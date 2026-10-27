@@ -5,6 +5,8 @@ import { useGameStore } from '../store/useGameStore';
 import { MobToonMaterial } from './MobToonMaterial';
 import { beastAvatarParts } from './beastAvatarParts.js';
 import { elementForSpell } from '../game/beasts.js';
+// The beast core's light mounts with the form: from the fixed light pool (render/lightPool.jsx).
+import { PooledLight } from './lightPool.jsx';
 import { ANTICIPATION_SEC } from '../game/beastTransform.js';
 import { MORPH_SEC, BURST_SEC, morphEntrance, burstFlash, chargeGlow } from '../game/beastMorph.js';
 import { isCaptureMode } from '../devtest/captureMode';
@@ -161,7 +163,7 @@ export function BeastAvatar() {
               blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
           </mesh>
 
-          <pointLight color={parts.glowColor} intensity={3 * GLOW} distance={6} decay={2} position={parts.core.pos} />
+          <PooledLight color={parts.glowColor} intensity={3 * GLOW} distance={6} decay={2} position={parts.core.pos} />
         </group>
       )}
     </group>

@@ -22,6 +22,10 @@ import { frameElapsed } from '../devtest/captureClock.js';
 import { Outlines } from '@react-three/drei';
 import { OUTLINE } from '../render/characterStyle';
 import { TIERS } from '../render/quality';
+import { renderDistanceFor } from '../render/tierGovernor.js';
+import { markShadowWorldChanged } from '../render/shadowSchedule.js';
+// A chest beacon mounts and unmounts with its chest: from the fixed light pool, so the light count never changes.
+import { PooledLight } from '../render/lightPool.jsx';
 import { Cube, Emissive } from '../render/mascots/voxelKit';
 import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
 import { shrineParts } from './shrineShape.js';
@@ -36,6 +40,8 @@ import { idForBlock, blockForId } from './blockIds';
 import { buildFootprint } from '../game/buildFootprint.js';
 import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE } from './loadedChunks.js';
 import { makeMobFloorProbe } from './mobFloorProbe.js';
+import { oreGlowTable, oreGlowGlsl } from './oreGlow.js';
+import { leafFeelGlsl } from './leafFeel.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -65,6 +71,8 @@ const compileShader = (shader) => {
     shader.uniforms.uTime = { value: 0 };
     shader.uniforms.uSunDir = { value: sunDirRef.current.clone() };
     shader.uniforms.uCloudCover = { value: cloudCoverRef.current };
+    // EXTERNAL-BASELINE-R2 #3: the ore nuggets glow at night (world/oreGlow.js). A static per-layer table.
+    shader.uniforms.uOreGlow = { value: oreGlowUniform };
 
     // Vertex Shader: forwards land varyings (blockType, world height/pos, AO) to the fragment.
     shader.vertexShader = `
@@ -74,6 +82,7 @@ const compileShader = (shader) => {
         attribute float aAO; // S1 vertex AO factor 0..3 (mesher cornerAO), forwarded to vAO
         varying float vAO;
         varying vec3 vWorldPos; // S(tex) de-tile: world position for per-cell value variation
+        ${LEAF_GLSL.vertexDecl}
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -99,6 +108,9 @@ const compileShader = (shader) => {
         vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz; // S(tex) de-tile: world cell for per-cell value variation
         // W2: voxel water faces are no longer emitted (Ocean.jsx owns the surface), so the old per-vertex
         // water wave-displacement is gone. Every emitted quad is opaque LAND.
+        // LEAF SWAY (EXTERNAL-BASELINE-R2 #2; world/leafFeel.js): leaves-only, phase from WORLD position so a merged
+        // canopy moves as a mass. vWorldPos above stays the rest position (the de-tile jitter must not crawl).
+        ${LEAF_GLSL.vertex}
         `
     );
 
@@ -114,6 +126,7 @@ const compileShader = (shader) => {
         flat varying float vBiome; // Q14 biome id from the vertex stage
         ${TINT_GLSL.decl}
         ${CLOUD_SHADOW_GLSL.decl}
+        ${ORE_GLOW_GLSL.decl}
         varying float vWorldY;
         varying float vAO; // S1 vertex AO 0..3 from the mesher (diffuse darkening in concave corners)
         varying vec3 vWorldPos; // S(tex) de-tile: world position for per-cell value variation
@@ -180,6 +193,19 @@ const compileShader = (shader) => {
         `
     );
 
+    // ORE GLOW (EXTERNAL-BASELINE-R2 #3; world/oreGlow.js) and LEAF TRANSLUCENCY (R2 #2; world/leafFeel.js): right after
+    // three sums the material's emissive, so the glow
+    // is light the surface GIVES (unshadowed, untouched by AO) and the bloom halos it. texColor and layerIndex come from
+    // the <color_fragment> patch above, earlier in the same main().
+    shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <emissivemap_fragment>',
+        `
+        #include <emissivemap_fragment>
+        ${ORE_GLOW_GLSL.apply}
+        ${LEAF_GLSL.fragment}
+        `
+    );
+
     // CLOUD SHADOWS (EXTERNAL-BASELINE #5; render/cloudField.js cloudShadowGlsl). Right after the lights are
     // summed and before they are combined: only the DIRECT terms are dimmed, so ambient and sky bounce stay.
     shader.fragmentShader = shader.fragmentShader.replace(
@@ -242,6 +268,9 @@ const CLOUD_SHADOW_GLSL = cloudShadowGlsl(); // the same field the sky dome draw
 const AERIAL_GLSL = aerialGlsl(); // shared with the far field (world/FarField.jsx)
 const LAND_GRADE_GLSL = landGradeGlsl(); // shared with the far field (world/FarField.jsx)
 const biomeTintMaskUniform = biomeTintMask(TEX_LAYERS);
+const ORE_GLOW_GLSL = oreGlowGlsl(TEX_LAYERS);
+const LEAF_GLSL = leafFeelGlsl();
+const oreGlowUniform = oreGlowTable(TEX_LAYERS);
 
 opaqueMaterial.onBeforeCompile = (shader) => {
     shader.uniforms.uBiomeTint = { value: biomeTintUniform };
@@ -291,6 +320,12 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
         return () => {
             if (opaqueGeometry) opaqueGeometry.dispose();
         };
+    }, [opaqueGeometry]);
+    // The sun's shadow renders on demand (render/shadowSchedule.js): a chunk whose mesh mounts, changes (a block edit
+    // remeshes it) or leaves must re-render it. A LAYOUT effect, so the render it asks for sees the committed mesh.
+    React.useLayoutEffect(() => {
+        markShadowWorldChanged();
+        return () => markShadowWorldChanged();
     }, [opaqueGeometry]);
 
     if (empty) return null;
@@ -421,7 +456,7 @@ const TreasureChestsRender = () => {
                                 <sphereGeometry args={[0.12, 8, 8]} />
                                 <meshBasicMaterial color="#ffd700" />
                             </mesh>
-                            <pointLight position={[0, 1.1, 0]} intensity={1.5} distance={6} color="#ffd700" />
+                            <PooledLight position={[0, 1.1, 0]} intensity={1.5} distance={6} color="#ffd700" />
                         </>
                     )}
                 </group>
@@ -665,11 +700,12 @@ export const MinecraftWorld = React.memo(() => {
         };
     }, [chunks]);
 
-    // Expose worker to Zustand store
+    // Expose worker to Zustand store. Through the setter: a world loaded before this mount (the context-loss resume, at App
+    // mount) is waiting to send its block edits, and the setter delivers them before the streamer asks for a chunk.
     useEffect(() => {
-        useGameStore.setState({ terrainWorker: worker });
+        useGameStore.getState().setTerrainWorker(worker);
         return () => {
-            useGameStore.setState({ terrainWorker: null });
+            useGameStore.getState().setTerrainWorker(null);
         };
     }, []);
 
@@ -781,8 +817,9 @@ export const MinecraftWorld = React.memo(() => {
             // Transient tier read (no reactive subscription): the active quality tier's
             // renderDistance gates how many chunks load/cull around the player. Falls back
             // to `low` if the tier key is somehow unknown.
+            // On a coarse pointer the radius is pinned to the boot tier (render/tierGovernor.js renderDistanceFor).
             const tier = useGameStore.getState().qualityTier;
-            const renderDistance = (TIERS[tier] || TIERS.low).renderDistance;
+            const renderDistance = renderDistanceFor(tier, useGameStore.getState().renderDistancePin);
 
             // chunkOf: the ONE chunk index the far-field mask also uses (review #4, R5.8).
             const playerCx = chunkOf(camera.position.x);

@@ -1,4 +1,4 @@
-import { useContext, useRef } from 'react';
+import { useContext } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EffectComposerContext } from '@react-three/postprocessing';
@@ -15,21 +15,26 @@ import { isCaptureMode } from '../devtest/captureMode';
 const BLOOM_BASE = 0.95;
 const BLOOM_PEAK = 2.4;
 
+/**
+ * PURE. The BloomEffect the composer is rendering NOW. Resolved every frame (a handful of passes and effects), never
+ * cached: this driver used to resolve it ONCE, and a low<->med tier step rebuilt Bloom (its mipmapBlur differs), so the
+ * spike drove a disposed effect for the rest of the session (refute F8). render/postFx.jsx now builds Bloom once, and
+ * this still follows whatever is live, so a future rebuild cannot strand it again.
+ */
+export function liveBloom(composer) {
+  if (!composer) return null;
+  for (const pass of composer.passes || []) {
+    const effects = pass && pass.effects;
+    if (!Array.isArray(effects)) continue;
+    for (const e of effects) if (e instanceof BloomEffect) return e;
+  }
+  return null;
+}
+
 export const BloomSpikeDriver = () => {
   const ctx = useContext(EffectComposerContext);
-  const fxRef = useRef(null);
   useFrame(() => {
-    // Resolve the live BloomEffect once (the composer's EffectPass holds it).
-    if (!fxRef.current && ctx && ctx.composer) {
-      for (const pass of ctx.composer.passes || []) {
-        const effects = pass && pass.effects;
-        if (Array.isArray(effects)) {
-          const bloom = effects.find((e) => e instanceof BloomEffect);
-          if (bloom) { fxRef.current = bloom; break; }
-        }
-      }
-    }
-    const fx = fxRef.current;
+    const fx = liveBloom(ctx && ctx.composer);
     if (!fx) return;
     if (isCaptureMode()) {
       // Deterministic baseline in capture — never spike (no spells in capture states).

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { TIERS } from '../../src/render/quality.js';
+import { createGovernor, governorIncline, governorDecline } from '../../src/render/tierGovernor.js';
 
 const read = (p) => readFileSync(resolve(process.cwd(), p), 'utf8');
 
@@ -31,8 +32,10 @@ describe('S2-A-M4a T1: renderDistance tier lever is WIRED', () => {
     // a hardcoded constant. Lock that it indexes TIERS by tier AND reads .renderDistance
     // (the actual code is `(TIERS[tier] || TIERS.low).renderDistance` -> a fallback-safe
     // derivation, so assert the two facts separately rather than one brittle adjacency).
-    expect(src).toMatch(/TIERS\[\s*tier\s*\]/);
-    expect(src).toMatch(/\.renderDistance/);
+    // RE-POINTED 2026-10-27 (plan 2026-10-27-crafty-steady-cool item d): the lookup moved into
+    // render/tierGovernor.js renderDistanceFor(tier, pin), which pins the radius to the boot tier on a coarse
+    // pointer; its arithmetic is tests/gates/tier-governor-gates. Here: the loader calls it with the tier it read.
+    expect(src).toMatch(/renderDistanceFor\(\s*tier\s*,\s*useGameStore\.getState\(\)\.renderDistancePin\s*\)/);
     // And it must read the tier transiently from the store (Game-Loop-Isolation: a
     // getState read inside the setTimeout chunk loop, NOT a reactive subscription).
     expect(src).toMatch(/useGameStore\.getState\(\)\.qualityTier/);
@@ -54,15 +57,20 @@ describe('S2-A-M4a T2: weather density tier lever is WIRED', () => {
     expect(TIERS.med.weather).toBeLessThan(TIERS.high.weather);
   });
 
-  it('WeatherSystem scales its instanced particle COUNT by TIERS[...].weather (transient read)', () => {
-    const src = read('src/GameScene.jsx') + read('src/render/WeatherSystem.jsx'); // A2.5: WeatherSystem moved -> src/render/
+  it('WeatherSystem scales its instanced particle COUNT by TIERS[...].weather (a selector, re-thinned on a tier step)', () => {
+    // RE-POINTED 2026-10-27. This read GameScene.jsx + WeatherSystem.jsx and asserted a TRANSIENT tier read
+    // (`getState().qualityTier`). WeatherSystem never did that: it subscribes with a selector, on purpose, so its
+    // count-keyed useMemos re-thin the particles on a runtime tier change (GameScene's residue note, "(was 3)").
+    // The assertion was satisfied by GameScene's old PerformanceMonitor handlers, which read the tier with
+    // getState — so it measured the wrong file, and went red the moment those handlers moved into
+    // render/tierGovernor.js. It now reads WeatherSystem alone and asserts what it actually does.
+    const src = read('src/render/WeatherSystem.jsx'); // A2.5: WeatherSystem moved -> src/render/
     // The effective rendered count must derive from the tier weather multiplier applied
     // to a base count (e.g. Math.round(rainCount * weather)). Lock the multiplier read +
     // its application to the particle base counts.
-    expect(src).toMatch(/\.weather/);
-    // Transient tier read (Game-Loop-Isolation: getState, not a per-frame subscription
-    // bound to the particle buffers).
-    expect(src).toMatch(/useGameStore\.getState\(\)\.qualityTier|getState\(\)\.qualityTier/);
+    expect(src).toMatch(/\(TIERS\[qualityTier\] \|\| TIERS\.low\)\.weather/);
+    // The tier arrives through a selector subscription (a render on a tier change, never a per-frame binding).
+    expect(src).toMatch(/useGameStore\(\(s\) => s\.qualityTier\)/);
     // The effective counts must be scaled by the multiplier (rounding the base count by
     // weatherDensity) for at least rain+snow. Code: `Math.round(rainCountBase * weatherDensity)`.
     expect(src).toMatch(/Math\.round\(\s*rainCountBase\s*\*\s*weatherDensity\s*\)/);
@@ -87,15 +95,29 @@ describe('S2-A-M4a T3: onIncline tier recovery (fix the one-way ratchet)', () =>
     //   cur === 'high' -> stays 'high' (the `next !== cur` guard no-ops)
     // Anchor on the JSX prop `onIncline={` (the actual callback) -- not a prose mention
     // of "onIncline" in a comment -- so the window holds the callback body.
-    const inclineIdx = src.indexOf('onIncline={');
-    expect(inclineIdx).toBeGreaterThan(-1);
-    // Grab a window after the prop up to the next prop / close (bounded, non-greedy).
-    const window = src.slice(inclineIdx, inclineIdx + 300);
-    // Upward ladder anchors: 'low' maps up to 'med', and 'med' maps up to 'high'.
-    expect(window).toMatch(/cur\s*===\s*'low'\s*\?\s*'med'\s*:\s*'high'/);
-    // It must guard against a no-op write (only setQualityTier when next differs).
-    expect(window).toMatch(/next\s*!==\s*cur/);
-    expect(window).toMatch(/setQualityTier\(next\)/);
+    // RE-POINTED 2026-10-27 (plan 2026-10-27-crafty-steady-cool item d). The ladder moved into
+    // render/tierGovernor.js (governorIncline / governorDecline, with hysteresis and a settle), so it is driven
+    // here as behaviour; what stays a source fact is the WIRING: both monitor callbacks go through GameScene's one
+    // governorStep, and that step writes the store only when the governor returns a tier.
+    const g = createGovernor();
+    expect([governorIncline(g, 'low', 0), governorIncline(g, 'med', 0), governorIncline(g, 'high', 0)]).toEqual(['med', 'high', null]);
+    expect([governorDecline(createGovernor(), 'high', 0), governorDecline(createGovernor(), 'med', 0), governorDecline(createGovernor(), 'low', 0)]).toEqual(['med', 'low', null]);
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    // 2026-10-27 (review MED 4, the warm-up): each callback hands drei's api to the step, which ignores a fresh monitor's
+    // first window (governorWarm, driven against drei's real monitor in tier-governor-gates), and the monitor is keyed on
+    // the tier so a step's own cost lands in a fresh monitor's first window.
+    expect(code).toMatch(/onIncline=\{\(api\) => governorStep\('incline', api\)\}/);
+    expect(code).toMatch(/onDecline=\{\(api\) => governorStep\('decline', api\)\}/);
+    const step = code.slice(code.indexOf('const governorStep = useRef('), code.indexOf('}).current;'));
+    expect(step, 'governorStep not found').toMatch(/governorIncline\(governor\.current, st\.qualityTier, now\)/);
+    expect(step).toMatch(/governorDecline\(governor\.current, st\.qualityTier, now\)/);
+    expect(step, 'the step does not ignore a fresh monitor\'s first window').toMatch(/^\s*if \(monitor && !governorWarm\(monitor\.index\)\) return null;/m);
+    expect(step.indexOf('governorWarm('), 'the warm-up check comes after the tier is stepped').toBeLessThan(step.indexOf('governorDecline('));
+    const tagAt = code.indexOf('<PerformanceMonitor');
+    const tag = code.slice(tagAt, code.indexOf('/>', tagAt));
+    expect(tag, 'the monitor is not remounted by a tier step').toMatch(/\bkey=\{qualityTier\}/);
+    // It must guard against a no-op write (only setQualityTier when the governor returned a tier).
+    expect(step).toMatch(/if \(next\) st\.setQualityTier\(next\);/);
   });
 
   it('PerformanceMonitor uses the bounds dead zone for hysteresis — and does NOT cap flipflops', () => {

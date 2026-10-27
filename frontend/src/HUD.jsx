@@ -39,6 +39,7 @@ import { FEROCITY_MAX, FEROCITY_THRESHOLD } from './game/ferocity.js';
 import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
 import { SNARE_COST, SOUL_MAX } from './game/soul.js';
 import { RESONANCE_MAX, ZONE_COST } from './game/resonance';
+import { subscribeHudTick } from './ui/hudTicker.js';
 
 // M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
 // (HUD is a plain declarative component, not a per-frame useFrame system, so a
@@ -203,18 +204,26 @@ const ControlsSheet = React.memo(() => {
 // INDEPENDENT) + live distance. Game-Loop-Isolation: a self-contained rAF doing transient getState() reads
 // + direct ref/DOM writes (no per-frame React state), copied from the Compass pattern. Capture-SUPPRESSED
 // (rAF never starts + returns null in capture) so the deterministic visual baselines stay byte-identical.
-const ObjectiveTracker = React.memo(() => {
+export const ObjectiveTracker = React.memo(() => {
   const t = useT();
+  const rootRef = useRef(null);
   const arrowRef = useRef(null);
   const textRef = useRef(null);
   const distRef = useRef(null);
   const shrineCache = useRef({ t: 0, shrine: null });
 
   useEffect(() => {
-    if (isCaptureMode()) return; // never animate/scan in capture -> zero baseline impact
-    let animFrame;
     const tick = () => {
-      animFrame = requestAnimationFrame(tick);
+      // CAPTURE RESETS, it does not early-return (review 2026-10-27, steady-cool LOW 7). The harness enters capture AFTER
+      // boot, so a check made once at mount let a tracker mounted in play keep turning in the gated frames, wherever it
+      // had got to. Read every tick: under capture the tracker rests HIDDEN (as when it mounts in capture: null below),
+      // and nothing is scanned or written; out of capture it shows again.
+      const root = rootRef.current;
+      if (isCaptureMode()) {
+        if (root && root.style.visibility !== 'hidden') root.style.visibility = 'hidden';
+        return;
+      }
+      if (root && root.style.visibility === 'hidden') root.style.visibility = '';
       const state = useGameStore.getState();
       const camera = state.gameCamera;
       const playerPos = state.playerPosition;
@@ -245,19 +254,22 @@ const ObjectiveTracker = React.memo(() => {
 
       // Full-circle bearing -> the arrow points to the objective regardless of which way the player faces.
       const b = bearingToMarker(targetX, targetZ, playerPos.x, playerPos.z, heading, Math.PI * 2);
-      arrow.style.transform = `rotate(${bearingDeg(b.pct)}deg)`;
-      arrow.style.background = color;
-      txt.textContent = label;
-      dist.textContent = `${Math.round(b.dist)}m`;
+      // Written only on change (plan 2026-10-27-crafty-steady-cool item f): standing still, nothing here moves.
+      const rot = `rotate(${bearingDeg(b.pct)}deg)`, m = `${Math.round(b.dist)}m`;
+      if (arrow.dataset.rot !== rot) { arrow.dataset.rot = rot; arrow.style.transform = rot; }
+      if (arrow.dataset.color !== color) { arrow.dataset.color = color; arrow.style.background = color; }
+      if (txt.textContent !== label) txt.textContent = label;
+      if (dist.textContent !== m) dist.textContent = m;
     };
     tick();
-    return () => cancelAnimationFrame(animFrame);
+    // One clock for the HUD (ui/hudTicker.js): the capped canvas's rendered frames, or rAF under Unlimited.
+    return subscribeHudTick(tick);
   }, []);
 
   if (isCaptureMode()) return null;
 
   return (
-    <div className="absolute top-12 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+    <div ref={rootRef} data-testid="objective-tracker" className="absolute top-12 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
       <div className="flex items-center gap-2 px-2.5 py-1 bg-panel-raise border-chrome border-ink rounded-sm whitespace-nowrap">
         <span ref={arrowRef} className="inline-block w-2.5 h-2.5 flex-none" style={{ background: '#46E0FF', clipPath: 'polygon(50% 0,100% 100%,0 100%)' }}></span>
         <span ref={textRef} className="text-[11px] font-bold text-text">{t('hud.objectiveShrine')}</span>
@@ -274,16 +286,18 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
   const shrineCache = useRef({ t: 0, shrine: null });
 
   useEffect(() => {
-    let animFrame;
-    
+    let unsubscribe = null;
+    let lastHtml = null;
+
     const updateCompass = () => {
       // Dev capture-determinism: in capture mode the follow-cam is pinned, so the
       // compass markers are fully determined by the frozen camera + marker positions.
-      // Render ONCE and do NOT reschedule the rAF loop — a continuously running loop
+      // Render ONCE and then stop ticking — a continuously running loop
       // re-derives the float `left: %` each frame and rounds to sub-pixel-different
       // marker x-positions between runs (a ~500px top-of-frame flicker). Inert in
-      // normal gameplay: the loop runs every frame exactly as before.
-      if (!isCaptureMode()) animFrame = requestAnimationFrame(updateCompass);
+      // normal gameplay: the compass ticks on every HUD frame (ui/hudTicker.js — the capped
+      // canvas's rendered frames, or rAF under Unlimited; plan 2026-10-27-crafty-steady-cool item f).
+      if (isCaptureMode() && unsubscribe) { unsubscribe(); unsubscribe = null; }
 
       const container = containerRef.current;
       if (!container) return;
@@ -477,11 +491,19 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
         }
       });
 
-      container.innerHTML = markersHtml.join('');
+      // Written only when it changed: standing still, the markers are identical frame after frame, and rebuilding
+      // them re-parsed ~20 elements and re-ran style and layout on every display frame (120 a second on a ProMotion
+      // panel) for nothing (plan 2026-09-23-crafty-perf-heat-ipad, Task 6).
+      const html = markersHtml.join('');
+      if (html !== lastHtml) {
+        lastHtml = html;
+        container.innerHTML = html;
+      }
     };
 
     updateCompass();
-    return () => cancelAnimationFrame(animFrame);
+    if (!isCaptureMode()) unsubscribe = subscribeHudTick(updateCompass);
+    return () => { if (unsubscribe) unsubscribe(); };
   }, [treasureChests, bossSystem]);
 
   const imbueArmed = useGameStore((s) => s.imbueArmed); // S2-B4-M5: the armed-reticle tell (edge-written)
@@ -502,7 +524,7 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
         {/* Alignment reticle line */}
         <div className="absolute top-0 bottom-0 w-[1.5px] bg-info z-20"></div>
         {/* Scrolling Marker track */}
-        <div ref={containerRef} className="w-[280px] h-full relative overflow-hidden font-mono"></div>
+        <div ref={containerRef} data-testid="compass-track" className="w-[280px] h-full relative overflow-hidden font-mono"></div>
       </div>
     </div>
     </>

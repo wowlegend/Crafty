@@ -175,7 +175,10 @@ describe('cost', () => {
 
 describe('the far field is drawn, from the real world, hazed like the terrain (weak, structural)', () => {
   it('GameScene mounts it at the tier\'s render distance', () => {
-    expect(carriersOf(/<FarField renderDistance=\{q\.renderDistance\} \/>/)).toEqual(['GameScene.jsx']);
+    // RE-POINTED 2026-10-27 (plan 2026-10-27-crafty-steady-cool item d): GameScene's `renderDistance` is
+    // renderDistanceFor(tier, pin) — the boot tier's on a coarse pointer, so a runtime step there does not rebuild it.
+    expect(carriersOf(/<FarField renderDistance=\{renderDistance\} \/>/)).toEqual(['GameScene.jsx']);
+    expect(carriersOf(/const renderDistance = renderDistanceFor\(qualityTier, renderDistancePin\);/)).toEqual(['GameScene.jsx']);
   });
 
   it('it re-centres through snapCentre and builds from the REAL column sampler', () => {
@@ -245,5 +248,33 @@ describe('R3.8 — which surfaces carry the canopy (read off the worker\'s flora
     const col = (biome) => farColumn({ surfaceBlock: BLOCK_ID.dirt, surfaceY: 40, isWater: false, biome }, MEANS);
     expect(col('swamp').y).toBeCloseTo(41 + FAR_CANOPY.swamp * FAR_CANOPY_HEIGHT, 6);
     expect(col('forest').y).toBe(41);
+  });
+});
+
+// EMISSIVE ORES (plan 2026-09-23-crafty-emissive-ores, Task 2; tests/gates/ore-glow-gates drives the maths). The
+// term reaches the NEAR terrain's program after three's emissive sum — and never the far field, which averages the
+// same tiles into one colour per column: a glowing mean would light whole distant hillsides (Review Focus 5).
+// Mutation-Proof (mutate.sh), each observed RED: S1 the apply dropped from the <emissivemap_fragment> splice; S2 the
+// far field imports the ore glow. WEAK by design: this proves the splice text, not the linked program — the frame is
+// the probe's (plan Task 3).
+describe('the ore glow is spliced into the near terrain only (weak, structural)', () => {
+  it('Terrain splices ORE_GLOW_GLSL right after <emissivemap_fragment>, with its table as a uniform', () => {
+    expect(carriersOf(/'#include <emissivemap_fragment>',\s*`\s*#include <emissivemap_fragment>\s*\$\{ORE_GLOW_GLSL\.apply\}/)).toEqual(['world/Terrain.jsx']);
+    expect(carriersOf(/shader\.uniforms\.uOreGlow = \{ value: oreGlowUniform \}/)).toEqual(['world/Terrain.jsx']);
+    expect(carriersOf(/\$\{ORE_GLOW_GLSL\.decl\}/)).toEqual(['world/Terrain.jsx']);
+  });
+  it('nothing else — the far field included — imports the ore glow', () => {
+    expect(carriersOf(/from '\.\/oreGlow\.js'|from '\.\.\/world\/oreGlow\.js'/)).toEqual(['world/Terrain.jsx']);
+  });
+  // LEAF SWAY + TRANSLUCENCY (plan 2026-09-23-crafty-leaf-sway-translucency, Task 2; leaf-feel-gates drives the maths).
+  // Mutation-Proof (mutate.sh), each observed RED: S3 the sway dropped from the <begin_vertex> splice; S4 the
+  // translucency dropped from the emissive splice; S5 the far field imports leafFeel. WEAK the same way.
+  it('Terrain splices the leaf sway after <begin_vertex> and the translucency after the ore glow', () => {
+    expect(carriersOf(/\$\{LEAF_GLSL\.vertexDecl\}/)).toEqual(['world/Terrain.jsx']);
+    expect(carriersOf(/'#include <begin_vertex>',\s*`\s*#include <begin_vertex>[\s\S]{0,1200}?\$\{LEAF_GLSL\.vertex\}\s*`/)).toEqual(['world/Terrain.jsx']);
+    expect(carriersOf(/\$\{ORE_GLOW_GLSL\.apply\}\s*\$\{LEAF_GLSL\.fragment\}/)).toEqual(['world/Terrain.jsx']);
+  });
+  it('nothing else — the far field included — imports the leaf terms', () => {
+    expect(carriersOf(/from '\.\/leafFeel\.js'|from '\.\.\/world\/leafFeel\.js'/)).toEqual(['world/Terrain.jsx']);
   });
 });

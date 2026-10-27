@@ -11,6 +11,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { registerTestHook } from '../devtest/testBridge.js';
+import { claimHudTick, emitHudTick } from '../ui/hudTicker.js';
 
 /**
  * PURE: one rAF tick of the cap. `last` is the cap's own clock (the time the last rendered frame was DUE, not when it
@@ -75,7 +76,7 @@ export function switchKeepingClock(clock, setFrameloop, mode) {
  * vsync after the switch on, this tick runs first: the loop finds nothing to draw and stops, and the commit's change is
  * drawn by the next capped frame, at most one interval later. A commit landing on a render tick is drawn by advance().
  */
-export function FrameCap({ fps, active }) {
+export function FrameCap({ fps, active, testHooks = false, drivesHud = false }) {
   const advance = useThree((s) => s.advance);
   const get = useThree((s) => s.get);
   const set = useThree((s) => s.set);
@@ -85,29 +86,41 @@ export function FrameCap({ fps, active }) {
     return () => set({ setFrameloop: original });
   }, [get, set]);
   const frames = useRef(0);
+  const fpsRef = useRef(fps);
+  fpsRef.current = fps; // the pace in force, for the DEV hook (the title screen selects a slower one)
   useFrame(() => {
     frames.current += 1; // one per R3F frame drawn, whichever loop drew it (read by the DEV hook below)
   });
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
+    // Only the game canvas registers the test hooks: the title canvas mounts a FrameCap too, and one hook name
+    // registered from two canvases would answer for whichever mounted last.
+    if (!import.meta.env.DEV || !testHooks) return;
     // DEV-only: the frame-cap e2e reads the live mode, the count of R3F frames drawn (the world clock is no proof of
     // drawing: it advances with no frame drawn at all), and the R3F clock, which must not jump back on a loop switch.
-    registerTestHook('readFrameloop', () => ({ loop: get().frameloop, frames: frames.current, clock: get().clock.elapsedTime }));
+    registerTestHook('readFrameloop', () => ({ loop: get().frameloop, frames: frames.current, clock: get().clock.elapsedTime, fps: fpsRef.current }));
     registerTestHook('invalidateCanvas', () => get().invalidate()); // stands in for a React commit inside the Canvas
-  }, [get]);
+  }, [get, testHooks]);
   useEffect(() => {
     if (!active || !(fps > 0)) return undefined;
+    // THE HUD FOLLOWS THE CANVAS (ui/hudTicker.js): while this loop paces the game canvas it owns the HUD's clock and
+    // ticks it once per RENDERED frame; on cleanup (Unlimited, unmount) the ticker falls back to its own rAF (F10).
+    const release = drivesHud ? claimHudTick() : null;
     let last = -Infinity;
     let raf = 0;
     const tick = (t) => {
       raf = requestAnimationFrame(tick);
       const step = stepCap(t, last, fps);
       last = step.last;
-      if (step.render) advance(t);
-      else get().internal.frames = 0; // nothing for R3F's own loop to draw between capped frames (see above)
+      if (step.render) {
+        advance(t);
+        if (drivesHud) emitHudTick(t);
+      } else get().internal.frames = 0; // nothing for R3F's own loop to draw between capped frames (see above)
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [fps, active, advance, get]);
+    return () => {
+      cancelAnimationFrame(raf);
+      if (release) release();
+    };
+  }, [fps, active, advance, get, drivesHud]);
   return null;
 }

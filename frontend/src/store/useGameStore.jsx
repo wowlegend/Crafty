@@ -59,6 +59,27 @@ export const EQUIPMENT_STATS = {
 const effectiveWith = (base, equipment, unlockedTalents) =>
   foldTalentEffects(computeEffective(base, equipment, EQUIPMENT_STATS), unlockedTalents);
 
+// The terrain worker's `load_modifications` message for the store's block edits (`x_y_z` -> block id): one
+// [cx, cz, voxelIndex, blockType] per edit. The worker REPLACES its edit table with this, so an empty map clears it.
+function loadModificationsMessage(worldBlocks) {
+  const modifications = [];
+  for (const [key, blockType] of worldBlocks.entries()) {
+    const [wxStr, wyStr, wzStr] = key.split('_');
+    const wx = parseInt(wxStr);
+    const wy = parseInt(wyStr);
+    const wz = parseInt(wzStr);
+
+    const cx = chunkOf(wx); // the ONE chunk index (world/loadedChunks.js, review #5 R6.7)
+    const cz = chunkOf(wz);
+    const lx = wx - cx * CHUNK_SIZE;
+    const lz = wz - cz * CHUNK_SIZE;
+    const index = voxelIndex(lx, wy, lz);
+
+    modifications.push([cx, cz, index, blockType]);
+  }
+  return { type: 'load_modifications', payload: { modifications } };
+}
+
 export const useGameStore = create((set, get) => ({
     // Transient World State (No need to persist)
     isSpawnChunkLoaded: false,
@@ -96,6 +117,9 @@ export const useGameStore = create((set, get) => ({
     // App.jsx selects up at startup via selectTier(readDeviceSignals()).
     qualityTier: 'low',
     setQualityTier: (tier) => set({ qualityTier: tier }),
+    // The boot tier on a coarse pointer (phone, iPad), else null: a runtime tier step never moves the render distance
+    // there (render/tierGovernor.js renderDistanceFor). Written once at boot by App.
+    renderDistancePin: null,
 
     // Danger mood input (spec §4): 0 = explore, 1 = dusk, 2 = obsidian. Gameplay
     // triggers (night/combat/boss) wire this in S2; the test bridge drives it now.
@@ -131,7 +155,22 @@ export const useGameStore = create((set, get) => ({
     setActiveHostilesCount: (count) => set({ activeHostilesCount: count }),
     
     terrainWorker: null,
-    setTerrainWorker: (worker) => set({ terrainWorker: worker }),
+    // Published by world/Terrain.jsx when the world mounts (null when it unmounts). A world LOADED before that — the
+    // context-loss resume runs at App mount, before the Canvas's children exist — had no worker to send its block edits
+    // to: loadWorldData marks them pending and the publish delivers them, ahead of the streamer's first chunk request.
+    setTerrainWorker: (worker) => {
+        set({ terrainWorker: worker });
+        if (worker && get()._worldEditsPending) {
+            worker.postMessage(loadModificationsMessage(get().worldBlocks));
+            set({ _worldEditsPending: false });
+        }
+    },
+    // True while the store holds block edits the terrain worker has not been sent (see setTerrainWorker).
+    _worldEditsPending: false,
+    // Where a RESUMED save puts the player (the context-loss reload, ui/ContextLossPanel.jsx), or null: one-shot, read
+    // and cleared by the Player's spawn (Components.jsx, game/spawnPlacement.js resolveResumeSpawn). Without it the boot
+    // spawn always lands on the origin column, wherever the save was made.
+    resumeSpawn: null,
     
     getGeneratedChunks: null,
     setGetGeneratedChunks: (fn) => set({ getGeneratedChunks: fn }),
@@ -336,6 +375,11 @@ export const useGameStore = create((set, get) => ({
     // default is 60: Kevin measured an M3 Max's fans at full speed on the uncapped loop. Persisted (settingsPersist).
     frameCap: 60,
     setFrameCap: (fps) => set({ frameCap: fps === 0 ? 0 : 60 }),
+    // The opaque title screen covers the game canvas (render/canvasPace.js paces it down). ONE writer: MenuSystem,
+    // from its own titleMenuVisible — a second derivation of "is the title up" is how two copies drift.
+    titleCovering: false,
+    // A panel's full-screen scrim covers the game canvas (render/canvasPace.js paces it to 30). ONE writer: MenuSystem.
+    panelCovering: false,
     juiceIntensity: 1,
     setJuiceIntensity: (v) => set(() => {
       const next = Math.max(0, Math.min(1, v));
@@ -1092,26 +1136,13 @@ export const useGameStore = create((set, get) => ({
 
             const position = saveData.player_data?.position;
 
-            if (state.terrainWorker) {
-                const modifications = [];
-                for (const [key, blockType] of worldBlocks.entries()) {
-                    const [wxStr, wyStr, wzStr] = key.split('_');
-                    const wx = parseInt(wxStr);
-                    const wy = parseInt(wyStr);
-                    const wz = parseInt(wzStr);
-
-                    const cx = chunkOf(wx); // the ONE chunk index (world/loadedChunks.js, review #5 R6.7)
-                    const cz = chunkOf(wz);
-                    const lx = wx - cx * CHUNK_SIZE;
-                    const lz = wz - cz * CHUNK_SIZE;
-                    const index = voxelIndex(lx, wy, lz);
-
-                    modifications.push([cx, cz, index, blockType]);
-                }
-                state.terrainWorker.postMessage({ type: 'load_modifications', payload: { modifications } });
-            }
+            // No worker yet (a load at boot, before the world mounted): the edits wait for setTerrainWorker to deliver
+            // them. Sending only when a worker existed is how a resumed save came back with its coins and without the
+            // blocks its player placed (review 2026-10-27, steady-cool HIGH 2).
+            if (state.terrainWorker) state.terrainWorker.postMessage(loadModificationsMessage(worldBlocks));
 
             return {
+                _worldEditsPending: !state.terrainWorker,
                 worldBlocks,
                 inventory,
                 gameMode,
