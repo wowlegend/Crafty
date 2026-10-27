@@ -50,7 +50,7 @@ restore() {
     echo "  [3] $LABEL — RESTORE FAILED. $SUBJ IS STILL MUTATED. Restore it before anything else: cp $BAK $SUBJ" >&2
     exit 3
   fi
-  rm -f "$BAK" "$OUT"
+  rm -f "$BAK" "$OUT" "${JSON:-}"
 }
 trap 'restore' EXIT
 trap 'exit 3' INT TERM
@@ -67,15 +67,23 @@ if p.read_text() == s:
     sys.stderr.write("mutation did not change the file\n"); sys.exit(1)
 PY
 
-count_tests() {
-  local n
-  n=$(grep -cE '^   (✓|×) ' "$1")
-  if [ "$n" -eq 0 ]; then n=$(grep -oE '\(([0-9]+) tests?\)' "$1" | head -1 | tr -dc '0-9'); fi
-  echo "${n:-0}"
+# THE COUNT AND THE RED TITLES COME FROM VITEST'S JSON REPORTER, never from its human-readable output. Until
+# 2026-10-27 this grepped the default reporter's "   ✓ " / "(N tests)" lines; vitest 4 stopped printing either when
+# stdout is not a TTY, and every mutation — the identity one too — read "collected 0" (COULD NOT CHECK: it failed
+# closed, which is the only reason it was noticed rather than believed). A machine-readable verdict does not move
+# with a reporter's cosmetics.
+JSON="$(mktemp "${TMPDIR:-/tmp}/mutate-json.XXXXXX")" || exit 3
+run_spec() {
+  rm -f "$JSON"
+  npx vitest run "$SPEC" --reporter=json --outputFile="$JSON" > "$OUT" 2>&1
+}
+# Prints the collected test count on line 1, then one failed test title per line.
+read_json() {
+  node -e 'try { const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(r.numTotalTests ?? 0); for (const f of r.testResults || []) for (const a of f.assertionResults || []) if (a.status === "failed") console.log(a.title); } catch { console.log(0); }' "$JSON"
 }
 
-npx vitest run "$SPEC" > "$OUT" 2>&1; RC=$?
-N=$(count_tests "$OUT")
+run_spec; RC=$?
+N=$(read_json | head -1)
 if [ "$N" -ne "$EXPECT" ]; then echo "  [3] $LABEL — COULD NOT CHECK: collected $N of $EXPECT"; exit 3; fi
 
 if [ "$RC" -eq 0 ]; then
@@ -83,9 +91,9 @@ if [ "$RC" -eq 0 ]; then
   exit 1
 fi
 
-REDLINES="$(grep -E '^   × ' "$OUT" | sed -E 's/^   × .*> //; s/ [0-9]+ms$//; s/^/         /')"
+REDLINES="$(read_json | tail -n +2 | sed -E 's/^/         /')"
 cp "$BAK" "$SUBJ" || exit 3
-npx vitest run "$SPEC" > "$OUT" 2>&1; BASE=$?
+run_spec; BASE=$?
 if [ "$BASE" -ne 0 ]; then
   echo "  [3] $LABEL — the spec is RED on the UNMUTATED subject, so this RED proves nothing"; exit 3
 fi

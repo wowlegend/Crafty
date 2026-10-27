@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
 
 /**
  * THE RECEIPT MUST CERTIFY THE TREE THAT WAS TESTED (QUEUE R1.3).
@@ -31,8 +32,8 @@ import { join, resolve } from 'node:path';
 const ROOT = resolve(__dirname, '../../..');
 const SCRIPT = join(ROOT, 'ci/write-receipt.sh');
 
-const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-const run = (cwd, receipt) => spawnSync('sh', [SCRIPT, receipt], { cwd, encoding: 'utf8' });
+const git = fixtureGit; // never the caller's repository: tests/scripts/_isolatedGit.js
+const run = (cwd, receipt) => spawnSync('sh', [SCRIPT, receipt], { cwd, encoding: 'utf8', env: isolatedGitEnv() });
 
 let repo;
 let receipt;

@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
 
 /**
  * A RECEIPT SKIPS THE OFFLINE CORE — NEVER THE COMMIT-RANGE GATES.
@@ -42,7 +43,7 @@ let dir;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'crafty-prepush-test-')); });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-const git = (cwd, ...a) => execFileSync('git', a, { cwd, encoding: 'utf8' }).trim();
+const git = fixtureGit; // never the caller's repository: tests/scripts/_isolatedGit.js
 
 /** A throwaway repo whose committed ci/pipeline.sh appends its argv to $PIPE_LOG. */
 function fixtureRepo() {
@@ -69,7 +70,7 @@ function runHook({ repo, sha }) {
     input: `refs/heads/main ${sha} refs/heads/main ${ZERO}\n`,
     // git prepends its exec-path to PATH when it runs a hook, so a real push reaches the real git binary
     // ahead of any PATH-level wrapper. Mirror that, or an operator's git shim answers instead of git.
-    env: { ...process.env, PIPE_LOG: log, TMPDIR: tmp, PATH: `${EXEC_PATH}:${process.env.PATH}` },
+    env: isolatedGitEnv({ PIPE_LOG: log, TMPDIR: tmp, PATH: `${EXEC_PATH}:${process.env.PATH}` }),
   });
   return { ...r, calls: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [] };
 }
@@ -110,7 +111,7 @@ describe('ci/pipeline.sh --range-only — the range gates run, every skipped cor
       chmodSync(p, 0o755);
     }
     const r = spawnSync('bash', [PIPELINE, ...args], {
-      encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+      encoding: 'utf8', env: isolatedGitEnv({ PATH: `${bin}:${process.env.PATH}` }),
     });
     return { ...r, cmds: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [] };
   }
