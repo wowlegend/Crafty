@@ -68,4 +68,35 @@ describe('a panel whose chunk FAILS does not take the game down, and the next op
     expect(calls, 'the re-open did not retry the load').toBe(2);
     expect(screen.getByTestId('box').textContent, 'the re-open stayed blank').toBe('inv');
   });
+
+  // Review #8 #1 (MED) = ultrareview U2, 2026-10-27: the boundary rendered null and stopped there. The panel's OPEN
+  // FLAG stayed set, and its onClose — the only thing that clears it and gives the game back (enterPlay) — lives in
+  // the panel UI that never rendered: the player sat in panel-open mode with nothing on screen (worst on touch).
+  it('a failed chunk CLOSES the panel and tells the player, once each', async () => {
+    let closed = 0, told = 0;
+    const { lazyPanel } = makeLazyPanels(() => Promise.reject(new Error('offline')), { onChunkFail: () => { told++; } });
+    const Box = lazyPanel('Box');
+    render(<Outer><Suspense fallback={null}><Box label="inv" onClose={() => { closed++; }} /></Suspense></Outer>);
+    await act(async () => {});
+    expect(screen.queryByTestId('crashed'), 'the chunk failure reached the app-wide boundary').toBeNull();
+    expect(closed, 'the panel was left open with nothing on screen').toBe(1);
+    expect(told, 'the player was not told why the panel did not open').toBe(1);
+  });
+
+  // The bake-off's candidate "the boundary swallows EVERY render error", checked and REFUTED (2026-10-27): this was
+  // green before any change. A panel that suspends on its first mount is never committed; React discards it and mounts
+  // it again once the chunk resolves, and by then `loaded` is set, so it renders on the direct path with no
+  // PanelBoundary around it. The boundary only ever stands around a pending or REJECTED lazy, so every error it sees
+  // is a load failure. Kept as a PIN: if the fast path or React's remount ever changes, a render bug would start to
+  // vanish silently, and this goes red.
+  it('a panel that LOADS but throws while rendering is NOT swallowed: it reaches the app-wide boundary', async () => {
+    let closed = 0;
+    const Broken = () => { throw new Error('render bug'); };
+    const { lazyPanel } = makeLazyPanels(() => Promise.resolve({ Broken }));
+    const P = lazyPanel('Broken');
+    render(<Outer><Suspense fallback={null}><P onClose={() => { closed++; }} /></Suspense></Outer>);
+    await act(async () => {});
+    expect(screen.getByTestId('crashed').textContent, 'a render bug was hidden as if it were a failed load').toMatch(/render bug/);
+    expect(closed, 'a render bug was treated as a load failure').toBe(0);
+  });
 });

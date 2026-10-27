@@ -6,6 +6,8 @@
 // one request, one chunk. prefetchPanels() starts it once the game is idle, so the first panel a player opens is
 // normally already there; a panel opened before that renders nothing for the moment the chunk takes (Suspense).
 import { lazy, createElement, Component, useRef } from 'react';
+import { useGameStore } from '../../store/useGameStore';
+import { t } from '../../i18n/i18n.js';
 
 /**
  * `load`, run at most once while it is pending or has succeeded; a REJECTED load is forgotten, so the next call
@@ -29,11 +31,21 @@ export function onceRetrying(load) {
  * and the nearest boundary used to be the app-wide one: a panel opened while its chunk failed — offline, or a tab
  * left open across a deploy, whose old hashed chunk now 404s — replaced the whole game with the reload screen. This
  * renders nothing instead, and tells the panel to drop its failed lazy so the next open builds a fresh one.
+ *
+ * And it GIVES THE GAME BACK (review #8 #1, ultrareview U2, 2026-10-27): rendering null left the panel's open flag set,
+ * and the onClose that clears it (and re-enters play) lives in the panel UI that never rendered — the player sat in
+ * panel-open mode with nothing on screen, worst on touch. So it calls the panel's own onClose and tells the player.
+ * Every error it sees is a LOAD failure: a panel that suspended on mount is re-mounted on the loaded path once the
+ * chunk resolves, so a render bug never meets this boundary (pinned in lazy-panels-render-gates).
  */
 class PanelBoundary extends Component {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch() { this.props.onFail(); }
+  componentDidCatch() {
+    this.props.onFail();
+    this.props.onChunkFail?.();
+    this.props.onClose?.();
+  }
   render() { return this.state.failed ? null : this.props.children; }
 }
 
@@ -46,7 +58,7 @@ class PanelBoundary extends Component {
  * An instance that opened through the lazy stays on it: switching the element type under an open panel would
  * remount it and drop its state.
  */
-export function makeLazyPanels(load) {
+export function makeLazyPanels(load, { onChunkFail } = {}) {
   let loaded = null;
   const loadPanels = onceRetrying(() => load().then((m) => { loaded = m; return m; }));
   const lazyPanel = (name) => {
@@ -55,7 +67,7 @@ export function makeLazyPanels(load) {
       const direct = useRef(loaded !== null);
       if (direct.current) return createElement(loaded[name], props);
       if (!Lazy) Lazy = lazy(() => loadPanels().then((m) => ({ default: m[name] })));
-      return createElement(PanelBoundary, { onFail: () => { Lazy = null; } }, createElement(Lazy, props));
+      return createElement(PanelBoundary, { onFail: () => { Lazy = null; }, onChunkFail, onClose: props.onClose }, createElement(Lazy, props));
     };
     Panel.displayName = `Panel(${name})`;
     return Panel;
@@ -63,7 +75,11 @@ export function makeLazyPanels(load) {
   return { loadPanels, lazyPanel };
 }
 
-const panels = makeLazyPanels(() => import('./panelBundle.js'));
+// The player hears why the panel did not open. Offline, or a tab left open across a deploy (its old hashed chunk now
+// 404s on every retry) — the notice names both, since only a reload fixes the second.
+const panels = makeLazyPanels(() => import('./panelBundle.js'), {
+  onChunkFail: () => useGameStore.getState().addNotification?.(t('notice.panelLoadFailed'), 'warn'),
+});
 
 /** The panel chunk, imported once (and again only after a failure). */
 export const loadPanels = panels.loadPanels;
