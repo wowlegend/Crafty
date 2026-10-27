@@ -6,6 +6,9 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedGitEnv } from './_isolatedGit.js';
 import { run, CHECKS, CANONICAL } from '../../scripts/ci/doc-currency.mjs';
+import { derive as deriveGates, renderBlock as renderGates, END as GATES_END } from '../../scripts/ci/gate-table.mjs';
+import { measure, renderBlock as renderMeasured } from '../../scripts/ci/measure.mjs';
+import { SURFACES, renderBlock as renderReadOrder } from '../../scripts/ci/read-order.mjs';
 
 /**
  * DOC-CURRENCY IS TESTED WHERE ITS CHECKS CONNECT, not only in the pure helpers behind them (plan U8a).
@@ -40,14 +43,23 @@ import { run, CHECKS, CANONICAL } from '../../scripts/ci/doc-currency.mjs';
  *   M-U8a14 the CLI guard compares resolve(argv[1]) again           -> "run through a symlinked path, still runs ..."
  *   M-U8a15 the space before the section sign dropped again         -> "sections: ... with the full message"
  *   M-U8a16 run() skips the sections check                          -> both sections cases
+ * Fix round (tranche A review: five of seven checks were never shown to read `root` or to report an ERROR), via
+ * mutate-batch (20 tests, 2026-10-27 21:45Z); identity SURVIVED, then 17 of 17 RED, each in its check's red case:
+ *   M-A1/2   packages reads package.json / the docs from the checkout, not root
+ *   M-A3/4   packages finding downgraded to a warning / its error line never reached
+ *   M-A5/6/7 status reads STATUS from the checkout / finding downgraded to a warning / error line deleted
+ *   M-A8/9/10   gates: the same three
+ *   M-A11/12/13 measured: the same three (the source-file count)
+ *   M-A14/15/16 read-order: the same three;  M-A17 read-order reads only the first surface
  *
  * The real-tree denominator case reads what the docs say today: an honest edit that leaves a check with nothing to
  * examine (the last watched-package line, the last `<doc> §` citation) turns it red. That is intended — a check
  * that examines nothing on the real tree guards nothing, and is re-pointed or retired rather than left green.
  *
  * BLIND SPOT: `root` moves where the DOCS are read from. The generated blocks' sources — the hook that defines the
- * gates (gate-table) and the src tree that `measure()` walks — are always this checkout's, so a fixture root can
- * drive `gates` and `measured` only to their "block missing" branches.
+ * gates (gate-table) and the src tree that `measure()` walks — are always this checkout's. So the `gates` and
+ * `measured` fixtures hold blocks RENDERED from this checkout's sources (current, or one row/number off): they prove
+ * the check reads the block from `root`, and say nothing about a check that read its SOURCE from the wrong place.
  */
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -110,6 +122,112 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     const root = fixture({ 'memory/STATUS.md': '## 2. THE REGISTRY\n', 'memory/ARCHITECTURE.md': 'see STATUS §2 for it\n' });
     const r = run({ root, only: ['sections'] });
     expect(r.checked).toEqual({ sections: 1 });
+    expect(r.errors).toEqual([]);
+  });
+
+  // The five checks below each get a red case that is an ERROR only when the check reads the FIXTURE root: the real
+  // tree is current for all five (the real-tree case below says so), so a check that read this checkout instead of
+  // `root` reports nothing on the red fixture. Each red case pins the exact `errors` and the exact `warnings`, so a
+  // finding downgraded to a warning, or its error line deleted, goes red too. Each has a one-token green twin.
+  const STATUS_WHOLE = "The single source of truth.\n## 2. THE REGISTRY\n## 3. What's next\n- [LOOP] a\n- [KEVIN] b\n";
+  // The fixture root is not a git checkout, so the STATUS age is unknown: the one warning a status run sets up itself.
+  const AGE_UNKNOWN = 'STATUS.md age is unknown here: git log is unavailable, so staleness went unchecked.';
+
+  it('packages: a doc claiming a package the fixture package.json lacks errors', () => {
+    const root = fixture({
+      'memory/ARCHITECTURE.md': 'knip is installed\n',
+      'frontend/package.json': JSON.stringify({ devDependencies: { vitest: '1.0.0' } }),
+    });
+    const r = run({ root, only: ['packages'] });
+    expect(r.checked).toEqual({ packages: 1 });
+    expect(r.errors).toEqual([
+      'STALE PACKAGE CLAIM in memory/ARCHITECTURE.md:1 — claims "knip" is installed/landed, but it is NOT in frontend/package.json.',
+    ]);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it('packages: the same claim passes when the fixture package.json has the package (one token from the case above)', () => {
+    const root = fixture({
+      'memory/ARCHITECTURE.md': 'knip is installed\n',
+      'frontend/package.json': JSON.stringify({ devDependencies: { knip: '1.0.0' } }),
+    });
+    const r = run({ root, only: ['packages'] });
+    expect(r.checked).toEqual({ packages: 1 });
+    expect(r.errors).toEqual([]);
+  });
+
+  it('status: a fixture STATUS that lost a load-bearing section errors', () => {
+    const root = fixture({ 'memory/STATUS.md': STATUS_WHOLE.replace('- [LOOP] a\n', '') });
+    const r = run({ root, only: ['status'] });
+    expect(r.checked).toEqual({ status: 5 });
+    expect(r.errors).toEqual(['STATUS.md has lost at least one [LOOP]-tagged item — it is the source of truth; keep it whole.']);
+    expect(r.warnings).toEqual([AGE_UNKNOWN]);
+  });
+
+  it('status: the whole fixture STATUS passes (one line from the case above)', () => {
+    const root = fixture({ 'memory/STATUS.md': STATUS_WHOLE });
+    const r = run({ root, only: ['status'] });
+    expect(r.checked).toEqual({ status: 5 });
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toEqual([AGE_UNKNOWN]);
+  });
+
+  it('gates: a stale GATES block in the fixture AGENTS.md errors', () => {
+    const { gates } = deriveGates();
+    const stale = renderGates(gates).replace(GATES_END, `| stale | row |\n${GATES_END}`);
+    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${stale}\n` });
+    const r = run({ root, only: ['gates'] });
+    expect(r.checked).toEqual({ gates: gates.length });
+    expect(r.errors).toEqual([
+      `.agent/AGENTS.md: GATES block is stale (hook defines ${gates.length} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`,
+    ]);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it('gates: the current GATES block passes (one row from the case above)', () => {
+    const { gates } = deriveGates();
+    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${renderGates(gates)}\n` });
+    const r = run({ root, only: ['gates'] });
+    expect(r.checked).toEqual({ gates: gates.length });
+    expect(r.errors).toEqual([]);
+  });
+
+  it('measured: a MEASURED block claiming twice the source files errors', () => {
+    const m = measure();
+    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${renderMeasured({ ...m, srcFiles: m.srcFiles * 2 })}\n` });
+    const r = run({ root, only: ['measured'] });
+    expect(r.checked).toEqual({ measured: 2 + m.largeFiles.length });
+    expect(r.errors).toEqual([
+      `.agent/AGENTS.md: MEASURED source files says ${(m.srcFiles * 2).toLocaleString('en-US')}, actual ` +
+        `${m.srcFiles.toLocaleString('en-US')} (100% drift, band 10%) — regenerate: node frontend/scripts/ci/measure.mjs --write`,
+    ]);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it('measured: the current MEASURED block passes (one number from the case above)', () => {
+    const m = measure();
+    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${renderMeasured(m)}\n` });
+    const r = run({ root, only: ['measured'] });
+    expect(r.checked).toEqual({ measured: 2 + m.largeFiles.length });
+    expect(r.errors).toEqual([]);
+  });
+
+  it('read-order: one stale surface among the current ones errors, naming that surface', () => {
+    expect(SURFACES.length, 'the red surface below must not be the only one read').toBeGreaterThan(1);
+    const files = Object.fromEntries(SURFACES.map((rel) => [rel, `# doc\n\n${renderReadOrder()}\n`]));
+    const red = SURFACES[1];
+    files[red] = files[red].replace('\n1. ', '\n1.  ');
+    const root = fixture(files);
+    const r = run({ root, only: ['read-order'] });
+    expect(r.checked).toEqual({ 'read-order': SURFACES.length });
+    expect(r.errors).toEqual([`${red}: READ-ORDER block is stale — regenerate: node frontend/scripts/ci/read-order.mjs --write`]);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it('read-order: every surface current passes (one space from the case above)', () => {
+    const root = fixture(Object.fromEntries(SURFACES.map((rel) => [rel, `# doc\n\n${renderReadOrder()}\n`])));
+    const r = run({ root, only: ['read-order'] });
+    expect(r.checked).toEqual({ 'read-order': SURFACES.length });
     expect(r.errors).toEqual([]);
   });
 
