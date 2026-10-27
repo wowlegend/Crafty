@@ -17,6 +17,10 @@ import { frameElapsed } from '../devtest/captureClock.js';
 import { realDelta } from '../game/worldClock.js';
 import { resetShadowForConfig } from './shadowReset.js';
 import { registerTestHook } from '../devtest/testBridge.js';
+import { FLASH_COLOR, hemiWithFlash } from '../game/lightning.js';
+
+// The lightning flash's colour in the working (linear) space, parsed once.
+const _flashColor = new THREE.Color(FLASH_COLOR);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // S1-D-M3: HEIGHT / VALLEY-MIST FOG (subtle).
@@ -310,11 +314,11 @@ export function Atmosphere({ shadowConfig }) {
       fillRef.current.intensity = m.fillIntensity;
     }
     if (hemiRef.current) {
-      hemiRef.current.color.copy(m.hemiSky);          // sky bounce (top)
-      hemiRef.current.groundColor.copy(m.hemiGround); // ground bounce (bottom)
-      // STORM LIGHTNING (render/LightningDriver.jsx): the flash is sky light, so it rides the hemisphere — the whole
-      // world lights from above for a beat, shadows unchanged. 0 outside a flash, and 0 under capture.
-      hemiRef.current.intensity = m.hemiIntensity + lightningFlashRef.current;
+      // Sky bounce (top) and ground bounce (bottom). STORM LIGHTNING (render/LightningDriver.jsx): the flash is sky
+      // light, so it rides the hemisphere's sky term — as WHITE light added to it, not as intensity on the night sky's
+      // blue, which never cleared the night grade (game/lightning.js hemiWithFlash). The whole world lights from above
+      // for a beat, shadows unchanged. 0 outside a flash and under capture, where this writes exactly the mood.
+      hemiWithFlash(hemiRef.current, m.hemiSky, m.hemiGround, m.hemiIntensity, lightningFlashRef.current, _flashColor);
     }
   });
 
