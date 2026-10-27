@@ -7,7 +7,7 @@ import { SpatialAudioController } from './render/SpatialAudioController';
 import { WeatherSystem } from './render/WeatherSystem';
 import { LightningDriver } from './render/LightningDriver.jsx';
 import { Physics } from '@react-three/rapier';
-import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays, ToneMapping } from '@react-three/postprocessing';
+import { EffectComposer, Noise, Vignette, SMAA, HueSaturation, BrightnessContrast, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import { TIERS } from './render/quality';
 import { Atmosphere } from './render/Atmosphere.jsx';
@@ -35,7 +35,7 @@ import { FrameCap, governorBounds } from './render/FrameCap.jsx';
 import { FrameStats } from './render/FrameStats.jsx';
 import { paceFor } from './render/canvasPace.js';
 import { usePixelBudgetDpr, CAPTURE_DPR_CAP } from './render/pixelBudget.js';
-import { ComposerPixelRatioSync } from './render/postFx.js';
+import { ComposerPixelRatioSync, PostTierDriver, N8AO, GodRays, Bloom } from './render/postFx.jsx';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -89,10 +89,17 @@ import { ComposerPixelRatioSync } from './render/postFx.js';
 // GPU allocations every second of idle play, the heat Kevin measured on an M3 Max. Memoised on the four things the
 // chain actually reads, it rebuilds only when the tier, the sun mesh, the horizon flag or capture mode changes.
 // (Defined here, not in its own file: the effect-chain gates read this file.)
-const PostFX = React.memo(function PostFX({ q, sunMesh, sunAboveHorizon, isCaptureMode }) {
+//
+// BUILT ONCE, TOGGLED IN PLACE (2026-10-27, plan 2026-10-27-crafty-steady-cool item c). N8AO, GodRays and Bloom here are
+// render/postFx.jsx's components, not the package's: each builds its effect once per mount and disposes it on unmount
+// (the package's GodRays built a new effect on every render and never disposed one — a leak per sunrise and per tier
+// step). N8AO and GodRays mount the first time a tier needs them (`withAO` / `withGodRays` are sticky) and then stay;
+// <PostTierDriver> applies the tier and the horizon to the live instances. So the props here no longer include the tier
+// or the horizon flag, and a tier step or a horizon flip re-renders no composer child.
+const PostFX = React.memo(function PostFX({ sunMesh, isCaptureMode, withAO, withGodRays }) {
   return (
     <EffectComposer multisampling={0}>
-      {q.ao && (
+      {withAO && (
         <N8AO
           halfRes
           aoRadius={1.2}
@@ -106,12 +113,12 @@ const PostFX = React.memo(function PostFX({ q, sunMesh, sunAboveHorizon, isCaptu
           source is the sun BILLBOARD, and three.js#18446 records the official godrays example
           flipping its shaft downwards when "the signs of the sun's screen space position vector
           components change" — which an arcing sun crosses at every dawn and dusk by construction.
-          Casting sun shafts at night is also just wrong. Gated on the store flag rather than solved
-          in the shader: the pass simply is not mounted while the sun is down. */}
-      {q.godRays && sunMesh && sunAboveHorizon && (
-        // S1-D-M3: now also ON at med tier with reduced samples (q.godRaySamples:
-        // high 100 / med 60) to stay in med's perf envelope.
-        <GodRays sun={sunMesh} samples={q.godRaySamples} density={0.97} decay={0.95} weight={1.1} exposure={0.88} clampMax={1} blur />
+          Casting sun shafts at night is also just wrong. The gate now lives in render/postFx.jsx
+          applyPostTier: below the horizon the effect is GATED (its render work skipped, its blend
+          opacity 0) rather than unmounted, because each unmount leaked the effect and rebuilt the chain.
+          Samples per tier (q.godRaySamples) are applied by the driver too. */}
+      {withGodRays && sunMesh && (
+        <GodRays sun={sunMesh} density={0.97} decay={0.95} weight={1.1} exposure={0.88} clampMax={1} blur />
       )}
       {/* S1-D-M3 MAGIC-HOUR COLOUR SCRIPT: these two effects are now driven PER-MOOD
           by <MoodGradeDriver> (saturation/brightness/contrast lerped on mood — knobs
@@ -120,11 +127,12 @@ const PostFX = React.memo(function PostFX({ q, sunMesh, sunAboveHorizon, isCaptu
           effect instances. Capture-safe (mood snapped in capture). */}
       <HueSaturation saturation={0.30} />
       <BrightnessContrast brightness={0.09} contrast={0.06} />
+      {/* The tier's mipmapBlur (low false, med/high true) is the driver's: as a prop it rebuilt Bloom on every
+          low<->med step while BloomSpikeDriver kept driving the old one (refute F8). */}
       <Bloom
         intensity={0.95}
         luminanceThreshold={0.65}
         luminanceSmoothing={0.25}
-        mipmapBlur={q.bloomMipmap}
       />
       <SMAA />
       <ToneMapping mode={ToneMappingMode.NEUTRAL} />
@@ -134,11 +142,19 @@ const PostFX = React.memo(function PostFX({ q, sunMesh, sunAboveHorizon, isCaptu
       <Vignette eskil={false} offset={0.45} darkness={0.35} />
       <BloomSpikeDriver />
       <MoodGradeDriver />
-      {/* The package resizes the composer on a CSS size change only; this follows a pixel-ratio change (render/postFx.js). */}
+      <PostTierDriver />
+      {/* The package resizes the composer on a CSS size change only; this follows a pixel-ratio change (render/postFx.jsx). */}
       <ComposerPixelRatioSync />
     </EffectComposer>
   );
 });
+
+/** False until `value` is first true, then true for the life of the component (React's derived-state pattern). */
+function useLatch(value) {
+  const [latched, setLatched] = useState(!!value);
+  if (value && !latched) setLatched(true);
+  return latched || !!value;
+}
 
 export const GameScene = React.memo(function GameScene({
   isWorldBuilt,
@@ -158,10 +174,8 @@ export const GameScene = React.memo(function GameScene({
   // (a mount toggle that flips only during capture setup, never in the hot loop).
   const captureStudio = useGameStore((s) => s.captureStudio);
   const qualityTier = useGameStore((s) => s.qualityTier);
-  // A real subscription, deliberately: this must trigger a React render to mount/unmount the GodRays
-  // pass. <Atmosphere> writes it edge-triggered (twice per day/night cycle), so this is not a per-frame
-  // binding and does not violate Game-Loop-Isolation.
-  const sunAboveHorizon = useGameStore((s) => s.sunAboveHorizon);
+  // (sunAboveHorizon is no longer subscribed here: it used to re-render this scene to mount/unmount the GodRays pass at
+  // every dawn and dusk. render/postFx.jsx PostTierDriver now reads it transiently and gates the built-once effect.)
   const frameCap = useGameStore((s) => s.frameCap);
   // Written only by MenuSystem (its titleMenuVisible): the opaque title screen covers this canvas.
   const titleCovering = useGameStore((s) => s.titleCovering);
@@ -169,6 +183,9 @@ export const GameScene = React.memo(function GameScene({
   const pace = paceFor({ frameCap, titleCovering, harness: isCaptureMode || isPerfProbe() });
   const q = TIERS[qualityTier] || TIERS.low;
   const budgetDpr = usePixelBudgetDpr(qualityTier);
+  // Sticky: N8AO and GodRays mount the first time any tier asks for them and stay mounted (toggled in place).
+  const withAO = useLatch(q.ao);
+  const withGodRays = useLatch(q.godRays);
   const [sunMesh, setSunMesh] = useState(null);
 
   useEffect(() => {
@@ -423,7 +440,7 @@ export const GameScene = React.memo(function GameScene({
               This prop stays on its own merits: a redundant buffer is still redundant.
 
               To revert: delete the prop. Tests/scripts/effect-chain-cost pins it and will red. */}
-          <PostFX q={q} sunMesh={sunMesh} sunAboveHorizon={sunAboveHorizon} isCaptureMode={isCaptureMode} />
+          <PostFX sunMesh={sunMesh} isCaptureMode={isCaptureMode} withAO={withAO} withGodRays={withGodRays} />
           <Preload all />
         </Suspense>
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Vector2 } from 'three';
 import { EffectComposer, Pass } from 'postprocessing';
-import { syncComposerToPixelRatio } from '../../src/render/postFx.js';
+import { syncComposerToPixelRatio } from '../../src/render/postFx.jsx';
 
 /**
  * THE COMPOSER FOLLOWS THE PIXEL RATIO (plan 2026-10-27-crafty-steady-cool, item b; refute F8 "Composer resize premise,
@@ -17,7 +17,7 @@ import { syncComposerToPixelRatio } from '../../src/render/postFx.js';
  * a renderer stand-in that implements exactly the five methods the composer calls, so the assertion reads the
  * composer's own buffers, not a model of them.
  *
- * Mutation-Proof: via scripts/dev/mutate.sh on src/render/postFx.js, see the commit for the receipts:
+ * Mutation-Proof: via scripts/dev/mutate.sh on src/render/postFx.js (now postFx.jsx), see commit 48cc061c for the receipts:
  *   S1 the sync never resizes                                         -> RED expected (the ratio-change case)
  *   S2 plausible-wrong: compares the CSS size, as upstream does        -> RED expected (the ratio-change case)
  *   S3 plausible-wrong: compares the width only                        -> RED expected (the height-only case)

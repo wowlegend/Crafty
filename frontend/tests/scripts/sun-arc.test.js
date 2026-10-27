@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { PerspectiveCamera, Mesh, BoxGeometry, MeshBasicMaterial } from 'three';
+import { BloomEffect } from 'postprocessing';
 import { sunArcDirection, sampleMood, MOOD_SCALARS, SUN_ARC_SWING } from '../../src/render/mood.js';
 import { CAPTURE_SOLAR_FRACTION, SUN_HORIZON_EPS } from '../../src/render/Atmosphere.jsx';
+import { applyPostTier, GatedGodRaysEffect } from '../../src/render/postFx.jsx';
+import { TIERS } from '../../src/render/quality.js';
 
 /**
  * THE SUN ARC — QUEUE.md B1, "the biggest one and it is mostly already written".
@@ -42,8 +43,7 @@ import { CAPTURE_SOLAR_FRACTION, SUN_HORIZON_EPS } from '../../src/render/Atmosp
  * cleanly at the horizon in a real frame. Both need the re-baseline already owed since postprocessing
  * 6.39.1 -> 6.39.5, which this change adds to. What is executed is the GEOMETRY and the gating decision.
  */
-const HERE = dirname(fileURLToPath(import.meta.url));
-const unit = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
+const unit =(v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
 const elevDeg = (d) => (Math.asin(Math.max(-1, Math.min(1, d[1]))) * 180) / Math.PI;
 
 describe('sun arc geometry', () => {
@@ -112,8 +112,22 @@ describe('sun arc geometry', () => {
 
   it('the GodRays pass is gated on the sun being above the horizon (three.js#18446 sign flip)', () => {
     expect(SUN_HORIZON_EPS).toBeGreaterThan(0); // not exactly 0: the horizon is the unstable region
-    const scene = readFileSync(resolve(HERE, '../../src/GameScene.jsx'), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(scene).toMatch(/q\.godRays && sunMesh && sunAboveHorizon &&/);
+    // RE-POINTED 2026-10-27 (plan 2026-10-27-crafty-steady-cool item c). This asserted the JSX mount condition
+    // `q.godRays && sunMesh && sunAboveHorizon &&` in GameScene. The gate is no longer a MOUNT — every unmount leaked the
+    // effect and rebuilt the chain — but render/postFx.jsx applyPostTier, which GATES the built-once effect (its render
+    // work skipped, its blend opacity 0). So this now drives that gate with the arc's own noon and midnight, through
+    // Atmosphere's horizon predicate, on a real GodRaysEffect.
+    const fx = {
+      n8ao: null,
+      bloom: new BloomEffect(),
+      godRays: new GatedGodRaysEffect(new PerspectiveCamera(), new Mesh(new BoxGeometry(), new MeshBasicMaterial()), {}),
+    };
+    const noon = MOOD_SCALARS.explore.sunPos;
+    const above = (fraction) => sunArcDirection(noon, fraction)[1] > SUN_HORIZON_EPS; // Atmosphere's predicate
+    expect([above(0.25), above(0.75)], 'SETUP: the arc no longer puts noon up and midnight down').toEqual([true, false]);
+    applyPostTier(fx, TIERS.high, above(0.75));
+    expect(fx.godRays.gated, 'god rays cast at midnight').toBe(true);
+    applyPostTier(fx, TIERS.high, above(0.25));
+    expect(fx.godRays.gated, 'god rays gated at noon').toBe(false);
   });
 });
