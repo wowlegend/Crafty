@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useSyncExternalStore } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { GameMethods } from './GameMethods';
 import * as THREE from 'three';
@@ -53,6 +53,7 @@ import { routeExpressVerb } from './input/expressVerbs.js';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
+import { lookbookPose, applyLookbookPose, subscribeLookbook, lookbookPinned } from './render/lookbookSeam.js';
 import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive, resetInput } from './input/inputState';
 import { installBlurReset } from './input/blurReset';
@@ -601,6 +602,15 @@ export const Player = ({ isWorldBuilt }) => {
       camera.lookAt(lookAt[0], lookAt[1], lookAt[2]);
       camera.fov = 75;
       camera.updateProjectionMatrix();
+      return;
+    }
+
+    // The lookbook probe's camera pin (render/lookbookSeam.js): null unless the page was opened with ?lookbook=1 AND
+    // a script posed it, so this is one null read per frame in play. Same early-return shape as capture above, but
+    // nothing else stops: physics, mobs, weather and the clock keep running — motion-on frames are its whole point.
+    const lookPose = lookbookPose();
+    if (lookPose) {
+      applyLookbookPose(state.camera, lookPose);
       return;
     }
 
@@ -1402,6 +1412,9 @@ export const Player = ({ isWorldBuilt }) => {
   // visual-regression fixture is a clean world vista (the render recipe operates on
   // terrain/sky/AO; the character render language is validated separately in S1-B M2).
   const inCapture = useGameStore((s) => s.isCaptureMode);
+  // The same for a lookbook pose (render/lookbookSeam.js): an elevated hero shot with the hands in the corner would
+  // misrepresent the frame. Changes only when the probe poses or clears, never per frame.
+  const lookbookOn = useSyncExternalStore(subscribeLookbook, lookbookPinned);
 
   return (
     <group>
@@ -1440,7 +1453,7 @@ export const Player = ({ isWorldBuilt }) => {
       <HurlSystem />
       <SnareTetherSystem />
       <primitive object={camera}>
-        {!inCapture && (
+        {!inCapture && !lookbookOn && (
           <StableMagicHands selectedBlock={selectedBlock} attackType={attackType} attackStartTime={attackStartTime} />
         )}
       </primitive>
