@@ -52,17 +52,20 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
  *
  * Never let a managed server open a browser. The harness brings its own; anything else is the operator's.
  */
-export function viteArgv(port, preview = false) {
+export function viteArgv(port, preview = false, outDir = null) {
   const base = preview ? ['vite', 'preview'] : ['vite'];
-  return [...base, '--port', String(port), '--strictPort', '--no-open'];
+  // `outDir` (preview only): serve a build kept elsewhere — the power A/B's other arm (scripts/dev/power-ab.sh
+  // --build-dir) — instead of build/. `vite preview --outDir <dir>` (vite 6.4.5 `vite preview --help`).
+  const out = preview && outDir ? ['--outDir', String(outDir)] : [];
+  return [...base, '--port', String(port), '--strictPort', '--no-open', ...out];
 }
 
-export function serveVite(port, { cwd, preview = false } = {}) {
+export function serveVite(port, { cwd, preview = false, outDir = null } = {}) {
   const url = `http://localhost:${port}`;
   // `preview: true` serves the BUILT bundle from build/ instead of the dev server. Same lifecycle, same
   // process-group kill — the whole point of this helper is that there is one correct way to do that, and
   // a fourth hand-rolled spawn would be a fourth chance to orphan vite on the port.
-  const server = spawn('npx', viteArgv(port, preview), { cwd: cwd || process.cwd(), stdio: 'ignore', detached: true });
+  const server = spawn('npx', viteArgv(port, preview, outDir), { cwd: cwd || process.cwd(), stdio: 'ignore', detached: true });
 
   const waitReady = async (tries = 60) => {
     for (let i = 0; i < tries; i++) {

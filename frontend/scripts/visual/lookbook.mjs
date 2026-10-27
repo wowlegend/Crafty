@@ -39,6 +39,7 @@
  * Usage:  node scripts/visual/lookbook.mjs [--out <dir>] [--targets chromium-1280x800,webkit-1180x820,webkit-820x1180]
  *                                          [--allow-software]
  *         node scripts/visual/lookbook.mjs --hold <seconds> [--headed] [--out <dir>]
+ *         either form takes [--build-dir <dir>] to serve a production build kept outside build/.
  */
 import { chromium, webkit, devices } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -61,6 +62,8 @@ const HOLD_S = Number(arg('--hold', 0));
 const HEADED = flag('--headed');
 const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
+// --build-dir: serve a production build kept outside build/ (the power A/B's other arm). Default: this app's build/.
+const BUILD_DIR = resolve(arg('--build-dir', 'build'));
 const LAUNCHERS = { chromium, webkit };
 
 const TITLE_WAIT_MS = 8000; // the title diorama mounts lazily; ipad-probe waits the same
@@ -70,8 +73,8 @@ const STREAM_MS = 6000; // chunks stream in around a newly posed camera (Positio
 const SETTLE_MS = 3000; // sky, fog and grade settle at a new time of day
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
-if (!existsSync(resolve('build/index.html'))) {
-  console.error('lookbook: COULD NOT MEASURE — no production build at build/index.html. Run `npm run build` first.');
+if (!existsSync(join(BUILD_DIR, 'index.html'))) {
+  console.error(`lookbook: COULD NOT MEASURE — no production build at ${join(BUILD_DIR, 'index.html')}. Run \`npm run build\` first.`);
   process.exit(3);
 }
 for (const id of WANT) {
@@ -82,7 +85,7 @@ for (const id of WANT) {
 }
 mkdirSync(OUT, { recursive: true });
 
-const { url, waitReady, shutdown } = serveVite(PORT, { preview: true });
+const { url, waitReady, shutdown } = serveVite(PORT, { preview: true, outDir: BUILD_DIR });
 
 // Anything we launch, we kill — on a throw (finally), and on Ctrl-C or power-ab.sh's TERM (these handlers).
 let liveBrowser = null;
@@ -300,11 +303,13 @@ async function hold(launchOpts, launchId) {
 }
 
 function buildIdentity() {
-  const html = readFileSync(resolve('build/index.html'), 'utf8');
+  const html = readFileSync(join(BUILD_DIR, 'index.html'), 'utf8');
   const chunk = (html.match(/assets\/(index-[\w-]+\.js)/) || [])[1] || null;
   let commit = null;
   try { commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim(); } catch { /* not a checkout */ }
-  return { indexChunk: chunk, commitAtRun: commit };
+  // The commit is the CHECKOUT's at run time; with --build-dir the served build may come from another commit, so the
+  // index chunk's content hash is the build's real identity.
+  return { buildDir: BUILD_DIR, indexChunk: chunk, commitAtRun: commit };
 }
 
 let code = 0;

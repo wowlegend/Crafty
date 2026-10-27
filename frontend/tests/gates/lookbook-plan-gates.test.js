@@ -10,6 +10,7 @@ import {
   shotVerdict,
   contactSheetHtml,
 } from '../../scripts/visual/_lookbook.mjs';
+import { viteArgv } from '../../scripts/visual/_serve.mjs';
 
 /**
  * THE LOOKBOOK PROBE'S JUDGEMENTS (scripts/visual/_lookbook.mjs; plan docs/superpowers/plans/
@@ -41,6 +42,10 @@ import {
  *   P10 the portrait iPad target without touch -> the targets test
  *   P11 a mid-shot context loss not flagged -> "each failure is named"
  *   I0 identity (a comment edit in _lookbook.mjs) SURVIVED.
+ * Added with the power A/B's --build-dir (scripts/visual/_serve.mjs viteArgv, now 13 tests), each observed RED:
+ *   P12 plausible-wrong: --outDir passed to the dev server too -> "serving a build kept elsewhere"
+ *   P13 --outDir never appended -> the same test
+ *   I1 identity (a comment edit in _serve.mjs) SURVIVED.
  *
  * BLIND SPOT: nothing here launches a browser. Whether a launch candidate REALLY yields ANGLE-Metal on this Mac is the
  * probe's own recorded output (lookbook.json `chromiumCandidates`), and the frames are judged by eye.
@@ -135,6 +140,15 @@ describe('a shot is valid only if it shows the game it claims to show', () => {
   it('the clock tolerance is circular: midnight-adjacent times either side of the wrap are close', () => {
     expect(shotVerdict({ cycle: 0.995, before: { ...ok, cycle: 0.995 }, after: { ...ok, cycle: 0.003 } }).valid).toBe(true);
     expect(shotVerdict({ cycle: 0.30, before: ok, after: { ...ok, cycle: 0.3101 } }).valid, 'a 0.0101 drift passed').toBe(false);
+  });
+});
+
+describe('serving a build kept elsewhere (the power A/B\'s other arm: --build-dir)', () => {
+  it('vite preview gets --outDir <dir>; without one, or for the dev server, nothing changes', () => {
+    expect(viteArgv(4238, true, '/tmp/arm-A/build')).toEqual(['vite', 'preview', '--port', '4238', '--strictPort', '--no-open', '--outDir', '/tmp/arm-A/build']);
+    expect(viteArgv(4238, true)).toEqual(['vite', 'preview', '--port', '4238', '--strictPort', '--no-open']);
+    // The dev server has no outDir to serve; a stray flag there would be a silent misconfiguration.
+    expect(viteArgv(4238, false, '/tmp/arm-A/build')).toEqual(['vite', '--port', '4238', '--strictPort', '--no-open']);
   });
 });
 
