@@ -96,6 +96,9 @@ export const useGameStore = create((set, get) => ({
     // App.jsx selects up at startup via selectTier(readDeviceSignals()).
     qualityTier: 'low',
     setQualityTier: (tier) => set({ qualityTier: tier }),
+    // The boot tier on a coarse pointer (phone, iPad), else null: a runtime tier step never moves the render distance
+    // there (render/tierGovernor.js renderDistanceFor). Written once at boot by App.
+    renderDistancePin: null,
 
     // Danger mood input (spec §4): 0 = explore, 1 = dusk, 2 = obsidian. Gameplay
     // triggers (night/combat/boss) wire this in S2; the test bridge drives it now.

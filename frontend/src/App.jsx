@@ -208,9 +208,13 @@ function GameApp({ experienceSystem }) {
     }
   }, [isPointerLocked, showSpellUpgrades, showAchievements, showStats]);
 
-  // Select the device quality tier once at startup (runs in prod + dev).
+  // Select the device quality tier once at startup (runs in prod + dev). On a coarse pointer the render distance is
+  // pinned to this boot tier: a runtime step there must not re-stream the world (render/tierGovernor.js).
   useEffect(() => {
-    useGameStore.getState().setQualityTier(selectTier(readDeviceSignals()));
+    const signals = readDeviceSignals();
+    const tier = selectTier(signals);
+    useGameStore.getState().setQualityTier(tier);
+    useGameStore.setState({ renderDistancePin: signals.coarsePointer ? tier : null });
   }, []);
 
   // M6 settings-persistence: hydrate audio/feedback/look prefs from localStorage + persist on change.

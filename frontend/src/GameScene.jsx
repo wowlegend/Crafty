@@ -1,7 +1,7 @@
 import React, { Suspense, useMemo, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useGameStore } from './store/useGameStore';
-import { Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
+import { Preload, PerformanceMonitor } from '@react-three/drei';
 import { PointerLook } from './render/PointerLook';
 import { SpatialAudioController } from './render/SpatialAudioController';
 import { WeatherSystem } from './render/WeatherSystem';
@@ -36,6 +36,9 @@ import { FrameStats } from './render/FrameStats.jsx';
 import { paceFor } from './render/canvasPace.js';
 import { usePixelBudgetDpr, CAPTURE_DPR_CAP } from './render/pixelBudget.js';
 import { ComposerPixelRatioSync, PostTierDriver, N8AO, GodRays, Bloom } from './render/postFx.jsx';
+import { createGovernor, governorDecline, governorIncline, governorSamples, renderDistanceFor } from './render/tierGovernor.js';
+import { registerTestHook } from './devtest/testBridge.js';
+import { FrameStall } from './devtest/FrameStall.jsx';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -183,6 +186,28 @@ export const GameScene = React.memo(function GameScene({
   const pace = paceFor({ frameCap, titleCovering, harness: isCaptureMode || isPerfProbe() });
   const q = TIERS[qualityTier] || TIERS.low;
   const budgetDpr = usePixelBudgetDpr(qualityTier);
+  // On a coarse pointer the render distance is pinned to the boot tier (render/tierGovernor.js renderDistanceFor).
+  const renderDistancePin = useGameStore((s) => s.renderDistancePin);
+  const renderDistance = renderDistanceFor(qualityTier, renderDistancePin);
+  // THE TIER GOVERNOR (render/tierGovernor.js): one per canvas, for the session. The one path from a PerformanceMonitor
+  // decision (or the DEV signal hook below) to the store.
+  const governor = useRef(null);
+  if (!governor.current) governor.current = createGovernor();
+  const governorStep = useRef((kind) => {
+    const st = useGameStore.getState();
+    const now = performance.now();
+    const next = kind === 'decline'
+      ? governorDecline(governor.current, st.qualityTier, now)
+      : governorIncline(governor.current, st.qualityTier, now);
+    if (next) st.setQualityTier(next);
+    return next;
+  }).current;
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    // DEV-only: the governor e2e drives the same step PerformanceMonitor drives, and reads the governor's memory.
+    registerTestHook('governorSignal', (kind) => governorStep(kind));
+    registerTestHook('readGovernor', () => ({ ...governor.current, blockedUntil: { ...governor.current.blockedUntil } }));
+  }, [governorStep]);
   // Sticky: N8AO and GodRays mount the first time any tier asks for them and stay mounted (toggled in place).
   const withAO = useLatch(q.ao);
   const withGodRays = useLatch(q.godRays);
@@ -227,7 +252,7 @@ export const GameScene = React.memo(function GameScene({
   // lowers renderDistance automatically tightens its shadows instead of spreading the same pixels wider.
   const shadowConfig = useMemo(() => {
     const CHUNK = 16; // src/world/terrain.worker.js CHUNK_SIZE
-    const extent = (q.renderDistance + 0.5) * CHUNK;
+    const extent = (renderDistance + 0.5) * CHUNK;
     return {
       mapSize: [q.shadowMapSize, q.shadowMapSize],
       // The frustum the light looks THROUGH; <Atmosphere> keeps it centred on the player.
@@ -243,7 +268,7 @@ export const GameScene = React.memo(function GameScene({
         far: 400,
       },
     };
-  }, [q.shadowMapSize, q.renderDistance]);
+  }, [q.shadowMapSize, renderDistance]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 0 }}>
@@ -337,23 +362,26 @@ export const GameScene = React.memo(function GameScene({
           // that spins the fans on a high-refresh laptop. No rate-based governor can see it. The answer is to
           // make `high` cheap enough to be safe rather than to tune the monitor, which is why the MSAA and
           // god-ray changes alongside this matter more than this line does.
-          <PerformanceMonitor
-            // render/FrameCap.jsx governorBounds: under the frame cap, a 60 Hz display's bounds, whatever drei has seen.
-            bounds={(refreshrate) => governorBounds(refreshrate, frameCap)}
-            factor={0.5}
-            onDecline={() => {
-              const cur = useGameStore.getState().qualityTier;
-              const next = cur === 'high' ? 'med' : 'low';
-              if (next !== cur) useGameStore.getState().setQualityTier(next);
-            }}
-            onIncline={() => {
-              const cur = useGameStore.getState().qualityTier;
-              const next = cur === 'low' ? 'med' : 'high';
-              if (next !== cur) useGameStore.getState().setQualityTier(next);
-            }}
-          />
+          //
+          // 2026-10-27 (plan 2026-10-27-crafty-steady-cool item d): every decision now goes through governorStep, i.e.
+          // render/tierGovernor.js — a decline blocks re-inclining to that tier for 60 s and the second decline
+          // settles the tier for the session. And the monitor is mounted only while the canvas runs at its PLAY pace:
+          // it counts rendered frames, so behind the title (paced to 10 fps) it read a slow GPU and declined; an unmount
+          // also discards the samples taken while paced, so play resumes with a fresh window.
+          governorSamples(pace, frameCap) && (
+            <PerformanceMonitor
+              // render/FrameCap.jsx governorBounds: under the frame cap, a 60 Hz display's bounds, whatever drei has seen.
+              bounds={(refreshrate) => governorBounds(refreshrate, frameCap)}
+              factor={0.5}
+              onDecline={() => governorStep('decline')}
+              onIncline={() => governorStep('incline')}
+            />
+          )
         )}
-        {!isCaptureMode && !isPerfProbe() && <AdaptiveDpr pixelated />}
+        {/* <AdaptiveDpr pixelated /> DELETED 2026-10-27 (plan 2026-10-27-crafty-steady-cool item d): drei's AdaptiveDpr
+            acts only on performance.regress(), and nothing in src calls it — it was mounted and never did anything. The
+            dpr is the pixel budget's (render/pixelBudget.js), stepped by the tier. */}
+        {import.meta.env.DEV && <FrameStall />}
         {/* FRAME CAP (render/FrameCap.jsx): paces the 'demand' loop the Canvas prop above switches on. */}
         <FrameCap fps={pace.fps} active={pace.loop === 'demand'} testHooks />
 
@@ -365,7 +393,7 @@ export const GameScene = React.memo(function GameScene({
 
         {/* The far horizon: land and sea beyond the loaded chunks, sunk under them, from the same surface
             formula (world/farField.js). Without it the world ended in fog at ~72 m while the camera sees 500. */}
-        <FarField renderDistance={q.renderDistance} />
+        <FarField renderDistance={renderDistance} />
 
         {/* S1-D-M3: always-on warm light motes (spec §5① "drifting light motes").
             Tier-gated count; capture-frozen drift; mood-tinted. Suppressed in the

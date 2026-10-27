@@ -22,6 +22,7 @@ import { frameElapsed } from '../devtest/captureClock.js';
 import { Outlines } from '@react-three/drei';
 import { OUTLINE } from '../render/characterStyle';
 import { TIERS } from '../render/quality';
+import { renderDistanceFor } from '../render/tierGovernor.js';
 import { Cube, Emissive } from '../render/mascots/voxelKit';
 import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
 import { shrineParts } from './shrineShape.js';
@@ -806,8 +807,9 @@ export const MinecraftWorld = React.memo(() => {
             // Transient tier read (no reactive subscription): the active quality tier's
             // renderDistance gates how many chunks load/cull around the player. Falls back
             // to `low` if the tier key is somehow unknown.
+            // On a coarse pointer the radius is pinned to the boot tier (render/tierGovernor.js renderDistanceFor).
             const tier = useGameStore.getState().qualityTier;
-            const renderDistance = (TIERS[tier] || TIERS.low).renderDistance;
+            const renderDistance = renderDistanceFor(tier, useGameStore.getState().renderDistancePin);
 
             // chunkOf: the ONE chunk index the far-field mask also uses (review #4, R5.8).
             const playerCx = chunkOf(camera.position.x);
