@@ -131,22 +131,38 @@ export function anyOnCooldown(abilityCooldowns, verbs) {
 // So the geometry is a straight FAN ROW extending inward from the anchor. It cannot leave the viewport on
 // either axis, adjacent items cannot overlap, it does not grow vertically into the other row's opener,
 // and it lands along the natural sweep of the thumb that just tapped the opener.
+//
+// WHERE THE ROWS SIT (review F1, 2026-10-27). The Aspect row used to sit at `11% + 104px`, which is the jump
+// button's own band (`11% + 96px`, 60px tall): its opener covered the jump's centre, so once Phase 0c showed the
+// opener to every player, a fresh player's jump tap opened the ring. The rows now stack ABOVE the jump, and they are
+// anchored to the JOYSTICK's 13% rather than the action cluster's 11%. That is not cosmetic: on a portrait phone the
+// fan reaches across the joystick base, and two different percentage anchors drift apart with the viewport height
+// (2% of 932px is 19px), so a px gap that clears on one phone overlaps on the next. On the shared anchor the gap to
+// the joystick is a constant 8px, and the gap to the jump (0.13H - 0.11H) only grows. The cost is height: the stack
+// (13% + 266px, then the 56px the Pause control takes at the top) is taller than a landscape phone under ~370px of
+// visible height, where the spell row meets the Pause control — measured and declared in
+// tests/gates/touch-layout-gates.test.jsx, which checks every control against every other in every viewport.
 export const TOUCH_BTN = 52;               // hit-target edge, px — the whole layout is expressed in these
 export const FAN_STEP = TOUCH_BTN + 6;     // centre-to-centre; the +6 is the visible gutter between two
-export const FAN_ANCHOR_RIGHT = 26;        // the opener's own right offset — item 0 sits directly on it
-export const ASPECT_ROW_BOTTOM = 104;      // the Aspect opener's row
-export const SPELL_ROW_BOTTOM = 182;       // the spell-picker row, one thumb-height above
+export const FAN_ANCHOR_RIGHT = 26;        // the opener's own right offset; item 0 sits one FAN_STEP inward of it
+export const FAN_ROW_ANCHOR = '13%';       // the rows' bottom anchor: the joystick base's own (TouchControlsSurface)
+export const ASPECT_ROW_BOTTOM = 156;      // the Aspect opener's row: 8px above the joystick base, clear of the jump
+export const SPELL_ROW_BOTTOM = 214;       // the spell-picker row, one row (and the 6px gutter) above
 
 /**
  * PURE. Offsets for `count` items fanning INWARD from a bottom-right-anchored opener.
  *
  * Consumers place items with `right: anchor - x` and `bottom: row - y`, so x must be NEGATIVE to move
  * leftward (inward) and y stays 0 — the row does not climb, which is what keeps it clear of the other
- * opener 78px above and off the top edge of a short landscape viewport.
+ * row above and off the top edge of a short landscape viewport.
+ *
+ * Item 0 sits ONE STEP inward of the opener, not on it (review F4). On it, the open ring's first sector covered its
+ * own opener, so the opener could never close the ring: with every Aspect locked, every way out of an open ring opened
+ * Talents. Beside it, the opener stays a real toggle.
  */
 export function fanLayout(count, step = FAN_STEP) {
   if (!(count > 0) || !(step > 0)) return [];
-  return Array.from({ length: count }, (_, i) => ({ x: -i * step, y: 0 }));
+  return Array.from({ length: count }, (_, i) => ({ x: -(i + 1) * step, y: 0 }));
 }
 
 /**
@@ -162,13 +178,13 @@ export function fanItemStyle(row, q) {
   const y = (q && q.y) || 0;
   return {
     right: `calc(env(safe-area-inset-right,0px) + ${FAN_ANCHOR_RIGHT - x}px)`,
-    bottom: `calc(11% + ${row - y}px)`,
+    bottom: `calc(${FAN_ROW_ANCHOR} + ${row - y}px)`,
     width: TOUCH_BTN,
     height: TOUCH_BTN,
   };
 }
 
-/** The opener sits at the fan's origin — item 0 lands exactly on it, which is the affordance. */
+/** The opener sits at the fan's origin; the items fan inward beside it, leaving it tappable to close the ring. */
 export function fanOpenerStyle(row) {
   return fanItemStyle(row, { x: 0, y: 0 });
 }

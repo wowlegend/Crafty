@@ -265,7 +265,7 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, onOpenTalents }) {
           style={{ ...hit, top: 'calc(50% - 140px)', left: 'calc(env(safe-area-inset-left,0px) + 10px)', width: 46, height: 46 }} />
       )}
       {active && trayOpen && TRAY_PANELS.map((p, i) => (
-        <button key={p.id} data-touch-btn aria-label={t(p.labelKey)}
+        <button key={p.id} data-touch-btn aria-label={t(p.labelKey)} data-testid={`touch-tray-${p.id}`}
           onPointerUp={() => { togglePanel(p, useGameStore.getState()); setTrayOpen(false); setActive(false); }}
           style={{ ...hit, top: `calc(50% - 84px + ${i * 56}px)`, left: 'calc(env(safe-area-inset-left,0px) + 12px)', width: 52, height: 52 }} />
       ))}

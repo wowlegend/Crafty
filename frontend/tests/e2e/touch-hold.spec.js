@@ -38,6 +38,9 @@ import { TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
 //   E7 src/ui/TouchControls.jsx: a locked sector does not call onOpenTalents -> the F9 case
 //   E8 src/App.jsx: onOpenTalents unwired -> the F9 case
 //   E9 src/ui/TouchControls.jsx: tap-to-play not withheld while Talents is open -> the F9 case
+//   E10 src/input/aspectWheel.js: plausible-wrong, the Aspect row back at its old offset (ASPECT_ROW_BOTTOM 104, onto
+//       the jump on iPad Pro 11 landscape — review F1) -> the F1 jump case
+//   E11 src/input/aspectWheel.js: the fan's item 0 back on its opener (`-i * step`) -> the F1 sweep (the opener stolen)
 //   E0 identity (a comment edit in src/ui/TouchControls.jsx) -> must SURVIVE
 // (A mutant of ANTICIPATION_SEC is deliberately absent: this spec imports that constant, so it would move its own
 // thresholds and score SETUP, not a verdict.) Replace OWED with the observed verdicts.
@@ -324,5 +327,56 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
     expect(opened, `a tap on the locked roar did not open the Talents panel — ${where}`).toBe(true);
     expect(tap.log.some((e) => e.roar === true) || state.roar, `a locked roar wrote its intent — ${where}`).toBe(false);
     expect(state.tapToPlay, `tap-to-play sits over the open Talents panel — ${where}`).toBe(false);
+  });
+
+  // REVIEW F1 (2026-10-27): the Aspect opener, now shown to every player, sat on the centre of the jump button, so a new
+  // player's jump tap opened the ring. tests/gates/touch-layout-gates.test.jsx proves the RECTANGLES are disjoint; this
+  // proves the browser agrees — its own CSS engine, stacking order and hit-testing, which the jsdom gate cannot model.
+  test('F1: a tap on jump lands on jump, never on the Aspect opener; with everything open, every control owns its centre', async ({ page }) => {
+    await enterTouchPlay(page);
+    await page.evaluate(() => window.useGameStore.setState({ unlockedTalents: {} })); // a fresh profile: the opener shows
+    await attached(page, 'touch-aspects', 'the Aspect opener is not offered to a fresh profile');
+    await installPressLog(page);
+    const cdp = await page.context().newCDPSession(page);
+    // The jump's centre, hit-tested WITHOUT aimAt (which would call a covered jump SETUP — here it is the verdict).
+    const jump = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="touch-jump"]');
+      const r = el.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return { x, y, hit: hit ? (hit.getAttribute('data-testid') || hit.tagName) : 'nothing' };
+    });
+    const tap = await press(page, cdp, jump, 60);
+    await page.waitForTimeout(200);
+    const ringOpen = await page.evaluate(() => !!document.querySelector('[data-testid="touch-aspect-roar"]'));
+    const jumpWhere = JSON.stringify({ jump, tap: tap.log, ringOpen });
+    console.log(`[touch-hold] F1 jump: ${jumpWhere}`);
+    expect(tap.down, `SETUP: the real tap at the jump's centre logged no pointerdown — ${jumpWhere}`).toBeDefined();
+    expect(jump.hit, `the jump's centre hit-tests to ${jump.hit} — a jump tap lands on another control: ${jumpWhere}`).toBe('touch-jump');
+    expect(tap.down.id, `the jump tap's pointerdown landed on ${tap.down.id}: ${jumpWhere}`).toBe('touch-jump');
+    expect(ringOpen, `a tap on jump opened the Aspect ring — F1: ${jumpWhere}`).toBe(false);
+
+    // Everything open at once (each opener tapped for real, through aimAt: an opener that is covered is SETUP here),
+    // then every control's centre must hit that control and nothing above it.
+    for (const opener of ['touch-panels', 'touch-aspects', 'touch-spells']) await press(page, cdp, await aimAt(page, opener), 60);
+    await attached(page, 'touch-aspect-roar', 'the Aspect ring did not open');
+    await attached(page, 'touch-spell-fireball', 'the spell ring did not open');
+    const sweep = await page.evaluate(() => {
+      const rows = [];
+      for (const el of document.querySelectorAll('[data-touch-btn]')) {
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        const name = (n) => (n ? (n.getAttribute('data-testid') || n.getAttribute('aria-label') || n.tagName) : 'nothing');
+        rows.push({ control: name(el), hit: hit === el ? 'self' : name(hit) });
+      }
+      return rows;
+    });
+    const stolen = sweep.filter((r) => r.hit !== 'self');
+    console.log(`[touch-hold] F1 sweep: ${sweep.length} controls, ${stolen.length} stolen: ${JSON.stringify(stolen)}`);
+    // pause, action, cast, jump, dodge, the tray toggle (6) + 4 tray rows + 2 openers + 4 Aspect + 4 spell sectors = 20,
+    // the same universe touch-layout-gates counts (it adds the joystick base, which is not a button).
+    expect(sweep.length, `SETUP: the sweep saw ${sweep.length} controls with everything open — ${JSON.stringify(sweep)}`).toBe(20);
+    expect(stolen, `controls whose centre lands on something else: ${JSON.stringify(stolen)}`).toEqual([]);
   });
 });

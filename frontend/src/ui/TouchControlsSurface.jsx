@@ -186,8 +186,9 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
       {/* center crosshair: gold dot + ink ring */}
       <div style={{ position: 'absolute', left: '50%', top: '50%', width: 10, height: 10, transform: 'translate(-50%,-50%)',
                     borderRadius: '50%', background: GOLD, boxShadow: `0 0 0 3px ${INK}, 0 0 8px rgba(0,0,0,0.6)` }} />
-      {/* joystick base ring (left thumb) */}
-      <div style={{ position: 'absolute', left: 'max(env(safe-area-inset-left,0px), 7%)', bottom: '13%',
+      {/* joystick base ring (left thumb). data-touch-zone: the place the drawn stick sends the thumb, so no control may
+          sit on it (tests/gates/touch-layout-gates.test.jsx reads this element's rectangle). */}
+      <div data-touch-zone="joystick" style={{ position: 'absolute', left: 'max(env(safe-area-inset-left,0px), 7%)', bottom: '13%',
                     width: 148, height: 148, borderRadius: '50%', border: `4px solid ${INK}`,
                     background: 'rgba(10,14,24,0.6)', boxShadow: '0 5px 16px rgba(0,0,0,0.55)' }}>
         <div data-touch-knob style={{ position: 'absolute', left: '50%', top: '50%', width: 64, height: 64,

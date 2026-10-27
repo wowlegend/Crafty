@@ -115,8 +115,15 @@ describe('aspectWheel — fan geometry, measured in px against the viewport', ()
     expect(SPELL_ROW_BOTTOM - ASPECT_ROW_BOTTOM).toBeGreaterThanOrEqual(TOUCH_BTN);
   });
 
-  it('item 0 lands exactly on its opener — the affordance, and the control for the offsets above', () => {
-    expect(fanItemStyle(SPELL_ROW_BOTTOM, fanLayout(4)[0])).toEqual(fanOpenerStyle(SPELL_ROW_BOTTOM));
+  // REVERSED 2026-10-27 (review F4): this asserted "item 0 lands exactly on its opener — the affordance". It did, and so
+  // the open ring's first sector covered its own opener: the opener could never close the ring, and with every Aspect
+  // locked every way out of an open ring opened Talents. Item 0 now sits one step inward, and the opener stays a toggle.
+  it('no item lands on its opener — item 0 sits one full step inward, so the opener stays tappable', () => {
+    const fan = fanLayout(4);
+    expect(fanItemStyle(SPELL_ROW_BOTTOM, fan[0])).not.toEqual(fanOpenerStyle(SPELL_ROW_BOTTOM));
+    for (const [i, q] of fan.entries()) {
+      expect(-q.x, `item ${i} overlaps its opener`).toBeGreaterThanOrEqual(TOUCH_BTN);
+    }
   });
 
   it('emits the CSS the component actually renders, both rows', () => {
@@ -124,11 +131,11 @@ describe('aspectWheel — fan geometry, measured in px against the viewport', ()
     // draw with — not a reimplementation of it.
     const s0 = fanItemStyle(SPELL_ROW_BOTTOM, { x: -58, y: 0 });
     expect(s0.right).toBe('calc(env(safe-area-inset-right,0px) + 84px)');
-    expect(s0.bottom).toBe('calc(11% + 182px)');
+    expect(s0.bottom).toBe('calc(13% + 214px)');
     expect(s0.width).toBe(TOUCH_BTN);
     const a0 = fanItemStyle(ASPECT_ROW_BOTTOM, { x: -116, y: 0 });
     expect(a0.right).toBe('calc(env(safe-area-inset-right,0px) + 142px)');
-    expect(a0.bottom).toBe('calc(11% + 104px)');
+    expect(a0.bottom).toBe('calc(13% + 156px)');
   });
 
   it('returns nothing for a degenerate fan instead of NaN coordinates', () => {

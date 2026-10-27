@@ -157,15 +157,36 @@ describe('the roar sector is press-and-hold', () => {
     expect(getInput().roar, 'the roar stayed held with input dead — the next press would have no rising edge').toBe(false);
   });
 
-  it('a second finger closing the ring mid-hold releases the roar', () => {
+  // REWRITTEN 2026-10-27 (review F4): this tap was IMPOSSIBLE when written — the ring's first sector sat on its own
+  // opener, so no finger could reach the opener while the ring was open, and the "tap" was a bare pointerup with no
+  // press and no pointer of its own. The fan now starts one step inward (tests/gates/touch-layout-gates.test.jsx asserts
+  // no sector covers its opener in any viewport), and the second finger is modelled as a device delivers it: its own
+  // pointerId, pointerType touch, a press and then a lift, while the first finger stays down on the sector.
+  it('a second finger tapping the (uncovered) opener mid-hold closes the ring and releases the roar', () => {
     withRoar();
     render(<TouchControls isWorldBuilt />);
     openRing();
-    fireEvent.pointerDown(roarSector(), { pointerId: 7 });
+    fireEvent.pointerDown(roarSector(), { pointerId: 7, pointerType: 'touch' });
     advance(600);
     expect(getInput().roar).toBe(true);
-    openRing(); // the opener toggles the ring shut
+    const opener = screen.getByTestId('touch-aspects');
+    fireEvent.pointerDown(opener, { pointerId: 8, pointerType: 'touch' });
+    advance(60);
+    expect(getInput().roar, 'the second finger\'s PRESS on the opener ended the first finger\'s hold').toBe(true);
+    fireEvent.pointerUp(opener, { pointerId: 8, pointerType: 'touch' }); // the opener toggles the ring shut on its lift
+    expect(screen.queryByTestId('touch-aspect-roar'), 'SETUP: the opener did not close the ring').toBeNull();
     expect(getInput().roar, 'the sector unmounted under the finger and left the roar held').toBe(false);
+  });
+
+  it('with every Aspect locked, the opener closes the ring WITHOUT opening Talents (F4: the ring is no trap)', () => {
+    const onOpenTalents = vi.fn();
+    render(<TouchControls isWorldBuilt onOpenTalents={onOpenTalents} />);
+    openRing();
+    expect(roarSector(), 'PRESENCE: the ring opened').toHaveAttribute('data-locked', 'true');
+    openRing();
+    expect(screen.queryByTestId('touch-aspect-roar'), 'the opener did not close the ring').toBeNull();
+    expect(onOpenTalents).not.toHaveBeenCalled();
+    expect(getInput().active, 'closing the ring dropped touch focus').toBe(true);
   });
 
   it('the other unlocked sectors keep the tap pulse on release — they have no charge to hold', () => {
