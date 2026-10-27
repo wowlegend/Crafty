@@ -54,6 +54,12 @@ import TouchControlsSurface from '../../src/ui/TouchControlsSurface.jsx';
 //   F3/Q6 talentsOpen dropped   F3/Q7 otherPanelOpen dropped
 //   F5/R1g src/input/touchHold.js: chargeRingDeg returns an object again   F5/R2 src/ui/TouchControlsSurface.jsx: the
 //   painter's cache removed   I2 identity (a comment edit in TouchControls.jsx) SURVIVED, as it must.
+// Review round 2, item 2 (35 tests; subject src/ui/TouchControls.jsx), each observed RED:
+//   A1 the window blur listener removed   A2 the pagehide listener removed   A4 the visibilitychange listener removed
+//   A3 plausible-wrong: ANY visibilitychange drops the holds (the page coming back cancelled a live charge)
+//   A5 plausible-wrong: dropHolds cancels the heavy but keeps the claim (every later press refused)
+//   A6 dropHolds leaves the roar's hold   A7 the input-dead effect ignores `active` (only a panel drops the holds)
+//   A0 identity (a comment edit in TouchControls.jsx) SURVIVED, as it must.
 //
 // BLIND SPOT: jsdom has no layout and no real pointer capture; whether a thumb on an iPad reaches these targets, and
 // whether a held touch commits the beast form in the running game, is tests/e2e/touch-hold.spec.js.
@@ -403,6 +409,91 @@ describe('the action button is press-and-hold: the light swing at the press, the
     act(() => useGameStore.setState({ showChestInterface: false }));
     fireEvent.pointerDown(action(), { pointerId: 6, pointerType: 'touch' });
     expect(calls.filter(([k]) => k === 'press'), 'PRESENCE: with the panel closed the button presses again').toHaveLength(2);
+  });
+
+  // REVIEW ROUND 2: input going dead (pause, death) UNMOUNTS the action button under the finger, so its lift can never
+  // arrive. The charge must be cancelled and the claim forgotten, or after resume every press is refused.
+  it('input going dead mid-charge cancels the heavy and frees the claim: after resume a new finger presses again', () => {
+    useGameStore.setState({ pressPrimary: (button, source) => { calls.push(['press', button, source]); pressHeavy(performance.now(), source); return 'attack'; } });
+    render(<TouchControls isWorldBuilt />);
+    fireEvent.pointerDown(action(), { pointerId: 3, pointerType: 'touch' });
+    advance(HEAVY_HOLD_MS + 100);
+    expect(isHeavyHeld(), 'SETUP: the press did not charge').toBe(true);
+    act(() => setActive(false));
+    expect(screen.queryByTestId('touch-action'), 'SETUP: input went dead and the button stayed mounted').toBeNull();
+    expect(isHeavyHeld(), 'input went dead under a held heavy and the charge survived').toBe(false);
+    expect(calls.filter(([k]) => k === 'release'), 'the dead input released (threw) the heavy').toEqual([]);
+    act(() => setActive(true));
+    fireEvent.pointerDown(action(), { pointerId: 4, pointerType: 'touch' });
+    expect(calls.filter(([k]) => k === 'press'), 'after resume the button refused a new finger — the dead claim is still held').toHaveLength(2);
+  });
+
+  // REVIEW ROUND 2: the page losing focus or going away takes the finger with no lift. Each of the three must cancel the
+  // heavy and free the claim, AND drop the roar's hold: blurReset clears the roar intent but not the hold's claim, so a
+  // sector whose claim survived refused every later press. A visibilitychange to VISIBLE is the control: it drops nothing.
+  const pageEvents = [
+    ['window blur', () => window.dispatchEvent(new Event('blur'))],
+    ['pagehide', () => window.dispatchEvent(new Event('pagehide'))],
+    ['visibilitychange (hidden)', () => { setVisibility('hidden'); document.dispatchEvent(new Event('visibilitychange')); }],
+  ];
+  const setVisibility = (v) => Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => v });
+  afterEach(() => { delete document.visibilityState; });
+
+  it('the page losing focus or going away mid-charge cancels the heavy and frees the claim (3 of 3)', () => {
+    let checked = 0;
+    for (const [name, leave] of pageEvents) {
+      setActive(true);
+      calls.length = 0;
+      useGameStore.setState({ pressPrimary: (button, source) => { calls.push(['press', button, source]); pressHeavy(performance.now(), source); return 'attack'; } });
+      render(<TouchControls isWorldBuilt />);
+      fireEvent.pointerDown(action(), { pointerId: 3, pointerType: 'touch' });
+      advance(HEAVY_HOLD_MS + 100);
+      expect(isHeavyHeld(), `SETUP (${name}): the press did not charge`).toBe(true);
+      act(leave);
+      expect(isHeavyHeld(), `${name} left the heavy charging with no finger down`).toBe(false);
+      expect(calls.filter(([k]) => k === 'release'), `${name} released (threw) the heavy`).toEqual([]);
+      fireEvent.pointerDown(action(), { pointerId: 4, pointerType: 'touch' });
+      expect(calls.filter(([k]) => k === 'press'), `after ${name} the button refused a new finger — the claim is still held`).toHaveLength(2);
+      checked += 1;
+      cleanup();
+      cancelHeavy();
+      delete document.visibilityState;
+    }
+    expect(checked).toBe(pageEvents.length);
+  });
+
+  it('the page losing focus or going away mid-hold drops the roar and frees the sector (3 of 3)', () => {
+    let checked = 0;
+    for (const [name, leave] of pageEvents) {
+      setActive(true);
+      withRoar();
+      render(<TouchControls isWorldBuilt />);
+      openRing();
+      fireEvent.pointerDown(roarSector(), { pointerId: 7, pointerType: 'touch' });
+      advance(300);
+      expect(getInput().roar, `SETUP (${name}): the press did not hold`).toBe(true);
+      act(leave);
+      expect(getInput().roar, `${name} left the roar held`).toBe(false);
+      fireEvent.pointerDown(roarSector(), { pointerId: 9, pointerType: 'touch' });
+      expect(getInput().roar, `after ${name} the sector refused a new finger — the hold's claim is still held`).toBe(true);
+      fireEvent.pointerUp(roarSector(), { pointerId: 9, pointerType: 'touch' });
+      advance(TAP_HOLD_MS);
+      checked += 1;
+      cleanup();
+      delete document.visibilityState;
+    }
+    expect(checked).toBe(pageEvents.length);
+  });
+
+  it('a visibilitychange to VISIBLE drops nothing (the control for the hidden case)', () => {
+    useGameStore.setState({ pressPrimary: (button, source) => { calls.push(['press', button, source]); pressHeavy(performance.now(), source); return 'attack'; } });
+    render(<TouchControls isWorldBuilt />);
+    fireEvent.pointerDown(action(), { pointerId: 3, pointerType: 'touch' });
+    advance(HEAVY_HOLD_MS + 100);
+    act(() => { setVisibility('visible'); document.dispatchEvent(new Event('visibilitychange')); });
+    expect(isHeavyHeld(), 'the page coming BACK cancelled a live charge').toBe(true);
+    fireEvent.pointerUp(action(), { pointerId: 3, pointerType: 'touch' });
+    expect(calls.filter(([k]) => k === 'release'), 'PRESENCE: the owning finger still releases it').toHaveLength(1);
   });
 
   it('a "touch" charge is ended only by the "touch" release — a compat mouseup from another finger cannot take it', () => {

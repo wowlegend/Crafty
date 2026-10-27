@@ -56,6 +56,12 @@ function capturePointer(e) {
 const releaseHandlers = (end) => ({ onPointerUp: end, onPointerCancel: end, onLostPointerCapture: end, onPointerLeave: end });
 // A long press must not raise a platform menu over a hold control. Defensive: not verified on a device.
 const noMenu = (e) => e.preventDefault();
+// Ends both holds at once: the roar's intent drops and the touch heavy is CANCELLED, never thrown. For every way a held
+// control loses its finger without a lift reaching it.
+function dropHolds(roarHold, actionClaim) {
+  roarHold.drop();
+  if (actionClaim.clear()) cancelHeavy();
+}
 
 // isWorldBuilt is App-LOCAL useState (App.jsx:105 -- verified NOT a store key) -> passed as a prop.
 // talentsOpen / onOpenTalents are App-LOCAL too (the Talents panel's flag lives in useInputManager): Phase 0c, F9.
@@ -93,9 +99,24 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
   // closing under a held finger (a second finger on the opener) releases the roar as a lift would; unmounting drops it.
   useEffect(() => {
     if (active && !panelOpen) return;
-    roarHold.drop();
-    if (actionClaim.clear()) cancelHeavy();
+    dropHolds(roarHold, actionClaim);
   }, [active, panelOpen, roarHold, actionClaim]);
+  // The page losing focus or going away (review round 2): an app switch, the multitasking gesture or a navigation can
+  // take the finger with no pointerup, cancel or lost capture reaching the control. blurReset clears the roar INTENT
+  // there but not the hold's pointer claim, so every later press on the sector was refused; the heavy kept charging,
+  // and its claim refused every later press on the action button.
+  useEffect(() => {
+    const drop = () => dropHolds(roarHold, actionClaim);
+    const onVisibility = () => { if (document.visibilityState === 'hidden') drop(); };
+    window.addEventListener('blur', drop);
+    window.addEventListener('pagehide', drop);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('blur', drop);
+      window.removeEventListener('pagehide', drop);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [roarHold, actionClaim]);
   useEffect(() => { if (!wheelOpen) roarHold.close(); }, [wheelOpen, roarHold]);
   useEffect(() => () => roarHold.drop(), [roarHold]);
 
