@@ -222,7 +222,15 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, onOpenTalents }) {
           style={{ ...hit, top: 'calc(env(safe-area-inset-top,0px) + 10px)', right: 64, width: 46, height: 46 }} />
       )}
       {active && (
-        <button data-touch-btn onPointerUp={() => dispatch(0)} aria-label={t('a11y.action')} data-testid="touch-action"
+        // PHASE 0c: the primary is press-and-hold, as on the mouse. The press swings AT ONCE (never delayed to the
+        // release) and, on an attack, begins the heavy's charge; the release throws it once charged. Both go through
+        // the store seams Components publishes beside performVerb, as the 'touch' source, so a compat mouseup from a
+        // second finger's tap cannot end this charge (heavyAttack.releaseHeavy checks the source). This used to
+        // dispatch on pointerup with no release at all, so the heavy could never be performed on touch.
+        <button data-touch-btn aria-label={t('a11y.action')} data-testid="touch-action"
+          onPointerDown={(e) => { capturePointer(e); useGameStore.getState().pressPrimary?.(0, 'touch'); }}
+          {...releaseHandlers(() => useGameStore.getState().releasePrimary?.('touch'))}
+          onContextMenu={noMenu}
           style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: '11%', width: 84, height: 84 }} />
       )}
       {active && (

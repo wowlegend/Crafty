@@ -7,6 +7,7 @@ import { setActive, getInput, setIntent } from '../../src/input/inputState.js';
 import { ASPECT_VERBS, TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
 import { openTalents } from '../../src/ui/touchTray.js';
 import { t as translate } from '../../src/i18n/i18n.js';
+import { pressHeavy, releaseHeavy, cancelHeavy, isHeavyHeld, HEAVY_HOLD_MS, HEAVY_CHARGE_MS } from '../../src/game/heavyAttack.js';
 import TouchControls from '../../src/ui/TouchControls.jsx';
 
 // PHASE 0c — TOUCH PLAYS THE SIGNATURE (plan docs/superpowers/plans/2026-10-27-crafty-touch-hold.md).
@@ -28,6 +29,12 @@ import TouchControls from '../../src/ui/TouchControls.jsx';
 //   M11 a locked sector named as the bare Aspect   M12 plausible-wrong: no minimum pulse on the roar
 //   M13 src/ui/touchTray.js: openTalents leaves Settings open
 //   M0 identity (a comment edit) SURVIVED, as it must.
+// Task 3 (the held action button; subject src/ui/TouchControls.jsx unless named):
+//   N1 plausible-wrong: the button swings at the press but never charges (performVerb, not pressPrimary)
+//   N2 plausible-wrong: the press sent as 'mouse'   N3 the charge released on pointerup only
+//   N4 the press does not capture its pointer   N5 plausible-wrong: the release sent as 'mouse'
+//   N6 src/game/heavyAttack.js: releaseHeavy ignores which input holds the charge
+//   N0 identity (a comment edit) SURVIVED, as it must.
 //
 // BLIND SPOT: jsdom has no layout and no real pointer capture; whether a thumb on an iPad reaches these targets, and
 // whether a held touch commits the beast form in the running game, is tests/e2e/touch-hold.spec.js.
@@ -211,6 +218,79 @@ describe('F9 — every Aspect is offered; a locked one opens Talents', () => {
     expect(screen.queryByTestId('touch-tap-to-play'), 'PRESENCE: tap-to-play shows with no panel open').not.toBeNull();
     rerender(<TouchControls isWorldBuilt talentsOpen />);
     expect(screen.queryByTestId('touch-tap-to-play')).toBeNull();
+  });
+});
+
+// The action button talks to the game only through the store seams Components publishes beside performVerb
+// (pressPrimary / releasePrimary). They are stand-ins here that RECORD each call, because the real ones live inside the
+// R3F Player and cannot run in jsdom: this proves the overlay's half of the seam. The game's half — the press swinging
+// the light attack and charging, the release throwing the heavy — is tests/e2e/touch-hold.spec.js (and, for the mouse
+// on the same function, tests/e2e/heavy-melee.spec.js).
+describe('the action button is press-and-hold: the light swing at the press, the heavy on the release', () => {
+  let calls;
+  beforeEach(() => {
+    calls = [];
+    useGameStore.setState({
+      pressPrimary: (button, source) => { calls.push(['press', button, source]); return 'attack'; },
+      releasePrimary: (source) => { calls.push(['release', source]); },
+      performVerb: (button) => { calls.push(['performVerb', button]); return 'attack'; },
+    });
+  });
+  afterEach(() => {
+    useGameStore.setState({ pressPrimary: null, releasePrimary: null, performVerb: null });
+    cancelHeavy();
+  });
+  const action = () => screen.getByTestId('touch-action');
+
+  it('the press calls pressPrimary(0, "touch") AT ONCE — the light swing is never delayed to the release', () => {
+    render(<TouchControls isWorldBuilt />);
+    fireEvent.pointerDown(action(), { pointerId: 3 });
+    expect(calls, 'the press reached nothing, or reached it late').toEqual([['press', 0, 'touch']]);
+    fireEvent.pointerUp(action(), { pointerId: 3 });
+    expect(calls[1]).toEqual(['release', 'touch']);
+    expect(calls.some(([k]) => k === 'performVerb'), 'the lift dispatched a verb — the old pointerup wiring').toBe(false);
+  });
+
+  it('a TAP is still exactly one press — one light swing — whatever lift events follow it', () => {
+    render(<TouchControls isWorldBuilt />);
+    fireEvent.pointerDown(action(), { pointerId: 3 });
+    fireEvent.pointerUp(action(), { pointerId: 3 });
+    fireEvent.lostPointerCapture(action(), { pointerId: 3 });
+    fireEvent.pointerLeave(action(), { pointerId: 3 });
+    expect(calls.filter(([k]) => k === 'press')).toHaveLength(1);
+    expect(calls.filter(([k]) => k === 'release').every(([, s]) => s === 'touch')).toBe(true);
+  });
+
+  it('every way a touch can end releases the charge as "touch" — up, cancel, lost capture, leave (4 of 4)', () => {
+    const endings = ['pointerUp', 'pointerCancel', 'lostPointerCapture', 'pointerLeave'];
+    let released = 0;
+    for (const end of endings) {
+      setActive(true); // the previous iteration's unmount relinquished the gate
+      render(<TouchControls isWorldBuilt />);
+      calls.length = 0;
+      fireEvent.pointerDown(action(), { pointerId: 3 });
+      fireEvent[end](action(), { pointerId: 3 });
+      expect(calls, `${end} did not release the touch charge — a stuck heavy that slows the walk`).toEqual([['press', 0, 'touch'], ['release', 'touch']]);
+      released += 1;
+      cleanup();
+    }
+    expect(released).toBe(endings.length);
+  });
+
+  it('the press captures its pointer, so a drifting thumb still releases on the button', () => {
+    render(<TouchControls isWorldBuilt />);
+    fireEvent.pointerDown(action(), { pointerId: 9 });
+    expect(captured.map((c) => c.id)).toEqual([9]);
+    expect(captured[0].el).toBe(action());
+  });
+
+  it('a "touch" charge is ended only by the "touch" release — a compat mouseup from another finger cannot take it', () => {
+    const t0 = 1000;
+    const ready = t0 + HEAVY_HOLD_MS + HEAVY_CHARGE_MS;
+    pressHeavy(t0, 'touch');
+    expect(releaseHeavy(ready + 5, 'mouse'), 'a mouse release ended the touch charge').toBe(false);
+    expect(isHeavyHeld()).toBe(true);
+    expect(releaseHeavy(ready + 10, 'touch'), 'the touch release lost its heavy').toBe(true);
   });
 });
 

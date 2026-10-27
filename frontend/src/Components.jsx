@@ -528,16 +528,21 @@ export const Player = ({ isWorldBuilt }) => {
       else if (verb === 'interact') GameMethods.terrainVerbs?.open(hit);
       return verb;
     };
-    // HEAVY MELEE (game/heavyAttack.js): the tap has already swung inside performVerb; HOLDING the mouse button on an
-    // attack starts the charge, and the release throws the heavy. Only the REAL mouse presses it — the touch overlay
-    // calls performVerb with no release event, and a press it never releases would slow the walk forever.
+    // HEAVY MELEE (game/heavyAttack.js): the tap has already swung inside performVerb; HOLDING the primary on an attack
+    // starts the charge, and the release throws the heavy. ONE press path for every input that HAS a release: the real
+    // mouse here, and (Phase 0c) the touch overlay's action button through the store seams published below. Touch used
+    // to call performVerb with no release event at all — which is why it could never charge, and why a press it never
+    // released would have slowed the walk forever; its button now releases on up, cancel, lost capture and leave.
+    // `source` names the input holding the charge, so another input's release cannot end it (R9.3).
     // A beast form's hold charges nothing (R9.2): triggerMeleeAttack drops `heavy` in a form, so a charge there only
     // slowed the walk, ticked "ready" and threw a free extra light swing on release.
-    const handleMouseDown = (e) => {
-      const verb = performVerb(e.button);
+    const pressPrimary = (button, source) => {
+      const verb = performVerb(button);
       const st = useGameStore.getState();
-      if (e.button === 0 && verb === 'attack' && !st.voidhandHeld && !st.beastFormActive) pressHeavy(performance.now(), 'mouse');
+      if (button === 0 && verb === 'attack' && !st.voidhandHeld && !st.beastFormActive) pressHeavy(performance.now(), source);
+      return verb;
     };
+    const handleMouseDown = (e) => { pressPrimary(e.button, 'mouse'); };
     // `source` is the input coming up: only the one holding the charge can release it (R9.3 — T's keyup used to end a
     // charge the mouse held).
     const releaseHeavySwing = (source) => {
@@ -546,7 +551,9 @@ export const Player = ({ isWorldBuilt }) => {
       if (releaseHeavy(now, source)) triggerMeleeAttack({ heavy: true });
     };
     const handleMouseUp = (e) => { if (e.button === 0) releaseHeavySwing('mouse'); };
-    useGameStore.setState({ performVerb }); // touch overlay (M1) dispatches via store.performVerb
+    // The touch overlay dispatches through the store: performVerb (M1: cast), pressPrimary / releasePrimary (Phase 0c:
+    // the held action button — the same press and release the mouse uses, as the 'touch' source).
+    useGameStore.setState({ performVerb, pressPrimary, releasePrimary: releaseHeavySwing });
     // Centralized active gate: the ONE pointer-lock read in the controller. Pointer-lock is the
     // KB+mouse "input is live" source today; setActive() routes it into the intent module so the
     // verb loop gates on getInput().active (a future touch layer sets active from its own focus).
@@ -580,7 +587,7 @@ export const Player = ({ isWorldBuilt }) => {
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
       document.removeEventListener('pointerlockerror', handlePointerLockError);
       removeBlurReset();
-      useGameStore.setState({ performVerb: null }); // symmetry with the playerRigidBodyRef teardown — don't retain a stale closure across remount
+      useGameStore.setState({ performVerb: null, pressPrimary: null, releasePrimary: null }); // symmetry with the playerRigidBodyRef teardown — don't retain a stale closure across remount
     }
   }, [camera, triggerMeleeAttack, triggerSpellCast]);
 

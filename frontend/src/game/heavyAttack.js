@@ -23,10 +23,10 @@ export const HEAVY_SHOVE_MULT = 2.5;
 export const HEAVY_WALK_MULT = 0.55;
 
 let pressedAt = 0; // 0 = nothing held
-let pressedBy = null; // WHICH input holds the charge: 'mouse' or 'key' (R9.3)
+let pressedBy = null; // WHICH input holds the charge: 'mouse', 'key' or 'touch' (R9.3; 'touch' since Phase 0c)
 
 /**
- * The melee input `source` ('mouse' or 'key') went down. A second press while ANY charge is held (T key-repeat, or T
+ * The melee input `source` ('mouse', 'key', or 'touch' — the overlay's held action button) went down. A second press while ANY charge is held (T key-repeat, or T
  * tapped during a mouse hold) is ignored — it must not restart the charge or take it over.
  */
 export function pressHeavy(now, source = 'mouse') {
