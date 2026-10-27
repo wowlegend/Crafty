@@ -147,7 +147,8 @@ export function verdict(current, stamp, base = { state: null }, push = {}) {
       code: 0,
       line:
         `e2e-freshness: the base's e2e is RED on CI${base.sha ? ` (${base.sha})` : ''}, but this push does not move main — ` +
-        'CI on the pushed branch decides. Main moves only on a local green receipt or CI green on the exact commit.',
+        'CI on the pushed branch decides. Main moves only on a local green receipt, or when CI\'s newest e2e verdict on ' +
+        "this commit's identity (its frontend/ tree and ci.yml, here or on an ancestor) is green.",
     };
   }
   if (base && base.state === 'failure') {
@@ -339,6 +340,16 @@ export function readTreeCi(exec, shas, timeoutMin = E2E_TIMEOUT_MIN) {
   return { state: null };
 }
 
+/**
+ * PURE. Whether CI's verdict on this tree (tier 1b) can change the exit code, and so is worth its walk — up to 40 git
+ * reads and a gh round trip per commit. Only a RED base on a push that may move main (true, or refs unknown: strict)
+ * can refuse; every other path through verdict() exits 0 without it (review 2026-10-27). The CLI skips the walk
+ * otherwise, so on those paths tier 3's "no e2e verdict yet" means none was looked for.
+ */
+export function needsTreeCi(base, mainMoves) {
+  return Boolean(base && base.state === 'failure' && mainMoves !== false);
+}
+
 /** PURE. Whether a push moves main, from the hook's space-separated remote refs: null when none were given (strict). */
 export function mainMovesFrom(refs) {
   const list = String(refs || '').trim().split(/\s+/).filter(Boolean);
@@ -476,7 +487,10 @@ if (process.argv[1] && resolve(process.argv[1]).endsWith('e2e-freshness.mjs')) {
   // The commit being certified (pre-push runs this in a detached worktree AT the pushed sha) and the refs the push
   // moves (exported by .githooks/pre-push). No refs given — a run by hand, or another caller — is null: strict.
   const git = (cmd) => execSync(cmd, { cwd: APP, env: scrubGitEnv(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-  const v = verdict(current, stamp, readBaseCi(gh), { commitCi: readTreeCi(gh, sameAppCommits(git)), mainMoves: mainMovesFrom(process.env.E2E_PUSH_REFS) });
+  const base = readBaseCi(gh);
+  const mainMoves = mainMovesFrom(process.env.E2E_PUSH_REFS);
+  const commitCi = needsTreeCi(base, mainMoves) ? readTreeCi(gh, sameAppCommits(git)) : { state: null };
+  const v = verdict(current, stamp, base, { commitCi, mainMoves });
   console.log(v.line);
   process.exit(v.code);
 }

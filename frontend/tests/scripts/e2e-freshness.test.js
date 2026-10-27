@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createServer } from 'node:net';
-import { verdict, readBaseCi, readCommitCi, sameAppCommits, scrubGitEnv, readTreeCi, mainMovesFrom, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, portInUse, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
+import { verdict, readBaseCi, readCommitCi, sameAppCommits, scrubGitEnv, readTreeCi, needsTreeCi, mainMovesFrom, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, portInUse, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
 
 /**
  * THE GATE THAT ASKED FOR IMPOSSIBLE EVIDENCE, and what replaced it.
@@ -290,6 +290,34 @@ describe('tier 1b and the main-only red-base rule', () => {
   it('a commit CI did NOT pass is no receipt (presence control: the same push without it is refused)', () => {
     expect(verdict(T, null, RED, { mainMoves: true, commitCi: { state: null } }).code).toBe(1);
   });
+  // LOW, review 2026-10-27: the tier-1b walk costs up to 40 git reads and a gh round trip per commit, and it can change
+  // the outcome in one case only. The property, over every combination verdict() can see: wherever CI green on the
+  // tree changes the exit code, the walk must run; and without a local receipt, wherever the walk runs, it can.
+  it('needsTreeCi: the walk runs exactly where CI\'s verdict on the tree can change the exit code', () => {
+    const RED = { state: 'failure' };
+    expect(needsTreeCi(RED, true)).toBe(true);
+    expect(needsTreeCi(RED, null), 'unknown refs are strict, so a CI green can still let main move').toBe(true);
+    expect(needsTreeCi(RED, false), 'a branch push exits 0 on a red base anyway').toBe(false);
+    expect(needsTreeCi({ state: 'success' }, true), 'a green base exits 0 anyway').toBe(false);
+    expect(needsTreeCi({ state: null }, true), 'an unknown base fails open anyway').toBe(false);
+    expect(needsTreeCi(undefined, true)).toBe(false);
+    let checked = 0;
+    for (const base of [RED, { state: 'success' }, { state: null }]) {
+      for (const mainMoves of [true, false, null]) {
+        for (const stamp of [null, { treeId: 'tree1', at: 't' }]) {
+          const T = { id: 'tree1', files: 490 };
+          const changes = verdict(T, stamp, base, { mainMoves, commitCi: { state: 'success', run: '1' } }).code
+            !== verdict(T, stamp, base, { mainMoves, commitCi: { state: null } }).code;
+          const at = `base ${base.state}, mainMoves ${mainMoves}, stamp ${Boolean(stamp)}`;
+          if (changes) expect(needsTreeCi(base, mainMoves), `${at}: CI green changes the outcome, yet the walk is skipped`).toBe(true);
+          if (!stamp) expect(changes, `${at}: the walk runs where it cannot change the outcome`).toBe(needsTreeCi(base, mainMoves));
+          checked += 1;
+        }
+      }
+    }
+    expect(checked).toBe(18);
+  });
+
   it('mainMovesFrom reads the hook refs: main -> true, branches only -> false, none -> null', () => {
     expect(mainMovesFrom(' refs/heads/main')).toBe(true);
     expect(mainMovesFrom('refs/heads/land/x refs/heads/main')).toBe(true);
