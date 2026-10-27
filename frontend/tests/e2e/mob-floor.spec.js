@@ -42,6 +42,9 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 //      the roof burst 0.5 m from the muzzle (ended by ground ...)"
 //   E3 EnhancedMagicSystem: the DEV end record never written — "no end was recorded" (the instrument's presence
 //      check: a blind recorder must not read as a clean flight)
+// The flake itself, CONSTRUCTED rather than waited for (2026-10-27, throwaway :4291 config, identity mutant green
+// on both tests): a page-side burner making every frame with a live spell take 4 s read "the fireball cast under the
+// roof burst after 1.3 m (2 frames)" on the old per-frame sampling — CI's shape — and passed on the end record.
 test.describe('mob floor', () => {
   test.setTimeout(180000);
 
