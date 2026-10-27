@@ -700,11 +700,12 @@ export const MinecraftWorld = React.memo(() => {
         };
     }, [chunks]);
 
-    // Expose worker to Zustand store
+    // Expose worker to Zustand store. Through the setter: a world loaded before this mount (the context-loss resume, at App
+    // mount) is waiting to send its block edits, and the setter delivers them before the streamer asks for a chunk.
     useEffect(() => {
-        useGameStore.setState({ terrainWorker: worker });
+        useGameStore.getState().setTerrainWorker(worker);
         return () => {
-            useGameStore.setState({ terrainWorker: null });
+            useGameStore.getState().setTerrainWorker(null);
         };
     }, []);
 

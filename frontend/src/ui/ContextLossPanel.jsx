@@ -25,7 +25,12 @@ export function ContextLossPanel({ reload = () => window.location.reload() }) {
     const storage = sessionStore();
     if (!storage) return;
     const data = consumeResumeWorld({ storage, readWorld });
-    if (data) useGameStore.getState().loadWorldData(data);
+    if (!data) return;
+    // At App mount the world has not mounted: loadWorldData holds the block edits until the terrain worker is published
+    // (store setTerrainWorker), and the Player's spawn reads resumeSpawn instead of landing on the origin column.
+    useGameStore.getState().loadWorldData(data);
+    const p = data.player_data && data.player_data.position;
+    if (p) useGameStore.setState({ resumeSpawn: { x: p.x, y: p.y, z: p.z } });
   }, []);
   if (!lost) return null;
   const resume = () => recoverFromContextLoss({ getState: useGameStore.getState, storage: sessionStore(), reload });

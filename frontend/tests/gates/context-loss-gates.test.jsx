@@ -6,6 +6,8 @@ import { STRINGS } from '../../src/i18n/strings.js';
 import { writeWorld } from '../../src/game/worldSaves.js';
 import { ContextLossPanel } from '../../src/ui/ContextLossPanel.jsx';
 import { recoverFromContextLoss, consumeResumeWorld, RESUME_WORLD_KEY } from '../../src/game/contextRecovery.js';
+import { resolveResumeSpawn, RESUME_PROBE_MAX_FAILS, SPAWN_PROBE_MAX_FAILS } from '../../src/game/spawnPlacement.js';
+import { voxelIndex } from '../../src/world/chunkLayout.js';
 
 /**
  * A LOST WEBGL CONTEXT HAS A WAY BACK (plan 2026-10-27-crafty-steady-cool, item e; masterpiece 0f).
@@ -100,5 +102,97 @@ describe('the breadcrumb resumes the world at boot, once', () => {
     recoverFromContextLoss({ getState: () => st, storage: throwing, reload });
     expect(st.saveActiveWorld).toHaveBeenCalledWith({ x: 1, y: 2, z: 3 });
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * THE RESUMED WORLD IS THE ONE THAT WAS PLAYED: ITS BLOCKS AND WHERE THE PLAYER STOOD (review 2026-10-27, steady-cool
+ * HIGH 2). The resume loads the save at App mount, before the Canvas's children exist: loadWorldData sent the block
+ * edits to the terrain worker only `if (state.terrainWorker)` — null then — so they were dropped, and the boot spawn
+ * always landed on the origin column. The e2e checked coins only, and passed. Now the edits wait for the worker's
+ * publication (store setTerrainWorker) and the spawn reads a one-shot resumeSpawn (game/spawnPlacement.js).
+ * BLIND SPOT: that Terrain publishes THROUGH setTerrainWorker and that the Player's spawn reads resumeSpawn are the e2e's
+ * (tests/e2e/context-loss.spec.js: a placed block's collider and the player's column after the reload).
+ *
+ * Mutation-Proof: via scripts/dev/mutate.sh, one batch, receipts in the commit:
+ *   R1 setTerrainWorker never delivers pending edits                         -> RED expected
+ *   R2 loadWorldData never marks its edits pending                           -> RED expected
+ *   R3 plausible-wrong: the delivery leaves the edits pending (sent twice)   -> RED expected
+ *   R4 plausible-wrong: the resume spawn places before its column loaded     -> RED expected
+ *   R5 plausible-wrong: the resume spawn places at the probe height          -> RED expected
+ *   R6 the boot resume never sets resumeSpawn                                -> RED expected
+ *   R0 identity (a comment edit in spawnPlacement.js)                        -> must SURVIVE
+ */
+const realLoadWorldData = useGameStore.getState().loadWorldData;
+const editedSave = () => ({
+  id: 'local_edits',
+  player_data: { position: { x: 24.5, y: 61.2, z: -20.5 } },
+  world_data: { blocks: [['26_70_-18', 3]] },
+});
+// x 26 -> chunk 1, local 10; z -18 -> chunk -2, local 14 (CHUNK_SIZE 16, floor division): every axis non-zero and distinct.
+const EDIT = [1, -2, voxelIndex(10, 70, 14), 3];
+
+describe('block edits loaded before the world mounted reach the terrain worker when it is published', () => {
+  beforeEach(() => {
+    useGameStore.setState({ loadWorldData: realLoadWorldData, terrainWorker: null, _worldEditsPending: false, playerRigidBodyRef: null, worldBlocks: new Map() });
+  });
+
+  it('no worker at load: nothing is sent then; the publish sends the save\'s edits, once', () => {
+    useGameStore.getState().loadWorldData(editedSave());
+    expect(useGameStore.getState().worldBlocks.get('26_70_-18'), 'SETUP: the save\'s edit is not in the store').toBe(3);
+    const worker = { postMessage: vi.fn() };
+    useGameStore.getState().setTerrainWorker(worker);
+    expect(useGameStore.getState().terrainWorker).toBe(worker);
+    expect(worker.postMessage, 'the published worker was never sent the edits loaded before it existed').toHaveBeenCalledTimes(1);
+    expect(worker.postMessage.mock.calls[0][0]).toEqual({ type: 'load_modifications', payload: { modifications: [EDIT] } });
+    // A remount publishes again: the worker already holds these edits, so nothing is resent.
+    const again = { postMessage: vi.fn() };
+    useGameStore.getState().setTerrainWorker(null);
+    useGameStore.getState().setTerrainWorker(again);
+    expect(again.postMessage, 'the edits were delivered twice').not.toHaveBeenCalled();
+  });
+
+  it('a live worker at load gets the edits at once, and a later publish does not resend them', () => {
+    const worker = { postMessage: vi.fn() };
+    useGameStore.getState().setTerrainWorker(worker);
+    expect(worker.postMessage, 'a publish with nothing pending sent something').not.toHaveBeenCalled();
+    useGameStore.getState().loadWorldData(editedSave());
+    expect(worker.postMessage.mock.calls.map((c) => c[0])).toEqual([{ type: 'load_modifications', payload: { modifications: [EDIT] } }]);
+    const next = { postMessage: vi.fn() };
+    useGameStore.getState().setTerrainWorker(next);
+    expect(next.postMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('the resumed save spawns the player where they stood', () => {
+  const saved = { x: 24.5, y: 61.2, z: -20.5 };
+  it('holds there while the column has no collider, counting toward a bounded wait', () => {
+    for (const probe of [null, NaN, 15, 3]) {
+      expect(resolveResumeSpawn(saved, probe, 0), `probe ${probe}`).toEqual({ place: null, hold: true });
+    }
+  });
+  it('once the column loads, places the body at the SAVED position — the probe is proof of colliders, not a height', () => {
+    // 75: the probe hits a roof above where the player stood. The saved y is where they were.
+    expect(resolveResumeSpawn(saved, 75, 12)).toEqual({ place: saved, hold: false });
+    expect(resolveResumeSpawn(saved, 58.5, 0)).toEqual({ place: saved, hold: false });
+  });
+  it('gives up for the origin spawn when the column never loads, or the save is unusable', () => {
+    expect(resolveResumeSpawn(saved, null, RESUME_PROBE_MAX_FAILS - 1)).toEqual({ place: null, hold: false });
+    expect(RESUME_PROBE_MAX_FAILS).toBeGreaterThan(SPAWN_PROBE_MAX_FAILS);
+    for (const bad of [null, { x: NaN, y: 60, z: 1 }, { x: 1, y: 2, z: 3 } /* a void y */, { x: 1, y: 60 }]) {
+      expect(resolveResumeSpawn(bad, 70, 0), JSON.stringify(bad)).toEqual({ place: null, hold: false });
+    }
+  });
+  it('the boot resume hands the save\'s position to the spawn; a boot with no breadcrumb leaves none', () => {
+    writeWorld('local_edits', { name: 'Edits', created_at: 'x', is_owner: true }, editedSave());
+    useGameStore.setState({ resumeSpawn: null, loadWorldData: vi.fn() });
+    render(<ContextLossPanel reload={() => {}} />);
+    expect(useGameStore.getState().resumeSpawn, 'SETUP: no breadcrumb, yet a resume position').toBeNull();
+    cleanup();
+    window.sessionStorage.setItem(RESUME_WORLD_KEY, 'local_edits');
+    render(<ContextLossPanel reload={() => {}} />);
+    expect(useGameStore.getState().loadWorldData, 'SETUP: the boot did not resume the world').toHaveBeenCalledTimes(1);
+    expect(useGameStore.getState().resumeSpawn, 'the resumed save will spawn on the origin column').toEqual(saved);
+    useGameStore.setState({ resumeSpawn: null, loadWorldData: realLoadWorldData });
   });
 });
