@@ -16,6 +16,7 @@ import {
 } from './mood.js';
 import { makeSkyDomeMaterial } from './skyDome.js';
 import { cloudTint } from './cloudField.js';
+import { makeSkyClock, followSkyClock, resetSkyClock } from './skyClock.js';
 import { frameElapsed } from '../devtest/captureClock.js';
 import { realDelta } from '../game/worldClock.js';
 import { resetShadowForConfig } from './shadowReset.js';
@@ -233,6 +234,10 @@ export function Atmosphere({ shadowConfig }) {
     return () => { scene.remove(sunTarget); };
   }, [scene, sunTarget]);
   const framesRef = useRef(0); // frames this component has run, for the DEV grey card's "wait three frames"
+  // THE SKY'S CLOCK (render/skyClock.js): the 1 Hz game clock, followed every frame, so the light ramps instead of
+  // stepping once a second. `cycleRef` is the fraction the frame was rendered at (DEV reads it).
+  const skyClock = useMemo(makeSkyClock, []);
+  const cycleRef = useRef(0);
   // DEV-only reads for tests/e2e/light-script.spec.js (plan 2026-10-27-crafty-light-colour-script, Task 3b). Every value
   // is read from the LIVE object it describes where one exists (the light's own position and intensity, the dome's
   // uniform, the terrain's uniform via its own hook), so a reader that stopped drawing from the frame is seen.
@@ -248,6 +253,7 @@ export function Atmosphere({ shadowConfig }) {
         terrainSunDirY: callTestHook('readTerrainSky')?.sunDir?.[1] ?? null,
         bloomThreshold: callTestHook('readPostFx')?.bloomThreshold ?? null,
         mood: moodRef.current, weatherBoost: st.weatherMoodBoost, tier: st.qualityTier,
+        cycle: cycleRef.current, gameTime: st.gameTime, frame: framesRef.current,
       };
     });
     // THE GREY CARD: the colour model (tests/gates/_lightModel.js) against the screen (review amendment 1). A 1 m quad,
@@ -364,7 +370,13 @@ export function Atmosphere({ shadowConfig }) {
     // varies 1.68-10.43s between processes. So capture renders at a DECLARED fraction (captureCycle): the state's own
     // `captureSolarFraction` if it set one, else noon for a day state and midnight for a night state. Live play goes
     // through liveCycle, which maps a corrupt (non-finite) gameTime to noon rather than to the key-less dawn.
-    const cycle = cap ? captureCycle(st) : liveCycle(st.gameTime);
+    //
+    // LIVE PLAY READS THE SKY CLOCK, NEVER st.gameTime DIRECTLY: gameTime is a 1 Hz step, and the light read from it
+    // stepped once a second (the dawn key popped three times on its way up). followSkyClock moves toward it every frame.
+    // Capture resets the sky clock, so a return to play snaps to the game clock instead of panning from before capture.
+    if (cap) resetSkyClock(skyClock);
+    const cycle = cap ? captureCycle(st) : liveCycle(followSkyClock(skyClock, st.gameTime, delta));
+    cycleRef.current = cycle;
     const m = sampleMood(moodRef.current, cycle);
     publishSkyFrame(m); // THE copy every other reader reads (Sun, MoodGradeDriver, Terrain, FarField)
     framesRef.current += 1;
