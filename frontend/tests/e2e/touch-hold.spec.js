@@ -41,7 +41,10 @@ import { TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
 //   E10 src/input/aspectWheel.js: plausible-wrong, the Aspect row back at its old offset (ASPECT_ROW_BOTTOM 104, onto
 //       the jump on iPad Pro 11 landscape — review F1) -> the F1 jump case
 //   E11 src/input/aspectWheel.js: the fan's item 0 back on its opener (`-i * step`) -> the F1 sweep (the opener stolen)
-//   E12 src/Components.jsx: handleMouseDown ignores the compat filter (review F2) -> the F2 case (no echo dropped)
+//   E12 src/Components.jsx: a raw window mousedown listener presses the primary unfiltered, beside installPrimaryMouse
+//       (review F2) -> the F2 case (presses as "mouse" +1). Review round 2: the old F2 verdict compared one echo total,
+//       which the mouseup echo alone satisfied, so this mutant was predicted to SURVIVE it; the verdict is the press now.
+//   E13 src/input/compatMouse.js: makeMouseHandlers presses whatever the filter says -> the F2 case (presses as "mouse")
 //   E0 identity (a comment edit in src/ui/TouchControls.jsx) -> must SURVIVE
 // (A mutant of ANTICIPATION_SEC is deliberately absent: this spec imports that constant, so it would move its own
 // thresholds and score SETUP, not a verdict.) Replace OWED with the observed verdicts.
@@ -382,25 +385,30 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
   });
 
   // REVIEW F2 (2026-10-27): a tap's compatibility mousedown reached the game's window `mousedown` listener and pressed the
-  // primary a second time as 'mouse'. The game counts the echoes it drops (input/compatMouse.js, through the dev test
-  // bridge); this taps the action button for real and requires every compat mousedown Chromium delivered to be one.
-  test('F2: a real tap on the action button — its compatibility mousedown is dropped as an echo, never pressed again', async ({ page }) => {
+  // primary a second time as 'mouse'. This taps the action button for real and reads, through the dev test bridge, the
+  // primary's presses PER SOURCE and the echoes the game dropped PER EVENT TYPE (input/compatMouse.js, Components.jsx).
+  // Review round 2: it used to compare one echo TOTAL against the mousedowns, and the total counts the mouseup echo too,
+  // so un-filtering the mousedown alone (E12) stayed green. The verdict is now the press itself: exactly one as 'touch',
+  // none as 'mouse'; and the mousedown drops must cover every compat mousedown Chromium delivered.
+  test('F2: a real tap on the action button presses the primary once as "touch" and never as "mouse"', async ({ page }) => {
     await enterTouchPlay(page);
     await installPressLog(page);
     const cdp = await page.context().newCDPSession(page);
     const action = await aimAt(page, 'touch-action');
     const before = await page.evaluate(() => window.__craftyTest.call('readCompatMouse'));
-    expect(before, 'SETUP: the readCompatMouse hook is not registered — the instrument is absent').toBeDefined();
+    expect(before?.presses && before?.dropped, `SETUP: the readCompatMouse hook is absent or has the old shape — ${JSON.stringify(before)}`).toBeTruthy();
     const tap = await press(page, cdp, action, 60);
     await page.waitForTimeout(150);
     const after = await page.evaluate(() => window.__craftyTest.call('readCompatMouse'));
     const mousedowns = tap.log.filter((e) => e.type === 'mousedown');
+    const delta = (k, field) => after[field][k] - before[field][k];
     const where = JSON.stringify({ before, after, log: tap.log });
-    console.log(`[touch-hold] F2: ${mousedowns.length} compat mousedown(s); echoes ${before.echoes} -> ${after.echoes}`);
+    console.log(`[touch-hold] F2: ${mousedowns.length} compat mousedown(s); presses touch +${delta('touch', 'presses')} mouse +${delta('mouse', 'presses')}; dropped mousedown +${delta('mousedown', 'dropped')} mouseup +${delta('mouseup', 'dropped')}`);
     expect(tap.down?.id, `SETUP: the real tap's pointerdown did not land on the action button — ${where}`).toBe('touch-action');
     // PRESENCE: with no compat mousedown the case cannot discriminate (a browser that suppressed it has no F2 to show).
     expect(mousedowns.length, `SETUP: Chromium delivered no compatibility mousedown for the tap — ${where}`).toBeGreaterThan(0);
-    expect(after.echoes - before.echoes, `a compat mousedown reached the primary as a real click — the F2 double press: ${where}`)
-      .toBeGreaterThanOrEqual(mousedowns.length);
+    expect(delta('touch', 'presses'), `PRESENCE: the tap did not press the primary as "touch" exactly once — ${where}`).toBe(1);
+    expect(delta('mouse', 'presses'), `a compat mousedown pressed the primary as "mouse" — the F2 double press: ${where}`).toBe(0);
+    expect(delta('mousedown', 'dropped'), `a compat mousedown was not dropped as an echo: ${where}`).toBeGreaterThanOrEqual(mousedowns.length);
   });
 });
