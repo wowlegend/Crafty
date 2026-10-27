@@ -22,7 +22,9 @@ import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
  *   M2 drop the untracked check (ls-files --others -> `true`)            -> untracked-input case RED
  *   M3 plausible-wrong: check the INDEX against HEAD (`git diff --cached`) instead of worktree vs index
  *                                                                           -> partial-stage case RED
- *   M4 plausible-wrong: drop the `.state` exclusion                      -> harness-state case RED
+ *   M-U4 plausible-wrong: re-add a `:(exclude).state` pathspec            -> "a modified TRACKED file anywhere" RED
+ *        (until U4 the script carved `.state/` out and this line pinned the carve-out; harness state is now
+ *         ignored and untracked, so nothing tracked is exempt)
  *   M5 remove `frontend` from INPUT_ROOTS                                 -> untracked-input case RED
  *   and against ci/pipeline.sh: M6 inline `git write-tree` back in        -> single-writer case RED
  *
@@ -86,11 +88,20 @@ describe('ci/write-receipt.sh — certify only what was tested', () => {
     expect(run(repo, receipt).status).toBe(1);
   });
 
-  it('harness state under .state/ does not block — tracked, rewritten continuously, read by no step', () => {
+  it('a modified TRACKED file anywhere refuses the receipt (no carve-out)', () => {
+    // The fixture tracks .state/events.jsonl, the path the script used to except. A tracked file that differs
+    // from the index is a tree the commit does not carry, wherever it sits.
     writeFileSync(join(repo, 'frontend/src/a.js'), 'export const a = 2;\n');
     git(repo, 'add', 'frontend/src/a.js');
     writeFileSync(join(repo, '.state/events.jsonl'), '{"n":2}\n');
-    expect(run(repo, receipt).status).toBe(0);
+    const r = run(repo, receipt);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toMatch(/REFUSED/);
+  });
+
+  it('the repo ignores .state/ — harness state is never a tracked input', () => {
+    expect(() => git(ROOT, 'check-ignore', '-q', '.state/compaction-events.jsonl')).not.toThrow();
+    expect(() => git(ROOT, 'check-ignore', '-q', 'frontend/src/a.js')).toThrow(); // the instrument can say no
   });
 
   it('untracked agent config at the root does not block — outside every input root', () => {

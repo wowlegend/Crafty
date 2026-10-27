@@ -16,10 +16,10 @@
 # worktree of exactly what is being pushed. So this fails toward the slow, correct path.
 #
 # WHAT COUNTS AS "DIFFERS" — the pipeline's INPUTS, declared rather than excepted:
-#   - any unstaged change to a tracked file, anywhere, EXCEPT `.state/`: tracked, rewritten continuously by
-#     the operator's session harness, and read by no pipeline step (grep ci/ and frontend/scripts/ci/ for
-#     a `.state/` path: none). Without this one exclusion no receipt could ever be written in the checkout
-#     the harness runs in, and the optimisation would silently become dead.
+#   - any unstaged change to a tracked file, anywhere. No carve-out: `.state/` (the operator's session
+#     harness log, rewritten continuously) used to be excepted here because it was TRACKED; it is ignored
+#     and untracked now, so nothing tracked needs an exception, and an exception is where the next defect
+#     would live.
 #   - any untracked, non-ignored file under a directory a step reads (INPUT_ROOTS). An untracked test in
 #     frontend/src/ runs under vitest yet is not in the commit — the same defect by another door.
 #     Untracked files OUTSIDE these roots (editor/agent config at the root) are read by no step.
@@ -37,7 +37,7 @@ cd "$ROOT" || exit 3
 INPUT_ROOTS="frontend ci .githooks docs memory .agent .github"
 
 # shellcheck disable=SC2086
-DIRTY=$( { git diff --name-only -- . ':(exclude).state'; git ls-files --others --exclude-standard -- $INPUT_ROOTS; } 2>/dev/null )
+DIRTY=$( { git diff --name-only -- .; git ls-files --others --exclude-standard -- $INPUT_ROOTS; } 2>/dev/null )
 if [ -n "$DIRTY" ]; then
   N=$(printf '%s\n' "$DIRTY" | wc -l | tr -d ' ')
   printf '\033[33m  receipt REFUSED: the tested working tree is not the index being committed (%s path(s) differ, e.g. %s)\033[0m\n' \
