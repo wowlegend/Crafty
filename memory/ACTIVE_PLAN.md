@@ -23,6 +23,15 @@ liberally** — both in `.agent/AGENTS.md` Method. Kevin's overnight `/goal` (SO
   its content as ported to main in aed92d0f + e9f4038f — confirm with a diff, then remove the worktree and branch).
 
 **Ordered next steps:**
+0. **Kevin launches an ultrareview FIRST (Kevin, 2026-10-27: "i will want an ultrareview done in new session now, then
+   one later at a milestone").** Only Kevin can start it: he types `/code-review ultra` on `main` in this session.
+   Expected scope: the 11 unpushed commits plus the uncommitted edits against origin's default branch — CHECK the
+   launch dialog's file and line counts before he confirms (limits 500 files / 8,000 lines; the branch state is
+   uploaded at launch, so later edits do not change it). It runs in the cloud for about 15-25 min and uses one of the
+   account's 3 free runs (then $5-25 a run). Work step 1 while it runs; when its findings arrive, verify each before
+   fixing, compare them with the 2026-10-27 bake-off's list below, and record the result as an addendum to the
+   DECISIONS.md entry of that date. The SECOND ultrareview is at a milestone: the parked `wip/perf-t3-features` work,
+   once applied to main, before it is pushed.
 1. **Get main green and pushed.** Commit or finish the uncommitted main edits first (the receipt hashes the tree):
    `frontend/src/render/Atmosphere.jsx` (review #8 finding 11, shadow reset as a layout effect),
    `frontend/tests/e2e/dodge-latch.spec.js` (finding 5; D1 mutant RED, an identity mutant + clean baseline still owed
