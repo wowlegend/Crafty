@@ -129,8 +129,14 @@ export function verdict(current, stamp, base = { state: null }, push = {}) {
   // clean runners, no load. Three local receipt runs that day failed on the operator's machine load (0.5 fps
   // software rendering, swapping at a load of 118-159), none on code — so the push of a commit CI has already run
   // green (on a branch, or by workflow_dispatch) no longer depends on re-running 45 minutes of e2e on a laptop.
+  // Widened the same day to any ancestor whose WHOLE app tree (frontend/) is byte-identical to this commit's: a
+  // docs-only commit on top of a CI-green one changes the sha and nothing CI ran, and demanding a fresh 25-minute
+  // run for it is the impossible-evidence shape this file exists to avoid (readTreeCi, sameAppCommits).
   if (push.commitCi && push.commitCi.state === 'success') {
-    return { code: 0, line: `e2e-freshness: fresh by CI — run ${push.commitCi.run}'s e2e jobs all passed on this exact commit` };
+    const on = push.commitCi.sha && push.commitCi.exact === false
+      ? `${String(push.commitCi.sha).slice(0, 8)}, whose app tree (frontend/) is byte-identical to this commit's`
+      : 'this exact commit';
+    return { code: 0, line: `e2e-freshness: fresh by CI — run ${push.commitCi.run}'s e2e jobs all passed on ${on}` };
   }
 
   // TIER 2 — refuse to stack onto a base CI has already called red. It guards MAIN: the branch Vercel deploys, and
@@ -262,6 +268,43 @@ export function readCommitCi(exec, sha, timeoutMin = E2E_TIMEOUT_MIN) {
   } catch {
     return { state: null };
   }
+}
+
+/**
+ * The commits whose whole app tree is byte-identical to HEAD's: HEAD first, then any of its last `max` ancestors with
+ * the same git tree id for the app directory (`<sha>:<prefix>`, prefix from `git rev-parse --show-prefix`, i.e.
+ * `frontend`). Equal tree ids mean equal content, so CI's e2e on any of them is CI's e2e on this app. Deliberately the
+ * WHOLE app, not the receipt's OBSERVED subset: the lockfile, the playwright and vite configs and public/ change what
+ * e2e runs too, and a CI verdict is borrowed only when nothing CI could see differs. Run from the repo root (no
+ * prefix) it compares the whole repository. Degrades to [] on any git failure, never throws.
+ */
+export function sameAppCommits(exec, max = 40) {
+  try {
+    const prefix = String(exec('git rev-parse --show-prefix')).trim().replace(/\/$/, '');
+    const shas = String(exec(`git rev-list --max-count=${max} HEAD`)).trim().split(/\s+/).filter(Boolean);
+    if (shas.length === 0) return [];
+    const treeOf = (sha) => String(exec(`git rev-parse ${sha}:${prefix}`)).trim();
+    const want = treeOf(shas[0]);
+    if (!want) return [];
+    return shas.filter((sha) => {
+      try { return treeOf(sha) === want; } catch { return false; }
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * CI's e2e verdict for this app tree: the first commit of `shas` (newest first, from sameAppCommits) on which some
+ * ci.yml run had ALL e2e jobs green. `exact` says whether that commit is HEAD itself. Same degrade rule as
+ * readCommitCi: only 'success' or null.
+ */
+export function readTreeCi(exec, shas, timeoutMin = E2E_TIMEOUT_MIN) {
+  for (const [i, sha] of (shas || []).entries()) {
+    const ci = readCommitCi(exec, sha, timeoutMin);
+    if (ci.state === 'success') return { ...ci, sha, exact: i === 0 };
+  }
+  return { state: null };
 }
 
 /** PURE. Whether a push moves main, from the hook's space-separated remote refs: null when none were given (strict). */
@@ -400,9 +443,8 @@ if (process.argv[1] && resolve(process.argv[1]).endsWith('e2e-freshness.mjs')) {
   const gh = (cmd) => execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   // The commit being certified (pre-push runs this in a detached worktree AT the pushed sha) and the refs the push
   // moves (exported by .githooks/pre-push). No refs given — a run by hand, or another caller — is null: strict.
-  let head = '';
-  try { head = execSync('git rev-parse HEAD', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { head = ''; }
-  const v = verdict(current, stamp, readBaseCi(gh), { commitCi: readCommitCi(gh, head), mainMoves: mainMovesFrom(process.env.E2E_PUSH_REFS) });
+  const git = (cmd) => execSync(cmd, { cwd: APP, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  const v = verdict(current, stamp, readBaseCi(gh), { commitCi: readTreeCi(gh, sameAppCommits(git)), mainMoves: mainMovesFrom(process.env.E2E_PUSH_REFS) });
   console.log(v.line);
   process.exit(v.code);
 }

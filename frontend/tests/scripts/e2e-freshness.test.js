@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createServer } from 'node:net';
-import { verdict, readBaseCi, readCommitCi, mainMovesFrom, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, portInUse, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
+import { verdict, readBaseCi, readCommitCi, sameAppCommits, readTreeCi, mainMovesFrom, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, portInUse, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
 
 /**
  * THE GATE THAT ASKED FOR IMPOSSIBLE EVIDENCE, and what replaced it.
@@ -308,5 +308,42 @@ describe('tier 1b and the main-only red-base rule', () => {
     expect(readCommitCi(fake({ 11: `${job('failure')} ${job('success')}` }), 'abc')).toEqual({ state: null });
     expect(readCommitCi(fake({ 13: '' }), 'abc'), 'a run with no e2e jobs is no verdict').toEqual({ state: null });
     expect(readCommitCi(fake({}), '')).toEqual({ state: null });
+  });
+
+  // A fake git: commits h (HEAD), p, q, r newest first; the app tree of h, p and r is T, of q is U (q changed the app,
+  // r is older and happens to match — equal tree ids are equal content, so r counts).
+  const fakeGit = (trees = { h: 'T', p: 'T', q: 'U', r: 'T' }, prefix = 'frontend/') => (cmd) => {
+    if (cmd === 'git rev-parse --show-prefix') return `${prefix}\n`;
+    if (cmd.startsWith('git rev-list')) return Object.keys(trees).join('\n');
+    const m = cmd.match(/^git rev-parse (\w+):(\S*)$/);
+    if (m && m[2] === prefix.replace(/\/$/, '') && m[1] in trees) return `${trees[m[1]]}\n`;
+    throw new Error(`unexpected: ${cmd}`);
+  };
+
+  it('sameAppCommits: HEAD plus every ancestor whose app tree id equals HEAD\'s — a commit that changed the app is out', () => {
+    expect(sameAppCommits(fakeGit())).toEqual(['h', 'p', 'r']);
+    expect(sameAppCommits(fakeGit({ h: 'T', p: 'U' })), 'HEAD changed the app: only HEAD itself').toEqual(['h']);
+    expect(sameAppCommits(() => { throw new Error('no git'); }), 'degrades, never throws').toEqual([]);
+  });
+
+  it('readTreeCi: the first green commit wins, and the verdict line names a borrowed verdict as borrowed', () => {
+    const job = (c) => `completed,${c},2026-10-27T00:00:00Z,2026-10-27T00:10:00Z,9`;
+    const runsByCommit = { h: {}, p: { 21: `${job('success')} ${job('success')}` }, r: { 22: `${job('success')} ${job('success')}` } };
+    const gh = (cmd) => {
+      const list = cmd.match(/--commit (\S+)/);
+      if (list) return Object.keys(runsByCommit[list[1]] || {}).join('\n');
+      const id = cmd.match(/gh run view (\S+)/)[1];
+      for (const runs of Object.values(runsByCommit)) if (runs[id]) return runs[id];
+      return '';
+    };
+    const ci = readTreeCi(gh, ['h', 'p', 'r']);
+    expect(ci).toEqual({ state: 'success', run: '21', sha: 'p', exact: false });
+    const v = verdict({ id: 'x', files: 3 }, null, { state: 'failure' }, { commitCi: ci, mainMoves: true });
+    expect(v.code).toBe(0);
+    expect(v.line).toMatch(/run 21's e2e jobs all passed on p, whose app tree \(frontend\/\) is byte-identical/);
+    expect(readTreeCi(gh, ['h']), 'HEAD alone, no run on it: no verdict, the base rules apply').toEqual({ state: null });
+    const exact = readTreeCi((cmd) => (cmd.includes('--commit') ? '31' : `${job('success')} ${job('success')}`), ['h']);
+    expect(exact).toEqual({ state: 'success', run: '31', sha: 'h', exact: true });
+    expect(verdict({ id: 'x', files: 3 }, null, { state: 'failure' }, { commitCi: exact, mainMoves: true }).line).toMatch(/on this exact commit$/);
   });
 });
