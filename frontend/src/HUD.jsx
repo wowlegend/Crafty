@@ -275,7 +275,8 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
 
   useEffect(() => {
     let animFrame;
-    
+    let lastHtml = null;
+
     const updateCompass = () => {
       // Dev capture-determinism: in capture mode the follow-cam is pinned, so the
       // compass markers are fully determined by the frozen camera + marker positions.
@@ -477,7 +478,14 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
         }
       });
 
-      container.innerHTML = markersHtml.join('');
+      // Written only when it changed: standing still, the markers are identical frame after frame, and rebuilding
+      // them re-parsed ~20 elements and re-ran style and layout on every display frame (120 a second on a ProMotion
+      // panel) for nothing (plan 2026-09-23-crafty-perf-heat-ipad, Task 6).
+      const html = markersHtml.join('');
+      if (html !== lastHtml) {
+        lastHtml = html;
+        container.innerHTML = html;
+      }
     };
 
     updateCompass();
@@ -502,7 +510,7 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
         {/* Alignment reticle line */}
         <div className="absolute top-0 bottom-0 w-[1.5px] bg-info z-20"></div>
         {/* Scrolling Marker track */}
-        <div ref={containerRef} className="w-[280px] h-full relative overflow-hidden font-mono"></div>
+        <div ref={containerRef} data-testid="compass-track" className="w-[280px] h-full relative overflow-hidden font-mono"></div>
       </div>
     </div>
     </>

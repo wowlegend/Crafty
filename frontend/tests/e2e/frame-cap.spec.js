@@ -122,3 +122,38 @@ test('capped by default; the cap binds, costs nothing below it, and lets go for 
   const d = await state();
   expect(d.loop, `the capture harness ran capped ('${d.loop}') — it steps its own frames: ${JSON.stringify(d)}`).toBe('always');
 });
+
+// THE TITLE SCREEN PACES THE CANVAS IT COVERS (plan Task 3). The title is an opaque layer with its own WebGL canvas,
+// and behind it the game canvas drew the whole world at the display rate. render/canvasPace.js paces it at TITLE_FPS
+// while the title covers it — not zero: stopping it would move every shader compile to the instant Start is pressed.
+// That the pace BINDS is the test above (the 1 fps cap); this proves the title SELECTS the slow pace and releases it,
+// through the real title flag MenuSystem publishes.
+//
+// Mutation-Proof: via scripts/dev/mutate-e2e.sh, observed RED (identity mutant SURVIVED in the same batch):
+//   Q1 MenuSystem never publishes titleCovering -> "the covered canvas drew at 60"
+//   Q2 plausible-wrong: titleCovering never cleared on play -> "still paced for the title in play"
+//   Q3 GameScene ignores canvasPace (the old capActive) -> "the covered canvas drew at 60"
+test('behind the title the game canvas is paced down, whatever the setting; play releases it', async ({ page }) => {
+  test.setTimeout(300000);
+  await bootDev(page);
+  await page
+    .waitForFunction(() => { try { return window.__craftyTest.call('readFrameloop') != null; } catch { return false; } }, null, { timeout: 60000 })
+    .catch((e) => { throw new Error(`SETUP: the game canvas never mounted its FrameCap (readFrameloop) — ${e.message}`); });
+  const pace = () => page.evaluate(() => ({ ...window.__craftyTest.call('readFrameloop'), title: window.useGameStore.getState().titleCovering, cap: window.useGameStore.getState().frameCap }));
+
+  const title = await pace();
+  expect(title.title, `SETUP: the title screen is not up at boot: ${JSON.stringify(title)}`).toBe(true);
+  expect([title.loop, title.fps], `the covered canvas drew at ${title.fps} (${title.loop}) behind the title: ${JSON.stringify(title)}`).toEqual(['demand', 10]);
+
+  await page.evaluate(() => window.useGameStore.getState().setFrameCap(0)); // Unlimited: the title still paces it
+  await page.waitForTimeout(300);
+  const titleFree = await pace();
+  expect([titleFree.loop, titleFree.fps], `Unlimited drew the covered canvas at the display rate: ${JSON.stringify(titleFree)}`).toEqual(['demand', 10]);
+  await page.evaluate(() => window.useGameStore.getState().setFrameCap(60));
+
+  await startPlayActive(page);
+  await page.waitForTimeout(300);
+  const play = await pace();
+  expect(play.title, `the title flag stayed up in play: ${JSON.stringify(play)}`).toBe(false);
+  expect([play.loop, play.fps], `still paced for the title in play: ${JSON.stringify(play)}`).toEqual(['demand', 60]);
+});

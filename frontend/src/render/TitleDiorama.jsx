@@ -15,6 +15,8 @@ import * as THREE from 'three';
 import { MascotCraftyHero } from './mascots/MascotCraftyHero';
 import { isCaptureMode } from '../devtest/captureMode';
 import { CaptureClockTicker } from '../devtest/CaptureClockTicker.jsx';
+import { useGameStore } from '../store/useGameStore';
+import { FrameCap } from './FrameCap.jsx';
 
 const SUN = '#FFE9C2', SKY = '#7FC9E0', GROUND = '#4A7A4A'; // warm magic-hour bounce
 
@@ -132,6 +134,12 @@ function DriftCamera() {
 }
 
 export function TitleDiorama() {
+  // THE FRAME CAP HERE TOO (perf plan 2026-09-23, Task 3): this canvas drew at the display rate — 120 a second on a
+  // ProMotion panel — for a slow drift nobody can tell from 60. The capture flag is a SUBSCRIPTION so that entering
+  // capture re-renders this and restores its capture mode exactly ('demand', uncapped).
+  const capture = useGameStore((s) => s.isCaptureMode);
+  const frameCap = useGameStore((s) => s.frameCap);
+  const capped = !capture && frameCap > 0;
   return (
     <div data-testid="title-diorama" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <Canvas
@@ -154,12 +162,13 @@ export function TitleDiorama() {
         // 0.984 / 0.359 / 0.557 across three rounds, so the metric is itself noisy and one A/B cannot
         // rank the two modes. What IS established is that `always` does not fix it, so the residual is
         // not the render-scheduling mode. Do not retry this without a new reason.
-        frameloop={isCaptureMode() ? 'demand' : 'always'}
+        frameloop={capture || capped ? 'demand' : 'always'}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         camera={{ fov: 34, near: 0.1, far: 100, position: CAPTURE_CAM }}
         onCreated={({ camera }) => camera.lookAt(0, LOOK_Y, 0)}
       >
         <CaptureClockTicker />
+        <FrameCap fps={frameCap} active={capped} />
         <DriftCamera />
         <hemisphereLight color={SKY} groundColor={GROUND} intensity={0.65} />
         <ambientLight color={SKY} intensity={0.5} />
