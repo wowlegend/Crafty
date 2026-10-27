@@ -75,4 +75,34 @@ export default [
       'no-undef': 'error',
     },
   },
+  // RAW GIT IN A TEST — forbidden. Added 2026-10-27 (harness plan U8).
+  //
+  // WHY: git exports GIT_DIR and friends to every hook, and the hooks run this suite. A test that shells out to git
+  // with the inherited environment talks to the CALLER's repository; in a linked worktree GIT_DIR is absolute, and on
+  // 2026-10-27 a fixture suite run that way re-initialised the main checkout `core.bare = true`. Tests use
+  // `fixtureGit` / `isolatedGitEnv` from tests/scripts/_isolatedGit.js, the one sanctioned site. Four call shapes:
+  // bare or member callee, string or template-literal first argument. Proven by tests/scripts/git-env-scrub.test.js.
+  {
+    files: ['tests/**/*.{js,jsx,mjs}', 'src/**/*.test.{js,jsx}'],
+    ignores: ['tests/scripts/_isolatedGit.js'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...(() => {
+          const exec = '/^(execFileSync|execSync|spawnSync|spawn|execFile|exec)$/';
+          const git = '/^git(\\s|$)/';
+          const message =
+            "raw git in a test runs against the CALLER's repo inside a hook — use fixtureGit / isolatedGitEnv (tests/scripts/_isolatedGit.js)";
+          const literal = `[arguments.0.type='Literal'][arguments.0.value=${git}]`;
+          const template = `[arguments.0.type='TemplateLiteral'][arguments.0.quasis.0.value.raw=${git}]`;
+          return [
+            { selector: `CallExpression[callee.name=${exec}]${literal}`, message },
+            { selector: `CallExpression[callee.property.name=${exec}]${literal}`, message },
+            { selector: `CallExpression[callee.name=${exec}]${template}`, message },
+            { selector: `CallExpression[callee.property.name=${exec}]${template}`, message },
+          ];
+        })(),
+      ],
+    },
+  },
 ];

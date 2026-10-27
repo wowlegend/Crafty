@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -126,12 +126,11 @@ describe('the pipeline has ONE receipt writer, and it is this script', () => {
     const roots = (src.match(/^INPUT_ROOTS="([^"]+)"/m) || [])[1];
     expect(roots, 'INPUT_ROOTS not found in write-receipt.sh').toBeTruthy();
     const inputs = new Set(roots.split(/\s+/));
-    // Read by no pipeline step when UNTRACKED: .state is harness state; .claude is agent config
-    // (opsec reads tracked files only; doc-currency reads a fixed CANONICAL list); scripts/ holds one
-    // harness hook no pipeline step invokes.
-    const unread = new Set(['.state', '.claude', 'scripts']);
-    const tracked = execFileSync('git', ['ls-tree', '-d', '--name-only', 'HEAD'], { cwd: ROOT, encoding: 'utf8' })
-      .split('\n').filter(Boolean);
+    // Read by no pipeline step when UNTRACKED: .claude is agent config (opsec reads tracked files only;
+    // doc-currency reads a fixed CANONICAL list); scripts/ holds one harness hook no pipeline step invokes.
+    // (.state left this set when U4 untracked it: HEAD no longer has the directory.)
+    const unread = new Set(['.claude', 'scripts']);
+    const tracked = git(ROOT, 'ls-tree', '-d', '--name-only', 'HEAD').split('\n').filter(Boolean);
     expect(tracked.length).toBeGreaterThan(3); // the walk reached a real tree
     const unclassified = tracked.filter((d) => !inputs.has(d) && !unread.has(d));
     expect(unclassified, 'new top-level dir: add it to INPUT_ROOTS, or to `unread` with a reason').toEqual([]);
