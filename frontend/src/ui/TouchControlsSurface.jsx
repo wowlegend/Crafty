@@ -6,6 +6,9 @@ import { SPELL_ORDER, spellLabelKey, spellAccent } from '../input/spellPicker';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 import { isCaptureMode } from '../devtest/captureMode';
+import { heavyChargeLevel } from '../game/heavyAttack';
+import { ANTICIPATION_SEC } from '../game/beastTransform';
+import { chargeFraction, chargeRingStyle } from '../input/touchHold';
 
 // M3a: the panel-access tray openers (lucide, tintable) keyed by registry id -> the live overlay
 // drives togglePanel on tap; this surface only draws the glyphs (grid icon always; openers when open).
@@ -34,6 +37,24 @@ const BTN = (extra) => ({
   boxShadow: '0 5px 14px rgba(0,0,0,0.6)', ...extra,
 });
 
+// Phase 0c — the radial CHARGE RING drawn round a hold control (the roar sector, the action button). Its shape is
+// static: a mask keeps only the outer 6px band of a conic sweep. Only the sweep changes, written per frame by the tick
+// below through chargeRingStyle (input/touchHold.js).
+const RING_MASK = 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px))';
+const CHARGE_RING = { position: 'absolute', inset: 0, borderRadius: '50%', opacity: 0, pointerEvents: 'none',
+  WebkitMaskImage: RING_MASK, maskImage: RING_MASK };
+/** Write a ring's style only when it differs from what THIS element last got, so an idle tick writes nothing. Keyed by
+ *  the element too: a ring re-mounted mid-charge (the Aspect ring reopened) is a new element and must be painted. */
+function paintRing(el, style, slot) {
+  if (!el) return;
+  const key = `${style.opacity}|${style.background || ''}`;
+  if (slot.el === el && slot.key === key) return;
+  slot.el = el;
+  slot.key = key;
+  el.style.opacity = style.opacity;
+  if (style.background) el.style.background = style.background;
+}
+
 /**
  * Pure visual surface for the touch overlay (M2). Joystick base ring (left), bottom-right thumb
  * cluster (jump / primary / cast), center crosshair, Pause. NO listeners, NO state -- the live
@@ -61,6 +82,10 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
   // a self-contained rAF reads getState() transiently and writes to DOM refs -- no per-frame React state.
   const sweepRefs = useRef({});
   const toggleRef = useRef(null);
+  const roarRingRef = useRef(null);
+  const heavyRingRef = useRef(null);
+  // The tick's own memory: when it first saw the roar charging, and what each ring was last painted with.
+  const ringState = useRef({ roarSince: null, roar: { el: null, key: '' }, heavy: { el: null, key: '' } });
   useEffect(() => {
     if (isCaptureMode()) return undefined; // capture frames must stay byte-identical
     let raf;
@@ -78,6 +103,19 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
       // The ring is SHUT most of the time, so the closed toggle carries the aggregate or the feedback is
       // invisible exactly when the player needs it.
       if (toggleRef.current) toggleRef.current.style.opacity = anyOnCooldown(cds, aspects) ? '1' : '0';
+      // Phase 0c — THE CHARGE RINGS. Each reads the TRUE charge, never the touch. The roar's comes from the transform
+      // state machine's own transition flag, beastCharging (Components sets it on startCharge and clears it on enter
+      // and cancel), so a roar the machine refused — no full Ferocity bank, on cooldown, dead — draws nothing however
+      // long the sector is held. The heavy's comes from heavyAttack's module state, which stays 0 through the tap
+      // window, so a tap never flashes a ring.
+      const now = performance.now();
+      const rs = ringState.current;
+      if (useGameStore.getState().beastCharging) {
+        if (rs.roarSince === null) rs.roarSince = now;
+      } else rs.roarSince = null;
+      paintRing(roarRingRef.current, chargeRingStyle(chargeFraction(rs.roarSince, now, ANTICIPATION_SEC * 1000)), rs.roar);
+      const heavy = heavyChargeLevel(now);
+      paintRing(heavyRingRef.current, chargeRingStyle(heavy > 0 ? heavy : null), rs.heavy);
     };
     tick();
     return () => cancelAnimationFrame(raf);
@@ -123,6 +161,8 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
               <div ref={(el) => { sweepRefs.current[a.verb] = el; }} data-testid={`aspect-sweep-${a.verb}`}
                    style={{ position: 'absolute', inset: 0, borderRadius: '50%', opacity: 0, pointerEvents: 'none' }} />
             )}
+            {/* Phase 0c: the roar is the one held sector, so it is the one that carries a charge ring. */}
+            {!a.locked && a.verb === 'roar' && <div ref={roarRingRef} data-testid="touch-charge-roar" style={CHARGE_RING} />}
           </div>
         );
       })}
@@ -161,6 +201,8 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
       {/* bottom-right thumb cluster: primary (attack/mine/interact) + cast + jump */}
       <div style={BTN({ right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: '12%', width: 92, height: 92 })}>
         <Sword size={46} strokeWidth={2.4} color={GLYPH} />
+        {/* Phase 0c: the heavy's charge ring — the action button is held to charge it. */}
+        <div ref={heavyRingRef} data-testid="touch-charge-heavy" style={CHARGE_RING} />
       </div>
       <div style={BTN({ right: 'calc(env(safe-area-inset-right,0px) + 132px)', bottom: '10%', width: 68, height: 68 })}>
         <Zap size={34} strokeWidth={2.4} color={GLYPH} />

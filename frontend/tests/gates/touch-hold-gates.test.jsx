@@ -9,6 +9,7 @@ import { openTalents } from '../../src/ui/touchTray.js';
 import { t as translate } from '../../src/i18n/i18n.js';
 import { pressHeavy, releaseHeavy, cancelHeavy, isHeavyHeld, HEAVY_HOLD_MS, HEAVY_CHARGE_MS } from '../../src/game/heavyAttack.js';
 import TouchControls from '../../src/ui/TouchControls.jsx';
+import TouchControlsSurface from '../../src/ui/TouchControlsSurface.jsx';
 
 // PHASE 0c — TOUCH PLAYS THE SIGNATURE (plan docs/superpowers/plans/2026-10-27-crafty-touch-hold.md).
 //
@@ -35,6 +36,14 @@ import TouchControls from '../../src/ui/TouchControls.jsx';
 //   N4 the press does not capture its pointer   N5 plausible-wrong: the release sent as 'mouse'
 //   N6 src/game/heavyAttack.js: releaseHeavy ignores which input holds the charge
 //   N0 identity (a comment edit) SURVIVED, as it must.
+// Task 4 (the charge rings; subject src/ui/TouchControlsSurface.jsx), all re-run against this file's final form:
+//   F1 plausible-wrong: the roar ring fills whether or not the machine charges
+//   F2 plausible-wrong: the heavy ring shows through the tap window (>= for >)
+//   F3 plausible-wrong: the roar duration in the wrong unit (x100)   F4 the roar start never cleared on cancel
+//   F5 the paint cache ignores which element it painted (SURVIVED the first draft, which re-mounted a ring mid-sweep;
+//      the case now re-mounts it full, the one state a value-only cache gets wrong)
+//   F6 the hidden state never written   F7 plausible-wrong: the ring on every unlocked sector
+//   F0 identity (a comment edit) SURVIVED, as it must.
 //
 // BLIND SPOT: jsdom has no layout and no real pointer capture; whether a thumb on an iPad reaches these targets, and
 // whether a held touch commits the beast form in the running game, is tests/e2e/touch-hold.spec.js.
@@ -291,6 +300,105 @@ describe('the action button is press-and-hold: the light swing at the press, the
     expect(releaseHeavy(ready + 5, 'mouse'), 'a mouse release ended the touch charge').toBe(false);
     expect(isHeavyHeld()).toBe(true);
     expect(releaseHeavy(ready + 10, 'touch'), 'the touch release lost its heavy').toBe(true);
+  });
+});
+
+// The rings are written by TouchControlsSurface's existing rAF tick (Game-Loop Isolation: transient reads, DOM writes,
+// no per-frame React state). The fake clock drives that tick, so these read what the tick actually painted.
+describe('the radial charge rings read the TRUE charge, never the touch', () => {
+  // The sweep angle from the conic-gradient the tick wrote: the number after the colour's closing paren.
+  const sweepDeg = (el) => {
+    const m = /\)\s(\d+)deg/.exec(el.style.background || '');
+    return m ? Number(m[1]) : null;
+  };
+  afterEach(() => {
+    useGameStore.setState({ beastCharging: false });
+    cancelHeavy();
+  });
+
+  it('the roar ring follows the state machine\'s charge: hidden, half-way, full at ANTICIPATION_SEC, gone on cancel', () => {
+    withRoar();
+    render(<TouchControlsSurface wheelOpen />);
+    const ring = screen.getByTestId('touch-charge-roar');
+    advance(48);
+    expect(ring.style.opacity, 'the ring shows with no charge').toBe('0');
+    act(() => useGameStore.setState({ beastCharging: true }));
+    advance(16); // the tick stamps the charge on the frame it first sees it
+    advance(224); // ~half of 450 ms, give or take a frame
+    expect(ring.style.opacity).toBe('1');
+    const half = sweepDeg(ring);
+    expect(half, `half-way through the charge the ring swept ${half} deg`).toBeGreaterThan(150);
+    expect(half).toBeLessThan(215);
+    advance(400);
+    expect(sweepDeg(ring), 'the ring is not full once the charge has run').toBe(360);
+    act(() => useGameStore.setState({ beastCharging: false }));
+    advance(16);
+    expect(ring.style.opacity, 'a cancelled charge left the ring up').toBe('0');
+  });
+
+  it('a roar the state machine REFUSED draws nothing, however long the sector is held — then the same ring CAN light', () => {
+    withRoar();
+    render(<TouchControlsSurface wheelOpen />);
+    const ring = screen.getByTestId('touch-charge-roar');
+    act(() => setIntent('roar', true)); // the finger is down on the sector, but no bank: the machine never charges
+    advance(600);
+    expect(ring.style.opacity, 'the ring filled for a roar the state machine refused').toBe('0');
+    act(() => useGameStore.setState({ beastCharging: true }));
+    advance(32);
+    expect(ring.style.opacity, 'PRESENCE: the same ring must light when the machine does charge').toBe('1');
+  });
+
+  // The ring is re-mounted while FULL on purpose: mid-sweep the angle changes every frame, so a reopened ring would be
+  // repainted whatever the paint cache did. A full ring paints the same value frame after frame — the one state in
+  // which a cache keyed only by value would leave the new element blank (found by mutant F5 surviving the first draft).
+  it('a ring re-mounted while full (the ring reopened) is painted again', () => {
+    withRoar();
+    const { rerender } = render(<TouchControlsSurface wheelOpen />);
+    act(() => useGameStore.setState({ beastCharging: true }));
+    advance(600);
+    expect(sweepDeg(screen.getByTestId('touch-charge-roar')), 'SETUP: the ring is not full').toBe(360);
+    rerender(<TouchControlsSurface wheelOpen={false} />);
+    advance(16);
+    rerender(<TouchControlsSurface wheelOpen />);
+    advance(16);
+    expect(screen.getByTestId('touch-charge-roar').style.opacity, 'the reopened ring was never painted').toBe('1');
+  });
+
+  it('the heavy ring follows heavyAttack\'s charge: nothing through a tap, half-way, full when ready, gone on cancel', () => {
+    render(<TouchControlsSurface />);
+    const ring = screen.getByTestId('touch-charge-heavy');
+    pressHeavy(performance.now(), 'touch');
+    advance(HEAVY_HOLD_MS - 40);
+    expect(ring.style.opacity, 'a tap flashed the heavy ring').toBe('0');
+    advance(40 + HEAVY_CHARGE_MS / 2);
+    expect(ring.style.opacity).toBe('1');
+    const mid = sweepDeg(ring);
+    expect(mid, `half-way through the heavy's charge the ring swept ${mid} deg`).toBeGreaterThan(150);
+    expect(mid).toBeLessThan(215);
+    advance(HEAVY_CHARGE_MS);
+    expect(sweepDeg(ring)).toBe(360);
+    cancelHeavy();
+    advance(16);
+    expect(ring.style.opacity, 'a cancelled heavy left the ring up').toBe('0');
+  });
+
+  it('with every Aspect unlocked there is exactly ONE roar ring, and it sits inside the roar sector\'s glyph', () => {
+    useGameStore.setState({ unlockedTalents: Object.fromEntries(ASPECT_VERBS.map((a) => [a.talent, 1])) });
+    render(<TouchControlsSurface wheelOpen />);
+    const rings = screen.getAllByTestId('touch-charge-roar');
+    expect(rings).toHaveLength(1);
+    expect(screen.getByTestId('aspect-glyph-roar').contains(rings[0])).toBe(true);
+  });
+
+  it('a locked roar draws a lock and no ring; an unlocked one draws its ring (the presence)', () => {
+    render(<TouchControlsSurface wheelOpen />);
+    expect(screen.getByTestId('aspect-glyph-roar')).toHaveAttribute('data-locked', 'true');
+    expect(screen.queryByTestId('touch-charge-roar')).toBeNull();
+    cleanup();
+    withRoar();
+    render(<TouchControlsSurface wheelOpen />);
+    expect(screen.getByTestId('aspect-glyph-roar')).toHaveAttribute('data-locked', 'false');
+    expect(screen.getByTestId('touch-charge-roar')).toBeInTheDocument();
   });
 });
 
