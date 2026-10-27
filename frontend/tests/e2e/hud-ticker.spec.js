@@ -14,7 +14,7 @@ import { bootDev, startPlayActive } from './_boot.js';
 // Intended batch, via scripts/dev/mutate-e2e.sh:
 //   E1 FrameCap never claims the ticker (`const release = null;`, FrameCap.jsx)        -> RED expected: "HUD rAF callbacks under the cap"
 //   E2 the ticker's release does not restart its rAF (hudTicker.js) — the F10 freeze     -> RED expected: "did not follow the camera under Unlimited"
-//   E3 the Compass back on its own requestAnimationFrame loop (HUD.jsx)                  -> RED expected: "HUD rAF callbacks under the cap"
+//   E3 the Compass never subscribes to the ticker (HUD.jsx)                              -> RED expected: "did not follow the camera under the cap"
 //   E0 identity (a comment edit in hudTicker.js)                                         -> must SURVIVE
 test('the compass follows the camera under the cap and under Unlimited, and the HUD runs no rAF loop of its own under the cap', async ({ page }) => {
   test.setTimeout(300000);

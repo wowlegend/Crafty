@@ -19,7 +19,8 @@ import { bootDev, startPlayActive } from './_boot.js';
 //
 // Mutation-Proof: NOT YET RUN — this lane does not run e2e (port 4179 and the browser belong to the command session).
 // Intended batch, via scripts/dev/mutate-e2e.sh:
-//   E1 governorIncline ignores the block and the settle (tierGovernor.js)            -> RED expected: "tier changes in the minute"
+//   E1 the settle removed (`if (g.settled) return null;`, tierGovernor.js): the 60 s block alone lets a probe pair
+//      through after a minute                                                       -> RED expected: "tier changes after 60 s"
 //   E2 the monitor mounted whatever the pace (governorSamples(...) -> true, GameScene) -> RED expected: "declined behind the title"
 //   E3 onDecline back to a direct setQualityTier (GameScene)                          -> RED expected: "the monitor never declined through the governor"
 //   E0 identity (a comment edit in tierGovernor.js)                                   -> must SURVIVE

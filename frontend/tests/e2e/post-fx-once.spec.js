@@ -14,10 +14,11 @@ import { bootDev, startPlay } from './_boot.js';
 //
 // Mutation-Proof: NOT YET RUN — this lane does not run e2e (port 4179 and the browser belong to the command session).
 // Intended batch, via scripts/dev/mutate-e2e.sh:
-//   E1 PostFX given the tier again (`withAO={q.ao}` in GameScene.jsx: N8AO unmounts at low)      -> RED expected: "n8ao constructions rose"
-//   E2 the GodRays mount gated on the horizon again (`withGodRays && sunMesh && useGameStore...`)  -> RED expected: "godRays constructions rose"
-//   E3 useGodRaysOnce disposes nothing (its unmount effect removed) + E1                          -> RED expected: "textures grew"
-//   E0 identity (a comment edit in postFx.jsx)                                                    -> must SURVIVE
+//   E1 PostFX given the tier again (`withAO={withAO}` -> `withAO={q.ao}`, GameScene.jsx: N8AO remounts per step) -> RED expected: "n8ao constructions rose"
+//   E2 the same for GodRays (`withGodRays={withGodRays}` -> `withGodRays={q.godRays}`)                             -> RED expected: "godRays constructions rose"
+//   E0 identity (a comment edit in postFx.jsx)                                                                      -> must SURVIVE
+// BLIND SPOT: the textures ceiling is not killed by a single-site mutant (a missing dispose leaks only when the effect
+// unmounts, which the built-once wiring no longer does); the unit gate's unmount-dispose case owns that.
 const TIERS = ['low', 'med', 'high'];
 
 test('after a warm-up, 20 tier steps and 4 horizon flips construct no effect and grow no GPU textures', async ({ page }) => {
