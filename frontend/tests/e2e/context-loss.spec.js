@@ -134,6 +134,9 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
 
   const MARK = 4321;
   await page.evaluate((c) => window.useGameStore.setState({ coins: c }), MARK);
+  // A recovery before Start only reloads (review LOW 5): the save needs a STARTED game, and the harness's forcePlay
+  // deliberately does not mark one (App.jsx). The player pressed Start in the case this resumes, so set it here.
+  await page.evaluate(() => window.useGameStore.getState().markGameStarted());
   await page.evaluate(() => window.__craftyTest.call('webglContext', 'lose'));
   await expect(panel).toBeVisible({ timeout: 10000 });
   await Promise.all([page.waitForEvent('load', { timeout: 60000 }), panel.click()]);

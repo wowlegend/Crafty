@@ -5,7 +5,7 @@ import { useGameStore } from '../../src/store/useGameStore';
 import { STRINGS } from '../../src/i18n/strings.js';
 import { writeWorld } from '../../src/game/worldSaves.js';
 import { ContextLossPanel } from '../../src/ui/ContextLossPanel.jsx';
-import { recoverFromContextLoss, consumeResumeWorld, whenDrawnAgain, RESUME_WORLD_KEY } from '../../src/game/contextRecovery.js';
+import { recoverFromContextLoss, consumeResumeWorld, whenDrawnAgain, onContextLost, RESUME_WORLD_KEY } from '../../src/game/contextRecovery.js';
 import { resolveResumeSpawn, RESUME_PROBE_MAX_FAILS, SPAWN_PROBE_MAX_FAILS } from '../../src/game/spawnPlacement.js';
 import { voxelIndex } from '../../src/world/chunkLayout.js';
 
@@ -59,6 +59,7 @@ describe('the panel is derived from the store flag', () => {
     const save = vi.fn(() => { order.push('save'); useGameStore.setState({ _sessionWorldId: 'local_abc' }); });
     useGameStore.setState({
       isWebGLContextLost: true,
+      gameStarted: true,
       _sessionWorldId: null,
       saveActiveWorld: save,
       playerRigidBodyRef: { current: { translation: () => ({ x: 4, y: 52, z: -7 }) } },
@@ -98,10 +99,47 @@ describe('the breadcrumb resumes the world at boot, once', () => {
   it('storage that throws (private mode) does not stop the recovery reload', () => {
     const reload = vi.fn();
     const throwing = { setItem: () => { throw new Error('denied'); } };
-    const st = { saveActiveWorld: vi.fn(), playerPosition: { x: 1, y: 2, z: 3 }, _sessionWorldId: 'w' };
+    const st = { saveActiveWorld: vi.fn(), playerPosition: { x: 1, y: 2, z: 3 }, _sessionWorldId: 'w', gameStarted: true };
     recoverFromContextLoss({ getState: () => st, storage: throwing, reload });
     expect(st.saveActiveWorld).toHaveBeenCalledWith({ x: 1, y: 2, z: 3 });
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * THE PANEL IS CLICKABLE, AND A LOSS ON THE TITLE SAVES NOTHING (review 2026-10-27, steady-cool LOW 5). A desktop player
+ * whose pointer is locked cannot click anything: the loss now releases the lock. And before Start there is no world in
+ * play — a save there minted a slot from the title's untouched state, and the breadcrumb resumed it.
+ * BLIND SPOT: that GameScene's listener calls onContextLost; a headless page refuses pointer lock, so no e2e can see it.
+ *
+ * Mutation-Proof: via scripts/dev/mutate.sh on src/game/contextRecovery.js, one batch, receipts in the commit:
+ *   P1 the loss never releases the lock                                -> RED expected
+ *   P2 plausible-wrong: a loss before Start still saves                -> RED expected
+ *   P3 plausible-wrong: a loss before Start neither saves nor reloads  -> RED expected
+ *   P0 identity (a comment edit)                                       -> must SURVIVE
+ */
+describe('the loss releases the pointer; a loss before Start only reloads', () => {
+  it('a locked pointer is released, an unlocked one (touch, or the title) is left alone; the loss is marked either way', () => {
+    for (const locked of [true, false]) {
+      const doc = { pointerLockElement: locked ? {} : null, exitPointerLock: vi.fn() };
+      const setLost = vi.fn();
+      onContextLost({ setLost, doc });
+      expect(setLost).toHaveBeenCalledWith(true);
+      expect(doc.exitPointerLock, `locked ${locked}`).toHaveBeenCalledTimes(locked ? 1 : 0);
+    }
+  });
+  it('before Start: the reload alone — no save, no breadcrumb', () => {
+    const s = memoryStorage();
+    const st = { saveActiveWorld: vi.fn(), playerPosition: { x: 1, y: 2, z: 3 }, _sessionWorldId: null, gameStarted: false };
+    const reload = vi.fn();
+    expect(recoverFromContextLoss({ getState: () => st, storage: s, reload })).toBeNull();
+    expect(st.saveActiveWorld, 'a loss on the title saved a world nobody played').not.toHaveBeenCalled();
+    expect(s.getItem(RESUME_WORLD_KEY), 'a loss on the title left a breadcrumb').toBeNull();
+    expect(reload, 'the graphics were never recovered').toHaveBeenCalledTimes(1);
+    // Presence: the same call in play does save (the instrument sees the save it is asserting absent above).
+    const played = { ...st, gameStarted: true, _sessionWorldId: 'w' };
+    recoverFromContextLoss({ getState: () => played, storage: s, reload });
+    expect(played.saveActiveWorld).toHaveBeenCalledTimes(1);
   });
 });
 

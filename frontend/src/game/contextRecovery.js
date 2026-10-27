@@ -15,12 +15,29 @@
 export const RESUME_WORLD_KEY = 'crafty.resumeWorldId';
 
 /**
+ * GameScene's `webglcontextlost` handler, after preventDefault: mark the loss, and release a locked pointer. The panel is
+ * the only way back, and a desktop player whose pointer is locked cannot click it (review 2026-10-27, steady-cool LOW 5).
+ * Touch has no lock. The unlock opens the pause panel underneath (App); the context-loss panel sits above it (z-modal).
+ * @param {{ setLost: (lost: boolean) => void, doc?: Document }} deps
+ */
+export function onContextLost({ setLost, doc = document }) {
+  setLost(true);
+  if (doc.pointerLockElement && typeof doc.exitPointerLock === 'function') doc.exitPointerLock();
+}
+
+/**
  * Save the live world, leave a breadcrumb naming it, then reload. Order matters: the save must land before the reload.
+ * Before Start there is no world in play: a save would mint a slot from the title's untouched state and the breadcrumb
+ * would resume it, so the recovery is the reload alone (review 2026-10-27, steady-cool LOW 5).
  * @param {{ getState: () => object, storage: Storage, reload: () => void }} deps
  * @returns {string|null} the world id the breadcrumb names
  */
 export function recoverFromContextLoss({ getState, storage, reload }) {
   const st = getState();
+  if (!st.gameStarted) {
+    reload();
+    return null;
+  }
   const rb = st.playerRigidBodyRef && st.playerRigidBodyRef.current;
   const t = rb && rb.translation ? rb.translation() : null;
   st.saveActiveWorld(t ? { x: t.x, y: t.y, z: t.z } : st.playerPosition);

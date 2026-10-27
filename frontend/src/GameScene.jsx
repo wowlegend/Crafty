@@ -41,7 +41,7 @@ import { createGovernor, governorDecline, governorIncline, governorSamples, rend
 import { registerTestHook } from './devtest/testBridge.js';
 import { FrameStall } from './devtest/FrameStall.jsx';
 import { PointLightPool } from './render/lightPool.jsx';
-import { whenDrawnAgain } from './game/contextRecovery.js';
+import { whenDrawnAgain, onContextLost } from './game/contextRecovery.js';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -319,7 +319,8 @@ export const GameScene = React.memo(function GameScene({
           const handleContextLost = (e) => {
             e.preventDefault();
             console.error('WebGL context lost detected in GameScene!');
-            useGameStore.getState().setIsWebGLContextLost(true);
+            // Marks the loss and releases a locked pointer, so the panel can be clicked (game/contextRecovery.js).
+            onContextLost({ setLost: useGameStore.getState().setIsWebGLContextLost });
           };
           const handleContextRestored = () => {
             if (import.meta.env.DEV) console.log('WebGL context successfully restored in GameScene.');
