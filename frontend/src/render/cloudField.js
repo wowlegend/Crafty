@@ -14,7 +14,6 @@
 // CAPTURE DETERMINISM: drift reads a time uniform the caller feeds from devtest/captureClock.frameElapsed,
 // so a gated frame always shows the same clouds.
 import * as THREE from 'three';
-import { MOOD_SCALARS } from './mood.js';
 
 /** Height of the cloud plane (world units, absolute y). Terrain surface sits around y 40-60. */
 export const CLOUD_HEIGHT = 220;
@@ -37,22 +36,29 @@ export const CLOUD_PARAMS = Object.freeze({
 const f = (n) => Number(n).toFixed(6);
 
 const WHITE = new THREE.Color(1, 1, 1);
-const DAY_SUN = MOOD_SCALARS.explore.sunIntensity;
+// A night cloud is its sky's colour lifted this many times: enough to read as a shape (at least twice the sky).
+const NIGHT_CLOUD_LIFT = 2.6;
 const _night = new THREE.Color();
 
 /**
  * The cloud colour for a sampled mood (render/mood.js sampleMood), written into `out`.
  *
  * By day, a sunlit body: the sky's mid colour carried most of the way to white. By night, the sky's own
- * colour lifted enough that a cloud still reads as a shape (about three times the sky's luminance), never
- * a glow. Blended by the sun's strength CUBED, so dusk (the sun at ~45%) is already night: a first version
- * blended linearly and put night clouds at six times the night sky's luminance, which is a lamp, not a
- * cloud. (A warm sun-tinted underside was tried and deleted: at the strength that kept night clouds dark
- * it changed nothing a test or an eye could tell apart.)
+ * colour lifted enough that a cloud still reads as a shape (NIGHT_CLOUD_LIFT times the sky's luminance), never
+ * a glow. Blended by the frame's `daylight` CUBED (render/colourScript.js: smoothstep from the twilight key to the
+ * day key, and 0 under the boss), so the horizon is already night: a first version blended linearly and put night
+ * clouds at six times the night sky's luminance, which is a lamp, not a cloud. (A warm sun-tinted underside was
+ * tried and deleted: at the strength that kept night clouds dark it changed nothing a test or an eye could tell
+ * apart.)
+ *
+ * 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3a): keyed on `daylight`, no longer on the mood's sun
+ * intensity, which the sky frame no longer carries. The lift went 1.8 -> 2.6: under the old keying a night (mood 1)
+ * still had 45% sun and kept some of the day's white, which is what put a night cloud over twice its sky; a true
+ * night (daylight 0) at 1.8 would sit under that.
  */
 export function cloudTint(m, out) {
-  const day = THREE.MathUtils.clamp(m.sunIntensity / DAY_SUN, 0, 1);
-  _night.copy(m.skyMid).multiplyScalar(1.8);
+  const day = THREE.MathUtils.clamp(m.daylight, 0, 1);
+  _night.copy(m.skyMid).multiplyScalar(NIGHT_CLOUD_LIFT);
   out.copy(m.skyMid).lerp(WHITE, 0.72).lerp(_night, 1 - day * day * day);
   out.r = Math.min(1, out.r); out.g = Math.min(1, out.g); out.b = Math.min(1, out.b);
   return out;

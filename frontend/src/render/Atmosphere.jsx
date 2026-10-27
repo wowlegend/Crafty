@@ -302,7 +302,7 @@ export function Atmosphere({ shadowConfig }) {
         u.midColor.value.addScalar(flash * 0.16);
         u.horizonColor.value.addScalar(flash * 0.1);
       }
-      u.sunColor.value.copy(m.sun);
+      u.sunColor.value.copy(m.sunColor); // the frame has no `.sun` since Task 3a (the full rewiring is Task 3b)
       u.sunDir.value.set(m.sunPos[0], m.sunPos[1], m.sunPos[2]).normalize();
       sunDirRef.current.copy(u.sunDir.value); // the ONE resolved sun, for the terrain's cloud shadows
       u.uStar.value = starIntensity(moodRef.current); // dusk-only twilight stars + moon
@@ -319,8 +319,8 @@ export function Atmosphere({ shadowConfig }) {
       ambientRef.current.intensity = m.ambientIntensity;
     }
     if (sunRef.current) {
-      sunRef.current.color.copy(m.sun);
-      sunRef.current.intensity = m.sunIntensity;
+      sunRef.current.color.copy(m.keyColor);
+      sunRef.current.intensity = m.keyIntensity;
       // THE ONE PLACE the sun's position is written. Mood owns the direction, player owns the centre.
       const sp = sunWorldPosition(shadowCentreRef.current, m.sunPos);
       sunRef.current.position.set(sp.x, sp.y, sp.z);

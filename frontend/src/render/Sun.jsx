@@ -17,7 +17,7 @@ export const Sun = ({ onReady }) => {
     const m = sampleMood(moodRef.current);
     _dir.set(m.sunPos[0], m.sunPos[1], m.sunPos[2]).normalize();
     mesh.position.copy(camera.position).addScaledVector(_dir, 380);
-    mesh.material.color.copy(m.sun);
+    mesh.material.color.copy(m.sunColor);
   });
   return (
     <mesh ref={ref} frustumCulled={false}>

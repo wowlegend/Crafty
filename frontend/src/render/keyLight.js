@@ -4,7 +4,7 @@
 //
 // THE MOON IS THE SAME LIGHT ON ITS OWN VECTOR. The rig keeps exactly one directional light, so the light count never
 // changes (no program relink) and shadows stay on all night. `moonArcDirection(f)` is the sun's own arc function
-// (render/mood.js sunArcDirection) applied to `MOON_NOON` half a cycle later, so the moon is up exactly when the sun is
+// (render/sunArc.js sunArcDirection) applied to `MOON_NOON` half a cycle later, so the moon is up exactly when the sun is
 // down. The key's intensity fades to 0 within `|s| < HORIZON_FADE` on each side of the horizon, so the direction swaps
 // only under a key of intensity 0: the world is never lit from under the ground, and never pops.
 //
@@ -16,7 +16,7 @@
 // to about 2.5 in a few seconds there, which is a ramp, not a pop; widening the fade enough to bring that step under the
 // day's bound would dim the golden key the lookbook frames.
 import * as THREE from 'three';
-import { sunArcDirection } from './mood.js';
+import { sunArcDirection } from './sunArc.js';
 import { solarPhase } from './colourScript.js';
 
 /** The moon's direction at its own noon: the painted moon's azimuth (render/skyDome.js), raised to the sun's 32 deg. */
@@ -31,7 +31,7 @@ export function moonArcDirection(f, out = [0, 0, 0]) {
 
 /** A fresh result to write into (persistent arrays and one Color; nothing is allocated per frame). */
 export function makeKeyLight() {
-  return { sunDir: [0, 0, 0], moonDir: [0, 0, 0], keyDir: [0, 0, 0], keyIsMoon: false, keyColor: new THREE.Color(), keyIntensity: 0 };
+  return { sunDir: [0, 0, 0], moonDir: [0, 0, 0], keyDir: [0, 0, 0], keyIsMoon: false, keyColor: new THREE.Color(), keyIntensity: 0, fade: 1 };
 }
 
 const _out = makeKeyLight();
@@ -48,6 +48,7 @@ export function resolveKeyLight(noonSunPos, f, frame, out = _out) {
   sunArcDirection(noonSunPos, ff, out.sunDir);
   moonArcDirection(ff, out.moonDir);
   const fade = THREE.MathUtils.smoothstep(Math.abs(s), 0, HORIZON_FADE);
+  out.fade = fade; // the horizon fade alone, for a caller that keys an intensity of its own (the boss state's, in mood.js)
   if (s >= 0) {
     out.keyIsMoon = false;
     copy3(out.keyDir, out.sunDir);

@@ -45,6 +45,14 @@ import { carriersOf } from './_srcWalk.js';
  *   M22 the terrain shadow ignores the sky's cover (review)               -> no-shadow-without-cloud RED
  *   M23 no sun-elevation fade (review: a grazing sun samples ~3,400 m away) -> low-sun RED
  *   M24 Terrain never reads the cover                                     -> structural RED
+ *   Light-colour plan Task 3a (2026-10-27, the tint re-keyed on the sky frame's `daylight`), via scripts/dev/mutate.sh:
+ *   CF1 `day = 1` (night clouds keep the day's white)                     -> night + boss RED
+ *   CF2 the night lift back to 1.8                                        -> night "does not read" RED
+ *   CF3 `day = 0` (the night body at noon)                                -> day "near-white" RED (it SURVIVED the
+ *       brightness-only day case, which is why that case now also asserts red within 0.6 of blue)
+ *   CF0 identity (a comment edit in cloudField.js)                        -> SURVIVED
+ *   CF4, SURVIVED and accepted: keyed on the key light's intensity / 2.8 (so a moonlit night keeps 14% of the day
+ *   body). The cloud still sits inside every design anchor; these cases pin the anchors, not the keying variable.
  *
  * BLIND SPOT: the GLSL is not compiled here — only a browser does that (the capture). How the clouds and
  * their shadows LOOK is judged from the captured frames. Atmosphere's and Terrain's per-frame writes are
@@ -89,14 +97,23 @@ const lum = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 describe('cloudTint — the clouds take the mood, they are not painted white', () => {
   // Design anchors, not the formula: a sunlit cloud is bright; a night cloud is a SHAPE, not a light —
   // dimmer than a lamp, and at least twice its sky's luminance or it does not read; the boss sky's are dark.
-  const at = (mood) => { const m = sampleMood(mood); return { m, t: cloudTint(m, new THREE.Color()) }; };
+  // REWRITTEN 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3a): night is the CLOCK's now, no longer mood
+  // 1 (mood 1 is a storm at whatever hour it is), so the night case samples midnight, and the tint keys on the frame's
+  // `daylight`. The design anchors are unchanged.
+  const at = (mood, cycle) => { const m = sampleMood(mood, cycle); return { m, t: cloudTint(m, new THREE.Color()) }; };
 
-  it('day clouds are bright', () => {
-    expect(lum(at(0).t)).toBeGreaterThan(0.7);
+  it('day clouds are bright, and near-white rather than sky-blue', () => {
+    const { t } = at(0);
+    expect(lum(t)).toBeGreaterThan(0.7);
+    // ADDED 2026-10-27 (Task 3a): the day key's sky (#5A9AE0) lifted by the night body's 2.6 alone clears lum 0.7 as a
+    // saturated (0.27, 0.84, 1), so brightness alone no longer tells a sunlit cloud from a night one at noon (mutant
+    // CF3, `day = 0`, survived it). A sunlit body is carried most of the way to white: red within 0.6 of blue.
+    expect(t.r / t.b, 'a sunlit cloud is near-white, not the sky lifted').toBeGreaterThan(0.6);
   });
 
   it('night clouds are a shape, not a glow: lighter than their sky, far dimmer than day', () => {
-    const { m, t } = at(1);
+    const { m, t } = at(0, 0.75);
+    expect(m.daylight).toBe(0); // the case really is night
     expect(lum(t), 'a night cloud brighter than a third of a day cloud reads as a lamp').toBeLessThan(0.3);
     expect(lum(t), 'a night cloud under twice its sky\'s luminance does not read as a shape').toBeGreaterThan(2 * lum(m.skyMid));
   });
