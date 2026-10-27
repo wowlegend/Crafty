@@ -33,7 +33,7 @@
  *   node scripts/ci/doc-currency.mjs               check this checkout; exit 1 on any error
  *   node scripts/ci/doc-currency.mjs --root=<dir>  check the docs under <dir> (a test seam)
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -410,7 +410,8 @@ function checkSections(root, out) {
     out.errors.push(
       `SECTION-CITATION RATCHET: ${dangling.length} dangling cross-doc citations, frozen at ${ANCHOR_FROZEN}.\n` +
         dangling.map((d) => `      - ${d}`).join('\n') +
-        `\n    A\u00a7 pointer to a section that does not exist sends the next reader looking for a rule that isn't there.`,
+        `\n    A ` +
+        `\u00a7 pointer to a section that does not exist sends the next reader looking for a rule that isn't there.`,
     );
   } else if (dangling.length < ANCHOR_FROZEN) {
     out.warnings.push(`section-citation ratchet can tighten: ${dangling.length} dangling (frozen ${ANCHOR_FROZEN}) — lower ANCHOR_FROZEN in doc-currency.mjs`);
@@ -419,8 +420,20 @@ function checkSections(root, out) {
 
 // --- report -----------------------------------------------------------------
 // The CLI is a printer around run(): what it prints and its exit code come from run()'s result and nothing else.
-const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isCli) {
+//
+// Invoked directly, however the path was spelled. Node loads the main module by its REAL path, so a plain
+// `resolve(process.argv[1]) === fileURLToPath(import.meta.url)` is false when the script is reached through a
+// symlinked directory, and the lint then exited 0 having checked nothing (tranche A review, 2026-10-27; before
+// the seam it ran on import, so no spelling could skip it). Both sides are compared as real paths.
+function invokedDirectly() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+if (invokedDirectly()) {
   const rootArg = process.argv.slice(2).find((a) => a.startsWith('--root='));
   const { errors, warnings, danglingSections } = run(rootArg ? { root: resolve(rootArg.slice('--root='.length)) } : {});
 

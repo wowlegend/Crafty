@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
@@ -26,19 +26,24 @@ import { run, CHECKS, CANONICAL } from '../../scripts/ci/doc-currency.mjs';
  * Sited in tests/scripts: the subject's input is the doc corpus (files), and the tool is EXECUTED against
  * fixtures, never read as source text.
  *
- * Mutation-Proof: via scripts/dev/mutate-batch.mjs against scripts/ci/doc-currency.mjs (7 tests); the identity mutant
- * (a trailing `// identity mutant`) SURVIVED, then 13 of 13 observed RED:
- *   M-U8a1  run() skips the dangling check (call site disconnected) -> both dangling cases
+ * Mutation-Proof: via scripts/dev/mutate-batch.mjs against scripts/ci/doc-currency.mjs (10 tests, 2026-10-27 21:00Z);
+ * the identity mutant (a trailing `// identity mutant`) SURVIVED, then 16 of 16 observed RED:
+ *   M-U8a1  run() skips the dangling check (call site disconnected) -> both dangling cases, both CLI fixture cases
  *   M-U8a2  dangling resolves a citation against the checkout, not `root` -> "...existing path passes"
  *   M-U8a3  dangling reads the docs from the checkout, not `root`   -> both dangling cases
- *   M-U8a4  `only` ignored (every check runs)                        -> both dangling cases
+ *   M-U8a4  `only` ignored (every check runs)                        -> the dangling and sections fixture cases
  *   M-U8a5/6/7  an empty `only`, an unknown check name, an unknown enforce flag accepted -> "...is refused"
  *   M-U8a8/9/10 the dangling, packages, sections denominators count nothing -> "...non-zero denominator"
  *   M-U8a11 the CLI exits 0 on errors                               -> "on a failing root, exits 1 ..."
- *   M-U8a12 the CLI drops run()'s warnings                          -> "on the real tree, prints run()'s warnings ..."
+ *   M-U8a12 the CLI drops run()'s warnings                          -> both CLI cases (the fixture sets its own warning)
  *   M-U8a13 the CLI ignores --root                                  -> "on a failing root, exits 1 ..."
- * M-U8a12 is RED only while the real tree carries a warning (today: STATUS.md's commit age); once it carries none,
- * that mutant would survive here.
+ *   M-U8a14 the CLI guard compares resolve(argv[1]) again           -> "run through a symlinked path, still runs ..."
+ *   M-U8a15 the space before the section sign dropped again         -> "sections: ... with the full message"
+ *   M-U8a16 run() skips the sections check                          -> both sections cases
+ *
+ * The real-tree denominator case reads what the docs say today: an honest edit that leaves a check with nothing to
+ * examine (the last watched-package line, the last `<doc> §` citation) turns it red. That is intended — a check
+ * that examines nothing on the real tree guards nothing, and is re-pointed or retired rather than left green.
  *
  * BLIND SPOT: `root` moves where the DOCS are read from. The generated blocks' sources — the hook that defines the
  * gates (gate-table) and the src tree that `measure()` walks — are always this checkout's, so a fixture root can
@@ -89,6 +94,25 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     expect(r.errors).toEqual([]);
   });
 
+  it('sections: a citation of a section the cited doc does not have errors, with the full message', () => {
+    const root = fixture({ 'memory/STATUS.md': '## 2. THE REGISTRY\n', 'memory/ARCHITECTURE.md': 'see STATUS §9 for it\n' });
+    const r = run({ root, only: ['sections'] });
+    expect(r.checked).toEqual({ sections: 1 });
+    expect(r.danglingSections).toBe(1);
+    expect(r.errors).toEqual([
+      'SECTION-CITATION RATCHET: 1 dangling cross-doc citations, frozen at 0.\n' +
+        '      - memory/ARCHITECTURE.md: status §9\n' +
+        "    A § pointer to a section that does not exist sends the next reader looking for a rule that isn't there.",
+    ]);
+  });
+
+  it('sections: the same citation of a section that exists passes (one token from the case above)', () => {
+    const root = fixture({ 'memory/STATUS.md': '## 2. THE REGISTRY\n', 'memory/ARCHITECTURE.md': 'see STATUS §2 for it\n' });
+    const r = run({ root, only: ['sections'] });
+    expect(r.checked).toEqual({ sections: 1 });
+    expect(r.errors).toEqual([]);
+  });
+
   it('every check reports a non-zero denominator on the real tree', () => {
     const r = run();
     expect(Object.keys(r.checked).sort(), 'every check ran and reported').toEqual([...CHECKS].sort());
@@ -115,14 +139,34 @@ describe('doc-currency CLI — the call site the pipeline runs', () => {
     }
   });
 
-  it('on a failing root, exits 1 and prints every error run() returns — the wiring case among them', () => {
+  it('on a failing root, exits 1 and prints every error and warning run() returns — the wiring case among them', () => {
     const root = fixture({ 'memory/ARCHITECTURE.md': 'see `docs/plans/gone.md`\n' });
     const r = run({ root });
     expect(r.errors).toContain('DANGLING path in memory/ARCHITECTURE.md: "docs/plans/gone.md" does not exist');
+    // The fixture is not a git checkout, so STATUS's age is unknown: a warning this test sets up itself, so the
+    // CLI's warning path is exercised whatever the real tree's STATUS age happens to be.
+    expect(r.warnings, 'presence: the fixture produces a warning').toContain(
+      'STATUS.md age is unknown here: git log is unavailable, so staleness went unchecked.',
+    );
     const p = cli(`--root=${root}`);
     expect(p.status, p.stderr).toBe(1);
     expect(p.stdout).toBe('');
+    expect(p.stderr.split('\n').filter((l) => l.startsWith('⚠ '))).toEqual(r.warnings.map((w) => `⚠ ${w}`));
     for (const e of r.errors) expect(p.stderr).toContain(`  • ${e}`);
     expect(p.stderr.split('  • ').length - 1, 'one bullet per error, no more').toBe(r.errors.length);
+  });
+
+  it('run through a symlinked path, still runs the lint — never exits 0 having checked nothing', () => {
+    const root = fixture({ 'memory/ARCHITECTURE.md': 'see `docs/plans/gone.md`\n' });
+    const link = join(mkdtempSync(join(tmpdir(), 'crafty-doc-currency-link-')), 'app');
+    fixtures.push(dirname(link));
+    symlinkSync(APP, link);
+    const p = spawnSync(process.execPath, [join(link, 'scripts/ci/doc-currency.mjs'), `--root=${root}`], {
+      cwd: link,
+      encoding: 'utf8',
+      env: isolatedGitEnv(),
+    });
+    expect(p.status, `stdout: ${p.stdout}\nstderr: ${p.stderr}`).toBe(1);
+    expect(p.stderr).toContain('  • DANGLING path in memory/ARCHITECTURE.md: "docs/plans/gone.md" does not exist');
   });
 });
