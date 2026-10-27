@@ -89,7 +89,8 @@ test('lookbook seam: absent without the parameter; pose pins the live camera, se
   await page.waitForTimeout(1200);
   const back = await cam();
   expect(dist(back.p, HEARTH.position), `clear() did not hand the camera back to the player: ${JSON.stringify(back)}`).toBeGreaterThan(5);
-  expect(back.nodes, 'the hands did not come back after clear()').toBe(free.nodes);
+  // More than while posed, not equal to before: the held item can change the hands' node count between reads.
+  expect(back.nodes, `the hands did not come back after clear() (${later.nodes} posed, ${back.nodes} after)`).toBeGreaterThan(later.nodes);
 
   // 3. The time of day, read back from the running sky.
   await page.evaluate(() => window.__craftyLookbook.setCycle(0.75));
