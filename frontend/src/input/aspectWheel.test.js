@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ASPECT_VERBS, unlockedAspectVerbs, aspectRing, fanLayout, fanItemStyle, fanOpenerStyle, fanItemInnerEdge, FAN_ANCHOR_RIGHT, TOUCH_BTN, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS, cooldownFraction, anyOnCooldown } from './aspectWheel.js';
+import { ASPECT_VERBS, unlockedAspectVerbs, aspectRing, fanLayout, fanItemStyle, fanOpenerStyle, fanItemInnerEdge, FAN_ANCHOR_RIGHT, TOUCH_BTN, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS, cooldownFraction, anyOnCooldown, spellRowStacks, spellAnchorRight } from './aspectWheel.js';
 import { KEY_MAP } from '../game/keyMap.js';
 import { INTENT_KEYS } from './inputState.js';
 
@@ -136,6 +136,24 @@ describe('aspectWheel — fan geometry, measured in px against the viewport', ()
     const a0 = fanItemStyle(ASPECT_ROW_BOTTOM, { x: -116, y: 0 });
     expect(a0.right).toBe('calc(env(safe-area-inset-right,0px) + 142px)');
     expect(a0.bottom).toBe('calc(13% + 156px)');
+  });
+
+  // REVIEW ROUND 2: raising the rows for F1 put the spell opener on the HUD's Settings gear in landscape iPhones. These
+  // numbers are worked by hand from the layout, not read back from the function: the stacked spell row's top is
+  // H - 13% of H - (214 + 52) px, and it must clear the gear's lowest edge, 16 + 42 = 58 px.
+  it('the spell row stacks where its top clears the 58 px top band, and not one pixel of height sooner', () => {
+    expect(spellRowStacks(373), '373 - 48.49 - 266 = 58.51 px: clear').toBe(true);
+    expect(spellRowStacks(372), '372 - 48.36 - 266 = 57.64 px: into the gear').toBe(false);
+    expect(spellRowStacks(320)).toBe(false); // iPhone SE, Safari landscape
+    expect(spellRowStacks(1180)).toBe(true); // iPad Air portrait
+  });
+
+  it('where it cannot stack, the spell row moves inward past the Pause (right 64 + 46 px) by the 6 px gutter', () => {
+    expect(spellAnchorRight(1180)).toBe(FAN_ANCHOR_RIGHT);
+    expect(spellAnchorRight(340)).toBe(116);
+    const s = fanOpenerStyle(SPELL_ROW_BOTTOM, spellAnchorRight(340));
+    expect(s.right).toBe('calc(env(safe-area-inset-right,0px) + 116px)');
+    expect(s.bottom, 'the shifted row keeps its height').toBe('calc(13% + 214px)');
   });
 
   it('returns nothing for a degenerate fan instead of NaN coordinates', () => {

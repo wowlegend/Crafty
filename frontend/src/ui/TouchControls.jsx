@@ -4,6 +4,7 @@ import { isTouchDevice } from '../input/touchDevice';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 import { useActiveInput } from '../input/useActiveInput';
+import { useSpellAnchorRight } from '../input/useSpellAnchor';
 import { setIntent, setActive, getInput } from '../input/inputState';
 import { aspectRing, fanLayout, fanItemStyle, fanOpenerStyle, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS } from '../input/aspectWheel';
 import { makeIntentHold, makePointerClaim } from '../input/touchHold';
@@ -228,6 +229,9 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
   const ring = aspectRing(unlockedTalents); // every Aspect, locked ones marked (Phase 0c, F9 — aspectWheel.js)
   const ringPositions = fanLayout(ring.length);
   const spellPositions = fanLayout(SPELL_ORDER.length);
+  // The spell row's right anchor: on the edge, or inward past the Pause where the viewport is too short for the stack
+  // (review round 2 — aspectWheel.js TOP_BAND_PX). The glyph layer reads the same hook.
+  const spellAnchor = useSpellAnchorRight();
   // pointerEvents 'auto' re-enables hit-testing on each control, since the root below is now 'none' (X3).
   const hit = { position: 'absolute', background: 'transparent', border: 'none', padding: 0, opacity: 0, pointerEvents: 'auto' };
   return (
@@ -373,14 +377,14 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
           opposite of the bug. Writes the EXISTING `setActiveSpell` seam — no new downstream path. */}
       {active && (
         <button data-touch-btn onPointerUp={() => setSpellOpen((o) => !o)} aria-label={t('a11y.selectSpell')} data-testid="touch-spells"
-          style={{ ...hit, ...fanOpenerStyle(SPELL_ROW_BOTTOM) }} />
+          style={{ ...hit, ...fanOpenerStyle(SPELL_ROW_BOTTOM, spellAnchor) }} />
       )}
       {active && spellOpen && SPELL_ORDER.map((id, i) => {
         const q = spellPositions[i] || { x: 0, y: 0 };
         return (
           <button key={id} data-touch-btn aria-label={t(spellLabelKey(id))} data-testid={`touch-spell-${id}`}
             onPointerUp={() => { useGameStore.getState().setActiveSpell(id); setSpellOpen(false); }}
-            style={{ ...hit, ...fanItemStyle(SPELL_ROW_BOTTOM, q) }} />
+            style={{ ...hit, ...fanItemStyle(SPELL_ROW_BOTTOM, q, spellAnchor) }} />
         );
       })}
     </div>

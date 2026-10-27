@@ -9,6 +9,7 @@ import { isCaptureMode } from '../devtest/captureMode';
 import { heavyChargeLevel } from '../game/heavyAttack';
 import { ANTICIPATION_SEC } from '../game/beastTransform';
 import { chargeFraction, chargeRingDeg, CHARGE_SWEEPS } from '../input/touchHold';
+import { useSpellAnchorRight } from '../input/useSpellAnchor';
 
 // M3a: the panel-access tray openers (lucide, tintable) keyed by registry id -> the live overlay
 // drives togglePanel on tap; this surface only draws the glyphs (grid icon always; openers when open).
@@ -78,6 +79,7 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
   const aspects = unlockedAspectVerbs(unlockedTalents); // the live subset: only these can be cooling down
   const ringPositions = fanLayout(ring.length);
   const spellPositions = fanLayout(SPELL_ORDER.length);
+  const spellAnchor = useSpellAnchorRight(); // the same anchor the hit-targets read (TouchControls)
   const activeSpell = useGameStore((st) => st.activeSpell);
 
   // X2 — COOLDOWN SWEEPS ON THE RING. Touch had no cooldown feedback at all: HUD.jsx:590 gates
@@ -176,7 +178,7 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
           (spellAccent -> SPELL_TYPES[id].color), so the picker cannot drift from the projectile the player
           will actually see. The closed toggle carries the currently-active spell's tint, which is the only
           way a touch player could previously have known what they were about to cast: not at all. */}
-      <div style={BTN(fanOpenerStyle(SPELL_ROW_BOTTOM))}>
+      <div data-testid="touch-spells-glyph" style={BTN(fanOpenerStyle(SPELL_ROW_BOTTOM, spellAnchor))}>
         <Sparkles size={24} strokeWidth={2.4} color={spellAccent(activeSpell) || GLYPH} />
       </div>
       {spellOpen && SPELL_ORDER.map((id, i) => {
@@ -184,7 +186,7 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
         const accent = spellAccent(id) || GLYPH;
         return (
           <div key={id} aria-label={t(spellLabelKey(id))} data-testid={`spell-glyph-${id}`}
-               style={BTN({ ...fanItemStyle(SPELL_ROW_BOTTOM, q), borderColor: id === activeSpell ? accent : undefined })}>
+               style={BTN({ ...fanItemStyle(SPELL_ROW_BOTTOM, q, spellAnchor), borderColor: id === activeSpell ? accent : undefined })}>
             <Sparkles size={22} strokeWidth={2.4} color={accent} />
           </div>
         );
