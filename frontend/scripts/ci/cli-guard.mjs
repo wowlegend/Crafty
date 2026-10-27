@@ -78,6 +78,13 @@ const initIsCall = (node) =>
  * comparing something built from `import.meta.url`.
  * BLIND SPOT: a guard written another way (a top-level `isCli && main()`, an early return inside `main`) is flagged;
  * widen this when a script needs one, never exempt the script.
+ * WHAT THIS DOES NOT PROVE (the narrowed claim, 2026-10-27 review round 2 — mutants that survive, kept as ledger):
+ * that the guard is CORRECT, only that one exists and gates. It accepts a guard that is always true when imported
+ * (`if (isCli || true)`; a guard function rewritten to `return Boolean(process.argv[1])`, which a vitest worker
+ * satisfies), a bare `process.argv[1]` truthiness test, a guard of either polarity, and a guarded `if` sitting next
+ * to an unguarded top-level `main();`. Each still runs the CLI on import while this check reads green. The real
+ * defence for a script that matters is an import test in its own spec with `process.argv[1]` SET to a foreign path
+ * (doc-currency-wiring's import case does not set it yet).
  */
 const SKIP_KEYS = new Set(['loc', 'start', 'end', 'extra', 'leadingComments', 'trailingComments', 'innerComments']);
 
