@@ -41,6 +41,23 @@ test.describe('dodge intent latch', () => {
       return { dodge: intents.dodge, active: intents.active, alive: s.isAlive, health: s.playerHealth };
     });
 
+  // PRESS, (optionally) LOSE INPUT, RELEASE — and read after each — in ONE evaluate. The release's clear used to be read
+  // a round trip later, and the controller's next frame clears a held dodge on its own (it spends it as a roll), so a
+  // mutant that DELETED the keyup clear stayed green (review #8, finding 5). Inside one synchronous evaluate no frame
+  // runs, so what is read after the keyup is the keyup's doing. `loseInput` dispatches the same pointerlockerror the
+  // game's own listener handles, clearing the input gate between the press and the release.
+  const pressLoseRelease = (page, { loseInput = false } = {}) =>
+    page.evaluate((lose) => {
+      const read = () => ({ ...window.__craftyTest.call('readIntents') });
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ShiftLeft', bubbles: true }));
+      const pressed = read();
+      if (lose) document.dispatchEvent(new Event('pointerlockerror'));
+      const lost = read();
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ShiftLeft', bubbles: true }));
+      const released = read();
+      return { pressed: { dodge: pressed.dodge, active: pressed.active }, lost: { dodge: lost.dodge, active: lost.active }, released: { dodge: released.dodge, active: released.active }, alive: window.useGameStore.getState().isAlive };
+    }, loseInput);
+
   // THE SUBJECT OF THIS SPEC IS THE INPUT LATCH, NOT SURVIVAL — so state the survival precondition
   // rather than inheriting it by accident. SpawnerSystem.jsx:94 spawns 20 hostiles the moment
   // isSpawnChunkLoaded flips, and startPlayActive waits for exactly that flag, so on a slow runner
@@ -70,13 +87,11 @@ test.describe('dodge intent latch', () => {
     // nothing until the same instrument, in the same run, has shown it can see the positive case.
     await startPlayActive(page);
     await declareAlive(page);
-    const armed = await pressShift(page);
-    expect(armed.dodge, `Shift no longer arms a dodge at all — the instrument is dead, or the verb is. State: ${JSON.stringify(armed)}`).toBe(true);
-
-    await shift(page, 'keyup');
+    const r = await pressLoseRelease(page);
+    expect(r.pressed.dodge, `Shift no longer arms a dodge at all — the instrument is dead, or the verb is. State: ${JSON.stringify(r)}`).toBe(true);
     expect(
-      await dodge(page),
-      'releasing Shift left the intent set — it survives into the next lock and rolls unbidden'
+      r.released.dodge,
+      `releasing Shift left the intent set — it survives into the next lock and rolls unbidden: ${JSON.stringify(r)}`
     ).toBe(false);
   });
 
@@ -88,11 +103,9 @@ test.describe('dodge intent latch', () => {
     await startPlayActive(page);
     await declareAlive(page);
 
-    const held = await pressShift(page);
-    expect(held.dodge, `the press was refused — State: ${JSON.stringify(held)}`).toBe(true);
-
-    await page.evaluate(() => window.__craftyTest.call('readIntents')); // no-op read, keeps the ordering explicit
-    await shift(page, 'keyup');
-    expect(await dodge(page), 'the release did not clear the intent').toBe(false);
+    const r = await pressLoseRelease(page, { loseInput: true });
+    expect(r.pressed.dodge, `the press was refused — State: ${JSON.stringify(r)}`).toBe(true);
+    expect(r.lost.active, `SETUP: input was not lost between the press and the release: ${JSON.stringify(r)}`).toBe(false);
+    expect(r.released.dodge, `the release, arriving while input was lost, did not clear the intent: ${JSON.stringify(r)}`).toBe(false);
   });
 });
