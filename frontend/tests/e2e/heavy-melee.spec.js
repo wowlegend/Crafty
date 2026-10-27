@@ -1,6 +1,9 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { HEAVY_HOLD_MS, HEAVY_CHARGE_MS, HEAVY_MULT } from '../../src/game/heavyAttack.js';
+import { formDurationFor, COOLDOWN_SEC } from '../../src/game/beastTransform.js';
+import { TALENT_LIMITS } from '../../src/game/talentTree.js';
+import { TRANSFORM_CAM_SEC } from '../../src/game/transformCam.js';
 
 // HEAVY MELEE THROUGH A REAL MOUSE HOLD (plan 2026-09-23-crafty-heavy-melee, Task 4).
 //
@@ -30,6 +33,10 @@ import { HEAVY_HOLD_MS, HEAVY_CHARGE_MS, HEAVY_MULT } from '../../src/game/heavy
 //   J4 Components.jsx: the release throws the heavy whatever the charge (plausible-wrong) -> the half-charged CONTROL
 //   J5 (R9.3) releaseHeavy ignores which input holds the charge -> "a T tapped during the mouse hold ended its charge"
 //   J6 (R9.2) the beast-form gate dropped from the mouse press -> "a BEAST-form hold threw ... on release"
+//      RE-MEASURED 2026-10-27, and the first receipt did not hold: against the REAL-mouse beast hold this case used to
+//      make, J6 stayed GREEN (form [true,true], release 0, held 2690 ms) — frames ran inside the hold and the per-frame
+//      cancel in a form dropped the charge before the release. With the in-page hold (no frame inside it): RED,
+//      "a BEAST-form hold threw 18 on release", form [true,true]. Unmutated: green, release 0.
 test.describe('heavy melee', () => {
   test.setTimeout(240000);
 
@@ -185,7 +192,7 @@ test.describe('heavy melee', () => {
     // store-called enterBeastForm lasts ONE frame — the transform state machine never started its timer, so its next
     // tick exits the form. The first version of this case did that, held a HUMAN sword, and survived its own mutant.
     // A FRESH brute, frozen where the first stood: the first one is nearly spent, and the roar's burst lands on it.
-    r.beastId = await page.evaluate((mid) => {
+    r.beastId = await page.evaluate(({ mid, endurance }) => {
       const s = window.useGameStore.getState();
       const at = window.__heavySpawn;
       if (window.__craftyTest.call('readMobs').some((e) => e.id === mid)) window.GameMethods.damageMob(mid, 99999, 'physical', 'ally');
@@ -193,24 +200,121 @@ test.describe('heavy melee', () => {
       s.spawnMob(at.x, at.z, 'moss_brute', at.y);
       const fresh = window.__craftyTest.call('readMobs').find((m) => !before.has(m.id));
       window.__heavyMob = fresh?.id ?? null;
-      window.useGameStore.setState({ ferocityBanked: 100, unlockedTalents: { ...s.unlockedTalents, wildheart_roar: 1 } });
+      window.useGameStore.setState({
+        ferocityBanked: 100,
+        unlockedTalents: { ...s.unlockedTalents, wildheart_roar: 1, wildheart_endurance: endurance },
+      });
       return window.__heavyMob;
-    }, id);
+    }, { mid: id, endurance: TALENT_LIMITS.wildheart_endurance });
+    // THE FORM IS ESTABLISHED, NOT RACED. A form lasts FORM_DURATION_SEC of REAL time (beastTransform.js, on R3F's
+    // clock — the world freeze does not stop it), and the first version of this case spent that budget across the page
+    // boundary: a fixed 3 s for the reveal camera, four round trips, then a REAL mouse hold, which CI stretched from
+    // 0.9 s to 3-15 s. CI run 40503389065 (shard 2, all three attempts): the form was already over at the press twice
+    // (the HUMAN sword then threw its heavy, correctly) and over before the release once — form [true,false], release 0.
+    // So now: Primal Endurance at its talent limit (a real state, +9 s); the commit and the camera's hand-back awaited
+    // IN THE PAGE, frame by frame; and the hold made in the page with no frame inside it. The form's timer ticks only in
+    // the player's frame, so a form live at the press is live at the release by construction (both are still read).
+    // A hold with no frame in it is also the STRICTEST case of the property: a frame can only DROP a charge (the
+    // per-frame cancel in a form, Components.jsx), never start one, so here the press gate alone stands between the
+    // hold and a free swing, and J6 cannot be masked by that cancel. The real-mouse path is the full hold's (J3).
     // R is HELD until the form commits, not for a fixed time: the transform needs the roar held across frames for its
     // 0.45 s anticipation, and a fixed 900 ms hold lost that race in 1 of 2 runs at this machine's ~3-5 fps (measured;
     // the human sword then threw its heavy, correctly — which is what a SETUP line must say, not the verdict).
+    // ONE RE-ROAR, and only when the form's TIMER ran out during the setup (the page stalled past it): a second chance
+    // at the precondition, never at the verdict. A form that ended EARLY is never retried — it fails at once, as a
+    // defect. Every roar is reported (`roars`). The re-roar path was driven once by a probe (a 15 s stall injected after
+    // the first commit, a 14 s form): classified "timer ran out (0-17931 ms, 14000 long)", re-roared, and measured.
+    // Measured locally (load ~35-60, three runs) without a probe: the commit read stalled 0-4 s, the press landed 4-10 s
+    // after the commit — inside the 23 s form, and inside 14 s too, once the fixed wait and the real-mouse hold are gone.
     await page.keyboard.down('r');
-    r.roared = await page.waitForFunction(() => window.useGameStore.getState().beastFormActive === true, null, { timeout: 20000 })
-      .then(() => true, () => false);
-    await page.keyboard.up('r');
-    await page.waitForTimeout(3000); // the transform camera plays out and hands back the first-person view
-    await aim();
-    r.beast = await hold(HEAVY_HOLD_MS + HEAVY_CHARGE_MS + 200);
+    r.beast = await page.evaluate(async ({ holdMs, camMs, roarMs, lastsMs, cooldownMs }) => {
+      const st = () => window.useGameStore.getState();
+      const frame = () => new Promise((res) => requestAnimationFrame(res));
+      const drawn = () => window.__craftyTest.call('readFrameloop')?.frames ?? null; // R3F frames drawn (DEV hook)
+      const key = (type) => window.dispatchEvent(new KeyboardEvent(type, { code: 'KeyR', bubbles: true }));
+      const cam = window.__threeCamera;
+      const brute = () => window.__craftyTest.call('readMobs').find((e) => e.id === window.__heavyMob);
+      const t0 = performance.now();
+      const since = (t) => Math.round(t - t0);
+      const head = () => {
+        const b = st().playerRigidBodyRef?.current?.translation?.();
+        return b ? { across: +Math.hypot(cam.position.x - b.x, cam.position.z - b.z).toFixed(2), up: +(cam.position.y - b.y - 1.2).toFixed(2) } : null;
+      };
+      const roars = [];
+      let h = null;
+      for (let roar = 1; ; roar++) {
+        if (roar > 1) {
+          // Past the transform's cooldown (it starts at the exit, which was before we saw it), the bank refilled, R again.
+          const until = performance.now() + cooldownMs;
+          while (performance.now() < until) await frame();
+          window.useGameStore.setState({ ferocityBanked: 100 });
+          key('keydown');
+        }
+        // 1. The roar commits. `human` and `formAt` bracket the commit: it landed between the two reads.
+        const tr0 = performance.now();
+        let human = tr0;
+        while (!st().beastFormActive) {
+          if (performance.now() - tr0 > roarMs) return { setup: `holding R for ${roarMs} ms never committed a beast form (roar ${roar})`, roars };
+          human = performance.now();
+          await frame();
+        }
+        const formAt = performance.now();
+        const seenAt = [since(human), since(formAt)];
+        key('keyup'); // in a form only a fresh PRESS of R does anything (it ends the form), so letting go is inert
+        // 2. The reveal camera hands back the first-person view. It runs TRANSFORM_CAM_SEC of frame time from the roar's
+        // START, which precedes the commit; then the head pose returns. The melee cone and the click ray both start at
+        // the camera, so wait for both: the window past on the clock, and the camera at the body's head (within 1 m
+        // across and 0.6 m in height — the freeze's hit shake moves it) on two R3F frames in a row.
+        let streak = 0, seen = drawn(), live = formAt, ranOut = null;
+        while (streak < 2) {
+          await frame();
+          const now = performance.now();
+          if (!st().beastFormActive) {
+            // How long it lasted, bracketed: it committed in (human, formAt] and ended in (live, now]. Both clocks are
+            // real time (R3F's clock is a THREE.Clock), so ending before `lastsMs` could have run is a defect, not timing.
+            const least = Math.round(live - formAt), most = Math.round(now - human);
+            const lasted = `it lasted ${least}-${most} ms and is ${lastsMs} ms long`;
+            if (most < lastsMs) return { early: `the beast form ended EARLY, before its timer could run out (${lasted}, roar ${roar})`, roars };
+            ranOut = `the form's timer ran out before the camera came back to the head — the page stalled (${lasted})`;
+            break;
+          }
+          live = now;
+          if (now - formAt > 20000) return { setup: 'the camera never came back to the head within 20 s of the form', roars, head: head() };
+          const d = drawn();
+          if (d !== null && d === seen) continue; // no R3F frame since the last look
+          seen = d;
+          h = head();
+          streak = now - formAt >= camMs && h && h.across < 1 && Math.abs(h.up) < 0.6 ? streak + 1 : 0;
+        }
+        roars.push({ seenAt, ranOut });
+        if (!ranOut) break;
+        if (roar >= 2) return { setup: ranOut, roars, head: head() };
+      }
+      // 3. The hold, in ONE task: aim, press, hold on the clock the charge reads (performance.now), release.
+      const m = brute();
+      if (!m) return { setup: 'the fresh brute was gone before the press', roars };
+      const hp = () => brute()?.health ?? null;
+      cam.lookAt(m.x, m.y + 0.8, m.z);
+      const opts = { button: 0, bubbles: true, cancelable: true };
+      const h0 = hp(), f0 = st().beastFormActive, tp = performance.now();
+      window.dispatchEvent(new MouseEvent('mousedown', opts));
+      const h1 = hp();
+      while (performance.now() - tp < holdMs) { /* the hold — no frame runs inside it */ }
+      const f1 = st().beastFormActive, tr = performance.now();
+      window.dispatchEvent(new MouseEvent('mouseup', opts));
+      const h2 = hp();
+      window.__heavyLog.splice(0);
+      return { press: h0 - h1, release: h1 - h2, form: [f0, f1], heldMs: Math.round(tr - tp), roars, pressAt: since(tp), head: h };
+    }, { holdMs: HEAVY_HOLD_MS + HEAVY_CHARGE_MS + 200, camMs: TRANSFORM_CAM_SEC * 1000, roarMs: 20000,
+      lastsMs: formDurationFor(TALENT_LIMITS.wildheart_endurance) * 1000, cooldownMs: COOLDOWN_SEC * 1000 + 200 });
+    await page.keyboard.up('r'); // Playwright's own key state; the roar intent is already down (inert either way)
+    await page.waitForTimeout(120);
+    r.beast.after = await read();
     await page.evaluate(() => { Math.random = window.__heavyRandom; });
 
     const where = JSON.stringify(r);
     const { half, full } = r;
-    console.log(`[heavy-melee] half: press ${half.press} release ${half.release} (${half.heldMin}-${half.heldMax} ms) · full: press ${full.press} release ${full.release} (${full.heldMs} ms) · cross: ${JSON.stringify(r.cross)} @ ${JSON.stringify({ dist: r.crossAfter?.dist, dy: r.crossAfter?.dy, mob: r.crossAfter?.mob, cam: r.crossAfter?.cam })} · full@ ${JSON.stringify({ dist: full.after.dist, dy: full.after.dy, cam: full.after.cam })} · beast: ${JSON.stringify({ form: r.beast?.form, press: r.beast?.press, release: r.beast?.release, heldMs: r.beast?.heldMs })}`);
+    console.log(`[heavy-melee] half: press ${half.press} release ${half.release} (${half.heldMin}-${half.heldMax} ms) · full: press ${full.press} release ${full.release} (${full.heldMs} ms) · cross: ${JSON.stringify(r.cross)} @ ${JSON.stringify({ dist: r.crossAfter?.dist, dy: r.crossAfter?.dy, mob: r.crossAfter?.mob, cam: r.crossAfter?.cam })} · full@ ${JSON.stringify({ dist: full.after.dist, dy: full.after.dy, cam: full.after.cam })} · beast: ${JSON.stringify({ form: r.beast?.form, press: r.beast?.press, release: r.beast?.release, heldMs: r.beast?.heldMs, roars: r.beast?.roars, pressAt: r.beast?.pressAt, head: r.beast?.head, setup: r.beast?.setup, early: r.beast?.early })}`);
     expect(full.after.gone, `SETUP: the brute died or vanished mid-measurement — ${where}`).toBeUndefined();
     expect(full.after.active && full.after.alive, `SETUP: the input gate dropped or the player died — ${where}`).toBe(true);
     expect(full.after.frozen, `SETUP: the world freeze ran out mid-measurement (the brute was free to move and strike) — ${where}`).toBe(true);
@@ -231,8 +335,9 @@ test.describe('heavy melee', () => {
       .toBeGreaterThanOrEqual(HEAVY_MULT * half.press);
     // R9.2: in a beast form the hold charges nothing — the release adds NOTHING.
     expect(r.beastId, `SETUP: the fresh brute did not spawn — ${where}`).not.toBeNull();
-    expect(r.roared, `SETUP: holding R for 20 s never committed a beast form — ${where}`).toBe(true);
-    expect(r.beast.form, `SETUP: not in a beast form at the press AND the release — the roar did not take, or the form ended: ${where}`).toEqual([true, true]);
+    expect(r.beast.early, `${r.beast.early} — ${where}`).toBeUndefined();
+    expect(r.beast.setup, `SETUP: ${r.beast.setup} — ${where}`).toBeUndefined();
+    expect(r.beast.form, `SETUP: not in a beast form at the press AND the release (no frame ran between them) — ${where}`).toEqual([true, true]);
     expect(r.beast.after.frozen, `SETUP: the world freeze ran out before the beast hold ended — ${where}`).toBe(true);
     expect(r.beast.press, `SETUP: the form's press did not swing — ${where}`).toBeGreaterThan(0);
     expect(r.beast.release, `a BEAST-form hold threw ${r.beast.release} on release — a free extra swing: ${where}`).toBe(0);
