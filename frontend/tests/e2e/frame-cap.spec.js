@@ -84,6 +84,18 @@ test('capped by default; the cap binds, costs nothing below it, and lets go for 
   // Unlimited first: the first window after boot still catches the world's warm-up, and the 60-cap reading needs a
   // settled renderer to mean anything (it starved twice as the first window at a load of 40).
   await setCap(0);
+  // And SETTLE, measured rather than timed: no fixed wait fits every load. With 5 s alone the unlimited window then
+  // caught the stall instead — 2 frames in 3 s, so "too slow for a 1 fps cap to bind" (full run, load ~40,
+  // 2026-10-27). Wait, unlimited, until two consecutive 1 s windows each draw at least 3 frames, up to 60 s; a
+  // renderer that never gets there fails here, named, as a precondition.
+  let settled = 0;
+  const settling = [];
+  for (let i = 0; i < 60 && settled < 2; i++) {
+    const w = await measure({ ms: 1000 });
+    settling.push(w.frames);
+    settled = w.frames >= 3 ? settled + 1 : 0;
+  }
+  expect(settled, `SETUP: the renderer never settled — frames per 1 s window, unlimited: ${JSON.stringify(settling)}`).toBe(2);
   const free = await measure();
   await setCap(60);
   const at60 = await measure();
