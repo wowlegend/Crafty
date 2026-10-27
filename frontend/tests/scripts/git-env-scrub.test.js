@@ -28,6 +28,9 @@ import { isolatedGitEnv } from './_isolatedGit.js';
  *   M-U8c drop the member-call selector                   -> "a member call is an error"
  *   M-U8d drop the member-call TemplateLiteral selector   -> "a member call with a template literal is an error"
  *   M-U8e step() runs `if "$@"` again (unscrubbed)          -> "step() runs its command through run_scrubbed"
+ * Fix round (tranche A review, item 4: only two of the rule's six callees were driven), via mutate-batch (18 tests),
+ * identity SURVIVED, then 7 of 7 RED in the six-callee cases: each of execFileSync, execSync, spawnSync, spawn,
+ * execFile, exec dropped from the rule's list (M-E1..6), and spawnSync misspelled in it (M-E7).
  *
  * BLIND SPOT: a test that shells out through some other spelling (`git` built by concatenation, a variable holding
  * 'git', a helper outside tests/) is not seen by the lint; only the three call shapes below are.
@@ -102,6 +105,14 @@ describe('ESLint forbids raw git in tests', () => {
 
   it('a member call with a template literal is an error', async () => {
     expect(await errors("import cp from 'node:child_process';\ncp.execSync(`git status`);\n")).toBe(1);
+  });
+
+  // The rule names six callees; the cases above drive two. Each of the six, in both callee shapes, is driven here, so
+  // a callee dropped from the rule's list (or misspelled in it) goes red (tranche A review, item 4).
+  const CALLEES = ['execFileSync', 'execSync', 'spawnSync', 'spawn', 'execFile', 'exec'];
+  it.each(CALLEES)('%s(\'git\', …) is an error, bare and as a member call', async (fn) => {
+    expect(await errors(`import { ${fn} } from 'node:child_process';\n${fn}('git', ['status']);\n`)).toBe(1);
+    expect(await errors(`import cp from 'node:child_process';\ncp.${fn}('git', ['status']);\n`)).toBe(1);
   });
 
   it('allow case, one token from a deny: node instead of git', async () => {
