@@ -3,7 +3,7 @@
 // isDay-ternary lights + drei <Sky> (removed). Each frame it lerps moodRef toward
 // moodTarget(isDay, dangerLevel) and applies the blended palette. In capture mode the
 // mood SNAPS to target for deterministic frames.
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo, useEffect, useLayoutEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { cycleFraction } from '../game/dayPhase.js';
@@ -173,7 +173,9 @@ export function Atmosphere({ shadowConfig }) {
   // A TIER CHANGE RE-BUILDS THE SHADOW (render/shadowReset.js): three keeps a light's first shadow target for life.
   const cam = shadowConfig?.camera || {};
   const [mapW, mapH] = shadowConfig?.mapSize || [0, 0];
-  useEffect(() => {
+  // A LAYOUT effect: it runs in the same commit that applied the new mapSize and extents, before any frame can render.
+  // A passive effect could let one rAF draw the new viewport over the old target — the bug, for a frame (review #11).
+  useLayoutEffect(() => {
     resetShadowForConfig(sunRef.current?.shadow);
   }, [mapW, mapH, cam.left, cam.right, cam.top, cam.bottom, cam.near, cam.far]);
   // DEV-only: the live shadow target's real size, for the tier-change e2e (the bridge is tree-shaken in prod).
