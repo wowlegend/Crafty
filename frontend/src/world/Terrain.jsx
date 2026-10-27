@@ -24,6 +24,8 @@ import { OUTLINE } from '../render/characterStyle';
 import { TIERS } from '../render/quality';
 import { renderDistanceFor } from '../render/tierGovernor.js';
 import { markShadowWorldChanged } from '../render/shadowSchedule.js';
+// A chest beacon mounts and unmounts with its chest: from the fixed light pool, so the light count never changes.
+import { PooledLight } from '../render/lightPool.jsx';
 import { Cube, Emissive } from '../render/mascots/voxelKit';
 import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
 import { shrineParts } from './shrineShape.js';
@@ -454,7 +456,7 @@ const TreasureChestsRender = () => {
                                 <sphereGeometry args={[0.12, 8, 8]} />
                                 <meshBasicMaterial color="#ffd700" />
                             </mesh>
-                            <pointLight position={[0, 1.1, 0]} intensity={1.5} distance={6} color="#ffd700" />
+                            <PooledLight position={[0, 1.1, 0]} intensity={1.5} distance={6} color="#ffd700" />
                         </>
                     )}
                 </group>

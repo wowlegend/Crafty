@@ -40,6 +40,7 @@ import { ComposerPixelRatioSync, PostTierDriver, N8AO, GodRays, Bloom } from './
 import { createGovernor, governorDecline, governorIncline, governorSamples, renderDistanceFor } from './render/tierGovernor.js';
 import { registerTestHook } from './devtest/testBridge.js';
 import { FrameStall } from './devtest/FrameStall.jsx';
+import { PointLightPool } from './render/lightPool.jsx';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -402,6 +403,9 @@ export const GameScene = React.memo(function GameScene({
         <FrameCap fps={pace.fps} active={pace.loop === 'demand'} testHooks drivesHud />
 
         <Atmosphere shadowConfig={shadowConfig} />
+        {/* The fixed per-tier set of point lights every chest beacon, cast, impact, beast core and boss light borrows
+            (render/lightPool.jsx): the light count never changes with play, so no lit shader re-links mid-game. */}
+        <PointLightPool />
 
         {/* W2 ocean: the stylized tropical-toon Gerstner water plane (replaces the old voxel water
             tops -- the mesher no longer emits water faces). Capture-frozen wave phase. */}
