@@ -43,6 +43,24 @@ on purpose: a pixel budget, tiers that settle, nothing redrawn that did not chan
 | 0f | **Steady tiers + an honest iPad** (roadmap 1): governor hysteresis; composer resized on a pixel-ratio change; GodRays, N8AO AND Bloom built once and disposed; a context-loss panel that recovers; the dead AdaptiveDpr deleted | Bloom included (F8); BloomSpikeDriver follows its effect |
 | 0g | **Cool by budget** (roadmap 2): dpr from a pixel budget (high 4.2 Mpx / cap 1.75, med 2.8 / 1.5, low 1.8 / 1.25); the HUD on one ticker that also runs under Unlimited; pacing behind opaque panels, unfocused windows and idle; shadow updates on a quantised sun (~0.5 deg steps) and on change; chest-beacon and cast-hand point lights into a fixed per-tier pool | F2, F3, F10; the power baseline is the post-0a deploy (F12) |
 
+## Seen on a real GPU, 2026-10-27 (the first frames of the shipped game that were not SwiftShader)
+
+The Phase 0d lookbook (`feat/instruments`, Chromium new-headless on ANGLE-Metal / M3 Max, and WebKit at both iPad
+viewports; production build; motion on) took the Hearth, a forest edge, the coast and a snow terrace at four times of
+day. Kept in `docs/superpowers/masterpiece-2026-10/evidence/before-*.jpg`. What it shows, as a player sees it:
+
+- **Night is unplayable to the eye.** At midnight (0.75) the whole world is maroon and magenta under an orange sky,
+  in both engines; the Hearth reads black. This is the "frozen sunset" finding, now measured on real hardware.
+- **Golden hour is cold.** At 0.48 the land carries a blue-teal cast, and in WebKit iPad portrait the Hearth's stone
+  pad renders as saturated NAVY. The iPad starts on the low tier (no AO, no god rays), where the saturated-blue flat
+  ambient does the shading. **This is the strongest candidate yet for Kevin's "iPad visuals very buggy / broken"** —
+  a colour defect that reads as broken, not a crash.
+- The compass labels overprint each other ("HOME" over "NPC"); the motes read as dust on the lens; the ocean is one
+  flat plastic sheet.
+
+**So the light and colour script leads Phase 1**, and its acceptance is these same lookbook shots, re-shot after,
+opened side by side, on both engines and both iPad orientations.
+
 ## Phase 1 — the core look and feel (three disjoint lanes)
 
 - **Ember against the dark — the light and colour script** (roadmap 4): colour by sun elevation through a six-key
