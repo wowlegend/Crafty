@@ -20,7 +20,7 @@ import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE
 import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
-import { pressHeavy, releaseHeavy, cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
+import { pressHeavy, cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -57,6 +57,7 @@ import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive, resetInput } from './input/inputState';
 import { installBlurReset } from './input/blurReset';
 import { installPrimaryMouse } from './input/compatMouse.js';
+import { installPrimaryInput } from './input/primaryInput.js';
 import { registerTestHook } from './devtest/testBridge.js';
 import { notifyDenied } from './ui/denyToast';
 import { PLAYER_SPAWN } from './game/playerSpawn.js';
@@ -538,29 +539,22 @@ export const Player = ({ isWorldBuilt }) => {
     // `source` names the input holding the charge, so another input's release cannot end it (R9.3).
     // A beast form's hold charges nothing (R9.2): triggerMeleeAttack drops `heavy` in a form, so a charge there only
     // slowed the walk, ticked "ready" and threw a free extra light swing on release.
-    // Presses per source, for the dev test bridge: the e2e F2 case asserts a real tap presses once as 'touch' and never
-    // as 'mouse'. One integer per press, not per frame.
-    // `at` (optional): the press event's own time. The touch overlay passes it, so the charge counts from the finger
-    // and not from a handler a stall delayed (heavyAttack inputTime; touch-hold.spec.js's late lift and late press). The
-    // mouse and T paths pass none and keep the handler's clock.
-    const primaryPresses = { mouse: 0, touch: 0 };
-    const pressPrimary = (button, source, at) => {
-      primaryPresses[source] = (primaryPresses[source] || 0) + 1;
-      const verb = performVerb(button);
-      const st = useGameStore.getState();
-      if (button === 0 && verb === 'attack' && !st.voidhandHeld && !st.beastFormActive) pressHeavy(performance.now(), source, at);
-      return verb;
-    };
-    // `source` is the input coming up: only the one holding the charge can release it (R9.3 — T's keyup used to end a
-    // charge the mouse held). `at` (optional): the lift event's own time, so a tap whose lift is handled late is a tap.
-    const releaseHeavySwing = (source, at) => {
-      const now = performance.now();
-      if (!getInput().active || !useGameStore.getState().isAlive) { cancelHeavy(); return; }
-      if (releaseHeavy(now, source, at)) triggerMeleeAttack({ heavy: true });
-    };
-    // The touch overlay dispatches through the store: performVerb (M1: cast), pressPrimary / releasePrimary (Phase 0c:
-    // the held action button — the same press and release the mouse uses, as the 'touch' source).
-    useGameStore.setState({ performVerb, pressPrimary, releasePrimary: releaseHeavySwing });
+    // input/primaryInput.js owns the press, the release and their publication to the store (review round 3: inline here,
+    // a store wrapper that dropped the lift's time stayed green across the suite; tests/gates/primary-input-gates.test.jsx
+    // drives the published seams). Each takes `at`, the event's own time, so the hold is read on the input and not on a
+    // handler a stall delayed (heavyAttack inputTime): the touch overlay passes it; the mouse pair and T pass none and
+    // keep the handler's clock. The touch
+    // overlay dispatches through the store: performVerb (M1: cast), pressPrimary / releasePrimary (Phase 0c: the held
+    // action button — the same press and release the mouse uses, as the 'touch' source).
+    const primary = installPrimaryInput({
+      performVerb,
+      setState: useGameStore.setState,
+      getState: useGameStore.getState,
+      isInputLive: () => getInput().active && useGameStore.getState().isAlive,
+      throwHeavy: () => triggerMeleeAttack({ heavy: true }),
+      now: () => performance.now(),
+    });
+    const { pressPrimary, releasePrimary: releaseHeavySwing } = primary;
     // Centralized active gate: the ONE pointer-lock read in the controller. Pointer-lock is the
     // KB+mouse "input is live" source today; setActive() routes it into the intent module so the
     // verb loop gates on getInput().active (a future touch layer sets active from its own focus).
@@ -586,7 +580,7 @@ export const Player = ({ isWorldBuilt }) => {
     // echo-filtered mousedown / mouseup pair, and a mouseup takes its mousedown's verdict.
     const primaryMouse = installPrimaryMouse({ pressPrimary, releaseHeavySwing, now: () => performance.now() });
     // dev bridge: the e2e F2 case reads what was dropped per event type, and the presses per source
-    registerTestHook('readCompatMouse', () => ({ dropped: primaryMouse.dropped(), presses: { ...primaryPresses } }));
+    registerTestHook('readCompatMouse', () => ({ dropped: primaryMouse.dropped(), presses: primary.presses() }));
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     document.addEventListener('pointerlockerror', handlePointerLockError);
     // B8: clear held movement intents on focus loss (alt-tab drops the keyup -> keys stuck ON).
@@ -598,7 +592,7 @@ export const Player = ({ isWorldBuilt }) => {
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
       document.removeEventListener('pointerlockerror', handlePointerLockError);
       removeBlurReset();
-      useGameStore.setState({ performVerb: null, pressPrimary: null, releasePrimary: null }); // symmetry with the playerRigidBodyRef teardown — don't retain a stale closure across remount
+      primary.remove(); // clears performVerb / pressPrimary / releasePrimary: symmetry with the playerRigidBodyRef teardown — don't retain a stale closure across remount
     }
   }, [camera, triggerMeleeAttack, triggerSpellCast]);
 
