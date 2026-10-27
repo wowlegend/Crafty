@@ -18,7 +18,10 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   E2 GameScene passes no `unfocused` to paceFor                               -> RED expected: "not paced in an unfocused window"
 //   E3 plausible-wrong: panelCovering derived from the store flags only (the React-local achievements panel missed)
 //                                                                              -> RED expected: "not paced behind the achievements panel"
+//   E4 Show Stats counted as covering (MenuSystem: `isAnyPanelCovering(...) || showStats`, the shipped defect of review
+//      2026-10-27 HIGH 1)                                                     -> RED expected: "Show Stats (F3) paced the canvas"
 //   E0 identity (a comment edit in canvasPace.js)                              -> must SURVIVE
+// The unit half of E4 is tests/gates/canvas-pace-gates (C1-C3, run); this spec adds the real F3 key and the live Canvas.
 test('30 fps behind a panel, 10 unfocused, 60 otherwise, and never paced under capture', async ({ page }) => {
   test.setTimeout(240000);
   await bootDev(page);
@@ -46,6 +49,15 @@ test('30 fps behind a panel, 10 unfocused, 60 otherwise, and never paced under c
   await settle();
   const refocused = await loop();
 
+  // Show Stats (F3, a React-local panel FLAG) draws its readout inside the canvas and covers nothing: the canvas must
+  // stay at its play pace, or the readout reports the pace instead of the game. Presence first: the readout is up.
+  await page.keyboard.press('F3');
+  await settle();
+  const stats = await loop();
+  const statsShown = await page.evaluate(() => !!document.querySelector('[data-testid="frame-stats"]'));
+  await page.keyboard.press('F3');
+  await settle();
+
   // A React-LOCAL panel (InputManager's useState, not the store): achievements, on Tab while in play (InputManager.jsx).
   // Last before capture, because closing it asks for the pointer lock back, which a headless page refuses.
   await page.keyboard.press('Tab');
@@ -58,7 +70,7 @@ test('30 fps behind a panel, 10 unfocused, 60 otherwise, and never paced under c
   await settle();
   const capture = await loop();
 
-  const where = JSON.stringify({ open, inventory, closed, achievements, achievementsOpen, blurred, refocused, capture });
+  const where = JSON.stringify({ open, inventory, closed, achievements, achievementsOpen, blurred, refocused, stats, statsShown, capture });
   console.log(`canvas-pace-panels: ${where}`);
   expect(inventory, `not paced behind the inventory: ${where}`).toEqual({ loop: 'demand', fps: 30 });
   expect(closed, `still paced after the inventory closed: ${where}`).toEqual({ loop: 'demand', fps: 60 });
@@ -66,5 +78,7 @@ test('30 fps behind a panel, 10 unfocused, 60 otherwise, and never paced under c
   expect(achievements, `not paced behind the achievements panel: ${where}`).toEqual({ loop: 'demand', fps: 30 });
   expect(blurred, `not paced in an unfocused window: ${where}`).toEqual({ loop: 'demand', fps: 10 });
   expect(refocused, `still paced after the window regained focus: ${where}`).toEqual({ loop: 'demand', fps: 60 });
+  expect(statsShown, `SETUP: F3 did not show the Show Stats readout — the stats case was not exercised: ${where}`).toBe(true);
+  expect(stats, `Show Stats (F3) paced the canvas it is measuring: ${where}`).toEqual({ loop: 'demand', fps: 60 });
   expect(capture, `the capture harness was paced behind a panel: ${where}`).toEqual({ loop: 'always', fps: 0 });
 });

@@ -17,6 +17,23 @@ export const PANEL_FLAGS = [
   'showSpellUpgrades', 'showAchievements', 'showStats',
 ];
 
+// The flags that put a full-screen scrim over the game canvas, which render/canvasPace.js paces down behind. Every panel
+// above draws one (an `inset-0` backdrop) EXCEPT Show Stats: F3 is the frame-time readout drawn INSIDE the canvas, so
+// pacing the canvas for it throttled the game to 30 fps, made the readout report the pace instead of the game, and
+// unmounted the tier governor's monitor (review 2026-10-27, steady-cool item g). A new panel covers by default; list it
+// here only if it draws no scrim.
+export const NON_COVERING_FLAGS = ['showStats'];
+export const COVERING_FLAGS = PANEL_FLAGS.filter((key) => !NON_COVERING_FLAGS.includes(key));
+
+/** isAnyPanelCovering(flags) -> true if a panel whose scrim covers the game canvas is open. Same input as isAnyPanelOpen. */
+export function isAnyPanelCovering(flags) {
+  if (!flags) return false;
+  for (const key of COVERING_FLAGS) {
+    if (flags[key]) return true;
+  }
+  return false;
+}
+
 /**
  * isAnyPanelOpen(flags) -> true if ANY known panel flag in `flags` is truthy.
  * `flags` = a merged object of the store panel flags + the React-local ones. Missing keys read falsy

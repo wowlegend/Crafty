@@ -18,7 +18,7 @@ import {
 } from './ui/panels/lazyPanels.js';
 import { Icon, Button } from './ui/primitives/index.js';
 import { AchievementsPanel } from './QuestSystem';
-import { shouldShowTitleMenu, shouldShowResumeOverlay, isAnyPanelOpen } from './ui/panelState.js';
+import { shouldShowTitleMenu, shouldShowResumeOverlay, isAnyPanelCovering } from './ui/panelState.js';
 import { isCaptureMode } from './devtest/captureMode.js';
 import { isTouchDevice } from './input/touchDevice';
 import { useT } from './i18n/i18n.js';
@@ -60,8 +60,9 @@ export function MenuSystem({
     useGameStore.setState({ titleCovering: titleMenuVisible });
   }, [titleMenuVisible]);
   // And whether a panel's full-screen scrim covers it (the same canvas pacing, plan 2026-10-27-crafty-steady-cool item g).
-  // Published here because three of the panel flags are React-local and this is where all of them meet.
-  const panelCovering = isAnyPanelOpen({ ...gameState, showSpellUpgrades, showAchievements, showStats });
+  // Published here because three of the panel flags are React-local and this is where all of them meet. COVERING, not
+  // open: Show Stats (F3) is a panel flag but draws inside the canvas, and must not pace the game it is measuring.
+  const panelCovering = isAnyPanelCovering({ ...gameState, showSpellUpgrades, showAchievements, showStats });
   useEffect(() => {
     useGameStore.setState({ panelCovering });
   }, [panelCovering]);
