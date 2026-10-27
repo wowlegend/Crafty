@@ -1,7 +1,7 @@
 {
   "_README": "Accepted home-path debt, per file. MAY FALL, NEVER RISE. Secrets and agent attribution are never ratcheted. Regenerate: node scripts/ci/opsec-scan.mjs --all --write",
-  "_total": 420,
-  "_files": 47,
+  "_total": 419,
+  "_files": 46,
   "files": {
     ".agent/AGENTS.md": 3,
     ".claude/workflows/crafty-s0-reality-audit.js": 1,
@@ -48,7 +48,6 @@
     "memory/CHANGELOG.md": 7,
     "memory/IN_DEPTH_AUDIT.md": 25,
     "memory/REALITY-AUDIT-2026-05-30.md": 1,
-    "memory/S2B2-M2-PERF.md": 1,
-    "scripts/hooks/post-compact-rules.sh": 1
+    "memory/S2B2-M2-PERF.md": 1
   }
 }

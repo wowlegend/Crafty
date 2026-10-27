@@ -15,17 +15,6 @@
     ]
   },
   "hooks": {
-    "PostCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh \"$CLAUDE_PROJECT_DIR/scripts/hooks/post-compact-rules.sh\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
@@ -60,6 +49,16 @@
       }
     ],
     "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/scripts/hooks/session-start-compact.sh\"",
+            "timeout": 10
+          }
+        ]
+      },
       {
         "hooks": [
           {
