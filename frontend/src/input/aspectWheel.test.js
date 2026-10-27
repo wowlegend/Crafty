@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ASPECT_VERBS, unlockedAspectVerbs, fanLayout, fanItemStyle, fanOpenerStyle, fanItemInnerEdge, FAN_ANCHOR_RIGHT, TOUCH_BTN, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS, cooldownFraction, anyOnCooldown } from './aspectWheel.js';
+import { ASPECT_VERBS, unlockedAspectVerbs, aspectRing, fanLayout, fanItemStyle, fanOpenerStyle, fanItemInnerEdge, FAN_ANCHOR_RIGHT, TOUCH_BTN, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS, cooldownFraction, anyOnCooldown } from './aspectWheel.js';
 import { KEY_MAP } from '../game/keyMap.js';
 import { INTENT_KEYS } from './inputState.js';
 
@@ -45,6 +45,35 @@ describe('aspectWheel — unlock gating', () => {
   it('treats rank 0 as LOCKED, not unlocked', () => {
     // The store writes rank numbers; `talentId in unlockedTalents` would wrongly admit a refunded talent.
     expect(unlockedAspectVerbs({ [ASPECT_VERBS[0].talent]: 0 })).toEqual([]);
+  });
+});
+
+// Phase 0c (refute F9): the ring draws EVERY Aspect and marks the locked ones (aspectRing's docblock says why).
+describe('aspectRing — every sector, locked ones marked', () => {
+  it('offers all four, in KEY_MAP order, ALL locked when nothing is unlocked', () => {
+    const ring = aspectRing({});
+    expect(ring.map((a) => a.verb)).toEqual(ASPECT_VERBS.map((a) => a.verb));
+    expect(ring).toHaveLength(4);
+    expect(ring.every((a) => a.locked)).toBe(true);
+    expect(aspectRing(undefined).every((a) => a.locked)).toBe(true);
+  });
+
+  it('unlocks exactly the verbs whose talent has a rank — one live, three locked', () => {
+    const two = ASPECT_VERBS[1];
+    const ring = aspectRing({ [two.talent]: 1 });
+    expect(ring.filter((a) => !a.locked).map((a) => a.verb)).toEqual([two.verb]);
+    expect(ring.filter((a) => a.locked)).toHaveLength(3);
+  });
+
+  it('treats rank 0 as LOCKED — a refunded talent must not light its sector', () => {
+    expect(aspectRing({ [ASPECT_VERBS[0].talent]: 0 })[0].locked).toBe(true);
+  });
+
+  it('agrees with unlockedAspectVerbs on which are live, for every single unlock', () => {
+    for (const a of ASPECT_VERBS) {
+      const map = { [a.talent]: 2 };
+      expect(aspectRing(map).filter((x) => !x.locked).map((x) => x.verb)).toEqual(unlockedAspectVerbs(map).map((x) => x.verb));
+    }
   });
 });
 

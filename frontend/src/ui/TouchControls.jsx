@@ -5,7 +5,8 @@ import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 import { useActiveInput } from '../input/useActiveInput';
 import { setIntent, setActive, getInput } from '../input/inputState';
-import { unlockedAspectVerbs, fanLayout, fanItemStyle, fanOpenerStyle, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS } from '../input/aspectWheel';
+import { aspectRing, fanLayout, fanItemStyle, fanOpenerStyle, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS } from '../input/aspectWheel';
+import { makeIntentHold } from '../input/touchHold';
 import { SPELL_ORDER, spellLabelKey } from '../input/spellPicker';
 import { makeTouchRouter } from '../input/touchMath';
 import { ownsTouch } from '../input/touchOwnership';
@@ -25,17 +26,39 @@ import { isAnyPanelOpen } from './panelState.js';
  * <TouchControlsSurface> (pointerEvents:none); the transparent data-touch-btn hit-areas, aligned to
  * those glyphs, are the real targets.
  */
-export default function TouchControls({ isWorldBuilt }) {
+export default function TouchControls({ isWorldBuilt, talentsOpen = false, onOpenTalents }) {
   if (isCaptureMode()) {
     // capture renders the tray OPEN so mobile.png locks the full M3a feature (grid icon + 4 openers).
     return getCaptureOpts().showTouch ? <TouchControlsSurface trayOpen /> : null;
   }
   if (!isTouchDevice()) return null;
-  return <TouchControlsLive isWorldBuilt={isWorldBuilt} />;
+  return <TouchControlsLive isWorldBuilt={isWorldBuilt} talentsOpen={talentsOpen} onOpenTalents={onOpenTalents} />;
 }
 
+// PHASE 0c — PRESS-AND-HOLD CONTROLS (plan docs/superpowers/plans/2026-10-27-crafty-touch-hold.md).
+//
+// A press keeps its pointer: with capture, a thumb that drifts off the control still releases ON it. A synthetic or
+// already-ended pointer cannot be captured (setPointerCapture throws NotFoundError), and jsdom has no capture at all;
+// the release handlers below still end the hold, so the throw is swallowed rather than allowed to abort the press.
+function capturePointer(e) {
+  const el = e.currentTarget;
+  if (!el || typeof el.setPointerCapture !== 'function') return;
+  try {
+    el.setPointerCapture(e.pointerId);
+  } catch {
+    // see above: the press stands; a release handler ends it
+  }
+}
+// Every way a touch can end. iOS can swallow pointerup inside a system gesture and deliver pointercancel instead;
+// capture can be lost with neither; pointerleave covers a browser that does not capture. Each handler must be
+// idempotent, because one lift delivers pointerup AND lostpointercapture AND (for touch) pointerleave.
+const releaseHandlers = (end) => ({ onPointerUp: end, onPointerCancel: end, onLostPointerCapture: end, onPointerLeave: end });
+// A long press must not raise a platform menu over a hold control. Defensive: not verified on a device.
+const noMenu = (e) => e.preventDefault();
+
 // isWorldBuilt is App-LOCAL useState (App.jsx:105 -- verified NOT a store key) -> passed as a prop.
-function TouchControlsLive({ isWorldBuilt }) {
+// talentsOpen / onOpenTalents are App-LOCAL too (the Talents panel's flag lives in useInputManager): Phase 0c, F9.
+function TouchControlsLive({ isWorldBuilt, talentsOpen, onOpenTalents }) {
   const t = useT();
   const rootRef = useRef(null);
   const routerRef = useRef(makeTouchRouter());
@@ -45,6 +68,16 @@ function TouchControlsLive({ isWorldBuilt }) {
   const [wheelOpen, setWheelOpen] = useState(false);
   const [spellOpen, setSpellOpen] = useState(false);
   const nubRafRef = useRef(0);                  // W4-T11: rAF throttle for the imperative knob-follow (no React state -> GLI trap-6)
+  // Phase 0c: the ROAR is press-and-hold (input/touchHold.js). The transform charges for ANTICIPATION_SEC and cancels
+  // the frame the intent drops, so the old 120 ms pulse could never commit it. One hold for the overlay's life,
+  // driven only from event handlers and effects — never per-frame React state (Game-Loop Isolation).
+  const [roarHold] = useState(() => makeIntentHold({ verb: 'roar', setIntent, now: () => performance.now() }));
+  // A hold must end however its control goes away, or the next press has no rising edge and is eaten. Input going
+  // dead (pause, a panel, death) drops it at once; the ring closing under a held finger (a second finger on the
+  // opener) releases it as a lift would; unmounting drops it.
+  useEffect(() => { if (!active) roarHold.drop(); }, [active, roarHold]);
+  useEffect(() => { if (!wheelOpen) roarHold.release(); }, [wheelOpen, roarHold]);
+  useEffect(() => () => roarHold.drop(), [roarHold]);
   // M3a: while any tray panel is open the control surface yields (active=false) so the panel is natively
   // interactive (no camera-drag fight, no preventDefault eating panel scroll). anyPanel also suppresses
   // tap-to-play so taps reach the panel; the panel's own close (X) returns to the tap-to-play state.
@@ -144,7 +177,9 @@ function TouchControlsLive({ isWorldBuilt }) {
 
   const dispatch = (b) => useGameStore.getState().performVerb?.(b);
   // Focus model (spec section 3 trap-3): touch owns setActive. Tap-to-Play when world is up + alive + not live.
-  const showTapToPlay = isWorldBuilt && isAlive && !active && !anyPanel;
+  // !talentsOpen: the Talents panel's flag is App-local, so `anyPanel` cannot see it, and without this a locked-sector
+  // tap (which opens Talents and lowers `active`) would put a full-screen tap-to-play over the panel it just opened.
+  const showTapToPlay = isWorldBuilt && isAlive && !active && !anyPanel && !talentsOpen;
   // transparent hit-target geometry mirrors the visible glyphs in TouchControlsSurface.
   // REACTIVE, not getState(): this was a non-reactive read during render, so unlocking an Aspect did not
   // re-render the ring — the new sector appeared only when something ELSE happened to re-render this
@@ -153,8 +188,8 @@ function TouchControlsLive({ isWorldBuilt }) {
   // exactly this pattern for `activeBeastForm`. Found by the touch probe, which reported "no touch-aspects
   // toggle in the DOM" after unlocking all four Aspects.
   const unlockedTalents = useGameStore((s) => s.unlockedTalents);
-  const aspects = unlockedAspectVerbs(unlockedTalents);
-  const ringPositions = fanLayout(aspects.length);
+  const ring = aspectRing(unlockedTalents); // every Aspect, locked ones marked (Phase 0c, F9 — aspectWheel.js)
+  const ringPositions = fanLayout(ring.length);
   const spellPositions = fanLayout(SPELL_ORDER.length);
   // pointerEvents 'auto' re-enables hit-testing on each control, since the root below is now 'none' (X3).
   const hit = { position: 'absolute', background: 'transparent', border: 'none', padding: 0, opacity: 0, pointerEvents: 'auto' };
@@ -230,24 +265,54 @@ function TouchControlsLive({ isWorldBuilt }) {
       {/* X1 ASPECT RING — the four Aspect verbs (roar / grab / snare / imbue) had NO touch affordance at
           all, so the game's signature identity was desktop-only (STATUS §E-bis X1; pillars P1 + P4).
           Mirrors the M3a tray deliberately: a toggle plus `data-touch-btn` hit-targets, so the router
-          already skips them and TouchControlsSurface draws the glyphs. ONLY UNLOCKED verbs get a sector —
-          a thumb-sized target that can only refuse is a worse trade than no target. Writes the SAME
-          boolean intents the keyboard writes, pulsed, so nothing downstream changes. */}
-      {active && aspects.length > 0 && (
+          already skips them and TouchControlsSurface draws the glyphs. Writes the SAME boolean intents the
+          keyboard writes, so nothing downstream changes.
+          Phase 0c (F9): EVERY Aspect gets a sector, and the opener is always offered. A locked sector writes
+          no intent and opens the Talents panel instead — until this phase nothing on touch opened that panel,
+          so no Aspect could ever be unlocked on an iPad (the reasoning is at aspectWheel.js `aspectRing`). */}
+      {active && (
         <button data-touch-btn onPointerUp={() => setWheelOpen((o) => !o)} aria-label={t('a11y.aspects')} data-testid="touch-aspects"
           style={{ ...hit, ...fanOpenerStyle(ASPECT_ROW_BOTTOM) }} />
       )}
-      {active && wheelOpen && aspects.map((a, i) => {
+      {active && wheelOpen && ring.map((a, i) => {
         const q = ringPositions[i] || { x: 0, y: 0 };
+        const place = { ...hit, ...fanItemStyle(ASPECT_ROW_BOTTOM, q) };
+        if (a.locked) {
+          return (
+            <button key={a.verb} data-touch-btn data-locked="true" data-testid={`touch-aspect-${a.verb}`}
+              aria-label={t('a11y.aspectLocked', { aspect: a.aspect })}
+              onPointerUp={() => {
+                // Open first, then yield: the same order as the KeyU branch (flag set before the input drops), and the
+                // same focus contract as the tray openers below (the panel must be natively interactive).
+                onOpenTalents?.();
+                setWheelOpen(false);
+                setActive(false);
+              }}
+              style={place} />
+          );
+        }
+        if (a.verb === 'roar') {
+          // PRESS-AND-HOLD (Phase 0c): the roar charges while held and commits at ANTICIPATION_SEC. A tap is still the
+          // old 120 ms pulse (makeIntentHold's minimum), so a tap in a beast form still exits it on the rising edge.
+          // The ring stays open while held — closing it on the press would unmount the sector under the finger.
+          return (
+            <button key={a.verb} data-touch-btn data-locked="false" data-testid={`touch-aspect-${a.verb}`} aria-label={a.aspect}
+              onPointerDown={(e) => { capturePointer(e); roarHold.press(); }}
+              {...releaseHandlers(() => { if (roarHold.release()) setWheelOpen(false); })}
+              onContextMenu={noMenu}
+              style={place} />
+          );
+        }
         return (
-          <button key={a.verb} data-touch-btn aria-label={a.aspect} data-testid={`touch-aspect-${a.verb}`}
+          <button key={a.verb} data-touch-btn data-locked="false" aria-label={a.aspect} data-testid={`touch-aspect-${a.verb}`}
             onPointerUp={() => {
-              // Pulse the intent exactly as a key press+release does (Components.jsx keydown/keyup).
+              // Pulse the intent exactly as a key press+release does (Components.jsx keydown/keyup). These verbs are
+              // edge-triggered with no charge, so a tap is all they need.
               setIntent(a.verb, true);
               setTimeout(() => setIntent(a.verb, false), TAP_HOLD_MS);
               setWheelOpen(false);
             }}
-            style={{ ...hit, ...fanItemStyle(ASPECT_ROW_BOTTOM, q) }} />
+            style={place} />
         );
       })}
 

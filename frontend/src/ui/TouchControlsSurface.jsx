@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { Sword, Zap, ChevronUp, Pause, LayoutGrid, Package, Hammer, Blocks, Sparkles, Wind, Flame } from 'lucide-react';
+import { Sword, Zap, ChevronUp, Pause, LayoutGrid, Package, Hammer, Blocks, Sparkles, Wind, Flame, Lock } from 'lucide-react';
 import { TRAY_PANELS } from './touchTray';
-import { unlockedAspectVerbs, fanLayout, fanItemStyle, fanOpenerStyle, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, cooldownFraction, anyOnCooldown } from '../input/aspectWheel';
+import { aspectRing, unlockedAspectVerbs, fanLayout, fanItemStyle, fanOpenerStyle, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, cooldownFraction, anyOnCooldown } from '../input/aspectWheel';
 import { SPELL_ORDER, spellLabelKey, spellAccent } from '../input/spellPicker';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
@@ -42,12 +42,14 @@ const BTN = (extra) => ({
  */
 export default function TouchControlsSurface({ trayOpen = false, wheelOpen = false, spellOpen = false }) {
   const t = useT();
-  // X1: only UNLOCKED Aspects get a glyph — the ring must not draw a sector the hit-layer will not offer.
+  // X1 + Phase 0c (F9): EVERY Aspect gets a glyph, mirroring the hit-layer (both read aspectRing); a locked one is
+  // dimmed and carries a lock, because its sector opens the Talents panel rather than firing.
   // REACTIVE, mirroring TouchControls: a non-reactive read here left the GLYPHS a frame behind the
   // hit-targets after a talent unlock — the tappable sector existed with nothing drawn on it.
   const unlockedTalents = useGameStore((s) => s.unlockedTalents);
-  const aspects = unlockedAspectVerbs(unlockedTalents);
-  const ringPositions = fanLayout(aspects.length);
+  const ring = aspectRing(unlockedTalents);
+  const aspects = unlockedAspectVerbs(unlockedTalents); // the live subset: only these can be cooling down
+  const ringPositions = fanLayout(ring.length);
   const spellPositions = fanLayout(SPELL_ORDER.length);
   const activeSpell = useGameStore((st) => st.activeSpell);
 
@@ -104,21 +106,23 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
           game's signature was desktop-only. Toggle sits above the cast button, in thumb reach; the ring
           fans out from it. Geometry comes from the shared fanItemStyle() so the glyphs and the hit-targets in
           TouchControls cannot drift apart — they read the same function, not two copies of the numbers. */}
-      {aspects.length > 0 && (
-        <div style={BTN(fanOpenerStyle(ASPECT_ROW_BOTTOM))}>
-          <Flame size={24} strokeWidth={2.4} color={GLYPH} />
-          <div ref={toggleRef} data-testid="aspect-cooling" style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8,
-                        borderRadius: '50%', background: GOLD, border: `2px solid ${INK}`, opacity: 0 }} />
-        </div>
-      )}
-      {wheelOpen && aspects.map((a, i) => {
+      <div style={BTN(fanOpenerStyle(ASPECT_ROW_BOTTOM))}>
+        <Flame size={24} strokeWidth={2.4} color={GLYPH} />
+        <div ref={toggleRef} data-testid="aspect-cooling" style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8,
+                      borderRadius: '50%', background: GOLD, border: `2px solid ${INK}`, opacity: 0 }} />
+      </div>
+      {wheelOpen && ring.map((a, i) => {
         const q = ringPositions[i] || { x: 0, y: 0 };
         return (
-          <div key={a.verb} aria-label={a.aspect}
-               style={BTN(fanItemStyle(ASPECT_ROW_BOTTOM, q))}>
-            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: GLYPH }}>{a.key}</span>
-            <div ref={(el) => { sweepRefs.current[a.verb] = el; }} data-testid={`aspect-sweep-${a.verb}`}
-                 style={{ position: 'absolute', inset: 0, borderRadius: '50%', opacity: 0, pointerEvents: 'none' }} />
+          <div key={a.verb} aria-label={a.aspect} data-testid={`aspect-glyph-${a.verb}`} data-locked={a.locked ? 'true' : 'false'}
+               style={BTN({ ...fanItemStyle(ASPECT_ROW_BOTTOM, q), opacity: a.locked ? 0.55 : 1 })}>
+            {a.locked
+              ? <Lock size={20} strokeWidth={2.6} color={GLYPH} />
+              : <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: GLYPH }}>{a.key}</span>}
+            {!a.locked && (
+              <div ref={(el) => { sweepRefs.current[a.verb] = el; }} data-testid={`aspect-sweep-${a.verb}`}
+                   style={{ position: 'absolute', inset: 0, borderRadius: '50%', opacity: 0, pointerEvents: 'none' }} />
+            )}
           </div>
         );
       })}

@@ -43,18 +43,36 @@ export const ASPECT_VERBS = KEY_MAP.filter((r) => r.group === 'Aspects' && r.ver
 export const TAP_HOLD_MS = 120;
 
 /**
- * Which Aspect verbs a player can actually use right now.
- *
- * GATED, NOT GREYED. The desktop path lets a locked verb through and fires a "denied" toast — reasonable
- * with a physical key you might press by accident. A ring is a menu the player chose to open, and offering a
- * sector that only ever refuses is a worse trade on a thumb-sized target than simply not offering it. A
- * player with nothing unlocked gets no ring at all, which is honest: there is nothing to show.
+ * Which Aspect verbs a player can actually use right now (rank > 0; a refunded talent sits at rank 0 and is LOCKED).
+ * The ring draws every Aspect (see `aspectRing`); this is the live subset, e.g. for the cooldown aggregate.
  *
  * @param {Record<string, number>|undefined} unlockedTalents store map talentId -> rank
  */
 export function unlockedAspectVerbs(unlockedTalents) {
   const t = unlockedTalents || {};
   return ASPECT_VERBS.filter((a) => (t[a.talent] ?? 0) > 0);
+}
+
+/**
+ * The ring's sectors: EVERY Aspect, in KEY_MAP order, each marked `locked` or not.
+ *
+ * SHOWN, LOCKED ONES MARKED — a reversal, Phase 0c (refute F9, plan docs/superpowers/plans/2026-10-27-crafty-touch-hold.md).
+ * This used to be GATED, NOT GREYED: "offering a sector that only ever refuses is a worse trade on a thumb-sized
+ * target than not offering it". That held only while the refusal was the end of the story. On desktop it is not — a
+ * locked key press teaches "open Talents (U)" (Components.jsx keydown, deniedReason.js). On touch there is no U and,
+ * until this phase, no other way to the Talents panel at all, so hiding a locked Aspect hid the only path that could
+ * lead a touch player to the game's signature: a new iPad player saw no ring, could unlock nothing, and never would.
+ * Now a locked sector is drawn dimmed with a lock, and tapping it opens the Talents panel — the touch form of the
+ * desktop's notice: the same trigger, the same purpose, delivered without naming a key the device lacks. The spell
+ * picker took the ungated side earlier for the same reason (TouchControls.jsx: touch must not be stricter than the
+ * keyboard). A locked sector writes NO intent.
+ *
+ * @param {Record<string, number>|undefined} unlockedTalents store map talentId -> rank
+ * @returns {Array<{verb:string, talent:string, key:string, aspect:string, locked:boolean}>}
+ */
+export function aspectRing(unlockedTalents) {
+  const t = unlockedTalents || {};
+  return ASPECT_VERBS.map((a) => ({ ...a, locked: !((t[a.talent] ?? 0) > 0) }));
 }
 
 /**
