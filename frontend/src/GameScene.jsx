@@ -276,7 +276,9 @@ export const GameScene = React.memo(function GameScene({
       >
         <CaptureClockTicker />
         <WorldClockTicker />
-        {!isCaptureMode && !isPerfProbe() && (
+        {/* render/canvasPace.js `governor`: never under the capture harness or the perf probe, and never behind the
+            title, whose 10 fps pace it would read as a slow machine. Unmounted there, so play starts it fresh. */}
+        {pace.governor && (
           // S2-A-M4a: tier recovery. Previously onDecline ratcheted the tier ONE-WAY toward
           // `low` under any transient FPS dip and never recovered. onIncline mirrors it:
           // low->med->high on sustained FPS headroom. Steady-state oscillation is prevented
