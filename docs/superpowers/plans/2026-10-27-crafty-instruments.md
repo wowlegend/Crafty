@@ -125,6 +125,26 @@ comment edit) that must survive.
 - **The probe itself, once, at the end** against a production build made in this worktree: the Chromium renderer string
   must not be SwiftShader; frames opened by eye; processes killed and swept.
 
+## Measured (the one allowed probe run, 2026-10-27, build `index-CZasAx0I.js` from commit `c9f07c36`)
+
+These are the run's own readings, true for that build on that machine on that day; re-run rather than quote them.
+
+- **The Chromium GPU mode, verified by the renderer string.** `channel: 'chromium'` (new headless) and the same with
+  `--use-angle=metal` both read `ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)`; Playwright's
+  default headless shell read `ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) ...), SwiftShader driver)`.
+  The GAME's own renderer (seam `info().gl`) agreed with the about:blank probe. WebKit reads only its masked
+  `Apple GPU`, so for WebKit "hardware" is inferred, not proven.
+- **48 of 48 shots valid** (16 per target): input live, player alive, no context loss, clock within 0.0033 of the
+  asked cycle, 0 console errors and 0 page errors on all three targets. Tier `high` at dpr 2 on all three, including
+  the touch targets, whose coarse pointer starts them at `low`: the governor inclined to `high` on this Mac, which says
+  nothing about an iPad's GPU.
+- **Motion on, seen in the frames:** mobs (spiders, husks with red eyes), NPCs with nametags, motes, rain, onboarding-free
+  HUD, and the game's own toasts ("Dusk approaches", "Night 1 — the first siege begins") — the real game, not capture.
+- **Observations for the looks lanes, not diagnosed here:** at cycle 0.75 (midnight) the sky renders a saturated orange
+  in BOTH Chromium and WebKit (snow-terrace and coast, with rain and Night 1's siege on); at 0.48 the Hearth's stone pad
+  reads deep blue in WebKit portrait. The forest-edge pose sits at canopy height (camera y 56 over trees standing on
+  y ~44), so a leaf block fills the middle of that frame: raise it (around y 66, z 104) and re-shoot.
+
 ## Heat cost
 
 Nothing in play: one module-level null read per Player frame while no pose is set. The readout costs work only while

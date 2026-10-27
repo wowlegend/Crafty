@@ -12,7 +12,10 @@
  * WHAT IT DOES. Serves build/ with `vite preview` (scripts/visual/_serve.mjs, port allocated there). For Chromium it
  * first TRIES each launch candidate (_lookbook.mjs CHROMIUM_CANDIDATES) on about:blank and records every renderer
  * string, then uses the first whose renderer is hardware — never assumed: on a Mac the goal is ANGLE-on-Metal, and a
- * SwiftShader frame is refused as a real-GPU frame (exit 3) unless --allow-software. Per target it opens
+ * SwiftShader frame is refused as a real-GPU frame (exit 3) unless --allow-software. (Measured once, 2026-10-27, on an
+ * M3 Max under macOS 27.0.1 with Playwright 1.64.1: new headless and new headless + --use-angle=metal both gave
+ * "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max ...)"; the headless shell gave SwiftShader. Re-read
+ * lookbook.json `chromiumCandidates` rather than trusting this line on another machine.) Per target it opens
  * `/?lookbook=1` (the production seam, src/render/lookbookSeam.js), shoots the title, enters play (a real tap on Start
  * Adventure on the touch targets; the seam's play() on desktop, where headless Chromium refuses pointer lock), and for
  * each of four places pins the camera and shoots the programme's four times of day. The clock keeps running, so it
@@ -255,6 +258,9 @@ async function shootTarget(target, launchOpts, launchId) {
     }
     await page.evaluate(() => window.__craftyLookbook.clear());
     report.gpu = classifyRenderer(report.renderer);
+    if (/^apple gpu$/i.test(String(report.renderer).trim())) {
+      report.notes.push('WebKit MASKS its renderer as "Apple GPU": hardware is inferred from WebKit\'s ANGLE-Metal path on macOS, not proven by this string');
+    }
     return report;
   } finally {
     await close(b);
