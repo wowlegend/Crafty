@@ -34,12 +34,14 @@ jobs:
   # ---------------------------------------------------------------------------
   gates:
     name: unit · lint · knip · build
-    runs-on: ubuntu-latest
+    # PINNED, not ubuntu-latest (2026-10-27): GitHub annotated "The ubuntu-latest label will migrate to Ubuntu 26
+    # beginning October 19, 2026", which would move the e2e browsers' OS with no commit here. Move the pin by hand.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -77,16 +79,16 @@ jobs:
   # a shard (shared in-page game state is why they must stay serialized).
   e2e:
     name: e2e (playwright) ${{ matrix.shard }}/3
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false # one red shard must not hide the results of the other two
       matrix:
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -142,7 +144,7 @@ jobs:
       # in a single look a root cause that instead took three parallel investigations to corner, one
       # of which reached a conclusion the timing data refuted. An upload path is a denominator too.
       # Coverage is excluded: it is per-test JSON that the reachability report already consumed.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-traces-shard-${{ matrix.shard }} # per-shard: a fixed name collides across the matrix
@@ -158,13 +160,13 @@ jobs:
   # ---------------------------------------------------------------------------
   docs:
     name: doc currency
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     defaults:
       run:
         working-directory: . # this one runs at the repo ROOT
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Doc-currency lint
         run: node frontend/scripts/ci/doc-currency.mjs
 
