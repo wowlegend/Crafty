@@ -28,9 +28,12 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
   await startPlayActive(page);
   const panel = page.getByTestId('context-loss-panel');
   await expect(panel, 'SETUP: the panel is up before any loss').toHaveCount(0);
-  // WHAT THE GAME CANVAS SHOWS, as composited pixels (review 2026-10-27 MED 3). The old check counted frame-loop callbacks,
-  // which keep running while the context is lost, so it could not fail. Every other element is hidden for the shot (the
-  // HUD over the canvas is non-uniform on its own); the game canvas is the largest one on the page.
+  // WHETHER THE GAME CANVAS IS BEING DRAWN, read from composited pixels (review 2026-10-27 MED 3). The old check counted
+  // frame-loop callbacks, which keep running while the context is lost, so it could not fail. A tonal-range check cannot
+  // do it either: measured locally 2026-10-27, a LOST canvas keeps showing its last image (range 173, against 242 lit), so
+  // "not blank" passes on a frozen canvas. What separates drawing from frozen is CHANGE: two shots 1.5 s apart differ
+  // while the world draws (water, motes, grass) and are identical while it does not. Every other element is hidden for
+  // the shot (the HUD over the canvas changes on its own); the game canvas is the largest one on the page.
   const canvasShot = async () => {
     await page.evaluate(() => {
       const all = [...document.querySelectorAll('canvas')];
@@ -43,31 +46,52 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
     });
     const png = PNG.sync.read(await page.locator('[data-e2e-game-canvas]').screenshot());
     await page.evaluate(() => document.getElementById('e2e-only-the-canvas')?.remove());
+    return png;
+  };
+  const lum = (d, i) => (d[i] + d[i + 1] + d[i + 2]) / 3;
+  // The share of pixels whose luminance moved by more than 8 between two shots taken 1.5 s apart, and the second's range.
+  const liveness = async () => {
+    const a = await canvasShot();
+    await page.waitForTimeout(1500);
+    const b = await canvasShot();
+    if (a.width !== b.width || a.height !== b.height) return { moved: 1, range: 255, note: 'resized' };
+    let moved = 0;
     let min = 255;
     let max = 0;
-    for (let i = 0; i < png.data.length; i += 4) {
-      const l = (png.data[i] + png.data[i + 1] + png.data[i + 2]) / 3;
+    for (let i = 0; i < b.data.length; i += 4) {
+      const l = lum(b.data, i);
+      if (Math.abs(l - lum(a.data, i)) > 8) moved += 1;
       if (l < min) min = l;
       if (l > max) max = l;
     }
-    return { range: Math.round(max - min), pixels: png.data.length / 4 };
+    return { moved: Number((moved / (b.data.length / 4)).toFixed(5)), range: Math.round(max - min) };
   };
-  // Presence first: the same instrument sees a drawn world before the loss (smoke.spec's tonal-range floor, 20).
-  const lit = await canvasShot();
-  expect(lit.range, `SETUP: the canvas reads blank before any loss — the instrument sees nothing: ${JSON.stringify(lit)}`).toBeGreaterThan(20);
+  // Calibrated from local runs 2026-10-27 (swiftshader, load 35-220): a drawing canvas moved 13.3%, 13.7% and 83.6% of its
+  // pixels in 1.5 s; a lost one moved 0% twice and 0.447% twice (a fixed region, same value both times). 2% sits 4.5x
+  // above the most a frozen canvas moved and 6.6x below the least a drawing one did.
+  const LIVE = 0.02;
+  // Presence first: the instrument sees a drawn, moving world before the loss.
+  const lit = await liveness();
+  expect(lit.range, `SETUP: the canvas reads blank before any loss: ${JSON.stringify(lit)}`).toBeGreaterThan(20);
+  expect(lit.moved, `SETUP: the world does not move between two shots here — liveness cannot be read: ${JSON.stringify(lit)}`).toBeGreaterThan(LIVE);
 
   // A real loss, then the browser's restore.
   expect(await page.evaluate(() => window.__craftyTest.call('webglContext', 'lose')), 'SETUP: WEBGL_lose_context is unavailable here').toBe(true);
   await expect(panel, 'no panel after the loss').toBeVisible({ timeout: 10000 });
   await expect(panel).toContainText('Graphics were reset by the system');
-  const dark = await canvasShot();
+  // The control: a canvas that is not being drawn reads as frozen to this instrument. A second's settle first, so the pair
+  // does not straddle the last frame the compositor presented before the loss.
+  await page.waitForTimeout(1000);
+  const dark = await liveness();
+  expect(dark.moved, `SETUP: the LOST canvas still changes between shots — the instrument cannot tell frozen from drawing: ${JSON.stringify(dark)}`).toBeLessThan(LIVE);
   await page.evaluate(() => window.__craftyTest.call('webglContext', 'restore'));
   // The panel clears once three has drawn since the restore (game/contextRecovery.js whenDrawnAgain): a frame, not an event.
   await expect(panel, 'the panel stayed after the context came back').toHaveCount(0, { timeout: 30000 });
-  await page.waitForTimeout(2000);
-  const back = await canvasShot();
-  console.log(`context-loss: canvas tonal range lit ${lit.range} · lost ${dark.range} · restored ${back.range}`);
-  expect(back.range, `the canvas did not draw after the restore — it reads blank: ${JSON.stringify({ lit, dark, back })}`).toBeGreaterThan(20);
+  await page.waitForTimeout(1000);
+  const back = await liveness();
+  console.log(`context-loss: canvas liveness lit ${JSON.stringify(lit)} · lost ${JSON.stringify(dark)} · restored ${JSON.stringify(back)}`);
+  expect(back.moved, `the canvas did not draw after the restore — it is frozen: ${JSON.stringify({ lit, dark, back })}`).toBeGreaterThan(LIVE);
+  expect(back.range, `the canvas reads blank after the restore: ${JSON.stringify({ lit, dark, back })}`).toBeGreaterThan(20);
 
   // Lose it again and take the way back: the world must be the one that was being played — its progress, the blocks its
   // player placed, and where the player stood (review 2026-10-27 HIGH 2: coins alone came back; the edits and the
@@ -140,7 +164,14 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
   await page.evaluate(() => window.__craftyTest.call('webglContext', 'lose'));
   await expect(panel).toBeVisible({ timeout: 10000 });
   await Promise.all([page.waitForEvent('load', { timeout: 60000 }), panel.click()]);
-  await bootDev(page);
+  // NOT bootDev: it navigates (page.goto), a SECOND load of the tab. The first load after the recovery consumed the
+  // breadcrumb and resumed the world in memory; a second one starts empty with no breadcrumb left. Found by the first
+  // local run of this spec (2026-10-27): three `[vite] connecting...` in the trace and `world: null, coins: 0` — the
+  // check read a page with nothing left to resume, whatever the resume had done. Wait for the reloaded page instead.
+  await page.waitForFunction(
+    () => typeof window.useGameStore === 'function' && !!window.__craftyTest && typeof window.__craftyTest.ready === 'function' && window.__craftyTest.ready(),
+    null, { timeout: 60000 },
+  ).catch((e) => { throw new Error(`SETUP: the reloaded page never came up (store + test bridge) — ${e.message}`); });
   await page.waitForTimeout(1500); // the boot effect that consumes the breadcrumb
   const after = await page.evaluate(() => ({
     coins: window.useGameStore.getState().coins,
@@ -154,17 +185,24 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
   expect(after.crumb, 'the breadcrumb survived its use').toBeNull();
   expect(after.lost, 'the fresh page still believes its context is lost').toBe(false);
 
-  // The resumed world's blocks and the player's place. The spawn consumes resumeSpawn once its column has colliders.
+  // The resumed world's blocks and the player's place. The spawn consumes resumeSpawn once its column has colliders; the
+  // wait for THAT is the subject, not a precondition (a spawn that ignores resumeSpawn never consumes it), so only the
+  // world build is SETUP.
   await page.waitForFunction(() => {
     const s = window.useGameStore.getState();
-    return s.isSpawnChunkLoaded === true && s.resumeSpawn === null && !!s.playerRigidBodyRef?.current;
+    return s.isSpawnChunkLoaded === true && !!s.playerRigidBodyRef?.current;
   }, null, { timeout: 120000 }).catch(() => {
-    throw new Error('SETUP: the resumed world never built, or its spawn never resolved (isSpawnChunkLoaded / resumeSpawn)');
+    throw new Error('SETUP: the resumed world never built (isSpawnChunkLoaded / the player body)');
   });
+  await page.waitForFunction((st) => {
+    const s = window.useGameStore.getState();
+    const t = s.playerRigidBodyRef.current.translation();
+    return s.resumeSpawn === null && Math.hypot(t.x - st.x, t.z - st.z) < 1.5;
+  }, stood, { timeout: 60000 }).catch(() => {});
   await page.waitForTimeout(1000);
   const placed = await page.evaluate(() => {
     const t = window.useGameStore.getState().playerRigidBodyRef.current.translation();
-    return { x: t.x, y: t.y, z: t.z };
+    return { x: t.x, y: t.y, z: t.z, pending: window.useGameStore.getState().resumeSpawn };
   });
   const blockBack = await page.waitForFunction(({ m, top }) => {
     const y = window.useGameStore.getState().getMobGroundLevel?.(m.x, m.z);
