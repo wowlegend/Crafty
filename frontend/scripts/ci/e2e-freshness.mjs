@@ -252,17 +252,27 @@ export function readBaseCi(exec, timeoutMin = E2E_TIMEOUT_MIN) {
   }
 }
 
+/** The events whose runs test the commit's OWN tree. A pull_request run checks out GitHub's merge ref — the head merged
+ *  into the base as the base stood then — so its verdict is about a tree no commit here has (review 2026-10-27). */
+export const COMMIT_EVENTS = ['push', 'workflow_dispatch'];
+
 /**
- * CI's e2e verdict on ONE commit (tier 1b): the newest ci.yml runs on `sha`, any branch or event. 'success' when
- * some run's e2e jobs ALL passed (the same reading as the base, e2eJobsState); else null. Never 'failure': a red run
- * on this commit is not a receipt, and the base rules still apply. Network + gh, degrades to null, never throws.
+ * CI's e2e verdict on ONE commit (tier 1b): its newest ci.yml runs on `sha` (gh lists newest first), push or
+ * workflow_dispatch only (COMMIT_EVENTS). The first of them whose e2e jobs reached a verdict decides — 'success' or
+ * 'failure', the same reading as the base (e2eJobsState) — so a red re-run outranks the green before it. A run with no
+ * verdict yet (in progress, cancelled short, no e2e job) is passed over. { state: null } when none has one. A
+ * 'failure' is never a receipt: the caller stops on it and the base rules apply. Network + gh, degrades to null.
  */
 export function readCommitCi(exec, sha, timeoutMin = E2E_TIMEOUT_MIN) {
   if (!sha) return { state: null };
   try {
-    const ids = String(exec(`gh run list --workflow=ci.yml --commit ${sha} --limit 5 --json databaseId --jq '.[].databaseId'`)).trim().split(/\s+/).filter(Boolean);
-    for (const id of ids) {
-      if (e2eJobsState(exec, id, timeoutMin) === 'success') return { state: 'success', run: id };
+    // `|`-separated id and event, one run per line.
+    const runs = String(exec(`gh run list --workflow=ci.yml --commit ${sha} --limit 5 --json databaseId,event --jq '.[] | "\\(.databaseId)|\\(.event)"'`))
+      .trim().split(/\s+/).filter(Boolean).map((line) => line.split('|'));
+    for (const [id, event] of runs) {
+      if (!COMMIT_EVENTS.includes(event)) continue;
+      const state = e2eJobsState(exec, id, timeoutMin);
+      if (state) return { state, run: id };
     }
     return { state: null };
   } catch {
@@ -316,14 +326,15 @@ export function sameAppCommits(exec, max = 40) {
 }
 
 /**
- * CI's e2e verdict for this app tree: the first commit of `shas` (newest first, from sameAppCommits) on which some
- * ci.yml run had ALL e2e jobs green. `exact` says whether that commit is HEAD itself. Same degrade rule as
- * readCommitCi: only 'success' or null.
+ * CI's e2e verdict for this identity: walk `shas` (newest first, from sameAppCommits) and STOP at the first commit with
+ * ANY e2e verdict (readCommitCi). Green is a receipt. Red is not, and the walk does not go on to an older green: a
+ * newer red on the same identity is the newer evidence about the same content (review 2026-10-27 — the first version
+ * skipped it and borrowed the older green). `exact` says whether the deciding commit is HEAD itself.
  */
 export function readTreeCi(exec, shas, timeoutMin = E2E_TIMEOUT_MIN) {
   for (const [i, sha] of (shas || []).entries()) {
     const ci = readCommitCi(exec, sha, timeoutMin);
-    if (ci.state === 'success') return { ...ci, sha, exact: i === 0 };
+    if (ci.state) return { ...ci, sha, exact: i === 0 };
   }
   return { state: null };
 }

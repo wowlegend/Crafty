@@ -297,17 +297,61 @@ describe('tier 1b and the main-only red-base rule', () => {
     expect(mainMovesFrom('')).toBe(null);
     expect(mainMovesFrom(undefined)).toBe(null);
   });
-  it('readCommitCi: success only when some run on the commit has ALL e2e jobs green', () => {
-    const job = (c) => `completed,${c},2026-10-27T00:00:00Z,2026-10-27T00:10:00Z,9`;
-    const fake = (runs) => (cmd) => {
-      if (cmd.startsWith('gh run list')) return Object.keys(runs).join('\n');
-      const id = cmd.match(/gh run view (\S+)/)[1];
-      return runs[id];
-    };
-    expect(readCommitCi(fake({ 11: `${job('failure')} ${job('success')}`, 12: `${job('success')} ${job('success')}` }), 'abc')).toEqual({ state: 'success', run: '12' });
-    expect(readCommitCi(fake({ 11: `${job('failure')} ${job('success')}` }), 'abc')).toEqual({ state: null });
-    expect(readCommitCi(fake({ 13: '' }), 'abc'), 'a run with no e2e jobs is no verdict').toEqual({ state: null });
-    expect(readCommitCi(fake({}), '')).toEqual({ state: null });
+  // A fake gh serving `runs` — [{ id, sha, event, jobs }], NEWEST FIRST as gh lists them — that honours what it is
+  // asked: `run list` filters by --commit and stops at --limit, and answers a field only when --json requested it
+  // (gh's --jq sees nothing else, so an unrequested field reads null); `run view <id>` answers that run's jobs. Any
+  // other command throws. The line format mirrors the --jq expression; the real-repository test below runs real jq.
+  const job = (c) => `completed,${c},2026-10-27T00:00:00Z,2026-10-27T00:10:00Z,9`;
+  const GREEN = `${job('success')} ${job('success')}`;
+  const REDJOBS = `${job('failure')} ${job('success')}`;
+  const RUNNING = `${job('success')} in_progress,,2026-10-27T00:00:00Z,,9`;
+  const fakeGh = (runs) => (cmd) => {
+    let m = /^gh run list --workflow=ci\.yml --commit (\S+) --limit (\d+) --json (\S+) /.exec(cmd);
+    if (m) {
+      const fields = m[3].split(',');
+      const f = (r, k) => (fields.includes(k) ? r[k === 'databaseId' ? 'id' : k] : null);
+      return runs.filter((r) => r.sha === m[1]).slice(0, Number(m[2])).map((r) => `${f(r, 'databaseId')}|${f(r, 'event')}`).join('\n');
+    }
+    m = /^gh run view (\S+) --json jobs /.exec(cmd);
+    if (m) {
+      const run = runs.find((r) => String(r.id) === m[1]);
+      if (!run) throw new Error(`no run ${m[1]}`);
+      return run.jobs;
+    }
+    throw new Error(`fakeGh: unexpected command: ${cmd}`);
+  };
+  const run = (id, sha, jobs, event = 'push') => ({ id, sha, event, jobs });
+
+  // HIGH, review 2026-10-27: a newer RED on the same content is newer evidence than an older green. Within one commit
+  // the newest run with a verdict decides, exactly as the walk across commits does (readTreeCi).
+  it('readCommitCi: the NEWEST push/dispatch run with an e2e verdict decides — green or red', () => {
+    expect(readCommitCi(fakeGh([run(12, 'a', GREEN), run(11, 'a', REDJOBS)]), 'a')).toEqual({ state: 'success', run: '12' });
+    expect(readCommitCi(fakeGh([run(12, 'a', REDJOBS), run(11, 'a', GREEN)]), 'a'), 'a red re-run outranks the green before it')
+      .toEqual({ state: 'failure', run: '12' });
+    expect(readCommitCi(fakeGh([run(13, 'a', RUNNING), run(11, 'a', GREEN)]), 'a'), 'a run with no verdict yet is passed over')
+      .toEqual({ state: 'success', run: '11' });
+    expect(readCommitCi(fakeGh([run(13, 'a', '')]), 'a'), 'a run with no e2e jobs is no verdict').toEqual({ state: null });
+    expect(readCommitCi(fakeGh([run(12, 'b', GREEN)]), 'a'), 'another commit\'s run').toEqual({ state: null });
+    expect(readCommitCi(fakeGh([]), '')).toEqual({ state: null });
+  });
+
+  // MED, review 2026-10-27: a pull_request run checks out GitHub's MERGE ref — the head merged into the base as it
+  // stood — so its verdict is about a tree no commit here has. Only push and workflow_dispatch runs test the commit.
+  it('readCommitCi: a pull_request run is never a verdict on the commit; push and workflow_dispatch are', () => {
+    expect(readCommitCi(fakeGh([run(14, 'a', GREEN, 'pull_request')]), 'a'), 'a green PR run').toEqual({ state: null });
+    expect(readCommitCi(fakeGh([run(14, 'a', GREEN, 'pull_request'), run(11, 'a', REDJOBS)]), 'a'), 'the PR run is skipped, not decisive')
+      .toEqual({ state: 'failure', run: '11' });
+    expect(readCommitCi(fakeGh([run(15, 'a', GREEN, 'workflow_dispatch')]), 'a')).toEqual({ state: 'success', run: '15' });
+    expect(readCommitCi(fakeGh([run(16, 'a', GREEN, 'push')]), 'a')).toEqual({ state: 'success', run: '16' });
+  });
+
+  it('readTreeCi [D, C red, A green]: the walk STOPS at C — a newer red on the same identity is no receipt', () => {
+    const gh = fakeGh([run(31, 'C', REDJOBS), run(21, 'A', GREEN)]);
+    const ci = readTreeCi(gh, ['D', 'C', 'A']);
+    expect(ci).toEqual({ state: 'failure', run: '31', sha: 'C', exact: false });
+    expect(verdict({ id: 'x', files: 3 }, null, { state: 'failure' }, { commitCi: ci, mainMoves: true }).code, 'red is not a receipt: the base rules apply').toBe(1);
+    expect(readTreeCi(fakeGh([run(21, 'A', GREEN)]), ['D', 'C', 'A']), 'presence control: with no red on C, A\'s green IS borrowed')
+      .toEqual({ state: 'success', run: '21', sha: 'A', exact: false });
   });
 
   // A fake git that HONOURS what it is asked (review 2026-10-27: the previous fake answered every rev-list with its
@@ -374,23 +418,15 @@ describe('tier 1b and the main-only red-base rule', () => {
     expect(env.GIT_DIR, 'the caller\'s env is not edited').toBe('d');
   });
 
-  it('readTreeCi: the first green commit wins, and the verdict line names a borrowed verdict as borrowed', () => {
-    const job = (c) => `completed,${c},2026-10-27T00:00:00Z,2026-10-27T00:10:00Z,9`;
-    const runsByCommit = { h: {}, p: { 21: `${job('success')} ${job('success')}` }, r: { 22: `${job('success')} ${job('success')}` } };
-    const gh = (cmd) => {
-      const list = cmd.match(/--commit (\S+)/);
-      if (list) return Object.keys(runsByCommit[list[1]] || {}).join('\n');
-      const id = cmd.match(/gh run view (\S+)/)[1];
-      for (const runs of Object.values(runsByCommit)) if (runs[id]) return runs[id];
-      return '';
-    };
+  it('readTreeCi: the first commit with a verdict decides, and the verdict line names a borrowed verdict as borrowed', () => {
+    const gh = fakeGh([run(22, 'r', GREEN), run(21, 'p', GREEN)]);
     const ci = readTreeCi(gh, ['h', 'p', 'r']);
     expect(ci).toEqual({ state: 'success', run: '21', sha: 'p', exact: false });
     const v = verdict({ id: 'x', files: 3 }, null, { state: 'failure' }, { commitCi: ci, mainMoves: true });
     expect(v.code).toBe(0);
     expect(v.line).toMatch(/run 21's e2e jobs all passed on p, whose frontend\/ tree and ci\.yml are byte-identical/);
     expect(readTreeCi(gh, ['h']), 'HEAD alone, no run on it: no verdict, the base rules apply').toEqual({ state: null });
-    const exact = readTreeCi((cmd) => (cmd.includes('--commit') ? '31' : `${job('success')} ${job('success')}`), ['h']);
+    const exact = readTreeCi(fakeGh([run(31, 'h', GREEN, 'workflow_dispatch')]), ['h']);
     expect(exact).toEqual({ state: 'success', run: '31', sha: 'h', exact: true });
     expect(verdict({ id: 'x', files: 3 }, null, { state: 'failure' }, { commitCi: exact, mainMoves: true }).line).toMatch(/on this exact commit$/);
   });
