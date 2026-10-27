@@ -204,16 +204,26 @@ const ControlsSheet = React.memo(() => {
 // INDEPENDENT) + live distance. Game-Loop-Isolation: a self-contained rAF doing transient getState() reads
 // + direct ref/DOM writes (no per-frame React state), copied from the Compass pattern. Capture-SUPPRESSED
 // (rAF never starts + returns null in capture) so the deterministic visual baselines stay byte-identical.
-const ObjectiveTracker = React.memo(() => {
+export const ObjectiveTracker = React.memo(() => {
   const t = useT();
+  const rootRef = useRef(null);
   const arrowRef = useRef(null);
   const textRef = useRef(null);
   const distRef = useRef(null);
   const shrineCache = useRef({ t: 0, shrine: null });
 
   useEffect(() => {
-    if (isCaptureMode()) return; // never animate/scan in capture -> zero baseline impact
     const tick = () => {
+      // CAPTURE RESETS, it does not early-return (review 2026-10-27, steady-cool LOW 7). The harness enters capture AFTER
+      // boot, so a check made once at mount let a tracker mounted in play keep turning in the gated frames, wherever it
+      // had got to. Read every tick: under capture the tracker rests HIDDEN (as when it mounts in capture: null below),
+      // and nothing is scanned or written; out of capture it shows again.
+      const root = rootRef.current;
+      if (isCaptureMode()) {
+        if (root && root.style.visibility !== 'hidden') root.style.visibility = 'hidden';
+        return;
+      }
+      if (root && root.style.visibility === 'hidden') root.style.visibility = '';
       const state = useGameStore.getState();
       const camera = state.gameCamera;
       const playerPos = state.playerPosition;
@@ -259,7 +269,7 @@ const ObjectiveTracker = React.memo(() => {
   if (isCaptureMode()) return null;
 
   return (
-    <div className="absolute top-12 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+    <div ref={rootRef} data-testid="objective-tracker" className="absolute top-12 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
       <div className="flex items-center gap-2 px-2.5 py-1 bg-panel-raise border-chrome border-ink rounded-sm whitespace-nowrap">
         <span ref={arrowRef} className="inline-block w-2.5 h-2.5 flex-none" style={{ background: '#46E0FF', clipPath: 'polygon(50% 0,100% 100%,0 100%)' }}></span>
         <span ref={textRef} className="text-[11px] font-bold text-text">{t('hud.objectiveShrine')}</span>
