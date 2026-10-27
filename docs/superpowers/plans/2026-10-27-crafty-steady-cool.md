@@ -136,3 +136,35 @@ levers are (a) pixels, (g) pacing and (h) shadow cadence. The power baseline for
 - **Focus (g)**: a page that never receives `focus` after load would sit at 10 fps; the pace reads `document.hasFocus()`
   at mount and on every focus/blur event, and only on fine pointers.
 - **Resume (e)** loads the world that was being played; a session that never saved (no slot) mints one in the autosave.
+
+## As built (2026-10-27) — what differs from the table above, and what is not proven
+
+Commits on `feat/steady-cool`, one per item: a `309dad4f`, b `48cc061c`, c `c8e57bcd`, d `ea5747c6`, e `d99a261a`,
+f `56d82b87`, g `176de7c0`, h `e9d49bdf`, i `ce0ecd03`. Every unit/behavioural gate was seen RED first and carries a
+mutation receipt in its commit (identity mutant SURVIVED in every batch).
+
+**Deviations, each decided and stated in its commit:**
+
+- (c) `render/postFx.js` became `postFx.jsx`, and the built-once effects are COMPONENTS carrying the package's names
+  (`N8AO`, `GodRays`, `Bloom`), so GameScene's declaration and the static gates' literals keep their meaning;
+  BloomSpikeDriver resolves the live Bloom every frame rather than taking it by prop. `n8ao` is now a declared
+  dependency, pinned at the 1.10.1 already in the lockfile (bundle-split-gates requires direct imports to be declared).
+- (d) No "doubling per repeat": with a settle after 2 declines only one block is ever set, so a doubling would be dead
+  code. A per-tier ban was built first and its own gate went RED (a probe pair after each block, 2 changes in a minute).
+- (f) `ui/TouchControlsSurface.jsx`'s touch-only sweep loop is unchanged (outside the brief's list).
+- (h) No e2e: not in the brief's list, and on CI's software renderer a render-rate assertion cannot fail. The
+  dynamic-caster signal in Atmosphere is the stated blind spot.
+- (i) Spell projectile and impact lights joined the pool too (same class; the programs-constant proof needs them).
+- Gates RE-POINTED where a property moved (receipts in the commits): `sun-arc` (horizon gate), `perf-config-gates`
+  (governor ladder, Terrain radius, and a WeatherSystem assertion that had been satisfied by GameScene's code all along),
+  `far-field-gates` and `shadow-frustum-follows-player` (`renderDistance`), `objective-tracker-gates` (a fixed 2200-char
+  slice re-bounded by the next component).
+
+**Not proven in this lane (the command session owns the browser and port 4179):**
+
+- Every e2e spec listed above is WRITTEN, NOT RUN; their mutants are listed in each spec as NOT YET RUN.
+- No heat number was measured: every saving above is arithmetic on the code, to be measured by the powermetrics A/B and
+  gpu-cost-probe timer queries on the post-0a deploy (F12).
+- The visual oracle was not re-captured: (i) changes the light ORDER in capture frames that show spell, boss or beast
+  lights (expected sub-LSB), and (a) keeps the legacy `[1, 2]` dpr under capture by design.
+- Not done here (Phase 0d's lane): the Diagnostics readout and its localStorage context-loss breadcrumb.
