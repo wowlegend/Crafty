@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, copyFileSync, rmSync, realpathSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, copyFileSync, rmSync, realpathSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +20,9 @@ import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
  *   M-U6b JSON built by printf interpolation again    -> "survives quotes and backslashes" (and every parse)
  *   M-U6c globs read by a single-line sed (old defect) -> "reads multi-line globs"
  *   M-U6d nonce-file write dropped                    -> "emits a nonce and records it"
+ * Fix round (tranche A review, item 4), via mutate-batch (12 tests), identity SURVIVED, then RED:
+ *   M-S1 the GIT_* unset loop deleted · M-S2 the loop matches no variable (GITX_) -> "an inherited GIT_DIR ..."
+ *   M-S3 the nonce written under --git-dir · M-S4 the tree found from CLAUDE_PROJECT_DIR -> "run from a linked worktree"
  *
  * BLIND SPOT: whether Claude Code delivers this output to the model. That is a lived check (plan U6): after a real
  * /compact, the nonce must appear in the transcript after the compact boundary, in an entry that is not a tool
@@ -31,16 +34,25 @@ const HEADING = '## CURSOR "quoted" and back\\slash — U6';
 
 let repo;
 let copy;
-const run = () =>
-  spawnSync('sh', [copy], {
+const run = (extra = {}, script = copy) =>
+  spawnSync('sh', [script], {
     input: '{"source":"compact"}',
     encoding: 'utf8',
-    env: isolatedGitEnv({ CLAUDE_PROJECT_DIR: repo }),
+    env: isolatedGitEnv({ CLAUDE_PROJECT_DIR: repo, ...extra }),
   });
-const context = () => {
-  const r = run();
+const context = (extra, script) => {
+  const r = run(extra, script);
   expect(r.status).toBe(0);
   return JSON.parse(r.stdout).hookSpecificOutput.additionalContext;
+};
+const others = [];
+afterEach(() => {
+  for (const d of others.splice(0)) rmSync(d, { recursive: true, force: true });
+});
+const tmp = (tag) => {
+  const d = realpathSync(mkdtempSync(join(tmpdir(), `crafty-compact-${tag}-`)));
+  others.push(d);
+  return d;
 };
 
 beforeEach(() => {
@@ -107,6 +119,41 @@ describe('scripts/hooks/session-start-compact.sh', () => {
     const ctx = context();
     expect(ctx).toContain("hooks: this tree's own .githooks");
     expect(ctx).not.toMatch(/local gates are OFF|not its own/);
+  });
+
+  // Two U6 claims no case drove (tranche A review, item 4): the GIT_* unset loop, and the nonce written to the COMMON
+  // git dir when the hook runs from a linked worktree.
+  it('an inherited GIT_DIR naming another repo is dropped: the hook reads its own tree and records the nonce there', () => {
+    const decoy = tmp('decoy');
+    fixtureGit(decoy, 'init', '-q');
+    const ctx = context({ GIT_DIR: join(decoy, '.git'), GIT_WORK_TREE: decoy });
+    expect(ctx).toContain(`tree: ${repo} (branch `);
+    const nonce = ctx.match(/^compact-context nonce ([0-9a-f]{16})\n/)[1];
+    expect(readFileSync(join(repo, '.git/crafty-compact-nonce'), 'utf8').trim()).toBe(nonce);
+    expect(existsSync(join(decoy, '.git/crafty-compact-nonce')), 'the nonce went to the inherited GIT_DIR').toBe(false);
+  });
+
+  it('run from a linked worktree, it reads the worktree and writes the nonce to the COMMON git dir', () => {
+    fixtureGit(repo, 'config', 'user.email', 'fixture@example.invalid');
+    fixtureGit(repo, 'config', 'user.name', 'fixture');
+    fixtureGit(repo, 'add', '-A');
+    fixtureGit(repo, 'commit', '-q', '-m', 'base');
+    const wt = join(tmp('lane'), 'lane');
+    // The operator's git shim refuses `worktree add` into a temp dir; this one lives for the length of the test, so it
+    // takes the shim's explicit override (as mutate-batch.test.js does). CI has no shim and ignores the variable.
+    process.env.AB_ALLOW_EPHEMERAL_WORKTREE = '1';
+    try {
+      fixtureGit(repo, 'worktree', 'add', '-q', '-b', 'lane', wt);
+    } finally {
+      delete process.env.AB_ALLOW_EPHEMERAL_WORKTREE;
+    }
+    const laneGitDir = fixtureGit(wt, 'rev-parse', '--path-format=absolute', '--git-dir');
+    expect(laneGitDir, 'presence: the lane has its own git dir, apart from the common one').not.toBe(join(repo, '.git'));
+    const ctx = context({}, join(wt, 'scripts/hooks/session-start-compact.sh'));
+    expect(ctx).toContain(`tree: ${wt} (branch lane)`);
+    const nonce = ctx.match(/^compact-context nonce ([0-9a-f]{16})\n/)[1];
+    expect(readFileSync(join(repo, '.git/crafty-compact-nonce'), 'utf8').trim()).toBe(nonce);
+    expect(existsSync(join(laneGitDir, 'crafty-compact-nonce')), 'the nonce went to the lane\'s own git dir').toBe(false);
   });
 
   it('missing rules dir prints {} and exits 0', () => {
