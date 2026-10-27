@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, createEvent, act } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { setActive, getInput, setIntent } from '../../src/input/inputState.js';
@@ -65,6 +65,9 @@ import TouchControlsSurface from '../../src/ui/TouchControlsSurface.jsx';
 //   B1 talentsOpen dropped from panelOpen   B2 otherPanelOpen dropped   B3 the store's panels dropped
 //   B4 the action button takes a press with a panel open (the heavy's loop alone)
 //   B0 identity (a comment edit in TouchControls.jsx) SURVIVED, as it must.
+// The input-time hold (2026-10-27, 36 tests; subject src/ui/TouchControls.jsx), each observed RED:
+//   T1 the action press passes no timeStamp   T2 the action lift passes no timeStamp (both: "the press and every way a
+//   touch can end hand the game the event's OWN time")   T0 identity (a comment edit) SURVIVED, as it must.
 //
 // BLIND SPOT: jsdom has no layout and no real pointer capture; whether a thumb on an iPad reaches these targets, and
 // whether a held touch commits the beast form in the running game, is tests/e2e/touch-hold.spec.js.
@@ -377,6 +380,37 @@ describe('the action button is press-and-hold: the light swing at the press, the
       cleanup();
     }
     expect(released).toBe(endings.length);
+  });
+
+  // A lift that came 40 ms after its press but was HANDLED seconds later read as a charged hold and threw a heavy
+  // (tests/e2e/touch-hold.spec.js, the late lift). The overlay hands the game each event's own time (`timeStamp`) beside
+  // the source, and heavyAttack reads the hold on it (tests/gates/heavy-melee-gates.test.js).
+  it('the press and every way a touch can end hand the game the event\'s OWN time, not the handler\'s (4 of 4)', () => {
+    const stamped = (kind, ts, init) => {
+      // React builds onPointerLeave from the native pointerout (fireEvent.pointerLeave aliases to it); a raw
+      // pointerleave event never reaches the handler, so the stamped leave is dispatched as the event React reads.
+      const ev = createEvent[kind === 'pointerLeave' ? 'pointerOut' : kind](action(), init);
+      Object.defineProperty(ev, 'timeStamp', { value: ts }); // a real event's time, as the browser stamps it
+      fireEvent(action(), ev);
+    };
+    const endings = ['pointerUp', 'pointerCancel', 'lostPointerCapture', 'pointerLeave'];
+    let stampedEnds = 0;
+    for (const end of endings) {
+      setActive(true);
+      calls.length = 0;
+      useGameStore.setState({
+        pressPrimary: (button, source, at) => { calls.push(['press', button, source, at]); return 'attack'; },
+        releasePrimary: (source, at) => { calls.push(['release', source, at]); },
+      });
+      render(<TouchControls isWorldBuilt />);
+      stamped('pointerDown', 1234.5, { pointerId: 3, pointerType: 'touch' });
+      stamped(end, 1274.5, { pointerId: 3, pointerType: 'touch' });
+      expect(calls, `${end}: the press or the lift reached the game without its own time`)
+        .toEqual([['press', 0, 'touch', 1234.5], ['release', 'touch', 1274.5]]);
+      stampedEnds += 1;
+      cleanup();
+    }
+    expect(stampedEnds).toBe(endings.length);
   });
 
   it('the press captures its pointer, so a drifting thumb still releases on the button', () => {

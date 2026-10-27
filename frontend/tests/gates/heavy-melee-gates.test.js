@@ -17,6 +17,12 @@ import {
  *   H5 the walk is slowed before the hold threshold (every tap would stutter the player)
  *   H6 (R9.3) releaseHeavy ignores which input holds the charge -> the mouse/T case
  *   H7 (R9.3) plausible-wrong: a second press by another input takes the charge over -> the mouse/T case
+ *   The input-time hold (2026-10-27, 11 tests):
+ *   H8 releaseHeavy reads the handler clock -> "a quick tap whose lift is HANDLED a second late is still a tap"
+ *   H9 pressHeavy ignores its stamp -> "a press HANDLED late still charges from the touch"
+ *   H10 plausible-wrong: a stamp after `now` (another clock) accepted -> the foreign-stamp case
+ *   H11 plausible-wrong: a zero / negative stamp accepted -> the foreign-stamp case
+ *   H0 identity (a comment edit in heavyAttack.js) SURVIVED, as it must.
  *
  * BLIND SPOT: nothing here proves a real mouse hold reaches the machine (plan Task 4's e2e does).
  */
@@ -91,5 +97,45 @@ describe('press, hold, release', () => {
     expect(heavyWalkMult(T0 + HEAVY_HOLD_MS + 50)).toBe(HEAVY_WALK_MULT);
     releaseHeavy(T0 + 2000);
     expect(heavyWalkMult(T0 + 2001)).toBe(1);
+  });
+});
+
+// THE HOLD IS THE FINGER'S, NOT THE HANDLER'S. A handler runs when the main thread is free, not when the finger moved:
+// a lift that came 40 ms after its press but was HANDLED 1787-2300 ms later read as a charged hold and threw a heavy
+// (tests/e2e/touch-hold.spec.js, the late lift with the stamp ignored — its mutants E14 / E15 / E17; found from
+// touch-hold CI run 40517958583, whose warm-up touch was handled 1029-7269 ms apart). A pointer event carries the time it happened (`timeStamp`, on performance.now()'s clock — measured, a 40 ms
+// press behind a 1.5 s stall: Chromium CDP touch 1506 ms handler / 71 ms timeStamp, WebKit mouse 1512 / 46; iOS Safari
+// unmeasured). A caller that has the stamp passes it; one that has none, or a stamp from another clock, keeps the
+// handler's time. BLIND SPOT: these drive the module; the overlay handing it the stamp is touch-hold-gates, and the
+// running game reading it (Components' seams) is tests/e2e/touch-hold.spec.js's late-lift and late-press phases.
+describe('the hold is read on the input\'s own time when the caller has it', () => {
+  const READY = HEAVY_HOLD_MS + HEAVY_CHARGE_MS;
+  it('a quick tap whose lift is HANDLED a second late is still a tap', () => {
+    // PRESENCE: the same late handler time with no stamp IS a charged hold — the stamp is what changes the answer.
+    pressHeavy(T0, 'touch');
+    expect(releaseHeavy(T0 + 1029, 'touch'), 'SETUP: a 1029 ms handler gap is not a charged hold — the case cannot discriminate').toBe(true);
+    pressHeavy(T0, 'touch', T0 - 5); // the press handled 5 ms after the touch
+    expect(releaseHeavy(T0 + 1029, 'touch', T0 + 35), 'a 40 ms tap threw the heavy because its lift was handled 1 s late').toBe(false);
+    expect(isHeavyHeld(), 'the late lift did not end the hold').toBe(false);
+  });
+  it('a press HANDLED late still charges from the touch: the full hold throws, and the ring reads it from the touch', () => {
+    pressHeavy(T0 + 400, 'touch', T0); // a long frame: the press ran 400 ms after the finger landed
+    // 490 ms after the touch (90 after the handler): half-way through the charge, not still inside the tap window.
+    expect(heavyChargeLevel(T0 + 490), 'the charge counted from the handler, not the touch')
+      .toBeCloseTo((490 - HEAVY_HOLD_MS) / HEAVY_CHARGE_MS, 6);
+    expect(releaseHeavy(T0 + 720, 'touch', T0 + READY + 10), `a ${READY + 10} ms hold whose press ran late threw nothing`).toBe(true);
+  });
+  it('a stamp that is not a reading on this clock is ignored — the handler\'s time stands (6 of 6)', () => {
+    // undefined (a caller with no event), 0 and negative (no stamp), NaN, a future reading, an epoch-ms reading.
+    const foreign = [undefined, 0, -3, NaN, T0 + 5000, 1.7e12];
+    let checked = 0;
+    for (const stamp of foreign) {
+      pressHeavy(T0, 'touch', stamp);
+      expect(releaseHeavy(T0 + READY + 10, 'touch', stamp), `stamp ${stamp}: a full hold on the handler clock threw nothing`).toBe(true);
+      pressHeavy(T0, 'touch', stamp);
+      expect(releaseHeavy(T0 + 150, 'touch', stamp), `stamp ${stamp}: a tap on the handler clock threw the heavy`).toBe(false);
+      checked += 1;
+    }
+    expect(checked).toBe(foreign.length);
   });
 });

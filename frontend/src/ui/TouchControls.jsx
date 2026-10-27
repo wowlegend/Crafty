@@ -269,13 +269,15 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
         // second finger's tap cannot end this charge (heavyAttack.releaseHeavy checks the source). This used to
         // dispatch on pointerup with no release at all, so the heavy could never be performed on touch.
         // Per finger (F6): only the claiming pointer presses and only it releases; refused while a panel is open (F3).
+        // Each carries its event's own time (e.timeStamp): the game reads the hold on the finger, not on handlers a
+        // stall can hold apart — a tap whose lift was handled late threw the heavy (touch-hold.spec.js, the late lift).
         <button data-touch-btn aria-label={t('a11y.action')} data-testid="touch-action"
           onPointerDown={(e) => {
             if (panelOpen || !actionClaim.claim(e.pointerId)) return;
             capturePointer(e);
-            useGameStore.getState().pressPrimary?.(0, 'touch');
+            useGameStore.getState().pressPrimary?.(0, 'touch', e.timeStamp);
           }}
-          {...releaseHandlers((e) => { if (actionClaim.free(e.pointerId)) useGameStore.getState().releasePrimary?.('touch'); })}
+          {...releaseHandlers((e) => { if (actionClaim.free(e.pointerId)) useGameStore.getState().releasePrimary?.('touch', e.timeStamp); })}
           onContextMenu={noMenu}
           style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 26px)', bottom: '11%', width: 84, height: 84 }} />
       )}

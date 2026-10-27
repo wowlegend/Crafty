@@ -540,20 +540,23 @@ export const Player = ({ isWorldBuilt }) => {
     // slowed the walk, ticked "ready" and threw a free extra light swing on release.
     // Presses per source, for the dev test bridge: the e2e F2 case asserts a real tap presses once as 'touch' and never
     // as 'mouse'. One integer per press, not per frame.
+    // `at` (optional): the press event's own time. The touch overlay passes it, so the charge counts from the finger
+    // and not from a handler a stall delayed (heavyAttack inputTime; touch-hold.spec.js's late lift and late press). The
+    // mouse and T paths pass none and keep the handler's clock.
     const primaryPresses = { mouse: 0, touch: 0 };
-    const pressPrimary = (button, source) => {
+    const pressPrimary = (button, source, at) => {
       primaryPresses[source] = (primaryPresses[source] || 0) + 1;
       const verb = performVerb(button);
       const st = useGameStore.getState();
-      if (button === 0 && verb === 'attack' && !st.voidhandHeld && !st.beastFormActive) pressHeavy(performance.now(), source);
+      if (button === 0 && verb === 'attack' && !st.voidhandHeld && !st.beastFormActive) pressHeavy(performance.now(), source, at);
       return verb;
     };
     // `source` is the input coming up: only the one holding the charge can release it (R9.3 — T's keyup used to end a
-    // charge the mouse held).
-    const releaseHeavySwing = (source) => {
+    // charge the mouse held). `at` (optional): the lift event's own time, so a tap whose lift is handled late is a tap.
+    const releaseHeavySwing = (source, at) => {
       const now = performance.now();
       if (!getInput().active || !useGameStore.getState().isAlive) { cancelHeavy(); return; }
-      if (releaseHeavy(now, source)) triggerMeleeAttack({ heavy: true });
+      if (releaseHeavy(now, source, at)) triggerMeleeAttack({ heavy: true });
     };
     // The touch overlay dispatches through the store: performVerb (M1: cast), pressPrimary / releasePrimary (Phase 0c:
     // the held action button — the same press and release the mouse uses, as the 'touch' source).
