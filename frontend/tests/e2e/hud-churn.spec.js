@@ -11,11 +11,19 @@ import { bootDev, startPlayActive } from './_boot.js';
 // PRESENCE CONTROL: the camera is then turned, and the strip must be seen to rewrite (with DIFFERENT markup) — so a
 // dead observer, or a compass that stopped updating altogether, cannot pass as "no waste".
 //
-// Mutation-Proof: via scripts/dev/mutate-e2e.sh, observed RED:
-//   H1 the dedupe removed (the write made unconditional) -> "rewrote itself N times with identical markup"
-//   H2 plausible-wrong: the dedupe keyed on a value that never changes (the compass freezes) -> "did not update when
-//      the camera turned"
-//   and an identity mutant (a comment edit in HUD.jsx) in the same batch SURVIVED.
+// Mutation-Proof: the header that stood here claimed H1 and H2 RED with a surviving identity, recorded on the parked
+// build (cfea7d41) and never re-run on this branch. Re-run 2026-10-27 (private-port copy of mutate-e2e.sh, SwiftShader):
+// the IDENTITY WENT RED — 8 rewrites, 2 identical, in 3 s standing still — and so did a mutant that writes only the
+// first frame of each effect run (2 writes, 1 identical). That was a real defect, not noise: the compass effect re-runs
+// whenever its props change identity, and its `lastHtml` was a per-run variable reset to null, so every re-run
+// rewrote what was on screen. HUD.jsx now keeps it in a ref. On that build, one batch:
+//   identity (a comment edit in HUD.jsx) SURVIVED: 6 rewrites, 0 identical; turning, 4 more
+//   H1 the dedupe removed -> RED "rewrote itself 9 times with identical markup" (15 writes)
+//   H2 plausible-wrong: write only while nothing was written yet (the compass freezes) -> RED "did not update when the
+//      camera turned" (0 writes)
+//   H3 the shipped defect: the last write forgotten on every effect run -> RED "rewrote itself 1 times with identical
+//      markup" (7 writes)
+// One run each; H3's margin is a single rewrite, so CI's runs are the flake-rate measurement.
 test('standing still the compass writes nothing; turning, it updates', async ({ page }) => {
   test.setTimeout(300000);
   await bootDev(page);

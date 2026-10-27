@@ -272,10 +272,14 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
   // S8b: throttle the nearest-shrine scan (nearestLandmark scans a chunk grid). The compass rAF runs
   // every frame; the player can't outrun a shrine in <1s, so recompute at most ~once a second.
   const shrineCache = useRef({ t: 0, shrine: null });
+  // The markup last written, kept ACROSS effect runs. The effect re-runs whenever treasureChests or bossSystem change
+  // identity, and a per-run `lastHtml = null` made every re-run rewrite markup identical to what was on screen: the
+  // hud-churn e2e's identity run counted 2 such rewrites in 3 s standing still, and with the writer cut to "only the
+  // first write of a run" it still counted 2 writes — one per re-run (2026-10-27).
+  const lastHtml = useRef(null);
 
   useEffect(() => {
     let animFrame;
-    let lastHtml = null;
 
     const updateCompass = () => {
       // Dev capture-determinism: in capture mode the follow-cam is pinned, so the
@@ -482,8 +486,8 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
       // them re-parsed ~20 elements and re-ran style and layout on every display frame (120 a second on a ProMotion
       // panel) for nothing (plan 2026-09-23-crafty-perf-heat-ipad, Task 6).
       const html = markersHtml.join('');
-      if (html !== lastHtml) {
-        lastHtml = html;
+      if (html !== lastHtml.current) {
+        lastHtml.current = html;
         container.innerHTML = html;
       }
     };
