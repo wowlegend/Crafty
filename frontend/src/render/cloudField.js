@@ -38,7 +38,15 @@ const f = (n) => Number(n).toFixed(6);
 const WHITE = new THREE.Color(1, 1, 1);
 // A night cloud is its sky's colour lifted this many times: enough to read as a shape (at least twice the sky).
 const NIGHT_CLOUD_LIFT = 2.6;
+/**
+ * How much a full storm (the sky frame's `storm` = 1) darkens a cloud's SUNLIT body: an overcast cloud is lit through
+ * itself. Calibrated against main's own tint (17e06ecd), which darkened storm clouds through the dusk mood's weaker
+ * sun: at noon main drew 0.4610 / 0.2526 / 0.1744 cloud luminance at storm 0.5 / 0.85 (the live boost) / 1, and 0.8
+ * here gives 0.4835 / 0.2579 / 0.1612 (tests/gates/cloud-field-gates.test.js holds it within 15% of main at all three).
+ */
+export const STORM_CLOUD_DIM = 0.8;
 const _night = new THREE.Color();
+const _day = new THREE.Color();
 
 /**
  * The cloud colour for a sampled mood (render/mood.js sampleMood), written into `out`.
@@ -55,11 +63,18 @@ const _night = new THREE.Color();
  * intensity, which the sky frame no longer carries. The lift went 1.8 -> 2.6: under the old keying a night (mood 1)
  * still had 45% sun and kept some of the day's white, which is what put a night cloud over twice its sky; a true
  * night (daylight 0) at 1.8 would sit under that.
+ *
+ * A STORM DARKENS THE SUNLIT BODY (review of the light-colour lane, 2026-10-27): `daylight` never moves under a storm,
+ * so keying on it alone left a daytime storm's clouds sunlit white, about 3.2x what main drew. The body is dimmed by
+ * STORM_CLOUD_DIM x the frame's `storm`. The night body is not: a night cloud is the sky's own glow, and main drew no
+ * change to it under a storm (night was mood 1 already, above the storm's 0.85).
  */
 export function cloudTint(m, out) {
   const day = THREE.MathUtils.clamp(m.daylight, 0, 1);
+  const storm = THREE.MathUtils.clamp(Number(m.storm) || 0, 0, 1);
   _night.copy(m.skyMid).multiplyScalar(NIGHT_CLOUD_LIFT);
-  out.copy(m.skyMid).lerp(WHITE, 0.72).lerp(_night, 1 - day * day * day);
+  _day.copy(m.skyMid).lerp(WHITE, 0.72).multiplyScalar(1 - STORM_CLOUD_DIM * storm);
+  out.copy(_day).lerp(_night, 1 - day * day * day);
   out.r = Math.min(1, out.r); out.g = Math.min(1, out.g); out.b = Math.min(1, out.b);
   return out;
 }

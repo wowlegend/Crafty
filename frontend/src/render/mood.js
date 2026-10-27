@@ -138,6 +138,7 @@ export function makeSkyFrame() {
     keyDir: [0, 1, 0], keyColor: new THREE.Color(), keyIntensity: 0, keyIsMoon: false,
     moonDir: [0, -1, 0], sunDir: [0, 1, 0], sunColor: new THREE.Color(),
     stars: 0, glowColor: new THREE.Color(), glowStrength: 0, motes: 0, daylight: 1, exposure: 1, aoFloor: new THREE.Color(),
+    storm: 0,
   };
 }
 
@@ -169,7 +170,8 @@ function greyToward(c, a) {
  * leaves, cloud shadows, GodRays). There is no `sun` or `sunIntensity`: a stale reader of those fails loudly
  * (`Color.copy(undefined)` throws) instead of quietly reading the moon as the sun. `aoFloor` is recomputed from the
  * COMPOSED ambient, so the overlays carry it. `sunPos` is the mood's noon vector arced by the cycle, exactly as
- * before; with no cycle it is the noon vector itself.
+ * before; with no cycle it is the noon vector itself. `storm` is the storm overlay's weight (t1, 0..1; a boss state
+ * carries 1), which darkens the clouds' sunlit body: `daylight` does not move under a storm.
  */
 export function sampleMood(mood, cycle) {
   const m = THREE.MathUtils.clamp(Number(mood) || 0, 0, 2);
@@ -207,6 +209,7 @@ export function sampleMood(mood, cycle) {
   _out.glowStrength = lerp(sc.glow.strength, 0, t2);
 
   _out.stars = sc.stars * (1 - t1);
+  _out.storm = t1; // the storm overlay's weight, for the clouds' sunlit body (render/cloudField.js cloudTint)
   _out.motes = sc.motes * (1 - t2);
   _out.daylight = sc.daylight * (1 - t2);
   _out.exposure = lerp(e, 1, t2);

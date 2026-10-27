@@ -6,6 +6,7 @@ import {
 } from '../../src/render/cloudField.js';
 import { makeSkyDomeMaterial } from '../../src/render/skyDome.js';
 import { sampleMood } from '../../src/render/mood.js';
+import { STORM_MOOD_BOOST } from '../../src/game/weatherGate.js';
 import { carriersOf } from './_srcWalk.js';
 
 /**
@@ -53,6 +54,12 @@ import { carriersOf } from './_srcWalk.js';
  *   CF0 identity (a comment edit in cloudField.js)                        -> SURVIVED
  *   CF4, SURVIVED and accepted: keyed on the key light's intensity / 2.8 (so a moonlit night keeps 14% of the day
  *   body). The cloud still sits inside every design anchor; these cases pin the anchors, not the keying variable.
+ *   Review fix (2026-10-27, a daytime storm left the clouds sunlit: about 3.2x main), via scripts/dev/mutate.sh:
+ *   CF5 STORM_CLOUD_DIM = 0                                               -> storm-at-noon RED
+ *   CF6 mood.js never writes the frame's `storm` (the producer)           -> storm-at-noon RED
+ *   CF7 plausible-wrong: the night body dimmed by the storm as well       -> night-storm RED
+ *   CF8 plausible-wrong: the storm's weight squared (right at 1, wrong at 0.5) -> storm-at-noon RED
+ *   CF0b identity (a comment edit in cloudField.js)                       -> SURVIVED
  *
  * BLIND SPOT: the GLSL is not compiled here — only a browser does that (the capture). How the clouds and
  * their shadows LOOK is judged from the captured frames. Atmosphere's and Terrain's per-frame writes are
@@ -120,6 +127,37 @@ describe('cloudTint — the clouds take the mood, they are not painted white', (
 
   it('the boss sky\'s clouds are dark', () => {
     expect(lum(at(2).t)).toBeLessThan(0.1);
+  });
+
+  // A STORM DARKENS THE CLOUDS (review of the light-colour lane, 2026-10-27, MED regression). Task 3a keyed the tint on
+  // the frame's `daylight`, which the storm overlay never touches, so a daytime storm left the clouds sunlit white:
+  // about 3.2x the luminance `main` drew at the storm boost. The reference is MAIN'S OWN TINT, measured on main at
+  // 17e06ecd by running its mood.js and cloudField.js (sampleMood(mood) then cloudTint): noon cloud luminance 0.4610 at
+  // mood 0.5, 0.2526 at the storm boost 0.85 (game/weatherGate.js STORM_MOOD_BOOST), 0.1744 at mood 1. Three points
+  // along the storm's weight, so a wrong darkening CURVE with the right value at one point still fails (rule 3b).
+  // Main's mood 0 was 0.7876 against this branch's 0.8059: the calm sky moved, so the band is +-15%, not exact.
+  it('a storm darkens the clouds at noon, as main did: within 15% of main\'s tint at three storm weights', () => {
+    const MAIN = [[0.5, 0.4610], [STORM_MOOD_BOOST, 0.2526], [1, 0.1744]];
+    const calm = lum(at(0, 0.25).t);
+    let n = 0;
+    for (const [mood, mainL] of MAIN) {
+      const L = lum(at(mood, 0.25).t);
+      expect(L, `storm ${mood} at noon: cloud L ${L.toFixed(4)} vs main ${mainL}`).toBeGreaterThanOrEqual(mainL * 0.85);
+      expect(L, `storm ${mood} at noon: cloud L ${L.toFixed(4)} vs main ${mainL} (a daytime storm left the clouds sunlit)`).toBeLessThanOrEqual(mainL * 1.15);
+      n++;
+    }
+    expect(n).toBe(3);
+    expect(lum(at(STORM_MOOD_BOOST, 0.25).t), 'the storm cloud is not clearly darker than the calm one').toBeLessThan(0.5 * calm);
+  });
+
+  it('a storm at midnight leaves the night clouds a shape: the darkening is the SUNLIT body\'s, not the night body\'s', () => {
+    // Main never drew a storm at night (night was mood 1 already, and a storm's 0.85 sat under it), so a night storm
+    // cloud is held to the night anchors: within 15% of the calm night cloud, and still twice its sky or more.
+    const calmNight = lum(at(0, 0.75).t);
+    const { m, t } = at(STORM_MOOD_BOOST, 0.75);
+    expect(m.daylight).toBe(0);
+    expect(lum(t), `night storm cloud L ${lum(t).toFixed(4)} vs calm ${calmNight.toFixed(4)}`).toBeGreaterThanOrEqual(calmNight * 0.85);
+    expect(lum(t), 'a night storm cloud under twice its sky does not read as a shape').toBeGreaterThan(2 * lum(m.skyMid));
   });
 
   it('never leaves displayable range, at any mood', () => {
