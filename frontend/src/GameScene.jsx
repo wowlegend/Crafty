@@ -34,6 +34,7 @@ import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
 import { FrameCap, governorBounds } from './render/FrameCap.jsx';
 import { FrameStats } from './render/FrameStats.jsx';
 import { paceFor } from './render/canvasPace.js';
+import { usePixelBudgetDpr, CAPTURE_DPR_CAP } from './render/pixelBudget.js';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -164,6 +165,7 @@ export const GameScene = React.memo(function GameScene({
   // How often this canvas draws — render/canvasPace.js, the one decision (the harnesses step or time their own frames).
   const pace = paceFor({ frameCap, titleCovering, harness: isCaptureMode || isPerfProbe() });
   const q = TIERS[qualityTier] || TIERS.low;
+  const budgetDpr = usePixelBudgetDpr(qualityTier);
   const [sunMesh, setSunMesh] = useState(null);
 
   useEffect(() => {
@@ -231,7 +233,9 @@ export const GameScene = React.memo(function GameScene({
         // setFrameloop('demand') from inside was overwritten back to 'always' by the next re-render (the first
         // version did exactly that — the e2e read 'always' under a 60 cap). FrameCap only paces the renders.
         frameloop={pace.loop}
-        dpr={isPerfProbe() ? PROBE_DPR : [1, q.dprCap]}
+        // THE PIXEL BUDGET (render/pixelBudget.js): the tier names the pixels it can afford, the window decides the
+        // ratio, recomputed on resize. Capture keeps the legacy [1, 2] range its baselines were shot under.
+        dpr={isPerfProbe() ? PROBE_DPR : isCaptureMode ? [1, CAPTURE_DPR_CAP] : budgetDpr}
         className="w-full h-full"
         gl={{
           antialias: false, // Post-processing handles AA
