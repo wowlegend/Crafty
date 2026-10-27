@@ -49,6 +49,11 @@ const sweep = (...args) =>
     encoding: 'utf8',
     env: { ...process.env, KTP_PATTERN: MARK, KTP_BROWSER: `${MARK}-browser`, KTP_CRASHPAD: `${MARK}-crashpad` },
   });
+// A fixture is READY only in the shape the sweep reads, not merely alive (2026-10-27, flaky at load ~78): a spawned
+// process answers kill(pid, 0) the moment it forks, before it execs the marked command line pgrep matches, and an
+// orphan is seen before its adoption by PID 1 is. Each wait below asserts that shape — the input the sweep decides on.
+const ppidOf = (pid) => Number(spawnSync('ps', ['-o', 'ppid=', '-p', String(pid)], { encoding: 'utf8' }).stdout.trim());
+const adopted = (tag) => pidsOf(tag).filter((p) => ppidOf(p) === 1).length;
 const waitFor = async (fn, ms = 5000) => {
   const end = Date.now() + ms;
   while (Date.now() < end) { if (fn()) return true; await new Promise((r) => setTimeout(r, 50)); }
@@ -81,7 +86,7 @@ describe('kill-test-procs: ownership decides, not age', () => {
   it('kills an orphan, leaves an owned process alone, and NAMES the owner', async () => {
     const owned = spawn(process.execPath, idle('owned'), { stdio: 'ignore' });
     orphan('orphan');
-    expect(await waitFor(() => pidsOf('orphan').length === 1), 'the orphan fixture never started').toBe(true);
+    expect(await waitFor(() => pidsOf('orphan').length === 1 && adopted('orphan') === 1), 'the orphan fixture never started (or was never adopted by PID 1)').toBe(true);
     const orphanPid = pidsOf('orphan')[0];
     expect(alive(owned.pid) && alive(orphanPid), 'fixtures not both alive before the sweep').toBe(true);
 
@@ -97,7 +102,7 @@ describe('kill-test-procs: ownership decides, not age', () => {
     // Three deep. Without the walk, each pass kills only the top of the chain and the rest is re-adopted by
     // launchd one level at a time — a 2-deep chain still died by the second pass and hid the missing walk.
     orphan('chain', 3);
-    expect(await waitFor(() => pidsOf('chain').length === 3), 'the 3-deep chain fixture never started').toBe(true);
+    expect(await waitFor(() => pidsOf('chain').length === 3 && adopted('chain') === 1), 'the 3-deep chain fixture never started (or its root was never adopted)').toBe(true);
     const pids = pidsOf('chain');
 
     const out = sweep();
@@ -125,7 +130,7 @@ describe('kill-test-procs: ownership decides, not age', () => {
     // plain orphan rule would kill a live run's handler. They are held while any browser is owned.
     const browser = spawn(process.execPath, idle('browser'), { stdio: 'ignore' });
     orphan('crashpad');
-    expect(await waitFor(() => pidsOf('crashpad').length === 1 && alive(browser.pid)), 'fixtures never started').toBe(true);
+    expect(await waitFor(() => adopted('crashpad') === 1 && pidsOf('browser').length === 1 && alive(browser.pid)), 'fixtures never started (crashpad adopted by PID 1, the browser visible to pgrep)').toBe(true);
     const [crashpad] = pidsOf('crashpad');
 
     const held = sweep();

@@ -54,6 +54,7 @@ while read -r _local_ref local_sha _remote_ref _remote_sha; do
   [ "$local_sha" = "$ZERO" ] && continue   # branch deletion: nothing to certify
   [ -z "$local_sha" ] && continue
   TARGETS="$TARGETS $local_sha"
+  PUSH_REFS="${PUSH_REFS:-} $_remote_ref"
   # The commits actually being introduced. A brand-new branch sends the zero-sha as the remote side, in
   # which case there is no meaningful range and the trailer check simply skips rather than scanning history.
   if [ "$_remote_sha" != "$ZERO" ] && [ -n "$_remote_sha" ]; then
@@ -65,6 +66,9 @@ if [ -z "$TARGETS" ]; then
   printf '\n✓ pre-push: nothing to certify (deletion, or no refs on stdin)\n\n'
   exit 0
 fi
+# The refs this push moves, for e2e-freshness: its red-base refusal guards MAIN (the branch Vercel deploys and whose
+# CI history a stacked change would hide in); a branch push is judged by CI on that branch (2026-10-27).
+export E2E_PUSH_REFS="$PUSH_REFS"
 
 # ── mutation-proof trailer ──────────────────────────────────────────────────────
 # Cheap, and it runs FIRST: a commit that adds a gate without saying how it was proven to fail should be

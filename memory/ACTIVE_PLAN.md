@@ -22,19 +22,21 @@ done first, then a design panel chooses the highest-leverage moves, each through
 |---|---|---|
 | T1 | `mutate-e2e.sh`: a test timeout and an untagged boot wait are COULD NOT CHECK, not kills; E2E_WORLD_TIMEOUT extends the test budget | DONE `93785815` (+ U4-U6) |
 | T2 | dodge-latch: identity + D1 mutants + clean run on the fixed instrument; commit Atmosphere layout effect, dodge-latch spec, iPad probe + port | DONE `48b003e3` `fb45cb35` `2cecfa7f` |
-| T3 | Full `e2e-freshness --run` receipt, commit it, push main, CI to `success` (delivers the heat fixes live) | open |
+| T3 | Full `e2e-freshness --run` receipt, commit it, push main, CI to `success` (delivers the heat fixes live) | run 1 red (frame-cap settle, fixed 121b2ea5); run 2 stopped (load 118-159, swapping); run 3 IN FLIGHT. Push also needed operator pages current (done 4a2efae2) |
 | T4 | Ultrareview findings: verify each, fix, DECISIONS 2026-10-27 addendum comparing with the bake-off | DONE: 6/6 confirmed, all fixed (`93785815` `2cecfa7f` `43754237` `167841e2`); addendum written |
 | T5 | Dependabot #20 / #21 and the 4 open alerts | DONE `10a43f68` (vitest 4; npm audit 0) |
 | T6 | CI-gates handoff §3 (Crafty's share), then rm the handoff file + MEMORY line if last owner | PARTIAL `5177c203` (pin + v7 actions); Vercel Deployment Checks need Kevin's dashboard; pre-commit speed and onFailure open |
-| T7 | iPad: WebKit probe of the PROD build, frames opened | open |
-| T8 | Parked features (wip/perf-t3-features) onto a branch from main, e2e + mutate-e2e each, PR (number to Kevin), merge on own gates | open |
+| T7 | iPad: WebKit probe of the PROD build, frames opened | lookbook (real GPU, WebKit iPad) DONE on feat/instruments: iPad golden hour renders the Hearth pad NAVY, night maroon/orange — evidence in docs/superpowers/masterpiece-2026-10/evidence; ipad-probe.mjs itself still unrun |
+| T8 | Parked features (wip/perf-t3-features) onto a branch from main, e2e + mutate-e2e each, PR (number to Kevin), merge on own gates | branch `feat/parked-looks-perf` (worktree .claude/worktrees/parked): `8ebd6192` pacing+compass, `717d5fef` ores/leaves/lightning; e2e proofs owed |
 | T9 | Review #8 open findings (#1 MED, #6, #7, #8, #12) + bake-off B1 and candidates, verify-first | open |
 | T10 | 147 -> 151 visual re-baseline (now mine to decide) | open |
 | T11 | dprCap and the FPV glove value (now mine to decide) | open |
 | T12 | mip-ab worktree: confirm ported by diff, remove worktree + branch | VERIFIED ported; removal REFUSED by the classifier, command handed to Kevin (DECISIONS) |
-| T13 | Masterpiece design panel -> plan docs -> builds (looks + gameplay), each lived-proven | open |
+| T13 | Masterpiece design panel -> plan docs -> builds (looks + gameplay), each lived-proven | Phase 0 lanes: touch-hold DONE (6 commits), instruments DONE (7), steady-cool running (8+); reviews running (headless /code-review xhigh x2 + seam reviewers wf_28ea59be-c29). NEXT: light & colour script lane (leads Phase 1) on top of steady-cool |
 | T14 | Per change range: fresh headless `/code-review xhigh` + one adversarial-reviewer-kz xhigh on runtime seams | open |
 | T15 | OVERNIGHT.md, STATUS, CHANGELOG, DECISIONS current | open |
+| T16 | Harness SOTA pass (Kevin 10-27: CLAUDE.md/rules/hooks/settings/docs/skills free to revise) | audit DONE (35 changes; refute: 13 KEEP / 22 AMEND) in session scratch harness-plan.json + harness-refute.txt; build lane after Phase 0 |
+| T17 | INCIDENT 03:32: worktree pre-commit suite rewrote the real repo (bare, fixture identity, fixture commits) | REPAIRED + root cause fixed `0c5b269c`; episode :1183 |
 
 ### CRAFTY COMMAND SESSION — START HERE (handoff written 2026-10-27 by the session that ran the SOTA overnight goal)
 
