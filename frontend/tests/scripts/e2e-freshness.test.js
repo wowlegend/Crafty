@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { verdict, readBaseCi, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
+import { createServer } from 'node:net';
+import { verdict, readBaseCi, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, portInUse, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
 
 /**
  * THE GATE THAT ASKED FOR IMPOSSIBLE EVIDENCE, and what replaced it.
@@ -204,9 +205,45 @@ describe('receiptVerdict — a run is recorded for the tree it STARTED on, and o
     expect(v.ok).toBe(false);
     expect(v.line).toMatch(/CHANGED during the run/);
   });
-  it('a red suite is never recorded, changed or not', () => {
-    expect(receiptVerdict(T('a1'), T('a1'), 1).ok).toBe(false);
-    expect(receiptVerdict(T('a1'), T('a1'), null).ok, 'a killed run (status null)').toBe(false);
+  it('a red suite is never recorded, changed or not — and reads STALE (1)', () => {
+    const v = receiptVerdict(T('a1'), T('a1'), 1);
+    expect(v.ok).toBe(false);
+    expect(v.code, 'a red suite must read as a verdict on the tree').toBe(1);
+  });
+  // ultrareview 2026-10-27: spawnSync reports a run killed by a signal, or never spawned, as status null. That is no
+  // verdict on the tree, so it is COULD NOT CHECK (3) — it used to exit 1, which the header defines as STALE.
+  it('a run that never finished (status null) is COULD NOT CHECK (3), not STALE', () => {
+    const v = receiptVerdict(T('a1'), T('a1'), null);
+    expect(v.ok, 'a killed run (status null)').toBe(false);
+    expect(v.code, 'a killed run read as a verdict on the tree').toBe(3);
+  });
+});
+
+// ultrareview 2026-10-27, CONFIRMED live: on macOS vite binds `localhost` to [::1] only (the e2e vite listened on
+// [::1]:4179, nothing on 127.0.0.1), and the IPv4-only probe reported that port free. Real sockets, not a fake.
+describe('portInUse — a server on EITHER loopback address is busy', () => {
+  const listen = (host) =>
+    new Promise((res, rej) => {
+      const srv = createServer();
+      srv.once('error', rej);
+      srv.listen(0, host, () => res(srv));
+    });
+  const close = (srv) => new Promise((res) => srv.close(res));
+  it('sees a server listening on 127.0.0.1 (presence control)', async () => {
+    const srv = await listen('127.0.0.1');
+    try { expect(await portInUse(srv.address().port)).toBe(true); } finally { await close(srv); }
+  });
+  it('sees a server listening on [::1] ONLY — the case the IPv4 probe missed', async () => {
+    const srv = await listen('::1');
+    try {
+      expect(await portInUse(srv.address().port), 'a [::1]-only vite read as a free port').toBe(true);
+    } finally { await close(srv); }
+  });
+  it('a closed port is free', async () => {
+    const srv = await listen('127.0.0.1');
+    const { port } = srv.address();
+    await close(srv);
+    expect(await portInUse(port)).toBe(false);
   });
 });
 

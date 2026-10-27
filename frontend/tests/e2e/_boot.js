@@ -13,16 +13,22 @@ export async function bootDev(page, { withErrors = false } = {}) {
       if (m.type() === 'error') errors.push(`console.error: ${m.text()}`);
     });
   }
-  await page.goto('/');
-  await page.waitForFunction(
-    () =>
-      typeof window.useGameStore === 'function' &&
-      !!window.__craftyTest &&
-      typeof window.__craftyTest.ready === 'function' &&
-      window.__craftyTest.ready(),
-    null,
-    { timeout: 30000 }
-  );
+  // A failure here is a PRECONDITION: the app never came up, so the spec never reached its subject. It says "SETUP:"
+  // so scripts/dev/mutate-e2e.sh reports COULD NOT CHECK — this untagged 30 s wait used to score as a caught mutant.
+  try {
+    await page.goto('/');
+    await page.waitForFunction(
+      () =>
+        typeof window.useGameStore === 'function' &&
+        !!window.__craftyTest &&
+        typeof window.__craftyTest.ready === 'function' &&
+        window.__craftyTest.ready(),
+      null,
+      { timeout: 30000 }
+    );
+  } catch (e) {
+    throw new Error(`SETUP: bootDev: the dev app never came up (store + test bridge) — ${e.message}`);
+  }
   return errors;
 }
 
@@ -46,7 +52,20 @@ export async function startPlay(page) {
 // 2026-09-23 at a load average of 45 (not this repo's processes), the spawn chunk took over 90 s and every spec failed
 // in SETUP before reaching its subject. CI keeps the 90 s default. The wait is a precondition, not a subject: a longer
 // limit only delays a broken-boot report, it never passes one.
-const WORLD_TIMEOUT_MS = Number(process.env.E2E_WORLD_TIMEOUT) > 0 ? Number(process.env.E2E_WORLD_TIMEOUT) : 90000;
+const DEFAULT_WORLD_TIMEOUT_MS = 90000;
+const WORLD_TIMEOUT_MS =
+  Number(process.env.E2E_WORLD_TIMEOUT) > 0 ? Number(process.env.E2E_WORLD_TIMEOUT) : DEFAULT_WORLD_TIMEOUT_MS;
+
+/** Every spec's test budget was sized for the DEFAULT world wait. A longer wait (E2E_WORLD_TIMEOUT=240000) used to run
+ *  into that budget first, so Playwright's "Test timeout" fired before the SETUP rethrow could name the world — and a
+ *  mutation batch scored the slow world as a kill. So a longer wait extends the running test by exactly the difference.
+ *  `testInfo` is a seam for the unit test; under Playwright the running test's own is used. */
+async function extendBudgetForWorldWait(worldTimeout, testInfo) {
+  const extra = worldTimeout - DEFAULT_WORLD_TIMEOUT_MS;
+  if (extra <= 0) return;
+  const info = testInfo ?? (await import('@playwright/test')).test.info();
+  if (info.timeout > 0) info.setTimeout(info.timeout + extra); // 0 = no timeout; nothing to extend
+}
 
 /** Enter play AND PROVE the input gate is live. Use this for any spec that drives a real keyboard or
  *  mouse verb — anything gated on `getInput().active`.
@@ -69,7 +88,8 @@ const WORLD_TIMEOUT_MS = Number(process.env.E2E_WORLD_TIMEOUT) > 0 ? Number(proc
  *  window, and throw NAMING the gate if it never does. `hud-layout`, `panel-overflow` and
  *  `touch-controls` each hand-rolled a copy of this loop and each survived that CI run; the two
  *  specs without it are the two that died. This is the shared instrument they should all call. */
-export async function startPlayActive(page, { worldTimeout = WORLD_TIMEOUT_MS } = {}) {
+export async function startPlayActive(page, { worldTimeout = WORLD_TIMEOUT_MS, testInfo } = {}) {
+  await extendBudgetForWorldWait(worldTimeout, testInfo);
   // STRICT — no `.catch` here, unlike startPlay. A spec that needs the input gate needs the world
   // that arms it, so a world that never builds must fail HERE naming `isSpawnChunkLoaded`, not 15s
   // later inside an assertion about something else.

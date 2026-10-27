@@ -252,10 +252,17 @@ export function readBaseCi(exec, timeoutMin = E2E_TIMEOUT_MIN) {
  * `--run` hashes the tree, runs the suite, hashes it again, and records only when the suite passed AND the two agree.
  */
 export function receiptVerdict(before, after, exitCode) {
-  if (exitCode !== 0) return { ok: false, line: `e2e-freshness: the suite exited ${exitCode} — nothing recorded.` };
+  // A suite that never finished — killed by a signal, or never spawned — has no verdict about the tree: spawnSync
+  // reports its status as null. That is COULD NOT CHECK (3), not STALE (1), so a caller branching on the code cannot
+  // read an interrupted run as a judgement (ultrareview 2026-10-27).
+  if (exitCode === null || exitCode === undefined) {
+    return { ok: false, code: 3, line: 'e2e-freshness: the suite did not finish (killed, or never started) — nothing recorded, nothing judged.' };
+  }
+  if (exitCode !== 0) return { ok: false, code: 1, line: `e2e-freshness: the suite exited ${exitCode} — nothing recorded.` };
   if (!before || !after || before.id !== after.id) {
     return {
       ok: false,
+      code: 1,
       line:
         `e2e-freshness: the tree CHANGED during the run (${before?.id} -> ${after?.id}) — nothing recorded.\n` +
         '  The suite tested the first tree; the edits made while it ran were never tested. Re-run.',
@@ -289,12 +296,21 @@ function e2ePort() {
   return m ? Number(m[1]) : null;
 }
 
-const portInUse = (port) =>
-  new Promise((res) => {
-    const sock = createConnection({ port, host: '127.0.0.1' });
-    sock.once('connect', () => { sock.destroy(); res(true); });
-    sock.once('error', () => res(false));
-  });
+/**
+ * Whether anything listens on `port` on EITHER loopback address. Playwright reaches the server as `localhost`, and on
+ * macOS with Node 17+ vite binds `localhost` to [::1] ONLY (measured 2026-10-27: the e2e vite listened on [::1]:4179
+ * and nothing on 127.0.0.1) — so the IPv4-only probe this replaced reported a sibling's server as a free port, and
+ * the run reused it (ultrareview 2026-10-27). Busy if either address accepts.
+ */
+export const portInUse = async (port, hosts = ['127.0.0.1', '::1']) => {
+  const one = (host) =>
+    new Promise((res) => {
+      const sock = createConnection({ port, host });
+      sock.once('connect', () => { sock.destroy(); res(true); });
+      sock.once('error', () => res(false));
+    });
+  return (await Promise.all(hosts.map(one))).some(Boolean);
+};
 
 if (process.argv[1] && resolve(process.argv[1]).endsWith('e2e-freshness.mjs')) {
   const current = treeId();
@@ -315,7 +331,7 @@ if (process.argv[1] && resolve(process.argv[1]).endsWith('e2e-freshness.mjs')) {
     const v = receiptVerdict(current, after, res.status);
     if (v.ok) writeFileSync(STAMP, `${JSON.stringify({ treeId: current.id, files: current.files, at: new Date().toISOString() }, null, 2)}\n`);
     console.log(v.line);
-    process.exit(v.ok ? 0 : 1);
+    process.exit(v.ok ? 0 : v.code);
   }
   if (process.argv.includes('--record')) {
     console.log('e2e-freshness: --record certifies the tree as it is NOW, whatever the run tested — prefer --run.');

@@ -19,7 +19,7 @@
 // pointer-lock refusal. It proves that GIVEN a gate that gets cleared, this helper re-asserts it and
 // refuses to return until it holds — and that given a world that never builds, it never forces play.
 import { describe, it, expect } from 'vitest';
-import { startPlayActive } from '../e2e/_boot.js';
+import { startPlayActive, bootDev } from '../e2e/_boot.js';
 
 /** A fake game whose `active` gate behaves like the real one: forcePlay sets it, and the first
  *  `clobbers` writes are immediately undone — the world-ready pointer-lock refusal, in miniature. */
@@ -101,5 +101,49 @@ describe('startPlayActive', () => {
     const game = makeGame();
     await expect(startPlayActive(makePage(game, { worldBuilds: false }))).rejects.toThrow(/Timeout 90000ms/);
     expect(game.stats().forcePlays, 'forcePlay ran against a world that never built').toBe(0);
+  });
+
+  // A longer world wait (E2E_WORLD_TIMEOUT) used to run into the spec's test budget, so Playwright's flat "Test timeout"
+  // fired before the SETUP rethrow could name the world, and mutate-e2e.sh scored a slow world as a kill (2026-10-27).
+  // The budget grows by exactly the extra wait. Presence first: at the default wait, it must not touch the budget.
+  const fakeInfo = (timeout) => {
+    const info = { timeout, calls: [], setTimeout(v) { this.calls.push(v); this.timeout = v; } };
+    return info;
+  };
+  it('leaves the test budget alone at the default world wait', async () => {
+    const info = fakeInfo(180000);
+    await startPlayActive(makePage(makeGame()), { worldTimeout: 90000, testInfo: info });
+    expect(info.calls, 'the default wait changed the test budget').toEqual([]);
+  });
+  it('extends the test budget by exactly the extra world wait', async () => {
+    const info = fakeInfo(180000);
+    await startPlayActive(makePage(makeGame()), { worldTimeout: 240000, testInfo: info });
+    expect(info.calls, 'a 240 s world wait left a budget sized for 90 s').toEqual([330000]);
+  });
+  it('does not turn "no timeout" into a timeout', async () => {
+    const info = fakeInfo(0);
+    await startPlayActive(makePage(makeGame()), { worldTimeout: 240000, testInfo: info });
+    expect(info.calls).toEqual([]);
+  });
+  it('fails a long world wait as SETUP, naming the world', async () => {
+    const info = fakeInfo(180000);
+    await expect(
+      startPlayActive(makePage(makeGame(), { worldBuilds: false }), { worldTimeout: 240000, testInfo: info })
+    ).rejects.toThrow(/^SETUP: the world never built/);
+  });
+});
+
+describe('bootDev', () => {
+  it('tags an app that never comes up as SETUP, not as a failure of the spec', async () => {
+    const page = {
+      async goto() {},
+      async waitForFunction() { throw new Error('page.waitForFunction: Timeout 30000ms exceeded.'); },
+      on() {},
+    };
+    await expect(bootDev(page)).rejects.toThrow(/^SETUP: bootDev: the dev app never came up/);
+  });
+  it('returns when the app is up (presence control)', async () => {
+    const page = { async goto() {}, async waitForFunction() {}, on() {} };
+    await expect(bootDev(page)).resolves.toEqual([]);
   });
 });

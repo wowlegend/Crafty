@@ -20,6 +20,11 @@
 #    can see. It must SURVIVE. If it goes red, the batch measured flakiness, not detection, and none of its kills
 #    count. In the same campaign an identity mutant going red was how a real leak in the SHIPPED code was found — a
 #    control that fails is information about the subject as often as about the harness.
+#  - A TEST TIMEOUT IS NOT A KILL EITHER (2026-10-27, found by both arms of the review bake-off). Playwright's "Test
+#    timeout of Nms exceeded" names no step: it fires as readily on a slow world as on a mutant, so it reports COULD NOT
+#    CHECK. This under-counts kills that only show as a hang — make such a spec fail FASTER, with a named message,
+#    rather than reading the timeout as detection. _boot.js tags bootDev's wait SETUP for the same reason, and extends
+#    the test budget when E2E_WORLD_TIMEOUT lengthens the world wait (it used to pre-empt the SETUP rethrow).
 #  - IT SWEEPS. Every run kills this repo's leftover vite servers and Playwright browsers (kill-test-procs.sh), so a
 #    batch of eight does not stack eight headless Chromiums.
 #
@@ -36,6 +41,17 @@ if [ -z "$SUBJ" ] || [ -z "$SPEC" ] || [ -z "$LABEL" ] || [ -z "$OLD" ]; then
 fi
 [ -f "$SUBJ" ] || { echo "  [3] $LABEL — subject not found: $SUBJ"; exit 3; }
 [ -f "$SPEC" ] || { echo "  [3] $LABEL — spec not found: $SPEC"; exit 3; }
+
+# A SERVER ALREADY ON THE E2E PORT IS REUSED (playwright.config: reuseExistingServer when not CI), so the spec would
+# test THAT server's tree — a sibling worktree's unmutated source — and every mutant would read SURVIVED (ultrareview
+# 2026-10-27, U6). Refuse before mutating anything. The probe is e2e-freshness's own, which checks BOTH loopback
+# addresses: vite on macOS binds [::1] only.
+PORT=$(grep -oE 'const PORT = [0-9]+;' playwright.config.js | grep -oE '[0-9]+')
+[ -n "$PORT" ] || { echo "  [3] $LABEL — could not read the e2e port from playwright.config.js"; exit 3; }
+if node --input-type=module -e "import { portInUse } from './scripts/ci/e2e-freshness.mjs'; process.exit((await portInUse($PORT)) ? 0 : 1);"; then
+  echo "  [3] $LABEL — COULD NOT CHECK: something already listens on the e2e port $PORT; the spec would reuse it and test its tree, not this mutant. Stop it first (sh scripts/dev/kill-test-procs.sh, or the sibling's run)."
+  exit 3
+fi
 
 BAK="$(mktemp "${TMPDIR:-/tmp}/mutate-e2e-bak.XXXXXX")" || exit 3
 OUT="$(mktemp "${TMPDIR:-/tmp}/mutate-e2e-out.XXXXXX")" || exit 3
@@ -69,6 +85,10 @@ FAILED=$(grep -oE '^ +[0-9]+ failed' "$OUT" | tr -dc '0-9')
 PASSED=$(grep -oE '^ +[0-9]+ passed' "$OUT" | tr -dc '0-9')
 FIRST_ERR="$(grep -m1 'Error:' "$OUT" | sed -E 's/^ +//' | cut -c1-240)"
 
+if grep -qE 'Test timeout of [0-9]+ms exceeded' "$OUT"; then
+  echo "  [3] $LABEL — COULD NOT CHECK: the test ran out of its time budget, which names no step"
+  echo "         $FIRST_ERR"; exit 3
+fi
 if grep 'Error:' "$OUT" | grep -q 'SETUP:'; then
   echo "  [3] $LABEL — COULD NOT CHECK: the spec failed a precondition, not its subject"
   echo "         $FIRST_ERR"; exit 3
