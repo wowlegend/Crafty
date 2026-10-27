@@ -22,9 +22,11 @@ import { TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
 // INSIDE its hold. The device's `defaultBrowserType` (webkit) is deliberately not passed: it is a worker option, the
 // config pins chromium, and CDP touch is Chromium's. So this is NOT a WebKit run — real Safari is Kevin's device.
 //
-// TIMING HONESTY. Each hold is stamped on the game's own clock (performance.now) by window listeners, and every verdict
-// prints it. Under load a real touch can be held longer than asked; where that makes a control unable to discriminate,
-// the spec says SETUP (scripts/dev/mutate-e2e.sh scores that COULD NOT CHECK), never a verdict.
+// TIMING HONESTY. Each hold is stamped by window listeners on the clock the game reads, and every verdict prints it.
+// The roar's hold is the intent the frame loop sees between the HANDLED press and lift (performance.now); the action
+// button's is the input's own time (the events' timeStamp — CI run 40517958583, below), printed beside the handled gap.
+// Under load a lift can be handled long after it happened; where that makes a control unable to discriminate, the spec
+// says SETUP (scripts/dev/mutate-e2e.sh scores that COULD NOT CHECK), never a verdict.
 //
 // Mutation-Proof: OWED — NO verdict below has been observed yet. Not run by the authoring lane: the browser and port
 // 4179 are reserved for the command session, which runs every e2e and its mutation batch (scripts/dev/mutate-e2e.sh,
@@ -48,12 +50,29 @@ import { TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
 //   E0 identity (a comment edit in src/ui/TouchControls.jsx) -> must SURVIVE
 // (A mutant of ANTICIPATION_SEC is deliberately absent: this spec imports that constant, so it would move its own
 // thresholds and score SETUP, not a verdict.) Replace OWED with the observed verdicts.
+// CI run 40517958583 fix (the input-time hold; the fresh-brute isolation) — OBSERVED 2026-10-27 by its
+// lane, the action-button case alone, a throwaway config on a free port, a machine at load 31-85 on 14 cores
+// (E2E_WORLD_TIMEOUT=180000), each RED with the message named unless marked:
+//   E0 identity (a comment edit in src/ui/TouchControls.jsx) -> SURVIVED, as it must
+//   E14 src/ui/TouchControls.jsx: the action button's lift passes no timeStamp -> RED, "a 40 ms tap whose lift was
+//       handled 2218 ms later threw the heavy (40)"
+//   E15 src/Components.jsx: releaseHeavySwing drops the lift's time -> RED, the late lift (handled 2300 ms, threw 40)
+//   E16 src/Components.jsx: pressPrimary drops the press's time -> RED, "a 1401 ms hold whose press was handled late
+//       threw nothing"
+//   E17 src/game/heavyAttack.js: plausible-wrong, the release reads the handler clock again -> RED, the late lift
+//   E18 src/Components.jsx: the heavy's staggerUntil line removed -> RED, "the heavy staggered nothing" (a verdict that
+//       could not fail on CI while the warm-up's stagger lingered under the freeze)
+//   E6 src/Components.jsx: plausible-wrong, the release throws the heavy whatever the charge -> RED, "a HALF-charged
+//       release dealt 40"
 
 const IPAD = devices['iPad Pro 11 landscape'];
 test.use({ viewport: IPAD.viewport, userAgent: IPAD.userAgent, isMobile: IPAD.isMobile, hasTouch: IPAD.hasTouch, deviceScaleFactor: 1 });
 
-const touchStart = (cdp, p) => cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: p.x, y: p.y }] });
-const touchEnd = (cdp) => cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+// `at` (optional): the time the input HAPPENED, CDP's `timestamp` (seconds since the epoch), which Chromium carries into
+// the event's `timeStamp`. Omitted, the browser stamps the moment it dispatches the event.
+const stampOf = (at) => (at === undefined ? {} : { timestamp: at });
+const touchStart = (cdp, p, at) => cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: p.x, y: p.y }], ...stampOf(at) });
+const touchEnd = (cdp, at) => cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [], ...stampOf(at) });
 
 /** The centre of a control, and proof a thumb there lands ON it. Throws SETUP otherwise. */
 async function aimAt(page, testid) {
@@ -207,107 +226,210 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
       const gx = cam.position.x + d.x * 2.5, gz = cam.position.z + d.z * 2.5;
       const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
       const gy = s.getMobFloor ? s.getMobFloor(gx, gz, cam.position.y - 1.6) : null;
+      window.__touchSpawn = { x: gx, y: gy, z: gz }; // each fresh brute below stands here
       s.spawnMob(gx, gz, 'moss_brute', gy);
       window.__touchRandom = Math.random;
       Math.random = () => 0.999;
       s.triggerHitstop(120000);
       const added = window.__craftyTest.call('readMobs').filter((m) => !before.has(m.id));
-      return added.length === 1 ? added[0].id : null;
+      window.__touchMob = added.length === 1 ? added[0].id : null; // re-pointed by freshBrute
+      return window.__touchMob;
     });
     expect(id, 'SETUP: spawnMob did not add exactly one brute').not.toBeNull();
     // The brute's health on every press and lift, read in CAPTURE phase on window — before the game's handlers run for
-    // an event targeted at the button — and stamped on the charge's own clock.
-    await page.evaluate((mid) => {
+    // an event targeted at the button — with TWO clocks: `t`, when the handler ran (performance.now), and `ts`, when the
+    // input happened (the event's timeStamp). The game reads the hold on the second; the first is what a stall moves.
+    await page.evaluate(() => {
       window.__hpLog = [];
-      const hp = () => window.__craftyTest.call('readMobs').find((e) => e.id === mid)?.health ?? null;
+      const hp = () => window.__craftyTest.call('readMobs').find((e) => e.id === window.__touchMob)?.health ?? null;
       for (const type of ['pointerdown', 'pointerup']) {
         window.addEventListener(type, (e) => {
           const target = e.target && e.target.closest ? e.target.closest('[data-testid]')?.getAttribute('data-testid') : null;
-          window.__hpLog.push({ type, t: performance.now(), hp: hp(), target, synthetic: !e.isTrusted });
+          window.__hpLog.push({ type, t: performance.now(), ts: e.timeStamp, hp: hp(), target, synthetic: !e.isTrusted });
         }, { capture: true });
       }
-    }, id);
-    const read = () => page.evaluate((mid) => {
+    });
+    const read = () => page.evaluate(() => {
       const call = (n) => window.__craftyTest.call(n);
-      const m = call('readMobs').find((e) => e.id === mid);
+      const m = call('readMobs').find((e) => e.id === window.__touchMob);
       const c = window.__threeCamera.position;
       const st = window.useGameStore.getState();
       return m
         ? { hp: m.health, staggered: m.staggerUntil > call('worldNow'), dist: +Math.hypot(m.x - c.x, m.z - c.z).toFixed(2),
           active: call('readIntents').active, alive: st.isAlive, frozen: st.hitstopUntil > performance.now() }
         : { hp: null, gone: true };
-    }, id);
-    const aim = () => page.evaluate((mid) => {
-      const m = window.__craftyTest.call('readMobs').find((e) => e.id === mid);
+    });
+    // A FRESH BRUTE where the first stood (heavy-melee.spec.js's beast phase does the same). CI run 40517958583 failed
+    // "a half-charged release staggered the brute" 3 of 3, and the half never staggered it: the WARM-UP did. Its 40 ms
+    // touch was handled 1029-7269 ms apart, the game threw a heavy (release 40 = HEAVY_MULT x its press of 20), and the
+    // world is FROZEN for the measurement — the stagger runs on the world clock, so it never expired. The half's press
+    // then dealt 30, the riposte's 1.5x on a staggered brute: it was staggered BEFORE the half began. And the full
+    // hold's "the heavy staggered" read that same stale stagger, so it could not fail. The warm-up cannot be made a tap
+    // here: CDP returns from the press only once the page has handled it, so under load the harness LIFTS late — measured
+    // locally 2026-10-27, a "40 ms" warm-up 2801 ms apart on the input clock, a real held press whose heavy is correct.
+    // So a stagger read is attributable only on a brute nothing has staggered: each judged phase starts on a fresh one,
+    // and says so (SETUP) first.
+    const freshBrute = () => page.evaluate(() => {
+      const s = window.useGameStore.getState();
+      const at = window.__touchSpawn;
+      if (window.__craftyTest.call('readMobs').some((e) => e.id === window.__touchMob)) window.GameMethods.damageMob(window.__touchMob, 99999, 'physical', 'ally');
+      const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
+      s.spawnMob(at.x, at.z, 'moss_brute', at.y);
+      const added = window.__craftyTest.call('readMobs').filter((m) => !before.has(m.id));
+      window.__touchMob = added.length === 1 ? added[0].id : null;
+      return window.__touchMob;
+    });
+    const aim = () => page.evaluate(() => {
+      const m = window.__craftyTest.call('readMobs').find((e) => e.id === window.__touchMob);
       if (m) window.__threeCamera.lookAt(m.x, m.y + 0.8, m.z);
-    }, id);
+    });
     const cdp = await page.context().newCDPSession(page);
     const action = await aimAt(page, 'touch-action');
     // One real touch on the action button: down, `ms`, up — then the press and lift health reads, and the state after.
-    const hold = async (ms) => {
+    // `heldMs` is the hold on the input's clock (the one the game reads); `handledMs` on the handlers'. `downAt` / `upAt`
+    // stamp the touch's own times (see touchStart).
+    const hold = async (ms, { downAt, upAt } = {}) => {
       await page.evaluate(() => { window.__hpLog = []; });
-      await touchStart(cdp, action);
+      await touchStart(cdp, action, downAt);
       await page.waitForTimeout(ms);
-      await touchEnd(cdp);
+      await touchEnd(cdp, upAt);
       await page.waitForTimeout(120);
       const after = await read();
       const log = await page.evaluate(() => window.__hpLog.splice(0));
       const down = log.find((e) => e.type === 'pointerdown' && e.target === 'touch-action');
       const up = log.find((e) => e.type === 'pointerup' && e.target === 'touch-action');
       if (!down || !up) return { log, after, missing: true };
-      return { press: down.hp - up.hp, release: up.hp - after.hp, heldMs: Math.round(up.t - down.t), after, trusted: !down.synthetic };
+      return { press: down.hp - up.hp, release: up.hp - after.hp, heldMs: Math.round(up.ts - down.ts),
+        handledMs: Math.round(up.t - down.t), after, trusted: !down.synthetic };
+    };
+    const brute = async (phase) => {
+      expect(await freshBrute(), `SETUP: no fresh brute for ${phase}`).not.toBeNull();
+      const before = await read();
+      expect(before.staggered, `SETUP: the fresh brute for ${phase} is already staggered — its stagger read cannot be attributed: ${JSON.stringify(before)}`).toBe(false);
+      expect(before.dist > 0.8 && before.dist < 3.5, `SETUP: the fresh brute for ${phase} is not in front, in reach — ${JSON.stringify(before)}`).toBe(true);
+      return before;
     };
 
     const r = { start: await read() };
     expect(r.start.dist > 0.8 && r.start.dist < 3.5, `SETUP: the brute is not in front, in reach — ${JSON.stringify(r.start)}`).toBe(true);
     await aim();
-    r.warm = await hold(40); // the page's first swing stalls the main thread (heavy-melee.spec.js); unmeasured
+    r.warm = await hold(40); // the page's first swing stalls the main thread (heavy-melee.spec.js); unmeasured, and its
+    r.warm.staggered = (await read()).staggered; // brute is replaced, whatever it did to it (printed, never judged)
     await page.waitForTimeout(400);
+    r.halfBefore = await brute('the half-charged CONTROL');
     // THE CONTROL: half-way through the charge — past the light swing's 300 ms cooldown, short of ready — held IN THE
     // PAGE on the game's clock by pointer events dispatched on the button (a real touch's jitter under load exceeds this
     // window; heavy-melee.spec.js measured it). React handles them as it handles the real ones; setPointerCapture
     // refuses their synthetic pointerId, which the overlay swallows by design. The FULL hold below is the real touch.
+    // In-page events are stamped when CONSTRUCTED (DOM: an event's timeStamp is its creation time), so each is built
+    // right before its dispatch and the input clock the game reads matches the busy-waited hold.
     await aim();
-    r.half = await page.evaluate(({ ms, mid }) => {
-      const hp = () => window.__craftyTest.call('readMobs').find((e) => e.id === mid)?.health ?? null;
+    r.half = await page.evaluate(({ ms }) => {
+      const hp = () => window.__craftyTest.call('readMobs').find((e) => e.id === window.__touchMob)?.health ?? null;
       const el = document.querySelector('[data-testid="touch-action"]');
       const opts = { bubbles: true, cancelable: true, pointerId: 77, pointerType: 'touch', isPrimary: true, button: 0 };
       const hp0 = hp(), t0 = performance.now();
-      el.dispatchEvent(new PointerEvent('pointerdown', { ...opts, buttons: 1 }));
+      const down = new PointerEvent('pointerdown', { ...opts, buttons: 1 });
+      el.dispatchEvent(down);
       const t1 = performance.now(), hp1 = hp();
       while (performance.now() - t1 < ms) { /* the hold, on the clock the charge reads */ }
       const t2 = performance.now();
-      el.dispatchEvent(new PointerEvent('pointerup', { ...opts, buttons: 0 }));
+      const up = new PointerEvent('pointerup', { ...opts, buttons: 0 });
+      el.dispatchEvent(up);
       window.__hpLog.splice(0);
-      return { press: hp0 - hp1, release: hp1 - hp(), heldMin: Math.round(t2 - t1), heldMax: Math.round(t2 - t0) };
-    }, { ms: HEAVY_HOLD_MS + HEAVY_CHARGE_MS / 2, mid: id });
+      return { press: hp0 - hp1, release: hp1 - hp(), heldMin: Math.round(t2 - t1), heldMax: Math.round(t2 - t0),
+        heldMs: Math.round(up.timeStamp - down.timeStamp) };
+    }, { ms: HEAVY_HOLD_MS + HEAVY_CHARGE_MS / 2 });
     await page.waitForTimeout(120);
     r.half.after = await read();
     await page.waitForTimeout(400);
-    // THE FULL HOLD: a real touch, past the hold threshold and the whole charge.
+    // THE FULL HOLD: a real touch, past the hold threshold and the whole charge, on the same brute (the half must have
+    // left it unstaggered — its verdict below — so the full's stagger read is the heavy's own).
     await aim();
+    r.fullBefore = await read();
     r.full = await hold(HEAVY_HOLD_MS + HEAVY_CHARGE_MS + 200);
+    await page.waitForTimeout(400);
+
+    // A LATE LIFT: a real touch whose lift HAPPENED 40 ms after its press but is DISPATCHED a second later — what a
+    // stalled main thread does to a quick tap, with the stall replaced by CDP's own input time (`timestamp`). It changes
+    // WHY the lift is handled late, not what the game sees: two trusted pointer events, stamped 40 ms apart, handled a
+    // second or more apart. A game that reads the hold on its handlers throws a heavy here; one that reads the finger
+    // swings once. (The game half of what CI run 40517958583 surfaced: its warm-up was handled 1029-7269 ms apart.)
+    r.lateBefore = await brute('the late lift');
+    await aim();
+    const tap0 = Date.now() / 1000;
+    r.late = await hold(1000, { downAt: tap0, upAt: tap0 + 0.04 });
+    await page.waitForTimeout(400);
+    // A LATE PRESS, its mirror: the finger lands, the main thread is busy for a second, then the press is handled, and
+    // the lift 400 ms after it — past the light swing's 300 ms cooldown, short of a charge on the handler clock, 1.4 s
+    // of hold on the finger's. Held IN THE PAGE (the event is constructed when the finger lands and dispatched after the
+    // stall), because the handler gap must sit inside (300, 700) and a real touch's jitter under load exceeds that.
+    await aim();
+    r.latePress = await page.evaluate(({ stallMs, holdMs }) => {
+      const hp = () => window.__craftyTest.call('readMobs').find((e) => e.id === window.__touchMob)?.health ?? null;
+      const spin = (ms) => { const s0 = performance.now(); while (performance.now() - s0 < ms) { /* the main thread, busy */ } };
+      const el = document.querySelector('[data-testid="touch-action"]');
+      const opts = { bubbles: true, cancelable: true, pointerId: 78, pointerType: 'touch', isPrimary: true, button: 0 };
+      const down = new PointerEvent('pointerdown', { ...opts, buttons: 1 }); // the finger lands: stamped now
+      spin(stallMs);
+      const hp0 = hp(), h0 = performance.now();
+      el.dispatchEvent(down);
+      const hp1 = hp();
+      spin(holdMs);
+      const up = new PointerEvent('pointerup', { ...opts, buttons: 0 });
+      const h1 = performance.now();
+      el.dispatchEvent(up);
+      window.__hpLog.splice(0);
+      return { press: hp0 - hp1, release: hp1 - hp(), heldMs: Math.round(up.timeStamp - down.timeStamp), handledMs: Math.round(h1 - h0) };
+    }, { stallMs: 1000, holdMs: 400 });
+    await page.waitForTimeout(120);
+    r.latePress.after = await read();
     await page.evaluate(() => { Math.random = window.__touchRandom; });
 
     const where = JSON.stringify(r);
-    const { half, full } = r;
-    console.log(`[touch-hold] heavy half: press ${half.press} release ${half.release} (${half.heldMin}-${half.heldMax} ms) · full: press ${full.press} release ${full.release} (${full.heldMs} ms, trusted ${full.trusted})`);
-    expect(full.missing, `SETUP: the real hold's pointerdown/pointerup on touch-action were not both logged — ${where}`).toBeUndefined();
-    expect(full.after.gone, `SETUP: the brute died or vanished mid-measurement — ${where}`).toBeUndefined();
-    expect(full.after.active && full.after.alive, `SETUP: the input gate dropped or the player died — ${where}`).toBe(true);
-    expect(full.after.frozen, `SETUP: the world freeze ran out mid-measurement — ${where}`).toBe(true);
-    expect(half.heldMin > 300 && half.heldMax < HEAVY_HOLD_MS + HEAVY_CHARGE_MS,
-      `SETUP: the half-charged hold lasted ${half.heldMin}-${half.heldMax} ms, not inside (300, ${HEAVY_HOLD_MS + HEAVY_CHARGE_MS}) — the control cannot discriminate: ${where}`).toBe(true);
-    expect(full.heldMs >= HEAVY_HOLD_MS + HEAVY_CHARGE_MS,
-      `SETUP: the real hold lasted ${full.heldMs} ms on the game's clock, short of the ${HEAVY_HOLD_MS + HEAVY_CHARGE_MS} ms charge: ${where}`).toBe(true);
-    expect(full.trusted, `SETUP: the full hold was not a real (trusted) touch — ${where}`).toBe(true);
+    const { half, full, late, latePress } = r;
+    const READY = HEAVY_HOLD_MS + HEAVY_CHARGE_MS;
+    console.log(`[touch-hold] heavy warm: held ${r.warm.heldMs} ms (handled ${r.warm.handledMs}) release ${r.warm.release} staggered ${r.warm.staggered}`
+      + ` · half: press ${half.press} release ${half.release} (${half.heldMin}-${half.heldMax} ms, input ${half.heldMs})`
+      + ` · full: press ${full.press} release ${full.release} (${full.heldMs} ms, handled ${full.handledMs}, trusted ${full.trusted})`
+      + ` · late lift: press ${late.press} release ${late.release} (input ${late.heldMs} ms, handled ${late.handledMs})`
+      + ` · late press: press ${latePress.press} release ${latePress.release} (input ${latePress.heldMs} ms, handled ${latePress.handledMs})`);
+    for (const [name, ph] of [['full', full], ['late lift', late]]) {
+      expect(ph.missing, `SETUP: the ${name}'s pointerdown/pointerup on touch-action were not both logged — ${where}`).toBeUndefined();
+      expect(ph.trusted, `SETUP: the ${name} was not a real (trusted) touch — ${where}`).toBe(true);
+    }
+    for (const [name, after] of [['half', half.after], ['full', full.after], ['late lift', late.after], ['late press', latePress.after]]) {
+      expect(after.gone, `SETUP: the brute died or vanished in the ${name} — ${where}`).toBeUndefined();
+      expect(after.active && after.alive, `SETUP: the input gate dropped or the player died in the ${name} — ${where}`).toBe(true);
+      expect(after.frozen, `SETUP: the world freeze ran out by the ${name} — ${where}`).toBe(true);
+    }
+    expect(half.heldMin > 300 && half.heldMax < READY && half.heldMs > 300 && half.heldMs < READY,
+      `SETUP: the half-charged hold lasted ${half.heldMin}-${half.heldMax} ms (input ${half.heldMs}), not inside (300, ${READY}) — the control cannot discriminate: ${where}`).toBe(true);
+    expect(full.heldMs >= READY,
+      `SETUP: the real hold lasted ${full.heldMs} ms on the input's clock, short of the ${READY} ms charge: ${where}`).toBe(true);
+    // THE CONTROL
     expect(half.press, `the action button's press dealt no damage — it never reached the brute (aim, range, or the gate): ${where}`).toBeGreaterThan(0);
     expect(half.release, `a HALF-charged release dealt ${half.release} — the heavy fired without a full charge: ${where}`).toBe(0);
-    expect(half.after.staggered, `a half-charged release staggered the brute: ${where}`).toBe(false);
+    expect(half.after.staggered, `a half-charged release staggered the (fresh) brute: ${where}`).toBe(false);
+    // THE FULL HOLD
+    expect(r.fullBefore.staggered, `SETUP: the brute was staggered before the full hold — its stagger read cannot be attributed: ${where}`).toBe(false);
     expect(full.press, `the held press did not swing the light tap at once: ${where}`).toBe(half.press);
     expect(full.release, `the charged release dealt nothing — a held touch never threw the heavy: ${where}`).toBeGreaterThan(0);
     expect(full.release / full.press, `the charged release dealt ${(full.release / full.press).toFixed(2)}x the tap: ${where}`).toBeCloseTo(HEAVY_MULT, 1);
     expect(full.after.staggered, `the heavy staggered nothing: ${where}`).toBe(true);
+    // THE LATE LIFT
+    expect(late.heldMs < HEAVY_HOLD_MS, `SETUP: the late lift's input times are ${late.heldMs} ms apart, not a tap — CDP's timestamp did not reach the event: ${where}`).toBe(true);
+    expect(late.handledMs >= READY, `SETUP: the late lift was handled only ${late.handledMs} ms after its press — the case cannot discriminate: ${where}`).toBe(true);
+    expect(late.press, `PRESENCE: the late-lift tap dealt no damage — it never reached the brute: ${where}`).toBeGreaterThan(0);
+    expect(late.release, `a ${late.heldMs} ms tap whose lift was handled ${late.handledMs} ms later threw the heavy (${late.release}) — the hold is read on the handler's clock, not the finger's: ${where}`).toBe(0);
+    expect(late.after.staggered, `the late-lift tap staggered the brute: ${where}`).toBe(false);
+    // THE LATE PRESS
+    expect(latePress.handledMs > 300 && latePress.handledMs < READY && latePress.heldMs >= READY,
+      `SETUP: the late press was handled ${latePress.handledMs} ms (input ${latePress.heldMs}), not inside (300, ${READY}) with a full charge on the input — the case cannot discriminate: ${where}`).toBe(true);
+    expect(latePress.press, `PRESENCE: the late press dealt no damage — it never reached the brute: ${where}`).toBeGreaterThan(0);
+    expect(latePress.release, `a ${latePress.heldMs} ms hold whose press was handled late threw nothing — the charge counted from the handler, not the finger: ${where}`).toBeGreaterThan(0);
+    expect(latePress.release / latePress.press, `the late press's release dealt ${(latePress.release / latePress.press).toFixed(2)}x the tap: ${where}`).toBeCloseTo(HEAVY_MULT, 1);
+    expect(latePress.after.staggered, `the late press's heavy staggered nothing: ${where}`).toBe(true);
   });
 
   test('F9: a new player sees the roar locked, and a tap on it opens the Talents panel without roaring', async ({ page }) => {
