@@ -1,6 +1,7 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
+import { BURST_M, flown, stoppedShort } from './_spellEnd.js';
 
 // A MOB UNDER A ROOF STAYS ON THE GROUND (review #6, QUEUE R7.1).
 //
@@ -29,10 +30,11 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // Both are inputs the spec read and never set. So the spell now reports its own end (readSpentProjectiles:
 // where, and what ended it), and the spec ESTABLISHES the three inputs it used to inherit: the AIM (level, along a
 // heading whose ground stays below the flight line for 8 m — it used to fly wherever the camera happened to face),
-// MOBS (a cast intercepted by a mob is set aside and recast, up to three times: a mob in the way is not a burst
-// at the muzzle, and the subject's defect can never read as 'mob' — EnhancedMagicSystem tests the ground before
-// it tests mobs, so a muzzle burst ends 'ground', or 'age' when the frame that carried it was over 3 s long, and
-// at the muzzle either way), and the FRAME RATE (no longer read at all).
+// MOBS (a cast a mob or the boss stopped within 4 m of the muzzle is set aside and recast, up to three times: it
+// cannot show whether the spell flies; one stopped beyond 4 m is judged, since the ground test passed at every
+// half-metre substep on the way out — and the subject's defect can never read as 'mob' — EnhancedMagicSystem tests
+// the ground before it tests mobs, so a muzzle burst ends 'ground', or 'age' when the frame that carried it was
+// over 3 s long, and at the muzzle either way), and the FRAME RATE (no longer read at all).
 //
 // Mutation-Proof: by hand (cp backup, byte-verified restore), each observed RED:
 //   E1 AIWorkerSystem: snapMob(entity, null, store.getMobGroundLevel) — the top-down snap — "the zombie stood ON
@@ -42,6 +44,9 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 //      the roof burst 0.5 m from the muzzle (ended by ground ...)"
 //   E3 EnhancedMagicSystem: the DEV end record never written — "no end was recorded" (the instrument's presence
 //      check: a blind recorder must not read as a clean flight)
+// The set-aside rule (_spellEnd.js) is mutation-proven where it can be driven: tests/gates/spell-end-verdict-gates
+// (its M1 is the old rule, which set aside a mob end at any distance). What the record stores is proven by
+// tests/gates/spent-spell-record-gates.
 // The flake itself, CONSTRUCTED rather than waited for (2026-10-27, throwaway :4291 config, identity mutant green
 // on both tests): a page-side burner making every frame with a live spell take 4 s read "the fireball cast under the
 // roof burst after 1.3 m (2 frames)" on the old per-frame sampling — CI's shape — and passed on the end record.
@@ -173,14 +178,16 @@ test.describe('mob floor', () => {
     const top = await page.evaluate(({ cx, cz }) => window.useGameStore.getState().getMobGroundLevel(cx, cz), site);
     expect(top, 'control: the top probe does not read the roof over the caster').toBeGreaterThan(me.eye);
 
-    // A cast a MOB ended is set aside and recast: a mob in the line is not a burst at the muzzle, and the defect this
-    // guards cannot hide there — the ground test runs before the mob test, so a muzzle burst never reads 'mob'.
+    // A cast a MOB or the boss ended WITHIN BURST_M of the muzzle is set aside and recast: the spell was stopped before
+    // it could show whether it flies. One ended BEYOND BURST_M is a valid flight and is judged — the ground test passed
+    // at every half-metre substep on the way out (_spellEnd.js). Setting those aside too threw valid flights away, and
+    // three in a row read as a SETUP failure on a spell that flew (review, 2026-10-27).
     const casts = [];
     for (let n = 0; n < 3; n++) {
       const c = await castLevel(page, site);
       expect(c.setup ?? null, `SETUP: ${c.setup}`).toBeNull();
       casts.push(c);
-      if (!c.end || (c.end.by !== 'mob' && c.end.by !== 'boss')) break;
+      if (!stoppedShort(c)) break;
     }
     const c = casts[casts.length - 1];
     const where = `heading ${c.heading}, open ${c.open.toFixed(1)} m, nearest mob ${c.nearMob.toFixed(1)} m, ` +
@@ -190,11 +197,11 @@ test.describe('mob floor', () => {
     expect(c.stillLive, `the fireball was still in flight after 60 s — nothing ended it (${where})`).toBe(false);
     // PRESENCE: the spell's own end record exists. A recorder that wrote nothing must not read as a clean flight.
     expect(c.end, `the fireball left the live list but no end was recorded — readSpentProjectiles is blind (${where})`).not.toBeNull();
-    expect(c.end.by === 'mob' || c.end.by === 'boss',
-      `SETUP: a ${c.end.by} intercepted the fireball in all ${casts.length} casts — no unobstructed flight was measured (${where})`).toBe(false);
-    const flew = Math.hypot(c.end.x - c.muzzle.x, c.end.y - c.muzzle.y, c.end.z - c.muzzle.z);
+    const flew = flown(c);
+    expect(stoppedShort(c), `SETUP: a ${c.end.by} stopped the fireball within ${BURST_M} m of the muzzle in all ` +
+      `${casts.length} casts (last at ${flew.toFixed(1)} m) — no flight long enough to judge was measured (${where})`).toBe(false);
     expect(flew, `the fireball cast under the roof burst ${flew.toFixed(1)} m from the muzzle ` +
-      `(ended by ${c.end.by} at age ${c.end.age.toFixed(0)} ms; ${where})`).toBeGreaterThan(4);
+      `(ended by ${c.end.by} at age ${c.end.age.toFixed(0)} ms; ${where})`).toBeGreaterThan(BURST_M);
   });
 
   test('a roof over open ground: the live floor probe and a zombie under it stay on the ground', async ({ page }) => {
