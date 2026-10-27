@@ -22,7 +22,7 @@
  *   2. it has top-level EXECUTABLE statements — a bare expression, a branch, a loop, or a `const` whose
  *      initialiser is a call. Declarations of functions, classes and plain literals are inert and do not
  *      count, which is exactly why `_serve.mjs` (a pure helper) is correctly silent here;
- *   3. it has no `import.meta.url` / `process.argv[1]` guard anywhere.
+ *   3. no top-level `if` is gated on a `process.argv[1]` / `import.meta` guard (see `gatedAtTopLevel` below).
  *
  * Anything looser flags harmless module setup and becomes noise, and noise is how a check gets switched
  * off — the same reasoning that made the i18n gate a ratchet rather than a zero-target.
@@ -67,12 +67,74 @@ const initIsCall = (node) =>
  * top-level work and only that path line scored as guarded — unflagged in exactly the shape this checker
  * exists to catch, which is worse than no checker because it also silences the reviewer.
  *
- * Line-scoped rather than whole-source, so the comparison and the mention have to occur together.
+ * AND A GUARD GATES; it does not merely exist. The second version matched guard tokens line by line over the raw
+ * SOURCE, so a comment or a string holding `process.argv[1]` counted, and so did a guard function nothing called.
+ * doc-currency.mjs carries both (a comment explaining why `resolve(process.argv[1]) === …` is not enough, and its
+ * `invokedDirectly()`), so turning its `if (invokedDirectly())` into `if (true)` — a CLI that runs on every import —
+ * stayed green (tranche A review, 2026-10-27). Now read off the AST: a script is guarded when a TOP-LEVEL `if`
+ * has a guard expression in its test, written there or reached through the top-level `const` or `function` the test
+ * names (the `isCli` and `invokedDirectly()` forms). Comments and strings are not nodes, so they cannot count.
+ * A guard expression: `process.argv[1]` (the house idiom), `import.meta.main` (Node's native flag), or an equality
+ * comparing something built from `import.meta.url`.
+ * BLIND SPOT: a guard written another way (a top-level `isCli && main()`, an early return inside `main`) is flagged;
+ * widen this when a script needs one, never exempt the script.
  */
-const isGuardLine = (line) =>
-  /process\.argv\[1\]/.test(line) || // the house idiom, and this token appears nowhere else in the repo
-  /import\.meta\.main/.test(line) || // Node's native flag, for whenever the repo adopts it
-  (/import\.meta\.url/.test(line) && /[=!]==/.test(line)); // any hand-rolled equality form
+const SKIP_KEYS = new Set(['loc', 'start', 'end', 'extra', 'leadingComments', 'trailingComments', 'innerComments']);
+
+/** Every AST node under `node`, itself included. */
+function* nodesOf(node) {
+  if (!node || typeof node !== 'object') return;
+  if (Array.isArray(node)) {
+    for (const n of node) yield* nodesOf(n);
+    return;
+  }
+  if (typeof node.type === 'string') yield node;
+  for (const [k, v] of Object.entries(node)) if (!SKIP_KEYS.has(k) && v && typeof v === 'object') yield* nodesOf(v);
+}
+
+const isMember = (n) => n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression';
+const isImportMeta = (n) => n && n.type === 'MetaProperty' && n.meta.name === 'import' && n.property.name === 'meta';
+const isImportMetaProp = (n, name) => isMember(n) && isImportMeta(n.object) && !n.computed && n.property.name === name;
+const isArgv1 = (n) =>
+  isMember(n) &&
+  n.computed &&
+  n.property.type === 'NumericLiteral' &&
+  n.property.value === 1 &&
+  isMember(n.object) &&
+  !n.object.computed &&
+  n.object.object.type === 'Identifier' &&
+  n.object.object.name === 'process' &&
+  n.object.property.name === 'argv';
+const isEquality = (n) => n.type === 'BinaryExpression' && ['===', '!==', '==', '!='].includes(n.operator);
+
+/** Does this subtree hold a guard expression? */
+const holdsGuard = (node) => {
+  for (const n of nodesOf(node)) {
+    if (isArgv1(n) || isImportMetaProp(n, 'main')) return true;
+    if (isEquality(n) && [...nodesOf(n)].some((m) => isImportMetaProp(m, 'url'))) return true;
+  }
+  return false;
+};
+
+/** Is some top-level `if` gated on a guard, directly or through the top-level bindings its test names? */
+function gatedAtTopLevel(body) {
+  const bindings = new Map(); // top-level name -> the subtree that defines it
+  for (const stmt of body) {
+    const decl = stmt.type.startsWith('Export') && stmt.declaration ? stmt.declaration : stmt;
+    if (decl.type === 'FunctionDeclaration' && decl.id) bindings.set(decl.id.name, decl.body);
+    if (decl.type === 'VariableDeclaration') for (const d of decl.declarations) if (d.id.type === 'Identifier') bindings.set(d.id.name, d.init);
+  }
+  const reaches = (node, seen) => {
+    if (holdsGuard(node)) return true;
+    for (const n of nodesOf(node)) {
+      if (n.type !== 'Identifier' || seen.has(n.name) || !bindings.has(n.name)) continue;
+      seen.add(n.name);
+      if (reaches(bindings.get(n.name), seen)) return true;
+    }
+    return false;
+  };
+  return body.some((stmt) => stmt.type === 'IfStatement' && reaches(stmt.test, new Set()));
+}
 
 /** PURE: decide a single source file. Exported so the decision is testable without a filesystem. */
 export function inspect(src) {
@@ -85,7 +147,7 @@ export function inspect(src) {
   const body = ast.program.body;
   const hasExport = body.some((n) => n.type.startsWith('Export'));
   const topLevel = body.filter((n) => EXECUTABLE.has(n.type) || initIsCall(n));
-  const hasGuard = src.split('\n').some(isGuardLine);
+  const hasGuard = gatedAtTopLevel(body);
   return { hasExport, topLevelCount: topLevel.length, hasGuard, kinds: [...new Set(topLevel.map((n) => n.type))] };
 }
 

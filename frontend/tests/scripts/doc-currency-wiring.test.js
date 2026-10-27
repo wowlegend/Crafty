@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isolatedGitEnv } from './_isolatedGit.js';
 import { run, CHECKS, CANONICAL } from '../../scripts/ci/doc-currency.mjs';
 import { derive as deriveGates, renderBlock as renderGates, END as GATES_END } from '../../scripts/ci/gate-table.mjs';
@@ -246,6 +246,20 @@ describe('doc-currency run() — the seam every check is wired into', () => {
 });
 
 describe('doc-currency CLI — the call site the pipeline runs', () => {
+  it('importing the module runs no CLI: the importer\'s output is its own, and it exits 0', () => {
+    // cli-guard reads the guard off the AST; this watches the behaviour. Importing in this worker would hide a CLI
+    // that ran (on a clean tree it only prints), so a fresh process imports it and owns its stdout and stderr.
+    const url = pathToFileURL(join(APP, 'scripts/ci/doc-currency.mjs')).href;
+    const p = spawnSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(url)}); console.log('imported');`], {
+      cwd: APP,
+      encoding: 'utf8',
+      env: isolatedGitEnv(),
+    });
+    expect(p.status, p.stderr).toBe(0);
+    expect(p.stdout, 'presence: the import finished, and nothing else printed').toBe('imported\n');
+    expect(p.stderr).toBe('');
+  });
+
   it('on the real tree, prints run()\'s warnings and verdict and exits on its errors', () => {
     const r = run();
     const p = cli();
