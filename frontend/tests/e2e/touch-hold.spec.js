@@ -23,8 +23,15 @@ import { TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
 // config pins chromium, and CDP touch is Chromium's. So this is NOT a WebKit run — real Safari is Kevin's device.
 //
 // TIMING HONESTY. Each hold is stamped by window listeners on the clock the game reads, and every verdict prints it.
-// The roar's hold is the intent the frame loop sees between the HANDLED press and lift (performance.now); the action
-// button's is the input's own time (the events' timeStamp — CI run 40517958583, below), printed beside the handled gap.
+// The action button's hold is the input's own time (the events' timeStamp — CI run 40517958583, below), printed beside
+// the handled gap: the heavy is decided AT the release, from both stamps. The roar is not, and cannot be: the frame loop
+// commits it DURING the hold, so it can only act on a lift the page has handled, and under load the page learns of a
+// lift long after it happened while frames keep running (measured 2026-10-27, six CDP taps on this iPad at ~3 fps: press
+// latency 551-2534 ms, lift latency 535-4326 ms; three unstamped "120 ms" taps were handled 661-4460 ms apart and two of
+// them committed the beast form, because the harness itself lifts only after CDP has seen the press handled). Counting
+// the roar's charge from the press's stamp would make that worse, not better: in all six, the frame that first saw the
+// press ran 874-2535 ms after the press's stamp, past the 450 ms charge, so every tap would have committed at once. So
+// the roar CONTROL is a tap the frame loop sees for exactly one frame (below), and the roar HOLD is real touch.
 // Under load a lift can be handled long after it happened; where that makes a control unable to discriminate, the spec
 // says SETUP (scripts/dev/mutate-e2e.sh scores that COULD NOT CHECK), never a verdict.
 //
@@ -67,6 +74,17 @@ import { TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
 //   E19 F2's flake CONSTRUCTED (a throwaway spec, deleted): the title menu brought back, input made live as forcePlay
 //       does, touch-action hit-tested the moment it mounted -> covered by "CANVAS in title-diorama", topmost 969 ms
 //       later. Every entry of the batch above logged the same cover: 3332-8841 ms after startPlayActive returned.
+// Review round 3 (the roar CONTROL rebuilt as a one-frame tap) — OBSERVED 2026-10-27 by
+// its lane, a throwaway config on port 4317, E2E_WORLD_TIMEOUT=300000, load 110-430 on 14 cores (the frame loop saw the
+// CONTROL's press 4046-7604 ms after it), the roar and action cases, each RED with the message named unless marked:
+//   E0 identity (a comment edit in src/ui/TouchControls.jsx) -> SURVIVED, as it must (2 passed)
+//   E2 src/input/touchHold.js: plausible-wrong, the release clears 10 minutes late -> RED, "a lift handled 6007 ms after
+//       its press, past the 120 ms minimum pulse, left the roar raised — the hold outlives its finger"
+//   E3 src/ui/TouchControls.jsx: plausible-wrong, the roar's minimum pulse 1000 ms -> SURVIVED, and it cannot be seen at
+//       that frame rate: the frame loop first saw the press 4046 ms after it, so a 1000 ms pulse had run out before the
+//       lift and the game cannot tell it from 120 ms. It is RED in tests/gates/touch-hold-gates.test.jsx ("a TAP is
+//       today's pulse"). When the frame that sees the press ends within 1000 ms of it (CI's ~3 fps), the lift lands
+//       inside the mutant's pulse and the intent verdict here reds it; that run is not yet observed.
 
 const IPAD = devices['iPad Pro 11 landscape'];
 test.use({ viewport: IPAD.viewport, userAgent: IPAD.userAgent, isMobile: IPAD.isMobile, hasTouch: IPAD.hasTouch, deviceScaleFactor: 1 });
@@ -102,7 +120,8 @@ async function attached(page, testid, why) {
     .catch(() => { throw new Error(`SETUP: ${testid} never attached — ${why}`); });
 }
 
-/** Window listeners that stamp every pointer press and lift on the game's clock, with the target and the roar intent.
+/** Window listeners that stamp every pointer press and lift on the handlers' clock (`t`) and the input's (`ts`, the
+ *  event's timeStamp), with the target and the roar intent.
  *  BUBBLE phase on window: they run after React's root listener, so `roar` is the intent the press just wrote. */
 async function installPressLog(page) {
   await page.evaluate(() => {
@@ -110,7 +129,7 @@ async function installPressLog(page) {
     const id = (e) => (e.target && e.target.closest ? e.target.closest('[data-testid]')?.getAttribute('data-testid') : null) ?? null;
     for (const type of ['pointerdown', 'pointerup', 'pointercancel', 'mousedown']) {
       window.addEventListener(type, (e) => {
-        window.__pressLog.push({ type, t: performance.now(), id: id(e), pointerType: e.pointerType ?? null,
+        window.__pressLog.push({ type, t: performance.now(), ts: e.timeStamp, id: id(e), pointerType: e.pointerType ?? null,
           roar: window.__craftyTest.call('readIntents').roar, active: window.__craftyTest.call('readIntents').active });
       });
     }
@@ -173,7 +192,7 @@ async function enterTouchPlay(page) {
 test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', () => {
   test.setTimeout(240000);
 
-  test('the roar sector: a 120 ms tap charges and cancels (the CONTROL); a held press commits the beast form', async ({ page }) => {
+  test('the roar sector: a tap the frame loop sees for one frame charges and cancels (the CONTROL); a held press commits the beast form', async ({ page }) => {
     await enterTouchPlay(page);
     await page.evaluate(() => {
       const s = window.useGameStore.getState();
@@ -199,22 +218,55 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
       await attached(page, 'touch-aspect-roar', 'a real tap on the Aspect opener did not open the ring');
     };
 
-    // THE CONTROL — a tap, 120 ms. It must REACH the roar (presence: the press raised the intent and the state machine
-    // started a charge) and still not transform, because the charge needs ANTICIPATION_SEC held.
+    // THE CONTROL — a TAP THE FRAME LOOP SEES FOR ONE FRAME. It must REACH the roar (presence: the press raised the
+    // intent and the state machine started a charge) and still not transform, because the charge needs ANTICIPATION_SEC
+    // held. The roar is decided by the frame loop during the hold, so a tap is short only on the clock the frames see:
+    // a real CDP touch cannot be made short there under load (TIMING HONESTY, above — measured 661-4460 ms between its
+    // handlers). So the press and the lift are pointer events dispatched IN THE PAGE on the sector, as the action button's
+    // half-charged control is: the press, then the lift in the very frame that first saw it (a microtask queued from the
+    // store's charge-start transition, which runs inside the frame loop's tick and before the next frame). React handles
+    // them as it handles the real ones; setPointerCapture refuses their synthetic pointerId, which the overlay swallows by
+    // design. Whatever the frame rate, the frames see the roar held for one frame, and a correct roar cancels on the next.
+    // Two verdicts: the lift lowers the intent at once once the minimum pulse has run (a hold that outlives its finger —
+    // E2, E3 — fails here at any frame rate), and no beast form follows.
     await openRing();
     const roarAim = await aimAt(page, 'touch-aspect-roar');
     expect(roarAim.locked, 'SETUP: the roar sector is still locked — the talent did not take').toBe('false');
-    const tap = await press(page, cdp, roarAim, TAP_HOLD_MS);
+    const tap = await page.evaluate(() => new Promise((resolve) => {
+      const el = document.querySelector('[data-testid="touch-aspect-roar"]');
+      const opts = { bubbles: true, cancelable: true, pointerId: 91, pointerType: 'touch', isPrimary: true, button: 0 };
+      const intent = () => window.__craftyTest.call('readIntents').roar;
+      const out = {};
+      let done = false;
+      const finish = (o) => { if (!done) { done = true; unsub(); resolve(o); } };
+      const unsub = window.useGameStore.subscribe((st, prev) => {
+        if (!(st.beastCharging && !prev.beastCharging) || out.chargeAt !== undefined) return;
+        out.chargeAt = performance.now();
+        queueMicrotask(() => {
+          out.liftAt = performance.now();
+          el.dispatchEvent(new PointerEvent('pointerup', { ...opts, buttons: 0 }));
+          out.roarAfterLift = intent();
+          finish(out);
+        });
+      });
+      out.pressAt = performance.now();
+      el.dispatchEvent(new PointerEvent('pointerdown', { ...opts, buttons: 1 }));
+      out.roarAfterPress = intent();
+      setTimeout(() => finish({ ...out, noCharge: true }), 20000);
+    }));
     await page.waitForTimeout(2000);
-    const afterTap = await page.evaluate(() => ({ starts: window.__roar.starts, form: window.useGameStore.getState().beastFormActive }));
-    const tapWhere = JSON.stringify({ tap: { heldMs: tap.heldMs, log: tap.log }, afterTap });
+    const afterTap = await page.evaluate(() => ({ starts: window.__roar.starts, form: window.useGameStore.getState().beastFormActive,
+      charging: window.useGameStore.getState().beastCharging, roar: window.__craftyTest.call('readIntents').roar }));
+    const liftMs = tap.liftAt !== undefined ? Math.round(tap.liftAt - tap.pressAt) : null;
+    const tapWhere = JSON.stringify({ liftAfterPressMs: liftMs, chargeAfterPressMs: tap.chargeAt !== undefined ? Math.round(tap.chargeAt - tap.pressAt) : null, tap, afterTap });
     console.log(`[touch-hold] roar CONTROL: ${tapWhere}`);
-    expect(tap.down?.id, `SETUP: the tap's pointerdown did not land on the roar sector — ${tapWhere}`).toBe('touch-aspect-roar');
-    expect(tap.down?.roar, `the tap reached the roar sector but did not raise the roar intent — ${tapWhere}`).toBe(true);
-    expect(tap.heldMs !== null && tap.heldMs < ANTICIPATION_SEC * 1000,
-      `SETUP: the 120 ms tap lasted ${tap.heldMs} ms on the game's clock — the control cannot discriminate: ${tapWhere}`).toBe(true);
-    expect(afterTap.starts, `SETUP: the frame loop never saw the tap (no charge started) — the control cannot discriminate: ${tapWhere}`).toBeGreaterThanOrEqual(1);
-    expect(afterTap.form, `a ${tap.heldMs} ms tap committed the beast form — the roar no longer needs its charge held: ${tapWhere}`).toBe(false);
+    expect(tap.roarAfterPress, `the press on the roar sector did not raise the roar intent — ${tapWhere}`).toBe(true);
+    expect(tap.noCharge, `SETUP: the frame loop never started a charge in 20 s of the roar held — the control cannot discriminate: ${tapWhere}`).toBeUndefined();
+    if (liftMs >= TAP_HOLD_MS) {
+      expect(tap.roarAfterLift, `a lift handled ${liftMs} ms after its press, past the ${TAP_HOLD_MS} ms minimum pulse, left the roar raised — the hold outlives its finger: ${tapWhere}`).toBe(false);
+    }
+    expect(afterTap.form, `a tap the frame loop saw for one frame committed the beast form — the roar no longer needs its charge held: ${tapWhere}`).toBe(false);
+    expect(afterTap.charging || afterTap.roar, `the tap's charge never ended (or its intent never dropped) — ${tapWhere}`).toBe(false);
 
     // THE HOLD — at least 600 ms, then until the form commits (cap 20 s): at a few frames per second a fixed 600 ms
     // can end before any frame lands past 0.45 s, which would be the renderer failing, not the hold.
