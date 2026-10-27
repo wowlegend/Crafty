@@ -5,6 +5,37 @@ autonomy, enumerate and treat EVERY historical punted bug/decision, review+prune
 evolved gate-shape principles, and **looks + gameplay are of utmost importance**. Persist RSI insights
 each ~300k context.
 
+### COMMAND SESSION c54fc9b6 — LIVE TASK LIST (2026-10-27). The Verify Gate reads THIS list.
+
+Kevin, 2026-10-27, two directives: (1) take over the command session, full autonomy, decisions recorded in DECISIONS.md;
+(2) **"make Crafty a masterpiece you'd be proud of. be creative and go all out ... free to enhance / prune / revise
+anything."** Bright lines: no money spent; never force-push or rewrite pushed history. Reviewers at xhigh, never max.
+
+**Goal frame (GF-L1..L4).** Goal: a game that a player experiences as a masterpiece on the LIVE site: looks and feel at
+a 2026 bar, cool on an M3 Max, correct on iPad. Attack: features that never fire in production; gates green while the
+game looks the same; capture-mode frames (weather, mobs, particles OFF) used as proof of looks; VFX that bring the heat
+back; iPad regressions. Metric: per feature, a lived proof in the running game (e2e or probe) AND frames from a
+NON-capture run opened by eye; a GPU budget held under the 60 fps cap; a player-lens review. Strategy: ship what is
+done first, then a design panel chooses the highest-leverage moves, each through plan doc, red-first gates, e2e, review.
+
+| # | Task | State |
+|---|---|---|
+| T1 | `mutate-e2e.sh`: a test timeout and an untagged boot wait are COULD NOT CHECK, not kills; E2E_WORLD_TIMEOUT extends the test budget | DONE `93785815` (+ U4-U6) |
+| T2 | dodge-latch: identity + D1 mutants + clean run on the fixed instrument; commit Atmosphere layout effect, dodge-latch spec, iPad probe + port | DONE `48b003e3` `fb45cb35` `2cecfa7f` |
+| T3 | Full `e2e-freshness --run` receipt, commit it, push main, CI to `success` (delivers the heat fixes live) | open |
+| T4 | Ultrareview findings: verify each, fix, DECISIONS 2026-10-27 addendum comparing with the bake-off | DONE: 6/6 confirmed, all fixed (`93785815` `2cecfa7f` `43754237` `167841e2`); addendum written |
+| T5 | Dependabot #20 / #21 and the 4 open alerts | DONE `10a43f68` (vitest 4; npm audit 0) |
+| T6 | CI-gates handoff §3 (Crafty's share), then rm the handoff file + MEMORY line if last owner | PARTIAL `5177c203` (pin + v7 actions); Vercel Deployment Checks need Kevin's dashboard; pre-commit speed and onFailure open |
+| T7 | iPad: WebKit probe of the PROD build, frames opened | open |
+| T8 | Parked features (wip/perf-t3-features) onto a branch from main, e2e + mutate-e2e each, PR (number to Kevin), merge on own gates | open |
+| T9 | Review #8 open findings (#1 MED, #6, #7, #8, #12) + bake-off B1 and candidates, verify-first | open |
+| T10 | 147 -> 151 visual re-baseline (now mine to decide) | open |
+| T11 | dprCap and the FPV glove value (now mine to decide) | open |
+| T12 | mip-ab worktree: confirm ported by diff, remove worktree + branch | VERIFIED ported; removal REFUSED by the classifier, command handed to Kevin (DECISIONS) |
+| T13 | Masterpiece design panel -> plan docs -> builds (looks + gameplay), each lived-proven | open |
+| T14 | Per change range: fresh headless `/code-review xhigh` + one adversarial-reviewer-kz xhigh on runtime seams | open |
+| T15 | OVERNIGHT.md, STATUS, CHANGELOG, DECISIONS current | open |
+
 ### CRAFTY COMMAND SESSION — START HERE (handoff written 2026-10-27 by the session that ran the SOTA overnight goal)
 
 Kevin, 2026-10-27: a new session rooted in `/Users/kz/Code/Crafty` takes over as the **Crafty command session** (so
@@ -23,7 +54,7 @@ liberally** — both in `.agent/AGENTS.md` Method. Kevin's overnight `/goal` (SO
   its content as ported to main in aed92d0f + e9f4038f — confirm with a diff, then remove the worktree and branch).
 
 **Ordered next steps:**
-0. **Kevin launches an ultrareview FIRST (Kevin, 2026-10-27: "i will want an ultrareview done in new session now, then
+0. **DONE 2026-10-27 — Kevin launched it (`/code-review ultra`, his keystroke; no session can). Findings handled in the c54fc9b6 task list above.** Kevin launches an ultrareview FIRST (Kevin, 2026-10-27: "i will want an ultrareview done in new session now, then
    one later at a milestone").** Only Kevin can start it: he types `/code-review ultra` on `main` in this session.
    Expected scope: the 11 unpushed commits plus the uncommitted edits against origin's default branch — CHECK the
    launch dialog's file and line counts before he confirms (limits 500 files / 8,000 lines; the branch state is

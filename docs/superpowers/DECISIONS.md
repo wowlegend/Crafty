@@ -18,6 +18,53 @@
 
 ---
 
+## 2026-10-27 (later) — [LOOP, Kevin-delegated] Dependencies: vitest 4, an audit refresh, and Dependabot #20/#21 applied on main (`10a43f68`)
+
+**Why it could not wait.** CI's `npm audit --audit-level=high` gate (R5, CI-only) would have failed the very push that
+delivers Kevin's heat fixes: 14 advisories, 2 critical (tinypool via vitest 3) and 8 high. Both open Dependabot PRs
+had failed on that gate, not on their bumps. `npm audit fix` inside the declared ranges left the 2 criticals, which
+only leaving vitest 3 removes.
+
+**Decided.** vitest + coverage-v8 3 -> 4.1.12 (the config uses none of v4's removed options; the suite needed no
+change: 477 files / 3757 tests green). Dependabot #20's dev group and #21's production group applied on main rather
+than merged (their branches carry main's state of 2026-10-01), Playwright taken to 1.64.1 (current) instead of the
+PR's 1.63.0 so the e2e browsers move once. Puppeteer to 25.16.0 because the audit fix needs it. **The engine stack is
+not touched** (three 0.172, postprocessing 6.39.5, R3F 9.5): dependabot.yml's 0.x-minor policy and the 2026-08-13
+r174 entry stand, and an engine bump that re-baselines the whole look is a separate, deliberate decision. Every new
+version was at least 5 days old at install. Result: `npm audit` 0. Dependabot closes the two PRs itself once it sees
+the versions on main; no comment is posted.
+
+**Trade-off accepted.** Playwright 1.64 brings new browser builds into a timing-sensitive e2e suite; the push receipt
+runs on them before anything is pushed, so a regression shows up locally first.
+
+## 2026-10-27 (later) — [KEVIN] The Crafty command session's mandate, and its limits
+
+**Source: Kevin's own startup prompt to session c54fc9b6** (not a file written by an earlier session; an earlier
+session's attempt to write this grant into ACTIVE_PLAN was refused by the auto-mode classifier, correctly, because a
+file carries no visible authority from Kevin). His words: *"You have full autonomy: I will not review or confirm
+anything. Decide, act, and record each non-routine decision in docs/superpowers/DECISIONS.md."* And: *"Wherever the
+plan says I check, confirm or decide, that is now yours. That includes the items my overnight goal reserved for me:
+the 147->151 visual re-baseline, dependency changes (Dependabot #20/#21), dprCap and the FPV glove value."* Then, the
+same day: *"make Crafty a masterpiece you'd be proud of. be creative and go all out ... you're free to enhance /
+prune / revise anything."*
+
+**Limits, also his:** two bright lines: spend no money (no usage credits, no paid service), and never force-push or
+rewrite pushed history. Reviewers at xhigh, never max. Code review per the entry below. The milestone (the parked
+`wip/perf-t3-features` work applied to main) goes up as a branch and PR, its number reported to Kevin so he can run
+`/code-review ultra <PR#>` himself; the session merges on its own gates without waiting for that review.
+
+**What stays outside the session, by mechanism, not by choice:** ultrareview is Kevin's keystroke only (Claude Code
+reserves it to the user). The harness's auto-mode classifier also refuses some actions on its own judgement; when it
+does, the session does not reroute, it records the refusal and hands Kevin the exact command. Refused so far:
+removing the `mip-ab` worktree and deleting branch `wip/r7-lazy-panels` (content verified fully ported to main by a
+line-containment diff: every line only the WIP carries was superseded by review #8's fixes; recoverable at `45590d2c`).
+Kevin's command: `git -C ~/Code/Crafty worktree remove --force .claude/worktrees/mip-ab && git -C ~/Code/Crafty branch -D wip/r7-lazy-panels`.
+
+**A claim corrected on arrival:** a hook in the previous session reported "remote CI success at 57c45ae on main
+(2026-10-25T08:26Z)". Re-measured: those are the weekly CodeQL `Analyze` runs. The `ci.yml` run for 57c45ae4
+(35845534213) still concludes `cancelled` (shards 2 and 3 at the time limit), so main's tree is still red by the read
+order's rule.
+
 ## 2026-10-27 — [KEVIN-delegated] Code review for Crafty: built-in `/code-review xhigh` as the default, ONE pointed adversarial reviewer on runtime seams, the dynamic layer stays ours; ultrareview held for milestones
 
 **Asked (Kevin, 2026-10-27):** decide between Claude Code's `/code-review` and ultrareview, say how they differ from our
@@ -53,6 +100,35 @@ against six defects verified earlier in that range (G1-G6). The first attempt wa
 
 **Limits.** One range and six defects, with a key produced by one of the compared methods. Indicative, not a
 statistic. Re-score when the next verified-defect set exists.
+
+### Addendum, same day: the ultrareview, against the bake-off
+
+Kevin launched `/code-review ultra` on main at the start of session c54fc9b6 (scope: the 12 unpushed commits plus the
+uncommitted edits, 42 files, +1,917/-164; free run 1 of 3). Six findings. Each was verified by this session before any
+fix; the scope is NOT the bake-off's range (57c45ae4..9dc5fac7 was a subset), so this compares what each method found
+on overlapping code, not a re-score.
+
+| # | Ultrareview finding | Verified how | Verdict | Bake-off had it? |
+|---|---|---|---|---|
+| U1 | `_serve.mjs` registers `ipad-probe.mjs`, no such file: probe-ports red | the test re-run with the untracked probe moved aside: RED, `[ 'ipad-probe.mjs' ]` orphaned | CONFIRMED for the uploaded tree (the file was untracked, so not uploaded); fixed by committing both together | no (not in its range) |
+| U2 | PanelBoundary renders null on a failed chunk and never closes the panel: the player is stranded | read `lazyPanels.js` + `MenuSystem.jsx`: `onFail` only drops the lazy; every `onClose` lives inside the panel UI that never renders | CONFIRMED; = review #8 #1 (MED), = the bake-off's unverified candidate "PanelBoundary swallows every render error" | yes, as a candidate |
+| U3 | a shove carries x/z only; the next ground snap judges from the old feet and reverses it | the bake-off's verifier reproduced it 8/8 with a control; gated red-first in this session | CONFIRMED; = B1 | yes (B1, reproduced) |
+| U4 | `e2e-freshness --run`'s busy-port probe is IPv4-only; vite on macOS binds `[::1]` only | LIVE: `lsof` showed the e2e vite listening on `[::1]:4179` and nothing on 127.0.0.1 | CONFIRMED | no |
+| U5 | a killed or unspawned `--run` exits 1 (STALE) instead of 3 (COULD NOT CHECK) | read: `spawnSync` status null fell into `exitCode !== 0` | CONFIRMED (nit) | no |
+| U6 | `mutate-e2e.sh` has no busy-port check, so a sibling's vite is reused and every mutant reads SURVIVED | read: `playwright.config.js` `reuseExistingServer: !process.env.CI`, no port check before `npx playwright test` | CONFIRMED | no |
+
+**Missed by the ultrareview, found by the bake-off's xhigh arms:** `mutate-e2e.sh` scoring a Playwright test timeout
+(and bootDev's untagged wait) as a KILL, which both xhigh arms found; re-verified here with a stubbed runner (HEAD
+instrument: `[RED]` on a pure timeout; fixed instrument: COULD NOT CHECK). Also the unverified candidates (T swings the
+sword while the voidhand is held; a voidhand grab mid-charge; BloomSpikeDriver's dead effect; FrameCap's DEV-only
+counter; duplicated guards).
+
+**What this says, held as indicative.** On the overlap, the ultrareview found 6 of 6 CONFIRMED (no false positive)
+and 4 the bake-off's arms did not, three of them instrument seams (U4-U6) the local reviewers had read past. It
+missed one instrument flaw both xhigh arms caught. So the methods are complementary rather than ranked, and the
+2026-10-27 decision stands: `/code-review xhigh` fresh per change range, a pointed adversarial reviewer on runtime
+seams, ultrareview at milestones only. One new practice from U1: **a review of a working tree uploads TRACKED
+files only**, so commit or stash untracked work before a review whose scope it belongs to.
 
 ## 2026-08-13 (night) — [LOOP] three r174 KILLS the GL-error storm, and is still NOT landing tonight
 
