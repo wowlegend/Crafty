@@ -25,9 +25,11 @@
  * both seams, and each unit that wires a new check in adds its case there.
  *   root     where the DOCS are read from (default: this checkout). The generated blocks' sources — the hook
  *            gate-table derives from and the src tree measure() walks — are always this checkout's.
- *   only     run just these checks (names in CHECKS); an unknown name or an empty list throws, because a run
- *            that checks nothing must never read as a pass.
+ *   only     run just these checks (names in CHECKS); an unknown name or an empty list throws, and so does a named
+ *            check that records no denominator, because a run that checks nothing must never read as a pass.
  *   enforce  flags that turn a check's warning into an error (ENFORCE_FLAGS); an unknown flag throws.
+ *   runners  the function behind each check name (default: the real ones). A test seam, so the wiring spec can show
+ *            that a check which does not report is a throw rather than a pass.
  *   checked  the per-check denominator: how many things each check actually examined.
  *
  *   node scripts/ci/doc-currency.mjs               check this checkout; exit 1 on any error
@@ -46,8 +48,21 @@ import { DOC_ALIASES, sectionIds, itemIds, citations, unresolved } from './doc-a
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..'); // frontend/scripts/ci -> repo root
 
-/** The checks `run()` knows, in the order it runs them. A unit that wires in a new check appends its name. */
-export const CHECKS = Object.freeze(['dangling', 'packages', 'status', 'gates', 'measured', 'read-order', 'sections']);
+/**
+ * The checks `run()` knows, in the order it runs them, each with the function behind it. A unit that wires in a new
+ * check appends it HERE: `run()` iterates this table, so a check removed from it stops running, and CHECKS (its names)
+ * is pinned by the wiring spec, which is what turns that red.
+ */
+const RUNNERS = Object.freeze({
+  dangling: checkDangling,
+  packages: checkPackages,
+  status: checkStatus,
+  gates: checkGates,
+  measured: checkMeasured,
+  'read-order': checkReadOrder,
+  sections: checkSections,
+});
+export const CHECKS = Object.freeze(Object.keys(RUNNERS));
 
 /** Flags that turn a check's warning into an error. None exist yet; the first is U30's ACTIVE_PLAN cap. */
 const ENFORCE_FLAGS = Object.freeze([]);
@@ -84,7 +99,7 @@ const AGENTS_REL = '.agent/AGENTS.md';
  * Returns `{ errors, warnings, checked, danglingSections }`: `checked[name]` is how many things that check
  * examined, and `danglingSections` the § citations that did not resolve (the CLI's PASSED line prints it).
  */
-export function run({ root = ROOT, only, enforce = {} } = {}) {
+export function run({ root = ROOT, only, enforce = {}, runners = RUNNERS } = {}) {
   if (only !== undefined) {
     if (!Array.isArray(only) || only.length === 0) {
       throw new Error('doc-currency run(): `only` must name at least one check — a run that checks nothing would read as a pass');
@@ -97,14 +112,16 @@ export function run({ root = ROOT, only, enforce = {} } = {}) {
     throw new Error(`doc-currency run(): unknown enforce flag(s) ${badFlags.join(', ')}; known: ${ENFORCE_FLAGS.join(', ') || '(none yet)'}`);
   }
   const out = { errors: [], warnings: [], checked: {}, danglingSections: 0 };
-  const want = (name) => only === undefined || only.includes(name);
-  if (want('dangling')) checkDangling(root, out);
-  if (want('packages')) checkPackages(root, out);
-  if (want('status')) checkStatus(root, out);
-  if (want('gates')) checkGates(root, out);
-  if (want('measured')) checkMeasured(root, out);
-  if (want('read-order')) checkReadOrder(root, out);
-  if (want('sections')) checkSections(root, out);
+  for (const name of CHECKS) {
+    if (only !== undefined && !only.includes(name)) continue;
+    const runner = runners[name];
+    if (typeof runner === 'function') runner(root, out);
+    // Every check records what it examined, even 0. One that recorded nothing did not run — and a run that checked
+    // nothing must never read as a pass, so it is a thrown wiring defect, not an empty error list.
+    if (!Object.hasOwn(out.checked, name)) {
+      throw new Error(`doc-currency run(): check "${name}" did not run (it recorded no denominator) — a run that checks nothing must never read as a pass`);
+    }
+  }
   return out;
 }
 

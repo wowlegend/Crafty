@@ -51,6 +51,13 @@ import { SURFACES, renderBlock as renderReadOrder } from '../../scripts/ci/read-
  *   M-A8/9/10   gates: the same three
  *   M-A11/12/13 measured: the same three (the source-file count)
  *   M-A14/15/16 read-order: the same three;  M-A17 read-order reads only the first surface
+ * run() iterates the RUNNERS table and throws when a named check records no denominator (review item 4), via
+ * mutate-batch (22 tests); identity SURVIVED, then 6 of 6 RED: M-L1 the did-not-run throw deleted, M-L2 the `runners`
+ * seam ignored, M-L3 `status` dropped from the table, M-L4 `only` inverted, M-L5 the run order changed, M-L6 a name
+ * with no runner called anyway.
+ *
+ * RECEIPT CORRECTION. f5207462's message records "the neighbouring specs (read-order, gate-table, measure, doc-anchors,
+ * cli-guard) 65/65". Those five specs held 58 tests, all green (re-run at ae28b702, 2026-10-27): the run was 58/58.
  *
  * The real-tree denominator case reads what the docs say today: an honest edit that leaves a check with nothing to
  * examine (the last watched-package line, the last `<doc> §` citation) turns it red. That is intended — a check
@@ -88,8 +95,18 @@ const cli = (...args) =>
 const steady = (s) => s.replace(/committed in \d+ days/g, 'committed in N days');
 
 describe('doc-currency run() — the seam every check is wired into', () => {
-  it('names its checks, and the list is pinned (a check removed from the list stops running silently)', () => {
+  it('names its checks in run order, and the list is pinned (run() iterates exactly this list, so a check dropped from it stops running; this pin is what turns that red)', () => {
     expect(CHECKS).toEqual(['dangling', 'packages', 'status', 'gates', 'measured', 'read-order', 'sections']);
+    expect(Object.keys(run().checked), 'run() visits the checks in CHECKS order').toEqual([...CHECKS]);
+  });
+
+  it('a named check that reports no denominator THROWS — it did not run, and an empty run must never read as a pass', () => {
+    const root = fixture();
+    expect(() => run({ root, only: ['packages'], runners: { packages: () => {} } })).toThrow(/"packages" did not run/);
+    expect(() => run({ root, only: ['packages'], runners: {} }), 'a name with no runner at all').toThrow(/"packages" did not run/);
+    // allow twin: a check that ran and examined nothing reports 0, which is a result, not a throw
+    const r = run({ root, only: ['packages'], runners: { packages: (_root, out) => { out.checked.packages = 0; } } });
+    expect(r.checked).toEqual({ packages: 0 });
   });
 
   it('dangling: a canonical doc citing a missing path errors', () => {
