@@ -56,6 +56,8 @@ import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
 import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive, resetInput } from './input/inputState';
 import { installBlurReset } from './input/blurReset';
+import { makeCompatMouseFilter, installCompatMouseFilter } from './input/compatMouse.js';
+import { registerTestHook } from './devtest/testBridge.js';
 import { notifyDenied } from './ui/denyToast';
 import { PLAYER_SPAWN } from './game/playerSpawn.js';
 
@@ -542,7 +544,12 @@ export const Player = ({ isWorldBuilt }) => {
       if (button === 0 && verb === 'attack' && !st.voidhandHeld && !st.beastFormActive) pressHeavy(performance.now(), source);
       return verb;
     };
-    const handleMouseDown = (e) => { pressPrimary(e.button, 'mouse'); };
+    // REVIEW F2 (input/compatMouse.js): a touch tap is followed by compatibility mousedown / mouseup events, which reached
+    // these window listeners and pressed the primary AGAIN as 'mouse' — the touch action button swung twice per tap, and
+    // a tap on any other touch control swung, mined or placed. An echo is not input: both listeners skip it.
+    const compatMouse = makeCompatMouseFilter({ now: () => performance.now() });
+    registerTestHook('readCompatMouse', () => ({ echoes: compatMouse.echoes() })); // dev bridge: the e2e F2 case reads it
+    const handleMouseDown = (e) => { if (!compatMouse.isCompat(e)) pressPrimary(e.button, 'mouse'); };
     // `source` is the input coming up: only the one holding the charge can release it (R9.3 — T's keyup used to end a
     // charge the mouse held).
     const releaseHeavySwing = (source) => {
@@ -550,7 +557,7 @@ export const Player = ({ isWorldBuilt }) => {
       if (!getInput().active || !useGameStore.getState().isAlive) { cancelHeavy(); return; }
       if (releaseHeavy(now, source)) triggerMeleeAttack({ heavy: true });
     };
-    const handleMouseUp = (e) => { if (e.button === 0) releaseHeavySwing('mouse'); };
+    const handleMouseUp = (e) => { if (e.button === 0 && !compatMouse.isCompat(e)) releaseHeavySwing('mouse'); };
     // The touch overlay dispatches through the store: performVerb (M1: cast), pressPrimary / releasePrimary (Phase 0c:
     // the held action button — the same press and release the mouse uses, as the 'touch' source).
     useGameStore.setState({ performVerb, pressPrimary, releasePrimary: releaseHeavySwing });
@@ -579,7 +586,9 @@ export const Player = ({ isWorldBuilt }) => {
     document.addEventListener('pointerlockerror', handlePointerLockError);
     // B8: clear held movement intents on focus loss (alt-tab drops the keyup -> keys stuck ON).
     const removeBlurReset = installBlurReset();
+    const removeCompatMouse = installCompatMouseFilter(compatMouse);
     return () => {
+      removeCompatMouse();
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('mousedown', handleMouseDown);
