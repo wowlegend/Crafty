@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createServer } from 'node:net';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname, delimiter } from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { verdict, readBaseCi, readCommitCi, sameAppCommits, scrubGitEnv, readTreeCi, needsTreeCi, mainMovesFrom, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, portInUse, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
 
 /**
@@ -457,5 +462,204 @@ describe('tier 1b and the main-only red-base rule', () => {
     const exact = readTreeCi(fakeGh([run(31, 'h', GREEN, 'workflow_dispatch')]), ['h']);
     expect(exact).toEqual({ state: 'success', run: '31', sha: 'h', exact: true });
     expect(verdict({ id: 'x', files: 3 }, null, { state: 'failure' }, { commitCi: exact, mainMoves: true }).line).toMatch(/on this exact commit$/);
+  });
+});
+
+// ─── THE CLI ITSELF, IN A REAL REPOSITORY ──────────────────────────────────────────────────────────────────────────
+// Every fake above answers what its author believed git and gh do; the review's ref/flag mutants survived exactly
+// there. This runs the CLI from frontend/ — a copy of the subject read at test time, so a mutant applies — in a git
+// repository built in a temp dir, with a stub `gh` first on PATH that serves fixture runs through the real `jq`, so
+// the --json field lists and --jq expressions run as written (jq ships on the ubuntu-24.04 runner and in macOS).
+// History, oldest first (S, B2, E, F, C, D are siblings off B):
+//   A   frontend/ + ci.yml            push run on main, e2e GREEN
+//   B   docs only, on A               no run   -> borrows A's green                                    exit 0
+//   C   frontend change, on B         one pull_request run, GREEN (it tested the merge ref, not C)    exit 1
+//   D   ci.yml only, on B             no run   -> same app as A, a different e2e job                  exit 1
+//   E   docs only, on B               workflow_dispatch, e2e RED
+//   F   docs only, on E               no run   -> the newest verdict on its identity is E's red       exit 1
+//   S   frontend change, on B         workflow_dispatch, e2e GREEN (a side branch)
+//   M   B2 (docs, on B) merged with S, --no-ff  -> M's pair is S's: borrows S                       exit 0
+// The base (main's newest run) is RED and the push moves main unless a case says otherwise. Fixtures write only under
+// the temp root they create, removed afterwards; every git call runs with the caller's GIT_* removed (a hook exports
+// GIT_DIR and GIT_INDEX_FILE, and this suite runs inside the pre-commit hook) and no global or system config.
+describe('the CLI, run from frontend/ in a real repository against a stub gh', () => {
+  const SUBJECT = fileURLToPath(new URL('../../scripts/ci/e2e-freshness.mjs', import.meta.url));
+  const CLEAN = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+  const ENV = { ...CLEAN, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
+  let TMP, ROOT, BIN, FIXTURE, LOG, DECOY;
+  const sha = {};
+  let tick = 0;
+  const git = (cwd, ...args) => {
+    const date = `2026-01-01T00:${String(tick).padStart(2, '0')}:00Z`;
+    return execFileSync('git', ['-c', 'commit.gpgsign=false', '-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', ...args], {
+      cwd, env: { ...ENV, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
+  };
+  const commit = (name, files) => {
+    for (const [p, body] of Object.entries(files)) {
+      mkdirSync(dirname(join(ROOT, p)), { recursive: true });
+      writeFileSync(join(ROOT, p), body);
+    }
+    tick += 1;
+    git(ROOT, 'add', '-A');
+    git(ROOT, 'commit', '-q', '-m', name);
+    sha[name] = git(ROOT, 'rev-parse', 'HEAD');
+  };
+  const at = (name) => git(ROOT, 'checkout', '-q', '--detach', sha[name]);
+  const YML = (shards) => `jobs:\n  e2e:\n    name: e2e ${shards}\n    timeout-minutes: 25\n`;
+
+  // The stub: `gh run list` filters by --branch and --commit, stops at --limit (gh's default is 20) and keeps only
+  // the --json fields; `gh run view <id>` answers that run's jobs; the --jq expression runs through real jq -r (gh
+  // prints a string result raw). Anything else exits 1, as gh does on an error. Every call is logged.
+  const STUB = `
+import { readFileSync, appendFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+const args = process.argv.slice(2);
+appendFileSync(process.env.GH_STUB_LOG, args.join(' ') + '\\n');
+const fx = JSON.parse(readFileSync(process.env.GH_STUB_FIXTURE, 'utf8'));
+const opt = (name) => {
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === name) return args[i + 1];
+    if (args[i].startsWith(name + '=')) return args[i].slice(name.length + 1);
+  }
+  return undefined;
+};
+const pick = (o) => Object.fromEntries(opt('--json').split(',').map((f) => [f, o[f] ?? null]));
+const emit = (data) => {
+  const json = JSON.stringify(data);
+  process.stdout.write(opt('--jq') ? execFileSync('jq', ['-r', opt('--jq')], { input: json, encoding: 'utf8' }) : json + '\\n');
+};
+if (args[0] === 'run' && args[1] === 'list' && opt('--workflow') === 'ci.yml') {
+  let runs = fx.runs;
+  if (opt('--branch')) runs = runs.filter((r) => r.headBranch === opt('--branch'));
+  if (opt('--commit')) runs = runs.filter((r) => r.headSha === opt('--commit'));
+  emit(runs.slice(0, Number(opt('--limit') ?? 20)).map(pick));
+} else if (args[0] === 'run' && args[1] === 'view' && fx.runs.some((r) => String(r.databaseId) === args[2])) {
+  emit(pick({ jobs: fx.runs.find((r) => String(r.databaseId) === args[2]).jobs }));
+} else {
+  process.stderr.write('stub gh: not served: ' + args.join(' ') + '\\n');
+  process.exit(1);
+}
+`;
+  const jobs = (c) => [1, 2].map((n) => ({
+    name: `e2e (playwright) ${n}/6`, status: 'completed', conclusion: c, databaseId: 100 + n,
+    startedAt: '2026-01-01T01:00:00Z', completedAt: '2026-01-01T01:10:00Z',
+  }));
+  const ghRun = (databaseId, event, headBranch, headSha, c) => ({ databaseId, event, headBranch, headSha, status: 'completed', conclusion: c, jobs: jobs(c) });
+  const runs = (base) => [ // newest first, as gh lists them
+    ghRun(9001, 'push', 'main', 'f'.repeat(40), base === 'red' ? 'failure' : 'success'),
+    ghRun(8001, 'pull_request', 'feat/c', sha.C, 'success'),
+    ghRun(7001, 'workflow_dispatch', 'side', sha.S, 'success'),
+    ghRun(6001, 'workflow_dispatch', 'e', sha.E, 'failure'),
+    ghRun(5001, 'push', 'main', sha.A, 'success'),
+  ];
+
+  const cli = (name, { base = 'red', refs = ' refs/heads/main', env = {} } = {}) => {
+    at(name);
+    writeFileSync(FIXTURE, JSON.stringify({ runs: runs(base) }));
+    writeFileSync(LOG, '');
+    const r = spawnSync(process.execPath, ['scripts/ci/e2e-freshness.mjs'], {
+      cwd: join(ROOT, 'frontend'),
+      env: { ...ENV, PATH: `${BIN}${delimiter}${process.env.PATH}`, GH_STUB_FIXTURE: FIXTURE, GH_STUB_LOG: LOG, E2E_PUSH_REFS: refs, ...env },
+      encoding: 'utf8',
+      timeout: 60_000,
+    });
+    return { code: r.status, out: `${r.stdout}${r.stderr}`, gh: readFileSync(LOG, 'utf8') };
+  };
+  const short = (name) => sha[name].slice(0, 8);
+
+  beforeAll(() => {
+    execFileSync('jq', ['--version'], { stdio: 'ignore' }); // the stub needs real jq; absent, this fails here, by name
+    TMP = mkdtempSync(join(tmpdir(), 'e2e-freshness-'));
+    ROOT = join(TMP, 'repo');
+    BIN = join(TMP, 'bin');
+    FIXTURE = join(TMP, 'runs.json');
+    LOG = join(TMP, 'gh.log');
+    mkdirSync(ROOT);
+    mkdirSync(BIN);
+    writeFileSync(join(TMP, 'gh-stub.mjs'), STUB);
+    writeFileSync(join(BIN, 'gh'), `#!/bin/sh\nexec "${process.execPath}" "${join(TMP, 'gh-stub.mjs')}" "$@"\n`);
+    chmodSync(join(BIN, 'gh'), 0o755);
+    git(ROOT, 'init', '-q', '-b', 'main');
+    commit('A', {
+      'frontend/scripts/ci/e2e-freshness.mjs': readFileSync(SUBJECT, 'utf8'),
+      'frontend/src/app.js': 'export const v = 1;\n',
+      '.github/workflows/ci.yml': YML(6),
+      'docs/notes.md': 'a\n',
+    });
+    commit('B', { 'docs/notes.md': 'b\n' });
+    commit('C', { 'frontend/src/app.js': 'export const v = 2;\n' });
+    at('B'); commit('D', { '.github/workflows/ci.yml': YML(3) });
+    at('B'); commit('E', { 'docs/notes.md': 'e\n' }); commit('F', { 'docs/notes.md': 'f\n' });
+    at('B'); commit('S', { 'frontend/src/app.js': 'export const v = 3;\n' });
+    at('B'); commit('B2', { 'docs/notes.md': 'b2\n' });
+    tick += 1;
+    git(ROOT, 'merge', '-q', '--no-ff', '-m', 'M', sha.S);
+    sha.M = git(ROOT, 'rev-parse', 'HEAD');
+    // A second repository, for the GIT_DIR case: one docs commit, no frontend/, no runs.
+    DECOY = join(TMP, 'decoy');
+    mkdirSync(DECOY);
+    git(DECOY, 'init', '-q', '-b', 'main');
+    writeFileSync(join(DECOY, 'x.md'), 'x\n');
+    git(DECOY, 'add', '-A');
+    git(DECOY, 'commit', '-q', '-m', 'decoy');
+  }, 120_000);
+  afterAll(() => {
+    if (TMP) rmSync(TMP, { recursive: true, force: true });
+  });
+
+  it('the fixture is what it claims: nine commits, M\'s pair equal to S\'s and to no other', () => {
+    expect(Object.keys(sha)).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'S', 'B2', 'M']);
+    const pair = (n) => git(ROOT, 'rev-parse', `${sha[n]}:frontend`, `${sha[n]}:.github/workflows/ci.yml`);
+    expect(pair('M')).toBe(pair('S'));
+    expect(pair('B')).toBe(pair('A'));
+    expect(['A', 'C', 'D', 'B2'].map(pair).filter((p) => p === pair('M'))).toEqual([]);
+  });
+
+  it('B, docs only on A: borrows A\'s green, naming the run and the commit', () => {
+    const r = cli('B');
+    expect(r.code, r.out).toBe(0);
+    expect(r.out).toContain(`fresh by CI — run 5001's e2e jobs all passed on ${short('A')}, whose frontend/ tree and ci.yml are byte-identical`);
+  });
+
+  it('C, an app change with only a green pull_request run: no receipt, the red base refuses', () => {
+    const r = cli('C');
+    expect(r.code, r.out).toBe(1);
+    expect(r.out).toMatch(/BASE's e2e is RED/);
+    expect(r.gh, 'presence control: the walk DID ask CI about C').toContain(`--commit ${sha.C}`);
+  });
+
+  it('D, a ci.yml-only change: not borrowed from A, whose app is the same', () => {
+    const r = cli('D');
+    expect(r.code, r.out).toBe(1);
+  });
+
+  it('F, docs only on E: the walk stops at E\'s red and never reaches A\'s green', () => {
+    const r = cli('F');
+    expect(r.code, r.out).toBe(1);
+    expect(r.gh, 'the walk reached E').toContain(`--commit ${sha.E}`);
+    expect(r.gh, 'and went no further').not.toContain(`--commit ${sha.A}`);
+  });
+
+  it('M, a merge whose pair is its side branch\'s: borrows S\'s workflow_dispatch green', () => {
+    const r = cli('M');
+    expect(r.code, r.out).toBe(0);
+    expect(r.out).toContain(`run 7001's e2e jobs all passed on ${short('S')}`);
+  });
+
+  it('an inherited GIT_DIR / GIT_WORK_TREE naming another repository changes nothing: the cwd decides', () => {
+    const r = cli('B', { env: { GIT_DIR: join(DECOY, '.git'), GIT_WORK_TREE: DECOY } });
+    expect(r.code, r.out).toBe(0);
+    expect(r.out).toContain(`on ${short('A')}`);
+  });
+
+  it('the walk is skipped where it cannot change the outcome: a green base, or a push that does not move main', () => {
+    const green = cli('C', { base: 'green' });
+    expect(green.code, green.out).toBe(0);
+    expect(green.gh, 'the base was read').toContain('--branch main');
+    expect(green.gh, 'a green base: no commit lookup').not.toContain('--commit');
+    const branch = cli('C', { refs: ' refs/heads/feat/x' });
+    expect(branch.code, branch.out).toBe(0);
+    expect(branch.gh, 'a branch push on a red base: no commit lookup').not.toContain('--commit');
   });
 });
