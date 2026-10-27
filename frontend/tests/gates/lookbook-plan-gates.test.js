@@ -1,0 +1,168 @@
+import { describe, it, expect } from 'vitest';
+import {
+  LOOKBOOK_CYCLES,
+  LOOKBOOK_PLACES,
+  TARGETS,
+  CHROMIUM_CANDIDATES,
+  shotPlan,
+  classifyRenderer,
+  pickCandidate,
+  shotVerdict,
+  contactSheetHtml,
+} from '../../scripts/visual/_lookbook.mjs';
+
+/**
+ * THE LOOKBOOK PROBE'S JUDGEMENTS (scripts/visual/_lookbook.mjs; plan docs/superpowers/plans/
+ * 2026-10-27-crafty-instruments.md). The probe is an instrument — it shoots frames and judges no look — but it makes
+ * four decisions that, made wrong, turn its output into a lie that reads as evidence:
+ *
+ *   1. "this is a real GPU": a SwiftShader frame called real-GPU is exactly the frame the programme stopped trusting.
+ *      Anchored on the strings each case actually produces: Chromium's SwiftShader (old and ANGLE-wrapped forms),
+ *      Mesa's llvmpipe, ANGLE-on-Metal, WebKit's MASKED "Apple GPU" (hardware: the FAIL-but-right case) and the
+ *      generic "WebKit WebGL" that names no device (unknown, never hardware);
+ *   2. which Chromium launch to use: the first candidate whose renderer is hardware, never merely the first;
+ *   3. the shot set: the programme's four places at its four times — 0.30, 0.48, 0.55, 0.75 of the DAWN-origin cycle
+ *      (roadmap move 4) — and all three targets (Chromium desktop, WebKit at both iPad viewports, with touch);
+ *   4. whether a shot is VALID: input live (no title menu or resume overlay over the world), the player alive (no death
+ *      screen), the clock where it was asked to be (it keeps running — circular distance, so 0.995 vs 0.005 is close),
+ *      the world built, no context loss mid-shot.
+ * And the contact sheet escapes what it prints: a renderer string is device-supplied text.
+ *
+ * Mutation-Proof: via scripts/dev/mutate.sh on scripts/visual/_lookbook.mjs, 12 tests, one batch, each observed RED:
+ *   P1 SwiftShader dropped from the software pattern -> the classifier and both pick tests
+ *   P2 plausible-wrong: a string naming no device counts as hardware -> "names no device is unknown", "returns null"
+ *   P3 plausible-wrong: the pick takes the first candidate that launched -> both pick tests
+ *   P4 plausible-wrong: golden hour 0.48 moved to dusk 0.50 -> the shot-set test
+ *   P5 input liveness read only before the shot -> "each failure is named"
+ *   P6 the clock tolerance not circular -> "the clock tolerance is circular"
+ *   P7 plausible-wrong: the tolerance doubled to 0.02 -> the same test (a 0.0101 drift passed)
+ *   P8 the contact sheet's escaping removed -> the contact-sheet test
+ *   P9 the software-renderer warning never shown -> the contact-sheet test
+ *   P10 the portrait iPad target without touch -> the targets test
+ *   P11 a mid-shot context loss not flagged -> "each failure is named"
+ *   I0 identity (a comment edit in _lookbook.mjs) SURVIVED.
+ *
+ * BLIND SPOT: nothing here launches a browser. Whether a launch candidate REALLY yields ANGLE-Metal on this Mac is the
+ * probe's own recorded output (lookbook.json `chromiumCandidates`), and the frames are judged by eye.
+ */
+
+const SWIFTSHADER_ANGLE = 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)';
+const ANGLE_METAL = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)';
+
+describe('the renderer classifier', () => {
+  it('software renderers are software, in every spelling a harness here produces', () => {
+    for (const s of [SWIFTSHADER_ANGLE, 'Google SwiftShader', 'llvmpipe (LLVM 15.0.7, 256 bits)', 'Mesa softpipe']) {
+      expect(classifyRenderer(s), s).toBe('software');
+    }
+  });
+  it('ANGLE-Metal and WebKit\'s masked "Apple GPU" are hardware', () => {
+    expect(classifyRenderer(ANGLE_METAL)).toBe('hardware');
+    expect(classifyRenderer('Apple GPU')).toBe('hardware');
+    expect(classifyRenderer('ANGLE (NVIDIA, NVIDIA GeForce RTX 4090 Direct3D11 vs_5_0 ps_5_0, D3D11)')).toBe('hardware');
+  });
+  it('a string that names no device is unknown, never hardware', () => {
+    for (const s of ['WebKit WebGL', ' webkit webgl ', 'unknown', '', null, undefined, 'no webgl2']) {
+      expect(classifyRenderer(s), JSON.stringify(s)).toBe('unknown');
+    }
+  });
+});
+
+describe('the Chromium launch pick', () => {
+  it('takes the FIRST candidate whose renderer is hardware, skipping a software one ahead of it', () => {
+    const results = [
+      { id: 'new-headless', renderer: SWIFTSHADER_ANGLE },
+      { id: 'new-headless+metal', renderer: ANGLE_METAL },
+      { id: 'headless-shell', renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)' },
+    ];
+    expect(pickCandidate(results).id).toBe('new-headless+metal');
+  });
+  it('returns null when none is hardware — the caller must refuse to call those frames real-GPU', () => {
+    expect(pickCandidate([{ id: 'a', renderer: SWIFTSHADER_ANGLE }, { id: 'b', renderer: 'WebKit WebGL' }, { id: 'c', error: 'launch failed' }])).toBeNull();
+    expect(pickCandidate([])).toBeNull();
+  });
+  it('the candidates: new headless first, a Metal-forced variant, and the headless shell last as the control', () => {
+    expect(CHROMIUM_CANDIDATES.map((c) => c.id)).toEqual(['new-headless', 'new-headless+metal', 'headless-shell']);
+    expect(CHROMIUM_CANDIDATES[0].launch).toMatchObject({ channel: 'chromium', headless: true });
+    expect(CHROMIUM_CANDIDATES[1].launch.args).toContain('--use-angle=metal');
+    expect(CHROMIUM_CANDIDATES[2].launch.channel).toBeUndefined();
+  });
+});
+
+describe('the shot set', () => {
+  it('four places x the programme\'s four times = 16 shots per target, each named by place and time', () => {
+    expect([...LOOKBOOK_CYCLES]).toEqual([0.30, 0.48, 0.55, 0.75]);
+    expect(LOOKBOOK_PLACES.map((p) => p.id)).toEqual(['hearth', 'forest-edge', 'coast', 'snow-terrace']);
+    const plan = shotPlan();
+    expect(plan).toHaveLength(16);
+    expect(new Set(plan.map((s) => s.file)).size, 'two shots share a file name').toBe(16);
+    for (const place of LOOKBOOK_PLACES) {
+      expect(plan.filter((s) => s.place === place.id).map((s) => s.cycle)).toEqual([0.30, 0.48, 0.55, 0.75]);
+    }
+    expect(plan[0]).toEqual({ place: 'hearth', cycle: 0.30, file: 'hearth-0.30.png' });
+    for (const p of LOOKBOOK_PLACES) {
+      expect(p.position.every(Number.isFinite) && p.lookAt.every(Number.isFinite), p.id).toBe(true);
+    }
+  });
+  it('three targets: Chromium desktop, and WebKit at both iPad viewports with touch', () => {
+    expect(TARGETS.map((t) => [t.id, t.engine, t.viewport.width, t.viewport.height, t.touch])).toEqual([
+      ['chromium-1280x800', 'chromium', 1280, 800, false],
+      ['webkit-1180x820', 'webkit', 1180, 820, true],
+      ['webkit-820x1180', 'webkit', 820, 1180, true],
+    ]);
+  });
+});
+
+describe('a shot is valid only if it shows the game it claims to show', () => {
+  const ok = { active: true, isAlive: true, cycle: 0.48, worldBuilt: true, contextLosses: 0 };
+  it('a clean shot is valid', () => {
+    expect(shotVerdict({ cycle: 0.48, before: ok, after: { ...ok, cycle: 0.4815 } })).toEqual({ valid: true, why: [] });
+  });
+  it('each failure is named', () => {
+    const cases = [
+      [{ before: { ...ok, active: false }, after: ok }, /input not live/],
+      [{ before: ok, after: { ...ok, active: false } }, /input not live/],
+      [{ before: ok, after: { ...ok, isAlive: false } }, /player dead/],
+      [{ before: ok, after: { ...ok, cycle: 0.50 } }, /clock/],
+      [{ before: ok, after: { ...ok, worldBuilt: false } }, /world not built/],
+      [{ before: ok, after: { ...ok, contextLosses: 1 } }, /context lost/],
+    ];
+    for (const [c, re] of cases) {
+      const v = shotVerdict({ cycle: 0.48, ...c });
+      expect(v.valid, JSON.stringify(c)).toBe(false);
+      expect(v.why.join('; ')).toMatch(re);
+    }
+  });
+  it('the clock tolerance is circular: midnight-adjacent times either side of the wrap are close', () => {
+    expect(shotVerdict({ cycle: 0.995, before: { ...ok, cycle: 0.995 }, after: { ...ok, cycle: 0.003 } }).valid).toBe(true);
+    expect(shotVerdict({ cycle: 0.30, before: ok, after: { ...ok, cycle: 0.3101 } }).valid, 'a 0.0101 drift passed').toBe(false);
+  });
+});
+
+describe('the contact sheet', () => {
+  it('lists every shot of every target, links each PNG, flags invalid shots and a software renderer, and escapes device text', () => {
+    const report = {
+      generatedAt: '2026-10-27T12:00:00Z',
+      targets: [
+        {
+          id: 'chromium-1280x800', engine: 'chromium', renderer: 'ANGLE <b>evil</b> & "co"', gpu: 'software',
+          shots: [
+            { place: 'hearth', cycle: 0.30, file: 'hearth-0.30.png', valid: true, why: [], cycleAtShot: 0.301, tier: 'high', dpr: 1.75, consoleErrors: 0 },
+            { place: 'coast', cycle: 0.75, file: 'coast-0.75.png', valid: false, why: ['player dead (death screen)'], cycleAtShot: 0.75, tier: 'med', dpr: 1.5, consoleErrors: 3 },
+          ],
+          notes: [],
+        },
+        { id: 'webkit-1180x820', engine: 'webkit', renderer: 'Apple GPU', gpu: 'hardware', shots: [], notes: ['COULD NOT MEASURE: the world never built'] },
+      ],
+    };
+    const html = contactSheetHtml(report);
+    expect(html).toMatch(/^<!doctype html>/i);
+    expect(html).toContain('src="chromium-1280x800/hearth-0.30.png"');
+    expect(html).toContain('src="chromium-1280x800/coast-0.75.png"');
+    expect(html).toContain('player dead (death screen)');
+    expect(html, 'the device string reached the page unescaped').not.toContain('<b>evil</b>');
+    expect(html).toContain('ANGLE &lt;b&gt;evil&lt;/b&gt; &amp; &quot;co&quot;');
+    expect(html).toMatch(/SOFTWARE renderer/);
+    expect(html).toContain('COULD NOT MEASURE: the world never built');
+    expect((html.match(/<figure/g) || []).length, 'one figure per shot').toBe(2);
+  });
+});
