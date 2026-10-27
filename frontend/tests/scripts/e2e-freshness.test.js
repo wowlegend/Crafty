@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createServer } from 'node:net';
-import { verdict, readBaseCi, readCommitCi, sameAppCommits, readTreeCi, mainMovesFrom, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, portInUse, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
+import { verdict, readBaseCi, readCommitCi, sameAppCommits, scrubGitEnv, readTreeCi, mainMovesFrom, jobTimedOut, parseE2eTimeout, receiptVerdict, runPreconditions, portInUse, E2E_TIMEOUT_MIN, OBSERVED } from '../../scripts/ci/e2e-freshness.mjs';
 
 /**
  * THE GATE THAT ASKED FOR IMPOSSIBLE EVIDENCE, and what replaced it.
@@ -310,20 +310,68 @@ describe('tier 1b and the main-only red-base rule', () => {
     expect(readCommitCi(fake({}), '')).toEqual({ state: null });
   });
 
-  // A fake git: commits h (HEAD), p, q, r newest first; the app tree of h, p and r is T, of q is U (q changed the app,
-  // r is older and happens to match — equal tree ids are equal content, so r counts).
-  const fakeGit = (trees = { h: 'T', p: 'T', q: 'U', r: 'T' }, prefix = 'frontend/') => (cmd) => {
-    if (cmd === 'git rev-parse --show-prefix') return `${prefix}\n`;
-    if (cmd.startsWith('git rev-list')) return Object.keys(trees).join('\n');
-    const m = cmd.match(/^git rev-parse (\w+):(\S*)$/);
-    if (m && m[2] === prefix.replace(/\/$/, '') && m[1] in trees) return `${trees[m[1]]}\n`;
-    throw new Error(`unexpected: ${cmd}`);
+  // A fake git that HONOURS what it is asked (review 2026-10-27: the previous fake answered every rev-list with its
+  // whole table and ignored the ref and --max-count, so mutants of both survived). rev-list walks `history` from the
+  // named rev (HEAD is its first entry) and stops at --max-count; rev-parse answers each `<sha>:<path>` from `ids`
+  // and FAILS, as git does (exit 128), when the commit or the path is unknown. Any other command throws, so a changed
+  // command reads as a failure, never as the old answer.
+  const CI = '.github/workflows/ci.yml';
+  const pair = (app, yml = 'Y') => ({ frontend: app, [CI]: yml });
+  const fakeGit = (ids, history = Object.keys(ids)) => (cmd) => {
+    let m = /^git rev-list --max-count=(\d+) (\S+)$/.exec(cmd);
+    if (m) {
+      const start = m[2] === 'HEAD' ? 0 : history.indexOf(m[2]);
+      if (start < 0) throw new Error(`fatal: bad revision '${m[2]}'`);
+      return `${history.slice(start, start + Number(m[1])).join('\n')}\n`;
+    }
+    m = /^git rev-parse((?: [^\s:]+:\S+)+)$/.exec(cmd);
+    if (m) {
+      return `${m[1].trim().split(' ').map((spec) => {
+        const at = spec.indexOf(':');
+        const id = ids[spec.slice(0, at)]?.[spec.slice(at + 1)];
+        if (id === undefined) throw new Error(`fatal: path '${spec.slice(at + 1)}' does not exist in '${spec.slice(0, at)}'`);
+        return id;
+      }).join('\n')}\n`;
+    }
+    throw new Error(`fakeGit: unexpected command: ${cmd}`);
   };
 
-  it('sameAppCommits: HEAD plus every ancestor whose app tree id equals HEAD\'s — a commit that changed the app is out', () => {
-    expect(sameAppCommits(fakeGit())).toEqual(['h', 'p', 'r']);
-    expect(sameAppCommits(fakeGit({ h: 'T', p: 'U' })), 'HEAD changed the app: only HEAD itself').toEqual(['h']);
+  // Commits h (HEAD), p, q, r, s newest first. h, p and r share the pair (T, Y); q changed the app; s, the OLDEST,
+  // changed it too, so a reference identity taken from anywhere but HEAD reads differently.
+  const HIST = { h: pair('T'), p: pair('T'), q: pair('U'), r: pair('T'), s: pair('U') };
+
+  it('sameAppCommits: HEAD plus every ancestor whose (frontend tree, ci.yml blob) pair equals HEAD\'s', () => {
+    expect(sameAppCommits(fakeGit(HIST))).toEqual(['h', 'p', 'r']);
+    expect(sameAppCommits(fakeGit({ h: pair('T'), p: pair('U') })), 'HEAD changed the app: only HEAD itself').toEqual(['h']);
     expect(sameAppCommits(() => { throw new Error('no git'); }), 'degrades, never throws').toEqual([]);
+  });
+
+  // HIGH, review 2026-10-27: the e2e job is DEFINED in ci.yml (its shards, --grep-invert, node, browser), so a commit
+  // that changed only ci.yml ran a different e2e over the same app. The identity is the pair, compared together.
+  it('a ci.yml-only difference is a different identity: that commit is not borrowed from', () => {
+    const ids = { h: pair('T', 'Y'), p: pair('T', 'Z'), r: pair('T', 'Y') };
+    expect(sameAppCommits(fakeGit(ids)), 'p ran e2e under a different ci.yml').toEqual(['h', 'r']);
+  });
+
+  it('an ancestor whose identity cannot be read is left out; the others are still compared', () => {
+    const ids = { h: pair('T'), p: { frontend: 'T' }, r: pair('T') }; // p has no ci.yml: rev-parse fails for it
+    expect(sameAppCommits(fakeGit(ids))).toEqual(['h', 'r']);
+  });
+
+  it('HEAD\'s identity unreadable: HEAD alone — its own CI verdict needs no comparison, and nothing is borrowed', () => {
+    expect(sameAppCommits(fakeGit({ h: { frontend: 'T' }, p: pair('T') }))).toEqual(['h']);
+  });
+
+  it('the walk is HEAD\'s history, at most `max` commits', () => {
+    const ids = { h: pair('T'), p: pair('T'), q: pair('T'), r: pair('T') };
+    expect(sameAppCommits(fakeGit(ids), 3)).toEqual(['h', 'p', 'q']);
+    expect(sameAppCommits(fakeGit(ids)), 'the default reaches past four').toEqual(['h', 'p', 'q', 'r']);
+  });
+
+  it('scrubGitEnv drops the five variables that pick a repository over the cwd, keeps the rest, and copies', () => {
+    const env = { PATH: '/bin', HOME: '/h', GIT_DIR: 'd', GIT_WORK_TREE: 'w', GIT_INDEX_FILE: 'i', GIT_OBJECT_DIRECTORY: 'o', GIT_COMMON_DIR: 'c', GIT_AUTHOR_NAME: 'a' };
+    expect(scrubGitEnv(env)).toEqual({ PATH: '/bin', HOME: '/h', GIT_AUTHOR_NAME: 'a' });
+    expect(env.GIT_DIR, 'the caller\'s env is not edited').toBe('d');
   });
 
   it('readTreeCi: the first green commit wins, and the verdict line names a borrowed verdict as borrowed', () => {
@@ -340,7 +388,7 @@ describe('tier 1b and the main-only red-base rule', () => {
     expect(ci).toEqual({ state: 'success', run: '21', sha: 'p', exact: false });
     const v = verdict({ id: 'x', files: 3 }, null, { state: 'failure' }, { commitCi: ci, mainMoves: true });
     expect(v.code).toBe(0);
-    expect(v.line).toMatch(/run 21's e2e jobs all passed on p, whose app tree \(frontend\/\) is byte-identical/);
+    expect(v.line).toMatch(/run 21's e2e jobs all passed on p, whose frontend\/ tree and ci\.yml are byte-identical/);
     expect(readTreeCi(gh, ['h']), 'HEAD alone, no run on it: no verdict, the base rules apply').toEqual({ state: null });
     const exact = readTreeCi((cmd) => (cmd.includes('--commit') ? '31' : `${job('success')} ${job('success')}`), ['h']);
     expect(exact).toEqual({ state: 'success', run: '31', sha: 'h', exact: true });

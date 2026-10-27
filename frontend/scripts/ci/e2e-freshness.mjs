@@ -129,12 +129,12 @@ export function verdict(current, stamp, base = { state: null }, push = {}) {
   // clean runners, no load. Three local receipt runs that day failed on the operator's machine load (0.5 fps
   // software rendering, swapping at a load of 118-159), none on code — so the push of a commit CI has already run
   // green (on a branch, or by workflow_dispatch) no longer depends on re-running 45 minutes of e2e on a laptop.
-  // Widened the same day to any ancestor whose WHOLE app tree (frontend/) is byte-identical to this commit's: a
+  // Widened the same day to any ancestor with the same IDENTITY — the frontend/ tree AND ci.yml, byte-identical: a
   // docs-only commit on top of a CI-green one changes the sha and nothing CI ran, and demanding a fresh 25-minute
   // run for it is the impossible-evidence shape this file exists to avoid (readTreeCi, sameAppCommits).
   if (push.commitCi && push.commitCi.state === 'success') {
     const on = push.commitCi.sha && push.commitCi.exact === false
-      ? `${String(push.commitCi.sha).slice(0, 8)}, whose app tree (frontend/) is byte-identical to this commit's`
+      ? `${String(push.commitCi.sha).slice(0, 8)}, whose frontend/ tree and ci.yml are byte-identical to this commit's`
       : 'this exact commit';
     return { code: 0, line: `e2e-freshness: fresh by CI — run ${push.commitCi.run}'s e2e jobs all passed on ${on}` };
   }
@@ -271,27 +271,48 @@ export function readCommitCi(exec, sha, timeoutMin = E2E_TIMEOUT_MIN) {
 }
 
 /**
- * The commits whose whole app tree is byte-identical to HEAD's: HEAD first, then any of its last `max` ancestors with
- * the same git tree id for the app directory (`<sha>:<prefix>`, prefix from `git rev-parse --show-prefix`, i.e.
- * `frontend`). Equal tree ids mean equal content, so CI's e2e on any of them is CI's e2e on this app. Deliberately the
- * WHOLE app, not the receipt's OBSERVED subset: the lockfile, the playwright and vite configs and public/ change what
- * e2e runs too, and a CI verdict is borrowed only when nothing CI could see differs. Run from the repo root (no
- * prefix) it compares the whole repository. Degrades to [] on any git failure, never throws.
+ * What CI's e2e job is a function of, as repository-root paths: the app it runs, and the workflow that DEFINES the job
+ * (its shards, its --grep-invert, its node and browser). A `<rev>:<path>` path is root-relative whatever the cwd, so
+ * this identity does not depend on where the script is run from — only on which repository git reads.
+ */
+export const IDENTITY_PATHS = ['frontend', '.github/workflows/ci.yml'];
+
+/** The variables that make git read a repository other than the one the cwd is in. A hook exports them (git does so
+ *  before running one), and the pre-push hook runs this in a detached worktree — so they are dropped, and the cwd
+ *  decides. PURE: returns a copy. */
+export const GIT_LOCATION_VARS = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_COMMON_DIR'];
+export function scrubGitEnv(env = process.env) {
+  const out = { ...env };
+  for (const k of GIT_LOCATION_VARS) delete out[k];
+  return out;
+}
+
+/**
+ * The commits CI's e2e verdict may be borrowed from: HEAD first, then each of its last `max` ancestors whose IDENTITY
+ * equals HEAD's. The identity is the PAIR — the git tree id of `<sha>:frontend` and the blob id of
+ * `<sha>:.github/workflows/ci.yml` (IDENTITY_PATHS) — read in one rev-parse and compared together: equal ids are equal
+ * content, and a commit that changed only ci.yml ran a different e2e over the same app (review 2026-10-27; the first
+ * version compared frontend/ alone). Deliberately the whole app tree, not the local receipt's OBSERVED subset: the
+ * lockfile, the playwright and vite configs and public/ change what e2e runs too. The paths are root-relative, so the
+ * cwd changes nothing but the repository, and the CLI runs git with GIT_LOCATION_VARS scrubbed so the cwd picks it.
+ * An ancestor whose identity cannot be read is left out; HEAD's unreadable leaves HEAD alone (its own verdict needs
+ * no comparison, and nothing is borrowed). [] when the history cannot be read. Never throws.
  */
 export function sameAppCommits(exec, max = 40) {
+  let shas;
   try {
-    const prefix = String(exec('git rev-parse --show-prefix')).trim().replace(/\/$/, '');
-    const shas = String(exec(`git rev-list --max-count=${max} HEAD`)).trim().split(/\s+/).filter(Boolean);
-    if (shas.length === 0) return [];
-    const treeOf = (sha) => String(exec(`git rev-parse ${sha}:${prefix}`)).trim();
-    const want = treeOf(shas[0]);
-    if (!want) return [];
-    return shas.filter((sha) => {
-      try { return treeOf(sha) === want; } catch { return false; }
-    });
+    shas = String(exec(`git rev-list --max-count=${max} HEAD`)).trim().split(/\s+/).filter(Boolean);
   } catch {
     return [];
   }
+  if (shas.length === 0) return [];
+  const identityOf = (sha) => String(exec(`git rev-parse ${IDENTITY_PATHS.map((p) => `${sha}:${p}`).join(' ')}`)).trim();
+  let want = '';
+  try { want = identityOf(shas[0]); } catch { /* unreadable: HEAD alone */ }
+  if (!want) return [shas[0]];
+  return [shas[0], ...shas.slice(1).filter((sha) => {
+    try { return identityOf(sha) === want; } catch { return false; }
+  })];
 }
 
 /**
@@ -443,7 +464,7 @@ if (process.argv[1] && resolve(process.argv[1]).endsWith('e2e-freshness.mjs')) {
   const gh = (cmd) => execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   // The commit being certified (pre-push runs this in a detached worktree AT the pushed sha) and the refs the push
   // moves (exported by .githooks/pre-push). No refs given — a run by hand, or another caller — is null: strict.
-  const git = (cmd) => execSync(cmd, { cwd: APP, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  const git = (cmd) => execSync(cmd, { cwd: APP, env: scrubGitEnv(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   const v = verdict(current, stamp, readBaseCi(gh), { commitCi: readTreeCi(gh, sameAppCommits(git)), mainMoves: mainMovesFrom(process.env.E2E_PUSH_REFS) });
   console.log(v.line);
   process.exit(v.code);
