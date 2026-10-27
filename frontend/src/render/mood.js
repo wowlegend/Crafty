@@ -223,9 +223,12 @@ export function sampleMood(mood, cycle) {
   return _out;
 }
 
+// The frame's field names, listed once: the copy runs every frame and must not allocate (Object.keys would, per call).
+const SKY_FRAME_KEYS = Object.freeze(Object.keys(_out));
+
 /** Copy every field of SkyFrame `src` into SkyFrame `dst` (Colors, arrays and the grade by value). */
 function copySkyFrame(dst, src) {
-  for (const key of Object.keys(dst)) {
+  for (const key of SKY_FRAME_KEYS) {
     const d = dst[key], s = src[key];
     if (d instanceof THREE.Color) d.copy(s);
     else if (Array.isArray(d)) { d[0] = s[0]; d[1] = s[1]; d[2] = s[2]; }

@@ -29,6 +29,10 @@ const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
  * scripts/visual/grass-probe.mjs before this shipped, and the frame was opened.
  *
  * Mutation-Proof: 4 mutations, recorded on the commit.
+ * Mutation-Proof (re-pointed consumer case, 2026-10-27, light-colour plan Task 3b), via scripts/dev/mutate.sh on
+ * world/Terrain.jsx, 5 tests: AO1 the floor derived from frame.skyMid again (aoFloorColor + setRGB) -> RED; AO2 the
+ * floor never written (the copy commented out) -> RED; AO3 the haze fed skyMid instead of the frame's horizon -> RED;
+ * AO0 identity (a comment edit) SURVIVED.
  */
 describe('S11 sky-coloured AO', () => {
   // Real mood samples: daylight, dusk, and the obsidian/night end where the naive form fails worst.
@@ -80,8 +84,14 @@ describe('S11 sky-coloured AO', () => {
     const t = strip(readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8'));
     expect(t, 'the AO term no longer mixes toward the uniform').toMatch(/mix\(uAoFloor, vec3\(1\.0\), clamp\(vAO/);
     expect(t, 'the flat grey AO multiply is back').not.toMatch(/mix\(0\.55, 1\.0, clamp\(vAO/);
-    expect(t, 'the uniform is declared but never written per-frame').toMatch(/uniforms\.uAoFloor\.value\.setRGB/);
-    expect(t, 'the AO floor is derived from a different mood sample than the haze — they can disagree')
-      .toMatch(/aoFloorColor\(\[sampled\.skyMid\.r/);
+    // RE-POINTED 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3b; review amendment 10). The floor's
+    // source moved: it is the published sky frame's `aoFloor` (render/mood.js: aoFloorColor of the COMPOSED ambient,
+    // the authored shadow tint), written per frame from the SAME frame the haze reads, so AO and haze still cannot
+    // disagree. It was aoFloorColor(skyMid) computed here, and skyMid is blue by day and navy at night. So: written
+    // per frame from the frame, and no second derivation of its own left in this file.
+    expect(t, 'the uniform is declared but never written per-frame from the sky frame').toMatch(/uniforms\.uAoFloor\.value\.copy\(frame\.aoFloor\)/);
+    expect(t, 'the haze is not read from the same sky frame as the AO floor — they can disagree')
+      .toMatch(/uniforms\.skyHorizon\.value\.copy\(frame\.skyHorizon\)/);
+    expect(t, 'Terrain derives its own AO floor again (from skyMid?) instead of reading the frame\'s').not.toMatch(/\baoFloorColor\s*\(/);
   });
 });

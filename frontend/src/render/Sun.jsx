@@ -1,11 +1,19 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { moodRef, sampleMood } from './mood';
+import { skyFrameRef } from './mood';
 
-// Sun -- the sky sun billboard: tracks the camera at a fixed distance along the per-mood sun direction
-// + recolours from the mood grade each frame. Extracted VERBATIM from GameScene.jsx (v6 de-monolith
-// A2.1); behavior unchanged. moodRef/sampleMood are the shared mood source (render/mood.js).
+// Sun -- the sky sun billboard (and therefore the GodRays light source): tracks the camera at a fixed distance along
+// the SUN's direction and takes the sun's colour, both from the one sky frame <Atmosphere> publishes each frame
+// (render/mood.js skyFrameRef). Extracted from GameScene.jsx (v6 de-monolith A2.1).
+//
+// SINCE 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3b): it called sampleMood with no cycle, so the
+// billboard stood at the noon bearing all day and all night. It now reads the frame's `sunDir` (the arc) and hides
+// once the sun is below the horizon. Its colour is `sunColor`, the SUN's, never `keyColor`: the billboard is visible
+// while the sun's y > -0.05 (s > -0.093), but the key light is the moon for every s < 0, so reading the key would paint
+// the sun the moon's colour in that window (review amendment 12).
+const SUN_HIDE_Y = -0.05;
+
 export const Sun = ({ onReady }) => {
   const ref = useRef();
   const { camera } = useThree();
@@ -14,10 +22,11 @@ export const Sun = ({ onReady }) => {
   useFrame(() => {
     const mesh = ref.current;
     if (!mesh) return;
-    const m = sampleMood(moodRef.current);
-    _dir.set(m.sunPos[0], m.sunPos[1], m.sunPos[2]).normalize();
+    const f = skyFrameRef.current; // the published copy: read, never retained across frames
+    _dir.fromArray(f.sunDir);
+    mesh.visible = _dir.y > SUN_HIDE_Y;
     mesh.position.copy(camera.position).addScaledVector(_dir, 380);
-    mesh.material.color.copy(m.sunColor);
+    mesh.material.color.copy(f.sunColor);
   });
   return (
     <mesh ref={ref} frustumCulled={false}>

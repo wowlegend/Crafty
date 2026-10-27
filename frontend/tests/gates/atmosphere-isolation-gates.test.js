@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { sourceTexts } from './_srcWalk.js';
 
 // S1-D-M3 follow-up: STUDIO-FIXTURE MOTE ISOLATION.
 //
@@ -64,6 +65,61 @@ describe('S1-D-M3 studio-fixture mote isolation', () => {
       expect(block, `${hook} must call setCaptureStudio(false)`)
         .toMatch(/setCaptureStudio\(false\)/);
     }
+  });
+});
+
+// THE SKY READERS (plan 2026-10-27-crafty-light-colour-script, Task 3b; review amendment 2; the light-coast seam table,
+// rows 1-3, "Seams with other lanes"). <Atmosphere> resolves ONE sky frame per frame (render/mood.js sampleMood, at the
+// clock's cycle) and publishes a copy (publishSkyFrame -> skyFrameRef); every other reader reads that copy. A second
+// caller of sampleMood is how the sun billboard stood at the noon bearing all night: Sun.jsx, MoodGradeDriver, Terrain
+// and FarField each re-sampled the mood with NO cycle, so each saw the noon frame whatever the hour.
+//   (a) apart from its definition in render/mood.js, exactly one file calls `sampleMood(`, and it is Atmosphere;
+//   (b) no file contains `uFresnelDay` (the coast lane's coast-first night gate on its Fresnel; it would be dead weight,
+//       and wrong, once night is the clock's and not mood 1);
+//   (c) render/Ocean.jsx reads neither `moodRef` nor `sunDirRef` (it reads the frame), and a `uSunColor` there pairs
+//       with a `glowColor` read (the glint takes the frame's glow, never a held constant).
+// Each holds on `main` in BOTH landing orders of the light and coast lanes, so it binds whichever commits after it.
+// Every assertion runs on COMMENT-STRIPPED code (_srcWalk.strip): GameScene.jsx carries a comment naming
+// `sampleMood(moodRef)`, and a comment must neither satisfy the presence half nor trip the absence half.
+//
+// Mutation-Proof: via scripts/dev/mutate.sh, 10 tests, 2026-10-27, each observed RED:
+//   G1 FarField reads sampleMood(moodRef.current).skyHorizon again            -> (a) RED
+//   G3 a uFresnelDay uniform written into FarField.jsx                         -> (b) RED
+//   G4 Ocean.jsx imports sunDirRef and reads sunDirRef.current                 -> (c) RED
+//   G5 Ocean.jsx holds a uSunColor uniform at a constant, no glowColor read    -> (c) RED
+//   G6 Sun.jsx re-samples (sampleMood(0, 0.25)) instead of reading the frame   -> (a) RED
+//   G7 Atmosphere stops calling sampleMood (reads skyFrameRef instead)         -> (a) RED (the presence half)
+//   SURVIVED, as they must: G0 identity (a comment edit in FarField.jsx); G2a `sampleMood(moodRef.current)` and
+//   `uFresnelDay` written only in a FarField comment; G2b `sunDirRef.current`, `moodRef.current` and `uSunColor`
+//   written only in a trailing comment in Ocean.jsx.
+//
+// BLIND SPOT: this is source shape. That the readers then DRAW from the frame is the e2e's (tests/e2e/light-script).
+describe('the sky readers: one resolved frame, read by everyone (light-colour plan Task 3b)', () => {
+  const texts = sourceTexts();
+  const of = (file) => texts.find((t) => t.file === file);
+
+  it('walks the real source population', () => {
+    console.log(`[sky-readers] ${texts.length} source files under src/ (comment-stripped); Ocean.jsx contains uSunColor: ${/\buSunColor\b/.test(of('render/Ocean.jsx')?.code ?? '')}`);
+    expect(texts.length).toBeGreaterThanOrEqual(250);
+    expect(of('render/Atmosphere.jsx'), 'SETUP: Atmosphere.jsx not in the walk').toBeDefined();
+    expect(of('render/mood.js'), 'SETUP: mood.js not in the walk').toBeDefined();
+    expect(of('render/Ocean.jsx'), 'SETUP: Ocean.jsx not in the walk').toBeDefined();
+  });
+
+  it('(a) only render/Atmosphere.jsx calls sampleMood( — every other reader reads skyFrameRef', () => {
+    const callers = texts.filter((t) => t.file !== 'render/mood.js' && /\bsampleMood\s*\(/.test(t.code)).map((t) => t.file);
+    expect(callers, `sampleMood( callers outside mood.js: ${callers.join(', ') || 'none'}`).toEqual(['render/Atmosphere.jsx']);
+  });
+
+  it('(b) no file under src/ contains uFresnelDay', () => {
+    expect(texts.filter((t) => /\buFresnelDay\b/.test(t.code)).map((t) => t.file)).toEqual([]);
+  });
+
+  it('(c) Ocean.jsx reads the frame: no moodRef, no sunDirRef, and a uSunColor pairs with glowColor', () => {
+    const ocean = of('render/Ocean.jsx').code;
+    expect(/\bmoodRef\b/.test(ocean), 'Ocean.jsx reads moodRef').toBe(false);
+    expect(/\bsunDirRef\b/.test(ocean), 'Ocean.jsx reads sunDirRef').toBe(false);
+    if (/\buSunColor\b/.test(ocean)) expect(/\bglowColor\b/.test(ocean), 'Ocean.jsx has a uSunColor and no glowColor read').toBe(true);
   });
 });
 

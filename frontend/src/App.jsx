@@ -366,6 +366,18 @@ function GameApp({ experienceSystem }) {
     registerTestHook('worldNow', () => worldNow());
     // `setTimeOfDay` writes the same `isDay` state the day/night cycle reads.
     registerTestHook('setTimeOfDay', (t) => useGameStore.getState().setTimeOfDay(t));
+    // The light-colour plan (Task 3b). `setCaptureSolar(f | null)` declares the cycle fraction a CAPTURE frame renders
+    // at (render/mood.js captureCycle; null falls back to noon or midnight by isDay). `setWeatherMoodBoost(n)` pins the
+    // storm overlay's input: the live weather flips clear and storm every 90 s (render/WeatherSystem.jsx), so a spec
+    // reading the sky pins it first. Both read back what the store now holds.
+    registerTestHook('setCaptureSolar', (f) => {
+      useGameStore.setState({ captureSolarFraction: typeof f === 'number' && Number.isFinite(f) ? f : null });
+      return useGameStore.getState().captureSolarFraction;
+    });
+    registerTestHook('setWeatherMoodBoost', (n) => {
+      useGameStore.getState().setWeatherMoodBoost(n);
+      return useGameStore.getState().weatherMoodBoost;
+    });
     // `enterCapture` flips the visual-regression capture-determinism layer ON: seeded
     // decorative RNG, paused physics, pinned follow-cam, suppressed mob spawns. Optional
     // { timeOfDay } pins the lighting in the same call. No-op in prod (bridge tree-shaken).
@@ -895,6 +907,7 @@ function GameApp({ experienceSystem }) {
       useGameStore.getState().setCaptureMode(false);
       useGameStore.getState().setHudHidden(false);
       useGameStore.getState().setCaptureStudio(false); // leaving capture -> motes return
+      useGameStore.setState({ captureSolarFraction: null }); // a declared capture fraction never outlives capture
     });
     // Open a modal (inventory/crafting) for the visual gate. DEV-only. The panels are a lazy chunk now, so this
     // WAITS for it first (page.evaluate awaits the promise): a capture must never shoot the empty Suspense frame.

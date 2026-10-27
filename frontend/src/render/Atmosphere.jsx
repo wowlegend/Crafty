@@ -1,22 +1,25 @@
-// Mood-driven atmosphere: one component owns the gradient skydome, fog, ambient/sun/
-// fill lights, and the smoothed mood. Replaces the inline EnvironmentalFog + the
-// isDay-ternary lights + drei <Sky> (removed). Each frame it lerps moodRef toward
-// moodTarget(isDay, dangerLevel) and applies the blended palette. In capture mode the
-// mood SNAPS to target for deterministic frames.
+// The atmosphere: one component owns the gradient skydome, fog, the light rig (ambient, the one directional KEY light,
+// fill, hemisphere) and the smoothed danger mood. Each frame it lerps moodRef toward moodTarget(dangerLevel,
+// weatherBoost), resolves THE SKY FRAME for the clock's cycle (render/mood.js sampleMood: the colour script under the
+// danger overlays) and publishes a copy of it (publishSkyFrame -> skyFrameRef) for every other reader: the sun
+// billboard, the grade, the terrain and the far field. It is the ONLY caller of sampleMood (the sky-readers gate in
+// tests/gates/atmosphere-isolation-gates.test.js). In capture mode the mood SNAPS to target and the cycle is DECLARED
+// (captureCycle), for deterministic frames.
 import { useRef, useMemo, useEffect, useLayoutEffect } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { cycleFraction } from '../game/dayPhase.js';
 import { useGameStore } from '../store/useGameStore.jsx';
 import { isCaptureMode } from '../devtest/captureMode.js';
-import { moodRef, moodTarget, sampleMood, sunDirRef, cloudCoverRef, lightningFlashRef } from './mood.js';
-import { starIntensity } from './nightSky.js';
+import {
+  moodRef, moodTarget, sampleMood, publishSkyFrame, skyFrameRef, captureCycle, liveCycle, sunDirRef, cloudCoverRef,
+  lightningFlashRef,
+} from './mood.js';
 import { makeSkyDomeMaterial } from './skyDome.js';
 import { cloudTint } from './cloudField.js';
 import { frameElapsed } from '../devtest/captureClock.js';
 import { realDelta } from '../game/worldClock.js';
 import { resetShadowForConfig } from './shadowReset.js';
-import { registerTestHook } from '../devtest/testBridge.js';
+import { registerTestHook, callTestHook } from '../devtest/testBridge.js';
 import { createShadowSchedule, shadowDue, shadowWorldEpoch } from './shadowSchedule.js';
 import { ecs, mobsQuery, alliesQuery } from '../ecs/world';
 
@@ -131,10 +134,9 @@ export const SUN_OFFSET = { x: 50, y: 100, z: 50 };
  *  the shadow camera's `near`; a directional light's position otherwise carries no distance meaning. */
 export const SUN_DISTANCE = 140;
 
-/** Capture pins the solar angle HERE — a declared constant, never "wherever the clock was". 0.25 = noon,
- *  the one fraction at which sunArcDirection returns the mood's own bearing unchanged, so committed
- *  baselines keep their exact sun direction. */
-export const CAPTURE_SOLAR_FRACTION = 0.25;
+// Capture's solar angle is DECLARED, never "wherever the clock was": render/mood.js CAPTURE_SOLAR and captureCycle
+// (noon for a day state, midnight for a night state, or the state's own declared fraction). It lived here as
+// CAPTURE_SOLAR_FRACTION = 0.25 for every state until the light-colour plan's Task 3b.
 
 /** Above this y-component the sun counts as above the horizon (god rays allowed). A small positive
  *  epsilon rather than 0: exactly at the horizon the screen-space projection is at its least stable,
@@ -153,11 +155,12 @@ export const SUN_HORIZON_EPS = 0.02;
  * A second writer is not a bug you fix by reordering, because the next edit reorders it back. It is a bug
  * you fix by leaving exactly one place that can write the value, and that is what this function is for.
  *
- * The mood's `sunPos` is treated as a DIRECTION, not a location — which is also what makes the sun-arc
- * work (QUEUE.md B1) a drop-in later: an arc changes this vector, and the shadow sweeps for free.
+ * The direction is treated as a DIRECTION, not a location — which is also what made the sun-arc work
+ * (QUEUE.md B1) a drop-in: an arc changes this vector, and the shadow sweeps for free. Since the light-colour
+ * plan's Task 3b the caller passes the sky frame's KEY direction (the moon's at night), not the sun's.
  *
  * @param {{x:number,z:number}} centre  texel-snapped frustum centre (the player)
- * @param {number[]|null} sunPos        the mood's sun direction, e.g. [-55, 48, -52]
+ * @param {number[]|null} sunPos        the light's direction, e.g. [-55, 48, -52] (magnitude ignored)
  * @returns {{x:number,y:number,z:number}}
  */
 export function sunWorldPosition(centre, sunPos) {
@@ -174,7 +177,7 @@ export function sunWorldPosition(centre, sunPos) {
 }
 
 export function Atmosphere({ shadowConfig }) {
-  const { scene, camera } = useThree();
+  const { scene, camera, gl } = useThree();
   const ambientRef = useRef();
   const sunRef = useRef();
   // A TIER CHANGE RE-BUILDS THE SHADOW (render/shadowReset.js): three keeps a light's first shadow target for life.
@@ -196,13 +199,18 @@ export function Atmosphere({ shadowConfig }) {
     sh.autoUpdate = false;
     sh.needsUpdate = true;
   }, []);
-  // DEV-only: the live shadow target's real size, for the tier-change e2e (the bridge is tree-shaken in prod).
+  // DEV-only: the live shadow target's real size, for the tier-change e2e (the bridge is tree-shaken in prod). `schedSun`
+  // is the direction the shadow map last rendered from (render/shadowSchedule.js), so the light-script e2e can see that
+  // the schedule is fed the KEY's direction (the moon at night), not the sun's under the ground.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     registerTestHook('readSunShadow', () => {
       const sh = sunRef.current?.shadow;
       return sh
-        ? { mapSize: [sh.mapSize.x, sh.mapSize.y], map: sh.map ? [sh.map.width, sh.map.height] : null, autoUpdate: sh.autoUpdate, renders: shadowSched.renders }
+        ? {
+          mapSize: [sh.mapSize.x, sh.mapSize.y], map: sh.map ? [sh.map.width, sh.map.height] : null, autoUpdate: sh.autoUpdate,
+          renders: shadowSched.renders, schedSun: shadowSched.sun ? [...shadowSched.sun] : null,
+        }
         : null;
     });
   }, [shadowSched]);
@@ -224,6 +232,99 @@ export function Atmosphere({ shadowConfig }) {
     if (sunRef.current) sunRef.current.target = sunTarget;
     return () => { scene.remove(sunTarget); };
   }, [scene, sunTarget]);
+  const framesRef = useRef(0); // frames this component has run, for the DEV grey card's "wait three frames"
+  // DEV-only reads for tests/e2e/light-script.spec.js (plan 2026-10-27-crafty-light-colour-script, Task 3b). Every value
+  // is read from the LIVE object it describes where one exists (the light's own position and intensity, the dome's
+  // uniform, the terrain's uniform via its own hook), so a reader that stopped drawing from the frame is seen.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+    const v = new THREE.Vector3();
+    const liveKeyDir = () => (sunRef.current ? v.copy(sunRef.current.position).sub(sunTarget.position).normalize().toArray() : null);
+    registerTestHook('readSkyLight', () => {
+      const st = useGameStore.getState(), f = skyFrameRef.current, key = liveKeyDir();
+      return {
+        sunDirY: f.sunDir[1], keyDir: key, keyDirY: key ? key[1] : null, keyIsMoon: f.keyIsMoon,
+        keyIntensity: sunRef.current ? sunRef.current.intensity : null, stars: domeMat.uniforms.uStar.value,
+        terrainSunDirY: callTestHook('readTerrainSky')?.sunDir?.[1] ?? null,
+        bloomThreshold: callTestHook('readPostFx')?.bloomThreshold ?? null,
+        mood: moodRef.current, weatherBoost: st.weatherMoodBoost, tier: st.qualityTier,
+      };
+    });
+    // THE GREY CARD: the colour model (tests/gates/_lightModel.js) against the screen (review amendment 1). A 1 m quad,
+    // the stone's albedo #8C8C8C on the terrain's material settings (MeshStandardMaterial, roughness 0.85, metalness
+    // 0.1), facing up, casting and receiving no shadow, 3 m ahead of the camera on the horizontal and 0.8 m below it:
+    // about 15 deg under the camera's horizon, clear of the bottom HUD. It is drawn last and its depth test always
+    // passes, so a hill or a tree in front cannot cover it (lighting does not depend on either).
+    // `readGreyCard` mounts it, waits three frames, and returns its screen rect with the LIVE rig it is lit by; the card
+    // STAYS until `clearGreyCard` (the spec calls it in a finally, after its screenshot), or 30 s, whichever is first.
+    let card = null, cardTimer = 0;
+    const dropCard = () => {
+      clearTimeout(cardTimer);
+      if (!card) return;
+      scene.remove(card);
+      card.geometry.dispose();
+      card.material.dispose();
+      card = null;
+    };
+    registerTestHook('readGreyCard', async () => {
+      dropCard();
+      const fwd = camera.getWorldDirection(new THREE.Vector3());
+      fwd.y = 0;
+      if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+      fwd.normalize();
+      card = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+        // depthFunc ALWAYS, not depthTest false: WebGL writes no depth while the depth test is disabled, so the depth
+        // buffer under the card would hold the terrain behind it for every depth-reading pass. ALWAYS passes the test
+        // and writes the card's own depth. (The e2e still reads the card on the LOW tier: at high, N8AO and GodRays moved
+        // it up to L 0.10 off the model either way, with this setting or without it.)
+        new THREE.MeshStandardMaterial({ color: '#8C8C8C', roughness: 0.85, metalness: 0.1, depthFunc: THREE.AlwaysDepth }),
+      );
+      card.castShadow = false;
+      card.receiveShadow = false;
+      card.renderOrder = 10000;
+      card.frustumCulled = false;
+      card.position.copy(camera.position).addScaledVector(fwd, 3).add(new THREE.Vector3(0, -0.8, 0));
+      scene.add(card);
+      cardTimer = setTimeout(dropCard, 30000);
+      try {
+        const start = framesRef.current, t0 = performance.now();
+        await new Promise((resolve, reject) => {
+          const tick = () => {
+            if (framesRef.current - start >= 3) resolve();
+            else if (performance.now() - t0 > 20000) reject(new Error(`readGreyCard: ${framesRef.current - start} frame(s) in 20 s`));
+            else requestAnimationFrame(tick);
+          };
+          tick();
+        });
+      } catch (e) {
+        dropCard();
+        throw e;
+      }
+      const box = gl.domElement.getBoundingClientRect(); // THIS renderer's canvas (the title screen has its own)
+      const corners = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]].map(([x, z]) => {
+        const p = new THREE.Vector3(x, 0, z).add(card.position).project(camera);
+        return [box.left + ((p.x + 1) / 2) * box.width, box.top + ((1 - p.y) / 2) * box.height];
+      });
+      const xs = corners.map((c) => c[0]), ys = corners.map((c) => c[1]);
+      const f = skyFrameRef.current, a = ambientRef.current, h = hemiRef.current, k = sunRef.current;
+      const st = useGameStore.getState();
+      return {
+        rect: { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) },
+        // The rig the card is lit by, read from the live lights, in the SkyFrame shape the model takes.
+        frame: {
+          ambient: a.color.toArray(), ambientIntensity: a.intensity, hemiSky: h.color.toArray(), hemiGround: h.groundColor.toArray(),
+          hemiIntensity: h.intensity, keyColor: k.color.toArray(), keyIntensity: k.intensity, aoFloor: f.aoFloor.toArray(),
+          keyDir: liveKeyDir(), grade: { ...f.grade }, keyIsMoon: f.keyIsMoon,
+        },
+        // From the card's centre TOWARD the camera: the model adds the key's view-dependent specular, as three does.
+        viewDir: camera.position.clone().sub(card.position).normalize().toArray(),
+        mood: moodRef.current, weatherBoost: st.weatherMoodBoost, tier: st.qualityTier,
+      };
+    });
+    registerTestHook('clearGreyCard', () => { dropCard(); return true; });
+    return dropCard;
+  }, [scene, camera, gl, domeMat, sunTarget]);
 
   useFrame((state, frameDelta) => {
     const delta = realDelta(frameDelta); // the sky's mood lerp is ambient: a freeze does not stop the day (R2.6)
@@ -248,23 +349,25 @@ export function Atmosphere({ shadowConfig }) {
     // during a capture (which runs >90s, longer than the 90s weather cycle), so a live weatherMoodBoost
     // would darken every frame captured after the first transition -> non-deterministic baselines. Capture
     // always renders the clear-sky mood; the storm darken is a live-play-only effect.
-    const target = moodTarget({ isDay: st.isDay, dangerLevel: st.dangerLevel, weatherBoost: cap ? 0 : st.weatherMoodBoost });
+    // NIGHT IS NOT DANGER (light-colour plan decision 2): the mood is the danger overlay only, so isDay is not passed.
+    const target = moodTarget({ dangerLevel: st.dangerLevel, weatherBoost: cap ? 0 : st.weatherMoodBoost });
     if (cap) {
       moodRef.current = target; // snap -> deterministic capture frames
     } else {
       moodRef.current = THREE.MathUtils.lerp(moodRef.current, target, Math.min(1, delta * 2.0));
     }
-    // THE SUN ARC (QUEUE.md B1). cycleFraction drives the sun's orbit angle; until today its only
-    // references were inside dayPhase.js itself, so the HUD dial showed a travelling sun while the sky's
-    // sun stood still.
+    // THE CLOCK (QUEUE.md B1, then the light-colour plan). cycleFraction drives the sun's orbit AND, since Task 3b, the
+    // whole colour script: night is the clock's, a moonlit blue, and the moon takes the key light.
     //
     // CAPTURE SAFETY, per AGENTS.md: "a capture guard must RESET to a declared value, never early-return."
-    // Freezing the arc wherever the clock happened to be would make every gated frame run-dependent, since
-    // boot length varies 1.68-10.43s between processes. So capture pins the solar angle to a DECLARED
-    // constant — noon, which is also the fraction at which the arc returns the mood's own historical
-    // bearing unchanged, so the existing baselines keep their exact sun direction.
-    const cycle = cap ? CAPTURE_SOLAR_FRACTION : cycleFraction(st.gameTime);
+    // Freezing the clock wherever it happened to be would make every gated frame run-dependent, since boot length
+    // varies 1.68-10.43s between processes. So capture renders at a DECLARED fraction (captureCycle): the state's own
+    // `captureSolarFraction` if it set one, else noon for a day state and midnight for a night state. Live play goes
+    // through liveCycle, which maps a corrupt (non-finite) gameTime to noon rather than to the key-less dawn.
+    const cycle = cap ? captureCycle(st) : liveCycle(st.gameTime);
     const m = sampleMood(moodRef.current, cycle);
+    publishSkyFrame(m); // THE copy every other reader reads (Sun, MoodGradeDriver, Terrain, FarField)
+    framesRef.current += 1;
     // Above the horizon? The GodRays shaft is a screen-space effect whose light source is the sun
     // BILLBOARD, and three.js#18446 records that the official godrays example flips the shaft downwards
     // when "the signs of the sun's screen space position vector components change" — which an arcing sun
@@ -302,10 +405,14 @@ export function Atmosphere({ shadowConfig }) {
         u.midColor.value.addScalar(flash * 0.16);
         u.horizonColor.value.addScalar(flash * 0.1);
       }
-      u.sunColor.value.copy(m.sunColor); // the frame has no `.sun` since Task 3a (the full rewiring is Task 3b)
-      u.sunDir.value.set(m.sunPos[0], m.sunPos[1], m.sunPos[2]).normalize();
-      sunDirRef.current.copy(u.sunDir.value); // the ONE resolved sun, for the terrain's cloud shadows
-      u.uStar.value = starIntensity(moodRef.current); // dusk-only twilight stars + moon
+      // The dome's sun glow and disc: the key's glow colour, faded out with the daylight (0 at night and under the boss).
+      u.sunColor.value.copy(m.glowColor).multiplyScalar(m.daylight);
+      u.sunDir.value.fromArray(m.sunDir);
+      // THE SUN, at every hour (refute F5): the terrain's cloud shadows, ore glow and leaf translucency mean the sun,
+      // so this is never the key's direction, which is the moon's at night.
+      sunDirRef.current.copy(u.sunDir.value);
+      u.uStar.value = m.stars;           // the script's stars (night 1, twilight 0.5), less the storm overlay
+      u.uMoonDir.value.fromArray(m.moonDir); // the painted moon rides its own arc, where the moon key light comes from
       u.uTime.value = frameElapsed(state.clock.elapsedTime); // cloud drift: the CAPTURE clock under capture
       cloudTint(m, u.uCloudTint.value);                     // clouds take the mood, not a painted white
       // The sky-studio subject cards sit ~74 m under the cloud plane, where clouds loom behind the subject:
@@ -319,10 +426,12 @@ export function Atmosphere({ shadowConfig }) {
       ambientRef.current.intensity = m.ambientIntensity;
     }
     if (sunRef.current) {
+      // THE KEY LIGHT (render/keyLight.js): the sun by day, the moon by night, on the one directional light. Its
+      // intensity fades to 0 at the horizon, so the direction swaps only under a dark key.
       sunRef.current.color.copy(m.keyColor);
       sunRef.current.intensity = m.keyIntensity;
-      // THE ONE PLACE the sun's position is written. Mood owns the direction, player owns the centre.
-      const sp = sunWorldPosition(shadowCentreRef.current, m.sunPos);
+      // THE ONE PLACE the light's position is written. The frame owns the direction (the KEY's), the player the centre.
+      const sp = sunWorldPosition(shadowCentreRef.current, m.keyDir);
       sunRef.current.position.set(sp.x, sp.y, sp.z);
       // SHADOW ON DEMAND. Capture renders it every frame, as before (the oracle is not this change's to move). In play,
       // a dynamic caster is: the camera moved since the last shadow render (the player's own hands cast), any ECS mob,
@@ -331,7 +440,9 @@ export function Atmosphere({ shadowConfig }) {
       if (cap) {
         sh.needsUpdate = true;
       } else {
-        const p = m.sunPos, len = Math.hypot(p[0], p[1], p[2]) || 1;
+        // Fed the KEY's direction, the same one the light is positioned from above: the moon's shadows step as it
+        // moves, and the dawn and dusk swaps (a step far past SUN_STEP_DEG) render at once.
+        const p = m.keyDir, len = Math.hypot(p[0], p[1], p[2]) || 1;
         sunUnit[0] = p[0] / len; sunUnit[1] = p[1] / len; sunUnit[2] = p[2] / len;
         const dynamic = !camera.matrixWorld.equals(shadowCamAt)
           || mobsQuery.entities.length > 0 || alliesQuery.entities.length > 0

@@ -112,6 +112,10 @@ export const useGameStore = create((set, get) => ({
     // false -> motes always render in gameplay and in the in-world capture frames.
     captureStudio: false,
     setCaptureStudio: (on) => set({ captureStudio: !!on }),
+    // The cycle fraction a CAPTURE state declares for its light (light-colour plan Task 3b; render/mood.js
+    // captureCycle): a finite value wins, null falls back to noon (isDay) or midnight (!isDay). Read only under
+    // capture; set by the DEV hook `setCaptureSolar`, reset to null by `exitCapture`. Transient (not persisted).
+    captureSolarFraction: null,
 
     // Device-gated render quality tier (spec §8). Default 'low' = conservative;
     // App.jsx selects up at startup via selectTier(readDeviceSignals()).
