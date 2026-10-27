@@ -23,6 +23,7 @@ import { Outlines } from '@react-three/drei';
 import { OUTLINE } from '../render/characterStyle';
 import { TIERS } from '../render/quality';
 import { renderDistanceFor } from '../render/tierGovernor.js';
+import { markShadowWorldChanged } from '../render/shadowSchedule.js';
 import { Cube, Emissive } from '../render/mascots/voxelKit';
 import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
 import { shrineParts } from './shrineShape.js';
@@ -317,6 +318,12 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
         return () => {
             if (opaqueGeometry) opaqueGeometry.dispose();
         };
+    }, [opaqueGeometry]);
+    // The sun's shadow renders on demand (render/shadowSchedule.js): a chunk whose mesh mounts, changes (a block edit
+    // remeshes it) or leaves must re-render it. A LAYOUT effect, so the render it asks for sees the committed mesh.
+    React.useLayoutEffect(() => {
+        markShadowWorldChanged();
+        return () => markShadowWorldChanged();
     }, [opaqueGeometry]);
 
     if (empty) return null;
