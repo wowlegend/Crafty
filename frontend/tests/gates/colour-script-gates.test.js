@@ -220,3 +220,65 @@ describe('the look, as DISPLAYED', () => {
     expect(sideSh.C).toBeLessThan(sideLit.C);
   });
 });
+
+// The reference for a blend between two keys: the straight line between them in OKLab, which is perceptually even. A
+// blend that falls DARKER than that line, or loses chroma against it, reads muddy at the midpoint. The script blends
+// in linear RGB (three's lerpColors in the working space); measured against this line, that path is never darker and
+// loses at most 0.015 of chroma (sunset to dusk fog), under the 0.02 OKLab step taken here as one visible difference.
+// An sRGB-byte lerp would be darker by up to 0.006.
+const lab = (c) => { const o = oklch(c); return [o.L, o.a, o.b]; };
+const chroma = (v) => Math.hypot(v[1], v[2]);
+const mixv = (a, b, t) => a.map((x, i) => x + (b[i] - x) * t);
+const BLEND_COLOURS = ['sky.top', 'sky.mid', 'sky.horizon', 'fog.color', 'glow.color', 'hemi.sky', 'hemi.ground', 'ambient.color', 'sun.color', 'moon.color'];
+// Each blended segment as [lower key, upper key, branch]: the anchors in ascending s on each side of the day.
+const SEGMENTS = [['night', 'preDawn', 'rising'], ['preDawn', 'sunrise', 'rising'], ['sunrise', 'day', 'rising'],
+  ['night', 'dusk', 'setting'], ['dusk', 'sunset', 'setting'], ['sunset', 'day', 'setting']];
+const KEY_ANCHOR_S = { night: KEY_S.night, preDawn: KEY_S.twilight, dusk: KEY_S.twilight, sunrise: KEY_S.golden, sunset: KEY_S.golden, day: KEY_S.day };
+const fOn = (s, branch) => (branch === 'rising' ? ((Math.asin(s) / TAU) + 1) % 1 : 0.5 - Math.asin(s) / TAU);
+
+describe('the blend between keys, against OKLab', () => {
+  it('no blend is darker than the OKLab line between its keys, or greyer by a visible step', () => {
+    const N = 24;
+    let n = 0, worstL = { d: -Infinity }, worstC = { d: -Infinity };
+    for (const [lo, hi, branch] of SEGMENTS) {
+      for (let i = 1; i < N; i++) {
+        const s = KEY_ANCHOR_S[lo] + (KEY_ANCHOR_S[hi] - KEY_ANCHOR_S[lo]) * (i / N);
+        const f = fOn(s, branch);
+        const at = scriptKeysAt(f);
+        expect([at.from, at.to].sort(), `SETUP: f ${f.toFixed(4)} is not in ${lo}..${hi}`).toEqual([lo, hi].sort());
+        const fr = sampleScript(f);
+        for (const p of BLEND_COLOURS) {
+          const ref = mixv(lab(rgb(get(SCRIPT_KEYS[at.from], p))), lab(rgb(get(SCRIPT_KEYS[at.to], p))), at.t);
+          const got = lab(rgb(get(fr, p)));
+          const dL = ref[0] - got[0], dC = chroma(ref) - chroma(got);
+          if (dL > worstL.d) worstL = { d: dL, at: `${p} ${at.from}->${at.to} t ${at.t.toFixed(2)}` };
+          if (dC > worstC.d) worstC = { d: dC, at: `${p} ${at.from}->${at.to} t ${at.t.toFixed(2)}` };
+          n++;
+        }
+      }
+    }
+    console.log(`[blend] ${n} samples; darkest against OKLab ${worstL.d.toFixed(4)} (${worstL.at}); greyest ${worstC.d.toFixed(4)} (${worstC.at})`);
+    expect(n).toBe(SEGMENTS.length * (N - 1) * BLEND_COLOURS.length);
+    expect(worstL.d, `a blend runs darker than the OKLab line: ${worstL.at}`).toBeLessThanOrEqual(0.002);
+    expect(worstC.d, `a blend greys out against the OKLab line: ${worstC.at}`).toBeLessThanOrEqual(0.02);
+  });
+
+  it('the displayed horizon keeps its colour through dusk and dawn: never grey, never darker than OKLab between its ends', () => {
+    const spans = [['sunset', 'dusk'], ['preDawn', 'sunrise']];
+    let n = 0;
+    for (const [a, b] of spans) {
+      const f0 = ANCHOR_F[a], f1 = ANCHOR_F[b] < f0 ? ANCHOR_F[b] + 1 : ANCHOR_F[b];
+      const show = (f) => { const fr = sampleScript(f % 1); return lab(displayed(dome(fr, fr.sky.horizon), fr.grade)); };
+      const e0 = show(f0), e1 = show(f1), d = e1.map((v, i) => v - e0[i]), len2 = d.reduce((s, v) => s + v * v, 0);
+      for (let i = 0; i <= 40; i++) {
+        const f = f0 + (f1 - f0) * (i / 40), p = show(f);
+        const t = Math.min(1, Math.max(0, p.reduce((s, v, j) => s + (v - e0[j]) * d[j], 0) / len2));
+        const ref = mixv(e0, e1, t);
+        expect(chroma(p), `${a}->${b} horizon greys out at f ${(f % 1).toFixed(4)}: C ${chroma(p).toFixed(3)}`).toBeGreaterThanOrEqual(0.04);
+        expect(ref[0] - p[0], `${a}->${b} horizon runs dark at f ${(f % 1).toFixed(4)}`).toBeLessThanOrEqual(0.01);
+        n++;
+      }
+    }
+    expect(n).toBe(82);
+  });
+});
