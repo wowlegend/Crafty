@@ -5,6 +5,7 @@ import { GameMethods } from './GameMethods';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isCaptureMode } from './devtest/captureMode';
+import { isWorldFrozenNow } from './game/worldClock.js';
 import { isTouchUIMode } from './input/touchDevice';
 import { Panel, Button, Icon, Toast, Modal } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
@@ -268,7 +269,7 @@ export const useQuestSystem = () => {
         const interval = setInterval(() => {
             // INSIDE the callback: this effect's deps are [] and the harness flips the capture flag AFTER
             // mount, so a guard on the setup path is provably false every time and suppresses nothing.
-            if (isCaptureMode()) return;
+            if (isCaptureMode() || isWorldFrozenNow()) return;
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
             const s = nearestLandmark(playerPos.x, playerPos.z);
@@ -717,7 +718,7 @@ export const useTreasureChests = () => {
         const interval = setInterval(() => {
             // INSIDE the callback. Deps are [] and the harness flips the capture flag AFTER mount, so a
             // guard on the setup path is provably false every time and suppressed nothing.
-            if (isCaptureMode()) return;
+            if (isCaptureMode() || isWorldFrozenNow()) return;
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
 
@@ -802,7 +803,7 @@ export const useTreasureChests = () => {
     useEffect(() => {
         const interval = setInterval(() => {
             // INSIDE the callback — same reason as the two sibling pollers above.
-            if (isCaptureMode()) return;
+            if (isCaptureMode() || isWorldFrozenNow()) return;
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
             const s = nearestLandmark(playerPos.x, playerPos.z);

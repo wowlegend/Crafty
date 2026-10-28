@@ -44,9 +44,10 @@ import { render } from '@testing-library/react';
 const setGameTime = vi.fn();
 let active = true;
 let capture = false;
+let world = {}; // the rest of the store the world clock reads: a hitstop's span
 
 vi.mock('../../src/store/useGameStore', () => ({
-  useGameStore: { getState: () => ({ setGameTime }) },
+  useGameStore: { getState: () => ({ setGameTime, ...world }) },
 }));
 vi.mock('../../src/input/inputState', () => ({ getInput: () => ({ active }) }));
 vi.mock('../../src/devtest/captureMode', () => ({ isCaptureMode: () => capture }));
@@ -58,7 +59,7 @@ const Host = ({ isWorldBuilt = true, isAlive = true }) => {
   return null;
 };
 
-beforeEach(() => { vi.useFakeTimers(); setGameTime.mockClear(); active = true; capture = false; });
+beforeEach(() => { vi.useFakeTimers(); setGameTime.mockClear(); active = true; capture = false; world = {}; });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('day/night clock — pause, determinism and loop isolation, driven', () => {
@@ -112,6 +113,21 @@ describe('day/night clock — pause, determinism and loop isolation, driven', ()
     active = true;
     vi.advanceTimersByTime(1000);
     expect(setGameTime).toHaveBeenCalledTimes(2); // and it resumes
+    unmount();
+  });
+
+  it('holds while the world is held by a hitstop, read live, and runs again the moment it ends', () => {
+    // A tick that lands inside a freeze is skipped, so over many hits the clock loses, on average, the time the world
+    // spent frozen: the same time worldNow loses.
+    const { unmount } = render(<Host />);
+    vi.advanceTimersByTime(1000);
+    expect(setGameTime).toHaveBeenCalledTimes(1);
+    world = { hitstopStart: 0, hitstopUntil: Number.MAX_SAFE_INTEGER };
+    vi.advanceTimersByTime(3000);
+    expect(setGameTime, 'the clock advanced through a hitstop').toHaveBeenCalledTimes(1);
+    world = { hitstopStart: 0, hitstopUntil: 0 };
+    vi.advanceTimersByTime(1000);
+    expect(setGameTime, 'the clock did not run again after the hitstop').toHaveBeenCalledTimes(2);
     unmount();
   });
 
