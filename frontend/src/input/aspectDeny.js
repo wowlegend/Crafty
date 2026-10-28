@@ -4,7 +4,8 @@
 // a block, disarming an imbue) is not refused and says nothing.
 //
 // The keydown listener is on window, so a letter typed into a text field or pressed while dead reaches it. Such a press
-// does nothing, so it says nothing: the liveness check sits here, where no caller can leave it out, as the dodge's does.
+// does nothing, so it says nothing (Shift arms no dodge then either). The liveness check sits here, where no caller can
+// leave it out, as routeExpressVerb keeps its own (input/expressVerbs.js).
 import { notifyDenied } from '../ui/denyToast';
 import { emberShort } from '../game/ember.js';
 import { ASPECT_VERBS } from './aspectWheel.js';
