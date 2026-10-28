@@ -716,13 +716,13 @@ footer p { max-width: 75ch; }
       <h3>The test suite rewrote the real repository</h3>
       <div class="body">
         <p><b>What happened.</b> In the 03:32 incident on 10-27, a test run from a worktree inherited <code>GIT_DIR</code> from a hook. Fixtures re-initialised the real repo as <code>core.bare=true</code> with a fixture <code>[user]</code> identity and four fixture commits. Main was untouched, by coincidence.</p>
-        <p><b>Done.</b> Repaired: <code>core.bare</code> false, <code>[user]</code> removed, the ref restored to <code>610bf9bf</code> by update-ref, the index re-read. Root cause fixed in <code>0c5b269c</code>. The lesson is AB <code>episodes.jsonl:1183</code>. The incident has no row in session-truth.</p>
+        <p><b>Done.</b> Repaired: <code>core.bare</code> false, <code>[user]</code> removed, the ref restored to <code>610bf9bf</code> by update-ref, the index re-read. Root cause fixed in <code>0c5b269c</code>. The lesson is recorded in the estate’s episode log. The incident has no row in session-truth.</p>
       </div>
     </article>
     <article>
       <h3>A load spike blamed on other sessions was this session’s own</h3>
       <div class="body">
-        <p><b>What happened.</b> At 04:20Z the session blamed AB fixtures and a tersign Chromium for machine load. At 04:39Z load was 317, with 142 processes runnable on 14 cores, and the top consumer was the session’s own inst-lightning-fix batch at 316% CPU.</p>
+        <p><b>What happened.</b> At 04:20Z the session blamed AB fixtures and another session’s browser for machine load. At 04:39Z load was 317, with 142 processes runnable on 14 cores, and the top consumer was the session’s own inst-lightning-fix batch at 316% CPU.</p>
         <p><b>Done.</b> Terminated at 04:41Z; runnable processes fell from 142 to 17. Rule: trace each top-CPU process to its owner before naming one.</p>
       </div>
     </article>
