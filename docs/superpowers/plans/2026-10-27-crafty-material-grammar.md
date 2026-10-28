@@ -71,7 +71,7 @@ build; the figures were measured during it. Where this amendment and the text be
 - The look is recorded in this file, not in `memory/ACTIVE_PLAN.md` (the command session's cursor).
 
 **Face grammar (Unit 2, changed).**
-- The terrain GLSL is in `src/world/Terrain.jsx` (`terrainMaterial.js` does not exist): the vertex `main()` patch is at
+- (At the lane's start; since the fix round the material and its `onBeforeCompile` live in `src/world/terrainMaterial.js`, an exported singleton, and `tests/gates/terrain-shader-patch-gates.test.js` runs that patch on three's own shader source: it gates the splice, the qualifiers and the sample in node. CI's prod-smoke links the program with SwiftShader, a CPU renderer, and no real-GPU compile is automated; registry `REVIEW:w2k:no-running-world-check`.) The terrain GLSL was in `src/world/Terrain.jsx`: the vertex `main()` patch is at
   `:95-104` (`vBlockType = color.r` at `:99`), the sample at `:145-150`, `TEX_LAYERS` at `:268`. The ore glow and the
   leaf feel are on main (`Terrain.jsx:45-46`) and read `layerIndex` (block type), as Risk 4 expects.
 - **Steps 7-9 are not built in this lane** (the probe page, the running-world e2e, `material-probe.mjs`): no local e2e

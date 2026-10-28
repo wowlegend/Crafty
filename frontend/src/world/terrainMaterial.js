@@ -39,7 +39,7 @@ const compileShader = (shader) => {
     // frame rendered before the first useFrame tick is byte-identical to the old behaviour rather than
     // flashing a wrong colour for one frame.
     shader.uniforms.uAoFloor = { value: new THREE.Color(AO_FLOOR, AO_FLOOR, AO_FLOOR) };
-    // EXTERNAL-BASELINE #5: cloud shadows. The clock and the sun are written per frame (useFrame below).
+    // EXTERNAL-BASELINE #5: cloud shadows. The clock and the sun are written per frame (Terrain.jsx's useFrame).
     shader.uniforms.uTime = { value: 0 };
     shader.uniforms.uSunDir = { value: sunDirRef.current.clone() };
     shader.uniforms.uCloudCover = { value: cloudCoverRef.current };

@@ -14,12 +14,13 @@ import {
  * The face layer crosses three seams that the generator's own gates (material-grammar-gates) cannot see, and each one
  * left every unit test green when it broke:
  *   - both stages declare vTexLayer with one type and one interpolation qualifier (GLSL ES 3.00 refuses to link a
- *     mismatch, and every varying the patch adds is held to the same rule);
- *   - the vertex main() writes it, unconditionally, from the face table, which is executed here for every block and
- *     every axis normal;
+ *     mismatch, and every varying the patch adds is held to the same rule), and neither main() hides it with a local;
+ *   - the vertex main() writes it as a statement of its own, outside any brace, preprocessor conditional or brace-less
+ *     if, else, for, while or do, from the face table, which is executed here for every block and every axis normal;
  *   - the fragment's one texture-array sample reads a layer derived from vTexLayer alone, executed for every layer.
  *
- * NOT CHECKED HERE: that the GLSL compiles or links on a GPU (CI's prod-smoke links the shipped program), what colour
+ * NOT CHECKED HERE: that the GLSL compiles or links on real GPU drivers (CI's prod-smoke links the shipped program
+ * with SwiftShader, a CPU renderer; no real-GPU compile is automated), what colour
  * a face draws in the running world (the eye-level lookbook frames; registry REVIEW:w2k:no-running-world-check), or
  * WebKit (REVIEW:w2k:webkit-face-grammar).
  */
@@ -128,6 +129,16 @@ function nesting(body, at) {
   return { conditionals: opens - ends, braces };
 }
 
+/** Whether the statement at `at` begins a statement of its own: a brace-less if, else, for, while or do before it
+ *  would make it conditional without opening a brace. Preprocessor lines are skipped, since an #endif may precede it. */
+function startsStatement(body, at) {
+  const before = body.slice(0, at).replace(/^[ \t]*#.*$/gm, '').trimEnd();
+  return before === '' || /[;}]$/.test(before);
+}
+
+/** A local declaration of `name` inside a main() body, which would hide the varying of that name. */
+const localDeclaration = (body, name) => new RegExp(`\\b(?:float|int|uint|[biu]?vec[234])\\s+${name}\\b`).test(body);
+
 const { vertex, fragment } = patchedStages(terrainMaterial);
 const unpatched = { vertex: stage(THREE.ShaderLib.physical.vertexShader), fragment: stage(THREE.ShaderLib.physical.fragmentShader) };
 
@@ -154,6 +165,8 @@ describe('the terrain shader patch, run on three\'s standard-material source', (
     expect(f.length, 'fragment declarations of vTexLayer').toBe(1);
     expect(f[0].type).toBe(v[0].type);
     expect(f[0].qualifier, 'the stages declare vTexLayer with different interpolation: the program fails to link').toBe(v[0].qualifier);
+    expect(localDeclaration(vertex.main, 'vTexLayer'), 'the vertex main() declares a local vTexLayer, so the varying is never written').toBe(false);
+    expect(localDeclaration(fragment.main, 'vTexLayer'), 'the fragment main() declares a local vTexLayer, so the sample never reads the varying').toBe(false);
   });
 
   it('every varying the patch adds is declared in the vertex stage alike wherever the fragment reads it', () => {
@@ -183,6 +196,7 @@ describe('the terrain shader patch, run on three\'s standard-material source', (
     expect(writes.length, 'writes of vTexLayer in the vertex main()').toBe(1);
     const at = writes[0].index;
     expect(nesting(vertex.main, at), 'the write sits inside a branch or a preprocessor conditional').toEqual({ conditionals: 0, braces: 0 });
+    expect(startsStatement(vertex.main, at), 'the write follows a brace-less if, else, for, while or do').toBe(true);
     const end = vertex.main.indexOf(';', at);
     const rhs = vertex.main.slice(at, end).replace(/^vTexLayer\s*=/, '').trim();
     const given = new Set(['normal', 'color', 'FACE_LAYER', 'int', 'float', 'clamp']);

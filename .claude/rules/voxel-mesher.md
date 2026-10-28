@@ -76,7 +76,7 @@ makes the deletion safe. `colors.r` carries the blockType per vertex, so the cla
 **AND: the unit suite does not compile the shader.** `terrainMaterial.js` builds the terrain GLSL inside JS
 template literals. `tests/gates/terrain-shader-patch-gates.test.js` runs its `onBeforeCompile` on three's own
 source and checks how the face layer crosses the stages (declared alike in both, written in the vertex `main()`,
-read by the sample); it does not compile anything. CI's `prod-smoke` links the shipped program on a GPU, and the
+read by the sample); it does not compile anything. CI's `prod-smoke` links the shipped program with SwiftShader, a CPU renderer (no real-GPU compile is automated), and the
 look is judged in lookbook frames. **Never put a backtick inside those template literals**; it terminates the
 string and the parse error lands far from the edit.
 
