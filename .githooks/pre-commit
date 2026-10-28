@@ -1,10 +1,10 @@
 #!/bin/sh
-# Crafty pre-commit gate — the offline pipeline core, on the COMMIT.
+# Crafty pre-commit gate — the fast commit tier, on the COMMIT.
 #
-# WHY THE COMMIT AND NOT ONLY THE PUSH. Until 2026-09-22 every gate in this repo ran at pre-push and none
-# at pre-commit, which is backwards: a break is cheapest to fix in the minute you wrote it, and by push
-# time it may be buried under three more commits. Agentic-Brain front-loads its suite onto the commit and
-# keeps the push to a differential plus a tree receipt; this adopts that shape.
+# WHY THE COMMIT AND NOT ONLY THE PUSH. A break is cheapest to fix in the minute you wrote it, and by push time it may
+# be buried under three more commits. From 2026-09-22 the whole offline core ran here; B7 cut it to the static gates and
+# the unit tests that import the staged files, and moved the rest to the push and certify (DECISIONS 2026-10-28 item
+# 22, which names what a commit no longer proves).
 #
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # WHY THIS FILE EXISTS AT ALL, which is the part worth reading.

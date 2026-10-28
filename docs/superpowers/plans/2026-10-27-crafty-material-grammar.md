@@ -763,8 +763,8 @@ Units 1, 2, 3 and 4, side by side with Unit 0's BEFORE. A Chromium run that repo
   `node scripts/ci/cli-guard.mjs`; `node scripts/ci/opsec-scan.mjs --all`; `node scripts/ci/doc-currency.mjs` (if it
   reports measured-block drift, run `node scripts/ci/measure.mjs --write` and commit the regenerated block).
 - `npm run build && node scripts/ci/bundle-budget.mjs` — `index` within +8,000 B of Unit 0's build and under 760,000.
-- `npx playwright test tests/e2e/material-grammar.spec.js` locally, then the full e2e in CI;
-  `node scripts/ci/e2e-freshness.mjs` green before push.
+- `npx playwright test tests/e2e/material-grammar.spec.js` locally, then the full e2e in CI: main takes the push only
+  on CI's `ci ok` on the exact sha (push to a `land/` branch), since W2-C deleted e2e-freshness.
 - `node scripts/visual/material-probe.mjs` (three verdict sets equal) and the lookbook (opened).
 - `node scripts/visual/gpu-cost-probe.mjs` — draw calls unchanged from Unit 0; triangles within ±3% of Unit 0's
   (grass parity sampling); textures resident unchanged in count.

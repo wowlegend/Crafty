@@ -1407,8 +1407,8 @@ owning unit.
 - **The dawn rush looks wrong** if the light and colour script interpolates badly under 60 units/s on a 1 Hz clock,
   as 4 visible jumps. Judge it on the lookbook frames (U11). The fallback is Open question 2.
 - **The hub NPCs eat 4 cap slots.** Wave fit is computed against cap - 4 (U5).
-- **e2e time.** Five more tests, about 3-5 min on CI's serialized, sharded run. The e2e-freshness gate needs a green
-  receipt before push.
+- **e2e time.** Five more tests, about 3-5 min on CI's serialized, sharded run. They are certified by
+  CI's `ci ok` on the exact sha (push to a `land/` branch), since W2-C deleted e2e-freshness.
 - **Bytes.** About 13.6 KB estimated against the 14 KB ceiling (the review amendments add about 1.0 KB for Unit 2b's
   contract and budget plus about 0.4 KB for the rout, sidestep, clearance and emissive rules, and move about 0.4 KB of
   hold waves out to a lazy chunk), with about 63 KB of shared headroom. That is close to the ceiling: measure per
