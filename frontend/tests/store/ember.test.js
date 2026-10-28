@@ -3,16 +3,19 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderHook, act, cleanup } from '@testing-library/react';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
+import { useSurvivalMode } from '../../src/world/survivalSystem.js';
 import { buildSaveData } from '../../src/game/saveSchema.js';
 import { ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST, PLACE_GAIN, DAILY_BUILD_CAP, EMBER_MAX } from '../../src/game/ember.js';
 
 // THE STORE'S EMBER (DECISIONS 2026-10-28 W1-H item 5). One bank, its spend, its build accrual under the daily cap,
-// and its place in the save. The pure rules are tests/game/ember.test.js; this is the store glue the game calls.
+// its place in the save, and dawn emptying it. The pure rules are tests/game/ember.test.js; this is the store glue the
+// game calls, and the survival hook App mounts, which re-renders on every isDay flip a clock crossing or a load makes.
 //
-// WHAT THIS DOES NOT CHECK: that Components.jsx calls spendEmber at each verb (the roar, the grab and the imbue are
-// driven in the running game by tests/e2e/ember.spec.js, heavy-melee.spec.js and imbue-latch.spec.js; the snare and the
-// fuse sites are not driven by any test), or the kill bus (tests/gates/friend-foe-gates.test.jsx).
+// WHAT THIS DOES NOT CHECK: that Components.jsx calls spendEmber at each verb (driven in the running game by
+// tests/e2e/ember.spec.js, heavy-melee.spec.js and imbue-latch.spec.js), the game clock's ticker (useDayNightClock), or
+// the kill bus (tests/gates/friend-foe-gates.test.jsx).
 //
 // Mutation-Proof: see the commit trailer.
 
@@ -149,5 +152,29 @@ describe('ember in the save', () => {
     S().startNewWorld('ember-fresh');
     expect(S().ember).toBe(0);
     expect(S().emberBuildDay).toEqual(useGameStore.getInitialState().emberBuildDay);
+  });
+});
+
+// Dawn empties the bar, so no night opens with the last day's leftovers. The cases drive the clock through setGameTime,
+// the one writer the ticker calls, and re-render the survival hook with the isDay it produced, as App does.
+describe('dawn empties the bar', () => {
+  afterEach(cleanup);
+
+  it('the clock crossing into day empties it', () => {
+    useGameStore.setState({ gameTime: 1150, isDay: false, nightCount: 1, lastRewardedNight: 1, ember: 70 });
+    const { rerender } = renderHook(({ d }) => useSurvivalMode(d), { initialProps: { d: false } });
+    act(() => { S().setGameTime((t) => t + 100); }); // 1150 -> 1250, across the half-cycle into day
+    rerender({ d: S().isDay });
+    expect(S().isDay, 'SETUP: the crossing did not reach day').toBe(true);
+    expect(S().ember, 'dawn left the night\'s bar in place').toBe(0);
+  });
+
+  it('the clock crossing into night leaves it', () => {
+    useGameStore.setState({ gameTime: 550, isDay: true, nightCount: 0, ember: 70 });
+    const { rerender } = renderHook(({ d }) => useSurvivalMode(d), { initialProps: { d: true } });
+    act(() => { S().setGameTime((t) => t + 100); }); // 550 -> 650, into night
+    rerender({ d: S().isDay });
+    expect(S().isDay, 'SETUP: the crossing did not reach night').toBe(false);
+    expect(S().ember, 'nightfall emptied the bar').toBe(70);
   });
 });
