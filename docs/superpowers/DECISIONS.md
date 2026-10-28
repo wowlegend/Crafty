@@ -48,6 +48,18 @@
    `previousUrl`. Reversible: once account 1 is active, republish the same sources there and point back.
 7. **E2E moves to 8 shards** (from 6): with the Phase 0 lanes' specs merged, two shards projected to about 20 minutes
    on a first pass with no room for a retry (PR #24 prep). Runner minutes are unchanged and free; wall time per shard falls.
+8. **The page cap binds only a push that moves main** (`fix/artifact-currency-scope`, two review rounds). A lane counted
+   its OWN commits past the publish sha, which no republish from main could lower, so #24 and then #25 were refused for
+   good. Branch pushes now report drift without refusing; a push that moves main (or whose refs are unknown) is still
+   refused over 30. A merge made on GitHub runs no hook, so CI checks main's drift on every push to main (full history):
+   that is DETECTION after the merge, not prevention. Prevention would need a required check, such as Vercel Deployment
+   Checks, which is Kevin's dashboard (T6). Residue goes to `memory/STATUS.md` G-ledger.
+9. **A fix that main needs ahead of its lane goes to main by `cherry-pick -x`.** The lightning spec's CI budget was
+   committed on `feat/instruments` (a9134e2b), but main was red on the same spec; it went to main as a9a303e9 so main
+   could go green before any lane landed. That is not a lane landing: #23 still lands by merge, and git reconciles the
+   identical change. Item 2 (merge commits only) governs lanes.
+10. **Lanes land in readiness order**, not the fixed 22 -> 24 -> 23 -> 25 queue, once main is green: whichever PR is
+   CI-green first lands first. The combat-stance lane (Phase 1) builds on main plus #24 and #25, and lands after both.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 
