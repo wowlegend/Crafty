@@ -1,5 +1,6 @@
-# dependencies
-node_modules/
+# dependencies — no trailing slash: a lane links frontend/node_modules to the main checkout's, and `node_modules/`
+# matches only a directory, never that symlink.
+node_modules
 
 # build output
 build/
@@ -45,3 +46,16 @@ graphify-out/
 /.githooks/commit-msg
 /.githooks/post-commit
 # AB-ATTRIBUTION-GUARD END
+
+# Agent harness, machine-local: what lanes and the operator's tooling create at the root. Worktree checkouts,
+# graft's helper and skill copies, per-machine settings (also covered by a machine-global ignore, which a fresh
+# clone does not have), the MCP server list and the search-tool ignore file.
+/.claude/worktrees/
+/.claude/helpers/
+/.claude/skills/graft/
+/.claude/settings.local.json
+/.mcp.json
+/.ignore
+# Harness state the operator's session hooks append to (Agentic-Brain's PreCompact log). Read from disk by its
+# writer and by no pipeline step; tracked, it dirtied every tree and needed a carve-out in ci/write-receipt.sh.
+/.state/

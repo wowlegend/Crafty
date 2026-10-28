@@ -15,7 +15,7 @@ import { StableMagicHands } from './render/playerRender';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
-import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
@@ -108,6 +108,7 @@ export const Player = ({ isWorldBuilt }) => {
   const imbueSMRef = useRef(makeImbueState()); // S2-B4-M5: the ELEMANCER imbue latch
   const prevImbueRef = useRef(false);
   const spawnProbeFailsRef = useRef(0); // KEVIN-FIX C1: the bounded spawn-probe wait
+  const resumeProbeFailsRef = useRef(0); // the resumed save's own bounded wait (game/spawnPlacement.js resolveResumeSpawn)
   const fuseSMRef = useRef(makeFuseState()); // S2-B3-M6: the FUSE channel state
   const prevSnareRef = useRef(false);
   const voidhandVerbRef = useRef({ attack: false, cast: false }); // M3: held-click edges -> SM
@@ -925,6 +926,29 @@ export const Player = ({ isWorldBuilt }) => {
       return;
     } else if (!spawnPosSet.current) {
       const store = useGameStore.getState();
+      // 0. a RESUMED save (the context-loss reload) stands the player where they were saved, once that column's colliders
+      //    exist (game/spawnPlacement.js resolveResumeSpawn). The camera goes there while it waits: chunk streaming follows it.
+      if (store.resumeSpawn) {
+        const r = store.resumeSpawn;
+        const probeY = store.getMobGroundLevel ? store.getMobGroundLevel(r.x, r.z) : null;
+        const resume = resolveResumeSpawn(r, probeY, resumeProbeFailsRef.current);
+        if (resume.hold) {
+          resumeProbeFailsRef.current += 1;
+          rigidBodyRef.current.setTranslation({ x: r.x, y: r.y, z: r.z }, true);
+          rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          camera.position.set(r.x, r.y + 1.2, r.z);
+          return;
+        }
+        useGameStore.setState({ resumeSpawn: null }); // one-shot: placed, or given up for the origin spawn below
+        resumeProbeFailsRef.current = 0;
+        if (resume.place) {
+          rigidBodyRef.current.setTranslation(resume.place, true);
+          rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          camera.position.set(resume.place.x, resume.place.y + 1.2, resume.place.z);
+          spawnPosSet.current = true;
+          return;
+        }
+      }
       // 1. placed-block ground (save load): highest block at the origin column
       let blockGroundY = null;
       if (store.worldBlocks && store.worldBlocks.size > 0) {

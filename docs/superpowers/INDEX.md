@@ -21,7 +21,7 @@
 | **`KEVIN-REVIEW-BATCH.md`** | Kevin's decision/eyeball queue. Append; never block on it. |
 
 Plus, at the repo root: **`SOTA-INITIATIVE.md`** = DIRECTION/vision only (**its §3 status block is FROZEN —
-superseded by STATUS.md**), and **`CLAUDE.md` → `.agent/AGENTS.md`** = the project's agent constitution.
+superseded by STATUS.md**), and **`CLAUDE.md`** = the project's agent constitution (one real file, no copy or link).
 
 ---
 

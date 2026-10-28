@@ -4,7 +4,8 @@ import { defineConfig } from '@playwright/test';
 // so a frame costs per pixel drawn; tests/e2e/_fixtures.js writes a cap on each page before it loads and both R3F
 // canvases (GameScene, TitleDiorama) hand R3F `e2eDpr(theirOwnDpr)` (src/devtest/e2eDpr.js). Viewport, CSS layout, HUD
 // and every DOM coordinate are unchanged; only the GL drawing buffer shrinks (640x400 inside the 1280x800 box). A spec
-// opts out with `test.use({ e2eDprCap: null })`: perf-siege does (its floor is read at PROBE_DPR). Each test prints its
+// opts out with `test.use({ e2eDprCap: null })`: perf-siege does (its floor is read at PROBE_DPR), and composer-dpr (it
+// asserts the renderer's ratio equals each tier's pixel budget). Each test prints its
 // canvases as `[e2e-dpr] ... drawing buffer/CSS box`; smoke asserts the cap took, tests/gates/e2e-dpr-seam-gates that
 // both canvases apply it.
 // MEASURED ON CI, all green, against main 2bb0857d (runs 40648756061 / 40651588887, the same sha twice):

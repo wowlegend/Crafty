@@ -18,6 +18,24 @@
 
 ---
 
+## 2026-10-28 — [KEVIN] One CLAUDE.md: the symlink and its directory are gone
+
+**Decided by Kevin, in his words:** "i don't really like how the agents.md symlinks to claude.md in this repo, let's just have one claude.md."
+
+**Supersedes** the layout the file described about itself: the instruction text lived in a directory of its own as AGENTS.md, and the root
+`CLAUDE.md` was a symlink to it, so that Antigravity and Gemini could read the same copy.
+
+**What shipped.** `CLAUDE.md` is now a real file at the repo root, with the former AGENTS.md text unchanged apart from its header, its layout block and
+the generated blocks (the file's earlier history is under the old path; git cannot pair it with a path that already existed as a link). The
+directory is removed; it held nothing else tracked (its two workflow notes were already deleted in `974f9a54`). The three generators (`measure.mjs`,
+`gate-table.mjs`, `read-order.mjs`) write into `CLAUDE.md`; `doc-currency` lists it as canonical; `ci/write-receipt.sh` no longer names the
+removed directory as an input root; the opsec ledger entry moved with the file.
+
+**Door.** Reversible: a link can be added back in one commit. **What it costs.** A harness that read the old directory (Antigravity, Gemini) no
+longer finds the instructions there; none is configured to in this repo.
+
+**Plans and audits dated before this** that say AGENTS.md mean `CLAUDE.md`; they are history and stay as written.
+
 ## 2026-10-28 — [LOOP, Kevin-delegated] Landing lifecycle: PRs with free CI, merges by merge commit, six e2e shards; PR #28 parked
 
 **Decided by the command session (Kevin asleep; standing authority).**

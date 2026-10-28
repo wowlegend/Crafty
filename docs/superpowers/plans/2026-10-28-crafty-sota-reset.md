@@ -511,3 +511,33 @@ from `npm view` (lens-reported).
   - The voxel-mesher winding rules.
 - **The first-minute plan's substance** (19 review amendments applied) `[pub: first-minute]`. It is amended, not
   rewritten, and is built last because it shows off what the First Night already delivers `[game: spine]`.
+
+---
+
+## 10. Composition with the 2026-10-27 masterpiece programme
+
+Added after Kevin asked whether this plan composes with yesterday's. It does: the same goal (a game a player calls
+a masterpiece, looks and play first, cool on the M3 Max, right on iPad), the same Phase 0 and Phase 1 lanes, and
+Phases 2-3 regrouped around the First Night. A lane-by-lane check found two lanes this plan did not carry; both are
+folded in below.
+
+| 2026-10-27 plan | Where it is now | In this plan |
+|---|---|---|
+| Phase 0a-0d (deliver, parked milestone, touch hold, instruments) | Landed on main | The base Wave 1 builds on |
+| Phase 0e (147 -> current re-baseline) | Cancelled | The capture oracle retires (W2-B); looks are accepted on eye-level frames (W1-D) |
+| Phase 0f/0g, steady tiers and cool by budget (#24) | In PR CI | Lands next; budgets rise after W2-I's measured pass deletions |
+| light-colour-script | Built on a branch (Tasks 0-3b) | Lands in Wave 1, accepted on eye-level frames; its capture-state work is dropped |
+| combat-stance | Built, in close-out | Lands after #24; dodge bursts exempt from the retreat cap |
+| coast-water | Deferred | Shader terms in W2-A; the seabed bake stays deferred |
+| first-minute | Plan kept, amended | W3-C |
+| material-grammar | Pulled forward | W2-K |
+| **sound-with-body** | **Not carried before this section** | **New W2-M, Sound with body:** the lazy CC0 sample bank with its byte ceiling, then the night's sounds (dusk horn, per-archetype windup voices, hits, the beast's roar) as part of W3-A. Disjoint files (the audio system), so it runs beside the HUD and the Cut. |
+| **feedback-grammar** | **Only partly carried before this section** | Telegraph through the edge, a hit flash on the lit band and spell VFX with a solid core and an ink outline join **W3-A** (they are how the night reads); merged mob meshes join **#49** |
+| lantern-block-light | Redesigned | #15: the radius rule first, the baked light field later |
+| encounters-siege | Regrouped | W3-A, the First Night |
+| relight-frontier | Regrouped | W3-B, the road of light, with Pike's quest spine |
+| shadow-dragon | Kept | W3-B, with the #25 damage adapter |
+| harness-sota (#27) | Tranche A landing | #34: the rest amended or cut |
+
+Unstarted lane plans become one-page briefs (#33): their designs stand; their step-by-step scripts are re-cut at lane
+start against the code as it is after the Cut, which yesterday's scripts could not see.

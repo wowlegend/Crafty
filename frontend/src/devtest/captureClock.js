@@ -3,7 +3,7 @@
 //
 // WHY THIS EXISTS. Until now the capture achieved determinism by turning systems OFF: 116
 // `isCaptureMode()` sites across 61 files, 31 of them early-`return`s, suppressing weather, mob AI, NPC
-// routines, particles and spawning. `AGENTS.md` states the consequence plainly — the gated frames depict
+// routines, particles and spawning. `CLAUDE.md` states the consequence plainly — the gated frames depict
 // a build nobody plays, structurally incapable of regressing anything that only manifests in motion.
 //
 // Suppression was the only option because substitution needs TWO primitives and only one existed.

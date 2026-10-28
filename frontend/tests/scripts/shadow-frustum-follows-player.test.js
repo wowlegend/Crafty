@@ -102,9 +102,13 @@ describe('the shadow frustum follows the player', () => {
     const end = scene.indexOf('}, [q.shadowMapSize', start);
     expect(end).toBeGreaterThan(start);
     const block = scene.slice(start, end).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(block).toMatch(/const\s+extent\s*=\s*\(q\.renderDistance\s*\+\s*0\.5\)\s*\*\s*CHUNK/);
+    // RE-POINTED 2026-10-27 (plan 2026-10-27-crafty-steady-cool item d): the extent derives from GameScene's
+    // `renderDistance`, which is render/tierGovernor.js renderDistanceFor(tier, pin) — pinned to the boot tier on a
+    // coarse pointer, so a runtime step there no longer resizes the shadow frustum. The producer line is pinned too.
+    expect(scene).toMatch(/const renderDistance = renderDistanceFor\(qualityTier, renderDistancePin\);/);
+    expect(block).toMatch(/const\s+extent\s*=\s*\(renderDistance\s*\+\s*0\.5\)\s*\*\s*CHUNK/);
     // ...and the dependency list must include it, or the memo never recomputes on a tier change.
-    expect(scene).toMatch(/\}, \[q\.shadowMapSize, q\.renderDistance\]\)/);
+    expect(scene).toMatch(/\}, \[q\.shadowMapSize, renderDistance\]\)/);
   });
 
   it('the derived extent actually covers the loaded chunks at every tier', () => {

@@ -5,6 +5,9 @@ import { ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from '../game/spellVisua
 import { computeSpellMotion } from '../game/spellMotion';
 import { buildFireTeardrop, buildIceShards } from './spellGeometry';
 import { isCaptureMode } from '../devtest/captureMode';
+// Every projectile and every impact mounted its own pointLight: from the fixed light pool now (render/lightPool.jsx),
+// so a cast changes no light count and re-links no shader. The impact's fade still drives its light through the ref.
+import { PooledLight } from './lightPool.jsx';
 
 // v7-S3.4/S3.5: per-element silhouette geometries, built ONCE at module load (deterministic, capture-safe).
 const FIRE_TEARDROP = buildFireTeardrop();
@@ -431,7 +434,7 @@ const SpellProjectileCore = React.memo(({ projectile }) => {
       )}
 
       {/* point-light pop so the energy actually casts onto nearby voxels (gameplay) */}
-      <pointLight color={profile.glowColor} intensity={5} distance={7} decay={2} />
+      <PooledLight color={profile.glowColor} intensity={5} distance={7} decay={2} />
     </group>
   );
 });
@@ -615,7 +618,7 @@ const SpellImpactPop = React.memo(({ impact }) => {
           toneMapped={false}
         />
       </mesh>
-      <pointLight
+      <PooledLight
         ref={lightRef}
         color={energy.glowColor}
         intensity={18}

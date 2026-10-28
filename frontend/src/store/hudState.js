@@ -68,7 +68,7 @@ export const selectHudState = (state) => ({
   setActiveChestCoords: state.setActiveChestCoords,
   // Credits: unreachable twice over — the gate key was missing AND the Settings button's handler called
   // an undefined setter. This is where the game-icons.net CC BY 3.0 attribution is discharged, per the
-  // Design Language section of AGENTS.md, so the licence obligation rode on a path that could not run.
+  // Design Language section of CLAUDE.md, so the licence obligation rode on a path that could not run.
   showCredits: state.showCredits,
   setShowCredits: state.setShowCredits,
   // WorldManager "Create World" called an undefined function inside a try, so the failure was swallowed
