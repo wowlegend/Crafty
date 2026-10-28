@@ -8,15 +8,12 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { STRINGS } from '../../src/i18n/strings.js';
 
 /**
- * The title's keyboard hint strip is for keyboards (plan 2026-10-28-crafty-sota-reset item #11, unit W2-A): an iPad
- * player was asked for WASD, Space and Q on a device that has none of them. The title renders on desktop with the
- * strip and on touch without it.
+ * The title's keyboard hint strip is for keyboards: a touch device has no WASD, Space or Q. The title renders on
+ * desktop with the strip and on touch without it.
  *
  * The device is set the way a browser reports it (navigator.maxTouchPoints with PointerEvent present), and the real
  * isTouchDevice() reads it: the predicate is not mocked, so a gate on the wrong predicate, or none, is seen here.
  * Each render first shows the title itself is up (Start Adventure), so an absence is never read off an empty screen.
- *
- * Mutation-Proof: recorded on the commit that added this file.
  *
  * BLIND SPOT: jsdom, not WebKit. That a real iPad reports maxTouchPoints > 0 is the browser's; the live check is
  * WebKit at 820x1180 on the deployed title.

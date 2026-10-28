@@ -8,8 +8,7 @@
 //               (world/proceduralTextures.js), and that stone is grey (c, c, c + 3): its chroma is ~0.01, a nugget's
 //               0.2-0.7, so the mask keeps the stone dark. The mask cannot be taken from the sampled tile: at distance
 //               the GPU reads a mip texel, the mean of nugget and stone, whose chroma no longer says how much of it was
-//               nugget (at the 4x4 level iron's glow fell 61%, gold's rose 42% and diamond's 80%). The mean of the
-//               baked product is the mean glow at every level.
+//               nugget. The mean of the baked product is the mean glow at every level.
 //   - uOreGlow  a per-LAYER strength (layer index == block code): iron, gold, diamond. Coal is not luminous.
 //   - night     0 while the sun is up — a day frame is untouched — and 1 once it is down, smooth through dusk.
 // The GLSL is GENERATED from these constants, so the shader cannot drift from what the test measures.

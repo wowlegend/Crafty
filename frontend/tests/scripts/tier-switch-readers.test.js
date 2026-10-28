@@ -3,14 +3,11 @@ import { TIERS } from '../../src/render/quality.js';
 import { sourceTexts } from '../gates/_srcWalk.js';
 
 /**
- * Every quality-tier switch has a reader. `outlineWorldEdge` sat on all three tiers from S1-A until 2026-10-28 with no
- * reader anywhere (plan 2026-10-28-crafty-sota-reset item #16, unit W2-A), and the tier table read as if the high tier
- * drew world-edge outlines. A switch nothing reads is a claim about the renderer that the renderer does not make.
+ * Every quality-tier switch has a reader. A switch nothing reads is a claim about the renderer that the renderer does
+ * not make, and knip cannot see an unread object key.
  *
  * Sited in tests/scripts because its subject is the source tree's content (which property names some file reads),
  * not behaviour.
- *
- * Mutation-Proof: recorded on the commit that added this file.
  *
  * BLIND SPOT: a reader is any `.name` access in comment-stripped src outside quality.js, so a same-named property on
  * an unrelated object counts as one. It proves a switch is named in code, not that the renderer honours it.

@@ -11,31 +11,17 @@ import { ORE_GLOW, oreGlowTable, nuggetMask, nightFactor, oreGlowGlsl, oreGlowTe
  * factor is built here: the table and the night curve as plain numbers, and the glow map baked from the REAL tile
  * bytes the terrain samples (linear colour x nugget mask, from level 0) — not from colours typed into this file.
  *
- * THE GLOW MAP IS MIPPED ON ITS OWN (registry REVIEW:w1e:night-ore-glow-mip-shift). With block mipmaps on, a mask
- * taken from the SAMPLED tile reads a mip texel, the mean of nugget and stone: at the 4x4 level iron's mean glow fell
- * 61%, gold's rose 42% and diamond's 80%, so a distant diamond face bloomed harder at night and iron nearly vanished.
- * The case below measures both paths on the real chain: the baked map holds its level-0 mean at every level, and the
- * old per-texel path, computed on the same levels, still moves (the instrument sees the defect it guards).
+ * THE GLOW MAP IS MIPPED ON ITS OWN. With block mipmaps on, a mask taken from the SAMPLED tile reads a mip texel, the
+ * mean of nugget and stone, so at distance the glow moves with each ore's speckle. The case below measures both paths
+ * on the real chain: the baked map holds its level-0 mean at every level, and the per-texel path, computed on the same
+ * levels, still moves (the instrument sees the defect it guards).
  *
- * Mutation-Proof (2026-10-28, the glow map): recorded on the commit that added it.
+ * Each factor's definition is checked, and so is the output line: a factor defined and left out of the product is
+ * caught there.
  *
- * Mutation-Proof: via scripts/dev/mutate.sh, each observed RED:
- *   O1 the chroma mask dropped (every texel of an ore layer glows) -> the stone-matrix case
- *   O2 coal given a glow -> the table case
- *   O3 plausible-wrong: the night factor inverted (glows by day) -> the night case
- *   O4 the table shifted one layer (stone 3 would glow... or diamond would not) -> the table case
- *   O5 plausible-wrong: the GLSL's night edge drifts from the JS (0.1 -> 0.3) -> the generated-curve case (it
- *      SURVIVED the first version of this file, which text-matched the chroma constants only)
- *   and O0, an identity mutant (a comment edit in oreGlow.js, same harness and batch), SURVIVED.
- * The output line (review 2026-10-27: every case above checks a factor's DEFINITION, and each could be dropped from the
- * product with all of them green), same harness, each observed RED at "the output line multiplies every factor":
- *   O6 oreNight dropped from the product (glows by day)   O7 oreNugget dropped (the stone between the nuggets glows)
- *   O8 oreGlowK dropped (every layer glows, coal and stone included)   O9 the linear tile colour dropped
- *   and O10 plausible-wrong: the table read at layer 0 instead of this one -> "the table factor does not read this layer"
- *   and O0b, an identity mutant (a comment edit in oreGlow.js), SURVIVED.
- *
- * BLIND SPOT: nothing here renders. Whether the term reaches the linked terrain program, and what it looks like,
- * is Task 2's gate and Task 3's probe frame.
+ * BLIND SPOT: nothing here renders. That the terrain program carrying the glow map links and draws in the shipped
+ * bundle is prod-smoke's (scripts/ci/prod-smoke.mjs WATCHED_PROGRAMS); how the glow looks at a distance is a live night
+ * frame's.
  */
 const tex = sharedVoxelTextures();
 const SIZE = tex.image.width;

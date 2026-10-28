@@ -1,5 +1,5 @@
-// oceanLook.js — the ocean surface's shading terms (plan 2026-10-28-crafty-sota-reset item #42, unit W2-A), as a
-// pure patch of three's standard fragment shader so a node test can run it on the real chunk order.
+// oceanLook.js — the ocean surface's shading terms, as a pure patch of three's standard fragment shader so a node
+// test can run it on the real chunk order.
 //
 //   foam      written into `diffuseColor` before lighting, so the light rig lights it: white by day, moonlit grey at
 //             night. Foam mixed in after lighting reads full white at every hour, a glow on a midnight sea.
