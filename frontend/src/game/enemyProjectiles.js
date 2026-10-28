@@ -5,6 +5,8 @@
 // Mutates position/age IN PLACE (no per-projectile allocation — addScaledVector replaced the old
 // velocity.clone(); the per-call survivors[] + result object remain, negligible at these counts).
 // Membership changed iff survivors.length !== list.length — the caller's only setState transition.
+import { MAX_FRAME_STEP_SEC } from './frameStep.js';
+
 export const ENEMY_PROJECTILE_SPEED_SCALE = 60; // legacy tuning: velocity is per-frame-at-60fps units
 export const ENEMY_PROJECTILE_HIT_RADIUS = 1.5;
 export const ENEMY_PROJECTILE_TTL_SEC = 3;
@@ -23,7 +25,7 @@ export const ENEMY_PROJECTILE_TTL_SEC = 3;
  * turning one frame into a hundred substeps.
  */
 export const ENEMY_PROJECTILE_MAX_STEP_SEC = 0.02;
-export const ENEMY_PROJECTILE_FRAME_CAP_SEC = 0.25;
+export const ENEMY_PROJECTILE_FRAME_CAP_SEC = MAX_FRAME_STEP_SEC; // the world's one frame step (game/frameStep.js)
 
 export function stepEnemyProjectiles(list, dt, playerPos) {
   const survivors = [];

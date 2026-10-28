@@ -49,6 +49,18 @@ export const SHOULDER_CHARGE_SPEED = 3.0;
 /** Within this of the latched point the charge has arrived. */
 export const SHOULDER_ARRIVE = 1.0;
 
+/**
+ * The chase multiplier on a mob's base speed: 1.0 un-aggro'd, 2.0 for an aggro'd spider, 1.5 for any other
+ * aggro'd type. The shoulder charge's SHOULDER_CHARGE_SPEED stacks on top, applied by the worker.
+ *
+ * ONE reader. This was a literal ternary inside ai.worker.js, so the combat stance, which derives its retreat
+ * cap from it (game/combatStance.js), would have held a second copy free to drift from the first.
+ */
+export function chaseSpeedMult(type, isAggro) {
+  if (!isAggro) return 1.0;
+  return type === 'spider' ? 2.0 : 1.5;
+}
+
 /** A mob with no charge in progress and no recovery pending. */
 export const IDLE_CHARGE = Object.freeze({ x: 0, z: 0, at: 0, readyAt: 0 });
 

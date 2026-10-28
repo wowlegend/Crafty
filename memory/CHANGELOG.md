@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-10-28 — close-quarters combat on `feat/combat-stance` (masterpiece Phase 1): built, NOT yet merge-ready
+
+Plan `docs/superpowers/plans/2026-10-27-crafty-combat-stance.md`, Tasks 0-12; the decisions are in `DECISIONS.md`
+(2026-10-28, "Close-quarters combat").
+
+- **The stance** (Tasks 1-5): once a fight is joined you cannot outwalk it. A radial clamp on the away-from-threat
+  component (retreat 2.0, strafe and advance 6.5 m/s, derived from the roster), engaged by an aggro'd pursuer within
+  12 m that can reach you, released 2 s after the last; measured from the same eye point the AI worker strikes from.
+- **The windup chevrons** (Tasks 6-7): a chevron at the screen edge for each windup off screen, on the HUD ticker,
+  refs only, lazy-loaded.
+- **The light string** (Tasks 8-10): three steps, a buffer, a 1.5x finisher that sweeps 140 degrees, a dodge that keeps
+  it alive, a heavy that ends it; the hand alternates its sweep.
+- **Touch** (Task 11): the joystick, the action button and the chevrons on an emulated iPad (spec written, not run).
+
+**Bytes, measured** (`npm run build`, `ls -l build/assets/index-*.js`): BASELINE_INDEX_BYTES 719,428 (on `f78644b9`);
+after the lane 725,739 B, **+6,311 B** against the lane's +9,000 B share, with `WindupChevrons-*.js` 3,174 B lazy.
+That leaves 34,261 B of headroom under the 760,000 B ceiling **on this branch**, which is NOT rebased on current `main`:
+the absolute size after landing is owed to whoever merges, for the programme byte ledger.
+
+**Suite**: 4014 unit tests before the milestone, 4084 after (+70), all green; knip clean; lint clean.
+
+**Owed before merge** (the plan's Task 12 Step 8 refuses it until then): CI on the exact commit with every e2e shard
+green; the observed verdicts for `windup-chevron`, `melee-string`, `combat-touch` and `combat-touch-webkit`, whose
+headers say `Mutation-Proof: OWED`; the stance's chase sub-assertions at CI's frame rate; the unmutated re-runs of
+`heavy-melee` and `perfect-dodge`; a fresh `/code-review xhigh` and one adversarial reviewer on the controller seam; the
+by-eye hand sweep, the combat-zoom verdict, the night-travel fraction and the frame-cost spot check. None ran: the
+machine's load average stayed above 115 on 14 cores through the lane's second half.
+
 ## 2026-08-13 (later) — a dependency bump removed the sun, and the gate caught it
 
 **PR #15 split, not merged whole.** Five of its six bumps landed and were verified visually inert —

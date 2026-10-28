@@ -17,14 +17,16 @@ import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
 import { resolveSpawnGround, resolveResumeSpawn, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
-import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
+import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
-import { cancelHeavy, heavyWalkMult, isHeavyReady, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
+import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
+import { gateSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
+import { stanceFrame, stanceWalk, dodgeBurst, resetStance, teleportPlayer } from './game/combatStance.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
-import { shakeOffset, SHAKE_WEIGHT_MAX } from './game/trauma.js';
+import { shakeOffset, SHAKE_WEIGHT_MAX, HITSTOP } from './game/trauma.js';
 import { shakeTrauma, shakeDir, decayShake } from './game/cameraShakeChannel.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC, squadCapFor } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
@@ -48,6 +50,8 @@ import { SnareTetherSystem } from './world/SnareTetherSystem.jsx';
 import { SquadAISystem } from './world/SquadAISystem.jsx';
 import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
+import { swingOrigin, steadyEye, EYE_HEIGHT_M } from './combat/swingOrigin.js';
+import { moveKinematic } from './game/kinematicMove.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { routeExpressVerb } from './input/expressVerbs.js';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
@@ -152,7 +156,7 @@ export const Player = ({ isWorldBuilt }) => {
   const lastAttackTime = useRef(0);
   const lastAttackTypeRef = useRef(null);
   const heavyReadyRef = useRef(false); // the heavy's READY tick plays once per charge
-  const MELEE_COOLDOWN = 300; // milliseconds
+  const MELEE_COOLDOWN = SWING_COOLDOWN_MS; // milliseconds: the light string's cooldown (game/meleeString.js)
 
   // Expose camera globally for magic system
   useEffect(() => {
@@ -215,7 +219,7 @@ export const Player = ({ isWorldBuilt }) => {
       // KEVIN-FIX C1 (the respawn deadlock): chunk streaming keys on the CAMERA — moving
       // only the body left origin chunks unloaded after a far-from-spawn death, so the
       // ground probe nulled forever and the frame loop starved before movement code.
-      camera.position.set(0, 121.2, 0);
+      camera.position.set(0, 120 + EYE_HEIGHT_M, 0);
     }
     lastAliveRef.current = isAlive;
   }, [isAlive]);
@@ -231,10 +235,25 @@ export const Player = ({ isWorldBuilt }) => {
     // While a heavy is CHARGING the arm is drawn back: no light swing (T tapped during a mouse hold, or LMB during a
     // T hold). It used to swing — and start the 300 ms cooldown that then silently ate the charged release (the T
     // tapped late in the hold, as it lands under load: release 0).
-    // The cooldown runs on this handler clock; a charged release is exempt from it (game/heavyAttack.meleeRefusal,
-    // review round 3): a press handled late and lifted soon after is a full charge on the finger, and the cooldown its
-    // own light swing started used to drop that heavy silently.
-    if (meleeRefusal(heavy, now, lastAttackTime.current, MELEE_COOLDOWN * formMeleeCooldownMult(beastEl))) return;
+    // The cooldown runs on this handler clock; a charged release is exempt from it: a press handled late and lifted
+    // soon after is a full charge on the finger, and the cooldown its own light swing started used to drop that heavy
+    // silently. So only a beast form's swing is asked meleeRefusal.
+    // THE LIGHT STRING (game/meleeString.js): a human light swing asks the string, which owns its cooldown, its buffer and
+    // its step. It does NOT also check lastAttackTime: a 300 ms check in front of pressSwing would refuse every press
+    // inside the cooldown before it could buffer. A buffered press (bufferedStep) has already been through the string,
+    // and IS the tap of the hold the charge refusal would see, so it skips both. A beast form's swing keeps its own
+    // cooldown; a thrown heavy or a form's swing ends the string and holds the next light swing 300 ms.
+    // The gate is game/meleeString.js gateSwing: the string step of this swing (0 for a heavy or a beast form's swing),
+    // or -1 for none.
+    const step = gateSwing(now, {
+      heavy,
+      form: !!beastEl,
+      bufferedStep: opts?.bufferedStep || 0,
+      heavyHeld: isHeavyHeld(),
+      refused: beastEl ? meleeRefusal(false, now, lastAttackTime.current, MELEE_COOLDOWN * formMeleeCooldownMult(beastEl)) : null,
+    });
+    if (step < 0) return;
+    const shape = swingShape(step); // step 0 -> the light cone
     { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.melee)); } // game-feel: melee recoil
     lastAttackTime.current = now;
     // M6: every committed swing whooshes (playAttackSounds = swing + attack; was DEFINED-BUT-NEVER-CALLED,
@@ -243,7 +262,8 @@ export const Player = ({ isWorldBuilt }) => {
     store.playAttackSounds?.();
 
     setAttackType('melee');
-    setTimeout(() => setAttackType(null), 200);
+    // The hand plays its sweep out on its own clock (game/meleeString.js handSwing); this clears the attack type after.
+    setTimeout(() => setAttackType(null), step ? slashSweep(step).durationS * 1000 : 200);
 
     const effectiveStats = store.getEffectiveAttributes ? store.getEffectiveAttributes() : { strength: 10, agility: 10 };
     
@@ -257,20 +277,20 @@ export const Player = ({ isWorldBuilt }) => {
     // activeBeastForm) — NOT the live activeSpell, so spell-switching mid-form can't desync the spark
     // from the body (Digit1-4 is ungated in-form). Unit-locked in beasts.test.js (the wiring contract).
     const { dealt, sparkType } = resolveFormMelee(damage, beastEl);
-    const swing = heavy ? Math.round(dealt * HEAVY_MULT) : dealt;
+    // The string's finisher hits for FINISHER_MULT; steps 1-2 and a beast form's swing deal `dealt` as today.
+    const swing = heavy ? Math.round(dealt * HEAVY_MULT) : shape.finisher ? Math.round(dealt * shape.damageMult) : dealt;
 
-    if (GameMethods.checkMobsInMeleeCone && GameMethods.damageMob) {
+    if (GameMethods.checkMobsInMeleeCone && GameMethods.damageMob && rigidBodyRef.current) {
       const lookDir = new THREE.Vector3();
       camera.getWorldDirection(lookDir);
       
       lookDir.y = 0;
       lookDir.normalize();
 
-      const playerPos = camera.position.clone();
-      playerPos.y -= 0.8; // shift down to chest/feet level
+      const playerPos = swingOrigin(rigidBodyRef.current.translation(), new THREE.Vector3());
 
       const range = 4.5;
-      const angleRad = Math.PI / 2; // 90-degree front arc sweep
+      const angleRad = shape.arcRad; // the full arc: 90 degrees, 140 for the string's finisher
 
       const hitMobs = GameMethods.checkMobsInMeleeCone(playerPos, lookDir, range, angleRad);
 
@@ -285,6 +305,8 @@ export const Player = ({ isWorldBuilt }) => {
             mob.windupUntil = 0;
             if (mob.knockback) mob.knockback = [mob.knockback[0] * HEAVY_SHOVE_MULT, mob.knockback[1], mob.knockback[2] * HEAVY_SHOVE_MULT];
           }
+          // The FINISHER shoves harder (no stagger: that is the heavy's).
+          if (shape.finisher && mob.knockback) mob.knockback = [mob.knockback[0] * shape.shoveMult, mob.knockback[1], mob.knockback[2] * shape.shoveMult];
         });
         hitSomething = true;
       }
@@ -320,6 +342,11 @@ export const Player = ({ isWorldBuilt }) => {
 
       if (hitSomething && isCrit && store.triggerCameraShake) {
         store.triggerCameraShake(1.6); // Visceral Crit camera shake
+      }
+      // A finisher that lands: a heavy-tier hitstop and the slam's thump at the player.
+      if (hitSomething && shape.finisher) {
+        store.triggerHitstop?.(HITSTOP.heavy * (store.juiceIntensity ?? 1));
+        store.playSpatialSound?.('slam', [camera.position.x, camera.position.y, camera.position.z], 1, 30);
       }
       // (the swing whoosh now plays on EVERY swing via playAttackSounds above -- no miss-only sound)
     }
@@ -478,22 +505,26 @@ export const Player = ({ isWorldBuilt }) => {
       // KEVIN-FIX C2: fire shares movement's gates — dead players don't shoot (the old
       // asymmetry presented as "can fire but cannot move" whenever the booleans disagreed).
       if (!store.isAlive) return;
+      if (!rigidBodyRef.current) return;
 
       const lookDir = new THREE.Vector3();
       camera.getWorldDirection(lookDir);
       const aimDir = lookDir.clone();              // true aim (vertical kept) for the aim cone
       lookDir.y = 0; lookDir.normalize();          // the flattened melee-arc dir (damage parity)
-      const playerPos = camera.position.clone();
-      playerPos.y -= 0.8;
+      const playerPos = swingOrigin(rigidBodyRef.current.translation(), new THREE.Vector3()); // the swing's own apex
 
-      // meleeHit — the EXACT live-damage test (mobs + boss)
+      // meleeHit — the EXACT live-damage test (mobs + boss). The arc is the one this press would swing: the string's
+      // finisher sweeps 140 degrees (game/meleeString.js peekStep, no side effect), so a mob only it reaches still
+      // routes the click to 'attack' instead of letting the ground behind win it for 'mine'. A human light swing only.
+      const lightSwing = !store.voidhandHeld && !store.beastFormActive;
+      const meleeArc = lightSwing && peekStep(performance.now()) === 3 ? FINISHER_ARC_RAD : Math.PI / 2;
       let meleeHit = false;
       if (GameMethods.checkMobsInMeleeCone) {
-        meleeHit = GameMethods.checkMobsInMeleeCone(playerPos, lookDir, 4.5, Math.PI / 2).length > 0;
+        meleeHit = GameMethods.checkMobsInMeleeCone(playerPos, lookDir, 4.5, meleeArc).length > 0;
       }
       if (!meleeHit && store.isBossActive?.() && store.getBossPosition) {
         const bp = store.getBossPosition();
-        if (bp) meleeHit = isPointInCone(playerPos, lookDir, { x: bp[0], y: bp[1], z: bp[2] }, 4.5, Math.PI / 2);
+        if (bp) meleeHit = isPointInCone(playerPos, lookDir, { x: bp[0], y: bp[1], z: bp[2] }, 4.5, meleeArc);
       }
 
       // aimedMobDist — nearest mob/boss in the narrow aim cone (pure math; mobs have no colliders)
@@ -745,7 +776,7 @@ export const Player = ({ isWorldBuilt }) => {
         // launch along camera-forward from just ahead of the head (the phantom visually snaps to it)
         const hd = new THREE.Vector3();
         camera.getWorldDirection(hd);
-        const ho = camera.position.clone().add(hd.clone().multiplyScalar(1.2));
+        const ho = steadyEye(rigidBodyRef.current.translation(), new THREE.Vector3()).add(hd.clone().multiplyScalar(1.2));
         requestHurl({ x: ho.x, y: ho.y, z: ho.z }, { x: hd.x, y: hd.y, z: hd.z }, stv.heldPhantom && stv.heldPhantom.color);
         if (stv.playSpatialSound) stv.playSpatialSound('hurl', [ho.x, ho.y, ho.z], 1, 25); // AUDIO: launch whoosh
         stv.setVoidhandHeld(false);
@@ -781,12 +812,13 @@ export const Player = ({ isWorldBuilt }) => {
       if (GameMethods.checkMobsInMeleeCone) {
         const sDir = new THREE.Vector3();
         camera.getWorldDirection(sDir); // unflattened — aim where you LOOK (the aimedMobDist precedent)
-        const candidates = GameMethods.checkMobsInMeleeCone(camera.position, sDir, SNARE_RANGE, Math.PI / 8) || [];
+        const sFrom = steadyEye(rigidBodyRef.current.translation(), new THREE.Vector3());
+        const candidates = GameMethods.checkMobsInMeleeCone(sFrom, sDir, SNARE_RANGE, Math.PI / 8) || [];
         // nearest snareable: weakened (<=30% HP), hostile (not passive; villager converter-blocked too)
         let best = null, bestD = Infinity;
         for (const e of candidates) {
           if (!e || e.passive || e.health > 0.3 * e.maxHealth || e.health <= 0) continue;
-          const dx = e.position.x - camera.position.x, dz = e.position.z - camera.position.z;
+          const dx = e.position.x - sFrom.x, dz = e.position.z - sFrom.z;
           const d = dx * dx + dz * dz;
           if (d < bestD) { bestD = d; best = e; }
         }
@@ -894,10 +926,12 @@ export const Player = ({ isWorldBuilt }) => {
     const isPlayerAlive = useGameStore.getState().isAlive;
     if (!isPlayerAlive) {
       cancelHeavy(); // a heavy's charge dies with the player (this branch returns before the input checks below)
+      endString(); // and so does the light string, with any buffered press
+      resetStance(); // and so does the stance: no fight carries across a respawn
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       const translation = rigidBodyRef.current.translation();
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, translation.x, 0.85);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, translation.y + 1.2, 0.85);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, translation.y + EYE_HEIGHT_M, 0.85);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, translation.z, 0.85);
       return;
     }
@@ -907,14 +941,22 @@ export const Player = ({ isWorldBuilt }) => {
     // jump + gravity sites below.
     const locoState = useGameStore.getState();
     const loco = formLocomotion(locoState.beastFormActive ? locoState.activeBeastForm : null);
-    const speed = moveSpeed(loco) * heavyWalkMult(performance.now()); // charging a heavy slows the walk
+    const now = performance.now();
+    const walkMult = heavyWalkMult(now) * stringWalkMult(now); // charging a heavy, or throwing a swing, slows the walk
+    const speed = moveSpeed(loco) * walkMult;
     const currentTrans = rigidBodyRef.current.translation();
+    // COMBAT STANCE (game/combatStance.js): once a fight is joined you cannot outwalk it. One transient step per frame
+    // (Game-Loop-Isolation), through the seam stanceFrame: the player's height is the point the AI worker strikes from,
+    // so the stance and the worker agree on which mobs can reach the player, and the away vector is measured from this
+    // frame's body, the point the frame's step starts from.
+    // nextTranslation, not translation: a move given on a frame that took no world step is where this one starts from
+    // (game/kinematicMove.js). The seam reads the world clock itself, so a pause holds the fight.
+    const stance = stanceFrame(mobsQuery.entities, rigidBodyRef.current.nextTranslation(), camera, delta);
 
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
     if (spawnPosSet.current && isVoidFall(currentTrans.y)) {
       console.warn('Player fell into void; teleporting to safety.');
-      rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
-      rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      teleportPlayer(rigidBodyRef.current, { x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true); // and the fight is left behind (game/combatStance.js)
       spawnPosSet.current = false;
       return;
     }
@@ -936,7 +978,7 @@ export const Player = ({ isWorldBuilt }) => {
           resumeProbeFailsRef.current += 1;
           rigidBodyRef.current.setTranslation({ x: r.x, y: r.y, z: r.z }, true);
           rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          camera.position.set(r.x, r.y + 1.2, r.z);
+          camera.position.set(r.x, r.y + EYE_HEIGHT_M, r.z);
           return;
         }
         useGameStore.setState({ resumeSpawn: null }); // one-shot: placed, or given up for the origin spawn below
@@ -944,7 +986,7 @@ export const Player = ({ isWorldBuilt }) => {
         if (resume.place) {
           rigidBodyRef.current.setTranslation(resume.place, true);
           rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          camera.position.set(resume.place.x, resume.place.y + 1.2, resume.place.z);
+          camera.position.set(resume.place.x, resume.place.y + EYE_HEIGHT_M, resume.place.z);
           spawnPosSet.current = true;
           return;
         }
@@ -974,7 +1016,7 @@ export const Player = ({ isWorldBuilt }) => {
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
 
       // Cancel skyfall lerp transition: set camera position instantly
-      camera.position.set(0, safeY + 1.2, 0);
+      camera.position.set(0, safeY + EYE_HEIGHT_M, 0);
 
       spawnPosSet.current = true;
       return;
@@ -1001,7 +1043,10 @@ export const Player = ({ isWorldBuilt }) => {
     const dodge = dodgeStateRef.current;
     const nowTime = state.clock.getElapsedTime();
     // A heavy's charge dies with the input (a release then throws nothing); death is handled above.
-    if (!isLocked || locoState.beastFormActive) cancelHeavy(); // a form entered mid-charge drops it too (R9.2)
+    if (!isLocked || locoState.beastFormActive) {
+      cancelHeavy(); // a form entered mid-charge drops it too (R9.2)
+      endString(); // the light string is the human sword's: lost input or a form ends it, buffered press and all
+    }
     const heavyReady = isHeavyReady(performance.now());
     if (heavyReady && !heavyReadyRef.current) useGameStore.getState().playSpatialSound?.('heavyReady', currentTrans, 0.7, 8);
     heavyReadyRef.current = heavyReady;
@@ -1024,6 +1069,7 @@ export const Player = ({ isWorldBuilt }) => {
         });
 
         cancelHeavy(); // a dodge drops a heavy's charge
+        cancelIntoDodge(performance.now()); // and keeps the light string alive (an open window restarts; the step is kept)
         // Initialize dodge
         dodge.isActive = true;
         dodge.timeElapsed = 0;
@@ -1061,6 +1107,11 @@ export const Player = ({ isWorldBuilt }) => {
       }
     }
 
+    // THE LIGHT STRING's buffered press (game/meleeString.js) fires the frame its cooldown ends. Lost input, a form and
+    // death have already ended the string above, so a press buffered before them fires nothing.
+    const bufferedStep = takeBufferedSwing(performance.now());
+    if (bufferedStep) triggerMeleeAttack({ bufferedStep });
+
     // W3 M-HUD.2: Mirror the Aspect/dodge cooldown timers into the store ~6.7x/s so the HUD ability bar
     // can sweep them WITHOUT reading these component-local SM refs (Game-Loop-Isolation: a throttled
     // setState, never per-frame React state). All SMs + the dodge ref share the getElapsedTime() seconds
@@ -1090,8 +1141,7 @@ export const Player = ({ isWorldBuilt }) => {
       // cooldown mirror above (piggybacks _lastCdMirror).
       const _aimDir = new THREE.Vector3();
       camera.getWorldDirection(_aimDir);
-      const _aimPos = camera.position.clone();
-      _aimPos.y -= 0.8;
+      const _aimPos = swingOrigin(currentTrans, new THREE.Vector3()); // performVerb's aim apex
       let _aimed = null;
       let _aimedDist = Infinity;
       if (GameMethods.checkMobsInMeleeCone) {
@@ -1234,7 +1284,8 @@ export const Player = ({ isWorldBuilt }) => {
         desiredVelZ = dodge.direction.z * spd;
         // W4: while dodging, the ramp is bypassed (burst velocity); keep the smoothed planar velocity in
         // sync with the dodge so the first post-dodge walk frame ramps from the real speed, not a stale 0.
-        planarVelRef.current = { x: desiredVelX, z: desiredVelZ };
+        // Marked as a burst, so the stance lets the ramp decay it instead of cutting it to the retreat cap.
+        planarVelRef.current = dodgeBurst(desiredVelX, desiredVelZ);
       }
     } else if (isLocked) {
       // Normal WASD movement — camera-relative planar velocity (pure, game/locomotion.moveVector),
@@ -1243,9 +1294,9 @@ export const Player = ({ isWorldBuilt }) => {
       const cameraDir = new THREE.Vector3();
       camera.getWorldDirection(cameraDir);
       const mv = moveVector(cameraDir.x, cameraDir.z, input, speed);
-      const targetX = mv.moving ? mv.x : 0;
-      const targetZ = mv.moving ? mv.z : 0;
-      const ramped = rampVelocity(planarVelRef.current, { x: targetX, z: targetZ }, delta);
+      // The stance's clamp, then the ramp (game/combatStance.js stanceWalk, the unit-tested seam): at w = 0 the clamp is
+      // the identity, so travel keeps 14 m/s. The ramped velocity is what the KCC is fed below.
+      const ramped = stanceWalk(mv, stance, loco, walkMult, planarVelRef.current, delta);
       planarVelRef.current = ramped;
       desiredVelX = ramped.x;
       desiredVelZ = ramped.z;
@@ -1302,29 +1353,13 @@ export const Player = ({ isWorldBuilt }) => {
       }
     }
 
-    // Call Rapier WASM Kinematic collision sweeps
+    // The Rapier KCC sweep and the frame's one kinematic write (game/kinematicMove.js: it also sweeps a move given on a
+    // frame that took no world step, which a plain write would lose). growDeltaY (from a just-applied enlarging
+    // form-swap) is folded into THIS write -- never a competing setNextKinematic from a subscribe callback -- so a
+    // larger capsule never spawns intersecting the ground.
     const collider = rigidBodyRef.current.collider(0);
     if (collider && controllerRef.current) {
-      controllerRef.current.computeColliderMovement(
-        collider,
-        displacement,
-        undefined,
-        undefined,
-        filterPredicate
-      );
-
-      // Get corrected movements
-      const corrected = controllerRef.current.computedMovement();
-
-      // Set next kinematic translation coordinates. growDeltaY (from a just-applied enlarging
-      // form-swap) is folded into THIS frame's single write -- never a competing setNextKinematic
-      // from a subscribe callback -- so a larger capsule never spawns intersecting the ground.
-      const currentPos = rigidBodyRef.current.translation();
-      rigidBodyRef.current.setNextKinematicTranslation({
-        x: currentPos.x + corrected.x,
-        y: currentPos.y + corrected.y + growDeltaY,
-        z: currentPos.z + corrected.z
-      });
+      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, growDeltaY, filterPredicate);
     }
 
     // Phase 9: Dynamic FOV Momentum & Camera Bobbing
@@ -1421,7 +1456,7 @@ export const Player = ({ isWorldBuilt }) => {
 
     if (!tc.active) {
       const targetX = translation.x + shakeX + kick.x;
-      const targetY = translation.y + 1.2 + bobOffset + shakeY + kick.y;
+      const targetY = translation.y + EYE_HEIGHT_M + bobOffset + shakeY + kick.y;
       const targetZ = translation.z + shakeZ + kick.z;
 
       // Use 0.85 lerp factor: eliminates camera coupling latency entirely while absorbing micro-stutter

@@ -7,6 +7,7 @@ import { routinePositionInto, npcFollowT } from '../game/npcRoutine.js';
 import { heightGridAt, snapMob } from '../game/localPath.js';
 import { groundForMover } from '../game/mobFloor.js';
 import { strikesToApply, holdStagger } from '../game/perfectDodge.js';
+import { mobSensePoint } from '../game/mobSenses.js';
 
 // Per-frame scratch + probe cadence for the ambient hub-NPC routine below. The routine ran a Rapier
 // castRay PER NPC PER RENDER FRAME and allocated two object literals per NPC per frame, for a lerp that
@@ -22,6 +23,7 @@ import { spellSlowFactor } from '../game/freeze.js';
 import AIWorker from '../workers/ai.worker.js?worker';
 import { drainKnockback } from '../game/captureRest.js';
 import { worldDelta, worldNow } from '../game/worldClock.js';
+import { takeTick } from '../game/frameStep.js';
 import { damageArgsForAttack } from '../game/mobDamage.js';
 import { buildMobPayload, applyMobUpdate } from '../game/mobStateSync.js';
 
@@ -199,12 +201,12 @@ export const AIWorkerSystem = () => {
     // 81-cell aggro heightGrids and the reply ground-snap raycasts all drop from 60-120Hz to 15Hz
     // (4-8× cut; 120Hz ProMotion iPads no longer pay double). MobModel's render-side damp keeps
     // 15Hz authority updates reading as smooth motion. The worker receives the ACCUMULATED
-    // seconds since the last tick (movement-speed parity), clamped vs tab-stall spikes.
+    // seconds since the last tick (movement-speed parity). Each frame's delta is already capped (worldDelta), and a
+    // tick takes at most one capped step and carries the rest, so the mobs get the same time the player walked.
     // (Knockback above stays render-rate — instant hit feel.)
     tickAccumRef.current += delta; // the AI clock stops with the world
-    if (tickAccumRef.current < AI_TICK_SEC) return;
-    const tickDelta = Math.min(tickAccumRef.current, 0.25);
-    tickAccumRef.current = 0;
+    const tickDelta = takeTick(tickAccumRef, AI_TICK_SEC);
+    if (tickDelta === 0) return;
 
     const store = useGameStore.getState();
     const getMobFloor = store.getMobFloor;
@@ -221,9 +223,12 @@ export const AIWorkerSystem = () => {
       });
     });
 
+    // The worker measures every sense and reach test from this point, and the combat stance reads the same one
+    // (game/mobSenses.js mobSensePoint), so the two cannot disagree about which mobs can reach the player.
+    const sense = mobSensePoint(camera);
     workerRef.current.postMessage({
       type: 'TICK',
-      playerPos: [camera.position.x, camera.position.y, camera.position.z],
+      playerPos: [sense.x, sense.y, sense.z],
       now,
       delta: tickDelta,
       mobs: mobsData,
