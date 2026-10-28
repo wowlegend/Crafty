@@ -52,7 +52,7 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                             </h2>
                             <p className="text-text-muted text-xs mt-1">Coordinate Grid Position: {coords}</p>
                         </div>
-                        <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-10 h-10 p-0 text-text-muted">
+                        <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.close')} onClick={onClose} className="w-10 h-10">
                             <Icon name="close" size={18} />
                         </Button>
                     </div>
@@ -60,7 +60,7 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                     {/* Double Columns grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Player inventory panel */}
-                        <Panel variant="inset" className="p-4 bg-panel flex flex-col gap-3">
+                        <Panel variant="inset" bg="bg-panel" className="p-4 flex flex-col gap-3">
                             <h3 className="flex items-center gap-2 font-display text-sm text-text uppercase tracking-widest border-b-chrome border-ink pb-2"><Icon name="backpack" size={16} className="flex-none" /> {t('chest.backpackTitle')}</h3>
                             {availableItems.length === 0 ? (
                                 <div className="py-8 text-center text-xs text-text-muted">{t('chest.backpackEmpty')}</div>
@@ -74,7 +74,8 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                                             role="button"
                                             tabIndex={0}
                                             aria-label={`Move ${qty} ${item} to chest`}
-                                            className="!aspect-auto p-2 cursor-pointer active:translate-x-[2px] active:translate-y-[2px] transition-transform duration-150 flex flex-col justify-between items-center min-h-16"
+                                            display="flex"
+                                            className="!aspect-auto p-2 cursor-pointer active:translate-x-[2px] active:translate-y-[2px] transition-transform duration-150 flex-col justify-between items-center min-h-16"
                                         >
                                             <div className="text-text text-xs font-bold truncate max-w-full">{item}</div>
                                             <div className="px-2 py-0.5 rounded-sm bg-track text-[10px] text-text-muted font-bold mt-1 tabular-nums">x{qty}</div>
@@ -86,7 +87,7 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                         </Panel>
 
                         {/* Chest inventory panel */}
-                        <Panel variant="inset" className="p-4 bg-panel flex flex-col gap-3">
+                        <Panel variant="inset" bg="bg-panel" className="p-4 flex flex-col gap-3">
                             <h3 className="flex items-center gap-2 font-display text-sm text-accent uppercase tracking-widest border-b-chrome border-ink pb-2"><Icon name="chest-open" size={16} className="flex-none" /> {t('chest.vaultTitle')}</h3>
                             {chestItems.length === 0 ? (
                                 <div className="py-8 text-center text-xs text-text-muted">{t('chest.vaultEmpty')}</div>
@@ -100,7 +101,8 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                                             role="button"
                                             tabIndex={0}
                                             aria-label={`Move ${qty} ${item} to backpack`}
-                                            className="!aspect-auto p-2 cursor-pointer active:translate-x-[2px] active:translate-y-[2px] transition-transform duration-150 flex flex-col justify-between items-center min-h-16"
+                                            display="flex"
+                                            className="!aspect-auto p-2 cursor-pointer active:translate-x-[2px] active:translate-y-[2px] transition-transform duration-150 flex-col justify-between items-center min-h-16"
                                         >
                                             <div className="text-accent text-xs font-bold truncate max-w-full">{item}</div>
                                             <div className="px-2 py-0.5 rounded-sm bg-track text-[10px] text-text-muted font-bold mt-1 tabular-nums">x{qty}</div>

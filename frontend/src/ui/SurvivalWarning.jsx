@@ -16,7 +16,7 @@ export const SurvivalWarning = React.memo(({ message }) => {
             exit={{ opacity: 0, y: -30, scale: 0.9 }}
             className="absolute top-32 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none"
         >
-            <Toast status={isNight ? 'danger' : 'warn'} className="flex items-center justify-center gap-2 text-center font-bold text-lg px-6 py-3">
+            <Toast status={isNight ? 'danger' : 'warn'} display="flex" pad="px-6 py-3" className="items-center justify-center gap-2 text-center font-bold text-lg">
                 <Icon name={isNight ? 'skull' : 'sun'} size={20} className="flex-none" />
                 {message}
             </Toast>

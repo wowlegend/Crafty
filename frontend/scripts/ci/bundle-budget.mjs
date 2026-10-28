@@ -32,7 +32,9 @@ const OUT_DIR = resolve(HERE, '../../build/assets'); // vite.config.js -> build.
 const BUDGETS = [
   { name: 'rapier', max: 2_420_000, actualAtWrite: 2_236_813 }, // WASM physics — the giant, and it is inert
   { name: 'r3f', max: 900_000, actualAtWrite: 833_418 },
-  { name: 'index', max: 760_000, actualAtWrite: 697_775 }, // the app itself — the one that creeps
+  // the app itself — the one that creeps. Ceiling = measured + the programme byte ledger's 67,600 B of lane
+  // allowances + ~13 KB, so the in-flight lanes still fit and nothing else gets the freed bytes.
+  { name: 'index', max: 700_000, actualAtWrite: 618_708 },
   { name: 'three', max: 740_000, actualAtWrite: 680_700 },
 ];
 
@@ -127,6 +129,60 @@ if (panelChunks.size > 1) {
   failed = true;
 } else if (panelChunks.size === 1 && lazyBad === 0) {
   console.log(`✓ lazy panels: ${LAZY_PANEL_MARKERS.length} panel markers only in ${[...panelChunks][0]}, none in the boot chunk`);
+}
+
+// LAZY GAME ICONS: the baked game-icons.net path data (~75 KB) is fetched
+// after boot by Icon.jsx. Path data from the first, a middle and the last baked icon must be ABSENT from the boot chunk
+// and PRESENT in exactly one other chunk, the same one for all three: presence proves the icons still ship, absence
+// proves no static import of gameIcons.js pulled them back into the boot chunk.
+const GAME_ICON_MARKERS = ['M278.814 35.137c', 'M143.627 36.361c', 'M54.6 25.88L41.4']; // apple, star-formation, glowing-artifact
+const iconChunks = new Set();
+let iconBad = 0;
+for (const marker of GAME_ICON_MARKERS) {
+  const holders = holdersOf(marker);
+  if (bootChunk && holders.includes(bootChunk)) {
+    console.error(`✘ lazy icons: game-icon path data "${marker}" is in the BOOT chunk (${bootChunk.file}); gameIcons.js is statically imported again`);
+    failed = true; iconBad++;
+  } else if (holders.length !== 1) {
+    console.error(`✘ lazy icons: game-icon path data "${marker}" found in ${holders.length} chunk(s); expected exactly one lazy icon chunk`);
+    failed = true; iconBad++;
+  } else {
+    iconChunks.add(holders[0].file);
+  }
+}
+if (iconChunks.size > 1) {
+  console.error(`✘ lazy icons: the baked set is split across ${iconChunks.size} chunks (${[...iconChunks].join(', ')})`);
+  failed = true;
+} else if (iconChunks.size === 1 && iconBad === 0) {
+  console.log(`✓ lazy icons: ${GAME_ICON_MARKERS.length} game-icon markers only in ${[...iconChunks][0]}, none in the boot chunk`);
+}
+
+// PRELOADED GAME ICONS: the title button's sword is a game icon, due 0.9 s into the menu's fade-in. Lazy alone, its
+// chunk is requested only after the boot chunk has downloaded and run; vite.config.js's preloadGameIcons() adds a
+// modulepreload to index.html so the fetch starts beside the boot chunk's. Read from the HTML that ships.
+const INDEX_HTML = resolve(OUT_DIR, '../index.html');
+if (iconChunks.size === 1) {
+  const iconFile = [...iconChunks][0];
+  const html = existsSync(INDEX_HTML) ? readFileSync(INDEX_HTML, 'utf8') : '';
+  const preloads = (html.match(/<link\b[^>]*>/g) ?? []).filter((tag) => /\brel=["']?modulepreload\b/.test(tag));
+  if (preloads.some((tag) => new RegExp(`\\bhref=["']?[^"' >]*/${iconFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["' >]`).test(tag))) {
+    console.log(`✓ icon preload: index.html modulepreloads ${iconFile} (${preloads.length} modulepreload links)`);
+  } else {
+    console.error(`✘ icon preload: index.html has no modulepreload for ${iconFile} (${preloads.length} modulepreload links${html ? '' : '; build/index.html is missing'}); the title icon waits for the boot chunk to run`);
+    failed = true;
+  }
+}
+
+// NO TAILWIND-MERGE: cn.js is a plain joiner and the primitives name each default a caller may replace, so the
+// ~28 KB merge engine has no reader. These are class-group ids from tailwind-merge's own config, which no Tailwind
+// class and nothing in src spells; any chunk carrying one ships the library again.
+const TAILWIND_MERGE_MARKERS = ['fvn-normal', 'mask-image-linear-pos'];
+const mergeHolders = chunks.filter((c) => TAILWIND_MERGE_MARKERS.some((m) => textOf(c).includes(m)));
+if (mergeHolders.length) {
+  console.error(`✘ tailwind-merge: its config markers are in ${mergeHolders.map((c) => c.file).join(', ')}; the dependency is back in the bundle`);
+  failed = true;
+} else {
+  console.log(`✓ tailwind-merge: ${TAILWIND_MERGE_MARKERS.length} markers absent from all ${chunks.length} chunks`);
 }
 
 if (failed) {
