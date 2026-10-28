@@ -14,6 +14,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MascotCraftyHero } from './mascots/MascotCraftyHero';
 import { isCaptureMode } from '../devtest/captureMode';
+import { e2eDpr } from '../devtest/e2eDpr.js';
 import { CaptureClockTicker } from '../devtest/CaptureClockTicker.jsx';
 import { useGameStore } from '../store/useGameStore';
 import { FrameCap } from './FrameCap.jsx';
@@ -154,7 +155,8 @@ export function TitleDiorama() {
         // Note what this is NOT: waitForStableFrame already guarantees the frame stopped changing,
         // and it was satisfied in both runs. A frame can settle at a DIFFERENT state each time.
         // Stable is not deterministic.
-        dpr={isCaptureMode() ? 1 : [1, 2]}
+        // e2eDpr (devtest/e2eDpr.js): the e2e suite's pixel-ratio cap — this canvas is up for the whole world build.
+        dpr={e2eDpr(isCaptureMode() ? 1 : [1, 2])}
         // `demand` in capture, and NOT for the reason you might assume. Switching this to `always` was
         // tried on 2026-08-08 as a determinism fix -- the theory being that a timing-dependent
         // invalidation count left the frame on an arbitrary pose -- and it did NOT work: menu.png's

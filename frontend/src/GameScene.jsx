@@ -28,6 +28,7 @@ import { GPUSparkSystem } from './world/GPUSparkSystem';
 import { ElementZoneRenderSystem } from './world/ElementZoneRenderSystem';
 import { isPerfProbe } from './devtest/perfProbe';
 import { PROBE_DPR } from './devtest/perfScenarios';
+import { e2eDpr } from './devtest/e2eDpr.js';
 import { PerfProbeSystem } from './devtest/PerfProbeSystem';
 import { CaptureClockTicker } from './devtest/CaptureClockTicker.jsx';
 import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
@@ -236,7 +237,8 @@ export const GameScene = React.memo(function GameScene({
         // setFrameloop('demand') from inside was overwritten back to 'always' by the next re-render (the first
         // version did exactly that — the e2e read 'always' under a 60 cap). FrameCap only paces the renders.
         frameloop={pace.loop}
-        dpr={isPerfProbe() ? PROBE_DPR : [1, q.dprCap]}
+        // e2eDpr (devtest/e2eDpr.js): the e2e suite's pixel-ratio cap, a no-op outside it. It wraps the whole expression.
+        dpr={e2eDpr(isPerfProbe() ? PROBE_DPR : [1, q.dprCap])}
         className="w-full h-full"
         gl={{
           antialias: false, // Post-processing handles AA
