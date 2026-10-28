@@ -269,7 +269,7 @@ That is 71 files in all.
 
 ## Units
 
-Unit order is strict: each unit is shippable alone and leaves the game sounding as it did, or better. **Units 2 and 3 reach `main` in ONE push** (separate commits): Vercel deploys every push, and Unit 2 alone would make live iPads download 300 KB and hold about 6.1 MB of decoded audio that plays nothing (review finding 16). Run unit tests from `<repo>/frontend`. e2e and prod-smoke run in CI, never on this machine while it is loaded; their mutants follow the mutation path in Global Constraints. Before each push, the `e2e freshness` gate needs CI's green e2e verdict on the exact commit (`f0e84766`), so push the unit to a branch, let CI run, then fast-forward `main`.
+Unit order is strict: each unit is shippable alone and leaves the game sounding as it did, or better. **Units 2 and 3 reach `main` in ONE push** (separate commits): Vercel deploys every push, and Unit 2 alone would make live iPads download 300 KB and hold about 6.1 MB of decoded audio that plays nothing (review finding 16). Run unit tests from `<repo>/frontend`. e2e and prod-smoke run in CI, never on this machine while it is loaded; their mutants follow the mutation path in Global Constraints. Before each push to `main`, its `ci ok` must pass on the exact commit (branch protection, DECISIONS 2026-10-28 item 13(b); e2e-freshness was deleted by W2-C), so push the unit to a `land/` branch, let CI run, then fast-forward `main`.
 
 ---
 

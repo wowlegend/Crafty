@@ -240,8 +240,8 @@ stagger lapse. Unit 4 pins both ends of that.
   scripts/visual) and `.claude/rules/input-and-pointer-lock.md` (it covers `GameScene.jsx`. Unit 1's edit there
   touches no input or lock path, and must not).
 - e2e specs are CI-only (about 20 min, serialized). Write them in the unit, run them in CI. **Do not run e2e, dev
-  servers or capture locally while the machine is loaded.** The push needs a green e2e receipt
-  (`scripts/ci/e2e-freshness.mjs`).
+  servers or capture locally while the machine is loaded.** e2e is certified by
+  CI's `ci ok` on the exact sha (push to a `land/` branch), since W2-C deleted e2e-freshness.
 
 ## Review Focus
 
@@ -1166,7 +1166,7 @@ The milestone is done when **all** of these are true, each seen. A green unit su
 | gate-shape, killability, cli-guard | `node scripts/ci/gate-shape.mjs && node scripts/ci/killability-ledger.mjs && node scripts/ci/cli-guard.mjs` | PASS; the killability count does not rise (every new check file carries its `Mutation-Proof:` line) |
 | opsec | `node scripts/ci/opsec-scan.mjs --all` | PASS |
 | trailers (push) | `node scripts/ci/mutation-proof-trailer.mjs <range>` and `node scripts/ci/baseline-trailer.mjs <range>` | PASS: gate commits carry `Mutation-Proof:`, and baseline commits carry `Baseline-Review:` and no `src/` |
-| e2e receipt (push) | `node scripts/ci/e2e-freshness.mjs` | PASS against CI's verdict on the exact commit |
+| e2e (CI) | `ci ok` on the land branch's exact sha | PASS: every shard green (e2e-freshness was deleted by W2-C) |
 | review | a fresh headless `/code-review xhigh` per unit's range; one pointed adversarial reviewer at **xhigh** on Units 1, 4 and 6 (they cross runtime seams: lazy loading, the dodge-start, the world clock) | findings fixed or ledgered with an owner |
 
 Then `superpowers:verification-before-completion` and `plan-verify-kz` against this file's task list before the

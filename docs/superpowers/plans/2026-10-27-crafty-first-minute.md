@@ -782,7 +782,7 @@ it('two materials get two uniform objects, and compiling one never rebinds the o
 
 - [ ] **Step 1: Write both specs.** The `Mutation-Proof:` block in the header lists the planned e2e mutants (OWED until observed).
 
-- [ ] **Step 2: Do not run them locally on a loaded machine.** `uptime` first. If load ≥ cores, push to a branch and let CI run them (they are CI-only by design; the push is checked by `e2e-freshness`).
+- [ ] **Step 2: Do not run them locally on a loaded machine.** `uptime` first. If load ≥ cores, push to a branch and let CI run them (they are CI-only by design; main takes the push only on CI's `ci ok` on the exact sha (push to a `land/` branch), since W2-C deleted e2e-freshness).
 
 - [ ] **Step 3: The command session runs the mutation batch** with `sh scripts/dev/mutate-e2e.sh`, E0 identity included. Mutants and the case expected to catch each:
   - **E1** Delete the director mount in `App.jsx`: A, F.

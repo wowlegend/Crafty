@@ -15,44 +15,44 @@
 #
 # The workflow runs `bash ci/pipeline.sh --tier=fast`. The pre-push hook runs `--tier=push`, and the
 # pre-commit hook runs `--tier=commit`. Neither restates a step, so neither can disagree. The
-# one-definition shape is Inkbloom's; the TIER SPLIT and the green-tree receipt below are AGENTIC-BRAIN's,
-# adopted 2026-09-22 after Kevin pointed out that AB front-loads the suite onto the commit and keeps the
-# push fast, while this repo had it backwards.
+# one-definition shape is Inkbloom's.
 #
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
-# THE TIERS, and the one question that decides which a gate belongs to: WHAT DOES IT READ?
+# THE TIERS, and the one question that decides which a gate belongs to: WHAT DOES IT READ, AND WHEN?
 #
-#   commit  reads the WORKING TREE          -> pre-commit. Offline, deterministic, no network, no browser.
-#                                              69s measured for the whole set, so the edit path can carry it.
-#   push    reads a COMMIT RANGE            -> pre-push. Trailers, queue-ledger, artifact-currency,
-#                                              e2e-freshness: a runner on a squashed ref cannot
-#                                              reconstruct the range, so these belong to the chokepoint
-#                                              that has it. Two exceptions run in the fast tier too:
-#                                              artifact-currency's range is syncedSha..HEAD, which a
-#                                              full-history runner on a push to main CAN count; and
-#                                              registry-append-only takes its base from the event (a
-#                                              push's before, a pull request's base), which CI has.
-#   fast    reads the NETWORK or a BROWSER  -> CI only. `npm audit` and `prod-smoke` must never sit on an
-#                                              edit path: a registry outage or a flaky browser reddening
-#                                              someone's commit is precisely how a gate gets bypassed,
-#                                              and a bypassed gate is worth less than no gate (R5).
+#   commit  the STAGED change               -> pre-commit. The static gates, plus only the unit tests that
+#                                              statically import a staged file (`vitest related`).
+#   push    reads a COMMIT RANGE            -> pre-push. opsec-scan, then queue-ledger, artifact-currency and
+#                                              registry-append-only: a runner on a squashed ref cannot
+#                                              reconstruct the range, so these belong to the chokepoint that
+#                                              has it. registry-append-only runs in the fast tier too, on the
+#                                              base the event names, which CI has. opsec-scan is here because
+#                                              the push PUBLISHES, and CI sees the content only once it is on
+#                                              GitHub. Nothing else: CI runs the static gates, unit suite, build
+#                                              and bundle budget on the exact sha, and main moves only on that
+#                                              sha's `ci ok`, so a local run repeated them at a cost in SSD
+#                                              writes (DECISIONS 2026-10-28 item 24).
+#   certify the WORKING TREE, whole         -> by hand, on demand: the static gates, the unit suite, build and
+#                                              bundle budget, i.e. CI's offline steps, for a local result
+#                                              before CI. No hook calls it and nothing waits for it.
+#   fast    the exact sha, in CI            -> GitHub Actions: the certify steps, then the ones that need the
+#                                              NETWORK or a BROWSER. `npm audit` and `prod-smoke` must never sit
+#                                              on an edit path: a registry outage or a flaky browser reddening
+#                                              someone's commit is precisely how a gate gets bypassed, and a
+#                                              bypassed gate is worth less than no gate (R5).
 #
-# THE GREEN-TREE RECEIPT closes the loop. A green `commit` tier records the INDEX TREE HASH it certified
-# (`git write-tree`, which is byte-identical to the tree the resulting commit stores — verified, not
-# assumed). pre-push reads that receipt: if the tree it is about to push is already recorded green, the
-# offline core is a known answer and re-deriving it in a fresh worktree buys nothing. The commit-shaped
-# gates still run, because a `commit` receipt cannot speak for a range it never saw.
+# WHAT THE LIGHT LOCAL TIERS COST: no commit and no push carries a unit, build or bundle result of its own. A
+# commit runs only the unit tests that statically import what it stages; the first full result for a pushed sha is
+# that sha's CI run, and main moves only on a sha whose `ci ok` passed.
 #
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # WHAT IT DELIBERATELY CANNOT COVER, because a green run is not a claim that the game works
 #
 #   - THE 31-FRAME VISUAL ORACLE. It needs a real GPU-less browser presenting frames and takes ~20
 #     minutes; it runs in neither caller today. A green pipeline says nothing about how Crafty LOOKS.
-#   - E2E FRESHNESS, not E2E itself. 21 Playwright specs take ~20 minutes, which is too slow for every
-#     push, so the push tier asserts that E2E was last run GREEN against the current source tree — the
-#     stamp, not the suite. CI runs the real thing, sharded. This is the inverse of Inkbloom's problem:
-#     there CI *cannot* run the Studio tiers so the hook must look; here the hook *can* but is too slow
-#     to, so it checks the receipt instead.
+#   - E2E. The Playwright suite runs only in CI, sharded, as jobs beside this pipeline's. main's branch
+#     protection requires `ci ok` on the exact sha, and `ci ok` needs every e2e shard, so no local tier
+#     asks for an e2e receipt (DECISIONS 2026-10-28 item 13(b)).
 #
 # Exit: 0 = every tier step passed · 1 = a step failed (the failing step is named).
 set -uo pipefail
@@ -63,52 +63,32 @@ APP="$ROOT/frontend"
 . "$ROOT/ci/git-env.sh"
 
 TIER="push"
-RANGE_ONLY=0
 CODE_CHANGED=""
-for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --range-only) RANGE_ONLY=1 ;; --code-changed=*) CODE_CHANGED="${a#--code-changed=}" ;; esac; done
+SHA_CERTIFIED=""
+for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --code-changed=*) CODE_CHANGED="${a#--code-changed=}" ;; --sha-certified=*) SHA_CERTIFIED="${a#--sha-certified=}" ;; esac; done
 # --code-changed=false: CI's change-scope job (frontend/scripts/ci/change-scope.mjs) found only docs changed since a
 # commit whose `ci ok` passed, so the fast tier skips prod-smoke, the one browser step here (the e2e job is skipped
 # by ci.yml itself). ONLY the exact word `false` skips; absent, `true`, empty or anything else runs it (fail SAFE).
 # The CI step also exports CODE_CHANGED, and the unit suite this pipeline runs inherits it and executes this file under
 # test. The reset above is what keeps a docs-only run from changing what that suite tests: the flag decides, an
 # inherited CODE_CHANGED never does.
-# --range-only: pre-push's path when the pre-commit receipt already certified this exact tree. The offline
-# core is skipped (and each skip PRINTED); the commit-range gates still run, because a receipt written at
-# commit time cannot speak for a range it never saw. Until 2026-09-22 pre-push `continue`d past this file
-# on a receipt match, so queue-ledger, artifact-currency and e2e-freshness silently never ran on those
-# pushes — found when artifact-currency, skipped for a day, surfaced 74 commits of page drift at once.
-if [ "$RANGE_ONLY" = 1 ] && [ "$TIER" != "push" ]; then
-  printf '\033[31m✖ pipeline: --range-only is only meaningful with --tier=push\033[0m\n' >&2; exit 2
+# --sha-certified=true: change-scope found this run is a push to main of a sha whose `ci ok` already passed in another
+# run, so the fast tier skips its six slow steps (the unit suite, build, bundle budget, knip, npm audit, prod-smoke) and
+# keeps the quick gates and registry-append-only, whose base here is main's previous tip, which that run never read.
+# ONLY the exact word `true` skips; reset above like CODE_CHANGED, so an inherited SHA_CERTIFIED decides nothing.
+if [ -n "$SHA_CERTIFIED" ] && [ "$TIER" != "fast" ]; then
+  printf '\033[31m✖ pipeline: --sha-certified is only meaningful with --tier=fast\033[0m\n' >&2; exit 2
 fi
 case "$TIER" in
-  commit|push|fast) ;;
-  *) printf '\033[31m✖ pipeline: unknown tier %s (expected commit|push|fast)\033[0m\n' "$TIER" >&2; exit 2 ;;
+  commit|push|fast|certify) ;;
+  *) printf '\033[31m✖ pipeline: unknown tier %s (expected commit|push|fast|certify)\033[0m\n' "$TIER" >&2; exit 2 ;;
 esac
-
-# The receipt lives in .git/, not in the tree: it is machine-local by nature and MUST NOT survive a clone
-# (a fresh checkout has certified nothing). Naming it here rather than in the hook keeps the writer and
-# the reader from drifting apart — the failure this whole file exists to prevent.
-# --git-common-dir returns a RELATIVE path (".git") when run from the repo root, and this script cd's into
-# frontend/ before the receipt is written — so the first version wrote to frontend/.git/… which does not
-# exist, failed, and printed "certified" anyway. Resolve it against ROOT and keep it absolute.
-RECEIPT_DIR="$(git rev-parse --git-common-dir 2>/dev/null || echo .git)"
-case "$RECEIPT_DIR" in /*) ;; *) RECEIPT_DIR="$ROOT/$RECEIPT_DIR" ;; esac
-RECEIPT="$RECEIPT_DIR/crafty-pipeline-green-tree"
 
 fail=0
 failed_steps=""
 say() { printf '\n\033[1m── %s\033[0m\n' "$1"; }
-SECTION=core
-ran_range=0
-skipped_core=0
 step() { # step <name> <cmd...>
   local name="$1"; shift
-  if [ "$RANGE_ONLY" = 1 ] && [ "$SECTION" = core ]; then
-    printf '\033[2m── skipped (certified by the pre-commit receipt for this exact tree): %s\033[0m\n' "$name"
-    skipped_core=$((skipped_core + 1))
-    return 0
-  fi
-  [ "$SECTION" = range ] && ran_range=$((ran_range + 1))
   say "$name"
   if run_scrubbed "$@"; then
     return 0
@@ -128,33 +108,51 @@ cd "$APP"
 step "opsec-scan (a PUBLIC repo must not publish the operator machine)" node scripts/ci/opsec-scan.mjs --all
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
-# TIER: FAST — deterministic, GPU-free, machine-independent. Both callers run all of these.
+# THE OFFLINE CORE — deterministic, GPU-free, machine-independent. The static gates run on the commit, in certify and
+# in CI; the unit suite, build and bundle budget in certify and CI only (the commit runs `vitest related` instead).
+# The push runs none of it.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
-step "doc-currency (a canonical doc citing a path that no longer exists)" node scripts/ci/doc-currency.mjs
-step "eslint (crash-class bugs; no-unused-vars is an error)" npm run --silent lint
-step "gate-shape (no assertion satisfiable by a COMMENT)" node scripts/ci/gate-shape.mjs
-step "cli-guard (an exporting script must not run its CLI on import)" node scripts/ci/cli-guard.mjs
-step "unit + static gates (vitest)" npm run --silent test:unit
-step "build" npm run --silent build
-step "bundle byte budget" node scripts/ci/bundle-budget.mjs
+if [ "$TIER" = "push" ]; then
+  printf '\n\033[2m── skipped (push tier): doc-currency, eslint, gate-shape, cli-guard, the unit suite, build, bundle byte budget — CI runs them on this sha; `--tier=certify` runs them here\033[0m\n'
+fi
+if [ "$TIER" != "push" ]; then
+  step "doc-currency (a canonical doc citing a path that no longer exists)" node scripts/ci/doc-currency.mjs
+  step "eslint (crash-class bugs; no-unused-vars is an error)" npm run --silent lint
+  step "gate-shape (no assertion satisfiable by a COMMENT)" node scripts/ci/gate-shape.mjs
+  step "cli-guard (an exporting script must not run its CLI on import)" node scripts/ci/cli-guard.mjs
+fi
+if [ "$TIER" = "commit" ]; then
+  # The list is taken here, with the hook's environment intact (ci/git-env.sh says why); only the step is scrubbed.
+  # A git failure leaves no list, which the step reports as COULD NOT CHECK rather than as nothing staged.
+  STAGED_LIST="$(mktemp "${TMPDIR:-/tmp}/crafty-staged-XXXXXX")" || STAGED_LIST=""
+  if [ -n "$STAGED_LIST" ] && ! staged_frontend_files "$ROOT" >| "$STAGED_LIST"; then rm -f "$STAGED_LIST"; fi
+  step "vitest related (the unit tests that statically import a staged file)" node scripts/ci/related-tests.mjs --staged-list "$STAGED_LIST"
+  rm -f "$STAGED_LIST"
+fi
+if [ "$TIER" = "certify" ] || [ "$TIER" = "fast" ]; then
+  if [ "$SHA_CERTIFIED" = "true" ]; then
+    printf '\n\033[2m── skipped (--sha-certified=true): unit + static gates, build, bundle byte budget — this sha passed them in the run that certified it\033[0m\n'
+  else
+    step "unit + static gates (vitest)" npm run --silent test:unit
+    step "build" npm run --silent build
+    step "bundle byte budget" node scripts/ci/bundle-budget.mjs
+  fi
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # TIER: PUSH — commit-shaped gates. They read a COMMIT RANGE, which a CI runner on a squashed or
 # rebased ref cannot reconstruct meaningfully, so they belong to the chokepoint that has the real range.
-# One of them, artifact-currency, ALSO runs in the fast tier on a CI push to main (see the CI-only block
-# below): its range is syncedSha..HEAD, which a full-history runner can count. In either tier its drift is a
-# report, never a refusal (DECISIONS 2026-10-28 item 12); only its three tree-defect checks fail a run.
-# registry-append-only runs in both tiers as well: here on the range pre-push hands it (PUSH_RANGES), in CI on the
-# event's base. A registry row deleted instead of closed is invisible to a tree check, so it needs the range.
+# artifact-currency's drift is a report, never a refusal (DECISIONS 2026-10-28 item 12); only its three
+# tree-defect checks fail a run, and they guard the Command Record's as-of stamp at every landing.
+# registry-append-only runs in CI as well, on the event's base: a registry row deleted instead of closed is
+# invisible to a tree check, so it needs a range, and pre-push hands it this push's (PUSH_RANGES).
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" != "push" ]; then
-  printf '\n\033[2m── skipped (%s tier): queue-ledger, artifact-currency, e2e-freshness, registry-append-only — they read a COMMIT RANGE (the fast tier runs artifact-currency on a CI push to main, and registry-append-only on every CI run, below)\033[0m\n' "$TIER"
+  printf '\n\033[2m── skipped (%s tier): queue-ledger, artifact-currency, registry-append-only — they read a COMMIT RANGE (the fast tier runs registry-append-only on every CI run, below)\033[0m\n' "$TIER"
 fi
 if [ "$TIER" = "push" ]; then
-  SECTION=range
   step "queue-ledger (a finding with no marker)" node scripts/ci/queue-ledger.mjs
   step "artifact-currency (page sources, Queued pills, as-of stamps; drift is reported only)" node scripts/ci/artifact-currency.mjs
-  step "e2e freshness (the suite CI runs, receipted against this tree)" node scripts/ci/e2e-freshness.mjs
   step "registry-append-only (a registry row deleted instead of closed, on the pushed range)" node scripts/ci/registry-append-only.mjs
 fi
 
@@ -172,60 +170,29 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # TIER: CI-ONLY — knip, npm audit and prod-smoke need the network or a browser, so they must never sit in a
 # developer's push path. A registry outage or a flaky browser reddening someone's push is how a gate gets
-# bypassed. The registry-append-only and artifact-currency steps at the end of this block are in CI for a different
-# reason: they need neither. registry-append-only needs a range, which the event names; artifact-currency needs the
-# state of main AFTER a merge GitHub made, which no local hook ever sees.
+# bypassed. The registry-append-only step at the end of this block is in CI for a different reason: it needs
+# neither, only a range, which the event names.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" = "fast" ]; then
-  step "knip (unused files / exports / deps)" npm run --silent knip
-  step "npm audit (high + critical)" npm audit --audit-level=high
-  if [ "$CODE_CHANGED" = "false" ]; then
-    printf '\n\033[2m── skipped (fast tier, --code-changed=false): prod-smoke — only docs changed since a commit CI passed, so the bundle is that commit'"'"'s\033[0m\n'
+  if [ "$SHA_CERTIFIED" = "true" ]; then
+    printf '\n\033[2m── skipped (--sha-certified=true): knip, npm audit, prod-smoke — this sha passed them in the run that certified it\033[0m\n'
   else
-    step "prod-smoke (the bundle that actually ships boots and renders)" node scripts/ci/prod-smoke.mjs
+    step "knip (unused files / exports / deps)" npm run --silent knip
+    step "npm audit (high + critical)" npm audit --audit-level=high
+    if [ "$CODE_CHANGED" = "false" ]; then
+      printf '\n\033[2m── skipped (fast tier, --code-changed=false): prod-smoke — only docs changed since a commit CI passed, so the bundle is that commit'"'"'s\033[0m\n'
+    else
+      step "prod-smoke (the bundle that actually ships boots and renders)" node scripts/ci/prod-smoke.mjs
+    fi
   fi
   # The event names the base (a push's before, a pull request's base sha, else the merge-base with origin/main), and the
   # gates job checks out full history, so every CI run can read the registry at both ends.
   step "registry-append-only (on every CI run, against the event's base)" node scripts/ci/registry-append-only.mjs
-  # THE SERVER-SIDE MERGE REPORT (2026-10-28) — `gh pr merge` and GitHub's UI move main without any local hook, so
-  # this step is the one place main's state after such a merge is looked at. It runs on the push event, AFTER main
-  # has moved and Vercel has deployed. It PRINTS how far each operator page is behind main and refuses no drift
-  # (DECISIONS 2026-10-28 item 12: the cap measured the writer; the pages now state their own commit and time for
-  # the reader). It still reds the gates job if a merge brought in one of the three tree defects (a missing or
-  # unusable page source, a falsified or undeclared Queued pill, a missing, duplicated or mismatched as-of stamp),
-  # which pre-push refuses on every local push. The drift is counted from the recorded sha, so the gates job checks
-  # out full history (fetch-depth: 0); without it, or for a sha only a squash-merged, deleted lane branch held, the
-  # line reads "cannot be measured". It stays on a push to main only, as it was: a PR's merge ref would print the
-  # lane's own commits as drift, and a workflow_dispatch run on main moves nothing (both take the else branch). It
-  # no longer passes E2E_PUSH_REFS, which the script stopped reading when the drift refusal went.
-  if [ "${GITHUB_EVENT_NAME:-}" = "push" ] && [ "${GITHUB_REF:-}" = "refs/heads/main" ]; then
-    step "artifact-currency (on a CI push to main: reports drift, refuses tree defects, after a merge GitHub made)" node scripts/ci/artifact-currency.mjs
-  else
-    printf '\n\033[2m── skipped (fast tier): artifact-currency — CI runs it on a push to main only (event %s, ref %s)\033[0m\n' "${GITHUB_EVENT_NAME:-unset}" "${GITHUB_REF:-unset}"
-  fi
 fi
 
 printf '\n'
-if [ "$RANGE_ONLY" = 1 ] && [ "$ran_range" -eq 0 ]; then
-  # ZERO-GUARD (R3a): a range-only run that ran no range gate certified nothing.
-  printf '\033[31m✖ pipeline (push, range-only): 0 commit-range gates ran — COULD NOT CHECK, not a pass\033[0m\n'
-  exit 3
-fi
-if [ "$fail" -eq 0 ] && [ "$RANGE_ONLY" = 1 ]; then
-  printf '\033[32m✓ pipeline (push, range-only): %s commit-range gate(s) passed; %s offline-core step(s) certified by the receipt\033[0m\n' "$ran_range" "$skipped_core"
-  exit 0
-fi
 if [ "$fail" -eq 0 ]; then
   printf '\033[32m✓ pipeline (%s): every step passed\033[0m\n' "$TIER"
-  # Record the receipt ONLY for the commit tier, and only on a fully green run. A tree hash is written
-  # here and consumed by pre-push; the tier name goes in with it so a `commit` receipt can never be
-  # mistaken for authorisation to skip the commit-shaped gates.
-  if [ "$TIER" = "commit" ]; then
-    # The steps above tested the WORKING TREE; the receipt certifies the INDEX. write-receipt.sh refuses
-    # when the two differ (a partial stage), and reads the file back before claiming it landed. A refusal
-    # is not a failure of this run — it only sends the push down the full-certification path.
-    sh "$ROOT/ci/write-receipt.sh" "$RECEIPT" || true
-  fi
   exit 0
 fi
 printf '\033[31m✖ pipeline (%s) FAILED:%s\033[0m\n' "$TIER" "$failed_steps"

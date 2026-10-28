@@ -57,5 +57,5 @@ graphify-out/
 /.mcp.json
 /.ignore
 # Harness state the operator's session hooks append to (Agentic-Brain's PreCompact log). Read from disk by its
-# writer and by no pipeline step; tracked, it dirtied every tree and needed a carve-out in ci/write-receipt.sh.
+# writer and by no pipeline step; tracked, it dirtied every tree.
 /.state/

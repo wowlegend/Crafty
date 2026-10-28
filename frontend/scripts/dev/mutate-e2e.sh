@@ -44,11 +44,11 @@ fi
 
 # A SERVER ALREADY ON THE E2E PORT IS REUSED (playwright.config: reuseExistingServer when not CI), so the spec would
 # test THAT server's tree — a sibling worktree's unmutated source — and every mutant would read SURVIVED (ultrareview
-# 2026-10-27, U6). Refuse before mutating anything. The probe is e2e-freshness's own, which checks BOTH loopback
-# addresses: vite on macOS binds [::1] only.
+# 2026-10-27, U6). Refuse before mutating anything. The probe checks BOTH loopback addresses: vite on macOS binds
+# [::1] only.
 PORT=$(grep -oE 'const PORT = [0-9]+;' playwright.config.js | grep -oE '[0-9]+')
 [ -n "$PORT" ] || { echo "  [3] $LABEL — could not read the e2e port from playwright.config.js"; exit 3; }
-if node --input-type=module -e "import { portInUse } from './scripts/ci/e2e-freshness.mjs'; process.exit((await portInUse($PORT)) ? 0 : 1);"; then
+if node --input-type=module -e "import { portInUse } from './scripts/dev/port-in-use.mjs'; process.exit((await portInUse($PORT)) ? 0 : 1);"; then
   echo "  [3] $LABEL — COULD NOT CHECK: something already listens on the e2e port $PORT; the spec would reuse it and test its tree, not this mutant. Stop it first (sh scripts/dev/kill-test-procs.sh, or the sibling's run)."
   exit 3
 fi

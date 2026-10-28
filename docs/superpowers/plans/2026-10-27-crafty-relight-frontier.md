@@ -367,7 +367,7 @@ In steady state, +2 draws with shrines lit, +3 on med and high, and +1 more duri
 
 The units are ordered and each is independently green. **U2 and U3 are inert until U5 gives them a producer, so U2-U5
 go in ONE push** (separate commits), which means no push ships a field that nothing writes. U1 can push alone, but
-only after Phase 0e's re-baseline has landed and with a green e2e receipt for its `src/` tree (U1 Step 7). U6 and U7
+only after Phase 0e's re-baseline has landed and with CI's `ci ok` on the exact sha (push to a `land/` branch), since W2-C deleted e2e-freshness (U1 Step 7). U6 and U7
 follow.
 
 ### U1: A shrine is a shrine (M1)
@@ -456,8 +456,8 @@ it('denominator: the 24-chunk census holds 28 landmarks and 7 shrines', () => {
 
 - [ ] **Step 7: Capture impact, then commit.** **Precondition:** Phase 0e's Chromium re-baseline has landed on `main`
   (`DECISIONS.md` 2026-10-27: it lands alone and BEFORE any look change, so a re-shoot before it would mix a renderer
-  change with this content change). If 0e has not landed, U1 commits but waits to push. The push also needs a green
-  e2e receipt for the changed `src/` tree (the `e2e freshness` gate). The minimap draws in capture, and its shrine blip moves from bearing
+  change with this content change). If 0e has not landed, U1 commits but waits to push. Its e2e is certified by
+  CI's `ci ok` on the exact sha (push to a `land/` branch), since W2-C deleted e2e-freshness. The minimap draws in capture, and its shrine blip moves from bearing
   atan2(40,-88) to atan2(40,-104), about 3.4 degrees on the rim. Run `npm run test:visual` when the load allows. If
   any frame is over its gate or its density ledger, **do not** re-shoot inside this commit. Commit the src change,
   then make a separate `Baseline-Review:` commit with the re-shoot, naming the minimap blip as the only intended
@@ -1003,8 +1003,8 @@ export const SHRINE_WAVES_VERSION = 'shrine-waves-v1'
   The e2e mutants run through `scripts/dev/mutate-e2e.sh` with an identity mutant. A `SETUP:` failure scores as COULD
   NOT CHECK, never as a kill.
 
-- [ ] **Step 8: Push U2-U5 together** after the gates pass and a green e2e receipt exists (the `e2e freshness` row in
-  `.agent/AGENTS.md`). Commit:
+- [ ] **Step 8: Push U2-U5 together** after the gates pass; their e2e is certified by
+  CI's `ci ok` on the exact sha (push to a `land/` branch), since W2-C deleted e2e-freshness. Commit:
   `git commit -m "feat(shrines): hold the light — G or the touch pill starts a 45 s defence; lighting strips the dragon (index +N B, lazy shrineEventRuntime +M B)"`
 
 ### U6: The light it leaves (M6)

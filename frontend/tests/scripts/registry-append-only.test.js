@@ -140,3 +140,18 @@ describe('the CLI, in a throwaway repo', () => {
     expect(r.stdout).not.toMatch(/✓/);
   });
 });
+
+// The CI half of the range: the event's base must be in the clone, so the gates job (the one that runs the fast tier)
+// checks out full history. A file-content check of ci.yml, comments stripped so the comment explaining it cannot pass.
+describe('ci.yml gives registry-append-only its base', () => {
+  it('the gates job runs the fast tier from a full-history checkout', () => {
+    const yml = readFileSync(join(ROOT, '.github/workflows/ci.yml'), 'utf8');
+    const start = yml.indexOf('\n  gates:\n');
+    const end = yml.indexOf('\n  e2e:\n');
+    expect(start, 'the gates job').toBeGreaterThan(-1);
+    expect(end, 'the job after it').toBeGreaterThan(start);
+    const job = yml.slice(start, end).split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+    expect(job).toMatch(/run: bash ci\/pipeline\.sh --tier=fast/);
+    expect(job).toMatch(/- uses: actions\/checkout@v\d+\n\s+with:\n\s+fetch-depth: 0\n/);
+  });
+});

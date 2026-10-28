@@ -4,8 +4,9 @@
 // we read/assert via useGameStore.getState() and drive via store actions / registered hooks.
 
 /** Navigate to the dev app and wait until the store + test bridge are live. Returns a
- *  growing array of captured runtime errors when { withErrors: true }. */
-export async function bootDev(page, { withErrors = false } = {}) {
+ *  growing array of captured runtime errors when { withErrors: true }. `path` is the URL opened: the lookbook seam
+ *  (render/lookbookSeam.js) installs only for `/?lookbook=1`. */
+export async function bootDev(page, { withErrors = false, path = '/' } = {}) {
   const errors = [];
   if (withErrors) {
     page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
@@ -16,7 +17,7 @@ export async function bootDev(page, { withErrors = false } = {}) {
   // A failure here is a PRECONDITION: the app never came up, so the spec never reached its subject. It says "SETUP:"
   // so scripts/dev/mutate-e2e.sh reports COULD NOT CHECK — this untagged 30 s wait used to score as a caught mutant.
   try {
-    await page.goto('/');
+    await page.goto(path);
     await page.waitForFunction(
       () =>
         typeof window.useGameStore === 'function' &&

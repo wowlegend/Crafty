@@ -5,7 +5,7 @@
  *
  * WHAT IT DOES (DECISIONS 2026-10-28 item 12):
  *   - DRIFT IS REPORTED, NEVER REFUSED. Every surface prints how many commits its page is behind HEAD, with
- *     the page's URL, on every push and in CI. A drift this script cannot measure (the recorded sha is not in
+ *     the page's URL, on every push. A drift this script cannot measure (the recorded sha is not in
  *     this history) prints as well, naming its two causes. Neither changes the exit code, on any push.
  *   - THREE TREE DEFECTS STILL REFUSE, on every push: a page source that is missing or unusable (a fetched copy
  *     of the publish wrapper rather than the authored page); a row marked Queued whose declared `data-absent`
@@ -34,9 +34,9 @@
  * wiped, the same way scratchpad/findings.json was lost. The HTML is committed now
  * (docs/superpowers/era-review.html) so a cold start can rebuild the page instead of re-deriving it.
  *
- * IN CI the fast tier runs this on a push to main (ci/pipeline.sh), from a full-history checkout so the drift can
- * be counted. There it prints main's drift after a merge GitHub made (which runs no local hook), and refuses the
- * three tree defects if a merge brought one in.
+ * WHERE IT RUNS: the push tier of ci/pipeline.sh, which pre-push runs on every local push. CI does not run it: a
+ * landing is a local merge pushed through that hook. A merge made on GitHub runs no hook, so nothing checks the pages
+ * it brings in.
  *
  * Mutation-Proof: 2026-10-28 (item 12), each via scripts/dev/mutate.sh against both specs below. Restoring a
  * drift refusal in driftVerdict (`refuse: false` -> `refuse: level === 'stale'`) turned the pure verdict test
@@ -535,7 +535,7 @@ function main() {
     if (level === 'unmeasured') {
       report = [
         `${s.id}: recorded sha ${from} is not in this history, so the drift cannot be measured — reported, not refused.`,
-        '  Two causes: a shallow checkout (the CI gates job needs fetch-depth: 0), or a recorded sha that only a lane',
+        '  Two causes: a shallow checkout (fetch the full history), or a recorded sha that only a lane',
         `  branch held, and that branch was squash-merged and deleted. For the second, from main: --stamp ${s.id}, republish, then --sync ${s.id}${at}`,
       ];
     } else if (level === 'current') {
