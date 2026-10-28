@@ -194,8 +194,10 @@ async function enterTouchPlay(page) {
 }
 
 /** Each case's timeout. The action case caps its world freeze at the running test's budget (this, or more when _boot.js
- *  extends it), so the freeze can never end before the test could. */
-const TOUCH_TEST_MS = 240000;
+ *  extends it), so the freeze can never end before the test could. 360 s, not 240: on main's slow runner (run
+ *  40642071917) the action case used 3.3-3.7 min of 4, so a runner ~10% slower would time out with every read green.
+ *  Three attempts of 6 min fit the e2e job's 35-minute cap. */
+const TOUCH_TEST_MS = 360000;
 
 test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', () => {
   test.setTimeout(TOUCH_TEST_MS);
