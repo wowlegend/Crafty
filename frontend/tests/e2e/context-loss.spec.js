@@ -23,7 +23,9 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   E0 identity (a comment edit in contextRecovery.js)                                          -> must SURVIVE
 // E4/E5's unit halves are tests/gates/context-loss-gates R1-R6 (run, all RED; identity SURVIVED).
 test('a lost context shows the panel; a restore clears it and draws again; a tap reloads into the same world', async ({ page }) => {
-  test.setTimeout(300000);
+  // Two boots (the second after the recovery reload). On CI's software renderer this was still running 5 min in (run
+  // 40615649137, shard 1: its post-reload log line at 304 s, then the job's own timeout), so 300 s was its edge.
+  test.setTimeout(420000);
   await bootDev(page);
   await startPlayActive(page);
   const panel = page.getByTestId('context-loss-panel');
