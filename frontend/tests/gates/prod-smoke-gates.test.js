@@ -4,6 +4,7 @@ import {
   isFatalMessage, seamVerdict, LOOKBOOK_SEAM_METHODS,
   installArrayTextureRecorder, readBlockTextureArray, mipVerdict,
   WATCHED_PROGRAMS, OCEAN_STAGE, installProgramRecorder, readProgramLinks, programVerdict,
+  chainVerdict, CHAIN_PRESENT,
 } from '../../scripts/ci/prod-smoke.mjs';
 import { installLookbookSeam, _resetLookbookForTest } from '../../src/render/lookbookSeam.js';
 import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
@@ -438,5 +439,39 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
     expect(OCEAN_STAGE?.id).toBe('coast');
     expect(drawsAt(OCEAN_STAGE.position), 'the ocean is not drawn at the coast stage').toBe(true);
     expect(drawsAt(PLAYER_SPAWN), 'SETUP: the ocean draws at the spawn, so staging proves nothing').toBe(false);
+  });
+});
+
+/**
+ * THE CHAIN THE SHIPPED BUNDLE RENDERS (W2-I). chainVerdict reads the pass labels the pass timer records for each
+ * composer.render (src/render/passTimer.js `chain`, written with or without a timer extension), so a deleted pass that
+ * returns to the composer goes red on the production build, whatever the source around it says.
+ */
+describe('prod-smoke: the post chain the production build renders', () => {
+  const ctx = (canvas, labels) => ({ canvas, chain: labels.map((label) => ({ label, enabled: true })) });
+  const KEPT = ['0:RenderPass', '1:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect)', '2:EffectPass(SMAAEffect)', '3:EffectPass(ToneMappingEffect+VignetteEffect)'];
+
+  it('passes the chain with every kept pass and none named absent, reading the game canvas, not the title\'s', () => {
+    const r = { contexts: [ctx([300, 200], ['0:RenderPass', '1:EffectPass(GodRaysEffect+BloomEffect)']), ctx([2549, 1647], KEPT)] };
+    const v = chainVerdict(r, { present: CHAIN_PRESENT, absent: ['GodRaysEffect', 'N8AO'] });
+    expect(v.ok, v.line).toBe(true);
+    expect(CHAIN_PRESENT.length).toBeGreaterThan(0);
+  });
+
+  it('goes red when a named pass is back, merged into an EffectPass or as a pass of its own', () => {
+    const merged = { contexts: [ctx([2549, 1647], [KEPT[0], '1:EffectPass(GodRaysEffect+HueSaturationEffect+BloomEffect)', ...KEPT.slice(2)])] };
+    expect(chainVerdict(merged, { absent: ['GodRaysEffect'] })).toMatchObject({ ok: false, control: false });
+    const own = { contexts: [ctx([2549, 1647], [KEPT[0], '1:N8AO', ...KEPT.slice(1)])] };
+    expect(chainVerdict(own, { absent: ['N8AO'] })).toMatchObject({ ok: false, control: false });
+    // A name is matched whole: GodRaysEffectLite is not GodRaysEffect, and a label that only CONTAINS N8AO is not it.
+    const near = { contexts: [ctx([2549, 1647], [...KEPT, '4:EffectPass(GodRaysEffectLite)', '5:N8AOish'])] };
+    expect(chainVerdict(near, { absent: ['GodRaysEffect', 'N8AO'] }).ok).toBe(true);
+  });
+
+  it('cannot pass on a chain it cannot see: no composer, or a kept pass missing, is COULD NOT CHECK', () => {
+    expect(chainVerdict({ contexts: [] })).toMatchObject({ ok: false, control: true });
+    expect(chainVerdict({ contexts: [{ canvas: [1, 1], chain: null }] })).toMatchObject({ ok: false, control: true });
+    const blind = { contexts: [ctx([2549, 1647], ['0:RenderPass'])] };
+    expect(chainVerdict(blind, { absent: ['GodRaysEffect'] })).toMatchObject({ ok: false, control: true });
   });
 });

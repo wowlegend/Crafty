@@ -62,7 +62,7 @@ describe('src/index.jsx installs the lookbook seam with the real collaborators',
     expect(plain.seam, 'a page without ?lookbook=1 got the seam — every player would carry it').toBeUndefined();
     const { seam } = await bootAt('?lookbook=1');
     expect(seam, 'the entry module did not install the seam on ?lookbook=1 — the probe has no door').toBeDefined();
-    expect(Object.keys(seam).sort()).toEqual(['clear', 'clearHostiles', 'info', 'look', 'passTimes', 'play', 'pose', 'setCycle', 'stand']);
+    expect(Object.keys(seam).sort()).toEqual(['clear', 'clearHostiles', 'info', 'look', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
   });
 
   it('hands the seam the REAL mob query: a hostile added to the ECS world is measured from the eye', async () => {
@@ -88,7 +88,7 @@ describe('src/index.jsx installs the lookbook seam with the real collaborators',
     const unpatched = EffectComposer.prototype.render;
     const report = await seam.passTimes();
     try {
-      expect(report, 'the entry module gave the seam no pass-timer loader').toEqual({ installed: true, contexts: [] });
+      expect(report, 'the entry module gave the seam no pass-timer loader').toEqual({ installed: true, mode: 'segments', contexts: [] });
       expect(EffectComposer.prototype.render, 'the loaded timer did not patch the composer the game renders with').not.toBe(unpatched);
     } finally {
       (await import('../../src/render/passTimer.js')).installPassTimer().uninstall();

@@ -10,6 +10,8 @@ import { N8AOPostPass } from 'n8ao';
 import { registerTestHook } from '../devtest/testBridge.js';
 import { useGameStore } from '../store/useGameStore';
 import { TIERS } from './quality.js';
+import { lookbookPassesOff } from './lookbookSeam.js';
+import { applyPassesOff } from './passesOff.js';
 
 /**
  * ITEM c — EACH EFFECT BUILT ONCE, TOGGLED IN PLACE, DISPOSED ON UNMOUNT.
@@ -116,10 +118,13 @@ export function setBloomMipmap(bloom, on) {
   return true;
 }
 
-/** Apply a tier's post settings and the horizon to the live effects. @returns {boolean} true when anything changed */
-export function applyPostTier(fx, q, sunAboveHorizon) {
+const NONE_OFF = new Set();
+
+/** Apply a tier's post settings and the horizon to the live effects; a pass the lookbook switched off (`off`) is
+ *  render/passesOff.js's until it is back on. @returns {boolean} true when anything changed */
+export function applyPostTier(fx, q, sunAboveHorizon, off = NONE_OFF) {
   let changed = false;
-  if (fx.n8ao && fx.n8ao.enabled !== !!q.ao) {
+  if (fx.n8ao && !off.has('n8ao') && fx.n8ao.enabled !== !!q.ao) {
     fx.n8ao.enabled = !!q.ao;
     changed = true;
   }
@@ -162,10 +167,13 @@ export function PostTierDriver() {
   const ctx = useContext(EffectComposerContext);
   const gl = useThree((s) => s.gl);
   const fx = useMemo(() => ({ n8ao: null, godRays: null, bloom: null }), []);
+  const offHeld = useMemo(() => new Map(), []);
   useFrame(() => {
     const st = useGameStore.getState();
+    const off = lookbookPassesOff();
     liveEffects(ctx && ctx.composer, fx);
-    applyPostTier(fx, TIERS[st.qualityTier] || TIERS.low, st.sunAboveHorizon);
+    applyPostTier(fx, TIERS[st.qualityTier] || TIERS.low, st.sunAboveHorizon, off);
+    applyPassesOff(ctx && ctx.composer, off, offHeld);
   });
   useEffect(() => {
     if (!import.meta.env.DEV) return;

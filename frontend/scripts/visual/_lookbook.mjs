@@ -236,6 +236,151 @@ export function passSummary(report, gameCanvas) {
   };
 }
 
+/**
+ * THE WHOLE-FRAME DIFFERENTIAL (lookbook.mjs --passes; plan docs/superpowers/plans/2026-10-28-crafty-w2i-passes.md).
+ * Each arm switches the named passes off through the seam (src/render/passesOff.js LOOKBOOK_PASS_NAMES).
+ */
+export const PASS_ARMS = Object.freeze([
+  { id: 'n8ao', off: ['n8ao'] },
+  { id: 'godrays+sun', off: ['godrays', 'sun'] },
+  { id: 'bloom', off: ['bloom'] },
+  { id: 'smaa', off: ['smaa'] },
+  { id: 'tonemapping', off: ['tonemapping'] },
+  { id: 'grade', off: ['grade'] },
+  { id: 'vignette', off: ['vignette'] },
+]);
+/** Noon, golden hour (GodRays is horizon-gated, so it runs only while the sun is up) and midnight, dawn-origin. At
+ *  golden hour the player faces the sun, where GodRays shows; otherwise north, the lodge wall and the forest edge. */
+export const PASS_TIMES = Object.freeze([
+  { id: 'noon', cycle: 0.25, face: 'north' },
+  { id: 'golden', cycle: 0.48, face: 'sun' },
+  { id: 'midnight', cycle: 0.75, face: 'north' },
+]);
+export const PASS_REPS = 5;
+/** Kevin's laptop window, the case render/quality.js derives the pixel budgets from: at tier high, dpr 1.475, 4.2 Mpx. */
+export const PASS_TARGET = Object.freeze({ id: 'chromium-1728x1117', engine: 'chromium', viewport: { width: 1728, height: 1117 }, deviceScaleFactor: 2, touch: false });
+/** The before/after frames shot for the plan's two named candidates, at the times their look depends on. */
+export const PASS_LOOK_PAIRS = Object.freeze([
+  { time: 'golden', arm: 'godrays+sun', face: 'sun' },
+  { time: 'noon', arm: 'godrays+sun', face: 'sun' },
+  { time: 'noon', arm: 'n8ao', face: 'north' },
+  { time: 'golden', arm: 'n8ao', face: 'sun' },
+  { time: 'midnight', arm: 'n8ao', face: 'north' },
+]);
+/** No block starts while the 1-minute load average is above this (the lane's measurement rule). */
+export const PASS_MAX_LOAD = 12;
+/** A positive control, not a decision: every post pass off at once, which must move every instrument a long way. */
+export const PASS_CONTROL = Object.freeze({ id: 'all-post', off: ['bloom', 'godrays', 'grade', 'n8ao', 'smaa', 'sun', 'tonemapping', 'vignette'], control: true });
+
+/**
+ * PURE. The GPU's own busy figures out of `ioreg -r -d 1 -w 0 -c IOAccelerator` (the driver's PerformanceStatistics,
+ * readable without root; Activity Monitor's GPU history reads the same): percent of the last driver interval the GPU
+ * was busy, whole device and the renderer and tiler stages. Null when the text carries no device figure.
+ */
+export function parseGpuUtil(text) {
+  const n = (key) => {
+    const m = String(text ?? '').match(new RegExp(`"${key} %"=(\\d+)`));
+    return m ? Number(m[1]) : null;
+  };
+  const device = n('Device Utilization');
+  return device === null ? null : { device, renderer: n('Renderer Utilization'), tiler: n('Tiler Utilization') };
+}
+
+/**
+ * PURE. GPU busy ms per frame over a utilization window: the median device percent of the samples taken after
+ * `skipMs` (the driver's figure lags), times the window's mean frame interval. Null without frames or samples.
+ */
+export function gpuMsPerFrame(samples, { frames, windowMs, skipMs = 500 } = {}) {
+  const pct = medianOf((samples || []).filter((s) => s.t >= skipMs && s.util).map((s) => s.util.device));
+  if (pct === null || !(frames > 0) || !(windowMs > 0)) return null;
+  return { pct, intervalMs: windowMs / frames, ms: (pct / 100) * (windowMs / frames), n: (samples || []).filter((s) => s.t >= skipMs && s.util).length };
+}
+
+/** The windows for one time of day, repetition-major (each arm once per repetition), on and off alternating by
+ *  repetition so a drift over the block lands on both arms alike: [{ arm, off, rep, state }]. */
+export function passWindowPlan(arms = PASS_ARMS, reps = PASS_REPS) {
+  const out = [];
+  for (let rep = 0; rep < reps; rep++) {
+    for (const arm of arms) {
+      const order = rep % 2 === 0 ? ['on', 'off'] : ['off', 'on'];
+      for (const state of order) out.push({ arm: arm.id, off: state === 'off' ? [...arm.off] : [], rep, state });
+    }
+  }
+  return out;
+}
+
+/** The game canvas's median for `label` out of a passTimes() report (the timer's p50 over the window), or null. */
+export function windowMedian(report, label, gameCanvas) {
+  const ctxs = report?.contexts || [];
+  const same = (c) => Array.isArray(c) && Array.isArray(gameCanvas) && c[0] === gameCanvas[0] && c[1] === gameCanvas[1];
+  const area = (c) => (Array.isArray(c) ? c[0] * c[1] : 0);
+  const ctx = ctxs.find((x) => same(x.canvas)) || [...ctxs].sort((x, y) => area(y.canvas) - area(x.canvas))[0];
+  const p = ctx?.passes?.find((x) => x.label === label);
+  return p && Number.isFinite(p.p50Ms) ? { ms: p.p50Ms, n: p.n } : null;
+}
+
+const medianOf = (xs) => {
+  const s = [...xs].sort((a, b) => a - b);
+  if (!s.length) return null;
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+const statsOf = (values) => ({
+  values, n: values.length, median: medianOf(values),
+  min: values.length ? Math.min(...values) : null, max: values.length ? Math.max(...values) : null,
+  positive: values.filter((v) => v > 0).length,
+});
+
+/**
+ * PURE. One arm's differential from measured windows ([{ arm, rep, state, q, w, valid }], `q` the whole-frame query
+ * median and `w` the synced wall median of each window): per repetition with both a valid `on` and a valid `off`,
+ * `d = on - off` on each instrument. A repetition missing either half counts for nothing.
+ */
+export function passDifferential(windows, arm) {
+  const reps = new Map();
+  for (const x of windows) {
+    if (x.arm !== arm || !x.valid || !Number.isFinite(x.q) || !Number.isFinite(x.w)) continue;
+    if (!reps.has(x.rep)) reps.set(x.rep, {});
+    reps.get(x.rep)[x.state] = x;
+  }
+  const pairs = [...reps.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v).filter((v) => v.on && v.off);
+  // `u`, GPU busy ms per frame from the driver's utilization, where the windows carry it; its own pairs.
+  const uPairs = pairs.filter((p) => Number.isFinite(p.on.u) && Number.isFinite(p.off.u));
+  return {
+    arm,
+    reps: pairs.length,
+    q: statsOf(pairs.map((p) => p.on.q - p.off.q)),
+    w: statsOf(pairs.map((p) => p.on.w - p.off.w)),
+    u: statsOf(uPairs.map((p) => p.on.u - p.off.u)),
+    onQ: medianOf(pairs.map((p) => p.on.q)), offQ: medianOf(pairs.map((p) => p.off.q)),
+    onW: medianOf(pairs.map((p) => p.on.w)), offW: medianOf(pairs.map((p) => p.off.w)),
+    onU: medianOf(uPairs.map((p) => p.on.u)), offU: medianOf(uPairs.map((p) => p.off.u)),
+  };
+}
+
+/** The rule (plan 2026-10-28-crafty-w2i-passes, "The decision rule"), fixed before the measurement. */
+export const PASS_RULE = Object.freeze({ minReps: 5, minMs: 0.5, minShare: 0.10, minPositiveShare: 0.8, agreeMs: 0.25, agreeFraction: 0.5 });
+
+/** PURE. Whether an arm's cost is material by PASS_RULE, with every reason it is not. */
+export function passVerdict(d, rule = PASS_RULE) {
+  const why = [];
+  const q = d.q.median, w = d.w.median;
+  if (d.reps < rule.minReps) why.push(`${d.reps} complete repetitions, fewer than ${rule.minReps}`);
+  let agree = false;
+  if (Number.isFinite(q) && Number.isFinite(w)) {
+    const big = Math.max(Math.abs(q), Math.abs(w));
+    const tol = Math.max(rule.agreeMs, rule.agreeFraction * big);
+    // Opposite signs cannot pass this unless both are under agreeMs: their difference is at least the larger of the two.
+    agree = Math.abs(q - w) <= tol;
+  }
+  if (!agree) why.push(`the instruments disagree (query ${q}, wall ${w})`);
+  const share = Number.isFinite(q) && d.onQ > 0 ? q / d.onQ : null;
+  if (!(q >= rule.minMs)) why.push(`under ${rule.minMs} ms (query ${q})`);
+  if (!(share >= rule.minShare)) why.push(`under ${Math.round(rule.minShare * 100)}% of the frame (${share === null ? '?' : `${(share * 100).toFixed(1)}%`})`);
+  if (d.q.positive < Math.ceil(rule.minPositiveShare * d.reps) || d.reps === 0) why.push(`${d.q.positive} of ${d.reps} repetitions positive`);
+  return { agree, share, material: why.length === 0, why };
+}
+
 const SOFTWARE_RE = /swiftshader|llvmpipe|softpipe|software rasterizer|microsoft basic render/i;
 const NAMES_NO_DEVICE_RE = /^(webkit webgl|unknown|no webgl2?)$/i;
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { PerspectiveCamera, Vector3, MathUtils, Object3D } from 'three';
-import { EffectComposer, EffectPass, VignetteEffect, ToneMappingEffect } from 'postprocessing';
+import { EffectComposer, EffectPass, VignetteEffect, ToneMappingEffect, BloomEffect, BlendFunction } from 'postprocessing';
 import { World } from 'miniplex';
 import {
   parseLookbookParam,
@@ -13,8 +13,11 @@ import {
   yawForHeading,
   headingOf,
   hostileReach,
+  lookbookPassesOff,
+  sunBearing,
   _resetLookbookForTest,
 } from '../../src/render/lookbookSeam.js';
+import { applyPassesOff, LOOKBOOK_PASS_NAMES } from '../../src/render/passesOff.js';
 import { createPassTimer, installPassTimer } from '../../src/render/passTimer.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { setActive, getActiveSnapshot, resetInput } from '../../src/input/inputState.js';
@@ -97,7 +100,7 @@ describe('the gate: ?lookbook=1 exactly, and nothing installed without it', () =
     expect(closed.__craftyLookbook).toBeUndefined();
     const open = fakeWin('?lookbook=1');
     expect(installLookbookSeam(open, deps())).toBe(true);
-    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'info', 'look', 'passTimes', 'play', 'pose', 'setCycle', 'stand']);
+    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'info', 'look', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
     // Installing changes nothing by itself: no pose is set until a script asks.
     expect(lookbookPose()).toBeNull();
     expect(lookbookPinned()).toBe(false);
@@ -387,14 +390,92 @@ describe('passTimes(): nothing is timed until a script asks', () => {
     installLookbookSeam(w, { ...deps(), loadPassTimer: async () => { loads += 1; return { installPassTimer }; } });
     try {
       expect(loads, 'installing the seam loaded the timer: the power A/B hold would pay for it in one arm').toBe(0);
-      expect(await w.__craftyLookbook.passTimes()).toEqual({ installed: true, contexts: [] });
-      expect(await w.__craftyLookbook.passTimes({ reset: true })).toEqual({ installed: true, contexts: [] });
+      expect(await w.__craftyLookbook.passTimes()).toEqual({ installed: true, mode: 'segments', contexts: [] });
+      expect(await w.__craftyLookbook.passTimes({ reset: true })).toEqual({ installed: true, mode: 'segments', contexts: [] });
       expect(loads, 'the timer was loaded more than once').toBe(1);
+      // The mode is set before the window the call starts, so `{ mode, reset: true }` opens a window in that mode.
+      expect((await w.__craftyLookbook.passTimes({ mode: 'frame', reset: true })).mode).toBe('frame');
+      expect((await w.__craftyLookbook.passTimes()).mode).toBe('frame');
+      await expect(w.__craftyLookbook.passTimes({ mode: 'often' })).rejects.toThrow(/mode/);
     } finally {
       installPassTimer().uninstall();
     }
   });
 });
+
+/**
+ * passesOff(): one named pass switched off for the whole-frame differential (plan 2026-10-28-crafty-w2i-passes). The seam
+ * only holds the set; render/postFx.jsx applyPassesOff and render/Sun.jsx read it. Driven here on REAL postprocessing
+ * effects in a real EffectPass, because what makes "off" mean what a deletion would is postprocessing's own behaviour:
+ * an effect whose blend function is SKIP leaves the merged shader, and a pass with nothing left skips its draw, but
+ * EffectPass.render still calls every effect's update(), which is where Bloom's and GodRays' own render passes run.
+ */
+describe('info().sun: the bearing a shot faces to have the sun in view', () => {
+  it('reads a direction in the HUD compass convention, with its elevation, and null without a reader', () => {
+    const r = (d) => { const b = sunBearing(d); return [Math.round(b.heading), Math.round(b.elevationDeg)]; };
+    expect(r([0, 0, -1])).toEqual([0, 0]);
+    expect(r([1, 0, 0])).toEqual([90, 0]);
+    expect(r([0, 0, 1])).toEqual([180, 0]);
+    expect(r([-1, 1, 0])).toEqual([270, 45]);
+    expect(sunBearing([NaN, 0, 0])).toBeNull();
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, { ...deps(), sunDir: () => [0, Math.sin(Math.PI / 6), -Math.cos(Math.PI / 6)] });
+    expect(Math.round(w.__craftyLookbook.info().sun.elevationDeg)).toBe(30);
+    const bare = fakeWin('?lookbook=1');
+    installLookbookSeam(bare, deps());
+    expect(bare.__craftyLookbook.info().sun).toBeNull();
+  });
+});
+
+describe('passesOff(): a named pass off for the differential, everything restored after', () => {
+  it('holds the names the seam knows, refuses an unknown one, and is empty for every player', () => {
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, deps());
+    expect([...lookbookPassesOff()]).toEqual([]);
+    expect(w.__craftyLookbook.passesOff(['smaa', 'bloom'])).toEqual(['bloom', 'smaa']);
+    expect([...lookbookPassesOff()].sort()).toEqual(['bloom', 'smaa']);
+    expect(() => w.__craftyLookbook.passesOff(['bloom', 'lensflare'])).toThrow(/lensflare/);
+    expect([...lookbookPassesOff()].sort(), 'a refused call changed the set').toEqual(['bloom', 'smaa']);
+    expect(w.__craftyLookbook.passesOff([])).toEqual([]);
+    expect(lookbookPassesOff().size).toBe(0);
+    expect(LOOKBOOK_PASS_NAMES.length, 'no pass can be switched off').toBeGreaterThan(0);
+  });
+
+  it('applyPassesOff skips an effect\'s blend and its update(), disables a pass, and restores both', () => {
+    let bloomUpdates = 0;
+    const bloom = new BloomEffect();
+    bloom.update = () => { bloomUpdates += 1; };
+    const vignette = new VignetteEffect();
+    const blend = bloom.blendMode.blendFunction;
+    const fx = new EffectPass(new PerspectiveCamera(), bloom, vignette);
+    const ao = { name: 'Pass', configuration: { aoRadius: 1 }, enabled: true };
+    const composer = { passes: [{ name: 'RenderPass', enabled: true }, ao, fx] };
+    const state = new Map();
+    const renderer = { setRenderTarget() {}, render() {} };
+    const frame = () => fx.render(renderer, { texture: {} }, { texture: {} }, 0.016);
+
+    frame();
+    expect(bloomUpdates, 'the rig does not call update()').toBe(1);
+    expect(applyPassesOff(composer, new Set(['bloom', 'n8ao']), state)).toBe(true);
+    expect(bloom.blendMode.blendFunction).toBe(BlendFunction.SKIP);
+    expect(vignette.blendMode.blendFunction, 'an effect not named was switched off').not.toBe(BlendFunction.SKIP);
+    expect(ao.enabled).toBe(false);
+    frame();
+    expect(bloomUpdates, 'an effect switched off still ran its update()').toBe(1);
+    expect(applyPassesOff(composer, new Set(['bloom', 'n8ao']), state), 'an unchanged frame wrote again').toBe(false);
+
+    expect(applyPassesOff(composer, new Set(), state)).toBe(true);
+    expect(bloom.blendMode.blendFunction).toBe(blend);
+    expect(ao.enabled).toBe(true);
+    frame();
+    expect(bloomUpdates, 'a restored effect did not run its update()').toBe(2);
+    expect(state.size, 'the restore left something held').toBe(0);
+    expect(applyPassesOff(composer, new Set(), state), 'an empty set with nothing held did any work').toBe(false);
+  });
+});
+
+/** What one fake sync (a 1-pixel readPixels) costs on the fake wall clock. */
+const SYNC_MS = 0.5;
 
 /** A WebGL 2 stand-in with the timer extension. A draw adds its cost to the TIME_ELAPSED query that is open, and
  *  opening a second one throws, as a real context raises INVALID_OPERATION. */
@@ -405,18 +486,27 @@ function fakeTimerGl({ ext = true } = {}) {
     QUERY_RESULT_AVAILABLE: 0x8867,
     canvas: { width: 2560, height: 1600 },
     queries: [], open: null, disjoint: false, ready: true, begun: 0, drawnMs: 0,
+    // `clock` is the wall clock a test hands the timer: a draw takes its ms, a sync SYNC_MS; `events` is the order.
+    clock: 0, syncs: 0, events: [],
+    RGBA: 0x1908, UNSIGNED_BYTE: 0x1401,
     getExtension(name) { return ext && name === 'EXT_disjoint_timer_query_webgl2' ? EXT : null; },
     createQuery() { const q = { ns: 0 }; this.queries.push(q); return q; },
     beginQuery(target, q) {
       if (target !== EXT.TIME_ELAPSED_EXT) throw new Error(`beginQuery: unexpected target ${target}`);
       if (this.open) throw new Error('INVALID_OPERATION: a TIME_ELAPSED query is already open');
-      q.ns = 0; this.open = q; this.begun += 1;
+      q.ns = 0; this.open = q; this.begun += 1; this.events.push('begin');
     },
     endQuery(target) {
       if (target !== EXT.TIME_ELAPSED_EXT || !this.open) throw new Error('INVALID_OPERATION: no query open');
-      this.open = null;
+      this.open = null; this.events.push('end');
     },
-    draw(ms) { this.drawnMs += ms; if (this.open) this.open.ns += ms * 1e6; },
+    draw(ms) { this.drawnMs += ms; this.clock += ms; if (this.open) this.open.ns += ms * 1e6; this.events.push('draw'); },
+    readPixels(x, y, w, h, format, type, out) {
+      if (w !== 1 || h !== 1 || format !== this.RGBA || type !== this.UNSIGNED_BYTE || !(out instanceof Uint8Array)) {
+        throw new Error(`readPixels: not a 1-pixel RGBA8 sync (${w}x${h}, ${format}, ${type})`);
+      }
+      this.syncs += 1; this.clock += SYNC_MS; this.events.push('sync');
+    },
     getQueryParameter(q, pname) { return pname === this.QUERY_RESULT_AVAILABLE ? this.ready : q.ns; },
     getParameter(pname) { return pname === EXT.GPU_DISJOINT_EXT ? this.disjoint : null; },
   };
@@ -633,6 +723,122 @@ describe('the pass timer through the real EffectComposer.prototype.render', () =
       expect(gl.drawnMs, 'the frame was not rendered').toBeCloseTo(4 + 0.125 + 1.5 + 0.25 + 0.75, 9);
       expect(gl.queries.length).toBe(0);
       expect(handle.report().contexts[0]).toMatchObject({ available: false, reason: expect.stringMatching(/not exposed/), passes: [] });
+      // The chain the composer rendered is listed with or without the extension (prod-smoke reads it on SwiftShader).
+      expect(handle.report().contexts[0].chain).toEqual([
+        { label: '0:RenderPass', enabled: true },
+        { label: '1:N8AO', enabled: true },
+        { label: '2:EffectPass(VignetteEffect+ToneMappingEffect)', enabled: true },
+      ]);
+    } finally {
+      handle.uninstall();
+    }
+  });
+});
+
+/**
+ * THE WHOLE-FRAME MODE (plan docs/superpowers/plans/2026-10-28-crafty-w2i-passes.md, T2). The per-segment readings
+ * summed to more than their window on ANGLE-Metal, so a pass is decided on the whole frame with it on minus off. Two
+ * instruments per frame: one TIME_ELAPSED query around the WHOLE composer.render (`frame`), opened after a sync so the
+ * GPU is idle when it opens; and the wall clock between that sync and a second one after the render (`frame:wall`),
+ * which needs no timer extension.
+ */
+describe('the pass timer\'s whole-frame mode', () => {
+  const FRAME_MS = 4 + 0.125 + 1.5 + 0.25 + 0.75; // what rig() draws in one frame
+  function rigFrame(gl) {
+    const renderer = {
+      targets: [],
+      getContext: () => gl,
+      setRenderTarget(t) { this.targets.push(t); },
+      render(scene, camera) {
+        scene.onBeforeRender(renderer, scene, camera);
+        gl.draw(scene.userData.ms ?? 0);
+        scene.onAfterRender(renderer, scene, camera);
+      },
+    };
+    const vignette = new VignetteEffect();
+    vignette.update = () => gl.draw(0.25);
+    const fx = new EffectPass(new PerspectiveCamera(), vignette, new ToneMappingEffect());
+    fx.scene.userData.ms = 0.75;
+    const composer = Object.create(EffectComposer.prototype);
+    Object.assign(composer, {
+      renderer,
+      passes: [
+        { name: 'RenderPass', enabled: true, needsSwap: false, needsDepthBlit: true, render: () => gl.draw(4) },
+        { name: 'Pass', configuration: { aoRadius: 1.2 }, enabled: true, needsSwap: true, render: () => gl.draw(1.5) },
+        fx,
+      ],
+      inputBuffer: { texture: {} }, outputBuffer: { texture: {} }, copyPass: null, depthRenderTarget: {},
+      blitDepthBuffer: () => gl.draw(0.125),
+    });
+    return composer;
+  }
+
+  it('times each composer.render as ONE query and the synced wall clock, with no segment inside it', () => {
+    const gl = fakeTimerGl();
+    const composer = rigFrame(gl);
+    const handle = installPassTimer(EffectComposer, { now: () => gl.clock });
+    try {
+      composer.render(0.016); // segments mode: instruments the chain
+      handle.setMode('frame');
+      handle.report({ reset: true });
+      gl.events = [];
+      composer.renderer.targets = [];
+      const frames = 30;
+      for (let i = 0; i < frames; i++) composer.render(0.016);
+      const ctx = handle.report().contexts[0];
+      expect(ctx.mode).toBe('frame');
+      expect(ctx).toMatchObject({ frames, skipped: 0, disjoint: 0, dropped: 0 });
+      const byLabel = msByLabel(ctx).sort((a, b) => a.label.localeCompare(b.label));
+      expect(byLabel, 'a segment was timed in frame mode, or the frame was not one query').toEqual([
+        { label: 'frame', n: frames, meanMs: FRAME_MS },
+        // The wall runs from after the first sync to after the second: this frame's work plus ONE sync.
+        { label: 'frame:wall', n: frames, meanMs: FRAME_MS + SYNC_MS },
+      ]);
+      expect(gl.syncs, 'not one sync before and one after each frame').toBe(2 * frames);
+      const one = gl.events.slice(0, gl.events.indexOf('sync', gl.events.indexOf('end')) + 1);
+      expect(one, 'the query does not open after a sync and close before the second').toEqual(
+        ['sync', 'begin', 'draw', 'draw', 'draw', 'draw', 'draw', 'end', 'sync'],
+      );
+      // The sync reads the screen: three is asked for the default framebuffer first, through its own state cache.
+      expect(composer.renderer.targets[0]).toBe(null);
+      // And back: segments land again and the frame query stops.
+      handle.setMode('segments');
+      handle.report({ reset: true });
+      composer.render(0.016);
+      const seg = handle.report().contexts[0];
+      expect(seg.mode).toBe('segments');
+      expect(seg.passes.map((p) => p.label)).toEqual([
+        '0:RenderPass', 'depth blit', '1:N8AO',
+        '2:EffectPass(VignetteEffect+ToneMappingEffect) > VignetteEffect.update',
+        '2:EffectPass(VignetteEffect+ToneMappingEffect) > ToneMappingEffect.update',
+        '2:EffectPass(VignetteEffect+ToneMappingEffect) > draw',
+      ]);
+      expect(() => handle.setMode('sometimes')).toThrow(/mode/);
+      // 'count': frames counted for a utilization window, with no query and no sync to perturb the frame.
+      handle.setMode('count');
+      handle.report({ reset: true });
+      const [begun, syncs] = [gl.begun, gl.syncs];
+      for (let i = 0; i < 5; i++) composer.render(0.016);
+      const counted = handle.report().contexts[0];
+      expect(counted).toMatchObject({ mode: 'count', frames: 5, passes: [] });
+      expect([gl.begun - begun, gl.syncs - syncs], 'count mode opened a query or synced').toEqual([0, 0]);
+    } finally {
+      handle.uninstall();
+    }
+  });
+
+  it('without the extension, frame mode still renders and still records the synced wall', () => {
+    const gl = fakeTimerGl({ ext: false });
+    const composer = rigFrame(gl);
+    const handle = installPassTimer(EffectComposer, { now: () => gl.clock });
+    try {
+      handle.setMode('frame');
+      for (let i = 0; i < 3; i++) composer.render(0.016);
+      expect(gl.drawnMs).toBeCloseTo(3 * FRAME_MS, 9);
+      const ctx = handle.report().contexts[0];
+      expect(ctx.available).toBe(false);
+      expect(gl.queries.length).toBe(0);
+      expect(msByLabel(ctx)).toEqual([{ label: 'frame:wall', n: 3, meanMs: FRAME_MS + SYNC_MS }]);
     } finally {
       handle.uninstall();
     }

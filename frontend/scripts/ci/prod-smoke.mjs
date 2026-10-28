@@ -105,7 +105,7 @@ export function glVerdict(count, frames, ledger) {
 }
 
 /** The seam methods scripts/visual/lookbook.mjs calls. */
-export const LOOKBOOK_SEAM_METHODS = Object.freeze(['clear', 'clearHostiles', 'info', 'look', 'passTimes', 'play', 'pose', 'setCycle', 'stand']);
+export const LOOKBOOK_SEAM_METHODS = Object.freeze(['clear', 'clearHostiles', 'info', 'look', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
 
 /**
  * PURE: the verdict on the lookbook seam in the production bundle. The lookbook judges looks on this bundle, through
@@ -368,6 +368,31 @@ export function programVerdict(readings, watched = WATCHED_PROGRAMS) {
   return { ok: true, line: `shader programs: all ${n} linked (${deleted} deleted before the read); drawn with their uniforms: ${drawnCounts.join(', ')}` };
 }
 
+/**
+ * THE POST CHAIN THE SHIPPED BUNDLE RENDERS (DECISIONS 2026-10-28, the W2-I items). The pass timer lists the chain each
+ * composer.render runs, with or without a timer extension (src/render/passTimer.js `chain`), so this reads the
+ * composer the production build actually built, on the game canvas, after play began: postprocessing's own effect
+ * names, which survive the minifier. `present` is the presence half: a chain the reader cannot see (no composer, a
+ * renamed effect) fails as COULD NOT CHECK instead of passing the absence half on nothing.
+ */
+export const CHAIN_PRESENT = Object.freeze(['RenderPass', 'BloomEffect', 'SMAAEffect', 'ToneMappingEffect']);
+export const CHAIN_ABSENT = Object.freeze([]);
+
+/** PURE: the verdict on the largest canvas's chain out of a passTimes() report. */
+export function chainVerdict(report, { present = CHAIN_PRESENT, absent = CHAIN_ABSENT } = {}) {
+  const fail = (why, control = false) => ({ ok: false, control, line: `post chain: ${why}` });
+  const area = (c) => (Array.isArray(c) ? c[0] * c[1] : 0);
+  const ctx = [...(report?.contexts || [])].filter((c) => Array.isArray(c.chain)).sort((a, b) => area(b.canvas) - area(a.canvas))[0];
+  if (!ctx) return fail('COULD NOT CHECK — no composer reported a chain', true);
+  const labels = ctx.chain.map((p) => p.label);
+  const has = (name) => labels.some((l) => new RegExp(`(^\\d+:|[(+])${name}([)+]|$)`).test(l));
+  const missing = present.filter((n) => !has(n));
+  if (missing.length) return fail(`COULD NOT CHECK — the chain [${labels.join(', ')}] lacks ${missing.join(', ')}`, true);
+  const back = absent.filter(has);
+  if (back.length) return fail(`${back.join(', ')} is back in the chain the shipped bundle renders: [${labels.join(', ')}]`);
+  return { ok: true, line: `post chain: [${labels.join(', ')}]${absent.length ? `; none of ${absent.join(', ')}` : ''}` };
+}
+
 /** PURE: is this console/page message worth failing over? */
 export function isFatalMessage(text) {
   if (!text) return false;
@@ -579,6 +604,15 @@ if (isCli) {
     const pv = programVerdict(links, WATCHED_PROGRAMS);
     console.log(`prod-smoke: ${pv.line}`);
     if (!pv.ok) errors.push(pv.control ? `${pv.line} (world built: ${worldBuilt}; ${staged}; eye ${JSON.stringify(eye)})` : pv.line);
+
+    // THE POST CHAIN — see chainVerdict. The timer installed by the seam check above has listed every composer.render
+    // since, so this is the chain the game canvas just drew.
+    const chainReport = await page.evaluate(async () => {
+      try { return await window.__craftyLookbook.passTimes(); } catch (e) { return { contexts: [], error: String((e && e.message) || e) }; }
+    });
+    const cv = chainVerdict(chainReport);
+    console.log(`prod-smoke: ${cv.line}`);
+    if (!cv.ok) errors.push(cv.control ? `${cv.line} (world built: ${worldBuilt}; ${staged})` : cv.line);
   } catch (e) {
     errors.push(`threw: ${e && e.message ? e.message : e}`);
   } finally {
