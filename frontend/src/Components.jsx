@@ -219,7 +219,7 @@ export const Player = ({ isWorldBuilt }) => {
       // KEVIN-FIX C1 (the respawn deadlock): chunk streaming keys on the CAMERA — moving
       // only the body left origin chunks unloaded after a far-from-spawn death, so the
       // ground probe nulled forever and the frame loop starved before movement code.
-      camera.position.set(0, 121.2, 0);
+      camera.position.set(0, 120 + EYE_HEIGHT_M, 0);
     }
     lastAliveRef.current = isAlive;
   }, [isAlive]);
@@ -235,14 +235,14 @@ export const Player = ({ isWorldBuilt }) => {
     // While a heavy is CHARGING the arm is drawn back: no light swing (T tapped during a mouse hold, or LMB during a
     // T hold). It used to swing — and start the 300 ms cooldown that then silently ate the charged release (the T
     // tapped late in the hold, as it lands under load: release 0).
-    // The cooldown runs on this handler clock; a charged release is exempt from it (game/heavyAttack.meleeRefusal,
-    // review round 3): a press handled late and lifted soon after is a full charge on the finger, and the cooldown its
-    // own light swing started used to drop that heavy silently.
+    // The cooldown runs on this handler clock; a charged release is exempt from it: a press handled late and lifted
+    // soon after is a full charge on the finger, and the cooldown its own light swing started used to drop that heavy
+    // silently. So only a beast form's swing is asked meleeRefusal.
     // THE LIGHT STRING (game/meleeString.js): a human light swing asks the string, which owns its cooldown, its buffer and
     // its step. It does NOT also check lastAttackTime: a 300 ms check in front of pressSwing would refuse every press
     // inside the cooldown before it could buffer. A buffered press (bufferedStep) has already been through the string,
-    // and IS the tap of the hold the charge refusal would see, so it skips both. The heavy and a beast form's swing keep
-    // today's cooldown; a thrown heavy or a form's swing ends the string and holds the next light swing 300 ms.
+    // and IS the tap of the hold the charge refusal would see, so it skips both. A beast form's swing keeps its own
+    // cooldown; a thrown heavy or a form's swing ends the string and holds the next light swing 300 ms.
     // The gate is game/meleeString.js gateSwing: the string step of this swing (0 for a heavy or a beast form's swing),
     // or -1 for none.
     const step = gateSwing(now, {
@@ -250,7 +250,7 @@ export const Player = ({ isWorldBuilt }) => {
       form: !!beastEl,
       bufferedStep: opts?.bufferedStep || 0,
       heavyHeld: isHeavyHeld(),
-      refused: heavy || beastEl ? meleeRefusal(heavy, now, lastAttackTime.current, MELEE_COOLDOWN * formMeleeCooldownMult(beastEl)) : null,
+      refused: beastEl ? meleeRefusal(false, now, lastAttackTime.current, MELEE_COOLDOWN * formMeleeCooldownMult(beastEl)) : null,
     });
     if (step < 0) return;
     const shape = swingShape(step); // step 0 -> the light cone
@@ -931,7 +931,7 @@ export const Player = ({ isWorldBuilt }) => {
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       const translation = rigidBodyRef.current.translation();
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, translation.x, 0.85);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, translation.y + 1.2, 0.85);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, translation.y + EYE_HEIGHT_M, 0.85);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, translation.z, 0.85);
       return;
     }
@@ -978,7 +978,7 @@ export const Player = ({ isWorldBuilt }) => {
           resumeProbeFailsRef.current += 1;
           rigidBodyRef.current.setTranslation({ x: r.x, y: r.y, z: r.z }, true);
           rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          camera.position.set(r.x, r.y + 1.2, r.z);
+          camera.position.set(r.x, r.y + EYE_HEIGHT_M, r.z);
           return;
         }
         useGameStore.setState({ resumeSpawn: null }); // one-shot: placed, or given up for the origin spawn below
@@ -986,7 +986,7 @@ export const Player = ({ isWorldBuilt }) => {
         if (resume.place) {
           rigidBodyRef.current.setTranslation(resume.place, true);
           rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          camera.position.set(resume.place.x, resume.place.y + 1.2, resume.place.z);
+          camera.position.set(resume.place.x, resume.place.y + EYE_HEIGHT_M, resume.place.z);
           spawnPosSet.current = true;
           return;
         }
@@ -1016,7 +1016,7 @@ export const Player = ({ isWorldBuilt }) => {
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
 
       // Cancel skyfall lerp transition: set camera position instantly
-      camera.position.set(0, safeY + 1.2, 0);
+      camera.position.set(0, safeY + EYE_HEIGHT_M, 0);
 
       spawnPosSet.current = true;
       return;
