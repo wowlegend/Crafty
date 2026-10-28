@@ -50,6 +50,16 @@
 //   1 m long -> RED; B0 identity -> survived.
 //   Round-1 review f (40 tests): T2 teleportPlayer keeps the stance -> RED; T3 it never stops the body -> RED; the save
 //   load's own call is tests/store/stance-teleport.test.js.
+//   Round-2 review, the bound on the velocity the body is fed (43 tests). RED FIRST on 60665da1: through strafe
+//   reversals the velocity stanceWalk returned left the husk at up to 4.381 m/s (S+D / S+A every 100 ms, 8 ms frames;
+//   4.626 at 150 ms) and 2.483 on a release, 27 of 48 runs over the cap; and the blend-in case read 12.5 for 9.875. Then
+//   holdStepBound, each mutant against a green baseline: R1 the call dropped -> RED; R2 the bound hard at every weight
+//   -> RED; R3 the bound only at w === 1 -> RED; R4 the allowed reach without the target's own (a double blend) -> RED;
+//   R5 the limit without the walk slow -> RED (the heavy reversal); R6 the tangential part not pulled in -> RED; R7 the
+//   record written before the bound -> RED; R8 stanceVelocity re-run on the ramped velocity (the review's suggested
+//   form, which blends twice) -> RED; R9 the bound only while the stick moves -> RED; R10 the hard limit dropped -> RED;
+//   R11 the weight inverted, 1 - w -> RED; R12 the limit 1.5x the retreat cap -> RED; R0 identity (a comment edit) ->
+//   survived.
 import { describe, it, expect } from 'vitest';
 import {
   STANCE_CAPS, MIN_CLOSING_RATE, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
@@ -450,11 +460,17 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
 // OWN step never takes the body further from the threat than retreat x dt. This drives the controller's frame as
 // Components.jsx runs it: stanceFrame with this frame's body and the camera as the follow leaves it (lerped 0.85 toward
 // the PRE-move body, + 1.2), moveVector in a view kept on (or turned from) the husk, stanceWalk, then the body steps by
-// the applied velocity (no KCC, which only shortens a step). The husk chases at its pursuit speed straight at the body
-// AFTER the player's step, so it keeps qualifying; the bound is read across the player's step alone.
-// NOT MODELLED: the husk's own aim (the worker aims at 15 Hz, on octile A* cell centres), which can only lower its
-// closing speed; that is the mob's side of F1 and tests/gates/stance-pursuit-gates.test.js measures the real worker.
-describe('the F1 bound at every frame interval (round-1 review b)', () => {
+// the applied velocity. The husk chases at its pursuit speed straight at the body AFTER the player's step, so it keeps
+// qualifying; the bound is read across the player's step alone.
+// WHAT THIS PROVES IS THE PLAYER'S HALF OF F1 ONLY (round-2 review): the player's own step never leaves the husk faster
+// than the retreat cap. F1 also needs the husk to close, and that is NOT MODELLED here: the husk moves at its full
+// pursuit speed every frame, while the real AI worker caps a tick at 0.25 s (AIWorkerSystem.jsx), so above 250 ms
+// frames a husk covers speed x 0.25 / dt per second and above 375 ms a 3.0 m/s husk cannot close on a 2.0 backpedal at
+// all; and its aim is refreshed at 15 Hz on octile A* cell centres, which lowers its closing speed further. The mob's
+// side is tests/gates/stance-pursuit-gates.test.js (the real worker). NOR THE KCC: the body steps by the applied
+// velocity unobstructed, and the character controller's slide along a wall can raise a step's away part (round-2 review,
+// unmeasured), so the bound is on the velocity FED to the KCC, not on the movement it returns.
+describe('the F1 bound on the player\'s own step, at every frame interval (round-1 review b, round-2)', () => {
   const DTS = [1 / 120, 1 / 60, 1 / 30, 0.05, 0.1, 0.2, 0.3, 0.4];
   const CASES = [
     { name: 'S+D, view on the husk', keys: { moveB: true, moveR: true }, face: 1 },
@@ -464,33 +480,51 @@ describe('the F1 bound at every frame interval (round-1 review b)', () => {
     { name: 'S+D charging a heavy', keys: { moveB: true, moveR: true }, face: 1, walk: 0.55 },
   ];
   const SETTLE_S = 0.3;
+  // `keys` is a key set, or a function (frame, dt) -> key set for a sequence that changes them.
   function run(dt, { keys, face, walk = 1 }) {
     resetStance();
     const mob = { id: 'f1', isMob: true, type: 'zombie', passive: false, isAggro: true, health: 50, position: { x: 0, y: 50.5, z: -3 } };
     const body = { x: 0, y: 50.5, z: 0 };
     const camera = { position: { x: 0, y: 51.7, z: 0 } };
     const chase = pursuitSpeed('zombie');
-    let vel = { x: 0, z: 0 }, now = 10000, worst = -Infinity, judged = 0, gapMax = 0;
+    let vel = { x: 0, z: 0 }, now = 10000, worst = -Infinity, worstV = -Infinity, judged = 0, gapMax = 0;
+    // non-vacuity, read on the judged frames: how often the keys changed, how often the applied strafe changed side,
+    // the slowest applied speed, and how many frames the record disagreed with what stanceWalk returned
+    let keyFlips = 0, tanFlips = 0, minSpeed = Infinity, recordOff = 0, lastKeys = null, lastTan = 0;
     const frames = Math.ceil(3 / dt);
     for (let f = 0; f < frames; f++) {
+      const k = typeof keys === 'function' ? keys(f, dt) : keys;
       const st = stanceFrame([mob], body, camera, now, dt);
       const vx = mob.position.x - camera.position.x, vz = mob.position.z - camera.position.z;
-      const mv = moveVector(face * vx, face * vz, keys, BASE_MOVE_SPEED * walk);
+      const mv = moveVector(face * vx, face * vz, k, BASE_MOVE_SPEED * walk);
       vel = stanceWalk(mv, st, { moveMult: 1 }, walk, vel, dt);
       // the follow: Components.jsx lerps the camera toward the body translation read BEFORE this frame's step lands
       camera.position.x += (body.x - camera.position.x) * 0.85;
       camera.position.z += (body.z - camera.position.z) * 0.85;
       const g0 = Math.hypot(body.x - mob.position.x, body.z - mob.position.z);
+      // the away direction THIS test rebuilds from the raw positions the frame's step starts from, never st.awayX/Z
+      const ux = (body.x - mob.position.x) / g0, uz = (body.z - mob.position.z) / g0;
       body.x += vel.x * dt; body.z += vel.z * dt;
       const g1 = Math.hypot(body.x - mob.position.x, body.z - mob.position.z);
-      if (st.w === 1 && f * dt >= SETTLE_S) { worst = Math.max(worst, (g1 - g0) / dt); judged++; }
+      if (st.w === 1 && f * dt >= SETTLE_S) {
+        worst = Math.max(worst, (g1 - g0) / dt);
+        worstV = Math.max(worstV, vel.x * ux + vel.z * uz);
+        judged++;
+        if (lastKeys !== null && k !== lastKeys) keyFlips++;
+        const tan = -vel.x * uz + vel.z * ux;
+        if (Math.abs(tan) > 0.5) { if (lastTan !== 0 && Math.sign(tan) !== lastTan) tanFlips++; lastTan = Math.sign(tan); }
+        minSpeed = Math.min(minSpeed, Math.hypot(vel.x, vel.z));
+        const r = readMoveTarget();
+        if (r.appliedX !== vel.x || r.appliedZ !== vel.z) recordOff++;
+        lastKeys = k;
+      }
       // the husk closes straight on the body, and stops at 1 m
       const step = Math.min(chase * dt, Math.max(0, g1 - 1));
       mob.position.x += ((body.x - mob.position.x) / g1) * step; mob.position.z += ((body.z - mob.position.z) / g1) * step;
       gapMax = Math.max(gapMax, g1);
       now += dt * 1000;
     }
-    return { worst, judged, gapMax, frames, cap: STANCE_CAPS.retreat * walk };
+    return { worst, worstV, judged, gapMax, frames, keyFlips, tanFlips, minSpeed, recordOff, cap: STANCE_CAPS.retreat * walk };
   }
 
   it('the player\'s own step never leaves the husk faster than the retreat cap, from 8 ms to 400 ms frames, any keys', () => {
@@ -512,6 +546,77 @@ describe('the F1 bound at every frame interval (round-1 review b)', () => {
     for (const dt of DTS) {
       const r = run(dt, CASES[2]);
       expect(r.worst, `S at ${Math.round(dt * 1000)} ms`).toBeGreaterThan(STANCE_CAPS.retreat - 1e-6);
+    }
+  });
+
+  // Round-2 review (2026-10-28, REPRODUCED): the bound above held the stance's TARGET only. rampVelocity runs per WORLD
+  // axis after it, so when the strafe changes side the two axes ramp at different rates and the velocity the body is fed
+  // leans away from the threat: the review's probe read 4.4 m/s at 8 ms frames with S+D and S+A swapped every 100 ms.
+  // Releasing the keys mid-strafe does the same (each axis decelerates on its own). These sequences change the keys
+  // every `period` (at least every frame, so a long frame still sees them change) and judge what stanceWalk RETURNS,
+  // the velocity the controller feeds the KCC: its away component, and the away rate of the step it makes.
+  const every = (period, a, b) => (f, dt) => (Math.floor(f / Math.max(1, Math.round(period / dt))) % 2 === 0 ? a : b);
+  const SD = { moveB: true, moveR: true }, SA = { moveB: true, moveL: true };
+  const REVERSALS = [
+    { name: 'S+D / S+A every 100 ms, view on the husk', keys: every(0.1, SD, SA), face: 1, follows: 'reverse' },
+    { name: 'S+D / S+A every 150 ms, view on the husk', keys: every(0.15, SD, SA), face: 1, follows: 'reverse' },
+    { name: 'D / A every 100 ms, view on the husk', keys: every(0.1, { moveR: true }, { moveL: true }), face: 1, follows: 'reverse' },
+    { name: 'W+D / W+A every 100 ms, view turned from the husk', keys: every(0.1, { moveF: true, moveR: true }, { moveF: true, moveL: true }), face: -1, follows: 'reverse' },
+    { name: 'S+D / released every 100 ms, view on the husk', keys: every(0.1, SD, {}), face: 1, follows: 'release' },
+    { name: 'S+D / S+A every 100 ms charging a heavy', keys: every(0.1, SD, SA), face: 1, walk: 0.55, follows: 'reverse' },
+  ];
+
+  it('the velocity fed to the body holds the bound through strafe reversals and releases, from 8 ms to 400 ms frames', () => {
+    const rows = [];
+    for (const c of REVERSALS) for (const dt of DTS) rows.push({ c, dt, ...run(dt, c) });
+    const table = rows.map((r) => `${r.c.name} @${Math.round(r.dt * 1000)} ms: step ${r.worst.toFixed(3)}, velocity ${r.worstV.toFixed(3)} m/s`).join('; ');
+    console.info(`[stance F1 reversals] ${rows.length} (sequence x frame interval) runs, worst away rate: ${table}`);
+    expect(rows.length, 'the sweep shrank').toBe(REVERSALS.length * DTS.length);
+    for (const r of rows) {
+      const at = `${r.c.name} at a ${Math.round(r.dt * 1000)} ms frame`;
+      expect(r.judged, `SETUP: ${at}: no frame at full weight was judged`).toBeGreaterThan(0);
+      expect(r.gapMax, `SETUP: ${at}: the husk left the engage radius`).toBeLessThan(12);
+      expect(r.keyFlips, `SETUP: ${at}: the keys never changed while frames were judged`).toBeGreaterThanOrEqual(2);
+      // The applied velocity followed the keys, so a bound that froze or killed the walk cannot pass.
+      if (r.c.follows === 'reverse') expect(r.tanFlips, `${at}: the applied strafe never changed side with the keys`).toBeGreaterThanOrEqual(2);
+      else expect(r.minSpeed, `${at}: the applied velocity never slowed when the keys were released`).toBeLessThan(1);
+      expect(r.recordOff, `${at}: readMoveTarget's applied is not what stanceWalk returned (the e2e reads the record)`).toBe(0);
+    }
+    const over = rows.filter((r) => r.worst > r.cap + 1e-9 || r.worstV > r.cap + 1e-9);
+    expect(over.map((r) => `${r.c.name} @${Math.round(r.dt * 1000)} ms step ${r.worst.toFixed(3)} velocity ${r.worstV.toFixed(3)} (cap ${r.cap})`), `the velocity fed to the body left the husk faster than the retreat cap — ${table}`).toEqual([]);
+  });
+
+  // The bound after the ramp must not change the stance's blend. A bound that re-ran stanceVelocity on the ramped
+  // velocity would blend twice: its settled speed at a held weight would depend on the frame interval (3.0 m/s at
+  // 60 fps, 5.0 at 400 ms, for w = 0.5), not the single linear blend lerp(raw, cap, w) the enter and exit blends are.
+  const MOVING = (x, z) => ({ x, z, moving: true });
+  it('at a held weight the settled velocity is still the one linear blend, at every frame interval', () => {
+    for (const dt of DTS) {
+      for (const w of [0.25, 0.5, 0.75]) {
+        const st = { w, awayX: 1, awayZ: 0, gap: 3 };
+        let back = { x: 14, z: 0 };
+        for (let i = 0; i < Math.ceil(2 / dt); i++) back = stanceWalk(MOVING(14, 0), st, { moveMult: 1 }, 1, back, dt);
+        expect(back.x, `a held backpedal at w ${w}, ${Math.round(dt * 1000)} ms frames`).toBeCloseTo(14 + (STANCE_CAPS.retreat - 14) * w, 9);
+        const diag = MOVING(14 * Math.SQRT1_2, 14 * Math.SQRT1_2);
+        let v = { x: diag.x, z: diag.z };
+        for (let i = 0; i < Math.ceil(2 / dt); i++) v = stanceWalk(diag, st, { moveMult: 1 }, 1, v, dt);
+        const want = stanceVelocity(diag.x, diag.z, 1, 0, w, 1, 1, STANCE_CAPS, { x: 0, z: 0 }, 3, dt);
+        expect(v.x, `a held diagonal at w ${w}, ${Math.round(dt * 1000)} ms frames: x is not the stance's own target`).toBeCloseTo(want.x, 9);
+        expect(v.z, `a held diagonal at w ${w}, ${Math.round(dt * 1000)} ms frames: z is not the stance's own target`).toBeCloseTo(want.z, 9);
+      }
+    }
+  });
+
+  // And it comes in with the weight: identity at w = 0, the hard bound at w = 1, and in between the step's end is pulled
+  // in by w of its excess, so the last frames of the exit blend cannot jump. A released backpedal at 14 (the ramp alone
+  // decelerates it to 12.5 in a 60 Hz frame) has an excess of 10.5 m/s over the 2.0 cap.
+  it('the bound after the ramp blends in with the weight: a released backpedal is pulled in by w of its excess', () => {
+    const dt = 1 / 60;
+    const plain = 14 - 90 * dt;
+    for (const w of [0, 0.25, 0.5, 1]) {
+      const v = stanceWalk({ x: 0, z: 0, moving: false }, { w, awayX: 1, awayZ: 0, gap: 3 }, { moveMult: 1 }, 1, { x: 14, z: 0 }, dt);
+      expect(v.x, `w ${w}`).toBeCloseTo(plain - w * (plain - STANCE_CAPS.retreat), 9);
+      expect(v.z, `w ${w}`).toBeCloseTo(0, 12);
     }
   });
 });

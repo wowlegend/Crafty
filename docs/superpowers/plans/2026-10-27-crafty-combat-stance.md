@@ -1065,7 +1065,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   | S3 | `src/Components.jsx` | the cone arc fixed at `Math.PI / 2` | case 1 off-axis zombie |
   | S4 | `src/Components.jsx` | `cancelIntoDodge` → `endString` at the dodge start (plausible-wrong) | case 4 |
   | S5 | `src/Components.jsx` | the `takeBufferedSwing` line removed | case 3 |
-  | S6 | `src/Components.jsx` | `endString(now)` removed from `releaseHeavySwing` | case 5 |
+  | S6 | `src/game/meleeString.js` | gateSwing's `endString(now);` → `if (form) endString(now);` (taken from the heavy only; re-anchored 2026-10-28, see Implementation review, round 2) | case 5 |
   | S7 | `src/Components.jsx` | the router's `meleeHit` arc fixed at `Math.PI / 2` | case 6 |
   | S0 | `src/game/meleeString.js` | a comment edit (`--identity`) | must SURVIVE |
 
@@ -1173,9 +1173,9 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   | label | subject | mutation | catch |
   |---|---|---|---|
   | U1 | `src/game/windupChevrons.js` | `touchBottomInsetPx` returns 0 | case 3, an overlap with the action or jump button |
-  | U2 | `src/Components.jsx` | the string advanced in `handleMouseDown` instead of `triggerMeleeAttack` (plausible-wrong: desktop-only) | case 2 |
+  | U2 | `src/game/meleeString.js` | a desktop-only string: gateSwing's `if (!heavy && !form) {` gains `&& !navigator.maxTouchPoints` (re-anchored 2026-10-28) | case 2 |
   | U3 | `src/game/windupChevrons.js` | `SIDE_INSET_PX = 8` | case 3, portrait, the tray column |
-  | U4 | `src/Components.jsx` | `stanceVelocity` called only when `input.moveB` | case 1b |
+  | U4 | `src/Components.jsx` | the stance applied only when `input.moveB`: the `stanceWalk` call is handed `input.moveB ? stance : { w: 0, awayX: 0, awayZ: 0, gap: 0 }` (re-anchored 2026-10-28) | case 1b |
   | U0 | `src/game/windupChevrons.js` | a comment edit (`--identity`) | must SURVIVE |
 
 - [x] **Step 4: Commit** with the title "test(e2e): close-quarters combat on an emulated iPad — joystick backpedal, three-tap finisher, chevrons clear of every control" and a trailer.
@@ -1426,3 +1426,75 @@ were applied in an adapted form, with the reason given below.
     husk's 3.0. The receipt now names the real kills: the pursuer count, and `closingOver` throwing "empty
     denominator" on a skeleton that never moved, a throw added so that a NaN mean cannot pass as a measurement. S2d
     (the `RETREAT_FLOOR` throw removed) is the mutant that actually exercises a slower pursuer.
+
+## Implementation review, round 2 (2026-10-28)
+
+Two independent reviewers re-read round 1's fixes at `60665da1`: a static one and a repro one, which ran the unit
+tier only (workflow `wf_b6b8729a-406`). Fixes a and c to g hold at unit level, and every round-1 survivor now dies.
+What came back, and what this lane did with it:
+
+1. **MED, REPRODUCED, fixed: F1's bound held on the stance's TARGET only.** `rampVelocity` runs per world axis after
+   `stanceVelocity`'s step bound. When the strafe changes side, or the keys are released mid-strafe, the two axes
+   arrive at different times, and the velocity the body is fed leans away from the threat. Red first on `60665da1`
+   (`src/game/combatStance.test.js`, the reversal sweep): up to 4.381 m/s with S+D and S+A swapped every 100 ms at
+   8 ms frames, 4.626 with 150 ms swaps, and 2.483 on a release. 27 of 48 runs (sequence x frame interval) were over
+   the cap. The fix is `holdStepBound` in `stanceWalk`, in the pure seam. It runs the step bound again on the ramped
+   velocity. The allowed reach is the larger of the hard limit (gap + retreat x walkMult x dt) and the target's own
+   reach, and the step's end is pulled in by w of the excess. After the fix, every run reads 2.0 or under (1.1 while
+   charging a heavy), held keys are unchanged, and a pure backpedal still reaches the full 2.0. `applied` and the next
+   frame's `planarVel` are the bounded value. Two alternatives were rejected:
+   - **Re-running `stanceVelocity` on the ramped velocity** (the review's suggested form) blends twice. At a held
+     w = 0.5, a backpedal settles at 3.0 m/s at 60 fps and 5.0 at 400 ms frames, against the single blend's 8.0
+     (measured). The enter and exit blends would then depend on the frame rate. Mutant R8 is that form, and the
+     blend test kills it.
+   - **Ramping in the (away, tangent) frame** does not hold the bound. That frame turns as the player circles, and the
+     bound is a disc about the threat, which a per-axis step can leave.
+
+   The strafe and advance caps are still held on the target only, and the ramp may overshoot them while it turns
+   (not measured). That does not touch F1, which is radial.
+2. **LOW, narrowed, not fixed: `728038ab`'s "F1 holds at every frame rate".** It holds for the PLAYER'S OWN STEP.
+   F1 also needs the husk to close. The AI worker caps a tick at 0.25 s (`AIWorkerSystem.jsx`) while the player steps
+   by the whole frame, so above 250 ms frames a mob covers speed x 0.25 / dt per second. Above 375 ms (about 2.7 fps) a
+   3.0 m/s husk cannot close on the 2.0 backpedal at all: 3.0 x 0.25 / 0.4 = 1.875 at 400 ms. The husk's 15 Hz aim
+   on A* cell centres lowers its closing speed further and is unmeasured. Scoped in `combatStance.js` (the seam's
+   KNOWN LIMITS 1 and `stanceVelocity`'s docblock), and in the unit describe's name and header. The commit message
+   cannot be rewritten (no amend), so this entry is the correction of record.
+3. **MED, narrowed, not fixed: the call sites' ARGUMENTS in `src/Components.jsx`.** `a1899d12`'s "the call sites
+   become a unit-tested seam" holds for the seam's internals only, because the unit tests hand the seam their own
+   arguments. Each of the following survived the full unit suite (4229 tests) in the round-2 repro:
+   - **CS1 (= the static review's MW1):** `stanceFrame` handed `camera.position` as the body, which brings back
+     round-1 b's low-frame-rate kite (0% of frames in reach at 100 and 400 ms frames, in the reviewer's harness).
+   - **CW1 (= MW2):** `stanceWalk` handed a walkMult of 1, so charging a heavy retreats at 2.0, not 1.1.
+   - **CW2:** the form and walk swapped at the call.
+   - **CB1 (= MW3):** the KCC fed the raw move after `stanceWalk` returns.
+   - **CV1:** the void guard teleporting without `teleportPlayer`, so the stance is kept.
+   - **H-c:** the worker's `playerPos` posted 1.2 m low.
+   - **CF1:** `gateSwing` told `form: false`.
+   - **CF2:** the refusal computed for the heavy only, so a beast form's swings get no cooldown.
+
+   **What guards them, by reading the specs:** none is guarded by a unit test.
+   - `tests/e2e/combat-stance.spec.js` case 0 is the one deterministic e2e check on `stanceFrame`'s point, and it
+     pins only its HEIGHT (H1, H2, and so H-c). It compares x and z standing still, where the camera has converged on
+     the body, and `mobSensePoint` is the camera's position, so under CS1 the stance agrees with the worker exactly.
+     **CS1 is therefore NOT guarded by case 0**, contrary to how the round-2 brief phrased it.
+   - CS1 and CB1 can show only in a chase sub-assertion, which is judged only at a median frame interval of 250 ms or
+     less. `applied` is recorded inside `stanceWalk`, upstream of CB1.
+   - No e2e case charges a heavy in a fight (CW1), stages a void fall (CV1), or swings in a beast form (CF1, CF2:
+     `melee-string.spec.js` excludes forms).
+
+   Recorded as known limit 2 in `combatStance.js`. The reviewers' structural fixes are open, not taken: `stanceFrame`
+   reading the rigid body itself, `stanceWalk` taking the raw walk slows, `gateSwing` computing its own refusal, and an
+   e2e case 0 that compares x and z while the player moves.
+4. **LOW, PLAUSIBLE, unmeasured: the KCC's slide.** The bound is on the velocity FED to `computeColliderMovement`, and
+   a slide along a wall can raise a step's away part (the reviewer's arithmetic: about 4.25 m/s along an axis-aligned
+   wall with the husk diagonal to it). Known limit 3. The reviewer's Rapier probe was not run, so it is owed, as is a wall case in the e2e.
+5. **LOW, CONFIRMED, fixed: three OWED e2e receipts aimed at code that had moved.** The new anchors are each counted
+   unique in the tree, and the spec headers and the tables above match them.
+   - **S6:** `meleeString.js` gateSwing's `endString(now);` becomes `if (form) endString(now);`, taken from the heavy
+     only. A form's swing shares the line since `446099f4`.
+   - **U2:** `meleeString.js` gateSwing's `if (!heavy && !form) {` gains `&& !navigator.maxTouchPoints`.
+   - **U4:** the `stanceWalk` call in `Components.jsx` is handed
+     `input.moveB ? stance : { w: 0, awayX: 0, awayZ: 0, gap: 0 }`. `stanceWalk` never sees the keys, and
+     `input.moveB` inside it would be a ReferenceError, a crash rather than the plausible-wrong mutant.
+
+   The batches are still OWED to the command session.

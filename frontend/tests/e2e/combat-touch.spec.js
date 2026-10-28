@@ -27,13 +27,19 @@ import { bootDev, startPlayActive } from './_boot.js';
 //
 // Mutation-Proof: OWED (the Task 11 batch below, observed verdicts to be written here).
 //   U1 src/game/windupChevrons.js  touchBottomInsetPx returns 0                                 -> case 3 (the action or jump button)
-//   U2 src/Components.jsx          a desktop-only string: `if (!heavy && !beastEl) {` gains `&& !navigator.maxTouchPoints`
+//   U2 src/game/meleeString.js     a desktop-only string: gateSwing's `if (!heavy && !form) {` gains `&& !navigator.maxTouchPoints`
 //                                  (the plan's handleMouseDown no longer exists: mouse and touch share pressPrimary)   -> case 2
 //   U3 src/game/windupChevrons.js  SIDE_INSET_PX = 8                                           -> case 3, portrait (the tray column)
-//   U4 src/Components.jsx          stanceVelocity called only when input.moveB                  -> case 1b
+//   U4 src/Components.jsx          the stance applied only when input.moveB: the stanceWalk call is handed
+//                                  `input.moveB ? stance : { w: 0, awayX: 0, awayZ: 0, gap: 0 }`              -> case 1b
 //   U0 src/game/windupChevrons.js  a comment edit (identity)                                    -> must SURVIVE
+// U2 and U4 RE-ANCHORED (round-2 review, 2026-10-28): 446099f4 moved the light-path guard into game/meleeString.js
+// gateSwing (its `form` is Components' `!!beastEl`), and a1899d12 moved the stance call into game/combatStance.js
+// stanceWalk, which never sees the keys (it takes moveVector's output). A key-gated stance can only be written where the
+// keys are, so U4 gates the stance at the stanceWalk call in Components.jsx; `input.moveB` inside stanceWalk would be a
+// ReferenceError, a crash and not the plausible-wrong mutant this case exists for.
 // Round-1 review c (2026-10-28): case 1 and 1b also judge `applied`, the velocity the ramp fed the body, from SETTLE_MS
-// on, sampling past the catch until then. U4's call site moved into src/game/combatStance.js stanceWalk, which
+// on, sampling past the catch until then. The stance's clamp lives in src/game/combatStance.js stanceWalk, which
 // src/game/combatStance.test.js drives directly. The joystick case passed locally on a throwaway config (2026-10-28);
 // its first local run, with a 300 ms settle and the old stop-at-the-catch, read SETUP (a husk already adjacent at the
 // first sample), which is why both changed. No touch mutant was run here: the U batch is still OWED.

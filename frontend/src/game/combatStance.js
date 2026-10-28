@@ -95,9 +95,12 @@ const lerp = (a, b, t) => a + (b - a) * t;
  *                   t² dt / 2g m/s on top of the clamped retreat, which grows with the frame interval (3.4 m/s at a
  *                   400 ms frame at 2.5 m, against a husk that closes at 3.0). When the step would end further than
  *                   gapM + retreat x dtS from the threat, its end is pulled in radially to exactly that, which scales
- *                   the step's away and tangential parts down together. So the player's own step never takes the body
- *                   further from the threat than the retreat cap allows, at ANY frame rate; a pure retreat is
- *                   untouched, and at 60 fps the cost is a few cm/s of strafe. gapM 0 (unknown) skips the bound.
+ *                   the step's away and tangential parts down together. So the TARGET's step never takes the body
+ *                   further from the threat than the retreat cap allows, at any frame interval; a pure retreat is
+ *                   untouched, and at 60 fps the cost is a few cm/s of strafe. gapM 0 (unknown) skips the bound. The
+ *                   ramp after it can still lean the velocity away from the threat when the target turns, so stanceWalk
+ *                   holds the same bound again on what the ramp returns (holdStepBound, round-2 review); the limits of
+ *                   what either proves are the seam's KNOWN LIMITS below.
  *
  * w === 0 returns (vx, vz) untouched, so out of combat the identity is exact rather than a float coincidence.
  */
@@ -267,10 +270,12 @@ export function getStance() {
 }
 
 // The controller's own record of the frame's movement command (Task 5): `raw` is moveVector's output, `target` what
-// the stance handed rampVelocity, `applied` what the ramp returned, which is the planar velocity the KCC is fed (before
-// knockback and hitstop), and `frame` the stance frame it belongs to. Read by the DEV hook readMoveTarget. Round-1
-// review c: the e2e judged only `target`, so a bypass placed AFTER the record (the ramp fed the raw move) passed every
-// frame-rate-independent assertion; it judges `applied` now. Number writes into one object; no allocation.
+// the stance handed rampVelocity, `applied` what stanceWalk returns (the ramp's output with the step bound held on it),
+// which is the planar velocity the KCC is fed (before knockback and hitstop), and `frame` the stance frame it belongs
+// to. Read by the DEV hook readMoveTarget. Round-1 review c: the e2e judged only `target`, so a bypass placed AFTER the
+// record (the ramp fed the raw move) passed every frame-rate-independent assertion; it judges `applied` now. The record
+// is written INSIDE stanceWalk, so a bypass placed after stanceWalk returns, in Components.jsx, is not in it (the seam's
+// known limit 2). Number writes into one object; no allocation.
 const _moveTarget = { rawX: 0, rawZ: 0, targetX: 0, targetZ: 0, appliedX: 0, appliedZ: 0, w: 0, frame: 0 };
 
 /** Record this frame's raw, target and applied planar velocities and the weight they were blended with. */
@@ -283,9 +288,31 @@ export function noteMoveTarget(rawX, rawZ, targetX, targetZ, appliedX, appliedZ,
 
 // ---- The controller's seam (round-1 review c) ---------------------------------------------------------------------
 // Everything between the Player controller's inputs and the planar velocity it hands the KCC runs through these two,
-// so a unit test drives the wiring that only the e2e could see before: which point the stance measures from, the order
-// of the form and walk multipliers, and that the ramp is fed the clamped target. What stays in Components.jsx is one
-// call each, in the frame's order.
+// so a unit test drives what that wiring DOES WITH ITS ARGUMENTS, which only the e2e could see before: the point the
+// stance measures from, the order of the form and walk multipliers, that the ramp is fed the clamped target, and that
+// the bound holds on what the ramp returns. What stays in Components.jsx is one call each, in the frame's order.
+//
+// KNOWN LIMITS (round-2 review, 2026-10-28; recorded, not fixed; plan "Implementation review, round 2"):
+//   1. F1 IS PROVEN FOR THE PLAYER'S OWN STEP ONLY: at every frame interval from 8 to 400 ms and every key sequence the
+//      unit sweep drives (held keys, strafe reversals, releases), the velocity stanceWalk returns never takes the body
+//      away from the threat faster than the retreat cap. F1 also needs the husk to close, and the AI worker caps a tick
+//      at 0.25 s (AIWorkerSystem.jsx) while the player steps by the whole frame: above 250 ms frames a mob covers speed x
+//      0.25 / dt per second, so above 375 ms (about 2.7 fps) a 3.0 m/s husk cannot close on the 2.0 backpedal at all. The
+//      husk's 15 Hz aim on A* cell centres lowers its closing speed further, and is not measured.
+//   2. THE CALL SITES' ARGUMENTS in Components.jsx are pinned by no unit test: the unit tests hand the seam their own.
+//      In the round-2 repro at 60665da1 each of these survived the full unit suite (4229 tests): stanceFrame handed
+//      camera.position as the body (CS1, which brings back round-1 b's low-frame-rate kite), stanceWalk handed a
+//      walkMult of 1 (CW1: the heavy-charge and swing slows stop slowing the retreat), the form and walk swapped at the
+//      call (CW2), the KCC fed the raw move after stanceWalk returns (CB1), and the void guard teleporting without
+//      teleportPlayer (CV1, the stance kept). In the e2e, case 0 is the one deterministic check on stanceFrame's point,
+//      and it pins only its HEIGHT (H1, H2): x and z are compared standing still, where the camera has converged on the
+//      body, and mobSensePoint IS the camera's position, so under CS1 the stance agrees with the worker exactly. CS1 and
+//      CB1 can show only in a chase sub-assertion, judged only at a median frame interval of 250 ms or less; no e2e
+//      case charges a heavy in a fight, so CW1 shows in none.
+//   3. THE KCC IS DOWNSTREAM. The bound is on the velocity FED to computeColliderMovement, not on the movement it
+//      returns, and a slide along a wall can raise a step's away part (round-2 review: PLAUSIBLE by arithmetic,
+//      unmeasured). Knockback and hitstop are added after the stance on purpose: a blow that throws the player is not
+//      the player's own step.
 
 const _point = { x: 0, y: 0, z: 0 };
 const _clamped = { x: 0, z: 0 };
@@ -305,10 +332,12 @@ export function stanceFrame(mobs, body, camera, nowMs, dtS) {
 
 /**
  * The frame's walk (Components.jsx, the pointer-locked branch): moveVector's output `mv` clamped by the stance, then the
- * W4 ramp from `planarVel`. Records raw, target and applied (noteMoveTarget) and returns the ramped velocity (a fresh
- * object, as rampVelocity's), which the controller feeds the KCC.
+ * W4 ramp from `planarVel`, then the step bound held on the ramped velocity (holdStepBound). Records raw, target and
+ * applied (noteMoveTarget) and returns the applied velocity (a fresh object, as rampVelocity's), which the controller
+ * feeds the KCC and keeps as next frame's planarVel.
  *   loco     the form's locomotion (formLocomotion): its moveMult is the form's pace. The object, not a bare number,
- *            so the form and walk multipliers cannot be swapped at the call site (round-1 review d).
+ *            so the two cannot be transposed as two numbers (round-1 review d); what the call actually hands it is
+ *            still pinned by no unit test (CW1, CW2: known limit 2).
  *   walkMult the product of the walk slows (heavyWalkMult x stringWalkMult)
  */
 export function stanceWalk(mv, stance, loco, walkMult, planarVel, dtS) {
@@ -321,8 +350,40 @@ export function stanceWalk(mv, stance, loco, walkMult, planarVel, dtS) {
     tx = _clamped.x; tz = _clamped.z;
   }
   const ramped = rampVelocity(planarVel, { x: tx, z: tz }, dtS);
+  holdStepBound(ramped, stance, walkMult, tx, tz, dtS);
   noteMoveTarget(mv.x, mv.z, tx, tz, ramped.x, ramped.z, stance.w);
   return ramped;
+}
+
+/**
+ * THE STEP BOUND, HELD ON THE VELOCITY THE BODY IS FED (round-2 review, reproduced). stanceVelocity bounds the TARGET,
+ * but rampVelocity then moves each WORLD axis toward it on its own, so whenever the target turns (a strafe that changes
+ * side, keys released mid-strafe) the two axes arrive at different times and the ramped velocity leans away from the
+ * threat: 4.4 m/s at 8 ms frames with S+D and S+A swapped every 100 ms, against the 2.0 cap. So the bound runs again on
+ * the ramped velocity `v`, in place. Ramping in the (away, tangent) frame instead would not hold it: that frame turns as
+ * the player circles, and the bound is a disc about the threat, which a per-axis step between two points inside it can
+ * still leave.
+ *   The allowed reach is the larger of the hard one (gap + retreat x walkMult x dt) and the target's own (tx, tz): during
+ *   the enter and exit blends the target itself may leave faster than the cap, by design, and what the ramp may not do
+ *   is leave faster than its own target. The step's end is then pulled in radially by w of its excess, so w = 1 is the
+ *   hard bound, w = 0 the identity, and nothing jumps as the weight moves. A settled velocity (v = target) is never
+ *   touched, so the blend stays one linear blend at every frame interval. Radial only: the strafe and advance caps are
+ *   held on the target, and the ramp may overshoot them while it turns (not measured).
+ */
+function holdStepBound(v, stance, walkMult, tx, tz, dtS) {
+  const w = stance.w, gap = stance.gap;
+  if (w === 0 || !(gap > 0) || !(dtS > 0)) return v;
+  const ax = stance.awayX, az = stance.awayZ, nx = -az, nz = ax; // away, and the tangential axis
+  const ex = gap + (v.x * ax + v.z * az) * dtS, et = (v.x * nx + v.z * nz) * dtS; // the step's end, from the threat
+  const reach = Math.hypot(ex, et);
+  const own = Math.hypot(gap + (tx * ax + tz * az) * dtS, (tx * nx + tz * nz) * dtS);
+  const allowed = Math.max(gap + STANCE_CAPS.retreat * walkMult * dtS, own);
+  if (reach <= allowed) return v;
+  const k = (reach - w * (reach - allowed)) / reach;
+  const r = (ex * k - gap) / dtS, t = (et * k) / dtS;
+  v.x = ax * r + nx * t;
+  v.z = az * r + nz * t;
+  return v;
 }
 
 /** The live move-target record (the DEV hook copies it). */

@@ -29,9 +29,14 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   S3 src/Components.jsx          the cone arc fixed at Math.PI / 2                                   -> case 1 off-axis zombie
 //   S4 src/Components.jsx          cancelIntoDodge -> endString at the dodge start                     -> case 4
 //   S5 src/Components.jsx          the takeBufferedSwing line removed                                  -> case 3
-//   S6 src/Components.jsx          endString(now) removed from the heavy's throw                       -> case 5
+//   S6 src/game/meleeString.js     endString(now) taken from the heavy's throw: gateSwing's            -> case 5
+//                                  `endString(now);` -> `if (form) endString(now);` (a form's swing keeps it)
 //   S7 src/Components.jsx          the router's meleeHit arc fixed at Math.PI / 2                      -> case 6
 //   S0 src/game/meleeString.js     a comment edit (identity)                                           -> must SURVIVE
+// S6 RE-ANCHORED (round-2 review, 2026-10-28): 446099f4 moved the heavy's `if (heavy) endString(now);` out of
+// Components.jsx into game/meleeString.js gateSwing, where one `endString(now);` now ends the string for a heavy AND a
+// beast form's swing. The anchor is unique in that file; deleting the line would also take it from the form, so the
+// mutant keeps it there and removes only the heavy's, which is what this case judges.
 
 const FINISHER_MULT = 1.5; // LITERALS: the yardstick must not move with the subject
 const WINDOW = 650;
