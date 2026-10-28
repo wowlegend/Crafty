@@ -115,16 +115,19 @@ describe('S2-A-M4a T3: onIncline tier recovery (fix the one-way ratchet)', () =>
     expect(code).not.toMatch(/flipflops\s*=\s*\{/); // and the session-freezing cap is not
   });
 
-  it('the PerformanceMonitor stays inside the !isCaptureMode guard (capture forced-high untouched)', () => {
+  it('the PerformanceMonitor stays inside the canvas pace\'s governor guard (capture forced-high untouched)', () => {
     // The monitor must remain capture-guarded so the deterministic forced-high capture is
     // never perturbed by recovery logic. S2-B2-M2 STRENGTHENED the guard to also exclude
-    // perf-probe mode (`{!isCaptureMode && !isPerfProbe() && (` — the probe must measure a
-    // FIXED render config, so the adaptive machinery is off under ?perf= too). The gate now
-    // pins the strengthened literal: the capture condition is still required verbatim inside
-    // it, the monitor must sit INSIDE the guard, and no intervening `)}` close may occur.
-    const GUARD = '{!isCaptureMode && !isPerfProbe() && (';
-    const guardIdx = src.indexOf(GUARD);
-    const monitorIdx = src.indexOf('<PerformanceMonitor');
+    // perf-probe mode (the probe must measure a FIXED render config, so the adaptive machinery
+    // is off under ?perf= too). 2026-10-27: the guard is render/canvasPace.js's `governor`, which
+    // is also off behind the title (whose 10 fps pace the monitor read as a slow machine); that
+    // decision's behaviour is canvas-pace-gates'. This pins its two ends here: the pace is computed
+    // with BOTH harnesses, and the monitor sits INSIDE `{pace.governor && (` with no `)}` between.
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code, 'the pace no longer knows both harnesses').toMatch(/paceFor\(\{[^}]*harness:\s*isCaptureMode\s*\|\|\s*isPerfProbe\(\)\s*\}\)/);
+    const GUARD = '{pace.governor && (';
+    const guardIdx = code.indexOf(GUARD);
+    const monitorIdx = code.indexOf('<PerformanceMonitor');
     expect(guardIdx).toBeGreaterThan(-1);
     expect(monitorIdx).toBeGreaterThan(-1);
     expect(guardIdx).toBeLessThan(monitorIdx);

@@ -48,10 +48,10 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **335 source files / 38,275 LOC** in
+- **Size (measured):** **340 source files / 38,779 LOC** in
   `frontend/src`, plus 137 colocated `*.test.js(x)` files (counted separately —
   tests are not the architecture).
-- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1467 · `src/store/useGameStore.jsx` 1229 · `src/world/Terrain.jsx` 1120 · `src/App.jsx` 1055 · `src/QuestSystem.jsx` 986.
+- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1467 · `src/store/useGameStore.jsx` 1232 · `src/world/Terrain.jsx` 1145 · `src/App.jsx` 1055 · `src/QuestSystem.jsx` 986.
   Its MEMBERSHIP is checked exactly by `doc-currency`; the LOC beside each name, and the counts above,
   sit under a ±10% band so ordinary churn does not redden the push — so a specific number here
   can be mildly stale and still green. Regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
