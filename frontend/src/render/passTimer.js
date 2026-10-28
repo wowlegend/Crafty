@@ -12,6 +12,11 @@
 // instance; EffectComposer.prototype.render is the one place every instance passes through. Labels use
 // postprocessing's own `name` strings, because the production bundle minifies class names.
 //
+// WHY A WALL-CLOCK WINDOW. A report carries the window's own length and every segment's summed ms within it, so a
+// reader can test whether the readings can be GPU execution time at all: serial segments that all began after the
+// window opened and finished before it was read cannot sum to more than the window (scripts/visual/_lookbook.mjs
+// passSummary). On ANGLE-Metal under load they have summed to several times it.
+//
 // Loaded only when the lookbook seam is asked for timings (render/lookbookSeam.js passTimes), never for a player and
 // never for the power A/B hold, which must not pay the queries' cost in one arm only.
 import { EffectComposer, EffectPass } from 'postprocessing';
@@ -24,11 +29,13 @@ const MAX_PENDING = 256;
 const sorted = (xs) => [...xs].sort((a, b) => a - b);
 const round3 = (x) => Math.round(x * 1000) / 1000;
 
+const wallClock = () => performance.now();
+
 /**
  * A timer over one WebGL 2 context. `available` is false (with a `reason`) when the context has no timer extension;
- * then begin() refuses and nothing touches the context again.
+ * then begin() refuses and nothing touches the context again. `now` is the wall clock the window is measured on.
  */
-export function createPassTimer(gl) {
+export function createPassTimer(gl, now = wallClock) {
   const ext = gl && typeof gl.createQuery === 'function' ? gl.getExtension(EXT_NAME) : null;
   const reason = !gl ? 'no WebGL context'
     : typeof gl.createQuery !== 'function' ? 'WebGL 1 context: timer queries need WebGL 2'
@@ -36,11 +43,14 @@ export function createPassTimer(gl) {
   const available = reason === null;
 
   const pool = [];
-  let pending = []; // { label, q, gen } in submission order
+  let pending = []; // { label, q, gen, frame } in submission order
   let open = null;
   let gen = 0;
-  let samples = new Map(); // label -> ms[] (first-seen order is pass order)
+  let samples = new Map(); // label -> { ms: last SAMPLES_PER_LABEL, count, sumMs over the whole window } (first-seen order is pass order)
   let frames = 0, disjoint = 0, skipped = 0, dropped = 0;
+  // Frames with at least one landed result, counted as results land (in submission order, so one frame's are adjacent).
+  let framesTimed = 0, lastFrameLanded = null;
+  let since = now();
 
   const recycle = (q) => { pool.push(q); };
 
@@ -53,7 +63,7 @@ export function createPassTimer(gl) {
       if (open) { skipped += 1; return false; }
       const q = pool.pop() || gl.createQuery();
       gl.beginQuery(ext.TIME_ELAPSED_EXT, q);
-      open = { label, q, gen };
+      open = { label, q, gen, frame: frames };
       return true;
     },
     end() {
@@ -79,10 +89,14 @@ export function createPassTimer(gl) {
         if (!gl.getQueryParameter(p.q, gl.QUERY_RESULT_AVAILABLE)) break;
         const ns = gl.getQueryParameter(p.q, gl.QUERY_RESULT);
         if (p.gen === gen) {
-          if (!samples.has(p.label)) samples.set(p.label, []);
+          const ms = ns / 1e6;
+          if (!samples.has(p.label)) samples.set(p.label, { ms: [], count: 0, sumMs: 0 });
           const s = samples.get(p.label);
-          s.push(ns / 1e6);
-          if (s.length > SAMPLES_PER_LABEL) s.shift();
+          s.ms.push(ms);
+          if (s.ms.length > SAMPLES_PER_LABEL) s.ms.shift();
+          s.count += 1;
+          s.sumMs += ms;
+          if (p.frame !== lastFrameLanded) { framesTimed += 1; lastFrameLanded = p.frame; }
         }
         recycle(p.q);
       }
@@ -94,9 +108,13 @@ export function createPassTimer(gl) {
       gen += 1;
       samples = new Map();
       frames = 0; disjoint = 0; skipped = 0; dropped = 0;
+      framesTimed = 0; lastFrameLanded = null;
+      since = now();
     },
+    /** `n`, `meanMs`, `p50Ms`, `maxMs` are over each label's last SAMPLES_PER_LABEL results; `count` and `sumMs` over
+     *  every result that landed in the window, which is `windowMs` long. */
     report() {
-      const passes = [...samples].map(([label, ms]) => {
+      const passes = [...samples].map(([label, { ms, count, sumMs }]) => {
         const s = sorted(ms);
         return {
           label,
@@ -104,9 +122,14 @@ export function createPassTimer(gl) {
           meanMs: round3(s.reduce((a, b) => a + b, 0) / s.length),
           p50Ms: round3(s[Math.floor((s.length - 1) / 2)]),
           maxMs: round3(s[s.length - 1]),
+          count,
+          sumMs: round3(sumMs),
         };
       });
-      return { available, reason, frames, disjoint, skipped, dropped, pending: pending.length, passes };
+      return {
+        available, reason, frames, framesTimed, windowMs: round3(now() - since),
+        disjoint, skipped, dropped, pending: pending.length, passes,
+      };
     },
   };
 }
@@ -121,16 +144,28 @@ function passLabel(pass, index) {
 }
 
 const timedPasses = new WeakSet();
+// wrapper -> the function it wraps. The library rebuilds an EffectPass over the SAME effect instances whenever the
+// composer's children change (GameScene mounts GodRays only while the sun is up), so an effect's update() may already
+// be a wrapper from its previous pass; it is wrapped from its original, so there is only ever one layer.
+const unwrapped = new WeakMap();
+const original = (fn) => {
+  let f = fn;
+  while (unwrapped.has(f)) f = unwrapped.get(f);
+  return f;
+};
 
 function timed(timer, label, fn) {
-  return function timedSegment(...args) {
+  const inner = original(fn);
+  const wrapper = function timedSegment(...args) {
     const on = timer.begin(label);
     try {
-      return fn.apply(this, args);
+      return inner.apply(this, args);
     } finally {
       if (on) timer.end();
     }
   };
+  unwrapped.set(wrapper, inner);
+  return wrapper;
 }
 
 /**

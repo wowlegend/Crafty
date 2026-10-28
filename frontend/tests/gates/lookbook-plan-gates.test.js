@@ -219,10 +219,13 @@ describe('the eye-level set and the walking clips', () => {
 
 describe('an eye-level shot is valid only if it shows what a player sees', () => {
   const ok = { active: true, isAlive: true, cycle: 0.48, worldBuilt: true, contextLosses: 0, pose: null, cameraNodes: 9, heading: 120.2,
-    hostiles: { nearestM: 12, within8m: 0 } };
-  const base = { cycle: 0.48, heading: 120, before: ok, handsBaseline: 2, hud: true };
+    hostiles: { nearestM: 12, within8m: 0 }, body: [0, 52.95, 0] };
+  const base = { cycle: 0.48, heading: 120, stand: [0, 52.95, 0], before: ok, handsBaseline: 2, hud: true };
   it('a clean shot is valid, and the bearing tolerance is circular', () => {
     expect(eyeShotVerdict({ ...base, after: ok })).toEqual({ valid: true, why: [] });
+    // 0.5 m from the stand, horizontally: a body that settled onto the ground (lower) is where it was stood.
+    expect(eyeShotVerdict({ ...base, after: { ...ok, body: [0.3, 51.5, 0.3] } }).valid, '0.42 m off and 1.45 m lower').toBe(true);
+    expect(eyeShotVerdict({ ...base, after: { ...ok, body: [0.4, 52.95, 0.4] } }).valid, '0.57 m off').toBe(false);
     expect(eyeShotVerdict({ ...base, heading: 0, after: { ...ok, heading: 359.5 } }).valid, '359.5 is half a degree from 0').toBe(true);
     expect(eyeShotVerdict({ ...base, after: { ...ok, hostiles: { nearestM: null, within8m: 0 } } }).valid, 'no hostile alive').toBe(true);
   });
@@ -246,6 +249,10 @@ describe('an eye-level shot is valid only if it shows what a player sees', () =>
       [{ after: { ...ok, heading: null } }, /facing \?/],
       [{ after: { ...ok, isAlive: false } }, /player dead/],
       [{ after: { ...ok, cycle: 0.50 } }, /clock/],
+      // stand() never ran or did not take: the body still where the last walk left it, 41 m south.
+      [{ after: { ...ok, body: [0, 51, 41.2] } }, /the body 41.20 m from the stand at the shot/],
+      [{ after: { ...ok, body: null } }, /the body \? m from the stand/],
+      [{ after: ok, stand: null }, /the body \? m from the stand/],
     ];
     for (const [c, re] of cases) {
       const v = eyeShotVerdict({ ...base, ...c });
@@ -255,11 +262,27 @@ describe('an eye-level shot is valid only if it shows what a player sees', () =>
   });
 });
 
-describe('a walking clip is valid only if the player walked', () => {
-  const at = (body, more = {}) => ({ active: true, isAlive: true, cycle: 0.30, body, ...more });
+describe('a walking clip is valid only if the player walked from the stand, along the bearing', () => {
+  const at = (body, more = {}) => ({ active: true, isAlive: true, cycle: 0.30, heading: 180, body, ...more });
+  const clip = { cycle: 0.30, heading: 180, stand: [0, 52, 0] };
   it('a walk across the ground is valid and reports how far', () => {
-    const v = clipVerdict({ cycle: 0.30, start: at([0, 52, 0]), end: at([6, 53, 4.5], { cycle: 0.3133 }), frames: 100 });
+    const v = clipVerdict({ ...clip, start: at([0, 52, 0]), end: at([6, 53, 4.5], { cycle: 0.3133 }), frames: 100 });
     expect(v).toEqual({ valid: true, why: [], movedM: 7.5 });
+    const wrap = clipVerdict({ ...clip, heading: 0, start: at([0, 52, 0], { heading: 359.5 }), end: at([0, 52, -6], { heading: 0.5 }), frames: 100 });
+    expect(wrap.valid, 'the bearing tolerance is circular').toBe(true);
+  });
+  it('a walk that did not start at the stand, or not along the bearing, is refused', () => {
+    // stand() dropped: each clip after the first starts where the previous walk ended, and still moves metres.
+    const unstood = clipVerdict({ ...clip, start: at([0, 51, 48]), end: at([0, 51, 94]), frames: 100 });
+    expect(unstood.valid).toBe(false);
+    expect(unstood.why.join('; ')).toMatch(/the body 48.00 m from the stand when the key went down/);
+    expect(clipVerdict({ ...clip, start: at([0.4, 52, 0.4]), end: at([0.4, 52, 6]), frames: 100 }).valid, '0.57 m off the stand').toBe(false);
+    expect(clipVerdict({ ...clip, start: at([0.3, 52, 0.3]), end: at([0.3, 52, 6]), frames: 100 }).valid, '0.42 m off the stand').toBe(true);
+    // look() faced the wrong way, or the view turned during the walk.
+    const turned = clipVerdict({ ...clip, start: at([0, 52, 0], { heading: 120 }), end: at([5, 52, 3], { heading: 120 }), frames: 100 });
+    expect(turned.why.join('; ')).toMatch(/facing 120.0 at the start, asked 180; facing 120.0 at the end, asked 180/);
+    expect(clipVerdict({ ...clip, start: at([0, 52, 0]), end: at([0, 52, 6], { heading: 181.5 }), frames: 100 }).why.join('; ')).toMatch(/facing 181.5 at the end/);
+    expect(clipVerdict({ ...clip, start: at([0, 52, 0], { heading: null }), end: at([0, 52, 6]), frames: 100 }).why.join('; ')).toMatch(/facing \? at the start/);
   });
   it('each failure is named; distance is horizontal, and the clock is read at the start', () => {
     const cases = [
@@ -272,30 +295,53 @@ describe('a walking clip is valid only if the player walked', () => {
       [{ start: at(null), end: at([6, 52, 0]), frames: 100 }, /moved \? m/],
     ];
     for (const [c, re] of cases) {
-      const v = clipVerdict({ cycle: 0.30, ...c });
+      const v = clipVerdict({ ...clip, ...c });
       expect(v.valid, JSON.stringify(c)).toBe(false);
       expect(v.why.join('; ')).toMatch(re);
     }
   });
 });
 
-describe('the post-pass summary picks the game canvas and sums its segments', () => {
-  const pass = (label, meanMs, p50Ms = meanMs / 2) => ({ label, n: 30, meanMs, p50Ms, maxMs: meanMs * 2 });
-  const title = { canvas: [3000, 2000], available: true, frames: 60, passes: [pass('0:RenderPass', 9)] };
-  const game = { canvas: [2560, 1600], available: true, frames: 58, disjoint: 0, skipped: 0, passes: [pass('0:RenderPass', 3.25), pass('1:N8AO', 1.5), pass('2:EffectPass(SMAAEffect) > draw', 0.125)] };
-  it('the game canvas, even beside a larger one, with the sum of the segments\' means', () => {
+describe('the post-pass summary: the game canvas, the scene apart from the post chain, per timed frame, judged against its window', () => {
+  // `perFrame` ms on each of `count` frames; a mean over the last 30 that differs from the window's, as the 240-result
+  // cap makes it on a long window.
+  const pass = (label, perFrame, count = 40) => ({ label, n: 30, meanMs: perFrame * 3, p50Ms: perFrame, maxMs: perFrame * 4, count, sumMs: perFrame * count });
+  const title = { canvas: [3000, 2000], available: true, frames: 60, framesTimed: 40, windowMs: 1000, passes: [pass('0:RenderPass', 9)] };
+  const game = { canvas: [2560, 1600], available: true, frames: 42, framesTimed: 40, windowMs: 1000, disjoint: 0, skipped: 0,
+    passes: [pass('0:RenderPass', 3.25), pass('depth blit', 0.5), pass('1:N8AO', 1.5), pass('2:EffectPass(SMAAEffect) > draw', 0.125)] };
+  it('the game canvas, even beside a larger one; the RenderPass is the scene and every other segment the post chain', () => {
     const s = passSummary({ installed: true, contexts: [title, game] }, [2560, 1600]);
-    expect(s).toMatchObject({ available: true, reason: null, totalMs: 4.875, frames: 58 });
-    expect(s.passes.map((p) => p.label)).toEqual(['0:RenderPass', '1:N8AO', '2:EffectPass(SMAAEffect) > draw']);
-    expect(passSummary({ installed: true, contexts: [game, title] }, null).totalMs, 'with no game canvas known, the largest').toBe(9);
+    expect(s).toMatchObject({ available: true, reason: null, sceneMs: 3.25, postMs: 2.125, gpuMs: 215, windowMs: 1000, framesTimed: 40, frames: 42, plausible: true });
+    expect(s.passes.map((p) => p.label)).toEqual(['0:RenderPass', 'depth blit', '1:N8AO', '2:EffectPass(SMAAEffect) > draw']);
+    expect(passSummary({ installed: true, contexts: [game, title] }, null).sceneMs, 'with no game canvas known, the largest').toBe(9);
+  });
+  it('a pass rebuilt mid-window counts each frame once, under whichever label drew it', () => {
+    // Frames 1-25 drew the day pass (with GodRays), 26-40 the night pass: two label sets, never both in one frame.
+    const s = passSummary({ installed: true, contexts: [{ ...game, passes: [
+      pass('0:RenderPass', 3, 40),
+      pass('2:EffectPass(GodRaysEffect+BloomEffect) > BloomEffect.update', 2, 25),
+      pass('2:EffectPass(BloomEffect) > BloomEffect.update', 4, 15),
+    ] }] }, [2560, 1600]);
+    expect(s).toMatchObject({ sceneMs: 3, postMs: 2.75, plausible: true });
+  });
+  it('more GPU time than the window lasted is IMPLAUSIBLE: the numbers are kept, and flagged', () => {
+    const at = (windowMs) => passSummary({ installed: true, contexts: [{ ...game, windowMs }] }, [2560, 1600]);
+    expect(at(215).plausible, 'exactly the window').toBe(true);
+    const over = at(214);
+    expect(over).toMatchObject({ plausible: false, sceneMs: 3.25, postMs: 2.125 });
+    expect(over.reason).toMatch(/IMPLAUSIBLE: 215 ms of GPU time in a 214 ms window/);
+    const unwindowed = passSummary({ installed: true, contexts: [{ ...game, windowMs: undefined }] }, [2560, 1600]);
+    expect(unwindowed, 'a report with no window must not read as plausible').toMatchObject({ plausible: false, sceneMs: null, postMs: null, reason: /no window/ });
+    const unsummed = passSummary({ installed: true, contexts: [{ ...game, passes: game.passes.map(({ sumMs, ...p }) => p) }] }, [2560, 1600]);
+    expect(unsummed).toMatchObject({ plausible: false, postMs: null, reason: /no window/ });
   });
   it('says why when nothing was timed', () => {
-    expect(passSummary({ installed: false, reason: 'no pass timer in this build' }, null)).toMatchObject({ available: false, reason: 'no pass timer in this build', totalMs: null });
+    expect(passSummary({ installed: false, reason: 'no pass timer in this build' }, null)).toMatchObject({ available: false, reason: 'no pass timer in this build', postMs: null, plausible: null });
     expect(passSummary(null, null).reason).toMatch(/not installed/);
     expect(passSummary({ installed: true, contexts: [] }, [2560, 1600]).reason).toMatch(/no composer/);
     const webkit = { canvas: [2360, 1640], available: false, reason: 'EXT_disjoint_timer_query_webgl2 is not exposed by this browser', passes: [] };
-    expect(passSummary({ installed: true, contexts: [webkit] }, [2360, 1640])).toMatchObject({ available: false, reason: /not exposed/, totalMs: null });
-    expect(passSummary({ installed: true, contexts: [{ ...game, passes: [] }] }, [2560, 1600])).toMatchObject({ available: true, totalMs: null, reason: /no samples/ });
+    expect(passSummary({ installed: true, contexts: [webkit] }, [2360, 1640])).toMatchObject({ available: false, reason: /not exposed/, postMs: null });
+    expect(passSummary({ installed: true, contexts: [{ ...game, passes: [] }] }, [2560, 1600])).toMatchObject({ available: true, postMs: null, reason: /no samples/ });
   });
 });
 
@@ -307,17 +353,20 @@ describe('the contact sheet shows the eye-level set and the clips', () => {
         id: 'chromium-1280x800', engine: 'chromium', renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max)', gpu: 'hardware', notes: [],
         shots: [],
         eye: [
-          { heading: 0, cycle: 0.30, file: 'eye-000-0.30.png', valid: true, why: [], cycleAtShot: 0.3, tier: 'high', dpr: 2, consoleErrors: 0, passMs: { totalMs: 4.875 } },
-          { heading: 120, cycle: 0.75, file: 'eye-120-0.75.png', valid: false, why: ['HUD not on screen'], cycleAtShot: 0.75, tier: 'high', dpr: 2, consoleErrors: 0, passMs: { totalMs: null, reason: 'passTimes threw: <oops>' } },
+          { heading: 0, cycle: 0.30, file: 'eye-000-0.30.png', valid: true, why: [], cycleAtShot: 0.3, tier: 'high', dpr: 2, consoleErrors: 0, passMs: { sceneMs: 3.25, postMs: 4.875, plausible: true } },
+          { heading: 120, cycle: 0.75, file: 'eye-120-0.75.png', valid: false, why: ['HUD not on screen'], cycleAtShot: 0.75, tier: 'high', dpr: 2, consoleErrors: 0, passMs: { postMs: null, reason: 'passTimes threw: <oops>' } },
         ],
-        clips: [{ cycle: 0.48, heading: 120, file: 'walk-0.48.mp4', valid: true, why: [], movedM: 14.2, frames: 101, passMs: { totalMs: 5.5 } }],
+        clips: [{ cycle: 0.48, heading: 120, file: 'walk-0.48.mp4', valid: true, why: [], movedM: 14.2, frames: 101,
+          passMs: { sceneMs: 5.8, postMs: 50.1, plausible: false, reason: 'IMPLAUSIBLE: 41266 ms of GPU time in a <10000> ms window' } }],
       }],
     });
     expect(html).toContain('src="chromium-1280x800/eye-000-0.30.png"');
     expect(html).toContain('src="chromium-1280x800/eye-120-0.75.png"');
     expect(html).toContain('<video src="chromium-1280x800/walk-0.48.mp4"');
     expect(html).toContain('HUD not on screen');
-    expect(html).toContain('post 4.875 ms');
+    expect(html).toContain('scene 3.25 ms · post 4.875 ms');
+    expect(html, 'an implausible timing was shown as a number with no flag').toContain('post 50.1 ms <span class="bad">IMPLAUSIBLE: 41266 ms of GPU time in a &lt;10000&gt; ms window</span>');
+    expect((html.match(/IMPLAUSIBLE/g) || []).length, 'only the implausible timing is flagged').toBe(1);
     expect(html).toContain('walked 14.2 m');
     expect(html, 'a reason reached the page unescaped').not.toContain('<oops>');
     expect(html).toContain('passTimes threw: &lt;oops&gt;');

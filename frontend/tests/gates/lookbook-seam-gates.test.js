@@ -61,7 +61,11 @@ import { contextLossCount, glInfo, _resetGlDiagnosticsForTest } from '../../src/
  *
  * BLIND SPOT: that Components.jsx's Player useFrame applies the pose to the LIVE camera (and stops applying it on
  * clear), that the hands really hide, and that index.jsx installs the seam, are the e2e's
- * (tests/e2e/lookbook-seam.spec.js). The probe's own logic is tests/gates/lookbook-plan-gates.test.js.
+ * (tests/e2e/lookbook-seam.spec.js); so are stand(), look() and clearHostiles() against the running game (its 2b), on
+ * the DEV server. That the PRODUCTION bundle installs the seam and can load the pass timer's chunk is prod-smoke's
+ * (scripts/ci/prod-smoke.mjs seamVerdict). Nothing here shows the timer's numbers are GPU execution times: the fake
+ * context below decides them. The probe judges each real window instead (scripts/visual/_lookbook.mjs passSummary,
+ * `plausible`). The probe's own logic is tests/gates/lookbook-plan-gates.test.js.
  */
 
 const fakeWin = (search) => ({ location: { search } });
@@ -479,13 +483,40 @@ describe('the pass timer (render/passTimer.js): GPU ms per segment, a no-op that
     const t = createPassTimer(gl);
     for (const ms of [1, 10, 2, 3]) segment(t, gl, 'pass', ms);
     t.poll();
-    expect(t.report().passes).toEqual([{ label: 'pass', n: 4, meanMs: 4, p50Ms: 2, maxMs: 10 }]);
+    expect(t.report().passes).toEqual([{ label: 'pass', n: 4, meanMs: 4, p50Ms: 2, maxMs: 10, count: 4, sumMs: 16 }]);
     gl.ready = false;
     segment(t, gl, 'pass', 5);
     t.reset();
     gl.ready = true;
     t.poll();
     expect(t.report().passes, 'a segment from before reset() was counted after it').toEqual([]);
+  });
+
+  it('measures its window on the wall clock and sums every result in it, past the per-label sample cap', () => {
+    const gl = fakeTimerGl();
+    let clock = 1000;
+    const t = createPassTimer(gl, () => clock);
+    t.frame();
+    segment(t, gl, 'pass', 7);
+    t.poll(); // landed before the window
+    t.frame();
+    segment(t, gl, 'pass', 9); // in flight across the reset: not part of the window either
+    clock = 2000;
+    t.reset();
+    const frames = 300; // more than the 240 results a label keeps for its mean and median
+    for (let i = 0; i < frames; i++) {
+      t.frame();
+      segment(t, gl, 'scene', 2);
+      segment(t, gl, 'pass', 0.5);
+      clock += 16;
+      t.poll();
+    }
+    const r = t.report();
+    expect(r, 'the window is not the wall time since reset(), or frames are counted per segment').toMatchObject({ frames, framesTimed: frames, windowMs: frames * 16 });
+    expect(r.passes).toEqual([
+      { label: 'scene', n: 240, meanMs: 2, p50Ms: 2, maxMs: 2, count: frames, sumMs: 600 },
+      { label: 'pass', n: 240, meanMs: 0.5, p50Ms: 0.5, maxMs: 0.5, count: frames, sumMs: 150 },
+    ]);
   });
 });
 
@@ -550,6 +581,46 @@ describe('the pass timer through the real EffectComposer.prototype.render', () =
       handle.uninstall();
     }
     expect(EffectComposer.prototype.render, 'uninstall() did not restore the composer').toBe(original);
+  });
+
+  it('an EffectPass rebuilt over the same effects (sunrise, sunset) is timed once under its new label, never nested', () => {
+    const gl = fakeTimerGl();
+    const composer = rig(gl);
+    const handle = installPassTimer();
+    // @react-three/postprocessing builds a new EffectPass over the SAME effect instances whenever the composer's children
+    // change, as GameScene's GodRays mount does when the sun crosses the horizon.
+    const rebuild = (...effects) => {
+      const pass = new EffectPass(new PerspectiveCamera(), ...effects);
+      pass.scene.userData.ms = 0.75;
+      composer.passes[2] = pass;
+    };
+    try {
+      for (let i = 0; i < 10; i++) composer.render(0.016);
+      const [vignette, toneMapping] = composer.passes[2].effects;
+      rebuild(vignette, toneMapping);
+      handle.report({ reset: true });
+      const frames = 10;
+      for (let i = 0; i < frames; i++) composer.render(0.016);
+      const ctx = handle.report({ reset: true }).contexts[0];
+      expect(ctx, 'the rebuilt pass re-wrapped its effects: every update opened a segment inside another').toMatchObject({ frames, skipped: 0 });
+      const fx = '2:EffectPass(VignetteEffect+ToneMappingEffect)';
+      expect(msByLabel(ctx).filter((p) => p.label.startsWith('2:'))).toEqual([
+        { label: `${fx} > VignetteEffect.update`, n: frames, meanMs: 0.25 },
+        { label: `${fx} > ToneMappingEffect.update`, n: frames, meanMs: 0 },
+        { label: `${fx} > draw`, n: frames, meanMs: 0.75 },
+      ]);
+      // A second rebuild with a different set (the sun sets again): the labels follow the pass now on the composer.
+      rebuild(vignette);
+      for (let i = 0; i < frames; i++) composer.render(0.016);
+      const later = handle.report().contexts[0];
+      expect(later.skipped, 'a second rebuild nested the wrappers again').toBe(0);
+      expect(msByLabel(later).filter((p) => p.label.startsWith('2:'))).toEqual([
+        { label: '2:EffectPass(VignetteEffect) > VignetteEffect.update', n: frames, meanMs: 0.25 },
+        { label: '2:EffectPass(VignetteEffect) > draw', n: frames, meanMs: 0.75 },
+      ]);
+    } finally {
+      handle.uninstall();
+    }
   });
 
   it('where the extension is absent the composer still renders and the report says why', () => {

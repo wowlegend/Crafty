@@ -62,6 +62,9 @@ export const EYE_HEADINGS = Object.freeze([0, 120, 240]);
 export const EYE_PITCH = 0;
 /** How far the camera may face from the asked-for bearing, in degrees. */
 const HEADING_TOLERANCE = 1;
+/** How far, horizontally, the body may be from where stand() put it. A body that was never stood, or walked off, is
+ *  metres away; one that settled onto the ground is not, so the height is not compared. */
+const STAND_TOLERANCE_M = 0.5;
 /** A hostile closer than this to the eye fills much of the frame: the shot is a fight, not the view. */
 export const OBSTRUCTION_M = 3;
 
@@ -95,13 +98,27 @@ const circularDeg = (a, b) => {
   return Math.min(d, 360 - d);
 };
 
+/** Why the body is not where stand() put it, or null. */
+function offStand(body, stand, when) {
+  const d = Array.isArray(body) && Array.isArray(stand) ? Math.hypot(body[0] - stand[0], body[2] - stand[2]) : NaN;
+  return d <= STAND_TOLERANCE_M ? null : `the body ${Number.isFinite(d) ? d.toFixed(2) : '?'} m from the stand ${when}`;
+}
+
+/** Why a heading reading is not the asked-for bearing, or null. */
+function offHeading(reading, heading, when) {
+  const at = Number(reading);
+  if (reading != null && Number.isFinite(at) && circularDeg(at, heading) <= HEADING_TOLERANCE) return null;
+  return `facing ${reading != null && Number.isFinite(at) ? at.toFixed(1) : '?'}${when}, asked ${heading}`;
+}
+
 /**
  * Whether an eye-level shot shows what a player sees: everything shotVerdict asks, plus no hero pose pinned, no
  * hostile in the player's face, the hands on the camera (more nodes on it than the same page measured with them
- * hidden: `handsBaseline`), the HUD on screen, and the camera facing the asked-for bearing. A frame that passes still
- * wants looking at: the hands count says they are mounted, not that they are inside the frame.
+ * hidden: `handsBaseline`), the HUD on screen, the body where it was stood (`stand`, the resting body read once per
+ * target), and the camera facing the asked-for bearing. A frame that passes still wants looking at: the hands count
+ * says they are mounted, not that they are inside the frame.
  */
-export function eyeShotVerdict({ cycle, heading, before, after, handsBaseline, hud }) {
+export function eyeShotVerdict({ cycle, heading, stand, before, after, handsBaseline, hud }) {
   const why = [...shotVerdict({ cycle, before, after }).why];
   if (after?.pose) why.push('camera pinned by a hero pose, not at the player\'s eye');
   const near = after?.hostiles?.nearestM;
@@ -110,20 +127,28 @@ export function eyeShotVerdict({ cycle, heading, before, after, handsBaseline, h
   if (!Number.isFinite(handsBaseline)) why.push('hands not checked: no baseline with them hidden');
   else if (!(after?.cameraNodes > handsBaseline)) why.push(`hands not on the camera (${after?.cameraNodes} nodes; ${handsBaseline} with them hidden)`);
   if (hud !== true) why.push('HUD not on screen');
-  const at = Number(after?.heading);
-  if (after?.heading == null || !Number.isFinite(at) || circularDeg(at, heading) > HEADING_TOLERANCE) {
-    why.push(`facing ${Number.isFinite(at) && after?.heading != null ? at.toFixed(1) : '?'}, asked ${heading}`);
-  }
+  const stood = offStand(after?.body, stand, 'at the shot');
+  if (stood) why.push(stood);
+  const facing = offHeading(after?.heading, heading, '');
+  if (facing) why.push(facing);
   return { valid: why.length === 0, why };
 }
 
 /**
- * Whether a walking clip shows a walk. `start` / `end`: the seam's info() just before the key went down and just after
- * it came up. The clock check is on `start`: a 4 s clip spans more of the day than CYCLE_TOLERANCE by design.
+ * Whether a walking clip shows the walk it claims: from where the body was stood (`stand`), along `heading` from the
+ * first frame to the last, far enough to be a walk. `start` / `end`: the seam's info() just before the key went down
+ * and just after it came up. The clock check is on `start`: a 4 s clip spans more of the day than CYCLE_TOLERANCE by
+ * design.
  */
-export function clipVerdict({ cycle, start, end, frames }) {
+export function clipVerdict({ cycle, heading, stand, start, end, frames }) {
   const why = [];
   if (!start?.active || !end?.active) why.push('input not live');
+  const stood = offStand(start?.body, stand, 'when the key went down');
+  if (stood) why.push(stood);
+  for (const [r, when] of [[start?.heading, ' at the start'], [end?.heading, ' at the end']]) {
+    const facing = offHeading(r, heading, when);
+    if (facing) why.push(facing);
+  }
   if (!end?.isAlive) why.push('player dead');
   const a = start?.body, b = end?.body;
   const movedM = a && b ? Math.hypot(b[0] - a[0], b[2] - a[2]) : NaN;
@@ -134,22 +159,45 @@ export function clipVerdict({ cycle, start, end, frames }) {
   return { valid: why.length === 0, why, movedM };
 }
 
+/** The segment that draws the world itself (postprocessing's RenderPass, pass 0), not a post-processing pass. */
+const SCENE_RE = /^\d+:RenderPass$/;
+const r3 = (x) => Math.round(x * 1000) / 1000;
+
 /**
  * The game canvas's pass times out of a passTimes() report: the context whose canvas is the game's (the seam's
- * glInfo canvas), else the largest. `totalMs` sums the segments' means, which is the post chain's GPU time per frame.
+ * glInfo canvas), else the largest. Per timed frame, from every result that landed in the window, so a pass rebuilt
+ * mid-window (the sun crossing the horizon) counts each frame once, under whichever label drew it: `sceneMs`, the
+ * RenderPass that draws the world, and `postMs`, every segment after it. `plausible` is false when the results sum to
+ * more GPU time (`gpuMs`) than the window lasted (`windowMs`): segments that run one after another cannot, so the
+ * numbers are then not GPU execution times and no decision about a pass may rest on them.
  */
 export function passSummary(report, gameCanvas) {
-  if (!report || report.installed !== true) return { available: false, reason: report?.reason || 'pass timer not installed', totalMs: null, passes: [] };
+  const none = (reason) => ({ available: false, reason, sceneMs: null, postMs: null, plausible: null, passes: [] });
+  if (!report || report.installed !== true) return none(report?.reason || 'pass timer not installed');
   const same = (c) => Array.isArray(c) && Array.isArray(gameCanvas) && c[0] === gameCanvas[0] && c[1] === gameCanvas[1];
   const area = (c) => (Array.isArray(c) ? c[0] * c[1] : 0);
   const ctxs = report.contexts || [];
   const ctx = ctxs.find((x) => same(x.canvas)) || [...ctxs].sort((x, y) => area(y.canvas) - area(x.canvas))[0];
-  if (!ctx) return { available: false, reason: 'no composer has rendered', totalMs: null, passes: [] };
-  if (!ctx.available) return { available: false, reason: ctx.reason, totalMs: null, passes: [] };
-  const passes = ctx.passes.map(({ label, n, meanMs, p50Ms, maxMs }) => ({ label, n, meanMs, p50Ms, maxMs }));
-  if (passes.length === 0) return { available: true, reason: 'no samples in the window', totalMs: null, passes, frames: ctx.frames };
-  const totalMs = Math.round(passes.reduce((s, p) => s + p.meanMs, 0) * 1000) / 1000;
-  return { available: true, reason: null, totalMs, passes, frames: ctx.frames, disjoint: ctx.disjoint, skipped: ctx.skipped };
+  if (!ctx) return none('no composer has rendered');
+  if (!ctx.available) return none(ctx.reason);
+  const passes = ctx.passes.map(({ label, n, meanMs, p50Ms, maxMs, count, sumMs }) => ({ label, n, meanMs, p50Ms, maxMs, count, sumMs }));
+  const base = { available: true, passes, frames: ctx.frames, framesTimed: ctx.framesTimed, windowMs: ctx.windowMs, disjoint: ctx.disjoint, skipped: ctx.skipped };
+  if (passes.length === 0) return { ...base, reason: 'no samples in the window', sceneMs: null, postMs: null, plausible: null };
+  if (!(ctx.framesTimed > 0) || !Number.isFinite(ctx.windowMs) || !passes.every((p) => Number.isFinite(p.sumMs))) {
+    return { ...base, reason: 'the timer reports no window: whether these are GPU times cannot be checked', sceneMs: null, postMs: null, plausible: false };
+  }
+  const sum = (ps) => ps.reduce((s, p) => s + p.sumMs, 0);
+  const gpuMs = sum(passes);
+  const sceneSum = sum(passes.filter((p) => SCENE_RE.test(p.label)));
+  const plausible = gpuMs <= ctx.windowMs;
+  return {
+    ...base,
+    reason: plausible ? null : `IMPLAUSIBLE: ${r3(gpuMs)} ms of GPU time in a ${r3(ctx.windowMs)} ms window, so these are not GPU execution times`,
+    gpuMs: r3(gpuMs),
+    sceneMs: r3(sceneSum / ctx.framesTimed),
+    postMs: r3((gpuMs - sceneSum) / ctx.framesTimed),
+    plausible,
+  };
 }
 
 const SOFTWARE_RE = /swiftshader|llvmpipe|softpipe|software rasterizer|microsoft basic render/i;
@@ -207,7 +255,12 @@ export function contactSheetHtml(report) {
       ? '<p class="warn">SOFTWARE renderer: these frames are NOT real-GPU frames and cannot judge looks.</p>'
       : t.gpu === 'unknown' ? '<p class="warn">Renderer UNKNOWN: whether these are real-GPU frames is not established.</p>' : '';
     const notes = (t.notes || []).map((n) => `<p class="warn">${esc(n)}</p>`).join('');
-    const passNote = (p) => (!p ? '' : p.totalMs != null ? ` · post ${esc(p.totalMs)} ms` : ` · post ms: ${esc(p.reason)}`);
+    const passNote = (p) => {
+      if (!p) return '';
+      if (p.postMs == null) return ` · post ms: ${esc(p.reason)}`;
+      const ms = ` · scene ${esc(p.sceneMs)} ms · post ${esc(p.postMs)} ms`;
+      return p.plausible ? ms : `${ms} <span class="bad">${esc(p.reason)}</span>`;
+    };
     const figure = (s, title, alt) => {
       const src = `${esc(t.id)}/${esc(s.file)}`;
       const facts = [`cycle ${esc(s.cycle)} (at ${esc(Number(s.cycleAtShot).toFixed(3))})`, `tier ${esc(s.tier)}`, `dpr ${esc(s.dpr)}`, `console errors ${esc(s.consoleErrors)}`].join(' · ');

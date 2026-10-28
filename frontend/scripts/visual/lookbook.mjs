@@ -406,7 +406,7 @@ async function shootTarget(target, launchOpts, launchId) {
       await page.screenshot({ path: join(dir, shot.file) });
       const after = await info(page);
       const pt = await passTimes(page);
-      const v = eyeShotVerdict({ cycle: shot.cycle, heading: shot.heading, before, after, handsBaseline: report.hands?.hidden, hud });
+      const v = eyeShotVerdict({ cycle: shot.cycle, heading: shot.heading, stand: report.stand, before, after, handsBaseline: report.hands?.hidden, hud });
       report.eye.push({ ...shot, valid: v.valid, why: v.why, ...facts(after, t0, pt), hud, heading: shot.heading,
         headingAtShot: after.heading, pitch: after.pitch, eye: after.eye, body: after.body, cameraNodes: after.cameraNodes,
         hostiles: after.hostiles, cleared,
@@ -435,7 +435,7 @@ async function shootTarget(target, launchOpts, launchId) {
       const end = await info(page);
       const passMs = passSummary(await passTimes(page), end.gl?.canvas);
       const video = encodeClip(webm, join(dir, clip.file), { fromS: 0, forS: heldMs / 1000 });
-      const v = clipVerdict({ cycle: clip.cycle, start, end, frames: video.frames });
+      const v = clipVerdict({ cycle: clip.cycle, heading: clip.heading, stand: report.stand, start, end, frames: video.frames });
       if (video.error) v.why.push(video.error);
       report.clips.push({ ...clip, file: video.file, valid: v.why.length === 0, why: v.why, movedM: v.movedM, heldMs, cleared,
         frames: video.frames, durationS: video.durationS, videoSize: video.size, videoFps: video.fps,
@@ -606,9 +606,11 @@ try {
         console.log(`  clips         ${r.clips.filter((c) => c.valid).length}/${r.clips.length} valid`);
         for (const c of r.clips) console.log(`    ${c.file}: walked ${Number(c.movedM).toFixed(2)} m, ${c.frames} video / ${c.gameFrames} game frames${c.valid ? '' : `, INVALID: ${c.why.join('; ')}`}`);
       }
-      const timed = [...r.shots, ...(r.eye || [])].map((s) => s.passMs).filter((p) => p?.totalMs != null);
-      const why = [...new Set([...r.shots, ...(r.eye || [])].map((s) => s.passMs?.reason).filter(Boolean))];
-      console.log(`  post-pass ms  ${timed.length} shot(s) timed${why.length ? `; untimed: ${why.join('; ')}` : ''}`);
+      const all = [...r.shots, ...(r.eye || []), ...(r.clips || [])].map((s) => s.passMs);
+      const timed = all.filter((p) => p?.postMs != null);
+      const implausible = timed.filter((p) => !p.plausible).length;
+      const why = [...new Set(all.filter((p) => p?.postMs == null).map((p) => p?.reason).filter(Boolean))];
+      console.log(`  post-pass ms  ${timed.length}/${all.length} shot(s) and clip(s) timed, ${implausible} of them IMPLAUSIBLE (more GPU ms than the window lasted)${why.length ? `; untimed: ${why.join('; ')}` : ''}`);
       const tiers = [...new Set(r.shots.map((s) => `${s.tier}@${s.dpr}`))];
       console.log(`  tier@dpr      ${tiers.join(', ') || '-'}`);
       console.log(`  page errors   ${r.pageErrors?.length ?? 0}`);
