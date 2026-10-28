@@ -23,6 +23,7 @@ import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { CombatLog } from './ui/CombatLog';
 import { BossHealthBar } from './ui/BossHealthBar';
 import DamageDirection from './ui/DamageDirection';
+import WindupChevrons from './ui/WindupChevrons';
 import LowHealthVignette from './ui/LowHealthVignette';
 import HeartbeatAudio from './ui/HeartbeatAudio';
 import DayNightAudio from './ui/DayNightAudio';
@@ -524,7 +525,7 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
       </div>
     )}
     <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
-      <div className="w-[320px] h-[34px] bg-panel-frame border-chrome border-ink rounded-md shadow-elev-md relative flex items-center justify-center overflow-hidden">
+      <div data-testid="hud-compass" className="w-[320px] h-[34px] bg-panel-frame border-chrome border-ink rounded-md shadow-elev-md relative flex items-center justify-center overflow-hidden">
         {/* Alignment reticle line */}
         <div className="absolute top-0 bottom-0 w-[1.5px] bg-info z-20"></div>
         {/* Scrolling Marker track */}
@@ -669,6 +670,7 @@ export function HUD({
       <DuskWarning />
       <MusicPlayer />
       <DamageDirection />
+      <WindupChevrons />{/* combat-stance Task 7: a chevron at the edge for a windup off screen; ticker-driven, refs only */}
       <UISounds />
       <AspectHintToast />
 
