@@ -37,12 +37,15 @@ export function onceRetrying(load) {
  * panel-open mode with nothing on screen, worst on touch. So it calls the panel's own onClose and tells the player.
  * Every error it sees is a LOAD failure: a panel that suspended on mount is re-mounted on the loaded path once the
  * chunk resolves, so a render bug never meets this boundary (pinned in lazy-panels-render-gates).
+ *
+ * Exported for the HUD's one other lazy chunk, the windup chevrons (HUD.jsx WindupChevronsSlot, round-1 review e):
+ * there it takes no props, and a failed fetch drops the chevrons for the session instead of the game.
  */
-class PanelBoundary extends Component {
+export class PanelBoundary extends Component {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
   componentDidCatch() {
-    this.props.onFail();
+    this.props.onFail?.();
     this.props.onChunkFail?.();
     this.props.onClose?.();
   }

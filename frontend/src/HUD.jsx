@@ -40,12 +40,24 @@ import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
 import { SNARE_COST, SOUL_MAX } from './game/soul.js';
 import { RESONANCE_MAX, ZONE_COST } from './game/resonance';
 import { subscribeHudTick } from './ui/hudTicker.js';
+import { PanelBoundary } from './ui/panels/lazyPanels.js';
 
 // The windup chevrons (combat-stance Task 7) load behind a lazy boundary: the combat-stance lane's share of the index
 // chunk is +9,000 B (plan Global Constraints and Task 12 Step 3), and the build with it in the boot chunk measured
 // +9,024 B. The layer is DOM-only and reads nothing until a windup is off screen, so it arriving a moment after the HUD
 // mounts costs nothing a player can see.
 const WindupChevrons = React.lazy(() => import('./ui/WindupChevrons'));
+// A rejected React.lazy rethrows on every render, and the nearest boundary was the app-wide one: a chevron chunk that
+// failed to load (offline at boot, or a tab left open across a deploy whose hashed chunk now 404s) replaced the whole
+// game with the reload screen (round-1 review e). The panels' own boundary (ui/panels/lazyPanels.js PanelBoundary)
+// contains it: the chevrons are dropped for the session, and the game plays on without them.
+export function WindupChevronsSlot() {
+  return (
+    <PanelBoundary>
+      <React.Suspense fallback={null}><WindupChevrons /></React.Suspense>
+    </PanelBoundary>
+  );
+}
 
 // M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
 // (HUD is a plain declarative component, not a per-frame useFrame system, so a
@@ -675,7 +687,7 @@ export function HUD({
       <DuskWarning />
       <MusicPlayer />
       <DamageDirection />
-      <React.Suspense fallback={null}><WindupChevrons /></React.Suspense>{/* combat-stance Task 7: a chevron at the edge for a windup off screen; ticker-driven, refs only */}
+      <WindupChevronsSlot />{/* combat-stance Task 7: a chevron at the edge for a windup off screen; ticker-driven, refs only */}
       <UISounds />
       <AspectHintToast />
 
