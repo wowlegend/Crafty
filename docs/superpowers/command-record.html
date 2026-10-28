@@ -269,7 +269,7 @@ footer p { max-width: 75ch; }
     <div>
       <p class="label">In flight</p>
       <p class="pills"><span class="pill run">round 3</span></p>
-      <p>#31 combat stance, round 3: a fresh <code>/code-review xhigh</code> found 13 issues, and the fixes are pushed. GitHub reports conflicts with main since the light lane landed. Then Wave 2.</p>
+      <p>#31 combat stance: a fresh <code>/code-review xhigh</code> found 13 issues; round 3 fixed them and its verifier confirmed four by putting the old code back, but refuted the roster fix, so a short final round is running. Wave 2’s first two lanes, W2-B and W2-C, which do not depend on the stance, started at 17:40Z.</p>
     </div>
     <div>
       <p class="label">Waiting on you</p>
@@ -292,8 +292,8 @@ footer p { max-width: 75ch; }
 <section id="outcome">
   <h2>Outcome</h2>
   <div class="prose">
-    <p class="lede">Main is green, protected and deployed at <code>6752ce5c</code>. Since 14:20Z Wave 1 landed its last four lanes and the light and colour script, so of Wave 1 only #31 remains, and Wave 2 starts once it lands.</p>
-    <p><strong>New since 14:20Z.</strong> A player now gets a moonlit night instead of a navy one, a sun that arcs, fireflies at night and none on the lens by day, a 480 s day whose first dusk falls at 4:00 of play, ground that reads at dawn and golden hour, mipmapped block textures that stop leaves and stone sparkling at mid distance, and a boot chunk W1-G cut by 104 kB. W1-H wrote ten standing decisions for the reset (one costed build mode, one Ember meter, the Forge, and more; <a href="#decisions">Decisions</a>) and moved all open work into one registry, <code>memory/registry.jsonl</code>: 347 rows, 228 open. The flaky ore-glow spec that failed main’s first attempt on <code>030ada1f</code> and a flaky hitstop test were both fixed at the cause, not by widening a bound.</p>
+    <p class="lede">Main is green, protected and deployed at <code>6752ce5c</code>. Since 14:20Z Wave 1 landed its last four lanes and the light and colour script, so of Wave 1 only #31 remains. Wave 2’s two lanes that do not depend on the stance (W2-B, W2-C) started at 17:40Z.</p>
+    <p><strong>New since 14:20Z.</strong> A player now gets a moonlit night instead of a navy one, a sun that arcs, fireflies at night and none on the lens by day, a 480 s day whose first dusk falls at 4:00 of play, ground that reads at dawn and golden hour, mipmapped block textures that stop leaves and stone sparkling at mid distance, and a boot chunk W1-G cut by 104 kB. W1-H wrote ten standing decisions for the reset (one costed build mode, one Ember meter, the Forge, and more; <a href="#decisions">Decisions</a>) and moved all open work into one registry, <code>memory/registry.jsonl</code>: 349 rows, 230 open. The flaky ore-glow spec that failed main’s first attempt on <code>030ada1f</code> and a flaky hitstop test were both fixed at the cause, not by widening a bound.</p>
     <p><strong>Between 06:30Z and 14:20Z.</strong> Your standing principle this morning (DECISIONS 2026-10-28 item 14) put nothing off limits and made this page your one review surface. The session ran a whole-project assessment and wrote the SOTA reset plan, “The First Night” (<code>ee26549c</code>, on main at 09:58Z). It ranks what to cut, rewrite and keep, in three waves. Wave 1 ships small visible wins and unlocks the rest: its required check landed at 11:11Z, and four more of its lanes at 14:08Z.</p>
     <p>The previous version reported main red on <code>touch-hold.spec.js:303</code> (run <code>40642071917</code> on <code>43d766e6</code>). The frame-counted freeze fix reached main as <code>2bb0857d</code>, and its run <code>40651588887</code> passed at 07:55Z.</p>
     <p>At the takeover on 10-27, main had not passed CI since 2026-09-23 (run <code>35820716087</code> on <code>a01b1982</code>), and 11 commits sat unpushed on the laptop. Main went green at <code>230fd72f</code> (run <code>40518887229</code>, 14:33Z on 10-27).</p>
@@ -303,7 +303,7 @@ footer p { max-width: 75ch; }
   <div class="qa">
     <div>
       <p class="q">Is Wave 1 done?</p>
-      <p><span class="pill run">all but one</span> Every Wave 1 lane is on main: W1-A to W1-D and W1-F at 14:08Z or before, W1-G at 16:04Z, W1-E at 16:22Z, W1-H at 17:18Z, and the carried light and colour lane at 17:35Z. The one left is the carried combat stance, PR #31, in its third round. The reset starts Wave 2 once #24, the stance, the light lane and W1-A have landed, so the stance is the last condition.</p>
+      <p><span class="pill run">all but one</span> Every Wave 1 lane is on main: W1-A to W1-D and W1-F at 14:08Z or before, W1-G at 16:04Z, W1-E at 16:22Z, W1-H at 17:18Z, and the carried light and colour lane at 17:35Z. The one left is the carried combat stance, PR #31, in its third round. The reset starts Wave 2 once #24, the stance, the light lane and W1-A have landed. The stance is the last condition for the lanes that touch combat; W2-B (retire the capture oracle) and W2-C (retire the old push-gate tiers) touch neither, so they started at 17:40Z.</p>
     </div>
     <div>
       <p class="q">Can a red commit reach the live site now?</p>
@@ -465,7 +465,7 @@ footer p { max-width: 75ch; }
           <td class="lane">#31</td>
           <td>Combat stance (<code>feat/combat-stance</code>)</td>
           <td class="st"><span class="pill run">round 3</span> <span class="pill warn">conflicts</span></td>
-          <td>Round 2’s head <code>e1bde21d</code> passed PR CI (<code>40717017009</code>). <code>/code-review xhigh</code> on the PR range then found 13 issues (16:03Z), and round 3’s fixes are pushed as <code>631edf28</code> to <code>3d2905c9</code>. Its merge of main <code>213eae36</code> (<code>fbf09903</code>) failed PR CI <code>40729446300</code> on a chevron spec that judged a different point of the husk than the layer now does; the spec fix <code>41e06d51</code> passed PR CI <code>40732551398</code> at 17:21Z. Round 3’s verifier verdict was not on record at 17:45Z. GitHub reports conflicts with main since the light lane landed; the PR is 48 commits ahead of main and 38 behind.</td>
+          <td>Round 2’s head <code>e1bde21d</code> passed PR CI (<code>40717017009</code>). <code>/code-review xhigh</code> on the PR range then found 13 issues (16:03Z), and round 3’s fixes are pushed as <code>631edf28</code> to <code>3d2905c9</code>. Its merge of main <code>213eae36</code> (<code>fbf09903</code>) failed PR CI <code>40729446300</code> on a chevron spec that judged a different point of the husk than the layer now does; the spec fix <code>41e06d51</code> passed PR CI <code>40732551398</code> at 17:21Z. Round 3’s verifier (about 17:50Z) put the old code back for findings 1, 2, 3 and 5 and saw each test go red, but refuted finding 6: its test went blind after an import-order change, and a mistuned roster still blanks the app through <code>App.jsx</code>. The final round makes a roster mistake clamp and log instead of throwing, moves the refusal into a unit gate on the shipped roster, merges main and lands through a land branch. GitHub reports conflicts with main since the light lane landed; the PR is 48 commits ahead of main and 38 behind.</td>
         </tr>
         <tr>
           <td class="lane">Dependabot #30</td>
@@ -650,8 +650,8 @@ footer p { max-width: 75ch; }
           <tr><td>1</td><td>W1-E mipmaps</td><td><span class="pill ok">done</span> on main 16:22Z; the ore-glow shift at distance is owed</td></tr>
           <tr><td>1</td><td>W1-H plans, decisions, registry</td><td><span class="pill ok">done</span> on main 17:18Z</td></tr>
           <tr><td>1</td><td>Carried: light and colour</td><td><span class="pill ok">done</span> on main 17:35Z; Tasks 5 and 6 wait for W2-I</td></tr>
-          <tr><td>1</td><td>Carried: combat stance #31</td><td><span class="pill run">round 3</span></td></tr>
-          <tr><td>2</td><td>W2-A to W2-M: the Cut, the HUD lane, hands, media, the capture oracle retired, passes measured, docs and harness</td><td><span class="pill idle">planned</span> starts once #24, stance, light and W1-A land; all but the stance have</td></tr>
+          <tr><td>1</td><td>Carried: combat stance #31</td><td><span class="pill run">final round</span></td></tr>
+          <tr><td>2</td><td>W2-A to W2-M: the Cut, the HUD lane, hands, media, the capture oracle retired, passes measured, docs and harness</td><td><span class="pill run">started</span> W2-B and W2-C, which touch neither combat nor the stance, since 17:40Z; the rest once the stance lands</td></tr>
           <tr><td>3</td><td>W3-A to W3-G: the First Night, the road of light and the dragon, the first minute, platform, polish</td><td><span class="pill idle">planned</span></td></tr>
           <tr><td>10-27</td><td>Phases 0a to 0d, 0f and 0g</td><td><span class="pill ok">landed</span></td></tr>
           <tr><td>10-27</td><td>Phase 0e re-baseline; coast</td><td><span class="pill idle">cancelled</span> 0e, since the capture oracle retires (W2-B); coast deferred, its shader terms move to W2-A</td></tr>
@@ -675,7 +675,7 @@ footer p { max-width: 75ch; }
           <li>Close-quarters e2e on an emulated iPad (<code>c2c93ec1</code>).</li>
           <li><strong>Round 2</strong> (<code>e1bde21d</code>): the player and the AI share one capped time step of 0.25 s, so a stall or a throttled iPad no longer lets you out-walk pursuers. It also fixed a defect found on the way: on a frame with no physics step the player’s move was dropped, so at 120 Hz the player covered half the distance fed, and 0.42 at 144 Hz; now 1.00 at every rate. Hits are aimed from the body, not the shaken camera.</li>
           <li><strong>Round 3</strong>, from the fresh review: the stance’s calm ran on wall time, so pausing escaped a fight; the threat clamp outlived the last kill; a live press did not consume a buffered one; a beast-form swap’s lift at 120 Hz could embed the capsule (from round 2’s own carry); and the store imported a module that could throw. The fixes are pushed (<code>631edf28</code>, <code>5ffca817</code>, <code>695a52f2</code>, <code>9f08b1fb</code>, <code>b305a155</code>, <code>1c1d3296</code>).</li>
-          <li><span class="gap">Open: round 3’s verifier, the merge of main, and CI on the merged head. Not checked: feel on a real iPad.</span></li>
+          <li><strong>Round 3’s verifier</strong> put the old code back for four of the fixes and saw each test go red; it refuted the roster fix, so a final round makes a roster mistake clamp and log instead of throwing, with the refusal moved to a unit gate. <span class="gap">Open: that round’s CI and the landing. Not checked: feel on a real iPad.</span></li>
         </ul>
       </div>
     </div>
@@ -962,7 +962,7 @@ footer p { max-width: 75ch; }
     <article>
       <h3>Records that lag the state</h3>
       <div class="body">
-        <p><b>What happened, new since 14:20Z.</b> Four registry rows for the light lane still read in flight after it landed at <code>6752ce5c</code>: the light and colour script, night in maroon and magenta, the cold golden hour, and the motes. Two follow-ups have no registry row although item 9 sends new open work there: the night ore-glow shift at distance (recorded only in DECISIONS item 20) and the override gate’s unnamed defaults (recorded in the session ledger at 16:04Z). ACTIVE_PLAN’s cursor still names the G-ledger as the residue, which item 9 replaced.</p>
+        <p><b>Corrected at this publish.</b> Four registry rows for the light lane read in flight after it landed at <code>6752ce5c</code> (the colour script, night, the cold golden hour, the motes); they are now closed by that commit. The night ore-glow shift at distance and the override gate’s unnamed defaults had no registry row; each has one now. <b>Still lagging, new since 14:20Z.</b> ACTIVE_PLAN’s cursor still names the G-ledger as the residue, which item 9 replaced.</p>
         <p><b>Still lagging from before.</b> DECISIONS 2026-10-28’s heading and item 3 still say six e2e shards; CI runs 8. ACTIVE_PLAN’s For-Kevin block still describes option (a) as pending and says #22 to #25 are open. GitHub still flags merged #23 and #25 as drafts. era-review and sota-audit have not moved to <code>docs/archive/</code>.</p>
         <p><b>Done.</b> W1-H’s harvest put every open item it could extract into the registry, with a floor per source, so the old G-ledger is no longer the list to read. The rest is listed here and is the session’s to correct.</p>
       </div>
@@ -987,12 +987,11 @@ footer p { max-width: 75ch; }
     <div>
       <h3>Open for the session</h3>
       <ul class="list">
-        <li>Land #31 after round 3: its verifier, the merge of main, and <code>ci ok</code> on the merged head. Then start Wave 2, W2-A to W2-M.</li>
-        <li>Write the registry rows owed (the ore-glow shift at distance, the override gate’s unnamed defaults) and close the four light-lane rows that still read in flight.</li>
+        <li>Land #31 after its final round, with <code>ci ok</code> on the merged head. W2-B and W2-C are in flight; the rest of Wave 2 follows the stance.</li>
         <li>The acceptance frames on the deployed build for W1-E and the light lane, and W1-D’s run against the production URL, which needs a <code>--url</code> mode.</li>
         <li>Wave 1 follow-ups: the beast form, snare and fuse timers during a pause (W3-D); the touch-resume stranding; the pause instruments’ LOW findings; the GPU cost probe hanging for over 5 minutes after writing its JSON, at load 170 to 400, undiagnosed.</li>
         <li>Move era-review and sota-audit to <code>docs/archive/</code> (item 13(a)).</li>
-        <li>Retire e2e-freshness’s tiers in favour of the server-side rule (item 13(b), W2-C).</li>
+        <li>Retire e2e-freshness’s tiers in favour of the server-side rule (item 13(b)): in flight in W2-C.</li>
         <li>Dependabot #30.</li>
         <li>Bring the records under Mistakes current.</li>
       </ul>
@@ -1002,22 +1001,22 @@ footer p { max-width: 75ch; }
   <div class="group">
     <h3>The registry</h3>
     <div class="ledger">
-      <p><code>memory/registry.jsonl</code> at <code>6752ce5c</code> holds 347 rows: 228 open, 5 in flight and 114 closed. W1-H harvested them from STATUS §2 and its G-ledger, ACTIVE_PLAN, the sota-2026-09 QUEUE and OPEN-ITEMS files and the masterpiece tables; 9 more are review residue from W1-H and the light lane. 95 of the open rows are visible to a player. Mapped to the reset’s lanes, the largest shares of open rows are W2-J, docs and harness (49), W3-D (19), W2-I (13) and W2-C (12); 65 are not yet mapped to a lane.</p>
-      <div class="bar" role="img" aria-label="Open registry rows by severity: 15 high, 67 medium, 128 low, 18 unrated, of 228 open rows">
+      <p><code>memory/registry.jsonl</code> at <code>6752ce5c</code> holds 349 rows: 230 open, 1 in flight and 118 closed (two follow-up rows added and four landed light-lane rows closed at publish). W1-H harvested them from STATUS §2 and its G-ledger, ACTIVE_PLAN, the sota-2026-09 QUEUE and OPEN-ITEMS files and the masterpiece tables; 11 more are review residue from W1-H, W1-E, W1-G and the light lane. 96 of the open rows are visible to a player. Mapped to the reset’s lanes, the largest shares of open rows are W2-J, docs and harness (49), W3-D (19), W2-I (13) and W2-C (12); 65 are not yet mapped to a lane.</p>
+      <div class="bar" role="img" aria-label="Open registry rows by severity: 15 high, 67 medium, 130 low, 18 unrated, of 230 open rows">
         <span class="seg-high" style="flex-grow: 15"></span>
         <span class="seg-med" style="flex-grow: 67"></span>
-        <span class="seg-low" style="flex-grow: 128"></span>
+        <span class="seg-low" style="flex-grow: 130"></span>
         <span class="seg-none" style="flex-grow: 18"></span>
       </div>
-      <p class="legend"><span class="l-high">HIGH 15</span><span class="l-med">MED 67</span><span class="l-low">LOW 128</span><span class="l-none">unrated 18</span></p>
-      <p class="muted">Owners of the 228 open rows: the command session 214 (12 of them HIGH), you 11, AB Command 3. The 5 in flight are the command session’s: four for the light lane, which has landed, and one for the combat stance.</p>
+      <p class="legend"><span class="l-high">HIGH 15</span><span class="l-med">MED 67</span><span class="l-low">LOW 130</span><span class="l-none">unrated 18</span></p>
+      <p class="muted">Owners of the 230 open rows: the command session 216 (12 of them HIGH), you 11, AB Command 3. The 1 in flight is the combat stance, #31.</p>
     </div>
   </div>
 </section>
 
 <footer>
   <p>Sources: a fetch of <code>origin/main</code> and <code>feat/combat-stance</code> read with git; GitHub runs and their logs, PRs, deployments and branch protection read with <code>gh</code> at about 17:35 to 17:45Z; both live hosts’ index chunk read with curl at 17:41Z; the repo’s DECISIONS.md (items 20 and 21 and the W1-H section), <code>memory/registry.jsonl</code>, ACTIVE_PLAN.md, the light plan’s as-built section and the light-colour evidence index at <code>6752ce5c</code>; and the session-truth ledger’s rows after 14:20Z. Each claim carries its commit, PR or run id.</p>
-  <p>Main run <code>40737159635</code> on <code>6752ce5c</code> was read again at 17:52Z, after it passed. Not checked: round 3’s verifier verdict on #31, which was not on record; any play on the live site; and the uncommitted state of lane worktrees beyond their branch heads. The previous version said main’s 030ada1f re-run passed at about 14:55Z; GitHub records it finishing at 14:42:57Z.</p>
+  <p>Main run <code>40737159635</code> on <code>6752ce5c</code> was read again at 17:52Z, after it passed. Round 3’s verifier verdict on #31 was added at publish, from its report. Not checked: any play on the live site; and the uncommitted state of lane worktrees beyond their branch heads. The previous version said main’s 030ada1f re-run passed at about 14:55Z; GitHub records it finishing at 14:42:57Z.</p>
 </footer>
 
 </div>
