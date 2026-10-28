@@ -119,6 +119,8 @@ export const STRINGS = {
     'combat.perfectDodge': 'PERFECT!',
     'a11y.panels': 'Panels',
     'a11y.aspects': 'Aspect powers',
+    // A locked ring sector (Phase 0c): it opens the Talents panel, so its name says why it will not fire.
+    'a11y.aspectLocked': '{aspect} (locked, opens Talents)',
     'a11y.selectSpell': 'Select spell',
     'a11y.pause': 'Pause',
     'a11y.allocStrength': 'Allocate point to Strength',
@@ -269,6 +271,7 @@ export const STRINGS = {
     'combat.perfectDodge': '完美闪避！',
     'a11y.panels': '面板',
     'a11y.aspects': '化身之力',
+    'a11y.aspectLocked': '{aspect}（未解锁，点击打开天赋）',
     'a11y.selectSpell': '选择法术',
     'a11y.pause': '暂停',
     'a11y.allocStrength': '分配点数至力量',
