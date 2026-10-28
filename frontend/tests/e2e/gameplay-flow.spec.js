@@ -153,6 +153,17 @@ const chainLightningCase = async ({ page }) => {
       const t0 = performance.now();
       for (let n = 0; n < 3 || performance.now() - t0 < 400; n++) await frame();
 
+      // The chain takes the nearest live hostile at each of its 3 hops of 8 m (game/spells.js), so any hostile other
+      // than A, B and C within that reach of the strike decides the verdict too: a crowd that walked in takes the hops
+      // before B. They are put down first, with no player credit; one still alive is a SETUP failure, not a chain one.
+      const REACH = 3 * 8 + 2;
+      const strangers = () => call('readMobs').filter((m) => !m.passive && m.health > 0 && ![A, B, C].includes(m.id)
+        && Math.hypot(m.x - M.x, m.y - M.y, m.z - M.z) <= REACH).map((m) => m.id);
+      const cleared = strangers();
+      for (const id of cleared) origDamage(id, 99999, 'physical', 'ally');
+      const left = strangers();
+      if (left.length) return { setup: `hostiles other than A, B and C still alive within the chain's reach: ${left.join(', ')}` };
+
       const hops = [];
       let struck = false, moved = false;
       GM.damageMob = (id, dmg, type, source, ...rest) => {
@@ -185,7 +196,8 @@ const chainLightningCase = async ({ page }) => {
       const arcs = call('readChainArcs').slice(-hops.length || 0);
       const p = (v) => (v ? `(${v.x.toFixed(2)}, ${v.y.toFixed(2)}, ${v.z.toFixed(2)})` : 'none');
       const scene = `muzzle planned ${p(M)}, bolt from ${p(bolt)} to ${p(end)}; store camera is the aimed one: `
-        + `${store.getState().gameCamera === cam}; frozen: ${store.getState().hitstopUntil > performance.now()}`;
+        + `${store.getState().gameCamera === cam}; frozen: ${store.getState().hitstopUntil > performance.now()}; `
+        + `cleared from the reach: [${cleared.join(', ')}]`;
       return { A, B, C, struck, moved, hops, arcs, end, frames, scene };
     } finally {
       GM.damageMob = origDamage;
