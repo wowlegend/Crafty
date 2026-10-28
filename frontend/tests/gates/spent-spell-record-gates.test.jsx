@@ -39,6 +39,7 @@ import { render, cleanup, act } from '@testing-library/react';
 import * as THREE from 'three';
 
 let frameCb = null;
+const drawnArcs = new Map(); // every chain arc the system handed its renderer, by id
 vi.mock('@react-three/fiber', async (orig) => ({
   ...(await orig()),
   useFrame: (cb) => { frameCb = cb; },
@@ -47,7 +48,7 @@ vi.mock('../../src/render/spellVfx', () => ({
   EnhancedSpellProjectile: () => null,
   SpellImpactPop: () => null,
   CastTelegraph: () => null,
-  ChainArc: () => null,
+  ChainArc: ({ arc }) => { drawnArcs.set(arc.id, arc); return null; },
   MagicWand: () => null,
 }));
 vi.mock('../../src/SoundManager', () => ({
@@ -58,6 +59,7 @@ const { EnhancedMagicSystem } = await import('../../src/EnhancedMagicSystem.jsx'
 const { useGameStore } = await import('../../src/store/useGameStore.jsx');
 const { GameMethods } = await import('../../src/GameMethods.js');
 const { callTestHook, _resetBridge } = await import('../../src/devtest/testBridge.js');
+const { ecs } = await import('../../src/ecs/world.js');
 
 const FLOOR = 12; // the ground probe's floor everywhere; a spell lands within 0.5 of it
 const noop = () => {};
@@ -85,6 +87,7 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 beforeEach(() => {
   frameCb = null;
   probed = [];
+  drawnArcs.clear();
   _resetBridge();
   vi.unstubAllEnvs();
   useGameStore.setState({
@@ -261,6 +264,7 @@ describe('DEV only', () => {
     expect(typeof frameCb, 'EnhancedMagicSystem did not mount').toBe('function');
     expect(callTestHook('readSpentProjectiles'), 'registered with DEV off').toBeUndefined();
     expect(callTestHook('readProjectiles'), 'registered with DEV off').toBeUndefined();
+    expect(callTestHook('readChainArcs'), 'registered with DEV off').toBeUndefined();
   });
 });
 
@@ -280,5 +284,92 @@ describe('a cast grants no XP', () => {
     frame(0.1); // in flight: a grant on the frame after the cast is the same farm
     expect(live().length, 'the ten spells are not in flight').toBe(10);
     expect(grants, 'casting granted XP').toEqual([]);
+  });
+});
+
+// The chain picks its victims itself, so it must pick them from the mobs as they are at the hop: an arc drawn to where a
+// mob stood a moment ago, or onto one already dead, is damage and a bolt landing on nothing.
+describe('chain lightning hops onto the live mobs', () => {
+  const added = [];
+  const mob = (fields) => {
+    const e = ecs.add({ isMob: true, type: 'zombie', health: 100, maxHealth: 100, passive: false, ...fields });
+    added.push(e);
+    return e;
+  };
+  afterEach(() => { while (added.length) ecs.remove(added.pop()); });
+
+  // One lightning strike on A, with the four ways a chain can go wrong standing within its 8 m reach. Returns every
+  // hop as damageMob saw it: the target, and its live state at that instant.
+  const strike = () => {
+    const A = mob({ id: 9101, position: new THREE.Vector3(0, 29, -6) });   // takes the bolt directly
+    const C = mob({ id: 9102, position: new THREE.Vector3(1, 29, -5) });   // nearest; dies inside the direct hit
+    const D = mob({ id: 9103, position: new THREE.Vector3(-1, 29, -5), dyingUntil: 1 }); // a corpse, dissolving
+    const ox = mob({ id: 9104, type: 'cow', passive: true, position: new THREE.Vector3(0, 29.5, -4) }); // never auto-picked
+    const B = mob({ id: 9105, position: new THREE.Vector3(3, 29, -8) });   // stands here now
+    // What a 250 ms mirror can still hold at this instant: B where it stood earlier, C and D alive.
+    const snap = (e, p) => ({ id: e.id, type: e.type, passive: e.passive, position: p });
+    useGameStore.setState({ mobEntities: [
+      snap(A, [0, 29, -6]), snap(C, [1, 29, -5]), snap(D, [-1, 29, -5]), snap(ox, [0, 29.5, -4]), snap(B, [5, 29, -9]),
+    ] });
+
+    let directHits = 0;
+    GameMethods.checkMobCollision = (_pos, _r, exclude) => (exclude && exclude.has(A.id) ? null : (directHits++, A));
+    const hops = [];
+    GameMethods.damageMob = (id, dmg, type, source) => {
+      const e = ecs.entities.find((m) => m.id === id);
+      if (source === undefined) { // the chain's hops pass no source; the direct hit does
+        hops.push({ id, type, alive: !!e && e.health > 0 && !e.dyingUntil, at: e && e.position.clone() });
+      }
+      if (e) e.health -= dmg;
+      if (id === A.id) { C.health = 0; C.dyingUntil = 1; } // something else killed C in this frame, before the chain
+      return e;
+    };
+
+    useGameStore.setState({ gameCamera: camera([0, 30, 0], [0, 0, -1]) });
+    cast('lightning');
+    frame(0.05);
+    expect(directHits, 'the bolt never struck A — nothing below is about a chain').toBe(1);
+    expect(hops.length, 'the strike chained to nobody').toBeGreaterThan(0);
+    while (added.length) ecs.remove(added.pop());
+    return { hops, ids: { A: A.id, B: B.id, C: C.id, D: D.id, ox: ox.id } };
+  };
+  const arcEnd = (arc) => arc.points.slice(-3);
+
+  it('skips a mob killed earlier in the same frame, and draws each arc to where its target stands', () => {
+    mount();
+    const { hops, ids } = strike();
+    expect(hops.every((h) => h.type === 'lightning')).toBe(true);
+    const hit = hops.map((h) => h.id);
+    expect(hit, 'the chain hopped onto a mob that died earlier in the same frame').not.toContain(ids.C);
+    expect(hit, 'the chain hopped onto a dissolving corpse').not.toContain(ids.D);
+    expect(hit, 'the chain picked the Ox on its own').not.toContain(ids.ox);
+    expect(hit, 'the chain never reached B, standing 4.4 m from the strike').toContain(ids.B);
+    expect(hops.every((h) => h.alive), 'a hop landed on a dead mob').toBe(true);
+
+    const arcs = [...drawnArcs.values()];
+    expect(arcs.length, 'one arc per hop').toBe(hops.length);
+    hops.forEach((h, i) => {
+      const [x, y, z] = arcEnd(arcs[i]);
+      // The arc ends at body height over the mob's feet.
+      expect(Math.hypot(x - h.at.x, y - 0.9 - h.at.y, z - h.at.z), `the arc to mob ${h.id} ends away from where it stands`)
+        .toBeLessThan(1e-6);
+    });
+
+    // The DEV record the e2e reads is the drawn geometry, hop for hop.
+    const rec = callTestHook('readChainArcs');
+    expect(rec.map((r) => r.target), 'the record names other targets than the hops').toEqual(hit);
+    rec.forEach((r, i) => expect([r.x, r.y, r.z], 'the record is not the drawn end').toEqual(arcEnd(arcs[i])));
+  });
+
+  it('records only while DEV is on, and stays bounded at 16 hops', () => {
+    mount();
+    vi.stubEnv('DEV', false);
+    strike();
+    expect(callTestHook('readChainArcs'), 'wrote a chain record with DEV off').toEqual([]);
+    vi.stubEnv('DEV', true); // PRESENCE, same mount, same instrument
+    strike();
+    expect(callTestHook('readChainArcs').length).toBe(1);
+    for (let i = 0; i < 20; i++) strike();
+    expect(callTestHook('readChainArcs').length, 'the chain record grew past its cap').toBe(16);
   });
 });

@@ -2,12 +2,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import * as THREE from 'three';
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-
 import { ecs, mobsQuery } from '../../src/ecs/world';
 import { CombatSystem } from '../../src/systems/CombatSystem';
 import { GameMethods } from '../../src/GameMethods';
@@ -136,10 +130,10 @@ describe('B1 friend/foe — the hub questgivers are not target practice', () => 
 
 describe('B1 friend/foe — auto-targeters may not pick their own victims', () => {
   it('chain lightning never hops to a questgiver or to livestock', () => {
-    const zombie = { id: 1, position: [0, 0, 0], passive: false };
-    const cow = { id: 2, position: [0, 0, 3], passive: true };
-    const questgiver = { id: 3, position: [0, 0, 4], passive: true, isNPC: true };
-    const skeleton = { id: 4, position: [0, 0, 5], passive: false };
+    const zombie = { id: 1, position: { x: 0, y: 0, z: 0 }, passive: false };
+    const cow = { id: 2, position: { x: 0, y: 0, z: 3 }, passive: true };
+    const questgiver = { id: 3, position: { x: 0, y: 0, z: 4 }, passive: true, isNPC: true };
+    const skeleton = { id: 4, position: { x: 0, y: 0, z: 5 }, passive: false };
 
     const hops = solveChainTargets([zombie, cow, questgiver, skeleton], { x: 0, y: 0, z: 0 }, {
       excludeId: 1, baseDamage: 75, maxChains: 3, range: 8, damageReduction: 0.3,
@@ -163,23 +157,6 @@ describe('B1 friend/foe — auto-targeters may not pick their own victims', () =
     // this goes red while every other test stays green.
     expect(isAutoTargetable({ id: 9, passive: false, isNPC: true })).toBe(false);
     expect(canPlayerDamage({ id: 9, passive: false, isNPC: true })).toBe(false);
-  });
-
-  it('the mobEntities SNAPSHOT carries every field the targeting predicates read', () => {
-    // Chain lightning targets off the store SNAPSHOT (MinimapSyncSystem), not off live ECS entities.
-    // `isNPC` was missing from that snapshot, so the questgivers were excluded only incidentally.
-    // Read the projection MinimapSyncSystem actually writes and assert it preserves allegiance.
-    const live = { id: 1, type: 'villager', passive: true, isNPC: true, role: 'merchant', npcName: 'Bram',
-                   position: { x: 1, y: 2, z: 3 } };
-    const snap = { id: live.id, type: live.type, passive: live.passive, isNPC: live.isNPC, role: live.role,
-                   npcName: live.npcName, position: [live.position.x, live.position.y, live.position.z] };
-
-    expect(isProtected(snap)).toBe(true);
-    expect(isProtected(snap)).toBe(isProtected(live));       // the snapshot cannot disagree with the entity
-    expect(isAutoTargetable(snap)).toBe(isAutoTargetable(live));
-
-    const src = readFileSync(resolve(HERE, '../../src/systems/MinimapSyncSystem.jsx'), 'utf8');
-    expect(src).toMatch(/setMobEntities\([\s\S]{0,200}isNPC:\s*e\.isNPC/);
   });
 });
 

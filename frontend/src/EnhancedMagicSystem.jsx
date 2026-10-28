@@ -24,6 +24,7 @@ import { chainArcPoints } from './game/chainArc';
 import { makeBurnManager } from './game/burnManager';
 import { worldDelta } from './game/worldClock.js';
 import { registerTestHook } from './devtest/testBridge.js';
+import { mobsQuery } from './ecs/world';
 // (A dead `export { MagicWand } from './render/spellVfx'` pass-through lived here. Every consumer
 // imports MagicWand from render/spellVfx directly — playerRender.jsx:16 is the only one — so this
 // re-export was a second import path nobody took. knip 6.32 flags it; 6.17 did not.)
@@ -48,6 +49,8 @@ export const EnhancedMagicSystem = React.memo(() => {
   const projectilesDirty = useRef(false);
   // DEV only: where the last few spells ENDED, and what ended them (the readSpentProjectiles hook below).
   const spentRef = useRef([]);
+  // DEV only: the last few chain hops — which mob each arc went to and the point it was drawn to (readChainArcs).
+  const chainRef = useRef([]);
 
 
   // Fire DoT tickers are owned by a registry so an unmount mid-burn can stop them all — otherwise a burn
@@ -68,6 +71,7 @@ export const EnhancedMagicSystem = React.memo(() => {
       id: p.id, type: p.type, age: p.age, x: p.position.x, y: p.position.y, z: p.position.z,
     })));
     registerTestHook('readSpentProjectiles', () => spentRef.current.map((s) => ({ ...s })));
+    registerTestHook('readChainArcs', () => chainRef.current.map((c) => ({ ...c })));
   }, []);
 
   const applyBurnEffect = useCallback((mobId, duration, dps) => {
@@ -76,22 +80,23 @@ export const EnhancedMagicSystem = React.memo(() => {
   }, []);
 
   const applyChainLightning = useCallback((startPos, excludeId, baseDamage, maxChains, range, damageReduction) => {
-    // S3-M2 T3: the targeting is pure (game/chainLightning.js); this wrapper keeps the
-    // live halves — the store snapshot read + the damage application.
-    const allMobs = useGameStore.getState().mobEntities;
-    if (!allMobs) return;
-    const pos = startPos.clone ? startPos : new THREE.Vector3(startPos.x, startPos.y, startPos.z);
-    const hits = solveChainTargets(allMobs, pos, { excludeId, baseDamage, maxChains, range, damageReduction });
-    // The signature inter-target ARC: a short-lived jagged additive bolt per hop (caster/first target ->
-    // each chained mob). chainArcPoints is pure + deterministic (capture-stable). Mob endpoints lifted
-    // ~0.9 to read at body height. The LOOK (color/jitter/lifetime) is a Kevin taste-gate -> KEVIN-REVIEW.
+    // The live ECS, never a mirror: a mob killed or moved since a snapshot was taken would take a hop it cannot
+    // receive, and its arc would land on empty ground.
+    const hits = solveChainTargets(mobsQuery.entities, startPos, { excludeId, baseDamage, maxChains, range, damageReduction });
     const arcColor = (SPELL_TYPES.lightning && SPELL_TYPES.lightning.glowColor) || '#FFE066';
     const arcs = [];
-    let arcFrom = { x: pos.x, y: pos.y, z: pos.z };
+    let arcFrom = { x: startPos.x, y: startPos.y, z: startPos.z };
     for (const h of hits) {
       if (GameMethods.damageMob) GameMethods.damageMob(h.id, h.damage, 'lightning');
-      const arcTo = { x: h.position[0], y: h.position[1] + 0.9, z: h.position[2] };
-      arcs.push({ id: arcId.current++, points: chainArcPoints(arcFrom, arcTo, { seed: arcId.current, jitter: 0.45 }), color: arcColor, age: 0, maxAge: 160 });
+      // Read at the hop, not later: the arc is fixed geometry and the mob keeps moving. Lifted to body height.
+      const arcTo = { x: h.position.x, y: h.position.y + 0.9, z: h.position.z };
+      const points = chainArcPoints(arcFrom, arcTo, { seed: arcId.current + 1, jitter: 0.45 });
+      arcs.push({ id: arcId.current++, points, color: arcColor, age: 0, maxAge: 160 });
+      if (import.meta.env.DEV) {
+        const n = points.length;
+        chainRef.current.push({ target: h.id, x: points[n - 3], y: points[n - 2], z: points[n - 1] });
+        if (chainRef.current.length > 16) chainRef.current.shift();
+      }
       arcFrom = arcTo;
     }
     if (arcs.length) setChainArcs(prev => (prev.length > 12 ? [...prev.slice(prev.length - 12), ...arcs] : [...prev, ...arcs]));

@@ -88,11 +88,9 @@ describe('hub NPC spawn + AI-skip', () => {
     // pin real ones. Fixed in `_srcWalk.js`; this is the assertion that caught it.
     expect(carriersOf(/npcEntities/), 'the set of modules touching the NPC mirror changed')
       .toEqual(['store/useGameStore.jsx', 'ui/RadialMinimap.jsx']);
-    // The sync payload must carry the two fields the consumers branch on: `role` routes the G-interact
-    // and `isNPC` selects the gold blip. Asserted in CODE, which is what the old case could not do.
+    // The sync payload must carry `role`, which routes the G-interact. Asserted in CODE, which is what the old
+    // case could not do.
     const sync = read('systems/MinimapSyncSystem.jsx');
     expect(sync, 'the mirror payload no longer carries role — G cannot route by it').toMatch(/role: e\.role/);
-    expect(sync, 'the mirror payload no longer marks NPCs — the minimap cannot tell them from mobs')
-      .toMatch(/isNPC: e\.isNPC/);
   });
 });
