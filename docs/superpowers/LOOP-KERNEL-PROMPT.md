@@ -26,9 +26,10 @@ mutation-proven + full suite green; atomic verified checkpoints (auditable, git-
 commit); do NOT silently reverse a RECORDED Kevin decision (world-design hybrid · CPU-ocean fork · F=cast/T=melee ·
 bloom 0.65 · Ember-Frontier/Blight-Heart · affixes kept · broad audience; a reversal is a new dated DECISIONS entry);
 Kevin's two bright lines: spend no money; never force-push or rewrite pushed history. Account sign-ins stay his
-because only he can make them; publishing the repo's public face is the session's (DECISIONS 2026-10-28 item 15). A
-hard delete of a REFERENCED file, an external send or a NEW dependency is the command session's call since Kevin's
-2026-10-27 mandate, made with care and recorded in DECISIONS (2026-10-28 items 14 and 16).
+because only he can make them. An external send (a message, post or publish to anyone outside the repo) needs
+Kevin's explicit OK; the one exception is publishing the repo's own public face, which is the session's (DECISIONS
+2026-10-28 item 15). A hard delete of a REFERENCED file or a NEW dependency is the command session's call since
+Kevin's 2026-10-27 mandate, made with care and recorded in DECISIONS (2026-10-28 items 14 and 16).
 Prefer ARCHIVE (reversible) over DELETE.
 
 ORIENT EVERY ITERATION (assume amnesia — the context may have just compacted or reset):
