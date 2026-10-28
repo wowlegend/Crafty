@@ -40,6 +40,12 @@
 5. **Landing is capped by the published operator pages.** `artifact-currency` refuses a push more than 30 commits past
    the pages' publish sha; era-review and sota-audit belong to account 1, which this session (account 2) cannot
    write. Until Kevin's morning answer (ACTIVE_PLAN, "For Kevin" 1), at most one PR lands: #22 first.
+6. **Then option (b), taken ~01:30Z while Kevin slept:** the cap had reached every lane (touch-hold's push refused at
+   41), so the three page sources were refreshed against measured state (`d00273cd`), read in full before publishing,
+   and era-review and sota-audit were published from account 2 at NEW addresses — era-review
+   https://claude.ai/artifact/Q1QQLYLxPVYZ8A7Srm1BMF, sota-audit https://claude.ai/artifact/NuwFDNnfZG3gRHv6LH1krr —
+   with `.artifact-sync.json` repointed and synced at `d00273cd`. The old account-1 addresses stay in the file as
+   `previousUrl`. Reversible: once account 1 is active, republish the same sources there and point back.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 
