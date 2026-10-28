@@ -253,7 +253,8 @@ function installTouchCombatHelpers() {
       await H.frames(3);
       const m = call('readMobs').find((e) => !before.has(e.id));
       if (!m) return { why: `SETUP: no zombie spawned at ${deg} degrees` };
-      const v = cam().position.clone().set(m.x, m.y, m.z).project(cam());
+      // The layer judges the body's centre, not its base (game/windupChevrons.js): a husk's 1.6 m body, 0.8 m up.
+      const v = cam().position.clone().set(m.x, m.y + 0.8, m.z).project(cam());
       const inView = v.z <= 1 && Math.abs(v.x) <= 0.94 && Math.abs(v.y) <= 0.94;
       if (inView) return { deg, inView: true };
       call('plantWindup', m.id, 2000);

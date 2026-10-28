@@ -92,7 +92,8 @@ function installChevronHelpers() {
     project(id) {
       const m = call('readMobs').find((x) => x.id === id);
       if (!m) return null;
-      const v = cam().position.clone().set(m.x, m.y, m.z).project(cam());
+      // The layer judges the body's centre, not its base (game/windupChevrons.js): a husk's 1.6 m body, 0.8 m up.
+      const v = cam().position.clone().set(m.x, m.y + 0.8, m.z).project(cam());
       return { x: +v.x.toFixed(3), y: +v.y.toFixed(3), z: +v.z.toFixed(3) };
     },
     chevrons() {
