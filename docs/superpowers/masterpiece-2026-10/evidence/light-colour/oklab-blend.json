@@ -1,0 +1,1922 @@
+[
+ {
+  "pair": "day->sunset",
+  "field": "sky.top",
+  "a": "#2A64C8",
+  "b": "#3A5CA8",
+  "endL": [
+   0.522,
+   0.489
+  ],
+  "endC": [
+   0.167,
+   0.128
+  ],
+  "midL": {
+   "lin": 0.506,
+   "srgb": 0.505,
+   "ok": 0.506
+  },
+  "midC": {
+   "lin": 0.149,
+   "srgb": 0.148,
+   "ok": 0.148
+  },
+  "minC": {
+   "lin": 0.128,
+   "srgb": 0.128,
+   "ok": 0.128
+  },
+  "midHex": {
+   "lin": "#3360B9",
+   "srgb": "#3260B8",
+   "ok": "#3360B8"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0016,
+   "linAtT": 0.53,
+   "srgb": 0.001,
+   "srgbAtT": 0.51
+  }
+ },
+ {
+  "pair": "day->sunset",
+  "field": "sky.mid",
+  "a": "#5A9AE0",
+  "b": "#8FA8D0",
+  "endL": [
+   0.674,
+   0.727
+  ],
+  "endC": [
+   0.124,
+   0.065
+  ],
+  "midL": {
+   "lin": 0.701,
+   "srgb": 0.699,
+   "ok": 0.7
+  },
+  "midC": {
+   "lin": 0.093,
+   "srgb": 0.095,
+   "ok": 0.094
+  },
+  "minC": {
+   "lin": 0.065,
+   "srgb": 0.065,
+   "ok": 0.065
+  },
+  "midHex": {
+   "lin": "#78A1D8",
+   "srgb": "#74A1D8",
+   "ok": "#76A1D8"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0026,
+   "linAtT": 0.47,
+   "srgb": 0.0019,
+   "srgbAtT": 0.48
+  }
+ },
+ {
+  "pair": "day->sunset",
+  "field": "sky.horizon",
+  "a": "#CFE6F2",
+  "b": "#FFC27A",
+  "endL": [
+   0.912,
+   0.854
+  ],
+  "endC": [
+   0.029,
+   0.113
+  ],
+  "midL": {
+   "lin": 0.884,
+   "srgb": 0.878,
+   "ok": 0.883
+  },
+  "midC": {
+   "lin": 0.033,
+   "srgb": 0.045,
+   "ok": 0.043
+  },
+  "minC": {
+   "lin": 0.003,
+   "srgb": 0.009,
+   "ok": 0.008
+  },
+  "midHex": {
+   "lin": "#E9D5C2",
+   "srgb": "#E7D4B6",
+   "ok": "#E9D5B9"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0122,
+   "linAtT": 0.56,
+   "srgb": 0.006,
+   "srgbAtT": 0.54
+  }
+ },
+ {
+  "pair": "day->sunset",
+  "field": "fog.color",
+  "a": "#CFE3EC",
+  "b": "#E8C6A0",
+  "endL": [
+   0.904,
+   0.846
+  ],
+  "endC": [
+   0.025,
+   0.064
+  ],
+  "midL": {
+   "lin": 0.876,
+   "srgb": 0.873,
+   "ok": 0.875
+  },
+  "midC": {
+   "lin": 0.016,
+   "srgb": 0.021,
+   "ok": 0.021
+  },
+  "minC": {
+   "lin": 0.005,
+   "srgb": 0.008,
+   "ok": 0.007
+  },
+  "midHex": {
+   "lin": "#DCD5CB",
+   "srgb": "#DBD4C6",
+   "ok": "#DDD5C7"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0053,
+   "linAtT": 0.54,
+   "srgb": 0.002,
+   "srgbAtT": 0.51
+  }
+ },
+ {
+  "pair": "day->sunset",
+  "field": "glow.color",
+  "a": "#FFF0D8",
+  "b": "#FFB060",
+  "endL": [
+   0.961,
+   0.818
+  ],
+  "endC": [
+   0.035,
+   0.133
+  ],
+  "midL": {
+   "lin": 0.895,
+   "srgb": 0.886,
+   "ok": 0.889
+  },
+  "midC": {
+   "lin": 0.073,
+   "srgb": 0.085,
+   "ok": 0.084
+  },
+  "minC": {
+   "lin": 0.035,
+   "srgb": 0.035,
+   "ok": 0.035
+  },
+  "midHex": {
+   "lin": "#FFD3AA",
+   "srgb": "#FFD09C",
+   "ok": "#FFD19F"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.013,
+   "linAtT": 0.57,
+   "srgb": 0.0042,
+   "srgbAtT": 0.57
+  }
+ },
+ {
+  "pair": "day->sunset",
+  "field": "hemi.sky",
+  "a": "#9DB8D6",
+  "b": "#B0B2C2",
+  "endL": [
+   0.773,
+   0.767
+  ],
+  "endC": [
+   0.052,
+   0.023
+  ],
+  "midL": {
+   "lin": 0.77,
+   "srgb": 0.769,
+   "ok": 0.77
+  },
+  "midC": {
+   "lin": 0.037,
+   "srgb": 0.037,
+   "ok": 0.037
+  },
+  "minC": {
+   "lin": 0.023,
+   "srgb": 0.023,
+   "ok": 0.023
+  },
+  "midHex": {
+   "lin": "#A7B5CC",
+   "srgb": "#A6B5CC",
+   "ok": "#A7B5CC"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0005,
+   "linAtT": 0.51,
+   "srgb": 0.0005,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "day->sunset",
+  "field": "hemi.ground",
+  "a": "#B49670",
+  "b": "#C88E5C",
+  "endL": [
+   0.691,
+   0.693
+  ],
+  "endC": [
+   0.063,
+   0.097
+  ],
+  "midL": {
+   "lin": 0.692,
+   "srgb": 0.691,
+   "ok": 0.692
+  },
+  "midC": {
+   "lin": 0.079,
+   "srgb": 0.08,
+   "ok": 0.08
+  },
+  "minC": {
+   "lin": 0.063,
+   "srgb": 0.063,
+   "ok": 0.063
+  },
+  "midHex": {
+   "lin": "#BE9267",
+   "srgb": "#BE9266",
+   "ok": "#BE9266"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0005,
+   "linAtT": 0.51,
+   "srgb": 0.0006,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "day->sunset",
+  "field": "ambient.color",
+  "a": "#C4C6CC",
+  "b": "#B8AA9C",
+  "endL": [
+   0.827,
+   0.746
+  ],
+  "endC": [
+   0.009,
+   0.026
+  ],
+  "midL": {
+   "lin": 0.788,
+   "srgb": 0.786,
+   "ok": 0.786
+  },
+  "midC": {
+   "lin": 0.007,
+   "srgb": 0.009,
+   "ok": 0.009
+  },
+  "minC": {
+   "lin": 0.003,
+   "srgb": 0.003,
+   "ok": 0.003
+  },
+  "midHex": {
+   "lin": "#BEB9B6",
+   "srgb": "#BEB8B4",
+   "ok": "#BEB8B4"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.003,
+   "linAtT": 0.53,
+   "srgb": 0.0002,
+   "srgbAtT": 0.49
+  }
+ },
+ {
+  "pair": "sunset->dusk",
+  "field": "sky.top",
+  "a": "#3A5CA8",
+  "b": "#1A2350",
+  "endL": [
+   0.489,
+   0.276
+  ],
+  "endC": [
+   0.128,
+   0.083
+  ],
+  "midL": {
+   "lin": 0.41,
+   "srgb": 0.386,
+   "ok": 0.383
+  },
+  "midC": {
+   "lin": 0.11,
+   "srgb": 0.106,
+   "ok": 0.105
+  },
+  "minC": {
+   "lin": 0.083,
+   "srgb": 0.083,
+   "ok": 0.083
+  },
+  "midHex": {
+   "lin": "#2D4685",
+   "srgb": "#2A3F7C",
+   "ok": "#2A3E7B"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0295,
+   "linAtT": 0.61,
+   "srgb": 0.0036,
+   "srgbAtT": 0.53
+  }
+ },
+ {
+  "pair": "sunset->dusk",
+  "field": "sky.mid",
+  "a": "#8FA8D0",
+  "b": "#3A4C88",
+  "endL": [
+   0.727,
+   0.432
+  ],
+  "endC": [
+   0.065,
+   0.102
+  ],
+  "midL": {
+   "lin": 0.615,
+   "srgb": 0.583,
+   "ok": 0.58
+  },
+  "midC": {
+   "lin": 0.072,
+   "srgb": 0.081,
+   "ok": 0.083
+  },
+  "minC": {
+   "lin": 0.065,
+   "srgb": 0.065,
+   "ok": 0.065
+  },
+  "midHex": {
+   "lin": "#6F84B1",
+   "srgb": "#647AAC",
+   "ok": "#6379AC"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0385,
+   "linAtT": 0.61,
+   "srgb": 0.0038,
+   "srgbAtT": 0.51
+  }
+ },
+ {
+  "pair": "sunset->dusk",
+  "field": "sky.horizon",
+  "a": "#FFC27A",
+  "b": "#9A90C0",
+  "endL": [
+   0.854,
+   0.679
+  ],
+  "endC": [
+   0.113,
+   0.071
+  ],
+  "midL": {
+   "lin": 0.777,
+   "srgb": 0.763,
+   "ok": 0.767
+  },
+  "midC": {
+   "lin": 0.05,
+   "srgb": 0.045,
+   "ok": 0.04
+  },
+  "minC": {
+   "lin": 0.04,
+   "srgb": 0.033,
+   "ok": 0.033
+  },
+  "midHex": {
+   "lin": "#D4ABA2",
+   "srgb": "#CCA99D",
+   "ok": "#CBABA4"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0147,
+   "linAtT": 0.56,
+   "srgb": 0.0087,
+   "srgbAtT": 0.48
+  }
+ },
+ {
+  "pair": "sunset->dusk",
+  "field": "fog.color",
+  "a": "#E8C6A0",
+  "b": "#5A6690",
+  "endL": [
+   0.846,
+   0.518
+  ],
+  "endC": [
+   0.064,
+   0.068
+  ],
+  "midL": {
+   "lin": 0.72,
+   "srgb": 0.683,
+   "ok": 0.682
+  },
+  "midC": {
+   "lin": 0.026,
+   "srgb": 0.013,
+   "ok": 0.013
+  },
+  "minC": {
+   "lin": 0.018,
+   "srgb": 0.013,
+   "ok": 0.012
+  },
+  "midHex": {
+   "lin": "#B49F98",
+   "srgb": "#A19698",
+   "ok": "#9F969B"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0458,
+   "linAtT": 0.61,
+   "srgb": 0.0058,
+   "srgbAtT": 0.51
+  }
+ },
+ {
+  "pair": "sunset->dusk",
+  "field": "glow.color",
+  "a": "#FFB060",
+  "b": "#9A90C0",
+  "endL": [
+   0.818,
+   0.679
+  ],
+  "endC": [
+   0.133,
+   0.071
+  ],
+  "midL": {
+   "lin": 0.755,
+   "srgb": 0.743,
+   "ok": 0.749
+  },
+  "midC": {
+   "lin": 0.062,
+   "srgb": 0.058,
+   "ok": 0.051
+  },
+  "minC": {
+   "lin": 0.049,
+   "srgb": 0.038,
+   "ok": 0.038
+  },
+  "midHex": {
+   "lin": "#D4A19A",
+   "srgb": "#CCA090",
+   "ok": "#CCA299"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0139,
+   "linAtT": 0.55,
+   "srgb": 0.0117,
+   "srgbAtT": 0.46
+  }
+ },
+ {
+  "pair": "sunset->dusk",
+  "field": "hemi.sky",
+  "a": "#B0B2C2",
+  "b": "#7E88AA",
+  "endL": [
+   0.767,
+   0.631
+  ],
+  "endC": [
+   0.023,
+   0.053
+  ],
+  "midL": {
+   "lin": 0.706,
+   "srgb": 0.7,
+   "ok": 0.699
+  },
+  "midC": {
+   "lin": 0.035,
+   "srgb": 0.037,
+   "ok": 0.038
+  },
+  "minC": {
+   "lin": 0.023,
+   "srgb": 0.023,
+   "ok": 0.023
+  },
+  "midHex": {
+   "lin": "#9A9FB7",
+   "srgb": "#979DB6",
+   "ok": "#979DB6"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0071,
+   "linAtT": 0.54,
+   "srgb": 0.0007,
+   "srgbAtT": 0.51
+  }
+ },
+ {
+  "pair": "sunset->dusk",
+  "field": "hemi.ground",
+  "a": "#C88E5C",
+  "b": "#5A5262",
+  "endL": [
+   0.693,
+   0.452
+  ],
+  "endC": [
+   0.097,
+   0.028
+  ],
+  "midL": {
+   "lin": 0.597,
+   "srgb": 0.573,
+   "ok": 0.573
+  },
+  "midC": {
+   "lin": 0.061,
+   "srgb": 0.049,
+   "ok": 0.045
+  },
+  "minC": {
+   "lin": 0.025,
+   "srgb": 0.022,
+   "ok": 0.022
+  },
+  "midHex": {
+   "lin": "#9E755F",
+   "srgb": "#91705F",
+   "ok": "#8F7063"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0304,
+   "linAtT": 0.59,
+   "srgb": 0.0055,
+   "srgbAtT": 0.51
+  }
+ },
+ {
+  "pair": "sunset->dusk",
+  "field": "ambient.color",
+  "a": "#B8AA9C",
+  "b": "#868AA0",
+  "endL": [
+   0.746,
+   0.638
+  ],
+  "endC": [
+   0.026,
+   0.033
+  ],
+  "midL": {
+   "lin": 0.696,
+   "srgb": 0.692,
+   "ok": 0.692
+  },
+  "midC": {
+   "lin": 0.009,
+   "srgb": 0.008,
+   "ok": 0.008
+  },
+  "minC": {
+   "lin": 0.009,
+   "srgb": 0.008,
+   "ok": 0.007
+  },
+  "midHex": {
+   "lin": "#A29B9E",
+   "srgb": "#9F9A9E",
+   "ok": "#9F9A9F"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0053,
+   "linAtT": 0.54,
+   "srgb": 0.0009,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "dusk->night",
+  "field": "sky.top",
+  "a": "#1A2350",
+  "b": "#0A1028",
+  "endL": [
+   0.276,
+   0.183
+  ],
+  "endC": [
+   0.083,
+   0.05
+  ],
+  "midL": {
+   "lin": 0.239,
+   "srgb": 0.231,
+   "ok": 0.23
+  },
+  "midC": {
+   "lin": 0.07,
+   "srgb": 0.067,
+   "ok": 0.066
+  },
+  "minC": {
+   "lin": 0.05,
+   "srgb": 0.05,
+   "ok": 0.05
+  },
+  "midHex": {
+   "lin": "#131B40",
+   "srgb": "#12193C",
+   "ok": "#12193B"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0102,
+   "linAtT": 0.59,
+   "srgb": 0.0013,
+   "srgbAtT": 0.53
+  }
+ },
+ {
+  "pair": "dusk->night",
+  "field": "sky.mid",
+  "a": "#3A4C88",
+  "b": "#18234A",
+  "endL": [
+   0.432,
+   0.27
+  ],
+  "endC": [
+   0.102,
+   0.074
+  ],
+  "midL": {
+   "lin": 0.369,
+   "srgb": 0.353,
+   "ok": 0.351
+  },
+  "midC": {
+   "lin": 0.09,
+   "srgb": 0.088,
+   "ok": 0.088
+  },
+  "minC": {
+   "lin": 0.074,
+   "srgb": 0.074,
+   "ok": 0.074
+  },
+  "midHex": {
+   "lin": "#2D3C6E",
+   "srgb": "#293769",
+   "ok": "#283768"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0186,
+   "linAtT": 0.59,
+   "srgb": 0.0023,
+   "srgbAtT": 0.53
+  }
+ },
+ {
+  "pair": "dusk->night",
+  "field": "sky.horizon",
+  "a": "#9A90C0",
+  "b": "#34406E",
+  "endL": [
+   0.679,
+   0.384
+  ],
+  "endC": [
+   0.071,
+   0.08
+  ],
+  "midL": {
+   "lin": 0.57,
+   "srgb": 0.536,
+   "ok": 0.532
+  },
+  "midC": {
+   "lin": 0.069,
+   "srgb": 0.073,
+   "ok": 0.074
+  },
+  "minC": {
+   "lin": 0.069,
+   "srgb": 0.071,
+   "ok": 0.071
+  },
+  "midHex": {
+   "lin": "#75719E",
+   "srgb": "#676897",
+   "ok": "#656796"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0414,
+   "linAtT": 0.62,
+   "srgb": 0.0041,
+   "srgbAtT": 0.52
+  }
+ },
+ {
+  "pair": "dusk->night",
+  "field": "fog.color",
+  "a": "#5A6690",
+  "b": "#333B58",
+  "endL": [
+   0.518,
+   0.358
+  ],
+  "endC": [
+   0.068,
+   0.052
+  ],
+  "midL": {
+   "lin": 0.452,
+   "srgb": 0.44,
+   "ok": 0.438
+  },
+  "midC": {
+   "lin": 0.061,
+   "srgb": 0.06,
+   "ok": 0.06
+  },
+  "minC": {
+   "lin": 0.052,
+   "srgb": 0.052,
+   "ok": 0.052
+  },
+  "midHex": {
+   "lin": "#4A5478",
+   "srgb": "#465074",
+   "ok": "#465073"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0144,
+   "linAtT": 0.57,
+   "srgb": 0.0018,
+   "srgbAtT": 0.52
+  }
+ },
+ {
+  "pair": "dusk->night",
+  "field": "glow.color",
+  "a": "#9A90C0",
+  "b": "#000000",
+  "endL": [
+   0.679,
+   0
+  ],
+  "endC": [
+   0.071,
+   0
+  ],
+  "midL": {
+   "lin": 0.539,
+   "srgb": 0.416,
+   "ok": 0.34
+  },
+  "midC": {
+   "lin": 0.056,
+   "srgb": 0.04,
+   "ok": 0.035
+  },
+  "minC": {
+   "lin": 0,
+   "srgb": 0,
+   "ok": 0
+  },
+  "midHex": {
+   "lin": "#70688C",
+   "srgb": "#4D4860",
+   "ok": "#393449"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.2629,
+   "linAtT": 0.81,
+   "srgb": 0.1017,
+   "srgbAtT": 0.86
+  }
+ },
+ {
+  "pair": "dusk->night",
+  "field": "hemi.sky",
+  "a": "#7E88AA",
+  "b": "#7A84A2",
+  "endL": [
+   0.631,
+   0.616
+  ],
+  "endC": [
+   0.053,
+   0.047
+  ],
+  "midL": {
+   "lin": 0.624,
+   "srgb": 0.623,
+   "ok": 0.623
+  },
+  "midC": {
+   "lin": 0.05,
+   "srgb": 0.05,
+   "ok": 0.05
+  },
+  "minC": {
+   "lin": 0.047,
+   "srgb": 0.047,
+   "ok": 0.047
+  },
+  "midHex": {
+   "lin": "#7C86A6",
+   "srgb": "#7C86A6",
+   "ok": "#7C86A6"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0001,
+   "linAtT": 0.51,
+   "srgb": 0,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "dusk->night",
+  "field": "hemi.ground",
+  "a": "#5A5262",
+  "b": "#4A4A56",
+  "endL": [
+   0.452,
+   0.414
+  ],
+  "endC": [
+   0.028,
+   0.02
+  ],
+  "midL": {
+   "lin": 0.434,
+   "srgb": 0.433,
+   "ok": 0.433
+  },
+  "midC": {
+   "lin": 0.024,
+   "srgb": 0.023,
+   "ok": 0.023
+  },
+  "minC": {
+   "lin": 0.02,
+   "srgb": 0.02,
+   "ok": 0.02
+  },
+  "midHex": {
+   "lin": "#524E5C",
+   "srgb": "#524E5C",
+   "ok": "#524E5C"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.001,
+   "linAtT": 0.52,
+   "srgb": 0.0001,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "dusk->night",
+  "field": "ambient.color",
+  "a": "#868AA0",
+  "b": "#7E8496",
+  "endL": [
+   0.638,
+   0.615
+  ],
+  "endC": [
+   0.033,
+   0.028
+  ],
+  "midL": {
+   "lin": 0.626,
+   "srgb": 0.626,
+   "ok": 0.626
+  },
+  "midC": {
+   "lin": 0.031,
+   "srgb": 0.031,
+   "ok": 0.031
+  },
+  "minC": {
+   "lin": 0.028,
+   "srgb": 0.028,
+   "ok": 0.028
+  },
+  "midHex": {
+   "lin": "#82879B",
+   "srgb": "#82879B",
+   "ok": "#82879B"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0002,
+   "linAtT": 0.51,
+   "srgb": 0,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "night->preDawn",
+  "field": "sky.top",
+  "a": "#0A1028",
+  "b": "#141C46",
+  "endL": [
+   0.183,
+   0.247
+  ],
+  "endC": [
+   0.05,
+   0.079
+  ],
+  "midL": {
+   "lin": 0.22,
+   "srgb": 0.215,
+   "ok": 0.215
+  },
+  "midC": {
+   "lin": 0.067,
+   "srgb": 0.065,
+   "ok": 0.064
+  },
+  "minC": {
+   "lin": 0.05,
+   "srgb": 0.05,
+   "ok": 0.05
+  },
+  "midHex": {
+   "lin": "#101739",
+   "srgb": "#0F1637",
+   "ok": "#0F1637"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0056,
+   "linAtT": 0.43,
+   "srgb": 0.0007,
+   "srgbAtT": 0.48
+  }
+ },
+ {
+  "pair": "night->preDawn",
+  "field": "sky.mid",
+  "a": "#18234A",
+  "b": "#34447E",
+  "endL": [
+   0.27,
+   0.404
+  ],
+  "endC": [
+   0.074,
+   0.099
+  ],
+  "midL": {
+   "lin": 0.35,
+   "srgb": 0.339,
+   "ok": 0.337
+  },
+  "midC": {
+   "lin": 0.088,
+   "srgb": 0.087,
+   "ok": 0.087
+  },
+  "minC": {
+   "lin": 0.074,
+   "srgb": 0.074,
+   "ok": 0.074
+  },
+  "midHex": {
+   "lin": "#293668",
+   "srgb": "#263364",
+   "ok": "#263363"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0133,
+   "linAtT": 0.42,
+   "srgb": 0.0017,
+   "srgbAtT": 0.48
+  }
+ },
+ {
+  "pair": "night->preDawn",
+  "field": "sky.horizon",
+  "a": "#34406E",
+  "b": "#8A90C0",
+  "endL": [
+   0.384,
+   0.666
+  ],
+  "endC": [
+   0.08,
+   0.071
+  ],
+  "midL": {
+   "lin": 0.561,
+   "srgb": 0.529,
+   "ok": 0.525
+  },
+  "midC": {
+   "lin": 0.07,
+   "srgb": 0.075,
+   "ok": 0.076
+  },
+  "minC": {
+   "lin": 0.07,
+   "srgb": 0.071,
+   "ok": 0.071
+  },
+  "midHex": {
+   "lin": "#6A719E",
+   "srgb": "#5F6897",
+   "ok": "#5D6796"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0377,
+   "linAtT": 0.39,
+   "srgb": 0.0042,
+   "srgbAtT": 0.48
+  }
+ },
+ {
+  "pair": "night->preDawn",
+  "field": "fog.color",
+  "a": "#333B58",
+  "b": "#5A6690",
+  "endL": [
+   0.358,
+   0.518
+  ],
+  "endC": [
+   0.052,
+   0.068
+  ],
+  "midL": {
+   "lin": 0.452,
+   "srgb": 0.44,
+   "ok": 0.438
+  },
+  "midC": {
+   "lin": 0.061,
+   "srgb": 0.06,
+   "ok": 0.06
+  },
+  "minC": {
+   "lin": 0.052,
+   "srgb": 0.052,
+   "ok": 0.052
+  },
+  "midHex": {
+   "lin": "#4A5478",
+   "srgb": "#465074",
+   "ok": "#465073"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0144,
+   "linAtT": 0.43,
+   "srgb": 0.0018,
+   "srgbAtT": 0.48
+  }
+ },
+ {
+  "pair": "night->preDawn",
+  "field": "glow.color",
+  "a": "#000000",
+  "b": "#8A90C0",
+  "endL": [
+   0,
+   0.666
+  ],
+  "endC": [
+   0,
+   0.071
+  ],
+  "midL": {
+   "lin": 0.529,
+   "srgb": 0.409,
+   "ok": 0.333
+  },
+  "midC": {
+   "lin": 0.057,
+   "srgb": 0.04,
+   "ok": 0.036
+  },
+  "minC": {
+   "lin": 0,
+   "srgb": 0,
+   "ok": 0
+  },
+  "midHex": {
+   "lin": "#64688C",
+   "srgb": "#454860",
+   "ok": "#323449"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.2579,
+   "linAtT": 0.19,
+   "srgb": 0.101,
+   "srgbAtT": 0.13
+  }
+ },
+ {
+  "pair": "night->preDawn",
+  "field": "hemi.sky",
+  "a": "#7A84A2",
+  "b": "#7E88AA",
+  "endL": [
+   0.616,
+   0.631
+  ],
+  "endC": [
+   0.047,
+   0.053
+  ],
+  "midL": {
+   "lin": 0.624,
+   "srgb": 0.623,
+   "ok": 0.623
+  },
+  "midC": {
+   "lin": 0.05,
+   "srgb": 0.05,
+   "ok": 0.05
+  },
+  "minC": {
+   "lin": 0.047,
+   "srgb": 0.047,
+   "ok": 0.047
+  },
+  "midHex": {
+   "lin": "#7C86A6",
+   "srgb": "#7C86A6",
+   "ok": "#7C86A6"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0001,
+   "linAtT": 0.49,
+   "srgb": 0,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "night->preDawn",
+  "field": "hemi.ground",
+  "a": "#4A4A56",
+  "b": "#5A5262",
+  "endL": [
+   0.414,
+   0.452
+  ],
+  "endC": [
+   0.02,
+   0.028
+  ],
+  "midL": {
+   "lin": 0.434,
+   "srgb": 0.433,
+   "ok": 0.433
+  },
+  "midC": {
+   "lin": 0.024,
+   "srgb": 0.023,
+   "ok": 0.023
+  },
+  "minC": {
+   "lin": 0.02,
+   "srgb": 0.02,
+   "ok": 0.02
+  },
+  "midHex": {
+   "lin": "#524E5C",
+   "srgb": "#524E5C",
+   "ok": "#524E5C"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.001,
+   "linAtT": 0.48,
+   "srgb": 0.0001,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "night->preDawn",
+  "field": "ambient.color",
+  "a": "#7E8496",
+  "b": "#868AA0",
+  "endL": [
+   0.615,
+   0.638
+  ],
+  "endC": [
+   0.028,
+   0.033
+  ],
+  "midL": {
+   "lin": 0.626,
+   "srgb": 0.626,
+   "ok": 0.626
+  },
+  "midC": {
+   "lin": 0.031,
+   "srgb": 0.031,
+   "ok": 0.031
+  },
+  "minC": {
+   "lin": 0.028,
+   "srgb": 0.028,
+   "ok": 0.028
+  },
+  "midHex": {
+   "lin": "#82879B",
+   "srgb": "#82879B",
+   "ok": "#82879B"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0002,
+   "linAtT": 0.49,
+   "srgb": 0,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "preDawn->sunrise",
+  "field": "sky.top",
+  "a": "#141C46",
+  "b": "#3A5CA8",
+  "endL": [
+   0.247,
+   0.489
+  ],
+  "endC": [
+   0.079,
+   0.128
+  ],
+  "midL": {
+   "lin": 0.404,
+   "srgb": 0.373,
+   "ok": 0.368
+  },
+  "midC": {
+   "lin": 0.109,
+   "srgb": 0.104,
+   "ok": 0.103
+  },
+  "minC": {
+   "lin": 0.079,
+   "srgb": 0.079,
+   "ok": 0.079
+  },
+  "midHex": {
+   "lin": "#2B4583",
+   "srgb": "#273C77",
+   "ok": "#263B75"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.039,
+   "linAtT": 0.37,
+   "srgb": 0.0049,
+   "srgbAtT": 0.46
+  }
+ },
+ {
+  "pair": "preDawn->sunrise",
+  "field": "sky.mid",
+  "a": "#34447E",
+  "b": "#9AA8D0",
+  "endL": [
+   0.404,
+   0.735
+  ],
+  "endC": [
+   0.099,
+   0.06
+  ],
+  "midL": {
+   "lin": 0.614,
+   "srgb": 0.574,
+   "ok": 0.569
+  },
+  "midC": {
+   "lin": 0.067,
+   "srgb": 0.078,
+   "ok": 0.08
+  },
+  "minC": {
+   "lin": 0.06,
+   "srgb": 0.06,
+   "ok": 0.06
+  },
+  "midHex": {
+   "lin": "#7582AD",
+   "srgb": "#6776A7",
+   "ok": "#6575A7"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0489,
+   "linAtT": 0.38,
+   "srgb": 0.0049,
+   "srgbAtT": 0.48
+  }
+ },
+ {
+  "pair": "preDawn->sunrise",
+  "field": "sky.horizon",
+  "a": "#8A90C0",
+  "b": "#FFB8A0",
+  "endL": [
+   0.666,
+   0.843
+  ],
+  "endC": [
+   0.071,
+   0.089
+  ],
+  "midL": {
+   "lin": 0.765,
+   "srgb": 0.751,
+   "ok": 0.755
+  },
+  "midC": {
+   "lin": 0.051,
+   "srgb": 0.041,
+   "ok": 0.041
+  },
+  "minC": {
+   "lin": 0.047,
+   "srgb": 0.039,
+   "ok": 0.039
+  },
+  "midHex": {
+   "lin": "#CFA6B1",
+   "srgb": "#C4A4B0",
+   "ok": "#C4A5B3"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0173,
+   "linAtT": 0.43,
+   "srgb": 0.0045,
+   "srgbAtT": 0.49
+  }
+ },
+ {
+  "pair": "preDawn->sunrise",
+  "field": "fog.color",
+  "a": "#5A6690",
+  "b": "#E8C2A8",
+  "endL": [
+   0.518,
+   0.84
+  ],
+  "endC": [
+   0.068,
+   0.056
+  ],
+  "midL": {
+   "lin": 0.715,
+   "srgb": 0.68,
+   "ok": 0.679
+  },
+  "midC": {
+   "lin": 0.027,
+   "srgb": 0.019,
+   "ok": 0.02
+  },
+  "minC": {
+   "lin": 0.024,
+   "srgb": 0.019,
+   "ok": 0.019
+  },
+  "midHex": {
+   "lin": "#B49D9D",
+   "srgb": "#A1949C",
+   "ok": "#9F949E"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0441,
+   "linAtT": 0.39,
+   "srgb": 0.0048,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "preDawn->sunrise",
+  "field": "glow.color",
+  "a": "#8A90C0",
+  "b": "#FFC08A",
+  "endL": [
+   0.666,
+   0.853
+  ],
+  "endC": [
+   0.071,
+   0.1
+  ],
+  "midL": {
+   "lin": 0.771,
+   "srgb": 0.756,
+   "ok": 0.76
+  },
+  "midC": {
+   "lin": 0.044,
+   "srgb": 0.034,
+   "ok": 0.031
+  },
+  "minC": {
+   "lin": 0.036,
+   "srgb": 0.027,
+   "ok": 0.027
+  },
+  "midHex": {
+   "lin": "#CFAAA8",
+   "srgb": "#C4A8A5",
+   "ok": "#C4AAAA"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0182,
+   "linAtT": 0.43,
+   "srgb": 0.0069,
+   "srgbAtT": 0.51
+  }
+ },
+ {
+  "pair": "preDawn->sunrise",
+  "field": "hemi.sky",
+  "a": "#7E88AA",
+  "b": "#B0B2C2",
+  "endL": [
+   0.631,
+   0.767
+  ],
+  "endC": [
+   0.053,
+   0.023
+  ],
+  "midL": {
+   "lin": 0.706,
+   "srgb": 0.7,
+   "ok": 0.699
+  },
+  "midC": {
+   "lin": 0.035,
+   "srgb": 0.037,
+   "ok": 0.038
+  },
+  "minC": {
+   "lin": 0.023,
+   "srgb": 0.023,
+   "ok": 0.023
+  },
+  "midHex": {
+   "lin": "#9A9FB7",
+   "srgb": "#979DB6",
+   "ok": "#979DB6"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0071,
+   "linAtT": 0.46,
+   "srgb": 0.0007,
+   "srgbAtT": 0.49
+  }
+ },
+ {
+  "pair": "preDawn->sunrise",
+  "field": "hemi.ground",
+  "a": "#5A5262",
+  "b": "#C8906A",
+  "endL": [
+   0.452,
+   0.699
+  ],
+  "endC": [
+   0.028,
+   0.086
+  ],
+  "midL": {
+   "lin": 0.601,
+   "srgb": 0.577,
+   "ok": 0.576
+  },
+  "midC": {
+   "lin": 0.055,
+   "srgb": 0.044,
+   "ok": 0.041
+  },
+  "minC": {
+   "lin": 0.025,
+   "srgb": 0.023,
+   "ok": 0.023
+  },
+  "midHex": {
+   "lin": "#9E7666",
+   "srgb": "#917166",
+   "ok": "#8F7168"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0308,
+   "linAtT": 0.4,
+   "srgb": 0.0042,
+   "srgbAtT": 0.49
+  }
+ },
+ {
+  "pair": "preDawn->sunrise",
+  "field": "ambient.color",
+  "a": "#868AA0",
+  "b": "#B8A89C",
+  "endL": [
+   0.638,
+   0.742
+  ],
+  "endC": [
+   0.033,
+   0.025
+  ],
+  "midL": {
+   "lin": 0.694,
+   "srgb": 0.69,
+   "ok": 0.69
+  },
+  "midC": {
+   "lin": 0.011,
+   "srgb": 0.01,
+   "ok": 0.01
+  },
+  "minC": {
+   "lin": 0.01,
+   "srgb": 0.009,
+   "ok": 0.009
+  },
+  "midHex": {
+   "lin": "#A29A9E",
+   "srgb": "#9F999E",
+   "ok": "#9F999F"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.005,
+   "linAtT": 0.46,
+   "srgb": 0.0008,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "sunrise->day",
+  "field": "sky.top",
+  "a": "#3A5CA8",
+  "b": "#2A64C8",
+  "endL": [
+   0.489,
+   0.522
+  ],
+  "endC": [
+   0.128,
+   0.167
+  ],
+  "midL": {
+   "lin": 0.506,
+   "srgb": 0.505,
+   "ok": 0.506
+  },
+  "midC": {
+   "lin": 0.149,
+   "srgb": 0.148,
+   "ok": 0.148
+  },
+  "minC": {
+   "lin": 0.128,
+   "srgb": 0.128,
+   "ok": 0.128
+  },
+  "midHex": {
+   "lin": "#3360B9",
+   "srgb": "#3260B8",
+   "ok": "#3360B8"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0016,
+   "linAtT": 0.47,
+   "srgb": 0.001,
+   "srgbAtT": 0.49
+  }
+ },
+ {
+  "pair": "sunrise->day",
+  "field": "sky.mid",
+  "a": "#9AA8D0",
+  "b": "#5A9AE0",
+  "endL": [
+   0.735,
+   0.674
+  ],
+  "endC": [
+   0.06,
+   0.124
+  ],
+  "midL": {
+   "lin": 0.706,
+   "srgb": 0.702,
+   "ok": 0.704
+  },
+  "midC": {
+   "lin": 0.09,
+   "srgb": 0.092,
+   "ok": 0.091
+  },
+  "minC": {
+   "lin": 0.06,
+   "srgb": 0.06,
+   "ok": 0.06
+  },
+  "midHex": {
+   "lin": "#7FA1D8",
+   "srgb": "#7AA1D8",
+   "ok": "#7CA1D8"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0037,
+   "linAtT": 0.53,
+   "srgb": 0.0028,
+   "srgbAtT": 0.53
+  }
+ },
+ {
+  "pair": "sunrise->day",
+  "field": "sky.horizon",
+  "a": "#FFB8A0",
+  "b": "#CFE6F2",
+  "endL": [
+   0.843,
+   0.912
+  ],
+  "endC": [
+   0.089,
+   0.029
+  ],
+  "midL": {
+   "lin": 0.879,
+   "srgb": 0.873,
+   "ok": 0.877
+  },
+  "midC": {
+   "lin": 0.027,
+   "srgb": 0.028,
+   "ok": 0.03
+  },
+  "minC": {
+   "lin": 0.007,
+   "srgb": 0.004,
+   "ok": 0.004
+  },
+  "midHex": {
+   "lin": "#E9D1CE",
+   "srgb": "#E7CFC9",
+   "ok": "#EAD0CA"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0063,
+   "linAtT": 0.45,
+   "srgb": 0.005,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "sunrise->day",
+  "field": "fog.color",
+  "a": "#E8C2A8",
+  "b": "#CFE3EC",
+  "endL": [
+   0.84,
+   0.904
+  ],
+  "endC": [
+   0.056,
+   0.025
+  ],
+  "midL": {
+   "lin": 0.873,
+   "srgb": 0.87,
+   "ok": 0.872
+  },
+  "midC": {
+   "lin": 0.012,
+   "srgb": 0.015,
+   "ok": 0.016
+  },
+  "minC": {
+   "lin": 0.001,
+   "srgb": 0.003,
+   "ok": 0.003
+  },
+  "midHex": {
+   "lin": "#DCD3CE",
+   "srgb": "#DBD2CA",
+   "ok": "#DDD3CA"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0044,
+   "linAtT": 0.46,
+   "srgb": 0.0021,
+   "srgbAtT": 0.49
+  }
+ },
+ {
+  "pair": "sunrise->day",
+  "field": "glow.color",
+  "a": "#FFC08A",
+  "b": "#FFF0D8",
+  "endL": [
+   0.853,
+   0.961
+  ],
+  "endC": [
+   0.1,
+   0.035
+  ],
+  "midL": {
+   "lin": 0.91,
+   "srgb": 0.906,
+   "ok": 0.907
+  },
+  "midC": {
+   "lin": 0.062,
+   "srgb": 0.067,
+   "ok": 0.067
+  },
+  "minC": {
+   "lin": 0.035,
+   "srgb": 0.035,
+   "ok": 0.035
+  },
+  "midHex": {
+   "lin": "#FFDAB6",
+   "srgb": "#FFD8B1",
+   "ok": "#FFD8B2"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0061,
+   "linAtT": 0.46,
+   "srgb": 0.0015,
+   "srgbAtT": 0.47
+  }
+ },
+ {
+  "pair": "sunrise->day",
+  "field": "hemi.sky",
+  "a": "#B0B2C2",
+  "b": "#9DB8D6",
+  "endL": [
+   0.767,
+   0.773
+  ],
+  "endC": [
+   0.023,
+   0.052
+  ],
+  "midL": {
+   "lin": 0.77,
+   "srgb": 0.769,
+   "ok": 0.77
+  },
+  "midC": {
+   "lin": 0.037,
+   "srgb": 0.037,
+   "ok": 0.037
+  },
+  "minC": {
+   "lin": 0.023,
+   "srgb": 0.023,
+   "ok": 0.023
+  },
+  "midHex": {
+   "lin": "#A7B5CC",
+   "srgb": "#A6B5CC",
+   "ok": "#A7B5CC"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0005,
+   "linAtT": 0.49,
+   "srgb": 0.0005,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "sunrise->day",
+  "field": "hemi.ground",
+  "a": "#C8906A",
+  "b": "#B49670",
+  "endL": [
+   0.699,
+   0.691
+  ],
+  "endC": [
+   0.086,
+   0.063
+  ],
+  "midL": {
+   "lin": 0.695,
+   "srgb": 0.695,
+   "ok": 0.695
+  },
+  "midC": {
+   "lin": 0.074,
+   "srgb": 0.074,
+   "ok": 0.074
+  },
+  "minC": {
+   "lin": 0.063,
+   "srgb": 0.063,
+   "ok": 0.063
+  },
+  "midHex": {
+   "lin": "#BE936D",
+   "srgb": "#BE936D",
+   "ok": "#BE936D"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0003,
+   "linAtT": 0.51,
+   "srgb": 0.0004,
+   "srgbAtT": 0.5
+  }
+ },
+ {
+  "pair": "sunrise->day",
+  "field": "ambient.color",
+  "a": "#B8A89C",
+  "b": "#C4C6CC",
+  "endL": [
+   0.742,
+   0.827
+  ],
+  "endC": [
+   0.025,
+   0.009
+  ],
+  "midL": {
+   "lin": 0.787,
+   "srgb": 0.784,
+   "ok": 0.784
+  },
+  "midC": {
+   "lin": 0.008,
+   "srgb": 0.009,
+   "ok": 0.009
+  },
+  "minC": {
+   "lin": 0.004,
+   "srgb": 0.003,
+   "ok": 0.004
+  },
+  "midHex": {
+   "lin": "#BEB8B6",
+   "srgb": "#BEB7B4",
+   "ok": "#BEB7B4"
+  },
+  "maxDeltaFromOk": {
+   "lin": 0.0031,
+   "linAtT": 0.47,
+   "srgb": 0.0002,
+   "srgbAtT": 0.5
+  }
+ }
+]

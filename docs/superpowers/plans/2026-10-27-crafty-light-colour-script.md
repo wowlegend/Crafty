@@ -2,7 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** PLAN, 2026-10-27. Phase 1 lead lane of the masterpiece programme. Not built. Amended the same day after an
+**Status, 2026-10-28: BUILT through Task 3b, plus Task 7; landing in Wave 1** under the SOTA reset
+(`docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`, section 8). The reset amends this plan, and "As built for
+the Wave 1 landing (2026-10-28)" at the end says how: Task 4 and Task 9 Step 4 (the capture-state work) are dropped,
+umbrella 0e is no longer a precondition, Task 8 is decided (480 s, superseding decision 8), the OKLab blend is checked,
+and Tasks 5 and 6 wait for W2-I. Where the body below disagrees with that section, that section wins.
+
+**Original status:** PLAN, 2026-10-27. Phase 1 lead lane of the masterpiece programme. Not built. Amended the same day after an
 adversarial review: the body below is edited in place, and "Review amendments (2026-10-27)" at the end lists every
 finding with its disposition. The largest change: every colour gate is now stated on the DISPLAYED colour (after the
 grade and the NEUTRAL tone map), not on the linear radiance before them.
@@ -36,8 +42,9 @@ umbrella plan and the refute win.
   achieved").
 - Every new or rewritten gate under `frontend/tests/gates/` or `frontend/scripts/ci/` carries a `Mutation-Proof:`
   trailer naming each mutant and its RED, plus an identity mutant that SURVIVED (`scripts/dev/mutate.sh`).
-- The visual baseline re-shoot is its own commit with a `Baseline-Review:` trailer and no `frontend/src/` change in it.
-  The 147->current-Chromium re-baseline (umbrella 0e) lands alone BEFORE this lane, never bundled with it (F4).
+- ~~The visual baseline re-shoot is its own commit with a `Baseline-Review:` trailer and no `frontend/src/` change in it.
+  The 147->current-Chromium re-baseline (umbrella 0e) lands alone BEFORE this lane, never bundled with it (F4).~~
+  Dropped 2026-10-28: no baseline re-shoot; 0e is cancelled (SOTA reset, W2-B).
 - No move adds GPU cost without stating it (the M3 Max heat complaint); each task states its main-chunk bytes against
   `scripts/ci/bundle-budget.mjs` (`index` ceiling 760,000 B, `bundle-budget.mjs:35`).
 - Never `sed`/`cat`-rewrite `.js`/`.jsx`; Edit only. Never a backtick inside a GLSL template literal.
@@ -52,7 +59,8 @@ umbrella plan and the refute win.
    demand in `render/shadowSchedule.js`, the point-light pool. Line numbers below marked `steady-cool:` are on that
    branch at `0d1474b3`; re-read them on `main` after the merge.
 2. `feat/instruments` is merged: the lookbook probe and its production seam (`src/render/lookbookSeam.js`).
-3. Umbrella 0e (the 147->current-Chromium re-baseline) has landed as its own Baseline-Review commit.
+3. ~~Umbrella 0e (the 147->current-Chromium re-baseline) has landed as its own Baseline-Review commit.~~ Dropped
+   2026-10-28: 0e is cancelled and the capture oracle retires (SOTA reset, W1-H and W2-B).
 
 If 1 is not merged, this lane does not start: three of its tasks edit code that branch rewrites.
 
@@ -175,8 +183,9 @@ So every colour gate in this plan is stated on the DISPLAYED colour, through `di
    blooms only emissive pushed past 1 and the sun disc; the bright day sky (horizon linear luminance about 0.77) stops
    blooming, which removes the milky horizon wall the roadmap measured. Every intended glow source is audited in the
    same unit, and the ore glow is re-tuned there (F6).
-8. **Day length stays 300 s in this lane** (Task 8 records the review). The lever with no balance cost is where the
-   keys sit in `s`; the cycle length moves the siege length and belongs with roadmap move 10.
+8. **Superseded 2026-10-28: the day is 480 s** (DECISIONS 2026-10-28 item 20a; Task 8). The original text: "Day
+   length stays 300 s in this lane (Task 8 records the review). The lever with no balance cost is where the keys sit in
+   `s`; the cycle length moves the siege length and belongs with roadmap move 10."
 
 ## Review Focus
 
@@ -278,7 +287,8 @@ lose chroma as well as gain light. The night grade's contrast 0.10, pivoting at 
 below mid-grey. Exposure scales the dome too (decision 6), so the night sky colours are re-checked on the displayed
 gates in the same pass.
 
-At 300 s per cycle, `s = 0.10` is 4.8 s after the horizon, `0.30` is 14.5 s, `0.45` is 22.3 s. The lookbook's fractions
+At the 480 s day (300 s when this was written), `s = 0.10` is 7.7 s after the horizon, `0.30` is 23.3 s, `0.45` is
+35.6 s. The lookbook's fractions
 land at `s` 0.951 (0.30), 0.125 (0.48, just past the sunset key), -0.309 (0.55, blue hour), -1 (0.75).
 
 ---
@@ -716,6 +726,10 @@ it('captureCycle: declared, then by isDay', () => {
 
 ### Task 4: Capture renders night as night, and guards golden hour
 
+**DROPPED 2026-10-28, never built** (SOTA reset, section 8; DECISIONS 2026-10-28 item 20b). The capture oracle
+retires; looks are accepted on the eye-level lookbook. The code built only for this task (`captureSolarFraction`,
+`setCaptureSolar`, `captureCycle`'s declared fraction) was removed in `a0cac94a`. The text below is kept as the record.
+
 **Files:**
 - Move (Step 0, its own commit): `frontend/src/devtest/visualStates.js` -> `frontend/tests/visual/visualStates.js`;
   modify its two importers `frontend/tests/gates/visual-denominator-gates.test.js:12` (and the message at `:49`) and
@@ -945,6 +959,10 @@ it('every MEANT source reaches 1.2 x threshold (imported constants, one per sour
 
 ### Task 8: Day length, reviewed
 
+**DECIDED 2026-10-28: 480 s, not 300 s** (`14c9707b`; DECISIONS 2026-10-28 item 20a). The SOTA reset gave this lane
+the decision, and the First Night (one dusk, one siege, one golden dawn in ten minutes) settled it. The text below is
+the original review, kept as the record.
+
 **Files:**
 - Modify: `docs/superpowers/DECISIONS.md` (one new dated entry)
 
@@ -979,7 +997,8 @@ it('every MEANT source reaches 1.2 x threshold (imported constants, one per sour
   on CI's software renderer.
 - [ ] **Step 3: Build a side-by-side sheet** (before | after, per target and time) and publish it for Kevin's async
   review; link it in `KEVIN-REVIEW-BATCH.md`.
-- [ ] **Step 4: The capture re-baseline, alone.** First add `'explore-golden'` to `VISUAL_STATES` (now
+- [ ] **Step 4 (DROPPED 2026-10-28 with the capture oracle; DECISIONS 2026-10-28 item 20b): The capture re-baseline,
+  alone.** First add `'explore-golden'` to `VISUAL_STATES` (now
   `tests/visual/visualStates.js`, Task 4 Step 0). Then capture twice (`npm run visual:capture`, one run at a time,
   port 4178), copying `tests/visual/current/` to `<scratchpad>/runA` and `<scratchpad>/runB` after each run. Review
   run A, promote its frames to `tests/visual/baseline/`, and freeze the density ledger against the pair:
@@ -1016,7 +1035,9 @@ it('every MEANT source reaches 1.2 x threshold (imported constants, one per sour
 | Motes: presence, near fade | `tests/gates/mote-presence-gates.test.js` | T1-T2 | T0 survives |
 | The whole suite, lint, build, bundle budget | `npm run test:unit`, `npm run lint`, `npm run build`, `node scripts/ci/bundle-budget.mjs` | — | — |
 | **ACCEPTANCE:** the real-GPU lookbook, Chromium ANGLE-Metal and WebKit at 1180x820 and 820x1180, four times of day, opened side by side with the before | `scripts/visual/lookbook.mjs` (Task 9) | by eye, the list in Task 9 Step 2 | — |
-| Regression oracle: 32 asserted capture frames (31 + `explore-golden`, which is added to `VISUAL_STATES` and the density ledger in the same baseline-only commit), re-baselined alone | `npm run test:visual`, `visual-denominator-gates`, Baseline-Review commit | — | — |
+| ~~Regression oracle: 32 asserted capture frames, re-baselined alone~~ DROPPED 2026-10-28 with the capture oracle (DECISIONS 2026-10-28 item 20b) | — | — | — |
+| Blend against OKLab: no key-to-key blend darker than the OKLab line or greyer by 0.02; the displayed dusk and dawn horizon above C 0.04 | `tests/gates/colour-script-gates.test.js` | OB1-OB3 | OB0 survives |
+| Day length: the First Night budget from a fresh profile; a full cycle of the real ticker | `tests/gates/day-length-gates.test.js`, `daynight-clock-gates.test.jsx` | DL1-DL5 | DL0 survives |
 
 What would still pass if the feature were deleted:
 - The pure gates import the modules, so they go red if a module is deleted. They do NOT go red if a module stops
@@ -1232,3 +1253,21 @@ nor `FarField.jsx`; three 0.172.0 (`WebGLRenderer.js:1652-1653,1693,1695`, `WebG
    task was written before the other merged now converts on its rebase; the gates on `main` go red until it does.
 8. **Bytes:** row 7 states both lanes' ceilings (+10,000 B here, +8,000 B coast) against the shared 63,076 B of
    headroom, and the second lander re-measures it on its rebased base.
+
+## As built for the Wave 1 landing (2026-10-28)
+
+The SOTA reset (`docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`, section 8) keeps this lane and lands it in
+Wave 1. It drops the capture-state work, accepts the look on W1-D's eye-level frames and dusk clip, asks for an OKLab
+check of the blend, settles the day length here, and leaves the motes reshape with Task 7. Where the tasks above
+disagree with this section, this section wins.
+
+| Task | State | Where |
+|---|---|---|
+| 0-3b (script, moon key, one sky frame, wiring, the 1 Hz follow, the storm clouds, the readers' gates, the dawn read) | Built before the reset | `01fb8a88`, `452d19cc`, `5631bfde`, `1ab2e4d0`, `43cc3112`, `212d294d`, `864e615d`, `4af495ae`, `822589a7`, `9f5b3c7e`, `39891c83`, `69e1c46d` |
+| Merge of main at `030ada1f` | Done; this lane never edited `.agent/AGENTS.md`, so nothing was ported to `CLAUDE.md` | `b98127e4` |
+| 4 (explore-golden) and 9 Step 4 (the capture re-baseline) | **Dropped**: the declared-fraction code built only for them is removed | `a0cac94a`; DECISIONS 2026-10-28 item 20b |
+| 5 (bloom only for HDR) and 6 (sun-glow fog) | **Not in this landing.** W2-I measures, and may delete, GodRays, the sun billboard and N8AO first (reset #16). Task 5 raises the billboard and audits glow sources that W2-I may remove, and Task 6 adds fragment cost before W2-I has its numbers | owed, after W2-I |
+| 7 (motes become fireflies) | **Built**: present by the script's hour, never by day or under the boss, faded between 6 m and 2.5 m from the camera | `037ce81a`; `tests/gates/mote-presence-gates.test.jsx`; e2e lines in `light-script.spec.js` (CI) |
+| 8 (day length) | **Decided: 480 s**, one constant (`DAY_LENGTH_SECONDS`) | `14c9707b`; DECISIONS 2026-10-28 item 20a |
+| OKLab blend check (the reset's ask) | **Measured; the blend stays in linear RGB**: never darker than OKLab, at most 0.0147 chroma short | `428cb4d5`; DECISIONS 2026-10-28 item 20c |
+| 9 (acceptance) | On the eye-level lookbook with `--cycles` for dawn and noon (`340b47fa`). See the evidence index | `docs/superpowers/masterpiece-2026-10/evidence/light-colour/index.md` |

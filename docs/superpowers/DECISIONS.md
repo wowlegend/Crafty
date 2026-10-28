@@ -164,6 +164,38 @@ longer finds the instructions there; none is configured to in this repo.
 19. **The homepage is https://crafty-game.vercel.app (command session, 2026-10-28).** The command session added it as
    an alias of the Vercel project the same day; Kevin clicked Add Domain. https://crafty-sand.vercel.app keeps working.
    The play link, the README and the repo's homepage are rendered from `frontend/src/brand.js`.
+20. **The light and colour lane, landing in Wave 1: the day lasts 480 s, the lane's capture-state work is dropped, and
+   the colour blend stays linear (command session, 2026-10-28; the SOTA reset, section 8, asked for each).**
+   (a) **Day length: 480 s, one constant** (`DAY_LENGTH_SECONDS`, `frontend/src/game/dayNight.js`; the game-unit rate
+   is derived from it). It supersedes the 300 s cycle (`GAME_UNITS_PER_SECOND = 4`) and the light plan's decision 8,
+   which kept 300 s for the lane. The reason is the First Night, the reset's ten-minute spine (one dusk, one siege held,
+   one golden dawn). A fresh profile starts at dawn (the store's `gameTime: 0`). At 480 s its first dusk falls at 4:00
+   of play and its first dawn at 8:00, so with the first minute in front the experience ends at 9:00. At 300 s night
+   fell at 2:30, before a new player could light a Hearth, and the ten minutes held two nights. At 600 s the first dawn
+   lands at 11:00. Measured in the same change: the golden blend (sunset key to dusk key) lasts 16.8 s, up from 10.5 s;
+   the sun's 0.5 deg shadow steps fall from about 2.4 to 1.51 renders a second (727 a cycle). What moves with it: every
+   timed system reads game units. The dusk warning's 0.18 of the day half is now the last 43 s, up from 27 s. A night
+   lasts 4 minutes, and the siege's per-night spawn chance and mob cap apply for longer. Balancing the siege is W3-A's,
+   which can move this one constant. Saves load unchanged, because `gameTime` is stored in units. The pause holds the
+   clock through the input gate and `isWorldFrozenNow`, and the sky clock catches up at most one tick and holds.
+   **Guard:** `tests/gates/day-length-gates.test.js` ticks a fresh profile from the store's own start: the first dusk
+   at 180 s or later, the first dawn plus a 60 s first minute within 600 s, and the golden blend 15 s or longer.
+   `daynight-clock-gates` drives the real hook for one cycle.
+   (b) **The lane's capture-state work is dropped.** This applies the reset's W2-B to this lane: the capture oracle
+   retires, and looks are accepted on W1-D's eye-level lookbook. The lane never added `explore-golden` to `capture.mjs`
+   or `VISUAL_STATES` (its Task 4, never built), and it will not re-shoot the baselines (its Task 9 Step 4). The code
+   built only to serve them is removed (`a0cac94a`): the `captureSolarFraction` store field, the DEV hook
+   `setCaptureSolar` and `captureCycle`'s declared-fraction branch. `captureCycle` keeps noon for a day state and
+   midnight for a night state, because night now comes from the clock, and a night capture state pinned at noon would
+   render daylight until W2-B deletes capture. The baselines are stale against the colour script, and nothing runs the
+   visual gate.
+   (c) **The colour blend stays in linear RGB.** The reset asked for an OKLab check. Measured on every pair of adjacent
+   keys and every blended colour, the script's linear-RGB path is never darker than the straight OKLab line between the
+   same keys, and it loses at most 0.0147 chroma (the fog, from dusk to sunset). That is under 0.02, the OKLab step this
+   check takes as one visible difference. An sRGB-byte lerp would run up to 0.006 darker. On screen, the horizon's
+   chroma bottoms at 0.051 between the sunset and dusk keys, and at 0.058 between preDawn and sunrise. The orange turns
+   to violet, so any straight blend passes near neutral there. **Guard:** `colour-script-gates`, "the blend between
+   keys, against OKLab".
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 
