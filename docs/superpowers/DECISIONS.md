@@ -82,8 +82,10 @@ that entry's items. Each stands while it earns its place; reversing one takes a 
 9. **`memory/registry.jsonl` is the one home for open work** (plan row 30). Supersedes the open-work role of STATUS §2,
    its G-ledger and the "Residue: memory/STATUS.md G-ledger" line in ACTIVE_PLAN. The registry holds every open item
    harvested from STATUS §2 and its G-ledger, the ACTIVE_PLAN task list and owed block, the sota-2026-09 QUEUE and
-   OPEN-ITEMS files and the masterpiece phase tables. It holds one row per closable item: a source item that bundles
-   several gets one row per part, with the id `key/part`. Rows follow the plan's schema (`{id, title, playerVisible,
+   OPEN-ITEMS files and the masterpiece phase tables. A source item that bundles several fixes is split into one row
+   per part (id `key/part`) where a lane closes part of it; some harvested rows (G-ledger 37, 39, 40, OI-47 and two
+   E-ter rows) are still bundles, and the lane that closes part of one splits it first, so a merge never closes an
+   unbuilt part. Rows follow the plan's schema (`{id, title, playerVisible,
    severity, owner, state, evidence, opened, closedBy}`, plus the harvest key and the plan unit). `evidence` is the
    source line, pinned to the commit on main it was harvested from. `opened` is the date that line was first written
    (`git log -L`), so an item carried into a source when the source was created reads the creation date. A done item

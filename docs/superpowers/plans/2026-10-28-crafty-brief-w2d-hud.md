@@ -134,7 +134,10 @@ commit, and a lookbook pair (before, after) attached to the PR for any visible c
       goes with the Forge in W2-F; B stays as Build; Tab becomes Character).
 - [ ] H keeps its key and opens a controls panel generated from `KEY_MAP`, in place of today's toggle and its
       8-second auto-fade (`HUD.jsx:191`). jsdom test: H opens it and it lists every `KEY_MAP` entry; mutant: drop one
-      group from the generator. RED.
+      group from the generator. RED. A first-time player must still find it: the panel auto-shows on a profile's first
+      play, and a small "H Controls" hint stays at the hotbar edge until the player has opened the panel once (saved
+      per profile). jsdom test: fresh profile shows panel and hint; after one H press, a new session shows neither;
+      mutant: hint never cleared, or no first-run show. RED. C1/c, Q26/c and OI-31/c close only on this.
 - [ ] Touch tray: Character, Journal, Build. jsdom test for the tray's three entries.
 - [ ] Automatic claim: completing a quest pays once (the `reduceClaim` seam stays the only payer). A test drives two
       quests completing in one tick and asserts both pay exactly once.
