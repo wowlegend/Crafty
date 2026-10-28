@@ -189,4 +189,21 @@ describe('the NEUTRAL tier banks no Aspect power', () => {
     expect(after.kinetic, 'a Husk kill banked no Kinetic').toBeGreaterThan(0);
     expect(after.soul, 'a Husk kill banked no Soul').toBeGreaterThan(0);
   });
+
+  it('a Settler kill drops no XP; a Husk or a Boar kill drops its whole declared worth', () => {
+    const orbXP = () => ecs.entities.filter((e) => e.isXPOrb).reduce((sum, e) => sum + e.amount, 0);
+    const killFor = (id, type, pos) => {
+      const e = spawn({ id, type, pos });
+      const before = orbXP();
+      GameMethods.damageMob(e.id, 9999, 'physical', 'player');
+      expect(e.health, `the ${type} did not die — nothing below is about a kill`).toBeLessThanOrEqual(0);
+      return orbXP() - before;
+    };
+    expect(killFor(9203, 'villager', [0, 0, -2]), 'killing a Settler dropped XP').toBe(0);
+    // Presence, same instrument: a hostile, and livestock hunted for food, still pay what the table declares.
+    expect(killFor(9204, 'zombie', [0, 0, -3]), 'a Husk kill dropped less than its declared XP — the orb path is dead')
+      .toBeGreaterThanOrEqual(MOB_TYPES.zombie.xp);
+    expect(killFor(9205, 'pig', [1, 0, -3]), 'a Boar kill dropped less than its declared XP')
+      .toBeGreaterThanOrEqual(MOB_TYPES.pig.xp);
+  });
 });

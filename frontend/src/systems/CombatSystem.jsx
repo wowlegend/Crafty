@@ -121,7 +121,8 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
         // Spawn warm-gold XP motes (recoloured from the old garish green). XP drops only on YOUR kills
         // (S2-B3-M1: ally kills would farm pickups). CAP the COUNT so a high-XP kill is a tasteful few
         // motes, not a confetti storm — and scale each mote's value to totalXP/count so no XP is lost.
-        const totalXP = isPlayerSource(source) ? (entity.xp || 10) : 0; // attribution: a burn kill is YOUR kill
+        // `??`, not `||`: a declared 0 (a Settler) is a kill that pays nothing, not one with no table entry.
+        const totalXP = isPlayerSource(source) ? (entity.xp ?? 10) : 0; // attribution: a burn kill is YOUR kill
         const count = totalXP > 0 ? Math.min(6, Math.max(1, Math.round(totalXP / 8))) : 0;
         const orbValue = count > 0 ? Math.ceil(totalXP / count) : 0;
         for (let i = 0; i < count; i++) {
