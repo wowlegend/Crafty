@@ -3,9 +3,17 @@ import * as THREE from 'three';
 import {
   isFatalMessage, seamVerdict, LOOKBOOK_SEAM_METHODS,
   installArrayTextureRecorder, readBlockTextureArray, mipVerdict,
+  WATCHED_PROGRAMS, OCEAN_STAGE, installProgramRecorder, readProgramLinks, programVerdict,
 } from '../../scripts/ci/prod-smoke.mjs';
 import { installLookbookSeam, _resetLookbookForTest } from '../../src/render/lookbookSeam.js';
 import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
+import { patchOceanFragment, OCEAN_SURFACE } from '../../src/render/oceanLook.js';
+import { oreGlowGlsl } from '../../src/world/oreGlow.js';
+import { loadedMaskGlsl } from '../../src/world/loadedChunks.js';
+import { TERRAIN_SURFACE } from '../../src/world/terrainSurface.js';
+import { oceanVisibleNear } from '../../src/world/oceanVisibility.js';
+import { surfaceBlockAt } from '../../src/world/climate.js';
+import { PLAYER_SPAWN } from '../../src/game/playerSpawn.js';
 
 // The production bundle is the ONE artifact this repo ships and the one nothing ever loaded. Every
 // harness drives the dev server, so `npm run build` proved it COMPILED and bundle-budget proved it was
@@ -264,5 +272,171 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
     const blind = mipVerdict({ ...reading, levels: reading.levels.map((l) => l.map(() => 0)) }, expected);
     expect(blind.ok).toBe(false);
     expect(blind.line).toMatch(/COULD NOT CHECK — level 0 read back all zero/);
+  });
+});
+
+/**
+ * Every shader program links, and the ones this repo patches are drawn with their uniforms. The live check runs in CI
+ * only, on the production build under SwiftShader. Here the recorder and the reader run against a fake WebGL 2 context
+ * that "compiles" a shader unless its source carries a `#error` directive (which a real GLSL compiler rejects), driven
+ * in the order three r172 drives a program (WebGLProgram.js: compile both shaders, link, then on first use read the
+ * logs and delete both shaders; WebGLRenderer setProgram: useProgram, then upload the material's uniforms). The
+ * sources are the real ones: three's standard shaders with this repo's patches applied.
+ */
+describe('prod-smoke: every shader program links, and the patched ones are drawn', () => {
+  const GL = { LINK_STATUS: 0x8b82, VERTEX_SHADER: 0x8b31, FRAGMENT_SHADER: 0x8b30 };
+
+  /** A fresh class per call, so each recorder wraps its own prototype once. */
+  function fakeProgramGL() {
+    class FakeGL2 {
+      createShader(type) { return { type, source: '', compiled: null, log: '', deleted: false }; }
+      shaderSource(shader, source) { shader.source = source; }
+      compileShader(shader) {
+        const bad = shader.source.split('\n').findIndex((l) => /^\s*#error/.test(l));
+        shader.compiled = bad < 0;
+        shader.log = bad < 0 ? '' : `ERROR: 0:${bad + 1}: '${shader.source.split('\n')[bad].trim()}'`;
+      }
+      getShaderInfoLog(shader) { return shader.deleted ? null : shader.log; }
+      isShader(shader) { return !shader.deleted; }
+      deleteShader(shader) { shader.deleted = true; }
+      createProgram() { return { shaders: [], linked: null, log: '', deleted: false, declared: new Map(), values: new Map() }; }
+      attachShader(program, shader) { program.shaders.push(shader); }
+      linkProgram(program) {
+        program.linked = program.shaders.every((s) => s.compiled);
+        program.log = program.linked ? '' : 'one or more attached shaders not successfully compiled';
+        for (const s of program.shaders) {
+          for (const m of s.source.matchAll(/^\s*uniform\s+(float|vec3)\s+(\w+)\s*;/gm)) program.declared.set(m[2], m[1]);
+        }
+      }
+      getProgramParameter(program, pname) { return program.deleted ? null : pname === this.LINK_STATUS ? program.linked : null; }
+      getProgramInfoLog(program) { return program.deleted ? null : program.log; }
+      useProgram(program) { this.current = program; }
+      getUniformLocation(program, name) { return program.linked && program.declared.has(name) ? { program, name } : null; }
+      uniform(at, value) { at.program.values.set(at.name, value); }
+      getUniform(program, at) {
+        const v = program.values.get(at.name);
+        if (program.declared.get(at.name) === 'float') return v === undefined ? 0 : v;
+        return new Float32Array(v === undefined ? [0, 0, 0] : v);
+      }
+      deleteProgram(program) { program.deleted = true; }
+    }
+    Object.assign(FakeGL2.prototype, GL);
+    return FakeGL2;
+  }
+
+  /** One material through three r172's program life: compile, link, first use, draw (optional), delete (optional). */
+  function drawLikeThreeR172(gl, { vertex, fragment, uniforms = {}, draw = true, del = false }) {
+    const vs = gl.createShader(gl.VERTEX_SHADER); gl.shaderSource(vs, vertex); gl.compileShader(vs);
+    const fs = gl.createShader(gl.FRAGMENT_SHADER); gl.shaderSource(fs, fragment); gl.compileShader(fs);
+    const program = gl.createProgram();
+    gl.attachShader(program, vs); gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    gl.getProgramInfoLog(program); gl.getShaderInfoLog(vs); gl.getShaderInfoLog(fs);
+    gl.getProgramParameter(program, gl.LINK_STATUS);
+    gl.deleteShader(vs); gl.deleteShader(fs);
+    if (draw) {
+      gl.useProgram(program);
+      for (const [name, value] of Object.entries(uniforms)) {
+        const at = gl.getUniformLocation(program, name);
+        if (at) gl.uniform(at, value);
+      }
+    }
+    if (del) gl.deleteProgram(program);
+    return program;
+  }
+
+  const std = THREE.ShaderLib.standard;
+  const ocean = { vertex: std.vertexShader, fragment: patchOceanFragment(std.fragmentShader) };
+  const terrain = { vertex: std.vertexShader, fragment: `${oreGlowGlsl().decl}\n${std.fragmentShader}` };
+  const farRing = { vertex: std.vertexShader, fragment: std.fragmentShader.replace('void main() {', `void main() {\n${loadedMaskGlsl()}`) };
+  const basic = { vertex: THREE.ShaderLib.basic.vertexShader, fragment: THREE.ShaderLib.basic.fragmentShader };
+  const oceanUniforms = { uKeyLight: [0.15, 0.16, 0.14], roughness: OCEAN_SURFACE.roughness };
+  const terrainUniforms = { metalness: TERRAIN_SURFACE.metalness, roughness: TERRAIN_SURFACE.roughness };
+  const broken = (fragment) => fragment.replace('void main() {', 'void main() {\n#error a broken shader');
+
+  /** The scene this repo draws, with `edit` changing one program. Returns the reading and the verdict. */
+  function scene(edit = (p) => p) {
+    const Gl = fakeProgramGL();
+    const sink = {};
+    installProgramRecorder(WATCHED_PROGRAMS, Gl.prototype, sink);
+    const gl = new Gl();
+    const programs = [
+      { name: 'title', ...basic },
+      { name: 'title-gone', ...basic, del: true },
+      { name: 'ocean', ...ocean, uniforms: oceanUniforms },
+      { name: 'terrain', ...terrain, uniforms: terrainUniforms },
+      { name: 'far ring', ...farRing, uniforms: { metalness: TERRAIN_SURFACE.metalness, roughness: 1 } },
+      { name: 'sky', ...basic },
+    ].map(edit).filter(Boolean);
+    for (const p of programs) drawLikeThreeR172(gl, p);
+    const reading = readProgramLinks(WATCHED_PROGRAMS, sink);
+    return { reading, verdict: programVerdict(reading, WATCHED_PROGRAMS) };
+  }
+  const only = (name, change) => (p) => (p.name === name ? change(p) : p);
+
+  it('passes on the scene as drawn, and its line states the denominator and each watched program', () => {
+    const { reading, verdict } = scene();
+    expect(reading).toHaveLength(6);
+    expect(verdict.ok, verdict.line).toBe(true);
+    expect(verdict.line).toBe('shader programs: all 6 linked (1 deleted before the read); drawn with their uniforms: ocean x1, terrain x1, far ring x1');
+  });
+
+  it('a broken ocean shader fails, named, with the compiler log', () => {
+    const { verdict } = scene(only('ocean', (p) => ({ ...p, fragment: broken(p.fragment) })));
+    expect(verdict.ok).toBe(false);
+    expect(verdict.control).toBe(false);
+    expect(verdict.line).toMatch(/^shader programs: 1 of 6 FAILED to link \(ocean\): ERROR: 0:\d+: '#error a broken shader' \| one or more attached shaders/);
+  });
+
+  it('any program that fails to link fails the check, watched or not, and one deleted before the read still counts', () => {
+    const unwatched = scene(only('sky', (p) => ({ ...p, fragment: broken(p.fragment) })));
+    expect(unwatched.verdict.ok).toBe(false);
+    expect(unwatched.verdict.line).toMatch(/^shader programs: 1 of 6 FAILED to link \(unwatched\): ERROR/);
+    const gone = scene(only('title-gone', (p) => ({ ...p, fragment: broken(p.fragment) })));
+    expect(gone.verdict.ok).toBe(false);
+    expect(gone.verdict.line).toMatch(/^shader programs: 1 of 6 FAILED to link \(unwatched\): ERROR: 0:\d+: '#error a broken shader'/);
+  });
+
+  it('an ocean never linked, or linked and never drawn, is COULD NOT CHECK, never a pass', () => {
+    const inland = scene((p) => (p.name === 'ocean' ? null : p));
+    expect(inland.verdict.ok).toBe(false);
+    expect(inland.verdict.control).toBe(true);
+    expect(inland.verdict.line).toBe('shader programs: COULD NOT CHECK the ocean — no program carrying `uniform vec3 uFoamColor;` was linked');
+    const undrawn = scene(only('ocean', (p) => ({ ...p, draw: false })));
+    expect(undrawn.verdict.ok).toBe(false);
+    expect(undrawn.verdict.line).toBe('shader programs: COULD NOT CHECK the ocean — 1 program(s) linked, none drawn');
+    const empty = programVerdict([], WATCHED_PROGRAMS);
+    expect(empty.ok).toBe(false);
+    expect(empty.line).toMatch(/COULD NOT CHECK — the recorder saw no program linked/);
+  });
+
+  it("the drawn programs' uniforms must be the materials': the hour's key on the ocean, the land's surface on the terrain and the far ring", () => {
+    const dark = scene(only('ocean', (p) => ({ ...p, uniforms: { ...p.uniforms, uKeyLight: [0, 0, 0] } })));
+    expect(dark.verdict.ok).toBe(false);
+    expect(dark.verdict.line).toBe("shader programs: the ocean program's uKeyLight is [0, 0, 0], expected non-zero");
+    const metal = scene(only('terrain', (p) => ({ ...p, uniforms: { ...p.uniforms, metalness: 0.1 } })));
+    expect(metal.verdict.ok).toBe(false);
+    expect(metal.verdict.line).toBe("shader programs: the terrain program's metalness is [0.1], expected 0");
+    const rough = scene(only('ocean', (p) => ({ ...p, uniforms: { ...p.uniforms, roughness: 0.5 } })));
+    expect(rough.verdict.line).toBe("shader programs: the ocean program's roughness is [0.5], expected 0.22");
+    const ring = scene(only('far ring', (p) => ({ ...p, uniforms: { ...p.uniforms, metalness: 0.1 } })));
+    expect(ring.verdict.line).toBe("shader programs: the far ring program's metalness is [0.1], expected 0");
+  });
+
+  it("each watched mark is a line this repo's own patch puts in the shader", () => {
+    const [o, t, f] = WATCHED_PROGRAMS;
+    expect(ocean.fragment).toContain(o.mark);
+    expect(std.fragmentShader).not.toContain(o.mark);
+    expect(oreGlowGlsl().decl).toContain(t.mark);
+    expect(loadedMaskGlsl()).toContain(f.mark);
+    expect(WATCHED_PROGRAMS.map((w) => w.name)).toEqual(['ocean', 'terrain', 'far ring']);
+  });
+
+  it('the stage is where the ocean draws, and the spawn is not (the reason the camera is posed)', () => {
+    const surface = (x, z) => surfaceBlockAt(x, z).surfaceY;
+    const drawsAt = ([x, , z]) => oceanVisibleNear(Math.round(x), Math.round(z), surface);
+    expect(OCEAN_STAGE?.id).toBe('coast');
+    expect(drawsAt(OCEAN_STAGE.position), 'the ocean is not drawn at the coast stage').toBe(true);
+    expect(drawsAt(PLAYER_SPAWN), 'SETUP: the ocean draws at the spawn, so staging proves nothing').toBe(false);
   });
 });

@@ -7,21 +7,22 @@
 //      (node_modules/three/src/renderers/shaders/ShaderChunk/common.glsl.js) times its irradiance: the ambient
 //      colour x intensity, the hemisphere `mix(ground, sky, 0.5 * dot(n, up) + 0.5)` x intensity
 //      (lights_pars_begin.glsl.js), and the one directional key x max(0, dot(n, L)). The stone is the terrain's
-//      material: MeshStandardMaterial, metalness 0.1 (world/Terrain.jsx), so its diffuse colour is the albedo x 0.9.
+//      material: MeshStandardMaterial on world/terrainSurface.js (metalness 0), so its diffuse colour is the albedo.
 //      THE DIRECT SPECULAR is added only when a `viewDir` is given (Task 3b's grey card): three's `RE_Direct_Physical`
 //      adds `irradiance * BRDF_GGX(L, V, N, material)` (lights_physical_pars_fragment.glsl.js: F_Schlick in its
 //      exp2 form from common.glsl.js, V_GGX_SmithCorrelated, D_GGX, alpha = roughness^2; specularColor =
 //      mix(0.04, albedo, metalness), specularF90 = 1, lights_physical_fragment.glsl.js), transcribed below with the
-//      terrain's roughness 0.85. It is view-dependent, and at a grazing view toward the key it is not small: on the
-//      Task 3b scratch model a camera 15 deg above an up face adds displayed L 0.020-0.106 at noon and 0.012-0.071 at
-//      midnight, by azimuth (2026-10-27). The B-gates pass no view, so they measure the diffuse face alone; specular
+//      terrain's roughness. It is view-dependent, and at a grazing view toward the key it is not small: a camera 15 deg
+//      above an up face, looking toward the sun, adds displayed L 0.086 at noon and 0.093 at f 0.30 (this model at
+//      metalness 0; 0.106 and 0.114 at the 0.1 it replaced), because Schlick's Fresnel, not the metalness, sets the
+//      grazing lobe. The B-gates pass no view, so they measure the diffuse face alone; specular
 //      only ADDS light, in the key's colour. The indirect specular is 0: with no envMap, `RE_IndirectSpecular_Physical`
 //      is fed iblIrradiance = 0 (lights_fragment_maps.glsl.js), so the indirect term is exactly the Lambert below.
 //   2. THE TERRAIN'S AO FLOOR. A fully occluded corner multiplies the ALBEDO by `uAoFloor` before lighting
 //      (Terrain.jsx: `diffuseColor.rgb *= mix(uAoFloor, vec3(1.0), clamp(vAO / 3.0, 0.0, 1.0))`, at vAO = 0).
 //   3. THE AERIAL HAZE at full distance (render/aerialPerspective.js, the same constants imported here).
 //   4. THE POST CHAIN, which is what the player sees (GameScene.jsx: HueSaturation -> BrightnessContrast -> Bloom ->
-//      SMAA -> ToneMapping NEUTRAL -> Noise -> Vignette), postprocessing 6.39.5:
+//      SMAA -> ToneMapping NEUTRAL -> Vignette), postprocessing 6.39.5:
 //        HueSaturation in LINEAR, then `min(color, 1.0)` (node_modules/postprocessing/build/index.js, the
 //        hue-saturation fragment); hue 0 makes its rotation the identity.
 //        BrightnessContrast in sRGB: its `inputColorSpace` is SRGBColorSpace (:4455), so the EffectPass inserts
@@ -29,15 +30,16 @@
 //        three's OETF takes a negative channel down its linear branch; the model clamps it at 0 first.
 //        NEUTRAL: three r172 `NeutralToneMapping`, transcribed line for line
 //        (node_modules/three/src/renderers/shaders/ShaderChunk/tonemapping_pars_fragment.glsl.js), exposure 1.
-//      Bloom adds light only above its threshold; SMAA, noise and vignette are below the gates' resolution at the
-//      centre of the frame. All four are left out. The framebuffer clamps to [0, 1], and so does the model.
+//      Bloom adds light only above its threshold; SMAA and vignette are below the gates' resolution at the
+//      centre of the frame. All three are left out. The framebuffer clamps to [0, 1], and so does the model.
 //
 // OKLab/OKLCH from linear sRGB (Ottosson's matrices). Hue in degrees, [0, 360).
 import * as THREE from 'three';
 import { AERIAL_DESAT, AERIAL_HAZE } from '../../src/render/aerialPerspective.js';
+import { TERRAIN_SURFACE } from '../../src/world/terrainSurface.js';
 
 export const STONE_HEX = '#8C8C8C';
-export const STONE_METALNESS = 0.1;
+export const STONE_METALNESS = TERRAIN_SURFACE.metalness;
 
 /** sRGB hex -> linear [r, g, b], through three's ColorManagement (the same conversion the game's colours take). */
 export function linearFromHex(hex) {
@@ -57,7 +59,7 @@ const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[
 const unit = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
-export const STONE_ROUGHNESS = 0.85; // world/Terrain.jsx opaqueMaterial (a flat face adds no geometryRoughness)
+export const STONE_ROUGHNESS = TERRAIN_SURFACE.roughness; // a flat face adds no geometryRoughness
 
 const STONE_DIFFUSE = scale(linearFromHex(STONE_HEX), 1 - STONE_METALNESS);
 const STONE_F0 = linearFromHex(STONE_HEX).map((a) => 0.04 + (a - 0.04) * STONE_METALNESS); // mix(0.04, albedo, metal)

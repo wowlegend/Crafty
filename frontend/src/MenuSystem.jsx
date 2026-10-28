@@ -20,7 +20,7 @@ import { Icon, Button } from './ui/primitives/index.js';
 import { AchievementsPanel } from './QuestSystem';
 import { shouldShowTitleMenu, shouldShowResumeOverlay, isAnyPanelOpen } from './ui/panelState.js';
 import { isCaptureMode } from './devtest/captureMode.js';
-import { isTouchDevice } from './input/touchDevice';
+import { isTouchDevice, isTouchUIMode } from './input/touchDevice';
 import { useT } from './i18n/i18n.js';
 import { useGameStore } from './store/useGameStore';
 
@@ -317,36 +317,32 @@ export function MenuSystem({
                   </Button>
                 </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1.5, duration: 1 }}
-                  // `text-text/85`, NOT `text-text-inverse/75`. The inverse token is #231708, the
-                  // near-black documented in tokens.js as "text on gold fills" — and this strip sits over
-                  // the title diorama's dark ground, not over gold. MEASURED on the committed menu.png
-                  // baseline: glyph rgb(29,19,8) against ground rgb(16,12,8) is a contrast ratio of
-                  // 1.07:1, where WCAG AA wants 4.5:1 and even the large-text floor is 3.0:1. The whole
-                  // controls hint — the first thing a new player reads — was effectively invisible.
-                  //
-                  // This is the SAME defect fixed 35 lines below at the PAUSED overlay, whose comment
-                  // already spells out that the inverse token is wrong on a dark scrim. Fixed there,
-                  // missed here, and no instrument could see it: a jsdom test asserts the text EXISTS,
-                  // and the 6% pixel gate cannot tell invisible text from visible text.
-                  className="mt-8 flex justify-center gap-5 text-xs text-text/85"
-                  style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}
-                >
-                  <span>{t('hint.wasdMove')}</span>
-                  <span>•</span>
-                  <span>{t('hint.spaceJump')}</span>
-                  <span>•</span>
-                  <span>{t('hint.fCast')}</span>
-                  <span>•</span>
-                  <span>{t('hint.spells14')}</span>
-                  <span>•</span>
-                  <span>{t('hint.tMelee')}</span>
-                  <span>•</span>
-                  <span>{t('hint.qClaimQuest')}</span>
-                </motion.div>
+                {/* Keyboard keys mean nothing on a touchscreen, where the on-screen controls carry the verbs. The
+                    same predicate hides the HUD's keyboard sheet, so the title and the HUD agree on one device. */}
+                {!isTouchUIMode() && (
+                  <motion.div
+                    data-testid="title-hint-strip"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 1.5, duration: 1 }}
+                    // `text-text`, not `text-text-inverse`: the inverse token is the near-black for text on gold
+                    // fills, and this strip sits over the diorama's dark ground (1.07:1 contrast with it).
+                    className="mt-8 flex justify-center gap-5 text-xs text-text/85"
+                    style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}
+                  >
+                    <span>{t('hint.wasdMove')}</span>
+                    <span>•</span>
+                    <span>{t('hint.spaceJump')}</span>
+                    <span>•</span>
+                    <span>{t('hint.fCast')}</span>
+                    <span>•</span>
+                    <span>{t('hint.spells14')}</span>
+                    <span>•</span>
+                    <span>{t('hint.tMelee')}</span>
+                    <span>•</span>
+                    <span>{t('hint.qClaimQuest')}</span>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           )}

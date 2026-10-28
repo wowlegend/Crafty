@@ -22,7 +22,7 @@ const encode = (linear) => Math.round(Math.pow(linear, 1 / 2.2) * 255);
  * covers. Built from level 0 every time, not from the level above, so 8-bit rounding never compounds. Layers are
  * reduced independently: a texture array has no neighbours to bleed from, unlike an atlas.
  */
-function linearLightMipChain(data, size, layers) {
+export function linearLightMipChain(data, size, layers) {
   const chain = [{ data, width: size, height: size }];
   for (let block = 2; block <= size; block *= 2) {
     const n = size / block;

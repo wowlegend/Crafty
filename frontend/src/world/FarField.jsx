@@ -23,6 +23,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { surfaceBlockAt } from './climate.js';
 import { sharedVoxelTextures } from './proceduralTextures.js';
+import { TERRAIN_SURFACE } from './terrainSurface.js';
 import {
   farFieldVertices, farFieldIndex, farInnerRadius, snapCentre, layerMeanLinear, FAR_OUTER, FAR_RINGS, FAR_SECTORS,
 } from './farField.js';
@@ -39,7 +40,7 @@ const CLOUD_SHADOW_GLSL = cloudShadowGlsl();
 const LOADED_MASK_GLSL = loadedMaskGlsl();
 
 function makeFarMaterial(maskTex, maskOrigin) {
-  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1, metalness: 0 });
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1, metalness: TERRAIN_SURFACE.metalness });
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.skyHorizon = { value: new THREE.Color(0.6, 0.75, 0.9) };
     shader.uniforms.mood = { value: moodRef.current };

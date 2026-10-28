@@ -14,9 +14,10 @@
  * `import.meta.env` branch that only existed in dev, a minifier mangling a name something reflects on.
  *
  * DELIBERATELY A SMOKE TEST, NOT A VISUAL GATE. It asks questions the build cannot answer:
- * does it boot, does it render, does it log an error, is the GL context alive, and does the block texture's
- * mip chain reach the GPU (mipVerdict). No baselines, so it cannot rot and never needs re-approval. How the
- * build looks is read by a person on the eye-level lookbook (scripts/visual/lookbook.mjs), not here.
+ * does it boot, does it render, does it log an error, is the GL context alive, does the block texture's
+ * mip chain reach the GPU (mipVerdict), and does every shader program link (programVerdict). No baselines, so it cannot
+ * rot and never needs re-approval. How the build looks is read by a person on the eye-level lookbook
+ * (scripts/visual/lookbook.mjs), not here.
  *
  *   node scripts/ci/prod-smoke.mjs        (expects `npm run build` to have run first)
  */
@@ -25,7 +26,10 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { serveVite } from '../visual/_serve.mjs';
+import { LOOKBOOK_PLACES } from '../visual/_lookbook.mjs';
 import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
+import { TERRAIN_SURFACE } from '../../src/world/terrainSurface.js';
+import { OCEAN_SURFACE } from '../../src/render/oceanLook.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 // A dedicated port outside _serve.mjs's probe table: e2e=4179, this=4180. Never an ad-hoc port: the one time a probe
@@ -73,7 +77,7 @@ const PORT = 4180;
  * all-clear, and an all-clear from an instrument that cannot see the thing is the DEGRADED shape — the
  * most dangerous of the three, because it looks like success.
  */
-export const GL_LEDGER_PATH = resolve(ROOT, 'frontend/tests/gates/.gl-error-ledger.json');
+export const GL_LEDGER_PATH = resolve(ROOT, 'tests/gates/.gl-error-ledger.json');
 
 /** PURE: the verdict on a GL error count against the ledger, separated from I/O so a test can drive it. */
 export function glVerdict(count, frames, ledger) {
@@ -236,6 +240,132 @@ export function mipVerdict(reading, { size, layers, chain }) {
   return { ok: true, line: `block texture mips: ${full} levels on the GPU (${filter}), every level filled in all ${drawn.length} drawn layers, all ${bytes.toLocaleString('en-US')} bytes equal the chain the source builds` };
 }
 
+/**
+ * EVERY SHADER PROGRAM LINKS. three reports a failed link with console.error, and the production build drops every
+ * console call (vite.config.js `drop`), so the bundle Vercel ships can lose its sea with this file's console channel
+ * silent. The context is asked instead: installProgramRecorder remembers every program linkProgram sees, and
+ * readProgramLinks asks each one for LINK_STATUS. A program three deletes before the read is asked as it is deleted,
+ * because a deleted program has no status. Both are serialized into the page, so neither may reference anything
+ * outside its own body.
+ *
+ * The programs this repo patches are named by a line its patch adds (`mark`) and must be linked AND drawn, with the
+ * uniforms their materials upload. The ocean draws only where water is within reach of the camera (render/Ocean.jsx,
+ * world/oceanVisibility.js), and the spawn is inland, so the camera is posed at the lookbook's coast before the read.
+ */
+export const WATCHED_PROGRAMS = Object.freeze([
+  // uKeyLight starts at zero (oceanLookUniforms); only the frame loop's writeOceanLight makes it non-zero.
+  { name: 'ocean', mark: 'uniform vec3 uFoamColor;', uniforms: { uKeyLight: 'nonzero', roughness: OCEAN_SURFACE.roughness } },
+  { name: 'terrain', mark: 'uniform sampler2DArray uOreGlowTex;', uniforms: { metalness: TERRAIN_SURFACE.metalness, roughness: TERRAIN_SURFACE.roughness } },
+  { name: 'far ring', mark: 'texture(uLoadedMask,', uniforms: { metalness: TERRAIN_SURFACE.metalness } },
+]);
+
+/** Where the ocean is posed into view: the lookbook's coast hero shot. */
+export const OCEAN_STAGE = LOOKBOOK_PLACES.find((p) => p.id === 'coast');
+
+export function installProgramRecorder(watched = [], proto = globalThis.WebGL2RenderingContext?.prototype, sink = globalThis) {
+  if (!proto || typeof proto.linkProgram !== 'function') return;
+  const programs = (sink.__craftySmokePrograms = sink.__craftySmokePrograms || []);
+  const shaderLogs = (sink.__craftySmokeShaderLogs = sink.__craftySmokeShaderLogs || new WeakMap());
+  const sourceOf = new WeakMap();
+  const shadersOf = new WeakMap();
+  const entryOf = new WeakMap();
+  const { shaderSource, attachShader, linkProgram, useProgram, deleteShader, deleteProgram } = proto;
+  proto.shaderSource = function recordShaderSource(shader, source) {
+    sourceOf.set(shader, String(source));
+    return shaderSource.call(this, shader, source);
+  };
+  proto.attachShader = function recordAttachShader(program, shader) {
+    shadersOf.set(program, [...(shadersOf.get(program) || []), shader]);
+    return attachShader.call(this, program, shader);
+  };
+  proto.linkProgram = function recordLinkProgram(program) {
+    const shaders = shadersOf.get(program) || [];
+    const texts = shaders.map((s) => sourceOf.get(s) || '');
+    const hits = watched.filter((w) => texts.some((t) => t.includes(w.mark))).map((w) => w.name);
+    const entry = { gl: this, program, shaders, hits, used: false, deleted: null };
+    programs.push(entry);
+    entryOf.set(program, entry);
+    return linkProgram.call(this, program);
+  };
+  proto.useProgram = function recordUseProgram(program) {
+    const entry = program && entryOf.get(program);
+    if (entry) entry.used = true;
+    return useProgram.call(this, program);
+  };
+  // three deletes both shaders on a program's first use (WebGLProgram.js onFirstUse), and a deleted shader has no log.
+  proto.deleteShader = function recordDeleteShader(shader) {
+    if (shader && !shaderLogs.has(shader)) shaderLogs.set(shader, String(this.getShaderInfoLog(shader) || ''));
+    return deleteShader.call(this, shader);
+  };
+  proto.deleteProgram = function recordDeleteProgram(program) {
+    const entry = program && entryOf.get(program);
+    if (entry && !entry.deleted) {
+      entry.deleted = { linked: this.getProgramParameter(program, this.LINK_STATUS), log: String(this.getProgramInfoLog(program) || '') };
+    }
+    return deleteProgram.call(this, program);
+  };
+}
+
+export function readProgramLinks(watched = [], sink = globalThis) {
+  const logs = sink.__craftySmokeShaderLogs;
+  return (sink.__craftySmokePrograms || []).map((e) => {
+    const { gl } = e;
+    const status = e.deleted ? e.deleted.linked : gl.getProgramParameter(e.program, gl.LINK_STATUS);
+    const out = { hits: e.hits, used: e.used, deleted: !!e.deleted, linked: status === true || status === false ? status : null };
+    if (out.linked === false) {
+      const shaderLog = e.shaders.map((s) => (logs && logs.has(s) ? logs.get(s) : gl.isShader(s) ? String(gl.getShaderInfoLog(s) || '') : ''));
+      const programLog = e.deleted ? e.deleted.log : String(gl.getProgramInfoLog(e.program) || '');
+      out.log = [...shaderLog, programLog].filter(Boolean).join(' | ').replace(/\s+/g, ' ').trim().slice(0, 400);
+    }
+    if (out.linked === true && out.used && !out.deleted) {
+      out.uniforms = {};
+      for (const w of watched) {
+        if (!e.hits.includes(w.name)) continue;
+        for (const name of Object.keys(w.uniforms || {})) {
+          const at = gl.getUniformLocation(e.program, name);
+          const v = at === null ? null : gl.getUniform(e.program, at);
+          out.uniforms[name] = v === null || v === undefined ? null : typeof v === 'number' ? [v] : Array.from(v);
+        }
+      }
+    }
+    return out;
+  });
+}
+
+const UNIFORM_TOLERANCE = 1e-4; // float32 holds 0.85 as 0.8500000238
+
+/** PURE: the verdict on a readProgramLinks reading. */
+export function programVerdict(readings, watched = WATCHED_PROGRAMS) {
+  const fail = (why, control = false) => ({ ok: false, control, line: `shader programs: ${why}` });
+  if (!Array.isArray(readings) || readings.length === 0) return fail('COULD NOT CHECK — the recorder saw no program linked', true);
+  const n = readings.length;
+  const failed = readings.filter((r) => r.linked === false);
+  if (failed.length) {
+    const names = failed.map((r) => (r.hits.length ? r.hits.join('+') : 'unwatched')).join(', ');
+    return fail(`${failed.length} of ${n} FAILED to link (${names}): ${failed[0].log || 'no info log'}`);
+  }
+  const unread = readings.filter((r) => r.linked !== true).length;
+  if (unread) return fail(`COULD NOT CHECK — ${unread} of ${n} gave no LINK_STATUS (a lost context reads this way)`, true);
+  const drawnCounts = [];
+  for (const w of watched) {
+    const mine = readings.filter((r) => r.hits.includes(w.name));
+    if (!mine.length) return fail(`COULD NOT CHECK the ${w.name} — no program carrying \`${w.mark}\` was linked`, true);
+    const drawn = mine.filter((r) => r.used && !r.deleted);
+    if (!drawn.length) return fail(`COULD NOT CHECK the ${w.name} — ${mine.length} program(s) linked, none drawn`, true);
+    for (const r of drawn) {
+      for (const [name, want] of Object.entries(w.uniforms || {})) {
+        const got = r.uniforms?.[name];
+        if (!Array.isArray(got) || got.length === 0) return fail(`the ${w.name} program has no readable uniform ${name}`);
+        const ok = want === 'nonzero' ? got.some((x) => x !== 0) : got.every((x) => Math.abs(x - want) <= UNIFORM_TOLERANCE);
+        if (!ok) return fail(`the ${w.name} program's ${name} is [${got.map((x) => +x.toFixed(4)).join(', ')}], expected ${want === 'nonzero' ? 'non-zero' : want}`);
+      }
+    }
+    drawnCounts.push(`${w.name} x${drawn.length}`);
+  }
+  const deleted = readings.filter((r) => r.deleted).length;
+  return { ok: true, line: `shader programs: all ${n} linked (${deleted} deleted before the read); drawn with their uniforms: ${drawnCounts.join(', ')}` };
+}
+
 /** PURE: is this console/page message worth failing over? */
 export function isFatalMessage(text) {
   if (!text) return false;
@@ -281,6 +411,7 @@ if (isCli) {
       if (m.type() === 'error' && isFatalMessage(m.text())) errors.push(`console.error: ${m.text()}`);
     });
     await page.evaluateOnNewDocument(installArrayTextureRecorder);
+    await page.evaluateOnNewDocument(installProgramRecorder, WATCHED_PROGRAMS);
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
@@ -426,6 +557,26 @@ if (isCli) {
     const sv = seamVerdict({ plain, opened });
     console.log(`prod-smoke: ${sv.line}`);
     if (!sv.ok) errors.push(sv.line);
+
+    // EVERY SHADER PROGRAM LINKS — see programVerdict. Noon, so the key light the ocean's glint reads is the sun.
+    const worldBuilt = await page.waitForFunction(() => window.__craftyLookbook?.info?.().worldBuilt === true, { polling: 1000, timeout: 90000 })
+      .then(() => true, () => false);
+    const staged = await page.evaluate((at) => {
+      const s = window.__craftyLookbook;
+      if (!s) return 'no lookbook seam';
+      try { s.play(); s.pose(at); s.setCycle(0.25); return 'posed at the coast'; } catch (e) { return `pose threw: ${String((e && e.message) || e)}`; }
+    }, { position: OCEAN_STAGE.position, lookAt: OCEAN_STAGE.lookAt });
+    await page.waitForFunction(
+      (name) => (globalThis.__craftySmokePrograms || []).some((r) => r.used && r.hits.includes(name)),
+      { polling: 500, timeout: 60000 },
+      WATCHED_PROGRAMS[0].name,
+    ).catch(() => {});
+    await new Promise((r) => setTimeout(r, 3000)); // a few SwiftShader frames at ~1 fps, so the uniforms are this hour's
+    const links = await page.evaluate(readProgramLinks, WATCHED_PROGRAMS);
+    const eye = await page.evaluate(() => window.__craftyLookbook?.info?.().eye ?? null);
+    const pv = programVerdict(links, WATCHED_PROGRAMS);
+    console.log(`prod-smoke: ${pv.line}`);
+    if (!pv.ok) errors.push(pv.control ? `${pv.line} (world built: ${worldBuilt}; ${staged}; eye ${JSON.stringify(eye)})` : pv.line);
   } catch (e) {
     errors.push(`threw: ${e && e.message ? e.message : e}`);
   } finally {
