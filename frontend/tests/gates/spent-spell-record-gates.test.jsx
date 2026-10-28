@@ -287,6 +287,33 @@ describe('a cast grants no XP', () => {
   });
 });
 
+// A spell that lands pays XP only when it lands on an enemy: a Settler or livestock is not a fight.
+describe('a spell that lands pays XP only on an enemy', () => {
+  // One fireball into `target`, resolved by the real hit loop; returns the XP grants that hit made.
+  const land = (target) => {
+    const grants = [];
+    GameMethods.grantXP = (amount) => { grants.push(amount); };
+    GameMethods.checkMobCollision = (_pos, _r, exclude) => (exclude && exclude.has(target.id) ? null : target);
+    GameMethods.damageMob = (_id, dmg) => { target.health -= dmg; return target; };
+    useGameStore.setState({ gameCamera: camera([0, 30, 0], [0, 0, -1]) });
+    const bolt = cast('fireball');
+    frame(0.05);
+    const end = spent().find((s) => s.id === bolt.id);
+    expect(end?.by, `the fireball never landed on the ${target.type} — nothing below is about a hit`).toBe('mob');
+    return grants;
+  };
+
+  it('a hit on a Settler or a Boar pays nothing; a hit on a Husk pays 5, the killing hit included', () => {
+    mount();
+    expect(land({ id: 's1', type: 'villager', passive: true, health: 120 }), 'a spell on a Settler paid XP').toEqual([]);
+    expect(land({ id: 'p1', type: 'pig', passive: true, health: 50 }), 'a spell on a Boar paid XP').toEqual([]);
+    // Presence on the same instrument, and the order of the check: health 1 dies to this hit, so a hostility read
+    // after the damage would see a corpse and pay nothing.
+    expect(land({ id: 'z1', type: 'zombie', passive: false, health: 500 }), 'a spell on a Husk paid no XP').toEqual([5]);
+    expect(land({ id: 'z2', type: 'zombie', passive: false, health: 1 }), 'the killing hit on a Husk paid no XP').toEqual([5]);
+  });
+});
+
 // The chain picks its victims itself, so it must pick them from the mobs as they are at the hop: an arc drawn to where a
 // mob stood a moment ago, or onto one already dead, is damage and a bolt landing on nothing.
 describe('chain lightning hops onto the live mobs', () => {

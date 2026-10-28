@@ -25,6 +25,7 @@ import { makeBurnManager } from './game/burnManager';
 import { worldDelta } from './game/worldClock.js';
 import { registerTestHook } from './devtest/testBridge.js';
 import { mobsQuery } from './ecs/world';
+import { isHostile } from './combat/targeting';
 // (A dead `export { MagicWand } from './render/spellVfx'` pass-through lived here. Every consumer
 // imports MagicWand from render/spellVfx directly — playerRender.jsx:16 is the only one — so this
 // re-export was a second import path nobody took. knip 6.32 flags it; 6.17 did not.)
@@ -359,6 +360,8 @@ export const EnhancedMagicSystem = React.memo(() => {
           if (hitMob) {
             (projectile.hitIds || (projectile.hitIds = new Set())).add(hitMob.id);
             const spellConfig = SPELL_TYPES[projectile.type];
+            // Read before the damage: the hit that kills an enemy no longer reads as one after it.
+            const onEnemy = isHostile(hitMob);
 
             // damageMob returns the entity; health<=0 means this hit killed it, so the
             // impact gets a beefier camera-shake + spark spray (S1-D-M1).
@@ -419,7 +422,8 @@ export const EnhancedMagicSystem = React.memo(() => {
               spentBy = 'mob';
             }
 
-            if (GameMethods.grantXP) GameMethods.grantXP(5);
+            // Levels come from fighting: a spell that lands on a Settler or on livestock pays nothing.
+            if (onEnemy && GameMethods.grantXP) GameMethods.grantXP(5);
           }
         }
 
