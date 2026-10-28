@@ -25,6 +25,13 @@ import { render, cleanup } from '@testing-library/react';
  *   S6 an 'unknown' name kept by the shared helper (the original cache test, glDiagnostics.js) -> "follows a context"
  *   I0 identity (a comment edit in FrameStats.jsx) SURVIVED.
  *
+ * The cap OFF (review of PR #23, static + dynamic: mutant Sa survived every test above, which all mount capActive=true).
+ * Mutation-Proof: via scripts/dev/mutate.sh, 4 tests each, every RED confirmed against a green baseline:
+ *   Sa capActive hard-coded true -> "names Unlimited when the cap is off"
+ *   Sb plausible-wrong: capActive derived from the store (s.frameCap > 0) -> the same test (a cap set but not in force)
+ *   Sc capActive inverted -> "shows the cap in force" and "names Unlimited"
+ *   I0 identity (a comment edit in FrameStats.jsx) SURVIVED.
+ *
  * BLIND SPOT: useFrame and useThree are stubs here, so that R3F calls the callback once per drawn frame, and that
  * GameScene mounts FrameStats with the live gl, is the e2e's (frame-cap.spec.js: the readout under a 1 fps cap;
  * lookbook-seam.spec.js: the GPU line equals the live renderer's). jsdom has no layout, so the wrap and size of the
@@ -97,6 +104,27 @@ describe('FrameStats, mounted', () => {
     useGameStore.setState({ frameCap: 1 });
     frames(1300);
     expect(readout().textContent.split('\n')[1], 'the readout still names the old cap').toBe('Tier High · DPR 1.50 · Frame cap 1 FPS');
+  });
+
+  it('names Unlimited when the cap is off, and follows the capActive PROP, not the store (review: mutant Sa)', () => {
+    // The Unlimited setting: frameCap 0, so GameScene's capActive is false.
+    useGameStore.setState({ frameCap: 0 });
+    const { rerender } = render(<FrameStats capActive={false} />);
+    frames(1000);
+    expect(readout().textContent.split('\n')[1], 'frameCap 0 with the cap off must read Unlimited')
+      .toBe('Tier High · DPR 1.50 · Frame cap Unlimited');
+    // The cap turned on in Settings: GameScene re-renders FrameStats with capActive true.
+    useGameStore.setState({ frameCap: 60 });
+    rerender(<FrameStats capActive />);
+    frames(1300);
+    expect(readout().textContent.split('\n')[1], 'the cap came on and the readout did not follow the prop')
+      .toBe('Tier High · DPR 1.50 · Frame cap 60 FPS');
+    // A cap is SET but not in force (capture mode and the perf probe step their own frames: GameScene's capActive is
+    // false with frameCap 60). Only the prop knows that, so a readout deriving "capped" from the store reads 60 here.
+    rerender(<FrameStats capActive={false} />);
+    frames(1600);
+    expect(readout().textContent.split('\n')[1], 'frameCap 60 not in force must read Unlimited')
+      .toBe('Tier High · DPR 1.50 · Frame cap Unlimited');
   });
 
   it('the GPU line follows a context that fails its first read and then recovers (F4)', () => {
