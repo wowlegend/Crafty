@@ -146,11 +146,6 @@ export const PlayerManaBar = ({ mana, maxMana }) => (
     <StatBar data-testid="stat-mana" kind="mana" icon="water" value={mana} max={maxMana} showValue className="w-44" />
 );
 
-// Hunger Bar Component
-export const PlayerHungerBar = ({ hunger }) => (
-    <StatBar kind="hunger" icon="meat" value={hunger} max={100} showValue className="w-44" />
-);
-
 // Damage Overlay Component
 export const DamageOverlay = () => {
     const { active, intensity } = useGameStore(useShallow(state => ({ active: state.damageFlash, intensity: state.screenShake })));

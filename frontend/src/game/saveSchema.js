@@ -20,7 +20,24 @@ const TOMBSTONE_SLICES = ['progression', 'game_state'];
 
 const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
-/** The keys of `saveData`'s slices this build does not write, as `{ progression?, game_state? }`. Pure. */
+// The placement-count quests the Cut deleted (DECISIONS 2026-10-28 W1-H item 10). A save's active entry for one is held
+// in the tombstone like an unknown key: the game never offers it again, and a rollback finds its progress where it was.
+export const RETIRED_QUEST_IDS = new Set(['builder', 'architect', 'world_builder']);
+const isRetiredQuest = (q) => isPlainObject(q) && RETIRED_QUEST_IDS.has(q.id);
+
+/** `questState` with the retired quests taken out of its active list: what the quest hook is seeded from. Pure. */
+export function liveQuestState(questState) {
+  if (!isPlainObject(questState) || !Array.isArray(questState.quests) || !questState.quests.some(isRetiredQuest)) return questState;
+  return { ...questState, quests: questState.quests.filter((q) => !isRetiredQuest(q)) };
+}
+
+const withHeldQuests = (questState, held) => {
+  if (!Array.isArray(held) || !held.length) return questState;
+  const base = isPlainObject(questState) ? questState : {};
+  return { ...base, quests: [...(Array.isArray(base.quests) ? base.quests : []), ...held] };
+};
+
+/** What `saveData` holds that this build does not write, as `{ progression?, game_state?, quests? }`. Pure. */
 export function splitTombstone(saveData) {
   const bag = {};
   if (!isPlainObject(saveData) || !(Number(saveData.version) >= SAVE_VERSION)) return bag;
@@ -30,6 +47,8 @@ export function splitTombstone(saveData) {
     const unknown = Object.entries(saveData[slice]).filter(([key]) => !Object.prototype.hasOwnProperty.call(written[slice], key));
     if (unknown.length) bag[slice] = Object.fromEntries(unknown);
   }
+  const held = Array.isArray(saveData.questState?.quests) ? saveData.questState.quests.filter(isRetiredQuest) : [];
+  if (held.length) bag.quests = held;
   return bag;
 }
 
@@ -49,7 +68,7 @@ export function buildSaveData(state, { position } = {}) {
     },
     // S2a: quest progress + achievements mirror (the gameplay hook keeps Sets in
     // working state and mirrors them to arrays here, so this is already JSON-safe).
-    questState: state.questState || null,
+    questState: withHeldQuests(state.questState || null, tomb.quests),
     progression: {
       ...tomb.progression,
       level: state.level,
@@ -74,7 +93,6 @@ export function buildSaveData(state, { position } = {}) {
     },
     game_state: {
       ...tomb.game_state,
-      gameMode: state.gameMode,
       selectedBlock: state.selectedBlock,
       activeSpell: state.activeSpell,
       isDay: state.isDay,

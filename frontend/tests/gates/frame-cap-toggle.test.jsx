@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { SettingsPanel } from '../../src/ui/GamePanels.jsx';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 
@@ -44,10 +44,9 @@ describe('Settings — Frame Rate', () => {
 
 // A night siege is survived, never skipped: no control in the pause menu may turn night into day.
 //
-// Every control is driven, in each game mode, and the clock is read after each one, so the failure names the control.
-// The panel is rendered with every optional row it has. Buttons are re-queried after each click and the mode is put
-// back, so a row that one mode shows, or that a click mounts, is clicked in that mode instead of being unmounted before
-// its turn. Every slider is driven to its min and its max. This drives only buttons and range sliders, so the census
+// Every control is driven and the clock is read after each one, so the failure names the control. The panel is
+// rendered with every optional row it has. Buttons are re-queried after each click, so a row a click mounts is clicked
+// too. Every slider is driven to its min and its max. This drives only buttons and range sliders, so the census
 // fails on any other control a player can reach: by native element, by ARIA widget role, or by a tab stop on anything
 // else. It runs on mount and after every click. An element with only a click handler (no role, no tab stop) is invisible
 // to it, as it is to a keyboard.
@@ -60,19 +59,19 @@ describe('Settings — no control moves the clock', () => {
     '[tabindex]:not([tabindex^="-"]):not(button):not([role="button"]):not(input[type="range"])',
   ].join(', ');
 
-  it.each(['creative', 'survival'])('in %s mode, every button and every slider leaves night as night and the clock where it was', (mode) => {
-    useGameStore.setState({ ...NIGHT, gameMode: mode, frameCap: 60, masterMuted: false, lookSensitivity: 1 });
+  it('every button and every slider leaves night as night and the clock where it was', () => {
+    useGameStore.setState({ ...NIGHT, frameCap: 60, masterMuted: false, lookSensitivity: 1 });
     render(<SettingsPanel onClose={() => {}} showStats={false} setShowStats={() => {}}
       onOpenWorldManager={() => {}} onOpenCredits={() => {}} />);
     const held = (what) => {
       const s = useGameStore.getState();
-      expect(s.isDay, `${what} turned night into day (${mode})`).toBe(false);
-      expect(s.gameTime, `${what} moved the clock (${mode})`).toBe(0.75);
+      expect(s.isDay, `${what} turned night into day`).toBe(false);
+      expect(s.gameTime, `${what} moved the clock`).toBe(0.75);
     };
 
     const census = (when) => {
       const others = [...document.body.querySelectorAll(UNDRIVEN)].map((e) => e.outerHTML.slice(0, 120));
-      expect(others, `${when}, the panel has a control this gate does not drive (${mode})`).toEqual([]);
+      expect(others, `${when}, the panel has a control this gate does not drive`).toEqual([]);
     };
     census('on mount');
 
@@ -83,7 +82,6 @@ describe('Settings — no control moves the clock', () => {
       const name = next.getAttribute('aria-label') || next.textContent.trim();
       fireEvent.click(next);
       held(`the "${name}" button`);
-      act(() => { useGameStore.setState({ gameMode: mode }); }); // flushed, so the next query sees this mode's rows
       census(`after the "${name}" click`);
     }
     expect(clicked.size, 'the panel rendered too few buttons for this to have clicked anything').toBeGreaterThanOrEqual(9);

@@ -269,7 +269,7 @@ test.describe('mob floor', () => {
     const ground = site.grounds['0,0'];
     const roofY = site.maxTop + 3; // the roof's underside: 3+ blocks of air over every column
 
-    // 2. A 7x7 roof, through the real placement verb (creative: free).
+    // 2. A 7x7 roof, through the real placement verb (49 stone, paid from the 100 added).
     await page.evaluate(({ cx, cz, roofY }) => {
       const s = window.useGameStore.getState();
       s.setSelectedBlock('stone');

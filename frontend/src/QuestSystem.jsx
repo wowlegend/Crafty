@@ -17,7 +17,7 @@ import { loreFor, themedDescription } from './game/questLore.js';
 import { getItemRarity } from './data/items.js';
 import { tierLootChance } from './game/lootTier.js';
 import { questRewards } from './game/questRewards.js';
-import { reduceClaim } from './game/questClaim.js';
+import { reduceClaim, MAX_ACTIVE_QUESTS } from './game/questClaim.js';
 import { resolveChestHeights } from './game/captureRest.js';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
@@ -29,7 +29,6 @@ export const QUEST_LIST = [
     // Beginner quests
     { id: 'first_blood', title: 'First Blood', icon: 'sword', description: 'Defeat your first mob', type: 'kill', target: 1, xpReward: 30, tier: 1 },
     { id: 'hunter', title: 'Hunter', icon: 'bow', description: 'Defeat 5 mobs', type: 'kill', target: 5, xpReward: 75, tier: 1, itemReward: { item: 'Iron Sword', count: 1 } },
-    { id: 'builder', title: 'Builder', icon: 'hammer', description: 'Place 20 blocks', type: 'block_place', target: 20, xpReward: 50, tier: 1, itemReward: { item: 'wood', count: 24 } },
     { id: 'miner', title: 'Miner', icon: 'pickaxe', description: 'Break 30 blocks', type: 'block_break', target: 30, xpReward: 60, tier: 1, itemReward: { item: 'Iron Helmet', count: 1 } },
     { id: 'spellcaster', title: 'Spellcaster', icon: 'magic', description: 'Land 10 spells on enemies', type: 'spell_hit', target: 10, xpReward: 40, tier: 1 },
 
@@ -38,7 +37,6 @@ export const QUEST_LIST = [
     { id: 'spider_hunter', title: 'Spider Hunter', icon: 'spider', description: 'Defeat 8 spiders', type: 'kill_type', mobType: 'spider', target: 8, xpReward: 100, tier: 2 },
     { id: 'pilgrim', title: 'Pilgrimage', icon: 'compass', description: 'Reach a frontier shrine', type: 'reach_shrine', target: 1, xpReward: 100, tier: 2, itemReward: { item: 'Iron Chestplate', count: 1 } },
     { id: 'collector', title: 'Collector', icon: 'coins', description: 'Open 5 treasure chests', type: 'chest_open', target: 5, xpReward: 80, tier: 2 },
-    { id: 'architect', title: 'Architect', icon: 'building', description: 'Place 100 blocks', type: 'block_place', target: 100, xpReward: 150, tier: 2 },
     // Survival-progression: surviving the night siege is now a tracked GOAL (ties the onboarding promise +
     // the siege/dawn audio to the quest loop). Driven by the dawn transition (onNightSurvived), tier >= 2 so
     // the initial active set (tier-1 first-3) is unchanged -> capture frames stable.
@@ -50,7 +48,6 @@ export const QUEST_LIST = [
     { id: 'champion', title: 'Champion', icon: 'trophy', description: 'Defeat 50 mobs', type: 'kill', target: 50, xpReward: 300, tier: 3, itemReward: { item: 'Diamond Sword', count: 1 } },
     { id: 'archmage', title: 'Archmage', icon: 'magic', description: 'Land 100 spells on enemies', type: 'spell_hit', target: 100, xpReward: 250, tier: 3 },
     { id: 'treasure_master', title: 'Treasure Master', icon: 'crown', description: 'Open 20 treasure chests', type: 'chest_open', target: 20, xpReward: 200, tier: 3 },
-    { id: 'world_builder', title: 'World Builder', icon: 'globe', description: 'Place 500 blocks', type: 'block_place', target: 500, xpReward: 400, tier: 3 },
     { id: 'undead_destroyer', title: 'Undead Destroyer', icon: 'skull', description: 'Defeat 25 skeletons', type: 'kill_type', mobType: 'skeleton', target: 25, xpReward: 200, tier: 3 },
     // The endurance capstone of the survival dimension.
     { id: 'siege_veteran', title: 'Siege Veteran', icon: 'shield', description: 'Survive 7 nights', type: 'survive_nights', target: 7, xpReward: 350, tier: 3 },
@@ -67,7 +64,7 @@ export function makeRepeatableQuest(seq) {
     // is Infinity and Math.max(0, Infinity) is Infinity — producing `bounty_Infinity` with target and
     // xpReward both Infinity. That is a quest the player can never complete, sitting at the head of a
     // feed whose entire job is to never run out. Found by sweeping the input shapes while proving this
-    // function total (repeatable-quest-gates.test.js), which is the property that lets pickNext drop its
+    // function total (repeatable-quest-gates.test.js), which is the property that lets nextQuest drop its
     // dead null-guard.
     const raw = Math.floor(Number(seq) || 0);
     const n = Number.isFinite(raw) ? Math.max(0, raw) : 0;
@@ -126,12 +123,42 @@ const withCurrentAsk = (q) => {
   return def ? { ...q, type: def.type, description: themedDescription(def) } : q;
 };
 
+// The quest offered when one is claimed: the next authored quest neither claimed nor active, else an endless scaling
+// BOUNTY, so the goal feed never dries up (seq = bounties already claimed or active, which keeps each id unique). The
+// lore and theming belong to this component, so it lives here and not in the pure reducer (game/questClaim.js), which
+// only decides IF there is room for one. No null guard after the `||`: makeRepeatableQuest returns an object literal
+// unconditionally, so the fallback is TOTAL (asserted in repeatable-quest-gates).
+const nextQuest = (claimedIds, active) => {
+    const bountyCount = [...claimedIds].filter(id => String(id).startsWith('bounty_')).length
+        + active.filter(a => String(a.id).startsWith('bounty_')).length;
+    const next = QUEST_LIST.find(q => !claimedIds.has(q.id) && !active.some(a => a.id === q.id))
+        || makeRepeatableQuest(bountyCount);
+    return {
+        ...next,
+        description: themedDescription(next),
+        ...(loreFor(next.id) || {}),
+        progress: 0,
+        completed: false,
+        claimed: false,
+    };
+};
+
+// A saved feed can come back short: a save's active entry for a quest the Cut retired is held out of it
+// (game/saveSchema.js RETIRED_QUEST_IDS). A claim only ever refills one slot, so a short feed would stay short; it is
+// topped up to MAX_ACTIVE_QUESTS on load, the way a claim refills.
+const fillFeed = (quests, completedQuestIds) => {
+    const feed = [...quests];
+    const claimed = new Set(_arrOr(completedQuestIds, []));
+    while (feed.filter((q) => q && !q.claimed).length < MAX_ACTIVE_QUESTS) feed.push(nextQuest(claimed, feed.filter(Boolean)));
+    return feed;
+};
+
 export const useQuestSystem = () => {
     // S2a: seed the persistable working state from the store's questState mirror
     // (set by loadWorldData) when present, else the fresh-game defaults.
     const [quests, setQuests] = useState(() => {
         const saved = useGameStore.getState().questState;
-        if (saved && Array.isArray(saved.quests)) return saved.quests.map(withCurrentAsk);
+        if (saved && Array.isArray(saved.quests)) return fillFeed(saved.quests.map(withCurrentAsk), saved.completedQuestIds);
         // Initialize active quests (first 3 from tier 1)
         // M-NARRATIVE.2: enrich with the frontier lore/giver + a themed description (story flavor over the
         // generic chore). type/target/xpReward stay untouched (the {...q} spread), so every driver + the
@@ -190,7 +217,7 @@ export const useQuestSystem = () => {
         if (!didMountQuest.current) { didMountQuest.current = true; return; }
         const qs = useGameStore.getState().questState;
         if (!qs) return;
-        if (Array.isArray(qs.quests)) setQuests(qs.quests.map(withCurrentAsk));
+        if (Array.isArray(qs.quests)) setQuests(fillFeed(qs.quests.map(withCurrentAsk), qs.completedQuestIds));
         setCompletedQuestIds(new Set(_arrOr(qs.completedQuestIds, [])));
         if (_objOr(qs.stats, null)) {
             const restoredStats = _statsOr(qs.stats);
@@ -306,35 +333,11 @@ export const useQuestSystem = () => {
 
     // Claim quest reward and add the next quest.
     const claimQuest = useCallback((questId) => {
-        // Supplies the replacement quest. Kept here (not in the pure reducer) because the lore/theming
-        // belongs to the component; the reducer only decides IF there is room for one.
-        const pickNext = (claimedIds, active) => {
-            // Once the authored list is exhausted, fall back to an endless scaling BOUNTY so the goal feed
-            // never dries up. seq = how many bounties already exist (claimed + active) -> a unique id.
-            const bountyCount = [...claimedIds].filter(id => String(id).startsWith('bounty_')).length
-                + active.filter(a => String(a.id).startsWith('bounty_')).length;
-            // No `if (!nextQuest) return null` guard: `makeRepeatableQuest` returns an object literal
-            // unconditionally, so the `||` fallback is TOTAL and the guard could never fire. That is the
-            // whole point of the bounty fallback — the goal feed does not dry up once the authored list is
-            // exhausted — and a dead guard beside it reads as though it might. The totality is asserted in
-            // QuestSystem's own suite rather than left implicit here.
-            const nextQuest = QUEST_LIST.find(q => !claimedIds.has(q.id) && !active.some(a => a.id === q.id))
-                || makeRepeatableQuest(bountyCount);
-            return {
-                ...nextQuest,
-                description: themedDescription(nextQuest),
-                ...(loreFor(nextQuest.id) || {}),
-                progress: 0,
-                completed: false,
-                claimed: false,
-            };
-        };
-
         // Reduce PURELY from the live (ref) state — never from a stale closure, never from inside an updater.
         const next = reduceClaim(
             { quests: questsRef.current, completedQuestIds: completedRef.current },
             questId,
-            pickNext,
+            nextQuest,
         );
         // Not claimable (already claimed / not complete) -> a true no-op. This is what makes a repeated
         // dispatch of the same id provably unable to double-pay.

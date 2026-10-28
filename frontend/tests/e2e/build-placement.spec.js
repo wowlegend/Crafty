@@ -66,10 +66,7 @@ test.describe('block placement', () => {
   test('the per-cell debit still governs — a multi-block place cannot go free', async ({ page }) => {
     // The economy guard. Placing was once free while mining granted +1, which gutted the economy
     // (placementEconomy.js, B3c); a multi-block mode must not reopen that door by debiting once and
-    // placing many. Both branches are asserted, because CREATIVE placement is free BY DESIGN and the
-    // default mode is creative — an earlier draft of this spec read that deliberate asymmetry as the
-    // exploit returning. Asserting only survival would leave the creative branch free to silently
-    // acquire a cost; asserting only creative would let the survival debit silently vanish.
+    // placing many. Every placement is costed (DECISIONS 2026-10-28 W1-H item 4): there is no free mode.
     await bootDev(page);
     await startPlay(page);
     await page.waitForFunction(() => window.GameMethods?.terrainVerbs?.place && window.__threeCamera, null, { timeout: 60000 });
@@ -98,29 +95,21 @@ test.describe('block placement', () => {
         return { spent: invBefore - inv(), placed: S().worldBlocks.size - blocksBefore, left: inv() };
       };
 
-      S().setGameMode('creative');
       setStone(200);
-      const creative = run(0);
-
-      S().setGameMode('survival');
-      setStone(200);
-      const survival = run(40);
+      const full = run(40);
 
       // The interesting case: material runs out PART-WAY through the footprint. The action must place
       // what it can afford, debit exactly that, and floor at zero — not refuse, and not go free.
       setStone(5);
       const partial = run(80);
 
-      return { ok: true, creative, survival, partial };
+      return { ok: true, full, partial };
     });
 
     expect(result.ok, result.why || '').toBe(true);
 
-    expect(result.creative.placed, 'the creative control placed nothing — the harness, not the economy, failed').toBe(27);
-    expect(result.creative.spent, 'creative placement started charging — the builder sandbox is no longer free').toBe(0);
-
-    expect(result.survival.placed, 'survival placed nothing despite full material').toBe(27);
-    expect(result.survival.spent, 'placed more blocks than it paid for — the free-placement exploit is back').toBe(27);
+    expect(result.full.placed, 'placed nothing despite full material — the harness, not the economy, failed').toBe(27);
+    expect(result.full.spent, 'placed more blocks than it paid for — the free-placement exploit is back').toBe(27);
 
     expect(result.partial.placed, 'ran out of material and placed nothing — it should place what it can afford').toBe(5);
     expect(result.partial.spent, 'a partly-affordable footprint did not debit exactly what it placed').toBe(5);

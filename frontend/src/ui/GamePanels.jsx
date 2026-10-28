@@ -612,7 +612,6 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
         sfxVolume: state.sfxVolume, setSfxVolume: state.setSfxVolume,
         musicVolume: state.musicVolume, setMusicVolume: state.setMusicVolume,
         masterMuted: state.masterMuted, setMasterMuted: state.setMasterMuted,
-        gameMode: state.gameMode, setGameMode: state.setGameMode,
     })));
     const t = useT();
     return (
@@ -760,19 +759,6 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             className="min-w-[64px]"
                         >
                             {gameState.masterMuted ? t('ui.on') : t('ui.off')}
-                        </Button>
-                    </Panel>
-
-                    {/* Game Mode toggle */}
-                    <Panel variant="inset" bg="bg-slot" className="flex items-center justify-between px-3 py-2.5">
-                        <span className="font-bold text-text">{t('panel.gameMode')}</span>
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => gameState.setGameMode(gameState.gameMode === 'creative' ? 'survival' : 'creative')}
-                            className="min-w-[96px]"
-                        >
-                            {gameState.gameMode}
                         </Button>
                     </Panel>
 

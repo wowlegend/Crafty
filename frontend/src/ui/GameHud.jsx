@@ -1,5 +1,5 @@
 // S3-M5 (part 1): the HUD chrome — extracted BYTE-EXACT from Components.jsx (the god-file de-monolith).
-// MinecraftHotbar (the bottom block hotbar) + GameUI (the HUD overlay: mode/settings + side action
+// MinecraftHotbar (the bottom block hotbar) + GameUI (the HUD overlay: settings + side action
 // rail + the hotbar). Both take `gameState` as a prop (no store coupling). GameUI renders MinecraftHotbar
 // (intra-module). Extraction-only — NO behavior change.
 import React from 'react';
@@ -77,11 +77,7 @@ export const GameUI = ({ gameState }) => {
   const t = useT();
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 pointer-events-none z-20">
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-auto">
-        <Panel variant="base" className="flex items-center gap-2 px-3 py-2 text-text">
-          <span className="text-sm text-text-muted">Mode:</span>
-          <span className="text-sm font-bold text-success">{gameState.gameMode}</span>
-        </Panel>
+      <div className="absolute top-4 left-4 right-4 flex justify-end items-start pointer-events-auto">
         <div className="flex gap-2">
           <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.settings')} data-testid="hud-settings" className="w-[42px] h-[42px]" onClick={() => gameState.setShowSettings(true)}>
             <Icon name="settings" size={20} />

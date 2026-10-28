@@ -3,7 +3,7 @@ import { mitigateDamage } from '../utils/combat';
 import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progression.js';
 import { foldTalentEffects, refundUnknownTalents, canUnlockTalent, respecTalents } from '../game/talentTree.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, migrateSaveData, splitTombstone } from '../game/saveSchema.js';
+import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -696,9 +696,6 @@ export const useGameStore = create((set, get) => ({
     selectedBuildBlock: null,
     setSelectedBuildBlock: (block) => set({ selectedBuildBlock: block }),
 
-    gameMode: 'creative',
-    setGameMode: (mode) => set({ gameMode: mode }),
-
     // W3 M-HUD.9: the controls cheatsheet (CombatInstructions) is now a toggle/auto-fade, not always-on.
     // HUD auto-fades it after the first ~8s of play; H re-summons it (InputManager). Default false so the
     // deterministic visual capture (which never runs the fade timer) renders a clean, sheet-free HUD.
@@ -771,14 +768,14 @@ export const useGameStore = create((set, get) => ({
         }
     })),
 
-    // B3c: the ONE decision point for whether a placement is allowed and what it costs. Terrain.jsx place()
-    // delegates here so the debit reuses the single removeFromInventory writer (the floor-at-0 invariant
-    // cannot fork). Returns false to REFUSE the placement (survival, no block to place). Creative = free.
+    // The ONE decision point for whether a placement is allowed and what it costs. Terrain.jsx place() delegates
+    // here so the debit reuses the single removeFromInventory writer (the floor-at-0 invariant cannot fork). Returns
+    // false to REFUSE the placement: no block of that kind to spend.
     consumeForPlacement: (blockName) => {
-        const { gameMode, inventory, removeFromInventory } = get();
-        const { allowed, consume } = resolvePlacement(gameMode, inventory.blocks[blockName]);
+        const { inventory, removeFromInventory } = get();
+        const { allowed, consume } = resolvePlacement(inventory.blocks[blockName]);
         if (!allowed) return false;
-        if (consume > 0) removeFromInventory(blockName, consume);
+        removeFromInventory(blockName, consume);
         return true;
     },
 
@@ -1083,7 +1080,6 @@ export const useGameStore = create((set, get) => ({
             const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
             // migrateSaveData already normalized inventory keys — use directly.
             const inventory = saveData.player_data?.inventory || state.inventory;
-            const gameMode = saveData.game_state?.gameMode || state.gameMode;
             const selectedBlock = saveData.game_state?.selectedBlock || state.selectedBlock;
             const activeSpell = saveData.game_state?.activeSpell || state.activeSpell;
             // `??`, not `||`: gameTime 0 is DAWN — a real, common, perfectly valid clock value, and it is
@@ -1150,7 +1146,6 @@ export const useGameStore = create((set, get) => ({
                 _tombstone: splitTombstone(saveData),
                 worldBlocks,
                 inventory,
-                gameMode,
                 selectedBlock,
                 activeSpell,
                 isDay,
@@ -1194,7 +1189,7 @@ export const useGameStore = create((set, get) => ({
                 // fresh reset save carries the key PRESENT with value null, and `null ?? state.questState`
                 // kept the OLD world's completed quests and achievements in the new one.
                 questState: Object.prototype.hasOwnProperty.call(saveData, 'questState')
-                    ? saveData.questState
+                    ? liveQuestState(saveData.questState)
                     : state.questState,
                 questLoadedAt: (state.questLoadedAt || 0) + 1,
             };
