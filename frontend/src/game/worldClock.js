@@ -16,6 +16,7 @@ import { useGameStore } from '../store/useGameStore';
 import { getInput } from '../input/inputState';
 import { isCaptureMode } from '../devtest/captureMode';
 import { worldTimeScale } from './hitstop.js';
+import { frameStep } from './frameStep.js';
 
 let scale = 1;
 let worldMs = null;
@@ -81,9 +82,13 @@ export function worldNow() {
   return worldMs === null ? performance.now() : worldMs;
 }
 
-/** A world-simulating useFrame's delta: 0 through a hitstop freeze or a pause, the frame's delta otherwise. */
+/**
+ * A world-simulating useFrame's delta: 0 through a hitstop freeze or a pause, the frame's step otherwise. The step is
+ * the frame's delta capped at MAX_FRAME_STEP_SEC (game/frameStep.js), the same cap realDelta applies, so a long frame
+ * advances the world and the player by the same time.
+ */
 export function worldDelta(delta) {
-  return delta * scale;
+  return frameStep(delta) * scale;
 }
 
 /** Is the world frozen this frame? For a frame consumer whose timers are not delta-driven (BossEntity's attacks, the spawner). */
@@ -93,9 +98,10 @@ export function isWorldFrozen() {
 
 /**
  * A useFrame that runs on REAL time on purpose — the player controller (it applies the freeze to its own
- * motion), the sky's mood lerp, the weather, the physics debris. Identity: the name is the decision, made where
- * it is reviewed.
+ * motion), the sky's mood lerp, the weather, the physics debris. It does not freeze: the name is the decision, made
+ * where it is reviewed. It is capped like worldDelta (game/frameStep.js): the player walking a whole stalled frame
+ * while every pursuer walked only the cap is how a fight was out-walked.
  */
 export function realDelta(delta) {
-  return delta;
+  return frameStep(delta);
 }

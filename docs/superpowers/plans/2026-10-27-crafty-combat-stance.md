@@ -207,14 +207,21 @@ lines.
 
 ### Task 0: Preconditions (no code)
 
-- [ ] **Step 1: Phase 0c and 0f/0g are on main**
+- [x] **Step 1: Phase 0c and 0f/0g are on main**
 
 Run: `cd <repo> && git grep -n "pressPrimary" main -- frontend/src/Components.jsx && git grep -n "export function subscribeHudTick" main -- frontend/src/ui/hudTicker.js`
 Expected: both print a match. If `pressPrimary` is missing, Task 11's touch finisher cannot run: build Tasks 1-10
 and hold Task 11. If `hudTicker.js` is missing, hold Task 7 only. A held task holds the MERGE too (Task 12 Step 8):
 this lane never lands the stance without its chevrons, or without its touch proof.
 
-- [ ] **Step 2: Cut the worktree and record the bundle baseline**
+> **Done 2026-10-27, with a deviation.** Neither had reached `main` (cut at `a8ce0dd1`), so the lane MERGED the two
+> branches instead: `feat/steady-cool` (a fast-forward to `ed8e51d7`, carrying `hudTicker.js`), then
+> `feat/touch-hold` (`f78644b9`, carrying `pressPrimary`; the one conflict was the generated MEASURED block in
+> `.agent/AGENTS.md`, regenerated with `measure.mjs --write` and `gate-table.mjs --write`). Both greps match on the
+> branch: `Components.jsx:550,560,584` and `hudTicker.js:31`. This lane therefore cannot land before both of those
+> branches land on `main`.
+
+- [x] **Step 2: Cut the worktree and record the bundle baseline**
 
 Run: `cd <repo> && orca worktree create combat-stance --branch feat/combat-stance` (or `git worktree add .claude/worktrees/combat-stance -b feat/combat-stance main`)
 Then: `cd <repo>/.claude/worktrees/combat-stance/frontend && npm ci && npm run build && ls -l build/assets/index-*.js`
@@ -238,7 +245,7 @@ derivation in another file would be a second copy that drifts.
   aggro'd `'spider'` and 1.5 for any other aggro'd type. The charge multiplier stays `SHOULDER_CHARGE_SPEED`, applied
   by the worker as today.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 // frontend/src/game/mobMovement.test.js
@@ -263,24 +270,24 @@ it('the real worker steps an aggro\'d mob by speed x the chase multiplier x delt
 });
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `cd <repo>/frontend && npx vitest run src/game/mobMovement.test.js tests/gates/stance-pursuit-gates.test.js`
 Expected: FAIL, "chaseSpeedMult is not a function / not exported".
 
-- [ ] **Step 3: Implement `chaseSpeedMult` in `mobMovement.js`, and in `ai.worker.js:327` replace the literal ternary with `chaseSpeedMult(type, isAggro)`** (add it to the existing import at `:25`). The behaviour is byte-identical.
+- [x] **Step 3: Implement `chaseSpeedMult` in `mobMovement.js`, and in `ai.worker.js:327` replace the literal ternary with `chaseSpeedMult(type, isAggro)`** (add it to the existing import at `:25`). The behaviour is byte-identical.
 
-- [ ] **Step 4: Run them, then the whole unit suite**
+- [x] **Step 4: Run them, then the whole unit suite**
 
 Run: `npx vitest run src/game/mobMovement.test.js tests/gates/stance-pursuit-gates.test.js && npm run test:unit`
 Expected: PASS, and the suite total equals the pre-task total plus 2.
 
-- [ ] **Step 5: Mutation receipt.** Run `sh scripts/dev/mutate.sh src/game/mobMovement.js tests/gates/stance-pursuit-gates.test.js 1 K1 "? 2.0 :" "? 1.5 :"`.
+- [x] **Step 5: Mutation receipt.** Run `sh scripts/dev/mutate.sh src/game/mobMovement.js tests/gates/stance-pursuit-gates.test.js 1 K1 "? 2.0 :" "? 1.5 :"`.
 Expected: RED. The worker then steps the spider 3.0 × 1.5 × 0.1 = 0.45 against the literal 0.6, which proves the
 worker reads the shared function: a worker that still held its own `2.0` literal would step 0.6 and the mutant would
 SURVIVE. Put the observed line into the gate file's header as `Mutation-Proof:`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/game/mobMovement.js frontend/src/game/mobMovement.test.js frontend/src/workers/ai.worker.js frontend/tests/gates/stance-pursuit-gates.test.js
@@ -304,11 +311,13 @@ git commit -m "refactor(ai): one chase multiplier, read by the worker and (next)
     Task 4's `stanceStep` skips these types too, so the exemption covers engagement and not only the derivation.
   - `pursuitSpeed(type, roster = MOB_TYPES) -> number`, meaning `roster[type].speed × chaseSpeedMult(type, true) × (archetypeFor(type).movement === 'shoulder' ? SHOULDER_CHARGE_SPEED : 1)`
   - `pursuers(roster = MOB_TYPES) -> string[]`: hostile (`!passive`) and not in `NON_PURSUERS`
-  - `deriveStanceCaps(roster = MOB_TYPES) -> { retreat, strafe, advance, slowest, fastest }`. It throws if
-    `retreat < RETREAT_FLOOR`.
+  - `deriveStanceCaps(roster = MOB_TYPES) -> { retreat, strafe, advance, slowest, fastest, violation }`. As built it
+    never throws: a retreat under `RETREAT_FLOOR` is held at the floor and named in `violation` (a throw at load
+    blanked the app, because the module is on App's import chain), and `tests/gates/stance-roster-gates.test.js` fails
+    the shipped roster on it. The throwing form in Step 1 below is the plan as first written.
   - `STANCE_CAPS`, frozen: `deriveStanceCaps()` evaluated once at load.
 
-- [ ] **Step 1: Write the failing property tests**
+- [x] **Step 1: Write the failing property tests**
 
 ```js
 // combatStance.test.js
@@ -348,19 +357,19 @@ it('the skeleton exemption holds: inside 8 m it retreats, so it never closes', (
 });
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `npx vitest run src/game/combatStance.test.js tests/gates/stance-pursuit-gates.test.js`
 Expected: FAIL, "Cannot find module './combatStance.js'".
 
-- [ ] **Step 3: Implement the Produces block in `combatStance.js`.** Pure; imports only the four modules above and
+- [x] **Step 3: Implement the Produces block in `combatStance.js`.** Pure; imports only the four modules above and
   `BASE_MOVE_SPEED` (re-exported for the test). `retreat = pursuitSpeed(slowest) − MIN_CLOSING_RATE`;
   `strafe = advance = pursuitSpeed(fastest) + STRAFE_MARGIN`. Round only in the test (`toBeCloseTo`) where floats
   demand it.
 
-- [ ] **Step 4: Run them to verify they pass.** The same command; expected PASS.
+- [x] **Step 4: Run them to verify they pass.** The same command; expected PASS.
 
-- [ ] **Step 5: Mutation receipts.** Apply each with `scripts/dev/mutate.sh`, each RED:
+- [x] **Step 5: Mutation receipts.** Apply each with `scripts/dev/mutate.sh`, each RED:
   - S2a: `Math.min` → `Math.max` in the slowest-pursuer pick (the retreat derived from the spider gives 5.0).
   - S2b: the `NON_PURSUERS` entry deleted. It goes RED through the pursuer count (`toBe(6)` sees 7) and through
     `closingOver('skeleton', 10, 10)`, where the skeleton stands and shoots in its 8-12 m band and throws 'empty
@@ -373,7 +382,7 @@ Expected: FAIL, "Cannot find module './combatStance.js'".
 
   Record the receipts in both files.
 
-- [ ] **Step 6: Commit** with the title "feat(combat): stance caps derived from the roster — a backpedal 1 m/s under the slowest pursuer, strafe 0.5 over the fastest (F1)" and a `Mutation-Proof:` trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): stance caps derived from the roster — a backpedal 1 m/s under the slowest pursuer, strafe 0.5 over the fastest (F1)" and a `Mutation-Proof:` trailer.
 
 ---
 
@@ -400,7 +409,7 @@ Expected: FAIL, "Cannot find module './combatStance.js'".
   - `w === 0` returns `(vx, vz)` untouched (an early return), so the identity is exact rather than a float
     coincidence.
 
-- [ ] **Step 1: Write the failing property tests**
+- [x] **Step 1: Write the failing property tests**
 
 ```js
 const FORMS = [0.6, 0.7, 1, 1.25, 1.4], HEAVY = [1, 0.55], DIRS = Array.from({ length: 360 }, (_, d) => d * Math.PI / 180);
@@ -439,10 +448,10 @@ it('a threat with no direction caps the total speed and makes no NaN', () => {
 it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBeCloseTo(8.0, 9));
 ```
 
-- [ ] **Step 2: Run and verify FAIL** ("stanceVelocity is not a function").
-- [ ] **Step 3: Implement `stanceVelocity`** to the Interfaces block.
-- [ ] **Step 4: Run and verify PASS.**
-- [ ] **Step 5: Mutation receipts, each RED:**
+- [x] **Step 2: Run and verify FAIL** ("stanceVelocity is not a function").
+- [x] **Step 3: Implement `stanceVelocity`** to the Interfaces block.
+- [x] **Step 4: Run and verify PASS.**
+- [x] **Step 5: Mutation receipts, each RED:**
   - S3a: the retreat clamp dropped. Only the strafe clamp remains, which is the camera-relative-backpedal design the
     derivation section rules out.
   - S3b: `lerp` weight inverted (`1 − w`).
@@ -451,7 +460,9 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - S3d: `formMult` ignored (absolute strafe and advance caps, the first draft's design). RED on `the clamp keeps
     the pace`.
   - S3e: the retreat cap also scaled by `formMult` (a comet retreats at 2.8). RED on `the retreat is form-invariant`.
-- [ ] **Step 6: Commit** with the title "feat(combat): the stance clamps the away-from-threat component, not the S key" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): the stance clamps the away-from-threat component, not the S key" and a trailer.
+
+> **Done 2026-10-27.** Built by a forked duplicate builder that died before committing; reviewed as a stranger's work, kept unchanged, and re-proven here: RED first (9 of 15 with "stanceVelocity is not a function"), then green. Two tests beyond the list above: the w = 0 early return is pinned by a non-finite away vector and a `-0` (the lerp alone returns finite input unchanged, so the identity case cannot tell the two apart), and `out` is written and returned. Receipts (mutate.sh): S3a, S3b, S3d, S3e RED; S3c SURVIVED as the equivalent mutant; added S3f (advance clamp dropped), S3g (early return dropped), S3h/S3i (no-direction cap dropped / at the retreat cap), S3j (walk slow off the retreat), S3k (one-sided strafe clamp), S3l (`w * w` blend), S3m (advance not scaled by the form), all RED; identity survived. Task 2's receipts were re-run clean on the committed `90863cc6` content first (its first run shared the file with another builder's mutate.sh): all reproduced, see the commit body.
 
 ---
 
@@ -494,7 +505,24 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     never subscribed.
   - `resetStance()`, called on death.
 
-- [ ] **Step 1: Write the failing tests.** Use a fake mob factory `mob({ x, y=0, z=0, aggro=true, passive=false, health=50 })` and player `{x:0,y:0,z:0}`:
+> **Deviation (command session decision, 2026-10-27): the height reference is the point the worker strikes from.**
+> This plan passed the rigid-body translation as `player` (Task 5 Step 3: `currentTrans`). The worker measures every
+> sense and reach test from the `playerPos` that `AIWorkerSystem` posts, and that is `camera.position`
+> (`systems/AIWorkerSystem.jsx:226`). The camera rides `translation.y + 1.2` plus bob, shake and kick
+> (`Components.jsx:1410`; the brief's `:886` is the death-branch copy of the same offset). The human capsule's centre
+> is 0.9 m above its feet (`beasts.js` `BASE_CAPSULE`) and a mob's `y` is 0.5 m above its floor (`localPath.js`
+> `settleOnGround`), so on one floor the worker reads dy 1.6 and the translation 0.4. Measured from the translation, the
+> stance would engage on a husk on the floor one or two blocks below the player's ledge, which the worker never lets
+> swing (dy 2.6 to 3.6 from the eye, over its 2.5), and would miss a husk three or four blocks up, which it does. So
+> `player` is the point mobs measure the player from, read from ONE function, `mobSensePoint(camera)` in
+> `game/mobSenses.js`: `AIWorkerSystem` posts it, and the controller hands it to `stanceStep` (Task 5). The horizontal
+> reads move with it (camera x/z is the translation plus shake and kick, centimetres), so the away vector is measured
+> from the same point, and `readStance` gains `playerY`. Task 4's dy tests are written against `player.y` as that
+> point. The agreement is gated in Task 5's e2e (case 0): the stance's recorded `playerX/Y/Z` must equal the last
+> `playerPos` the page posted to the AI worker, observed by wrapping `Worker.prototype.postMessage`, so a stance fed the
+> translation reads 1.2 m off and goes RED, and so does a worker fed the body centre.
+
+- [x] **Step 1: Write the failing tests.** Use a fake mob factory `mob({ x, y=0, z=0, aggro=true, passive=false, health=50 })` and player `{x:0,y:0,z:0}`:
   - `engages on an aggro'd hostile at 11.9 m and not at 12.1 m`
   - `ignores a hostile beyond its own vertical reach` (a husk at dy 2.6 does not engage and at dy 2.4 does; a brute
     engages at dy 3.1; a spider engages at dy 5.9 and not at dy 6.1)
@@ -514,10 +542,10 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - `away points from the threat to the player, unit length`
   - `resetStance zeroes w and engaged`
 
-- [ ] **Step 2: Run and verify FAIL.**
-- [ ] **Step 3: Implement** to the Interfaces block. Allocation-free per call: no arrays or objects created.
-- [ ] **Step 4: Run and verify PASS.**
-- [ ] **Step 5: Mutation receipts, each RED:**
+- [x] **Step 2: Run and verify FAIL.**
+- [x] **Step 3: Implement** to the Interfaces block. Allocation-free per call: no arrays or objects created.
+- [x] **Step 4: Run and verify PASS.**
+- [x] **Step 5: Mutation receipts, each RED:**
   - S4a: the vertical-reach check dropped.
   - S4b: `CALM_MS` → 0.
   - S4c: hysteresis removed (always the nearest).
@@ -526,7 +554,22 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - S4f: the stall rule dropped. RED on `a stranded mob stops qualifying`.
   - S4g: progress measured as the fall in the mob-to-player DISTANCE (plausible-wrong: the player's motion counts).
     RED on `the player's own approach is not the mob's progress`.
-- [ ] **Step 6: Commit** with the title "feat(combat): the stance engages on an aggro'd pursuer that can reach you, within 12 m, and leaves 2 s after the last" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): the stance engages on an aggro'd pursuer that can reach you, within 12 m, and leaves 2 s after the last" and a trailer.
+
+> **Done 2026-10-27, with three deviations from the Interfaces block** (each pinned by a test and a mutant that
+> restores the plan's text). (1) **The stall clocks are kept for every aggro'd hostile pursuer, not only those in
+> range**, and dropped when the mob stops being one. Scoped to range, a clock restarts each time a stranded mob
+> flickers across the 12 m radius or its reach bound (the eye the stance now measures from bobs a few centimetres a
+> step), so a mob that never gains could hold the stance forever, which is review claim 4's failure. Test `a
+> stranded mob flickering across the engage radius still stalls`, mutant S4j. (2) **A climber's strike reach is its
+> leap** (`LEAP_RANGE` across, as `engageDyM` already used it up): the worker's spider leaps from 6 m
+> (`canReach(dx, dy, dz, LEAP_RANGE, LEAP_RANGE)`), so a spider standing at 5.5 m can hit a still player and must not
+> stall out. Mutant S4i2. (3) **With no qualifier this frame the last threat's position is kept**, so the calm and the
+> exit blend clamp against where the fight was rather than against no direction (which would free a 6.5 m/s walk the
+> moment a threat dropped out of range); `threatId` clears once `w` is back to 0. Mutant S4r. Also: `stanceStep`
+> records `playerY` (the height-reference deviation above), and `archetypeFor` is read once per type into a cache,
+> because it builds a fresh object per call. Receipts: 24 mutants RED (S4a-S4g as listed, plus S4a2, S4a3, S4c2, S4h,
+> S4i, S4i2, S4j, S4k, S4l, S4m, S4n, S4o, S4p, S4q, S4r, S4s), the identity mutant survived.
 
 ---
 
@@ -563,7 +606,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   if CI never reaches 4 fps, a deterministic stepping hook (AI and player advanced by a fixed dt) is the follow-up,
   named in DECISIONS rather than assumed.
 
-- [ ] **Step 1: Write the failing e2e** (`combat-stance.spec.js`). Use the `perfect-dodge.spec.js` staging pattern:
+- [x] **Step 1: Write the failing e2e** (`combat-stance.spec.js`). Use the `perfect-dodge.spec.js` staging pattern:
   `bootDev`, `startPlayActive`, `setTimeOfDay(0.5)`, every hostile within 40 m killed, the camera yaw set directly
   through `window.__threeCamera.rotation.y` (pointerLook keeps no yaw of its own, `input/pointerLook.js:15-17`), and
   pitch 0.
@@ -616,12 +659,12 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
 
   The header carries `Mutation-Proof: OWED` and the batch below.
 
-- [ ] **Step 2: Run it to verify it fails.** In the command session or CI:
+- [x] **Step 2: Run it to verify it fails.** In the command session or CI:
   `cd <repo>/.claude/worktrees/combat-stance/frontend && npx playwright test tests/e2e/combat-stance.spec.js`
   Expected: FAIL at case 1. The `readStance` hook is absent, so the call returns `undefined` and the message reads
   "the stance never engaged".
 
-- [ ] **Step 3: Wire it.** At `Components.jsx:881`, read `now = performance.now()` once and compute
+- [x] **Step 3: Wire it.** At `Components.jsx:881`, read `now = performance.now()` once and compute
   `walkMult = heavyWalkMult(now)`; `speed = moveSpeed(loco) * walkMult` (today's value, reordered into a named
   factor; Task 9 multiplies in `stringWalkMult(now)`). At `:882`, after `const currentTrans =
   rigidBodyRef.current.translation()`, add `const st = stanceStep(getStance(), mobsQuery.entities, currentTrans, now,
@@ -630,10 +673,10 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   `noteMoveTarget(mv.x, mv.z, targetX, targetZ, st.w)` records the pair. `stanceOutRef` is a `useRef({x:0,z:0})`.
   In the death branch at `:867`, call `resetStance()` beside `cancelHeavy()`. In `App.jsx`, add the two hooks.
 
-- [ ] **Step 4: Run it to verify it passes,** then run `npm run test:unit` and `npm run lint`. Expected: green, with
+- [x] **Step 4: Run it to verify it passes,** then run `npm run test:unit` and `npm run lint`. Expected: green, with
   the trace printing about 2.0 m/s retreat and the gap closing at ≥ 0.8 m/s.
 
-- [ ] **Step 5: Mutation batch** with `sh scripts/dev/mutate-e2e.sh <subject> tests/e2e/combat-stance.spec.js <label> <old> <new>`.
+- [x] **Step 5: Mutation batch** with `sh scripts/dev/mutate-e2e.sh <subject> tests/e2e/combat-stance.spec.js <label> <old> <new>`.
   Each must be RED unless marked:
 
   | label | subject | mutation | expected catch |
@@ -652,7 +695,33 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   T6-T9 are the mutants the first draft's all-S, threat-ahead geometry could not see (review findings 1 and 6). Replace
   OWED with the observed verdicts. Sweep with `sh scripts/dev/kill-test-procs.sh`.
 
-- [ ] **Step 6: Commit** with the title "feat(combat): you cannot outwalk a fight — the stance in the Player loop; travel keeps 14 m/s" and the `Mutation-Proof:` trailer listing T0-T9.
+- [x] **Step 6: Commit** with the title "feat(combat): you cannot outwalk a fight — the stance in the Player loop; travel keeps 14 m/s" and the `Mutation-Proof:` trailer listing T0-T9.
+
+> **Done 2026-10-27, with deviations; the chase verdicts and CI's frame rate are OWED TO CI.**
+> - **The height reference** (the command session's decision, recorded under Task 4): `stanceStep` receives
+>   `mobSensePoint(camera)` (new in `game/mobSenses.js`), not `currentTrans`, and `AIWorkerSystem` posts the same
+>   function's point as the worker's `playerPos`. `readStance` gains `playerY`. The agreement is gated by a new case 0:
+>   the spec wraps `Worker.prototype.postMessage` and compares the stance's recorded point with the last TICK's
+>   (H1 and H2 RED at 1.200 m apart; H3, the point moved for both readers, survives by design;
+>   `src/game/mobSenses.test.js` pins the point itself). The controller's local is named `stance`, not `st` (the frame
+>   already has block-scoped `st`s for the store).
+> - **Staging.** No heading of 8 has the plan's flat strip at the spawn: the hearth platform (floor 52, 15 x 15 m) sits
+>   in rolling ground at 45-61 (measured on the first local run), so the plan's SETUP would have fired on every run.
+>   Every case is staged from the platform (the body put back on its stand point, as `context-loss.spec.js` does), with
+>   a per-case heading that keeps the husk on the player's level; a flat walked path gates only that case's CHASE, as
+>   the frame rate does. The stage's "wait for w === 0" is a verdict, not a SETUP, so T4 is killable there.
+> - **The strafe chase needs a faster frame** (measured): within a frame the player moves in a straight line, so a
+>   tangential step grows the gap by about L²/2g, a leak of 6.5² · Δ / 2g. At Δ = 247 ms the strafe case's gap grew
+>   3.2 to 6.05 m while every frame's target held the caps. Its chase is judged only at Δ ≤ 61 ms (the leak at the
+>   2.6 m catch gap at most half the 1 m/s margin). Case 3's travel speed is judged over the flat first 8 m past the
+>   walk ramp, because no heading has a flat 22 m path from the hearth.
+> - **Proof.** RED first against the Task 4 tree (no hook, no call). Green locally under the identity mutant, three
+>   times (median frame interval 214, 255 and 387 ms): case 0 median 0.000 m over 12 frames; the targets at exactly the 2.0 cap;
+>   the chases of cases 2 and 2b judged and held at 214 ms (retreat 1.86 and 1.91 m/s, caught at 2.55 and 2.48 m).
+>   Mutation batch T1-T9, H1, H2 all RED, H3 and the identity mutant SURVIVED: run by hand on a throwaway config (port
+>   4297) and scored by `mutate-e2e.sh`'s own rules, because `mutate-e2e.sh` serves 4179 and sweeps with
+>   `kill-test-procs.sh`, which the authoring lane may not run. **Owed to CI:** the chase sub-assertions at CI's frame
+>   rate, and Step 0's CI median frame interval (the spec logs it on every run).
 
 ---
 
@@ -681,7 +750,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     It intersects the ray from the container's centre at screen angle `angle` with the inset rectangle
     `[SIDE, w−SIDE] × [TOP, h−bottomInset]`. `rotDeg = angle·180/π`, so the chevron points outward toward the mob.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `a windup behind the player is off screen, at angle ±π`
   - `a windup dead ahead and in the frustum is not listed`
   - `a windup ahead but above the frustum is off screen` (the fake projector returns `y = 1.4`; Review Focus 4)
@@ -693,15 +762,21 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     the four edges.
   - `placement at angle 0 is top-centre, π/2 right-centre, π bottom-centre`
 
-- [ ] **Step 2: Run and verify FAIL.**
-- [ ] **Step 3: Implement** to the Interfaces block. Allocation-free: `out` holds 4 preallocated objects.
-- [ ] **Step 4: Run and verify PASS.**
-- [ ] **Step 5: Mutation receipts, each RED:**
+- [x] **Step 2: Run and verify FAIL.**
+- [x] **Step 3: Implement** to the Interfaces block. Allocation-free: `out` holds 4 preallocated objects.
+- [x] **Step 4: Run and verify PASS.**
+- [x] **Step 5: Mutation receipts, each RED:**
   - C6a: the off-screen predicate negated.
   - C6b: the `|y|` term dropped, which kills the steep-pitch test.
   - C6c: `out` not sorted.
   - C6d: the bottom inset ignored.
-- [ ] **Step 6: Commit** with the title "feat(combat): the windups a player cannot see, and an edge frame clear of the HUD to show them on" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): the windups a player cannot see, and an edge frame clear of the HUD to show them on" and a trailer.
+
+> **Done 2026-10-27 (`6f1b1c51`).** 11 tests, RED first (the module did not exist). Receipts: C6a-C6d as listed plus
+> C6e-C6r (14 plausible-wrong mutants: the range flat or strict, the margin, the stagger, the windup edge, the ramp,
+> the sort reversed, the cap keeping the latest four, the ray from the frame's centre, rotDeg negated, the yaw
+> ignored, screen y flipped, the far boundary, the hostile check), all RED; the identity mutant survived. Deviations:
+> `chevronPlacement` takes an optional preallocated `out`, and each slot carries the `until` it was sorted by.
 
 ---
 
@@ -726,7 +801,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   inner marker track, and `:500` the `pointer-events-none` outer wrapper) gains `data-testid="hud-compass"` (one attribute)
   so the e2e can test for overlap with it.
 
-- [ ] **Step 1: Write the failing jsdom gate** (`windup-chevrons-gates.test.jsx`). Stub `subscribeHudTick` to capture
+- [x] **Step 1: Write the failing jsdom gate** (`windup-chevrons-gates.test.jsx`). Stub `subscribeHudTick` to capture
   the tick, a store with a fake `gameCamera` (a `project` behind the camera returns `z > 1`), and `mobsQuery` with
   one hostile winding up behind. Render once, call the captured tick:
   - `one chevron is on, at about 180 degrees, the other three off`
@@ -735,9 +810,9 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - `the component renders once across 30 ticks` (a render counter: Game-Loop isolation)
   - `under capture mode it renders nothing`
 
-- [ ] **Step 2: Run and verify FAIL** ("Cannot find module '../../src/ui/WindupChevrons.jsx'").
+- [x] **Step 2: Run and verify FAIL** ("Cannot find module '../../src/ui/WindupChevrons.jsx'").
 
-- [ ] **Step 3: Implement `WindupChevrons`.**
+- [x] **Step 3: Implement `WindupChevrons`.**
   - The tick runs on every HUD frame. It reads the camera, the player position (`camera.position`) and `worldNow()`,
     calls `offscreenWindups`, and places each node.
   - It writes `style.transform`, `style.opacity` and the `data-*` attributes only when the quantised values change:
@@ -747,7 +822,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     already bounds the DOM cost.
   - Wire it into `HUD.jsx`.
 
-- [ ] **Step 4: Run the gate (PASS), then write the e2e** (`windup-chevron.spec.js`, desktop 1280×800). Stage as in
+- [x] **Step 4: Run the gate (PASS), then write the e2e** (`windup-chevron.spec.js`, desktop 1280×800). Stage as in
   Task 5. Freeze the world (`triggerHitstop(60000)`), wait 3 s real time, so `performance.now() − worldNow() > 2000`,
   which is what makes C4 below killable.
   1. Spawn a zombie 2 m **behind** (`camera − forward·2`), wait 3 frames, `plantWindup(id, 2000)`. Within 10 frames,
@@ -779,7 +854,18 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   | C6 | `src/game/windupChevrons.js` | `TOP_INSET_PX = 40` (the chevron climbs into the compass) | case 4 |
   | C0 | `src/ui/WindupChevrons.jsx` | a comment edit (`--identity`) | must SURVIVE |
 
-- [ ] **Step 6: Commit** with the title "feat(hud): a chevron at the screen edge for a windup you cannot see — on the HUD ticker, refs only" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(hud): a chevron at the screen edge for a windup you cannot see — on the HUD ticker, refs only" and a trailer.
+
+> **Done 2026-10-27, with its e2e OWED (`dcd31b3b`, then `d0f67eed`).** The jsdom gate (8 tests) drives the REAL
+> HUD ticker (claimHudTick + emitHudTick) instead of a stubbed subscribeHudTick, and declares the device class per
+> test, because jsdom answers isTouchDevice() as touch. Receipts: J1-J13 RED (12 mutants), the identity mutant survived,
+> and J1b (the transform's write-on-change guard dropped) survived as an EQUIVALENT mutant: a same-value style write
+> makes no mutation record. The compass frame is HUD.jsx:528 and the mount :673 (the plan's :501/:645 had moved). C5's
+> subject is `game/windupChevrons.js`, where the windupUntil test lives. The e2e runs case 2 (no windup) BEFORE case 1
+> on the same zombie: a windup cannot be un-planted in a frozen world without leaving an expired one the worker would
+> strike with when the freeze ends. **Step 5 is OWED**: the machine's load average was 77-161 on 14 cores, so the e2e
+> and its C0-C6 batch were not run. Its header says `Mutation-Proof: OWED`. Task 12 then moved the layer behind a
+> `React.lazy` boundary for the byte share (see Task 12 Step 3).
 
 ---
 
@@ -836,7 +922,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     against it).
   - `_resetStringForTest()`
 
-- [ ] **Step 1: Write the failing tests** (each calls `_resetStringForTest()` first):
+- [x] **Step 1: Write the failing tests** (each calls `_resetStringForTest()` first):
   - `three presses 350 ms apart are steps 1, 2, 3, and the fourth starts again at 1`
   - `a press after STRING_WINDOW_MS restarts at step 1` (presses at 0, 700 give steps 1, 1)
   - `a press inside the cooldown with more than BUFFER_MS left is dropped` (0, 50 gives drop)
@@ -857,10 +943,10 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - (The first draft's `a heavy's minimum hold outlasts the string window` test is deleted. It pinned 700 > 650, an
     inequality that does not carry the claim; `endString(now)` on the heavy's release carries it now.)
 
-- [ ] **Step 2: Run and verify FAIL.**
-- [ ] **Step 3: Implement** to the Interfaces block.
-- [ ] **Step 4: Run and verify PASS.**
-- [ ] **Step 5: Mutation receipts, each RED:**
+- [x] **Step 2: Run and verify FAIL.**
+- [x] **Step 3: Implement** to the Interfaces block.
+- [x] **Step 4: Run and verify PASS.**
+- [x] **Step 5: Mutation receipts, each RED:**
   - S8a: the window check dropped (every third swing finishes).
   - S8b: `cancelIntoDodge` resets the step.
   - S8c: `BUFFER_MS` → 0.
@@ -868,7 +954,14 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - S8e: `cancelIntoDodge`'s open-window guard dropped. RED on `after the window has lapsed revives nothing`.
   - S8f: `endString(now)` ignores `now` (no cooldown after a heavy). RED on `cannot finish on the heavy's heels`.
   - S8g: `peekStep` records the press (a side effect). RED on `changes nothing`.
-- [ ] **Step 6: Commit** with the title "feat(combat): a three-step light string — window, buffer, finisher, cancel into dodge (pure)" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): a three-step light string — window, buffer, finisher, cancel into dodge (pure)" and a trailer.
+
+> **Done 2026-10-27 (`34bc39f7`).** 15 tests (the plan's 14 plus Task 10's `slashSweep alternates`), RED first. S8a-S8g
+> RED, plus S8h-S8r and S8u (12 more plausible-wrong mutants), all RED; the identity mutant survived. S8s/S8t (a
+> buffered press's step read at the press, not at readyAt) SURVIVED and are EQUIVALENT in every reachable state: a
+> fire sets the window 650 ms past a cooldown of at most 500 ms, and only endString pushes readyAt past the window,
+> which zeroes `last`. pressSwing returns shared frozen results; readString returns the live state object (the DEV
+> hook copies it).
 
 ---
 
@@ -910,7 +1003,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     player. The riposte still stacks inside `damageMob` (`CombatSystem.jsx:40`), so a finisher on a perfectly dodged
     mob deals 2.25×. That is intended: reading a telegraph is the best answer.
 
-- [ ] **Step 1: Write the failing e2e** (`melee-string.spec.js`, desktop). Stage as in `heavy-melee.spec.js`: a frozen
+- [x] **Step 1: Write the failing e2e** (`melee-string.spec.js`, desktop). Stage as in `heavy-melee.spec.js`: a frozen
   world (`triggerHitstop(60000)`), `Math.random` pinned high (no crit).
   - A **moss brute** 2.2 m dead ahead.
   - A **zombie** 2.0 m at **60° off-axis**: outside the 90° cone, inside the 140° finisher.
@@ -957,7 +1050,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
 
 - [ ] **Step 2: Run it to verify it fails.** Expected: FAIL at case 1, with `d3 === d1` (no finisher yet).
 
-- [ ] **Step 3: Wire it** per the Files and Interfaces blocks. In `useFrame`, right after the dodge block
+- [x] **Step 3: Wire it** per the Files and Interfaces blocks. In `useFrame`, right after the dodge block
   (`:1010`), add `const bs = takeBufferedSwing(performance.now()); if (bs) triggerMeleeAttack({ bufferedStep: bs });`.
   Task 5's `walkMult` at `:881` becomes `heavyWalkMult(now) * stringWalkMult(now)`, with `now` read once; it feeds
   both `speed` and `stanceVelocity`'s `walkMult`, so the swing slow survives the clamp. The swing slow applies out of
@@ -975,14 +1068,24 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   | S3 | `src/Components.jsx` | the cone arc fixed at `Math.PI / 2` | case 1 off-axis zombie |
   | S4 | `src/Components.jsx` | `cancelIntoDodge` → `endString` at the dodge start (plausible-wrong) | case 4 |
   | S5 | `src/Components.jsx` | the `takeBufferedSwing` line removed | case 3 |
-  | S6 | `src/Components.jsx` | `endString(now)` removed from `releaseHeavySwing` | case 5 |
+  | S6 | `src/game/meleeString.js` | gateSwing's `endString(now);` → `if (form) endString(now);` (taken from the heavy only; re-anchored 2026-10-28, see Implementation review, round 2) | case 5 |
   | S7 | `src/Components.jsx` | the router's `meleeHit` arc fixed at `Math.PI / 2` | case 6 |
   | S0 | `src/game/meleeString.js` | a comment edit (`--identity`) | must SURVIVE |
 
   Also re-run `tests/e2e/heavy-melee.spec.js` and `tests/e2e/perfect-dodge.spec.js` unmutated on this branch. Both
   must stay green: the light swing's path changed under them.
 
-- [ ] **Step 6: Commit** with the title "feat(combat): the light string in play — the third hit sweeps 140 degrees for 1.5x with a heavy-tier hitstop; a dodge keeps it alive" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): the light string in play — the third hit sweeps 140 degrees for 1.5x with a heavy-tier hitstop; a dodge keeps it alive" and a trailer.
+
+> **Done 2026-10-27, with its e2e OWED (`e05e1a30`).** Deviations: `releaseHeavySwing` no longer throws the heavy
+> itself (since the touch-hold lane it is `input/primaryInput.js` releasePrimary -> throwHeavy -> triggerMeleeAttack
+> `{ heavy: true }`), so `endString(now)` sits in triggerMeleeAttack's heavy branch, which every thrown heavy passes;
+> S6 is "that line removed". Case 4 stamps the dodge start from the 'swing' sound the dodge site plays, because S4
+> would never stamp `cancelAt`. Case 5 judges by `lastSwingStep`, not damage, because the heavy's stagger holds in a
+> frozen world and the riposte multiplies the next hit. **Steps 2, 4 (the e2e half) and 5 are OWED**: no e2e ran (load
+> above 115). That covers the red-first run, the green run, S0-S7, and the unmutated heavy-melee and perfect-dodge
+> re-runs. Unit: the 25 gate files that read Components.jsx (213 tests) and the full suite are green. Read from the code,
+> not observed: touch-hold's and heavy-melee's measured presses stay at steps 1-2.
 
 ---
 
@@ -992,12 +1095,12 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
 
 **Interfaces:** Consumes `readString()` and `slashSweep(step)` (Task 8), read transiently inside the existing `useFrame`.
 
-- [ ] **Step 1: Write the failing test.** In `meleeString.test.js`: `slashSweep alternates dir for steps 1 and 2 and
+- [x] **Step 1: Write the failing test.** In `meleeString.test.js`: `slashSweep alternates dir for steps 1 and 2 and
   widens the finisher` (already in Task 8). The hand's wiring has no unit seam. Its proof is a by-eye frame-step in a
   dev session, stated in the commit, and it is NOT claimed as e2e-proven. A swing never appears in the 31 capture
   frames (capture runs no input).
 
-- [ ] **Step 2: Implement.**
+- [x] **Step 2: Implement.**
   - Read `const s = readString()` once. The swing in progress is a STRING swing only when
     `performance.now() − s.lastSwingAt ≤ 1000 × slashSweep(s.lastSwingStep).durationS`; then
     `sw = slashSweep(s.lastSwingStep)`. Otherwise (a heavy, a beast-form swing, or no recent light swing)
@@ -1015,7 +1118,11 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
 - [ ] **Step 3: Verify.** Run `npm run test:unit && npm run lint && npm run build`. Then, in a dev session, three
   swings must show right-to-left, left-to-right, then a wide sweep. Record "by eye, dev, <date>" in the commit body.
 
-- [ ] **Step 4: Commit** with the title "feat(fpv): the string reads — the arc alternates and the finisher sweeps wide".
+- [x] **Step 4: Commit** with the title "feat(fpv): the string reads — the arc alternates and the finisher sweeps wide".
+
+> **Done 2026-10-27 (`49513058`), NOT checked by eye.** The yaw term and the slash crescent are mirrored by `sw.dir`
+> too, and the crescent runs over `sw.durationS`. **Step 3's by-eye frame-step is OWED** to the command session or
+> Kevin: this lane has no browser for it, and the load ruled out a dev session. The unit suite, lint and build are green.
 
 ---
 
@@ -1032,7 +1139,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - The CDP touch helpers and `aimAt` hit-test of `tests/e2e/touch-hold.spec.js` (copy the two helpers; do not
     import a spec).
 
-- [ ] **Step 1: Write the spec** with `devices['iPad Pro 11 landscape']`, `deviceScaleFactor: 1` and chromium, as the
+- [x] **Step 1: Write the spec** with `devices['iPad Pro 11 landscape']`, `deviceScaleFactor: 1` and chromium, as the
   touch-hold spec does. Its header says this is not WebKit; real Safari is Kevin's device.
   1. **Joystick backpedal is caught.** Same staging as Task 5. CDP `touchStart` at (15% w, 70% h), then `touchMove`
      60 px down (moveB), held. A zombie 5 m ahead: `readStance().w === 1`, the `readMoveTarget()` away component is
@@ -1069,12 +1176,18 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   | label | subject | mutation | catch |
   |---|---|---|---|
   | U1 | `src/game/windupChevrons.js` | `touchBottomInsetPx` returns 0 | case 3, an overlap with the action or jump button |
-  | U2 | `src/Components.jsx` | the string advanced in `handleMouseDown` instead of `triggerMeleeAttack` (plausible-wrong: desktop-only) | case 2 |
+  | U2 | `src/game/meleeString.js` | a desktop-only string: gateSwing's `if (!heavy && !form) {` gains `&& !navigator.maxTouchPoints` (re-anchored 2026-10-28) | case 2 |
   | U3 | `src/game/windupChevrons.js` | `SIDE_INSET_PX = 8` | case 3, portrait, the tray column |
-  | U4 | `src/Components.jsx` | `stanceVelocity` called only when `input.moveB` | case 1b |
+  | U4 | `src/Components.jsx` | the stance applied only when `input.moveB`: the `stanceWalk` call is handed `input.moveB ? stance : { w: 0, awayX: 0, awayZ: 0, gap: 0 }` (re-anchored 2026-10-28) | case 1b |
   | U0 | `src/game/windupChevrons.js` | a comment edit (`--identity`) | must SURVIVE |
 
-- [ ] **Step 4: Commit** with the title "test(e2e): close-quarters combat on an emulated iPad — joystick backpedal, three-tap finisher, chevrons clear of every control" and a trailer.
+- [x] **Step 4: Commit** with the title "test(e2e): close-quarters combat on an emulated iPad — joystick backpedal, three-tap finisher, chevrons clear of every control" and a trailer.
+
+> **Done 2026-10-27, run OWED (`c2c93ec1`).** The WebKit look is its own file, `tests/e2e/combat-touch-webkit.spec.js`
+> (@local-only), because Playwright refuses `browserName` inside a describe group. U2 is rewritten: the plan's
+> handleMouseDown no longer exists (mouse and touch share pressPrimary), so a desktop-only string is the light-path
+> guard gaining `&& !navigator.maxTouchPoints`. On touch only the target is judged, not the chase. **Steps 2 and 3 are
+> OWED**: no run, no U0-U4 batch, no WebKit frames (load above 115). Both headers say `Mutation-Proof: OWED`.
 
 ---
 
@@ -1085,16 +1198,22 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   Expected: all 14 pre-push gates green. `killability-ledger` must not rise, so every new check file carries its
   receipt. `gate-shape` must not rise, since no source-grep was added.
 
-- [ ] **Step 2: The suite and lint.** Run `npm run test:unit && npm run lint`. Expected: green, with the total equal
+- [x] **Step 2: The suite and lint.** Run `npm run test:unit && npm run lint`. Expected: green, with the total equal
   to the pre-milestone total plus the new tests (state both numbers in the commit).
 
-- [ ] **Step 3: Bytes.** Run `npm run build && node scripts/ci/bundle-budget.mjs && ls -l build/assets/index-*.js`.
+- [x] **Step 3: Bytes.** Run `npm run build && node scripts/ci/bundle-budget.mjs && ls -l build/assets/index-*.js`.
   Expected: `bundle-budget` green, and the index delta vs `BASELINE_INDEX_BYTES` (Task 0) ≤ **+9,000 B**, this
   lane's share (Global Constraints). The estimate is +6 to +9 KB raw: three pure modules of about 1.5-2.5 KB minified
   each, one DOM component of about 2 KB, and the call sites. Record the measured delta in the CHANGELOG, together
   with the ABSOLUTE `index` size on a build of this branch rebased on current `main` and the headroom it leaves, so
   the programme byte ledger can be checked against the lanes that land after. If it is over, move `WindupChevrons`
   behind a `React.lazy` boundary first; never raise the ceiling.
+
+  **`BASELINE_INDEX_BYTES = 719,428`** (Task 0 Step 2, measured 2026-10-27 on `f78644b9`, i.e. `main` `a8ce0dd1` plus
+  `feat/steady-cool` and `feat/touch-hold`: `build/assets/index-BCztZMl7.js`; `bundle-budget` printed
+  `index: 702.6KB / 742.2KB`). The headroom under the 760,000 B ceiling is therefore **40,572 B**, not the 63,076 B
+  the Global Constraints computed from the 696,924 B build: the two Phase 0 branches this lane sits on already spend
+  about 22.5 KB of it. That is a fact for the command session's programme byte ledger (Review amendments, finding 16).
 
 - [ ] **Step 4: GPU and frame cost, stated and spot-checked.** Added GPU cost is zero: no light, shader, draw call
   or render target.
@@ -1138,7 +1257,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     4. "a mob that cannot reach the player releases the stance within `STALL_MS + CALM_MS`".
   - Fix rounds are new commits.
 
-- [ ] **Step 7: Records.**
+- [x] **Step 7: Records.**
   - **DECISIONS.md:** a `[LOOP]` entry for the stance constants and the decisions an encounter or boss tuner will
     balance against:
     - retreat 2.0 / strafe 6.5 / advance 6.5, derived; strafe and advance scale with the form's `moveMult`, and all
@@ -1166,6 +1285,35 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   Task 7 or Task 11 is held (Task 0): the stance without its chevrons, or without any touch proof, is a broken
   intermediate. REFUSE while the Step 5 `OWED` grep prints anything. Report the PR number so Kevin can run
   `/code-review ultra <PR#>`.
+
+> **Task 12 as run, 2026-10-28, by the authoring lane** (which may not push, open a PR or edit the main checkout):
+> - **Step 1 RUN, RED on two range gates that are not this lane's code** (`bash ci/pipeline.sh --tier=push` at
+>   `f3e6bb49`). 12 of 14 green: the offline core (4084 tests, the build, bundle-budget, killability-ledger and
+>   gate-shape not rising) and queue-ledger. Red (1): `artifact-currency`, because the three published pages are 75
+>   commits behind (`1a1bee68`). Main scoped that cap to main-moving pushes in `d5375ac1`, which this branch does not
+>   carry. Red (2): `e2e-freshness`, because the push BASE's e2e is RED on CI. main `43d766e6`, run 40642071917, shard
+>   7/8 failed three times at `touch-hold.spec.js:303`: "SETUP: the world freeze ran out by the late press". And this
+>   tree has no green e2e receipt. The trailer gates the hook runs pass over `81d0ab89..HEAD`.
+> - **Step 2 DONE.** 4014 unit tests before the milestone, 4084 after (+70: combatStance 31, meleeString 15,
+>   windupChevrons 11, windup-chevrons-gates 8, stance-pursuit-gates 3, mobMovement 1, mobSenses +1), all green; lint
+>   clean; knip clean.
+> - **Step 3 DONE, with the plan's remedy.** The first build of the finished lane measured index 728,452 B, **+9,024 B**:
+>   24 B over the share. So `WindupChevrons` moved behind a `React.lazy` boundary (`d0f67eed`). After that the index is
+>   **725,739 B, +6,311 B**, with `WindupChevrons-*.js` at 3,174 B; bundle-budget PASSED. Headroom on this branch is
+>   34,261 B. The absolute size on a build rebased on current `main` was NOT measured: this lane may not rebase, and
+>   main was 33 commits ahead.
+> - **Step 4 STATED, NOT SPOT-CHECKED.** Added GPU cost is zero by construction: no light, shader, draw call or render
+>   target; the chevrons are four DOM nodes writing transform and opacity. The 30 s frame-time p50 A/B, the night-travel
+>   fraction and the combat-zoom verdict were **not measured**. They need a dev session the machine's load ruled out.
+> - **Step 5 NOT RUN** (no push from this lane). `git grep -n "Mutation-Proof: OWED" HEAD -- frontend/tests` prints the
+>   four new specs, so Step 8 is blocked.
+> - **Step 6 NOT RUN.** A review from the authoring context would be a self-review. The fresh `/code-review xhigh` on
+>   `main..feat/combat-stance` and the adversarial reviewer on the controller seam (Tasks 5 and 9) are the command
+>   session's.
+> - **Step 7 DONE**: `DECISIONS.md`, `memory/CHANGELOG.md`, the ACTIVE_PLAN row T18 and a `KEVIN-REVIEW-BATCH.md` FYI.
+>   The dragon-lane note goes to the command session in the lane's report.
+> - **Step 8 REFUSED, as the plan requires**: the OWED grep prints lines, CI has not run, and the reviews have not run.
+>   Tasks 7 and 11 are not held, since both preconditions were met in Task 0.
 
 ---
 
@@ -1281,3 +1429,102 @@ were applied in an adapted form, with the reason given below.
     husk's 3.0. The receipt now names the real kills: the pursuer count, and `closingOver` throwing "empty
     denominator" on a skeleton that never moved, a throw added so that a NaN mean cannot pass as a measurement. S2d
     (the `RETREAT_FLOOR` throw removed) is the mutant that actually exercises a slower pursuer.
+
+## Implementation review, round 2 (2026-10-28)
+
+Two independent reviewers re-read round 1's fixes at `60665da1`: a static one and a repro one, which ran the unit
+tier only (workflow `wf_b6b8729a-406`). Fixes a and c to g hold at unit level, and every round-1 survivor now dies.
+What came back, and what this lane did with it:
+
+1. **MED, REPRODUCED, fixed: F1's bound held on the stance's TARGET only.** `rampVelocity` runs per world axis after
+   `stanceVelocity`'s step bound. When the strafe changes side, or the keys are released mid-strafe, the two axes
+   arrive at different times, and the velocity the body is fed leans away from the threat. Red first on `60665da1`
+   (`src/game/combatStance.test.js`, the reversal sweep): up to 4.381 m/s with S+D and S+A swapped every 100 ms at
+   8 ms frames, 4.626 with 150 ms swaps, and 2.483 on a release. 27 of 48 runs (sequence x frame interval) were over
+   the cap. The fix is `holdStepBound` in `stanceWalk`, in the pure seam. It runs the step bound again on the ramped
+   velocity. The allowed reach is the larger of the hard limit (gap + retreat x walkMult x dt) and the target's own
+   reach, and the step's end is pulled in by w of the excess. After the fix, every run reads 2.0 or under (1.1 while
+   charging a heavy), held keys are unchanged, and a pure backpedal still reaches the full 2.0. `applied` and the next
+   frame's `planarVel` are the bounded value. Two alternatives were rejected:
+   - **Re-running `stanceVelocity` on the ramped velocity** (the review's suggested form) blends twice. At a held
+     w = 0.5, a backpedal settles at 3.0 m/s at 60 fps and 5.0 at 400 ms frames, against the single blend's 8.0
+     (measured). The enter and exit blends would then depend on the frame rate. Mutant R8 is that form, and the
+     blend test kills it.
+   - **Ramping in the (away, tangent) frame** does not hold the bound. That frame turns as the player circles, and the
+     bound is a disc about the threat, which a per-axis step can leave.
+
+   The strafe and advance caps are still held on the target only, and the ramp may overshoot them while it turns
+   (not measured). That does not touch F1, which is radial.
+2. **LOW, narrowed, not fixed: `728038ab`'s "F1 holds at every frame rate".** It holds for the PLAYER'S OWN STEP.
+   F1 also needs the husk to close. The AI worker caps a tick at 0.25 s (`AIWorkerSystem.jsx`) while the player steps
+   by the whole frame, so above 250 ms frames a mob covers speed x 0.25 / dt per second. Above 375 ms (about 2.7 fps) a
+   3.0 m/s husk cannot close on the 2.0 backpedal at all: 3.0 x 0.25 / 0.4 = 1.875 at 400 ms. The husk's 15 Hz aim
+   on A* cell centres lowers its closing speed further and is unmeasured. Scoped in `combatStance.js` (the seam's
+   KNOWN LIMITS 1 and `stanceVelocity`'s docblock), and in the unit describe's name and header. The commit message
+   cannot be rewritten (no amend), so this entry is the correction of record.
+3. **MED, narrowed, not fixed: the call sites' ARGUMENTS in `src/Components.jsx`.** `a1899d12`'s "the call sites
+   become a unit-tested seam" holds for the seam's internals only, because the unit tests hand the seam their own
+   arguments. Each of the following survived the full unit suite (4229 tests) in the round-2 repro:
+   - **CS1 (= the static review's MW1):** `stanceFrame` handed `camera.position` as the body, which brings back
+     round-1 b's low-frame-rate kite (0% of frames in reach at 100 and 400 ms frames, in the reviewer's harness).
+   - **CW1 (= MW2):** `stanceWalk` handed a walkMult of 1, so charging a heavy retreats at 2.0, not 1.1.
+   - **CW2:** the form and walk swapped at the call.
+   - **CB1 (= MW3):** the KCC fed the raw move after `stanceWalk` returns.
+   - **CV1:** the void guard teleporting without `teleportPlayer`, so the stance is kept.
+   - **H-c:** the worker's `playerPos` posted 1.2 m low.
+   - **CF1:** `gateSwing` told `form: false`.
+   - **CF2:** the refusal computed for the heavy only, so a beast form's swings get no cooldown.
+
+   **What guards them, by reading the specs:** none is guarded by a unit test.
+   - `tests/e2e/combat-stance.spec.js` case 0 is the one deterministic e2e check on `stanceFrame`'s point, and it
+     pins only its HEIGHT (H1, H2, and so H-c). It compares x and z standing still, where the camera has converged on
+     the body, and `mobSensePoint` is the camera's position, so under CS1 the stance agrees with the worker exactly.
+     **CS1 is therefore NOT guarded by case 0**, contrary to how the round-2 brief phrased it.
+   - CS1 and CB1 can show only in a chase sub-assertion, which is judged only at a median frame interval of 250 ms or
+     less. `applied` is recorded inside `stanceWalk`, upstream of CB1.
+   - No e2e case charges a heavy in a fight (CW1), stages a void fall (CV1), or swings in a beast form (CF1, CF2:
+     `melee-string.spec.js` excludes forms).
+
+   Recorded as known limit 2 in `combatStance.js`. The reviewers' structural fixes are open, not taken: `stanceFrame`
+   reading the rigid body itself, `stanceWalk` taking the raw walk slows, `gateSwing` computing its own refusal, and an
+   e2e case 0 that compares x and z while the player moves.
+4. **LOW, PLAUSIBLE, unmeasured: the KCC's slide.** The bound is on the velocity FED to `computeColliderMovement`, and
+   a slide along a wall can raise a step's away part (the reviewer's arithmetic: about 4.25 m/s along an axis-aligned
+   wall with the husk diagonal to it). Known limit 3. The reviewer's Rapier probe was not run, so it is owed, as is a wall case in the e2e.
+5. **LOW, CONFIRMED, fixed: three OWED e2e receipts aimed at code that had moved.** The new anchors are each counted
+   unique in the tree, and the spec headers and the tables above match them.
+   - **S6:** `meleeString.js` gateSwing's `endString(now);` becomes `if (form) endString(now);`, taken from the heavy
+     only. A form's swing shares the line since `446099f4`.
+   - **U2:** `meleeString.js` gateSwing's `if (!heavy && !form) {` gains `&& !navigator.maxTouchPoints`.
+   - **U4:** the `stanceWalk` call in `Components.jsx` is handed
+     `input.moveB ? stance : { w: 0, awayX: 0, awayZ: 0, gap: 0 }`. `stanceWalk` never sees the keys, and
+     `input.moveB` inside it would be a ReferenceError, a crash rather than the plausible-wrong mutant.
+
+   The batches are still OWED to the command session.
+
+## Implementation review, round 3 (2026-10-28)
+
+The two reviews of `9b22f69f` (workflow `wf_0aafd40d-0c4`) found no correctness defect in the post-ramp bound. They
+found three plausible wrong versions that passed the whole unit suite, two claims stated without their scope, and one
+feel change nobody had decided. What this lane did:
+
+1. **The dodge keeps its decay (command session decision).** At `9b22f69f` a dodge straight away from a threat ended
+   in a one-frame cut from about 8.5 m/s to the 2.0 retreat cap, because the first walk frame after the burst ramps
+   from the burst and `holdStepBound` then pulls it in, exactly as it pulls in a released backpedal. The stance caps
+   WALKING away; the dodge is the deliberate escape and is not clamped (the "dodge is the escape" decision above). The
+   exemption is explicit in the pure seam: `dodgeBurst(x, z)` in `frontend/src/game/combatStance.js` marks the
+   velocity the controller keeps during a dodge (`frontend/src/Components.jsx`, the dodge branch), with a carry window
+   of the burst's largest axis over the ramp's slower rate (60 u/s²), the time by which every axis has spent its part
+   of the burst. `stanceWalk` skips `holdStepBound` on a frame whose `planarVel` carries the mark, and carries it on
+   only while the window lasts and the ramp has not reached its target. So the decay is the plain ramp from the burst
+   (8.5, 7.0, 5.5, 4.0, 2.5 m/s at 60 fps, then the 2.0 backpedal or rest), as it was before the stance, and the walk
+   after it is bounded again. Known limit 4: keys changed inside the window are clamped on the target only.
+2. **The three surviving mutants are pinned.** M1 (the post-ramp bound handed the form's pace) and M4 (the bound
+   skipped when the fed velocity does not move away) now go red in the reversal sweep: it gained a reversal in each
+   beast form, S+D / S+A with the view turned from the husk, W+D / W+A with the view on it, and S held under a view
+   turning at 6 rad/s. M15 (the sideways part rebuilt with the wrong sign) goes red on a ray check: on every judged
+   frame where the bound changed what the ramp gave, the step must end on the ray from the threat through the ramp's
+   own step end.
+3. **Narrowed:** `holdStepBound`'s docblock and known limit 1 state the F1 property at full stance weight only, and
+   say that during the enter and exit blends the pull-in covers only w of the excess. Limit 1 names what the sweep
+   drives: every sequence in the human form, a strafe reversal in each beast form.
