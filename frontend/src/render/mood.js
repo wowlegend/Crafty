@@ -1,9 +1,9 @@
 // Mood/danger atmosphere model (spec §4), over the light and colour script.
 //
-// Since 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3a) the world's light and colour come from the
-// CLOCK: render/colourScript.js's six keys on the sun's elevation, with render/keyLight.js choosing the sun or the moon
-// as the one directional light. A continuous `mood ∈ [0,2]` is only the DANGER OVERLAY on top: 0..1 a storm, 1..2 the
-// obsidian boss state (colours from tokens.PALETTE.obsidian). Night is no longer mood 1. `sampleMood` resolves the
+// The world's light and colour come from the CLOCK: render/colourScript.js's six keys on the sun's elevation, with
+// render/keyLight.js choosing the sun or the moon as the one directional light. A continuous `mood ∈ [0,2]` is only the
+// DANGER OVERLAY on top: 0..1 a storm, 1..2 the obsidian boss state (colours from tokens.PALETTE.obsidian). Night is
+// the clock's, not a mood. `sampleMood` resolves the
 // whole frame; `publishSkyFrame` copies it into `skyFrameRef` once per frame for every reader. `moodRef` is the single
 // smoothed "current mood" — written by <Atmosphere>, read by the terrain shader.
 import * as THREE from 'three';
@@ -64,8 +64,8 @@ export const MOOD_SCALARS = {
 // The effect ranges are clamped/blended in MoodGradeDriver; all three are SAFE to retune
 // without touching the shader. Capture-safe: mood is snapped in capture so grade is stable.
 //
-// SINCE 2026-10-27 the base grade is the colour script's, per key (render/colourScript.js); sampleMood reads only
-// `obsidian` here, as the boss state's grade. `explore` and `dusk` are kept as the record of the old per-mood script.
+// The base grade is the colour script's, per key (render/colourScript.js); sampleMood reads only `obsidian` here, as
+// the boss state's grade. tests/render/mood.test.js still pins `explore` against the old neutral lock.
 export const MOOD_GRADE = {
   explore:  { saturation: 0.30, brightness: 0.09, contrast: 0.06 }, // magic-hour: warm, lifted, tasteful
   dusk:     { saturation: 0.10, brightness: -0.02, contrast: 0.12 }, // cooler, slightly crushed, more punch
@@ -77,10 +77,9 @@ const lerp = THREE.MathUtils.lerp;
 /**
  * Map (dangerLevel, weatherBoost) -> target mood in [0,2]: the larger of the two, clamped.
  *
- * NIGHT IS NO LONGER DANGER (plan 2026-10-27-crafty-light-colour-script, decision 2). This used to floor the mood at 1
- * whenever `isDay` was false, so every night WAS the dusk danger palette: a maroon land under an orange horizon. Night
- * is now the colour script's, read from the clock (render/colourScript.js); the mood is only the overlay a storm
- * (0..1) or a boss (1..2) lays over it. An `isDay` argument is accepted and ignored.
+ * NIGHT IS NOT DANGER. Flooring the mood at 1 by night would make every night the danger palette (a maroon land under
+ * an orange horizon). Night is the colour script's, read from the clock (render/colourScript.js); the mood is only the
+ * overlay a storm (0..1) or a boss (1..2) lays over it. An `isDay` argument is accepted and ignored.
  */
 export function moodTarget({ dangerLevel = 0, weatherBoost = 0 } = {}) {
   return THREE.MathUtils.clamp(Math.max(Number(dangerLevel) || 0, Number(weatherBoost) || 0), 0, 2);
@@ -242,7 +241,7 @@ function copySkyFrame(dst, src) {
 }
 
 /**
- * THE ONE RESOLVED FRAME, published by <Atmosphere> once per frame (Task 3b); the dome, the light rig, the sun
+ * THE ONE RESOLVED FRAME, published by <Atmosphere> once per frame; the dome, the light rig, the sun
  * billboard, the grade and the land read THIS instead of re-sampling the mood with no cycle. A reader that runs before
  * Atmosphere in a frame reads the previous frame's values (the script is continuous, and capture flushes frames before
  * every shot). It starts as the noon day frame, so nothing reads zeros before Atmosphere's first frame.

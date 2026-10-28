@@ -4,11 +4,9 @@ import { moodTarget, sampleMood, moodRef, MOOD_GRADE, STORM_FOG, STORM_DESAT } f
 import { SCRIPT_KEYS } from '../../src/render/colourScript.js';
 import { PALETTE } from '../../src/theme/tokens.js';
 
-// PREMISES REWRITTEN 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3a). The mood used to BE the palette:
-// 0 explore, 1 dusk (which was every night), 2 obsidian. Since Task 3a the base palette is the colour script's, read from
-// the clock (render/colourScript.js), and the mood is the danger overlay on it: 0..1 a storm, 1..2 the obsidian boss
-// state. So "night = 1" became "night = 0", "mood 0 = explore palette" became "mood 0 at noon = the day key", and
-// "mood 1 = dusk palette" became "mood 1 = the storm overlay". mood 2 = obsidian is unchanged.
+// The base palette is the colour script's, read from the clock (render/colourScript.js), and the mood is the danger
+// overlay on it: 0..1 a storm, 1..2 the obsidian boss state. So night is mood 0, mood 0 at noon is the day key, mood 1
+// is the storm overlay and mood 2 is obsidian.
 describe('moodTarget', () => {
   it('day + no danger = 0 (explore)', () => expect(moodTarget({ isDay: true, dangerLevel: 0 })).toBe(0));
   it('night + no danger = 0: night is the clock\'s, not danger (light-colour plan decision 2)', () => expect(moodTarget({ isDay: false, dangerLevel: 0 })).toBe(0));
@@ -96,10 +94,9 @@ describe('W2-T1 warm magic-hour explore grade', () => {
     expect(MOOD_GRADE.explore.saturation).toBeGreaterThanOrEqual(0.28);
     expect(MOOD_GRADE.explore.brightness).toBeGreaterThanOrEqual(0.08);
   });
-  // REWRITTEN 2026-10-27 (light-colour plan, review amendment 1): sampleMood(0) no longer reads the explore grade or
-  // fill. The day's warmth now comes from the colour script's lights (a warm sun, golden keys), because the +0.30
-  // global saturation, through the toe of NEUTRAL, is what made the iPad's stone navy. The constants above still hold
-  // the W2 values; the frame takes the day key's grade (saturation 0.12) and no fill light.
+  // sampleMood(0) reads neither the explore grade nor the fill: the day's warmth comes from the colour script's lights
+  // (a warm sun, golden keys), because a +0.30 global saturation, through the toe of NEUTRAL, turns the iPad's stone
+  // navy. The frame takes the day key's grade (saturation 0.12) and no fill light.
   it('sampleMood(0) takes the day key\'s grade and no fill light (the W2 warmth moved into the script)', () => {
     const m = sampleMood(0);
     expect(m.fillIntensity).toBe(0);

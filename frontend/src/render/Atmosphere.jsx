@@ -158,8 +158,8 @@ export const SUN_HORIZON_EPS = 0.02;
  * you fix by leaving exactly one place that can write the value, and that is what this function is for.
  *
  * The direction is treated as a DIRECTION, not a location — which is also what made the sun-arc work
- * (QUEUE.md B1) a drop-in: an arc changes this vector, and the shadow sweeps for free. Since the light-colour
- * plan's Task 3b the caller passes the sky frame's KEY direction (the moon's at night), not the sun's.
+ * (QUEUE.md B1) a drop-in: an arc changes this vector, and the shadow sweeps for free. The caller passes the sky
+ * frame's KEY direction (the moon's at night), not the sun's.
  *
  * @param {{x:number,z:number}} centre  texel-snapped frustum centre (the player)
  * @param {number[]|null} sunPos        the light's direction, e.g. [-55, 48, -52] (magnitude ignored)
@@ -239,7 +239,7 @@ export function Atmosphere({ shadowConfig }) {
   // stepping once a second. `cycleRef` is the fraction the frame was rendered at (DEV reads it).
   const skyClock = useMemo(makeSkyClock, []);
   const cycleRef = useRef(0);
-  // DEV-only reads for tests/e2e/light-script.spec.js (plan 2026-10-27-crafty-light-colour-script, Task 3b). Every value
+  // DEV-only reads for tests/e2e/light-script.spec.js. Every value
   // is read from the LIVE object it describes where one exists (the light's own position and intensity, the dome's
   // uniform, the terrain's uniform via its own hook), so a reader that stopped drawing from the frame is seen.
   useEffect(() => {
@@ -258,7 +258,7 @@ export function Atmosphere({ shadowConfig }) {
         cycle: cycleRef.current, gameTime: st.gameTime, frame: framesRef.current,
       };
     });
-    // THE GREY CARD: the colour model (tests/gates/_lightModel.js) against the screen (review amendment 1). A 1 m quad,
+    // THE GREY CARD: the colour model (tests/gates/_lightModel.js) against the screen. A 1 m quad,
     // the stone's albedo #8C8C8C on the terrain's material settings (MeshStandardMaterial, roughness 0.85, metalness
     // 0.1), facing up, casting and receiving no shadow, 3 m ahead of the camera on the horizontal and 0.8 m below it:
     // about 15 deg under the camera's horizon, clear of the bottom HUD. It is drawn last and its depth test always
@@ -331,8 +331,7 @@ export function Atmosphere({ shadowConfig }) {
       };
     });
     registerTestHook('clearGreyCard', () => { dropCard(); return true; });
-    // THE DOME SAMPLER (review of the light-colour lane: the painted moon's horizon mask is GLSL, so no node test can
-    // run it). The dome's OWN material, rendered alone on THIS renderer into a 4x4 target through a 2 deg view along
+    // THE DOME SAMPLER (the painted moon's horizon mask is GLSL, so no node test can run it). The dome's OWN material, rendered alone on THIS renderer into a 4x4 target through a 2 deg view along
     // `dir` from the dome's centre, with the given uniforms set for that one render and restored after. Returns the mean
     // linear RGB (the dome writes no tone mapping or colour-space conversion). Outside the frame loop, so the frame's
     // own writes do not race it.
@@ -395,15 +394,14 @@ export function Atmosphere({ shadowConfig }) {
     // during a capture (which runs >90s, longer than the 90s weather cycle), so a live weatherMoodBoost
     // would darken every frame captured after the first transition -> non-deterministic baselines. Capture
     // always renders the clear-sky mood; the storm darken is a live-play-only effect.
-    // NIGHT IS NOT DANGER (light-colour plan decision 2): the mood is the danger overlay only, so isDay is not passed.
+    // NIGHT IS NOT DANGER: the mood is the danger overlay only, so isDay is not passed.
     const target = moodTarget({ dangerLevel: st.dangerLevel, weatherBoost: cap ? 0 : st.weatherMoodBoost });
     if (cap) {
       moodRef.current = target; // snap -> deterministic capture frames
     } else {
       moodRef.current = THREE.MathUtils.lerp(moodRef.current, target, Math.min(1, delta * 2.0));
     }
-    // THE CLOCK (QUEUE.md B1, then the light-colour plan). cycleFraction drives the sun's orbit AND, since Task 3b, the
-    // whole colour script: night is the clock's, a moonlit blue, and the moon takes the key light.
+    // THE CLOCK. cycleFraction drives the sun's orbit AND the whole colour script: night is the clock's, a moonlit blue, and the moon takes the key light.
     //
     // CAPTURE SAFETY, per CLAUDE.md: "a capture guard must RESET to a declared value, never early-return."
     // Freezing the clock wherever it happened to be would make every gated frame run-dependent, since boot length
@@ -460,7 +458,7 @@ export function Atmosphere({ shadowConfig }) {
       // The dome's sun glow and disc: the key's glow colour, faded out with the daylight (0 at night and under the boss).
       u.sunColor.value.copy(m.glowColor).multiplyScalar(m.daylight);
       u.sunDir.value.fromArray(m.sunDir);
-      // THE SUN, at every hour (refute F5): the terrain's cloud shadows, ore glow and leaf translucency mean the sun,
+      // THE SUN, at every hour: the terrain's cloud shadows, ore glow and leaf translucency mean the sun,
       // so this is never the key's direction, which is the moon's at night.
       sunDirRef.current.copy(u.sunDir.value);
       u.uStar.value = m.stars;           // the script's stars (night 1, twilight 0.5), less the storm overlay

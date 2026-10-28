@@ -60,10 +60,9 @@ export const useSurvivalMode = (isDay) => {
 
     // NOTE: night does NOT write dangerLevel. A night->dangerLevel(1) write could stomp an
     // active boss's dangerLevel=2 at a dusk/dawn transition (the boss bridge below is the
-    // SOLE dangerLevel writer). Night's LOOK is the clock's since the light-colour plan
-    // (2026-10-27, decision 2): render/colourScript.js keys a moonlit night on the sun's
-    // elevation, and the mood is only the danger overlay (moodTarget no longer floors
-    // night at 1). Night danger is delivered by the escalating siege spawn-ramp
+    // SOLE dangerLevel writer). Night's LOOK is the clock's: render/colourScript.js keys a
+    // moonlit night on the sun's elevation, and the mood is only the danger overlay
+    // (moodTarget does not floor night at 1). Night danger is delivered by the escalating siege spawn-ramp
     // (siegeParams); a siege-night overlay needs a siege signal the mood does not have yet
     // (roadmap move 10). The obsidian mood (level 2) stays the BOSS signature.
 

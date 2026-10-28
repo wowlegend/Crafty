@@ -112,7 +112,7 @@ export function FarField({ renderDistance }) {
   useFrame((state) => {
     const shader = mat.userData.shader;
     if (shader) {
-      // The published sky frame's horizon (light-colour plan Task 3b), not a no-cycle re-sample (the noon horizon).
+      // The published sky frame's horizon, not a no-cycle re-sample (the noon horizon).
       shader.uniforms.skyHorizon.value.copy(skyFrameRef.current.skyHorizon);
       shader.uniforms.mood.value = moodRef.current;
       shader.uniforms.uTime.value = frameElapsed(state.clock.elapsedTime);

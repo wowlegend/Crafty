@@ -4,7 +4,7 @@ import { sampleScript, SCRIPT_KEYS } from '../../src/render/colourScript.js';
 import { sunArcDirection, MOOD_SCALARS } from '../../src/render/mood.js';
 
 /**
- * THE MOON TAKES THE KEY LIGHT (plan 2026-10-27-crafty-light-colour-script, Task 2; refute F5).
+ * THE MOON TAKES THE KEY LIGHT.
  *
  * One directional light: the sun's vector by day, the moon's by night, faded to 0 within HORIZON_FADE of the horizon so
  * the direction swaps only under a dark key. `sunDir` stays the SUN at every hour, because ore glow, leaves, cloud
@@ -13,21 +13,8 @@ import { sunArcDirection, MOOD_SCALARS } from '../../src/render/mood.js';
  * DENOMINATORS, each asserted: 3600 fractions around the clock per case; 3600 consecutive pairs, the wrap included;
  * exactly 2 swaps (one at dawn, one at dusk).
  *
- * Measured on the built keys: the worst key-radiance step is 0.0905 inside the fade (f 0.4942, the setting branch) and
- * 0.0206 outside it (f 0.4900), the plan's own 0.091 and 0.020.
- *
- * Mutation-Proof: via scripts/dev/mutate.sh (src/render/keyLight.js, 7 tests), each observed RED:
- *   K1 keyDir = sunDir always (today's behaviour) -> never-from-below, midnight
- *   K2 the moon's vector also written into sunDir (the F5 seam) -> the sunDir case
- *   K3 no horizon fade -> never-from-below, swap-under-zero, continuity
- *   K4 the moon keyed in the sun's colour -> midnight
- *   K5 MOON_NOON arced at f instead of f - 0.5 -> never-from-below, midnight, moon-rises
- *   K6 HORIZON_FADE = 0.001 -> swap-under-zero, continuity
- *   K7 the fade written as a step at |s| = 0.03 -> continuity
- *   and K0, an identity mutant (a comment edit in keyLight.js), SURVIVED at the start and the end of the same batch.
- *
  * BLIND SPOT: nothing here renders or wires. Whether Atmosphere positions the light from `keyDir`, writes `sunDirRef`
- * from `sunDir`, and feeds the shadow schedule the key is Task 3b's e2e (mutants E1, E2, E4).
+ * from `sunDir`, and feeds the shadow schedule the key is the e2e's (tests/e2e/light-script.spec.js).
  */
 const NOON = MOOD_SCALARS.explore.sunPos;
 const ring = (n) => Array.from({ length: n }, (_, i) => i / n);

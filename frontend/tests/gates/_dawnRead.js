@@ -12,7 +12,7 @@
 //              under FAST_S of the tick's second); a stepped sky sits ON it. One on the clock is a FAIL.
 //   PAIRS      two consecutive frames inside one game-second, the mood still, the sky BEHIND the clock at the first.
 //              Only such a pair has to move: once the sky has caught up it is still by design, and counting those
-//              pairs let a following sky read "no change" (round-2 review, MED). At least one must move the key > MOVED.
+//              pairs would let a following sky read "no change". At least one must move the key > MOVED.
 // NEITHER IS NOT MEASURED: below the frame-rate floor (a frame a second or longer catches a following sky up, so it and
 // the stepped sky draw the same frames). Reported as such, never as a pass and never as a fail.
 //

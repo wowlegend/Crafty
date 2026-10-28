@@ -1,9 +1,8 @@
 // sunArc.js — the sun's (and, half a cycle later, the moon's) path across the sky. PURE: no three import, no state.
 //
-// Moved out of render/mood.js on 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3a) so render/keyLight.js
-// can use it without importing mood.js, which itself imports keyLight.js to compose the sky frame: a module cycle in
-// which mood.js's module-load publish of the first frame would call into a keyLight.js not yet evaluated. mood.js
-// re-exports both names, so every existing importer is unchanged.
+// Its own module so render/keyLight.js can use it without importing mood.js, which itself imports keyLight.js to
+// compose the sky frame: a module cycle in which mood.js's module-load publish of the first frame would call into a
+// keyLight.js not yet evaluated. mood.js re-exports both names.
 
 /**
  * PURE. Rotate a mood's NOON sun direction onto the day/night arc.

@@ -3,13 +3,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as THREE from 'three';
 
 /**
- * THE SKY RAMPS, IT DOES NOT STEP (review of the light-colour lane, 2026-10-27, HIGH).
+ * THE SKY RAMPS, IT DOES NOT STEP.
  *
- * The game clock is a 1 Hz setInterval (game/useDayNightClock.js: +4 units a second). <Atmosphere> rendered the colour
- * script and the key light straight from it, so in play the whole sky stepped once a second: at dawn and dusk, where the
- * key ramps from 0 to full in about 2.9 s, the light, the exposure and every colour jumped three times. The plan's
- * "a ramp, not a pop" was true of the pure key-light model and false in the running game. render/skyClock.js follows
- * the game clock every frame; Atmosphere renders from it (capture still renders its declared fraction).
+ * The game clock is a 1 Hz setInterval (game/useDayNightClock.js: GAME_UNITS_PER_SECOND a second). Rendered straight
+ * from it, the whole sky would step once a second: at dawn and dusk, where the key ramps from 0 to full in a few
+ * seconds (HORIZON_FADE), the light, the exposure and every colour would jump at each tick. render/skyClock.js follows
+ * the game clock every frame, and Atmosphere renders from it (capture renders its declared fraction).
  *
  * Two halves, because the property crosses a seam (gates-and-probes 4c):
  *   followSkyClock    the pure rule: between ticks it moves at the clock's own rate, never past it; a jump snaps.
@@ -20,34 +19,14 @@ import * as THREE from 'three';
  *                     And EVERY frame's key and exposure sit where the clock's own rate puts the sky after the REAL
  *                     time since the tick (game time min(UPS, UPS x elapsed)), at four frame-rate shapes.
  *
- * WHY FOUR FRAME RATES (round-2 review, MED). The first draft stepped Atmosphere only at 1/60 s, so a delta Atmosphere
- * mis-scales in a way that is exact at 60 fps passed: a frame counted as 1/60 s, a delta clamped or floored at 1/60,
- * even a doubled delta (the sky reaches the clock in half a second, and nothing asserted it had not). At 30 fps the
- * frame-counted sky brings the HIGH back: run with the real followSkyClock, it falls 7.5 units behind, the gap passes
- * SKY_CLOCK_SNAP at a tick, and it CUTS 8.6 units in one frame, five times in 20 s. So the Atmosphere test runs at
- * 1/30, 1/60 and 1/120 s and on a jittered sequence (1/144 to 1/30 s, mean about 1/54), and pins the trajectory in
- * real time; the expected value is computed from the elapsed time and the clock's rate, never from followSkyClock.
+ * WHY FOUR FRAME RATES. A delta Atmosphere mis-scales in a way that is exact at 60 fps (a frame counted as 1/60 s, a
+ * delta clamped or floored at 1/60, a doubled delta) passes a 60 fps-only test. At 30 fps a frame-counted sky falls
+ * behind, the gap passes SKY_CLOCK_SNAP at a tick, and the sky CUTS in one frame. So the Atmosphere test runs at 1/30,
+ * 1/60 and 1/120 s and on a jittered sequence (1/144 to 1/30 s, mean about 1/54), and pins the trajectory in real
+ * time; the expected value is computed from the elapsed time and the clock's rate, never from followSkyClock.
  *
  * DENOMINATORS: 4 clock-rule tests; 4 frame-rate cases (asserted), each a second and two frames after the tick
  * (asserted: at least 32 frames, elapsed >= 1 s), every frame compared.
- *
- * Mutation-Proof: via scripts/dev/mutate.sh, 2026-10-27 — receipts in the commit:
- *   SC1 Atmosphere renders liveCycle(st.gameTime), the stepped value (the shipped defect) -> wiring RED
- *   SC2 followSkyClock always snaps to the game clock                                    -> rule + wiring RED
- *   SC3 followSkyClock never clamps at the game clock (runs past a paused clock)         -> rule RED
- *   SC4 a backwards step (setTimeOfDay, a load) pans back instead of cutting             -> rule RED
- *   SC5 the follow rate x60 (a few frames close the tick)                                -> rule + wiring RED
- *   SC6 no catch-up: the base rate however far behind                                    -> rule RED (it SURVIVED the
- *       first draft, whose "greater than the base rate" the base rate itself passed on float noise)
- *   SC7 SKY_CLOCK_SNAP under one tick (every tick a cut)                                 -> rule + wiring RED
- *   SC0 identity (a comment edit in skyClock.js)                                         -> SURVIVED
- *   Round 2 (the frame-rate cases), each SURVIVED the 1/60-only draft first:
- *   SC8  Atmosphere feeds followSkyClock 1/60 per frame (frames counted, not seconds)    -> RED at 30, 120, jitter
- *   SC9  the delta clamped at 1/60 (Math.min)                                            -> RED at 30, jitter
- *   SC10 the delta doubled                                                               -> RED at every rate
- *   SC11 the delta floored at 1/60 (Math.max)                                            -> RED at 120, jitter
- *   (A first draft also snapped on `gap < 0` explicitly; deleting that SURVIVED, because the clamp to the game clock
- *   already lands a backwards step at once. The redundant branch was deleted, and SC4 is the plausible-wrong version.)
  *
  * BLIND SPOT: nothing is drawn. Whether the running game's light ramps on screen is the e2e's
  * (tests/e2e/light-script.spec.js, the dawn read: the live light's intensity between frames inside one game-second).
@@ -165,7 +144,7 @@ describe('Atmosphere renders the sky clock: two frames inside one game-second pu
     expect(keys.length).toBe(dts.length);
     expect(elapsed, 'SETUP: the frames do not cover the second after the tick').toBeGreaterThanOrEqual(1);
 
-    // Two consecutive frames inside ONE game-second (the store says gameTime 4 for both) publish different light.
+    // Two consecutive frames inside ONE game-second (the store holds the same gameTime for both) publish different light.
     const where = `${name}: key ${at0.key.toFixed(4)} -> frames ${keys.slice(0, 3).map((k) => k.toFixed(4)).join(', ')} (the tick's target ${at1.key.toFixed(4)})`;
     expect(keys[1], `the published key did not move between two frames of one game-second: ${where}`).not.toBe(keys[0]);
     expect(exps[1], `the published exposure did not move between two frames of one game-second: ${where}`).not.toBe(exps[0]);

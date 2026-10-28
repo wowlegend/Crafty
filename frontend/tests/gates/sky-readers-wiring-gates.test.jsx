@@ -4,11 +4,11 @@ import * as THREE from 'three';
 import { HueSaturationEffect, BrightnessContrastEffect } from 'postprocessing';
 
 /**
- * THE SKY FRAME'S READERS, DRIVEN (review of the light-colour lane, 2026-10-27, MED: no gate saw this wiring).
+ * THE SKY FRAME'S READERS, DRIVEN.
  *
- * Task 3b made every sky reader read the one published frame (render/mood.js skyFrameRef). The sky-readers gate proves
- * by source text that only Atmosphere calls sampleMood; nothing proved what each reader DOES with the frame, and the
- * review's mutants on that wiring all survived the suite. Each reader here is mounted through R3F's own reconciler
+ * Every sky reader reads the one published frame (render/mood.js skyFrameRef). The sky-readers gate proves by source
+ * text that only Atmosphere calls sampleMood; that says nothing about what each reader DOES with the frame, so each
+ * reader here is mounted through R3F's own reconciler
  * (tests/gates/_r3f.jsx: real THREE objects, a renderer that draws nothing) and stepped, and what its useFrame wrote
  * is read back from the live object:
  *
@@ -25,17 +25,7 @@ import { HueSaturationEffect, BrightnessContrastEffect } from 'postprocessing';
  * Expected values come from the pure functions the frame must agree with (sunArcDirection, moonArcDirection,
  * sampleScript), never from the frame the reader read.
  *
- * Mutation-Proof: via scripts/dev/mutate.sh, 2026-10-27 — receipts in the commit (the review's names where it had one):
- *   MI the billboard aimed down the key's direction                 -> billboard RED
- *   MJ the billboard takes keyColor                                 -> billboard RED
- *   MH the billboard hides at y 0 instead of -0.05                  -> billboard RED
- *   MG1 MoodGradeDriver drops bc.brightness                         -> grade RED
- *   MG2 MoodGradeDriver drops bc.contrast                           -> grade RED
- *   MQ the grade re-sampled from the script at noon                 -> grade RED
- *   MK the dome's uMoonDir never written                            -> dome RED
- *   W0 identity (a comment edit in Sun.jsx)                         -> SURVIVED
- *
- * BLIND SPOT: nothing is drawn. The dome shader's horizon mask on the painted moon (mutant MT) is GLSL, so it is read
+ * BLIND SPOT: nothing is drawn. The dome shader's horizon mask on the painted moon is GLSL, so it is read
  * on a real renderer by the e2e (tests/e2e/light-script.spec.js, the dome sampler). Whether the App's exitCapture hook
  * still calls setCaptureMode(false) is not driven here (App.jsx cannot be mounted in a unit test).
  */

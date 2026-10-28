@@ -899,7 +899,7 @@ function GameApp({ experienceSystem }) {
     });
     registerTestHook('exitCapture', () => {
       exitCaptureMode();
-      useGameStore.getState().setCaptureMode(false); // also clears the declared capture fraction (store, one writer)
+      useGameStore.getState().setCaptureMode(false);
       useGameStore.getState().setHudHidden(false);
       useGameStore.getState().setCaptureStudio(false); // leaving capture -> motes return
     });

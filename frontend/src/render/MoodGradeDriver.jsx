@@ -5,12 +5,10 @@ import { HueSaturationEffect, BrightnessContrastEffect } from 'postprocessing';
 import { skyFrameRef } from './mood';
 
 // MoodGradeDriver -- writes the colour grade (saturation/brightness/contrast) onto the LIVE HueSaturation +
-// BrightnessContrast post effects each frame (reached via the composer context, cached on first frame). Extracted
-// from GameScene.jsx (v6 de-monolith A2.2).
+// BrightnessContrast post effects each frame (reached via the composer context, cached on first frame).
 //
-// SINCE 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3b): the grade is the published sky frame's
-// (render/mood.js skyFrameRef: the colour script's per-key grade under the danger overlays), no longer a re-sample of
-// the mood with no cycle, which held the grade at noon's whatever the hour.
+// The grade is the published sky frame's (render/mood.js skyFrameRef: the colour script's per-key grade under the
+// danger overlays). A re-sample of the mood with no cycle would hold the grade at noon's whatever the hour.
 export const MoodGradeDriver = () => {
   const ctx = useContext(EffectComposerContext);
   const hueRef = useRef(null);

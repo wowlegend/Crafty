@@ -5,7 +5,7 @@ import { displayed, stoneFaceUnder, oklch } from '../gates/_lightModel.js';
 import { judgeDawnRead } from '../gates/_dawnRead.js';
 import { KEY_S } from '../../src/render/colourScript.js';
 
-// THE LIGHT SCRIPT, LIVED (plan docs/superpowers/plans/2026-10-27-crafty-light-colour-script.md, Task 3b).
+// THE LIGHT SCRIPT, LIVED.
 //
 // The pure gates (colour-script, key-light, sky-frame) import the modules, so they go red if a module is deleted, but
 // not if the running game stops CALLING it. This reads the wiring in the running game, each value from the live object
@@ -14,20 +14,20 @@ import { KEY_S } from '../../src/render/colourScript.js';
 //
 //   noon      the key is the sun: not the moon, its direction IS the sun's, and it is lit.
 //   midnight  the sun is under the ground (sunDirY < 0) and the key is the MOON above it (keyDirY > 0, keyIsMoon, lit);
-//             the stars are out; the terrain still reads the SUN (ore glow, leaves and cloud shadows mean the sun,
-//             refute F5); the shadow map was rendered from the moon's key, not from the sun under the ground; and the
+//             the stars are out; the terrain still reads the SUN (ore glow, leaves and cloud shadows mean the
+//             sun); the shadow map was rendered from the moon's key, not from the sun under the ground; and the
 //             firefly mesh is drawn with its near-camera fade compiled in, where at noon it is not drawn at all.
 //   moon mask the dome's painted moon shows 0.06 above the horizon and not 0.06 below it (the shader itself, sampled
 //             alone with declared uniforms through the DEV hook sampleDome).
 //   storm     the overlay hides the stars (one read, then the weather is reset).
-//   dawn      THE LIGHT RAMPS (render/skyClock.js): the game clock is a 1 Hz step, and the sky read straight from it
-//             stepped once a second (review, HIGH). Sampled every frame for six seconds from the sun's rise, each with
+//   dawn      THE LIGHT RAMPS (render/skyClock.js): the game clock is a 1 Hz step, and a sky read straight from it
+//             would step once a second. Sampled every frame for six seconds from the sun's rise, each with
 //             the store's gameTime, the sky's OWN rendered cycle and R3F's clock; the verdict is tests/gates/_dawnRead.js
 //             (driven by tests/gates/dawn-read-gates.test.js). A frame drawn under 0.9 s after a one-tick advance must
 //             find the sky still BEHIND the clock (a stepped sky sits on it), and in two frames of one game-second with
 //             the sky still behind at the first, the mood still (|dmood| < 1e-6), the live key must move by more than
 //             the mood's own decay could (1e-4). A pair after the sky has caught up is still by design and is NOT
-//             counted (round-2 review, MED: counting it let a following sky read "no change"). With neither, below
+//             counted (counting it would let a following sky read "no change"). With neither, below
 //             the frame-rate floor (CI's SwiftShader measured 0.8-1.9 fps), the read is printed and annotated NOT
 //             MEASURED; the rate itself (a sky following too fast or too slow) is the unit gate's
 //             (tests/gates/sky-clock-gates.test.jsx, at 30, 60 and 120 fps and jittered).
@@ -40,36 +40,16 @@ import { KEY_S } from '../../src/render/colourScript.js';
 //             Read on the LOW tier (pinned for the read, then restored): N8AO and GodRays (med/high) are passes the
 //             model does not hold, and moved this card up to L 0.10 either way when measured.
 //
-// THE WEATHER IS PINNED before every read (review amendment 6): the live weather flips clear and storm every 90 s
+// THE WEATHER IS PINNED before every read: the live weather flips clear and storm every 90 s
 // (render/WeatherSystem.jsx) and a storm's boost (about 0.85) scales the stars by (1 - t1). Each read sets the boost to
 // 0, polls until the smoothed mood is under 0.02, and reads at once; every message carries mood, weatherBoost, tier,
 // isAlive and active (gates-and-probes 4e).
 //
-// Mutation-Proof: 2026-10-27, mutate-e2e.sh's contract (same verdict rules, SETUP and timeouts COULD NOT CHECK, an
-// identity mutant per batch) run through a throwaway copy of the config on port 4297, each observed RED:
-//   E1 sunDirRef written from m.keyDir                       -> "midnight: the terrain's uSunDir is not the sun"
-//   E2 the light positioned from m.sunPos (the old behaviour)  -> "midnight: the light comes from below the horizon"
-//   E3 uStar left at 0                                        -> "midnight: no stars"
-//   E4 the shadow schedule fed m.sunPos, the light m.keyDir   -> "midnight: the shadow map last rendered from below"
-//   E5 the night exposure back to the draft's 1.15            -> "the moonlit stone is black on screen (L 0.282)",
-//      on the away-from-the-moon read; it SURVIVED the facing read (specular), which is why that read exists
-//   E6 the weather pin replaced by a forced storm             -> "midnight: no stars" (stars 0.15)
-//   E7 the model without the specular term                    -> "noon: model L 0.490 vs screen 0.593"
-//   E8 the card's albedo darkened to #5A5A5A (screen != model) -> the noon card's grey/agreement checks
-//   E0 identity (a comment edit in Atmosphere.jsx) SURVIVED, in both batches.
-//   SC1e Atmosphere renders liveCycle(st.gameTime), the 1 Hz step  -> "dawn: the key light did not move between frames
-//        of one game-second" (0 of 2 pairs moved, key steps 0.0000 0.0000; the identities' runs moved 0.0026-0.9136)
-//   MTe the moon disc's moonUp horizon mask dropped (skyDome.js)    -> "the painted moon shows under the horizon" (0.702)
-//   I4 the away card read's time set to 0.2 (out of the night key)  -> SETUP "the clock left the night key" (the guard)
-//   Re-run 2026-10-27/28 on this spec after the light-colour review's fixes, throwaway config on port 4303: E1-E8 each
-//   RED again (E2 on a second attempt: the first drew 2 of 4 frames in 20 s at load ~350), identities SURVIVED.
-//   Round 2, 2026-10-28 01 UTC, the dawn verdict moved to _dawnRead.js, throwaway config on port 4311: baseline green
-//   (dawn pass: 27 frames, 6 crossings behind, 7 of 7 behind pairs moved); SC1e -> "dawn: the sky sat ON the clock
-//   right after a tick in 1 of 1 frames drawn under 0.9 s after the one before" (7 frames at load ~20-140);
-//   E0 identity (a comment in Atmosphere.jsx) SURVIVED (dawn pass: 2 of 2 behind pairs moved).
+// The midnight card is read twice, facing the key and away from it: GGX specular lifts the facing read, so a night too
+// dark to read can pass the facing read alone.
 //
 // BLIND SPOT: SwiftShader on CI is not a GPU, and this reads one patch of one material. The look itself (the night as
-// a whole, golden hour, WebKit and the iPad) is the lookbook's (plan Task 9), on a real GPU.
+// a whole, golden hour, WebKit and the iPad) is the lookbook's, on a real GPU.
 
 const UP = [0, 1, 0];
 const call = (page, name, ...args) => page.evaluate(([n, a]) => window.__craftyTest.call(n, ...a), [name, args]);
@@ -245,16 +225,15 @@ test('the light script in the running game: a sun key at noon, a moon key at mid
   expect(Math.abs(cardNight.screen.L - cardNight.model.L), `midnight: model L ${cardNight.model.L.toFixed(3)} vs screen ${cardNight.screen.L.toFixed(3)} — ${cardNight.where}`).toBeLessThanOrEqual(0.03);
   expect(Math.abs(cardNight.screen.C - cardNight.model.C), `midnight: model C ${cardNight.model.C.toFixed(3)} vs screen ${cardNight.screen.C.toFixed(3)} — ${cardNight.where}`).toBeLessThanOrEqual(0.02);
   // THE ABSOLUTE NIGHT BOUNDS, on the screen, read with the camera turned AWAY from the moon: facing it, the specular
-  // lifts the card about L 0.07, which held a night exposure of 1.15 (the draft's) above 0.30 (mutant E5 survived the
-  // facing read: screen 0.331 against a diffuse 0.273). Away, the specular is about 0.01 and the bound means what B2 means.
+  // lifts the card about L 0.07, enough to hold a too-dark night exposure (1.15: screen 0.331 against a diffuse 0.273)
+  // above 0.30. Away, the specular is about 0.01 and the bound means what B2 means.
   const cardAway = await greyCard(page, 'midnight, away from the moon', { away: true, timeOfDay: 0.0, key: 'night' });
   console.log(`[light-script] grey card at midnight, away from the moon: screen ${fmt(cardAway.screen)} model ${fmt(cardAway.model)} (diffuse only ${fmt(cardAway.diffuseOnly)}) view ${fmt(cardAway.viewDir)} median ${cardAway.median} over ${cardAway.pixels} px`);
   expect(Math.abs(cardAway.screen.L - cardAway.model.L), `midnight, away: model L ${cardAway.model.L.toFixed(3)} vs screen ${cardAway.screen.L.toFixed(3)} — ${cardAway.where}`).toBeLessThanOrEqual(0.03);
   expect(cardAway.screen.L, `midnight: the moonlit stone is black on screen (L ${cardAway.screen.L.toFixed(3)}) — ${cardAway.where}`).toBeGreaterThanOrEqual(0.30);
   expect(cardAway.screen.C, `midnight: the moonlit stone is navy on screen (C ${cardAway.screen.C.toFixed(3)}) — ${cardAway.where}`).toBeLessThanOrEqual(0.07);
 
-  // THE PAINTED MOON IS MASKED UNDER THE HORIZON (review: mutant MT, the mask dropped from the disc, survived; the mask
-  // is GLSL, so only a renderer can read it). The dome's own shader, sampled alone (DEV hook sampleDome: a 2 deg view
+  // THE PAINTED MOON IS MASKED UNDER THE HORIZON (the mask is GLSL, so only a renderer can read it). The dome's own shader, sampled alone (DEV hook sampleDome: a 2 deg view
   // into a 4x4 target) with DECLARED uniforms: stars full, no clouds, no sun, plain grey-blue gradient stops. The moon
   // 0.06 above the horizon, looked at straight on, must stand far above the sky 40 deg beside it at the same height
   // (presence: the instrument sees the disc); 0.06 below, it must not differ from its neighbour at all.
@@ -334,7 +313,7 @@ test('the light script in the running game: a sun key at noon, a moon key at mid
     // following sky is forced to show it, read from the sky's own cycle against the store's clock: a frame drawn under
     // 0.9 s after a one-tick advance must find the sky still BEHIND the clock (a stepped sky sits on it), and two frames
     // of one game-second with the sky still behind at the first must move the live key. A pair after the sky has caught
-    // up is still by design and is not counted: counting it let a following sky read "no change" (round-2 review, MED).
+    // up is still by design and is not counted: counting it would let a following sky read "no change".
     const read = judgeDawnRead(samples);
     console.log(`[light-script] dawn: ${read.verdict} ${JSON.stringify(read.counts)} — ${read.reason}`);
     // NOT MEASURABLE IS NOT A PASS, AND NOT A FAILURE: it is said. Per-frame interpolation is visible only when frames

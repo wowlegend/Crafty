@@ -1,10 +1,9 @@
 // skyClock.js — the clock the SKY renders at: the game clock, followed every frame. PURE: no scene, no store.
 //
-// WHY IT EXISTS (review of the light-colour lane, 2026-10-27, HIGH). The game clock is a 1 Hz setInterval
-// (game/useDayNightClock.js: +GAME_UNITS_PER_SECOND each second; a per-frame store write would be a render storm), and
-// <Atmosphere> rendered the colour script and the key light straight from it. So the whole sky STEPPED once a second:
+// WHY IT EXISTS. The game clock is a 1 Hz setInterval (game/useDayNightClock.js: +GAME_UNITS_PER_SECOND each second;
+// a per-frame store write would be a render storm). Rendered straight from it, the whole sky would STEP once a second:
 // at dawn and dusk, where the key ramps from 0 to full in a few seconds (render/keyLight.js HORIZON_FADE), the light,
-// the exposure and every colour jumped three times instead of ramping. A 1 Hz value may drive a per-frame visual only
+// the exposure and every colour would jump at each tick instead of ramping. A 1 Hz value may drive a per-frame visual only
 // through a per-frame interpolation; this is that interpolation.
 //
 // THE RULE. Each frame the sky clock moves TOWARD the game clock at the game clock's own rate (GAME_UNITS_PER_SECOND

@@ -59,15 +59,12 @@ const _day = new THREE.Color();
  * tried and deleted: at the strength that kept night clouds dark it changed nothing a test or an eye could tell
  * apart.)
  *
- * 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3a): keyed on `daylight`, no longer on the mood's sun
- * intensity, which the sky frame no longer carries. The lift went 1.8 -> 2.6: under the old keying a night (mood 1)
- * still had 45% sun and kept some of the day's white, which is what put a night cloud over twice its sky; a true
- * night (daylight 0) at 1.8 would sit under that.
+ * Keyed on `daylight` (the sky frame carries no sun intensity). The night lift is 2.6: a true night (daylight 0)
+ * keeps none of the day's white, and at 1.8 a night cloud would sit under twice its sky's luminance and not read.
  *
- * A STORM DARKENS THE SUNLIT BODY (review of the light-colour lane, 2026-10-27): `daylight` never moves under a storm,
- * so keying on it alone left a daytime storm's clouds sunlit white, about 3.2x what main drew. The body is dimmed by
- * STORM_CLOUD_DIM x the frame's `storm`. The night body is not: a night cloud is the sky's own glow, and main drew no
- * change to it under a storm (night was mood 1 already, above the storm's 0.85).
+ * A STORM DARKENS THE SUNLIT BODY: `daylight` never moves under a storm, so keying on it alone would leave a daytime
+ * storm's clouds sunlit white. The body is dimmed by STORM_CLOUD_DIM x the frame's `storm`. The night body is not: a
+ * night cloud is the sky's own glow, which a storm does not change.
  */
 export function cloudTint(m, out) {
   const day = THREE.MathUtils.clamp(m.daylight, 0, 1);

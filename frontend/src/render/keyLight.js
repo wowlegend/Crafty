@@ -1,6 +1,6 @@
 // keyLight.js — the one directional light, and which body it is: the sun by day, the moon by night.
 //
-// Plan 2026-10-27-crafty-light-colour-script, Task 2 (refute F5). PURE: no scene, no store.
+// PURE: no scene, no store.
 //
 // THE MOON IS THE SAME LIGHT ON ITS OWN VECTOR. The rig keeps exactly one directional light, so the light count never
 // changes (no program relink) and shadows stay on all night. `moonArcDirection(f)` is the sun's own arc function
@@ -12,7 +12,7 @@
 // (render/cloudField.js) and the GodRays horizon gate all mean the SUN: at midnight they must see it under the ground,
 // not the moon overhead. Only `keyDir` follows the body that lights the world.
 //
-// HORIZON_FADE = 0.06, and the fade window carries its own continuity bound (review amendment 8): the key ramps from 0
+// HORIZON_FADE = 0.06, and the fade window carries its own continuity bound: the key ramps from 0
 // to about 2.5 in a few seconds there, which is a ramp, not a pop; widening the fade enough to bring that step under the
 // day's bound would dim the golden key the lookbook frames.
 import * as THREE from 'three';

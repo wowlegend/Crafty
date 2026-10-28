@@ -12,12 +12,12 @@ import { PALETTE } from '../../src/theme/tokens.js';
 import { oklch, displayed, stoneFaceUnder } from './_lightModel.js';
 
 /**
- * ONE SKY FRAME (plan 2026-10-27-crafty-light-colour-script, Task 3a; refute F5).
+ * ONE SKY FRAME.
  *
  * sampleMood(mood, cycle) is the colour script at the clock's fraction, under the danger overlays: mood 0..1 is the
  * storm (fog thickens, sky greys, key dims, stars hide), mood 1..2 blends to the obsidian boss state, which replaces
- * the colours at any hour. Night is the CLOCK's, no longer danger. publishSkyFrame copies the frame once per frame
- * into skyFrameRef, which every other reader will read (Task 3b). Capture declares its solar fraction.
+ * the colours at any hour. Night is the CLOCK's, not a danger level. publishSkyFrame copies the frame once per frame
+ * into skyFrameRef, which every other reader reads. Capture renders noon for a day state and midnight for a night one.
  *
  * The expected values here are built INDEPENDENTLY of mood.js: the script and the key light are sampled directly and
  * the exposure applied as decision 6 states (the rig's intensities and the dome's colours), and the obsidian state is
@@ -26,25 +26,8 @@ import { oklch, displayed, stoneFaceUnder } from './_lightModel.js';
  * DENOMINATORS: five fractions for the script case (each compares 36 colour channels and 14 scalars); six junk
  * gameTimes; the copy case compares every field of the frame (asserted count).
  *
- * Mutation-Proof: via scripts/dev/mutate.sh on src/render/mood.js, 8 tests, each observed RED (2026-10-27):
- *   S1 moodTarget floors night at 1 again                       -> night case RED
- *   S2 the obsidian blend keyed by the hour (t2 x [daylight > .5]) -> boss-any-hour RED
- *   S3 publishSkyFrame assigns the scratch by reference          -> copies case RED
- *   S4 captureCycle's night fallback -> CAPTURE_SOLAR.day (the old noon pin for every state, F5) -> captureCycle RED
- *   S5 the storm's fog x(1 + 8*t1)                               -> storm-at-midnight RED
- *   S6 liveCycle = cycleFraction (a NaN clock is the key-less dawn) -> liveCycle RED
- *   S7 sunColor written from keyColor                            -> key-and-sun RED (and mood-0-is-the-script)
- *   S8 the dome's skyMid without the key's exposure              -> mood-0-is-the-script RED
- *   S0 identity (a comment edit in mood.js)                      -> SURVIVED
- *   Review fixes (2026-10-27: MB, MA, STORM_KEY_DIM = 0 and STORM_SKY_GREY = 0 had survived the whole suite):
- *   MB moonDir never copied into the frame                        -> directions RED
- *   MA sunDir written from the key's direction                    -> directions RED
- *   SK1 STORM_KEY_DIM = 0 / SK2 doubled (0.8) / MC the key's storm term dropped -> storm RED (each)
- *   SG1 STORM_SKY_GREY = 0 / SG3 0.9 / SG2 the storm darkens the sky instead of greying it -> storm RED (each)
- *   S0b identity (a comment edit in mood.js)                     -> SURVIVED
- *
- * BLIND SPOT: nothing here wires. Whether Atmosphere publishes the frame, and whether the readers read it, is Task 3b
- * (its sky-readers gate and its e2e).
+ * BLIND SPOT: nothing here wires. Whether Atmosphere publishes the frame, and whether the readers read it, is the
+ * sky-readers gate's and the e2e's.
  */
 const COLOURS = ['ambient', 'fog', 'skyTop', 'skyMid', 'skyHorizon', 'hemiSky', 'hemiGround', 'keyColor', 'sunColor', 'glowColor',
   'fill', 'aoFloor'];
@@ -151,8 +134,8 @@ describe('the sky frame: the script under the danger overlays', () => {
     expect(skyFrameRef.current.keyDir).toEqual(heldKey);
   });
 
-  // THE FRAME'S THREE DIRECTIONS (review of the light-colour lane, 2026-10-27: mutants MB and MA survived the suite).
-  // Each is checked against the pure arc it must come from, built here independently of mood.js: the sun's arc on the
+  // THE FRAME'S THREE DIRECTIONS: a frame that copies the wrong body's direction still renders a plausible sky, so each
+  // is checked against the pure arc it must come from, built here independently of mood.js: the sun's arc on the
   // mood's noon vector, the moon's arc (keyLight.js moonArcDirection), and the key = whichever body is up. At 0.62 the
   // moon is up and far from its own noon (MOON_NOON, which is also the dome's initial uniform), so a moonDir never
   // copied (left at the scratch's [0, -1, 0]) or a frozen one both fail.
@@ -175,8 +158,8 @@ describe('the sky frame: the script under the danger overlays', () => {
     expect(cos, 'the case cannot tell the moon\'s arc from its noon').toBeLessThan(Math.cos((10 * Math.PI) / 180));
   });
 
-  // THE STORM OVERLAY'S TWO OTHER TERMS (review: STORM_KEY_DIM = 0 and STORM_SKY_GREY = 0 both survived). Design
-  // anchors, not the constants: at the live storm boost (game/weatherGate.js) a storm takes between a quarter and a half
+  // THE STORM OVERLAY'S TWO OTHER TERMS, against design anchors rather than the constants (a check that reads the
+  // constant passes whatever it is set to): at the live storm boost (game/weatherGate.js) a storm takes between a quarter and a half
   // off the key light, and washes the sky toward grey (OKLab chroma down by 20-50%) without darkening it (the grey is
   // the colour's own luminance, Rec. 709, so the luminance holds within 1%). Noon and midnight, so both keys are seen.
   it('a storm dims the key and greys the sky toward its own luminance, at noon and at midnight', () => {

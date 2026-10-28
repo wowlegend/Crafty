@@ -5,13 +5,11 @@ import { skyFrameRef } from './mood';
 
 // Sun -- the sky sun billboard (and therefore the GodRays light source): tracks the camera at a fixed distance along
 // the SUN's direction and takes the sun's colour, both from the one sky frame <Atmosphere> publishes each frame
-// (render/mood.js skyFrameRef). Extracted from GameScene.jsx (v6 de-monolith A2.1).
+// (render/mood.js skyFrameRef).
 //
-// SINCE 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3b): it called sampleMood with no cycle, so the
-// billboard stood at the noon bearing all day and all night. It now reads the frame's `sunDir` (the arc) and hides
-// once the sun is below the horizon. Its colour is `sunColor`, the SUN's, never `keyColor`: the billboard is visible
-// while the sun's y > -0.05 (s > -0.093), but the key light is the moon for every s < 0, so reading the key would paint
-// the sun the moon's colour in that window (review amendment 12).
+// It follows the frame's `sunDir` (the arc) and hides once the sun is below the horizon. Its colour is `sunColor`, the
+// SUN's, never `keyColor`: the billboard is visible while the sun's y > -0.05 (s > -0.093), but the key light is the
+// moon for every s < 0, so reading the key would paint the sun the moon's colour in that window.
 const SUN_HIDE_Y = -0.05;
 
 export const Sun = ({ onReady }) => {

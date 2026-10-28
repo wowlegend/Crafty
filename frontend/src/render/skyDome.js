@@ -69,7 +69,7 @@ export function makeSkyDomeMaterial() {
           col += vec3(0.85, 0.90, 1.0) * star * up * uStar * 2.2;             // cool-white stars
           // MOON — a soft cool hero disc on its own arc (uMoonDir, the sky frame's moonDir: the direction the
           // moon key light comes from). The sun-disc technique (pow), cooler, so the global Bloom blows it out.
-          // It was a fixed vec3(0.32, 0.30, -0.90) until the light-colour plan's Task 3b. Faded out just
+          // Faded out just
           // below the horizon, so the twilight window where stars still show and the moon has set draws no
           // disc in the ground band.
           vec3 moonDir = normalize(uMoonDir);

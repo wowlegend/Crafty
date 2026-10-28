@@ -4,50 +4,33 @@ import { followSkyClock, makeSkyClock } from '../../src/render/skyClock.js';
 import { liveCycle, sampleMood } from '../../src/render/mood.js';
 
 /**
- * THE DAWN READ'S VERDICT, DRIVEN (round-2 review of the light-colour lane, MED).
+ * THE DAWN READ'S VERDICT, DRIVEN.
  *
  * tests/e2e/light-script.spec.js samples every drawn frame for six seconds from dawn and decides whether the sky
- * ramps between the 1 Hz clock's ticks. Its verdict counted EVERY pair of frames sharing one game-second, including
- * pairs where the sky had already caught up with the clock, which are still by design: a following sky drawn as a
- * long frame and then a short one reads "no change" and failed as if it stepped. The verdict now lives in
- * tests/gates/_dawnRead.js, so it can be driven here with frames whose answer is known by construction: each fixture is
- * the REAL followSkyClock (or the stepped clock) at chosen frame times, read the way the e2e reads it.
+ * ramps between the 1 Hz clock's ticks. Counting EVERY pair of frames sharing one game-second would include pairs
+ * where the sky has already caught up with the clock, which are still by design: a following sky drawn as a long frame
+ * and then a short one would read "no change" and fail as if it stepped. The verdict lives in tests/gates/_dawnRead.js
+ * so it can be driven here with frames whose answer is known by construction: each fixture is the REAL followSkyClock
+ * (or the stepped clock) at chosen frame times, read the way the e2e reads it.
  *
  * Fixtures (the ticker adds UPS at every whole second; a frame's clock is its R3F time in seconds):
  *   follow60     a following sky at 60 fps                                    -> pass
  *   step60       the stepped sky (liveCycle(gameTime)) at 60 fps                -> fail (on the clock after a tick)
- *   step60race   the same, every tick read after a frame that predates it       -> fail (the old count PASSED it)
+ *   step60race   the same, every tick read after a frame that predates it       -> fail
  *   follow1_8    a following sky at 1.8 fps (frames 0.55 s apart: CI's range)   -> pass
  *   longShort    a following sky whose same-second pairs all follow a 1.25 s
- *                frame, so the sky is on the clock in each (THE REVIEW CASE)    -> not measured (the old count FAILED it)
+ *                frame, so the sky is on the clock in each                      -> not measured
  *   follow0_8    a following sky at 0.8 fps                                     -> not measured
  *   frozenLight  the sky follows, the live key reads the 1 Hz clock            -> fail (the light does not follow)
  *   moodLight    the same, with a decaying mood moving the key for 3 s         -> fail (a moving mood is not the ramp)
  *   staleStart   follow60 with a first sample read before the jump to dawn     -> pass (no false crossing)
  *   doubleTick   two ticks inside one short frame while the sky trailed: a cut   -> pass (not a one-tick crossing)
  *
- * RED FIRST: with the e2e's old inline count copied into the helper, longShort read 'fail' ("no pair moved", 4 pairs)
- * and step60race read 'pass' (6 of 296 pairs "moved": the steps themselves, read across the race).
- *
  * DENOMINATORS: 10 fixtures (asserted); the 60 fps following sky crosses every tick it spans (asserted equal to the
  * ticks counted from the fixture, at least 5) and every one of its behind pairs moves.
  *
- * Mutation-Proof: tests/gates/_dawnRead.js via scripts/dev/mutate.sh (12 tests), 2026-10-28, each RED against a green
- * baseline:
- *   D1  every same-second pair counts (the behind filter dropped)          -> longShort, denominators
- *   D2  no crossing check                                                   -> step60, step60race
- *   D3  no race normalization (frameOf returns the store's clock)           -> step60race
- *   D4  FAST_S 1.5 (a 1.25 s frame counted as fast)                          -> longShort, follow0_8, SETUP
- *   D5  a crossing without the sky-within-a-tick guard                       -> staleStart
- *   D6  no mood filter                                                       -> moodLight
- *   D7  MOVED = 1                                                            -> follow60, follow1_8, staleStart, doubleTick
- *   D8  any clock advance is a crossing (not exactly one tick)               -> doubleTick
- *   D9  "on the clock" read as under half a tick behind                      -> follow1_8
- *   D10 behind pairs that never moved pass                                   -> frozenLight, moodLight
- *   D0  identity (a comment in _dawnRead.js)                                 -> SURVIVED
- *
  * BLIND SPOT: the frames are synthetic. That the running game's samples look like these (the sky's cycle, the store's
- * clock and R3F's clock per drawn frame) is the e2e's, which also proves the stepped sky (SC1e) RED on a real renderer.
+ * clock and R3F's clock per drawn frame) is the e2e's.
  */
 
 /**

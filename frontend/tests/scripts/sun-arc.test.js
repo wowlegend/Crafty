@@ -38,10 +38,7 @@ import { TIERS } from '../../src/render/quality.js';
  *   M5 sampleMood applies the arc even when cycle is omitted -> additive case RED
  *   M6 CAPTURE_SOLAR_FRACTION -> 0.0 (dawn)                  -> capture case RED
  * mood.js / Atmosphere.jsx restored from cp backups and diffed byte-identical after each.
- * RE-POINTED 2026-10-27 (light-colour plan Task 3a): the capture constant is mood.js's CAPTURE_SOLAR now, and M6 was
- * re-run on it through scripts/dev/mutate.sh: CAPTURE_SOLAR.day -> 0.0 -> capture case RED; and M6b, captureCycle's
- * night fallback -> CAPTURE_SOLAR.day (today's noon pin for every state) -> capture case RED. The arc itself moved to
- * render/sunArc.js (re-exported by mood.js), unchanged.
+ * The capture constant is mood.js's CAPTURE_SOLAR; the arc lives in render/sunArc.js (re-exported by mood.js).
  *
  * BLIND SPOT, stated (R7): nothing here proves the sun LOOKS right moving, nor that the god rays stop
  * cleanly at the horizon in a real frame. Both need the re-baseline already owed since postprocessing
@@ -108,9 +105,8 @@ describe('sun arc geometry', () => {
   it('capture pins the solar angle to a DECLARED constant: noon for a day state, midnight for a night state', () => {
     // CLAUDE.md: "a capture guard must RESET to a declared value, never early-return." Noon is the one
     // fraction that leaves the mood bearing untouched, so committed day baselines keep their sun direction.
-    // RE-POINTED 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3a; refute F5): the declared values moved
-    // to render/mood.js (CAPTURE_SOLAR, captureCycle). The old pin rendered EVERY state at noon, so the night states
-    // were night only by palette; a night state now renders at its declared midnight, and a declared fraction wins.
+    // The declared values live in render/mood.js (CAPTURE_SOLAR, captureCycle). Night comes from the clock, so a night
+    // state renders at its declared midnight; pinned at noon it would render daylight.
     expect(CAPTURE_SOLAR.day).toBe(0.25);
     const noon = MOOD_SCALARS.explore.sunPos;
     const pinned = sunArcDirection(noon, CAPTURE_SOLAR.day);
