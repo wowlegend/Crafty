@@ -18,6 +18,80 @@
 
 ---
 
+## 2026-10-28 — [LOOP] The SOTA reset's standing decisions (W1-H)
+
+**Decided by the command session** under item 14 of the 2026-10-28 landing entry below, from the SOTA reset plan
+(`docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`, lane W1-H). Numbered on their own, so they cannot collide with
+that entry's items. Each stands while it earns its place; reversing one takes a new dated entry. The mipmaps decision
+(plan row 10) is W1-E's entry, written with its measurement, and is not repeated here.
+
+1. **The capture oracle retires** (plan row 4, lane W2-B). Supersedes "The 31 baselines remain a regression oracle"
+   (`docs/superpowers/masterpiece-2026-10/roadmap-2026-10-27.json:261`) and rule 2 of "How a move counts as done" in
+   `docs/superpowers/plans/2026-10-27-crafty-masterpiece.md:26-28`. Why: capture mode turns off weather, mobs, NPCs,
+   particles, spawning and the hands, so its frames show a build nobody plays, and shipped source carries 131
+   `isCaptureMode()` calls (`rg -c` over `frontend/src`, 2026-10-28) that no player needs. Looks are accepted on the eye-level lookbook (W1-D); DOM-only
+   checks use Playwright's `toHaveScreenshot`. No re-baseline is owed meanwhile, so ACTIVE_PLAN task T10 and masterpiece
+   Phase 0e are cancelled. `tests/visual/baseline/menu.png` stays until the media pipeline (W2-H) replaces the og-image source.
+2. **The umbrella is amended** (plan rows 12, 45-49; section 10). Supersedes the Phase 0-3 structure of the masterpiece plan
+   above. (a) A Cut wave (W2-F) removes the sandbox layer before Wave 3 builds, so no lane ports a dead system. (b) The
+   platform work (W2-G, W3-D) runs beside the game lanes, not in front of them: the refuter showed the dragon and
+   feedback-grammar plans need no ECS rewrite. (c) One HUD lane with one owner (W2-D) takes every HUD change from the
+   first-minute plan, the visuals lens and roadmap move 6. (d) Phase 0e and T10 are cancelled (item 1). Phase 3 regroups
+   into the First Night (W3-A) and the road of light (W3-B).
+3. **Lane briefs plus task scripts of 300 lines or less** (plan row 33). Supersedes Kevin's 2026-06-10 rule that every
+   milestone gets a full plan doc before it is built (`CLAUDE.md:248`). Why: the twelve 2026-10-27 lane plans run 771 to
+   1,720 lines against code the Cut will change, so their step scripts would be rewritten at lane start anyway. Now an
+   unstarted lane carries a brief of one page or less (8 KB) that links to its reset-plan row and states scope, files,
+   acceptance and one-way doors. At lane start it writes a task script of 300 lines or less against the code as it is
+   then, with red-first steps and the gates it runs. The 2026-10-27 designs stay as reference. Kevin's rule fixed
+   building from a spec with no build contract; the brief keeps that and drops the cost. Plan row 29 (W2-J) rewrites
+   `CLAUDE.md:248`; until then this entry governs. The first briefs are named in item 9.
+4. **One costed build mode** (plan row 19, lane W2-F). Supersedes the builder sandbox in
+   `frontend/src/world/placementEconomy.js:6-7` ("CREATIVE mode — the game's default — keeps free placement") and the
+   default `gameMode: 'creative'` (`frontend/src/store/useGameStore.jsx:694`). Placing a block spends one mined block in
+   every game; the creative/survival toggle and the Mode chip go. Why: free walls make holding a siege no choice, and free
+   placement would make build accrual (item 5) farmable. A free-build world may return later as a world type. Door: the
+   `gameMode` save field stops being written at the Cut; the tombstone pass-through (plan row 20) carries it one release.
+5. **Ember: one meter, and it keeps build accrual** (plan row 21, lane W2-F). Supersedes the four banks, Ferocity, Kinetic,
+   Soul and Resonance (`frontend/src/store/useGameStore.jsx:546-561`, `:824-826`), and their four HUD bars. One `ember`
+   bar feeds the four spends (roar, grab, snare, imbue). It accrues from day kills and from building, as Resonance does
+   today (`frontend/src/game/resonance.js:11`), with a per-day cap. Why: four meters that fill the same way read as one
+   meter drawn four times; the choice that matters is the spend. Building stays a source because placement now costs
+   blocks (item 4); the cap stops a build-and-break loop. Bank by day, spend by night, stays.
+6. **Progression becomes talents that change verbs, plus loot relics** (plan row 22, lane W2-F). Supersedes hand
+   attribute allocation (`frontend/src/store/useGameStore.jsx:326-333`, five points a level at `:450-456`), the free
+   spell-mastery click (`upgradeSpell`, `frontend/src/world/spellUpgrades.js:90`) and the crystal wallet with its wand
+   discount (`frontend/src/game/crystalWallet.js`, the 2026-07-14 B3b fix). A level grants one talent point; a talent
+   changes how a verb plays; relics come from loot; spells scale with level. Why: seven axes that each add a number give
+   a player nothing to choose. It needs a damage rebalance first, because `solveSpellDamage` reads attributes.
+   `frontend/src/game/affixes.js` (no importer) goes with it.
+7. **The Forge replaces the crafting grid** (plan row 23, lane W2-F). Supersedes the 3x3 grid
+   (`frontend/src/ui/panels/CraftingTable.jsx`, `frontend/src/data/recipes.js`, the C key, the touch-tray Craft slot,
+   the pickaxe item) and with it the 2026-07-14 grid fixes (B3a sword patterns, B3d escrow). A Forge card on Mara (G)
+   offers three things, each with its cost shown: a weapon upgrade, a relic upgrade and a lantern. Why: hidden recipe
+   shapes are guesswork, and a drag grid does not work on iPad. The pickaxe is a weapon stat stick (damage 8), so it
+   folds into the weapon line.
+8. **The lantern is costed, and the radius rule ships first** (plan row 15). Amends
+   `docs/superpowers/plans/2026-10-27-crafty-lantern-block-light.md` before block id 16 ships: its grid recipe (1 glass +
+   1 coal, Unit 5) and its spawn rule on the baked light field (Unit 6). The lantern is bought at the Forge (item 7), and
+   W3-A ships a radius rule: no natural hostile spawn within R of a placed lantern, R starting at 16 m. The light field
+   follows as its own lane. Why: a cheap lantern goes everywhere and stops meaning anything, and the radius rule is one
+   distance check the siege can build on now, where the light field is a mesher and shader change. Door: block id 16
+   enters saves at the first push that lets a player save one, so the radius rule and the Forge price land with the
+   block, never after it.
+9. **`memory/registry.jsonl` is the one home for open work** (plan row 30). Supersedes the open-work role of STATUS §2,
+   its G-ledger and the "Residue: memory/STATUS.md G-ledger" line in ACTIVE_PLAN. The registry holds every open item
+   harvested from STATUS §2 and its G-ledger, the ACTIVE_PLAN task list and owed block, the sota-2026-09 QUEUE and
+   OPEN-ITEMS files and the masterpiece phase tables, one row each, with owner, severity, status and plan unit; done
+   items are closed with the commit that closed them, never dropped. Kevin owns a row only when it needs his device,
+   ear, money or an account sign-in. Until those sources leave HEAD (plan row 32), `frontend/scripts/ci/registry-harvest.mjs`
+   (run by `tests/scripts/registry-harvest.test.js` in every unit run) fails when a source holds an open item with no
+   registry row. New open work goes straight to the registry. The first lane briefs under item 3:
+   `docs/superpowers/plans/2026-10-28-crafty-brief-w2b-retire-capture-oracle.md`,
+   `docs/superpowers/plans/2026-10-28-crafty-brief-w2d-hud.md`, `docs/superpowers/plans/2026-10-28-crafty-brief-w2f-the-cut.md`,
+   `docs/superpowers/plans/2026-10-28-crafty-brief-lantern-costed.md` and
+   `docs/superpowers/plans/2026-10-28-crafty-brief-quest-spine.md`.
+
 ## 2026-10-28 — [KEVIN] One CLAUDE.md: the symlink and its directory are gone
 
 **Decided by Kevin, in his words:** "i don't really like how the agents.md symlinks to claude.md in this repo, let's just have one claude.md."
