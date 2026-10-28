@@ -24,9 +24,10 @@ quality, dead-code, comment/doc truth, polish, better patterns — and MAKE tast
 than blocking. GUARDRAILS still binding (they make "aggressive" safe, not reckless): every change RED-first +
 mutation-proven + full suite green; atomic verified checkpoints (auditable, git-reversible, ONE coherent unit per
 commit); do NOT silently reverse a RECORDED Kevin decision (world-design hybrid · CPU-ocean fork · F=cast/T=melee ·
-bloom 0.65 · Ember-Frontier/Blight-Heart · affixes kept · broad audience); irreversible high-blast (hard-delete a
-REFERENCED file, force-push, external send, money/accounts/publishing, a NEW dependency) still gets care + usually
-Kevin. Prefer ARCHIVE (reversible) over DELETE.
+bloom 0.65 · Ember-Frontier/Blight-Heart · affixes kept · broad audience; a reversal is a new dated DECISIONS entry);
+force-push, external send and money/accounts/publishing stay Kevin's; a hard delete of a REFERENCED file or a NEW
+dependency is the command session's call, made with care and recorded in DECISIONS (2026-10-28 items 14 and 16).
+Prefer ARCHIVE (reversible) over DELETE.
 
 ORIENT EVERY ITERATION (assume amnesia — the context may have just compacted or reset):
 `cd /Users/kz/Code/Crafty && git fetch && git status -sb && git log --oneline -8`
@@ -94,8 +95,8 @@ retired 2026-10-28: `docs/archive/LOOP-PROGRESS-2026-10-28.html`), and the publi
 "CI 0/88" — false for two days. Kevin had to ask. **The surface he READS is part of the deliverable**; a
 dashboard asserting a state it no longer has is the same defect as a gate reporting PASS over input it never
 examined. Update an artifact IN PLACE by passing its URL, or a fresh publish mints a new URL and strands the
-bookmarked one. Route pure
-taste / recorded-decision reversals to `KEVIN-REVIEW-BATCH.md`. Never end the loop yourself.
+bookmarked one. Taste calls and reversals of recorded decisions are
+the command session's (DECISIONS 2026-10-28 item 14): record each in DECISIONS, never silently. Never end the loop yourself.
 
 THE FIVE RULES THAT MATTER MOST (each one is a scar):
 1. **⛔ MUTATION-PROVE EVERY GATE.** A gate that greps SOURCE TEXT is NOT a gate. Break the behavior → the gate MUST
@@ -144,11 +145,11 @@ BUILD-FIRST on any JSX/structure change. Capture-verify EVERY render-affecting s
 read it before trusting any diff, and do NOT transcribe its numbers here** (a number copied into this file
 rots and this file is re-injected verbatim on every firing). Check the compositor (rAF count, ~3s) BEFORE
 planning browser work, expect to lose it mid-run, and do browser work FIRST while the window is open.
-**Read the frame with your own eyes.** Re-baseline → Kevin sign-off.
+**Read the frame with your own eyes.** Re-baseline → the command session's call (Kevin's 2026-10-27 mandate), with a `Baseline-Review:` trailer.
 
 TASTE BOUNDS: the coherence pillars **P0–P5** (`docs/superpowers/specs/crafty-coherence-pillars.md`; summarized in STATUS §4). **The
 only HARD vetoes are P4's two invariants: no mid-combat re-mesh; input via intent-abstraction, not pointer-lock.**
-Accessibility never vetoes depth. Reference-lock before any look-bearing work; judge IN-WORLD on the real grade.
+Accessibility never vetoes depth. Pick a reference before any look-bearing work; judge IN-WORLD on the real grade.
 
 ⚠️ BROWSER / TEST-PROCESS HYGIENE — **anything you launch, you kill, and the SURFACE outlives the process.** Full rules: `CLAUDE.md` (orientation) and `.claude/rules/gates-and-probes.md`, which auto-injects the moment you touch `frontend/scripts/**` or `frontend/tests/**`. This was a FIFTH copy; five copies of a rule is not five times the compliance, it is five places to drift.
 
@@ -157,15 +158,15 @@ husks → green the tree → update ACTIVE_PLAN + STATUS + CHANGELOG + the opera
 surfaces (README truth · repo description · CI badge) and PUSH** → mark-truth → re-arm. A session that ends without the
 remote step has left the project's public face lying about it.
 
-STILL GENUINELY KEVIN (surface to `KEVIN-REVIEW-BATCH.md`; never block on it): the holistic PLAYTEST (his eye + ear —
-spell look, movement feel, storm, audio mix, real-device touch) · S4 multiplayer + monetization scope (the loop will
-NOT start netcode or payments) · final taste sign-offs incl. visual re-baselines + water aesthetic · real-device runs ·
-anything spending money / creating accounts / publishing externally · adding any NEW dev dependency.
-**NOT the four this line used to name** (chest-mining, damage-lockout, camera-shake feel, 3D mob AI): `DECISIONS.md`
-assigned all four **[LOOP]** and the charter says the RECORD, not this prompt, is what settles ownership. Reading the
-stale list here is what put twelve non-Kevin items in front of Kevin. The only taste row still **[KEVIN]** is the
-ocean water aesthetic.
-SETTLED (do NOT relitigate): F=cast / T=melee · bloom 0.65 · grantXP full-heal · affixes KEPT · Ember-Frontier +
+STILL GENUINELY KEVIN (surface to `KEVIN-REVIEW-BATCH.md`; never block on it), only what the session cannot do or
+may not do: the real-device playtest (touch feel on a real device, the audio mix by ear) · real-device runs · S4
+multiplayer and monetization (servers, payments, accounts: the loop will NOT start netcode or payments) · anything spending money /
+creating accounts / publishing externally. Taste sign-offs (visual re-baselines and the ocean water aesthetic
+included) and NEW dev dependencies are the command session's since Kevin's 2026-10-27 mandate (DECISIONS 2026-10-28
+items 14 and 16). The RECORD, not this prompt, settles ownership: reading a stale list here once put twelve
+non-Kevin items in front of Kevin.
+RECORDED DECISIONS (each stands while it earns its place; a reversal is a new dated DECISIONS entry naming the one it
+supersedes): F=cast / T=melee · bloom 0.65 · grantXP full-heal · affixes KEPT · Ember-Frontier +
 Blight-Heart · audience is BROAD (the youngest players are users, not a ceiling) · world-design HYBRID · CPU-ocean fork.
 
 CONTINUE: while committable units remain — read the depth, never recall it: `node frontend/scripts/ci/queue-ledger.mjs`. This is an ACTIVE build queue, not a hold.

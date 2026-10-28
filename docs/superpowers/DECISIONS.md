@@ -120,6 +120,27 @@ longer finds the instructions there; none is configured to in this repo.
    mutation receipts in code: git and this file hold history, and `Mutation-Proof:` commit trailers hold receipts. So
    the killability-ledger gate, which demands a receipt literal in every check file, retires with the comment pass. The
    pass runs as its own wave after the in-flight lanes land, directory by directory, keeping every load-bearing fact.
+16. **Nothing is locked (Kevin, 2026-10-28):** *"when i see things like "Design Language (LOCKED — S1-C)" , remember
+   the directive, nothing is locked . you're free to enhance / delete / revise anything."* It restates item 14. The
+   live docs still carried labels that read as binding locks to the next agent. They now state the decision, its
+   reason, and that it stands only while it earns its place; the command session may enhance, replace or delete it,
+   recording the call here. **Rewritten:** `CLAUDE.md` (the design-language heading; the de-monolith,
+   `Components.jsx` and engine-core lines, which keep their facts: the Player loop's per-frame order is load-bearing,
+   so a split must keep it; the engine core is proven, so a replacement must measure better); `LOOP-CHARTER.md` and
+   `LOOP-KERNEL-PROMPT.md` (a recorded decision may be reversed by a new dated entry here; `Components.jsx` was parked,
+   not banned; the CUT-gate stays unused as a tool, and deleting a shipped player-facing feature needs an entry here
+   with the lived or e2e proof that nothing still promised depends on it, not a KEVIN-REVIEW-BATCH entry first;
+   re-baselines, new dependencies, taste and direction calls are the session's); `memory/STATUS.md` (the `[KEVIN]`
+   legend, the CUT-gate line, section H, the re-baseline items, the pillar summary); `memory/ARCHITECTURE.md` (the
+   Components line); `SOTA-INITIATIVE.md` (its guardrails and process sections); `INDEX.md` (a line near the top on how to
+   read old labels, and the UI-system entry); the coherence-pillars spec (a status line; P3); and six 2026-10-27
+   plans (coast-water, combat-stance, encounters-siege, first-minute, harness-sota, material-grammar). **Left as written:** dated
+   specs and plans before 2026-10-27, archives, reviews and CHANGELOG, which are records (the INDEX line says their
+   labels bind nothing); this file's own entries; and what stays Kevin's by mechanism or by bright line: real-device
+   feel, the audio mix by ear, money, accounts, external publishing, and S4. **Guard:** `doc-currency` has a `locks`
+   check. It fails when a canonical doc other than this one carries `(LOCKED`, `LOCKED —`, `IRREDUCIBLE`,
+   `MUST NOT be split`, `KEEP, don't rewrite` or `do not relitigate`, printing file:line and pointing here. This file
+   is left out because it records and quotes such labels. The PASSED line prints how many docs the check scanned.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 

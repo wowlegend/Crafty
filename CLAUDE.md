@@ -9,6 +9,8 @@
 > best, with full autonomy. Ask Kevin nothing unless absolutely needed; install any tool that helps. Kevin reviews ONE
 > page, the Command Record (`docs/superpowers/command-record.html`). Keep the public face (repo, GitHub Pages) beautiful
 > and the docs in SOTA shape. Older rules, plans and gates in this repo bind only as far as they still earn their place.
+> A lock or approval label in a dated spec or plan records a decision as it stood then and binds nothing;
+> `doc-currency` refuses lock labels in the canonical docs (DECISIONS 2026-10-28 item 16).
 
 ## ⚠️ REPO LAYOUT — read before ANY path/Bash op (the #1 recurring mistake)
 
@@ -64,14 +66,17 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
 <!-- END MEASURED -->
 
 - **What is still true qualitatively:** the codebase is **MONOLITHIC in shape** — a handful of large
-  imperative files carry the game loop. De-monolithing is **CLOSED, not pending** — `memory/STATUS.md` records it done (SimplifiedNPCSystem 934→183, GameScene 933→304) and `SOTA-INITIATIVE.md` formally PARKED the remainder as "risky imperative-orchestration, not blocking". Five files remain ≥900 LOC by design, not by backlog.
-  `Components.jsx` is a documented IRREDUCIBLE residual rather than an accidental god-file (verified
-  2026-06-29): it is the `Player` useFrame imperative controller, already delegating all pure logic to
-  imported `game/*` modules, and the remainder is the loop + input wiring that MUST NOT be split
-  (Game-Loop-Isolation / ordering, decision-of-record). **The other ≥900-LOC files carry no such finding**
-  — do not assume they are irreducible too. `miniplex` ECS is a **NARROW** slice: real and
+  imperative files carry the game loop. The de-monolith campaign ended with SimplifiedNPCSystem 934→183 and
+  GameScene 933→304 (`memory/STATUS.md`), and `SOTA-INITIATIVE.md` parked the rest as risky imperative
+  orchestration that blocked nothing. That was a priority call, not a ruling: any of the ≥900-LOC files may be
+  split, rewritten or deleted when doing so pays (DECISIONS 2026-10-28 items 14 and 16).
+  `Components.jsx` is the `Player` useFrame imperative controller, not an accidental god-file (finding of
+  2026-06-29): it already delegates its pure logic to imported `game/*` modules, and what remains is the loop
+  and its input wiring. **The per-frame ORDER of that loop is load-bearing** (Game-Loop-Isolation), so a split
+  must keep that order and prove it in the running game (e2e, a live probe), not only that it compiles.
+  **The other ≥900-LOC files carry no such finding.** `miniplex` ECS is a **NARROW** slice: real and
   load-bearing well beyond the "mobs/loot/XP only" this line used to claim — `grep -rln "ecs/world" frontend/src/ | grep -v "\.test\."` returns 15 files incl. grass, minimap sync, nametags, element zones, hurl and squad AI — but still NOT the whole architecture. Do NOT trust older "clean ECS" claims.
-- Engine CORE is real — KEEP, don't rewrite (greedy mesher, DataArrayTexture, Rapier KCC, A* worker, audio occlusion, day/night, chunk-dispose). Touch/mobile is now BUILT (iPad/iPhone, 2026-06-15) — iOS cold-start was Pointer-Lock-gated and is bridged via `enterPlay()` (src/MenuSystem.jsx); QuestTracker collapses on touch, compact SimpleExperienceBarTouch readout, `scripts/visual/touch-probe.mjs` MANUAL probe (in neither pre-push nor CI; the committed guard is `tests/gates/quest-tracker-touch.test.jsx`); only real-device feel is Kevin-gated. The real test surface is the vitest unit suite + the puppeteer visual gate (the old blind `test_swarm.js` rubber-stamp was deleted) — but still distrust old "100% green/SOTA" doc claims; verify against live code + the gates. **Counts deliberately omitted** — read them from the command instead — `npm run test:unit` prints the suite total, `ls tests/visual/baseline/*.png | wc -l` the gated states.
+- The engine CORE is proven in the shipped game (greedy mesher, DataArrayTexture, Rapier KCC, A* worker, audio occlusion, day/night, chunk-dispose): a replacement lands when it measures better on the same scenes (frame time, memory, the e2e and visual gates), not on taste. Touch/mobile is now BUILT (iPad/iPhone, 2026-06-15) — iOS cold-start was Pointer-Lock-gated and is bridged via `enterPlay()` (src/MenuSystem.jsx); QuestTracker collapses on touch, compact SimpleExperienceBarTouch readout, `scripts/visual/touch-probe.mjs` MANUAL probe (in neither pre-push nor CI; the committed guard is `tests/gates/quest-tracker-touch.test.jsx`); only real-device feel is Kevin-gated. The real test surface is the vitest unit suite + the puppeteer visual gate (the old blind `test_swarm.js` rubber-stamp was deleted) — but still distrust old "100% green/SOTA" doc claims; verify against live code + the gates. **Counts deliberately omitted** — read them from the command instead — `npm run test:unit` prints the suite total, `ls tests/visual/baseline/*.png | wc -l` the gated states.
 
 ## ⚠️ BROWSER / TEST-PROCESS HYGIENE (Kevin, 2026-07-13 — NON-NEGOTIABLE)
 
@@ -214,7 +219,9 @@ pipeline genuinely cannot see:
   narrative, round numbers or mutation receipts in code: git and DECISIONS hold history, `Mutation-Proof:` trailers
   hold receipts. Name things so the code reads without them.
 
-## Design Language (LOCKED — S1-C)
+## Design Language (current: S1-C bold-flat)
+The S1-C decision (2026-06-01) and what it is today. It stands while it earns its place: the command session may
+enhance, replace or delete any part of it, recording the call in DECISIONS (2026-10-28 items 14 and 16).
 ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.js` (`--ui-*` vars + `applyThemeVars()`) → `tailwind.config.cjs`. **Filled 2-tone game-icons** (`src/ui/primitives/gameIcons.js`, baked from game-icons.net **CC BY 3.0** via the Iconify API) for game CONTENT (items/spells/mobs/achievements); **lucide outline** for app-chrome. The UI primitives live in `src/ui/primitives/` (read the set from its `index.js`; this said "7" and was wrong). i18n in `src/i18n/` (en default + lazy-CJK zh-CN). **NO emoji in `src/`** (zero-emoji hard gate). game-icons.net attribution is DISCHARGED by `src/ui/CreditsScreen.jsx` (Settings → Credits).
 
 ## Commit Conventions

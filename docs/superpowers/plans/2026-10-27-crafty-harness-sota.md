@@ -1497,7 +1497,7 @@ the next `src` lane (Design, decisions). Kept in place: `memory/perf/*.json`,
 **Files:**
 - `memory/ROADMAP.md`: about a 10-line stub pointing at the umbrella plan. It keeps the 4-piece contract.
 - Create `memory/archive/ROADMAP-2026-04-to-08.md`.
-- `SOTA-INITIATIVE.md`: §3 moves verbatim to `docs/archive/2026-Q2/SOTA-INITIATIVE-status-2026-06.md`; delete the L18-21 precedence chain; keep §1, §2, §5, Kevin's quoted grants, AND §6's **"Decisions of record (do not relitigate without Kevin)"** list (`SOTA-INITIATIVE.md:150-152`: audience-broad, soft death, the Aspect sequence, game-direction "Ember Frontier + Blight-Heart climax", and the rest) verbatim. The umbrella plan (:102-103) and DECISIONS.md (:61-62) cite `SOTA-INITIATIVE.md` as the home of the soft-death decision, and doc-currency checks only that the path exists, so dropping the list would leave both citations dangling while staying green.
+- `SOTA-INITIATIVE.md`: §3 moves verbatim to `docs/archive/2026-Q2/SOTA-INITIATIVE-status-2026-06.md`; delete the L18-21 precedence chain; keep §1, §2, §5, Kevin's quoted grants, AND §6's **"Decisions of record"** list (`SOTA-INITIATIVE.md:150-152` as of 2026-10-27: audience-broad, soft death, the Aspect sequence, game-direction "Ember Frontier + Blight-Heart climax", and the rest) verbatim. The umbrella plan (:102-103) and DECISIONS.md (:61-62) cite `SOTA-INITIATIVE.md` as the home of the soft-death decision, and doc-currency checks only that the path exists, so dropping the list would leave both citations dangling while staying green.
 - The Phase-26 sky warning goes into the umbrella plan, via `main`.
 
 - [ ] **Green:** doc-currency and opsec pass; `grep -c 'Decisions of record' SOTA-INITIATIVE.md` is 1 or more, and

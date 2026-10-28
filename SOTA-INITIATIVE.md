@@ -54,7 +54,8 @@ layered on a day-build / night-siege survival loop. All four Aspects SHIPPED (20
 2. **Spec before build; plan-doc per milestone** (`superpowers:writing-plans`); TDD red-first; the **test
    ratchet** (never delete/weaken a test or gate to pass — justified changes only, in the commit body).
 3. **Quality gates green every unit:** unit suite holds-or-grows · build clean · the 20-state visual gate
-   (deliberate re-baselines only, with rationale + eyeball + KEVIN-REVIEW-BATCH entry).
+   (deliberate re-baselines only, with rationale + eyeball + a `Baseline-Review:` trailer; the call is the command
+   session's since Kevin's 2026-10-27 mandate).
 4. **Engine invariants:** Game-Loop-Isolation (transient reads in hot loops; render JSX never reads
    worker/loop-mutated fields) · NO-RE-MESH from combat systems · capture-determinism · derive-don't-bake.
 5. **Perf envelope discipline:** every render/physics feature states its frame-cost story; measure
@@ -144,12 +145,14 @@ gen-perf hardening in S3.
 - **Autonomous build loop:** `docs/superpowers/LOOP-CHARTER.md` is the operating constitution (orientation,
   one-verified-unit-per-iteration, priority order, self-gated taste discipline, doc-currency, parking rules).
   Kevin reviews ASYNC via `docs/superpowers/KEVIN-REVIEW-BATCH.md` + CHANGELOG; only physically-Kevin items
-  block (real-device runs, spend/accounts/publishing, reversals of his recorded directional decisions).
+  block (real-device runs, spend/accounts/publishing). Reversing one of his recorded directional decisions is the
+  command session's call since 2026-10-28, as a new dated DECISIONS entry (DECISIONS 2026-10-28 items 14 and 16).
 - **Method:** subagent/workflow-driven design + adversarial review; specs in `docs/superpowers/specs/`,
   plan docs in `docs/superpowers/plans/`; the 4-piece (`memory/`) carries session state across compaction.
-- **Decisions of record (do not relitigate without Kevin):** audience-broad (2026-06-04) · third-person
+- **Decisions of record (each stands while it earns its place; a reversal is a new dated DECISIONS entry naming the
+  one it supersedes):** audience-broad (2026-06-04) · third-person
   direction w/ deferred control pivot (2026-06-07) · monetization model = S4 · web-first distribution ·
-  the locked S1-C design language + WILDHEART look · soft death · Aspect sequence · **game-direction = "Ember Frontier + Blight-Heart climax" (2026-06-15)** — outward exploration on existing landmark/compass rails + a fixed foreshadowed boss-lair win-state; the canonical answer to "what is the point of the game" (the world-purpose milestone, plan in `docs/superpowers/plans/2026-06-15-crafty-world-purpose-sota.md`).
+  the S1-C design language + WILDHEART look · soft death · Aspect sequence · **game-direction = "Ember Frontier + Blight-Heart climax" (2026-06-15)** — outward exploration on existing landmark/compass rails + a fixed foreshadowed boss-lair win-state; the canonical answer to "what is the point of the game" (the world-purpose milestone, plan in `docs/superpowers/plans/2026-06-15-crafty-world-purpose-sota.md`).
 
 ## 7. Pointers
 

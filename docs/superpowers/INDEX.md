@@ -7,6 +7,10 @@
 > week-sized dead proposal on 2026-07-13).
 >
 > Status for the whole project lives in **`memory/STATUS.md`** — not here, and not in any doc below.
+>
+> **A lock, approval or of-record label in a dated spec or plan records the decision as it stood then and binds
+> nothing.** Every decision stands only while it still earns its place; the command session may enhance, replace or
+> delete it, recording the call in `DECISIONS.md` (DECISIONS 2026-10-28 items 14 and 16).
 
 ---
 
@@ -53,7 +57,7 @@ commit from the recorded publish, refuses every push.
   are still the best statement of the remaining depth gap (STATUS §E). Its own premises were systematically
   over-optimistic — verify every claim against code.
 - `2026-06-13-crafty-world-design-hybrid.md` · `2026-06-02-crafty-s2-game-design-design.md` — world + game design of record.
-- `2026-06-01-crafty-s1c-ui-system-brief.md` + `-m3-icon-registry-contract.md` — **the LOCKED bold-flat UI system.**
+- `2026-06-01-crafty-s1c-ui-system-brief.md` + `-m3-icon-registry-contract.md` — **the current bold-flat UI system** (S1-C; revisable like any decision).
 - `2026-05-30-crafty-visual-direction-design.md` — the visual direction (note: the restrained-grade lock was
   REVERSED 2026-06-17; glowier is authorized).
 

@@ -29,11 +29,12 @@ Crafty is a **mature, deployed, internally-coherent R3F voxel action-RPG** (**30
 excluding tests, auto-deploying to crafty-sand.vercel.app). **The masterplan's spine is complete.**
 
 **DONE (verified against code, not docs):**
-- **S0** reality audit · **S1** art direction + render recipe + the locked bold-flat UI · **S2** game design
+- **S0** reality audit · **S1** art direction + render recipe + the bold-flat UI · **S2** game design
 - **S2-B — the four-Aspect spine**: Wildheart (beast-transform) · Voidhand (kinetic grab/hurl) · Soulbind
   (capture/squad/fuse) · Elemancer (element-zone chemistry). All shipped 2026-06-10/11.
 - **S3 engine/platform**: de-monolith done (SimplifiedNPCSystem 934→183, GameScene 933→304; Components ~1330
-  is a *documented irreducible* Player useFrame controller, not an accidental god-file) · touch/mobile built
+  is the Player useFrame controller, whose per-frame order is load-bearing, not an accidental god-file; it may
+  still be split when that pays, keeping that order) · touch/mobile built
   (iPad/iPhone, iOS cold-start bridged) · perf tiers.
 - **The 2026-06-17 W1–W4 Comprehensive Rebuild**: purge/fix → the look (warm magic-hour grade, toon ocean,
   cinematic title, de-islanded continent) → living frontier (RPG HUD, Hearth outpost, 4 named NPCs, quest
@@ -100,7 +101,10 @@ source text is not a gate.
 
 ## 2. THE REGISTRY — every open item (the loop's definition of done)
 
-Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` open · `▣` in flight · `▣✓` done
+Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him, which since 2026-10-28 means only what the
+session cannot do (real-device feel, the audio mix by ear) or may not do (spend money, open accounts, publish
+externally). An older [KEVIN] tag on a taste, layout, design or re-baseline call is the command session's now
+(Kevin's 2026-10-27 mandate; DECISIONS 2026-10-28 items 14 and 16) · `▢` open · `▣` in flight · `▣✓` done
 
 ### A. Confirmed live bugs
 - ▣✓ **R9 — ESC out of the pause menu FROZE THE PLAYER. FIXED + SHIPPED `8e68425` (2026-08-05).**
@@ -188,8 +192,8 @@ Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` ope
 ### A-bis. ✅ THE 18-DOMAIN REVIEW — 91 confirmed bugs — **ALL 8 SEAMS CLOSED 2026-08-05.**
 
 > **Loop-actionable work in this block is DONE.** B1-B8 are all `▣✓`. What remains inside it is
-> KEVIN-gated, not code: the two owed visual re-baselines (B5's HUD, B7's `mobile.png`) and B8's 3 taste
-> items. Verify before re-opening anything here — B3 was already closed when a queue told me to start on it.
+> not code: the two owed visual re-baselines (B5's HUD, B7's `mobile.png`) and B8's 3 taste items, all the
+> command session's to decide since Kevin's 2026-10-27 mandate. Verify before re-opening anything here — B3 was already closed when a queue told me to start on it.
 > Last two seams: **B4/B4b** (mobs hit you through 200 blocks of rock; windups bankable across de-aggro) and
 > **B6c** (2 of 12 achievements dead on arrival — `updateLevel` had zero callers).
 
@@ -692,11 +696,11 @@ finished by the beast stage varies. **Fix that and the beast states become basel
 same root cause behind the earlier 100-vs-120 readings.** Note this is a CAPTURE-DETERMINISM defect that
 happens to be visible here — it may affect any stage whose content depends on player position.
 
-**KEVIN-GATED, do NOT decide unilaterally:** if the player position cannot be made deterministic cheaply,
+**A design call, the command session's since 2026-10-28 (item 14):** if the player position cannot be made deterministic cheaply,
 the alternative is making the beast reveal a STUDIO card like `boss-closeup` (fixed SX/SY/SZ, clean sky
 backdrop). That would REVERSE a recorded design decision — the fixture is IN-WORLD on purpose, so the
-silhouette is judged in its true context (`setCaptureStudio(false)`, and the code comment says so). Surface
-it; do not just do it.
+silhouette is judged in its true context (`setCaptureStudio(false)`, and the code comment says so). Record
+the reversal and its reason in DECISIONS when it is made, never silently.
 
 **PASS 12 (2026-08-08) — THE THREE POSITIONS ARE NAMED CONSTANTS. THE PHYSICS BODY IS DETERMINISTIC NOW.
 THE VISUAL GROUP IS NOT — AND THAT IS THE LAST LINK.**
@@ -971,7 +975,8 @@ you know the floor.** Same shape as asserting an absence without a baseline.
 - ▢ **[LOOP] add a determinism CONTROL to the visual harness** — capture twice, diff run-to-run, and fail
   on any frame above a floor. A regression gate whose own instrument drifts reports noise as signal, and
   nothing currently measures that.
-- ▢ **[KEVIN] the re-baseline** stays owner-gated and should wait for both of the above.
+- ▢ **[LOOP] the re-baseline** (owner-gated until Kevin's 2026-10-27 mandate handed it to the command session)
+  should wait for both of the above.
 
 ### B. Verification truth (the structural gap)
 - ▢ **V1 [LOOP] Vacuous-gate audit — ⚠️ MY OWN HEADLINE WAS OVERSTATED. Corrected below.**
@@ -1286,9 +1291,10 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   OPPOSITE direction — see §G below. The title hints are deliberately abbreviated copy; rewriting them to
   render from KEY_MAP would change visible title-screen text, which the `menu` baseline covers and the
   compositor cannot currently verify. The discoverability bug it was pointing at is fixed.)** · **WebGPU/TSL migration** (specced, never done — huge blast radius).
-- ▢ The **coherence CUT-gate** stays **PARKED by design** (its own bound #1: inadmissible until a blind
-  calibration scores 100% on must-NOT-cut negatives). **⇒ The pillars govern what to BUILD; they may NOT be used
-  to authorize deletions.**
+- ▢ The **coherence CUT-gate** (an automated audit) stays unused until a blind calibration scores 100% on
+  must-NOT-cut negatives (its own bound #1). That limits the tool, not deletion: the command session may delete
+  anything, shipped player-facing features included, recording the call in DECISIONS with its reason and the
+  lived or e2e proof that nothing still promised depends on the cut (DECISIONS 2026-10-28 items 14 and 16).
 
 ### F. Perf + polish
 - ▢ **F1 [LOOP]** Per-frame allocations still real despite the CHANGELOG's "vein C DONE" claim:
@@ -1439,14 +1445,15 @@ As of 2026-10-28 ~05:30Z, compiled from session-truth (st- ids, `.state/session-
 | 46 | K55(c): retention for refs/backup and refs/snapshots (AB repo: 101 and 275 on 10-27, reopen trigger 300; Crafty 0 and 0). Nothing expires them; recommended 60 days then expire; AB Command owns the tool. | unrated | st-28a6963c3f46; st-d84d79eccb04 | Kevin (decision); AB Command (tool) | open |
 | 47 | The old account-1 operator-page addresses still serve the 2026-10-27 versions; moving the pages back to them when account 1 is next active is optional and Kevin's call. | unrated | st-206fe4439ba2; st-9b9e6abe5382 | Kevin | open |
 
-### H. KEVIN-ONLY (the loop will not touch these)
-- ▢ **#44 The holistic playtest.** The perennial one. It gates every taste sign-off: spell look, movement feel,
-  storm, **audio mix (your ear)**, real-device touch feel.
+### H. KEVIN-ONLY (what the session cannot do or may not do)
+- ▢ **#44 The real-device playtest:** **audio mix (your ear)** and real-device touch feel. The other taste
+  sign-offs it used to gate (spell look, movement feel, storm) are the command session's since 2026-10-28.
 - ▢ **S4 — multiplayer + monetization scope.** The plan's last frontier. Servers, accounts, real money, legal.
   The loop will NOT start netcode or payments without your model. (Hard line already recorded: no randomized
   gacha/lootboxes, COPPA, odds-disclosure-if-random.)
 - ▢ **Shareable-moment / clip / photo-mode tooling** — a named *commercial* blocker.
-- ▢ Final taste sign-offs (the v7 spell look; the art pass in D once it lands).
+- Final taste sign-offs (the v7 spell look; the art pass in D once it lands) moved to the command session on
+  2026-10-27/28 (Kevin's mandate; DECISIONS 2026-10-28 item 14); they are listed here only so the move is visible.
 
 ---
 
@@ -1467,8 +1474,8 @@ out of that one hour. What it bought:
   `explore-day-low` 6.55% is the known intended diff; and **the four `beast-*` baselines are BROKEN — they
   contain no beast at all.** The fixture exists to show the four silhouettes; the baselines are empty
   landscapes blessed 2026-06-22 without anyone looking, so the gate has compared against a broken reference
-  for six weeks. The current captures are correct. **Not re-baselined — Kevin's call**, but the evidence
-  says those four must be replaced. *A baseline nobody looked at is the same defect as a gate that reports
+  for six weeks. The current captures are correct. **Not re-baselined then (it was Kevin's call; since
+  2026-10-27 it is the command session's)**, and the evidence says those four must be replaced. *A baseline nobody looked at is the same defect as a gate that reports
   PASS over input it never examined.*
 
 **Harness ratchets are now closed as a class.** `mutation-proof-trailer` (a new gate must state its proof),
@@ -1534,10 +1541,11 @@ The live cursor (which single unit is in flight *right now*) lives in `memory/AC
 
 Full text: `docs/superpowers/specs/crafty-coherence-pillars.md`. Each is an "X even over Y" trade-off.
 
-- **P0** Preserve novel "beyond-SOTA" seeds until proven incoherent → **PARK-AND-WATCH, never an autonomous cut.**
+- **P0** Preserve novel "beyond-SOTA" seeds until proven incoherent → the automated audit routes them to
+  **PARK-AND-WATCH**, never to a cut.
 - **P1** Four Aspects, each **DEEP before next** — even over feature breadth. *(The Aspects ARE the identity.)*
 - **P2** Cohesive loop: every system feeds fight→loot→build→fight-harder — even over standalone "cool" toys.
-- **P3** ONE locked visual/UI language + a readable feedback grammar — even over raw effect count.
+- **P3** ONE coherent visual/UI language + a readable feedback grammar — even over raw effect count.
 - **P4** Runs great in the **web / iPad / mobile + touch** envelope — even over GPU-maximal fidelity.
 - **P5** Broad-audience legible (≈8 → adult), zh-CN-ready — even over hardcore gatekeeping. *(the youngest players are users,
   NOT a depth-lowering ceiling — real stakes are allowed.)*
@@ -1545,7 +1553,9 @@ Full text: `docs/superpowers/specs/crafty-coherence-pillars.md`. Each is an "X e
 **⛔ The only HARD VETOES in the system are P4's two invariants: (1) NO frequent mid-combat re-mesh;
 (2) input via intent-abstraction, NOT `pointerLockElement`.** Everything else is a ranked support
 (P1=P2 > P3 > P5≈P4-soft). **Accessibility never vetoes depth. Aesthetic verdicts are quarantined from
-autonomous deletion. Default-KEEP under uncertainty; tie → DEEPEN.**
+autonomous deletion by the automated audit. Default-KEEP under uncertainty; tie → DEEPEN.** These bound the
+audit (the CUT-gate), not the command session's own calls, which it records in DECISIONS (2026-10-28 items 14
+and 16).
 
 *(Note P4 invariant (2) is also precisely what makes the input-driven E2E harness in §V2 possible — verbs gate on
 `getInput().active`, not on pointer-lock. The pillar and the test strategy are the same fact.)*
