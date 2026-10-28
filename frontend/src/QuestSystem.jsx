@@ -1,7 +1,7 @@
 import { useGameStore } from './store/useGameStore';
 import { subscribeMobKill } from './game/mobKillBus.js';
 import { questMatches } from './game/questMatch.js';
-import { MOB_TYPES } from './game/mobTypes.js';
+import { killXP } from './game/killReward.js';
 import { GameMethods } from './GameMethods';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -385,15 +385,13 @@ export const useQuestSystem = () => {
     const onMobKill = useCallback((mobType, position, source) => {
         // S2-B3-M1: quest/achievement kill credit = YOUR kills only (ally kills bank nothing)
         if (source !== 'player') return;
-        // Update stats
-        applyStats(prev => ({
-            ...prev,
-            kills: prev.kills + 1,
-            kills_by_type: { ...prev.kills_by_type, [mobType]: (prev.kills_by_type[mobType] || 0) + 1 },
-        }));
-
-        // A kill the mob table pays no XP for pays none through a quest either: a Settler is not quarry.
-        if (MOB_TYPES[mobType]?.xp !== 0) {
+        // A kill worth no XP (a Settler) is not quarry: it counts toward no kill quest and no kill achievement either.
+        if (killXP(mobType) > 0) {
+            applyStats(prev => ({
+                ...prev,
+                kills: prev.kills + 1,
+                kills_by_type: { ...prev.kills_by_type, [mobType]: (prev.kills_by_type[mobType] || 0) + 1 },
+            }));
             updateQuestProgress('kill');
             updateQuestProgress('kill_type', 1, { mobType });
         }

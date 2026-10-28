@@ -78,14 +78,23 @@ describe('B6 wiring — the real hook credits kills correctly', () => {
     expect(progressOf(result, 'hunter')).toBe(7);  // and every kill still counts once for the generic quest
   });
 
-  it('a Settler kill earns no quest credit; a Husk or a Boar kill does', () => {
-    // A Settler kill pays no XP (mobTypes xp 0), so it may not pay XP through "Defeat N mobs" either.
+  it('a Settler kill earns no quest credit and no kill count; a Husk or a Boar kill earns both', () => {
+    // A Settler kill pays no XP (mobTypes xp 0), so it may not pay XP through "Defeat N mobs", or count toward the kill
+    // achievements (Warrior, Serial Slayer, Centurion) either.
     const { result } = renderHook(() => useQuestSystem());
     kill('villager', 3);
     expect(progressOf(result, 'hunter'), 'killing Settlers advanced a kill quest').toBe(0);
+    expect(progressOf(result, 'zslayer')).toBe(0);
+    expect(result.current.stats.kills, 'killing Settlers counted toward the kill achievements').toBe(0);
+    expect(result.current.stats.kills_by_type.villager, 'Settler kills were tallied by type').toBeUndefined();
+    expect(result.current.unlockedAchievements.has('first_kill'), 'a Settler kill unlocked Warrior').toBe(false);
     kill('zombie', 1);
     kill('pig', 1);
     expect(progressOf(result, 'hunter'), 'a Husk or a Boar kill earned no credit — the kill path is dead').toBe(2);
+    expect(progressOf(result, 'zslayer')).toBe(1);
+    expect(result.current.stats.kills, 'a Husk or a Boar kill was not counted — the stats path is dead').toBe(2);
+    expect(result.current.stats.kills_by_type).toMatchObject({ zombie: 1, pig: 1 });
+    expect(result.current.unlockedAchievements.has('first_kill'), 'the first Husk kill did not unlock Warrior').toBe(true);
   });
 });
 

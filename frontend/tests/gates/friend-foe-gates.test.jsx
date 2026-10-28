@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, renderHook, act, cleanup } from '@testing-library/react';
 import * as THREE from 'three';
 import { ecs, mobsQuery } from '../../src/ecs/world';
 import { CombatSystem } from '../../src/systems/CombatSystem';
@@ -11,6 +11,7 @@ import { solveChainTargets } from '../../src/game/chainLightning';
 import { isProtected, isAutoTargetable, canPlayerDamage } from '../../src/combat/targeting';
 import { useGameStore } from '../../src/store/useGameStore';
 import { useFerocityAccrual, useKineticAccrual, useSoulAccrual } from '../../src/world/accrualHooks';
+import { useQuestSystem } from '../../src/QuestSystem';
 
 // B1 — FRIEND/FOE. The 18-domain review's #1 CRITICAL: the player could permanently kill all four hub
 // questgivers (merchant / smith / healer / guide) with 2.7 seconds of holding left-click, deleting
@@ -205,5 +206,38 @@ describe('the NEUTRAL tier banks no Aspect power', () => {
       .toBeGreaterThanOrEqual(MOB_TYPES.zombie.xp);
     expect(killFor(9205, 'pig', [1, 0, -3]), 'a Boar kill dropped less than its declared XP')
       .toBeGreaterThanOrEqual(MOB_TYPES.pig.xp);
+  });
+});
+
+// The XP a kill drops, the kill-quest credit it earns and the kill it counts all read one value, the worth the mob's
+// TYPE declares. A mob carrying its own `xp` field cannot split them: here a Settler carries 40 and a Husk carries 0,
+// and every channel follows the type.
+describe('a kill pays XP and earns kill credit from one reading', () => {
+  beforeEach(() => {
+    clearWorld();
+    useGameStore.setState({ questState: { quests: [
+      { id: 'hunter', title: 'Hunter', type: 'kill', target: 50, progress: 0, completed: false, claimed: false },
+    ], completedQuestIds: [] } });
+    render(<CombatSystem setDamageNumbers={() => {}} setShockwaves={() => {}} damageId={{ current: 0 }} />);
+  });
+
+  it('a Settler carrying xp 40 pays and counts nothing; a Husk carrying xp 0 pays its declared worth and counts', () => {
+    const { result } = renderHook(() => useQuestSystem());
+    const orbXP = () => ecs.entities.filter((e) => e.isXPOrb).reduce((sum, e) => sum + e.amount, 0);
+    const killOne = (id, type, ownXP, pos) => {
+      const e = spawn({ id, type, xp: ownXP, pos });
+      const before = orbXP();
+      act(() => { GameMethods.damageMob(e.id, 9999, 'physical', 'player'); });
+      expect(e.health, `the ${type} did not die — nothing below is about a kill`).toBeLessThanOrEqual(0);
+      const hunter = result.current.quests.find((q) => q.id === 'hunter');
+      return { xp: orbXP() - before, kills: result.current.stats.kills, credit: hunter.progress };
+    };
+    expect(killOne(9301, 'villager', 40, [0, 0, -2]), 'a Settler paid or counted through a field on the entity')
+      .toEqual({ xp: 0, kills: 0, credit: 0 });
+    const husk = killOne(9302, 'zombie', 0, [0, 0, -3]);
+    expect(husk.kills, 'the Husk kill was not counted — the kill bus never reached the quest system').toBe(1);
+    expect(husk.credit, 'the Husk kill earned no quest credit').toBe(1);
+    expect(husk.xp, 'the Husk paid what its entity field says, not what its type declares')
+      .toBeGreaterThanOrEqual(MOB_TYPES.zombie.xp);
   });
 });
