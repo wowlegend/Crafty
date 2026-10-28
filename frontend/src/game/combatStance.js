@@ -330,6 +330,18 @@ export function readMoveTarget() {
   return _moveTarget;
 }
 
+/**
+ * A NON-DEATH TELEPORT: the void-fall guard (Components.jsx) and a save load (useGameStore loadWorldData). The body is
+ * moved, stopped when `stop` (the void guard's falling body; a load's kinematic body carries none), and the stance is
+ * reset: the fight it was in is somewhere else now. Round-1 review f: both sites teleported and kept the stance, so for
+ * up to CALM_MS + EXIT_S (2.6 s) the walk at the new site was clamped against the old fight's threat, with no mob near.
+ */
+export function teleportPlayer(rb, pos, stop = false) {
+  rb.setTranslation(pos, true);
+  if (stop) rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  resetStance();
+}
+
 /** Death: no weight, no engagement, no threat, no calm carried over, and every stall clock dropped. */
 export function resetStance() {
   _state.w = 0; _state.engaged = false; _state.threatId = null; _state.awayX = 0; _state.awayZ = 0; _state.gap = 0;

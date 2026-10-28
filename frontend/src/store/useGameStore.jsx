@@ -6,6 +6,7 @@ import { aspectUnlockHint } from '../game/aspectHints.js';
 import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
+import { teleportPlayer } from '../game/combatStance.js';
 import { addShake, decayShake } from '../game/cameraShakeChannel.js';
 import { writeWorld, listWorlds, mintWorldId, setActiveWorldId } from '../game/worldSaves.js';
 import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward, gameTimeForTimeOfDay } from '../game/dayNight.js';
@@ -1195,11 +1196,12 @@ export const useGameStore = create((set, get) => ({
             };
         });
 
-        // Teleport the live Rapier body (imperative; outside the reactive set) if present.
+        // Teleport the live Rapier body (imperative; outside the reactive set) if present, leaving any fight behind
+        // (game/combatStance.js teleportPlayer resets the stance).
         const pos = saveData.player_data?.position;
         const rb = get().playerRigidBodyRef;
         if (pos && rb && rb.current && typeof rb.current.setTranslation === 'function') {
-            rb.current.setTranslation({ x: pos.x, y: pos.y, z: pos.z }, true);
+            teleportPlayer(rb.current, { x: pos.x, y: pos.y, z: pos.z });
         }
         // No-permanent-beast: a same-session load while transformed returns to human (the beast-form
         // state is transient/never serialized; this also drives Components.jsx to restore the base

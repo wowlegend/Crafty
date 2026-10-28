@@ -22,7 +22,7 @@ import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
 import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { pressSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
-import { stanceFrame, stanceWalk, resetStance } from './game/combatStance.js';
+import { stanceFrame, stanceWalk, resetStance, teleportPlayer } from './game/combatStance.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -954,8 +954,7 @@ export const Player = ({ isWorldBuilt }) => {
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
     if (spawnPosSet.current && isVoidFall(currentTrans.y)) {
       console.warn('Player fell into void; teleporting to safety.');
-      rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
-      rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      teleportPlayer(rigidBodyRef.current, { x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true); // and the fight is left behind (game/combatStance.js)
       spawnPosSet.current = false;
       return;
     }

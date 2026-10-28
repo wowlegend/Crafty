@@ -48,11 +48,13 @@
 //   bound's limit without the walk slow -> RED (the heavy-charge case); B4 the tangential part not pulled in -> RED; B5
 //   stanceWalk passes no gap and no dt -> RED; B6 the limit at half the retreat (a blanket slow) -> RED; B7 the gap
 //   1 m long -> RED; B0 identity -> survived.
+//   Round-1 review f (40 tests): T2 teleportPlayer keeps the stance -> RED; T3 it never stops the body -> RED; the save
+//   load's own call is tests/store/stance-teleport.test.js.
 import { describe, it, expect } from 'vitest';
 import {
   STANCE_CAPS, MIN_CLOSING_RATE, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
   stanceVelocity, stanceStep, getStance, resetStance, engageDyM, STALL_MS, CALM_MS, ENTER_S, EXIT_S,
-  noteMoveTarget, readMoveTarget, stanceFrame, stanceWalk,
+  noteMoveTarget, readMoveTarget, stanceFrame, stanceWalk, teleportPlayer,
 } from './combatStance.js';
 import { mobSensePoint } from './mobSenses.js';
 import { moveVector } from './locomotion.js';
@@ -404,6 +406,28 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
     expect(cometStrafe.z, 'the form lost its pace').toBeCloseTo(STANCE_CAPS.strafe * 1.4, 12);
     const charging = stanceWalk(MOVING(14 * 0.55, 0), st, { moveMult: 1 }, 0.55, { x: 0, z: 0 }, SNAP);
     expect(charging.x, 'the heavy\'s walk slow did not reach the retreat').toBeCloseTo(STANCE_CAPS.retreat * 0.55, 12);
+  });
+
+  // Round-1 review f: the void-fall guard and a save load teleported the body and kept the stance, so the walk at the
+  // new site stayed clamped against the old fight for up to 2.6 s. Both now go through teleportPlayer.
+  it('teleportPlayer moves the body, stops it when asked, and leaves the fight behind', () => {
+    engaged();
+    const calls = [];
+    const rb = { setTranslation: (p, wake) => calls.push(['at', p, wake]), setLinvel: (v, wake) => calls.push(['vel', v, wake]) };
+    teleportPlayer(rb, { x: 0, y: 120, z: 0 }, true);
+    expect(calls).toEqual([['at', { x: 0, y: 120, z: 0 }, true], ['vel', { x: 0, y: 0, z: 0 }, true]]);
+    const s = getStance();
+    expect([s.w, s.engaged, s.threatId, s.awayX, s.awayZ, s.gap], 'the stance came along on the teleport').toEqual([0, false, null, 0, 0, 0]);
+    // the next frame at the new site, with no mob near: no calm carried, no clamp
+    const after = stanceFrame([], { x: 0, y: 120, z: 0 }, cam(0, 121.2, 0), 1000, 1 / 60);
+    expect([after.engaged, after.w]).toEqual([false, 0]);
+    const v = stanceWalk(MOVING(14, 0), after, { moveMult: 1 }, 1, { x: 14, z: 0 }, 1 / 60);
+    expect(v.x, 'the walk at the new site was clamped against the old fight').toBe(14);
+    calls.length = 0;
+    engaged();
+    teleportPlayer(rb, { x: 5, y: 60, z: 5 });
+    expect(calls.map((c) => c[0]), 'a teleport without stop touched the velocity').toEqual(['at']);
+    expect(getStance().engaged).toBe(false);
   });
 
   it('out of combat stanceWalk hands the ramp moveVector\'s output exactly, and a still stick ramps to 0', () => {
