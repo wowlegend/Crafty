@@ -11,7 +11,30 @@ export const SAVE_VERSION = 2; // 1 = pre-A3 (no progression); 2 = A3 progressio
 
 const mapEntries = (m) => (m instanceof Map ? Array.from(m.entries()) : Array.isArray(m) ? m : []);
 
+// THE TOMBSTONE PASS-THROUGH (plan row 20; DECISIONS 2026-10-28 W1-H items 4 and 10). A key under `progression` or
+// `game_state` that this build does not write is kept as loaded (the store's `_tombstone`) and written back on every
+// save, so a build that stops writing a field, or one rolled back behind a build that added one, loses nothing. It
+// holds for one SAVE_VERSION: a save stamped older than this build carries nothing forward, so bumping SAVE_VERSION is
+// the act that closes these doors. Live keys are spread after the bag, so a tombstoned value never shadows one.
+const TOMBSTONE_SLICES = ['progression', 'game_state'];
+
+const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/** The keys of `saveData`'s slices this build does not write, as `{ progression?, game_state? }`. Pure. */
+export function splitTombstone(saveData) {
+  const bag = {};
+  if (!isPlainObject(saveData) || !(Number(saveData.version) >= SAVE_VERSION)) return bag;
+  const written = buildSaveData({});
+  for (const slice of TOMBSTONE_SLICES) {
+    if (!isPlainObject(saveData[slice])) continue;
+    const unknown = Object.entries(saveData[slice]).filter(([key]) => !Object.prototype.hasOwnProperty.call(written[slice], key));
+    if (unknown.length) bag[slice] = Object.fromEntries(unknown);
+  }
+  return bag;
+}
+
 export function buildSaveData(state, { position } = {}) {
+  const tomb = isPlainObject(state._tombstone) ? state._tombstone : {};
   return {
     version: SAVE_VERSION,
     save_name: `Save_${new Date().toLocaleString()}`,
@@ -28,6 +51,7 @@ export function buildSaveData(state, { position } = {}) {
     // working state and mirrors them to arrays here, so this is already JSON-safe).
     questState: state.questState || null,
     progression: {
+      ...tomb.progression,
       level: state.level,
       currentXP: state.currentXP,
       totalXP: state.totalXP,
@@ -49,6 +73,7 @@ export function buildSaveData(state, { position } = {}) {
       resonanceBanked: state.resonanceBanked, // S2-B4-M2 (twin)
     },
     game_state: {
+      ...tomb.game_state,
       gameMode: state.gameMode,
       selectedBlock: state.selectedBlock,
       activeSpell: state.activeSpell,

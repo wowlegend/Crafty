@@ -1,0 +1,171 @@
+{
+  "id": "local_1793212399641",
+  "name": "Save_10/28/2026, 11:33:19 AM",
+  "created_at": "2026-10-28T18:33:19.641Z",
+  "is_owner": true,
+  "version": 2,
+  "save_name": "Save_10/28/2026, 11:33:19 AM",
+  "world_data": {
+    "blocks": [
+      [
+        "3_20_4",
+        3
+      ],
+      [
+        "4_20_4",
+        3
+      ]
+    ]
+  },
+  "chests": [],
+  "player_data": {
+    "position": {
+      "x": 3,
+      "y": 21,
+      "z": 6
+    },
+    "inventory": {
+      "blocks": {
+        "grass": 32,
+        "dirt": 32,
+        "stone": 16,
+        "wood": 16,
+        "glass": 8,
+        "sand": 16,
+        "coal": 8,
+        "iron": 4,
+        "Stone Sword": 0,
+        "Health Potion": 2,
+        "Mana Potion": 1,
+        "crystals": 12,
+        "wand": 1
+      },
+      "tools": {
+        "pickaxe": 1,
+        "shovel": 1,
+        "axe": 1,
+        "sword": 1
+      },
+      "magic": {}
+    }
+  },
+  "questState": {
+    "quests": [
+      {
+        "id": "first_blood",
+        "title": "First Blood",
+        "icon": "sword",
+        "description": "Cut down the first horror at the gate",
+        "type": "kill",
+        "target": 1,
+        "xpReward": 30,
+        "tier": 1,
+        "giver": "Old Pike the Warden",
+        "lore": "The Blight pushes monsters to our gate. Draw first blood, and prove you can hold the frontier.",
+        "progress": 0,
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "id": "hunter",
+        "title": "Hunter",
+        "icon": "bow",
+        "description": "Thin the frontier pack -- defeat 5",
+        "type": "kill",
+        "target": 5,
+        "xpReward": 75,
+        "tier": 1,
+        "itemReward": {
+          "item": "Iron Sword",
+          "count": 1
+        },
+        "giver": "Mara the Smith",
+        "lore": "Five more, and I will forge you something worth carrying past the shrines.",
+        "progress": 0,
+        "completed": false,
+        "claimed": false
+      },
+      {
+        "id": "builder",
+        "title": "Builder",
+        "icon": "hammer",
+        "description": "Raise the outpost walls -- place 20 blocks",
+        "type": "block_place",
+        "target": 20,
+        "xpReward": 50,
+        "tier": 1,
+        "itemReward": {
+          "item": "wood",
+          "count": 24
+        },
+        "progress": 4,
+        "completed": false,
+        "claimed": false
+      }
+    ],
+    "completedQuestIds": [],
+    "stats": {
+      "kills": 0,
+      "kills_by_type": {},
+      "spells": 0,
+      "blocks_placed": 4,
+      "blocks_broken": 0,
+      "chests": 0,
+      "distance": 0,
+      "deaths": 0,
+      "level": 1
+    },
+    "unlockedAchievements": [
+      "first_step"
+    ]
+  },
+  "progression": {
+    "level": 5,
+    "currentXP": 1,
+    "totalXP": 813,
+    "attributes": {
+      "strength": 13,
+      "agility": 11,
+      "intellect": 12,
+      "armor": 0,
+      "attributePoints": 14
+    },
+    "equipment": {
+      "head": null,
+      "chest": null,
+      "boots": null,
+      "weapon": "Stone Sword",
+      "offhand": null
+    },
+    "talentPoints": 3,
+    "unlockedTalents": {
+      "voidhand_force": 1
+    },
+    "spellLevels": {
+      "fireball": 2,
+      "iceball": 2
+    },
+    "coins": 240,
+    "nightCount": 0,
+    "lastRewardedNight": 0,
+    "ferocityBanked": 30,
+    "kineticBanked": 20,
+    "soulBanked": 15,
+    "resonanceBanked": 10
+  },
+  "game_state": {
+    "gameMode": "survival",
+    "selectedBlock": "grass",
+    "activeSpell": "fireball",
+    "isDay": true,
+    "gameTime": 0,
+    "gameWon": false,
+    "bossState": {
+      "health": 700,
+      "active": false,
+      "defeated": false,
+      "tier": 0,
+      "killNight": 0
+    }
+  }
+}

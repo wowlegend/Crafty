@@ -3,7 +3,7 @@ import { mitigateDamage } from '../utils/combat';
 import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progression.js';
 import { foldTalentEffects, refundUnknownTalents, canUnlockTalent, respecTalents } from '../game/talentTree.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, migrateSaveData } from '../game/saveSchema.js';
+import { buildSaveData, migrateSaveData, splitTombstone } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -98,6 +98,10 @@ export const useGameStore = create((set, get) => ({
     // inherits a pointer to a save it never opened and the autosave writes a level-1 world over it.
     // NEVER serialize this into saveSchema.
     _sessionWorldId: null,
+
+    // The save keys this build does not write, as loaded (game/saveSchema.js splitTombstone); buildSaveData writes them
+    // back. Replaced wholesale by every load, so a new world never inherits the last one's.
+    _tombstone: {},
 
     // Capture-only: hide the gameplay HUD for clean character-studio shots
     // (e.g. the character-closeup visual fixture). Default false -> HUD always shows
@@ -1143,6 +1147,7 @@ export const useGameStore = create((set, get) => ({
 
             return {
                 _worldEditsPending: !state.terrainWorker,
+                _tombstone: splitTombstone(saveData),
                 worldBlocks,
                 inventory,
                 gameMode,
