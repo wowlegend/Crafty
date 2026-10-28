@@ -21,10 +21,19 @@
 //   S3h the no-direction cap dropped -> RED. S3i the no-direction cap at the retreat cap -> RED. S3j the walk slow
 //   not applied to the retreat -> RED. S3k the negative strafe clamp dropped -> RED. S3l a quadratic blend `w * w`
 //   -> RED. S3m the advance cap not scaled by formMult -> RED. S3n identity (a comment edit) -> survived.
+//   Task 4 (stanceStep; RED first with "resetStance is not a function", 15 of 30). Every one RED: S4a the vertical
+//   reach dropped; S4a2 a flat 4 m reach (the first draft); S4a3 the reach one-sided (a mob below passes); S4b
+//   CALM_MS 0; S4s the calm halved; S4c hysteresis removed; S4c2 the switch margin on the wrong side; S4d isAggro
+//   not required; S4e the NON_PURSUERS skip dropped; S4q isHostile dropped; S4f the stall rule dropped; S4g progress
+//   as the fall in the mob-to-player DISTANCE (the player's motion counts); S4h STALL_PROGRESS_M 0.7; S4i the melee
+//   margin dropped; S4i2 a climber's strike reach its melee range (the plan's text) instead of its leap; S4j the stall
+//   clocks scoped to range (the plan's text: a flicker restarts them); S4k clocks never dropped; S4l resetStance
+//   keeps the clocks; S4m the enter blend at the exit rate; S4n no zero-direction guard; S4o away negated; S4p a 3D
+//   engage radius; S4r a stale threat kept out of combat. S4z identity (a comment edit) -> survived.
 import { describe, it, expect } from 'vitest';
 import {
   STANCE_CAPS, MIN_CLOSING_RATE, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
-  stanceVelocity,
+  stanceVelocity, stanceStep, getStance, resetStance, engageDyM, STALL_MS, CALM_MS, ENTER_S, EXIT_S,
 } from './combatStance.js';
 import { MOB_TYPES } from './mobTypes.js';
 import { chaseSpeedMult } from './mobMovement.js';
@@ -111,5 +120,181 @@ describe('stanceVelocity — the radial clamp (Task 3)', () => {
     expect(out.x).toBeCloseTo(2.0, 12);
     expect(stanceVelocity(3, 4, 1, 0, 0, 1, 1, STANCE_CAPS, out)).toBe(out);
     expect(out).toEqual({ x: 3, z: 4 });
+  });
+});
+
+// Task 4. `player` is the point mobs measure the player from (mobSensePoint, the camera: the plan's height-reference
+// deviation), so every dy below is measured the way the worker measures it. stanceStep's state is a module singleton,
+// so every case starts from resetStance(). "Qualified THIS frame" is read as `lastEngagedAt === now`: `engaged` alone
+// cannot show it, because the calm holds `engaged` for CALM_MS after the last qualifying frame.
+describe('stanceStep — engage, calm, blend (Task 4)', () => {
+  let nextId = 0;
+  const mob = ({ x, y = 0, z = 0, aggro = true, passive = false, health = 50, type = 'zombie', dyingUntil } = {}) => ({
+    id: `m${++nextId}`, isMob: true, type, passive, isAggro: aggro, health, dyingUntil, position: { x, y, z },
+  });
+  const P = Object.freeze({ x: 0, y: 0, z: 0 });
+  const step = (mobs, now, player = P, dt = 1 / 60) => stanceStep(getStance(), mobs, player, now, dt);
+  const qualifies = (mobs, now, player = P) => step(mobs, now, player).lastEngagedAt === now;
+  const once = (m) => { resetStance(); return step([m], 0).engaged; };
+
+  it('engages on an aggro\'d hostile at 11.9 m and not at 12.1 m (horizontal distance)', () => {
+    expect(once(mob({ x: 11.9 }))).toBe(true);
+    expect(once(mob({ x: 12.1 }))).toBe(false);
+    expect(once(mob({ x: 8.4, z: 8.4 }))).toBe(true); // 11.88 m on a diagonal
+    expect(once(mob({ x: 11.9, y: 2 }))).toBe(true); // 3D 12.07 m: a 3D radius would refuse it
+  });
+
+  it('ignores a hostile beyond its own vertical reach — the reach the worker strikes with', () => {
+    const at = (type, y) => once(mob({ x: 5, y, type }));
+    expect(at('zombie', 2.4)).toBe(true); expect(at('zombie', 2.6)).toBe(false);
+    expect(at('zombie', -2.4)).toBe(true); expect(at('zombie', -2.6)).toBe(false); // above the player, too
+    expect(at('moss_brute', 3.1)).toBe(true); expect(at('moss_brute', 3.3)).toBe(false);
+    expect(at('spider', 5.9)).toBe(true); expect(at('spider', 6.1)).toBe(false);
+    expect(at('skitterling', 2.6)).toBe(false);
+    expect([engageDyM('zombie'), engageDyM('moss_brute'), engageDyM('spider')]).toEqual([2.5, 3.2, 6]);
+  });
+
+  it('ignores passive, un-aggro\'d, dead and dying (dyingUntil) mobs', () => {
+    expect(once(mob({ x: 5 })), 'control: the same factory, hostile and aggro\'d').toBe(true);
+    expect(once(mob({ x: 5, passive: true }))).toBe(false);
+    expect(once(mob({ x: 5, aggro: false }))).toBe(false);
+    expect(once(mob({ x: 5, health: 0 }))).toBe(false);
+    expect(once(mob({ x: 5, dyingUntil: 123 }))).toBe(false);
+  });
+
+  it('a skeleton never engages', () => {
+    for (const x of [10, 5]) {
+      resetStance();
+      expect(once(mob({ x })), `control: a husk at ${x} m`).toBe(true);
+      resetStance();
+      const s = mob({ x, type: 'skeleton' });
+      for (let f = 0; f <= 120; f++) step([s], f * 1000 / 60);
+      expect(getStance().engaged, `skeleton at ${x} m`).toBe(false);
+      expect(getStance().w).toBe(0);
+    }
+  });
+
+  it('a stranded mob stops qualifying after STALL_MS, and engaged leaves CALM_MS later', () => {
+    resetStance();
+    const h = [mob({ x: 8 })]; // outside the husk's melee reach + margin (3.5 m), never moving
+    for (const t of [0, 500, 1000, 1499]) expect(qualifies(h, t), `t=${t}`).toBe(true);
+    expect(qualifies(h, 1501)).toBe(false);
+    expect(step(h, 3498).engaged).toBe(true);
+    expect(step(h, 3500).engaged).toBe(false);
+    expect(STALL_MS).toBe(1500);
+  });
+
+  it('a mob closing by its own steps keeps qualifying', () => {
+    resetStance();
+    const m = mob({ x: 11 });
+    for (let t = 0; t <= 5000; t += 100) {
+      m.position.x = 11 - 0.6 * Math.floor(t / 1000); // 0.6 m toward the player every 1000 ms
+      expect(qualifies([m], t), `t=${t}`).toBe(true);
+    }
+  });
+
+  it('the player\'s own approach is not the mob\'s progress', () => {
+    resetStance();
+    const h = [mob({ x: 8 })];
+    let last = null;
+    for (let t = 0; t <= 1600; t += 100) last = qualifies(h, t, { x: 3 * t / 1600, y: 0, z: 0 }); // 3 m toward it
+    expect(last, 'the husk never moved, so the player walking up to 5 m of it must not keep it qualified').toBe(false);
+  });
+
+  it('a mob inside its melee reach qualifies while standing still (the brute\'s own reach; a spider\'s leap)', () => {
+    for (const [type, x] of [['zombie', 2.0], ['zombie', 3.4], ['moss_brute', 4.1], ['spider', 5.5]]) {
+      resetStance();
+      const h = [mob({ x, type })];
+      for (let t = 0; t <= 5000; t += 100) expect(qualifies(h, t), `${type} at ${x} m, t=${t}`).toBe(true);
+    }
+    resetStance();
+    const out = [mob({ x: 3.6 })]; // just outside the husk's 2.5 + 1.0
+    for (let t = 0; t < 1500; t += 100) step(out, t);
+    expect(qualifies(out, 1600), 'control: a husk at 3.6 m does stall').toBe(false);
+  });
+
+  it('a stranded mob flickering across the engage radius still stalls (its clock is not restarted)', () => {
+    resetStance();
+    const h = [mob({ x: 12.05 })];
+    for (let t = 0, i = 0; t <= 3600; t += 50, i++) step(h, t, { x: i % 2 ? 0.2 : 0, y: 0, z: 0 }); // 11.85 / 12.05 m
+    expect(getStance().lastEngagedAt).toBeLessThan(1500);
+    expect(getStance().engaged, 'released within STALL_MS + CALM_MS').toBe(false);
+  });
+
+  it('a mob that stops being an aggro\'d hostile loses its stall clock', () => {
+    resetStance();
+    const m = mob({ x: 8 });
+    for (let t = 0; t <= 1400; t += 100) step([m], t);
+    m.isAggro = false; step([m], 1450);
+    m.isAggro = true;
+    for (let t = 1500; t <= 2900; t += 100) expect(qualifies([m], t), `t=${t}`).toBe(true);
+  });
+
+  it('stays engaged for CALM_MS after the last engaged frame, then leaves', () => {
+    resetStance();
+    expect(step([mob({ x: 5 })], 0).engaged).toBe(true);
+    expect(step([], 1999).engaged).toBe(true);
+    expect(step([], 2001).engaged).toBe(false);
+    expect(CALM_MS).toBe(2000);
+  });
+
+  it('w reaches 1 after ENTER_S and returns to 0 after EXIT_S (dt 1/60)', () => {
+    resetStance();
+    const h = [mob({ x: 5 })];
+    let f = 0;
+    const tick = (mobs) => step(mobs, (f++) * 1000 / 60);
+    for (let i = 0; i < 11; i++) tick(h);
+    expect(getStance().w).toBeGreaterThan(0.9); expect(getStance().w).toBeLessThan(1);
+    tick(h); tick(h);
+    expect(getStance().w).toBe(1);
+    while (tick([]).engaged) expect(getStance().w).toBe(1); // the calm holds the stance at full weight
+    for (let i = 1; i < 35; i++) tick([]);
+    expect(getStance().w).toBeGreaterThan(0); expect(getStance().w).toBeLessThan(0.1);
+    tick([]); tick([]); tick([]);
+    expect(getStance().w).toBe(0);
+    expect([getStance().threatId, getStance().awayX, getStance().awayZ], 'out of combat, no threat is kept').toEqual([null, 0, 0]);
+    expect([ENTER_S, EXIT_S]).toEqual([0.2, 0.6]);
+  });
+
+  it('keeps its threat until another is a metre nearer', () => {
+    resetStance();
+    const east = mob({ x: 5 }), west = mob({ x: -4.5 });
+    expect(step([east], 0).threatId).toBe(east.id);
+    expect(step([east, west], 16).threatId, 'west at 4.5 m is only 0.5 m nearer').toBe(east.id);
+    expect(getStance().awayX).toBeCloseTo(-1, 12);
+    west.position.x = -3.9;
+    expect(step([east, west], 33).threatId, 'west at 3.9 m is 1.1 m nearer').toBe(west.id);
+    expect(getStance().awayX).toBeCloseTo(1, 12);
+    expect(step([east], 50).threatId, 'the threat no longer qualifies: the nearest takes over at once').toBe(east.id);
+  });
+
+  it('away points from the threat to the player, unit length, from the positions it records', () => {
+    resetStance();
+    const player = { x: 1, y: 7, z: 1 };
+    const s = step([mob({ x: 3, y: 7, z: 4 })], 0, player);
+    expect(s.awayX).toBeCloseTo(-2 / Math.sqrt(13), 12); expect(s.awayZ).toBeCloseTo(-3 / Math.sqrt(13), 12);
+    expect(Math.hypot(s.awayX, s.awayZ)).toBeCloseTo(1, 12);
+    expect([s.threatX, s.threatZ, s.playerX, s.playerY, s.playerZ]).toEqual([3, 4, 1, 7, 1]);
+    resetStance();
+    const o = step([mob({ x: 0.0005 })], 0); // on the player's column: no direction
+    expect(o.engaged).toBe(true);
+    expect([o.awayX, o.awayZ]).toEqual([0, 0]);
+  });
+
+  it('stanceStep returns the live singleton, counts frames, and resetStance zeroes w and engaged', () => {
+    resetStance();
+    const s = getStance();
+    const f0 = s.frame;
+    for (let f = 0; f < 15; f++) expect(step([mob({ x: 5 })], f * 1000 / 60)).toBe(s);
+    expect(s.frame - f0).toBe(15);
+    expect(s.w).toBe(1); expect(s.engaged).toBe(true);
+    resetStance();
+    expect(getStance()).toBe(s);
+    expect([s.w, s.engaged, s.threatId, s.awayX, s.awayZ]).toEqual([0, false, null, 0, 0]);
+    expect(step([], 300).engaged, 'no calm carried across a reset').toBe(false);
+    const h = [mob({ x: 8 })];
+    for (let t = 1000; t <= 2600; t += 100) step(h, t); // stalled by now
+    resetStance();
+    expect(qualifies(h, 2700), 'the reset clears the stall clocks too').toBe(true);
   });
 });

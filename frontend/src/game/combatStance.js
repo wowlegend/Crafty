@@ -17,6 +17,9 @@ import { MOB_TYPES } from './mobTypes.js';
 import { archetypeFor } from './mobArchetypes.js';
 import { chaseSpeedMult, SHOULDER_CHARGE_SPEED } from './mobMovement.js';
 import { BASE_MOVE_SPEED } from './locomotion.js';
+import { CLIMBERS } from './localPath.js';
+import { LEAP_RANGE } from './mobSenses.js';
+import { isHostile } from '../combat/targeting.js';
 
 export { BASE_MOVE_SPEED };
 
@@ -113,4 +116,136 @@ export function stanceVelocity(vx, vz, awayX, awayZ, w, formMult = 1, walkMult =
   out.x = lerp(vx, cx, w);
   out.z = lerp(vz, cz, w);
   return out;
+}
+
+// ---- Engage, calm, blend: the stance state machine (Task 4) -------------------------------------------------------
+
+/** A threat engages within this HORIZONTAL distance (m). */
+export const ENGAGE_RADIUS_M = 12;
+/** The stance stays engaged this long (ms) after the last frame a threat qualified. */
+export const CALM_MS = 2000;
+/** w rises 0 -> 1 over ENTER_S and falls 1 -> 0 over EXIT_S (seconds). */
+export const ENTER_S = 0.2;
+export const EXIT_S = 0.6;
+/** The current threat holds until another qualifier is MORE than this much nearer (m): no jitter between equals. */
+export const THREAT_SWITCH_M = 1.0;
+/** A mob outside its strike reach that has made less than STALL_PROGRESS_M (m) of its OWN progress toward the player
+ *  in STALL_MS (ms) stops qualifying: a husk stranded under a ledge must not hold the stance forever. */
+export const STALL_MS = 1500;
+export const STALL_PROGRESS_M = 0.5;
+/** A mob within its strike reach plus this (m) is never stalled: it can hit you standing still. */
+export const MELEE_MARGIN_M = 1.0;
+
+// Per type, cached once: archetypeFor builds a fresh object per call, and stanceStep runs per mob per frame.
+const _reach = new Map();
+function reachOf(type) {
+  let r = _reach.get(type);
+  if (!r) {
+    const a = archetypeFor(type);
+    // A climber (the spider) strikes with its leap, which covers LEAP_RANGE across AND up (ai.worker.js, the leap
+    // branch: canReach(dx, dy, dz, LEAP_RANGE, LEAP_RANGE)); every other type with its melee reach.
+    const leaps = CLIMBERS.has(type);
+    r = { dy: leaps ? LEAP_RANGE : a.verticalReach, strike: leaps ? LEAP_RANGE : a.meleeRange };
+    _reach.set(type, r);
+  }
+  return r;
+}
+
+/** How far above or below the player a mob of `type` may stand and still engage (m): the reach it strikes with. */
+export function engageDyM(type) {
+  return reachOf(type).dy;
+}
+
+const _state = {
+  w: 0, engaged: false, threatId: null, awayX: 0, awayZ: 0, lastEngagedAt: -Infinity,
+  threatX: 0, threatZ: 0, playerX: 0, playerY: 0, playerZ: 0, frame: 0,
+};
+
+// The stall clocks: id -> { ax, az, at, seen }, the mob's position when it last made STALL_PROGRESS_M of its own
+// progress, and when. Kept for EVERY aggro'd hostile pursuer, not only those in range (a deviation from the plan,
+// which scoped them to range): a range-scoped clock restarts each time a stranded mob flickers across the 12 m radius
+// or its reach bound (the eye bobs a few cm a step), so a mob that never gains could hold the stance forever. A clock
+// whose mob was not an aggro'd hostile this frame is dropped, so the map is bounded by the live mobs.
+const _anchors = new Map();
+let _tag = 0;
+const _sweep = (a, id) => { if (a.seen !== _tag) _anchors.delete(id); };
+
+/**
+ * One frame of the stance. Mutates and returns `state` (pass getStance()). Allocation-free in steady state: one small
+ * object per newly aggro'd mob, for its stall clock.
+ *
+ *   mobs    the live mob entities (mobsQuery.entities), read only.
+ *   player  { x, y, z }, THE POINT MOBS MEASURE THE PLAYER FROM: mobSensePoint(camera) (game/mobSenses.js), the same
+ *           point AIWorkerSystem posts to the worker, so a mob counted as able to reach you is one the worker would
+ *           let swing (the plan's height-reference deviation).
+ *   nowMs   performance.now(): the stance is the player's real-time feel, like heavyAttack.js.
+ *   dtS     the frame's seconds, for the blend.
+ *
+ * A mob QUALIFIES when it is hostile (isHostile: not protected, passive or dead/dying), aggro'd, not a NON_PURSUER,
+ * within ENGAGE_RADIUS_M horizontally and engageDyM(type) vertically, and not stalled. The threat is the current one
+ * while it qualifies, unless another is more than THREAT_SWITCH_M nearer; else the nearest. With no qualifier the
+ * last threat's position is kept, so the calm and the exit blend still clamp against where the fight was.
+ */
+export function stanceStep(state, mobs, player, nowMs, dtS) {
+  state.frame++;
+  _tag = state.frame;
+  const px = player.x, py = player.y, pz = player.z;
+  let nearId = null, nearD = Infinity, nearX = 0, nearZ = 0;
+  let curD = Infinity, curX = 0, curZ = 0;
+  for (let i = 0; i < mobs.length; i++) {
+    const m = mobs[i];
+    if (!isHostile(m) || !m.isAggro || m.type in NON_PURSUERS) continue;
+    const mx = m.position.x, mz = m.position.z;
+    const dx = px - mx, dz = pz - mz;
+    const d = Math.hypot(dx, dz);
+    let a = _anchors.get(m.id);
+    if (!a) { a = { ax: mx, az: mz, at: nowMs, seen: 0 }; _anchors.set(m.id, a); }
+    a.seen = _tag;
+    // The mob's OWN displacement since its anchor, projected on the direction to the player. The player's motion
+    // never enters it: walking up to a stranded husk is not the husk making progress.
+    if (d > 1e-9 && ((mx - a.ax) * dx + (mz - a.az) * dz) / d >= STALL_PROGRESS_M) { a.ax = mx; a.az = mz; a.at = nowMs; }
+    if (d > ENGAGE_RADIUS_M) continue;
+    const r = reachOf(m.type);
+    if (Math.abs(m.position.y - py) > r.dy) continue;
+    if (d > r.strike + MELEE_MARGIN_M && nowMs - a.at >= STALL_MS) continue;
+    if (d < nearD) { nearD = d; nearId = m.id; nearX = mx; nearZ = mz; }
+    if (m.id === state.threatId) { curD = d; curX = mx; curZ = mz; }
+  }
+  _anchors.forEach(_sweep);
+
+  if (nearId !== null) {
+    state.lastEngagedAt = nowMs;
+    if (curD !== Infinity && !(nearD < curD - THREAT_SWITCH_M)) {
+      state.threatX = curX; state.threatZ = curZ;
+    } else {
+      state.threatId = nearId; state.threatX = nearX; state.threatZ = nearZ;
+    }
+  }
+  state.engaged = nowMs - state.lastEngagedAt < CALM_MS;
+
+  if (state.engaged) state.w = Math.min(1, state.w + dtS / ENTER_S);
+  else state.w = Math.max(0, state.w - dtS / EXIT_S);
+  if (!state.engaged && state.w === 0) state.threatId = null;
+
+  state.playerX = px; state.playerY = py; state.playerZ = pz;
+  if (state.threatId === null) {
+    state.awayX = 0; state.awayZ = 0;
+  } else {
+    const ax = px - state.threatX, az = pz - state.threatZ;
+    const l = Math.hypot(ax, az);
+    if (l < 1e-3) { state.awayX = 0; state.awayZ = 0; } else { state.awayX = ax / l; state.awayZ = az / l; }
+  }
+  return state;
+}
+
+/** The live stance, read transiently by the controller and passed back to stanceStep. Never subscribed. */
+export function getStance() {
+  return _state;
+}
+
+/** Death: no weight, no engagement, no threat, no calm carried over, and every stall clock dropped. */
+export function resetStance() {
+  _state.w = 0; _state.engaged = false; _state.threatId = null; _state.awayX = 0; _state.awayZ = 0;
+  _state.lastEngagedAt = -Infinity;
+  _anchors.clear();
 }

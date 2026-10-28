@@ -502,7 +502,24 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     never subscribed.
   - `resetStance()`, called on death.
 
-- [ ] **Step 1: Write the failing tests.** Use a fake mob factory `mob({ x, y=0, z=0, aggro=true, passive=false, health=50 })` and player `{x:0,y:0,z:0}`:
+> **Deviation (command session decision, 2026-10-27): the height reference is the point the worker strikes from.**
+> This plan passed the rigid-body translation as `player` (Task 5 Step 3: `currentTrans`). The worker measures every
+> sense and reach test from the `playerPos` that `AIWorkerSystem` posts, and that is `camera.position`
+> (`systems/AIWorkerSystem.jsx:226`). The camera rides `translation.y + 1.2` plus bob, shake and kick
+> (`Components.jsx:1410`; the brief's `:886` is the death-branch copy of the same offset). The human capsule's centre
+> is 0.9 m above its feet (`beasts.js` `BASE_CAPSULE`) and a mob's `y` is 0.5 m above its floor (`localPath.js`
+> `settleOnGround`), so on one floor the worker reads dy 1.6 and the translation 0.4. Measured from the translation, the
+> stance would engage on a husk on the floor one or two blocks below the player's ledge, which the worker never lets
+> swing (dy 2.6 to 3.6 from the eye, over its 2.5), and would miss a husk three or four blocks up, which it does. So
+> `player` is the point mobs measure the player from, read from ONE function, `mobSensePoint(camera)` in
+> `game/mobSenses.js`: `AIWorkerSystem` posts it, and the controller hands it to `stanceStep` (Task 5). The horizontal
+> reads move with it (camera x/z is the translation plus shake and kick, centimetres), so the away vector is measured
+> from the same point, and `readStance` gains `playerY`. Task 4's dy tests are written against `player.y` as that
+> point. The agreement is gated in Task 5's e2e (case 0): the stance's recorded `playerX/Y/Z` must equal the last
+> `playerPos` the page posted to the AI worker, observed by wrapping `Worker.prototype.postMessage`, so a stance fed the
+> translation reads 1.2 m off and goes RED, and so does a worker fed the body centre.
+
+- [x] **Step 1: Write the failing tests.** Use a fake mob factory `mob({ x, y=0, z=0, aggro=true, passive=false, health=50 })` and player `{x:0,y:0,z:0}`:
   - `engages on an aggro'd hostile at 11.9 m and not at 12.1 m`
   - `ignores a hostile beyond its own vertical reach` (a husk at dy 2.6 does not engage and at dy 2.4 does; a brute
     engages at dy 3.1; a spider engages at dy 5.9 and not at dy 6.1)
@@ -522,10 +539,10 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - `away points from the threat to the player, unit length`
   - `resetStance zeroes w and engaged`
 
-- [ ] **Step 2: Run and verify FAIL.**
-- [ ] **Step 3: Implement** to the Interfaces block. Allocation-free per call: no arrays or objects created.
-- [ ] **Step 4: Run and verify PASS.**
-- [ ] **Step 5: Mutation receipts, each RED:**
+- [x] **Step 2: Run and verify FAIL.**
+- [x] **Step 3: Implement** to the Interfaces block. Allocation-free per call: no arrays or objects created.
+- [x] **Step 4: Run and verify PASS.**
+- [x] **Step 5: Mutation receipts, each RED:**
   - S4a: the vertical-reach check dropped.
   - S4b: `CALM_MS` → 0.
   - S4c: hysteresis removed (always the nearest).
@@ -534,7 +551,22 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - S4f: the stall rule dropped. RED on `a stranded mob stops qualifying`.
   - S4g: progress measured as the fall in the mob-to-player DISTANCE (plausible-wrong: the player's motion counts).
     RED on `the player's own approach is not the mob's progress`.
-- [ ] **Step 6: Commit** with the title "feat(combat): the stance engages on an aggro'd pursuer that can reach you, within 12 m, and leaves 2 s after the last" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): the stance engages on an aggro'd pursuer that can reach you, within 12 m, and leaves 2 s after the last" and a trailer.
+
+> **Done 2026-10-27, with three deviations from the Interfaces block** (each pinned by a test and a mutant that
+> restores the plan's text). (1) **The stall clocks are kept for every aggro'd hostile pursuer, not only those in
+> range**, and dropped when the mob stops being one. Scoped to range, a clock restarts each time a stranded mob
+> flickers across the 12 m radius or its reach bound (the eye the stance now measures from bobs a few centimetres a
+> step), so a mob that never gains could hold the stance forever, which is review claim 4's failure. Test `a
+> stranded mob flickering across the engage radius still stalls`, mutant S4j. (2) **A climber's strike reach is its
+> leap** (`LEAP_RANGE` across, as `engageDyM` already used it up): the worker's spider leaps from 6 m
+> (`canReach(dx, dy, dz, LEAP_RANGE, LEAP_RANGE)`), so a spider standing at 5.5 m can hit a still player and must not
+> stall out. Mutant S4i2. (3) **With no qualifier this frame the last threat's position is kept**, so the calm and the
+> exit blend clamp against where the fight was rather than against no direction (which would free a 6.5 m/s walk the
+> moment a threat dropped out of range); `threatId` clears once `w` is back to 0. Mutant S4r. Also: `stanceStep`
+> records `playerY` (the height-reference deviation above), and `archetypeFor` is read once per type into a cache,
+> because it builds a fresh object per call. Receipts: 24 mutants RED (S4a-S4g as listed, plus S4a2, S4a3, S4c2, S4h,
+> S4i, S4i2, S4j, S4k, S4l, S4m, S4n, S4o, S4p, S4q, S4r, S4s), the identity mutant survived.
 
 ---
 
