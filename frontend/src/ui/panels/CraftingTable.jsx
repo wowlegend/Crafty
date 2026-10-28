@@ -104,7 +104,8 @@ export const CraftingTable = React.memo(({ onClose }) => {
         <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Crafting" onClose={onClose}>
             <Panel
                 variant="raise"
-                className="w-[640px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
+                shadow="shadow-elev-xl"
+                className="w-[640px] max-w-[95vw] overflow-hidden p-0"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header bar */}
@@ -114,7 +115,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
                         <span className="font-display text-xxl tracking-wide">{t('ui.craft')}</span>
                         <span className="text-xs font-bold tracking-[2px] uppercase text-accent">{t('panel.patternMatcher')}</span>
                     </div>
-                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                    <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9">
                         <Icon name="close" size={18} />
                     </Button>
                 </div>
@@ -124,7 +125,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
                     {/* Craft bench: 3x3 grid, arrow, result */}
                     <div className="flex flex-row justify-around items-center gap-8">
                         {/* 3x3 Grid */}
-                        <Panel variant="inset" className="grid grid-cols-3 gap-2 p-3 bg-well">
+                        <Panel variant="inset" bg="bg-well" className="grid grid-cols-3 gap-2 p-3">
                             {grid.map((item, i) => {
                                 return (
                                     <div
@@ -222,7 +223,7 @@ export const CraftingTable = React.memo(({ onClose }) => {
                     )}
 
                     {/* Quick Info */}
-                    <Panel variant="base" className="bg-slot px-4 py-3">
+                    <Panel variant="base" bg="bg-slot" className="px-4 py-3">
                         <h3 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-2">{t('panel.inventoryTip')}</h3>
                         <div className="text-sm text-text-muted flex items-center gap-2">
                             <span className="w-6 h-6 flex-none rounded-sm grid place-items-center text-accent text-xs font-bold border-chrome border-ink bg-panel-inset">i</span>

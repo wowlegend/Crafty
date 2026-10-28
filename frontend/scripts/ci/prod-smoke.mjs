@@ -14,8 +14,9 @@
  * bundle can be byte-perfect and still fail to boot — a DEV-only import tree-shaken to nothing, a
  * `import.meta.env` branch that only existed in dev, a minifier mangling a name something reflects on.
  *
- * DELIBERATELY A SMOKE TEST, NOT A SECOND VISUAL GATE. It asks four questions the build cannot answer:
- * does it boot, does it render, does it log an error, is the GL context alive. No baselines, so it cannot
+ * DELIBERATELY A SMOKE TEST, NOT A SECOND VISUAL GATE. It asks questions the build cannot answer:
+ * does it boot, does it render, does it log an error, is the GL context alive, and does the block texture's
+ * mip chain reach the GPU (mipVerdict). No baselines, so it cannot
  * rot and never needs re-approval — the same property that makes the intra-page invariant worth having.
  * A 31-frame production capture would need its own oracle and would double the re-baseline burden for
  * frames that already have one.
@@ -27,6 +28,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { serveVite } from '../visual/_serve.mjs';
+import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 // A fourth dedicated port. capture=4178, e2e=4179, this=4180. Never an ad-hoc port: the one time a probe
@@ -127,6 +129,116 @@ export function seamVerdict({ plain, opened }) {
   return { ok: true, line: `lookbook seam: installed with ?lookbook=1 (${opened.methods.length} methods, the pass timer loads), absent without it` };
 }
 
+/**
+ * THE BLOCK TEXTURE'S MIP CHAIN, READ BACK FROM THE GPU (DECISIONS 2026-10-28 item 20).
+ *
+ * Every unit gate on the chain (tests/world/proceduralTextures.test.js, tests/gates/texture-mipmap-gates.test.js)
+ * reads the JS object. Whether three uploads levels 1..5 is a property of three's upload path: r172 allocates
+ * `texture.mipmaps.length` levels and fills each with one texSubImage3D only on the CompressedArrayTexture +
+ * RGBAFormat branch (WebGLTextures.js getMipLevels and uploadTexture). A three upgrade that allocates the levels and
+ * leaves them unfilled draws distant terrain from zeros with every unit gate green, so this reads the GPU.
+ *
+ * installArrayTextureRecorder runs before the page's own scripts and remembers each TEXTURE_2D_ARRAY that
+ * texStorage3D allocates, with the texture bound at that moment; readBlockTextureArray finds the one with the block
+ * stack's dimensions and reads back every layer of every level through a framebuffer, restoring the bindings it
+ * touched, because three caches them. Both are serialized into the page by puppeteer, so neither may reference
+ * anything outside its own body.
+ */
+export function installArrayTextureRecorder(proto = globalThis.WebGL2RenderingContext?.prototype, sink = globalThis) {
+  if (!proto || typeof proto.texStorage3D !== 'function') return;
+  const seen = (sink.__craftySmokeArrays = sink.__craftySmokeArrays || []);
+  const texStorage3D = proto.texStorage3D;
+  proto.texStorage3D = function recordTexStorage3D(target, levels, internalformat, width, height, depth) {
+    if (target === this.TEXTURE_2D_ARRAY) {
+      seen.push({ gl: this, texture: this.getParameter(this.TEXTURE_BINDING_2D_ARRAY), levels, width, height, depth });
+    }
+    return texStorage3D.call(this, target, levels, internalformat, width, height, depth);
+  };
+}
+
+export function readBlockTextureArray({ size, layers }, seen = globalThis.__craftySmokeArrays || []) {
+  const allocations = seen.map((r) => `${r.width}x${r.height}x${r.depth} (${r.levels} levels)`);
+  const hits = seen.filter((r) => r.width === size && r.height === size && r.depth === layers);
+  if (hits.length !== 1) return { found: hits.length, allocations };
+  const { gl, texture } = hits[0];
+  const boundTexture = gl.getParameter(gl.TEXTURE_BINDING_2D_ARRAY);
+  gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
+  const immutableLevels = gl.getTexParameter(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_IMMUTABLE_LEVELS);
+  const minFilter = gl.getTexParameter(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER);
+  gl.bindTexture(gl.TEXTURE_2D_ARRAY, boundTexture);
+  const boundRead = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fb);
+  const levels = [];
+  const unreadable = [];
+  for (let level = 0; level < immutableLevels; level++) {
+    const n = Math.max(1, size >> level);
+    const bytes = new Uint8Array(n * n * 4 * layers);
+    for (let layer = 0; layer < layers; layer++) {
+      gl.framebufferTextureLayer(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, texture, level, layer);
+      const status = gl.checkFramebufferStatus(gl.READ_FRAMEBUFFER);
+      if (status !== gl.FRAMEBUFFER_COMPLETE) { unreadable.push(`level ${level} layer ${layer}: status 0x${status.toString(16)}`); continue; }
+      gl.readPixels(0, 0, n, n, gl.RGBA, gl.UNSIGNED_BYTE, bytes, layer * n * n * 4);
+    }
+    levels.push(Array.from(bytes));
+  }
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, boundRead);
+  gl.deleteFramebuffer(fb);
+  return { found: 1, allocations, immutableLevels, minFilter, levels, unreadable };
+}
+
+/** GL minify filters that sample a mip chain (WebGL 2 enums); any other filter reads level 0 alone. */
+const MIPMAP_MIN_FILTERS = new Map([
+  [0x2700, 'NEAREST_MIPMAP_NEAREST'], [0x2701, 'LINEAR_MIPMAP_NEAREST'],
+  [0x2702, 'NEAREST_MIPMAP_LINEAR'], [0x2703, 'LINEAR_MIPMAP_LINEAR'],
+]);
+
+/**
+ * PURE: the verdict on a readBlockTextureArray reading. Fails unless the GPU holds a full chain (6 levels for 32 px
+ * tiles, derived from the tile size so a chain cut short in the source fails too), samples it through a mipmap
+ * minify filter, has every level filled in every layer whose level 0 is drawn, and holds exactly the bytes the
+ * source builds. `expected` is { size, layers, chain }, the chain being createProceduralVoxelTextures().mipmaps.
+ */
+export function mipVerdict(reading, { size, layers, chain }) {
+  const full = Math.log2(size) + 1;
+  const dims = `${size}x${size}x${layers}`;
+  const fail = (why, control = false) => ({ ok: false, control, line: `block texture mips: ${why}` });
+  if (!reading || reading.found === 0) {
+    const seen = reading?.allocations?.length ? reading.allocations.join(', ') : 'none';
+    return fail(
+      `COULD NOT CHECK — no ${dims} TEXTURE_2D_ARRAY was allocated by texStorage3D (arrays seen: ${seen}; spawn chunk loaded: ${reading?.worldBuilt ?? 'unknown'})`,
+      true,
+    );
+  }
+  if (reading.found > 1) return fail(`${reading.found} ${dims} arrays were allocated; cannot tell which is the block texture`, true);
+  if (reading.immutableLevels !== full) return fail(`${reading.immutableLevels} level(s) on the GPU; a full chain for ${size} px tiles is ${full}`);
+  if (!MIPMAP_MIN_FILTERS.has(reading.minFilter)) return fail(`the minify filter is 0x${Number(reading.minFilter).toString(16)}, which samples level 0 alone`);
+  if (reading.unreadable?.length) return fail(`COULD NOT CHECK — ${reading.unreadable.length} level/layer images were unreadable (${reading.unreadable[0]})`, true);
+
+  const layerOf = (bytes, n, layer) => bytes.slice(layer * n * n * 4, (layer + 1) * n * n * 4);
+  const drawn = [];
+  for (let layer = 0; layer < layers; layer++) if (layerOf(reading.levels[0], size, layer).some((b) => b !== 0)) drawn.push(layer);
+  if (drawn.length === 0) return fail('COULD NOT CHECK — level 0 read back all zero, so an empty level would read the same', true);
+
+  let bytes = 0;
+  for (let level = 0; level < full; level++) {
+    const n = Math.max(1, size >> level);
+    const got = reading.levels[level];
+    const want = chain[level]?.data;
+    if (!got || got.length !== n * n * 4 * layers) return fail(`level ${level} read back ${got?.length ?? 0} bytes, expected ${n * n * 4 * layers}`);
+    const empty = drawn.filter((layer) => !layerOf(got, n, layer).some((b) => b !== 0));
+    if (empty.length) return fail(`level ${level} is EMPTY on the GPU in ${empty.length} of the ${drawn.length} drawn layers (${empty.join(', ')})`);
+    let differ = 0;
+    for (let i = 0; i < got.length; i++) if (!want || got[i] !== want[i]) differ++;
+    if (differ) {
+      return fail(`level ${level}: ${differ} of ${got.length} bytes on the GPU differ from the chain the source builds (a build/ older than the source reads this way: run npm run build)`);
+    }
+    bytes += got.length;
+  }
+  const filter = MIPMAP_MIN_FILTERS.get(reading.minFilter);
+  return { ok: true, line: `block texture mips: ${full} levels on the GPU (${filter}), every level filled in all ${drawn.length} drawn layers, all ${bytes.toLocaleString('en-US')} bytes equal the chain the source builds` };
+}
+
 /** PURE: is this console/page message worth failing over? */
 export function isFatalMessage(text) {
   if (!text) return false;
@@ -171,6 +283,7 @@ if (isCli) {
     page.on('console', (m) => {
       if (m.type() === 'error' && isFatalMessage(m.text())) errors.push(`console.error: ${m.text()}`);
     });
+    await page.evaluateOnNewDocument(installArrayTextureRecorder);
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
@@ -240,6 +353,23 @@ if (isCli) {
       writeFileSync(GL_LEDGER_PATH, `${JSON.stringify({ count: gl.count, frames: gl.frames, at: new Date().toISOString() }, null, 2)}\n`);
       console.log(`prod-smoke: froze the GL ceiling at ${gl.count}`);
     }
+
+    // THE BLOCK TEXTURE'S MIP CHAIN — see mipVerdict. After the GL poll, so the readback cannot add to its count. The
+    // texture is uploaded when the first terrain chunk draws, which waits on the world build; the wait's timeout is
+    // not a verdict, the reading below is, and it names whether the spawn chunk ever loaded.
+    const blockTexture = createProceduralVoxelTextures();
+    const expectedMips = { size: blockTexture.image.width, layers: blockTexture.image.depth, chain: blockTexture.mipmaps };
+    const dims = { size: expectedMips.size, layers: expectedMips.layers };
+    await page.waitForFunction(
+      ({ size, layers }) => (globalThis.__craftySmokeArrays || []).some((r) => r.width === size && r.height === size && r.depth === layers),
+      { polling: 500, timeout: 90000 },
+      dims,
+    ).catch(() => {});
+    const mipReading = await page.evaluate(readBlockTextureArray, dims);
+    mipReading.worldBuilt = await page.evaluate(() => window.useGameStore?.getState?.().isSpawnChunkLoaded === true);
+    const mv = mipVerdict(mipReading, expectedMips);
+    console.log(`prod-smoke: ${mv.line}`);
+    if (!mv.ok) errors.push(mv.line);
 
     // SETTINGS PERSISTENCE — a PRODUCTION-ONLY defect, which is why it belongs here and nowhere else.
     // `initSettingsPersistence` used to be the last statement of the DEV-only test-bridge effect, behind

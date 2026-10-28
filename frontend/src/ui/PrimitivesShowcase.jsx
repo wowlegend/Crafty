@@ -166,10 +166,10 @@ export function PrimitivesShowcase() {
             </div>
           </Panel>
           <div className="flex flex-col gap-2.5">
-            <Button variant="secondary" size="sm" aria-label={t('ui.settings')} className="w-[42px] h-[42px] p-0 text-text-muted">
+            <Button variant="secondary" size="icon" text="text-text-muted" aria-label={t('ui.settings')} className="w-[42px] h-[42px]">
               <Icon name="compass" size={20} />
             </Button>
-            <Button variant="secondary" size="sm" aria-label={t('ui.settings')} className="w-[42px] h-[42px] p-0 text-text-muted">
+            <Button variant="secondary" size="icon" text="text-text-muted" aria-label={t('ui.settings')} className="w-[42px] h-[42px]">
               <Icon name="settings" size={20} />
             </Button>
           </div>
@@ -214,14 +214,14 @@ export function PrimitivesShowcase() {
 
       {/* ════════════════════ MODAL LAYER ════════════════════ */}
       <div className="absolute inset-0 grid place-items-center">
-        <Panel variant="raise" className="w-[884px] overflow-hidden shadow-elev-xl p-0">
+        <Panel variant="raise" shadow="shadow-elev-xl" className="w-[884px] overflow-hidden p-0">
           {/* header bar — title + Backpack sub + close */}
           <div className="flex items-center justify-between px-5 py-4 bg-panel-raise border-b-chrome border-ink">
             <div className="flex items-baseline gap-3">
               <span className={`${displayFont} text-xxl tracking-wide`}>{t('ui.inventory')}</span>
               <span className="text-xs font-bold tracking-[2px] uppercase text-accent">{t('ui.backpack')}</span>
             </div>
-            <Button variant="secondary" size="sm" aria-label={t('ui.close')} className="w-9 h-9 p-0 text-text-muted">
+            <Button variant="secondary" size="icon" text="text-text-muted" aria-label={t('ui.close')} className="w-9 h-9">
               <Icon name="close" size={18} />
             </Button>
           </div>
@@ -230,7 +230,7 @@ export function PrimitivesShowcase() {
           <div className="grid grid-cols-[228px_1fr_214px] gap-[18px] px-5 pt-5 pb-[22px]">
             {/* ── left: paper doll + gear ── */}
             <div className="flex flex-col gap-3">
-              <Panel variant="inset" className="relative h-[228px] bg-well grid place-items-center overflow-hidden">
+              <Panel variant="inset" bg="bg-well" className="relative h-[228px] grid place-items-center overflow-hidden">
                 {/* voxel hero silhouette (character art — inline colors, mirrors mockup .ava) */}
                 <div className="relative w-24 h-[170px]">
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[46px] h-[46px] rounded-md" style={{ background: AVA.head }}>
@@ -278,7 +278,7 @@ export function PrimitivesShowcase() {
 
             {/* ── right: stats + gold + equip cta ── */}
             <div className="flex flex-col gap-3.5">
-              <Panel variant="base" className="bg-slot px-4 py-4">
+              <Panel variant="base" bg="bg-slot" className="px-4 py-4">
                 <div className={`${displayFont} text-xs font-bold tracking-[2px] uppercase text-accent mb-3`}>{t('ui.stats')}</div>
                 {stats.map((s, i) => (
                   <div key={s.k} className={`flex items-center gap-2.5 ${i < stats.length - 1 ? 'mb-3' : ''}`}>
@@ -289,14 +289,14 @@ export function PrimitivesShowcase() {
                   </div>
                 ))}
               </Panel>
-              <Panel variant="base" className="bg-slot px-4 py-3.5">
+              <Panel variant="base" bg="bg-slot" className="px-4 py-3.5">
                 <div className="flex items-center gap-2.5">
                   <Icon name="coins" size={20} className="flex-none text-accent-raise" />
                   <span className="flex-1 text-sm text-text-muted font-semibold tracking-wide">{t('ui.gold')}</span>
                   <span className={`${displayFont} text-md tabular-nums text-accent-raise`}>1,280</span>
                 </div>
               </Panel>
-              <Button variant="primary" size="lg" className="w-full h-[54px] gap-2.5">
+              <Button variant="primary" size={null} className="w-full h-[54px] gap-2.5 text-lg px-6 py-3">
                 <Icon name="upgrade" size={22} />
                 {t('ui.equip')}
               </Button>

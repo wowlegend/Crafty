@@ -1,13 +1,6 @@
-import { clsx } from 'clsx';
-import { extendTailwindMerge } from 'tailwind-merge';
-
-// tailwind-merge must learn the project's custom `borderWidth: { chrome }` token,
-// else it mis-files `border-chrome` into the border-COLOR group and silently drops it
-// when paired with `border-ink` (both seen as `border-*`). Register chrome as a width
-// so width (border-chrome) and color (border-ink) coexist instead of colliding.
-const twMerge = extendTailwindMerge({
-  extend: { classGroups: { 'border-w': [{ border: ['chrome'] }] } },
-});
-
-/** Merge conditional class lists with Tailwind-aware conflict resolution. */
-export function cn(...inputs) { return twMerge(clsx(inputs)); }
+// Joins class lists, skipping falsy parts, and resolves NO conflicts: two classes that set the same CSS property
+// are decided by stylesheet order, not by their position here. So each default a caller may replace is a named
+// prop (Panel, Button, Toast, Slot), and a className must not restate one; primitive-class-override-gates checks
+// the named ones only, so a className that fights an unnamed default (a Button fill, a Toast background) still
+// renders by stylesheet order.
+export function cn(...parts) { return parts.filter(Boolean).join(' '); }

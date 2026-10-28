@@ -3,22 +3,14 @@ import * as THREE from 'three';
 import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
 import { BLOCK_ID } from '../../src/world/blockIds.js';
 
-// REGRESSION LOCK for the bold-flat / pixel-art design language (CLAUDE.md "Design Language LOCKED S1-C").
-// These invariants are what keep the voxel surfaces reading as crisp stylized pixel-art rather than
-// drifting toward smoothed/realistic filtering. Crossing any of them (LinearFilter, mipmaps, non-square
-// tiles, layer-count change) is a Kevin-taste fork, NOT an autonomous change -> this test makes such a
-// drift fail loudly instead of slipping in silently.
-describe('procedural voxel textures — bold-flat lock invariants', () => {
+// The invariants the terrain relies on: layer index == block code, square REPEAT tiles, and the filtering that keeps
+// texels crisp up close and stops them sparkling at distance.
+describe('procedural voxel textures — the invariants the terrain relies on', () => {
   const tex = createProceduralVoxelTextures();
 
-  // ⚠️ DELIBERATE CHANGE 2026-07-13 (R4a), 14 -> 16 layers. NOT a weakened gate — a widened one.
-  // `cobblestone` and `glass` were offered in HOTBAR_BLOCKS but had NO voxel id and NO texture layer, so
-  // placing them silently produced STONE (and `cobblestone` is even a Stone Sword recipe ingredient). They
-  // now have real ids (14, 15) + real texture layers. Layer index == block code, so the array had to grow.
-  // The invariant this test protects (layer count matches the id space) is UNCHANGED and still enforced —
-  // it is asserted against blockIds.js below so the two can never drift apart again.
-  it('is a 16-layer DataArrayTexture (blockType 0..9 + ore tiles 10..13 + cobblestone 14 + glass 15)', () => {
-    expect(tex.isDataArrayTexture).toBe(true);
+  // Layer index == block code, so the array grows with the id space (asserted against blockIds.js below).
+  it('is a 16-layer array texture (blockType 0..9 + ore tiles 10..13 + cobblestone 14 + glass 15)', () => {
+    expect(tex.isCompressedArrayTexture).toBe(true);
     expect(tex.image.depth).toBe(16);
   });
 
@@ -50,7 +42,7 @@ describe('procedural voxel textures — bold-flat lock invariants', () => {
   it('S6: the 4 ore layers (10=coal,11=iron,12=gold,13=diamond) are drawn on a stone base + speckled', () => {
     // Ores ride the existing block-code->atlas-layer scheme (layer index == block code). Each must be
     // actually drawn (non-blank) AND differ from the plain stone tile (layer 3) somewhere -> the ore
-    // speckle was applied. Bold-flat lock unchanged (still NearestFilter/no-mipmaps/square, asserted below).
+    // speckle was applied.
     const data = tex.image.data;
     const size = tex.image.width;
     const layerBytes = size * size * 4;
@@ -70,10 +62,19 @@ describe('procedural voxel textures — bold-flat lock invariants', () => {
     expect(tex.image.width).toBeGreaterThan(0);
   });
 
-  it('keeps the pixel-art lock: NearestFilter min+mag, NO mipmaps (never drift to realistic filtering)', () => {
-    expect(tex.minFilter).toBe(THREE.NearestFilter);
+  it('is mipmapped: NEAREST up close, NEAREST within a mip level and LINEAR between levels at distance', () => {
     expect(tex.magFilter).toBe(THREE.NearestFilter);
+    expect(tex.minFilter).toBe(THREE.NearestMipmapLinearFilter);
+    // The chain is built here, so the GPU must not rebuild it from the bytes.
     expect(tex.generateMipmaps).toBe(false);
+    const size = tex.image.width;
+    const levels = Math.log2(size) + 1;
+    expect(tex.mipmaps.map((m) => m.width)).toEqual(Array.from({ length: levels }, (_, i) => size >> i));
+    tex.mipmaps.forEach((m) => {
+      expect(m.height).toBe(m.width);
+      expect(m.data.length).toBe(m.width * m.height * 4 * tex.image.depth);
+    });
+    expect(tex.mipmaps[0].data).toBe(tex.image.data);
   });
 
   it('tiles repeat (RepeatWrapping) so one tile covers many voxels', () => {
