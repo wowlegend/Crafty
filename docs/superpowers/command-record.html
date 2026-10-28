@@ -247,14 +247,14 @@ footer p { max-width: 75ch; }
 <header class="top">
   <p class="label kicker">Crafty · Ember against the dark · command session</p>
   <h1>Crafty Command Record</h1>
-  <p class="sub">What the Crafty command session achieved and decided from the takeover on 2026-10-27 to 2026-10-28, 21:50 UTC.</p>
-  <p class="meta">State read at about 2026-10-28 21:45Z against <code>origin/main 3bd6fbde</code> and the land batch <code>87428e2d</code> that this page lands with. The previous version was read at 17:45Z against <code>6752ce5c</code>; each section puts what changed since then first. Times are UTC unless marked PDT. Git commit times are PDT (UTC−7); GitHub times are UTC.</p>
+  <p class="sub">What the Crafty command session achieved and decided from the takeover on 2026-10-27 to 2026-10-28, 22:15 UTC.</p>
+  <p class="meta">State read at about 2026-10-28 21:45Z against <code>origin/main 3bd6fbde</code> and the land batch <code>87428e2d</code> that this page lands with, then brought up to <code>6a01d1dc</code> (#36) at 22:15Z. The previous version was read at 17:45Z against <code>6752ce5c</code>; each section puts what changed since then first. Times are UTC unless marked PDT. Git commit times are PDT (UTC−7); GitHub times are UTC.</p>
 
   <div class="state" aria-label="Current state">
     <div>
       <p class="label">Main CI</p>
       <p class="pills"><span class="pill ok">head green</span></p>
-      <p>Head <code>3bd6fbde</code> passed PR run <code>40769981525</code> on that exact commit (21:12 to 21:28Z), and main’s run on it, <code>40773279609</code>, passed at 21:37Z on that verdict without re-running the heavy jobs (item 23). All seven main runs since 17:45Z passed. The one on <code>c03186fe</code> passed on re-run after <code>ore-glow.spec.js</code> failed its first attempt, a framing defect now fixed at its cause (<code>68336efd</code>).</p>
+      <p>Head <code>3bd6fbde</code> passed PR run <code>40769981525</code> on that exact commit (21:12 to 21:28Z), and main’s run on it, <code>40773279609</code>, passed at 21:37Z on that verdict without re-running the heavy jobs (item 23). All seven main runs since 17:45Z passed; main’s run on #36’s <code>6a01d1dc</code> was still running at 22:10Z. The one on <code>c03186fe</code> passed on re-run after <code>ore-glow.spec.js</code> failed its first attempt, a framing defect now fixed at its cause (<code>68336efd</code>).</p>
     </div>
     <div>
       <p class="label">Production</p>
@@ -263,13 +263,13 @@ footer p { max-width: 75ch; }
     </div>
     <div>
       <p class="label">Landed since 17:45Z</p>
-      <p class="pills"><span class="pill ok">7 main pushes</span></p>
-      <p>The last version of this page, the combat stance (#31), the ore-glow framing fix, and four Wave 2 lanes: W2-C, W2-A, the Cut’s first two steps and W2-B. Wave 1 is done. 98 commits, 76 of them not merges, counting #31’s own from earlier today.</p>
+      <p class="pills"><span class="pill ok">8 main pushes</span></p>
+      <p>The last version of this page, the combat stance (#31), the ore-glow framing fix, four Wave 2 lanes (W2-C, W2-A, the Cut’s first two steps and W2-B), and #36, which makes the floating damage numbers draw. Wave 1 is done. 98 commits, 76 of them not merges, counting #31’s own from earlier today.</p>
     </div>
     <div>
       <p class="label">In flight</p>
       <p class="pills"><span class="pill run">3 lanes</span></p>
-      <p>#36 makes fogged sprites, such as the floating damage numbers, draw again: its first PR run passed at 21:36Z, but on a base 22 commits behind main, so it merges main and runs once more before it lands. W2-I is measuring each post-processing pass on the production build, and W2-K is repainting the block textures. Neither has a result yet.</p>
+      <p>W2-I has its instruments on the production build and is waiting for the Mac’s load to fall: it decides which passes to cut only on numbers from a quiet machine, and the load has stayed between 20 and 51, almost all of it from other sessions. W2-K is repainting the block textures, and the Cut’s step 3, one Ember meter in place of four, is being built. None has a result yet.</p>
     </div>
     <div>
       <p class="label">Waiting on you</p>
@@ -331,6 +331,14 @@ footer p { max-width: 75ch; }
 <section id="live">
   <h2>Live for players</h2>
   <p class="lede">Everything here is on <code>origin/main</code> and in a Vercel production deployment, newest first.</p>
+
+  <div class="group">
+    <div class="group-head"><h3>Floating damage numbers draw (PR #36)</h3><code>6a01d1dc</code><span class="when">on main 22:08Z · new</span></div>
+    <ul class="list">
+      <li><strong>The damage, XP and WALL HIT numbers appear.</strong> The height fog’s shader read a value three’s sprite shader never declares, so every fogged sprite failed to compile and drew nothing; the floating combat numbers are the game’s only sprites. The fog now takes the world height from the eye-space position every fogged shader has, which is also right for instanced and batched meshes (<code>e73c3c82</code>).</li>
+      <li><strong>Checked on CI’s GPU path:</strong> a fogged sprite links and sits at its computed fog height, and the old shader still fails the same probe on every run. <span class="gap">Not checked: how the numbers look in the game, and whether combat text should take fog at all.</span></li>
+    </ul>
+  </div>
 
   <div class="group">
     <div class="group-head"><h3>The Cut, steps 1 and 2 (PR #33)</h3><code>a4ed6822</code><span class="when">on main 21:10Z · new</span></div>
@@ -494,10 +502,10 @@ footer p { max-width: 75ch; }
       <tbody>
         <tr class="divider"><td colspan="4">In flight at 21:45Z</td></tr>
         <tr>
-          <td class="lane">#36</td>
-          <td>Fogged sprites draw again (<code>fix/sprite-fog</code>)</td>
-          <td class="st"><span class="pill run">PR CI green</span> <span class="pill warn">behind main</span></td>
-          <td>The height-fog chunk read <code>transformed</code>, which three 0.172’s sprite vertex shader does not declare, so every fogged sprite failed to compile and drew nothing: in the game, the floating damage, XP and WALL HIT numbers. The fix takes the world height from <code>mvPosition</code>, which every fogged stock shader has (<code>e73c3c82</code>). PR run <code>40770978454</code> passed at 21:36:52Z, but its base is 22 commits behind main, so it merges main and runs once more before it lands. <span class="gap">Not checked: how the numbers look in the game.</span></td>
+          <td class="lane">W2-F step 3</td>
+          <td>Ember, one meter in place of four (<code>feat/w2f-ember</code>)</td>
+          <td class="st"><span class="pill run">building</span></td>
+          <td>One ember bank replaces the Ferocity, Kinetic, Soul and Resonance banks with the four spends unchanged; day kills and building fill it, with a per-day cap; old saves sum their four banks into it; a spend refused for want of ember says so. Started 22:00Z from <code>3bd6fbde</code>. No result yet.</td>
         </tr>
         <tr>
           <td class="lane">W2-I</td>
@@ -565,6 +573,12 @@ footer p { max-width: 75ch; }
           <td>W2-B, the capture oracle retired (<code>feat/w2b-retire-capture</code>)</td>
           <td class="st"><span class="pill ok">on main</span></td>
           <td><code>3bd6fbde</code> at 21:35Z, on PR run <code>40769981525</code>. A run on a head that lacked the Cut was cancelled (<code>40768417120</code>).</td>
+        </tr>
+        <tr>
+          <td class="lane">#36</td>
+          <td>Fogged sprites draw again (<code>fix/sprite-fog</code>)</td>
+          <td class="st"><span class="pill ok">on main</span></td>
+          <td><code>6a01d1dc</code> at 22:08Z, on PR run <code>40775169764</code>. Both reviews said LAND; the follow-up <code>f15b19b0</code> makes the shader gate refuse a chunk that reads <code>instanceMatrix</code> unguarded. <span class="gap">Not checked: how the numbers look in the game.</span></td>
         </tr>
         <tr class="divider"><td colspan="4">Landed between 14:20Z and 17:45Z, oldest first</td></tr>
         <tr><td class="lane">Command Record</td><td>Version 3 of this page</td><td class="st"><span class="pill ok">on main</span></td><td><code>a3fb66cd</code> at 14:50Z, after land run <code>40709327204</code>.</td></tr>
@@ -837,7 +851,7 @@ footer p { max-width: 75ch; }
   <div class="group">
     <h3>Deploys</h3>
     <div class="prose">
-      <p>Vercel deployed every push to main: 32 Production deployments since the takeover. The seven since 17:45Z are <code>13c600ad</code>, <code>c03186fe</code>, <code>68336efd</code>, <code>8bbd969e</code>, <code>6a926fce</code>, <code>a4ed6822</code> and <code>3bd6fbde</code>, each reporting success. At 21:44Z crafty-game.vercel.app and crafty-sand.vercel.app both served <code>index-CfmscO8D.js</code>, the index chunk PR run <code>40769981525</code> built from <code>3bd6fbde</code>, so the live site carries the head build.</p>
+      <p>Vercel deployed every push to main: 32 Production deployments since the takeover. The seven since 17:45Z are <code>13c600ad</code>, <code>c03186fe</code>, <code>68336efd</code>, <code>8bbd969e</code>, <code>6a926fce</code>, <code>a4ed6822</code> and <code>3bd6fbde</code>, each reporting success; <code>6a01d1dc</code> (#36) was deploying at 22:10Z. At 21:44Z crafty-game.vercel.app and crafty-sand.vercel.app both served <code>index-CfmscO8D.js</code>, the index chunk PR run <code>40769981525</code> built from <code>3bd6fbde</code>, so the live site carries the head build.</p>
       <p>Before 17:45Z: the six between 14:20Z and 17:45Z were <code>a3fb66cd</code>, <code>c6d04db8</code>, <code>d201c073</code>, <code>213eae36</code>, <code>65f35f28</code> and <code>6752ce5c</code>; the nine between 06:30Z and 14:20Z were <code>2bb0857d</code>, <code>58455351</code>, <code>c2bda904</code>, <code>b3425d83</code>, <code>da70413f</code>, <code>1c4e3bc1</code>, <code>d700e531</code>, <code>dc8b0d65</code> and <code>030ada1f</code>. <code>c2bda904</code> deployed although its CI was cancelled, before protection went on. Since then main accepts only a commit with a green <code>ci ok</code>, which is the prevention the Vercel Deployment Checks idea (T6) was for.</p>
     </div>
   </div>
@@ -954,7 +968,7 @@ footer p { max-width: 75ch; }
     <div>
       <h3>Open for the session</h3>
       <ul class="list">
-        <li>Land #36 once it has merged main and passed its PR run again; then look at the damage numbers in the game.</li>
+        <li>Look at the floating damage numbers in the game now that they draw (#36), and decide whether combat text should take fog.</li>
         <li>W2-I decides each pass by its rule; W2-K builds its face grammar and shoots its frames. Then the rest of Wave 2.</li>
         <li>Owed looks: live frames for W2-A’s ocean and the night ore glow at a distance, the acceptance frames on the deployed build for W1-E and the light lane, and W1-D’s run against the production URL.</li>
         <li>Review residue: W2-A’s grazing sheen (MED), the Cut’s cobblestone XP loop and recipe-reach gate, and the stance’s long-frame clocks.</li>
@@ -967,7 +981,7 @@ footer p { max-width: 75ch; }
   <div class="group">
     <h3>The registry</h3>
     <div class="ledger">
-      <p><code>memory/registry.jsonl</code> at <code>87428e2d</code>, the land batch, holds 359 rows: 222 open, none in flight and 137 closed. Since the last version 19 rows closed (13 by W2-C, 2 each by W2-A and the stance landing, 1 each by the Cut and W2-B) and 10 were added, 9 of them review residue from Wave 2. 99 of the open rows are visible to a player. Mapped to the reset’s lanes, the largest shares of open rows are W2-J, docs and harness (46), W3-D (19), W2-I (13) and W1-A’s CI and test hygiene (12); 66 are not yet mapped to a lane.</p>
+      <p><code>memory/registry.jsonl</code> in this land batch holds 360 rows: 222 open, none in flight and 138 closed. Since the last version 20 rows closed (13 by W2-C, 2 each by W2-A and the stance landing, 1 each by the Cut, W2-B and #36) and 11 were added, 9 of them review residue from Wave 2. 99 of the open rows are visible to a player. Mapped to the reset’s lanes, the largest shares of open rows are W2-J, docs and harness (46), W3-D (19), W2-I (13) and W1-A’s CI and test hygiene (12); 66 are not yet mapped to a lane.</p>
       <div class="bar" role="img" aria-label="Open registry rows by severity: 14 high, 64 medium, 127 low, 17 unrated, of 222 open rows">
         <span class="seg-high" style="flex-grow: 14"></span>
         <span class="seg-med" style="flex-grow: 64"></span>
