@@ -30,7 +30,7 @@ try {
   await page.evaluate(() => window.__craftyTest.call('start'));
   await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", { timeout: 15000 }).catch(() => {});
   await delay(3000); // let terrain stream + player settle
-  // Enter capture mode FIRST (the capture.mjs showcase pattern): this pauses the physics step, which
+  // Enter capture mode FIRST: this pauses the physics step, which
   // removes the headless-swiftshader Rapier WASM re-entrancy ("recursive use ... in rust") crash that
   // otherwise tears down the Canvas before the fixture renders. THEN drive the soulbind fixture (it
   // re-enters capture mode internally with its own 5-subject camera).

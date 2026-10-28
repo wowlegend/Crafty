@@ -29,7 +29,6 @@ const LORE = {
 const THEMED = {
   first_blood: 'Cut down the first horror at the gate',
   hunter: 'Thin the frontier pack -- defeat 5',
-  builder: 'Raise the outpost walls -- place 20 blocks',
   miner: 'Quarry stone for the forge -- break 30 blocks',
   spellcaster: 'Turn the old wardings on the horde -- land 10 spells',
   pilgrim: 'Walk the pilgrim road to a frontier shrine',

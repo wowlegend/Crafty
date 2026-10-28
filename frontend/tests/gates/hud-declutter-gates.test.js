@@ -44,9 +44,4 @@ describe('hud declutter gates', () => {
     // the old persistent band read "Spell: " in a centered Panel; assert it is gone
     expect(hud).not.toMatch(/Spell:\s*<\/span>/);
   });
-  it('PlayerHungerBar is gated on survival mode (no duplicate 100/100 pill in non-survival)', () => {
-    // anchored to the ACTUAL gate `gameMode === 'survival' && <PlayerHungerBar`; the old
-    // /gameMode|.../ alternation passed on any bare `gameMode` token anywhere in the file.
-    expect(read('HUD.jsx')).toMatch(/gameMode\s*===\s*'survival'\s*&&\s*<PlayerHungerBar\b/);
-  });
 });

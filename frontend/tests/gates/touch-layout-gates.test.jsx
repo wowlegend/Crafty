@@ -261,16 +261,16 @@ const KNOWN_OUTSIDE = [
 // ---------------------------------------------------------------------------------------------------------------------
 const HUD_CONTROLS = [
   {
-    // GameHud.jsx: the last control of the top row (`absolute top-4 left-4 right-4 flex justify-between items-start`), so
+    // GameHud.jsx: the last control of the top row (`absolute top-4 left-4 right-4 flex justify-end items-start`), so
     // its top is the row's (16 px) and its right edge the row's (16 px); `w-[42px] h-[42px]`.
     name: 'hud-settings',
     own: ['w-[42px]', 'h-[42px]'],
-    row: ['absolute', 'top-4', 'left-4', 'right-4', 'flex', 'justify-between', 'items-start'],
+    row: ['absolute', 'top-4', 'left-4', 'right-4', 'flex', 'justify-end', 'items-start'],
     style: { position: 'absolute', top: 16, right: 16, width: 42, height: 42 },
   },
 ];
 const HUD_STATE = {
-  gameMode: 'survival', selectedBlock: null, inventory: { blocks: {} },
+  selectedBlock: null, inventory: { blocks: {} },
   setSelectedBlock: () => {}, setShowSettings: () => {}, setShowInventory: () => {}, setShowCrafting: () => {},
   setShowMagic: () => {}, setShowBuildingTools: () => {},
 };

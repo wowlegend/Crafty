@@ -59,13 +59,6 @@ const PrimitivesShowcase = import.meta.env.DEV
   ? lazy(() => import('./ui/PrimitivesShowcase').then((m) => ({ default: m.PrimitivesShowcase })))
   : () => null;
 
-// DEV-only mascot studio overlay (S1-D-M4): renders the chosen "Crafty Hero" brand face
-// via the `showMascot` test hook (used to capture the `title-mascot` review frame). Lazy +
-// DEV-gated so the whole subtree tree-shakes out of prod builds.
-const MascotStudio = import.meta.env.DEV
-  ? lazy(() => import('./render/mascots/MascotStudio').then((m) => ({ default: m.MascotStudio })))
-  : () => null;
-
 function App() {
   // Load the panel chunk once the page has settled (ui/panels/lazyPanels.js), so the first panel a player opens is
   // normally already here. On idle, not at mount: boot is busy streaming the world.
@@ -111,9 +104,6 @@ function GameApp({ experienceSystem }) {
   }, [playLevelUpSound, playFanfare, playVictory, playCraft]);
 
   const [isWorldBuilt, setIsWorldBuilt] = useState(false);
-  // DEV-only mascot studio overlay: false = hidden, true = the chosen Crafty Hero brand
-  // face. Driven by the `showMascot` test hook (visual harness). No-op in prod.
-  const [showMascotStudio, setShowMascotStudio] = useState(false);
 
   useEffect(() => {
     if (gameState.isSpawnChunkLoaded && !isWorldBuilt) {
@@ -264,7 +254,6 @@ function GameApp({ experienceSystem }) {
         s.talentPoints !== prevS.talentPoints ||
         s.unlockedTalents !== prevS.unlockedTalents ||
         s.spellLevels !== prevS.spellLevels ||
-        s.gameMode !== prevS.gameMode ||
         s.worldBlocks !== prevS.worldBlocks ||
         s.inventory !== prevS.inventory ||
         s.questState !== prevS.questState ||
@@ -540,7 +529,7 @@ function GameApp({ experienceSystem }) {
       // diagnostic below then branched on it -- so `physicsY == null` was a tautology, two of its four
       // reason strings were unreachable, and the one it always returned blamed a probe that was never
       // run. A diagnostic naming a cause that cannot have occurred is worse than a silent failure: it
-      // sends the next reader to the wrong subsystem, and capture.mjs prints this string in its WARN.
+      // sends the next reader to the wrong subsystem, and the caller prints this string as its warning.
       // Passing the literal at the one call site keeps resolveSpawnGround's signature honest about what
       // this hook deliberately does NOT consult.
       // `force` passes the EXHAUSTED fail count so resolveSpawnGround takes its documented
@@ -885,27 +874,13 @@ function GameApp({ experienceSystem }) {
       enterCaptureMode({ camera: { position: [OX, OY + 1.6, OZ + 14.0], lookAt: [OX, OY + 1.0, OZ] } });
     });
     // Primitives-showcase fixture: drives the locale, shows the DEV gallery overlay,
-    // and (for zh-CN) loads CJK fonts. The capture script waits for document.fonts.ready
-    // before screenshotting so the font swap is fully painted.
+    // and (for zh-CN) loads CJK fonts. A caller screenshotting it waits for
+    // document.fonts.ready, or the frame shows the pre-swap font.
     registerTestHook('showPrimitivesShowcase', (locale = 'en') => {
       const store = useGameStore.getState();
       store.setHudHidden(true);
       store.setLocale(locale);          // zh-CN triggers the lazy CJK load (async)
       store.setShowcaseView(true);
-    });
-    // Mascot-studio fixture (S1-D-M4): mount the standalone mascot studio overlay rendering
-    // the chosen "Crafty Hero" brand face. Enters capture mode so the idle animation is
-    // frozen and the frame renders byte-stable, and hides the HUD so the overlay is clean.
-    // The studio has its OWN Canvas/camera/lighting, so it renders identically regardless
-    // of the gameplay scene state behind it. DEV-only (tree-shaken from prod). The `variant`
-    // arg is ignored now (A/C pruned) but accepted for back-compat with the capture loop.
-    registerTestHook('showMascot', () => {
-      const store = useGameStore.getState();
-      store.setHudHidden(true);
-      enterCaptureMode();
-      store.setCaptureMode(true);
-      store.setQualityTier('high');
-      setShowMascotStudio(true);
     });
     registerTestHook('exitCapture', () => {
       exitCaptureMode();
@@ -1070,10 +1045,6 @@ function GameApp({ experienceSystem }) {
       {import.meta.env.DEV && !hudHidden && <DebugOverlay isWorldBuilt={isWorldBuilt} />}
 
       {import.meta.env.DEV && showcaseView && (<Suspense fallback={null}><PrimitivesShowcase /></Suspense>)}
-
-      {import.meta.env.DEV && showMascotStudio && (
-        <Suspense fallback={null}><MascotStudio /></Suspense>
-      )}
     </div>
   );
 }

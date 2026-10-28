@@ -139,18 +139,16 @@ THE FIVE RULES THAT MATTER MOST (each one is a scar):
 
 DISCIPLINE (every code tick): TDD red-first; AST-safe edits only on .js/.jsx; seam-extraction (move buggy/vacuous-
 gated logic to a pure injectable module, test purely, mutation-prove, wire); Game-Loop-Isolation (no reactive state
-in useFrame — transient refs / `.getState()` / seeded); capture-determinism (NO Math.random/clock in capture — seeded
-+ `isCaptureMode()`-gated; static geometry at module load); **NO mid-combat RE-MESH** (a P4 engineering constraint: break it only with a measurement that the iPad-class frame
+in useFrame — transient refs / `.getState()` / seeded); no NEW `isCaptureMode()` guard (DECISIONS 2026-10-28 W1-H
+item 1: looks are judged on the lookbook, which shows the game as played; existing guards leave as their subjects move); **NO mid-combat RE-MESH** (a P4 engineering constraint: break it only with a measurement that the iPad-class frame
 budget still holds, recorded in DECISIONS); bloom 0.65
 INTENDED; zero-emoji in `src/` (use `\u{}` escapes); the store owns persisted state; no AI footer on commits; no
 `git add -A`; `.state/` untouched; `git commit -F -` heredoc. The push runs only the commit-range gates and opsec-scan; the full suite, eslint, build and bundle run in CI on the exact sha, which is the verdict (pre-push gate COUNT and list: read the generated GATES table in `CLAUDE.md` — never recall it, and never type it here: this file is re-injected verbatim, so a number written here cannot self-correct). `bash ci/pipeline.sh --tier=certify` gives a local result first, on demand. `knip` is CI-only, NOT at push. SSD-light: throwaway copies are `cp -c -R` with node_modules symlinked, and no local e2e or lookbook unless a real-GPU look question needs one (CLAUDE.md, Method).
-BUILD-FIRST on any JSX/structure change. Capture-verify EVERY render-affecting slice
-(`npm run visual:capture`) — but **the harness is NOT a trustworthy oracle**. `75191ef` fixed the
-`close()`-hang, NOT determinism. **`memory/STATUS.md` §B-race owns the harness's current measured state —
-read it before trusting any diff, and do NOT transcribe its numbers here** (a number copied into this file
-rots and this file is re-injected verbatim on every firing). Check the compositor (rAF count, ~3s) BEFORE
-planning browser work, expect to lose it mid-run, and do browser work FIRST while the window is open.
-**Read the frame with your own eyes.** Re-baseline → the command session's call (Kevin's 2026-10-27 mandate), with a `Baseline-Review:` trailer.
+BUILD-FIRST on any JSX/structure change. Look-verify EVERY render-affecting slice on the eye-level lookbook
+(`node frontend/scripts/visual/lookbook.mjs`, real GPU): shoot before and after and attach both to the commit or PR.
+Check the compositor (rAF count, ~3s) BEFORE planning browser work, expect to lose it mid-run, and do browser work
+FIRST while the window is open. **Read the frame with your own eyes.** Accepting a look change is the command
+session's call (Kevin's 2026-10-27 mandate).
 
 TASTE BOUNDS: the coherence pillars **P0–P5** (`docs/superpowers/specs/crafty-coherence-pillars.md`; summarized in STATUS §4). **P4's
 two invariants are engineering constraints, not locks: no mid-combat re-mesh; input via intent-abstraction, not
@@ -170,7 +168,7 @@ STILL GENUINELY KEVIN (surface to `KEVIN-REVIEW-BATCH.md`; never block on it): h
 never force-push or rewrite pushed history) and what only he can do: the real-device playtest (touch feel on a real
 device, the audio mix by ear) · real-device runs · account sign-ins. S4 multiplayer and monetization stay his because
 they spend money and need his accounts (the loop will NOT start netcode or payments). Publishing the repo's public
-face is the session's (DECISIONS 2026-10-28 item 15). Taste sign-offs (visual re-baselines and the ocean water
+face is the session's (DECISIONS 2026-10-28 item 15). Taste sign-offs (look changes on lookbook frames and the ocean water
 aesthetic included), reversals and NEW dev dependencies are the command session's since Kevin's 2026-10-27 mandate,
 restated as the standing principle in DECISIONS 2026-10-28 item 14.
 **NOT the four this line used to name** (chest-mining, damage-lockout, camera-shake feel, 3D mob AI): `DECISIONS.md`

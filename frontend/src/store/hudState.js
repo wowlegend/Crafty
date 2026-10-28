@@ -81,7 +81,6 @@ export const selectHudState = (state) => ({
   loadWorldData: state.loadWorldData,
   selectedBlock: state.selectedBlock,
   setSelectedBlock: state.setSelectedBlock, // X3: absent until 2026-08-05 — the hotbar click threw
-  gameMode: state.gameMode,
   activeSpell: state.activeSpell,
   setActiveSpell: state.setActiveSpell,
 });

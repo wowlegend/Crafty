@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { MINE_GAIN, PLACE_GAIN } from '../game/resonance.js';
+import { MINE_GAIN } from '../game/resonance.js';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
@@ -36,10 +36,9 @@ import { blightHeartSite, blightHeartChunk } from './blightHeart.js';
 import { nearestLandmark } from './shrines.js';
 import { HubRender } from '../render/HubRender';
 import { HEARTH_Y, HEARTH_FIRE } from './homeAnchor.js';
-import { BLOCK_TYPES } from './Blocks';
 import { chestHasItems } from '../game/chestState.js';
-import { idForBlock, blockForId } from './blockIds';
-import { buildFootprint } from '../game/buildFootprint.js';
+import { blockForId } from './blockIds';
+import { placeAtHit } from './placeAtHit.js';
 import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE } from './loadedChunks.js';
 import { makeMobFloorProbe } from './mobFloorProbe.js';
 import { oreGlowTable, oreGlowGlsl, oreGlowTexture } from './oreGlow.js';
@@ -1025,70 +1024,8 @@ export const MinecraftWorld = React.memo(() => {
             store.onBlockBreak?.();
         };
 
-        const place = (h) => {
-            if (!h) return;
-            const store = useGameStore.getState();
-            const type = store.selectedBlock || 'grass';
-            // R4a: resolve through the ONE table. `null` means the engine genuinely cannot place this block
-            // (no voxel id, no texture layer) -> REFUSE it. The old code silently substituted stone (or grass
-            // via `|| 1`), which is how a voxel builder ends up lying to its player about what it placed.
-            const numericType = idForBlock(type);
-            if (numericType === null) return;
-            // B3c: placement costs the block in SURVIVAL (creative stays free). consumeForPlacement is the
-            // ONE decision point + debit (shared removeFromInventory writer); false = refuse. Placing was
-            // free while mining granted +1 -> an infinite-material loop that gutted the economy.
-            // PLACE
-            const placeDirection = h.normal ? new THREE.Vector3(h.normal.x, h.normal.y, h.normal.z) : h.direction.clone().multiplyScalar(-1);
-            const placePos = h.hitPoint.clone().add(placeDirection.multiplyScalar(0.01));
-            const tx = Math.floor(placePos.x);
-            const ty = Math.floor(placePos.y);
-            const tz = Math.floor(placePos.z);
-
-            // MULTI-BLOCK BUILD (Building Tools). The panel wrote buildingMode/buildSize into the store and
-            // nothing read them, so every mode placed one block. Transient getState reads — not a
-            // subscription — so Game-Loop-Isolation holds. buildFootprint caps the cell count at 64; see
-            // its header for why the cap is an ECONOMY decision, given the per-block debit below.
-            const cells = buildFootprint(store.buildingMode || 'single', store.buildSize || 1, { x: tx, y: ty, z: tz }, h.normal);
-
-            const newBlocks = new Map(store.worldBlocks);
-            let placed = 0;
-            for (const c of cells) {
-                // The debit is PER CELL and is the stop condition: run out of material part-way and the
-                // action places what it could afford rather than refusing or going free. Placing was once
-                // free while mining granted +1, which gutted the economy — that must not come back through
-                // a multi-block door.
-                if (!store.consumeForPlacement(type)) break;
-                const cx = chunkOf(c.x);
-                const cz = chunkOf(c.z);
-                worker.postMessage({ type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: numericType } });
-                newBlocks.set(`${c.x}_${c.y}_${c.z}`, numericType);
-                placed++;
-            }
-            if (placed === 0) return; // could not afford even one cell — no sound, no puff, no bank
-
-            // ONCE PER ACTION, not per cell: sixty-four resonance ticks and sixty-four place sounds from a
-            // single click would be an economy exploit and an audio pile-up.
-            if (store.isDay) store.accrueResonance(PLACE_GAIN);
-            playBlockPlace(placePos, useGameStore.getState().selectedBlock);
-            // next-levers #1b: a gentle PLACE PUFF — colored dust at the placed block (break shatters into
-            // falling debris via BlockParticleSystem; place poofs). GPU sparks are store-reachable; a low
-            // count keeps the iPad/mobile fill-rate envelope. Capture-safe: place() runs only on real input.
-            const puffColor = (BLOCK_TYPES[type] && BLOCK_TYPES[type].color) || '#cccccc';
-            store.triggerGPUSparks?.(placePos, puffColor, 6, 'physical');
-
-            store.setWorldBlocks(newBlocks); // built across the footprint loop above
-
-            // Initialize chest in Zustand Map
-            if (type === 'chest') {
-                const newChests = new Map(store.chests);
-                newChests.set(`${tx}_${ty}_${tz}`, { inventory: {}, name: 'Wooden Chest' });
-                useGameStore.setState({ chests: newChests });
-            }
-
-            // M6: a placed block advances the Builder/Architect/World Builder quests + Master Builder
-            // achievement (the callback is registered by QuestSystem; one count per place verb).
-            store.onBlockPlace?.();
-        };
+        // The executor lives in placeAtHit.js so the unit suite drives the real placement path; the worker stays here.
+        const place = (h) => placeAtHit(h, { post: (msg) => worker.postMessage(msg), playPlace: playBlockPlace });
 
         const open = (h) => {
             if (!h || !h.chestTargeted) return;

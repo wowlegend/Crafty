@@ -141,18 +141,9 @@ describe('S1-D-M2 cast-arc + deterministic spell-cast capture state', () => {
     expect(src, 'a fixed capture spark phase constant must exist').toMatch(/CAPTURE_SPARK_PHASE/);
   });
 
-  // (A2) The deterministic cast driver is wired as a test hook + into the capture
-  //      script + the visual diff STATES list, so `spell-cast` is a first-class state.
+  // (A2) The deterministic cast driver is a test hook, so a probe or spec can stage a cast.
   it('spawnSpellCast test hook is registered (deterministic cast driver)', () => {
     expect(app(), 'App must register a spawnSpellCast test hook').toMatch(/registerTestHook\(\s*['"`]spawnSpellCast['"`]/);
-  });
-
-  it('spell-cast is a wired visual-regression state (capture script + diff STATES)', () => {
-    const cap = readFileSync(resolve(SRC, '..', 'scripts', 'visual', 'capture.mjs'), 'utf8');
-    expect(cap, 'capture.mjs must drive spawnSpellCast').toMatch(/spawnSpellCast/);
-    expect(cap, "capture.mjs must screenshot spell-cast.png").toMatch(/spell-cast\.png/);
-    const diff = readFileSync(resolve(SRC, '..', 'tests', 'visual', 'diff.test.js'), 'utf8');
-    expect(diff, "spell-cast must be in the visual diff STATES list").toMatch(/['"`]spell-cast['"`]/);
   });
 
   // (B) The TELEGRAPH rune-circle (the spec's shared shape vocabulary) exists, is

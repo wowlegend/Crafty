@@ -286,9 +286,9 @@ jobs:
         run: node scripts/ci/ci-ok.mjs
 
 # NOTE — deliberately NOT in CI (and why):
-#   * the 24-state VISUAL gate: it renders the real R3F scene under software WebGL (swiftshader). It is
-#     load-sensitive even locally (documented title-mascot timeouts) and would be flaky on a shared runner.
-#     Flaky gates get ignored, and an ignored gate is worse than none. It stays a LOCAL pre-merge gate.
+#   * the eye-level lookbook (scripts/visual/lookbook.mjs): it needs a real GPU, which a hosted runner lacks,
+#     and a person reads its frames. Look changes attach its before and after frames to the commit or PR
+#     (DECISIONS 2026-10-28 W1-H item 1), so nothing in CI compares pixels.
 #   * perf probes: the median quantizes to the host vblank, so a cloud runner's number is meaningless
 #     (see STATUS §F2 — the perf harness's own honesty problem is a tracked item).
 #

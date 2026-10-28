@@ -33,7 +33,7 @@ import { parseHook, callersFor, CALLERS, checkBlock, renderBlock, derive, BEGIN,
  */
 const HOOK = `#!/bin/sh
 node "$ROOT/frontend/scripts/ci/mutation-proof-trailer.mjs" "$RANGE"
-node "$ROOT/frontend/scripts/ci/baseline-trailer.mjs" "$RANGE"
+node "$ROOT/frontend/scripts/ci/second-trailer.mjs" "$RANGE"
 step "opsec-scan (a PUBLIC repo)" node scripts/ci/opsec-scan.mjs --all
 step "eslint" npm run --silent lint
 if [ "$TIER" != "commit" ]; then
@@ -51,7 +51,7 @@ describe('gate-table — parseHook is a COUNT, so its denominator is the whole p
   it('finds EVERY gate in the fixture — the count, asserted', () => {
     // The named failure: silently returning fewer than the hook contains.
     expect(gates.map((g) => g.name)).toEqual([
-      'mutation-proof-trailer', 'baseline-trailer', 'opsec-scan', 'eslint', 'queue-ledger', 'npm audit', 'build',
+      'mutation-proof-trailer', 'second-trailer', 'opsec-scan', 'eslint', 'queue-ledger', 'npm audit', 'build',
     ]);
   });
 
@@ -76,7 +76,7 @@ describe('gate-table — parseHook is a COUNT, so its denominator is the whole p
     // the table — the same self-undercount this file exists to stop. Both are present above; this pins
     // that the second one is found for structural reasons.
     expect(gates.filter((g) => g.tier === 'range').map((g) => g.name))
-      .toEqual(['mutation-proof-trailer', 'baseline-trailer']);
+      .toEqual(['mutation-proof-trailer', 'second-trailer']);
   });
 
   it('a COMMENTED-OUT gate is not a gate', () => {

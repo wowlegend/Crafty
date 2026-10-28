@@ -1,5 +1,6 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
+import { installStanceEngage } from './_stanceEngage.js';
 
 // YOU CANNOT OUTWALK A FIGHT, through real held keys (docs/superpowers/plans/2026-10-27-crafty-combat-stance.md, Task 5).
 //
@@ -19,7 +20,8 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   - THE CHASE, in GAME time: whether the husk closes, and how fast the BODY left it. The player and the AI worker
 //     advance by the same capped step (src/game/frameStep.js), so a long frame slows both alike and a retreat chase is
 //     judged at every frame rate. A hold lasts 8 s of game time on the stance's own clock (readStance().atS), so a stall
-//     cannot use up the husk's time; a page that cannot advance that far inside HOLD_WALL_MS is SETUP. Speeds are the
+//     cannot use up the husk's time; a page that cannot advance that far inside HOLD_WALL_MS is SETUP. The wait for the
+//     stance to ENGAGE is bounded the same way (tests/e2e/_stanceEngage.js). Speeds are the
 //     body's own (readStance().playerX/Z, where each frame's step starts) over that clock. Case 3 read 8 to 23 m/s for a
 //     14 m/s walk from wall-clock samples of the camera, which mix frame timing into the speed, while frames that took
 //     no world step lost their move (src/game/kinematicMove.js). The strafe chase is still
@@ -197,19 +199,6 @@ function installStanceHelpers() {
       const added = call('readMobs').filter((m) => !before.has(m.id));
       return added.length === 1 ? { id: added[0].id } : { why: `SETUP: spawnMob added ${added.length} mobs, not one` };
     },
-    async engage(id, medianMs) {
-      const t0 = performance.now();
-      const deadline = Math.max(3000, 15 * medianMs);
-      const trace = [];
-      for (;;) {
-        await frame();
-        const st = call('readStance');
-        const m = call('readMobs').find((x) => x.id === id), c = cam();
-        if (trace.length < 20) trace.push([Math.round(performance.now() - t0), st ? +st.w.toFixed(2) : 'no readStance', st?.engaged, m ? +Math.hypot(m.x - c.x, m.z - c.z).toFixed(2) : 'gone']);
-        if (st && st.engaged === true && st.w === 1) return { ok: true, ms: Math.round(performance.now() - t0) };
-        if (performance.now() - t0 > deadline) return { ok: false, trace };
-      }
-    },
     // The stance's recorded player point against the last AI TICK's, standing still (case 0).
     async agreement() {
       const n0 = window.__aiTick.n;
@@ -329,6 +318,7 @@ test.describe('combat stance', () => {
 
   test('an aggro\'d husk catches a held S, a held W with it behind, and a strafe; out of combat the target is moveVector\'s', async ({ page }, testInfo) => {
     await page.addInitScript(installStanceHelpers);
+    await page.addInitScript(installStanceEngage);
     await bootDev(page);
     await startPlayActive(page);
     await page.waitForFunction(() => window.__craftyTest?.call('readMobs') && window.__threeCamera && window.GameMethods?.damageMob
@@ -369,8 +359,9 @@ test.describe('combat stance', () => {
       await idleFirst(label);
       const sp = await page.evaluate(({ where, dist, yaw }) => window.__stanceSpec.spawn(where, dist, yaw), { where, dist, yaw });
       expect(sp.why, sp.why).toBeUndefined();
-      const en = await page.evaluate(({ id, ms }) => window.__stanceSpec.engage(id, ms), { id: sp.id, ms: fi.median });
-      expect(en.ok, `${label}: the stance never engaged with an aggro'd husk ${dist} m ${where} — ${JSON.stringify(en.trace)}`).toBe(true);
+      const en = await page.evaluate(({ id, ms, wallMs }) => window.__stanceEngage(id, ms, wallMs), { id: sp.id, ms: fi.median, wallMs: HOLD_WALL_MS });
+      expect(en.stalled, `SETUP: ${label}: the game advanced ${en.gameS} s in ${en.ms} ms waiting for the stance to engage, short of its ${en.budgetS} s — [ms, gameS, w, engaged, gap] ${JSON.stringify(en.trace)}`).not.toBe(true);
+      expect(en.ok, `${label}: the stance never engaged with an aggro'd husk ${dist} m ${where} in ${en.budgetS} s of game time — [ms, gameS, w, engaged, gap] ${JSON.stringify(en.trace)}`).toBe(true);
       return sp.id;
     };
     const caught = async (code, id, label, judgeChase, { strafe = false } = {}) => {

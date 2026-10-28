@@ -8,13 +8,13 @@
  * fetches the tag out of the document. So every share of this game showed a title, a description, and an
  * empty grey box.
  *
- * The source is the committed `menu` visual baseline — the real title screen, wordmark and all, which is
- * both the most representative frame and the one that cannot drift from what ships without the visual
- * gate noticing. Regenerating from a baseline rather than hand-exporting means the card follows the game.
+ * The source is the committed `menu.png` frame — the real title screen, wordmark and all. It is the one
+ * file kept from the retired capture oracle, and nothing re-shoots it any more, so the card follows the
+ * game only when that frame is replaced (the media pipeline, W2-H, owns the replacement).
  *
  * NEAREST-NEIGHBOUR resampling, deliberately. This is a voxel game with hard-edged bold-flat UI; a
  * smoothing filter would soften exactly the edges that carry the art direction. It also keeps this script
- * dependency-free beyond pngjs, which the visual gate already uses.
+ * dependency-free beyond pngjs.
  *
  *   node scripts/visual/make-og-image.mjs         write public/og-image.png
  *   node scripts/visual/make-og-image.mjs --check exit 1 if the file is missing or the wrong size

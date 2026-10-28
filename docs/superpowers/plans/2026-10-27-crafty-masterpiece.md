@@ -24,8 +24,9 @@ on purpose: a pixel budget, tiers that settle, nothing redrawn that did not chan
 1. **Lived proof in the running game**, not a compiling call site: a real-input e2e, a probe, or a log line watched
    fire. Ask what would still pass if the feature were deleted.
 2. **Looks are judged on real-GPU, motion-on frames** (the lookbook probe, Phase 0), opened by eye, including iPad
-   viewports in WebKit. The 31 SwiftShader capture frames stay the REGRESSION oracle only: capture mode turns off
-   weather, mobs, NPCs, particles and spawning, and pins the sun at noon.
+   viewports in WebKit. The 31 SwiftShader capture frames, kept here at first as the regression oracle, retired
+   2026-10-28 (DECISIONS W1-H item 1): capture mode turns off weather, mobs, NPCs, particles and spawning, and pins
+   the sun at noon.
 3. **A heat budget held:** no move adds GPU cost without stating it, and Phase 0 sets the budget the rest are held to.
 4. **Mutation receipts** on every gate (identity mutant included), per `.claude/rules/gates-and-probes.md`.
 5. **Review:** fresh headless `/code-review xhigh` per change range plus one pointed adversarial reviewer at xhigh on

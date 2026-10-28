@@ -11,11 +11,10 @@ import { render } from '@testing-library/react';
 // This cost the 2026-08-08 re-baseline: menu.png measured 0.984% run-to-run against a < 0.15% bar, and
 // the diff was outlines tracing every edge of the diorama plus the borders of motes that had not moved.
 // GameScene already disabled AdaptiveDpr under isCaptureMode and pinned PROBE_DPR for the perf probe;
-// TitleDiorama and MascotStudio never got the same treatment, and both feed gated baselines.
+// TitleDiorama never got the same treatment.
 //
-// WORTH KEEPING STRAIGHT: waitForStableFrame was satisfied in BOTH runs — no "never stabilized" warning
-// fired. The frame stopped changing, at a different state each time. Stable is not deterministic, and
-// this covers the half stability cannot.
+// WORTH KEEPING STRAIGHT: the frame stopped changing in BOTH runs, at a different state each time.
+// Stable is not deterministic, and this covers the half stability cannot.
 //
 // BEHAVIOURAL, not a source grep: it RENDERS the component and reads the prop the Canvas actually
 // receives, so a refactor that computes dpr some other way is still covered.

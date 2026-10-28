@@ -8,8 +8,7 @@ const REPO = resolve(process.cwd(), '..');
 /**
  * `read-order.mjs` had NO test. Found 2026-09-22 by `gate-census.mjs`, but only after fixing a defect in
  * the census itself: five files under `scripts/ci/` all scored 0/5 and looked like one uniform class of
- * "unevidenced", when four of them are pure helpers driven by tests elsewhere (`_density-ratchet` by
- * four) and exactly one — this one — was driven by nothing at all. A uniform low score across a class
+ * "unevidenced", when four of them are pure helpers driven by tests elsewhere, and exactly one — this one — was driven by nothing at all. A uniform low score across a class
  * conveys nothing and hid the single real gap inside it. Read the count, not the tick, applied to the
  * census's own output.
  *

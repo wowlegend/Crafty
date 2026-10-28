@@ -3,7 +3,7 @@
 // Fixes the repo-wide probe-hygiene bug class (holistic review): probes spawned `npx vite` NON-detached and
 // killed it with `server.kill()`, which only reaps the npx WRAPPER and ORPHANS the forked vite child holding
 // the port; and many closed the browser only on the happy path, leaking headless Chromium on a throw. This
-// helper encapsulates the pattern already proven in ocean-probe.mjs + capture.mjs (ran to 0 leaked procs):
+// helper encapsulates the pattern first proven in ocean-probe.mjs (ran to 0 leaked procs):
 //   - spawn vite DETACHED (its own process group) so shutdown() can SIGKILL the WHOLE group.
 //   - shutdown() closes the browser under an 8s timeout (cleared on settle) + force-kills its process — a
 //     GPU-context-lost / crashed headless Chrome leaves close() hanging on an unanswered CDP command forever.
@@ -47,7 +47,7 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
  *      tab survives, and a loaded Crafty tab keeps running the R3F render loop and the Rapier physics
  *      step at ~100% of a core indefinitely. Measured today: 1.9 GB RSS, 102.6% CPU, server long dead.
  *
- * That is also why only :4180 ever did it — it is the one preview port; every dev probe (4178, 4179, and
+ * That is also why only :4180 ever did it — it was the one preview port; every dev server (e2e's 4179 and
  * the frozen table below) took the other branch and passed the flag. The asymmetry WAS the bug.
  *
  * Never let a managed server open a browser. The harness brings its own; anything else is the operator's.
@@ -111,18 +111,16 @@ export function serveVite(port, { cwd, preview = false, outDir = null } = {}) {
  * Measured 2026-08-12: of the probes under scripts/visual, FIFTEEN shared just six ports — 4196 was
  * claimed by four different files, 4195 by three, 4194/4198/5197/5199 by two each. Every one of them
  * binds with `--strictPort`, so running two that collide does not queue or fall back: the second dies
- * on bind and the failure reads as a broken probe rather than as two probes wanting one socket. This
- * repo has already paid for that exact confusion once, on the capture port.
+ * on bind and the failure reads as a broken probe rather than as two probes wanting one socket.
  *
  * The fix belongs in the shared instrument, not in twenty-five hand-picked constants — a helper is used
  * at the moment of the mistake, a convention is read before it. A probe that forgets to register throws
  * with its own filename in the message instead of silently colliding with whatever 4196 is today.
  *
- * capture.mjs keeps 4178, which is documented as a managed port elsewhere; everything else is
- * reallocated into a contiguous block so a gap is visible.
+ * The block is contiguous so a gap is visible. The e2e (4179) and prod-smoke (4180) servers are managed
+ * outside it.
  */
 export const PROBE_PORTS = Object.freeze({
-  'capture.mjs': 4178,
   'dayphase-probe.mjs': 4210,
   'death-probe.mjs': 4211,
   'drive-elemancer.mjs': 4212,

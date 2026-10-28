@@ -1,6 +1,7 @@
 import { test, expect } from './_fixtures.js';
 import { devices } from '@playwright/test';
 import { bootDev, startPlayActive } from './_boot.js';
+import { installStanceEngage } from './_stanceEngage.js';
 
 // CLOSE-QUARTERS COMBAT ON AN EMULATED iPAD (docs/superpowers/plans/2026-10-27-crafty-combat-stance.md, Task 11).
 //
@@ -184,16 +185,6 @@ function installTouchCombatHelpers() {
       const added = call('readMobs').filter((m) => !before.has(m.id));
       return added.length === 1 ? { id: added[0].id } : { why: `SETUP: spawnMob added ${added.length} mobs, not one` };
     },
-    async engage() {
-      const t0 = performance.now();
-      const deadline = Math.max(3000, 15 * H.median);
-      while (performance.now() - t0 < deadline) {
-        await frame();
-        const st = call('readStance');
-        if (st && st.engaged === true && st.w === 1) return true;
-      }
-      return false;
-    },
     // Sample every frame while the stick is held (the touch itself is driven from the test through CDP).
     // `minMs`: keep sampling at least this long even once the husk has caught up, so the applied velocity has settled
     // frames to be judged on (a husk already walking in during the engage can be adjacent on the first sample).
@@ -303,6 +294,7 @@ function judgeTarget(samples) {
 
 async function boot(page) {
   await page.addInitScript(installTouchCombatHelpers);
+  await page.addInitScript(installStanceEngage);
   await bootDev(page);
   await startPlayActive(page);
   await page.waitForFunction(() => window.__craftyTest?.call('readMobs') && window.__threeCamera && window.GameMethods?.damageMob
@@ -334,7 +326,9 @@ test.describe('combat on touch', () => {
       expect(await page.evaluate(() => window.__touchCombat.home()), `SETUP: case ${label}: the player could not be put back on the stand point`).toBe(true);
       const sp = await page.evaluate((wh) => window.__touchCombat.spawnZombie(wh, 5), where);
       expect(sp.why, sp.why).toBeUndefined();
-      expect(await page.evaluate(() => window.__touchCombat.engage()), `case ${label}: the stance never engaged with an aggro'd husk 5 m ${where}`).toBe(true);
+      const en = await page.evaluate((id) => window.__stanceEngage(id, window.__touchCombat.median, 120000), sp.id);
+      expect(en.stalled, `SETUP: case ${label}: the game advanced ${en.gameS} s in ${en.ms} ms waiting for the stance to engage, short of its ${en.budgetS} s — [ms, gameS, w, engaged, gap] ${JSON.stringify(en.trace)}`).not.toBe(true);
+      expect(en.ok, `case ${label}: the stance never engaged with an aggro'd husk 5 m ${where} in ${en.budgetS} s of game time — [ms, gameS, w, engaged, gap] ${JSON.stringify(en.trace)}`).toBe(true);
       await touchStart(cdp, stick);
       await touchMove(cdp, { x: stick.x, y: stick.y + dy / 2 });
       await touchMove(cdp, { x: stick.x, y: stick.y + dy });
