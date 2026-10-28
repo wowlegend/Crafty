@@ -1,6 +1,7 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
+import { BURST_M, flown, stoppedShort } from './_spellEnd.js';
 
 // A MOB UNDER A ROOF STAYS ON THE GROUND (review #6, QUEUE R7.1).
 //
@@ -15,12 +16,40 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // within 3 blocks — the first draft demanded a FLAT one and the e2e world, hilly at spawn, had none among 32).
 // If none exists the spec fails as SETUP, naming how many sites it scanned — never as "the probe is broken".
 //
+// THE FIREBALL IS MEASURED BY WHERE IT ENDED, NOT BY THE PATH SAMPLED PER FRAME (2026-10-27). The first version
+// read the live projectile once per rendered frame and called the distance between the first and last samples
+// "the flight". On CI's software renderer the traces show 4.7-11.2 s between rendered frames around the cast —
+// longer than a fireball's whole 3 s life — so the spell's entire flight fitted inside ONE frame and the spec
+// printed "burst after 0.0 m (1 frames)" whatever it had done (runs 40499349776, 40517958583: red three attempts
+// running; green on 40514448242). In 40517958583's first attempt the first frame carried the fireball 3.6 m past
+// the muzzle WITHOUT bursting, then the trace's screencast shows no new frame for 8.7 s, and the spell was gone at
+// the next sample: the spec failed on its own 4 m threshold, on a flight it never saw end. All three attempts show
+// the same terrain from the same spot and aim; what differed was the frame timing and the mobs near the line (in
+// the third, a wild villager — tagged "villager", not a named hub NPC, so a spell can hit it — stands close at the
+// right edge of the view as the spell is cast).
+// Both are inputs the spec read and never set. So the spell now reports its own end (readSpentProjectiles:
+// where, and what ended it), and the spec ESTABLISHES the three inputs it used to inherit: the AIM (level, along a
+// heading whose ground stays below the flight line for 8 m — it used to fly wherever the camera happened to face),
+// MOBS (a cast a mob or the boss stopped within 4 m of the muzzle is set aside and recast, up to three times: it
+// cannot show whether the spell flies; one stopped beyond 4 m is judged, since the ground test passed at every
+// half-metre substep on the way out — and the subject's defect can never read as 'mob' — EnhancedMagicSystem tests
+// the ground before it tests mobs, so a muzzle burst ends 'ground', or 'age' when the frame that carried it was
+// over 3 s long, and at the muzzle either way), and the FRAME RATE (no longer read at all).
+//
 // Mutation-Proof: by hand (cp backup, byte-verified restore), each observed RED:
 //   E1 AIWorkerSystem: snapMob(entity, null, store.getMobGroundLevel) — the top-down snap — "the zombie stood ON
 //      the roof" (the probe asserts stay green under E1: they read getMobFloor directly — which is why the zombie
 //      is here)
-//   E2 EnhancedMagicSystem: projectileGrounded(projectile.position, null, ...) — the column top (R7.9) — "the
-//      fireball cast under the roof burst after 0.0 m"
+//   E2 EnhancedMagicSystem: projectileGrounded(p, null, ...) — the column top (R7.9) — "the fireball cast under
+//      the roof burst 0.5 m from the muzzle (ended by ground ...)"
+//   E3 EnhancedMagicSystem: the DEV end record never written — "no end was recorded" (the instrument's presence
+//      check: a blind recorder must not read as a clean flight)
+// The set-aside rule (_spellEnd.js) is mutation-proven where it can be driven: tests/gates/spell-end-verdict-gates
+// (its M1 is the old rule, which set aside a mob end at any distance). What the record stores is proven by
+// tests/gates/spent-spell-record-gates.
+// The flake itself, CONSTRUCTED rather than waited for (2026-10-27, throwaway :4291 config, identity mutant green
+// on both tests): a page-side burner making every frame with a live spell take 4 s read "the fireball cast under the
+// roof burst after 1.3 m (2 frames)" on the old per-frame sampling — CI's shape — and passed on the end record.
 test.describe('mob floor', () => {
   test.setTimeout(180000);
 
@@ -60,12 +89,80 @@ test.describe('mob floor', () => {
     }, { cx, cz, roofY }, { timeout: 30000 }).then(() => true, () => false);
   };
 
+  // How far from the eye the chosen heading's ground must stay below the flight line: the muzzle sits 2 m out, so
+  // this leaves 6 m of open flight past it — more than the 4 m the assertion asks for.
+  const OPEN_M = 8;
+  // A spell hits a mob within size + 1.5 of it (fireball: 2.7 m, CombatSystem checkMobCollision); keep 3.5 m.
+  const MOB_CLEAR_M = 3.5;
+
+  // ONE fireball, cast LEVEL from where the player stands, along the best of 8 headings, then read back where the
+  // spell itself says it ENDED. Every input the verdict depends on is set here or reported back:
+  //  - the heading: its ground — the patch's ground mapped BEFORE the roof, the column top beyond — stays more than a
+  //    spell's 0.5 m landing band (plus 0.3 m) below the eye for OPEN_M; preferring one with no mob near the line.
+  //  - the frame rate: the wait runs until the spell leaves the live list, on any number of frames, and the verdict
+  //    reads the spell's own end record — never the samples, which a single long frame can contain whole.
+  const castLevel = (page, { cx, cz, grounds }) => page.evaluate(async ({ cx, cz, grounds, openM, mobClearM }) => {
+    const s = window.useGameStore.getState();
+    const cam = window.__threeCamera;
+    const ox = cam.position.x, oy = cam.position.y, oz = cam.position.z;
+    // The probes read column floor(x + 0.1) (the seam jitter), so the patch map is keyed the same way.
+    const groundAt = (x, z) => {
+      const g = grounds[`${Math.floor(x + 0.1) - cx},${Math.floor(z + 0.1) - cz}`];
+      return g !== undefined ? g : s.getMobGroundLevel(x, z);
+    };
+    const mobs = window.__craftyTest.call('readMobs');
+    const headings = [];
+    for (let k = 0; k < 8; k++) {
+      const a = (k * Math.PI) / 4, hx = Math.sin(a), hz = -Math.cos(a);
+      let open = 0;
+      for (let i = 20; i <= openM * 10; i++) {
+        const g = groundAt(ox + (hx * i) / 10, oz + (hz * i) / 10);
+        if (g == null || g + 0.5 >= oy - 0.3) break;
+        open = i / 10;
+      }
+      // Nearest mob to the flight line between the muzzle and 12 m — the same 3D distance the hit test measures.
+      let nearMob = Infinity;
+      for (const m of mobs) {
+        const t = Math.max(2, Math.min(12, (m.x - ox) * hx + (m.z - oz) * hz));
+        nearMob = Math.min(nearMob, Math.hypot(m.x - (ox + hx * t), m.y - oy, m.z - (oz + hz * t)));
+      }
+      headings.push({ k, hx, hz, open, nearMob });
+    }
+    const usable = headings.filter((h) => h.open >= openM);
+    if (!usable.length) {
+      return { setup: `no heading keeps its ground below the flight line for ${openM} m (open, by heading: ` +
+        `${headings.map((h) => h.open.toFixed(1)).join(', ')}; eye ${oy.toFixed(2)})` };
+    }
+    const h = usable.find((u) => u.nearMob > mobClearM) || usable.reduce((b, u) => (u.nearMob > b.nearMob ? u : b));
+
+    cam.lookAt(ox + h.hx * 10, oy, oz + h.hz * 10); // LEVEL: the flight height is the eye
+    window.useGameStore.setState({ isAlive: true, mana: s.maxMana ?? 100 });
+    const before = new Set(window.__craftyTest.call('readProjectiles').map((p) => p.id));
+    window.useGameStore.getState().castSpell('fireball');
+    const mine = window.__craftyTest.call('readProjectiles').find((p) => !before.has(p.id));
+    if (!mine) return { setup: 'castSpell created no projectile (mana, isAlive or an unmounted system)' };
+
+    const live = () => window.__craftyTest.call('readProjectiles').some((p) => p.id === mine.id);
+    const frame = () => new Promise((r) => requestAnimationFrame(r));
+    const t0 = performance.now();
+    let frames = 0;
+    while (live() && performance.now() - t0 < 60000) { await frame(); frames++; }
+    const end = window.__craftyTest.call('readSpentProjectiles').find((e) => e.id === mine.id) || null;
+    return {
+      heading: h.k, open: h.open, nearMob: h.nearMob, eye: oy, muzzle: { x: mine.x, y: mine.y, z: mine.z },
+      end, frames, waitedMs: performance.now() - t0, stillLive: live(),
+    };
+  }, { cx, cz, grounds, openM: OPEN_M, mobClearM: MOB_CLEAR_M });
+
   test('a fireball cast under a roof flies — it does not burst at the muzzle (R7.9)', async ({ page }) => {
+    // Up to three casts on a slow runner, each waiting out a whole flight; the boot alone can take 90 s on CI.
+    test.setTimeout(240000);
     await bootDev(page);
     await startPlayActive(page);
     await page.waitForFunction(
       () => window.GameMethods?.terrainVerbs?.place && window.__threeCamera && window.useGameStore.getState().castSpell
-        && window.__craftyTest?.call('readProjectiles') !== undefined,
+        && window.__craftyTest?.call('readProjectiles') !== undefined
+        && window.__craftyTest?.call('readSpentProjectiles') !== undefined,
       null, { timeout: 60000 },
     );
     const me = await page.evaluate(() => {
@@ -81,27 +178,30 @@ test.describe('mob floor', () => {
     const top = await page.evaluate(({ cx, cz }) => window.useGameStore.getState().getMobGroundLevel(cx, cz), site);
     expect(top, 'control: the top probe does not read the roof over the caster').toBeGreaterThan(me.eye);
 
-    const flight = await page.evaluate(async () => {
-      const s = window.useGameStore.getState();
-      window.useGameStore.setState({ isAlive: true, mana: s.maxMana ?? 100 });
-      const before = new Set(window.__craftyTest.call('readProjectiles').map((p) => p.id));
-      s.castSpell('fireball');
-      const mine = () => window.__craftyTest.call('readProjectiles').find((p) => !before.has(p.id));
-      const frame = () => new Promise((r) => requestAnimationFrame(r));
-      const path = [];
-      const t0 = performance.now();
-      while (performance.now() - t0 < 6000) {
-        const p = mine();
-        if (!p) { if (path.length) break; await frame(); continue; }
-        path.push({ x: p.x, y: p.y, z: p.z });
-        await frame();
-      }
-      return path;
-    });
-    expect(flight.length, 'SETUP: castSpell created no projectile (mana, cooldown or an unmounted system)').toBeGreaterThan(0);
-    const a = flight[0], b = flight[flight.length - 1];
-    const travelled = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
-    expect(travelled, `the fireball cast under the roof burst after ${travelled.toFixed(1)} m (${flight.length} frames)`).toBeGreaterThan(4);
+    // A cast a MOB or the boss ended WITHIN BURST_M of the muzzle is set aside and recast: the spell was stopped before
+    // it could show whether it flies. One ended BEYOND BURST_M is a valid flight and is judged — the ground test passed
+    // at every half-metre substep on the way out (_spellEnd.js). Setting those aside too threw valid flights away, and
+    // three in a row read as a SETUP failure on a spell that flew (review, 2026-10-27).
+    const casts = [];
+    for (let n = 0; n < 3; n++) {
+      const c = await castLevel(page, site);
+      expect(c.setup ?? null, `SETUP: ${c.setup}`).toBeNull();
+      casts.push(c);
+      if (!stoppedShort(c)) break;
+    }
+    const c = casts[casts.length - 1];
+    const where = `heading ${c.heading}, open ${c.open.toFixed(1)} m, nearest mob ${c.nearMob.toFixed(1)} m, ` +
+      `${c.frames} frames in ${c.waitedMs.toFixed(0)} ms, cast ${casts.length} of up to 3`;
+    expect(c.eye, `SETUP: the eye (${c.eye.toFixed(2)}) is not under the roof's underside (${roofY}) — the muzzle is not under it`)
+      .toBeLessThan(roofY - 0.5);
+    expect(c.stillLive, `the fireball was still in flight after 60 s — nothing ended it (${where})`).toBe(false);
+    // PRESENCE: the spell's own end record exists. A recorder that wrote nothing must not read as a clean flight.
+    expect(c.end, `the fireball left the live list but no end was recorded — readSpentProjectiles is blind (${where})`).not.toBeNull();
+    const flew = flown(c);
+    expect(stoppedShort(c), `SETUP: a ${c.end.by} stopped the fireball within ${BURST_M} m of the muzzle in all ` +
+      `${casts.length} casts (last at ${flew.toFixed(1)} m) — no flight long enough to judge was measured (${where})`).toBe(false);
+    expect(flew, `the fireball cast under the roof burst ${flew.toFixed(1)} m from the muzzle ` +
+      `(ended by ${c.end.by} at age ${c.end.age.toFixed(0)} ms; ${where})`).toBeGreaterThan(BURST_M);
   });
 
   test('a roof over open ground: the live floor probe and a zombie under it stay on the ground', async ({ page }) => {
