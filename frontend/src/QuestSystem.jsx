@@ -534,9 +534,9 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
                                         {quest.completed && !quest.claimed && (
                                             <Button
                                                 variant="primary"
-                                                size="sm"
+                                                size={null}
                                                 onClick={() => onClaim(quest.id)}
-                                                className="px-2 py-0.5 text-xs"
+                                                className="gap-2 px-2 py-0.5 text-xs"
                                             >
                                                 {touch ? 'Claim' : 'Press Q'}
                                             </Button>
@@ -657,7 +657,7 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
                         <span className="flex items-center gap-2 font-display text-xl uppercase tracking-wide text-accent">
                             <Icon name="star" size={24} className="text-accent" /> Achievements
                         </span>
-                        <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                        <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9">
                             <Icon name="close" size={18} />
                         </Button>
                     </div>
@@ -674,7 +674,8 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
                                     <Panel
                                         key={ach.id}
                                         variant="inset"
-                                        className={`p-3 ${unlocked ? 'bg-slot' : 'bg-panel-inset opacity-50'}`}
+                                        bg={unlocked ? 'bg-slot' : 'bg-panel-inset'}
+                                        className={unlocked ? 'p-3' : 'p-3 opacity-50'}
                                     >
                                         <div className="mb-1 text-2xl">
                                             {unlocked
@@ -697,7 +698,7 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
                             </h3>
                             <div className="grid grid-cols-3 gap-2 text-xs">
                                 {statCells.map(cell => (
-                                    <Panel key={cell.label} variant="inset" className="bg-slot text-center p-2">
+                                    <Panel key={cell.label} variant="inset" bg="bg-slot" className="text-center p-2">
                                         <div className={`${cell.color} font-bold text-lg tabular-nums`}>{cell.value}</div>
                                         <div className="text-text-muted">{cell.label}</div>
                                     </Panel>
@@ -985,7 +986,7 @@ export const ChestIndicator = React.memo(({ chests, openedChestIds }) => {
             className="absolute top-1/2 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none"
             style={{ marginTop: 60 }}
         >
-            <Panel variant="base" className="bg-accent text-text-inverse px-4 py-2 text-center flex items-center gap-2">
+            <Panel variant="base" bg="bg-accent" text="text-text-inverse" className="px-4 py-2 text-center flex items-center gap-2">
                 <Icon name="chest" size={22} className="text-text-inverse flex-none" />
                 <div className="text-left">
                     <div className="font-display uppercase tracking-wide text-sm leading-tight">{t('chest.treasure')}</div>

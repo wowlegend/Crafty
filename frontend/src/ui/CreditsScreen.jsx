@@ -25,7 +25,8 @@ export const CreditsScreen = React.memo(({ onClose }) => {
         <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label={t('credits.title')} onClose={onClose}>
             <Panel
                 variant="raise"
-                className="w-[420px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
+                shadow="shadow-elev-xl"
+                className="w-[420px] max-w-[95vw] overflow-hidden p-0"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header bar */}
@@ -34,7 +35,7 @@ export const CreditsScreen = React.memo(({ onClose }) => {
                         <Icon name="heart" size={26} className="text-accent" />
                         <span className="font-display text-xxl tracking-wide">{t('credits.title')}</span>
                     </div>
-                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                    <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9">
                         <Icon name="close" size={18} />
                     </Button>
                 </div>
@@ -42,7 +43,7 @@ export const CreditsScreen = React.memo(({ onClose }) => {
                 {/* Body */}
                 <div className="flex flex-col gap-4 px-5 pt-5 pb-5">
                     {/* Game icons — CC BY 3.0 (attribution owed) */}
-                    <Panel variant="inset" className="bg-slot flex flex-col gap-2 px-4 py-3">
+                    <Panel variant="inset" bg="bg-slot" className="flex flex-col gap-2 px-4 py-3">
                         <span className="text-xs text-text-muted uppercase tracking-widest">{t('credits.icons_heading')}</span>
                         <div className="flex items-baseline justify-between gap-3">
                             <span className="font-bold text-text">
@@ -61,7 +62,7 @@ export const CreditsScreen = React.memo(({ onClose }) => {
                     </Panel>
 
                     {/* Fonts */}
-                    <Panel variant="inset" className="bg-slot flex flex-col gap-2 px-4 py-3">
+                    <Panel variant="inset" bg="bg-slot" className="flex flex-col gap-2 px-4 py-3">
                         <span className="text-xs text-text-muted uppercase tracking-widest">{t('credits.fonts_heading')}</span>
                         <CreditRow label="Lilita One" license="OFL" />
                         <CreditRow label="Space Grotesk" license="OFL" />

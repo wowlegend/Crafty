@@ -13,7 +13,7 @@
 // the palette IS the product.)
 //
 // The engine's id space is defined by the worker: `terrain.worker.js` BLOCK_COLORS keys, and
-// `proceduralTextures.js` builds a DataArrayTexture where **layer index == block code** (numLayers = 16).
+// `proceduralTextures.js` builds an array texture where **layer index == block code** (numLayers = 16).
 // So ids 0..15 are the ENTIRE supported space. Anything outside it cannot be rendered, and must not be
 // silently substituted — it must be refused.
 //
