@@ -20,8 +20,9 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   - THE CHASE, only at >= 4 fps (median frame interval <= 250 ms; the strafe's at <= 61 ms, see
 //     STRAFE_CHASE_MAX_INTERVAL_MS): whether the husk actually closes. Below that,
 //     AIWorkerSystem caps an AI tick at 0.25 s, so mobs move slower than their speed and a chase cannot be judged; it
-//     is then reported as not judged (an annotation), never as a verdict. Every run logs its median frame interval, so
-//     the first CI run of this spec measures what it can judge (plan Task 5 Step 0).
+//     is then reported as not judged (an annotation), never as a verdict. The CATCH is judged only when every frame of
+//     the hold up to it was within that bound too, since the idle median does not describe the hold's frames. Every run
+//     logs its median frame interval, and each chase its worst frame and the AI time it lost.
 //
 // WHERE IT STANDS. The plan asked for one flat strip (14 m behind to 6 m ahead, 25 m lateral) and SETUP without one.
 // The first local run measured the spawn: the hearth platform (floor 52, a 15 x 15 m pad) inside rolling ground at
@@ -306,12 +307,20 @@ function caughtFrames(samples) {
   return i < 0 ? samples : samples.slice(0, i + 1);
 }
 
-/** The achieved speed away from the threat over the frames at full weight, m/s; and a compact per-frame trace. */
+/**
+ * The achieved speed away from the threat over the frames at full weight, m/s; a compact per-frame trace; and the
+ * frames themselves: the longest, and the AI time they cost. The worker gets at most CHASE_MAX_INTERVAL_MS of AI time
+ * per frame (AIWorkerSystem.jsx caps a tick at 0.25 s) while the player steps by the whole frame, so every frame past
+ * it is time the husk did not walk.
+ */
 function chase(samples) {
-  let along = 0, ms = 0, gapMin = Infinity;
+  let along = 0, ms = 0, gapMin = Infinity, worstFrameMs = 0, aiLostMs = 0;
   const trace = [];
   for (let i = 0; i < samples.length; i++) {
     const s = samples[i], p = samples[i - 1];
+    const frameMs = s.t - (p ? p.t : 0);
+    worstFrameMs = Math.max(worstFrameMs, frameMs);
+    aiLostMs += Math.max(0, frameMs - CHASE_MAX_INTERVAL_MS);
     if (s.gap != null) gapMin = Math.min(gapMin, s.gap);
     const speed = p ? Math.hypot(s.px - p.px, s.pz - p.pz) / ((s.t - p.t) / 1000) : 0;
     if (trace.length < 40) trace.push([Math.round(s.t), s.gap == null ? null : +s.gap.toFixed(2), +speed.toFixed(2), s.st ? +s.st.w.toFixed(2) : null]);
@@ -321,7 +330,10 @@ function chase(samples) {
     along += ((s.px - p.px) * ax + (s.pz - p.pz) * az) / l;
     ms += s.t - p.t;
   }
-  return { retreat: ms > 0 ? +(along / (ms / 1000)).toFixed(2) : null, gapMin: +gapMin.toFixed(2), trace };
+  return {
+    retreat: ms > 0 ? +(along / (ms / 1000)).toFixed(2) : null, gapMin: +gapMin.toFixed(2), trace,
+    worstFrameMs: Math.round(worstFrameMs), aiLostMs: Math.round(aiLostMs), spanMs: Math.round(samples.length ? samples[samples.length - 1].t : 0),
+  };
 }
 
 test.describe('combat stance', () => {
@@ -383,9 +395,17 @@ test.describe('combat stance', () => {
       expect(j.worstAppliedAway, `${label}: the velocity fed to the body left the husk at ${j.worstAppliedAway} m/s while the target said ${j.worstAway} (cap ${RETREAT}; ${j.applied} settled frames)`).toBeLessThanOrEqual(RETREAT + APPLIED_TOL);
       if (strafe) expect(j.worstAppliedTan, `${label}: the velocity fed to the body circled at ${j.worstAppliedTan} m/s (cap ${STRAFE}; ${j.applied} settled frames)`).toBeLessThanOrEqual(STRAFE + APPLIED_TOL);
       const ch = chase(caughtFrames(r.samples));
-      chaseNotes.push(`${label}: ${j.judged} frames judged, worst away ${j.worstAway} (applied ${j.worstAppliedAway} over ${j.applied}), retreat ${ch.retreat} m/s, closest ${ch.gapMin} m, chase ${judgeChase ? 'judged' : 'not judged'}`);
+      // The catch is judged on the frames the chase ran on, not on the idle median that admitted it: a 78 ms idle median
+      // has preceded holds of 330-550 ms frames and a 3.9 s stall (CI run 40675430218), where the AI clock lost 5.0 of
+      // 8.0 s and no husk could close. So every frame up to the catch must be within the bound.
+      const frameBound = strafe ? STRAFE_CHASE_MAX_INTERVAL_MS : CHASE_MAX_INTERVAL_MS;
+      const judgeCatch = judgeChase && ch.worstFrameMs <= frameBound;
+      if (judgeChase && !judgeCatch) {
+        testInfo.annotations.push({ type: 'not judged', description: `${label}: the catch (a frame of the hold took ${ch.worstFrameMs} ms > ${frameBound} ms; the AI clock lost ${ch.aiLostMs} of ${ch.spanMs} ms); the target assertions carry the verdict` });
+      }
+      chaseNotes.push(`${label}: ${j.judged} frames judged, worst away ${j.worstAway} (applied ${j.worstAppliedAway} over ${j.applied}), retreat ${ch.retreat} m/s, closest ${ch.gapMin} m, worst frame ${ch.worstFrameMs} ms (AI lost ${ch.aiLostMs} of ${ch.spanMs} ms), chase ${judgeChase ? 'judged' : 'not judged'}, catch ${judgeCatch ? 'judged' : 'not judged'}`);
       if (judgeChase) {
-        expect(ch.gapMin, `${label}: the husk never caught up (closest ${ch.gapMin} m) — [ms, gap, playerSpeed, w] ${JSON.stringify(ch.trace)}`).toBeLessThanOrEqual(CAUGHT_GAP_M);
+        if (judgeCatch) expect(ch.gapMin, `${label}: the husk never caught up (closest ${ch.gapMin} m) — [ms, gap, playerSpeed, w] ${JSON.stringify(ch.trace)}`).toBeLessThanOrEqual(CAUGHT_GAP_M);
         if (!strafe) expect(ch.retreat, `${label}: the achieved retreat was ${ch.retreat} m/s — ${JSON.stringify(ch.trace)}`).toBeLessThanOrEqual(2.3);
       }
     };

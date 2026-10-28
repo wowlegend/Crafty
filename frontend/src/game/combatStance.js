@@ -310,7 +310,8 @@ export function noteMoveTarget(rawX, rawZ, targetX, targetZ, appliedX, appliedZ,
 //      through teleportPlayer, and the dodge branch marking its burst with dodgeBurst. In the e2e, case 0 pins only the
 //      HEIGHT of stanceFrame's point: x and z are compared standing still, where the camera has converged on the body,
 //      and mobSensePoint is the camera's position. A wrong body or a bypassed stanceWalk can show only in a chase
-//      sub-assertion, judged only at a median frame interval of 250 ms or less; no e2e case charges a heavy in a fight,
+//      sub-assertion, judged only at a median frame interval of 250 ms or less (the catch only when every frame of the
+//      hold up to it was); no e2e case charges a heavy in a fight,
 //      or dodges in one.
 //   3. THE KCC IS DOWNSTREAM. The bound is on the velocity FED to computeColliderMovement, not on the movement it
 //      returns, and a slide along a wall can raise a step's away part (plausible by arithmetic, unmeasured). Knockback

@@ -10,15 +10,23 @@ import { bootDev, startPlayActive } from './_boot.js';
 // STAGING. A frozen world (triggerHitstop), so the AI never ticks and no mob moves, winds up or strikes; Math.random
 // pinned high, so no swing crits (a bare-handed light swing deals 20, a finisher 30). Each case stages a fresh moss
 // brute 2.2 m dead ahead and a zombie 2.0 m at 60 degrees off the view axis: outside the 90 degree light cone, inside
-// the 140 degree finisher's.
+// the 140 degree finisher's. Screen shake off (setJuiceIntensity(0), the Reduced-motion setting): a swing's cone starts at
+// the camera, and the shake moves the camera, by metres at its peak (2.43 m off the body in the frame a dodge started,
+// measured here), so a click timed with no frame after a dodge swung from there and missed a brute 2.2 m ahead.
 //
 // TIMING IS JUDGED AGAINST MEASURED TIMES, NEVER INTENDED ONES (plan review finding 8). Each click is stamped on the
 // page clock by a capture listener, each case states the semantic interval its intent needs (from the string's own
 // rules: fire or buffer from readyAt - BUFFER_MS, the window to + STRING_WINDOW_MS), and a measured gap outside it is
-// SETUP, never a verdict. A BUFFERED fire is judged by state (readString().lastSwingAt / lastSwingStep), polled until a
-// deadline of readyAt + max(300, 3 x the median frame interval), because it fires in useFrame, up to a frame late.
-// The dodge's start is stamped independently of the subject (the 'swing' sound the dodge site plays), so a mutant that
-// never stamps cancelAt is judged, not excused.
+// SETUP, never a verdict.
+// A click that must land inside a window is placed by spinUntil, a busy wait on the clock the string reads. An awaited
+// sleep yields to the frame loop, and on CI's SwiftShader one frame can hold the main thread for hundreds of ms (run
+// 40675430218: a click aimed 350 ms after the first was handled 974 ms after it); a busy wait lets no frame start
+// between two presses whose spacing the case judges. Only waits whose overshoot cannot matter (past a window, a rest)
+// still yield.
+// A BUFFERED fire happens in useFrame, so it is awaited in FRAMES, not ms: swingAfter returns once the swing is seen, or
+// once the frame loop has run FRAMES_PAST_READY frames at or past readyAt without it, the game's own deadline whatever a
+// frame costs. The dodge's start is stamped independently of the subject (the 'swing' sound the dodge site plays), so a
+// mutant that never stamps cancelAt is judged, not excused.
 //
 // WHAT THIS DOES NOT CHECK: the string in a beast form (out of scope: the string is the human sword's); touch
 // (tests/e2e/combat-touch.spec.js, Task 11); the hand's sweep (by eye, Task 10).
@@ -41,8 +49,12 @@ import { bootDev, startPlayActive } from './_boot.js';
 const FINISHER_MULT = 1.5; // LITERALS: the yardstick must not move with the subject
 const WINDOW = 650;
 const HEAVY_FULL_MS = 700; // HEAVY_HOLD_MS + HEAVY_CHARGE_MS
+const PLACE_TRIES = 3; // stagings of a case whose measured times must fit its windows
 
 function installStringHelpers() {
+  // The page's rAF and the frame loop's share a vsync in either order. Ours runs at or past readyAt on vsync k, so the
+  // loop's frame on vsync k+1 starts past it and takes a buffered press, and ours on k+2 runs after that frame.
+  const FRAMES_PAST_READY = 3;
   const call = (n, ...a) => window.__craftyTest.call(n, ...a);
   const frame = () => new Promise((r) => requestAnimationFrame(r));
   const tick = () => new Promise((r) => setTimeout(r, 2));
@@ -56,6 +68,7 @@ function installStringHelpers() {
     yaw: 0,
     median: 16,
     sleepUntil: async (t) => { while (performance.now() < t) await tick(); },
+    spinUntil: (t) => { while (performance.now() < t) { /* no frame may start before the next press */ } },
     async frames(n) { for (let i = 0; i < n; i++) await frame(); },
     async frameInterval(n) {
       const d = [];
@@ -91,10 +104,13 @@ function installStringHelpers() {
       store().triggerHitstop(600000);
       window.__stringRandom = window.__stringRandom || Math.random;
       Math.random = () => 0.999;
+      if (window.__stringJuice == null) window.__stringJuice = store().juiceIntensityChoice ?? 1;
+      store().setJuiceIntensity(0);
     },
     thaw() {
       H.killHostiles(40);
       if (window.__stringRandom) Math.random = window.__stringRandom;
+      if (window.__stringJuice != null) store().setJuiceIntensity(window.__stringJuice);
       window.useGameStore.setState({ hitstopUntil: performance.now() });
     },
     // A fresh moss brute 2.2 m dead ahead and a zombie 2.0 m at 60 degrees right of the view axis.
@@ -133,13 +149,19 @@ function installStringHelpers() {
       window.dispatchEvent(new MouseEvent('mouseup', opts));
       return window.__clicks[window.__clicks.length - 1];
     },
-    // Wait until a swing newer than `prevAt` has fired, or the deadline readyAt + max(300, 3 x median frame).
+    // Wait until a swing newer than `prevAt` has fired, or FRAMES_PAST_READY frames have run at or past readyAt. A
+    // click that fires does so inside its own handler, so this returns at once; only a buffered press waits on frames.
+    // It is watched from a task, which runs as soon as the frame that fired it ends; a rAF callback can come a whole
+    // frame later, and case 5 times its release from the moment the swing is seen.
     async swingAfter(prevAt) {
-      const s0 = H.str();
-      const deadline = Math.max(performance.now(), s0.readyAt) + Math.max(300, 3 * H.median);
-      while (H.str().lastSwingAt <= prevAt && performance.now() < deadline) await frame();
+      const readyAt = H.str().readyAt;
+      let past = 0, counting = true;
+      const count = () => { if (!counting) return; if (performance.now() >= readyAt) past++; requestAnimationFrame(count); };
+      requestAnimationFrame(count);
+      while (H.str().lastSwingAt <= prevAt && past < FRAMES_PAST_READY) await tick();
+      counting = false;
       const s = H.str();
-      return { fired: s.lastSwingAt > prevAt, at: s.lastSwingAt, step: s.lastSwingStep, last: s.last };
+      return { fired: s.lastSwingAt > prevAt, at: s.lastSwingAt, step: s.lastSwingStep, last: s.last, past };
     },
     // Wait the string's window and the finisher recovery out.
     async rest() { await H.sleepUntil(performance.now() + 1200); },
@@ -178,11 +200,11 @@ test.describe('melee string', () => {
         const t0 = H.click();
         const s1 = await H.swingAfter(t0 - 1);
         const b1 = H.hp(st.brute), z1 = H.hp(st.zombie);
-        await H.sleepUntil(t0 + 350);
+        H.spinUntil(t0 + 350);
         const t2 = H.click();
         const s2 = await H.swingAfter(s1.at);
         const b2 = H.hp(st.brute), z2 = H.hp(st.zombie);
-        await H.sleepUntil(t0 + 700);
+        H.spinUntil(t0 + 700);
         const t3 = H.click();
         const s3 = await H.swingAfter(s2.at);
         const b3 = H.hp(st.brute), z3 = H.hp(st.zombie);
@@ -200,7 +222,8 @@ test.describe('melee string', () => {
       expect(c1.zd[2], `the finisher's 140 degree sweep missed the mob 60 degrees off-axis — ${JSON.stringify(c1.zd)} ${JSON.stringify(c1.st.oz)}`).toBeGreaterThan(0);
       expect(c1.last, 'the string did not restart after the finisher').toBe(0);
 
-      // CASE 2 (control): clicks at 0, 800, 1600 — every gap past the window, so no finisher.
+      // CASE 2 (control): three clicks, each at least 800 ms after the one before — every gap past the window, so no
+      // finisher.
       await page.evaluate(() => window.__stringSpec.rest());
       const c2 = await page.evaluate(async () => {
         const H = window.__stringSpec;
@@ -214,7 +237,7 @@ test.describe('melee string', () => {
         t.push(H.click());
         const s2 = await H.swingAfter(s1.at);
         const b2 = H.hp(st.brute);
-        await H.sleepUntil(t[0] + 1600);
+        await H.sleepUntil(t[1] + 800); // from the click before: a late second click must not pull the third into its cooldown
         t.push(H.click());
         const s3 = await H.swingAfter(s2.at);
         const b3 = H.hp(st.brute), z3 = H.hp(st.zombie);
@@ -237,7 +260,7 @@ test.describe('melee string', () => {
         const t0 = H.click();
         const s1 = await H.swingAfter(t0 - 1);
         const b1 = H.hp(st.brute);
-        await H.sleepUntil(t0 + 200);
+        H.spinUntil(t0 + 200);
         const t2 = H.click();
         const buffered = H.str().buffered; // in the same task as the click
         const s2 = await H.swingAfter(s1.at);
@@ -258,7 +281,7 @@ test.describe('melee string', () => {
         const t0 = H.click();
         const s1 = await H.swingAfter(t0 - 1);
         const b1 = H.hp(st.brute);
-        await H.sleepUntil(t0 + 20);
+        H.spinUntil(t0 + 20);
         const t2 = H.click();
         const buffered = H.str().buffered;
         const s2 = await H.swingAfter(s1.at); // waits out the same deadline a buffered fire would get
@@ -269,10 +292,13 @@ test.describe('melee string', () => {
       expect(c3c.buffered, `a click with ${Math.round(300 - c3c.gap)} ms of cooldown left was buffered`).toBe(false);
       expect(c3c.total, `a dropped click still hit — ${JSON.stringify(c3c)}`).toBe(c3c.d1);
 
-      // CASE 4: cancel into dodge. Clicks at 0 and 350, Shift at 600; the third click lands past the undodged window
-      // and inside the dodged one, so it is the finisher only if the dodge kept the string alive.
-      await page.evaluate(() => window.__stringSpec.rest());
-      const c4 = await page.evaluate(async () => {
+      // CASE 4: cancel into dodge. Clicks at 0 and 350, Shift 200 ms after step 2; the third click lands past the
+      // undodged window and inside the dodged one, so it is the finisher only if the dodge kept the string alive. The
+      // dodge starts in the first frame after the Shift, so Shift goes early enough that a slow frame still starts it
+      // inside step 2's window, and the third click is placed against the measured dodge start. A frame that still
+      // comes too late for those windows (a multi-second stall, seen on CI) leaves the case unplaceable: it is staged
+      // again, up to PLACE_TRIES times, and only a run whose measured times fit is judged.
+      const case4 = () => page.evaluate(async () => {
         const H = window.__stringSpec;
         const call = (n) => window.__craftyTest.call(n);
         const st = await H.stage();
@@ -281,10 +307,10 @@ test.describe('melee string', () => {
         const t0 = H.click();
         const s1 = await H.swingAfter(t0 - 1);
         const b1 = H.hp(st.brute);
-        await H.sleepUntil(t0 + 350);
+        H.spinUntil(t0 + 350);
         H.click();
         const s2 = await H.swingAfter(s1.at);
-        await H.sleepUntil(t0 + 600);
+        H.spinUntil(s2.at + 200);
         // The dodge's start, stamped independently of the string: the 'swing' sound the dodge site plays.
         const store = window.useGameStore;
         const real = store.getState().playSpatialSound;
@@ -292,44 +318,58 @@ test.describe('melee string', () => {
         store.setState({ playSpatialSound: (name, ...rest) => { if (name === 'swing' && !dodgeAt) dodgeAt = performance.now(); return real?.(name, ...rest); } });
         window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ShiftLeft', bubbles: true }));
         const armed = call('readIntents').dodge === true;
-        for (let i = 0; i < 30 && !dodgeAt; i++) await new Promise((r) => requestAnimationFrame(r));
+        const shiftAt = performance.now();
+        let framesToDodge = 0;
+        while (framesToDodge < 30 && !dodgeAt) { await new Promise((r) => requestAnimationFrame(r)); framesToDodge++; }
         window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ShiftLeft', bubbles: true }));
         store.setState({ playSpatialSound: real });
         if (!dodgeAt) return { why: `SETUP: case 4: the dodge never started (armed ${armed}) — ${JSON.stringify(H.str())}` };
-        const at3 = Math.max(dodgeAt + 400, s2.at + 700);
-        await H.sleepUntil(at3);
+        H.spinUntil(s2.at + 700);
         const b2 = H.hp(st.brute);
+        const bm = call('readMobs').find((m) => m.id === st.brute), cp = window.__threeCamera.position;
+        const body = window.useGameStore.getState().playerRigidBodyRef?.current?.translation();
+        const bruteAt3 = bm ? { dist: +Math.hypot(bm.x - cp.x, bm.z - cp.z).toFixed(2), camOffBody: body ? +Math.hypot(cp.x - body.x, cp.z - body.z).toFixed(2) : null, bodyDist: body ? +Math.hypot(bm.x - body.x, bm.z - body.z).toFixed(2) : null } : null;
         const t3 = H.click();
         const s3 = await H.swingAfter(s2.at);
-        return { st, s2, s3, dodgeAt, t3, sinceStep2: dodgeAt - s2.at, d1: b0 - b1, d3: b2 - H.hp(st.brute), cancelAt: H.str().cancelAt };
+        return { st, s2, s3, dodgeAt, t3, sinceStep2: dodgeAt - s2.at, shiftToDodge: dodgeAt - shiftAt, framesToDodge, bruteAt3, d1: b0 - b1, d3: b2 - H.hp(st.brute), cancelAt: H.str().cancelAt };
       });
+      const placed = (c) => c.sinceStep2 <= WINDOW && c.t3 - c.s2.at > WINDOW && c.t3 - c.dodgeAt <= WINDOW - 50;
+      let c4, tries = 0;
+      do {
+        await page.evaluate(() => window.__stringSpec.rest());
+        c4 = await case4();
+        tries++;
+      } while (!c4.why && c4.s2.step === 2 && !placed(c4) && tries < PLACE_TRIES);
+      c4.tries = tries;
       expect(c4.why, c4.why).toBeUndefined();
       expect(c4.s2.step, `SETUP: case 4: the second click was not step 2 — ${JSON.stringify(c4)}`).toBe(2);
-      expect(c4.sinceStep2 <= WINDOW, `SETUP: case 4: the dodge started ${Math.round(c4.sinceStep2)} ms after step 2, after its window had lapsed`).toBe(true);
-      expect(c4.t3 - c4.s2.at > WINDOW, 'SETUP: case 4: the third click is inside the undodged window').toBe(true);
+      expect(c4.sinceStep2 <= WINDOW, `SETUP: case 4: the dodge started ${Math.round(c4.sinceStep2)} ms after step 2 (${Math.round(c4.shiftToDodge)} ms and ${c4.framesToDodge} frames after the Shift), after its window had lapsed (${tries} tries)`).toBe(true);
+      expect(c4.t3 - c4.s2.at > WINDOW, `SETUP: case 4: the third click is inside the undodged window (${tries} tries)`).toBe(true);
+      expect(c4.t3 - c4.dodgeAt <= WINDOW - 50, `SETUP: case 4: the third click came ${Math.round(c4.t3 - c4.dodgeAt)} ms after the dodge started, too late for its window (${tries} tries)`).toBe(true);
       expect(c4.s3.fired, `the click after the dodge fired no swing — ${JSON.stringify(c4)}`).toBe(true);
       expect(c4.d3, `a dodge mid-string did not keep it alive: the third hit dealt ${c4.d3}, step ${c4.s3.step} — ${JSON.stringify(c4)}`).toBe(Math.round(c4.d1 * FINISHER_MULT));
 
       // CASE 5: a heavy ends the string. Click at 0; at 150 a HELD press (it buffers, fires as step 2, and the hold
-      // starts); release at +750 (the heavy); a click 10 ms later must not be a finisher on the heavy's heels.
-      await page.evaluate(() => window.__stringSpec.rest());
-      const c5 = await page.evaluate(async () => {
+      // starts); release HEAVY_FULL_MS + 20 into the hold (the heavy); a click 10 ms later must not be a finisher on the
+      // heavy's heels. That click is only a test inside step 2's window, so a run where the buffered fire was seen too
+      // late to release in time is staged again, as in case 4.
+      const case5 = () => page.evaluate(async ({ holdMs }) => {
         const H = window.__stringSpec;
         const st = await H.stage();
         if (st.why) return st;
         const opts = { button: 0, bubbles: true, cancelable: true };
         const t0 = H.click();
         const s1 = await H.swingAfter(t0 - 1);
-        await H.sleepUntil(t0 + 150);
+        H.spinUntil(t0 + 150);
         window.dispatchEvent(new MouseEvent('mousedown', opts));
         const holdAt = window.__clicks[window.__clicks.length - 1];
         const s2 = await H.swingAfter(s1.at);
-        await H.sleepUntil(holdAt + 750);
+        H.spinUntil(holdAt + holdMs);
         const bh = H.hp(st.brute);
         window.dispatchEvent(new MouseEvent('mouseup', opts));
         const releaseAt = performance.now();
         const heavy = bh - H.hp(st.brute);
-        await H.sleepUntil(releaseAt + 10);
+        H.spinUntil(releaseAt + 10);
         const b0 = H.hp(st.brute);
         const tc = H.click();
         const sc = await H.swingAfter(s2.at);
@@ -338,13 +378,21 @@ test.describe('melee string', () => {
         const tl = H.click();
         const sl = await H.swingAfter(Math.max(s2.at, sc.at));
         return { st, s1, s2, held: releaseAt - holdAt, heavy, clickSinceStep2: tc - s2.at, sc, after, sl, late: tl - releaseAt };
-      });
+      }, { holdMs: HEAVY_FULL_MS + 20 });
+      let c5;
+      tries = 0;
+      do {
+        await page.evaluate(() => window.__stringSpec.rest());
+        c5 = await case5();
+        tries++;
+      } while (!c5.why && c5.s2.fired && c5.s2.step === 2 && c5.clickSinceStep2 > WINDOW && tries < PLACE_TRIES);
+      c5.tries = tries;
       expect(c5.why, c5.why).toBeUndefined();
       expect(c5.s2.fired && c5.s2.step === 2, `SETUP: case 5: the held press did not fire as step 2 — ${JSON.stringify(c5)}`).toBe(true);
       expect(c5.held >= HEAVY_FULL_MS, `SETUP: case 5: the hold lasted ${Math.round(c5.held)} ms, under ${HEAVY_FULL_MS}`).toBe(true);
       expect(c5.heavy, `SETUP: case 5: the release threw no heavy — ${JSON.stringify(c5)}`).toBeGreaterThan(0);
       // Only inside step 2's window could the click be a finisher at all: past it, the case cannot see S6.
-      expect(c5.clickSinceStep2 <= WINDOW, `SETUP: case 5: the click after the heavy came ${Math.round(c5.clickSinceStep2)} ms after step 2, past its window`).toBe(true);
+      expect(c5.clickSinceStep2 <= WINDOW, `SETUP: case 5: the click after the heavy came ${Math.round(c5.clickSinceStep2)} ms after step 2, past its window (${tries} tries)`).toBe(true);
       expect(c5.sc.fired && c5.sc.step === 3, `a finisher landed on the heavy's heels — ${JSON.stringify(c5)}`).toBe(false);
       expect(c5.after, `the click 10 ms after the heavy hit the brute — ${JSON.stringify(c5)}`).toBe(0);
       expect(c5.sl.fired && c5.sl.step === 1, `the click 400 ms after the heavy did not swing step 1 — ${JSON.stringify(c5)}`).toBe(true);
@@ -369,14 +417,15 @@ test.describe('melee string', () => {
         const z0 = H.hp(st.zombie);
         const t0 = H.click();
         const s1 = await H.swingAfter(t0 - 1);
-        await H.sleepUntil(t0 + 350);
+        H.spinUntil(t0 + 350);
         H.click();
         const s2 = await H.swingAfter(s1.at);
         const z2 = H.hp(st.zombie);
+        // No frame between the pitch and the click: setView updates the camera's matrix, which the build ray and the
+        // click's router read, and a frame here could outlast step 2's window.
         H.setView(H.yaw, pitch);
-        await H.frames(1);
         const ground = window.GameMethods.castBuildRay?.();
-        await H.sleepUntil(Math.max(performance.now(), s2.at + 350));
+        H.spinUntil(s2.at + 350);
         const t3 = H.click();
         const s3 = await H.swingAfter(s2.at);
         H.setView(H.yaw, 0);

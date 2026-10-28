@@ -16,7 +16,13 @@ import { bootDev, startPlayActive } from './_boot.js';
 //      moveB-gated one (plan review finding 1), so this is the case that sees U4.
 //   2  THREE TAPS MAKE A FINISHER. A frozen world, a moss brute 2.2 m ahead and a zombie 2 m at 60 degrees off-axis,
 //      three taps on the action button: the third deals 1.5x and only it reaches the zombie. Gaps are judged on the
-//      measured pointerdown times (SETUP outside [100, 650] ms), as in melee-string.spec.js.
+//      measured pointerdown times (SETUP outside [100, 650] ms), as in melee-string.spec.js. A REAL CDP tap first
+//      must swing (the browser's touch path into the overlay); the three timed taps are pointer events dispatched on
+//      the button IN THE PAGE, each gap placed by a busy wait on the clock the string reads. From outside the page a
+//      gap cannot be placed: every CDP touch and every evaluate waits for the main thread, which a SwiftShader frame
+//      holds for hundreds of ms (CI run 40675430218: taps aimed 350 ms apart were handled 2477-4941 ms apart). What
+//      the substitution changes: the timed taps skip the browser's touch-to-pointer translation and the compatibility
+//      mouse events after it (input/compatMouse.js filters those), so only the real tap exercises that path.
 //   3  CHEVRONS CLEAR EVERY TOUCH CONTROL, landscape then portrait (834 x 1194), with the tray open. For 8 bearings
 //      outside the frustum a windup gets a chevron that overlaps no [data-touch-btn] and stays in the viewport;
 //      bearings in view are skipped and counted, `checked N/8` is printed, and N must be at least 5.
@@ -57,9 +63,12 @@ const APPLIED_TOL = 0.1;
 const FINISHER_MULT = 1.5;
 const WINDOW = 650;
 
-const touchStart = (cdp, p) => cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: p.x, y: p.y }] });
+// `at` (optional): the time the input HAPPENED, CDP's `timestamp` (seconds since the epoch), which Chromium carries into
+// the event's timeStamp (tests/e2e/touch-hold.spec.js). Omitted, the browser stamps the moment it dispatches the event.
+const stampOf = (at) => (at === undefined ? {} : { timestamp: at });
+const touchStart = (cdp, p, at) => cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: p.x, y: p.y }], ...stampOf(at) });
 const touchMove = (cdp, p) => cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: p.x, y: p.y }] });
-const touchEnd = (cdp) => cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+const touchEnd = (cdp, at) => cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [], ...stampOf(at) });
 
 /** The centre of a control, and proof a thumb there lands ON it (tests/e2e/touch-hold.spec.js's aimAt, copied). */
 async function aimAt(page, testid) {
@@ -94,6 +103,16 @@ function installTouchCombatHelpers() {
   const H = {
     median: 16,
     sleepUntil: async (t) => { while (performance.now() < t) await tick(); },
+    spinUntil: (t) => { while (performance.now() < t) { /* no frame may start before the next tap */ } },
+    // One tap on the action button through the overlay's own React handlers. Each event is built right before its
+    // dispatch, since an event's timeStamp (which the overlay hands the game) is its creation time.
+    tap() {
+      const el = document.querySelector('[data-testid="touch-action"]');
+      const opts = { bubbles: true, cancelable: true, pointerId: 78, pointerType: 'touch', isPrimary: true, button: 0 };
+      el.dispatchEvent(new PointerEvent('pointerdown', { ...opts, buttons: 1 }));
+      el.dispatchEvent(new PointerEvent('pointerup', { ...opts, buttons: 0 }));
+      return window.__downs[window.__downs.length - 1];
+    },
     async frames(n) { for (let i = 0; i < n; i++) await frame(); },
     async frameInterval(n) {
       const d = [];
@@ -330,26 +349,44 @@ test.describe('combat on touch', () => {
       const st = await page.evaluate(() => window.__touchCombat.stageMelee());
       expect(st.why, st.why).toBeUndefined();
       const action = await aimAt(page, 'touch-action');
-      const tap = async () => { await touchStart(cdp, action); await touchEnd(cdp); };
-      const read = () => page.evaluate(({ b, z }) => ({ b: window.__touchCombat.hp(b), z: window.__touchCombat.hp(z), downs: window.__downs.slice(-1)[0] }), { b: st.brute, z: st.zombie });
-      const r0 = await read();
-      await tap();
-      const s1 = await page.evaluate(() => window.__touchCombat.swingAfter(window.__downs.slice(-1)[0] - 1));
-      const r1 = await read();
-      await page.evaluate((t) => window.__touchCombat.sleepUntil(t + 350), r1.downs);
-      await tap();
-      const s2 = await page.evaluate((at) => window.__touchCombat.swingAfter(at), s1.at);
-      const r2 = await read();
-      await page.evaluate((t) => window.__touchCombat.sleepUntil(t + 350), s2.at);
-      await tap();
-      const s3 = await page.evaluate((at) => window.__touchCombat.swingAfter(at), s2.at);
-      const r3 = await read();
-      const d = [r0.b - r1.b, r1.b - r2.b, r2.b - r3.b], zd = [r0.z - r1.z, r1.z - r2.z, r2.z - r3.z];
-      const where = JSON.stringify({ s1, s2, s3, d, zd, downs: [r1.downs, r2.downs, r3.downs] });
+      const hp = () => page.evaluate(({ b, z }) => ({ b: window.__touchCombat.hp(b), z: window.__touchCombat.hp(z) }), { b: st.brute, z: st.zombie });
+      const h0 = await hp();
+      // A TAP on the input's clock, which the game reads the hold on: under load CDP handles the lift long after the
+      // press, and an unstamped tap was a held press that threw a heavy (CI run 40675430218: the first tap dealt 60, a
+      // light swing plus the heavy, and the heavy's stagger made every later hit a 1.5x riposte).
+      const tap0 = Date.now() / 1000;
+      await touchStart(cdp, action, tap0);
+      await touchEnd(cdp, tap0 + 0.04);
+      const real = await page.evaluate(() => window.__touchCombat.swingAfter(window.__downs.slice(-1)[0] - 1));
+      const h1 = await hp();
+      const realWhere = JSON.stringify({ real, before: h0, after: h1, downs: await page.evaluate(() => window.__downs.length) });
+      expect(real.fired, `a real touch on the action button fired no swing of the light string — ${realWhere}`).toBe(true);
+      expect(h0.b - h1.b, `the real tap's swing dealt nothing to the brute dead ahead — ${realWhere}`).toBeGreaterThan(0);
+      const c = await page.evaluate(async ({ b, z }) => {
+        const H = window.__touchCombat;
+        await H.sleepUntil(Math.max(performance.now(), H.str().windowEndsAt, H.str().readyAt) + 100); // the real tap's string lapses
+        const r = () => ({ b: H.hp(b), z: H.hp(z) });
+        const r0 = r();
+        const t1 = H.tap();
+        const s1 = await H.swingAfter(t1 - 1);
+        const r1 = r();
+        H.spinUntil(t1 + 350);
+        const t2 = H.tap();
+        const s2 = await H.swingAfter(s1.at);
+        const r2 = r();
+        H.spinUntil(s2.at + 350);
+        const t3 = H.tap();
+        const s3 = await H.swingAfter(s2.at);
+        const r3 = r();
+        return { s1, s2, s3, downs: [t1, t2, t3], d: [r0.b - r1.b, r1.b - r2.b, r2.b - r3.b], zd: [r0.z - r1.z, r1.z - r2.z, r2.z - r3.z] };
+      }, { b: st.brute, z: st.zombie });
+      const { s1, s2, s3, d, zd, downs } = c;
+      const where = JSON.stringify({ ...c, realDealt: h0.b - h1.b });
       expect(s1.fired && s2.fired, `SETUP: a tap on the action button fired no swing — ${where}`).toBe(true);
-      expect(r2.downs - r1.downs >= 100 && r2.downs - r1.downs <= WINDOW, `SETUP: tap 2 came ${Math.round(r2.downs - r1.downs)} ms after tap 1 — ${where}`).toBe(true);
-      expect(r3.downs - s2.at >= 100 && r3.downs - s2.at <= WINDOW, `SETUP: tap 3 came ${Math.round(r3.downs - s2.at)} ms after step 2 — ${where}`).toBe(true);
+      expect(downs[1] - downs[0] >= 100 && downs[1] - downs[0] <= WINDOW, `SETUP: tap 2 came ${Math.round(downs[1] - downs[0])} ms after tap 1 — ${where}`).toBe(true);
+      expect(downs[2] - s2.at >= 100 && downs[2] - s2.at <= WINDOW, `SETUP: tap 3 came ${Math.round(downs[2] - s2.at)} ms after step 2 — ${where}`).toBe(true);
       expect(d[0], `the first tap dealt nothing to the brute — ${where}`).toBeGreaterThan(0);
+      expect(d[0], `the real tap and an in-page tap dealt different light swings — ${where}`).toBe(h0.b - h1.b);
       expect(d[2], `three taps on the action button made no finisher — ${where}`).toBe(Math.round(d[0] * FINISHER_MULT));
       expect(zd[0] + zd[1], `a light tap hit the zombie off-axis — ${where}`).toBe(0);
       expect(zd[2], `the touch finisher missed the zombie 60 degrees off-axis — ${where}`).toBeGreaterThan(0);
