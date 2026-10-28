@@ -24,9 +24,11 @@ export const CYCLE_UNITS = 1200;
 export const DAY_LENGTH_SECONDS = 480;
 
 /**
- * `gameTime` units the real-time ticker advances per second, derived from the day length. Every timed system reads
- * game units, so the day length moves them all together. HALF_CYCLE_UNITS divides by it (240 ticks a half), so a tick
- * lands exactly on each dusk and dawn.
+ * `gameTime` units the real-time ticker advances per second, derived from the day length. What reads game units (the
+ * day and night halves, the dusk warning, the sky, the sun's shadow steps) moves with the day length; what runs on real
+ * time does not. The spawner checks once a real second (systems/SpawnerSystem.jsx), so a longer night holds the siege at
+ * its mob cap for longer in real time: 240 s a night at 480 s a day, against 150 s at 300 s. Rebalancing the siege for
+ * that is W3-A's. HALF_CYCLE_UNITS divides by it (240 ticks a half), so a tick lands exactly on each dusk and dawn.
  */
 export const GAME_UNITS_PER_SECOND = CYCLE_UNITS / DAY_LENGTH_SECONDS;
 
