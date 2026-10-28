@@ -17,12 +17,14 @@ import { bootDev, startPlayActive } from './_boot.js';
 //     derivation (T2) would move with the subject. `applied` is judged once the ramp has settled (SETTLE_MS after the
 //     key went down; round-1 review c: judging `target` alone let a bypass placed AFTER the record pass every run whose
 //     chase went unjudged).
-//   - THE CHASE, only at >= 4 fps (median frame interval <= 250 ms; the strafe's at <= 61 ms, see
-//     STRAFE_CHASE_MAX_INTERVAL_MS): whether the husk actually closes. Below that,
-//     AIWorkerSystem caps an AI tick at 0.25 s, so mobs move slower than their speed and a chase cannot be judged; it
-//     is then reported as not judged (an annotation), never as a verdict. The CATCH is judged only when every frame of
-//     the hold up to it was within that bound too, since the idle median does not describe the hold's frames. Every run
-//     logs its median frame interval, and each chase its worst frame and the AI time it lost.
+//   - THE CHASE, in GAME time: whether the husk closes, and how fast the BODY left it. The player and the AI worker
+//     advance by the same capped step (src/game/frameStep.js), so a long frame slows both alike and a retreat chase is
+//     judged at every frame rate. A hold lasts 8 s of game time on the stance's own clock (readStance().atS), so a stall
+//     cannot use up the husk's time; a page that cannot advance that far inside HOLD_WALL_MS is SETUP. Speeds are the
+//     body's own (readStance().playerX/Z, where each frame's step starts) over that clock: a wall-clock sample of the
+//     camera mixes frame timing into the speed (case 3 read 8 to 23 m/s for a 14 m/s walk). The strafe chase is still
+//     judged only at a median frame interval of 61 ms or less (STRAFE_CHASE_MAX_INTERVAL_MS, the husk's 15 Hz aim),
+//     else reported as not judged. Every run logs its median frame interval, and each chase its worst frame.
 //
 // WHERE IT STANDS. The plan asked for one flat strip (14 m behind to 6 m ahead, 25 m lateral) and SETUP without one.
 // The first local run measured the spawn: the hearth platform (floor 52, a 15 x 15 m pad) inside rolling ground at
@@ -83,7 +85,8 @@ import { bootDev, startPlayActive } from './_boot.js';
 const RETREAT = 2.0; // LITERALS: the yardstick must not move with the subject (the Task 1 lesson)
 const STRAFE = 6.5;
 const EPS = 1e-6;
-const CHASE_MAX_INTERVAL_MS = 250;
+// A hold's game time is bounded by the stance clock; this bounds the wall clock, for a page that stops advancing.
+const HOLD_WALL_MS = 120000;
 // The applied velocity is judged from here on. The ramp (game/gameFeel.js) moves each axis 60 u/s² toward its target,
 // so from rest it reaches any stance target (at most 6.8 m/s) within 113 ms of ramp time, and a frame longer than that
 // reaches it in one step; before then a per-axis ramp can lean the velocity off the target's direction. (A first draft
@@ -243,33 +246,40 @@ function installStanceHelpers() {
       return { d, ticks: window.__aiTick.n - n0, eyeOverFloor: +(c.y - (H.floorAt(c.x, c.z) ?? NaN)).toFixed(2) };
     },
     key(code, down) { window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code, bubbles: true })); },
-    // Hold a key through the controller's listener and sample every frame until the husk is caught, `maxMs` passes,
-    // or (with no husk) `minSamples` matched frames and `minMs` have been seen.
-    // `catchMs`: once the husk has caught up, keep sampling until this long has passed, so the applied velocity has
-    // settled frames to be judged on; the chase is read only up to the catch (caughtFrames below).
-    async hold(code, id, { maxMs = 8000, minMs = 0, minSamples = 0, catchMs = 0 } = {}) {
+    // Hold a key through the controller's listener and sample every frame until the husk is caught, `maxS` of game
+    // time passes, or (with no husk) `minSamples` matched frames and `minS` have been seen. Game time is the stance's
+    // clock: each sample's `a` is the game time, from the key going down, at which the body point it read (where that
+    // frame's step started) held, and `g` the game time through that frame.
+    // `catchS`: once the husk has caught up, keep sampling until this much game time has passed, so the applied
+    // velocity has settled frames to be judged on; the chase is read only up to the catch (caughtFrames below).
+    async hold(code, id, { maxS = 8, minS = 0, minSamples = 0, catchS = 0, wallMs = 120000 } = {}) {
       const samples = [];
       const c0 = { x: cam().x, z: cam().z };
+      const s0 = call('readStance');
+      const g0 = s0 ? s0.atS + s0.stepS : 0;
       const t0 = performance.now();
-      let matched = 0;
+      let matched = 0, stalled = false;
       H.key(code, true);
       try {
         for (;;) {
           await frame();
           const t = performance.now() - t0;
           const st = call('readStance'), mt = call('readMoveTarget'), c = cam();
+          const g = st ? st.atS + st.stepS - g0 : 0, a = st ? st.atS - g0 : 0;
           const m = id == null ? null : call('readMobs').find((x) => x.id === id);
           const gap = m ? Math.hypot(m.x - c.x, m.z - c.z) : null;
           if (st && mt && mt.frame === st.frame) matched++;
-          samples.push({ t, gap, px: c.x, pz: c.z, st, mt });
-          if (t >= maxMs) break;
-          if (id != null && gap != null && gap <= 2.6 && t >= catchMs) break;
-          if (id == null && matched >= minSamples && t >= minMs) break;
+          samples.push({ t, g, a, gap, px: c.x, pz: c.z, st, mt });
+          if (g >= maxS) break;
+          if (t >= wallMs) { stalled = true; break; }
+          if (id != null && gap != null && gap <= 2.6 && g >= catchS) break;
+          if (id == null && matched >= minSamples && g >= minS) break;
         }
       } finally {
         H.key(code, false);
       }
-      return { samples, moved: Math.hypot(cam().x - c0.x, cam().z - c0.z) };
+      const last = samples[samples.length - 1];
+      return { samples, stalled, gameS: last ? +last.g.toFixed(2) : 0, wallMs: Math.round(performance.now() - t0), moved: Math.hypot(cam().x - c0.x, cam().z - c0.z) };
     },
   };
   window.__stanceSpec = H;
@@ -277,12 +287,12 @@ function installStanceHelpers() {
 
 /**
  * The target and the applied velocity on every frame the stance was at full weight, its move target was that frame's,
- * and the key was seen; the applied one only from SETTLE_MS on.
+ * and the key was seen; the applied one only from SETTLE_MS of game time on (the ramp runs on the frame's step).
  */
 function judgeTarget(samples) {
   let judged = 0, worstAway = -Infinity, worstTan = 0;
   let applied = 0, worstAppliedAway = -Infinity, worstAppliedTan = 0;
-  for (const { t, st, mt } of samples) {
+  for (const { g, st, mt } of samples) {
     if (!st || !mt || st.w !== 1 || mt.frame !== st.frame || Math.hypot(mt.rawX, mt.rawZ) < 1) continue;
     const ax = st.playerX - st.threatX, az = st.playerZ - st.threatZ, l = Math.hypot(ax, az);
     if (l < 1e-3) continue;
@@ -290,7 +300,7 @@ function judgeTarget(samples) {
     worstAway = Math.max(worstAway, mt.targetX * ux + mt.targetZ * uz);
     worstTan = Math.max(worstTan, Math.abs(-mt.targetX * uz + mt.targetZ * ux));
     judged++;
-    if (t < SETTLE_MS) continue;
+    if (g * 1000 < SETTLE_MS) continue;
     worstAppliedAway = Math.max(worstAppliedAway, mt.appliedX * ux + mt.appliedZ * uz);
     worstAppliedTan = Math.max(worstAppliedTan, Math.abs(-mt.appliedX * uz + mt.appliedZ * ux));
     applied++;
@@ -308,31 +318,31 @@ function caughtFrames(samples) {
 }
 
 /**
- * The achieved speed away from the threat over the frames at full weight, m/s; a compact per-frame trace; and the
- * frames themselves: the longest, and the AI time they cost. The worker gets at most CHASE_MAX_INTERVAL_MS of AI time
- * per frame (AIWorkerSystem.jsx caps a tick at 0.25 s) while the player steps by the whole frame, so every frame past
- * it is time the husk did not walk.
+ * The BODY's achieved speed away from the threat over the frames at full weight, m/s of game time; a compact trace; the
+ * longest frame and the game time the chase took. Between two samples the body moved by the steps of the frames from
+ * the earlier one on, and the stance clock advanced by exactly those steps, so the speed is the body's own whatever the
+ * frames cost; the direction is the earlier frame's (the frame that moved it).
  */
 function chase(samples) {
-  let along = 0, ms = 0, gapMin = Infinity, worstFrameMs = 0, aiLostMs = 0;
+  let along = 0, secs = 0, gapMin = Infinity, worstFrameMs = 0;
   const trace = [];
   for (let i = 0; i < samples.length; i++) {
     const s = samples[i], p = samples[i - 1];
-    const frameMs = s.t - (p ? p.t : 0);
-    worstFrameMs = Math.max(worstFrameMs, frameMs);
-    aiLostMs += Math.max(0, frameMs - CHASE_MAX_INTERVAL_MS);
+    worstFrameMs = Math.max(worstFrameMs, s.t - (p ? p.t : 0));
     if (s.gap != null) gapMin = Math.min(gapMin, s.gap);
-    const speed = p ? Math.hypot(s.px - p.px, s.pz - p.pz) / ((s.t - p.t) / 1000) : 0;
-    if (trace.length < 40) trace.push([Math.round(s.t), s.gap == null ? null : +s.gap.toFixed(2), +speed.toFixed(2), s.st ? +s.st.w.toFixed(2) : null]);
-    if (!p || !s.st || s.st.w !== 1) continue;
-    const ax = s.st.playerX - s.st.threatX, az = s.st.playerZ - s.st.threatZ, l = Math.hypot(ax, az);
+    const ok = p && p.st && s.st && s.st.atS > p.st.atS;
+    const speed = ok ? Math.hypot(s.st.playerX - p.st.playerX, s.st.playerZ - p.st.playerZ) / (s.st.atS - p.st.atS) : 0;
+    if (trace.length < 40) trace.push([Math.round(s.t), +s.g.toFixed(2), s.gap == null ? null : +s.gap.toFixed(2), +speed.toFixed(2), s.st ? +s.st.w.toFixed(2) : null]);
+    if (!ok || p.st.w !== 1) continue;
+    const ax = p.st.playerX - p.st.threatX, az = p.st.playerZ - p.st.threatZ, l = Math.hypot(ax, az);
     if (l < 1e-3) continue;
-    along += ((s.px - p.px) * ax + (s.pz - p.pz) * az) / l;
-    ms += s.t - p.t;
+    along += ((s.st.playerX - p.st.playerX) * ax + (s.st.playerZ - p.st.playerZ) * az) / l;
+    secs += s.st.atS - p.st.atS;
   }
+  const last = samples[samples.length - 1];
   return {
-    retreat: ms > 0 ? +(along / (ms / 1000)).toFixed(2) : null, gapMin: +gapMin.toFixed(2), trace,
-    worstFrameMs: Math.round(worstFrameMs), aiLostMs: Math.round(aiLostMs), spanMs: Math.round(samples.length ? samples[samples.length - 1].t : 0),
+    retreat: secs > 0 ? +(along / secs).toFixed(2) : null, gapMin: +gapMin.toFixed(2), trace,
+    worstFrameMs: Math.round(worstFrameMs), gameS: last ? +last.g.toFixed(2) : 0, spanMs: Math.round(last ? last.t : 0),
   };
 }
 
@@ -354,9 +364,9 @@ test.describe('combat stance', () => {
     console.log(`combat-stance: median frame interval: ${fi.median} ms (${fi.n} samples)`); // the chase's denominator, every run
     const chaseNotes = [];
     // A heading whose spawn point is on the stand's level (else SETUP), preferring one whose walked path is flat; the
-    // chase is judged only on a flat path at a frame interval of at most `maxMs`, and an unjudged chase is an
-    // annotation, never a verdict.
-    const heading = (label, level, flatPath, maxMs = CHASE_MAX_INTERVAL_MS) => {
+    // chase is judged only on a flat path (and the strafe's only at a frame interval of at most `maxMs`), and an
+    // unjudged chase is an annotation, never a verdict.
+    const heading = (label, level, flatPath, maxMs = Infinity) => {
       const h = prep.survey.find((x) => x[level] && x[flatPath]) ?? prep.survey.find((x) => x[level]);
       expect(h, `SETUP: ${label}: no heading puts the husk on the player's level — ${prep.survey.map((x) => x.note).join('; ')}`).toBeTruthy();
       const fpsOk = fi.median <= maxMs;
@@ -385,7 +395,8 @@ test.describe('combat stance', () => {
       return sp.id;
     };
     const caught = async (code, id, label, judgeChase, { strafe = false } = {}) => {
-      const r = await page.evaluate(({ code, id, catchMs }) => window.__stanceSpec.hold(code, id, { catchMs }), { code, id, catchMs: SETTLE_MS + 4 * fi.median });
+      const r = await page.evaluate(({ code, id, catchS, wallMs }) => window.__stanceSpec.hold(code, id, { catchS, wallMs }), { code, id, catchS: SETTLE_MS / 1000 + 0.25, wallMs: HOLD_WALL_MS });
+      expect(r.stalled, `SETUP: ${label}: the game advanced ${r.gameS} s in ${r.wallMs} ms of holding, short of the hold's 8 s`).toBe(false);
       expect(r.moved, `SETUP: ${label}: the player moved ${r.moved.toFixed(2)} m (blocked by terrain?)`).toBeGreaterThanOrEqual(0.5);
       const j = judgeTarget(r.samples);
       expect(j.judged, `SETUP: ${label}: no frame at w === 1 with that frame's move target and the key seen (${r.samples.length} sampled)`).toBeGreaterThan(0);
@@ -395,18 +406,13 @@ test.describe('combat stance', () => {
       expect(j.worstAppliedAway, `${label}: the velocity fed to the body left the husk at ${j.worstAppliedAway} m/s while the target said ${j.worstAway} (cap ${RETREAT}; ${j.applied} settled frames)`).toBeLessThanOrEqual(RETREAT + APPLIED_TOL);
       if (strafe) expect(j.worstAppliedTan, `${label}: the velocity fed to the body circled at ${j.worstAppliedTan} m/s (cap ${STRAFE}; ${j.applied} settled frames)`).toBeLessThanOrEqual(STRAFE + APPLIED_TOL);
       const ch = chase(caughtFrames(r.samples));
-      // The catch is judged on the frames the chase ran on, not on the idle median that admitted it: a 78 ms idle median
-      // has preceded holds of 330-550 ms frames and a 3.9 s stall (CI run 40675430218), where the AI clock lost 5.0 of
-      // 8.0 s and no husk could close. So every frame up to the catch must be within the bound.
-      const frameBound = strafe ? STRAFE_CHASE_MAX_INTERVAL_MS : CHASE_MAX_INTERVAL_MS;
-      const judgeCatch = judgeChase && ch.worstFrameMs <= frameBound;
-      if (judgeChase && !judgeCatch) {
-        testInfo.annotations.push({ type: 'not judged', description: `${label}: the catch (a frame of the hold took ${ch.worstFrameMs} ms > ${frameBound} ms; the AI clock lost ${ch.aiLostMs} of ${ch.spanMs} ms); the target assertions carry the verdict` });
-      }
-      chaseNotes.push(`${label}: ${j.judged} frames judged, worst away ${j.worstAway} (applied ${j.worstAppliedAway} over ${j.applied}), retreat ${ch.retreat} m/s, closest ${ch.gapMin} m, worst frame ${ch.worstFrameMs} ms (AI lost ${ch.aiLostMs} of ${ch.spanMs} ms), chase ${judgeChase ? 'judged' : 'not judged'}, catch ${judgeCatch ? 'judged' : 'not judged'}`);
+      chaseNotes.push(`${label}: ${j.judged} frames judged, worst away ${j.worstAway} (applied ${j.worstAppliedAway} over ${j.applied}), retreat ${ch.retreat} m/s, closest ${ch.gapMin} m in ${ch.gameS} s of game time (${ch.spanMs} ms, worst frame ${ch.worstFrameMs} ms), chase ${judgeChase ? 'judged' : 'not judged'}`);
       if (judgeChase) {
-        if (judgeCatch) expect(ch.gapMin, `${label}: the husk never caught up (closest ${ch.gapMin} m) — [ms, gap, playerSpeed, w] ${JSON.stringify(ch.trace)}`).toBeLessThanOrEqual(CAUGHT_GAP_M);
-        if (!strafe) expect(ch.retreat, `${label}: the achieved retreat was ${ch.retreat} m/s — ${JSON.stringify(ch.trace)}`).toBeLessThanOrEqual(2.3);
+        expect(ch.gapMin, `${label}: the husk never caught up in ${ch.gameS} s of game time (closest ${ch.gapMin} m) — [ms, gameS, gap, bodySpeed, w] ${JSON.stringify(ch.trace)}`).toBeLessThanOrEqual(CAUGHT_GAP_M);
+        if (!strafe) {
+          expect(ch.retreat, `SETUP: ${label}: no frame at full weight moved the body (${r.samples.length} sampled)`).not.toBeNull();
+          expect(ch.retreat, `${label}: the body left the husk at ${ch.retreat} m/s of game time — [ms, gameS, gap, bodySpeed, w] ${JSON.stringify(ch.trace)}`).toBeLessThanOrEqual(2.3);
+        }
       }
     };
 
@@ -449,20 +455,22 @@ test.describe('combat stance', () => {
       const h = heading('case 3', 'any', 'back');
       await idleFirst('case 3');
       await page.evaluate((yaw) => window.__stanceSpec.setView(yaw), h.yaw);
-      const r = await page.evaluate(() => window.__stanceSpec.hold('KeyS', null, { maxMs: 20000, minMs: 1500, minSamples: 10 }));
+      const r = await page.evaluate((wallMs) => window.__stanceSpec.hold('KeyS', null, { maxS: 20, minS: 1.5, minSamples: 10, wallMs }), HOLD_WALL_MS);
+      expect(r.stalled, `SETUP: case 3: the game advanced ${r.gameS} s in ${r.wallMs} ms of holding`).toBe(false);
       const seen = r.samples.filter(({ st, mt }) => st && mt && mt.frame === st.frame && Math.hypot(mt.rawX, mt.rawZ) >= 1);
       expect(seen.length, `SETUP: case 3: ${seen.length} frames had that frame's move target with the key seen (need 10)`).toBeGreaterThanOrEqual(10);
       const off = seen.filter(({ st, mt }) => st.w !== 0 || !Object.is(mt.targetX, mt.rawX) || !Object.is(mt.targetZ, mt.rawZ));
       expect(off.length, `out of combat the controller's target is not moveVector's on ${off.length} of ${seen.length} frames — ${JSON.stringify(off.slice(0, 3).map(({ st, mt }) => ({ w: st.w, mt })))}`).toBe(0);
-      // The window: past the walk ramp (60 u/s² reaches 14 m/s in 0.23 s, game/gameFeel.js) and inside the flat 8 m.
-      const win = r.samples.filter((s) => s.t >= 300 && Math.hypot(s.px - prep.stand.x, s.pz - prep.stand.z) <= 8);
-      const span = win.length >= 2 ? win[win.length - 1].t - win[0].t : 0;
-      if (h.judge && span >= 100) {
+      // The window, in game time on the body: past the walk ramp (60 u/s² reaches 14 m/s in 0.23 s, game/gameFeel.js) and
+      // inside the flat 8 m.
+      const win = r.samples.filter((s) => s.st && s.a >= 0.3 && Math.hypot(s.st.playerX - prep.stand.x, s.st.playerZ - prep.stand.z) <= 8);
+      const span = win.length >= 2 ? win[win.length - 1].a - win[0].a : 0;
+      if (h.judge && span >= 0.1) {
         expect(r.moved, `SETUP: case 3: the player moved ${r.moved.toFixed(2)} m holding S out of combat (blocked?)`).toBeGreaterThanOrEqual(3);
-        const a = win[0], b = win[win.length - 1];
-        const speed = Math.hypot(b.px - a.px, b.pz - a.pz) / (span / 1000);
-        chaseNotes.push(`case 3: ${seen.length} identity frames, travel ${speed.toFixed(2)} m/s over ${Math.round(span)} ms`);
-        expect(speed, `out of combat a held S travelled at ${speed.toFixed(2)} m/s (${win.length} frames over ${Math.round(span)} ms on the flat)`).toBeGreaterThanOrEqual(12);
+        const a = win[0].st, b = win[win.length - 1].st;
+        const speed = Math.hypot(b.playerX - a.playerX, b.playerZ - a.playerZ) / span;
+        chaseNotes.push(`case 3: ${seen.length} identity frames, travel ${speed.toFixed(2)} m/s over ${span.toFixed(2)} s of game time (${win.length} frames)`);
+        expect(speed, `out of combat a held S moved the body at ${speed.toFixed(2)} m/s of game time (${win.length} frames over ${span.toFixed(2)} s on the flat)`).toBeGreaterThanOrEqual(12);
       } else {
         if (h.judge) testInfo.annotations.push({ type: 'not judged', description: `case 3: travel speed (${win.length} frames on the flat 8 m past the ramp)` });
         chaseNotes.push(`case 3: ${seen.length} identity frames (travel speed not judged: ${win.length} frames in the window)`);

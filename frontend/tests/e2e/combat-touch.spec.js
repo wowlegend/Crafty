@@ -209,7 +209,9 @@ function installTouchCombatHelpers() {
       store().triggerHitstop(600000);
       window.__touchRandom = window.__touchRandom || Math.random;
       Math.random = () => 0.999;
-      const c = cam().position, f = fwdOf(H.yaw), r = rightOf(H.yaw);
+      const rb = store().playerRigidBodyRef?.current;
+      if (!rb) return { why: 'SETUP: no player body (playerRigidBodyRef) to stage from' };
+      const c = rb.translation(), f = fwdOf(H.yaw), r = rightOf(H.yaw); // the body: every cone starts there (combat/swingOrigin.js)
       const k = Math.cos(Math.PI / 3), s = Math.sin(Math.PI / 3);
       const b = { x: c.x + f.x * 2.2, z: c.z + f.z * 2.2 };
       const z = { x: c.x + (k * f.x + s * r.x) * 2.0, z: c.z + (k * f.z + s * r.z) * 2.0 };

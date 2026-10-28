@@ -10,9 +10,9 @@ import { bootDev, startPlayActive } from './_boot.js';
 // STAGING. A frozen world (triggerHitstop), so the AI never ticks and no mob moves, winds up or strikes; Math.random
 // pinned high, so no swing crits (a bare-handed light swing deals 20, a finisher 30). Each case stages a fresh moss
 // brute 2.2 m dead ahead and a zombie 2.0 m at 60 degrees off the view axis: outside the 90 degree light cone, inside
-// the 140 degree finisher's. Screen shake off (setJuiceIntensity(0), the Reduced-motion setting): a swing's cone starts at
-// the camera, and the shake moves the camera, by metres at its peak (2.43 m off the body in the frame a dodge started,
-// measured here), so a click timed with no frame after a dodge swung from there and missed a brute 2.2 m ahead.
+// the 140 degree finisher's. Screen shake ON, the default setting: the shake moves the camera by metres at its peak (2.43 m
+// off the body in the frame a dodge started), and every cone starts at the body (src/combat/swingOrigin.js), so the shake
+// is presentation only. The mobs are staged from the body for the same reason.
 //
 // TIMING IS JUDGED AGAINST MEASURED TIMES, NEVER INTENDED ONES (plan review finding 8). Each click is stamped on the
 // page clock by a capture listener, each case states the semantic interval its intent needs (from the string's own
@@ -104,21 +104,20 @@ function installStringHelpers() {
       store().triggerHitstop(600000);
       window.__stringRandom = window.__stringRandom || Math.random;
       Math.random = () => 0.999;
-      if (window.__stringJuice == null) window.__stringJuice = store().juiceIntensityChoice ?? 1;
-      store().setJuiceIntensity(0);
     },
     thaw() {
       H.killHostiles(40);
       if (window.__stringRandom) Math.random = window.__stringRandom;
-      if (window.__stringJuice != null) store().setJuiceIntensity(window.__stringJuice);
       window.useGameStore.setState({ hitstopUntil: performance.now() });
     },
-    // A fresh moss brute 2.2 m dead ahead and a zombie 2.0 m at 60 degrees right of the view axis.
+    // A fresh moss brute 2.2 m dead ahead of the BODY and a zombie 2.0 m at 60 degrees right of the view axis.
     async stage() {
       window.useGameStore.setState({ isAlive: true, playerHealth: store().maxHealth });
       H.killHostiles(40);
       H.setView(H.yaw, 0);
-      const c = cam().position, f = fwdOf(H.yaw), r = rightOf(H.yaw);
+      const rb = store().playerRigidBodyRef?.current;
+      if (!rb) return { why: 'SETUP: no player body (playerRigidBodyRef) to stage from' };
+      const c = rb.translation(), f = fwdOf(H.yaw), r = rightOf(H.yaw);
       const at = (dx, dz) => ({ x: c.x + dx, z: c.z + dz });
       const b = at(f.x * 2.2, f.z * 2.2);
       const k = Math.cos(Math.PI / 3), s = Math.sin(Math.PI / 3);
