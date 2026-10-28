@@ -114,7 +114,8 @@ export function readState() {
  *   kind 'artifact' — published to a URL. Drift is measured from the sha that was PUBLISHED, which git
  *                     cannot know, so it lives in the state file. `validateSource` applies: the committed
  *                     file must be the AUTHORED page, not a fetched copy of the publish wrapper.
- *   kind 'page'     — a committed page nobody publishes (`LOOP-PROGRESS.html`). Drift is measured from the
+ *   kind 'page'     — a committed page nobody publishes (none is tracked since LOOP-PROGRESS.html was archived
+ *                     on 2026-10-28; the kind stays supported, and pinned by the gates spec). Drift is measured from the
  *                     file's OWN last commit, which git knows, so it needs no recorded sha and cannot lie.
  *                     `validateSource` must NOT run on it — it rejects a doctype, because the Artifact shell
  *                     adds one at publish time, and a standalone page legitimately has its own.

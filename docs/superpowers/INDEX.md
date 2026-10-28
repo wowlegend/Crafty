@@ -131,6 +131,12 @@ bare paths, and is mutation-proven against exactly that case.
   file it cites would leave a historical entry pointing at a path that never existed at the time it was
   written. Not worth the churn for a directory listing.
 
+## `docs/archive/` — retired single files
+
+- `docs/archive/LOOP-PROGRESS-2026-10-28.html` — the autonomous loop's progress page, RETIRED 2026-10-28: it was
+  never published to a URL and nobody read it, while keeping it current was a session-close duty
+  (DECISIONS 2026-10-28 item 12). Restore with `git mv`; do not read it as current.
+
 ## The rule that keeps this map honest
 
 A milestone completing updates **`memory/STATUS.md` + `memory/CHANGELOG.md` + its own plan-doc banner** — and

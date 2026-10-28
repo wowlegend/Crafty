@@ -84,7 +84,9 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
   verified checkpoints (auditable, git-reversible, ONE unit/commit); NO silent reversal of a recorded Kevin decision
   (the "do NOT relitigate" set below); irreversible high-blast (hard-delete a REFERENCED file, force-push, external
   send, money/accounts/publishing, a NEW dependency) still gets care + usually Kevin; ARCHIVE-over-DELETE for docs.
-  Progress dashboard: `docs/superpowers/LOOP-PROGRESS.html` (kept current) + its Artifact.
+  Progress dashboard: RETIRED 2026-10-28 — it had no URL and no reader; archived as
+  `docs/archive/LOOP-PROGRESS-2026-10-28.html` (DECISIONS 2026-10-28 item 12). The operator pages live in
+  `docs/superpowers/.artifact-sync.json`.
 - **Vision** = `SOTA-INITIATIVE.md` v2 §1 (goal) + §2 (hard guardrails): SOTA in every aspect; visual/aesthetic taste is the
   HIGHEST bar (premium, distinctive, tasteful — never generic-voxel, never AI-slop); **web + iPad + mobile
   envelope** (clever > brute-force GPU); commercial-grade ambition (S4 multiplayer/monetization later).
@@ -351,13 +353,14 @@ fire it on any deliberate `/compact`, or when Kevin says "wrap up". **Do not wai
 2. **Local surfaces:** `memory/STATUS.md` (registry ticked: what closed, what opened) → `memory/ACTIVE_PLAN.md`
    (the NEXT unit, so a cold session resumes in one read) → `memory/CHANGELOG.md` (what shipped) →
    plan-doc banners (`✅ SHIPPED`).
-2b. **PUBLISHED surfaces — the two that drift silently, because nothing rendered locally shows their staleness:**
-   - `docs/superpowers/LOOP-PROGRESS.html` — the kernel calls this a session-close obligation and it had gone
-     **17 commits stale** by 2026-08-07 (last touched `1b776ca`). It has NO gate. Refresh it here or it rots.
-   - `docs/superpowers/era-review.html` → its published Artifact. This one DOES have a gate
-     (`node frontend/scripts/ci/artifact-currency.mjs`: it prints the drift and refuses none, DECISIONS 2026-10-28 item 12).
-     **Update IN PLACE via the URL in `.artifact-sync.json`, then `--sync`.** A fresh publish mints a new URL
-     and strands the bookmark Kevin already has.
+2b. **PUBLISHED surfaces — the pages that drift silently, because nothing rendered locally shows their staleness:**
+   - every surface in `docs/superpowers/.artifact-sync.json` (`docs/superpowers/era-review.html` is one) → its
+     published Artifact. `node frontend/scripts/ci/artifact-currency.mjs` prints each page's drift and refuses none
+     (DECISIONS 2026-10-28 item 12). **Update the source, run `--sync <id>` (it writes the page's as-of stamp and
+     records HEAD), then republish the stamped source IN PLACE via the URL in `.artifact-sync.json`.** A fresh
+     publish mints a new URL and strands the bookmark Kevin already has.
+   - `LOOP-PROGRESS.html`, the ungated progress page that had gone **17 commits stale** by 2026-08-07, is retired:
+     it had no URL and no reader (archived 2026-10-28 as `docs/archive/LOOP-PROGRESS-2026-10-28.html`).
 3. **REMOTE / GitHub surfaces** *(this is the step that kept getting skipped)*:
    - **README.md** — is it still TRUE? (It went ~6 weeks stale once, with a **`localhost:3000` "Live Demo"
      link** shipped to the public.) Features, controls, and the demo URL must match reality.
