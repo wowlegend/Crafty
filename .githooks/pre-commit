@@ -29,15 +29,13 @@
 #
 # WHAT RUNS: `ci/pipeline.sh --tier=commit` — the static gates (opsec, doc-currency, eslint, gate-shape,
 # cli-guard) and the unit tests that statically import a staged file (`vitest related`). The full suite,
-# build and bundle budget run at the push and in `--tier=certify`, never here.
+# build and bundle budget run in CI on every sha (and by hand in `--tier=certify`), never in a hook
+# (DECISIONS 2026-10-28 item 24).
 # Deliberately NOT the network or browser gates: a registry outage reddening a commit teaches people to
 # pass --no-verify, and a bypassed gate is worth less than no gate.
 #
-# IT WRITES NO RECEIPT. A selection of the suite cannot certify a tree. To make the push skip the offline
-# core, run `bash ci/pipeline.sh --tier=certify` in the background on the committed tree before pushing.
-#
-# ESCAPE HATCH, and its cost: `git commit --no-verify` skips this; the push still certifies the pushed tree
-# in full. Nothing is bypassed by skipping here — it is only deferred.
+# ESCAPE HATCH, and its cost: `git commit --no-verify` skips this. The push re-runs only opsec-scan of these, so
+# the other static gates first see such a commit in CI.
 
 set -u
 
@@ -69,7 +67,7 @@ fi
 if ! sh "$ROOT/ci/pipeline.sh" --tier=commit; then
   printf '\n\033[31m✖ commit blocked — the commit tier is RED on the staged change\033[0m\n' >&2
   printf '  Fix it now, while the change is one commit old. Deliberate override: git commit --no-verify\n' >&2
-  printf '  (the push still certifies the pushed tree in full)\n\n' >&2
+  printf '  (the push will not re-run these: CI is the next check)\n\n' >&2
   exit 1
 fi
 

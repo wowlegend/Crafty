@@ -19,7 +19,9 @@
  *      ACCUMULATE them and EXPORT the list; nothing else in the suite drives the real hook's export. The same pushes
  *      prove that a push moving main far past the publish sha LANDS, with the drift printed, and that a push whose
  *      commit carries a tree defect is REFUSED, to main or to a branch, with no remote ref moved: the gate's exit 1
- *      is only a refusal if the hook acts on it.
+ *      is only a refusal if the hook acts on it. Both of the hook's paths run the real gate: a push of the checked-out
+ *      clean lane tip runs it in place, and `feat/bad`, pushed while another branch is checked out, from a detached
+ *      worktree of that commit; the defect is also pushed from a checkout AT it, in place.
  *   3. NOT IN CI — the real ci/pipeline.sh fast tier (node/npm stubbed) runs this gate on no event: it belongs to the
  *      push tier, where the pre-push hook runs it on every local push.
  *
@@ -605,7 +607,6 @@ describe('the PRODUCER: .githooks/pre-push builds PUSH_RANGES from what the remo
     fixtureGit(repo, 'commit', '-q', '-m', 'a falsified Queued pill');
     bad = fixtureGit(repo, 'rev-parse', 'HEAD');
     fixtureGit(repo, 'checkout', '-q', 'feat/x'); // HEAD is the lane tip again: `HEAD:refs/heads/main` pushes `tip`
-    mkdirSync(join(repo, 'frontend/node_modules')); // the hook symlinks it: no install in its worktree
     // Copied now, not cached: the mutation harness rewrites the real hook before this suite runs.
     copyFileSync(HOOK, join(hooks, 'pre-push'));
     chmodSync(join(hooks, 'pre-push'), 0o755);
@@ -657,6 +658,7 @@ describe('the PRODUCER: .githooks/pre-push builds PUSH_RANGES from what the remo
 
   it('`feat/x:main` — a LOCAL branch name, a REMOTE main — the range is main\'s remote sha to the pushed tip, and it lands', () => {
     const r = push('feat/x:main');
+    expect(r.out, 'the fixture: the checked-out clean tip takes the in-place path').toMatch(/the push tier runs in place/);
     expect(r.refs, r.out).toEqual([`RANGES[ ${base}..${tip}]`]);
     expectDriftReported(r);
     expect(r.status, r.out).toBe(0);
@@ -692,10 +694,9 @@ describe('the PRODUCER: .githooks/pre-push builds PUSH_RANGES from what the remo
     expect(r.remoteMain, 'the push did not land').toBe(tip);
   });
 
-  // THE REFUSAL, through the real hook. Every case above is a push that LANDS, and the stub pipeline in
-  // prepush-range-gates.test.js always exits 0, so a hook that ignored the pipeline's exit status (`|| true` on the
-  // call, or `set -e` dropped) passed the whole suite. Here the pipeline FAILS, on a tree defect, and the push must not
-  // land: the gate's refusal is only real if the hook acts on it.
+  // THE REFUSAL, through the real hook. Every case above is a push that LANDS, so a hook that ignored the pipeline's
+  // exit status (`|| true` on the call, or `set -e` dropped) would pass them all. Here the real gate FAILS, on a tree
+  // defect, and the push must not land: the gate's refusal is only real if the hook acts on it.
   /** The real gate ran in the hook on the pushed commit, refused the falsified pill, and git refused the push. */
   function expectRefused(r) {
     expect(r.out).toMatch(/✘ fixture: row abc1234 is marked Queued, but docs\/shipped\.txt EXISTS/);
@@ -705,6 +706,7 @@ describe('the PRODUCER: .githooks/pre-push builds PUSH_RANGES from what the remo
 
   it('a TREE DEFECT pushed to main (`feat/bad:main`) is REFUSED by the real hook, and main does not move', () => {
     const r = push('feat/bad:main');
+    expect(r.out, 'the fixture: a commit that is not HEAD takes the worktree path').toMatch(/checking out the PUSHED COMMIT into a detached worktree/);
     expect(r.refs, `presence: the hook ran the pipeline\n${r.out}`).toEqual([`RANGES[ ${base}..${bad}]`]);
     expectRefused(r);
     expect(r.remoteMain, 'the refused push moved main anyway').toBe(base);
@@ -717,6 +719,19 @@ describe('the PRODUCER: .githooks/pre-push builds PUSH_RANGES from what the remo
     expectRefused(r);
     expect(fixtureGit(remote, 'for-each-ref', '--format=%(refname)', 'refs/heads/feat/bad'), 'the refused push created the branch anyway').toBe('');
     expect(r.remoteMain).toBe(base);
+  });
+
+  it('the defect pushed from a checkout AT that commit (the in-place path) is refused, and main does not move', () => {
+    fixtureGit(repo, 'checkout', '-q', 'feat/bad');
+    try {
+      const r = push('feat/bad:main');
+      expect(r.out, 'the fixture: the hook took the in-place path').toMatch(/the push tier runs in place/);
+      expect(r.refs, `presence: the hook ran the pipeline\n${r.out}`).toEqual([`RANGES[ ${base}..${bad}]`]);
+      expectRefused(r);
+      expect(r.remoteMain, 'the refused push moved main anyway').toBe(base);
+    } finally {
+      fixtureGit(repo, 'checkout', '-q', 'feat/x');
+    }
   });
 });
 

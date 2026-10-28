@@ -454,6 +454,16 @@ longer finds the instructions there; none is configured to in this repo.
    request's verdict** sits on the head sha but tested the merge with its base; main fast-forwards to that head only
    when the base is its ancestor, and then the merge's tree is the head's. **Door:** two-way: deleting the main-push
    branch of `scope()` restores full runs. A dispatch, or a re-run of the main push's own run, still runs everything.
+24. **The push runs only the range gates (command session, 2026-10-28, on Kevin's SSD order; lane W2-C follow-ups).**
+   It supersedes item 22's push half: `.githooks/pre-push` now runs the two trailers, then `ci/pipeline.sh --tier=push`
+   (opsec-scan, queue-ledger, artifact-currency, registry-append-only) on the pushed commit, in place when that commit
+   is the checkout's clean HEAD and in a detached worktree otherwise, and no static gate, unit suite, build or bundle
+   budget, because CI runs them on the exact sha and main cannot move without that sha's `ci ok` (item 13(b)), while the
+   Mac's SSD writes ~4.3 TB/day against a 1 TB/day budget. **What is lost:** local feedback before CI, so a red unit,
+   build or bundle result first shows on the branch's CI run (`bash ci/pipeline.sh --tier=certify` gives it on demand,
+   and nothing waits for it); the certify receipt and `ci/write-receipt.sh` are deleted with their only reader.
+   opsec-scan stays because the push publishes and CI sees the content only once it is on GitHub. **Door:** two-way:
+   the push tier is one guard in `ci/pipeline.sh`.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 

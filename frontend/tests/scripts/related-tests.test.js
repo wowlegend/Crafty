@@ -27,7 +27,7 @@ describe('related-tests — the line it prints', () => {
   it('the denominator, and what the commit does not run', () => {
     expect(summary({ staged: 1, selected: 3, total: 9 })).toBe(`related tests: 3 of 9 test files selected by static import from 1 staged file(s); ${TAIL}`);
     expect(TAIL).toMatch(/dynamic imports/);
-    expect(TAIL).toMatch(/the full suite, build and bundle run at push and certify/);
+    expect(TAIL).toMatch(/the full suite, build and bundle run in CI and certify/);
   });
 });
 

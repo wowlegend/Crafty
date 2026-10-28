@@ -13,11 +13,7 @@
 # lane's hook re-initialised the main checkout `core.bare = true`. pre-push unset three named variables; pre-commit
 # unset none. This removes every GIT_* name `env` lists, not a list of the dangerous ones: the set git exports grows,
 # and a gate's exception list is where the next defect lives (tests/scripts/_isolatedGit.js does the same for tests).
-#
-# ci/write-receipt.sh is NOT run through it: it sources this file to LOCATE its toplevel scrubbed (an absolute GIT_DIR
-# makes git take the cwd as the toplevel), and reads the tree with the caller's environment, so a caller that names an
-# index gets that index read. Its one caller, the certify tier, runs by hand and names none. Proven by
-# tests/scripts/git-env-scrub.test.js and tests/scripts/write-receipt.test.js.
+# Proven by tests/scripts/git-env-scrub.test.js.
 run_scrubbed() {
   (
     for v in $(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "$v"; done

@@ -6,8 +6,9 @@
  *
  * <file> holds one staged path per line, relative to frontend/ (ci/git-env.sh `staged_frontend_files`). Run from
  * frontend/. The selection is `vitest related`, which follows STATIC imports only: a lazily imported module and a
- * gate that reads a file as text are not selected. The full suite, build and bundle budget run at the push and in
- * the certify tier, so this step trades coverage for speed on the commit alone, and its line says so on every run.
+ * gate that reads a file as text are not selected. The full suite, build and bundle budget run in CI on every sha and
+ * by hand in the certify tier, so this step trades coverage for speed on the commit alone, and its line says so on
+ * every run.
  *
  * Exit: vitest's own status when tests ran · 0 when nothing was staged or nothing was selected (each printed as
  * such) · 3 when the list is missing or the test-file count cannot be read (COULD NOT CHECK).
@@ -18,7 +19,7 @@ import { join, resolve, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-export const TAIL = 'dynamic imports, source-grep gates, the full suite, build and bundle run at push and certify';
+export const TAIL = 'dynamic imports, source-grep gates, the full suite, build and bundle run in CI and certify';
 
 /** PURE. The staged paths in a list file's text: one per line, blanks dropped. */
 export function parseList(text) {
