@@ -6,7 +6,8 @@
 // Game-Loop Isolation: one useFrame, transient refs and getState() only — a flash never re-renders React. Times are
 // WORLD ms, so a hitstop holds a flash, the next strike and a thunder in flight like the rest of the world. Under
 // capture the flash is RESET to 0 and every pending strike and thunder dropped (a declared reset, never an early
-// return: capture is entered after boot, mid-storm possibly).
+// return: capture is entered after boot, mid-storm possibly). Capture is read from the MODULE flag
+// (devtest/captureMode.js), as Atmosphere reads it: eleven fixture hooks enter capture without the store's mirror.
 import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGameStore } from '../store/useGameStore';
@@ -14,6 +15,7 @@ import { worldNow } from '../game/worldClock.js';
 import { nextStrikeIn, flashLight, thunderDelayMs } from '../game/lightning.js';
 import { lightningFlashRef } from './mood';
 import { registerTestHook } from '../devtest/testBridge.js';
+import { isCaptureMode } from '../devtest/captureMode.js';
 
 /** How far away a strike lands, m: near enough to feel, far enough that the crack arrives after the flash. */
 const STRIKE_NEAR_M = 250;
@@ -44,7 +46,7 @@ export function LightningDriver() {
   useFrame(() => {
     const st = useGameStore.getState();
     const now = worldNow();
-    if (st.isCaptureMode) {
+    if (isCaptureMode()) {
       lightningFlashRef.current = 0;
       nextAt.current = null;
       thunder.current.length = 0;

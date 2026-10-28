@@ -64,6 +64,10 @@ export function leafDay(sunY) {
 export function leafFeelGlsl() {
   const f = (x) => x.toFixed(3);
   const layer = f(LEAF_LAYER);
+  // The translucency term's factors, multiplied into its one output line: the linear leaf colour, the warm tint, the
+  // strength, the back-light lobe and the day factor. Defining a factor does not apply it, so the product is generated
+  // from this list and the gate reads the list back out of it.
+  const glowTerm = ['pow(texColor.rgb, vec3(2.2))', `vec3(${LEAF_SUN.map(f).join(', ')})`, f(LEAF_TRANSLUCENCY), 'leafBack', 'leafDay'];
   return {
     vertexDecl: 'uniform float uTime;',
     vertex: [
@@ -79,7 +83,7 @@ export function leafFeelGlsl() {
       `if (abs(layerIndex - ${layer}) < 0.5) {`,
       `  float leafBack = pow(max(dot(normalize(vWorldPos - cameraPosition), normalize(uSunDir)), 0.0), ${f(BACK_POWER)});`,
       `  float leafDay = smoothstep(${f(DAY_LO)}, ${f(DAY_HI)}, uSunDir.y);`,
-      `  totalEmissiveRadiance += pow(texColor.rgb, vec3(2.2)) * vec3(${LEAF_SUN.map(f).join(', ')}) * ${f(LEAF_TRANSLUCENCY)} * leafBack * leafDay;`,
+      `  totalEmissiveRadiance += ${glowTerm.join(' * ')};`,
       `}`,
     ].join('\n'),
   };

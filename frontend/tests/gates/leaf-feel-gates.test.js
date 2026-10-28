@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { BLOCK_ID } from '../../src/world/blockIds.js';
-import { LEAF_LAYER, SWAY_AMP, leafSway, backLight, leafDay, leafFeelGlsl } from '../../src/world/leafFeel.js';
+import { LEAF_LAYER, SWAY_AMP, LEAF_TRANSLUCENCY, leafSway, backLight, leafDay, leafFeelGlsl } from '../../src/world/leafFeel.js';
 
 /**
  * LEAF SWAY + TRANSLUCENCY (plan 2026-09-23-crafty-leaf-sway-translucency, Task 1; EXTERNAL-BASELINE-R2 #2).
@@ -17,6 +17,11 @@ import { LEAF_LAYER, SWAY_AMP, leafSway, backLight, leafDay, leafFeelGlsl } from
  *   L4 plausible-wrong: the GLSL amplitude drifts from the JS (0.04 -> 0.4) -> the generated-sway case
  *   L5 the day factor inverted (leaves glow at night) -> the day case
  *   and L0, an identity mutant (a comment edit in leafFeel.js, same harness and batch), SURVIVED.
+ * The output line (review 2026-10-27: the cases above check each factor's DEFINITION, and each could be dropped from
+ * the product with all of them green), same harness, each observed RED at "the output line multiplies every factor":
+ *   L6 leafDay dropped from the product (leaves glow at night)   L7 leafBack dropped (glow whatever the view)
+ *   L8 the strength dropped   L9 the warm tint dropped   L10 the linear leaf colour dropped
+ *   and L0b, an identity mutant (a comment edit in leafFeel.js), SURVIVED.
  *
  * BLIND SPOT: nothing here renders. That the terms reach the linked terrain program is the structural gate in
  * far-field-gates; how a canopy LOOKS is the plan's Task 3 frames.
@@ -100,5 +105,28 @@ describe('the generated GLSL computes what the JS twins compute', () => {
     const [lo, hi] = num(/leafDay = smoothstep\((-?[\d.]+), (-?[\d.]+), uSunDir\.y\);/, g.fragment);
     for (let d = -1; d <= 1; d += 0.05) expect(Math.pow(Math.max(d, 0), pw)).toBeCloseTo(backLight(d), 5);
     for (let y = -0.5; y <= 0.5; y += 0.01) expect(smooth(lo, hi, y)).toBeCloseTo(leafDay(y), 3);
+  });
+
+  it('the output line multiplies every factor — the colour, the tint, the strength, the lobe and the day', () => {
+    // A factor DEFINED above and tested against its twin is not APPLIED unless it is in this product: dropping
+    // `* leafDay` passed every other case here. The expected factors are written here, not read from leafFeel.js.
+    const lines = g.fragment.split('\n').filter((l) => /totalEmissiveRadiance\s*\+=/.test(l));
+    expect(lines.length, 'the term must add into totalEmissiveRadiance exactly once').toBe(1);
+    const rhs = lines[0].match(/totalEmissiveRadiance\s*\+=\s*(.+);\s*$/)[1];
+    const factors = [];
+    let depth = 0, cur = '';
+    for (const ch of rhs) {
+      if (ch === '(') depth += 1;
+      if (ch === ')') depth -= 1;
+      if (ch === '*' && depth === 0) { factors.push(cur.trim()); cur = ''; } else cur += ch;
+    }
+    factors.push(cur.trim());
+    const why = `the output line multiplies every factor: ${factors.join(' * ')}`;
+    expect(factors.length, why).toBe(5);
+    for (const f of ['pow(texColor.rgb, vec3(2.2))', LEAF_TRANSLUCENCY.toFixed(3), 'leafBack', 'leafDay']) expect(factors, why).toContain(f);
+    const tint = factors.find((f) => /^vec3\(/.test(f));
+    expect(tint, why).toBeDefined();
+    const [r, gg, b] = num(/^vec3\(([\d.]+), ([\d.]+), ([\d.]+)\)$/, tint);
+    expect(r >= gg && gg >= b && b > 0 && r <= 1, `${why} — the tint is not a warm light (${tint})`).toBe(true);
   });
 });
