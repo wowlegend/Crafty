@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
@@ -8,7 +8,7 @@ import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
 /**
  * THE RECEIPT MUST CERTIFY THE TREE THAT WAS TESTED (QUEUE R1.3).
  *
- * The commit-tier pipeline runs every step against the WORKING TREE, then wrote a receipt keyed on
+ * The receipt-writing pipeline tier runs every step against the WORKING TREE, then wrote a receipt keyed on
  * `git write-tree` — the INDEX. With a partial stage those differ, and pre-push skipped the offline core for
  * a tree no gate had ever run against. The fix moved the write into ci/write-receipt.sh, which refuses when
  * the working tree differs from the index on any pipeline input.
@@ -37,13 +37,13 @@ const ROOT = resolve(__dirname, '../../..');
 const SCRIPT = join(ROOT, 'ci/write-receipt.sh');
 
 const git = fixtureGit; // never the caller's repository: tests/scripts/_isolatedGit.js
-const run = (cwd, receipt) => spawnSync('sh', [SCRIPT, receipt], { cwd, encoding: 'utf8', env: isolatedGitEnv() });
+const run = (cwd, dir, ...tier) => spawnSync('sh', [SCRIPT, dir, ...(tier.length ? tier : ['certify'])], { cwd, encoding: 'utf8', env: isolatedGitEnv() });
 
 let repo;
-let receipt;
+let receipt; // the receipt DIRECTORY: one file per certified tree
 beforeEach(() => {
   repo = mkdtempSync(join(tmpdir(), 'crafty-receipt-'));
-  receipt = join(repo, '.git', 'crafty-pipeline-green-tree');
+  receipt = join(repo, '.git', 'crafty-green-trees');
   git(repo, 'init', '-q');
   git(repo, 'config', 'user.email', 'fixture@example.invalid');
   git(repo, 'config', 'user.name', 'fixture');
@@ -58,12 +58,42 @@ beforeEach(() => {
 afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
 describe('ci/write-receipt.sh — certify only what was tested', () => {
-  it('positive control: a fully staged tree is certified with the exact index hash', () => {
+  it('positive control: a fully staged tree is certified as <dir>/<index tree>, holding the tree, the tier and a UTC time', () => {
     writeFileSync(join(repo, 'frontend/src/a.js'), 'export const a = 2;\n');
     git(repo, 'add', 'frontend/src/a.js');
     const r = run(repo, receipt);
-    expect(r.status).toBe(0);
-    expect(readFileSync(receipt, 'utf8').split(' ')[0]).toBe(git(repo, 'write-tree'));
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+    const tree = git(repo, 'write-tree');
+    expect(readdirSync(receipt)).toEqual([tree]);
+    expect(readFileSync(join(receipt, tree), 'utf8')).toMatch(new RegExp(`^${tree} certify \\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ\\n$`));
+  });
+
+  it('the tier argument is what the receipt records', () => {
+    writeFileSync(join(repo, 'frontend/src/a.js'), 'export const a = 2;\n');
+    git(repo, 'add', 'frontend/src/a.js');
+    expect(run(repo, receipt, 'other').status).toBe(0);
+    expect(readFileSync(join(receipt, git(repo, 'write-tree')), 'utf8').split(' ')[1]).toBe('other');
+  });
+
+  it('no tier, or no directory: a usage refusal (exit 2), and nothing is written', () => {
+    const noTier = spawnSync('sh', [SCRIPT, receipt], { cwd: repo, encoding: 'utf8', env: isolatedGitEnv() });
+    expect(noTier.status).toBe(2);
+    expect(noTier.stderr).toMatch(/usage: sh ci\/write-receipt\.sh <receipt-dir> <tier>/);
+    expect(spawnSync('sh', [SCRIPT], { cwd: repo, encoding: 'utf8', env: isolatedGitEnv() }).status).toBe(2);
+    expect(existsSync(receipt)).toBe(false);
+  });
+
+  it('receipts for two trees sit side by side: the second does not evict the first', () => {
+    writeFileSync(join(repo, 'frontend/src/a.js'), 'export const a = 2;\n');
+    git(repo, 'add', 'frontend/src/a.js');
+    expect(run(repo, receipt).status).toBe(0);
+    const first = git(repo, 'write-tree');
+    writeFileSync(join(repo, 'frontend/src/a.js'), 'export const a = 3;\n');
+    git(repo, 'add', 'frontend/src/a.js');
+    expect(run(repo, receipt).status).toBe(0);
+    const second = git(repo, 'write-tree');
+    expect(second).not.toBe(first);
+    expect(readdirSync(receipt).sort()).toEqual([first, second].sort());
   });
 
   it('a PARTIAL stage is refused — the tested tree carried an edit the commit does not', () => {
@@ -133,7 +163,7 @@ describe('ci/write-receipt.sh run from a LINKED WORKTREE\'s hook, the way ci/pip
       mkdirSync(hooks);
       writeFileSync(
         join(hooks, 'pre-commit'),
-        `#!/bin/sh\nenv > '${envLog}'\ncd frontend || exit 1\nsh '${SCRIPT}' '${laneReceipt}' > '${log}' 2>&1\necho "exit=$?" >> '${log}'\nexit 0\n`,
+        `#!/bin/sh\nenv > '${envLog}'\ncd frontend || exit 1\nsh '${SCRIPT}' '${laneReceipt}' certify > '${log}' 2>&1\necho "exit=$?" >> '${log}'\nexit 0\n`,
         { mode: 0o755 },
       );
       git(repo, 'config', 'core.hooksPath', hooks);
@@ -154,7 +184,8 @@ describe('ci/write-receipt.sh run from a LINKED WORKTREE\'s hook, the way ci/pip
       expect(env, 'the hook did not see an absolute GIT_DIR — this case is not reproducing the lane context').toMatch(/^GIT_DIR=\//m);
       const out = readFileSync(log, 'utf8');
       expect(out, out).toMatch(/exit=0\s*$/);
-      expect(readFileSync(laneReceipt, 'utf8').split(' ')[0], out).toBe(git(wt, 'rev-parse', 'HEAD^{tree}'));
+      const tree = git(wt, 'rev-parse', 'HEAD^{tree}');
+      expect(readFileSync(join(laneReceipt, tree), 'utf8').split(' ')[0], out).toBe(tree);
     } finally {
       rmSync(outside, { recursive: true, force: true });
     }

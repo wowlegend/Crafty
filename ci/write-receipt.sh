@@ -1,9 +1,13 @@
 #!/bin/sh
 # Write the green-tree receipt that pre-push honours — but ONLY for a tree that was actually tested.
 #
-#   sh ci/write-receipt.sh <receipt-path>
+#   sh ci/write-receipt.sh <receipt-dir> <tier>
+#   writes <receipt-dir>/<tree>, holding `<tree> <tier> <utc>`. One file per tree, so receipts written by different
+#   lanes never evict each other, and none is pruned: a tree hash names its content, so an old file never speaks for
+#   a different tree. pre-push honours only a `certify` receipt (ci/pipeline.sh --tier=certify).
 #   exit 0  receipt written and read back
 #   exit 1  REFUSED: the working tree the pipeline just tested is not the index being committed
+#   exit 2  usage: no receipt directory, or no tier
 #   exit 3  COULD NOT write (write-tree failed, or the file did not land)
 #
 # WHY THIS IS ITS OWN FILE. The receipt used to be written inline at the end of ci/pipeline.sh, keyed on
@@ -30,7 +34,12 @@
 
 set -u
 
-RECEIPT="${1:?usage: sh ci/write-receipt.sh <receipt-path>}"
+RECEIPT_DIR="${1:-}"
+TIER="${2:-}"
+if [ -z "$RECEIPT_DIR" ] || [ -z "$TIER" ]; then
+  echo "usage: sh ci/write-receipt.sh <receipt-dir> <tier>" >&2
+  exit 2
+fi
 # THE TREE IS FOUND WITH GIT_* SCRUBBED; IT IS CERTIFIED WITH GIT'S OWN. pipeline.sh runs this from frontend/, and in
 # a LINKED worktree git hands its hooks an absolute GIT_DIR with no GIT_WORK_TREE, under which git takes the CURRENT
 # directory as the top of the work tree: `--show-toplevel` answered frontend/, every tracked path outside it read as
@@ -60,11 +69,13 @@ if [ -z "$TREE" ]; then
   exit 3
 fi
 
+RECEIPT="$RECEIPT_DIR/$TREE"
 # VERIFY THE ARTIFACT, NEVER THE INTENT: read the file back. A receipt CLAIMED but absent is a silent lie
 # about what was checked; an earlier version printed "certified" on a write that had just failed.
-if printf '%s commit %s\n' "$TREE" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >| "$RECEIPT" 2>/dev/null &&
-   [ "$(cut -d' ' -f1 "$RECEIPT" 2>/dev/null)" = "$TREE" ]; then
-  printf '\033[2m  receipt: tree %.10s certified — a push of this tree skips the offline core\033[0m\n' "$TREE"
+if mkdir -p "$RECEIPT_DIR" 2>/dev/null &&
+   printf '%s %s %s\n' "$TREE" "$TIER" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >| "$RECEIPT" 2>/dev/null &&
+   [ "$(cut -d' ' -f1-2 "$RECEIPT" 2>/dev/null)" = "$TREE $TIER" ]; then
+  printf '\033[2m  receipt: tree %.10s certified (%s) — a push of this tree skips the offline core\033[0m\n' "$TREE" "$TIER"
   exit 0
 fi
 printf '\033[33m  receipt NOT written to %s — the push will certify in full\033[0m\n' "$RECEIPT"

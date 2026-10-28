@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ESLint } from 'eslint';
-import { isolatedGitEnv } from './_isolatedGit.js';
+import { isolatedGitEnv, fixtureGit } from './_isolatedGit.js';
 
 /**
  * NO PIPELINE STEP AND NO TEST CAN REACH THE CALLER'S REPOSITORY (plan U8, amended F16).
@@ -57,6 +58,62 @@ describe('ci/git-env.sh run_scrubbed', () => {
   it('run_scrubbed returns the command\'s own exit status', () => {
     expect(sh('run_scrubbed false').status).toBe(1);
     expect(sh('run_scrubbed true').status).toBe(0);
+  });
+});
+
+// THE ONE CALL THAT MUST NOT BE SCRUBBED. git hands pre-commit the index being committed in GIT_INDEX_FILE (a lock
+// file under `git commit -a` and `git commit <path>`), so staged_frontend_files keeps git's environment. A real
+// commit in a fixture repo, through a pre-commit hook that sources the REAL helper and calls it from frontend/ as
+// pipeline.sh does, lets git itself set that environment.
+describe('ci/git-env.sh staged_frontend_files sees the index being committed', () => {
+  let dir;
+  beforeEach(() => {
+    dir = realpathSync(mkdtempSync(join(tmpdir(), 'crafty-staged-')));
+    mkdirSync(join(dir, 'frontend/src'), { recursive: true });
+    writeFileSync(join(dir, 'frontend/src/a.js'), 'export const a = 1;\n');
+    writeFileSync(join(dir, 'README.md'), '# r\n');
+    fixtureGit(dir, 'init', '-q');
+    fixtureGit(dir, 'config', 'user.email', 'fixture@example.invalid');
+    fixtureGit(dir, 'config', 'user.name', 'fixture');
+    fixtureGit(dir, 'add', '-A');
+    fixtureGit(dir, 'commit', '-q', '-m', 'base');
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  /** Install a pre-commit hook that logs what the helper prints, run as `call` (plain or through run_scrubbed). */
+  function hook(call) {
+    const hooks = join(dir, '.hooks');
+    mkdirSync(hooks, { recursive: true });
+    writeFileSync(join(hooks, 'pre-commit'), `#!/bin/bash\n. '${ROOT}/ci/git-env.sh'\ncd frontend && ${call} '${dir}' > '${dir}/staged.log'\nexit 0\n`, { mode: 0o755 });
+    fixtureGit(dir, 'config', 'core.hooksPath', hooks);
+  }
+  const edit = () => writeFileSync(join(dir, 'frontend/src/a.js'), 'export const a = 2;\n');
+  const staged = () => readFileSync(join(dir, 'staged.log'), 'utf8');
+
+  it('`git commit -a` lists the changed file, relative to frontend/', () => {
+    hook('staged_frontend_files');
+    edit();
+    fixtureGit(dir, 'commit', '-q', '-a', '-m', 'all');
+    expect(staged()).toBe('src/a.js\n');
+  });
+  it('`git commit <path>` lists it too', () => {
+    hook('staged_frontend_files');
+    edit();
+    writeFileSync(join(dir, 'README.md'), '# r, edited, not committed\n');
+    fixtureGit(dir, 'commit', '-q', '-m', 'path', 'frontend/src/a.js');
+    expect(staged()).toBe('src/a.js\n');
+  });
+  it('a path outside frontend/ is not listed', () => {
+    hook('staged_frontend_files');
+    writeFileSync(join(dir, 'README.md'), '# r, edited\n');
+    fixtureGit(dir, 'commit', '-q', '-a', '-m', 'docs');
+    expect(staged()).toBe('');
+  });
+  it('the defect it guards: the same call through run_scrubbed lists NOTHING under `git commit -a`', () => {
+    hook('run_scrubbed staged_frontend_files');
+    edit();
+    fixtureGit(dir, 'commit', '-q', '-a', '-m', 'all');
+    expect(staged()).toBe('');
   });
 });
 

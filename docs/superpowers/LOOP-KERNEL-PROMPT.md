@@ -143,7 +143,7 @@ in useFrame — transient refs / `.getState()` / seeded); capture-determinism (N
 + `isCaptureMode()`-gated; static geometry at module load); **NO mid-combat RE-MESH** (a P4 engineering constraint: break it only with a measurement that the iPad-class frame
 budget still holds, recorded in DECISIONS); bloom 0.65
 INTENDED; zero-emoji in `src/` (use `\u{}` escapes); the store owns persisted state; no AI footer on commits; no
-`git add -A`; `.state/` untouched; `git commit -F -` heredoc. Full suite + eslint + build + pre-push each push (pre-push gate COUNT and list: read the generated GATES table in `CLAUDE.md` — never recall it, and never type it here: this file is re-injected verbatim, so a number written here cannot self-correct). `knip` is CI-only, NOT at push.
+`git add -A`; `.state/` untouched; `git commit -F -` heredoc. Before each push, `bash ci/pipeline.sh --tier=certify` (full suite, eslint, build) in the background, then the push (pre-push gate COUNT and list: read the generated GATES table in `CLAUDE.md` — never recall it, and never type it here: this file is re-injected verbatim, so a number written here cannot self-correct). `knip` is CI-only, NOT at push.
 BUILD-FIRST on any JSX/structure change. Capture-verify EVERY render-affecting slice
 (`npm run visual:capture`) — but **the harness is NOT a trustworthy oracle**. `75191ef` fixed the
 `close()`-hang, NOT determinism. **`memory/STATUS.md` §B-race owns the harness's current measured state —

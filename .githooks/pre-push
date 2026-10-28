@@ -87,51 +87,47 @@ for RANGE in $RANGES; do
   node "$REPO_ROOT/frontend/scripts/ci/baseline-trailer.mjs" "$RANGE" || exit 1
 done
 
-# ── green-tree receipt (AB's shape, adopted 2026-09-22 on Kevin's direction) ────────────────────────
+# ── green-tree receipts ─────────────────────────────────────────────────────────────────────────────────
 #
-# pre-commit certifies the offline core against the staged tree and records the INDEX TREE HASH. git's
-# index tree IS the tree the resulting commit stores — verified, not assumed: `git write-tree` and
-# `git rev-parse HEAD^{tree}` returned the same sha on a clean index. So when the tree being pushed is
-# already in the receipt, spinning up a worktree to re-derive that answer buys nothing.
+# `ci/pipeline.sh --tier=certify` runs the whole offline core over the working tree and records the INDEX TREE
+# HASH it certified as <git-common-dir>/crafty-green-trees/<tree>, holding `<tree> certify <utc>`. git's index
+# tree IS the tree the resulting commit stores, so when the tree being pushed has a certify receipt, spinning up
+# a worktree to re-derive that answer buys nothing. One file per tree: a lane's receipt never evicts another's.
+# The commit tier writes none (it runs a selection of the suite), and a receipt of any other tier is ignored.
 #
-# WHAT THE RECEIPT DOES NOT AUTHORISE, and this is the part that makes it safe: it speaks only for the
-# OFFLINE CORE. The commit-shaped gates read a COMMIT RANGE that did not exist when the receipt was
-# written, so they run on EVERY push: the two trailers above, and queue-ledger / artifact-currency /
-# registry-append-only via `pipeline.sh --tier=push --range-only` below.
+# WHAT A RECEIPT DOES NOT AUTHORISE: it speaks only for the OFFLINE CORE. The commit-shaped gates read a
+# COMMIT RANGE that did not exist when the receipt was written, so they run on EVERY push: the two trailers
+# above, and queue-ledger / artifact-currency / registry-append-only via `pipeline.sh --tier=push --range-only`.
 #
-# THAT LAST PART WAS FALSE UNTIL 2026-09-22. A receipt match used to `continue` straight past the
-# pipeline, and those three gates live in its push tier, so on every receipt-matched push they silently
-# never ran — while this comment said they "run unconditionally, above". Only the trailers were above.
-# Found when a partial-stage fix stopped the receipt being written, the full path ran for once, and
-# artifact-currency surfaced 74 commits of drift that had accumulated past a gate nobody was running.
-#
-# The receipt lives in .git/ and so cannot survive a clone — a fresh checkout has certified nothing, which
-# is the correct default. A missing or stale receipt costs a full certification: it fails toward WORK, not
-# toward trust.
-RECEIPT="$(git rev-parse --git-common-dir)/crafty-pipeline-green-tree"
-GREEN_TREE=""
-GREEN_TIER=""
-GREEN_AT=""
-if [ -f "$RECEIPT" ]; then
-  GREEN_TREE=$(cut -d' ' -f1 "$RECEIPT" 2>/dev/null || true)
-  GREEN_TIER=$(cut -d' ' -f2 "$RECEIPT" 2>/dev/null || true)
-  GREEN_AT=$(cut -d' ' -f3 "$RECEIPT" 2>/dev/null || true)
-fi
+# Receipts live in .git/ and so cannot survive a clone — a fresh checkout has certified nothing. A missing
+# receipt costs a full certification: it fails toward WORK, not toward trust.
+RECEIPTS="$(git rev-parse --git-common-dir)/crafty-green-trees"
+case "$RECEIPTS" in /*) ;; *) RECEIPTS="$REPO_ROOT/$RECEIPTS" ;; esac
 
 for SHA in $TARGETS; do
   SHORT=$(git rev-parse --short "$SHA")
   PUSHED_TREE=$(git rev-parse "$SHA^{tree}" 2>/dev/null || true)
 
+  GREEN_TREE=""
+  GREEN_TIER=""
+  GREEN_AT=""
+  if [ -n "$PUSHED_TREE" ] && [ -f "$RECEIPTS/$PUSHED_TREE" ]; then
+    GREEN_TREE=$(cut -d' ' -f1 "$RECEIPTS/$PUSHED_TREE" 2>/dev/null || true)
+    GREEN_TIER=$(cut -d' ' -f2 "$RECEIPTS/$PUSHED_TREE" 2>/dev/null || true)
+    GREEN_AT=$(cut -d' ' -f3 "$RECEIPTS/$PUSHED_TREE" 2>/dev/null || true)
+  fi
+
   RANGE_FLAG=""
-  if [ -n "$GREEN_TREE" ] && [ "$GREEN_TIER" = "commit" ] && [ -n "$PUSHED_TREE" ] && [ "$PUSHED_TREE" = "$GREEN_TREE" ]; then
+  if [ -n "$PUSHED_TREE" ] && [ "$GREEN_TREE" = "$PUSHED_TREE" ] && [ "$GREEN_TIER" = "certify" ]; then
     printf '\n══ pre-push: %s — offline core already certified on this exact tree (%s) ══\n' "$SHORT" "$GREEN_AT"
-    printf '  tree %s matches the pre-commit receipt; the core is skipped, the commit-range gates still run.\n' "$(printf '%.10s' "$PUSHED_TREE")"
+    printf '  tree %s has a certify receipt; the core is skipped, the commit-range gates still run.\n' "$(printf '%.10s' "$PUSHED_TREE")"
     RANGE_FLAG="--range-only"
   elif [ -n "$GREEN_TREE" ]; then
-    printf '\n  (receipt present but for tree %s, not %s — certifying in full)\n' \
-      "$(printf '%.10s' "$GREEN_TREE")" "$(printf '%.10s' "${PUSHED_TREE:-unknown}")"
+    printf '\n  (a receipt for tree %s says tier %s, not certify — certifying in full)\n' \
+      "$(printf '%.10s' "$PUSHED_TREE")" "${GREEN_TIER:-unknown}"
   else
-    printf '\n  (no green receipt on this machine — certifying in full)\n'
+    printf '\n  (no certify receipt for tree %s on this machine — certifying in full; `bash ci/pipeline.sh --tier=certify` before a push skips this)\n' \
+      "$(printf '%.10s' "${PUSHED_TREE:-unknown}")"
   fi
   if [ -z "$RANGE_FLAG" ]; then
     printf '\n══ pre-push: certifying the PUSHED COMMIT %s (not the working tree) ══\n' "$SHORT"

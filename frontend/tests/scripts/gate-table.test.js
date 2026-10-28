@@ -91,7 +91,7 @@ describe('gate-table — parseHook is a COUNT, so its denominator is the whole p
   });
 
   it('callersFor maps every tier, and defaults to core for an unknown one', () => {
-    expect(Object.keys(CALLERS).sort()).toEqual(['core', 'fast', 'not-commit', 'not-fast', 'not-push', 'push', 'range']);
+    expect(Object.keys(CALLERS).sort()).toEqual(['commit', 'core', 'fast', 'not-commit', 'not-fast', 'not-push', 'push', 'range']);
     expect(callersFor({ tier: 'core' })).toEqual({ commit: true, push: true, ci: true });
     expect(callersFor({ tier: 'fast' }), 'a CI-only gate must not be printed as a pre-push gate')
       .toEqual({ commit: false, push: false, ci: true });
@@ -120,6 +120,12 @@ fi
     expect(twice.cmd, 'the row keeps the FIRST command').toBe('node scripts/ci/twice.mjs');
     expect(callersFor(two.find((g) => g.name === 'after-nested')), 'an INDENTED nested fi must not reset the tier')
       .toEqual(CALLERS.fast);
+  });
+
+  it('a step inside `if [ "$TIER" = "commit" ]` is a commit-only gate, not a core one', () => {
+    const [only] = parseHook('if [ "$TIER" = "commit" ]; then\n  step "related" node scripts/ci/related-tests.mjs\nfi\n');
+    expect(only.tier).toBe('commit');
+    expect(callersFor(only), 'the push and CI do not run it').toEqual({ commit: true, push: false, ci: false });
   });
 
   it('renderBlock emits one row per gate, between the sentinels', () => {

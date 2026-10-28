@@ -64,6 +64,7 @@ export const DESCRIPTIONS = {
   'gate-shape': 'a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise)',
   'cli-guard': 'a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts',
   'unit + static gates': 'everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates',
+  'vitest related': 'on the commit only, a staged change that breaks a unit test which STATICALLY imports it (`vitest related`). It prints how many of the suite\'s test files it selected; a lazily imported module and a source-grep gate are not selected, and the full suite runs at the push, in `--tier=certify` and in CI',
   build: 'broken JSX/imports',
   'bundle byte budget': 'a chunk growing past its byte ceiling',
 };
@@ -125,6 +126,7 @@ export function parseHook(src) {
  * PURE: which of the three callers run a gate, derived from its tier. The mapping IS the pipeline's
  * contract, stated once:
  *   core  — no tier guard      -> every caller
+ *   commit — the staged change   -> pre-commit only (the push and CI run the whole suite instead)
  *   push  — reads a commit RANGE -> pre-push only (a CI runner on a squashed ref cannot rebuild it)
  *   fast  — needs network/browser -> CI only (never on an edit path, R5)
  * A range-reading pre-banner gate (the trailers) is `range`: the hook owns it, and this file says so
@@ -132,6 +134,7 @@ export function parseHook(src) {
  */
 export const CALLERS = {
   core:  { commit: true,  push: true,  ci: true  },
+  commit: { commit: true, push: false, ci: false },
   push:  { commit: false, push: true,  ci: false },
   fast:  { commit: false, push: false, ci: true  },
   range: { commit: false, push: true,  ci: false },
@@ -169,7 +172,8 @@ export function renderBlock(gates, _ciText) {
     'pre-commit, pre-push and GitHub Actions all call, so no two can drift. Do not edit the table by hand;',
     'add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.',
     '',
-    `**${n('commit')} run on every commit** (offline core, 69s) · **${n('push')} on every push** · **${n('ci')} in CI**.`,
+    `**${n('commit')} run on every commit** (the static gates and the related unit tests) · **${n('push')} on every push** · **${n('ci')} in CI**.`,
+    '`bash ci/pipeline.sh --tier=certify` runs the offline core by hand and writes a receipt for the tree, so a push of that tree skips the core.',
     'The columns are DERIVED from each step\'s tier guard in the script, not asserted here — they used to be,',
     'and all three network/browser gates were printed as pre-push gates they have never been.',
     '',

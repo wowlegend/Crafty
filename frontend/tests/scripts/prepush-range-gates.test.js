@@ -75,20 +75,48 @@ function runHook({ repo, sha }) {
   return { ...r, calls: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [] };
 }
 
-describe('pre-push — a receipt narrows the pipeline, it never skips it', () => {
-  it('receipt matches the pushed tree: the pipeline IS invoked, with --range-only', () => {
+/** A hand-written receipt file, the way ci/write-receipt.sh lays one out. */
+function writeReceipt(repo, tree, tier) {
+  mkdirSync(join(repo, '.git/crafty-green-trees'), { recursive: true });
+  writeFileSync(join(repo, '.git/crafty-green-trees', tree), `${tree} ${tier} 2026-10-28T00:00:00Z\n`);
+}
+/** The REAL ci/write-receipt.sh, run in the fixture the way the certify tier runs it. */
+function certify(repo) {
+  const r = spawnSync('sh', [join(ROOT, 'ci/write-receipt.sh'), join(repo, '.git/crafty-green-trees'), 'certify'], {
+    cwd: repo, encoding: 'utf8', env: isolatedGitEnv(),
+  });
+  expect(r.status, `the real writer refused: ${r.stdout}${r.stderr}`).toBe(0);
+}
+
+describe('pre-push — a certify receipt narrows the pipeline, it never skips it', () => {
+  it('a certify receipt for the pushed tree: the pipeline IS invoked, with --range-only', () => {
     const f = fixtureRepo();
-    writeFileSync(join(f.repo, '.git/crafty-pipeline-green-tree'), `${f.tree} commit 2026-09-22T00:00:00Z\n`);
+    writeReceipt(f.repo, f.tree, 'certify');
     const r = runHook(f);
     expect(r.status, r.stderr + r.stdout).toBe(0);
     expect(r.calls).toEqual(['ARGS --tier=push --range-only']);
   });
 
-  it('receipt for a DIFFERENT tree: full certification, no --range-only', () => {
+  it('a receipt of the COMMIT tier for the pushed tree no longer skips the core: full certification', () => {
     const f = fixtureRepo();
-    writeFileSync(join(f.repo, '.git/crafty-pipeline-green-tree'), `${'a'.repeat(40)} commit 2026-09-22T00:00:00Z\n`);
+    writeReceipt(f.repo, f.tree, 'commit');
     const r = runHook(f);
     expect(r.status, r.stderr + r.stdout).toBe(0);
+    expect(r.calls).toEqual(['ARGS --tier=push']);
+  });
+
+  it('a certify receipt for a DIFFERENT tree only: full certification', () => {
+    const f = fixtureRepo();
+    writeReceipt(f.repo, 'a'.repeat(40), 'certify');
+    const r = runHook(f);
+    expect(r.status, r.stderr + r.stdout).toBe(0);
+    expect(r.calls).toEqual(['ARGS --tier=push']);
+  });
+
+  it('the old single-file receipt, even naming this tree, is ignored: full certification', () => {
+    const f = fixtureRepo();
+    writeFileSync(join(f.repo, '.git/crafty-pipeline-green-tree'), `${f.tree} commit 2026-09-22T00:00:00Z\n`);
+    const r = runHook(f);
     expect(r.calls).toEqual(['ARGS --tier=push']);
   });
 
@@ -96,6 +124,27 @@ describe('pre-push — a receipt narrows the pipeline, it never skips it', () =>
     const r = runHook(fixtureRepo());
     expect(r.status, r.stderr + r.stdout).toBe(0);
     expect(r.calls).toEqual(['ARGS --tier=push']);
+  });
+
+  it('the writer\'s output is what the reader honours: the REAL write-receipt.sh, then the REAL hook', () => {
+    const f = fixtureRepo();
+    certify(f.repo);
+    const r = runHook(f);
+    expect(r.status, r.stderr + r.stdout).toBe(0);
+    expect(r.calls).toEqual(['ARGS --tier=push --range-only']);
+  });
+
+  it('two lanes\' receipts coexist: certifying tree B leaves tree A\'s receipt standing', () => {
+    const a = fixtureRepo();
+    certify(a.repo);
+    writeFileSync(join(a.repo, 'second.txt'), 'b\n');
+    git(a.repo, 'add', 'second.txt');
+    git(a.repo, 'commit', '-q', '-m', 'second');
+    const b = { repo: a.repo, sha: git(a.repo, 'rev-parse', 'HEAD') };
+    certify(a.repo);
+    expect(runHook(a).calls, 'tree A').toEqual(['ARGS --tier=push --range-only']);
+    rmSync(join(dir, 'pipe.log'), { force: true });
+    expect(runHook(b).calls, 'tree B').toEqual(['ARGS --tier=push --range-only']);
   });
 });
 
@@ -124,7 +173,7 @@ describe('ci/pipeline.sh --range-only — the range gates run, every skipped cor
       'node scripts/ci/artifact-currency.mjs',
       'node scripts/ci/registry-append-only.mjs',
     ]);
-    const skipped = r.stdout.match(/skipped \(certified by the pre-commit receipt/g) || [];
+    const skipped = r.stdout.match(/skipped \(certified by a certify receipt/g) || [];
     expect(skipped.length).toBeGreaterThanOrEqual(8); // every core step is NAMED as skipped, not silently absent
     expect(r.stdout).toMatch(/3 commit-range gate\(s\) passed/);
   });
@@ -140,5 +189,6 @@ describe('ci/pipeline.sh --range-only — the range gates run, every skipped cor
   it('--range-only is refused on any tier but push', () => {
     expect(runPipeline(['--tier=commit', '--range-only']).status).toBe(2);
     expect(runPipeline(['--tier=fast', '--range-only']).status).toBe(2);
+    expect(runPipeline(['--tier=certify', '--range-only']).status).toBe(2);
   });
 });

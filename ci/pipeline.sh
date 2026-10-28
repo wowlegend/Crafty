@@ -15,16 +15,17 @@
 #
 # The workflow runs `bash ci/pipeline.sh --tier=fast`. The pre-push hook runs `--tier=push`, and the
 # pre-commit hook runs `--tier=commit`. Neither restates a step, so neither can disagree. The
-# one-definition shape is Inkbloom's; the TIER SPLIT and the green-tree receipt below are AGENTIC-BRAIN's,
-# adopted 2026-09-22 after Kevin pointed out that AB front-loads the suite onto the commit and keeps the
-# push fast, while this repo had it backwards.
+# one-definition shape is Inkbloom's.
 #
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
-# THE TIERS, and the one question that decides which a gate belongs to: WHAT DOES IT READ?
+# THE TIERS, and the one question that decides which a gate belongs to: WHAT DOES IT READ, AND WHEN?
 #
-#   commit  reads the WORKING TREE          -> pre-commit. Offline, deterministic, no network, no browser.
-#                                              69s measured for the whole set, so the edit path can carry it.
-#   push    reads a COMMIT RANGE            -> pre-push. Trailers, queue-ledger, artifact-currency,
+#   commit  the STAGED change               -> pre-commit. The static gates, plus only the unit tests that
+#                                              statically import a staged file (`vitest related`). No full
+#                                              suite, build or bundle: those run at the push and in certify.
+#   certify the WORKING TREE, whole         -> by hand, in the background, before a push: every offline-core
+#                                              step, then a receipt for the tree (below).
+#   push    reads a COMMIT RANGE            -> pre-push. The offline core in full, then trailers, queue-ledger, artifact-currency,
 #                                              registry-append-only: a runner on a squashed ref cannot
 #                                              reconstruct the range, so these belong to the chokepoint
 #                                              that has it. One exception runs in the fast tier too:
@@ -35,11 +36,17 @@
 #                                              someone's commit is precisely how a gate gets bypassed,
 #                                              and a bypassed gate is worth less than no gate (R5).
 #
-# THE GREEN-TREE RECEIPT closes the loop. A green `commit` tier records the INDEX TREE HASH it certified
-# (`git write-tree`, which is byte-identical to the tree the resulting commit stores — verified, not
-# assumed). pre-push reads that receipt: if the tree it is about to push is already recorded green, the
-# offline core is a known answer and re-deriving it in a fresh worktree buys nothing. The commit-shaped
-# gates still run, because a `commit` receipt cannot speak for a range it never saw.
+# THE GREEN-TREE RECEIPT. A green `certify` run records the INDEX TREE HASH it certified (`git write-tree`,
+# byte-identical to the tree the resulting commit stores) as one file per tree under
+# <git-common-dir>/crafty-green-trees/. pre-push looks up the tree it is about to push there: a certify
+# receipt means the offline core is a known answer, and re-deriving it in a fresh worktree buys nothing. The
+# commit-range gates still run, because a receipt cannot speak for a range it never saw. The commit tier
+# writes no receipt: it ran a selection of the suite, not the suite.
+#
+# WHAT THE FAST COMMIT COSTS: an intermediate commit carries no unit, build or bundle result of its own, and a
+# lazily imported module is invisible to `vitest related`. The push certifies the tree it pushes (in full, or
+# by that tree's certify receipt), CI runs the full suite on every sha, and main moves only on a sha whose
+# `ci ok` passed.
 #
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # WHAT IT DELIBERATELY CANNOT COVER, because a green run is not a claim that the game works
@@ -75,8 +82,8 @@ if [ "$RANGE_ONLY" = 1 ] && [ "$TIER" != "push" ]; then
   printf '\033[31m✖ pipeline: --range-only is only meaningful with --tier=push\033[0m\n' >&2; exit 2
 fi
 case "$TIER" in
-  commit|push|fast) ;;
-  *) printf '\033[31m✖ pipeline: unknown tier %s (expected commit|push|fast)\033[0m\n' "$TIER" >&2; exit 2 ;;
+  commit|push|fast|certify) ;;
+  *) printf '\033[31m✖ pipeline: unknown tier %s (expected commit|push|fast|certify)\033[0m\n' "$TIER" >&2; exit 2 ;;
 esac
 
 # The receipt lives in .git/, not in the tree: it is machine-local by nature and MUST NOT survive a clone
@@ -87,7 +94,7 @@ esac
 # exist, failed, and printed "certified" anyway. Resolve it against ROOT and keep it absolute.
 RECEIPT_DIR="$(git rev-parse --git-common-dir 2>/dev/null || echo .git)"
 case "$RECEIPT_DIR" in /*) ;; *) RECEIPT_DIR="$ROOT/$RECEIPT_DIR" ;; esac
-RECEIPT="$RECEIPT_DIR/crafty-pipeline-green-tree"
+RECEIPT="$RECEIPT_DIR/crafty-green-trees"
 
 fail=0
 failed_steps=""
@@ -98,7 +105,7 @@ skipped_core=0
 step() { # step <name> <cmd...>
   local name="$1"; shift
   if [ "$RANGE_ONLY" = 1 ] && [ "$SECTION" = core ]; then
-    printf '\033[2m── skipped (certified by the pre-commit receipt for this exact tree): %s\033[0m\n' "$name"
+    printf '\033[2m── skipped (certified by a certify receipt for this exact tree): %s\033[0m\n' "$name"
     skipped_core=$((skipped_core + 1))
     return 0
   fi
@@ -122,15 +129,26 @@ cd "$APP"
 step "opsec-scan (a PUBLIC repo must not publish the operator machine)" node scripts/ci/opsec-scan.mjs --all
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
-# TIER: FAST — deterministic, GPU-free, machine-independent. Both callers run all of these.
+# THE OFFLINE CORE — deterministic, GPU-free, machine-independent. The static gates run in every tier; the
+# unit suite, build and bundle budget in every tier but the commit, which runs `vitest related` instead.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 step "doc-currency (a canonical doc citing a path that no longer exists)" node scripts/ci/doc-currency.mjs
 step "eslint (crash-class bugs; no-unused-vars is an error)" npm run --silent lint
 step "gate-shape (no assertion satisfiable by a COMMENT)" node scripts/ci/gate-shape.mjs
 step "cli-guard (an exporting script must not run its CLI on import)" node scripts/ci/cli-guard.mjs
-step "unit + static gates (vitest)" npm run --silent test:unit
-step "build" npm run --silent build
-step "bundle byte budget" node scripts/ci/bundle-budget.mjs
+if [ "$TIER" = "commit" ]; then
+  # The list is taken here, with the hook's environment intact (ci/git-env.sh says why); only the step is scrubbed.
+  # A git failure leaves no list, which the step reports as COULD NOT CHECK rather than as nothing staged.
+  STAGED_LIST="$(mktemp "${TMPDIR:-/tmp}/crafty-staged-XXXXXX")" || STAGED_LIST=""
+  if [ -n "$STAGED_LIST" ] && ! staged_frontend_files "$ROOT" >| "$STAGED_LIST"; then rm -f "$STAGED_LIST"; fi
+  step "vitest related (the unit tests that statically import a staged file)" node scripts/ci/related-tests.mjs --staged-list "$STAGED_LIST"
+  rm -f "$STAGED_LIST"
+fi
+if [ "$TIER" != "commit" ]; then
+  step "unit + static gates (vitest)" npm run --silent test:unit
+  step "build" npm run --silent build
+  step "bundle byte budget" node scripts/ci/bundle-budget.mjs
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # TIER: PUSH — commit-shaped gates. They read a COMMIT RANGE, which a CI runner on a squashed or
@@ -192,14 +210,13 @@ if [ "$fail" -eq 0 ] && [ "$RANGE_ONLY" = 1 ]; then
 fi
 if [ "$fail" -eq 0 ]; then
   printf '\033[32m✓ pipeline (%s): every step passed\033[0m\n' "$TIER"
-  # Record the receipt ONLY for the commit tier, and only on a fully green run. A tree hash is written
-  # here and consumed by pre-push; the tier name goes in with it so a `commit` receipt can never be
-  # mistaken for authorisation to skip the commit-shaped gates.
-  if [ "$TIER" = "commit" ]; then
+  # Only certify writes a receipt, and only on a fully green run: it is the one tier that ran the whole offline
+  # core over the whole tree. The tier goes into the receipt, and pre-push honours `certify` alone.
+  if [ "$TIER" = "certify" ]; then
     # The steps above tested the WORKING TREE; the receipt certifies the INDEX. write-receipt.sh refuses
     # when the two differ (a partial stage), and reads the file back before claiming it landed. A refusal
     # is not a failure of this run — it only sends the push down the full-certification path.
-    sh "$ROOT/ci/write-receipt.sh" "$RECEIPT" || true
+    sh "$ROOT/ci/write-receipt.sh" "$RECEIPT" certify || true
   fi
   exit 0
 fi

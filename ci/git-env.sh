@@ -3,6 +3,9 @@
 #
 #   run_scrubbed <cmd...>   run a command with EVERY GIT_* variable removed from its environment, and return its
 #                           exit status
+#   staged_frontend_files <toplevel>
+#                           print the paths staged under frontend/ (added, copied, modified, renamed), relative to
+#                           frontend/, from the index being committed
 #
 # WHY. Git exports GIT_DIR, GIT_INDEX_FILE and friends to every hook it runs, and the hooks run this pipeline. In a
 # linked worktree GIT_DIR is ABSOLUTE, so any git a step runs, or any git a test inside the unit step runs, finds the
@@ -19,4 +22,12 @@ run_scrubbed() {
     for v in $(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "$v"; done
     "$@"
   )
+}
+
+# NEVER call this through run_scrubbed. Under `git commit -a` and `git commit <path>` the index being committed is
+# the lock file git names in GIT_INDEX_FILE, not .git/index, so a scrubbed call lists nothing. `-C <toplevel>` keeps
+# the call independent of the cwd (pipeline.sh calls it from frontend/). `--relative=frontend/` prints paths the way
+# `vitest related` resolves them, against frontend/, and drops every path outside it.
+staged_frontend_files() {
+  git -C "$1" diff --cached --name-only --relative=frontend/ --diff-filter=ACMR
 }

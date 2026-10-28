@@ -110,11 +110,12 @@ Full procedure — the `finally` shape, `_serve.mjs`, the managed ports, deletin
 ## Build / Test / Gates (from `frontend/`)
 
 <!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->
-**16 gates, across three callers.** Generated from `ci/pipeline.sh` — the ONE definition
+**17 gates, across three callers.** Generated from `ci/pipeline.sh` — the ONE definition
 pre-commit, pre-push and GitHub Actions all call, so no two can drift. Do not edit the table by hand;
 add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.
 
-**8 run on every commit** (offline core, 69s) · **13 on every push** · **12 in CI**.
+**6 run on every commit** (the static gates and the related unit tests) · **13 on every push** · **12 in CI**.
+`bash ci/pipeline.sh --tier=certify` runs the offline core by hand and writes a receipt for the tree, so a push of that tree skips the core.
 The columns are DERIVED from each step's tier guard in the script, not asserted here — they used to be,
 and all three network/browser gates were printed as pre-push gates they have never been.
 
@@ -127,9 +128,10 @@ and all three network/browser gates were printed as pre-push gates they have nev
 | eslint | `npm run lint` | ✅ | ✅ | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
 | gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | ✅ | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise) |
 | cli-guard | `node scripts/ci/cli-guard.mjs` | ✅ | ✅ | ✅ | a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts |
-| unit + static gates | `npm run test:unit` | ✅ | ✅ | ✅ | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates |
-| build | `npm run build` | ✅ | ✅ | ✅ | broken JSX/imports |
-| bundle byte budget | `node scripts/ci/bundle-budget.mjs` | ✅ | ✅ | ✅ | a chunk growing past its byte ceiling |
+| vitest related | `node scripts/ci/related-tests.mjs --staged-list "$STAGED_LIST"` | ✅ | — | — | on the commit only, a staged change that breaks a unit test which STATICALLY imports it (`vitest related`). It prints how many of the suite's test files it selected; a lazily imported module and a source-grep gate are not selected, and the full suite runs at the push, in `--tier=certify` and in CI |
+| unit + static gates | `npm run test:unit` | — | ✅ | ✅ | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates |
+| build | `npm run build` | — | ✅ | ✅ | broken JSX/imports |
+| bundle byte budget | `node scripts/ci/bundle-budget.mjs` | — | ✅ | ✅ | a chunk growing past its byte ceiling |
 | queue-ledger | `node scripts/ci/queue-ledger.mjs` | — | ✅ | — | a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command |
 | artifact-currency | `node scripts/ci/artifact-currency.mjs` | — | ✅ | — | on every push, an unusable operator-page source (missing, or a fetched copy of the published wrapper), a row still marked **Queued** whose declared `data-absent` artifact now EXISTS or that declares none — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped — and a page whose as-of stamp is missing, duplicated, or names a different commit from the publish `.artifact-sync.json` records (the hand-bumped-sha lie). The pages' DRIFT from HEAD is printed with each page's URL and refuses nothing (DECISIONS 2026-10-28 item 12: the pages state their own commit and time). Push tier only: a merge made on GitHub runs no hook, so nothing checks the pages it brings in |
 | registry-append-only | `node scripts/ci/registry-append-only.mjs` | — | ✅ | ✅ | a row of `memory/registry.jsonl` DELETED instead of closed: every row id at the range's base must still be a row at its head. The tree check (`registry-harvest`, in the unit run) proves each open source item has at least one row, so it stays green when one part of a split key goes, and it sees nothing once the old sources leave HEAD. Runs on the pushed range in pre-push (`PUSH_RANGES`; a new branch measures from its merge-base with origin/main) and on the event's base on every CI run. Compares the two ends only, and not a row's content: reopening or retitling a row passes |
@@ -148,6 +150,11 @@ pipeline genuinely cannot see:
 | `ci ok` | `node scripts/ci/ci-ok.mjs` (the last job in `ci.yml`) | — | — | ✅ | **THE REQUIRED CHECK on main** — the one context branch protection names. Needs every other job and fails unless each passed, or e2e was skipped under a docs-only verdict; also fails when `ci.yml` has a job missing from its needs. Runs under `always()`, so a cancelled run reads red, never skipped (a skipped check counts as passing) |
 | visual | `npm run test:visual` | — | — | — | **nothing runs it.** Manual, before a milestone or any render change — so a green pipeline says nothing about how Crafty LOOKS |
 
+- **Commit, certify, push.** A commit runs the static gates and only the unit tests that statically import a
+  staged file (`vitest related`), and writes no receipt. Before a push, run `bash ci/pipeline.sh --tier=certify`
+  in the background on the committed tree: a green run records a receipt for that tree under
+  `.git/crafty-green-trees/`, and the push of that tree then runs only the commit-range gates. Without one, the
+  push certifies the pushed tree in full in a fresh worktree. CI runs the whole suite on every sha either way.
 - `test:visual` is `capture.mjs && vitest`, i.e. it RE-CAPTURES. Never run it alongside another capture —
   both bind port 4178 with `--strictPort` and the collision fakes a failure.
 - `npm run visual:capture` regenerates frames only. It preflights that the browser can present a frame and
