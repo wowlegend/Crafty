@@ -93,21 +93,29 @@ mkdirSync(OUT, { recursive: true });
 
 const { url, waitReady, shutdown } = serveVite(PORT, { preview: true, outDir: BUILD_DIR });
 
-// Anything we launch, we kill — on a throw (finally), and on Ctrl-C or power-ab.sh's TERM (these handlers).
+// Anything we launch, we kill — on a throw (finally), and on Ctrl-C, power-ab.sh's TERM or a closed terminal (these
+// handlers). They own the order: close the browser (under shutdown()'s 8 s timeout), kill the vite group, exit.
+// Playwright's own signal handlers are switched off at every launch (OWN_SIGNALS) because, while a browser is open,
+// its SIGINT handler closes the browser and calls process.exit(130) itself, ahead of the `await` here — which is how
+// Ctrl-C left `vite preview` on the port (review of PR #23, item 2; scripts/dev/lookbook-signal-check.mjs --case int
+// reproduced it). _serve.mjs now kills the vite group on ANY process exit as well, so a second signal while stopping
+// exits at once without leaving it. Check this file's lifecycle with that script after changing it.
+const OWN_SIGNALS = Object.freeze({ handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false });
 let liveBrowser = null;
 let stopping = false;
-async function stopAll(code) {
-  if (stopping) return;
+async function stopAll(code, signal) {
+  if (stopping) process.exit(code);
   stopping = true;
-  await liveBrowser?.close().catch(() => {});
-  await shutdown(null);
+  console.error(`lookbook: ${signal} — closing the browser and vite`);
+  await shutdown(liveBrowser);
   process.exit(code);
 }
-process.on('SIGINT', () => { console.error('lookbook: SIGINT — closing the browser and vite'); stopAll(130); });
-process.on('SIGTERM', () => { console.error('lookbook: SIGTERM — closing the browser and vite'); stopAll(143); });
+for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGHUP', 129]]) {
+  process.on(signal, () => { stopAll(code, signal); });
+}
 
 async function launch(engine, opts) {
-  const b = await LAUNCHERS[engine].launch(opts);
+  const b = await LAUNCHERS[engine].launch({ ...opts, ...OWN_SIGNALS });
   liveBrowser = b;
   return b;
 }
@@ -391,7 +399,6 @@ try {
   console.error(`lookbook: COULD NOT MEASURE — ${e.message}`);
   code = 3;
 } finally {
-  await liveBrowser?.close().catch(() => {});
-  await shutdown(null);
+  await shutdown(liveBrowser);
 }
 process.exit(code);

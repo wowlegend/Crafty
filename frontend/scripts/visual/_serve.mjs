@@ -75,6 +75,20 @@ export function serveVite(port, { cwd, preview = false, outDir = null } = {}) {
     throw new Error(`vite did not start on ${port}`);
   };
 
+  // kill the whole vite process GROUP (npx wrapper + forked child); fall back to a plain kill. Synchronous, so it can
+  // run inside a process 'exit' listener.
+  const killGroup = () => {
+    try { process.kill(-server.pid, 'SIGKILL'); } catch { try { server.kill('SIGKILL'); } catch { /* already gone */ } }
+  };
+  // THE EXIT BACKSTOP (review of PR #23, item 2). shutdown() runs only if the caller gets to it, and a process can end
+  // without that: Playwright installs its own SIGINT handler while a browser is open (playwright-core 1.64.1
+  // processLauncher `sigintHandler`: gracefullyCloseAll(), then process.exit(130)), so Ctrl-C on lookbook.mjs exited
+  // before lookbook's own handler reached `await shutdown()` — and this group, detached and therefore out of reach of
+  // the terminal's SIGINT by design, kept the port. node runs 'exit' listeners on every process.exit and on an uncaught
+  // throw, so the group dies with its owner on all of those. It cannot cover a signal no listener handles (node's
+  // default action ends the process with no 'exit' event): a probe that wants Ctrl-C to clean up still installs one.
+  process.on('exit', killGroup);
+
   const shutdown = async (browser) => {
     if (browser) {
       // race close() against a timeout (cleared on settle so no timer lingers), then force-kill the browser.
@@ -84,8 +98,8 @@ export function serveVite(port, { cwd, preview = false, outDir = null } = {}) {
       });
       try { const p = browser.process && browser.process(); if (p && !p.killed) p.kill('SIGKILL'); } catch { /* already gone */ }
     }
-    // kill the whole vite process GROUP (npx wrapper + forked child); fall back to a plain kill.
-    try { process.kill(-server.pid, 'SIGKILL'); } catch { try { server.kill('SIGKILL'); } catch { /* already gone */ } }
+    killGroup();
+    process.off('exit', killGroup);
   };
 
   return { server, url, waitReady, shutdown };
