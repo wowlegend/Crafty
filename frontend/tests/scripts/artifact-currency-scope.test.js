@@ -21,7 +21,9 @@
  *      REMOTE ref, ACCUMULATE every pushed ref and EXPORT it. artifact-currency stopped reading that variable on
  *      2026-10-28, but e2e-freshness's main-only red-base rule still does, and nothing else in the suite drives
  *      the real hook's export, so these cases are kept. They also prove, through the real hook, that a push
- *      moving main far past the publish sha now LANDS, with the drift printed.
+ *      moving main far past the publish sha now LANDS, with the drift printed, and that a push whose commit carries a
+ *      tree defect is REFUSED, to main or to a branch, with no remote ref moved: the gate's exit 1 is only a
+ *      refusal if the hook acts on it.
  *   3. THE CI CHECK — the real ci/pipeline.sh fast tier (node/npm stubbed) runs this gate on a push to main and on
  *      nothing else, and the gates job that runs that tier checks out full history, without which CI's drift
  *      line could only say "cannot be measured".
@@ -48,7 +50,9 @@
  * missing-source case RED. The stamp check (round-1 review), each RED observed: C1 skipped; C2 its `failed = true`
  * dropped; C3 run on every artifact surface, not only those declaring stampTokens; C4 its mismatch branch dropped; C5
  * a page with no publish recorded refused. In .githooks/pre-push: P1 the list built from `$_local_ref`, P2 `export` dropped, P3 only
- * the LAST ref kept, P4 only the FIRST ref kept, each turned producer cases RED. In ci/pipeline.sh: C1 the guard
+ * the LAST ref kept, P4 only the FIRST ref kept, each turned producer cases RED; H1 the pipeline call's exit ignored
+ * (`|| true`) and H2 `set -e` -> `set +e` each turned BOTH refusal cases RED, and only those (round-1 review: before
+ * them, every case that drove the hook asserted a push that lands). In ci/pipeline.sh: C1 the guard
  * without its GITHUB_REF test, C2 without its GITHUB_EVENT_NAME test, C3 the step removed, each turned a CI case
  * RED; in ci.yml, Y1 `fetch-depth: 0` -> `1` turned the full-history case RED. Identity mutants (a comment edit in
  * artifact-currency.mjs, run in both batches, in pre-push and in pipeline.sh) survived. The receipts for the
@@ -462,6 +466,7 @@ describe('the PRODUCER: .githooks/pre-push builds E2E_PUSH_REFS from the REMOTE 
   let remote;
   let base; // main on the remote, before any case pushes
   let tip; // feat/x, OVER + 1 commits past the publish sha
+  let bad; // feat/bad, one commit on `base` whose page carries a tree defect
   let calls = 0;
 
   beforeAll(() => {
@@ -496,6 +501,14 @@ describe('the PRODUCER: .githooks/pre-push builds E2E_PUSH_REFS from the REMOTE 
     fixtureGit(repo, 'checkout', '-q', '-b', 'feat/x');
     for (let i = 1; i <= OVER; i++) fixtureGit(repo, 'commit', '-q', '--allow-empty', '-m', `lane ${i}`);
     tip = fixtureGit(repo, 'rev-parse', 'HEAD');
+    // A lane commit carrying a TREE DEFECT the gate refuses on any push: a Queued row whose data-absent path EXISTS.
+    fixtureGit(repo, 'checkout', '-q', '-b', 'feat/bad', base);
+    writeFileSync(join(repo, 'docs/superpowers/page.html'), queuedPage('docs/shipped.txt'));
+    writeFileSync(join(repo, 'docs/shipped.txt'), 'landed\n');
+    fixtureGit(repo, 'add', '-A');
+    fixtureGit(repo, 'commit', '-q', '-m', 'a falsified Queued pill');
+    bad = fixtureGit(repo, 'rev-parse', 'HEAD');
+    fixtureGit(repo, 'checkout', '-q', 'feat/x'); // HEAD is the lane tip again: `HEAD:refs/heads/main` pushes `tip`
     mkdirSync(join(repo, 'frontend/node_modules')); // the hook symlinks it: no install in its worktree
     // Copied now, not cached: the mutation harness rewrites the real hook before this suite runs.
     copyFileSync(HOOK, join(hooks, 'pre-push'));
@@ -585,6 +598,33 @@ describe('the PRODUCER: .githooks/pre-push builds E2E_PUSH_REFS from the REMOTE 
     expectDriftReported(r);
     expect(r.status, r.out).toBe(0);
     expect(r.remoteMain, 'the push did not land').toBe(tip);
+  });
+
+  // THE REFUSAL, through the real hook. Every case above is a push that LANDS, and the stub pipeline in
+  // prepush-range-gates.test.js always exits 0, so a hook that ignored the pipeline's exit status (`|| true` on the
+  // call, or `set -e` dropped) passed the whole suite. Here the pipeline FAILS, on a tree defect, and the push must not
+  // land: the gate's refusal is only real if the hook acts on it.
+  /** The real gate ran in the hook on the pushed commit, refused the falsified pill, and git refused the push. */
+  function expectRefused(r) {
+    expect(r.out).toMatch(/✘ fixture: row abc1234 is marked Queued, but docs\/shipped\.txt EXISTS/);
+    expect(r.out).toMatch(/failed to push some refs/);
+    expect(r.status, r.out).not.toBe(0);
+  }
+
+  it('a TREE DEFECT pushed to main (`feat/bad:main`) is REFUSED by the real hook, and main does not move', () => {
+    const r = push('feat/bad:main');
+    expect(r.refs, `presence: the hook ran the pipeline\n${r.out}`).toEqual(['REFS[ refs/heads/main]']);
+    expectRefused(r);
+    expect(r.remoteMain, 'the refused push moved main anyway').toBe(base);
+    expect(r.remoteMain, 'the fixture: the defect commit is not main').not.toBe(bad);
+  });
+
+  it('the same defect on a BRANCH push (`feat/bad`) is refused too, and the branch is never created on the remote', () => {
+    const r = push('feat/bad');
+    expect(r.refs, `presence: the hook ran the pipeline\n${r.out}`).toEqual(['REFS[ refs/heads/feat/bad]']);
+    expectRefused(r);
+    expect(fixtureGit(remote, 'for-each-ref', '--format=%(refname)', 'refs/heads/feat/bad'), 'the refused push created the branch anyway').toBe('');
+    expect(r.remoteMain).toBe(base);
   });
 });
 

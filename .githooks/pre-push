@@ -165,6 +165,8 @@ for SHA in $TARGETS; do
   # restated a DIFFERENT set; they disagreed, and the drift surfaced as CI mailing about a commit that
   # passed locally (2026-09-22: a damage-model change broke an E2E spec only the workflow ran).
   # ci/pipeline.sh is now the definition and both callers invoke it, so neither can drift.
+  # A failing pipeline REFUSES the push through `set -e`, so nothing may swallow this call's exit status: pinned by the
+  # refusal cases in tests/scripts/artifact-currency-scope.test.js (a tree defect pushed through this hook).
   # shellcheck disable=SC2086 -- RANGE_FLAG is empty or one word, by construction above
   bash "$WT/ci/pipeline.sh" --tier=push $RANGE_FLAG
 
