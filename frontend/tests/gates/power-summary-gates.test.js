@@ -118,25 +118,32 @@ describe('the command', () => {
 });
 
 /*
- * THE TWO ARMS RAN IN THE SAME CONDITIONS (review of PR #23, item 3). power-ab.sh writes `window:` (headed / headless)
- * and `scenario:` (in play with the pointer locked, or not) into meta.txt beside each arm's powermetrics.txt. An arm
- * whose click did not lock the pointer measures the game behind its resume overlay; compared with an arm in play, the
- * delta is the overlay, not the build; and headed and headless differ in renderer and compositor besides. So a pair whose lines differ is REFUSED, and a pair without them (raw logs,
- * or an arm from before power-ab.sh wrote them) is compared but flagged UNCHECKED.
+ * THE TWO ARMS RAN IN THE SAME CONDITIONS (review of PR #23, item 3). power-ab.sh writes `window:` (headed / headless),
+ * `scenario:` (in play through a real or a stood-in pointer lock, or not) and `world:` (whether the mob mirror moved
+ * during the hold) into meta.txt beside each arm's powermetrics.txt. An arm NOT in play is a paused game, whose world a
+ * build with the real pause holds and a build without it runs, so it measures no game and is REFUSED on its own, even
+ * beside a matching arm. Headed and headless differ in renderer and compositor, a real lock and a stood-in one in what
+ * the browser does with the pointer, and a world that ran and one that did not in the simulation: so a pair whose lines
+ * differ is REFUSED, and a pair without them (raw logs, or an arm from before power-ab.sh wrote them) is compared but
+ * flagged UNCHECKED.
  */
 describe('the two arms ran in the same conditions', () => {
   const IN = 'in play (pointer locked)';
-  const OUT = 'NOT in play (no pointer lock: the game behind its resume overlay)';
-  const meta = (window, scenario) => `label:       x\nstarted:     2026-10-28\nwindow:      ${window}\nscenario:    ${scenario}\n`;
+  const STOOD = 'in play (pointer lock stood in by the page: the click was refused one)';
+  const OUT = 'NOT in play (the input gate stayed dead: a paused game, whose world is held from the real pause on)';
+  const OLD_OUT = 'NOT in play (no pointer lock: the game behind its resume overlay)';
+  const RAN = 'moving (a mob moved or the mob count changed during the hold)';
+  const HELD = 'still (no mob moved and the mob count held during the hold)';
+  const meta = (window, scenario, world = RAN) => `label:       x\nstarted:     2026-10-28\nwindow:      ${window}\nscenario:    ${scenario}\n${world === null ? '' : `world:       ${world}\n`}`;
   const pair = (metaA, metaB) => io({
     'A/powermetrics.txt': arm(3200), 'A/meta.txt': metaA, 'B/powermetrics.txt': arm(2400), 'B/meta.txt': metaB,
   });
   const run = (h) => main(['A/powermetrics.txt', 'B/powermetrics.txt'], h.io);
 
-  it('reads the window and scenario lines power-ab.sh writes', () => {
-    expect(armConditions(meta('headed', IN))).toEqual({ window: 'headed', scenario: IN });
-    expect(armConditions(meta('headless', OUT))).toEqual({ window: 'headless', scenario: OUT });
-    expect(armConditions('label:       x\n'), 'an absent line must read null, not a neighbour').toEqual({ window: null, scenario: null });
+  it('reads the window, scenario and world lines power-ab.sh writes', () => {
+    expect(armConditions(meta('headed', IN))).toEqual({ window: 'headed', scenario: IN, world: RAN });
+    expect(armConditions(meta('headless', OUT, HELD))).toEqual({ window: 'headless', scenario: OUT, world: HELD });
+    expect(armConditions('label:       x\n'), 'an absent line must read null, not a neighbour').toEqual({ window: null, scenario: null, world: null });
   });
 
   it('compares two arms whose meta.txt agree, and prints the conditions it checked', () => {
@@ -144,8 +151,36 @@ describe('the two arms ran in the same conditions', () => {
     expect(run(h)).toBe(0);
     const text = h.out.join('\n');
     expect(text).toMatch(/GPU\s+3200\s+2400\s+-800\s+-25\.0%/);
-    expect(text).toContain(`both arms: window headed · scenario ${IN}`);
+    expect(text).toContain(`both arms: window headed · scenario ${IN} · world ${RAN}`);
     expect(h.err, 'an agreeing pair printed a warning').toEqual([]);
+  });
+
+  it('REFUSES (exit 3) an arm NOT in play, even beside a matching one, naming it, and prints no delta', () => {
+    for (const out of [OUT, OLD_OUT]) {
+      const both = pair(meta('headless', out, HELD), meta('headless', out, HELD));
+      expect(run(both), `two arms not in play were compared (${out})`).toBe(3);
+      expect(both.err.join('\n')).toMatch(/COULD NOT COMPARE: A\/powermetrics\.txt, B\/powermetrics\.txt ran NOT in play/);
+      expect(both.out.join('\n')).not.toMatch(/B - A/);
+    }
+    const one = pair(meta('headless', IN), 'label:       x\nwindow:      headless\nscenario:    ' + OUT + '\n');
+    expect(run(one), 'an arm not in play was compared beside one in play').toBe(3);
+    expect(one.err.join('\n')).toMatch(/COULD NOT COMPARE: B\/powermetrics\.txt ran NOT in play/);
+    const beside = pair(meta('headless', OUT), 'label:       x\n');
+    expect(run(beside), 'an arm not in play was compared because the other arm had no conditions').toBe(3);
+  });
+
+  it('REFUSES (exit 3) a pair whose world differs: one ran during the hold, the other did not', () => {
+    const h = pair(meta('headless', STOOD, RAN), meta('headless', STOOD, HELD));
+    expect(run(h)).toBe(3);
+    expect(h.err.join('\n')).toContain(`world: A ${RAN}, B ${HELD}`);
+    expect(h.out.join('\n')).not.toMatch(/B - A/);
+  });
+
+  it('compares a pair with no world line on record, flagged UNCHECKED for the world alone', () => {
+    const h = pair(meta('headed', IN), meta('headed', IN, null));
+    expect(run(h)).toBe(0);
+    expect(h.err.join('\n')).toMatch(/UNCHECKED: no world line in meta\.txt beside B\/powermetrics\.txt — /);
+    expect(h.err.join('\n'), 'the window and scenario were on record').not.toMatch(/window\/scenario/);
   });
 
   it('REFUSES (exit 3) a pair whose window differs, naming both, and prints no delta', () => {
@@ -155,10 +190,10 @@ describe('the two arms ran in the same conditions', () => {
     expect(h.out.join('\n'), 'a refused pair still printed B - A').not.toMatch(/B - A/);
   });
 
-  it('REFUSES (exit 3) a pair whose scenario differs: one arm in play, the other behind the overlay', () => {
-    const h = pair(meta('headless', IN), meta('headless', OUT));
+  it('REFUSES (exit 3) a pair whose scenario differs: a real pointer lock in one, a stood-in one in the other', () => {
+    const h = pair(meta('headless', IN), meta('headless', STOOD));
     expect(run(h)).toBe(3);
-    expect(h.err.join('\n')).toContain(`scenario: A ${IN}, B ${OUT}`);
+    expect(h.err.join('\n')).toContain(`scenario: A ${IN}, B ${STOOD}`);
     expect(h.out.join('\n')).not.toMatch(/B - A/);
   });
 
@@ -173,25 +208,7 @@ describe('the two arms ran in the same conditions', () => {
 });
 
 /*
- * Mutation-Proof: via scripts/dev/mutate.sh on scripts/dev/power-summary.mjs, 7 tests, one batch, each observed RED:
- *   W1 plausible-wrong: the median of UNSORTED samples -> the stats and summarise tests
- *   W2 plausible-wrong: an even count's median takes the upper middle -> the stats and one-arm tests
- *   W3 plausible-wrong: the mean divides by n + 1 -> four tests
- *   W4 the thermal count is a flag (= 1) -> the summarise test
- *   W5 the sample floor removed -> "COULD NOT SUMMARISE ... fewer than 10 samples"
- *   W6 the delta's sign flipped (A - B) -> "two arms: B - A, signed"
- *   W7 a log with no GPU rail accepted -> the COULD NOT SUMMARISE test
- *   W8 plausible-wrong: the preamble counted as a sample -> five tests
- *   W9 plausible-wrong: absent values (null) counted as 0 -> the stats and COULD NOT SUMMARISE tests
- *   I0 identity (a comment edit in power-summary.mjs) SURVIVED.
- * The arms' conditions (review of PR #23, item 3) — Mutation-Proof: via scripts/dev/mutate.sh, 12 tests, every RED
- * confirmed against a green baseline:
- *   C1 the refusal removed -> both REFUSES tests
- *   C2 only the window compared -> "REFUSES ... scenario differs"; C3 only the scenario compared -> "REFUSES ... window differs"
- *   C4 plausible-wrong: both arms read the first arm's meta.txt -> both REFUSES tests and the UNCHECKED test
- *   C5 plausible-wrong: an absent line reads '' instead of null -> "reads the window and scenario lines", UNCHECKED
- *   C6 a pair missing its conditions compared silently (no UNCHECKED line) -> the UNCHECKED test
- *   I0 identity (a comment edit in power-summary.mjs) SURVIVED.
+ * Mutation-Proof: in commit trailers, not here (DECISIONS 2026-10-28 15c).
  * NOT mutated, on purpose: which of the two `GPU Power` lines is taken. Every published log shows the same estimate in
  * both sections, so first-vs-last is equivalent on any fixture this file can honestly build.
  */

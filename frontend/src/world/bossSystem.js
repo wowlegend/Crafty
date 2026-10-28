@@ -11,6 +11,7 @@ import { runIsolatedEffects } from '../game/isolatedEffects.js';
 import { bossEntranceBeat, ENTRANCE } from '../game/bossEntrance.js';
 import { phaseForHealth } from '../game/bossPersistence.js';
 import { makeNotifClearTracker } from './bossNotifTimers.js';
+import { isWorldFrozenNow } from '../game/worldClock.js';
 
 export const useBossSystem = (playerLevel) => {
     // A-bis B2g: seed from the STORE, which is what the save restores into, instead of from BOSS_CONFIG.
@@ -56,7 +57,7 @@ export const useBossSystem = (playerLevel) => {
         if (bossTier === 0 && (playerLevel < BOSS_BASE_LEVEL || bossDefeated || useGameStore.getState().gameWon)) return;
         const lair = blightHeartSite();
         const interval = setInterval(() => {
-            if (bossSpawned.current) return;
+            if (bossSpawned.current || isWorldFrozenNow()) return;
             if (bossTier > 0 && bossDefeated) {
                 const s = useGameStore.getState();
                 if (!bossCanReturn({ tier: bossTier, killNight: s.bossKillNight, nightCount: s.nightCount, level: playerLevel })) return;

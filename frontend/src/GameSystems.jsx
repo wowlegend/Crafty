@@ -7,6 +7,7 @@ import { Panel } from './ui/primitives/Panel.jsx';
 import { Button } from './ui/primitives/Button.jsx';
 import { MAGIC } from './theme/tokens.js';
 import { useT } from './i18n/i18n.js';
+import { isWorldFrozenNow } from './game/worldClock.js';
 
 
 const GameSystemsContext = createContext();
@@ -24,7 +25,6 @@ export const useGameSystems = () => {
             damagePlayer: () => { },
             healPlayer: () => { },
             useMana: () => true,
-            consumeHunger: () => { },
             feedPlayer: () => { },
             respawn: () => { },
         };
@@ -53,14 +53,12 @@ export const GameSystemsProvider = ({ children }) => {
         damagePlayer: state.damagePlayer,
         healPlayer: state.healPlayer,
         useMana: state.useMana,
-        consumeHunger: state.consumeHunger,
         feedPlayer: state.feedPlayer,
         respawn: state.respawn
     })));
     const { playerHealth, maxHealth, isAlive, damageFlash, screenShake, mana, maxMana, hunger } = gameState;
 
     const manaRegenTimer = useRef(null);
-    const hungerTimer = useRef(null);
 
     // getMaxHealthBonus / getSpellDamageMultiplier DELETED 2026-08-11. Both were computed, placed on the
     // context, and read by NOBODY -- the context's only consumer forwards the whole object to
@@ -88,26 +86,16 @@ export const GameSystemsProvider = ({ children }) => {
         useGameStore.setState({ _spawnTime: Date.now() });
     }, []);
 
-    // Mana regeneration - FAST REGEN for action combat
+    // Mana regeneration - FAST REGEN for action combat. Held with the world, so a pause is not a free refill.
     useEffect(() => {
         manaRegenTimer.current = setInterval(() => {
+            if (isWorldFrozenNow()) return;
             const state = useGameStore.getState();
             if (state.isAlive) {
-                state.setMana(prev => Math.min(prev + 10, state.maxMana)); 
+                state.setMana(prev => Math.min(prev + 10, state.maxMana));
             }
         }, 1000);
         return () => clearInterval(manaRegenTimer.current);
-    }, []);
-
-    // Hunger depletes over time
-    useEffect(() => {
-        hungerTimer.current = setInterval(() => {
-            const state = useGameStore.getState();
-            if (state.isAlive) {
-                state.consumeHunger(0.1); 
-            }
-        }, 5000);
-        return () => clearInterval(hungerTimer.current);
     }, []);
 
     const value = {
@@ -122,7 +110,6 @@ export const GameSystemsProvider = ({ children }) => {
         damagePlayer: gameState.damagePlayer,
         healPlayer: gameState.healPlayer,
         useMana: gameState.useMana,
-        consumeHunger: gameState.consumeHunger,
         feedPlayer: gameState.feedPlayer,
         respawn: gameState.respawn,
     };

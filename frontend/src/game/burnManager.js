@@ -6,12 +6,17 @@
 //
 // Pure of React. damageMob is read through a getter on EVERY tick (not captured at start) so a burn
 // stops the instant the global damage method disappears — mirroring the original inline behaviour.
+// A tick that lands while the world is held (a pause or a hitstop) deals nothing and spends nothing, so the burn
+// resumes with every tick it had left.
+import { isWorldFrozenNow } from './worldClock.js';
+
 export function makeBurnManager() {
   const active = new Set();
 
   function start(mobId, duration, dps, getDamageMob) {
     let ticksRemaining = Math.floor(duration);
     const handle = setInterval(() => {
+      if (isWorldFrozenNow()) return;
       const damageMob = getDamageMob();
       if (ticksRemaining <= 0 || typeof damageMob !== 'function') { stop(handle); return; }
       // 'player-dot': the player's damage for XP and kill attribution, NOT a direct hit for feel. This
