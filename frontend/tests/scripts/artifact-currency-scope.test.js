@@ -323,6 +323,9 @@ describe('the PRODUCER: .githooks/pre-push builds E2E_PUSH_REFS from the REMOTE 
     fixtureGit(remote, 'update-ref', 'refs/heads/main', base);
     for (const name of seed) fixtureGit(remote, 'update-ref', `refs/heads/${name}`, base);
     const log = join(hdir, `pipe-${++calls}.log`);
+    // Isolated already: cwd is the fixture repo and cleanEnv is isolatedGitEnv. fixtureGit cannot be used because it
+    // throws on a non-zero exit, and these cases need the status and output of a push the hook REFUSES.
+    // eslint-disable-next-line no-restricted-syntax
     const r = spawnSync('git', ['push', 'origin', ...[].concat(refspecs)], {
       cwd: repo, encoding: 'utf8', env: cleanEnv({ PIPE_LOG: log, TMPDIR: join(hdir, 'tmp') }),
     });
