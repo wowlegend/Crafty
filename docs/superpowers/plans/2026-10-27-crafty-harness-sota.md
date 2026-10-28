@@ -1073,6 +1073,15 @@ Also `frontend/tests/scripts/gate-table.test.js` and `.agent/AGENTS.md` (regener
 
 ### U21 — A1 remainder + D4 (loop half): retire the dormant loop surfaces (amended F3)
 
+> **PAGE HALF DONE 2026-10-28** on `fix/page-cap-informational`, in the commit that archives it (DECISIONS 2026-10-28
+> item 12): `LOOP-PROGRESS.html` moved to `docs/archive/LOOP-PROGRESS-2026-10-28.html` (a dated name in
+> `docs/archive/`, not `docs/archive/2026-Q3/` as drafted below), its `loop-progress` surface removed from
+> `.artifact-sync.json`, and LOOP-CHARTER.md (§1 dashboard line, §6.5 step 2b), LOOP-KERNEL-PROMPT.md (the
+> session-close lines) and INDEX.md re-pointed. doc-currency went RED (2 DANGLING) on the move before the re-points,
+> which is M-U21's defect reproduced by hand rather than through a `doc-currency-wiring.test.js` case. No test
+> pinned the surface list, so there was no pin to change. **Still open:** `KEVIN-REVIEW.html` and the kernel's own
+> archival, with the read-order, CANONICAL and AGENTS.md re-points below.
+
 **Files:**
 - `git mv` `docs/superpowers/LOOP-PROGRESS.html`, `docs/superpowers/KEVIN-REVIEW.html` and `docs/superpowers/LOOP-KERNEL-PROMPT.md` to `docs/archive/2026-Q3/`. The kernel gets a first line: `DORMANT — restore with git mv docs/archive/2026-Q3/LOOP-KERNEL-PROMPT.md docs/superpowers/`.
 - `docs/superpowers/.artifact-sync.json`: remove `loop-progress` (:13-17).

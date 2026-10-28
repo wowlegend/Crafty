@@ -86,9 +86,11 @@ test-vacuity (seam-extract) → coverage-gaps → perf → a11y → inconsistenc
 BATCHES (fix every finding in a file together = one commit).  Then the STATUS §2 secondary queue —
 note **A-bis (all 8 seams) CLOSED 2026-08-05**; verify any registry line against live code before working
 OR repeating it (two were found describing code that did not exist). Ship ONE
-verified unit per iteration; **keep `docs/superpowers/LOOP-PROGRESS.html` current — a SESSION-CLOSE
-obligation, not a nicety.** It went 25 commits stale in Aug 2026 while STATUS and CHANGELOG stayed
-immaculate, and the published era-review artifact went 9 days / 99 commits stale still leading with
+verified unit per iteration; **keep the operator pages in `docs/superpowers/.artifact-sync.json` current — a
+SESSION-CLOSE obligation, not a nicety** (`--stamp <id>` stamps a page with the commit it was written against; republish
+it; then `--sync <id>` records the publish).
+The old progress page went 25 commits stale in Aug 2026 while STATUS and CHANGELOG stayed immaculate (it was
+retired 2026-10-28: `docs/archive/LOOP-PROGRESS-2026-10-28.html`), and the published era-review artifact went 9 days / 99 commits stale still leading with
 "CI 0/88" — false for two days. Kevin had to ask. **The surface he READS is part of the deliverable**; a
 dashboard asserting a state it no longer has is the same defect as a gate reporting PASS over input it never
 examined. Update an artifact IN PLACE by passing its URL, or a fresh publish mints a new URL and strands the
@@ -151,7 +153,7 @@ Accessibility never vetoes depth. Reference-lock before any look-bearing work; j
 ⚠️ BROWSER / TEST-PROCESS HYGIENE — **anything you launch, you kill, and the SURFACE outlives the process.** Full rules: `.agent/AGENTS.md` (orientation) and `.claude/rules/gates-and-probes.md`, which auto-injects the moment you touch `frontend/scripts/**` or `frontend/tests/**`. This was a FIFTH copy; five copies of a rule is not five times the compliance, it is five places to drift.
 
 SESSION-CLOSE (charter §6.5 — fires at the CONTEXT WATERMARK, 85/90/94%, unprompted): kill leaked test procs → LIST
-husks → green the tree → update ACTIVE_PLAN + STATUS + CHANGELOG + LOOP-PROGRESS.html → **refresh the REMOTE GitHub
+husks → green the tree → update ACTIVE_PLAN + STATUS + CHANGELOG + the operator pages (`--stamp`, republish, `--sync`) → **refresh the REMOTE GitHub
 surfaces (README truth · repo description · CI badge) and PUSH** → mark-truth → re-arm. A session that ends without the
 remote step has left the project's public face lying about it.
 

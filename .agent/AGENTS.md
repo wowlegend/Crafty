@@ -3,6 +3,13 @@
 > **Single source of truth for all agent frameworks.** Root `CLAUDE.md` is a symlink to this file
 > (Claude Code), and Antigravity/Gemini read it here in `.agent/`. **Edit THIS file, never the symlink.**
 
+> **Standing principle (Kevin, 2026-10-28; DECISIONS 2026-10-28 item 14).** Crafty was built since 2025 by far weaker
+> models and carries their design, architecture and tech debt and AI slop. **Nothing is off limits**: the game, its
+> architecture, design, every element, visual and idea may be changed, deleted or pruned as the command session judges
+> best, with full autonomy. Ask Kevin nothing unless absolutely needed; install any tool that helps. Kevin reviews ONE
+> page, the Command Record (`docs/superpowers/command-record.html`). Keep the public face (repo, GitHub Pages) beautiful
+> and the docs in SOTA shape. Older rules, plans and gates in this repo bind only as far as they still earn their place.
+
 ## ⚠️ REPO LAYOUT — read before ANY path/Bash op (the #1 recurring mistake)
 
 This repo is **TWO-LEVEL**. The Bash cwd drifts between tool calls and **resets after every
@@ -119,7 +126,7 @@ and all three network/browser gates were printed as pre-push gates they have nev
 | build | `npm run build` | ✅ | ✅ | ✅ | broken JSX/imports |
 | bundle byte budget | `node scripts/ci/bundle-budget.mjs` | ✅ | ✅ | ✅ | a chunk growing past its byte ceiling |
 | queue-ledger | `node scripts/ci/queue-ledger.mjs` | — | ✅ | — | a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command |
-| artifact-currency | `node scripts/ci/artifact-currency.mjs` | — | ✅ | ✅ | the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it on a push that moves main or names no refs (a branch-only push prints the drift and passes: the pages describe main, and a lane cannot lower its own count). In CI it runs on a PUSH TO MAIN ONLY, never on a pull_request (whose merge ref carries the lane's own commits): that step DETECTS drift after a merge GitHub made (which runs no local hook) and does not bound it, because it runs after main has moved and Vercel has deployed, so it reds the gates job and refuses nothing, and a workflow_dispatch run on main skips it. It counts on a full-history checkout; there, an artifact surface whose recorded sha is not in the history fails as unmeasured (a shallow checkout, or a sha only a squash-merged, deleted lane branch held), while an artifact surface with no recorded sha still skips and a page-kind surface in a shallow checkout reads as current. Also rejects, on every push, an unusable page source (missing, or a fetched copy of the published wrapper), and a row still marked **Queued** whose declared `data-absent` artifact now EXISTS — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped |
+| artifact-currency | `node scripts/ci/artifact-currency.mjs` | — | ✅ | ✅ | on every push, an unusable operator-page source (missing, or a fetched copy of the published wrapper), a row still marked **Queued** whose declared `data-absent` artifact now EXISTS or that declares none — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped — and a page whose as-of stamp is missing, duplicated, or names a different commit from the publish `.artifact-sync.json` records (the hand-bumped-sha lie). The pages' DRIFT from HEAD is printed with each page's URL and refuses nothing, on any push or in CI (DECISIONS 2026-10-28 item 12: the old 30-commit refusal measured how far the writer was behind, and refused 8 pushes, 5 of them correct lane work, while stopping no recorded false claim; the pages now state their own commit and time). In CI it runs on a push to main only, to report main's drift after a merge GitHub made and refuse a tree defect such a merge brought in |
 | e2e freshness | `node scripts/ci/e2e-freshness.mjs` | — | ✅ | — | a push whose `src/` or `tests/e2e/` tree has changed since the last GREEN e2e run. The Playwright specs are CI-only (~20 min, serialized because they share in-page game state), so no local chokepoint can see an e2e regression — which is exactly how the 2026-09-22 damage-model change shipped green locally and broke `soft-death-protections`. This asserts the RECEIPT, content-keyed on the observed trees so editing a doc does not expire it and editing a store action does. Fails CLOSED on stale, OPEN on absent (a fresh clone must not be refused), exit 3 on an empty walk |
 | knip | `npm run knip` | — | — | ✅ | an unused file, export or dependency — the accretion that makes a codebase look larger than the part that runs. CI-only because it is slow and never a correctness failure |
 | npm audit | `npm audit --audit-level=high` | — | — | ✅ | a HIGH or CRITICAL advisory in the installed dependency set. CI-only ON PURPOSE (R5): this needs the registry, and a network outage reddening a local commit is how developers learn to pass --no-verify |
@@ -202,6 +209,10 @@ pipeline genuinely cannot see:
 - **Initialization:** on turn 1, silently orient — `pwd`, git branch, `package.json` scripts, framework state — before proposing.
 - **Game Loop Isolation (CRITICAL):** NEVER bind declarative React to high-frequency imperative systems (R3F `useFrame`, Rapier) via reactive state (`useState`/zustand subscriptions). Use transient reads (`refs`, `.getState()`, miniplex queries).
 - **AST-Safe Edits:** never `sed`/`cat`-rewrite `.js/.jsx` (AST-safe tools/Edit only; `sed` OK for markdown). Verify behavior, not implementation. No `// ... rest of code`.
+- **Comments say WHY, and only when the code cannot** (DECISIONS 2026-10-28 item 15): a non-obvious constraint, an
+  external fact (a library quirk with its version and line), a safety or ordering invariant. Never history, review
+  narrative, round numbers or mutation receipts in code: git and DECISIONS hold history, `Mutation-Proof:` trailers
+  hold receipts. Name things so the code reads without them.
 
 ## Design Language (LOCKED — S1-C)
 ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.js` (`--ui-*` vars + `applyThemeVars()`) → `tailwind.config.cjs`. **Filled 2-tone game-icons** (`src/ui/primitives/gameIcons.js`, baked from game-icons.net **CC BY 3.0** via the Iconify API) for game CONTENT (items/spells/mobs/achievements); **lucide outline** for app-chrome. The UI primitives live in `src/ui/primitives/` (read the set from its `index.js`; this said "7" and was wrong). i18n in `src/i18n/` (en default + lazy-CJK zh-CN). **NO emoji in `src/`** (zero-emoji hard gate). game-icons.net attribution is DISCHARGED by `src/ui/CreditsScreen.jsx` (Settings → Credits).
