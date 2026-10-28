@@ -65,7 +65,7 @@ resolves collisions. Terrain is generated and greedy-meshed with vertex ambient 
 Mobs, loot and many effects are entities in a small miniplex ECS (`frontend/src/ecs/world.js`), and most of the game
 rules are plain modules under `frontend/src/game/` that run, and are unit-tested, without a browser.
 
-CI runs on every push to main and on every pull request: the linter, the unit suite, a production build and a
+CI runs on every push to main and on every pull request to main: the linter, the unit suite, a production build and a
 bundle-size budget, and, when code has changed, real-input Playwright tests and a boot check of the production bundle.
 
 ## Run it locally
@@ -75,7 +75,7 @@ You need npm and the Node version that `engines` in `frontend/package.json` decl
 ```bash
 git clone https://github.com/wowlegend/Crafty.git
 cd Crafty/frontend
-npm ci
+npm install
 npm run dev        # serves the game and opens it in your browser
 npm run test:unit  # the unit suite
 ```
