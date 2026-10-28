@@ -1,26 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import { ShaderLib } from 'three';
 import {
-  patchOceanFragment, oceanLookUniforms, writeOceanLight, FOAM_HEX, GLINT_GAIN,
+  patchOceanFragment, oceanLookUniforms, writeOceanLight, FOAM_HEX, FOAM_WEIGHT, GLINT_GAIN, OCEAN_SURFACE,
 } from '../../src/render/oceanLook.js';
 import { sampleMood } from '../../src/render/mood.js';
-import { stoneFaceUnder, displayed, linearFromHex } from './_lightModel.js';
-import { carriersOf } from './_srcWalk.js';
+import { stoneFaceUnder, displayed, linearFromHex, STONE_METALNESS } from './_lightModel.js';
 
 /**
- * The ocean's foam, sky Fresnel and glint take the hour's light, under the fog (plan 2026-10-28-crafty-sota-reset
- * item #42, unit W2-A). They were spliced after `<dithering_fragment>`: never fogged, the Fresnel toward a fixed teal,
- * the highlight off a fixed vector, and the foam mixed toward white AFTER lighting, so a midnight sea carried crests
- * at full white.
+ * The ocean's foam, sky Fresnel and glint take the hour's light, under the fog. The patch runs here on three r172's
+ * real ShaderLib.standard fragment shader (an import, not a file read), so the chunk order these assertions read is
+ * the one the GPU compiles. The foam's brightness is measured on the colour model the light gates use (_lightModel.js:
+ * the rig, the grade and NEUTRAL), under the real sky frames, for the foam position the patch actually has.
  *
- * The patch runs here on three r172's real ShaderLib.standard fragment shader (an import, not a file read), so the
- * chunk order these assertions read is the one the GPU compiles. The foam's lit brightness is measured on the colour
- * model the light gates use (_lightModel.js: the rig, the grade and NEUTRAL), under the real sky frames.
+ * That Ocean.jsx runs this patch and writes the hour each frame is checked on the shipped bundle by prod-smoke: the
+ * ocean program must link, carry the patch's uniforms and hold a non-zero key light (scripts/ci/prod-smoke.mjs
+ * WATCHED_PROGRAMS).
  *
- * Mutation-Proof: recorded on the commit that added this file.
- *
- * BLIND SPOT: nothing here compiles GLSL; a browser does (prod-smoke loads the shipped bundle; the live eye-level
- * frames at 0.75 are the acceptance). The model lights the foam as an up face; wave normals vary.
+ * BLIND SPOT: the model lights the foam and the sea as up faces (wave normals vary) and leaves out the view-dependent
+ * terms: the material's own specular, equal on foam and sea, which lowers the contrast, and the sky Fresnel on the
+ * sea, toward a midnight horizon darker than the water, which raises it at a grazing view. The live eye-level frames
+ * at 0.75 are the acceptance.
  */
 const src = ShaderLib.standard.fragmentShader;
 const out = patchOceanFragment(src);
@@ -95,25 +94,38 @@ describe('the ocean takes the hour from the sky frame', () => {
     expect(Y(u.uKeyLight.value.toArray()) / old).toBeLessThan(1.15);
   });
 
-  it('lit foam at midnight displays at most 0.6 of its noon luminance; unlit foam held about 1.0', () => {
-    const shown = (f, lit) => {
-      const fr = sampleMood(0, f);
-      const c = lit ? stoneFaceUnder(fr, { keyDir: fr.keyDir, albedo: FOAM_HEX }) : linearFromHex(FOAM_HEX);
-      return Y(displayed(c, fr.grade));
-    };
-    // The instrument sees the defect: foam that bypasses the rig is as bright at midnight as at noon.
-    expect(shown(0.75, false) / shown(0.25, false)).toBeGreaterThan(0.95);
-    const ratio = shown(0.75, true) / shown(0.25, true);
-    console.log(`[ocean-look] lit foam Y noon ${shown(0.25, true).toFixed(3)} midnight ${shown(0.75, true).toFixed(3)} (ratio ${ratio.toFixed(2)})`);
-    expect(ratio).toBeLessThanOrEqual(0.6);
-  });
-});
+  // The foam a full crest shows (vFoam 1), and the sea beside it, for the patch's foam position: written into the
+  // albedo before lighting, the rig lights it; mixed into the output after lighting, it holds its own colour.
+  const FOAM_LINE = 'diffuseColor.rgb = mix(diffuseColor.rgb, uFoamColor, oFoam);';
+  const mixv = (a, b, t) => a.map((x, i) => x + (b[i] - x) * t);
+  const addv = (a, b) => a.map((x, i) => x + b[i]);
+  const shown = (f, { foamLit }) => {
+    const fr = sampleMood(0, f);
+    // Lambert of a white dielectric under this rig; the model's stone carries the terrain's metalness, divided out.
+    const white = stoneFaceUnder(fr, { keyDir: fr.keyDir, albedo: '#FFFFFF' }).map((v) => (v / (1 - STONE_METALNESS)) * (1 - OCEAN_SURFACE.metalness));
+    const lit = (albedo) => albedo.map((a, i) => a * white[i]);
+    const water = linearFromHex(OCEAN_SURFACE.color), foamColor = linearFromHex(FOAM_HEX);
+    const emissive = linearFromHex(OCEAN_SURFACE.emissive).map((v) => v * OCEAN_SURFACE.emissiveIntensity);
+    const sea = addv(lit(water), emissive);
+    const foam = foamLit
+      ? addv(lit(mixv(water, foamColor, FOAM_WEIGHT)), emissive.map((v) => v * (1 - FOAM_WEIGHT)))
+      : mixv(sea, foamColor, FOAM_WEIGHT);
+    return { foam: Y(displayed(foam, fr.grade)), sea: Y(displayed(sea, fr.grade)) };
+  };
 
-describe('Ocean.jsx uses the patch and the frame (weak, structural)', () => {
-  it('its onBeforeCompile runs the patch, and its frame loop writes the hour', () => {
-    expect(carriersOf(/shader\.fragmentShader = patchOceanFragment\(shader\.fragmentShader\);/)).toEqual(['render/Ocean.jsx']);
-    expect(carriersOf(/writeOceanLight\(lookUniforms, skyFrameRef\.current\);/)).toEqual(['render/Ocean.jsx']);
-    expect(carriersOf(/Object\.assign\(shader\.uniforms, lookUniforms\);/)).toEqual(['render/Ocean.jsx']);
-    expect(carriersOf(/#include <dithering_fragment>/), 'a file splices after dithering again').not.toContain('render/Ocean.jsx');
+  it('a crest at midnight displays at most 0.6 of its noon luminance, and stands out from the sea no more than at noon', () => {
+    const foamLit = at(FOAM_LINE) < at('#include <lights_fragment_begin>');
+    expect(foamLit, 'SETUP: the patch no longer writes foam into the albedo before lighting, which is what this case models').toBe(true);
+    expect(out, 'SETUP: the patch no longer dims the emissive under foam, which this case models').toContain('totalEmissiveRadiance *= 1.0 - oFoam;');
+    // The instrument sees the defect: foam that bypasses the rig is as bright at midnight as at noon, and stands out
+    // from the midnight sea twice as much as from the noon one.
+    const unlitNoon = shown(0.25, { foamLit: false }), unlitNight = shown(0.75, { foamLit: false });
+    expect(unlitNight.foam / unlitNoon.foam).toBeGreaterThan(0.95);
+    expect(unlitNight.foam / unlitNight.sea).toBeGreaterThan(1.5 * (unlitNoon.foam / unlitNoon.sea));
+    const noon = shown(0.25, { foamLit }), night = shown(0.75, { foamLit });
+    console.log(`[ocean-look] crest Y noon ${noon.foam.toFixed(3)} midnight ${night.foam.toFixed(3)}; foam/sea noon ${(noon.foam / noon.sea).toFixed(2)} midnight ${(night.foam / night.sea).toFixed(2)}`);
+    expect(night.foam / noon.foam).toBeLessThanOrEqual(0.6);
+    expect(noon.foam / noon.sea, 'the crest does not read as foam at noon').toBeGreaterThan(1.3);
+    expect(night.foam / night.sea).toBeLessThanOrEqual(noon.foam / noon.sea);
   });
 });
