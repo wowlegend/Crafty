@@ -31,19 +31,28 @@ test('the world REBUILDS after Load — chunks come back and the ground is solid
   //    Waiting on `size > 0` makes the baseline a RACE — it can resolve at 3 chunks or at 81 — and a
   //    small baseline makes every downstream threshold trivially satisfiable by the handful of in-flight
   //    chunks that survive a load. That is exactly how the first version of this test passed with the bug
-  //    deliberately reintroduced. The baseline must be the SETTLED world (~81 chunks at default render
-  //    distance), so wait for the count to stop growing.
+  //    deliberately reintroduced. The baseline must be the SETTLED world, so wait for the count to stop
+  //    growing WITH the whole box of the tier in force resident.
+  //
+  //    THE BOX, NOT A CONSTANT (2026-10-27). This said `n > 40` — half the 81-chunk high box, and on CI the 49 of a
+  //    `med` world streamed before the governor stepped it down. startPlay now pins the suite's tier, `low`, as
+  //    play begins (_boot.js pinSuiteTier), so the world streams a 25-chunk box from the spawn chunk on and settles
+  //    under 40: the wait could never be met (CI run 40551564326, 3 attempts of 3; reproduced locally). The bar is
+  //    the tier's own box, read live as Terrain.jsx reads it, which is still the whole settled world and still far
+  //    above the handful of stragglers the bug leaves.
+  const tierRd = { low: 2, med: 3, high: 4 }; // TIERS.renderDistance; the box a tier asks for is (2*rd + 1)^2
   const streamStart = Date.now();
   await page.waitForFunction(
-    () => {
+    (rd) => {
       const g = window.useGameStore.getState();
       if (!g.getGeneratedChunks) return false;
       const n = g.getGeneratedChunks().size;
-      const settled = window.__prevChunkCount === n && n > 40;
+      const box = (2 * (rd[g.qualityTier] ?? 2) + 1) ** 2;
+      const settled = window.__prevChunkCount === n && n >= box;
       window.__prevChunkCount = n;
       return settled;
     },
-    null,
+    tierRd,
     { timeout: 90000, polling: 1000 }
   );
   // CALIBRATE THE RECOVERY BUDGET FROM THIS MACHINE, not from the author's laptop.
@@ -64,7 +73,8 @@ test('the world REBUILDS after Load — chunks come back and the ground is solid
   console.log(`[world-rebuild] initial stream ${streamMs}ms -> recovery budget ${recoveryBudget}ms`);
   const before = await store(page, () => window.useGameStore.getState().getGeneratedChunks().size);
   const tierBefore = await store(page, () => window.useGameStore.getState().qualityTier);
-  expect(before, 'the world should be fully streamed before we load over it').toBeGreaterThan(40);
+  const boxFor = (tier) => (2 * (tierRd[tier] ?? 2) + 1) ** 2;
+  expect(before, `the world should be fully streamed before we load over it (tier "${tierBefore}": a ${boxFor(tierBefore)}-chunk box)`).toBeGreaterThanOrEqual(boxFor(tierBefore));
 
   // 2. Drive the REAL save path: serialize -> localStorage -> read back -> loadWorldData.
   //    (This is exactly what the World Manager's Load button does: MenuSystem.jsx -> loadWorldData.)
@@ -110,9 +120,7 @@ test('the world REBUILDS after Load — chunks come back and the ground is solid
   //
   // The real bug this spec exists for is untouched by this: it parks the count at ZERO forever, which fails
   // against any tier's box.
-  // The box a given tier asks for: (2*renderDistance + 1)^2, with TIERS.renderDistance = 4/3/2.
-  const tierRd = { low: 2, med: 3, high: 4 };
-  const boxFor = (tier) => (2 * (tierRd[tier] ?? 2) + 1) ** 2;
+  // The box a given tier asks for: boxFor above, (2*renderDistance + 1)^2 with TIERS.renderDistance = 4/3/2.
   const targetFor = (tier) => Math.ceil(Math.min(before, boxFor(tier)) * 0.8);
   // Provisional target for the WAIT. The tier can decline again mid-recovery, so the ASSERTION below
   // recomputes it from the tier as it stands when we actually judge — waiting on a stale, larger target

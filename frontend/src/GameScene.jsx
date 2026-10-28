@@ -5,6 +5,7 @@ import { Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
 import { PointerLook } from './render/PointerLook';
 import { SpatialAudioController } from './render/SpatialAudioController';
 import { WeatherSystem } from './render/WeatherSystem';
+import { LightningDriver } from './render/LightningDriver.jsx';
 import { Physics } from '@react-three/rapier';
 import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
@@ -32,6 +33,7 @@ import { CaptureClockTicker } from './devtest/CaptureClockTicker.jsx';
 import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
 import { FrameCap, governorBounds } from './render/FrameCap.jsx';
 import { FrameStats } from './render/FrameStats.jsx';
+import { paceFor } from './render/canvasPace.js';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -157,7 +159,10 @@ export const GameScene = React.memo(function GameScene({
   // binding and does not violate Game-Loop-Isolation.
   const sunAboveHorizon = useGameStore((s) => s.sunAboveHorizon);
   const frameCap = useGameStore((s) => s.frameCap);
-  const capActive = frameCap > 0 && !isCaptureMode && !isPerfProbe(); // the harnesses step or time their own frames
+  // Written only by MenuSystem (its titleMenuVisible): the opaque title screen covers this canvas.
+  const titleCovering = useGameStore((s) => s.titleCovering);
+  // How often this canvas draws — render/canvasPace.js, the one decision (the harnesses step or time their own frames).
+  const pace = paceFor({ frameCap, titleCovering, harness: isCaptureMode || isPerfProbe() });
   const q = TIERS[qualityTier] || TIERS.low;
   const [sunMesh, setSunMesh] = useState(null);
 
@@ -225,7 +230,7 @@ export const GameScene = React.memo(function GameScene({
         // THE FRAME CAP'S MODE LIVES HERE, not in FrameCap: R3F re-applies this prop on every Canvas render, so a
         // setFrameloop('demand') from inside was overwritten back to 'always' by the next re-render (the first
         // version did exactly that — the e2e read 'always' under a 60 cap). FrameCap only paces the renders.
-        frameloop={capActive ? 'demand' : 'always'}
+        frameloop={pace.loop}
         dpr={isPerfProbe() ? PROBE_DPR : [1, q.dprCap]}
         className="w-full h-full"
         gl={{
@@ -271,7 +276,9 @@ export const GameScene = React.memo(function GameScene({
       >
         <CaptureClockTicker />
         <WorldClockTicker />
-        {!isCaptureMode && !isPerfProbe() && (
+        {/* render/canvasPace.js `governor`: never under the capture harness or the perf probe, and never behind the
+            title, whose 10 fps pace it would read as a slow machine. Unmounted there, so play starts it fresh. */}
+        {pace.governor && (
           // S2-A-M4a: tier recovery. Previously onDecline ratcheted the tier ONE-WAY toward
           // `low` under any transient FPS dip and never recovered. onIncline mirrors it:
           // low->med->high on sustained FPS headroom. Steady-state oscillation is prevented
@@ -326,7 +333,7 @@ export const GameScene = React.memo(function GameScene({
         )}
         {!isCaptureMode && !isPerfProbe() && <AdaptiveDpr pixelated />}
         {/* FRAME CAP (render/FrameCap.jsx): paces the 'demand' loop the Canvas prop above switches on. */}
-        <FrameCap fps={frameCap} active={capActive} />
+        <FrameCap fps={pace.fps} active={pace.loop === 'demand'} testHooks />
 
         <Atmosphere shadowConfig={shadowConfig} />
 
@@ -345,6 +352,8 @@ export const GameScene = React.memo(function GameScene({
         {!captureStudio && <LightMotes count={q.moteCount} />}
 
         <WeatherSystem />
+        {/* Storm lightning (EXTERNAL-BASELINE-R2 #4): flash + thunder while a storm is on; inert under capture. */}
+        <LightningDriver />
 
         {/* Desktop mouse-look — our own pointer-lock handler (src/input/pointerLook.js), replacing drei's
             pointer-lock controls. drei's PLC only rotated while its EXACT canvas was pointerLockElement

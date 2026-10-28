@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 // The on-demand panels come from ONE lazy chunk (ui/panels/lazyPanels.js, plan 2026-09-23-crafty-lazy-panels): each
 // renders inside its own keyed <Suspense> below, so a panel opened before the chunk arrives shows nothing for that
@@ -55,6 +55,10 @@ export function MenuSystem({
   // player's own ESC, so the optimistic relock every panel's onClose performs is guaranteed to fail on
   // that path and the player was left with no input and no UI. Derived from state, so no close path —
   // present or future — can strand a player again. Capture-suppressed: the visual gate must never see it.
+  // Published for the game canvas, which paces itself down while this opaque layer covers it (render/canvasPace.js).
+  useEffect(() => {
+    useGameStore.setState({ titleCovering: titleMenuVisible });
+  }, [titleMenuVisible]);
   const resumeOverlayVisible = !isCaptureMode() &&
     shouldShowResumeOverlay({ isPointerLocked, ...gameState, showSpellUpgrades, showAchievements, showStats });
 

@@ -706,6 +706,32 @@ export const makeVictorySound = (ctx) => {
     return buffer;
 };
 
+// Thunder (storm lightning, plan 2026-09-23-crafty-storm-lightning): a sharp crack of bright noise, then a low rolling
+// rumble that swells and fades over ~2.5 s — the storm bed (audio/stormBed.js) keeps its own quiet rumble underneath.
+export const makeThunderSound = (ctx) => {
+    if (!ctx) return null;
+    const sampleRate = ctx.sampleRate;
+    const duration = 2.6;
+    const frameCount = Math.floor(sampleRate * duration);
+    const buffer = ctx.createBuffer(1, frameCount, sampleRate);
+    const d = buffer.getChannelData(0);
+    let low = 0, lower = 0;
+    for (let i = 0; i < frameCount; i++) {
+      const t = i / sampleRate;
+      const n = Math.random() * 2 - 1;
+      low += (n - low) * 0.02;       // one-pole low-pass: the rumble
+      lower += (low - lower) * 0.05; // a second pole: rounder, deeper
+      const crack = n * Math.exp(-t * 18) * 0.7;
+      const swell = Math.min(1, t / 0.25) * Math.exp(-t * 1.4); // the roll swells in, then fades
+      const roll = lower * 9 * swell * (0.75 + 0.25 * Math.sin(2 * Math.PI * 3.3 * t));
+      d[i] = (crack + roll) * 0.6;
+    }
+    let peak = 0;
+    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
+    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
+    return buffer;
+};
+
 import { MOTIFS } from './aspectMotifs';
 
 /** name -> factory; the SoundProvider's generateSounds loops this registry. */
@@ -745,4 +771,5 @@ export const VOICES = {
   freeze: makeFreezeSound,
   zap: makeZapSound,
   rune: makeRuneSound,
+  thunder: makeThunderSound,
 };

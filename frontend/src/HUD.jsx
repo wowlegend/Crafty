@@ -272,10 +272,15 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
   // S8b: throttle the nearest-shrine scan (nearestLandmark scans a chunk grid). The compass rAF runs
   // every frame; the player can't outrun a shrine in <1s, so recompute at most ~once a second.
   const shrineCache = useRef({ t: 0, shrine: null });
+  // The markup last written, kept ACROSS effect runs. The effect re-runs whenever treasureChests or bossSystem change
+  // identity, and a per-run `lastHtml = null` made every re-run rewrite markup identical to what was on screen: the
+  // hud-churn e2e's identity run counted 2 such rewrites in 3 s standing still, and with the writer cut to "only the
+  // first write of a run" it still counted 2 writes — one per re-run (2026-10-27).
+  const lastHtml = useRef(null);
 
   useEffect(() => {
     let animFrame;
-    
+
     const updateCompass = () => {
       // Dev capture-determinism: in capture mode the follow-cam is pinned, so the
       // compass markers are fully determined by the frozen camera + marker positions.
@@ -477,7 +482,14 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
         }
       });
 
-      container.innerHTML = markersHtml.join('');
+      // Written only when it changed: standing still, the markers are identical frame after frame, and rebuilding
+      // them re-parsed ~20 elements and re-ran style and layout on every display frame (120 a second on a ProMotion
+      // panel) for nothing (plan 2026-09-23-crafty-perf-heat-ipad, Task 6).
+      const html = markersHtml.join('');
+      if (html !== lastHtml.current) {
+        lastHtml.current = html;
+        container.innerHTML = html;
+      }
     };
 
     updateCompass();
@@ -502,7 +514,7 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
         {/* Alignment reticle line */}
         <div className="absolute top-0 bottom-0 w-[1.5px] bg-info z-20"></div>
         {/* Scrolling Marker track */}
-        <div ref={containerRef} className="w-[280px] h-full relative overflow-hidden font-mono"></div>
+        <div ref={containerRef} data-testid="compass-track" className="w-[280px] h-full relative overflow-hidden font-mono"></div>
       </div>
     </div>
     </>
