@@ -20,8 +20,7 @@ const menu = strip(readFileSync(resolve(SRC, 'MenuSystem.jsx'), 'utf8'));
  *
  * BLIND SPOT, stated (R7): mounting is asserted from source. Nothing here renders the title screen, and
  * the diorama failing to load its scene, rendering black, or being hidden behind an overlay would all
- * pass. `TitleDiorama` is dev-visible in the capture corpus as `title-mascot`, but that frame is one of
- * the three that cannot exist in the shipped bundle.
+ * pass.
  *
  * Mutation-Proof: 2 mutations, recorded on the commit.
  */

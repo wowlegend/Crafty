@@ -7,9 +7,8 @@
  * that bundle on every push to main. So the coverage was: 100% of visual/e2e testing against a build that
  * never ships, and 0% against the one that does.
  *
- * Not hypothetical. Three of the 31 gated visual frames (`primitives-showcase-en`, `primitives-showcase-zh`,
- * `title-mascot`) render dev-only components behind `import.meta.env.DEV` and CANNOT exist in production —
- * ~10% of the visual gate tests surfaces that ship to nobody. And the failure class this repo keeps
+ * Not hypothetical. Dev-only components behind `import.meta.env.DEV` cannot exist in production, so a
+ * harness on the dev server can test surfaces that ship to nobody. And the failure class this repo keeps
  * shipping is precisely "compiles, gates green, never RUNS": four in one day on 2026-08-05. A production
  * bundle can be byte-perfect and still fail to boot — a DEV-only import tree-shaken to nothing, a
  * `import.meta.env` branch that only existed in dev, a minifier mangling a name something reflects on.
