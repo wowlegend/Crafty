@@ -268,17 +268,30 @@ describe('DEV only', () => {
   });
 });
 
-// Levels come from fighting. A spell cast at nothing pays nothing, or casting at the sky is the fastest way to level.
-// XP reaches the bar two ways, the GameMethods.grantXP bridge and the store itself, and a sky cast lives 3 s, so the
-// whole flight is watched on both channels, and the spell-quest step a landing pays is watched too.
-describe('a cast grants no XP', () => {
-  it('ten casts at the sky spend mana ten times, fly out their whole life, and pay nothing on any channel', () => {
+// Levels come from fighting. A spell that lands on nothing pays nothing, or casting at the sky or at your own feet is the
+// fastest way to level. XP reaches the bar two ways, the GameMethods.grantXP bridge and the store itself, so both are
+// read after the spell has ended AND after every timer the cast could have left queued has run, and the spell-quest step
+// is read too.
+describe('a spell that lands on nothing grants no XP', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    useGameStore.setState({ onSpellHit: null });
+  });
+
+  it.each([
+    // Up and away: never lands, and flies out its 3 s life.
+    ['at the sky', [0, 30, 0], [0.2, 1, 0.1], 3.5, 'age'],
+    // Down and across onto the floor: lands about 19 m out, well inside its life.
+    ['at the ground', [3, 20.05, 7], [0.48, -0.36, -0.8], 1, 'ground'],
+  ])('ten casts %s spend mana ten times, end there, and pay nothing on any channel', async (where, from, dir, settle, endBy) => {
+    // Only the timer queues: the frame clock and the store's own clocks stay real.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate'] });
     mount();
     const grants = [];
     let quest = 0;
     GameMethods.grantXP = (amount) => { grants.push(amount); };
     useGameStore.setState({
-      gameCamera: camera([0, 30, 0], [0.2, 1, 0.1]), level: 1, currentXP: 0, totalXP: 0, onSpellHit: () => { quest++; },
+      gameCamera: camera(from, dir), level: 1, currentXP: 0, totalXP: 0, onSpellHit: () => { quest++; },
     });
     const xp = () => { const s = useGameStore.getState(); return { level: s.level, currentXP: s.currentXP, totalXP: s.totalXP }; };
     const before = useGameStore.getState().mana;
@@ -289,18 +302,19 @@ describe('a cast grants no XP', () => {
     expect(before - useGameStore.getState().mana, 'not every cast went through').toBeCloseTo(10 * perCast, 6);
     frame(0.1); // in flight: a grant on the frame after the cast is the same farm
     expect(live().length, 'the ten spells are not in flight').toBe(10);
-    frame(3.5); // past maxAge: where a sky cast ends, and where a deferred grant would land
+    frame(settle);
     const ends = spent().filter((s) => ids.includes(s.id)).map((s) => s.by);
-    expect(ends, 'the ten spells did not all fly out their life — the age-out was never reached').toEqual(Array(10).fill('age'));
+    expect(ends, `the ten spells cast ${where} did not all end by '${endBy}' — nothing below is about that end`)
+      .toEqual(Array(10).fill(endBy));
+    await act(async () => { await vi.runAllTimersAsync(); });
     expect(grants, 'casting granted XP through GameMethods').toEqual([]);
     expect(xp(), 'casting moved the XP in the store').toEqual({ level: 1, currentXP: 0, totalXP: 0 });
-    expect(quest, 'casting at the sky advanced a spell quest').toBe(0);
-    useGameStore.setState({ onSpellHit: null });
+    expect(quest, `casting ${where} advanced a spell quest`).toBe(0);
   });
 });
 
 // A spell that lands pays only when it lands on an enemy: a Settler or livestock is not a fight. It pays twice, 5 XP and
-// one step of the spell quests (QuestSystem's onSpellHit, published on the store), and both are checked.
+// a step of the spell quests (QuestSystem's onSpellHit, published on the store), and both are checked.
 describe('a spell that lands pays only on an enemy', () => {
   // One fireball into `target`, resolved by the real hit loop; returns the XP grants and quest steps that hit made.
   const land = (target) => {
@@ -331,6 +345,88 @@ describe('a spell that lands pays only on an enemy', () => {
       .toEqual({ grants: [5], quest: 1 });
     expect(land({ id: 'z2', type: 'zombie', passive: false, health: 1 }), 'the killing hit on a Husk did not pay')
       .toEqual({ grants: [5], quest: 1 });
+  });
+});
+
+// "Land 10 spells on enemies" counts spells. A bolt that pierces three enemies or arcs through them is one spell landed;
+// a spell on the Shadow Dragon is a spell landed on an enemy. Per-hit XP stays per hit.
+describe('a spell counts once toward the spell quests, whatever it lands on', () => {
+  const added = [];
+  const mob = (fields) => {
+    const e = ecs.add({ isMob: true, type: 'zombie', health: 100, maxHealth: 100, passive: false, ...fields });
+    added.push(e);
+    return e;
+  };
+  let grants;
+  let quest;
+  beforeEach(() => {
+    grants = [];
+    quest = 0;
+    GameMethods.grantXP = (amount) => { grants.push(amount); };
+    useGameStore.setState({ onSpellHit: () => { quest++; } });
+  });
+  afterEach(() => {
+    while (added.length) ecs.remove(added.pop());
+    useGameStore.setState({ onSpellHit: null });
+  });
+  const flyOut = (bolt) => {
+    for (let i = 0; i < 40 && live().some((p) => p.id === bolt.id); i++) frame(0.05);
+    return spent().find((s) => s.id === bolt.id)?.by;
+  };
+
+  it('an arcane bolt through three Husks pays 5 XP a hit and one quest step', () => {
+    mount();
+    const line = ['h1', 'h2', 'h3'].map((id) => ({ id, type: 'zombie', passive: false, health: 500 }));
+    GameMethods.checkMobCollision = (_pos, _r, exclude) => line.find((m) => !(exclude && exclude.has(m.id))) ?? null;
+    GameMethods.damageMob = (id, dmg) => { const m = line.find((x) => x.id === id); m.health -= dmg; return m; };
+    useGameStore.setState({ gameCamera: camera([0, 30, 0], [0, 0, -1]) });
+    expect(flyOut(cast('arcane')), 'the arcane bolt did not end on a mob').toBe('mob');
+    expect(line.map((m) => m.health < 500), 'the bolt did not pierce all three Husks — nothing below is about a pierce')
+      .toEqual([true, true, true]);
+    expect(grants, 'each Husk the bolt pierced pays its 5 XP').toEqual([5, 5, 5]);
+    expect(quest, 'one bolt through three Husks counted more than one spell').toBe(1);
+  });
+
+  it('a spell that lands on the Shadow Dragon counts', () => {
+    mount();
+    useGameStore.setState({
+      isBossActive: () => true, getBossPosition: () => [-4, 31, 21], gameCamera: camera([-4, 30, 0], [0, 0, 1]),
+    });
+    expect(flyOut(cast('fireball')), 'the fireball did not end on the boss').toBe('boss');
+    expect(quest, 'a spell on the Shadow Dragon did not count').toBe(1);
+  });
+
+  // The direct target stands under the muzzle; two Husks stand inside the chain's 8 m reach of it.
+  const strike = (direct) => {
+    const A = mob({ id: 9201, position: new THREE.Vector3(0, 29, -6), ...direct });
+    mob({ id: 9202, position: new THREE.Vector3(3, 29, -8) });
+    mob({ id: 9203, position: new THREE.Vector3(-3, 29, -8) });
+    let directHits = 0;
+    const hops = [];
+    GameMethods.checkMobCollision = (_pos, _r, exclude) => (exclude && exclude.has(A.id) ? null : (directHits++, A));
+    GameMethods.damageMob = (id, dmg, _type, source) => {
+      const e = ecs.entities.find((m) => m.id === id);
+      if (source === undefined) hops.push(id); // the chain's hops pass no source; the direct hit does
+      if (e) e.health -= dmg;
+      return e;
+    };
+    useGameStore.setState({ gameCamera: camera([0, 30, 0], [0, 0, -1]) });
+    expect(flyOut(cast('lightning')), 'the lightning did not end on a mob').toBe('mob');
+    expect(directHits, 'the bolt never struck its target — nothing below is about a strike').toBe(1);
+    expect(hops.length, 'the strike did not chain to both Husks — nothing below is about a chain').toBe(2);
+  };
+
+  it('a lightning strike on a Husk that chains to two more counts once', () => {
+    mount();
+    strike({});
+    expect(quest, 'one lightning strike counted once per mob it reached').toBe(1);
+  });
+
+  it('a lightning strike on a Settler that arcs into Husks counts once, and the Settler hit pays no XP', () => {
+    mount();
+    strike({ type: 'villager', passive: true });
+    expect(grants, 'the hit on the Settler paid XP').toEqual([]);
+    expect(quest, 'a strike that reached Husks through its chain did not count').toBe(1);
   });
 });
 

@@ -34,6 +34,13 @@ import { isHostile } from './combat/targeting';
 // one comparison and was allocated once per projectile per frame.
 const _bossVec = new THREE.Vector3();
 
+// The spell quests count spells, not hits: a bolt that pierces three enemies, or arcs through them, is one spell landed.
+const countLanding = (projectile) => {
+  if (projectile.landedOnEnemy) return;
+  projectile.landedOnEnemy = true;
+  useGameStore.getState().onSpellHit?.();
+};
+
 export const EnhancedMagicSystem = React.memo(() => {
   const playSpatialSound = useGameStore(state => state.playSpatialSound);
   const { playMagicCast, playMagicHit, playMagicExplosion } = useGameSounds();
@@ -86,9 +93,10 @@ export const EnhancedMagicSystem = React.memo(() => {
     const hits = solveChainTargets(mobsQuery.entities, startPos, { excludeId, baseDamage, maxChains, range, damageReduction });
     const arcColor = (SPELL_TYPES.lightning && SPELL_TYPES.lightning.glowColor) || '#FFE066';
     const arcs = [];
+    let landed = 0;
     let arcFrom = { x: startPos.x, y: startPos.y, z: startPos.z };
     for (const h of hits) {
-      if (GameMethods.damageMob) GameMethods.damageMob(h.id, h.damage, 'lightning');
+      if (GameMethods.damageMob?.(h.id, h.damage, 'lightning')) landed++;
       // Read at the hop, not later: the arc is fixed geometry and the mob keeps moving. Lifted to body height.
       const arcTo = { x: h.position.x, y: h.position.y + 0.9, z: h.position.z };
       const points = chainArcPoints(arcFrom, arcTo, { seed: arcId.current + 1, jitter: 0.45 });
@@ -101,6 +109,7 @@ export const EnhancedMagicSystem = React.memo(() => {
       arcFrom = arcTo;
     }
     if (arcs.length) setChainArcs(prev => (prev.length > 12 ? [...prev.slice(prev.length - 12), ...arcs] : [...prev, ...arcs]));
+    return landed;
   }, []);
 
   // S1-D-M1: Spell impacts now route through the SOTA shared GPU spark pool
@@ -380,6 +389,7 @@ export const EnhancedMagicSystem = React.memo(() => {
             }
 
             let willPierce = false;
+            let chained = 0;
             if (spellConfig?.secondary) {
               const sec = spellConfig.secondary;
 
@@ -395,7 +405,7 @@ export const EnhancedMagicSystem = React.memo(() => {
                   break;
                 }
                 case 'chain':
-                  applyChainLightning(
+                  chained = applyChainLightning(
                     projectile.position,
                     hitMob.id,
                     projectile.damage,
@@ -422,12 +432,10 @@ export const EnhancedMagicSystem = React.memo(() => {
               spentBy = 'mob';
             }
 
-            // Levels come from fighting: a spell that lands on a Settler or on livestock pays nothing, in XP or in
-            // spell-quest progress.
-            if (onEnemy) {
-              if (GameMethods.grantXP) GameMethods.grantXP(5);
-              useGameStore.getState().onSpellHit?.();
-            }
+            // Levels come from fighting: a hit on a Settler or on livestock pays no XP. The chain hops only onto enemies,
+            // so a bolt aimed at a Settler that arcs into a Husk has landed on an enemy.
+            if (onEnemy && GameMethods.grantXP) GameMethods.grantXP(5);
+            if (onEnemy || chained > 0) countLanding(projectile);
           }
         }
 
@@ -447,6 +455,7 @@ export const EnhancedMagicSystem = React.memo(() => {
                   store.damageBoss(projectile.damage);
                   store.triggerHitstop?.(hitstopForHit(projectile.damage, store.juiceIntensity ?? 1));
                 }
+                countLanding(projectile);
                 createSpellImpact(projectile.position, projectile.type);
                 if (playSpatialSound) {
                   playSpatialSound('magicHit', projectile.position, 1.2, 30);
