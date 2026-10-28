@@ -163,7 +163,7 @@ describe('B2a save-slot ownership — an autosave may not overwrite a world it n
 // `autosave.flush()` (App.jsx's visibilitychange/beforeunload handler) is a no-op unless a debounce is
 // ALREADY pending: `flush() { if (timer !== null) { clear(); save(); } }`. That is correct on its own —
 // nothing pending means nothing to save. The bug is the TRIGGER LIST: App.jsx only schedules an autosave
-// when level / equipment / chests / talentPoints / gameMode / worldBlocks / inventory / questState / the
+// when level / equipment / chests / talentPoints / worldBlocks / inventory / questState / the
 // four banked meters change. So `coins`, `currentXP` (without a level-up), `gameWon`, `nightCount` and
 // `gameTime` NEVER schedule one. Kill mobs for an hour, earn 3000 coins, beat the boss, close the tab —
 // nothing was ever pending, flush() no-ops, and the entire session is gone.
@@ -193,7 +193,7 @@ describe('B2c autosave triggers — everything we persist must be able to schedu
     const gameStateBlock = block('game_state');
     const persisted = [...`${progBlock}\n${gameStateBlock}`.matchAll(/(\w+):\s*state\.(\w+)/g)].map((m) => m[2]);
     expect(persisted.length).toBeGreaterThan(10);   // the blocks were actually found
-    expect(gameStateBlock, 'the game_state block was not found — half the schema is unchecked').toContain('gameMode');
+    expect(gameStateBlock, 'the game_state block was not found — half the schema is unchecked').toContain('selectedBlock');
 
     // the keys the autosave subscription compares
     const triggerMatch = app.match(/const unsub = useGameStore\.subscribe\(\(s, prevS\) => \{([\s\S]*?)\n\s{4}\}\);/);
