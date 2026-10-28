@@ -35,6 +35,15 @@ describe('the ember bar', () => {
     expect(screen.queryByTestId('ember-bar'), 'an empty bar is still drawn').toBeNull();
   });
 
+  it('is drawn from the first ember: a bar holding 1 shows, 0 does not', () => {
+    useGameStore.setState({ ember: 1 });
+    render(<EmberBar />);
+    expect(screen.queryByTestId('ember-bar'), 'a bar holding 1 ember is hidden').not.toBeNull();
+    expect(screen.getByTestId('ember-bar').textContent).toContain(`1/${EMBER_MAX}`);
+    act(() => useGameStore.getState().setEmber(0));
+    expect(screen.queryByTestId('ember-bar'), 'an empty bar is still drawn').toBeNull();
+  });
+
   it('is labelled in the player\'s language', () => {
     useGameStore.setState({ ember: 12, locale: 'zh-CN' });
     render(<EmberBar />);
