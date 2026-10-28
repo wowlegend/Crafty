@@ -22,6 +22,15 @@ against a build of main `030ada1f` (before, `index-DuGj5xO_.js`) and a build of 
 `index-B1yLdAvU.js`), served locally. Two separate pages, so chunk streaming, mobs and time differ between the arms.
 The clips come from this pair.
 
+**UNVERIFIED: everything from the separate-build lookbook runs.** The committed clips and the frame-time and
+timer-query numbers below come from the second lookbook pair (after: started 14:53:08Z; before: started 14:57:57Z,
+both on port 4238). Those runs sit inside the window, about 14:53-15:17Z, in which a lookbook port collision between
+lanes may have served another lane's build. `lookbook.json` records the build directory it was handed, not the bundle
+the page loaded, so nothing shows which build each clip shows. Treat the before/after stills and clips from separate
+builds, and the numbers drawn from them, as unverified. The same-page filter comparison and the GPU readback are
+unaffected: each compares within one page, and that page's block texture had 6 levels, which only this lane's build
+allocates (the readback matched all 87,360 bytes to this lane's chain).
+
 ## Files
 
 | File | What it shows |
@@ -30,7 +39,7 @@ The clips come from this pair.
 | `crop-forest-120-off-on.png` | Mid-distance forest: the leaf speckle smooths out. The trunks and the nearest leaves are unchanged. |
 | `crop-forest-120-off-nearest-trilinear.png` | Off, NEAREST_MIPMAP_LINEAR (ships), and LINEAR_MIPMAP_LINEAR, from one page. |
 | `eye-120-0.30-{off,on}.png`, `eye-240-0.30-{off,on}.png` | Whole same-page frames, scaled down to CSS size (Lanczos). The downscale removes some of the speckle itself, so judge on the crops. |
-| `walk-0.30-{before,after}.mp4` | The lookbook clips: W held for 4 s due south from the Hearth, on the old build and on this lane's build. |
+| `walk-0.30-{before,after}.mp4` | UNVERIFIED (see above): the lookbook clips, W held for 4 s due south from the Hearth, meant to be the old build and this lane's build. |
 
 ## Numbers
 
@@ -51,10 +60,13 @@ where a texel is about one pixel wide, which is why the nearest-within-a-level f
 **What is on the GPU.** A second throwaway probe read the bound texture arrays of the running page back through a
 framebuffer. On this lane's build the block texture has 6 immutable levels, minify filter NEAREST_MIPMAP_LINEAR and
 magnify filter NEAREST, and all 87,360 bytes of its 6 levels x 16 layers equal the chain the module builds in node
-(0 mismatches). On the old build it has 1 level, NEAREST, and its 65,536 bytes equal this lane's level 0.
+(0 mismatches). On the old build it has 1 level, NEAREST, and its 65,536 bytes equal this lane's level 0. The same
+readback is now a committed check that runs in CI: `scripts/ci/prod-smoke.mjs` (`mipVerdict`) loads the production
+build under SwiftShader and fails unless the block texture holds the full chain, every level filled and every byte
+equal to the chain the source builds.
 
-**Frame time.** Every walking clip held the game's 60 fps cap on both builds: 16.67 ms per frame pooled over 1,053
-frames before, 16.64 ms over 1,315 frames after (wall-clock window divided by the composer's frame count, from
+**Frame time, UNVERIFIED (from the lookbook pair above).** Every walking clip held the game's 60 fps cap in both
+arms: 16.67 ms per frame pooled over 1,053 frames before, 16.64 ms over 1,315 frames after (wall-clock window divided by the composer's frame count, from
 `lookbook.json`). The cap hides any difference under 16.7 ms. The timer-query reading for the scene pass moved from
 4.03 to 4.19 ms on eye frames and from 3.45 to 3.56 ms on clips, inside the spread between two runs of the same build
 (an earlier pair read 2.25 and 2.33 ms on eye frames). These readings are not established as GPU
@@ -65,11 +77,14 @@ time (`../eye-level/index.md`).
 ## What these do not show
 
 - **The crawl in motion is not measured.** A frame-difference proxy over the clips did not separate from its sky
-  control (same page: mid band -7.1%, sky -4.5%; across the two builds the mid band rose 3-8%). The screencast is
-  1280x800 H.264 from a 2240x1400 canvas, which smooths the speckle away. Whether the crawl is gone is judged by eye,
-  walking on the deployed sha.
+  control (same page: mid band -7.1%, sky -4.5%; across the two builds the mid band rose 3-8%, a figure from the
+  unverified pair). The screencast is 1280x800 H.264 from a 2240x1400 canvas, which smooths the speckle away.
+- **The live acceptance clip on the deployed sha is still owed.** After merge and deploy, an eye-level walking clip
+  before and after on the deployed sha, judged by eye for leaf and stone sparkle at mid distance (plan item #10's
+  acceptance), replaces the unverified clips here.
 - **One machine, one GPU, one pixel ratio.** At a pixel ratio of 1 the mip levels start at half the distance, so the
   change should be larger there; that was not shot. WebKit was not shot either.
-- **Grazing ground is the remaining ceiling.** three r172 applies no anisotropy while the magnify filter is NEAREST,
-  so grass tops at a grazing angle drop to the small mips sooner than they would with it; the on frames show faint
-  bands across them.
+- **Grazing ground is the remaining ceiling, accepted.** three r172 applies no anisotropy while the magnify filter is
+  NEAREST, so ground seen at a low angle from eye height blends toward level 1 from about 6-10 blocks out, while faces
+  seen head-on stay crisp to about 16-28 blocks (DECISIONS 2026-10-28 item 20 (a)); the grass tops in the meadow crop
+  go flat. A sharper level choice is a Wave 2 evaluation.

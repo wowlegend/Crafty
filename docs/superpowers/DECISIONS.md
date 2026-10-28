@@ -171,7 +171,14 @@ longer finds the instructions there; none is configured to in this repo.
    The 2026-06-15 gate recorded mipmaps as drift toward "realistic filtering"; `6a33a101` (2026-09-22) built the option
    and fixed the one technical trap, then left it off for Kevin's word. **Each reason, and how it is handled:**
    (a) *the pixel look up close*: magnification stays NEAREST, and minification is NEAREST within a mip level and
-   LINEAR between levels, so texels stay crisp wherever they are about a pixel wide or larger; (b) *a grid line at
+   LINEAR between levels. What holds: a face seen head-on keeps level 0's crisp texels out to about 16-28 blocks. What
+   does not: the GPU picks the level from the larger of the two screen derivatives, and three r172 applies no
+   anisotropy under a NEAREST magnify filter, so ground seen at a low angle from eye height blends toward level 1 from
+   about 6-10 blocks out while its texels are still several pixels wide (the meadow grass tops in the evidence crop go
+   from speckle to flat colour). The lower figures are at device pixel ratio 1 and the higher at 1.75, estimated from
+   the screen geometry (fov 75, eye height) by the two reviews of this lane, not measured per distance. The flattening
+   is accepted as the standard voxel trade for no sparkle. A sharper level choice, a negative LOD bias or a shader that
+   picks the level from the smaller derivative, is a Wave 2 evaluation, judged on eye-level frames; (b) *a grid line at
    every block edge*: the sampler reads raw `vUv` with REPEAT wrapping (since `6a33a101`), so the UV derivative does not
    jump at block edges; (c) *bleeding between tiles*: this is a texture array, not an atlas, and the chain is built per
    layer; (d) *cutout leaves thinning*: there are none to thin, since the leaf tile is opaque (its "holes" are dark
@@ -183,22 +190,31 @@ longer finds the instructions there; none is configured to in this repo.
    the tone step where the near terrain meets the far field. three r172 uploads caller-built levels for an array texture
    only through `CompressedArrayTexture` with `RGBAFormat` (an uncompressed `texSubImage3D` per level), so the texture is
    that class; `image.data` stays level 0 for the far field. (f) *anisotropy*: not available. three r172 skips it while
-   magFilter is NEAREST, and a linear magFilter would blur the close-up look, so grazing ground reaches the small mips
-   sooner than it would with anisotropy. That is the remaining ceiling. **Cost:** GPU texture memory 65,536 to 87,360
-   bytes (+21,824, +33%); the chain builds once at boot in about 0.6 ms (node, at a load of 240); the index chunk grows
-   551 bytes. **Frame time:** every eye-level walking clip held the game's 60 fps cap on both builds (16.67 ms per frame
-   over 1,053 frames before, 16.64 ms over 1,315 after), so any cost is under what the cap shows; the scene pass's
-   timer-query reading moved less than it does between two runs of one build. **Look:** on one production page at the
-   player's eye, with only the GPU's minify filter switched, high-frequency energy falls 5-9% over the frame against a
-   noise floor of 0.6-2.2%, by 54% on the patch of meadow grass in the evidence crop (seen at a grazing angle), and by at
-   most 1.0% in the sky; read back from the
-   GPU, all 87,360 bytes of the chain equal the one built in node. Frames, crops, the before and after walking clips,
-   and the method: `docs/superpowers/masterpiece-2026-10/evidence/mipmaps/index.md`. **Side effect:** the ore-glow mask
-   reads a texel's chroma, and a mipped texel mixes nugget and stone. Averaged over a face, night glow at the 4x4 level
-   moves iron -61%, gold +42%, diamond +80% against level 0. Close up nothing changes; a re-tune, if wanted, is the
-   ore-glow owner's. **Gates:** `tests/world/proceduralTextures.test.js` pins the filters and the full chain;
+   magFilter is NEAREST, and a linear magFilter would blur the close-up look; that is why the ground flattening in (a)
+   is the remaining ceiling. **Cost:** GPU texture memory 65,536 to 87,360 bytes (+21,824, +33%); the chain builds once
+   at boot, about 3.5-4.6 ms for the cold first call and about 0.6 ms warm (node, measured by the repro review at a
+   load of 59-77); the index chunk grows 551 bytes. **Frame time:** not established. The walking-clip figures (16.67 ms
+   per frame over 1,053 frames before, 16.64 ms over 1,315 after, both at the 60 fps cap) and the scene pass's
+   timer-query readings come from two lookbook runs at 14:53-15:00Z, inside the window (about 14:53-15:17Z) in which a
+   lookbook port collision between lanes may have served another lane's build, so they are unverified. **Look:** on one
+   production page at the player's eye, with only the GPU's minify filter switched, high-frequency energy falls 5-9%
+   over the frame against a noise floor of 0.6-2.2%, by 54% on the patch of meadow grass in the evidence crop (seen at a
+   grazing angle), and by at most 1.0% in the sky; read back from the GPU, all 87,360 bytes of the chain equal the one
+   built in node. That comparison is within one page, so the collision cannot touch it. The crawl in motion is not
+   measured: a still frame's energy is not temporal stability, and the before and after walking clips come from the
+   unverified lookbook pair. The live acceptance clip on the deployed sha is still owed. Frames, crops, clips and the
+   method: `docs/superpowers/masterpiece-2026-10/evidence/mipmaps/index.md`. **Known side effect, not fixed here:** the
+   ore-glow mask reads the texel the sampler returns (`oreGlow.js`), and a mipped texel mixes nugget and stone, which
+   the mask's smoothstep does not average linearly. Averaged over a face, night glow at the 4x4 level moves iron -61%,
+   gold +42%, diamond +80% against level 0, so distant diamond blooms harder at night while distant iron nearly goes
+   dark; close up nothing changes. Owner: W2-A (shared-file quick fixes) or the light lane's successor. The likely fix
+   is to derive the glow mask from level-0 texels and mip it separately, so the mask is averaged rather than recomputed
+   from mixed colour. **Gates:** `tests/world/proceduralTextures.test.js` pins the filters and the full chain;
    `tests/gates/texture-mipmap-gates.test.js` pins every texel of every level as the linear-light mean of its block and
-   the 1x1 level as the far field's colour. Mutations are in the commit's `Mutation-Proof:` trailer.
+   the 1x1 level as the far field's colour; `scripts/ci/prod-smoke.mjs` (`mipVerdict`, CI only) reads the block texture
+   back from the GPU of the production build and fails unless it holds a full chain (6 levels for 32 px tiles) sampled
+   through a mipmap minify filter, with every level filled and every byte equal to the chain the source builds.
+   Mutations are in the commits' `Mutation-Proof:` trailers.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 
