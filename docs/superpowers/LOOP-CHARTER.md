@@ -100,7 +100,7 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
   and 16) as a new dated DECISIONS entry that names the entry it supersedes and says why:
   **Ember-Frontier / Blight-Heart** world direction · the **grade LOCK REVERSAL** (glowier/warmer authorized) ·
   **control scheme Option A, F=cast / T=melee** · **bloom 0.65 is INTENDED** (supersedes the ≥0.85 spec) ·
-  **grantXP full-heal is INTENDED** · **E2E = `@playwright/test`, separate from the visual gate** · **audience
+  **grantXP full-heal is INTENDED** · **E2E = `@playwright/test`** (the visual gate it stood apart from retired 2026-10-28, DECISIONS W1-H item 1) · **audience
   is BROAD** (the youngest players are users, not a ceiling) · **zh-CN is a toggle, EN default** · **controller-SEQUENTIAL
   for code** · **de-monolith is full loop authority**. Reversing one, or refining a sub-direction inside one, is
   the command session's call, recorded as above.
@@ -144,26 +144,20 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
    verify-before-assert (e.g. "breaking already shatters" was wrong — debris was invisible). Persist the artifact
    (commit the doc) as the tick's PERSIST step.
 5. **VERIFY before declaring (evidence, not belief):** from `frontend/` — `npx vitest run` (count must HOLD
-   OR GROW — see §3 ratchet; a workflow/doc-only tick may hold the count FLAT, say so) · `npm run build` clean · the
-   N-state visual gate (`ls frontend/tests/visual/baseline/*.png | wc -l` — never hardcode it; this said 20),
-   or a DELIBERATE re-baseline per §4 with rationale + self-eyeball. **⚠️ VISUAL-GATE HAZARD (the iter-159 lesson — a crash hid on main for 5
-   iters):** `npx vitest run --config vitest.visual.config.js` ALONE only DIFFS the pre-existing `current/`
-   PNGs against `baseline/` — it does NOT re-render. So it reports "18/18" on STALE frames + silently MISSES
-   any render-affecting change (the iter-154 GameScene crash passed this "gate" @154-158 on iter-150 frames).
-   **For ANY change that can affect a rendered scene/HUD/component, you MUST re-CAPTURE first: `npm run
-   visual:capture` (or `npm run test:visual` = capture+diff), THEN read the changed frame.** The diff-alone is
-   valid ONLY for changes that provably cannot render (pure logic / capture-null overlays / non-rendering props
-   — and say WHY in the report). A unit that can't reach green this iteration gets reverted or parked behind a
+   OR GROW — see §3 ratchet; a workflow/doc-only tick may hold the count FLAT, say so) · `npm run build` clean · and, for ANY change that can affect a rendered scene, HUD or component, the eye-level lookbook
+   (`node frontend/scripts/visual/lookbook.mjs`, real GPU) shot before and after, with both sets of frames read by
+   eye and attached to the commit or PR (DECISIONS 2026-10-28 W1-H item 1; the capture oracle it replaces showed a
+   build with weather, mobs and the hands turned off). A change that provably cannot render skips it and says WHY
+   in the report. A unit that can't reach green this iteration gets reverted or parked behind a
    note in ACTIVE_PLAN — never left silently broken.
-   **⚠️ LIVE-PROBE + LOOK is a REQUIRED verification axis, not optional:** the headless gates (visual = static
-   pinned-camera diorama; unit = pure logic) are BLIND to live input/camera/feel/audio — this blind spot shipped a
+   **⚠️ LIVE-PROBE + LOOK is a REQUIRED verification axis, not optional:** the headless gates (unit = pure logic;
+   lookbook = frames, not feel) are BLIND to live input/camera/feel/audio — this blind spot shipped a
    DEAD desktop mouse-look AND a DEAD iOS touch cold-start, both "green". For ANY change touching input/camera/feel/
    render-in-motion, run the standing per-modality LIVE probe (`frontend/scripts/visual/{pov-probe,touch-probe,ocean-probe,look-e2e}.mjs`
-   — drive the REAL app HUD-hidden, screenshot, LOOK with your own eyes) BEFORE claiming done. Gate metric = 6%
-   pixelmatch, NOT md5 (bloom/dither is sub-perceptually non-byte-stable). swiftshader ≈ GPU but is NOT a real finger
-   or ear — audio + real-device feel stay honestly Kevin-gated. **Also: the capture cams don't frame a highland peak,
-   so a world-SHAPE change can be INVISIBLE to the gate — verify world-gen changes via DATA (a worldShape-style test)
-   + a probe pointed at the actual thing, not the gate alone (the 2026-06-15 S4 lesson).**
+   — drive the REAL app HUD-hidden, screenshot, LOOK with your own eyes) BEFORE claiming done. A browser is NOT a real finger
+   or ear — audio + real-device feel stay honestly Kevin-gated. **Also: a fixed set of camera poses need not frame
+   the thing that changed (the old capture cams never framed a highland peak), so verify world-gen changes via DATA
+   (a worldShape-style test) + a probe pointed at the actual thing (the 2026-06-15 S4 lesson).**
 6. **PERSIST (the filesystem is the only memory that survives):** commit (no AI footers; no `git add -A`;
    `.state/` untouched) + **push `main`** + update `memory/ACTIVE_PLAN.md` (what shipped + the NEXT unit) and
    `memory/CHANGELOG.md` (milestone-grade entries). Batch Kevin-facing decisions/eyeballs into
@@ -276,17 +270,14 @@ Kevin delegated taste authority — the loop replaces his gate with this discipl
 - **Player-experience lens** **[ADVISORY — no mechanism; this is the "green gate is not a lived result" axis]** on everything: builder-plays-before-done (drive the real app when behavior
   changed); content-variety + signature-fires checks; legibility (a fresh player must be able to FIND the
   feature — key taught, HUD honest, denied-actions give feedback).
-- **Visual re-baselines are allowed and expected** (the look is MEANT to improve): re-baseline = render →
-  self-eyeball at HD (340dpi-equivalent zoom, IB-grade scrutiny) → commit baseline + a one-line rationale and
-  the before/after paths in its `Baseline-Review:` trailer (the call is the command session's since Kevin's
-  2026-10-27 mandate, which names the re-baseline). Capture-determinism stays load-bearing (new
-  effects freeze or self-null under `isCaptureMode()`). **BATCH re-baseline cadence (visual-overhaul campaigns,
-  Kevin-confirmed 2026-06-15 = "re-baselines = BATCH review"):** when a planned campaign produces MULTIPLE intended
-  re-baselines each exceeding the 6% gate (e.g. the world-purpose AO/aerial/beacon/postproc slices), accumulate the
-  before/after pairs across iterations + judge them as ONE consolidated taste review at slice-ladder close (a
-  contact-sheet of N frames), recorded in DECISIONS and shown on the Command Record, NOT slice-by-slice. Each
-  individual re-baseline still gets its HD self-eyeball + commit + one-line rationale at the tick it ships; only
-  the TASTE review batches. Use stable git refs (`git show <commit>:.../baseline/<frame>.png`), never `current/`.
+- **Look changes are allowed and expected** (the look is MEANT to improve). A look change is accepted on eye-level
+  lookbook frames: shoot before and after, self-eyeball them at HD (IB-grade scrutiny), and attach both, with a
+  one-line rationale, to the commit or PR (DECISIONS 2026-10-28 W1-H item 1). New work adds no `isCaptureMode()`
+  guard: the lookbook shows the game as played, and the existing guards leave as their subjects move. **BATCH taste
+  review (Kevin-confirmed 2026-06-15):** when a planned campaign produces several intended look changes, accumulate
+  the before/after frames across iterations and judge them as ONE consolidated taste review at slice-ladder close (a
+  contact sheet), recorded in DECISIONS and shown on the Command Record, not slice by slice. Each change still gets
+  its HD self-eyeball and rationale at the tick it ships; only the TASTE review batches.
 - **Audio is a first-class axis** **[ADVISORY — no mechanism]** (it shipped most-neglected): every Aspect gets its motif + verb SFX; the
   WILDHEART roar-set backfill is owed (#74 — the loop now OWNS this decision: do it).
 - **Genuinely-Kevin items** (park + batch, never block the loop) are now only his two bright lines (spend no

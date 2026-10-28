@@ -440,9 +440,12 @@ chunk offset), then S7-S15.
   correct from inverted — both windings stay CCW, both pass every gate — so the ONLY verification is
   looking at the render, and the visual harness is exactly what is broken (§B-race). Shipping a coin-flip
   into a blind harness would produce a green push and an unverifiable result.
-  **Unblocks when §B-race does.** Then: implement, capture, and LOOK at a face with strong AO contrast.
+  **Unblocks when §B-race does** (2026-10-28: the oracle is retired; judge it on lookbook frames). Then: implement, capture, and LOOK at a face with strong AO contrast.
 
 ### B-race. ✅ CLOSED — but the closing claim was TOO BROAD, and S8 falsified it the next day.
+
+> **SUPERSEDED 2026-10-28 (DECISIONS W1-H item 1, lane W2-B):** the capture harness, its baselines and its
+> density ratchet are deleted; looks are judged on the eye-level lookbook. Everything below is history.
 
 > **⚠️ AMENDED 2026-08-08 (`c472533`). Read this before trusting any visual diff.**
 > The block below closes B-race with "HARNESS DETERMINISTIC". **Determinism was never a property of the

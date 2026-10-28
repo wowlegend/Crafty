@@ -21,19 +21,12 @@ fires at the moment you can act on it.
 |---|---|
 | `gate-shape` — 97 assertions | 42% of the gate corpus, skipped (re-measured 2026-08-13: **388** assertions, **106** source-grep gates of **181** files) |
 | `doc-currency` — "✓ PASSED" | every bare, non-backticked path |
-| a test placed in `tests/visual/` | itself — vitest EXCLUDES that dir, so it never ran |
+| a test placed in `tests/visual/` | itself — vitest excluded that dir until 2026-10-28, so it never ran |
 | `quest-rewards-gates` | the save-corrupting bug it stayed green through |
 | `esc-pause-probe` | the second ESC press, where the bug lived |
 | `tapTestId` | whether the tap landed on the element it named |
 | the `setActive` structural gate | satisfiable by the COMMENT explaining the import |
-| the local-density ratchet's own failure message | told you to open `tests/visual/diff/<state>.png` — a file written ONLY on GLOBAL-gate red, so a density-only failure pointed at nothing |
-| the density LEDGER it asserts against | 29 of 31 entries were the FLOOR constant, not measurements (FIXED 2026-08-13: frozen from a reviewed pair, **29 → 23**, ratcheted) |
-| `freeze-density.mjs`'s own docblock | it demanded **TWO captures** from the day it was written while the code read **ONE** hardcoded directory — every ledger it ever produced was single-sample, i.e. the requirement was a comment |
-| the same script, on a partial capture | aborted the WHOLE freeze if one frame was missing from one run, so a flaky canvas wait left the other thirty unmeasured |
-| the ledger gate's own remediation instruction | its failure message says to run `freeze-density.mjs`; doing so wrote a ledger **that gate then rejected**, because it wants an `_unmeasured` field nothing generated |
-| the density banner printed on every visual run | said "REPORT ONLY, asserts nothing" for four days **after** the ratchet started asserting |
 | a source gate asserting `for (const dir of sources)` | the SECOND occurrence of that pattern (an existence pre-check) — it stayed green under the exact mutation it named |
-| `evaluateCaptureFreshness`'s unit tests | whether anything ever FILLS the `skipped` array they are handed — deleting the producer left the suite green |
 | a WCAG contrast gate's reference values | all achromatic (black/white/grey) — a mutation replacing the luminance coefficients with a plain average stayed GREEN |
 | a `text-text-inverse` usage scan | two of the three ways a gold background is declared here, reporting four false positives on correct code |
 | `dodge-latch`, green for two years | a world. `startPlay`'s swallowed wait meant it ran BEFORE terrain existed, so the 20 mobs gated on the same flag never spawned and nothing could kill the player — the green measured the absence of the game (2026-08-13) |
@@ -95,7 +88,7 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
    is satisfied by a comment — anchor structural gates to the syntactic form, not a bare token.
 
 4b. **COUNT YOUR PATTERN'S OCCURRENCES BEFORE TRUSTING IT, AND WHEN THE MUTATION STAYS GREEN, STOP
-   TIGHTENING.** A source gate asserted `freeze-density.mjs` contains `for (const dir of sources)` to
+   TIGHTENING.** A source gate asserted a ledger-freezing script contains `for (const dir of sources)` to
    prove it reads every run directory. It passed — and kept passing when the read loop was mutated to
    `[sources[0]]`, because a SECOND loop over `sources` (an existence pre-check) matched. A text match
    cannot tell which occurrence is load-bearing, so a better regex answers the wrong question. **The fix
@@ -105,8 +98,8 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
    landmarks (`cap.slice(stageStart, nextFinally)`), never to the whole file — a slice cannot match an
    unrelated site.
 
-4c. **A PRODUCER/CONSUMER SPLIT HIDES AN UNTESTED PRODUCER.** `evaluateCaptureFreshness` is HANDED a
-   `skipped` array, so its nine unit tests say nothing about whether `capture.mjs` ever fills one —
+4c. **A PRODUCER/CONSUMER SPLIT HIDES AN UNTESTED PRODUCER.** A capture-freshness check was HANDED a
+   `skipped` array, so its nine unit tests said nothing about whether the capture harness ever filled one —
    deleting `skippedGated.push(...)` left the entire suite green, inside the commit that added it. When
    a value crosses a seam, ask the two questions separately: what proves the consumer HANDLES it, and
    what proves the producer EMITS it. Only the first is usually written.
@@ -148,9 +141,8 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
   an actual 17, in the file whose subject is numbers that rot): config, tooling and
   repo-shape checks that must read source or JSON by their nature (`supply-chain`, `probe-ports`,
   `node-runtime-declared`, `social-preview`, `vite-console-drop`, `text-inverse-usage`,
-  `density-ledger-measured`, `freeze-density`, …). Note `freeze-density.test.js` does NOT read the
-  subject's source — it EXECUTES it against synthetic frames via injected `--baseline`/`--out`, which is
-  why it lives here despite being a behavioural test: its fixtures are files. Siting a check here keeps it out of the frozen population — **say so in
+  `kill-test-procs`, …). Note `kill-test-procs.test.js` does NOT read the subject's source — it EXECUTES
+  the script against fixture processes, which is why it lives here despite being a behavioural test. Siting a check here keeps it out of the frozen population — **say so in
   the file when you do it**, and never site something here merely to dodge the ratchet or the trailer.
   The test is whether the subject is BEHAVIOUR (gates/) or a FILE'S CONTENT (scripts/). Split when both:
   the WCAG work put the arithmetic in `tests/gates/` and the usage scan in `tests/scripts/`.
@@ -166,7 +158,7 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
   an error naming its own file instead of a silent collision. This replaced hand-picked constants after
   FIFTEEN probes were found sharing six ports (4196 claimed by four of them), and every probe binds
   `--strictPort`, so a collision kills the second on bind and reads as a broken probe. Managed harness
-  ports outside the table: e2e 4179, prod-smoke 4180 (capture 4178 is in it).
+  ports outside the table: e2e 4179, prod-smoke 4180.
 - **A listening localhost port CAN mint a browser tab that outlives the process — but you cannot tell.**
   OBSERVED ONCE, 2026-08-09: a `vite preview` on 4180 opened a Crafty tab in Kevin's OWN Chrome, which
   kept running the R3F render loop and the Rapier physics step at **75% of a core** long after the server
@@ -191,8 +183,8 @@ with a printed line; this pointer named a `ci.yml` line until the step moved). I
 and never ran `ls`. The gate's own docblock says "nothing has ever LOADED it", because it was written
 to CLOSE that gap: I quoted the problem statement of the fix as if it were current state.
 
-What IS true, and is the useful part: `capture.mjs` and all 25 probes drive the DEV server, so the
-VISUAL corpus says nothing about the shipped bundle. `prod-smoke` covers boot/render/GL-alive on prod;
+What IS true, and is the useful part: the probes and the e2e suite drive the DEV server, so they
+say nothing about the shipped bundle. `prod-smoke` covers boot/render/GL-alive on prod;
 it does not diff pixels. Two different coverages, and only the second gap is real.
 
 The numbers below stand — they were measured, not inferred:
@@ -209,11 +201,10 @@ a fix and the alarming one for a baseline.
 glBlitFramebuffer` in two alternating forms, per frame, until Chrome emits *"too many errors, no more
 errors will be reported to the console for this context"* and stops. Two consequences: 256 is a FLOOR
 rather than a count, and **once muted, a genuine GL error later in that context is silenced too** — the
-noise disables the very channel `capture.mjs`'s `fatalGl` bucket watches. `FATAL_GL_RE` does not match
-it (verified by running the regex against the message, not by reading it).
+noise disables the very channel any console-error watcher relies on.
 
-**Do NOT "fix" this by widening `FATAL_GL_RE`.** The capture runs the dev server, so it would still
-never load the frame where this happens. The probe that loads the production build ALREADY EXISTS —
+**Do NOT "fix" this in a dev-server probe.** It would never load the frame where this happens. The
+probe that loads the production build ALREADY EXISTS —
 `scripts/ci/prod-smoke.mjs`, a CI gate — so the work is to teach THAT about this error class, not to
 write a new one. (This line previously claimed the probe was missing. It was not.)
 

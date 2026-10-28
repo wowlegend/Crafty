@@ -79,7 +79,7 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 
 **Character render language (M2b):** mobs = 2-band toon (body/head/legs/nose) + tier-gated fresnel rim + inverted-hull `drei <Outlines>` on ALL body parts; the per-frame hit-flash traversal is a positive material-type allow-list (Standard/Toon) so it flashes the toon body but skips the outline `ShaderMaterial`. Boss = outline on torso+neck ONLY, emissive attack-telegraph preserved (no toon), capture freeze-gate + DEV-only `forceBossSpawn`. Chests + pets outlined. **drei `<Outlines>` `thickness` is screen-PIXELS at the default `screenspace=false`** (not world units). Two deterministic capture states gate the look: `character-closeup` + `boss-closeup`. Static gates in `tests/gates/character-render-gates.test.js`.
 
-**Visual-regression gate:** `npm run test:visual` (puppeteer + pixelmatch, 6% threshold, 20 states (2026-06-15, incl. ocean-coast/mobile/mob-bestiary)) — replaces the blind `test_swarm.js`; re-baseline per intended look change under forced `high` tier, human-reviewed.
+**Look acceptance:** the eye-level lookbook (`frontend/scripts/visual/lookbook.mjs`, Playwright on a real GPU): hero places, eye-level bearings and dusk clips, read by a person, before and after every look change. It replaced the capture-mode visual-regression oracle on 2026-10-28 (DECISIONS W1-H item 1, lane W2-B), whose SwiftShader frames showed a build with weather, mobs and the hands turned off. Capture mode stays as a test tool for e2e freezes; `tests/visual/baseline/menu.png` stays as the og-image source until W2-H.
 
 ## Architecture
 
