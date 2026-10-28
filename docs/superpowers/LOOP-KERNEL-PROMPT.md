@@ -137,7 +137,7 @@ gated logic to a pure injectable module, test purely, mutation-prove, wire); Gam
 in useFrame — transient refs / `.getState()` / seeded); capture-determinism (NO Math.random/clock in capture — seeded
 + `isCaptureMode()`-gated; static geometry at module load); **NO mid-combat RE-MESH (a HARD P4 veto)**; bloom 0.65
 INTENDED; zero-emoji in `src/` (use `\u{}` escapes); the store owns persisted state; no AI footer on commits; no
-`git add -A`; `.state/` untouched; `git commit -F -` heredoc. Full suite + eslint + build + pre-push each push (pre-push gate COUNT and list: read the generated GATES table in `.agent/AGENTS.md` — never recall it, and never type it here: this file is re-injected verbatim, so a number written here cannot self-correct). `knip` is CI-only, NOT at push.
+`git add -A`; `.state/` untouched; `git commit -F -` heredoc. Full suite + eslint + build + pre-push each push (pre-push gate COUNT and list: read the generated GATES table in `CLAUDE.md` — never recall it, and never type it here: this file is re-injected verbatim, so a number written here cannot self-correct). `knip` is CI-only, NOT at push.
 BUILD-FIRST on any JSX/structure change. Capture-verify EVERY render-affecting slice
 (`npm run visual:capture`) — but **the harness is NOT a trustworthy oracle**. `75191ef` fixed the
 `close()`-hang, NOT determinism. **`memory/STATUS.md` §B-race owns the harness's current measured state —
@@ -150,7 +150,7 @@ TASTE BOUNDS: the coherence pillars **P0–P5** (`docs/superpowers/specs/crafty-
 only HARD vetoes are P4's two invariants: no mid-combat re-mesh; input via intent-abstraction, not pointer-lock.**
 Accessibility never vetoes depth. Reference-lock before any look-bearing work; judge IN-WORLD on the real grade.
 
-⚠️ BROWSER / TEST-PROCESS HYGIENE — **anything you launch, you kill, and the SURFACE outlives the process.** Full rules: `.agent/AGENTS.md` (orientation) and `.claude/rules/gates-and-probes.md`, which auto-injects the moment you touch `frontend/scripts/**` or `frontend/tests/**`. This was a FIFTH copy; five copies of a rule is not five times the compliance, it is five places to drift.
+⚠️ BROWSER / TEST-PROCESS HYGIENE — **anything you launch, you kill, and the SURFACE outlives the process.** Full rules: `CLAUDE.md` (orientation) and `.claude/rules/gates-and-probes.md`, which auto-injects the moment you touch `frontend/scripts/**` or `frontend/tests/**`. This was a FIFTH copy; five copies of a rule is not five times the compliance, it is five places to drift.
 
 SESSION-CLOSE (charter §6.5 — fires at the CONTEXT WATERMARK, 85/90/94%, unprompted): kill leaked test procs → LIST
 husks → green the tree → update ACTIVE_PLAN + STATUS + CHANGELOG + the operator pages (`--stamp`, republish, `--sync`) → **refresh the REMOTE GitHub

@@ -24,7 +24,7 @@
 #
 # SECOND HOLE, also closed: the old hook skipped lint, tests, build and the bundle budget entirely for any
 # push touching no `frontend/` path. The whole gate set runs in well under a minute, so the "optimisation"
-# bought nothing and left a docs-only push able to move a symlinked CLAUDE.md, a workflow file, or a hook
+# bought nothing and left a docs-only push able to move CLAUDE.md, a workflow file, or a hook
 # with zero verification. There is no skip path any more.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 #

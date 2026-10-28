@@ -84,7 +84,7 @@ export const CANONICAL = [
   'docs/superpowers/DECISIONS.md',
   'SOTA-INITIATIVE.md',
   'README.md',
-  '.agent/AGENTS.md',
+  'CLAUDE.md',
 ];
 
 // Packages whose presence docs have historically LIED about. If a canonical doc asserts one of these is
@@ -92,7 +92,7 @@ export const CANONICAL = [
 const CLAIM_VERBS = /(installed|landed|added|approved \+ landed|is wired|now available)/i;
 const WATCHED_PACKAGES = ['@react-three/test-renderer', '@playwright/test', 'knip', 'puppeteer'];
 
-const AGENTS_REL = '.agent/AGENTS.md';
+const CLAUDE_REL = 'CLAUDE.md';
 
 /**
  * Run the named checks (all of them by default) over the docs under `root`.
@@ -136,7 +136,9 @@ function readDoc(root, rel, out, what) {
 }
 
 // --- 1. DANGLING LINKS ------------------------------------------------------
-// Match markdown links + inline-code paths that look repo-relative.
+// Match markdown links + inline-code paths that look repo-relative. The `.agent` first segment stays in both
+// path lists on purpose: that directory is retired, so a canonical doc that still cites a path under it dangles
+// and fails here instead of passing unexamined.
 const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
 const CODEPATH_RE = /`((?:memory|docs|frontend|src|\.agent|scripts|tests)\/[A-Za-z0-9._\-/]+\.[a-z]{2,5})`/g;
 // BARE paths — not in backticks, not a markdown link. This repo's prose is full of them:
@@ -148,7 +150,7 @@ const CODEPATH_RE = /`((?:memory|docs|frontend|src|\.agent|scripts|tests)\/[A-Za
 // it did not, and that false confidence is what made the hole worth closing rather than noting.
 const BAREPATH_RE = /(?<![`(\w/.-])((?:memory|docs|frontend|src|\.agent|scripts|tests)\/[A-Za-z0-9._\-/]+\.[a-z]{2,5})/g;
 
-// Some docs deliberately cite a WRONG path as a cautionary example (e.g. AGENTS.md warns that
+// Some docs deliberately cite a WRONG path as a cautionary example (e.g. CLAUDE.md warns that
 // `memory/SOTA-INITIATIVE.md` is the classic false-absence mistake — "it's at root"). Flagging those
 // would be the lint failing to read English. Skip lines that are explicitly calling a path wrong.
 const NEGATED = /\b(a wrong|wrong|incorrect|is at root|not at|does not exist|false-absence|used to be|REMOVED)\b/i;
@@ -290,17 +292,17 @@ function checkStatus(root, out) {
 /** checked.gates = the gates the hook defines, which the block is compared against. */
 function checkGates(root, out) {
   out.checked.gates = 0;
-  const md = readDoc(root, AGENTS_REL, out, 'the GATES block');
+  const md = readDoc(root, CLAUDE_REL, out, 'the GATES block');
   if (md === null) return;
   const r = checkGateBlock(md);
   out.checked.gates = r.count;
   if (!r.ok) {
-    out.errors.push(`${AGENTS_REL}: ${r.reason} (hook defines ${r.count} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`);
+    out.errors.push(`${CLAUDE_REL}: ${r.reason} (hook defines ${r.count} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`);
   }
 }
 
 // --- 4. MEASURED BLOCK CURRENCY ---------------------------------------------
-// `.agent/AGENTS.md` carries a generated size block. A number in a doc that is re-read every iteration is a
+// `CLAUDE.md` carries a generated size block. A number in a doc that is re-read every iteration is a
 // CLAIM, and this one rotted badly before it was generated: the hand-typed version said "~14.4k LOC / ~31
 // JS(X) files" against a real 30,022 / 264, and asserted a single large file when five are >= 900 LOC.
 //
@@ -314,12 +316,12 @@ function checkGates(root, out) {
 /** checked.measured = the claimed quantities compared: the two counts plus each listed large file. */
 function checkMeasured(root, out) {
   out.checked.measured = 0;
-  const md = readDoc(root, AGENTS_REL, out, 'the MEASURED block');
+  const md = readDoc(root, CLAUDE_REL, out, 'the MEASURED block');
   if (md === null) return;
   const claimed = parseBlock(md);
   const regen = 'node frontend/scripts/ci/measure.mjs --write';
   if (!claimed) {
-    out.errors.push(`${AGENTS_REL}: MEASURED block missing or unparseable — regenerate: ${regen}`);
+    out.errors.push(`${CLAUDE_REL}: MEASURED block missing or unparseable — regenerate: ${regen}`);
     return;
   }
   out.checked.measured = 2 + claimed.largeFiles.length;
@@ -331,7 +333,7 @@ function checkMeasured(root, out) {
   ]) {
     if (drift(got, want) > TOLERANCE) {
       out.errors.push(
-        `${AGENTS_REL}: MEASURED ${label} says ${got.toLocaleString('en-US')}, actual ` +
+        `${CLAUDE_REL}: MEASURED ${label} says ${got.toLocaleString('en-US')}, actual ` +
           `${want.toLocaleString('en-US')} (${(drift(got, want) * 100).toFixed(0)}% drift, band ` +
           `${Math.round(TOLERANCE * 100)}%) — regenerate: ${regen}`,
       );
@@ -340,7 +342,7 @@ function checkMeasured(root, out) {
   const key = (l) => l.map((f) => f.file).sort().join(', ');
   if (key(claimed.largeFiles) !== key(actual.largeFiles)) {
     out.errors.push(
-      `${AGENTS_REL}: the >=${LARGE_FILE_LOC}-LOC file list is wrong.\n` +
+      `${CLAUDE_REL}: the >=${LARGE_FILE_LOC}-LOC file list is wrong.\n` +
         `    doc says: ${key(claimed.largeFiles) || '(none)'}\n` +
         `    actual:   ${key(actual.largeFiles) || '(none)'}\n` +
         `    regenerate: ${regen}`,
@@ -357,7 +359,7 @@ function checkMeasured(root, out) {
     if (want === undefined) continue; // membership drift — already reported above
     if (drift(f.loc, want) > TOLERANCE) {
       out.errors.push(
-        `${AGENTS_REL}: MEASURED says ${f.file} is ${f.loc} LOC, actual ${want} ` +
+        `${CLAUDE_REL}: MEASURED says ${f.file} is ${f.loc} LOC, actual ${want} ` +
           `(${(drift(f.loc, want) * 100).toFixed(0)}% drift, band ${Math.round(TOLERANCE * 100)}%) — ` +
           `regenerate: ${regen}`,
       );
@@ -367,7 +369,7 @@ function checkMeasured(root, out) {
 
 // --- 4b. READ-ORDER BLOCK PARITY ---------------------------------------------
 // Three documents each carried their own hand-kept copy of the orientation read order, and all three
-// disagreed — while `.agent/AGENTS.md` asserted "Order matches LOOP-CHARTER.md §0-A so the two documents
+// disagreed — while `CLAUDE.md` asserted "Order matches LOOP-CHARTER.md §0-A so the two documents
 // cannot disagree". §0-A omitted DECISIONS.md entirely; only the kernel named the PRIMARY work queue or put
 // CI in the orientation. A cold-start agent's first act is to follow one of these, so which copy it happened
 // to read determined what it believed the work was. Generated from one source now; drift fails the push.

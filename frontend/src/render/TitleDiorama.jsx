@@ -119,7 +119,7 @@ function DriftCamera() {
       // Proof it is cross-run and not the renderer: three shots from ONE page are byte-identical
       // (0 px), while two separate processes differ by 0.359-0.557%.
       //
-      // AGENTS.md already says the capture check must live INSIDE the callback because the harness
+      // CLAUDE.md already says the capture check must live INSIDE the callback because the harness
       // flips the flag after mount. It did. The gap is that "stop animating" is not the same as
       // "return to a known pose" — freezing an animation still leaves you wherever it had got to.
       s.camera.position.set(...titleCameraPose(true, 0));

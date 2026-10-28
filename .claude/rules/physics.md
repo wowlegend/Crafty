@@ -7,7 +7,7 @@ paths:
 ---
 # Physics and movement: what the code does not say at a glance
 
-Replaces the deleted `.agent/workflows` debug-physics and fix-movement guides, which named `App.jsx` and gravity -25.
+Replaces the deleted Antigravity debug-physics and fix-movement workflow notes, which named `App.jsx` and gravity -25.
 
 - Physics is PAUSED in capture mode: `<Physics gravity={[0, -30, 0]} paused={isCaptureMode}>` in `frontend/src/GameScene.jsx`. A capture frame or visual baseline proves nothing about physics.
 - The Rapier kinematic character controller owns grounding: `computedGrounded()` in `frontend/src/Components.jsx`.

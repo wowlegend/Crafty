@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * GATE TABLE — generate the "what authorizes a push" table in .agent/AGENTS.md from the HOOK ITSELF.
+ * GATE TABLE — generate the "what authorizes a push" table in CLAUDE.md from the HOOK ITSELF.
  *
  * WHY THIS EXISTS. That paragraph has now undercounted its own gates THREE TIMES:
  *   "three gates"  ->  "Six"  ->  "NINE"  ->  live TEN
  * Each rewrite was written to fix the previous one, and the "Six" version stated the wrong number
  * directly above a table already showing eight. The latest rot took ONE COMMIT: adding
- * artifact-currency to the hook left AGENTS.md claiming NINE with no row for the new gate — and a
+ * artifact-currency to the hook left CLAUDE.md claiming NINE with no row for the new gate — and a
  * six-agent review read that paragraph closely, with five of six certifying the old count.
  *
  * That is not carelessness anyone can fix by being careful. A hand-maintained mirror of a machine-
@@ -20,7 +20,7 @@
  * below; a gate with no entry renders a TODO marker, so a new gate is visible rather than silent.
  *
  *   node scripts/ci/gate-table.mjs           print the derived table (check mode)
- *   node scripts/ci/gate-table.mjs --write   regenerate the block inside .agent/AGENTS.md
+ *   node scripts/ci/gate-table.mjs --write   regenerate the block inside CLAUDE.md
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
@@ -40,7 +40,7 @@ const HOOK = join(ROOT, 'ci/pipeline.sh');
 // was hand-kept). Parsing both surfaces is the fix; asserting the count here would just be a fourth guess.
 const PUSH_HOOK = join(ROOT, '.githooks/pre-push');
 const CI = join(ROOT, '.github/workflows/ci.yml');
-const AGENTS = join(ROOT, '.agent/AGENTS.md');
+const CLAUDE_MD = join(ROOT, 'CLAUDE.md');
 
 export const BEGIN = '<!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->';
 export const END = '<!-- END GATES -->';
@@ -205,15 +205,15 @@ function main() {
   const { gates, ciText } = derive();
   const block = renderBlock(gates, ciText);
   if (process.argv.includes('--write')) {
-    const md = readFileSync(AGENTS, 'utf8');
+    const md = readFileSync(CLAUDE_MD, 'utf8');
     const i = md.indexOf(BEGIN);
     const j = md.indexOf(END);
     if (i < 0 || j < 0) {
-      console.error(`gate-table: no ${BEGIN} / ${END} markers in .agent/AGENTS.md — add them around the gate table first`);
+      console.error(`gate-table: no ${BEGIN} / ${END} markers in CLAUDE.md — add them around the gate table first`);
       process.exit(1);
     }
-    writeFileSync(AGENTS, md.slice(0, i) + block + md.slice(j + END.length));
-    console.log(`gate-table: wrote ${gates.length} gates into .agent/AGENTS.md`);
+    writeFileSync(CLAUDE_MD, md.slice(0, i) + block + md.slice(j + END.length));
+    console.log(`gate-table: wrote ${gates.length} gates into CLAUDE.md`);
     return;
   }
   console.log(block);

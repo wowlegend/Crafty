@@ -116,7 +116,7 @@ describe('ci/write-receipt.sh — certify only what was tested', () => {
 
 describe('ci/write-receipt.sh run from a LINKED WORKTREE\'s hook, the way ci/pipeline.sh runs it', () => {
   // THE DEFECT (tranche A review, 2026-10-27): every commit made in a lane worktree had its receipt refused,
-  // "1255 path(s) differ, e.g. .agent/AGENTS.md". pipeline.sh cds into frontend/ and then runs this script; git hands
+  // "1255 path(s) differ, e.g. a tracked doc at the repo root". pipeline.sh cds into frontend/ and then runs this script; git hands
   // a linked worktree's hooks an ABSOLUTE GIT_DIR and no GIT_WORK_TREE, and with GIT_DIR set git takes the CURRENT
   // directory as the top of the work tree. So `git rev-parse --show-toplevel` answered frontend/, and every tracked
   // path outside it read as deleted. Fail-safe (no receipt, so pre-push certified in full), but every lane commit
@@ -177,9 +177,15 @@ describe('the pipeline has ONE receipt writer, and it is this script', () => {
     const inputs = new Set(roots.split(/\s+/));
     // Read by no pipeline step when UNTRACKED: .claude is agent config (opsec reads tracked files only;
     // doc-currency reads a fixed CANONICAL list); scripts/ holds one harness hook no pipeline step invokes.
-    // (.state left this set when U4 untracked it: HEAD no longer has the directory.)
+    // (.state left this set when U4 untracked it, and the retired agent-instruction directory left INPUT_ROOTS when
+    // CLAUDE.md became one real file: both gone from the tree.)
     const unread = new Set(['.claude', 'scripts']);
-    const tracked = git(ROOT, 'ls-tree', '-d', '--name-only', 'HEAD').split('\n').filter(Boolean);
+    // Read from the INDEX, not HEAD: a commit that removes a top-level directory runs this under pre-commit while HEAD
+    // still has it, so a HEAD walk would redden the very commit that retires the directory (found moving CLAUDE.md,
+    // 2026-10-28). The index is the tree being committed here, and a fresh CI checkout's index equals HEAD.
+    const tracked = [...new Set(
+      git(ROOT, 'ls-files').split('\n').filter((p) => p.includes('/')).map((p) => p.split('/')[0]),
+    )];
     expect(tracked.length).toBeGreaterThan(3); // the walk reached a real tree
     const unclassified = tracked.filter((d) => !inputs.has(d) && !unread.has(d));
     expect(unclassified, 'new top-level dir: add it to INPUT_ROOTS, or to `unread` with a reason').toEqual([]);

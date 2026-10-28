@@ -486,7 +486,7 @@ diffed between runs.** Result: **0 of 31 frames differ by more than 1%.** Worst 
 69-72%"* — **does not reproduce.**
 
 - **The load/environment hypothesis is DISCONFIRMED, and it was mine.** I predicted the variance was
-  machine-load-driven (the box was at load 22.49, `AGENTS.md` says the capture harness is load-sensitive,
+  machine-load-driven (the box was at load 22.49, `CLAUDE.md` says the capture harness is load-sensitive,
   and the compositor is intermittent). Run B executed at load **18.06** — high — and still produced 0.00%.
   High load does not produce the variance. Recorded because it was the stated reason for running this.
 - **Compositor ALIVE** at 62-65 rAF/1.2s across three separate checks. Also intermittent-by-history, so
@@ -1357,7 +1357,7 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   133 — so a script with an export, top-level work and only that path line scored as GUARDED. A guard must
   now COMPARE, tested line-scoped. *A false negative in the exact shape a checker exists to catch is worse
   than no checker, because it also silences the reviewer.*
-- ▣✓ `6817df3` **`.agent/AGENTS.md` said "Six gates authorize a push" above a table already showing eight**
+- ▣✓ `6817df3` **`CLAUDE.md` said "Six gates authorize a push" above a table already showing eight**
   — a headline contradicting its own table, inside the paragraph written to fix an undercount. Now NINE,
   and it carries the command to recount from the hook instead of from memory.
 - ▢ **G1 [LOOP]** Doc-truth: `LOOP-CHARTER.md:225` still advertises `@react-three/test-renderer` as

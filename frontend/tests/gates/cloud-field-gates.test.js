@@ -138,7 +138,7 @@ describe('the sky dome draws the cloud field', () => {
   it('the studio subject cards reset cloud cover to a DECLARED 0; everywhere else it is 1', () => {
     // At y~146 the studio camera sits ~74 m under the cloud plane: clouds loom behind the subject and put a
     // white band behind pale spell VFX, defeating the card. A reset to a declared value, never an early
-    // return (AGENTS.md capture rule); the explore frames still gate the clouds.
+    // return (CLAUDE.md capture rule); the explore frames still gate the clouds.
     expect(mat.uniforms.uCloudCover.value).toBe(1);
     expect(mat.fragmentShader).toContain('col = mix(col, cloudCol, cloudD * cloudUp * 0.92 * uCloudCover);');
     expect(carriersOf(/u\.uCloudCover\.value = st\.captureStudio \? 0 : 1;/)).toEqual(['render/Atmosphere.jsx']);

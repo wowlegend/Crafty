@@ -57,7 +57,7 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
    or Kevin) grading SURFACED EVIDENCE against the sprint's stated criteria. A self-reported "done" is not
    evidence. *No checker can exist for this — a loop cannot enforce its own recusal, which is the point.*
 3. **Sprint contract BEFORE code** — "done" and *how it will be proven* stated first, naming the GATE and not
-   just the steps. Enforced in practice by the per-milestone plan-doc discipline (`.agent/AGENTS.md` Method).
+   just the steps. Enforced in practice by the per-milestone plan-doc discipline (`CLAUDE.md` Method).
 4. **[ADVISORY] Drive the product surface, not the implementation.** Real-input E2E outranks unit tests for
    "does it work"; unit tests sit too close to the code. `memory/STATUS.md §V2` is the campaign's spine.
 5. **[ADVISORY] Context RESET > compaction for long work** — compaction preserves continuity but not a clean
@@ -192,7 +192,7 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
    subsumed by the 2026-06-17 11-agent audit; any remaining items are folded into W1–W4. The four-Aspect spine
    (WILDHEART · VOIDHAND · SOULBIND · ELEMANCER) completed 2026-06-11; S3 de-monolith is now LARGELY DONE (4-of-5
    god-files dissolved; `GameScene.jsx` is DONE — 299 LOC as of 2026-08-07, not the "~914" this line claimed.
-   Read the live ≥900-LOC set from the generated MEASURED block in `.agent/AGENTS.md`; there are more than the
+   Read the live ≥900-LOC set from the generated MEASURED block in `CLAUDE.md`; there are more than the
    one this sentence implies, and `Components.jsx` is PARKED iter-175 — risky
    imperative-loop extraction, not actively blocking) → de-monolith is now a DEBT LANE behind the mega-directive,
    not the spine. B4-v1.5 + the v2 voxel-mutation seam (iPad-gated) + S4 stay Kevin-gated/later.
@@ -315,9 +315,9 @@ is quietly wrong.
 servers + a headless Chromium at 622% CPU, drove load average to 25, and timed out the capture gate — which
 presented as a *"flaky gate"* and burned a real debugging cycle.
 
-**COMPRESSED 2026-08-07: this section was the FOURTH copy of these rules** (charter · `.agent/AGENTS.md` ·
+**COMPRESSED 2026-08-07: this section was the FOURTH copy of these rules** (charter · `CLAUDE.md` ·
 `.claude/rules/gates-and-probes.md` · the kernel), which is the exact disease §8 names. The full narrative —
-the cmux preview-tab half, the `close-surface` footgun, the managed ports — lives in **`.agent/AGENTS.md`**,
+the cmux preview-tab half, the `close-surface` footgun, the managed ports — lives in **`CLAUDE.md`**,
 which is loaded unconditionally at every session start, and the moment-of-use checklist in
 **`.claude/rules/gates-and-probes.md`**, which fires when you are actually editing a probe. Read them there.
 
@@ -425,7 +425,7 @@ and unlike the rules they govern, all three are gradeable by grep:
    the behaviour is covered.
 2. **A number is computed, or it is deleted.** No hand-typed counts in any governing document. A count appears
    as the command that regenerates it, or as a dated past-tense scar ("was 88 runs on 2026-07-27"). Every
-   hand-typed number in these docs rotted: `.agent/AGENTS.md` claimed "~14.4k LOC / ~31 files" against an
+   hand-typed number in these docs rotted: `CLAUDE.md` claimed "~14.4k LOC / ~31 files" against an
    actual 29.5k / 264 (measured 2026-08-02) — already false by 1.8x the day it was written. That block is GENERATED now.
 3. **A claim about state outside the working tree is emitted by the command that observed it, in the same
    turn, or it is a fabrication** — regardless of whether it happens to be true. This is the generative cause

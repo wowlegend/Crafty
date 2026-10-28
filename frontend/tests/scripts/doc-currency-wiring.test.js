@@ -189,21 +189,21 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     expect(r.warnings).toEqual([AGE_UNKNOWN]);
   });
 
-  it('gates: a stale GATES block in the fixture AGENTS.md errors', () => {
+  it('gates: a stale GATES block in the fixture CLAUDE.md errors', () => {
     const { gates } = deriveGates();
     const stale = renderGates(gates).replace(GATES_END, `| stale | row |\n${GATES_END}`);
-    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${stale}\n` });
+    const root = fixture({ 'CLAUDE.md': `# claude\n\n${stale}\n` });
     const r = run({ root, only: ['gates'] });
     expect(r.checked).toEqual({ gates: gates.length });
     expect(r.errors).toEqual([
-      `.agent/AGENTS.md: GATES block is stale (hook defines ${gates.length} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`,
+      `CLAUDE.md: GATES block is stale (hook defines ${gates.length} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`,
     ]);
     expect(r.warnings).toEqual([]);
   });
 
   it('gates: the current GATES block passes (one row from the case above)', () => {
     const { gates } = deriveGates();
-    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${renderGates(gates)}\n` });
+    const root = fixture({ 'CLAUDE.md': `# claude\n\n${renderGates(gates)}\n` });
     const r = run({ root, only: ['gates'] });
     expect(r.checked).toEqual({ gates: gates.length });
     expect(r.errors).toEqual([]);
@@ -211,11 +211,11 @@ describe('doc-currency run() — the seam every check is wired into', () => {
 
   it('measured: a MEASURED block claiming twice the source files errors', () => {
     const m = measure();
-    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${renderMeasured({ ...m, srcFiles: m.srcFiles * 2 })}\n` });
+    const root = fixture({ 'CLAUDE.md': `# claude\n\n${renderMeasured({ ...m, srcFiles: m.srcFiles * 2 })}\n` });
     const r = run({ root, only: ['measured'] });
     expect(r.checked).toEqual({ measured: 2 + m.largeFiles.length });
     expect(r.errors).toEqual([
-      `.agent/AGENTS.md: MEASURED source files says ${(m.srcFiles * 2).toLocaleString('en-US')}, actual ` +
+      `CLAUDE.md: MEASURED source files says ${(m.srcFiles * 2).toLocaleString('en-US')}, actual ` +
         `${m.srcFiles.toLocaleString('en-US')} (100% drift, band 10%) — regenerate: node frontend/scripts/ci/measure.mjs --write`,
     ]);
     expect(r.warnings).toEqual([]);
@@ -223,7 +223,7 @@ describe('doc-currency run() — the seam every check is wired into', () => {
 
   it('measured: the current MEASURED block passes (one number from the case above)', () => {
     const m = measure();
-    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${renderMeasured(m)}\n` });
+    const root = fixture({ 'CLAUDE.md': `# claude\n\n${renderMeasured(m)}\n` });
     const r = run({ root, only: ['measured'] });
     expect(r.checked).toEqual({ measured: 2 + m.largeFiles.length });
     expect(r.errors).toEqual([]);

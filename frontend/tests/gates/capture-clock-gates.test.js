@@ -17,7 +17,7 @@ import {
 // Determinism today is achieved by SUPPRESSION: 116 isCaptureMode() sites across 61 files, 31 of them
 // early-returns, turning weather, mob AI, NPC routines, particles and spawning OFF. So the 31 gated
 // frames depict a build nobody plays, and the gate is structurally incapable of regressing anything that
-// only manifests in motion. AGENTS.md states this outright.
+// only manifests in motion. CLAUDE.md states this outright.
 //
 // Suppression was chosen because the alternative needs two primitives and only one existed:
 // `captureRandom` (seeded per-key streams) shipped; a deterministic CLOCK never did. Against 72 clock

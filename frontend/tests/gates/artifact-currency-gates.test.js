@@ -146,7 +146,7 @@ describe('artifact-currency — multiple surfaces (A4)', () => {
 // because the stats were in the denominator and the status pills were not. Kevin caught it, having
 // raised the general problem more than once already.
 //
-// AGENTS.md is explicit about what to do when a rule fails repeatedly: escalate to a deterministic layer
+// CLAUDE.md is explicit about what to do when a rule fails repeatedly: escalate to a deterministic layer
 // rather than write the sentence again. So a queued row must now declare `data-absent="<path>"` — the
 // artifact whose ABSENCE is the reason it is still queued. The moment that path exists, the claim is
 // false and the push goes red. It makes "Queued" falsifiable instead of narrative.

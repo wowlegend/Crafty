@@ -8,7 +8,7 @@ paths:
 # Writing a gate, test, or probe in Crafty
 
 This fires because you are editing a thing whose whole job is to GO RED. It exists because the rule it
-carries was already written in `.agent/AGENTS.md` (the DENOMINATOR paragraph, with three worked examples)
+carries was already written in `CLAUDE.md` (the DENOMINATOR paragraph, with three worked examples)
 and was violated twice more on 2026-08-05 anyway. The problem was never that the rule was unknown — it is
 read at orientation, and the mistake happens here, forty tool calls later. So it lives here now, where it
 fires at the moment you can act on it.
@@ -186,7 +186,7 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
 **CORRECTION 2026-08-13.** This section originally opened "Every harness in this repo drives the DEV
 server ... the build Vercel serves is loaded by nothing." That was FALSE when written.
 `scripts/ci/prod-smoke.mjs` loads the PRODUCTION build (`serveVite(PORT, { preview: true })`) and runs
-as a CI gate — `.github/workflows/ci.yml:106`. I read an older line in `.agent/AGENTS.md`, repeated it,
+as a CI gate — `.github/workflows/ci.yml:106`. I read an older line in `CLAUDE.md`, repeated it,
 and never ran `ls`. The gate's own docblock says "nothing has ever LOADED it", because it was written
 to CLOSE that gap: I quoted the problem statement of the fix as if it were current state.
 

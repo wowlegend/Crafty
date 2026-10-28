@@ -2,8 +2,8 @@
 /**
  * MEASURE — the single authority for every repo number a governing doc quotes.
  *
- * WHY. `.agent/AGENTS.md` is the project constitution: symlinked as CLAUDE.md, auto-loaded on every task,
- * re-injected after every compaction. Its architecture paragraph hand-typed "~14.4k LOC / ~31 JS(X) files"
+ * WHY. `CLAUDE.md` is the project constitution: the one instruction file at the repo root, auto-loaded on every
+ * task, re-injected after every compaction. Its architecture paragraph hand-typed "~14.4k LOC / ~31 JS(X) files"
  * and asserted "Components ~1330 is the LAST single large file". Measured 2026-08-02:
  *
  *     files   ~31   ->   373      (12x)
@@ -15,7 +15,7 @@
  * four other files that qualify. A number in a document that is re-read every iteration is a CLAIM, and a
  * claim nobody recomputes has a half-life of days.
  *
- * SO THE NUMBERS ARE NOT TYPED. They are generated into AGENTS.md between HTML-comment markers, and
+ * SO THE NUMBERS ARE NOT TYPED. They are generated into CLAUDE.md between HTML-comment markers, and
  * `doc-currency.mjs` re-measures on every push and fails if the committed block has drifted.
  *
  * TOLERANCE IS DELIBERATE, AND IT IS THE WHOLE DESIGN. LOC changes on nearly every commit, so an
@@ -29,7 +29,7 @@
  *
  *   node scripts/ci/measure.mjs            print the markdown block
  *   node scripts/ci/measure.mjs --json     machine-readable
- *   node scripts/ci/measure.mjs --write    regenerate the block inside .agent/AGENTS.md
+ *   node scripts/ci/measure.mjs --write    regenerate the block inside CLAUDE.md
  */
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, dirname, join, relative } from 'node:path';
@@ -38,7 +38,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = resolve(HERE, '../..'); // frontend/
 const ROOT = resolve(APP, '..'); // repo root
-const AGENTS = join(ROOT, '.agent/AGENTS.md');
+const CLAUDE_MD = join(ROOT, 'CLAUDE.md');
 
 export const BEGIN = '<!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->';
 export const END = '<!-- END MEASURED -->';
@@ -116,15 +116,15 @@ if (isCli) {
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(m, null, 2));
   } else if (process.argv.includes('--write')) {
-    const md = readFileSync(AGENTS, 'utf8');
+    const md = readFileSync(CLAUDE_MD, 'utf8');
     const i = md.indexOf(BEGIN);
     const j = md.indexOf(END);
     if (i === -1 || j === -1) {
-      console.error(`measure: no MEASURED block in .agent/AGENTS.md — add the markers first:\n${BEGIN}\n${END}`);
+      console.error(`measure: no MEASURED block in CLAUDE.md — add the markers first:\n${BEGIN}\n${END}`);
       process.exit(1);
     }
-    writeFileSync(AGENTS, md.slice(0, i) + renderBlock(m) + md.slice(j + END.length));
-    console.log(`measure: wrote ${m.srcFiles} files / ${m.srcLoc} LOC / ${m.largeFiles.length} large into .agent/AGENTS.md`);
+    writeFileSync(CLAUDE_MD, md.slice(0, i) + renderBlock(m) + md.slice(j + END.length));
+    console.log(`measure: wrote ${m.srcFiles} files / ${m.srcLoc} LOC / ${m.largeFiles.length} large into CLAUDE.md`);
   } else {
     console.log(renderBlock(m));
   }
