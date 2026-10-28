@@ -25,11 +25,19 @@ deletion). Land = merge into a land/<date> branch, push, green `ci ok` on that e
   `setActive(false)` (Components.jsx ~575) and undoes the touch resume; own row, real-iPad check.
 - Command Record exceptions: the hunger bar never moves until W2-F (the drain is deleted, the bar is not); the
   8b1d383f headline "a paused game holds the world" excepts beast form, snare and fuse.
-- Pause instruments: `_probe.mjs` ~382 / `lookbook.mjs` ~366 claim a stood-in lock does not turn the camera
+- Pause instruments: `_probe.mjs` ~133 / `lookbook.mjs` ~366 claim a stood-in lock does not turn the camera
   (pointerLook gates only on pointerLockElement); power-summary refuses a not-in-play arm only in two-arm mode; the
   "NOT in play" string is hand-copied between power-ab.sh and its test; the in-reach e2e hold settles 2 rAF, not game
   frames (possible flake); worst-case retry time of pause-freezes-world (2x3x420 s) exceeds the 35-min shard cap.
 - gpu-cost-probe hung >5 min after writing its JSON at load 170-400; undiagnosed.
+
+**W2-B (the capture oracle retired) deleted tests, noted here per the test ratchet (LOOP-CHARTER §3).** The justification
+is in the bodies of edee0d4d and 42fbe84e. Ten unit test files, each removed because its only subject was harness code that
+went with the oracle: capture-preflight, density-ratchet, density-ledger-measured and freeze-density (removed from tests/scripts);
+visual-denominator, diff-density, subject-on-screen and baseline-trailer gates (removed from tests/gates); captureFreshness and
+machineHeadroom (removed from src/devtest); plus probe-honesty's blocks for the removed _probe.mjs helpers, and the oracle's own
+diff test, which no unit run included. The one check that read shipped code, "enterCapture returns its state", is still
+covered by `tests/e2e/lightning.spec.js`.
 
 ## CURSOR — 2026-09-22 (SOTA campaign, session 2). READ THIS FIRST.
 

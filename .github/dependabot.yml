@@ -88,8 +88,8 @@ updates:
       # written for its NEIGHBOUR and never applied here. The minor-only rule let PR #18 through on
       # 2026-09-01: `6.39.1 -> 6.39.4`, a PATCH, of the exact version measured 2026-08-13 as removing the
       # sun from the sky. It sat OPEN and 8/8 GREEN for three weeks, one click from the live demo,
-      # because the 31-frame visual gate runs in NEITHER the pre-push hook NOR CI — so every check in the
-      # pipeline is structurally incapable of seeing a missing sun. Closed 2026-09-22.
+      # because nothing in the pre-push hook or CI compares pixels — so every check in the pipeline is
+      # structurally incapable of seeing a missing sun. Closed 2026-09-22.
       #
       # Crafty's sun is not ordinary scene geometry: it is a camera-locked billboard that GodRaysEffect
       # reparents into its own `lightScene` each frame, the effect owning a `renderTargetLight` with its

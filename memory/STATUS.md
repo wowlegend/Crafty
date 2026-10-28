@@ -185,8 +185,8 @@ reversal, is the command session's since Kevin's 2026-10-27 mandate, restated as
   3rd such gate this session; see V1.)
 - ▢ **R2 [LOOP]** Repo-wide sweep for the same anti-pattern: any closure var mutated inside a setState updater;
   any `setX()` called inside a `setY(prev => ...)` body. Fix only hits with a real multi-dispatch caller.
-- ▢ **R3 [LOOP]** `tests/e2e/smoke.spec.js` canvas-**detach** race — three `<Canvas>` mounts exist
-  (`GameScene.jsx:125`, `render/TitleDiorama.jsx:60`, `render/mascots/MascotStudio.jsx:75`) and
+- ▢ **R3 [LOOP]** `tests/e2e/smoke.spec.js` canvas-**detach** race — two `<Canvas>` mounts exist
+  (`GameScene.jsx:290`, `render/TitleDiorama.jsx:146`; a third, MascotStudio's, was removed 2026-10-28 by W2-B) and
   `locator('canvas').first()` races the title→play transition. Bind the game canvas explicitly. **Do not widen
   the 60s timeout.**
 

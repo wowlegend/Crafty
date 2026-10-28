@@ -132,7 +132,7 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
 4. **BUILD with the standing method:** milestone-scale work gets a `superpowers:writing-plans` plan doc in
    `docs/superpowers/plans/` FIRST (CLAUDE.md §Method — no build-from-spec shortcuts); TDD red-first for
    logic; extract-pure modules + thin god-file wiring; AST-safe edits only; Game-Loop-Isolation; NO-RE-MESH;
-   capture-determinism. Big/risky deltas: adversarially review via a multi-agent Workflow (explicitly
+   no new `isCaptureMode()` guard (DECISIONS 2026-10-28 W1-H item 1). Big/risky deltas: adversarially review via a multi-agent Workflow (explicitly
    authorized) — confirmed findings get fixed before the unit is "done".
    **Workflow orchestration (ultracode mode):** AUTHORING a background multi-agent Workflow is a first-class
    substantive activity (not just a within-iteration review step) for research / codebase audit / SOTA-design /
@@ -182,7 +182,7 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
 
 ## 2. Work-selection priority (top-down; skip = blocked only)
 
-1. **Broken main** (tests/build/visual red) — fix first, always.
+1. **Broken main** (tests or build red, or CI on `main` not `success`) — fix first, always.
 2. **The current in-flight milestone** per ACTIVE_PLAN (finish > start).
 3. **Pre-requisites the plan-of-record marks blocking** (e.g. #72 verb-mode seam before VOIDHAND M3;
    #69 gate inversion before M3).

@@ -47,7 +47,7 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
  *      tab survives, and a loaded Crafty tab keeps running the R3F render loop and the Rapier physics
  *      step at ~100% of a core indefinitely. Measured today: 1.9 GB RSS, 102.6% CPU, server long dead.
  *
- * That is also why only :4180 ever did it — it is the one preview port; every dev probe (4178, 4179, and
+ * That is also why only :4180 ever did it — it was the one preview port; every dev server (e2e's 4179 and
  * the frozen table below) took the other branch and passed the flag. The asymmetry WAS the bug.
  *
  * Never let a managed server open a browser. The harness brings its own; anything else is the operator's.

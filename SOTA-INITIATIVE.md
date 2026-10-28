@@ -53,11 +53,13 @@ layered on a day-build / night-siege survival loop. All four Aspects SHIPPED (20
 1. **Verify code-reality before trusting any doc claim** — the founding rule of this initiative.
 2. **Spec before build; plan-doc per milestone** (`superpowers:writing-plans`); TDD red-first; the **test
    ratchet** (never delete/weaken a test or gate to pass — justified changes only, in the commit body).
-3. **Quality gates green every unit:** unit suite holds-or-grows · build clean · the 20-state visual gate
-   (deliberate re-baselines only, with rationale + eyeball + a `Baseline-Review:` trailer; the call is the command
-   session's since Kevin's 2026-10-27 mandate).
+3. **Quality gates green every unit:** unit suite holds-or-grows · build clean · CI `ci ok` green on the exact sha
+   · every look change shot on the eye-level lookbook (`node frontend/scripts/visual/lookbook.mjs`, real GPU) before
+   and after, read by eye and attached to the commit or PR (DECISIONS 2026-10-28 W1-H item 1, which retired the
+   capture oracle and its baselines; the call is the command session's since Kevin's 2026-10-27 mandate).
 4. **Engine invariants:** Game-Loop-Isolation (transient reads in hot loops; render JSX never reads
-   worker/loop-mutated fields) · NO-RE-MESH from combat systems · capture-determinism · derive-don't-bake.
+   worker/loop-mutated fields) · NO-RE-MESH from combat systems · no new `isCaptureMode()` guard (W1-H item 1: the
+   lookbook shows the game as played) · derive-don't-bake.
    NO-RE-MESH and input via intent-abstraction are P4's engineering constraints, not locks: they bind the command
    session as facts about the iPad-class frame budget and input routing, and one may be broken only with a
    measurement showing that frame budget (or input parity) still holds, recorded in DECISIONS.

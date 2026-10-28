@@ -83,7 +83,9 @@ plan for "what to do next" — that is what `memory/registry.jsonl` and the SOTA
   `2026-10-28-crafty-brief-w2f-the-cut.md`, `2026-10-28-crafty-brief-lantern-costed.md`,
   `2026-10-28-crafty-brief-quest-spine.md`.
 - **The 2026-10-27 lane plans** (`2026-10-27-crafty-*`) are design reference under the amended umbrella
-  (`2026-10-27-crafty-masterpiece.md`, amended 2026-10-28); their step scripts are re-cut at lane start.
+  (`2026-10-27-crafty-masterpiece.md`, amended 2026-10-28); their step scripts are re-cut at lane start. Every
+  capture, re-baseline or `Baseline-Review:` step in them is void: the capture oracle and that trailer retired
+  2026-10-28 (DECISIONS W1-H item 1), and a look change attaches before and after lookbook frames instead.
 
 - **Most recent / most relevant:** `2026-06-29-crafty-{de-monolith,spell-vfx-redesign}`,
   `2026-06-17-crafty-W{1,2,3,4}-*` (the big rebuild, 503 steps).

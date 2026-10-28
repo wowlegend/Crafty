@@ -13,12 +13,10 @@
  * bundle can be byte-perfect and still fail to boot — a DEV-only import tree-shaken to nothing, a
  * `import.meta.env` branch that only existed in dev, a minifier mangling a name something reflects on.
  *
- * DELIBERATELY A SMOKE TEST, NOT A SECOND VISUAL GATE. It asks questions the build cannot answer:
+ * DELIBERATELY A SMOKE TEST, NOT A VISUAL GATE. It asks questions the build cannot answer:
  * does it boot, does it render, does it log an error, is the GL context alive, and does the block texture's
- * mip chain reach the GPU (mipVerdict). No baselines, so it cannot
- * rot and never needs re-approval — the same property that makes the intra-page invariant worth having.
- * A 31-frame production capture would need its own oracle and would double the re-baseline burden for
- * frames that already have one.
+ * mip chain reach the GPU (mipVerdict). No baselines, so it cannot rot and never needs re-approval. How the
+ * build looks is read by a person on the eye-level lookbook (scripts/visual/lookbook.mjs), not here.
  *
  *   node scripts/ci/prod-smoke.mjs        (expects `npm run build` to have run first)
  */
@@ -30,7 +28,7 @@ import { serveVite } from '../visual/_serve.mjs';
 import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-// A fourth dedicated port. capture=4178, e2e=4179, this=4180. Never an ad-hoc port: the one time a probe
+// A dedicated port outside _serve.mjs's probe table: e2e=4179, this=4180. Never an ad-hoc port: the one time a probe
 // picked its own, it minted the worst crop of orphan cmux preview surfaces.
 const PORT = 4180;
 

@@ -46,8 +46,8 @@
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # WHAT IT DELIBERATELY CANNOT COVER, because a green run is not a claim that the game works
 #
-#   - THE 31-FRAME VISUAL ORACLE. It needs a real GPU-less browser presenting frames and takes ~20
-#     minutes; it runs in neither caller today. A green pipeline says nothing about how Crafty LOOKS.
+#   - HOW CRAFTY LOOKS. Looks are read by a person on the eye-level lookbook (scripts/visual/lookbook.mjs,
+#     real GPU), which no caller runs. A green pipeline says nothing about how Crafty LOOKS.
 #   - E2E FRESHNESS, not E2E itself. 21 Playwright specs take ~20 minutes, which is too slow for every
 #     push, so the push tier asserts that E2E was last run GREEN against the current source tree — the
 #     stamp, not the suite. CI runs the real thing, sharded. This is the inverse of Inkbloom's problem:

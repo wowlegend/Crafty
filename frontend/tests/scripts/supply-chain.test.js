@@ -118,7 +118,7 @@ describe('the supply chain is scanned at all', () => {
     // The majors rule was not enough. It let through a grouped PR carrying `three 0.172.0 -> 0.185.1`
     // — thirteen releases of the renderer — plus @react-three/fiber, drei and lucide-react 0.439 ->
     // 0.577, and that PR passed EVERY CI check. It passed because CI structurally cannot see rendering:
-    // the visual gate runs in neither the pre-push hook nor the workflow. Under semver a 0.x MINOR is
+    // nothing in the pre-push hook or the workflow compares pixels. Under semver a 0.x MINOR is
     // the breaking position, so `version-update:semver-major` matches none of these bumps.
     //
     // Listed explicitly rather than by wildcard, because blocking minors everywhere would also block
