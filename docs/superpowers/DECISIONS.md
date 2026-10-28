@@ -1033,7 +1033,7 @@ It is in neither `.githooks/pre-push` nor `ci.yml`; the hook contains only a com
 run it. Measured 733 s (37 s of which is literal sleeps), and every baseline is macOS arm64 against Ubuntu
 x86-64 runners, so CI would compare across a published cross-platform pixel-parity problem.
 
-What was *unanswerable* before is answerable now: `tests/visual/baseline/.capture-meta.json` (landed with
+What was *unanswerable* before is answerable now: `tests/visual/baseline/.capture-meta.json` (REMOVED 2026-10-28, W2-B) (landed with
 the provenance work) stamps `startedAt`/`finishedAt` on every capture. Last run **2026-08-09 04:52:11 ->
 05:07:36, 925 s, `complete: true`, `crashes: 0`**, on ANGLE/SwiftShader Vulkan 1.3.0, darwin-arm64. Before
 that file existed, "when was this oracle last exercised" had no answer at all — which is the more important
@@ -1191,7 +1191,7 @@ suppressed, because a suppressed world is still by construction.
 ### The decision. **[LOOP]**
 `setCaptureFrame(n)` sets the phase ABSOLUTELY and freezes the clock; `resetCaptureClock()` thaws, so each
 captured state is free to tick during its own setup and is then pinned before its shot. `shot()` in
-`frontend/scripts/visual/capture.mjs` pins before the stability wait, records what the page actually
+`frontend/scripts/visual/capture.mjs` (REMOVED 2026-10-28, W2-B) pins before the stability wait, records what the page actually
 returned, and the run prints the denominator and fails on any frame shot at an undeclared phase.
 `CAPTURE_PHASE_FRAMES = 90` — 1.5 s of virtual time, one constant rather than a per-state parameter,
 because a phase that varies by state is one more thing a baseline diff can disagree about for a reason
@@ -1212,7 +1212,7 @@ way when the suppression census is worked rather than discovered again per subsy
 `7d743d6` is titled "step-then-shoot" and says it wired the hook "so the harness can drive it". It touched
 `App.jsx`, `captureClock.js` and that module's gate. `capture.mjs` had zero references to it. The
 primitive and the bridge hook shipped; the caller never did, and no gate asserted the CALLER — this
-repo's most-repeated defect class, inside the harness built to catch it. `tests/scripts/capture-preflight.test.js`
+repo's most-repeated defect class, inside the harness built to catch it. `tests/scripts/capture-preflight.test.js` (REMOVED 2026-10-28, W2-B)
 now asserts it, and the assertion goes red against exactly the `7d743d6` state.
 
 ---

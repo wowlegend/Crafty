@@ -659,7 +659,7 @@ re-baseline still capture, and **exits the run NON-ZERO at the end**.
 *Live mutation proof, twice:* framed fire 20 units high → the run refused with `"beast-ice": 11 mesh(es) in
 the scene but only 0 project on screen`; and the unmutated run refused `beast-fire` under load. Both times
 the harness declined to write a beast-less PNG that a byte-comparison would have blessed forever. Unit-level:
-`tests/gates/subject-on-screen-gates.test.js`, 8 assertions, mutation-proved (disabling the out-of-frame
+`tests/gates/subject-on-screen-gates.test.js` (REMOVED 2026-10-28 with the capture oracle, W2-B), 8 assertions, mutation-proved (disabling the out-of-frame
 branch → 3 RED).
 
 **CONSEQUENCE TO EXPECT:** `visual:capture` now exits non-zero whenever a beast state has no beast — which
@@ -1350,7 +1350,7 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   captures the controls panel.
 - ▣✓ **CLI-on-import sweep — DONE 2026-08-03, and it found nothing left to fix.** The defect (a module
   running its CLI at import, so a test importing it dies mid-collection and vitest reports "no tests" while
-  every assertion silently skips) bit twice: `scripts/ci/i18n-adoption.mjs` and `scripts/visual/capture.mjs`.
+  every assertion silently skips) bit twice: `scripts/ci/i18n-adoption.mjs` and `scripts/visual/capture.mjs` (REMOVED 2026-10-28, W2-B).
   Swept every file under `scripts/` that has an `export`: **6 total.** Five carry an argv guard
   (`measure`, `queue-ledger`, `i18n-adoption`, `mutation-proof-trailer`, `capture`). The sixth,
   `scripts/visual/_serve.mjs`, has **no guard and needs none** — it is a pure helper with zero top-level

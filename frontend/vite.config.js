@@ -40,7 +40,7 @@ export default defineConfig(({ command }) => ({
         // returned 11,888 bytes containing ZERO occurrences of `console.error`, and `/src/MenuSystem.jsx`
         // zero of `console.warn`. Not inferred from the docs — fetched from the running server.
         //
-        // What was silently blind: capture.mjs's `page.on('console')` crash filter (which runs against
+        // What was silently blind: every probe's `page.on('console')` crash filter (they run against
         // the DEV server), the console-error collectors in height-fog-instancing.spec.js and
         // perf-siege.spec.js, the ErrorBoundary's own `console.error` on a crash, and every `console.warn`
         // a fallback path emits. Each of those reports PASS by finding no errors, over a stream that had

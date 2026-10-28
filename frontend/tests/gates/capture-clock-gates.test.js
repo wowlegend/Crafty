@@ -258,11 +258,9 @@ describe('stepCaptureFrames — reports what it actually did', () => {
 // LATENT today only because nothing reads the clock yet -- and it goes live with the first subsystem
 // converted from suppression to substitution, which is the next unit of work.
 //
-// AND THE SECOND REASON, which is the one that makes freezing necessary rather than merely tidy: the
-// harness photographs a frame only after waitForStableFrame reports two consecutive identical frames. A
-// world animating off a free-running clock never produces two identical frames, so a stability wait and
-// a free-running clock cannot both be satisfied. The world must be STILL at the declared phase to be
-// photographable at all.
+// AND THE SECOND REASON, which is the one that makes freezing necessary rather than merely tidy: a
+// harness that photographs a frame only once two consecutive frames match can never photograph a world
+// animating off a free-running clock. The world must be STILL at the declared phase to be photographable.
 describe('setCaptureFrame — the phase is declared, not emergent', () => {
   beforeEach(() => { exitCaptureMode(); resetCaptureClock(); });
   afterEach(() => exitCaptureMode());

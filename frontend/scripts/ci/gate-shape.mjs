@@ -148,18 +148,17 @@ function resolveTarget(value) {
  * Gates rarely hand a whole path to one literal. They compose it:
  *
  *     readFileSync(resolve(SRC, 'render', 'spellVfx.jsx'))
- *     readFileSync(resolve(SRC, '..', 'scripts', 'visual', 'capture.mjs'))
+ *     readFileSync(resolve(SRC, '..', 'scripts', 'visual', 'touch-probe.mjs'))
  *
  * so no single literal is a path and the per-literal resolver above finds nothing. This rebuilds the path
  * from the trailing string arguments of a resolve()/join() call.
  *
  * COMPLETENESS IS A CORRECTNESS REQUIREMENT HERE, NOT A NICETY. Check A concludes "comment-satisfied" from
  * a pattern matching NO target's code — so a target that is missed cannot exonerate an assertion, and the
- * script accuses a gate that is working. That is precisely what happened on the first run of the widened
- * version: spell-vfx-gates:154 asserts against scripts/visual/capture.mjs, where `spell-cast` is a real
- * state name in real code, and it was reported as satisfied by a comment in EnhancedMagicSystem.jsx —
- * a file that assertion is not about. Same shape as the oceanProfile false accusations this script's
- * walk() already carries a warning about. Twice now, so it is the failure mode to design against.
+ * script accuses a gate that is working: an assertion about a script under scripts/visual, matching a real
+ * name in real code there, gets reported as satisfied by a comment in some src file that assertion is not
+ * about. Same shape as the oceanProfile false accusations this script's walk() already carries a warning
+ * about.
  */
 function composedPaths(ast) {
   const out = new Set();

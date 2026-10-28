@@ -29,9 +29,8 @@
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 #
 # Runs the FAST, deterministic gates only. Deliberately NOT here:
-#   * the 31-state visual gate (renders the real scene under swiftshader; load-sensitive, would flake)
-#   * e2e (browser boot ~60s)
-# Run those before a milestone: `npm run test:visual` / `npm run test:e2e`.
+#   * e2e (browser boot ~60s; CI runs it, and e2e-freshness checks the receipt here)
+#   * the eye-level lookbook (`node scripts/visual/lookbook.mjs`), which a person reads
 #
 # Escape hatch: `git push --no-verify`.
 # ⚠️ Using --no-verify to dodge a red gate is a reward-hack (LOOP-CHARTER §3). If a gate is genuinely

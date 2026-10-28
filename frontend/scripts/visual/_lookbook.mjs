@@ -46,8 +46,8 @@ export function parseCycles(arg) {
 
 /**
  * The four places. Seed 12345 is fixed (world/terrain.worker.js), so these are the same ground on every build.
- *   hearth, coast, snow-terrace — the capture harness's own poses (capture.mjs, the hearth / ocean-coast / biome-snow
- *     states), so a lookbook frame and a regression frame of one place can be set side by side;
+ *   hearth, coast, snow-terrace — the poses of the retired capture oracle's hearth / ocean-coast / biome-snow
+ *     states, so a lookbook frame and an old baseline of one place (git history) can be set side by side;
  *   forest-edge — located from the generator itself (climate.surfaceBlockAt over a grid): forest at z <= 58 for
  *     x 12..64, plains to the south; the camera stands ~12 m above the plains looking north at the tree line.
  */

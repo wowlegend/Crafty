@@ -34,8 +34,8 @@ REPO ROOT = /Users/kz/Code/Crafty/            ← .git + docs + memory + master-
 
 APP DIR   = /Users/kz/Code/Crafty/frontend/    ← the React/Vite app — run npm + tests FROM HERE
   ├─ src/                                         ← ALL source (.jsx/.js). NOT at the repo root.
-  ├─ tests/  gates/ (static-gates) · data/ (characterization) · visual/baseline/*.png · store/
-  ├─ scripts/visual/capture.mjs
+  ├─ tests/  gates/ (static-gates) · data/ (characterization) · e2e/ (Playwright) · store/
+  ├─ scripts/visual/lookbook.mjs                  ← the eye-level lookbook, the look acceptance surface
   └─ package.json, node_modules/, vite.config.js, tailwind.config.cjs
 ```
 
@@ -78,7 +78,7 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   it in the running game (e2e, a live probe), not only that it compiles.
   **The other ≥900-LOC files carry no such finding.** `miniplex` ECS is a **NARROW** slice: real and
   load-bearing well beyond the "mobs/loot/XP only" this line used to claim — `grep -rln "ecs/world" frontend/src/ | grep -v "\.test\."` returns 15 files incl. grass, minimap sync, nametags, element zones, hurl and squad AI — but still NOT the whole architecture. Do NOT trust older "clean ECS" claims.
-- The engine CORE is real and is what the deployed game runs on (greedy mesher, the block texture array, Rapier KCC, A* worker, audio occlusion, day/night, chunk-dispose): a replacement lands when it measures better on the same scenes (frame time, memory, the e2e and visual gates), not on taste. Touch/mobile is now BUILT (iPad/iPhone, 2026-06-15) — iOS cold-start was Pointer-Lock-gated and is bridged via `enterPlay()` (src/MenuSystem.jsx); QuestTracker collapses on touch, compact SimpleExperienceBarTouch readout, `scripts/visual/touch-probe.mjs` MANUAL probe (in neither pre-push nor CI; the committed guard is `tests/gates/quest-tracker-touch.test.jsx`); only real-device feel is Kevin-gated. The real test surface is the vitest unit suite + the puppeteer visual gate (the old blind `test_swarm.js` rubber-stamp was deleted) — but still distrust old "100% green/SOTA" doc claims; verify against live code + the gates. **Counts deliberately omitted** — read them from the command instead — `npm run test:unit` prints the suite total, `ls tests/visual/baseline/*.png | wc -l` the gated states.
+- The engine CORE is real and is what the deployed game runs on (greedy mesher, the block texture array, Rapier KCC, A* worker, audio occlusion, day/night, chunk-dispose): a replacement lands when it measures better on the same scenes (frame time, memory, the e2e suite and the lookbook), not on taste. Touch/mobile is now BUILT (iPad/iPhone, 2026-06-15) — iOS cold-start was Pointer-Lock-gated and is bridged via `enterPlay()` (src/MenuSystem.jsx); QuestTracker collapses on touch, compact SimpleExperienceBarTouch readout, `scripts/visual/touch-probe.mjs` MANUAL probe (in neither pre-push nor CI; the committed guard is `tests/gates/quest-tracker-touch.test.jsx`); only real-device feel is Kevin-gated. The real test surface is the vitest unit suite + the Playwright e2e suite in CI, and looks are judged on the eye-level lookbook (the old blind `test_swarm.js` rubber-stamp was deleted) — but still distrust old "100% green/SOTA" doc claims; verify against live code + the gates. **Counts deliberately omitted** — read them from the command instead — `npm run test:unit` prints the suite total.
 
 ## ⚠️ BROWSER / TEST-PROCESS HYGIENE (Kevin, 2026-07-13 — NON-NEGOTIABLE)
 
@@ -147,45 +147,20 @@ pipeline genuinely cannot see:
 |---|---|:--:|:--:|:--:|---|
 | e2e (the suite) | `npm run test:e2e` (playwright, **sharded 8×** in CI) | — | — | ✅ | real-input regressions; `@local-only` specs are excluded in the workflow. Too slow for any local tier (~20 min, `workers: 1`), so the push checks the RECEIPT instead — the `e2e freshness` row above. Skipped in CI when every changed path is docs AND the base commit's own `ci ok` passed (`frontend/scripts/ci/change-scope.mjs`) |
 | `ci ok` | `node scripts/ci/ci-ok.mjs` (the last job in `ci.yml`) | — | — | ✅ | **THE REQUIRED CHECK on main** — the one context branch protection names. Needs every other job and fails unless each passed, or e2e was skipped under a docs-only verdict; also fails when `ci.yml` has a job missing from its needs. Runs under `always()`, so a cancelled run reads red, never skipped (a skipped check counts as passing) |
-| visual | `npm run test:visual` | — | — | — | **nothing runs it.** Manual, before a milestone or any render change — so a green pipeline says nothing about how Crafty LOOKS |
+| look (lookbook) | `node scripts/visual/lookbook.mjs` | — | — | — | **nothing automatic**: eye-level frames (hands, HUD, weather, mobs, motion) on a real GPU, read by a person. It is the look acceptance surface: every look change attaches its before and after frames (DECISIONS 2026-10-28 W1-H item 1). DOM-only checks use Playwright's `toHaveScreenshot` |
 
-- `test:visual` is `capture.mjs && vitest`, i.e. it RE-CAPTURES. Never run it alongside another capture —
-  both bind port 4178 with `--strictPort` and the collision fakes a failure.
-- `npm run visual:capture` regenerates frames only. It preflights that the browser can present a frame and
-  aborts in ~3s with a named cause if not, rather than hanging on a dead compositor.
-- Visual gate: capture-determinism is the **DESIGN** (forced `high` tier), **not the ACHIEVED state**.
-  Chromium does not guarantee deterministic rendering (playwright#22620, crbug 919955), so exact equality
-  is not a property you can demand — `docs/superpowers/DECISIONS.md` (2026-08-09) carries the evidence.
-- **THE MEASURED DETERMINISM NUMBERS THAT USED TO SIT HERE ARE VOID, AND THE REASON GENERALISES.** This
-  bullet stated a per-frame table (13 byte-identical, `menu` 0.455%, `explore-day` 0.210%) measured
-  2026-08-09. On 2026-08-13 `puppeteer` went 24.42.0 → 25.6.0 to remove `extract-zip` (CVE-2026-56876),
-  which moved the **bundled Chromium 147 → 151** — four majors. Every one of those numbers was produced
-  by a renderer that is no longer installed. **"None is reproducible" was DISPROVEN the same day**: two
-  clean captures on Chromium 151 put 17/31 frames byte-identical against the 147-shot baselines with ZERO
-  over the 6% gate. The renderer swap is real and the numbers are still void as CURRENT state — but the
-  oracle survived it, which is the opposite of what this paragraph predicted. **A determinism measurement is a
-  claim about a RENDERER as much as about the code**, so it expires when either moves; that is why this
-  file now names the COMMAND and the provenance field rather than a table. Read
-  `tests/visual/baseline/.capture-meta.json` → `provenance.ua` for which Chromium a baseline was shot on,
-  and re-measure rather than quoting. A re-baseline on 151 is OWED — see `memory/ACTIVE_PLAN.md`.
-- **HOW determinism is actually achieved — by SUPPRESSION, not by seeding.** The old wording here said
-  "seed RNG; freeze clocks", and an agent who believes that will misdiagnose a flapping frame. Measured:
-  `captureRandom` has **one** consumer (`render/WeatherSystem.jsx`) against **72 raw `Math.random()` in
-  20 files** (re-measured 2026-08-13; was 73/19 — the ratio, not the exact pair, is the point); there is
-  no global clock freeze, just scattered substitutions against clock reads and timers. What actually
-  happens is that **127** `isCaptureMode()` guards TURN THINGS OFF. **So the gated
-  frames depict a build with weather, mob AI, NPC routines, particles and spawning disabled — a version
-  nobody plays, and one structurally incapable of regressing anything that only manifests in motion.**
-- **A capture guard must RESET to a declared value, never early-`return`.** Stopping an animation leaves
-  it wherever it got to, and capture is enabled AFTER boot, whose length varies per process (measured
-  1.68–10.43 s across five runs) — so a freeze is itself run-dependent. Pairwise frame diff tracks that
-  window, r = 0.842. The check must also live INSIDE the callback, since the flag flips after mount.
-- The gate runs against the **DEV server**, so 3 of its 31 frames (`primitives-showcase-*`,
-  `title-mascot`) are dev-only components that cannot exist in the bundle Vercel deploys on every push —
-  and **no harness loads that bundle at all**.
+- **The capture oracle is retired** (DECISIONS 2026-10-28 W1-H item 1, lane W2-B): its 31 SwiftShader baselines
+  showed a build with weather, mobs, NPCs, particles, spawning and the hands turned off, a version nobody plays.
+  The old frames are git history. `frontend/tests/visual/baseline/menu.png` stays only as the og-image source
+  (`scripts/visual/make-og-image.mjs`) until the media pipeline (W2-H) replaces it.
+- **Capture mode stays a test tool** (e2e specs and probes call `enterCapture` to freeze the world for a
+  deterministic read), and it works by SUPPRESSION, not seeding: `isCaptureMode()` guards turn things off
+  (`rg -c "isCaptureMode\(" frontend/src` counts them). A guard must RESET to a declared value, never
+  early-`return`, and must check inside the callback, because capture is enabled after boot and boot length
+  varies per process. Each guard leaves shipped code when its subject next moves (SOTA reset plan row 48).
 - **A gate's PASS is worth nothing without its DENOMINATOR.** SEVENTEEN things here have now shipped a clean
   report over input they never examined (`gate-shape` skipping 42% of gates, `doc-currency` blind to bare
-  paths, a test written into `tests/visual/` which vitest EXCLUDES so it never ran, `esc-pause-probe` never
+  paths, a test written into `tests/visual/` while vitest excluded that directory, so it never ran, `esc-pause-probe` never
   pressing ESC twice, `tapTestId` never checking WHERE its tap landed, …). Read the count, not the tick.
   **This paragraph was already here when the last two happened** — being read at orientation is not the same
   as being salient while you write the gate, so the full checklist now lives in

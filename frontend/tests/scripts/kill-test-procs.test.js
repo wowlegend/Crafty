@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
  *   - an orphaned CHAIN (matching parent -> matching child, as Chrome -> its helpers, npm -> vite) must be
  *     killed whole: the walk goes up past matching ancestors to the first non-matching one;
  *   - --force kills the owned one too.
- * Lives in tests/scripts/ because its subject is a TOOL executed on fixtures, like freeze-density.
+ * Lives in tests/scripts/ because its subject is a TOOL executed on fixtures.
  *
  * Mutation-Proof: by hand against scripts/dev/kill-test-procs.sh (cp backup, byte-verified restore), each RED:
  *   K1 plausible-wrong: every candidate treated as orphaned (the old blanket sweep) -> "owned" RED
@@ -33,8 +33,8 @@ import { tmpdir } from 'node:os';
  *   K8 plausible-wrong: every non-matching ancestor walked past (a live runner too)   -> live-wrapper RED
  *
  * BLIND SPOT: the DEFAULT patterns are not driven here. They were checked by hand against a live capture's
- * real process table on 2026-09-22 (vite -> npm exec -> capture.mjs; Chrome helpers -> Chrome -> capture.mjs;
- * crashpad handlers at PPID 1) — which is how the crashpad exception was found, after this suite was green.
+ * real process table on 2026-09-22 (vite -> npm exec -> a node harness; Chrome helpers -> Chrome -> that
+ * harness; crashpad handlers at PPID 1) — which is how the crashpad exception was found, after this suite was green.
  */
 const SCRIPT = resolve(process.cwd(), 'scripts/dev/kill-test-procs.sh');
 const MARK = `ktp-canary-${process.pid}-${Date.now()}`;
@@ -112,7 +112,7 @@ describe('kill-test-procs: ownership decides, not age', () => {
   });
 
   it('names the RUNNER as the owner of a live chain, not the wrapper in between', async () => {
-    // The live shape: this test -> a matching wrapper -> a matching child (capture.mjs -> npm exec vite ->
+    // The live shape: this test -> a matching wrapper -> a matching child (a probe -> npm exec vite ->
     // vite). The owner worth naming is the runner; naming the wrapper points at the wrong process to stop.
     const wrapper = spawn(process.execPath, chainArgs(2, 'live-chain'), { stdio: 'ignore' });
     expect(await waitFor(() => pidsOf('live-chain').length === 2), 'the live chain fixture never started').toBe(true);

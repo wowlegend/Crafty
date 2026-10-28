@@ -5,7 +5,7 @@ import { render } from '@testing-library/react';
 // EVERY CAPTURE-GATED ANIMATION RESETS TO A DECLARED POSE. IT DOES NOT MERELY STOP.
 //
 // `if (isCaptureMode()) return;` freezes an animation WHEREVER IT HAD GOT TO. The harness enables
-// capture only after the page has booted (capture.mjs calls enterCapture once __craftyTest.ready()
+// capture only after the page has booted (enterCapture is called once __craftyTest.ready()
 // resolves), and boot takes a different length of time in every process — so the frozen phase is
 // RUN-DEPENDENT and the capture faithfully locks it in.
 //

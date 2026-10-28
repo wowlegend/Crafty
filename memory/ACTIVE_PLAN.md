@@ -539,9 +539,9 @@ blind to the error class it exists to watch. Widening it is cheap and is NOT gat
 **1. VISUAL RE-BASELINE (capture A running in background at time of writing).**
 - WHY: puppeteer 25.6.0 moved bundled Chromium **147 → 151**, so every committed baseline was captured on
   a renderer four majors old. It is ALSO the only way to replace the **29 of 31 floor-clamped
-  density-ledger entries** with measurements (`_unmeasured` in `frontend/tests/visual/.density-ledger.json`).
+  density-ledger entries** with measurements (`_unmeasured` in `frontend/tests/visual/.density-ledger.json`, REMOVED 2026-10-28 by W2-B).
 - PROCEDURE: two captures on identical code, quiet machine, review frames by eye, then
-  `node scripts/visual/freeze-density.mjs`. Preconditions written in that file's header.
+  `node scripts/visual/freeze-density.mjs` (REMOVED 2026-10-28 by W2-B). Preconditions written in that file's header.
 - Run A frames land in `/tmp/.../scratchpad/rbA/`; run B in `rbB/`. Compare A-vs-B for real run-to-run
   variance, and A-vs-baseline for the Chromium delta.
 - COMMIT DISCIPLINE: `Baseline-Review:` trailer required; must NOT be bundled with any `frontend/src/` edit.

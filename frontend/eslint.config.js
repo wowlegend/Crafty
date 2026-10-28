@@ -48,7 +48,7 @@ export default [
   //
   // WHY: this gate exists because four ReferenceError crashes shipped to main from byte-exact god-file
   // extractions — and for two weeks it did not cover the 28 script files that PRODUCE every visual, perf
-  // and CI verdict, nor the 330 test files that are the verdict. A crash in capture.mjs or a probe is
+  // and CI verdict, nor the 330 test files that are the verdict. A crash in a probe or a CI script is
   // exactly as capable of shipping a false GREEN as a crash in src/, and it is less likely to be noticed
   // because nobody looks at a harness that "passed".
   //

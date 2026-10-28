@@ -11,8 +11,7 @@ const VISUAL = resolve(dirname(fileURLToPath(import.meta.url)), '../../scripts/v
 // Measured 2026-08-12, before this gate existed: 4196 was claimed by four separate probes, 4195 by three,
 // and 4194 / 4198 / 5197 / 5199 by two each. `--strictPort` means the second one to start does not fall
 // back to the next free socket — it dies on bind, and the failure reads as a broken probe rather than as
-// two probes wanting one port. The repo has already paid for that exact confusion once on the capture
-// port, and the finding notes the compounding case: a leaked vite from a crashed run squats the shared
+// two probes wanting one port. The finding notes the compounding case: a leaked vite from a crashed run squats the shared
 // port and blocks a DIFFERENT probe, which then looks broken for reasons in nobody's diff.
 //
 // The fix was to move allocation into `_serve.mjs` — a helper is used at the moment of the mistake, a
@@ -29,9 +28,8 @@ const VISUAL = resolve(dirname(fileURLToPath(import.meta.url)), '../../scripts/v
 /**
  * Every script here that STARTS A SERVER — classified by what the file does, not by its name.
  *
- * This was a filename exclusion list (`!f.startsWith('_') && f !== 'freeze-density.mjs'`), and it broke
- * the first time a non-server script was added to the directory: make-og-image.mjs, which reads a PNG
- * and writes a PNG, was reported as a probe with no port allocation. An exclusion list is a denominator
+ * Not a filename exclusion list: a non-server script such as make-og-image.mjs, which reads a PNG and
+ * writes a PNG, would be reported as a probe with no port allocation. An exclusion list is a denominator
  * that rots — it has to be edited by whoever adds a file, which is exactly the person not thinking about
  * this gate. Asking whether the file spawns vite cannot go stale that way.
  */

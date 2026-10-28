@@ -530,7 +530,7 @@ function GameApp({ experienceSystem }) {
       // diagnostic below then branched on it -- so `physicsY == null` was a tautology, two of its four
       // reason strings were unreachable, and the one it always returned blamed a probe that was never
       // run. A diagnostic naming a cause that cannot have occurred is worse than a silent failure: it
-      // sends the next reader to the wrong subsystem, and capture.mjs prints this string in its WARN.
+      // sends the next reader to the wrong subsystem, and the caller prints this string as its warning.
       // Passing the literal at the one call site keeps resolveSpawnGround's signature honest about what
       // this hook deliberately does NOT consult.
       // `force` passes the EXHAUSTED fail count so resolveSpawnGround takes its documented

@@ -80,10 +80,9 @@ export function resetCaptureClock() {
  * Setting an ABSOLUTE index makes the captured phase a constant a reviewer can read out of the harness,
  * identical on a 120 Hz laptop and a CI runner.
  *
- * AND IT FREEZES, which is not tidiness but a requirement. The harness only photographs a frame after
- * `waitForStableFrame` sees two consecutive IDENTICAL frames. A world animating off a still-ticking
- * clock never produces two identical frames, so a stability wait and a free-running clock cannot both be
- * satisfied — the world has to be still at the declared phase to be photographable twice. `resetCaptureClock`
+ * AND IT FREEZES, which is not tidiness but a requirement. A harness that photographs a frame only once
+ * two consecutive frames match can never photograph a world animating off a still-ticking clock — the
+ * world has to be still at the declared phase to be photographable twice. `resetCaptureClock`
  * thaws, so the next captured state is free to tick again before it too is pinned.
  *
  * Refuses a negative or non-finite phase rather than corrupting the counter, and returns -1 so a caller

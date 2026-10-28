@@ -6,8 +6,8 @@ import { inspect, needsGuard } from '../../scripts/ci/cli-guard.mjs';
 // The class this enforces bit TWICE, and both times the symptom was a suite that reported a result over
 // tests it never ran. scripts/ci/i18n-adoption.mjs called process.exit(1) at module scope; importing a seam
 // from it killed the vitest worker DURING COLLECTION and the run printed "1 failed | no tests" — which reads
-// like a caught failure rather than a suite that never executed. scripts/visual/capture.mjs was worse in
-// kind: `import` spawned a browser and a vite server.
+// like a caught failure rather than a suite that never executed. A browser harness (since deleted) was worse
+// in kind: `import` spawned a browser and a vite server.
 //
 // STATUS §G recorded the sweep as done with nothing left to fix. That is a SNAPSHOT, not a ratchet — nothing
 // stopped the next script shipping unguarded, which is the whole reason this checker exists.
@@ -31,7 +31,7 @@ describe('cli-guard — flags an exporting script that runs on import', () => {
     expect(needsGuard(info)).toBe(true);
   });
 
-  it('flags the capture.mjs shape — a top-level await that launches something', () => {
+  it('flags the browser-harness shape — a top-level await that launches something', () => {
     const src = `
       export const PORT = 4178;
       const browser = await launch();
@@ -201,8 +201,8 @@ describe('cli-guard — the live repo, with its denominator asserted', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('the two historical offenders are guarded TODAY — the fix is still in place', () => {
-    for (const rel of ['scripts/ci/i18n-adoption.mjs', 'scripts/visual/capture.mjs']) {
+  it('the surviving historical offender is guarded TODAY — the fix is still in place', () => {
+    for (const rel of ['scripts/ci/i18n-adoption.mjs']) {
       const hit = scanned.find((s) => s.rel === rel);
       expect(hit, `${rel} not found — path moved? update this test`).toBeDefined();
       expect(hit.info.hasExport, `${rel} should still export a seam`).toBe(true);

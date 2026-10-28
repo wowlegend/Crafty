@@ -9,7 +9,7 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.test.{js,jsx}', 'src/**/*.test.{js,jsx}'],
     // tests/e2e/** are Playwright specs (*.spec.js, import @playwright/test) — never run by vitest
-    exclude: [...configDefaults.exclude, 'tests/visual/**', 'tests/e2e/**'],
+    exclude: [...configDefaults.exclude, 'tests/e2e/**'],
     testTimeout: 20000,
     // COVERAGE IS AN INSTRUMENT HERE, NOT A GATE — and deliberately has NO thresholds.
     //
