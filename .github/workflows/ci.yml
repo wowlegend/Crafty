@@ -39,7 +39,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      # FULL HISTORY (2026-10-28). On a push to main the fast tier runs artifact-currency, whose drift is
+      # `rev-list --count syncedSha..HEAD`; a depth-1 clone holds no commit but HEAD, so that count cannot be taken.
+      # For an artifact surface the script refuses an unmeasurable drift on a main push rather than skipping it, so a
+      # shallow checkout here reds main for those; a surface with no recorded sha still skips, and a page-kind
+      # surface in a shallow checkout reads as current. The step runs after the push has landed: it detects drift,
+      # it does not bound a merge.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -62,7 +70,9 @@ jobs:
       # ran. ci/pipeline.sh is the definition; both callers invoke it, so neither can drift.
       #
       # `--tier=fast` adds the steps that need network or a browser (knip, npm audit, prod-smoke) and
-      # skips the commit-shaped ones, which need a push refspec a runner does not have.
+      # skips the commit-shaped ones (queue-ledger, e2e-freshness), which need a push refspec a runner does not
+      # have. The one exception is artifact-currency: on a push to main it runs here too, naming main, to detect
+      # drift after a merge GitHub made (a pull_request or a workflow_dispatch run skips it).
       - name: Pipeline (fast tier — every deterministic gate, plus network/browser)
         working-directory: .
         run: bash ci/pipeline.sh --tier=fast
@@ -81,14 +91,16 @@ jobs:
   # the software renderer, and every shard of PR #22 hit timeout-minutes with all its finished tests
   # green (#23 and #25 likewise) — the same `cancelled`-reads-as-noise shape as 2026-07-27. Six shards
   # keep the total runner minutes (free: the repo is public) and halve each shard's wall time.
+  # 6 -> 8 SHARDS 2026-10-28: with the Phase 0 lanes' specs merged, two shards projected to ~20 min on a first
+  # pass with no room for a retry of their heavy specs (PR #24 prep, episode :1209).
   e2e:
-    name: e2e (playwright) ${{ matrix.shard }}/6
+    name: e2e (playwright) ${{ matrix.shard }}/8
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false # one red shard must not hide the results of the others
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v7
 
@@ -114,7 +126,7 @@ jobs:
       # is HERE, in the workflow, rather than hidden in playwright.config.js, so it is visible to anyone
       # reading what CI actually runs. Those specs still run at full strength locally.
       - name: E2E
-        run: npm run test:e2e -- --shard=${{ matrix.shard }}/6 --grep-invert="@local-only"
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/8 --grep-invert="@local-only"
 
       # `if: always()` because a shard that FAILED is exactly when you want to know which specs were
       # merely flaky and which actually broke. REPORT-ONLY, exits 0 — `retries: 2` means a retry-then-pass
