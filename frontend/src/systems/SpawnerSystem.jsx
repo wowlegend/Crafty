@@ -67,7 +67,6 @@ export const SpawnerSystem = () => {
       speed: mobConfig.speed,
       passive: mobConfig.passive,
       damage: mobConfig.damage,
-      xp: mobConfig.xp,
       // the mob-variety pass: registry legMode reaches the renderer (only hybrids carried it before)
       ...(mobConfig.legMode ? { legMode: mobConfig.legMode } : {}),
       targetX: x,

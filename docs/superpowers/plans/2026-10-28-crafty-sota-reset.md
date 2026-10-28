@@ -85,7 +85,7 @@ Verdicts: delete, rewrite, redesign, new, keep. Sizes are the lens estimates. Th
 | 4 | Retire the capture-mode visual oracle; cancel umbrella 0e and T10 `[harn: retire oracle]` | delete | The light lane ships without a re-baseline; 129 test-only `isCaptureMode()` branches leave shipped code over time | L | #3 seam gate; a DECISIONS entry reversing roadmap :261; the og source replaced, or `menu.png` kept until it is | WEAKENED |
 | 5 | Land the light and colour script (in flight). Accept it on eye-level frames and clips; check an OKLab blend on the dusk clip `[vis: colour script]` | keep | A moonlit, readable night and a warm golden hour instead of maroon nights and navy ground | S | #4 | UNVERIFIED (branch not read by the refuter) |
 | 6 | Land combat stance as reviewed, without coupling it to encounters `[ref]` | keep | Off-screen windup chevrons, a 3-step string with a finisher; a fight can no longer be outwalked | S | #24 (DECISIONS item 10) | The game lens's coupling proposal is WEAKENED, so no coupling |
-| 7 | Gameplay quick deletions: delete the Settings Time row; delete the 3 XP per cast; Settler kills bank 0 Aspect power `[game: Time toggle, XP farms, Settlers]` | delete | No skipping a siege from the pause menu; levels mean fighting; no reward for killing a villager | S | none | STANDS, STANDS; WEAKENED for Settlers, so only the narrow banking fix is adopted |
+| 7 | Gameplay quick deletions: delete the Settings Time row; delete the 3 XP per cast; a Settler kill banks 0 Aspect power, pays 0 XP, and earns no kill-quest credit and no kill count; a spell hit on a NEUTRAL mob (a Settler or livestock) pays no per-hit XP, while a livestock KILL still pays its declared XP, so hunting stays rewarded; Spellcaster and Archmage count spells landed on hostiles (once per spell, the Shadow Dragon included), not casts `[game: Time toggle, XP farms, Settlers]` | delete | No skipping a siege from the pause menu; levels mean fighting; no reward for killing a villager | S | none | STANDS, STANDS; WEAKENED for Settlers. The command session approved the wider Settler and NEUTRAL scope on game-design grounds (2026-10-28, DECISIONS item 18) |
 | 8 | Delete hunger (the meter that kills while its bar is hidden) `[game: creative/hunger]` | delete | No unexplained damage late in a session | S | #2 (shares GameSystems.jsx) | WEAKENED for the creative half; the hunger half is confirmed |
 | 9 | Chain lightning queries `mobsQuery` live; later delete the 250 ms ECS-to-store mirror `[arch A17]` | delete | Arcs land where mobs are, never on a mob that already died | S | none | STANDS |
 | 10 | Terrain mipmaps on (one constant; an A/B has been on file since 2026-09-22) `[vis: mipmaps]` | rewrite | Distant ground and treelines stop crawling and sparkling | S | #3 for the clips; DECISIONS entry | STANDS |
@@ -492,8 +492,10 @@ from `npm view` (lens-reported).
   and keeps build accrual feeding it `[ref]`.
 - **Fire and ice annihilating each other.** Documented as "THE DESIGN" (elementZones.js:4-6). The roadmap's reaction
   table (:263) extends it rather than undoing it `[ref]`.
-- **Soft death** (the decision of record), the audience-broad stance, and the killable NEUTRAL Settler tier
-  (targeting.js:16-23). Only the Settler banking side effect changes `[game]` `[ref]`.
+- **Soft death** (the decision of record), the audience-broad stance, and the killable NEUTRAL tier
+  (targeting.js:16-23). What a NEUTRAL hit or kill pays changes (#7, DECISIONS item 18): a Settler kill pays 0 XP, banks
+  nothing, and earns no kill-quest credit or kill count; a spell hit on a Settler or livestock pays no per-hit XP; a
+  livestock kill still pays its declared XP, so hunting stays rewarded `[game]` `[ref]`.
 - **First person as the default camera** (Kevin, 2026-06-07; transformCam.js:4-12). The 14 s third-person beast hold
   is already in Kevin's recorded scope. A persistent chase camera stays a flagged experiment `[ref]`.
 - **Rapier as the movement engine** until a flagged voxel controller wins a replay A/B. Movement feel is the game, and

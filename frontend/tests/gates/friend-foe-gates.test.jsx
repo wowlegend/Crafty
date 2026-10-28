@@ -1,13 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, renderHook, act, cleanup } from '@testing-library/react';
 import * as THREE from 'three';
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-
 import { ecs, mobsQuery } from '../../src/ecs/world';
 import { CombatSystem } from '../../src/systems/CombatSystem';
 import { GameMethods } from '../../src/GameMethods';
@@ -15,6 +9,9 @@ import { makeNpcEntity } from '../../src/world/npcSpawn';
 import { MOB_TYPES } from '../../src/game/mobTypes';
 import { solveChainTargets } from '../../src/game/chainLightning';
 import { isProtected, isAutoTargetable, canPlayerDamage } from '../../src/combat/targeting';
+import { useGameStore } from '../../src/store/useGameStore';
+import { useFerocityAccrual, useKineticAccrual, useSoulAccrual } from '../../src/world/accrualHooks';
+import { useQuestSystem } from '../../src/QuestSystem';
 
 // B1 — FRIEND/FOE. The 18-domain review's #1 CRITICAL: the player could permanently kill all four hub
 // questgivers (merchant / smith / healer / guide) with 2.7 seconds of holding left-click, deleting
@@ -134,10 +131,10 @@ describe('B1 friend/foe — the hub questgivers are not target practice', () => 
 
 describe('B1 friend/foe — auto-targeters may not pick their own victims', () => {
   it('chain lightning never hops to a questgiver or to livestock', () => {
-    const zombie = { id: 1, position: [0, 0, 0], passive: false };
-    const cow = { id: 2, position: [0, 0, 3], passive: true };
-    const questgiver = { id: 3, position: [0, 0, 4], passive: true, isNPC: true };
-    const skeleton = { id: 4, position: [0, 0, 5], passive: false };
+    const zombie = { id: 1, position: { x: 0, y: 0, z: 0 }, passive: false };
+    const cow = { id: 2, position: { x: 0, y: 0, z: 3 }, passive: true };
+    const questgiver = { id: 3, position: { x: 0, y: 0, z: 4 }, passive: true, isNPC: true };
+    const skeleton = { id: 4, position: { x: 0, y: 0, z: 5 }, passive: false };
 
     const hops = solveChainTargets([zombie, cow, questgiver, skeleton], { x: 0, y: 0, z: 0 }, {
       excludeId: 1, baseDamage: 75, maxChains: 3, range: 8, damageReduction: 0.3,
@@ -162,21 +159,85 @@ describe('B1 friend/foe — auto-targeters may not pick their own victims', () =
     expect(isAutoTargetable({ id: 9, passive: false, isNPC: true })).toBe(false);
     expect(canPlayerDamage({ id: 9, passive: false, isNPC: true })).toBe(false);
   });
+});
 
-  it('the mobEntities SNAPSHOT carries every field the targeting predicates read', () => {
-    // Chain lightning targets off the store SNAPSHOT (MinimapSyncSystem), not off live ECS entities.
-    // `isNPC` was missing from that snapshot, so the questgivers were excluded only incidentally.
-    // Read the projection MinimapSyncSystem actually writes and assert it preserves allegiance.
-    const live = { id: 1, type: 'villager', passive: true, isNPC: true, role: 'merchant', npcName: 'Bram',
-                   position: { x: 1, y: 2, z: 3 } };
-    const snap = { id: live.id, type: live.type, passive: live.passive, isNPC: live.isNPC, role: live.role,
-                   npcName: live.npcName, position: [live.position.x, live.position.y, live.position.z] };
+// A Settler is NEUTRAL: killable when you aim at one, but killing villagers must never be a way to power up. The kill
+// runs through the real damage path and the real kill bus into the three accrual hooks the game mounts.
+describe('the NEUTRAL tier banks no Aspect power', () => {
+  const Accrual = () => { useFerocityAccrual(); useKineticAccrual(); useSoulAccrual(); return null; };
+  const banks = () => {
+    const s = useGameStore.getState();
+    return { ferocity: s.ferocityBanked, kinetic: s.kineticBanked, soul: s.soulBanked };
+  };
+  beforeEach(() => {
+    clearWorld();
+    useGameStore.setState({ isDay: true, ferocityBanked: 0, kineticBanked: 0, soulBanked: 0 });
+    render(<><CombatSystem setDamageNumbers={() => {}} setShockwaves={() => {}} damageId={{ current: 0 }} /><Accrual /></>);
+  });
 
-    expect(isProtected(snap)).toBe(true);
-    expect(isProtected(snap)).toBe(isProtected(live));       // the snapshot cannot disagree with the entity
-    expect(isAutoTargetable(snap)).toBe(isAutoTargetable(live));
+  it('a deliberate day kill of a Settler leaves every bank where it was; a Husk kill fills them', () => {
+    const settler = spawn({ id: 9201, type: 'villager', pos: [0, 0, -2] });
+    GameMethods.damageMob(settler.id, 9999, 'physical', 'player');
+    expect(settler.health, 'the Settler did not die — nothing below is about a kill').toBeLessThanOrEqual(0);
+    expect(banks(), 'killing a Settler banked Aspect power').toEqual({ ferocity: 0, kinetic: 0, soul: 0 });
 
-    const src = readFileSync(resolve(HERE, '../../src/systems/MinimapSyncSystem.jsx'), 'utf8');
-    expect(src).toMatch(/setMobEntities\([\s\S]{0,200}isNPC:\s*e\.isNPC/);
+    // The same instrument, same frame of mind: a hostile day kill does bank, so a zero above is not a dead bus.
+    const husk = spawn({ id: 9202, type: 'zombie', pos: [0, 0, -3] });
+    GameMethods.damageMob(husk.id, 9999, 'physical', 'player');
+    expect(husk.health).toBeLessThanOrEqual(0);
+    const after = banks();
+    expect(after.ferocity, 'a Husk kill banked no Ferocity — the accrual path is dead').toBeGreaterThan(0);
+    expect(after.kinetic, 'a Husk kill banked no Kinetic').toBeGreaterThan(0);
+    expect(after.soul, 'a Husk kill banked no Soul').toBeGreaterThan(0);
+  });
+
+  it('a Settler kill drops no XP; a Husk or a Boar kill drops its whole declared worth', () => {
+    const orbXP = () => ecs.entities.filter((e) => e.isXPOrb).reduce((sum, e) => sum + e.amount, 0);
+    const killFor = (id, type, pos) => {
+      const e = spawn({ id, type, pos });
+      const before = orbXP();
+      GameMethods.damageMob(e.id, 9999, 'physical', 'player');
+      expect(e.health, `the ${type} did not die — nothing below is about a kill`).toBeLessThanOrEqual(0);
+      return orbXP() - before;
+    };
+    expect(killFor(9203, 'villager', [0, 0, -2]), 'killing a Settler dropped XP').toBe(0);
+    // Presence, same instrument: a hostile, and livestock hunted for food, still pay what the table declares.
+    expect(killFor(9204, 'zombie', [0, 0, -3]), 'a Husk kill dropped less than its declared XP — the orb path is dead')
+      .toBeGreaterThanOrEqual(MOB_TYPES.zombie.xp);
+    expect(killFor(9205, 'pig', [1, 0, -3]), 'a Boar kill dropped less than its declared XP')
+      .toBeGreaterThanOrEqual(MOB_TYPES.pig.xp);
+  });
+});
+
+// The XP a kill drops, the kill-quest credit it earns and the kill it counts all read one value, the worth the mob's
+// TYPE declares. A mob carrying its own `xp` field cannot split them: here a Settler carries 40 and a Husk carries 0,
+// and every channel follows the type.
+describe('a kill pays XP and earns kill credit from one reading', () => {
+  beforeEach(() => {
+    clearWorld();
+    useGameStore.setState({ questState: { quests: [
+      { id: 'hunter', title: 'Hunter', type: 'kill', target: 50, progress: 0, completed: false, claimed: false },
+    ], completedQuestIds: [] } });
+    render(<CombatSystem setDamageNumbers={() => {}} setShockwaves={() => {}} damageId={{ current: 0 }} />);
+  });
+
+  it('a Settler carrying xp 40 pays and counts nothing; a Husk carrying xp 0 pays its declared worth and counts', () => {
+    const { result } = renderHook(() => useQuestSystem());
+    const orbXP = () => ecs.entities.filter((e) => e.isXPOrb).reduce((sum, e) => sum + e.amount, 0);
+    const killOne = (id, type, ownXP, pos) => {
+      const e = spawn({ id, type, xp: ownXP, pos });
+      const before = orbXP();
+      act(() => { GameMethods.damageMob(e.id, 9999, 'physical', 'player'); });
+      expect(e.health, `the ${type} did not die — nothing below is about a kill`).toBeLessThanOrEqual(0);
+      const hunter = result.current.quests.find((q) => q.id === 'hunter');
+      return { xp: orbXP() - before, kills: result.current.stats.kills, credit: hunter.progress };
+    };
+    expect(killOne(9301, 'villager', 40, [0, 0, -2]), 'a Settler paid or counted through a field on the entity')
+      .toEqual({ xp: 0, kills: 0, credit: 0 });
+    const husk = killOne(9302, 'zombie', 0, [0, 0, -3]);
+    expect(husk.kills, 'the Husk kill was not counted — the kill bus never reached the quest system').toBe(1);
+    expect(husk.credit, 'the Husk kill earned no quest credit').toBe(1);
+    expect(husk.xp, 'the Husk paid what its entity field says, not what its type declares')
+      .toBeGreaterThanOrEqual(MOB_TYPES.zombie.xp);
   });
 });
