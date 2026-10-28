@@ -216,8 +216,11 @@ longer finds the instructions there; none is configured to in this repo.
    sun are unchanged, so the dusk sky stays violet. The grey card's up face now reads L 0.418 at 0.02 and 0.415 at 0.48
    (gold, hue 78-79), 0.381 at 0.50 and 0.337 at midnight. A first retune with lavender twilight light and redder greys
    passed the model, but the real-GPU pad by the brazier read 10-20 deg redder than the model and touched maroon at
-   0.50 on one target (WebKit 1180x820, L 0.303 C 0.043 h 16), so the final colours hold the model's pad at chroma 0.02
-   or less in the maroon hue band. **Guard:** `colour-script-gates` G1 (while the sun is up the ground, grey card and
+   0.50 on one target (WebKit 1180x820, L 0.303 C 0.043 h 16), so the final colours were chosen to keep the model's
+   pad near chroma 0.02 in the maroon hue band (read 0.021 at hue 30 at f 0.502; no gate asserts that margin). Known
+   gaps, as registry rows: G2's pad sample uses the grey card, not the terrain stone the screen was calibrated on, reads
+   only 1 m from the brazier, and stops before the night keys (0.574, 0.926); and at midnight the pad within about 1 m
+   of the brazier reads on the maroon line on screen (C 0.037-0.040, h 313-331), as it did before this lane. **Guard:** `colour-script-gates` G1 (while the sun is up the ground, grey card and
    terrain stone, is never darker than at midnight; golden hour at least 0.374 and gold) and G2 (no maroon through
    either twilight blend in the sky, fog, hazed land, ground, or the pad 1 m from the brazier, whose light `HEARTH_FIRE`
    in `frontend/src/world/homeAnchor.js` the gate and the brazier share). G2 judges the model, so it does not see that

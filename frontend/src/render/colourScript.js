@@ -29,8 +29,8 @@
 //   / dusk   the ground there: ambient x0.85 and hemi x1.50 hold it at midnight's lightness or above, for the grey card
 //            and for the darker terrain stone alike. Their light is a steel blue (#7E8CA2, hemi sky #788AAC), not
 //            lavender: the Hearth's orange on a violet light lands on maroon by the pad, and on the real GPU the pad
-//            reads 10-20 deg redder than this model, so the model keeps the pad 1 m from the brazier at chroma 0.02 or
-//            less wherever its hue is maroon's. The dusk SKY stays violet: its horizon #9A90C0 displays hue 294 (a pink
+//            reads 10-20 deg redder than this model, so these were chosen to keep the model's pad 1 m from the brazier
+//            near chroma 0.02 in maroon's hue band; G2 does not assert that margin. The dusk SKY stays violet: its horizon #9A90C0 displays hue 294 (a pink
 //            one, hue 331, hazes the land maroon).
 //   sunrise  the sun grazes (its arc peaks at 32 deg, so the up face takes about 7% of the key at golden hour), so the
 //   / sunset ground is lit by the indirect terms: ambient x0.80 and hemi x1.80 put the up face at L 0.42, between
