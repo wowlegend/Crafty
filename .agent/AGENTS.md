@@ -22,7 +22,7 @@ REPO ROOT = /Users/kz/Code/Crafty/            ← .git + docs + memory + master-
   ├─ .git/   CLAUDE.md (symlink -> .agent/AGENTS.md)
   ├─ SOTA-INITIATIVE.md                          ← MASTER PLAN v2, DIRECTION ONLY (§3 status FROZEN 06-18; S0-S3 DONE, S4 Kevin-gated)
   ├─ SOTA-KICKOFF-PROMPT.md
-  ├─ .agent/  AGENTS.md (this file) + workflows/ (debug-physics, fix-movement)
+  ├─ .agent/  AGENTS.md (this file)
   ├─ docs/superpowers/                           ← plans/, specs/, KEVIN-REVIEW-BATCH.md
   ├─ memory/                                      ← 4-piece (ACTIVE_PLAN, ARCHITECTURE, CHANGELOG, ROADMAP)
   │                                                 + REALITY-AUDIT-2026-05-30.md, IN_DEPTH_AUDIT.md,
@@ -270,10 +270,6 @@ ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.
 - `ACTIVE_PLAN.md` — volatile current-task POINTER (carries the compaction-safe resume + repo-layout block); update BEFORE execution.
 - `CHANGELOG.md` — reverse-chronological history. `ARCHITECTURE.md` — current blueprint. `ROADMAP.md` — future goals.
 - Master plan = `SOTA-INITIATIVE.md` at the repo ROOT. Review/decide items batch into `docs/superpowers/KEVIN-REVIEW-BATCH.md`.
-
-## Project-Specific Workflows (`.agent/workflows/`)
-- `debug-physics-Crafty-kz` — Rapier collision / terrain (player falling through, collider misalignment).
-- `fix-movement-Crafty-kz` — WASD / camera / pointer-lock movement.
 
 ## Where state lives (READ IN THIS ORDER)
 

@@ -57,6 +57,8 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
 APP="$ROOT/frontend"
+# Every step runs with GIT_* scrubbed (run_scrubbed, below): a hook's GIT_DIR must never reach a step's git.
+. "$ROOT/ci/git-env.sh"
 
 TIER="push"
 RANGE_ONLY=0
@@ -99,7 +101,7 @@ step() { # step <name> <cmd...>
   fi
   [ "$SECTION" = range ] && ran_range=$((ran_range + 1))
   say "$name"
-  if "$@"; then
+  if run_scrubbed "$@"; then
     return 0
   fi
   fail=1

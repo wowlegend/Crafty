@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "deny": [
       "Bash(cmux close-surface)",
@@ -8,81 +8,20 @@
     "ask": [
       "Bash(*close-preview-tabs.sh --close*)",
       "Bash(sh frontend/scripts/dev/close-preview-tabs.sh --close*)"
-    ],
-    "allow": [
-      "Bash(graft:*)",
-      "Bash(npx graft:*)"
     ]
   },
   "hooks": {
-    "PostCompact": [
+    "SessionStart": [
       {
+        "matcher": "compact",
         "hooks": [
           {
             "type": "command",
-            "command": "sh \"$CLAUDE_PROJECT_DIR/scripts/hooks/post-compact-rules.sh\"",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/scripts/hooks/session-start-compact.sh\"",
             "timeout": 10
           }
         ]
       }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" post-edit",
-            "timeout": 10000
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|mcp__graft__",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" tool-savings",
-            "timeout": 8000
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" prompt",
-            "timeout": 15000
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" session-start",
-            "timeout": 8000
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" stop",
-            "timeout": 8000
-          }
-        ]
-      }
     ]
-  },
-  "footerLinksRegexes": [
-    "graft/[\\w./-]+\\.md"
-  ]
+  }
 }
