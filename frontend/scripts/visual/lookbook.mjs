@@ -85,7 +85,7 @@ import {
   TARGETS, CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, EYE_HEADINGS, EYE_PITCH, shotPlan, eyeShotPlan, clipPlan, classifyRenderer,
   pickCandidate, shotVerdict, eyeShotVerdict, clipVerdict, passSummary, contactSheetHtml, parseCycles, indexChunkOf,
   servedBuildProblem, CYCLE_TOLERANCE, PASS_ARMS, PASS_TIMES, PASS_REPS, PASS_TARGET, PASS_LOOK_PAIRS, PASS_MAX_LOAD,
-  passWindowPlan, windowMedian, passDifferential, passVerdict, PASS_CONTROL, parseGpuUtil, gpuMsPerFrame,
+  passWindowPlan, windowMedian, passDifferential, passVerdict, admittedInstruments, PASS_CONTROL, parseGpuUtil, gpuMsPerFrame,
 } from './_lookbook.mjs';
 
 const PORT = probePort(import.meta.url);
@@ -752,9 +752,13 @@ async function measurePasses(launchOpts, launchId) {
       await page.evaluate(() => window.__craftyLookbook.passesOff([]));
       block.endedAt = new Date().toISOString();
       block.loadAtEnd = Math.round(os.loadavg()[0] * 100) / 100;
+      // Q cannot be GPU execution time in a window where it outlasts the synced wall clock that brackets it.
+      block.qOverW = block.windows.filter((x) => Number.isFinite(x.q) && Number.isFinite(x.w) && x.q > x.w).length;
+      block.admitted = admittedInstruments(passDifferential(block.windows, PASS_CONTROL.id), { qOverW: block.qOverW });
+      console.log(`    instruments admitted by the control: ${JSON.stringify(block.admitted)}; windows with Q > W: ${block.qOverW} of ${block.windows.length}`);
       block.verdicts = [...PASS_ARMS_RUN, PASS_CONTROL].map((a) => {
         const d = passDifferential(block.windows, a.id);
-        return { arm: a.id, ...d, verdict: passVerdict(d) };
+        return { arm: a.id, ...d, verdict: passVerdict(d, block.admitted) };
       });
       for (const v of block.verdicts) {
         const f = (x) => (x == null ? '-' : x.toFixed(2));

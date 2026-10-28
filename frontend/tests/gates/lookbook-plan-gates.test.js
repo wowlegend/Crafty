@@ -29,6 +29,7 @@ import {
   windowMedian,
   passDifferential,
   passVerdict,
+  admittedInstruments,
   PASS_CONTROL,
   parseGpuUtil,
   gpuMsPerFrame,
@@ -464,34 +465,60 @@ describe('the whole-frame differential and the rule it is judged by', () => {
     expect(d.onQ).toBeCloseTo(7.15, 9);
     expect(d.offQ).toBeCloseTo(6.05, 9);
     expect(passDifferential(ws, 'smaa').reps).toBe(0);
+    // U has pairs of its own: a repetition whose utilization read failed on one side counts for Q and W, not for U.
+    const withU = [
+      win('grade', 0, 'on', 7, 9, { u: 5 }), win('grade', 0, 'off', 6, 8, { u: 4 }),
+      win('grade', 1, 'on', 7, 9, { u: 5.2 }), win('grade', 1, 'off', 6, 8, { u: null }),
+    ];
+    const du = passDifferential(withU, 'grade');
+    expect([du.reps, du.u.n, du.u.median, du.onU]).toEqual([2, 1, 1, 5]);
   });
 
-  it('material: at least 0.5 ms AND 10% of the frame, 4 of 5 positive, instruments agreeing; else named', () => {
-    const five = (arm, ds, dw, on = 6) => ds.flatMap((d, i) => [win(arm, i, 'on', on, on + 3), win(arm, i, 'off', on - d, on + 3 - dw[i])]);
-    const big = passVerdict(passDifferential(five('a', [1, 1.1, 0.9, 1.2, 1], [1.1, 1, 1, 1.3, 0.9]), 'a'));
-    expect(big).toMatchObject({ agree: true, material: true });
+  it('material: U at least 0.5 ms AND 10% of the frame, 4 of 5 positive, no admitted instrument contradicting; else named', () => {
+    // Each repetition: on and off windows with U (GPU busy ms), Q and W, the differential on each instrument given.
+    const five = (arm, du, { on = 6, dq = du, dw = du } = {}) => du.flatMap((d, i) => [
+      win(arm, i, 'on', on + 4, on + 2, { u: on }),
+      win(arm, i, 'off', on + 4 - dq[i], on + 2 - dw[i], { u: on - d }),
+    ]);
+    const all = { u: true, w: true, q: true };
+    const v = (ws, arm, adm = all) => passVerdict(passDifferential(ws, arm), adm);
+    expect(v(five('a', [1, 1.1, 0.9, 1.2, 1]), 'a')).toMatchObject({ material: true, contradicted: [] });
     // 0.5 ms is the floor: 0.45 ms is not material even at 10% of a 4.5 ms frame.
-    const small = passVerdict(passDifferential(five('b', [0.45, 0.45, 0.45, 0.45, 0.45], [0.45, 0.45, 0.45, 0.45, 0.45], 4.5), 'b'));
+    const small = v(five('b', [0.45, 0.45, 0.45, 0.45, 0.45], { on: 4.5 }), 'b');
     expect(small.material).toBe(false);
     expect(small.why.join(' ')).toMatch(/0\.5 ms/);
-    // 10% is the share: 0.6 ms of a 7 ms frame (8.6%) is not material.
-    const share = passVerdict(passDifferential(five('c', [0.6, 0.6, 0.6, 0.6, 0.6], [0.6, 0.6, 0.6, 0.6, 0.6], 7), 'c'));
+    // 10% is the share OF THE FRAME WITH THE PASS ON: 0.65 ms of a 7 ms frame is 9.3%, not material (of the 6.35 ms
+    // frame without it, it would read 10.2%).
+    const share = v(five('c', [0.65, 0.65, 0.65, 0.65, 0.65], { on: 7 }), 'c');
     expect(share.material).toBe(false);
     expect(share.why.join(' ')).toMatch(/10%/);
     // Sign consistency: 3 of 5 positive is not enough, however big the median.
-    const noisy = passVerdict(passDifferential(five('d', [2, 2, 2, -1, -1], [2, 2, 2, -1, -1]), 'd'));
+    const noisy = v(five('d', [2, 2, 2, -1, -1]), 'd');
     expect(noisy.material).toBe(false);
     expect(noisy.why.join(' ')).toMatch(/positive/);
-    // The instruments disagree: the timer says 2 ms, the wall says 0.3 ms.
-    const split = passVerdict(passDifferential(five('e', [2, 2, 2, 2, 2], [0.3, 0.3, 0.3, 0.3, 0.3]), 'e'));
-    expect(split).toMatchObject({ agree: false, material: false });
-    // Both negligible: agreement holds below 0.25 ms whatever the sign.
-    const nil = passVerdict(passDifferential(five('f', [0.1, 0.1, 0.1, 0.1, 0.1], [-0.1, -0.1, -0.1, -0.1, -0.1]), 'f'));
-    expect(nil.agree).toBe(true);
+    // An admitted instrument that says the pass SAVES time contradicts it; a near-zero one does not.
+    const against = v(five('e', [2, 2, 2, 2, 2], { dw: [-1, -1, -1, -1, -1] }), 'e');
+    expect(against).toMatchObject({ material: false, contradicted: ['w'] });
+    expect(v(five('f', [2, 2, 2, 2, 2], { dw: [-0.2, -0.2, -0.2, -0.2, -0.2] }), 'f').material).toBe(true);
+    // ...but only an ADMITTED one: an instrument the control could not move says nothing either way.
+    expect(v(five('e', [2, 2, 2, 2, 2], { dw: [-1, -1, -1, -1, -1] }), 'e', { u: true, w: false, q: true }).material).toBe(true);
+    // No decision at all without U admitted.
+    const blind = v(five('a', [1, 1.1, 0.9, 1.2, 1]), 'a', { u: false, w: true, q: true });
+    expect(blind.material).toBe(false);
+    expect(blind.why.join(' ')).toMatch(/not admitted/);
     // Fewer than 5 complete repetitions is no verdict at all.
-    const short = passVerdict(passDifferential(five('g', [1, 1, 1, 1], [1, 1, 1, 1]), 'g'));
+    const short = v(five('g', [1, 1, 1, 1]), 'g');
     expect(short.material).toBe(false);
     expect(short.why.join(' ')).toMatch(/repetitions/);
+  });
+
+  it('the control admits an instrument it moves materially, and refuses Q once Q outlasts the wall clock', () => {
+    const stats = (median, positive = 5, n = 5) => ({ median, positive, n });
+    const control = { u: stats(3), w: stats(0.1, 3), q: stats(4) };
+    expect(admittedInstruments(control)).toEqual({ u: true, w: false, q: true });
+    expect(admittedInstruments(control, { qOverW: 1 })).toEqual({ u: true, w: false, q: false });
+    expect(admittedInstruments({ u: stats(3, 3), w: stats(1), q: stats(0.4) })).toEqual({ u: false, w: true, q: false });
+    expect(admittedInstruments({ u: stats(3, 4, 4), w: stats(1), q: stats(1) }).u, 'four repetitions admitted').toBe(false);
   });
 });
 

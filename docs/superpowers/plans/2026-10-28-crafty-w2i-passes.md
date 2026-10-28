@@ -47,6 +47,33 @@ is switched off the way deleting it would read on the GPU: its blend function se
 it out of the merged shader and skips a pass left with nothing to draw) and its `update()` not run (its own render
 passes). N8AO is a pass of its own and is disabled. The Sun billboard is hidden.
 
+## Amendment before the measurement: a third instrument, and which instruments count
+
+Two smoke runs (noon, N8AO and Bloom, one and two repetitions, 14:27-14:45Z) checked the instruments before the
+measurement. The first showed the whole-frame query is not GPU execution time either: its median was 13.3 to 15.0 ms
+per frame while the synced wall clock that brackets it read 10.9 to 11.4 ms, and GPU work bracketed by two syncs
+cannot outlast them. The segment sum in the same run was 65 ms per frame at 60 frames a second. The wall clock's
+differentials were near zero (N8AO +0.1 ms, Bloom -0.3 ms) while the query's were +2.2 and +3.0 ms: the wall clock
+measures the frame's critical path, which the GPU is not on when the CPU encodes for longer than the GPU draws.
+
+So a third instrument joins, one with no timer query in it: **U, the GPU's own busy time per frame**, the driver's
+"Device Utilization %" (`ioreg -r -d 1 -w 0 -c IOAccelerator`, the figure Activity Monitor's GPU history reads, no
+root) sampled every 200 ms over 2.5 s of free-running play (no query, no sync), the median after the first 0.5 s,
+times the window's mean frame interval. It is GPU-wide, so other processes' GPU work is in it; the interleaving puts
+that on both arms alike, and the idle reading before the run is recorded. It measures what heat follows: how long
+the GPU is busy per frame.
+
+A positive control joins the arms: **all-post**, every post pass off at once, which must move an instrument that can
+see post-processing at all. The amended rule:
+
+- An instrument is **admitted** at a time of day when the control's differential on it is material (0.5 ms or more,
+  4 of 5 repetitions positive), and, for Q, when no window has Q above W.
+- The decision rests on **U**. A pass is **material** when its median `dU` is at least **0.5 ms** and at least
+  **10%** of the frame's `U` with the pass on, at one or more of the three times, with at least 4 of 5 repetitions
+  positive, and no admitted instrument contradicts it (a contradiction is a median of the opposite sign larger than
+  0.25 ms). If U is not admitted, no pass is decided on cost.
+- Everything else in the rule below stands: look loss, delete, keep, the ink edge, the dynamic import, the bundle.
+
 ## The decision rule (written before measuring)
 
 For each arm, at each time where the pass runs:

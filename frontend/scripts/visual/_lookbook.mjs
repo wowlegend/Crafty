@@ -358,27 +358,34 @@ export function passDifferential(windows, arm) {
   };
 }
 
-/** The rule (plan 2026-10-28-crafty-w2i-passes, "The decision rule"), fixed before the measurement. */
-export const PASS_RULE = Object.freeze({ minReps: 5, minMs: 0.5, minShare: 0.10, minPositiveShare: 0.8, agreeMs: 0.25, agreeFraction: 0.5 });
+/** The rule (plan 2026-10-28-crafty-w2i-passes, "The decision rule" and its amendment), fixed before the measurement. */
+export const PASS_RULE = Object.freeze({ minReps: 5, minMs: 0.5, minShare: 0.10, minPositiveShare: 0.8, contradictMs: 0.25 });
 
-/** PURE. Whether an arm's cost is material by PASS_RULE, with every reason it is not. */
-export function passVerdict(d, rule = PASS_RULE) {
+const enoughPositive = (s, rule) => s.n > 0 && s.positive >= Math.ceil(rule.minPositiveShare * s.n);
+
+/**
+ * PURE. Which instruments can see post-processing at all at this time of day: those on which the positive control
+ * (PASS_CONTROL, every pass off) moves the frame by a material amount in enough repetitions. Q is also refused when any
+ * window read more GPU time than the synced wall clock that brackets it (`qOverW`).
+ */
+export function admittedInstruments(control, { qOverW = 0 } = {}, rule = PASS_RULE) {
+  const ok = (s) => !!s && s.n >= rule.minReps && s.median >= rule.minMs && enoughPositive(s, rule);
+  return { u: ok(control?.u), w: ok(control?.w), q: ok(control?.q) && qOverW === 0 };
+}
+
+/** PURE. Whether an arm's cost is material by PASS_RULE, decided on U, with every reason it is not. */
+export function passVerdict(d, admitted, rule = PASS_RULE) {
   const why = [];
-  const q = d.q.median, w = d.w.median;
-  if (d.reps < rule.minReps) why.push(`${d.reps} complete repetitions, fewer than ${rule.minReps}`);
-  let agree = false;
-  if (Number.isFinite(q) && Number.isFinite(w)) {
-    const big = Math.max(Math.abs(q), Math.abs(w));
-    const tol = Math.max(rule.agreeMs, rule.agreeFraction * big);
-    // Opposite signs cannot pass this unless both are under agreeMs: their difference is at least the larger of the two.
-    agree = Math.abs(q - w) <= tol;
-  }
-  if (!agree) why.push(`the instruments disagree (query ${q}, wall ${w})`);
-  const share = Number.isFinite(q) && d.onQ > 0 ? q / d.onQ : null;
-  if (!(q >= rule.minMs)) why.push(`under ${rule.minMs} ms (query ${q})`);
+  const u = d.u.median;
+  if (!admitted?.u) why.push('U (GPU busy time) is not admitted: the control did not move it');
+  if (d.u.n < rule.minReps) why.push(`${d.u.n} complete repetitions, fewer than ${rule.minReps}`);
+  const share = Number.isFinite(u) && d.onU > 0 ? u / d.onU : null;
+  if (!(u >= rule.minMs)) why.push(`under ${rule.minMs} ms (U ${u})`);
   if (!(share >= rule.minShare)) why.push(`under ${Math.round(rule.minShare * 100)}% of the frame (${share === null ? '?' : `${(share * 100).toFixed(1)}%`})`);
-  if (d.q.positive < Math.ceil(rule.minPositiveShare * d.reps) || d.reps === 0) why.push(`${d.q.positive} of ${d.reps} repetitions positive`);
-  return { agree, share, material: why.length === 0, why };
+  if (!enoughPositive(d.u, rule)) why.push(`${d.u.positive} of ${d.u.n} repetitions positive`);
+  const contradicted = ['w', 'q'].filter((k) => admitted?.[k] && d[k].median < -rule.contradictMs);
+  for (const k of contradicted) why.push(`${k.toUpperCase()} contradicts it (${d[k].median})`);
+  return { share, contradicted, material: why.length === 0, why };
 }
 
 const SOFTWARE_RE = /swiftshader|llvmpipe|softpipe|software rasterizer|microsoft basic render/i;
