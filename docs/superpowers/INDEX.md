@@ -21,7 +21,7 @@
 |---|---|
 | **`memory/STATUS.md`** | **Where we are · what's next.** THE source of truth for status. Its §2 and G-ledger are the record the registry was harvested from. |
 | **`memory/ACTIVE_PLAN.md`** | The live cursor: the ONE unit in flight right now. |
-| **`memory/registry.jsonl`** | **The one home for open work**: id, source, title, owner, severity, status, plan unit. `node frontend/scripts/ci/registry-harvest.mjs` proves every open item in the old sources has a row. |
+| **`memory/registry.jsonl`** | **The one home for open work**: one row per closable item, with id, title, playerVisible, severity, owner, state, evidence, opened, closedBy and plan unit. A row is closed, never deleted. `node frontend/scripts/ci/registry-harvest.mjs` proves every open item in the old sources has a row; `registry-append-only.mjs` refuses a push that deletes one. |
 | **`plans/2026-10-28-crafty-sota-reset.md`** | The programme: what to build, in which wave and lane. |
 | **`LOOP-CHARTER.md`** | The loop's constitution — how it operates, what it may/may not do. |
 | **`LOOP-KERNEL-PROMPT.md`** | Durable copy of the `/loop` prompt (cold/git-only recovery source). |

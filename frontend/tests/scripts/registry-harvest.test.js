@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import {
-  ROOT, REGISTRY, SOURCES, harvest, compare, parseRegistry, slug,
+  ROOT, REGISTRY, SOURCES, FLOORS_FILE, harvest, compare, parseRegistry, readFloors, slug,
   extractStatus, extractActivePlan, extractQueue, extractOpenItems, extractMasterpiece,
 } from '../../scripts/ci/registry-harvest.mjs';
 
@@ -23,10 +23,10 @@ function treeWith(edits) {
   return root;
 }
 
-function harvestIn(edits) {
+function harvestIn(edits, floorsText) {
   const root = treeWith(edits);
   try {
-    return harvest(root);
+    return floorsText === undefined ? harvest(root) : harvest(root, floorsText);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -46,12 +46,41 @@ describe('registry-harvest on the real tree', () => {
     for (const s of r.extracted) expect(new Set(s.items.map((it) => it.key)).size).toBe(s.items.length);
   });
 
-  it('deleting one registry row turns the check red and names that row', () => {
+  it('deleting the only row of a key turns the check red and names that key', () => {
     const lines = readFileSync(join(ROOT, REGISTRY), 'utf8').split('\n').filter(Boolean);
-    const victim = JSON.parse(lines.find((l) => JSON.parse(l).key === 'STATUS:G-ledger:41'));
+    const victim = JSON.parse(lines.find((l) => JSON.parse(l).key === 'STATUS:G-ledger:40'));
     const broken = harvestIn({ [REGISTRY]: (text) => text.split('\n').filter((l) => !l.includes(`"id": "${victim.id}"`)).join('\n') });
-    expect(broken.errors.some((e) => e.includes('"STATUS:G-ledger:41" has no row'))).toBe(true);
-    expect(broken.perSource.find((s) => s.name === 'STATUS').missing.map((m) => m.key)).toEqual(['STATUS:G-ledger:41']);
+    expect(broken.errors.some((e) => e.includes('"STATUS:G-ledger:40" has no row'))).toBe(true);
+    expect(broken.perSource.find((s) => s.name === 'STATUS').missing.map((m) => m.key)).toEqual(['STATUS:G-ledger:40']);
+  });
+
+  it('every source is at or above its committed floor, and the floors name exactly the five sources', () => {
+    const { floors, errors } = readFloors(readFileSync(FLOORS_FILE, 'utf8'));
+    expect(errors).toEqual([]);
+    expect(Object.keys(floors).sort()).toEqual(SOURCES.map((s) => s.name).sort());
+    for (const s of r.perSource) expect(s.total, `${s.name}: ${s.total} items, floor ${s.floor}`).toBeGreaterThanOrEqual(s.floor);
+  });
+
+  it('a renamed G-ledger heading drops its rows from extraction and fails on the STATUS floor', () => {
+    const renamed = harvestIn({ 'memory/STATUS.md': (t) => t.replace(/^### G-ledger\. /m, '### Residue ledger. ') });
+    const status = renamed.perSource.find((s) => s.name === 'STATUS');
+    expect(status.total).toBeLessThan(status.floor);
+    expect(status.missing).toEqual([]);
+    expect(renamed.errors).toEqual([expect.stringMatching(new RegExp(`memory/STATUS\\.md: ${status.total} items extracted, below its floor of ${status.floor}\\.`))]);
+  });
+
+  it('the same drop passes when the floor is lowered in the same change', () => {
+    const floors = JSON.parse(readFileSync(FLOORS_FILE, 'utf8'));
+    const edit = { 'memory/STATUS.md': (t) => t.replace(/^### G-ledger\. /m, '### Residue ledger. ') };
+    const count = harvestIn(edit).perSource.find((s) => s.name === 'STATUS').total;
+    expect(harvestIn(edit, JSON.stringify({ ...floors, STATUS: count })).errors).toEqual([]);
+  });
+
+  it('a floors file that misses a source, or names one that is gone, is an error', () => {
+    const floors = JSON.parse(readFileSync(FLOORS_FILE, 'utf8'));
+    const { QUEUE: _dropped, ...noQueue } = floors;
+    expect(readFloors(JSON.stringify(noQueue)).errors).toEqual(['registry-floors.json: QUEUE has no floor (a positive integer)']);
+    expect(readFloors(JSON.stringify({ ...floors, GONE: 3 })).errors).toEqual([expect.stringContaining('floor for "GONE", which is not a source')]);
   });
 
   it('a source that yields nothing, or is missing, is an error, never a pass over an empty set', () => {
@@ -67,7 +96,7 @@ describe('the extraction rules, on fixtures where the answer is known', () => {
   it('STATUS: open and in-flight markers and open G-ledger rows count; done, struck and closed rows do not', () => {
     const md = [
       '## 1. Where', '- ▢ **R9 [LOOP]** outside section 2, ignored',
-      '## 2. THE REGISTRY', '### A. Bugs',
+      '## 2. THE HARVESTED RECORD', '### A. Bugs',
       '- ▢ **R4 [LOOP] open with an id**', '- ▣✓ **R1 — FIXED**', '- ~~▢ **R2 [LOOP] struck original**~~',
       '- ▣ **E3 — in flight**', '  - ▢ **STILL OPEN:** the three arms', '  **▢ RESIDUAL — a nested marker**',
       '### G-ledger. Residue', '| # | Item | Severity | Source | Owner | State |', '|---|---|---|---|---|---|',
@@ -143,24 +172,36 @@ describe('the extraction rules, on fixtures where the answer is known', () => {
 
 describe('the registry schema', () => {
   const row = (o) => JSON.stringify({
-    id: 'a', key: 'K', source: 'memory/STATUS.md:1', title: 't', owner: 'command session', severity: 'LOW',
-    status: 'open', planUnit: 'W2-D', playerVisible: true, ...o,
+    id: 'K', key: 'K', title: 't', playerVisible: true, severity: 'LOW', owner: 'command session', state: 'open',
+    evidence: 'memory/STATUS.md:1@a3fb66cd', opened: '2026-07-13', planUnit: 'W2-D', ...o,
   });
 
-  it('accepts a well-formed open row and a closed row with closedBy', () => {
-    expect(parseRegistry([row(), row({ id: 'b', status: 'closed', closedBy: 'abc1234' })].join('\n')).errors).toEqual([]);
+  it('accepts a well-formed open row, split parts of one key, and closed rows naming a commit or a decision', () => {
+    expect(parseRegistry([
+      row(), row({ id: 'K/a' }), row({ id: 'K/b', state: 'closed', closedBy: 'abc1234' }),
+      row({ id: 'K/c', state: 'closed', closedBy: 'DECISIONS 2026-10-28 (W1-H) item 1' }),
+    ].join('\n')).errors).toEqual([]);
   });
 
-  it('refuses a bad owner, a closed row with no closedBy, a repeated id, a missing field and a non-JSON line', () => {
+  it('refuses a bad owner, a bad state, a closed row with no closedBy, a repeated id, a missing field, a bad date and a non-JSON line', () => {
     const { errors } = parseRegistry([
-      row({ owner: 'someone' }), row({ id: 'b', status: 'closed' }), row({ id: 'b' }), row({ id: 'c', planUnit: '' }), 'not json',
+      row({ owner: 'someone' }), row({ id: 'K/a', state: 'done' }), row({ id: 'K/b', state: 'closed' }), row({ id: 'K/b' }),
+      row({ id: 'K/c', evidence: '' }), row({ id: 'K/d', opened: '10-28' }), 'not json',
     ].join('\n'));
-    expect(errors).toHaveLength(5);
+    expect(errors).toHaveLength(7);
     expect(errors.join('\n')).toMatch(/owner "someone"/);
+    expect(errors.join('\n')).toMatch(/state "done"/);
     expect(errors.join('\n')).toMatch(/closed with no closedBy/);
-    expect(errors.join('\n')).toMatch(/id "b" repeats/);
-    expect(errors.join('\n')).toMatch(/missing planUnit/);
+    expect(errors.join('\n')).toMatch(/id "K\/b" repeats/);
+    expect(errors.join('\n')).toMatch(/missing evidence/);
+    expect(errors.join('\n')).toMatch(/opened "10-28" is not a YYYY-MM-DD date/);
     expect(errors.join('\n')).toMatch(/not a JSON object/);
+  });
+
+  it('an id is its key or key/part, so a split row cannot drift away from the source item it came from', () => {
+    for (const id of ['K-b', 'KX', 'Q/a', 'K/', 'K/B', 'K/a/b']) {
+      expect(parseRegistry(row({ id })).errors, id).toEqual([expect.stringContaining(`(${id}): id is neither its key "K" nor "K/<part>"`)]);
+    }
   });
 
   it('compare reports a missing key per source and the rows no rule produced', () => {

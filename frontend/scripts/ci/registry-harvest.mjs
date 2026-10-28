@@ -21,12 +21,22 @@
  *   MASTERPIECE   docs/superpowers/plans/2026-10-27-crafty-masterpiece.md: every Phase 0 table row, every bold-led
  *                 bullet under the Phase 1-3 headings, and every bullet under "Seen on a real GPU" and "Open questions".
  *
+ * FLOORS. Each source's extracted count has a committed floor (`registry-floors.json`). A source that yields fewer
+ * items than its floor fails, with both numbers printed: a renamed heading or a reworded row shape drops items from
+ * extraction while every remaining key still has its row, and a check that asked only "is anything missing" would
+ * pass. Closing items at the source lowers the count legitimately; the floor is lowered in the same change.
+ *
+ * ROWS. Each row has a unique id: the extracted key, or `key/part` when one source item holds several closable units.
+ * This check proves every extracted key has at least one row. That a row, once written, is never deleted is a
+ * property of a change, not of a tree, so `registry-append-only.mjs` checks it on the push range.
+ *
  * BLIND SPOTS, stated: an open item written as plain prose with none of these shapes is not extracted (the rules
  * above are what the harvest proves, and nothing wider); a row's TEXT is not compared, so a registry row can carry
- * a wrong title or status and pass; and keys made from a slug of the item's first words change when that text is
- * edited, which fails the check until the row's key is updated, the safe direction.
+ * a wrong title or state and pass; a count above its floor leaves that slack unprotected until the floor is raised;
+ * and keys made from a slug of the item's first words change when that text is edited, which fails the check until
+ * the row's key is updated, the safe direction.
  *
- *   node scripts/ci/registry-harvest.mjs          check; prints each source's denominator
+ *   node scripts/ci/registry-harvest.mjs          check; prints each source's denominator and floor
  *   node scripts/ci/registry-harvest.mjs --list   print every extracted item (key, line, title) as TSV
  */
 import { readFileSync, existsSync, realpathSync } from 'node:fs';
@@ -36,11 +46,16 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = resolve(HERE, '../../..');
 export const REGISTRY = 'memory/registry.jsonl';
+export const FLOORS_FILE = join(HERE, 'registry-floors.json');
 
 export const OWNERS = Object.freeze(['command session', 'Kevin', 'AB Command']);
-export const STATUSES = Object.freeze(['open', 'in-flight', 'closed']);
+export const STATES = Object.freeze(['open', 'in-flight', 'closed']);
 export const SEVERITIES = Object.freeze(['HIGH', 'MED', 'LOW', 'unrated']);
-const REQUIRED_FIELDS = Object.freeze(['id', 'key', 'source', 'title', 'owner', 'severity', 'status', 'planUnit', 'playerVisible']);
+// The reset plan's schema (sota-reset.md, the registry row): {id, title, playerVisible, severity, owner, state,
+// evidence, opened, closedBy}, plus the harvest key and the plan unit. closedBy is required only on a closed row.
+const REQUIRED_FIELDS = Object.freeze(['id', 'key', 'title', 'playerVisible', 'severity', 'owner', 'state', 'evidence', 'opened', 'planUnit']);
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const PART = /^[a-z0-9]+$/;
 
 /** The words of a line, lower-cased, markup and tags removed, joined by '-'. */
 export function slug(text, words = 5) {
@@ -277,9 +292,13 @@ export function parseRegistry(text) {
     const missing = REQUIRED_FIELDS.filter((f) => !Object.hasOwn(row, f) || row[f] === '' || row[f] === null);
     if (missing.length) errors.push(`${REGISTRY}:${i + 1} (${row.id ?? '?'}): missing ${missing.join(', ')}`);
     if (row.owner && !OWNERS.includes(row.owner)) errors.push(`${REGISTRY}:${i + 1} (${row.id}): owner "${row.owner}" is not one of ${OWNERS.join(' / ')}`);
-    if (row.status && !STATUSES.includes(row.status)) errors.push(`${REGISTRY}:${i + 1} (${row.id}): status "${row.status}" is not one of ${STATUSES.join(' / ')}`);
+    if (row.state && !STATES.includes(row.state)) errors.push(`${REGISTRY}:${i + 1} (${row.id}): state "${row.state}" is not one of ${STATES.join(' / ')}`);
     if (row.severity && !SEVERITIES.includes(row.severity)) errors.push(`${REGISTRY}:${i + 1} (${row.id}): severity "${row.severity}" is not one of ${SEVERITIES.join(' / ')}`);
-    if (row.status === 'closed' && !row.closedBy) errors.push(`${REGISTRY}:${i + 1} (${row.id}): closed with no closedBy (the commit or decision that closed it)`);
+    if (row.state === 'closed' && !row.closedBy) errors.push(`${REGISTRY}:${i + 1} (${row.id}): closed with no closedBy (the commit, decision or document that closed it)`);
+    if (row.opened && !DATE.test(row.opened)) errors.push(`${REGISTRY}:${i + 1} (${row.id}): opened "${row.opened}" is not a YYYY-MM-DD date`);
+    if (row.id && row.key && row.id !== row.key && !(row.id.startsWith(`${row.key}/`) && PART.test(row.id.slice(row.key.length + 1)))) {
+      errors.push(`${REGISTRY}:${i + 1} (${row.id}): id is neither its key "${row.key}" nor "${row.key}/<part>"`);
+    }
     if (row.playerVisible !== undefined && typeof row.playerVisible !== 'boolean') errors.push(`${REGISTRY}:${i + 1} (${row.id}): playerVisible must be true or false`);
     rows.push({ ...row, _line: i + 1 });
   });
@@ -303,6 +322,7 @@ export function compare(extracted, rows) {
     perSource: extracted.map((s) => ({
       name: s.name,
       path: s.path,
+      floor: s.floor,
       total: s.items.length,
       missing: s.items.filter((it) => !keys.has(it.key)),
     })),
@@ -310,18 +330,50 @@ export function compare(extracted, rows) {
   };
 }
 
-/** Read the five sources and the registry under `root`. A missing source is an error: the check never runs blind. */
-export function harvest(root = ROOT) {
+/** The committed floor for each source's extracted count; a source with no floor, or a floor for no source, is an error. */
+export function readFloors(text) {
   const errors = [];
+  let floors = {};
+  try {
+    floors = JSON.parse(text);
+  } catch {
+    return { floors: {}, errors: ['registry-floors.json: not a JSON object'] };
+  }
+  for (const s of SOURCES) {
+    if (!Number.isInteger(floors[s.name]) || floors[s.name] < 1) errors.push(`registry-floors.json: ${s.name} has no floor (a positive integer)`);
+  }
+  for (const name of Object.keys(floors)) {
+    if (!SOURCES.some((s) => s.name === name)) errors.push(`registry-floors.json: floor for "${name}", which is not a source; a source that leaves SOURCES takes its floor with it`);
+  }
+  return { floors, errors };
+}
+
+/**
+ * Read the five sources and the registry under `root`. A missing source is an error: the check never runs blind.
+ * `floorsText` is the floors file's text; it is read beside this script, not under `root`, so a fixture tree tests the
+ * committed floors.
+ */
+export function harvest(root = ROOT, floorsText = readFileSync(FLOORS_FILE, 'utf8')) {
+  const errors = [];
+  const { floors, errors: floorErrors } = readFloors(floorsText);
+  errors.push(...floorErrors);
   const extracted = SOURCES.map((s) => {
     const abs = join(root, s.path);
+    const floor = floors[s.name];
     if (!existsSync(abs)) {
       errors.push(`${s.path}: missing. A source that leaves HEAD (plan row 32) is removed from SOURCES in the same commit.`);
-      return { ...s, items: [] };
+      return { ...s, floor, items: [] };
     }
     const items = s.extract(readFileSync(abs, 'utf8'));
     if (items.length === 0) errors.push(`${s.path}: 0 items extracted. Either the source changed shape or the rule broke; a check over nothing is not a pass.`);
-    return { ...s, items };
+    else if (Number.isInteger(floor) && items.length < floor) {
+      errors.push(
+        `${s.path}: ${items.length} items extracted, below its floor of ${floor}. If items were closed or removed at the source ` +
+          `on purpose, lower ${s.name} in scripts/ci/registry-floors.json in the same change; if not, a heading or row shape ` +
+          'changed and an extraction rule lost them.',
+      );
+    }
+    return { ...s, floor, items };
   });
   const regAbs = join(root, REGISTRY);
   const { rows, errors: regErrors } = existsSync(regAbs) ? parseRegistry(readFileSync(regAbs, 'utf8')) : { rows: [], errors: [`${REGISTRY}: missing`] };
@@ -348,17 +400,19 @@ function main() {
     for (const s of r.extracted) for (const it of s.items) console.log(`${it.key}\t${s.path}:${it.line}\t${it.title}`);
     return;
   }
-  const byStatus = (st) => r.rows.filter((row) => row.status === st).length;
-  for (const s of r.perSource) console.log(`  ${s.name.padEnd(12)} ${String(s.total).padStart(4)} items extracted from ${s.path}; ${s.missing.length} missing from the registry`);
-  console.log(`  registry     ${r.rows.length} rows: ${byStatus('open')} open, ${byStatus('in-flight')} in flight, ${byStatus('closed')} closed; ${r.unextracted.length} not produced by the rules (harvested by reading)`);
+  const byState = (st) => r.rows.filter((row) => row.state === st).length;
+  for (const s of r.perSource) {
+    console.log(`  ${s.name.padEnd(12)} ${String(s.total).padStart(4)} items extracted (floor ${s.floor ?? 'none'}) from ${s.path}; ${s.missing.length} missing from the registry`);
+  }
+  console.log(`  registry     ${r.rows.length} rows: ${byState('open')} open, ${byState('in-flight')} in flight, ${byState('closed')} closed; ${r.unextracted.length} not produced by the rules (harvested by reading)`);
   if (r.errors.length) {
     console.error(`\n✖ registry-harvest: ${r.errors.length} problem(s)`);
     for (const e of r.errors) console.error(`  • ${e}`);
-    console.error(`\nAdd a row to ${REGISTRY} for each missing item (key = the quoted key), or close it there with closedBy.`);
+    console.error(`\nAdd a row to ${REGISTRY} for each missing item (key = the quoted key); a row is closed there with closedBy, never deleted.`);
     process.exit(1);
   }
   const total = r.perSource.reduce((a, s) => a + s.total, 0);
-  console.log(`✓ registry-harvest: all ${total} extracted items from ${r.perSource.length} sources have a registry row`);
+  console.log(`✓ registry-harvest: all ${total} extracted items from ${r.perSource.length} sources have a registry row, and no source is below its floor`);
 }
 
 if (invokedDirectly()) main();
