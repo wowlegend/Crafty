@@ -159,7 +159,9 @@ export function verdict(current, stamp, base = { state: null }, push = {}) {
   // TIER 3 — allow, and say plainly what is and is not known.
   const runNote = base && base.run && base.run !== base.state ? `; the run itself concluded ${base.run}, on a non-e2e job` : '';
   const why = base && base.state === 'success' ? `base CI e2e is green${base.sha ? ` (${base.sha})` : ''}${runNote}`
-    : 'base CI state UNKNOWN (no gh, no network, or no runs yet) — failing OPEN by design';
+    : base && base.e2e === 'skipped'
+      ? `the base run${base.sha ? ` (${base.sha})` : ''} SKIPPED e2e (a docs-only change; its e2e verdict is its own base's) — UNKNOWN here, failing OPEN by design`
+      : 'base CI state UNKNOWN (no gh, no network, or no runs yet) — failing OPEN by design';
   return {
     code: 0,
     line:
@@ -240,7 +242,10 @@ export function readBaseCi(exec, timeoutMin = E2E_TIMEOUT_MIN) {
     const [id, status, conclusion, sha] = String(out).trim().split('|');
     if (!id || id === 'null') return { state: null };
     const run = status === 'completed' ? conclusion : status; // what to SAY about the run; not the verdict
-    return { state: e2eJobsState(exec, id, timeoutMin), sha, run };
+    const state = e2eJobsState(exec, id, timeoutMin);
+    // A run whose e2e matrix was SKIPPED (2026-10-28: a docs-only change, see ci.yml's `changes` job) gave no e2e
+    // verdict of its own; it stays UNKNOWN here, and `e2e: 'skipped'` lets the printed line say why.
+    return state === 'skipped' ? { state: null, sha, run, e2e: 'skipped' } : { state, sha, run };
   } catch {
     return { state: null }; // no gh, no network, not a repo with runs — unknown, and that is allowed
   }
@@ -289,6 +294,9 @@ function e2eJobsState(exec, id, timeoutMin) {
     };
     if (e2e.some((j) => j[1] === 'failure' || j[1] === 'timed_out' || jobTimedOut(j, timeoutMin, notes(j)))) state = 'failure'; // a timeout is a red shard
     else if (e2e.length > 0 && e2e.every(([st, c]) => st === 'completed' && c === 'success')) state = 'success';
+    // Every e2e job SKIPPED (a docs-only run): no verdict, and never 'success' — readCommitCi must not take a skip
+    // for "CI's e2e passed on this exact commit". readBaseCi reports it as unknown, naming the skip.
+    else if (e2e.length > 0 && e2e.every(([st, c]) => st === 'completed' && c === 'skipped')) state = 'skipped';
     return state;
   } catch {
     return null; // a run whose jobs cannot be read has no verdict
