@@ -65,8 +65,9 @@ for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --range-only) RA
 # --code-changed=false: CI's change-scope job (frontend/scripts/ci/change-scope.mjs) found only docs changed since a
 # commit whose `ci ok` passed, so the fast tier skips prod-smoke, the one browser step here (the e2e job is skipped
 # by ci.yml itself). ONLY the exact word `false` skips; absent, `true`, empty or anything else runs it (fail SAFE).
-# A FLAG, not an environment variable, on purpose: an env var set on the CI step is inherited by the unit suite this
-# pipeline runs, and the suite executes this file under test, so a docs-only run would have changed what it tests.
+# The CI step also exports CODE_CHANGED, and the unit suite this pipeline runs inherits it and executes this file under
+# test. The reset above is what keeps a docs-only run from changing what that suite tests: the flag decides, an
+# inherited CODE_CHANGED never does.
 # --range-only: pre-push's path when the pre-commit receipt already certified this exact tree. The offline
 # core is skipped (and each skip PRINTED); the commit-range gates still run, because a receipt written at
 # commit time cannot speak for a range it never saw. Until 2026-09-22 pre-push `continue`d past this file

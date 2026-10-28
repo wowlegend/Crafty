@@ -50,8 +50,12 @@ jobs:
   # Change scope (2026-10-28). Decides whether this run may skip the browser jobs — the e2e matrix below and the
   # pipeline's prod-smoke step — and outputs `code=true|false`. `false` only when every changed path is docs or
   # Markdown AND the base it is measured against carries a passing `ci ok` of its own, so a skip borrows a verdict
-  # that exists rather than one assumed. Every unknown — a forced push, a base missing from the clone, an empty diff,
-  # an API error — reads `true` and everything runs. The rule and its reasons: frontend/scripts/ci/change-scope.mjs.
+  # that exists rather than one assumed. Every unknown the script meets — a forced push, a base missing from the clone,
+  # an empty diff, an API error — makes it write `true`, and everything runs. The rule and its reasons:
+  # frontend/scripts/ci/change-scope.mjs.
+  # If this JOB fails or is cancelled (a checkout flake, the timeout), no output exists: GitHub skips gates and e2e,
+  # because a job whose needs did not succeed is skipped, and `ci ok` FAILS on this job's result. That is a red run
+  # with no gate or browser signal, not a run that tested everything.
   # ---------------------------------------------------------------------------
   changes:
     name: change scope
@@ -127,8 +131,9 @@ jobs:
       # workflow_dispatch run skips it).
       #
       # `--code-changed` carries the change-scope verdict: `false` skips prod-smoke (a browser step), anything else runs
-      # it. A flag rather than an env var the pipeline reads, because the unit suite the pipeline runs executes the
-      # pipeline under test and would inherit an env var.
+      # it. The step also exports CODE_CHANGED so the expression is not spliced into the script text, which means the
+      # unit suite this pipeline runs inherits it too, and it executes pipeline.sh under test. That is harmless only
+      # because pipeline.sh resets its own CODE_CHANGED before reading flags: the flag decides, never the inherited value.
       - name: Pipeline (fast tier — every deterministic gate, plus network/browser)
         working-directory: .
         env:
@@ -154,9 +159,10 @@ jobs:
   # 25 -> 35 MINUTES 2026-10-28: main run 40642071917 ran shards 5/8 and 7/8 to 23 of 25 min (7/8 with three
   # attempts of one failing case), and a job that hits its cap reports `cancelled`, losing every finished verdict in
   # it. Shards run 5-23 min because specs differ tenfold in cost; the cap is headroom for retries, not a target.
-  # DOCS-ONLY SKIP (2026-10-28): skipped only when the change-scope job said exactly `false`; an empty or unknown
-  # output runs it. A skipped e2e is passed by `ci ok` only under that same `false`, so a mis-wired condition cannot
-  # turn into a permanent green. The job NAME must keep starting with `e2e`: e2e-freshness.mjs selects these jobs by
+  # DOCS-ONLY SKIP: skipped only when the change-scope job said exactly `false`; an empty or unknown output runs it.
+  # A change-scope job that failed or was cancelled has no output at all and skips this job too (its needs did not
+  # succeed), which `ci ok` then fails. A skipped e2e is passed by `ci ok` only under that same `false`, so a
+  # mis-wired condition cannot turn into a permanent green. The job NAME must keep starting with `e2e`: e2e-freshness.mjs selects these jobs by
   # `^e2e`, and no other job's name may.
   e2e:
     name: e2e (playwright) ${{ matrix.shard }}/8

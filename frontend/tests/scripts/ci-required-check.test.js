@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { parse as parseYaml } from 'yaml';
 import { isDocsPath, classify, candidateBase, certified, scope, REQUIRED_CHECK } from '../../scripts/ci/change-scope.mjs';
 import { jobIds, verdict, SELF, SCOPE_JOB, SKIPPABLE_ON_DOCS } from '../../scripts/ci/ci-ok.mjs';
 import { isolatedGitEnv, fixtureGit } from './_isolatedGit.js';
@@ -306,18 +307,6 @@ describe('ci.yml — the wiring that connects the two scripts', () => {
   };
   const ids = jobIds(yml);
 
-  it(`the aggregate is named exactly "${REQUIRED_CHECK}", runs under always(), and needs every other job (Y2, Y3)`, () => {
-    expect(ids).toContain(SELF);
-    const ok = block(SELF);
-    expect(ok).toMatch(new RegExp(`\\n {4}name: ${REQUIRED_CHECK}\\n`));
-    expect(ok).toMatch(/\n {4}if: always\(\)\n/);
-    const needs = (/\n {4}needs: \[([^\]]*)\]/.exec(ok) || [])[1];
-    expect(needs, 'ci-ok needs list').toBeTruthy();
-    expect(needs.split(',').map((s) => s.trim()).sort()).toEqual(ids.filter((j) => j !== SELF).sort());
-    expect(ok).toMatch(/NEEDS_JSON: \$\{\{ toJSON\(needs\) \}\}/);
-    expect(ok).toMatch(/run: node scripts\/ci\/ci-ok\.mjs/);
-  });
-
   it('the change-scope job exists under the id ci-ok.mjs reads, and outputs its decision', () => {
     expect(ids).toContain(SCOPE_JOB);
     const c = block(SCOPE_JOB);
@@ -337,13 +326,6 @@ describe('ci.yml — the wiring that connects the two scripts', () => {
     }
   });
 
-  it('the gates job hands the scope to the pipeline as a flag, not an env var the unit suite would inherit', () => {
-    const g = block('gates');
-    expect(g).toMatch(/\n {4}needs: changes\n/);
-    expect(g).toMatch(/CODE_CHANGED: \$\{\{ needs\.changes\.outputs\.code \}\}/);
-    expect(g).toMatch(/run: bash ci\/pipeline\.sh --tier=fast --code-changed="\$CODE_CHANGED"/);
-  });
-
   it('CI runs on a push to land/** as well as main; the concurrency group is per event and ref; main is never cancelled', () => {
     expect(yml).toMatch(/\n {2}push:\n {4}branches: \[main, 'land\/\*\*'\]\n/);
     expect(yml).toMatch(/\n {2}group: ci-\$\{\{ github\.event_name \}\}-\$\{\{ github\.ref \}\}\n/);
@@ -357,12 +339,80 @@ describe('ci.yml — the wiring that connects the two scripts', () => {
   });
 });
 
+// `ci ok` is computed by the commit it judges, from that commit's ci.yml, so a workflow edit that makes a red shard
+// report success makes `ci ok` pass too. These read the real file as a YAML document, where a comment or a string
+// cannot satisfy them, and pin what makes a judged job's result mean something.
+describe('ci.yml — the jobs `ci ok` judges cannot quietly report success', () => {
+  const yml = readFileSync(CI_YML, 'utf8');
+  const doc = parseYaml(yml);
+  const jobs = doc.jobs;
+  const stepsOf = (id) => jobs[id].steps || [];
+  /** Where a workflow lets a failing job or step read as success: the job id, or `id.steps[i]`. */
+  const softened = (map) => Object.entries(map).flatMap(([id, j]) => [
+    ...('continue-on-error' in j ? [id] : []),
+    ...(j.steps || []).flatMap((s, i) => ('continue-on-error' in s ? [`${id}.steps[${i}]`] : [])),
+  ]);
+
+  it('the YAML reader and the text reader ci-ok.mjs uses find the same jobs, the ones that matter among them', () => {
+    expect(Object.keys(jobs).sort()).toEqual(jobIds(yml).sort());
+    expect(Object.keys(jobs)).toEqual(expect.arrayContaining([SCOPE_JOB, 'gates', 'e2e', 'docs', SELF]));
+  });
+
+  it('no job and no step carries continue-on-error, which turns a red result into success: not the e2e job or step, the gates pipeline step, nor `ci ok` itself', () => {
+    const control = softened({
+      a: { 'continue-on-error': true, steps: [{ run: 'x' }, { run: 'y', 'continue-on-error': '${{ true }}' }] },
+      b: { steps: [{ run: 'z' }] },
+    });
+    expect(control, 'the detector must see both spellings before its silence means anything').toEqual(['a', 'a.steps[1]']);
+    const walked = Object.values(jobs).reduce((n, j) => n + (j.steps || []).length, 0);
+    expect(walked, 'steps walked').toBeGreaterThanOrEqual(15);
+    expect(softened(jobs)).toEqual([]);
+  });
+
+  it('the e2e step runs playwright for the shard the matrix hands it, unconditionally, and the matrix covers every shard the command divides by', () => {
+    const e2e = stepsOf('e2e').filter((s) => s.name === 'E2E');
+    expect(e2e, 'exactly one step named E2E').toHaveLength(1);
+    const m = /^npm run test:e2e -- --shard=\$\{\{ matrix\.shard \}\}\/(\d+) --grep-invert="@local-only"$/.exec(e2e[0].run || '');
+    expect(m, `the E2E step's run line: ${e2e[0].run}`).toBeTruthy();
+    expect(e2e[0]).not.toHaveProperty('if');
+    expect(jobs.e2e.strategy.matrix.shard, 'a shard the matrix never hands out is a slice of the suite that never runs')
+      .toEqual(Array.from({ length: Number(m[1]) }, (_, i) => i + 1));
+  });
+
+  it('the gates job runs the fast-tier pipeline on every change with the scope as a flag; CODE_CHANGED is exported beside it and decides nothing', () => {
+    const p = stepsOf('gates').filter((s) => /^bash ci\/pipeline\.sh\b/.test(s.run || ''));
+    expect(p, 'exactly one pipeline step').toHaveLength(1);
+    expect(p[0].run).toBe('bash ci/pipeline.sh --tier=fast --code-changed="$CODE_CHANGED"');
+    expect(p[0].env).toEqual({ CODE_CHANGED: '${{ needs.changes.outputs.code }}' });
+    expect(p[0]).not.toHaveProperty('if');
+    expect(jobs.gates).not.toHaveProperty('if');
+    expect(jobs.gates.needs).toBe('changes');
+  });
+
+  it(`the aggregate is named exactly "${REQUIRED_CHECK}", runs under always(), and needs every other job (Y2, Y3)`, () => {
+    const ok = jobs[SELF];
+    expect(ok.name).toBe(REQUIRED_CHECK);
+    expect(ok.if, 'success() or !cancelled() skips this job on a cancelled run, and a skipped job passes branch protection').toBe('always()');
+    const others = Object.keys(jobs).filter((j) => j !== SELF).sort();
+    expect(others.length, 'jobs it must need').toBeGreaterThanOrEqual(4);
+    expect([].concat(ok.needs).sort()).toEqual(others);
+  });
+
+  it('the `ci ok` verdict step runs ci-ok.mjs over the needs context, and no step of that job can be skipped', () => {
+    const ok = jobs[SELF];
+    const verdictStep = ok.steps.filter((s) => s.run === 'node scripts/ci/ci-ok.mjs');
+    expect(verdictStep, 'exactly one verdict step').toHaveLength(1);
+    expect(verdictStep[0].env).toEqual({ NEEDS_JSON: '${{ toJSON(needs) }}' });
+    expect(ok.steps.filter((s) => 'if' in s), 'a skipped verdict step is a pass').toEqual([]);
+  });
+});
+
 describe('pipeline.sh --code-changed — only the exact word `false` skips prod-smoke', () => {
   let dir;
   beforeAll(() => { dir = mkdtempSync(join(tmpdir(), 'ci-pipeline-')); });
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
   let n = 0;
-  const run = (...flags) => {
+  const runWith = (extraEnv, ...flags) => {
     const bin = join(dir, `bin-${++n}`);
     const log = join(dir, `cmd-${n}.log`);
     mkdirSync(bin);
@@ -370,7 +420,7 @@ describe('pipeline.sh --code-changed — only the exact word `false` skips prod-
       writeFileSync(join(bin, t), `#!/bin/sh\necho "${t} $*" >> "${log}"\nexit 0\n`);
       chmodSync(join(bin, t), 0o755);
     }
-    const env = isolatedGitEnv({ PATH: `${bin}:${process.env.PATH}` });
+    const env = isolatedGitEnv({ PATH: `${bin}:${process.env.PATH}`, ...extraEnv });
     delete env.GITHUB_EVENT_NAME;
     delete env.GITHUB_REF;
     const r = spawnSync('bash', [join(ROOT, 'ci/pipeline.sh'), '--tier=fast', ...flags], { encoding: 'utf8', env });
@@ -379,6 +429,7 @@ describe('pipeline.sh --code-changed — only the exact word `false` skips prod-
     expect(cmds.some((c) => c.startsWith('npm audit')), r.stdout + r.stderr).toBe(true);
     return { ...r, smoke: cmds.filter((c) => c.startsWith('node scripts/ci/prod-smoke.mjs')).length };
   };
+  const run = (...flags) => runWith({}, ...flags);
 
   it('--code-changed=false: prod-smoke is skipped, and the skip is printed', () => {
     const r = run('--code-changed=false');
@@ -396,5 +447,13 @@ describe('pipeline.sh --code-changed — only the exact word `false` skips prod-
       ran++;
     }
     expect(ran, 'denominator').toBe(5);
+  });
+
+  it('a CODE_CHANGED=false inherited from the environment, as the CI step exports one, does not skip prod-smoke: only the flag decides', () => {
+    const inherited = runWith({ CODE_CHANGED: 'false' });
+    expect(inherited.smoke, inherited.stdout).toBe(1);
+    expect(inherited.stdout).not.toMatch(/--code-changed=false\): prod-smoke/);
+    expect(runWith({ CODE_CHANGED: 'false' }, '--code-changed=false').smoke, 'the same environment with the flag does skip').toBe(0);
+    expect(runWith({ CODE_CHANGED: 'false' }, '--code-changed=true').smoke).toBe(1);
   });
 });

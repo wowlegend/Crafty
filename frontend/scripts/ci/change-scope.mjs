@@ -6,12 +6,14 @@
  * should not wait twenty minutes for eight e2e shards that cannot see what it changed. A skipped job counts as
  * passing, so the skip is a CLAIM: "this sha's app is byte-identical to a commit whose app CI already passed".
  * This script decides whether that claim is true, and it fails SAFE — on anything it cannot establish it says
- * code=true and everything runs.
+ * code=true and everything runs. That covers the script's own decision only: if the JOB running it fails or is
+ * cancelled there is no output, GitHub skips the jobs that need it (gates and e2e), and `ci ok` fails on the result.
  *
  * THE RULE. code=false only when ALL of these hold:
  *   1. a BASE exists for the event —
  *        push               github.event.before, the branch's previous tip (a forced push has none: everything runs);
- *                           a NEW branch (before is all zeros) uses its merge-base with origin/main
+ *                           a NEW branch (before is all zeros, or the event payload is unreadable) uses its merge-base
+ *                           with origin/main
  *        pull_request       the pull request's base sha
  *        workflow_dispatch  the merge-base with origin/main
  *        anything else      no base: everything runs
@@ -26,7 +28,11 @@
  * ran green, through the required check. (PR #28 was parked on the same class: a docs commit borrowing an
  * ancestor's verdict without proving the ancestor's verdict was green.) A cancelled run's `ci ok` concludes
  * failure (it runs under `if: always()`), so the newest-check rule refuses exactly that base. Induction makes it
- * sound: a `ci ok` success on a sha means its app was e2e-tested green there, or on a certified base it equals.
+ * sound for push and workflow_dispatch runs, which check out the sha they name: a `ci ok` success on that sha means
+ * its app was e2e-tested green there, or on a certified base it equals. A pull_request run checks out the MERGE
+ * commit while GitHub attaches its check runs to the PR's head sha, so its `ci ok` vouches for a tree the head may
+ * not equal, and certified() cannot tell it from a push's. Main is not exposed: a head that differs from the tested
+ * merge is behind main and cannot be fast-forwarded onto it.
  *
  * WHAT IT DOES NOT CHECK (R9). Whether a docs file can break the GATES job — it cannot skip that job, which always
  * runs (doc-currency, opsec-scan, the unit suite and artifact-currency read docs). Whether the newest `ci ok` on
@@ -136,7 +142,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     payload = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH || '', 'utf8'));
   } catch {
-    payload = {}; // no payload: candidateBase finds no base for push/pull_request and everything runs
+    // An unreadable payload reads as {}: a push then takes the new-branch path (merge-base with origin/main) and loses
+    // its `forced` bit; a pull_request has no base sha, so everything runs. The tree diff and the base's `ci ok` still decide.
+    payload = {};
   }
   const git = (args) => execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const repo = process.env.GITHUB_REPOSITORY || '';
