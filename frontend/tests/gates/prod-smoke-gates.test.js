@@ -45,7 +45,7 @@ describe('prod-smoke: the noise filter keeps its teeth', () => {
 
 describe('prod-smoke: the lookbook seam ships in the production bundle, and only behind ?lookbook=1', () => {
   const ran = (seam) => ({ entryRan: true, seam });
-  const open = (methods) => ({ entryRan: true, methods });
+  const open = (methods, timer = { installed: true, reason: null }) => ({ entryRan: true, methods, timer });
   it('passes when the seam is absent on a plain page and whole with the parameter', () => {
     expect(seamVerdict({ plain: ran('undefined'), opened: open([...LOOKBOOK_SEAM_METHODS]) }).ok).toBe(true);
   });
@@ -59,6 +59,18 @@ describe('prod-smoke: the lookbook seam ships in the production bundle, and only
     const leaked = seamVerdict({ plain: ran('object'), opened: open([...LOOKBOOK_SEAM_METHODS]) });
     expect(leaked.ok).toBe(false);
     expect(leaked.line).toMatch(/WITHOUT \?lookbook=1/);
+  });
+  it('fails when passTimes() cannot load the pass timer chunk, however that shows', () => {
+    for (const [timer, re] of [
+      [{ installed: false, reason: 'passTimes threw: Failed to fetch dynamically imported module' }, /did not install the pass timer.*Failed to fetch/],
+      [{ installed: false, reason: 'no pass timer in this build' }, /did not install the pass timer.*no pass timer in this build/],
+      [null, /did not install the pass timer.*no report/],
+    ]) {
+      const v = seamVerdict({ plain: ran('undefined'), opened: open([...LOOKBOOK_SEAM_METHODS], timer) });
+      expect(v.ok, JSON.stringify(timer)).toBe(false);
+      expect(v.line).toMatch(re);
+    }
+    expect(seamVerdict({ plain: ran('undefined'), opened: open([...LOOKBOOK_SEAM_METHODS]) }).line).toMatch(/the pass timer loads/);
   });
   it('a page whose entry module never ran is COULD NOT CHECK, never an absence', () => {
     for (const r of [
