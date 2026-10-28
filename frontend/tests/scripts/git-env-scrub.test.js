@@ -15,7 +15,8 @@ import { isolatedGitEnv, fixtureGit } from './_isolatedGit.js';
  * REAL repository: on 2026-10-27 a fixture suite re-initialised the main checkout `core.bare = true`.
  * Two guards, one per door:
  *   - ci/git-env.sh `run_scrubbed` runs a command with every GIT_* variable removed, and pipeline.sh's `step()`
- *     runs each step through it (write-receipt.sh stays outside: it needs git's GIT_INDEX_FILE);
+ *     runs each step through it (write-receipt.sh locates its toplevel through it and reads the tree with the
+ *     caller's environment);
  *   - an ESLint `no-restricted-syntax` block forbids raw git in tests, so a new test cannot reintroduce it.
  *
  * Sited in tests/scripts: the subjects are a shell helper, a shell file's text and a lint config. The `step()` case is

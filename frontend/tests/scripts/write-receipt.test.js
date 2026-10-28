@@ -11,7 +11,8 @@ import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
  * The receipt-writing pipeline tier runs every step against the WORKING TREE, then wrote a receipt keyed on
  * `git write-tree` — the INDEX. With a partial stage those differ, and pre-push skipped the offline core for
  * a tree no gate had ever run against. The fix moved the write into ci/write-receipt.sh, which refuses when
- * the working tree differs from the index on any pipeline input.
+ * the working tree differs from the index on any pipeline input, and when the index is not the tree `--tree` printed
+ * before the run's first step (a commit made while the steps ran).
  *
  * THIS DRIVES THE REAL SCRIPT in a real throwaway git repo — not a re-implementation of its condition —
  * because the defect lived in the seam between "what was tested" and "what was recorded", and only git
@@ -37,7 +38,10 @@ const ROOT = resolve(__dirname, '../../..');
 const SCRIPT = join(ROOT, 'ci/write-receipt.sh');
 
 const git = fixtureGit; // never the caller's repository: tests/scripts/_isolatedGit.js
-const run = (cwd, dir, ...tier) => spawnSync('sh', [SCRIPT, dir, ...(tier.length ? tier : ['certify'])], { cwd, encoding: 'utf8', env: isolatedGitEnv() });
+// A run that started on the index as it stands now, unless a start tree is given.
+const run = (cwd, dir, tier = 'certify', start = git(cwd, 'write-tree')) =>
+  spawnSync('sh', [SCRIPT, dir, tier, start], { cwd, encoding: 'utf8', env: isolatedGitEnv() });
+const treeOf = (cwd) => spawnSync('sh', [SCRIPT, '--tree'], { cwd, encoding: 'utf8', env: isolatedGitEnv() });
 
 let repo;
 let receipt; // the receipt DIRECTORY: one file per certified tree
@@ -75,12 +79,49 @@ describe('ci/write-receipt.sh — certify only what was tested', () => {
     expect(readFileSync(join(receipt, git(repo, 'write-tree')), 'utf8').split(' ')[1]).toBe('other');
   });
 
-  it('no tier, or no directory: a usage refusal (exit 2), and nothing is written', () => {
-    const noTier = spawnSync('sh', [SCRIPT, receipt], { cwd: repo, encoding: 'utf8', env: isolatedGitEnv() });
-    expect(noTier.status).toBe(2);
-    expect(noTier.stderr).toMatch(/usage: sh ci\/write-receipt\.sh <receipt-dir> <tier>/);
-    expect(spawnSync('sh', [SCRIPT], { cwd: repo, encoding: 'utf8', env: isolatedGitEnv() }).status).toBe(2);
+  it('no start tree, no tier, or no directory: a usage refusal (exit 2), and nothing is written', () => {
+    const bare = (...args) => spawnSync('sh', [SCRIPT, ...args], { cwd: repo, encoding: 'utf8', env: isolatedGitEnv() });
+    const noStart = bare(receipt, 'certify');
+    expect(noStart.status).toBe(2);
+    expect(noStart.stderr).toMatch(/usage: sh ci\/write-receipt\.sh <receipt-dir> <tier> <start-tree>/);
+    expect(bare(receipt).status).toBe(2);
+    expect(bare().status).toBe(2);
     expect(existsSync(receipt)).toBe(false);
+    expect(run(repo, receipt).status, 'control: the same tree with a start tree is certified').toBe(0);
+  });
+
+  it('--tree prints the index tree of a fully staged tree, and nothing else', () => {
+    writeFileSync(join(repo, 'frontend/src/a.js'), 'export const a = 2;\n');
+    git(repo, 'add', 'frontend/src/a.js');
+    const r = treeOf(repo);
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toBe(`${git(repo, 'write-tree')}\n`);
+    expect(existsSync(receipt)).toBe(false);
+  });
+
+  it('--tree refuses a working tree that is not the index, and prints no tree', () => {
+    writeFileSync(join(repo, 'frontend/src/a.js'), 'export const a = 2;\n');
+    git(repo, 'add', 'frontend/src/a.js');
+    writeFileSync(join(repo, 'frontend/src/b.js'), 'export const b = 2;\n');
+    const r = treeOf(repo);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toBe('');
+    expect(r.stderr).toMatch(/REFUSED/);
+  });
+
+  it('a tree that moved since the run started is refused: a commit made while the steps ran', () => {
+    const start = treeOf(repo).stdout.trim();
+    expect(start).toBe(git(repo, 'write-tree'));
+    writeFileSync(join(repo, 'frontend/src/late.js'), 'export const late = 1;\n');
+    git(repo, 'add', 'frontend/src/late.js');
+    git(repo, 'commit', '-q', '-m', 'made while certify ran');
+    const now = git(repo, 'write-tree');
+    expect(now).not.toBe(start);
+    const r = run(repo, receipt, 'certify', start);
+    expect(r.status, r.stdout + r.stderr).toBe(1);
+    expect(r.stderr).toMatch(/REFUSED: the index tree changed during the run/);
+    expect(existsSync(receipt)).toBe(false);
+    expect(run(repo, receipt, 'certify', now).status, 'control: the same tree, started on, is certified').toBe(0);
   });
 
   it('receipts for two trees sit side by side: the second does not evict the first', () => {
@@ -102,7 +143,7 @@ describe('ci/write-receipt.sh — certify only what was tested', () => {
     writeFileSync(join(repo, 'frontend/src/b.js'), 'export const b = 2;\n'); // edited, NOT staged
     const r = run(repo, receipt);
     expect(r.status).toBe(1);
-    expect(r.stdout).toMatch(/REFUSED/);
+    expect(r.stderr).toMatch(/REFUSED/);
     expect(existsSync(receipt)).toBe(false);
   });
 
@@ -128,7 +169,7 @@ describe('ci/write-receipt.sh — certify only what was tested', () => {
     writeFileSync(join(repo, '.state/events.jsonl'), '{"n":2}\n');
     const r = run(repo, receipt);
     expect(r.status).toBe(1);
-    expect(r.stdout).toMatch(/REFUSED/);
+    expect(r.stderr).toMatch(/REFUSED/);
   });
 
   it('the repo ignores .state/ — harness state is never a tracked input', () => {
@@ -163,7 +204,7 @@ describe('ci/write-receipt.sh run from a LINKED WORKTREE\'s hook, the way ci/pip
       mkdirSync(hooks);
       writeFileSync(
         join(hooks, 'pre-commit'),
-        `#!/bin/sh\nenv > '${envLog}'\ncd frontend || exit 1\nsh '${SCRIPT}' '${laneReceipt}' certify > '${log}' 2>&1\necho "exit=$?" >> '${log}'\nexit 0\n`,
+        `#!/bin/sh\nenv > '${envLog}'\ncd frontend || exit 1\nT=$(sh '${SCRIPT}' --tree)\nsh '${SCRIPT}' '${laneReceipt}' certify "$T" > '${log}' 2>&1\necho "exit=$?" >> '${log}'\nexit 0\n`,
         { mode: 0o755 },
       );
       git(repo, 'config', 'core.hooksPath', hooks);

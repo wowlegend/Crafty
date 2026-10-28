@@ -80,11 +80,12 @@ function writeReceipt(repo, tree, tier) {
   mkdirSync(join(repo, '.git/crafty-green-trees'), { recursive: true });
   writeFileSync(join(repo, '.git/crafty-green-trees', tree), `${tree} ${tier} 2026-10-28T00:00:00Z\n`);
 }
-/** The REAL ci/write-receipt.sh, run in the fixture the way the certify tier runs it. */
+/** The REAL ci/write-receipt.sh, run in the fixture the way the certify tier runs it: the tree first, then the write. */
 function certify(repo) {
-  const r = spawnSync('sh', [join(ROOT, 'ci/write-receipt.sh'), join(repo, '.git/crafty-green-trees'), 'certify'], {
-    cwd: repo, encoding: 'utf8', env: isolatedGitEnv(),
-  });
+  const sh = (...args) => spawnSync('sh', [join(ROOT, 'ci/write-receipt.sh'), ...args], { cwd: repo, encoding: 'utf8', env: isolatedGitEnv() });
+  const start = sh('--tree');
+  expect(start.status, `the real writer refused the start tree: ${start.stderr}`).toBe(0);
+  const r = sh(join(repo, '.git/crafty-green-trees'), 'certify', start.stdout.trim());
   expect(r.status, `the real writer refused: ${r.stdout}${r.stderr}`).toBe(0);
 }
 

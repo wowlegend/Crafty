@@ -37,7 +37,8 @@
 #                                              and a bypassed gate is worth less than no gate (R5).
 #
 # THE GREEN-TREE RECEIPT. A green `certify` run records the INDEX TREE HASH it certified (`git write-tree`,
-# byte-identical to the tree the resulting commit stores) as one file per tree under
+# byte-identical to the tree the resulting commit stores, read before the first step and again after the last, and
+# written only when the two agree) as one file per tree under
 # <git-common-dir>/crafty-green-trees/. pre-push looks up the tree it is about to push there: a certify
 # receipt means the offline core is a known answer, and re-deriving it in a fresh worktree buys nothing. The
 # commit-range gates still run, because a receipt cannot speak for a range it never saw. The commit tier
@@ -121,6 +122,16 @@ step() { # step <name> <cmd...>
 }
 
 cd "$APP"
+
+# The certify receipt names the tree the steps read, so the tree is taken before the first step: a commit, checkout or
+# merge made while they run changes the index, and the writer refuses any tree that is not this one.
+START_TREE=""
+if [ "$TIER" = "certify" ]; then
+  START_TREE=$(sh "$ROOT/ci/write-receipt.sh" --tree) || START_TREE=""
+  if [ -z "$START_TREE" ]; then
+    printf '\033[33m── certify: the working tree is not the index at the start, so no receipt will be written; every step still runs\033[0m\n'
+  fi
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # TIER: PUBLISH GUARD — runs FIRST in every tier. This repo is PUBLIC and Vercel auto-deploys every
@@ -213,10 +224,15 @@ if [ "$fail" -eq 0 ]; then
   # Only certify writes a receipt, and only on a fully green run: it is the one tier that ran the whole offline
   # core over the whole tree. The tier goes into the receipt, and pre-push honours `certify` alone.
   if [ "$TIER" = "certify" ]; then
-    # The steps above tested the WORKING TREE; the receipt certifies the INDEX. write-receipt.sh refuses
-    # when the two differ (a partial stage), and reads the file back before claiming it landed. A refusal
-    # is not a failure of this run — it only sends the push down the full-certification path.
-    sh "$ROOT/ci/write-receipt.sh" "$RECEIPT" certify || true
+    # The steps above tested the WORKING TREE; the receipt certifies the INDEX. write-receipt.sh refuses when the two
+    # differ (a partial stage) or when the index is not the tree taken before the first step, and reads the file back
+    # before claiming it landed. A refusal is not a failure of this run: it only sends the push down the
+    # full-certification path.
+    if [ -n "$START_TREE" ]; then
+      sh "$ROOT/ci/write-receipt.sh" "$RECEIPT" certify "$START_TREE" || true
+    else
+      printf '\033[33m  receipt NOT written: the working tree was not the index when the run started\033[0m\n'
+    fi
   fi
   exit 0
 fi
