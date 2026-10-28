@@ -39,7 +39,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      # FULL HISTORY (2026-10-28). On a push to main the fast tier runs artifact-currency, whose drift is
+      # `rev-list --count syncedSha..HEAD`; a depth-1 clone holds no commit but HEAD, so that count cannot be taken.
+      # For an artifact surface the script refuses an unmeasurable drift on a main push rather than skipping it, so a
+      # shallow checkout here reds main for those; a surface with no recorded sha still skips, and a page-kind
+      # surface in a shallow checkout reads as current. The step runs after the push has landed: it detects drift,
+      # it does not bound a merge.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -62,7 +70,9 @@ jobs:
       # ran. ci/pipeline.sh is the definition; both callers invoke it, so neither can drift.
       #
       # `--tier=fast` adds the steps that need network or a browser (knip, npm audit, prod-smoke) and
-      # skips the commit-shaped ones, which need a push refspec a runner does not have.
+      # skips the commit-shaped ones (queue-ledger, e2e-freshness), which need a push refspec a runner does not
+      # have. The one exception is artifact-currency: on a push to main it runs here too, naming main, to detect
+      # drift after a merge GitHub made (a pull_request or a workflow_dispatch run skips it).
       - name: Pipeline (fast tier — every deterministic gate, plus network/browser)
         working-directory: .
         run: bash ci/pipeline.sh --tier=fast

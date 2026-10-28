@@ -297,6 +297,15 @@ describe('tier 1b and the main-only red-base rule', () => {
     expect(mainMovesFrom('')).toBe(null);
     expect(mainMovesFrom(undefined)).toBe(null);
   });
+  // Every case above puts main LAST, but git lists the refs the remote already has before new ones: measured
+  // 2026-10-28, `git push origin feat/y main` handed pre-push main FIRST. And a branch merely NAMED for main is
+  // not main. Mutation-Proof (mutate.sh), each observed RED here: M10 `list.at(-1) === 'refs/heads/main'` (last ref
+  // only) -> the main-first case; M11 `list.some((r) => r.includes('main'))` (substring) -> the fix/main-menu case.
+  it('mainMovesFrom: main FIRST in a multi-ref push is a main move; a branch named like main is not', () => {
+    expect(mainMovesFrom(' refs/heads/main refs/heads/feat/y')).toBe(true);
+    expect(mainMovesFrom(' refs/heads/fix/main-menu')).toBe(false);
+    expect(mainMovesFrom(' refs/heads/feat/main refs/heads/mainline')).toBe(false);
+  });
   it('readCommitCi: success only when some run on the commit has ALL e2e jobs green', () => {
     const job = (c) => `completed,${c},2026-10-27T00:00:00Z,2026-10-27T00:10:00Z,9`;
     const fake = (runs) => (cmd) => {
