@@ -3,6 +3,13 @@
 > **Single source of truth for all agent frameworks.** Root `CLAUDE.md` is a symlink to this file
 > (Claude Code), and Antigravity/Gemini read it here in `.agent/`. **Edit THIS file, never the symlink.**
 
+> **Standing principle (Kevin, 2026-10-28; DECISIONS 2026-10-28 item 14).** Crafty was built since 2025 by far weaker
+> models and carries their design, architecture and tech debt and AI slop. **Nothing is off limits**: the game, its
+> architecture, design, every element, visual and idea may be changed, deleted or pruned as the command session judges
+> best, with full autonomy. Ask Kevin nothing unless absolutely needed; install any tool that helps. Kevin reviews ONE
+> page, the Command Record (`docs/superpowers/command-record.html`). Keep the public face (repo, GitHub Pages) beautiful
+> and the docs in SOTA shape. Older rules, plans and gates in this repo bind only as far as they still earn their place.
+
 ## ⚠️ REPO LAYOUT — read before ANY path/Bash op (the #1 recurring mistake)
 
 This repo is **TWO-LEVEL**. The Bash cwd drifts between tool calls and **resets after every
