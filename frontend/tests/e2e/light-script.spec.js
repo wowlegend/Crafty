@@ -2,6 +2,7 @@ import { test, expect } from './_fixtures.js';
 import { PNG } from 'pngjs';
 import { bootDev, startPlayActive } from './_boot.js';
 import { displayed, stoneFaceUnder, oklch } from '../gates/_lightModel.js';
+import { KEY_S } from '../../src/render/colourScript.js';
 
 // THE LIGHT SCRIPT, LIVED (plan docs/superpowers/plans/2026-10-27-crafty-light-colour-script.md, Task 3b).
 //
@@ -53,6 +54,9 @@ import { displayed, stoneFaceUnder, oklch } from '../gates/_lightModel.js';
 //   SC1e Atmosphere renders liveCycle(st.gameTime), the 1 Hz step  -> "dawn: the key light did not move between frames
 //        of one game-second" (0 of 2 pairs moved, key steps 0.0000 0.0000; the identities' runs moved 0.0026-0.9136)
 //   MTe the moon disc's moonUp horizon mask dropped (skyDome.js)    -> "the painted moon shows under the horizon" (0.702)
+//   I4 the away card read's time set to 0.2 (out of the night key)  -> SETUP "the clock left the night key" (the guard)
+//   Re-run 2026-10-27/28 on this spec after the light-colour review's fixes, throwaway config on port 4303: E1-E8 each
+//   RED again (E2 on a second attempt: the first drew 2 of 4 frames in 20 s at load ~350), identities SURVIVED.
 //
 // BLIND SPOT: SwiftShader on CI is not a GPU, and this reads one patch of one material. The look itself (the night as
 // a whole, golden hour, WebKit and the iPad) is the lookbook's (plan Task 9), on a real GPU.
@@ -125,21 +129,32 @@ async function faceTheKey(page, label, away = false) {
  *  The model is the whole chain there (rig, grade, NEUTRAL). Med and high add N8AO and GodRays, screen-space passes the
  *  model does not hold: measured 2026-10-27 on this card, high read up to L 0.10 off the model in both directions while
  *  low agreed within 0.006 at three facings, noon and midnight. The tier the game had is restored after. */
-async function greyCard(page, label, away = false) {
+async function greyCard(page, label, { away = false, timeOfDay, key } = {}) {
   const priorTier = await page.evaluate(() => window.useGameStore.getState().qualityTier);
   await call(page, 'setQualityTier', 'low');
   try {
     // THE WEATHER CAN FLIP INSIDE THE READ: the card waits three frames and the screenshot comes after, and a 90 s storm
     // tick landed there once (measured: mood 0.06, boost 0.85, the screen 0.08 under the model). So the weather is read
     // again AFTER the screenshot, and a read it moved is taken again (two tries, then SETUP).
+    //
+    // SO CAN THE CLOCK (review of the light-colour lane, MED). It runs at 4 units a second through the whole read, and
+    // the absolute night bounds mean what B2 means only inside the NIGHT key (s <= KEY_S.night; the script is flat
+    // there): the away read came tens of seconds after midnight was set and nothing checked it was still night. So each
+    // try sets its own time first, and after the screenshot the fraction the sky RENDERED at (readSkyLight.cycle) must
+    // still be inside the key the read is about (night: s <= KEY_S.night; day: s >= KEY_S.day). The clock only moves
+    // forward from the set time and s is monotonic there, so a read in the key after the shot was in it during the shot.
     let last = null;
     for (let attempt = 0; attempt < 2; attempt++) {
+      await page.evaluate((t) => window.__craftyTest.call('setTimeOfDay', t), timeOfDay);
+      await frames(page, 2);
       last = await shootCard(page, label, away);
       const after = await call(page, 'readSkyLight');
-      if (last.weatherBoost === 0 && after?.weatherBoost === 0 && after.mood < 0.02) return last;
-      last.weatherAfter = { mood: after?.mood, weatherBoost: after?.weatherBoost };
+      const s = Math.sin(2 * Math.PI * (after?.cycle ?? NaN));
+      const inKey = key === 'night' ? s <= KEY_S.night : s >= KEY_S.day;
+      if (last.weatherBoost === 0 && after?.weatherBoost === 0 && after.mood < 0.02 && inKey) return last;
+      last.weatherAfter = { mood: after?.mood, weatherBoost: after?.weatherBoost, cycle: after?.cycle, s, key, inKey };
     }
-    throw new Error(`SETUP: ${label}: the weather moved during both card reads — ${fmt(last.weatherAfter)}`);
+    throw new Error(`SETUP: ${label}: the weather moved or the clock left the ${key} key during both card reads — ${fmt(last.weatherAfter)}`);
   } finally {
     await call(page, 'clearGreyCard');
     await call(page, 'setQualityTier', priorTier);
@@ -191,7 +206,7 @@ test('the light script in the running game: a sun key at noon, a moon key at mid
   expect(Math.abs(noon.keyDirY - noon.sunDirY), `noon: the light is not aimed down the sun's direction — ${atNoon}`).toBeLessThanOrEqual(1e-6);
   expect(noon.keyIntensity, `noon: the key is unlit — ${atNoon}`).toBeGreaterThan(1);
 
-  const cardNoon = await greyCard(page, 'noon');
+  const cardNoon = await greyCard(page, 'noon', { timeOfDay: 0.5, key: 'day' });
   console.log(`[light-script] grey card at noon: screen ${fmt(cardNoon.screen)} model ${fmt(cardNoon.model)} (diffuse only ${fmt(cardNoon.diffuseOnly)}) view ${fmt(cardNoon.viewDir)} median ${cardNoon.median} over ${cardNoon.pixels} px`);
   expect(cardNoon.screen.C, `noon: the card does not read grey on screen, so the clip is not the card — ${cardNoon.where}`).toBeLessThanOrEqual(0.03);
   expect(Math.abs(cardNoon.screen.L - cardNoon.model.L), `noon: model L ${cardNoon.model.L.toFixed(3)} vs screen ${cardNoon.screen.L.toFixed(3)} — ${cardNoon.where}`).toBeLessThanOrEqual(0.03);
@@ -210,14 +225,14 @@ test('the light script in the running game: a sun key at noon, a moon key at mid
   expect(night.terrainSunDirY, `midnight: the terrain's uSunDir is not the sun (ore glow, leaves and cloud shadows would follow the moon) — ${atNight}`).toBeLessThan(0);
   expect(shadow?.schedSun?.[1], `midnight: the shadow map last rendered from below the horizon, not from the moon's key — ${atNight}`).toBeGreaterThan(0);
 
-  const cardNight = await greyCard(page, 'midnight');
+  const cardNight = await greyCard(page, 'midnight', { timeOfDay: 0.0, key: 'night' });
   console.log(`[light-script] grey card at midnight: screen ${fmt(cardNight.screen)} model ${fmt(cardNight.model)} (diffuse only ${fmt(cardNight.diffuseOnly)}) view ${fmt(cardNight.viewDir)} median ${cardNight.median} over ${cardNight.pixels} px`);
   expect(Math.abs(cardNight.screen.L - cardNight.model.L), `midnight: model L ${cardNight.model.L.toFixed(3)} vs screen ${cardNight.screen.L.toFixed(3)} — ${cardNight.where}`).toBeLessThanOrEqual(0.03);
   expect(Math.abs(cardNight.screen.C - cardNight.model.C), `midnight: model C ${cardNight.model.C.toFixed(3)} vs screen ${cardNight.screen.C.toFixed(3)} — ${cardNight.where}`).toBeLessThanOrEqual(0.02);
   // THE ABSOLUTE NIGHT BOUNDS, on the screen, read with the camera turned AWAY from the moon: facing it, the specular
   // lifts the card about L 0.07, which held a night exposure of 1.15 (the draft's) above 0.30 (mutant E5 survived the
   // facing read: screen 0.331 against a diffuse 0.273). Away, the specular is about 0.01 and the bound means what B2 means.
-  const cardAway = await greyCard(page, 'midnight, away from the moon', true);
+  const cardAway = await greyCard(page, 'midnight, away from the moon', { away: true, timeOfDay: 0.0, key: 'night' });
   console.log(`[light-script] grey card at midnight, away from the moon: screen ${fmt(cardAway.screen)} model ${fmt(cardAway.model)} (diffuse only ${fmt(cardAway.diffuseOnly)}) view ${fmt(cardAway.viewDir)} median ${cardAway.median} over ${cardAway.pixels} px`);
   expect(Math.abs(cardAway.screen.L - cardAway.model.L), `midnight, away: model L ${cardAway.model.L.toFixed(3)} vs screen ${cardAway.screen.L.toFixed(3)} — ${cardAway.where}`).toBeLessThanOrEqual(0.03);
   expect(cardAway.screen.L, `midnight: the moonlit stone is black on screen (L ${cardAway.screen.L.toFixed(3)}) — ${cardAway.where}`).toBeGreaterThanOrEqual(0.30);
