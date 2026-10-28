@@ -173,10 +173,12 @@ longer finds the instructions there; none is configured to in this repo.
    of play and its first dawn at 8:00, so with the first minute in front the experience ends at 9:00. At 300 s night
    fell at 2:30, before a new player could light a Hearth, and the ten minutes held two nights. At 600 s the first dawn
    lands at 11:00. Measured in the same change: the golden blend (sunset key to dusk key) lasts 16.8 s, up from 10.5 s;
-   the sun's 0.5 deg shadow steps fall from about 2.4 to 1.51 renders a second (727 a cycle). What moves with it: every
-   timed system reads game units. The dusk warning's 0.18 of the day half is now the last 43 s, up from 27 s. A night
-   lasts 4 minutes, and the siege's per-night spawn chance and mob cap apply for longer. Balancing the siege is W3-A's,
-   which can move this one constant. Saves load unchanged, because `gameTime` is stored in units. The pause holds the
+   the sun's 0.5 deg shadow steps fall from about 2.4 to 1.51 renders a second (727 a cycle). What moves with it is
+   what reads game units: the day and night halves, the sky, the shadow steps, and the dusk warning, whose 0.18 of the
+   day half is now the last 43 s, up from 27 s. What runs on real time does not: the spawner checks once a real second
+   (`frontend/src/systems/SpawnerSystem.jsx`), so a night holds the siege at its mob cap for 240 s of real time instead
+   of 150 s, and night 1 ships in Wave 1 at that length, unmeasured. Rebalancing the siege for the longer night is
+   W3-A's, which can also move this one constant. Saves load unchanged, because `gameTime` is stored in units. The pause holds the
    clock through the input gate and `isWorldFrozenNow`, and the sky clock catches up at most one tick and holds.
    **Guard:** `tests/gates/day-length-gates.test.js` ticks a fresh profile from the store's own start: the first dusk
    at 180 s or later, the first dawn plus a 60 s first minute within 600 s, and the golden blend 15 s or longer.
@@ -189,13 +191,37 @@ longer finds the instructions there; none is configured to in this repo.
    midnight for a night state, because night now comes from the clock, and a night capture state pinned at noon would
    render daylight until W2-B deletes capture. The baselines are stale against the colour script, and nothing runs the
    visual gate.
-   (c) **The colour blend stays in linear RGB.** The reset asked for an OKLab check. Measured on every pair of adjacent
-   keys and every blended colour, the script's linear-RGB path is never darker than the straight OKLab line between the
-   same keys, and it loses at most 0.0147 chroma (the fog, from dusk to sunset). That is under 0.02, the OKLab step this
-   check takes as one visible difference. An sRGB-byte lerp would run up to 0.006 darker. On screen, the horizon's
-   chroma bottoms at 0.051 between the sunset and dusk keys, and at 0.058 between preDawn and sunrise. The orange turns
-   to violet, so any straight blend passes near neutral there. **Guard:** `colour-script-gates`, "the blend between
-   keys, against OKLab".
+   (c) **The colour blend stays in linear RGB.** The reset asked for an OKLab check of the dusk clip. What was
+   measured, and in what: (1) the colour model and the authored keys, not pixels. On every pair of adjacent keys and
+   every blended colour, the script's linear-RGB path is never darker than the straight OKLab line between the same
+   keys, and it loses at most 0.0147 chroma (the fog, from dusk to sunset), under 0.02, the OKLab step the gate takes as
+   one visible difference. An sRGB-byte lerp would run up to 0.006 darker, also under a step; linear is kept because it
+   is never darker and is three's own lerp. In the display model (the dome's horizon through the key's exposure, the
+   grade and NEUTRAL), the horizon's chroma bottoms at 0.051 between the sunset and dusk keys and 0.058 between preDawn
+   and sunrise. (2) The dusk clip's pixels, measured afterwards: in `after-walk-0.50.mp4` (the H.264 screencast, f 0.500
+   to 0.508, about a quarter of the 16.8 s blend), the sky band where it meets the land reads OKLab L 0.68-0.79 and
+   chroma 0.005-0.047, median 0.017, against the model's L 0.82-0.83 and chroma 0.051-0.068 for the dome's horizon. On
+   screen the band passes near neutral mid-clip, as the fog and the distance haze grey it; the model's "never grey" is a
+   claim about the dome colour, not about that band. Orange to violet passes near neutral in any straight blend
+   (OKLab's own midpoint is 0.040), so this is no case for a different blend space; whether the grey band reads as mud
+   is a look judgement for the lookbook. **Guard:** `colour-script-gates`, "the blend between keys, against OKLab", both
+   bounds one visible step (0.02): the claim is how the blend looks, and a tighter bound would gate how it is computed.
+   (d) **The ground at golden hour and through the twilight blends (command session, 2026-10-28, after the lane's
+   review).** The keys as first landed lit the ground at dawn and golden hour darker than at midnight and than on main
+   (the grey card's up face at L 0.225, against midnight's 0.337 and main's 0.374), because the sun grazes there (its
+   arc peaks at 32 deg) and the sunrise and sunset keys gave the indirect light 0.26 ambient and 0.60 hemisphere. The
+   pad by the Hearth read maroon at 0.50 (L 0.202 C 0.053 h 3): the fire's orange on the violet twilight. Retuned:
+   sunrise and sunset ambient x0.80 and hemisphere x1.80 in warm yellow-greys (#C6B698 / #C2BAAC, #C6B496 / #C2BAA8),
+   preDawn and dusk ambient x0.85 and hemisphere x1.50 in a steel blue (#7E8CA2 / #788AAC); exposure, the sky and the
+   sun are unchanged, so the dusk sky stays violet. The grey card's up face now reads L 0.418 at 0.02 and 0.415 at 0.48
+   (gold, hue 78-79), 0.381 at 0.50 and 0.337 at midnight. A first retune with lavender twilight light and redder greys
+   passed the model, but the real-GPU pad by the brazier read 10-20 deg redder than the model and touched maroon at
+   0.50 on one target (WebKit 1180x820, L 0.303 C 0.043 h 16), so the final colours hold the model's pad at chroma 0.02
+   or less in the maroon hue band. **Guard:** `colour-script-gates` G1 (while the sun is up the ground, grey card and
+   terrain stone, is never darker than at midnight; golden hour at least 0.374 and gold) and G2 (no maroon through
+   either twilight blend in the sky, fog, hazed land, ground, or the pad 1 m from the brazier, whose light `HEARTH_FIRE`
+   in `frontend/src/world/homeAnchor.js` the gate and the brazier share). G2 judges the model, so it does not see that
+   red offset: the lavender-twilight keys pass it, and the evidence for the final colours is the lookbook reading.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 

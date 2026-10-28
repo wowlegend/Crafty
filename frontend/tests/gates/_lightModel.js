@@ -1,8 +1,7 @@
-// _lightModel.js — the arithmetic the colour gates measure with. A TEST HELPER, not a check file: it asserts
-// nothing, so it carries no Mutation-Proof receipt of its own; the gates that import it carry theirs.
+// _lightModel.js — the arithmetic the colour gates measure with. A test helper, not a check file: it asserts nothing;
+// the gates that import it carry the assertions.
 //
-// What it models, from the light rig to the pixel (plan 2026-10-27-crafty-light-colour-script, Task 1 and review
-// amendment 1). Every step is transcribed from the code that runs, and cited:
+// What it models, from the light rig to the pixel. Every step is transcribed from the code that runs, and cited:
 //
 //   1. THE RIG (three r172, physically-correct lights). A diffuse face takes `BRDF_Lambert = diffuseColor / PI`
 //      (node_modules/three/src/renderers/shaders/ShaderChunk/common.glsl.js) times its irradiance: the ambient
@@ -113,6 +112,17 @@ function irradiance(rig, n, keyDir) {
   return e;
 }
 
+/**
+ * The irradiance a point light (`{ color, intensity, distance }`, decay 2) puts on an up face `r` metres out from the
+ * foot of the light, the light `height` above the face: three r172's `getPointLightInfo` with `getDistanceAttenuation`
+ * (lights_pars_begin.glsl.js), times dot(n, L). Linear [r, g, b], in the same units as `rigOf`'s terms.
+ */
+export function pointLightOnUpFace(light, height, r) {
+  const d = Math.hypot(height, r);
+  const falloff = (1 / Math.max(d * d, 0.01)) * (light.distance > 0 ? sat(1 - (d / light.distance) ** 4) ** 2 : 1);
+  return scale(linearFromHex(light.color), light.intensity * falloff * (height / d));
+}
+
 /** The indirect irradiance on an up face (ambient + hemisphere sky), linear [r, g, b]. */
 export function indirectOnUpFace(frame) {
   return irradiance(rigOf(frame), [0, 1, 0], null);
@@ -121,10 +131,14 @@ export function indirectOnUpFace(frame) {
 /**
  * Linear radiance of the grey stone face under `frame`, before the post chain. With a `viewDir` (unit, from the face
  * TOWARD the camera) and a lit key, the key's direct specular is added, as three adds it; without one, the diffuse face.
+ * `extra` is further irradiance on the face (a point light's, from `pointLightOnUpFace`), diffuse only. `albedo` (hex)
+ * replaces the grey card's diffuse colour; the specular stays the grey card's.
  */
-export function stoneFaceUnder(frame, { normal = [0, 1, 0], keyDir = null, viewDir = null } = {}) {
+export function stoneFaceUnder(frame, { normal = [0, 1, 0], keyDir = null, viewDir = null, extra = null, albedo = null } = {}) {
   const rig = rigOf(frame);
-  const diffuse = scale(mul(STONE_DIFFUSE, irradiance(rig, normal, keyDir)), 1 / Math.PI);
+  const e = extra ? add(irradiance(rig, normal, keyDir), extra) : irradiance(rig, normal, keyDir);
+  const base = albedo ? scale(linearFromHex(albedo), 1 - STONE_METALNESS) : STONE_DIFFUSE;
+  const diffuse = scale(mul(base, e), 1 / Math.PI);
   if (!keyDir || !viewDir) return diffuse;
   const n = unit(normal), l = unit(keyDir);
   return add(diffuse, mul(scale(rig.key, sat(dot(n, l))), brdfGGX(n, l, unit(viewDir))));

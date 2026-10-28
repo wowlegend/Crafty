@@ -34,7 +34,7 @@ import { surfaceBlockAt } from './climate.js';
 import { blightHeartSite, blightHeartChunk } from './blightHeart.js';
 import { nearestLandmark } from './shrines.js';
 import { HubRender } from '../render/HubRender';
-import { HEARTH_Y } from './homeAnchor.js';
+import { HEARTH_Y, HEARTH_FIRE } from './homeAnchor.js';
 import { BLOCK_TYPES } from './Blocks';
 import { chestHasItems } from '../game/chestState.js';
 import { idForBlock, blockForId } from './blockIds';
@@ -492,7 +492,7 @@ const HomeAnchorRender = () => {
                 {!isCaptureMode() && (
                     <>
                         <Emissive position={[0, 1.35, 0]} size={0.34} color="#FF7A1A" intensity={2.8} />
-                        <pointLight position={[0, 1.6, 0]} intensity={1.6} distance={9} color="#FF8A2A" />
+                        <pointLight position={[0, HEARTH_FIRE.height, 0]} intensity={HEARTH_FIRE.intensity} distance={HEARTH_FIRE.distance} color={HEARTH_FIRE.color} />
                     </>
                 )}
             </group>
@@ -657,18 +657,17 @@ export const MinecraftWorld = React.memo(() => {
     // capture-frozen wave time now, so the land material has no time-varying term.
     useFrame((state) => {
         const mood = moodRef.current;                                   // smoothed by <Atmosphere>
-        // THE PUBLISHED SKY FRAME (render/mood.js skyFrameRef; plan 2026-10-27-crafty-light-colour-script, Task 3b): the
-        // one frame <Atmosphere> resolved at the clock's cycle. This used to re-sample the mood with no cycle, so the
-        // land hazed toward the NOON horizon at every hour. Read now, never retained.
+        // THE PUBLISHED SKY FRAME (render/mood.js skyFrameRef): the one frame <Atmosphere> resolved at the clock's
+        // cycle, so the land hazes toward the horizon of this hour; a re-sample with no cycle would be noon's. Read
+        // now, never retained.
         const frame = skyFrameRef.current;
         const opaqueShader = opaqueMaterial.userData.shader;
         if (opaqueShader) {
             opaqueShader.uniforms.mood.value = mood;
             opaqueShader.uniforms.skyHorizon.value.copy(frame.skyHorizon); // S2 aerial haze target
-            // S11, re-sourced by the light-colour plan (Task 1, review amendment 10): the AO floor is the frame's
-            // `aoFloor`, aoFloorColor of the COMPOSED AMBIENT (the authored shadow tint), no longer of skyMid, which
-            // was blue by day and navy at night and multiplied the albedo of every occluded corner. Its luminance is
-            // still AO_FLOOR's; only the hue follows the light.
+            // The AO floor is the frame's `aoFloor`, aoFloorColor of the COMPOSED AMBIENT (the authored shadow tint).
+            // It multiplies the albedo of every occluded corner, so a sky colour here (blue by day, navy at night)
+            // would tint them all. Its luminance is AO_FLOOR's; only the hue follows the light.
             opaqueShader.uniforms.uAoFloor.value.copy(frame.aoFloor);
             // Cloud shadows: the sky dome's clock (the capture clock under capture) and the sun Atmosphere resolved.
             opaqueShader.uniforms.uTime.value = frameElapsed(state.clock.elapsedTime);
@@ -676,9 +675,9 @@ export const MinecraftWorld = React.memo(() => {
             opaqueShader.uniforms.uCloudCover.value = cloudCoverRef.current;
         }
     });
-    // DEV-only: the land material's LIVE sky uniforms, for tests/e2e/light-script.spec.js (light-colour plan Task 3b):
-    // `sunDir` must be the SUN at every hour (ore glow, leaf translucency and cloud shadows read it; refute F5), never
-    // the moon key. Null until the material has compiled. Tree-shaken in production with the bridge.
+    // DEV-only: the land material's LIVE sky uniforms, for tests/e2e/light-script.spec.js: `sunDir` must be the SUN at
+    // every hour (ore glow, leaf translucency and cloud shadows read it), never the moon key. Null until the material
+    // has compiled. Tree-shaken in production with the bridge.
     useEffect(() => {
         if (!import.meta.env.DEV) return;
         registerTestHook('readTerrainSky', () => {

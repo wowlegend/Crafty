@@ -1,13 +1,12 @@
 // colourScript.js — the light and colour script: six authored keys, keyed on the SUN'S ELEVATION.
 //
-// Plan 2026-10-27-crafty-light-colour-script, Task 1. PURE: no scene, no store, no React. `sampleScript(f)` turns the
+// PURE: no scene, no store, no React. `sampleScript(f)` turns the
 // cycle fraction (`cycleFraction`, dawn-origin: 0 dawn, 0.25 noon, 0.5 dusk, 0.75 midnight) into one resolved frame
 // of colours and intensities. render/mood.js composes it with the danger overlays; nothing reads this module per frame
 // except through that.
 //
-// WHY THE SOLAR PHASE, NOT `isDay` OR THE MOOD. Night used to BE the dusk danger palette (moodTarget mapped `isDay
-// false` to mood 1), so every night was maroon under an orange horizon and the iPad's stone read navy under a blue
-// ambient. Here the input is `s = sin(2*pi*f)`, the normalised elevation (-1..1, the same for every mood's noon
+// WHY THE SOLAR PHASE, NOT `isDay` OR THE MOOD. A night drawn as the dusk danger palette is maroon under an orange
+// horizon, and the iPad's stone reads navy under a blue ambient. Here the input is `s = sin(2*pi*f)`, the normalised elevation (-1..1, the same for every mood's noon
 // vector), and `rising = cos(2*pi*f) >= 0`. Two branches share their end keys:
 //     rising   night -> preDawn -> sunrise -> day
 //     setting  day   -> sunset  -> dusk    -> night
@@ -20,20 +19,25 @@
 // it only keeps the colour channel continuous through the keys where that body is down, so each one is the colour of
 // the neighbouring key where the body is up.
 //
-// THE NIGHT, PRE-DAWN AND DUSK VALUES ARE DERIVED, NOT THE PLAN'S FIRST DRAFT (its keys table marked them PROVISIONAL).
-// The draft night (exposure 1.15, moon #9DB4FF x0.70, ambient #465074 x0.32) displays the moonlit stone at (5, 22,
-// 57)/255, OKLab L 0.211 C 0.071: black, and navy, once the grade and NEUTRAL's toe are applied (review amendment 1;
-// this file's gate reproduces exactly those numbers on the draft). Re-derived on the displayed model
-// (tests/gates/_lightModel.js) until tests/gates/colour-script-gates.test.js passes:
-//   night    light up and chroma down: moon #B4C2E8 x0.85, ambient #7E8496 x0.42, hemi #7A84A2 / #4A4A56 x0.68, fog
-//            #333B58, sky #0A1028 / #18234A / #34406E, grade -0.10 / +0.03 / 0.02 (contrast 0.10 pivoting at sRGB 0.5
-//            crushed every night value), exposure 1.7. Moonlit stone displays (47, 55, 74): L 0.337 C 0.036 hue 268;
-//            in shadow (22, 30, 47): L 0.236. At exposure 1.15 the same night is L 0.273, under the 0.30 bound.
-//   preDawn  moon #B4BEE6 x0.55, ambient #868AA0 x0.38, hemi #7E88AA / #5A5262 x0.68, grade -0.02 / +0.03 / 0.04,
-//   / dusk   exposure 1.4 (dusk saturation 0.0). The dusk horizon goes VIOLET, #9A90C0 (displayed hue 294): the
-//            draft #C88A90 displays hue 331 and hazes the land maroon (f 0.54: (125, 76, 92)).
-//   golden   the hemisphere sky at sunrise and sunset #A8B2C8 -> #B0B2C2: the draft turned the sunrise up face a hair
-//            BLUE (OKLab b -0.001 at f 0.02), which B3 forbids; this is the smallest change that clears it.
+// THE VALUES ARE SOLVED ON THE DISPLAYED MODEL (tests/gates/_lightModel.js: the rig, the grade and NEUTRAL's toe), not
+// on the linear light, because NEUTRAL crushes a dark linear value far below where it reads. Each key holds a bound in
+// tests/gates/colour-script-gates.test.js:
+//   night    the moonlit stone must read, and not as navy: exposure 1.7 with a near-neutral ambient #7E8496 x0.42 and
+//            moon #B4C2E8 x0.85 display it at L 0.337 C 0.036 hue 268 (in shadow L 0.236). The grade's contrast stays
+//            0.02, because contrast pivots at sRGB 0.5 and so crushes every night value.
+//   preDawn  half of the light at the instant the sun crosses the horizon, where the key has faded to 0, so they carry
+//   / dusk   the ground there: ambient x0.85 and hemi x1.50 hold it at midnight's lightness or above, for the grey card
+//            and for the darker terrain stone alike. Their light is a steel blue (#7E8CA2, hemi sky #788AAC), not
+//            lavender: the Hearth's orange on a violet light lands on maroon by the pad, and on the real GPU the pad
+//            reads 10-20 deg redder than this model, so the model keeps the pad 1 m from the brazier at chroma 0.02 or
+//            less wherever its hue is maroon's. The dusk SKY stays violet: its horizon #9A90C0 displays hue 294 (a pink
+//            one, hue 331, hazes the land maroon).
+//   sunrise  the sun grazes (its arc peaks at 32 deg, so the up face takes about 7% of the key at golden hour), so the
+//   / sunset ground is lit by the indirect terms: ambient x0.80 and hemi x1.80 put the up face at L 0.42, between
+//            midnight's 0.337 and noon's 0.491. Exposure stays 1.0 so the dome keeps its authored warmth. The ambient
+//            and hemisphere sky are warm yellow-greys (#C6B698 / #C2BAAC and #C6B496 / #C2BAA8), which read the
+//            ground gold (hue 78-79) and keep the brazier's light on it orange; a redder or bluer grey turns the
+//            fire-lit pad pink, a step from maroon.
 import * as THREE from 'three';
 import { aoFloorColor } from '../world/biomeTable.js';
 
@@ -55,8 +59,8 @@ const AUTHORED = {
   preDawn: {
     sun: { color: '#FFB870', intensity: 0 },
     moon: { color: '#B4BEE6', intensity: 0.55 },
-    ambient: { color: '#868AA0', intensity: 0.38 },
-    hemi: { sky: '#7E88AA', ground: '#5A5262', intensity: 0.68 },
+    ambient: { color: '#7E8CA2', intensity: 0.85 },
+    hemi: { sky: '#788AAC', ground: '#5A5262', intensity: 1.50 },
     fog: { color: '#5A6690', density: 0.0045 },
     sky: { top: '#141C46', mid: '#34447E', horizon: '#8A90C0' },
     glow: { color: '#8A90C0', strength: 0.15 },
@@ -66,8 +70,8 @@ const AUTHORED = {
   sunrise: {
     sun: { color: '#FFB870', intensity: 2.4 },
     moon: { color: '#B4BEE6', intensity: 0 },
-    ambient: { color: '#B8A89C', intensity: 0.26 },
-    hemi: { sky: '#B0B2C2', ground: '#C8906A', intensity: 0.60 },
+    ambient: { color: '#C6B698', intensity: 0.80 },
+    hemi: { sky: '#C2BAAC', ground: '#C8906A', intensity: 1.80 },
     fog: { color: '#E8C2A8', density: 0.0035 },
     sky: { top: '#3A5CA8', mid: '#9AA8D0', horizon: '#FFB8A0' },
     glow: { color: '#FFC08A', strength: 0.55 },
@@ -88,8 +92,8 @@ const AUTHORED = {
   sunset: {
     sun: { color: '#FFAA55', intensity: 2.6 },
     moon: { color: '#B4BEE6', intensity: 0 },
-    ambient: { color: '#B8AA9C', intensity: 0.26 },
-    hemi: { sky: '#B0B2C2', ground: '#C88E5C', intensity: 0.60 },
+    ambient: { color: '#C6B496', intensity: 0.80 },
+    hemi: { sky: '#C2BAA8', ground: '#C88E5C', intensity: 1.80 },
     fog: { color: '#E8C6A0', density: 0.0035 },
     sky: { top: '#3A5CA8', mid: '#8FA8D0', horizon: '#FFC27A' },
     glow: { color: '#FFB060', strength: 0.60 },
@@ -99,8 +103,8 @@ const AUTHORED = {
   dusk: {
     sun: { color: '#FFAA55', intensity: 0 },
     moon: { color: '#B4BEE6', intensity: 0.55 },
-    ambient: { color: '#868AA0', intensity: 0.38 },
-    hemi: { sky: '#7E88AA', ground: '#5A5262', intensity: 0.68 },
+    ambient: { color: '#7E8CA2', intensity: 0.85 },
+    hemi: { sky: '#788AAC', ground: '#5A5262', intensity: 1.50 },
     fog: { color: '#5A6690', density: 0.0045 },
     sky: { top: '#1A2350', mid: '#3A4C88', horizon: '#9A90C0' },
     glow: { color: '#9A90C0', strength: 0.20 },
