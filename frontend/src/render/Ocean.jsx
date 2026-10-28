@@ -18,7 +18,7 @@ import { isCaptureMode } from '../devtest/captureMode.js';
 import { oceanVisibleNear } from '../world/oceanVisibility.js';
 import { surfaceBlockAt } from '../world/climate.js';
 import { skyFrameRef } from './mood.js';
-import { oceanLookUniforms, writeOceanLight, patchOceanFragment } from './oceanLook.js';
+import { OCEAN_SURFACE, oceanLookUniforms, writeOceanLight, patchOceanFragment } from './oceanLook.js';
 
 // B8: surface world-Y sampler for the visibility gate (shares the terrain formula via climate.js).
 const sampleSurfaceY = (x, z) => surfaceBlockAt(x, z).surfaceY;
@@ -42,11 +42,7 @@ export function Ocean() {
   // The vertex colour is gone (foam is computed in the vertex shader from the same waves) and the diffuse
   // survives — so the sea takes the sun, the mood grade and the time of day like everything else does.
   const mat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#10BCC6', roughness: 0.22, metalness: 0.0, flatShading: false,
-    // A much smaller lift than before: it is a tropical shallow-water glow, no longer load-bearing for
-    // the surface being visible at all.
-    emissive: '#0E7E93', emissiveIntensity: 0.22,
-    transparent: true, opacity: 0.93,
+    ...OCEAN_SURFACE, flatShading: false, transparent: true, opacity: 0.93,
   }), []);
   // The wave clock and the plane's world centre, read by the vertex shader. The shader samples the waves
   // at the UNDISPLACED grid point (position is never written back), so nothing compounds frame to frame.

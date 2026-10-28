@@ -1,0 +1,6 @@
+{
+  "count": 0,
+  "frames": 3,
+  "at": "2026-10-28T19:29:08Z",
+  "measuredBy": "prod-smoke in CI under SwiftShader: 0 GL errors in each of runs 40739853527, 40745025015, 40748052087, 40748484718, 40750241581, 40750408406, 40750596330, 40750830116, 40751033629 and 40754038084 (2 to 6 frames each), read from their logs while the ledger path was doubled and every run seeded"
+}

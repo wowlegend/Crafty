@@ -9,6 +9,12 @@
 //   them like everything else; foam suppresses both, since foam is matte.
 import * as THREE from 'three';
 
+/** The water's MeshStandardMaterial surface (sRGB hexes), read by render/Ocean.jsx and by the colour model the ocean
+ *  gates measure foam against. */
+export const OCEAN_SURFACE = Object.freeze({
+  color: '#10BCC6', roughness: 0.22, metalness: 0, emissive: '#0E7E93', emissiveIntensity: 0.22,
+});
+
 /** The foam's albedo (sRGB): near-white, so the light rig alone sets how bright it reads. */
 export const FOAM_HEX = '#F2FAFB';
 /** How far a full crest moves the water's albedo toward the foam's. */
