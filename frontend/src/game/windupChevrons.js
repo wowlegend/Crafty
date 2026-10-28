@@ -29,6 +29,13 @@ export const BOTTOM_INSET_DESKTOP_PX = 140; // over the hotbar
 export function touchBottomInsetPx(h) {
   return Math.round(0.11 * h) + 170;
 }
+/**
+ * Every edge of the frame stays at least this far (px) from the screen centre, where the crosshair and the imbue tell
+ * sit. Round-1 review a: on touch the bottom inset exceeds half the height below about 436 px (every landscape iPhone),
+ * so the frame's bottom edge rose above the centre and a windup behind the player drew its chevron ON the crosshair.
+ * Where the insets do not fit, the frame now gives way toward the HUD and the controls, never toward the centre.
+ */
+export const CENTRE_CLEAR_PX = 60;
 
 const offScreen = (ndc) => ndc.z > 1 || Math.abs(ndc.x) > 1 - ON_SCREEN_MARGIN || Math.abs(ndc.y) > 1 - ON_SCREEN_MARGIN;
 
@@ -74,12 +81,14 @@ export function offscreenWindups(mobs, player, yaw, project, worldNowMs, out) {
 
 /**
  * Where a chevron for screen angle `angle` sits: the ray from the container's centre meets the inset rectangle
- * [SIDE, w - SIDE] x [TOP, h - bottomInsetPx]. `rotDeg` points the chevron outward, toward the mob.
+ * [SIDE, w - SIDE] x [TOP, h - bottomInsetPx], each edge held at least CENTRE_CLEAR_PX from the centre. `rotDeg`
+ * points the chevron outward, toward the mob.
  * @returns {{left:number, top:number, rotDeg:number}} px inside the safe-area container (written into `out`)
  */
 export function chevronPlacement(angle, w, h, bottomInsetPx, out = { left: 0, top: 0, rotDeg: 0 }) {
   const cx = w / 2, cy = h / 2;
-  const L = SIDE_INSET_PX, R = w - SIDE_INSET_PX, T = TOP_INSET_PX, B = h - bottomInsetPx;
+  const L = Math.min(SIDE_INSET_PX, cx - CENTRE_CLEAR_PX), R = Math.max(w - SIDE_INSET_PX, cx + CENTRE_CLEAR_PX);
+  const T = Math.min(TOP_INSET_PX, cy - CENTRE_CLEAR_PX), B = Math.max(h - bottomInsetPx, cy + CENTRE_CLEAR_PX);
   const dx = Math.sin(angle), dy = -Math.cos(angle); // screen y grows downward; angle 0 is up
   const tx = dx > 0 ? (R - cx) / dx : dx < 0 ? (L - cx) / dx : Infinity;
   const ty = dy > 0 ? (B - cy) / dy : dy < 0 ? (T - cy) / dy : Infinity;
