@@ -40,21 +40,35 @@ import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
 import { SNARE_COST, SOUL_MAX } from './game/soul.js';
 import { RESONANCE_MAX, ZONE_COST } from './game/resonance';
 import { subscribeHudTick } from './ui/hudTicker.js';
-import { PanelBoundary } from './ui/panels/lazyPanels.js';
+import { PanelBoundary, onceRetrying } from './ui/panels/lazyPanels.js';
 
 // The windup chevrons (combat-stance Task 7) load behind a lazy boundary: the combat-stance lane's share of the index
 // chunk is +9,000 B (plan Global Constraints and Task 12 Step 3), and the build with it in the boot chunk measured
 // +9,024 B. The layer is DOM-only and reads nothing until a windup is off screen, so it arriving a moment after the HUD
 // mounts costs nothing a player can see.
-const WindupChevrons = React.lazy(() => import('./ui/WindupChevrons'));
-// A rejected React.lazy rethrows on every render, and the nearest boundary was the app-wide one: a chevron chunk that
-// failed to load (offline at boot, or a tab left open across a deploy whose hashed chunk now 404s) replaced the whole
-// game with the reload screen (round-1 review e). The panels' own boundary (ui/panels/lazyPanels.js PanelBoundary)
-// contains it: the chevrons are dropped for the session, and the game plays on without them.
+const loadChevrons = onceRetrying(() => import('./ui/WindupChevrons'));
+let ChevronsLazy = null;
+/** After a failed load the slot asks again this many times, CHEVRON_RETRY_MS after the failure and doubling. */
+export const CHEVRON_RETRIES = 4;
+export const CHEVRON_RETRY_MS = 4000;
+// A rejected React.lazy rethrows on every render, and the nearest boundary would be the app-wide one, which replaces
+// the game with the reload screen; the panels' boundary (ui/panels/lazyPanels.js PanelBoundary) holds the failure in
+// the slot instead. A React.lazy also keeps its rejection for good, so a failure drops that lazy, and the slot mounts
+// a fresh one on a retry or a remount: one failed fetch at boot (flaky Wi-Fi) no longer drops the chevrons for the
+// session. The retries are bounded, so a tab left open across a deploy, whose hashed chunk now 404s, stops asking.
 export function WindupChevronsSlot() {
+  const [attempt, setAttempt] = React.useState(0);
+  const [failed, setFailed] = React.useState(false);
+  useEffect(() => {
+    if (!failed || attempt >= CHEVRON_RETRIES) return undefined;
+    const t = setTimeout(() => { setFailed(false); setAttempt((a) => a + 1); }, CHEVRON_RETRY_MS * 2 ** attempt);
+    return () => clearTimeout(t);
+  }, [failed, attempt]);
+  if (failed) return null;
+  if (!ChevronsLazy) ChevronsLazy = React.lazy(loadChevrons);
   return (
-    <PanelBoundary>
-      <React.Suspense fallback={null}><WindupChevrons /></React.Suspense>
+    <PanelBoundary onFail={() => { ChevronsLazy = null; setFailed(true); }}>
+      <React.Suspense fallback={null}><ChevronsLazy /></React.Suspense>
     </PanelBoundary>
   );
 }

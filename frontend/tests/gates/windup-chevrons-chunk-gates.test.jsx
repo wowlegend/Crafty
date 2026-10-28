@@ -4,25 +4,20 @@ import React from 'react';
 import { render, cleanup, waitFor } from '@testing-library/react';
 
 /**
- * A FAILED CHEVRON CHUNK DROPS THE CHEVRONS, NOT THE GAME (round-1 review e, combat-stance).
+ * A FAILED CHEVRON CHUNK DROPS THE CHEVRONS, NOT THE GAME.
  *
  * The windup chevrons load as their own lazy chunk (HUD.jsx). A rejected React.lazy rethrows its error on every render,
- * and before this the nearest boundary was the app-wide one (index.jsx), so a chevron chunk that failed at boot (an iPad
- * on flaky Wi-Fi, or a tab left open across a deploy whose hashed chunk now 404s) replaced the game with the reload
- * screen. The panels had already met and fixed this (ui/panels/lazyPanels.js PanelBoundary); the slot now uses it.
+ * and the nearest boundary would be the app-wide one (index.jsx), so a chevron chunk that failed at boot (an iPad on
+ * flaky Wi-Fi, or a tab left open across a deploy whose hashed chunk now 404s) would replace the game with the reload
+ * screen. The panels' boundary (ui/panels/lazyPanels.js PanelBoundary) holds it in the slot.
  *
  * This mounts the REAL HUD.jsx slot with the chevron module made to fail its import, inside a stand-in for the app-wide
  * boundary, beside a sibling. PRESENCE first: the failure must be seen thrown (React reports a caught error on
  * console.error), so "nothing rendered" cannot be a lazy still pending. Then: the outer boundary caught nothing, the
  * sibling is still on screen, and the slot rendered nothing.
  *
- * WHAT THIS DOES NOT CHECK: a real network failure in a browser (the import is made to reject here), and a retry: the
- * slot drops the chevrons for the session, by design, as a panel's failed lazy is dropped until its next open.
- *
- * Mutation-Proof: scripts/dev/mutate.sh, 1 test, each against a green baseline:
- *   K1 src/HUD.jsx: the slot's PanelBoundary removed (the Suspense alone, as shipped) -> RED
- *   K2 src/ui/panels/lazyPanels.js plausible-wrong: PanelBoundary renders its children again after a failure -> RED
- *   K0 src/HUD.jsx identity (a comment edit) -> SURVIVED
+ * WHAT THIS DOES NOT CHECK: a real network failure in a browser (the import is made to reject here), and the slot's
+ * bounded retry, which tests/gates/windup-chevrons-retry-gates.test.jsx drives.
  */
 
 vi.mock('../../src/ui/WindupChevrons', () => {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, act } from '@testing-library/react';
 import { Profiler } from 'react';
 import * as THREE from 'three';
@@ -236,5 +236,38 @@ describe('WindupChevrons on the HUD ticker', () => {
     mob.windupUntil = worldNow() - 1;
     tick();
     expect(onOnes(root).length, 'an expired windup kept its chevron').toBe(0);
+  });
+
+  it('a tick with no windup off screen reads no layout; the frame is measured once, and again after a resize', () => {
+    // The HUD tick runs after the Compass and the AbilityBar write their styles, so a size read there can force a
+    // layout every frame. Counted on the getters the layer reads.
+    asDevice('desktop');
+    let reads = 0;
+    const count = function () { reads += 1; return 0; };
+    const cw = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(count);
+    const ch = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockImplementation(count);
+    try {
+      addMob({ z: -4 }); // in view: a windup, and no chevron
+      const { getByTestId } = render(<WindupChevrons />);
+      const root = getByTestId('windup-chevrons');
+      reads = 0;
+      for (let i = 0; i < 10; i++) tick();
+      expect(onOnes(root).length, 'SETUP: the windup in view turned a chevron on').toBe(0);
+      expect(reads, 'ticks with no chevron to place read the layout').toBe(0);
+      addMob({ z: 4 });
+      tick();
+      expect(onOnes(root).length, 'SETUP: the windup behind turned no chevron on').toBe(1);
+      const measured = reads;
+      expect(measured, 'SETUP: the counter never saw the frame measured, so its zero above means nothing').toBeGreaterThan(0);
+      tick();
+      tick();
+      expect(reads, 'every tick with a chevron re-measured the frame').toBe(measured);
+      act(() => { window.dispatchEvent(new Event('resize')); });
+      tick();
+      expect(reads, 'a resize did not re-measure the frame').toBeGreaterThan(measured);
+    } finally {
+      cw.mockRestore();
+      ch.mockRestore();
+    }
   });
 });

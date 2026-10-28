@@ -72,6 +72,21 @@ describe('offscreenWindups', () => {
     expect(out[0].angle).toBeCloseTo(Math.PI / 2, 9);
   });
 
+  it('a mob is judged by its body, not its base: feet below the frame with the torso in view gets no chevron', () => {
+    // The pinhole is at the eye (y 0). A husk 2 m ahead standing 1.6 m below it has its base at NDC y -1.04, past the
+    // edge, and its body's centre (its base plus half its 1.6 m body) at -0.52, in view.
+    const out = pool();
+    const close = mob({ z: -2, y: -1.6 });
+    expect(offscreenWindups([close], PLAYER, 0, pinhole(0), NOW, out), 'a husk whose torso is in view got a chevron').toBe(0);
+    // PRESENCE: the same projection lists a husk whose body is below the frame as well
+    const below = mob({ z: -2, y: -3.0 });
+    expect(offscreenWindups([below], PLAYER, 0, pinhole(0), NOW, out)).toBe(1);
+    // a mob's own body size (a hybrid's) wins over its type's: a 3 m body here is in view, a husk's 1.6 m body is not
+    const tall = { ...mob({ z: -2, y: -2.4 }), bodySize: [1, 3.0, 1] };
+    expect(offscreenWindups([tall], PLAYER, 0, pinhole(0), NOW, out), 'the entity\'s own body size was ignored').toBe(0);
+    expect(offscreenWindups([mob({ z: -2, y: -2.4 })], PLAYER, 0, pinhole(0), NOW, out)).toBe(1);
+  });
+
   it('a windup ahead but above the frustum is off screen (Review Focus 4)', () => {
     // A steep pitch: the mob is horizontally dead ahead, yet the camera's projection puts it above the view.
     const ahead = mob({ z: -2.5 });

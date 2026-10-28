@@ -60,6 +60,11 @@ function WindupChevrons() {
       if (l.mob !== mob) { l.mob = mob; node.dataset.mob = mob; }
     };
     const allOff = () => { for (let i = 0; i < CHEVRON_MAX; i++) write(i, '0', '', '0', '', ''); };
+    // The frame's size, read only on a tick that places a chevron and then kept until the window resizes: this tick runs
+    // after the Compass and the AbilityBar write their styles, so a read on every tick could force a layout each frame.
+    let w = 0, h = 0, measured = false;
+    const remeasure = () => { measured = false; };
+    window.addEventListener('resize', remeasure);
 
     const tick = () => {
       const box = boxRef.current;
@@ -69,8 +74,12 @@ function WindupChevrons() {
       if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) { allOff(); return; }
       projCamera = camera;
       const n = offscreenWindups(mobsQuery.entities, camera.position, camera.rotation.y, project, worldNow(), slots);
-      const w = box.clientWidth || window.innerWidth;
-      const h = box.clientHeight || window.innerHeight;
+      if (n === 0) { allOff(); return; }
+      if (!measured) {
+        w = box.clientWidth || window.innerWidth;
+        h = box.clientHeight || window.innerHeight;
+        measured = true;
+      }
       const bottom = touch ? touchBottomInsetPx(h) : BOTTOM_INSET_DESKTOP_PX;
       for (let i = 0; i < CHEVRON_MAX; i++) {
         if (i >= n) { write(i, '0', '', '0', '', ''); continue; }
@@ -83,7 +92,11 @@ function WindupChevrons() {
       }
     };
     tick();
-    return subscribeHudTick(tick);
+    const unsubscribe = subscribeHudTick(tick);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('resize', remeasure);
+    };
   }, []);
 
   if (isCaptureMode()) return null;

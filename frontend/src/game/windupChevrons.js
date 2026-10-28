@@ -14,6 +14,7 @@ import { windupRamp, WINDUP_MS } from './attackTelegraph.js';
 import { isStaggered } from './perfectDodge.js';
 import { isHostile } from '../combat/targeting.js';
 import { ENGAGE_RADIUS_M } from './combatStance.js';
+import { MOB_TYPES } from './mobTypes.js';
 
 /** At most this many chevrons at once (the DOM pool's size). */
 export const CHEVRON_MAX = 4;
@@ -39,6 +40,17 @@ export const CENTRE_CLEAR_PX = 60;
 
 const offScreen = (ndc) => ndc.z > 1 || Math.abs(ndc.x) > 1 - ON_SCREEN_MARGIN || Math.abs(ndc.y) > 1 - ON_SCREEN_MARGIN;
 
+// A mob's position is the base of its body (render/MobModel.jsx draws the body from there up), so the point judged on
+// screen is the body's centre: a close mob with its feet under the frame edge and its torso in view is seen.
+const _centre = { x: 0, y: 0, z: 0 };
+function bodyCentre(m) {
+  const size = m.bodySize || MOB_TYPES[m.type]?.bodySize;
+  _centre.x = m.position.x;
+  _centre.y = m.position.y + (size ? size[1] / 2 : 0);
+  _centre.z = m.position.z;
+  return _centre;
+}
+
 /**
  * The windups the player cannot see, soonest strike first, at most CHEVRON_MAX.
  * @param {Iterable} mobs  the ECS mobs (mobsQuery.entities)
@@ -57,7 +69,7 @@ export function offscreenWindups(mobs, player, yaw, project, worldNowMs, out) {
     const p = m.position;
     const dx = p.x - player.x, dy = p.y - player.y, dz = p.z - player.z;
     if (dx * dx + dy * dy + dz * dz > r2) continue;
-    if (!offScreen(project(p))) continue;
+    if (!offScreen(project(bodyCentre(m)))) continue;
     const until = m.windupUntil;
     // Insert into the sorted top-CHEVRON_MAX by soonest strike. The slots are rotated, never replaced, so `out`
     // keeps the four objects it was handed.
