@@ -5,11 +5,13 @@ import { fileURLToPath } from 'node:url';
 import { KEY_MAP, KEY_GROUPS } from '../../src/game/keyMap.js';
 import { INTENT_KEYS } from '../../src/input/inputState.js';
 import { EXPRESS_VERBS } from '../../src/input/expressVerbs.js';
+import { blankComments } from '../../scripts/ci/gate-shape.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(resolve(HERE, '../../src/', p), 'utf8');
 // the handler universe: panel toggles live in InputManager, the verb intents + WASD/F in Components.
-const handlers = read('InputManager.jsx') + read('Components.jsx');
+// Comments are blanked first, so a comment that names a handler, or records one's removal, cannot stand in for it.
+const handlers = ['InputManager.jsx', 'Components.jsx'].map((f) => blankComments(read(f)) ?? '').join('\n');
 
 // ONE PATTERN, BOTH DIRECTIONS, AND IT MATCHES ANY RECEIVER. The reverse test below parsed
 // `event.code === 'X'` — but Components.jsx:397 handles F as `e.code === 'KeyF'`, so every handler
@@ -17,6 +19,12 @@ const handlers = read('InputManager.jsx') + read('Components.jsx');
 // reverse gate undercount live handlers, and it made the forward gate (which used a bare substring
 // instead) look like the lenient one when both were wrong in different directions.
 const CODE_HANDLER = /\b[A-Za-z_$][\w$]*\.code\s*===\s*'([A-Za-z0-9]+)'/g;
+
+// A handler may test `event.key` instead of `event.code`. For a function key the two are the same string
+// (F3 is key 'F3' and code 'F3'), so its key joins the same set and an advertised `code: 'F3'` row matches it.
+// A printable key differs ('e' against 'KeyE'): one handled by `key` surfaces as an orphan named 'e', and the
+// reverse gate below then asks for it to be advertised rather than letting it pass unseen.
+const KEY_HANDLER = /\b[A-Za-z_$][\w$]*\.key\s*===\s*'([A-Za-z0-9]+)'/g;
 
 // AND THE KEYS HANDLED BY A ROUTER TABLE RATHER THAN AN INLINE BRANCH.
 //
@@ -30,6 +38,7 @@ const CODE_HANDLER = /\b[A-Za-z_$][\w$]*\.code\s*===\s*'([A-Za-z0-9]+)'/g;
 // is stronger than the regex it replaces.
 const handledCodes = () => new Set([
   ...[...handlers.matchAll(CODE_HANDLER)].map((m) => m[1]),
+  ...[...handlers.matchAll(KEY_HANDLER)].map((m) => m[1]),
   ...Object.keys(EXPRESS_VERBS),
 ]);
 
@@ -122,6 +131,12 @@ describe('KEY_MAP — the REVERSE direction, which was never guarded', () => {
     for (const [code, row] of Object.entries(COVERED_BY_COMPOUND_ROW)) {
       expect(keys, `${code} claims coverage by a "${row}" row that does not exist`).toContain(row);
     }
+  });
+
+  it('teaches F3 (Show stats), the key the bug report form asks players to press', () => {
+    const f3 = KEY_MAP.find((r) => r.code === 'F3');
+    expect(f3, 'F3 must be advertised').toBeDefined();
+    expect(handledCodes().has('F3'), 'F3 must have a live handler').toBe(true);
   });
 
   it('teaches both quest bindings, which is the gap that motivated this gate', () => {

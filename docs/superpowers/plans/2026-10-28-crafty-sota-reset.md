@@ -136,7 +136,7 @@ Verdicts: delete, rewrite, redesign, new, keep. Sizes are the lens estimates. Th
 | 55 | GitHub Releases as the devlog `[pub: releases]` | new | A dated, illustrated history of the game | M | #1, #17 | not tested |
 | 56 | Flatten `frontend/` to the repo root, in one window with the Vercel root-directory change `[pub: flatten]` | redesign | none | L | all lanes landed; Kevin's Vercel dashboard | not tested |
 | 57 | Doc hygiene `[harn]` `[pub]`: declutter the root; generated ARCHITECTURE and CHANGELOG; ACTIVE_PLAN as a cursor; short DECISIONS entries; gates-and-probes as a checklist; the opsec ledger set to 0 | rewrite | none | S each | #32 | STANDS (declutter, low); the rest not tested |
-| 58 | A readable `*.vercel.app` alias; crafty-sand stays permanent `[pub: alias]` | new | A link people can remember | S | Kevin's dashboard; availability UNVERIFIED | not tested |
+| 58 | A readable `*.vercel.app` alias; crafty-sand stays permanent `[pub: alias]` | new | A link people can remember | S | Kevin's dashboard; done 2026-10-28: crafty-game.vercel.app | not tested |
 
 **Dropped as REFUTED** (kept here for traceability):
 - **A3's claim** that Phase 3 depends on the ECS/sim rewrite, and its hold on Phase 3 builds.
@@ -159,7 +159,8 @@ Verdicts: delete, rewrite, redesign, new, keep. Sizes are the lens estimates. Th
 ## 3. Waves
 
 **Live check.** "Live" means the landing sha shows as Production in
-`gh api repos/wowlegend/Crafty/deployments`, and the check runs against https://crafty-sand.vercel.app:
+`gh api repos/wowlegend/Crafty/deployments`, and the check runs against https://crafty-game.vercel.app (the public
+address since 2026-10-28; a check there after a deploy also shows the alias follows Production):
 - Chromium on ANGLE Metal on the M3 Max, through the production lookbook seam `[vis]`.
 - WebKit at 1180x820 and 820x1180 for iPad layout. WebKit is not iPad hardware; real-device feel stays Kevin-gated
   (AGENTS.md).
@@ -397,7 +398,8 @@ with rotating questions.
 **About line and topics** (W1-F, applied idempotently by `scripts/ci/public-face.mjs`; `--check` reports drift and
 refuses nothing) `[pub: pitch source]`:
 - **About:** "A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, a dragon at
-  the edge of the world." Homepage: crafty-sand.vercel.app. The current "31-frame visual-regression gate" claim goes.
+  the edge of the world." Homepage: https://crafty-game.vercel.app (amended 2026-10-28: the readable alias of item 58,
+  added that day; crafty-sand.vercel.app keeps working). The current "31-frame visual-regression gate" claim goes.
 - **Topics:** browser-game, action-rpg, rpg-game, voxel, voxel-game, procedural-generation, threejs,
   react-three-fiber, webgl, webgl-game, rapier-physics, game-development, ipad.
 - **Dropped topics:** 3d-engine, voxel-engine, framer-motion, zustand, vite, react19, miniplex, ecs,
@@ -500,7 +502,7 @@ from `npm view` (lens-reported).
 - **No GitHub Pages site, and no licence grant.** Both are reversible later; the grant is not `[pub]`.
 - **Deploy and repo rules:**
   - Vercel's auto-deploy of main on push.
-  - The permanent crafty-sand.vercel.app alias.
+  - crafty-game.vercel.app as the public address, with crafty-sand.vercel.app kept working beside it.
   - No force push and no amend; history stays and the records tag preserves it.
   - The opsec gate on a public repo.
 - **Code invariants:**

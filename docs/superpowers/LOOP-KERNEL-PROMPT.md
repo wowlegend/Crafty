@@ -160,7 +160,8 @@ Accessibility never vetoes depth. Pick a reference before any look-bearing work;
 
 SESSION-CLOSE (charter §6.5 — fires at the CONTEXT WATERMARK, 85/90/94%, unprompted): kill leaked test procs → LIST
 husks → green the tree → update ACTIVE_PLAN + STATUS + CHANGELOG + the operator pages (`--stamp`, republish, `--sync`) → **refresh the REMOTE GitHub
-surfaces (README truth · repo description · CI badge) and PUSH** → mark-truth → re-arm. A session that ends without the
+surfaces (README prose truth · `node frontend/scripts/ci/public-face.mjs --live`, then `--apply`, for the About line,
+topics and labels, never `gh repo edit` by hand) and PUSH** → mark-truth → re-arm. A session that ends without the
 remote step has left the project's public face lying about it.
 
 STILL GENUINELY KEVIN (surface to `KEVIN-REVIEW-BATCH.md`; never block on it): his two bright lines (spend no money;
