@@ -61,6 +61,7 @@ const RUNNERS = Object.freeze({
   measured: checkMeasured,
   'read-order': checkReadOrder,
   sections: checkSections,
+  locks: checkLocks,
 });
 export const CHECKS = Object.freeze(Object.keys(RUNNERS));
 
@@ -437,6 +438,40 @@ function checkSections(root, out) {
   }
 }
 
+// --- 5. LOCK LABELS -----------------------------------------------------------
+// Nothing in Crafty is locked (DECISIONS 2026-10-28 items 14 and 16). A canonical doc states a decision, its reason and
+// that it stands while it earns its place; a lock label reads to the next agent as a ban. DECISIONS.md is the record
+// and quotes the labels it retired, so it is not scanned.
+export const LOCK_LABELS = Object.freeze([
+  ['(LOCKED', /\(LOCKED\b/],
+  // \b keeps "BLOCKED —" out (memory/ACTIVE_PLAN.md uses it for a pinned dependency).
+  ['LOCKED —', /\bLOCKED\s*[—–]/],
+  ['IRREDUCIBLE', /\birreducible\b/i],
+  ['MUST NOT be split', /\bmust not be split\b/i],
+  ["KEEP, don't rewrite", /\bkeep, don['’]t rewrite\b/i],
+  ['do not relitigate', /\bdo not relitigate\b/i],
+]);
+export const LOCK_DOCS = Object.freeze(CANONICAL.filter((rel) => rel !== 'docs/superpowers/DECISIONS.md'));
+
+/** checked.locks = the canonical docs read for lock labels (a missing one is reported by `dangling`). */
+function checkLocks(root, out) {
+  let scanned = 0;
+  for (const rel of LOCK_DOCS) {
+    const abs = join(root, rel);
+    if (!existsSync(abs)) continue;
+    scanned += 1;
+    readFileSync(abs, 'utf8').split('\n').forEach((line, i) => {
+      const hits = LOCK_LABELS.filter(([, re]) => re.test(line)).map(([label]) => `"${label}"`);
+      if (hits.length === 0) return;
+      out.errors.push(
+        `LOCK LABEL at ${rel}:${i + 1}: ${hits.join(', ')} — nothing in Crafty is locked; state the decision, its ` +
+          `reason, and that it stands while it earns its place (DECISIONS 2026-10-28 item 16).`,
+      );
+    });
+  }
+  out.checked.locks = scanned;
+}
+
 // --- report -----------------------------------------------------------------
 // The CLI is a printer around run(): what it prints and its exit code come from run()'s result and nothing else.
 //
@@ -454,7 +489,7 @@ function invokedDirectly() {
 }
 if (invokedDirectly()) {
   const rootArg = process.argv.slice(2).find((a) => a.startsWith('--root='));
-  const { errors, warnings, danglingSections } = run(rootArg ? { root: resolve(rootArg.slice('--root='.length)) } : {});
+  const { errors, warnings, checked, danglingSections } = run(rootArg ? { root: resolve(rootArg.slice('--root='.length)) } : {});
 
   for (const w of warnings) console.warn(`⚠ ${w}`);
 
@@ -470,6 +505,6 @@ if (invokedDirectly()) {
 
   console.log(
     `✓ doc-currency PASSED (${CANONICAL.length} canonical docs checked; ${danglingSections} dangling ` +
-      `\u00a7 citation(s), ratchet ${ANCHOR_FROZEN})`,
+      `\u00a7 citation(s), ratchet ${ANCHOR_FROZEN}; lock labels: 0 in ${checked.locks} docs scanned)`,
   );
 }
