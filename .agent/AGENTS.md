@@ -48,10 +48,10 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **352 source files / 40,279 LOC** in
-  `frontend/src`, plus 139 colocated `*.test.js(x)` files (counted separately —
+- **Size (measured):** **358 source files / 41,393 LOC** in
+  `frontend/src`, plus 143 colocated `*.test.js(x)` files (counted separately —
   tests are not the architecture).
-- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1488 · `src/store/useGameStore.jsx` 1260 · `src/world/Terrain.jsx` 1157 · `src/App.jsx` 1066 · `src/QuestSystem.jsx` 986.
+- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1565 · `src/store/useGameStore.jsx` 1260 · `src/world/Terrain.jsx` 1157 · `src/App.jsx` 1076 · `src/QuestSystem.jsx` 986.
   Its MEMBERSHIP is checked exactly by `doc-currency`; the LOC beside each name, and the counts above,
   sit under a ±10% band so ordinary churn does not redden the push — so a specific number here
   can be mildly stale and still green. Regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
@@ -101,7 +101,7 @@ Full procedure — the `finally` shape, `_serve.mjs`, the managed ports, deletin
 pre-commit, pre-push and GitHub Actions all call, so no two can drift. Do not edit the table by hand;
 add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.
 
-**9 run on every commit** (offline core, 69s) · **14 on every push** · **12 in CI**.
+**9 run on every commit** (offline core, 69s) · **14 on every push** · **13 in CI**.
 The columns are DERIVED from each step's tier guard in the script, not asserted here — they used to be,
 and all three network/browser gates were printed as pre-push gates they have never been.
 
@@ -119,7 +119,7 @@ and all three network/browser gates were printed as pre-push gates they have nev
 | build | `npm run build` | ✅ | ✅ | ✅ | broken JSX/imports |
 | bundle byte budget | `node scripts/ci/bundle-budget.mjs` | ✅ | ✅ | ✅ | a chunk growing past its byte ceiling |
 | queue-ledger | `node scripts/ci/queue-ledger.mjs` | — | ✅ | — | a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command |
-| artifact-currency | `node scripts/ci/artifact-currency.mjs` | — | ✅ | — | the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it. Also rejects an unusable page source (missing, or a fetched copy of the published wrapper), and a row still marked **Queued** whose declared `data-absent` artifact now EXISTS — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped |
+| artifact-currency | `node scripts/ci/artifact-currency.mjs` | — | ✅ | ✅ | the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it on a push that moves main or names no refs (a branch-only push prints the drift and passes: the pages describe main, and a lane cannot lower its own count). In CI it runs on a PUSH TO MAIN ONLY, never on a pull_request (whose merge ref carries the lane's own commits): that step DETECTS drift after a merge GitHub made (which runs no local hook) and does not bound it, because it runs after main has moved and Vercel has deployed, so it reds the gates job and refuses nothing, and a workflow_dispatch run on main skips it. It counts on a full-history checkout; there, an artifact surface whose recorded sha is not in the history fails as unmeasured (a shallow checkout, or a sha only a squash-merged, deleted lane branch held), while an artifact surface with no recorded sha still skips and a page-kind surface in a shallow checkout reads as current. Also rejects, on every push, an unusable page source (missing, or a fetched copy of the published wrapper), and a row still marked **Queued** whose declared `data-absent` artifact now EXISTS — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped |
 | e2e freshness | `node scripts/ci/e2e-freshness.mjs` | — | ✅ | — | a push whose `src/` or `tests/e2e/` tree has changed since the last GREEN e2e run. The Playwright specs are CI-only (~20 min, serialized because they share in-page game state), so no local chokepoint can see an e2e regression — which is exactly how the 2026-09-22 damage-model change shipped green locally and broke `soft-death-protections`. This asserts the RECEIPT, content-keyed on the observed trees so editing a doc does not expire it and editing a store action does. Fails CLOSED on stale, OPEN on absent (a fresh clone must not be refused), exit 3 on an empty walk |
 | knip | `npm run knip` | — | — | ✅ | an unused file, export or dependency — the accretion that makes a codebase look larger than the part that runs. CI-only because it is slow and never a correctness failure |
 | npm audit | `npm audit --audit-level=high` | — | — | ✅ | a HIGH or CRITICAL advisory in the installed dependency set. CI-only ON PURPOSE (R5): this needs the registry, and a network outage reddening a local commit is how developers learn to pass --no-verify |
@@ -223,7 +223,9 @@ ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.
   `ROOT = /Users/kz/Code/Crafty` / `APP = frontend/` in every delegation prompt, plus any path rule the
   task touches. A subagent that reports a file "missing" from a relative path is usually reporting that
   you did not tell it where it was.
-Subagent-driven-development (Opus 5) per task: implementer + spec-compliance review + code-quality review; sequential where files are shared; a committed design/spec BEFORE implementation — **SELF-gated** per `LOOP-CHARTER.md` §4 (Kevin's pre-loop hard gate is superseded; he reviews async via KEVIN-REVIEW-BATCH + CHANGELOG); superpowers `writing-plans` for plan authoring. Plans/specs live in `docs/superpowers/`.
+- **Subagent-driven development** per task, on the models the first bullet of this section names (this line said
+  "(Opus 5)" from June until 2026-10-28: a model named in a second place goes stale when the first is updated, so it
+  names none): implementer + spec-compliance review + code-quality review; sequential where files are shared; a committed design/spec BEFORE implementation — **SELF-gated** per `LOOP-CHARTER.md` §4 (Kevin's pre-loop hard gate is superseded; he reviews async via KEVIN-REVIEW-BATCH + CHANGELOG); superpowers `writing-plans` for plan authoring. Plans/specs live in `docs/superpowers/`.
 - **EVERY milestone uses the `superpowers:writing-plans` discipline (Kevin, 2026-06-10):** before building ANY milestone (M0..Mn of any Aspect/stream), author its own plan doc in `docs/superpowers/plans/YYYY-MM-DD-crafty-<stream>-<milestone>.md` (TDD red-first steps + verification gates), THEN build. **No "build directly from the spec" shortcuts**, even for small/foundational milestones — the VOIDHAND-M1 skip (built from the spec's milestone breakdown without a plan doc) is the anti-pattern this rule forbids. The design SPEC is the HARD-GATE approval; the per-milestone PLAN is the build contract.
 
 ## Core Agent Skills (evaluate per task)

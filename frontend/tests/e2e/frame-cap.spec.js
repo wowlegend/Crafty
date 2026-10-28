@@ -106,7 +106,8 @@ test('capped by default; the cap binds, costs nothing below it, and lets go for 
   // loop iterations, and under the cap the loop runs empty iterations — it read the display rate (review #2).
   await page.keyboard.press('F3');
   await page.waitForTimeout(2500);
-  const readout = await page.evaluate(() => document.querySelector('[data-testid="frame-stats"]')?.textContent ?? null);
+  // data-fps, not the text: the text is localised and its first line need not start with an English "N FPS".
+  const readout = await page.evaluate(() => document.querySelector('[data-testid="frame-stats"]')?.dataset.fps ?? null);
   await page.keyboard.press('F3');
   await setCap(60);
   const r = { at60, free, test1 };
@@ -124,7 +125,7 @@ test('capped by default; the cap binds, costs nothing below it, and lets go for 
   expect(test1.perTick, `the ${TEST_CAP} fps cap did not bind — it drew on ${test1.frames} of ${test1.ticks} display ticks: ${where}`).toBeLessThan(0.5);
   expect(test1.fps, `the ${TEST_CAP} fps cap leaked — ${test1.fps.toFixed(2)} fps drawn while the canvas was invalidated from outside: ${where}`).toBeLessThan(TEST_CAP * 1.5);
   expect(readout, `the Show Stats readout is not on screen after F3: ${where}`).not.toBeNull();
-  const shownFps = Number((readout.match(/^(\d+) FPS/) || [])[1]);
+  const shownFps = Number(readout);
   expect(shownFps, `Show Stats read "${readout}" under a ${TEST_CAP} fps cap — it counts something other than frames drawn: ${where}`).toBeLessThanOrEqual(TEST_CAP + 1);
   expect(test1.fps, `the ${TEST_CAP} fps cap starved the loop — ${test1.fps.toFixed(2)} fps: ${where}`).toBeGreaterThan(TEST_CAP * 0.4);
   // Below the 60 cap the renderer is the limit, so every tick must draw: the halved-rate bug drew on every other one.

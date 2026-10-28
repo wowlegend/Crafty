@@ -34,6 +34,7 @@ import { CaptureClockTicker } from './devtest/CaptureClockTicker.jsx';
 import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
 import { FrameCap, governorBounds } from './render/FrameCap.jsx';
 import { FrameStats } from './render/FrameStats.jsx';
+import { watchContextLoss, trackRenderer } from './render/glDiagnostics.js';
 import { paceFor } from './render/canvasPace.js';
 import { usePixelBudgetDpr, CAPTURE_DPR_CAP } from './render/pixelBudget.js';
 import { ComposerPixelRatioSync, PostTierDriver, N8AO, GodRays, Bloom } from './render/postFx.jsx';
@@ -191,6 +192,10 @@ export const GameScene = React.memo(function GameScene({
   const [finePointer] = useState(() => !readDeviceSignals().coarsePointer);
   const focused = useWindowFocused({ finePointer });
   const pace = paceFor({ frameCap, titleCovering, panelCovering, unfocused: !focused, harness: isCaptureMode || isPerfProbe() });
+  // The PLAYER's frame cap in force, for the Show Stats readout (render/FrameStats.jsx): the setting, unless a harness
+  // steps its own frames. Not `pace.loop`: behind the title, a panel or an unfocused window that is the reduced pace,
+  // which the readout's own drawn-frame count already shows, and the cap line names the setting that play will run at.
+  const capActive = frameCap > 0 && !isCaptureMode && !isPerfProbe();
   const q = TIERS[qualityTier] || TIERS.low;
   const budgetDpr = usePixelBudgetDpr(qualityTier);
   // On a coarse pointer the render distance is pinned to the boot tier (render/tierGovernor.js renderDistanceFor).
@@ -318,22 +323,16 @@ export const GameScene = React.memo(function GameScene({
 
           const canvasEl = gl.domElement;
           canvasRef.current = canvasEl; // the element requestPointerLock targets (desktop mouse-look)
-          const handleContextLost = (e) => {
-            e.preventDefault();
-            console.error('WebGL context lost detected in GameScene!');
-            // Marks the loss and releases a locked pointer, so the panel can be clicked (game/contextRecovery.js).
-            onContextLost({ setLost: useGameStore.getState().setIsWebGLContextLost });
-          };
-          const handleContextRestored = () => {
-            if (import.meta.env.DEV) console.log('WebGL context successfully restored in GameScene.');
-            // The panel (ui/ContextLossPanel.jsx) stays up until three has DRAWN since the restore: its going away then
-            // means the world is on screen again, not merely that the browser said the context is back. The empty shadow
-            // map is asked for again on the way (game/contextRecovery.js onContextRestored).
-            onContextRestored(gl, { setLost: useGameStore.getState().setIsWebGLContextLost });
-          };
-          
-          canvasEl.addEventListener('webglcontextlost', handleContextLost, false);
-          canvasEl.addEventListener('webglcontextrestored', handleContextRestored, false);
+          // Context loss/restore. render/glDiagnostics.js owns the listeners: it preventDefault()s a loss and COUNTS it
+          // for the Show Stats readout. game/contextRecovery.js owns what a loss and a restore DO: a loss marks the store
+          // and releases a locked pointer, so the panel can be clicked; a restore asks for the sun's shadow again, and
+          // the panel (ui/ContextLossPanel.jsx) stays up until three has DRAWN since, so its going away means the world
+          // is on screen again, not merely that the browser said the context is back.
+          const setLost = (lost) => useGameStore.getState().setIsWebGLContextLost(lost);
+          watchContextLoss(canvasEl, useGameStore, {
+            lost: () => onContextLost({ setLost }),
+            restored: () => onContextRestored(gl, { setLost }),
+          });
           if (import.meta.env.DEV) {
             // DEV-only: the context-loss e2e loses and restores THIS canvas's context the way the browser would. The
             // extension is taken now, while the context is alive (getExtension on a lost context returns null).
@@ -345,6 +344,8 @@ export const GameScene = React.memo(function GameScene({
               return true;
             });
           }
+          // The renderer the readout and the lookbook seam (render/lookbookSeam.js) report: GL renderer, dpr in force.
+          trackRenderer(gl);
         }}
       >
         <CaptureClockTicker />
@@ -504,7 +505,7 @@ export const GameScene = React.memo(function GameScene({
           <Preload all />
         </Suspense>
 
-        {showStats && <FrameStats />}
+        {showStats && <FrameStats capActive={capActive} />}
       </Canvas>
     </div>
   );

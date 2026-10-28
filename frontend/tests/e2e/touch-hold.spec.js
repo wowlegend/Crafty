@@ -4,6 +4,7 @@ import { bootDev, startPlayActive } from './_boot.js';
 import { HEAVY_HOLD_MS, HEAVY_CHARGE_MS, HEAVY_MULT } from '../../src/game/heavyAttack.js';
 import { ANTICIPATION_SEC } from '../../src/game/beastTransform.js';
 import { TAP_HOLD_MS } from '../../src/input/aspectWheel.js';
+import { installWorldHold } from './_worldHold.js';
 
 // TOUCH PLAYS THE SIGNATURE — the lived proof for Phase 0c (plan docs/superpowers/plans/2026-10-27-crafty-touch-hold.md).
 //
@@ -192,8 +193,14 @@ async function enterTouchPlay(page) {
   await uncovered(page, 'touch-action', 'the title menu never left, or something else sits over the overlay');
 }
 
+/** Each case's timeout. The action case caps its world freeze at the running test's budget (this, or more when _boot.js
+ *  extends it), so the freeze can never end before the test could. 360 s, not 240: on main's slow runner (run
+ *  40642071917) the action case used 3.3-3.7 min of 4, so a runner ~10% slower would time out with every read green.
+ *  Three attempts of 6 min fit the e2e job's 35-minute cap. */
+const TOUCH_TEST_MS = 360000;
+
 test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', () => {
-  test.setTimeout(240000);
+  test.setTimeout(TOUCH_TEST_MS);
 
   test('the roar sector: a tap the frame loop sees for one frame charges and cancels (the CONTROL); a held press commits the beast form', async ({ page }) => {
     await enterTouchPlay(page);
@@ -301,11 +308,25 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
   });
 
   test('the action button: a held press throws the heavy (HEAVY_MULT x the tap); a half-charged hold (the CONTROL) throws nothing', async ({ page }) => {
+    await page.addInitScript(installWorldHold); // before boot: defines window.__e2eHoldWorld, costs no round trip below
     await enterTouchPlay(page);
     await page.waitForFunction(() => window.__craftyTest?.call('readMobs') && window.__threeCamera && window.GameMethods?.damageMob, null, { timeout: 60000 })
       .catch(() => { throw new Error('SETUP: the mob bridge (readMobs / camera / damageMob) never came up'); });
-    // The brute, frozen world and pinned crit roll of tests/e2e/heavy-melee.spec.js, for the same reasons (read there).
-    const id = await page.evaluate(async () => {
+    // The brute, frozen world and pinned crit roll of tests/e2e/heavy-melee.spec.js, for the same reasons (read there) —
+    // but the freeze is HELD UNTIL THE LAST READ, not a window sized in advance. heavy-melee's one 120 s triggerHitstop
+    // was copied here, and this case does more inside it: four real touches and some forty round trips. On main CI run
+    // 40642071917 (shard 7/8) it ran out 3 of 3, "SETUP: the world freeze ran out by the late press": from the overlay's
+    // entry to the log line took 129-154 s on that runner, each real touch's handled gap 12-19 s (the warm-up held
+    // 7-10 s on the input clock), against 59 s on PR #25's run 40637517889, where the same spec passed. No window sized
+    // in advance can promise a run's length (world-hitstop.spec.js found the same of frames). So tests/e2e/_worldHold.js
+    // opens it as one long beat through the store's own action, capped at the running test's own budget — the wall
+    // budget the run already has, so no runner this test can finish on ends the freeze first — and the spec releases
+    // it after its last read, which prints the span held and the frames drawn inside it. The rule is gated over CI's
+    // timelines in tests/gates/world-hold-gates.test.js. Every `frozen` SETUP read below is unchanged; they now check
+    // the helper. OBSERVED 2026-10-28, a throwaway config on a free port, load 230-313 on 14 cores,
+    // E2E_WORLD_TIMEOUT=300000: passed in 4.0 min, "freeze: held 55538 ms over 35 frames (longest 11598 ms, cap 450000,
+    // lapsed false)" — the cap is the 240 s budget plus _boot.js's 210 s extension, read after boot as intended.
+    const id = await page.evaluate(async ({ capMs }) => {
       const frame = () => new Promise((r) => requestAnimationFrame(r));
       while (Date.now() - (window.useGameStore.getState()._spawnTime || 0) < 5500) await frame();
       const s = window.useGameStore.getState();
@@ -324,11 +345,12 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
       s.spawnMob(gx, gz, 'moss_brute', gy);
       window.__touchRandom = Math.random;
       Math.random = () => 0.999;
-      s.triggerHitstop(120000);
+      window.__e2eHoldWorld({ capMs }); // frozen at once, in the task that spawned the brute; released after the last read
       const added = window.__craftyTest.call('readMobs').filter((m) => !before.has(m.id));
       window.__touchMob = added.length === 1 ? added[0].id : null; // re-pointed by freshBrute
       return window.__touchMob;
-    });
+    }, { capMs: test.info().timeout || TOUCH_TEST_MS }); // the running test's budget, read after boot: _boot.js extends it
+    // for a slow local world-build (E2E_WORLD_TIMEOUT), and a cap fixed before that could end first (0 = no timeout)
     expect(id, 'SETUP: spawnMob did not add exactly one brute').not.toBeNull();
     // The brute's health on every press and lift, read in CAPTURE phase on window — before the game's handlers run for
     // an event targeted at the button — with TWO clocks: `t`, when the handler ran (performance.now), and `ts`, when the
@@ -491,7 +513,9 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
     r.quick = await page.evaluate(lateTouch, { stallMs: 1400, holdMs: 100, pointerId: 79 });
     await page.waitForTimeout(120);
     r.quick.after = await read();
-    await page.evaluate(() => { Math.random = window.__touchRandom; });
+    // Every read is taken: the crit roll restored and the freeze released, in one round trip. `freeze` is the span it
+    // held and the frames drawn inside it — the denominator of every `frozen` verdict below.
+    r.freeze = await page.evaluate(() => { Math.random = window.__touchRandom; return window.__e2eWorldHold.release(); });
 
     const where = JSON.stringify(r);
     const { half, full, late, latePress, quick } = r;
@@ -501,7 +525,8 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
       + ` · full: press ${full.press} release ${full.release} (${full.heldMs} ms, handled ${full.handledMs}, trusted ${full.trusted})`
       + ` · late lift: press ${late.press} release ${late.release} (input ${late.heldMs} ms, handled ${late.handledMs})`
       + ` · late press: press ${latePress.press} release ${latePress.release} (input ${latePress.heldMs} ms, handled ${latePress.handledMs})`
-      + ` · late press lifted quickly: press ${quick.press} release ${quick.release} (input ${quick.heldMs} ms, handled ${quick.handledMs})`);
+      + ` · late press lifted quickly: press ${quick.press} release ${quick.release} (input ${quick.heldMs} ms, handled ${quick.handledMs})`
+      + ` · freeze: held ${r.freeze.heldMs} ms over ${r.freeze.frames} frames (longest ${r.freeze.longestFrameMs} ms, cap ${r.freeze.capMs}, lapsed ${r.freeze.lapsed})`);
     for (const [name, ph] of [['full', full], ['late lift', late]]) {
       expect(ph.missing, `SETUP: the ${name}'s pointerdown/pointerup on touch-action were not both logged — ${where}`).toBeUndefined();
       expect(ph.trusted, `SETUP: the ${name} was not a real (trusted) touch — ${where}`).toBe(true);

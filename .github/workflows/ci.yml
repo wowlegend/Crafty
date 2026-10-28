@@ -39,7 +39,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      # FULL HISTORY (2026-10-28). On a push to main the fast tier runs artifact-currency, whose drift is
+      # `rev-list --count syncedSha..HEAD`; a depth-1 clone holds no commit but HEAD, so that count cannot be taken.
+      # For an artifact surface the script refuses an unmeasurable drift on a main push rather than skipping it, so a
+      # shallow checkout here reds main for those; a surface with no recorded sha still skips, and a page-kind
+      # surface in a shallow checkout reads as current. The step runs after the push has landed: it detects drift,
+      # it does not bound a merge.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -62,7 +70,9 @@ jobs:
       # ran. ci/pipeline.sh is the definition; both callers invoke it, so neither can drift.
       #
       # `--tier=fast` adds the steps that need network or a browser (knip, npm audit, prod-smoke) and
-      # skips the commit-shaped ones, which need a push refspec a runner does not have.
+      # skips the commit-shaped ones (queue-ledger, e2e-freshness), which need a push refspec a runner does not
+      # have. The one exception is artifact-currency: on a push to main it runs here too, naming main, to detect
+      # drift after a merge GitHub made (a pull_request or a workflow_dispatch run skips it).
       - name: Pipeline (fast tier — every deterministic gate, plus network/browser)
         working-directory: .
         run: bash ci/pipeline.sh --tier=fast
@@ -83,10 +93,13 @@ jobs:
   # keep the total runner minutes (free: the repo is public) and halve each shard's wall time.
   # 6 -> 8 SHARDS 2026-10-28: with the Phase 0 lanes' specs merged, two shards projected to ~20 min on a first
   # pass with no room for a retry of their heavy specs (PR #24 prep, episode :1209).
+  # 25 -> 35 MINUTES 2026-10-28: main run 40642071917 ran shards 5/8 and 7/8 to 23 of 25 min (7/8 with three
+  # attempts of one failing case), and a job that hits its cap reports `cancelled`, losing every finished verdict in
+  # it. Shards run 5-23 min because specs differ tenfold in cost; the cap is headroom for retries, not a target.
   e2e:
     name: e2e (playwright) ${{ matrix.shard }}/8
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     strategy:
       fail-fast: false # one red shard must not hide the results of the others
       matrix:
