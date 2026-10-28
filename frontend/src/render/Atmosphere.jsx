@@ -329,8 +329,46 @@ export function Atmosphere({ shadowConfig }) {
       };
     });
     registerTestHook('clearGreyCard', () => { dropCard(); return true; });
+    // THE DOME SAMPLER (review of the light-colour lane: the painted moon's horizon mask is GLSL, so no node test can
+    // run it). The dome's OWN material, rendered alone on THIS renderer into a 4x4 target through a 2 deg view along
+    // `dir` from the dome's centre, with the given uniforms set for that one render and restored after. Returns the mean
+    // linear RGB (the dome writes no tone mapping or colour-space conversion). Outside the frame loop, so the frame's
+    // own writes do not race it.
+    registerTestHook('sampleDome', ({ dir, uniforms = {} } = {}) => {
+      const u = domeMat.uniforms, saved = {};
+      for (const [k, v] of Object.entries(uniforms)) {
+        const cur = u[k]?.value;
+        if (cur === undefined) throw new Error(`sampleDome: the dome has no uniform ${k}`);
+        if (cur && (cur.isColor || cur.isVector3)) { saved[k] = cur.clone(); cur.fromArray(v); } else { saved[k] = cur; u[k].value = v; }
+      }
+      const SIDE = 4, PX = SIDE * SIDE; // the target's side and pixel count
+      const rt = new THREE.WebGLRenderTarget(SIDE, SIDE);
+      const cam = new THREE.PerspectiveCamera(2, 1, 0.1, 1000);
+      cam.lookAt(dir[0], dir[1], dir[2]);
+      cam.updateMatrixWorld();
+      const s = new THREE.Scene();
+      const mesh = new THREE.Mesh(domeGeo, domeMat);
+      mesh.frustumCulled = false;
+      s.add(mesh);
+      const prev = gl.getRenderTarget();
+      try {
+        gl.setRenderTarget(rt);
+        gl.clear(true, true, false);
+        gl.render(s, cam);
+        const buf = new Uint8Array(PX * 4); // RGBA bytes
+        gl.readRenderTargetPixels(rt, 0, 0, SIDE, SIDE, buf);
+        const rgb = [0, 0, 0];
+        for (let i = 0; i < PX; i++) for (let c = 0; c < 3; c++) rgb[c] += buf[i * 4 + c] / 255 / PX;
+        return rgb;
+      } finally {
+        gl.setRenderTarget(prev);
+        for (const [k, v] of Object.entries(saved)) { if (v && (v.isColor || v.isVector3)) u[k].value.copy(v); else u[k].value = v; }
+        s.remove(mesh);
+        rt.dispose();
+      }
+    });
     return dropCard;
-  }, [scene, camera, gl, domeMat, sunTarget]);
+  }, [scene, camera, gl, domeMat, domeGeo, sunTarget]);
 
   useFrame((state, frameDelta) => {
     const delta = realDelta(frameDelta); // the sky's mood lerp is ambient: a freeze does not stop the day (R2.6)

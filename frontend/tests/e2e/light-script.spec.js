@@ -14,6 +14,8 @@ import { displayed, stoneFaceUnder, oklch } from '../gates/_lightModel.js';
 //   midnight  the sun is under the ground (sunDirY < 0) and the key is the MOON above it (keyDirY > 0, keyIsMoon, lit);
 //             the stars are out; the terrain still reads the SUN (ore glow, leaves and cloud shadows mean the sun,
 //             refute F5); and the shadow map was rendered from the moon's key, not from the sun under the ground.
+//   moon mask the dome's painted moon shows 0.06 above the horizon and not 0.06 below it (the shader itself, sampled
+//             alone with declared uniforms through the DEV hook sampleDome).
 //   storm     the overlay hides the stars (one read, then the weather is reset).
 //   dawn      THE LIGHT RAMPS (render/skyClock.js): the game clock is a 1 Hz step, and the sky read straight from it
 //             stepped once a second (review, HIGH). Sampled every frame for a few seconds from the sun's rise, the live
@@ -50,6 +52,7 @@ import { displayed, stoneFaceUnder, oklch } from '../gates/_lightModel.js';
 //   E0 identity (a comment edit in Atmosphere.jsx) SURVIVED, in both batches.
 //   SC1e Atmosphere renders liveCycle(st.gameTime), the 1 Hz step  -> "dawn: the key light did not move between frames
 //        of one game-second" (0 of 2 pairs moved, key steps 0.0000 0.0000; the identities' runs moved 0.0026-0.9136)
+//   MTe the moon disc's moonUp horizon mask dropped (skyDome.js)    -> "the painted moon shows under the horizon" (0.702)
 //
 // BLIND SPOT: SwiftShader on CI is not a GPU, and this reads one patch of one material. The look itself (the night as
 // a whole, golden hour, WebKit and the iPad) is the lookbook's (plan Task 9), on a real GPU.
@@ -219,6 +222,26 @@ test('the light script in the running game: a sun key at noon, a moon key at mid
   expect(Math.abs(cardAway.screen.L - cardAway.model.L), `midnight, away: model L ${cardAway.model.L.toFixed(3)} vs screen ${cardAway.screen.L.toFixed(3)} — ${cardAway.where}`).toBeLessThanOrEqual(0.03);
   expect(cardAway.screen.L, `midnight: the moonlit stone is black on screen (L ${cardAway.screen.L.toFixed(3)}) — ${cardAway.where}`).toBeGreaterThanOrEqual(0.30);
   expect(cardAway.screen.C, `midnight: the moonlit stone is navy on screen (C ${cardAway.screen.C.toFixed(3)}) — ${cardAway.where}`).toBeLessThanOrEqual(0.07);
+
+  // THE PAINTED MOON IS MASKED UNDER THE HORIZON (review: mutant MT, the mask dropped from the disc, survived; the mask
+  // is GLSL, so only a renderer can read it). The dome's own shader, sampled alone (DEV hook sampleDome: a 2 deg view
+  // into a 4x4 target) with DECLARED uniforms: stars full, no clouds, no sun, plain grey-blue gradient stops. The moon
+  // 0.06 above the horizon, looked at straight on, must stand far above the sky 40 deg beside it at the same height
+  // (presence: the instrument sees the disc); 0.06 below, it must not differ from its neighbour at all.
+  {
+    const N = (v) => { const l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; };
+    const yaw = (v, deg) => { const a = (deg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a); return [v[0] * c + v[2] * s, v[1], -v[0] * s + v[2] * c]; };
+    const DOME = { uStar: 1, uCloudCover: 0, sunColor: [0, 0, 0], sunDir: [0, -1, 0], topColor: [0.05, 0.06, 0.1], midColor: [0.08, 0.1, 0.16], horizonColor: [0.2, 0.22, 0.3] };
+    const domeAt = (dir, moon) => call(page, 'sampleDome', { dir, uniforms: { ...DOME, uMoonDir: moon } });
+    const up = N([0.284, 0.06, -0.799]), down = N([0.284, -0.06, -0.799]);
+    const upMoon = await domeAt(up, up), upSky = await domeAt(yaw(up, 40), up);
+    const downMoon = await domeAt(down, down), downSky = await domeAt(yaw(down, 40), down);
+    const atMoon = fmt({ upMoon, upSky, downMoon, downSky });
+    console.log(`[light-script] the dome's moon: ${atMoon}`);
+    expect(upMoon[2] - upSky[2], `SETUP: the dome sampler cannot see the moon disc above the horizon — ${atMoon}`).toBeGreaterThan(0.3);
+    const leak = Math.max(...[0, 1, 2].map((c) => Math.abs(downMoon[c] - downSky[c])));
+    expect(leak, `the painted moon shows under the horizon (the dome's moonUp mask is gone): ${leak.toFixed(3)} — ${atMoon}`).toBeLessThanOrEqual(0.02);
+  }
 
   // THE OVERLAY, once: a storm hides the stars. Then the weather is reset.
   try {
