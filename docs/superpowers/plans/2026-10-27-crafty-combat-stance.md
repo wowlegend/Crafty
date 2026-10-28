@@ -1284,6 +1284,13 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   `/code-review ultra <PR#>`.
 
 > **Task 12 as run, 2026-10-28, by the authoring lane** (which may not push, open a PR or edit the main checkout):
+> - **Step 1 RUN, RED on two range gates that are not this lane's code** (`bash ci/pipeline.sh --tier=push` at
+>   `f3e6bb49`). 12 of 14 green: the offline core (4084 tests, the build, bundle-budget, killability-ledger and
+>   gate-shape not rising) and queue-ledger. Red (1): `artifact-currency`, because the three published pages are 75
+>   commits behind (`1a1bee68`). Main scoped that cap to main-moving pushes in `d5375ac1`, which this branch does not
+>   carry. Red (2): `e2e-freshness`, because the push BASE's e2e is RED on CI. main `43d766e6`, run 40642071917, shard
+>   7/8 failed three times at `touch-hold.spec.js:303`: "SETUP: the world freeze ran out by the late press". And this
+>   tree has no green e2e receipt. The trailer gates the hook runs pass over `81d0ab89..HEAD`.
 > - **Step 2 DONE.** 4014 unit tests before the milestone, 4084 after (+70: combatStance 31, meleeString 15,
 >   windupChevrons 11, windup-chevrons-gates 8, stance-pursuit-gates 3, mobMovement 1, mobSenses +1), all green; lint
 >   clean; knip clean.
