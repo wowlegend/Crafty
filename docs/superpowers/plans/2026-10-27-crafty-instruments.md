@@ -157,9 +157,12 @@ against a 760,000 B ceiling (696,924 B on the last main build).
   shot invalid and calls the store's own `respawn`.
 - New headless on macOS may still fall back to SwiftShader; the probe tries candidates and records every renderer
   string rather than assuming, and refuses to call software frames real-GPU frames.
-- Pointer lock in headed Chromium (the power scenario) is untested here; `play()` holds input live where the seam exists.
-  A build without the seam (an older baseline for the A/B) enters by clicking Start and records that it could not check
-  the input gate.
+- Pointer lock in headed Chromium (the power scenario) is untested here. AMENDED 2026-10-28 (PR #23 review, item 3):
+  the hold no longer uses `play()` in any build — the A/B's baseline build has no seam, so it made the two arms enter
+  play differently wherever the click did not lock the pointer. Every arm enters by the click alone, records whether
+  the pointer locked (`inPlay`, read from the page in every build) as `scenario:` beside `window:` in meta.txt, and
+  `power-summary.mjs` refuses to compare two arms whose lines differ. Whether a headed click locks the pointer on
+  Kevin's Mac is answered by the first headed arm's scenario line.
 - powermetrics' text format is verified from published logs, not from a run on this Mac; the parser prints its
   denominator and refuses an empty log, and power-ab keeps the raw log beside the summary.
 - WebKit on macOS is not iPadOS (same engine and ANGLE-Metal path, not the same GPU, memory or thermals): the lookbook's

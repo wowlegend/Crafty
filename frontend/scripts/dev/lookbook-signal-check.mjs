@@ -17,10 +17,16 @@
  *         hold.json with what it has — the timeline so far — marked `partial: true`, `stoppedBy: "SIGTERM"`. Until this
  *         fix its TERM handler wrote nothing.
  *   complete  a short hold that runs out: exit 0 and a hold.json marked `partial: false`, held for the time asked.
+ *   entry short holds on a build with a (fake) seam and on one without, as the A/B's two arms are, on a page whose
+ *         click locks the pointer and on one whose click does not. Both builds must enter the same way (the click
+ *         alone) and record the same `inPlay`; on the refusing page, false, with a NOT IN PLAY note. The fake seam's
+ *         play() throws. Until this fix the hold made input live through the seam where one existed, so wherever the
+ *         click did not lock the pointer the new build played while the old build's sat behind the resume overlay.
  *   arm   one power-ab.sh ARM end to end, with `sudo` on PATH replaced by a stand-in that prints powermetrics-shaped
  *         samples (no root is used; /usr/bin/powermetrics is never run). The arm must wait out the hold instead of
  *         TERMing it, so its hold.json is complete (`partial: false`), and still exit 0 with a summary. Until this fix
- *         every normal arm TERMed the driver ~37 s before its hold ended, and no hold.json was written at all.
+ *         every normal arm TERMed the driver ~37 s before its hold ended, and no hold.json was written at all. Its page
+ *         locks nothing, so the arm must also record `window: headless` and `scenario: NOT in play` and warn.
  *
  * Every case asserts a PRESENCE before the absence it is about: the port has a listener once the hold is READY.
  *
@@ -35,8 +41,15 @@
  *   identity (a comment edit in lookbook.mjs) -> PASS. SURVIVED: the held-seconds clock running on through the browser
  *   close (complete's upper bound catches it only when the close takes over 2 s, as it did once under load: 18 s for a
  *   3 s hold).
+ * Mutation-Proof: entry, arm, run on 2026-10-27 against the pre-fix lookbook.mjs, power-ab.sh and power-summary.mjs
+ *   -> FAIL entry ("seam, refusing page: exit 3": the hold reached the seam's play(); "locking page: inPlay undefined")
+ *   and FAIL arm (no window or scenario in meta.txt, no warning). After the fix, one mutant at a time: the hold making
+ *   input live through the seam again -> FAIL entry; the arm recording "in play" for any inPlay token -> FAIL arm; the
+ *   arm's NOT IN PLAY warning removed -> FAIL arm; identity (a comment edit in power-ab.sh) -> PASS. Not mutated, as
+ *   equivalent: inPlay read from the seam's info().active — with play() never called, the desktop input gate follows
+ *   pointer lock, so it reads the same as the page.
  *
- * Usage:  node scripts/dev/lookbook-signal-check.mjs [--case int,term,complete,arm]   (default: every case; ~2 min,
+ * Usage:  node scripts/dev/lookbook-signal-check.mjs [--case int,term,complete,entry,arm]   (default: every case; ~2 min,
  *         macOS: the arm case runs power-ab.sh, which refuses anything else)
  * Exit 0 = every case passed · 1 = a case FAILED (named) · 3 = COULD NOT CHECK (named; never a pass).
  *
@@ -61,8 +74,12 @@ const READY_TIMEOUT_MS = 120000;
 const EXIT_TIMEOUT_MS = 30000;
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** The fake build's page. `seam` adds a window.__craftyLookbook stand-in. */
-function fakeIndexHtml({ seam = '' } = {}) {
+/**
+ * The fake build's page. `seam` adds a window.__craftyLookbook stand-in. `lock` is whether Start Adventure asks for
+ * pointer lock: false stands for a click the browser does not lock (Playwright's headless shell refuses every request;
+ * new headless GRANTED this page's on 2026-10-27, so a refusal has to be constructed to be checked).
+ */
+function fakeIndexHtml({ seam = '', lock = true } = {}) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>fake crafty build</title></head><body>
 <button id="start">Start Adventure</button>
 <canvas id="c" width="2560" height="1600" style="width:1280px;height:800px;display:block"></canvas>
@@ -71,7 +88,9 @@ function fakeIndexHtml({ seam = '' } = {}) {
   document.getElementById('start').onclick = () => {
     window.__started = true;
     const c = document.getElementById('c');
-    try { const p = c.requestPointerLock && c.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* refused */ }
+    if (${lock ? 'true' : 'false'}) {
+      try { const p = c.requestPointerLock && c.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* refused */ }
+    }
   };
   const state = () => ({ isSpawnChunkLoaded: window.__started, qualityTier: 'high', isAlive: true, frameCap: 60 });
   window.useGameStore = Object.assign(function useGameStore() {}, { getState: state });
@@ -101,12 +120,12 @@ function killListeners(port) {
 }
 
 /** Start lookbook.mjs --hold on a fresh fake build. Resolves once READY prints, or rejects naming why. */
-function startHold({ holdS, seam }) {
+function startHold({ holdS, seam, lock = true }) {
   const dir = mkdtempSync(join(tmpdir(), 'crafty-lookbook-check-'));
   const build = join(dir, 'build');
   const out = join(dir, 'out');
   spawnSync('mkdir', ['-p', build]);
-  writeFileSync(join(build, 'index.html'), fakeIndexHtml({ seam }));
+  writeFileSync(join(build, 'index.html'), fakeIndexHtml({ seam, lock }));
   const child = spawn(process.execPath, [LOOKBOOK, '--hold', String(holdS), '--build-dir', build, '--out', out, '--allow-software'],
     { cwd: APP, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = '';
@@ -213,13 +232,50 @@ const CASES = {
     }
   },
 
+  async entry() {
+    // The A/B's two arms: a build with the seam and one from before it. Both must enter the hold the same way, on a
+    // page whose click locks the pointer and on one whose click does not. The fake seam's play() throws, so a hold that
+    // reaches for it dies instead of quietly entering play differently.
+    const fails = [];
+    const said = [];
+    for (const lock of [true, false]) {
+      const runs = [];
+      for (const [name, seam] of [['no seam', ''], ['seam', FAKE_SEAM]]) {
+        const run = startHold({ holdS: 2, seam, lock });
+        try {
+          await run.ready.catch(() => {});
+          const ex = await awaitExit(run);
+          runs.push({ name: `${name}, ${lock ? 'locking' : 'refusing'} page`, ex, h: readHold(run.out), log: run.log() });
+        } finally {
+          await cleanupRun(run);
+        }
+      }
+      const broken = runs.filter((r) => r.ex.code !== 0 || !r.h);
+      for (const r of broken) fails.push(`${r.name}: exit ${r.ex.code}${r.h ? '' : ', no hold.json'} (${r.log.split('\n').filter(Boolean).slice(-2).join(' | ')})`);
+      if (broken.length) continue;
+      const [a, b] = runs.map((r) => r.h.hold);
+      if (a.seam !== false || b.seam !== true) return { verdict: 3, why: `the fake builds were not told apart (seam ${a.seam} / ${b.seam})` };
+      const page = lock ? 'locking page' : 'refusing page';
+      if (a.entry !== b.entry) fails.push(`${page}: entered differently: "${a.entry}" vs "${b.entry}"`);
+      if (typeof a.inPlay !== 'boolean' || a.inPlay !== b.inPlay) fails.push(`${page}: inPlay ${JSON.stringify(a.inPlay)} vs ${JSON.stringify(b.inPlay)}`);
+      if (!lock) {
+        if (a.inPlay !== false) fails.push('refusing page: a click that locks nothing read as in play');
+        for (const [n, h] of [['no seam', a], ['seam', b]]) {
+          if (!h.notes.some((x) => x.startsWith('NOT IN PLAY'))) fails.push(`refusing page, ${n}: not in play, and the hold did not say so`);
+        }
+      }
+      said.push(`${page}: "${a.entry}", inPlay ${a.inPlay} in both`);
+    }
+    return fails.length ? { verdict: 1, why: fails.join('; ') } : { verdict: 0, why: `${said.join('; ')}; the seam never used` };
+  },
+
   async arm() {
     const dir = mkdtempSync(join(tmpdir(), 'crafty-power-arm-check-'));
     const build = join(dir, 'build');
     const bin = join(dir, 'bin');
     const outRoot = join(dir, 'arms');
     spawnSync('mkdir', ['-p', build, bin, outRoot]);
-    writeFileSync(join(build, 'index.html'), fakeIndexHtml());
+    writeFileSync(join(build, 'index.html'), fakeIndexHtml({ lock: false })); // the click locks nothing: NOT in play
     writeFileSync(join(bin, 'sudo'), FAKE_SUDO);
     chmodSync(join(bin, 'sudo'), 0o755);
     const SAMPLES = 10;
@@ -240,6 +296,12 @@ const CASES = {
       if (!h) fails.push('the arm left no hold.json — the driver was stopped before its hold ended and wrote nothing');
       else if (h.hold?.partial !== false) fails.push(`hold.json is marked partial (${h.hold?.stoppedBy}, ${h.hold?.heldS} s of ${h.hold?.requestedS})`);
       if (!/GPU\s+\d/.test(log)) fails.push('no GPU row in the printed summary');
+      // The conditions power-summary compares a pair on, as the hold saw them: this page's click locks nothing.
+      const meta = readFileSync(join(armDir, 'meta.txt'), 'utf8');
+      if (!/^window:\s+headless$/m.test(meta)) fails.push('meta.txt does not record window: headless');
+      if (h && h.hold?.inPlay !== false) fails.push(`the hold read inPlay ${JSON.stringify(h.hold?.inPlay)} on a page that locks nothing`);
+      if (!/^scenario:\s+NOT in play/m.test(meta)) fails.push('meta.txt does not record the arm as NOT in play');
+      if (!/NOT IN PLAY/.test(log)) fails.push('the arm did not warn that it is not in play');
       if (await listening(PORT)) fails.push(`a listener is still on port ${PORT}`);
       return fails.length ? { verdict: 1, why: fails.join('; ') }
         : { verdict: 0, why: `arm exit 0, summary printed, hold.json complete (${h.hold.heldS} s of ${h.hold.requestedS})` };
@@ -250,6 +312,16 @@ const CASES = {
     }
   },
 };
+
+/**
+ * A window.__craftyLookbook stand-in whose play() fails loudly — the hold must never make input live through it. Its
+ * info().active follows pointer lock, as the real input gate does on desktop until something calls play(), so a hold
+ * that asks the seam whether input is live, and calls play() when it is not, reaches play() on the refusing page.
+ */
+const FAKE_SEAM = `window.__craftyLookbook = {
+    info: () => ({ active: !!document.pointerLockElement, worldBuilt: window.__started, gl: { dpr: 2 } }),
+    play: () => { throw new Error('the hold called the seam play(): the two arms would enter play differently'); },
+  };`;
 
 /** hold.json in `dir`, parsed, or null. */
 function readHold(dir) {

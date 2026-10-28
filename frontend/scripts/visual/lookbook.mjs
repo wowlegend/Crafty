@@ -37,9 +37,12 @@
  * shot can kill the player: the shot is marked invalid and the store's own respawn() runs before the next. First-session onboarding toasts are
  * suppressed (crafty_onboarded) so they do not cover the frames.
  *
- * --hold <seconds> is the power scenario (scripts/dev/power-ab.sh): one Chromium page at 1280x800, entered into play
- * at spawn by clicking Start Adventure (plus the seam's play() where the build has the seam), held for N seconds; it
- * prints "LOOKBOOK HOLD READY" when play is entered and writes hold.json (tier timeline, `partial: false`, the seconds
+ * --hold <seconds> is the power scenario (scripts/dev/power-ab.sh): one Chromium page at 1280x800, entered at spawn by
+ * clicking Start Adventure and nothing else, in every build — never through the seam, which the A/B's baseline build
+ * lacks — held for N seconds. Whether that put it in play is read the same way in every build (pointer lock held:
+ * `inPlay`); a hold the click did not lock (Playwright's headless shell always refuses pointer lock) is NOT in play and
+ * says so. It prints "LOOKBOOK
+ * HOLD READY" (renderer, seam, entry, inPlay, headed) and writes hold.json (tier timeline, `partial: false`, the seconds
  * held). A hold stopped by a signal or an error writes what it had, marked `partial: true` with `stoppedBy`.
  * --headed shows the window.
  *
@@ -304,7 +307,17 @@ async function shootTarget(target, launchOpts, launchId) {
   }
 }
 
-/** The power scenario: one Chromium page entered into play at spawn and held. Works on builds without the seam. */
+/** Whether the page holds pointer lock: two consecutive reads 250 ms apart, within ~10 s. */
+async function pointerLockHeld(page, tries = 40) {
+  let held = 0;
+  for (let i = 0; i < tries && held < 2; i++) {
+    held = (await page.evaluate(() => !!document.pointerLockElement)) ? held + 1 : 0;
+    if (held < 2) await delay(250);
+  }
+  return held >= 2;
+}
+
+/** The power scenario: one Chromium page entered by the click alone at spawn, and held. Any build, seam or none. */
 async function hold(launchOpts, launchId) {
   const out = { launch: launchId, headed: HEADED, seam: false, renderer: null, entry: null, timeline: [], notes: [] };
   holdOut = out;
@@ -322,21 +335,28 @@ async function hold(launchOpts, launchId) {
     const built = await page.waitForFunction(() => window.useGameStore.getState().isSpawnChunkLoaded === true, null, { timeout: WORLD_TIMEOUT_MS, polling: 1000 })
       .then(() => true, () => false);
     if (!built) { out.notes.push(`COULD NOT MEASURE: the world never built within ${WORLD_TIMEOUT_MS / 1000} s`); return out; }
-    if (out.seam) {
-      const h = await holdActive(page);
-      if (h.plays) out.entry = `${out.entry || 'no click'} + seam play() x${h.plays}`;
-      if (!h.held) { out.notes.push('COULD NOT MEASURE: the input gate never held live'); return out; }
-    } else {
-      out.notes.push('this build has no lookbook seam: entered by the click alone; whether input is live is UNCHECKED');
+    // ONE ENTRY FOR EVERY BUILD (review of PR #23, item 3). The A/B's baseline arm is a build from before the seam, so
+    // it can enter play only by the click. Making input live through the seam in the other arm measured two different
+    // states wherever the click did not lock the pointer (Playwright's headless shell never does): the new build played
+    // through the seam while the old one sat behind its resume overlay. So no build's seam is used here, and both are read by the same seam-free instrument: whether the page
+    // holds pointer lock (Components.jsx sets the input gate from pointerlockchange). Not in play is recorded and said
+    // out loud, never fixed up; power-summary.mjs refuses to compare two arms whose scenario differs.
+    if (!out.entry) out.notes.push('no Start Adventure button on the title: not entered at all');
+    out.inPlay = await pointerLockHeld(page);
+    if (!out.inPlay) {
+      out.notes.push(`NOT IN PLAY: the pointer was not locked after the click (${HEADED ? 'was the window in front?' : `headless, launch ${launchId}: Playwright's headless shell refuses pointer lock; new headless granted it to a plain click-to-lock page on 2026-10-27`}): the game runs behind its resume overlay. Every arm enters this way, so compare this arm only with one whose scenario matches.`);
     }
-    console.log(`LOOKBOOK HOLD READY ${JSON.stringify({ renderer: out.renderer, gpu: classifyRenderer(out.renderer), seam: out.seam, entry: out.entry })}`);
+    console.log(`LOOKBOOK HOLD READY ${JSON.stringify({ renderer: out.renderer, gpu: classifyRenderer(out.renderer), seam: out.seam, entry: out.entry, inPlay: out.inPlay, headed: HEADED })}`);
     const t0 = Date.now();
     holdT0 = t0;
     while (Date.now() - t0 < HOLD_S * 1000) {
+      // Seam-free reads, the same in every build: the store (exposed by every build) and the page itself. The pixel
+      // ratio in force is the game canvas's backing width over its CSS width (the largest canvas on the page).
       const s = await page.evaluate(() => {
         const g = window.useGameStore.getState();
-        const lb = window.__craftyLookbook?.info?.();
-        return { tier: g.qualityTier, isAlive: g.isAlive, active: lb ? lb.active : null, dpr: lb?.gl?.dpr ?? null };
+        const c = [...document.querySelectorAll('canvas')].sort((x, y) => y.width * y.height - x.width * x.height)[0];
+        return { tier: g.qualityTier, isAlive: g.isAlive, pointerLocked: !!document.pointerLockElement,
+          dpr: c && c.clientWidth ? Math.round((c.width / c.clientWidth) * 100) / 100 : null };
       });
       out.timeline.push({ t: Math.round((Date.now() - t0) / 1000), ...s });
       await delay(Math.min(10000, Math.max(0, HOLD_S * 1000 - (Date.now() - t0))));

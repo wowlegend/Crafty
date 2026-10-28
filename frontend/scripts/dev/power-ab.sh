@@ -28,13 +28,20 @@
 # is.) If a label was used before, the glob matches several runs: name the run directories instead.
 #
 # OPTIONS: --samples N (default 120) · --warmup S (default 20) · --build-dir DIR (default build/) ·
-#          --out-root DIR (default ~/crafty-power-ab) · --headless (no window; the renderer may not be the real GPU).
+#          --out-root DIR (default ~/crafty-power-ab) · --headless (no window; the renderer may not be the real GPU,
+#          and pointer lock may be refused, leaving the arm NOT in play; compare it only with another --headless arm).
+#
+# BOTH ARMS ENTER THE SAME WAY (review of PR #23, item 3). The scenario clicks Start Adventure and nothing else, in
+# every build: the baseline build has no lookbook seam, so using the seam in the other arm would compare two different
+# states. Whether the click put the game in play (pointer lock held) is read the same way in both and written into
+# meta.txt as `window:` and `scenario:`; an arm that is not in play says so loudly, and power-summary.mjs REFUSES to
+# compare two arms whose window or scenario differ.
 #
 # WHAT IT CANNOT TELL YOU. powermetrics' own help calls its power figures estimates, fit for comparing builds of one
 # app on one machine and not for comparing machines. The scenario stands still at spawn; it says nothing about combat
 # or the siege. The day clock runs (a fresh world starts at dawn, and the whole run is ~3 minutes, past noon), the
-# same way for both arms. A second arm on a build without the lookbook seam enters play by the click alone, and the
-# scenario log says so.
+# same way for both arms. Whether a headed window gets pointer lock from the click is unverified on the operator's Mac
+# until the first headed run: the scenario line in meta.txt is the answer.
 #
 # Exit 0 = measured and summarised · 3 = COULD NOT MEASURE, named.
 
@@ -131,7 +138,28 @@ until grep -q "LOOKBOOK HOLD READY" "$OUT/scenario.log" 2>/dev/null; do
   sleep 2
   waited=$((waited + 2))
 done
-grep "LOOKBOOK HOLD READY" "$OUT/scenario.log"
+READY_LINE=$(grep "LOOKBOOK HOLD READY" "$OUT/scenario.log" | head -1)
+echo "$READY_LINE"
+
+# The conditions power-summary.mjs compares two arms on, recorded beside this arm's log (review of PR #23, item 3).
+if [ -n "$HEADED" ]; then WINDOW=headed; else WINDOW=headless; fi
+case "$READY_LINE" in
+  *'"inPlay":true'*) SCENARIO="in play (pointer locked)" ;;
+  *) SCENARIO="NOT in play (no pointer lock: the game behind its resume overlay)" ;;
+esac
+{
+  echo "window:      $WINDOW"
+  echo "scenario:    $SCENARIO"
+} >> "$OUT/meta.txt"
+echo "window:      $WINDOW"
+echo "scenario:    $SCENARIO"
+case "$SCENARIO" in
+  NOT*)
+    echo "power-ab: WARNING — this arm is NOT IN PLAY: the click did not lock the pointer, so it measures the game behind" >&2
+    echo "  its resume overlay. Every arm enters the same way, so it compares only with an arm whose window and scenario" >&2
+    echo "  match; power-summary refuses any other pair. Headed, bring the Chromium window to the front and run again." >&2
+    ;;
+esac
 
 echo "warm-up ${WARMUP} s ..."
 sleep "$WARMUP"
