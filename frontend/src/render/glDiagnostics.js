@@ -34,18 +34,25 @@ export function rendererString(ctx) {
  * Listen for context loss and restore on the game canvas. A loss is preventDefault()ed — that is what tells the
  * browser the page will handle a restore; without it the context is gone for good — counted, and flagged on the
  * store (`isWebGLContextLost`). Returns a detach function.
+ *
+ * `handlers.lost` / `handlers.restored`, when given, replace the plain store-flag writes: GameScene passes
+ * game/contextRecovery.js's onContextLost (also releases a locked pointer) and onContextRestored (asks for a shadow
+ * render, and clears the flag only once three has drawn). The preventDefault, the count and the renderer reset stay
+ * here either way, so the readout cannot lose a loss the recovery handles.
  */
-export function watchContextLoss(canvas, store) {
+export function watchContextLoss(canvas, store, handlers = {}) {
   const onLost = (e) => {
     e.preventDefault();
     _losses += 1;
     console.error('WebGL context lost detected in GameScene!');
-    store.getState().setIsWebGLContextLost(true);
+    if (handlers.lost) handlers.lost();
+    else store.getState().setIsWebGLContextLost(true);
   };
   const onRestored = () => {
     if (import.meta.env.DEV) console.log('WebGL context successfully restored in GameScene.');
-    store.getState().setIsWebGLContextLost(false);
     _renderer = null; // read the GPU name again: a restore can land on another GPU, and a read made while lost may have failed
+    if (handlers.restored) handlers.restored();
+    else store.getState().setIsWebGLContextLost(false);
   };
   canvas.addEventListener('webglcontextlost', onLost, false);
   canvas.addEventListener('webglcontextrestored', onRestored, false);

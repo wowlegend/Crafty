@@ -1,12 +1,16 @@
 ## CURSOR — 2026-10-28 (command session c54fc9b6). READ THIS FIRST; everything below it is history.
 
-**Governing:** Kevin's standing principle (DECISIONS 2026-10-28 item 14, top of AGENTS.md): nothing is off limits;
+**Governing:** Kevin's standing principle (DECISIONS 2026-10-28 item 14, top of CLAUDE.md): nothing is off limits;
 full autonomy; Kevin reviews ONE page, the Command Record (docs/superpowers/command-record.html,
 https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f). **The programme:** `docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`
 (whole-project assessment wf_657ac8b1-834): "The First Night" spine; Wave 1 now (W1-A required check, W1-B real
 pause, W1-C gameplay deletions, W1-D eye-level instruments, W1-E mipmaps, W1-F public text, W1-G bundle UI, W1-H
 plans/decisions/registry), Wave 2 after #24, stance and light land (the Cut, HUD lane, hands, media pipeline, capture
 oracle retired, harness to ~10 gates), Wave 3 the First Night, road of light, first minute, platform deep.
+
+**One instruction file (Kevin 2026-10-28, DECISIONS 2026-10-28 "One CLAUDE.md"):** `CLAUDE.md` at the repo root is a real file and the
+only agent-instruction file; the former AGENTS.md copy, the symlink and its directory are gone. Any plan, audit or queue dated
+before this that says AGENTS.md means `CLAUDE.md`. The generators (measure, gate-table, read-order) write into it.
 
 **Landing:** each lane is a PR; CI ~8 min since the e2e dpr cap (ae2e10a5); land by local merge commit, CI on the exact
 commit (land/2026-10-28 until the required check is on), push main. Review cadence (DECISIONS item 13/the speed plan):
@@ -74,7 +78,7 @@ done first, then a design panel chooses the highest-leverage moves, each through
 Kevin, 2026-10-27: a new session rooted in `/Users/kz/Code/Crafty` takes over as the **Crafty command session** (so
 Crafty's own `.claude/settings.json` hooks and permission rules are live — the previous session was rooted at
 `~/Code`, where they are not). Standing defaults: **reviewers at xhigh, never max**; **Sonnet 5.5 / Haiku 5.5
-liberally** — both in `.agent/AGENTS.md` Method. Kevin's overnight `/goal` (SOTA looks + gameplay, full autonomy, his
+liberally** — both in `CLAUDE.md` Method. Kevin's overnight `/goal` (SOTA looks + gameplay, full autonomy, his
 2026-09-23 live-site report leading: M3 Max heat, iPad visuals broken) is the work; this block is its state.
 
 **Measured 2026-10-27 (re-measure before relying on any of it):**
@@ -533,7 +537,7 @@ blind to the error class it exists to watch. Widening it is cheap and is NOT gat
 **2. PR #13 HELD, NOT ABANDONED.** Fully green (the dead re-exports it tripped on are removed). Merge it
 AFTER the re-baseline — a dependency change mid-capture contaminates the pair.
 
-**3. DOC REVIEW IN PROGRESS** (`CLAUDE.md` = `.agent/AGENTS.md`, plus `.claude/rules/*.md`). Verified drift
+**3. DOC REVIEW IN PROGRESS** (`CLAUDE.md`, plus `.claude/rules/*.md`). Verified drift
 found so far, all understated:
 - `isCaptureMode()` guards: doc says ~112, live is **127**
 - raw `Math.random()`: doc says 73 in 19 files, live is **72 in 20**

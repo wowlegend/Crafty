@@ -5,16 +5,27 @@
 // InputManager's key gate — and they DRIFTED: the menu guard listed only 5 of the 13 panels, so opening
 // the Aspect tree (or achievements / chest / world-manager / credits / trading / auth / stats) popped the
 // main menu OVER the panel (2026-06-07, caught in playtest). Both call-sites now read THIS list, so a new
-// panel can't be half-wired. (Most flags live in the zustand store; the 3 React-local ones —
-// showSpellUpgrades / showAchievements / showStats — are merged in by each caller. The
-// durable follow-up is to move those 3 into the store so a single store selector suffices.)
+// panel can't be half-wired. (Most flags live in the zustand store; the 2 React-local ones —
+// showSpellUpgrades / showAchievements — are merged in by each caller. The durable follow-up is to
+// move those into the store so a single store selector suffices.)
+//
+// WHAT A PANEL IS, and why Show Stats is not one (2026-10-27). Every flag here mounts a full-screen surface with a scrim
+// over the canvas and a control that closes it — which is exactly what each reader assumes: the key gate (gameplay keys
+// off), the pause-on-unlock and the resume overlay (an open panel IS the way back), the canvas pace (a scrim covers the
+// world). `showStats` was listed here too, and it is none of those: F3 draws a frame-time readout INSIDE the canvas, with
+// no scrim and nothing to click. Counted as a panel it STRANDED a desktop player — F3 on, ESC: no pause panel (App read
+// a panel as open), no resume overlay (same), the title suppressed after Start, and no click re-locks the pointer; input
+// dead, mobs swinging, the only way out an unadvertised second F3. It also switched off spell select, quest claim and
+// hotbar scroll while the readout was up, and paced the game it was measuring to 30 fps. The exhaustive invariant in
+// panelState.test.js now counts an open panel as a way back only when that panel RENDERS a control that closes it, so a
+// flag like this one goes red there instead of in a playtest.
 
 export const PANEL_FLAGS = [
   // store-backed
   'showInventory', 'showCrafting', 'showMagic', 'showBuildingTools', 'showSettings',
   'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits', 'showQuestLog',
   // React-local (passed in by the caller)
-  'showSpellUpgrades', 'showAchievements', 'showStats',
+  'showSpellUpgrades', 'showAchievements',
 ];
 
 /**
@@ -62,6 +73,17 @@ export function shouldShowResumeOverlay(state) {
   if (state.isAlive === false) return false; // the DeathScreen owns that moment (as with the title menu)
   if (!state.gameStarted) return false; // pre-game unlock is the title/click-to-play screen's job
   return !state.isPointerLocked && !isAnyPanelOpen(state);
+}
+
+/**
+ * shouldOpenPauseOnUnlock(state) -> whether an in-game unlock (the player's ESC) opens the pause panel. App calls it on the
+ * active true->false TRANSITION. A panel already open keeps the screen (its scrim and its own close control are the way
+ * back); touch has no lock to lose; the DeathScreen owns death; before Start an unlock is the title's.
+ * @param {object} state { isTouch, isAlive, gameStarted, ...panelFlags }
+ */
+export function shouldOpenPauseOnUnlock(state) {
+  if (!state || state.isTouch) return false;
+  return !!state.isAlive && !!state.gameStarted && !isAnyPanelOpen(state);
 }
 
 export function shouldShowTitleMenu(state) {

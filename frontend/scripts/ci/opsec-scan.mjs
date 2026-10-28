@@ -35,7 +35,7 @@
  * the same file with a relative path exited 0.
  */
 import { execSync } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, lstatSync, readlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
@@ -119,6 +119,39 @@ export function scanText(text, file) {
   return out;
 }
 
+/**
+ * What a tracked path PUBLISHES, as text: a symlink's TARGET STRING (that is what git stores and GitHub shows),
+ * a regular file's text, or null (a directory, a missing path, a binary, a file over 2,000,000 bytes).
+ *
+ * `lstat`, never `stat`. The CLI used to `existsSync` then `statSync`, which FOLLOW a link: a committed link to an
+ * operator home path whose target was absent or a directory was skipped outright, and a link to a file was
+ * scanned as that FILE's text — so the then-symlinked `CLAUDE.md` carried 3 findings that were its target's, while the
+ * string it actually publishes was never read.
+ */
+export function readForScan(absPath) {
+  let st;
+  try {
+    st = lstatSync(absPath);
+  } catch {
+    return null;
+  }
+  if (st.isSymbolicLink()) {
+    try {
+      return readlinkSync(absPath);
+    } catch {
+      return null;
+    }
+  }
+  if (!st.isFile() || st.size > 2_000_000) return null; // directories; binaries/large blobs (baseline PNGs)
+  let text;
+  try {
+    text = readFileSync(absPath, 'utf8');
+  } catch {
+    return null;
+  }
+  return text.includes('\u0000') ? null : text; // binary
+}
+
 function gitFiles(all) {
   const cmd = all ? 'git ls-files' : 'git diff --cached --name-only --diff-filter=ACMR';
   return execSync(cmd, { encoding: 'utf8', cwd: REPO }).split('\n').map((s) => s.trim()).filter(Boolean);
@@ -185,17 +218,8 @@ if (process.argv[1] && resolve(process.argv[1]).endsWith('opsec-scan.mjs')) {
   let scanned = 0;
   for (const f of files) {
     if (EXEMPT.includes(f)) continue;
-    const p = resolve(REPO, f);
-    if (!existsSync(p)) continue;
-    const st = statSync(p);
-    if (!st.isFile() || st.size > 2_000_000) continue; // skip binaries/large blobs (baseline PNGs)
-    let text;
-    try {
-      text = readFileSync(p, 'utf8');
-    } catch {
-      continue;
-    }
-    if (text.includes('\u0000')) continue; // binary
+    const text = readForScan(resolve(REPO, f));
+    if (text === null) continue;
     scanned += 1;
     findings.push(...scanText(text, f));
   }

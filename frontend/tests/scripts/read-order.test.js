@@ -14,7 +14,7 @@ const REPO = resolve(process.cwd(), '..');
  * census's own output.
  *
  * WHY IT MATTERS MORE THAN ITS SIZE SUGGESTS. This module is the single source of the orientation read
- * order, rendered into `.agent/AGENTS.md`, `LOOP-CHARTER.md` and `LOOP-KERNEL-PROMPT.md`. It exists
+ * order, rendered into `CLAUDE.md`, `LOOP-CHARTER.md` and `LOOP-KERNEL-PROMPT.md`. It exists
  * because those three each kept their own copy and all three drifted — while one of them asserted the
  * two "cannot disagree". `doc-currency` checks the RENDERED blocks against `checkFile`, so if
  * `checkFile` ever returns ok for a stale or missing block, the drift it was built to stop becomes
