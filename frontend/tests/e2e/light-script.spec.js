@@ -15,6 +15,13 @@ import { displayed, stoneFaceUnder, oklch } from '../gates/_lightModel.js';
 //             the stars are out; the terrain still reads the SUN (ore glow, leaves and cloud shadows mean the sun,
 //             refute F5); and the shadow map was rendered from the moon's key, not from the sun under the ground.
 //   storm     the overlay hides the stars (one read, then the weather is reset).
+//   dawn      THE LIGHT RAMPS (render/skyClock.js): the game clock is a 1 Hz step, and the sky read straight from it
+//             stepped once a second (review, HIGH). Sampled every frame for a few seconds from the sun's rise, the live
+//             key light must change between two frames inside ONE game-second (the store's gameTime the same for both),
+//             with the mood still (|dmood| < 1e-6), by more than the mood's own decay could move it (1e-4). Only a
+//             renderer drawing two frames inside one game-second can show this; under ~2 fps (CI's SwiftShader measured
+//             0.8-1.9) the read is printed and annotated NOT MEASURED, and the stepped clock's kill is the unit gate's
+//             (tests/gates/sky-clock-gates.test.jsx).
 //   grey card the colour model (tests/gates/_lightModel.js displayed()) against the real screen, at noon and at
 //             midnight: within displayed OKLab L 0.03 and C 0.02. Noon also reads grey (C <= 0.03: the clip IS the
 //             card), and midnight also holds the absolute night bounds (L >= 0.30, C <= 0.07), so a change that moves
@@ -41,6 +48,8 @@ import { displayed, stoneFaceUnder, oklch } from '../gates/_lightModel.js';
 //   E7 the model without the specular term                    -> "noon: model L 0.490 vs screen 0.593"
 //   E8 the card's albedo darkened to #5A5A5A (screen != model) -> the noon card's grey/agreement checks
 //   E0 identity (a comment edit in Atmosphere.jsx) SURVIVED, in both batches.
+//   SC1e Atmosphere renders liveCycle(st.gameTime), the 1 Hz step  -> "dawn: the key light did not move between frames
+//        of one game-second" (0 of 2 pairs moved, key steps 0.0000 0.0000; the identities' runs moved 0.0026-0.9136)
 //
 // BLIND SPOT: SwiftShader on CI is not a GPU, and this reads one patch of one material. The look itself (the night as
 // a whole, golden hour, WebKit and the iPad) is the lookbook's (plan Task 9), on a real GPU.
@@ -227,5 +236,65 @@ test('the light script in the running game: a sun key at noon, a moon key at mid
     expect(storm.stars, `storm: the stars still show through the overlay — ${atStorm}`).toBeLessThan(0.3);
   } finally {
     await call(page, 'setWeatherMoodBoost', 0);
+  }
+
+  // DAWN: THE LIGHT RAMPS BETWEEN THE CLOCK'S TICKS. On the low tier (more frames per game-second on a software
+  // renderer), the weather pinned and the mood settled far below the clear-read bound: the mood lerps every frame, so a
+  // mood still decaying would move the key per frame by itself and hide a stepped clock.
+  const priorTier = await page.evaluate(() => window.useGameStore.getState().qualityTier);
+  await call(page, 'setQualityTier', 'low');
+  try {
+    await call(page, 'setWeatherMoodBoost', 0);
+    const settle = Date.now();
+    let calm = null;
+    while (Date.now() - settle < 15000) {
+      calm = await call(page, 'readSkyLight');
+      if (calm && calm.mood < 1e-4) break;
+      await page.waitForTimeout(200);
+    }
+    if (!(calm && calm.mood < 1e-4)) throw new Error(`SETUP: dawn: the mood never settled under 1e-4 — ${fmt({ ...calm, ...(await preconditions(page)) })}`);
+    await frames(page, 5); // the tier step recompiles programs; the first frames after it are the slowest
+    await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.25)); // the clock's dawn (gameTime 0)
+    const samples = await page.evaluate(async (ms) => {
+      const out = [];
+      const t0 = performance.now();
+      await new Promise((resolve) => {
+        const tick = () => {
+          const s = window.__craftyTest.call('readSkyLight');
+          if (s && (!out.length || out[out.length - 1].frame !== s.frame)) {
+            out.push({ frame: s.frame, gameTime: s.gameTime, key: s.keyIntensity, mood: s.mood, cycle: s.cycle, t: Math.round(performance.now() - t0) });
+          }
+          if (performance.now() - t0 < ms) requestAnimationFrame(tick); else resolve();
+        };
+        tick();
+      });
+      return out;
+    }, 6000);
+    const firstTick = samples.findIndex((s) => s.gameTime !== samples[0].gameTime);
+    const where = fmt({ frames: samples.length, firstTick, head: samples.slice(0, 4), tail: samples.slice(-2), ...(await preconditions(page)) });
+    // Pairs of consecutive frames inside one game-second, after the first tick (until then the sky is AT the clock, which
+    // it never passes), with the mood still.
+    const pairs = [];
+    for (let i = Math.max(1, firstTick + 1); firstTick >= 0 && i < samples.length; i++) {
+      const a = samples[i - 1], b = samples[i];
+      if (a.gameTime === b.gameTime && Math.abs(a.mood - b.mood) < 1e-6) pairs.push(Math.abs(b.key - a.key));
+    }
+    console.log(`[light-script] dawn: ${samples.length} frames over 6 s, first tick at sample ${firstTick}, ${pairs.length} same-second pairs after it, key steps ${pairs.slice(0, 8).map((d) => d.toFixed(4)).join(' ')}`);
+    // NOT MEASURABLE IS NOT A PASS, AND NOT A FAILURE: it is said. Per-frame interpolation is visible only when frames
+    // come faster than the 1 Hz tick; a frame longer than a second catches the sky up to the clock by design, so the
+    // smooth and the stepped sky draw the same frames. CI's SwiftShader measured 0.8-1.9 fps (2026-10-27) and a local run
+    // at load ~360 drew one frame in 6.2 s. So with no same-second pair the read is RECORDED as not measured (printed
+    // and annotated) instead of failing a tree on the machine's speed; the deterministic kill of the stepped clock is
+    // tests/gates/sky-clock-gates.test.jsx (Atmosphere's real useFrame, stepped at 60 Hz).
+    if (pairs.length === 0) {
+      const why = `dawn: NOT MEASURED — no two frames fell inside one game-second after a tick (the renderer draws under ~2 fps here) — ${where}`;
+      console.log(`[light-script] ${why}`);
+      test.info().annotations.push({ type: 'not-measured', description: why });
+    } else {
+      const moved = pairs.filter((d) => d > 1e-4).length;
+      expect(moved, `dawn: the key light did not move between frames of one game-second (${moved} of ${pairs.length} pairs moved): it steps with the 1 Hz clock — ${where}`).toBeGreaterThan(0);
+    }
+  } finally {
+    await call(page, 'setQualityTier', priorTier);
   }
 });
