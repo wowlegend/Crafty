@@ -41,3 +41,20 @@ describe('Settings — Frame Rate', () => {
     expect(toggle().getAttribute('aria-label'), 'the toggle has no accessible name').toMatch(/Frame rate/i);
   });
 });
+
+// A night siege is survived, never skipped: no control in the pause menu may turn night into day.
+describe('Settings — no control moves the clock', () => {
+  it('clicking every button in the panel leaves night as night and the clock where it was', () => {
+    useGameStore.setState({ isDay: false, gameTime: 0.75, frameCap: 60, masterMuted: false });
+    render(<SettingsPanel onClose={() => {}} showStats={false} setShowStats={() => {}} />);
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.length, 'the panel rendered too few buttons for this to have clicked anything').toBeGreaterThanOrEqual(7);
+    for (const b of buttons) fireEvent.click(b);
+    const s = useGameStore.getState();
+    // The clicks landed: the two toggles whose effect is in the store changed.
+    expect(s.frameCap, 'the Frame Rate click never landed').toBe(0);
+    expect(s.masterMuted, 'the Mute All click never landed').toBe(true);
+    expect(s.isDay, 'a Settings control turned night into day').toBe(false);
+    expect(s.gameTime, 'a Settings control moved the clock').toBe(0.75);
+  });
+});

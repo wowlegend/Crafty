@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { BLOCK_TYPES } from '../world/Blocks';
 import { useT } from '../i18n/i18n.js';
 import { Panel, Button, Slot, Icon, SpellRing, Slider, Modal } from './primitives/index.js';
-import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon, Sun, Moon } from 'lucide-react';
+import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon } from 'lucide-react';
 import { getItemRarity } from '../data/items.js';
 import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
 import { gearStatRows } from '../game/gearCompare.js';
@@ -608,7 +608,6 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
         musicVolume: state.musicVolume, setMusicVolume: state.setMusicVolume,
         masterMuted: state.masterMuted, setMasterMuted: state.setMasterMuted,
         gameMode: state.gameMode, setGameMode: state.setGameMode,
-        isDay: state.isDay, setIsDay: state.setIsDay,
     })));
     const t = useT();
     return (
@@ -768,21 +767,6 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                             className="min-w-[96px]"
                         >
                             {gameState.gameMode}
-                        </Button>
-                    </Panel>
-
-                    {/* Time toggle */}
-                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
-                        <span className="font-bold text-text">Time</span>
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => gameState.setIsDay(!gameState.isDay)}
-                            className="min-w-[96px] gap-1.5"
-                        >
-                            {gameState.isDay
-                                ? (<><Sun width={15} height={15} strokeWidth={2.5} aria-hidden /> Day</>)
-                                : (<><Moon width={15} height={15} strokeWidth={2.5} aria-hidden /> Night</>)}
                         </Button>
                     </Panel>
 
