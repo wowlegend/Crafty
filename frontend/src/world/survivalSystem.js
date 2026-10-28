@@ -1,5 +1,5 @@
 // survivalSystem.js — the day/night survival hook (extracted from AdvancedGameFeatures S3-M4 p2:
-// same nightCount-single-SoT + dawn-bleed + dawn-reward behavior; mounted once in App). It deliberately
+// same nightCount-single-SoT + dawn-reward behavior; mounted once in App). It deliberately
 // does NOT write dangerLevel (the boss bridge is the sole dangerLevel writer — siege-gates locks this).
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
@@ -29,9 +29,8 @@ export const useSurvivalMode = (isDay) => {
         }
 
         if (!prevIsDay.current && isDay) {
-            // Ember empties at dawn: a bar banked by day is spent by night or lost, so no night opens with the last
-            // one's leftovers (a second-night power spike, or a stale full bar arming the next roar).
-            useGameStore.getState().setEmber(0);
+            // This edge fires on a load as well as a dawn, so nothing that must happen only at a real dawn belongs here
+            // (the ember bar empties in setGameTime, on the clock's crossing).
             // Dawn: reward surviving the night just passed. nightCount was bumped at
             // nightfall, so it equals the night survived. grantDawnReward guards
             // once-per-night INTERNALLY (via the persisted lastRewardedNight), so a

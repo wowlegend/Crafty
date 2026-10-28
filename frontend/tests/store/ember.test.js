@@ -177,4 +177,29 @@ describe('dawn empties the bar', () => {
     expect(S().isDay, 'SETUP: the crossing did not reach night').toBe(false);
     expect(S().ember, 'nightfall emptied the bar').toBe(70);
   });
+
+  // A load sets isDay from the save's clock, so a day save loaded at night flips the hook's isDay exactly as a dawn does.
+  // The case the review found: the four banks of a pre-cut save, just migrated into 75, emptied by the load, then written
+  // as ember 0 by the next save, after which the migration never runs again.
+  it('loading a day save at night is not a dawn: a pre-cut save keeps its 75, and the next save writes it', () => {
+    useGameStore.setState({ gameTime: 700, isDay: false, nightCount: 0, ember: 10 });
+    const { rerender } = renderHook(({ d }) => useSurvivalMode(d), { initialProps: { d: false } });
+    act(() => { S().loadWorldData(PRE_CUT()); });
+    rerender({ d: S().isDay });
+    expect(S().isDay, 'SETUP: the pre-cut save is not a day save').toBe(true);
+    expect(S().ember, 'loading a day save at night emptied the bar').toBe(75);
+    const saved = JSON.parse(JSON.stringify(buildSaveData(S(), POS)));
+    expect(saved.progression.ember, 'the save after the load lost the migrated ember').toBe(75);
+  });
+
+  it('a post-cut day save loaded at night keeps its bar too', () => {
+    useGameStore.setState({ gameTime: 100, isDay: true, ember: 42 });
+    const daySave = JSON.parse(JSON.stringify(buildSaveData(S(), POS)));
+    useGameStore.setState({ gameTime: 700, isDay: false, ember: 0 });
+    const { rerender } = renderHook(({ d }) => useSurvivalMode(d), { initialProps: { d: false } });
+    act(() => { S().loadWorldData(daySave); });
+    rerender({ d: S().isDay });
+    expect(S().isDay, 'SETUP: the save is not a day save').toBe(true);
+    expect(S().ember, 'loading a day save at night emptied the bar').toBe(42);
+  });
 });

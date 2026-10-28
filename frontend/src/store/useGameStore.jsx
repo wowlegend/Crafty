@@ -805,7 +805,7 @@ export const useGameStore = create((set, get) => ({
 
     // EMBER (game/ember.js): the one Aspect meter. Day kills fill it (useEmberAccrual, App), day placements fill it up
     // to the day's allowance (accrueBuildEmber, world/placeAtHit.js), the four verbs spend it, dawn empties it
-    // (useSurvivalMode). Both fields are persisted.
+    // (setGameTime, on the clock's crossing into day). Both fields are persisted.
     ember: 0,
     setEmber: (v) => set({ ember: clampEmber(v) }),
     gainEmber: (n) => set((s) => ({ ember: clampEmber(s.ember + n) })),
@@ -855,11 +855,13 @@ export const useGameStore = create((set, get) => ({
             // isDayAtUnit, with no crossing) — so resuming a night save silently added a phantom siege
             // night, and it ratcheted +1 on every reload. setGameTime is the single clock-ADVANCE writer,
             // so gating the bump here makes a load / dev time-jump unable to advance the siege.
+            // Dawn empties the ember bar on this same crossing, for the same reason: the hook's isDay edge also fires on a
+            // load, and a day save loaded at night would lose its bar (a pre-cut save its just-migrated banks for good).
             const enteringNight = crossedIntoNight(state.gameTime, newTime);
             return {
                 gameTime: newTime,
                 isDay: !state.isDay,
-                ...(enteringNight ? { nightCount: state.nightCount + 1 } : {}),
+                ...(enteringNight ? { nightCount: state.nightCount + 1 } : { ember: 0 }),
             };
         }
         return { gameTime: newTime };
