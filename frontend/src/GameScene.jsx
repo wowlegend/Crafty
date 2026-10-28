@@ -1,15 +1,16 @@
 import React, { Suspense, useMemo, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useGameStore } from './store/useGameStore';
-import { Preload, PerformanceMonitor, AdaptiveDpr } from '@react-three/drei';
+import { Preload, PerformanceMonitor } from '@react-three/drei';
 import { PointerLook } from './render/PointerLook';
 import { SpatialAudioController } from './render/SpatialAudioController';
 import { WeatherSystem } from './render/WeatherSystem';
 import { LightningDriver } from './render/LightningDriver.jsx';
 import { Physics } from '@react-three/rapier';
-import { EffectComposer, Bloom, Noise, Vignette, N8AO, SMAA, HueSaturation, BrightnessContrast, GodRays, ToneMapping } from '@react-three/postprocessing';
+import { EffectComposer, Noise, Vignette, SMAA, HueSaturation, BrightnessContrast, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
-import { TIERS } from './render/quality';
+import { TIERS, readDeviceSignals } from './render/quality';
+import { useWindowFocused } from './render/useWindowFocused.js';
 import { Atmosphere } from './render/Atmosphere.jsx';
 import { Ocean } from './render/Ocean.jsx';
 import { FarField } from './world/FarField.jsx';
@@ -36,6 +37,13 @@ import { FrameCap, governorBounds } from './render/FrameCap.jsx';
 import { FrameStats } from './render/FrameStats.jsx';
 import { watchContextLoss, trackRenderer } from './render/glDiagnostics.js';
 import { paceFor } from './render/canvasPace.js';
+import { usePixelBudgetDpr, CAPTURE_DPR_CAP } from './render/pixelBudget.js';
+import { ComposerPixelRatioSync, PostTierDriver, N8AO, GodRays, Bloom } from './render/postFx.jsx';
+import { createGovernor, governorDecline, governorIncline, governorSamples, governorWarm, renderDistanceFor } from './render/tierGovernor.js';
+import { registerTestHook } from './devtest/testBridge.js';
+import { FrameStall } from './devtest/FrameStall.jsx';
+import { PointLightPool } from './render/lightPool.jsx';
+import { onContextLost, onContextRestored } from './game/contextRecovery.js';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
 // Bright sun disc in the sky — the GodRays light source. Follows the camera at a
@@ -89,10 +97,17 @@ import { paceFor } from './render/canvasPace.js';
 // every second of idle play, the heat Kevin measured on an M3 Max. Memoised on the four things the
 // chain actually reads, it rebuilds only when the tier, the sun mesh, the horizon flag or capture mode changes.
 // (Defined here, not in its own file: the effect-chain gates read this file.)
-const PostFX = React.memo(function PostFX({ q, sunMesh, sunAboveHorizon, isCaptureMode }) {
+//
+// BUILT ONCE, TOGGLED IN PLACE (2026-10-27, plan 2026-10-27-crafty-steady-cool item c). N8AO, GodRays and Bloom here are
+// render/postFx.jsx's components, not the package's: each builds its effect once per mount and disposes it on unmount
+// (the package's GodRays built a new effect on every render and never disposed one — a leak per sunrise and per tier
+// step). N8AO and GodRays mount the first time a tier needs them (`withAO` / `withGodRays` are sticky) and then stay;
+// <PostTierDriver> applies the tier and the horizon to the live instances. So the props here no longer include the tier
+// or the horizon flag, and a tier step or a horizon flip re-renders no composer child.
+const PostFX = React.memo(function PostFX({ sunMesh, isCaptureMode, withAO, withGodRays }) {
   return (
     <EffectComposer multisampling={0}>
-      {q.ao && (
+      {withAO && (
         <N8AO
           halfRes
           aoRadius={1.2}
@@ -106,12 +121,12 @@ const PostFX = React.memo(function PostFX({ q, sunMesh, sunAboveHorizon, isCaptu
           source is the sun BILLBOARD, and three.js#18446 records the official godrays example
           flipping its shaft downwards when "the signs of the sun's screen space position vector
           components change" — which an arcing sun crosses at every dawn and dusk by construction.
-          Casting sun shafts at night is also just wrong. Gated on the store flag rather than solved
-          in the shader: the pass simply is not mounted while the sun is down. */}
-      {q.godRays && sunMesh && sunAboveHorizon && (
-        // S1-D-M3: now also ON at med tier with reduced samples (q.godRaySamples:
-        // high 100 / med 60) to stay in med's perf envelope.
-        <GodRays sun={sunMesh} samples={q.godRaySamples} density={0.97} decay={0.95} weight={1.1} exposure={0.88} clampMax={1} blur />
+          Casting sun shafts at night is also just wrong. The gate now lives in render/postFx.jsx
+          applyPostTier: below the horizon the effect is GATED (its render work skipped, its blend
+          opacity 0) rather than unmounted, because each unmount leaked the effect and rebuilt the chain.
+          Samples per tier (q.godRaySamples) are applied by the driver too. */}
+      {withGodRays && sunMesh && (
+        <GodRays sun={sunMesh} density={0.97} decay={0.95} weight={1.1} exposure={0.88} clampMax={1} blur />
       )}
       {/* S1-D-M3 MAGIC-HOUR COLOUR SCRIPT: these two effects are now driven PER-MOOD
           by <MoodGradeDriver> (saturation/brightness/contrast lerped on mood — knobs
@@ -120,11 +135,12 @@ const PostFX = React.memo(function PostFX({ q, sunMesh, sunAboveHorizon, isCaptu
           effect instances. Capture-safe (mood snapped in capture). */}
       <HueSaturation saturation={0.30} />
       <BrightnessContrast brightness={0.09} contrast={0.06} />
+      {/* The tier's mipmapBlur (low false, med/high true) is the driver's: as a prop it rebuilt Bloom on every
+          low<->med step while BloomSpikeDriver kept driving the old one (refute F8). */}
       <Bloom
         intensity={0.95}
         luminanceThreshold={0.65}
         luminanceSmoothing={0.25}
-        mipmapBlur={q.bloomMipmap}
       />
       <SMAA />
       <ToneMapping mode={ToneMappingMode.NEUTRAL} />
@@ -134,9 +150,19 @@ const PostFX = React.memo(function PostFX({ q, sunMesh, sunAboveHorizon, isCaptu
       <Vignette eskil={false} offset={0.45} darkness={0.35} />
       <BloomSpikeDriver />
       <MoodGradeDriver />
+      <PostTierDriver />
+      {/* The package resizes the composer on a CSS size change only; this follows a pixel-ratio change (render/postFx.jsx). */}
+      <ComposerPixelRatioSync />
     </EffectComposer>
   );
 });
+
+/** False until `value` is first true, then true for the life of the component (React's derived-state pattern). */
+function useLatch(value) {
+  const [latched, setLatched] = useState(!!value);
+  if (value && !latched) setLatched(true);
+  return latched || !!value;
+}
 
 export const GameScene = React.memo(function GameScene({
   isWorldBuilt,
@@ -156,20 +182,50 @@ export const GameScene = React.memo(function GameScene({
   // (a mount toggle that flips only during capture setup, never in the hot loop).
   const captureStudio = useGameStore((s) => s.captureStudio);
   const qualityTier = useGameStore((s) => s.qualityTier);
-  // A real subscription, deliberately: this must trigger a React render to mount/unmount the GodRays
-  // pass. <Atmosphere> writes it edge-triggered (twice per day/night cycle), so this is not a per-frame
-  // binding and does not violate Game-Loop-Isolation.
-  const sunAboveHorizon = useGameStore((s) => s.sunAboveHorizon);
+  // (sunAboveHorizon is no longer subscribed here: it used to re-render this scene to mount/unmount the GodRays pass at
+  // every dawn and dusk. render/postFx.jsx PostTierDriver now reads it transiently and gates the built-once effect.)
   const frameCap = useGameStore((s) => s.frameCap);
   // Written only by MenuSystem (its titleMenuVisible): the opaque title screen covers this canvas.
   const titleCovering = useGameStore((s) => s.titleCovering);
   // How often this canvas draws — render/canvasPace.js, the one decision (the harnesses step or time their own frames).
-  const pace = paceFor({ frameCap, titleCovering, harness: isCaptureMode || isPerfProbe() });
+  // A panel's scrim (MenuSystem publishes it) paces the canvas to 30; an unfocused desktop window to 10 (item g).
+  const panelCovering = useGameStore((s) => s.panelCovering);
+  const [finePointer] = useState(() => !readDeviceSignals().coarsePointer);
+  const focused = useWindowFocused({ finePointer });
+  const pace = paceFor({ frameCap, titleCovering, panelCovering, unfocused: !focused, harness: isCaptureMode || isPerfProbe() });
   // The PLAYER's frame cap in force, for the Show Stats readout (render/FrameStats.jsx): the setting, unless a harness
   // steps its own frames. Not `pace.loop`: behind the title that is the TITLE_FPS pace, which the readout's own drawn-
   // frame count already shows, and the cap line names the setting that play will run at.
   const capActive = frameCap > 0 && !isCaptureMode && !isPerfProbe();
   const q = TIERS[qualityTier] || TIERS.low;
+  const budgetDpr = usePixelBudgetDpr(qualityTier);
+  // On a coarse pointer the render distance is pinned to the boot tier (render/tierGovernor.js renderDistanceFor).
+  const renderDistancePin = useGameStore((s) => s.renderDistancePin);
+  const renderDistance = renderDistanceFor(qualityTier, renderDistancePin);
+  // THE TIER GOVERNOR (render/tierGovernor.js): one per canvas, for the session. The one path from a PerformanceMonitor
+  // decision (or the DEV signal hook below) to the store.
+  const governor = useRef(null);
+  if (!governor.current) governor.current = createGovernor();
+  const governorStep = useRef((kind, monitor) => {
+    // A monitor's first window is warm-up (render/tierGovernor.js governorWarm). The DEV signal hook passes no monitor.
+    if (monitor && !governorWarm(monitor.index)) return null;
+    const st = useGameStore.getState();
+    const now = performance.now();
+    const next = kind === 'decline'
+      ? governorDecline(governor.current, st.qualityTier, now)
+      : governorIncline(governor.current, st.qualityTier, now);
+    if (next) st.setQualityTier(next);
+    return next;
+  }).current;
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    // DEV-only: the governor e2e drives the same step PerformanceMonitor drives, and reads the governor's memory.
+    registerTestHook('governorSignal', (kind) => governorStep(kind));
+    registerTestHook('readGovernor', () => ({ ...governor.current, blockedUntil: { ...governor.current.blockedUntil } }));
+  }, [governorStep]);
+  // Sticky: N8AO and GodRays mount the first time any tier asks for them and stay mounted (toggled in place).
+  const withAO = useLatch(q.ao);
+  const withGodRays = useLatch(q.godRays);
   const [sunMesh, setSunMesh] = useState(null);
 
   useEffect(() => {
@@ -211,7 +267,7 @@ export const GameScene = React.memo(function GameScene({
   // lowers renderDistance automatically tightens its shadows instead of spreading the same pixels wider.
   const shadowConfig = useMemo(() => {
     const CHUNK = 16; // src/world/terrain.worker.js CHUNK_SIZE
-    const extent = (q.renderDistance + 0.5) * CHUNK;
+    const extent = (renderDistance + 0.5) * CHUNK;
     return {
       mapSize: [q.shadowMapSize, q.shadowMapSize],
       // The frustum the light looks THROUGH; <Atmosphere> keeps it centred on the player.
@@ -227,7 +283,7 @@ export const GameScene = React.memo(function GameScene({
         far: 400,
       },
     };
-  }, [q.shadowMapSize, q.renderDistance]);
+  }, [q.shadowMapSize, renderDistance]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 0 }}>
@@ -237,8 +293,11 @@ export const GameScene = React.memo(function GameScene({
         // setFrameloop('demand') from inside was overwritten back to 'always' by the next re-render (the first
         // version did exactly that — the e2e read 'always' under a 60 cap). FrameCap only paces the renders.
         frameloop={pace.loop}
-        // e2eDpr (devtest/e2eDpr.js): the e2e suite's pixel-ratio cap, a no-op outside it. It wraps the whole expression.
-        dpr={e2eDpr(isPerfProbe() ? PROBE_DPR : [1, q.dprCap])}
+        // THE PIXEL BUDGET (render/pixelBudget.js): the tier names the pixels it can afford, the window decides the
+        // ratio, recomputed on resize. Capture keeps the legacy [1, 2] range its baselines were shot under.
+        // e2eDpr (devtest/e2eDpr.js): the e2e suite's pixel-ratio cap, a no-op outside it. It wraps the whole expression,
+        // so every leg is capped and the cap applies after the budget.
+        dpr={e2eDpr(isPerfProbe() ? PROBE_DPR : isCaptureMode ? [1, CAPTURE_DPR_CAP] : budgetDpr)}
         className="w-full h-full"
         gl={{
           antialias: false, // Post-processing handles AA
@@ -267,9 +326,27 @@ export const GameScene = React.memo(function GameScene({
 
           const canvasEl = gl.domElement;
           canvasRef.current = canvasEl; // the element requestPointerLock targets (desktop mouse-look)
-          // Context loss/restore: the handlers that lived inline here moved, unchanged in effect, to
-          // render/glDiagnostics.js, where they also COUNT losses for the Show Stats readout and a gate can drive them.
-          watchContextLoss(canvasEl, useGameStore);
+          // Context loss/restore. render/glDiagnostics.js owns the listeners: it preventDefault()s a loss and COUNTS it
+          // for the Show Stats readout. game/contextRecovery.js owns what a loss and a restore DO: a loss marks the store
+          // and releases a locked pointer, so the panel can be clicked; a restore asks for the sun's shadow again, and
+          // the panel (ui/ContextLossPanel.jsx) stays up until three has DRAWN since, so its going away means the world
+          // is on screen again, not merely that the browser said the context is back.
+          const setLost = (lost) => useGameStore.getState().setIsWebGLContextLost(lost);
+          watchContextLoss(canvasEl, useGameStore, {
+            lost: () => onContextLost({ setLost }),
+            restored: () => onContextRestored(gl, { setLost }),
+          });
+          if (import.meta.env.DEV) {
+            // DEV-only: the context-loss e2e loses and restores THIS canvas's context the way the browser would. The
+            // extension is taken now, while the context is alive (getExtension on a lost context returns null).
+            const lose = gl.getContext().getExtension('WEBGL_lose_context');
+            registerTestHook('webglContext', (op) => {
+              if (!lose) return false;
+              if (op === 'lose') lose.loseContext();
+              else lose.restoreContext();
+              return true;
+            });
+          }
           // The renderer the readout and the lookbook seam (render/lookbookSeam.js) report: GL renderer, dpr in force.
           trackRenderer(gl);
         }}
@@ -315,27 +392,36 @@ export const GameScene = React.memo(function GameScene({
           // that spins the fans on a high-refresh laptop. No rate-based governor can see it. The answer is to
           // make `high` cheap enough to be safe rather than to tune the monitor, which is why the MSAA and
           // god-ray changes alongside this matter more than this line does.
-          <PerformanceMonitor
-            // render/FrameCap.jsx governorBounds: under the frame cap, a 60 Hz display's bounds, whatever drei has seen.
-            bounds={(refreshrate) => governorBounds(refreshrate, frameCap)}
-            factor={0.5}
-            onDecline={() => {
-              const cur = useGameStore.getState().qualityTier;
-              const next = cur === 'high' ? 'med' : 'low';
-              if (next !== cur) useGameStore.getState().setQualityTier(next);
-            }}
-            onIncline={() => {
-              const cur = useGameStore.getState().qualityTier;
-              const next = cur === 'low' ? 'med' : 'high';
-              if (next !== cur) useGameStore.getState().setQualityTier(next);
-            }}
-          />
+          //
+          // 2026-10-27 (plan 2026-10-27-crafty-steady-cool item d): every decision now goes through governorStep, i.e.
+          // render/tierGovernor.js — a decline blocks re-inclining to that tier for 60 s and the second decline
+          // settles the tier for the session. And the monitor is mounted only while the canvas runs at its PLAY pace:
+          // it counts rendered frames, so behind the title (paced to 10 fps) it read a slow GPU and declined; an unmount
+          // also discards the samples taken while paced, so play resumes with a fresh window.
+          governorSamples(pace, frameCap) && (
+            <PerformanceMonitor
+              // Keyed on the tier: a step mounts a fresh monitor, and its first window — the step's own cost — is warm-up
+              // (governorStep ignores it; render/tierGovernor.js rule 4).
+              key={qualityTier}
+              // render/FrameCap.jsx governorBounds: under the frame cap, a 60 Hz display's bounds, whatever drei has seen.
+              bounds={(refreshrate) => governorBounds(refreshrate, frameCap)}
+              factor={0.5}
+              onDecline={(api) => governorStep('decline', api)}
+              onIncline={(api) => governorStep('incline', api)}
+            />
+          )
         )}
-        {!isCaptureMode && !isPerfProbe() && <AdaptiveDpr pixelated />}
+        {/* <AdaptiveDpr pixelated /> DELETED 2026-10-27 (plan 2026-10-27-crafty-steady-cool item d): drei's AdaptiveDpr
+            acts only on performance.regress(), and nothing in src calls it — it was mounted and never did anything. The
+            dpr is the pixel budget's (render/pixelBudget.js), stepped by the tier. */}
+        {import.meta.env.DEV && <FrameStall />}
         {/* FRAME CAP (render/FrameCap.jsx): paces the 'demand' loop the Canvas prop above switches on. */}
-        <FrameCap fps={pace.fps} active={pace.loop === 'demand'} testHooks />
+        <FrameCap fps={pace.fps} active={pace.loop === 'demand'} testHooks drivesHud />
 
         <Atmosphere shadowConfig={shadowConfig} />
+        {/* The fixed per-tier set of point lights every chest beacon, cast, impact, beast core and boss light borrows
+            (render/lightPool.jsx): the light count never changes with play, so no lit shader re-links mid-game. */}
+        <PointLightPool />
 
         {/* W2 ocean: the stylized tropical-toon Gerstner water plane (replaces the old voxel water
             tops -- the mesher no longer emits water faces). Capture-frozen wave phase. */}
@@ -343,7 +429,7 @@ export const GameScene = React.memo(function GameScene({
 
         {/* The far horizon: land and sea beyond the loaded chunks, sunk under them, from the same surface
             formula (world/farField.js). Without it the world ended in fog at ~72 m while the camera sees 500. */}
-        <FarField renderDistance={q.renderDistance} />
+        <FarField renderDistance={renderDistance} />
 
         {/* S1-D-M3: always-on warm light motes (spec §5① "drifting light motes").
             Tier-gated count; capture-frozen drift; mood-tinted. Suppressed in the
@@ -418,7 +504,7 @@ export const GameScene = React.memo(function GameScene({
               This prop stays on its own merits: a redundant buffer is still redundant.
 
               To revert: delete the prop. Tests/scripts/effect-chain-cost pins it and will red. */}
-          <PostFX q={q} sunMesh={sunMesh} sunAboveHorizon={sunAboveHorizon} isCaptureMode={isCaptureMode} />
+          <PostFX sunMesh={sunMesh} isCaptureMode={isCaptureMode} withAO={withAO} withGodRays={withGodRays} />
           <Preload all />
         </Suspense>
 

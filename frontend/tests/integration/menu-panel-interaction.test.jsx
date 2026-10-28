@@ -65,3 +65,32 @@ describe('keyboard -> panel -> menu interaction (jsdom)', () => {
     expect(shouldShowTitleMenu({ isPointerLocked: false })).toBe(true);
   });
 });
+
+/**
+ * SHOW STATS (F3) IS A READOUT, NOT A PANEL (2026-10-27). While it sat in PANEL_FLAGS the key gate treated it as an open
+ * panel, so with the readout up the spell keys, the quest claim and the hotbar wheel did nothing — and ESC stranded the
+ * player (ui/panelState.js header). This drives the REAL InputManager handlers: F3 on, then each verb must still act.
+ *
+ * Mutation-Proof: via scripts/dev/mutate.sh on src/InputManager.jsx, one batch, receipts in the commit:
+ *   I1 the key gate counts the readout as a panel again (`... || showStats`)    -> RED expected (spell + claim)
+ *   I2 the wheel gate counts the readout as a panel again (`... || showStats`)  -> RED expected (hotbar)
+ *   I0 identity (a comment edit)                                              -> must SURVIVE
+ */
+describe('with Show Stats on, gameplay keys still act', () => {
+  it('F3 shows the readout; Digit2 selects a spell, Q claims a finished quest, the wheel scrolls the hotbar', () => {
+    const claimQuest = vi.fn();
+    const quests = { ...QUEST_STUB, quests: [{ id: 'q1', progress: 5, target: 5, claimed: false }], claimQuest };
+    useGameStore.setState({ activeSpell: 'fireball', selectedBlock: 'grass' });
+    const { result } = renderHook(() => useInputManager({}, {}, quests));
+    // The F3 handler matches event.key (pressKey sets only event.code).
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F3', code: 'F3', bubbles: true })); });
+    expect(result.current.showStats, 'SETUP: F3 did not turn the readout on — the stats case was not exercised').toBe(true);
+    pressKey('Digit2');
+    expect(useGameStore.getState().activeSpell, 'a spell key did nothing with the readout up').toBe('iceball');
+    pressKey('KeyQ');
+    expect(claimQuest, 'Q claimed nothing with the readout up').toHaveBeenCalledWith('q1');
+    const before = useGameStore.getState().selectedBlock;
+    act(() => { window.dispatchEvent(new WheelEvent('wheel', { deltaY: 100 })); });
+    expect(useGameStore.getState().selectedBlock, 'the wheel did not scroll the hotbar with the readout up').not.toBe(before);
+  });
+});

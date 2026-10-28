@@ -78,6 +78,7 @@ beforeEach(() => {
     domElement: canvas,
     getPixelRatio: () => 2,
     getContext: () => ({ RENDERER: 0x1f01, getExtension: () => null, getParameter: () => GPU }),
+    info: { render: { frame: 0 } }, // three's draw counter: the restore waits on it (game/contextRecovery.js whenDrawnAgain)
   };
   gl._resetGlDiagnosticsForTest();
   vi.spyOn(performance, 'now').mockImplementation(() => clock);
@@ -86,6 +87,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   gl._resetGlDiagnosticsForTest();
   useGameStore.setState({ frameCap: 60, isCaptureMode: false, isWebGLContextLost: false });
 });
@@ -100,8 +102,18 @@ describe('GameScene wires the diagnostics', () => {
     expect(gl.contextLossCount(), 'a loss on the game canvas was not counted — no listener on it').toBe(1);
     expect(lost.defaultPrevented, 'the loss was not preventDefault()ed: the browser will not restore the context').toBe(true);
     expect(useGameStore.getState().isWebGLContextLost).toBe(true);
+    // The restore goes through the recovery (game/contextRecovery.js, #24): the flag, and so the context-loss panel, stays
+    // up until three has DRAWN since the restore, so the panel never drops over a blank canvas.
+    const rafs = [];
+    vi.stubGlobal('requestAnimationFrame', (fn) => { rafs.push(fn); return rafs.length; });
+    const flush = () => rafs.splice(0).forEach((fn) => fn());
     h.gl.domElement.dispatchEvent(new Event('webglcontextrestored'));
-    expect(useGameStore.getState().isWebGLContextLost, 'the restore did not clear the flag').toBe(false);
+    flush();
+    expect(rafs.length, 'presence: the recovery is waiting on a frame, not finished or never started').toBe(1);
+    expect(useGameStore.getState().isWebGLContextLost, 'the flag cleared before three drew: the panel would drop over a blank canvas').toBe(true);
+    h.gl.info.render.frame = 1;
+    flush();
+    expect(useGameStore.getState().isWebGLContextLost, 'the restore did not clear the flag once three drew').toBe(false);
   });
 
   it('records the renderer R3F created, for the readout and the seam', () => {

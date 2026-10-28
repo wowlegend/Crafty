@@ -184,7 +184,7 @@ export function validateSource(html) {
  * message promised "every stat re-measured". That was true and beside the point: the STATS were in the
  * denominator, the STATUS PILLS were not. Kevin caught it, having raised the general problem before.
  *
- * A rule that has failed repeatedly does not get better by being restated (AGENTS.md says exactly this).
+ * A rule that has failed repeatedly does not get better by being restated (CLAUDE.md says exactly this).
  * So a queued row must declare `data-absent="<repo-relative path>"` — the artifact whose ABSENCE is the
  * reason it is still open. The moment that path exists, the claim is false. That turns a status pill from
  * narrative into something a machine can falsify, which is the only kind of claim this repo trusts.
