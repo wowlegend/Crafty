@@ -29,12 +29,19 @@
  * NOT scoped: a missing or unusable source and a falsified Queued pill refuse EVERY push — those are
  * defects in the committed tree, which any branch can fix.
  *
- * THE SERVER-SIDE MERGE (2026-10-28). Exempting branch pushes left one path to main unbounded: a merge made
- * by `gh pr merge` or GitHub's UI runs no local hook. So CI runs this gate too, on a PUSH TO MAIN ONLY
+ * THE SERVER-SIDE MERGE (2026-10-28). Exempting branch pushes left one path to main with no local check: a merge
+ * made by `gh pr merge` or GitHub's UI runs no local hook. So CI runs this gate too, on a PUSH TO MAIN ONLY
  * (ci/pipeline.sh's fast tier, with `E2E_PUSH_REFS=' refs/heads/main'`, from a full-history checkout).
- * Never on pull_request: a PR's merge ref carries the lane's own commits, which is the #24 deadlock again.
- * A drift that cannot be MEASURED — the recorded sha absent from this history, as in a shallow clone —
- * refuses on the same terms as one over the limit: a main move whose bound cannot be computed is unbounded.
+ * THAT STEP DETECTS; IT DOES NOT BOUND. It runs on the push event, after the merge has moved main and Vercel has
+ * deployed, and never on pull_request (a PR's merge ref carries the lane's own commits, which is the #24 deadlock
+ * again), so nothing can refuse an over-limit merge: the gates job goes red on main until the pages are republished
+ * and `--sync`ed, and each further merge goes red the same way. A workflow_dispatch run on main skips it, so a
+ * green dispatch run does not clear a red push run.
+ * A drift that cannot be MEASURED — the recorded sha absent from this history — is refused on a main move, as
+ * one over the limit is, rather than skipped. Two causes: a shallow checkout, or a sha only a lane branch held
+ * that was squash-merged on GitHub and deleted (a full-history clone then lacks the object a local clone keeps).
+ * That holds for 'artifact' surfaces. One with no recorded sha still skips, and a 'page' surface in a shallow
+ * checkout reads as current, because its last commit is then HEAD itself.
  * A branch-only push still skips it, saying so.
  *
  * ERRS STRICT, known: the hook hands every pushed ref to each target it certifies, so a single push of
@@ -53,6 +60,9 @@
  * in the unmeasured branch turned the process main / unknown cases RED. Wrapping the Queued failure loops in
  * `if (mainMoves !== false)` and adding `if (mainMoves === false) continue;` to the missing-source branch each
  * turned a branch-push process case RED. An identity comment edit survived.
+ * 2026-10-28 close-out: `if (mainMoves === false) continue;` added inside the undeclared-Queued loop turned the
+ * branch-push undeclared-Queued process case RED; deleting the `squash-merged and deleted` cause from the unmeasured
+ * message turned the unmeasured-on-main process case RED; an identity comment edit survived.
  *
  *   node scripts/ci/artifact-currency.mjs          check (informational under the limit; over it, refuses a push
  *                                                  that moves main or names no refs, and prints for any other)
@@ -289,8 +299,9 @@ function main() {
         continue;
       }
       console.error(`\n✘ ${s.id}: recorded sha ${from} is not in this history, so the drift cannot be measured.`);
-      console.error('  On a push that moves main (or names no refs) an unmeasured drift is an unbounded one. In CI this is a');
-      console.error('  shallow checkout (the gates job needs fetch-depth: 0); locally, a publish sha rewritten out of history.');
+      console.error('  On a push that moves main (or names no refs) a drift that cannot be measured is refused, not skipped. Two causes:');
+      console.error('  a shallow checkout (the CI gates job needs fetch-depth: 0), or a recorded sha that only a lane branch held, and');
+      console.error('  that branch was squash-merged and deleted. For the second cause, republish from main and --sync.');
       if (s.kind === 'artifact') {
         console.error(`  Fix: republish ${s.source} to the SAME url, then \`node scripts/ci/artifact-currency.mjs --sync ${s.id}\`.\n`);
       }

@@ -8,13 +8,17 @@
  *
  *   1. THE CONSUMER — main() reads `E2E_PUSH_REFS` and turns the verdict into the exit code the hook acts on.
  *      E2E_PUSH_REFS is set BY HAND here, so these cases say nothing about who produces it. They also pin
- *      that a branch-only push is NOT excused the tree checks (a missing source, a falsified Queued pill),
- *      and that a drift the script cannot MEASURE refuses a main push instead of skipping it.
+ *      that a branch-only push is NOT excused the tree checks (a missing source, a falsified Queued pill, a
+ *      Queued pill that declares no data-absent), and that a drift the script cannot MEASURE refuses a main
+ *      push instead of skipping it, with a message naming both causes.
  *   2. THE PRODUCER — the real .githooks/pre-push, run by a real `git push` from a fixture repo to a bare
- *      remote, with DISTINCT local and remote ref names (`feat/x:main`, `HEAD:refs/heads/main`). The hook
- *      must build the list from the REMOTE ref and EXPORT it; nothing else in the suite drives that.
- *   3. THE CI BOUND — the real ci/pipeline.sh fast tier (node/npm stubbed) runs this gate on a push to main
- *      and on nothing else, naming main; and the gates job that runs that tier checks out full history.
+ *      remote, with DISTINCT local and remote ref names (`feat/x:main`, `HEAD:refs/heads/main`) and with TWO
+ *      refs in one push, main listed first and main listed last. The hook must build the list from the REMOTE
+ *      ref, ACCUMULATE every pushed ref and EXPORT it; nothing else in the suite drives that.
+ *   3. THE CI CHECK — the real ci/pipeline.sh fast tier (node/npm stubbed) runs this gate on a push to main
+ *      and on nothing else, naming main; and the gates job that runs that tier checks out full history. What
+ *      this pins is that the step is WIRED. It does not make the step a bound: it runs on the push event, after
+ *      a GitHub-side merge has already moved main, so it detects drift and cannot refuse the merge.
  *
  * How (1): the real script bytes are copied into a throwaway repo at `frontend/scripts/ci/` (its ROOT is
  * derived from its own location, so it then measures the fixture), with the one sibling it imports. The
@@ -42,6 +46,13 @@
  * GITHUB_EVENT_NAME test -> the workflow_dispatch-on-main CI case RED; the step without `env E2E_PUSH_REFS=...`
  * -> the push-to-main CI case RED; ci.yml `fetch-depth: 0` -> `1` -> the full-history case RED. Identity
  * mutants (a comment edit in artifact-currency.mjs, in pre-push and in pipeline.sh) survived.
+ * Close-out round (21 tests): P-last (pre-push `PUSH_REFS="${PUSH_REFS:-} $_remote_ref"` -> `PUSH_REFS=" $_remote_ref"`,
+ * which keeps only the LAST pushed ref) and P-first (-> `PUSH_REFS="${PUSH_REFS:- $_remote_ref}"`, which keeps only
+ * the FIRST) each turned both TWO-ref producer cases RED; both had survived the 18 earlier cases and the whole
+ * 3842-test suite. R-undeclared-scoped (`if (mainMoves === false) continue;` added inside the undeclared-Queued loop
+ * of main()) turned the branch-push undeclared-Queued case RED. M-msg (the unmeasured message's `squash-merged and
+ * deleted` cause removed) turned the unmeasured-on-main case RED. Identity mutants (a comment edit in pre-push, in
+ * artifact-currency.mjs and in pipeline.sh, run before and after the real ones in the same batch) survived.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync, realpathSync, readFileSync, existsSync, chmodSync } from 'node:fs';
@@ -59,9 +70,9 @@ const PIPELINE = join(REPO_ROOT, 'ci/pipeline.sh');
 const EXTRA = 5;
 const OVER = HARD_LIMIT + EXTRA;
 const PAGE = '<title>fixture</title><div>page</div>';
-/** A review-page row marked Queued, declaring the path whose ABSENCE is why it is still open. */
+/** A review-page row marked Queued, declaring the path whose ABSENCE is why it is still open (`null`: declaring none). */
 const queuedPage = (absent) =>
-  `<title>fixture</title><div class="row"><div class="sha">abc1234</div><div class="body" data-absent="${absent}">not landed</div><span class="pill queue">Queued</span></div>`;
+  `<title>fixture</title><div class="row"><div class="sha">abc1234</div><div class="body"${absent === null ? '' : ` data-absent="${absent}"`}>not landed</div><span class="pill queue">Queued</span></div>`;
 /** A sha no fixture commit has: the drift from it cannot be measured. */
 const NOT_IN_HISTORY = 'abcdef0123456789abcdef0123456789abcdef01';
 
@@ -202,6 +213,13 @@ describe('a branch-only push is NOT excused the checks on the committed tree', (
     }
   });
 
+  it('a Queued row that declares NO data-absent (an unfalsifiable pill) still exits 1', () => {
+    const { status, out } = run(BRANCH, shas[OVER], queuedPage(null));
+    expect(out, 'presence: the row was parsed').toMatch(/fixture: 1 queued row\(s\) claiming unfinished work/);
+    expect(out).toMatch(/✘ fixture: row abc1234 is marked Queued but declares no data-absent/);
+    expect(status, out).toBe(1);
+  });
+
   it('control: the same Queued row whose path is truly ABSENT, at HEAD, exits 0', () => {
     const { status, out } = run(BRANCH, shas[OVER], queuedPage('docs/not-landed.txt'));
     expect(out).toMatch(/fixture: 1 queued row\(s\) claiming unfinished work/);
@@ -214,10 +232,15 @@ describe('a branch-only push is NOT excused the checks on the committed tree', (
 describe('a drift that cannot be MEASURED (the recorded sha is not in this history)', () => {
   const notInHistory = /fixture: recorded sha abcdef0123456789abcdef0123456789abcdef01 is not in this history/;
 
-  it('on a push that moves main: exit 1 — a main move whose bound cannot be computed is unbounded', () => {
+  it('on a push that moves main: exit 1 — refused, not skipped, and the message names BOTH causes', () => {
     const { status, out } = run(' refs/heads/main', NOT_IN_HISTORY);
     expect(out).toMatch(notInHistory);
     expect(out).toMatch(/✘ fixture: recorded sha/);
+    // The two ways a recorded sha is absent from the history CI sees. A message that names only the first sent the
+    // operator to fetch-depth when the real cause was a lane commit squash-merged on GitHub and its branch deleted.
+    expect(out).toMatch(/a shallow checkout/);
+    expect(out).toMatch(/squash-merged and deleted/);
+    expect(out).toMatch(/republish from main and --sync/);
     expect(status, out).toBe(1);
   });
 
@@ -288,14 +311,19 @@ describe('the PRODUCER: .githooks/pre-push builds E2E_PUSH_REFS from the REMOTE 
     if (hdir) rmSync(hdir, { recursive: true, force: true });
   });
 
-  /** `git push origin <refspec>` through the real hook, from a remote reset to main at `base` and no feat/x. */
-  function push(refspec) {
-    fixtureGit(remote, 'update-ref', 'refs/heads/main', base);
-    if (spawnSync('git', ['rev-parse', '--verify', '-q', 'refs/heads/feat/x'], { cwd: remote, env: cleanEnv() }).status === 0) {
-      fixtureGit(remote, 'update-ref', '-d', 'refs/heads/feat/x');
+  /**
+   * `git push origin <refspecs...>` through the real hook, from a remote reset to main at `base` and no other
+   * branch, except those named in `seed`, which start at `base` too (so a push to one is a fast-forward of an
+   * EXISTING remote ref, which git lists before a ref that is new on the remote).
+   */
+  function push(refspecs, seed = []) {
+    for (const ref of fixtureGit(remote, 'for-each-ref', '--format=%(refname)', 'refs/heads/').split('\n')) {
+      if (ref && ref !== 'refs/heads/main') fixtureGit(remote, 'update-ref', '-d', ref);
     }
+    fixtureGit(remote, 'update-ref', 'refs/heads/main', base);
+    for (const name of seed) fixtureGit(remote, 'update-ref', `refs/heads/${name}`, base);
     const log = join(hdir, `pipe-${++calls}.log`);
-    const r = spawnSync('git', ['push', 'origin', refspec], {
+    const r = spawnSync('git', ['push', 'origin', ...[].concat(refspecs)], {
       cwd: repo, encoding: 'utf8', env: cleanEnv({ PIPE_LOG: log, TMPDIR: join(hdir, 'tmp') }),
     });
     return {
@@ -332,11 +360,39 @@ describe('the PRODUCER: .githooks/pre-push builds E2E_PUSH_REFS from the REMOTE 
     expect(r.status, r.out).not.toBe(0);
     expect(r.remoteMain, 'the refused push moved main anyway').toBe(base);
   });
+
+  // The hook ACCUMULATES one ref per stdin line. The cases above push ONE refspec each, so an edit that keeps only
+  // the last ref (`PUSH_REFS=" $_remote_ref"`) or only the first (`PUSH_REFS="${PUSH_REFS:- $_remote_ref}"`) passed
+  // every one of them, and either let an over-limit main land in a two-ref push. Git hands the hook the refs that
+  // EXIST on the remote first, in the order the remote advertises them (alphabetical), then the refs that are NEW
+  // there in refspec order; so main is first when main exists and the other branch is new, and last when both exist
+  // and the other branch sorts before main. Each case asserts that order too: a setup that stopped producing the
+  // order it names would otherwise quietly cover only one of the two mutants.
+  //
+  // Per target the hook runs the pipeline once, and both refs point at the same commit, so a push that passes
+  // logs the same line twice; the Set collapses that, and what is compared is the one list the hook exported.
+  const seen = (r) => [...new Set(r.refs)];
+
+  it('TWO refs, main listed FIRST (`feat/x:main feat/x:feat/y`, feat/y new): the list names both, and main is refused', () => {
+    const r = push(['feat/x:main', 'feat/x:feat/y']);
+    expect(seen(r), r.out).toEqual(['REFS[ refs/heads/main refs/heads/feat/y]']);
+    expect(r.out).toMatch(overLine);
+    expect(r.status, r.out).toBe(1);
+    expect(r.remoteMain, 'the refused push moved main anyway').toBe(base);
+  });
+
+  it('TWO refs, main listed LAST (`feat/x:feat/y feat/x:main`, feat/y already on the remote): the list names both, and main is refused', () => {
+    const r = push(['feat/x:feat/y', 'feat/x:main'], ['feat/y']);
+    expect(seen(r), r.out).toEqual(['REFS[ refs/heads/feat/y refs/heads/main]']);
+    expect(r.out).toMatch(overLine);
+    expect(r.status, r.out).toBe(1);
+    expect(r.remoteMain, 'the refused push moved main anyway').toBe(base);
+  });
 });
 
-// ── 3. THE CI BOUND ─────────────────────────────────────────────────────────────────────────────────────────
+// ── 3. THE CI CHECK ─────────────────────────────────────────────────────────────────────────────────────────
 
-describe('the CI bound: ci/pipeline.sh --tier=fast runs artifact-currency on a push to main, and nowhere else', () => {
+describe('the CI check: ci/pipeline.sh --tier=fast runs artifact-currency on a push to main, and nowhere else', () => {
   let bdir;
   beforeAll(() => { bdir = mkdtempSync(join(tmpdir(), 'artifact-scope-ci-')); });
   afterAll(() => { if (bdir) rmSync(bdir, { recursive: true, force: true }); });
