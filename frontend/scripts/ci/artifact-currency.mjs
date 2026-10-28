@@ -260,7 +260,8 @@ export function missingTokens(html, tokens) {
 /**
  * PURE: put `block` at the top of the page's visible content, or replace the stamp already there. Everything outside
  * the markers stays byte-identical. The first stamp goes right after the content wrapper's opening tag
- * (`<div class="wrap">`, which every operator page opens with, or `<body>`), on its own line.
+ * (`<div class="wrap">`, which every operator page opens with; `<body>` only for a page with no wrapper), on its own
+ * line.
  * @returns {{html: string} | {error: string}}
  */
 export function applyStamp(html, block) {
@@ -272,7 +273,10 @@ export function applyStamp(html, block) {
     return { html: html.slice(0, b) + block + html.slice(e + STAMP_END.length) };
   }
   if (html.includes(STAMP_END)) return { error: `a ${STAMP_END} marker with no ${STAMP_BEGIN}` };
-  const m = /<div class="wrap"[^>]*>|<body[^>]*>/.exec(html);
+  // The wrapper FIRST, wherever it sits, and `<body>` only when there is none: one alternation would take whichever
+  // comes first in the file, and a page that opens `<body>` and then its wrapper would get the stamp outside the
+  // content column.
+  const m = /<div class="wrap"[^>]*>/.exec(html) || /<body[^>]*>/.exec(html);
   if (!m) return { error: 'no content wrapper (<div class="wrap"> or <body>) to put the stamp under' };
   const at = m.index + m[0].length;
   return { html: `${html.slice(0, at)}\n${block}${html.slice(at)}` };

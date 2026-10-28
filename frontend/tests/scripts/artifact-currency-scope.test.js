@@ -61,7 +61,8 @@
  * the stamp's time from the wall clock; S3 from the AUTHOR time (`%ct` -> `%at`); S4 --as-of ignored (HEAD stamped);
  * S5 the token check skipped; S6 an --as-of that is not a commit accepted; Y1 --sync recording a commit the stamp
  * does not name; Y2 --sync recording HEAD rather than the stamp's commit; Y3 --sync accepting a page with no stamp;
- * Y4 --sync writing the state despite a refusal; B1 --stamp and --sync accepted together. An identity comment edit
+ * Y4 --sync writing the state despite a refusal; B1 --stamp and --sync accepted together; S7 each page written as soon
+ * as it stamps rather than after every target has (killed only by the two-surface case). An identity comment edit
  * survived. (The earlier one-step --sync receipts are in git history.)
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -413,6 +414,36 @@ describe('--stamp and --sync: two steps, with the publish between them', () => {
     expect(bad.out).toMatch(new RegExp(`--as-of ${NOT_IN_HISTORY} is not a commit in this history`));
     expect(bad.page).toBe(STAMP_PAGE);
     expect(bad.stateChanged).toBe(false);
+  });
+
+  it('--stamp over TWO surfaces is all-or-nothing: the second page lacks a token, so the FIRST page is byte-unchanged too', () => {
+    // Every other --stamp case has one surface, where "nothing written" holds whether or not the pages wait for each
+    // other (round-1 review). The first surface here CAN stamp; it must not be written because the second cannot.
+    const second = join(root, 'docs/superpowers/page2.html');
+    const two = (link2) => JSON.stringify({ surfaces: [
+      { ...surface(shas[OVER - EXTRA]), stampTokens: tokens },
+      { ...surface(shas[OVER - EXTRA], 'docs/superpowers/page2.html'), id: 'fixture2', stampTokens: { ...tokens, link: link2 } },
+    ] });
+    try {
+      writeFileSync(pagePath(), STAMP_PAGE);
+      writeFileSync(second, STAMP_PAGE);
+      writeFileSync(statePath(), two('--not-declared'));
+      const r = cli('--stamp'); // no id: every artifact surface
+      expect(r.status, r.out).toBe(1);
+      expect(r.out).toMatch(/fixture2: stampTokens in \.artifact-sync\.json must name a token .* for: link/);
+      expect(r.page, 'the first page, which could stamp, was written anyway').toBe(STAMP_PAGE);
+      expect(readFileSync(second, 'utf8')).toBe(STAMP_PAGE);
+      expect(r.stateChanged).toBe(false);
+
+      // Control: with both pages stampable, both are stamped, so the refusal above is the second page's doing.
+      writeFileSync(statePath(), two('--l-x'));
+      const ok = cli('--stamp');
+      expect(ok.status, ok.out).toBe(0);
+      expect(count(ok.page, STAMP_BEGIN)).toBe(1);
+      expect(count(readFileSync(second, 'utf8'), STAMP_BEGIN)).toBe(1);
+    } finally {
+      rmSync(second, { force: true });
+    }
   });
 
   it('--sync after a publish records the commit the stamp names, and does not touch the page', () => {

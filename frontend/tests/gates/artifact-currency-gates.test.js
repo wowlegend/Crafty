@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { spawnSync } from 'node:child_process';
 import {
   classify, driftVerdict, HARD_LIMIT, validateSource, surfaces, queuedClaims, verifyQueued,
   stampBlock, applyStamp, missingTokens, readStamp, stampVerdict, STAMP_BEGIN, STAMP_END, STAMP_ROLES,
@@ -79,6 +80,12 @@ describe('validateSource — the committed page must be the AUTHORED source', ()
   it('rejects a fetched copy of the PUBLISHED page — re-committing one nests the shell in itself', () => {
     expect(validateSource('<!doctype html><html><head><script>window.__FRAME_PREAMBLE={}</script></head><title>x</title>'))
       .toMatch(/publish-shell runtime|doctype/);
+  });
+
+  it('rejects the publish-shell runtime on its own, with the doctype stripped: each refusal has its own reason', () => {
+    // The fixture above carries BOTH signs, so the doctype branch alone satisfied it and the runtime check could be
+    // deleted unseen (round-1 review). A fetched shell with its doctype stripped is still a fetched shell.
+    expect(validateSource('<title>x</title><script>window.__FRAME_PREAMBLE={}</script><div>hi</div>')).toMatch(/publish-shell runtime/);
   });
 
   it('rejects a page with no title, and empty input', () => {
@@ -198,10 +205,13 @@ describe('queuedClaims — a Queued pill must be falsifiable, and false when the
 // Mutation-Proof (the stamp, 2026-10-28, via scripts/dev/mutate.sh, each RED observed): a re-sync that keeps the old
 // stamp (`html.slice(e + STAMP_END.length)` -> `html.slice(b)`); a replace that leaves a dangling end marker
 // (-> `html.slice(e)`); the first stamp placed before the wrapper (`m.index + m[0].length` -> `m.index`); the time to
-// the hour (`slice(11, 16)` -> `slice(11, 13)`); local time printed as UTC (run under TZ America/Los_Angeles: in a UTC
-// zone that mutant cannot be told apart, which is why the fixed instant sits on the 28th in UTC and the 27th west of
-// it); the currentStatus pointer dropped; a literal colour in place of the text token; the token match without its
-// left bound; the label not escaped. An identity comment edit survived.
+// the hour (`slice(11, 16)` -> `slice(11, 13)`); the currentStatus pointer dropped; a literal colour in place of the
+// text token; the token match without its left bound; the label not escaped. An identity comment edit survived.
+// Round-1 review additions (2026-10-28, the whole batch run under TZ=UTC, as on CI's runner, each RED observed): T1
+// local time printed as UTC (`when.toISOString()` -> the local wall time re-labelled), killed ONLY by the child-process
+// case, which pins its own TZ (in-process, a UTC runner cannot tell the two apart); W1 the wrapper and `<body>` matched
+// by one leftmost alternation again; W2 the `<body>` fallback dropped; V1 (validateSource, above) the publish-shell
+// runtime check disabled. An identity comment edit survived.
 describe('the as-of stamp — a page states its own age', () => {
   const tokens = { text: '--t-x', rule: '--r-x', link: '--l-x', font: '--f-x' };
   // 06:05:59 UTC: seconds are dropped, and in any zone west of UTC this is still the 27th, so a stamp printed in
@@ -264,6 +274,27 @@ describe('the as-of stamp — a page states its own age', () => {
     const block = stampBlock({ sha: 'cccc3333', when, tokens });
     const moved = `A\n${STAMP_BEGIN}a hand edit${STAMP_END}\nB ${WRAP}C`;
     expect(applyStamp(moved, block).html).toBe(`A\n${block}\nB ${WRAP}C`);
+  });
+
+  it('prints UTC in ANY zone: run in a child under TZ=America/Los_Angeles, where 06:05 UTC on the 28th is still the 27th', () => {
+    // In-process, this file inherits the runner's zone, and CI's runner is UTC, where local time and UTC agree: a stamp
+    // printing local time as UTC passed there. A child with its own TZ makes the kill hold on every runner.
+    const mod = new URL('../../scripts/ci/artifact-currency.mjs', import.meta.url).href;
+    const code = `const { stampBlock } = await import(${JSON.stringify(mod)});`
+      + `const when = new Date(${when.getTime()});`
+      + `process.stdout.write(JSON.stringify({ offset: when.getTimezoneOffset(), block: stampBlock({ sha: 'abc12345', when, tokens: ${JSON.stringify(tokens)} }) }));`;
+    const r = spawnSync(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, TZ: 'America/Los_Angeles' }, encoding: 'utf8' });
+    expect(r.status, r.stderr).toBe(0);
+    const { offset, block } = JSON.parse(r.stdout);
+    expect(offset, 'presence: the child runs WEST of UTC, or it could not tell local time from UTC').toBeGreaterThan(0);
+    expect(visible(block)).toBe('As of commit abc12345, 2026-10-28 06:05 UTC.');
+  });
+
+  it('a page that opens <body> and THEN its wrapper gets the stamp inside the wrapper, not under <body>', () => {
+    const block = stampBlock({ sha: 'eeee5555', when, tokens });
+    const both = `<title>p</title><body class="x">\n${WRAP}\n<p>body</p>\n</div></body>`;
+    const inWrap = both.indexOf(WRAP) + WRAP.length;
+    expect(applyStamp(both, block).html).toBe(`${both.slice(0, inWrap)}\n${block}${both.slice(inWrap)}`);
   });
 
   it('falls back to <body>, and refuses a page it cannot place a stamp in rather than guessing', () => {
