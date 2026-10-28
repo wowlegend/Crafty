@@ -128,6 +128,30 @@ export function endString(now = 0) {
   if (now > 0) S.readyAt = Math.max(S.readyAt, now + SWING_COOLDOWN_MS);
 }
 
+/**
+ * triggerMeleeAttack's gate (Components.jsx): does a press swing now, and as which string step?
+ *   heavy        a charged release (the human sword's only)
+ *   form         a beast form is active
+ *   bufferedStep a press the string buffered earlier: it has been through the string already, so it skips the rest
+ *   heavyHeld    a heavy is charging (heavyAttack.isHeavyHeld): the arm is drawn back, no light swing
+ *   refused      heavyAttack.meleeRefusal's verdict for a heavy or a form's swing, which keep their own cooldown
+ * A heavy or a form's swing ENDS THE STRING AT `now`, holding the next light swing SWING_COOLDOWN_MS, because the light
+ * path consults only the string's readyAt. Round-1 review g: a form's swing stamped only the controller's
+ * lastAttackTime, so the first human light swing after a form ended could land inside the 300 ms cooldown.
+ * @returns {number} the string step (1-3) of a light swing, 0 for a heavy or a form's swing, -1 for no swing
+ */
+export function gateSwing(now, { heavy = false, form = false, bufferedStep = 0, heavyHeld = false, refused = null } = {}) {
+  if (!heavy && !form) {
+    if (bufferedStep) return bufferedStep;
+    if (heavyHeld) return -1;
+    const press = pressSwing(now);
+    return press.action === 'fire' ? press.step : -1;
+  }
+  if (refused) return -1;
+  endString(now);
+  return 0;
+}
+
 /** The walk multiplier the string applies at `now` (1 when no swing is being thrown). */
 export function stringWalkMult(now) {
   return now < S.walkUntil ? S.walkMult : 1;

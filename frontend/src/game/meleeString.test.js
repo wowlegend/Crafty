@@ -13,9 +13,13 @@
 //   Round-1 review pins (2026-10-28, 17 tests): W3 a dodge inside an open window sets it to never expire -> RED; W5 a
 //   dropped press extends the window -> RED; W0 identity (a comment edit) -> survived. W3 was REPRODUCED against the
 //   lane's code first: a press 700 ms after the dodge fires step 1, so the game does not do it; the case pins that.
+//   Round-1 review g, gateSwing (19 tests): G1 a form's swing does not end the string (the shipped behaviour) -> RED;
+//   G2 it ends the string without a cooldown -> RED; G3 a refusal ignored -> RED; G4 a charging heavy ignored -> RED; G5
+//   a buffered step pressed through the string again -> RED; G6 a buffered press fires at once -> RED; G0 identity ->
+//   survived. The controller's call site (Components.jsx) is one call with named fields; it is not driven here.
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  pressSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep,
+  pressSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, gateSwing,
   readString, _resetStringForTest,
   STRING_STEPS, SWING_COOLDOWN_MS, STRING_WINDOW_MS, BUFFER_MS, FINISHER_RECOVERY_MS, FINISHER_MULT, FINISHER_ARC_RAD,
   FINISHER_SHOVE_MULT, SWING_WALK_MULT, SWING_WALK_MS, FINISHER_WALK_MULT, FINISHER_WALK_MS,
@@ -209,5 +213,36 @@ describe('the light string', () => {
     expect(SWING_COOLDOWN_MS).toBe(300);
     pressSwing(1000);
     expect(readString().readyAt).toBe(1300);
+  });
+});
+
+// Round-1 review g: the controller's press gate (Components.jsx triggerMeleeAttack), as gateSwing. A beast form's swing
+// stamped only the controller's lastAttackTime and never the string, so the first human light swing after a form ended
+// fired at once, inside the old 300 ms cooldown.
+describe('gateSwing — the press gate of triggerMeleeAttack', () => {
+  it('after a beast form\'s swing the next human light swing waits SWING_COOLDOWN_MS, as after a heavy', () => {
+    expect(gateSwing(1000, { form: true })).toBe(0);
+    expect(gateSwing(1050, {}), 'a human light swing 50 ms after a form\'s swing fired').toBe(-1); // 250 ms left: dropped
+    expect(gateSwing(1120, {}), 'a human light swing 120 ms after a form\'s swing fired').toBe(-1); // 180 ms left: buffered
+    expect(readString().buffered).toBe(true);
+    expect(takeBufferedSwing(1000 + SWING_COOLDOWN_MS - 1)).toBe(0);
+    expect(takeBufferedSwing(1000 + SWING_COOLDOWN_MS)).toBe(1);
+    // the heavy, for comparison: the same hold
+    _resetStringForTest();
+    expect(gateSwing(1000, { heavy: true })).toBe(0);
+    expect(gateSwing(1120, {})).toBe(-1);
+    expect(takeBufferedSwing(1300)).toBe(1);
+  });
+
+  it('a light press fires through the string; a buffered step skips it; a charging heavy and a refusal stop a swing', () => {
+    expect([gateSwing(1000, {}), gateSwing(1350, {}), gateSwing(1700, {})], 'the string steps').toEqual([1, 2, 3]);
+    _resetStringForTest();
+    expect(gateSwing(1000, { bufferedStep: 2, heavyHeld: true }), 'a buffered press went through the string again').toBe(2);
+    expect(readString().lastSwingAt, 'a buffered press fired the string a second time').toBe(0);
+    expect(gateSwing(1000, { heavyHeld: true }), 'a light swing fired while a heavy was charging').toBe(-1);
+    expect(readString().lastSwingAt).toBe(0);
+    expect(gateSwing(1000, { form: true, refused: 'cooldown' }), 'a refused form swing fired').toBe(-1);
+    expect(gateSwing(1000, { heavy: true, refused: 'charging' }), 'a refused heavy fired').toBe(-1);
+    expect(readString().readyAt, 'a refused swing still held the string').toBe(0);
   });
 });

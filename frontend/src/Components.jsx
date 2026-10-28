@@ -21,7 +21,7 @@ import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
 import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
-import { pressSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
+import { gateSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
 import { stanceFrame, stanceWalk, resetStance, teleportPlayer } from './game/combatStance.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
@@ -240,20 +240,17 @@ export const Player = ({ isWorldBuilt }) => {
     // its step. It does NOT also check lastAttackTime: a 300 ms check in front of pressSwing would refuse every press
     // inside the cooldown before it could buffer. A buffered press (bufferedStep) has already been through the string,
     // and IS the tap of the hold the charge refusal would see, so it skips both. The heavy and a beast form's swing keep
-    // today's cooldown; a thrown heavy ends the string and holds the next light swing 300 ms (endString(now)).
-    let step = 0; // the string step of this swing; 0 for a heavy or a beast form's swing
-    if (!heavy && !beastEl) {
-      if (opts?.bufferedStep) step = opts.bufferedStep;
-      else {
-        if (isHeavyHeld()) return; // charging: the arm is drawn back
-        const press = pressSwing(now);
-        if (press.action !== 'fire') return;
-        step = press.step;
-      }
-    } else {
-      if (meleeRefusal(heavy, now, lastAttackTime.current, MELEE_COOLDOWN * formMeleeCooldownMult(beastEl))) return;
-      if (heavy) endString(now);
-    }
+    // today's cooldown; a thrown heavy or a form's swing ends the string and holds the next light swing 300 ms.
+    // The gate is game/meleeString.js gateSwing: the string step of this swing (0 for a heavy or a beast form's swing),
+    // or -1 for none.
+    const step = gateSwing(now, {
+      heavy,
+      form: !!beastEl,
+      bufferedStep: opts?.bufferedStep || 0,
+      heavyHeld: isHeavyHeld(),
+      refused: heavy || beastEl ? meleeRefusal(heavy, now, lastAttackTime.current, MELEE_COOLDOWN * formMeleeCooldownMult(beastEl)) : null,
+    });
+    if (step < 0) return;
     const shape = swingShape(step); // step 0 -> the light cone
     { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.melee)); } // game-feel: melee recoil
     lastAttackTime.current = now;
