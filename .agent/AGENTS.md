@@ -22,7 +22,7 @@ REPO ROOT = /Users/kz/Code/Crafty/            ← .git + docs + memory + master-
   ├─ .git/   CLAUDE.md (symlink -> .agent/AGENTS.md)
   ├─ SOTA-INITIATIVE.md                          ← MASTER PLAN v2, DIRECTION ONLY (§3 status FROZEN 06-18; S0-S3 DONE, S4 Kevin-gated)
   ├─ SOTA-KICKOFF-PROMPT.md
-  ├─ .agent/  AGENTS.md (this file) + workflows/ (debug-physics, fix-movement)
+  ├─ .agent/  AGENTS.md (this file)
   ├─ docs/superpowers/                           ← plans/, specs/, KEVIN-REVIEW-BATCH.md
   ├─ memory/                                      ← 4-piece (ACTIVE_PLAN, ARCHITECTURE, CHANGELOG, ROADMAP)
   │                                                 + REALITY-AUDIT-2026-05-30.md, IN_DEPTH_AUDIT.md,
@@ -55,10 +55,10 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **344 source files / 39,457 LOC** in
-  `frontend/src`, plus 139 colocated `*.test.js(x)` files (counted separately —
+- **Size (measured):** **355 source files / 40,660 LOC** in
+  `frontend/src`, plus 140 colocated `*.test.js(x)` files (counted separately —
   tests are not the architecture).
-- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1481 · `src/store/useGameStore.jsx` 1232 · `src/world/Terrain.jsx` 1145 · `src/App.jsx` 1059 · `src/QuestSystem.jsx` 986.
+- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1505 · `src/store/useGameStore.jsx` 1260 · `src/world/Terrain.jsx` 1157 · `src/App.jsx` 1066 · `src/QuestSystem.jsx` 986.
   Its MEMBERSHIP is checked exactly by `doc-currency`; the LOC beside each name, and the counts above,
   sit under a ±10% band so ordinary churn does not redden the push — so a specific number here
   can be mildly stale and still green. Regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
@@ -210,6 +210,10 @@ pipeline genuinely cannot see:
 - **Initialization:** on turn 1, silently orient — `pwd`, git branch, `package.json` scripts, framework state — before proposing.
 - **Game Loop Isolation (CRITICAL):** NEVER bind declarative React to high-frequency imperative systems (R3F `useFrame`, Rapier) via reactive state (`useState`/zustand subscriptions). Use transient reads (`refs`, `.getState()`, miniplex queries).
 - **AST-Safe Edits:** never `sed`/`cat`-rewrite `.js/.jsx` (AST-safe tools/Edit only; `sed` OK for markdown). Verify behavior, not implementation. No `// ... rest of code`.
+- **Comments say WHY, and only when the code cannot** (DECISIONS 2026-10-28 item 15): a non-obvious constraint, an
+  external fact (a library quirk with its version and line), a safety or ordering invariant. Never history, review
+  narrative, round numbers or mutation receipts in code: git and DECISIONS hold history, `Mutation-Proof:` trailers
+  hold receipts. Name things so the code reads without them.
 
 ## Design Language (LOCKED — S1-C)
 ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.js` (`--ui-*` vars + `applyThemeVars()`) → `tailwind.config.cjs`. **Filled 2-tone game-icons** (`src/ui/primitives/gameIcons.js`, baked from game-icons.net **CC BY 3.0** via the Iconify API) for game CONTENT (items/spells/mobs/achievements); **lucide outline** for app-chrome. The UI primitives live in `src/ui/primitives/` (read the set from its `index.js`; this said "7" and was wrong). i18n in `src/i18n/` (en default + lazy-CJK zh-CN). **NO emoji in `src/`** (zero-emoji hard gate). game-icons.net attribution is DISCHARGED by `src/ui/CreditsScreen.jsx` (Settings → Credits).
@@ -267,10 +271,6 @@ ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.
 - `ACTIVE_PLAN.md` — volatile current-task POINTER (carries the compaction-safe resume + repo-layout block); update BEFORE execution.
 - `CHANGELOG.md` — reverse-chronological history. `ARCHITECTURE.md` — current blueprint. `ROADMAP.md` — future goals.
 - Master plan = `SOTA-INITIATIVE.md` at the repo ROOT. Review/decide items batch into `docs/superpowers/KEVIN-REVIEW-BATCH.md`.
-
-## Project-Specific Workflows (`.agent/workflows/`)
-- `debug-physics-Crafty-kz` — Rapier collision / terrain (player falling through, collider misalignment).
-- `fix-movement-Crafty-kz` — WASD / camera / pointer-lock movement.
 
 ## Where state lives (READ IN THIS ORDER)
 

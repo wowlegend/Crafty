@@ -30,8 +30,9 @@ export function useInputManager(gameState, gameSystems, questSystem) {
     const handleWheel = (event) => {
       const state = useGameStore.getState();
       const active = getInput().active;
-      const { showAchievements, showSpellUpgrades, showStats } = localRefs.current;
-      const anyPanelOpen = isAnyPanelOpen({ ...state, showAchievements, showSpellUpgrades, showStats });
+      const { showAchievements, showSpellUpgrades } = localRefs.current;
+      // Show Stats is not a panel (ui/panelState.js): the hotbar scrolls with the readout up.
+      const anyPanelOpen = isAnyPanelOpen({ ...state, showAchievements, showSpellUpgrades });
 
       if (active && !anyPanelOpen) {
         const currentIndex = HOTBAR_BLOCKS.indexOf(state.selectedBlock);
@@ -64,7 +65,8 @@ export function useInputManager(gameState, gameSystems, questSystem) {
       const active = getInput().active;
       const { showStats, showAchievements, showSpellUpgrades, questSystem } = localRefs.current;
 
-      const anyPanelOpen = isAnyPanelOpen({ ...state, showAchievements, showSpellUpgrades, showStats });
+      // Show Stats is not a panel (ui/panelState.js): spells, claims and every other key act with the readout up.
+      const anyPanelOpen = isAnyPanelOpen({ ...state, showAchievements, showSpellUpgrades });
 
       if (event.code === 'Escape') {
         event.preventDefault();

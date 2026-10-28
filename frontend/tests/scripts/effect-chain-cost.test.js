@@ -97,7 +97,7 @@ describe('render cost — the knobs that were burning a laptop', () => {
   });
 
   it('every tier declares every cost knob (an undefined knob reads as "off" and is never noticed)', () => {
-    const KNOBS = ['ao', 'godRays', 'godRaySamples', 'bloomMipmap', 'shadowMapSize', 'renderDistance', 'dprCap'];
+    const KNOBS = ['ao', 'godRays', 'godRaySamples', 'bloomMipmap', 'shadowMapSize', 'renderDistance', 'dprCap', 'budgetPx'];
     const tiers = Object.keys(TIERS);
     expect(tiers.length).toBeGreaterThan(0); // R3a — the zero-guard, or this loop is vacuous
     for (const t of tiers) {

@@ -72,6 +72,7 @@ describe('a fixture repo never writes into the repository its caller is in', () 
 
   it('CONTROL: the same calls WITHOUT the helper damage the caller (the hazard is real on this git)', () => {
     const d = decoy();
+    // eslint-disable-next-line no-restricted-syntax -- the deliberate hazard control
     const raw = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
     asHookChild(d.dir, () => fixtureRepo(raw));
     const damaged = readFileSync(join(d.dir, '.git/config'), 'utf8') !== d.config || fixtureGit(d.dir, 'rev-parse', 'HEAD') !== d.head;

@@ -2,6 +2,7 @@ import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 import { BURST_M, flown, stoppedShort } from './_spellEnd.js';
+import { MIN_UNDER, TEST_BUDGET_MS, colOf, floorEvidence, watchUntilEvidence } from './_floorSamples.js';
 
 // A MOB UNDER A ROOF STAYS ON THE GROUND (review #6, QUEUE R7.1).
 //
@@ -50,6 +51,25 @@ import { BURST_M, flown, stoppedShort } from './_spellEnd.js';
 // The flake itself, CONSTRUCTED rather than waited for (2026-10-27, throwaway :4291 config, identity mutant green
 // on both tests): a page-side burner making every frame with a live spell take 4 s read "the fireball cast under the
 // roof burst after 1.3 m (2 frames)" on the old per-frame sampling — CI's shape — and passed on the end record.
+//
+// THE ZOMBIE IS WATCHED UNTIL ITS EVIDENCE EXISTS, NOT FOR A FLAT 10 s (2026-10-28). The same defect, in the zombie test:
+// it sampled once per requestAnimationFrame callback for 10 s of wall clock and then demanded a worker reply and 2
+// post-reply samples under the roof — a frame count read inside a time window. What CI measured (run 40637608377, shard
+// 5, both traces): that in-page loop ran 10.04 s and 10.05 s and returned 2 samples and 1, so in the ~10 s after spawnMob
+// the page ran at most ONE requestAnimationFrame callback, while in the retry the screencast shows compositor frames at
+// +0.44-0.51 s after the spawn. An episodic main-thread stall, then (inferred: rAF stopped and the compositor did not),
+// ~10 s long and starting at the spawn — not a slow steady frame rate. Its cause is unmeasured. It failed three attempts
+// of three on feat/steady-cool ("the zombie never moved in 1 frames" / "only 1 post-reply samples under the roof, of 2
+// frames"), and main's first attempt failed the same way twice (995f1da2, d5375ac1), each passing on a retry. It now
+// samples at least the old 10 s, then on until the evidence exists, the zombie is gone, or 60 s; nothing it asserts was
+// relaxed. The whole watch, its poll loop included, is _floorSamples.js watchUntilEvidence, which
+// tests/gates/floor-sample-window-gates drives on a fake clock; this spec supplies only the page reads, the clock and
+// the sleep. Whether it supplies them right (t0 right after the spawn, this test's own site) is the one seam no unit
+// gate sees: it is unverified until CI runs the pushed sha.
+// Local (throwaway :4307 config, 2026-10-28): the unmodified spec passed at load ~22 (13 frames in its 10 s). The CI
+// shape constructed with a page-side burner (a 9.6 s frame after the spawn, then 2.5 s frames), against the old spec and
+// this one, and this spec unburned, all died in SETUP ("the world never built ... within 90000 ms") at load 145-222, so
+// none gave a verdict: this spec's browser run is OWED to CI.
 test.describe('mob floor', () => {
   test.setTimeout(180000);
 
@@ -205,6 +225,8 @@ test.describe('mob floor', () => {
   });
 
   test('a roof over open ground: the live floor probe and a zombie under it stay on the ground', async ({ page }) => {
+    // The zombie is watched for up to 60 s on a slow renderer, after a boot that can take 90 s on CI (_floorSamples.js).
+    test.setTimeout(TEST_BUDGET_MS);
     await bootDev(page);
     await startPlayActive(page);
     await page.waitForFunction(
@@ -277,39 +299,55 @@ test.describe('mob floor', () => {
     expect(probe.under, 'under the roof, the floor is the ground').toBeCloseTo(ground, 2);
     expect(probe.onRoof, 'standing on the roof, the floor is the roof').toBeCloseTo(roofY + 1, 2);
 
-    // 5. A zombie spawned under the roof, sampled every rendered frame as the real reply loop snaps it.
-    const run = await page.evaluate(async ({ cx, cz, ground }) => {
+    // 5. A zombie spawned under the roof, sampled as the real reply loop snaps it: a recorder in the page takes one sample
+    //    per requestAnimationFrame callback, and this reads it until the verdict's evidence exists (_floorSamples.js).
+    const id = await page.evaluate(({ cx, cz, ground }) => {
       const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
       window.useGameStore.getState().spawnMob(cx + 0.4, cz + 0.4, 'zombie', ground);
       const added = window.__craftyTest.call('readMobs').filter((m) => !before.has(m.id));
-      if (added.length !== 1) return { id: null };
-      const id = added[0].id;
-      const frame = () => new Promise((r) => requestAnimationFrame(r));
-      const samples = [];
-      const t0 = performance.now();
-      while (performance.now() - t0 < 10000) {
-        await frame();
-        const m = window.__craftyTest.call('readMobs').find((e) => e.id === id);
-        if (!m) break;
-        samples.push({ x: m.x, y: m.y, z: m.z });
-      }
-      return { id, samples };
+      if (added.length !== 1) return null;
+      const rec = { id: added[0].id, samples: [], gone: false, stop: false };
+      window.__mobFloorRec = rec;
+      const tick = () => {
+        if (rec.stop) return;
+        const m = window.__craftyTest.call('readMobs').find((e) => e.id === rec.id);
+        if (!m) { rec.gone = true; return; }
+        rec.samples.push({ x: m.x, y: m.y, z: m.z });
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      return rec.id;
     }, { cx: site.cx, cz: site.cz, ground });
-    expect(run.id, 'spawnMob did not add exactly one mob').not.toBeNull();
-    // Samples are per RENDERED frame, and a loaded runner renders few (3 frames in 4 s at load 13, locally). So the
-    // denominator is not a frame count: it is the samples taken AFTER a worker reply moved the zombie — the snap
-    // runs on every reply, so from that sample on the zombie's y is the snap's answer — while still under the roof.
-    const first = run.samples[0], last = run.samples[run.samples.length - 1];
-    const colOf = (m) => `${Math.floor(m.x + 0.1) - site.cx},${Math.floor(m.z + 0.1) - site.cz}`;
-    const replied = run.samples.findIndex((m) => Math.hypot(m.x - first.x, m.z - first.z) > 0.01);
-    expect(replied, `the zombie never moved in ${run.samples.length} frames — no worker reply was applied, so no snap ran`).toBeGreaterThan(0);
-    const under = run.samples.slice(replied).filter((m) => site.grounds[colOf(m)] !== undefined);
-    expect(under.length, `only ${under.length} post-reply samples under the roof, of ${run.samples.length} frames ` +
-      `(first ${colOf(first)} y ${first.y.toFixed(2)}, last ${colOf(last)} y ${last.y.toFixed(2)}, ground ${ground})`).toBeGreaterThanOrEqual(2);
+    expect(id, 'spawnMob did not add exactly one mob').not.toBeNull();
+    // HOW LONG: at least the old 10 s, then on until 2 post-reply samples under the roof exist, the zombie is gone, or
+    // 60 s have passed (_floorSamples.js watchUntilEvidence: the loop is there, so the gate drives it). A flat 10 s held
+    // 1-2 samples on CI, where the page ran at most one requestAnimationFrame callback in the ~10 s after the spawn.
+    let watch;
+    try {
+      watch = await watchUntilEvidence({
+        read: () => page.evaluate(() => ({ samples: window.__mobFloorRec.samples, gone: window.__mobFloorRec.gone })),
+        now: () => Date.now(),
+        sleep: (ms) => page.waitForTimeout(ms),
+        site,
+      });
+    } finally {
+      await page.evaluate(() => { window.__mobFloorRec.stop = true; }).catch(() => {}); // a closed page has no recorder to stop
+    }
+    const { rec, elapsedMs } = watch;
+    const watched = `${rec.samples.length} frames in ${elapsedMs} ms${rec.gone ? ', then the zombie was gone' : ''}`;
+    // Samples are per requestAnimationFrame callback, and a loaded runner runs few. So the denominator is not a frame count: it is the
+    // samples taken AFTER a worker reply moved the zombie — the snap runs on every reply, so from that sample on the
+    // zombie's y is the snap's answer — while still under the roof.
+    const first = rec.samples[0], last = rec.samples[rec.samples.length - 1];
+    const { replied, under } = floorEvidence(rec.samples, site);
+    expect(replied, `the zombie never moved in ${watched} — no worker reply was applied, so no snap ran`).toBeGreaterThan(0);
+    expect(under.length, `only ${under.length} post-reply samples under the roof, of ${watched} ` +
+      `(first ${colOf(first, site)} y ${first.y.toFixed(2)}, last ${colOf(last, site)} y ${last.y.toFixed(2)}, ground ${ground})`)
+      .toBeGreaterThanOrEqual(MIN_UNDER);
     // Above its column's own ground by more than a block = it was put on something; the roof is the only thing.
-    const lifted = under.filter((m) => m.y > site.grounds[colOf(m)] + 1.6);
+    const lifted = under.filter((m) => m.y > site.grounds[colOf(m, site)] + 1.6);
     const worst = lifted[0];
     expect(lifted.length, `the zombie stood ON the roof in ${lifted.length} of ${under.length} samples` +
-      (worst ? ` (y ${worst.y.toFixed(2)} over ground ${site.grounds[colOf(worst)]}, roof top ${roofY + 1})` : '')).toBe(0);
+      (worst ? ` (y ${worst.y.toFixed(2)} over ground ${site.grounds[colOf(worst, site)]}, roof top ${roofY + 1})` : '')).toBe(0);
   });
 });

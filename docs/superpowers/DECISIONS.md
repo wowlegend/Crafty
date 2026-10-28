@@ -90,6 +90,18 @@
    on re-reading; a fresh whole-project assessment (2026-10-28) ranks what to delete, rewrite and keep; and the
    harness is shaped so a stronger model can take over cold and move faster (state on disk, small surfaces, generated
    facts, no ceremony that only a weaker model needed).
+15. **The public face, tests and comments (Kevin, 2026-10-28: "you decide").** (a) **No GitHub Pages site for now.**
+   Kevin meant the repo's own face; the live game on Vercel is the showcase, and a second website is a second surface to
+   keep current. The effort goes to the README (a hero clip captured from the real game, a short honest description, how
+   to play, the architecture in brief, no emoji markers, no number that can rot unless generated), the About line,
+   topics, labels, issue templates and the social preview image. Revisit only if a devlog earns its keep. (b) **Tests
+   are in scope like everything else.** Keep a test when it checks behaviour and has shown it can fail on the defect it
+   guards; delete or merge tests that pin implementation, source-grep gates and duplicates. (c) **Comments are
+   minimal.** A comment says WHY, and only when the code cannot: a non-obvious constraint, an external fact (a library
+   quirk with its version and line), a safety or ordering invariant. No history, review narrative, round numbers or
+   mutation receipts in code: git and this file hold history, and `Mutation-Proof:` commit trailers hold receipts. So
+   the killability-ledger gate, which demands a receipt literal in every check file, retires with the comment pass. The
+   pass runs as its own wave after the in-flight lanes land, directory by directory, keeping every load-bearing fact.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 

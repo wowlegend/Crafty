@@ -17,7 +17,14 @@ import { frameElapsed } from '../devtest/captureClock.js';
 import { realDelta } from '../game/worldClock.js';
 import { resetShadowForConfig } from './shadowReset.js';
 import { registerTestHook } from '../devtest/testBridge.js';
+import { createShadowSchedule, shadowDue, shadowWorldEpoch } from './shadowSchedule.js';
+import { ecs, mobsQuery, alliesQuery } from '../ecs/world';
 import { FLASH_COLOR, hemiWithFlash } from '../game/lightning.js';
+
+// The shadow's DYNAMIC CASTERS that live in the ECS (render/shadowSchedule.js): mobs and villagers, squad allies, and the
+// loot and XP pickups (pickupVfx casts). The same component sets the systems use; miniplex reuses a query per key.
+const lootQuery = ecs.with('isLootDrop', 'position');
+const orbQuery = ecs.with('isXPOrb', 'position');
 
 // The lightning flash's colour in the working (linear) space, parsed once.
 const _flashColor = new THREE.Color(FLASH_COLOR);
@@ -182,14 +189,27 @@ export function Atmosphere({ shadowConfig }) {
   useLayoutEffect(() => {
     resetShadowForConfig(sunRef.current?.shadow);
   }, [mapW, mapH, cam.left, cam.right, cam.top, cam.bottom, cam.near, cam.far]);
+  // THE SHADOW RENDERS ON DEMAND (render/shadowSchedule.js; plan 2026-10-27-crafty-steady-cool item h): three skips a
+  // light whose shadow.autoUpdate and needsUpdate are both false; the useFrame below sets needsUpdate when one is due.
+  const shadowSched = useMemo(createShadowSchedule, []);
+  const shadowCamAt = useMemo(() => new THREE.Matrix4(), []); // the camera when the shadow last rendered
+  const sunUnit = useMemo(() => [0, 0, 0], []);
+  useLayoutEffect(() => {
+    const sh = sunRef.current?.shadow;
+    if (!sh) return;
+    sh.autoUpdate = false;
+    sh.needsUpdate = true;
+  }, []);
   // DEV-only: the live shadow target's real size, for the tier-change e2e (the bridge is tree-shaken in prod).
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     registerTestHook('readSunShadow', () => {
       const sh = sunRef.current?.shadow;
-      return sh ? { mapSize: [sh.mapSize.x, sh.mapSize.y], map: sh.map ? [sh.map.width, sh.map.height] : null } : null;
+      return sh
+        ? { mapSize: [sh.mapSize.x, sh.mapSize.y], map: sh.map ? [sh.map.width, sh.map.height] : null, autoUpdate: sh.autoUpdate, renders: shadowSched.renders }
+        : null;
     });
-  }, []);
+  }, [shadowSched]);
   // The light's aim point. A directional light with no `target` aims at the world ORIGIN, which is
   // exactly how the shadowed region ended up pinned to spawn. three.js only updates a target's
   // matrixWorld if it is in the scene graph, so it is added here rather than just assigned.
@@ -308,6 +328,24 @@ export function Atmosphere({ shadowConfig }) {
       // THE ONE PLACE the sun's position is written. Mood owns the direction, player owns the centre.
       const sp = sunWorldPosition(shadowCentreRef.current, m.sunPos);
       sunRef.current.position.set(sp.x, sp.y, sp.z);
+      // SHADOW ON DEMAND. Capture renders it every frame, as before (the oracle is not this change's to move). In play,
+      // a dynamic caster is: the camera moved since the last shadow render (the player's own hands cast), any ECS mob,
+      // villager, ally or pickup, the boss, the beast form, or a held phantom block. Transient reads only.
+      const sh = sunRef.current.shadow;
+      if (cap) {
+        sh.needsUpdate = true;
+      } else {
+        const p = m.sunPos, len = Math.hypot(p[0], p[1], p[2]) || 1;
+        sunUnit[0] = p[0] / len; sunUnit[1] = p[1] / len; sunUnit[2] = p[2] / len;
+        const dynamic = !camera.matrixWorld.equals(shadowCamAt)
+          || mobsQuery.entities.length > 0 || alliesQuery.entities.length > 0
+          || lootQuery.entities.length > 0 || orbQuery.entities.length > 0
+          || !!st.bossActive || !!st.beastFormActive || !!st.voidhandHeld;
+        if (shadowDue(shadowSched, { now: performance.now(), sunDir: sunUnit, centre: shadowCentreRef.current, worldEpoch: shadowWorldEpoch(), dynamic })) {
+          sh.needsUpdate = true;
+          shadowCamAt.copy(camera.matrixWorld);
+        }
+      }
     }
     if (fillRef.current) {
       fillRef.current.color.copy(m.fill);
