@@ -1,13 +1,5 @@
 // windupChevrons.test.js — which windups the player cannot see, and where their chevrons sit (combat-stance Task 6).
 // Plan: docs/superpowers/plans/2026-10-27-crafty-combat-stance.md, Task 6.
-//
-// Mutation-Proof: scripts/dev/mutate.sh on src/game/windupChevrons.js, 11 tests, 2026-10-27. RED: C6a the off-screen
-//   predicate negated; C6b the |y| term dropped (only the steep-pitch test catches it, as designed); C6c the sort
-//   dropped; C6d the bottom inset ignored; C6e the range measured flat (no dy); C6f the range test strict (<);
-//   C6g the x margin dropped; C6h the stagger check dropped; C6i windupUntil >= now; C6j the ramp over 2x WINDUP_MS;
-//   C6k the sort reversed; C6l the cap keeps the LATEST four; C6m the ray from the frame's centre, not the screen's;
-//   C6n rotDeg negated; C6o the yaw ignored; C6p screen y flipped; C6q the far boundary instead of the near;
-//   C6r the hostile check dropped. C6z (a comment edit, the identity mutant) SURVIVED.
 import { describe, it, expect } from 'vitest';
 import {
   offscreenWindups, chevronPlacement, touchBottomInsetPx,
@@ -87,7 +79,7 @@ describe('offscreenWindups', () => {
     expect(offscreenWindups([mob({ z: -2, y: -2.4 })], PLAYER, 0, pinhole(0), NOW, out)).toBe(1);
   });
 
-  it('a windup ahead but above the frustum is off screen (Review Focus 4)', () => {
+  it('a windup ahead but above the frustum is off screen', () => {
     // A steep pitch: the mob is horizontally dead ahead, yet the camera's projection puts it above the view.
     const ahead = mob({ z: -2.5 });
     const out = pool();

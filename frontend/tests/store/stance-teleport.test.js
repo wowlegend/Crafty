@@ -3,17 +3,12 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { stanceFrame, getStance, resetStance } from '../../src/game/combatStance.js';
 
-// A SAVE LOAD LEAVES THE FIGHT BEHIND (round-1 review f, combat-stance). loadWorldData teleports the live body to the
-// save's position; it used to keep the stance, so the walk at the loaded site was clamped against the old fight's
-// threat for up to 2.6 s with no mob near. It now teleports through game/combatStance.js teleportPlayer, which resets
-// the stance. This drives the REAL store action with a fake body (it records what it was asked to do).
-// The void-fall guard is the helper's other caller (Components.jsx); that call site is not driven here.
-//
-// Mutation-Proof: scripts/dev/mutate.sh on src/store/useGameStore.jsx, 1 test, each against a green baseline:
-//   T1 the load teleports with rb.current.setTranslation directly again (the stance kept) -> RED
-//   T0 identity (a comment edit) -> SURVIVED
-//   T2s src/game/combatStance.js: teleportPlayer keeps the stance -> RED (here, and in src/game/combatStance.test.js,
-//   which also kills T3, the body never stopped).
+// A SAVE LOAD LEAVES THE FIGHT BEHIND. loadWorldData teleports the live body to the save's position through
+// game/stanceState.js teleportPlayer, which resets the stance: kept, the walk at the loaded site would be clamped
+// against the old fight's threat for up to 2.6 s with no mob near. This drives the REAL store action with a fake body
+// (it records what it was asked to do), and reads the stance before any frame, so stanceFrame's own teleport check
+// cannot stand in for the store's reset. The void-fall guard is the helper's other caller (Components.jsx); that call
+// site is not driven here.
 
 afterEach(() => {
   resetStance();

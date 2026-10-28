@@ -3,8 +3,8 @@ import { chevronPlacement, touchBottomInsetPx } from '../../src/game/windupChevr
 import { VIEWPORTS } from './_touchViewports.js';
 
 /**
- * THE WINDUP CHEVRON SITS ON A VALID EDGE BAND IN EVERY VIEWPORT WE SUPPORT, AND AT EVERY HEIGHT (round-1 review a,
- * combat-stance; plan docs/superpowers/plans/2026-10-27-crafty-combat-stance.md, Task 6).
+ * THE WINDUP CHEVRON SITS ON A VALID EDGE BAND IN EVERY VIEWPORT WE SUPPORT, AND AT EVERY HEIGHT (plan
+ * docs/superpowers/plans/2026-10-27-crafty-combat-stance.md, Task 6).
  *
  * WHY. The frame a chevron rides is the safe-area container inset by the HUD: 120 px at the top, 96 at the sides, and
  * on touch round(0.11 h) + 170 at the bottom (the joystick and the action cluster). That bottom inset exceeds half the
@@ -27,14 +27,6 @@ import { VIEWPORTS } from './_touchViewports.js';
  * the bands the frame gives way into, so on a landscape phone a chevron near a lower corner can sit over (beneath,
  * z 38 under the overlay's 40, pointer-events none) the joystick or the action cluster. The crosshair is the one
  * place it may never be. On an iPad the chevrons clearing every control is tests/e2e/combat-touch.spec.js case 3.
- *
- * Mutation-Proof: scripts/dev/mutate.sh on src/game/windupChevrons.js, 4 tests, each against a green baseline:
- *   M1 the shipped frame (no centre clearance at the top or the bottom) -> RED (the review's crosshair placement)
- *   M2 plausible-wrong: the bottom edge held only at the centre (`cy`, no clearance) -> RED
- *   M3 plausible-wrong: CENTRE_CLEAR_PX 30 -> RED
- *   M4 the top clearance dropped (a 120 px top inset at any height) -> RED (heights under 360)
- *   M5 plausible-wrong: the bottom edge one pixel high where the plan's inset fits -> RED (the no-regression case)
- *   M0 identity (a comment edit) -> SURVIVED
  */
 
 const SIDE = 96, TOP = 120, CLEAR = 60, HALF_BOX = 15, ANGLES = 360;

@@ -92,7 +92,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
  *                   homogeneous, so scaling the caps by walkMult equals applying the walk slow AFTER the clamp while
  *                   the input path stays exactly today's.
  *   gapM, dtS       the horizontal distance from the threat to the point the frame's step starts from, and the
- *                   frame's seconds: THE STEP BOUND (round-1 review b). Within a frame the body moves in a straight
+ *                   frame's seconds: THE STEP BOUND. Within a frame the body moves in a straight
  *                   line, so a tangential step L at gap g ends sqrt(g² + L²) - g further out, a leak of about
  *                   t² dt / 2g m/s on top of the clamped retreat, which grows with the frame interval (3.4 m/s at a
  *                   400 ms frame at 2.5 m, against a husk that closes at 3.0). When the step would end further than
@@ -101,7 +101,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
  *                   further from the threat than the retreat cap allows, at any frame interval; a pure retreat is
  *                   untouched, and at 60 fps the cost is a few cm/s of strafe. gapM 0 (unknown) skips the bound. The
  *                   ramp after it can still lean the velocity away from the threat when the target turns, so stanceWalk
- *                   holds the same bound again on what the ramp returns (holdStepBound, round-2 review); the limits of
+ *                   holds the same bound again on what the ramp returns (holdStepBound); the limits of
  *                   what either proves are the seam's KNOWN LIMITS below.
  *
  * w === 0 returns (vx, vz) untouched, so out of combat the identity is exact rather than a float coincidence.
@@ -198,7 +198,7 @@ const _sweep = (a, id) => { if (a.seen !== _tag) _anchors.delete(id); };
  *           the point AIWorkerSystem posts to the worker, so a mob counted as able to reach you is one the worker would
  *           let swing (the plan's height-reference deviation). x and z are the body this frame, the point the frame's
  *           step starts from (stanceFrame builds it): the away vector and `gap` must be measured from there, not from
- *           the camera, which trails the body by about 1.2 frames (round-1 review b).
+ *           the camera, which trails the body by about 1.2 frames.
  *   nowMs   the WORLD clock (game/worldClock.js worldNow): the calm and the stall clocks measure the fight, and a
  *           pause or a hitstop holds the fight, so neither may spend them.
  *   dtS     the frame's seconds, for the blend: the controller's capped step (game/frameStep.js), 0 while the world
@@ -281,8 +281,8 @@ export function getStance() {
 // The controller's own record of the frame's movement command (Task 5): `raw` is moveVector's output, `target` what
 // the stance handed rampVelocity, `applied` what stanceWalk returns (the ramp's output with the step bound held on it),
 // which is the planar velocity the KCC is fed (before knockback and hitstop), and `frame` the stance frame it belongs
-// to. Read by the DEV hook readMoveTarget. Round-1 review c: the e2e judged only `target`, so a bypass placed AFTER the
-// record (the ramp fed the raw move) passed every frame-rate-independent assertion; it judges `applied` now. The record
+// to. Read by the DEV hook readMoveTarget. The e2e judges `applied`: judged on `target` alone, a bypass placed AFTER the
+// record (the ramp fed the raw move) would pass every frame-rate-independent assertion. The record
 // is written INSIDE stanceWalk, so a bypass placed after stanceWalk returns, in Components.jsx, is not in it (the seam's
 // known limit 2). Number writes into one object; no allocation.
 const _moveTarget = { rawX: 0, rawZ: 0, targetX: 0, targetZ: 0, appliedX: 0, appliedZ: 0, w: 0, frame: 0 };
@@ -295,7 +295,7 @@ export function noteMoveTarget(rawX, rawZ, targetX, targetZ, appliedX, appliedZ,
   _moveTarget.w = w; _moveTarget.frame = _state.frame;
 }
 
-// ---- The controller's seam (round-1 review c) ---------------------------------------------------------------------
+// ---- The controller's seam ----------------------------------------------------------------------------------------
 // Everything between the Player controller's inputs and the planar velocity it hands the KCC runs through these two,
 // so a unit test drives what that wiring DOES WITH ITS ARGUMENTS, which only the e2e could see before: the point the
 // stance measures from, the order of the form and walk multipliers, that the ramp is fed the clamped target, and that

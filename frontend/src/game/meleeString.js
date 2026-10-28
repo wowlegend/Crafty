@@ -141,10 +141,10 @@ export function endString(now = 0) {
  *   form         a beast form is active
  *   bufferedStep a press the string buffered earlier: it has been through the string already, so it skips the rest
  *   heavyHeld    a heavy is charging (heavyAttack.isHeavyHeld): the arm is drawn back, no light swing
- *   refused      heavyAttack.meleeRefusal's verdict for a heavy or a form's swing, which keep their own cooldown
+ *   refused      heavyAttack.meleeRefusal's verdict for a form's swing, which keeps its own cooldown
  * A heavy or a form's swing ENDS THE STRING AT `now`, holding the next light swing SWING_COOLDOWN_MS, because the light
- * path consults only the string's readyAt. Round-1 review g: a form's swing stamped only the controller's
- * lastAttackTime, so the first human light swing after a form ended could land inside the 300 ms cooldown.
+ * path consults only the string's readyAt: a form's swing that stamped only the controller's lastAttackTime would let
+ * the first human light swing after a form ended land inside the 300 ms cooldown.
  * @returns {number} the string step (1-3) of a light swing, 0 for a heavy or a form's swing, -1 for no swing
  */
 export function gateSwing(now, { heavy = false, form = false, bufferedStep = 0, heavyHeld = false, refused = null } = {}) {

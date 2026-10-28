@@ -32,9 +32,9 @@ export function touchBottomInsetPx(h) {
 }
 /**
  * Every edge of the frame stays at least this far (px) from the screen centre, where the crosshair and the imbue tell
- * sit. Round-1 review a: on touch the bottom inset exceeds half the height below about 436 px (every landscape iPhone),
- * so the frame's bottom edge rose above the centre and a windup behind the player drew its chevron ON the crosshair.
- * Where the insets do not fit, the frame now gives way toward the HUD and the controls, never toward the centre.
+ * sit. On touch the bottom inset exceeds half the height below about 436 px (every landscape iPhone), so without this
+ * the frame's bottom edge rises above the centre and a windup behind the player draws its chevron ON the crosshair.
+ * Where the insets do not fit, the frame gives way toward the HUD and the controls, never toward the centre.
  */
 export const CENTRE_CLEAR_PX = 60;
 

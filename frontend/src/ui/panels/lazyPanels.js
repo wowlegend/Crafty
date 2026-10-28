@@ -38,8 +38,8 @@ export function onceRetrying(load) {
  * Every error it sees is a LOAD failure: a panel that suspended on mount is re-mounted on the loaded path once the
  * chunk resolves, so a render bug never meets this boundary (pinned in lazy-panels-render-gates).
  *
- * Exported for the HUD's one other lazy chunk, the windup chevrons (HUD.jsx WindupChevronsSlot, round-1 review e):
- * there it takes no props, and a failed fetch drops the chevrons for the session instead of the game.
+ * Exported for the HUD's one other lazy chunk, the windup chevrons (HUD.jsx WindupChevronsSlot): there a failed fetch
+ * drops the chevrons instead of the game, and the slot asks again a bounded number of times.
  */
 export class PanelBoundary extends Component {
   state = { failed: false };

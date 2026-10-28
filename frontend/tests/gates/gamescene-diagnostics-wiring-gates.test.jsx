@@ -25,15 +25,8 @@ import { render, cleanup, act } from '@testing-library/react';
  *   G7 showStats ignored (FrameStats always mounted) -> "mounts the readout only with Show Stats on"
  *   I0 identity (a comment edit in GameScene.jsx) SURVIVED.
  *
- * THE MERGE SEAM (merge of main into feat/combat-stance, 2026-10-28). main moved the listeners into glDiagnostics and
- * steady-cool gave them a recovery (game/contextRecovery.js): a loss releases a locked pointer, and a restore clears
- * the loss only once three has drawn. The two met in onCreated; the first test pins that both still act. Receipts, via
- * scripts/dev/mutate.sh, 4 tests each, every RED against a green baseline:
- *   S1 GameScene passes no handlers (main's plain flag writes) -> "attaches the context-loss listener" (cleared at once)
- *   S2 plausible-wrong: glDiagnostics ignores handlers.restored -> the same test
- *   S3 glDiagnostics ignores handlers.lost -> the same test (the pointer is never released)
- *   S4 plausible-wrong: GameScene's restored handler clears the flag itself -> the same test
- *   S5 identity (a comment edit in glDiagnostics.js) SURVIVED.
+ * THE SEAM IN onCreated: glDiagnostics owns the listeners and game/contextRecovery.js the recovery (a loss releases a
+ * locked pointer, and a restore clears the loss only once three has drawn); the first test pins that both still act.
  *
  * BLIND SPOT: the Canvas is a stub, so that R3F really calls onCreated once with the live WebGLRenderer, and that a real
  * GPU context loss reaches the canvas, is the e2e's (tests/e2e/lookbook-seam.spec.js: WEBGL_lose_context on the live

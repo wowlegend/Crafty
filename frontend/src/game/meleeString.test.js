@@ -1,22 +1,7 @@
 // meleeString.test.js — the light attack's three-step string (combat-stance Task 8).
 // Plan: docs/superpowers/plans/2026-10-27-crafty-combat-stance.md, Task 8.
 //
-// Mutation-Proof: scripts/dev/mutate.sh on src/game/meleeString.js, 15 tests, 2026-10-27. RED: S8a the window check
-//   dropped; S8b cancelIntoDodge resets the step; S8c BUFFER_MS 0; S8d the finisher keeps `last`; S8e the open-window
-//   guard dropped; S8f endString(now) ignores now; S8g peekStep fires; S8h the buffer edge strict; S8i a second buffer
-//   allowed; S8j the buffered fire 1 ms early; S8k a buffer taken twice; S8l no finisher recovery; S8m one walk mult;
-//   S8n the dodge keeps the walk slow; S8o endString keeps the buffer; S8p step 2 sweeps the same way; S8q step 2 a
-//   finisher; S8r the window edge strict; S8u a 110 degree finisher arc. S80 (a comment edit, the identity mutant)
-//   SURVIVED. S8s / S8t (a buffered press's step read at the press, not at readyAt) SURVIVED and are EQUIVALENT: a fire
-//   sets the window 650 ms past a cooldown of at most 500, and only endString pushes readyAt past the window, which
-//   zeroes `last`, so the two reads give the same step in every reachable state.
-//   Round-1 review pins (2026-10-28, 17 tests): W3 a dodge inside an open window sets it to never expire -> RED; W5 a
-//   dropped press extends the window -> RED; W0 identity (a comment edit) -> survived. W3 was REPRODUCED against the
-//   lane's code first: a press 700 ms after the dodge fires step 1, so the game does not do it; the case pins that.
-//   Round-1 review g, gateSwing (19 tests): G1 a form's swing does not end the string (the shipped behaviour) -> RED;
-//   G2 it ends the string without a cooldown -> RED; G3 a refusal ignored -> RED; G4 a charging heavy ignored -> RED; G5
-//   a buffered step pressed through the string again -> RED; G6 a buffered press fires at once -> RED; G0 identity ->
-//   survived. The controller's call site (Components.jsx) is one call with named fields; it is not driven here.
+// The controller's call site of gateSwing (Components.jsx) is one call with named fields; it is not driven here.
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   pressSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, gateSwing,
@@ -116,8 +101,7 @@ describe('the light string', () => {
     expect(takeBufferedSwing(1300)).toBe(0);
   });
 
-  // Round-1 review (dynamic, W3): the case above presses INSIDE the restarted window, so a dodge that made an open
-  // window never expire passed it. The restart is one window long, from the dodge.
+  // The case above presses INSIDE the restarted window, so a dodge that made an open window never expire would pass it. The restart is one window long, from the dodge.
   it('a dodge inside an open window restarts it once: past its own STRING_WINDOW_MS the string lapses', () => {
     fires(1000, 1350); // window to 2000
     cancelIntoDodge(1800); // window to 2450
@@ -125,7 +109,7 @@ describe('the light string', () => {
     expect(pressSwing(2500)).toEqual({ action: 'fire', step: 1 });
   });
 
-  // Round-1 review (dynamic, W5): a press that drops changes nothing, the window included.
+  // A press that drops changes nothing, the window included.
   it('a dropped press leaves the window where it was', () => {
     expect(pressSwing(1000)).toEqual({ action: 'fire', step: 1 }); // window to 1650
     expect(pressSwing(1050)).toEqual({ action: 'drop', step: 0 }); // 250 ms of cooldown left: more than BUFFER_MS
@@ -139,7 +123,7 @@ describe('the light string', () => {
     expect(pressSwing(4100)).toEqual({ action: 'fire', step: 1 });
   });
 
-  it('endString drops a buffered press (Review Focus 5)', () => {
+  it('endString drops a buffered press', () => {
     pressSwing(1000);
     expect(pressSwing(1150).action).toBe('buffer');
     endString();
@@ -226,9 +210,9 @@ describe('the light string', () => {
   });
 });
 
-// Round-1 review g: the controller's press gate (Components.jsx triggerMeleeAttack), as gateSwing. A beast form's swing
-// stamped only the controller's lastAttackTime and never the string, so the first human light swing after a form ended
-// fired at once, inside the old 300 ms cooldown.
+// The controller's press gate (Components.jsx triggerMeleeAttack), as gateSwing. A beast form's swing that stamped only
+// the controller's lastAttackTime and never the string would let the first human light swing after a form ended fire
+// at once, inside the 300 ms cooldown.
 describe('gateSwing — the press gate of triggerMeleeAttack', () => {
   it('after a beast form\'s swing the next human light swing waits SWING_COOLDOWN_MS, as after a heavy', () => {
     expect(gateSwing(1000, { form: true })).toBe(0);

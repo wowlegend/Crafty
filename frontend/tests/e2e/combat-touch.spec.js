@@ -13,7 +13,7 @@ import { bootDev, startPlayActive } from './_boot.js';
 //      (the direction rebuilt from the positions that frame used, the cap a LITERAL, as in combat-stance.spec.js).
 //   1b JOYSTICK FORWARD WITH THE THREAT BEHIND. A zombie 5 m behind, the stick pushed UP (moveF): the same. As on
 //      desktop, a down-stick against a threat ahead cannot tell the away-from-threat clamp from a camera-backward or a
-//      moveB-gated one (plan review finding 1), so this is the case that sees U4.
+//      moveB-gated one, so this is the case that sees U4.
 //   2  THREE TAPS MAKE A FINISHER. A frozen world, a moss brute 2.2 m ahead and a zombie 2 m at 60 degrees off-axis,
 //      three taps on the action button: the third deals 1.5x and only it reaches the zombie. Gaps are judged on the
 //      measured pointerdown times (SETUP outside [100, 650] ms), as in melee-string.spec.js. A REAL CDP tap first
@@ -45,16 +45,13 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   U4 src/Components.jsx          the stance applied only when input.moveB: the stanceWalk call is handed
 //                                  `input.moveB ? stance : { w: 0, awayX: 0, awayZ: 0, gap: 0 }`              -> case 1b
 //   U0 src/game/windupChevrons.js  a comment edit (identity)                                    -> must SURVIVE
-// U2 and U4 RE-ANCHORED (round-2 review, 2026-10-28): 446099f4 moved the light-path guard into game/meleeString.js
-// gateSwing (its `form` is Components' `!!beastEl`), and a1899d12 moved the stance call into game/combatStance.js
-// stanceWalk, which never sees the keys (it takes moveVector's output). A key-gated stance can only be written where the
-// keys are, so U4 gates the stance at the stanceWalk call in Components.jsx; `input.moveB` inside stanceWalk would be a
-// ReferenceError, a crash and not the plausible-wrong mutant this case exists for.
-// Round-1 review c (2026-10-28): case 1 and 1b also judge `applied`, the velocity the ramp fed the body, from SETTLE_MS
-// on, sampling past the catch until then. The stance's clamp lives in src/game/combatStance.js stanceWalk, which
-// src/game/combatStance.test.js drives directly. The joystick case passed locally on a throwaway config (2026-10-28);
-// its first local run, with a 300 ms settle and the old stop-at-the-catch, read SETUP (a husk already adjacent at the
-// first sample), which is why both changed. No touch mutant was run here: the U batch is still OWED.
+// U2 and U4 are written where the code lives: the light-path guard is game/meleeString.js gateSwing (its `form` is
+// Components' `!!beastEl`), and stanceWalk never sees the keys (it takes moveVector's output). A key-gated stance can
+// only be written where the keys are, so U4 gates the stance at the stanceWalk call in Components.jsx; `input.moveB`
+// inside stanceWalk would be a ReferenceError, a crash and not the plausible-wrong mutant this case exists for.
+// Case 1 and 1b also judge `applied`, the velocity the ramp fed the body, from SETTLE_MS on, sampling past the catch
+// until then: a longer settle that stopped at the catch found the husk already adjacent at the first sample. The
+// stance's clamp lives in src/game/combatStance.js stanceWalk, which src/game/combatStance.test.js drives directly.
 
 const IPAD = devices['iPad Pro 11 landscape'];
 test.use({ viewport: IPAD.viewport, userAgent: IPAD.userAgent, isMobile: IPAD.isMobile, hasTouch: IPAD.hasTouch, deviceScaleFactor: 1 });
@@ -62,7 +59,7 @@ test.use({ viewport: IPAD.viewport, userAgent: IPAD.userAgent, isMobile: IPAD.is
 const RETREAT = 2.0; // LITERALS: the yardstick must not move with the subject
 const EPS = 1e-6;
 // The applied velocity (readMoveTarget's `applied`, what the ramp fed the body) is judged from SETTLE_MS of sampling on,
-// within APPLIED_TOL: combat-stance.spec.js's numbers and reasons (round-1 review c). Sampling starts after the stick is
+// within APPLIED_TOL: combat-stance.spec.js's numbers and reasons. Sampling starts after the stick is
 // down, so the ramp has had at least that long.
 const SETTLE_MS = 120;
 const APPLIED_TOL = 0.1;

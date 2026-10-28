@@ -7,28 +7,14 @@
 // player still at the origin, and measures how far the mob actually moved.
 //
 // The expected step values are LITERALS on purpose. Computed from chaseSpeedMult, they would move with a mutant of
-// it, and K1 below could never go RED (the plan's review finding 7).
+// it, and a wrong multiplier could never turn them red; as literals they also prove the worker READS the shared
+// function (a worker keeping its own spider multiplier would step the literal under a mutant of it).
 //
 // WHAT THIS DOES NOT CHECK: terrain. heightGrid is null, so no wall, slope or A* detour enters the step; a mob
 // parked by a wall (ai.worker.js clampMove) is the stance's stall rule's business, unit-proven in
-// src/game/combatStance.test.js.
-//
-// Mutation-Proof: (scripts/dev/mutate.sh, observed 2026-10-27, subject src/game/mobMovement.js) K1 the aggro
-// spider `? 2.0 :` -> `? 1.5 :` in chaseSpeedMult -> RED, the worker stepped the spider 0.45 against the literal
-// 0.6, which proves the worker READS the shared function (a worker keeping its own 2.0 would step 0.6 and the
-// mutant would survive); K1b the other-aggro `: 1.5;` -> `: 1.25;` -> RED (zombie step 2.0 x 1.25 x 0.1 vs 0.3);
-// K0 identity (a comment edit) -> survived. NOT killed here, by design: K1c (the calm multiplier), which only
-// src/game/mobMovement.test.js sees, because every mob in this file is aggro'd.
-// Task 2 (subject src/game/combatStance.js): S2a the slowest pick `Math.min` -> `Math.max` -> RED (retreat 5.0, no
-// pursuer closes 1 m/s on it); S2b the NON_PURSUERS skeleton entry deleted -> RED on the pursuer count, which reads
-// 7 against 6 (observed in the clean re-run: that assertion runs first, so closingOver('skeleton', 10, 10), which
-// would throw 'empty denominator' on an archer standing in its 8-12 m band, is never reached; the skeleton does NOT
-// become the slowest pursuer, its formula speed is 3.75 against the husk's 3.0); S2c
-// `chaseSpeedMult(type, true)` -> `1` -> the module throws RETREAT_FLOOR at load, so this file fails to import
-// (observed by hand; mutate.sh scores it COULD NOT CHECK, 0 collected); S0 identity -> survived. SURVIVE here by
-// design, killed in src/game/combatStance.test.js: S2d (the floor throw disabled: today's roster never reaches the
-// floor, so only a synthetic slower pursuer can) and S2c2 (the spider's 2.0 lost in the derivation: it moves only
-// the strafe cap, which nothing here measures).
+// src/game/combatStance.test.js. The calm multiplier: every mob here is aggro'd (src/game/mobMovement.test.js has
+// it). The RETREAT_FLOOR throw and the strafe cap: today's roster never reaches the floor and nothing here measures
+// the strafe (src/game/combatStance.test.js has both).
 import { describe, it, expect, beforeAll } from 'vitest';
 import { buildMobPayload, applyMobUpdate } from '../../src/game/mobStateSync.js';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';

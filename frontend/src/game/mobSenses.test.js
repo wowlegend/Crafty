@@ -92,8 +92,6 @@ describe('canReach — building finally does something', () => {
 // The combat stance's height reference (plan 2026-10-27-crafty-combat-stance, Task 4's deviation): the worker and the
 // stance read the player from ONE function. That they both CALL it is proven in the running game
 // (tests/e2e/combat-stance.spec.js case 0, the agreement); this pins what it returns — today's worker input, the eye.
-// Mutation-Proof: (mutate.sh, 2026-10-27) M1 returns the body centre `{ ...p, y: p.y - 1.2 }` -> RED; M2 returns a
-// copy `{ x, y, z }` (allocates per frame, and a later write to the camera is not seen) -> RED; identity -> survived.
 describe('mobSensePoint — the one point mobs measure the player from', () => {
   it('is the camera\'s own position object: the eye the worker strikes from, not a copy and not the body', () => {
     const camera = { position: { x: 1, y: 52.1, z: -3 } };

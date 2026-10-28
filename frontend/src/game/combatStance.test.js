@@ -1,65 +1,6 @@
 // combatStance.test.js — the combat stance's numbers and decisions, as pure properties.
 // Plan: docs/superpowers/plans/2026-10-27-crafty-combat-stance.md (Tasks 2-4). What the REAL worker does with the
 // same roster is measured in tests/gates/stance-pursuit-gates.test.js.
-//
-// Mutation-Proof: (scripts/dev/mutate.sh on src/game/combatStance.js unless noted, observed 2026-10-27)
-//   Task 2. S2a `Math.min(...speeds)` -> `Math.max` (retreat from the spider, 5.0) -> RED. S2b the NON_PURSUERS
-//   skeleton entry deleted -> RED (the pursuer count reads 7). S2d the RETREAT_FLOOR throw disabled -> RED (the slug
-//   test). S2c `chaseSpeedMult(type, true)` -> `1` -> mutate.sh COULD NOT CHECK (0 collected): the module itself
-//   throws "retreat 1 m/s (zombie pursues at 2) is under RETREAT_FLOOR 1.5" at load, observed by hand (cp backup,
-//   cmp-verified restore), so the file fails to import. S2c2 the same call -> `1.5` (the spider's 2.0 lost, no throw)
-//   -> RED (strafe 6.2). S0 identity (a comment edit) -> survived.
-//   Task 2, re-run clean on the committed 90863cc6 content (the first run shared this file with a second builder's
-//   mutate.sh): every verdict above reproduced. Added plausible-wrong kills: S2d2 the floor tested against the
-//   pursuit speed, `lo < RETREAT_FLOOR` -> RED (the slug test); S2e strafe from the SLOWEST, `lo + STRAFE_MARGIN`
-//   (3.5) -> RED; S2f `MIN_CLOSING_RATE / 2` (retreat 2.5) -> RED; S2g the margin dropped from the fastest (6.0) -> RED.
-//   Task 3 (stanceVelocity; RED first with "stanceVelocity is not a function", 9 of 15). S3a the retreat clamp dropped
-//   -> RED. S3b the blend weight `1 - w` -> RED. S3c the tangential axis sign-flipped -> SURVIVED, an EQUIVALENT
-//   mutant (the clamp is symmetric in t), not a hole. S3d formMult ignored (absolute strafe/advance) -> RED (keeps
-//   the pace). S3e the retreat scaled by formMult -> RED (form-invariant). S3f the advance clamp dropped -> RED.
-//   S3g the w = 0 early return dropped -> RED (the -0 / non-finite case only: the lerp alone returns finite input).
-//   S3h the no-direction cap dropped -> RED. S3i the no-direction cap at the retreat cap -> RED. S3j the walk slow
-//   not applied to the retreat -> RED. S3k the negative strafe clamp dropped -> RED. S3l a quadratic blend `w * w`
-//   -> RED. S3m the advance cap not scaled by formMult -> RED. S3n identity (a comment edit) -> survived.
-//   Task 4 (stanceStep; RED first with "resetStance is not a function", 15 of 30). Every one RED: S4a the vertical
-//   reach dropped; S4a2 a flat 4 m reach (the first draft); S4a3 the reach one-sided (a mob below passes); S4b
-//   CALM_MS 0; S4s the calm halved; S4c hysteresis removed; S4c2 the switch margin on the wrong side; S4d isAggro
-//   not required; S4e the NON_PURSUERS skip dropped; S4q isHostile dropped; S4f the stall rule dropped; S4g progress
-//   as the fall in the mob-to-player DISTANCE (the player's motion counts); S4h STALL_PROGRESS_M 0.7; S4i the melee
-//   margin dropped; S4i2 a climber's strike reach its melee range (the plan's text) instead of its leap; S4j the stall
-//   clocks scoped to range (the plan's text: a flicker restarts them); S4k clocks never dropped; S4l resetStance
-//   keeps the clocks; S4m the enter blend at the exit rate; S4n no zero-direction guard; S4o away negated; S4p a 3D
-//   engage radius; S4r a stale threat kept out of combat. S4z identity (a comment edit) -> survived.
-//   Task 5 (noteMoveTarget/readMoveTarget; RED first with "noteMoveTarget is not a function"). N1 the target slots
-//   written from raw (the e2e's identity case could then never fail) -> RED; N2 the frame never written -> RED; N3 the
-//   stance's w recorded instead of the one the controller passed -> RED; N4 rawZ written from rawX -> RED; N0 identity
-//   -> survived. The wiring itself is proven in the running game: tests/e2e/combat-stance.spec.js.
-//   Round-1 review pins (2026-10-28, 33 tests): A4 the advance capped at the retreat cap -> RED; A3 the total speed
-//   also capped at the strafe cap -> RED; A1 the no-direction cap applied per world axis -> RED; A0 identity (a comment
-//   edit) -> survived.
-//   Round-1 review c/d, the controller's seam (stanceFrame / stanceWalk; 37 tests): C1 the ramp fed the raw move after
-//   the record -> RED; C2 the target recorded as applied -> RED; C3 the form and walk multipliers swapped -> RED; C4 the
-//   height measured 1.2 m under the sense point (review H-b) -> RED; C5 a copy of the stance stepped -> RED; C6 the
-//   stance's output ignored -> RED; C7 the clamped target scaled by 0.9 -> RED; C0 identity -> survived. The record's
-//   N1-N4 receipts above were taken on its five-argument form; the case now checks the applied slots too.
-//   Round-1 review b, the F1 bound over a frame-interval sweep (39 tests). RED FIRST on the shipped code: the player's own
-//   step left the husk at 2.49 m/s (S+D, 8 ms frames) up to 6.57 m/s (400 ms), against the 2.0 cap. Then, each against a
-//   green baseline: B1 the stance point's x/z from the camera again -> RED; B2 the step bound dropped -> RED; B3 the
-//   bound's limit without the walk slow -> RED (the heavy-charge case); B4 the tangential part not pulled in -> RED; B5
-//   stanceWalk passes no gap and no dt -> RED; B6 the limit at half the retreat (a blanket slow) -> RED; B7 the gap
-//   1 m long -> RED; B0 identity -> survived.
-//   Round-1 review f (40 tests): T2 teleportPlayer keeps the stance -> RED; T3 it never stops the body -> RED; the save
-//   load's own call is tests/store/stance-teleport.test.js.
-//   Round-2 review, the bound on the velocity the body is fed (43 tests). RED FIRST on 60665da1: through strafe
-//   reversals the velocity stanceWalk returned left the husk at up to 4.381 m/s (S+D / S+A every 100 ms, 8 ms frames;
-//   4.626 at 150 ms) and 2.483 on a release, 27 of 48 runs over the cap; and the blend-in case read 12.5 for 9.875. Then
-//   holdStepBound, each mutant against a green baseline: R1 the call dropped -> RED; R2 the bound hard at every weight
-//   -> RED; R3 the bound only at w === 1 -> RED; R4 the allowed reach without the target's own (a double blend) -> RED;
-//   R5 the limit without the walk slow -> RED (the heavy reversal); R6 the tangential part not pulled in -> RED; R7 the
-//   record written before the bound -> RED; R8 stanceVelocity re-run on the ramped velocity (the review's suggested
-//   form, which blends twice) -> RED; R9 the bound only while the stick moves -> RED; R10 the hard limit dropped -> RED;
-//   R11 the weight inverted, 1 - w -> RED; R12 the limit 1.5x the retreat cap -> RED; R0 identity (a comment edit) ->
-//   survived.
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { tickWorldClock, isWorldFrozen } from './worldClock.js';
 import { useGameStore } from '../store/useGameStore';
@@ -136,7 +77,7 @@ describe('stanceVelocity — the radial clamp (Task 3)', () => {
     const s = stanceVelocity(0, 14, 1, 0, 1); expect(s.x).toBeCloseTo(0, 12); expect(s.z).toBeCloseTo(6.5, 12);
   });
   // The bounds above are upper bounds only, so absolute caps would pass them. These pin the LOWER side: the clamp keeps
-  // each form's pace and each walk slow instead of flattening them to 6.5 (review finding 5).
+  // each form's pace and each walk slow instead of flattening them to 6.5.
   it('the clamp keeps the pace: a pure strafe comes out at strafe x moveMult x walkMult for every form and walk slow', () => {
     for (const m of FORMS) for (const h of HEAVY) {
       const o = stanceVelocity(0, 14 * m * h, 1, 0, 1, m, h); expect(o.z).toBeCloseTo(STANCE_CAPS.strafe * m * h, 9);
@@ -150,15 +91,15 @@ describe('stanceVelocity — the radial clamp (Task 3)', () => {
     const o = stanceVelocity(14, 0, 0, 0, 1); expect(Number.isFinite(o.x) && Number.isFinite(o.z)).toBe(true);
     expect(Math.hypot(o.x, o.z)).toBeCloseTo(6.5, 9);
   });
-  // Round-1 review (dynamic, A4): the w = 1 sweep bounds the advance from ABOVE only, so an advance capped at the 2.0
-  // retreat cap passed every test. Closing on an enemy is the footwork pace, 6.5 x the form x the walk slow.
+  // The w = 1 sweep bounds the advance from ABOVE only, so an advance capped at the 2.0 retreat cap would pass it.
+  // Closing on an enemy is the footwork pace, 6.5 x the form x the walk slow.
   it('a straight advance at 14 comes out at exactly the advance cap, for every form and walk slow', () => {
     const a = stanceVelocity(-14, 0, 1, 0, 1); expect(a.x).toBeCloseTo(-6.5, 12); expect(a.z).toBeCloseTo(0, 12);
     for (const m of FORMS) for (const h of HEAVY) {
       expect(stanceVelocity(-14 * m * h, 0, 1, 0, 1, m, h).x).toBeCloseTo(-STANCE_CAPS.advance * m * h, 9);
     }
   });
-  // Round-1 review (dynamic, A1 and A3): every input above lies on an axis, where a per-axis clamp, a radial one and a
+  // Every input above lies on an axis, where a per-axis clamp, a radial one and a
   // total-speed cap all agree. A diagonal separates them: engaging mid-run keeps hypot(2.0, 6.5) = 6.8 m/s (the plan's
   // FOV note), and a threat with no direction caps the TOTAL, not each world axis.
   it('a diagonal comes out at exactly (retreat, strafe) with a direction, and at the strafe cap in total without one', () => {
@@ -375,9 +316,9 @@ describe('noteMoveTarget / readMoveTarget — the controller\'s move-target reco
   });
 });
 
-// Round-1 review c and d: the controller's call sites, as a seam. Components.jsx calls stanceFrame once a frame and
-// stanceWalk in the pointer-locked branch; everything between its inputs and the velocity it feeds the KCC is here.
-describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c, d)', () => {
+// The controller's call sites, as a seam. Components.jsx calls stanceFrame once a frame and stanceWalk in the
+// pointer-locked branch; everything between its inputs and the velocity it feeds the KCC is here.
+describe('stanceFrame / stanceWalk — the controller\'s seam', () => {
   let nextId = 0;
   const husk = (x, z, y = 51.7) => ({ id: `s${++nextId}`, isMob: true, type: 'zombie', passive: false, isAggro: true, health: 50, position: { x, y, z } });
   const cam = (x, y, z) => ({ position: { x, y, z } });
@@ -426,8 +367,8 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
     expect(charging.x, 'the heavy\'s walk slow did not reach the retreat').toBeCloseTo(STANCE_CAPS.retreat * 0.55, 12);
   });
 
-  // Round-1 review f: the void-fall guard and a save load teleported the body and kept the stance, so the walk at the
-  // new site stayed clamped against the old fight for up to 2.6 s. Both now go through teleportPlayer.
+  // The void-fall guard and a save load teleport through teleportPlayer: kept, the stance would clamp the walk at the
+  // new site against the old fight for up to 2.6 s.
   it('teleportPlayer moves the body, stops it when asked, and leaves the fight behind', () => {
     engaged();
     const calls = [];
@@ -461,7 +402,7 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
   });
 });
 
-// Round-1 review b: F1's derivation assumed the tangential part "does not enter at all", which holds for a continuous,
+// F1's derivation assumed the tangential part "does not enter at all", which holds for a continuous,
 // fresh line to the threat. The controller is discrete: within a frame the body moves in a straight line, so a
 // tangential step L at gap g grows the gap by about L²/2g, and the away vector was built from the camera, which trails
 // the body by about 1.2 frames, so strafe leaked into retreat at about 1.7 t² dt / g. The F1 bound is that the player's
@@ -477,9 +418,9 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
 // frames a husk covers speed x 0.25 / dt per second and above 375 ms a 3.0 m/s husk cannot close on a 2.0 backpedal at
 // all; and its aim is refreshed at 15 Hz on octile A* cell centres, which lowers its closing speed further. The mob's
 // side is tests/gates/stance-pursuit-gates.test.js (the real worker). NOR THE KCC: the body steps by the applied
-// velocity unobstructed, and the character controller's slide along a wall can raise a step's away part (round-2 review,
-// unmeasured), so the bound is on the velocity FED to the KCC, not on the movement it returns.
-describe('the F1 bound on the player\'s own step, at every frame interval (round-1 review b, round-2)', () => {
+// velocity unobstructed, and the character controller's slide along a wall can raise a step's away part (unmeasured),
+// so the bound is on the velocity FED to the KCC, not on the movement it returns.
+describe('the F1 bound on the player\'s own step, at every frame interval', () => {
   const DTS = [1 / 120, 1 / 60, 1 / 30, 0.05, 0.1, 0.2, 0.3, 0.4];
   const CASES = [
     { name: 'S+D, view on the husk', keys: { moveB: true, moveR: true }, face: 1 },

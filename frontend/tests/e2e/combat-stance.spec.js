@@ -13,10 +13,9 @@ import { bootDev, startPlayActive } from './_boot.js';
 //     (`target`), and what the ramp returned (`applied`), the planar velocity the KCC is fed. Each away-from-threat
 //     component is judged against a direction THIS SPEC rebuilds from the positions that frame used
 //     (`readStance().threatX/Z` and `playerX/Z`, the same `frame`), never from `readStance().awayX/Z`, which a negated
-//     away (T5) would negate too; and against LITERAL caps (2.0, 6.5), never STANCE_CAPS, which a mutant of the
-//     derivation (T2) would move with the subject. `applied` is judged once the ramp has settled (SETTLE_MS after the
-//     key went down; round-1 review c: judging `target` alone let a bypass placed AFTER the record pass every run whose
-//     chase went unjudged).
+//     away would negate too; and against LITERAL caps (2.0, 6.5), never STANCE_CAPS, which a wrong derivation would
+//     move with the subject. `applied` is judged once the ramp has settled (SETTLE_MS after the key went down): judged
+//     on `target` alone, a bypass placed AFTER the record would pass every run whose chase went unjudged.
 //   - THE CHASE, in GAME time: whether the husk closes, and how fast the BODY left it. The player and the AI worker
 //     advance by the same capped step (src/game/frameStep.js), so a long frame slows both alike and a retreat chase is
 //     judged at every frame rate. A hold lasts 8 s of game time on the stance's own clock (readStance().atS), so a stall
@@ -35,53 +34,21 @@ import { bootDev, startPlayActive } from './_boot.js';
 // never engages), preferring a heading whose WALKED path is flat. Flatness gates only that case's chase, like the frame
 // rate does; the target assertions never need it.
 //
-// WHY THE GEOMETRY VARIES (review finding 1). With the husk dead ahead, a held S is both away-from-threat and
-// camera-backward, so a camera-backward away vector (T6) or a moveB-gated call (T7) passes every S case. Case 2b (W,
+// WHY THE GEOMETRY VARIES. With the husk dead ahead, a held S is both away-from-threat and camera-backward, so a
+// camera-backward away vector or a moveB-gated call would pass every S case. Case 2b (W,
 // the husk behind) and case 2c (D, a pure strafe, which a decomposition along the camera's axes gets wrong) separate
 // them.
 //
 // CASE 0, THE HEIGHT REFERENCE (the command session's decision; plan Task 4, "Deviation"). The stance must measure the
 // player from the point the AI worker strikes from. This spec wraps Worker.prototype.postMessage before the app loads
 // and keeps the playerPos of the last AI TICK; with the player standing still, the stance's recorded player point must
-// equal it. (Round-1 review b: the point's x and z are now the body this frame, the y the worker's; standing still, the
-// camera's x and z have converged on the body's, so the agreement still holds there, and H1 is still the 1.2 m in y.) A stance fed the rigid-body translation reads about 1.2 m low (H1), and so does a worker fed the body
-// centre (H2). It is an AGREEMENT gate: a sense point moved for both readers at once (H3) survives here by design, and
-// src/game/mobSenses.test.js pins the point itself.
+// equal it. The point's x and z are the body this frame and its y the worker's; standing still, the camera's x and z
+// have converged on the body's, so the agreement holds there. A stance fed the rigid-body translation reads about
+// 1.2 m low, and so does a worker fed the body centre. It is an AGREEMENT gate: a sense point moved for both readers at
+// once passes here by design, and src/game/mobSenses.test.js pins the point itself.
 //
-// WHAT THIS DOES NOT CHECK: a stranded mob (the stall rule is unit-proven only, plan review finding 4); beast forms
-// and the heavy's walk slow (unit-proven); touch input (tests/e2e/combat-touch.spec.js, Task 11); the dodge, which
-// the stance does not clamp.
-//
-// Mutation-Proof: observed 2026-10-27 in the authoring lane, one local run per mutant on a THROWAWAY Playwright config
-// (port 4297, Chromium + SwiftShader, median frame interval 214-387 ms), each scored by scripts/dev/mutate-e2e.sh's own
-// rules (only an `Error:` line carrying SETUP: is a precondition; a test timeout is COULD NOT CHECK). mutate-e2e.sh
-// itself was not used: it serves port 4179 and sweeps with kill-test-procs.sh, neither open to that lane. Red-first:
-// the spec against the Task 4 tree (App.jsx, Components.jsx, AIWorkerSystem.jsx at HEAD) failed at the first stage.
-//   T0 src/game/combatStance.js   a comment edit (identity)                                      SURVIVED (three runs)
-//   T1 src/Components.jsx         the stanceVelocity call bypassed (the raw mv.x / mv.z used)     RED case 2: target 14 m/s
-//   T2 src/game/combatStance.js   the slowest pursuer picked with Math.max (retreat 5.0)          RED case 2: target 5 m/s
-//   T3 src/game/combatStance.js   ENGAGE_RADIUS_M = 0                                             RED case 0: never engaged
-//   T4 src/game/combatStance.js   `engaged` forced true                                           RED the first stage: w 1
-//   T5 src/game/combatStance.js   away negated (points at the threat)                             RED case 2: target 6.5 m/s
-//   T6 src/Components.jsx         the planar camera-BACKWARD vector passed as (awayX, awayZ)      RED case 2b: target 6.5 m/s
-//   T7 src/Components.jsx         stanceVelocity called only when input.moveB                     RED case 2b: target 14 m/s
-//   T8 src/Components.jsx         the call passes Math.max(stance.w, 0.1) (a w floor)             RED case 3: 10 of 10 frames
-//   T9 src/Components.jsx         the target scaled by 0.9 after the stance call                  RED case 3: 10 of 10 frames
-// Round-1 review c, observed 2026-10-28 in the lane on a THROWAWAY Playwright config (port 4297, one run each, the
-// stance's call sites now in src/game/combatStance.js stanceFrame / stanceWalk, which src/game/combatStance.test.js also
-// pins by mutate.sh). Both runs had the chase unjudged (median frame interval over 250 ms), the condition under which
-// the review found T10 survived:
-//   T10 src/game/combatStance.js  the ramp fed the raw move after the record, in stanceWalk       RED case 2: "the
-//                                 velocity fed to the body left the husk at 14 m/s while the target said 2" (303 ms)
-//   T0  src/game/combatStance.js  a comment edit (identity)                                      SURVIVED (283 ms)
-// The unmutated spec passed twice more locally (163 and 258 ms). STILL OWED TO CI: a run at CI's own frame rate.
-//   H1 src/Components.jsx         stanceStep fed currentTrans (the body), not mobSensePoint      RED case 0: 1.200 m apart
-//   H2 src/systems/AIWorkerSystem.jsx  playerPos posted as the body centre (sense.y - 1.2)        RED case 0: 1.200 m apart
-//   H3 src/game/mobSenses.js      mobSensePoint returns a point 1.2 m lower, for both readers     SURVIVED, as designed
-// STILL OWED TO CI: every chase sub-assertion's verdict at CI's own frame rate (locally the retreat chases of cases 2
-// and 2b were judged and held in one run of two; the strafe chase and case 3's travel speed were never judged here),
-// and CI's median frame interval for the plan's Task 5 Step 0. The mutants above were all killed by the target,
-// identity and agreement assertions, none by a chase.
+// WHAT THIS DOES NOT CHECK: a stranded mob (the stall rule is unit-proven only); beast forms and the heavy's walk slow
+// (unit-proven); touch input (tests/e2e/combat-touch.spec.js, Task 11); the dodge, which the stance does not clamp.
 
 const RETREAT = 2.0; // LITERALS: the yardstick must not move with the subject (the Task 1 lesson)
 const STRAFE = 6.5;
@@ -100,7 +67,7 @@ const CAUGHT_GAP_M = 2.6;
 // A STRAFE CHASE IS STILL JUDGED ONLY AT A FAST FRAME, now for the MOB's reason, not the player's. Within one frame the
 // player moves in a straight line, so a tangential step L at gap g grew the gap by about L²/2g: a leak of STRAFE² · Δ /
 // (2g) m/s (measured locally at Δ = 247 ms, 2026-10-27: the gap grew from 3.2 to 6.05 m while every target held the
-// caps). Round-1 review b: the stance now pulls the step's end in to gap + 2.0 · Δ (game/combatStance.js, the step
+// caps). The stance pulls the step's end in to gap + 2.0 · Δ (game/combatStance.js, the step
 // bound, unit-gated over 8-400 ms frames), so the player's own leak is gone at every frame rate. What remains is the
 // husk's aim, which the worker refreshes at 15 Hz (a tick per frame below 15 fps) toward a player 6.5 · Δ further round
 // the circle; nothing has measured that. So the old threshold (half the margin at the catch gap) is kept, as a

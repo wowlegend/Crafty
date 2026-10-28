@@ -23,17 +23,8 @@ import { claimHudTick, emitHudTick } from '../../src/ui/hudTicker.js';
  * state per tick, so its commit count (React's Profiler) stays at the mount's 1 while 30 ticks move a chevron.
  *
  * WHAT THIS DOES NOT CHECK: that the layer is mounted in the HUD, that the chevron is placed clear of the HUD's controls,
- * and the world clock in a running game (tests/e2e/windup-chevron.spec.js carries all three).
- *
- * Mutation-Proof: scripts/dev/mutate.sh on src/ui/WindupChevrons.jsx, 8 tests, 2026-10-27. RED: J1 the data-on
- *   write-on-change guard dropped (a still tick rewrites); J2 a state setter subscribed to the ticker (a re-render per
- *   tick); J3 the in-tick capture guard dropped; J4 the capture guard freezes instead of resetting; J6 the touch inset
- *   ignored; J7 the insets swapped; J8 the angle in radians, not quantised degrees; J9 a slot past the count left on;
- *   J10 the yaw ignored; J11 the opacity ignores the ramp; J12 the projection's view matrix left stale; J13 the tick
- *   never subscribed. J0 (a comment edit, the identity mutant) SURVIVED. J1b (the transform's guard dropped) SURVIVED:
- *   EQUIVALENT here, since a same-value style write makes no mutation record, so the behaviour this gate states holds.
- *   Round-1 review pin (2026-10-28, 9 tests): P9 the camera-space point read as NDC (`applyMatrix4(matrixWorldInverse)`
- *   for `project`) -> RED; P0 identity (a comment edit) -> survived.
+ * and the world clock in a running game (tests/e2e/windup-chevron.spec.js carries all three). Nor a dropped guard on
+ * the transform write: a same-value style write makes no mutation record, so this instrument cannot see it.
  */
 let release = null;
 let added = [];
@@ -176,8 +167,8 @@ describe('WindupChevrons on the HUD ticker', () => {
     for (const n of chevrons(root)) expect(n.style.opacity).toBe('0');
   });
 
-  // Round-1 review (dynamic, P9): every mob above sits dead ahead, dead behind or square to the side, where view space
-  // and NDC agree, so a layer reading the camera-space point as NDC passed. These two are IN VIEW but off the axis (to
+  // Every mob above sits dead ahead, dead behind or square to the side, where view space and NDC agree, so a layer
+  // reading the camera-space point as NDC would pass them. These two are IN VIEW but off the axis (to
   // the side, and below the eye), which only a perspective projection calls on screen.
   it('a windup in view but off the view axis gets no chevron; the one behind still does', () => {
     asDevice('desktop');
