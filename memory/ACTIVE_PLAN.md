@@ -38,6 +38,22 @@ done first, then a design panel chooses the highest-leverage moves, each through
 | T16 | Harness SOTA pass (Kevin 10-27: CLAUDE.md/rules/hooks/settings/docs/skills free to revise) | BUILDING (wf_34f35934-dfe): plan `docs/superpowers/plans/2026-10-27-crafty-harness-sota.md`, current unit U1 (P0 done). Lane worktree `.claude/worktrees/wf_34f35934-dfe-2`, branch `worktree-wf_34f35934-dfe-2`, base 230fd72f. P0: harness-integrity draft RED on 5 untracked graft-helper commands, the PostCompact context hook, 5 hook timeouts > 60 s; R1 PASS; R2/R3 not run (shared-repo worktree / a deny rule — out of the lane's brief); U5 (graft becomes machine-local) STOPPED: it removes the graft permission allows — a permission change, mine to decide |
 | T17 | INCIDENT 03:32: worktree pre-commit suite rewrote the real repo (bare, fixture identity, fixture commits) | REPAIRED + root cause fixed `0c5b269c`; episode :1183 |
 
+### For Kevin (queued while he sleeps, 2026-10-27; nothing here blocks the lanes)
+
+1. **The two published operator pages are owned by account 1.** era-review and sota-audit
+   (`docs/superpowers/.artifact-sync.json`) can only be republished from account 1; account 2/3 cannot see them.
+   `artifact-currency` refuses any branch more than 30 commits past their publish sha, so PR #24 (steady-cool,
+   33) cannot push until they are republished. Options: (a) next time account 1 is active, the command session
+   republishes both (recommended, no change for you); (b) publish fresh copies from the active account and move
+   the URLs (your bookmarks change, and you only see them while logged in as that account).
+   **Impact measured 22:39Z:** main is 8 commits past the publish sha; landing #22 alone takes it to about 22,
+   and any second PR (#23 instruments, #24 steady-cool, #27 harness, #28) crosses 30. So until the pages are
+   republished, AT MOST ONE PR can land. #22, #23, #27 and #28 are CI-green or close; they queue in the order
+   22 -> 24 -> 23 -> 25 -> 27 -> 28.
+2. **K55(c): retention for refs/backup and refs/snapshots** (AB: 101 and 275 on 10-27; Crafty 0/0). Nothing expires
+   them. Recommended: 60 days, then expire (git gc reclaims). AB Command owns the tool.
+3. FYI, no action: main is live with the heat fixes (CI green); PRs #22-#25 open; e2e moved to 6 shards (17e06ecd).
+
 ### CRAFTY COMMAND SESSION — START HERE (handoff written 2026-10-27 by the session that ran the SOTA overnight goal)
 
 Kevin, 2026-10-27: a new session rooted in `/Users/kz/Code/Crafty` takes over as the **Crafty command session** (so
