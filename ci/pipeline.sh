@@ -60,7 +60,13 @@ APP="$ROOT/frontend"
 
 TIER="push"
 RANGE_ONLY=0
-for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --range-only) RANGE_ONLY=1 ;; esac; done
+CODE_CHANGED=""
+for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --range-only) RANGE_ONLY=1 ;; --code-changed=*) CODE_CHANGED="${a#--code-changed=}" ;; esac; done
+# --code-changed=false: CI's change-scope job (frontend/scripts/ci/change-scope.mjs) found only docs changed since a
+# commit whose `ci ok` passed, so the fast tier skips prod-smoke, the one browser step here (the e2e job is skipped
+# by ci.yml itself). ONLY the exact word `false` skips; absent, `true`, empty or anything else runs it (fail SAFE).
+# A FLAG, not an environment variable, on purpose: an env var set on the CI step is inherited by the unit suite this
+# pipeline runs, and the suite executes this file under test, so a docs-only run would have changed what it tests.
 # --range-only: pre-push's path when the pre-commit receipt already certified this exact tree. The offline
 # core is skipped (and each skip PRINTED); the commit-range gates still run, because a receipt written at
 # commit time cannot speak for a range it never saw. Until 2026-09-22 pre-push `continue`d past this file
@@ -165,7 +171,11 @@ fi
 if [ "$TIER" = "fast" ]; then
   step "knip (unused files / exports / deps)" npm run --silent knip
   step "npm audit (high + critical)" npm audit --audit-level=high
-  step "prod-smoke (the bundle that actually ships boots and renders)" node scripts/ci/prod-smoke.mjs
+  if [ "$CODE_CHANGED" = "false" ]; then
+    printf '\n\033[2m── skipped (fast tier, --code-changed=false): prod-smoke — only docs changed since a commit CI passed, so the bundle is that commit'"'"'s\033[0m\n'
+  else
+    step "prod-smoke (the bundle that actually ships boots and renders)" node scripts/ci/prod-smoke.mjs
+  fi
   # THE SERVER-SIDE MERGE REPORT (2026-10-28) — `gh pr merge` and GitHub's UI move main without any local hook, so
   # this step is the one place main's state after such a merge is looked at. It runs on the push event, AFTER main
   # has moved and Vercel has deployed. It PRINTS how far each operator page is behind main and refuses no drift

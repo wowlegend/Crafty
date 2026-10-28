@@ -6,9 +6,17 @@ name: CI
 # This workflow is the backstop. It must stay FAST and DETERMINISTIC — a flaky gate that people learn to
 # ignore is worse than no gate (see LOOP-CHARTER §3: never weaken a gate to make it pass).
 
+# THE REQUIRED CHECK (2026-10-28, DECISIONS 2026-10-28 item 13(b)). main's branch protection requires ONE context:
+# the `ci ok` job at the foot of this file, which needs every other job and fails unless each passed (or was skipped
+# for a docs-only change, see the `changes` job). Required checks match job NAMES, so the shard count, a job's name
+# and the set of jobs can all change freely as long as `ci ok` keeps its name and its needs list stays complete —
+# and ci-ok.mjs checks that list against this file on every run.
+#
+# land/** (2026-10-28): a landing is a local merge commit pushed to `land/<date>` first, so CI certifies the exact sha
+# that main will be moved to; the push to main then needs that sha's `ci ok`.
 on:
   push:
-    branches: [main]
+    branches: [main, 'land/**']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -20,9 +28,18 @@ on:
 permissions:
   contents: read
 
+# THE GROUP KEY is event + ref: `ci-push-refs/heads/land/2026-10-28`, `ci-push-refs/heads/main`,
+# `ci-pull_request-refs/pull/24/merge`, `ci-workflow_dispatch-refs/heads/main`. A run is superseded only by a newer
+# run of the SAME event on the SAME ref, so a land/** push is never cancelled by the main push of the same sha (two
+# refs, two groups), and a dispatch never cancels the push run it was meant to double-check.
+# CANCEL-IN-PROGRESS everywhere EXCEPT main. On a land/**, PR or dispatch ref the older run is for a sha nobody will
+# land, so it yields. On main every run is the record of what was deployed — a cancelled run reads as no verdict
+# (the 2026-07-27 shape: 86 of 88 runs `cancelled`), and once protection is on main moves only on a sha whose `ci ok`
+# already passed — so a main run is never cancelled; a third push while one runs replaces only the PENDING one
+# (GitHub's queue of one).
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 defaults:
   run:
@@ -30,10 +47,46 @@ defaults:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Change scope (2026-10-28). Decides whether this run may skip the browser jobs — the e2e matrix below and the
+  # pipeline's prod-smoke step — and outputs `code=true|false`. `false` only when every changed path is docs or
+  # Markdown AND the base it is measured against carries a passing `ci ok` of its own, so a skip borrows a verdict
+  # that exists rather than one assumed. Every unknown — a forced push, a base missing from the clone, an empty diff,
+  # an API error — reads `true` and everything runs. The rule and its reasons: frontend/scripts/ci/change-scope.mjs.
+  # ---------------------------------------------------------------------------
+  changes:
+    name: change scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read # the base commit's `ci ok` check runs are read through the API
+    outputs:
+      code: ${{ steps.scope.outputs.code }}
+    steps:
+      # Full history: github.event.before, the pull request's base and the merge-base with origin/main must all be
+      # in the clone, or the ancestry check fails and the run falls back to everything.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Classify the change (code, or docs only against a certified base)
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci/change-scope.mjs
+
+  # ---------------------------------------------------------------------------
   # Fast deterministic gates. GPU-free, machine-independent. These must never flake.
+  # It runs on EVERY change, docs-only included: doc-currency, opsec-scan, artifact-currency and parts of the unit
+  # suite read docs, so a docs change can break this job and nothing else would see it.
   # ---------------------------------------------------------------------------
   gates:
     name: unit · lint · knip · build
+    needs: changes
     # PINNED, not ubuntu-latest (2026-10-27): GitHub annotated "The ubuntu-latest label will migrate to Ubuntu 26
     # beginning October 19, 2026", which would move the e2e browsers' OS with no commit here. Move the pin by hand.
     runs-on: ubuntu-24.04
@@ -72,9 +125,15 @@ jobs:
       # have. The one exception is artifact-currency: on a push to main it runs here too, to report the pages'
       # drift after a merge GitHub made and to refuse a tree defect such a merge brought in (a pull_request or a
       # workflow_dispatch run skips it).
+      #
+      # `--code-changed` carries the change-scope verdict: `false` skips prod-smoke (a browser step), anything else runs
+      # it. A flag rather than an env var the pipeline reads, because the unit suite the pipeline runs executes the
+      # pipeline under test and would inherit an env var.
       - name: Pipeline (fast tier — every deterministic gate, plus network/browser)
         working-directory: .
-        run: bash ci/pipeline.sh --tier=fast
+        env:
+          CODE_CHANGED: ${{ needs.changes.outputs.code }}
+        run: bash ci/pipeline.sh --tier=fast --code-changed="$CODE_CHANGED"
 
   # ---------------------------------------------------------------------------
   # E2E. Separate job so a slow browser run can't stall the fast gates.
@@ -95,8 +154,14 @@ jobs:
   # 25 -> 35 MINUTES 2026-10-28: main run 40642071917 ran shards 5/8 and 7/8 to 23 of 25 min (7/8 with three
   # attempts of one failing case), and a job that hits its cap reports `cancelled`, losing every finished verdict in
   # it. Shards run 5-23 min because specs differ tenfold in cost; the cap is headroom for retries, not a target.
+  # DOCS-ONLY SKIP (2026-10-28): skipped only when the change-scope job said exactly `false`; an empty or unknown
+  # output runs it. A skipped e2e is passed by `ci ok` only under that same `false`, so a mis-wired condition cannot
+  # turn into a permanent green. The job NAME must keep starting with `e2e`: e2e-freshness.mjs selects these jobs by
+  # `^e2e`, and no other job's name may.
   e2e:
     name: e2e (playwright) ${{ matrix.shard }}/8
+    needs: changes
+    if: needs.changes.outputs.code != 'false'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     strategy:
@@ -187,6 +252,38 @@ jobs:
       - uses: actions/checkout@v7
       - name: Doc-currency lint
         run: node frontend/scripts/ci/doc-currency.mjs
+
+  # ---------------------------------------------------------------------------
+  # `ci ok` — THE REQUIRED CHECK (2026-10-28). Branch protection on main requires this job's name and nothing else.
+  # It needs EVERY other job (ci-ok.mjs fails the run if ci.yml has a job missing from this list) and passes only
+  # when each one succeeded, or, for e2e alone, was skipped because the change-scope job said `false`.
+  # `if: always()`, NEVER `!cancelled()`: a skipped job reports SUCCESS to branch protection, so an aggregate that
+  # skipped itself on a cancelled run would pass the required check on a sha nothing finished testing. Under
+  # always() it runs, reads the cancelled jobs, and fails. Rename this job and main's protection must follow.
+  # ---------------------------------------------------------------------------
+  ci-ok:
+    name: ci ok
+    needs: [changes, gates, e2e, docs]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # Two files only: the verdict script and this workflow, which it reads to check its own needs list.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/workflows/ci.yml
+            frontend/scripts/ci/ci-ok.mjs
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Every job passed, or was skipped because nothing it tests changed
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: node scripts/ci/ci-ok.mjs
 
 # NOTE — deliberately NOT in CI (and why):
 #   * the 24-state VISUAL gate: it renders the real R3F scene under software WebGL (swiftshader). It is
