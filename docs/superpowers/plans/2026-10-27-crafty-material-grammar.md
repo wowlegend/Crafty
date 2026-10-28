@@ -27,6 +27,73 @@ no mipmap entry in DECISIONS.md), `upside-2026-10-27.md:88,95` (L3, L10). Where 
 
 ---
 
+## Amendment 2026-10-28 (lane W2-K): read this first
+
+The SOTA reset (`2026-10-28-crafty-sota-reset.md`, row 44, lane W2-K) pulls Units 0-2 forward. Every "current state"
+citation below was re-read against main at `6a926fce`. The scope and the instrument changes were fixed before the
+build; the figures were measured during it. Where this amendment and the text below disagree, the amendment wins.
+
+**Scope.**
+- **Units 0, 1 and 2 are this lane.**
+- **Unit 3 (grass spread) is out of this lane.** Its design stands; its registry row stays open with no lane named.
+- **Unit 4 (mipmaps) landed in `d201c073` (W1-E; DECISIONS 2026-10-28 item 20), built differently.** There is no
+  `TERRAIN_MIPMAPS` constant and no `{ mipmaps }` option: the texture is a `CompressedArrayTexture` whose chain is
+  built in JS in linear light (`linearLightMipChain`), minified NEAREST within a level and LINEAR between levels, and
+  the JS heap keeps the whole chain (`texture.mipmaps`), not level 0 alone. Re-checked premises: the chain is rebuilt
+  from whatever level 0 holds, so the repaint and the three new layers are mipped with no edit; `prod-smoke`'s
+  `mipVerdict` reads the layer count from the texture (`scripts/ci/prod-smoke.mjs:491-494`), so a deeper array needs
+  no edit there; the ore glow map is baked from level 0 (`oreGlow.js` `oreGlowTexture`), so it follows the repainted
+  ore tiles. Nothing of Unit 4 is rebuilt. With 19 layers the chain is 19 x 1,365 texels x 4 B = 103,740 B on the GPU
+  and the same in the JS heap.
+- **Unit 5 (the capture re-baseline) is void.** The capture oracle retires (DECISIONS 2026-10-28 item 1, lane W2-B, PR
+  #32); `tests/visual/baseline` is not touched. Acceptance is on eye-level lookbook frames (below).
+
+**Instruments (Unit 0, changed).**
+- The material lookbook set is **eye-level**, not hero poses: `--sets material` (opt-in; the default sets are
+  unchanged) stands the player in front of a grass hill's side and a tree trunk and turns their head to it, with the
+  hands and the HUD on, and the eye-shot verdict judges each frame. The two sights are found in the live world's own
+  mesh (`_lookbook.mjs` `findMaterialSights`, run in the page on `useGameStore.getState().debugChunks`), at least
+  20 m from the Hearth because the outpost's buildings are not in the terrain mesh, with ground at the wall's base
+  under the stand point and a clear line to the face. The seed is fixed and the mesher's geometry does not change in
+  this lane (only UVs), so BEFORE and AFTER find the same two sights.
+- The BEFORE fixture is `tests/world/material-before-2026-10-28.json`.
+- **No `Mutation-Proof:` line inside any file.** The killability-ledger gate that demanded them is retired
+  (DECISIONS 2026-10-28 items 15(c) and 17); receipts live only in commit trailers.
+- Local GPU runs are Chromium 1280x800 only (ANGLE-Metal), one at a time under the shared lock; WebKit is not shot.
+
+**Tone grammar (Unit 1, changed).**
+- Stone tones stay `r = g, b - r <= 3`, the shape `ore-glow-gates.test.js` reads as matrix, so the crack tone is
+  `78,78,81`, not `82`. The ore tiles' matrix is stone without cracks: a crack (luminance 0.074) is darker than 0.35 of
+  the brighter ore layers' means. `NUGGET_CHROMA` is on main (`oreGlow.js:23`).
+- `ore-glow-gates`' presence control asked the old per-texel mask to move 40% at 4x4; clustered nuggets keep more of
+  their colour in a mip texel, so it now asks for 20% at some level (iron moves 47%, gold 51%, diamond 74%), ten times
+  the 2% bound. The same file now also ties the uploaded level 0 to the map it checks.
+- The look is recorded in this file, not in `memory/ACTIVE_PLAN.md` (the command session's cursor).
+
+**Face grammar (Unit 2, changed).**
+- The terrain GLSL is in `src/world/Terrain.jsx` (`terrainMaterial.js` does not exist): the vertex `main()` patch is at
+  `:95-104` (`vBlockType = color.r` at `:99`), the sample at `:145-150`, `TEX_LAYERS` at `:268`. The ore glow and the
+  leaf feel are on main (`Terrain.jsx:45-46`) and read `layerIndex` (block type), as Risk 4 expects.
+- **Steps 7-9 are not built in this lane** (the probe page, the running-world e2e, `material-probe.mjs`): no local e2e
+  (the SSD order). In their place: `prod-smoke` (CI) links and draws the shipped terrain program
+  (`WATCHED_PROGRAMS`, `prod-smoke.mjs:260`), and the AFTER lookbook frames show the grammar on a real GPU in the
+  production build. WebKit (iPad) is not proven here: Risk 11's fallback stays untested, and the row stays open.
+- Step 6 adds no new source-grep assertion (DECISIONS 2026-10-28 item 15(b)); it re-points the existing sampler line
+  in `grass-biome-tint-gates.test.js` to `texLayer`.
+- Unit 1's and Unit 2's DECISIONS entries are one 2026-10-28 entry.
+
+**The lantern.** The lantern brief (`2026-10-28-crafty-brief-lantern-costed.md`) ships the radius rule first; the block
+(id 16, Task 4) takes its layer after this layout: `BLOCK_LAYER_COUNT` 17, the variants at 17-19, the array 20 deep,
+all derived. `colors.b` stays free for the baked light field that comes later. The brief's Task 4 now says so.
+
+**Acceptance (replaces Unit 5 and the capture parts of Acceptance).** Eye-level lookbook frames of the material set
+on the production build (`node scripts/visual/lookbook.mjs --targets chromium-1280x800 --sets material --cycles
+0.30,0.48,0.75`), before and after, at most 12 PNGs of at most 300 KB under
+`docs/superpowers/masterpiece-2026-10/evidence/w2k/`, each opened and judged in words in this file (the record at the
+end).
+
+---
+
 ## Current state (cited, verified by reading on 2026-10-27)
 
 Repo layout: ROOT = `<repo>`, APP = `<repo>/frontend`. All paths below are relative to

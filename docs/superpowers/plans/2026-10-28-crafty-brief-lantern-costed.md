@@ -85,6 +85,9 @@ Run from `frontend/`. Re-verify every file:line at lane start (after W2-F and W2
 
 - [ ] Unit 5 of the lantern plan, minus the recipe: block id 16, texture layer (after W2-K's layer layout), flame
       emissive, hotbar slot, i18n, icon. Its own gates as Unit 5 lists them.
+- [ ] The layer layout (W2-K, `src/world/materialGrammar.js`): id 16 makes `BLOCK_LAYER_COUNT` 17 and moves the face
+      variants to 17-19, so the array is 20 deep, derived. The lantern plan's "depth 17" assertion and its K2 mutant
+      ("`numLayers` left at 16") are void; assert `depth === TEXTURE_LAYER_COUNT`. `colors.b` is still unwritten.
 
 ### Task 5: The Forge offer
 
