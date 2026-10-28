@@ -168,8 +168,9 @@ describe('the glow map: baked from level 0, mipped on its own', () => {
         oldMoved = Math.max(oldMoved, Math.abs(old / base - 1));
         levels++;
       }
-      // Clustered nuggets keep more of their colour in a mip texel than single-texel specks did, so the old path moves
-      // less at any one level; ten times the bound above is still a defect this case can see.
+      // Clustered nuggets keep much of their colour in a mip texel, so masking the block array's own mip (the `old`
+      // path, which the glow map replaces) loses only part of the glow; 20% at some level, ten times the bound above,
+      // is still a defect this case can see.
       expect(oldMoved, `${name}: the old path held at every level, so this case cannot see the defect`).toBeGreaterThan(0.2);
     }
     expect(levels).toBe(3 * (glow.mipmaps.length - 1));
@@ -180,6 +181,7 @@ describe('the GLSL cannot drift from the JS', () => {
   it('sized from the layers, samples the glow map, adds into totalEmissiveRadiance, reads the sun', () => {
     const g = oreGlowGlsl(LAYERS);
     expect(g.decl).toMatch(new RegExp(`uniform float uOreGlow\\[${LAYERS}\\];`));
+    expect(oreGlowGlsl().decl, 'the default table is not sized to the texture array').toBe(g.decl);
     expect(g.decl).toMatch(/uniform sampler2DArray uOreGlowTex;/);
     expect(g.apply).toMatch(/totalEmissiveRadiance \+=/);
     expect(g.apply).toMatch(/uSunDir\.y/);

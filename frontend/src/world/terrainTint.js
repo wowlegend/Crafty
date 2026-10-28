@@ -14,6 +14,7 @@
 // per-block mask is a table indexed by the texture layer (= block id).
 import { BIOME_NAMES } from './biomeTable.js';
 import { BLOCK_ID } from './blockIds.js';
+import { TEXTURE_LAYER_COUNT } from './materialGrammar.js';
 
 /**
  * The natural SURFACE blocks a biome colours: its ground (grass, dirt, sand, snow) and its canopy (leaves —
@@ -38,7 +39,7 @@ export function biomeTintMask(layers) {
  * The mask is MIXED, not branched: the multiplier is luminance-normalised, so mix(1, tint, 0/1) either
  * shifts hue or leaves the texel alone, with no divergence in the fragment shader.
  */
-export function biomeTintGlsl(biomeCount = BIOME_NAMES.length, layers = 16) {
+export function biomeTintGlsl(biomeCount = BIOME_NAMES.length, layers = TEXTURE_LAYER_COUNT) {
   const lastBiome = (biomeCount - 1).toFixed(1);
   const lastLayer = (layers - 1).toFixed(1);
   return {

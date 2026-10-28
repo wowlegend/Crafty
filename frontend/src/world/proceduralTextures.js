@@ -199,7 +199,8 @@ function painters() {
 // The terrain shader decodes a texel with pow(rgb, 2.2) and the far field averages tiles the same way
 // (farField.js layerMeanLinear), so a mip texel must be the mean in THAT linear light. The GPU's generateMipmap
 // averages the stored bytes instead, which darkens every high-contrast tile at distance: at the 1x1 level,
-// leaves -4%, cobblestone -10%, gold ore -17% in luminance, and the near terrain would no longer meet the far field.
+// leaves -3%, cobblestone -10%, gold ore -15%, coal and the snow side -16% in luminance, and the near terrain would no
+// longer meet the far field.
 const DECODE = Float64Array.from({ length: 256 }, (_, v) => Math.pow(v / 255, 2.2));
 const encode = (linear) => Math.round(Math.pow(linear, 1 / 2.2) * 255);
 

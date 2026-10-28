@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import { BLOCK_ID } from './blockIds.js';
 import { linearLightMipChain } from './proceduralTextures.js';
+import { TEXTURE_LAYER_COUNT } from './materialGrammar.js';
 
 /** Emissive strength per glowing ore, x its own linear colour. Diamond reaches the bloom threshold; iron glints. */
 export const ORE_GLOW = Object.freeze({ iron: 0.35, gold: 0.8, diamond: 1.25 });
@@ -113,7 +114,7 @@ const ORE_GLOW_TERM = ['pow(oreGlowTexel, vec3(2.2))', 'oreGlowK', 'oreNight'];
  * earlier in the same main()) and the land's `vUv` varying. The glow map is sampled before the branch: a texture
  * read with implicit derivatives inside non-uniform control flow picks an undefined mip level.
  */
-export function oreGlowGlsl(layers = 16) {
+export function oreGlowGlsl(layers = TEXTURE_LAYER_COUNT) {
   const lastLayer = (layers - 1).toFixed(1);
   const f = (x) => x.toFixed(3);
   return {

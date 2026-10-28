@@ -8,8 +8,8 @@ import { layerMeanLinear } from '../../src/world/farField.js';
  * Without a mip chain every distant face samples one texel of a 32x32 tile per screen pixel, so leaves and stone
  * sparkle and crawl in motion. Two ways to build the chain look alike in a still frame and differ in tone:
  *   - the GPU's generateMipmap averages the STORED sRGB bytes, which darkens every high-contrast tile at distance
- *     (gold ore by about 17%, cobblestone 10%, leaves 4%), and leaves a tone step where the near terrain meets the
- *     far field, which averages in linear light;
+ *     (at the 1x1 level the snow side and coal by about 16%, gold ore 15%, cobblestone 10%, leaves 3%), and leaves
+ *     a tone step where the near terrain meets the far field, which averages in linear light;
  *   - averaging in the linear light the shader decodes into (pow 2.2) keeps a distant face the same colour, on
  *     average, as the same face up close and as the far field.
  * These gates pin the second.
@@ -63,7 +63,7 @@ describe('the block texture mip chain is the linear-light mean of the tiles', ()
         }
       }
     }
-    // 16 layers x (16^2 + 8^2 + 4^2 + 2^2 + 1^2) texels.
+    // Every layer of the array x (16^2 + 8^2 + 4^2 + 2^2 + 1^2) texels: levels 1-5 of a 32 x 32 tile.
     expect(checked).toBe(LAYERS * (256 + 64 + 16 + 4 + 1));
     expect(rawWouldDiffer, 'SETUP: no texel where byte-space and linear-light means differ, so this cannot fail').toBeGreaterThan(500);
     expect(misses.slice(0, 5), `${misses.length} mip texels are not the linear-light mean of their block`).toEqual([]);

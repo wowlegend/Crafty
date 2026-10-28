@@ -214,8 +214,8 @@ const groundAt = (f, extra = null, albedo = null) => {
   const fr = sampleMood(0, f);
   return { fr, c: stoneFaceUnder(fr, { normal: UP, keyDir: fr.keyDir, extra, albedo }) };
 };
-// The terrain's stone as it renders: world/proceduralTextures.js layer 3 (base 104, veins 132, strata +6, noise
-// x0.9-1.08), and the grey a fit of the lookbook's pad patch lands on. NEUTRAL's toe pulls a darker albedo down faster,
+// The terrain's stone as it renders: world/proceduralTextures.js layer 3 (MATERIAL_TONES.stone, clusters of a 104 base,
+// a 132 light and a 78 crack), and the grey a fit of the lookbook's pad patch lands on. NEUTRAL's toe pulls a darker albedo down faster,
 // so a floor the grey card clears by a hair this stone can miss.
 const TERRAIN_STONE = '#707070';
 // The up face at the lookbook's golden frames under the flat-day rig this script replaced (main 030ada1f's mood 0, read
