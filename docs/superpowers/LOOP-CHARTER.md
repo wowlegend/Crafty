@@ -356,9 +356,12 @@ fire it on any deliberate `/compact`, or when Kevin says "wrap up". **Do not wai
 2b. **PUBLISHED surfaces — the pages that drift silently, because nothing rendered locally shows their staleness:**
    - every surface in `docs/superpowers/.artifact-sync.json` (`docs/superpowers/era-review.html` is one) → its
      published Artifact. `node frontend/scripts/ci/artifact-currency.mjs` prints each page's drift and refuses none
-     (DECISIONS 2026-10-28 item 12). **Update the source, run `--sync <id>` (it writes the page's as-of stamp and
-     records HEAD), then republish the stamped source IN PLACE via the URL in `.artifact-sync.json`.** A fresh
-     publish mints a new URL and strands the bookmark Kevin already has.
+     (DECISIONS 2026-10-28 item 12). **Refresh the source, run `--stamp <id>` (it writes the page's as-of stamp: the
+     commit the page was written against, `--as-of <sha>`, default HEAD, and that commit's time), republish the
+     stamped source IN PLACE via the URL in `.artifact-sync.json`, then run `--sync <id>` (it records the publish, and
+     refuses unless the page's stamp names the same commit), then commit the source with the state file.** A fresh
+     publish mints a new URL and strands the bookmark Kevin already has. Never `--sync` a page you have not
+     published: the recorded sha is what every later drift line is measured from.
    - `LOOP-PROGRESS.html`, the ungated progress page that had gone **17 commits stale** by 2026-08-07, is retired:
      it had no URL and no reader (archived 2026-10-28 as `docs/archive/LOOP-PROGRESS-2026-10-28.html`).
 3. **REMOTE / GitHub surfaces** *(this is the step that kept getting skipped)*:

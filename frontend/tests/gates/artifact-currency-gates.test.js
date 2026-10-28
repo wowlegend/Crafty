@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   classify, driftVerdict, HARD_LIMIT, validateSource, surfaces, queuedClaims, verifyQueued,
-  stampBlock, applyStamp, missingTokens, STAMP_BEGIN, STAMP_END, STAMP_ROLES,
+  stampBlock, applyStamp, missingTokens, readStamp, STAMP_BEGIN, STAMP_END, STAMP_ROLES,
 } from '../../scripts/ci/artifact-currency.mjs';
 
 // Behavioural, not a source-grep: exercises the threshold function directly so gate-shape's
@@ -192,7 +192,7 @@ describe('queuedClaims — a Queued pill must be falsifiable, and false when the
 });
 
 // THE READER-SIDE STAMP (DECISIONS 2026-10-28 item 12). The operator's question was whether the page he READS is
-// current, so the page says, in one generated line at the top: "As of commit <sha>, <UTC time>." `--sync` writes it;
+// current, so the page says, in one generated line at the top: "As of commit <sha>, <UTC time>." `--stamp` writes it;
 // the wiring is pinned as a process in tests/scripts/artifact-currency-scope.test.js.
 //
 // Mutation-Proof (the stamp, 2026-10-28, via scripts/dev/mutate.sh, each RED observed): a re-sync that keeps the old
@@ -283,5 +283,37 @@ describe('the as-of stamp — a page states its own age', () => {
     expect(missingTokens(page, { text: '--t-x' })).toEqual(['rule', 'link', 'font']);
     expect(missingTokens(page, { ...tokens, font: 'monospace' })).toEqual(['font']); // not a custom property at all
     expect(missingTokens(page, undefined)).toEqual(STAMP_ROLES);
+  });
+});
+
+// readStamp: the commit a page's stamp names. `--sync` records a publish only when it matches, so it must read the ONE
+// stamp and nothing else, and say so when it cannot, rather than guess.
+//
+// Mutation-Proof (2026-10-28, via scripts/dev/mutate.sh, each RED observed): the commit searched in the whole page
+// rather than between the markers (`.exec(html.slice(b, e))` -> `.exec(html)`); a lone end marker accepted
+// (`begins !== 1 || ends !== 1` -> `begins !== 1`); the end-before-begin guard dropped. An identity comment edit survived.
+describe('readStamp — the commit the page says it is as of', () => {
+  const tokens = { text: '--t-x', rule: '--r-x', link: '--l-x', font: '--f-x' };
+  const when = new Date(Date.UTC(2026, 9, 28, 6, 5, 59));
+  const status = { label: 'the Command Record', url: 'https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f' };
+
+  it('reads back the sha of the block stampBlock wrote, with or without the current-status pointer', () => {
+    const page = (block) => `<title>p</title><div class="wrap">\n${block}<p>body</p></div>`;
+    expect(readStamp(page(stampBlock({ sha: '32a55b75', when, tokens })))).toEqual({ sha: '32a55b75' });
+    expect(readStamp(page(stampBlock({ sha: '43d766e6', when, tokens, currentStatus: status })))).toEqual({ sha: '43d766e6' });
+  });
+
+  it('reads only BETWEEN the markers: a sha in the page\'s prose is not a stamp', () => {
+    const html = `<p>As of commit 1111111, a sentence.</p>${STAMP_BEGIN}<p>a hand edit</p>${STAMP_END}`;
+    expect(readStamp(html)).toEqual({ error: 'has an as-of stamp that names no commit' });
+  });
+
+  it('refuses anything but exactly one begin marker followed by exactly one end marker', () => {
+    const one = stampBlock({ sha: 'abc1234', when, tokens });
+    expect(readStamp('<title>p</title><p>no stamp</p>')).toEqual({ error: 'has no as-of stamp' });
+    expect(readStamp(`${one}${one}`).error).toMatch(/has 2 <!-- asof:begin --> and 2 <!-- asof:end --> markers/);
+    expect(readStamp(`${one}${STAMP_END}`).error).toMatch(/has 1 <!-- asof:begin --> and 2 <!-- asof:end --> markers/);
+    expect(readStamp(`${STAMP_BEGIN}As of commit abc1234, x`).error).toMatch(/has 1 <!-- asof:begin --> and 0 <!-- asof:end --> markers/);
+    expect(readStamp(`${STAMP_END}As of commit abc1234, x${STAMP_BEGIN}`).error).toMatch(/end --> marker before its/);
   });
 });

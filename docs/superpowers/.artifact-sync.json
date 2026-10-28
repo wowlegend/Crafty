@@ -17,7 +17,7 @@
         "label": "the Command Record",
         "url": "https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f"
       },
-      "note": "Update the source, run scripts/ci/artifact-currency.mjs --sync era-review (it writes the as-of stamp at the top of the page and records HEAD), republish the stamped source to the SAME url, then commit both. Bumping the sha without republishing makes the record lie.",
+      "note": "Refresh the source, run scripts/ci/artifact-currency.mjs --stamp era-review [--as-of <sha>] (it writes the as-of stamp at the top of the page: the commit the page was written against, and that commit's time), republish the stamped source to the SAME url, run --sync era-review [--as-of <sha>] (it records the publish, and refuses unless the stamp names the same commit), then commit both. Recording a sha that was not published makes the record lie.",
       "previousUrl": "https://claude.ai/code/artifact/ccdc987f-fef7-4eda-9a65-b5d6cb60529c",
       "movedNote": "2026-10-28: republished from account 2 at a new URL because the previous artifact belongs to account 1, which the session could not write (DECISIONS 2026-10-28). Repoint to previousUrl once account 1 is active again, republishing the same source there first."
     },
@@ -53,7 +53,7 @@
         "link": "--accent",
         "font": "--font-mono"
       },
-      "note": "The operator's CURRENT status page (the command session's record); era-review and sota-audit point here from their stamps. Tracked as a surface from 2026-10-28 (DECISIONS 2026-10-28 item 12). Update the source, run scripts/ci/artifact-currency.mjs --sync command-record, republish the stamped source to the SAME url, then commit both.",
+      "note": "The operator's CURRENT status page (the command session's record); era-review and sota-audit point here from their stamps. Tracked as a surface from 2026-10-28 (DECISIONS 2026-10-28 item 12). Refresh the source, run scripts/ci/artifact-currency.mjs --stamp command-record, republish the stamped source to the SAME url, run --sync command-record, then commit both.",
       "syncedSha": "03a59964",
       "syncedAt": "2026-10-28"
     }

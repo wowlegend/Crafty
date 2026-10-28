@@ -9,9 +9,12 @@
  *      under several E2E_PUSH_REFS spellings (main, a branch, both, unset, empty). The script no longer reads that
  *      variable, so the spellings are there to catch a push scope creeping back in: it would show as a case
  *      whose verdict changes with the refs.
- *   1b. --sync — main() writes the as-of stamp into the page itself and records HEAD, replaces the stamp on a
- *      re-sync rather than adding a second, and writes nothing at all when the page lacks a token the stamp names.
- *      The stamp's pure functions are pinned in the gates spec; this is the call site they cannot see.
+ *   1b. --stamp and --sync, the two steps with the publish between them. --stamp writes the as-of stamp into the page
+ *      (the --as-of commit, default HEAD, at that commit's COMMITTER time), replaces it on a re-stamp rather than
+ *      adding a second, never touches the state file, and writes nothing at all when the page lacks a token the stamp
+ *      names or --as-of is not a commit. --sync records the commit the stamp names, never touches the page, and
+ *      records nothing unless the stamp names the --as-of commit. The stamp's pure functions are pinned in the gates
+ *      spec; this is the call site they cannot see.
  *   2. THE PRODUCER — the real .githooks/pre-push, run by a real `git push` from a fixture repo to a bare
  *      remote, with DISTINCT local and remote ref names (`feat/x:main`, `HEAD:refs/heads/main`) and with TWO
  *      refs in one push, main listed first and main listed last. The hook must build E2E_PUSH_REFS from the
@@ -48,17 +51,19 @@
  * RED; in ci.yml, Y1 `fetch-depth: 0` -> `1` turned the full-history case RED. Identity mutants (a comment edit in
  * artifact-currency.mjs, run in both batches, in pre-push and in pipeline.sh) survived. The receipts for the
  * pre-2026-10-28 main-only scope are in git history.
- * The --sync stamp (1b), each RED observed: --sync not writing the page; --sync skipping the token check; --sync
- * going on to record the sha after a failed stamp (its `process.exit(1)` dropped); a re-sync that keeps the old
- * stamp; the first stamp placed before the wrapper; the time printed to the hour; the currentStatus pointer
- * dropped. An identity comment edit survived.
+ * The two steps (1b), 2026-10-28, each RED observed: S1 --stamp also recording the sha (the old one-step --sync); S2
+ * the stamp's time from the wall clock; S3 from the AUTHOR time (`%ct` -> `%at`); S4 --as-of ignored (HEAD stamped);
+ * S5 the token check skipped; S6 an --as-of that is not a commit accepted; Y1 --sync recording a commit the stamp
+ * does not name; Y2 --sync recording HEAD rather than the stamp's commit; Y3 --sync accepting a page with no stamp;
+ * Y4 --sync writing the state despite a refusal; B1 --stamp and --sync accepted together. An identity comment edit
+ * survived. (The earlier one-step --sync receipts are in git history.)
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync, realpathSync, readFileSync, existsSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execFileSync } from 'node:child_process';
 import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
 import { HARD_LIMIT, STAMP_BEGIN, STAMP_END } from '../../scripts/ci/artifact-currency.mjs';
 
@@ -75,6 +80,9 @@ const queuedPage = (absent) =>
   `<title>fixture</title><div class="row"><div class="sha">abc1234</div><div class="body"${absent === null ? '' : ` data-absent="${absent}"`}>not landed</div><span class="pill queue">Queued</span></div>`;
 /** A sha no fixture commit has: the drift from it cannot be measured. */
 const NOT_IN_HISTORY = 'abcdef0123456789abcdef0123456789abcdef01';
+/** The consumer fixture's published commit's COMMITTER date, and how a stamp prints it (its author date is 2025-06-07). */
+const PUBLISHED_COMMITTED = '2026-01-02T03:04:05Z';
+const PUBLISHED_AT = '2026-01-02 03:04 UTC';
 
 /**
  * Every E2E_PUSH_REFS spelling a caller can hand the script: main, a branch, both, unset (undefined: a hand run),
@@ -115,7 +123,11 @@ beforeAll(() => {
   mkdirSync(join(root, 'docs/superpowers'), { recursive: true });
   writeFileSync(join(root, 'docs/superpowers/page.html'), PAGE);
   fixtureGit(root, 'add', '-A');
-  fixtureGit(root, 'commit', '-q', '-m', 'published');
+  // The published commit carries FIXED dates, months apart and both far from now, so a stamp's time can be told
+  // apart from the author time and from the wall clock (see PUBLISHED_AT).
+  execFileSync('git', ['commit', '-q', '-m', 'published'], {
+    cwd: root, encoding: 'utf8', env: isolatedGitEnv({ GIT_AUTHOR_DATE: '2025-06-07T08:09:10Z', GIT_COMMITTER_DATE: PUBLISHED_COMMITTED }),
+  });
   shas = [fixtureGit(root, 'rev-parse', '--short', 'HEAD')];
   for (let i = 1; i <= OVER; i++) {
     fixtureGit(root, 'commit', '-q', '--allow-empty', '-m', `c${i}`);
@@ -243,66 +255,143 @@ describe('a drift that cannot be MEASURED (the recorded sha is not in this histo
       // operator to fetch-depth when the real cause was a lane commit squash-merged on GitHub and its branch deleted.
       expect(out, label(refs)).toMatch(/a shallow checkout/);
       expect(out, label(refs)).toMatch(/squash-merged and deleted/);
-      expect(out, label(refs)).toMatch(/republish from main and --sync fixture/);
+      expect(out, label(refs)).toMatch(/from main: --stamp fixture, republish, then --sync fixture/);
       expect(out, label(refs)).not.toMatch(/✘/);
       expect(status, `${label(refs)}\n${out}`).toBe(0);
     });
   });
 });
 
-// ── 1b. --sync WRITES THE STAMP ─────────────────────────────────────────────────────────────────────────────
-// The pure stamp functions are pinned in tests/gates/artifact-currency-gates.test.js; these prove main() CALLS them:
-// that `--sync` writes the stamp into the page itself, records HEAD, and writes nothing when it cannot stamp.
+// ── 1b. --stamp WRITES THE PAGE; --sync RECORDS THE PUBLISH ──────────────────────────────────────────────────
+// The pure stamp functions are pinned in tests/gates/artifact-currency-gates.test.js; these prove main() CALLS them,
+// and that the two steps stay apart: --stamp writes the page and never the state file, --sync writes the state file
+// and never the page, and --sync refuses unless the page's stamp names the commit it is asked to record.
 
-describe('--sync: the page gets its as-of stamp and the state file gets HEAD', () => {
+describe('--stamp and --sync: two steps, with the publish between them', () => {
   const tokens = { text: '--t-x', rule: '--r-x', link: '--l-x', font: '--f-x' };
   const status = { label: 'the Command Record', url: 'https://example.invalid/status' };
   const STAMP_PAGE = '<title>fixture</title><style>:root{--t-x:#111;--r-x:#222;--l-x:#333;--f-x:ui-monospace}</style>\n<div class="wrap">\n<p>body</p>\n</div>\n';
   const pagePath = () => join(root, 'docs/superpowers/page.html');
   const statePath = () => join(root, 'docs/superpowers/.artifact-sync.json');
-
-  /** `--sync fixture` over `html`, the surface published at shas[0] with `extra` fields. */
-  function sync(extra, html = STAMP_PAGE) {
-    writeFileSync(pagePath(), html);
-    writeFileSync(statePath(), JSON.stringify({ surfaces: [{ ...surface(shas[0]), stampTokens: tokens, ...extra }] }));
-    const r = spawnSync('node', [join(root, 'frontend/scripts/ci/artifact-currency.mjs'), '--sync', 'fixture'], { cwd: root, env: cleanEnv(), encoding: 'utf8' });
-    return {
-      status: r.status,
-      out: `${r.stdout}${r.stderr}`,
-      page: readFileSync(pagePath(), 'utf8'),
-      synced: JSON.parse(readFileSync(statePath(), 'utf8')).surfaces[0].syncedSha,
-    };
-  }
   const count = (s, needle) => s.split(needle).length - 1;
+  /** How a stamp prints a fixture commit's COMMITTER time. */
+  const committedAt = (sha) => {
+    const iso = new Date(Number(fixtureGit(root, 'log', '-1', '--format=%ct', sha)) * 1000).toISOString();
+    return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+  };
 
-  it('writes the stamp at the top of the content, records HEAD, and leaves the rest of the page byte-identical', () => {
+  /**
+   * Write the page and the state file: one surface, recorded as published at `synced` (by default a sha that is
+   * neither HEAD nor shas[0], so a refused --sync and a --sync of either is told apart), with `extra` fields.
+   */
+  function prepare({ html = STAMP_PAGE, synced = shas[OVER - EXTRA], extra = {} } = {}) {
+    writeFileSync(pagePath(), html);
+    writeFileSync(statePath(), JSON.stringify({ surfaces: [{ ...surface(synced), stampTokens: tokens, ...extra }] }));
+  }
+
+  /** `node artifact-currency.mjs ...args` in the fixture, then what it left on disk. */
+  function cli(...args) {
+    const before = readFileSync(statePath(), 'utf8');
+    const r = spawnSync('node', [join(root, 'frontend/scripts/ci/artifact-currency.mjs'), ...args], { cwd: root, env: cleanEnv(), encoding: 'utf8' });
+    const state = readFileSync(statePath(), 'utf8');
+    const row = JSON.parse(state).surfaces[0];
+    return { status: r.status, out: `${r.stdout}${r.stderr}`, page: readFileSync(pagePath(), 'utf8'), stateChanged: state !== before, synced: row.syncedSha, syncedAt: row.syncedAt };
+  }
+
+  it('--stamp writes the stamp at the top of the content, naming HEAD at ITS commit time; the page is otherwise byte-identical and the state file untouched', () => {
     const head = fixtureGit(root, 'rev-parse', '--short', 'HEAD');
-    const r = sync({ currentStatus: status });
+    prepare({ extra: { currentStatus: status } });
+    const r = cli('--stamp', 'fixture');
     expect(r.status, r.out).toBe(0);
-    expect(r.synced).toBe(head);
-    expect(r.page).toMatch(new RegExp(`<div class="wrap">\\n${STAMP_BEGIN}<p [^>]*>As of commit ${head}, \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2} UTC\\. Most of this page is history; current status: <a href="https://example\\.invalid/status"`));
+    expect(r.page).toMatch(new RegExp(`<div class="wrap">\\n${STAMP_BEGIN}<p [^>]*>As of commit ${head}, ${committedAt('HEAD')}\\. Most of this page is history; current status: <a href="https://example\\.invalid/status"`));
     const b = r.page.indexOf(STAMP_BEGIN);
     const e = r.page.indexOf(STAMP_END) + STAMP_END.length;
     expect(b, 'presence: the stamp was written').toBeGreaterThan(-1);
     expect(`${r.page.slice(0, b)}${r.page.slice(e)}`).toBe(STAMP_PAGE.replace('<div class="wrap">', '<div class="wrap">\n'));
+    expect(r.stateChanged, 'a stamp records nothing: the publish has not happened yet').toBe(false);
+    expect(r.out).toMatch(/then run --sync fixture, then commit/);
   });
 
-  it('a second --sync replaces the stamp: still exactly one, and nothing else moved', () => {
-    const first = sync({}).page;
-    const second = sync({}, first).page;
-    expect(count(first, STAMP_BEGIN), 'presence: the first sync stamped').toBe(1);
+  it(`--stamp --as-of <sha> names THAT commit at its COMMITTER time (${PUBLISHED_AT}: not its author time, not the wall clock), and a re-run writes the same bytes`, () => {
+    prepare();
+    const first = cli('--stamp', 'fixture', '--as-of', shas[0]);
+    expect(first.status, first.out).toBe(0);
+    expect(first.page).toContain(`As of commit ${shas[0]}, ${PUBLISHED_AT}.`);
+    expect(first.out).toMatch(new RegExp(`then run --sync fixture --as-of ${shas[0]}, then commit`));
+    const again = cli('--stamp', 'fixture', '--as-of', shas[0]);
+    expect(again.status, again.out).toBe(0);
+    expect(again.page, 'reproducible: the same commit stamps the same bytes').toBe(first.page);
+  });
+
+  it('a second --stamp replaces the stamp: still exactly one, and nothing else moved', () => {
+    prepare();
+    const first = cli('--stamp', 'fixture').page;
+    prepare({ html: first });
+    const second = cli('--stamp', 'fixture', '--as-of', shas[0]).page;
+    expect(count(first, STAMP_BEGIN), 'presence: the first --stamp stamped').toBe(1);
     expect(count(second, STAMP_BEGIN)).toBe(1);
     expect(count(second, STAMP_END)).toBe(1);
+    expect(second).toContain(`As of commit ${shas[0]},`);
     expect(second.replace(/<!-- asof:begin -->[\s\S]*<!-- asof:end -->/, '')).toBe(first.replace(/<!-- asof:begin -->[\s\S]*<!-- asof:end -->/, ''));
   });
 
-  it('a page that does not declare a named token: exit 1, and NOTHING is written — not the stamp, not the sha', () => {
-    const r = sync({ stampTokens: { ...tokens, link: '--not-declared' } });
+  it('--stamp on a page that does not declare a named token, or --as-of a sha that is not a commit: exit 1, and NOTHING is written', () => {
+    prepare({ extra: { stampTokens: { ...tokens, link: '--not-declared' } } });
+    const r = cli('--stamp', 'fixture');
     expect(r.status, r.out).toBe(1);
     expect(r.out).toMatch(/stampTokens in \.artifact-sync\.json must name a token .* for: link/);
     expect(r.out).toMatch(/Nothing was written/);
     expect(r.page).toBe(STAMP_PAGE);
-    expect(r.synced).toBe(shas[0]);
+    expect(r.stateChanged).toBe(false);
+
+    prepare();
+    const bad = cli('--stamp', 'fixture', '--as-of', NOT_IN_HISTORY);
+    expect(bad.status, bad.out).toBe(1);
+    expect(bad.out).toMatch(new RegExp(`--as-of ${NOT_IN_HISTORY} is not a commit in this history`));
+    expect(bad.page).toBe(STAMP_PAGE);
+    expect(bad.stateChanged).toBe(false);
+  });
+
+  it('--sync after a publish records the commit the stamp names, and does not touch the page', () => {
+    const head = fixtureGit(root, 'rev-parse', '--short', 'HEAD');
+    prepare();
+    const stamped = cli('--stamp', 'fixture').page;
+    const r = cli('--sync', 'fixture');
+    expect(r.status, r.out).toBe(0);
+    expect(r.synced).toBe(head);
+    expect(r.syncedAt).toBe(new Date().toISOString().slice(0, 10));
+    expect(r.page, '--sync writes no page').toBe(stamped);
+
+    // A page written against an older commit is recorded at THAT commit when --as-of names it.
+    prepare();
+    cli('--stamp', 'fixture', '--as-of', shas[0]);
+    const old = cli('--sync', 'fixture', '--as-of', shas[0]);
+    expect(old.status, old.out).toBe(0);
+    expect(old.synced).toBe(shas[0]);
+  });
+
+  it('--sync REFUSES, recording nothing, when the stamp names another commit, when there is no stamp, or when run together with --stamp', () => {
+    prepare();
+    cli('--stamp', 'fixture', '--as-of', shas[0]);
+    const other = cli('--sync', 'fixture'); // asked to record HEAD; the page says shas[0]
+    expect(other.status, other.out).toBe(1);
+    expect(other.out).toMatch(new RegExp(`the page's stamp names ${shas[0]}, not ${fixtureGit(root, 'rev-parse', '--short', 'HEAD')}`));
+    expect(other.out).toMatch(/Nothing was recorded/);
+    expect(other.stateChanged).toBe(false);
+    expect(other.synced).toBe(shas[OVER - EXTRA]);
+
+    prepare();
+    const none = cli('--sync', 'fixture');
+    expect(none.status, none.out).toBe(1);
+    expect(none.out).toMatch(/has no as-of stamp\. Run --stamp fixture/);
+    expect(none.stateChanged).toBe(false);
+
+    prepare();
+    const both = cli('--stamp', 'fixture', '--sync', 'fixture');
+    expect(both.status, both.out).toBe(1);
+    expect(both.out).toMatch(/separate steps/);
+    expect(both.page).toBe(STAMP_PAGE);
+    expect(both.stateChanged).toBe(false);
   });
 });
 

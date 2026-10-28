@@ -49,20 +49,32 @@
  * tests/scripts/artifact-currency-scope.test.js (this script run as a process, through the real pre-push hook
  * and the real pipeline). The receipts for the earlier main-only scope (2026-10-27/28) are in git history.
  *
- * THE PAGES STATE THEIR OWN AGE (item 12, the reader's half). `--sync` writes one generated line at the top of each
- * page's visible content, between `<!-- asof:begin -->` and `<!-- asof:end -->`: "As of commit <sha>, <UTC time>.",
- * plus, for a surface that declares `currentStatus`, a pointer to the page that carries current status. It is
+ * THE PAGES STATE THEIR OWN AGE (item 12, the reader's half). `--stamp` writes one generated line at the top of each
+ * page's visible content, between `<!-- asof:begin -->` and `<!-- asof:end -->`: "As of commit <sha>, <YYYY-MM-DD
+ * HH:MM> UTC.", plus, for a surface that declares `currentStatus`, a pointer to the page that carries current status.
+ * The sha is the commit the page's text was WRITTEN AGAINST (`--as-of <sha>`, default HEAD), and the time is that
+ * commit's COMMITTER time, never the wall clock, so stamping the same commit twice writes the same bytes. The line is
  * styled only with the page's own tokens, named per surface in `stampTokens`, and refused if the page does not
- * declare them. Re-syncing replaces the line and never duplicates it; the rest of the page stays byte-identical.
- * So the ORDER is: update the source, `--sync <id>` (it stamps the page and records HEAD), publish the stamped
- * source to the SAME url, commit. The stamp travels with the content, so even a copy left stale says how old it is.
+ * declare them. Re-stamping replaces the line and never duplicates it; the rest of the page stays byte-identical.
  *
- * Mutation-Proof (the stamp, 2026-10-28): listed in tests/gates/artifact-currency-gates.test.js (pure) and
- * tests/scripts/artifact-currency-scope.test.js (the --sync process cases).
+ * TWO STEPS, because publishing happens between them and can wait (a page owned by another claude.ai account waits
+ * until that account is active). `--stamp` writes the page and nothing else. `--sync` runs AFTER the publish and
+ * records the sha as published; it refuses unless the page's stamp names that same commit, so the state file can
+ * only record what the published page itself says. Recording before publishing would make every later drift line
+ * understate how old the page the operator reads is. So the ORDER is: refresh the source, `--stamp <id>`, publish
+ * the stamped source to the SAME url, `--sync <id>`, commit the source with the state file. The stamp travels with
+ * the content, so even a copy left stale says how old it is.
  *
- *   node scripts/ci/artifact-currency.mjs              check: report every surface's drift; refuse the tree defects
- *   node scripts/ci/artifact-currency.mjs --sync [id]  stamp the page(s) with HEAD and the time, and record HEAD as
- *                                                      published (then publish the stamped source)
+ * Mutation-Proof (the stamp and the two steps, 2026-10-28): listed in tests/gates/artifact-currency-gates.test.js
+ * (pure) and tests/scripts/artifact-currency-scope.test.js (the --stamp and --sync process cases).
+ *
+ *   node scripts/ci/artifact-currency.mjs                               check: report every surface's drift; refuse
+ *                                                                       the tree defects
+ *   node scripts/ci/artifact-currency.mjs --stamp [id] [--as-of <sha>]  write the as-of stamp into the page(s); the
+ *                                                                       state file is not touched
+ *   node scripts/ci/artifact-currency.mjs --sync [id] [--as-of <sha>]   AFTER publishing: record the sha as published,
+ *                                                                       only if the page's stamp names it
+ * With no id, every artifact surface; `--as-of` defaults to HEAD.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -200,7 +212,7 @@ export function verifyQueued(claims, exists) {
 /**
  * THE READER-SIDE STAMP (DECISIONS 2026-10-28 item 12). The question the operator asked about these pages was
  * whether what he READS is current, so each page states its own age at the top of its visible content, in one
- * generated line between two marker comments. `--sync` writes it; nothing else does, and nobody types it.
+ * generated line between two marker comments. `--stamp` writes it; nothing else does, and nobody types it.
  */
 export const STAMP_BEGIN = '<!-- asof:begin -->';
 export const STAMP_END = '<!-- asof:end -->';
@@ -261,54 +273,140 @@ export function applyStamp(html, block) {
   return { html: `${html.slice(0, at)}\n${block}${html.slice(at)}` };
 }
 
+/**
+ * PURE: the commit a page's stamp names. Exactly one begin marker, exactly one end marker after it, and a commit in
+ * between; anything else is an error, never a guess, because `--sync` and the push-time check both trust this value.
+ * @returns {{sha: string} | {error: string}}
+ */
+export function readStamp(html) {
+  const begins = html.split(STAMP_BEGIN).length - 1;
+  const ends = html.split(STAMP_END).length - 1;
+  if (begins === 0 && ends === 0) return { error: 'has no as-of stamp' };
+  if (begins !== 1 || ends !== 1) return { error: `has ${begins} ${STAMP_BEGIN} and ${ends} ${STAMP_END} markers, not one of each` };
+  const b = html.indexOf(STAMP_BEGIN);
+  const e = html.indexOf(STAMP_END);
+  if (e < b) return { error: `has its ${STAMP_END} marker before its ${STAMP_BEGIN}` };
+  const m = /As of commit ([0-9a-f]{4,40}),/.exec(html.slice(b, e));
+  if (!m) return { error: 'has an as-of stamp that names no commit' };
+  return { sha: m[1] };
+}
+
+/** The value after `flag` on the command line; undefined when the flag is absent or the next word is another flag. */
+function argAfter(flag) {
+  const i = process.argv.indexOf(flag);
+  const v = i === -1 ? undefined : process.argv[i + 1];
+  return v && !v.startsWith('-') ? v : undefined;
+}
+
+/** `ref` as a commit in this history, {full, short}; null when it is not one. */
+function resolveCommit(ref) {
+  try {
+    const full = execFileSync('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    return full ? { full, short: git('rev-parse', '--short', full) } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The commit's COMMITTER time, so a stamp of the same commit is the same bytes on every run. */
+const committedAt = (full) => new Date(Number(git('log', '-1', '--format=%ct', full)) * 1000);
+
+function fail(mode, problems, consequence) {
+  for (const p of problems) console.error(`✘ artifact-currency ${mode}: ${p}`);
+  console.error(`  ${consequence}`);
+  process.exit(1);
+}
+
+/** The artifact surfaces `--stamp [id]` / `--sync [id]` act on, and the `--as-of` commit (default HEAD). */
+function writeTargets(mode, all) {
+  // Only 'artifact' surfaces are published, so only they carry a stamp and a recorded sha.
+  const which = argAfter(mode);
+  const targets = all.filter((s) => s.kind === 'artifact' && (!which || s.id === which));
+  if (!targets.length) fail(mode, [`no artifact surface matching ${which || '(any)'}`], 'Nothing was written.');
+  const ref = process.argv.includes('--as-of') ? argAfter('--as-of') : 'HEAD';
+  const asOf = ref && resolveCommit(ref);
+  if (!asOf) fail(mode, [`--as-of ${ref || '(no value)'} is not a commit in this history`], 'Nothing was written.');
+  return { targets, asOf, head: resolveCommit('HEAD') };
+}
+
+/**
+ * `--stamp`: write each target page's as-of stamp, and nothing else. Every target is stamped in memory FIRST and
+ * nothing is written unless all of them stamp: a run that stamped one page and failed on the next would leave the
+ * pages telling different stories about one publish.
+ */
+function stampPages(all) {
+  const { targets, asOf, head } = writeTargets('--stamp', all);
+  const when = committedAt(asOf.full);
+  const stamped = [];
+  const problems = [];
+  for (const t of targets) {
+    const src = join(ROOT, t.source);
+    if (!existsSync(src)) { problems.push(`${t.id}: ${t.source} is missing`); continue; }
+    const html = readFileSync(src, 'utf8');
+    const missing = missingTokens(html, t.stampTokens);
+    if (missing.length) {
+      problems.push(`${t.id}: stampTokens in .artifact-sync.json must name a token ${t.source} declares, for: ${missing.join(', ')}`);
+      continue;
+    }
+    const r = applyStamp(html, stampBlock({ sha: asOf.short, when, tokens: t.stampTokens, currentStatus: t.currentStatus }));
+    if (r.error) { problems.push(`${t.id}: ${t.source} has ${r.error}`); continue; }
+    stamped.push({ src, html: r.html });
+  }
+  if (problems.length) fail('--stamp', problems, 'Nothing was written: no page stamped.');
+  for (const { src, html } of stamped) writeFileSync(src, html);
+  const ids = targets.map((t) => t.id);
+  const asOfFlag = asOf.full === head.full ? '' : ` --as-of ${asOf.short}`;
+  console.log(`artifact-currency: stamped ${ids.join(', ')} as of ${asOf.short} (that commit's time). The state file is unchanged.`);
+  console.log(`  Next: publish each stamped source to its SAME url, then run --sync ${ids.length === 1 ? ids[0] : '<id>'}${asOfFlag}, then commit the sources with the state file.`);
+}
+
+/**
+ * `--sync`: AFTER a publish, record the sha as published. It refuses unless each page's stamp names the `--as-of`
+ * commit, so the state file records only what the published page itself says; and, like `--stamp`, it records
+ * nothing unless every target passes. The recorded sha is the stamp's own text, which is what the push-time check
+ * compares it with.
+ */
+function syncPublished(state, all) {
+  const { targets, asOf } = writeTargets('--sync', all);
+  const recorded = [];
+  const problems = [];
+  for (const t of targets) {
+    const src = join(ROOT, t.source);
+    if (!existsSync(src)) { problems.push(`${t.id}: ${t.source} is missing`); continue; }
+    const st = readStamp(readFileSync(src, 'utf8'));
+    if (st.error) { problems.push(`${t.id}: ${t.source} ${st.error}. Run --stamp ${t.id} and publish the stamped source first.`); continue; }
+    const named = resolveCommit(st.sha);
+    if (!named || named.full !== asOf.full) {
+      problems.push(`${t.id}: the page's stamp names ${st.sha}, not ${asOf.short}. The published page says it is as of ${st.sha}; `
+        + `record that (--as-of ${st.sha}), or re-stamp it at ${asOf.short} and republish first.`);
+      continue;
+    }
+    recorded.push({ id: t.id, sha: st.sha });
+  }
+  if (problems.length) fail('--sync', problems, 'Nothing was recorded: the state file is unchanged.');
+  const next = JSON.parse(JSON.stringify(state));
+  const list = Array.isArray(next.surfaces) ? next.surfaces : [next];
+  const today = new Date().toISOString().slice(0, 10);
+  for (const { id, sha } of recorded) {
+    const row = list.find((r) => (r.id || r.source) === id);
+    if (row) { row.syncedSha = sha; row.syncedAt = today; }
+  }
+  writeFileSync(STATE, `${JSON.stringify(next, null, 2)}\n`);
+  console.log(`artifact-currency: recorded ${recorded.map((r) => `${r.id} as published at ${r.sha}`).join(', ')}`);
+  console.log('  Now commit the sources with the state file.');
+}
+
 function main() {
-  const head = git('rev-parse', '--short', 'HEAD');
   const state = readState();
   const all = surfaces(state);
 
-  if (process.argv.includes('--sync')) {
-    // `--sync [id]` — only 'artifact' surfaces carry a recorded sha; a 'page' is tracked by its own commit.
-    const which = process.argv[process.argv.indexOf('--sync') + 1];
-    const targets = all.filter((s) => s.kind === 'artifact' && (!which || which.startsWith('-') || s.id === which));
-    if (!targets.length) {
-      console.error(`artifact-currency: no artifact surface matching ${which || '(any)'} — nothing to sync`);
-      process.exit(1);
-    }
-    const now = new Date();
-    // Stamp every target FIRST, in memory, and write nothing unless all of them stamp: a sync that stamped one page
-    // and failed on the next would leave the pages and the state file telling different stories.
-    const stamped = [];
-    const problems = [];
-    for (const t of targets) {
-      const src = join(ROOT, t.source);
-      if (!existsSync(src)) { problems.push(`${t.id}: ${t.source} is missing`); continue; }
-      const html = readFileSync(src, 'utf8');
-      const missing = missingTokens(html, t.stampTokens);
-      if (missing.length) {
-        problems.push(`${t.id}: stampTokens in .artifact-sync.json must name a token ${t.source} declares, for: ${missing.join(', ')}`);
-        continue;
-      }
-      const r = applyStamp(html, stampBlock({ sha: head, when: now, tokens: t.stampTokens, currentStatus: t.currentStatus }));
-      if (r.error) { problems.push(`${t.id}: ${t.source} has ${r.error}`); continue; }
-      stamped.push({ src, html: r.html });
-    }
-    if (problems.length) {
-      for (const p of problems) console.error(`✘ artifact-currency --sync: ${p}`);
-      console.error('  Nothing was written: no page stamped, no sha recorded.');
-      process.exit(1);
-    }
-    for (const { src, html } of stamped) writeFileSync(src, html);
-    const next = JSON.parse(JSON.stringify(state));
-    const list = Array.isArray(next.surfaces) ? next.surfaces : [next];
-    for (const t of targets) {
-      const row = list.find((r) => (r.id || r.source) === t.id);
-      if (row) { row.syncedSha = head; row.syncedAt = now.toISOString().slice(0, 10); }
-    }
-    writeFileSync(STATE, `${JSON.stringify(next, null, 2)}\n`);
-    console.log(`artifact-currency: stamped and recorded ${head} for ${targets.map((t) => t.id).join(', ')}`);
-    console.log('  Now publish each stamped source to its SAME url, then commit the sources with the state file.');
-    return;
+  if (process.argv.includes('--stamp') && process.argv.includes('--sync')) {
+    fail('--stamp/--sync', ['--stamp and --sync are separate steps, with the publish between them: run one at a time'], 'Nothing was written.');
   }
+  if (process.argv.includes('--stamp')) return stampPages(all);
+  if (process.argv.includes('--sync')) return syncPublished(state, all);
+
+  const head = git('rev-parse', '--short', 'HEAD');
 
   if (!all.length) {
     console.log('artifact-currency: no surfaces configured — nothing to check');
@@ -363,7 +461,7 @@ function main() {
       if (!from) { console.log(`· ${s.id}: never committed — skipping`); continue; }
     }
     if (!from) {
-      console.log(`· ${s.id}: no sync state — run with --sync ${s.id} after publishing`);
+      console.log(`· ${s.id}: no publish recorded — --stamp ${s.id}, publish the stamped source, then --sync ${s.id}`);
       continue;
     }
 
@@ -381,7 +479,7 @@ function main() {
       report = [
         `${s.id}: recorded sha ${from} is not in this history, so the drift cannot be measured — reported, not refused.`,
         '  Two causes: a shallow checkout (the CI gates job needs fetch-depth: 0), or a recorded sha that only a lane',
-        `  branch held, and that branch was squash-merged and deleted. For the second, republish from main and --sync ${s.id}${at}`,
+        `  branch held, and that branch was squash-merged and deleted. For the second, from main: --stamp ${s.id}, republish, then --sync ${s.id}${at}`,
       ];
     } else if (level === 'current') {
       report = [`✓ ${s.id}: at HEAD (${head})${at}`];
