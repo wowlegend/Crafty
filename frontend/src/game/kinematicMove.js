@@ -10,10 +10,16 @@
 // The move given but not yet stepped is nextTranslation() - translation(): Rapier makes the two equal after a step and
 // after setTranslation (a teleport drops it). So the KCC sweeps that pending move plus this frame's, from where the
 // collider still is, and the target is written from there: no move is lost, and the sweep that resolves collisions
-// covers the whole path. A capsule grown into the ground by a form swap (`lift`, not swept, as before) is carried the
-// same way, and an upward sweep leaves the penetration.
+// covers the whole path.
+//
+// A capsule grown into the ground by a form swap is lifted out WITHOUT a sweep (`lift`), on its frame and on every frame
+// until a step lands it: swept again on a frame that took no step, the lift stopped at any ceiling within it and left
+// the capsule in the floor, at 120 Hz and not at 60. So the lift a pending target carries is kept per body and taken
+// out of the pending move before the sweep. A step or a teleport makes nextTranslation equal translation exactly
+// (measured against real Rapier), and then nothing is pending.
 
 const _d = { x: 0, y: 0, z: 0 };
+const _unswept = new WeakMap(); // body -> metres of lift in its pending target
 
 /**
  * Sweep this frame's displacement `d` (plus any move not yet stepped) and set the body's next kinematic translation.
@@ -28,11 +34,15 @@ const _d = { x: 0, y: 0, z: 0 };
 export function moveKinematic(body, kcc, collider, d, lift = 0, filter = undefined) {
   const at = body.translation();
   const next = body.nextTranslation();
-  _d.x = d.x + (next.x - at.x);
-  _d.y = d.y + (next.y - at.y);
-  _d.z = d.z + (next.z - at.z);
+  const px = next.x - at.x, py = next.y - at.y, pz = next.z - at.z;
+  const held = px === 0 && py === 0 && pz === 0 ? 0 : _unswept.get(body) || 0;
+  _d.x = d.x + px;
+  _d.y = d.y + py - held;
+  _d.z = d.z + pz;
   kcc.computeColliderMovement(collider, _d, undefined, undefined, filter);
   const m = kcc.computedMovement();
-  body.setNextKinematicTranslation({ x: at.x + m.x, y: at.y + m.y + lift, z: at.z + m.z });
+  const up = held + lift;
+  body.setNextKinematicTranslation({ x: at.x + m.x, y: at.y + m.y + up, z: at.z + m.z });
+  _unswept.set(body, up);
   return m;
 }

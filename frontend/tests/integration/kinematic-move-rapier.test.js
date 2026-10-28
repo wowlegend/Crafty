@@ -102,6 +102,58 @@ describe('moveKinematic: no frame\'s move is lost to a frame that took no world 
   });
 });
 
+describe('a form swap\'s grow lift lands unswept whether or not a world step follows its frame (real Rapier)', () => {
+  // A capsule grown by LIFT at each end, standing where the base capsule stood, so its base is LIFT into the floor, and
+  // a ceiling CLEAR above its top, inside the lift. The lift is a depenetration: it moves the body without a sweep.
+  const LIFT = 0.2, CLEAR = 0.1;
+  function grownUnderCeiling() {
+    const w = makeWorld();
+    w.world.removeCollider(w.collider, false);
+    w.collider = w.world.createCollider(RAPIER.ColliderDesc.capsule(BASE_CAPSULE.halfHeight + LIFT, BASE_CAPSULE.radius), w.body);
+    const y0 = w.body.translation().y;
+    const top = y0 + BASE_CAPSULE.halfHeight + LIFT + BASE_CAPSULE.radius;
+    const ceiling = w.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, top + CLEAR + 0.5, 0));
+    w.world.createCollider(RAPIER.ColliderDesc.cuboid(50, 0.5, 50), ceiling);
+    w.world.step();
+    return { w, y0 };
+  }
+  const still = { x: 0, y: 0, z: 0 };
+
+  it('the swap frame, then a step (60 Hz): the body rises the whole lift', () => {
+    const { w, y0 } = grownUnderCeiling();
+    moveKinematic(w.body, w.kcc, w.collider, still, LIFT);
+    w.world.step();
+    moveKinematic(w.body, w.kcc, w.collider, still, 0);
+    w.world.step();
+    expect(w.body.translation().y - y0).toBeCloseTo(LIFT, 4);
+  });
+
+  it('the swap frame takes no step (120 Hz): the next frame does not sweep the lift into the ceiling', () => {
+    const { w, y0 } = grownUnderCeiling();
+    moveKinematic(w.body, w.kcc, w.collider, still, LIFT);
+    moveKinematic(w.body, w.kcc, w.collider, still, 0);
+    w.world.step();
+    expect(w.body.translation().y - y0, 'the lift was swept and stopped at the ceiling: the capsule stays in the floor').toBeCloseTo(LIFT, 4);
+  });
+
+  it('the lift rides with a walk across frames that take no step, and a teleport drops it', () => {
+    const { w, y0 } = grownUnderCeiling();
+    const x0 = w.body.translation().x;
+    moveKinematic(w.body, w.kcc, w.collider, { x: 0.1, y: 0, z: 0 }, LIFT);
+    moveKinematic(w.body, w.kcc, w.collider, { x: 0.1, y: 0, z: 0 }, 0);
+    moveKinematic(w.body, w.kcc, w.collider, { x: 0.1, y: 0, z: 0 }, 0);
+    w.world.step();
+    expect(w.body.translation().y - y0, 'the lift was lost or doubled over three frames with no step').toBeCloseTo(LIFT, 3);
+    expect(w.body.translation().x - x0, 'a frame\'s walk was lost beside the lift').toBeCloseTo(0.3, 3);
+    const t = grownUnderCeiling();
+    moveKinematic(t.w.body, t.w.kcc, t.w.collider, still, LIFT);
+    t.w.body.setTranslation({ x: 40, y: t.y0, z: 40 }, true);
+    moveKinematic(t.w.body, t.w.kcc, t.w.collider, still, 0);
+    t.w.world.step();
+    expect(t.w.body.translation().y - t.y0, 'a lift dropped by a teleport came back').toBeCloseTo(0, 4);
+  });
+});
+
 describe('the frame cap and the wall: the KCC sweep does not tunnel at any step length', () => {
   // Why MAX_FRAME_STEP_SEC need not be lower for the player (game/frameStep.js).
   for (const thick of [1.0, 0.05]) {
