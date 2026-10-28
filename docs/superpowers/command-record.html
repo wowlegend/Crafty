@@ -247,34 +247,34 @@ footer p { max-width: 75ch; }
 <header class="top">
   <p class="label kicker">Crafty · Ember against the dark · command session</p>
   <h1>Crafty Command Record</h1>
-  <p class="sub">What the Crafty command session achieved and decided from the takeover on 2026-10-27 to 2026-10-28, 17:45 UTC.</p>
-  <p class="meta">State read at about 2026-10-28 17:45Z against <code>origin/main 6752ce5c</code>. The previous version was read at 14:20Z against <code>030ada1f</code>; each section puts what changed since then first. Times are UTC unless marked PDT. Git commit times are PDT (UTC−7); GitHub times are UTC.</p>
+  <p class="sub">What the Crafty command session achieved and decided from the takeover on 2026-10-27 to 2026-10-28, 21:50 UTC.</p>
+  <p class="meta">State read at about 2026-10-28 21:45Z against <code>origin/main 3bd6fbde</code> and the land batch <code>87428e2d</code> that this page lands with. The previous version was read at 17:45Z against <code>6752ce5c</code>; each section puts what changed since then first. Times are UTC unless marked PDT. Git commit times are PDT (UTC−7); GitHub times are UTC.</p>
 
   <div class="state" aria-label="Current state">
     <div>
       <p class="label">Main CI</p>
       <p class="pills"><span class="pill ok">head green</span></p>
-      <p>Head <code>6752ce5c</code> passed land run <code>40734785930</code> on that exact commit (17:20 to 17:34Z), which main requires before it accepts a push, and main’s own run on it, <code>40737159635</code>, passed on the first attempt at 17:49Z. So did main’s run on each of the five pushes before it. The flaky <code>ore-glow.spec.js</code> that failed main’s first attempt on <code>030ada1f</code> is fixed at its cause (<code>213eae36</code>).</p>
+      <p>Head <code>3bd6fbde</code> passed PR run <code>40769981525</code> on that exact commit (21:12 to 21:28Z), and main’s run on it, <code>40773279609</code>, passed at 21:37Z on that verdict without re-running the heavy jobs (item 23). All seven main runs since 17:45Z passed. The one on <code>c03186fe</code> passed on re-run after <code>ore-glow.spec.js</code> failed its first attempt, a framing defect now fixed at its cause (<code>68336efd</code>).</p>
     </div>
     <div>
       <p class="label">Production</p>
       <p class="pills"><span class="pill ok">deployed</span><span class="pill ok">protected</span></p>
-      <p>Vercel Production deployment of <code>6752ce5c</code> at 17:36:30Z, state success. At 17:41Z <a href="https://crafty-game.vercel.app/">crafty-game.vercel.app</a> and crafty-sand.vercel.app both served <code>index-IhOGvzsX.js</code>, the chunk the land run built from <code>6752ce5c</code>. Main accepts only a commit with a green <code>ci ok</code>.</p>
+      <p>Vercel Production deployment of <code>3bd6fbde</code> at 21:36:25Z, state success. At 21:44Z <a href="https://crafty-game.vercel.app/">crafty-game.vercel.app</a> and crafty-sand.vercel.app both served <code>index-CfmscO8D.js</code>, the chunk PR run <code>40769981525</code> built from <code>3bd6fbde</code>. Main accepts only a commit with a green <code>ci ok</code>.</p>
     </div>
     <div>
-      <p class="label">Landed since 14:20Z</p>
-      <p class="pills"><span class="pill ok">6 main pushes</span></p>
-      <p>The last version of this page, W1-G bundle UI, W1-E mipmaps, two flaky-spec fixes, W1-H (the decisions, the lane briefs and one registry), and the light and colour script. Wave 1 is done except #31. 57 commits, counting the light lane’s own from 10-27.</p>
+      <p class="label">Landed since 17:45Z</p>
+      <p class="pills"><span class="pill ok">7 main pushes</span></p>
+      <p>The last version of this page, the combat stance (#31), the ore-glow framing fix, and four Wave 2 lanes: W2-C, W2-A, the Cut’s first two steps and W2-B. Wave 1 is done. 98 commits, 76 of them not merges, counting #31’s own from earlier today.</p>
     </div>
     <div>
       <p class="label">In flight</p>
-      <p class="pills"><span class="pill run">round 3</span></p>
-      <p>#31 combat stance: a fresh <code>/code-review xhigh</code> found 13 issues; round 3 fixed them and its verifier confirmed four by putting the old code back, but refuted the roster fix, so a short final round is running. Wave 2’s first two lanes, W2-B and W2-C, which do not depend on the stance, started at 17:40Z.</p>
+      <p class="pills"><span class="pill run">3 lanes</span></p>
+      <p>#36 makes fogged sprites, such as the floating damage numbers, draw again: its first PR run passed at 21:36Z, but on a base 22 commits behind main, so it merges main and runs once more before it lands. W2-I is measuring each post-processing pass on the production build, and W2-K is repainting the block textures. Neither has a result yet.</p>
     </div>
     <div>
       <p class="label">Waiting on you</p>
-      <p class="pills"><span class="pill warn">iPad and ears</span></p>
-      <p>Three checks on a real iPad, and the audio mix by ear. A look at dawn, dusk and midnight on the live site is welcome, not required. <a href="#open">Details</a>.</p>
+      <p class="pills"><span class="pill idle">nothing blocks</span></p>
+      <p>Two optional items from the registry: the watts A/B, which needs your sudo password once, and a session on a real iPad. <a href="#open">Details</a>.</p>
     </div>
   </div>
 
@@ -292,30 +292,34 @@ footer p { max-width: 75ch; }
 <section id="outcome">
   <h2>Outcome</h2>
   <div class="prose">
-    <p class="lede">Main is green, protected and deployed at <code>6752ce5c</code>. Since 14:20Z Wave 1 landed its last four lanes and the light and colour script, so of Wave 1 only #31 remains. Wave 2’s two lanes that do not depend on the stance (W2-B, W2-C) started at 17:40Z.</p>
-    <p><strong>New since 14:20Z.</strong> A player now gets a moonlit night instead of a navy one, a sun that arcs, fireflies at night and none on the lens by day, a 480 s day whose first dusk falls at 4:00 of play, ground that reads at dawn and golden hour, mipmapped block textures that stop leaves and stone sparkling at mid distance, and a boot chunk W1-G cut by 104 kB. W1-H wrote ten standing decisions for the reset (one costed build mode, one Ember meter, the Forge, and more; <a href="#decisions">Decisions</a>) and moved all open work into one registry, <code>memory/registry.jsonl</code>: 349 rows, 230 open. The flaky ore-glow spec that failed main’s first attempt on <code>030ada1f</code> and a flaky hitstop test were both fixed at the cause, not by widening a bound.</p>
-    <p><strong>Between 06:30Z and 14:20Z.</strong> Your standing principle this morning (DECISIONS 2026-10-28 item 14) put nothing off limits and made this page your one review surface. The session ran a whole-project assessment and wrote the SOTA reset plan, “The First Night” (<code>ee26549c</code>, on main at 09:58Z). It ranks what to cut, rewrite and keep, in three waves. Wave 1 ships small visible wins and unlocks the rest: its required check landed at 11:11Z, and four more of its lanes at 14:08Z.</p>
-    <p>The previous version reported main red on <code>touch-hold.spec.js:303</code> (run <code>40642071917</code> on <code>43d766e6</code>). The frame-counted freeze fix reached main as <code>2bb0857d</code>, and its run <code>40651588887</code> passed at 07:55Z.</p>
-    <p>At the takeover on 10-27, main had not passed CI since 2026-09-23 (run <code>35820716087</code> on <code>a01b1982</code>), and 11 commits sat unpushed on the laptop. Main went green at <code>230fd72f</code> (run <code>40518887229</code>, 14:33Z on 10-27).</p>
-    <p>Those hours also gave a player a canvas that spends a fixed pixel budget per quality tier and settles its tier, a way back from a lost graphics context, a pause that holds the world, no Time row in Settings, and no XP for casting at the sky or killing Settlers. Earlier work still stands: post-processing built once, the 60 fps cap, the shadow fix, night ore glow, leaf sway, storm lightning, touch press-and-hold and Diagnostics.</p>
+    <p class="lede">Main is green, protected and deployed at <code>3bd6fbde</code>. Since 17:45Z Wave 1 finished with the combat stance, and Wave 2 landed four lanes: W2-C, W2-A, the Cut’s first two steps and W2-B. Three more lanes are in flight, and nothing waits on you.</p>
+    <p><strong>New since 17:45Z.</strong> A player can no longer out-walk a fight, sees a chevron at the screen edge when an enemy winds up off screen, and has a three-step light string with a wide finisher (#31). Building now spends the blocks you mine, in every world: an empty stack says why, chests and cobblestone are crafted, the creative toggle and the three building quests are gone, and a save from before the change keeps its progress (the Cut, #33). The title stops showing keyboard hints on a touch device, the ground is no longer slightly metallic, sea foam no longer glows at night, and distant ore keeps its glow colour (W2-A, #35). Behind the scenes, a lane with a PR now lands on its own PR run instead of a second land-branch run, main’s own run reuses that verdict, the capture oracle is gone, and a push runs only the gates that read its range, which cuts the Mac’s SSD writes. The ore-glow spec that reddened main again was fixed at its cause.</p>
+    <p><strong>Between 14:20Z and 17:45Z.</strong> A moonlit night instead of a navy one, a sun that arcs, fireflies at night and none on the lens by day, a 480 s day whose first dusk falls at 4:00 of play, ground that reads at dawn and golden hour, mipmapped block textures that stop leaves and stone sparkling at mid distance, and a boot chunk 104 kB smaller. W1-H wrote ten standing decisions for the reset and moved all open work into one registry, <code>memory/registry.jsonl</code>.</p>
+    <p><strong>Between 06:30Z and 14:20Z.</strong> Your standing principle (DECISIONS 2026-10-28 item 14) put nothing off limits and made this page your one review surface. The session wrote the SOTA reset plan, “The First Night” (<code>ee26549c</code>, on main at 09:58Z), which ranks what to cut, rewrite and keep in three waves. A player got a canvas that spends a fixed pixel budget per quality tier, a way back from a lost graphics context, a pause that holds the world, no Time row in Settings, and no XP for casting at the sky or killing Settlers.</p>
+    <p>Version 2 of this page reported main red on <code>touch-hold.spec.js:303</code> (run <code>40642071917</code> on <code>43d766e6</code>). The frame-counted freeze fix reached main as <code>2bb0857d</code>, and its run <code>40651588887</code> passed at 07:55Z.</p>
+    <p>At the takeover on 10-27, main had not passed CI since 2026-09-23 (run <code>35820716087</code> on <code>a01b1982</code>), and 11 commits sat unpushed on the laptop. Main went green at <code>230fd72f</code> (run <code>40518887229</code>, 14:33Z on 10-27). Earlier work still stands: post-processing built once, the 60 fps cap, the shadow fix, night ore glow, leaf sway, storm lightning, touch press-and-hold and Diagnostics.</p>
   </div>
 
   <div class="qa">
     <div>
       <p class="q">Is Wave 1 done?</p>
-      <p><span class="pill run">all but one</span> Every Wave 1 lane is on main: W1-A to W1-D and W1-F at 14:08Z or before, W1-G at 16:04Z, W1-E at 16:22Z, W1-H at 17:18Z, and the carried light and colour lane at 17:35Z. The one left is the carried combat stance, PR #31, in its third round. The reset starts Wave 2 once #24, the stance, the light lane and W1-A have landed. The stance is the last condition for the lanes that touch combat; W2-B (retire the capture oracle) and W2-C (retire the old push-gate tiers) touch neither, so they started at 17:40Z.</p>
+      <p><span class="pill ok">done</span> Yes. The last Wave 1 lane, the carried combat stance (#31), reached main as <code>c03186fe</code> at 18:25Z. Wave 2 has landed W2-C (20:28Z), W2-A (20:51Z), the Cut’s steps 1 and 2 (21:10Z) and W2-B (21:35Z). W2-I and W2-K are building, and the rest of Wave 2 is next (<a href="#lanes">programme map</a>).</p>
     </div>
     <div>
       <p class="q">Can a red commit reach the live site now?</p>
-      <p><span class="pill ok">protected</span> No. Branch protection went on right after <code>1c4e3bc1</code> reached main at 11:11Z. Its one required check is <code>ci ok</code>, the branch must be up to date, admins are included, and force pushes and deletion are off; the GitHub API read those settings back again at 17:43Z. A lane now lands by merging into a <code>land/&lt;date&gt;</code> branch, waiting for a green <code>ci ok</code> on that exact commit, then fast-forwarding main. Vercel deploys every push to main, so every deployment since has been a commit CI passed.</p>
+      <p><span class="pill ok">protected</span> No. Branch protection has been on since <code>1c4e3bc1</code> reached main at 11:11Z: its one required check is <code>ci ok</code>, the branch must be up to date, admins are included, and force pushes and deletion are off; the GitHub API read those settings back at 21:47Z. <strong>New since 17:45Z:</strong> a lane with a PR lands by merging main into its own branch; the PR’s CI run tests that exact commit, and main fast-forwards to it once <code>ci ok</code> is green. A change with no PR, such as this page, uses a <code>land/&lt;date&gt;</code> branch the same way. Main’s own run then reuses that verdict and runs only the quick gates (item 23). Vercel deploys every push to main, so every deployment is a commit CI passed.</p>
+    </div>
+    <div>
+      <p class="q">What was done about the SSD wear?</p>
+      <p><span class="pill ok">done</span> Your request reached the session through AB Command at about 19:16Z: the Mac’s SSD writes about 4.3 TB a day against a 1 TB budget. The fixes cut duplicate work, not checks. A commit runs only the static gates and the unit tests that import what it changed (item 22). A push runs only the trailer check and four cheap gates, with no unit suite, build or bundle, because CI runs them on the exact commit before main can move (item 24). A reviewer’s or verifier’s scratch copy is a clonefile copy of the lane with <code>node_modules</code> linked, never a fresh clone and install, and no e2e or lookbook runs locally unless a look question needs the real GPU, one run at a time; CI arbitrates (<code>CLAUDE.md</code>, Method, “SSD-light lanes”). On your low-disk request, relayed by AB Command, 28 landed worktrees were removed, taking free space from 28.9 to 33.5 GB. <span class="gap">Not measured: Crafty’s own share of the writes. The session’s log counts the whole Mac, about 199 GB from 20:35 to 21:36Z.</span></p>
     </div>
     <div>
       <p class="q">Did the harness enhancements land?</p>
-      <p><span class="pill ok">landed</span> Tranche A did. PR #27 landed with #24 as <code>da70413f</code> at 10:41Z, after land run <code>40672067288</code> passed on that exact commit. Its U4 stopped tracking <code>.state/</code>: the session saved the directory, merged and restored it, and the session-truth ledger held 264 lines before and after. Its U5 made graft machine-local: your one-time script at 11:10Z put graft’s 2 allows and 5 hook blocks into the untracked <code>.claude/settings.local.json</code>. The SOTA reset cuts some later units of the harness plan and keeps others (its item #34).</p>
+      <p><span class="pill ok">landed</span> Tranche A did. PR #27 landed with #24 as <code>da70413f</code> at 10:41Z, after land run <code>40672067288</code> passed on that exact commit. Its U4 stopped tracking <code>.state/</code>: the session saved the directory, merged and restored it, and the session-truth ledger held 264 lines before and after. Its U5 made graft machine-local: your one-time script at 11:10Z put graft’s 2 allows and 5 hook blocks into the untracked <code>.claude/settings.local.json</code>. W2-C, landed at 20:28Z, carried the harness plan’s B7 fast commit tier (item 22).</p>
     </div>
     <div>
       <p class="q">Is there one instruction file now?</p>
-      <p><span class="pill ok">yes</span> Yes, since <code>d700e531</code> reached main at 11:29Z (your call; DECISIONS 2026-10-28, “One CLAUDE.md”). <code>CLAUDE.md</code> is a real file at the repo root, 38,606 bytes at <code>6752ce5c</code>. <code>.agent/</code> and the symlink are gone, and the generators write into <code>CLAUDE.md</code>. Cutting it to 12 KB or less is plan item #29, in Wave 2. <a href="#instruction-file">More</a>.</p>
+      <p><span class="pill ok">yes</span> Yes, since <code>d700e531</code> reached main at 11:29Z (your call; DECISIONS 2026-10-28, “One CLAUDE.md”). <code>CLAUDE.md</code> is a real file at the repo root, 37,852 bytes at <code>3bd6fbde</code>, and the only line in it that sets a model is its Models-and-effort bullet. Cutting it to 12 KB or less is plan item #29, in W2-J, whose proof is a cold agent answering 10 orientation questions in 15 tool calls or fewer.</p>
     </div>
     <div>
       <p class="q">What happened to option (a) for the pages?</p>
@@ -329,48 +333,83 @@ footer p { max-width: 75ch; }
   <p class="lede">Everything here is on <code>origin/main</code> and in a Vercel production deployment, newest first.</p>
 
   <div class="group">
-    <div class="group-head"><h3>The light and colour script</h3><code>6752ce5c</code><span class="when">on main 17:35Z · new</span></div>
+    <div class="group-head"><h3>The Cut, steps 1 and 2 (PR #33)</h3><code>a4ed6822</code><span class="when">on main 21:10Z · new</span></div>
+    <ul class="list">
+      <li><strong>Building spends what you mine, in every world.</strong> Placing a block spends one from the stack you mined. The creative and survival toggle, the Mode chip and the Builder, Architect and World Builder quests are gone (W1-H items 4 and 10; <code>00c0a8d4</code>).</li>
+      <li><strong>An empty stack says why.</strong> A refused placement shows “No Dirt left”, or for a crafted block “No Wooden Chest left — craft more in Crafting”, and the hotbar draws every count, 0 and 1 included, with an empty slot dimmed (<code>1a45dfb3</code>, <code>11ccd592</code>).</li>
+      <li><strong>Chests and cobblestone are crafted,</strong> both payable from the starting loadout. Without that, no player could place a storage chest once placing cost a block, and the stone tools asked for a material nothing yields (<code>1a45dfb3</code>). A chest places as one cell at the aimed cell in every build mode (<code>a5c1e8e7</code>, from the re-review).</li>
+      <li><strong>Old saves keep their progress.</strong> Keys this build no longer writes ride through a save for one version, and a frozen save from before the Cut loads at level 5 with its attributes, spells, banks, inventory and quests (<code>d4acbe2d</code>). A completed but unclaimed Builder, Architect or World Builder quest is paid once on load (<code>024aa1e3</code>).</li>
+      <li><strong>The hunger bar is off the HUD.</strong> It showed only in survival mode, so it went with the toggle. The hunger value and the food stay for a later Cut step.</li>
+      <li><span class="gap">Open: whether crafting cobblestone and mining it back pays XP on a loop (a design call), and the hotbar gate does not yet walk a recipe’s ingredients; both are registry rows. The new e2e cases were not mutation-run. Not checked on a real iPad.</span></li>
+    </ul>
+  </div>
+
+  <div class="group">
+    <div class="group-head"><h3>W2-A, quick fixes in shared files (PR #35)</h3><code>6a926fce</code><span class="when">on main 20:51Z · new</span></div>
+    <ul class="list">
+      <li><strong>No keyboard hints on a touch title.</strong> An iPad or iPhone no longer sees the WASD, Space and Q Claim strip; desktop keeps it (<code>51dfab5f</code>).</li>
+      <li><strong>The ground is no longer slightly metallic.</strong> Terrain drew at metalness 0.1, so its diffuse was its albedo × 0.9 beside creatures and props at × 1. The terrain, the far ring, the light rig’s grey card and the colour model now read one constant, metalness 0 (<code>95e96d33</code>). <span class="gap">Not met: the plan’s “at 0.30 dirt shows no specular sheen”. That sheen comes from the Fresnel term, not metalness; on the model it falls only from L 0.114 to 0.093. A MED registry row.</span></li>
+      <li><strong>Sea foam is lit by the light rig,</strong> so it no longer glows white at night, and the sky reflection and the sun or moon glint sit under the fog and follow the key light (<code>1cab6b56</code>). prod-smoke now poses the camera at the coast and fails unless every shader program links (<code>35e392a5</code>). <span class="gap">Unjudged on live frames: on the colour model, lit foam reads about 36% dimmer at noon than the old unlit foam (a registry row).</span></li>
+      <li><strong>Distant ore keeps its night glow.</strong> The glow map is baked from the full-size texels and mipped on its own, within 2% of level 0 at every level, so the shift W1-E brought (iron −61%, diamond +80% at the 4x4 level) is gone from the texture chain (<code>7c206ef5</code>). <span class="gap">The look at a distance waits for a live night frame; its row was reopened until then.</span></li>
+      <li>The 1% film grain and an unused edge-outline tier switch are deleted (<code>7eba9c06</code>).</li>
+    </ul>
+  </div>
+
+  <div class="group">
+    <div class="group-head"><h3>Combat stance (PR #31)</h3><code>c03186fe</code><span class="when">on main 18:25Z · new</span></div>
+    <ul class="list">
+      <li><strong>You cannot out-walk a fight.</strong> Near an aggro’d pursuer within 12 m that can reach you, walking away is capped at 2.0 m/s, derived from the slowest pursuer. Strafe and advance are capped at 6.5 m/s, above the fastest pursuer; a dodge keeps its burst, and travel keeps 14 m/s. The boss and the dragon are outside the stance.</li>
+      <li><strong>A windup you cannot see gets a chevron</strong> at the screen edge, at most four, clear of the crosshair and every touch control, and loaded lazily.</li>
+      <li><strong>A three-step light string:</strong> a 650 ms window to the next swing, and a finisher that sweeps 140 degrees for 1.5x with a heavy-tier hitstop. A dodge keeps an open window alive. On iPad: a joystick backpedal and a three-tap finisher.</li>
+      <li><strong>One capped step for every mover.</strong> The player and the AI share one time step capped at 0.25 s, so a stall or a throttled iPad no longer lets you out-walk pursuers. On a frame with no physics step the player’s move used to be dropped, so at 120 Hz the player covered half the distance fed; now all of it at every rate. Hits are aimed from the body, not the shaken camera.</li>
+      <li><strong>How it got here.</strong> The first fix round loosened a test instead of fixing the game; a verifier refuted it, and round 2 fixed the game. A fresh <code>/code-review xhigh</code> then found 13 issues, at least six of them correctness defects the paired reviewers had missed, a pause that escaped a fight among them; round 3 reproduced and fixed them. Its verifier refuted the roster fix, so the final round makes a mistuned roster clamp and log instead of blanking the app, with a unit gate that fails the shipped roster (<code>b585b109</code>). <a href="#decisions">Decisions</a> has the stance’s numbers.</li>
+      <li><span class="gap">Open: the stance’s calm and stall clocks run on the world clock while the fight moves by the capped step, so one frame longer than the stall window can let go of an engaged stance (a LOW registry row). Not taken: the by-eye verdict on the combat zoom, and how much night travel the stance engages. Not checked: feel on a real iPad.</span></li>
+    </ul>
+  </div>
+
+  <p class="muted">Landed between 14:20Z and 17:45Z:</p>
+
+  <div class="group">
+    <div class="group-head"><h3>The light and colour script</h3><code>6752ce5c</code><span class="when">on main 17:35Z</span></div>
     <ul class="list">
       <li><strong>Night is moonlit, not navy.</strong> A six-key colour script sets the light by the sun’s phase, and below the horizon the moon takes the key light on its own vector (<code>01fb8a88</code>, <code>452d19cc</code>).</li>
-      <li><strong>One sky frame.</strong> The light rig, the dome, the sun billboard, the grade and the land read one frame, so the sun billboard finally arcs (<code>1ab2e4d0</code>). The sky follows the game clock every frame, so dawn and dusk ramp instead of stepping once a second (<code>43cc3112</code>). Storm clouds darken again (<code>212d294d</code>).</li>
-      <li><strong>Fireflies at night, nothing on the lens by day.</strong> The motes used to float on the camera by day. Now they are fireflies, full at night, 0.6 at dusk, 0.3 before dawn and none from sunrise to sunset, and each fades out between 6 and 2.5 m from the eye (<code>037ce81a</code>).</li>
-      <li><strong>A day lasts 480 s</strong>, set by one constant (<code>14c9707b</code>, item 21). A fresh profile sees its first dusk at 4:00 of play and its first dawn at 8:00, so the First Night fits ten minutes. Golden hour’s blend lasts 16.8 s, up from 10.5, and the dusk warning comes 43 s before night, up from 27. Saves load unchanged. <span class="gap">Exception: the spawner runs on real time, so a night now holds the siege at its mob cap for 240 s, not 150. Night 1 ships at that length unmeasured; W3-A rebalances it.</span></li>
-      <li><strong>The ground reads at dawn, golden hour and through the twilight blends,</strong> and the pad by the Hearth no longer turns maroon at dusk (<code>73f4cebc</code>). The review found the first keys lit dawn and golden hour darker than midnight and than main; after the retune the model’s grey card reads L 0.418 at dawn, 0.415 at golden hour, 0.381 at the dusk blend and 0.337 at midnight, against main’s 0.374, 0.374, 0.146 and 0.146. <span class="gap">Exception: at midnight the ground within about 1 m of the brazier still reads on the maroon line, as it did before this lane (a registry row).</span></li>
-      <li><span class="gap">Not in this landing: bloom only for HDR and the sun-glow fog (the light plan’s Tasks 5 and 6), which wait for W2-I to measure the passes they touch. Not looked at on the live site.</span></li>
+      <li><strong>One sky frame.</strong> The light rig, the dome, the sun billboard, the grade and the land read one frame, so the sun billboard arcs (<code>1ab2e4d0</code>), dawn and dusk ramp every frame instead of stepping once a second (<code>43cc3112</code>), and storm clouds darken again (<code>212d294d</code>).</li>
+      <li><strong>Fireflies at night, nothing on the lens by day:</strong> full at night, 0.6 at dusk, 0.3 before dawn and none from sunrise to sunset, each fading out between 6 and 2.5 m from the eye (<code>037ce81a</code>).</li>
+      <li><strong>A day lasts 480 s</strong> (<code>14c9707b</code>, item 21). A fresh profile sees its first dusk at 4:00 of play and its first dawn at 8:00, so the First Night fits ten minutes. Saves load unchanged. <span class="gap">Exception: the spawner runs on real time, so a night now holds the siege at its mob cap for 240 s, not 150. W3-A rebalances it.</span></li>
+      <li><strong>The ground reads at dawn, golden hour and through the twilight blends,</strong> and the pad by the Hearth no longer turns maroon at dusk (<code>73f4cebc</code>). The model’s grey card reads L 0.418 at dawn, 0.415 at golden hour, 0.381 at the dusk blend and 0.337 at midnight, against 0.374, 0.374, 0.146 and 0.146 before. <span class="gap">Exception: at midnight the ground within about 1 m of the brazier still reads on the maroon line (a registry row).</span></li>
+      <li><span class="gap">Not in this landing: bloom only for HDR and the sun-glow fog (the light plan’s Tasks 5 and 6), which wait for W2-I. Not looked at on the live site.</span></li>
     </ul>
   </div>
 
   <div class="group">
-    <div class="group-head"><h3>W1-E, mipmapped block textures</h3><code>d201c073</code><span class="when">on main 16:22Z · new</span></div>
+    <div class="group-head"><h3>W1-E, mipmapped block textures</h3><code>d201c073</code><span class="when">on main 16:22Z</span></div>
     <ul class="list">
-      <li><strong>Leaves and stone stop sparkling at mid distance.</strong> The block textures carry a mip chain, built per layer in linear light, so a distant block’s colour is its true average (<code>6ccc483c</code>, item 20). Up close nothing changes: magnification stays NEAREST, and a face seen head-on keeps its crisp texels out to about 16 to 28 blocks.</li>
-      <li><strong>Checked on the shipped bundle.</strong> prod-smoke reads the texture back from the GPU of the production build: 6 levels, every level filled in all 15 drawn layers, and all 87,360 bytes equal the chain the source builds (land run <code>40722522469</code>, the check’s first live run). The cost is 21,824 bytes of GPU memory and 3.5 to 4.6 ms once at boot (measured in node).</li>
-      <li><span class="gap">Accepted: ground seen at a low angle from eye height flattens toward the next level from about 6 to 10 blocks out (estimated from the screen geometry, not measured per distance). A sharper level choice is a Wave 2 evaluation.</span></li>
-      <li><span class="gap">Side effect, not fixed: at a distance the night ore glow shifts, iron dimmer by 61% and diamond brighter by 80% at the 4x4 level. Close up nothing changes. Owner: W2-A or the light lane’s successor. Not measured: frame time, the crawl in motion, and the acceptance clip on the deployed build.</span></li>
+      <li><strong>Leaves and stone stop sparkling at mid distance.</strong> The block textures carry a mip chain built per layer in linear light, so a distant block’s colour is its true average (<code>6ccc483c</code>, item 20). Up close nothing changes: a face seen head-on keeps its crisp texels out to about 16 to 28 blocks.</li>
+      <li><strong>Checked on the shipped bundle.</strong> prod-smoke reads the texture back from the GPU of the production build: 6 levels, every level filled in all 15 drawn layers, all 87,360 bytes equal to the chain the source builds (land run <code>40722522469</code>). The cost is 21,824 bytes of GPU memory and 3.5 to 4.6 ms once at boot.</li>
+      <li><span class="gap">Accepted: ground seen at a low angle from eye height flattens toward the next level from about 6 to 10 blocks out (estimated, not measured per distance). The night ore-glow shift at distance it caused is fixed in the texture chain by W2-A (above). Not measured: frame time, the crawl in motion, and the acceptance clip on the deployed build.</span></li>
     </ul>
   </div>
 
   <div class="group">
-    <div class="group-head"><h3>W1-G, a smaller boot chunk</h3><code>c6d04db8</code><span class="when">on main 16:04Z · new</span></div>
+    <div class="group-head"><h3>W1-G, a smaller boot chunk</h3><code>c6d04db8</code><span class="when">on main 16:04Z</span></div>
     <ul class="list">
-      <li><strong>The boot chunk is 104 kB smaller.</strong> In CI’s builds the index chunk went from 726.4 kB at <code>030ada1f</code> (run <code>40703024235</code>) to 622.0 kB at <code>c6d04db8</code> (run <code>40722279947</code>); with the light lane it is 629.6 kB. The game-icon set is now its own 75.2 kB chunk, and the page preloads it beside the boot chunk so the title sword is not late (<code>56a5ef8e</code>, <code>b3681a77</code>).</li>
-      <li><strong>A failed icon load is retried</strong> the next time an icon mounts, instead of leaving every game icon blank for the session (<code>ee696bf3</code>).</li>
-      <li>tailwind-merge, clsx and class-variance-authority are gone. Each UI primitive names the default a caller replaces, and a new gate fails a class that fights one (<code>aa453ae8</code>). <span class="gap">Until its chunk lands, a game icon draws an empty box of the same size. Not measured: load time on a real connection.</span></li>
+      <li><strong>The boot chunk is 104 kB smaller:</strong> 726.4 kB at <code>030ada1f</code> to 622.0 kB at <code>c6d04db8</code> in CI’s builds. The game-icon set is its own 75.2 kB chunk, preloaded beside the boot chunk so the title sword is not late (<code>56a5ef8e</code>, <code>b3681a77</code>), and a failed icon load is retried the next time an icon mounts (<code>ee696bf3</code>).</li>
+      <li>tailwind-merge, clsx and class-variance-authority are gone, and a gate fails a class that fights a primitive’s named default (<code>aa453ae8</code>). <span class="gap">Until its chunk lands, a game icon draws an empty box of the same size. Not measured: load time on a real connection.</span></li>
     </ul>
   </div>
 
-  <p class="muted">Landed between 06:30Z and 14:20Z, unchanged since the previous version:</p>
+  <p class="muted">Landed between 06:30Z and 14:20Z:</p>
 
   <div class="group">
     <div class="group-head"><h3>Wave 1: pause, cuts and public text</h3><code>030ada1f</code><span class="when">on main 14:08Z</span></div>
     <ul class="list">
       <li><strong>A pause holds the world.</strong> ESC, an open panel, a lost focus and the touch Pause now stop mobs, projectiles, burns, spawns, quest timers, mana and the day clock (<code>8b1d383f</code>, <code>0ec569b3</code>). On main before it, a player paused for 5 s beside a chasing mob lost 20 HP, and the mob walked 3.4 m (<code>472acd91</code>). <span class="gap">Exception: the beast form, snare and fuse timers still count down during a pause. They live in the combat lane’s file and are owed to W3-D.</span></li>
-      <li><strong>Hunger no longer drains,</strong> so the starvation damage after 83 minutes is gone. <span class="gap">Exception: the hunger bar stays on screen and never moves until the Wave 2 cut removes it (W2-F).</span></li>
+      <li><strong>Hunger no longer drains,</strong> so the starvation damage after 83 minutes is gone. The bar that never moved left the HUD with the Cut (<code>a4ed6822</code>).</li>
       <li><strong>The touch Pause acts on the tap’s click, not its lift,</strong> so the tap’s own click cannot resume play (<code>030ada1f</code>). The first land run failed on it (<code>40696946693</code>, shard 5/8, 3 of 3 attempts): the case had passed only on the laptop. The fix passed land run <code>40700481509</code>. <span class="gap">Not checked on a real iPad, including a tap while another finger holds the joystick.</span></li>
       <li><strong>Settings has no Time row,</strong> so a night siege cannot be skipped from the pause menu (<code>f1ce2be9</code>).</li>
       <li><strong>XP comes from fighting.</strong> A cast pays nothing, and a spell pays its 5 XP per hit only on an enemy (<code>55f32668</code>, <code>a3786d0d</code>). A Settler kill pays nothing, banks no Aspect power, earns no quest credit and is not counted as a kill; a livestock kill still pays (item 18). Spellcaster and Archmage count spells that land on hostiles, once each, the Shadow Dragon included. <span class="gap">One edge is not migrated: an old save that finished Spellcaster under the old rule and has not claimed it still pays its 40 XP once.</span></li>
       <li><strong>Chain lightning</strong> picks its targets from the live mob list, so an arc never lands on a dead or moved mob (<code>76cdef57</code>).</li>
-      <li><strong>Public text.</strong> The README, the page head, the manifest and the repo’s About line come from one brand source, <code>frontend/src/brand.js</code>. New PNG app icons, a noscript page, NOTICE and the font licences, a bug report form, and a generated controls table in the README that now lists F3 for Show Stats (<code>f2082fdd</code>).</li>
+      <li><strong>Public text.</strong> The README, the page head, the manifest and the repo’s About line come from one brand source, <code>frontend/src/brand.js</code>. New PNG app icons, a noscript page, NOTICE and the font licences, a bug report form, and a generated controls table in the README that lists F3 for Show Stats (<code>f2082fdd</code>).</li>
     </ul>
   </div>
 
@@ -396,8 +435,7 @@ footer p { max-width: 75ch; }
       <li><strong>Shadows survive a quality-tier change.</strong> A tier change now rebuilds the sun’s shadow target (<code>ecf22bc9</code>; the reset runs as a layout effect since <code>fb45cb35</code>). This is the prime suspect for the iPad bug, and <code>shadow-tier.spec.js</code> proves the mechanism over 4 steps. <span class="gap">Not proven: how it looks on an iPad.</span></li>
       <li><strong>60 fps cap.</strong> Default 60 fps, with a Settings choice of 60 or Unlimited in en and zh-CN, saved between sessions. Show Stats counts frames drawn, the governor gets 60 Hz bounds, and displays slightly off 60 or 120 Hz drop no frames (<code>9dc5fac7</code>, <code>54b6f65c</code>). <span class="gap">Not driven: 60-of-120 on a real 120 Hz display.</span></li>
       <li><strong>Panels.</strong> A panel whose code chunk fails to load closes with a notice (en and zh-CN), and a prefetched panel opens with no blank beat (<code>b2cd2674</code>, <code>43754237</code>).</li>
-      <li><strong>Heavy attack.</strong> The heavy does not charge in beast form or throw a free light swing, and mouse and T keep separate charges (<code>b2cd2674</code>).</li>
-      <li><strong>Mobs.</strong> A mob knocked off a ledge is no longer rewound (<code>167841e2</code>).</li>
+      <li><strong>Heavy attack.</strong> The heavy does not charge in beast form or throw a free light swing, and mouse and T keep separate charges (<code>b2cd2674</code>). <strong>Mobs.</strong> A mob knocked off a ledge is no longer rewound (<code>167841e2</code>).</li>
     </ul>
   </div>
 
@@ -405,10 +443,8 @@ footer p { max-width: 75ch; }
     <div class="group-head"><h3>PR #22, the parked milestone (Phase 0b)</h3><code>76262a08</code><span class="when">merged 02:40:43Z</span></div>
     <ul class="list">
       <li><strong>Title screen.</strong> The title canvas runs at 10 fps and the diorama is capped. The quality governor ignores the title pace (<code>52494738</code>).</li>
-      <li><strong>Night ore glow.</strong> Ores glow at night. Coal does not (<code>717d5fef</code>).</li>
-      <li><strong>Leaves</strong> sway and take back-light.</li>
-      <li><strong>Storm lightning.</strong> Thunder arrives at distance ÷ 343 m/s. There is a juice dial and a photosensitivity off-switch, and lightning is inert under capture (<code>717d5fef</code>). A night flash lights the ground (<code>4cb7e085</code>).</li>
-      <li><strong>Compass</strong> writes only when its value changes (<code>a562f25b</code>).</li>
+      <li><strong>Night ore glow.</strong> Ores glow at night. Coal does not (<code>717d5fef</code>). <strong>Leaves</strong> sway and take back-light.</li>
+      <li><strong>Storm lightning.</strong> Thunder arrives at distance ÷ 343 m/s. There is a juice dial and a photosensitivity off-switch (<code>717d5fef</code>). A night flash lights the ground (<code>4cb7e085</code>). <strong>Compass</strong> writes only when its value changes (<code>a562f25b</code>).</li>
     </ul>
   </div>
 
@@ -416,11 +452,8 @@ footer p { max-width: 75ch; }
     <div class="group-head"><h3>PR #25, touch press-and-hold (Phase 0c)</h3><code>a466a3b6</code><span class="when">merged 06:08:37Z</span></div>
     <ul class="list">
       <li><strong>Roar and heavy on touch.</strong> The roar sector and the action button are press-and-hold, so the beast form and the heavy can be performed on iPad. The roar used to be a 120 ms pulse against a 0.45 s charge (<code>78ba0d52</code>).</li>
-      <li>The ring shows every Aspect. A locked one opens Talents (F9).</li>
-      <li>The action button presses on pointerdown. A 6 px gold ring fills with the charge, read from <code>beastCharging</code> and <code>heavyChargeLevel</code> (<code>d149e9e9</code>).</li>
-      <li>The opener moved off the jump button, checked over 21 controls × 24 viewports (<code>cbab942d</code>).</li>
-      <li>Holds are one-finger, and drop on blur, pagehide and visibilitychange (<code>c0706f0c</code>). Input-time fixes include a 300 ms cooldown (<code>ae87c9ba</code>).</li>
-      <li>One glyph changes in the <code>mobile.png</code> capture frame. <span class="gap">Not measured: iOS Safari (<code>425a9bca</code>).</span></li>
+      <li>The ring shows every Aspect; a locked one opens Talents (F9). The action button presses on pointerdown, and a 6 px gold ring fills with the charge (<code>d149e9e9</code>).</li>
+      <li>The opener moved off the jump button, checked over 21 controls × 24 viewports (<code>cbab942d</code>). Holds are one-finger, and drop on blur, pagehide and visibilitychange (<code>c0706f0c</code>). <span class="gap">Not measured: iOS Safari (<code>425a9bca</code>).</span></li>
     </ul>
   </div>
 
@@ -432,27 +465,26 @@ footer p { max-width: 75ch; }
     </ul>
   </div>
 
-  <p class="muted">Not game-visible. New since 14:20Z: the ore-glow and hitstop spec fixes (<code>4e399285</code>, <code>213eae36</code>), the registry and its two gates (W1-H), the class-override gate (<code>aa453ae8</code>), prod-smoke’s mip check (<code>25a50c3c</code>), and the lookbook’s <code>--cycles</code> and port check (<code>340b47fa</code>, <code>998c7de2</code>). Between 06:30Z and 14:20Z: the e2e canvases at half pixel ratio (<code>ae2e10a5</code>), the required check, harness Tranche A, and the eye-level instruments, whose <code>?lookbook=1</code> seam prod-smoke now checks in the shipped bundle (<code>7c6b10dd</code>). Before: the dependency refresh (<code>10a43f68</code>), runner and action pins (<code>5177c203</code>), and the WebKit iPad probe (<code>2cecfa7f</code>).</p>
+  <p class="muted">Not game-visible. New since 17:45Z: the ore-glow framing fix (<code>68336efd</code>), W2-C’s commit and push tiers and W2-B’s retired capture oracle (<a href="#harness">Harness and gates</a>), prod-smoke’s shader-link check (<code>35e392a5</code>), and the registry’s union merge (<code>87428e2d</code>, in this land batch). Before: the registry and its gates (W1-H), the class-override gate, prod-smoke’s mip check, the required check, harness Tranche A, the eye-level instruments, the dependency refresh and the runner pins.</p>
 
   <div class="group">
     <h3>How it looks today, at the player’s eye</h3>
     <div class="prose">
-      <p><strong>New since 14:20Z.</strong> The light lane shot main at <code>030ada1f</code> and its own build on the eye-level lookbook, at dawn, noon, golden hour, the dusk blend and midnight (15:10 to 15:25Z), then shot the retuned keys again from 16:29 to 16:31Z on Chromium and both iPad sizes, 12 of 12 frames valid per target. Each run first checked that its port served the build it named. These are local production builds; nothing has been shot on the live site yet. The frames are in <code>docs/superpowers/masterpiece-2026-10/evidence/light-colour/</code>, and the mipmap crops in <code>docs/superpowers/masterpiece-2026-10/evidence/mipmaps/</code>.</p>
+      <p><strong>New since 17:45Z.</strong> No eye-level set has been shot of main since the light lane. W2-A’s ground and ocean changes are unjudged on frames (registry rows), and W2-K shot six before frames of grass hill sides and tree trunks on the production build of <code>6a926fce</code> for its own lane. Under the SSD rule a lookbook run happens only when a look question needs the real GPU.</p>
+      <p>The light lane shot its frames from 15:10 to 16:31Z on local production builds; the retuned set has 12 of 12 valid frames per target on Chromium and both iPad sizes, in <code>docs/superpowers/masterpiece-2026-10/evidence/light-colour/</code>. Nothing has been shot on the live site yet.</p>
       <ul class="list">
         <li><strong>Before:</strong> dawn, noon and golden hour were the same saturated blue daylight, and at the dusk blend and midnight the land was a near-black silhouette under a navy sky with an orange band.</li>
-        <li><strong>Now, dawn and golden hour:</strong> a warm horizon and a gold ground, softer than noon.</li>
-        <li><strong>Now, the dusk blend:</strong> a lavender sky over dim but readable land, the ground a neutral grey.</li>
-        <li><strong>Now, midnight:</strong> a blue-violet sky with stars, grass and trees lit by the moon, no orange band, and fireflies out. On the iPad portrait path the ground reads L 0.285, against 0.162 before.</li>
+        <li><strong>Now:</strong> a warm horizon and a gold ground at dawn and golden hour; a lavender sky over dim but readable land at the dusk blend; at midnight a blue-violet sky with stars, grass and trees lit by the moon, and fireflies. On the iPad portrait path the midnight ground reads L 0.285, against 0.162 before.</li>
         <li><strong>Still as before:</strong> the hands are two near-black slabs at the bottom edge, and the eye sits about 2.15 m above the ground, not 1.6 m. Both are W2-E’s.</li>
       </ul>
-      <p>The dusk clip’s horizon passes near grey mid-blend on screen, where fog and distance haze meet it. Whether that reads as mud is a look judgement for the lookbook, not a case for another blend space (item 21). The W1-D set from 10:50Z (<code>a011fb7a</code>, 36 of 36 frames valid) stays the record of the look before both lanes.</p>
+      <p>The dusk clip’s horizon passes near grey mid-blend on screen, where fog and distance haze meet it. Whether that reads as mud is a look judgement for the lookbook, not a case for another blend space (item 21). The W1-D set from 10:50Z (<code>a011fb7a</code>, 36 of 36 frames valid) stays the record of the look before the light lane and W1-E.</p>
     </div>
   </div>
 </section>
 
 <section id="lanes">
   <h2>Landed and in flight</h2>
-  <p class="lede">One row per PR or lane. Lanes land as local merge commits, through a land branch whose CI must pass on the exact commit.</p>
+  <p class="lede">One row per PR or lane. Since about 18:35Z a lane with a PR lands on its own PR run on the exact commit, then main fast-forwards to it; a change with no PR uses a land branch the same way.</p>
 
   <div class="tbl">
     <table>
@@ -460,178 +492,111 @@ footer p { max-width: 75ch; }
         <tr><th scope="col">PR or lane</th><th scope="col">What it carries</th><th scope="col">State</th><th scope="col">Where it stands</th></tr>
       </thead>
       <tbody>
-        <tr class="divider"><td colspan="4">In flight at 17:45Z</td></tr>
+        <tr class="divider"><td colspan="4">In flight at 21:45Z</td></tr>
         <tr>
-          <td class="lane">#31</td>
-          <td>Combat stance (<code>feat/combat-stance</code>)</td>
-          <td class="st"><span class="pill run">round 3</span> <span class="pill warn">conflicts</span></td>
-          <td>Round 2’s head <code>e1bde21d</code> passed PR CI (<code>40717017009</code>). <code>/code-review xhigh</code> on the PR range then found 13 issues (16:03Z), and round 3’s fixes are pushed as <code>631edf28</code> to <code>3d2905c9</code>. Its merge of main <code>213eae36</code> (<code>fbf09903</code>) failed PR CI <code>40729446300</code> on a chevron spec that judged a different point of the husk than the layer now does; the spec fix <code>41e06d51</code> passed PR CI <code>40732551398</code> at 17:21Z. Round 3’s verifier (about 17:50Z) put the old code back for findings 1, 2, 3 and 5 and saw each test go red, but refuted finding 6: its test went blind after an import-order change, and a mistuned roster still blanks the app through <code>App.jsx</code>. The final round makes a roster mistake clamp and log instead of throwing, moves the refusal into a unit gate on the shipped roster, merges main and lands through a land branch. GitHub reports conflicts with main since the light lane landed; the PR is 48 commits ahead of main and 38 behind.</td>
+          <td class="lane">#36</td>
+          <td>Fogged sprites draw again (<code>fix/sprite-fog</code>)</td>
+          <td class="st"><span class="pill run">PR CI green</span> <span class="pill warn">behind main</span></td>
+          <td>The height-fog chunk read <code>transformed</code>, which three 0.172’s sprite vertex shader does not declare, so every fogged sprite failed to compile and drew nothing: in the game, the floating damage, XP and WALL HIT numbers. The fix takes the world height from <code>mvPosition</code>, which every fogged stock shader has (<code>e73c3c82</code>). PR run <code>40770978454</code> passed at 21:36:52Z, but its base is 22 commits behind main, so it merges main and runs once more before it lands. <span class="gap">Not checked: how the numbers look in the game.</span></td>
+        </tr>
+        <tr>
+          <td class="lane">W2-I</td>
+          <td>Measure each post pass, then decide (<code>feat/w2i-passes</code>)</td>
+          <td class="st"><span class="pill run">measuring</span></td>
+          <td>The task script and its decision rule were committed before any measurement (<code>7395c21f</code>). The lookbook switches one pass off at a time on the production build at tier high, at noon, golden hour and midnight (<code>1aa000bd</code>). A smoke run showed the GPU timer query outlasting the wall clock around it, so the rule now decides on the driver’s own GPU utilization (<code>e7079633</code>). No result yet.</td>
+        </tr>
+        <tr>
+          <td class="lane">W2-K</td>
+          <td>Material grammar (<code>feat/w2k-material-grammar</code>)</td>
+          <td class="st"><span class="pill run">building</span></td>
+          <td>Its acceptance: bark on trunk sides and a turf lip over a dirt wall on grass hills, on live eye-level frames. Its first unit, one tone grammar for every block texture with each layer’s mean held within 5.5%, is committed on the branch (<code>42481790</code>); the before frames were shot on the production build of <code>6a926fce</code>. No result yet.</td>
+        </tr>
+        <tr>
+          <td class="lane">Land batch</td>
+          <td>Registry closures, the union merge, this page (<code>land/2026-10-28-batch2</code>)</td>
+          <td class="st"><span class="pill run">this publish</span></td>
+          <td><code>87428e2d</code>: the two combat rows closed by <code>c03186fe</code>; <code>memory/registry.jsonl</code> merges by union, because every landing had conflicted on rows appended at its end (a row edited on both sides repeats its id, which <code>registry-harvest</code> refuses in CI); and the cursor’s landing paragraph states the one-CI-run rule.</td>
         </tr>
         <tr>
           <td class="lane">Dependabot #30</td>
           <td>4 production updates</td>
           <td class="st"><span class="pill warn">open</span></td>
-          <td>Opened 10:43:41Z. Its CI on <code>ae865de8</code> passed (<code>40722792129</code>, 16:20Z). It lands through <code>ci ok</code> like any other change.</td>
+          <td>Opened 10:43:41Z. Its head moved to <code>585159f1</code>, and CI on it started at 21:37Z. It lands through <code>ci ok</code> like any other change.</td>
         </tr>
-        <tr class="divider"><td colspan="4">Landed since 14:20Z, oldest first</td></tr>
+        <tr class="divider"><td colspan="4">Landed since 17:45Z, oldest first</td></tr>
         <tr>
           <td class="lane">Command Record</td>
-          <td>The previous version of this page (<code>docs/command-record-1028</code>)</td>
+          <td>The previous version of this page (<code>docs/command-record-1028b</code>)</td>
           <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>a3fb66cd</code> at 14:50Z, after land run <code>40709327204</code>.</td>
+          <td><code>13c600ad</code> at 18:06Z, after land run <code>40740902822</code>.</td>
         </tr>
         <tr>
-          <td class="lane">W1-G</td>
-          <td>Bundle, UI only (<code>feat/w1-bundle-ui</code>)</td>
+          <td class="lane">#31</td>
+          <td>Combat stance (<code>feat/combat-stance</code>)</td>
           <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>c6d04db8</code> at 16:04Z, after land run <code>40719658990</code>. Both reviews asked for fixes first: a failed icon load was never retried, and a reviewer’s mutant shipped a wrong panel fill with every gate green, which the override gate now catches.</td>
+          <td><code>c03186fe</code> at 18:25Z, after land run <code>40743970578</code> on that exact commit: the last lane with a PR to land through a land branch. On the previous head <code>b4239118</code> the PR’s own run (<code>40739844276</code>, red on ore-glow) and a land run (<code>40739853527</code>, green) had both run: the double run you asked about.</td>
         </tr>
         <tr>
-          <td class="lane">W1-E</td>
-          <td>Mipmaps (<code>feat/w1-mipmaps</code>)</td>
+          <td class="lane">Ore-glow framing</td>
+          <td>The spec’s camera pinned at the cell centre (<code>fix/ore-glow-stone-frame</code>, no PR)</td>
           <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>d201c073</code> at 16:22Z, after land run <code>40722522469</code>, where prod-smoke’s GPU mip check ran live for the first time. DECISIONS 2026-10-28 item 20.</td>
+          <td><code>68336efd</code> at 20:11Z, after land run <code>40758757119</code>. Two runs before it passed on the first attempt (<code>40754042931</code>, <code>40756195999</code>), and three mutants went red on CI (<a href="#mistakes">Mistakes</a>).</td>
         </tr>
         <tr>
-          <td class="lane">Flaky specs</td>
-          <td>ore-glow and the hitstop gate (<code>fix/ore-glow-drift</code>)</td>
+          <td class="lane">#34</td>
+          <td>W2-C, ruleset follow-ups (<code>fix/w2c-ruleset-followups</code>)</td>
           <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>213eae36</code> at 16:41Z, after land run <code>40725859875</code>. Both fixed at the cause (<a href="#mistakes">Mistakes</a>).</td>
+          <td><code>8bbd969e</code> at 20:28Z, on its PR run <code>40761017932</code>: the first landing under the one-run rule. DECISIONS items 22 to 24.</td>
         </tr>
         <tr>
-          <td class="lane">W1-H</td>
-          <td>Decisions, lane briefs, one registry (<code>docs/w1-plans-registry</code>)</td>
+          <td class="lane">#35</td>
+          <td>W2-A, quick fixes in shared files (<code>feat/w2a-shared-quick-fixes</code>)</td>
           <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>65f35f28</code> at 17:18Z, after land run <code>40732041445</code>. The review asked for an append-only check, a floor per source, and bundled rows split before a lane closes part of one; all three landed.</td>
+          <td><code>6a926fce</code> at 20:51Z, on PR run <code>40764829449</code>. The static review said FIX, since nothing proved the ocean shader compiles in the shipped bundle; prod-smoke’s link check answers it. The dynamic review said LAND.</td>
         </tr>
         <tr>
-          <td class="lane">Light and colour</td>
-          <td>The colour script and sky frame (<code>worktree-wf_34f35934-dfe-1</code>)</td>
+          <td class="lane">#33</td>
+          <td>The Cut, steps 1 and 2 (<code>feat/w2f-the-cut</code>)</td>
           <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>6752ce5c</code> at 17:35Z, after land run <code>40734785930</code>. Its review found dawn and golden hour darker than midnight and a maroon pad at dusk; the retune fixed both. DECISIONS 2026-10-28 item 21.</td>
+          <td><code>a4ed6822</code> at 21:10Z, on PR run <code>40767412584</code>. Both first reviews said FIX (chests unplaceable, a silent refusal, an unclaimed quest reward lost, migrations that would repeat); the re-review found a chest multi-block defect, fixed in <code>a5c1e8e7</code>.</td>
         </tr>
+        <tr>
+          <td class="lane">#32</td>
+          <td>W2-B, the capture oracle retired (<code>feat/w2b-retire-capture</code>)</td>
+          <td class="st"><span class="pill ok">on main</span></td>
+          <td><code>3bd6fbde</code> at 21:35Z, on PR run <code>40769981525</code>. A run on a head that lacked the Cut was cancelled (<code>40768417120</code>).</td>
+        </tr>
+        <tr class="divider"><td colspan="4">Landed between 14:20Z and 17:45Z, oldest first</td></tr>
+        <tr><td class="lane">Command Record</td><td>Version 3 of this page</td><td class="st"><span class="pill ok">on main</span></td><td><code>a3fb66cd</code> at 14:50Z, after land run <code>40709327204</code>.</td></tr>
+        <tr><td class="lane">W1-G</td><td>Bundle, UI only</td><td class="st"><span class="pill ok">on main</span></td><td><code>c6d04db8</code> at 16:04Z, after land run <code>40719658990</code>. Both reviews asked for fixes first: a failed icon load was never retried, and a reviewer’s mutant shipped a wrong panel fill with every gate green, which the override gate now catches.</td></tr>
+        <tr><td class="lane">W1-E</td><td>Mipmaps</td><td class="st"><span class="pill ok">on main</span></td><td><code>d201c073</code> at 16:22Z, after land run <code>40722522469</code>, where prod-smoke’s GPU mip check ran live for the first time. Item 20.</td></tr>
+        <tr><td class="lane">Flaky specs</td><td>ore-glow and the hitstop gate</td><td class="st"><span class="pill ok">on main</span></td><td><code>213eae36</code> at 16:41Z, after land run <code>40725859875</code>. Both fixed at the cause.</td></tr>
+        <tr><td class="lane">W1-H</td><td>Decisions, lane briefs, one registry</td><td class="st"><span class="pill ok">on main</span></td><td><code>65f35f28</code> at 17:18Z, after land run <code>40732041445</code>. The review asked for an append-only check, a floor per source, and bundled rows split before a lane closes part of one; all three landed.</td></tr>
+        <tr><td class="lane">Light and colour</td><td>The colour script and sky frame</td><td class="st"><span class="pill ok">on main</span></td><td><code>6752ce5c</code> at 17:35Z, after land run <code>40734785930</code>. Its review found dawn and golden hour darker than midnight and a maroon pad at dusk; the retune fixed both. Item 21.</td></tr>
         <tr class="divider"><td colspan="4">Landed between 06:30Z and 14:20Z, oldest first</td></tr>
-        <tr>
-          <td class="lane">Touch-hold freeze</td>
-          <td>Main green again (<code>fix/touch-hold-freeze</code>)</td>
-          <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>2bb0857d</code> at 07:40Z, run <code>40651588887</code> green. The e2e job’s cap is 35 minutes.</td>
-        </tr>
-        <tr>
-          <td class="lane">Page cap</td>
-          <td>Reports drift, refuses no push (<code>fix/page-cap-informational</code>)</td>
-          <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>92ca0bc0</code>, on main at 09:09Z with <code>58455351</code>. Each page carries its own as-of stamp (item 12).</td>
-        </tr>
-        <tr>
-          <td class="lane">E2E speed</td>
-          <td>Canvases at half pixel ratio under e2e (<code>fix/e2e-runner-speed</code>)</td>
-          <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>ae2e10a5</code>, on main at 09:58Z. A/B on CI: the workflow from 16.4 to 8.4 minutes, the slowest shard from 978 to 501 s, every reading held.</td>
-        </tr>
-        <tr>
-          <td class="lane">SOTA reset plan</td>
-          <td>The First Night, three waves (<code>docs/superpowers/plans/2026-10-28-crafty-sota-reset.md</code>)</td>
-          <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>ee26549c</code> and <code>b3425d83</code>, on main at 09:58Z.</td>
-        </tr>
-        <tr>
-          <td class="lane">#24</td>
-          <td>Phase 0f and 0g, steady cool (<code>feat/steady-cool</code>)</td>
-          <td class="st"><span class="pill ok">merged</span></td>
-          <td>Merged as <code>22048707</code> (PR head <code>5226a461</code>), on main at 10:41Z with #27.</td>
-        </tr>
-        <tr>
-          <td class="lane">#27</td>
-          <td>Harness Tranche A</td>
-          <td class="st"><span class="pill ok">merged</span></td>
-          <td><code>da70413f</code> at 10:41Z, after land run <code>40672067288</code>.</td>
-        </tr>
-        <tr>
-          <td class="lane">W1-A</td>
-          <td>The required check (<code>fix/ci-required-check</code>)</td>
-          <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>1c4e3bc1</code> at 11:11Z, after land run <code>40675354151</code>. Branch protection went on right after.</td>
-        </tr>
-        <tr>
-          <td class="lane">One CLAUDE.md</td>
-          <td>The symlink and <code>.agent/</code> gone (<code>chore/one-claude-md</code>)</td>
-          <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>d700e531</code> at 11:29Z, after land run <code>40678345158</code>.</td>
-        </tr>
-        <tr>
-          <td class="lane">Nothing is locked</td>
-          <td>Lock labels rewritten, the lock-label check (<code>docs/nothing-locked</code>)</td>
-          <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>dc8b0d65</code> at 12:52Z, after run <code>40689226695</code> on its land branch.</td>
-        </tr>
-        <tr>
-          <td class="lane">Wave 1</td>
-          <td>W1-B pause, W1-C cuts, W1-D instruments, W1-F public text (<code>land/2026-10-28-w1</code>)</td>
-          <td class="st"><span class="pill ok">on main</span></td>
-          <td><code>030ada1f</code> at 14:08Z: merges <code>f2082fdd</code>, <code>f74185cc</code>, <code>a7ad2fbc</code> and <code>7c1eea2f</code>, the killability retirement <code>9132c160</code>, DECISIONS items 17 to 19, and the touch Pause fix. Land run <code>40700481509</code> passed; the first, <code>40696946693</code>, failed on the touch Pause.</td>
-        </tr>
+        <tr><td class="lane">Touch-hold freeze</td><td>Main green again (<code>fix/touch-hold-freeze</code>)</td><td class="st"><span class="pill ok">on main</span></td><td><code>2bb0857d</code> at 07:40Z, run <code>40651588887</code> green. The e2e job’s cap is 35 minutes.</td></tr>
+        <tr><td class="lane">Page cap</td><td>Reports drift, refuses no push</td><td class="st"><span class="pill ok">on main</span></td><td><code>92ca0bc0</code>, on main at 09:09Z with <code>58455351</code>. Each page carries its own as-of stamp (item 12).</td></tr>
+        <tr><td class="lane">E2E speed</td><td>Canvases at half pixel ratio under e2e</td><td class="st"><span class="pill ok">on main</span></td><td><code>ae2e10a5</code> at 09:58Z. A/B on CI: the workflow from 16.4 to 8.4 minutes, the slowest shard from 978 to 501 s, every reading held.</td></tr>
+        <tr><td class="lane">SOTA reset plan</td><td>The First Night, three waves (<code>docs/superpowers/plans/2026-10-28-crafty-sota-reset.md</code>)</td><td class="st"><span class="pill ok">on main</span></td><td><code>ee26549c</code> and <code>b3425d83</code> at 09:58Z.</td></tr>
+        <tr><td class="lane">#24, #27</td><td>Phase 0f and 0g, steady cool; harness Tranche A</td><td class="st"><span class="pill ok">merged</span></td><td><code>22048707</code> (PR head <code>5226a461</code>) and <code>da70413f</code> at 10:41Z, after land run <code>40672067288</code>.</td></tr>
+        <tr><td class="lane">W1-A</td><td>The required check</td><td class="st"><span class="pill ok">on main</span></td><td><code>1c4e3bc1</code> at 11:11Z, after land run <code>40675354151</code>. Branch protection went on right after.</td></tr>
+        <tr><td class="lane">One CLAUDE.md</td><td>The symlink and <code>.agent/</code> gone</td><td class="st"><span class="pill ok">on main</span></td><td><code>d700e531</code> at 11:29Z, after land run <code>40678345158</code>.</td></tr>
+        <tr><td class="lane">Nothing is locked</td><td>Lock labels rewritten, the lock-label check</td><td class="st"><span class="pill ok">on main</span></td><td><code>dc8b0d65</code> at 12:52Z, after run <code>40689226695</code> on its land branch.</td></tr>
+        <tr><td class="lane">Wave 1</td><td>W1-B pause, W1-C cuts, W1-D instruments, W1-F public text</td><td class="st"><span class="pill ok">on main</span></td><td><code>030ada1f</code> at 14:08Z, with the killability retirement <code>9132c160</code>, DECISIONS items 17 to 19 and the touch Pause fix. Land run <code>40700481509</code> passed; the first, <code>40696946693</code>, failed on the touch Pause.</td></tr>
         <tr class="divider"><td colspan="4">Closed since 06:30Z</td></tr>
-        <tr>
-          <td class="lane">#28</td>
-          <td>CI tree equivalence (<code>feat/ci-tree-equivalence</code>)</td>
-          <td class="st"><span class="pill idle">closed</span></td>
-          <td>Closed unmerged at 13:35:59Z: the required check replaces the receipt it optimised.</td>
-        </tr>
-        <tr>
-          <td class="lane">Dependabot #20</td>
-          <td>8 dev updates</td>
-          <td class="st"><span class="pill idle">closed</span></td>
-          <td>Closed unmerged at 08:55:35Z. <code>10a43f68</code> says its updates were applied on main.</td>
-        </tr>
-        <tr>
-          <td class="lane">Dependabot #26</td>
-          <td>3 production updates</td>
-          <td class="st"><span class="pill idle">closed</span></td>
-          <td>Closed unmerged at 10:43:31Z; #30, for the same group, opened 10 s later.</td>
-        </tr>
+        <tr><td class="lane">#28</td><td>CI tree equivalence</td><td class="st"><span class="pill idle">closed</span></td><td>Closed unmerged at 13:35:59Z: the required check replaces the receipt it optimised.</td></tr>
+        <tr><td class="lane">Dependabot #20, #26</td><td>8 dev updates; 3 production updates</td><td class="st"><span class="pill idle">closed</span></td><td>#20 closed unmerged at 08:55:35Z, its updates applied on main in <code>10a43f68</code>; #26 at 10:43:31Z, and #30 opened for the same group 10 s later.</td></tr>
         <tr class="divider"><td colspan="4">Landed before 06:30Z</td></tr>
-        <tr>
-          <td class="lane">#29</td>
-          <td>e2e hardening (<code>fix/e2e-hardening-2026-10-27</code>)</td>
-          <td class="st"><span class="pill ok">merged</span></td>
-          <td><code>fbb11411</code> at 00:43:10Z. 5 commits, 6 files, +609/−77.</td>
-        </tr>
-        <tr>
-          <td class="lane">#22</td>
-          <td>Phase 0b, the parked milestone (<code>feat/parked-looks-perf</code>)</td>
-          <td class="st"><span class="pill ok">merged</span></td>
-          <td><code>76262a08</code> at 02:40:43Z. 20 commits, 31 files, +1723/−46.</td>
-        </tr>
-        <tr>
-          <td class="lane">artifact-currency</td>
-          <td>The page cap binds only a push that moves main (<code>fix/artifact-currency-scope</code>, no PR)</td>
-          <td class="st"><span class="pill ok">merged</span></td>
-          <td><code>008ba09e</code> at 22:19 PDT on 10-27. Superseded by item 12.</td>
-        </tr>
-        <tr>
-          <td class="lane">Lightning budget</td>
-          <td>The lightning spec’s CI time budget (<code>fix/lightning-ci-budget</code>)</td>
-          <td class="st"><span class="pill ok">on main</span></td>
-          <td>Cherry-picked from <code>a9134e2b</code> as <code>a9a303e9</code> after land run <code>40632886705</code> passed.</td>
-        </tr>
-        <tr>
-          <td class="lane">#25</td>
-          <td>Phase 0c, touch press-and-hold (<code>feat/touch-hold</code>)</td>
-          <td class="st"><span class="pill ok">merged</span></td>
-          <td><code>a466a3b6</code> at 06:08:37Z. 29 commits, 23 files, +3977/−120.</td>
-        </tr>
-        <tr>
-          <td class="lane">#23</td>
-          <td>Phase 0d, instruments (<code>feat/instruments</code>)</td>
-          <td class="st"><span class="pill ok">merged</span></td>
-          <td><code>32a55b75</code> at 06:08:37Z. 22 commits, 26 files, +3483/−29.</td>
-        </tr>
+        <tr><td class="lane">#29</td><td>e2e hardening</td><td class="st"><span class="pill ok">merged</span></td><td><code>fbb11411</code> at 00:43:10Z. 5 commits, 6 files, +609/−77.</td></tr>
+        <tr><td class="lane">#22</td><td>Phase 0b, the parked milestone</td><td class="st"><span class="pill ok">merged</span></td><td><code>76262a08</code> at 02:40:43Z. 20 commits, 31 files, +1723/−46.</td></tr>
+        <tr><td class="lane">artifact-currency</td><td>The page cap binds only a push that moves main (no PR)</td><td class="st"><span class="pill ok">merged</span></td><td><code>008ba09e</code> at 22:19 PDT on 10-27. Superseded by item 12.</td></tr>
+        <tr><td class="lane">Lightning budget</td><td>The lightning spec’s CI time budget</td><td class="st"><span class="pill ok">on main</span></td><td>Cherry-picked from <code>a9134e2b</code> as <code>a9a303e9</code> after land run <code>40632886705</code> passed.</td></tr>
+        <tr><td class="lane">#25, #23</td><td>Phase 0c, touch press-and-hold; Phase 0d, instruments</td><td class="st"><span class="pill ok">merged</span></td><td><code>a466a3b6</code> and <code>32a55b75</code> at 06:08:37Z. 29 commits, +3977/−120; 22 commits, +3483/−29.</td></tr>
       </tbody>
     </table>
   </div>
 
-  <p class="muted">ACTIVE_PLAN tasks, the 10-27 list, as the registry now holds them. Done: T1, T2, T3, T4, T5, T8, T12, T17. Closed since 14:20Z: T9 (harvested into the registry), T10 (cancelled by W1-H item 1), T13 (the reset is the queue) and T16 (Tranche A landed). Open rows: T6 (W2-C), T7 (<code>ipad-probe.mjs</code> unrun), T11 (the glove value, W2-E), T14 and T15 (W2-J). T14’s <code>/code-review xhigh</code> ran on #31 and found what the paired reviewers missed.</p>
+  <p class="muted">ACTIVE_PLAN tasks, the 10-27 list, as the registry holds them at <code>87428e2d</code>. Done: T1 to T5, T8, T12, T17. Closed: T9, T10, T13, T16, and, new since 17:45Z, T18, the stance landing (<code>c03186fe</code>). Open rows: T6 (still open after W2-C landed), T7 (<code>ipad-probe.mjs</code> unrun), T11 (the glove value, W2-E), T14 and T15 (W2-J).</p>
 
   <div class="group">
     <h3>Programme map, the SOTA reset</h3>
@@ -641,20 +606,19 @@ footer p { max-width: 75ch; }
           <tr><th scope="col">Wave</th><th scope="col">Unit</th><th scope="col">State</th></tr>
         </thead>
         <tbody>
-          <tr><td>1</td><td>W1-A required check</td><td><span class="pill ok">done</span> on main, protection on</td></tr>
-          <tr><td>1</td><td>W1-B real pause</td><td><span class="pill ok">done</span> with the exceptions under Live</td></tr>
-          <tr><td>1</td><td>W1-C gameplay cuts</td><td><span class="pill ok">done</span> scope widened by item 18</td></tr>
-          <tr><td>1</td><td>W1-D eye-level instruments</td><td><span class="pill ok">done</span> the run against the production URL is owed</td></tr>
-          <tr><td>1</td><td>W1-F public text</td><td><span class="pill ok">done</span> applied to the repo at about 14:10Z</td></tr>
-          <tr><td>1</td><td>W1-G bundle UI</td><td><span class="pill ok">done</span> on main 16:04Z</td></tr>
-          <tr><td>1</td><td>W1-E mipmaps</td><td><span class="pill ok">done</span> on main 16:22Z; the ore-glow shift at distance is owed</td></tr>
-          <tr><td>1</td><td>W1-H plans, decisions, registry</td><td><span class="pill ok">done</span> on main 17:18Z</td></tr>
+          <tr><td>1</td><td>W1-A to W1-H: required check, pause, cuts, instruments, mipmaps, public text, bundle, decisions and registry</td><td><span class="pill ok">done</span> W1-D’s run against the production URL is owed</td></tr>
           <tr><td>1</td><td>Carried: light and colour</td><td><span class="pill ok">done</span> on main 17:35Z; Tasks 5 and 6 wait for W2-I</td></tr>
-          <tr><td>1</td><td>Carried: combat stance #31</td><td><span class="pill run">final round</span></td></tr>
-          <tr><td>2</td><td>W2-A to W2-M: the Cut, the HUD lane, hands, media, the capture oracle retired, passes measured, docs and harness</td><td><span class="pill run">started</span> W2-B and W2-C, which touch neither combat nor the stance, since 17:40Z; the rest once the stance lands</td></tr>
+          <tr><td>1</td><td>Carried: combat stance #31</td><td><span class="pill ok">done</span> on main 18:25Z · new</td></tr>
+          <tr><td>2</td><td>W2-C ruleset follow-ups</td><td><span class="pill ok">done</span> on main 20:28Z · new</td></tr>
+          <tr><td>2</td><td>W2-A quick fixes in shared files</td><td><span class="pill ok">done</span> on main 20:51Z · new; partial on its own acceptance (the grazing sheen)</td></tr>
+          <tr><td>2</td><td>W2-F the Cut</td><td><span class="pill ok">steps 1–2 done</span> on main 21:10Z · new; Ember, progression, the Forge, hunger and quest text next</td></tr>
+          <tr><td>2</td><td>W2-B the capture oracle retired</td><td><span class="pill ok">done</span> on main 21:35Z · new</td></tr>
+          <tr><td>2</td><td>W2-I passes measured, then decided</td><td><span class="pill run">in flight</span> new</td></tr>
+          <tr><td>2</td><td>W2-K material grammar</td><td><span class="pill run">in flight</span> new</td></tr>
+          <tr><td>2</td><td>W2-D the HUD, W2-E hands, W2-G platform, W2-H media, W2-J docs and harness, W2-L LazyMotion, W2-M sound with body</td><td><span class="pill idle">next</span></td></tr>
           <tr><td>3</td><td>W3-A to W3-G: the First Night, the road of light and the dragon, the first minute, platform, polish</td><td><span class="pill idle">planned</span></td></tr>
           <tr><td>10-27</td><td>Phases 0a to 0d, 0f and 0g</td><td><span class="pill ok">landed</span></td></tr>
-          <tr><td>10-27</td><td>Phase 0e re-baseline; coast</td><td><span class="pill idle">cancelled</span> 0e, since the capture oracle retires (W2-B); coast deferred, its shader terms move to W2-A</td></tr>
+          <tr><td>10-27</td><td>Phase 0e re-baseline; coast</td><td><span class="pill idle">cancelled</span> 0e with the capture oracle; the coast’s shader terms landed in W2-A, its seabed bake stays deferred</td></tr>
         </tbody>
       </table>
     </div>
@@ -662,32 +626,12 @@ footer p { max-width: 75ch; }
   </div>
 
   <div class="group">
-    <h3>Built, not on main</h3>
-    <div class="blocks">
-      <div>
-        <div class="group-head"><strong>Combat stance, #31</strong><code>41e06d51</code></div>
-        <p class="muted">The PR head is 48 commits ahead of main and 38 behind, and conflicts with it.</p>
-        <ul class="list">
-          <li>You cannot out-walk a fight: when an aggro’d pursuer within 12 m can reach you, the stance caps how fast you move away from it. Travel keeps 14 m/s (<code>90863cc6</code>, <code>84dc0604</code>, <code>dffeda3b</code>).</li>
-          <li>A dodge’s burst is exempt from that cap (<code>9178d813</code>).</li>
-          <li>A chevron at the screen edge for a windup you cannot see, loaded lazily (<code>dcd31b3b</code>, <code>d0f67eed</code>).</li>
-          <li>A three-step light string: the third hit sweeps 140 degrees for 1.5x with a heavy-tier hitstop, and a dodge keeps it alive (<code>e05e1a30</code>).</li>
-          <li>Close-quarters e2e on an emulated iPad (<code>c2c93ec1</code>).</li>
-          <li><strong>Round 2</strong> (<code>e1bde21d</code>): the player and the AI share one capped time step of 0.25 s, so a stall or a throttled iPad no longer lets you out-walk pursuers. It also fixed a defect found on the way: on a frame with no physics step the player’s move was dropped, so at 120 Hz the player covered half the distance fed, and 0.42 at 144 Hz; now 1.00 at every rate. Hits are aimed from the body, not the shaken camera.</li>
-          <li><strong>Round 3</strong>, from the fresh review: the stance’s calm ran on wall time, so pausing escaped a fight; the threat clamp outlived the last kill; a live press did not consume a buffered one; a beast-form swap’s lift at 120 Hz could embed the capsule (from round 2’s own carry); and the store imported a module that could throw. The fixes are pushed (<code>631edf28</code>, <code>5ffca817</code>, <code>695a52f2</code>, <code>9f08b1fb</code>, <code>b305a155</code>, <code>1c1d3296</code>).</li>
-          <li><strong>Round 3’s verifier</strong> put the old code back for four of the fixes and saw each test go red; it refuted the roster fix, so a final round makes a roster mistake clamp and log instead of throwing, with the refusal moved to a unit gate. <span class="gap">Open: that round’s CI and the landing. Not checked: feel on a real iPad.</span></li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <div class="group">
-    <h3>What Waves 2 and 3 set out to change</h3>
+    <h3>What the rest of Waves 2 and 3 set out to change</h3>
     <ul class="list">
-      <li><strong>The Cut</strong> (W2-F, now set by the W1-H decisions): one costed build mode, one Ember meter, talents and loot relics instead of attribute points, the Forge in place of the hidden grid, and the three placement quests and hunger gone; a pre-cut save still loads.</li>
+      <li><strong>The rest of the Cut</strong> (W2-F, set by the W1-H decisions): one Ember meter, talents and loot relics instead of attribute points, the Forge in place of the hidden grid, and hunger’s value and food gone.</li>
       <li><strong>The HUD lane</strong> (W2-D): chrome at 8% of the frame or less at rest, three panels instead of seven, chrome re-keyed from navy to warm charcoal.</li>
       <li><strong>Hands</strong> (W2-E): ember gauntlets with a brightness floor at midnight.</li>
-      <li><strong>Passes measured, then cut</strong> (W2-I): GodRays and N8AO deleted or replaced on the timer’s numbers, and lower watts on the M3 Max.</li>
+      <li><strong>Passes measured, then cut</strong> (W2-I): GodRays and N8AO deleted or replaced on the measured numbers, and lower watts on the M3 Max.</li>
       <li><strong>Sound with body</strong> (W2-M), then <strong>the First Night</strong> (W3-A): a siege marching on a Hearth you lit, held until a golden dawn.</li>
     </ul>
   </div>
@@ -695,29 +639,40 @@ footer p { max-width: 75ch; }
 
 <section id="decisions">
   <h2>Decisions taken</h2>
-  <p class="lede">From <code>docs/superpowers/DECISIONS.md</code>. Item numbers are the file’s own. The W1-H section numbers its items on their own, so its 1 to 10 are not the landing entry’s 1 to 10.</p>
+  <p class="lede">From <code>docs/superpowers/DECISIONS.md</code>. Item numbers are the file’s own. The W1-H section and the combat-stance section number their items on their own, so their 1 to 10 are not the landing entry’s 1 to 10.</p>
 
   <div class="group">
-    <h3>2026-10-28, new since 14:20Z, in the landing entry</h3>
+    <h3>2026-10-28, new since 17:45Z</h3>
     <ol class="dec">
-      <li><span class="n">20</span><p><strong>The block textures are mipmapped, in linear light</strong> (W1-E). It supersedes the “no mipmaps” half of the 2026-06-15 texture lock and answers the 2026-09-22 question left for your taste, which items 14 and 16 make the session’s call. Close up the pixel look stays; ground at a low angle flattens from about 6 to 10 blocks out, accepted as the standard voxel trade for no sparkle. The night ore-glow shift at distance goes to W2-A or the light lane’s successor.</p></li>
+      <li><span class="n">22</span><p><strong>A commit runs a fast tier</strong> (W2-C, <code>a56f6d50</code>): the static gates and the unit tests that statically import a staged file. It reverses the 2026-09-22 direction to run the whole offline suite on every commit, since the push and CI re-ran it on the same tree anyway. What is lost: a commit in the middle of a branch carries no unit or build result of its own, and a lazily imported module is not selected. Two-way door.</p></li>
+      <li><span class="n">23</span><p><strong>A push to main passes on the verdict CI already reached for that exact commit</strong> (18:35Z). Main moves only on a commit whose <code>ci ok</code> passed on its PR or land branch, so main’s own run tested it a second time. Now that run skips e2e and the heavy jobs when another run’s <code>ci ok</code> on that commit succeeded, keeps the quick gates and the registry check, and runs everything on any doubt: an API error, a missing run id, or a newer red or running <code>ci ok</code>.</p></li>
+      <li><span class="n">24</span><p><strong>The push runs only the range gates</strong> (on your SSD order): the commit trailers, opsec-scan, queue-ledger, artifact-currency and registry-append-only, and no static gate, unit suite, build or bundle, because CI runs them on the exact commit and main cannot move without its <code>ci ok</code>. What is lost: local feedback before CI, which <code>bash ci/pipeline.sh --tier=certify</code> gives on demand.</p></li>
+      <li><span class="n">—</span><p><strong>The combat stance’s numbers</strong> (their own section, with #31). Retreat 2.0 m/s, the slowest pursuer (the zombie at 3.0) minus 1.0; strafe and advance 6.5; engagement within 12 m and within the mob’s own vertical reach; the skeleton never engages it and the moss brute can be backpedalled from; the boss and the dragon stay outside it; travel stays 14 m/s; a roster that breaks the 1.5 m/s floor is held at it and fails a gate, never blanking the game. Not yet taken: the by-eye verdict on the combat zoom (about 88.5 to 77.7 degrees when engaging mid-run) and the share of night travel spent in the stance.</p></li>
+      <li><span class="n">—</span><p><strong>One CI run per landing</strong> (about 18:35Z, after you asked whether CI ran twice). A lane with a PR lands on its own PR run; a land branch only for a change with no PR. It is recorded in the cursor’s landing paragraph (ACTIVE_PLAN, <code>87428e2d</code>, in this land batch), not as a DECISIONS item of its own; item 23 is the main-push half of the same change.</p></li>
+    </ol>
+  </div>
+
+  <div class="group">
+    <h3>2026-10-28, 14:20Z to 17:45Z, in the landing entry</h3>
+    <ol class="dec">
+      <li><span class="n">20</span><p><strong>The block textures are mipmapped, in linear light</strong> (W1-E). It supersedes the “no mipmaps” half of the 2026-06-15 texture lock and answers the 2026-09-22 question left for your taste, which items 14 and 16 make the session’s call. Close up the pixel look stays; ground at a low angle flattens from about 6 to 10 blocks out, accepted as the standard voxel trade for no sparkle. The night ore-glow shift at distance went to W2-A, which fixed it in the texture chain.</p></li>
       <li><span class="n">21</span><p><strong>The light and colour lane lands in Wave 1.</strong> (a) A day lasts 480 s, not 300, so a fresh profile’s first dusk falls at 4:00 and its first dawn at 8:00, and the First Night fits ten minutes; at 300 s night fell before a new player could light a Hearth. Rebalancing the longer siege is W3-A’s. (b) The lane’s capture-state work is dropped with the capture oracle. (c) The colour blend stays linear: measured against OKLab it is never darker and loses at most 0.0147 chroma, under one visible step. (d) After review, the dawn, golden-hour and twilight keys were retuned so the ground reads and the Hearth pad is not maroon.</p></li>
     </ol>
   </div>
 
   <div class="group">
-    <h3>2026-10-28, the SOTA reset’s standing decisions (W1-H), new since 14:20Z</h3>
+    <h3>2026-10-28, the SOTA reset’s standing decisions (W1-H)</h3>
     <ol class="dec">
-      <li><span class="n">1</span><p><strong>The capture oracle retires</strong> (W2-B). Capture mode turns off weather, mobs, NPCs, particles, spawning and the hands, so its frames show a build nobody plays, and shipped source carries 131 <code>isCaptureMode()</code> calls. Looks are accepted on the eye-level lookbook. No re-baseline is owed, so T10 and Phase 0e are cancelled.</p></li>
+      <li><span class="n">1</span><p><strong>The capture oracle retires</strong> (W2-B, landed 21:35Z). Capture mode turns off weather, mobs, NPCs, particles, spawning and the hands, so its frames show a build nobody plays, and shipped source carries 131 <code>isCaptureMode()</code> calls. Looks are accepted on the eye-level lookbook. No re-baseline is owed, so T10 and Phase 0e are cancelled.</p></li>
       <li><span class="n">2</span><p><strong>The umbrella plan is amended.</strong> A Cut wave (W2-F) removes the sandbox layer before Wave 3 builds, platform work runs beside the game lanes, one HUD lane has one owner (W2-D), and Phase 3 regroups into the First Night (W3-A) and the road of light (W3-B).</p></li>
       <li><span class="n">3</span><p><strong>Lane briefs, and task scripts of 300 lines or less.</strong> It supersedes your 2026-06-10 rule of a full plan doc per milestone: the twelve 10-27 lane plans run 771 to 1,720 lines against code the Cut will change. A brief of one page states scope, files, acceptance and one-way doors; at lane start a task script with red-first steps is written against the code as it is then. The build contract your rule asked for stays.</p></li>
-      <li><span class="n">4</span><p><strong>One costed build mode.</strong> Placing a block spends one mined block in every game; the creative and survival toggle and the Mode chip go. Free walls made holding a siege no choice. A free-build world may return later as a world type.</p></li>
+      <li><span class="n">4</span><p><strong>One costed build mode</strong> (landed with the Cut). Placing a block spends one mined block in every game; the creative and survival toggle and the Mode chip go. Free walls made holding a siege no choice. A free-build world may return later as a world type.</p></li>
       <li><span class="n">5</span><p><strong>Ember: one meter.</strong> It replaces the four banks and their four bars, feeds the four spends (roar, grab, snare, imbue), and accrues from day kills and from building, with a per-day cap. Bank by day, spend by night, stays.</p></li>
       <li><span class="n">6</span><p><strong>Progression becomes talents that change verbs, plus loot relics.</strong> Hand attribute points, the free spell-mastery click and the crystal wallet go; a level grants one talent point, and spells scale with level. A damage rebalance comes first.</p></li>
       <li><span class="n">7</span><p><strong>The Forge replaces the crafting grid.</strong> A Forge card on Mara offers a weapon upgrade, a relic upgrade and a lantern, each with its cost shown. Hidden recipe shapes were guesswork, and a drag grid does not work on iPad.</p></li>
       <li><span class="n">8</span><p><strong>The lantern is costed, and its radius rule ships first.</strong> It is bought at the Forge, and W3-A ships one rule: no natural hostile spawn within 16 m of a placed lantern. The rule and the price land with the block, never after it, because the block enters saves the moment a player can save one.</p></li>
-      <li><span class="n">9</span><p><strong><code>memory/registry.jsonl</code> is the one home for open work.</strong> It replaces STATUS §2, its G-ledger and the residue line in ACTIVE_PLAN. A done item is closed, never deleted. You own a row only when it needs your device, your ear, money, an account sign-in, your OK for an external send, or a decision its source reserves for you. New open work goes straight to the registry.</p></li>
-      <li><span class="n">10</span><p><strong>The Builder, Architect and World Builder quests go.</strong> Under item 4, breaking a block gives it back, so placing and breaking one block would complete all three for 600 XP and 24 wood at no cost. Building pays through Ember and the siege.</p></li>
+      <li><span class="n">9</span><p><strong><code>memory/registry.jsonl</code> is the one home for open work.</strong> It replaces STATUS §2, its G-ledger and the residue line in ACTIVE_PLAN. A done item is closed, never deleted. You own a row only when it needs your device, your ear, money, an account sign-in, your OK for an external send, or a decision its source reserves for you.</p></li>
+      <li><span class="n">10</span><p><strong>The Builder, Architect and World Builder quests go</strong> (landed with the Cut). Under item 4, breaking a block gives it back, so placing and breaking one block would complete all three for 600 XP and 24 wood at no cost. Building pays through Ember and the siege.</p></li>
     </ol>
   </div>
 
@@ -729,9 +684,9 @@ footer p { max-width: 75ch; }
       <li><span class="n">13</span><p>Your answer, “agree on your recommendations and changes”. (a) One page for you, this one, refreshed at every landing. era-review and sota-audit retire as dated history, so option (a) of item 11 lapses. (b) A required status check on main: one aggregate job, <code>ci ok</code>, then branch protection with no bypass. (c) You applied the narrow allow rules the session could not grant itself; <code>git branch -D</code> stays denied.</p></li>
       <li><span class="n">14</span><p>Your standing principle: nothing is off limits. The whole game, its architecture, design and every element may be changed, deleted or pruned, with full autonomy, and you are asked nothing unless absolutely needed. Earlier decisions bind only while they earn their place.</p></li>
       <li><span class="n">15</span><p>No GitHub Pages site for now: the repo’s own face and the live game instead. Tests are in scope like everything else. Comments say why, and only when the code cannot.</p></li>
-      <li><span class="n">16</span><p>Nothing is locked (your words, on “Design Language (LOCKED — S1-C)”). The live docs now state each decision, its reason, and that it stands while it earns its place. A doc-currency check fails a canonical doc carrying one of six lock phrasings. What stays yours: your two bright lines, and what only you can do (real-device feel, the audio mix by ear, account sign-ins).</p></li>
+      <li><span class="n">16</span><p>Nothing is locked (your words, on “Design Language (LOCKED — S1-C)”). The live docs state each decision, its reason, and that it stands while it earns its place. What stays yours: your two bright lines, and what only you can do (real-device feel, the audio mix by ear, account sign-ins).</p></li>
       <li><span class="n">17</span><p>The killability-ledger gate retires. A mutation receipt has one home, the <code>Mutation-Proof:</code> commit trailer, which the trailer gate still demands for every commit that adds or rewrites a gate.</p></li>
-      <li><span class="n">18</span><p>Wave 1’s cuts reach further than the plan first said, on game-design grounds: a Settler kill pays nothing and counts nowhere, and a spell hit on a neutral mob pays no XP. A livestock kill still pays, so hunting stays rewarded.</p></li>
+      <li><span class="n">18</span><p>Wave 1’s cuts reach further than the plan first said: a Settler kill pays nothing and counts nowhere, and a spell hit on a neutral mob pays no XP. A livestock kill still pays, so hunting stays rewarded.</p></li>
       <li><span class="n">19</span><p>The homepage is https://crafty-game.vercel.app. The session added the alias and you clicked Add Domain at about 11:10Z. crafty-sand.vercel.app keeps working.</p></li>
     </ol>
     <p class="muted">Also recorded, in the loop docs (<code>62f07a83</code>): an external send needs your explicit OK; publishing the repo’s own public face stays the session’s.</p>
@@ -740,16 +695,11 @@ footer p { max-width: 75ch; }
   <div class="group">
     <h3>2026-10-28, before 06:30Z</h3>
     <ol class="dec">
-      <li><span class="n">1</span><p>Every lane lands through a PR. Main deploys on every push, and e2e runs reliably only in CI: three local receipts failed under load on 10-27. Actions are free on a public repo.</p></li>
+      <li><span class="n">1</span><p>Every lane lands through a PR. Main deploys on every push, and e2e runs reliably only in CI. Actions are free on a public repo.</p></li>
       <li><span class="n">2</span><p>Merges are local merge commits, never cherry-picks or GitHub squashes. A cherry-pick left a branch git calls unmerged, and <code>git branch -D</code> is denied.</p></li>
-      <li><span class="n">3</span><p>E2E runs in 6 shards (<code>17e06ecd</code>). Superseded by item 7.</p></li>
-      <li><span class="n">4</span><p>PR #28 is parked as a draft. It was closed at 13:35:59Z, replaced by <code>ci ok</code>.</p></li>
-      <li><span class="n">5</span><p>Landing was capped by the operator pages, at 30 commits past their publish. Superseded by item 12.</p></li>
-      <li><span class="n">6</span><p>Interim option (b), about 01:30Z: era-review and sota-audit published from account 2 at new addresses.</p></li>
-      <li><span class="n">7</span><p>E2E moves to 8 shards. At 6, two shards projected to about 20 minutes with no room for a retry (<code>a8ce0dd1</code>).</p></li>
-      <li><span class="n">8</span><p>The page cap binds only a push that moves main. Its refusal is superseded by item 12.</p></li>
+      <li><span class="n">3–8</span><p>E2E shards went to 6 (item 3), then 8 (item 7); PR #28 was parked (item 4), then closed at 13:35:59Z; the page cap (items 5 and 8) and the interim page addresses (item 6) are superseded by items 12 and 13.</p></li>
       <li><span class="n">9</span><p>A fix that main needs before its lane lands goes to main by <code>cherry-pick -x</code>, as the lightning CI budget did.</p></li>
-      <li><span class="n">10</span><p>Lanes land in readiness order once main is green. Combat stance lands after #24 and #25; both have.</p></li>
+      <li><span class="n">10</span><p>Lanes land in readiness order once main is green. Combat stance lands after #24 and #25; it did, at 18:25Z.</p></li>
       <li><span class="n">11</span><p>Your call: option (a) for the pages. Lapsed with item 13.</p></li>
     </ol>
   </div>
@@ -758,13 +708,13 @@ footer p { max-width: 75ch; }
     <div>
       <h3>2026-10-27, push gate and reserved calls</h3>
       <ul class="list">
-        <li><strong>Push gate.</strong> It stops depending on laptop load. CI’s e2e verdict on the exact commit counts as a receipt (tier 1b). The red-base refusal guards main only, and unknown refs stay strict. Item 13(b) retires these tiers in favour of the server-side rule (W2-C).</li>
-        <li><strong>Visual re-baseline.</strong> Planned as Phase 0e on 10-27. The reset cancels it: the capture oracle retires (W2-B), and looks are accepted on eye-level frames.</li>
-        <li><strong>dprCap.</strong> Replaced by a pixel budget (Phase 0g), on main since #24: dpr = min(cap, devicePixelRatio, √(budget ÷ CSS pixels)) per tier. An M3 Max at dpr 2 renders at about 1.5.</li>
-        <li><strong>First-person glove value.</strong> Deferred until after the light rig rebalance. B5 measured the gloves at rgb(16, 3, 40). The reset moves it to W2-E’s hands.</li>
+        <li><strong>Push gate.</strong> CI’s e2e verdict on the exact commit counted as a receipt (tier 1b), and the red-base refusal guarded main only. W2-C deleted these tiers at 20:28Z in favour of the server-side rule (item 13(b)).</li>
+        <li><strong>Visual re-baseline.</strong> Planned as Phase 0e on 10-27, cancelled by the reset; the capture oracle retired at 21:35Z (W2-B).</li>
+        <li><strong>dprCap.</strong> Replaced by a pixel budget (Phase 0g), on main since #24: dpr = min(cap, devicePixelRatio, √(budget ÷ CSS pixels)) per tier.</li>
+        <li><strong>First-person glove value.</strong> B5 measured the gloves at rgb(16, 3, 40). The reset moves it to W2-E’s hands.</li>
         <li><strong>three r186 and cascaded shadows.</strong> Not now. An engine bump re-baselines the look, and r186 removes PCFSoftShadowMap.</li>
         <li><strong>Soft death.</strong> Kept. The “ember cache” would reverse a decision of record and is not built.</li>
-        <li><strong>Dependencies.</strong> vitest and coverage-v8 3 to 4.1.12, Playwright 1.64.1, Puppeteer 25.16.0. 14 advisories (2 critical, 8 high) went to npm audit 0. Engine stack untouched; every version at least 5 days old.</li>
+        <li><strong>Dependencies.</strong> vitest 4.1.12, Playwright 1.64.1, Puppeteer 25.16.0. 14 advisories (2 critical, 8 high) went to npm audit 0. Engine stack untouched.</li>
       </ul>
     </div>
     <div>
@@ -773,8 +723,7 @@ footer p { max-width: 75ch; }
         <li><strong>Mandate.</strong> Your startup prompt gave full autonomy with each non-routine decision recorded. Bright lines: no money, no force-push or history rewrite. Reviewers at xhigh, never max.</li>
         <li><strong>Outside the session.</strong> Ultrareview is your keystroke only. Classifier refusals go to you as exact commands.</li>
         <li><strong>Default review.</strong> <code>/code-review xhigh</code> as a fresh headless <code>claude -p</code> process, never forked, plus one adversarial reviewer at xhigh with a pointed brief on runtime seams. The dynamic layer (<code>mutate.sh</code>, <code>mutate-e2e.sh</code>) stays the floor.</li>
-        <li><strong>Bake-off</strong>, a blind re-run on <code>57c45ae4..9dc5fac7</code> against G1–G6: <code>/code-review xhigh</code> found 3 (15 findings, 15.5 min), the adversarial reviewer at xhigh found 2 (5 findings, 20 min), max with a pointed brief found 6 (12 findings, 28 min). Indicative only.</li>
-        <li><strong>Ultrareview</strong> (free run 1 of 3): six findings, U1–U6, all confirmed and fixed. It found four the bake-off missed and missed the timeout-as-kill flaw. The methods complement each other.</li>
+        <li><strong>Bake-off</strong>, a blind re-run on <code>57c45ae4..9dc5fac7</code> against G1–G6: <code>/code-review xhigh</code> found 3, the adversarial reviewer at xhigh found 2, max with a pointed brief found 6. Indicative only. <strong>Ultrareview</strong> (free run 1 of 3): six findings, all confirmed and fixed.</li>
       </ul>
     </div>
   </div>
@@ -784,9 +733,21 @@ footer p { max-width: 75ch; }
   <h2>Harness and gates</h2>
 
   <div class="group">
-    <h3>New on main since 14:20Z</h3>
+    <h3>New on main since 17:45Z</h3>
     <ul class="list">
-      <li><strong>One registry, and two gates that keep it whole</strong> (W1-H, <code>7e32cb02</code>, <code>54f2a733</code>, <code>0165f49e</code>). <code>registry-harvest</code>, in every unit run, fails when an old source holds an open item with no registry row, or yields fewer items than its floor. <code>registry-append-only</code> fails a push, in pre-push and in CI, that deletes a row instead of closing it. The read order and the doc map now point at the registry (<code>99c9ef44</code>). The generated table reads 17 gates: 8 on every commit, 14 on every push, 13 in CI.</li>
+      <li><strong>CI decides, once</strong> (W2-C, PR #34, items 22 to 24). A commit runs the static gates and the related unit tests; a push runs the trailer check, opsec-scan and the gates that read its range; CI runs everything on the exact commit. <code>e2e-freshness</code>, its committed receipt and the tier-1b push logic are deleted, CI’s duplicate docs job is gone, and <code>ci ok</code> needs the three jobs left. A main push of a commit another run already passed skips the heavy jobs: first on <code>8bbd969e</code>, whose main run took 89 s.</li>
+      <li><strong>The capture oracle is retired</strong> (W2-B, PR #32, W1-H item 1). Deleted: <code>capture.mjs</code>, the <code>test:visual</code> and <code>visual:capture</code> scripts, 30 of the 31 baselines (<code>menu.png</code> stays as the social image’s source, now checked to exist), the density ratchet and its ledgers, <code>pixelmatch</code>, the mascot studio and the baseline-trailer gate. Looks are accepted on eye-level lookbook frames, and the PR template asks a look change for before and after frames. The 131 <code>isCaptureMode()</code> calls stay for now (plan row 48). The generated table now reads 16 gates: 6 on every commit, 5 on every push, 12 in CI.</li>
+      <li><strong>prod-smoke checks that every shader links</strong> in the shipped bundle, with the ocean posed into view (<code>35e392a5</code>). The production build drops console calls, so a failed link used to pass unseen.</li>
+      <li><strong>The ore-glow spec checks its own framing</strong> (<code>68336efd</code>): the camera at the pin, no hands on it, and each measured square inside its face. Its mutants ran on CI as their own land refs, since no local browser runs were allowed.</li>
+      <li><strong>The registry merges by union</strong> (<code>.gitattributes</code>, <code>87428e2d</code>, in this land batch), so lanes that append rows no longer conflict at every landing.</li>
+      <li><strong>SSD-light lanes</strong> (<code>CLAUDE.md</code> Method, <code>fd8067b7</code>): clonefile scratch copies, no local e2e or lookbook but one real-GPU run at a time, CI arbitrates. See the <a href="#outcome">SSD answer</a>.</li>
+    </ul>
+  </div>
+
+  <div class="group">
+    <h3>On main between 14:20Z and 17:45Z</h3>
+    <ul class="list">
+      <li><strong>One registry, and two gates that keep it whole</strong> (W1-H, <code>7e32cb02</code>, <code>54f2a733</code>, <code>0165f49e</code>). <code>registry-harvest</code>, in every unit run, fails when an old source holds an open item with no registry row, or yields fewer items than its floor. <code>registry-append-only</code> fails a push, in pre-push and in CI, that deletes a row instead of closing it. The read order and the doc map point at the registry (<code>99c9ef44</code>).</li>
       <li><strong>prod-smoke reads the mip chain back from the GPU</strong> (<code>25a50c3c</code>) and fails unless all six levels hold the chain the source builds; 14 mutants went red.</li>
       <li><strong>A class-override gate</strong> (<code>aa453ae8</code>). It renders each UI primitive, compiles the app’s own stylesheet and cascades every call site’s classes against the primitive’s named defaults: 133 call sites, 1,560 judged pairs, 0 conflicts. <span class="gap">It judges named defaults only; an unnamed default still falls to stylesheet order.</span></li>
       <li><strong>bundle-budget tightened.</strong> The index ceiling fell from 760,000 to 700,000 bytes, icon paths must be absent from the boot chunk, and the shipped <code>index.html</code> must preload the icon chunk.</li>
@@ -797,56 +758,52 @@ footer p { max-width: 75ch; }
   <div class="group">
     <h3>On main between 06:30Z and 14:20Z</h3>
     <ul class="list">
-      <li><strong>One required check</strong> (<code>627405df</code>, on main with <code>1c4e3bc1</code>). <code>ci ok</code> needs every other job and fails unless each succeeded, so the shard count can change freely. A cancelled run reads red. A docs-only commit skips the browser jobs only when its base’s <code>ci ok</code> passed. CI runs on every push to <code>land/**</code>, and main’s runs are never cancelled. 22 mutants went red.</li>
+      <li><strong>One required check</strong> (<code>627405df</code>, on main with <code>1c4e3bc1</code>). <code>ci ok</code> needs every other job and fails unless each succeeded, so the shard count can change freely. A cancelled run reads red. Main’s runs are never cancelled. 22 mutants went red.</li>
       <li><strong>Branch protection</strong> on main: <code>ci ok</code> required, up to date, admins included, no force push, no deletion.</li>
-      <li><strong>E2E at half pixel ratio</strong> (<code>ae2e10a5</code>). The A/B measured the workflow at 8.4 minutes, from 16.4. The runs since took 11 to 21 minutes from start to finish, as GitHub records them.</li>
+      <li><strong>E2E at half pixel ratio</strong> (<code>ae2e10a5</code>). The A/B measured the workflow at 8.4 minutes, from 16.4.</li>
       <li><strong>The page cap reports and refuses nothing</strong> (<code>92ca0bc0</code>, item 12). Each operator page carries an as-of stamp naming its commit, and a push still refuses a missing or mismatched stamp. LOOP-PROGRESS is archived.</li>
       <li><strong>Harness Tranche A</strong> (<code>da70413f</code>). <code>.state/</code> left git. Every pipeline step scrubs <code>GIT_*</code>, and raw git in a test is a lint error. cli-guard reads the guard off the syntax tree. The worktree receipt fix (<code>6b15bb27</code>). A mutation batch tool that runs the identity mutant first and prints its denominator. The compaction reminder moved to SessionStart(compact), the channel that delivers it.</li>
       <li><strong>A lock-label check</strong> in doc-currency (<code>213bf114</code>, <code>dc8b0d65</code>, item 16). It fails a canonical doc carrying one of six lock phrasings, prints file and line, and states both denominators.</li>
-      <li><strong>The killability-ledger gate is retired</strong> (<code>9132c160</code>, item 17). The generated table now reads 16 gates: 8 on every commit, 13 on every push, 12 in CI.</li>
-      <li><strong>prod-smoke checks the shipped lookbook seam</strong> (<code>7c6b10dd</code>): a pass-timer chunk the production build cannot load turns it red. That covers the gap G-ledger row 31 named.</li>
-      <li><strong>The public face is generated and applied.</strong> <code>public-face.mjs --apply</code> sent 13 requests at about 14:10Z: the About line, the homepage, Discussions and Projects off, 13 topics, three labels added (ipad, looks, perf) and 8 unused GitHub defaults deleted. It refuses a stale face and the deletion of a label in use. The About line reads: “A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, and a dragon waiting at its far edge.”</li>
+      <li><strong>The killability-ledger gate is retired</strong> (<code>9132c160</code>, item 17).</li>
+      <li><strong>prod-smoke checks the shipped lookbook seam</strong> (<code>7c6b10dd</code>): a pass-timer chunk the production build cannot load turns it red.</li>
+      <li><strong>The public face is generated and applied.</strong> <code>public-face.mjs --apply</code> sent 13 requests at about 14:10Z: the About line, the homepage, Discussions and Projects off, 13 topics, three labels added and 8 unused GitHub defaults deleted. It refuses a stale face and the deletion of a label in use.</li>
     </ul>
-  </div>
-
-  <div class="group" id="instruction-file">
-    <h3>The instruction file</h3>
-    <div class="prose">
-      <p>Since <code>d700e531</code>, <code>CLAUDE.md</code> is a regular file at the repo root (38,606 bytes at <code>6752ce5c</code>) and the only agent-instruction file. <code>.agent/AGENTS.md</code> and the symlink are gone. Plans dated before it that say AGENTS.md mean <code>CLAUDE.md</code>. Its Models-and-effort bullet is the only line that sets a model: Opus 5.5 reviewers at xhigh, never max, and Sonnet and Haiku used liberally.</p>
-      <p>Plan item #29 cuts the file to 12 KB or less and keeps your standing directives. It runs in Wave 2 (W2-J), whose proof is a cold agent answering 10 orientation questions in 15 tool calls or fewer.</p>
-    </div>
   </div>
 
   <div class="group">
     <h3>Gate and CI changes before 06:30Z</h3>
     <ul class="list">
       <li><strong>mutate-e2e stops scoring failures as kills</strong> (<code>93785815</code>). A timeout, an untagged <code>bootDev</code> or a busy port now gives COULD NOT CHECK (exit 3).</li>
-      <li><strong>Push gate tier 1b</strong> (<code>f0e84766</code>). CI’s e2e verdict on the exact commit counts as a receipt, and the red-base refusal guards main only.</li>
-      <li><strong>Fixtures cannot write into the real repo</strong> (<code>0c5b269c</code>). <code>_isolatedGit.js</code> strips every <code>GIT_*</code> variable.</li>
-      <li><strong>E2E shards</strong> went from 3 to 6 (<code>17e06ecd</code>), then to 8 (<code>a8ce0dd1</code>).</li>
-      <li><strong>Runner pin</strong> (<code>5177c203</code>). All jobs on ubuntu-24.04; checkout, setup-node and upload-artifact on v7.</li>
-      <li><strong>Artifact-currency scoped to main pushes</strong> (<code>008ba09e</code>). Superseded by item 12.</li>
-      <li><strong>Dependencies</strong> (<code>10a43f68</code>): vitest 4, npm audit 0.</li>
+      <li><strong>Push gate tier 1b</strong> (<code>f0e84766</code>), deleted by W2-C. <strong>Fixtures cannot write into the real repo</strong> (<code>0c5b269c</code>): <code>_isolatedGit.js</code> strips every <code>GIT_*</code> variable.</li>
+      <li><strong>E2E shards</strong> went from 3 to 6 (<code>17e06ecd</code>), then to 8 (<code>a8ce0dd1</code>). <strong>Runner pin</strong> (<code>5177c203</code>): all jobs on ubuntu-24.04. <strong>Dependencies</strong> (<code>10a43f68</code>): vitest 4, npm audit 0.</li>
     </ul>
   </div>
 
   <div class="group">
     <h3>Main CI, run by run</h3>
-    <p class="muted">Cancelled means a newer push replaced the run, or the time limit stopped a shard. A cancelled run is not a pass. Since 11:11Z, each commit also passed a land-branch run before main accepted it.</p>
+    <p class="muted">Cancelled means a newer push replaced the run, or the time limit stopped a shard. A cancelled run is not a pass. Since 11:11Z every commit passed a land-branch or PR run before main accepted it; since 20:28Z main’s own run reuses that verdict.</p>
     <div class="tbl">
       <table>
         <thead>
           <tr><th scope="col">Commit</th><th scope="col">Run</th><th scope="col">Result</th><th scope="col">Note</th></tr>
         </thead>
         <tbody>
-          <tr class="divider"><td colspan="4">Since the takeover, newest first</td></tr>
-          <tr><td><code>6752ce5c</code></td><td><code>40737159635</code></td><td class="st"><span class="pill ok">success</span></td><td>Light and colour. Land run <code>40734785930</code>. Main’s run finished at 17:49:03Z, first attempt.</td></tr>
+          <tr class="divider"><td colspan="4">New since 17:45Z, newest first</td></tr>
+          <tr><td><code>3bd6fbde</code></td><td><code>40773279609</code></td><td class="st"><span class="pill ok">success</span></td><td>W2-B. On PR run <code>40769981525</code>’s verdict, in 76 s.</td></tr>
+          <tr><td><code>a4ed6822</code></td><td><code>40769752349</code></td><td class="st"><span class="pill ok">success</span></td><td>The Cut. On PR run <code>40767412584</code>’s verdict.</td></tr>
+          <tr><td><code>6a926fce</code></td><td><code>40766970690</code></td><td class="st"><span class="pill ok">success</span></td><td>W2-A. On PR run <code>40764829449</code>’s verdict.</td></tr>
+          <tr><td><code>8bbd969e</code></td><td><code>40763627390</code></td><td class="st"><span class="pill ok">success</span></td><td>W2-C. The first main run to pass on another run’s verdict (PR run <code>40761017932</code>), in 89 s.</td></tr>
+          <tr><td><code>68336efd</code></td><td><code>40760965589</code></td><td class="st"><span class="pill ok">success</span></td><td>The ore-glow framing fix, run in full. Land run <code>40758757119</code>.</td></tr>
+          <tr><td><code>c03186fe</code></td><td><code>40745025015</code></td><td class="st"><span class="pill warn">passed on re-run</span></td><td>#31. Land run <code>40743970578</code>. Main’s first attempt failed <code>ore-glow.spec.js</code> on all 3 tries (“the stone face is not in frame”); the re-run passed at 18:58:10Z. Fixed at the cause in <code>68336efd</code>.</td></tr>
+          <tr><td><code>13c600ad</code></td><td><code>40742070022</code></td><td class="st"><span class="pill ok">success</span></td><td>The previous page; docs only, so the browser jobs were skipped. Land run <code>40740902822</code>.</td></tr>
+          <tr class="divider"><td colspan="4">From the takeover to 17:45Z, newest first</td></tr>
+          <tr><td><code>6752ce5c</code></td><td><code>40737159635</code></td><td class="st"><span class="pill ok">success</span></td><td>Light and colour. Land run <code>40734785930</code>.</td></tr>
           <tr><td><code>65f35f28</code></td><td><code>40734495891</code></td><td class="st"><span class="pill ok">success</span></td><td>W1-H. Land run <code>40732041445</code>.</td></tr>
           <tr><td><code>213eae36</code></td><td><code>40728471308</code></td><td class="st"><span class="pill ok">success</span></td><td>The flaky-spec fixes. Land run <code>40725859875</code>.</td></tr>
           <tr><td><code>d201c073</code></td><td><code>40725291735</code></td><td class="st"><span class="pill ok">success</span></td><td>W1-E. Land run <code>40722522469</code>.</td></tr>
           <tr><td><code>c6d04db8</code></td><td><code>40722279947</code></td><td class="st"><span class="pill ok">success</span></td><td>W1-G. Land run <code>40719658990</code>.</td></tr>
-          <tr><td><code>a3fb66cd</code></td><td><code>40709961911</code></td><td class="st"><span class="pill ok">success</span></td><td>The previous page; docs only, so the browser jobs were skipped. Land run <code>40709327204</code>.</td></tr>
-          <tr><td><code>030ada1f</code></td><td><code>40703024235</code></td><td class="st"><span class="pill warn">passed on re-run</span></td><td>Wave 1. Land run <code>40700481509</code> passed on this exact commit. Main’s first attempt failed <code>ore-glow.spec.js</code> (light drift between shots, 3 of 3); the re-run passed, finishing at 14:42:57Z. Fixed at the cause in <code>213eae36</code>.</td></tr>
+          <tr><td><code>a3fb66cd</code></td><td><code>40709961911</code></td><td class="st"><span class="pill ok">success</span></td><td>Version 3 of this page; docs only. Land run <code>40709327204</code>.</td></tr>
+          <tr><td><code>030ada1f</code></td><td><code>40703024235</code></td><td class="st"><span class="pill warn">passed on re-run</span></td><td>Wave 1. Land run <code>40700481509</code>. Main’s first attempt failed <code>ore-glow.spec.js</code> (light drift between shots); the re-run passed at 14:42:57Z. Fixed at the cause in <code>213eae36</code>.</td></tr>
           <tr><td><code>dc8b0d65</code></td><td><code>40691409278</code></td><td class="st"><span class="pill ok">success</span></td><td>Nothing is locked. Land run <code>40689226695</code>.</td></tr>
           <tr><td><code>d700e531</code></td><td><code>40680375511</code></td><td class="st"><span class="pill ok">success</span></td><td>One CLAUDE.md. Land run <code>40678345158</code>.</td></tr>
           <tr><td><code>1c4e3bc1</code></td><td><code>40678012103</code></td><td class="st"><span class="pill ok">success</span></td><td>The required check. Land run <code>40675354151</code>. Protection went on after this push.</td></tr>
@@ -855,11 +812,11 @@ footer p { max-width: 75ch; }
           <tr><td><code>c2bda904</code></td><td><code>40665999489</code></td><td class="st"><span class="pill idle">cancelled</span></td><td>Superseded by the push of <code>b3425d83</code>.</td></tr>
           <tr><td><code>58455351</code></td><td><code>40662026371</code></td><td class="st"><span class="pill ok">success</span></td><td></td></tr>
           <tr><td><code>2bb0857d</code></td><td><code>40651588887</code></td><td class="st"><span class="pill ok">success</span></td><td>Main green again after the failure below.</td></tr>
-          <tr><td><code>43d766e6</code></td><td><code>40642071917</code></td><td class="st"><span class="pill bad">failed</span></td><td>e2e 7/8 red: <code>touch-hold.spec.js:303</code>, SETUP on all 3 attempts (a wall-clock freeze on a slow runner).</td></tr>
-          <tr><td><code>d5375ac1</code></td><td><code>40637429575</code></td><td class="st"><span class="pill ok">success</span></td><td>8 shards. Finished 05:36:25Z.</td></tr>
-          <tr><td><code>a9a303e9</code></td><td><code>40636298093</code></td><td class="st"><span class="pill idle">cancelled</span></td><td>Superseded. 9 jobs green, shard 6/8 cancelled.</td></tr>
-          <tr><td><code>0c5a4041</code></td><td><code>40622556954</code></td><td class="st"><span class="pill bad">timeout</span></td><td>Shard 4/6 hit the 25-minute limit; <code>lightning.spec.js:59</code> test timeout. Never green.</td></tr>
-          <tr><td><code>76262a08</code></td><td><code>40622346757</code></td><td class="st"><span class="pill idle">cancelled</span></td><td>Superseded. Never green.</td></tr>
+          <tr><td><code>43d766e6</code></td><td><code>40642071917</code></td><td class="st"><span class="pill bad">failed</span></td><td>e2e 7/8 red: <code>touch-hold.spec.js:303</code>, a wall-clock freeze on a slow runner.</td></tr>
+          <tr><td><code>d5375ac1</code></td><td><code>40637429575</code></td><td class="st"><span class="pill ok">success</span></td><td>8 shards.</td></tr>
+          <tr><td><code>a9a303e9</code></td><td><code>40636298093</code></td><td class="st"><span class="pill idle">cancelled</span></td><td>Superseded; shard 6/8 cancelled.</td></tr>
+          <tr><td><code>0c5a4041</code></td><td><code>40622556954</code></td><td class="st"><span class="pill bad">timeout</span></td><td>Shard 4/6 hit the 25-minute limit on <code>lightning.spec.js:59</code>.</td></tr>
+          <tr><td><code>76262a08</code></td><td><code>40622346757</code></td><td class="st"><span class="pill idle">cancelled</span></td><td>Superseded.</td></tr>
           <tr><td><code>995f1da2</code></td><td><code>40615332358</code></td><td class="st"><span class="pill ok">success</span></td><td></td></tr>
           <tr><td><code>0928edbb</code></td><td><code>40610542612</code></td><td class="st"><span class="pill ok">success</span></td><td>Pushed with #29’s merge <code>fbb11411</code>.</td></tr>
           <tr><td><code>17e06ecd</code></td><td><code>40551471583</code></td><td class="st"><span class="pill ok">success</span></td><td>First 6-shard run.</td></tr>
@@ -880,8 +837,8 @@ footer p { max-width: 75ch; }
   <div class="group">
     <h3>Deploys</h3>
     <div class="prose">
-      <p>Vercel deployed every push to main: 25 Production deployments since the takeover. The six since 14:20Z are <code>a3fb66cd</code>, <code>c6d04db8</code>, <code>d201c073</code>, <code>213eae36</code>, <code>65f35f28</code> and <code>6752ce5c</code>, each reporting success. At 17:41Z crafty-game.vercel.app and crafty-sand.vercel.app both served <code>index-IhOGvzsX.js</code>, which is the index chunk CI’s land run built from <code>6752ce5c</code>, so the live site carries the head build.</p>
-      <p>Before 14:20Z: the nine since 06:30Z were <code>2bb0857d</code>, <code>58455351</code>, <code>c2bda904</code>, <code>b3425d83</code>, <code>da70413f</code>, <code>1c4e3bc1</code>, <code>d700e531</code>, <code>dc8b0d65</code> and <code>030ada1f</code>. <code>c2bda904</code> deployed although its CI was cancelled, before protection went on. Since then main accepts only a commit with a green <code>ci ok</code>, which is the prevention the Vercel Deployment Checks idea (T6) was for.</p>
+      <p>Vercel deployed every push to main: 32 Production deployments since the takeover. The seven since 17:45Z are <code>13c600ad</code>, <code>c03186fe</code>, <code>68336efd</code>, <code>8bbd969e</code>, <code>6a926fce</code>, <code>a4ed6822</code> and <code>3bd6fbde</code>, each reporting success. At 21:44Z crafty-game.vercel.app and crafty-sand.vercel.app both served <code>index-CfmscO8D.js</code>, the index chunk PR run <code>40769981525</code> built from <code>3bd6fbde</code>, so the live site carries the head build.</p>
+      <p>Before 17:45Z: the six between 14:20Z and 17:45Z were <code>a3fb66cd</code>, <code>c6d04db8</code>, <code>d201c073</code>, <code>213eae36</code>, <code>65f35f28</code> and <code>6752ce5c</code>; the nine between 06:30Z and 14:20Z were <code>2bb0857d</code>, <code>58455351</code>, <code>c2bda904</code>, <code>b3425d83</code>, <code>da70413f</code>, <code>1c4e3bc1</code>, <code>d700e531</code>, <code>dc8b0d65</code> and <code>030ada1f</code>. <code>c2bda904</code> deployed although its CI was cancelled, before protection went on. Since then main accepts only a commit with a green <code>ci ok</code>, which is the prevention the Vercel Deployment Checks idea (T6) was for.</p>
     </div>
   </div>
 </section>
@@ -890,32 +847,52 @@ footer p { max-width: 75ch; }
   <h2>Mistakes, and what was done about them</h2>
   <div class="mk">
     <article>
+      <h3>Landings ran CI twice after the landing model changed <span class="pill run">new</span></h3>
+      <div class="body">
+        <p><b>What happened.</b> Once branch protection made every landing a fast-forward (11:12Z), a lane merged main into its own branch, so its branch head became the commit main moves to. For a lane with a PR, the PR run already tested that commit, yet the land-branch push ran a second identical run, and main’s own push a third. You asked at about 18:35Z whether CI ran twice. It did: #31’s head <code>b4239118</code> carried two <code>ci ok</code> runs, the PR’s (<code>40739844276</code>, red on ore-glow) and the land branch’s (<code>40739853527</code>, green). Main’s own run on a commit another run had already passed is where ore-glow reddened main, twice.</p>
+        <p><b>Done.</b> A lane with a PR now lands on its own PR run, and a land branch is only for a change with no PR; W2-C was the first at 20:28Z. Main’s run on a commit another run already passed skips the heavy jobs (item 23). Recorded as a lesson in the Agentic Brain’s episode log: when how work lands changes, re-derive each step from its reason, because a step kept after its reason expires costs silently and gives flaky specs more chances to redden main.</p>
+      </div>
+    </article>
+    <article>
+      <h3>A spec measured through the glove, and main went red again <span class="pill run">new</span></h3>
+      <div class="body">
+        <p><b>What happened.</b> Main’s first attempt on <code>c03186fe</code> (run <code>40745025015</code>) failed <code>ore-glow.spec.js</code> on all three tries: “the stone face is not in frame”. The same failure reddened eight PR runs from 17:52 to 20:19Z, across #31 and all four Wave 2 PRs. The eye spawns on a cell corner, within 1e-5 of it, so the spec picked the measured cell by the sign of floating-point noise; in one of four framings the stone square sat half on the first-person left glove. Both readings had cleared the bound of 8 before the colour script; its darker noon scaled them to 6.3 and 14.5, and the half-glove one fell under.</p>
+        <p><b>Done.</b> The spec now pins the camera at the centre of the eye’s cell through the lookbook pose, which also takes the hands off the camera, and checks the framing by geometry; the bound stays 8 (<code>68336efd</code>, 20:11Z). Three mutants each went red on CI, and two runs in a row passed on the first attempt. It is the second time ore-glow reddened main, from a different cause each time, and both were fixed at the cause rather than by widening a bound.</p>
+      </div>
+    </article>
+    <article>
+      <h3>A red spec taken for a W2-B regression <span class="pill run">new</span></h3>
+      <div class="body">
+        <p><b>What happened.</b> At 19:30Z the session took PR #32’s red combat-stance spec (run <code>40750241581</code>, “stance never engaged”) for a W2-B regression, probably a deleted capture-only hook. It was the spec waiting for engagement on the wall clock through one stalled frame.</p>
+        <p><b>Done.</b> <code>d9e9e7b3</code> makes the stance specs wait in game time, and the stance’s own clocks, which can let go of a fight after one long frame, became a registry row.</p>
+      </div>
+    </article>
+    <article>
       <h3>Two lanes could shoot each other’s builds</h3>
       <div class="body">
         <p><b>What happened.</b> Every worktree’s lookbook served its build on the same port, 4238. When a second run started while another held the port, its own server failed silently, and it shot the first run’s build under its own label. The light lane found it at 15:17Z while shooting its before and after: two runs drew near-identical frames. From about 14:53 to 15:17Z the light lane and W1-E overlapped, so W1-E’s frame-time and pass-timer figures from that window may come from the wrong build.</p>
-        <p><b>Done.</b> A run now loads the page before each target and stops (exit 3) unless the port serves the index chunk of the build it was asked to shoot (<code>998c7de2</code>, proved against a decoy server; on main with the light lane). DECISIONS item 20 marks W1-E’s figures from that window unverified; its in-page measurements are unaffected. The light lane discarded its two unchecked runs and reshot.</p>
+        <p><b>Done.</b> A run now loads the page before each target and stops (exit 3) unless the port serves the index chunk of the build it was asked to shoot (<code>998c7de2</code>, proved against a decoy server). DECISIONS item 20 marks W1-E’s figures from that window unverified; its in-page measurements are unaffected. The light lane discarded its two unchecked runs and reshot.</p>
       </div>
     </article>
     <article>
       <h3>Two flaky specs reddened main and a push</h3>
       <div class="body">
         <p><b>What happened.</b> <code>ore-glow.spec.js</code> failed main’s first attempt on <code>030ada1f</code> (run <code>40703024235</code>, 3 of 3), on a commit that had just passed its land run. Then the hitstop test in <code>hurt-feel-gates</code> failed the pre-push of the ore-glow land branch, reading 93 against 85 ms at a load of about 33.</p>
-        <p><b>Done.</b> Both were fixed at the cause, and neither bound was widened. The ore-glow spec held the weather and the world one shot at a time, so the storm that fires about 90 s after boot could land inside a noon shot, and hostiles could kill the player during the night pair; it now holds both for the whole measurement, with its bound unchanged (<code>4e399285</code>). The hitstop test timed each hit on the live clock, so time the store spent under load leaked into the comparison; it now pins the clock the store reads (<code>213eae36</code>). An earlier fix to it, on 2026-08-09, had only narrowed the window.</p>
+        <p><b>Done.</b> Both were fixed at the cause, and neither bound was widened. The ore-glow spec held the weather and the world one shot at a time, so the storm that fires about 90 s after boot could land inside a noon shot, and hostiles could kill the player during the night pair; it now holds both for the whole measurement (<code>4e399285</code>). The hitstop test timed each hit on the live clock, so time the store spent under load leaked into the comparison; it now pins the clock the store reads (<code>213eae36</code>).</p>
       </div>
     </article>
     <article>
       <h3>A lane reported done before it reached main</h3>
       <div class="body">
         <p><b>What happened.</b> At about 10:53Z the session reported the one-CLAUDE.md lane as done. Its commit <code>ba66d352</code> sat on <code>chore/one-claude-md</code>, unpushed, while main still carried <code>.agent/AGENTS.md</code>, which you then saw in Orca.</p>
-        <p><b>Done.</b> It landed through land run <code>40678345158</code> and reached main as <code>d700e531</code> at 11:29Z, and <code>.agent/</code> was removed from the main checkout. This page reports a lane as landed only with its main commit.</p>
+        <p><b>Done.</b> It landed through land run <code>40678345158</code> and reached main as <code>d700e531</code> at 11:29Z. This page reports a lane as landed only with its main commit.</p>
       </div>
     </article>
     <article>
       <h3>PR #31’s first fix weakened a test instead of fixing the game</h3>
       <div class="body">
-        <p><b>What happened.</b> PR #31’s first CI run (<code>40675430218</code>, on <code>58ce5708</code>) failed two new specs: <code>combat-stance.spec.js:330</code>, where the gap to the husk was 2.96 to 3.07 m against a 2.6 m limit, and <code>melee-string.spec.js:153</code>, a 974 ms gap between clicks, outside its 100 to 650 ms window. The round-1 fix judged the catch only when every frame took 250 ms or less, which CI’s software renderer never meets, so the check stopped judging, and CI went green (<code>40695331687</code>). A verifier refuted it: a husk slowed to 0.6x still passed (mutant M3). The melee and touch fixes were confirmed.</p>
-        <p><b>Done.</b> Round 2 fixed the game, not the test (<code>e1bde21d</code>, PR CI <code>40717017009</code>). The player and the AI share one capped time step, so a player cannot out-walk pursuers after a stall or on a throttled iPad. Melee is aimed from the body, and camera shake is only presentation. The catch is judged again on CI, and the mutant M3 now turns it red.</p>
-        <p><b>Then.</b> A fresh <code>/code-review xhigh</code> on the PR range (16:03Z) found 13 issues, at least six of them correctness defects the paired reviewers had missed, including a pause that escaped a fight. One came from round 2’s own fix. Round 3 reproduces each before fixing it. The session reads this as T14’s answer: a fresh review is worth its run on every game-code PR range.</p>
+        <p><b>What happened.</b> PR #31’s first CI run (<code>40675430218</code>, on <code>58ce5708</code>) failed two new specs: <code>combat-stance.spec.js:330</code>, where the gap to the husk was 2.96 to 3.07 m against a 2.6 m limit, and <code>melee-string.spec.js:153</code>, a 974 ms gap between clicks. The round-1 fix judged the catch only when every frame took 250 ms or less, which CI’s software renderer never meets, so the check stopped judging, and CI went green (<code>40695331687</code>). A verifier refuted it: a husk slowed to 0.6x still passed (mutant M3).</p>
+        <p><b>Done.</b> Round 2 fixed the game, not the test (<code>e1bde21d</code>, PR CI <code>40717017009</code>): one capped time step for the player and the AI, and melee aimed from the body. The catch is judged again on CI, and M3 turns it red. A fresh <code>/code-review xhigh</code> then found 13 issues, at least six of them correctness defects the paired reviewers had missed, and round 3 reproduced each before fixing it. The stance landed at 18:25Z as <code>c03186fe</code>. The session reads this as T14’s answer: a fresh review is worth its run on every game-code PR range.</p>
       </div>
     </article>
     <article>
@@ -947,24 +924,16 @@ footer p { max-width: 75ch; }
       </div>
     </article>
     <article>
-      <h3>A message forked a second builder</h3>
-      <div class="body">
-        <p><b>What happened.</b> At 04:45Z a SendMessage to a combat builder forked a twin, and both committed.</p>
-        <p><b>Done.</b> Both stopped; work continued in place. Rule: never SendMessage a workflow agent (G-ledger row 42).</p>
-      </div>
-    </article>
-    <article>
       <h3>Earlier, more briefly</h3>
       <div class="body">
-        <p>A cancelled shard hid two real e2e failures (fixed in <code>dfae38b6</code> and <code>df6e9900</code>). Builders gave the wrong root cause for the worktree receipt (the real one, fixed in <code>6b15bb27</code>, landed with #27). PR #28 did not survive review and is now closed. <code>4a2efae2</code> carries more than its message says, and <code>fa1e870a</code> records it. A worker’s output read as instructions was relayed to you and not acted on.</p>
+        <p>At 04:45Z a SendMessage to a combat builder forked a twin, and both committed; both stopped, and the rule is never to SendMessage a workflow agent (G-ledger row 42). A cancelled shard hid two real e2e failures (fixed in <code>dfae38b6</code> and <code>df6e9900</code>). Builders gave the wrong root cause for the worktree receipt (the real one, fixed in <code>6b15bb27</code>, landed with #27). PR #28 did not survive review and is closed. <code>4a2efae2</code> carries more than its message says, and <code>fa1e870a</code> records it. A worker’s output read as instructions was relayed to you and not acted on.</p>
       </div>
     </article>
     <article>
       <h3>Records that lag the state</h3>
       <div class="body">
-        <p><b>Corrected at this publish.</b> Four registry rows for the light lane read in flight after it landed at <code>6752ce5c</code> (the colour script, night, the cold golden hour, the motes); they are now closed by that commit. The night ore-glow shift at distance and the override gate’s unnamed defaults had no registry row; each has one now. <b>Still lagging, new since 14:20Z.</b> ACTIVE_PLAN’s cursor still names the G-ledger as the residue, which item 9 replaced.</p>
-        <p><b>Still lagging from before.</b> DECISIONS 2026-10-28’s heading and item 3 still say six e2e shards; CI runs 8. ACTIVE_PLAN’s For-Kevin block still describes option (a) as pending and says #22 to #25 are open. GitHub still flags merged #23 and #25 as drafts. era-review and sota-audit have not moved to <code>docs/archive/</code>.</p>
-        <p><b>Done.</b> W1-H’s harvest put every open item it could extract into the registry, with a floor per source, so the old G-ledger is no longer the list to read. The rest is listed here and is the session’s to correct.</p>
+        <p><b>Corrected in this land batch.</b> The two combat rows read in flight after #31 landed; they are closed by <code>c03186fe</code>. The cursor’s landing paragraph described land branches and named the G-ledger as the residue; it now states the one-CI-run rule and points at the registry (<code>87428e2d</code>).</p>
+        <p><b>Still lagging.</b> DECISIONS 2026-10-28’s landing-lifecycle heading still says six e2e shards; CI runs 8. ACTIVE_PLAN’s For-Kevin block still describes option (a) as pending and #22 to #25 as open. GitHub still flags merged #23 and #25 as drafts. era-review and sota-audit have not moved to <code>docs/archive/</code>. All are the session’s to correct.</p>
       </div>
     </article>
   </div>
@@ -975,25 +944,22 @@ footer p { max-width: 75ch; }
 
   <div class="two">
     <div>
-      <h3>Waiting on you: only what only you can do</h3>
+      <h3>Waiting on you: nothing blocks</h3>
       <ul class="list">
-        <li><strong>Three checks on a real iPad</strong>, when you next have it. (1) Tap Pause while another finger holds the joystick: <code>030ada1f</code> pauses on the tap’s click, and iOS may not send that click for a second finger. (2) Resume from the touch overlay: if iOS refuses the pointer lock the resume asks for, the game may undo the resume. (3) The feel of the combat stance, once #31 lands. Note the iPadOS version while you are there.</li>
-        <li><strong>The audio mix</strong>, by ear.</li>
-        <li><strong>Welcome, not required:</strong> a look at dawn, dusk and midnight on the live site, and the new fireflies at night. A fresh profile sees its first dusk at 4:00 of play and its first dawn at 8:00.</li>
+        <li><span class="pill idle">optional</span> <strong>The watts A/B.</strong> Run <code>frontend/scripts/dev/power-ab.sh</code> at your own terminal on the M3 Max; it asks for your sudo password once, because powermetrics needs root. W2-I decides on the driver’s GPU utilization without it.</li>
+        <li><span class="pill idle">optional</span> <strong>A session on a real iPad</strong> (STATUS:#44): the audio mix by ear and how touch feels, now with the combat stance and costed building. While there, tap Pause while another finger holds the joystick, resume from the touch overlay, and note the iPadOS and Safari version.</li>
       </ul>
-      <p class="muted">Later, not now: W2-I’s power A/B needs your sudo password once, because <code>power-ab.sh</code> asks for it at your terminal.</p>
-      <p class="muted">The registry names you on 11 open rows, seven subjects: the real-device playtest and how a session feels (three rows), the touch-resume check, your iPad’s iPadOS and Safari version, the power A/B, the multiplayer and monetization scope (S4, two rows), the retention for backup and snapshot refs (K55(c), two rows; the tool that expires them is AB Command’s), and posting the reply to pmndrs/postprocessing#750, an external send that needs your OK. The device, ear and version rows are the checks above, and the power A/B is the later item; the scope, retention and send rows are not asked of you now, and are listed so this page matches the registry.</p>
+      <p class="muted">The registry names you on 11 open rows, seven subjects: the real-device playtest and how a session feels (three rows), the touch-resume check, your iPad’s versions, the power A/B, the multiplayer and monetization scope (S4, two rows), the retention for backup and snapshot refs (K55(c), two rows), and posting the reply to pmndrs/postprocessing#750, an external send that needs your OK. The scope, retention and send rows are not asked of you now.</p>
     </div>
     <div>
       <h3>Open for the session</h3>
       <ul class="list">
-        <li>Land #31 after its final round, with <code>ci ok</code> on the merged head. W2-B and W2-C are in flight; the rest of Wave 2 follows the stance.</li>
-        <li>The acceptance frames on the deployed build for W1-E and the light lane, and W1-D’s run against the production URL, which needs a <code>--url</code> mode.</li>
-        <li>Wave 1 follow-ups: the beast form, snare and fuse timers during a pause (W3-D); the touch-resume stranding; the pause instruments’ LOW findings; the GPU cost probe hanging for over 5 minutes after writing its JSON, at load 170 to 400, undiagnosed.</li>
-        <li>Move era-review and sota-audit to <code>docs/archive/</code> (item 13(a)).</li>
-        <li>Retire e2e-freshness’s tiers in favour of the server-side rule (item 13(b)): in flight in W2-C.</li>
-        <li>Dependabot #30.</li>
-        <li>Bring the records under Mistakes current.</li>
+        <li>Land #36 once it has merged main and passed its PR run again; then look at the damage numbers in the game.</li>
+        <li>W2-I decides each pass by its rule; W2-K builds its face grammar and shoots its frames. Then the rest of Wave 2.</li>
+        <li>Owed looks: live frames for W2-A’s ocean and the night ore glow at a distance, the acceptance frames on the deployed build for W1-E and the light lane, and W1-D’s run against the production URL.</li>
+        <li>Review residue: W2-A’s grazing sheen (MED), the Cut’s cobblestone XP loop and recipe-reach gate, and the stance’s long-frame clocks.</li>
+        <li>Wave 1 follow-ups: the beast form, snare and fuse timers during a pause (W3-D); the touch-resume stranding; the GPU cost probe hanging after writing its JSON.</li>
+        <li>Move era-review and sota-audit to <code>docs/archive/</code>; Dependabot #30; the records under Mistakes.</li>
       </ul>
     </div>
   </div>
@@ -1001,22 +967,22 @@ footer p { max-width: 75ch; }
   <div class="group">
     <h3>The registry</h3>
     <div class="ledger">
-      <p><code>memory/registry.jsonl</code> at <code>6752ce5c</code> holds 349 rows: 230 open, 1 in flight and 118 closed (two follow-up rows added and four landed light-lane rows closed at publish). W1-H harvested them from STATUS §2 and its G-ledger, ACTIVE_PLAN, the sota-2026-09 QUEUE and OPEN-ITEMS files and the masterpiece tables; 11 more are review residue from W1-H, W1-E, W1-G and the light lane. 96 of the open rows are visible to a player. Mapped to the reset’s lanes, the largest shares of open rows are W2-J, docs and harness (49), W3-D (19), W2-I (13) and W2-C (12); 65 are not yet mapped to a lane.</p>
-      <div class="bar" role="img" aria-label="Open registry rows by severity: 15 high, 67 medium, 130 low, 18 unrated, of 230 open rows">
-        <span class="seg-high" style="flex-grow: 15"></span>
-        <span class="seg-med" style="flex-grow: 67"></span>
-        <span class="seg-low" style="flex-grow: 130"></span>
-        <span class="seg-none" style="flex-grow: 18"></span>
+      <p><code>memory/registry.jsonl</code> at <code>87428e2d</code>, the land batch, holds 359 rows: 222 open, none in flight and 137 closed. Since the last version 19 rows closed (13 by W2-C, 2 each by W2-A and the stance landing, 1 each by the Cut and W2-B) and 10 were added, 9 of them review residue from Wave 2. 99 of the open rows are visible to a player. Mapped to the reset’s lanes, the largest shares of open rows are W2-J, docs and harness (46), W3-D (19), W2-I (13) and W1-A’s CI and test hygiene (12); 66 are not yet mapped to a lane.</p>
+      <div class="bar" role="img" aria-label="Open registry rows by severity: 14 high, 64 medium, 127 low, 17 unrated, of 222 open rows">
+        <span class="seg-high" style="flex-grow: 14"></span>
+        <span class="seg-med" style="flex-grow: 64"></span>
+        <span class="seg-low" style="flex-grow: 127"></span>
+        <span class="seg-none" style="flex-grow: 17"></span>
       </div>
-      <p class="legend"><span class="l-high">HIGH 15</span><span class="l-med">MED 67</span><span class="l-low">LOW 130</span><span class="l-none">unrated 18</span></p>
-      <p class="muted">Owners of the 230 open rows: the command session 216 (12 of them HIGH), you 11, AB Command 3. The 1 in flight is the combat stance, #31.</p>
+      <p class="legend"><span class="l-high">HIGH 14</span><span class="l-med">MED 64</span><span class="l-low">LOW 127</span><span class="l-none">unrated 17</span></p>
+      <p class="muted">Owners of the 222 open rows: the command session 208 (11 of them HIGH), you 11, AB Command 3.</p>
     </div>
   </div>
 </section>
 
 <footer>
-  <p>Sources: a fetch of <code>origin/main</code> and <code>feat/combat-stance</code> read with git; GitHub runs and their logs, PRs, deployments and branch protection read with <code>gh</code> at about 17:35 to 17:45Z; both live hosts’ index chunk read with curl at 17:41Z; the repo’s DECISIONS.md (items 20 and 21 and the W1-H section), <code>memory/registry.jsonl</code>, ACTIVE_PLAN.md, the light plan’s as-built section and the light-colour evidence index at <code>6752ce5c</code>; and the session-truth ledger’s rows after 14:20Z. Each claim carries its commit, PR or run id.</p>
-  <p>Main run <code>40737159635</code> on <code>6752ce5c</code> was read again at 17:52Z, after it passed. Round 3’s verifier verdict on #31 was added at publish, from its report. Not checked: any play on the live site; and the uncommitted state of lane worktrees beyond their branch heads. The previous version said main’s 030ada1f re-run passed at about 14:55Z; GitHub records it finishing at 14:42:57Z.</p>
+  <p>Sources: <code>origin/main</code>, the land batch and the lane branches read with git; GitHub runs and their logs, PRs #30 to #36, deployments and branch protection read with <code>gh</code> at about 21:40 to 21:48Z; both live hosts’ index chunk read with curl at 21:44Z; DECISIONS.md (items 22 to 24 and the combat-stance section), <code>memory/registry.jsonl</code> and ACTIVE_PLAN.md at <code>87428e2d</code>; the session-truth ledger’s rows after 17:45Z, the Agentic Brain’s episode log and the session’s SSD write log. Each claim carries its commit, PR or run id.</p>
+  <p>Not checked: any play on the live site, and the uncommitted state of lane worktrees beyond their branch heads. Not on main at the time of reading: <code>87428e2d</code>, which lands with this page.</p>
 </footer>
 
 </div>
