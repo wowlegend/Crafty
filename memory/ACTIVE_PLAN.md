@@ -40,7 +40,7 @@ done first, then a design panel chooses the highest-leverage moves, each through
 
 ### For Kevin (queued while he sleeps, 2026-10-27; nothing here blocks the lanes)
 
-1. **DONE by option (b), 2026-10-28 ~01:30Z: the pages now live at era-review https://claude.ai/artifact/Q1QQLYLxPVYZ8A7Srm1BMF and sota-audit https://claude.ai/artifact/NuwFDNnfZG3gRHv6LH1krr (account 2); the old account-1 links show the 2026-10-27 version. Say if you want them moved back when account 1 is active.** History: the two published operator pages are owned by account 1. era-review and sota-audit
+1. **Kevin chose OPTION (a), 2026-10-28 morning (DECISIONS 2026-10-28 item 11): the pages go back to their original account-1 links the next time account 1 is the active account (republish at `previousUrl`, swap `url`/`previousUrl` in `.artifact-sync.json`, `--sync`). Until then the interim copies below stay current.** Interim, by option (b), 2026-10-28 ~01:30Z: the pages live at era-review https://claude.ai/artifact/Q1QQLYLxPVYZ8A7Srm1BMF and sota-audit https://claude.ai/artifact/NuwFDNnfZG3gRHv6LH1krr (account 2); the old account-1 links show the 2026-10-27 version. Say if you want them moved back when account 1 is active.** History: the two published operator pages are owned by account 1. era-review and sota-audit
    (`docs/superpowers/.artifact-sync.json`) can only be republished from account 1; account 2/3 cannot see them.
    `artifact-currency` refuses any branch more than 30 commits past their publish sha, so PR #24 (steady-cool,
    33) cannot push until they are republished. Options: (a) next time account 1 is active, the command session

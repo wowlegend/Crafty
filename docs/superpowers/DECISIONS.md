@@ -60,6 +60,12 @@
    identical change. Item 2 (merge commits only) governs lanes.
 10. **Lanes land in readiness order**, not the fixed 22 -> 24 -> 23 -> 25 queue, once main is green: whichever PR is
    CI-green first lands first. The combat-stance lane (Phase 1) builds on main plus #24 and #25, and lands after both.
+11. **Kevin, 2026-10-28 morning: "go with option a for the pages."** Option (a) was: keep the operator pages at their
+   ORIGINAL account-1 links and republish them there whenever account 1 is active. It supersedes item 6's move as the
+   end state: the account-2 copies (`.artifact-sync.json` `url`) are interim. The session cannot switch accounts, so
+   the next time account 1 is the active account, the command session republishes era-review and sota-audit at their
+   `previousUrl`, swaps `url` and `previousUrl`, and runs `--sync`. Until then the interim copies stay current, because
+   a main push more than 30 commits past their publish point is refused (item 8).
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 
