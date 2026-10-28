@@ -143,6 +143,8 @@ describe('scope — the decision, with git and the check runs injected', () => {
 describe('scope against a real repository', () => {
   let dir;
   const git = (args) => {
+    // Raw git because the diff cases need stdout untrimmed, which fixtureGit trims; isolated all the same.
+    // eslint-disable-next-line no-restricted-syntax
     const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8', env: isolatedGitEnv() });
     if (r.status !== 0) throw new Error(`git ${args.join(' ')}: ${r.stderr}`);
     return r.stdout;
