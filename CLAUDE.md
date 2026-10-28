@@ -304,12 +304,13 @@ hand-kept copies drifted three different ways while one of them claimed they "ca
 
 1. `git main` + **CI on `main`** — the code is the only truth that cannot lie — and CI IS PART OF THE TREE. `gh run list --workflow=ci.yml --branch main`; a push that leaves CI non-`success` is a RED TREE and outranks every queue item.
 2. `memory/ACTIVE_PLAN.md` — the live cursor — the ONE unit in flight right now.
-3. `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — **DRAINED 2026-08-12 — no longer a work queue.** 215 findings disposed of: 207 fixed, 8 dismissed with runnable proofs, 0 open. Read it as the RECORD of that campaign, not as the next thing to do; the live cursor is ACTIVE_PLAN. **This markdown is the ONLY copy** — the machine JSON it was regenerable from died with a session-scoped tmp scratchpad (verified absent 2026-07-27). Do not hunt for it; its absence is not a blocker.
-4. `memory/STATUS.md` — THE source of truth for WHERE WE ARE, and the SECONDARY queue (gameplay/content/UX items the code review did not cover). Both, without contradiction: it owns status, the review owns the work ladder. VERIFY an item is still open before working it — much of the older A-bis/V1 work is DRAINED.
-5. `docs/superpowers/LOOP-CHARTER.md` — the constitution — how the loop operates (esp. §0-B harness layer + §3 gates), plus `LOOP-KERNEL-PROMPT.md`, the durable copy of the `/loop` prompt and the cold/git-only recovery source.
-6. `docs/superpowers/DECISIONS.md` — the decision RECORD. `KEVIN-REVIEW-BATCH.md` is the append-only INBOX and structurally cannot tell you what is settled. A reversal is a NEW dated entry naming the one it supersedes — never a silent edit.
-7. `docs/superpowers/INDEX.md` — the doc map — what to read and what to IGNORE. A stale doc is a LIVE TRAP; never mine old plans for "what is next".
-8. `SOTA-INITIATIVE.md` — DIRECTION only. Its §3 status block is FROZEN — do not read status from it.
+3. `memory/registry.jsonl` — THE ONE HOME FOR OPEN WORK — one JSON row per item: id, source, title, owner, severity, status, plan unit. Read the open rows for what is owed; add a row for anything new. `node frontend/scripts/ci/registry-harvest.mjs` proves every open item in the older sources (STATUS §2 and its G-ledger, ACTIVE_PLAN, the sota-2026-09 queue, the masterpiece tables) has a row.
+4. `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — **DRAINED 2026-08-12 — no longer a work queue.** 215 findings disposed of: 207 fixed, 8 dismissed with runnable proofs, 0 open. Read it as the RECORD of that campaign, not as the next thing to do; the live cursor is ACTIVE_PLAN. **This markdown is the ONLY copy** — the machine JSON it was regenerable from died with a session-scoped tmp scratchpad (verified absent 2026-07-27). Do not hunt for it; its absence is not a blocker.
+5. `memory/STATUS.md` — THE source of truth for WHERE WE ARE. Its §2 and G-ledger are the record the registry was harvested from, not a work queue: open work lives in `memory/registry.jsonl`.
+6. `docs/superpowers/LOOP-CHARTER.md` — the constitution — how the loop operates (esp. §0-B harness layer + §3 gates), plus `LOOP-KERNEL-PROMPT.md`, the durable copy of the `/loop` prompt and the cold/git-only recovery source.
+7. `docs/superpowers/DECISIONS.md` — the decision RECORD. `KEVIN-REVIEW-BATCH.md` is the append-only INBOX and structurally cannot tell you what is settled. A reversal is a NEW dated entry naming the one it supersedes — never a silent edit.
+8. `docs/superpowers/INDEX.md` — the doc map — what to read and what to IGNORE. A stale doc is a LIVE TRAP; never mine old plans for "what is next".
+9. `SOTA-INITIATIVE.md` — DIRECTION only. Its §3 status block is FROZEN — do not read status from it.
 <!-- END READ-ORDER -->
 
 ## Post-compaction re-orientation (BLOCKING — before the first edit)

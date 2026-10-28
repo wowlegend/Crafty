@@ -2,11 +2,12 @@
 
 > **Purpose:** this repo carries more docs than any one context can hold (count them: `git ls-files '*.md' | wc -l`
 > — hand-typed here as "142" until 2026-08-09, when the real number was 172). An agent that tries to read them all burns its context
-> and still gets a stale picture. This is the map. **Read the CANONICAL five. Consult the rest on demand.
+> and still gets a stale picture. This is the map. **Read the CANONICAL set. Consult the rest on demand.
 > Never treat a HISTORICAL doc as current — several are live traps** (a stale line in the charter regenerated a
 > week-sized dead proposal on 2026-07-13).
 >
-> Status for the whole project lives in **`memory/STATUS.md`** — not here, and not in any doc below.
+> Status for the whole project lives in **`memory/STATUS.md`**, and every open item lives in **`memory/registry.jsonl`**
+> (one JSON row per item, DECISIONS 2026-10-28 (W1-H) item 9) — not here, and not in any doc below.
 >
 > **A lock, approval or of-record label in a dated spec or plan records the decision as it stood then and binds
 > nothing.** Every decision stands only while it still earns its place; the command session may enhance, replace or
@@ -18,8 +19,10 @@
 
 | Doc | Role |
 |---|---|
-| **`memory/STATUS.md`** | **Where we are · the open-work REGISTRY · what's next.** THE source of truth. |
+| **`memory/STATUS.md`** | **Where we are · what's next.** THE source of truth for status. Its §2 and G-ledger are the record the registry was harvested from. |
 | **`memory/ACTIVE_PLAN.md`** | The live cursor: the ONE unit in flight right now. |
+| **`memory/registry.jsonl`** | **The one home for open work**: id, source, title, owner, severity, status, plan unit. `node frontend/scripts/ci/registry-harvest.mjs` proves every open item in the old sources has a row. |
+| **`plans/2026-10-28-crafty-sota-reset.md`** | The programme: what to build, in which wave and lane. |
 | **`LOOP-CHARTER.md`** | The loop's constitution — how it operates, what it may/may not do. |
 | **`LOOP-KERNEL-PROMPT.md`** | Durable copy of the `/loop` prompt (cold/git-only recovery source). |
 | **`KEVIN-REVIEW-BATCH.md`** | Kevin's decision/eyeball queue. Append; never block on it. |
@@ -33,7 +36,7 @@ superseded by STATUS.md**), and **`CLAUDE.md`** = the project's agent constituti
 
 | Page | Role |
 |---|---|
-| **`docs/superpowers/command-record.html`** | **The current status page** — what the command session has done and what waits on Kevin, as a page he reads (https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f). The registry of record is still `memory/STATUS.md`. |
+| **`docs/superpowers/command-record.html`** | **The current status page** — what the command session has done and what waits on Kevin, as a page he reads (https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f). Open work lives in `memory/registry.jsonl`. |
 | `docs/superpowers/era-review.html` | The loop era's review. Mostly history; its stamp points to the Command Record. |
 | `docs/superpowers/sota-audit.html` | The visual-test harness SOTA audit. Mostly history; its stamp points to the Command Record. |
 
@@ -72,7 +75,15 @@ commit from the recorded publish, refuses every push.
 ## 🔨 PLANS — build contracts (`ls docs/superpowers/plans/*.md | wc -l`)
 
 Plans are **per-milestone build contracts**. Once a milestone ships, its plan is **history**. Do not mine an old
-plan for "what to do next" — that is what `memory/STATUS.md` is for.
+plan for "what to do next" — that is what `memory/registry.jsonl` and the SOTA reset plan are for.
+
+- **The programme:** `2026-10-28-crafty-sota-reset.md`. Unstarted lanes carry a brief of one page or less and write a
+  task script of 300 lines or less at lane start (DECISIONS 2026-10-28 (W1-H) item 3). Briefs so far:
+  `2026-10-28-crafty-brief-w2b-retire-capture-oracle.md`, `2026-10-28-crafty-brief-w2d-hud.md`,
+  `2026-10-28-crafty-brief-w2f-the-cut.md`, `2026-10-28-crafty-brief-lantern-costed.md`,
+  `2026-10-28-crafty-brief-quest-spine.md`.
+- **The 2026-10-27 lane plans** (`2026-10-27-crafty-*`) are design reference under the amended umbrella
+  (`2026-10-27-crafty-masterpiece.md`, amended 2026-10-28); their step scripts are re-cut at lane start.
 
 - **Most recent / most relevant:** `2026-06-29-crafty-{de-monolith,spell-vfx-redesign}`,
   `2026-06-17-crafty-W{1,2,3,4}-*` (the big rebuild, 503 steps).
@@ -105,7 +116,7 @@ plan for "what to do next" — that is what `memory/STATUS.md` is for.
 
 - `AUDIT-2026-06-28-full-status.md` — **the most honest scorecard ever taken of this project**
   (~70% done; and the 0.5%-of-185-features-fully-validated finding). **Its gap list is now folded into
-  `memory/STATUS.md`; read STATUS, not this, for what's open.** Much of its list was closed by v6/v7.
+  `memory/STATUS.md`; read `memory/registry.jsonl`, not this, for what's open.** Much of its list was closed by v6/v7.
 - `CODE-REVIEW-2026-06-20.md` (2614 L) — the 39-agent all-file review. Its backlog was driven to zero.
 - `2026-06-16-SOTA-TOTAL-AUDIT.md` — **explicitly SUPERSEDED** by the 06-17 rebuild. Historical only.
 - `audits/2026-06-17-*` — the 11-agent pre-rebuild element audit (fed W1–W4). Historical.
@@ -159,6 +170,6 @@ bare paths, and is mutation-proven against exactly that case.
 
 ## The rule that keeps this map honest
 
-A milestone completing updates **`memory/STATUS.md` + `memory/CHANGELOG.md` + its own plan-doc banner** — and
-adds a line here **only if a new doc was created**. Status never gets written into a spec, a plan, an audit, or
+A milestone completing updates **`memory/STATUS.md` + `memory/CHANGELOG.md` + its own plan-doc banner**, closes its
+rows in **`memory/registry.jsonl`** with the merging commit — and adds a line here **only if a new doc was created**. Status never gets written into a spec, a plan, an audit, or
 the master plan again. That scatter is what this map exists to end.
