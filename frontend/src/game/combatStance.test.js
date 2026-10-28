@@ -30,10 +30,15 @@
 //   clocks scoped to range (the plan's text: a flicker restarts them); S4k clocks never dropped; S4l resetStance
 //   keeps the clocks; S4m the enter blend at the exit rate; S4n no zero-direction guard; S4o away negated; S4p a 3D
 //   engage radius; S4r a stale threat kept out of combat. S4z identity (a comment edit) -> survived.
+//   Task 5 (noteMoveTarget/readMoveTarget; RED first with "noteMoveTarget is not a function"). N1 the target slots
+//   written from raw (the e2e's identity case could then never fail) -> RED; N2 the frame never written -> RED; N3 the
+//   stance's w recorded instead of the one the controller passed -> RED; N4 rawZ written from rawX -> RED; N0 identity
+//   -> survived. The wiring itself is proven in the running game: tests/e2e/combat-stance.spec.js.
 import { describe, it, expect } from 'vitest';
 import {
   STANCE_CAPS, MIN_CLOSING_RATE, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
   stanceVelocity, stanceStep, getStance, resetStance, engageDyM, STALL_MS, CALM_MS, ENTER_S, EXIT_S,
+  noteMoveTarget, readMoveTarget,
 } from './combatStance.js';
 import { MOB_TYPES } from './mobTypes.js';
 import { chaseSpeedMult } from './mobMovement.js';
@@ -296,5 +301,22 @@ describe('stanceStep — engage, calm, blend (Task 4)', () => {
     for (let t = 1000; t <= 2600; t += 100) step(h, t); // stalled by now
     resetStance();
     expect(qualifies(h, 2700), 'the reset clears the stall clocks too').toBe(true);
+  });
+});
+
+// Task 5: the controller's own record of what it commanded, read by the e2e (readMoveTarget). The e2e's identity case
+// compares rawX/Z with targetX/Z by Object.is, so a field written to the wrong slot would make it lie.
+describe('noteMoveTarget / readMoveTarget — the controller\'s move-target record (Task 5)', () => {
+  it('records raw and final targets with the stance frame, in one live object rewritten in place', () => {
+    resetStance();
+    stanceStep(getStance(), [], { x: 0, y: 0, z: 0 }, 0, 1 / 60);
+    const f = getStance().frame;
+    noteMoveTarget(1, -2, 0.5, -0.25, 0.75);
+    const r = readMoveTarget();
+    expect(r).toEqual({ rawX: 1, rawZ: -2, targetX: 0.5, targetZ: -0.25, w: 0.75, frame: f });
+    stanceStep(getStance(), [], { x: 0, y: 0, z: 0 }, 16, 1 / 60);
+    noteMoveTarget(3, 4, 5, 6, 0);
+    expect(readMoveTarget()).toBe(r);
+    expect(r).toEqual({ rawX: 3, rawZ: 4, targetX: 5, targetZ: 6, w: 0, frame: f + 1 });
   });
 });

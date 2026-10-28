@@ -603,7 +603,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   if CI never reaches 4 fps, a deterministic stepping hook (AI and player advanced by a fixed dt) is the follow-up,
   named in DECISIONS rather than assumed.
 
-- [ ] **Step 1: Write the failing e2e** (`combat-stance.spec.js`). Use the `perfect-dodge.spec.js` staging pattern:
+- [x] **Step 1: Write the failing e2e** (`combat-stance.spec.js`). Use the `perfect-dodge.spec.js` staging pattern:
   `bootDev`, `startPlayActive`, `setTimeOfDay(0.5)`, every hostile within 40 m killed, the camera yaw set directly
   through `window.__threeCamera.rotation.y` (pointerLook keeps no yaw of its own, `input/pointerLook.js:15-17`), and
   pitch 0.
@@ -656,12 +656,12 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
 
   The header carries `Mutation-Proof: OWED` and the batch below.
 
-- [ ] **Step 2: Run it to verify it fails.** In the command session or CI:
+- [x] **Step 2: Run it to verify it fails.** In the command session or CI:
   `cd <repo>/.claude/worktrees/combat-stance/frontend && npx playwright test tests/e2e/combat-stance.spec.js`
   Expected: FAIL at case 1. The `readStance` hook is absent, so the call returns `undefined` and the message reads
   "the stance never engaged".
 
-- [ ] **Step 3: Wire it.** At `Components.jsx:881`, read `now = performance.now()` once and compute
+- [x] **Step 3: Wire it.** At `Components.jsx:881`, read `now = performance.now()` once and compute
   `walkMult = heavyWalkMult(now)`; `speed = moveSpeed(loco) * walkMult` (today's value, reordered into a named
   factor; Task 9 multiplies in `stringWalkMult(now)`). At `:882`, after `const currentTrans =
   rigidBodyRef.current.translation()`, add `const st = stanceStep(getStance(), mobsQuery.entities, currentTrans, now,
@@ -670,10 +670,10 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   `noteMoveTarget(mv.x, mv.z, targetX, targetZ, st.w)` records the pair. `stanceOutRef` is a `useRef({x:0,z:0})`.
   In the death branch at `:867`, call `resetStance()` beside `cancelHeavy()`. In `App.jsx`, add the two hooks.
 
-- [ ] **Step 4: Run it to verify it passes,** then run `npm run test:unit` and `npm run lint`. Expected: green, with
+- [x] **Step 4: Run it to verify it passes,** then run `npm run test:unit` and `npm run lint`. Expected: green, with
   the trace printing about 2.0 m/s retreat and the gap closing at ≥ 0.8 m/s.
 
-- [ ] **Step 5: Mutation batch** with `sh scripts/dev/mutate-e2e.sh <subject> tests/e2e/combat-stance.spec.js <label> <old> <new>`.
+- [x] **Step 5: Mutation batch** with `sh scripts/dev/mutate-e2e.sh <subject> tests/e2e/combat-stance.spec.js <label> <old> <new>`.
   Each must be RED unless marked:
 
   | label | subject | mutation | expected catch |
@@ -692,7 +692,33 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   T6-T9 are the mutants the first draft's all-S, threat-ahead geometry could not see (review findings 1 and 6). Replace
   OWED with the observed verdicts. Sweep with `sh scripts/dev/kill-test-procs.sh`.
 
-- [ ] **Step 6: Commit** with the title "feat(combat): you cannot outwalk a fight — the stance in the Player loop; travel keeps 14 m/s" and the `Mutation-Proof:` trailer listing T0-T9.
+- [x] **Step 6: Commit** with the title "feat(combat): you cannot outwalk a fight — the stance in the Player loop; travel keeps 14 m/s" and the `Mutation-Proof:` trailer listing T0-T9.
+
+> **Done 2026-10-27, with deviations; the chase verdicts and CI's frame rate are OWED TO CI.**
+> - **The height reference** (the command session's decision, recorded under Task 4): `stanceStep` receives
+>   `mobSensePoint(camera)` (new in `game/mobSenses.js`), not `currentTrans`, and `AIWorkerSystem` posts the same
+>   function's point as the worker's `playerPos`. `readStance` gains `playerY`. The agreement is gated by a new case 0:
+>   the spec wraps `Worker.prototype.postMessage` and compares the stance's recorded point with the last TICK's
+>   (H1 and H2 RED at 1.200 m apart; H3, the point moved for both readers, survives by design;
+>   `src/game/mobSenses.test.js` pins the point itself). The controller's local is named `stance`, not `st` (the frame
+>   already has block-scoped `st`s for the store).
+> - **Staging.** No heading of 8 has the plan's flat strip at the spawn: the hearth platform (floor 52, 15 x 15 m) sits
+>   in rolling ground at 45-61 (measured on the first local run), so the plan's SETUP would have fired on every run.
+>   Every case is staged from the platform (the body put back on its stand point, as `context-loss.spec.js` does), with
+>   a per-case heading that keeps the husk on the player's level; a flat walked path gates only that case's CHASE, as
+>   the frame rate does. The stage's "wait for w === 0" is a verdict, not a SETUP, so T4 is killable there.
+> - **The strafe chase needs a faster frame** (measured): within a frame the player moves in a straight line, so a
+>   tangential step grows the gap by about L²/2g, a leak of 6.5² · Δ / 2g. At Δ = 247 ms the strafe case's gap grew
+>   3.2 to 6.05 m while every frame's target held the caps. Its chase is judged only at Δ ≤ 61 ms (the leak at the
+>   2.6 m catch gap at most half the 1 m/s margin). Case 3's travel speed is judged over the flat first 8 m past the
+>   walk ramp, because no heading has a flat 22 m path from the hearth.
+> - **Proof.** RED first against the Task 4 tree (no hook, no call). Green locally under the identity mutant, three
+>   times (median frame interval 214, 255 and 387 ms): case 0 median 0.000 m over 12 frames; the targets at exactly the 2.0 cap;
+>   the chases of cases 2 and 2b judged and held at 214 ms (retreat 1.86 and 1.91 m/s, caught at 2.55 and 2.48 m).
+>   Mutation batch T1-T9, H1, H2 all RED, H3 and the identity mutant SURVIVED: run by hand on a throwaway config (port
+>   4297) and scored by `mutate-e2e.sh`'s own rules, because `mutate-e2e.sh` serves 4179 and sweeps with
+>   `kill-test-procs.sh`, which the authoring lane may not run. **Owed to CI:** the chase sub-assertions at CI's frame
+>   rate, and Step 0's CI median frame interval (the spec logs it on every run).
 
 ---
 

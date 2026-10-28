@@ -7,6 +7,7 @@ import { routinePositionInto, npcFollowT } from '../game/npcRoutine.js';
 import { heightGridAt, snapMob } from '../game/localPath.js';
 import { groundForMover } from '../game/mobFloor.js';
 import { strikesToApply, holdStagger } from '../game/perfectDodge.js';
+import { mobSensePoint } from '../game/mobSenses.js';
 
 // Per-frame scratch + probe cadence for the ambient hub-NPC routine below. The routine ran a Rapier
 // castRay PER NPC PER RENDER FRAME and allocated two object literals per NPC per frame, for a lerp that
@@ -221,9 +222,12 @@ export const AIWorkerSystem = () => {
       });
     });
 
+    // The worker measures every sense and reach test from this point, and the combat stance reads the same one
+    // (game/mobSenses.js mobSensePoint), so the two cannot disagree about which mobs can reach the player.
+    const sense = mobSensePoint(camera);
     workerRef.current.postMessage({
       type: 'TICK',
-      playerPos: [camera.position.x, camera.position.y, camera.position.z],
+      playerPos: [sense.x, sense.y, sense.z],
       now,
       delta: tickDelta,
       mobs: mobsData,

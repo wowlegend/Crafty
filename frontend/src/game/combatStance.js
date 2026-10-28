@@ -243,6 +243,24 @@ export function getStance() {
   return _state;
 }
 
+// The controller's own record of the frame's movement command (Task 5): `raw` is moveVector's output, `target` what
+// the controller handed rampVelocity, `frame` the stance frame it belongs to. Read by the DEV hook readMoveTarget, so
+// the e2e sees a wrong away vector, a key-gated call or a blanket scale wherever it sits between the two. Four number
+// writes per frame into one object; no allocation.
+const _moveTarget = { rawX: 0, rawZ: 0, targetX: 0, targetZ: 0, w: 0, frame: 0 };
+
+/** Record this frame's raw and final planar targets and the weight they were blended with. */
+export function noteMoveTarget(rawX, rawZ, targetX, targetZ, w) {
+  _moveTarget.rawX = rawX; _moveTarget.rawZ = rawZ;
+  _moveTarget.targetX = targetX; _moveTarget.targetZ = targetZ;
+  _moveTarget.w = w; _moveTarget.frame = _state.frame;
+}
+
+/** The live move-target record (the DEV hook copies it). */
+export function readMoveTarget() {
+  return _moveTarget;
+}
+
 /** Death: no weight, no engagement, no threat, no calm carried over, and every stall clock dropped. */
 export function resetStance() {
   _state.w = 0; _state.engaged = false; _state.threatId = null; _state.awayX = 0; _state.awayZ = 0;

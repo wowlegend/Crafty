@@ -21,6 +21,8 @@ import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './ga
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
 import { cancelHeavy, heavyWalkMult, isHeavyReady, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
+import { stanceStep, stanceVelocity, getStance, resetStance, noteMoveTarget, STANCE_CAPS } from './game/combatStance.js';
+import { mobSensePoint } from './game/mobSenses.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -83,6 +85,7 @@ export const Player = ({ isWorldBuilt }) => {
 
   const velocityY = useRef(0);
   const planarVelRef = useRef({ x: 0, z: 0 }); // W4 game-feel: smoothed horizontal velocity (accel/decel ramp)
+  const stanceOutRef = useRef({ x: 0, z: 0 }); // the combat stance's velocity, written in place per frame
   const lastGroundedAtRef = useRef(0);     // W4 coyote-time: performance.now()/1000 of the last grounded frame
   const lastJumpPressRef = useRef(null);   // W4 jump-buffer: performance.now()/1000 of the last jump-intent rising edge
   const prevJumpIntentRef = useRef(false); // edge-detect the jump intent so a held key only stamps the buffer once
@@ -880,6 +883,7 @@ export const Player = ({ isWorldBuilt }) => {
     const isPlayerAlive = useGameStore.getState().isAlive;
     if (!isPlayerAlive) {
       cancelHeavy(); // a heavy's charge dies with the player (this branch returns before the input checks below)
+      resetStance(); // and so does the stance: no fight carries across a respawn
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       const translation = rigidBodyRef.current.translation();
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, translation.x, 0.85);
@@ -893,8 +897,14 @@ export const Player = ({ isWorldBuilt }) => {
     // jump + gravity sites below.
     const locoState = useGameStore.getState();
     const loco = formLocomotion(locoState.beastFormActive ? locoState.activeBeastForm : null);
-    const speed = moveSpeed(loco) * heavyWalkMult(performance.now()); // charging a heavy slows the walk
+    const now = performance.now(); // read once: the walk slows and the stance share it
+    const walkMult = heavyWalkMult(now); // charging a heavy slows the walk
+    const speed = moveSpeed(loco) * walkMult;
     const currentTrans = rigidBodyRef.current.translation();
+    // COMBAT STANCE (game/combatStance.js): once a fight is joined you cannot outwalk it. One transient step per frame
+    // (Game-Loop-Isolation). The player point is the one the AI worker strikes from (mobSensePoint, the eye), not the
+    // body, so the stance and the worker agree on which mobs can reach the player.
+    const stance = stanceStep(getStance(), mobsQuery.entities, mobSensePoint(camera), now, delta);
 
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
     if (spawnPosSet.current && isVoidFall(currentTrans.y)) {
@@ -1229,8 +1239,16 @@ export const Player = ({ isWorldBuilt }) => {
       const cameraDir = new THREE.Vector3();
       camera.getWorldDirection(cameraDir);
       const mv = moveVector(cameraDir.x, cameraDir.z, input, speed);
-      const targetX = mv.moving ? mv.x : 0;
-      const targetZ = mv.moving ? mv.z : 0;
+      let targetX = mv.moving ? mv.x : 0;
+      let targetZ = mv.moving ? mv.z : 0;
+      if (mv.moving) {
+        // The stance clamps the AWAY-from-threat component of the move, whatever key produced it; at w = 0 it is
+        // the identity, so travel keeps 14 m/s.
+        const sv = stanceVelocity(mv.x, mv.z, stance.awayX, stance.awayZ, stance.w, loco.moveMult, walkMult, STANCE_CAPS, stanceOutRef.current);
+        targetX = sv.x;
+        targetZ = sv.z;
+      }
+      noteMoveTarget(mv.x, mv.z, targetX, targetZ, stance.w);
       const ramped = rampVelocity(planarVelRef.current, { x: targetX, z: targetZ }, delta);
       planarVelRef.current = ramped;
       desiredVelX = ramped.x;

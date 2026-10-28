@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dist2D, dist3D, withinSense, canReach, VERTICAL_REACH } from './mobSenses.js';
+import { dist2D, dist3D, withinSense, canReach, VERTICAL_REACH, mobSensePoint } from './mobSenses.js';
 
 // A-bis B4 — the mob brain reasoned on the XZ plane only, so a mob 200 blocks below you and three blocks
 // away horizontally was inside MELEE_RANGE and hit you. Pillaring up, walling in and going underground all
@@ -86,5 +86,17 @@ describe('canReach — building finally does something', () => {
     expect(canReach(1, 99, 0, MELEE_RANGE)).toBe(false); // near in 2D, far in Y
     expect(canReach(99, 0, 0, MELEE_RANGE)).toBe(false); // near in Y, far in 2D
     expect(canReach(1, 0, 0, MELEE_RANGE)).toBe(true); // near in both
+  });
+});
+
+// The combat stance's height reference (plan 2026-10-27-crafty-combat-stance, Task 4's deviation): the worker and the
+// stance read the player from ONE function. That they both CALL it is proven in the running game
+// (tests/e2e/combat-stance.spec.js case 0, the agreement); this pins what it returns — today's worker input, the eye.
+// Mutation-Proof: (mutate.sh, 2026-10-27) M1 returns the body centre `{ ...p, y: p.y - 1.2 }` -> RED; M2 returns a
+// copy `{ x, y, z }` (allocates per frame, and a later write to the camera is not seen) -> RED; identity -> survived.
+describe('mobSensePoint — the one point mobs measure the player from', () => {
+  it('is the camera\'s own position object: the eye the worker strikes from, not a copy and not the body', () => {
+    const camera = { position: { x: 1, y: 52.1, z: -3 } };
+    expect(mobSensePoint(camera)).toBe(camera.position);
   });
 });

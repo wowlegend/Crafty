@@ -61,3 +61,17 @@ export function withinSense(dx, dy, dz, range) {
 export function canReach(dx, dy, dz, range, verticalReach = VERTICAL_REACH) {
   return dist2D(dx, dz) <= range && Math.abs(dy) <= verticalReach;
 }
+
+/**
+ * THE POINT MOBS MEASURE THE PLAYER FROM: the camera's position, the player's eye. The camera rides the body's centre
+ * + 1.2 m plus bob, shake and kick (Components.jsx, the camera follow), so on one floor a mob reads dy 1.6 from here
+ * and 0.4 from the body. AIWorkerSystem posts this point as the worker's playerPos, so every sense and reach test
+ * above runs against it; the combat stance (game/combatStance.js stanceStep) reads the SAME point for its own reach
+ * test, so a mob the stance counts as able to reach you is one the worker would let swing. One function for both
+ * readers: move the origin here and both move together. tests/e2e/combat-stance.spec.js case 0 gates the agreement.
+ *
+ * Returns the camera's own position object, not a copy (it runs every frame): read it, never write it.
+ */
+export function mobSensePoint(camera) {
+  return camera.position;
+}
