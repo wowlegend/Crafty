@@ -1,9 +1,8 @@
 /**
  * placementEconomy.js — the pure rule for whether a block placement is allowed and what it costs.
  *
- * Placing a block spends one of it, in every game (DECISIONS 2026-10-28 W1-H item 4, which reverses the creative-mode
- * builder sandbox this file used to keep). Mining gives a broken block back, so free placement was an infinite-material
- * loop, and a free wall makes holding a siege no choice.
+ * Placing a block spends one of it, in every game (DECISIONS 2026-10-28 W1-H item 4). Mining gives a broken block back,
+ * so a free placement is an infinite-material loop, and a free wall makes holding a siege no choice.
  */
 
 /**

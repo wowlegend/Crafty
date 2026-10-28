@@ -2,14 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from '../../src/store/useGameStore';
 import { resolvePlacement } from '../../src/world/placementEconomy';
 
-// ONE COSTED BUILD MODE (DECISIONS 2026-10-28 W1-H item 4; B3c before it). Placing a block spends one of it, in every
-// game: the worker's block_broken handler grants +1 on every mine, so a free placement is an infinite-material loop,
-// and a free wall makes holding a siege no choice. The creative builder sandbox that kept placement free is gone, and
-// with it the store's gameMode.
+// ONE COSTED BUILD MODE (DECISIONS 2026-10-28 W1-H item 4). Placing a block spends one of it, in every game: the
+// worker's block_broken handler grants +1 on every mine, so a free placement is an infinite-material loop, and a free
+// wall makes holding a siege no choice. No game mode exists to make it free.
 //
-// place() lives inside the unmountable R3F Terrain component, so the surface here is the pure rule (resolvePlacement)
-// and the store seam (consumeForPlacement) that place() calls per cell. tests/e2e/the-cut.spec.js places through a real
-// right-click and reads the hotbar's count.
+// The surface here is the pure rule (resolvePlacement) and the store seam (consumeForPlacement) the place executor calls
+// per cell. tests/gates/place-executor-gates.test.jsx drives that executor (world/placeAtHit.js, what Terrain.jsx's
+// place() calls); tests/e2e/the-cut.spec.js places through a real right-click and reads the hotbar's count.
 //
 // Mutation-Proof: see the commit trailer (each case below named by the mutant that reddens it).
 
