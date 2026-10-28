@@ -1001,7 +1001,7 @@ The ore tiles paint four of their five declared tones: their stone matrix has no
 is clumped shade and light over a mid green; dirt is clods of shade with a few light pebbles; stone is light and base
 facets with broken one-texel cracks; sand is diagonal ripples; snow is soft blue drifts with rare glints; the wood end
 grain is rings in a two-texel rim around a light pith; leaves are lit lobes over dark gaps with no black holes; cactus
-is vertical ridges with a staggered spine column; ores are two-to-four-texel nuggets with a darker rim; cobblestone
+is vertical ridges with a staggered spine column; ores are nugget clusters a few texels across with a darker rim; cobblestone
 is a running bond of rounded cobbles in two tones. The spine columns read as dotted lines on the sheet; they are left
 as they are, since a cactus side is small on screen.
 
@@ -1009,7 +1009,7 @@ as they are, since a cactus side is small on screen.
 
 - `src/world/materialGrammar.js`: the roles, the three variants above the id space, the remaps (grass underside to
   dirt, snow underside to stone), `buildGrammar` and the generated GLSL. `LIP_TEXELS` is 6, not 4: at 4 the lip was a
-  hairline on the contact sheet, and six rows (about a fifth of a block) is the Minecraft-like proportion; the drips
+  hairline on the contact sheet; six rows are about a fifth of a block; the drips
   reach one or two rows lower in about a third of the columns.
 - `src/world/mesher.js`: X faces push `(0,0, 0,w, h,w, h,0)`, so `v` rises with world Y on all four side directions.
   `colors.b` stays 0. 64 `realChunk` fixtures, median of 15 interleaved runs: 171.0 ms before, 170.8 ms after (ratio
@@ -1026,3 +1026,26 @@ as they are, since a cactus side is small on screen.
   `proceduralTextures.test.js`, the sampler line in `grass-biome-tint-gates`, and `prod-smoke-gates`' mip-verdict
   lines now read their counts off the texture (19 layers: 18 drawn, 103,740 B). Under the mutant that restores the
   old X-face UVs, the orientation test goes red and the 1:1 UV-length test stays green, as the plan predicted.
+
+### The AFTER frames, and the look judged
+
+Shot the same way on the production build of `8978bc4b` (index chunk 643,640 B): the finder chose the same two sights
+(same faces, stands and bearings), and all six shots are valid by the eye-shot verdict with no console errors. Each
+frame was opened beside its BEFORE.
+
+- `evidence/w2k/after-turf-wall-0.30.png` (afternoon): the step's side is now a dirt body of light and dark clods
+  under a green turf lip about a fifth of the block deep, with short drips; the lip is at the top of the wall, so the
+  row orientation holds on the GPU. The terraces behind read as stacked soil steps, each with its own lip, where they
+  were green cliffs. The trunk on the right shows vertical bark, no rings.
+- `after-turf-wall-0.48.png` (golden hour): the same, warm; the dirt body reads as soil against the grass top, the
+  lip as grass. The grass top is clumped in two greens instead of static.
+- `after-turf-wall-0.75.png` (midnight): the lip stays green and the body dark brown, so the step keeps its shape
+  where BEFORE it merged into one dark green.
+- `after-trunk-0.30.png`: the trunk's side is vertical bark furrows, no bullseyes; the stone wall behind reads as
+  chunky facets with cracks instead of fine speckle.
+- `after-trunk-0.48.png`: bark under golden light; the furrows are low-contrast but read as grain.
+- `after-trunk-0.75.png`: bark in dark red at midnight, the grain faint; no rings.
+
+What these frames do not show: a cut trunk top (its rings), a snow side, a distant hillside where the near terrain
+meets the far ring (which still averages the grass top, Review Focus 3), and anything on WebKit. The dirt body takes
+the grass biome's tint, as dirt blocks already did.
