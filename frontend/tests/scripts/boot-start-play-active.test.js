@@ -149,6 +149,13 @@ describe('bootDev', () => {
     const page = { async goto() {}, async waitForFunction() {}, on() {} };
     await expect(bootDev(page)).resolves.toEqual([]);
   });
+  it('opens the root by default and the path it is given otherwise (the lookbook seam installs only for ?lookbook=1)', async () => {
+    const opened = [];
+    const page = { async goto(url) { opened.push(url); }, async waitForFunction() {}, on() {} };
+    await bootDev(page);
+    await bootDev(page, { path: '/?lookbook=1' });
+    expect(opened).toEqual(['/', '/?lookbook=1']);
+  });
 });
 
 describe('the play helpers pin the quality tier the suite was built on, before they force play', () => {
