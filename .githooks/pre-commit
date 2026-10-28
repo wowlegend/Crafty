@@ -28,7 +28,7 @@
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 #
 # WHAT RUNS: `ci/pipeline.sh --tier=commit` — the offline, deterministic core (opsec, doc-currency,
-# eslint, gate-shape, killability, cli-guard, the unit suite, build, bundle budget). 69s measured.
+# eslint, gate-shape, cli-guard, the unit suite, build, bundle budget). 69s measured.
 # Deliberately NOT the network or browser gates: a registry outage reddening a commit teaches people to
 # pass --no-verify, and a bypassed gate is worth less than no gate.
 #

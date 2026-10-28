@@ -309,7 +309,7 @@ signed in there; otherwise it costs Kevin one click. Everything else runs under 
 | The capture oracle: `scripts/visual/capture.mjs`, `test:visual`, the density ratchet and ledger, `scripts/ci/baseline-trailer.mjs`, visual-denominator-gates, `tests/visual/baseline/*.png` (`menu.png` last) `[harn]` | The eye-level lookbook, plus `toHaveScreenshot` for DOM-only checks |
 | `scripts/ci/artifact-currency.mjs` (562 LOC), `.artifact-sync.json`, the `--stamp`/`--sync` protocol `[harn]` | `scripts/report/record.mjs` |
 | `scripts/ci/queue-ledger.mjs` `[harn]` | A registry schema check in doc-currency |
-| `scripts/ci/killability-ledger.mjs` (already decided, 15c) | `Mutation-Proof:` trailers, which stay |
+| `scripts/ci/killability-ledger.mjs` (decided in 15c; done 2026-10-28, DECISIONS item 17) | `Mutation-Proof:` trailers, which stay |
 | `scripts/ci/cli-guard.mjs` (132 LOC) `[harn]` | `if (import.meta.main) main();`, engines `>=24.2.0` and a run-by-path test |
 | `scripts/ci/gate-shape.mjs` (only after Stryker is proven on this suite) `[harn]` | Stryker incremental reports |
 | `scripts/ci/doc-anchors.mjs`, `scripts/ci/read-order.mjs` `[harn]` | `npm run orient` |
