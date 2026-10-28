@@ -146,8 +146,8 @@ function passLabel(pass, index) {
 const timedPasses = new WeakSet();
 // wrapper -> the function it wraps. The library rebuilds an EffectPass over the SAME effect instances whenever its
 // pass-building effect re-runs (@react-three/postprocessing 3.0.4 dist/index.js: deps composer, children, camera and
-// its two internal passes). In GameScene that is a tier first mounting N8AO or GodRays, the sun mesh arriving,
-// capture mode toggling (Noise mounts or unmounts) and a camera change (a new composer). So an effect's update() may
+// its two internal passes). In GameScene that is a tier first mounting N8AO or GodRays, the sun mesh arriving
+// and a camera change (a new composer). So an effect's update() may
 // already be a wrapper from its previous pass; it is wrapped from its original, so there is only ever one layer.
 const unwrapped = new WeakMap();
 const original = (fn) => {

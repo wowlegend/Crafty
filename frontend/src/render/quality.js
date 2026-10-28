@@ -13,7 +13,7 @@
 // PerformanceMonitor.onDecline ratchets the tier one-way toward `low`, so gating the outline
 // off at low made the signature contour vanish mid-session (Kevin caught 2026-06-02). The
 // perf budget at low is recovered from the genuinely-expensive toggles below
-// (ao/godRays/shadowMapSize/dprCap/renderDistance/outlineWorldEdge), not from the outline.
+// (ao/godRays/shadowMapSize/dprCap/renderDistance), not from the outline.
 // `charRim` (the fresnel onBeforeCompile patch) stays high-only — it is the costlier effect.
 // Guarded by tests/gates/character-render-gates.test.js ("charOutline ON at every tier").
 //
@@ -26,8 +26,8 @@
 // an iPad Pro 11 (1194x834) gets exactly the cap at each tier, a 1080p monitor stays at 1, a 5K display at high
 // drops to ~1.07. Sharpness at ~1.5 on Retina is the taste call; the lookbook's side-by-side crops decide it.
 export const TIERS = {
-  low:  { ao: false, godRays: false, godRaySamples: 0,   bloomMipmap: false, shadowMapSize: 512,  renderDistance: 2, weather: 0.25, dprCap: 1.25, budgetPx: 1.8e6, outlineWorldEdge: false, charOutline: true,  charRim: false, moteCount: 36  },
-  med:  { ao: true,  godRays: true,  godRaySamples: 60,  bloomMipmap: true,  shadowMapSize: 1024, renderDistance: 3, weather: 0.6,  dprCap: 1.5,  budgetPx: 2.8e6, outlineWorldEdge: false, charOutline: true,  charRim: false, moteCount: 80  },
+  low:  { ao: false, godRays: false, godRaySamples: 0,   bloomMipmap: false, shadowMapSize: 512,  renderDistance: 2, weather: 0.25, dprCap: 1.25, budgetPx: 1.8e6, charOutline: true,  charRim: false, moteCount: 36  },
+  med:  { ao: true,  godRays: true,  godRaySamples: 60,  bloomMipmap: true,  shadowMapSize: 1024, renderDistance: 3, weather: 0.6,  dprCap: 1.5,  budgetPx: 2.8e6, charOutline: true,  charRim: false, moteCount: 80  },
   // godRaySamples high 100 -> 60 (2026-09-22). This file's own header states the governing fact —
   // "GodRays cost scales ~linearly with samples" — which makes 100 the single most expensive knob in the
   // post chain, and it was never cost-budgeted: `selectTier` puts any machine with >=12 GB and >=8 cores
@@ -38,7 +38,7 @@ export const TIERS = {
   // signature, so this takes ~40% off the most expensive pass at a quality point already accepted.
   // dprCap was held at 2 here "for a measured before/after and Kevin's eye"; the masterpiece programme (Kevin,
   // 2026-10-27, Phase 0g) moved it into the pixel budget above, and the lookbook crops are that eye.
-  high: { ao: true,  godRays: true,  godRaySamples: 60,  bloomMipmap: true,  shadowMapSize: 2048, renderDistance: 4, weather: 1.0,  dprCap: 1.75, budgetPx: 4.2e6, outlineWorldEdge: true,  charOutline: true,  charRim: true,  moteCount: 140 },
+  high: { ao: true,  godRays: true,  godRaySamples: 60,  bloomMipmap: true,  shadowMapSize: 2048, renderDistance: 4, weather: 1.0,  dprCap: 1.75, budgetPx: 4.2e6, charOutline: true,  charRim: true,  moteCount: 140 },
 };
 
 /**

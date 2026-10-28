@@ -111,7 +111,7 @@ export function MascotStudio() {
         {/* Post stack replicates the game's composer (GameScene.jsx): saturation/contrast
             pop, emissive-ONLY bloom (high threshold so the toon bodies don't bloom), SMAA,
             Neutral tone-map (NOT ACES — preserves the bright stylized look), gentle vignette.
-            No Noise (would break determinism) — matches capture-mode behavior in-game. */}
+            No film grain, as in the game. */}
         <EffectComposer>
           <HueSaturation saturation={0.22} />
           <BrightnessContrast brightness={0.04} contrast={0.08} />

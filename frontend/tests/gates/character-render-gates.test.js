@@ -69,7 +69,7 @@ describe('character ink outline is tier-independent (locked-look regression guar
   //
   // FIX + DECISION: the ink outline is the LOCKED character render language (S1-B-M2b) and is
   // CHEAP (one backface mesh per object). The perf budget at `low` is recovered from the
-  // genuinely-expensive toggles (ao/godRays/shadowMapSize/dprCap/renderDistance/outlineWorldEdge),
+  // genuinely-expensive toggles (ao/godRays/shadowMapSize/dprCap/renderDistance),
   // NOT from the character outline. So charOutline must be TRUE at every tier — never a
   // perf-downgrade casualty. (charRim — the fresnel onBeforeCompile patch — stays high-only.)
   it('charOutline is ON at every quality tier (never dropped by a perf downgrade)', () => {
