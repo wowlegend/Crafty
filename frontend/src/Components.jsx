@@ -944,8 +944,9 @@ export const Player = ({ isWorldBuilt }) => {
     const speed = moveSpeed(loco) * walkMult;
     const currentTrans = rigidBodyRef.current.translation();
     // COMBAT STANCE (game/combatStance.js): once a fight is joined you cannot outwalk it. One transient step per frame
-    // (Game-Loop-Isolation), through the seam stanceFrame, which measures the player from the point the AI worker
-    // strikes from, so the stance and the worker agree on which mobs can reach the player.
+    // (Game-Loop-Isolation), through the seam stanceFrame: the player's height is the point the AI worker strikes from,
+    // so the stance and the worker agree on which mobs can reach the player, and the away vector is measured from this
+    // frame's body, the point the frame's step starts from.
     const stance = stanceFrame(mobsQuery.entities, currentTrans, camera, now, delta);
 
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
