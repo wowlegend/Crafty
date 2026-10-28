@@ -33,7 +33,7 @@ import { enterCaptureMode, exitCaptureMode } from './devtest/captureMode.js';
 import { resetCaptureClock, stepCaptureFrames, captureFrameIndex, setCaptureFrame } from './devtest/captureClock.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ContextLossPanel } from './ui/ContextLossPanel.jsx';
-import { ecs, mobsQuery } from './ecs/world';
+import { ecs, mobsQuery, alliesQuery } from './ecs/world';
 import { worldNow } from './game/worldClock.js';
 import { applyFusion } from './game/hybrids';
 import { getLiveZones } from './world/ElementZoneSystem';
@@ -327,6 +327,10 @@ function GameApp({ experienceSystem }) {
     registerTestHook('readMobs', () => mobsQuery.entities.map((e) => ({
       id: e.id, type: e.type, health: e.health, passive: !!e.passive, x: e.position.x, y: e.position.y, z: e.position.z,
       knockback: !!e.knockback, windupUntil: e.windupUntil || 0, staggerUntil: e.staggerUntil || 0,
+    })));
+    // The squad, for the ember E2E: a bind is seen as a mob joining it, a fuse as a pair leaving it for one hybrid.
+    registerTestHook('readAllies', () => alliesQuery.entities.map((e) => ({
+      id: e.id, type: e.type, baseType: e.baseType || null, hybridId: e.hybridId || null, x: e.position.x, z: e.position.z,
     })));
     // The combat stance (game/combatStance.js) and the controller's own move-target record, for the combat-stance E2E.
     // The stance records the threat's and the player's positions as it read them, before deriving `away`, so the spec

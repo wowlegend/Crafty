@@ -2,20 +2,25 @@ import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { installWorldHold } from './_worldHold.js';
 import { bankForKill } from '../../src/game/mobBank.js';
-import { EMBER_MAX, ROAR_COST, GRAB_COST } from '../../src/game/ember.js';
+import { EMBER_MAX, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST } from '../../src/game/ember.js';
+import { ANTICIPATION_SEC } from '../../src/game/beastTransform.js';
 
 // EMBER, IN THE BOOTED GAME (W2-F step 3; DECISIONS 2026-10-28 W1-H item 5; plan
 // docs/superpowers/plans/2026-10-28-crafty-w2f-ember.md). One bar in the HUD's stat stack, filled by a day kill made with
 // a real left click, spent by a roar held on the real R key and by a grab on the real V key, refused with its notice on a
-// real R press it cannot pay for, and not filled by a night kill made the same way.
+// real R press it cannot pay for, held shut on an R held past the charge window one kill short, and not filled by a night
+// kill made the same way. The second case spends it on the X key: a bind held on a weakened zombie, a fuse held beside a
+// pair with a recipe, and the notice on a fuse the bar cannot pay for, which a pair with no recipe never raises.
 //
 // The bar is read off the DOM (the value the player sees) and the store; the kills are real clicks on staged zombies left
 // at 1 HP by an ally-sourced hit (ally kills bank nothing, so only the click's kill can pay). The world is held still for
-// the whole spec (_worldHold.js), so no mob moves and the clock never reaches dawn, which would empty the bar.
+// the whole spec (_worldHold.js), so no mob or ally moves and the clock never reaches dawn, which would empty the bar.
 //
 // WHAT THIS DOES NOT CHECK: building's accrual and its daily cap (tests/store/ember.test.js and
-// tests/gates/place-executor-gates.test.jsx), the snare and the fuse (no test drives a bind or a fuse), the dawn bleed,
-// a save's migration (tests/e2e/the-cut.spec.js and tests/store/preCutSave.test.js), or touch.
+// tests/gates/place-executor-gates.test.jsx), a bind or a fuse refused because another verb emptied the bar during its
+// channel (the reducers' refusal is src/game/soulbind.test.js; the notice at that call site is driven by nothing), the
+// dawn bleed (tests/store/ember.test.js), a save's migration (tests/e2e/the-cut.spec.js and
+// tests/store/preCutSave.test.js), or touch.
 //
 // Mutation-Proof: see the commit trailer. These cases need a browser, so CI runs them; no local run was allowed.
 
@@ -50,6 +55,33 @@ async function setTime(t) {
   window.useGameStore.getState().setTimeOfDay(t);
   for (let i = 0; i < 8; i++) await frame();
   return window.useGameStore.getState().isDay;
+}
+
+/** In the page: a `type` spawned 2 m to the player's side at full health and bound straight into the squad. */
+function bindBeside({ type, side }) {
+  const s = window.useGameStore.getState();
+  const cam = window.__threeCamera;
+  const d = new cam.position.constructor();
+  cam.getWorldDirection(d); d.y = 0; d.normalize();
+  const gx = cam.position.x - d.z * 2 * side, gz = cam.position.z + d.x * 2 * side;
+  const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
+  s.spawnMob(gx, gz, type, s.getMobFloor(gx, gz, cam.position.y - 1.6));
+  const m = window.__craftyTest.call('readMobs').find((e) => !before.has(e.id));
+  if (!m) return { why: `SETUP: spawnMob added no ${type}` };
+  if (!window.GameMethods.captureMob(m.id)) return { why: `SETUP: captureMob refused the ${type}` };
+  return { id: m.id };
+}
+
+/** In the page: the camera turned to the sky, so no weakened hostile is in the snare's aim and X goes to the fuse. */
+function lookUp() {
+  const cam = window.__threeCamera;
+  cam.rotation.order = 'YXZ'; cam.rotation.x = 1.2; cam.updateMatrixWorld();
+}
+
+/** In the page: `n` drawn frames, so a key held across them reaches the frame loop. */
+async function frames(n) {
+  const frame = () => new Promise((r) => requestAnimationFrame(r));
+  for (let i = 0; i < n; i++) await frame();
 }
 
 test.describe('ember', () => {
@@ -98,6 +130,27 @@ test.describe('ember', () => {
     const refused = await S();
     expect(refused.charging || refused.form, `a short roar started anyway: ${JSON.stringify(refused)}`).toBe(false);
     expect(refused.ember, 'a refused roar took ember').toBe(SEED);
+
+    // 2b. THE ROAR'S GATE IS THE FULL BAR. R held past the charge window one kill short starts no charge and no form
+    // (step 4 holds R the same way on a full bar and sees the form, so this reading is not a dead instrument).
+    await page.keyboard.down('r');
+    const heldShort = await page.evaluate(async (ms) => {
+      const frame = () => new Promise((r) => requestAnimationFrame(r));
+      const t0 = performance.now();
+      let n = 0, started = false, intent = false;
+      while (performance.now() - t0 < ms || n < 10) {
+        await frame();
+        n += 1;
+        const s = window.useGameStore.getState();
+        if (s.beastCharging || s.beastFormActive) started = true;
+        if (window.__craftyTest.call('readIntents').roar) intent = true;
+      }
+      return { frames: n, started, intent, ember: window.useGameStore.getState().ember };
+    }, Math.round(ANTICIPATION_SEC * 1000) + 800);
+    await page.keyboard.up('r');
+    expect(heldShort.intent, `SETUP: R held never reached the roar intent: ${JSON.stringify(heldShort)}`).toBe(true);
+    expect(heldShort.started, `R held on ${SEED} ember started the roar: ${JSON.stringify(heldShort)}`).toBe(false);
+    expect(heldShort.ember, 'a held short roar took ember').toBe(SEED);
 
     // 3. A DAY KILL FILLS IT, by a real left click on a 1-HP zombie.
     const day = await page.evaluate(stageZombie);
@@ -163,6 +216,98 @@ test.describe('ember', () => {
 
     const hold = await page.evaluate(() => window.__e2eWorldHold.release());
     console.log(`[ember] world held ${hold.heldMs} ms over ${hold.frames} drawn frames (longest ${hold.longestFrameMs} ms, cap ${hold.capMs}, lapsed ${hold.lapsed})`);
+    expect(hold.lapsed, `SETUP: the world hold ran out before the last read: ${JSON.stringify(hold)}`).toBe(false);
+    expect(hold.frames, `SETUP: the game drew no frame while the world was held: ${JSON.stringify(hold)}`).toBeGreaterThan(0);
+  });
+
+  test('X spends it: a bind and a fuse take their price, a fuse the bar cannot pay for says so, a pair with no recipe does not', async ({ page }) => {
+    await page.addInitScript(installWorldHold);
+    await bootDev(page);
+    await startPlayActive(page);
+    await page.waitForFunction(() => Array.isArray(window.__craftyTest?.call('readAllies')) && window.__craftyTest.call('readMobs')
+      && window.__threeCamera && window.GameMethods?.damageMob && window.GameMethods?.captureMob
+      && window.useGameStore.getState().spawnMob && window.useGameStore.getState().getMobFloor, null, { timeout: 60000 })
+      .catch((e) => { throw new Error(`SETUP: the mob and squad hooks and camera never came up — ${e.message}`); });
+
+    const S = () => page.evaluate(() => {
+      const s = window.useGameStore.getState();
+      return { ember: s.ember, alive: s.isAlive, active: window.__craftyTest.call('readIntents').active,
+        allies: window.__craftyTest.call('readAllies') };
+    });
+    const notice = page.getByText('Not enough ember');
+    const BIND_SEED = SNARE_COST + 5; // pays a bind, not a fuse
+    const FUSE_SEED = FUSE_COST + 10;
+
+    // Noon, no mob within 40 m, the world held, the snare unlocked, a bar that pays a bind and not a fuse.
+    expect(await page.evaluate(setTime, 0.5), 'SETUP: noon did not read as day').toBe(true);
+    const staged = await page.evaluate(({ seed, capMs }) => {
+      const s = window.useGameStore.getState();
+      const cam = window.__threeCamera;
+      for (const m of window.__craftyTest.call('readMobs')) {
+        if (m.health > 0 && Math.hypot(m.x - cam.position.x, m.z - cam.position.z) < 40) window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
+      }
+      if (!window.__e2eHoldWorld) return { why: 'SETUP: the world hold was never installed (page.addInitScript(installWorldHold))' };
+      window.__e2eHoldWorld({ capMs });
+      window.useGameStore.setState({ ember: seed, unlockedTalents: { ...s.unlockedTalents, soulbind_snare: 1 } });
+      return {};
+    }, { seed: BIND_SEED, capMs: test.info().timeout || 180000 });
+    expect(staged.why, staged.why).toBeUndefined();
+    expect((await S()).allies, 'SETUP: the squad is not empty at the start').toEqual([]);
+
+    // 1. A BIND SPENDS THE SNARE'S PRICE: X held on a staged 1-HP zombie in the aim until it joins the squad.
+    const z = await page.evaluate(stageZombie);
+    expect(z.why, z.why).toBeUndefined();
+    await page.keyboard.down('x');
+    await expect.poll(async () => (await S()).allies.map((a) => a.id), {
+      message: `X held on a weakened zombie never bound it (gates ${JSON.stringify(await S())})`, timeout: 30000,
+    }).toEqual([z.id]);
+    await page.keyboard.up('x');
+    expect((await S()).ember, 'the bind did not spend the snare\'s price').toBe(BIND_SEED - SNARE_COST);
+
+    // 2. A FUSE THE BAR CANNOT PAY FOR SAYS SO. A spider bound beside the zombie (spider + zombie has a recipe), the aim on
+    // the sky, a bar that pays a bind and not a fuse: X held across frames raises the notice and starts nothing. Below the
+    // snare's price the keydown says it whatever X starts, so this bar is the one only the frame loop can answer for.
+    const spider = await page.evaluate(bindBeside, { type: 'spider', side: 1 });
+    expect(spider.why, spider.why).toBeUndefined();
+    await page.evaluate(lookUp);
+    await page.evaluate((v) => window.useGameStore.setState({ ember: v }), BIND_SEED);
+    await expect(notice, 'SETUP: an earlier notice is still on screen').toHaveCount(0, { timeout: 15000 });
+    await page.keyboard.down('x');
+    await page.evaluate(frames, 10);
+    await page.keyboard.up('x');
+    await expect(notice.first(), `a fuse the bar cannot pay for was refused in silence (gates ${JSON.stringify(await S())})`)
+      .toBeVisible({ timeout: 15000 });
+    const short = await S();
+    expect(short.ember, 'a refused fuse took ember').toBe(BIND_SEED);
+    expect(short.allies.map((a) => a.id).sort(), 'a refused fuse changed the squad').toEqual([z.id, spider.id].sort());
+
+    // 3. A FUSE SPENDS ITS PRICE: the same pair, the bar refilled past the fuse, X held until one hybrid stands for both.
+    await page.evaluate((v) => window.useGameStore.setState({ ember: v }), FUSE_SEED);
+    await page.keyboard.down('x');
+    await expect.poll(async () => (await S()).allies.map((a) => a.hybridId), {
+      message: `X held beside a pair with a recipe never fused it (gates ${JSON.stringify(await S())})`, timeout: 30000,
+    }).toEqual(['dreadweaver']);
+    await page.keyboard.up('x');
+    expect((await S()).ember, 'the fuse did not spend its price').toBe(FUSE_SEED - FUSE_COST);
+
+    // 4. A PAIR WITH NO RECIPE SAYS NOTHING. A zombie bound beside the hybrid (no recipe pairs them), the same short bar:
+    // X held the same way, after the notice in step 2 showed this instrument can see one, raises none.
+    const second = await page.evaluate(bindBeside, { type: 'zombie', side: -1 });
+    expect(second.why, second.why).toBeUndefined();
+    await page.evaluate(lookUp);
+    await page.evaluate((v) => window.useGameStore.setState({ ember: v }), BIND_SEED);
+    await expect(notice, 'SETUP: the step 2 notice is still on screen').toHaveCount(0, { timeout: 15000 });
+    await page.keyboard.down('x');
+    await page.evaluate(frames, 10);
+    await page.keyboard.up('x');
+    await page.waitForTimeout(1500);
+    await expect(notice, 'a pair with no recipe blamed the ember bar').toHaveCount(0);
+    const none = await S();
+    expect(none.ember, 'a press beside a pair with no recipe took ember').toBe(BIND_SEED);
+    expect(none.allies.length, `a pair with no recipe fused (gates ${JSON.stringify(none)})`).toBe(2);
+
+    const hold = await page.evaluate(() => window.__e2eWorldHold.release());
+    console.log(`[ember-x] world held ${hold.heldMs} ms over ${hold.frames} drawn frames (longest ${hold.longestFrameMs} ms, cap ${hold.capMs}, lapsed ${hold.lapsed})`);
     expect(hold.lapsed, `SETUP: the world hold ran out before the last read: ${JSON.stringify(hold)}`).toBe(false);
     expect(hold.frames, `SETUP: the game drew no frame while the world was held: ${JSON.stringify(hold)}`).toBeGreaterThan(0);
   });
