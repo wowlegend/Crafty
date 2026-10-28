@@ -314,7 +314,7 @@ git commit -m "refactor(ai): one chase multiplier, read by the worker and (next)
     `retreat < RETREAT_FLOOR`.
   - `STANCE_CAPS`, frozen: `deriveStanceCaps()` evaluated once at load.
 
-- [ ] **Step 1: Write the failing property tests**
+- [x] **Step 1: Write the failing property tests**
 
 ```js
 // combatStance.test.js
@@ -354,19 +354,19 @@ it('the skeleton exemption holds: inside 8 m it retreats, so it never closes', (
 });
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `npx vitest run src/game/combatStance.test.js tests/gates/stance-pursuit-gates.test.js`
 Expected: FAIL, "Cannot find module './combatStance.js'".
 
-- [ ] **Step 3: Implement the Produces block in `combatStance.js`.** Pure; imports only the four modules above and
+- [x] **Step 3: Implement the Produces block in `combatStance.js`.** Pure; imports only the four modules above and
   `BASE_MOVE_SPEED` (re-exported for the test). `retreat = pursuitSpeed(slowest) − MIN_CLOSING_RATE`;
   `strafe = advance = pursuitSpeed(fastest) + STRAFE_MARGIN`. Round only in the test (`toBeCloseTo`) where floats
   demand it.
 
-- [ ] **Step 4: Run them to verify they pass.** The same command; expected PASS.
+- [x] **Step 4: Run them to verify they pass.** The same command; expected PASS.
 
-- [ ] **Step 5: Mutation receipts.** Apply each with `scripts/dev/mutate.sh`, each RED:
+- [x] **Step 5: Mutation receipts.** Apply each with `scripts/dev/mutate.sh`, each RED:
   - S2a: `Math.min` → `Math.max` in the slowest-pursuer pick (the retreat derived from the spider gives 5.0).
   - S2b: the `NON_PURSUERS` entry deleted. It goes RED through the pursuer count (`toBe(6)` sees 7) and through
     `closingOver('skeleton', 10, 10)`, where the skeleton stands and shoots in its 8-12 m band and throws 'empty
@@ -379,7 +379,7 @@ Expected: FAIL, "Cannot find module './combatStance.js'".
 
   Record the receipts in both files.
 
-- [ ] **Step 6: Commit** with the title "feat(combat): stance caps derived from the roster — a backpedal 1 m/s under the slowest pursuer, strafe 0.5 over the fastest (F1)" and a `Mutation-Proof:` trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): stance caps derived from the roster — a backpedal 1 m/s under the slowest pursuer, strafe 0.5 over the fastest (F1)" and a `Mutation-Proof:` trailer.
 
 ---
 

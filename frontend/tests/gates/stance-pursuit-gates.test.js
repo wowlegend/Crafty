@@ -19,9 +19,19 @@
 // mutant would survive); K1b the other-aggro `: 1.5;` -> `: 1.25;` -> RED (zombie step 2.0 x 1.25 x 0.1 vs 0.3);
 // K0 identity (a comment edit) -> survived. NOT killed here, by design: K1c (the calm multiplier), which only
 // src/game/mobMovement.test.js sees, because every mob in this file is aggro'd.
+// Task 2 (subject src/game/combatStance.js): S2a the slowest pick `Math.min` -> `Math.max` -> RED (retreat 5.0, no
+// pursuer closes 1 m/s on it); S2b the NON_PURSUERS skeleton entry deleted -> RED (the pursuer count reads 7, and
+// closingOver('skeleton', 10, 10) throws 'empty denominator': it stands and shoots in its 8-12 m band; the skeleton
+// does NOT become the slowest pursuer, its formula speed is 3.75 against the husk's 3.0); S2c
+// `chaseSpeedMult(type, true)` -> `1` -> the module throws RETREAT_FLOOR at load, so this file fails to import
+// (observed by hand; mutate.sh scores it COULD NOT CHECK, 0 collected); S0 identity -> survived. SURVIVE here by
+// design, killed in src/game/combatStance.test.js: S2d (the floor throw disabled: today's roster never reaches the
+// floor, so only a synthetic slower pursuer can) and S2c2 (the spider's 2.0 lost in the derivation: it moves only
+// the strafe cap, which nothing here measures).
 import { describe, it, expect, beforeAll } from 'vitest';
 import { buildMobPayload, applyMobUpdate } from '../../src/game/mobStateSync.js';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';
+import { STANCE_CAPS, MIN_CLOSING_RATE, pursuers } from '../../src/game/combatStance.js';
 
 const PLAYER = [0, 50.5, 0];
 const posted = [];
@@ -66,5 +76,37 @@ describe('the worker reads the chase multiplier (Task 1)', () => {
   it('the real worker steps an aggro\'d mob by speed x the chase multiplier x delta (the multiplier is READ, not copied)', () => {
     expect(stepOnce('zombie', 10)).toBeCloseTo(0.3, 6); // 2.0 x 1.5 x 0.1
     expect(stepOnce('spider', 10)).toBeCloseTo(0.6, 6); // 3.0 x 2.0 x 0.1
+  });
+});
+
+/**
+ * `ticks` ticks of the real worker at delta 0.1 (100 ms of world clock each) from (fromX, 50.5, 0). Returns the mean
+ * metres/second of RADIAL closing over the ticks in which the mob MOVED (a measured displacement, not the worker's
+ * own isMoving flag): the brute's brace ticks stand still and are excluded. 10 ticks from 10 m, so even the spider
+ * (6 m in 1 s) is still closing at the last tick and no arrival tick dilutes the mean.
+ *
+ * It THROWS 'empty denominator' when no tick moved: a mob that never moved has no closing speed, and a NaN mean must
+ * not reach an assertion as if it were a measurement.
+ */
+function closingOver(type, fromX, ticks) {
+  const m = mobAt(type, fromX);
+  let sum = 0, moved = 0;
+  for (let i = 0; i < ticks; i++) {
+    const x0 = m.position.x, z0 = m.position.z, d0 = planarDist(m);
+    tick(m, 10000 + i * 100);
+    if (Math.hypot(m.position.x - x0, m.position.z - z0) > 1e-9) { sum += (d0 - planarDist(m)) / 0.1; moved++; }
+  }
+  if (moved === 0) throw new Error(`empty denominator: the ${type} never moved in ${ticks} ticks from ${fromX} m`);
+  return sum / moved;
+}
+
+describe('the stance caps against what the REAL worker does (Task 2)', () => {
+  it('every pursuer\'s MEASURED closing speed exceeds the retreat cap by at least MIN_CLOSING_RATE', () => {
+    const ps = pursuers();
+    expect(ps.length, 'empty denominator').toBe(6);
+    for (const t of ps) expect(closingOver(t, 10, 10) - STANCE_CAPS.retreat, t).toBeGreaterThanOrEqual(MIN_CLOSING_RATE - 0.05);
+  });
+  it('the skeleton exemption holds: inside 8 m it retreats, so it never closes', () => {
+    expect(closingOver('skeleton', 5, 10)).toBeLessThan(0);
   });
 });
