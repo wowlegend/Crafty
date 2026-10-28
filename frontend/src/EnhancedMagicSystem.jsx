@@ -243,10 +243,6 @@ export const EnhancedMagicSystem = React.memo(() => {
       if (window.playSpellCastSound) {
         window.playSpellCastSound(spellType);
       }
-
-      if (GameMethods.grantXP) {
-        GameMethods.grantXP(3);
-      }
     }});
 
     // S1-D-M2: deterministic cast injector for the `spell-cast` visual-regression state.

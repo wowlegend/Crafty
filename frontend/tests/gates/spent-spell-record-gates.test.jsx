@@ -263,3 +263,22 @@ describe('DEV only', () => {
     expect(callTestHook('readProjectiles'), 'registered with DEV off').toBeUndefined();
   });
 });
+
+// Levels come from fighting. A spell cast at nothing pays nothing, or casting at the sky is the fastest way to level.
+describe('a cast grants no XP', () => {
+  it('ten casts at the sky spend mana ten times and grant no XP', () => {
+    mount();
+    const grants = [];
+    GameMethods.grantXP = (amount) => { grants.push(amount); };
+    useGameStore.setState({ gameCamera: camera([0, 30, 0], [0.2, 1, 0.1]) });
+    const before = useGameStore.getState().mana;
+    cast('fireball');
+    const perCast = before - useGameStore.getState().mana;
+    expect(perCast, 'a cast spent no mana — the cast path was refused before it ran').toBeGreaterThan(0);
+    for (let i = 1; i < 10; i++) cast('fireball');
+    expect(before - useGameStore.getState().mana, 'not every cast went through').toBeCloseTo(10 * perCast, 6);
+    frame(0.1); // in flight: a grant on the frame after the cast is the same farm
+    expect(live().length, 'the ten spells are not in flight').toBe(10);
+    expect(grants, 'casting granted XP').toEqual([]);
+  });
+});
