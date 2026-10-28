@@ -19,10 +19,8 @@ import { defineConfig } from '@playwright/test';
 
 // Gameplay-flow E2E foundation (Option A, 2026-06-28 audit follow-up).
 // Runs against `vite dev` because the test bridge (window.__craftyTest) + window.useGameStore
-// are DEV-ONLY (tree-shaken in prod). Headless WebGL via swiftshader — mirrors the proven
-// scripts/visual/capture.mjs launch config. The puppeteer visual gate stays separate + intact;
-// this layer adds gameplay-flow + runtime-error coverage the headless gate never had.
-const PORT = 4179; // dedicated port (capture.mjs uses 4178; vite dev default 3000)
+// are DEV-ONLY (tree-shaken in prod). Headless WebGL via swiftshader.
+const PORT = 4179; // dedicated port, outside the probe block in scripts/visual/_serve.mjs (vite dev default 3000)
 const URL = `http://localhost:${PORT}`;
 
 export default defineConfig({

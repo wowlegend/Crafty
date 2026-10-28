@@ -65,8 +65,7 @@ const APP_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export const POPULATION = [
   { group: 'tests/gates', re: /^tests\/gates\/.+\.test\.jsx?$/ },
   { group: 'tests/scripts', re: /^tests\/scripts\/.+\.test\.jsx?$/ },
-  { group: 'tests/store+data', re: /^tests\/(?!gates\/|scripts\/|e2e\/|visual\/).+\.test\.jsx?$/ },
-  { group: 'tests/visual', re: /^tests\/visual\/.+\.test\.jsx?$/ },
+  { group: 'tests/store+data', re: /^tests\/(?!gates\/|scripts\/|e2e\/).+\.test\.jsx?$/ },
   { group: 'tests/e2e', re: /^tests\/e2e\/.+\.spec\.js$/ },
   { group: 'src colocated', re: /^src\/.+\.test\.jsx?$/ },
   { group: 'scripts/ci', re: /^scripts\/ci\/.+\.mjs$/ },

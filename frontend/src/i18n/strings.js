@@ -81,7 +81,6 @@ export const STRINGS = {
     'ui.music': 'Music',
     'a11y.musicVolume': 'Music volume',
     'panel.muteAll': 'Mute All',
-    'panel.gameMode': 'Game Mode',
     // Toggle states. Below the adoption detector's 6-character floor, so nothing flagged them — but a
     // settings panel whose labels translate and whose switches still read ON/OFF is exactly the
     // half-English result the ratchet exists to prevent.
@@ -252,7 +251,6 @@ export const STRINGS = {
     'ui.music': '音乐',
     'a11y.musicVolume': '音乐音量',
     'panel.muteAll': '全部静音',
-    'panel.gameMode': '游戏模式',
     'ui.on': '开',
     'ui.off': '关',
     'ui.respawn': '重生',

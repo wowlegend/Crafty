@@ -60,7 +60,7 @@ describe('M6 #20 dead rubber-stamp removed', () => {
 });
 
 // M6 #20: every package imported DIRECTLY in src/ must be a declared dependency, not relied on via
-// transitive resolution. `postprocessing` was imported directly (GameScene/MascotStudio: ToneMappingMode,
+// transitive resolution. `postprocessing` was imported directly (GameScene: ToneMappingMode,
 // BloomEffect, HueSaturationEffect, BrightnessContrastEffect) but resolved only transitively through
 // @react-three/postprocessing -- a hoist/version change in the parent could break the direct import.
 // This pins it as a declared direct dependency.

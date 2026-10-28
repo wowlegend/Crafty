@@ -1,7 +1,7 @@
 // S9 OWNER TASTE CALL — render the grass colour ladder for Kevin to pick from.
 //
 // WHY A PROBE AND NOT THE GATE. The 31 gated capture states put their cameras 20-30m above the ground
-// (capture.mjs: y 62-82 looking at y 51-70), where a 0.7m tuft is a few pixels. S8 measured 3.119%
+// (y 62-82 looking at y 51-70), where a 0.7m tuft is a few pixels. S8 measured 3.119%
 // against baseline with ZERO of 31 frames over the 6% threshold — the gate would have passed it whether
 // or not the feature worked. A colour decision cannot be made from frames that cannot resolve the thing
 // being coloured, so this uses the ground-level camera from grass-probe.mjs.

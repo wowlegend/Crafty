@@ -54,7 +54,7 @@ describe('gate-shape ratchet — the frozen population must be the live one', ()
   });
 
   // AND THE CALLER, because a seam nothing calls is this repo's most-repeated defect and I shipped one
-  // earlier the same day (`stepCaptureFrames` existed for two days before `capture.mjs` ever called it).
+  // earlier the same day (`stepCaptureFrames` existed for two days before the capture harness called it).
   // Reading the script's source is the right tool: the assertion is that one CLI consumes one function,
   // and executing gate-shape.mjs to prove it would mean re-parsing the whole corpus.
   it('gate-shape actually CONSUMES the stale direction, rather than only computing it', () => {

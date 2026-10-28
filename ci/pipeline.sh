@@ -48,8 +48,8 @@
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # WHAT IT DELIBERATELY CANNOT COVER, because a green run is not a claim that the game works
 #
-#   - THE 31-FRAME VISUAL ORACLE. It needs a real GPU-less browser presenting frames and takes ~20
-#     minutes; it runs in neither caller today. A green pipeline says nothing about how Crafty LOOKS.
+#   - HOW CRAFTY LOOKS. Looks are read by a person on the eye-level lookbook (scripts/visual/lookbook.mjs,
+#     real GPU), which no caller runs. A green pipeline says nothing about how Crafty LOOKS.
 #   - E2E. The Playwright suite runs only in CI, sharded, as jobs beside this pipeline's. main's branch
 #     protection requires `ci ok` on the exact sha, and `ci ok` needs every e2e shard, so no local tier
 #     asks for an e2e receipt (DECISIONS 2026-10-28 item 13(b)).
@@ -159,9 +159,9 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # WHAT THE HOOK OWNS, AND WHY THIS FILE DOES NOT CLAIM IT
 #
-# `mutation-proof-trailer` and `baseline-trailer` read the COMMIT RANGES BEING PUSHED, which arrive on
+# `mutation-proof-trailer` reads the COMMIT RANGES BEING PUSHED, which arrive on
 # the hook's stdin as refspecs and exist nowhere else — not in the tree, not in a runner's checkout, not
-# in this script's environment. The hook runs them itself, once per pushed ref, before this file is
+# in this script's environment. The hook runs it itself, once per pushed ref, before this file is
 # called. "One definition" means no step is stated TWICE, not that every step lives here; a step this
 # file cannot honestly execute would be a second, weaker copy. First draft of this pipeline did claim
 # them, reading a `$RANGE` that was a leaked loop variable from an earlier loop in the hook.

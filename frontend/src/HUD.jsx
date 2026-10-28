@@ -13,7 +13,6 @@ import { isTouchUIMode } from './input/touchDevice';
 import {
   PlayerHealthBar,
   PlayerManaBar,
-  PlayerHungerBar,
   DamageOverlay,
   DeathScreen,
   VictoryOverlay
@@ -605,9 +604,6 @@ export function HUD({
             <div data-testid="stat-stack" className="absolute bottom-4 left-4 pointer-events-none z-20 flex flex-col gap-2 w-44">
               <PlayerHealthBar health={gameSystems.playerHealth} maxHealth={gameSystems.maxHealth} />
               <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
-              {/* W3 M-HUD.9: the hunger bar is a SURVIVAL-mode mechanic — in creative it pinned a static
-                  100/100 pill that read as a duplicate stat. Gate it on survival so non-survival stacks clean. */}
-              {gameState.gameMode === 'survival' && <PlayerHungerBar hunger={gameSystems.hunger} />}
               <FerocityBar />
               <KineticBar />
               <SoulBar />

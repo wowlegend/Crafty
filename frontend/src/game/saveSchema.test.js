@@ -9,7 +9,7 @@ const stateLike = {
   equipment: { head: null, chest: null, boots: null, weapon: 'Diamond Sword', offhand: null },
   talentPoints: 1, unlockedTalents: { frost_shield: 2 }, spellLevels: { fireball: 3 },
   level: 4, currentXP: 25, totalXP: 400,
-  gameMode: 'creative', selectedBlock: 'grass', activeSpell: 'fireball', isDay: true, gameTime: 12, achievements: ['first_block'],
+  selectedBlock: 'grass', activeSpell: 'fireball', isDay: true, gameTime: 12, achievements: ['first_block'],
   questState: { quests: { first_blood: { progress: 3, claimed: false } }, achievements: ['first_kill'] },
 };
 

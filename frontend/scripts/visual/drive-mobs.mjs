@@ -1,5 +1,4 @@
-// One-shot judge driver for the mobShowcase card (M6 T4). Mirrors capture.mjs's
-// proven launch/readiness recipe exactly; NOT part of the visual gate.
+// One-shot judge driver for the mobShowcase card (M6 T4): launch, wait for readiness, shoot.
 import puppeteer from 'puppeteer';
 import { serveVite, probePort } from './_serve.mjs';
 

@@ -12,12 +12,13 @@ oracle retired, harness to ~10 gates), Wave 3 the First Night, road of light, fi
 only agent-instruction file; the former AGENTS.md copy, the symlink and its directory are gone. Any plan, audit or queue dated
 before this that says AGENTS.md means `CLAUDE.md`. The generators (measure, gate-table, read-order) write into it.
 
-**Landing:** each lane is a PR; CI ~8 min since the e2e dpr cap (ae2e10a5); land by local merge commit, CI on the exact
-commit (land/2026-10-28 until the required check is on), push main. Review cadence (DECISIONS item 13/the speed plan):
-one static+dynamic round on game code, then `/code-review xhigh` on the PR range; tests/claims-only fixes get the
-author's mutation run. Residue: memory/STATUS.md G-ledger (to become a single registry file, plan item #30).
-Since 2026-10-28 ~11:12Z main is branch-protected: required check `ci ok` (strict, admins included, no force push or
-deletion). Land = merge into a land/<date> branch, push, green `ci ok` on that exact sha, `git merge --ff-only`, push.
+**Landing (since 2026-10-28 ~18:35Z, one CI run per landing):** each lane is a PR. Merge main into the lane's branch
+locally, push the branch (its PR CI runs once, on that exact sha), and when `ci ok` is green there and main has not moved,
+`git merge --ff-only` main to it and push; GitHub marks the PR merged. A change with no PR (the Command Record, registry
+closures) uses a land/<date> branch the same way. If main moves first, merge it in again and re-run; cancel a run whose
+base is already stale. Main is branch-protected: required check `ci ok` (strict, admins included, no force push or
+deletion). Review cadence (DECISIONS item 13): one static+dynamic round on game code, then `/code-review xhigh` on the
+PR range; tests/claims-only fixes get the author's mutation run. Open work lives in `memory/registry.jsonl`.
 
 **Owed after Wave 1 lands (from the pause/cuts/public/instruments re-reviews, 2026-10-28; LOW, none blocks):**
 - W3-D row: name beast form, snare and fuse timers (they still run through a pause; Components.jsx belongs to the
@@ -25,11 +26,19 @@ deletion). Land = merge into a land/<date> branch, push, green `ci ok` on that e
   `setActive(false)` (Components.jsx ~575) and undoes the touch resume; own row, real-iPad check.
 - Command Record exceptions: the hunger bar never moves until W2-F (the drain is deleted, the bar is not); the
   8b1d383f headline "a paused game holds the world" excepts beast form, snare and fuse.
-- Pause instruments: `_probe.mjs` ~382 / `lookbook.mjs` ~366 claim a stood-in lock does not turn the camera
+- Pause instruments: `_probe.mjs` ~133 / `lookbook.mjs` ~366 claim a stood-in lock does not turn the camera
   (pointerLook gates only on pointerLockElement); power-summary refuses a not-in-play arm only in two-arm mode; the
   "NOT in play" string is hand-copied between power-ab.sh and its test; the in-reach e2e hold settles 2 rAF, not game
   frames (possible flake); worst-case retry time of pause-freezes-world (2x3x420 s) exceeds the 35-min shard cap.
 - gpu-cost-probe hung >5 min after writing its JSON at load 170-400; undiagnosed.
+
+**W2-B (the capture oracle retired) deleted tests, noted here per the test ratchet (LOOP-CHARTER §3).** The justification
+is in the bodies of edee0d4d and 42fbe84e. Ten unit test files, each removed because its only subject was harness code that
+went with the oracle: capture-preflight, density-ratchet, density-ledger-measured and freeze-density (removed from tests/scripts);
+visual-denominator, diff-density, subject-on-screen and baseline-trailer gates (removed from tests/gates); captureFreshness and
+machineHeadroom (removed from src/devtest); plus probe-honesty's blocks for the removed _probe.mjs helpers, and the oracle's own
+diff test, which no unit run included. The one check that read shipped code, "enterCapture returns its state", is still
+covered by `tests/e2e/lightning.spec.js`.
 
 ## CURSOR — 2026-09-22 (SOTA campaign, session 2). READ THIS FIRST.
 
@@ -540,9 +549,9 @@ blind to the error class it exists to watch. Widening it is cheap and is NOT gat
 **1. VISUAL RE-BASELINE (capture A running in background at time of writing).**
 - WHY: puppeteer 25.6.0 moved bundled Chromium **147 → 151**, so every committed baseline was captured on
   a renderer four majors old. It is ALSO the only way to replace the **29 of 31 floor-clamped
-  density-ledger entries** with measurements (`_unmeasured` in `frontend/tests/visual/.density-ledger.json`).
+  density-ledger entries** with measurements (`_unmeasured` in `frontend/tests/visual/.density-ledger.json`, REMOVED 2026-10-28 by W2-B).
 - PROCEDURE: two captures on identical code, quiet machine, review frames by eye, then
-  `node scripts/visual/freeze-density.mjs`. Preconditions written in that file's header.
+  `node scripts/visual/freeze-density.mjs` (REMOVED 2026-10-28 by W2-B). Preconditions written in that file's header.
 - Run A frames land in `/tmp/.../scratchpad/rbA/`; run B in `rbB/`. Compare A-vs-B for real run-to-run
   variance, and A-vs-baseline for the Chromium delta.
 - COMMIT DISCIPLINE: `Baseline-Review:` trailer required; must NOT be bundled with any `frontend/src/` edit.

@@ -60,24 +60,16 @@ export function installHeightFog() {
 	varying float vFogDepth;
 	varying float vFogWorldY;
 #endif`;
-  // `transformed` is the displaced local position (set earlier in the vertex shader);
-  // modelMatrix takes it to world space. We only need the Y for the height profile.
+  // The world Y comes from mvPosition, the one input every stock shader that includes fog_vertex has built by then (the
+  // stock chunk reads mvPosition.z). The sprite shader declares no `transformed` and builds mvPosition from
+  // modelViewMatrix[ 3 ] (three 0.172 ShaderLib/sprite.glsl.js:15), so a chunk that reads `transformed` does not
+  // compile for a fogged SpriteMaterial. mvPosition already carries instanceMatrix (each grass blade at its own
+  // height, not its chunk's origin), batchingMatrix, skinning, morphs and the sprite's billboard offset.
+  // viewMatrix is a rigid [ R | t ], so world = R^T ( view - t ), and GLSL's `v * M` is transpose( M ) * v. A camera
+  // whose world matrix carries scale would misplace the height; no camera here is scaled or has a scaled parent.
   THREE.ShaderChunk.fog_vertex = `#ifdef USE_FOG
 	vFogDepth = - mvPosition.z;
-	// INSTANCED GEOMETRY NEEDS instanceMatrix. modelMatrix * transformed is the object-space position
-	// taken to world space -- correct for ordinary meshes, and WRONG for every instance of an
-	// InstancedMesh, whose per-instance placement lives in instanceMatrix and not in modelMatrix. The
-	// grass is instanced (one instancedMesh per chunk, ~81 chunks), so every blade reported the y of the
-	// chunk's origin rather than its own: the whole field was fogged at one altitude regardless of the
-	// terrain under it, which reads as fog that ignores the hills it is draped over.
-	//
-	// three defines USE_INSTANCING only when the material is compiled for an InstancedMesh, so the two
-	// branches cannot drift apart -- there is no "instanced but no instanceMatrix" state to get wrong.
-	#ifdef USE_INSTANCING
-		vFogWorldY = ( modelMatrix * instanceMatrix * vec4( transformed, 1.0 ) ).y;
-	#else
-		vFogWorldY = ( modelMatrix * vec4( transformed, 1.0 ) ).y;
-	#endif
+	vFogWorldY = ( ( mvPosition.xyz - viewMatrix[ 3 ].xyz ) * mat3( viewMatrix ) ).y;
 #endif`;
   THREE.ShaderChunk.fog_pars_fragment = `#ifdef USE_FOG
 	uniform vec3 fogColor;

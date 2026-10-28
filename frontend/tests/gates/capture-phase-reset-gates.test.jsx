@@ -5,7 +5,7 @@ import { render } from '@testing-library/react';
 // EVERY CAPTURE-GATED ANIMATION RESETS TO A DECLARED POSE. IT DOES NOT MERELY STOP.
 //
 // `if (isCaptureMode()) return;` freezes an animation WHEREVER IT HAD GOT TO. The harness enables
-// capture only after the page has booted (capture.mjs calls enterCapture once __craftyTest.ready()
+// capture only after the page has booted (enterCapture is called once __craftyTest.ready()
 // resolves), and boot takes a different length of time in every process — so the frozen phase is
 // RUN-DEPENDENT and the capture faithfully locks it in.
 //
@@ -22,11 +22,9 @@ import { render } from '@testing-library/react';
 //
 // WHY "DECLARED VALUES" AND NOT t=0. The gems are the reason. Their JSX declares intensity 8.5 / 11 and
 // the idle multiplies by `pulse = 0.82 + sin(t*2.4)*0.18`, whose PEAK is 1.0 — so the declared value is
-// the pulse PEAK, not the t=0 value (0.82 -> 6.97 / 9.02). Resetting to t=0 would dim both gems and
-// force a re-baseline of `title-mascot` as well as `menu`. Resetting to the DECLARED values leaves
-// `title-mascot` byte-identical, because in MascotStudio the mascot mounts with capture ALREADY on, so
-// its useFrame returns on frame 1 and the JSX values stand untouched. That is exactly why title-mascot
-// measures 0.0000% run-to-run today while menu measures 0.455%.
+// the pulse PEAK, not the t=0 value (0.82 -> 6.97 / 9.02). Resetting to t=0 would dim both gems in
+// every frozen frame below what the JSX declares; resetting to the DECLARED values leaves a mascot that
+// mounts with capture already on exactly as it renders before its first useFrame.
 //
 // BEHAVIOURAL, not a source grep: the coupling test RENDERS the mascot and reads the intensity props
 // the primitives actually receive, so a JSX edit that drifts from the pure seam still fails.
