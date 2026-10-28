@@ -89,10 +89,19 @@ const lerp = (a, b, t) => a + (b - a) * t;
  *                   retreat cap with the walk slows only, so no form outwalks a fight. A clamp is positively
  *                   homogeneous, so scaling the caps by walkMult equals applying the walk slow AFTER the clamp while
  *                   the input path stays exactly today's.
+ *   gapM, dtS       the horizontal distance from the threat to the point the frame's step starts from, and the
+ *                   frame's seconds: THE STEP BOUND (round-1 review b). Within a frame the body moves in a straight
+ *                   line, so a tangential step L at gap g ends sqrt(g² + L²) - g further out, a leak of about
+ *                   t² dt / 2g m/s on top of the clamped retreat, which grows with the frame interval (3.4 m/s at a
+ *                   400 ms frame at 2.5 m, against a husk that closes at 3.0). When the step would end further than
+ *                   gapM + retreat x dtS from the threat, its end is pulled in radially to exactly that, which scales
+ *                   the step's away and tangential parts down together. So the player's own step never takes the body
+ *                   further from the threat than the retreat cap allows, at ANY frame rate; a pure retreat is
+ *                   untouched, and at 60 fps the cost is a few cm/s of strafe. gapM 0 (unknown) skips the bound.
  *
  * w === 0 returns (vx, vz) untouched, so out of combat the identity is exact rather than a float coincidence.
  */
-export function stanceVelocity(vx, vz, awayX, awayZ, w, formMult = 1, walkMult = 1, caps = STANCE_CAPS, out = { x: 0, z: 0 }) {
+export function stanceVelocity(vx, vz, awayX, awayZ, w, formMult = 1, walkMult = 1, caps = STANCE_CAPS, out = { x: 0, z: 0 }, gapM = 0, dtS = 0) {
   if (w === 0) { out.x = vx; out.z = vz; return out; }
   const pace = formMult * walkMult;
   const retreat = caps.retreat * walkMult;
@@ -111,6 +120,16 @@ export function stanceVelocity(vx, vz, awayX, awayZ, w, formMult = 1, walkMult =
     if (r < -advance) r = -advance;
     if (t > strafe) t = strafe;
     if (t < -strafe) t = -strafe;
+    if (gapM > 0 && dtS > 0) {
+      const ex = gapM + r * dtS, et = t * dtS; // where the step ends, in the (away, tangent) frame from the threat
+      const reach = Math.hypot(ex, et);
+      const limit = gapM + retreat * dtS;
+      if (reach > limit) {
+        const k = limit / reach;
+        r = (ex * k - gapM) / dtS;
+        t = (et * k) / dtS;
+      }
+    }
     cx = awayX * r + tx * t;
     cz = awayZ * r + tz * t;
   }
@@ -158,7 +177,7 @@ export function engageDyM(type) {
 }
 
 const _state = {
-  w: 0, engaged: false, threatId: null, awayX: 0, awayZ: 0, lastEngagedAt: -Infinity,
+  w: 0, engaged: false, threatId: null, awayX: 0, awayZ: 0, gap: 0, lastEngagedAt: -Infinity,
   threatX: 0, threatZ: 0, playerX: 0, playerY: 0, playerZ: 0, frame: 0,
 };
 
@@ -176,16 +195,19 @@ const _sweep = (a, id) => { if (a.seen !== _tag) _anchors.delete(id); };
  * object per newly aggro'd mob, for its stall clock.
  *
  *   mobs    the live mob entities (mobsQuery.entities), read only.
- *   player  { x, y, z }, THE POINT MOBS MEASURE THE PLAYER FROM: mobSensePoint(camera) (game/mobSenses.js), the same
- *           point AIWorkerSystem posts to the worker, so a mob counted as able to reach you is one the worker would
- *           let swing (the plan's height-reference deviation).
+ *   player  { x, y, z }. y is THE HEIGHT MOBS MEASURE THE PLAYER FROM: mobSensePoint(camera).y (game/mobSenses.js),
+ *           the point AIWorkerSystem posts to the worker, so a mob counted as able to reach you is one the worker would
+ *           let swing (the plan's height-reference deviation). x and z are the body this frame, the point the frame's
+ *           step starts from (stanceFrame builds it): the away vector and `gap` must be measured from there, not from
+ *           the camera, which trails the body by about 1.2 frames (round-1 review b).
  *   nowMs   performance.now(): the stance is the player's real-time feel, like heavyAttack.js.
  *   dtS     the frame's seconds, for the blend.
  *
  * A mob QUALIFIES when it is hostile (isHostile: not protected, passive or dead/dying), aggro'd, not a NON_PURSUER,
  * within ENGAGE_RADIUS_M horizontally and engageDyM(type) vertically, and not stalled. The threat is the current one
  * while it qualifies, unless another is more than THREAT_SWITCH_M nearer; else the nearest. With no qualifier the
- * last threat's position is kept, so the calm and the exit blend still clamp against where the fight was.
+ * last threat's position is kept, so the calm and the exit blend still clamp against where the fight was. `gap` is the
+ * horizontal distance from the player point to the threat (0 with no threat), for stanceVelocity's step bound.
  */
 export function stanceStep(state, mobs, player, nowMs, dtS) {
   state.frame++;
@@ -230,11 +252,11 @@ export function stanceStep(state, mobs, player, nowMs, dtS) {
 
   state.playerX = px; state.playerY = py; state.playerZ = pz;
   if (state.threatId === null) {
-    state.awayX = 0; state.awayZ = 0;
+    state.awayX = 0; state.awayZ = 0; state.gap = 0;
   } else {
     const ax = px - state.threatX, az = pz - state.threatZ;
     const l = Math.hypot(ax, az);
-    if (l < 1e-3) { state.awayX = 0; state.awayZ = 0; } else { state.awayX = ax / l; state.awayZ = az / l; }
+    if (l < 1e-3) { state.awayX = 0; state.awayZ = 0; state.gap = 0; } else { state.awayX = ax / l; state.awayZ = az / l; state.gap = l; }
   }
   return state;
 }
@@ -269,15 +291,15 @@ const _point = { x: 0, y: 0, z: 0 };
 const _clamped = { x: 0, z: 0 };
 
 /**
- * One frame of the stance, as the controller runs it: stanceStep on the live stance, measuring the player from the
- * point the AI worker strikes from (mobSensePoint(camera)). Returns the live stance.
+ * One frame of the stance, as the controller runs it: stanceStep on the live stance, with the player point built from
+ * this frame's BODY across (the point the frame's step starts from, so the away vector and the gap are this frame's)
+ * and the height the AI worker strikes from (mobSensePoint(camera).y). Returns the live stance.
  *   mobs    mobsQuery.entities
  *   body    the rigid body's translation this frame
  *   camera  the game camera
  */
 export function stanceFrame(mobs, body, camera, nowMs, dtS) {
-  const sense = mobSensePoint(camera);
-  _point.x = sense.x; _point.y = sense.y; _point.z = sense.z;
+  _point.x = body.x; _point.y = mobSensePoint(camera).y; _point.z = body.z;
   return stanceStep(_state, mobs, _point, nowMs, dtS);
 }
 
@@ -295,7 +317,7 @@ export function stanceWalk(mv, stance, loco, walkMult, planarVel, dtS) {
   if (mv.moving) {
     // The stance clamps the AWAY-from-threat component of the move, whatever key produced it; at w = 0 it is the
     // identity, so travel keeps 14 m/s.
-    stanceVelocity(mv.x, mv.z, stance.awayX, stance.awayZ, stance.w, loco.moveMult, walkMult, STANCE_CAPS, _clamped);
+    stanceVelocity(mv.x, mv.z, stance.awayX, stance.awayZ, stance.w, loco.moveMult, walkMult, STANCE_CAPS, _clamped, stance.gap, dtS);
     tx = _clamped.x; tz = _clamped.z;
   }
   const ramped = rampVelocity(planarVel, { x: tx, z: tz }, dtS);
@@ -310,7 +332,7 @@ export function readMoveTarget() {
 
 /** Death: no weight, no engagement, no threat, no calm carried over, and every stall clock dropped. */
 export function resetStance() {
-  _state.w = 0; _state.engaged = false; _state.threatId = null; _state.awayX = 0; _state.awayZ = 0;
+  _state.w = 0; _state.engaged = false; _state.threatId = null; _state.awayX = 0; _state.awayZ = 0; _state.gap = 0;
   _state.lastEngagedAt = -Infinity;
   _anchors.clear();
 }

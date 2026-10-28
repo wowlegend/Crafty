@@ -42,6 +42,12 @@
 //   height measured 1.2 m under the sense point (review H-b) -> RED; C5 a copy of the stance stepped -> RED; C6 the
 //   stance's output ignored -> RED; C7 the clamped target scaled by 0.9 -> RED; C0 identity -> survived. The record's
 //   N1-N4 receipts above were taken on its five-argument form; the case now checks the applied slots too.
+//   Round-1 review b, the F1 bound over a frame-interval sweep (39 tests). RED FIRST on the shipped code: the player's own
+//   step left the husk at 2.49 m/s (S+D, 8 ms frames) up to 6.57 m/s (400 ms), against the 2.0 cap. Then, each against a
+//   green baseline: B1 the stance point's x/z from the camera again -> RED; B2 the step bound dropped -> RED; B3 the
+//   bound's limit without the walk slow -> RED (the heavy-charge case); B4 the tangential part not pulled in -> RED; B5
+//   stanceWalk passes no gap and no dt -> RED; B6 the limit at half the retreat (a blanket slow) -> RED; B7 the gap
+//   1 m long -> RED; B0 identity -> survived.
 import { describe, it, expect } from 'vitest';
 import {
   STANCE_CAPS, MIN_CLOSING_RATE, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
@@ -49,6 +55,7 @@ import {
   noteMoveTarget, readMoveTarget, stanceFrame, stanceWalk,
 } from './combatStance.js';
 import { mobSensePoint } from './mobSenses.js';
+import { moveVector } from './locomotion.js';
 import { MOB_TYPES } from './mobTypes.js';
 import { chaseSpeedMult } from './mobMovement.js';
 
@@ -388,7 +395,8 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
   });
 
   it('stanceWalk passes the form and the walk slow in their own places: a comet retreats at 2.0, a heavy charge at 1.1', () => {
-    const st = engaged();
+    // Full weight, away +x, and no gap, so the step bound (its own describe below) stays out of the reading.
+    const st = { w: 1, awayX: 1, awayZ: 0, gap: 0 };
     const SNAP = 1; // a 1 s frame: the ramp reaches the target, so the target is read directly
     const comet = stanceWalk(MOVING(14 * 1.4, 0), st, { moveMult: 1.4 }, 1, { x: 0, z: 0 }, SNAP);
     expect(comet.x, 'a beast form outwalked the fight (the form multiplier reached the retreat cap)').toBeCloseTo(STANCE_CAPS.retreat, 12);
@@ -408,5 +416,78 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
     const still = stanceWalk({ x: 0, z: 0, moving: false }, st, { moveMult: 1 }, 1, { x: 3, z: 0 }, 1 / 60);
     expect(still.x).toBeCloseTo(1.5, 12); // 90 u/s² down
     expect([readMoveTarget().targetX, readMoveTarget().targetZ]).toEqual([0, 0]);
+  });
+});
+
+// Round-1 review b: F1's derivation assumed the tangential part "does not enter at all", which holds for a continuous,
+// fresh line to the threat. The controller is discrete: within a frame the body moves in a straight line, so a
+// tangential step L at gap g grows the gap by about L²/2g, and the away vector was built from the camera, which trails
+// the body by about 1.2 frames, so strafe leaked into retreat at about 1.7 t² dt / g. The F1 bound is that the player's
+// OWN step never takes the body further from the threat than retreat x dt. This drives the controller's frame as
+// Components.jsx runs it: stanceFrame with this frame's body and the camera as the follow leaves it (lerped 0.85 toward
+// the PRE-move body, + 1.2), moveVector in a view kept on (or turned from) the husk, stanceWalk, then the body steps by
+// the applied velocity (no KCC, which only shortens a step). The husk chases at its pursuit speed straight at the body
+// AFTER the player's step, so it keeps qualifying; the bound is read across the player's step alone.
+// NOT MODELLED: the husk's own aim (the worker aims at 15 Hz, on octile A* cell centres), which can only lower its
+// closing speed; that is the mob's side of F1 and tests/gates/stance-pursuit-gates.test.js measures the real worker.
+describe('the F1 bound at every frame interval (round-1 review b)', () => {
+  const DTS = [1 / 120, 1 / 60, 1 / 30, 0.05, 0.1, 0.2, 0.3, 0.4];
+  const CASES = [
+    { name: 'S+D, view on the husk', keys: { moveB: true, moveR: true }, face: 1 },
+    { name: 'D, view on the husk', keys: { moveR: true }, face: 1 },
+    { name: 'S, view on the husk', keys: { moveB: true }, face: 1 },
+    { name: 'W+D, view turned from the husk', keys: { moveF: true, moveR: true }, face: -1 },
+    { name: 'S+D charging a heavy', keys: { moveB: true, moveR: true }, face: 1, walk: 0.55 },
+  ];
+  const SETTLE_S = 0.3;
+  function run(dt, { keys, face, walk = 1 }) {
+    resetStance();
+    const mob = { id: 'f1', isMob: true, type: 'zombie', passive: false, isAggro: true, health: 50, position: { x: 0, y: 50.5, z: -3 } };
+    const body = { x: 0, y: 50.5, z: 0 };
+    const camera = { position: { x: 0, y: 51.7, z: 0 } };
+    const chase = pursuitSpeed('zombie');
+    let vel = { x: 0, z: 0 }, now = 10000, worst = -Infinity, judged = 0, gapMax = 0;
+    const frames = Math.ceil(3 / dt);
+    for (let f = 0; f < frames; f++) {
+      const st = stanceFrame([mob], body, camera, now, dt);
+      const vx = mob.position.x - camera.position.x, vz = mob.position.z - camera.position.z;
+      const mv = moveVector(face * vx, face * vz, keys, BASE_MOVE_SPEED * walk);
+      vel = stanceWalk(mv, st, { moveMult: 1 }, walk, vel, dt);
+      // the follow: Components.jsx lerps the camera toward the body translation read BEFORE this frame's step lands
+      camera.position.x += (body.x - camera.position.x) * 0.85;
+      camera.position.z += (body.z - camera.position.z) * 0.85;
+      const g0 = Math.hypot(body.x - mob.position.x, body.z - mob.position.z);
+      body.x += vel.x * dt; body.z += vel.z * dt;
+      const g1 = Math.hypot(body.x - mob.position.x, body.z - mob.position.z);
+      if (st.w === 1 && f * dt >= SETTLE_S) { worst = Math.max(worst, (g1 - g0) / dt); judged++; }
+      // the husk closes straight on the body, and stops at 1 m
+      const step = Math.min(chase * dt, Math.max(0, g1 - 1));
+      mob.position.x += ((body.x - mob.position.x) / g1) * step; mob.position.z += ((body.z - mob.position.z) / g1) * step;
+      gapMax = Math.max(gapMax, g1);
+      now += dt * 1000;
+    }
+    return { worst, judged, gapMax, frames, cap: STANCE_CAPS.retreat * walk };
+  }
+
+  it('the player\'s own step never leaves the husk faster than the retreat cap, from 8 ms to 400 ms frames, any keys', () => {
+    const rows = [];
+    for (const c of CASES) for (const dt of DTS) rows.push({ c, dt, ...run(dt, c) });
+    const table = rows.map((r) => `${r.c.name} @${Math.round(r.dt * 1000)} ms: ${r.worst.toFixed(3)} m/s`).join('; ');
+    console.info(`[stance F1] ${rows.length} (keys x frame interval) runs, worst away rate of the player's own step: ${table}`);
+    expect(rows.length, 'the sweep shrank').toBe(CASES.length * DTS.length);
+    for (const r of rows) {
+      const at = `${r.c.name} at a ${Math.round(r.dt * 1000)} ms frame`;
+      expect(r.judged, `SETUP: ${at}: no frame at full weight was judged`).toBeGreaterThan(0);
+      expect(r.gapMax, `SETUP: ${at}: the husk left the engage radius`).toBeLessThan(12);
+    }
+    const over = rows.filter((r) => r.worst > r.cap + 1e-9);
+    expect(over.map((r) => `${r.c.name} @${Math.round(r.dt * 1000)} ms ${r.worst.toFixed(3)} (cap ${r.cap})`), `the body left the husk faster than the retreat cap — ${table}`).toEqual([]);
+  });
+
+  it('a held pure backpedal still retreats at the full cap at every frame interval (the bound is not a blanket slow)', () => {
+    for (const dt of DTS) {
+      const r = run(dt, CASES[2]);
+      expect(r.worst, `S at ${Math.round(dt * 1000)} ms`).toBeGreaterThan(STANCE_CAPS.retreat - 1e-6);
+    }
   });
 });

@@ -39,7 +39,8 @@ import { bootDev, startPlayActive } from './_boot.js';
 // CASE 0, THE HEIGHT REFERENCE (the command session's decision; plan Task 4, "Deviation"). The stance must measure the
 // player from the point the AI worker strikes from. This spec wraps Worker.prototype.postMessage before the app loads
 // and keeps the playerPos of the last AI TICK; with the player standing still, the stance's recorded player point must
-// equal it. A stance fed the rigid-body translation reads about 1.2 m low (H1), and so does a worker fed the body
+// equal it. (Round-1 review b: the point's x and z are now the body this frame, the y the worker's; standing still, the
+// camera's x and z have converged on the body's, so the agreement still holds there, and H1 is still the 1.2 m in y.) A stance fed the rigid-body translation reads about 1.2 m low (H1), and so does a worker fed the body
 // centre (H2). It is an AGREEMENT gate: a sense point moved for both readers at once (H3) survives here by design, and
 // src/game/mobSenses.test.js pins the point itself.
 //
@@ -85,11 +86,14 @@ const SETTLE_MS = 300;
 // by that much. 0.1 m/s is under a hundredth of the 14 m/s a bypassed stance reads.
 const APPLIED_TOL = 0.1;
 const CAUGHT_GAP_M = 2.6;
-// A STRAFE CHASE NEEDS A FASTER FRAME THAN A RETREAT. Within one frame the player moves in a straight line, so a
-// tangential step L at gap g grows the gap by sqrt(g² + L²) - g ≈ L²/2g: a leak of STRAFE² · Δ / (2g) m/s that only
-// vanishes as the frame interval Δ does. Measured locally at Δ = 247 ms (2026-10-27): the strafe case's gap grew from
-// 3.2 to 6.05 m while every frame's target held the caps, because the leak at 3 m (about 1.7 m/s) exceeds the 1 m/s
-// closing margin. So the strafe's chase is judged only where that leak at the catch gap is at most half the margin.
+// A STRAFE CHASE IS STILL JUDGED ONLY AT A FAST FRAME, now for the MOB's reason, not the player's. Within one frame the
+// player moves in a straight line, so a tangential step L at gap g grew the gap by about L²/2g: a leak of STRAFE² · Δ /
+// (2g) m/s (measured locally at Δ = 247 ms, 2026-10-27: the gap grew from 3.2 to 6.05 m while every target held the
+// caps). Round-1 review b: the stance now pulls the step's end in to gap + 2.0 · Δ (game/combatStance.js, the step
+// bound, unit-gated over 8-400 ms frames), so the player's own leak is gone at every frame rate. What remains is the
+// husk's aim, which the worker refreshes at 15 Hz (a tick per frame below 15 fps) toward a player 6.5 · Δ further round
+// the circle; nothing has measured that. So the old threshold (half the margin at the catch gap) is kept, as a
+// conservative bound until CI's frame interval and a judged strafe chase say how far it can widen.
 const STRAFE_CHASE_MAX_INTERVAL_MS = Math.floor((1000 * 0.5 * 2 * CAUGHT_GAP_M) / STRAFE ** 2); // 61 ms
 const AGREE_M = 0.1;
 
