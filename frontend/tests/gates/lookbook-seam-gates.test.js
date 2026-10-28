@@ -583,12 +583,12 @@ describe('the pass timer through the real EffectComposer.prototype.render', () =
     expect(EffectComposer.prototype.render, 'uninstall() did not restore the composer').toBe(original);
   });
 
-  it('an EffectPass rebuilt over the same effects (sunrise, sunset) is timed once under its new label, never nested', () => {
+  it('an EffectPass rebuilt over the same effects is timed once under its new label, never nested', () => {
     const gl = fakeTimerGl();
     const composer = rig(gl);
     const handle = installPassTimer();
     // @react-three/postprocessing builds a new EffectPass over the SAME effect instances whenever the composer's children
-    // change, as GameScene's GodRays mount does when the sun crosses the horizon.
+    // change, as GameScene's first mount of N8AO or GodRays for a tier does.
     const rebuild = (...effects) => {
       const pass = new EffectPass(new PerspectiveCamera(), ...effects);
       pass.scene.userData.ms = 0.75;
@@ -609,7 +609,7 @@ describe('the pass timer through the real EffectComposer.prototype.render', () =
         { label: `${fx} > ToneMappingEffect.update`, n: frames, meanMs: 0 },
         { label: `${fx} > draw`, n: frames, meanMs: 0.75 },
       ]);
-      // A second rebuild with a different set (the sun sets again): the labels follow the pass now on the composer.
+      // A second rebuild with a different set: the labels follow the pass now on the composer.
       rebuild(vignette);
       for (let i = 0; i < frames; i++) composer.render(0.016);
       const later = handle.report().contexts[0];

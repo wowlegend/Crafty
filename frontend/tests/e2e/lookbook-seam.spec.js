@@ -10,6 +10,9 @@ import { bootDev } from './_boot.js';
 //   2. pose() moves the LIVE R3F camera and keeps it there across frames — the Player useFrame applies it and returns
 //      before the follow-cam can pull it back — and the first-person hands leave the camera while posed;
 //      clear() hands the camera back to the player rig;
+//   2b. the eye level the probe shoots from: stand() moves the LIVE body, look() turns the LIVE camera and the Player rig
+//      leaves it facing that way frame after frame, and clearHostiles() removes a hostile spawned beside the player
+//      through the real ECS (index.jsx hands the seam ecs.remove and the mob query), counting no kill;
 //   3. setCycle(0.75) puts the sun below the horizon and setCycle(0.30) brings it back (Atmosphere reads the store's
 //      gameTime: the seam's dawn-origin conversion is right in the running sky, not only in arithmetic);
 //   4. F3 shows the readout with the tier, the dpr IN FORCE (equal to the live renderer's pixel ratio), the frame cap
@@ -36,6 +39,8 @@ const DEFAULT_WORLD_TIMEOUT_MS = 90000;
 const WORLD_TIMEOUT_MS = Number(process.env.E2E_WORLD_TIMEOUT) > 0 ? Number(process.env.E2E_WORLD_TIMEOUT) : DEFAULT_WORLD_TIMEOUT_MS;
 const HEARTH = { position: [13, 81, 13], lookAt: [0, 51, 0] };
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+const flat = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
+const offBearing = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
 
 test('lookbook seam: absent without the parameter; pose pins the live camera, setCycle moves the sun, Show Stats reads the live renderer and counts a real context loss', async ({ page }) => {
   test.setTimeout(WORLD_TIMEOUT_MS + 150000);
@@ -91,6 +96,42 @@ test('lookbook seam: absent without the parameter; pose pins the live camera, se
   expect(dist(back.p, HEARTH.position), `clear() did not hand the camera back to the player: ${JSON.stringify(back)}`).toBeGreaterThan(5);
   // More than while posed, not equal to before: the held item can change the hands' node count between reads.
   expect(back.nodes, `the hands did not come back after clear() (${later.nodes} posed, ${back.nodes} after)`).toBeGreaterThan(later.nodes);
+
+  // 2b. The eye level. Four metres due south of where the body rests is open plains (scripts/visual/_lookbook.mjs,
+  // the walking clips' bearing), so the stand lands on ground, not inside a tree.
+  const lb = (verb, arg) => page.evaluate(([v, a]) => window.__craftyLookbook[v](a), [verb, arg]);
+  const home = (await lb('info')).body;
+  expect(home, 'SETUP: the seam reads no player body').not.toBeNull();
+  const spot = [home[0], home[1] + 0.5, home[2] + 4];
+  await lb('stand', { position: spot });
+  await page.waitForTimeout(1000);
+  const stood = await lb('info');
+  expect(flat(stood.body, spot), `stand() did not move the live body: ${JSON.stringify({ home, spot, body: stood.body })}`).toBeLessThan(0.25);
+  for (const heading of [90, 270]) {
+    await lb('look', { heading, pitch: 0 });
+    await page.waitForTimeout(800);
+    const h = (await lb('info')).heading;
+    expect(offBearing(h, heading), `look() faced ${heading} and the camera faces ${h} 800 ms later: the Player rig turned it`).toBeLessThan(1);
+  }
+  const spawned = await page.evaluate(() => {
+    const s = window.useGameStore.getState();
+    const cam = window.__threeCamera;
+    const x = cam.position.x + 2, z = cam.position.z;
+    const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
+    s.spawnMob(x, z, 'zombie', s.getMobFloor ? s.getMobFloor(x, z, cam.position.y - 1.6) : null);
+    const added = window.__craftyTest.call('readMobs').filter((m) => !before.has(m.id));
+    return added.length === 1 ? added[0].id : null;
+  });
+  expect(spawned, 'SETUP: spawnMob did not add exactly one zombie beside the player').not.toBeNull();
+  const near = (await lb('info')).hostiles;
+  expect(near?.nearestM, `SETUP: the seam does not see the zombie spawned 2 m away: ${JSON.stringify(near)}`).toBeLessThan(4);
+  const xp = await page.evaluate(() => window.useGameStore.getState().totalXP);
+  const cleared = await lb('clearHostiles', { radius: 12 });
+  const left = await page.evaluate((id) => window.__craftyTest.call('readMobs').some((m) => m.id === id), spawned);
+  expect(cleared, 'clearHostiles() removed nothing with a zombie 2 m away').toBeGreaterThanOrEqual(1);
+  expect(left, 'clearHostiles() reported a removal but the zombie is still in the ECS').toBe(false);
+  expect(await page.evaluate(() => window.useGameStore.getState().totalXP), 'clearing granted XP, as a kill does').toBe(xp);
+  await lb('stand', { position: home });
 
   // 3. The time of day, read back from the running sky.
   await page.evaluate(() => window.__craftyLookbook.setCycle(0.75));

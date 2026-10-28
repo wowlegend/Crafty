@@ -145,7 +145,7 @@ function passLabel(pass, index) {
 
 const timedPasses = new WeakSet();
 // wrapper -> the function it wraps. The library rebuilds an EffectPass over the SAME effect instances whenever the
-// composer's children change (GameScene mounts GodRays only while the sun is up), so an effect's update() may already
+// composer's children change (GameScene mounts N8AO and GodRays the first time a tier needs them), so an effect's update() may already
 // be a wrapper from its previous pass; it is wrapped from its original, so there is only ever one layer.
 const unwrapped = new WeakMap();
 const original = (fn) => {

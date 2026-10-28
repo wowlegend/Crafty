@@ -166,7 +166,7 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
 /**
  * The game canvas's pass times out of a passTimes() report: the context whose canvas is the game's (the seam's
  * glInfo canvas), else the largest. Per timed frame, from every result that landed in the window, so a pass rebuilt
- * mid-window (the sun crossing the horizon) counts each frame once, under whichever label drew it: `sceneMs`, the
+ * mid-window (a tier first mounting N8AO or GodRays) counts each frame once, under whichever label drew it: `sceneMs`, the
  * RenderPass that draws the world, and `postMs`, every segment after it. `plausible` is false when the results sum to
  * more GPU time (`gpuMs`) than the window lasted (`windowMs`): segments that run one after another cannot, so the
  * numbers are then not GPU execution times and no decision about a pass may rest on them.
