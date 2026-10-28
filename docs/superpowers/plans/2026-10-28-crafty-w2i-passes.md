@@ -74,6 +74,20 @@ see post-processing at all. The amended rule:
   0.25 ms). If U is not admitted, no pass is decided on cost.
 - Everything else in the rule below stands: look loss, delete, keep, the ink edge, the dynamic import, the bundle.
 
+## Second amendment, after the windowed run and before the alternation run
+
+The windowed run (all three times, 5 repetitions) showed the GPU moving between two busy levels with no change in the
+work, about 45% and 87% busy at the same 60 frames a second, holding each for tens of seconds and switching at
+moments unrelated to the arm (a power or clock state; GPU-wide, so another process's GPU work cannot be ruled out).
+The windows of an on/off pair sit about 5 s apart, so a pair that straddles a switch reads up to 6 ms either way.
+The median over 5 repetitions is the rule's defence, and the 4-of-5 sign test its second.
+
+A **fast alternation** (`lookbook.mjs --passes --alt`) is added as a check written before its results: one window per
+arm, the pass switched off and on every 1.5 s for 10 halves, the utilization read through each half, so each adjacent
+pair of halves is one differential within one state; 2 such windows per arm per time. It does not replace the
+windowed decision. **It can only block one:** a pass the windowed U finds material at a time is deleted only if the
+alternation's median at that time is at least 0.25 ms; below that, the pass is recorded as unproven and kept.
+
 ## The decision rule (written before measuring)
 
 For each arm, at each time where the pass runs:
