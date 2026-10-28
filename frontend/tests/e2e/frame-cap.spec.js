@@ -171,15 +171,49 @@ test('capped by default; the cap binds, costs nothing below it, and lets go for 
 //     reading the previous version of this test asserted)
 //   M2 the governor never mounted -> RED "the tier governor never stepped down in play" (114 frames, still med)
 // The rate bound (<= TITLE_FPS x 1.5) could not fail on this renderer, which drew ~3 fps behind the title; see above.
+// 2026-10-28 UTC, with the pointer lock refused (below), one batch (private-port copy, SwiftShader, COVERAGE=0, load
+// 75-200 from other sessions — the title drew at CI's rate here):
+//   identity (a comment edit in GameScene.jsx) SURVIVED: title 61 frames, 58 by the pacer, in 73 ticks over 54.6 s
+//     (1.12 fps), tier held med; play: med -> low after 30 frames over 37.8 s.
+//   M1 -> RED "the tier governor stepped the tier down behind the title" (low after 62 title frames over 62.2 s; the
+//     title still up at the end with the world built: active false, started false, world true)
+//   M3 -> RED "the covered canvas was not drawn by its pacer" (62 frames, 0 by the pacer)
+//   M2 -> RED "the tier governor never stepped down in play" (116 frames over 63.6 s, still med)
 const GOVERNOR_FRAMES = 60;
+// THE TITLE IS HELD FOR THE WHOLE WINDOW, BY REFUSING THE POINTER LOCK (2026-10-27). What ends the title on its own is
+// the world-ready auto-lock (App.jsx: requestPointerLock 100 ms after isSpawnChunkLoaded). Granted, the lock sets
+// `active` and latches gameStarted, so the title is gone for good. Behind the title CI's software renderer drew under
+// 1 fps, so the 60-frame window outlasted the world build and the title went away inside it, 3 attempts of 3 (CI run
+// 40551564326: title false 20 s in, at 19 frames; the HUD up at the failure; no "pointer lock denied" logged) — while
+// in the same run world-hitstop's page logged "NotAllowedError: A user gesture is required to request Pointer Lock".
+// The difference is this case's own reads: Playwright runs every page.evaluate AS A USER GESTURE (playwright-core
+// 1.64.1, Runtime.callFunctionOn with userGesture: true), and the window reads the page once a second, so an auto-lock
+// fired inside it can find the activation it needs. A local run with the refusal removed kept the title (2026-10-28,
+// world built, lock not taken), so the grant is timing: the auto-lock must fire soon after one of these reads, as on
+// CI, where the world landed 20 s into the window. A lock asked for with no gesture is one the game expects refused
+// (GameScene.jsx requestPointerLock: "every caller is inside a real click/key gesture"), so this page refuses it from
+// boot, as a refusal arrives (a pointerlockerror and a rejected promise): the title then stays up until play is forced
+// below, as a player who has not pressed Start sees it. startPlayActive enters play through forcePlay, no lock asked.
+const refusePointerLock = () => {
+  Element.prototype.requestPointerLock = function refused() {
+    setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 0);
+    return Promise.reject(new DOMException('refused by frame-cap.spec.js: no user gesture', 'NotAllowedError'));
+  };
+};
 test('behind the title the game canvas is paced down by its pacer and the tier governor is off; play releases both', async ({ page }) => {
   test.setTimeout(720000);
+  await page.addInitScript(refusePointerLock);
   await bootDev(page);
   await page.setViewportSize({ width: 480, height: 270 });
   await page
     .waitForFunction(() => { try { return window.__craftyTest.call('readFrameloop') != null; } catch { return false; } }, null, { timeout: 60000 })
     .catch((e) => { throw new Error(`SETUP: the game canvas never mounted its FrameCap (readFrameloop) — ${e.message}`); });
-  const pace = () => page.evaluate(() => ({ ...window.__craftyTest.call('readFrameloop'), title: window.useGameStore.getState().titleCovering, cap: window.useGameStore.getState().frameCap, tier: window.useGameStore.getState().qualityTier, ticks: window.__ticks ?? null }));
+  // `active`, `started` and `alive` are the title's own gates (ui/panelState.js shouldShowTitleMenu), read beside it so a
+  // title that goes away names what took it.
+  const pace = () => page.evaluate(() => {
+    const g = window.useGameStore.getState();
+    return { ...window.__craftyTest.call('readFrameloop'), title: g.titleCovering, cap: g.frameCap, tier: g.qualityTier, ticks: window.__ticks ?? null, active: window.__craftyTest.call('readIntents').active, started: !!g.gameStarted, alive: g.isAlive, world: g.isSpawnChunkLoaded };
+  });
   await page.evaluate(() => {
     window.__ticks = 0;
     const count = () => { window.__ticks += 1; requestAnimationFrame(count); };
@@ -196,14 +230,15 @@ test('behind the title the game canvas is paced down by its pacer and the tier g
     }
     const secs = (Date.now() - t0) / 1000;
     const frames = b.frames - a.frames, paced = b.paced - a.paced, ticks = b.ticks - a.ticks;
-    return { frames, paced, ticks, secs: +secs.toFixed(1), fps: +(frames / secs).toFixed(2), perTick: ticks ? +(frames / ticks).toFixed(3) : null, title: b.title, tier: b.tier, loop: b.loop };
+    return { frames, paced, ticks, secs: +secs.toFixed(1), fps: +(frames / secs).toFixed(2), perTick: ticks ? +(frames / ticks).toFixed(3) : null, title: b.title, tier: b.tier, loop: b.loop, active: b.active, started: b.started, alive: b.alive, world: b.world };
   };
 
   const title = await pace();
   expect(title.title, `SETUP: the title screen is not up at boot: ${JSON.stringify(title)}`).toBe(true);
   expect([title.loop, title.fps], `the covered canvas drew at ${title.fps} (${title.loop}) behind the title: ${JSON.stringify(title)}`).toEqual(['demand', TITLE_FPS]);
 
-  // The governor case: `med` on the title (bootDev pins `low`, which a decline could not move), then a long draw.
+  // The governor case: `med` on the title (set, not inherited from selectTier: `low` is a tier a decline could not move),
+  // then a long draw.
   await page.evaluate(() => window.useGameStore.getState().setQualityTier('med'));
   const covered = await drawn(GOVERNOR_FRAMES, 240000);
   const where = JSON.stringify(covered);
