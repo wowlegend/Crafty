@@ -25,17 +25,7 @@ import { render } from '@testing-library/react';
  *   CLEANUP is proved by unmounting and advancing time: a leaked interval keeps ticking forever, which on
  *   a hook that writes to the store every second is a real leak and invisible to a source scan.
  *
- * Mutation-Proof: 5 mutations, denominator asserted (6/6 cases collected on every run).
- *   M1 drop the `!isCaptureMode()` gate     -> capture case RED (baselines would stop being byte-stable)
- *   M2 drop the `getInput().active` gate    -> pause case RED (time would run in menus)
- *   M3 read `active` once at mount AND USE that value -> live-read case RED (the stale-capture defect a
- *      grep for `getInput` can never see, since the token is still present). First attempt at this
- *      mutation captured the value and never used it — a no-op that SURVIVED, and the survivor was my
- *      mutation being wrong rather than the gate being weak. A mutation has to change BEHAVIOUR; adding
- *      an unused binding changes only the text.
- *   M4 return undefined instead of clearInterval -> cleanup case RED (a leaked 1Hz store writer)
- *   M5 interval 1000 -> 60000                -> cadence case RED
- * useDayNightClock.js restored from a cp backup and diffed byte-identical after each.
+ * Mutation-Proof: in commit trailers, not here (DECISIONS 2026-10-28 15c).
  *
  * BLIND SPOT, stated (R7): this drives the hook in isolation with the store, input and capture flag
  * mocked. It does not prove the hook is MOUNTED by the app — that is one call site, and `runtime-reach`

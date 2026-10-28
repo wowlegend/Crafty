@@ -25,8 +25,11 @@ let pausedAt = null; // that clock's reading at the tick a pause was first seen;
 let pausedTotal = 0; // that clock's ms spent in every finished pause
 
 /**
- * The player has stopped the game: play has begun, they are alive, and their input is dead. ESC, an open panel, a
- * lost focus and the touch Pause all clear the one input gate (input/inputState.js), so every pause path lands here.
+ * The player has stopped the game: play has begun, they are alive, and their input is dead. ESC, an open panel and
+ * the touch Pause all clear the one input gate (input/inputState.js), so every pause path lands here. A desktop
+ * window losing focus does too, because the browser must exit pointer lock then (Pointer Lock 2.0, "Pointer lock must
+ * be exited if ... the user agent, window, or tab loses focus"). On touch nothing clears the gate when the page is
+ * hidden (input/blurReset.js clears only held intents), so switching apps does not pause.
  * The world behind the title keeps running, the death screen is not a pause, and under capture the visual harness
  * holds the world its own way.
  */
