@@ -3,10 +3,9 @@
 // there; this file holds what that declaration cannot express.
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { Vector2 } from 'three';
-import { useFrame, useThree, applyProps } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { EffectComposerContext } from '@react-three/postprocessing';
 import { BloomEffect, GodRaysEffect } from 'postprocessing';
-import { N8AOPostPass } from 'n8ao';
 import { registerTestHook } from '../devtest/testBridge.js';
 import { useGameStore } from '../store/useGameStore';
 import { TIERS } from './quality.js';
@@ -21,21 +20,19 @@ import { applyPassesOff } from './passesOff.js';
  * `dispose: null`; R3F never disposes primitives and the composer's removePass disposes nothing. So every sunrise (the
  * horizon gate mounted it), every tier step and every PostFX re-render in daylight left a GodRaysEffect's render
  * targets and depth texture allocated: GPU memory that grows over a long session, which on an iPad ends in a lost
- * context. N8AO is a primitive too (the same leak on every low<->med step), and `mipmapBlur` differing low/med rebuilt
- * Bloom. Every one of those mounts also changed the composer's children, which rebuilds every EffectPass and deletes
- * and re-creates the composer's depth texture.
+ * context. And `mipmapBlur` differing low/med rebuilt Bloom. Every one of those mounts also changed the composer's
+ * children, which rebuilds every EffectPass and deletes and re-creates the composer's depth texture.
  *
- * Now the three components below carry the package's names and build their effect ONCE PER MOUNT from their first
- * props, render it as a primitive, and dispose it on unmount. GameScene mounts N8AO and GodRays the first time a tier
- * needs them (a sticky flag: on an iPad that never leaves low, never) and keeps them mounted. PostTierDriver toggles the
- * live instances in place — N8AO through `enabled` (the composer skips a disabled pass), GodRays through a gate that
- * skips its render work and zeroes its blend opacity (a uniform: no recompile), Bloom through its mipmap pass plus the
- * map uniform its composite samples. PostFX no longer receives the tier or the horizon flag, so a tier step or a
+ * Now the two components below carry the package's names and build their effect ONCE PER MOUNT from their first
+ * props, render it as a primitive, and dispose it on unmount. GameScene mounts GodRays the first time a tier needs it
+ * (a sticky flag: on an iPad that never leaves low, never) and keeps it mounted. PostTierDriver toggles the live
+ * instances in place — GodRays through a gate that skips its render work and zeroes its blend opacity (a uniform: no
+ * recompile), Bloom through its mipmap pass plus the map uniform its composite samples. PostFX no longer receives the tier or the horizon flag, so a tier step or a
  * horizon flip re-renders no composer child.
  */
 
 /** Construction counts, for the DEV read path (the post-fx e2e asserts they stay flat across tier steps). */
-export const postFxBuilds = { bloom: 0, godRays: 0, n8ao: 0 };
+export const postFxBuilds = { bloom: 0, godRays: 0 };
 
 /**
  * GodRays with a gate. postprocessing calls an effect's update() "even if the blend function is set to SKIP"
@@ -65,24 +62,6 @@ export function useBloomOnce(props) {
   return bloom;
 }
 
-/** N8AO, built once per mount: the package's wrapper applied these props (its own defaults included) through
- *  applyProps, then the quality mode; kept identical so the look does not move. */
-export function useN8AOOnce({ quality, ...config }) {
-  const scene = useThree((s) => s.scene);
-  const camera = useThree((s) => s.camera);
-  const [pass] = useState(() => {
-    postFxBuilds.n8ao += 1;
-    const p = new N8AOPostPass(scene, camera);
-    applyProps(p.configuration, {
-      aoSamples: 16, denoiseSamples: 4, denoiseRadius: 12, renderMode: 0, depthAwareUpsampling: true, ...config,
-    });
-    if (quality) p.setQualityMode(quality.charAt(0).toUpperCase() + quality.slice(1));
-    return p;
-  });
-  useEffect(() => () => pass.dispose(), [pass]);
-  return pass;
-}
-
 /** GodRays, built once per mount (the sun mesh arrives once, at boot, before this mounts). */
 export function useGodRaysOnce({ sun, ...options }) {
   const camera = useThree((s) => s.camera);
@@ -93,9 +72,6 @@ export function useGodRaysOnce({ sun, ...options }) {
 
 export function Bloom(props) {
   return <primitive object={useBloomOnce(props)} dispose={null} />;
-}
-export function N8AO(props) {
-  return <primitive object={useN8AOOnce(props)} dispose={null} />;
 }
 export function GodRays(props) {
   return <primitive object={useGodRaysOnce(props)} dispose={null} />;
@@ -118,16 +94,9 @@ export function setBloomMipmap(bloom, on) {
   return true;
 }
 
-const NONE_OFF = new Set();
-
-/** Apply a tier's post settings and the horizon to the live effects; a pass the lookbook switched off (`off`) is
- *  render/passesOff.js's until it is back on. @returns {boolean} true when anything changed */
-export function applyPostTier(fx, q, sunAboveHorizon, off = NONE_OFF) {
+/** Apply a tier's post settings and the horizon to the live effects. @returns {boolean} true when anything changed */
+export function applyPostTier(fx, q, sunAboveHorizon) {
   let changed = false;
-  if (fx.n8ao && !off.has('n8ao') && fx.n8ao.enabled !== !!q.ao) {
-    fx.n8ao.enabled = !!q.ao;
-    changed = true;
-  }
   if (fx.godRays) {
     if (setGodRaysOn(fx.godRays, !!q.godRays && !!sunAboveHorizon)) changed = true;
     if (q.godRaySamples > 0 && fx.godRays.samples !== q.godRaySamples) {
@@ -140,13 +109,11 @@ export function applyPostTier(fx, q, sunAboveHorizon, off = NONE_OFF) {
 }
 
 /** PURE. The live instances in the composer's passes — found, never cached, so a rebuilt chain is always followed. */
-export function liveEffects(composer, out = { n8ao: null, godRays: null, bloom: null }) {
-  out.n8ao = null;
+export function liveEffects(composer, out = { godRays: null, bloom: null }) {
   out.godRays = null;
   out.bloom = null;
   if (!composer) return out;
   for (const pass of composer.passes || []) {
-    if (pass instanceof N8AOPostPass) out.n8ao = pass;
     const effects = pass && pass.effects;
     if (!Array.isArray(effects)) continue;
     for (const e of effects) {
@@ -161,19 +128,18 @@ export function liveEffects(composer, out = { n8ao: null, godRays: null, bloom: 
  * Mount inside <EffectComposer>. Each frame: find the live effects and apply the tier and the horizon — transient
  * getState() reads (Game-Loop Isolation), and write-on-change, so an unchanged frame costs a few comparisons. Per frame
  * rather than in an effect because the composer builds its passes in ITS layout effect, after its children's, and a
- * sticky first mount (N8AO, GodRays) arrives with defaults that must be corrected before it draws.
+ * sticky first mount (GodRays) arrives with defaults that must be corrected before it draws.
  */
 export function PostTierDriver() {
   const ctx = useContext(EffectComposerContext);
   const gl = useThree((s) => s.gl);
-  const fx = useMemo(() => ({ n8ao: null, godRays: null, bloom: null }), []);
+  const fx = useMemo(() => ({ godRays: null, bloom: null }), []);
   const offHeld = useMemo(() => new Map(), []);
   useFrame(() => {
     const st = useGameStore.getState();
-    const off = lookbookPassesOff();
     liveEffects(ctx && ctx.composer, fx);
-    applyPostTier(fx, TIERS[st.qualityTier] || TIERS.low, st.sunAboveHorizon, off);
-    applyPassesOff(ctx && ctx.composer, off, offHeld);
+    applyPostTier(fx, TIERS[st.qualityTier] || TIERS.low, st.sunAboveHorizon);
+    applyPassesOff(ctx && ctx.composer, lookbookPassesOff(), offHeld);
   });
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -182,7 +148,6 @@ export function PostTierDriver() {
       const live = liveEffects(ctx && ctx.composer);
       return {
         builds: { ...postFxBuilds },
-        n8ao: live.n8ao ? live.n8ao.enabled : null,
         godRays: live.godRays ? !live.godRays.gated : null,
         bloomMipmap: live.bloom ? live.bloom.mipmapBlurPass.enabled : null,
         // The LIVE threshold (BloomEffect keeps it on its luminance material; the prop is only the first value), for the

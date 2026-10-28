@@ -136,12 +136,6 @@ describe('static gates', () => {
     expect(residual.length).toBeGreaterThanOrEqual(0); // reporter only
   });
 
-  it('S1-B: AO pass present in the EffectComposer', () => {
-    const src = readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
-    expect(src, 'N8AO must be rendered inside the composer, not just imported')
-      .toMatch(/<N8AO\b/);
-  });
-
   // W2-T1: Kevin REVERSED the restrained-NEUTRAL lock — warm magic-hour glow is now the
   // intended look, so highlights are MEANT to bloom (threshold lowered from the old 0.85
   // floor to 0.65). The floor stays >= 0.60 so an accidental near-zero threshold (which would

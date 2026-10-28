@@ -10,12 +10,12 @@ import { renderHook, render } from '@testing-library/react';
  * Read in the installed packages: @react-three/postprocessing's GodRays wrapper builds `new GodRaysEffect(...)` in a
  * memo keyed on its props OBJECT and renders it as a `primitive` with `dispose: null`; R3F never disposes primitives,
  * and the composer's removePass disposes nothing. So every sunrise (the horizon gate mounted it), every tier step and
- * every PostFX re-render in daylight left a GodRaysEffect's render targets allocated. N8AO is a primitive too (the same
+ * every PostFX re-render in daylight left a GodRaysEffect's render targets allocated. N8AO was a primitive too (the same
  * on every low<->med step), `mipmapBlur` differing low/med rebuilt Bloom, and BloomSpikeDriver kept driving the first
  * Bloom it found.
  *
  * Now each effect is built once per mount and disposed on unmount, GameScene keeps them mounted, and a per-frame driver
- * toggles the LIVE instances in place. This drives the REAL postprocessing / n8ao classes; nothing here models them.
+ * toggles the LIVE instances in place. This drives the REAL postprocessing classes; nothing here models them.
  * BLIND SPOT: that GameScene's PostFX no longer re-renders on a tier step (its props) is the e2e's
  * (tests/e2e/post-fx-once.spec.js, construction counts across 20 tier steps).
  *
@@ -41,7 +41,7 @@ vi.mock('@react-three/fiber', async (orig) => ({
 }));
 
 const {
-  postFxBuilds, useBloomOnce, useN8AOOnce, useGodRaysOnce, applyPostTier, setGodRaysOn, setBloomMipmap, liveEffects, PostTierDriver,
+  postFxBuilds, useBloomOnce, useGodRaysOnce, applyPostTier, setGodRaysOn, setBloomMipmap, liveEffects, PostTierDriver,
 } = await import('../../src/render/postFx.jsx');
 const { BloomSpikeDriver, liveBloom } = await import('../../src/render/BloomSpikeDriver.jsx');
 const { TIERS } = await import('../../src/render/quality.js');
@@ -49,14 +49,12 @@ const { EffectComposerContext } = await import('@react-three/postprocessing');
 const { useGameStore } = await import('../../src/store/useGameStore');
 
 const BLOOM = { intensity: 0.95, luminanceThreshold: 0.65, luminanceSmoothing: 0.25 };
-const AO = { halfRes: true, aoRadius: 1.2, distanceFalloff: 1.0, intensity: 2.0, quality: 'medium', color: 'black' };
 const RAYS = { density: 0.97, decay: 0.95, weight: 1.1, exposure: 0.88, clampMax: 1, blur: true };
 const sunMesh = () => new THREE.Mesh(new THREE.SphereGeometry(1), new THREE.MeshBasicMaterial());
 const built = () => {
   const sun = sunMesh();
   return {
     bloom: renderHook(() => useBloomOnce({ ...BLOOM })).result.current,
-    n8ao: renderHook(() => useN8AOOnce({ ...AO })).result.current,
     godRays: renderHook(() => useGodRaysOnce({ sun, ...RAYS })).result.current,
   };
 };
@@ -71,24 +69,19 @@ describe('each effect is built once per mount, with the look it had, and dispose
     const sun = sunMesh();
     const c0 = { ...postFxBuilds };
     const b = renderHook(() => useBloomOnce({ ...BLOOM }));
-    const n = renderHook(() => useN8AOOnce({ ...AO }));
     const g = renderHook(() => useGodRaysOnce({ sun, ...RAYS }));
-    const first = [b.result.current, n.result.current, g.result.current];
-    for (let i = 0; i < 10; i++) { b.rerender(); n.rerender(); g.rerender(); }
-    expect([b.result.current, n.result.current, g.result.current], 'a re-render built a new effect').toEqual(first);
-    expect(first.map((x) => x === undefined || x === null), 'SETUP: an effect was not built').toEqual([false, false, false]);
+    const first = [b.result.current, g.result.current];
+    for (let i = 0; i < 10; i++) { b.rerender(); g.rerender(); }
+    expect([b.result.current, g.result.current], 'a re-render built a new effect').toEqual(first);
+    expect(first.map((x) => x === undefined || x === null), 'SETUP: an effect was not built').toEqual([false, false]);
     const c1 = { ...postFxBuilds };
-    expect([c1.bloom - c0.bloom, c1.n8ao - c0.n8ao, c1.godRays - c0.godRays], '[bloom, n8ao, godRays] constructions').toEqual([1, 1, 1]);
+    expect([c1.bloom - c0.bloom, c1.godRays - c0.godRays], '[bloom, godRays] constructions').toEqual([1, 1]);
   });
 
   it('the built effects carry the chain look (the props the package wrappers applied)', () => {
     const fx = built();
     expect(fx.bloom.luminanceMaterial.threshold).toBeCloseTo(0.65, 6);
     expect(fx.bloom.intensity).toBeCloseTo(0.95, 6);
-    expect(fx.n8ao.configuration.aoRadius).toBe(1.2);
-    expect(fx.n8ao.configuration.halfRes).toBe(true);
-    // (color is not asserted: applyProps on n8ao's configuration proxy stores the STRING 'black' instead of setting
-    // its Color — the package's own wrapper made the identical call, so the look is unchanged; a quirk, not pinned.)
     expect(fx.godRays.godRaysMaterial.density).toBeCloseTo(0.97, 6);
     expect(fx.godRays).toBeInstanceOf(GodRaysEffect);
   });
@@ -97,22 +90,21 @@ describe('each effect is built once per mount, with the look it had, and dispose
     const sun = sunMesh();
     const hooks = [
       renderHook(() => useBloomOnce({ ...BLOOM })),
-      renderHook(() => useN8AOOnce({ ...AO })),
       renderHook(() => useGodRaysOnce({ sun, ...RAYS })),
     ];
     const spies = hooks.map((h) => vi.spyOn(h.result.current, 'dispose'));
     hooks.forEach((h) => h.unmount());
-    expect(spies.map((s) => s.mock.calls.length), '[bloom, n8ao, godRays] dispose calls').toEqual([1, 1, 1]);
+    expect(spies.map((s) => s.mock.calls.length), '[bloom, godRays] dispose calls').toEqual([1, 1]);
   });
 });
 
 describe('applyPostTier — a tier step or a horizon flip toggles in place', () => {
-  it('N8AO follows the tier; GodRays follows the tier AND the horizon; Bloom follows the tier mipmap', () => {
+  it('GodRays follows the tier AND the horizon; Bloom follows the tier mipmap', () => {
     const fx = built();
     applyPostTier(fx, TIERS.low, true);
-    expect([fx.n8ao.enabled, fx.godRays.gated, fx.bloom.mipmapBlurPass.enabled]).toEqual([false, true, false]);
+    expect([fx.godRays.gated, fx.bloom.mipmapBlurPass.enabled]).toEqual([true, false]);
     applyPostTier(fx, TIERS.med, true);
-    expect([fx.n8ao.enabled, fx.godRays.gated, fx.bloom.mipmapBlurPass.enabled]).toEqual([true, false, true]);
+    expect([fx.godRays.gated, fx.bloom.mipmapBlurPass.enabled]).toEqual([false, true]);
     applyPostTier(fx, TIERS.high, false);
     expect(fx.godRays.gated, 'night must gate the god rays (three.js#18446, and shafts at night are wrong)').toBe(true);
     expect(fx.godRays.blendMode.opacity.value, 'a gated GodRays still blends').toBe(0);
@@ -156,12 +148,12 @@ describe('applyPostTier — a tier step or a horizon flip toggles in place', () 
 });
 
 describe('the drivers follow the LIVE effects in the composer', () => {
-  const composerOf = (fx) => ({ passes: [fx.n8ao, { effects: [fx.godRays, new THREE.Object3D(), fx.bloom] }] });
+  const composerOf = (fx) => ({ passes: [{ name: 'RenderPass' }, { effects: [fx.godRays, new THREE.Object3D(), fx.bloom] }] });
 
   it('liveEffects finds each instance among the passes', () => {
     const fx = built();
     expect(liveEffects(composerOf(fx))).toEqual(fx);
-    expect(liveEffects(null)).toEqual({ n8ao: null, godRays: null, bloom: null });
+    expect(liveEffects(null)).toEqual({ godRays: null, bloom: null });
     expect(liveBloom(composerOf(fx))).toBe(fx.bloom);
   });
 
@@ -172,13 +164,13 @@ describe('the drivers follow the LIVE effects in the composer', () => {
     render(<EffectComposerContext.Provider value={{ composer }}><PostTierDriver /></EffectComposerContext.Provider>);
     expect(frameCallbacks.length, 'SETUP: the driver registered no frame callback').toBe(1);
     frameCallbacks[0]();
-    expect([fx.n8ao.enabled, fx.godRays.gated, fx.bloom.mipmapBlurPass.enabled]).toEqual([false, true, false]);
+    expect([fx.godRays.gated, fx.bloom.mipmapBlurPass.enabled]).toEqual([true, false]);
     useGameStore.setState({ qualityTier: 'high', sunAboveHorizon: false });
     const fresh = built(); // a rebuilt chain: new instances, default (ungated) state
     composer.passes = composerOf(fresh).passes;
     frameCallbacks[0]();
     expect(fresh.godRays.gated, 'the driver kept toggling the old instances').toBe(true);
-    expect([fresh.n8ao.enabled, fresh.bloom.mipmapBlurPass.enabled]).toEqual([true, true]);
+    expect(fresh.bloom.mipmapBlurPass.enabled).toBe(true);
   });
 
   it('a spike after the chain is rebuilt drives the NEW Bloom — the old driver latched the first one it found', () => {

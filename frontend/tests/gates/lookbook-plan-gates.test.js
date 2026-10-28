@@ -435,7 +435,7 @@ describe('the whole-frame differential and the rule it is judged by', () => {
     expect(plan.slice(0, PASS_ARMS.length * 2).map((x) => x.rep).every((r) => r === 0)).toBe(true);
     // Every name an arm switches off is one the seam accepts, and the plan's arms are the composer's passes.
     for (const a of PASS_ARMS) for (const n of a.off) expect(LOOKBOOK_PASS_NAMES).toContain(n);
-    expect(PASS_ARMS.map((a) => a.id)).toEqual(['n8ao', 'godrays+sun', 'bloom', 'smaa', 'tonemapping', 'grade', 'vignette']);
+    expect(PASS_ARMS.map((a) => a.id)).toEqual(['godrays+sun', 'bloom', 'smaa', 'tonemapping', 'grade', 'vignette']);
     expect(PASS_TIMES.map((t) => t.cycle)).toEqual([0.25, 0.48, 0.75]);
   });
 

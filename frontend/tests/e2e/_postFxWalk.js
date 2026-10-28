@@ -7,7 +7,7 @@
 // those cost setTier 2.9-3.5 s mean, the 700 ms wait 3.1-3.5 s and readPostFx 7.5-8.8 s mean (up to 14.0 s), so a
 // measured step took ~14 s, the warm-up ended at 132-146 s, and the 300 s timeout fired with 11 or 12 of the 20 steps
 // read, on all three attempts, naming nothing. Every read those attempts did get showed the constructions flat, the GPU textures at
-// 50 and N8AO following the tier, so the game did nothing wrong that the run could see: the SPEC ran out of time.
+// 50 and the chain following the tier, so the game did nothing wrong that the run could see: the SPEC ran out of time.
 //
 // NOW: the page runs the whole plan in ONE evaluate (walkPostFx). Each step waits until the game canvas has drawn
 // STEP_FRAMES frames since it was applied AND its old time floor has passed. Frames, not seconds, because what a step

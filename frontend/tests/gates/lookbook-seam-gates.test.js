@@ -441,32 +441,31 @@ describe('passesOff(): a named pass off for the differential, everything restore
     expect(LOOKBOOK_PASS_NAMES.length, 'no pass can be switched off').toBeGreaterThan(0);
   });
 
-  it('applyPassesOff skips an effect\'s blend and its update(), disables a pass, and restores both', () => {
+  it('applyPassesOff skips an effect\'s blend and its update(), leaves a pass with no effects alone, and restores both', () => {
     let bloomUpdates = 0;
     const bloom = new BloomEffect();
     bloom.update = () => { bloomUpdates += 1; };
     const vignette = new VignetteEffect();
     const blend = bloom.blendMode.blendFunction;
     const fx = new EffectPass(new PerspectiveCamera(), bloom, vignette);
-    const ao = { name: 'Pass', configuration: { aoRadius: 1 }, enabled: true };
-    const composer = { passes: [{ name: 'RenderPass', enabled: true }, ao, fx] };
+    const scenePass = { name: 'RenderPass', enabled: true };
+    const composer = { passes: [scenePass, fx] };
     const state = new Map();
     const renderer = { setRenderTarget() {}, render() {} };
     const frame = () => fx.render(renderer, { texture: {} }, { texture: {} }, 0.016);
 
     frame();
     expect(bloomUpdates, 'the rig does not call update()').toBe(1);
-    expect(applyPassesOff(composer, new Set(['bloom', 'n8ao']), state)).toBe(true);
+    expect(applyPassesOff(composer, new Set(['bloom']), state)).toBe(true);
     expect(bloom.blendMode.blendFunction).toBe(BlendFunction.SKIP);
     expect(vignette.blendMode.blendFunction, 'an effect not named was switched off').not.toBe(BlendFunction.SKIP);
-    expect(ao.enabled).toBe(false);
+    expect(scenePass.enabled, 'a pass with no effects was switched off').toBe(true);
     frame();
     expect(bloomUpdates, 'an effect switched off still ran its update()').toBe(1);
-    expect(applyPassesOff(composer, new Set(['bloom', 'n8ao']), state), 'an unchanged frame wrote again').toBe(false);
+    expect(applyPassesOff(composer, new Set(['bloom']), state), 'an unchanged frame wrote again').toBe(false);
 
     expect(applyPassesOff(composer, new Set(), state)).toBe(true);
     expect(bloom.blendMode.blendFunction).toBe(blend);
-    expect(ao.enabled).toBe(true);
     frame();
     expect(bloomUpdates, 'a restored effect did not run its update()').toBe(2);
     expect(state.size, 'the restore left something held').toBe(0);

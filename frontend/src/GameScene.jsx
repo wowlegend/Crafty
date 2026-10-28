@@ -38,7 +38,7 @@ import { FrameStats } from './render/FrameStats.jsx';
 import { watchContextLoss, trackRenderer } from './render/glDiagnostics.js';
 import { paceFor } from './render/canvasPace.js';
 import { usePixelBudgetDpr, CAPTURE_DPR_CAP } from './render/pixelBudget.js';
-import { ComposerPixelRatioSync, PostTierDriver, N8AO, GodRays, Bloom } from './render/postFx.jsx';
+import { ComposerPixelRatioSync, PostTierDriver, GodRays, Bloom } from './render/postFx.jsx';
 import { createGovernor, governorDecline, governorIncline, governorSamples, governorWarm, renderDistanceFor } from './render/tierGovernor.js';
 import { registerTestHook } from './devtest/testBridge.js';
 import { FrameStall } from './devtest/FrameStall.jsx';
@@ -95,28 +95,20 @@ import { onContextLost, onContextRestored } from './game/contextRecovery.js';
 // depends on `children` — and removePass/addPass delete and re-create the composer's depth textures and depth
 // render target. Inline in GameScene it re-rendered on every mana tick (1 s while regenerating): GPU allocations
 // every second of idle play, the heat Kevin measured on an M3 Max. Memoised on the things the
-// chain actually reads, it rebuilds only when the sun mesh changes or a tier first needs N8AO or GodRays.
+// chain actually reads, it rebuilds only when the sun mesh changes or a tier first needs GodRays.
 // (Defined here, not in its own file: the effect-chain gates read this file.)
 //
-// BUILT ONCE, TOGGLED IN PLACE (2026-10-27, plan 2026-10-27-crafty-steady-cool item c). N8AO, GodRays and Bloom here are
+// BUILT ONCE, TOGGLED IN PLACE (2026-10-27, plan 2026-10-27-crafty-steady-cool item c). GodRays and Bloom here are
 // render/postFx.jsx's components, not the package's: each builds its effect once per mount and disposes it on unmount
 // (the package's GodRays built a new effect on every render and never disposed one — a leak per sunrise and per tier
-// step). N8AO and GodRays mount the first time a tier needs them (`withAO` / `withGodRays` are sticky) and then stay;
+// step). GodRays mounts the first time a tier needs it (`withGodRays` is sticky) and then stays;
 // <PostTierDriver> applies the tier and the horizon to the live instances. So the props here no longer include the tier
 // or the horizon flag, and a tier step or a horizon flip re-renders no composer child.
-const PostFX = React.memo(function PostFX({ sunMesh, withAO, withGodRays }) {
+// No screen-space ambient occlusion: N8AO cost about a quarter of the GPU's frame for contact shading the mesher's
+// vertex AO already gives every block corner (DECISIONS 2026-10-28 item 26).
+const PostFX = React.memo(function PostFX({ sunMesh, withGodRays }) {
   return (
     <EffectComposer multisampling={0}>
-      {withAO && (
-        <N8AO
-          halfRes
-          aoRadius={1.2}
-          distanceFalloff={1.0}
-          intensity={2.0}
-          quality="medium"
-          color="black"
-        />
-      )}
       {/* HORIZON GATE (2026-09-22, with the sun arc). GodRays is a screen-space effect whose light
           source is the sun BILLBOARD, and three.js#18446 records the official godrays example
           flipping its shaft downwards when "the signs of the sun's screen space position vector
@@ -220,8 +212,7 @@ export const GameScene = React.memo(function GameScene({
     registerTestHook('governorSignal', (kind) => governorStep(kind));
     registerTestHook('readGovernor', () => ({ ...governor.current, blockedUntil: { ...governor.current.blockedUntil } }));
   }, [governorStep]);
-  // Sticky: N8AO and GodRays mount the first time any tier asks for them and stay mounted (toggled in place).
-  const withAO = useLatch(q.ao);
+  // Sticky: GodRays mounts the first time any tier asks for it and stays mounted (toggled in place).
   const withGodRays = useLatch(q.godRays);
   const [sunMesh, setSunMesh] = useState(null);
 
@@ -501,7 +492,7 @@ export const GameScene = React.memo(function GameScene({
               This prop stays on its own merits: a redundant buffer is still redundant.
 
               To revert: delete the prop. Tests/scripts/effect-chain-cost pins it and will red. */}
-          <PostFX sunMesh={sunMesh} withAO={withAO} withGodRays={withGodRays} />
+          <PostFX sunMesh={sunMesh} withGodRays={withGodRays} />
           <Preload all />
         </Suspense>
 

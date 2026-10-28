@@ -72,7 +72,7 @@
  * Usage:  node scripts/visual/lookbook.mjs [--out <dir>] [--targets chromium-1280x800,webkit-1180x820,webkit-820x1180]
  *                                          [--sets hero,eye,clips] [--cycles 0.02,0.25,0.5,0.75] [--allow-software]
  *         node scripts/visual/lookbook.mjs --hold <seconds> [--headed] [--out <dir>]
- *         node scripts/visual/lookbook.mjs --passes [--reps N] [--arms n8ao,bloom] [--times noon,golden] [--out <dir>]
+ *         node scripts/visual/lookbook.mjs --passes [--reps N] [--arms godrays+sun,bloom] [--times noon,golden] [--out <dir>]
  *         either form takes [--build-dir <dir>] to serve a production build kept outside build/.
  */
 import { chromium, webkit, devices } from '@playwright/test';
@@ -681,9 +681,6 @@ async function passWindow(page, report, { cycle, off, mode }) {
   if (!(Math.min(drift, 1 - drift) <= CYCLE_TOLERANCE)) why.push(`clock at ${i.cycle}`);
   if (!ctx) why.push('no composer on the game canvas');
   if (mode === 'frame' && (!q || !w || q.n < 30 || w.n < 30)) why.push(`too few timed frames (query ${q?.n ?? 0}, wall ${w?.n ?? 0})`);
-  // The chain must show the arm: N8AO named off means its pass is disabled in the composer the frame ran.
-  const ao = ctx?.chain?.find((p) => /:N8AO$/.test(p.label));
-  if (ao && ao.enabled === off.includes('n8ao')) why.push(`N8AO ${ao.enabled ? 'on' : 'off'} against the arm`);
   if (mode === 'frame' && !(util.uN >= 5)) why.push(`too few GPU utilization readings (${util.uN ?? 0})`);
   return {
     applied, ...util, q: q?.ms ?? null, w: w?.ms ?? null, nQ: q?.n ?? 0, nW: w?.n ?? 0, frames: ctx?.frames ?? null,

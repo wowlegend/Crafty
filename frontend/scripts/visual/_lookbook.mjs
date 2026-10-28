@@ -202,7 +202,7 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
 /**
  * The game canvas's pass times out of a passTimes() report: the context whose canvas is the game's (the seam's
  * glInfo canvas), else the largest. Per timed frame, from every result that landed in the window, so a pass rebuilt
- * mid-window (a tier first mounting N8AO or GodRays) counts each frame once, under whichever label drew it: `sceneMs`, the
+ * mid-window (a tier first mounting GodRays) counts each frame once, under whichever label drew it: `sceneMs`, the
  * RenderPass that draws the world, and `postMs`, every segment after it. `plausible` is false when the results sum to
  * more GPU time (`gpuMs`) than the window lasted (`windowMs`): segments that run one after another cannot, so the
  * numbers are then not GPU execution times and no decision about a pass may rest on them.
@@ -241,7 +241,6 @@ export function passSummary(report, gameCanvas) {
  * Each arm switches the named passes off through the seam (src/render/passesOff.js LOOKBOOK_PASS_NAMES).
  */
 export const PASS_ARMS = Object.freeze([
-  { id: 'n8ao', off: ['n8ao'] },
   { id: 'godrays+sun', off: ['godrays', 'sun'] },
   { id: 'bloom', off: ['bloom'] },
   { id: 'smaa', off: ['smaa'] },
@@ -263,14 +262,11 @@ export const PASS_TARGET = Object.freeze({ id: 'chromium-1728x1117', engine: 'ch
 export const PASS_LOOK_PAIRS = Object.freeze([
   { time: 'golden', arm: 'godrays+sun', face: 'sun' },
   { time: 'noon', arm: 'godrays+sun', face: 'sun' },
-  { time: 'noon', arm: 'n8ao', face: 'north' },
-  { time: 'golden', arm: 'n8ao', face: 'sun' },
-  { time: 'midnight', arm: 'n8ao', face: 'north' },
 ]);
 /** No block starts while the 1-minute load average is above this (the lane's measurement rule). */
 export const PASS_MAX_LOAD = 12;
 /** A positive control, not a decision: every post pass off at once, which must move every instrument a long way. */
-export const PASS_CONTROL = Object.freeze({ id: 'all-post', off: ['bloom', 'godrays', 'grade', 'n8ao', 'smaa', 'sun', 'tonemapping', 'vignette'], control: true });
+export const PASS_CONTROL = Object.freeze({ id: 'all-post', off: ['bloom', 'godrays', 'grade', 'smaa', 'sun', 'tonemapping', 'vignette'], control: true });
 
 /**
  * PURE. The GPU's own busy figures out of `ioreg -r -d 1 -w 0 -c IOAccelerator` (the driver's PerformanceStatistics,

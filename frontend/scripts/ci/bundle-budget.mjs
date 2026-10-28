@@ -31,7 +31,8 @@ const OUT_DIR = resolve(HERE, '../../build/assets'); // vite.config.js -> build.
 // RAISING one to make a red build go green is a reward-hack and is forbidden (LOOP-CHARTER §3).
 const BUDGETS = [
   { name: 'rapier', max: 2_420_000, actualAtWrite: 2_236_813 }, // WASM physics — the giant, and it is inert
-  { name: 'r3f', max: 900_000, actualAtWrite: 833_418 },
+  // Lowered by the 141,581 B the n8ao deletion freed (W2-I: 829,540 -> 687,959 B), the same headroom kept.
+  { name: 'r3f', max: 760_000, actualAtWrite: 687_959 },
   // the app itself — the one that creeps. Ceiling = measured + the programme byte ledger's 67,600 B of lane
   // allowances + ~13 KB, so the in-flight lanes still fit and nothing else gets the freed bytes.
   { name: 'index', max: 700_000, actualAtWrite: 618_708 },
@@ -171,6 +172,18 @@ if (iconChunks.size === 1) {
     console.error(`✘ icon preload: index.html has no modulepreload for ${iconFile} (${preloads.length} modulepreload links${html ? '' : '; build/index.html is missing'}); the title icon waits for the boot chunk to run`);
     failed = true;
   }
+}
+
+// NO N8AO (DECISIONS 2026-10-28 item 26): the ambient-occlusion pass was deleted on its measured GPU cost. Two
+// strings only n8ao's own code carries, an internal transparency mode and a line of its shader, so any chunk that has
+// either ships the pass again, whoever imports it (our code, or a vendor's wrapper pulled into the r3f chunk).
+const N8AO_MARKERS = ['transparencyDWTrueDepth', 'uniform sampler2D bluenoise'];
+const n8aoHolders = chunks.filter((c) => N8AO_MARKERS.some((m) => textOf(c).includes(m)));
+if (n8aoHolders.length) {
+  console.error(`✘ n8ao: its code is in ${n8aoHolders.map((c) => c.file).join(', ')}; the deleted ambient-occlusion pass ships again`);
+  failed = true;
+} else {
+  console.log(`✓ n8ao: ${N8AO_MARKERS.length} markers absent from all ${chunks.length} chunks`);
 }
 
 // NO TAILWIND-MERGE: cn.js is a plain joiner and the primitives name each default a caller may replace, so the

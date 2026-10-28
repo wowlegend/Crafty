@@ -367,14 +367,16 @@ export function programVerdict(readings, watched = WATCHED_PROGRAMS) {
 }
 
 /**
- * THE POST CHAIN THE SHIPPED BUNDLE RENDERS (DECISIONS 2026-10-28, the W2-I items). The pass timer lists the chain each
+ * THE POST CHAIN THE SHIPPED BUNDLE RENDERS (DECISIONS 2026-10-28 item 26). The pass timer lists the chain each
  * composer.render runs, with or without a timer extension (src/render/passTimer.js `chain`), so this reads the
  * composer the production build actually built, on the game canvas, after play began: postprocessing's own effect
  * names, which survive the minifier. `present` is the presence half: a chain the reader cannot see (no composer, a
  * renamed effect) fails as COULD NOT CHECK instead of passing the absence half on nothing.
  */
 export const CHAIN_PRESENT = Object.freeze(['RenderPass', 'BloomEffect', 'SMAAEffect', 'ToneMappingEffect']);
-export const CHAIN_ABSENT = Object.freeze([]);
+// N8AO was deleted on its measured GPU cost; render/passTimer.js labels a pass of its shape `N8AO` whatever
+// imports it, so its return to the chain is named here.
+export const CHAIN_ABSENT = Object.freeze(['N8AO']);
 
 /** PURE: the verdict on the largest canvas's chain out of a passTimes() report. */
 export function chainVerdict(report, { present = CHAIN_PRESENT, absent = CHAIN_ABSENT } = {}) {
@@ -389,46 +391,6 @@ export function chainVerdict(report, { present = CHAIN_PRESENT, absent = CHAIN_A
   const back = absent.filter(has);
   if (back.length) return fail(`${back.join(', ')} is back in the chain the shipped bundle renders: [${labels.join(', ')}]`);
   return { ok: true, line: `post chain: [${labels.join(', ')}]${absent.length ? `; none of ${absent.join(', ')}` : ''}` };
-}
-
-/**
- * A MESH ON THE SUN'S RAY. The Sun billboard was a sphere kept at a fixed distance from the eye along the sun's
- * direction, which is what made it a sun to the eye and a light source to GodRays. Whatever a returning one is called
- * or made of, it sits there, so this reads the live scene the production build draws: every visible mesh, its distance
- * from the camera and its angle off the sun's direction. Runs in the page (no imports): `scene` and `camera` are the
- * game's (GameScene publishes them as window.__threeScene / __threeCamera), `sun` the seam's info().sun.
- */
-export function readSunRay(sun, scene = globalThis.__threeScene, camera = globalThis.__threeCamera) {
-  if (!sun || !scene || !camera) return { sun: sun || null, checked: 0, onRay: [] };
-  const D = Math.PI / 180;
-  const h = sun.heading * D, e = sun.elevationDeg * D;
-  const dir = [Math.sin(h) * Math.cos(e), Math.sin(e), -Math.cos(h) * Math.cos(e)];
-  scene.updateMatrixWorld?.(true);
-  const c = camera.matrixWorld.elements;
-  const shown = (o) => { for (let x = o; x; x = x.parent) if (x.visible === false) return false; return true; };
-  let checked = 0;
-  const onRay = [];
-  scene.traverse((o) => {
-    if (!o.isMesh || !shown(o)) return;
-    checked += 1;
-    const m = o.matrixWorld.elements;
-    const v = [m[12] - c[12], m[13] - c[13], m[14] - c[14]];
-    const dist = Math.hypot(v[0], v[1], v[2]);
-    if (dist < 50) return; // the sky dome and anything centred on the eye have no direction
-    const cos = (v[0] * dir[0] + v[1] * dir[1] + v[2] * dir[2]) / dist;
-    const angleDeg = Math.acos(Math.max(-1, Math.min(1, cos))) / D;
-    if (angleDeg <= 2) onRay.push({ type: o.geometry?.type ?? null, dist: Math.round(dist), angleDeg: +angleDeg.toFixed(2) });
-  });
-  return { sun, checked, onRay };
-}
-
-/** PURE: the verdict on a readSunRay reading, taken while the sun is up. */
-export function sunRayVerdict(r) {
-  const fail = (why, control = false) => ({ ok: false, control, line: `sun billboard: ${why}` });
-  if (!r?.sun || !(r.sun.elevationDeg > 2)) return fail(`COULD NOT CHECK — the sun is not up (${JSON.stringify(r?.sun ?? null)})`, true);
-  if (!(r.checked >= 20)) return fail(`COULD NOT CHECK — ${r.checked ?? 0} visible meshes read; the scene is not drawn`, true);
-  if (r.onRay.length) return fail(`${r.onRay.length} mesh(es) on the sun's ray from the eye (${JSON.stringify(r.onRay)}): a sun billboard is back`);
-  return { ok: true, line: `sun billboard: none of ${r.checked} visible meshes on the sun's ray (sun at ${Math.round(r.sun.heading)} deg, ${r.sun.elevationDeg.toFixed(1)} up)` };
 }
 
 /** PURE: is this console/page message worth failing over? */

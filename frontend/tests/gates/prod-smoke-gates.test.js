@@ -4,7 +4,7 @@ import {
   isFatalMessage, seamVerdict, LOOKBOOK_SEAM_METHODS,
   installArrayTextureRecorder, readBlockTextureArray, mipVerdict,
   WATCHED_PROGRAMS, OCEAN_STAGE, installProgramRecorder, readProgramLinks, programVerdict,
-  chainVerdict, CHAIN_PRESENT, readSunRay, sunRayVerdict,
+  chainVerdict, CHAIN_PRESENT, CHAIN_ABSENT,
 } from '../../scripts/ci/prod-smoke.mjs';
 import { installLookbookSeam, _resetLookbookForTest } from '../../src/render/lookbookSeam.js';
 import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
@@ -456,6 +456,11 @@ describe('prod-smoke: the post chain the production build renders', () => {
     const v = chainVerdict(r, { present: CHAIN_PRESENT, absent: ['GodRaysEffect', 'N8AO'] });
     expect(v.ok, v.line).toBe(true);
     expect(CHAIN_PRESENT.length).toBeGreaterThan(0);
+    // The run's own default: the deleted N8AO is named absent, so the chain it rendered goes red the day it returns.
+    expect(CHAIN_ABSENT).toContain('N8AO');
+    const back = { contexts: [ctx([2549, 1647], [KEPT[0], '1:N8AO', ...KEPT.slice(1)])] };
+    expect(chainVerdict(back), 'the default lists do not refuse N8AO back in the chain').toMatchObject({ ok: false, control: false });
+    expect(chainVerdict({ contexts: [ctx([2549, 1647], KEPT)] }).ok, 'the default lists refuse the kept chain').toBe(true);
   });
 
   it('goes red when a named pass is back, merged into an EffectPass or as a pass of its own', () => {
@@ -473,69 +478,5 @@ describe('prod-smoke: the post chain the production build renders', () => {
     expect(chainVerdict({ contexts: [{ canvas: [1, 1], chain: null }] })).toMatchObject({ ok: false, control: true });
     const blind = { contexts: [ctx([2549, 1647], ['0:RenderPass'])] };
     expect(chainVerdict(blind, { absent: ['GodRaysEffect'] })).toMatchObject({ ok: false, control: true });
-  });
-});
-
-/**
- * A MESH ON THE SUN'S RAY (W2-I). readSunRay is driven here on a real three.js scene: the deleted Sun billboard's own
- * placement (a sphere 380 m out along the sun's direction from the eye) must be found, at any distance and size, and
- * nothing else in a scene of ordinary meshes.
- */
-describe('prod-smoke: no mesh on the sun\'s ray', () => {
-  const D = Math.PI / 180;
-  const sun = { heading: 316, elevationDeg: 32.4 };
-  const dirOf = (s) => new THREE.Vector3(Math.sin(s.heading * D) * Math.cos(s.elevationDeg * D), Math.sin(s.elevationDeg * D), -Math.cos(s.heading * D) * Math.cos(s.elevationDeg * D));
-  /** The sun's direction turned `deg` degrees off it (about the vertical, then renormalised). */
-  const offRay = (deg) => dirOf(sun).applyAxisAngle(new THREE.Vector3(0, 1, 0), deg * D);
-  function world({ billboard = null, extra = [] } = {}) {
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera();
-    camera.position.set(-60, 78, 40);
-    scene.add(camera);
-    const box = new THREE.BoxGeometry(1, 1, 1);
-    const mat = new THREE.MeshBasicMaterial();
-    for (let i = 0; i < 30; i++) {
-      const m = new THREE.Mesh(box, mat);
-      m.position.set(-60 + (i % 6) * 9 - 20, 60 + (i % 3), 40 - Math.floor(i / 6) * 9);
-      scene.add(m);
-    }
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(450, 8, 8), mat); // the sky dome rides the eye
-    dome.position.copy(camera.position);
-    scene.add(dome);
-    if (billboard) {
-      const b = new THREE.Mesh(new THREE.SphereGeometry(billboard.r, 8, 8), mat);
-      b.position.copy(camera.position).addScaledVector(billboard.dir ?? dirOf(sun), billboard.d);
-      b.visible = billboard.visible ?? true;
-      scene.add(b);
-    }
-    for (const x of extra) {
-      const m = new THREE.Mesh(box, mat);
-      m.position.copy(camera.position).addScaledVector(x.dir, x.d);
-      scene.add(m);
-    }
-    return { scene, camera };
-  }
-
-  it('finds the billboard the game had (380 m, radius 13) and one placed anywhere else along the ray', () => {
-    // ...and one 1.5 degrees off it, inside the 2 degree cone a disc of radius 13 at 380 m spans.
-    for (const bb of [{ d: 380, r: 13 }, { d: 120, r: 2 }, { d: 380, r: 13, dir: offRay(1.5) }]) {
-      const { scene, camera } = world({ billboard: bb });
-      const v = sunRayVerdict(readSunRay(sun, scene, camera));
-      expect(v, JSON.stringify(bb)).toMatchObject({ ok: false, control: false });
-    }
-  });
-
-  it('passes a scene with none, a hidden one, and the sky dome on the eye; cannot pass with the sun down or nothing drawn', () => {
-    const plain = world();
-    expect(sunRayVerdict(readSunRay(sun, plain.scene, plain.camera)).ok).toBe(true);
-    // Something near the eye in the sun's direction (a held item, a tree beside the player) is not a sky object, and a
-    // far one 4 degrees off the sun is not on its ray.
-    const near = world({ extra: [{ d: 10, dir: dirOf(sun) }, { d: 300, dir: offRay(4) }] });
-    expect(sunRayVerdict(readSunRay(sun, near.scene, near.camera)).ok).toBe(true);
-    const hidden = world({ billboard: { d: 380, r: 13, visible: false } });
-    expect(sunRayVerdict(readSunRay(sun, hidden.scene, hidden.camera)).ok).toBe(true);
-    expect(sunRayVerdict(readSunRay({ heading: 316, elevationDeg: -20 }, plain.scene, plain.camera))).toMatchObject({ ok: false, control: true });
-    expect(sunRayVerdict(readSunRay(sun, new THREE.Scene(), plain.camera))).toMatchObject({ ok: false, control: true });
-    expect(sunRayVerdict(readSunRay(null, plain.scene, plain.camera))).toMatchObject({ ok: false, control: true });
   });
 });

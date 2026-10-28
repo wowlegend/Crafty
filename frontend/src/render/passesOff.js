@@ -18,11 +18,8 @@ const EFFECTS = {
   grade: ['HueSaturationEffect', 'BrightnessContrastEffect'],
   vignette: ['VignetteEffect'],
 };
-// n8ao's N8AOPostPass is a pass of its own (no postprocessing name: render/passTimer.js passLabel reads it the same way).
-const isN8AO = (pass) => !!(pass && pass.configuration && 'aoRadius' in pass.configuration);
-
-/** Every name the seam accepts: the effects above, N8AO, and the Sun billboard (render/Sun.jsx reads that one). */
-export const LOOKBOOK_PASS_NAMES = Object.freeze([...Object.keys(EFFECTS), 'n8ao', 'sun'].sort());
+/** Every name the seam accepts: the effects above and the Sun billboard (render/Sun.jsx reads that one). */
+export const LOOKBOOK_PASS_NAMES = Object.freeze([...Object.keys(EFFECTS), 'sun'].sort());
 
 const NOOP_UPDATE = () => {};
 
@@ -31,13 +28,8 @@ function offNamesOf(effect, off) {
   return false;
 }
 
-function switchOff(obj, state, isPass) {
+function switchOff(obj, state) {
   if (state.has(obj)) return false;
-  if (isPass) {
-    state.set(obj, { enabled: obj.enabled });
-    obj.enabled = false;
-    return true;
-  }
   const own = Object.prototype.hasOwnProperty.call(obj, 'update');
   state.set(obj, { blend: obj.blendMode.blendFunction, own, update: obj.update });
   obj.update = NOOP_UPDATE;
@@ -46,18 +38,14 @@ function switchOff(obj, state, isPass) {
 }
 
 function restore(obj, held) {
-  if ('enabled' in held) {
-    obj.enabled = held.enabled;
-    return;
-  }
   if (held.own) obj.update = held.update;
   else delete obj.update;
   obj.blendMode.blendFunction = held.blend;
 }
 
 /**
- * Bring the composer's passes in line with `off` (a Set of LOOKBOOK_PASS_NAMES). `state` holds what each switched-off
- * effect or pass had, so it is restored exactly; keep one per composer. Write-on-change.
+ * Bring the composer's effects in line with `off` (a Set of LOOKBOOK_PASS_NAMES). `state` holds what each switched-off
+ * effect had, so it is restored exactly; keep one per composer. Write-on-change.
  * @returns {boolean} true when anything changed
  */
 export function applyPassesOff(composer, off, state) {
@@ -65,13 +53,9 @@ export function applyPassesOff(composer, off, state) {
   let changed = false;
   const live = new Set();
   for (const pass of composer.passes || []) {
-    if (isN8AO(pass)) {
-      if (off.has('n8ao')) { live.add(pass); changed = switchOff(pass, state, true) || changed; }
-      continue;
-    }
     if (!Array.isArray(pass && pass.effects)) continue;
     for (const e of pass.effects) {
-      if (offNamesOf(e, off)) { live.add(e); changed = switchOff(e, state, false) || changed; }
+      if (offNamesOf(e, off)) { live.add(e); changed = switchOff(e, state) || changed; }
     }
   }
   for (const [obj, held] of state) {
