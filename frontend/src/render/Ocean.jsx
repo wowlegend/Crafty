@@ -1,8 +1,8 @@
 // W2 stylized tropical-toon ocean SURFACE — a real animated water plane that REPLACES the
 // old voxel water tops (the mesher no longer emits water faces). A subdivided plane pinned at
 // SEA_LEVEL, displaced by summed Gerstner waves in the VERTEX SHADER (oceanProfile.gerstnerGlsl) with analytic
-// normals, a bright turquoise->teal toon palette, Fresnel off the real normal, glossy highlight
-// bands, and a continuous smoothstep shoreline foam. Capture-frozen time => byte-stable frames.
+// normals, a bright turquoise->teal toon palette, and the hour's light on it: lit foam, a sky Fresnel and the key
+// light's glint (render/oceanLook.js), all under the fog. Capture-frozen time => byte-stable frames.
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -17,6 +17,8 @@ const GERSTNER_GLSL = gerstnerGlsl();
 import { isCaptureMode } from '../devtest/captureMode.js';
 import { oceanVisibleNear } from '../world/oceanVisibility.js';
 import { surfaceBlockAt } from '../world/climate.js';
+import { skyFrameRef } from './mood.js';
+import { oceanLookUniforms, writeOceanLight, patchOceanFragment } from './oceanLook.js';
 
 // B8: surface world-Y sampler for the visibility gate (shares the terrain formula via climate.js).
 const sampleSurfaceY = (x, z) => surfaceBlockAt(x, z).surfaceY;
@@ -49,12 +51,15 @@ export function Ocean() {
   // The wave clock and the plane's world centre, read by the vertex shader. The shader samples the waves
   // at the UNDISPLACED grid point (position is never written back), so nothing compounds frame to frame.
   const oceanUniforms = useMemo(() => ({ uTime: { value: CAPTURE_TIME }, uCenter: { value: new THREE.Vector2() } }), []);
+  // The hour's light for the foam, the sky Fresnel and the glint (render/oceanLook.js), from the published sky frame.
+  const lookUniforms = useMemo(() => oceanLookUniforms(), []);
 
   // prop-attached geometry + material are not auto-disposed by R3F -> dispose on unmount
   useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
 
   useFrame((state) => {
     const mesh = meshRef.current; if (!mesh) return;
+    writeOceanLight(lookUniforms, skyFrameRef.current);
     const cx = Math.round(camera.position.x), cz = Math.round(camera.position.z);
     // B8: the plane only COVERS ~110m around the camera, so skip its render (and, since 9860eaa9, its
     // vertex-shader wave pass — the CPU loop is gone) when no water column is within reach — deep inland / inside an inland cave, where the plane
@@ -69,10 +74,10 @@ export function Ocean() {
     oceanUniforms.uCenter.value.set(cx, cz);
   });
 
-  // Fresnel + glossy band tint injected post-lighting (reads off the recomputed normal).
   const onBeforeCompile = useMemo(() => (shader) => {
     shader.uniforms.uTime = oceanUniforms.uTime;
     shader.uniforms.uCenter = oceanUniforms.uCenter;
+    Object.assign(shader.uniforms, lookUniforms);
     // The waves, on the GPU. The plane is rotated -90deg about X, so local (x, y) is world (x, -z): sample
     // at the world point, then map the displacement and the normal back into plane-local axes. The normal
     // is computed first because three includes beginnormal_vertex before begin_vertex.
@@ -96,17 +101,8 @@ export function Ocean() {
   float gSlope = smoothstep(0.05, 0.22, 1.0 - gNrm.y);
   vFoam = min(1.0, gCrest * 0.85 + gSlope * 0.5);`
       );
-    shader.fragmentShader = `varying float vFoam;\n${shader.fragmentShader}`.replace(
-      '#include <dithering_fragment>',
-      `#include <dithering_fragment>
-       vec3 V = normalize(vViewPosition);
-       float fres = pow(1.0 - max(dot(normalize(geometryNormal), V), 0.0), 3.0);
-       gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.45, 0.86, 0.92), fres * 0.20); // sky-teal Fresnel -- HALVED from 0.38: a surface-skimming camera sees almost the whole sheet at grazing incidence, where this term saturates and washed the sea to pale ice
-       float band = smoothstep(0.90, 0.99, dot(normalize(geometryNormal), normalize(vec3(0.4,1.0,0.3))));
-       gl_FragColor.rgb += vec3(0.16, 0.26, 0.27) * band; // glossy highlight band off the real normal (tighter + dimmer)
-       gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.95, 0.99, 1.0), clamp(vFoam, 0.0, 1.0) * 0.85); // crest + breaking-face foam`
-    );
-  }, [oceanUniforms]);
+    shader.fragmentShader = patchOceanFragment(shader.fragmentShader);
+  }, [oceanUniforms, lookUniforms]);
   mat.onBeforeCompile = onBeforeCompile;
 
   return (
