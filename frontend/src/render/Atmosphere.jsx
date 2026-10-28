@@ -139,9 +139,6 @@ export const SUN_OFFSET = { x: 50, y: 100, z: 50 };
  *  the shadow camera's `near`; a directional light's position otherwise carries no distance meaning. */
 export const SUN_DISTANCE = 140;
 
-// Capture's solar angle is DECLARED, never "wherever the clock was": render/mood.js CAPTURE_SOLAR and captureCycle
-// (noon for a day state, midnight for a night state, or the state's own declared fraction). It lived here as
-// CAPTURE_SOLAR_FRACTION = 0.25 for every state until the light-colour plan's Task 3b.
 
 /** Above this y-component the sun counts as above the horizon (god rays allowed). A small positive
  *  epsilon rather than 0: exactly at the horizon the screen-space projection is at its least stable,
@@ -409,8 +406,8 @@ export function Atmosphere({ shadowConfig }) {
     //
     // CAPTURE SAFETY, per CLAUDE.md: "a capture guard must RESET to a declared value, never early-return."
     // Freezing the clock wherever it happened to be would make every gated frame run-dependent, since boot length
-    // varies 1.68-10.43s between processes. So capture renders at a DECLARED fraction (captureCycle): the state's own
-    // `captureSolarFraction` if it set one, else noon for a day state and midnight for a night state. Live play goes
+    // varies 1.68-10.43s between processes. So capture renders at a DECLARED fraction (captureCycle): noon for a day
+    // state and midnight for a night state. Live play goes
     // through liveCycle, which maps a corrupt (non-finite) gameTime to noon rather than to the key-less dawn.
     //
     // LIVE PLAY READS THE SKY CLOCK, NEVER st.gameTime DIRECTLY: gameTime is a 1 Hz step, and the light read from it

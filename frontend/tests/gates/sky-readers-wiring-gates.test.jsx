@@ -19,10 +19,8 @@ import { HueSaturationEffect, BrightnessContrastEffect } from 'postprocessing';
  *   MoodGradeDriver    the live HueSaturation and BrightnessContrast effects take the frame's grade, all three values,
  *                      at two grades that differ from noon's in every component (midnight's, the boss's).
  *   Atmosphere         the dome's painted moon (uMoonDir) rides the frame's moonDir, read where the moon is far from its
- *                      own noon (the uniform's initial value); and under capture the frame is the state's DECLARED
- *                      fraction (captureSolarFraction), else noon or midnight by isDay.
- *   the store          a declared capture fraction never outlives capture: setCaptureMode(false), which the exitCapture
- *                      hook calls, clears it.
+ *                      own noon (the uniform's initial value); and under capture the frame is noon or midnight by
+ *                      isDay.
  *
  * Expected values come from the pure functions the frame must agree with (sunArcDirection, moonArcDirection,
  * sampleScript), never from the frame the reader read.
@@ -35,8 +33,6 @@ import { HueSaturationEffect, BrightnessContrastEffect } from 'postprocessing';
  *   MG2 MoodGradeDriver drops bc.contrast                           -> grade RED
  *   MQ the grade re-sampled from the script at noon                 -> grade RED
  *   MK the dome's uMoonDir never written                            -> dome RED
- *   MO capture ignores the declared fraction (isDay only)           -> capture RED
- *   MN setCaptureMode(false) keeps the declared fraction            -> store RED
  *   W0 identity (a comment edit in Sun.jsx)                         -> SURVIVED
  *
  * BLIND SPOT: nothing is drawn. The dome shader's horizon mask on the painted moon (mutant MT) is GLSL, so it is read
@@ -136,7 +132,7 @@ describe('MoodGradeDriver writes the frame\'s grade onto the live effects', () =
   });
 });
 
-describe('Atmosphere: the dome\'s moon and capture\'s declared fraction', () => {
+describe('Atmosphere: the dome\'s moon and capture\'s fraction by isDay', () => {
   const shadowConfig = { mapSize: [TIERS.low.shadowMapSize, TIERS.low.shadowMapSize], extent: 40, camera: { left: -40, right: 40, top: 40, bottom: -40, near: 0.1, far: 400 } };
   const dome = (scene) => {
     let mat = null;
@@ -146,7 +142,7 @@ describe('Atmosphere: the dome\'s moon and capture\'s declared fraction', () => 
   const live = (over) => {
     exitCaptureMode();
     moodRef.current = 0;
-    useGameStore.setState({ weatherMoodBoost: 0, dangerLevel: 0, playerPosition: { x: 0, y: 60, z: 0 }, captureStudio: false, captureSolarFraction: null, ...over });
+    useGameStore.setState({ weatherMoodBoost: 0, dangerLevel: 0, playerPosition: { x: 0, y: 60, z: 0 }, captureStudio: false, ...over });
   };
 
   it('the painted moon rides the frame\'s moonDir (f 0.62: far from the moon\'s own noon)', async () => {
@@ -164,31 +160,17 @@ describe('Atmosphere: the dome\'s moon and capture\'s declared fraction', () => 
     expect(angleDeg(skyFrameRef.current.moonDir, want), 'the published frame\'s moonDir is not the moon\'s arc').toBeLessThan(1e-4);
   });
 
-  it('under capture the frame is the state\'s DECLARED fraction, and without one noon or midnight by isDay', async () => {
-    live({ gameTime: 0.3 * CYCLE_UNITS, isDay: true, captureSolarFraction: 0.48 });
+  it('under capture the frame is noon for a day state and midnight for a night state, whatever the clock', async () => {
+    // The clock sits at 0.3, away from both declared fractions, so a capture that read the clock fails both reads.
+    live({ gameTime: 0.3 * CYCLE_UNITS, isDay: false });
     enterCaptureMode();
     r = await mountR3F(<Atmosphere shadowConfig={shadowConfig} />);
     await r.step(1);
-    const declared = sunArcDirection(NOON_SUN, 0.48), noon = sunArcDirection(NOON_SUN, 0.25), midnight = sunArcDirection(NOON_SUN, 0.75);
-    expect(angleDeg(declared, noon), 'SETUP: the declared fraction is indistinguishable from noon').toBeGreaterThan(10);
-    expect(angleDeg(skyFrameRef.current.sunDir, declared), 'capture did not render the declared fraction 0.48').toBeLessThan(1e-4);
-
-    useGameStore.setState({ captureSolarFraction: null, isDay: false });
-    await r.step(1);
-    expect(angleDeg(skyFrameRef.current.sunDir, midnight), 'capture without a declared fraction is not midnight for a night state').toBeLessThan(1e-4);
+    const clock = sunArcDirection(NOON_SUN, 0.3), noon = sunArcDirection(NOON_SUN, 0.25), midnight = sunArcDirection(NOON_SUN, 0.75);
+    expect(angleDeg(clock, noon), 'SETUP: the clock is indistinguishable from noon').toBeGreaterThan(10);
+    expect(angleDeg(skyFrameRef.current.sunDir, midnight), 'capture is not midnight for a night state').toBeLessThan(1e-4);
     useGameStore.setState({ isDay: true });
     await r.step(1);
-    expect(angleDeg(skyFrameRef.current.sunDir, noon), 'capture without a declared fraction is not noon for a day state').toBeLessThan(1e-4);
-  });
-});
-
-describe('the store: a declared capture fraction never outlives capture', () => {
-  it('setCaptureMode(false) clears captureSolarFraction; entering capture keeps it', () => {
-    useGameStore.setState({ captureSolarFraction: 0.48 });
-    useGameStore.getState().setCaptureMode(true);
-    expect(useGameStore.getState().captureSolarFraction, 'entering capture dropped the declared fraction').toBe(0.48);
-    useGameStore.getState().setCaptureMode(false);
-    expect(useGameStore.getState().isCaptureMode).toBe(false);
-    expect(useGameStore.getState().captureSolarFraction, 'leaving capture kept the declared fraction').toBeNull();
+    expect(angleDeg(skyFrameRef.current.sunDir, noon), 'capture is not noon for a day state').toBeLessThan(1e-4);
   });
 });

@@ -200,12 +200,10 @@ describe('the sky frame: the script under the danger overlays', () => {
     expect(n).toBe(2);
   });
 
-  it('captureCycle: declared, then by isDay', () => {
+  it('captureCycle: noon for a day state, midnight for a night state', () => {
     expect(CAPTURE_SOLAR).toEqual({ day: 0.25, night: 0.75 });
     expect(captureCycle({ isDay: true })).toBe(0.25);
     expect(captureCycle({ isDay: false })).toBe(0.75);
-    expect(captureCycle({ isDay: true, captureSolarFraction: 0.48 })).toBe(0.48);
-    expect(captureCycle({ isDay: false, captureSolarFraction: NaN })).toBe(0.75);
-    expect(captureCycle({ isDay: false, captureSolarFraction: null })).toBe(0.75);
+    expect(captureCycle({})).toBe(0.25);
   });
 });

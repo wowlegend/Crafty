@@ -367,14 +367,8 @@ function GameApp({ experienceSystem }) {
     registerTestHook('worldNow', () => worldNow());
     // `setTimeOfDay` writes the same `isDay` state the day/night cycle reads.
     registerTestHook('setTimeOfDay', (t) => useGameStore.getState().setTimeOfDay(t));
-    // The light-colour plan (Task 3b). `setCaptureSolar(f | null)` declares the cycle fraction a CAPTURE frame renders
-    // at (render/mood.js captureCycle; null falls back to noon or midnight by isDay). `setWeatherMoodBoost(n)` pins the
-    // storm overlay's input: the live weather flips clear and storm every 90 s (render/WeatherSystem.jsx), so a spec
-    // reading the sky pins it first. Both read back what the store now holds.
-    registerTestHook('setCaptureSolar', (f) => {
-      useGameStore.setState({ captureSolarFraction: typeof f === 'number' && Number.isFinite(f) ? f : null });
-      return useGameStore.getState().captureSolarFraction;
-    });
+    // `setWeatherMoodBoost(n)` pins the storm overlay's input: the live weather flips clear and storm every 90 s
+    // (render/WeatherSystem.jsx), so a spec reading the sky pins it first. It reads back what the store now holds.
     registerTestHook('setWeatherMoodBoost', (n) => {
       useGameStore.getState().setWeatherMoodBoost(n);
       return useGameStore.getState().weatherMoodBoost;

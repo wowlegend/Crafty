@@ -94,12 +94,11 @@ export { SUN_ARC_SWING, sunArcDirection };
 export const CAPTURE_SOLAR = Object.freeze({ day: 0.25, night: 0.75 });
 
 /**
- * The cycle fraction a capture frame renders at. A finite declared fraction (the store's `captureSolarFraction`, set by
- * a state such as `explore-golden`) wins; otherwise the state's `isDay` picks noon or midnight. Never "wherever the boot
- * clock stopped": a capture guard RESETS to a declared value (AGENTS.md).
+ * The cycle fraction a capture frame renders at: noon for a day state, midnight for a night state. Never "wherever the
+ * boot clock stopped": a capture guard RESETS to a declared value (CLAUDE.md), and night is the clock's now, so a
+ * night state pinned at noon would render daylight.
  */
-export function captureCycle({ isDay = true, captureSolarFraction = null } = {}) {
-  if (typeof captureSolarFraction === 'number' && Number.isFinite(captureSolarFraction)) return captureSolarFraction;
+export function captureCycle({ isDay = true } = {}) {
   return isDay === false ? CAPTURE_SOLAR.night : CAPTURE_SOLAR.day;
 }
 
