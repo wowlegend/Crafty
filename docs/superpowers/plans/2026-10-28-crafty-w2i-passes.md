@@ -142,4 +142,56 @@ differential is measured with a sync point per frame in both arms.
 
 ## Results
 
-Filled in after T5 and T6.
+**The runs.** The production build of `651b589c` (index chunk `index-DDg_cF3-.js`), served by `lookbook.mjs` on its
+managed port, headless Chromium on ANGLE-Metal (Apple M3 Max), 1728x1117 CSS at device scale 2, tier `high` the whole
+time (dpr 1.475, canvas 2549x1647), 60 frames a second free-running. Windowed: noon 15:14-15:21, golden hour
+15:23-15:31, midnight 15:33-15:40 (local), each block started at a 1-minute load of 10.3, 9.7 and 11.0, which other
+sessions then pushed to 50, 28 and 26 during the windows (recorded per window). Alternation: noon 15:49-15:56, golden
+16:00-16:03, midnight 16:04-16:06. Raw readings: `docs/superpowers/masterpiece-2026-10/evidence/w2i/`.
+
+**The instruments.** The segments summed to 55-63 ms per frame at 60 frames a second: not GPU time, as W1-D found. The
+whole-frame query read more than the synced wall clock that brackets it in 214 of 240 windows: not GPU time either,
+and not admitted. The synced wall clock and U were admitted by the control at all three times. U's windowed readings
+sit at one of two busy levels, about 45% and 87%, at the same 60 frames a second, switching every tens of seconds at
+moments unrelated to the arm; the alternation shows the same pass costing about three times as long at the higher
+level (N8AO 1 ms against 3.5 ms in one window), so the GPU's clock is the likeliest cause, and a pass's saving is partly
+taken back by the clock within a few seconds. The windowed medians are therefore lower than the alternation's.
+
+**U differentials, ms of GPU busy time per frame** (median [min..max] (positive/n), share of the frame with the pass on):
+
+| Arm | Noon, windowed | Golden, windowed | Midnight, windowed | Noon, alternation | Golden, alternation | Midnight, alternation |
+|---|---|---|---|---|---|---|
+| N8AO | 0.32 [0.02..3.34] (5/5) 4.1% | 0.32 [-0.17..3.68] (4/5) 4.2% | **2.31 [0.64..4.39] (5/5) 26.2%** | 3.41 [0.17..5.67] (18/18) 29% | 3.67 [1.00..4.00] (18/18) 25% | 2.58 [0.17..4.50] (18/18) 24% |
+| GodRays + Sun | 0.17 [-5.68..2.04] (3/5) 2.1% | -0.48 [-6.13..1.74] (2/5) | 0.14 [-0.49..0.50] (3/5) 1.6% | 1.33 [1.17..1.50] (18/18) 9.1% | 1.33 [1.00..1.50] (18/18) 9.0% | 0.00 [-5.00..0.67] (6/18): gated below the horizon |
+| Bloom | 1.11 [1.01..1.34] (5/5) 7.6% | 1.19 [-0.00..1.77] (4/5) 8.1% | 1.00 [-0.16..1.86] (4/5) 7.4% | 1.17 [1.00..1.50] (18/18) 8.0% | 1.17 [0.83..1.50] (18/18) 7.9% | 1.00 [1.00..1.83] (18/18) 7.5% |
+| SMAA | 0.66 [-0.51..1.03] (4/5) 4.5% | 0.47 [-0.35..0.79] (3/5) 5.8% | 0.88 [0.46..0.94] (5/5) 6.6% | 0.67 [0.50..0.67] (18/18) 4.6% | 0.75 [0.50..1.00] (18/18) 5.1% | 0.67 [0.50..1.00] (18/18) 5.0% |
+| Tone mapping | 0.12 [-0.03..0.22] (4/5) 0.8% | -0.02 [-0.83..0.19] (2/5) | 0.04 [-0.02..1.03] (4/5) 0.3% | not run | not run | not run |
+| Grade | 0.07 [-0.22..0.20] (3/5) 0.5% | 0.01 [-0.14..0.16] (3/5) 0.1% | 0.15 [-0.03..0.28] (4/5) 1.1% | not run | not run | not run |
+| Vignette | -0.00 [-0.11..0.21] (2/5) | 0.04 [-0.08..0.18] (3/5) 0.3% | 0.12 [-0.15..0.94] (3/5) 0.9% | not run | not run | not run |
+| All post (control) | 9.93 [2.15..10.46] (5/5) 68% | 10.26 [1.00..10.51] (5/5) 70% | 4.59 [3.17..7.10] (5/5) 52% | 7.67 (18/18) | 8.33 (18/18) | 3.50 (18/18) |
+
+The synced wall clock's differentials were within 0.25 ms of zero or positive for every arm the rule finds material,
+so none contradicts it. Its own medians, for the record: N8AO 1.40, 1.10 and 0.70 ms at the three times.
+
+**Look, judged on the pairs** (`evidence/w2i/frames/`, each pass on, then off, same stand, bearing and time):
+
+- **N8AO** (`noon-000-n8ao-*`, `golden-056-n8ao-*`, `midnight-000-n8ao-*`): at noon and golden hour, a slight darkening
+  under the leaf canopy and where a trunk meets it goes; the lodge wall, the ground and the NPCs do not change; at
+  midnight the two frames cannot be told apart. The mesher's baked vertex AO (`aAO` in `world/Terrain.jsx`) already
+  darkens every block corner and stays. The frame differences (1.2-1.3% mean) are the size of the motion between the
+  two shots (rain, grass, clouds). **Small.**
+- **GodRays + Sun** (`noon-316-godrays-sun-*`, `golden-043-godrays-sun-*`): at golden hour, facing the sun, the sun
+  disc and its warm glow are the frame: off, there is no sun in the sky at all and the scene reads as flat overcast
+  green. At noon facing the sun the shafts wash the upper half (the lodge roof reads pale pink-beige instead of maroon,
+  the hands brown instead of black), which reads as glare more than light. **Large** at golden hour.
+
+**Decisions by the rule.** N8AO is material (windowed at midnight; the alternation, 3.4-3.7 ms and about a quarter of
+the frame, does not block it) and its look loss is small: **deleted**, with no ink-edge replacement (the loss is small
+and the vertex AO stays). GodRays + Sun is not material on the windowed U at any time, and the alternation can only
+block, so **kept**; at 1.3 ms and 9% of the frame it is the largest remaining pass and the first candidate if
+steady-cool's raised pixel budgets need room, and its noon glare is a look note for the light and colour lane. Bloom,
+SMAA, tone mapping, the grade and the vignette are not material: **kept**. GodRays is the only kept pass a tier switches
+off, and a dynamic import would free nothing: `GodRaysEffect` lives in postprocessing's single module in the r3f chunk,
+which boot loads for the composer, Bloom and SMAA anyway, and GameScene already builds it only when a tier first needs
+it. The n8ao deletion takes 141,581 B out of the r3f chunk (829,540 to 687,959 B; 77 KB gzipped), and its ceiling falls
+by that (900,000 to 760,000 B).

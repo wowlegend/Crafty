@@ -18,6 +18,51 @@
 
 ---
 
+## 2026-10-28 — [LOOP] W2-I: the post passes measured on the GPU's own busy time; N8AO deleted, the rest kept
+
+**Decided by the W2-I lane under the standing grant** (DECISIONS 2026-10-28 item 14), by the rule in
+`docs/superpowers/plans/2026-10-28-crafty-w2i-passes.md`, written before the measurement and amended twice before the
+runs it decides on. The items continue the numbering of the landing entry below (its last is 24), so "DECISIONS
+2026-10-28 item 26" names one item. Readings: `docs/superpowers/masterpiece-2026-10/evidence/w2i/`. Why the lane exists:
+Kevin heard his M3 Max run hot on the live site; #24 cut the pixels, this cuts GPU work per frame.
+
+25. **What a pass costs is read from the GPU's own busy time, not from timer queries.** The per-pass timer segments
+   summed to 55-63 ms per frame at 60 frames a second, and the whole-frame query (one query per composer.render, opened
+   after a sync) read more than the synced wall clock that brackets it in 214 of 240 windows: neither is GPU execution
+   time on ANGLE-Metal. The decision instrument is U, the driver's "Device Utilization %" (`ioreg`, no root) times the
+   frame interval, in a free-running window, admitted at each time by an all-post control that moved it by 4.6 to 10.3
+   ms. The GPU sat at one of two busy levels (about 45% and 87% at the same 60 frames a second), switching every tens of
+   seconds, so the windowed run (5 interleaved repetitions of 5 s pairs) under-reads a pass whose pair straddles a
+   switch; a fast alternation (the pass off and on every 1.5 s, 18 pairs per arm and time) reads inside one level and,
+   by the rule, can only block a deletion. Both stay in the lookbook (`--passes`, `--alt`) for the next pass question.
+26. **N8AO is deleted.** U, windowed: 0.32 ms at noon and golden hour (4%), **2.31 ms at midnight (26% of the frame,
+   5 of 5 positive)**, material by the rule; the alternation does not block it: 3.41 ms at noon (29%), 3.67 at golden
+   hour (25%), 2.58 at midnight (24%), every one of 18 pairs positive each time. The look loss is small: a slight
+   darkening under the leaf canopy at noon and golden hour, nothing at midnight, and the mesher's baked vertex AO still
+   darkens every block corner. No ink-edge pass replaces it. The r3f chunk loses 141,581 B (829,540 to 687,959 B, 77 KB
+   gzipped) and its budget ceiling falls by that, 900,000 to 760,000 B; `n8ao` leaves `package.json` (it stays installed
+   as `@react-three/postprocessing`'s own dependency). Two gates keep it out: `scripts/ci/bundle-budget.mjs` fails on
+   either of two strings only n8ao's code carries in any chunk, and `scripts/ci/prod-smoke.mjs` fails when the chain the
+   production build renders has a pass of N8AO's shape (`chainVerdict`, `CHAIN_ABSENT`). Door: two-way; restoring it is
+   one dependency and one element in `GameScene.jsx`, with the ceiling raised back in its own commit.
+27. **GodRays and the Sun billboard stay.** U, windowed: 0.17, -0.48 and 0.14 ms (2 to 3 of 5 positive: the busy-level
+   switches); not material. The alternation reads 1.33 ms at noon and golden hour, 9% of the frame, under the 10% line,
+   and it can only block. The look loss would be large: at golden hour, facing the sun, the sun disc and its warm glow
+   are the frame, and without them the sky has no sun and the scene reads as flat overcast. At noon facing the sun the
+   shafts wash the upper half of the frame (the lodge roof pale pink-beige instead of maroon), a look note for the light
+   and colour lane, not a deletion under this rule. It is the largest remaining pass and the first candidate when
+   steady-cool's pixel budgets rise toward dpr 2. **No dynamic import:** `GodRaysEffect` lives in postprocessing's single
+   module in the r3f chunk, which boot loads for the composer, Bloom and SMAA anyway, and GameScene already builds the
+   effect only when a tier first needs it, so a dynamic import would move nothing off the boot path.
+28. **Bloom, SMAA, tone mapping, the grade and the vignette stay.** U, windowed, largest of the three times: Bloom 1.19
+   ms (8.1%), SMAA 0.88 (6.6%), tone mapping 0.12, the grade 0.15, the vignette 0.12; none material. The alternation
+   reads Bloom 1.17 ms (8%) and SMAA 0.67 to 0.75 (5%).
+29. **Not proven, and owed.** Watts: `scripts/dev/power-ab.sh` needs root and stays Kevin's optional row; the GPU-time
+   saving is measured, the temperature and fan change are not. The iPad: WebKit was not measured (no timer extension,
+   and utilization was read only for Chromium), though `low` never ran N8AO. Other machines, and which busy level a
+   player's Mac settles at. Steady-cool's budgets rising toward dpr 2 with the freed time is #24's follow-up, not done
+   here. Rapier lazy behind the title (plan row 28) has its own open registry row (`PLAN:sota-reset:28`).
+
 ## 2026-10-28 — [LOOP] The SOTA reset's standing decisions (W1-H)
 
 **Decided by the command session** under item 14 of the 2026-10-28 landing entry below, from the SOTA reset plan
