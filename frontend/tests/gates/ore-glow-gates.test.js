@@ -133,6 +133,7 @@ describe('the glow map: baked from level 0, mipped on its own', () => {
     // prod-smoke finds the block array on the GPU as the one TEXTURE_2D_ARRAY of its dimensions.
     expect(glow.image.depth, 'the glow map has the block array\'s dimensions: prod-smoke could not tell them apart').not.toBe(LAYERS);
     expect(glow.mipmaps.length).toBe(tex.mipmaps.length);
+    expect(glow.mipmaps[0].data, 'the uploaded level 0 is not the map checked below').toBe(glow.image.data);
     expect(glow.mipmaps.length).toBeGreaterThanOrEqual(6);
     for (const k of ['minFilter', 'magFilter', 'wrapS', 'wrapT']) expect(glow[k], k).toBe(tex[k]);
   });
@@ -154,20 +155,22 @@ describe('the glow map: baked from level 0, mipped on its own', () => {
     expect(checked).toBe(3 * SIZE * SIZE);
   });
 
-  it('every level keeps each ore\'s level-0 mean glow, where the old per-texel mask moved by 40% or more at 4x4', () => {
+  it('every level keeps each ore\'s level-0 mean glow, where the old per-texel mask moves by 20% or more at some level', () => {
     let levels = 0;
     for (const name of Object.keys(ORE_GLOW)) {
       const l = BLOCK_ID[name], base = meanGlow(l, 0).fresh;
       expect(base, `${name} has no glow at level 0`).toBeGreaterThan(0.05);
+      let oldMoved = 0;
       for (let k = 1; k < glow.mipmaps.length; k++) {
-        const { fresh } = meanGlow(l, k);
+        const { fresh, old } = meanGlow(l, k);
         expect(Math.abs(fresh / base - 1), `${name} at level ${k}: mean glow ${fresh.toFixed(4)} vs level 0 ${base.toFixed(4)}`)
           .toBeLessThan(0.02);
+        oldMoved = Math.max(oldMoved, Math.abs(old / base - 1));
         levels++;
       }
-      const at4 = meanGlow(l, 3);
-      expect(glow.mipmaps[3].width).toBe(4);
-      expect(Math.abs(at4.old / base - 1), `${name}: the old path held at 4x4, so this case cannot see the defect`).toBeGreaterThan(0.4);
+      // Clustered nuggets keep more of their colour in a mip texel than single-texel specks did, so the old path moves
+      // less at any one level; ten times the bound above is still a defect this case can see.
+      expect(oldMoved, `${name}: the old path held at every level, so this case cannot see the defect`).toBeGreaterThan(0.2);
     }
     expect(levels).toBe(3 * (glow.mipmaps.length - 1));
   });

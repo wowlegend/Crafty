@@ -973,3 +973,34 @@ made on the full 2560x1600 frames.
   end-grain pattern on a side face.
 - `before-trunk-0.48.png`: the same bullseyes under golden light.
 - `before-trunk-0.75.png`: the bullseyes in dark red at midnight.
+
+### Unit 1: the tone grammar, measured
+
+Every sampled layer, against the frozen reference (linear luminance; chromaticity of the linear mean; tones and the
+same-tone neighbour ratio from `tests/world/_textureStats.js`):
+
+| layer | before lum | after lum | change | chroma r, g change | tones before / after | same-tone neighbours before / after |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 grass | 0.1410 | 0.1481 | 5.0% | -0.003, 0.004 | 68 / 3 | 0.016 / 0.850 |
+| 2 dirt | 0.1668 | 0.1670 | 0.1% | -0.010, 0.004 | 123 / 3 | 0.012 / 0.883 |
+| 3 stone | 0.1580 | 0.1618 | 2.4% | 0.000, 0.000 | 54 / 3 | 0.042 / 0.864 |
+| 4 sand | 0.4782 | 0.4752 | -0.6% | -0.001, -0.002 | 107 / 3 | 0.033 / 0.803 |
+| 5 snow | 0.8926 | 0.8713 | -2.4% | -0.006, -0.000 | 22 / 3 | 0.053 / 0.865 |
+| 6 wood | 0.0488 | 0.0473 | -3.2% | 0.004, 0.000 | 50 / 3 | 0.031 / 0.654 |
+| 7 leaves | 0.1310 | 0.1373 | 4.8% | 0.006, -0.012 | 71 / 3 | 0.015 / 0.846 |
+| 8 cactus | 0.1672 | 0.1764 | 5.5% | 0.002, -0.003 | 52 / 3 | 0.030 / 0.744 |
+| 10 coal | 0.1207 | 0.1231 | 2.0% | 0.000, 0.000 | 69 / 4 | 0.025 / 0.751 |
+| 11 iron | 0.2542 | 0.2503 | -1.5% | -0.008, 0.001 | 170 / 4 | 0.017 / 0.740 |
+| 12 gold | 0.3321 | 0.3395 | 2.2% | 0.007, -0.007 | 140 / 4 | 0.023 / 0.751 |
+| 13 diamond | 0.2576 | 0.2570 | -0.2% | -0.000, -0.001 | 165 / 4 | 0.025 / 0.741 |
+| 14 cobblestone | 0.1747 | 0.1656 | -5.2% | -0.000, -0.000 | 56 / 3 | 0.060 / 0.806 |
+| 15 glass | 0.8395 | 0.8439 | 0.5% | -0.000, -0.000 | 24 / 3 | 0.110 / 0.897 |
+
+The ore tiles paint four of their five declared tones: their stone matrix has no cracks. The index chunk grew 1,059 B
+(640,154 to 641,213; the plan allowed 4,000). The tiles were opened as an 8x contact sheet before the commit: grass
+is clumped shade and light over a mid green; dirt is clods of shade with a few light pebbles; stone is light and base
+facets with broken one-texel cracks; sand is diagonal ripples; snow is soft blue drifts with rare glints; the wood end
+grain is rings in a two-texel rim around a light pith; leaves are lit lobes over dark gaps with no black holes; cactus
+is vertical ridges with a staggered spine column; ores are two-to-four-texel nuggets with a darker rim; cobblestone
+is a running bond of rounded cobbles in two tones. The spine columns read as dotted lines on the sheet; they are left
+as they are, since a cactus side is small on screen.

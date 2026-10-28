@@ -18,6 +18,28 @@
 
 ---
 
+## 2026-10-28 — [LOOP] One material grammar: clustered tones, and top, side and bottom faces (lane W2-K)
+
+**Decided by the command session's W2-K lane** under items 14 and 16 of the 2026-10-28 landing entry, building Units
+0-2 of `docs/superpowers/plans/2026-10-27-crafty-material-grammar.md` as its 2026-10-28 amendment scopes them (plan
+row 44 of the SOTA reset). Numbered on from that entry's last item. Each stands while it earns its place.
+
+25. **The block textures speak a tone grammar** (`frontend/src/world/proceduralTextures.js`). The bold-flat texture
+   look (solid fills, NEAREST up close, no PBR or normal maps) now reads: each material is two to four
+   solid tones (`MATERIAL_TONES`), painted in clustered shapes from value noise on a lattice whose cells divide the
+   32-texel tile, never per-texel static. **Why:** every layer was per-texel noise (22 to 170 distinct colours, a
+   texel sharing its neighbour's colour 1-11% of the time), which reads as static up close and, before the mipmaps,
+   crawled at distance; the leaves' 15% near-black "holes" read as mould. **Value held:** each layer keeps its linear
+   mean within 15% in luminance and 0.03 in chromaticity of a reference frozen before the repaint
+   (`frontend/tests/world/material-before-2026-10-28.json`); measured, every layer is within 5.5% in luminance and 0.012 in chromaticity. The far field,
+   the biome tint, the grass blades' match to their turf, the ore glow and the light rig keep their inputs, so the
+   light and colour lane's tuning stands. The tones are shaded by rank, not by threshold, so a layer's mean is set by
+   its shares. Stone stays grey (`r = g`, `b - r <= 3`) under the ore glow's chroma edge, and the ore tiles' matrix
+   is stone without its cracks. **Gates:** `frontend/tests/gates/material-grammar-gates.test.js` (declared tones,
+   clustering, seams, the frozen means, no texel under 0.35 of its layer's mean but a nugget, stone never glowing).
+   **Cost:** no GPU change (same array, same fetch); the index chunk grew 1,059 B. Mutations are in the commit's
+   trailers.
+
 ## 2026-10-28 — [LOOP] The SOTA reset's standing decisions (W1-H)
 
 **Decided by the command session** under item 14 of the 2026-10-28 landing entry below, from the SOTA reset plan
