@@ -49,8 +49,8 @@ passes). N8AO is a pass of its own and is disabled. The Sun billboard is hidden.
 
 ## Amendment before the measurement: a third instrument, and which instruments count
 
-Two smoke runs (noon, N8AO and Bloom, one and two repetitions, 14:27-14:45Z) checked the instruments before the
-measurement. The first showed the whole-frame query is not GPU execution time either: its median was 13.3 to 15.0 ms
+A smoke run (noon, N8AO and Bloom, one repetition, on the production build) checked the instruments before the
+measurement. It showed the whole-frame query is not GPU execution time either: its median was 13.3 to 15.0 ms
 per frame while the synced wall clock that brackets it read 10.9 to 11.4 ms, and GPU work bracketed by two syncs
 cannot outlast them. The segment sum in the same run was 65 ms per frame at 60 frames a second. The wall clock's
 differentials were near zero (N8AO +0.1 ms, Bloom -0.3 ms) while the query's were +2.2 and +3.0 ms: the wall clock
