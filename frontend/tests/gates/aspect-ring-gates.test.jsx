@@ -19,6 +19,13 @@ import TouchControlsSurface from '../../src/ui/TouchControlsSurface.jsx';
 // The lived browser check is separate and still owed — `touch-probe.mjs` drives the real cold-start — but
 // that harness needs a compositor, and this machine's frame production is intermittently dead. This gate
 // covers everything that does NOT require a rendered frame.
+//
+// Phase 0c rewrote four cases here (the ring now offers every Aspect, locked ones marked; the roar writes on the
+// press). Mutation-Proof for those, via scripts/dev/mutate.sh against src/ui/TouchControls.jsx (15 tests):
+//   A1 plausible-wrong: the ring gated again (the old decision) -> RED
+//   A2 the roar back on the release only (the old wiring) -> RED
+//   A0 identity (a comment edit) -> SURVIVED, as it must.
+// The older cases predate the receipt regime and carry none.
 afterEach(() => {
   cleanup();
   for (const a of ASPECT_VERBS) setIntent(a.verb, false);
@@ -43,10 +50,12 @@ describe('X1 — the Aspect ring makes the four verbs reachable on touch', () =>
     useGameStore.setState({ unlockedTalents: {} });
   });
 
-  it('offers NO ring toggle when no Aspect is unlocked', () => {
+  // REVERSED Phase 0c (refute F9): this asserted "NO ring toggle when no Aspect is unlocked". Nothing on touch opened
+  // the Talents panel, so a touch player could never unlock one and never saw the ring. Locked sectors now open Talents.
+  it('offers the ring toggle even when no Aspect is unlocked — a new player must see the signature', () => {
     withAspects({});
     render(<TouchControls isWorldBuilt />);
-    expect(screen.queryByTestId('touch-aspects')).toBeNull();
+    expect(screen.getByTestId('touch-aspects')).toBeInTheDocument();
   });
 
   it('offers the toggle once an Aspect is unlocked', () => {
@@ -55,24 +64,35 @@ describe('X1 — the Aspect ring makes the four verbs reachable on touch', () =>
     expect(screen.getByTestId('touch-aspects')).toBeInTheDocument();
   });
 
-  it('shows ONLY the unlocked verbs when opened — a locked sector is never offered', () => {
+  // REVERSED Phase 0c (F9): this asserted a locked sector is never offered. Every sector is now offered and a locked
+  // one is MARKED (and opens Talents — tests/gates/touch-hold-gates.test.jsx drives that).
+  it('offers EVERY verb when opened, marking the locked ones and only those', () => {
     const [first, second] = ASPECT_VERBS;
     withAspects({ [first.talent]: 1 });
     render(<TouchControls isWorldBuilt />);
     fireEvent.pointerUp(screen.getByTestId('touch-aspects'));
-    expect(screen.getByTestId(`touch-aspect-${first.verb}`)).toBeInTheDocument();
-    expect(screen.queryByTestId(`touch-aspect-${second.verb}`)).toBeNull();
+    expect(screen.getByTestId(`touch-aspect-${first.verb}`)).toHaveAttribute('data-locked', 'false');
+    expect(screen.getByTestId(`touch-aspect-${second.verb}`)).toHaveAttribute('data-locked', 'true');
   });
 
+  // Phase 0c: the roar writes on the PRESS now (it is press-and-hold — the charge needs the intent held), and the
+  // other verbs still pulse on the release. Both write the same boolean intent the keyboard does.
   it('TAPPING A SECTOR WRITES THE REAL INTENT — the whole point of the feature', () => {
-    const a = ASPECT_VERBS[0];
-    withAspects({ [a.talent]: 1 });
+    withAspects(Object.fromEntries(ASPECT_VERBS.map((a) => [a.talent, 1])));
     render(<TouchControls isWorldBuilt />);
-    expect(getInput()[a.verb]).toBe(false);
-    fireEvent.pointerUp(screen.getByTestId('touch-aspects'));
-    fireEvent.pointerUp(screen.getByTestId(`touch-aspect-${a.verb}`));
-    // The same boolean intent the keyboard's KeyR writes — no new downstream path.
-    expect(getInput()[a.verb]).toBe(true);
+    let written = 0;
+    for (const a of ASPECT_VERBS) {
+      expect(getInput()[a.verb]).toBe(false);
+      fireEvent.pointerUp(screen.getByTestId('touch-aspects'));
+      const sector = screen.getByTestId(`touch-aspect-${a.verb}`);
+      if (a.verb === 'roar') fireEvent.pointerDown(sector, { pointerId: 1 });
+      else fireEvent.pointerUp(sector);
+      // The same boolean intent the keyboard's key writes — no new downstream path.
+      expect(getInput()[a.verb], `${a.verb}: the tap wrote nothing`).toBe(true);
+      if (a.verb === 'roar') fireEvent.pointerUp(sector, { pointerId: 1 });
+      written += 1;
+    }
+    expect(written).toBe(4);
   });
 
   it('closes the ring after a selection so it cannot eat the next tap', () => {
@@ -80,7 +100,8 @@ describe('X1 — the Aspect ring makes the four verbs reachable on touch', () =>
     withAspects({ [a.talent]: 1 });
     render(<TouchControls isWorldBuilt />);
     fireEvent.pointerUp(screen.getByTestId('touch-aspects'));
-    fireEvent.pointerUp(screen.getByTestId(`touch-aspect-${a.verb}`));
+    fireEvent.pointerDown(screen.getByTestId(`touch-aspect-${a.verb}`), { pointerId: 1 });
+    fireEvent.pointerUp(screen.getByTestId(`touch-aspect-${a.verb}`), { pointerId: 1 });
     expect(screen.queryByTestId(`touch-aspect-${a.verb}`)).toBeNull();
   });
 
