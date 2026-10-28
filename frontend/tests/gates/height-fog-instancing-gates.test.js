@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { installHeightFog } from '../../src/render/Atmosphere.jsx';
 
 // THE PATCHED fog_vertex IS COMPILED INTO EVERY MATERIAL THREE FOGS, so it may read only what every stock vertex
-// shader that includes it has declared by then. A chunk that read `transformed` compiled for meshes and failed for
+// shader that includes it has declared by then. A chunk that reads `transformed` compiles for meshes and fails for
 // every fogged SpriteMaterial, whose shader never declares it.
 //
 // This EXECUTES the patch (it mutates THREE.ShaderChunk), expands each stock shader in THREE.ShaderLib up to its
@@ -13,10 +13,12 @@ import { installHeightFog } from '../../src/render/Atmosphere.jsx';
 // each sprite is fogged at its own world Y.
 
 // What three's vertex prefix declares for every non-raw program ahead of the material's source (three 0.172
-// WebGLProgram.js:657-663 uniforms, :667 instanceMatrix under USE_INSTANCING, :683-685 attributes).
+// WebGLProgram.js:657-663 uniforms, :683-685 attributes). instanceMatrix is left out: it is declared only under
+// USE_INSTANCING (:665-667), so a chunk that reads it fails every non-instanced program. A read guarded by
+// #ifdef USE_INSTANCING also reads as undeclared here, because this check ignores #ifdef.
 const PREFIX_DECLARED = [
   'modelMatrix', 'modelViewMatrix', 'projectionMatrix', 'viewMatrix', 'normalMatrix', 'cameraPosition', 'isOrthographic',
-  'instanceMatrix', 'position', 'normal', 'uv',
+  'position', 'normal', 'uv',
 ];
 
 // GLSL words a shader never declares. A builtin missing here reads as undeclared, which fails loud, never silently.
