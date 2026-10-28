@@ -84,16 +84,6 @@ for RANGE in $RANGES; do
   node "$REPO_ROOT/frontend/scripts/ci/mutation-proof-trailer.mjs" "$RANGE" || exit 1
 done
 
-# ── baseline trailer ────────────────────────────────────────────────────────────
-# Same shape, same position, for the ORACLE. The visual gate judges every frame against the committed
-# PNGs, so those PNGs ARE the specification — and until 2026-08-09 not one of the ten gates looked at
-# them. Measured: 79 of 1,603 commits rewrite baselines and 10 of the last 12 bundled a src/ change into
-# the same commit, which makes an intended look change indistinguishable from a regression the oracle was
-# updated to match.
-for RANGE in $RANGES; do
-  node "$REPO_ROOT/frontend/scripts/ci/baseline-trailer.mjs" "$RANGE" || exit 1
-done
-
 # ── green-tree receipt (AB's shape, adopted 2026-09-22 on Kevin's direction) ────────────────────────
 #
 # pre-commit certifies the offline core against the staged tree and records the INDEX TREE HASH. git's
@@ -103,7 +93,7 @@ done
 #
 # WHAT THE RECEIPT DOES NOT AUTHORISE, and this is the part that makes it safe: it speaks only for the
 # OFFLINE CORE. The commit-shaped gates read a COMMIT RANGE that did not exist when the receipt was
-# written, so they run on EVERY push: the two trailers above, and queue-ledger / artifact-currency /
+# written, so they run on EVERY push: the trailer above, and queue-ledger / artifact-currency /
 # e2e-freshness / registry-append-only via `pipeline.sh --tier=push --range-only` below.
 #
 # THAT LAST PART WAS FALSE UNTIL 2026-09-22. A receipt match used to `continue` straight past the

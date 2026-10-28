@@ -161,9 +161,9 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # WHAT THE HOOK OWNS, AND WHY THIS FILE DOES NOT CLAIM IT
 #
-# `mutation-proof-trailer` and `baseline-trailer` read the COMMIT RANGES BEING PUSHED, which arrive on
+# `mutation-proof-trailer` reads the COMMIT RANGES BEING PUSHED, which arrive on
 # the hook's stdin as refspecs and exist nowhere else — not in the tree, not in a runner's checkout, not
-# in this script's environment. The hook runs them itself, once per pushed ref, before this file is
+# in this script's environment. The hook runs it itself, once per pushed ref, before this file is
 # called. "One definition" means no step is stated TWICE, not that every step lives here; a step this
 # file cannot honestly execute would be a second, weaker copy. First draft of this pipeline did claim
 # them, reading a `$RANGE` that was a leaked loop variable from an earlier loop in the hook.

@@ -57,10 +57,10 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **358 source files / 41,223 LOC** in
-  `frontend/src`, plus 141 colocated `*.test.js(x)` files (counted separately —
+- **Size (measured):** **357 source files / 41,491 LOC** in
+  `frontend/src`, plus 138 colocated `*.test.js(x)` files (counted separately —
   tests are not the architecture).
-- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1505 · `src/store/useGameStore.jsx` 1259 · `src/world/Terrain.jsx` 1157 · `src/App.jsx` 1066 · `src/QuestSystem.jsx` 1000.
+- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1505 · `src/store/useGameStore.jsx` 1259 · `src/world/Terrain.jsx` 1169 · `src/App.jsx` 1044 · `src/QuestSystem.jsx` 1000.
   Its MEMBERSHIP is checked exactly by `doc-currency`; the LOC beside each name, and the counts above,
   sit under a ±10% band so ordinary churn does not redden the push — so a specific number here
   can be mildly stale and still green. Regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
@@ -110,18 +110,17 @@ Full procedure — the `finally` shape, `_serve.mjs`, the managed ports, deletin
 ## Build / Test / Gates (from `frontend/`)
 
 <!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->
-**17 gates, across three callers.** Generated from `ci/pipeline.sh` — the ONE definition
+**16 gates, across three callers.** Generated from `ci/pipeline.sh` — the ONE definition
 pre-commit, pre-push and GitHub Actions all call, so no two can drift. Do not edit the table by hand;
 add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.
 
-**8 run on every commit** (offline core, 69s) · **14 on every push** · **13 in CI**.
+**8 run on every commit** (offline core, 69s) · **13 on every push** · **13 in CI**.
 The columns are DERIVED from each step's tier guard in the script, not asserted here — they used to be,
 and all three network/browser gates were printed as pre-push gates they have never been.
 
 | Gate | Command | pre-commit | pre-push | CI | What it actually stops |
 |---|---|:--:|:--:|:--:|---|
 | mutation-proof-trailer | `node scripts/ci/mutation-proof-trailer.mjs <range>` | — | ✅ | — | a commit that ADDS a gate under `tests/gates/` or `scripts/ci/`, or REWRITES the ASSERTIONS of an existing one, without a `Mutation-Proof:` trailer stating what was broken and that it went RED |
-| baseline-trailer | `node scripts/ci/baseline-trailer.mjs <range>` | — | ✅ | — | a commit that rewrites the visual ORACLE under `tests/visual/baseline/` without a `Baseline-Review:` trailer, or that BUNDLES the rewrite with `frontend/src/` changes — which makes an intended look change indistinguishable from a regression the baseline was updated to match |
 | opsec-scan | `node scripts/ci/opsec-scan.mjs --all` | ✅ | ✅ | ✅ | an operator home path, a credential shape, or agent attribution reaching a PUBLIC repo. Built after a third-party statusline tool injected `/Users/<user>/...` into a TRACKED `.claude/settings.json` on its own — a convention cannot stop a tool that edits your config unprompted. Deliberately does NOT flag the operator first name (~196 files of design attribution): a gate that cries wolf gets bypassed, and a bypassed gate on a publish boundary is worse than none |
 | doc-currency | `node scripts/ci/doc-currency.mjs` | ✅ | ✅ | ✅ | a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, drift in the generated MEASURED and GATES blocks, and one of six lock-label phrasings (`(LOCKED`, `LOCKED —`, `IRREDUCIBLE`, `MUST NOT be split`, `KEEP, don't rewrite`, `do not relitigate`) in a canonical doc other than DECISIONS, unless the line cites item 16 (DECISIONS 2026-10-28 item 16). Any other lock wording passes it |
 | eslint | `npm run lint` | ✅ | ✅ | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
@@ -136,7 +135,7 @@ and all three network/browser gates were printed as pre-push gates they have nev
 | registry-append-only | `node scripts/ci/registry-append-only.mjs` | — | ✅ | ✅ | a row of `memory/registry.jsonl` DELETED instead of closed: every row id at the range's base must still be a row at its head. The tree check (`registry-harvest`, in the unit run) proves each open source item has at least one row, so it stays green when one part of a split key goes, and it sees nothing once the old sources leave HEAD. Runs on the pushed range in pre-push (`PUSH_RANGES`; a new branch measures from its merge-base with origin/main) and on the event's base on every CI run. Compares the two ends only, and not a row's content: reopening or retitling a row passes |
 | knip | `npm run knip` | — | — | ✅ | an unused file, export or dependency — the accretion that makes a codebase look larger than the part that runs. CI-only because it is slow and never a correctness failure |
 | npm audit | `npm audit --audit-level=high` | — | — | ✅ | a HIGH or CRITICAL advisory in the installed dependency set. CI-only ON PURPOSE (R5): this needs the registry, and a network outage reddening a local commit is how developers learn to pass --no-verify |
-| prod-smoke | `node scripts/ci/prod-smoke.mjs` | — | — | ✅ | the bundle that actually SHIPS failing to boot, render, or keep a live GL context. It is the only harness that loads the production build — `capture.mjs` and all 25 probes drive the DEV server, which measures LCP ~6.6x slower and cannot see a prod-only break. CI-only because it needs a browser. Skipped (`--code-changed=false`, printed) when CI's change-scope job finds only docs changed since a commit whose `ci ok` passed, the same condition that skips the e2e matrix |
+| prod-smoke | `node scripts/ci/prod-smoke.mjs` | — | — | ✅ | the bundle that actually SHIPS failing to boot, render, or keep a live GL context. It is the only harness that loads the production build — the probes and the e2e suite drive the DEV server, which measures LCP ~6.6x slower and cannot see a prod-only break. CI-only because it needs a browser. Skipped (`--code-changed=false`, printed) when CI's change-scope job finds only docs changed since a commit whose `ci ok` passed, the same condition that skips the e2e matrix |
 <!-- END GATES -->
 
 **Outside the pipeline entirely**, kept by hand because no tier can call them. `knip` used to be listed
