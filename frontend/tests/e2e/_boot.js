@@ -32,6 +32,18 @@ export async function bootDev(page, { withErrors = false } = {}) {
   return errors;
 }
 
+/** THE E2E WORLD'S QUALITY TIER IS PINNED AS PLAY BEGINS, NOT INHERITED (2026-10-27). The tier governor used to
+ *  sample behind the title, read its pace as a slow machine and step every software-rendered run down to `low`
+ *  before play, so the specs here were all written against `low` (CI logs: gl-churn tier ["low","low"],
+ *  world-rebuild "@low"). It now starts in play (render/canvasPace.js `governor`), which would move that step-down —
+ *  recompiles, shadow-map and chunk reallocation — INTO each spec's measurement. So both play helpers set `low`
+ *  just before they force play, the state the suite was built on; at `low` the governor has nothing to decline and,
+ *  on a software renderer, never climbs. Here and not in bootDev: App registers its hooks in a mount effect, and on
+ *  a loaded machine that mount outlasted bootDev's 30 s wait. A spec that needs another tier sets it afterwards. */
+async function pinSuiteTier(page) {
+  await page.evaluate(() => window.__craftyTest.call('setQualityTier', 'low'));
+}
+
 /** Enter play (mounts the in-game HUD) via the headless-safe `forcePlay` hook (no pointer-lock).
  *
  *  DELIBERATELY LENIENT, and NOT sufficient if your spec drives real input — use `startPlayActive`
@@ -45,6 +57,7 @@ export async function startPlay(page) {
   await page
     .waitForFunction(() => window.useGameStore.getState().isSpawnChunkLoaded === true, null, { timeout: 45000 })
     .catch(() => {}); // store-driven specs still assert without it
+  await pinSuiteTier(page);
   await page.evaluate(() => window.__craftyTest.call('forcePlay'));
 }
 
@@ -100,6 +113,7 @@ export async function startPlayActive(page, { worldTimeout = WORLD_TIMEOUT_MS, t
     .catch((e) => {
       throw new Error(`SETUP: the world never built (isSpawnChunkLoaded) within ${worldTimeout} ms — ${e.message}`);
     });
+  await pinSuiteTier(page);
 
   // Two consecutive live reads 250ms apart = 250ms of held gate, which outlives the ~100ms refusal.
   // One read cannot distinguish "set" from "about to be cleared" — that is the whole defect.

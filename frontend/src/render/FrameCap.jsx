@@ -75,7 +75,7 @@ export function switchKeepingClock(clock, setFrameloop, mode) {
  * vsync after the switch on, this tick runs first: the loop finds nothing to draw and stops, and the commit's change is
  * drawn by the next capped frame, at most one interval later. A commit landing on a render tick is drawn by advance().
  */
-export function FrameCap({ fps, active }) {
+export function FrameCap({ fps, active, testHooks = false }) {
   const advance = useThree((s) => s.advance);
   const get = useThree((s) => s.get);
   const set = useThree((s) => s.set);
@@ -85,16 +85,22 @@ export function FrameCap({ fps, active }) {
     return () => set({ setFrameloop: original });
   }, [get, set]);
   const frames = useRef(0);
+  const paced = useRef(0); // frames THIS cap drew (its advance() calls) — the e2e tells them from R3F's own loop's
+  const fpsRef = useRef(fps);
+  fpsRef.current = fps; // the pace in force, for the DEV hook (the title screen selects a slower one)
   useFrame(() => {
     frames.current += 1; // one per R3F frame drawn, whichever loop drew it (read by the DEV hook below)
   });
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
+    // Only the game canvas registers the test hooks: the title canvas mounts a FrameCap too, and one hook name
+    // registered from two canvases would answer for whichever mounted last.
+    if (!import.meta.env.DEV || !testHooks) return;
     // DEV-only: the frame-cap e2e reads the live mode, the count of R3F frames drawn (the world clock is no proof of
-    // drawing: it advances with no frame drawn at all), and the R3F clock, which must not jump back on a loop switch.
-    registerTestHook('readFrameloop', () => ({ loop: get().frameloop, frames: frames.current, clock: get().clock.elapsedTime }));
+    // drawing: it advances with no frame drawn at all), how many of them this cap drew, and the R3F clock, which must
+    // not jump back on a loop switch. `fps` is the pace DECLARED; `paced` is what the cap actually drew.
+    registerTestHook('readFrameloop', () => ({ loop: get().frameloop, frames: frames.current, paced: paced.current, clock: get().clock.elapsedTime, fps: fpsRef.current }));
     registerTestHook('invalidateCanvas', () => get().invalidate()); // stands in for a React commit inside the Canvas
-  }, [get]);
+  }, [get, testHooks]);
   useEffect(() => {
     if (!active || !(fps > 0)) return undefined;
     let last = -Infinity;
@@ -103,8 +109,10 @@ export function FrameCap({ fps, active }) {
       raf = requestAnimationFrame(tick);
       const step = stepCap(t, last, fps);
       last = step.last;
-      if (step.render) advance(t);
-      else get().internal.frames = 0; // nothing for R3F's own loop to draw between capped frames (see above)
+      if (step.render) {
+        advance(t);
+        paced.current += 1;
+      } else get().internal.frames = 0; // nothing for R3F's own loop to draw between capped frames (see above)
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
