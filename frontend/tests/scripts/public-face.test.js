@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 import {
   TARGETS, TOPICS, LABELS, check, write, renderHead, renderNoscript, renderManifest, renderFace, renderPitch,
-  planRequests, ghArgs, escapeAttr, NOSCRIPT_BEGIN, NOSCRIPT_END,
+  planRequests, ghArgs, escapeAttr, main, NOSCRIPT_BEGIN, NOSCRIPT_END,
 } from '../../scripts/ci/public-face.mjs';
 import { BRAND, ICONS, MASKABLE_SAFE_RADIUS } from '../../src/brand.js';
 
@@ -72,27 +72,37 @@ describe('public-face rendering', () => {
     expect(face).toMatchObject({ description: TRICKY.pitch, homepage: BRAND.url, has_discussions: false, has_projects: false });
     expect(face.topics).toEqual([...TOPICS]);
     expect(new Set(face.topics).size).toBe(13);
-    expect(face.labels.map((l) => l.name)).toContain('bug');
     expect(renderPitch(TRICKY)).toContain(TRICKY.pitch);
+  });
+
+  it('keeps exactly the planned labels, since --apply deletes every live label outside them', () => {
+    // The SOTA-reset plan's list (bug, ipad, looks, perf, dependencies), plus javascript and github_actions, the
+    // labels Dependabot adds for the npm and github-actions ecosystems in .github/dependabot.yml. A row dropped
+    // here would be deleted from GitHub, and from every open Dependabot PR, at the next session close.
+    expect(JSON.parse(renderFace()).labels.map((l) => l.name)).toEqual(['bug', 'ipad', 'looks', 'perf', 'dependencies', 'javascript', 'github_actions']);
   });
 });
 
+const HOST = {
+  'frontend/index.html': ([head, body]) => `<html>\n  <head>\n    ${head}\n  </head>\n  <body>\n    ${body}\n  </body>\n</html>\n`,
+  'README.md': ([block]) => `# Crafty\n\n${block}\n\nThe rest of the README.\n`,
+};
+
+/** A scratch checkout holding every target with stale content between its markers. */
+function seedTree() {
+  const root = mkdtempSync(join(tmpdir(), 'public-face-'));
+  for (const rel of new Set(TARGETS.map((t) => t.rel))) {
+    const blocks = TARGETS.filter((t) => t.rel === rel && t.begin).map((t) => `${t.begin}\nold\n${t.end}`);
+    mkdirSync(dirname(join(root, rel)), { recursive: true });
+    writeFileSync(join(root, rel), blocks.length ? HOST[rel](blocks) : 'old\n');
+  }
+  return root;
+}
+
 describe('public-face check and write, on a scratch tree', () => {
   let root;
-  const host = {
-    'frontend/index.html': ([head, body]) => `<html>\n  <head>\n    ${head}\n  </head>\n  <body>\n    ${body}\n  </body>\n</html>\n`,
-    'README.md': ([block]) => `# Crafty\n\n${block}\n\nThe rest of the README.\n`,
-  };
-  const seed = () => {
-    for (const rel of new Set(TARGETS.map((t) => t.rel))) {
-      const blocks = TARGETS.filter((t) => t.rel === rel && t.begin).map((t) => `${t.begin}\nold\n${t.end}`);
-      mkdirSync(dirname(join(root, rel)), { recursive: true });
-      writeFileSync(join(root, rel), blocks.length ? host[rel](blocks) : 'old\n');
-    }
-  };
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'public-face-'));
-    seed();
+    root = seedTree();
   });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
@@ -199,8 +209,108 @@ describe('public-face planRequests', () => {
       { method: 'PATCH', path: 'repos/wowlegend/Crafty/labels/bug', fields: { color: bug.color, description: bug.description } },
       { method: 'POST', path: 'repos/wowlegend/Crafty/labels', fields: looks },
       { method: 'PATCH', path: 'repos/wowlegend/Crafty/labels/perf', fields: { color: perf.color, description: perf.description } },
-      { method: 'DELETE', path: 'repos/wowlegend/Crafty/labels/good%20first%20issue', fields: {} },
+      { method: 'DELETE', path: 'repos/wowlegend/Crafty/labels/good%20first%20issue', fields: {}, label: 'good first issue' },
     ]);
+  });
+
+  describe('--live and --apply through main(), on a scratch tree with a stand-in for gh', () => {
+    let root;
+    beforeEach(() => {
+      root = seedTree();
+      write(root);
+    });
+    afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+    // Answers the three reads --live makes, records every call, and throws on any other, so an unexpected request
+    // fails the test instead of passing unseen. `usage[label]` is { issues, prs } open counts; a label not named is 0.
+    const fakeGh = (live, usage = {}) => {
+      const calls = [];
+      const run = (args) => {
+        calls.push(args);
+        if (args[1] === '-X') return '{}';
+        if (args[1] === 'graphql') {
+          const u = usage[args.find((a) => a.startsWith('label=')).slice('label='.length)] ?? { issues: 0, prs: 0 };
+          if (u === 'unreadable') return JSON.stringify({ data: null, errors: [{ message: 'rate limited' }] });
+          return JSON.stringify({ data: { repository: { label: { issues: { totalCount: u.issues }, pullRequests: { totalCount: u.prs } } } } });
+        }
+        if (args[1] === 'repos/wowlegend/Crafty') return JSON.stringify({ ...live.repo, topics: live.topics });
+        if (args.includes('repos/wowlegend/Crafty/labels?per_page=100')) return JSON.stringify([live.labels]);
+        throw new Error(`unexpected gh call: ${args.join(' ')}`);
+      };
+      return { run, sent: () => calls.filter((a) => a[1] === '-X'), usageReads: () => calls.filter((a) => a[1] === 'graphql').map((a) => a.at(-1)) };
+    };
+    const extra = (...names) => {
+      const live = matching();
+      for (const name of names) live.labels.push({ name, color: 'ffffff', description: '' });
+      return live;
+    };
+    const cli = (argv, gh) => {
+      const out = { log: [], error: [] };
+      const code = main(argv, { root, run: gh.run, log: (s) => out.log.push(s), error: (s) => out.error.push(s) });
+      return { code, ...out };
+    };
+    const deleteOf = (name) => ghArgs({ method: 'DELETE', path: `repos/wowlegend/Crafty/labels/${encodeURIComponent(name)}`, fields: {} });
+
+    it('refuses a stale face before asking GitHub anything, and sends once it is re-rendered', () => {
+      const file = join(root, 'docs/superpowers/public-face.json');
+      const edited = JSON.parse(readFileSync(file, 'utf8'));
+      edited.labels = edited.labels.filter((l) => l.name !== 'dependencies');
+      writeFileSync(file, `${JSON.stringify(edited, null, 2)}\n`);
+      for (const argv of [['--live'], ['--apply'], ['--apply', '--delete-used-labels']]) {
+        const gh = fakeGh(matching());
+        const r = cli(argv, gh);
+        expect(r.code, argv.join(' ')).toBe(1);
+        expect(r.error).toContain('  docs/superpowers/public-face.json: stale');
+        expect(gh.usageReads()).toEqual([]);
+        expect(gh.sent()).toEqual([]);
+      }
+      write(root);
+      const gh = fakeGh(extra('wontfix'));
+      expect(cli(['--apply'], gh).code).toBe(0);
+      expect(gh.sent()).toEqual([deleteOf('wontfix')]);
+    });
+
+    it('reads the use of each label it would delete, and only those, then deletes the unused ones', () => {
+      const gh = fakeGh(extra('wontfix', 'good first issue'));
+      expect(cli(['--apply'], gh).code).toBe(0);
+      expect(gh.usageReads()).toEqual(['label=wontfix', 'label=good first issue']);
+      expect(gh.sent()).toEqual([deleteOf('wontfix'), deleteOf('good first issue')]);
+    });
+
+    it('refuses --apply, sending nothing, while a label it would delete is on an open issue or an open PR', () => {
+      const usage = { wontfix: { issues: 1, prs: 0 }, question: { issues: 0, prs: 2 } };
+      const refused = fakeGh(extra('wontfix', 'question', 'invalid'), usage);
+      const r = cli(['--apply'], refused);
+      expect(r.code).toBe(1);
+      expect(refused.sent()).toEqual([]);
+      expect(r.error.filter((l) => l.startsWith('  label '))).toEqual([
+        '  label "wontfix" is on 1 open issue(s) or pull request(s); deleting it removes it from them',
+        '  label "question" is on 2 open issue(s) or pull request(s); deleting it removes it from them',
+      ]);
+      expect(r.error.at(-1)).toMatch(/^public-face: refusing --apply, nothing sent: 2 label\(s\).*--delete-used-labels$/);
+
+      const forced = fakeGh(extra('wontfix', 'question', 'invalid'), usage);
+      expect(cli(['--apply', '--delete-used-labels'], forced).code).toBe(0);
+      expect(forced.sent()).toEqual(['wontfix', 'question', 'invalid'].map(deleteOf));
+    });
+
+    it('--live sends nothing and says that --apply would refuse', () => {
+      const gh = fakeGh(extra('wontfix'), { wontfix: { issues: 0, prs: 1 } });
+      const r = cli(['--live'], gh);
+      expect(r.code).toBe(0);
+      expect(gh.sent()).toEqual([]);
+      expect(r.log).toEqual([
+        '  gh api -X DELETE repos/wowlegend/Crafty/labels/wontfix',
+        'public-face: 1 request(s) would bring wowlegend/Crafty in line; run with --apply to send them',
+        'public-face: --apply will refuse while 1 label(s) it would delete are in use',
+      ]);
+    });
+
+    it('treats a use count GitHub did not return as a failure, never as zero', () => {
+      const gh = fakeGh(extra('wontfix'), { wontfix: 'unreadable' });
+      expect(() => cli(['--apply'], gh)).toThrow(/did not report the use of label "wontfix"/);
+      expect(gh.sent()).toEqual([]);
+    });
   });
 
   it('builds gh arguments that send booleans as JSON and repeat array fields', () => {

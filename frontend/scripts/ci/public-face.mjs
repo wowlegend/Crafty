@@ -10,6 +10,12 @@
  *   node scripts/ci/public-face.mjs --live     compare the live GitHub repository with public-face.json and
  *                                              print the requests --apply would send; changes nothing
  *   node scripts/ci/public-face.mjs --apply    send those requests through `gh api`
+ *
+ * --live and --apply refuse while any rendered target is stale, because the plan would then come from a
+ * public-face.json that brand.js no longer renders. --apply also refuses, sending nothing, when a label it would
+ * delete is on an open issue or pull request: GitHub strips a deleted label from every issue and PR, so a label
+ * added by hand, or a Dependabot label dropped from LABELS, would otherwise vanish at the next session close.
+ * Keep such a label by adding it to LABELS, or delete it anyway with `--apply --delete-used-labels`.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -19,6 +25,7 @@ import { BRAND, ICONS } from '../../src/brand.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..');
+const FACE_REL = 'docs/superpowers/public-face.json';
 
 export const REPO = 'wowlegend/Crafty';
 export const TOPICS = Object.freeze([
@@ -146,7 +153,7 @@ export const TARGETS = Object.freeze([
   { rel: 'frontend/index.html', begin: NOSCRIPT_BEGIN, end: NOSCRIPT_END, render: renderNoscript },
   { rel: 'frontend/public/manifest.webmanifest', render: renderManifest },
   { rel: 'README.md', begin: PITCH_BEGIN, end: PITCH_END, render: renderPitch },
-  { rel: 'docs/superpowers/public-face.json', render: renderFace },
+  { rel: FACE_REL, render: renderFace },
 ]);
 
 function splice(text, t) {
@@ -220,7 +227,7 @@ export function planRequests(face, live) {
   }
   const keep = new Set(face.labels.map((l) => l.name));
   for (const l of live.labels) {
-    if (!keep.has(l.name)) out.push({ method: 'DELETE', path: `repos/${face.repo}/labels/${enc(l.name)}`, fields: {} });
+    if (!keep.has(l.name)) out.push({ method: 'DELETE', path: `repos/${face.repo}/labels/${enc(l.name)}`, fields: {}, label: l.name });
   }
   return out;
 }
@@ -242,9 +249,9 @@ function gh(args) {
   return execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
 }
 
-function readLive(repo) {
-  const r = JSON.parse(gh(['api', `repos/${repo}`]));
-  const labels = JSON.parse(gh(['api', '--paginate', '--slurp', `repos/${repo}/labels?per_page=100`])).flat();
+function readLive(repo, run = gh) {
+  const r = JSON.parse(run(['api', `repos/${repo}`]));
+  const labels = JSON.parse(run(['api', '--paginate', '--slurp', `repos/${repo}/labels?per_page=100`])).flat();
   return {
     repo: { description: r.description, homepage: r.homepage, has_discussions: r.has_discussions, has_projects: r.has_projects },
     topics: r.topics ?? [],
@@ -252,36 +259,74 @@ function readLive(repo) {
   };
 }
 
-function main() {
-  const argv = process.argv.slice(2);
-  if (argv.includes('--write')) {
-    write();
-    console.log(`public-face: rendered ${TARGETS.length} targets from src/brand.js`);
-    return;
+// GraphQL, not the REST `labels=` filter, because that filter splits its value on commas and a label name may hold one.
+export const LABEL_USAGE_QUERY =
+  'query($owner: String!, $name: String!, $label: String!) { repository(owner: $owner, name: $name) { ' +
+  'label(name: $label) { issues(states: OPEN) { totalCount } pullRequests(states: OPEN) { totalCount } } } }';
+
+/**
+ * Map of label name -> open issues plus open pull requests carrying it. Throws when GitHub's answer holds no
+ * count, so a count that could not be read never passes as zero. Only an explicit `label: null` (GitHub no longer
+ * has the label) counts 0.
+ */
+export function labelUsage(repo, names, run = gh) {
+  const [owner, name] = repo.split('/');
+  const usage = new Map();
+  for (const label of names) {
+    const res = JSON.parse(run(['api', 'graphql', '-f', `query=${LABEL_USAGE_QUERY}`, '-f', `owner=${owner}`, '-f', `name=${name}`, '-f', `label=${label}`]));
+    const node = res?.data?.repository?.label;
+    const n = node === null ? 0 : node?.issues?.totalCount + node?.pullRequests?.totalCount;
+    if (!Number.isInteger(n)) throw new Error(`public-face: GitHub did not report the use of label "${label}": ${JSON.stringify(res)}`);
+    usage.set(label, n);
   }
-  if (argv.includes('--live') || argv.includes('--apply')) {
-    const face = JSON.parse(readFileSync(join(ROOT, 'docs/superpowers/public-face.json'), 'utf8'));
-    const reqs = planRequests(face, readLive(face.repo));
-    if (!reqs.length) {
-      console.log(`public-face: ${face.repo} already matches public-face.json`);
-      return;
-    }
-    for (const r of reqs) console.log(`  gh ${ghArgs(r).map(shellQuote).join(' ')}`);
-    if (!argv.includes('--apply')) {
-      console.log(`public-face: ${reqs.length} request(s) would bring ${face.repo} in line; run with --apply to send them`);
-      return;
-    }
-    for (const r of reqs) gh(ghArgs(r));
-    console.log(`public-face: sent ${reqs.length} request(s) to ${face.repo}`);
-    return;
-  }
-  const { checked, stale } = check();
-  if (stale.length) {
-    for (const s of stale) console.error(`  ${s.rel}: ${s.reason}`);
-    console.error(`public-face: ${stale.length} of ${checked} rendered targets differ from src/brand.js; run with --write`);
-    process.exit(1);
-  }
-  console.log(`public-face: ${checked} rendered targets match src/brand.js`);
+  return usage;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+/** The CLI; returns its exit code. `deps` lets a test run it on a scratch tree with a stand-in for `gh`. */
+export function main(argv = process.argv.slice(2), { root = ROOT, brand = BRAND, run = gh, log = console.log, error = console.error } = {}) {
+  if (argv.includes('--write')) {
+    write(root, brand);
+    log(`public-face: rendered ${TARGETS.length} targets from src/brand.js`);
+    return 0;
+  }
+  const live = argv.includes('--live') || argv.includes('--apply');
+  const { checked, stale } = check(root, brand);
+  if (stale.length) {
+    for (const s of stale) error(`  ${s.rel}: ${s.reason}`);
+    error(`public-face: ${stale.length} of ${checked} rendered targets differ from src/brand.js; run with --write${live ? ' and commit before comparing with GitHub' : ''}`);
+    return 1;
+  }
+  if (!live) {
+    log(`public-face: ${checked} rendered targets match src/brand.js`);
+    return 0;
+  }
+
+  const apply = argv.includes('--apply');
+  const face = JSON.parse(readFileSync(join(root, FACE_REL), 'utf8'));
+  const reqs = planRequests(face, readLive(face.repo, run));
+  if (!reqs.length) {
+    log(`public-face: ${face.repo} already matches public-face.json`);
+    return 0;
+  }
+  for (const r of reqs) log(`  gh ${ghArgs(r).map(shellQuote).join(' ')}`);
+  const doomed = reqs.filter((r) => r.method === 'DELETE').map((r) => r.label);
+  const used = [...labelUsage(face.repo, doomed, run)].filter(([, n]) => n > 0);
+  for (const [name, n] of used) error(`  label "${name}" is on ${n} open issue(s) or pull request(s); deleting it removes it from them`);
+  if (!apply) {
+    log(`public-face: ${reqs.length} request(s) would bring ${face.repo} in line; run with --apply to send them`);
+    if (used.length) log(`public-face: --apply will refuse while ${used.length} label(s) it would delete are in use`);
+    return 0;
+  }
+  if (used.length && !argv.includes('--delete-used-labels')) {
+    error(
+      `public-face: refusing --apply, nothing sent: ${used.length} label(s) it would delete are in use. Keep them by ` +
+        'adding them to LABELS in frontend/scripts/ci/public-face.mjs, or delete them with --apply --delete-used-labels',
+    );
+    return 1;
+  }
+  for (const r of reqs) run(ghArgs(r));
+  log(`public-face: sent ${reqs.length} request(s) to ${face.repo}`);
+  return 0;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = main();
