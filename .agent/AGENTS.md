@@ -48,10 +48,10 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **338 source files / 38,352 LOC** in
-  `frontend/src`, plus 137 colocated `*.test.js(x)` files (counted separately —
+- **Size (measured):** **344 source files / 39,457 LOC** in
+  `frontend/src`, plus 139 colocated `*.test.js(x)` files (counted separately —
   tests are not the architecture).
-- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1450 · `src/store/useGameStore.jsx` 1232 · `src/world/Terrain.jsx` 1145 · `src/App.jsx` 1055 · `src/QuestSystem.jsx` 986.
+- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1481 · `src/store/useGameStore.jsx` 1232 · `src/world/Terrain.jsx` 1145 · `src/App.jsx` 1059 · `src/QuestSystem.jsx` 986.
   Its MEMBERSHIP is checked exactly by `doc-currency`; the LOC beside each name, and the counts above,
   sit under a ±10% band so ordinary churn does not redden the push — so a specific number here
   can be mildly stale and still green. Regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
@@ -223,7 +223,9 @@ ONE bold-flat UI. Token SoT chain: `src/theme/tokens.js` → `src/theme/cssVars.
   `ROOT = /Users/kz/Code/Crafty` / `APP = frontend/` in every delegation prompt, plus any path rule the
   task touches. A subagent that reports a file "missing" from a relative path is usually reporting that
   you did not tell it where it was.
-Subagent-driven-development (Opus 5) per task: implementer + spec-compliance review + code-quality review; sequential where files are shared; a committed design/spec BEFORE implementation — **SELF-gated** per `LOOP-CHARTER.md` §4 (Kevin's pre-loop hard gate is superseded; he reviews async via KEVIN-REVIEW-BATCH + CHANGELOG); superpowers `writing-plans` for plan authoring. Plans/specs live in `docs/superpowers/`.
+- **Subagent-driven development** per task, on the models the first bullet of this section names (this line said
+  "(Opus 5)" from June until 2026-10-28: a model named in a second place goes stale when the first is updated, so it
+  names none): implementer + spec-compliance review + code-quality review; sequential where files are shared; a committed design/spec BEFORE implementation — **SELF-gated** per `LOOP-CHARTER.md` §4 (Kevin's pre-loop hard gate is superseded; he reviews async via KEVIN-REVIEW-BATCH + CHANGELOG); superpowers `writing-plans` for plan authoring. Plans/specs live in `docs/superpowers/`.
 - **EVERY milestone uses the `superpowers:writing-plans` discipline (Kevin, 2026-06-10):** before building ANY milestone (M0..Mn of any Aspect/stream), author its own plan doc in `docs/superpowers/plans/YYYY-MM-DD-crafty-<stream>-<milestone>.md` (TDD red-first steps + verification gates), THEN build. **No "build directly from the spec" shortcuts**, even for small/foundational milestones — the VOIDHAND-M1 skip (built from the spec's milestone breakdown without a plan doc) is the anti-pattern this rule forbids. The design SPEC is the HARD-GATE approval; the per-milestone PLAN is the build contract.
 
 ## Core Agent Skills (evaluate per task)

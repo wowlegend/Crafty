@@ -23,15 +23,33 @@ export const HEAVY_SHOVE_MULT = 2.5;
 export const HEAVY_WALK_MULT = 0.55;
 
 let pressedAt = 0; // 0 = nothing held
-let pressedBy = null; // WHICH input holds the charge: 'mouse' or 'key' (R9.3)
+let pressedBy = null; // WHICH input holds the charge: 'mouse', 'key' or 'touch' (R9.3; 'touch' since Phase 0c)
 
 /**
- * The melee input `source` ('mouse' or 'key') went down. A second press while ANY charge is held (T key-repeat, or T
- * tapped during a mouse hold) is ignored — it must not restart the charge or take it over.
+ * WHEN THE INPUT HAPPENED, not when its handler ran. A handler runs when the main thread is free, so a lift that came
+ * 40 ms after its press but waited behind a stall read as a charged hold and threw a heavy nobody held for
+ * (tests/e2e/touch-hold.spec.js, the late lift, with the stamp ignored: input 40 ms apart, handled 1787-2300 ms apart,
+ * release 40 = the heavy — measured 2026-10-27 as that spec's mutants E14 / E15 / E17). Found
+ * from touch-hold CI run 40517958583, whose warm-up touch was handled 1029-7269 ms apart and threw a heavy; that run did
+ * not record its input times, so whether ITS heavy was this or a genuinely long press is unknown. An event's `timeStamp` is the time it
+ * happened, on performance.now()'s clock (measured 2026-10-27, a 40 ms press behind a 1.5 s stall: Chromium, a CDP
+ * touch, 1506 ms on the handler clock and 71 ms on timeStamp; Playwright's macOS WebKit, a mouse click — it has no held
+ * touch — 1512 and 46 ms. iOS Safari is NOT measured: Kevin's device). `stamp` is used only when it is a reading on THIS
+ * clock — positive and not after `now`; anything else (no event, 0, an epoch-ms stamp from an engine on another clock)
+ * keeps the handler's `now`, which is the behaviour every caller had before. (undefined and NaN fail both comparisons.)
  */
-export function pressHeavy(now, source = 'mouse') {
+function inputTime(stamp, now) {
+  return stamp > 0 && stamp <= now ? stamp : now;
+}
+
+/**
+ * The melee input `source` ('mouse', 'key', or 'touch' — the overlay's held action button) went down. A second press while ANY charge is held (T key-repeat, or T
+ * tapped during a mouse hold) is ignored — it must not restart the charge or take it over. `at`, when the caller has the
+ * press event, is its own time (see inputTime): the charge counts from the finger, not from the handler.
+ */
+export function pressHeavy(now, source = 'mouse', at) {
   if (pressedAt === 0) {
-    pressedAt = now || 1;
+    pressedAt = inputTime(at, now) || 1;
     pressedBy = source;
   }
 }
@@ -39,6 +57,22 @@ export function pressHeavy(now, source = 'mouse') {
 /** Is a charge held (by either input)? While it is, the arm is drawn back: no light swing fires (Components). */
 export function isHeavyHeld() {
   return pressedAt !== 0;
+}
+
+/**
+ * Why a melee swing may NOT go now — 'charging' (the arm is drawn back for a heavy) or 'cooldown' (inside
+ * `cooldownMs` of the last swing, at `lastAt`) — or null when it may. `now` and `lastAt` are the handler's clock.
+ *
+ * A CHARGED RELEASE (`heavy`) is refused by neither (review round 3, item 3). The cooldown runs on the handler clock and
+ * the charge on the input's (inputTime), so a press handled late behind a stall and lifted soon after — a full charge
+ * on the finger — put its light swing (at the press) and the heavy (at the release) inside one cooldown, and the heavy
+ * the finger held for was dropped silently. The heavy's own gate is the charge, a hold of at least
+ * HEAVY_HOLD_MS + HEAVY_CHARGE_MS, which already outlasts the cooldown, and a press throws at most one.
+ */
+export function meleeRefusal(heavy, now, lastAt, cooldownMs) {
+  if (heavy) return null;
+  if (isHeavyHeld()) return 'charging';
+  return now - lastAt < cooldownMs ? 'cooldown' : null;
 }
 
 /** The charge so far, in [0, 1]: 0 until HEAVY_HOLD_MS, 1 once ready. */
@@ -55,11 +89,12 @@ export function isHeavyReady(now) {
 
 /**
  * The input `source` came up: true when the charge was ready — throw the heavy. Ends the hold only when `source` is
- * the input that holds it (R9.3): a T tapped during a mouse hold released the MOUSE's charge on its keyup.
+ * the input that holds it (R9.3): a T tapped during a mouse hold released the MOUSE's charge on its keyup. `at`, when
+ * the caller has the lift event, is its own time: a tap whose lift is handled late is still a tap.
  */
-export function releaseHeavy(now, source = 'mouse') {
+export function releaseHeavy(now, source = 'mouse', at) {
   if (pressedAt === 0 || source !== pressedBy) return false;
-  const ready = isHeavyReady(now);
+  const ready = isHeavyReady(inputTime(at, now));
   pressedAt = 0;
   pressedBy = null;
   return ready;

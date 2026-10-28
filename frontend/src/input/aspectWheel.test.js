@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ASPECT_VERBS, unlockedAspectVerbs, fanLayout, fanItemStyle, fanOpenerStyle, fanItemInnerEdge, FAN_ANCHOR_RIGHT, TOUCH_BTN, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS, cooldownFraction, anyOnCooldown } from './aspectWheel.js';
+import { ASPECT_VERBS, unlockedAspectVerbs, aspectRing, fanLayout, fanItemStyle, fanOpenerStyle, fanItemInnerEdge, FAN_ANCHOR_RIGHT, TOUCH_BTN, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS, cooldownFraction, anyOnCooldown, spellRowStacks, spellAnchorRight } from './aspectWheel.js';
 import { KEY_MAP } from '../game/keyMap.js';
 import { INTENT_KEYS } from './inputState.js';
 
@@ -48,6 +48,35 @@ describe('aspectWheel — unlock gating', () => {
   });
 });
 
+// Phase 0c (refute F9): the ring draws EVERY Aspect and marks the locked ones (aspectRing's docblock says why).
+describe('aspectRing — every sector, locked ones marked', () => {
+  it('offers all four, in KEY_MAP order, ALL locked when nothing is unlocked', () => {
+    const ring = aspectRing({});
+    expect(ring.map((a) => a.verb)).toEqual(ASPECT_VERBS.map((a) => a.verb));
+    expect(ring).toHaveLength(4);
+    expect(ring.every((a) => a.locked)).toBe(true);
+    expect(aspectRing(undefined).every((a) => a.locked)).toBe(true);
+  });
+
+  it('unlocks exactly the verbs whose talent has a rank — one live, three locked', () => {
+    const two = ASPECT_VERBS[1];
+    const ring = aspectRing({ [two.talent]: 1 });
+    expect(ring.filter((a) => !a.locked).map((a) => a.verb)).toEqual([two.verb]);
+    expect(ring.filter((a) => a.locked)).toHaveLength(3);
+  });
+
+  it('treats rank 0 as LOCKED — a refunded talent must not light its sector', () => {
+    expect(aspectRing({ [ASPECT_VERBS[0].talent]: 0 })[0].locked).toBe(true);
+  });
+
+  it('agrees with unlockedAspectVerbs on which are live, for every single unlock', () => {
+    for (const a of ASPECT_VERBS) {
+      const map = { [a.talent]: 2 };
+      expect(aspectRing(map).filter((x) => !x.locked).map((x) => x.verb)).toEqual(unlockedAspectVerbs(map).map((x) => x.verb));
+    }
+  });
+});
+
 describe('aspectWheel — fan geometry, measured in px against the viewport', () => {
   // THE OLD RING PUT ITEM 1 ENTIRELY OFF-SCREEN.
   //
@@ -86,8 +115,15 @@ describe('aspectWheel — fan geometry, measured in px against the viewport', ()
     expect(SPELL_ROW_BOTTOM - ASPECT_ROW_BOTTOM).toBeGreaterThanOrEqual(TOUCH_BTN);
   });
 
-  it('item 0 lands exactly on its opener — the affordance, and the control for the offsets above', () => {
-    expect(fanItemStyle(SPELL_ROW_BOTTOM, fanLayout(4)[0])).toEqual(fanOpenerStyle(SPELL_ROW_BOTTOM));
+  // REVERSED 2026-10-27 (review F4): this asserted "item 0 lands exactly on its opener — the affordance". It did, and so
+  // the open ring's first sector covered its own opener: the opener could never close the ring, and with every Aspect
+  // locked every way out of an open ring opened Talents. Item 0 now sits one step inward, and the opener stays a toggle.
+  it('no item lands on its opener — item 0 sits one full step inward, so the opener stays tappable', () => {
+    const fan = fanLayout(4);
+    expect(fanItemStyle(SPELL_ROW_BOTTOM, fan[0])).not.toEqual(fanOpenerStyle(SPELL_ROW_BOTTOM));
+    for (const [i, q] of fan.entries()) {
+      expect(-q.x, `item ${i} overlaps its opener`).toBeGreaterThanOrEqual(TOUCH_BTN);
+    }
   });
 
   it('emits the CSS the component actually renders, both rows', () => {
@@ -95,11 +131,29 @@ describe('aspectWheel — fan geometry, measured in px against the viewport', ()
     // draw with — not a reimplementation of it.
     const s0 = fanItemStyle(SPELL_ROW_BOTTOM, { x: -58, y: 0 });
     expect(s0.right).toBe('calc(env(safe-area-inset-right,0px) + 84px)');
-    expect(s0.bottom).toBe('calc(11% + 182px)');
+    expect(s0.bottom).toBe('calc(13% + 214px)');
     expect(s0.width).toBe(TOUCH_BTN);
     const a0 = fanItemStyle(ASPECT_ROW_BOTTOM, { x: -116, y: 0 });
     expect(a0.right).toBe('calc(env(safe-area-inset-right,0px) + 142px)');
-    expect(a0.bottom).toBe('calc(11% + 104px)');
+    expect(a0.bottom).toBe('calc(13% + 156px)');
+  });
+
+  // REVIEW ROUND 2: raising the rows for F1 put the spell opener on the HUD's Settings gear in landscape iPhones. These
+  // numbers are worked by hand from the layout, not read back from the function: the stacked spell row's top is
+  // H - 13% of H - (214 + 52) px, and it must clear the gear's lowest edge, 16 + 42 = 58 px.
+  it('the spell row stacks where its top clears the 58 px top band, and not one pixel of height sooner', () => {
+    expect(spellRowStacks(373), '373 - 48.49 - 266 = 58.51 px: clear').toBe(true);
+    expect(spellRowStacks(372), '372 - 48.36 - 266 = 57.64 px: into the gear').toBe(false);
+    expect(spellRowStacks(320)).toBe(false); // iPhone SE, Safari landscape
+    expect(spellRowStacks(1180)).toBe(true); // iPad Air portrait
+  });
+
+  it('where it cannot stack, the spell row moves inward past the Pause (right 64 + 46 px) by the 6 px gutter', () => {
+    expect(spellAnchorRight(1180)).toBe(FAN_ANCHOR_RIGHT);
+    expect(spellAnchorRight(340)).toBe(116);
+    const s = fanOpenerStyle(SPELL_ROW_BOTTOM, spellAnchorRight(340));
+    expect(s.right).toBe('calc(env(safe-area-inset-right,0px) + 116px)');
+    expect(s.bottom, 'the shifted row keeps its height').toBe('calc(13% + 214px)');
   });
 
   it('returns nothing for a degenerate fan instead of NaN coordinates', () => {
