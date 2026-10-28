@@ -187,6 +187,8 @@ describe('the pipeline has ONE receipt writer, and it is this script', () => {
       git(ROOT, 'ls-files').split('\n').filter((p) => p.includes('/')).map((p) => p.split('/')[0]),
     )];
     expect(tracked.length).toBeGreaterThan(3); // the walk reached a real tree
+    // LICENSES holds licence texts no step reads; doc-currency only checks that the README's link to the folder resolves.
+    unread.add('LICENSES');
     const unclassified = tracked.filter((d) => !inputs.has(d) && !unread.has(d));
     expect(unclassified, 'new top-level dir: add it to INPUT_ROOTS, or to `unread` with a reason').toEqual([]);
   });

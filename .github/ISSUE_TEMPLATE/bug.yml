@@ -1,0 +1,70 @@
+name: Bug report
+description: Something in Crafty broke, looked wrong or ran badly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Exact steps and the diagnostics readout below are what make a bug fixable.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected to see instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: From opening the game to the moment it went wrong.
+      placeholder: |
+        1. Start a new world
+        2. Walk toward the coast at dusk
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device
+      options:
+        - Desktop or laptop
+        - iPad
+        - iPhone
+        - Android tablet or phone
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and version
+      placeholder: macOS 15.4, iPadOS 18.2, Windows 11
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Chrome 141, Safari 18.4, Firefox 144
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics readout
+      description: |
+        If the game starts, open Settings and turn on Show Stats (F3 on a keyboard). Copy the lines it shows in
+        the top-left corner (frames drawn, quality tier, pixel ratio, frame cap, GPU and GL context losses), or
+        attach a screenshot of them.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or a short video
+      description: Drag files here. A clip of the moment it happens helps most with visual and movement bugs.
+    validations:
+      required: false

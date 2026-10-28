@@ -1,11 +1,10 @@
 /**
- * chainLightning.js — the chain's TARGETING half, pure (S3-M2 T3 extraction from
- * EnhancedMagicSystem's applyChainLightning). Math verbatim, characterized as-is —
- * including the live quirk that the FIRST arc deals baseDamage * damageReduction (NOT
- * base minus a reduction) — the arcs are weak ECHOES of the direct hit, then fall off
- * by x(1 - damageReduction) per hop.
- * The component keeps the thin wrapper (the store read + damageMob/spark application).
- * Mob positions arrive as [x,y,z] arrays (the mobEntities snapshot format).
+ * chainLightning.js — which mobs a chain-lightning strike hops to, and how hard each hop hits.
+ *
+ * `mobs` are live ECS entities (`mobsQuery.entities`, positions as {x, y, z}). The allegiance filter drops the
+ * dead and the dissolving as well as the passive and the protected, so a hop is never spent on a corpse.
+ * The first hop deals baseDamage * damageReduction, not baseDamage minus a reduction: the arcs are weak echoes
+ * of the direct hit, and each further hop falls off by (1 - damageReduction).
  */
 import { isAutoTargetable } from '../combat/targeting.js';
 
@@ -17,28 +16,23 @@ export function solveChainTargets(mobs, startPos, { excludeId, baseDamage, maxCh
   const hit = new Set([excludeId]);
   const out = [];
 
+  const distSqFrom = (from, mob) => {
+    const dx = mob.position.x - from.x;
+    const dy = mob.position.y - from.y;
+    const dz = mob.position.z - from.z;
+    return dx * dx + dy * dy + dz * dz;
+  };
+
+  // The chain picks its own victims, so only hostiles: aiming at livestock still works through the direct hit.
   const maxPossibleRangeSq = (range * maxChains) ** 2;
-  const nearby = mobs.filter((mob) => {
-    // B1 (18-domain review): the chain picks its own victims, so it only gets HOSTILES. It was hopping
-    // onto the Ox you happened to be standing next to and onto the hub healer — a spell you aimed at a
-    // zombie was executing the village. Aiming AT livestock still works (that goes through the direct
-    // hit, not the chain); what is forbidden is the auto-targeter choosing them for you.
-    if (!isAutoTargetable(mob)) return false;
-    const dx = mob.position[0] - last.x;
-    const dy = mob.position[1] - last.y;
-    const dz = mob.position[2] - last.z;
-    return (dx * dx + dy * dy + dz * dz) <= maxPossibleRangeSq;
-  });
+  const nearby = mobs.filter((mob) => isAutoTargetable(mob) && distSqFrom(last, mob) <= maxPossibleRangeSq);
 
   for (let i = 0; i < maxChains; i++) {
     let nearest = null;
     let nearestDistSq = range * range;
     for (const mob of nearby) {
       if (hit.has(mob.id)) continue;
-      const dx = mob.position[0] - last.x;
-      const dy = mob.position[1] - last.y;
-      const dz = mob.position[2] - last.z;
-      const distSq = dx * dx + dy * dy + dz * dz;
+      const distSq = distSqFrom(last, mob);
       if (distSq < nearestDistSq) {
         nearestDistSq = distSq;
         nearest = mob;
@@ -47,7 +41,7 @@ export function solveChainTargets(mobs, startPos, { excludeId, baseDamage, maxCh
     if (!nearest) break;
     hit.add(nearest.id);
     out.push({ id: nearest.id, position: nearest.position, damage: Math.floor(currentDamage) });
-    last = { x: nearest.position[0], y: nearest.position[1], z: nearest.position[2] };
+    last = { x: nearest.position.x, y: nearest.position.y, z: nearest.position.z };
     currentDamage *= (1 - damageReduction);
   }
   return out;

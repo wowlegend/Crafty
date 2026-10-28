@@ -177,13 +177,12 @@ describe('S1-D-M2 cast-arc + deterministic spell-cast capture state', () => {
     expect(magic(), 'velocity stretch-billboard trail math must remain').toMatch(/_trailDir|stretch-billboard/i);
   });
 
-  // GAMEPLAY PRESERVATION re-asserted after the arc edits: the cast still costs mana,
-  // grants XP, and the projectile lifecycle (damage/targeting) is untouched.
-  it('cast-arc preserves spell gameplay (mana cost + XP grant + cast entry)', () => {
+  // GAMEPLAY PRESERVATION re-asserted after the arc edits: the cast still costs mana, and the projectile lifecycle
+  // (damage/targeting) is untouched. A cast grants no XP (tests/gates/spent-spell-record-gates, behavioural).
+  it('cast-arc preserves spell gameplay (mana cost + cast entry)', () => {
     const src = magic();
     expect(src, 'castSpell must remain the public cast entry').toMatch(/castSpell\s*:/);
     expect(src, 'mana cost gate must remain on cast').toMatch(/useMana/);
-    expect(src, 'XP grant on cast must remain').toMatch(/grantXP/);
   });
 });
 

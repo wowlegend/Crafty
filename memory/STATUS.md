@@ -1394,7 +1394,9 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   - *(`kernel` is deliberately NOT an alias: LOOP-KERNEL-PROMPT.md has no numbered headings, so resolving
     against it would flag every `kernel §N` on the strength of the checker's own parse failure.)*
 - ▢ **G3 [LOOP]** **Session-close ritual at the context watermark** — refresh the GitHub remote surfaces
-  (README, repo description, CHANGELOG/STATUS) and push, every session.
+  (the README's hand-written prose; the About line, topics and labels through
+  `node frontend/scripts/ci/public-face.mjs --live`, then `--apply`, never `gh repo edit` by hand;
+  CHANGELOG/STATUS) and push, every session.
 
 ### G-ledger. Command-session residue, 2026-10-27/28 (after two review rounds; owner: Crafty command session unless named)
 

@@ -384,12 +384,17 @@ fire it on any deliberate `/compact`, or when Kevin says "wrap up". **Do not wai
    - `LOOP-PROGRESS.html`, the ungated progress page that had gone **17 commits stale** by 2026-08-07, is retired:
      it had no URL and no reader (archived 2026-10-28 as `docs/archive/LOOP-PROGRESS-2026-10-28.html`).
 3. **REMOTE / GitHub surfaces** *(this is the step that kept getting skipped)*:
-   - **README.md** — is it still TRUE? (It went ~6 weeks stale once, with a **`localhost:3000` "Live Demo"
-     link** shipped to the public.) Features, controls, and the demo URL must match reality.
-   - **Repo description + topics** (`gh repo edit`) — must describe the game as it *is*.
-   - **CI `success`** — confirmed with `gh run list --workflow=ci.yml --branch main`, NEVER from the README
-     badge. CI has existed since 2026-07-13, and a job that blows its own `timeout-minutes` renders as
-     `cancelled`, which the badge does not show as failure. Read the conclusion string, not the image.
+   - **README.md** — is the hand-written prose still TRUE? (It went ~6 weeks stale once, with a **`localhost:3000`
+     "Live Demo" link** shipped to the public.) The pitch, the play link and the controls table are generated
+     (`frontend/src/brand.js` and `KEY_MAP`), and doc-currency fails when they drift; the features and the
+     how-it-is-built prose are not, so read them against the game.
+   - **The GitHub About line, homepage, topics and labels** are rendered from `frontend/src/brand.js` into
+     `docs/superpowers/public-face.json`. Never hand-edit them on GitHub (`gh repo edit`): run
+     `node frontend/scripts/ci/public-face.mjs --live`, which prints what differs and changes nothing, then
+     `--apply` to send it. To change the wording, change `brand.js` and re-render.
+   - **CI `success`** — confirmed with `gh run list --workflow=ci.yml --branch main`, never from a badge or
+     any other image. A job that blows its own `timeout-minutes` renders as `cancelled`, which a badge does not
+     show as failure. Read the conclusion string.
    - `git push` — **the tree must be pushed, not just committed.** Vercel auto-deploys from `main`.
 4. **Durable memory:** mark-truth any operator-state change; snapshot the native-memory dir.
 5. **Re-arm** the loop with the kernel (`LOOP-KERNEL-PROMPT.md`) so the next firing orients from disk.

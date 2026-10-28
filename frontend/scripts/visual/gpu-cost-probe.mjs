@@ -44,6 +44,7 @@ import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import os from 'node:os';
 import { serveVite, probePort } from './_serve.mjs';
+import { standInPointerLock, playLiveReading } from './_probe.mjs';
 
 const PORT = probePort(import.meta.url);
 const arg = (k, d) => {
@@ -113,6 +114,24 @@ async function main() {
         'gpu-cost-probe: COULD NOT MEASURE — isSpawnChunkLoaded never became true within 180s.\n' +
         '  Under the SwiftShader CPU rasteriser world-build is slow; this is a MEASUREMENT failure, not a\n' +
         '  verdict about the build. Re-run on an idle machine before drawing any conclusion.',
+      );
+      process.exitCode = 3;
+      return;
+    }
+    // markGameStarted alone leaves the input gate dead, and a started game with a dead gate is PAUSED: its world is
+    // held (no mob moves or spawns), so the frame would cost less than any frame a player sees. Headless Chromium grants
+    // no pointer lock, so the page stands one in and the game's own lock listener opens the gate (_probe.mjs).
+    const lock = await page.evaluate(standInPointerLock);
+    let live = 0;
+    for (let i = 0; i < 40 && live < 2; i++) {
+      const r = await page.evaluate(playLiveReading);
+      live = r.started && r.alive && !r.pauseSurface ? live + 1 : 0;
+      if (live < 2) await new Promise((res) => setTimeout(res, 250));
+    }
+    if (live < 2) {
+      console.error(
+        `gpu-cost-probe: COULD NOT MEASURE — play never went live (lock ${lock}, ${JSON.stringify(await page.evaluate(playLiveReading))}).\n` +
+        '  A paused game holds its world, so a frame measured here would be a frozen world, not the game.',
       );
       process.exitCode = 3;
       return;
@@ -210,7 +229,7 @@ async function main() {
     }
 
     const load = loadAvg();
-    console.log(`\ngpu-cost-probe  (production bundle, dpr ${DPR}, ${m.canvas} = ${(m.px / 1e6).toFixed(1)} Mpx)`);
+    console.log(`\ngpu-cost-probe  (production bundle, dpr ${DPR}, ${m.canvas} = ${(m.px / 1e6).toFixed(1)} Mpx, in play, pointer lock ${lock})`);
     console.log('  ── load-INDEPENDENT (a busy machine cannot move these) ───────────────────');
     console.log(`  default FBO samp. ${m.defaultFboSamples}   (the CANVAS framebuffer — NOT the composer's own render target, which is unreachable from here)`);
     console.log(`  driver max samples ${m.maxSamples}${m.maxSamples < 8 ? '   <- below 8, so a composer asking for 8 is CLAMPED in this environment' : ''}`);
@@ -239,7 +258,7 @@ async function main() {
     }
 
     if (JSON_OUT) {
-      writeFileSync(JSON_OUT, `${JSON.stringify({ ...m, loadAvg: load, dpr: DPR, at: new Date().toISOString() }, null, 2)}\n`);
+      writeFileSync(JSON_OUT, `${JSON.stringify({ ...m, lock, inPlay: true, loadAvg: load, dpr: DPR, at: new Date().toISOString() }, null, 2)}\n`);
       console.log(`\n  wrote ${JSON_OUT}`);
     }
   } finally {

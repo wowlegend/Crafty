@@ -179,8 +179,8 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 | System | Details |
 | ------ | ------- |
 | Health | Hearts display, damage overlay on hit, death screen + respawn |
-| Mana | 100 max, regenerates over time, spells consume per cast |
-| Hunger | Chicken leg icons, depletes over time |
+| Mana | 100 max, regenerates over world time (held while paused), spells consume per cast |
+| Hunger | Chicken leg icons; nothing drains it over time, and the meter is cut in the SOTA reset's Wave 2 |
 | XP | Level-based progression, visual +XP popups, level-up effect |
 | Sound | Procedurally generated: footsteps, block place/break, combat, magic, ambient |
 

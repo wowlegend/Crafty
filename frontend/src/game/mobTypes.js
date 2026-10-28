@@ -9,7 +9,8 @@ export const MOB_TYPES = {
   zombie: { bank: 16, color: '#228B22', health: 100, speed: 2.0, damage: 10, xp: 25, passive: false, bodySize: [0.8, 1.6, 0.5], headSize: [0.7, 0.7, 0.7], displayName: 'Husk' },
   skeleton: { bank: 16, color: '#F5F5DC', health: 80, speed: 2.5, damage: 15, xp: 30, passive: false, bodySize: [0.6, 1.5, 0.4], headSize: [0.6, 0.6, 0.6], displayName: 'Bonepicker' },
   spider: { bank: 16, color: '#2F2F2F', health: 60, speed: 3.0, damage: 8, xp: 20, passive: false, bodySize: [1.2, 0.5, 1.5], headSize: [0.6, 0.4, 0.6], displayName: 'Frontier Spider' },
-  villager: { bank: 8, color: '#8b5a2b', health: 120, speed: 1.2, damage: 0, xp: 0, passive: true, bodySize: [0.8, 1.5, 0.6], headSize: [0.7, 0.8, 0.7], weight: 0.6, displayName: 'Settler' },
+  // bank 0: a Settler is killable when aimed at, but killing villagers is never a way to power up.
+  villager: { bank: 0, color: '#8b5a2b', health: 120, speed: 1.2, damage: 0, xp: 0, passive: true, bodySize: [0.8, 1.5, 0.6], headSize: [0.7, 0.8, 0.7], weight: 0.6, displayName: 'Settler' },
   // the mob-variety pass (2026-06-11): three silhouettes on the existing procedural axes.
   skitterling: { bank: 16, color: '#5B4FA8', health: 30, speed: 3.8, damage: 5, xp: 12, passive: false, bodySize: [0.7, 0.35, 0.9], headSize: [0.45, 0.3, 0.45], legMode: 'spider', weight: 1.2, displayName: 'Skitterling' },
   duskhound: { bank: 16, color: '#4A3A50', health: 70, speed: 3.2, damage: 12, xp: 28, passive: false, bodySize: [0.9, 0.7, 1.5], headSize: [0.6, 0.55, 0.7], legMode: 'quad', weight: 0.9, displayName: 'Duskhound' },

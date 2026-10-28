@@ -6,7 +6,7 @@
 //
 // That mistake is not careless — this codebase carries BOTH shapes on purpose:
 //   - ECS entities (`mobsQuery`) store a THREE.Vector3   -> SpawnerSystem.jsx:58, npcSpawn.js:32
-//   - the store mirror (`mobEntities`) stores an [x,y,z] -> MinimapSyncSystem.jsx:20
+//   - the store mirror (`mobEntities`) stores an [x,y,z] -> MinimapSyncSystem.jsx:16
 // Array-indexing is correct for the mirror and silently wrong for the entity. So this module accepts
 // EITHER and is tested against both, which is the only version of the fix that cannot regress the next
 // time a caller passes the other one.

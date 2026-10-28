@@ -93,8 +93,8 @@ import { onContextLost, onContextRestored } from './game/contextRecovery.js';
 // THE POST-PROCESSING CHAIN, BUILT ONCE (plan 2026-09-23-crafty-perf-heat-ipad, Task 2). @react-three/postprocessing
 // rebuilds every EffectPass whenever its <EffectComposer>'s children re-render — its pass-building layout effect
 // depends on `children` — and removePass/addPass delete and re-create the composer's depth textures and depth
-// render target. Inline in GameScene it re-rendered on every hunger tick (5 s) and mana tick (1 s while regenerating):
-// GPU allocations every second of idle play, the heat Kevin measured on an M3 Max. Memoised on the four things the
+// render target. Inline in GameScene it re-rendered on every mana tick (1 s while regenerating): GPU allocations
+// every second of idle play, the heat Kevin measured on an M3 Max. Memoised on the four things the
 // chain actually reads, it rebuilds only when the tier, the sun mesh, the horizon flag or capture mode changes.
 // (Defined here, not in its own file: the effect-chain gates read this file.)
 //

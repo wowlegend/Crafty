@@ -29,13 +29,16 @@
 #
 # OPTIONS: --samples N (default 120) · --warmup S (default 20) · --build-dir DIR (default build/) ·
 #          --out-root DIR (default ~/crafty-power-ab) · --headless (no window; the renderer may not be the real GPU,
-#          and pointer lock may be refused, leaving the arm NOT in play; compare it only with another --headless arm).
+#          and pointer lock may be refused and stood in by the page; compare it only with another --headless arm).
 #
 # BOTH ARMS ENTER THE SAME WAY (review of PR #23, item 3). The scenario clicks Start Adventure and nothing else, in
 # every build: the baseline build has no lookbook seam, so using the seam in the other arm would compare two different
-# states. Whether the click put the game in play (pointer lock held) is read the same way in both and written into
-# meta.txt as `window:` and `scenario:`; an arm that is not in play says so loudly, and power-summary.mjs REFUSES to
-# compare two arms whose window or scenario differ.
+# states. A click the browser refuses a lock is followed by a page-level lock stand-in that opens the input gate through
+# the game's own listener: a started game whose gate stays dead is paused, and from the real pause on a paused game
+# holds its world, so an arm left there would measure a frozen world in one build and a running one in another. How
+# play was entered, and whether the world then ran (the mob mirror moved), are written into meta.txt as `window:`,
+# `scenario:` and `world:`. power-summary.mjs REFUSES an arm not in play, and two arms whose window, scenario or world
+# differ.
 #
 # WHAT IT CANNOT TELL YOU. powermetrics' own help calls its power figures estimates, fit for comparing builds of one
 # app on one machine and not for comparing machines. The scenario stands still at spawn; it says nothing about combat
@@ -144,8 +147,9 @@ echo "$READY_LINE"
 # The conditions power-summary.mjs compares two arms on, recorded beside this arm's log (review of PR #23, item 3).
 if [ -n "$HEADED" ]; then WINDOW=headed; else WINDOW=headless; fi
 case "$READY_LINE" in
-  *'"inPlay":true'*) SCENARIO="in play (pointer locked)" ;;
-  *) SCENARIO="NOT in play (no pointer lock: the game behind its resume overlay)" ;;
+  *'"lock":"held"'*'"inPlay":true'*) SCENARIO="in play (pointer locked)" ;;
+  *'"lock":"stood-in"'*'"inPlay":true'*) SCENARIO="in play (pointer lock stood in by the page: the click was refused one)" ;;
+  *) SCENARIO="NOT in play (the input gate stayed dead: a paused game, whose world is held from the real pause on)" ;;
 esac
 {
   echo "window:      $WINDOW"
@@ -155,9 +159,9 @@ echo "window:      $WINDOW"
 echo "scenario:    $SCENARIO"
 case "$SCENARIO" in
   NOT*)
-    echo "power-ab: WARNING — this arm is NOT IN PLAY: the click did not lock the pointer, so it measures the game behind" >&2
-    echo "  its resume overlay. Every arm enters the same way, so it compares only with an arm whose window and scenario" >&2
-    echo "  match; power-summary refuses any other pair. Headed, bring the Chromium window to the front and run again." >&2
+    echo "power-ab: WARNING — this arm is NOT IN PLAY: neither the click nor the page's lock stand-in opened the input" >&2
+    echo "  gate, so the game is paused. A paused game holds its world in every build from the real pause on, and ran it" >&2
+    echo "  behind the overlay before, so this arm measures no game; power-summary refuses it. See $OUT/scenario.log." >&2
     ;;
 esac
 
@@ -198,6 +202,16 @@ node -e '
   console.log(`quality tier during the hold: ${k.map((x) => `${x} x${c[x]}`).join(", ") || "no samples"}`);
   if (k.length > 1) console.log("power-ab: WARNING — the tier moved during the hold; an arm compares only with one held at the same tier");
 ' "$OUT/hold.json"
+# Whether the world ran during the hold, read from the store's mob mirror (lookbook.mjs worldMovedOver): the variable a
+# paused game changes. power-summary.mjs refuses two arms whose world lines differ.
+# shellcheck disable=SC2016 # JavaScript, not shell expansions
+WORLD=$(node -e '
+  const h = require(process.argv[1]).hold;
+  console.log(h.worldMoved === true ? "moving (a mob moved or the mob count changed during the hold)"
+    : h.worldMoved === false ? "still (no mob moved and the mob count held during the hold)" : "unknown");
+' "$OUT/hold.json")
+echo "world:       $WORLD" >> "$OUT/meta.txt"
+echo "world:       $WORLD"
 
 node scripts/dev/power-summary.mjs "$OUT/powermetrics.txt" > "$OUT/summary.txt" 2>&1
 RC=$?

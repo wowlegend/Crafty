@@ -57,10 +57,10 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **359 source files / 41,636 LOC** in
-  `frontend/src`, plus 144 colocated `*.test.js(x)` files (counted separately —
+- **Size (measured):** **365 source files / 42,224 LOC** in
+  `frontend/src`, plus 147 colocated `*.test.js(x)` files (counted separately —
   tests are not the architecture).
-- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1553 · `src/store/useGameStore.jsx` 1262 · `src/world/Terrain.jsx` 1157 · `src/App.jsx` 1076 · `src/QuestSystem.jsx` 986.
+- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1540 · `src/store/useGameStore.jsx` 1261 · `src/world/Terrain.jsx` 1157 · `src/App.jsx` 1076 · `src/QuestSystem.jsx` 999.
   Its MEMBERSHIP is checked exactly by `doc-currency`; the LOC beside each name, and the counts above,
   sit under a ±10% band so ordinary churn does not redden the push — so a specific number here
   can be mildly stale and still green. Regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
@@ -110,11 +110,11 @@ Full procedure — the `finally` shape, `_serve.mjs`, the managed ports, deletin
 ## Build / Test / Gates (from `frontend/`)
 
 <!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->
-**17 gates, across three callers.** Generated from `ci/pipeline.sh` — the ONE definition
+**16 gates, across three callers.** Generated from `ci/pipeline.sh` — the ONE definition
 pre-commit, pre-push and GitHub Actions all call, so no two can drift. Do not edit the table by hand;
 add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.
 
-**9 run on every commit** (offline core, 69s) · **14 on every push** · **13 in CI**.
+**8 run on every commit** (offline core, 69s) · **13 on every push** · **12 in CI**.
 The columns are DERIVED from each step's tier guard in the script, not asserted here — they used to be,
 and all three network/browser gates were printed as pre-push gates they have never been.
 
@@ -126,7 +126,6 @@ and all three network/browser gates were printed as pre-push gates they have nev
 | doc-currency | `node scripts/ci/doc-currency.mjs` | ✅ | ✅ | ✅ | a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, drift in the generated MEASURED and GATES blocks, and one of six lock-label phrasings (`(LOCKED`, `LOCKED —`, `IRREDUCIBLE`, `MUST NOT be split`, `KEEP, don't rewrite`, `do not relitigate`) in a canonical doc other than DECISIONS, unless the line cites item 16 (DECISIONS 2026-10-28 item 16). Any other lock wording passes it |
 | eslint | `npm run lint` | ✅ | ✅ | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
 | gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | ✅ | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise) |
-| killability-ledger | `node scripts/ci/killability-ledger.mjs` | ✅ | ✅ | ✅ | a NEW check file that never states what makes it fail. The `Mutation-Proof:` trailer proves a COMMIT was asked; this proves the FILE carries the answer, ratcheted like the source-grep ledger so the debt can fall and never rise. It also prints the number nothing in this suite could previously state — how many of its own checks have ever been shown to fail. It does NOT verify the receipt is true; nothing can |
 | cli-guard | `node scripts/ci/cli-guard.mjs` | ✅ | ✅ | ✅ | a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts |
 | unit + static gates | `npm run test:unit` | ✅ | ✅ | ✅ | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates |
 | build | `npm run build` | ✅ | ✅ | ✅ | broken JSX/imports |
