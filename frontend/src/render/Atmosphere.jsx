@@ -23,11 +23,15 @@ import { resetShadowForConfig } from './shadowReset.js';
 import { registerTestHook, callTestHook } from '../devtest/testBridge.js';
 import { createShadowSchedule, shadowDue, shadowWorldEpoch } from './shadowSchedule.js';
 import { ecs, mobsQuery, alliesQuery } from '../ecs/world';
+import { FLASH_COLOR, hemiWithFlash } from '../game/lightning.js';
 
 // The shadow's DYNAMIC CASTERS that live in the ECS (render/shadowSchedule.js): mobs and villagers, squad allies, and the
 // loot and XP pickups (pickupVfx casts). The same component sets the systems use; miniplex reuses a query per key.
 const lootQuery = ecs.with('isLootDrop', 'position');
 const orbQuery = ecs.with('isXPOrb', 'position');
+
+// The lightning flash's colour in the working (linear) space, parsed once.
+const _flashColor = new THREE.Color(FLASH_COLOR);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // S1-D-M3: HEIGHT / VALLEY-MIST FOG (subtle).
@@ -403,7 +407,7 @@ export function Atmosphere({ shadowConfig }) {
     // THE CLOCK (QUEUE.md B1, then the light-colour plan). cycleFraction drives the sun's orbit AND, since Task 3b, the
     // whole colour script: night is the clock's, a moonlit blue, and the moon takes the key light.
     //
-    // CAPTURE SAFETY, per AGENTS.md: "a capture guard must RESET to a declared value, never early-return."
+    // CAPTURE SAFETY, per CLAUDE.md: "a capture guard must RESET to a declared value, never early-return."
     // Freezing the clock wherever it happened to be would make every gated frame run-dependent, since boot length
     // varies 1.68-10.43s between processes. So capture renders at a DECLARED fraction (captureCycle): the state's own
     // `captureSolarFraction` if it set one, else noon for a day state and midnight for a night state. Live play goes
@@ -509,11 +513,11 @@ export function Atmosphere({ shadowConfig }) {
       fillRef.current.intensity = m.fillIntensity;
     }
     if (hemiRef.current) {
-      hemiRef.current.color.copy(m.hemiSky);          // sky bounce (top)
-      hemiRef.current.groundColor.copy(m.hemiGround); // ground bounce (bottom)
-      // STORM LIGHTNING (render/LightningDriver.jsx): the flash is sky light, so it rides the hemisphere — the whole
-      // world lights from above for a beat, shadows unchanged. 0 outside a flash, and 0 under capture.
-      hemiRef.current.intensity = m.hemiIntensity + lightningFlashRef.current;
+      // Sky bounce (top) and ground bounce (bottom). STORM LIGHTNING (render/LightningDriver.jsx): the flash is sky
+      // light, so it rides the hemisphere's sky term — as WHITE light added to it, not as intensity on the night sky's
+      // blue, which never cleared the night grade (game/lightning.js hemiWithFlash). The whole world lights from above
+      // for a beat, shadows unchanged. 0 outside a flash and under capture, where this writes exactly the mood.
+      hemiWithFlash(hemiRef.current, m.hemiSky, m.hemiGround, m.hemiIntensity, lightningFlashRef.current, _flashColor);
     }
   });
 

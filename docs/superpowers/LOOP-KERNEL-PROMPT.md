@@ -24,9 +24,13 @@ quality, dead-code, comment/doc truth, polish, better patterns — and MAKE tast
 than blocking. GUARDRAILS still binding (they make "aggressive" safe, not reckless): every change RED-first +
 mutation-proven + full suite green; atomic verified checkpoints (auditable, git-reversible, ONE coherent unit per
 commit); do NOT silently reverse a RECORDED Kevin decision (world-design hybrid · CPU-ocean fork · F=cast/T=melee ·
-bloom 0.65 · Ember-Frontier/Blight-Heart · affixes kept · broad audience); irreversible high-blast (hard-delete a
-REFERENCED file, force-push, external send, money/accounts/publishing, a NEW dependency) still gets care + usually
-Kevin. Prefer ARCHIVE (reversible) over DELETE.
+bloom 0.65 · Ember-Frontier/Blight-Heart · affixes kept · broad audience; a reversal is a new dated DECISIONS entry);
+Kevin's two bright lines: spend no money; never force-push or rewrite pushed history. Account sign-ins stay his
+because only he can make them. An external send (a message, post or publish to anyone outside the repo) needs
+Kevin's explicit OK; the one exception is publishing the repo's own public face, which is the session's (DECISIONS
+2026-10-28 item 15). A hard delete of a REFERENCED file or a NEW dependency is the command session's call since
+Kevin's 2026-10-27 mandate, made with care and recorded in DECISIONS (2026-10-28 items 14 and 16).
+Prefer ARCHIVE (reversible) over DELETE.
 
 ORIENT EVERY ITERATION (assume amnesia — the context may have just compacted or reset):
 `cd /Users/kz/Code/Crafty && git fetch && git status -sb && git log --oneline -8`
@@ -86,14 +90,16 @@ test-vacuity (seam-extract) → coverage-gaps → perf → a11y → inconsistenc
 BATCHES (fix every finding in a file together = one commit).  Then the STATUS §2 secondary queue —
 note **A-bis (all 8 seams) CLOSED 2026-08-05**; verify any registry line against live code before working
 OR repeating it (two were found describing code that did not exist). Ship ONE
-verified unit per iteration; **keep `docs/superpowers/LOOP-PROGRESS.html` current — a SESSION-CLOSE
-obligation, not a nicety.** It went 25 commits stale in Aug 2026 while STATUS and CHANGELOG stayed
-immaculate, and the published era-review artifact went 9 days / 99 commits stale still leading with
+verified unit per iteration; **keep the operator pages in `docs/superpowers/.artifact-sync.json` current — a
+SESSION-CLOSE obligation, not a nicety** (`--stamp <id>` stamps a page with the commit it was written against; republish
+it; then `--sync <id>` records the publish).
+The old progress page went 25 commits stale in Aug 2026 while STATUS and CHANGELOG stayed immaculate (it was
+retired 2026-10-28: `docs/archive/LOOP-PROGRESS-2026-10-28.html`), and the published era-review artifact went 9 days / 99 commits stale still leading with
 "CI 0/88" — false for two days. Kevin had to ask. **The surface he READS is part of the deliverable**; a
 dashboard asserting a state it no longer has is the same defect as a gate reporting PASS over input it never
 examined. Update an artifact IN PLACE by passing its URL, or a fresh publish mints a new URL and strands the
-bookmarked one. Route pure
-taste / recorded-decision reversals to `KEVIN-REVIEW-BATCH.md`. Never end the loop yourself.
+bookmarked one. Taste calls and reversals of recorded decisions are the command session's since Kevin's
+2026-10-27 mandate, restated as the standing principle in DECISIONS 2026-10-28 item 14: record each in DECISIONS, never silently. Never end the loop yourself.
 
 THE FIVE RULES THAT MATTER MOST (each one is a scar):
 1. **⛔ MUTATION-PROVE EVERY GATE.** A gate that greps SOURCE TEXT is NOT a gate. Break the behavior → the gate MUST
@@ -133,37 +139,44 @@ THE FIVE RULES THAT MATTER MOST (each one is a scar):
 DISCIPLINE (every code tick): TDD red-first; AST-safe edits only on .js/.jsx; seam-extraction (move buggy/vacuous-
 gated logic to a pure injectable module, test purely, mutation-prove, wire); Game-Loop-Isolation (no reactive state
 in useFrame — transient refs / `.getState()` / seeded); capture-determinism (NO Math.random/clock in capture — seeded
-+ `isCaptureMode()`-gated; static geometry at module load); **NO mid-combat RE-MESH (a HARD P4 veto)**; bloom 0.65
++ `isCaptureMode()`-gated; static geometry at module load); **NO mid-combat RE-MESH** (a P4 engineering constraint: break it only with a measurement that the iPad-class frame
+budget still holds, recorded in DECISIONS); bloom 0.65
 INTENDED; zero-emoji in `src/` (use `\u{}` escapes); the store owns persisted state; no AI footer on commits; no
-`git add -A`; `.state/` untouched; `git commit -F -` heredoc. Full suite + eslint + build + pre-push each push (pre-push gate COUNT and list: read the generated GATES table in `.agent/AGENTS.md` — never recall it, and never type it here: this file is re-injected verbatim, so a number written here cannot self-correct). `knip` is CI-only, NOT at push.
+`git add -A`; `.state/` untouched; `git commit -F -` heredoc. Full suite + eslint + build + pre-push each push (pre-push gate COUNT and list: read the generated GATES table in `CLAUDE.md` — never recall it, and never type it here: this file is re-injected verbatim, so a number written here cannot self-correct). `knip` is CI-only, NOT at push.
 BUILD-FIRST on any JSX/structure change. Capture-verify EVERY render-affecting slice
 (`npm run visual:capture`) — but **the harness is NOT a trustworthy oracle**. `75191ef` fixed the
 `close()`-hang, NOT determinism. **`memory/STATUS.md` §B-race owns the harness's current measured state —
 read it before trusting any diff, and do NOT transcribe its numbers here** (a number copied into this file
 rots and this file is re-injected verbatim on every firing). Check the compositor (rAF count, ~3s) BEFORE
 planning browser work, expect to lose it mid-run, and do browser work FIRST while the window is open.
-**Read the frame with your own eyes.** Re-baseline → Kevin sign-off.
+**Read the frame with your own eyes.** Re-baseline → the command session's call (Kevin's 2026-10-27 mandate), with a `Baseline-Review:` trailer.
 
-TASTE BOUNDS: the coherence pillars **P0–P5** (`docs/superpowers/specs/crafty-coherence-pillars.md`; summarized in STATUS §4). **The
-only HARD vetoes are P4's two invariants: no mid-combat re-mesh; input via intent-abstraction, not pointer-lock.**
-Accessibility never vetoes depth. Reference-lock before any look-bearing work; judge IN-WORLD on the real grade.
+TASTE BOUNDS: the coherence pillars **P0–P5** (`docs/superpowers/specs/crafty-coherence-pillars.md`; summarized in STATUS §4). **P4's
+two invariants are engineering constraints, not locks: no mid-combat re-mesh; input via intent-abstraction, not
+pointer-lock.** They bind the session as facts about the iPad-class frame budget and input routing; break one only
+with a measurement showing the frame budget (or input parity) still holds, recorded in DECISIONS.
+Accessibility never vetoes depth. Pick a reference before any look-bearing work; judge IN-WORLD on the real grade.
 
-⚠️ BROWSER / TEST-PROCESS HYGIENE — **anything you launch, you kill, and the SURFACE outlives the process.** Full rules: `.agent/AGENTS.md` (orientation) and `.claude/rules/gates-and-probes.md`, which auto-injects the moment you touch `frontend/scripts/**` or `frontend/tests/**`. This was a FIFTH copy; five copies of a rule is not five times the compliance, it is five places to drift.
+⚠️ BROWSER / TEST-PROCESS HYGIENE — **anything you launch, you kill, and the SURFACE outlives the process.** Full rules: `CLAUDE.md` (orientation) and `.claude/rules/gates-and-probes.md`, which auto-injects the moment you touch `frontend/scripts/**` or `frontend/tests/**`. This was a FIFTH copy; five copies of a rule is not five times the compliance, it is five places to drift.
 
 SESSION-CLOSE (charter §6.5 — fires at the CONTEXT WATERMARK, 85/90/94%, unprompted): kill leaked test procs → LIST
-husks → green the tree → update ACTIVE_PLAN + STATUS + CHANGELOG + LOOP-PROGRESS.html → **refresh the REMOTE GitHub
-surfaces (README truth · repo description · CI badge) and PUSH** → mark-truth → re-arm. A session that ends without the
+husks → green the tree → update ACTIVE_PLAN + STATUS + CHANGELOG + the operator pages (`--stamp`, republish, `--sync`) → **refresh the REMOTE GitHub
+surfaces (README prose truth · `node frontend/scripts/ci/public-face.mjs --live`, then `--apply`, for the About line,
+topics and labels, never `gh repo edit` by hand) and PUSH** → mark-truth → re-arm. A session that ends without the
 remote step has left the project's public face lying about it.
 
-STILL GENUINELY KEVIN (surface to `KEVIN-REVIEW-BATCH.md`; never block on it): the holistic PLAYTEST (his eye + ear —
-spell look, movement feel, storm, audio mix, real-device touch) · S4 multiplayer + monetization scope (the loop will
-NOT start netcode or payments) · final taste sign-offs incl. visual re-baselines + water aesthetic · real-device runs ·
-anything spending money / creating accounts / publishing externally · adding any NEW dev dependency.
+STILL GENUINELY KEVIN (surface to `KEVIN-REVIEW-BATCH.md`; never block on it): his two bright lines (spend no money;
+never force-push or rewrite pushed history) and what only he can do: the real-device playtest (touch feel on a real
+device, the audio mix by ear) · real-device runs · account sign-ins. S4 multiplayer and monetization stay his because
+they spend money and need his accounts (the loop will NOT start netcode or payments). Publishing the repo's public
+face is the session's (DECISIONS 2026-10-28 item 15). Taste sign-offs (visual re-baselines and the ocean water
+aesthetic included), reversals and NEW dev dependencies are the command session's since Kevin's 2026-10-27 mandate,
+restated as the standing principle in DECISIONS 2026-10-28 item 14.
 **NOT the four this line used to name** (chest-mining, damage-lockout, camera-shake feel, 3D mob AI): `DECISIONS.md`
-assigned all four **[LOOP]** and the charter says the RECORD, not this prompt, is what settles ownership. Reading the
-stale list here is what put twelve non-Kevin items in front of Kevin. The only taste row still **[KEVIN]** is the
-ocean water aesthetic.
-SETTLED (do NOT relitigate): F=cast / T=melee · bloom 0.65 · grantXP full-heal · affixes KEPT · Ember-Frontier +
+assigned all four **[LOOP]**. The RECORD, not this prompt, settles ownership: reading a stale list here once put
+twelve non-Kevin items in front of Kevin.
+RECORDED DECISIONS (each stands while it earns its place; a reversal is a new dated DECISIONS entry naming the one it
+supersedes): F=cast / T=melee · bloom 0.65 · grantXP full-heal · affixes KEPT · Ember-Frontier +
 Blight-Heart · audience is BROAD (the youngest players are users, not a ceiling) · world-design HYBRID · CPU-ocean fork.
 
 CONTINUE: while committable units remain — read the depth, never recall it: `node frontend/scripts/ci/queue-ledger.mjs`. This is an ACTIVE build queue, not a hold.

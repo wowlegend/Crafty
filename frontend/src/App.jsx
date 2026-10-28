@@ -20,6 +20,7 @@ import { useInputManager } from './InputManager';
 import { setActive, getInput } from './input/inputState';
 import { useActiveInput } from './input/useActiveInput';
 import TouchControls from './ui/TouchControls';
+import { openTalents } from './ui/touchTray';
 import { isTouchDevice } from './input/touchDevice';
 import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
@@ -1040,7 +1041,10 @@ function GameApp({ experienceSystem }) {
         />
       )}
 
-      <TouchControls isWorldBuilt={isWorldBuilt} />
+      {/* Phase 0c (F9): the Talents panel's flag is App-local (useInputManager), so touch gets it as props — the
+          locked ring sector opens it (nothing else on touch can), and tap-to-play stays off it while it is open. */}
+      <TouchControls isWorldBuilt={isWorldBuilt} talentsOpen={showSpellUpgrades} otherPanelOpen={showAchievements || showStats}
+        onOpenTalents={() => openTalents(useGameStore.getState(), { setShowSpellUpgrades, setShowAchievements })} />
 
       {/* MenuSystem's setIsPointerLocked prop is wired to setActive — the OPTIMISTIC
           active writer, used by the touch entry path (the prop NAME is kept to avoid

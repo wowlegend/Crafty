@@ -19,7 +19,7 @@
 // pointer-lock refusal. It proves that GIVEN a gate that gets cleared, this helper re-asserts it and
 // refuses to return until it holds — and that given a world that never builds, it never forces play.
 import { describe, it, expect } from 'vitest';
-import { startPlayActive, bootDev } from '../e2e/_boot.js';
+import { startPlayActive, startPlay, bootDev } from '../e2e/_boot.js';
 
 /** A fake game whose `active` gate behaves like the real one: forcePlay sets it, and the first
  *  `clobbers` writes are immediately undone — the world-ready pointer-lock refusal, in miniature. */
@@ -27,9 +27,12 @@ function makeGame({ clobbers = 0, forcePlayWorks = true } = {}) {
   let active = false;
   let forcePlays = 0;
   let remaining = clobbers;
+  const calls = [];
   const win = {
     __craftyTest: {
-      call(name) {
+      call(name, arg) {
+        calls.push(arg === undefined ? name : `${name}:${arg}`);
+        if (name === 'setQualityTier') return undefined;
         if (name === 'forcePlay') {
           forcePlays += 1;
           active = forcePlayWorks;
@@ -45,7 +48,7 @@ function makeGame({ clobbers = 0, forcePlayWorks = true } = {}) {
     },
     useGameStore: { getState: () => ({ isSpawnChunkLoaded: true }) },
   };
-  return { win, stats: () => ({ forcePlays, active }) };
+  return { win, stats: () => ({ forcePlays, active }), log: () => calls };
 }
 
 /** A fake page that RUNS the real predicates _boot.js passes it, with `window` bound to the game. */
@@ -146,4 +149,18 @@ describe('bootDev', () => {
     const page = { async goto() {}, async waitForFunction() {}, on() {} };
     await expect(bootDev(page)).resolves.toEqual([]);
   });
+});
+
+describe('the play helpers pin the quality tier the suite was built on, before they force play', () => {
+  // The tier governor starts in play now; at the device-picked tier it would step a software renderer down
+  // mid-spec. The fake game logs every hook call in order, so the pin is observed as a call, not read as source.
+  for (const [name, run] of [['startPlayActive', (p) => startPlayActive(p)], ['startPlay', (p) => startPlay(p)]]) {
+    it(`${name}: setQualityTier('low') precedes the first forcePlay`, async () => {
+      const game = makeGame();
+      await run(makePage(game));
+      const log = game.log();
+      expect(log.indexOf('setQualityTier:low'), `${name} left the tier to the device pick and the governor: ${log}`).toBeGreaterThan(-1);
+      expect(log.indexOf('setQualityTier:low'), `${name} pinned the tier after play began: ${log}`).toBeLessThan(log.indexOf('forcePlay'));
+    });
+  }
 });

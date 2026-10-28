@@ -126,7 +126,13 @@ describe('the sky readers: one resolved frame, read by everyone (light-colour pl
 describe('W2-T1 hemisphere bounce light', () => {
   it('W2-T1 Atmosphere mounts a mood-driven hemisphereLight', () => {
     const src = readFileSync(resolve(process.cwd(), 'src/render/Atmosphere.jsx'), 'utf8');
-    expect(src).toMatch(/hemisphereLight/);
-    expect(src).toMatch(/groundColor/);
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).toMatch(/<hemisphereLight ref=\{hemiRef\}/);
+    // 2026-10-27: the sky and ground colours and the intensity are written by game/lightning.js hemiWithFlash (the
+    // lightning flash is added there as white sky light); what it writes is lightning-gates' behavioural cases. This
+    // pins that the mood's sky, ground and intensity are what Atmosphere hands it, in that order.
+    expect(code, 'the hemisphere is not driven from the mood').toMatch(
+      /hemiWithFlash\(hemiRef\.current, m\.hemiSky, m\.hemiGround, m\.hemiIntensity, lightningFlashRef\.current, _flashColor\)/,
+    );
   });
 });

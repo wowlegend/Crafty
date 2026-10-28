@@ -6,7 +6,7 @@ import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
 import { makeZoneRegistry, spawnZone, stepZones, clearZones, applyZoneEffects } from '../game/elementZones';
 import { consumeZoneRequest } from '../game/elemancerChannel';
-import { worldDelta } from '../game/worldClock.js';
+import { worldDelta, worldNow } from '../game/worldClock.js';
 
 const AI_TICK_SEC = 1 / 15; // the bridge cadence (the SquadAISystem stencil)
 const SFX_BY_KIND = { burning: 'ignite', frozen: 'freeze', conductive: 'zap', resonant: 'rune' };
@@ -43,7 +43,9 @@ export function ElementZoneSystem() {
     if (accumRef.current < AI_TICK_SEC) return;
     accumRef.current = 0;
 
-    const now = state.clock.getElapsedTime();
+    // Seconds on the WORLD clock: R3F's clock runs through a pause and a hitstop, so a zone stamped on it would expire
+    // on the first tick after a hold longer than its life.
+    const now = worldNow() / 1000;
     const req = consumeZoneRequest();
     if (req) {
       const z = spawnZone(liveZones, req, now);

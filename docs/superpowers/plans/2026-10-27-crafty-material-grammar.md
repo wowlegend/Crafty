@@ -163,12 +163,12 @@ seeded from the colours the generator already declares, plus one new tone where 
 | cactus | base `46,125,50`, ridge `35,95,40`, spine `230,230,160` (`:143-150`) | vertical ridges every 8 px, 1 px spines |
 | cobblestone | mortar `74,74,76`, cobble `118,118,120`, cobble light `140,140,142` (`:196-197`) | 8 px rounded cobbles, no grit |
 | glass | pane `214,232,244`, sheen `236,248,255`, frame `244,250,255` (`:211-213`) | frame, pane, diagonal sheen; no noise |
-| ores (10-13) | the stone tones + the locked ore colour (`ORE_TILES`, `:6-11`) + its shade (x0.78) | 2-3 px nugget clusters |
+| ores (10-13) | the stone tones + the ore colour (`ORE_TILES`, `:6-11`) + its shade (x0.78) | 2-3 px nugget clusters |
 
 The table is a starting point the implementer tunes in the lookbook; the gates hold the rules, not the values:
 2-4 tones per material; composite layers (ores, face variants) use only their parents' tones; a same-tone neighbour
 ratio of at least 0.55 (today 0.012-0.110); continuous tiles wrap seamlessly, framed tiles (glass, wood top) have a
-one-tone border; no texel darker than 0.35x its layer's mean luminance unless it is a locked ore colour or its shade;
+one-tone border; no texel darker than 0.35x its layer's mean luminance unless it is an `ORE_TILES` ore colour or its shade;
 **each layer's linear luminance within ±15% and chromaticity within ±0.03 of today's** (a frozen fixture). The mean
 pin is the decision that keeps this move out of the light-and-colour lane's way: the far field (`farField.js:85-106`),
 the biome-tint balance, the grass blade's measured match to its turf, and the light rig all keep their inputs; only

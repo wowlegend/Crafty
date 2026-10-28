@@ -32,7 +32,7 @@ export function makeNpcEntity(npc, id, groundY) {
     position: new THREE.Vector3(a.pos[0], groundY, a.pos[1]),
     color: npc.color,
     health: 200, maxHealth: 200,
-    speed: 0, passive: true, damage: 0, xp: 0,
+    speed: 0, passive: true, damage: 0,
     rotation: a.facing,
     targetX: a.pos[0], targetZ: a.pos[1], // shape parity with spawnMob (unused while isStatic)
     homeX: a.pos[0], homeZ: a.pos[1],

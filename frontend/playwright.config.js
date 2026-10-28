@@ -1,5 +1,22 @@
 import { defineConfig } from '@playwright/test';
 
+// THE SUITE DRAWS ITS CANVASES AT PIXEL RATIO 0.5 (2026-10-28). Every spec runs on SwiftShader, a software rasteriser,
+// so a frame costs per pixel drawn; tests/e2e/_fixtures.js writes a cap on each page before it loads and both R3F
+// canvases (GameScene, TitleDiorama) hand R3F `e2eDpr(theirOwnDpr)` (src/devtest/e2eDpr.js). Viewport, CSS layout, HUD
+// and every DOM coordinate are unchanged; only the GL drawing buffer shrinks (640x400 inside the 1280x800 box). A spec
+// opts out with `test.use({ e2eDprCap: null })`: perf-siege does (its floor is read at PROBE_DPR), and composer-dpr (it
+// asserts the renderer's ratio equals each tier's pixel budget). Each test prints its
+// canvases as `[e2e-dpr] ... drawing buffer/CSS box`; smoke asserts the cap took, tests/gates/e2e-dpr-seam-gates that
+// both canvases apply it.
+// MEASURED ON CI, all green, against main 2bb0857d (runs 40648756061 / 40651588887, the same sha twice):
+//   slowest e2e shard 978 / 926 s -> 605 s · the 8 shard jobs summed 5153 / 4698 s -> 2850 s · the workflow 16.4 / 15.5
+//   min -> 10.2 min · test time summed 4673 / 4205 s -> 2386 s · touch-hold 648 / 446 s -> 221 s · ore-glow 420 / 366 s
+//   -> 156 s · lightning 90 / 96 s -> 49 s (run 40660167239). Readings held: lightning sky 8.3 -> 144.5 vs 8.2 -> 143.4,
+//   ore-glow night diamond lift +74.5 vs +83.2 with stone/coal still flat.
+// REJECTED, measured the same way: a 640x400 default viewport (run 40661726468) summed the same (2871 s) but its slowest
+// shard was 701 s, it left every spec with its own viewport (touch-hold 498 s) at full cost, and it changed what
+// ore-glow measures: its stone patch read 56.8 at noon AND at midnight (26.4 / 3.0 at 1280x800), no longer the stone face.
+
 // Gameplay-flow E2E foundation (Option A, 2026-06-28 audit follow-up).
 // Runs against `vite dev` because the test bridge (window.__craftyTest) + window.useGameStore
 // are DEV-ONLY (tree-shaken in prod). Headless WebGL via swiftshader — mirrors the proven

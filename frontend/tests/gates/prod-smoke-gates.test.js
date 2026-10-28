@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { isFatalMessage } from '../../scripts/ci/prod-smoke.mjs';
+import { isFatalMessage, seamVerdict, LOOKBOOK_SEAM_METHODS } from '../../scripts/ci/prod-smoke.mjs';
+import { installLookbookSeam, _resetLookbookForTest } from '../../src/render/lookbookSeam.js';
 
 // The production bundle is the ONE artifact this repo ships and the one nothing ever loaded. Every
 // harness drives the dev server, so `npm run build` proved it COMPILED and bundle-budget proved it was
@@ -39,5 +40,52 @@ describe('prod-smoke: the noise filter keeps its teeth', () => {
     // The trap in every allowlist: a pattern loose enough to swallow the thing it was never meant to.
     expect(isFatalMessage('TypeError: cannot read favicon of undefined in renderer boot')).toBe(true);
     expect(isFatalMessage('Pointer Lock failed: WebGL context lost')).toBe(true);
+  });
+});
+
+describe('prod-smoke: the lookbook seam ships in the production bundle, and only behind ?lookbook=1', () => {
+  const ran = (seam) => ({ entryRan: true, seam });
+  const open = (methods, timer = { installed: true, reason: null }) => ({ entryRan: true, methods, timer });
+  it('passes when the seam is absent on a plain page and whole with the parameter', () => {
+    expect(seamVerdict({ plain: ran('undefined'), opened: open([...LOOKBOOK_SEAM_METHODS]) }).ok).toBe(true);
+  });
+  it('fails when the bundle lost the install, when a method is gone, and when a plain page carries the seam', () => {
+    const missing = seamVerdict({ plain: ran('undefined'), opened: open(null) });
+    expect(missing.ok).toBe(false);
+    expect(missing.line).toMatch(/MISSING from the production bundle/);
+    const partial = seamVerdict({ plain: ran('undefined'), opened: open(LOOKBOOK_SEAM_METHODS.filter((m) => m !== 'look')) });
+    expect(partial.ok).toBe(false);
+    expect(partial.line).toMatch(/lacks look$/);
+    const leaked = seamVerdict({ plain: ran('object'), opened: open([...LOOKBOOK_SEAM_METHODS]) });
+    expect(leaked.ok).toBe(false);
+    expect(leaked.line).toMatch(/WITHOUT \?lookbook=1/);
+  });
+  it('fails when passTimes() cannot load the pass timer chunk, however that shows', () => {
+    for (const [timer, re] of [
+      [{ installed: false, reason: 'passTimes threw: Failed to fetch dynamically imported module' }, /did not install the pass timer.*Failed to fetch/],
+      [{ installed: false, reason: 'no pass timer in this build' }, /did not install the pass timer.*no pass timer in this build/],
+      [null, /did not install the pass timer.*no report/],
+    ]) {
+      const v = seamVerdict({ plain: ran('undefined'), opened: open([...LOOKBOOK_SEAM_METHODS], timer) });
+      expect(v.ok, JSON.stringify(timer)).toBe(false);
+      expect(v.line).toMatch(re);
+    }
+    expect(seamVerdict({ plain: ran('undefined'), opened: open([...LOOKBOOK_SEAM_METHODS]) }).line).toMatch(/the pass timer loads/);
+  });
+  it('a page whose entry module never ran is COULD NOT CHECK, never an absence', () => {
+    for (const r of [
+      { plain: { entryRan: false, seam: 'undefined' }, opened: open([...LOOKBOOK_SEAM_METHODS]) },
+      { plain: ran('undefined'), opened: { entryRan: false, methods: null } },
+    ]) {
+      const v = seamVerdict(r);
+      expect(v.ok, JSON.stringify(r)).toBe(false);
+      expect(v.line).toMatch(/COULD NOT CHECK/);
+    }
+  });
+  it('demands exactly the methods the real seam installs', () => {
+    _resetLookbookForTest();
+    const win = { location: { search: '?lookbook=1' } };
+    installLookbookSeam(win, { store: { getState: () => ({}) }, setActive() {}, getActive: () => false, cycleOf: () => 0, glInfo: () => null, contextLosses: () => 0 });
+    expect(Object.keys(win.__craftyLookbook).sort()).toEqual([...LOOKBOOK_SEAM_METHODS]);
   });
 });

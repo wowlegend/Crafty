@@ -1,26 +1,17 @@
-import { describe, it, expect } from 'vitest';
-import { dimensions, scoreOf, verdict, SCORE_KEYS, drivenBy } from '../../scripts/ci/gate-census.mjs';
+import { describe, it, expect, afterAll } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
+import { dimensions, scoreOf, verdict, SCORE_KEYS, drivenBy, survey, POPULATION } from '../../scripts/ci/gate-census.mjs';
 
 /**
  * The census is an instrument, so its own reading has to be provable on inputs where the answer is known
  * by construction. R8a: a derived metric needs its own positive control — the estate nearly killed a
  * healthy mutation campaign on a count that was a property of the LOGGING, not of the run.
  *
- * Every fixture here is a synthetic string, never a real repo file. A fixture pointing at the real world
- * expires when the real world moves (R8b), and this file's whole subject is other files.
- *
- * Mutation-Proof: 6 mutations, denominator asserted (10/10 cases collected on every run).
- *   M1 dimensions() stops stripping comments -> the comment-immunity case RED (prose naming a dimension
- *      would score, which is the exact defect that made opsec-scan fire on the files documenting its ban)
- *   M2 `executes` regex drops the vitest/node negative lookahead -> harness-import case RED (importing
- *      `vitest` would count as reaching the subject, which would score ~every test file in the repo)
- *   M3 scoreOf sums a fixed 1 -> scoring case RED
- *   M4 verdict() drops its empty-rows guard -> control-failure case RED (an empty population would report
- *      a flawless corpus forever — R3a, and the single most dangerous reading this file can produce)
- *   M5 verdict() returns code 0 on empty rows -> control-failure case RED (the guard must EXIT, not just
- *      print; printing a denominator while returning success is what made two estate gates useless)
- *   M6 `receipt` matches /Mutation/ instead of the full token -> receipt case RED (the word appears in
- *      prose all over this repo; only the trailing colon makes it a claim)
+ * Every fixture here is synthetic (a string, or a scratch tree for survey()), never a real repo file. A
+ * fixture pointing at the real world expires when the real world moves (R8b), and this file's whole
+ * subject is other files.
  */
 const wrap = (body) => `import { describe } from 'vitest';\n${body}`;
 
@@ -49,14 +40,13 @@ describe('gate-census dimensions', () => {
     const d = dimensions(commented);
     expect(d.executes).toBe(false);
     expect(d.denominator).toBe(false);
-    // `receipt` is deliberately measured on the RAW source: a receipt IS a comment, by design.
-    expect(d.receipt).toBe(true);
   });
 
-  it('receipt: only the full token counts, not the bare word', () => {
-    expect(dimensions('// Mutation-Proof: deleted X -> RED').receipt).toBe(true);
-    expect(dimensions('// mutation testing is good').receipt).toBe(false);
-    expect(dimensions('// Mutation proof was considered').receipt).toBe(false);
+  it('a Mutation-Proof line in the file scores nothing: the receipt is the commit trailer (DECISIONS 2026-10-28 item 17)', () => {
+    expect(SCORE_KEYS).toEqual(['executes', 'denominator', 'zeroGuard', 'blindSpot']);
+    const receiptOnly = dimensions('// Mutation-Proof: deleted X -> RED\nexport const x = 1;');
+    expect(receiptOnly).not.toHaveProperty('receipt');
+    expect(scoreOf(receiptOnly)).toBe(0);
   });
 
   it('zeroGuard counts ANY numeric floor, not only the literal zero', () => {
@@ -88,7 +78,7 @@ describe('gate-census dimensions', () => {
   it('scoreOf counts the dimensions that are actually present', () => {
     expect(scoreOf({})).toBe(0);
     expect(scoreOf(Object.fromEntries(SCORE_KEYS.map((k) => [k, true])))).toBe(SCORE_KEYS.length);
-    expect(scoreOf({ executes: true, receipt: true })).toBe(2);
+    expect(scoreOf({ executes: true, receipt: true }), 'a key outside SCORE_KEYS scores nothing').toBe(1);
   });
 
   it('a file with nothing scores 0, and that is a CLAIM about evidence, not about correctness', () => {
@@ -105,8 +95,8 @@ describe('gate-census verdict', () => {
 
   it('a real population reports its denominator and exits 0', () => {
     const rows = [
-      { file: 'a', group: 'g', executes: true, receipt: false, denominator: false, zeroGuard: false, blindSpot: false, score: 1 },
-      { file: 'b', group: 'g', executes: false, receipt: false, denominator: false, zeroGuard: false, blindSpot: false, score: 0 },
+      { file: 'a', group: 'g', executes: true, denominator: false, zeroGuard: false, blindSpot: false, score: 1 },
+      { file: 'b', group: 'g', executes: false, denominator: false, zeroGuard: false, blindSpot: false, score: 0 },
     ];
     const v = verdict(rows);
     expect(v.code).toBe(0);
@@ -147,5 +137,49 @@ describe('drivenBy — an import is RESOLVED against its importer, not matched a
   });
   it('prose, a same-named file elsewhere, and a longer path do NOT count — and the subject never drives itself', () => {
     expect(drivers).toEqual(['scripts/ci/sibling.mjs', 'tests/scripts/driver.test.js', 'tests/scripts/dynamic.test.js']);
+  });
+});
+
+describe('survey — the population the census ranks, walked on a scratch tree', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gate-census-'));
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+  const IN = {
+    'tests/gates/a.test.js': 'tests/gates',
+    'tests/gates/b.test.jsx': 'tests/gates',
+    'tests/scripts/c.test.js': 'tests/scripts',
+    'tests/store/d.test.js': 'tests/store+data',
+    'tests/visual/e.test.js': 'tests/visual',
+    'tests/e2e/f.spec.js': 'tests/e2e',
+    'src/game/g.test.js': 'src colocated',
+    'scripts/ci/h.mjs': 'scripts/ci',
+  };
+  const OUT = [
+    'scripts/visual/capture.mjs',
+    'scripts/dev/mutate.sh',
+    'src/game/g.js',
+    'tests/e2e/_boot.js',
+    'tests/gates/node_modules/x.test.js',
+    'tests/gates/build/y.test.js',
+    'tests/gates/.hidden/z.test.js',
+  ];
+  for (const rel of [...Object.keys(IN), ...OUT]) {
+    mkdirSync(dirname(join(root, rel)), { recursive: true });
+    writeFileSync(join(root, rel), 'export const x = 1;\n');
+  }
+
+  it('finds every declared group, sorted, and nothing outside them', () => {
+    const rows = survey(root);
+    expect(rows).toEqual(Object.keys(IN).sort((a, b) => a.localeCompare(b)).map((file) => ({ file, group: IN[file] })));
+    expect(new Set(rows.map((r) => r.group)).size, 'every declared group is represented').toBe(POPULATION.length);
+  });
+
+  it('an empty tree surveys to nothing, which the verdict refuses as COULD NOT CHECK', () => {
+    const empty = mkdtempSync(join(tmpdir(), 'gate-census-empty-'));
+    try {
+      expect(survey(empty)).toEqual([]);
+      expect(verdict(survey(empty)).code).toBe(3);
+    } finally {
+      rmSync(empty, { recursive: true, force: true });
+    }
   });
 });

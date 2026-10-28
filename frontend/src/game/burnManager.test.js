@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { makeBurnManager } from './burnManager.js';
+import { useGameStore } from '../store/useGameStore';
+import { setActive } from '../input/inputState';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -65,5 +67,45 @@ describe('makeBurnManager — fire DoT interval registry', () => {
     expect(mgr.size).toBe(2);
     mgr.stopAll();
     expect(mgr.size).toBe(0);
+  });
+
+  describe('a held world holds the burn: no damage lands and no tick is spent', () => {
+    beforeEach(() => {
+      useGameStore.setState({ gameStarted: true, isAlive: true, hitstopUntil: 0, hitstopStart: 0 });
+      setActive(true);
+    });
+    afterEach(() => {
+      setActive(false);
+      useGameStore.setState({ gameStarted: false, hitstopUntil: 0, hitstopStart: 0 });
+    });
+
+    it('through a pause, then every remaining tick lands after the resume', () => {
+      const hits = [];
+      const mgr = makeBurnManager();
+      mgr.start('m1', 3, 5, () => (id) => { hits.push(id); return { id }; });
+      vi.advanceTimersByTime(1000);
+      expect(hits.length, 'the burn never ticked in play').toBe(1);
+      setActive(false);
+      vi.advanceTimersByTime(5000);
+      expect(hits.length, 'the burn ticked while the game was paused').toBe(1);
+      expect(mgr.size, 'the pause ended the burn instead of holding it').toBe(1);
+      setActive(true);
+      vi.advanceTimersByTime(4000);
+      expect(hits.length, 'the burn lost ticks to the pause').toBe(3);
+      expect(mgr.size).toBe(0);
+    });
+
+    it('through a hitstop, then every tick lands after it', () => {
+      const hits = [];
+      const mgr = makeBurnManager();
+      useGameStore.setState({ hitstopStart: 0, hitstopUntil: Number.MAX_SAFE_INTEGER });
+      mgr.start('m1', 2, 5, () => (id) => { hits.push(id); return { id }; });
+      vi.advanceTimersByTime(3000);
+      expect(hits.length, 'the burn ticked through a hitstop').toBe(0);
+      useGameStore.setState({ hitstopUntil: 0 });
+      vi.advanceTimersByTime(3000);
+      expect(hits.length, 'the burn lost ticks to the hitstop').toBe(2);
+      expect(mgr.size).toBe(0);
+    });
   });
 });

@@ -18,6 +18,153 @@
 
 ---
 
+## 2026-10-28 — [KEVIN] One CLAUDE.md: the symlink and its directory are gone
+
+**Decided by Kevin, in his words:** "i don't really like how the agents.md symlinks to claude.md in this repo, let's just have one claude.md."
+
+**Supersedes** the layout the file described about itself: the instruction text lived in a directory of its own as AGENTS.md, and the root
+`CLAUDE.md` was a symlink to it, so that Antigravity and Gemini could read the same copy.
+
+**What shipped.** `CLAUDE.md` is now a real file at the repo root, with the former AGENTS.md text unchanged apart from its header, its layout block and
+the generated blocks (the file's earlier history is under the old path; git cannot pair it with a path that already existed as a link). The
+directory is removed; it held nothing else tracked (its two workflow notes were already deleted in `974f9a54`). The three generators (`measure.mjs`,
+`gate-table.mjs`, `read-order.mjs`) write into `CLAUDE.md`; `doc-currency` lists it as canonical; `ci/write-receipt.sh` no longer names the
+removed directory as an input root; the opsec ledger entry moved with the file.
+
+**Door.** Reversible: a link can be added back in one commit. **What it costs.** A harness that read the old directory (Antigravity, Gemini) no
+longer finds the instructions there; none is configured to in this repo.
+
+**Plans and audits dated before this** that say AGENTS.md mean `CLAUDE.md`; they are history and stay as written.
+
+## 2026-10-28 — [LOOP, Kevin-delegated] Landing lifecycle: PRs with free CI, merges by merge commit, six e2e shards; PR #28 parked
+
+**Decided by the command session (Kevin asleep; standing authority).**
+
+1. **Every lane lands through a PR**, because main deploys to the live site on every push and the e2e suite runs
+   reliably only in CI (local receipts failed three times on 2026-10-27 on machine load, none on code). Actions are
+   free: the repository is public. Kevin asked for the milestone as a PR (#22) for his `/code-review ultra`; the
+   pattern is now general.
+2. **Merges are local merge commits, never cherry-picks or GitHub squashes** (the repository allows only squash in
+   the UI). A cherry-pick on 2026-10-27 left a branch git calls unmerged, deletable only by `git branch -D`, which is
+   denied estate-wide; AB's `worktree-reap` (now allowed for this repository only, Kevin 2026-10-27) deletes merged
+   branches with `-d`, and Kevin's K55(d) moves stale unmerged ones to `refs/backup/branches/`.
+3. **E2E runs in 6 shards** (`17e06ecd`): every shard of #22 hit its 25-minute limit with all finished tests green.
+4. **PR #28 is parked as a draft** after two review rounds. It let a docs-only commit borrow CI's e2e verdict from an
+   ancestor with the same app identity. Round 1 refuted it (identity ignored ci.yml; a newer red was skipped); round 2
+   closed that, and the dynamic review found nothing blocking, but a fail-open mutant (only a commit's newest run
+   read) and two pre-existing weaknesses (only each run's latest attempt is read; the base read has no event filter)
+   remain. It is a convenience; the landing headroom below allows one PR, which goes to #22. Revisit with a
+   fail-closed rule: any push or dispatch run with no verdict on a same-identity commit stops the walk.
+5. **Landing is capped by the published operator pages.** `artifact-currency` refuses a push more than 30 commits past
+   the pages' publish sha; era-review and sota-audit belong to account 1, which this session (account 2) cannot
+   write. Until Kevin's morning answer (ACTIVE_PLAN, "For Kevin" 1), at most one PR lands: #22 first.
+6. **Then option (b), taken ~01:30Z while Kevin slept:** the cap had reached every lane (touch-hold's push refused at
+   41), so the three page sources were refreshed against measured state (`d00273cd`), read in full before publishing,
+   and era-review and sota-audit were published from account 2 at NEW addresses — era-review
+   https://claude.ai/artifact/Q1QQLYLxPVYZ8A7Srm1BMF, sota-audit https://claude.ai/artifact/NuwFDNnfZG3gRHv6LH1krr —
+   with `.artifact-sync.json` repointed and synced at `d00273cd`. The old account-1 addresses stay in the file as
+   `previousUrl`. Reversible: once account 1 is active, republish the same sources there and point back.
+7. **E2E moves to 8 shards** (from 6): with the Phase 0 lanes' specs merged, two shards projected to about 20 minutes
+   on a first pass with no room for a retry (PR #24 prep). Runner minutes are unchanged and free; wall time per shard falls.
+8. **The page cap binds only a push that moves main** (`fix/artifact-currency-scope`, two review rounds). A lane counted
+   its OWN commits past the publish sha, which no republish from main could lower, so #24 and then #25 were refused for
+   good. Branch pushes now report drift without refusing; a push that moves main (or whose refs are unknown) is still
+   refused over 30. A merge made on GitHub runs no hook, so CI checks main's drift on every push to main (full history):
+   that is DETECTION after the merge, not prevention. Prevention would need a required check, such as Vercel Deployment
+   Checks, which is Kevin's dashboard (T6). Residue goes to `memory/STATUS.md` G-ledger.
+9. **A fix that main needs ahead of its lane goes to main by `cherry-pick -x`.** The lightning spec's CI budget was
+   committed on `feat/instruments` (a9134e2b), but main was red on the same spec; it went to main as a9a303e9 so main
+   could go green before any lane landed. That is not a lane landing: #23 still lands by merge, and git reconciles the
+   identical change. Item 2 (merge commits only) governs lanes.
+10. **Lanes land in readiness order**, not the fixed 22 -> 24 -> 23 -> 25 queue, once main is green: whichever PR is
+   CI-green first lands first. The combat-stance lane (Phase 1) builds on main plus #24 and #25, and lands after both.
+11. **Kevin, 2026-10-28 morning: "go with option a for the pages."** Option (a) was: keep the operator pages at their
+   ORIGINAL account-1 links and republish them there whenever account 1 is active. It supersedes item 6's move as the
+   end state: the account-2 copies (`.artifact-sync.json` `url`) are interim. The session cannot switch accounts, so
+   the next time account 1 is the active account, the command session republishes era-review and sota-audit at their
+   `previousUrl`, swaps `url` and `previousUrl`, and runs `--sync`. Until then the interim copies stay current, because
+   a main push more than 30 commits past their publish point is refused (item 8).
+12. **The page cap reports and no longer refuses; the pages state their own age** (supersedes the hard-fail half of the 2026-08-07 artifact-currency decision, 7d30ee27; holistic review wf_16b54287-0f9). Measured: the cap refused 8 pushes, 5 of them correct lane work; it stopped no recorded false claim, and it passed a false "Queued" pill on a page that was at HEAD (41c40c6d). It measures how far the WRITER is behind; Kevin's question in August was whether what he READS is current, which a page answers by printing its own commit and time. After item 8, merging a lane still counted the lane's commits into main's drift, so every landing needed a republish from whichever account owns the pages. Now: drift prints on every push and in CI and refuses nothing; a missing or unusable source, a falsified or undeclared Queued pill, and a missing, duplicated or mismatched as-of stamp still refuse; `--stamp` writes a generated "As of <commit>, <UTC time>" line at the top of each page, naming the commit the page was written against and that commit's time, and `--sync`, run after the publish, records it only when the committed source's stamp names the same commit (it cannot read the published page, so the record is honest only if the stamped source was published first); LOOP-PROGRESS (no URL, no reader) is archived; the Command Record page (`docs/superpowers/command-record.html`) is tracked as a surface. Whether era-review and sota-audit stay living pages or are frozen as dated history is Kevin's call (they are his reading surface); option (a) stands until he says otherwise. This also supersedes items 5, 8 and 11 of this entry where they state the refusal (no push is refused any longer for being more than 30 commits past the pages' publish sha), and under option (a) the Command Record, which the era-review and sota-audit stamps point to, must be readable from the account the pages are published from.
+13. **Kevin, 2026-10-28: "agree on your recommendations and changes."** It answers the two calls put to him with
+   items 8-12. (a) **ONE page for Kevin: the Command Record.** Kevin, same day: "just maintain one html for
+   me to review your achievements/ decisions etc whenever i have time." era-review and sota-audit retire to
+   `docs/archive/` as dated history (their last published versions stay readable at their links); no account-1
+   republish is owed, so option (a) of item 11 lapses. The Command Record is refreshed at every landing.
+   (b) **GitHub required status check on main.** First a CI change: one aggregate job is the only required context
+   (required checks match job names, so eight shard names would block main whenever the shard count changes),
+   docs-only commits skip the e2e jobs (a skipped check counts as passing), and CI runs on every push to `land/**`.
+   Then branch protection through the API: that check required, branches up to date, "do not allow bypassing" on
+   (every push here comes from the admin account, which bypasses it otherwise), no force pushes, no deletion. Then
+   e2e-freshness's tiers retire in favour of the server-side rule. (c) Kevin applied the narrow allow rules the
+   classifier would not let the session grant itself (`git branch -d`, remote deletes of `land/`, `feat/`, `fix/`,
+   `gh pr close`, the protection call); `git branch -D` stays denied.
+14. **Kevin's overarching principle, 2026-10-28 (standing; it governs every later decision).** Crafty was started in 2025
+   by far weaker models and agents, and carries fundamental design, architecture and tech debt and AI slop from them;
+   work has accelerated only around Opus 5.5, and later models will go faster still. So **nothing is off limits**: the
+   whole game, its architecture and design, every element, visual and idea may be changed, enhanced, deleted or pruned
+   as the command session judges best. Full autonomy; Kevin is asked nothing unless absolutely needed. Install any tool
+   that helps. Keep the public face (the GitHub repo, and GitHub Pages) beautiful and "ASI-looking cool", and the docs
+   in SOTA shape. Consequences: earlier decisions, plans, gates and docs bind only as far as they still earn their place
+   on re-reading; a fresh whole-project assessment (2026-10-28) ranks what to delete, rewrite and keep; and the
+   harness is shaped so a stronger model can take over cold and move faster (state on disk, small surfaces, generated
+   facts, no ceremony that only a weaker model needed).
+15. **The public face, tests and comments (Kevin, 2026-10-28: "you decide").** (a) **No GitHub Pages site for now.**
+   Kevin meant the repo's own face; the live game on Vercel is the showcase, and a second website is a second surface to
+   keep current. The effort goes to the README (a hero clip captured from the real game, a short honest description, how
+   to play, the architecture in brief, no emoji markers, no number that can rot unless generated), the About line,
+   topics, labels, issue templates and the social preview image. Revisit only if a devlog earns its keep. (b) **Tests
+   are in scope like everything else.** Keep a test when it checks behaviour and has shown it can fail on the defect it
+   guards; delete or merge tests that pin implementation, source-grep gates and duplicates. (c) **Comments are
+   minimal.** A comment says WHY, and only when the code cannot: a non-obvious constraint, an external fact (a library
+   quirk with its version and line), a safety or ordering invariant. No history, review narrative, round numbers or
+   mutation receipts in code: git and this file hold history, and `Mutation-Proof:` commit trailers hold receipts. So
+   the killability-ledger gate, which demands a receipt literal in every check file, retires with the comment pass. The
+   pass runs as its own wave after the in-flight lanes land, directory by directory, keeping every load-bearing fact.
+16. **Nothing is locked (Kevin, 2026-10-28):** *"when i see things like "Design Language (LOCKED — S1-C)" , remember
+   the directive, nothing is locked . you're free to enhance / delete / revise anything."* It restates item 14. The
+   live docs still carried labels that read as binding locks to the next agent. They now state the decision, its
+   reason, and that it stands only while it earns its place; the command session may enhance, replace or delete it,
+   recording the call here. **Rewritten:** `CLAUDE.md` (the design-language heading; the de-monolith,
+   `Components.jsx` and engine-core lines, which keep their facts: the Player loop's per-frame order is load-bearing,
+   so a split must keep it; the engine core is proven, so a replacement must measure better); `LOOP-CHARTER.md` and
+   `LOOP-KERNEL-PROMPT.md` (a recorded decision may be reversed by a new dated entry here; `Components.jsx` was parked,
+   not banned; the CUT-gate stays unused as a tool, and deleting a shipped player-facing feature needs an entry here
+   with the lived or e2e proof that nothing still promised depends on it, not a KEVIN-REVIEW-BATCH entry first;
+   re-baselines, new dependencies, taste and direction calls are the session's); `memory/STATUS.md` (the `[KEVIN]`
+   legend, the CUT-gate line, section H, the re-baseline items, the pillar summary); `memory/ARCHITECTURE.md` (the
+   Components line); `SOTA-INITIATIVE.md` (its guardrails and process sections); `INDEX.md` (a line near the top on how to
+   read old labels, and the UI-system entry); the coherence-pillars spec (a status line; P3); and six 2026-10-27
+   plans (coast-water, combat-stance, encounters-siege, first-minute, harness-sota, material-grammar). **Left as written:** dated
+   specs and plans before 2026-10-27, archives, reviews and CHANGELOG, which are records (the INDEX line says their
+   labels bind nothing); this file's own entries; and what stays Kevin's: his two bright lines (spend no money; never
+   force-push or rewrite pushed history, the 2026-10-27 mandate entry) and what only he can do (real-device feel, the
+   audio mix by ear, account sign-ins), which is also why S4 stays his. Publishing the repo's public face is the
+   session's (item 15). P4's two invariants (no frequent mid-combat re-mesh; input via intent-abstraction, not
+   `pointerLockElement`) are engineering constraints, not locks: they bind the session as facts about the iPad-class
+   frame budget and input routing, and one may be broken only with a measurement showing that frame budget (or input
+   parity) still holds, recorded here. **Guard:** `doc-currency` has a `locks` check. It fails when a canonical doc
+   other than this one carries one of six phrasings: `(LOCKED` and `LOCKED —` (capitals; the dash may be em or en),
+   `IRREDUCIBLE` (capitals, or "documented irreducible"), and `MUST NOT be split`, `KEEP, don't rewrite` and
+   `do not relitigate` (any case). It prints file:line and points here. A line that cites item 16 may quote a label,
+   which is how a doc quotes Kevin's directive; any other lock wording passes the check. This file is left out
+   because it records and quotes such labels. The PASSED line prints both denominators: the phrasings and the docs.
+17. **The killability-ledger gate is retired (command session, 2026-10-28; item 15(c) decided it).** It demanded a
+   `Mutation-Proof:` line inside every new check file. Item 15(c) forbids mutation receipts in code, so every new test
+   raised its ratchet, and its only green path was a comment the comment pass would delete. The receipt now has one
+   home: the `Mutation-Proof:` commit trailer. The `mutation-proof-trailer` gate still demands it on every push, for a
+   commit that adds a gate or rewrites a gate's assertions. Removed: the pipeline step, the script, its ledger, its
+   test and its row in the gate table. The gate census keeps the population it shared with the ledger and no longer
+   scores a receipt inside a file. Neither the old gate nor the trailer gate can check that a receipt is true.
+18. **The Wave 1 cuts reach further than the plan first said (command session, 2026-10-28, on game-design grounds).**
+   A Settler kill pays 0 XP, banks no Aspect power, earns no kill-quest credit and does not count in `stats.kills`. A
+   spell hit on a NEUTRAL mob (a Settler or livestock) pays no per-hit XP. A livestock kill still pays its declared XP,
+   so hunting stays rewarded. Spellcaster and Archmage count spells that land on hostiles, once per spell, the Shadow
+   Dragon included; a cast, a ground hit or a sky shot counts nothing. One edge is not migrated: an old save that
+   finished Spellcaster under the old rule and has not claimed it still pays its 40 XP once.
+19. **The homepage is https://crafty-game.vercel.app (command session, 2026-10-28).** The command session added it as
+   an alias of the Vercel project the same day; Kevin clicked Add Domain. https://crafty-sand.vercel.app keeps working.
+   The play link, the README and the repo's homepage are rendered from `frontend/src/brand.js`.
+
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 
 **Why.** `e2e-freshness` refused every push because the base's CI e2e is red (57c45ae4: run 35845534213 cancelled at

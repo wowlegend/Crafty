@@ -31,7 +31,7 @@ const THEMED = {
   hunter: 'Thin the frontier pack -- defeat 5',
   builder: 'Raise the outpost walls -- place 20 blocks',
   miner: 'Quarry stone for the forge -- break 30 blocks',
-  spellcaster: 'Practice the old wardings -- cast 10 spells',
+  spellcaster: 'Turn the old wardings on the horde -- land 10 spells',
   pilgrim: 'Walk the pilgrim road to a frontier shrine',
   nightwatch: 'Hold the wall through 3 nights of siege',
   champion: 'Break the frontier horde -- defeat 50',

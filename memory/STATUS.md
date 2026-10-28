@@ -29,11 +29,12 @@ Crafty is a **mature, deployed, internally-coherent R3F voxel action-RPG** (**30
 excluding tests, auto-deploying to crafty-sand.vercel.app). **The masterplan's spine is complete.**
 
 **DONE (verified against code, not docs):**
-- **S0** reality audit · **S1** art direction + render recipe + the locked bold-flat UI · **S2** game design
+- **S0** reality audit · **S1** art direction + render recipe + the bold-flat UI · **S2** game design
 - **S2-B — the four-Aspect spine**: Wildheart (beast-transform) · Voidhand (kinetic grab/hurl) · Soulbind
   (capture/squad/fuse) · Elemancer (element-zone chemistry). All shipped 2026-06-10/11.
-- **S3 engine/platform**: de-monolith done (SimplifiedNPCSystem 934→183, GameScene 933→304; Components ~1330
-  is a *documented irreducible* Player useFrame controller, not an accidental god-file) · touch/mobile built
+- **S3 engine/platform**: de-monolith done (SimplifiedNPCSystem 934→183, GameScene 933→304; Components, sized
+  in the generated MEASURED block in `CLAUDE.md`, is the Player useFrame controller, whose per-frame order is
+  load-bearing, not an accidental god-file; it may still be split when that pays, keeping that order) · touch/mobile built
   (iPad/iPhone, iOS cold-start bridged) · perf tiers.
 - **The 2026-06-17 W1–W4 Comprehensive Rebuild**: purge/fix → the look (warm magic-hour grade, toon ocean,
   cinematic title, de-islanded continent) → living frontier (RPG HUD, Hearth outpost, 4 named NPCs, quest
@@ -100,7 +101,11 @@ source text is not a gate.
 
 ## 2. THE REGISTRY — every open item (the loop's definition of done)
 
-Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` open · `▣` in flight · `▣✓` done
+Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him, which now means only his two bright lines
+(spend no money; never force-push or rewrite pushed history) and what only he can do (real-device feel, the audio
+mix by ear, account sign-ins). An older [KEVIN] tag on a taste, layout, design or re-baseline call, or on a
+reversal, is the command session's since Kevin's 2026-10-27 mandate, restated as the standing principle in DECISIONS
+2026-10-28 item 14; publishing the repo's public face is the session's too (item 15) · `▢` open · `▣` in flight · `▣✓` done
 
 ### A. Confirmed live bugs
 - ▣✓ **R9 — ESC out of the pause menu FROZE THE PLAYER. FIXED + SHIPPED `8e68425` (2026-08-05).**
@@ -188,8 +193,8 @@ Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him · `▢` ope
 ### A-bis. ✅ THE 18-DOMAIN REVIEW — 91 confirmed bugs — **ALL 8 SEAMS CLOSED 2026-08-05.**
 
 > **Loop-actionable work in this block is DONE.** B1-B8 are all `▣✓`. What remains inside it is
-> KEVIN-gated, not code: the two owed visual re-baselines (B5's HUD, B7's `mobile.png`) and B8's 3 taste
-> items. Verify before re-opening anything here — B3 was already closed when a queue told me to start on it.
+> not code: the two owed visual re-baselines (B5's HUD, B7's `mobile.png`) and B8's 3 taste items, all the
+> command session's to decide since Kevin's 2026-10-27 mandate. Verify before re-opening anything here — B3 was already closed when a queue told me to start on it.
 > Last two seams: **B4/B4b** (mobs hit you through 200 blocks of rock; windups bankable across de-aggro) and
 > **B6c** (2 of 12 achievements dead on arrival — `updateLevel` had zero callers).
 
@@ -406,11 +411,13 @@ by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — 
   `oceanVisibleNear` unit (returns false all-land-above-sea), NOT lived-confirmed (this probe takes no cave shot);
   an in-cave lived shot + the water aesthetic sign-off remain → Kevin (KEVIN-REVIEW-BATCH).
   **(all fixable B8 bugs now shipped — see the header; spatial-audio was the last, fixed `e78bd1c`.)**
-  **→ KEVIN-REVIEW (routed 2026-07-14 — design/feel, do NOT change):** **chest-mining** (LMB on a chest MINES
+  **→ [LOOP], all four (routed to Kevin on 2026-07-14 as design/feel; `DECISIONS.md` "Older open items,
+  dispositioned" assigned them [LOOP] as real bugs, queued by size):** **chest-mining** (LMB on a chest MINES
   it + loses its stored inventory; RMB opens; but `verbRouter.test.js` §5-12 EXPLICITLY tests LMB→mine as
-  "break chest, existing cleanup" → a design call, recommended LMB-opens-not-mines); the 500ms *global*
-  damage-lockout (a pack of N deals the damage of ONE); camera-shake decays per-frame-not-per-second (1067ms
-  @30fps vs 267ms @120fps). **B4** mob-AI-2D→3D → Kevin. Details in KEVIN-REVIEW-BATCH.
+  "break chest, existing cleanup"; DECISIONS takes LMB-opens, the one option that cannot destroy player
+  property); the 500ms *global* damage-lockout (a pack of N deals the damage of ONE); camera-shake decays
+  per-frame-not-per-second (1067ms @30fps vs 267ms @120fps). **B4** mob-AI-2D→3D (a project to plan before it
+  is started). Details in DECISIONS.
 
 **MEDIUM (32) + LOW (13)** — enumerated in the audit doc. Fold them into the seam slices above where they share
 a root cause; do not open 45 separate tickets.
@@ -486,7 +493,7 @@ diffed between runs.** Result: **0 of 31 frames differ by more than 1%.** Worst 
 69-72%"* — **does not reproduce.**
 
 - **The load/environment hypothesis is DISCONFIRMED, and it was mine.** I predicted the variance was
-  machine-load-driven (the box was at load 22.49, `AGENTS.md` says the capture harness is load-sensitive,
+  machine-load-driven (the box was at load 22.49, `CLAUDE.md` says the capture harness is load-sensitive,
   and the compositor is intermittent). Run B executed at load **18.06** — high — and still produced 0.00%.
   High load does not produce the variance. Recorded because it was the stated reason for running this.
 - **Compositor ALIVE** at 62-65 rAF/1.2s across three separate checks. Also intermittent-by-history, so
@@ -692,11 +699,11 @@ finished by the beast stage varies. **Fix that and the beast states become basel
 same root cause behind the earlier 100-vs-120 readings.** Note this is a CAPTURE-DETERMINISM defect that
 happens to be visible here — it may affect any stage whose content depends on player position.
 
-**KEVIN-GATED, do NOT decide unilaterally:** if the player position cannot be made deterministic cheaply,
+**A design call, the command session's since Kevin's 2026-10-27 mandate (restated in DECISIONS 2026-10-28 item 14):** if the player position cannot be made deterministic cheaply,
 the alternative is making the beast reveal a STUDIO card like `boss-closeup` (fixed SX/SY/SZ, clean sky
 backdrop). That would REVERSE a recorded design decision — the fixture is IN-WORLD on purpose, so the
-silhouette is judged in its true context (`setCaptureStudio(false)`, and the code comment says so). Surface
-it; do not just do it.
+silhouette is judged in its true context (`setCaptureStudio(false)`, and the code comment says so). Record
+the reversal and its reason in DECISIONS when it is made, never silently.
 
 **PASS 12 (2026-08-08) — THE THREE POSITIONS ARE NAMED CONSTANTS. THE PHYSICS BODY IS DETERMINISTIC NOW.
 THE VISUAL GROUP IS NOT — AND THAT IS THE LAST LINK.**
@@ -971,7 +978,8 @@ you know the floor.** Same shape as asserting an absence without a baseline.
 - ▢ **[LOOP] add a determinism CONTROL to the visual harness** — capture twice, diff run-to-run, and fail
   on any frame above a floor. A regression gate whose own instrument drifts reports noise as signal, and
   nothing currently measures that.
-- ▢ **[KEVIN] the re-baseline** stays owner-gated and should wait for both of the above.
+- ▢ **[LOOP] the re-baseline** (owner-gated until Kevin's 2026-10-27 mandate handed it to the command session)
+  should wait for both of the above.
 
 ### B. Verification truth (the structural gap)
 - ▢ **V1 [LOOP] Vacuous-gate audit — ⚠️ MY OWN HEADLINE WAS OVERSTATED. Corrected below.**
@@ -1278,17 +1286,20 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   always generic; calling `runBossKillEffects` from a SPAWN path would have been a name-lie. `bossKill.js`
   re-exports the old name, so existing callers and their gates are untouched.
 - ▢ Voidhand **multi-phantom pool** (cap-4) · Soulbind **v2 faction protocol** (mob-vs-mob) · Elemancer **v2
-  terrain chemistry** (⚠️ *parked behind the P4 no-mid-combat-re-mesh HARD VETO* — do not unpark without a
-  measured trimesh re-cook budget).
+  terrain chemistry** (⚠️ *parked behind P4's no-mid-combat-re-mesh engineering constraint* — do not unpark
+  without a measured trimesh re-cook budget showing the iPad-class frame budget still holds, recorded in DECISIONS).
+- ▢ **[LOOP] Shareable-moment / clip / photo-mode tooling** — a named *commercial* blocker. Moved out of §H on
+  2026-10-28: it is code the command session can build.
 - ▢ World **M4b biome palette / M4c topography / M5b seabed / M7 landmarks** (the "deferred refinements").
 - ▢ Item **sets / set-bonuses** (affixes exist; sets never built) · `aspect-underbanked` denied-reason ·
   ~~title-screen hint should read from `keyMap`~~ **(2026-08-05: investigated, and the real defect was the
   OPPOSITE direction — see §G below. The title hints are deliberately abbreviated copy; rewriting them to
   render from KEY_MAP would change visible title-screen text, which the `menu` baseline covers and the
   compositor cannot currently verify. The discoverability bug it was pointing at is fixed.)** · **WebGPU/TSL migration** (specced, never done — huge blast radius).
-- ▢ The **coherence CUT-gate** stays **PARKED by design** (its own bound #1: inadmissible until a blind
-  calibration scores 100% on must-NOT-cut negatives). **⇒ The pillars govern what to BUILD; they may NOT be used
-  to authorize deletions.**
+- ▢ The **coherence CUT-gate** (an automated audit) stays unused until a blind calibration scores 100% on
+  must-NOT-cut negatives (its own bound #1). That limits the tool, not deletion: the command session may delete
+  anything, shipped player-facing features included, recording the call in DECISIONS with its reason and the
+  lived or e2e proof that nothing still promised depends on the cut (DECISIONS 2026-10-28 items 14 and 16).
 
 ### F. Perf + polish
 - ▢ **F1 [LOOP]** Per-frame allocations still real despite the CHANGELOG's "vein C DONE" claim:
@@ -1357,7 +1368,7 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   133 — so a script with an export, top-level work and only that path line scored as GUARDED. A guard must
   now COMPARE, tested line-scoped. *A false negative in the exact shape a checker exists to catch is worse
   than no checker, because it also silences the reviewer.*
-- ▣✓ `6817df3` **`.agent/AGENTS.md` said "Six gates authorize a push" above a table already showing eight**
+- ▣✓ `6817df3` **`CLAUDE.md` said "Six gates authorize a push" above a table already showing eight**
   — a headline contradicting its own table, inside the paragraph written to fix an undercount. Now NINE,
   and it carries the command to recount from the hook instead of from memory.
 - ▢ **G1 [LOOP]** Doc-truth: `LOOP-CHARTER.md:225` still advertises `@react-three/test-renderer` as
@@ -1383,16 +1394,74 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   - *(`kernel` is deliberately NOT an alias: LOOP-KERNEL-PROMPT.md has no numbered headings, so resolving
     against it would flag every `kernel §N` on the strength of the checker's own parse failure.)*
 - ▢ **G3 [LOOP]** **Session-close ritual at the context watermark** — refresh the GitHub remote surfaces
-  (README, repo description, CHANGELOG/STATUS) and push, every session.
+  (the README's hand-written prose; the About line, topics and labels through
+  `node frontend/scripts/ci/public-face.mjs --live`, then `--apply`, never `gh repo edit` by hand;
+  CHANGELOG/STATUS) and push, every session.
 
-### H. KEVIN-ONLY (the loop will not touch these)
-- ▢ **#44 The holistic playtest.** The perennial one. It gates every taste sign-off: spell look, movement feel,
-  storm, **audio mix (your ear)**, real-device touch feel.
-- ▢ **S4 — multiplayer + monetization scope.** The plan's last frontier. Servers, accounts, real money, legal.
-  The loop will NOT start netcode or payments without your model. (Hard line already recorded: no randomized
-  gacha/lootboxes, COPPA, odds-disclosure-if-random.)
-- ▢ **Shareable-moment / clip / photo-mode tooling** — a named *commercial* blocker.
-- ▢ Final taste sign-offs (the v7 spell look; the art pass in D once it lands).
+### G-ledger. Command-session residue, 2026-10-27/28 (after two review rounds; owner: Crafty command session unless named)
+
+As of 2026-10-28 ~05:30Z, compiled from session-truth (st- ids, `.state/session-truth.jsonl`) and the final-round review results in the session's workflow journals (`subagents/workflows/<wf id>/journal.jsonl`; the label after the id is the reviewer or stage). Every row is open; anything a later commit fixed was left out. Re-measure a row before relying on it: most name branches that are not yet on main.
+
+| # | Item | Severity | Source | Owner | State |
+|---|---|---|---|---|---|
+| 1 | A workflow_dispatch run on main skips the artifact-currency step, so it can conclude green on top of the red push run for an over-limit main; `gh run list --workflow=ci.yml --branch main` can then show success while main is still over the limit. | LOW | wf_fc04eb9a-b08 review:static | command | open |
+| 2 | CI and the local hook disagree when the recorded sync sha is reachable only from a squash-merged, deleted lane branch: CI's full clone lacks the object and goes red as unmeasured, while the operator's repo still holds it and passes. (The wrong shallow-checkout wording is routed separately; the disagreement is not.) | LOW | wf_fc04eb9a-b08 review:dynamic (also review:static) | command | open |
+| 3 | gate-table merges a repeated step by display name only: a different gate whose name collides with an earlier one is folded into that row (its command vanishes, the count does not move), and a same-tier duplicate no longer shows as a second row. Latent: 17 is correct today. | LOW | wf_fc04eb9a-b08 review:dynamic; review:static | command | open |
+| 4 | The generated gate table prints CI as yes for artifact-currency although CI runs it only on a push to main (never on a pull_request); only the description cell says so. | LOW | wf_fc04eb9a-b08 review:static | command | open |
+| 5 | gate-table text says a drift the gate cannot measure in CI fails rather than skips; an artifact surface with no recorded sha still skips on a CI push to main, and a page-kind surface in a shallow checkout reads as current. | LOW | wf_fc04eb9a-b08 review:dynamic | command | open |
+| 6 | One push of main plus an over-limit branch refuses the branch: the hook hands every pushed ref to each target it certifies, so the branch tip is judged as a main move (the PR 24 refusal again, for combined pushes). Errs strict; workaround is to push separately. Stated in the gate header, never ledgered. | LOW | wf_7ac4989f-4a9 static:artifact-scope, dynamic:artifact-scope; wf_fc04eb9a-b08 build:scope-round2; st-fa71e7add03f | command | open |
+| 7 | The branch-only-push message and the gate-table text say a branch cannot lower its own count; false (a --sync run, or a regenerated page committed on the lane, lowers it). The true claim is narrower: a republish from main cannot lower it, and a republish from the lane would publish unmerged state. Page-kind drift is also scoped although the header says in-tree defects stay strict on every push. Still present at e20928cc. | LOW | wf_7ac4989f-4a9 static:artifact-scope | command | open |
+| 8 | The pre-push hook never initialises PUSH_REFS, so a PUSH_REFS in the pusher's environment leaks into E2E_PUSH_REFS (harmless direction: it can only turn a branch push strict). Still unset at e20928cc. | LOW | wf_7ac4989f-4a9 static:artifact-scope | command | open |
+| 9 | fetch-depth 0 applies to every pull_request run in the gates job, where the artifact-currency step is skipped (about 224 MB full against 38 MB at depth 1, the reviewer's upper estimate). | LOW | wf_fc04eb9a-b08 review:dynamic | command | open |
+| 10 | In CI artifact-currency is detection after the merge, not a bound: no required check can block an over-limit GitHub-side merge (the step skips pull_request), repeated merges each land and go red, and nothing forces the republish until the next local push to main (the red-base rule reads only the e2e jobs). The overclaiming wording is routed; the mechanism is not. | MED | wf_fc04eb9a-b08 review:static; review:dynamic | command | open |
+| 11 | The operator pages (era-review, sota-audit, LOOP-PROGRESS) say 12 gates in CI; the fix branch makes it 13. Correctable only at their next republish. | unrated (builder report) | wf_fc04eb9a-b08 build:scope-round2 | command | open |
+| 12 | The new CI step has never run on GitHub; its first real test is the next push to main after the fix lands. | unrated (builder report) | wf_fc04eb9a-b08 build:scope-round2 | command | open |
+| 13 | The artifact-currency fix branch (e20928cc, two commits) and its close-out wf_f1eae656-3df are not on main. Until they land, the 30-commit page cap still binds branch pushes and about one PR lands per page republish; republish the operator pages (same file paths, active account) when main nears 30 commits past the synced sha. | unrated | st-9b9e6abe5382; st-393e388d5ba2; st-63f862b979f3 | command | closed by its landing on main (merge of fix/artifact-currency-scope, 2026-10-28) |
+| 14 | The guard `resolve(process.argv[1])` silently no-ops when a CLI script is run through a symlinked path; its author counts 17 scripts (a grep today finds the literal in 24 script files, so not all are fragile; how many are is unmeasured). | unrated | st-a1d4daff8eaa | command | open |
+| 15 | The pre-commit green-tree receipt is refused in linked worktrees (1240 to 1303 paths differ across lanes), so each push re-runs the full certification, and doc-currency ran degraded in one lane. Root cause per the harness lane: write-receipt.sh takes frontend/ as the toplevel under the hook's GIT_DIR; the builders' explanation (an untracked node_modules symlink) was disputed by two reviewers. Fix 6b15bb27 sits on feat/harness-tranche-a (PR 27, draft), not on main. | LOW (reviewers); a real bug (harness lane) | st-1df59f34c214; st-019a3868fb5d; wf_fc04eb9a-b08 review:static; wf_43c476c0-e8c dynamic:parked-ci; wf_779a4a5c-ac8 static:instruments-2 | command (lands with PR 27) | open |
+| 16 | PR 28 (feat/ci-tree-equivalence: e2e-freshness borrows CI verdicts across same-identity commits) is parked as a draft after two review rounds. Surviving mutant Y4: readCommitCi reads only a commit's newest run, so the walk fails open past an older red push run; also readCommitCi --limit 5. Revisit with a fail-closed rule: any push or dispatch run with no verdict on a same-identity commit stops the walk. | MED | st-76979df688e3; wf_f788103b-666 dynamic:ci-tree-2 | command | open |
+| 17 | e2e-freshness reads only each run's latest attempt and skips a run whose verdict is null, so a red run that is re-run, or re-run and then cancelled, reads as no verdict. That reopens the red-base refusal (the base reader on main has it too) and defeats PR 28's red-stops-the-walk fix. How GitHub reports re-run attempts is not measured. | HIGH (plausible) | st-76979df688e3; wf_f788103b-666 static:ci-tree-2 | command | open |
+| 18 | The base read has no event filter: on this public repo a pull_request run from a fork branch named main can be read as main's base, and a green merge-ref run or an approval-gated run with no jobs disarms the refusal while main is red. Pre-existing. | MED (plausible) | st-76979df688e3; wf_f788103b-666 static:ci-tree-2 | command | open |
+| 19 | The tier-1 local e2e receipt hashes only .js, .jsx, .mjs and .json under src and tests/e2e, so CSS and image files under src are invisible to it; the receipt is committed and travels with later commits. Pre-existing. | MED | st-76979df688e3; wf_f788103b-666 static:ci-tree-2 | command | open |
+| 20 | PR 28 LOWs: newest verdict means newest commit and then newest-created run, not newest in time (a later red on an older same-identity commit is outranked); a run reads green with any non-zero count of successful e2e jobs (no check against the shard count, now 8); the tier-2 branch-push line still says CI on the pushed branch decides, though ci.yml runs on push only for main; a green is borrowed from up to 40 ancestors with no age limit, though the e2e job depends on floating inputs (action tags, Node major, npm install); mutants X4 (dropped cwd) and Y11 (blocklist for allowlist) survive and are equivalent today. | LOW | wf_f788103b-666 static:ci-tree-2; dynamic:ci-tree-2 | command | open |
+| 21 | The Mutation-Proof trailer gate polices only tests/gates and scripts/ci, so a commit that weakens the assertions of the scripts test files (the e2e-freshness test file guards the push gate) passes without a trailer. Pre-existing. | LOW | wf_f788103b-666 dynamic:ci-tree-2 | command | open |
+| 22 | cli-guard accepts guards that gate nothing: a bare argv truthiness test, any top-level if that names a guard binding whatever its polarity, and one guarded if that exempts every other top-level statement. The wiring import probe runs with argv[1] unset, so the mutant making invokedDirectly return Boolean(process.argv[1]) survives the cli-guard spec, the gate and the wiring test. Narrowed into cli-guard's docblock (cb08d489) and kept as ledger, not claimed. | MED | wf_876e2b23-8ee static:harness-fix, dynamic:harness-fix; st-4ed852758768 | command (PR 27) | open |
+| 23 | Harness LOWs: the receipt fix's claim that GIT_INDEX_FILE still names the index being committed (commit -a, commit with paths) is unmeasured and a scrubbed-dirty mutant survives; the kills of the reads-the-checkout-instead-of-root mutants rest on a precondition no test asserts (the real-tree case asserts only denominators); cli-guard's own CLI loop is driven by no spec. | LOW | wf_876e2b23-8ee static:harness-fix, dynamic:harness-fix | command (PR 27) | open |
+| 24 | PR 27 landing preconditions: U4 needs a save, merge and restore of the .state directory; U5 (graft permission allows moved to settings.local.json) is a permission change reserved to the command session and lands with that file change; U7 removes the repo's .agent/workflows (AB Command told, because Antigravity reads it). | unrated | st-4ed852758768; st-47c6886f761a; st-1d67e51603a2; st-019a3868fb5d | command (PR 27) | open |
+| 25 | PR 22 (landed): the pin to the low tier lands after the world wait, so on CI every spec takes a med-to-low step-down at the moment play starts (recompiles, shadow-map and chunk reallocation); the cost is moved to the start of play, not removed. | MED (plausible) | st-e30a56a240c7; wf_43c476c0-e8c static:parked-ci | command | open |
+| 26 | PR 22 LOWs: the lightning let-go property has no mutant that turns red (a let-go defect fails first as SETUP, which mutate-e2e scores COULD NOT CHECK); the natural-strike check reads after the screenshot; the storm is half held (WeatherSystem's 90 s interval still flips its own weather ref); world-rebuild hand-copies the per-tier render distances while its comment says they are read live; the title-case comment quotes GameScene as saying every caller is inside a gesture, false for App's timer-driven world-ready auto-lock; the local 5.3 min lightning receipt ran on a budget longer than CI's 300 s. | LOW | wf_43c476c0-e8c static:parked-ci; dynamic:parked-ci | command | open |
+| 27 | world-hitstop (line 69) also fails intermittently on main; the ledger attributes it to materials not warmed and a SpriteMaterial program invalid on SwiftShader. | unrated | st-e30a56a240c7 | command | open |
+| 28 | The ore-glow e2e spec has the lightning shape, a wall-clock budget against runner speed: 3.2 min on a fast runner against a 480 s budget, about 6.4 min on a 2x slower runner, so it can time out on a slow CI runner as lightning did. | unrated (ledger) | st-96a0c034f74f | command | open |
+| 29 | gl-churn: CI linked 11 to 25 shader programs during idle in the old window. The failure itself was a spec defect (fixed in dfae38b6); the churn observation was left as an open item. | unrated | st-1df59f34c214 | command | open |
+| 30 | PR 23: power-summary compares the scenario line, read once before the hold; losing play during sampling (pointer lock dropped, player dead) or a different quality tier between the two arms is recorded or warned but never refuses the pair, so an arm that drops out of play mid-sampling still matches. | MED | st-f60f2434e09e; wf_779a4a5c-ac8 static:instruments-2 | command (PR 23) | open |
+| 31 | PR 23: no gate anywhere checks that the shipped production bundle keeps the lookbook seam install; the new gate's BLIND SPOT comment wrongly says the e2e covers it on vite preview; putting the install behind import.meta.env.DEV passes every unit test and removes the seam from the production build. | MED | wf_779a4a5c-ac8 dynamic:instruments-2 | command (PR 23) | open |
+| 32 | PR 23 LOWs: a failed arm can still be compared (power-summary ignores the partial flag in hold.json); signal-check never runs the headed or in-play branches of power-ab.sh; inPlay is pointerLockElement, not the game's input gate; the arm's browser close has no timeout (a hung close discards a valid arm after 100 s); heldS includes close time when the hold dies of an error; a relative --out-root makes the tier summary fail with MODULE_NOT_FOUND, unchecked; the EXIT trap's orphan sweep kills orphans from any checkout; the serve-exit-backstop fixture can leak a vite group if vitest dies abnormally; docs still say headless Chromium refuses pointer lock; three of the reviewer's mutants survive unreceipted. | LOW | wf_779a4a5c-ac8 static:instruments-2; dynamic:instruments-2 | command (PR 23) | open |
+| 33 | PR 25 late-lift roar: a real short roar tap can still commit the beast form when its lift is handled late while frames keep running (the measurements refuted the timestamp remedy, not the defect class, and the real-input check for it was replaced). The converse, a real hold of 450 ms or more whose handlers ran less than 450 ms apart after a stall, never commits and needs a decision. | MED (plausible) | st-206fe4439ba2; wf_84084422-b32 static:touch; wf_84084422-b32 fix:touch (ledger 4) | command (PR 25) | open |
+| 34 | PR 25 mouse path (K12 shape): a wrapper that drops the stamp at Components' installPrimaryMouse call survives all 3876 unit tests. T's two call sites, dropping isAlive from the liveness check (C3), dropping the teardown remove (C6) and dropping the stamp for the mouse inside primaryInput also survive; the wiring is proven only by the e2e. | MED | wf_84084422-b32 dynamic:touch; wf_84084422-b32 fix:touch (ledger 5); st-206fe4439ba2 | command (PR 25) | open |
+| 35 | PR 25 round-2 debt: glyph against hit rectangles; pen treated as desktop input; the Aspect cooldown sweep builds a string every frame; the 800 ms compat window drops a real click made within 800 ms of a touch on hybrid devices and under long stalls; echo detection by pointerType lineage; no jsdom gate for App passing otherPanelOpen; F3 heavy tested with one opener; the layout gate ignores transforms and margins; compat pointerup and cancel openers untested; the hybrid mouseup verdict. | debt (LOW) | st-ff48f752a59e; st-8918fc55653f | command (PR 25) | open |
+| 36 | PR 25 LOWs: the roar control reads post-lift verdicts after a fixed 2000 ms with no check that a frame ran; the e2e Mutation-Proof header is wrong in both directions; a docblock cites a gate path that does not exist; mutant E3 (1000 ms minimum pulse) survives the e2e at CI's frame rate; the desktop heavy-melee spec may share one brute between its warm-up click and its half control in a frozen world (latent, unmeasured); iOS Safari event.timeStamp is unmeasured and needs a device; the heavy's cooldown exemption rests on the input clock, so after a stall two heavies can land 35 ms apart on the game clock; touch-layout-gates 181 of 181 is a flake candidate (3de7edb2 gives the sweep a 90 s budget on this branch). | LOW | wf_84084422-b32 static:touch, dynamic:touch; wf_84084422-b32 fix:touch (ledger 1-3, 6) | command (PR 25) | open |
+| 37 | Light lane LOWs after the tests-only closure: SKY_CLOCK_SNAP is checked only from below; the claim that capture resets the sky clock is not gated (a reset of the wrong clock object passes); no test drives App's exitCapture calling setCaptureMode(false); the declared capture fraction has no producer and the explore-golden state that mood.js cites does not exist (it needs visualStates moved to tests/visual first); survivors MF, MG, MH, MM and MP unkilled (R-CF4 accepted); the dawn read's NOT MEASURED branch also fires when the game clock never ticked and blames the frame rate; the sky lags the game clock by up to one tick, so the HUD dial and the day-night flip lead the sky by about a second. | LOW | wf_84084422-b32 static:light, dynamic:light, fix:light (what remains); wf_779a4a5c-ac8 tests:light; st-f16a1039e0a2 | command (light lane) | open |
+| 38 | Seen in real-GPU frames and not yet assigned: the "Dusk approaches" toast covers the day-night widget; compass labels overprint; golden-hour sun bloom glare. | unrated | st-a37b2dcf0317 | command | open |
+| 39 | PR 29 (landed): the E2 mutant (projectileGrounded with a null argument) has not been run against the rewritten mob-floor spec; an unmutated browser pass is evidenced only by CI green on the merged PR 29 tree. Survivors B3 and B10 sit below the sweep's 0.25 m resolution; the premise that EnhancedMagicSystem tests mobs and the boss only when the frame's move did not land is pinned by no test; the gate re-types the verdict instead of importing it from the spec. | MED (E2 owed); LOW (rest) | wf_84084422-b32 dynamic:harden, static:harden; st-7c5314b30fc9 | command | open |
+| 40 | Game: the title vista keeps a second WebGL context rendering through the fade-out (about 24 s on CI), and its full-screen overlay takes clicks over the game for that time; fixing it touches the deterministic menu capture frame; the isWebGLContextLost store flag has no consumer. No commit named in the sources addresses it. | unrated (fixer report) | wf_84084422-b32 fix:harden (item 3, what remains) | command | open |
+| 41 | A programme-wide byte ledger is owed: lane shares must fit the index headroom, which the plans state as 63,076 B and the combat builder measured as 40,572 B (BASELINE_INDEX_BYTES 719,428), before the light lane's +6,652 B. Also owed: tell the dragon lane that the combat stance does not alter its fight. | unrated (refuter note) | st-4b8204beb569; st-468731449420; st-a37b2dcf0317 | command | open |
+| 42 | SendMessage to a running workflow builder forked a second execution in the combat-stance worktree (Q283; recurrence of episodes :889, :953, :1141). An enforcer ask went to AB Command. Rule for this session: never SendMessage a workflow agent; route notes through files or after it returns. | unrated | st-468731449420 | AB Command | open |
+| 43 | Lanes share the session scratchpad and its file names (msg1.txt, commit1.log); zsh noclobber stopped one lane's first commit attempts. Lanes should use private subdirectories; no episode for the lesson has been written. | unrated | wf_84084422-b32 fix:touch (ledger 8) | command | open |
+| 44 | PR 24 (steady-cool): no re-review of its fix commits (items 1 to 7, the showStats stranding root-cause fix 853aa7eb, and the prep commits for the tier governor, composer dpr and context-loss budget) appears in the workflow journals searched; the only review journal is the pre-fix round 1. Verify before landing. | unrated | st-a88e9baf51ea; st-a125d69ae2e3; wf_b9cb056d-df0 review:steady-cool | command | open |
+| 45 | Branch worktree-agent-a1402180a95a26ef6 is kept: its only commit is on main by content (cherry-picked as 8c79e038; git cherry all minus) but git calls it unmerged, and git branch -D is denied. K55(d) decided that a weekly worktree-reap MOVES provably landed branches to refs/backup/branches; lane q384-reap-stale-branches (wf_7e129d86-c27) builds it with this branch as a fixture. No branch is deleted or moved by hand until it lands. | unrated | st-590de01adef2; st-dd2360f47f28; st-96fcc35a27be | AB Command (q384) | open |
+| 46 | K55(c): retention for refs/backup and refs/snapshots (AB repo: 101 and 275 on 10-27, reopen trigger 300; Crafty 0 and 0). Nothing expires them; recommended 60 days then expire; AB Command owns the tool. | unrated | st-28a6963c3f46; st-d84d79eccb04 | Kevin (decision); AB Command (tool) | open |
+| 47 | The old account-1 operator-page addresses still serve the 2026-10-27 versions; moving the pages back to them when account 1 is next active is optional and Kevin's call. | unrated | st-206fe4439ba2; st-9b9e6abe5382 | Kevin | open |
+
+### H. KEVIN-ONLY (his two bright lines, and what only he can do)
+- ▢ **#44 The real-device playtest:** **audio mix (your ear)** and real-device touch feel. The other taste
+  sign-offs it used to gate (spell look, movement feel, storm) are the command session's since Kevin's
+  2026-10-27 mandate, restated in DECISIONS 2026-10-28 item 14.
+- ▢ **S4 — multiplayer + monetization scope.** The plan's last frontier. It spends money (servers, payments) and
+  needs account sign-ins only you can make, plus legal terms. The loop will NOT start netcode or payments without
+  your model. (Hard line already recorded: no randomized gacha/lootboxes, COPPA, odds-disclosure-if-random.)
+- Final taste sign-offs (the v7 spell look; the art pass in D once it lands) moved to the command session with
+  Kevin's 2026-10-27 mandate, restated in DECISIONS 2026-10-28 item 14; they are listed here only so the move is
+  visible. Shareable-moment / clip / photo-mode tooling moved to §E-ter as [LOOP] work.
 
 ---
 
@@ -1416,6 +1485,9 @@ out of that one hour. What it bought:
   for six weeks. The current captures are correct. **Not re-baselined — Kevin's call**, but the evidence
   says those four must be replaced. *A baseline nobody looked at is the same defect as a gate that reports
   PASS over input it never examined.*
+
+*2026-10-28: replacing those four beast baselines is the command session's call since Kevin's 2026-10-27
+mandate, restated in DECISIONS 2026-10-28 item 14.*
 
 **Harness ratchets are now closed as a class.** `mutation-proof-trailer` (a new gate must state its proof),
 `queue-ledger` (a finding must carry its own marker), `gate-shape` (no assertion satisfiable by a comment),
@@ -1480,18 +1552,23 @@ The live cursor (which single unit is in flight *right now*) lives in `memory/AC
 
 Full text: `docs/superpowers/specs/crafty-coherence-pillars.md`. Each is an "X even over Y" trade-off.
 
-- **P0** Preserve novel "beyond-SOTA" seeds until proven incoherent → **PARK-AND-WATCH, never an autonomous cut.**
+- **P0** Preserve novel "beyond-SOTA" seeds until proven incoherent → the automated audit routes them to
+  **PARK-AND-WATCH**, never to a cut.
 - **P1** Four Aspects, each **DEEP before next** — even over feature breadth. *(The Aspects ARE the identity.)*
 - **P2** Cohesive loop: every system feeds fight→loot→build→fight-harder — even over standalone "cool" toys.
-- **P3** ONE locked visual/UI language + a readable feedback grammar — even over raw effect count.
+- **P3** ONE coherent visual/UI language + a readable feedback grammar — even over raw effect count.
 - **P4** Runs great in the **web / iPad / mobile + touch** envelope — even over GPU-maximal fidelity.
 - **P5** Broad-audience legible (≈8 → adult), zh-CN-ready — even over hardcore gatekeeping. *(the youngest players are users,
   NOT a depth-lowering ceiling — real stakes are allowed.)*
 
-**⛔ The only HARD VETOES in the system are P4's two invariants: (1) NO frequent mid-combat re-mesh;
-(2) input via intent-abstraction, NOT `pointerLockElement`.** Everything else is a ranked support
-(P1=P2 > P3 > P5≈P4-soft). **Accessibility never vetoes depth. Aesthetic verdicts are quarantined from
-autonomous deletion. Default-KEEP under uncertainty; tie → DEEPEN.**
+**⛔ P4's two invariants are engineering constraints, not locks: (1) NO frequent mid-combat re-mesh;
+(2) input via intent-abstraction, NOT `pointerLockElement`.** They are facts about the iPad-class frame budget
+and about input routing, so they bind the command session's own calls too: one may be broken only with a
+measurement showing the iPad-class frame budget (for (2), input parity) still holds, recorded in DECISIONS.
+Everything else is a ranked support (P1=P2 > P3 > P5≈P4-soft). **Accessibility never vetoes depth. Aesthetic
+verdicts are quarantined from autonomous deletion by the automated audit. Default-KEEP under uncertainty; tie →
+DEEPEN.** The ranking and these audit rules bound the audit (the CUT-gate), not the command session's own calls,
+which it records in DECISIONS (2026-10-28 items 14 and 16).
 
 *(Note P4 invariant (2) is also precisely what makes the input-driven E2E harness in §V2 possible — verbs gate on
 `getInput().active`, not on pointer-lock. The pillar and the test strategy are the same fact.)*

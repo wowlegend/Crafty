@@ -12,7 +12,7 @@ import { claimHudTick, emitHudTick } from '../../src/ui/hudTicker.js';
  *
  * The tracker checked capture mode once, when its tick subscribed. The harness enters capture AFTER boot, so a tracker
  * mounted in play kept turning through the gated frames, wherever the player's position had left it — run-dependent by
- * construction (AGENTS.md: "a capture guard must RESET to a declared value, never early-return", and "the check must live
+ * construction (CLAUDE.md: "a capture guard must RESET to a declared value, never early-return", and "the check must live
  * INSIDE the callback, since the flag flips after mount"). Now the tick reads it every time and rests the tracker HIDDEN
  * under capture, writing nothing; it shows again when capture ends. This renders the REAL tracker against the real store
  * and drives the real HUD ticker by hand (claimHudTick + emitHudTick: one tick per call, no rAF).

@@ -1395,8 +1395,8 @@ owning unit.
     signature, the prologue pick) and the lantern (move 12: the light refusal), both before this move, and relight
     (move 14) proposes a third parameter after it. Unit 2b is the reconciliation; build it against what actually
     landed.
-  - `Components.jsx:759` (the snare filter, one condition; the file is the irreducible Player controller, so Edit
-    only) and `Terrain.jsx:1013` (one line).
+  - `Components.jsx:759` (the snare filter, one condition; the file is the Player controller, whose per-frame order is
+    load-bearing, so a one-line Edit only) and `Terrain.jsx:1013` (one line).
   - Build each unit on current main and re-read every cited line first: the line numbers here are as of 2026-10-27.
 - **Pathing.** Marchers now run the 9x9 A* (U6), which routes around a boulder or trunk but not around a wall longer
   than about 4 m. Past that, stuck detection sidesteps them twice and then switches them to hunting the player (U6).

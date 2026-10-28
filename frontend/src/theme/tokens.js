@@ -40,14 +40,14 @@ export const MAGIC = {
   arcane: '#B36BFF', nature: '#7FE0A0', default: '#46E0FF',
 };
 
-// ── UI design-system tokens (S1-C "bold-flat", locked 2026-06-01 §9). ──────────
+// ── UI design-system tokens (S1-C "bold-flat", the 2026-06-01 UI-system brief §9). ──
 // SoT for chrome. Derived into CSS vars + Tailwind by src/theme/cssVars.js.
 // Bold-flat = SOLID saturated fills · uniform 4px near-black ink on every chrome
 // element · hard blur-0 offset shadows · radius <=14 · NO glass/blur/gradient-chrome.
 export const UI = {
   color: {
     ink: '#0B0E14',
-    // navy surface ladder (from the locked bold-flat comp — lighter slate so the ink pops)
+    // navy surface ladder (from the bold-flat comp — lighter slate so the ink pops)
     panel:      '#16213A',   // modal / main card body
     panelRaise: '#22304E',   // header bar / raised surface
     panelFrame: '#1C2942',   // HUD panel / toast / hotbar frame fill
@@ -104,7 +104,7 @@ export const UI = {
   // nobody implemented, which is worse than an absent token because it reads as available.
   border: { chrome: 4 },                      // 4px ink everywhere
   // hard offset shadows (blur 0, spread 0) — the bold-flat signature. The md value
-  // is the locked `5px 5px 0 0 #0b0e14` recolored to the ink var.
+  // is the S1-C `5px 5px 0 0 #0b0e14` recolored to the ink var.
   elevation: {
     sm: '3px 3px 0 0 rgb(var(--ui-ink))',
     md: '5px 5px 0 0 rgb(var(--ui-ink))',

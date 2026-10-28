@@ -86,6 +86,7 @@ export function FrameCap({ fps, active, testHooks = false, drivesHud = false }) 
     return () => set({ setFrameloop: original });
   }, [get, set]);
   const frames = useRef(0);
+  const paced = useRef(0); // frames THIS cap drew (its advance() calls) — the e2e tells them from R3F's own loop's
   const fpsRef = useRef(fps);
   fpsRef.current = fps; // the pace in force, for the DEV hook (the title screen selects a slower one)
   useFrame(() => {
@@ -96,8 +97,9 @@ export function FrameCap({ fps, active, testHooks = false, drivesHud = false }) 
     // registered from two canvases would answer for whichever mounted last.
     if (!import.meta.env.DEV || !testHooks) return;
     // DEV-only: the frame-cap e2e reads the live mode, the count of R3F frames drawn (the world clock is no proof of
-    // drawing: it advances with no frame drawn at all), and the R3F clock, which must not jump back on a loop switch.
-    registerTestHook('readFrameloop', () => ({ loop: get().frameloop, frames: frames.current, clock: get().clock.elapsedTime, fps: fpsRef.current }));
+    // drawing: it advances with no frame drawn at all), how many of them this cap drew, and the R3F clock, which must
+    // not jump back on a loop switch. `fps` is the pace DECLARED; `paced` is what the cap actually drew.
+    registerTestHook('readFrameloop', () => ({ loop: get().frameloop, frames: frames.current, paced: paced.current, clock: get().clock.elapsedTime, fps: fpsRef.current }));
     registerTestHook('invalidateCanvas', () => get().invalidate()); // stands in for a React commit inside the Canvas
   }, [get, testHooks]);
   useEffect(() => {
@@ -113,6 +115,7 @@ export function FrameCap({ fps, active, testHooks = false, drivesHud = false }) 
       last = step.last;
       if (step.render) {
         advance(t);
+        paced.current += 1;
         if (drivesHud) emitHudTick(t);
       } else get().internal.frames = 0; // nothing for R3F's own loop to draw between capped frames (see above)
     };

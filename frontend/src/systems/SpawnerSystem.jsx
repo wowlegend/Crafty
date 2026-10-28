@@ -14,6 +14,7 @@ import { MOB_TYPES } from '../game/mobTypes';
 import { runSpawnPlacement } from './spawnPlacement.js';
 import { spawnGroundAt } from '../game/mobFloor.js';
 import { CHUNK_SIZE } from '../world/chunkLayout.js';
+import { isWorldFrozen, isWorldFrozenNow } from '../game/worldClock.js';
 
 // SpawnerSystem -- siege/day mob spawning + the one-time static hub-NPC spawn + distance-cull.
 // Extracted VERBATIM from SimplifiedNPCSystem.jsx (v6 de-monolith A1.3); behavior unchanged.
@@ -66,7 +67,6 @@ export const SpawnerSystem = () => {
       speed: mobConfig.speed,
       passive: mobConfig.passive,
       damage: mobConfig.damage,
-      xp: mobConfig.xp,
       // the mob-variety pass: registry legMode reaches the renderer (only hybrids carried it before)
       ...(mobConfig.legMode ? { legMode: mobConfig.legMode } : {}),
       targetX: x,
@@ -93,7 +93,7 @@ export const SpawnerSystem = () => {
       // bootstrap below, and the effect's deps are [], so nothing ever remounts it: tearing it down on the
       // first capture tick killed the spawner for the rest of the session. Cost of staying armed through a
       // capture is one getState() read every 500ms; it still self-clears at the end of a successful spawn.
-      if (isCaptureMode()) return;
+      if (isCaptureMode() || isWorldFrozenNow()) return;
       if (state.getMobGroundLevel && state.getGeneratedChunks && state.getGeneratedChunks().size > 0 && state.isSpawnChunkLoaded) {
         for (let i = 0; i < 20; i++) {
           const angle = (i / 20) * Math.PI * 2;
@@ -135,7 +135,8 @@ export const SpawnerSystem = () => {
     // that query. Cheap and time-critical has no business sharing a throttle with expensive and periodic.
     sweepExpiredCorpses(mobsQuery.entities, now, (e) => ecs.remove(e));
 
-    if (now - lastSpawnCheck.current >= 1000) {
+    // A held world spawns and culls nothing; the check runs on the first live frame after.
+    if (now - lastSpawnCheck.current >= 1000 && !isWorldFrozen()) {
       lastSpawnCheck.current = now;
       const playerX = camera.position.x;
       const playerZ = camera.position.z;

@@ -1,5 +1,15 @@
 # Crafty — Vision Coherence Pillars + Less-Is-More Audit Dimension
 
+> **Status (2026-10-28):** the pillars are a design aid, and the CUT-gate below is an automated audit that stays
+> unused until its blind calibration passes. Neither binds the command session: it may enhance, replace or delete
+> anything, shipped player-facing features included, recording the call in `docs/superpowers/DECISIONS.md` with its
+> reason and the lived or e2e proof that nothing still promised depends on the cut (DECISIONS 2026-10-28 items 14
+> and 16). The rules below about what may not be cut bind the automated audit only. P4's two invariants (no
+> frequent mid-combat re-mesh; input via intent-abstraction, not `pointerLockElement`) are different: they are
+> engineering constraints, not locks, facts about the iPad-class frame budget and input routing that bind the
+> session too. One may be broken only with a measurement showing that frame budget (for the second, input parity)
+> still holds, recorded in DECISIONS.
+>
 > **Status (2026-06-10): ADOPTED + IN-USE as the coherence anchor; the destructive-CUT GATE is PARKED pending calibration.** Kevin engaged + revised the pillars (P5 audience/accessibility/no-pay-to-win revisions, `6a305bb`; monetization dropped from P5 → an S4 decision, `bf6eb30`), and they are the active QA-cadence + content-audit anchor (the 2026-06-03 pre-S2-B content audit ran against them, `793b9fd`) — so the pillars themselves are **effectively ratified / in active use**. What remains PARKED: the **coherence GATE governing destructive CUTS** is inadmissible until a blind calibration run scores **100% on the must-NOT-cut negatives** (the pillars' own bound #1, the anti-99.2%-false-positive guard) — that calibration has NOT run, so the cut-gate MUST NOT govern any cut yet. (Original authoring status below.)
 >
 > **Status:** ✅ ACTIVE — the canonical coherence anchor the loop self-gate (charter §4) judges every addition against; ratified-in-practice. *(Historical "at authoring" note follows.)*
@@ -25,7 +35,7 @@ Not in tension — they govern **different axes**. **Less-is-more governs the CO
 | **P0** *(meta — novelty guard)* | **Preserve novel "beyond-SOTA" seeds until proven INCOHERENT, even over forcing every mechanic to match a current Aspect** | Flagged novel/never-before-seen → **PARK-AND-WATCH**, never autonomous CUT |
 | **P1** | **Four Aspects, each DEEP-before-next** (Voidhand→Wildheart→Soulbind→Elemancer), **even over** feature breadth | Name the Aspect **or** the scheduled foundation/scaffold slot it serves. Deepen-in-flight / complete-foundation / logged-scaffold = PASS |
 | **P2** | **Cohesive loop — every system feeds fight→loot→build→fight-harder, even over** standalone "cool" toys | Trace to a concrete edge in the loop graph (consumes-from OR feeds a node). Parallel-redundant verb = merge-or-cut |
-| **P3** | **One LOCKED visual+UI language + readable feedback grammar, even over** raw effect count / asset volume | Renders through the locked token/icon/material chain **and** feedback magnitude matches action magnitude |
+| **P3** | **One coherent visual+UI language + readable feedback grammar, even over** raw effect count / asset volume | Renders through the token/icon/material chain **and** feedback magnitude matches action magnitude |
 | **P4** | **Runs great in the web/iPad/mobile + touch envelope, even over** GPU-maximal fidelity | No frequent mid-combat re-mesh; input via intent-abstraction not `pointerLockElement`; perf vs measured frame budget on a mid iPad |
 | **P5** | **Broad-audience (≈8→young-adult→adult) accessible — legible, joyful, zh-CN-ready, even over** hardcore-gatekeeping that locks out newcomers | A new verb is graspable in **<60s** (good UX at every age — "easy to learn, hard to master"; NOT dumbed-down depth) + has a zh-CN string path. **a young player (8yo) is A user, not a depth-lowering ceiling** — lines blurred toward a wide teen/adult audience, so intensity, real stakes, even permadeath-*modes* are a DESIGN CHOICE, not vetoed. **Monetization is NOT a pillar** → S4 decision (see the S4 Monetization note below); sell-power is legal + Kevin's call, only randomized-gacha-to-minors + COPPA are hard legal lines. |
 
@@ -49,7 +59,7 @@ Not in tension — they govern **different axes**. **Less-is-more governs the CO
 - **Default-KEEP under uncertainty; burden of proof on the cutter; tie → DEEPEN.** Accessibility/legibility and ambition (all of P0–P5) keep default-KEEP — a less-legible-than-ideal verb for the wide teen/adult audience is a DEEPEN, never a cut.
 - **ORPHAN = a provable empty-set claim** — CUT-eligible only if the cutter enumerates **every pillar AND every scheduled build-slot (S2-A..S2-B4)** and shows each is a miss. Any plausible map → DEEPEN/PARK.
 - **Dead-path test is TEMPORAL, not static** — a "feeds-nothing/inert/never-fired" path is CUT-eligible only if **NOT on the written build schedule**; scheduled scaffold = SCAFFOLD-KEEP. (The inert talent tree + never-fired dangerLevel were SCAFFOLD-KEEP, not CUT — both since wired.)
-- **Aesthetic verdicts quarantined from autonomous CUT** — P3-taste + P5-joy sub-tests ("tasteful," "joyful," "magnitude matches stakes," metaphor-break) → **FLAG-FOR-HUMAN / DEEPEN, never an autonomous CUT** (taste is Kevin's Layer-5 reserve). AI hard-CUT authority on P3/P5 is restricted to **greppable** sub-tests (token/icon-chain rendering, no-raw-hex, zero-emoji-in-src, zh-CN string path, no-permadeath/no-sell-power).
+- **Aesthetic verdicts quarantined from autonomous CUT** — P3-taste + P5-joy sub-tests ("tasteful," "joyful," "magnitude matches stakes," metaphor-break) → **FLAG-FOR-HUMAN / DEEPEN, never an autonomous CUT** by the audit (taste was Kevin's Layer-5 reserve when this was written; it became the command session's own call by Kevin's 2026-10-27 mandate, restated as the standing principle in DECISIONS 2026-10-28 item 14). AI hard-CUT authority on P3/P5 is restricted to **greppable** sub-tests (token/icon-chain rendering, no-raw-hex, zero-emoji-in-src, zh-CN string path, no-permadeath/no-sell-power).
 - **De-correlate judges + break generator=judge identity** — the agent that wrote a feature is **ineligible to vote** on its disposition; prefer cross-family judges (headless-validator path); a **mandatory adversarial third role** refutes the verdict (steelman KEEP-vs-CUT and CUT-vs-KEEP). Track inter-rater agreement both directions (falling = vague pillars; suspiciously-high CUT-agreement = correlated blindness → human-sample).
 - **Pillars RIGID within a phase, RE-RATIFIED at each stream/Aspect boundary.** ESCALATE-TO-RESCOPE trigger = **two independent novel seeds in the same off-pillar direction** (escalate early, cut late).
 

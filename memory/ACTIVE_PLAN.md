@@ -1,3 +1,22 @@
+## CURSOR — 2026-10-28 (command session c54fc9b6). READ THIS FIRST; everything below it is history.
+
+**Governing:** Kevin's standing principle (DECISIONS 2026-10-28 item 14, top of CLAUDE.md): nothing is off limits;
+full autonomy; Kevin reviews ONE page, the Command Record (docs/superpowers/command-record.html,
+https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f). **The programme:** `docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`
+(whole-project assessment wf_657ac8b1-834): "The First Night" spine; Wave 1 now (W1-A required check, W1-B real
+pause, W1-C gameplay deletions, W1-D eye-level instruments, W1-E mipmaps, W1-F public text, W1-G bundle UI, W1-H
+plans/decisions/registry), Wave 2 after #24, stance and light land (the Cut, HUD lane, hands, media pipeline, capture
+oracle retired, harness to ~10 gates), Wave 3 the First Night, road of light, first minute, platform deep.
+
+**One instruction file (Kevin 2026-10-28, DECISIONS 2026-10-28 "One CLAUDE.md"):** `CLAUDE.md` at the repo root is a real file and the
+only agent-instruction file; the former AGENTS.md copy, the symlink and its directory are gone. Any plan, audit or queue dated
+before this that says AGENTS.md means `CLAUDE.md`. The generators (measure, gate-table, read-order) write into it.
+
+**Landing:** each lane is a PR; CI ~8 min since the e2e dpr cap (ae2e10a5); land by local merge commit, CI on the exact
+commit (land/2026-10-28 until the required check is on), push main. Review cadence (DECISIONS item 13/the speed plan):
+one static+dynamic round on game code, then `/code-review xhigh` on the PR range; tests/claims-only fixes get the
+author's mutation run. Residue: memory/STATUS.md G-ledger (to become a single registry file, plan item #30).
+
 ## CURSOR — 2026-09-22 (SOTA campaign, session 2). READ THIS FIRST.
 
 Kevin's standing `/goal` (still armed): enhance Crafty to cutting-edge SOTA + future-proof, full
@@ -22,28 +41,44 @@ done first, then a design panel chooses the highest-leverage moves, each through
 |---|---|---|
 | T1 | `mutate-e2e.sh`: a test timeout and an untagged boot wait are COULD NOT CHECK, not kills; E2E_WORLD_TIMEOUT extends the test budget | DONE `93785815` (+ U4-U6) |
 | T2 | dodge-latch: identity + D1 mutants + clean run on the fixed instrument; commit Atmosphere layout effect, dodge-latch spec, iPad probe + port | DONE `48b003e3` `fb45cb35` `2cecfa7f` |
-| T3 | Push main, CI to `success` (delivers the heat fixes live) | Landing CI 40503389065 on f0e84766 found 2 SPEC defects (both SETUP, runner frame times of seconds): gl-churn sampled a 1 s mana timer by wall clock (fixed `dfae38b6`), heavy-melee raced the beast form's 14 s real-time timer and could not see its own J6 mutant (fixed `8c79e038`). Frame cap cleared (it never delays a late frame); the shard slowdown is runner variance. NOW: re-land main via `land/2026-10-27`, push main when its CI e2e is green (tier 1b) |
+| T3 | Push main, CI to `success` (delivers the heat fixes live) | DONE: main pushed c03e9f2f (CI 40514448242 green on the exact sha; main CI green after), then 230fd72f (the 12 plan docs). Heat fixes are LIVE |
 | T4 | Ultrareview findings: verify each, fix, DECISIONS 2026-10-27 addendum comparing with the bake-off | DONE: 6/6 confirmed, all fixed (`93785815` `2cecfa7f` `43754237` `167841e2`); addendum written |
 | T5 | Dependabot #20 / #21 and the 4 open alerts | DONE `10a43f68` (vitest 4; npm audit 0) |
 | T6 | CI-gates handoff §3 (Crafty's share), then rm the handoff file + MEMORY line if last owner | PARTIAL `5177c203` (pin + v7 actions); Vercel Deployment Checks need Kevin's dashboard; pre-commit speed and onFailure open |
 | T7 | iPad: WebKit probe of the PROD build, frames opened | lookbook (real GPU, WebKit iPad) DONE on feat/instruments: iPad golden hour renders the Hearth pad NAVY, night maroon/orange — evidence in docs/superpowers/masterpiece-2026-10/evidence; ipad-probe.mjs itself still unrun |
-| T8 | Parked features (wip/perf-t3-features) onto a branch from main, e2e + mutate-e2e each, PR (number to Kevin), merge on own gates | branch `feat/parked-looks-perf` = **PR #22** (ready). Local mutation batch VOID (identity G0 red at load 6-35). CI on #22 is the clean verdict once the two spec fixes are merged in; receipts owed (PENDING in 4 spec headers). Then merge, then rm worktree perf-t3 + branch wip/perf-t3-features |
+| T8 | Parked features (wip/perf-t3-features) onto a branch from main, e2e + mutate-e2e each, PR (number to Kevin), merge on own gates | DONE: PR #22 merged as 76262a08 (tree = refs/pull/22/merge), pages synced 1a1bee68/0c5a4041. Residue: main CI on 76262a08/0c5a4041 CANCELLED (shard timeouts + lightning.spec too slow on CI runners). 8 shards (a8ce0dd1, local) cured the timeouts on land run 40628428531; lightning alone stayed red; its CI-budget fix (a9134e2b on feat/instruments) went to main as a9a303e9 (DECISIONS 2026-10-28 item 9). Main PUSHED a9a303e9 on land run 40632886705 (all green on the exact sha). The artifact-currency scope fix (e20928cc + 3e431c9d, item 8) lands next through one more land run |
 | T9 | Review #8 open findings (#1 MED, #6, #7, #8, #12) + bake-off B1 and candidates, verify-first | open |
 | T10 | 147 -> 151 visual re-baseline (now mine to decide) | open |
 | T11 | dprCap and the FPV glove value (now mine to decide) | open |
 | T12 | mip-ab worktree: confirm ported by diff, remove worktree + branch | DONE: Kevin ran the removal (branch was 45590d2c); verified by `git worktree list` |
-| T13 | Masterpiece design panel -> plan docs -> builds (looks + gameplay), each lived-proven | Phase 0 PRs: touch-hold **#25** (draft; round-2 review: 3 MED incl. a REGRESSION on landscape iPhone Settings gear + a reproduced stuck action claim after pause; fixer touch-hold-fixer-2 working), instruments **#23** (draft), steady-cool **#24** (draft). Phase 1 plans written + refute/amend running (wf_9142d58c-a58 coast, wf_7704edde-95f combat, wf_b42a4fad-878 light-colour; seam agreed: coast reads skyFrameRef). Phase 2/3 + harness plans: workflow wf_b9cb056d-df0. Plan docs UNCOMMITTED until their amend passes finish. Leftover: worktree .claude/worktrees/agent-a1402180a95a26ef6 (branch worktree-agent-a1402180a95a26ef6, fix cherry-picked as 8c79e038; removal refused by the classifier) |
+| T13 | Masterpiece design panel -> plan docs -> builds (looks + gameplay), each lived-proven | Landing queue after the scope fix is on main, in READINESS order (DECISIONS item 10): #25 touch-hold (main merged locally 53e956b8, push refused at 31 > 30 until the scope fix lands) and #24 steady-cool (local ed8e51d7) -> #23 instruments (re-merge main) -> #27 harness (U4 .state save/merge/restore + U5 settings move) -> light lane (worktree-wf_34f35934-dfe-1, 69e1c46d, Tasks 0-3b) -> 0e re-baseline alone -> light Tasks 4-9. #28 ci-tree PARKED draft. BUILDING: combat stance (wf_c6b2136b-5ab, .claude/worktrees/combat-stance, feat/combat-stance = main + steady-cool + touch-hold). Coast DEFERRED until light lands (load; lookbook) |
 | T14 | Per change range: fresh headless `/code-review xhigh` + one adversarial-reviewer-kz xhigh on runtime seams | open |
 | T15 | OVERNIGHT.md, STATUS, CHANGELOG, DECISIONS current | open |
-| T16 | Harness SOTA pass (Kevin 10-27: CLAUDE.md/rules/hooks/settings/docs/skills free to revise) | audit DONE (35 changes; refute: 13 KEEP / 22 AMEND) in session scratch harness-plan.json + harness-refute.txt; build lane after Phase 0 |
+| T16 | Harness SOTA pass (Kevin 10-27: CLAUDE.md/rules/hooks/settings/docs/skills free to revise) | BUILDING (wf_34f35934-dfe): plan `docs/superpowers/plans/2026-10-27-crafty-harness-sota.md`, current unit U1 (P0 done). Lane worktree `.claude/worktrees/wf_34f35934-dfe-2`, branch `worktree-wf_34f35934-dfe-2`, base 230fd72f. P0: harness-integrity draft RED on 5 untracked graft-helper commands, the PostCompact context hook, 5 hook timeouts > 60 s; R1 PASS; R2/R3 not run (shared-repo worktree / a deny rule — out of the lane's brief); U5 (graft becomes machine-local) STOPPED: it removes the graft permission allows — a permission change, mine to decide |
 | T17 | INCIDENT 03:32: worktree pre-commit suite rewrote the real repo (bare, fixture identity, fixture commits) | REPAIRED + root cause fixed `0c5b269c`; episode :1183 |
+
+### For Kevin (queued while he sleeps, 2026-10-27; nothing here blocks the lanes)
+
+1. **Kevin chose OPTION (a), 2026-10-28 morning (DECISIONS 2026-10-28 item 11): the pages go back to their original account-1 links the next time account 1 is the active account (republish at `previousUrl`, swap `url`/`previousUrl` in `.artifact-sync.json`, `--sync`). Until then the interim copies below stay current.** Interim, by option (b), 2026-10-28 ~01:30Z: the pages live at era-review https://claude.ai/artifact/Q1QQLYLxPVYZ8A7Srm1BMF and sota-audit https://claude.ai/artifact/NuwFDNnfZG3gRHv6LH1krr (account 2); the old account-1 links show the 2026-10-27 version. Say if you want them moved back when account 1 is active.** History: the two published operator pages are owned by account 1. era-review and sota-audit
+   (`docs/superpowers/.artifact-sync.json`) can only be republished from account 1; account 2/3 cannot see them.
+   `artifact-currency` refuses any branch more than 30 commits past their publish sha, so PR #24 (steady-cool,
+   33) cannot push until they are republished. Options: (a) next time account 1 is active, the command session
+   republishes both (recommended, no change for you); (b) publish fresh copies from the active account and move
+   the URLs (your bookmarks change, and you only see them while logged in as that account).
+   **Impact measured 22:39Z:** main is 8 commits past the publish sha; landing #22 alone takes it to about 22,
+   and any second PR (#23 instruments, #24 steady-cool, #27 harness, #28) crosses 30. So until the pages are
+   republished, AT MOST ONE PR can land. #22, #23, #27 and #28 are CI-green or close; they queue in the order
+   22 -> 24 -> 23 -> 25 -> 27 -> 28.
+2. **K55(c): retention for refs/backup and refs/snapshots** (AB: 101 and 275 on 10-27; Crafty 0/0). Nothing expires
+   them. Recommended: 60 days, then expire (git gc reclaims). AB Command owns the tool.
+3. FYI, no action: main is live with the heat fixes (CI green); PRs #22-#25 open; e2e moved to 6 shards (17e06ecd).
 
 ### CRAFTY COMMAND SESSION — START HERE (handoff written 2026-10-27 by the session that ran the SOTA overnight goal)
 
 Kevin, 2026-10-27: a new session rooted in `/Users/kz/Code/Crafty` takes over as the **Crafty command session** (so
 Crafty's own `.claude/settings.json` hooks and permission rules are live — the previous session was rooted at
 `~/Code`, where they are not). Standing defaults: **reviewers at xhigh, never max**; **Sonnet 5.5 / Haiku 5.5
-liberally** — both in `.agent/AGENTS.md` Method. Kevin's overnight `/goal` (SOTA looks + gameplay, full autonomy, his
+liberally** — both in `CLAUDE.md` Method. Kevin's overnight `/goal` (SOTA looks + gameplay, full autonomy, his
 2026-09-23 live-site report leading: M3 Max heat, iPad visuals broken) is the work; this block is its state.
 
 **Measured 2026-10-27 (re-measure before relying on any of it):**
@@ -502,7 +537,7 @@ blind to the error class it exists to watch. Widening it is cheap and is NOT gat
 **2. PR #13 HELD, NOT ABANDONED.** Fully green (the dead re-exports it tripped on are removed). Merge it
 AFTER the re-baseline — a dependency change mid-capture contaminates the pair.
 
-**3. DOC REVIEW IN PROGRESS** (`CLAUDE.md` = `.agent/AGENTS.md`, plus `.claude/rules/*.md`). Verified drift
+**3. DOC REVIEW IN PROGRESS** (`CLAUDE.md`, plus `.claude/rules/*.md`). Verified drift
 found so far, all understated:
 - `isCaptureMode()` guards: doc says ~112, live is **127**
 - raw `Math.random()`: doc says 73 in 19 files, live is **72 in 20**

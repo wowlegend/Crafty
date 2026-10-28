@@ -11,8 +11,11 @@
 // WHAT THIS DOES NOT CHECK: history already pushed, untracked files, or anything a third-party bot
 // publishes on your behalf (Vercel's PR comment embeds the team slug and project id — outside this
 // repo's control). It also deliberately does not flag the operator's first name; see the module header.
-import { describe, it, expect } from 'vitest';
-import { scanText, verdict, RULES, EXEMPT } from '../../scripts/ci/opsec-scan.mjs';
+import { describe, it, expect, afterAll } from 'vitest';
+import { mkdtempSync, writeFileSync, symlinkSync, mkdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { scanText, verdict, RULES, EXEMPT, readForScan } from '../../scripts/ci/opsec-scan.mjs';
 
 const ids = (f) => f.map((x) => x.rule).sort();
 
@@ -43,7 +46,7 @@ describe('opsec-scan — what it must refuse', () => {
   // DOCUMENTS the ban and on zero real attributions — a gate reporting a violation by the people obeying
   // it. Prose about a trailer is never line-initial; the trailer always is.
   it('does NOT flag prose that FORBIDS the footer', () => {
-    expect(scanText('- NO "Generated with" / "Co-Authored-By: Claude" footer.', 'AGENTS.md')).toHaveLength(0);
+    expect(scanText('- NO "Generated with" / "Co-Authored-By: Claude" footer.', 'CLAUDE.md')).toHaveLength(0);
     expect(scanText('No `Generated with`/`Co-Authored-By: Claude` lines.', 'plan.md')).toHaveLength(0);
   });
 
@@ -93,6 +96,54 @@ describe('opsec-scan — verdict shape', () => {
     const v = verdict([], 0);
     expect(v.skipped).toBe(true);
     expect(v.line).toMatch(/SKIPPED, not a pass/);
+  });
+});
+
+describe('opsec-scan — a SYMLINK is scanned by its target string, never followed (U3)', () => {
+  // A committed symlink publishes its TARGET STRING — that is what GitHub stores and shows. The CLI used to
+  // `existsSync` then `statSync`, which FOLLOW the link: a link to an operator home path whose target is absent
+  // (or a directory) was skipped, and a link to a file was scanned as that file's text. Neither is what ships.
+  // Mutation-Proof: `lstatSync` -> `statSync` in readForScan -> the dangling-link and link-to-file rows RED.
+  const dir = mkdtempSync(join(tmpdir(), 'crafty-opsec-link-'));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  // Assembled at runtime so this file never holds the literal.
+  const home = ['', 'Users', 'someone', 'Code', 'elsewhere', 'notes.md'].join('/');
+
+  it('positive control: a regular file holding a home path is a finding', () => {
+    const p = join(dir, 'plain.md');
+    writeFileSync(p, `${home}\n`);
+    expect(ids(scanText(readForScan(p), 'plain.md'))).toEqual(['home-path']);
+  });
+
+  it('a symlink whose target matches the home-path rule is a finding (the target need not exist)', () => {
+    const link = join(dir, 'dangling-link');
+    symlinkSync(home, link);
+    expect(readForScan(link)).toBe(home);
+    expect(ids(scanText(readForScan(link), 'link'))).toEqual(['home-path']);
+  });
+
+  it('a symlink to a FILE is read as its target string, not the file text', () => {
+    const target = join(dir, 'target.md');
+    writeFileSync(target, `${home}\n`); // the TEXT would be a finding; the link's target string is not
+    const link = join(dir, 'to-file-link');
+    symlinkSync('target.md', link);
+    expect(readForScan(link)).toBe('target.md');
+    expect(scanText(readForScan(link), 'link')).toEqual([]);
+  });
+
+  it('allow case, one token away: a symlink to a NESTED relative path is no finding', () => {
+    const link = join(dir, 'CLAUDE.md');
+    symlinkSync('docs/nested/target.md', link);
+    expect(readForScan(link)).toBe('docs/nested/target.md');
+    expect(scanText(readForScan(link), 'CLAUDE.md')).toEqual([]);
+  });
+
+  it('a directory, or a file with a NUL byte, is not scanned (null)', () => {
+    mkdirSync(join(dir, 'sub'));
+    expect(readForScan(join(dir, 'sub'))).toBeNull();
+    writeFileSync(join(dir, 'bin.dat'), 'a\u0000b');
+    expect(readForScan(join(dir, 'bin.dat'))).toBeNull();
+    expect(readForScan(join(dir, 'absent'))).toBeNull();
   });
 });
 

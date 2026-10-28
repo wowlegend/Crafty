@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -37,7 +37,7 @@ const ROOT = resolve(__dirname, '../../..');
 const HOOK = join(ROOT, '.githooks/pre-push');
 const PIPELINE = join(ROOT, 'ci/pipeline.sh');
 const ZERO = '0'.repeat(40);
-const EXEC_PATH = execFileSync('git', ['--exec-path'], { encoding: 'utf8' }).trim();
+const EXEC_PATH = fixtureGit(process.cwd(), '--exec-path');
 
 let dir;
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'crafty-prepush-test-')); });

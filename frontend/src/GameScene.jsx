@@ -29,11 +29,13 @@ import { GPUSparkSystem } from './world/GPUSparkSystem';
 import { ElementZoneRenderSystem } from './world/ElementZoneRenderSystem';
 import { isPerfProbe } from './devtest/perfProbe';
 import { PROBE_DPR } from './devtest/perfScenarios';
+import { e2eDpr } from './devtest/e2eDpr.js';
 import { PerfProbeSystem } from './devtest/PerfProbeSystem';
 import { CaptureClockTicker } from './devtest/CaptureClockTicker.jsx';
 import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
 import { FrameCap, governorBounds } from './render/FrameCap.jsx';
 import { FrameStats } from './render/FrameStats.jsx';
+import { watchContextLoss, trackRenderer } from './render/glDiagnostics.js';
 import { paceFor } from './render/canvasPace.js';
 import { usePixelBudgetDpr, CAPTURE_DPR_CAP } from './render/pixelBudget.js';
 import { ComposerPixelRatioSync, PostTierDriver, N8AO, GodRays, Bloom } from './render/postFx.jsx';
@@ -91,8 +93,8 @@ import { onContextLost, onContextRestored } from './game/contextRecovery.js';
 // THE POST-PROCESSING CHAIN, BUILT ONCE (plan 2026-09-23-crafty-perf-heat-ipad, Task 2). @react-three/postprocessing
 // rebuilds every EffectPass whenever its <EffectComposer>'s children re-render — its pass-building layout effect
 // depends on `children` — and removePass/addPass delete and re-create the composer's depth textures and depth
-// render target. Inline in GameScene it re-rendered on every hunger tick (5 s) and mana tick (1 s while regenerating):
-// GPU allocations every second of idle play, the heat Kevin measured on an M3 Max. Memoised on the four things the
+// render target. Inline in GameScene it re-rendered on every mana tick (1 s while regenerating): GPU allocations
+// every second of idle play, the heat Kevin measured on an M3 Max. Memoised on the four things the
 // chain actually reads, it rebuilds only when the tier, the sun mesh, the horizon flag or capture mode changes.
 // (Defined here, not in its own file: the effect-chain gates read this file.)
 //
@@ -191,6 +193,10 @@ export const GameScene = React.memo(function GameScene({
   const [finePointer] = useState(() => !readDeviceSignals().coarsePointer);
   const focused = useWindowFocused({ finePointer });
   const pace = paceFor({ frameCap, titleCovering, panelCovering, unfocused: !focused, harness: isCaptureMode || isPerfProbe() });
+  // The PLAYER's frame cap in force, for the Show Stats readout (render/FrameStats.jsx): the setting, unless a harness
+  // steps its own frames. Not `pace.loop`: behind the title that is the TITLE_FPS pace, which the readout's own drawn-
+  // frame count already shows, and the cap line names the setting that play will run at.
+  const capActive = frameCap > 0 && !isCaptureMode && !isPerfProbe();
   const q = TIERS[qualityTier] || TIERS.low;
   const budgetDpr = usePixelBudgetDpr(qualityTier);
   // On a coarse pointer the render distance is pinned to the boot tier (render/tierGovernor.js renderDistanceFor).
@@ -289,7 +295,9 @@ export const GameScene = React.memo(function GameScene({
         frameloop={pace.loop}
         // THE PIXEL BUDGET (render/pixelBudget.js): the tier names the pixels it can afford, the window decides the
         // ratio, recomputed on resize. Capture keeps the legacy [1, 2] range its baselines were shot under.
-        dpr={isPerfProbe() ? PROBE_DPR : isCaptureMode ? [1, CAPTURE_DPR_CAP] : budgetDpr}
+        // e2eDpr (devtest/e2eDpr.js): the e2e suite's pixel-ratio cap, a no-op outside it. It wraps the whole expression,
+        // so every leg is capped and the cap applies after the budget.
+        dpr={e2eDpr(isPerfProbe() ? PROBE_DPR : isCaptureMode ? [1, CAPTURE_DPR_CAP] : budgetDpr)}
         className="w-full h-full"
         gl={{
           antialias: false, // Post-processing handles AA
@@ -318,22 +326,16 @@ export const GameScene = React.memo(function GameScene({
 
           const canvasEl = gl.domElement;
           canvasRef.current = canvasEl; // the element requestPointerLock targets (desktop mouse-look)
-          const handleContextLost = (e) => {
-            e.preventDefault();
-            console.error('WebGL context lost detected in GameScene!');
-            // Marks the loss and releases a locked pointer, so the panel can be clicked (game/contextRecovery.js).
-            onContextLost({ setLost: useGameStore.getState().setIsWebGLContextLost });
-          };
-          const handleContextRestored = () => {
-            if (import.meta.env.DEV) console.log('WebGL context successfully restored in GameScene.');
-            // The panel (ui/ContextLossPanel.jsx) stays up until three has DRAWN since the restore: its going away then
-            // means the world is on screen again, not merely that the browser said the context is back. The empty shadow
-            // map is asked for again on the way (game/contextRecovery.js onContextRestored).
-            onContextRestored(gl, { setLost: useGameStore.getState().setIsWebGLContextLost });
-          };
-          
-          canvasEl.addEventListener('webglcontextlost', handleContextLost, false);
-          canvasEl.addEventListener('webglcontextrestored', handleContextRestored, false);
+          // Context loss/restore. render/glDiagnostics.js owns the listeners: it preventDefault()s a loss and COUNTS it
+          // for the Show Stats readout. game/contextRecovery.js owns what a loss and a restore DO: a loss marks the store
+          // and releases a locked pointer, so the panel can be clicked; a restore asks for the sun's shadow again, and
+          // the panel (ui/ContextLossPanel.jsx) stays up until three has DRAWN since, so its going away means the world
+          // is on screen again, not merely that the browser said the context is back.
+          const setLost = (lost) => useGameStore.getState().setIsWebGLContextLost(lost);
+          watchContextLoss(canvasEl, useGameStore, {
+            lost: () => onContextLost({ setLost }),
+            restored: () => onContextRestored(gl, { setLost }),
+          });
           if (import.meta.env.DEV) {
             // DEV-only: the context-loss e2e loses and restores THIS canvas's context the way the browser would. The
             // extension is taken now, while the context is alive (getExtension on a lost context returns null).
@@ -345,11 +347,15 @@ export const GameScene = React.memo(function GameScene({
               return true;
             });
           }
+          // The renderer the readout and the lookbook seam (render/lookbookSeam.js) report: GL renderer, dpr in force.
+          trackRenderer(gl);
         }}
       >
         <CaptureClockTicker />
         <WorldClockTicker />
-        {!isCaptureMode && !isPerfProbe() && (
+        {/* render/canvasPace.js `governor`: never under the capture harness or the perf probe, and never behind the
+            title, whose 10 fps pace it would read as a slow machine. Unmounted there, so play starts it fresh. */}
+        {pace.governor && (
           // S2-A-M4a: tier recovery. Previously onDecline ratcheted the tier ONE-WAY toward
           // `low` under any transient FPS dip and never recovered. onIncline mirrors it:
           // low->med->high on sustained FPS headroom. Steady-state oscillation is prevented
@@ -502,7 +508,7 @@ export const GameScene = React.memo(function GameScene({
           <Preload all />
         </Suspense>
 
-        {showStats && <FrameStats />}
+        {showStats && <FrameStats capActive={capActive} />}
       </Canvas>
     </div>
   );

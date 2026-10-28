@@ -50,7 +50,7 @@ const PORT = 4180;
  * error for the whole run, which is how a count like this reads as clean.
  *
  * RATCHETED, NOT THRESHOLDED. Nobody knows the post-fix number, so the first run RECORDS and later runs
- * may FALL and never RISE — the same shape as the opsec, killability and source-grep ledgers here. That
+ * may FALL and never RISE — the same shape as the opsec and source-grep ledgers here. That
  * makes the number falsifiable without pretending to know it.
  *
  * ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -97,6 +97,34 @@ export function glVerdict(count, frames, ledger) {
     };
   }
   return { ok: true, line: `GL errors: ${count} over ${frames} frames (ceiling ${cap}${count < cap ? ' — FELL, re-freeze with --write-gl' : ''})` };
+}
+
+/** The seam methods scripts/visual/lookbook.mjs calls. */
+export const LOOKBOOK_SEAM_METHODS = Object.freeze(['clear', 'clearHostiles', 'info', 'look', 'passTimes', 'play', 'pose', 'setCycle', 'stand']);
+
+/**
+ * PURE: the verdict on the lookbook seam in the production bundle. The lookbook judges looks on this bundle, through
+ * `window.__craftyLookbook` (src/render/lookbookSeam.js), and every unit test of the install imports the SOURCE, so
+ * moving index.jsx's install behind `import.meta.env.DEV`, or deleting it, keeps them green while the build Vercel
+ * ships loses the door. Each page reading says whether the entry module ran (window.useGameStore), so a page that
+ * never booted cannot read as "absent". `opened.timer` is what one passTimes() call returned: the pass timer is a
+ * chunk of its own loaded on that first call, so only calling it shows the production build can load it. It must
+ * install; it need not time anything (SwiftShader may expose no timer extension).
+ * @param {{plain: {entryRan: boolean, seam: string},
+ *          opened: {entryRan: boolean, methods: string[]|null, timer: {installed: boolean, reason?: string}|null}}} r
+ */
+export function seamVerdict({ plain, opened }) {
+  if (!plain?.entryRan || !opened?.entryRan) {
+    return { ok: false, line: `lookbook seam: COULD NOT CHECK — the entry module never ran (${!plain?.entryRan ? 'plain page' : '?lookbook=1 page'})` };
+  }
+  if (plain.seam !== 'undefined') return { ok: false, line: `lookbook seam: installed WITHOUT ?lookbook=1 (typeof ${plain.seam}): every player carries it` };
+  if (!Array.isArray(opened.methods)) return { ok: false, line: 'lookbook seam: MISSING from the production bundle with ?lookbook=1: the lookbook has no door into the shipped build' };
+  const missing = LOOKBOOK_SEAM_METHODS.filter((m) => !opened.methods.includes(m));
+  if (missing.length) return { ok: false, line: `lookbook seam: the production seam lacks ${missing.join(', ')}` };
+  if (opened.timer?.installed !== true) {
+    return { ok: false, line: `lookbook seam: passTimes() did not install the pass timer in the production bundle (${opened.timer?.reason || 'no report'}): the lookbook gets no GPU times` };
+  }
+  return { ok: true, line: `lookbook seam: installed with ?lookbook=1 (${opened.methods.length} methods, the pass timer loads), absent without it` };
 }
 
 /** PURE: is this console/page message worth failing over? */
@@ -245,6 +273,32 @@ if (isCli) {
     } else {
       console.log(`prod-smoke: settings persisted in prod (sfxVolume -> ${persistence.next})`);
     }
+
+    // THE LOOKBOOK SEAM — see seamVerdict. Absent on this page (opened without the parameter), present on a fresh
+    // load with it.
+    const plain = await page.evaluate(() => ({ entryRan: typeof window.useGameStore === 'function', seam: typeof window.__craftyLookbook }));
+    await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForFunction(() => typeof window.useGameStore === 'function', { timeout: 45000 }).catch(() => {});
+    const opened = await page.evaluate(async () => {
+      const s = window.__craftyLookbook;
+      let timer = null;
+      if (s && typeof s.passTimes === 'function') {
+        try {
+          const r = await s.passTimes();
+          timer = { installed: r?.installed === true, reason: r?.reason ?? null };
+        } catch (e) {
+          timer = { installed: false, reason: `passTimes threw: ${String((e && e.message) || e).split('\n')[0]}` };
+        }
+      }
+      return {
+        entryRan: typeof window.useGameStore === 'function',
+        methods: s ? Object.keys(s).filter((k) => typeof s[k] === 'function').sort() : null,
+        timer,
+      };
+    });
+    const sv = seamVerdict({ plain, opened });
+    console.log(`prod-smoke: ${sv.line}`);
+    if (!sv.ok) errors.push(sv.line);
   } catch (e) {
     errors.push(`threw: ${e && e.message ? e.message : e}`);
   } finally {

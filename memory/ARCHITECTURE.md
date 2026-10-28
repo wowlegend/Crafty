@@ -1,6 +1,11 @@
 # Crafty - 3D Minecraft-Style Browser Game
 
-> **ADDENDUM (2026-06-30, v6+v7):** **De-monolith (v6):** SimplifiedNPCSystem 934→183 (7 ECS systems + `_npcShared` seam → `src/systems/`) + GameScene 933→304 (6 render drivers + `_sceneScratch` → `src/render/`) fully dissolved; PositionTracker → `src/systems/`; Components.jsx ~1330 is the documented IRREDUCIBLE `Player` useFrame controller (delegates all pure logic to 32 `game/*` modules — do NOT split, Game-Loop-Isolation). **Spell-VFX SOTA redesign (v7):** each of the 4 spells is now a DISTINCT silhouette+motion+palette — new pure modules **`src/game/spellMotion.js`** (`computeSpellMotion` per-element motion grammar: roil/static/strobe/orbit) + **`src/render/spellGeometry.js`** (`buildFireTeardrop` blackbody-ramp teardrop, `buildIceShards` merged solid crystal cluster; deterministic module-load static geometry); `render/spellVfx.jsx` `renderSilhouette` branches teardrop/shards/bolt(thin additive wire)/sigil(rune-wheel+duotone); data in `game/spellVisualProfiles.js` ENERGY_PROFILE (added `motion`/`midColor`/`glowShape` fields). **Weather (v7):** `game/weatherGate.js` gained pure `precipFor(weather,biome)` — the state machine is now `clear↔storm` with the player's biome deciding rain/snow/dry; the 3 weather instancedMeshes carry `frustumCulled={false}`. Visual gate 21→24 states (added spell-iceball/lightning/arcane cast frames).
+> **ADDENDUM (2026-06-30, v6+v7):** **De-monolith (v6):** SimplifiedNPCSystem 934→183 (7 ECS systems + `_npcShared` seam → `src/systems/`) + GameScene 933→304 (6 render drivers + `_sceneScratch` → `src/render/`) fully dissolved; PositionTracker → `src/systems/`; Components.jsx is the `Player` useFrame controller, which v6 left whole: it delegates all pure logic to 32 `game/*` modules, and v6 judged the remaining loop not worth splitting (its size today: the MEASURED block in `CLAUDE.md`). **Spell-VFX SOTA redesign (v7):** each of the 4 spells is now a DISTINCT silhouette+motion+palette — new pure modules **`src/game/spellMotion.js`** (`computeSpellMotion` per-element motion grammar: roil/static/strobe/orbit) + **`src/render/spellGeometry.js`** (`buildFireTeardrop` blackbody-ramp teardrop, `buildIceShards` merged solid crystal cluster; deterministic module-load static geometry); `render/spellVfx.jsx` `renderSilhouette` branches teardrop/shards/bolt(thin additive wire)/sigil(rune-wheel+duotone); data in `game/spellVisualProfiles.js` ENERGY_PROFILE (added `motion`/`midColor`/`glowShape` fields). **Weather (v7):** `game/weatherGate.js` gained pure `precipFor(weather,biome)` — the state machine is now `clear↔storm` with the player's biome deciding rain/snow/dry; the 3 weather instancedMeshes carry `frustumCulled={false}`. Visual gate 21→24 states (added spell-iceball/lightning/arcane cast frames).
+>
+> **2026-10-28:** `Components.jsx`'s per-frame order is load-bearing, a constraint of its own, separate from
+> Game-Loop-Isolation (which keeps reactive state out of `useFrame`). v6's choice not to split it was a priority
+> call: it may be split when that pays, keeping that order and proving it in the running game (e2e, a live probe),
+> not only that it compiles (DECISIONS 2026-10-28 items 14 and 16).
 
 > ⚠️ **Doc-reality caveat (2026-05-31):** the blueprint below is the pre-initiative Gemini-3.5-Flash self-description; the S0 audit found several "SOTA / verified" claims over-stated and parts of the architecture framing wrong (e.g. the miniplex ECS is **load-bearing for mobs/loot/XP, NOT vestigial**). Until this file is rewritten against reality, ground truth = git `main` + `REALITY-AUDIT-2026-05-30.md` + `SOTA-INITIATIVE.md` + `docs/superpowers/specs/`. The full reality-rewrite is a deferred task.
 
@@ -174,8 +179,8 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 | System | Details |
 | ------ | ------- |
 | Health | Hearts display, damage overlay on hit, death screen + respawn |
-| Mana | 100 max, regenerates over time, spells consume per cast |
-| Hunger | Chicken leg icons, depletes over time |
+| Mana | 100 max, regenerates over world time (held while paused), spells consume per cast |
+| Hunger | Chicken leg icons; nothing drains it over time, and the meter is cut in the SOTA reset's Wave 2 |
 | XP | Level-based progression, visual +XP popups, level-up effect |
 | Sound | Procedurally generated: footsteps, block place/break, combat, magic, ambient |
 

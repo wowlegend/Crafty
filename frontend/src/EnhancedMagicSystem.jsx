@@ -24,6 +24,8 @@ import { chainArcPoints } from './game/chainArc';
 import { makeBurnManager } from './game/burnManager';
 import { worldDelta } from './game/worldClock.js';
 import { registerTestHook } from './devtest/testBridge.js';
+import { mobsQuery } from './ecs/world';
+import { isHostile } from './combat/targeting';
 // (A dead `export { MagicWand } from './render/spellVfx'` pass-through lived here. Every consumer
 // imports MagicWand from render/spellVfx directly — playerRender.jsx:16 is the only one — so this
 // re-export was a second import path nobody took. knip 6.32 flags it; 6.17 did not.)
@@ -31,6 +33,13 @@ import { registerTestHook } from './devtest/testBridge.js';
 // Per-frame scratch for the boss proximity test below. See its call site: it held three numbers for
 // one comparison and was allocated once per projectile per frame.
 const _bossVec = new THREE.Vector3();
+
+// The spell quests count spells, not hits: a bolt that pierces three enemies, or arcs through them, is one spell landed.
+const countLanding = (projectile) => {
+  if (projectile.landedOnEnemy) return;
+  projectile.landedOnEnemy = true;
+  useGameStore.getState().onSpellHit?.();
+};
 
 export const EnhancedMagicSystem = React.memo(() => {
   const playSpatialSound = useGameStore(state => state.playSpatialSound);
@@ -46,6 +55,10 @@ export const EnhancedMagicSystem = React.memo(() => {
 
   const projectilesRef = useRef([]);
   const projectilesDirty = useRef(false);
+  // DEV only: where the last few spells ENDED, and what ended them (the readSpentProjectiles hook below).
+  const spentRef = useRef([]);
+  // DEV only: the last few chain hops — which mob each arc went to and the point it was drawn to (readChainArcs).
+  const chainRef = useRef([]);
 
 
   // Fire DoT tickers are owned by a registry so an unmount mid-burn can stop them all — otherwise a burn
@@ -55,11 +68,18 @@ export const EnhancedMagicSystem = React.memo(() => {
   useEffect(() => () => burnManagerRef.current?.stopAll(), []);
   // DEV: the live spells, read-only, for the mob-floor E2E (R7.9) — a cast under a roof must FLY, and only the
   // projectile's own path can show it. A copy, so a spec cannot mutate one through it. No-op in prod.
+  // readSpentProjectiles is the other half: WHERE each of the last 16 spells ended and WHAT ended it ('ground',
+  // 'age', 'mob', 'boss'). Sampling the live list once per rendered frame cannot see a flight that one frame holds:
+  // on CI's software renderer the traces show 4.7-11.2 s between rendered frames around the cast, longer than a
+  // fireball's whole 3 s life, and the spec read "burst after 0.0 m (1 frames)" whatever the spell had done inside
+  // that frame (CI runs 40499349776, 40517958583). The end point is the spell's own record; no frame rate hides it.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     registerTestHook('readProjectiles', () => projectilesRef.current.map((p) => ({
       id: p.id, type: p.type, age: p.age, x: p.position.x, y: p.position.y, z: p.position.z,
     })));
+    registerTestHook('readSpentProjectiles', () => spentRef.current.map((s) => ({ ...s })));
+    registerTestHook('readChainArcs', () => chainRef.current.map((c) => ({ ...c })));
   }, []);
 
   const applyBurnEffect = useCallback((mobId, duration, dps) => {
@@ -68,25 +88,28 @@ export const EnhancedMagicSystem = React.memo(() => {
   }, []);
 
   const applyChainLightning = useCallback((startPos, excludeId, baseDamage, maxChains, range, damageReduction) => {
-    // S3-M2 T3: the targeting is pure (game/chainLightning.js); this wrapper keeps the
-    // live halves — the store snapshot read + the damage application.
-    const allMobs = useGameStore.getState().mobEntities;
-    if (!allMobs) return;
-    const pos = startPos.clone ? startPos : new THREE.Vector3(startPos.x, startPos.y, startPos.z);
-    const hits = solveChainTargets(allMobs, pos, { excludeId, baseDamage, maxChains, range, damageReduction });
-    // The signature inter-target ARC: a short-lived jagged additive bolt per hop (caster/first target ->
-    // each chained mob). chainArcPoints is pure + deterministic (capture-stable). Mob endpoints lifted
-    // ~0.9 to read at body height. The LOOK (color/jitter/lifetime) is a Kevin taste-gate -> KEVIN-REVIEW.
+    // The live ECS, never a mirror: a mob killed or moved since a snapshot was taken would take a hop it cannot
+    // receive, and its arc would land on empty ground.
+    const hits = solveChainTargets(mobsQuery.entities, startPos, { excludeId, baseDamage, maxChains, range, damageReduction });
     const arcColor = (SPELL_TYPES.lightning && SPELL_TYPES.lightning.glowColor) || '#FFE066';
     const arcs = [];
-    let arcFrom = { x: pos.x, y: pos.y, z: pos.z };
+    let landed = 0;
+    let arcFrom = { x: startPos.x, y: startPos.y, z: startPos.z };
     for (const h of hits) {
-      if (GameMethods.damageMob) GameMethods.damageMob(h.id, h.damage, 'lightning');
-      const arcTo = { x: h.position[0], y: h.position[1] + 0.9, z: h.position[2] };
-      arcs.push({ id: arcId.current++, points: chainArcPoints(arcFrom, arcTo, { seed: arcId.current, jitter: 0.45 }), color: arcColor, age: 0, maxAge: 160 });
+      if (GameMethods.damageMob?.(h.id, h.damage, 'lightning')) landed++;
+      // Read at the hop, not later: the arc is fixed geometry and the mob keeps moving. Lifted to body height.
+      const arcTo = { x: h.position.x, y: h.position.y + 0.9, z: h.position.z };
+      const points = chainArcPoints(arcFrom, arcTo, { seed: arcId.current + 1, jitter: 0.45 });
+      arcs.push({ id: arcId.current++, points, color: arcColor, age: 0, maxAge: 160 });
+      if (import.meta.env.DEV) {
+        const n = points.length;
+        chainRef.current.push({ target: h.id, x: points[n - 3], y: points[n - 2], z: points[n - 1] });
+        if (chainRef.current.length > 16) chainRef.current.shift();
+      }
       arcFrom = arcTo;
     }
     if (arcs.length) setChainArcs(prev => (prev.length > 12 ? [...prev.slice(prev.length - 12), ...arcs] : [...prev, ...arcs]));
+    return landed;
   }, []);
 
   // S1-D-M1: Spell impacts now route through the SOTA shared GPU spark pool
@@ -235,10 +258,6 @@ export const EnhancedMagicSystem = React.memo(() => {
       if (window.playSpellCastSound) {
         window.playSpellCastSound(spellType);
       }
-
-      if (GameMethods.grantXP) {
-        GameMethods.grantXP(3);
-      }
     }});
 
     // S1-D-M2: deterministic cast injector for the `spell-cast` visual-regression state.
@@ -323,10 +342,12 @@ export const EnhancedMagicSystem = React.memo(() => {
       const landed = advanceProjectile(projectile.position, projectile.velocity, delta, grounded);
 
       let keep = true;
+      let spentBy = null; // what ended this spell — read only by the DEV record below
 
       if (projectile.age > projectile.maxAge) {
         createSpellImpact(projectile.position, projectile.type);
         keep = false;
+        spentBy = 'age';
       } else {
         if (landed) {
           createSpellImpact(projectile.position, projectile.type);
@@ -337,6 +358,7 @@ export const EnhancedMagicSystem = React.memo(() => {
             projectile.imbueKind = null;
           }
           keep = false;
+          spentBy = 'ground';
         }
 
         if (keep && GameMethods.checkMobCollision) {
@@ -347,6 +369,8 @@ export const EnhancedMagicSystem = React.memo(() => {
           if (hitMob) {
             (projectile.hitIds || (projectile.hitIds = new Set())).add(hitMob.id);
             const spellConfig = SPELL_TYPES[projectile.type];
+            // Read before the damage: the hit that kills an enemy no longer reads as one after it.
+            const onEnemy = isHostile(hitMob);
 
             // damageMob returns the entity; health<=0 means this hit killed it, so the
             // impact gets a beefier camera-shake + spark spray (S1-D-M1).
@@ -365,6 +389,7 @@ export const EnhancedMagicSystem = React.memo(() => {
             }
 
             let willPierce = false;
+            let chained = 0;
             if (spellConfig?.secondary) {
               const sec = spellConfig.secondary;
 
@@ -380,7 +405,7 @@ export const EnhancedMagicSystem = React.memo(() => {
                   break;
                 }
                 case 'chain':
-                  applyChainLightning(
+                  chained = applyChainLightning(
                     projectile.position,
                     hitMob.id,
                     projectile.damage,
@@ -404,9 +429,13 @@ export const EnhancedMagicSystem = React.memo(() => {
             if (!willPierce) {
               createSpellImpact(projectile.position, projectile.type, wasKill);
               keep = false;
+              spentBy = 'mob';
             }
 
-            if (GameMethods.grantXP) GameMethods.grantXP(5);
+            // Levels come from fighting: a hit on a Settler or on livestock pays no XP. The chain hops only onto enemies,
+            // so a bolt aimed at a Settler that arcs into a Husk has landed on an enemy.
+            if (onEnemy && GameMethods.grantXP) GameMethods.grantXP(5);
+            if (onEnemy || chained > 0) countLanding(projectile);
           }
         }
 
@@ -426,11 +455,13 @@ export const EnhancedMagicSystem = React.memo(() => {
                   store.damageBoss(projectile.damage);
                   store.triggerHitstop?.(hitstopForHit(projectile.damage, store.juiceIntensity ?? 1));
                 }
+                countLanding(projectile);
                 createSpellImpact(projectile.position, projectile.type);
                 if (playSpatialSound) {
                   playSpatialSound('magicHit', projectile.position, 1.2, 30);
                 }
                 keep = false;
+                spentBy = 'boss';
               }
             }
           }
@@ -439,6 +470,14 @@ export const EnhancedMagicSystem = React.memo(() => {
 
       if (keep) {
         survivingProjectiles.push(projectile);
+      } else if (import.meta.env.DEV) {
+        // A ref write, never React state: this runs inside the frame loop. Bounded, so a long session cannot grow it.
+        const spent = spentRef.current;
+        spent.push({
+          id: projectile.id, type: projectile.type, by: spentBy, age: projectile.age,
+          x: projectile.position.x, y: projectile.position.y, z: projectile.position.z,
+        });
+        if (spent.length > 16) spent.shift();
       }
     }
 

@@ -28,7 +28,7 @@ describe('kill-attribution gates (S2-B3-M1)', () => {
     expect(npc).toMatch(/if \(isDirectPlayerHit\(source\)\)\s*\{[\s\S]{0,260}triggerHitstop\(hitstopForHit\(/);
     expect(npc).toMatch(/isDirectPlayerHit\(source\) && store\.triggerCameraShake/);
     // XP orbs are player-SOURCED (direct hit or burn tick), and the orb count is 0 when totalXP is 0.
-    expect(npc).toMatch(/const totalXP = isPlayerSource\(source\) \? \(entity\.xp \|\| 10\) : 0/);
+    expect(npc).toMatch(/const totalXP = isPlayerSource\(source\) \? killXP\(entity\.type\) : 0/);
     expect(npc).toMatch(/const count = totalXP > 0 \?[\s\S]{0,80}: 0/);
   });
 

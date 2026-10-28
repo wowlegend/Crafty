@@ -14,8 +14,13 @@ export const SOUND_M_PER_MS = 0.343;
 export const FLASH_ATTACK_MS = 40;
 export const FLASH_FLICKER_MS = 130;
 export const FLASH_END_MS = 360;
-/** The flash's peak, as added hemisphere-light intensity at juiceIntensity 1 — a light change, never a white-out. */
+/** The flash's peak at juiceIntensity 1 — the value the driver publishes, read by the dome and the hemisphere. */
 export const FLASH_PEAK = 1.6;
+/** The flash's own colour, a cold white: the light of the bolt, never the colour of the night sky it lights. */
+export const FLASH_COLOR = '#E6ECFF';
+/** The hemisphere's sky term gains FLASH_HEMI_GAIN x the flash, in FLASH_COLOR — at FLASH_PEAK ~3.0 of white, which
+ *  takes an up-facing grass face past the night grade's black point (tests/gates/lightning-gates.test.js). */
+export const FLASH_HEMI_GAIN = 1.9;
 
 /** World ms until the next strike, from a [0, 1) rng; Infinity when no strike may come (clear sky, or capture). */
 export function nextStrikeIn(rng, { storm, capture }) {
@@ -35,6 +40,35 @@ export function flashAt(ms) {
 /** The light the flash adds, `ms` after a strike, scaled by the juice dial (0 = none). */
 export function flashLight(ms, juiceIntensity = 1) {
   return FLASH_PEAK * flashAt(ms) * Math.max(0, juiceIntensity);
+}
+
+/**
+ * PURE. The hemisphere light for this frame with the flash added as WHITE sky light: afterwards
+ * `out.color x out.intensity = sky x intensity + flashColor x flash x FLASH_HEMI_GAIN`, and the ground term
+ * `out.groundColor x out.intensity = ground x intensity`, unchanged.
+ *
+ * The first version added the flash to the light's INTENSITY, which multiplies the light's colour — at night the
+ * night sky's (#2E4A6E, linear luminance ~0.07). The ground's radiance rose ~2.7x and stayed under the night grade's
+ * black point (0.08 linear), so the bytes stayed black while the sky dome flashed (CI: ground 6.8 -> 6.4).
+ * With no flash it writes exactly `sky`, `ground` and `intensity`, so a frame without one is byte-identical to before.
+ * `out` is three's HemisphereLight (or anything with `color`, `groundColor`, `intensity`); colours carry r, g, b.
+ */
+export function hemiWithFlash(out, sky, ground, intensity, flash, flashColor) {
+  const f = Math.max(0, flash) * FLASH_HEMI_GAIN;
+  const total = intensity + f;
+  if (!(f > 0) || !(total > 0)) {
+    out.color.r = sky.r; out.color.g = sky.g; out.color.b = sky.b;
+    out.groundColor.r = ground.r; out.groundColor.g = ground.g; out.groundColor.b = ground.b;
+    out.intensity = intensity;
+    return out;
+  }
+  out.color.r = (sky.r * intensity + flashColor.r * f) / total;
+  out.color.g = (sky.g * intensity + flashColor.g * f) / total;
+  out.color.b = (sky.b * intensity + flashColor.b * f) / total;
+  const keep = intensity / total; // the ground bounce keeps its own light: the bolt lights from above
+  out.groundColor.r = ground.r * keep; out.groundColor.g = ground.g * keep; out.groundColor.b = ground.b * keep;
+  out.intensity = total;
+  return out;
 }
 
 /** How long the thunder waits after the flash, for a strike `distanceM` away. */

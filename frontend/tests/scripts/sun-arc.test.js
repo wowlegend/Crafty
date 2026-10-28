@@ -106,7 +106,7 @@ describe('sun arc geometry', () => {
   });
 
   it('capture pins the solar angle to a DECLARED constant: noon for a day state, midnight for a night state', () => {
-    // AGENTS.md: "a capture guard must RESET to a declared value, never early-return." Noon is the one
+    // CLAUDE.md: "a capture guard must RESET to a declared value, never early-return." Noon is the one
     // fraction that leaves the mood bearing untouched, so committed day baselines keep their sun direction.
     // RE-POINTED 2026-10-27 (plan 2026-10-27-crafty-light-colour-script, Task 3a; refute F5): the declared values moved
     // to render/mood.js (CAPTURE_SOLAR, captureCycle). The old pin rendered EVERY state at noon, so the night states

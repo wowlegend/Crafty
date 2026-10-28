@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * GATE TABLE — generate the "what authorizes a push" table in .agent/AGENTS.md from the HOOK ITSELF.
+ * GATE TABLE — generate the "what authorizes a push" table in CLAUDE.md from the HOOK ITSELF.
  *
  * WHY THIS EXISTS. That paragraph has now undercounted its own gates THREE TIMES:
  *   "three gates"  ->  "Six"  ->  "NINE"  ->  live TEN
  * Each rewrite was written to fix the previous one, and the "Six" version stated the wrong number
  * directly above a table already showing eight. The latest rot took ONE COMMIT: adding
- * artifact-currency to the hook left AGENTS.md claiming NINE with no row for the new gate — and a
+ * artifact-currency to the hook left CLAUDE.md claiming NINE with no row for the new gate — and a
  * six-agent review read that paragraph closely, with five of six certifying the old count.
  *
  * That is not carelessness anyone can fix by being careful. A hand-maintained mirror of a machine-
@@ -20,7 +20,7 @@
  * below; a gate with no entry renders a TODO marker, so a new gate is visible rather than silent.
  *
  *   node scripts/ci/gate-table.mjs           print the derived table (check mode)
- *   node scripts/ci/gate-table.mjs --write   regenerate the block inside .agent/AGENTS.md
+ *   node scripts/ci/gate-table.mjs --write   regenerate the block inside CLAUDE.md
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
@@ -40,7 +40,7 @@ const HOOK = join(ROOT, 'ci/pipeline.sh');
 // was hand-kept). Parsing both surfaces is the fix; asserting the count here would just be a fourth guess.
 const PUSH_HOOK = join(ROOT, '.githooks/pre-push');
 const CI = join(ROOT, '.github/workflows/ci.yml');
-const AGENTS = join(ROOT, '.agent/AGENTS.md');
+const CLAUDE_MD = join(ROOT, 'CLAUDE.md');
 
 export const BEGIN = '<!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->';
 export const END = '<!-- END GATES -->';
@@ -53,14 +53,13 @@ export const DESCRIPTIONS = {
   'e2e freshness': 'a push whose `src/` or `tests/e2e/` tree has changed since the last GREEN e2e run. The Playwright specs are CI-only (~20 min, serialized because they share in-page game state), so no local chokepoint can see an e2e regression — which is exactly how the 2026-09-22 damage-model change shipped green locally and broke `soft-death-protections`. This asserts the RECEIPT, content-keyed on the observed trees so editing a doc does not expire it and editing a store action does. Fails CLOSED on stale, OPEN on absent (a fresh clone must not be refused), exit 3 on an empty walk',
   'knip': 'an unused file, export or dependency — the accretion that makes a codebase look larger than the part that runs. CI-only because it is slow and never a correctness failure',
   'npm audit': 'a HIGH or CRITICAL advisory in the installed dependency set. CI-only ON PURPOSE (R5): this needs the registry, and a network outage reddening a local commit is how developers learn to pass --no-verify',
-  'prod-smoke': 'the bundle that actually SHIPS failing to boot, render, or keep a live GL context. It is the only harness that loads the production build — `capture.mjs` and all 25 probes drive the DEV server, which measures LCP ~6.6x slower and cannot see a prod-only break. CI-only because it needs a browser',
+  'prod-smoke': 'the bundle that actually SHIPS failing to boot, render, or keep a live GL context. It is the only harness that loads the production build — `capture.mjs` and all 25 probes drive the DEV server, which measures LCP ~6.6x slower and cannot see a prod-only break. CI-only because it needs a browser. Skipped (`--code-changed=false`, printed) when CI\'s change-scope job finds only docs changed since a commit whose `ci ok` passed, the same condition that skips the e2e matrix',
   'opsec-scan': 'an operator home path, a credential shape, or agent attribution reaching a PUBLIC repo. Built after a third-party statusline tool injected `/Users/<user>/...` into a TRACKED `.claude/settings.json` on its own — a convention cannot stop a tool that edits your config unprompted. Deliberately does NOT flag the operator first name (~196 files of design attribution): a gate that cries wolf gets bypassed, and a bypassed gate on a publish boundary is worse than none',
-  'killability-ledger': 'a NEW check file that never states what makes it fail. The `Mutation-Proof:` trailer proves a COMMIT was asked; this proves the FILE carries the answer, ratcheted like the source-grep ledger so the debt can fall and never rise. It also prints the number nothing in this suite could previously state — how many of its own checks have ever been shown to fail. It does NOT verify the receipt is true; nothing can',
   'mutation-proof-trailer': 'a commit that ADDS a gate under `tests/gates/` or `scripts/ci/`, or REWRITES the ASSERTIONS of an existing one, without a `Mutation-Proof:` trailer stating what was broken and that it went RED',
   'baseline-trailer': 'a commit that rewrites the visual ORACLE under `tests/visual/baseline/` without a `Baseline-Review:` trailer, or that BUNDLES the rewrite with `frontend/src/` changes — which makes an intended look change indistinguishable from a regression the baseline was updated to match',
-  'doc-currency': 'a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, and drift in the generated MEASURED and GATES blocks',
+  'doc-currency': 'a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, drift in the generated MEASURED and GATES blocks, and one of six lock-label phrasings (`(LOCKED`, `LOCKED —`, `IRREDUCIBLE`, `MUST NOT be split`, `KEEP, don\'t rewrite`, `do not relitigate`) in a canonical doc other than DECISIONS, unless the line cites item 16 (DECISIONS 2026-10-28 item 16). Any other lock wording passes it',
   'queue-ledger': 'a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command',
-  'artifact-currency': 'the published Artifact page drifting from HEAD — informational under the ceiling, hard fail above it. Also rejects an unusable page source (missing, or a fetched copy of the published wrapper), and a row still marked **Queued** whose declared `data-absent` artifact now EXISTS — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped',
+  'artifact-currency': 'on every push, an unusable operator-page source (missing, or a fetched copy of the published wrapper), a row still marked **Queued** whose declared `data-absent` artifact now EXISTS or that declares none — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped — and a page whose as-of stamp is missing, duplicated, or names a different commit from the publish `.artifact-sync.json` records (the hand-bumped-sha lie). The pages\' DRIFT from HEAD is printed with each page\'s URL and refuses nothing, on any push or in CI (DECISIONS 2026-10-28 item 12: the old 30-commit refusal measured how far the writer was behind, and refused 8 pushes, 5 of them correct lane work, while stopping no recorded false claim; the pages now state their own commit and time). In CI it runs on a push to main only, to report main\'s drift after a merge GitHub made and refuse a tree defect such a merge brought in',
   eslint: 'crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component',
   'gate-shape': 'a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise)',
   'cli-guard': 'a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts',
@@ -111,6 +110,12 @@ export function parseHook(src) {
     if (!m) return;
     const name = m[1].replace(/\s*\([^)]*\)\s*$/, '').trim();
     const cmd = m[2].trim().replace(/^npm run --silent /, 'npm run ').replace(/\s*\|\|.*$/, '');
+    // ONE GATE, TWO TIERS (2026-10-28): artifact-currency runs in the push tier AND, on a CI push to main, in
+    // the fast tier (where it reports drift and refuses only tree defects, as it does everywhere). A second row would print 18 gates where 17 exist, and the first row alone would print
+    // `CI: —` for a gate CI runs. So a step whose name an earlier step already took adds its tier to that
+    // row (`also`), and callersFor unions them; the row keeps the first command.
+    const prior = gates.find((g) => g.name === name);
+    if (prior) { (prior.also ||= []).push(tier); return; }
     gates.push({ name, cmd, tier, line: i + 1 });
   });
   return gates;
@@ -136,7 +141,11 @@ export const CALLERS = {
   'not-push':   { commit: true,  push: false, ci: true  },
   'not-fast':   { commit: true,  push: true,  ci: false },
 };
-export const callersFor = (gate) => CALLERS[gate.tier] || CALLERS.core;
+export const callersFor = (gate) => {
+  // A gate parsed in more than one tier (`also`, see parseHook) runs for every caller any of its tiers names.
+  const each = [gate.tier, ...(gate.also || [])].map((t) => CALLERS[t] || CALLERS.core);
+  return { commit: each.some((c) => c.commit), push: each.some((c) => c.push), ci: each.some((c) => c.ci) };
+};
 
 /*
  * REMOVED 2026-09-22: `parseCi` / `inCi`. They answered "does ci.yml mention this script's name", which
@@ -195,15 +204,15 @@ function main() {
   const { gates, ciText } = derive();
   const block = renderBlock(gates, ciText);
   if (process.argv.includes('--write')) {
-    const md = readFileSync(AGENTS, 'utf8');
+    const md = readFileSync(CLAUDE_MD, 'utf8');
     const i = md.indexOf(BEGIN);
     const j = md.indexOf(END);
     if (i < 0 || j < 0) {
-      console.error(`gate-table: no ${BEGIN} / ${END} markers in .agent/AGENTS.md — add them around the gate table first`);
+      console.error(`gate-table: no ${BEGIN} / ${END} markers in CLAUDE.md — add them around the gate table first`);
       process.exit(1);
     }
-    writeFileSync(AGENTS, md.slice(0, i) + block + md.slice(j + END.length));
-    console.log(`gate-table: wrote ${gates.length} gates into .agent/AGENTS.md`);
+    writeFileSync(CLAUDE_MD, md.slice(0, i) + block + md.slice(j + END.length));
+    console.log(`gate-table: wrote ${gates.length} gates into CLAUDE.md`);
     return;
   }
   console.log(block);

@@ -1,5 +1,6 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
+import { TITLE_FPS } from '../../src/render/canvasPace.js';
 
 // THE FRAME CAP, IN THE RUNNING CANVAS (plan 2026-09-23-crafty-perf-heat-ipad, Task 4).
 //
@@ -105,7 +106,8 @@ test('capped by default; the cap binds, costs nothing below it, and lets go for 
   // loop iterations, and under the cap the loop runs empty iterations — it read the display rate (review #2).
   await page.keyboard.press('F3');
   await page.waitForTimeout(2500);
-  const readout = await page.evaluate(() => document.querySelector('[data-testid="frame-stats"]')?.textContent ?? null);
+  // data-fps, not the text: the text is localised and its first line need not start with an English "N FPS".
+  const readout = await page.evaluate(() => document.querySelector('[data-testid="frame-stats"]')?.dataset.fps ?? null);
   await page.keyboard.press('F3');
   await setCap(60);
   const r = { at60, free, test1 };
@@ -123,7 +125,7 @@ test('capped by default; the cap binds, costs nothing below it, and lets go for 
   expect(test1.perTick, `the ${TEST_CAP} fps cap did not bind — it drew on ${test1.frames} of ${test1.ticks} display ticks: ${where}`).toBeLessThan(0.5);
   expect(test1.fps, `the ${TEST_CAP} fps cap leaked — ${test1.fps.toFixed(2)} fps drawn while the canvas was invalidated from outside: ${where}`).toBeLessThan(TEST_CAP * 1.5);
   expect(readout, `the Show Stats readout is not on screen after F3: ${where}`).not.toBeNull();
-  const shownFps = Number((readout.match(/^(\d+) FPS/) || [])[1]);
+  const shownFps = Number(readout);
   expect(shownFps, `Show Stats read "${readout}" under a ${TEST_CAP} fps cap — it counts something other than frames drawn: ${where}`).toBeLessThanOrEqual(TEST_CAP + 1);
   expect(test1.fps, `the ${TEST_CAP} fps cap starved the loop — ${test1.fps.toFixed(2)} fps: ${where}`).toBeGreaterThan(TEST_CAP * 0.4);
   // Below the 60 cap the renderer is the limit, so every tick must draw: the halved-rate bug drew on every other one.
@@ -138,29 +140,122 @@ test('capped by default; the cap binds, costs nothing below it, and lets go for 
 // THE TITLE SCREEN PACES THE CANVAS IT COVERS (plan Task 3). The title is an opaque layer with its own WebGL canvas,
 // and behind it the game canvas drew the whole world at the display rate. render/canvasPace.js paces it at TITLE_FPS
 // while the title covers it — not zero: stopping it would move every shader compile to the instant Start is pressed.
-// That the pace BINDS is the test above (the 1 fps cap); this proves the title SELECTS the slow pace and releases it,
-// through the real title flag MenuSystem publishes.
+// That stepCap BINDS at a given rate is the test above (the 1 fps cap). This proves, through the real title flag
+// MenuSystem publishes: the title SELECTS the slow pace and play releases it; the frames drawn under the title are
+// DRAWN BY THE PACER (FrameCap's own advance() count, `paced`) — the declared pace alone stays 10 when the pacer is
+// not running at all — and no more than TITLE_FPS of them a second; and THE TIER GOVERNOR DOES NOT SAMPLE THEM
+// (review 2026-10-27: it read the 10 fps pace as a slow machine and stepped every desktop down to `low` before play).
+//
+// THE GOVERNOR CASE, AND ITS PRESENCE CONTROL. The tier is set to `med` on the title and must still read `med` after
+// the covered canvas has drawn GOVERNOR_FRAMES more: drei judges a batch of 10 windows, a window closing on the first
+// frame >= 250 ms after its first, so at <= TITLE_FPS a batch is at most 40 frames and any 60 contain a verdict —
+// which, at that rate, is always a decline. Then in play, where this renderer draws far under the governor's 40 fps
+// floor, the same governor must step `med` down — so "held on the title" is a governor that was off, not a dead one.
+// At a small viewport, as the cap test above: at 1280x800 on a loaded machine the covered canvas drew 0.74 fps.
+//
+// FRAMES AGAINST DISPLAY TICKS. Measured and printed every run, and the rate bounded by TITLE_FPS. The rate bound
+// can fail only on a renderer faster than the pace: CI's software rasteriser drew 6.6 fps UNLIMITED at 480x270 in play
+// (frame-cap log, CI run 40514448242), so there it holds by construction and the pacer check carries the case.
 //
 // Mutation-Proof: via scripts/dev/mutate-e2e.sh, observed RED (identity mutant SURVIVED in the same batch):
 //   Q1 MenuSystem never publishes titleCovering -> "the covered canvas drew at 60"
 //   Q2 plausible-wrong: titleCovering never cleared on play -> "still paced for the title in play"
 //   Q3 GameScene ignores canvasPace (the old capActive) -> "the covered canvas drew at 60"
-test('behind the title the game canvas is paced down, whatever the setting; play releases it', async ({ page }) => {
-  test.setTimeout(300000);
+// Q1-Q3 were recorded on 2026-09-26 on cfea7d41, before this test gained the cases below; NOT re-run since — owed.
+// 2026-10-27, this test as committed, one batch (private-port copy of mutate-e2e.sh, SwiftShader, load ~40):
+//   identity (a comment edit in GameScene.jsx) SURVIVED: title 64 frames, 61 by the pacer, in 81 ticks over 21.1 s
+//     (3.04 fps, 0.79 per tick), tier held med; play: med -> low after 22 frames over 6.4 s.
+//   M1 the governor mounted on the old harness-only guard (sampling behind the title) -> RED "the tier governor
+//     stepped the tier down behind the title" (tier low after 65 title frames)
+//   M3 GameScene's FrameCap `active` wired off under the title -> RED "the covered canvas was not drawn by its pacer"
+//     (61 frames, 0 by the pacer: rapier kept R3F's own loop drawing, while the DECLARED pace still read 10 — the
+//     reading the previous version of this test asserted)
+//   M2 the governor never mounted -> RED "the tier governor never stepped down in play" (114 frames, still med)
+// The rate bound (<= TITLE_FPS x 1.5) could not fail on this renderer, which drew ~3 fps behind the title; see above.
+// 2026-10-28 UTC, with the pointer lock refused (below), one batch (private-port copy, SwiftShader, COVERAGE=0, load
+// 75-200 from other sessions — the title drew at CI's rate here):
+//   identity (a comment edit in GameScene.jsx) SURVIVED: title 61 frames, 58 by the pacer, in 73 ticks over 54.6 s
+//     (1.12 fps), tier held med; play: med -> low after 30 frames over 37.8 s.
+//   M1 -> RED "the tier governor stepped the tier down behind the title" (low after 62 title frames over 62.2 s; the
+//     title still up at the end with the world built: active false, started false, world true)
+//   M3 -> RED "the covered canvas was not drawn by its pacer" (62 frames, 0 by the pacer)
+//   M2 -> RED "the tier governor never stepped down in play" (116 frames over 63.6 s, still med)
+const GOVERNOR_FRAMES = 60;
+// THE TITLE IS HELD FOR THE WHOLE WINDOW, BY REFUSING THE POINTER LOCK (2026-10-27). What ends the title on its own is
+// the world-ready auto-lock (App.jsx: requestPointerLock 100 ms after isSpawnChunkLoaded). Granted, the lock sets
+// `active` and latches gameStarted, so the title is gone for good. Behind the title CI's software renderer drew under
+// 1 fps, so the 60-frame window outlasted the world build and the title went away inside it, 3 attempts of 3 (CI run
+// 40551564326: title false 20 s in, at 19 frames; the HUD up at the failure; no "pointer lock denied" logged) — while
+// in the same run world-hitstop's page logged "NotAllowedError: A user gesture is required to request Pointer Lock".
+// The difference is this case's own reads: Playwright runs every page.evaluate AS A USER GESTURE (playwright-core
+// 1.64.1, Runtime.callFunctionOn with userGesture: true), and the window reads the page once a second, so an auto-lock
+// fired inside it can find the activation it needs. A local run with the refusal removed kept the title (2026-10-28,
+// world built, lock not taken), so the grant is timing: the auto-lock must fire soon after one of these reads, as on
+// CI, where the world landed 20 s into the window. A lock asked for with no gesture is one the game expects refused
+// (GameScene.jsx requestPointerLock: "every caller is inside a real click/key gesture"), so this page refuses it from
+// boot, as a refusal arrives (a pointerlockerror and a rejected promise): the title then stays up until play is forced
+// below, as a player who has not pressed Start sees it. startPlayActive enters play through forcePlay, no lock asked.
+const refusePointerLock = () => {
+  Element.prototype.requestPointerLock = function refused() {
+    setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 0);
+    return Promise.reject(new DOMException('refused by frame-cap.spec.js: no user gesture', 'NotAllowedError'));
+  };
+};
+test('behind the title the game canvas is paced down by its pacer and the tier governor is off; play releases both', async ({ page }) => {
+  test.setTimeout(720000);
+  await page.addInitScript(refusePointerLock);
   await bootDev(page);
+  await page.setViewportSize({ width: 480, height: 270 });
   await page
     .waitForFunction(() => { try { return window.__craftyTest.call('readFrameloop') != null; } catch { return false; } }, null, { timeout: 60000 })
     .catch((e) => { throw new Error(`SETUP: the game canvas never mounted its FrameCap (readFrameloop) — ${e.message}`); });
-  const pace = () => page.evaluate(() => ({ ...window.__craftyTest.call('readFrameloop'), title: window.useGameStore.getState().titleCovering, cap: window.useGameStore.getState().frameCap }));
+  // `active`, `started` and `alive` are the title's own gates (ui/panelState.js shouldShowTitleMenu), read beside it so a
+  // title that goes away names what took it.
+  const pace = () => page.evaluate(() => {
+    const g = window.useGameStore.getState();
+    return { ...window.__craftyTest.call('readFrameloop'), title: g.titleCovering, cap: g.frameCap, tier: g.qualityTier, ticks: window.__ticks ?? null, active: window.__craftyTest.call('readIntents').active, started: !!g.gameStarted, alive: g.isAlive, world: g.isSpawnChunkLoaded };
+  });
+  await page.evaluate(() => {
+    window.__ticks = 0;
+    const count = () => { window.__ticks += 1; requestAnimationFrame(count); };
+    requestAnimationFrame(count);
+  });
+  // Draw until the canvas has drawn `want` more frames or `ms` passes; the window's frames, pacer share, ticks, rate.
+  const drawn = async (want, ms) => {
+    const a = await pace();
+    const t0 = Date.now();
+    let b = a;
+    while (b.frames - a.frames < want && Date.now() - t0 < ms) {
+      await page.waitForTimeout(1000);
+      b = await pace();
+    }
+    const secs = (Date.now() - t0) / 1000;
+    const frames = b.frames - a.frames, paced = b.paced - a.paced, ticks = b.ticks - a.ticks;
+    return { frames, paced, ticks, secs: +secs.toFixed(1), fps: +(frames / secs).toFixed(2), perTick: ticks ? +(frames / ticks).toFixed(3) : null, title: b.title, tier: b.tier, loop: b.loop, active: b.active, started: b.started, alive: b.alive, world: b.world };
+  };
 
   const title = await pace();
   expect(title.title, `SETUP: the title screen is not up at boot: ${JSON.stringify(title)}`).toBe(true);
-  expect([title.loop, title.fps], `the covered canvas drew at ${title.fps} (${title.loop}) behind the title: ${JSON.stringify(title)}`).toEqual(['demand', 10]);
+  expect([title.loop, title.fps], `the covered canvas drew at ${title.fps} (${title.loop}) behind the title: ${JSON.stringify(title)}`).toEqual(['demand', TITLE_FPS]);
+
+  // The governor case: `med` on the title (set, not inherited from selectTier: `low` is a tier a decline could not move),
+  // then a long draw.
+  await page.evaluate(() => window.useGameStore.getState().setQualityTier('med'));
+  const covered = await drawn(GOVERNOR_FRAMES, 240000);
+  const where = JSON.stringify(covered);
+  console.log(`frame-cap title: ${covered.frames} frames (${covered.paced} by the pacer) in ${covered.ticks} ticks over ${covered.secs} s — ${covered.fps} fps, ${covered.perTick} per tick; tier ${covered.tier}`); // the denominator
+  expect(covered.title, `SETUP: the title went away while it was being measured: ${where}`).toBe(true);
+  expect(covered.frames, `the covered canvas drew nothing in ${covered.secs} s — starved behind the title (Start would pay every shader compile at once): ${where}`).toBeGreaterThan(0);
+  expect(covered.paced, `the covered canvas was not drawn by its pacer — FrameCap is not running under the title: ${where}`).toBeGreaterThan(0);
+  expect(covered.frames - covered.paced, `the covered canvas drew ${covered.frames - covered.paced} frames its pacer did not: ${where}`).toBeLessThanOrEqual(Math.max(2, covered.frames * 0.1));
+  expect(covered.fps, `the covered canvas drew ${covered.fps} fps behind the title, over the ${TITLE_FPS} fps pace: ${where}`).toBeLessThanOrEqual(TITLE_FPS * 1.5);
+  expect(covered.frames, `SETUP: the covered canvas drew only ${covered.frames} frames — too few for the governor to have judged it: ${where}`).toBeGreaterThanOrEqual(GOVERNOR_FRAMES);
+  expect(covered.tier, `the tier governor stepped the tier down behind the title, reading its pace as a slow machine: ${where}`).toBe('med');
 
   await page.evaluate(() => window.useGameStore.getState().setFrameCap(0)); // Unlimited: the title still paces it
   await page.waitForTimeout(300);
   const titleFree = await pace();
-  expect([titleFree.loop, titleFree.fps], `Unlimited drew the covered canvas at the display rate: ${JSON.stringify(titleFree)}`).toEqual(['demand', 10]);
+  expect([titleFree.loop, titleFree.fps], `Unlimited drew the covered canvas at the display rate: ${JSON.stringify(titleFree)}`).toEqual(['demand', TITLE_FPS]);
   await page.evaluate(() => window.useGameStore.getState().setFrameCap(60));
 
   await startPlayActive(page);
@@ -168,4 +263,25 @@ test('behind the title the game canvas is paced down, whatever the setting; play
   const play = await pace();
   expect(play.title, `the title flag stayed up in play: ${JSON.stringify(play)}`).toBe(false);
   expect([play.loop, play.fps], `still paced for the title in play: ${JSON.stringify(play)}`).toEqual(['demand', 60]);
+
+  // PRESENCE CONTROL: in play the governor runs, and on this renderer it must step `med` down. A tier pinned by
+  // something else would read `med` on the title too, so the title case means nothing until this shows a live governor.
+  // Counted in FRAMES, not seconds: under 35 fps a window holds at most 10 frames, so 110 frames hold a verdict.
+  await page.evaluate(() => window.useGameStore.getState().setQualityTier('med'));
+  const VERDICT_FRAMES = 110;
+  const a = await pace();
+  const t0 = Date.now();
+  let b = a;
+  while (b.tier === 'med' && b.frames - a.frames < VERDICT_FRAMES && Date.now() - t0 < 240000) {
+    await page.waitForTimeout(1000);
+    b = await pace();
+  }
+  const inPlay = { tier: b.tier, frames: b.frames - a.frames, secs: +((Date.now() - t0) / 1000).toFixed(1) };
+  const playFps = inPlay.frames / inPlay.secs;
+  console.log(`frame-cap play: tier med -> ${inPlay.tier} after ${inPlay.frames} frames over ${inPlay.secs} s (${playFps.toFixed(1)} fps)`);
+  expect(playFps, `SETUP: this renderer drew ${playFps.toFixed(1)} fps in play — over the governor's 40 fps floor, so it has nothing to step down: ${JSON.stringify(inPlay)}`).toBeLessThan(35);
+  if (inPlay.tier === 'med') {
+    expect(inPlay.frames, `SETUP: only ${inPlay.frames} frames drawn in play — too few for the governor to have reached a verdict: ${JSON.stringify(inPlay)}`).toBeGreaterThanOrEqual(VERDICT_FRAMES);
+  }
+  expect(inPlay.tier, `the tier governor never stepped down in play at ${playFps.toFixed(1)} fps — a dead governor, so the title case measured nothing: ${JSON.stringify(inPlay)}`).toBe('low');
 });

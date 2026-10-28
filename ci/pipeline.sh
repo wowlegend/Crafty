@@ -27,7 +27,9 @@
 #   push    reads a COMMIT RANGE            -> pre-push. Trailers, queue-ledger, artifact-currency,
 #                                              e2e-freshness: a runner on a squashed ref cannot
 #                                              reconstruct the range, so these belong to the chokepoint
-#                                              that has it.
+#                                              that has it. One exception: artifact-currency's range is
+#                                              syncedSha..HEAD, which a full-history runner on a push to
+#                                              main CAN count, so the fast tier runs it there too.
 #   fast    reads the NETWORK or a BROWSER  -> CI only. `npm audit` and `prod-smoke` must never sit on an
 #                                              edit path: a registry outage or a flaky browser reddening
 #                                              someone's commit is precisely how a gate gets bypassed,
@@ -55,10 +57,19 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
 APP="$ROOT/frontend"
+# Every step runs with GIT_* scrubbed (run_scrubbed, below): a hook's GIT_DIR must never reach a step's git.
+. "$ROOT/ci/git-env.sh"
 
 TIER="push"
 RANGE_ONLY=0
-for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --range-only) RANGE_ONLY=1 ;; esac; done
+CODE_CHANGED=""
+for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --range-only) RANGE_ONLY=1 ;; --code-changed=*) CODE_CHANGED="${a#--code-changed=}" ;; esac; done
+# --code-changed=false: CI's change-scope job (frontend/scripts/ci/change-scope.mjs) found only docs changed since a
+# commit whose `ci ok` passed, so the fast tier skips prod-smoke, the one browser step here (the e2e job is skipped
+# by ci.yml itself). ONLY the exact word `false` skips; absent, `true`, empty or anything else runs it (fail SAFE).
+# The CI step also exports CODE_CHANGED, and the unit suite this pipeline runs inherits it and executes this file under
+# test. The reset above is what keeps a docs-only run from changing what that suite tests: the flag decides, an
+# inherited CODE_CHANGED never does.
 # --range-only: pre-push's path when the pre-commit receipt already certified this exact tree. The offline
 # core is skipped (and each skip PRINTED); the commit-range gates still run, because a receipt written at
 # commit time cannot speak for a range it never saw. Until 2026-09-22 pre-push `continue`d past this file
@@ -97,7 +108,7 @@ step() { # step <name> <cmd...>
   fi
   [ "$SECTION" = range ] && ran_range=$((ran_range + 1))
   say "$name"
-  if "$@"; then
+  if run_scrubbed "$@"; then
     return 0
   fi
   fail=1
@@ -120,23 +131,25 @@ step "opsec-scan (a PUBLIC repo must not publish the operator machine)" node scr
 step "doc-currency (a canonical doc citing a path that no longer exists)" node scripts/ci/doc-currency.mjs
 step "eslint (crash-class bugs; no-unused-vars is an error)" npm run --silent lint
 step "gate-shape (no assertion satisfiable by a COMMENT)" node scripts/ci/gate-shape.mjs
-step "killability-ledger (a new check must name the mutation that reds it)" node scripts/ci/killability-ledger.mjs
 step "cli-guard (an exporting script must not run its CLI on import)" node scripts/ci/cli-guard.mjs
 step "unit + static gates (vitest)" npm run --silent test:unit
 step "build" npm run --silent build
 step "bundle byte budget" node scripts/ci/bundle-budget.mjs
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
-# TIER: PUSH-ONLY — commit-shaped gates. They read a COMMIT RANGE, which a CI runner on a squashed or
+# TIER: PUSH — commit-shaped gates. They read a COMMIT RANGE, which a CI runner on a squashed or
 # rebased ref cannot reconstruct meaningfully, so they belong to the chokepoint that has the real range.
+# One of them, artifact-currency, ALSO runs in the fast tier on a CI push to main (see the CI-only block
+# below): its range is syncedSha..HEAD, which a full-history runner can count. In either tier its drift is a
+# report, never a refusal (DECISIONS 2026-10-28 item 12); only its three tree-defect checks fail a run.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" != "push" ]; then
-  printf '\n\033[2m── skipped (%s tier): queue-ledger, artifact-currency, e2e-freshness — they read a COMMIT RANGE\033[0m\n' "$TIER"
+  printf '\n\033[2m── skipped (%s tier): queue-ledger, artifact-currency, e2e-freshness — they read a COMMIT RANGE (the fast tier runs artifact-currency on a CI push to main, below)\033[0m\n' "$TIER"
 fi
 if [ "$TIER" = "push" ]; then
   SECTION=range
   step "queue-ledger (a finding with no marker)" node scripts/ci/queue-ledger.mjs
-  step "artifact-currency (a published page drifting from HEAD)" node scripts/ci/artifact-currency.mjs
+  step "artifact-currency (page sources, Queued pills, as-of stamps; drift is reported only)" node scripts/ci/artifact-currency.mjs
   step "e2e freshness (the suite CI runs, receipted against this tree)" node scripts/ci/e2e-freshness.mjs
 fi
 
@@ -152,13 +165,35 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
-# TIER: CI-ONLY — needs the network or a browser, so it must never sit in a developer's push path. A
-# registry outage or a flaky browser reddening someone's push is how a gate gets bypassed.
+# TIER: CI-ONLY — knip, npm audit and prod-smoke need the network or a browser, so they must never sit in a
+# developer's push path. A registry outage or a flaky browser reddening someone's push is how a gate gets
+# bypassed. The artifact-currency step at the end of this block is in CI for a different reason: it needs
+# neither, it needs the state of main AFTER a merge GitHub made, which no local hook ever sees.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" = "fast" ]; then
   step "knip (unused files / exports / deps)" npm run --silent knip
   step "npm audit (high + critical)" npm audit --audit-level=high
-  step "prod-smoke (the bundle that actually ships boots and renders)" node scripts/ci/prod-smoke.mjs
+  if [ "$CODE_CHANGED" = "false" ]; then
+    printf '\n\033[2m── skipped (fast tier, --code-changed=false): prod-smoke — only docs changed since a commit CI passed, so the bundle is that commit'"'"'s\033[0m\n'
+  else
+    step "prod-smoke (the bundle that actually ships boots and renders)" node scripts/ci/prod-smoke.mjs
+  fi
+  # THE SERVER-SIDE MERGE REPORT (2026-10-28) — `gh pr merge` and GitHub's UI move main without any local hook, so
+  # this step is the one place main's state after such a merge is looked at. It runs on the push event, AFTER main
+  # has moved and Vercel has deployed. It PRINTS how far each operator page is behind main and refuses no drift
+  # (DECISIONS 2026-10-28 item 12: the cap measured the writer; the pages now state their own commit and time for
+  # the reader). It still reds the gates job if a merge brought in one of the three tree defects (a missing or
+  # unusable page source, a falsified or undeclared Queued pill, a missing, duplicated or mismatched as-of stamp),
+  # which pre-push refuses on every local push. The drift is counted from the recorded sha, so the gates job checks
+  # out full history (fetch-depth: 0); without it, or for a sha only a squash-merged, deleted lane branch held, the
+  # line reads "cannot be measured". It stays on a push to main only, as it was: a PR's merge ref would print the
+  # lane's own commits as drift, and a workflow_dispatch run on main moves nothing (both take the else branch). It
+  # no longer passes E2E_PUSH_REFS, which the script stopped reading when the drift refusal went.
+  if [ "${GITHUB_EVENT_NAME:-}" = "push" ] && [ "${GITHUB_REF:-}" = "refs/heads/main" ]; then
+    step "artifact-currency (on a CI push to main: reports drift, refuses tree defects, after a merge GitHub made)" node scripts/ci/artifact-currency.mjs
+  else
+    printf '\n\033[2m── skipped (fast tier): artifact-currency — CI runs it on a push to main only (event %s, ref %s)\033[0m\n' "${GITHUB_EVENT_NAME:-unset}" "${GITHUB_REF:-unset}"
+  fi
 fi
 
 printf '\n'

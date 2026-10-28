@@ -9,7 +9,7 @@
  * WHAT IT IS EXPLICITLY NOT. It does NOT catch the dead-on-arrival class — the four defects of 2026-08-05
  * where a feature shipped, compiled, gated green and never RAN in the game. Coverage measures whether a
  * TEST executed a line; it can never measure whether the APP reaches it. A module with 100% coverage can
- * be unreachable in the running game, and `AGENTS.md` draws that distinction deliberately. Anyone citing
+ * be unreachable in the running game, and `CLAUDE.md` draws that distinction deliberately. Anyone citing
  * this as evidence that a feature works has misread it.
  *
  * NO THRESHOLD, DELIBERATELY, and this is not laziness. A coverage gate rewards EXECUTION, while

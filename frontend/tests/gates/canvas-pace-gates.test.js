@@ -15,14 +15,21 @@ import { useWindowFocused } from '../../src/render/useWindowFocused.js';
  *   P3 plausible-wrong: the harness check after the title check -> "the harness was paced"
  *   P4 plausible-wrong: Unlimited paced at 60 -> "Unlimited is capped"
  *   and P0, an identity mutant (a comment edit in canvasPace.js, same harness and batch), SURVIVED.
+ * The governor (review 2026-10-27: behind the title it read 10 fps as a slow machine and stepped every desktop down
+ * to `low` before play), same harness, each observed RED:
+ *   V1 the title case leaves the governor on -> "the governor samples the title's pace"
+ *   V2 the harness case leaves it on -> "the governor samples a harness"
+ *   V3 plausible-wrong: Unlimited play ungoverned -> "play is ungoverned"
+ *   and V0, an identity mutant (a comment edit in canvasPace.js), SURVIVED.
  *
  * BLIND SPOT: that GameScene reads this, and that MenuSystem's title flag reaches the store, is the e2e's
- * (tests/e2e/frame-cap.spec.js); that the pace BINDS is the same e2e's 1 fps case.
+ * (tests/e2e/frame-cap.spec.js); that the pace BINDS is the same e2e's 1 fps case. That GameScene mounts the monitor
+ * on `governor` is pinned by shape in perf-config-gates and lived in the same e2e (the tier set on the title holds).
  */
 describe('paceFor', () => {
   it('in play, the setting decides: 60 -> paced at 60, Unlimited -> the display rate', () => {
-    expect(paceFor({ frameCap: 60, titleCovering: false, harness: false })).toEqual({ loop: 'demand', fps: 60 });
-    expect(paceFor({ frameCap: 0, titleCovering: false, harness: false }), 'Unlimited is capped').toEqual({ loop: 'always', fps: 0 });
+    expect(paceFor({ frameCap: 60, titleCovering: false, harness: false })).toMatchObject({ loop: 'demand', fps: 60 });
+    expect(paceFor({ frameCap: 0, titleCovering: false, harness: false }), 'Unlimited is capped').toMatchObject({ loop: 'always', fps: 0 });
   });
   it('behind the title, the covered canvas draws slowly whatever the setting — never at the display rate, never not at all', () => {
     for (const frameCap of [60, 0]) {
@@ -36,7 +43,7 @@ describe('paceFor', () => {
   it('the capture harness and the perf probe are never paced, title or not', () => {
     for (const titleCovering of [false, true]) {
       for (const frameCap of [60, 0]) {
-        expect(paceFor({ frameCap, titleCovering, harness: true }), 'the harness was paced').toEqual({ loop: 'always', fps: 0 });
+        expect(paceFor({ frameCap, titleCovering, harness: true }), 'the harness was paced').toMatchObject({ loop: 'always', fps: 0 });
       }
     }
   });
@@ -61,26 +68,26 @@ describe('paceFor — behind a panel and in an unfocused window', () => {
   const pace = (o) => paceFor({ frameCap: 60, titleCovering: false, panelCovering: false, unfocused: false, harness: false, ...o });
   it('a panel over the canvas: 30 fps under the cap and under Unlimited', () => {
     expect(PANEL_FPS).toBe(30);
-    expect(pace({ panelCovering: true })).toEqual({ loop: 'demand', fps: PANEL_FPS });
-    expect(pace({ panelCovering: true, frameCap: 0 }), 'Unlimited drew at the display rate behind a panel').toEqual({ loop: 'demand', fps: PANEL_FPS });
+    expect(pace({ panelCovering: true })).toEqual({ loop: 'demand', fps: PANEL_FPS, governor: true });
+    expect(pace({ panelCovering: true, frameCap: 0 }), 'Unlimited drew at the display rate behind a panel').toEqual({ loop: 'demand', fps: PANEL_FPS, governor: true });
   });
   it('an unfocused window: 10 fps, whether or not a panel is open', () => {
     expect(BLUR_FPS).toBe(10);
-    expect(pace({ unfocused: true })).toEqual({ loop: 'demand', fps: BLUR_FPS });
-    expect(pace({ unfocused: true, panelCovering: true }), 'a blurred window with a panel open drew at the panel pace').toEqual({ loop: 'demand', fps: BLUR_FPS });
-    expect(pace({ unfocused: true, frameCap: 0 })).toEqual({ loop: 'demand', fps: BLUR_FPS });
+    expect(pace({ unfocused: true })).toEqual({ loop: 'demand', fps: BLUR_FPS, governor: true });
+    expect(pace({ unfocused: true, panelCovering: true }), 'a blurred window with a panel open drew at the panel pace').toEqual({ loop: 'demand', fps: BLUR_FPS, governor: true });
+    expect(pace({ unfocused: true, frameCap: 0 })).toEqual({ loop: 'demand', fps: BLUR_FPS, governor: true });
   });
   it('never above the cap the player (or a test) set', () => {
-    expect(pace({ panelCovering: true, frameCap: 1 })).toEqual({ loop: 'demand', fps: 1 });
-    expect(pace({ unfocused: true, frameCap: 1 })).toEqual({ loop: 'demand', fps: 1 });
+    expect(pace({ panelCovering: true, frameCap: 1 })).toEqual({ loop: 'demand', fps: 1, governor: true });
+    expect(pace({ unfocused: true, frameCap: 1 })).toEqual({ loop: 'demand', fps: 1, governor: true });
   });
   it('the title still wins, and the harness wins over everything', () => {
-    expect(pace({ titleCovering: true, panelCovering: true, unfocused: true })).toEqual({ loop: 'demand', fps: TITLE_FPS });
-    expect(pace({ harness: true, panelCovering: true, unfocused: true }), 'the harness was paced').toEqual({ loop: 'always', fps: 0 });
+    expect(pace({ titleCovering: true, panelCovering: true, unfocused: true })).toEqual({ loop: 'demand', fps: TITLE_FPS, governor: false });
+    expect(pace({ harness: true, panelCovering: true, unfocused: true }), 'the harness was paced').toEqual({ loop: 'always', fps: 0, governor: false });
   });
   it('nothing covering, focused: the setting decides, as before', () => {
-    expect(pace({})).toEqual({ loop: 'demand', fps: 60 });
-    expect(pace({ frameCap: 0 })).toEqual({ loop: 'always', fps: 0 });
+    expect(pace({})).toEqual({ loop: 'demand', fps: 60, governor: true });
+    expect(pace({ frameCap: 0 })).toEqual({ loop: 'always', fps: 0, governor: true });
   });
 });
 
@@ -146,7 +153,25 @@ describe('Show Stats is not a panel: F3 neither paces the canvas nor unmounts th
     // The pace and the governor, fed what MenuSystem published with the readout up: the 60 cap holds and the monitor stays.
     const withStats = published({ showStats: true });
     const pace = paceFor({ frameCap: 60, titleCovering: false, panelCovering: withStats, unfocused: false, harness: false });
-    expect(pace, 'Show Stats paced the canvas it is measuring').toEqual({ loop: 'demand', fps: 60 });
+    expect(pace, 'Show Stats paced the canvas it is measuring').toEqual({ loop: 'demand', fps: 60, governor: true });
     expect(governorSamples(pace, 60), 'Show Stats unmounted the tier governor\'s monitor').toBe(true);
+  });
+});
+
+describe('the tier governor judges only a rate the machine set', () => {
+  // All eight combinations, each with its own answer: the governor runs exactly in play without a harness.
+  it('off behind the title and under either harness; on in play, capped or Unlimited', () => {
+    let checked = 0;
+    for (const harness of [false, true]) {
+      for (const titleCovering of [false, true]) {
+        for (const frameCap of [60, 0]) {
+          const { governor } = paceFor({ frameCap, titleCovering, harness });
+          const why = harness ? 'the governor samples a harness' : titleCovering ? 'the governor samples the title\'s pace' : 'play is ungoverned';
+          expect(governor, `${why} (${JSON.stringify({ frameCap, titleCovering, harness })})`).toBe(!harness && !titleCovering);
+          checked += 1;
+        }
+      }
+    }
+    expect(checked, 'the combinations checked').toBe(8);
   });
 });

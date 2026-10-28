@@ -7,7 +7,7 @@
 // exactly once, at mount, when the flag is still false — and the interval it was meant to suppress then
 // runs unguarded for the entire capture session. The guard reads as protection and is a no-op.
 //
-// AGENTS.md already carries the shape of this rule ("the check must live INSIDE the callback, since the
+// CLAUDE.md already carries the shape of this rule ("the check must live INSIDE the callback, since the
 // flag flips after mount"), and the 2026-08-09 audit still found several sites violating it. So this is a
 // behavioural gate over the CLASS: mount with capture off, flip it on the way the harness does, run the
 // timers, and assert the guarded work stops.
@@ -107,6 +107,39 @@ describe('the quest chest spawner — same setup-time guard, same failure', () =
       result.current.chests.length,
       'chests spawned during capture — the guard ran at setup and the interval ran unguarded'
     ).toBe(atCapture);
+  });
+});
+
+describe('the shrine quest poll — same setup-time guard, same failure', () => {
+  beforeEach(async () => {
+    vi.useFakeTimers();
+    exitCaptureMode();
+    const { nearestLandmark } = await import('../../src/world/shrines.js');
+    const shrine = nearestLandmark(0, 0); // the live landmark hash, not a retyped position
+    useGameStore.setState({ playerPosition: { x: shrine.worldX, y: 60, z: shrine.worldZ }, shrineReached: false, addNotification: () => {} });
+  });
+  afterEach(() => {
+    cleanup();
+    exitCaptureMode();
+    vi.useRealTimers();
+  });
+
+  it('POSITIVE CONTROL — with capture off, standing on a shrine counts as reaching it', async () => {
+    const { useQuestSystem } = await import('../../src/QuestSystem.jsx');
+    renderHook(() => useQuestSystem());
+    act(() => { vi.advanceTimersByTime(3100); });
+    expect(useGameStore.getState().shrineReached, 'the poll never counted the shrine — the control is dead').toBe(true);
+  });
+
+  it('counts no shrine once capture is entered after mount', async () => {
+    const { useQuestSystem } = await import('../../src/QuestSystem.jsx');
+    renderHook(() => useQuestSystem());
+    act(() => { enterCaptureMode(); });
+    act(() => { vi.advanceTimersByTime(9100); }); // three full poll periods
+    expect(
+      useGameStore.getState().shrineReached,
+      'the shrine counted during capture — the guard ran at setup and the poll ran unguarded'
+    ).toBe(false);
   });
 });
 

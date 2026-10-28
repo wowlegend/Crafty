@@ -3,10 +3,10 @@
  * READ ORDER — one canonical orientation order, generated into all three surfaces that state it.
  *
  * WHY. Three documents each carried their own copy and all three disagreed:
- *   .agent/AGENTS.md   git → STATUS → ACTIVE_PLAN → CHARTER → DECISIONS → INDEX
+ *   CLAUDE.md          git → STATUS → ACTIVE_PLAN → CHARTER → DECISIONS → INDEX
  *   LOOP-CHARTER §0-A  git → STATUS → ACTIVE_PLAN → charter → INDEX → SOTA-INITIATIVE
  *   LOOP-KERNEL        ACTIVE_PLAN → HOLISTIC-REVIEW → STATUS → CHARTER → DECISIONS → INDEX
- * AGENTS.md asserted "Order matches LOOP-CHARTER.md §0-A **so the two documents cannot disagree**" —
+ * CLAUDE.md asserted "Order matches LOOP-CHARTER.md §0-A **so the two documents cannot disagree**" —
  * while they disagreed. §0-A omits DECISIONS entirely; the kernel is the only one that names the
  * PRIMARY work queue at all; only the kernel puts CI in the orientation.
  *
@@ -14,7 +14,7 @@
  * that ("never re-state a rule instead of enforcing it"). So the order lives HERE and is rendered into
  * all three; doc-currency fails on drift, the same contract measure.mjs and gate-table.mjs already have.
  *
- * RECONCILIATION NOTE (the one real conflict): AGENTS/charter call STATUS.md "THE source of truth"
+ * RECONCILIATION NOTE (the one real conflict): CLAUDE.md/charter call STATUS.md "THE source of truth"
  * while the kernel calls it the SECONDARY queue. Both are right about different things and the
  * imprecision is what made them look contradictory — STATUS is the source of truth for WHERE WE ARE;
  * HOLISTIC-REVIEW is the primary WORK QUEUE. Stated separately below so neither has to lose.
@@ -34,7 +34,7 @@ export const END = '<!-- END READ-ORDER -->';
 
 /** Every surface that states the orientation order. Adding one here is all it takes. */
 export const SURFACES = [
-  '.agent/AGENTS.md',
+  'CLAUDE.md',
   'docs/superpowers/LOOP-CHARTER.md',
   'docs/superpowers/LOOP-KERNEL-PROMPT.md',
 ];
