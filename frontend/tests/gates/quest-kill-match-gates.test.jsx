@@ -88,3 +88,43 @@ describe('B6 wiring — the real hook credits kills correctly', () => {
     expect(progressOf(result, 'hunter'), 'a Husk or a Boar kill earned no credit — the kill path is dead').toBe(2);
   });
 });
+
+// Spell quests count spells that land on an enemy, not casts: ten casts at the sky must not finish Spellcaster, or the
+// day quests are claimed automatically casting at nothing pays 40 XP. The magic system calls the store's onSpellHit on a
+// hostile landing (tests/gates/spent-spell-record-gates); this is the quest side of that seam.
+describe('spell quests count spells that land on an enemy', () => {
+  // The shape a save written before the retype holds: the old ask, and progress made under it.
+  const oldSpellcaster = {
+    id: 'spellcaster', title: 'Spellcaster', icon: 'magic', description: 'Cast 10 spells', type: 'spell_cast',
+    target: 10, xpReward: 40, tier: 1, progress: 3, completed: false, claimed: false,
+  };
+  const quest = (result, id) => result.current.quests.find((q) => q.id === id);
+
+  it('a cast advances no spell quest; a hit on an enemy does, and an old save takes the new ask with its progress', () => {
+    seed([oldSpellcaster]);
+    const { result } = renderHook(() => useQuestSystem());
+    expect(quest(result, 'spellcaster'), 'the old save lost its Spellcaster').toMatchObject({ type: 'spell_hit', progress: 3 });
+    expect(quest(result, 'spellcaster').description, 'the old save still shows the old ask').toMatch(/land 10 spells/i);
+
+    const s = useGameStore.getState();
+    expect(typeof s.onSpellHit, 'QuestSystem published no onSpellHit for the magic system to call').toBe('function');
+    for (let i = 0; i < 5; i++) act(() => useGameStore.getState().onSpellCast());
+    expect(result.current.stats.spells, 'the casts never reached the quest system — nothing below is about them').toBe(5);
+    expect(quest(result, 'spellcaster').progress, 'casting advanced Spellcaster').toBe(3);
+    for (let i = 0; i < 2; i++) act(() => useGameStore.getState().onSpellHit());
+    expect(quest(result, 'spellcaster').progress, 'a spell on an enemy did not advance Spellcaster').toBe(5);
+  });
+
+  it('a save loaded into a running game takes the new ask too', () => {
+    seed([]);
+    const { result } = renderHook(() => useQuestSystem());
+    act(() => {
+      useGameStore.setState({
+        questState: { quests: [{ ...oldSpellcaster, id: 'archmage', title: 'Archmage', description: 'Cast 100 spells', target: 100, progress: 40 }], completedQuestIds: [] },
+        questLoadedAt: (useGameStore.getState().questLoadedAt || 0) + 1,
+      });
+    });
+    expect(quest(result, 'archmage'), 'the loaded Archmage kept the old ask').toMatchObject({ type: 'spell_hit', progress: 40 });
+    expect(quest(result, 'archmage').description).toMatch(/land 100 spells/i);
+  });
+});

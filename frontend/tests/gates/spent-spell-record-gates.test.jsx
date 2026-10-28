@@ -269,30 +269,45 @@ describe('DEV only', () => {
 });
 
 // Levels come from fighting. A spell cast at nothing pays nothing, or casting at the sky is the fastest way to level.
+// XP reaches the bar two ways, the GameMethods.grantXP bridge and the store itself, and a sky cast lives 3 s, so the
+// whole flight is watched on both channels, and the spell-quest step a landing pays is watched too.
 describe('a cast grants no XP', () => {
-  it('ten casts at the sky spend mana ten times and grant no XP', () => {
+  it('ten casts at the sky spend mana ten times, fly out their whole life, and pay nothing on any channel', () => {
     mount();
     const grants = [];
+    let quest = 0;
     GameMethods.grantXP = (amount) => { grants.push(amount); };
-    useGameStore.setState({ gameCamera: camera([0, 30, 0], [0.2, 1, 0.1]) });
+    useGameStore.setState({
+      gameCamera: camera([0, 30, 0], [0.2, 1, 0.1]), level: 1, currentXP: 0, totalXP: 0, onSpellHit: () => { quest++; },
+    });
+    const xp = () => { const s = useGameStore.getState(); return { level: s.level, currentXP: s.currentXP, totalXP: s.totalXP }; };
     const before = useGameStore.getState().mana;
-    cast('fireball');
+    const ids = [cast('fireball').id];
     const perCast = before - useGameStore.getState().mana;
     expect(perCast, 'a cast spent no mana — the cast path was refused before it ran').toBeGreaterThan(0);
-    for (let i = 1; i < 10; i++) cast('fireball');
+    for (let i = 1; i < 10; i++) ids.push(cast('fireball').id);
     expect(before - useGameStore.getState().mana, 'not every cast went through').toBeCloseTo(10 * perCast, 6);
     frame(0.1); // in flight: a grant on the frame after the cast is the same farm
     expect(live().length, 'the ten spells are not in flight').toBe(10);
-    expect(grants, 'casting granted XP').toEqual([]);
+    frame(3.5); // past maxAge: where a sky cast ends, and where a deferred grant would land
+    const ends = spent().filter((s) => ids.includes(s.id)).map((s) => s.by);
+    expect(ends, 'the ten spells did not all fly out their life — the age-out was never reached').toEqual(Array(10).fill('age'));
+    expect(grants, 'casting granted XP through GameMethods').toEqual([]);
+    expect(xp(), 'casting moved the XP in the store').toEqual({ level: 1, currentXP: 0, totalXP: 0 });
+    expect(quest, 'casting at the sky advanced a spell quest').toBe(0);
+    useGameStore.setState({ onSpellHit: null });
   });
 });
 
-// A spell that lands pays XP only when it lands on an enemy: a Settler or livestock is not a fight.
-describe('a spell that lands pays XP only on an enemy', () => {
-  // One fireball into `target`, resolved by the real hit loop; returns the XP grants that hit made.
+// A spell that lands pays only when it lands on an enemy: a Settler or livestock is not a fight. It pays twice, 5 XP and
+// one step of the spell quests (QuestSystem's onSpellHit, published on the store), and both are checked.
+describe('a spell that lands pays only on an enemy', () => {
+  // One fireball into `target`, resolved by the real hit loop; returns the XP grants and quest steps that hit made.
   const land = (target) => {
     const grants = [];
+    let quest = 0;
     GameMethods.grantXP = (amount) => { grants.push(amount); };
+    useGameStore.setState({ onSpellHit: () => { quest++; } });
     GameMethods.checkMobCollision = (_pos, _r, exclude) => (exclude && exclude.has(target.id) ? null : target);
     GameMethods.damageMob = (_id, dmg) => { target.health -= dmg; return target; };
     useGameStore.setState({ gameCamera: camera([0, 30, 0], [0, 0, -1]) });
@@ -300,17 +315,22 @@ describe('a spell that lands pays XP only on an enemy', () => {
     frame(0.05);
     const end = spent().find((s) => s.id === bolt.id);
     expect(end?.by, `the fireball never landed on the ${target.type} — nothing below is about a hit`).toBe('mob');
-    return grants;
+    return { grants, quest };
   };
+  afterEach(() => useGameStore.setState({ onSpellHit: null }));
 
-  it('a hit on a Settler or a Boar pays nothing; a hit on a Husk pays 5, the killing hit included', () => {
+  it('a hit on a Settler or a Boar pays nothing; a hit on a Husk pays, the killing hit included', () => {
     mount();
-    expect(land({ id: 's1', type: 'villager', passive: true, health: 120 }), 'a spell on a Settler paid XP').toEqual([]);
-    expect(land({ id: 'p1', type: 'pig', passive: true, health: 50 }), 'a spell on a Boar paid XP').toEqual([]);
+    expect(land({ id: 's1', type: 'villager', passive: true, health: 120 }), 'a spell on a Settler paid')
+      .toEqual({ grants: [], quest: 0 });
+    expect(land({ id: 'p1', type: 'pig', passive: true, health: 50 }), 'a spell on a Boar paid')
+      .toEqual({ grants: [], quest: 0 });
     // Presence on the same instrument, and the order of the check: health 1 dies to this hit, so a hostility read
     // after the damage would see a corpse and pay nothing.
-    expect(land({ id: 'z1', type: 'zombie', passive: false, health: 500 }), 'a spell on a Husk paid no XP').toEqual([5]);
-    expect(land({ id: 'z2', type: 'zombie', passive: false, health: 1 }), 'the killing hit on a Husk paid no XP').toEqual([5]);
+    expect(land({ id: 'z1', type: 'zombie', passive: false, health: 500 }), 'a spell on a Husk did not pay')
+      .toEqual({ grants: [5], quest: 1 });
+    expect(land({ id: 'z2', type: 'zombie', passive: false, health: 1 }), 'the killing hit on a Husk did not pay')
+      .toEqual({ grants: [5], quest: 1 });
   });
 });
 

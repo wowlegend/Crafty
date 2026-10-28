@@ -422,8 +422,12 @@ export const EnhancedMagicSystem = React.memo(() => {
               spentBy = 'mob';
             }
 
-            // Levels come from fighting: a spell that lands on a Settler or on livestock pays nothing.
-            if (onEnemy && GameMethods.grantXP) GameMethods.grantXP(5);
+            // Levels come from fighting: a spell that lands on a Settler or on livestock pays nothing, in XP or in
+            // spell-quest progress.
+            if (onEnemy) {
+              if (GameMethods.grantXP) GameMethods.grantXP(5);
+              useGameStore.getState().onSpellHit?.();
+            }
           }
         }
 

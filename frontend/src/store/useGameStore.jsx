@@ -428,6 +428,7 @@ export const useGameStore = create((set, get) => ({
     // (onMobKill moved to the src/game/mobKillBus.js fan-out in M3.5 — quests + ferocity both subscribe.)
     onSpellCast: null,
     setOnSpellCast: (fn) => set({ onSpellCast: fn }),
+    onSpellHit: null, // QuestSystem publishes it; the magic system calls it when a spell lands on an enemy
     onBlockPlace: null,
     setOnBlockPlace: (fn) => set({ onBlockPlace: fn }),
     onBlockBreak: null,
