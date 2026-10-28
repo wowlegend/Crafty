@@ -117,6 +117,19 @@ export const RECIPES = [
         pattern: [['sand']],
         output: { glass: 1 }
     },
+    // Building blocks the world never generates. Placing spends the block (world/placementEconomy.js), and no voxel
+    // mines to either one (a placed chest is a wood voxel, and breaks back to wood), so a craft from the starting
+    // loadout is their only source. The chest is the only way to make a storage chest.
+    {
+        name: 'Cobblestone',
+        pattern: [['stone']],
+        output: { cobblestone: 1 }
+    },
+    {
+        name: 'Wooden Chest',
+        pattern: [['wood', 'wood', 'wood'], ['wood', null, 'wood'], ['wood', 'wood', 'wood']],
+        output: { chest: 1 }
+    },
     {
         name: 'Magic Crystal',
         pattern: [['diamond', 'gold']],

@@ -4,8 +4,8 @@
 //   - a GREEN spark soul-burst rising upward (hue PRESERVED -- NOT a white/black puff),
 //   - a t=0 hot flash at the burst centre,
 //   - a fading ground-ring decal in the mob's colour.
-// Saves PNGs to /tmp/crafty-mobdeath/. NOT part of the visual gate (death is transient). Mirrors
-// capture.mjs's launch recipe + spell-elements-probe.mjs's hook-driving sequence.
+// Saves PNGs to /tmp/crafty-mobdeath/. Mirrors spell-elements-probe.mjs's launch recipe and
+// hook-driving sequence.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { serveVite, probePort } from './_serve.mjs';

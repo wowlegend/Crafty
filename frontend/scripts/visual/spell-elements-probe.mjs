@@ -4,7 +4,7 @@
 // side along +X via the spawnDeterministicCast store seam — one full arc each (muzzle rune
 // telegraph -> frozen mid-flight projectile head + per-element trail -> per-element impact).
 // The four silhouettes stand in one frame so the DISTINCTNESS reads at a glance. Saves PNGs
-// to /tmp/crafty-spell/. NOT part of the visual gate. Mirrors capture.mjs's launch recipe.
+// to /tmp/crafty-spell/.
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { serveVite, probePort } from './_serve.mjs';

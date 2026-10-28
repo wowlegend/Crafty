@@ -2,7 +2,7 @@
 # Crafty pre-push gate: the checks that need the COMMIT RANGE being pushed, or that must run before the push
 # publishes anything.
 #
-# WHAT RUNS, per pushed ref: mutation-proof-trailer and baseline-trailer over the commits the push introduces, then
+# WHAT RUNS, per pushed ref: mutation-proof-trailer over the commits the push introduces, then
 # `ci/pipeline.sh --tier=push` (opsec-scan, queue-ledger, artifact-currency, registry-append-only) on the pushed
 # commit. The range arrives on this hook's stdin and exists nowhere else, so no CI runner can run these the same way;
 # opsec-scan is here because CI sees the content only once it is public.
@@ -10,7 +10,8 @@
 # WHAT DOES NOT RUN: the static gates, the unit suite, build and bundle budget. CI runs them on the exact sha, and
 # main's branch protection requires that sha's `ci ok`, so running them here only repeated them, in a fresh worktree
 # with a full build, on an SSD writing four times its daily budget (DECISIONS 2026-10-28 item 24). The cost: no local
-# result before CI. `bash ci/pipeline.sh --tier=certify` gives one by hand. e2e and the visual oracle never ran here.
+# result before CI. `bash ci/pipeline.sh --tier=certify` gives one by hand. e2e never ran here, and the eye-level lookbook
+# (`node scripts/visual/lookbook.mjs`) is read by a person, not a hook.
 #
 # THE PUSHED COMMIT, NOT THE WORKING TREE. The range gates read files, so they must read the pushed commit's: a dirty
 # working tree can hold the fix a pushed commit lacks. When the pushed commit is this checkout's HEAD and `git status`
@@ -58,14 +59,6 @@ export PUSH_RANGES="$RANGES"
 # milliseconds. LOOP-CHARTER §3's rule has an enforcer.
 for RANGE in $RANGES; do
   node "$REPO_ROOT/frontend/scripts/ci/mutation-proof-trailer.mjs" "$RANGE" || exit 1
-done
-
-# ── baseline trailer ────────────────────────────────────────────────────────────
-# Same shape, same position, for the ORACLE. The visual gate judges every frame against the committed
-# PNGs, so those PNGs ARE the specification, and a commit that rewrites them alongside a src/ change makes an
-# intended look change indistinguishable from a regression the oracle was updated to match.
-for RANGE in $RANGES; do
-  node "$REPO_ROOT/frontend/scripts/ci/baseline-trailer.mjs" "$RANGE" || exit 1
 done
 
 # ── the push tier, on each pushed commit ────────────────────────────────────────

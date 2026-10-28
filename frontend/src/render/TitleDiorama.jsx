@@ -108,7 +108,7 @@ function DriftCamera() {
       //
       // This used to `return`, which freezes the camera WHEREVER THE DRIFT LEFT IT. Capture mode is
       // enabled by the harness AFTER the page has booted and this diorama has been animating
-      // (capture.mjs calls enterCapture only once __craftyTest.ready() resolves), and boot takes a
+      // (enterCapture is called only once __craftyTest.ready() resolves), and boot takes a
       // different length of time in every process. So the camera settled on a RUN-DEPENDENT pose and
       // capture faithfully locked it there.
       //
@@ -152,9 +152,8 @@ export function TitleDiorama() {
         // already does this (GameScene.jsx disables AdaptiveDpr under isCaptureMode and pins
         // PROBE_DPR for the perf probe); this canvas never got the same treatment.
         //
-        // Note what this is NOT: waitForStableFrame already guarantees the frame stopped changing,
-        // and it was satisfied in both runs. A frame can settle at a DIFFERENT state each time.
-        // Stable is not deterministic.
+        // Note what this is NOT a fix for: a frame that has stopped changing can settle at a
+        // DIFFERENT state each run. Stable is not deterministic.
         // e2eDpr (devtest/e2eDpr.js): the e2e suite's pixel-ratio cap — this canvas is up for the whole world build.
         dpr={e2eDpr(isCaptureMode() ? 1 : [1, 2])}
         // `demand` in capture, and NOT for the reason you might assume. Switching this to `always` was

@@ -8,6 +8,11 @@ export function deniedReason(kind, ctx = '') {
       return 'Not enough mana';
     case 'aspect-locked':
       return `${ctx ? ctx + ' ' : ''}not yet unlocked — open Talents (U)`;
+    // ctx = the block's display name. No key is named: the Crafting panel opens from a desktop key and a touch button.
+    case 'no-block':
+      return `No ${ctx || 'block'} left`;
+    case 'no-block-craftable':
+      return `No ${ctx || 'block'} left — craft more in Crafting`;
     default:
       return "You can't do that yet";
   }

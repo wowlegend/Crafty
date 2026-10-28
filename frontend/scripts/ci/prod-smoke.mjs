@@ -7,19 +7,17 @@
  * that bundle on every push to main. So the coverage was: 100% of visual/e2e testing against a build that
  * never ships, and 0% against the one that does.
  *
- * Not hypothetical. Three of the 31 gated visual frames (`primitives-showcase-en`, `primitives-showcase-zh`,
- * `title-mascot`) render dev-only components behind `import.meta.env.DEV` and CANNOT exist in production —
- * ~10% of the visual gate tests surfaces that ship to nobody. And the failure class this repo keeps
+ * Not hypothetical. Dev-only components behind `import.meta.env.DEV` cannot exist in production, so a
+ * harness on the dev server can test surfaces that ship to nobody. And the failure class this repo keeps
  * shipping is precisely "compiles, gates green, never RUNS": four in one day on 2026-08-05. A production
  * bundle can be byte-perfect and still fail to boot — a DEV-only import tree-shaken to nothing, a
  * `import.meta.env` branch that only existed in dev, a minifier mangling a name something reflects on.
  *
- * DELIBERATELY A SMOKE TEST, NOT A SECOND VISUAL GATE. It asks questions the build cannot answer:
+ * DELIBERATELY A SMOKE TEST, NOT A VISUAL GATE. It asks questions the build cannot answer:
  * does it boot, does it render, does it log an error, is the GL context alive, does the block texture's
  * mip chain reach the GPU (mipVerdict), and does every shader program link (programVerdict). No baselines, so it cannot
- * rot and never needs re-approval — the same property that makes the intra-page invariant worth having.
- * A 31-frame production capture would need its own oracle and would double the re-baseline burden for
- * frames that already have one.
+ * rot and never needs re-approval. How the build looks is read by a person on the eye-level lookbook
+ * (scripts/visual/lookbook.mjs), not here.
  *
  *   node scripts/ci/prod-smoke.mjs        (expects `npm run build` to have run first)
  */
@@ -34,7 +32,7 @@ import { TERRAIN_SURFACE } from '../../src/world/terrainSurface.js';
 import { OCEAN_SURFACE } from '../../src/render/oceanLook.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-// A fourth dedicated port. capture=4178, e2e=4179, this=4180. Never an ad-hoc port: the one time a probe
+// A dedicated port outside _serve.mjs's probe table: e2e=4179, this=4180. Never an ad-hoc port: the one time a probe
 // picked its own, it minted the worst crop of orphan cmux preview surfaces.
 const PORT = 4180;
 

@@ -14,7 +14,7 @@ import config from '../../vite.config.js';
 // `console.*` from app source (the single survivor is inside the pre-bundled r3f vendor chunk, which
 // the app's esbuild pass never transforms).
 //
-// What had been silently blind: capture.mjs's `page.on('console')` crash filter (it runs against the
+// What had been silently blind: every probe's `page.on('console')` crash filter (they run against the
 // DEV server), the console-error collectors in height-fog-instancing.spec.js and perf-siege.spec.js,
 // and the ErrorBoundary's own crash log. Every one of them reports PASS by finding no errors, over a
 // stream that the build config had emptied. That is this repo's signature defect — an instrument

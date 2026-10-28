@@ -5,9 +5,10 @@
  * (docs/superpowers/plans/2026-10-27-crafty-masterpiece.md, "How a move counts as done" #2; plan
  * docs/superpowers/plans/2026-10-27-crafty-instruments.md).
  *
- * WHY NOT THE CAPTURE FRAMES. The 31 capture baselines are the REGRESSION oracle and stay so, but they cannot judge
- * looks: SwiftShader, the DEV server, and capture mode turns off weather, mobs, NPCs, particles and spawning and pins
- * the sun at noon. This shoots the build Vercel ships, with all of that running.
+ * WHY NOT CAPTURE MODE. Capture frames cannot judge looks: SwiftShader, the DEV server, and capture mode turns off
+ * weather, mobs, NPCs, particles and spawning and pins the sun at noon. That is why the capture oracle was retired
+ * (DECISIONS 2026-10-28 W1-H item 1) and this is the look acceptance surface. It shoots the build Vercel ships, with
+ * all of that running.
  *
  * WHAT IT DOES. Serves build/ with `vite preview` (scripts/visual/_serve.mjs, port allocated there). For Chromium it
  * first TRIES each launch candidate (_lookbook.mjs CHROMIUM_CANDIDATES) on about:blank and records every renderer

@@ -20,7 +20,7 @@
 # So: for every matching process, walk up its parents past other matching processes (a Chrome helper to its
 # Chrome, `vite` to its `npm exec vite` wrapper) to the first NON-matching ancestor — the owner. If the chain
 # reaches launchd (PID 1), the runner that started it is gone: it is an ORPHAN, a true leak, and it is killed.
-# If the owner is a live process (capture.mjs, the Playwright runner, a shell), the run is live and it is left
+# If the owner is a live process (a probe, the Playwright runner, a shell), the run is live and it is left
 # alone — and the owner is NAMED, so a hung runner is visible rather than silently swept. `--force` kills
 # everything matching, as before.
 #

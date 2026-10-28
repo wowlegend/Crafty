@@ -578,9 +578,7 @@ describe('the PRODUCER: .githooks/pre-push builds PUSH_RANGES from what the remo
     // The stub pipeline: record what the hook exported, then run the ONE real gate this spec is about.
     writeFileSync(join(repo, 'ci/pipeline.sh'), 'echo "RANGES[$PUSH_RANGES]" >> "$PIPE_LOG"\nexec node scripts/ci/artifact-currency.mjs\n');
     copyFileSync(join(CI, 'artifact-currency.mjs'), join(repo, 'frontend/scripts/ci/artifact-currency.mjs'));
-    for (const f of ['mutation-proof-trailer.mjs', 'baseline-trailer.mjs']) {
-      writeFileSync(join(repo, 'frontend/scripts/ci', f), '// fixture stub: the trailer gates are not this spec\'s subject\n');
-    }
+    writeFileSync(join(repo, 'frontend/scripts/ci/mutation-proof-trailer.mjs'), '// fixture stub: the trailer gate is not this spec\'s subject\n');
     writeFileSync(join(repo, 'frontend/package-lock.json'), '{}\n');
     writeFileSync(join(repo, '.gitignore'), 'node_modules/\n');
     writeFileSync(join(repo, 'docs/superpowers/page.html'), PAGE);

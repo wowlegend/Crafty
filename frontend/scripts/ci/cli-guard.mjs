@@ -2,12 +2,11 @@
 /**
  * CLI-GUARD — a script that EXPORTS must not run its CLI when someone imports it.
  *
- * THE DEFECT, WHICH BIT TWICE. `scripts/ci/i18n-adoption.mjs` and `scripts/visual/capture.mjs` both ran
- * their whole CLI body at module scope. The moment a test imported a seam from either, loading the test
- * file executed the tool: i18n-adoption's `process.exit(1)` killed the vitest worker DURING COLLECTION, so
- * the run reported **"1 failed | no tests"** — every assertion in the file skipped silently while the file
- * looked like it had caught something. capture.mjs was worse in kind: importing it spawned a browser and a
- * vite server as a side effect of `import`.
+ * THE DEFECT, WHICH BIT TWICE. Two scripts ran their whole CLI body at module scope, so a test importing a
+ * seam from either executed the tool: `scripts/ci/i18n-adoption.mjs`'s `process.exit(1)` killed the vitest
+ * worker DURING COLLECTION, so the run reported **"1 failed | no tests"** — every assertion in the file
+ * skipped silently while the file looked like it had caught something. The other, a since-deleted browser
+ * harness, was worse in kind: importing it spawned a browser and a vite server as a side effect of `import`.
  *
  * A red that reports ZERO tests is the worst possible red, because it looks like a failure that was
  * detected rather than a suite that never ran.

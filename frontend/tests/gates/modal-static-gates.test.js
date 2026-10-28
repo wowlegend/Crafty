@@ -42,8 +42,8 @@ describe('#52 S1 modals use the shared Modal primitive', () => {
 // #52 S2: the 3 capture-state modals + the chest panel get the same a11y win without ANY pixel drift.
 // The two plain-div backdrops (Inventory, Achievements) become <Modal> (its rendered div is byte-identical
 // to the old backdrop + role/aria + capture-gated focus). The two framer motion.div backdrops
-// (SpellUpgrade [progression-open capture], Chest) keep their element + the load-bearing overflow-y-auto
-// (capture.mjs scrolls .closest('.overflow-y-auto')) and gain role/aria/tabIndex inline.
+// (SpellUpgrade, Chest) keep their element + the overflow-y-auto scroll container and gain
+// role/aria/tabIndex inline.
 describe('#52 S2 capture-state modals carry role=dialog (zero-pixel a11y)', () => {
   it('Inventory (GamePanels) is a <Modal> keeping the inventory-modal testId on the backdrop', () => {
     const src = read('ui/GamePanels.jsx');

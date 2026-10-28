@@ -3,7 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
-import { OG_WIDTH, OG_HEIGHT, centreCrop, buildCard } from '../../scripts/visual/make-og-image.mjs';
+import { OG_WIDTH, OG_HEIGHT, SOURCE, centreCrop, buildCard } from '../../scripts/visual/make-og-image.mjs';
 
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const html = readFileSync(resolve(APP, 'index.html'), 'utf8');
@@ -108,6 +108,14 @@ describe('the iPad home-screen icon', () => {
 });
 
 describe('the card generator itself', () => {
+  it('reads a source frame that exists and is a real image', () => {
+    // The source sits among files that get deleted wholesale; regenerating the card from a missing one
+    // throws only when someone next runs the script, long after the deletion landed.
+    expect(existsSync(SOURCE), `make-og-image's source ${SOURCE} is missing — the card cannot be regenerated`).toBe(true);
+    const src = PNG.sync.read(readFileSync(SOURCE));
+    expect(src.width * src.height, 'the source frame decodes to no pixels').toBeGreaterThan(OG_WIDTH * OG_HEIGHT / 4);
+  });
+
   it('centre-crops to the target aspect without ever exceeding the source', () => {
     const c = centreCrop(1280, 800);
     expect(c.w).toBeLessThanOrEqual(1280);

@@ -1,5 +1,5 @@
 {
-  "_count": 105,
+  "_count": 104,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -68,7 +68,6 @@
     "tests/gates/ocean-mesher-no-water-faces.test.js",
     "tests/gates/ore-drop-gates.test.js",
     "tests/gates/perf-config-gates.test.js",
-    "tests/gates/place-puff-gates.test.js",
     "tests/gates/proc-music-mute-gates.test.js",
     "tests/gates/progression-source-gates.test.js",
     "tests/gates/quest-log-gates.test.js",

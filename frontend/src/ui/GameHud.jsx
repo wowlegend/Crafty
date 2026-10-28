@@ -1,7 +1,5 @@
-// S3-M5 (part 1): the HUD chrome — extracted BYTE-EXACT from Components.jsx (the god-file de-monolith).
-// MinecraftHotbar (the bottom block hotbar) + GameUI (the HUD overlay: mode/settings + side action
-// rail + the hotbar). Both take `gameState` as a prop (no store coupling). GameUI renders MinecraftHotbar
-// (intra-module). Extraction-only — NO behavior change.
+// The HUD chrome: MinecraftHotbar (the bottom block hotbar) and GameUI (the HUD overlay: settings, the side action
+// rail and the hotbar). Both take `gameState` as a prop, with no store coupling.
 import React from 'react';
 import { useT } from '../i18n/i18n.js';
 import { motion } from 'framer-motion';
@@ -51,20 +49,21 @@ const MinecraftHotbar = React.memo(({ gameState }) => {
               // stable seam for the input-driven E2E (X3)
               data-hotbar-block={blockType}
             >
-              {/* block-color swatch — gameplay data (inline color allowed) */}
+              {/* block-color swatch — gameplay data (inline color allowed). Every placement spends one, so an
+                  empty slot is dimmed and every count is drawn: a last block and none must not look alike. */}
               <div
-                className="w-9 h-9 rounded-sm border-chrome border-ink"
+                data-hotbar-swatch
+                className={`w-9 h-9 rounded-sm border-chrome border-ink${quantity > 0 ? '' : ' opacity-30'}`}
                 style={{ backgroundColor: blockConfig.color || '#567C35' }}
               />
               <span className="absolute top-1 left-1.5 text-[11px] font-bold text-text-muted tabular-nums">{index + 1}</span>
-              {quantity > 1 && (
-                <span
-                  className="absolute bottom-1 right-1.5 text-[13px] font-bold text-text tabular-nums"
-                  style={{ textShadow: '0 1px 2px #000' }}
-                >
-                  {quantity > 999 ? '999+' : quantity}
-                </span>
-              )}
+              <span
+                data-hotbar-count
+                className={`absolute bottom-1 right-1.5 text-[13px] font-bold tabular-nums ${quantity > 0 ? 'text-text' : 'text-text-muted'}`}
+                style={{ textShadow: '0 1px 2px #000' }}
+              >
+                {quantity > 999 ? '999+' : quantity}
+              </span>
             </Slot>
           );
         })}
@@ -77,11 +76,7 @@ export const GameUI = ({ gameState }) => {
   const t = useT();
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 pointer-events-none z-20">
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-auto">
-        <Panel variant="base" className="flex items-center gap-2 px-3 py-2 text-text">
-          <span className="text-sm text-text-muted">Mode:</span>
-          <span className="text-sm font-bold text-success">{gameState.gameMode}</span>
-        </Panel>
+      <div className="absolute top-4 left-4 right-4 flex justify-end items-start pointer-events-auto">
         <div className="flex gap-2">
           <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.settings')} data-testid="hud-settings" className="w-[42px] h-[42px]" onClick={() => gameState.setShowSettings(true)}>
             <Icon name="settings" size={20} />
