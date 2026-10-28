@@ -16,6 +16,20 @@ before this that says AGENTS.md means `CLAUDE.md`. The generators (measure, gate
 commit (land/2026-10-28 until the required check is on), push main. Review cadence (DECISIONS item 13/the speed plan):
 one static+dynamic round on game code, then `/code-review xhigh` on the PR range; tests/claims-only fixes get the
 author's mutation run. Residue: memory/STATUS.md G-ledger (to become a single registry file, plan item #30).
+Since 2026-10-28 ~11:20Z main is branch-protected: required check `ci ok` (strict, admins included, no force push or
+deletion). Land = merge into a land/<date> branch, push, green `ci ok` on that exact sha, `git merge --ff-only`, push.
+
+**Owed after Wave 1 lands (from the pause/cuts/public/instruments re-reviews, 2026-10-28; LOW, none blocks):**
+- W3-D row: name beast form, snare and fuse timers (they still run through a pause; Components.jsx belongs to the
+  combat lane). Touch-resume stranding: on touch, a refused `requestPointerLock` fires `pointerlockerror` ->
+  `setActive(false)` (Components.jsx ~575) and undoes the touch resume; own row, real-iPad check.
+- Command Record exceptions: the hunger bar never moves until W2-F (the drain is deleted, the bar is not); the
+  8b1d383f headline "a paused game holds the world" excepts beast form, snare and fuse.
+- Pause instruments: `_probe.mjs` ~382 / `lookbook.mjs` ~366 claim a stood-in lock does not turn the camera
+  (pointerLook gates only on pointerLockElement); power-summary refuses a not-in-play arm only in two-arm mode; the
+  "NOT in play" string is hand-copied between power-ab.sh and its test; the in-reach e2e hold settles 2 rAF, not game
+  frames (possible flake); worst-case retry time of pause-freezes-world (2x3x420 s) exceeds the 35-min shard cap.
+- gpu-cost-probe hung >5 min after writing its JSON at load 170-400; undiagnosed.
 
 ## CURSOR — 2026-09-22 (SOTA campaign, session 2). READ THIS FIRST.
 
@@ -47,13 +61,13 @@ done first, then a design panel chooses the highest-leverage moves, each through
 | T6 | CI-gates handoff §3 (Crafty's share), then rm the handoff file + MEMORY line if last owner | PARTIAL `5177c203` (pin + v7 actions); Vercel Deployment Checks need Kevin's dashboard; pre-commit speed and onFailure open |
 | T7 | iPad: WebKit probe of the PROD build, frames opened | lookbook (real GPU, WebKit iPad) DONE on feat/instruments: iPad golden hour renders the Hearth pad NAVY, night maroon/orange — evidence in docs/superpowers/masterpiece-2026-10/evidence; ipad-probe.mjs itself still unrun |
 | T8 | Parked features (wip/perf-t3-features) onto a branch from main, e2e + mutate-e2e each, PR (number to Kevin), merge on own gates | DONE: PR #22 merged as 76262a08 (tree = refs/pull/22/merge), pages synced 1a1bee68/0c5a4041. Residue: main CI on 76262a08/0c5a4041 CANCELLED (shard timeouts + lightning.spec too slow on CI runners). 8 shards (a8ce0dd1, local) cured the timeouts on land run 40628428531; lightning alone stayed red; its CI-budget fix (a9134e2b on feat/instruments) went to main as a9a303e9 (DECISIONS 2026-10-28 item 9). Main PUSHED a9a303e9 on land run 40632886705 (all green on the exact sha). The artifact-currency scope fix (e20928cc + 3e431c9d, item 8) lands next through one more land run |
-| T9 | Review #8 open findings (#1 MED, #6, #7, #8, #12) + bake-off B1 and candidates, verify-first | open |
+| T9 | Review #8 open findings (#1 MED, #6, #7, #8, #12) + bake-off B1 and candidates, verify-first | MISSED 10-27/28, now PUNTED with a trigger: harvested into the single registry by the SOTA reset W1-H lane (plan #30); each item is re-verified against post-Cut code there |
 | T10 | 147 -> 151 visual re-baseline (now mine to decide) | open |
 | T11 | dprCap and the FPV glove value (now mine to decide) | open |
 | T12 | mip-ab worktree: confirm ported by diff, remove worktree + branch | DONE: Kevin ran the removal (branch was 45590d2c); verified by `git worktree list` |
 | T13 | Masterpiece design panel -> plan docs -> builds (looks + gameplay), each lived-proven | Landing queue after the scope fix is on main, in READINESS order (DECISIONS item 10): #25 touch-hold (main merged locally 53e956b8, push refused at 31 > 30 until the scope fix lands) and #24 steady-cool (local ed8e51d7) -> #23 instruments (re-merge main) -> #27 harness (U4 .state save/merge/restore + U5 settings move) -> light lane (worktree-wf_34f35934-dfe-1, 69e1c46d, Tasks 0-3b) -> 0e re-baseline alone -> light Tasks 4-9. #28 ci-tree PARKED draft. BUILDING: combat stance (wf_c6b2136b-5ab, .claude/worktrees/combat-stance, feat/combat-stance = main + steady-cool + touch-hold). Coast DEFERRED until light lands (load; lookbook) |
-| T14 | Per change range: fresh headless `/code-review xhigh` + one adversarial-reviewer-kz xhigh on runtime seams | open |
-| T15 | OVERNIGHT.md, STATUS, CHANGELOG, DECISIONS current | open |
+| T14 | Per change range: fresh headless `/code-review xhigh` + one adversarial-reviewer-kz xhigh on runtime seams | MISSED 10-27/28 (0 /code-review runs; workflow reviewer pairs used instead). Trigger: from the combat-stance PR on, every game-code PR range gets `/code-review xhigh` as its second look |
+| T15 | OVERNIGHT.md, STATUS, CHANGELOG, DECISIONS current | PARTIAL: DECISIONS current (2026-10-28 items 1-15), STATUS G-ledger added, Command Record published; CHANGELOG and OVERNIGHT.md NOT updated (MISSED) -> generated CHANGELOG is SOTA-reset item #57 (W2-J); OVERNIGHT.md retires with the loop docs (#38) |
 | T16 | Harness SOTA pass (Kevin 10-27: CLAUDE.md/rules/hooks/settings/docs/skills free to revise) | BUILDING (wf_34f35934-dfe): plan `docs/superpowers/plans/2026-10-27-crafty-harness-sota.md`, current unit U1 (P0 done). Lane worktree `.claude/worktrees/wf_34f35934-dfe-2`, branch `worktree-wf_34f35934-dfe-2`, base 230fd72f. P0: harness-integrity draft RED on 5 untracked graft-helper commands, the PostCompact context hook, 5 hook timeouts > 60 s; R1 PASS; R2/R3 not run (shared-repo worktree / a deny rule — out of the lane's brief); U5 (graft becomes machine-local) STOPPED: it removes the graft permission allows — a permission change, mine to decide |
 | T17 | INCIDENT 03:32: worktree pre-commit suite rewrote the real repo (bare, fixture identity, fixture commits) | REPAIRED + root cause fixed `0c5b269c`; episode :1183 |
 
