@@ -4,44 +4,43 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content="Crafty — a magical voxel action-RPG: cast elemental spells, hold the frontier, and face the Shadow Dragon across an infinite world." />
-    <title>Crafty | Magical Voxel Adventure</title>
-
+    <!-- BEGIN BRAND (generated from src/brand.js: node scripts/ci/public-face.mjs --write) -->
+    <title>Crafty: a voxel action-RPG in your browser</title>
+    <meta name="description" content="A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, and a dragon waiting at its far edge." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0C1322" />
+    <meta name="theme-color" content="#0D1320" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
-    <!-- SOCIAL PREVIEW. og:image and twitter:image used to point at /favicon.svg, which is blank in every
-         scraper for two independent reasons: none of them rasterise SVG, and a root-relative path has no
-         host to resolve against when the tag is fetched out of the document. Both are fixed here — a real
-         1200x630 PNG at an ABSOLUTE URL. The card is generated from the committed `menu` visual baseline
-         by scripts/visual/make-og-image.mjs, so it follows the actual title screen instead of drifting
-         from it; regenerate after any title-screen change. -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://crafty-sand.vercel.app/" />
     <meta property="og:site_name" content="Crafty" />
-    <meta property="og:title" content="Crafty | Magical Voxel Adventure" />
-    <meta property="og:description" content="Cast elemental spells, hold the frontier, and face the Shadow Dragon across an infinite voxel world." />
+    <meta property="og:title" content="Crafty: a voxel action-RPG in your browser" />
+    <meta property="og:description" content="A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, and a dragon waiting at its far edge." />
     <meta property="og:image" content="https://crafty-sand.vercel.app/og-image.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="The Crafty title screen: a voxel wizard tower under a starfield, with the Crafty wordmark." />
-
-    <!-- summary_large_image, not summary: `summary` renders a small square thumbnail and crops a 1.91:1
-         card to nonsense. -->
+    <meta property="og:image:alt" content="The Crafty title screen: a voxel wizard with a staff under a starry night sky, behind the Crafty wordmark." />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Crafty | Magical Voxel Adventure" />
-    <meta name="twitter:description" content="Cast elemental spells, hold the frontier, and face the Shadow Dragon across an infinite voxel world." />
+    <meta name="twitter:title" content="Crafty: a voxel action-RPG in your browser" />
+    <meta name="twitter:description" content="A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, and a dragon waiting at its far edge." />
     <meta name="twitter:image" content="https://crafty-sand.vercel.app/og-image.png" />
-    <meta name="twitter:image:alt" content="The Crafty title screen: a voxel wizard tower under a starfield, with the Crafty wordmark." />
+    <meta name="twitter:image:alt" content="The Crafty title screen: a voxel wizard with a staff under a starry night sky, behind the Crafty wordmark." />
+    <!-- END BRAND -->
 </head>
 
 <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <noscript>
+        <div style="position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: #0D1320; color: #ECECEF; font: 17px/1.55 system-ui, sans-serif; text-align: center;">
+            <div style="max-width: 34em;">
+                <p style="margin: 0 0 12px; font-size: 40px; font-weight: 800; color: #C9A86A;">Crafty</p>
+                <p style="margin: 0 0 12px;">Crafty is a voxel action-RPG that runs in your browser. It needs JavaScript to start and WebGL 2 to draw the world.</p>
+                <p style="margin: 0; color: #9AA0AD;">Turn JavaScript on for this site and reload the page. If it is already on, open the game in a current version of Chrome, Edge, Firefox or Safari.</p>
+            </div>
+        </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/index.jsx"></script>
 </body>

@@ -122,6 +122,8 @@ describe('the pipeline has ONE receipt writer, and it is this script', () => {
     const tracked = execFileSync('git', ['ls-tree', '-d', '--name-only', 'HEAD'], { cwd: ROOT, encoding: 'utf8' })
       .split('\n').filter(Boolean);
     expect(tracked.length).toBeGreaterThan(3); // the walk reached a real tree
+    // LICENSES holds licence texts no step reads; doc-currency only checks that the README's link to the folder resolves.
+    unread.add('LICENSES');
     const unclassified = tracked.filter((d) => !inputs.has(d) && !unread.has(d));
     expect(unclassified, 'new top-level dir: add it to INPUT_ROOTS, or to `unread` with a reason').toEqual([]);
   });

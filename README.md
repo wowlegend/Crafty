@@ -1,159 +1,94 @@
-# 🎮 Crafty — Next-Gen 3D Browser Voxel Engine
+# Crafty
 
-<div align="center">
+<!-- HERO: the media pipeline (reset plan item 17) places a frame of the real game here, linked to the live game. Until that frame exists, this page carries no image. -->
 
-[![CI](https://github.com/wowlegend/Crafty/actions/workflows/ci.yml/badge.svg)](https://github.com/wowlegend/Crafty/actions/workflows/ci.yml)
+<!-- BEGIN PITCH (generated from frontend/src/brand.js: node frontend/scripts/ci/public-face.mjs --write) -->
+A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, and a dragon waiting at its far edge.
 
-[![React](https://img.shields.io/github/package-json/dependency-version/wowlegend/Crafty/react?filename=frontend%2Fpackage.json&style=for-the-badge&label=React&color=61DAFB&logo=react&logoColor=black)](https://react.dev)
-[![Three.js](https://img.shields.io/github/package-json/dependency-version/wowlegend/Crafty/three?filename=frontend%2Fpackage.json&style=for-the-badge&label=three.js&color=000000&logo=three.js&logoColor=white)](https://threejs.org)
-[![Rapier](https://img.shields.io/github/package-json/dependency-version/wowlegend/Crafty/@react-three/rapier?filename=frontend%2Fpackage.json&style=for-the-badge&label=Rapier&color=E15B35&logo=rust&logoColor=white)](https://rapier.rs)
-[![R3F](https://img.shields.io/github/package-json/dependency-version/wowlegend/Crafty/@react-three/fiber?filename=frontend%2Fpackage.json&style=for-the-badge&label=R3F&color=black&logo=react&logoColor=white)](https://r3f.docs.pmnd.rs)
-[![Vite](https://img.shields.io/github/package-json/dependency-version/wowlegend/Crafty/dev/vite?filename=frontend%2Fpackage.json&style=for-the-badge&label=Vite&color=646CFF&logo=vite&logoColor=white)](https://vite.dev)
+**[Play it now](https://crafty-sand.vercel.app/)**: nothing to install.
+<!-- END PITCH -->
 
-<sub>Version badges read <code>frontend/package.json</code> directly — they cannot go stale, which the hand-typed ones they replaced had already managed.</sub>
+## The game
 
-A high-craft 3D voxel action-RPG that runs entirely in the browser — explore a procedurally generated frontier of distinct biomes, wield four combat Aspects and an elemental spell arsenal, and chase the Blight-Heart climax. Built on a declarative-imperative hybrid (React + R3F/Three.js + Rapier) tuned for high-refresh (ProMotion 120Hz) smoothness, and playable on desktop, iPad, and iPhone.
+You set out from a hub into a generated frontier of forests, deserts, snowfields, swamps and coast. Each night is more
+dangerous than the last, and the land turns more hostile the farther out you go. You fight with melee strikes, four
+elemental spells (fire, ice, lightning and arcane) and the Aspects you unlock with talents: Wildheart turns you into a
+beast, Voidhand grabs and hurls, Soulbind snares an enemy and binds it to your side, and Elemancer imbues your next
+cast. At the frontier's far edge the Shadow Dragon waits at the Blight Heart.
 
-[▶ Play the Live Demo](https://crafty-sand.vercel.app) • [Architecture](#-architecture) • [Controls](#-controls) • [Quick Start](#-quick-start)
+Progress saves in your browser. There is no account and nothing to download.
 
-</div>
+## How to play
 
----
+Click into the game to capture the mouse, then move the mouse to look. Esc releases it and opens the menu.
 
-## ✨ Features
+<!-- BEGIN CONTROLS (generated from frontend/src/game/keyMap.js: node frontend/scripts/ci/controls-table.mjs --write) -->
+| | Key | What it does |
+|---|---|---|
+| **Move** | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> | Move |
+|  | <kbd>Space</kbd> | Jump |
+|  | <kbd>Shift</kbd> | Dodge-roll (at a lunge: perfect) |
+| **Combat** | <kbd>Left click</kbd> | Attack (hold: heavy) / mine |
+|  | <kbd>Right click</kbd> | Cast / place / interact |
+|  | <kbd>F</kbd> | Cast spell |
+|  | <kbd>T</kbd> | Melee (hold: heavy) |
+|  | <kbd>1</kbd> to <kbd>4</kbd> | Select spell |
+|  | <kbd>Mouse wheel</kbd> | Cycle block |
+| **Aspects** | <kbd>R</kbd> | WILDHEART — roar |
+|  | <kbd>V</kbd> | VOIDHAND — grab &amp; hurl |
+|  | <kbd>X</kbd> | SOULBIND — snare &amp; fuse |
+|  | <kbd>Z</kbd> | ELEMANCER — imbue cast |
+| **Panels** | <kbd>E</kbd> | Inventory |
+|  | <kbd>M</kbd> | Magic |
+|  | <kbd>C</kbd> | Crafting |
+|  | <kbd>B</kbd> | Building |
+|  | <kbd>U</kbd> | Talents &amp; Aspect guide |
+|  | <kbd>G</kbd> | Open chest / trade |
+|  | <kbd>L</kbd> | Quest log |
+|  | <kbd>Q</kbd> | Claim completed quests |
+|  | <kbd>H</kbd> | Toggle controls |
+|  | <kbd>Tab</kbd> | Achievements |
+|  | <kbd>Esc</kbd> | Settings / pause |
+<!-- END CONTROLS -->
 
-* **🗡️ Four combat Aspects**: WILDHEART (beast-form transformation with per-form movement + melee), VOIDHAND (telekinetic grab/hurl), SOULBIND (convert enemies into allies), and ELEMANCER (elemental spell mastery) — each with its own verbs, VFX, and audio motif.
-* **🔥 Distinct elemental spells**: fire, ice, lightning, and arcane, each a genuinely distinct silhouette + motion + palette — a roiling flame teardrop, a solid faceted ice crystal, a thin crackling lightning wire, and an orbital arcane rune-wheel — with per-cast telegraphs and impacts.
-* **🌍 Procedural frontier world**: noise-driven temperature × moisture × continent selection across 10 biomes (snow, taiga, plains, forest, meadow, swamp, jungle, savanna, desert, mesa) with per-biome flora, vertex ambient occlusion, a toon ocean + shore foam, a dynamic day/night cycle, and biome-aware weather (rain/snow).
-* **⚡ Decoupled high-frequency loop**: mob AI, spatial tracking, particles, and terrain meshing run off React's state tree via transient refs, object pools, and offscreen **Web Workers** (A* pathfinding + greedy-mesher chunk generation) to keep the render loop smooth on the web/mobile envelope.
-* **👾 ECS mobs, loot & XP**: a `miniplex` ECS drives mobs, physical loot drops, and magnetic gold XP motes; a Shadow-Dragon boss anchors a real win-state at the frontier's Blight-Heart lair.
-* **🛒 Trading, crafting & progression**: passive merchant villagers with reciprocal trading, a 3×3 crafting grid, an attribute/talent progression tree, and a spell-mastery upgrade system.
-* **📱 Desktop + touch**: full desktop mouse-look/keyboard plus a built-out iPad/iPhone touch layer (virtual joystick, verb wheel, pointer-lock-free cold start).
-* **🎨 One bold-flat UI**: a single token-driven design language (filled 2-tone game-icons for content, outline icons for chrome), an English/简体中文 locale toggle, and the test harness below guarding every pixel of it.
-* **💾 Offline world save**: chunk modifications, inventory, and progression persist to local storage — no login wall.
+On a touchscreen, drag on the left half of the screen to move and on the right half to look. The buttons on the right
+attack (hold for a heavy blow), cast, jump and dodge. One ring holds the four Aspects and another the four spells, and
+the button on the left edge opens the inventory, crafting, building and magic panels.
 
----
+## How it is built
 
-## 🛠️ Architecture
+React 19 draws the interface, three.js through React Three Fiber draws the world, and Rapier moves the player and
+resolves collisions. Terrain is generated and greedy-meshed with vertex ambient occlusion off the main thread, in
+`frontend/src/world/terrain.worker.js`; mob pathfinding runs in a second worker, `frontend/src/workers/ai.worker.js`.
+Mobs, loot and many effects are entities in a small miniplex ECS (`frontend/src/ecs/world.js`), and most of the game
+rules are plain modules under `frontend/src/game/` that run, and are unit-tested, without a browser.
 
-Crafty is engineered on a modern **Hybrid ECS & Multi-Worker Architecture** that bridges React's declarative syntax with Three.js/WebGL's high-frequency imperative performance.
+Every push runs the linter, the unit suite, a production build and a bundle-size budget. CI adds real-input Playwright
+tests and a boot check of the production bundle.
 
-```mermaid
-graph TD
-    subgraph "Main Thread UI (React 19 & Zustand)"
-        A["App.jsx (State Engine)"] -->|"Props"| B["HUD / MenuSystem"]
-        A -->|"Zustand Store"| C["GameScene Canvas"]
-    end
+## Run it locally
 
-    subgraph "High-Frequency Render Loop (R3F & Rapier)"
-        C --> D["RigidBody Physics World"]
-        C --> E["ECS Entity-Component-System (Miniplex)"]
-        D -->|"Sub-frame Lerping (0.85)"| F["Smoothed Camera System"]
-        F -->|"GPU transform matrix"| G["StableMagicHands (Viewport Locked)"]
-    end
-
-    subgraph "Multithreaded Subsystems"
-        H["Terrain Generation Worker"] <-->|"Shared modifications"| I["Voxel Chunk Mesher (GPU AO)"]
-        J["Mob AI Web Worker"] <-->|"Batch coordinate updates"| K["NPC Spawning Systems"]
-    end
-
-    E -->|"Physics simulation"| D
-    E -->|"Gold icosahedron motes"| L["XPOrbSystem"]
-    K -->|"Leap attacks & IK articulation"| D
-```
-
-### Technical Design Pillars
-1. **GPU-Bound Viewport Locking**: The player's first-person hands are mounted natively within the active three.js camera primitive hierarchy. Complex global coordinate translations and wobbly lerps are replaced with local matrix locking, assuring 100% vibration-free hand meshes during high-momentum jumps.
-2. **Sub-Frame Interpolation**: To prevent 60Hz physics step stutter on high-refresh ProMotion (120Hz) screens, camera updates are lerped toward the player's translation by a factor of `0.85` (`src/Components.jsx`), keeping input lag imperceptible while absorbing micro-snaps.
-3. **Seam-Resistant Grounding**: Ground state comes from the Rapier character controller itself — `controllerRef.current.computedGrounded()` (`src/Components.jsx:994`) — rather than a hand-rolled raycast, so jumping stays solid across flat voxel triangle seams. (This read "a downward `world.castRay` extending 1.05 units" until 2026-08-13; that raycast exists but detects CHESTS, twenty lines further down.)
-
----
-
-## 🔬 The test harness — the unusual part
-
-Most of this repo's engineering effort is not in the game. It is in making the game's own instruments
-incapable of lying, after several of them were caught doing exactly that.
-
-| Gate | What it stops |
-| :--- | :--- |
-| **31-frame visual regression** | Deterministic headless captures diffed against committed PNG oracles. A **per-frame local-density ratchet** runs beside the global 6% tolerance, because a change can be tightly concentrated: 15% of a 128×128 window is 2,458 pixels — **0.24%** of a 1280×800 frame — so a whole UI panel can be wrong while the global number stays quiet. That is the false negative the global gate cannot see. |
-| **`Mutation-Proof:` trailer** | A commit adding or rewriting a gate must state what was broken to make it go RED. A gate green on day one against unfixed code is a rubber stamp. |
-| **`Baseline-Review:` trailer** | The visual oracle has its own governance: a baseline rewrite is its own commit, never bundled with `src/`. Measured over 1,603 commits, ten of the last twelve baseline rewrites were bundled — which is how four monster baselines quietly became pictures of an empty mountain. |
-| **`gate-shape`** | Assertions satisfiable by a *comment*, plus a frozen source-grep population that may fall and never rise. |
-| **`doc-currency`** | Canonical docs citing paths that no longer exist — including bare, un-backticked ones. |
-| **`cli-guard`** | A script exporting a seam while running its CLI at module scope, so importing it executes the tool. |
-| **`bundle-budget`** | Per-chunk byte ceilings, with `three` / `rapier` / `r3f` split out. |
-
-Plus `eslint` (where `no-unused-vars` is an **error**), the full unit suite, a production build, `knip`,
-and a 3-way-sharded Playwright e2e run in CI.
-
-**Counts are deliberately not written here.** This file said *"24-state visual-regression gate + ~1,970
-unit tests"* while the real figures were 31 and 3,189 — a number in prose rots no matter how confidently
-it was written. Read them from the source instead:
+You need Node 24, the version `frontend/package.json` declares, and npm.
 
 ```bash
-cd frontend
-ls tests/visual/baseline/*.png | wc -l   # gated frames
-npm run test:unit                        # the suite prints its own total
+git clone https://github.com/wowlegend/Crafty.git
+cd Crafty/frontend
+npm ci
+npm run dev        # serves the game on http://localhost:3000 and opens it
+npm run test:unit  # the unit suite
 ```
 
----
+## Credits
 
-## ⌨️ Controls
+- Fonts: Lilita One, Space Grotesk and Smiley Sans under the SIL Open Font License 1.1, and Alibaba PuHuiTi 3.0
+  under Alibaba's free font licence.
+- Icons from [game-icons.net](https://game-icons.net) by their authors, recoloured, under CC BY 3.0.
+- Music generated with ElevenLabs.
 
-| Key | Action |
-| :--- | :--- |
-| **`W` `A` `S` `D`** | Walk & Strafe |
-| **`Space`** | Jump |
-| **`Mouse`** | Look around |
-| **`F`** | **Cast** selected spell (magic is the marquee verb) |
-| **`T`** | **Melee** attack |
-| **`Left Click`** | Mine block / melee |
-| **`Right Click`** | Cast selected spell / place block |
-| **`Scroll Wheel`** | Cycle hotbar blocks |
-| **`1` - `4`** | Select spell (Fireball, Iceball, Lightning, Arcane) |
-| **`E`** | Open Inventory |
-| **`C`** | Open Crafting Grid (3×3) |
-| **`M`** | Open Magic / Spell panel |
-| **`B`** | Open Building tools |
-| **`G`** | Interact (trade with villager / open loot chest) |
-| **`ESC`** | Settings menu |
+[NOTICE](NOTICE) carries the copyright lines, and [LICENSES](LICENSES) the licence texts.
 
-_On touch (iPad/iPhone): a virtual joystick + an on-screen verb wheel replace the keyboard/mouse verbs._
+## Licence
 
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-* **[Node.js](https://nodejs.org/) 24.x** — not a suggestion: `frontend/package.json` declares
-  `"engines": { "node": ">=24.0.0 <25" }` and install fails outside that range. (This line said "v18+
-  recommended" until 2026-08-13, which was wrong in the one direction that matters — it sent newcomers
-  at a version the project rejects.)
-* **npm** — the repo is locked with `package-lock.json`; pnpm/yarn will resolve a different tree.
-
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/wowlegend/Crafty.git
-   cd Crafty
-   ```
-2. Setup and run the frontend development server:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-3. Open your browser and navigate to **[http://localhost:3000](http://localhost:3000)** — set explicitly by
-   `server.port` in `frontend/vite.config.js`, which also sets `open: true`, so it launches on its own.
-
-
----
-
-## 🧠 Memory & Documentation
-
-This codebase adheres to a structured **4-Piece Agentic Memory Architecture** located inside the `/memory` directory to sustain documentation integrity across developer handoffs:
-* 🗺️ **[ROADMAP.md](memory/ROADMAP.md)**: Prioritized directory of future features, combat dynamics, and biome generation.
-* 🏛️ **[ARCHITECTURE.md](memory/ARCHITECTURE.md)**: Structural laws, performance boundaries, and component maps.
-* 📜 **[CHANGELOG.md](memory/CHANGELOG.md)**: Reverse-chronological logging of feature integrations and cleanups.
-* 📝 **[ACTIVE_PLAN.md](memory/ACTIVE_PLAN.md)**: Real-time checkpoint tracking of in-flight tasks.
+Crafty's code and its own assets are copyright 2025-2026 wowlegend, all rights reserved. Nothing in this repository
+grants a licence to copy, modify or redistribute them. The third-party fonts, icons and libraries keep their own
+licences, listed in [NOTICE](NOTICE).

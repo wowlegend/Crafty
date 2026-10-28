@@ -25,6 +25,8 @@ import { fileURLToPath } from 'node:url';
 import { measure, parseBlock, TOLERANCE, LARGE_FILE_LOC } from './measure.mjs';
 import { checkBlock as checkGateBlock } from './gate-table.mjs';
 import { checkAll as checkReadOrder } from './read-order.mjs';
+import { checkBlock as checkControlsBlock } from './controls-table.mjs';
+import { check as checkPublicFace } from './public-face.mjs';
 
 import { DOC_ALIASES, sectionIds, itemIds, unresolved } from './doc-anchors.mjs';
 
@@ -265,6 +267,18 @@ if (existsSync(statusAbs)) {
     if (!r.ok) {
       errors.push(`${r.rel}: ${r.reason} — regenerate: node frontend/scripts/ci/read-order.mjs --write`);
     }
+  }
+}
+
+// --- 4c. PUBLIC FACE ----------------------------------------------------------
+// The README's controls table comes from KEY_MAP, and the page head, manifest, README lead and repo metadata
+// from src/brand.js. A hand edit to any of them, or a rebound key, fails here until it is re-rendered.
+{
+  const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
+  const c = checkControlsBlock(readme);
+  if (!c.ok) errors.push(`README.md: ${c.reason} — regenerate: node frontend/scripts/ci/controls-table.mjs --write`);
+  for (const s of checkPublicFace(ROOT).stale) {
+    errors.push(`${s.rel}: ${s.reason} against src/brand.js — regenerate: node frontend/scripts/ci/public-face.mjs --write`);
   }
 }
 

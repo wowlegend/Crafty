@@ -90,6 +90,23 @@ describe('social preview tags point at something a scraper can actually render',
   });
 });
 
+describe('the iPad home-screen icon', () => {
+  // iOS takes only a PNG apple-touch-icon; an SVG one is ignored and the home screen gets no real icon.
+  it('apple-touch-icon names a 180x180 opaque PNG that ships', () => {
+    const links = [...html.matchAll(/<link\s+rel="apple-touch-icon"[^>]*\shref="([^"]+)"/g)].map((m) => m[1]);
+    expect(links, 'expected exactly one apple-touch-icon link').toHaveLength(1);
+    const href = links[0];
+    expect(href).toMatch(/\.png$/);
+    const file = resolve(APP, 'public', href.replace(/^\//, ''));
+    expect(existsSync(file), `${href} is linked but public/ has no such file`).toBe(true);
+    const png = PNG.sync.read(readFileSync(file));
+    expect([png.width, png.height]).toEqual([180, 180]);
+    let transparent = 0;
+    for (let i = 3; i < png.data.length; i += 4) if (png.data[i] !== 255) transparent++;
+    expect(transparent, 'iOS fills transparent pixels with black').toBe(0);
+  });
+});
+
 describe('the card generator itself', () => {
   it('centre-crops to the target aspect without ever exceeding the source', () => {
     const c = centreCrop(1280, 800);
