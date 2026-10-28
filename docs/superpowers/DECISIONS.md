@@ -164,6 +164,41 @@ longer finds the instructions there; none is configured to in this repo.
 19. **The homepage is https://crafty-game.vercel.app (command session, 2026-10-28).** The command session added it as
    an alias of the Vercel project the same day; Kevin clicked Add Domain. https://crafty-sand.vercel.app keeps working.
    The play link, the README and the repo's homepage are rendered from `frontend/src/brand.js`.
+20. **The block textures are mipmapped, in linear light (command session, lane W1-E, 2026-10-28; plan item #10).** It
+   supersedes the "no mipmaps" half of the bold-flat texture lock (`tests/world/proceduralTextures.test.js`,
+   2026-06-15, `90c3edf0`) and answers the 2026-09-22 KEVIN-REVIEW-BATCH entry "Distant-terrain mipmaps: one constant,
+   your taste call", which items 14 and 16 make the session's call. **Why it was refused:** taste, not a defect.
+   The 2026-06-15 gate recorded mipmaps as drift toward "realistic filtering"; `6a33a101` (2026-09-22) built the option
+   and fixed the one technical trap, then left it off for Kevin's word. **Each reason, and how it is handled:**
+   (a) *the pixel look up close*: magnification stays NEAREST, and minification is NEAREST within a mip level and
+   LINEAR between levels, so texels stay crisp wherever they are about a pixel wide or larger; (b) *a grid line at
+   every block edge*: the sampler reads raw `vUv` with REPEAT wrapping (since `6a33a101`), so the UV derivative does not
+   jump at block edges; (c) *bleeding between tiles*: this is a texture array, not an atlas, and the chain is built per
+   layer; (d) *cutout leaves thinning*: there are none to thin, since the leaf tile is opaque (its "holes" are dark
+   texels) and the terrain material has no alpha test; (e) *tone*: the GPU's `generateMipmap` filters the stored bytes,
+   which here are sRGB-encoded, and a box filter over those bytes, computed for every tile, darkens at the 1x1 level
+   leaves by 4.4%, cobblestone 9.7%, cactus 11.5% and gold ore 17.1% in luminance (grass, dirt, stone, sand, snow and
+   water move under 1%). So the chain is built in JS from level 0, in the
+   linear light the shader decodes into (pow 2.2), and its 1x1 level equals the far field's per-layer mean, which closes
+   the tone step where the near terrain meets the far field. three r172 uploads caller-built levels for an array texture
+   only through `CompressedArrayTexture` with `RGBAFormat` (an uncompressed `texSubImage3D` per level), so the texture is
+   that class; `image.data` stays level 0 for the far field. (f) *anisotropy*: not available. three r172 skips it while
+   magFilter is NEAREST, and a linear magFilter would blur the close-up look, so grazing ground reaches the small mips
+   sooner than it would with anisotropy. That is the remaining ceiling. **Cost:** GPU texture memory 65,536 to 87,360
+   bytes (+21,824, +33%); the chain builds once at boot in about 0.6 ms (node, at a load of 240); the index chunk grows
+   551 bytes. **Frame time:** every eye-level walking clip held the game's 60 fps cap on both builds (16.67 ms per frame
+   over 1,053 frames before, 16.64 ms over 1,315 after), so any cost is under what the cap shows; the scene pass's
+   timer-query reading moved less than it does between two runs of one build. **Look:** on one production page at the
+   player's eye, with only the GPU's minify filter switched, high-frequency energy falls 5-9% over the frame against a
+   noise floor of 0.6-2.2%, by 54% on the patch of meadow grass in the evidence crop (seen at a grazing angle), and by at
+   most 1.0% in the sky; read back from the
+   GPU, all 87,360 bytes of the chain equal the one built in node. Frames, crops, the before and after walking clips,
+   and the method: `docs/superpowers/masterpiece-2026-10/evidence/mipmaps/index.md`. **Side effect:** the ore-glow mask
+   reads a texel's chroma, and a mipped texel mixes nugget and stone. Averaged over a face, night glow at the 4x4 level
+   moves iron -61%, gold +42%, diamond +80% against level 0. Close up nothing changes; a re-tune, if wanted, is the
+   ore-glow owner's. **Gates:** `tests/world/proceduralTextures.test.js` pins the filters and the full chain;
+   `tests/gates/texture-mipmap-gates.test.js` pins every texel of every level as the linear-light mean of its block and
+   the 1x1 level as the far field's colour. Mutations are in the commit's `Mutation-Proof:` trailer.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 
