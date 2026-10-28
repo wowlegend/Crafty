@@ -27,8 +27,9 @@
  *          pipeline, recorded with Playwright's screencast and encoded to mp4 with ffmpeg;
  *   hero   for each of four places, pins the camera above it and shoots the programme's four times of day.
  * The clock keeps running, so before each shot it sets the time, lets the sky settle, sets it again and shoots, and
- * records where the clock actually was. Every shot and clip also records GPU ms per post pass over its window
- * (src/render/passTimer.js, EXT_disjoint_timer_query_webgl2: Chromium only; WebKit says it cannot time).
+ * records where the clock actually was. Every shot and clip also records timer-query ms per pass over its window
+ * (src/render/passTimer.js, EXT_disjoint_timer_query_webgl2: Chromium only; WebKit says it cannot time). Those are not
+ * established as GPU execution times: the window check (_lookbook.mjs passSummary, `plausible`) can only refute them.
  *
  * WHAT IT WRITES into --out: <target>/<place>-<cycle>.png, <target>/eye-<bearing>-<cycle>.png,
  * <target>/walk-<cycle>.mp4 and <target>/title.png, lookbook.json (per shot: requested and actual cycle, input live,

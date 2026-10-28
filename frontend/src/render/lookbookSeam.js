@@ -229,7 +229,8 @@ export function installLookbookSeam(win, {
       for (const e of doomed) removeEntity(e);
       return doomed.length;
     },
-    /** GPU ms per post pass since the last reset, per WebGL context (render/passTimer.js). The first call loads the
+    /** Timer-query ms per pass since the last reset, per WebGL context (render/passTimer.js); not established as GPU
+     *  execution times (scripts/visual/_lookbook.mjs passSummary can only refute them). The first call loads the
      *  timer, so nothing is timed until a script asks. */
     passTimes: async ({ reset = false } = {}) => {
       if (!loadPassTimer) return { installed: false, reason: 'no pass timer in this build' };

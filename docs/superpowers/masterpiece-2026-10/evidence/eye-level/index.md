@@ -82,7 +82,11 @@ the night pass both appear in its sum, counting that pass twice. The `skipped` c
 
 The probe now records each window's wall-clock length, reports the scene and the post chain apart from every result
 in the window, flags a window whose results sum to more than it lasted (`passMs.plausible: false`), and wraps each
-effect once. Re-measure on an idle machine before deciding any pass.
+effect once. That flag can only refute: `plausible: true` says the segments fit inside the window, which GPU times
+must, not that they are GPU times: a threefold inflation of a 4 ms chain would still fit a 16.7 ms frame. Nor is an
+idle machine known to remove the inflation, since its cause is not established. So no pass is decided on timer
+readings until a re-measurement carries an independent whole-frame figure (the whole `composer.render` timed as one query, or
+the frame with one pass disabled) and the segments agree with it. The probe does not take that figure yet.
 
 The figures as this run recorded them, each the median across the 12 eye shots of a segment's mean:
 

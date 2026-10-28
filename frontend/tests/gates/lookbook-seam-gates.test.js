@@ -64,8 +64,9 @@ import { contextLossCount, glInfo, _resetGlDiagnosticsForTest } from '../../src/
  * (tests/e2e/lookbook-seam.spec.js); so are stand(), look() and clearHostiles() against the running game (its 2b), on
  * the DEV server. That the PRODUCTION bundle installs the seam and can load the pass timer's chunk is prod-smoke's
  * (scripts/ci/prod-smoke.mjs seamVerdict). Nothing here shows the timer's numbers are GPU execution times: the fake
- * context below decides them. The probe judges each real window instead (scripts/visual/_lookbook.mjs passSummary,
- * `plausible`). The probe's own logic is tests/gates/lookbook-plan-gates.test.js.
+ * context below decides them. The probe's window check on real runs (scripts/visual/_lookbook.mjs passSummary,
+ * `plausible`) can only refute them: results that sum to more than the window are not GPU time, and results that fit
+ * are not shown to be. The probe's own logic is tests/gates/lookbook-plan-gates.test.js.
  */
 
 const fakeWin = (search) => ({ location: { search } });
