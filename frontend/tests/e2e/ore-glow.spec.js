@@ -14,7 +14,8 @@ import { idForBlock } from '../../src/world/blockIds.js';
 //   - DAY CONTROL: at noon the same switch changes nothing (the glow is gated on the night).
 //   - DRIFT CONTROL: stone and coal carry no glow, so they must not move across the three shots; if they do, the
 //     lighting moved between shots and the treatment measured that.
-// NOT CHECKED HERE: how the glow looks on a GPU, or in a cave.
+// NOT CHECKED HERE: how the glow looks on a GPU, or in a cave; nor whether a HUD panel or an entity between the eye and
+// the row covers a square (the squares are checked against the faces' outlines and the camera against its hands only).
 // The first version failed on correct code for two reasons. It compared ratios ACROSS noon and midnight (diamond/stone
 // must rise, coal/stone must not), and the night grade and the tone-mapping toe are not a power law, so a ratio of two
 // surfaces moves with the light level; on/off within one state cancels the curve. And it never measured the blocks:
@@ -29,9 +30,10 @@ test.describe('ore glow', () => {
 
   test('at night the glow lifts a diamond face; at noon it does nothing; stone and coal hold still', async ({ page }) => {
     await page.addInitScript(installWorldHold);
-    await bootDev(page);
+    // ?lookbook=1 installs the camera pin used below (render/lookbookSeam.js); a player's game is unchanged by it.
+    await bootDev(page, { path: '/?lookbook=1' });
     await startPlayActive(page);
-    await page.waitForFunction(() => window.GameMethods?.terrainVerbs?.place && window.__threeCamera && window.useGameStore.getState().getMobGroundLevel, null, { timeout: 60000 });
+    await page.waitForFunction(() => window.GameMethods?.terrainVerbs?.place && window.__threeCamera && window.useGameStore.getState().getMobGroundLevel && window.__craftyLookbook?.pose, null, { timeout: 60000 });
 
     // The row: 4 blocks ahead of the camera and RAISED 3 above the eye, two apart, the camera turned to face it — along
     // an axis with no terrain in the way. Spawn is a village: at eye level a wall stood in front of the stone cell and
@@ -66,7 +68,7 @@ test.describe('ore glow', () => {
         tried.push({ a, open });
         if (open) { ax = a; break; }
       }
-      if (!ax) return { cells: [], ax: null, tried, by };
+      if (!ax) return { cells: [], ax: null, tried, by, pose: null, rigEye: cam.position.toArray() };
       const side = [-ax[1], ax[0]];
       const bx = cx + ax[0] * 4, bz = cz + ax[1] * 4;
       window.useGameStore.setState({ buildingMode: 'single', buildSize: 1 });
@@ -79,11 +81,15 @@ test.describe('ore glow', () => {
         window.GameMethods.terrainVerbs.place({ hitPoint: new V(x + 0.5, by + 0.5, z + 0.5), normal: { x: 0, y: 1, z: 0 } });
         cells.push({ block, x, y: by, z, placed: window.useGameStore.getState().worldBlocks.get(`${x}_${by}_${z}`) ?? null });
       }
-      // face the row square: look at the middle block's near face centre
-      cam.lookAt(bx + 0.5 - ax[0] * 0.5, by + 0.5, bz + 0.5 - ax[1] * 0.5);
-      return { cells, ax, tried, by };
+      // The camera is pinned at the centre of the eye's cell, facing the middle block's near face square. The eye
+      // spawns on a cell corner (game/playerSpawn.js, x 0 z 0), so floor() above picks one of the four cells around
+      // it by the sign of float noise, and the row then sits at a different offset from the unpinned eye in each;
+      // pinned, every run frames the row the same. The pin also takes the first-person hands off the camera
+      // (Components.jsx), whose left glove otherwise covers half the stone face's square in one of those framings.
+      const pose = { position: [cx + 0.5, eye + 0.5, cz + 0.5], lookAt: [bx + 0.5 - ax[0] * 0.5, by + 0.5, bz + 0.5 - ax[1] * 0.5] };
+      return { cells, ax, tried, by, pose, rigEye: cam.position.toArray() };
     }, RAISE);
-    console.log(`[ore-glow] row along ${JSON.stringify(row.ax)} at y ${row.by} (directions tried: ${JSON.stringify(row.tried)})`);
+    console.log(`[ore-glow] row along ${JSON.stringify(row.ax)} at y ${row.by}: ${row.cells.map((c) => `${c.block} ${c.x},${c.z}`).join(' · ')}; rig eye ${JSON.stringify(row.rigEye)}, pinned at ${JSON.stringify(row.pose?.position ?? null)} (directions tried: ${JSON.stringify(row.tried)})`);
     expect(row.ax, `SETUP: no direction from spawn is open for 4 cells — every row would be occluded: ${JSON.stringify(row)}`).not.toBeNull();
     // PRESENCE: each cell holds the block named for it — the faces measured below are the blocks placed here.
     expect(row.cells.length).toBe(3);
@@ -91,7 +97,8 @@ test.describe('ore glow', () => {
       expect(c.placed, `SETUP: the ${c.block} cell holds ${c.placed}, not ${idForBlock(c.block)}: ${JSON.stringify(row.cells)}`).toBe(idForBlock(c.block));
     }
 
-    // Each face's centre on screen, and the mean luminance of a small square there, from one screenshot.
+    // Each face's centre on screen, and the mean luminance of a square of half-side PATCH there, from one screenshot.
+    const PATCH = 12;
     const measure = async () => {
       const centres = await page.evaluate(({ cells, ax }) => {
         const cam = window.__threeCamera;
@@ -102,7 +109,7 @@ test.describe('ore glow', () => {
         });
       }, row);
       const png = await page.screenshot();
-      return page.evaluate(async ({ b64, centres }) => {
+      return page.evaluate(async ({ b64, centres, R }) => {
         const img = new Image();
         img.src = `data:image/png;base64,${b64}`;
         await img.decode();
@@ -112,13 +119,13 @@ test.describe('ore glow', () => {
         g.drawImage(img, 0, 0);
         const out = {};
         for (const c of centres) {
-          const R = 12, px = g.getImageData(c.x - R, c.y - R, 2 * R, 2 * R).data;
+          const px = g.getImageData(c.x - R, c.y - R, 2 * R, 2 * R).data;
           let sum = 0;
           for (let i = 0; i < px.length; i += 4) sum += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2];
           out[c.block] = sum / (px.length / 4);
         }
         return { lum: out, centres };
-      }, { b64: png.toString('base64'), centres });
+      }, { b64: png.toString('base64'), centres, R: PATCH });
     };
     // THE GLOW ON AND OFF, IN ONE LIGHTING STATE. Every chunk shares one material whose uOreGlow uniform IS the
     // module's Float32Array (world/Terrain.jsx), and three re-uploads a float-array uniform each time it binds the
@@ -167,6 +174,59 @@ test.describe('ore glow', () => {
       const on2 = await shot(frac, true);
       return { on, off, on2 };
     };
+    // THE CAMERA, pinned before any shot. Drawables hanging off the camera are counted before and after the pin; the
+    // first count shows the counter sees the hands while they are there.
+    const onCamera = () => page.evaluate(() => {
+      let drawn = 0;
+      window.__threeCamera.traverse((o) => {
+        if (!(o.isMesh || o.isSprite || o.isPoints || o.isLine)) return;
+        for (let p = o; p; p = p.parent) if (!p.visible) return;
+        drawn += 1;
+      });
+      return { drawn, eye: window.__threeCamera.position.toArray() };
+    });
+    const offPin = (eye) => Math.hypot(eye[0] - row.pose.position[0], eye[1] - row.pose.position[1], eye[2] - row.pose.position[2]);
+    const free = await onCamera();
+    expect(free.drawn, `SETUP: nothing is drawn on the unpinned camera, so the hands check below cannot see hands: ${JSON.stringify(free)}`).toBeGreaterThan(0);
+    await page.evaluate((p) => window.__craftyLookbook.pose(p), row.pose);
+    // The hands leave when React commits the pose, which can be before the evaluate returns; the camera moves only on
+    // the Player's next frame. So wait for both, not for the first.
+    let pinned = await onCamera();
+    for (let i = 0; i < 30 && (pinned.drawn > 0 || offPin(pinned.eye) >= 0.01); i++) { await frames(2); pinned = await onCamera(); }
+    expect(pinned.drawn, `SETUP: ${pinned.drawn} drawables still hang off the pinned camera — the first-person hands are in the frame: ${JSON.stringify({ free, pinned })}`).toBe(0);
+    expect(offPin(pinned.eye), `SETUP: the camera is not at the pin: ${JSON.stringify({ pin: row.pose, pinned })}`).toBeLessThan(0.01);
+    // Each measurement square lies inside its own face's outline on screen, so it averages that face and nothing else.
+    const faces = await page.evaluate(({ cells, ax }) => {
+      const cam = window.__threeCamera;
+      const V = cam.position.constructor;
+      const side = [-ax[1], ax[0]];
+      const screen = (x, y, z) => {
+        const p = new V(x, y, z).project(cam);
+        return [(p.x + 1) / 2 * window.innerWidth, (1 - p.y) / 2 * window.innerHeight];
+      };
+      return cells.map((c) => {
+        const fx = c.x + 0.5 - ax[0] * 0.5, fy = c.y + 0.5, fz = c.z + 0.5 - ax[1] * 0.5;
+        const corner = (s, u) => screen(fx + side[0] * 0.5 * s, fy + 0.5 * u, fz + side[1] * 0.5 * s);
+        return { block: c.block, centre: screen(fx, fy, fz), outline: [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)] };
+      });
+    }, row);
+    const insideConvex = ([x, y], poly) => {
+      let sign = 0;
+      for (let i = 0; i < poly.length; i++) {
+        const [x0, y0] = poly[i];
+        const [x1, y1] = poly[(i + 1) % poly.length];
+        const s = Math.sign((x1 - x0) * (y - y0) - (y1 - y0) * (x - x0));
+        if (s === 0) continue;
+        if (sign === 0) sign = s;
+        else if (s !== sign) return false;
+      }
+      return true;
+    };
+    for (const f of faces) {
+      const [x, y] = f.centre.map(Math.round); // the centre measure() samples around
+      const square = [[x - PATCH, y - PATCH], [x + PATCH, y - PATCH], [x + PATCH, y + PATCH], [x - PATCH, y + PATCH]];
+      expect(square.every((p) => insideConvex(p, f.outline)), `SETUP: the ${f.block} square (half-side ${PATCH} at ${x},${y}) reaches outside the ${f.block} face: ${JSON.stringify(faces)}`).toBe(true);
+    }
     // FIXTURES, set once and held for every shot: each is a light source this spec does not measure. Re-pinning one at
     // the start of a shot leaves the shot itself open to it.
     //  - Clouds and light motes: the sky-studio switch (store captureStudio) zeroes the cloud cover the terrain's cloud
@@ -194,7 +254,7 @@ test.describe('ore glow', () => {
     await page.screenshot({ path: test.info().outputPath('ore-glow-night.png') });
     const end = await page.evaluate(() => {
       const s = window.useGameStore.getState();
-      return { hold: window.__e2eWorldHold.release(), alive: s.isAlive, hp: s.playerHealth, boost: s.weatherMoodBoost, stormWrites: window.__oreGlowStormWrites };
+      return { hold: window.__e2eWorldHold.release(), alive: s.isAlive, hp: s.playerHealth, boost: s.weatherMoodBoost, stormWrites: window.__oreGlowStormWrites, eye: window.__threeCamera.position.toArray() };
     });
     const where = JSON.stringify({ noon, night, held, end });
     const f1 = (x) => x.toFixed(1);
@@ -207,8 +267,9 @@ test.describe('ore glow', () => {
     expect(end.hold.frames, `SETUP: the game drew no frame while the world was held: ${where}`).toBeGreaterThan(0);
     expect(end.alive && end.hp === held.hp, `SETUP: the player was hurt while the world was held: ${where}`).toBe(true);
     expect(end.boost, `SETUP: the weather grade moved off clear: ${where}`).toBe(0);
+    expect(offPin(end.eye), `SETUP: the camera left the pin during the shots: ${where}`).toBeLessThan(0.01);
 
-    expect(noon.on.stone, `SETUP: the stone face is not in frame — ${where}`).toBeGreaterThan(8);
+    expect(noon.on.stone, `SETUP: the stone face reads near black at noon — no drift instrument is live: ${where}`).toBeGreaterThan(8);
     // At night the raised stone and coal faces fall under the night grade's black point (~3 measured), so there the
     // live drift instrument is the diamond's own glow-on pair (on, on2), which must be well above black.
     expect(night.on.diamond, `SETUP: the diamond face is crushed to black at night — no drift instrument is live: ${where}`).toBeGreaterThan(8);

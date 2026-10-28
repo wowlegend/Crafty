@@ -20,6 +20,7 @@ import { makeSkyClock, followSkyClock, resetSkyClock } from './skyClock.js';
 import { frameElapsed } from '../devtest/captureClock.js';
 import { realDelta } from '../game/worldClock.js';
 import { resetShadowForConfig } from './shadowReset.js';
+import { TERRAIN_SURFACE } from '../world/terrainSurface.js';
 import { registerTestHook, callTestHook } from '../devtest/testBridge.js';
 import { createShadowSchedule, shadowDue, shadowWorldEpoch } from './shadowSchedule.js';
 import { ecs, mobsQuery, alliesQuery } from '../ecs/world';
@@ -258,10 +259,9 @@ export function Atmosphere({ shadowConfig }) {
         cycle: cycleRef.current, gameTime: st.gameTime, frame: framesRef.current,
       };
     });
-    // THE GREY CARD: the colour model (tests/gates/_lightModel.js) against the screen. A 1 m quad,
-    // the stone's albedo #8C8C8C on the terrain's material settings (MeshStandardMaterial, roughness 0.85, metalness
-    // 0.1), facing up, casting and receiving no shadow, 3 m ahead of the camera on the horizontal and 0.8 m below it:
-    // about 15 deg under the camera's horizon, clear of the bottom HUD. It is drawn last and its depth test always
+    // THE GREY CARD: the colour model (tests/gates/_lightModel.js) against the screen. A 1 m quad, the stone's albedo
+    // #8C8C8C on the terrain's surface (MeshStandardMaterial, world/terrainSurface.js), facing up, casting and receiving
+    // no shadow, 3 m ahead of the camera on the horizontal and 0.8 m below it: about 15 deg under the camera's horizon, clear of the bottom HUD. It is drawn last and its depth test always
     // passes, so a hill or a tree in front cannot cover it (lighting does not depend on either).
     // `readGreyCard` mounts it, waits three frames, and returns its screen rect with the LIVE rig it is lit by; the card
     // STAYS until `clearGreyCard` (the spec calls it in a finally, after its screenshot), or 30 s, whichever is first.
@@ -286,7 +286,7 @@ export function Atmosphere({ shadowConfig }) {
         // buffer under the card would hold the terrain behind it for every depth-reading pass. ALWAYS passes the test
         // and writes the card's own depth. (The e2e still reads the card on the LOW tier: at high, N8AO and GodRays moved
         // it up to L 0.10 off the model either way, with this setting or without it.)
-        new THREE.MeshStandardMaterial({ color: '#8C8C8C', roughness: 0.85, metalness: 0.1, depthFunc: THREE.AlwaysDepth }),
+        new THREE.MeshStandardMaterial({ color: '#8C8C8C', ...TERRAIN_SURFACE, depthFunc: THREE.AlwaysDepth }),
       );
       card.castShadow = false;
       card.receiveShadow = false;

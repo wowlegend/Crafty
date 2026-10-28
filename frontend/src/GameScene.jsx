@@ -7,7 +7,7 @@ import { SpatialAudioController } from './render/SpatialAudioController';
 import { WeatherSystem } from './render/WeatherSystem';
 import { LightningDriver } from './render/LightningDriver.jsx';
 import { Physics } from '@react-three/rapier';
-import { EffectComposer, Noise, Vignette, SMAA, HueSaturation, BrightnessContrast, ToneMapping } from '@react-three/postprocessing';
+import { EffectComposer, Vignette, SMAA, HueSaturation, BrightnessContrast, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import { TIERS, readDeviceSignals } from './render/quality';
 import { useWindowFocused } from './render/useWindowFocused.js';
@@ -94,8 +94,8 @@ import { onContextLost, onContextRestored } from './game/contextRecovery.js';
 // rebuilds every EffectPass whenever its <EffectComposer>'s children re-render — its pass-building layout effect
 // depends on `children` — and removePass/addPass delete and re-create the composer's depth textures and depth
 // render target. Inline in GameScene it re-rendered on every mana tick (1 s while regenerating): GPU allocations
-// every second of idle play, the heat Kevin measured on an M3 Max. Memoised on the four things the
-// chain actually reads, it rebuilds only when the tier, the sun mesh, the horizon flag or capture mode changes.
+// every second of idle play, the heat Kevin measured on an M3 Max. Memoised on the things the
+// chain actually reads, it rebuilds only when the sun mesh changes or a tier first needs N8AO or GodRays.
 // (Defined here, not in its own file: the effect-chain gates read this file.)
 //
 // BUILT ONCE, TOGGLED IN PLACE (2026-10-27, plan 2026-10-27-crafty-steady-cool item c). N8AO, GodRays and Bloom here are
@@ -104,7 +104,7 @@ import { onContextLost, onContextRestored } from './game/contextRecovery.js';
 // step). N8AO and GodRays mount the first time a tier needs them (`withAO` / `withGodRays` are sticky) and then stay;
 // <PostTierDriver> applies the tier and the horizon to the live instances. So the props here no longer include the tier
 // or the horizon flag, and a tier step or a horizon flip re-renders no composer child.
-const PostFX = React.memo(function PostFX({ sunMesh, isCaptureMode, withAO, withGodRays }) {
+const PostFX = React.memo(function PostFX({ sunMesh, withAO, withGodRays }) {
   return (
     <EffectComposer multisampling={0}>
       {withAO && (
@@ -144,9 +144,6 @@ const PostFX = React.memo(function PostFX({ sunMesh, isCaptureMode, withAO, with
       />
       <SMAA />
       <ToneMapping mode={ToneMappingMode.NEUTRAL} />
-      {/* Per-frame random film grain — disabled in dev capture mode because it
-          makes every frame pixel-different (defeats the visual-regression diff). */}
-      {!isCaptureMode && <Noise opacity={0.01} />}
       <Vignette eskil={false} offset={0.45} darkness={0.35} />
       <BloomSpikeDriver />
       <MoodGradeDriver />
@@ -504,7 +501,7 @@ export const GameScene = React.memo(function GameScene({
               This prop stays on its own merits: a redundant buffer is still redundant.
 
               To revert: delete the prop. Tests/scripts/effect-chain-cost pins it and will red. */}
-          <PostFX sunMesh={sunMesh} isCaptureMode={isCaptureMode} withAO={withAO} withGodRays={withGodRays} />
+          <PostFX sunMesh={sunMesh} withAO={withAO} withGodRays={withGodRays} />
           <Preload all />
         </Suspense>
 

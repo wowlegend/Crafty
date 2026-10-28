@@ -153,8 +153,8 @@ describe('S2-A-M4a T3: onIncline tier recovery (fix the one-way ratchet)', () =>
     expect(guardIdx).toBeGreaterThan(-1);
     expect(monitorIdx).toBeGreaterThan(-1);
     expect(guardIdx).toBeLessThan(monitorIdx);
-    // No guard-close `)}` between the opening guard and the monitor tag.
-    const between = src.slice(guardIdx + GUARD.length, monitorIdx);
+    // No guard-close `)}` between the opening guard and the monitor tag. Sliced from `code`, whose offsets these are.
+    const between = code.slice(guardIdx + GUARD.length, monitorIdx);
     expect(between).not.toMatch(/\)\}/);
   });
 });

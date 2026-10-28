@@ -691,8 +691,8 @@ it('quad budget, ABSOLUTE quads added, on the fixture it was measured on (amendm
   (walk `window.__threeScene`). Read `geometry.attributes.color.array`: the max of the blue channel is exactly 15
   (the pad face under the forge fire looks into the emitter cell) and some value lies in 1..14 (the gradient). A
   PRESENCE before the absence: a loaded chunk with no emitter in reach has a max of 0. Deleting the bake (no field
-  passed) turns the first assertion red. Not run locally (machine load; e2e is CI-only); the push's
-  `e2e freshness` gate demands its green receipt.
+  passed) turns the first assertion red. Not run locally (machine load; e2e is CI-only); it is
+  certified by CI's `ci ok` on the exact sha (push to a `land/` branch), since W2-C deleted e2e-freshness.
 
 - [ ] **Step 7: Bench and commit.** Run `node scripts/bench/block-light-bench.mjs --base <scratchpad>/lantern-base`
   three times, and preferably at a load average below the core count. Criteria, each against the FROZEN baseline

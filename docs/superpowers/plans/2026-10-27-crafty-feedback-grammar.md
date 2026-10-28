@@ -872,7 +872,7 @@ Review amendment 16. This is outside Phase 3's scope (the umbrella names only "o
 
 The milestone is done when every row holds, measured in the turn it is claimed.
 
-**1. Lived proof in the running game.** These run on CI and must pass at the HEAD that lands each unit (e2e-freshness receipt):
+**1. Lived proof in the running game.** These run on CI and must pass at the HEAD that lands each unit (CI's `ci ok` on the exact sha (push to a `land/` branch), since W2-C deleted e2e-freshness):
 - `tests/e2e/feedback-grammar.spec.js`: windup edge at three angles (U2), rim on the low tier (U2), click flash and squash (U3), touch flash (U3), GLSL parity (U4), draw count with the nametag split out (U4), outline size with no mob (U4, extended in U6), rig programs compiled before the first rig draw (U4), eye bloom (U5), 20 casts with the mounted materials read (U6), impact clear (U7).
 
 What would still pass if the feature were deleted?

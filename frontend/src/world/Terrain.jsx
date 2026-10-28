@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { BIOME_TINT, AO_FLOOR } from './biomeTable.js';
+import { TERRAIN_SURFACE } from './terrainSurface.js';
 import { biomeTintGlsl, biomeTintMask } from './terrainTint.js';
 import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
@@ -40,19 +41,19 @@ import { blockForId } from './blockIds';
 import { placeAtHit } from './placeAtHit.js';
 import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE } from './loadedChunks.js';
 import { makeMobFloorProbe } from './mobFloorProbe.js';
-import { oreGlowTable, oreGlowGlsl } from './oreGlow.js';
+import { oreGlowTable, oreGlowGlsl, oreGlowTexture } from './oreGlow.js';
 import { leafFeelGlsl } from './leafFeel.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
 
 const voxelTextures = sharedVoxelTextures(); // the ONE block texture array (the far field averages the same one)
+const oreGlowTex = oreGlowTexture(voxelTextures); // the nuggets' glow, baked from its level 0 and mipped on its own
 
 // Shared SOTA opaque-LAND terrain material (W2: water is owned by the Ocean.jsx Gerstner plane now;
 // this material renders only land — de-tile, vertex AO, danger-mood grade, aerial perspective).
 const opaqueMaterial = new THREE.MeshStandardMaterial({
-    roughness: 0.85,
-    metalness: 0.1,
+    ...TERRAIN_SURFACE,
     vertexColors: true,
     transparent: false,
     depthWrite: true,
@@ -73,6 +74,7 @@ const compileShader = (shader) => {
     shader.uniforms.uCloudCover = { value: cloudCoverRef.current };
     // EXTERNAL-BASELINE-R2 #3: the ore nuggets glow at night (world/oreGlow.js). A static per-layer table.
     shader.uniforms.uOreGlow = { value: oreGlowUniform };
+    shader.uniforms.uOreGlowTex = { value: oreGlowTex };
 
     // Vertex Shader: forwards land varyings (blockType, world height/pos, AO) to the fragment.
     shader.vertexShader = `
@@ -196,7 +198,7 @@ const compileShader = (shader) => {
     // ORE GLOW (EXTERNAL-BASELINE-R2 #3; world/oreGlow.js) and LEAF TRANSLUCENCY (R2 #2; world/leafFeel.js): right after
     // three sums the material's emissive, so the glow
     // is light the surface GIVES (unshadowed, untouched by AO) and the bloom halos it. texColor and layerIndex come from
-    // the <color_fragment> patch above, earlier in the same main().
+    // the <color_fragment> patch above, earlier in the same main(); vUv is the land's varying.
     shader.fragmentShader = shader.fragmentShader.replace(
         '#include <emissivemap_fragment>',
         `

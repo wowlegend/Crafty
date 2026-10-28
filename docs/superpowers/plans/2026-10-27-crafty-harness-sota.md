@@ -48,7 +48,7 @@ main-chunk byte, no player string and no input verb.
 - **Zero `frontend/src` changes in the whole plan.** Each unit's commit is checked with `git diff --stat HEAD~1 -- frontend/src`
   (empty), and the last gate checks the branch with `git diff --stat main...HEAD -- frontend/src` (empty). This is what makes the
   GPU cost 0, the main-chunk bytes 0 (`frontend/scripts/ci/bundle-budget.mjs` output unchanged), i18n and touch
-  not applicable, and the `e2e-freshness` receipt (keyed on `src/` and `tests/e2e/`) unexpired by these commits.
+  not applicable, and (until W2-C deleted it) the `e2e-freshness` receipt, keyed on `src/` and `tests/e2e/`, unexpired by these commits.
 - **Bright lines (DECISIONS.md:83-95):** spend no money; never force-push or rewrite pushed history; never use
   `--amend` or `reset` for a fix-up (fix-ups are new commits).
 - **Trailers:** every commit that adds or rewrites assertions under `frontend/tests/gates/` or adds/edits
@@ -180,7 +180,7 @@ The only new JavaScript is under `frontend/scripts/`, `frontend/tests/` and `scr
 
 - **E1 is superseded.** The lookbook exists on `feat/instruments` (fact 19). U37 adds only the AGENTS pointer once that branch merges.
 - **A1's "unblock" premise has expired** (fact 15). Its retirement half is folded into U21, and its republish half into U38 and the midpoint checkpoint.
-- **`cameraKick.js:7` is handed to the next lane that touches `src/`** as one STATUS row. Fixing a comment here would expire the e2e receipt for every push of this lane.
+- **`cameraKick.js:7` is handed to the next lane that touches `src/`** as one STATUS row. Fixing a comment here would have expired the e2e receipt for every push of this lane (that gate was deleted by W2-C).
 - **Anti-Goodhart for C3:** a byte cap in doc-currency, plus `agents-shape.test.js` (required sections, an enforcer
   named per hard rule, no home path), plus a per-section disposition table in DECISIONS keyed to the pre-trim SHA.
 - **B7 lands last in tranche B,** after push-audit (U13) and harness-integrity (U9). It uses a named `certify` tier,

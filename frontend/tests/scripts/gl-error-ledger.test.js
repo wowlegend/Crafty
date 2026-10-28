@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { glVerdict } from '../../scripts/ci/prod-smoke.mjs';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { glVerdict, GL_LEDGER_PATH } from '../../scripts/ci/prod-smoke.mjs';
 
 /**
  * THE GL ERROR LEDGER — closing OI-06 and OI-08, the gate that could not see the class it watches.
@@ -70,5 +73,15 @@ describe('GL error ledger verdict', () => {
     // which is the strongest form this ledger can take and the one worth arriving at.
     expect(glVerdict(0, 120, { count: 0 }).ok).toBe(true);
     expect(glVerdict(1, 120, { count: 0 }).ok).toBe(false);
+  });
+});
+
+describe('the GL error ledger prod-smoke reads', () => {
+  // A ledger the gate cannot find seeds on every run, so the ratchet never holds: the missing file reads as ok.
+  it('is the committed file beside the gates, holding a frozen ceiling', () => {
+    expect(GL_LEDGER_PATH).toBe(resolve(dirname(fileURLToPath(import.meta.url)), '../gates/.gl-error-ledger.json'));
+    const ledger = JSON.parse(readFileSync(GL_LEDGER_PATH, 'utf8'));
+    expect(Number.isInteger(ledger.count) && ledger.count >= 0, JSON.stringify(ledger)).toBe(true);
+    expect(glVerdict(ledger.count + 1, 3, ledger).ok, 'one error over the frozen ceiling passes').toBe(false);
   });
 });

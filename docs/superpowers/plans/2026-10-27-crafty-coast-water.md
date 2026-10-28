@@ -739,7 +739,7 @@ plus `visible: () => mesh.visible`) and `window.__craftyOceanUniforms` (the unif
   - **E11** the glint line deleted, and **E12** `reflect(V, geometryNormal)` in place of `reflect(-V, ...)` (pose 3).
 
   **E4**, the identity mutant, must SURVIVE. A mutant that reports COULD NOT CHECK is not a kill: re-run it.
-- [ ] **Step 7:** `npm run test:unit`, then a local e2e receipt for the push (`e2e freshness` gate). Commit:
+- [ ] **Step 7:** `npm run test:unit`; e2e is certified by CI's `ci ok` on the exact sha (push to a `land/` branch), since W2-C deleted e2e-freshness. Commit:
   `feat(ocean): the seabed depth bake drives block-stepped bands and a shore foam line`, with a `Mutation-Proof:`
   trailer for the spec and the re-anchored gate.
 
