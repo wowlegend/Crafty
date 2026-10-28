@@ -14,13 +14,13 @@
     "framer-motion": "^12.43.0",
     "lucide-react": "^0.439.0",
     "miniplex": "^2.0.0",
-    "n8ao": "1.10.1",
+    "n8ao": "1.10.3",
     "postprocessing": "6.39.5",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "react": "^19.2.9",
+    "react-dom": "^19.2.9",
     "simplex-noise": "^4.0.3",
     "three": "^0.172.0",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.16"
   },
   "scripts": {
     "start": "vite",
