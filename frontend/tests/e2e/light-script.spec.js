@@ -2,6 +2,7 @@ import { test, expect } from './_fixtures.js';
 import { PNG } from 'pngjs';
 import { bootDev, startPlayActive } from './_boot.js';
 import { displayed, stoneFaceUnder, oklch } from '../gates/_lightModel.js';
+import { judgeDawnRead } from '../gates/_dawnRead.js';
 import { KEY_S } from '../../src/render/colourScript.js';
 
 // THE LIGHT SCRIPT, LIVED (plan docs/superpowers/plans/2026-10-27-crafty-light-colour-script.md, Task 3b).
@@ -19,12 +20,16 @@ import { KEY_S } from '../../src/render/colourScript.js';
 //             alone with declared uniforms through the DEV hook sampleDome).
 //   storm     the overlay hides the stars (one read, then the weather is reset).
 //   dawn      THE LIGHT RAMPS (render/skyClock.js): the game clock is a 1 Hz step, and the sky read straight from it
-//             stepped once a second (review, HIGH). Sampled every frame for a few seconds from the sun's rise, the live
-//             key light must change between two frames inside ONE game-second (the store's gameTime the same for both),
-//             with the mood still (|dmood| < 1e-6), by more than the mood's own decay could move it (1e-4). Only a
-//             renderer drawing two frames inside one game-second can show this; under ~2 fps (CI's SwiftShader measured
-//             0.8-1.9) the read is printed and annotated NOT MEASURED, and the stepped clock's kill is the unit gate's
-//             (tests/gates/sky-clock-gates.test.jsx).
+//             stepped once a second (review, HIGH). Sampled every frame for six seconds from the sun's rise, each with
+//             the store's gameTime, the sky's OWN rendered cycle and R3F's clock; the verdict is tests/gates/_dawnRead.js
+//             (driven by tests/gates/dawn-read-gates.test.js). A frame drawn under 0.9 s after a one-tick advance must
+//             find the sky still BEHIND the clock (a stepped sky sits on it), and in two frames of one game-second with
+//             the sky still behind at the first, the mood still (|dmood| < 1e-6), the live key must move by more than
+//             the mood's own decay could (1e-4). A pair after the sky has caught up is still by design and is NOT
+//             counted (round-2 review, MED: counting it let a following sky read "no change"). With neither, below
+//             the frame-rate floor (CI's SwiftShader measured 0.8-1.9 fps), the read is printed and annotated NOT
+//             MEASURED; the rate itself (a sky following too fast or too slow) is the unit gate's
+//             (tests/gates/sky-clock-gates.test.jsx, at 30, 60 and 120 fps and jittered).
 //   grey card the colour model (tests/gates/_lightModel.js displayed()) against the real screen, at noon and at
 //             midnight: within displayed OKLab L 0.03 and C 0.02. Noon also reads grey (C <= 0.03: the clip IS the
 //             card), and midnight also holds the absolute night bounds (L >= 0.30, C <= 0.07), so a change that moves
@@ -57,6 +62,10 @@ import { KEY_S } from '../../src/render/colourScript.js';
 //   I4 the away card read's time set to 0.2 (out of the night key)  -> SETUP "the clock left the night key" (the guard)
 //   Re-run 2026-10-27/28 on this spec after the light-colour review's fixes, throwaway config on port 4303: E1-E8 each
 //   RED again (E2 on a second attempt: the first drew 2 of 4 frames in 20 s at load ~350), identities SURVIVED.
+//   Round 2, 2026-10-28 01 UTC, the dawn verdict moved to _dawnRead.js, throwaway config on port 4311: baseline green
+//   (dawn pass: 27 frames, 6 crossings behind, 7 of 7 behind pairs moved); SC1e -> "dawn: the sky sat ON the clock
+//   right after a tick in 1 of 1 frames drawn under 0.9 s after the one before" (7 frames at load ~20-140);
+//   E0 identity (a comment in Atmosphere.jsx) SURVIVED (dawn pass: 2 of 2 behind pairs moved).
 //
 // BLIND SPOT: SwiftShader on CI is not a GPU, and this reads one patch of one material. The look itself (the night as
 // a whole, golden hour, WebKit and the iPad) is the lookbook's (plan Task 9), on a real GPU.
@@ -300,7 +309,9 @@ test('the light script in the running game: a sun key at noon, a moon key at mid
         const tick = () => {
           const s = window.__craftyTest.call('readSkyLight');
           if (s && (!out.length || out[out.length - 1].frame !== s.frame)) {
-            out.push({ frame: s.frame, gameTime: s.gameTime, key: s.keyIntensity, mood: s.mood, cycle: s.cycle, t: Math.round(performance.now() - t0) });
+            // clock: R3F's own clock, the drawn frame's time, so two samples' difference is the real time the sky got.
+            const clock = window.__craftyTest.call('readFrameloop')?.clock ?? null;
+            out.push({ frame: s.frame, gameTime: s.gameTime, key: s.keyIntensity, mood: s.mood, cycle: s.cycle, clock, t: Math.round(performance.now() - t0) });
           }
           if (performance.now() - t0 < ms) requestAnimationFrame(tick); else resolve();
         };
@@ -308,29 +319,30 @@ test('the light script in the running game: a sun key at noon, a moon key at mid
       });
       return out;
     }, 6000);
-    const firstTick = samples.findIndex((s) => s.gameTime !== samples[0].gameTime);
-    const where = fmt({ frames: samples.length, firstTick, head: samples.slice(0, 4), tail: samples.slice(-2), ...(await preconditions(page)) });
-    // Pairs of consecutive frames inside one game-second, after the first tick (until then the sky is AT the clock, which
-    // it never passes), with the mood still.
-    const pairs = [];
-    for (let i = Math.max(1, firstTick + 1); firstTick >= 0 && i < samples.length; i++) {
-      const a = samples[i - 1], b = samples[i];
-      if (a.gameTime === b.gameTime && Math.abs(a.mood - b.mood) < 1e-6) pairs.push(Math.abs(b.key - a.key));
+    const where = fmt({ frames: samples.length, head: samples.slice(0, 4), tail: samples.slice(-2), ...(await preconditions(page)) });
+    const clocks = samples.map((s) => s.clock);
+    if (!clocks.every((c, i) => Number.isFinite(c) && (i === 0 || c > clocks[i - 1]))) {
+      throw new Error(`SETUP: dawn: readFrameloop gave no rising R3F clock per frame, so the real time between frames is unknown — ${where}`);
     }
-    console.log(`[light-script] dawn: ${samples.length} frames over 6 s, first tick at sample ${firstTick}, ${pairs.length} same-second pairs after it, key steps ${pairs.slice(0, 8).map((d) => d.toFixed(4)).join(' ')}`);
+    // THE VERDICT (tests/gates/_dawnRead.js, driven by tests/gates/dawn-read-gates.test.js). Counted only where a
+    // following sky is forced to show it, read from the sky's own cycle against the store's clock: a frame drawn under
+    // 0.9 s after a one-tick advance must find the sky still BEHIND the clock (a stepped sky sits on it), and two frames
+    // of one game-second with the sky still behind at the first must move the live key. A pair after the sky has caught
+    // up is still by design and is not counted: counting it let a following sky read "no change" (round-2 review, MED).
+    const read = judgeDawnRead(samples);
+    console.log(`[light-script] dawn: ${read.verdict} ${JSON.stringify(read.counts)} — ${read.reason}`);
     // NOT MEASURABLE IS NOT A PASS, AND NOT A FAILURE: it is said. Per-frame interpolation is visible only when frames
     // come faster than the 1 Hz tick; a frame longer than a second catches the sky up to the clock by design, so the
     // smooth and the stepped sky draw the same frames. CI's SwiftShader measured 0.8-1.9 fps (2026-10-27) and a local run
-    // at load ~360 drew one frame in 6.2 s. So with no same-second pair the read is RECORDED as not measured (printed
-    // and annotated) instead of failing a tree on the machine's speed; the deterministic kill of the stepped clock is
-    // tests/gates/sky-clock-gates.test.jsx (Atmosphere's real useFrame, stepped at 60 Hz).
-    if (pairs.length === 0) {
-      const why = `dawn: NOT MEASURED — no two frames fell inside one game-second after a tick (the renderer draws under ~2 fps here) — ${where}`;
+    // at load ~360 drew one frame in 6.2 s. So below that floor the read is RECORDED as not measured (printed and
+    // annotated) instead of failing a tree on the machine's speed; the deterministic kill of the stepped clock is
+    // tests/gates/sky-clock-gates.test.jsx (Atmosphere's real useFrame, stepped at 30, 60 and 120 fps and jittered).
+    if (read.verdict === 'not-measured') {
+      const why = `dawn: NOT MEASURED — ${read.reason} — ${fmt(read.counts)} — ${where}`;
       console.log(`[light-script] ${why}`);
       test.info().annotations.push({ type: 'not-measured', description: why });
     } else {
-      const moved = pairs.filter((d) => d > 1e-4).length;
-      expect(moved, `dawn: the key light did not move between frames of one game-second (${moved} of ${pairs.length} pairs moved): it steps with the 1 Hz clock — ${where}`).toBeGreaterThan(0);
+      expect(read.verdict, `dawn: ${read.reason} — ${fmt(read.counts)} — ${where}`).toBe('pass');
     }
   } finally {
     await call(page, 'setQualityTier', priorTier);
