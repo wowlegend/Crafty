@@ -45,9 +45,9 @@ commit from the recorded publish, refuses every push.
 
 ---
 
-## 📐 SPECS — design of record (consult when building the thing it describes)
+## 📐 SPECS — current designs (consult when building the thing it describes; each is revisable)
 
-**Live / still-governing:**
+**Current (each stands while it earns its place, revisable by a DECISIONS entry):**
 - `crafty-coherence-pillars.md` — **P0–P5, the taste bounds on every addition.** Read before any look-bearing work.
 - `2026-06-28-crafty-control-scheme-design.md` — **Option A picked by Kevin**; the 4 A-enhancements are
   AUTHORIZED loop work and **still unbuilt** (STATUS §C1).
@@ -56,7 +56,7 @@ commit from the recorded publish, refuses every push.
 - `2026-06-14-crafty-next-levers-backlog.md` — ⚠️ its quick-wins are HARVESTED, but its **4 MILESTONE levers**
   are still the best statement of the remaining depth gap (STATUS §E). Its own premises were systematically
   over-optimistic — verify every claim against code.
-- `2026-06-13-crafty-world-design-hybrid.md` · `2026-06-02-crafty-s2-game-design-design.md` — world + game design of record.
+- `2026-06-13-crafty-world-design-hybrid.md` · `2026-06-02-crafty-s2-game-design-design.md` — the current world + game design.
 - `2026-06-01-crafty-s1c-ui-system-brief.md` + `-m3-icon-registry-contract.md` — **the current bold-flat UI system** (S1-C; revisable like any decision).
 - `2026-05-30-crafty-visual-direction-design.md` — the visual direction (note: the restrained-grade lock was
   REVERSED 2026-06-17; glowier is authorized).

@@ -363,8 +363,8 @@ export function MenuSystem({
           aria-label={t('ui.paused')}
           data-testid="resume-overlay"
           onClick={enterPlay}
-          // Bold-flat scrim — the S1-C locked language bans frosted-glass blur on shipped in-game UI, and
-          // the design-language gate caught the first draft doing it. Same tokens the panels already use.
+          // Bold-flat scrim, not frosted glass: the S1-C language draws in-game UI as solid fills with no blur,
+          // and static-gates.test.js refuses a blurred backdrop on shipped in-game UI. Same tokens the panels use.
           className="fixed inset-0 z-modal flex flex-col items-center justify-center gap-5 bg-ink/75 cursor-pointer"
         >
           {/* `text-text` (#ECECEF), NOT `text-text-inverse` — the inverse token is '#231708', documented in

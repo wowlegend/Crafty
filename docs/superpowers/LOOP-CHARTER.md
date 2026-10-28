@@ -82,9 +82,11 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
   comment+doc truth/polish/patterns) and MAKES taste calls, noting them veto-ably rather than blocking. The guardrails
   that keep aggressive *safe* remain binding: every change RED-first + mutation-proven + full suite green; atomic
   verified checkpoints (auditable, git-reversible, ONE unit/commit); NO silent reversal of a recorded Kevin decision
-  (the set below: a reversal is a new dated DECISIONS entry); force-push, external send and money/accounts/publishing
-  stay Kevin's; a hard delete of a referenced file or a NEW dependency is the command session's call since 2026-10-27,
-  made with care and recorded in DECISIONS (2026-10-28 items 14 and 16); ARCHIVE-over-DELETE for docs.
+  (the set below: a reversal is a new dated DECISIONS entry); Kevin's two bright lines hold (spend no money; never
+  force-push or rewrite pushed history), and account sign-ins stay his because only he can make them; publishing the
+  repo's public face is the session's (DECISIONS 2026-10-28 item 15); a hard delete of a referenced file, an external
+  send or a NEW dependency is the command session's call since Kevin's 2026-10-27 mandate, made with care and
+  recorded in DECISIONS (2026-10-28 items 14 and 16); ARCHIVE-over-DELETE for docs.
   Progress dashboard: RETIRED 2026-10-28 — it had no URL and no reader; archived as
   `docs/archive/LOOP-PROGRESS-2026-10-28.html` (DECISIONS 2026-10-28 item 12). The operator pages live in
   `docs/superpowers/.artifact-sync.json`.
@@ -199,7 +201,8 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
    one this sentence implies, and `Components.jsx` was parked at iter-175 as a risky imperative-loop extraction
    that blocked nothing; a split may still be taken when it pays, keeping the loop's per-frame order) → de-monolith
    is now a DEBT LANE behind the mega-directive, not the spine. B4-v1.5 is later work; the v2 voxel-mutation seam
-   waits on a real-iPad run; S4 (multiplayer, monetization) means servers, payments and accounts, which stay Kevin's.
+   waits on a real-iPad run; S4 (multiplayer, monetization) stays Kevin's because it spends money (servers, payments)
+   and needs account sign-ins only he can make.
 5. **SOTA experience enhancements** (the explicit Kevin mandate — interleave at least one every 2–3
    milestones, don't ghetto them to "later"): §6 backlog — audio/music, game-feel/juice, visual/render
    polish, content variety, UX legibility, i18n.
@@ -285,13 +288,15 @@ Kevin delegated taste authority — the loop replaces his gate with this discipl
   the TASTE review batches. Use stable git refs (`git show <commit>:.../baseline/<frame>.png`), never `current/`.
 - **Audio is a first-class axis** **[ADVISORY — no mechanism]** (it shipped most-neglected): every Aspect gets its motif + verb SFX; the
   WILDHEART roar-set backfill is owed (#74 — the loop now OWNS this decision: do it).
-- **Genuinely-Kevin items** (park + batch, never block the loop) are now only what the session cannot do or may
-  not do: real-device iPad/phone runs and ear checks of the audio mix (no instrument here), and anything spending
-  money / creating accounts / publishing externally (his bright lines). Direction reversals of his recorded
-  decisions (third-person timing, audience, the Ember-Frontier direction), new-direction picks, a NEW dev
-  dependency / test substrate / install, and taste sign-off (final colour/foam taste) were his until 2026-10-27;
-  they are the command session's now (his 2026-10-27 mandate; DECISIONS 2026-10-28 items 14 and 16), each
-  recorded in DECISIONS. Monetization (S4) stays his, because it means payments, accounts and legal terms.
+- **Genuinely-Kevin items** (park + batch, never block the loop) are now only his two bright lines (spend no
+  money; never force-push or rewrite pushed history; DECISIONS, Kevin's 2026-10-27 mandate entry) and what only he can do:
+  real-device iPad/phone runs and ear checks of the audio mix (no instrument here), and account sign-ins.
+  Publishing the repo's public face (README, About line, topics, social preview) is the session's (DECISIONS
+  2026-10-28 item 15). Direction reversals of his recorded decisions (third-person timing, audience, the
+  Ember-Frontier direction), new-direction picks, a NEW dev dependency / test substrate / install, and taste
+  sign-off (final colour/foam taste) became the command session's by Kevin's 2026-10-27 mandate, restated as the
+  standing principle on 2026-10-28 (DECISIONS 2026-10-28 item 14), each recorded in DECISIONS. Monetization (S4)
+  stays his, because it spends money and needs his account sign-ins and legal terms.
   > **⚠️ CORRECTED 2026-07-13 (this line was a LIVE TRAP).** It used to claim `@react-three/test-renderer` was
   > "approved + landed (`0f8cad9`)". **It was REMOVED as unused by `8b6e3a44`** — verified: absent from
   > `package.json`, imported nowhere. That single stale sentence caused an agent to propose a week-sized

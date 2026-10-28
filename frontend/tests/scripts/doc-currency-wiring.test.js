@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isolatedGitEnv } from './_isolatedGit.js';
-import { run, CHECKS, CANONICAL, LOCK_DOCS } from '../../scripts/ci/doc-currency.mjs';
+import { run, CHECKS, CANONICAL, LOCK_DOCS, LOCK_LABELS } from '../../scripts/ci/doc-currency.mjs';
 import { derive as deriveGates, renderBlock as renderGates, END as GATES_END } from '../../scripts/ci/gate-table.mjs';
 import { measure, renderBlock as renderMeasured } from '../../scripts/ci/measure.mjs';
 import { SURFACES, renderBlock as renderReadOrder } from '../../scripts/ci/read-order.mjs';
@@ -248,7 +248,8 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     expect(r.errors).toEqual([]);
   });
 
-  // A label per line, each pattern on its own line at least once, the case-insensitive ones in both cases.
+  // A label per line, each pattern on its own line at least once, the case-insensitive ones in both cases. The last two
+  // lines are one token from the allowed cases: a quote citing another item, and prose that argues against a lock.
   const LOCKED_DOC = [
     '# arch',
     '## Design Language (LOCKED — S1-C)',
@@ -258,9 +259,11 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     'the loop MUST NOT be split',
     "Engine CORE is real — KEEP, don't rewrite",
     'decisions of record (Do Not Relitigate)',
+    'Kevin: "Design Language (LOCKED — S1-C)" (DECISIONS 2026-10-28 item 14)',
+    'do not assume they are irreducible too',
     '',
   ].join('\n');
-  // The same doc, one token reworded per line.
+  // The same doc, one token reworded per line; the quote now cites item 16, the decision that retired the label.
   const FREED_DOC = [
     '# arch',
     '## Design Language (current: S1-C)',
@@ -270,11 +273,23 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     'the loop keeps its order when split',
     'Engine CORE is real — replace it when a rewrite measures better',
     'decisions of record (revisable by a new entry)',
+    'Kevin: "Design Language (LOCKED — S1-C)" (DECISIONS 2026-10-28 item 16)',
+    'do not assume they are irreducible too',
     '',
   ].join('\n');
-  const LOCK_TAIL = "nothing in Crafty is locked; state the decision, its reason, and that it stands while it earns its place (DECISIONS 2026-10-28 item 16).";
+  const LOCK_TAIL =
+    'nothing in Crafty is locked; state the decision, its reason, and that it stands while it earns its place ' +
+    '(DECISIONS 2026-10-28 item 16). To quote a label, cite "item 16" on the same line.';
 
   it('locks: every lock label on a canonical doc errors, naming file:line and the decision that freed it', () => {
+    expect(LOCK_LABELS.map(([label]) => label), 'the six phrasings the PASSED line counts').toEqual([
+      '(LOCKED',
+      'LOCKED —',
+      'IRREDUCIBLE',
+      'MUST NOT be split',
+      "KEEP, don't rewrite",
+      'do not relitigate',
+    ]);
     const root = fixture({ 'memory/ARCHITECTURE.md': LOCKED_DOC });
     const r = run({ root, only: ['locks'] });
     expect(r.checked).toEqual({ locks: LOCK_DOCS.length });
@@ -286,11 +301,12 @@ describe('doc-currency run() — the seam every check is wired into', () => {
       `LOCK LABEL at memory/ARCHITECTURE.md:6: "MUST NOT be split" — ${LOCK_TAIL}`,
       `LOCK LABEL at memory/ARCHITECTURE.md:7: "KEEP, don't rewrite" — ${LOCK_TAIL}`,
       `LOCK LABEL at memory/ARCHITECTURE.md:8: "do not relitigate" — ${LOCK_TAIL}`,
+      `LOCK LABEL at memory/ARCHITECTURE.md:9: "(LOCKED", "LOCKED —" — ${LOCK_TAIL}`,
     ]);
     expect(r.warnings).toEqual([]);
   });
 
-  it('locks: the same doc reworded passes, and so do the decision record and a BLOCKED dash (one token per line from the case above)', () => {
+  it('locks: the same doc reworded passes, and so do a quote citing item 16, lower-case prose, the decision record and a BLOCKED dash (one token per line from the case above)', () => {
     expect(LOCK_DOCS, 'the decision record is the one canonical doc not scanned').toEqual(
       CANONICAL.filter((rel) => rel !== 'docs/superpowers/DECISIONS.md'),
     );
@@ -342,7 +358,9 @@ describe('doc-currency CLI — the call site the pipeline runs', () => {
     expect(warned.map(steady)).toEqual(r.warnings.map((w) => steady(`⚠ ${w}`)));
     if (r.errors.length === 0) {
       expect(p.stdout.trim()).toMatch(new RegExp(`^✓ doc-currency PASSED \\(${CANONICAL.length} canonical docs checked; `));
-      expect(p.stdout, 'the lock check prints its denominator').toContain(`lock labels: 0 in ${r.checked.locks} docs scanned`);
+      expect(p.stdout, 'the lock check prints both denominators').toContain(
+        `lock labels: 0 (${LOCK_LABELS.length} phrasings, ${r.checked.locks} docs)`,
+      );
     }
   });
 

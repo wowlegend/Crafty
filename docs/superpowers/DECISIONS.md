@@ -136,11 +136,18 @@ longer finds the instructions there; none is configured to in this repo.
    read old labels, and the UI-system entry); the coherence-pillars spec (a status line; P3); and six 2026-10-27
    plans (coast-water, combat-stance, encounters-siege, first-minute, harness-sota, material-grammar). **Left as written:** dated
    specs and plans before 2026-10-27, archives, reviews and CHANGELOG, which are records (the INDEX line says their
-   labels bind nothing); this file's own entries; and what stays Kevin's by mechanism or by bright line: real-device
-   feel, the audio mix by ear, money, accounts, external publishing, and S4. **Guard:** `doc-currency` has a `locks`
-   check. It fails when a canonical doc other than this one carries `(LOCKED`, `LOCKED —`, `IRREDUCIBLE`,
-   `MUST NOT be split`, `KEEP, don't rewrite` or `do not relitigate`, printing file:line and pointing here. This file
-   is left out because it records and quotes such labels. The PASSED line prints how many docs the check scanned.
+   labels bind nothing); this file's own entries; and what stays Kevin's: his two bright lines (spend no money; never
+   force-push or rewrite pushed history, the 2026-10-27 mandate entry) and what only he can do (real-device feel, the
+   audio mix by ear, account sign-ins), which is also why S4 stays his. Publishing the repo's public face is the
+   session's (item 15). P4's two invariants (no frequent mid-combat re-mesh; input via intent-abstraction, not
+   `pointerLockElement`) are engineering constraints, not locks: they bind the session as facts about the iPad-class
+   frame budget and input routing, and one may be broken only with a measurement showing that frame budget (or input
+   parity) still holds, recorded here. **Guard:** `doc-currency` has a `locks` check. It fails when a canonical doc
+   other than this one carries one of six phrasings: `(LOCKED` and `LOCKED —` (capitals; the dash may be em or en),
+   `IRREDUCIBLE` (capitals, or "documented irreducible"), and `MUST NOT be split`, `KEEP, don't rewrite` and
+   `do not relitigate` (any case). It prints file:line and points here. A line that cites item 16 may quote a label,
+   which is how a doc quotes Kevin's directive; any other lock wording passes the check. This file is left out
+   because it records and quotes such labels. The PASSED line prints both denominators: the phrasings and the docs.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 

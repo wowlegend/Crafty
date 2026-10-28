@@ -58,6 +58,9 @@ layered on a day-build / night-siege survival loop. All four Aspects SHIPPED (20
    session's since Kevin's 2026-10-27 mandate).
 4. **Engine invariants:** Game-Loop-Isolation (transient reads in hot loops; render JSX never reads
    worker/loop-mutated fields) · NO-RE-MESH from combat systems · capture-determinism · derive-don't-bake.
+   NO-RE-MESH and input via intent-abstraction are P4's engineering constraints, not locks: they bind the command
+   session as facts about the iPad-class frame budget and input routing, and one may be broken only with a
+   measurement showing that frame budget (or input parity) still holds, recorded in DECISIONS.
 5. **Perf envelope discipline:** every render/physics feature states its frame-cost story; measure
    delta-from-baseline when in doubt (the M2 FPS-gate pattern).
 6. **Taste discipline:** reference-lock before building any look; judge IN-WORLD on the real grade;
@@ -144,9 +147,11 @@ gen-perf hardening in S3.
 
 - **Autonomous build loop:** `docs/superpowers/LOOP-CHARTER.md` is the operating constitution (orientation,
   one-verified-unit-per-iteration, priority order, self-gated taste discipline, doc-currency, parking rules).
-  Kevin reviews ASYNC via `docs/superpowers/KEVIN-REVIEW-BATCH.md` + CHANGELOG; only physically-Kevin items
-  block (real-device runs, spend/accounts/publishing). Reversing one of his recorded directional decisions is the
-  command session's call since 2026-10-28, as a new dated DECISIONS entry (DECISIONS 2026-10-28 items 14 and 16).
+  Kevin reviews ASYNC via `docs/superpowers/KEVIN-REVIEW-BATCH.md` + CHANGELOG; only his two bright lines (spend
+  no money; never force-push or rewrite pushed history) and what only he can do (real-device runs, account sign-ins)
+  stay his. Publishing the repo's public face is the session's (DECISIONS 2026-10-28 item 15). Reversing one of his
+  recorded directional decisions became the command session's call by Kevin's 2026-10-27 mandate, restated as the
+  standing principle on 2026-10-28 (DECISIONS 2026-10-28 item 14); each reversal is a new dated DECISIONS entry.
 - **Method:** subagent/workflow-driven design + adversarial review; specs in `docs/superpowers/specs/`,
   plan docs in `docs/superpowers/plans/`; the 4-piece (`memory/`) carries session state across compaction.
 - **Decisions of record (each stands while it earns its place; a reversal is a new dated DECISIONS entry naming the

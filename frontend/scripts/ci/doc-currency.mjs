@@ -442,16 +442,21 @@ function checkSections(root, out) {
 // Nothing in Crafty is locked (DECISIONS 2026-10-28 items 14 and 16). A canonical doc states a decision, its reason and
 // that it stands while it earns its place; a lock label reads to the next agent as a ban. DECISIONS.md is the record
 // and quotes the labels it retired, so it is not scanned.
+// Blind spot: only these six phrasings. "locked" in prose, "do NOT change", "Kevin's call" and any new wording pass.
 export const LOCK_LABELS = Object.freeze([
   ['(LOCKED', /\(LOCKED\b/],
   // \b keeps "BLOCKED —" out (memory/ACTIVE_PLAN.md uses it for a pinned dependency).
   ['LOCKED —', /\bLOCKED\s*[—–]/],
-  ['IRREDUCIBLE', /\birreducible\b/i],
+  // The label is the capitalised word or "documented irreducible"; a lower-case "irreducible" in prose, such as
+  // "do not assume they are irreducible too", argues against a lock rather than stating one.
+  ['IRREDUCIBLE', /\bIRREDUCIBLE\b|\b[Dd]ocumented irreducible\b/],
   ['MUST NOT be split', /\bmust not be split\b/i],
   ["KEEP, don't rewrite", /\bkeep, don['’]t rewrite\b/i],
   ['do not relitigate', /\bdo not relitigate\b/i],
 ]);
 export const LOCK_DOCS = Object.freeze(CANONICAL.filter((rel) => rel !== 'docs/superpowers/DECISIONS.md'));
+// A doc quotes Kevin's directive, which names a label, by citing the decision that retired it on the same line.
+const QUOTES_THE_DECISION = /\bitem 16\b/;
 
 /** checked.locks = the canonical docs read for lock labels (a missing one is reported by `dangling`). */
 function checkLocks(root, out) {
@@ -461,11 +466,13 @@ function checkLocks(root, out) {
     if (!existsSync(abs)) continue;
     scanned += 1;
     readFileSync(abs, 'utf8').split('\n').forEach((line, i) => {
+      if (QUOTES_THE_DECISION.test(line)) return;
       const hits = LOCK_LABELS.filter(([, re]) => re.test(line)).map(([label]) => `"${label}"`);
       if (hits.length === 0) return;
       out.errors.push(
         `LOCK LABEL at ${rel}:${i + 1}: ${hits.join(', ')} — nothing in Crafty is locked; state the decision, its ` +
-          `reason, and that it stands while it earns its place (DECISIONS 2026-10-28 item 16).`,
+          `reason, and that it stands while it earns its place (DECISIONS 2026-10-28 item 16). To quote a label, ` +
+          `cite "item 16" on the same line.`,
       );
     });
   }
@@ -505,6 +512,6 @@ if (invokedDirectly()) {
 
   console.log(
     `✓ doc-currency PASSED (${CANONICAL.length} canonical docs checked; ${danglingSections} dangling ` +
-      `\u00a7 citation(s), ratchet ${ANCHOR_FROZEN}; lock labels: 0 in ${checked.locks} docs scanned)`,
+      `\u00a7 citation(s), ratchet ${ANCHOR_FROZEN}; lock labels: 0 (${LOCK_LABELS.length} phrasings, ${checked.locks} docs))`,
   );
 }

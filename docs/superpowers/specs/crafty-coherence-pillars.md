@@ -4,7 +4,11 @@
 > unused until its blind calibration passes. Neither binds the command session: it may enhance, replace or delete
 > anything, shipped player-facing features included, recording the call in `docs/superpowers/DECISIONS.md` with its
 > reason and the lived or e2e proof that nothing still promised depends on the cut (DECISIONS 2026-10-28 items 14
-> and 16). The rules below about what may not be cut bind the automated audit only.
+> and 16). The rules below about what may not be cut bind the automated audit only. P4's two invariants (no
+> frequent mid-combat re-mesh; input via intent-abstraction, not `pointerLockElement`) are different: they are
+> engineering constraints, not locks, facts about the iPad-class frame budget and input routing that bind the
+> session too. One may be broken only with a measurement showing that frame budget (for the second, input parity)
+> still holds, recorded in DECISIONS.
 >
 > **Status (2026-06-10): ADOPTED + IN-USE as the coherence anchor; the destructive-CUT GATE is PARKED pending calibration.** Kevin engaged + revised the pillars (P5 audience/accessibility/no-pay-to-win revisions, `6a305bb`; monetization dropped from P5 → an S4 decision, `bf6eb30`), and they are the active QA-cadence + content-audit anchor (the 2026-06-03 pre-S2-B content audit ran against them, `793b9fd`) — so the pillars themselves are **effectively ratified / in active use**. What remains PARKED: the **coherence GATE governing destructive CUTS** is inadmissible until a blind calibration run scores **100% on the must-NOT-cut negatives** (the pillars' own bound #1, the anti-99.2%-false-positive guard) — that calibration has NOT run, so the cut-gate MUST NOT govern any cut yet. (Original authoring status below.)
 >
@@ -55,7 +59,7 @@ Not in tension — they govern **different axes**. **Less-is-more governs the CO
 - **Default-KEEP under uncertainty; burden of proof on the cutter; tie → DEEPEN.** Accessibility/legibility and ambition (all of P0–P5) keep default-KEEP — a less-legible-than-ideal verb for the wide teen/adult audience is a DEEPEN, never a cut.
 - **ORPHAN = a provable empty-set claim** — CUT-eligible only if the cutter enumerates **every pillar AND every scheduled build-slot (S2-A..S2-B4)** and shows each is a miss. Any plausible map → DEEPEN/PARK.
 - **Dead-path test is TEMPORAL, not static** — a "feeds-nothing/inert/never-fired" path is CUT-eligible only if **NOT on the written build schedule**; scheduled scaffold = SCAFFOLD-KEEP. (The inert talent tree + never-fired dangerLevel were SCAFFOLD-KEEP, not CUT — both since wired.)
-- **Aesthetic verdicts quarantined from autonomous CUT** — P3-taste + P5-joy sub-tests ("tasteful," "joyful," "magnitude matches stakes," metaphor-break) → **FLAG-FOR-HUMAN / DEEPEN, never an autonomous CUT** by the audit (taste was Kevin's Layer-5 reserve when this was written; since 2026-10-28 it is the command session's own call, DECISIONS 2026-10-28 item 14). AI hard-CUT authority on P3/P5 is restricted to **greppable** sub-tests (token/icon-chain rendering, no-raw-hex, zero-emoji-in-src, zh-CN string path, no-permadeath/no-sell-power).
+- **Aesthetic verdicts quarantined from autonomous CUT** — P3-taste + P5-joy sub-tests ("tasteful," "joyful," "magnitude matches stakes," metaphor-break) → **FLAG-FOR-HUMAN / DEEPEN, never an autonomous CUT** by the audit (taste was Kevin's Layer-5 reserve when this was written; it became the command session's own call by Kevin's 2026-10-27 mandate, restated as the standing principle in DECISIONS 2026-10-28 item 14). AI hard-CUT authority on P3/P5 is restricted to **greppable** sub-tests (token/icon-chain rendering, no-raw-hex, zero-emoji-in-src, zh-CN string path, no-permadeath/no-sell-power).
 - **De-correlate judges + break generator=judge identity** — the agent that wrote a feature is **ineligible to vote** on its disposition; prefer cross-family judges (headless-validator path); a **mandatory adversarial third role** refutes the verdict (steelman KEEP-vs-CUT and CUT-vs-KEEP). Track inter-rater agreement both directions (falling = vague pillars; suspiciously-high CUT-agreement = correlated blindness → human-sample).
 - **Pillars RIGID within a phase, RE-RATIFIED at each stream/Aspect boundary.** ESCALATE-TO-RESCOPE trigger = **two independent novel seeds in the same off-pillar direction** (escalate early, cut late).
 
