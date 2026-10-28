@@ -142,7 +142,9 @@ beforeAll(() => {
   writeFileSync(join(root, 'docs/superpowers/page.html'), PAGE);
   fixtureGit(root, 'add', '-A');
   // The published commit carries FIXED dates, months apart and both far from now, so a stamp's time can be told
-  // apart from the author time and from the wall clock (see PUBLISHED_AT).
+  // apart from the author time and from the wall clock (see PUBLISHED_AT). Raw git because fixtureGit cannot pass the
+  // date variables; it is isolated all the same (cwd is the fixture repo, env is isolatedGitEnv).
+  // eslint-disable-next-line no-restricted-syntax
   execFileSync('git', ['commit', '-q', '-m', 'published'], {
     cwd: root, encoding: 'utf8', env: isolatedGitEnv({ GIT_AUTHOR_DATE: '2025-06-07T08:09:10Z', GIT_COMMITTER_DATE: PUBLISHED_COMMITTED }),
   });
