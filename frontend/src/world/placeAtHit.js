@@ -32,8 +32,10 @@ export function placeAtHit(h, { post, playPlace }) {
     const tz = Math.floor(placePos.z);
 
     // Transient getState reads, not a subscription, so Game-Loop-Isolation holds. buildFootprint caps the cell count;
-    // its header says why the cap is an economy decision, given the per-cell debit below.
-    const cells = buildFootprint(store.buildingMode || 'single', store.buildSize || 1, { x: tx, y: ty, z: tz }, h.normal);
+    // its header says why the cap is an economy decision, given the per-cell debit below. A chest is one storage
+    // container keyed by its own cell, so it always places as a single cell at the aimed one, whatever the build mode.
+    const mode = type === 'chest' ? 'single' : store.buildingMode || 'single';
+    const cells = buildFootprint(mode, store.buildSize || 1, { x: tx, y: ty, z: tz }, h.normal);
 
     const newBlocks = new Map(store.worldBlocks);
     let placed = 0;

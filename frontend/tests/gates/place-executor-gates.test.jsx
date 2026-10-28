@@ -84,6 +84,15 @@ describe('placeAtHit spends the block it places', () => {
     expect(S().worldBlocks.size, 'the store recorded more cells than were paid for').toBe(5);
     expect(notes, 'a placement that placed something raised a refusal').toEqual([]);
   });
+
+  it('a chest places as one cell at the aimed cell in any build mode, and that cell is its storage chest', () => {
+    useGameStore.setState({ selectedBlock: 'chest', buildingMode: 'floor', buildSize: 3 });
+    withBlocks({ chest: 9 });
+    expect(placeAtHit(hitAt(), { post }), 'a chest placed more than one cell').toBe(1);
+    expect(S().inventory.blocks.chest, 'a chest placement spent more than one chest').toBe(8);
+    expect([...S().worldBlocks.keys()], 'the chest voxel is not at the aimed cell').toEqual(['10_20_10']);
+    expect([...S().chests.keys()], 'the storage chest is not the placed cell').toEqual(['10_20_10']);
+  });
 });
 
 describe('every hotbar block can be had, so no slot only ever refuses', () => {
