@@ -162,8 +162,12 @@ jobs:
       # in a single look a root cause that instead took three parallel investigations to corner, one
       # of which reached a conclusion the timing data refuted. An upload path is a denominator too.
       # Coverage is excluded: it is per-test JSON that the reachability report already consumed.
+      # AND ON CANCELLED. A shard that hits timeout-minutes concludes `cancelled`, not `failure`, so `failure()` alone
+      # threw away every trace of the attempts that ate its time: run 40615649137 lost four shards' worth (composer-dpr's
+      # two hung attempts, three attempts each of lightning, heavy-melee and tier-governor) with total_count 0
+      # artefacts. The steps after a timeout do run (the flaky report above ran in all four).
       - uses: actions/upload-artifact@v7
-        if: failure()
+        if: failure() || cancelled()
         with:
           name: playwright-traces-shard-${{ matrix.shard }} # per-shard: a fixed name collides across the matrix
           path: |

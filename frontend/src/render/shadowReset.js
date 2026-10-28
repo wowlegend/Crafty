@@ -7,7 +7,9 @@
 // the new size on its next shadow render; the projection is refreshed here because pierced shadow-camera-* props
 // never refresh it.
 
-/** Drop `shadow`'s render target (three re-allocates it at the current mapSize) and refresh its projection. */
+/** Drop `shadow`'s render target (three re-allocates it at the current mapSize), refresh its projection, and ask for a
+ *  render: the shadow renders on demand now (render/shadowSchedule.js), so a dropped map would otherwise stay empty
+ *  until the next scheduled render. */
 export function resetShadowForConfig(shadow) {
   if (!shadow) return false;
   const had = !!shadow.map;
@@ -16,5 +18,6 @@ export function resetShadowForConfig(shadow) {
     shadow.map = null;
   }
   shadow.camera?.updateProjectionMatrix?.();
+  shadow.needsUpdate = true;
   return had;
 }

@@ -5,6 +5,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber';
 import { Outlines } from '@react-three/drei';
 import * as THREE from 'three';
+// The boss's body light and each fireball's light mount with them: from the fixed light pool (render/lightPool.jsx).
+import { PooledLight } from './lightPool.jsx';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
 import { bossEmissiveIntensity, OUTLINE } from './characterStyle';
@@ -562,7 +564,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                     <sphereGeometry args={[0.22, 8, 8]} />
                     <meshBasicMaterial color={eyeColor} toneMapped={false} />
                 </mesh>
-                <pointLight color={phase.color} intensity={2.5} distance={15} />
+                <PooledLight color={phase.color} intensity={2.5} distance={15} />
                 {/* iter-172 dragon silhouette features (horns / tail / back-ridge) — torso material so
                     they flash + phase-color with the body; the boss outline carries the silhouette. */}
                 {DRAGON_FEATURES.map((f, i) => (
@@ -587,7 +589,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 <mesh key={f.id} ref={el => { if (el) fireballMeshes.current[f.id] = el; else delete fireballMeshes.current[f.id]; }} position={f.position}>
                     <sphereGeometry args={[0.45, 12, 12]} />
                     <meshBasicMaterial color="#f97316" toneMapped={false} />
-                    <pointLight color="#f97316" intensity={2.0} distance={6} />
+                    <PooledLight color="#f97316" intensity={2.0} distance={6} />
                 </mesh>
             ))}
 

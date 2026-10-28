@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
 import { Slot, Icon } from './primitives/index.js';
+import { subscribeHudTick } from './hudTicker.js';
 
 // The signature-ability action bar with CSS conic-gradient radial cooldown sweeps. Reads the
 // store's abilityCooldowns mirror (written ~6.7x/s by Components.jsx) — never the component-local
@@ -24,15 +25,19 @@ export const AbilityBar = React.memo(() => {
     // every time and the sweep ran through every capture. Entering capture neither stopped it nor reset
     // it. The same shape appears wherever a mount-time read stands in for a runtime one; the flag has to
     // be consulted where the work happens.
-    let raf;
+    //
+    // ONE CLOCK, WRITE ON CHANGE (plan 2026-10-27-crafty-steady-cool item f): this was its own rAF at the display rate
+    // (120 Hz on ProMotion), outside the frame cap, writing every wedge's style every vsync. It now ticks on
+    // ui/hudTicker.js — the capped canvas's rendered frames, or rAF under Unlimited — and writes a style only when its
+    // value changed.
+    const set = (el, prop, v) => { if (el.style[prop] !== v) el.style[prop] = v; };
     const tick = () => {
-      raf = requestAnimationFrame(tick);
       if (isCaptureMode()) {
         // A DECLARED RESTING SWEEP: every wedge cleared. Stopping the loop instead would leave each
         // wedge at whatever fraction the run had reached, and boot length varies per process.
         for (const s of SLOTS) {
           const el = sweepRefs.current[s.key];
-          if (el) el.style.opacity = '0';
+          if (el) set(el, 'opacity', '0');
         }
         return;
       }
@@ -41,15 +46,20 @@ export const AbilityBar = React.memo(() => {
         const el = sweepRefs.current[s.key];
         if (!el) continue;
         const cd = cds[s.key];
-        if (!cd || cd.ready || !cd.duration) { el.style.opacity = '0'; continue; }
+        if (!cd || cd.ready || !cd.duration) { set(el, 'opacity', '0'); continue; }
         const frac = Math.min(1, Math.max(0, cd.remaining / cd.duration));
-        el.style.opacity = '1';
-        // conic sweep from top, clockwise; the dark wedge shrinks as the cooldown elapses
-        el.style.background = `conic-gradient(from 0deg, rgba(0,0,0,0.62) ${frac * 360}deg, transparent ${frac * 360}deg)`;
+        set(el, 'opacity', '1');
+        // conic sweep from top, clockwise; the dark wedge shrinks as the cooldown elapses. The last value written is
+        // kept on the element (the browser re-serialises style.background, so it cannot be compared directly).
+        const bg = `conic-gradient(from 0deg, rgba(0,0,0,0.62) ${frac * 360}deg, transparent ${frac * 360}deg)`;
+        if (el.dataset.sweep !== bg) {
+          el.dataset.sweep = bg;
+          el.style.background = bg;
+        }
       }
     };
     tick();
-    return () => cancelAnimationFrame(raf);
+    return subscribeHudTick(tick);
   }, []);
 
   // SUBSCRIBE to a STABLE membership key so the bar re-renders when an Aspect ability is unlocked/lost.

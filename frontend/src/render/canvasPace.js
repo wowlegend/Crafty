@@ -19,17 +19,34 @@
 /** Frames a second the game canvas draws while the title screen covers it. */
 export const TITLE_FPS = 10;
 
+// PACING BEYOND THE TITLE (plan docs/superpowers/plans/2026-10-27-crafty-steady-cool.md, item g). A panel covers the
+// canvas with a full-screen bg-ink/75 scrim (ui/GamePanels.jsx): the world stays visible through it, so it keeps moving,
+// at half the rate. An unfocused desktop window is not being looked at: the title's pace. Neither ever draws ABOVE the
+// player's own cap (the frame-cap e2e runs a 1 fps test cap and opens Show Stats under it).
+
+/** Frames a second the game canvas draws behind a panel. */
+export const PANEL_FPS = 30;
+/** Frames a second the game canvas draws while a desktop window is unfocused. */
+export const BLUR_FPS = 10;
+
+const atMost = (fps, frameCap) => (frameCap > 0 ? Math.min(fps, frameCap) : fps);
+
 /**
- * PURE. The Canvas `frameloop`, the FrameCap rate, and whether the tier governor may judge the frames drawn.
- * @param {{ frameCap: number, titleCovering: boolean, harness: boolean }} s
- *   frameCap: the player's setting (60, or 0 = unlimited); titleCovering: the title screen is up; harness: the
- *   capture harness or the perf probe is running (they step or time their own frames — never paced).
- * @returns {{ loop: 'always' | 'demand', fps: number, governor: boolean }} fps 0 = not paced. governor: the frame
- *   rate is the machine's to report (the player's cap is a display the governor's bounds already know).
+ * PURE. The Canvas `frameloop`, the FrameCap rate, and whether the tier governor may be mounted at all.
+ * @param {{ frameCap: number, titleCovering: boolean, panelCovering?: boolean, unfocused?: boolean, harness: boolean }} s
+ *   frameCap: the player's setting (60, or 0 = unlimited); titleCovering: the title screen is up; panelCovering: a panel
+ *   scrim covers the canvas; unfocused: a desktop window without focus; harness: the capture harness or the perf probe
+ *   is running (they step or time their own frames — never paced).
+ * @returns {{ loop: 'always' | 'demand', fps: number, governor: boolean }} fps 0 = not paced. governor: false where the
+ *   whole canvas is ours to pace (a harness, the title); the player's cap is a display the governor's bounds already
+ *   know. A panel or an unfocused window leaves it true: whether a pace BELOW the cap may be sampled is the second,
+ *   separate rule GameScene also applies — render/tierGovernor.js governorSamples.
  */
-export function paceFor({ frameCap, titleCovering, harness }) {
+export function paceFor({ frameCap, titleCovering, panelCovering = false, unfocused = false, harness }) {
   if (harness) return { loop: 'always', fps: 0, governor: false };
   if (titleCovering) return { loop: 'demand', fps: TITLE_FPS, governor: false };
+  if (unfocused) return { loop: 'demand', fps: atMost(BLUR_FPS, frameCap), governor: true };
+  if (panelCovering) return { loop: 'demand', fps: atMost(PANEL_FPS, frameCap), governor: true };
   if (frameCap > 0) return { loop: 'demand', fps: frameCap, governor: true };
   return { loop: 'always', fps: 0, governor: true };
 }

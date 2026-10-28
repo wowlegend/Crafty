@@ -175,7 +175,10 @@ describe('cost', () => {
 
 describe('the far field is drawn, from the real world, hazed like the terrain (weak, structural)', () => {
   it('GameScene mounts it at the tier\'s render distance', () => {
-    expect(carriersOf(/<FarField renderDistance=\{q\.renderDistance\} \/>/)).toEqual(['GameScene.jsx']);
+    // RE-POINTED 2026-10-27 (plan 2026-10-27-crafty-steady-cool item d): GameScene's `renderDistance` is
+    // renderDistanceFor(tier, pin) — the boot tier's on a coarse pointer, so a runtime step there does not rebuild it.
+    expect(carriersOf(/<FarField renderDistance=\{renderDistance\} \/>/)).toEqual(['GameScene.jsx']);
+    expect(carriersOf(/const renderDistance = renderDistanceFor\(qualityTier, renderDistancePin\);/)).toEqual(['GameScene.jsx']);
   });
 
   it('it re-centres through snapCentre and builds from the REAL column sampler', () => {
