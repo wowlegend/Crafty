@@ -176,7 +176,7 @@ describe('a press the bar cannot pay for', () => {
     expect(emberShort('imbue', at(0, { imbueArmed: true }))).toBe(false);
   });
 
-  it('X is short only when neither of its spends could start (the snare is the cheaper)', () => {
+  it('X is short at the press below the snare\'s price, the cheaper of its spends; from there a fuse\'s want is the frame loop\'s to say', () => {
     expect(emberShort('snare', at(SNARE_COST - 1))).toBe(true);
     expect(emberShort('snare', at(SNARE_COST))).toBe(false);
     expect(FUSE_COST).toBeGreaterThan(SNARE_COST);

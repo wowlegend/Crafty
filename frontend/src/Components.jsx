@@ -861,7 +861,7 @@ export const Player = ({ isWorldBuilt }) => {
 
       // S2-B3-M6: FUSE — the X key's second life via a deterministic arbiter: a valid SNARE
       // target WINS; with none, holding X by two bound creatures braids them into a hybrid.
-      // The channel only STARTS when fusion CAN complete (bank + roster entry + proximity).
+      // The channel only STARTS when fusion CAN complete (a recipe for the pair near the player) and the bar pays.
       let fusePair = null;
       if (!snareTargetId && alliesQuery.entities.length >= 2) {
         const pp = stv.playerPosition;
@@ -873,19 +873,21 @@ export const Player = ({ isWorldBuilt }) => {
           if (near.length >= 2) fusePair = [near[0].e, near[1].e];
         }
       }
-      const canStartFuse = !!fusePair && canAfford(stv.ember, FUSE_COST)
-        && !!lookupHybrid(fusePair[0].baseType || fusePair[0].type, fusePair[1].baseType || fusePair[1].type);
       const { sm: fsm, action: faction } = decideFuse(fuseSMRef.current, {
         fuseEdge: snareEdge, // the same key edge; the arbiter above kept it exclusive
         active: vin.active,
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
-        canStart: canStartFuse,
+        canStart: !!fusePair && !!lookupHybrid(fusePair[0].baseType || fusePair[0].type, fusePair[1].baseType || fusePair[1].type),
+        // Read now, not from stv: this frame's grab or bind may already have spent from the bar.
+        canPay: canAfford(useGameStore.getState().ember, FUSE_COST),
         pairNear: !!fusePair,
       });
       fuseSMRef.current = fsm;
+      // The keydown's notice covers a bar below the snare's price; between the two prices only this frame knows X was a fuse.
+      if (faction === 'short') notifyDenied('no-ember');
       // As the bind: vetted when the channel started, paid only if the bar still covers it now.
-      if (faction === 'fuse' && fusePair && !stv.spendEmber(FUSE_COST)) {
+      else if (faction === 'fuse' && fusePair && !stv.spendEmber(FUSE_COST)) {
         notifyDenied('no-ember');
       } else if (faction === 'fuse' && fusePair) {
         const hy = applyFusion(ecs, fusePair[0], fusePair[1]);

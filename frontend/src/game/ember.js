@@ -94,9 +94,11 @@ export function emberFromSave(progression, fallback = 0) {
 }
 
 /**
- * Whether pressing `verb` now asks for a spend the bar cannot pay. A press that releases (ending a beast form, dropping
- * a held block, disarming an imbue) is not a spend. X starts a snare or a fuse; the snare is the cheaper, so X is short
- * only when neither could start.
+ * Whether pressing `verb` asks for a spend the bar cannot pay, as far as the press alone can tell. A press that releases
+ * (ending a beast form, dropping a held block, disarming an imbue) is not a spend. X starts a snare or a fuse and the
+ * snare is the cheaper, so below the snare's price X is short whatever it would start. Between the two prices only a fuse
+ * is short, and whether X would start one (a pair near the player with a recipe) is known only to the frame loop, which
+ * raises that notice itself (game/soulbind.js decideFuse, 'short').
  */
 export function emberShort(verb, { ember, beastFormActive, voidhandHeld, imbueArmed } = {}) {
   switch (verb) {

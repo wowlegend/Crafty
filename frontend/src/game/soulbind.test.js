@@ -52,8 +52,37 @@ describe('S2-B3-M4: the bind action preserves targetId for the apply-site', () =
   });
 });
 
+describe('a fuse the bar cannot pay for', () => {
+  // canStart: a pair near the player whose fusion has a recipe; canPay: the bar holds FUSE_COST.
+  const press = { fuseEdge: true, active: true, alive: true, now: 10, canStart: true, canPay: false, pairNear: true };
+
+  it('a press that would start the channel but for the price is short: nothing starts and no cooldown is charged', () => {
+    const { sm, action } = decideFuse(makeFuseState(), press);
+    expect(action, 'a fuse the bar cannot pay for was refused in silence, or started').toBe('short');
+    expect(sm.channeling).toBe(false);
+    expect(sm.cooldownUntil).toBe(0);
+  });
+
+  it('the same press with the price in the bar starts the channel', () => {
+    expect(decideFuse(makeFuseState(), { ...press, canPay: true }).action).toBe('startFuse');
+  });
+
+  it('a press that would not start the channel whatever the bar holds is not short', () => {
+    for (const [why, ctx] of [
+      ['a pair with no recipe', { ...press, canStart: false }],
+      ['no pair near', { ...press, pairNear: false }],
+      ['no press', { ...press, fuseEdge: false }],
+      ['input released', { ...press, active: false }],
+      ['dead', { ...press, alive: false }],
+    ]) {
+      expect(decideFuse(makeFuseState(), ctx).action, `${why} blamed the bar`).toBe('none');
+    }
+    expect(decideFuse({ ...makeFuseState(), cooldownUntil: 20 }, { ...press, now: 19 }).action, 'a press in the cooldown blamed the bar').toBe('none');
+  });
+});
+
 describe('S2-B3-M6: the FUSE channel (the snare reducer twin)', () => {
-  const fbase = { fuseEdge: false, active: true, alive: true, now: 10, canStart: false, pairNear: false };
+  const fbase = { fuseEdge: false, active: true, alive: true, now: 10, canStart: false, canPay: true, pairNear: false };
   it('arms ONLY when canStart && pairNear (bank + roster entry + proximity all pre-vetted)', () => {
     expect(decideFuse(makeFuseState(), { ...fbase, fuseEdge: true }).action).toBe('none');
     expect(decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairNear: true }).action).toBe('startFuse');

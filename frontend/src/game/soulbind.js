@@ -65,10 +65,11 @@ export function makeFuseState() {
   return { channeling: false, channelStart: 0, cooldownUntil: 0 };
 }
 
-/** decideFuse(sm, ctx) -> { sm, action }; action: 'none'|'startFuse'|'fuseBreak'|'fuse'|'cancel'.
- *  ctx: { fuseEdge, active, alive, now, canStart, pairNear }. canStart is PRE-VETTED at the
- *  apply-site (bank + a roster entry + pair proximity) — the channel only STARTS when fusion
- *  CAN complete, so no consumed-nothing refuse state exists (design simplification, M6 plan). */
+/** decideFuse(sm, ctx) -> { sm, action }; action: 'none'|'startFuse'|'short'|'fuseBreak'|'fuse'|'cancel'.
+ *  ctx: { fuseEdge, active, alive, now, canStart, canPay, pairNear }. canStart: a pair near the player whose fusion has
+ *  a recipe, so the channel starts only when fusion can complete. canPay: the bar holds FUSE_COST now. A press that would
+ *  start the channel but for the price is 'short', so the press can say why it did nothing; a pair with no recipe is not,
+ *  since no bar would start that fuse. */
 export function decideFuse(sm, ctx) {
   const out = { ...sm };
 
@@ -84,6 +85,7 @@ export function decideFuse(sm, ctx) {
   }
 
   if (ctx.fuseEdge && ctx.now >= sm.cooldownUntil && ctx.alive && ctx.active && ctx.canStart && ctx.pairNear) {
+    if (!ctx.canPay) return { sm: out, action: 'short' };
     out.channeling = true;
     out.channelStart = ctx.now;
     return { sm: out, action: 'startFuse' };
