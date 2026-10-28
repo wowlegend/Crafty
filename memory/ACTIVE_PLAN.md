@@ -12,12 +12,13 @@ oracle retired, harness to ~10 gates), Wave 3 the First Night, road of light, fi
 only agent-instruction file; the former AGENTS.md copy, the symlink and its directory are gone. Any plan, audit or queue dated
 before this that says AGENTS.md means `CLAUDE.md`. The generators (measure, gate-table, read-order) write into it.
 
-**Landing:** each lane is a PR; CI ~8 min since the e2e dpr cap (ae2e10a5); land by local merge commit, CI on the exact
-commit (land/2026-10-28 until the required check is on), push main. Review cadence (DECISIONS item 13/the speed plan):
-one static+dynamic round on game code, then `/code-review xhigh` on the PR range; tests/claims-only fixes get the
-author's mutation run. Residue: memory/STATUS.md G-ledger (to become a single registry file, plan item #30).
-Since 2026-10-28 ~11:12Z main is branch-protected: required check `ci ok` (strict, admins included, no force push or
-deletion). Land = merge into a land/<date> branch, push, green `ci ok` on that exact sha, `git merge --ff-only`, push.
+**Landing (since 2026-10-28 ~18:35Z, one CI run per landing):** each lane is a PR. Merge main into the lane's branch
+locally, push the branch (its PR CI runs once, on that exact sha), and when `ci ok` is green there and main has not moved,
+`git merge --ff-only` main to it and push; GitHub marks the PR merged. A change with no PR (the Command Record, registry
+closures) uses a land/<date> branch the same way. If main moves first, merge it in again and re-run; cancel a run whose
+base is already stale. Main is branch-protected: required check `ci ok` (strict, admins included, no force push or
+deletion). Review cadence (DECISIONS item 13): one static+dynamic round on game code, then `/code-review xhigh` on the
+PR range; tests/claims-only fixes get the author's mutation run. Open work lives in `memory/registry.jsonl`.
 
 **Owed after Wave 1 lands (from the pause/cuts/public/instruments re-reviews, 2026-10-28; LOW, none blocks):**
 - W3-D row: name beast form, snare and fuse timers (they still run through a pause; Components.jsx belongs to the

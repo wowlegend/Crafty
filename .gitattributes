@@ -1,0 +1,4 @@
+# The registry is append-mostly: concurrent lanes each add rows at its end, so a plain 3-way merge conflicts on
+# every lane landing. union keeps both sides; a row edited on both sides then repeats its id, and registry-harvest
+# (in the CI unit run) refuses a repeated id.
+memory/registry.jsonl merge=union
