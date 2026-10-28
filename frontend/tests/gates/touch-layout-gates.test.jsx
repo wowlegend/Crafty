@@ -580,5 +580,7 @@ describe('round 2 — the spell row and the top band, swept across every height 
     const offScreen = outside.filter((row) => spellRow.test(row));
     expect(offScreen.filter((row) => heightOf(row) >= ASPECT_ROW_FLOOR_PX), 'the spell row left the screen at a supported height').toEqual([]);
     expect(outside.filter((row) => !spellRow.test(row)), 'something other than the spell row left the screen').toEqual([]);
-  });
+    // Its own budget, not the suite's 20 s: 181 full renders took 5.9 s alone and 20.8-22.6 s in a pre-commit full suite
+    // at load 100-165 (2026-10-28), which failed the commit with every assertion green. The sweep stays exhaustive.
+  }, 90_000);
 });
