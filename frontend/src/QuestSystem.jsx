@@ -37,9 +37,8 @@ export const QUEST_LIST = [
     { id: 'spider_hunter', title: 'Spider Hunter', icon: 'spider', description: 'Defeat 8 spiders', type: 'kill_type', mobType: 'spider', target: 8, xpReward: 100, tier: 2 },
     { id: 'pilgrim', title: 'Pilgrimage', icon: 'compass', description: 'Reach a frontier shrine', type: 'reach_shrine', target: 1, xpReward: 100, tier: 2, itemReward: { item: 'Iron Chestplate', count: 1 } },
     { id: 'collector', title: 'Collector', icon: 'coins', description: 'Open 5 treasure chests', type: 'chest_open', target: 5, xpReward: 80, tier: 2 },
-    // Survival-progression: surviving the night siege is now a tracked GOAL (ties the onboarding promise +
-    // the siege/dawn audio to the quest loop). Driven by the dawn transition (onNightSurvived), tier >= 2 so
-    // the initial active set (tier-1 first-3) is unchanged -> capture frames stable.
+    // Surviving the night siege is a tracked goal, driven by the dawn transition (onNightSurvived). Tier 2 keeps it out
+    // of a new game's first three quests, which are the first three tier-1 rows above.
     { id: 'nightwatch', title: 'Nightwatch', icon: 'star', description: 'Survive 3 nights', type: 'survive_nights', target: 3, xpReward: 120, tier: 2 },
     // A targeted hunt for the charred siege husk (the night-siege themed hostile).
     { id: 'ember_hunter', title: 'Ember Hunter', icon: 'skull', description: 'Defeat 10 emberhusks', type: 'kill_type', mobType: 'emberhusk', target: 10, xpReward: 130, tier: 2 },
@@ -143,7 +142,7 @@ const nextQuest = (claimedIds, active) => {
     };
 };
 
-// A saved feed can come back short: a save's active entry for a quest the Cut retired is held out of it
+// A saved feed can come back short: a save's active entry for a retired quest is held out of it
 // (game/saveSchema.js RETIRED_QUEST_IDS). A claim only ever refills one slot, so a short feed would stay short; it is
 // topped up to MAX_ACTIVE_QUESTS on load, the way a claim refills.
 const fillFeed = (quests, completedQuestIds) => {
