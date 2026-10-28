@@ -44,10 +44,10 @@ export function makeVoidhandState() {
  * decideVoidhand(sm, ctx) -> { sm, action }.
  * ctx: { held, grabEdge(pressed this frame), attack(edge), cast(edge), active(input live), alive, now, canGrab }
  * action: 'none' | 'startGrab' | 'cancel' | 'grab' | 'hurl' | 'slam' | 'drop'
- *   - 'grab'  -> Components spawns the phantom + setVoidhandHeld(true) + spends GRAB_COST kinetic
+ *   - 'grab'  -> Components spawns the phantom + setVoidhandHeld(true) + spends GRAB_COST from the ember bar
  *   - 'hurl'/'slam' -> launch the phantom (the 2 attack intents re-skinned) + setVoidhandHeld(false)
  *   - 'drop'/'cancel' -> despawn the phantom + setVoidhandHeld(false)
- * `canGrab` is the gate other layers compose (the kinetic.js GRAB_COST bank + the voidhand_grasp talent).
+ * `canGrab` is the gate other layers compose (the ember bar holding GRAB_COST + the voidhand_grasp talent).
  */
 export function decideVoidhand(sm, ctx) {
   const out = { ...sm };
