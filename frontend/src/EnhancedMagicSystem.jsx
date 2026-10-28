@@ -46,6 +46,8 @@ export const EnhancedMagicSystem = React.memo(() => {
 
   const projectilesRef = useRef([]);
   const projectilesDirty = useRef(false);
+  // DEV only: where the last few spells ENDED, and what ended them (the readSpentProjectiles hook below).
+  const spentRef = useRef([]);
 
 
   // Fire DoT tickers are owned by a registry so an unmount mid-burn can stop them all — otherwise a burn
@@ -55,11 +57,17 @@ export const EnhancedMagicSystem = React.memo(() => {
   useEffect(() => () => burnManagerRef.current?.stopAll(), []);
   // DEV: the live spells, read-only, for the mob-floor E2E (R7.9) — a cast under a roof must FLY, and only the
   // projectile's own path can show it. A copy, so a spec cannot mutate one through it. No-op in prod.
+  // readSpentProjectiles is the other half: WHERE each of the last 16 spells ended and WHAT ended it ('ground',
+  // 'age', 'mob', 'boss'). Sampling the live list once per rendered frame cannot see a flight that one frame holds:
+  // on CI's software renderer the traces show 4.7-11.2 s between rendered frames around the cast, longer than a
+  // fireball's whole 3 s life, and the spec read "burst after 0.0 m (1 frames)" whatever the spell had done inside
+  // that frame (CI runs 40499349776, 40517958583). The end point is the spell's own record; no frame rate hides it.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     registerTestHook('readProjectiles', () => projectilesRef.current.map((p) => ({
       id: p.id, type: p.type, age: p.age, x: p.position.x, y: p.position.y, z: p.position.z,
     })));
+    registerTestHook('readSpentProjectiles', () => spentRef.current.map((s) => ({ ...s })));
   }, []);
 
   const applyBurnEffect = useCallback((mobId, duration, dps) => {
@@ -323,10 +331,12 @@ export const EnhancedMagicSystem = React.memo(() => {
       const landed = advanceProjectile(projectile.position, projectile.velocity, delta, grounded);
 
       let keep = true;
+      let spentBy = null; // what ended this spell — read only by the DEV record below
 
       if (projectile.age > projectile.maxAge) {
         createSpellImpact(projectile.position, projectile.type);
         keep = false;
+        spentBy = 'age';
       } else {
         if (landed) {
           createSpellImpact(projectile.position, projectile.type);
@@ -337,6 +347,7 @@ export const EnhancedMagicSystem = React.memo(() => {
             projectile.imbueKind = null;
           }
           keep = false;
+          spentBy = 'ground';
         }
 
         if (keep && GameMethods.checkMobCollision) {
@@ -404,6 +415,7 @@ export const EnhancedMagicSystem = React.memo(() => {
             if (!willPierce) {
               createSpellImpact(projectile.position, projectile.type, wasKill);
               keep = false;
+              spentBy = 'mob';
             }
 
             if (GameMethods.grantXP) GameMethods.grantXP(5);
@@ -431,6 +443,7 @@ export const EnhancedMagicSystem = React.memo(() => {
                   playSpatialSound('magicHit', projectile.position, 1.2, 30);
                 }
                 keep = false;
+                spentBy = 'boss';
               }
             }
           }
@@ -439,6 +452,14 @@ export const EnhancedMagicSystem = React.memo(() => {
 
       if (keep) {
         survivingProjectiles.push(projectile);
+      } else if (import.meta.env.DEV) {
+        // A ref write, never React state: this runs inside the frame loop. Bounded, so a long session cannot grow it.
+        const spent = spentRef.current;
+        spent.push({
+          id: projectile.id, type: projectile.type, by: spentBy, age: projectile.age,
+          x: projectile.position.x, y: projectile.position.y, z: projectile.position.z,
+        });
+        if (spent.length > 16) spent.shift();
       }
     }
 
