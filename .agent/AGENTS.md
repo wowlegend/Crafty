@@ -132,7 +132,7 @@ pipeline genuinely cannot see:
 
 | Gate | Command | pre-commit | pre-push | CI | What it actually stops |
 |---|---|:--:|:--:|:--:|---|
-| e2e (the suite) | `npm run test:e2e` (playwright, **sharded 6×** in CI) | — | — | ✅ | real-input regressions; `@local-only` specs are excluded in the workflow. Too slow for any local tier (~20 min, `workers: 1`), so the push checks the RECEIPT instead — the `e2e freshness` row above |
+| e2e (the suite) | `npm run test:e2e` (playwright, **sharded 8×** in CI) | — | — | ✅ | real-input regressions; `@local-only` specs are excluded in the workflow. Too slow for any local tier (~20 min, `workers: 1`), so the push checks the RECEIPT instead — the `e2e freshness` row above |
 | visual | `npm run test:visual` | — | — | — | **nothing runs it.** Manual, before a milestone or any render change — so a green pipeline says nothing about how Crafty LOOKS |
 
 - `test:visual` is `capture.mjs && vitest`, i.e. it RE-CAPTURES. Never run it alongside another capture —

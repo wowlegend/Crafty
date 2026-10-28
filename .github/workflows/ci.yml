@@ -81,14 +81,16 @@ jobs:
   # the software renderer, and every shard of PR #22 hit timeout-minutes with all its finished tests
   # green (#23 and #25 likewise) — the same `cancelled`-reads-as-noise shape as 2026-07-27. Six shards
   # keep the total runner minutes (free: the repo is public) and halve each shard's wall time.
+  # 6 -> 8 SHARDS 2026-10-28: with the Phase 0 lanes' specs merged, two shards projected to ~20 min on a first
+  # pass with no room for a retry of their heavy specs (PR #24 prep, episode :1209).
   e2e:
-    name: e2e (playwright) ${{ matrix.shard }}/6
+    name: e2e (playwright) ${{ matrix.shard }}/8
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false # one red shard must not hide the results of the others
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v7
 
@@ -114,7 +116,7 @@ jobs:
       # is HERE, in the workflow, rather than hidden in playwright.config.js, so it is visible to anyone
       # reading what CI actually runs. Those specs still run at full strength locally.
       - name: E2E
-        run: npm run test:e2e -- --shard=${{ matrix.shard }}/6 --grep-invert="@local-only"
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/8 --grep-invert="@local-only"
 
       # `if: always()` because a shard that FAILED is exactly when you want to know which specs were
       # merely flaky and which actually broke. REPORT-ONLY, exits 0 — `retries: 2` means a retry-then-pass
