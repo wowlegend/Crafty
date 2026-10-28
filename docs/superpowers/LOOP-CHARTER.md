@@ -57,7 +57,7 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
    or Kevin) grading SURFACED EVIDENCE against the sprint's stated criteria. A self-reported "done" is not
    evidence. *No checker can exist for this — a loop cannot enforce its own recusal, which is the point.*
 3. **Sprint contract BEFORE code** — "done" and *how it will be proven* stated first, naming the GATE and not
-   just the steps. Enforced in practice by the per-milestone plan-doc discipline (`.agent/AGENTS.md` Method).
+   just the steps. Enforced in practice by the per-milestone plan-doc discipline (`CLAUDE.md` Method).
 4. **[ADVISORY] Drive the product surface, not the implementation.** Real-input E2E outranks unit tests for
    "does it work"; unit tests sit too close to the code. `memory/STATUS.md §V2` is the campaign's spine.
 5. **[ADVISORY] Context RESET > compaction for long work** — compaction preserves continuity but not a clean
@@ -82,22 +82,27 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
   comment+doc truth/polish/patterns) and MAKES taste calls, noting them veto-ably rather than blocking. The guardrails
   that keep aggressive *safe* remain binding: every change RED-first + mutation-proven + full suite green; atomic
   verified checkpoints (auditable, git-reversible, ONE unit/commit); NO silent reversal of a recorded Kevin decision
-  (the "do NOT relitigate" set below); irreversible high-blast (hard-delete a REFERENCED file, force-push, external
-  send, money/accounts/publishing, a NEW dependency) still gets care + usually Kevin; ARCHIVE-over-DELETE for docs.
+  (the set below: a reversal is a new dated DECISIONS entry); Kevin's two bright lines hold (spend no money; never
+  force-push or rewrite pushed history), and account sign-ins stay his because only he can make them; publishing the
+  repo's public face is the session's (DECISIONS 2026-10-28 item 15); a hard delete of a referenced file, an external
+  send or a NEW dependency is the command session's call since Kevin's 2026-10-27 mandate, made with care and
+  recorded in DECISIONS (2026-10-28 items 14 and 16); ARCHIVE-over-DELETE for docs.
   Progress dashboard: RETIRED 2026-10-28 — it had no URL and no reader; archived as
   `docs/archive/LOOP-PROGRESS-2026-10-28.html` (DECISIONS 2026-10-28 item 12). The operator pages live in
   `docs/superpowers/.artifact-sync.json`.
 - **Vision** = `SOTA-INITIATIVE.md` v2 §1 (goal) + §2 (hard guardrails): SOTA in every aspect; visual/aesthetic taste is the
   HIGHEST bar (premium, distinctive, tasteful — never generic-voxel, never AI-slop); **web + iPad + mobile
   envelope** (clever > brute-force GPU); commercial-grade ambition (S4 multiplayer/monetization later).
-- **Kevin's decisions-of-record — do NOT relitigate or silently reverse.** Stated in full in
-  `docs/superpowers/DECISIONS.md` (read-order #6), NAMED here so the loop cannot forget one exists:
+- **Kevin's decisions-of-record — never reverse one silently.** Stated in full in
+  `docs/superpowers/DECISIONS.md` (read-order #6), NAMED here so the loop cannot forget one exists. Each stands
+  while it still earns its place; the command session may revise or reverse one (DECISIONS 2026-10-28 items 14
+  and 16) as a new dated DECISIONS entry that names the entry it supersedes and says why:
   **Ember-Frontier / Blight-Heart** world direction · the **grade LOCK REVERSAL** (glowier/warmer authorized) ·
   **control scheme Option A, F=cast / T=melee** · **bloom 0.65 is INTENDED** (supersedes the ≥0.85 spec) ·
   **grantXP full-heal is INTENDED** · **E2E = `@playwright/test`, separate from the visual gate** · **audience
   is BROAD** (the youngest players are users, not a ceiling) · **zh-CN is a toggle, EN default** · **controller-SEQUENTIAL
-  for code** · **de-monolith is full loop authority**. Reversing one is genuinely-Kevin; affirming a
-  sub-direction inside one is loop authority.
+  for code** · **de-monolith is full loop authority**. Reversing one, or refining a sub-direction inside one, is
+  the command session's call, recorded as above.
   *(Migrated 2026-08-07. They had been embedded in ~5.5 KB of mandate narrative — 06-17 rebuild, 06-20 "fix
   everything then build everything", 06-28 post-audit, 06-29 tech-debt — that §0-A already declares HISTORY.
   A file read EVERY iteration was carrying superseded process instructions as packaging for ten decisions.
@@ -180,7 +185,7 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
    unit — do not idle-spin or manufacture churn while waiting). ~30min ONLY if EVERYTHING is blocked on Kevin/external
    (say so explicitly). Never end the loop yourself; never idle-spin tokens.
 
-## 2. Work-selection priority (top-down; skip = locked/blocked only)
+## 2. Work-selection priority (top-down; skip = blocked only)
 
 1. **Broken main** (tests/build/visual red) — fix first, always.
 2. **The current in-flight milestone** per ACTIVE_PLAN (finish > start).
@@ -192,10 +197,12 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
    subsumed by the 2026-06-17 11-agent audit; any remaining items are folded into W1–W4. The four-Aspect spine
    (WILDHEART · VOIDHAND · SOULBIND · ELEMANCER) completed 2026-06-11; S3 de-monolith is now LARGELY DONE (4-of-5
    god-files dissolved; `GameScene.jsx` is DONE — 299 LOC as of 2026-08-07, not the "~914" this line claimed.
-   Read the live ≥900-LOC set from the generated MEASURED block in `.agent/AGENTS.md`; there are more than the
-   one this sentence implies, and `Components.jsx` is PARKED iter-175 — risky
-   imperative-loop extraction, not actively blocking) → de-monolith is now a DEBT LANE behind the mega-directive,
-   not the spine. B4-v1.5 + the v2 voxel-mutation seam (iPad-gated) + S4 stay Kevin-gated/later.
+   Read the live ≥900-LOC set from the generated MEASURED block in `CLAUDE.md`; there are more than the
+   one this sentence implies, and `Components.jsx` was parked at iter-175 as a risky imperative-loop extraction
+   that blocked nothing; a split may still be taken when it pays, keeping the loop's per-frame order) → de-monolith
+   is now a DEBT LANE behind the mega-directive, not the spine. B4-v1.5 is later work; the v2 voxel-mutation seam
+   waits on a real-iPad run; S4 (multiplayer, monetization) stays Kevin's because it spends money (servers, payments)
+   and needs account sign-ins only he can make.
 5. **SOTA experience enhancements** (the explicit Kevin mandate — interleave at least one every 2–3
    milestones, don't ghetto them to "later"): §6 backlog — audio/music, game-feel/juice, visual/render
    polish, content variety, UX legibility, i18n.
@@ -255,34 +262,41 @@ deterministic enforcer, which §8 rule 1 requires be marked advisory rather than
 ## 4. Design/taste discipline (how the loop self-gates what Kevin used to gate)
 
 Kevin delegated taste authority — the loop replaces his gate with this discipline, NOT with vibes:
-- **Reference-lock before building any look** **[ADVISORY — no mechanism]** (the locked VFX rule): pick/produce a concrete visual reference
-  (existing locked refs in `.superpowers/`, or a generated mockup committed for the record), THEN build to it.
+- **Pick a reference before building any look** **[ADVISORY — no mechanism]** (the VFX reference rule): pick/produce a concrete visual reference
+  (the existing refs in `.superpowers/`, or a generated mockup committed for the record), THEN build to it.
   Judge IN-WORLD (real context, the grade ON), never on a sky-studio card.
 - **Coherence pillars** **[ADVISORY — no mechanism]** (`docs/superpowers/specs/crafty-coherence-pillars.md` P0–P5) bound every addition:
-  one readable art direction (S1-C bold-flat + the locked render recipe), no kitchen-sink drift. The
-  destructive-CUT gate stays PARKED (its own bound #1) — the loop may ADD/REFINE freely but large deletions
-  of shipped player-facing features need a KEVIN-REVIEW-BATCH entry first (deleting dead code/scaffold is free).
+  one readable art direction (today S1-C bold-flat + the S1 render recipe; either may be replaced by a better one,
+  recorded in DECISIONS), no kitchen-sink drift. The automated destructive-CUT gate stays unused as a tool until its
+  blind calibration passes (its own bound #1). That limits the tool, not deletion: the command session may add,
+  refine or delete anything, shipped player-facing features included (DECISIONS 2026-10-28 items 14 and 16). A
+  large player-facing deletion is recorded in DECISIONS with its reason and the lived or e2e proof that nothing
+  still promised depends on what was cut.
 - **Player-experience lens** **[ADVISORY — no mechanism; this is the "green gate is not a lived result" axis]** on everything: builder-plays-before-done (drive the real app when behavior
   changed); content-variety + signature-fires checks; legibility (a fresh player must be able to FIND the
   feature — key taught, HUD honest, denied-actions give feedback).
 - **Visual re-baselines are allowed and expected** (the look is MEANT to improve): re-baseline = render →
-  self-eyeball at HD (340dpi-equivalent zoom, IB-grade scrutiny) → commit baseline + a one-line rationale +
-  a KEVIN-REVIEW-BATCH entry with the before/after paths. Capture-determinism stays load-bearing (new
+  self-eyeball at HD (340dpi-equivalent zoom, IB-grade scrutiny) → commit baseline + a one-line rationale and
+  the before/after paths in its `Baseline-Review:` trailer (the call is the command session's since Kevin's
+  2026-10-27 mandate, which names the re-baseline). Capture-determinism stays load-bearing (new
   effects freeze or self-null under `isCaptureMode()`). **BATCH re-baseline cadence (visual-overhaul campaigns,
   Kevin-confirmed 2026-06-15 = "re-baselines = BATCH review"):** when a planned campaign produces MULTIPLE intended
   re-baselines each exceeding the 6% gate (e.g. the world-purpose AO/aerial/beacon/postproc slices), accumulate the
-  before/after pairs across iterations + present them as ONE consolidated KEVIN-REVIEW-BATCH taste review at
-  slice-ladder close (a contact-sheet of N frames + one taste ask), NOT slice-by-slice. Each individual re-baseline
-  still gets its HD self-eyeball + commit + one-line rationale at the tick it ships; only the Kevin-facing TASTE
-  sign-off batches. Use stable git refs (`git show <commit>:.../baseline/<frame>.png`), never `current/`.
+  before/after pairs across iterations + judge them as ONE consolidated taste review at slice-ladder close (a
+  contact-sheet of N frames), recorded in DECISIONS and shown on the Command Record, NOT slice-by-slice. Each
+  individual re-baseline still gets its HD self-eyeball + commit + one-line rationale at the tick it ships; only
+  the TASTE review batches. Use stable git refs (`git show <commit>:.../baseline/<frame>.png`), never `current/`.
 - **Audio is a first-class axis** **[ADVISORY — no mechanism]** (it shipped most-neglected): every Aspect gets its motif + verb SFX; the
   WILDHEART roar-set backfill is owed (#74 — the loop now OWNS this decision: do it).
-- **Genuinely-Kevin items** (park + batch, never block the loop): real-device iPad/phone runs, anything
-  spending money / creating accounts / publishing externally, big direction REVERSALS of his recorded decisions
-  (third-person timing, monetization=S4, audience, the Ember-Frontier direction); **NEW-DIRECTION CONFIRMATION**
-  (when the loop surfaces a proposed game-direction/sub-direction for Kevin to AFFIRM before building the gameplay
-  layer — a PICK, distinct from a reversal; the Ember-Frontier pick was this before 2026-06-15); **adding any NEW dev
-  dependency / test substrate / install**; ear / taste sign-off (audio mix, final colour/foam taste).
+- **Genuinely-Kevin items** (park + batch, never block the loop) are now only his two bright lines (spend no
+  money; never force-push or rewrite pushed history; DECISIONS, Kevin's 2026-10-27 mandate entry) and what only he can do:
+  real-device iPad/phone runs and ear checks of the audio mix (no instrument here), and account sign-ins.
+  Publishing the repo's public face (README, About line, topics, social preview) is the session's (DECISIONS
+  2026-10-28 item 15). Direction reversals of his recorded decisions (third-person timing, audience, the
+  Ember-Frontier direction), new-direction picks, a NEW dev dependency / test substrate / install, and taste
+  sign-off (final colour/foam taste) became the command session's by Kevin's 2026-10-27 mandate, restated as the
+  standing principle on 2026-10-28 (DECISIONS 2026-10-28 item 14), each recorded in DECISIONS. Monetization (S4)
+  stays his, because it spends money and needs his account sign-ins and legal terms.
   > **⚠️ CORRECTED 2026-07-13 (this line was a LIVE TRAP).** It used to claim `@react-three/test-renderer` was
   > "approved + landed (`0f8cad9`)". **It was REMOVED as unused by `8b6e3a44`** — verified: absent from
   > `package.json`, imported nowhere. That single stale sentence caused an agent to propose a week-sized
@@ -315,9 +329,9 @@ is quietly wrong.
 servers + a headless Chromium at 622% CPU, drove load average to 25, and timed out the capture gate — which
 presented as a *"flaky gate"* and burned a real debugging cycle.
 
-**COMPRESSED 2026-08-07: this section was the FOURTH copy of these rules** (charter · `.agent/AGENTS.md` ·
+**COMPRESSED 2026-08-07: this section was the FOURTH copy of these rules** (charter · `CLAUDE.md` ·
 `.claude/rules/gates-and-probes.md` · the kernel), which is the exact disease §8 names. The full narrative —
-the cmux preview-tab half, the `close-surface` footgun, the managed ports — lives in **`.agent/AGENTS.md`**,
+the cmux preview-tab half, the `close-surface` footgun, the managed ports — lives in **`CLAUDE.md`**,
 which is loaded unconditionally at every session start, and the moment-of-use checklist in
 **`.claude/rules/gates-and-probes.md`**, which fires when you are actually editing a probe. Read them there.
 
@@ -425,7 +439,7 @@ and unlike the rules they govern, all three are gradeable by grep:
    the behaviour is covered.
 2. **A number is computed, or it is deleted.** No hand-typed counts in any governing document. A count appears
    as the command that regenerates it, or as a dated past-tense scar ("was 88 runs on 2026-07-27"). Every
-   hand-typed number in these docs rotted: `.agent/AGENTS.md` claimed "~14.4k LOC / ~31 files" against an
+   hand-typed number in these docs rotted: `CLAUDE.md` claimed "~14.4k LOC / ~31 files" against an
    actual 29.5k / 264 (measured 2026-08-02) — already false by 1.8x the day it was written. That block is GENERATED now.
 3. **A claim about state outside the working tree is emitted by the command that observed it, in the same
    turn, or it is a fabrication** — regardless of whether it happens to be true. This is the generative cause

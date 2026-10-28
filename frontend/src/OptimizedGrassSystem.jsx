@@ -261,7 +261,7 @@ export const OptimizedGrassSystem = ({ blockPositions = [] }) => {
       {grassCount > 0 && (
         <instancedMesh ref={grassMeshRef} args={[null, grassMaterial, grassCount]} receiveShadow>
           {/* M4 #5: a READABLE stylized tuft (was 0.1x0.18 -- sub-perceptual specks). 0.4 wide x 0.7 tall
-              billboard, DoubleSide, wind-swayed at the top by the shader. Bold-flat (flat blade, locked palette). */}
+              billboard, DoubleSide, wind-swayed at the top by the shader. Bold-flat (flat blade, the S1 palette). */}
           <planeGeometry args={[0.4, 0.7]} />
         </instancedMesh>
       )}

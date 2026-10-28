@@ -262,7 +262,7 @@ export function Atmosphere({ shadowConfig }) {
     // references were inside dayPhase.js itself, so the HUD dial showed a travelling sun while the sky's
     // sun stood still.
     //
-    // CAPTURE SAFETY, per AGENTS.md: "a capture guard must RESET to a declared value, never early-return."
+    // CAPTURE SAFETY, per CLAUDE.md: "a capture guard must RESET to a declared value, never early-return."
     // Freezing the arc wherever the clock happened to be would make every gated frame run-dependent, since
     // boot length varies 1.68-10.43s between processes. So capture pins the solar angle to a DECLARED
     // constant — noon, which is also the fraction at which the arc returns the mood's own historical

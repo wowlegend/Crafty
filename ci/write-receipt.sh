@@ -42,7 +42,7 @@ RECEIPT="${1:?usage: sh ci/write-receipt.sh <receipt-path>}"
 ROOT=$(run_scrubbed git rev-parse --show-toplevel) || exit 3
 cd "$ROOT" || exit 3
 
-INPUT_ROOTS="frontend ci .githooks docs memory .agent .github"
+INPUT_ROOTS="frontend ci .githooks docs memory .github"
 
 # shellcheck disable=SC2086
 DIRTY=$( { git diff --name-only -- .; git ls-files --others --exclude-standard -- $INPUT_ROOTS; } 2>/dev/null )

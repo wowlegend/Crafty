@@ -3,7 +3,7 @@
  * MUTATION-PROOF TRAILER — the enforcer for the rule this repo states three times and never checked.
  *
  * LOOP-CHARTER §3 opens with "⛔ MUTATION-PROOF EVERY NEW GATE", and says it again in §0-B and in
- * `.agent/AGENTS.md`. The 2026-07-27 doc audit found the pattern behind every rule this project fails to
+ * `CLAUDE.md`. The 2026-07-27 doc audit found the pattern behind every rule this project fails to
  * follow: rules checkable from an artifact the loop already produces (the diff, the commit message) were
  * obeyed ~100%, and rules whose only consumer was the docs' own prose were obeyed erratically or not at all.
  * "Mutation-prove every gate" had ZERO checkers, and most gate files still read source text without importing

@@ -29,9 +29,9 @@ water") and "Seen on a real GPU" ("the ocean is one flat plastic sheet"); roadma
 ## Global Constraints
 
 - Bold-flat, not photoreal: flat colour bands stepped on the block grid, a crisp foam edge, one toon glint lobe. No
-  normal maps, no screen-space reflection, no refraction, no new render pass. (`.agent/AGENTS.md` "Design Language
-  (LOCKED — S1-C)".)
-- Band colours come from the locked palette where it has them: `PALETTE.explore.waterShallow` `#8FD3D8` and
+  normal maps, no screen-space reflection, no refraction, no new render pass. (The current S1-C design language, `CLAUDE.md` "Design Language"; it stands while it
+  earns its place, DECISIONS 2026-10-28 item 16.)
+- Band colours come from the S1-C palette where it has them: `PALETTE.explore.waterShallow` `#8FD3D8` and
   `.waterDeep` `#3E86A6` (`frontend/src/theme/tokens.js:17`, which nothing reads today). The middle band is
   `#10BCC6`, today's ocean and far-water colour (`Ocean.jsx:43`, `farField.js:47`).
 - No WebGPU/TSL and no three bump (masterpiece plan, "Decisions taken with this plan").
@@ -253,7 +253,7 @@ into this plan's Acceptance table, filled in under Task 7's commit.
   now yours", and "make Crafty a masterpiece ... you're free to enhance / prune / revise anything") supersedes both.
   Per the repo's rule, a reversal is a NEW dated entry naming what it supersedes, never an edit. Append one dated
   2026-10-27 that names `:452-453` and `:478` as superseded under that grant and states the look chosen (three
-  block-stepped bands from the locked palette, a 1-2 block lit foam line, calm shallows, sky Fresnel, a toon sun
+  block-stepped bands from the S1-C palette, a 1-2 block lit foam line, calm shallows, sky Fresnel, a toon sun
   glint, no square edge). Commit it alone: `docs(decisions): the ocean look is decided under the 10-27 grant`.
 
 ### Task 1: `oceanLook.js` — the terms, their JS twins, and the generated GLSL

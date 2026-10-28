@@ -46,7 +46,7 @@ describe('opsec-scan — what it must refuse', () => {
   // DOCUMENTS the ban and on zero real attributions — a gate reporting a violation by the people obeying
   // it. Prose about a trailer is never line-initial; the trailer always is.
   it('does NOT flag prose that FORBIDS the footer', () => {
-    expect(scanText('- NO "Generated with" / "Co-Authored-By: Claude" footer.', 'AGENTS.md')).toHaveLength(0);
+    expect(scanText('- NO "Generated with" / "Co-Authored-By: Claude" footer.', 'CLAUDE.md')).toHaveLength(0);
     expect(scanText('No `Generated with`/`Co-Authored-By: Claude` lines.', 'plan.md')).toHaveLength(0);
   });
 
@@ -107,7 +107,7 @@ describe('opsec-scan — a SYMLINK is scanned by its target string, never follow
   const dir = mkdtempSync(join(tmpdir(), 'crafty-opsec-link-'));
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
   // Assembled at runtime so this file never holds the literal.
-  const home = ['', 'Users', 'someone', 'Code', 'elsewhere', 'AGENTS.md'].join('/');
+  const home = ['', 'Users', 'someone', 'Code', 'elsewhere', 'notes.md'].join('/');
 
   it('positive control: a regular file holding a home path is a finding', () => {
     const p = join(dir, 'plain.md');
@@ -131,10 +131,10 @@ describe('opsec-scan — a SYMLINK is scanned by its target string, never follow
     expect(scanText(readForScan(link), 'link')).toEqual([]);
   });
 
-  it('allow case, one token away: a symlink to .agent/AGENTS.md is no finding', () => {
+  it('allow case, one token away: a symlink to a NESTED relative path is no finding', () => {
     const link = join(dir, 'CLAUDE.md');
-    symlinkSync('.agent/AGENTS.md', link);
-    expect(readForScan(link)).toBe('.agent/AGENTS.md');
+    symlinkSync('docs/nested/target.md', link);
+    expect(readForScan(link)).toBe('docs/nested/target.md');
     expect(scanText(readForScan(link), 'CLAUDE.md')).toEqual([]);
   });
 

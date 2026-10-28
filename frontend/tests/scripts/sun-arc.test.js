@@ -102,7 +102,7 @@ describe('sun arc geometry', () => {
   });
 
   it('capture pins the solar angle to a DECLARED constant, and that constant is noon', () => {
-    // AGENTS.md: "a capture guard must RESET to a declared value, never early-return." Noon is the one
+    // CLAUDE.md: "a capture guard must RESET to a declared value, never early-return." Noon is the one
     // fraction that leaves the mood bearing untouched, so committed baselines keep their sun direction.
     expect(CAPTURE_SOLAR_FRACTION).toBe(0.25);
     const noon = MOOD_SCALARS.explore.sunPos;

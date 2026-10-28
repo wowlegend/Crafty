@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isolatedGitEnv } from './_isolatedGit.js';
-import { run, CHECKS, CANONICAL } from '../../scripts/ci/doc-currency.mjs';
+import { run, CHECKS, CANONICAL, LOCK_DOCS, LOCK_LABELS } from '../../scripts/ci/doc-currency.mjs';
 import { derive as deriveGates, renderBlock as renderGates, END as GATES_END } from '../../scripts/ci/gate-table.mjs';
 import { measure, renderBlock as renderMeasured } from '../../scripts/ci/measure.mjs';
 import { SURFACES, renderBlock as renderReadOrder } from '../../scripts/ci/read-order.mjs';
@@ -96,7 +96,7 @@ const steady = (s) => s.replace(/committed in \d+ days/g, 'committed in N days')
 
 describe('doc-currency run() — the seam every check is wired into', () => {
   it('names its checks in run order, and the list is pinned (run() iterates exactly this list, so a check dropped from it stops running; this pin is what turns that red)', () => {
-    expect(CHECKS).toEqual(['dangling', 'packages', 'status', 'gates', 'measured', 'read-order', 'sections']);
+    expect(CHECKS).toEqual(['dangling', 'packages', 'status', 'gates', 'measured', 'read-order', 'sections', 'locks']);
     expect(Object.keys(run().checked), 'run() visits the checks in CHECKS order').toEqual([...CHECKS]);
   });
 
@@ -189,21 +189,21 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     expect(r.warnings).toEqual([AGE_UNKNOWN]);
   });
 
-  it('gates: a stale GATES block in the fixture AGENTS.md errors', () => {
+  it('gates: a stale GATES block in the fixture CLAUDE.md errors', () => {
     const { gates } = deriveGates();
     const stale = renderGates(gates).replace(GATES_END, `| stale | row |\n${GATES_END}`);
-    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${stale}\n` });
+    const root = fixture({ 'CLAUDE.md': `# claude\n\n${stale}\n` });
     const r = run({ root, only: ['gates'] });
     expect(r.checked).toEqual({ gates: gates.length });
     expect(r.errors).toEqual([
-      `.agent/AGENTS.md: GATES block is stale (hook defines ${gates.length} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`,
+      `CLAUDE.md: GATES block is stale (hook defines ${gates.length} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`,
     ]);
     expect(r.warnings).toEqual([]);
   });
 
   it('gates: the current GATES block passes (one row from the case above)', () => {
     const { gates } = deriveGates();
-    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${renderGates(gates)}\n` });
+    const root = fixture({ 'CLAUDE.md': `# claude\n\n${renderGates(gates)}\n` });
     const r = run({ root, only: ['gates'] });
     expect(r.checked).toEqual({ gates: gates.length });
     expect(r.errors).toEqual([]);
@@ -211,11 +211,11 @@ describe('doc-currency run() — the seam every check is wired into', () => {
 
   it('measured: a MEASURED block claiming twice the source files errors', () => {
     const m = measure();
-    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${renderMeasured({ ...m, srcFiles: m.srcFiles * 2 })}\n` });
+    const root = fixture({ 'CLAUDE.md': `# claude\n\n${renderMeasured({ ...m, srcFiles: m.srcFiles * 2 })}\n` });
     const r = run({ root, only: ['measured'] });
     expect(r.checked).toEqual({ measured: 2 + m.largeFiles.length });
     expect(r.errors).toEqual([
-      `.agent/AGENTS.md: MEASURED source files says ${(m.srcFiles * 2).toLocaleString('en-US')}, actual ` +
+      `CLAUDE.md: MEASURED source files says ${(m.srcFiles * 2).toLocaleString('en-US')}, actual ` +
         `${m.srcFiles.toLocaleString('en-US')} (100% drift, band 10%) — regenerate: node frontend/scripts/ci/measure.mjs --write`,
     ]);
     expect(r.warnings).toEqual([]);
@@ -223,7 +223,7 @@ describe('doc-currency run() — the seam every check is wired into', () => {
 
   it('measured: the current MEASURED block passes (one number from the case above)', () => {
     const m = measure();
-    const root = fixture({ '.agent/AGENTS.md': `# agents\n\n${renderMeasured(m)}\n` });
+    const root = fixture({ 'CLAUDE.md': `# claude\n\n${renderMeasured(m)}\n` });
     const r = run({ root, only: ['measured'] });
     expect(r.checked).toEqual({ measured: 2 + m.largeFiles.length });
     expect(r.errors).toEqual([]);
@@ -245,6 +245,79 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     const root = fixture(Object.fromEntries(SURFACES.map((rel) => [rel, `# doc\n\n${renderReadOrder()}\n`])));
     const r = run({ root, only: ['read-order'] });
     expect(r.checked).toEqual({ 'read-order': SURFACES.length });
+    expect(r.errors).toEqual([]);
+  });
+
+  // A label per line, each pattern on its own line at least once, the case-insensitive ones in both cases. The last two
+  // lines are one token from the allowed cases: a quote citing another item, and prose that argues against a lock.
+  const LOCKED_DOC = [
+    '# arch',
+    '## Design Language (LOCKED — S1-C)',
+    'Status: LOCKED – S1',
+    'a documented IRREDUCIBLE residual',
+    'a documented irreducible residual',
+    'the loop MUST NOT be split',
+    "Engine CORE is real — KEEP, don't rewrite",
+    'decisions of record (Do Not Relitigate)',
+    'Kevin: "Design Language (LOCKED — S1-C)" (DECISIONS 2026-10-28 item 14)',
+    'do not assume they are irreducible too',
+    '',
+  ].join('\n');
+  // The same doc, one token reworded per line; the quote now cites item 16, the decision that retired the label.
+  const FREED_DOC = [
+    '# arch',
+    '## Design Language (current: S1-C)',
+    'Status: current – S1',
+    'a documented Player controller',
+    'a documented Player controller',
+    'the loop keeps its order when split',
+    'Engine CORE is real — replace it when a rewrite measures better',
+    'decisions of record (revisable by a new entry)',
+    'Kevin: "Design Language (LOCKED — S1-C)" (DECISIONS 2026-10-28 item 16)',
+    'do not assume they are irreducible too',
+    '',
+  ].join('\n');
+  const LOCK_TAIL =
+    'nothing in Crafty is locked; state the decision, its reason, and that it stands while it earns its place ' +
+    '(DECISIONS 2026-10-28 item 16). To quote a label, cite "item 16" on the same line.';
+
+  it('locks: every lock label on a canonical doc errors, naming file:line and the decision that freed it', () => {
+    expect(LOCK_LABELS.map(([label]) => label), 'the six phrasings the PASSED line counts').toEqual([
+      '(LOCKED',
+      'LOCKED —',
+      'IRREDUCIBLE',
+      'MUST NOT be split',
+      "KEEP, don't rewrite",
+      'do not relitigate',
+    ]);
+    const root = fixture({ 'memory/ARCHITECTURE.md': LOCKED_DOC });
+    const r = run({ root, only: ['locks'] });
+    expect(r.checked).toEqual({ locks: LOCK_DOCS.length });
+    expect(r.errors).toEqual([
+      `LOCK LABEL at memory/ARCHITECTURE.md:2: "(LOCKED", "LOCKED —" — ${LOCK_TAIL}`,
+      `LOCK LABEL at memory/ARCHITECTURE.md:3: "LOCKED —" — ${LOCK_TAIL}`,
+      `LOCK LABEL at memory/ARCHITECTURE.md:4: "IRREDUCIBLE" — ${LOCK_TAIL}`,
+      `LOCK LABEL at memory/ARCHITECTURE.md:5: "IRREDUCIBLE" — ${LOCK_TAIL}`,
+      `LOCK LABEL at memory/ARCHITECTURE.md:6: "MUST NOT be split" — ${LOCK_TAIL}`,
+      `LOCK LABEL at memory/ARCHITECTURE.md:7: "KEEP, don't rewrite" — ${LOCK_TAIL}`,
+      `LOCK LABEL at memory/ARCHITECTURE.md:8: "do not relitigate" — ${LOCK_TAIL}`,
+      `LOCK LABEL at memory/ARCHITECTURE.md:9: "(LOCKED", "LOCKED —" — ${LOCK_TAIL}`,
+    ]);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it('locks: the same doc reworded passes, and so do a quote citing item 16, lower-case prose, the decision record and a BLOCKED dash (one token per line from the case above)', () => {
+    expect(LOCK_DOCS, 'the decision record is the one canonical doc not scanned').toEqual(
+      CANONICAL.filter((rel) => rel !== 'docs/superpowers/DECISIONS.md'),
+    );
+    expect(LOCK_DOCS.length).toBe(CANONICAL.length - 1);
+    const root = fixture({
+      'memory/ARCHITECTURE.md': FREED_DOC,
+      'docs/superpowers/DECISIONS.md': LOCKED_DOC,
+      'memory/ACTIVE_PLAN.md': 'BLOCKED — **postprocessing is PINNED at 6.39.1**\n',
+    });
+    const r = run({ root, only: ['locks'] });
+    expect(r.checked).toEqual({ locks: LOCK_DOCS.length });
     expect(r.errors).toEqual([]);
   });
 
@@ -285,6 +358,9 @@ describe('doc-currency CLI — the call site the pipeline runs', () => {
     expect(warned.map(steady)).toEqual(r.warnings.map((w) => steady(`⚠ ${w}`)));
     if (r.errors.length === 0) {
       expect(p.stdout.trim()).toMatch(new RegExp(`^✓ doc-currency PASSED \\(${CANONICAL.length} canonical docs checked; `));
+      expect(p.stdout, 'the lock check prints both denominators').toContain(
+        `lock labels: 0 (${LOCK_LABELS.length} phrasings, ${r.checked.locks} docs)`,
+      );
     }
   });
 

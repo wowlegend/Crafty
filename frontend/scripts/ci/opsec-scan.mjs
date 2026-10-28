@@ -125,7 +125,7 @@ export function scanText(text, file) {
  *
  * `lstat`, never `stat`. The CLI used to `existsSync` then `statSync`, which FOLLOW a link: a committed link to an
  * operator home path whose target was absent or a directory was skipped outright, and a link to a file was
- * scanned as that FILE's text — so `CLAUDE.md` carried 3 findings that were `.agent/AGENTS.md`'s, while the
+ * scanned as that FILE's text — so the then-symlinked `CLAUDE.md` carried 3 findings that were its target's, while the
  * string it actually publishes was never read.
  */
 export function readForScan(absPath) {

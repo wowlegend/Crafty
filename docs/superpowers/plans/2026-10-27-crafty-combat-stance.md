@@ -115,7 +115,8 @@ the spell. The derivation uses unslowed pursuit.
 - **Game-loop isolation.** No `useState` or zustand subscription is written or read per frame. The controller reads
   `getStance()`, `readString()` and `mobsQuery.entities` transiently. The chevron layer writes DOM through refs from
   the HUD ticker.
-- **`src/Components.jsx` is NOT split** (decision of record, `.agent/AGENTS.md`). It gains only call sites. Every
+- **This plan does not split `src/Components.jsx`**: the Player loop's per-frame order is load-bearing (`CLAUDE.md`),
+  and a split is its own unit, not a side effect of this one. It gains only call sites. Every
   number and decision lives in the pure modules.
 - **`BASE_MOVE_SPEED` stays 14.** At stance weight 0 the movement target equals today's exactly (Task 3's property
   for the function, Task 5 case 3 for the controller).

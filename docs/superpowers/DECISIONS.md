@@ -66,6 +66,24 @@ section is the derivation). Every value below was printed from the modules on th
 (their headers say `Mutation-Proof: OWED`), the chase sub-assertions at CI's frame rate, and the plan's reviews. Load
 above 115 on 14 cores ruled out local runs. The stance's own e2e has local verdicts (Task 5).
 
+## 2026-10-28 — [KEVIN] One CLAUDE.md: the symlink and its directory are gone
+
+**Decided by Kevin, in his words:** "i don't really like how the agents.md symlinks to claude.md in this repo, let's just have one claude.md."
+
+**Supersedes** the layout the file described about itself: the instruction text lived in a directory of its own as AGENTS.md, and the root
+`CLAUDE.md` was a symlink to it, so that Antigravity and Gemini could read the same copy.
+
+**What shipped.** `CLAUDE.md` is now a real file at the repo root, with the former AGENTS.md text unchanged apart from its header, its layout block and
+the generated blocks (the file's earlier history is under the old path; git cannot pair it with a path that already existed as a link). The
+directory is removed; it held nothing else tracked (its two workflow notes were already deleted in `974f9a54`). The three generators (`measure.mjs`,
+`gate-table.mjs`, `read-order.mjs`) write into `CLAUDE.md`; `doc-currency` lists it as canonical; `ci/write-receipt.sh` no longer names the
+removed directory as an input root; the opsec ledger entry moved with the file.
+
+**Door.** Reversible: a link can be added back in one commit. **What it costs.** A harness that read the old directory (Antigravity, Gemini) no
+longer finds the instructions there; none is configured to in this repo.
+
+**Plans and audits dated before this** that say AGENTS.md mean `CLAUDE.md`; they are history and stay as written.
+
 ## 2026-10-28 — [LOOP, Kevin-delegated] Landing lifecycle: PRs with free CI, merges by merge commit, six e2e shards; PR #28 parked
 
 **Decided by the command session (Kevin asleep; standing authority).**
@@ -150,6 +168,34 @@ above 115 on 14 cores ruled out local runs. The stance's own e2e has local verdi
    mutation receipts in code: git and this file hold history, and `Mutation-Proof:` commit trailers hold receipts. So
    the killability-ledger gate, which demands a receipt literal in every check file, retires with the comment pass. The
    pass runs as its own wave after the in-flight lanes land, directory by directory, keeping every load-bearing fact.
+16. **Nothing is locked (Kevin, 2026-10-28):** *"when i see things like "Design Language (LOCKED — S1-C)" , remember
+   the directive, nothing is locked . you're free to enhance / delete / revise anything."* It restates item 14. The
+   live docs still carried labels that read as binding locks to the next agent. They now state the decision, its
+   reason, and that it stands only while it earns its place; the command session may enhance, replace or delete it,
+   recording the call here. **Rewritten:** `CLAUDE.md` (the design-language heading; the de-monolith,
+   `Components.jsx` and engine-core lines, which keep their facts: the Player loop's per-frame order is load-bearing,
+   so a split must keep it; the engine core is proven, so a replacement must measure better); `LOOP-CHARTER.md` and
+   `LOOP-KERNEL-PROMPT.md` (a recorded decision may be reversed by a new dated entry here; `Components.jsx` was parked,
+   not banned; the CUT-gate stays unused as a tool, and deleting a shipped player-facing feature needs an entry here
+   with the lived or e2e proof that nothing still promised depends on it, not a KEVIN-REVIEW-BATCH entry first;
+   re-baselines, new dependencies, taste and direction calls are the session's); `memory/STATUS.md` (the `[KEVIN]`
+   legend, the CUT-gate line, section H, the re-baseline items, the pillar summary); `memory/ARCHITECTURE.md` (the
+   Components line); `SOTA-INITIATIVE.md` (its guardrails and process sections); `INDEX.md` (a line near the top on how to
+   read old labels, and the UI-system entry); the coherence-pillars spec (a status line; P3); and six 2026-10-27
+   plans (coast-water, combat-stance, encounters-siege, first-minute, harness-sota, material-grammar). **Left as written:** dated
+   specs and plans before 2026-10-27, archives, reviews and CHANGELOG, which are records (the INDEX line says their
+   labels bind nothing); this file's own entries; and what stays Kevin's: his two bright lines (spend no money; never
+   force-push or rewrite pushed history, the 2026-10-27 mandate entry) and what only he can do (real-device feel, the
+   audio mix by ear, account sign-ins), which is also why S4 stays his. Publishing the repo's public face is the
+   session's (item 15). P4's two invariants (no frequent mid-combat re-mesh; input via intent-abstraction, not
+   `pointerLockElement`) are engineering constraints, not locks: they bind the session as facts about the iPad-class
+   frame budget and input routing, and one may be broken only with a measurement showing that frame budget (or input
+   parity) still holds, recorded here. **Guard:** `doc-currency` has a `locks` check. It fails when a canonical doc
+   other than this one carries one of six phrasings: `(LOCKED` and `LOCKED —` (capitals; the dash may be em or en),
+   `IRREDUCIBLE` (capitals, or "documented irreducible"), and `MUST NOT be split`, `KEEP, don't rewrite` and
+   `do not relitigate` (any case). It prints file:line and points here. A line that cites item 16 may quote a label,
+   which is how a doc quotes Kevin's directive; any other lock wording passes the check. This file is left out
+   because it records and quotes such labels. The PASSED line prints both denominators: the phrasings and the docs.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 

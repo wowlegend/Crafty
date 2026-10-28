@@ -5,7 +5,7 @@
  *
  * WHY A SECOND PLACE. `mutation-proof-trailer.mjs` runs at PUSH time over a commit RANGE. By then the
  * message is written and the only remedy is `git commit --amend` — which this project forbids for fix-ups
- * (`.agent/AGENTS.md`: "Subagent fix-ups = NEW commits, never --amend/reset"). So the pre-push failure mode
+ * (`CLAUDE.md`: "Subagent fix-ups = NEW commits, never --amend/reset"). So the pre-push failure mode
  * is a real bind: the check is right, and obeying it costs a rewrite of history you are not allowed to do.
  * At commit-msg time the message has not been recorded yet, the editor is still open, and adding the
  * trailer is free.
