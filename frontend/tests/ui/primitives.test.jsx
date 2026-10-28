@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { Panel } from '../../src/ui/primitives/Panel.jsx';
 
@@ -23,6 +23,28 @@ describe('Panel', () => {
     expect(el.className).toMatch(/bg-panel-raise/);
     expect(el.className).toMatch(/\bw-40\b/);
   });
+
+  // cn joins without resolving conflicts, so a replaced default must be ABSENT, not merely outvoted.
+  const tokens = (el, prefix) => el.className.split(/\s+/).filter((c) => c.startsWith(prefix));
+  it('a named override replaces the variant default instead of joining beside it', () => {
+    render(<Panel variant="inset" bg="bg-slot" text="text-text-inverse" radius="rounded-full" shadow="shadow-elev-xl" data-testid="p">x</Panel>);
+    const el = screen.getByTestId('p');
+    expect(tokens(el, 'bg-')).toEqual(['bg-slot']);
+    expect(tokens(el, 'text-')).toEqual(['text-text-inverse']);
+    expect(tokens(el, 'rounded-')).toEqual(['rounded-full']);
+    expect(tokens(el, 'shadow-')).toEqual(['shadow-elev-xl']);
+  });
+  it('without overrides each variant carries exactly one fill, radius and shadow', () => {
+    for (const [variant, bg, radius, shadow] of [
+      ['base', 'bg-panel', 'rounded-md', 'shadow-elev-md'],
+      ['raise', 'bg-panel-raise', 'rounded-md', 'shadow-elev-lg'],
+      ['inset', 'bg-panel-inset', 'rounded-sm', 'shadow-none'],
+    ]) {
+      render(<Panel variant={variant} data-testid={variant}>x</Panel>);
+      const el = screen.getByTestId(variant);
+      expect([tokens(el, 'bg-'), tokens(el, 'rounded-'), tokens(el, 'shadow-')]).toEqual([[bg], [radius], [shadow]]);
+    }
+  });
 });
 
 import { Button } from '../../src/ui/primitives/Button.jsx';
@@ -43,6 +65,14 @@ describe('Button', () => {
     expect(el.className).toMatch(/bg-danger/);
     el.click();
     expect(clicked).toBe(1);
+  });
+  it('`text` replaces the variant colour, `icon` drops the padding, `size={null}` leaves sizing to className', () => {
+    const classes = (name) => screen.getByRole('button', { name }).className.split(/\s+/);
+    render(<Button variant="ghost" size="icon" text="text-text-muted" className="w-9 h-9">I</Button>);
+    expect(classes('I').filter((c) => /^text-text/.test(c))).toEqual(['text-text-muted']);
+    expect(classes('I').filter((c) => /^(p|px|py)-/.test(c))).toEqual(['p-0']);
+    render(<Button size={null} className="gap-2 px-2 py-0.5 text-xs">N</Button>);
+    expect(classes('N').filter((c) => /^(px|py|gap)-|^text-(xs|sm|base|lg)$/.test(c))).toEqual(['gap-2', 'px-2', 'py-0.5', 'text-xs']);
   });
 });
 
@@ -70,6 +100,12 @@ describe('Slot', () => {
   it('gear slot uses the gold gear fill', () => {
     render(<Slot gear data-testid="s">x</Slot>);
     expect(screen.getByTestId('s').getAttribute('style')).toMatch(/linear-gradient/);
+  });
+  it('`display` replaces the grid default instead of joining beside it', () => {
+    render(<Slot display="flex" data-testid="s">x</Slot>);
+    const cls = screen.getByTestId('s').className.split(/\s+/);
+    expect(cls).toContain('flex');
+    expect(cls).not.toContain('grid');
   });
 });
 
@@ -116,12 +152,13 @@ describe('SpellRing', () => {
 import { Icon } from '../../src/ui/primitives/Icon.jsx';
 
 describe('Icon', () => {
-  it('renders a sized 2-tone game-icon svg for a known game name (currentColor)', () => {
+  it('renders a sized 2-tone game-icon svg for a known game name (currentColor)', async () => {
     render(<Icon name="sword" size={24} data-testid="i" />);
     const svg = screen.getByTestId('i');
     expect(svg.tagName.toLowerCase()).toBe('svg');
     expect(svg.getAttribute('width')).toBe('24');
-    expect(svg.innerHTML).toMatch(/path|g/i); // baked inner markup present
+    // The baked set loads lazily, so the path data may arrive after the first render.
+    await waitFor(() => expect(svg.querySelector('path[d]')).not.toBeNull());
   });
   it('renders a lucide chrome icon for a chrome name', () => {
     render(<Icon name="settings" size={18} data-testid="i" />);
@@ -148,6 +185,12 @@ describe('Toast', () => {
     expect(screen.getByTestId('t')).toHaveAttribute('role', 'alert');
     rerender(<Toast status="success" data-testid="t">y</Toast>);
     expect(screen.getByTestId('t')).toHaveAttribute('role', 'status');
+  });
+  it('`display` and `pad` replace the inline-flex and padding defaults', () => {
+    render(<Toast status="warn" display="flex" pad="px-6 py-3" data-testid="t">z</Toast>);
+    const cls = screen.getByTestId('t').className.split(/\s+/);
+    expect(cls.filter((c) => /^(inline-)?flex$/.test(c))).toEqual(['flex']);
+    expect(cls.filter((c) => /^p[xy]-/.test(c))).toEqual(['px-6', 'py-3']);
   });
 });
 import { LocaleToggle } from '../../src/ui/LocaleToggle.jsx';

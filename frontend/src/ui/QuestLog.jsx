@@ -18,7 +18,8 @@ export const QuestLog = React.memo(({ quests = [], onClose }) => {
         >
             <Panel
                 variant="raise"
-                className="w-[460px] max-w-[95vw] max-h-[80vh] overflow-hidden shadow-elev-xl p-0 flex flex-col"
+                shadow="shadow-elev-xl"
+                className="w-[460px] max-w-[95vw] max-h-[80vh] overflow-hidden p-0 flex flex-col"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header bar */}
@@ -27,7 +28,7 @@ export const QuestLog = React.memo(({ quests = [], onClose }) => {
                         <Icon name="scroll" size={26} className="text-accent" />
                         <span className="font-display text-xxl tracking-wide">{t('panel.questLog')}</span>
                     </div>
-                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                    <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9">
                         <Icon name="close" size={18} />
                     </Button>
                 </div>
@@ -38,7 +39,7 @@ export const QuestLog = React.memo(({ quests = [], onClose }) => {
                         const target = q.target || 1;
                         const pct = Math.min(100, Math.round(((q.progress || 0) / target) * 100));
                         return (
-                            <Panel key={q.id} variant="inset" className="bg-slot p-3">
+                            <Panel key={q.id} variant="inset" bg="bg-slot" className="p-3">
                                 <div className="flex items-center gap-2 text-text font-bold text-sm">
                                     {q.icon && <Icon name={q.icon} size={16} className="text-accent flex-none" />}
                                     <span className="flex-1 min-w-0">{q.title}</span>

@@ -225,7 +225,8 @@ export const Inventory = ({ onClose }) => {
         <Modal testId="inventory-modal" label={t('ui.inventory')} className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" onClose={onClose}>
             <Panel
                 variant="raise"
-                className="w-[884px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
+                shadow="shadow-elev-xl"
+                className="w-[884px] max-w-[95vw] overflow-hidden p-0"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header bar */}
@@ -234,7 +235,7 @@ export const Inventory = ({ onClose }) => {
                         <span className="font-display text-xxl tracking-wide">{t('ui.inventory')}</span>
                         <span className="text-xs font-bold tracking-[2px] uppercase text-accent">{t('ui.backpack')} · {t('ui.level_short')} {playerLevel}</span>
                     </div>
-                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                    <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9">
                         <Icon name="close" size={18} />
                     </Button>
                 </div>
@@ -244,7 +245,7 @@ export const Inventory = ({ onClose }) => {
                     {/* ── Column 1: paper-doll well + gear slots + core attributes ── */}
                     <div className="flex flex-col gap-3 overflow-y-auto">
                         {/* Avatar well */}
-                        <Panel variant="inset" className="relative h-[160px] bg-well grid place-items-center overflow-hidden flex-none">
+                        <Panel variant="inset" bg="bg-well" className="relative h-[160px] grid place-items-center overflow-hidden flex-none">
                             <div className="relative w-24 h-[150px] scale-90">
                                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[46px] h-[46px] rounded-md" style={{ background: AVA.head }}>
                                     <div className="absolute top-5 left-3.5 w-[7px] h-[9px] rounded-sm" style={{ background: AVA.eye }} />
@@ -309,7 +310,7 @@ export const Inventory = ({ onClose }) => {
                         </div>
 
                         {/* Core attributes */}
-                        <Panel variant="base" className="bg-slot px-3 py-2 mt-auto">
+                        <Panel variant="base" bg="bg-slot" className="px-3 py-2 mt-auto">
                             <h4 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-1.5">{t('panel.coreAttributes')}</h4>
                             {attributePoints > 0 && (
                                 <div className="text-[10px] font-bold text-accent mb-1.5 flex items-center gap-1"><Icon name="upgrade" size={12} className="flex-none" />{attributePoints} point{attributePoints !== 1 ? 's' : ''} to spend</div>
@@ -338,7 +339,7 @@ export const Inventory = ({ onClose }) => {
                         </div>
 
                         {/* Combat stats */}
-                        <Panel variant="base" className="bg-slot px-4 py-3 flex-none">
+                        <Panel variant="base" bg="bg-slot" className="px-4 py-3 flex-none">
                             <h4 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-2">{t('panel.combatStats')}</h4>
                             <div className="space-y-1.5 text-xs">
                                 <div className="flex items-center gap-2"><Icon name="sword" size={16} className="text-stat-atk flex-none" /><span className="flex-1 text-text-muted">{t('stat.physicalHit')}</span><span className="font-bold tabular-nums">{meleeDmg} DMG</span></div>
@@ -395,9 +396,9 @@ export const Inventory = ({ onClose }) => {
                                             <div className="absolute top-0.5 right-0.5 hidden group-hover:block z-10">
                                                 <Button
                                                     variant="primary"
-                                                    size="sm"
+                                                    size={null}
                                                     onClick={(e) => handleConsume(e, type)}
-                                                    className="text-[8px] px-1.5 py-0.5 leading-none"
+                                                    className="gap-2 text-[8px] px-1.5 py-0.5 leading-none"
                                                 >
                                                     Use
                                                 </Button>
@@ -445,7 +446,8 @@ export const MagicSystem = ({ onClose }) => {
         <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label={t('panel.magicSpells')} onClose={onClose}>
             <Panel
                 variant="raise"
-                className="w-[440px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
+                shadow="shadow-elev-xl"
+                className="w-[440px] max-w-[95vw] overflow-hidden p-0"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header bar */}
@@ -454,7 +456,7 @@ export const MagicSystem = ({ onClose }) => {
                         <Icon name="magic" size={26} className="text-spell-arcane" />
                         <span className="font-display text-xxl tracking-wide">{t('panel.magicSpells')}</span>
                     </div>
-                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                    <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9">
                         <Icon name="close" size={18} />
                     </Button>
                 </div>
@@ -465,7 +467,9 @@ export const MagicSystem = ({ onClose }) => {
                         <Panel
                             key={i}
                             variant="inset"
-                            className={`flex items-center gap-4 p-3 bg-slot text-spell-${spell.spell}`}
+                            bg="bg-slot"
+                            text={`text-spell-${spell.spell}`}
+                            className="flex items-center gap-4 p-3"
                         >
                             <SpellRing spell={spell.spell} keyLabel={spell.key} size={52} className="flex-none">
                                 <Icon name={spell.icon} size={28} />
@@ -519,7 +523,8 @@ export const BuildingTools = React.memo(({ onClose }) => {
         <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Building Tools" onClose={onClose}>
             <Panel
                 variant="raise"
-                className="w-[480px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
+                shadow="shadow-elev-xl"
+                className="w-[480px] max-w-[95vw] overflow-hidden p-0"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header bar */}
@@ -528,7 +533,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
                         <Grid width={26} height={26} strokeWidth={2.5} className="text-accent" aria-hidden />
                         <span className="font-display text-xxl tracking-wide">{t('panel.buildingTools')}</span>
                     </div>
-                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                    <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9">
                         <Icon name="close" size={18} />
                     </Button>
                 </div>
@@ -536,7 +541,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
                 {/* Body */}
                 <div className="flex flex-col gap-4 px-5 pt-5 pb-5">
                     {/* Size Slider */}
-                    <Panel variant="inset" className="bg-slot p-3">
+                    <Panel variant="inset" bg="bg-slot" className="p-3">
                         <div className="flex justify-between items-center mb-2">
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">{t('panel.buildSize')}</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{buildSize}</span>
@@ -578,7 +583,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
                     </div>
 
                     {/* Selected Block Preview */}
-                    <Panel variant="inset" className="bg-slot p-3 flex items-center gap-3">
+                    <Panel variant="inset" bg="bg-slot" className="p-3 flex items-center gap-3">
                         <div
                             className="w-10 h-10 rounded-sm border-chrome border-ink flex-none"
                             style={{ backgroundColor: BLOCK_TYPES[gameState.selectedBlock]?.color || '#567C35' }}
@@ -615,7 +620,8 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
         <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Settings" onClose={onClose}>
             <Panel
                 variant="raise"
-                className="w-[380px] max-w-[95vw] overflow-hidden shadow-elev-xl p-0"
+                shadow="shadow-elev-xl"
+                className="w-[380px] max-w-[95vw] overflow-hidden p-0"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header bar */}
@@ -624,7 +630,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                         <Icon name="settings" size={26} className="text-accent" />
                         <span className="font-display text-xxl tracking-wide">{t('ui.settings')}</span>
                     </div>
-                    <Button variant="ghost" size="sm" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+                    <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.close')} onClick={onClose} className="w-9 h-9">
                         <Icon name="close" size={18} />
                     </Button>
                 </div>
@@ -632,7 +638,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                 {/* Body */}
                 <div className="flex flex-col gap-3 px-5 pt-5 pb-5">
                     {/* Show Stats toggle */}
-                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
+                    <Panel variant="inset" bg="bg-slot" className="flex items-center justify-between px-3 py-2.5">
                         <span className="font-bold text-text">Show Stats (F3)</span>
                         <Button
                             variant={showStats ? 'primary' : 'secondary'}
@@ -645,7 +651,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                     </Panel>
 
                     {/* Look Sensitivity (mouse pointerSpeed + touch drag-look) */}
-                    <Panel variant="inset" className="bg-slot p-3">
+                    <Panel variant="inset" bg="bg-slot" className="p-3">
                         <div className="flex justify-between items-center mb-2">
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">{t('panel.lookSensitivity')}</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{(gameState.lookSensitivity ?? 1).toFixed(1)}</span>
@@ -663,7 +669,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
 
                     {/* Feedback Intensity (M3 #3: the M1 juiceIntensity dial -- screenshake + hitstop
                         strength; 0 = calm / reduced-motion, 100% = full punch. The a11y win the audit flagged). */}
-                    <Panel variant="inset" className="bg-slot p-3">
+                    <Panel variant="inset" bg="bg-slot" className="p-3">
                         <div className="flex justify-between items-center mb-2">
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">{t('panel.feedbackIntensity')}</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.juiceIntensity ?? 1) * 100)}%</span>
@@ -682,7 +688,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                     {/* Reduced Motion toggle (M3 #3): an explicit a11y switch -- ON pins the feedback dial
                         to 0 (no shake/hitstop), OFF restores full. The OS prefers-reduced-motion default is
                         auto-applied at mount (App); this is the discoverable in-game override. */}
-                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
+                    <Panel variant="inset" bg="bg-slot" className="flex items-center justify-between px-3 py-2.5">
                         <span className="font-bold text-text">{t('panel.reducedMotion')}</span>
                         <Button
                             variant={(gameState.juiceIntensity ?? 1) === 0 ? 'primary' : 'secondary'}
@@ -696,7 +702,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
 
                     {/* Frame Rate (perf plan 2026-09-23, Task 4): 60 by default — an uncapped loop on a 120 Hz laptop does
                         twice the GPU work for little a player sees. Unlimited follows the display. */}
-                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
+                    <Panel variant="inset" bg="bg-slot" className="flex items-center justify-between px-3 py-2.5">
                         <span className="font-bold text-text">{t('panel.frameRate')}</span>
                         <Button
                             variant={(gameState.frameCap ?? 60) === 0 ? 'secondary' : 'primary'}
@@ -712,7 +718,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
 
                     {/* SFX Volume (M3 #3: drives the WebAudio master-bus gain; 0% = silent SFX). Music
                         volume + master mute are the sibling panels below (both shipped). */}
-                    <Panel variant="inset" className="bg-slot p-3">
+                    <Panel variant="inset" bg="bg-slot" className="p-3">
                         <div className="flex justify-between items-center mb-2">
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">{t('panel.soundEffects')}</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.sfxVolume ?? 1) * 100)}%</span>
@@ -729,7 +735,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                     </Panel>
 
                     {/* Music Volume (M3 #3 S3b: scales the ElevenLabs music crossfade target). */}
-                    <Panel variant="inset" className="bg-slot p-3">
+                    <Panel variant="inset" bg="bg-slot" className="p-3">
                         <div className="flex justify-between items-center mb-2">
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">{t('ui.music')}</span>
                             <span className="font-display font-bold text-accent tabular-nums text-lg">{Math.round((gameState.musicVolume ?? 1) * 100)}%</span>
@@ -746,7 +752,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                     </Panel>
 
                     {/* Master Mute (M3 #3 S3b): one switch silences BOTH the SFX bus AND the music. */}
-                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
+                    <Panel variant="inset" bg="bg-slot" className="flex items-center justify-between px-3 py-2.5">
                         <span className="font-bold text-text">{t('panel.muteAll')}</span>
                         <Button
                             variant={gameState.masterMuted ? 'primary' : 'secondary'}
@@ -759,7 +765,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
                     </Panel>
 
                     {/* Game Mode toggle */}
-                    <Panel variant="inset" className="bg-slot flex items-center justify-between px-3 py-2.5">
+                    <Panel variant="inset" bg="bg-slot" className="flex items-center justify-between px-3 py-2.5">
                         <span className="font-bold text-text">{t('panel.gameMode')}</span>
                         <Button
                             variant="secondary"

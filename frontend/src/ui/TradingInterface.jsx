@@ -100,7 +100,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
                 {villager?.npcName || 'Villager Merchant'}
               </h2>
             </div>
-            <Button variant="ghost" size="sm" aria-label="Close" onClick={onClose} className="w-9 h-9 p-0 text-text-muted">
+            <Button variant="ghost" size="icon" text="text-text-muted" aria-label="Close" onClick={onClose} className="w-9 h-9">
               <Icon name="close" size={18} />
             </Button>
           </div>
