@@ -15,6 +15,9 @@ import { bootDev } from './_boot.js';
 // MUTATION-PROOF: revert the stat-stack container to `absolute top-16 left-4 ... space-y-2` and BOTH the
 // no-collision assertion (1) and the vertical-stack assertion (2) go RED.
 
+// CANDIDATE B (2026-10-28): held at 1280x800 under the smaller suite default — it measures the desktop HUD geometry its B5 defects were found at.
+test.use({ viewport: { width: 1280, height: 800 } });
+
 const boxOf = (page, testid) =>
   page.evaluate((id) => {
     const el = document.querySelector(`[data-testid="${id}"]`);

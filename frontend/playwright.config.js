@@ -37,7 +37,8 @@ export default defineConfig({
   use: {
     baseURL: URL,
     browserName: 'chromium',
-    viewport: { width: 1280, height: 800 },
+    // CANDIDATE B of the runner-speed A/B (2026-10-28): a 640x400 default for specs that set none.
+    viewport: { width: 640, height: 400 },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     launchOptions: {
