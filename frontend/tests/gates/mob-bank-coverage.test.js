@@ -30,7 +30,16 @@ describe('every mob type banks a declared amount — no silent fallback', () => 
   it.each(types)('%s has an explicit bank value, not the fallback', (type) => {
     expect(MOB_TYPES[type], `${type} has no bank field — it would silently take the default`).toHaveProperty('bank');
     expect(typeof MOB_TYPES[type].bank).toBe('number');
-    expect(MOB_TYPES[type].bank).toBeGreaterThan(0);
+    expect(MOB_TYPES[type].bank).toBeGreaterThanOrEqual(0);
+  });
+
+  it('every hostile banks something, and a Settler banks nothing', () => {
+    // Zero is a real value for exactly one mob: killing villagers must not power the player up. A zero anywhere else
+    // is a hostile that pays nothing for the fight.
+    const hostile = types.filter((t) => !MOB_TYPES[t].passive);
+    for (const t of hostile) expect(bankForKill(t), `${t} banks nothing`).toBeGreaterThan(0);
+    expect(bankForKill('villager'), 'a Settler kill banks Aspect power').toBe(0);
+    expect(bankForKill('cow'), 'livestock lost its bank with the Settler').toBeGreaterThan(0);
   });
 
   it('no hostile mob banks less than a passive one — the gradient the table exists for', () => {

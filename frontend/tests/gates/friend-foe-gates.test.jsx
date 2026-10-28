@@ -15,6 +15,8 @@ import { makeNpcEntity } from '../../src/world/npcSpawn';
 import { MOB_TYPES } from '../../src/game/mobTypes';
 import { solveChainTargets } from '../../src/game/chainLightning';
 import { isProtected, isAutoTargetable, canPlayerDamage } from '../../src/combat/targeting';
+import { useGameStore } from '../../src/store/useGameStore';
+import { useFerocityAccrual, useKineticAccrual, useSoulAccrual } from '../../src/world/accrualHooks';
 
 // B1 — FRIEND/FOE. The 18-domain review's #1 CRITICAL: the player could permanently kill all four hub
 // questgivers (merchant / smith / healer / guide) with 2.7 seconds of holding left-click, deleting
@@ -178,5 +180,36 @@ describe('B1 friend/foe — auto-targeters may not pick their own victims', () =
 
     const src = readFileSync(resolve(HERE, '../../src/systems/MinimapSyncSystem.jsx'), 'utf8');
     expect(src).toMatch(/setMobEntities\([\s\S]{0,200}isNPC:\s*e\.isNPC/);
+  });
+});
+
+// A Settler is NEUTRAL: killable when you aim at one, but killing villagers must never be a way to power up. The kill
+// runs through the real damage path and the real kill bus into the three accrual hooks the game mounts.
+describe('the NEUTRAL tier banks no Aspect power', () => {
+  const Accrual = () => { useFerocityAccrual(); useKineticAccrual(); useSoulAccrual(); return null; };
+  const banks = () => {
+    const s = useGameStore.getState();
+    return { ferocity: s.ferocityBanked, kinetic: s.kineticBanked, soul: s.soulBanked };
+  };
+  beforeEach(() => {
+    clearWorld();
+    useGameStore.setState({ isDay: true, ferocityBanked: 0, kineticBanked: 0, soulBanked: 0 });
+    render(<><CombatSystem setDamageNumbers={() => {}} setShockwaves={() => {}} damageId={{ current: 0 }} /><Accrual /></>);
+  });
+
+  it('a deliberate day kill of a Settler leaves every bank where it was; a Husk kill fills them', () => {
+    const settler = spawn({ id: 9201, type: 'villager', pos: [0, 0, -2] });
+    GameMethods.damageMob(settler.id, 9999, 'physical', 'player');
+    expect(settler.health, 'the Settler did not die — nothing below is about a kill').toBeLessThanOrEqual(0);
+    expect(banks(), 'killing a Settler banked Aspect power').toEqual({ ferocity: 0, kinetic: 0, soul: 0 });
+
+    // The same instrument, same frame of mind: a hostile day kill does bank, so a zero above is not a dead bus.
+    const husk = spawn({ id: 9202, type: 'zombie', pos: [0, 0, -3] });
+    GameMethods.damageMob(husk.id, 9999, 'physical', 'player');
+    expect(husk.health).toBeLessThanOrEqual(0);
+    const after = banks();
+    expect(after.ferocity, 'a Husk kill banked no Ferocity — the accrual path is dead').toBeGreaterThan(0);
+    expect(after.kinetic, 'a Husk kill banked no Kinetic').toBeGreaterThan(0);
+    expect(after.soul, 'a Husk kill banked no Soul').toBeGreaterThan(0);
   });
 });
