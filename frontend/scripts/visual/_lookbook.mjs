@@ -358,6 +358,29 @@ export function passDifferential(windows, arm) {
   };
 }
 
+/**
+ * PURE. The fast alternation (lookbook.mjs --passes --alt): one window of halves, the arm switched on and off every
+ * half, the GPU's utilization read through each. The GPU moves between power states over tens of seconds, which the
+ * windowed design lands on either arm at random; within a few seconds it does not, so each adjacent on/off pair of
+ * halves is one differential within one state. A half's value is its median busy percent after `skipMs` (the driver
+ * lags), in ms at the window's frame interval. `halves`: [{ state: 'on'|'off', samples: [{ t, util }] }].
+ */
+export function altDifferential(halves, intervalMs, { skipMs = 600 } = {}) {
+  const value = (h) => {
+    const pct = medianOf((h.samples || []).filter((s) => s.t >= skipMs && s.util).map((s) => s.util.device));
+    return pct === null || !(intervalMs > 0) ? null : (pct / 100) * intervalMs;
+  };
+  const vals = (halves || []).map((h) => ({ state: h.state, ms: value(h) }));
+  const d = [];
+  for (let i = 1; i < vals.length; i++) {
+    const [a, b] = [vals[i - 1], vals[i]];
+    if (a.ms === null || b.ms === null || a.state === b.state) continue;
+    d.push(a.state === 'on' ? a.ms - b.ms : b.ms - a.ms);
+  }
+  const onMs = medianOf(vals.filter((v) => v.state === 'on' && v.ms !== null).map((v) => v.ms));
+  return { u: statsOf(d), onU: onMs, halves: vals.map((v) => v.ms) };
+}
+
 /** The rule (plan 2026-10-28-crafty-w2i-passes, "The decision rule" and its amendment), fixed before the measurement. */
 export const PASS_RULE = Object.freeze({ minReps: 5, minMs: 0.5, minShare: 0.10, minPositiveShare: 0.8, contradictMs: 0.25 });
 

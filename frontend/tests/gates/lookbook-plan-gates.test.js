@@ -33,6 +33,7 @@ import {
   PASS_CONTROL,
   parseGpuUtil,
   gpuMsPerFrame,
+  altDifferential,
 } from '../../scripts/visual/_lookbook.mjs';
 import { LOOKBOOK_PASS_NAMES } from '../../src/render/passesOff.js';
 import { viteArgv } from '../../scripts/visual/_serve.mjs';
@@ -549,5 +550,27 @@ describe('the GPU\'s own utilization: an instrument with no timer query in it', 
     expect(new Set(PASS_CONTROL.off)).toEqual(named);
     expect(PASS_CONTROL.control).toBe(true);
     expect(PASS_ARMS.some((a) => a.id === PASS_CONTROL.id)).toBe(false);
+  });
+});
+
+describe('the fast alternation: one differential per adjacent on/off pair of halves, within one power state', () => {
+  const half = (state, pcts) => ({ state, samples: pcts.map((p, i) => ({ t: i * 200, util: { device: p } })) });
+  it('takes each half after the driver lag, pairs neighbours whatever their order, and reads ms at the frame interval', () => {
+    // Halves at 600 ms and after: 88 / 80 / 88 / 80 % at 16 ms a frame. The first two readings of each are lag.
+    const halves = [half('on', [10, 10, 10, 88, 88, 88]), half('off', [99, 99, 99, 80, 80, 80]), half('on', [0, 0, 0, 88, 88, 88]), half('off', [0, 0, 0, 80, 80, 80])];
+    const d = altDifferential(halves, 16);
+    expect(d.u.n, 'three adjacent pairs from four halves').toBe(3);
+    expect(d.u.values.map((x) => Math.round(x * 100) / 100)).toEqual([1.28, 1.28, 1.28]);
+    expect(d.onU).toBeCloseTo(0.88 * 16, 9);
+  });
+  it('a step in the GPU\'s power state between pairs leaves each pair\'s differential alone', () => {
+    // The state jumps from about 47% to 87% busy between the second and third halves: the one pair across the jump
+    // reads it (4.2 ms), and the median of the four pairs holds at the in-state 0.2 ms.
+    const halves = [half('on', [0, 0, 0, 48, 48]), half('off', [0, 0, 0, 46, 46]), half('on', [0, 0, 0, 88, 88]), half('off', [0, 0, 0, 86, 86]), half('on', [0, 0, 0, 88, 88])];
+    const d = altDifferential(halves, 10);
+    expect(d.u.values.map((x) => Math.round(x * 100) / 100)).toEqual([0.2, 4.2, 0.2, 0.2]);
+    expect(d.u.median).toBeCloseTo(0.2, 9);
+    expect(altDifferential([half('on', [0, 0, 0, 50]), half('on', [0, 0, 0, 40])], 10).u.n, 'two halves in the same state are no pair').toBe(0);
+    expect(altDifferential(halves, null).u.n, 'no frame interval, no ms').toBe(0);
   });
 });

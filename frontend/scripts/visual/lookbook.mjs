@@ -87,6 +87,7 @@ import {
   pickCandidate, shotVerdict, eyeShotVerdict, clipVerdict, passSummary, contactSheetHtml, parseCycles, indexChunkOf,
   servedBuildProblem, CYCLE_TOLERANCE, PASS_ARMS, PASS_TIMES, PASS_REPS, PASS_TARGET, PASS_LOOK_PAIRS, PASS_MAX_LOAD,
   passWindowPlan, windowMedian, passDifferential, passVerdict, admittedInstruments, PASS_CONTROL, parseGpuUtil, gpuMsPerFrame,
+  altDifferential,
 } from './_lookbook.mjs';
 
 const PORT = probePort(import.meta.url);
@@ -100,6 +101,9 @@ const OUT = resolve(arg('--out', `/tmp/crafty-lookbook-${STAMP}`));
 const HOLD_S = Number(arg('--hold', 0));
 const PASSES = flag('--passes');
 const PASS_REPS_RUN = Number(arg('--reps', PASS_REPS));
+// --alt: the fast alternation instead of the windowed differential (altWindow), in --alt-reps windows per arm.
+const PASS_ALT = flag('--alt');
+const PASS_ALT_REPS = Number(arg('--alt-reps', 2));
 const PASS_ARMS_RUN = (() => {
   const want = arg('--arms', null);
   return want ? PASS_ARMS.filter((a) => want.split(',').includes(a.id)) : PASS_ARMS;
@@ -658,6 +662,9 @@ async function passWindow(page, report, { cycle, off, mode }) {
   if (mode === 'frame') {
     const gl = (await info(page)).gl;
     util = await utilWindow(page, () => gl?.canvas);
+    // The utilization window ran the clock about 3 s on; set it back so the timed window starts at the asked time and
+    // the whole window stays within CYCLE_TOLERANCE of it (4.8 s of the 480 s day).
+    await setCycle(page, cycle);
   }
   await passTimes(page, { mode, reset: true });
   await delay(PASS_WINDOW_MS);
@@ -684,6 +691,42 @@ async function passWindow(page, report, { cycle, off, mode }) {
     segments: mode === 'segments' ? passSummary(r, canvas) : undefined,
     tier: i.tier, dpr: i.gl?.dpr ?? null, canvas, cycleAt: i.cycle, frameCap: i.frameCap,
     load: Math.round(os.loadavg()[0] * 100) / 100, valid: why.length === 0, why,
+  };
+}
+
+const PASS_ALT_HALVES = 10;
+const PASS_ALT_HALF_MS = 1500;
+const PASS_ALT_EVERY_MS = 150;
+
+/** The fast alternation (--alt): the arm off and on every PASS_ALT_HALF_MS through one window, the GPU's utilization
+ *  read through each half (_lookbook.mjs altDifferential). */
+async function altWindow(page, report, { cycle, off }) {
+  await respawnIfDead(page, report);
+  await page.evaluate((radius) => window.__craftyLookbook.clearHostiles({ radius }), PASS_CLEAR_M);
+  await play(page);
+  await passTimes(page, { mode: 'count', reset: true });
+  const halves = [];
+  for (let i = 0; i < PASS_ALT_HALVES; i++) {
+    const state = i % 2 === 0 ? 'on' : 'off';
+    await setCycle(page, cycle);
+    await page.evaluate((o) => window.__craftyLookbook.passesOff(o), state === 'off' ? off : []);
+    const t0 = Date.now();
+    const samples = [];
+    while (Date.now() - t0 < PASS_ALT_HALF_MS) {
+      samples.push({ t: Date.now() - t0, util: readGpuUtil() });
+      await delay(PASS_ALT_EVERY_MS);
+    }
+    halves.push({ state, samples });
+  }
+  const r = await passTimes(page);
+  const i = await info(page);
+  const canvas = i.gl?.canvas;
+  const ctx = (r.contexts || []).find((c) => c.canvas && canvas && c.canvas[0] === canvas[0] && c.canvas[1] === canvas[1]) || null;
+  const intervalMs = ctx?.frames > 0 ? ctx.windowMs / ctx.frames : null;
+  return {
+    d: altDifferential(halves, intervalMs), intervalMs, frames: ctx?.frames ?? null, tier: i.tier, isAlive: i.isAlive,
+    active: i.active, cycleAt: i.cycle, load: Math.round(os.loadavg()[0] * 100) / 100,
+    halves: halves.map((h) => ({ state: h.state, device: h.samples.map((s) => [s.t, s.util?.device ?? null]) })),
   };
 }
 
@@ -741,6 +784,25 @@ async function measurePasses(launchOpts, launchId) {
       const block = { time: time.id, cycle: time.cycle, heading, sun, loadAtStart: gate.load, waitedS: gate.waitedS,
         startedAt: new Date().toISOString(), segments: [], windows: [] };
       console.log(`  ${time.id} (cycle ${time.cycle}, facing ${heading}, sun ${sun ? `${Math.round(sun.heading)} at ${sun.elevationDeg.toFixed(1)} deg` : '?'}), load ${gate.load}`);
+      if (PASS_ALT) {
+        block.alt = [];
+        for (let rep = 0; rep < PASS_ALT_REPS; rep++) {
+          for (const arm of [...PASS_ARMS_RUN, PASS_CONTROL]) block.alt.push({ arm: arm.id, rep, ...(await altWindow(page, report, { cycle: time.cycle, off: arm.off })) });
+        }
+        await page.evaluate(() => window.__craftyLookbook.passesOff([]));
+        block.endedAt = new Date().toISOString();
+        block.loadAtEnd = Math.round(os.loadavg()[0] * 100) / 100;
+        for (const arm of [...PASS_ARMS_RUN, PASS_CONTROL]) {
+          const runs = block.alt.filter((x) => x.arm === arm.id);
+          const d = runs.flatMap((x) => x.d.u.values);
+          const f = (x) => (x == null ? '-' : x.toFixed(2));
+          const med = (xs) => { const t = [...xs].sort((a, b) => a - b); return t.length ? (t.length % 2 ? t[(t.length - 1) / 2] : (t[t.length / 2 - 1] + t[t.length / 2]) / 2) : null; };
+          console.log(`    alt ${arm.id.padEnd(12)} dU ${f(med(d))} [${f(Math.min(...d))}..${f(Math.max(...d))}] (${d.filter((x) => x > 0).length}/${d.length} +) of ${f(med(runs.map((x) => x.d.onU)))}`);
+        }
+        out.blocks.push(block);
+        writeFileSync(join(OUT, 'passes.json'), JSON.stringify({ ...passBase, passes: out }, null, 2));
+        continue;
+      }
       // The segments check: segment mode, everything on, each beside a whole-frame window, three times.
       for (let i = 0; i < 3; i++) {
         const seg = await passWindow(page, report, { cycle: time.cycle, off: [], mode: 'segments' });
@@ -769,7 +831,7 @@ async function measurePasses(launchOpts, launchId) {
       writeFileSync(join(OUT, 'passes.json'), JSON.stringify({ ...passBase, passes: out }, null, 2));
     }
     // The look pairs, after the measurement so no screenshot falls inside a window.
-    for (const pair of PASS_LOOK_PAIRS) {
+    for (const pair of PASS_ALT ? [] : PASS_LOOK_PAIRS) {
       const time = PASS_TIMES.find((t) => t.id === pair.time);
       const arm = PASS_ARMS.find((a) => a.id === pair.arm);
       if (!PASS_TIMES_RUN.includes(time)) continue;
