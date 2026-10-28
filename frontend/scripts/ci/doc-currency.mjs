@@ -17,25 +17,59 @@
  *
  * It does NOT try to judge prose staleness with an LLM. A lint that can be argued with is a lint that gets
  * ignored.
+ *
+ * THE SEAM (plan U8a, 2026-10-27). Every check lives in `run({ root, only, enforce })`, which returns
+ * `{ errors, warnings, checked, danglingSections }` and never prints or exits; the CLI below is a thin printer around it. Until
+ * then the whole lint ran at module scope with no export, so no test could call it, and deleting the call to one
+ * of its checks stayed green under every test in the suite. `tests/scripts/doc-currency-wiring.test.js` drives
+ * both seams, and each unit that wires a new check in adds its case there.
+ *   root     where the DOCS are read from (default: this checkout). The generated blocks' sources — the hook
+ *            gate-table derives from and the src tree measure() walks — are always this checkout's.
+ *   only     run just these checks (names in CHECKS); an unknown name or an empty list throws, and so does a named
+ *            check that records no denominator, because a run that checks nothing must never read as a pass.
+ *   enforce  flags that turn a check's warning into an error (ENFORCE_FLAGS); an unknown flag throws.
+ *   runners  the function behind each check name (default: the real ones). A test seam, so the wiring spec can show
+ *            that a check which does not report is a throw rather than a pass.
+ *   checked  the per-check denominator: how many things each check actually examined.
+ *
+ *   node scripts/ci/doc-currency.mjs               check this checkout; exit 1 on any error
+ *   node scripts/ci/doc-currency.mjs --root=<dir>  check the docs under <dir> (a test seam)
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { measure, parseBlock, TOLERANCE, LARGE_FILE_LOC } from './measure.mjs';
 import { checkBlock as checkGateBlock } from './gate-table.mjs';
-import { checkAll as checkReadOrder } from './read-order.mjs';
+import { SURFACES as READ_ORDER_SURFACES, checkFile as checkReadOrderFile } from './read-order.mjs';
 
-import { DOC_ALIASES, sectionIds, itemIds, unresolved } from './doc-anchors.mjs';
+import { DOC_ALIASES, sectionIds, itemIds, citations, unresolved } from './doc-anchors.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..'); // frontend/scripts/ci -> repo root
-const PKG = JSON.parse(readFileSync(join(ROOT, 'frontend/package.json'), 'utf8'));
-const DEPS = { ...(PKG.dependencies || {}), ...(PKG.devDependencies || {}) };
+
+/**
+ * The checks `run()` knows, in the order it runs them, each with the function behind it. A unit that wires in a new
+ * check appends it HERE: `run()` iterates this table, so a check removed from it stops running, and CHECKS (its names)
+ * is pinned by the wiring spec, which is what turns that red.
+ */
+const RUNNERS = Object.freeze({
+  dangling: checkDangling,
+  packages: checkPackages,
+  status: checkStatus,
+  gates: checkGates,
+  measured: checkMeasured,
+  'read-order': checkReadOrder,
+  sections: checkSections,
+});
+export const CHECKS = Object.freeze(Object.keys(RUNNERS));
+
+/** Flags that turn a check's warning into an error. None exist yet; the first is U30's ACTIVE_PLAN cap. */
+const ENFORCE_FLAGS = Object.freeze([]);
 
 // The docs an agent is actually told to trust. Rot here is what causes damage; rot in a shipped 2026-06-03
 // plan doc is just history.
-const CANONICAL = [
+export const CANONICAL = [
   'memory/STATUS.md',
   'memory/ACTIVE_PLAN.md',
   'memory/ARCHITECTURE.md',
@@ -58,8 +92,48 @@ const CANONICAL = [
 const CLAIM_VERBS = /(installed|landed|added|approved \+ landed|is wired|now available)/i;
 const WATCHED_PACKAGES = ['@react-three/test-renderer', '@playwright/test', 'knip', 'puppeteer'];
 
-const errors = [];
-const warnings = [];
+const AGENTS_REL = '.agent/AGENTS.md';
+
+/**
+ * Run the named checks (all of them by default) over the docs under `root`.
+ * Returns `{ errors, warnings, checked, danglingSections }`: `checked[name]` is how many things that check
+ * examined, and `danglingSections` the § citations that did not resolve (the CLI's PASSED line prints it).
+ */
+export function run({ root = ROOT, only, enforce = {}, runners = RUNNERS } = {}) {
+  if (only !== undefined) {
+    if (!Array.isArray(only) || only.length === 0) {
+      throw new Error('doc-currency run(): `only` must name at least one check — a run that checks nothing would read as a pass');
+    }
+    const unknown = only.filter((name) => !CHECKS.includes(name));
+    if (unknown.length) throw new Error(`doc-currency run(): unknown check(s) ${unknown.join(', ')}; known: ${CHECKS.join(', ')}`);
+  }
+  const badFlags = Object.keys(enforce).filter((flag) => !ENFORCE_FLAGS.includes(flag));
+  if (badFlags.length) {
+    throw new Error(`doc-currency run(): unknown enforce flag(s) ${badFlags.join(', ')}; known: ${ENFORCE_FLAGS.join(', ') || '(none yet)'}`);
+  }
+  const out = { errors: [], warnings: [], checked: {}, danglingSections: 0 };
+  for (const name of CHECKS) {
+    if (only !== undefined && !only.includes(name)) continue;
+    const runner = runners[name];
+    if (typeof runner === 'function') runner(root, out);
+    // Every check records what it examined, even 0. One that recorded nothing did not run — and a run that checked
+    // nothing must never read as a pass, so it is a thrown wiring defect, not an empty error list.
+    if (!Object.hasOwn(out.checked, name)) {
+      throw new Error(`doc-currency run(): check "${name}" did not run (it recorded no denominator) — a run that checks nothing must never read as a pass`);
+    }
+  }
+  return out;
+}
+
+/** A doc's text, or null with an error naming the check that could not run. */
+function readDoc(root, rel, out, what) {
+  const abs = join(root, rel);
+  if (!existsSync(abs)) {
+    out.errors.push(`${rel}: does not exist, so ${what} could not be checked`);
+    return null;
+  }
+  return readFileSync(abs, 'utf8');
+}
 
 // --- 1. DANGLING LINKS ------------------------------------------------------
 // Match markdown links + inline-code paths that look repo-relative.
@@ -74,77 +148,102 @@ const CODEPATH_RE = /`((?:memory|docs|frontend|src|\.agent|scripts|tests)\/[A-Za
 // it did not, and that false confidence is what made the hole worth closing rather than noting.
 const BAREPATH_RE = /(?<![`(\w/.-])((?:memory|docs|frontend|src|\.agent|scripts|tests)\/[A-Za-z0-9._\-/]+\.[a-z]{2,5})/g;
 
-for (const rel of CANONICAL) {
-  const abs = join(ROOT, rel);
-  if (!existsSync(abs)) {
-    errors.push(`MISSING CANONICAL DOC: ${rel}`);
-    continue;
-  }
-  const src = readFileSync(abs, 'utf8');
-  const seen = new Set();
+// Some docs deliberately cite a WRONG path as a cautionary example (e.g. AGENTS.md warns that
+// `memory/SOTA-INITIATIVE.md` is the classic false-absence mistake — "it's at root"). Flagging those
+// would be the lint failing to read English. Skip lines that are explicitly calling a path wrong.
+const NEGATED = /\b(a wrong|wrong|incorrect|is at root|not at|does not exist|false-absence|used to be|REMOVED)\b/i;
 
-  // Some docs deliberately cite a WRONG path as a cautionary example (e.g. AGENTS.md warns that
-  // `memory/SOTA-INITIATIVE.md` is the classic false-absence mistake — "it's at root"). Flagging those
-  // would be the lint failing to read English. Skip lines that are explicitly calling a path wrong.
-  const NEGATED = /\b(a wrong|wrong|incorrect|is at root|not at|does not exist|false-absence|used to be|REMOVED)\b/i;
-  const lineOf = (idx) => src.slice(0, idx).split('\n').length - 1;
-  const srcLines = src.split('\n');
-
-  const check = (target, kind, atIndex) => {
-    if (seen.has(target)) return;
-    seen.add(target);
-    if (/^(https?:|mailto:|#)/.test(target)) return; // external / anchor
-    if (atIndex != null && NEGATED.test(srcLines[lineOf(atIndex)] || '')) return;
-    const clean = target.split('#')[0].trim();
-    if (!clean) return;
-    if (/[*?<>|]/.test(clean)) return; // globs/placeholders, not real paths
-    // TWO-LEVEL REPO: docs live at the ROOT but habitually write app paths as `src/...` / `tests/...`,
-    // meaning `frontend/src/...`. Resolve against all three roots before calling a path dangling —
-    // otherwise this lint emits 36 false positives on its first run, and a noisy gate gets disabled,
-    // which is strictly worse than no gate at all.
-    const candidates = [
-      resolve(dirname(abs), clean), // relative to the doc
-      join(ROOT, clean), // repo root
-      join(ROOT, 'frontend', clean), // the app dir (the two-level trap)
-    ];
-    if (!candidates.some(existsSync)) {
-      errors.push(`DANGLING ${kind} in ${rel}: "${clean}" does not exist`);
+/** checked.dangling = the citations actually resolved against the disk (after the external/negated/glob skips). */
+function checkDangling(root, out) {
+  let examined = 0;
+  for (const rel of CANONICAL) {
+    const abs = join(root, rel);
+    if (!existsSync(abs)) {
+      out.errors.push(`MISSING CANONICAL DOC: ${rel}`);
+      continue;
     }
-  };
+    const src = readFileSync(abs, 'utf8');
+    const seen = new Set();
+    const lineOf = (idx) => src.slice(0, idx).split('\n').length - 1;
+    const srcLines = src.split('\n');
 
-  let m;
-  while ((m = LINK_RE.exec(src))) check(m[1], 'link', m.index);
-  while ((m = CODEPATH_RE.exec(src))) check(m[1], 'path', m.index);
-  while ((m = BAREPATH_RE.exec(src))) check(m[1], 'bare path', m.index);
+    const check = (target, kind, atIndex) => {
+      if (seen.has(target)) return;
+      seen.add(target);
+      if (/^(https?:|mailto:|#)/.test(target)) return; // external / anchor
+      if (atIndex != null && NEGATED.test(srcLines[lineOf(atIndex)] || '')) return;
+      const clean = target.split('#')[0].trim();
+      if (!clean) return;
+      if (/[*?<>|]/.test(clean)) return; // globs/placeholders, not real paths
+      // TWO-LEVEL REPO: docs live at the ROOT but habitually write app paths as `src/...` / `tests/...`,
+      // meaning `frontend/src/...`. Resolve against all three roots before calling a path dangling —
+      // otherwise this lint emits 36 false positives on its first run, and a noisy gate gets disabled,
+      // which is strictly worse than no gate at all.
+      const candidates = [
+        resolve(dirname(abs), clean), // relative to the doc
+        join(root, clean), // repo root
+        join(root, 'frontend', clean), // the app dir (the two-level trap)
+      ];
+      examined += 1;
+      if (!candidates.some(existsSync)) {
+        out.errors.push(`DANGLING ${kind} in ${rel}: "${clean}" does not exist`);
+      }
+    };
+
+    let m;
+    while ((m = LINK_RE.exec(src))) check(m[1], 'link', m.index);
+    while ((m = CODEPATH_RE.exec(src))) check(m[1], 'path', m.index);
+    while ((m = BAREPATH_RE.exec(src))) check(m[1], 'bare path', m.index);
+  }
+  out.checked.dangling = examined;
 }
 
 // --- 2. PACKAGE CLAIMS ------------------------------------------------------
-for (const rel of CANONICAL) {
-  const abs = join(ROOT, rel);
-  if (!existsSync(abs)) continue;
-  const lines = readFileSync(abs, 'utf8').split('\n');
+/** checked.packages = the doc lines that mention a watched package (each one is judged). */
+function checkPackages(root, out) {
+  const pkgAbs = join(root, 'frontend/package.json');
+  if (!existsSync(pkgAbs)) {
+    out.errors.push('frontend/package.json: does not exist, so package claims could not be checked');
+    out.checked.packages = 0;
+    return;
+  }
+  const PKG = JSON.parse(readFileSync(pkgAbs, 'utf8'));
+  const DEPS = { ...(PKG.dependencies || {}), ...(PKG.devDependencies || {}) };
+  let examined = 0;
+  for (const rel of CANONICAL) {
+    const abs = join(root, rel);
+    if (!existsSync(abs)) continue;
+    const lines = readFileSync(abs, 'utf8').split('\n');
 
-  lines.forEach((line, i) => {
-    for (const pkg of WATCHED_PACKAGES) {
-      if (!line.includes(pkg)) continue;
-      if (!CLAIM_VERBS.test(line)) continue;
-      // A line that explicitly documents the REMOVAL/correction is fine — that is the fix, not the rot.
-      if (/\b(REMOVED|removed|NOT in|not in|absent|was a LIVE TRAP|CORRECTED|no longer)\b/.test(line)) continue;
-      const installed = Object.prototype.hasOwnProperty.call(DEPS, pkg);
-      if (!installed) {
-        errors.push(
-          `STALE PACKAGE CLAIM in ${rel}:${i + 1} — claims "${pkg}" is installed/landed, ` +
-            `but it is NOT in frontend/package.json.`,
-        );
+    lines.forEach((line, i) => {
+      for (const pkg of WATCHED_PACKAGES) {
+        if (!line.includes(pkg)) continue;
+        examined += 1;
+        if (!CLAIM_VERBS.test(line)) continue;
+        // A line that explicitly documents the REMOVAL/correction is fine — that is the fix, not the rot.
+        if (/\b(REMOVED|removed|NOT in|not in|absent|was a LIVE TRAP|CORRECTED|no longer)\b/.test(line)) continue;
+        const installed = Object.prototype.hasOwnProperty.call(DEPS, pkg);
+        if (!installed) {
+          out.errors.push(
+            `STALE PACKAGE CLAIM in ${rel}:${i + 1} — claims "${pkg}" is installed/landed, ` +
+              `but it is NOT in frontend/package.json.`,
+          );
+        }
       }
-    }
-  });
+    });
+  }
+  out.checked.packages = examined;
 }
 
 // --- 3. STATUS INTEGRITY ----------------------------------------------------
-const statusRel = 'memory/STATUS.md';
-const statusAbs = join(ROOT, statusRel);
-if (existsSync(statusAbs)) {
+/** process.env with every GIT_* removed: the age is read from the repo at `root`, never an inherited GIT_DIR's. */
+const scrubbedEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+
+/** checked.status = the load-bearing sections looked for (0 when STATUS is absent; dangling reports that). */
+function checkStatus(root, out) {
+  const statusAbs = join(root, 'memory/STATUS.md');
+  out.checked.status = 0;
+  if (!existsSync(statusAbs)) return;
   const status = readFileSync(statusAbs, 'utf8');
   const REQUIRED = [
     { re: /single source of truth/i, what: 'the source-of-truth declaration' },
@@ -154,8 +253,9 @@ if (existsSync(statusAbs)) {
     { re: /\[KEVIN\]|KEVIN-ONLY/, what: 'the KEVIN-only partition' },
   ];
   for (const { re, what } of REQUIRED) {
-    if (!re.test(status)) errors.push(`STATUS.md has lost ${what} — it is the source of truth; keep it whole.`);
+    if (!re.test(status)) out.errors.push(`STATUS.md has lost ${what} — it is the source of truth; keep it whole.`);
   }
+  out.checked.status = REQUIRED.length;
   // Soft signal: STATUS should not go stale relative to shipped code.
   //
   // MEASURED FROM GIT, NOT FROM THE FILESYSTEM. This read `statSync(...).mtimeMs`, and a fresh CI
@@ -165,15 +265,20 @@ if (existsSync(statusAbs)) {
   // The commit date is the real "when was this last touched" and it travels with the repo.
   let ageDays = null;
   try {
-    const ts = execFileSync('git', ['log', '-1', '--format=%ct', '--', statusAbs], { encoding: 'utf8' }).trim();
+    const ts = execFileSync('git', ['log', '-1', '--format=%ct', '--', statusAbs], {
+      cwd: root,
+      encoding: 'utf8',
+      env: scrubbedEnv(),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
     if (ts) ageDays = (Date.now() - Number(ts) * 1000) / 86_400_000;
   } catch {
     // Not a git checkout (a tarball, a sandbox). Say so rather than silently reporting fresh — an age
     // this cannot measure must not read as an age of zero.
-    warnings.push('STATUS.md age is unknown here: git log is unavailable, so staleness went unchecked.');
+    out.warnings.push('STATUS.md age is unknown here: git log is unavailable, so staleness went unchecked.');
   }
   if (ageDays !== null && ageDays > 14) {
-    warnings.push(`STATUS.md has not been committed in ${ageDays.toFixed(0)} days — is the registry still true?`);
+    out.warnings.push(`STATUS.md has not been committed in ${ageDays.toFixed(0)} days — is the registry still true?`);
   }
 }
 
@@ -182,12 +287,15 @@ if (existsSync(statusAbs)) {
 // ("three" -> "Six" -> "NINE"), the last time ONE COMMIT after artifact-currency landed — and a six-agent
 // review read the paragraph closely with five of six certifying the stale number. A mirror of a
 // machine-readable file drifts the moment that file changes, so this fails the push instead.
-{
-  const agentsRel = '.agent/AGENTS.md';
-  const md = readFileSync(join(ROOT, agentsRel), 'utf8');
+/** checked.gates = the gates the hook defines, which the block is compared against. */
+function checkGates(root, out) {
+  out.checked.gates = 0;
+  const md = readDoc(root, AGENTS_REL, out, 'the GATES block');
+  if (md === null) return;
   const r = checkGateBlock(md);
+  out.checked.gates = r.count;
   if (!r.ok) {
-    errors.push(`${agentsRel}: ${r.reason} (hook defines ${r.count} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`);
+    out.errors.push(`${AGENTS_REL}: ${r.reason} (hook defines ${r.count} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`);
   }
 }
 
@@ -203,53 +311,56 @@ if (existsSync(statusAbs)) {
 //
 // The large-file LIST is checked EXACTLY, not by tolerance: it is short, slow-moving, was the most-wrong
 // claim of the three, and its membership is precisely what de-monolith decisions get made from.
-{
-  const agentsRel = '.agent/AGENTS.md';
-  const md = readFileSync(join(ROOT, agentsRel), 'utf8');
+/** checked.measured = the claimed quantities compared: the two counts plus each listed large file. */
+function checkMeasured(root, out) {
+  out.checked.measured = 0;
+  const md = readDoc(root, AGENTS_REL, out, 'the MEASURED block');
+  if (md === null) return;
   const claimed = parseBlock(md);
   const regen = 'node frontend/scripts/ci/measure.mjs --write';
   if (!claimed) {
-    errors.push(`${agentsRel}: MEASURED block missing or unparseable — regenerate: ${regen}`);
-  } else {
-    const actual = measure();
-    const drift = (a, b) => Math.abs(a - b) / Math.max(b, 1);
-    for (const [label, got, want] of [
-      ['source files', claimed.srcFiles, actual.srcFiles],
-      ['source LOC', claimed.srcLoc, actual.srcLoc],
-    ]) {
-      if (drift(got, want) > TOLERANCE) {
-        errors.push(
-          `${agentsRel}: MEASURED ${label} says ${got.toLocaleString('en-US')}, actual ` +
-            `${want.toLocaleString('en-US')} (${(drift(got, want) * 100).toFixed(0)}% drift, band ` +
-            `${Math.round(TOLERANCE * 100)}%) — regenerate: ${regen}`,
-        );
-      }
-    }
-    const key = (l) => l.map((f) => f.file).sort().join(', ');
-    if (key(claimed.largeFiles) !== key(actual.largeFiles)) {
-      errors.push(
-        `${agentsRel}: the >=${LARGE_FILE_LOC}-LOC file list is wrong.\n` +
-          `    doc says: ${key(claimed.largeFiles) || '(none)'}\n` +
-          `    actual:   ${key(actual.largeFiles) || '(none)'}\n` +
-          `    regenerate: ${regen}`,
+    out.errors.push(`${AGENTS_REL}: MEASURED block missing or unparseable — regenerate: ${regen}`);
+    return;
+  }
+  out.checked.measured = 2 + claimed.largeFiles.length;
+  const actual = measure();
+  const drift = (a, b) => Math.abs(a - b) / Math.max(b, 1);
+  for (const [label, got, want] of [
+    ['source files', claimed.srcFiles, actual.srcFiles],
+    ['source LOC', claimed.srcLoc, actual.srcLoc],
+  ]) {
+    if (drift(got, want) > TOLERANCE) {
+      out.errors.push(
+        `${AGENTS_REL}: MEASURED ${label} says ${got.toLocaleString('en-US')}, actual ` +
+          `${want.toLocaleString('en-US')} (${(drift(got, want) * 100).toFixed(0)}% drift, band ` +
+          `${Math.round(TOLERANCE * 100)}%) — regenerate: ${regen}`,
       );
     }
-    // ...and the per-file LOC VALUES, which membership alone never looked at: the block prints
-    // `Components.jsx 1325`, and that number could rot to any value without changing who is on the list.
-    // Banded, NOT exact — every one of these files changes LOC on ordinary commits, so an exact check would
-    // redden nearly every push and get switched off within a day (the same reasoning as the counts above).
-    // The band still catches the drift that misleads: a file read as ~1300 that is really ~900.
-    const actualLoc = new Map(actual.largeFiles.map((f) => [f.file, f.loc]));
-    for (const f of claimed.largeFiles) {
-      const want = actualLoc.get(f.file);
-      if (want === undefined) continue; // membership drift — already reported above
-      if (drift(f.loc, want) > TOLERANCE) {
-        errors.push(
-          `${agentsRel}: MEASURED says ${f.file} is ${f.loc} LOC, actual ${want} ` +
-            `(${(drift(f.loc, want) * 100).toFixed(0)}% drift, band ${Math.round(TOLERANCE * 100)}%) — ` +
-            `regenerate: ${regen}`,
-        );
-      }
+  }
+  const key = (l) => l.map((f) => f.file).sort().join(', ');
+  if (key(claimed.largeFiles) !== key(actual.largeFiles)) {
+    out.errors.push(
+      `${AGENTS_REL}: the >=${LARGE_FILE_LOC}-LOC file list is wrong.\n` +
+        `    doc says: ${key(claimed.largeFiles) || '(none)'}\n` +
+        `    actual:   ${key(actual.largeFiles) || '(none)'}\n` +
+        `    regenerate: ${regen}`,
+    );
+  }
+  // ...and the per-file LOC VALUES, which membership alone never looked at: the block prints
+  // `Components.jsx 1325`, and that number could rot to any value without changing who is on the list.
+  // Banded, NOT exact — every one of these files changes LOC on ordinary commits, so an exact check would
+  // redden nearly every push and get switched off within a day (the same reasoning as the counts above).
+  // The band still catches the drift that misleads: a file read as ~1300 that is really ~900.
+  const actualLoc = new Map(actual.largeFiles.map((f) => [f.file, f.loc]));
+  for (const f of claimed.largeFiles) {
+    const want = actualLoc.get(f.file);
+    if (want === undefined) continue; // membership drift — already reported above
+    if (drift(f.loc, want) > TOLERANCE) {
+      out.errors.push(
+        `${AGENTS_REL}: MEASURED says ${f.file} is ${f.loc} LOC, actual ${want} ` +
+          `(${(drift(f.loc, want) * 100).toFixed(0)}% drift, band ${Math.round(TOLERANCE * 100)}%) — ` +
+          `regenerate: ${regen}`,
+      );
     }
   }
 }
@@ -260,12 +371,19 @@ if (existsSync(statusAbs)) {
 // cannot disagree". §0-A omitted DECISIONS.md entirely; only the kernel named the PRIMARY work queue or put
 // CI in the orientation. A cold-start agent's first act is to follow one of these, so which copy it happened
 // to read determined what it believed the work was. Generated from one source now; drift fails the push.
-{
-  for (const r of checkReadOrder()) {
+/** checked['read-order'] = the surfaces read and compared against the one generated block. */
+function checkReadOrder(root, out) {
+  let examined = 0;
+  for (const rel of READ_ORDER_SURFACES) {
+    const md = readDoc(root, rel, out, 'its READ-ORDER block');
+    if (md === null) continue;
+    examined += 1;
+    const r = checkReadOrderFile(md);
     if (!r.ok) {
-      errors.push(`${r.rel}: ${r.reason} — regenerate: node frontend/scripts/ci/read-order.mjs --write`);
+      out.errors.push(`${rel}: ${r.reason} — regenerate: node frontend/scripts/ci/read-order.mjs --write`);
     }
   }
+  out.checked['read-order'] = examined;
 }
 
 // --- cross-doc SECTION citations (`charter §6.4`, `STATUS §2`) ---------------
@@ -283,42 +401,73 @@ if (existsSync(statusAbs)) {
 // and taught the next reader to distrust the lint. A ratchet that ratchets in rot it invented is worse
 // than no ratchet.
 const ANCHOR_FROZEN = 0;
-const sectionsByAlias = {};
-for (const [alias, rel] of Object.entries(DOC_ALIASES)) {
-  try {
-    const src = readFileSync(join(ROOT, rel), 'utf8');
-    // Headings AND item ids: these docs cite both `STATUS §2` (a heading) and `STATUS §V1` (an item inside
-    // one). Reading headings alone reported five valid citations as dangling.
-    sectionsByAlias[alias] = new Set([...sectionIds(src), ...itemIds(src)]);
-  } catch { /* absent: unresolved() skips it */ }
-}
-const dangling = [];
-for (const rel of CANONICAL) {
-  let src;
-  try { src = readFileSync(join(ROOT, rel), 'utf8'); } catch { continue; }
-  for (const c of unresolved(src, sectionsByAlias)) dangling.push(`${rel}: ${c.alias} §${c.section}`);
-}
-if (dangling.length > ANCHOR_FROZEN) {
-  errors.push(
-    `SECTION-CITATION RATCHET: ${dangling.length} dangling cross-doc citations, frozen at ${ANCHOR_FROZEN}.\n` +
-      dangling.map((d) => `      - ${d}`).join('\n') +
-      `\n    A \u00a7 pointer to a section that does not exist sends the next reader looking for a rule that isn't there.`,
-  );
-} else if (dangling.length < ANCHOR_FROZEN) {
-  warnings.push(`section-citation ratchet can tighten: ${dangling.length} dangling (frozen ${ANCHOR_FROZEN}) — lower ANCHOR_FROZEN in doc-currency.mjs`);
+
+/** checked.sections = the `<doc> §<id>` citations found in the canonical docs; each is resolved or reported. */
+function checkSections(root, out) {
+  const sectionsByAlias = {};
+  for (const [alias, rel] of Object.entries(DOC_ALIASES)) {
+    try {
+      const src = readFileSync(join(root, rel), 'utf8');
+      // Headings AND item ids: these docs cite both `STATUS §2` (a heading) and `STATUS §V1` (an item inside
+      // one). Reading headings alone reported five valid citations as dangling.
+      sectionsByAlias[alias] = new Set([...sectionIds(src), ...itemIds(src)]);
+    } catch { /* absent: unresolved() skips it */ }
+  }
+  const dangling = [];
+  let examined = 0;
+  for (const rel of CANONICAL) {
+    let src;
+    try { src = readFileSync(join(root, rel), 'utf8'); } catch { continue; }
+    examined += citations(src).length;
+    for (const c of unresolved(src, sectionsByAlias)) dangling.push(`${rel}: ${c.alias} §${c.section}`);
+  }
+  out.checked.sections = examined;
+  out.danglingSections = dangling.length;
+  if (dangling.length > ANCHOR_FROZEN) {
+    out.errors.push(
+      `SECTION-CITATION RATCHET: ${dangling.length} dangling cross-doc citations, frozen at ${ANCHOR_FROZEN}.\n` +
+        dangling.map((d) => `      - ${d}`).join('\n') +
+        `\n    A ` +
+        `\u00a7 pointer to a section that does not exist sends the next reader looking for a rule that isn't there.`,
+    );
+  } else if (dangling.length < ANCHOR_FROZEN) {
+    out.warnings.push(`section-citation ratchet can tighten: ${dangling.length} dangling (frozen ${ANCHOR_FROZEN}) — lower ANCHOR_FROZEN in doc-currency.mjs`);
+  }
 }
 
 // --- report -----------------------------------------------------------------
-for (const w of warnings) console.warn(`⚠ ${w}`);
-
-if (errors.length) {
-  console.error(`\n✘ doc-currency FAILED (${errors.length} issue${errors.length === 1 ? '' : 's'}):\n`);
-  for (const e of errors) console.error(`  • ${e}`);
-  console.error(
-    `\nA stale doc is not cosmetic — it manufactures dead work for the next agent.` +
-      `\nFix the doc, or delete the claim. Do not silence this lint.`,
-  );
-  process.exit(1);
+// The CLI is a printer around run(): what it prints and its exit code come from run()'s result and nothing else.
+//
+// Invoked directly, however the path was spelled. Node loads the main module by its REAL path, so a plain
+// `resolve(process.argv[1]) === fileURLToPath(import.meta.url)` is false when the script is reached through a
+// symlinked directory, and the lint then exited 0 having checked nothing (tranche A review, 2026-10-27; before
+// the seam it ran on import, so no spelling could skip it). Both sides are compared as real paths.
+function invokedDirectly() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
 }
+if (invokedDirectly()) {
+  const rootArg = process.argv.slice(2).find((a) => a.startsWith('--root='));
+  const { errors, warnings, danglingSections } = run(rootArg ? { root: resolve(rootArg.slice('--root='.length)) } : {});
 
-console.log(`✓ doc-currency PASSED (${CANONICAL.length} canonical docs checked; ${dangling.length} dangling \u00a7 citation(s), ratchet ${ANCHOR_FROZEN})`);
+  for (const w of warnings) console.warn(`⚠ ${w}`);
+
+  if (errors.length) {
+    console.error(`\n✘ doc-currency FAILED (${errors.length} issue${errors.length === 1 ? '' : 's'}):\n`);
+    for (const e of errors) console.error(`  • ${e}`);
+    console.error(
+      `\nA stale doc is not cosmetic — it manufactures dead work for the next agent.` +
+        `\nFix the doc, or delete the claim. Do not silence this lint.`,
+    );
+    process.exit(1);
+  }
+
+  console.log(
+    `✓ doc-currency PASSED (${CANONICAL.length} canonical docs checked; ${danglingSections} dangling ` +
+      `\u00a7 citation(s), ratchet ${ANCHOR_FROZEN})`,
+  );
+}

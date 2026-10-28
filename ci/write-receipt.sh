@@ -16,10 +16,10 @@
 # worktree of exactly what is being pushed. So this fails toward the slow, correct path.
 #
 # WHAT COUNTS AS "DIFFERS" — the pipeline's INPUTS, declared rather than excepted:
-#   - any unstaged change to a tracked file, anywhere, EXCEPT `.state/`: tracked, rewritten continuously by
-#     the operator's session harness, and read by no pipeline step (grep ci/ and frontend/scripts/ci/ for
-#     a `.state/` path: none). Without this one exclusion no receipt could ever be written in the checkout
-#     the harness runs in, and the optimisation would silently become dead.
+#   - any unstaged change to a tracked file, anywhere. No carve-out: `.state/` (the operator's session
+#     harness log, rewritten continuously) used to be excepted here because it was TRACKED; it is ignored
+#     and untracked now, so nothing tracked needs an exception, and an exception is where the next defect
+#     would live.
 #   - any untracked, non-ignored file under a directory a step reads (INPUT_ROOTS). An untracked test in
 #     frontend/src/ runs under vitest yet is not in the commit — the same defect by another door.
 #     Untracked files OUTSIDE these roots (editor/agent config at the root) are read by no step.
@@ -31,13 +31,21 @@
 set -u
 
 RECEIPT="${1:?usage: sh ci/write-receipt.sh <receipt-path>}"
-ROOT=$(git rev-parse --show-toplevel) || exit 3
+# THE TREE IS FOUND WITH GIT_* SCRUBBED; IT IS CERTIFIED WITH GIT'S OWN. pipeline.sh runs this from frontend/, and in
+# a LINKED worktree git hands its hooks an absolute GIT_DIR with no GIT_WORK_TREE, under which git takes the CURRENT
+# directory as the top of the work tree: `--show-toplevel` answered frontend/, every tracked path outside it read as
+# deleted, and every lane commit's receipt was refused ("1255 path(s) differ", tranche A review, 2026-10-27). So the
+# toplevel is located by discovery from the cwd (run_scrubbed, ci/git-env.sh), and every git below runs from that
+# toplevel with the hook's variables intact — GIT_INDEX_FILE is the index being committed, which is the point.
+# Proven by tests/scripts/write-receipt.test.js ("run from a LINKED WORKTREE's hook").
+. "$(dirname "$0")/git-env.sh" || exit 3
+ROOT=$(run_scrubbed git rev-parse --show-toplevel) || exit 3
 cd "$ROOT" || exit 3
 
 INPUT_ROOTS="frontend ci .githooks docs memory .agent .github"
 
 # shellcheck disable=SC2086
-DIRTY=$( { git diff --name-only -- . ':(exclude).state'; git ls-files --others --exclude-standard -- $INPUT_ROOTS; } 2>/dev/null )
+DIRTY=$( { git diff --name-only -- .; git ls-files --others --exclude-standard -- $INPUT_ROOTS; } 2>/dev/null )
 if [ -n "$DIRTY" ]; then
   N=$(printf '%s\n' "$DIRTY" | wc -l | tr -d ' ')
   printf '\033[33m  receipt REFUSED: the tested working tree is not the index being committed (%s path(s) differ, e.g. %s)\033[0m\n' \

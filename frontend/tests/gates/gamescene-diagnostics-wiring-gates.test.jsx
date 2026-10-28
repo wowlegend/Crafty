@@ -88,7 +88,7 @@ beforeEach(() => {
     domElement: canvas,
     getPixelRatio: () => 2,
     getContext: () => ({ RENDERER: 0x1f01, getExtension: () => null, getParameter: () => GPU }),
-    info: { render: { frame: 7 } }, // three's frame counter: game/contextRecovery.js whenDrawnAgain reads it
+    info: { render: { frame: 0 } }, // three's draw counter: the restore waits on it (game/contextRecovery.js whenDrawnAgain)
   };
   gl._resetGlDiagnosticsForTest();
   vi.spyOn(performance, 'now').mockImplementation(() => clock);
@@ -97,12 +97,13 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   gl._resetGlDiagnosticsForTest();
   useGameStore.setState({ frameCap: 60, isCaptureMode: false, isWebGLContextLost: false });
 });
 
 describe('GameScene wires the diagnostics', () => {
-  it('attaches the context-loss listener to the canvas R3F created, and the recovery acts on it', async () => {
+  it('attaches the context-loss listener to the canvas R3F created, and the recovery acts on it', () => {
     // A locked pointer, so the loss handler's release is observable (jsdom has no pointer lock of its own).
     const exitPointerLock = vi.fn();
     Object.defineProperty(document, 'pointerLockElement', { configurable: true, get: () => h.gl.domElement });
@@ -118,13 +119,20 @@ describe('GameScene wires the diagnostics', () => {
       expect(useGameStore.getState().isWebGLContextLost).toBe(true);
       expect(exitPointerLock, 'a loss left the pointer locked: a desktop player cannot click the way back')
         .toHaveBeenCalledTimes(1);
+      // The restore goes through the recovery (game/contextRecovery.js, #24): the flag, and so the context-loss panel,
+      // stays up until three has DRAWN since the restore, so the panel never drops over a blank canvas. The frames are
+      // stepped by hand, so the wait is driven, not raced.
+      const rafs = [];
+      vi.stubGlobal('requestAnimationFrame', (fn) => { rafs.push(fn); return rafs.length; });
+      const flush = () => rafs.splice(0).forEach((fn) => fn());
       h.gl.domElement.dispatchEvent(new Event('webglcontextrestored'));
+      flush();
+      expect(rafs.length, 'presence: the recovery is waiting on a frame, not finished or never started').toBe(1);
       expect(useGameStore.getState().isWebGLContextLost,
         'the restore cleared the loss before three drew a frame: the panel went away over a black canvas').toBe(true);
-      h.gl.info.render.frame += 1; // three draws
-      await vi.waitFor(() => {
-        expect(useGameStore.getState().isWebGLContextLost, 'a drawn frame after the restore did not clear the flag').toBe(false);
-      });
+      h.gl.info.render.frame = 1; // three draws
+      flush();
+      expect(useGameStore.getState().isWebGLContextLost, 'a drawn frame after the restore did not clear the flag').toBe(false);
     } finally {
       delete document.pointerLockElement;
       delete document.exitPointerLock;

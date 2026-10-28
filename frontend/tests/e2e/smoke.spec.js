@@ -7,7 +7,7 @@ import { bootDev, startPlay } from './_boot.js';
 // and (b) NO runtime error of the crash/throw classes this codebase has repeatedly shipped
 // (render-tree hook crashes, undefined symbols from byte-exact extractions, the rapier-2.2
 // block-debris TypeError). This is the live net the pinned visual gate could never be.
-test('boots, renders a non-blank canvas, and enters play with no runtime errors', async ({ page }) => {
+test('boots, renders a non-blank canvas, and enters play with no runtime errors', async ({ page, e2eDprCap }) => {
   const errors = await bootDev(page, { withErrors: true });
   await startPlay(page);
   await page.waitForTimeout(1500); // let several frames render + any per-frame throw surface
@@ -26,6 +26,15 @@ test('boots, renders a non-blank canvas, and enters play with no runtime errors'
     if (l > max) max = l;
   }
   expect(max - min, 'canvas appears blank — WebGL is not rendering').toBeGreaterThan(20);
+
+  // THE SUITE'S PIXEL-RATIO CAP REACHED THIS CANVAS (src/devtest/e2eDpr.js, set by tests/e2e/_fixtures.js). Every spec
+  // that does not opt out draws at the cap; without this check a canvas that stopped applying it (a merge dropping the
+  // e2eDpr wrapper from GameScene's dpr) would show only as a slower suite. Its uncapped ratio here is 1
+  // (deviceScaleFactor 1), so the expected one is min(1, cap). Read off the element: drawing buffer over CSS box.
+  const box = await canvas.evaluate((c) => ({ w: c.width, h: c.height, cw: c.clientWidth, ch: c.clientHeight }));
+  const want = Math.min(1, e2eDprCap ?? Infinity);
+  expect(box.cw, `SETUP: the canvas has no CSS width: ${JSON.stringify(box)}`).toBeGreaterThan(0);
+  expect(box.w / box.cw, `the canvas draws ${box.w}x${box.h} in a ${box.cw}x${box.ch} box — not at the suite's cap ${e2eDprCap}`).toBeCloseTo(want, 2);
 
   // crash/throw classes only — pointer-lock rejection + benign warnings are ignored
   const fatal = errors.filter((e) =>

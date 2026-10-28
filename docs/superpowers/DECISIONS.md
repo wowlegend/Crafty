@@ -114,6 +114,42 @@ above 115 on 14 cores ruled out local runs. The stance's own e2e has local verdi
    the next time account 1 is the active account, the command session republishes era-review and sota-audit at their
    `previousUrl`, swaps `url` and `previousUrl`, and runs `--sync`. Until then the interim copies stay current, because
    a main push more than 30 commits past their publish point is refused (item 8).
+12. **The page cap reports and no longer refuses; the pages state their own age** (supersedes the hard-fail half of the 2026-08-07 artifact-currency decision, 7d30ee27; holistic review wf_16b54287-0f9). Measured: the cap refused 8 pushes, 5 of them correct lane work; it stopped no recorded false claim, and it passed a false "Queued" pill on a page that was at HEAD (41c40c6d). It measures how far the WRITER is behind; Kevin's question in August was whether what he READS is current, which a page answers by printing its own commit and time. After item 8, merging a lane still counted the lane's commits into main's drift, so every landing needed a republish from whichever account owns the pages. Now: drift prints on every push and in CI and refuses nothing; a missing or unusable source, a falsified or undeclared Queued pill, and a missing, duplicated or mismatched as-of stamp still refuse; `--stamp` writes a generated "As of <commit>, <UTC time>" line at the top of each page, naming the commit the page was written against and that commit's time, and `--sync`, run after the publish, records it only when the committed source's stamp names the same commit (it cannot read the published page, so the record is honest only if the stamped source was published first); LOOP-PROGRESS (no URL, no reader) is archived; the Command Record page (`docs/superpowers/command-record.html`) is tracked as a surface. Whether era-review and sota-audit stay living pages or are frozen as dated history is Kevin's call (they are his reading surface); option (a) stands until he says otherwise. This also supersedes items 5, 8 and 11 of this entry where they state the refusal (no push is refused any longer for being more than 30 commits past the pages' publish sha), and under option (a) the Command Record, which the era-review and sota-audit stamps point to, must be readable from the account the pages are published from.
+13. **Kevin, 2026-10-28: "agree on your recommendations and changes."** It answers the two calls put to him with
+   items 8-12. (a) **ONE page for Kevin: the Command Record.** Kevin, same day: "just maintain one html for
+   me to review your achievements/ decisions etc whenever i have time." era-review and sota-audit retire to
+   `docs/archive/` as dated history (their last published versions stay readable at their links); no account-1
+   republish is owed, so option (a) of item 11 lapses. The Command Record is refreshed at every landing.
+   (b) **GitHub required status check on main.** First a CI change: one aggregate job is the only required context
+   (required checks match job names, so eight shard names would block main whenever the shard count changes),
+   docs-only commits skip the e2e jobs (a skipped check counts as passing), and CI runs on every push to `land/**`.
+   Then branch protection through the API: that check required, branches up to date, "do not allow bypassing" on
+   (every push here comes from the admin account, which bypasses it otherwise), no force pushes, no deletion. Then
+   e2e-freshness's tiers retire in favour of the server-side rule. (c) Kevin applied the narrow allow rules the
+   classifier would not let the session grant itself (`git branch -d`, remote deletes of `land/`, `feat/`, `fix/`,
+   `gh pr close`, the protection call); `git branch -D` stays denied.
+14. **Kevin's overarching principle, 2026-10-28 (standing; it governs every later decision).** Crafty was started in 2025
+   by far weaker models and agents, and carries fundamental design, architecture and tech debt and AI slop from them;
+   work has accelerated only around Opus 5.5, and later models will go faster still. So **nothing is off limits**: the
+   whole game, its architecture and design, every element, visual and idea may be changed, enhanced, deleted or pruned
+   as the command session judges best. Full autonomy; Kevin is asked nothing unless absolutely needed. Install any tool
+   that helps. Keep the public face (the GitHub repo, and GitHub Pages) beautiful and "ASI-looking cool", and the docs
+   in SOTA shape. Consequences: earlier decisions, plans, gates and docs bind only as far as they still earn their place
+   on re-reading; a fresh whole-project assessment (2026-10-28) ranks what to delete, rewrite and keep; and the
+   harness is shaped so a stronger model can take over cold and move faster (state on disk, small surfaces, generated
+   facts, no ceremony that only a weaker model needed).
+15. **The public face, tests and comments (Kevin, 2026-10-28: "you decide").** (a) **No GitHub Pages site for now.**
+   Kevin meant the repo's own face; the live game on Vercel is the showcase, and a second website is a second surface to
+   keep current. The effort goes to the README (a hero clip captured from the real game, a short honest description, how
+   to play, the architecture in brief, no emoji markers, no number that can rot unless generated), the About line,
+   topics, labels, issue templates and the social preview image. Revisit only if a devlog earns its keep. (b) **Tests
+   are in scope like everything else.** Keep a test when it checks behaviour and has shown it can fail on the defect it
+   guards; delete or merge tests that pin implementation, source-grep gates and duplicates. (c) **Comments are
+   minimal.** A comment says WHY, and only when the code cannot: a non-obvious constraint, an external fact (a library
+   quirk with its version and line), a safety or ordering invariant. No history, review narrative, round numbers or
+   mutation receipts in code: git and this file hold history, and `Mutation-Proof:` commit trailers hold receipts. So
+   the killability-ledger gate, which demands a receipt literal in every check file, retires with the comment pass. The
+   pass runs as its own wave after the in-flight lanes land, directory by directory, keeping every load-bearing fact.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 

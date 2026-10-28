@@ -29,6 +29,7 @@ import { GPUSparkSystem } from './world/GPUSparkSystem';
 import { ElementZoneRenderSystem } from './world/ElementZoneRenderSystem';
 import { isPerfProbe } from './devtest/perfProbe';
 import { PROBE_DPR } from './devtest/perfScenarios';
+import { e2eDpr } from './devtest/e2eDpr.js';
 import { PerfProbeSystem } from './devtest/PerfProbeSystem';
 import { CaptureClockTicker } from './devtest/CaptureClockTicker.jsx';
 import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
@@ -294,7 +295,9 @@ export const GameScene = React.memo(function GameScene({
         frameloop={pace.loop}
         // THE PIXEL BUDGET (render/pixelBudget.js): the tier names the pixels it can afford, the window decides the
         // ratio, recomputed on resize. Capture keeps the legacy [1, 2] range its baselines were shot under.
-        dpr={isPerfProbe() ? PROBE_DPR : isCaptureMode ? [1, CAPTURE_DPR_CAP] : budgetDpr}
+        // e2eDpr (devtest/e2eDpr.js): the e2e suite's pixel-ratio cap, a no-op outside it. It wraps the whole expression,
+        // so every leg is capped and the cap applies after the budget.
+        dpr={e2eDpr(isPerfProbe() ? PROBE_DPR : isCaptureMode ? [1, CAPTURE_DPR_CAP] : budgetDpr)}
         className="w-full h-full"
         gl={{
           antialias: false, // Post-processing handles AA

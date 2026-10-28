@@ -23,7 +23,10 @@ import { pixelBudgetDpr } from '../../src/render/pixelBudget.js';
 //   The lane's E1 (<ComposerPixelRatioSync /> removed) also removes the readComposerSize hook this spec reads, so it
 //   fails as SETUP ("the page is not at deviceScaleFactor 2"), not as a kill. E2 not run here.
 // BLIND SPOT: a sync that resizes EVERY frame passes here (the buffer is always right); that is the unit gate's in-sync case.
-test.use({ viewport: { width: 1200, height: 800 }, deviceScaleFactor: 2 });
+//
+// WHY NO e2e PIXEL-RATIO CAP (src/devtest/e2eDpr.js). This spec asserts the renderer's ratio EQUALS the tier's budget and
+// that the steps change it; the suite's 0.5 cap would pin every tier to 0.5, so neither could be read.
+test.use({ viewport: { width: 1200, height: 800 }, deviceScaleFactor: 2, e2eDprCap: null });
 
 /** Frames drawn after a tier step before the read: the Canvas re-render, R3F's setDpr, then the sync's resize frame. */
 const STEP_FRAMES = 4;

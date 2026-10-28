@@ -16,10 +16,20 @@ test('stepping the quality tier re-sizes the live shadow target to the new map s
   test.setTimeout(240000);
   await bootDev(page);
   await startPlayActive(page);
+  // The new map is allocated on the next shadow render, so each read waits for STEP_FRAMES frames DRAWN after the step
+  // (FrameCap's DEV count): the commit that resets the map, then shadow passes at the new size. It used to wait a fixed
+  // 1500 ms, which read `map: null` at the first step on CI run 40660167239 (attempt 1 of 2, retry green): a wall-clock
+  // guess about a renderer this spec does not control. A renderer that draws nothing for 60 s fails as SETUP, named.
+  const STEP_FRAMES = 4;
   const at = async (tier) => {
+    const f0 = await page.evaluate(() => window.__craftyTest.call('readFrameloop').frames);
     await page.evaluate((t) => window.__craftyTest.call('setQualityTier', t), tier);
-    await page.waitForTimeout(1500); // several frames: the new map is allocated on the next shadow render
-    return page.evaluate(() => ({ tier: window.useGameStore.getState().qualityTier, ...window.__craftyTest.call('readSunShadow') }));
+    const drew = await page
+      .waitForFunction(({ f, n }) => window.__craftyTest.call('readFrameloop').frames >= f + n, { f: f0, n: STEP_FRAMES }, { timeout: 60000, polling: 250 })
+      .then(() => true, () => false);
+    const r = await page.evaluate(() => ({ tier: window.useGameStore.getState().qualityTier, frames: window.__craftyTest.call('readFrameloop').frames, ...window.__craftyTest.call('readSunShadow') }));
+    expect(drew, `SETUP: the renderer drew fewer than ${STEP_FRAMES} frames in 60 s after the step to ${tier} (frames ${f0} -> ${r.frames})`).toBe(true);
+    return r;
   };
   const seq = [await at('low'), await at('high'), await at('med'), await at('low')];
   const where = JSON.stringify(seq);

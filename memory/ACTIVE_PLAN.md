@@ -1,3 +1,18 @@
+## CURSOR — 2026-10-28 (command session c54fc9b6). READ THIS FIRST; everything below it is history.
+
+**Governing:** Kevin's standing principle (DECISIONS 2026-10-28 item 14, top of AGENTS.md): nothing is off limits;
+full autonomy; Kevin reviews ONE page, the Command Record (docs/superpowers/command-record.html,
+https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f). **The programme:** `docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`
+(whole-project assessment wf_657ac8b1-834): "The First Night" spine; Wave 1 now (W1-A required check, W1-B real
+pause, W1-C gameplay deletions, W1-D eye-level instruments, W1-E mipmaps, W1-F public text, W1-G bundle UI, W1-H
+plans/decisions/registry), Wave 2 after #24, stance and light land (the Cut, HUD lane, hands, media pipeline, capture
+oracle retired, harness to ~10 gates), Wave 3 the First Night, road of light, first minute, platform deep.
+
+**Landing:** each lane is a PR; CI ~8 min since the e2e dpr cap (ae2e10a5); land by local merge commit, CI on the exact
+commit (land/2026-10-28 until the required check is on), push main. Review cadence (DECISIONS item 13/the speed plan):
+one static+dynamic round on game code, then `/code-review xhigh` on the PR range; tests/claims-only fixes get the
+author's mutation run. Residue: memory/STATUS.md G-ledger (to become a single registry file, plan item #30).
+
 ## CURSOR — 2026-09-22 (SOTA campaign, session 2). READ THIS FIRST.
 
 Kevin's standing `/goal` (still armed): enhance Crafty to cutting-edge SOTA + future-proof, full
