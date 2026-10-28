@@ -319,3 +319,35 @@ describe('tier 1b and the main-only red-base rule', () => {
     expect(readCommitCi(fake({}), '')).toEqual({ state: null });
   });
 });
+
+// A DOCS-ONLY RUN SKIPS THE E2E MATRIX (2026-10-28: ci.yml's `changes` job). GitHub concludes each skipped job
+// `skipped`, which is no verdict: the base read must stay UNKNOWN and say why, and readCommitCi must never take a skip
+// for "CI's e2e passed on this exact commit". Mutation-Proof (mutate.sh), each observed RED here: S1 the skipped branch
+// returns 'success' -> the readCommitCi skip case; S2 readBaseCi drops the `e2e: 'skipped'` marker -> the base-read
+// case; S3 the verdict line ignores the marker -> the printed-reason case.
+describe('a run that SKIPPED its e2e matrix (docs only) is no e2e verdict', () => {
+  const T0 = '2026-10-28T09:00:00Z', T1 = '2026-10-28T09:00:01Z';
+  const skipped = (n) => Array.from({ length: n }, (_, i) => `completed,skipped,${T0},${T1},${i + 1}`).join(' ');
+  const gh = (run, jobs) => (cmd) => (cmd.includes('run list') ? run : cmd.includes('run view') ? jobs : '');
+
+  it('the base read: unknown, carrying the reason, never green', () => {
+    expect(readBaseCi(gh('5|completed|success|abc1234', skipped(1)))).toEqual({ state: null, sha: 'abc1234', run: 'success', e2e: 'skipped' });
+    // Presence control on the same wire format: the same run with green shards IS green.
+    expect(readBaseCi(gh('5|completed|success|abc1234', `completed,success,${T0},${T1},1`)).state).toBe('success');
+    // A mix (one shard skipped, one green) is neither a skip nor a verdict.
+    expect(readBaseCi(gh('5|completed|success|abc1234', `${skipped(1)} completed,success,${T0},${T1},2`))).toEqual({ state: null, sha: 'abc1234', run: 'success' });
+  });
+
+  it('readCommitCi: a commit whose only run skipped e2e has no receipt', () => {
+    const fake = (cmd) => (cmd.startsWith('gh run list') ? '21' : skipped(8));
+    expect(readCommitCi(fake, 'abc')).toEqual({ state: null });
+  });
+
+  it('the printed line names the skip instead of blaming gh or the network', () => {
+    const v = verdict(CUR, null, { state: null, sha: 'abc1234', run: 'success', e2e: 'skipped' });
+    expect(v.code).toBe(0);
+    expect(v.line).toMatch(/the base run \(abc1234\) SKIPPED e2e/);
+    expect(v.line).not.toMatch(/no gh, no network/);
+    expect(verdict(CUR, null, { state: null }).line, 'control: an unreadable base still says so').toMatch(/no gh, no network/);
+  });
+});

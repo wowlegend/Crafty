@@ -59,6 +59,44 @@ describe('cli-guard — flags an exporting script that runs on import', () => {
     expect(inspect(src).hasGuard).toBe(false);
     expect(needsGuard(inspect(src))).toBe(true);
   });
+
+  // THE GUARD MUST BE CODE THAT GATES (tranche A review, 2026-10-27). The checker matched guard tokens line by line
+  // over the raw source, and doc-currency.mjs carries a COMMENT explaining why `resolve(process.argv[1]) === …` is
+  // not enough. So turning its `if (invokedDirectly())` into `if (true)` — a CLI that runs on every import — stayed
+  // green. Each case below is one way a guard token can sit in a file without guarding anything.
+  // Mutation-Proof (mutate-batch, 20 tests, identity SURVIVED): that `if (true)` on the REAL doc-currency.mjs SURVIVED
+  // before the fix and is RED after it ("finds NO exporting script ..."); and against cli-guard.mjs, RED: a token in
+  // the raw source counts (M-C2), a guard anywhere in the AST counts (M-C3), bindings not followed (M-C4),
+  // import.meta.url without an equality (M-C5), import.meta.main refused (M-C6), argv[2] (M-C7), exports not unwrapped (M-C8).
+  it('a guard spelled in a COMMENT is not a guard', () => {
+    const src = `
+      export function run() {}
+      // a plain \`resolve(process.argv[1]) === fileURLToPath(import.meta.url)\` is false through a symlink
+      main();
+    `;
+    expect(inspect(src).hasGuard).toBe(false);
+    expect(needsGuard(inspect(src))).toBe(true);
+  });
+
+  it('a guard spelled in a STRING is not a guard (cli-guard prints one in its own advice)', () => {
+    const src = `
+      export function run() {}
+      console.error('const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);');
+      main();
+    `;
+    expect(inspect(src).hasGuard).toBe(false);
+    expect(needsGuard(inspect(src))).toBe(true);
+  });
+
+  it('a guard FUNCTION nothing gates on is not a guard — the import-runs-CLI mutant of doc-currency.mjs', () => {
+    const src = `
+      export function run() {}
+      function invokedDirectly() { return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); }
+      if (true) { main(); }
+    `;
+    expect(inspect(src).hasGuard).toBe(false);
+    expect(needsGuard(inspect(src))).toBe(true);
+  });
 });
 
 describe('cli-guard — stays silent where a guard is genuinely not owed', () => {
@@ -88,6 +126,25 @@ describe('cli-guard — stays silent where a guard is genuinely not owed', () =>
 
   it('accepts the process.argv[1] guard form on its own', () => {
     expect(needsGuard(inspect(`export const A = 1;\nif (process.argv[1]) { run(); }`))).toBe(false);
+  });
+
+  it('accepts a guard reached through the function the `if` calls (the doc-currency.mjs shape, one token from the mutant)', () => {
+    const src = `
+      export function run() {}
+      function invokedDirectly() { return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); }
+      if (invokedDirectly()) { main(); }
+    `;
+    expect(inspect(src).hasGuard).toBe(true);
+    expect(needsGuard(inspect(src))).toBe(false);
+    // ...and when that function is itself exported, the binding is still found through the export.
+    expect(inspect(src.replace('function invokedDirectly', 'export function invokedDirectly')).hasGuard).toBe(true);
+  });
+
+  it('accepts the hand-rolled equality and the native flag, each gating an `if` directly', () => {
+    expect(inspect(`export const A = 1;\nif (import.meta.url === pathToFileURL(x).href) main();`).hasGuard).toBe(true);
+    expect(inspect(`export const A = 1;\nif (import.meta.main) main();`).hasGuard).toBe(true);
+    // ...and the equality is what makes import.meta.url a guard: a path built from it gates nothing.
+    expect(inspect(`export const A = 1;\nif (dirname(import.meta.url)) main();`).hasGuard).toBe(false);
   });
 
   it('does NOT flag a script with no exports — nothing can import a seam it does not offer', () => {

@@ -15,6 +15,8 @@ import { useGameStore } from '../store/useGameStore';
 import { OUTLINE } from './characterStyle';
 import { MagicWand } from './spellVfx';
 import { heavyChargeLevel } from '../game/heavyAttack.js';
+// The cast-hand light mounts per cast: from the fixed light pool (render/lightPool.jsx), so a cast re-links no shader.
+import { PooledLight } from './lightPool.jsx';
 
 // Swing-ribbon scratch, allocated ONCE at the ring's capacity. The trail used to build a Float32Array
 // pair, a Uint16Array and three BufferAttributes every frame of every swing, plus two bounding-volume
@@ -509,7 +511,7 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
               <sphereGeometry args={[0.07, 8, 8]} />
               <meshBasicMaterial color={currentSpellColor} transparent opacity={0.85} />
             </mesh>
-            <pointLight position={[0, 0.1, -0.2]} distance={8} intensity={2.5} color={currentSpellColor} />
+            <PooledLight position={[0, 0.1, -0.2]} distance={8} intensity={2.5} color={currentSpellColor} />
           </group>
         )}
         {attackType !== 'spell' && selectedBlock && (

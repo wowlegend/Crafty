@@ -3,7 +3,7 @@ import { measure, renderBlock, parseBlock, LARGE_FILE_LOC, TOLERANCE, BEGIN, END
 
 // THE ROUND TRIP IS THE WHOLE CONTRACT.
 //
-// `measure.mjs` RENDERS the size block into .agent/AGENTS.md and `doc-currency.mjs` PARSES it back to check
+// `measure.mjs` RENDERS the size block into CLAUDE.md and `doc-currency.mjs` PARSES it back to check
 // for drift. Those are two regexes pointed at one format, and nothing but this test keeps them agreeing.
 // If a later edit reformats the block — bolding, a thousands separator, a reordered clause — parseBlock
 // starts returning null or, worse, the wrong number, and the drift check silently stops defending anything.
