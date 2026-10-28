@@ -33,7 +33,10 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   U4 src/Components.jsx          stanceVelocity called only when input.moveB                  -> case 1b
 //   U0 src/game/windupChevrons.js  a comment edit (identity)                                    -> must SURVIVE
 // Round-1 review c (2026-10-28): case 1 and 1b also judge `applied`, the velocity the ramp fed the body, from SETTLE_MS
-// on. U4's call site moved into src/game/combatStance.js stanceWalk, which src/game/combatStance.test.js drives directly.
+// on, sampling past the catch until then. U4's call site moved into src/game/combatStance.js stanceWalk, which
+// src/game/combatStance.test.js drives directly. The joystick case passed locally on a throwaway config (2026-10-28);
+// its first local run, with a 300 ms settle and the old stop-at-the-catch, read SETUP (a husk already adjacent at the
+// first sample), which is why both changed. No touch mutant was run here: the U batch is still OWED.
 
 const IPAD = devices['iPad Pro 11 landscape'];
 test.use({ viewport: IPAD.viewport, userAgent: IPAD.userAgent, isMobile: IPAD.isMobile, hasTouch: IPAD.hasTouch, deviceScaleFactor: 1 });
@@ -41,8 +44,9 @@ test.use({ viewport: IPAD.viewport, userAgent: IPAD.userAgent, isMobile: IPAD.is
 const RETREAT = 2.0; // LITERALS: the yardstick must not move with the subject
 const EPS = 1e-6;
 // The applied velocity (readMoveTarget's `applied`, what the ramp fed the body) is judged from SETTLE_MS of sampling on,
-// within APPLIED_TOL: combat-stance.spec.js's numbers and reasons (round-1 review c).
-const SETTLE_MS = 300;
+// within APPLIED_TOL: combat-stance.spec.js's numbers and reasons (round-1 review c). Sampling starts after the stick is
+// down, so the ramp has had at least that long.
+const SETTLE_MS = 120;
 const APPLIED_TOL = 0.1;
 const FINISHER_MULT = 1.5;
 const WINDOW = 650;
@@ -156,7 +160,9 @@ function installTouchCombatHelpers() {
       return false;
     },
     // Sample every frame while the stick is held (the touch itself is driven from the test through CDP).
-    async sample(id, maxMs) {
+    // `minMs`: keep sampling at least this long even once the husk has caught up, so the applied velocity has settled
+    // frames to be judged on (a husk already walking in during the engage can be adjacent on the first sample).
+    async sample(id, maxMs, minMs = 0) {
       const out = [], t0 = performance.now();
       let intents = null;
       for (;;) {
@@ -166,7 +172,7 @@ function installTouchCombatHelpers() {
         if (!intents) intents = call('readIntents');
         out.push({ t: performance.now() - t0, st, mt, gap: m ? Math.hypot(m.x - c.x, m.z - c.z) : null });
         if (performance.now() - t0 > maxMs) break;
-        if (out[out.length - 1].gap != null && out[out.length - 1].gap <= 2.6) break;
+        if (out[out.length - 1].gap != null && out[out.length - 1].gap <= 2.6 && performance.now() - t0 >= minMs) break;
       }
       return { out, intents };
     },
@@ -295,7 +301,7 @@ test.describe('combat on touch', () => {
       await touchMove(cdp, { x: stick.x, y: stick.y + dy });
       let run;
       try {
-        run = await page.evaluate((id) => window.__touchCombat.sample(id, 8000), sp.id);
+        run = await page.evaluate(({ id, minMs }) => window.__touchCombat.sample(id, 8000, minMs + 4 * window.__touchCombat.median), { id: sp.id, minMs: SETTLE_MS });
       } finally {
         await touchEnd(cdp);
       }
@@ -303,7 +309,8 @@ test.describe('combat on touch', () => {
       const t = judgeTarget(run.out);
       expect(t.judged, `SETUP: case ${label}: no frame at full weight with the stick's target recorded`).toBeGreaterThan(0);
       expect(t.worstAway, `case ${label}: the stick's target left the husk at ${t.worstAway} m/s (${t.judged} frames)`).toBeLessThanOrEqual(RETREAT + EPS);
-      expect(t.applied, `SETUP: case ${label}: no frame at full weight from ${SETTLE_MS} ms of sampling on`).toBeGreaterThan(0);
+      const span = run.out.map((s) => [Math.round(s.t), s.gap == null ? null : +s.gap.toFixed(2), s.st ? s.st.w : null]);
+      expect(t.applied, `SETUP: case ${label}: no frame at full weight from ${SETTLE_MS} ms of sampling on (${t.judged} judged; [ms, gap, w] ${JSON.stringify(span.slice(0, 12))})`).toBeGreaterThan(0);
       expect(t.worstAppliedAway, `case ${label}: the velocity fed to the body left the husk at ${t.worstAppliedAway} m/s (${t.applied} settled frames)`).toBeLessThanOrEqual(RETREAT + APPLIED_TOL);
     }
   });

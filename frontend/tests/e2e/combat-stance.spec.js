@@ -63,10 +63,14 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   T7 src/Components.jsx         stanceVelocity called only when input.moveB                     RED case 2b: target 14 m/s
 //   T8 src/Components.jsx         the call passes Math.max(stance.w, 0.1) (a w floor)             RED case 3: 10 of 10 frames
 //   T9 src/Components.jsx         the target scaled by 0.9 after the stance call                  RED case 3: 10 of 10 frames
-// Round-1 review c, OWED (not run here; the stance's call sites moved into game/combatStance.js stanceFrame/stanceWalk,
-// whose unit seam src/game/combatStance.test.js pins these by mutate.sh): T10 the ramp fed the raw move after the record
-// (`rampVelocity(planarVel, { x: mv.x, z: mv.z }, dtS)` in stanceWalk) -> expected RED at the applied check, at any frame
-// rate; T0 identity -> must SURVIVE.
+// Round-1 review c, observed 2026-10-28 in the lane on a THROWAWAY Playwright config (port 4297, one run each, the
+// stance's call sites now in src/game/combatStance.js stanceFrame / stanceWalk, which src/game/combatStance.test.js also
+// pins by mutate.sh). Both runs had the chase unjudged (median frame interval over 250 ms), the condition under which
+// the review found T10 survived:
+//   T10 src/game/combatStance.js  the ramp fed the raw move after the record, in stanceWalk       RED case 2: "the
+//                                 velocity fed to the body left the husk at 14 m/s while the target said 2" (303 ms)
+//   T0  src/game/combatStance.js  a comment edit (identity)                                      SURVIVED (283 ms)
+// The unmutated spec passed twice more locally (163 and 258 ms). STILL OWED TO CI: a run at CI's own frame rate.
 //   H1 src/Components.jsx         stanceStep fed currentTrans (the body), not mobSensePoint      RED case 0: 1.200 m apart
 //   H2 src/systems/AIWorkerSystem.jsx  playerPos posted as the body centre (sense.y - 1.2)        RED case 0: 1.200 m apart
 //   H3 src/game/mobSenses.js      mobSensePoint returns a point 1.2 m lower, for both readers     SURVIVED, as designed
@@ -79,9 +83,11 @@ const RETREAT = 2.0; // LITERALS: the yardstick must not move with the subject (
 const STRAFE = 6.5;
 const EPS = 1e-6;
 const CHASE_MAX_INTERVAL_MS = 250;
-// The applied velocity is judged from here on: 60 u/s² (game/gameFeel.js) takes either axis from rest to 6.5 m/s in
-// 0.11 s, and at a slower frame the ramp reaches its target in one frame.
-const SETTLE_MS = 300;
+// The applied velocity is judged from here on. The ramp (game/gameFeel.js) moves each axis 60 u/s² toward its target,
+// so from rest it reaches any stance target (at most 6.8 m/s) within 113 ms of ramp time, and a frame longer than that
+// reaches it in one step; before then a per-axis ramp can lean the velocity off the target's direction. (A first draft
+// used 300 ms: the touch spec's husk, already walking in during the engage, caught up inside it, leaving no frame.)
+const SETTLE_MS = 120;
 // On a frame where the target turned faster than the ramp's 60 u/s² x the frame interval, the applied velocity lags it
 // by that much. 0.1 m/s is under a hundredth of the 14 m/s a bypassed stance reads.
 const APPLIED_TOL = 0.1;
@@ -238,7 +244,9 @@ function installStanceHelpers() {
     key(code, down) { window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code, bubbles: true })); },
     // Hold a key through the controller's listener and sample every frame until the husk is caught, `maxMs` passes,
     // or (with no husk) `minSamples` matched frames and `minMs` have been seen.
-    async hold(code, id, { maxMs = 8000, minMs = 0, minSamples = 0 } = {}) {
+    // `catchMs`: once the husk has caught up, keep sampling until this long has passed, so the applied velocity has
+    // settled frames to be judged on; the chase is read only up to the catch (caughtFrames below).
+    async hold(code, id, { maxMs = 8000, minMs = 0, minSamples = 0, catchMs = 0 } = {}) {
       const samples = [];
       const c0 = { x: cam().x, z: cam().z };
       const t0 = performance.now();
@@ -254,7 +262,7 @@ function installStanceHelpers() {
           if (st && mt && mt.frame === st.frame) matched++;
           samples.push({ t, gap, px: c.x, pz: c.z, st, mt });
           if (t >= maxMs) break;
-          if (id != null && gap != null && gap <= 2.6) break;
+          if (id != null && gap != null && gap <= 2.6 && t >= catchMs) break;
           if (id == null && matched >= minSamples && t >= minMs) break;
         }
       } finally {
@@ -290,6 +298,12 @@ function judgeTarget(samples) {
     judged, worstAway: +worstAway.toFixed(6), worstTan: +worstTan.toFixed(6),
     applied, worstAppliedAway: +worstAppliedAway.toFixed(6), worstAppliedTan: +worstAppliedTan.toFixed(6),
   };
+}
+
+/** The samples up to and including the first one at which the husk had caught up (all of them if it never did). */
+function caughtFrames(samples) {
+  const i = samples.findIndex((s) => s.gap != null && s.gap <= CAUGHT_GAP_M);
+  return i < 0 ? samples : samples.slice(0, i + 1);
 }
 
 /** The achieved speed away from the threat over the frames at full weight, m/s; and a compact per-frame trace. */
@@ -359,7 +373,7 @@ test.describe('combat stance', () => {
       return sp.id;
     };
     const caught = async (code, id, label, judgeChase, { strafe = false } = {}) => {
-      const r = await page.evaluate(({ code, id }) => window.__stanceSpec.hold(code, id), { code, id });
+      const r = await page.evaluate(({ code, id, catchMs }) => window.__stanceSpec.hold(code, id, { catchMs }), { code, id, catchMs: SETTLE_MS + 4 * fi.median });
       expect(r.moved, `SETUP: ${label}: the player moved ${r.moved.toFixed(2)} m (blocked by terrain?)`).toBeGreaterThanOrEqual(0.5);
       const j = judgeTarget(r.samples);
       expect(j.judged, `SETUP: ${label}: no frame at w === 1 with that frame's move target and the key seen (${r.samples.length} sampled)`).toBeGreaterThan(0);
@@ -368,7 +382,7 @@ test.describe('combat stance', () => {
       expect(j.applied, `SETUP: ${label}: no frame at w === 1 from ${SETTLE_MS} ms on with that frame's move target (${r.samples.length} sampled)`).toBeGreaterThan(0);
       expect(j.worstAppliedAway, `${label}: the velocity fed to the body left the husk at ${j.worstAppliedAway} m/s while the target said ${j.worstAway} (cap ${RETREAT}; ${j.applied} settled frames)`).toBeLessThanOrEqual(RETREAT + APPLIED_TOL);
       if (strafe) expect(j.worstAppliedTan, `${label}: the velocity fed to the body circled at ${j.worstAppliedTan} m/s (cap ${STRAFE}; ${j.applied} settled frames)`).toBeLessThanOrEqual(STRAFE + APPLIED_TOL);
-      const ch = chase(r.samples);
+      const ch = chase(caughtFrames(r.samples));
       chaseNotes.push(`${label}: ${j.judged} frames judged, worst away ${j.worstAway} (applied ${j.worstAppliedAway} over ${j.applied}), retreat ${ch.retreat} m/s, closest ${ch.gapMin} m, chase ${judgeChase ? 'judged' : 'not judged'}`);
       if (judgeChase) {
         expect(ch.gapMin, `${label}: the husk never caught up (closest ${ch.gapMin} m) — [ms, gap, playerSpeed, w] ${JSON.stringify(ch.trace)}`).toBeLessThanOrEqual(CAUGHT_GAP_M);
