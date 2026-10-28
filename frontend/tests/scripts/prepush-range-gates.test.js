@@ -9,7 +9,7 @@ import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
  * A RECEIPT SKIPS THE OFFLINE CORE — NEVER THE COMMIT-RANGE GATES.
  *
  * pre-push used to `continue` past ci/pipeline.sh whenever the pushed tree matched the pre-commit receipt.
- * The three gates that read a commit range — queue-ledger, artifact-currency, e2e-freshness — live in the
+ * The gates that read a commit range — queue-ledger, artifact-currency, registry-append-only — live in the
  * pipeline's push tier, so on every receipt-matched push they silently never ran, while the hook's own
  * comment said they "run unconditionally, above". artifact-currency, skipped for a day, surfaced 74
  * commits of operator-page drift the first time a push took the full path.
@@ -116,18 +116,17 @@ describe('ci/pipeline.sh --range-only — the range gates run, every skipped cor
     return { ...r, cmds: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [] };
   }
 
-  it('runs exactly the four commit-range gates, and none of the offline core', () => {
+  it('runs exactly the three commit-range gates, and none of the offline core', () => {
     const r = runPipeline(['--tier=push', '--range-only']);
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.cmds).toEqual([
       'node scripts/ci/queue-ledger.mjs',
       'node scripts/ci/artifact-currency.mjs',
-      'node scripts/ci/e2e-freshness.mjs',
       'node scripts/ci/registry-append-only.mjs',
     ]);
     const skipped = r.stdout.match(/skipped \(certified by the pre-commit receipt/g) || [];
     expect(skipped.length).toBeGreaterThanOrEqual(8); // every core step is NAMED as skipped, not silently absent
-    expect(r.stdout).toMatch(/4 commit-range gate\(s\) passed/);
+    expect(r.stdout).toMatch(/3 commit-range gate\(s\) passed/);
   });
 
   it('positive control: without --range-only the same stubs see the offline core run', () => {

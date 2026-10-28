@@ -98,8 +98,8 @@ describe('gate-table — parseHook is a COUNT, so its denominator is the whole p
     expect(callersFor({ tier: 'nonsense-tier' })).toEqual(CALLERS.core);
   });
 
-  // 2026-10-28: artifact-currency runs in the push tier AND, on a CI push to main, in the fast tier. Two rows
-  // would print 18 gates where 17 exist; the first row alone would print `CI: —` for a gate CI runs.
+  // registry-append-only runs in the push tier AND in the fast tier. Two rows would count it twice; the first row
+  // alone would print `CI: —` for a gate CI runs.
   // Mutation-Proof (mutate.sh), each observed RED: G1 parseHook's merge deleted (every step is its own row) ->
   // this case; G2 callersFor reads `[gate.tier]` only, ignoring `also` -> this case.
   it('ONE gate run by two tiers is ONE row, and its callers are the UNION of both tiers', () => {

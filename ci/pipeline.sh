@@ -25,11 +25,9 @@
 #   commit  reads the WORKING TREE          -> pre-commit. Offline, deterministic, no network, no browser.
 #                                              69s measured for the whole set, so the edit path can carry it.
 #   push    reads a COMMIT RANGE            -> pre-push. Trailers, queue-ledger, artifact-currency,
-#                                              e2e-freshness: a runner on a squashed ref cannot
+#                                              registry-append-only: a runner on a squashed ref cannot
 #                                              reconstruct the range, so these belong to the chokepoint
-#                                              that has it. Two exceptions run in the fast tier too:
-#                                              artifact-currency's range is syncedSha..HEAD, which a
-#                                              full-history runner on a push to main CAN count; and
+#                                              that has it. One exception runs in the fast tier too:
 #                                              registry-append-only takes its base from the event (a
 #                                              push's before, a pull request's base), which CI has.
 #   fast    reads the NETWORK or a BROWSER  -> CI only. `npm audit` and `prod-smoke` must never sit on an
@@ -48,11 +46,9 @@
 #
 #   - THE 31-FRAME VISUAL ORACLE. It needs a real GPU-less browser presenting frames and takes ~20
 #     minutes; it runs in neither caller today. A green pipeline says nothing about how Crafty LOOKS.
-#   - E2E FRESHNESS, not E2E itself. 21 Playwright specs take ~20 minutes, which is too slow for every
-#     push, so the push tier asserts that E2E was last run GREEN against the current source tree — the
-#     stamp, not the suite. CI runs the real thing, sharded. This is the inverse of Inkbloom's problem:
-#     there CI *cannot* run the Studio tiers so the hook must look; here the hook *can* but is too slow
-#     to, so it checks the receipt instead.
+#   - E2E. The Playwright suite runs only in CI, sharded, as jobs beside this pipeline's. main's branch
+#     protection requires `ci ok` on the exact sha, and `ci ok` needs every e2e shard, so no local tier
+#     asks for an e2e receipt (DECISIONS 2026-10-28 item 13(b)).
 #
 # Exit: 0 = every tier step passed · 1 = a step failed (the failing step is named).
 set -uo pipefail
@@ -72,11 +68,9 @@ for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --range-only) RA
 # The CI step also exports CODE_CHANGED, and the unit suite this pipeline runs inherits it and executes this file under
 # test. The reset above is what keeps a docs-only run from changing what that suite tests: the flag decides, an
 # inherited CODE_CHANGED never does.
-# --range-only: pre-push's path when the pre-commit receipt already certified this exact tree. The offline
-# core is skipped (and each skip PRINTED); the commit-range gates still run, because a receipt written at
-# commit time cannot speak for a range it never saw. Until 2026-09-22 pre-push `continue`d past this file
-# on a receipt match, so queue-ledger, artifact-currency and e2e-freshness silently never ran on those
-# pushes — found when artifact-currency, skipped for a day, surfaced 74 commits of page drift at once.
+# --range-only: pre-push's path when a receipt already certified this exact tree. The offline core is
+# skipped (and each skip PRINTED); the commit-range gates still run, because a receipt cannot speak for a
+# range it never saw.
 if [ "$RANGE_ONLY" = 1 ] && [ "$TIER" != "push" ]; then
   printf '\033[31m✖ pipeline: --range-only is only meaningful with --tier=push\033[0m\n' >&2; exit 2
 fi
@@ -141,20 +135,18 @@ step "bundle byte budget" node scripts/ci/bundle-budget.mjs
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # TIER: PUSH — commit-shaped gates. They read a COMMIT RANGE, which a CI runner on a squashed or
 # rebased ref cannot reconstruct meaningfully, so they belong to the chokepoint that has the real range.
-# One of them, artifact-currency, ALSO runs in the fast tier on a CI push to main (see the CI-only block
-# below): its range is syncedSha..HEAD, which a full-history runner can count. In either tier its drift is a
-# report, never a refusal (DECISIONS 2026-10-28 item 12); only its three tree-defect checks fail a run.
-# registry-append-only runs in both tiers as well: here on the range pre-push hands it (PUSH_RANGES), in CI on the
-# event's base. A registry row deleted instead of closed is invisible to a tree check, so it needs the range.
+# artifact-currency's drift is a report, never a refusal (DECISIONS 2026-10-28 item 12); only its three
+# tree-defect checks fail a run, and they guard the Command Record's as-of stamp at every landing.
+# registry-append-only runs in CI as well, on the event's base: a registry row deleted instead of closed is
+# invisible to a tree check, so it needs a range, and pre-push hands it this push's (PUSH_RANGES).
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" != "push" ]; then
-  printf '\n\033[2m── skipped (%s tier): queue-ledger, artifact-currency, e2e-freshness, registry-append-only — they read a COMMIT RANGE (the fast tier runs artifact-currency on a CI push to main, and registry-append-only on every CI run, below)\033[0m\n' "$TIER"
+  printf '\n\033[2m── skipped (%s tier): queue-ledger, artifact-currency, registry-append-only — they read a COMMIT RANGE (the fast tier runs registry-append-only on every CI run, below)\033[0m\n' "$TIER"
 fi
 if [ "$TIER" = "push" ]; then
   SECTION=range
   step "queue-ledger (a finding with no marker)" node scripts/ci/queue-ledger.mjs
   step "artifact-currency (page sources, Queued pills, as-of stamps; drift is reported only)" node scripts/ci/artifact-currency.mjs
-  step "e2e freshness (the suite CI runs, receipted against this tree)" node scripts/ci/e2e-freshness.mjs
   step "registry-append-only (a registry row deleted instead of closed, on the pushed range)" node scripts/ci/registry-append-only.mjs
 fi
 
@@ -172,9 +164,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # TIER: CI-ONLY — knip, npm audit and prod-smoke need the network or a browser, so they must never sit in a
 # developer's push path. A registry outage or a flaky browser reddening someone's push is how a gate gets
-# bypassed. The registry-append-only and artifact-currency steps at the end of this block are in CI for a different
-# reason: they need neither. registry-append-only needs a range, which the event names; artifact-currency needs the
-# state of main AFTER a merge GitHub made, which no local hook ever sees.
+# bypassed. The registry-append-only step at the end of this block is in CI for a different reason: it needs
+# neither, only a range, which the event names.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" = "fast" ]; then
   step "knip (unused files / exports / deps)" npm run --silent knip
@@ -187,22 +178,6 @@ if [ "$TIER" = "fast" ]; then
   # The event names the base (a push's before, a pull request's base sha, else the merge-base with origin/main), and the
   # gates job checks out full history, so every CI run can read the registry at both ends.
   step "registry-append-only (on every CI run, against the event's base)" node scripts/ci/registry-append-only.mjs
-  # THE SERVER-SIDE MERGE REPORT (2026-10-28) — `gh pr merge` and GitHub's UI move main without any local hook, so
-  # this step is the one place main's state after such a merge is looked at. It runs on the push event, AFTER main
-  # has moved and Vercel has deployed. It PRINTS how far each operator page is behind main and refuses no drift
-  # (DECISIONS 2026-10-28 item 12: the cap measured the writer; the pages now state their own commit and time for
-  # the reader). It still reds the gates job if a merge brought in one of the three tree defects (a missing or
-  # unusable page source, a falsified or undeclared Queued pill, a missing, duplicated or mismatched as-of stamp),
-  # which pre-push refuses on every local push. The drift is counted from the recorded sha, so the gates job checks
-  # out full history (fetch-depth: 0); without it, or for a sha only a squash-merged, deleted lane branch held, the
-  # line reads "cannot be measured". It stays on a push to main only, as it was: a PR's merge ref would print the
-  # lane's own commits as drift, and a workflow_dispatch run on main moves nothing (both take the else branch). It
-  # no longer passes E2E_PUSH_REFS, which the script stopped reading when the drift refusal went.
-  if [ "${GITHUB_EVENT_NAME:-}" = "push" ] && [ "${GITHUB_REF:-}" = "refs/heads/main" ]; then
-    step "artifact-currency (on a CI push to main: reports drift, refuses tree defects, after a merge GitHub made)" node scripts/ci/artifact-currency.mjs
-  else
-    printf '\n\033[2m── skipped (fast tier): artifact-currency — CI runs it on a push to main only (event %s, ref %s)\033[0m\n' "${GITHUB_EVENT_NAME:-unset}" "${GITHUB_REF:-unset}"
-  fi
 fi
 
 printf '\n'

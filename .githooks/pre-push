@@ -28,10 +28,10 @@
 # with zero verification. There is no skip path any more.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 #
-# Runs the FAST, deterministic gates only. Deliberately NOT here:
+# Runs the FAST, deterministic gates only. Deliberately NOT here, and no receipt for either is asked:
 #   * the 31-state visual gate (renders the real scene under swiftshader; load-sensitive, would flake)
-#   * e2e (browser boot ~60s)
-# Run those before a milestone: `npm run test:visual` / `npm run test:e2e`.
+#   * e2e: CI runs it, sharded, and main's branch protection requires `ci ok` on the exact sha, which needs every
+#     e2e shard (DECISIONS 2026-10-28 item 13(b)). A local run is `npm run test:e2e`.
 #
 # Escape hatch: `git push --no-verify`.
 # ⚠️ Using --no-verify to dodge a red gate is a reward-hack (LOOP-CHARTER §3). If a gate is genuinely
@@ -54,10 +54,6 @@ while read -r _local_ref local_sha _remote_ref _remote_sha; do
   [ "$local_sha" = "$ZERO" ] && continue   # branch deletion: nothing to certify
   [ -z "$local_sha" ] && continue
   TARGETS="$TARGETS $local_sha"
-  # The REMOTE ref, never the local one: `git push origin feat/x:main` and `git push origin HEAD:refs/heads/main`
-  # name a local branch or HEAD, and both move main. Pinned by tests/scripts/artifact-currency-scope.test.js (its
-  # PRODUCER cases, kept for e2e-freshness, which reads the list).
-  PUSH_REFS="${PUSH_REFS:-} $_remote_ref"
   # The commits actually being introduced. A brand-new branch sends the zero-sha as the remote side, in
   # which case there is no meaningful range and the trailer check simply skips rather than scanning history.
   if [ "$_remote_sha" != "$ZERO" ] && [ -n "$_remote_sha" ]; then
@@ -69,13 +65,9 @@ if [ -z "$TARGETS" ]; then
   printf '\n✓ pre-push: nothing to certify (deletion, or no refs on stdin)\n\n'
   exit 0
 fi
-# The refs this push moves, for e2e-freshness: its red-base refusal guards MAIN (the branch Vercel deploys and whose
-# CI history a stacked change would hide in); a branch push is judged by CI on that branch (2026-10-27).
-# (artifact-currency read it too until 2026-10-28, when its drift refusal went: DECISIONS 2026-10-28 item 12.)
-# EXPORTED, or the node processes the pipeline starts never see it and read every push as "refs unknown".
-export E2E_PUSH_REFS="$PUSH_REFS"
 # The pushed ranges, for registry-append-only, which picks the one whose head is the sha it runs at. A new branch has no
-# range here, and the script measures from its merge-base with origin/main instead.
+# range here, and the script measures from its merge-base with origin/main instead. EXPORTED, or the node processes the
+# pipeline starts never see it. Pinned by the PRODUCER cases in tests/scripts/artifact-currency-scope.test.js.
 export PUSH_RANGES="$RANGES"
 
 # ── mutation-proof trailer ──────────────────────────────────────────────────────
@@ -105,7 +97,7 @@ done
 # WHAT THE RECEIPT DOES NOT AUTHORISE, and this is the part that makes it safe: it speaks only for the
 # OFFLINE CORE. The commit-shaped gates read a COMMIT RANGE that did not exist when the receipt was
 # written, so they run on EVERY push: the two trailers above, and queue-ledger / artifact-currency /
-# e2e-freshness / registry-append-only via `pipeline.sh --tier=push --range-only` below.
+# registry-append-only via `pipeline.sh --tier=push --range-only` below.
 #
 # THAT LAST PART WAS FALSE UNTIL 2026-09-22. A receipt match used to `continue` straight past the
 # pipeline, and those three gates live in its push tier, so on every receipt-matched push they silently

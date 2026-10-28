@@ -23,7 +23,7 @@ import { isolatedGitEnv, fixtureGit } from './_isolatedGit.js';
  * K1-K6, listed in its header; pipeline.sh: P1 `= "false"` widened to any non-empty value -> the `true` and FALSE
  * cases; P2 the skip branch deleted -> the docs-only case (prod-smoke ran); ci.yml: Y1 the e2e `if:` compares
  * `== 'true'` (an unknown output would skip) -> the e2e-condition case; Y2 `ci ok` on `!cancelled()` -> the always()
- * case; Y3 `docs` dropped from ci-ok's needs -> the wiring case.
+ * case; Y3 a job dropped from ci-ok's needs -> the wiring case.
  */
 
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -241,19 +241,26 @@ describe('scope against a real repository', () => {
 });
 
 describe('ci-ok verdict — the aggregate', () => {
-  const JOBS = ['changes', 'gates', 'e2e', 'docs', 'ci-ok'];
+  const JOBS = ['changes', 'gates', 'e2e', 'ci-ok'];
   const needs = (code, results = {}) => ({
     changes: { result: 'success', outputs: { code } },
     gates: { result: 'success', outputs: {} },
     e2e: { result: 'success', outputs: {} },
-    docs: { result: 'success', outputs: {} },
     ...Object.fromEntries(Object.entries(results).map(([k, r]) => [k, typeof r === 'string' ? { result: r, outputs: {} } : r])),
   });
 
   it('every job green: ok, and the denominator is printed', () => {
     const v = verdict(needs('true'), JOBS);
     expect(v.ok, v.lines.join('\n')).toBe(true);
-    expect(v.lines[0]).toMatch(/4 dependencies read, 4 other job\(s\) in ci\.yml/);
+    expect(v.lines[0]).toMatch(/3 dependencies read, 3 other job\(s\) in ci\.yml/);
+  });
+  // A matrix job's `needs.<id>.result` is `failure` when any one of its shards failed, so this is one red shard.
+  it('one red e2e shard (the matrix concludes failure) is not ok, on a code change and on a docs-only verdict alike', () => {
+    for (const code of ['true', 'false']) {
+      const v = verdict(needs(code, { e2e: 'failure' }), JOBS);
+      expect(v.ok, `code=${code}\n${v.lines.join('\n')}`).toBe(false);
+      expect(v.lines.join('\n')).toMatch(/e2e: failure {2}<- NOT OK/);
+    }
   });
   it('e2e skipped on a docs-only verdict: ok', () => {
     expect(verdict(needs('false', { e2e: 'skipped' }), JOBS).ok).toBe(true);
@@ -269,7 +276,7 @@ describe('ci-ok verdict — the aggregate', () => {
   it('a failed or CANCELLED dependency (K2) is not ok — a timed-out shard concludes cancelled', () => {
     expect(verdict(needs('true', { e2e: 'failure' }), JOBS).ok).toBe(false);
     expect(verdict(needs('true', { e2e: 'cancelled' }), JOBS).ok).toBe(false);
-    expect(verdict(needs('false', { docs: 'cancelled', e2e: 'skipped' }), JOBS).ok).toBe(false);
+    expect(verdict(needs('false', { gates: 'cancelled', e2e: 'skipped' }), JOBS).ok).toBe(false);
   });
   it('a job in ci.yml missing from the needs list (K3) is not ok', () => {
     const v = verdict(needs('true'), [...JOBS, 'pages']);
@@ -333,12 +340,6 @@ describe('ci.yml — the wiring that connects the two scripts', () => {
     expect(yml).toMatch(/\n {2}group: ci-\$\{\{ github\.event_name \}\}-\$\{\{ github\.ref \}\}\n/);
     expect(yml).toMatch(/\n {2}cancel-in-progress: \$\{\{ github\.ref != 'refs\/heads\/main' \}\}\n/);
   });
-
-  it('e2e-freshness selects e2e jobs by `^e2e`: the e2e job\'s name starts with it, and no other job\'s does', () => {
-    const names = Object.fromEntries(ids.map((j) => [j, (/\n {4}name: (.+)\n/.exec(block(j)) || [])[1]]));
-    expect(names.e2e).toMatch(/^e2e /);
-    for (const [j, n] of Object.entries(names)) if (j !== 'e2e') expect(n, j).not.toMatch(/^e2e/);
-  });
 });
 
 // `ci ok` is computed by the commit it judges, from that commit's ci.yml, so a workflow edit that makes a red shard
@@ -357,7 +358,7 @@ describe('ci.yml — the jobs `ci ok` judges cannot quietly report success', () 
 
   it('the YAML reader and the text reader ci-ok.mjs uses find the same jobs, the ones that matter among them', () => {
     expect(Object.keys(jobs).sort()).toEqual(jobIds(yml).sort());
-    expect(Object.keys(jobs)).toEqual(expect.arrayContaining([SCOPE_JOB, 'gates', 'e2e', 'docs', SELF]));
+    expect(Object.keys(jobs)).toEqual(expect.arrayContaining([SCOPE_JOB, 'gates', 'e2e', SELF]));
   });
 
   it('no job and no step carries continue-on-error, which turns a red result into success: not the e2e job or step, the gates pipeline step, nor `ci ok` itself', () => {
@@ -396,7 +397,7 @@ describe('ci.yml — the jobs `ci ok` judges cannot quietly report success', () 
     expect(ok.name).toBe(REQUIRED_CHECK);
     expect(ok.if, 'success() or !cancelled() skips this job on a cancelled run, and a skipped job passes branch protection').toBe('always()');
     const others = Object.keys(jobs).filter((j) => j !== SELF).sort();
-    expect(others.length, 'jobs it must need').toBeGreaterThanOrEqual(4);
+    expect(others.length, 'jobs it must need').toBeGreaterThanOrEqual(3);
     expect([].concat(ok.needs).sort()).toEqual(others);
   });
 

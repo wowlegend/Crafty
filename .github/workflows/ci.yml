@@ -85,8 +85,9 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Fast deterministic gates. GPU-free, machine-independent. These must never flake.
-  # It runs on EVERY change, docs-only included: doc-currency, opsec-scan, artifact-currency and parts of the unit
-  # suite read docs, so a docs change can break this job and nothing else would see it.
+  # It runs on EVERY change, docs-only included: doc-currency, opsec-scan and parts of the unit suite read docs, so a
+  # docs change can break this job and nothing else would see it. doc-currency runs here, as a pipeline step, and in
+  # no second job.
   # ---------------------------------------------------------------------------
   gates:
     name: unit · lint · knip · build
@@ -96,10 +97,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      # FULL HISTORY (2026-10-28). On a push to main the fast tier runs artifact-currency, whose drift is
-      # `rev-list --count syncedSha..HEAD`; a depth-1 clone holds no commit but HEAD, so that count cannot be taken.
-      # The drift is a report, never a refusal (DECISIONS 2026-10-28 item 12): in a shallow checkout the line would
-      # only say "cannot be measured", which is why the history is fetched. The step runs after the push has landed.
+      # FULL HISTORY. registry-append-only compares the registry at the event's base (a push's before, a pull
+      # request's base sha) with HEAD on every run, and a depth-1 clone holds no commit but HEAD.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -125,11 +124,9 @@ jobs:
       # ran. ci/pipeline.sh is the definition; both callers invoke it, so neither can drift.
       #
       # `--tier=fast` adds the steps that need network or a browser (knip, npm audit, prod-smoke) and
-      # skips the commit-shaped ones (queue-ledger, e2e-freshness), which need a push refspec a runner does not
-      # have. Two exceptions run here too. registry-append-only runs on every event, against the base the event
-      # names (a push's before, a pull request's base sha), which the full-history checkout holds. artifact-currency
-      # runs on a push to main, to report the pages' drift after a merge GitHub made and to refuse a tree defect such
-      # a merge brought in (a pull_request or a workflow_dispatch run skips it).
+      # skips the commit-shaped ones (queue-ledger, artifact-currency), which need a push refspec a runner does not
+      # have. One exception runs here too: registry-append-only, on every event, against the base the event names
+      # (a push's before, a pull request's base sha), which the full-history checkout holds.
       #
       # `--code-changed` carries the change-scope verdict: `false` skips prod-smoke (a browser step), anything else runs
       # it. The step also exports CODE_CHANGED so the expression is not spliced into the script text, which means the
@@ -148,7 +145,7 @@ jobs:
   # ~30s-1.7m each and blew through its own timeout-minutes on EVERY run. A timed-out job reports as
   # `cancelled`, which is visually indistinguishable from a run superseded by `cancel-in-progress`, so
   # the workflow had concluded `success` ZERO times in 88 runs (86 cancelled / 2 failure) and nobody
-  # noticed — the fast `gates` and `doc currency` jobs were passing the whole time. Each shard is its
+  # noticed — the fast `gates` job was passing the whole time. Each shard is its
   # own runner with its own vite webServer, so `fullyParallel: false` + `workers: 1` still hold within
   # a shard (shared in-page game state is why they must stay serialized).
   # 3 -> 6 SHARDS 2026-10-27: the masterpiece lanes brought the suite to ~50 tests at 1-3 min each on
@@ -163,8 +160,7 @@ jobs:
   # DOCS-ONLY SKIP: skipped only when the change-scope job said exactly `false`; an empty or unknown output runs it.
   # A change-scope job that failed or was cancelled has no output at all and skips this job too (its needs did not
   # succeed), which `ci ok` then fails. A skipped e2e is passed by `ci ok` only under that same `false`, so a
-  # mis-wired condition cannot turn into a permanent green. The job NAME must keep starting with `e2e`: e2e-freshness.mjs selects these jobs by
-  # `^e2e`, and no other job's name may.
+  # mis-wired condition cannot turn into a permanent green.
   e2e:
     name: e2e (playwright) ${{ matrix.shard }}/8
     needs: changes
@@ -249,22 +245,6 @@ jobs:
           if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
-  # Doc-currency. Cheap, and it guards the failure mode that actually bit us:
-  # a stale doc is a LIVE TRAP that regenerates dead work (LOOP-CHARTER §0-B.6).
-  # ---------------------------------------------------------------------------
-  docs:
-    name: doc currency
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    defaults:
-      run:
-        working-directory: . # this one runs at the repo ROOT
-    steps:
-      - uses: actions/checkout@v7
-      - name: Doc-currency lint
-        run: node frontend/scripts/ci/doc-currency.mjs
-
-  # ---------------------------------------------------------------------------
   # `ci ok` — THE REQUIRED CHECK (2026-10-28). Branch protection on main requires this job's name and nothing else.
   # It needs EVERY other job (ci-ok.mjs fails the run if ci.yml has a job missing from this list) and passes only
   # when each one succeeded, or, for e2e alone, was skipped because the change-scope job said `false`.
@@ -274,7 +254,7 @@ jobs:
   # ---------------------------------------------------------------------------
   ci-ok:
     name: ci ok
-    needs: [changes, gates, e2e, docs]
+    needs: [changes, gates, e2e]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5

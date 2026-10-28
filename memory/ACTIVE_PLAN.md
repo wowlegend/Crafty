@@ -118,8 +118,8 @@ liberally** — both in `CLAUDE.md` Method. Kevin's overnight `/goal` (SOTA look
    `frontend/src/render/Atmosphere.jsx` (review #8 finding 11, shadow reset as a layout effect),
    `frontend/tests/e2e/dodge-latch.spec.js` (finding 5; D1 mutant RED, an identity mutant + clean baseline still owed
    via `frontend/scripts/dev/mutate-e2e.sh`), and the untracked iPad probe + its `_serve.mjs` port. Then stop anything
-   on port 4179 and run `cd frontend && E2E_WORLD_TIMEOUT=240000 node scripts/ci/e2e-freshness.mjs --run` (~1 h on a
-   loaded machine; it now refuses a partial run or a reused server), commit `frontend/tests/e2e/.last-green.json`,
+   on port 4179 and run `cd frontend && E2E_WORLD_TIMEOUT=240000 node scripts/ci/e2e-freshness.mjs --run` (~1 h on a (REMOVED by W2-C)
+   loaded machine; it now refuses a partial run or a reused server), commit `frontend/tests/e2e/.last-green.json`, (REMOVED by W2-C)
    push onto a completed CI run, watch CI to a `success` conclusion. That push delivers the perf fixes to the live
    site Kevin tested (Vercel auto-deploys on push).
 2. **Dependabot #20 / #21** — triage against the estate's Dependabot gotchas (`rules-global/github-automation.md`).
@@ -165,8 +165,8 @@ liberally** — both in `CLAUDE.md` Method. Kevin's overnight `/goal` (SOTA look
   b2cd2674 d35351cf cd491d37 4a0e2951 78726503 (P1) ecf22bc9 (P5) 9dc5fac7 (P4 frame cap) 54b6f65c (review #8 on the
   cap: no dropped frames off-60/120 Hz, Show Stats counts drawn frames, governor bounds under the cap) f998e442
   (e2e-freshness --run refuses partial runs and a reused server). The push still needs a GREEN full local receipt:
-  stop anything on port 4179, then `cd frontend && E2E_WORLD_TIMEOUT=240000 node scripts/ci/e2e-freshness.mjs --run`
-  (~1 h at this machine's load), commit `frontend/tests/e2e/.last-green.json`, push onto a completed CI run, watch CI.
+  stop anything on port 4179, then `cd frontend && E2E_WORLD_TIMEOUT=240000 node scripts/ci/e2e-freshness.mjs --run` (REMOVED by W2-C)
+  (~1 h at this machine's load), commit `frontend/tests/e2e/.last-green.json`, push onto a completed CI run, watch CI. (REMOVED by W2-C)
   The first receipt attempt was stopped deliberately: the review found the stepCap judder in the tree it certified.
 - **Uncommitted in the MAIN checkout** (commit or finish before the receipt, which hashes the tree):
   `frontend/src/render/Atmosphere.jsx` (review #11: the shadow reset is a layout effect; no gate can see a one-frame
@@ -190,9 +190,9 @@ liberally** — both in `CLAUDE.md` Method. Kevin's overnight `/goal` (SOTA look
 
 - **P4 frame cap COMMITTED `9dc5fac7`** (advance() rendering, pending-frame clear, clock-keeping setFrameloop wrapper;
   e2e + unit + toggle gates, all mutants RED with identity controls). New instrument `frontend/scripts/dev/mutate-e2e.sh`.
-- **In flight:** the full local e2e receipt, `cd frontend && E2E_WORLD_TIMEOUT=240000 node scripts/ci/e2e-freshness.mjs
+- **In flight:** the full local e2e receipt, `cd frontend && E2E_WORLD_TIMEOUT=240000 node scripts/ci/e2e-freshness.mjs (REMOVED by W2-C)
   --run` (log in the session scratchpad `receipt-run.log`). NO edits to frontend/src or tests/e2e in the MAIN checkout
-  until it ends (the receipt hashes the tree). On green: commit `frontend/tests/e2e/.last-green.json`, push onto a
+  until it ends (the receipt hashes the tree). On green: commit `frontend/tests/e2e/.last-green.json`, push onto a (REMOVED by W2-C)
   completed CI run, watch CI.
 - **Built in the worktree `.claude/worktrees/perf-t3` (detached at 9dc5fac7, node_modules symlinked; NOT committed there
   — apply to main as diffs by file group and commit from main so the pipeline runs):**
@@ -231,7 +231,7 @@ liberally** — both in `CLAUDE.md` Method. Kevin's overnight `/goal` (SOTA look
 - **CI RED on 57c45ae4** (run 35845534213, shards 2+3 cancelled at the limit). Fixes committed, NOT pushed:
   b2cd2674 (review #8 R9), d35351cf (world-hitstop/perfect-dodge vs in-freeze stalls), cd491d37 (dodge-latch race +
   `e2e-freshness --run`). A full local run died on dodge-latch (now fixed); the push needs a GREEN receipt:
-  `cd frontend && node scripts/ci/e2e-freshness.mjs --run` (then commit `.last-green.json`, push onto a completed run).
+  `cd frontend && node scripts/ci/e2e-freshness.mjs --run` (then commit `.last-green.json`, push onto a completed run). (REMOVED by W2-C)
 - **Drafts waiting in the session scratchpad** (apply AFTER no e2e server runs; each validated before commit):
   `patch-postfx.py` (P1: PostFX memo inside GameScene.jsx + GameScene memo with boss primitives; App passes them) ·
   `shadowReset.js` (to become a new module beside Atmosphere in the render dir) + `patch-shadow.py` (P5 + DEV hook readSunShadow) ·
@@ -253,7 +253,7 @@ liberally** — both in `CLAUDE.md` Method. Kevin's overnight `/goal` (SOTA look
   its timeout is RED) · plus the OVERNIGHT/ACTIVE_PLAN docs commit.
 - **CI on `37d030a8` = RED** (run 35830093253: perfect-dodge failed x3 on shard 2, then the shard hit its 25-min limit
   and concluded `cancelled`). The push therefore needs a local green e2e receipt: full run was launched; on green run
-  `node scripts/ci/e2e-freshness.mjs --record` from `frontend/`, commit the receipt, push, watch CI.
+  `node scripts/ci/e2e-freshness.mjs --record` from `frontend/`, commit the receipt, push, watch CI. (REMOVED by W2-C)
 - **`/code-review high` over `37d030a8..HEAD`** was launched as a forked background skill — verify each finding, fix
   with a red-first gate, QUEUE row R9.
 - **Then:** EXTERNAL-BASELINE-R2 #3 ore glow, #2 leaves, #4 lightning, #5 lantern + block light (a plan doc each).
@@ -272,7 +272,7 @@ liberally** — both in `CLAUDE.md` Method. Kevin's overnight `/goal` (SOTA look
   `c0785955`, `fafc562a`, `07661878`). Pushed through `33c75345`; the later commits push once CI on
   `33c75345` completes and the two e2e specs whose seams moved (world-hitstop, world-rebuild-after-load) pass.
 - **Reviews #4-#7 done** (QUEUE R5-R8). Pushed through `a01b1982`; CI RED on `9c6dc852` (the perfect-dodge e2e, a
-  spec flake) — fixed in `962b69bd`, full local e2e 42/42 green (receipt `frontend/tests/e2e/.last-green.json`).
+  spec flake) — fixed in `962b69bd`, full local e2e 42/42 green (receipt `frontend/tests/e2e/.last-green.json`). (REMOVED by W2-C)
   **NEXT:** push onto the completed run; then port WIP `45590d2c` (branch `wip/r7-lazy-panels` in worktree `mip-ab`:
   R7.4-R7.8 + lazy panels) into main through the pipeline (build + the bundle-budget lazy-panel marker check); then
   the heavy-melee milestone (spec `docs/superpowers/specs/2026-09-23-crafty-heavy-melee-design.md`; plan doc owed) =

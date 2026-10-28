@@ -1,14 +1,11 @@
 /**
  * ARTIFACT-CURRENCY, DRIVEN AS PROCESSES, end to end, across three seams. Since DECISIONS 2026-10-28 item 12 the
- * drift is REPORTED and never refused, on any push and in CI, while a missing or unusable page source and a
+ * drift is REPORTED and never refused, on any push, while a missing or unusable page source and a
  * falsified or undeclared Queued pill refuse on every push. The pure verdict is pinned in
  * tests/gates/artifact-currency-gates.test.js. This file pins what that pure test cannot see:
  *
  *   1. THE CONSUMER — main() turns the report into the exit code the hook acts on. Every drift (stale, drifting,
- *      unmeasured) exits 0 with the count and the page's URL printed; every tree defect exits 1. Each case runs
- *      under several E2E_PUSH_REFS spellings (main, a branch, both, unset, empty). The script no longer reads that
- *      variable, so the spellings are there to catch a push scope creeping back in: it would show as a case
- *      whose verdict changes with the refs.
+ *      unmeasured) exits 0 with the count and the page's URL printed; every tree defect exits 1.
  *   1b. --stamp and --sync, the two steps with the publish between them. --stamp writes the as-of stamp into the page
  *      (the --as-of commit, default HEAD, at that commit's COMMITTER time), replaces it on a re-stamp rather than
  *      adding a second, never touches the state file, and writes nothing at all when the page lacks a token the stamp
@@ -17,28 +14,26 @@
  *      spec; this is the call site they cannot see.
  *   2. THE PRODUCER — the real .githooks/pre-push, run by a real `git push` from a fixture repo to a bare
  *      remote, with DISTINCT local and remote ref names (`feat/x:main`, `HEAD:refs/heads/main`) and with TWO
- *      refs in one push, main listed first and main listed last. The hook must build E2E_PUSH_REFS from the
- *      REMOTE ref, ACCUMULATE every pushed ref and EXPORT it. artifact-currency stopped reading that variable on
- *      2026-10-28, but e2e-freshness's main-only red-base rule still does, and nothing else in the suite drives
- *      the real hook's export, so these cases are kept. They also prove, through the real hook, that a push
- *      moving main far past the publish sha now LANDS, with the drift printed, and that a push whose commit carries a
- *      tree defect is REFUSED, to main or to a branch, with no remote ref moved: the gate's exit 1 is only a
- *      refusal if the hook acts on it.
- *   3. THE CI CHECK — the real ci/pipeline.sh fast tier (node/npm stubbed) runs this gate on a push to main and on
- *      nothing else, and the gates job that runs that tier checks out full history, without which CI's drift
- *      line could only say "cannot be measured".
+ *      refs in one push, main listed first and main listed last. The hook must build PUSH_RANGES (the range
+ *      registry-append-only reads) as `<remote sha>..<local sha>` for every pushed ref the remote already has,
+ *      ACCUMULATE them and EXPORT the list; nothing else in the suite drives the real hook's export. The same pushes
+ *      prove that a push moving main far past the publish sha LANDS, with the drift printed, and that a push whose
+ *      commit carries a tree defect is REFUSED, to main or to a branch, with no remote ref moved: the gate's exit 1
+ *      is only a refusal if the hook acts on it.
+ *   3. NOT IN CI — the real ci/pipeline.sh fast tier (node/npm stubbed) runs this gate on no event: it belongs to the
+ *      push tier, where the pre-push hook runs it on every local push.
  *
  * How (1): the real script bytes are copied into a throwaway repo at `frontend/scripts/ci/` (its ROOT is derived
  * from its own location, so it then measures the fixture). The fixture's surface is published at its first commit
  * and HEAD is HARD_LIMIT + 5 commits on. Every run asserts the denominator line first, so a script that failed to
  * load cannot pass an exit-1 case. How (2): the fixture repo's committed ci/pipeline.sh is a stub that records
- * E2E_PUSH_REFS and runs the real copied artifact-currency.mjs; the expensive pipeline never runs. The trailer
- * gates the hook calls are empty stubs. E2E_PUSH_REFS is cleared from every inherited env: the pre-push hook
+ * PUSH_RANGES and runs the real copied artifact-currency.mjs; the expensive pipeline never runs. The trailer
+ * gates the hook calls are empty stubs. PUSH_RANGES is cleared from every inherited env: the pre-push hook
  * exports it, this suite runs under that hook, and an inherited exported value would hide a hook that forgot to
  * export.
  *
  * Sited in tests/scripts/: the subjects are a CI script, a git hook and the pipeline, driven as processes over
- * fixtures, plus one file-content check of ci.yml.
+ * fixtures.
  *
  * Mutation-Proof: 2026-10-28 (item 12), each via scripts/dev/mutate.sh against this file, each RED observed. In
  * artifact-currency.mjs: A1 driftVerdict `refuse: false` -> `refuse: level === 'stale'` turned the stale case and all
@@ -46,17 +41,11 @@
  * guard each turned the unmeasured case RED; A4 main() `if (refuse)` -> `if (refuse || level === 'stale')` turned the
  * stale case RED; A7 the drift line's URL dropped turned the stale and drifting cases RED; A5, A6, Q1, Q2 (dropping
  * `failed = true` from the missing-source, unusable-source, Queued-EXISTS and undeclared-Queued branches) each turned
- * its own case RED; Q3 (the missing-source check skipped when E2E_PUSH_REFS names a feat/ branch) turned the
- * missing-source case RED. The stamp check (round-1 review), each RED observed: C1 skipped; C2 its `failed = true`
+ * its own case RED. The stamp check (round-1 review), each RED observed: C1 skipped; C2 its `failed = true`
  * dropped; C3 run on every artifact surface, not only those declaring stampTokens; C4 its mismatch branch dropped; C5
- * a page with no publish recorded refused. In .githooks/pre-push: P1 the list built from `$_local_ref`, P2 `export` dropped, P3 only
- * the LAST ref kept, P4 only the FIRST ref kept, each turned producer cases RED; H1 the pipeline call's exit ignored
- * (`|| true`) and H2 `set -e` -> `set +e` each turned BOTH refusal cases RED, and only those (round-1 review: before
- * them, every case that drove the hook asserted a push that lands). In ci/pipeline.sh: C1 the guard
- * without its GITHUB_REF test, C2 without its GITHUB_EVENT_NAME test, C3 the step removed, each turned a CI case
- * RED; in ci.yml, Y1 `fetch-depth: 0` -> `1` turned the full-history case RED. Identity mutants (a comment edit in
- * artifact-currency.mjs, run in both batches, in pre-push and in pipeline.sh) survived. The receipts for the
- * pre-2026-10-28 main-only scope are in git history.
+ * a page with no publish recorded refused. In .githooks/pre-push: H1 the pipeline call's exit ignored (`|| true`) and
+ * H2 `set -e` -> `set +e` each turned BOTH refusal cases RED. The PUSH_RANGES producer cases and the not-in-CI case
+ * carry their receipts in the W2-C commit's trailers.
  * The two steps (1b), 2026-10-28, each RED observed: S1 --stamp also recording the sha (the old one-step --sync); S2
  * the stamp's time from the wall clock; S3 from the AUTHOR time (`%ct` -> `%at`); S4 --as-of ignored (HEAD stamped);
  * S5 the token check skipped; S6 an --as-of that is not a commit accepted; Y1 --sync recording a commit the stamp
@@ -102,17 +91,10 @@ const NOT_IN_HISTORY = 'abcdef0123456789abcdef0123456789abcdef01';
 const PUBLISHED_COMMITTED = '2026-01-02T03:04:05Z';
 const PUBLISHED_AT = '2026-01-02 03:04 UTC';
 
-/**
- * Every E2E_PUSH_REFS spelling a caller can hand the script: main, a branch, both, unset (undefined: a hand run),
- * empty. The pre-2026-10-28 script judged these differently; the current one must not.
- */
-const REFS = [' refs/heads/main', ' refs/heads/feat/steady-cool', ' refs/heads/feat/x refs/heads/main', undefined, ''];
-const label = (refs) => (refs === undefined ? 'refs unset' : `refs ${JSON.stringify(refs)}`);
-
-/** process.env for a fixture child: no GIT_*, and no inherited E2E_PUSH_REFS (see header). */
+/** process.env for a fixture child: no GIT_*, and no inherited PUSH_RANGES (see header). */
 function cleanEnv(extra = {}) {
   const env = isolatedGitEnv(extra);
-  delete env.E2E_PUSH_REFS;
+  delete env.PUSH_RANGES;
   return env;
 }
 
@@ -165,13 +147,11 @@ afterAll(() => {
 const surface = (syncedSha, source = 'docs/superpowers/page.html') =>
   ({ id: 'fixture', kind: 'artifact', url: URL, source, syncedSha });
 
-/** Run the copied script over `surfaces`; `refs` undefined = the var is unset. */
-function runScript({ refs, surfaces, html = PAGE }) {
+/** Run the copied script over `surfaces`. */
+function runScript({ surfaces, html = PAGE }) {
   writeFileSync(join(root, 'docs/superpowers/page.html'), html);
   writeFileSync(join(root, 'docs/superpowers/.artifact-sync.json'), JSON.stringify({ surfaces }));
-  const env = cleanEnv();
-  if (refs !== undefined) env.E2E_PUSH_REFS = refs;
-  const r = spawnSync('node', [join(root, 'frontend/scripts/ci/artifact-currency.mjs')], { cwd: root, env, encoding: 'utf8' });
+  const r = spawnSync('node', [join(root, 'frontend/scripts/ci/artifact-currency.mjs')], { cwd: root, env: cleanEnv(), encoding: 'utf8' });
   const out = `${r.stdout}${r.stderr}`;
   // The denominator, before any verdict is read: a script that never loaded must not satisfy an exit-1 case.
   expect(out, out).toMatch(/artifact-currency: 1 surface\(s\) tracked/);
@@ -179,83 +159,61 @@ function runScript({ refs, surfaces, html = PAGE }) {
 }
 
 /** The common case: the fixture page, published at `syncedSha`. */
-const run = (refs, syncedSha, html = PAGE) => runScript({ refs, surfaces: [surface(syncedSha)], html });
-
-/** Run `fn(refs)` once per spelling in `list`, and assert the denominator: every spelling was judged. */
-function eachRefs(list, fn) {
-  let ran = 0;
-  for (const refs of list) { fn(refs); ran++; }
-  expect(ran, 'denominator: every refs spelling was run').toBe(list.length);
-}
+const run = (syncedSha, html = PAGE) => runScript({ surfaces: [surface(syncedSha)], html });
 
 describe('artifact-currency: drift is REPORTED, never refused, on any push', () => {
-  it(`${OVER} behind (stale): exit 0, the count and the page's URL printed, under every refs spelling`, () => {
-    eachRefs(REFS, (refs) => {
-      const { status, out } = run(refs, shas[0]);
-      expect(out, label(refs)).toMatch(behindWithUrl(OVER));
-      expect(out, label(refs)).toMatch(/stale, over \d+ commits; reported, not refused/);
-      expect(out, label(refs)).not.toMatch(/✘/);
-      expect(status, `${label(refs)}\n${out}`).toBe(0);
-    });
+  it(`${OVER} behind (stale): exit 0, the count and the page's URL printed`, () => {
+    const { status, out } = run(shas[0]);
+    expect(out).toMatch(behindWithUrl(OVER));
+    expect(out).toMatch(/stale, over \d+ commits; reported, not refused/);
+    expect(out).not.toMatch(/✘/);
+    expect(status, out).toBe(0);
   });
 
   it(`${EXTRA} behind (drifting): exit 0 with the nudge and the URL`, () => {
-    eachRefs([' refs/heads/main', undefined], (refs) => {
-      const { status, out } = run(refs, shas[OVER - EXTRA]);
-      expect(out, label(refs)).toMatch(behindWithUrl(EXTRA));
-      expect(out, label(refs)).toMatch(/refresh it at session close/);
-      expect(status, `${label(refs)}\n${out}`).toBe(0);
-    });
+    const { status, out } = run(shas[OVER - EXTRA]);
+    expect(out).toMatch(behindWithUrl(EXTRA));
+    expect(out).toMatch(/refresh it at session close/);
+    expect(status, out).toBe(0);
   });
 });
 
 describe('the tree defects refuse on EVERY push', () => {
-  // Every case is at HEAD (syncedSha = shas[OVER]), so the drift cannot be what fails it. Each runs under a main
-  // push, a branch push and unset refs: a defect in the committed tree is wrong whichever ref carries it.
-  const SPELLINGS = [' refs/heads/main', ' refs/heads/feat/x', undefined];
-
+  // Every case is at HEAD (syncedSha = shas[OVER]), so the drift cannot be what fails it.
   it('an unusable page source (a doctype: a fetched copy) exits 1', () => {
-    eachRefs(SPELLINGS, (refs) => {
-      const { status, out } = run(refs, shas[OVER], '<!doctype html><title>fixture</title>');
-      expect(out, label(refs)).toMatch(/✘ artifact-currency: docs\/superpowers\/page\.html is contains a doctype/);
-      expect(status, `${label(refs)}\n${out}`).toBe(1);
-    });
+    const { status, out } = run(shas[OVER], '<!doctype html><title>fixture</title>');
+    expect(out).toMatch(/✘ artifact-currency: docs\/superpowers\/page\.html is contains a doctype/);
+    expect(status, out).toBe(1);
   });
 
   it('a MISSING page source exits 1', () => {
-    eachRefs(SPELLINGS, (refs) => {
-      const { status, out } = runScript({ refs, surfaces: [surface(shas[OVER], 'docs/superpowers/absent.html')] });
-      expect(out, label(refs)).toMatch(/✘ artifact-currency: docs\/superpowers\/absent\.html is missing/);
-      expect(status, `${label(refs)}\n${out}`).toBe(1);
-    });
+    const { status, out } = runScript({ surfaces: [surface(shas[OVER], 'docs/superpowers/absent.html')] });
+    expect(out).toMatch(/✘ artifact-currency: docs\/superpowers\/absent\.html is missing/);
+    expect(status, out).toBe(1);
   });
 
   it('a Queued row whose data-absent path EXISTS (a falsified pill) exits 1', () => {
     const shipped = join(root, 'docs/shipped.txt');
     writeFileSync(shipped, 'landed\n');
     try {
-      eachRefs(SPELLINGS, (refs) => {
-        const { status, out } = run(refs, shas[OVER], queuedPage('docs/shipped.txt'));
-        expect(out, 'presence: the row was parsed').toMatch(/fixture: 1 queued row\(s\) claiming unfinished work/);
-        expect(out, label(refs)).toMatch(/✘ fixture: row abc1234 is marked Queued, but docs\/shipped\.txt EXISTS/);
-        expect(status, `${label(refs)}\n${out}`).toBe(1);
-      });
+      const { status, out } = run(shas[OVER], queuedPage('docs/shipped.txt'));
+      expect(out, 'presence: the row was parsed').toMatch(/fixture: 1 queued row\(s\) claiming unfinished work/);
+      expect(out).toMatch(/✘ fixture: row abc1234 is marked Queued, but docs\/shipped\.txt EXISTS/);
+      expect(status, out).toBe(1);
     } finally {
       rmSync(shipped, { force: true });
     }
   });
 
   it('a Queued row that declares NO data-absent (an unfalsifiable pill) exits 1', () => {
-    eachRefs(SPELLINGS, (refs) => {
-      const { status, out } = run(refs, shas[OVER], queuedPage(null));
-      expect(out, 'presence: the row was parsed').toMatch(/fixture: 1 queued row\(s\) claiming unfinished work/);
-      expect(out, label(refs)).toMatch(/✘ fixture: row abc1234 is marked Queued but declares no data-absent/);
-      expect(status, `${label(refs)}\n${out}`).toBe(1);
-    });
+    const { status, out } = run(shas[OVER], queuedPage(null));
+    expect(out, 'presence: the row was parsed').toMatch(/fixture: 1 queued row\(s\) claiming unfinished work/);
+    expect(out).toMatch(/✘ fixture: row abc1234 is marked Queued but declares no data-absent/);
+    expect(status, out).toBe(1);
   });
 
   it('control: the same Queued row whose path is truly ABSENT, at HEAD, exits 0', () => {
-    const { status, out } = run(' refs/heads/feat/x', shas[OVER], queuedPage('docs/not-landed.txt'));
+    const { status, out } = run(shas[OVER], queuedPage('docs/not-landed.txt'));
     expect(out).toMatch(/fixture: 1 queued row\(s\) claiming unfinished work/);
     expect(out).toMatch(/✓ fixture: at HEAD/);
     expect(out).not.toMatch(/✘/);
@@ -269,40 +227,34 @@ describe('the tree defects refuse on EVERY push', () => {
     const when = new Date(Date.UTC(2026, 9, 28, 6, 5, 59));
     const stamped = (...shaList) => `<title>fixture</title><div class="wrap">\n${shaList.map((sha) => stampBlock({ sha, when, tokens })).join('')}<p>body</p></div>`;
     const stampSurface = (syncedSha, extra = {}) => ({ ...surface(syncedSha), stampTokens: tokens, ...extra });
-    const runStamped = (refs, html, s) => runScript({ refs, surfaces: [s], html });
+    const runStamped = (html, s) => runScript({ surfaces: [s], html });
 
     it('control: the stamp names the recorded publish — exit 0, and the report says so', () => {
-      eachRefs(SPELLINGS, (refs) => {
-        const { status, out } = runStamped(refs, stamped(shas[OVER]), stampSurface(shas[OVER]));
-        expect(out, label(refs)).toMatch(new RegExp(`fixture: stamped as of ${shas[OVER]}, the recorded publish`));
-        expect(out, label(refs)).not.toMatch(/✘/);
-        expect(status, `${label(refs)}\n${out}`).toBe(0);
-      });
+      const { status, out } = runStamped(stamped(shas[OVER]), stampSurface(shas[OVER]));
+      expect(out).toMatch(new RegExp(`fixture: stamped as of ${shas[OVER]}, the recorded publish`));
+      expect(out).not.toMatch(/✘/);
+      expect(status, out).toBe(0);
     });
 
     it('a stamp naming a DIFFERENT commit from the recorded publish exits 1, naming both', () => {
-      eachRefs(SPELLINGS, (refs) => {
-        const { status, out } = runStamped(refs, stamped(shas[0]), stampSurface(shas[OVER]));
-        expect(out, label(refs)).toMatch(new RegExp(`✘ fixture: docs/superpowers/page\\.html has a stamp naming ${shas[0]}, but \\.artifact-sync\\.json records ${shas[OVER]} as published`));
-        expect(status, `${label(refs)}\n${out}`).toBe(1);
-      });
+      const { status, out } = runStamped(stamped(shas[0]), stampSurface(shas[OVER]));
+      expect(out).toMatch(new RegExp(`✘ fixture: docs/superpowers/page\\.html has a stamp naming ${shas[0]}, but \\.artifact-sync\\.json records ${shas[OVER]} as published`));
+      expect(status, out).toBe(1);
     });
 
     it('a page with NO stamp, or with TWO, exits 1', () => {
-      eachRefs(SPELLINGS, (refs) => {
-        const none = runStamped(refs, PAGE, stampSurface(shas[OVER]));
-        expect(none.out, label(refs)).toMatch(/✘ fixture: docs\/superpowers\/page\.html has no as-of stamp/);
-        expect(none.status, `${label(refs)}\n${none.out}`).toBe(1);
-        const two = runStamped(refs, stamped(shas[OVER], shas[OVER]), stampSurface(shas[OVER]));
-        expect(two.out, label(refs)).toMatch(/✘ fixture: docs\/superpowers\/page\.html has 2 <!-- asof:begin --> and 2 <!-- asof:end --> markers/);
-        expect(two.status, `${label(refs)}\n${two.out}`).toBe(1);
-      });
+      const none = runStamped(PAGE, stampSurface(shas[OVER]));
+      expect(none.out).toMatch(/✘ fixture: docs\/superpowers\/page\.html has no as-of stamp/);
+      expect(none.status, none.out).toBe(1);
+      const two = runStamped(stamped(shas[OVER], shas[OVER]), stampSurface(shas[OVER]));
+      expect(two.out).toMatch(/✘ fixture: docs\/superpowers\/page\.html has 2 <!-- asof:begin --> and 2 <!-- asof:end --> markers/);
+      expect(two.status, two.out).toBe(1);
     });
 
     it('a stamp that names a REF (HEAD), not a commit, exits 1 even when the record holds the same name', () => {
       // The page and the record AGREE here, as text, and git resolves the name to HEAD, whose drift is zero: only the
       // stamp reader's hex-only pattern separates this from a page honestly at HEAD (round-2 review).
-      const { status, out } = runStamped(undefined, stamped('HEAD'), stampSurface('HEAD'));
+      const { status, out } = runStamped(stamped('HEAD'), stampSurface('HEAD'));
       expect(out).toMatch(/✘ fixture: docs\/superpowers\/page\.html has an as-of stamp that names no commit/);
       expect(out).not.toMatch(/stamped as of HEAD/);
       expect(status, out).toBe(1);
@@ -311,17 +263,17 @@ describe('the tree defects refuse on EVERY push', () => {
     it('no publish recorded yet: only the presence of one stamp is required — exit 0, and the report says none is recorded', () => {
       const s = stampSurface(undefined);
       delete s.syncedSha;
-      const { status, out } = runStamped(undefined, stamped(shas[0]), s);
+      const { status, out } = runStamped(stamped(shas[0]), s);
       expect(out).toMatch(new RegExp(`fixture: stamped as of ${shas[0]}; no publish recorded yet`));
       expect(out).toMatch(/fixture: no publish recorded — --stamp fixture, publish the stamped source, then --sync fixture/);
       expect(status, out).toBe(0);
-      const none = runStamped(undefined, PAGE, s);
+      const none = runStamped(PAGE, s);
       expect(none.out, 'still refused without a stamp').toMatch(/✘ fixture: docs\/superpowers\/page\.html has no as-of stamp/);
       expect(none.status, none.out).toBe(1);
     });
 
     it('control: a surface that declares NO stampTokens is not stamp-checked (an unstamped page at HEAD exits 0)', () => {
-      const { status, out } = run(undefined, shas[OVER]);
+      const { status, out } = run(shas[OVER]);
       expect(out).toMatch(/✓ fixture: at HEAD/);
       expect(out).not.toMatch(/stamped as of|as-of stamp/);
       expect(status, out).toBe(0);
@@ -332,19 +284,17 @@ describe('the tree defects refuse on EVERY push', () => {
 describe('a drift that cannot be MEASURED (the recorded sha is not in this history)', () => {
   const notInHistory = /fixture: recorded sha abcdef0123456789abcdef0123456789abcdef01 is not in this history/;
 
-  it('exit 0 under every refs spelling — reported, not refused — and the message names BOTH causes', () => {
-    eachRefs(REFS, (refs) => {
-      const { status, out } = run(refs, NOT_IN_HISTORY);
-      expect(out, label(refs)).toMatch(notInHistory);
-      expect(out, label(refs)).toMatch(/cannot be measured — reported, not refused/);
-      // The two ways a recorded sha is absent from the history CI sees. A message that names only the first sent the
-      // operator to fetch-depth when the real cause was a lane commit squash-merged on GitHub and its branch deleted.
-      expect(out, label(refs)).toMatch(/a shallow checkout/);
-      expect(out, label(refs)).toMatch(/squash-merged and deleted/);
-      expect(out, label(refs)).toMatch(/from main: --stamp fixture, republish, then --sync fixture/);
-      expect(out, label(refs)).not.toMatch(/✘/);
-      expect(status, `${label(refs)}\n${out}`).toBe(0);
-    });
+  it('exit 0 — reported, not refused — and the message names BOTH causes', () => {
+    const { status, out } = run(NOT_IN_HISTORY);
+    expect(out).toMatch(notInHistory);
+    expect(out).toMatch(/cannot be measured — reported, not refused/);
+    // The two ways a recorded sha is absent from a history. A message that names only the first sent the operator to
+    // fetch-depth when the real cause was a lane commit squash-merged on GitHub and its branch deleted.
+    expect(out).toMatch(/a shallow checkout/);
+    expect(out).toMatch(/squash-merged and deleted/);
+    expect(out).toMatch(/from main: --stamp fixture, republish, then --sync fixture/);
+    expect(out).not.toMatch(/✘/);
+    expect(status, out).toBe(0);
   });
 });
 
@@ -606,7 +556,7 @@ describe('--stamp and --sync: two steps, with the publish between them', () => {
 
 // ── 2. THE PRODUCER ─────────────────────────────────────────────────────────────────────────────────────────
 
-describe('the PRODUCER: .githooks/pre-push builds E2E_PUSH_REFS from the REMOTE ref and exports it', () => {
+describe('the PRODUCER: .githooks/pre-push builds PUSH_RANGES from what the remote has, and exports it', () => {
   let hdir;
   let repo;
   let remote;
@@ -624,7 +574,7 @@ describe('the PRODUCER: .githooks/pre-push builds E2E_PUSH_REFS from the REMOTE 
       mkdirSync(d, { recursive: true });
     }
     // The stub pipeline: record what the hook exported, then run the ONE real gate this spec is about.
-    writeFileSync(join(repo, 'ci/pipeline.sh'), 'echo "REFS[$E2E_PUSH_REFS]" >> "$PIPE_LOG"\nexec node scripts/ci/artifact-currency.mjs\n');
+    writeFileSync(join(repo, 'ci/pipeline.sh'), 'echo "RANGES[$PUSH_RANGES]" >> "$PIPE_LOG"\nexec node scripts/ci/artifact-currency.mjs\n');
     copyFileSync(join(CI, 'artifact-currency.mjs'), join(repo, 'frontend/scripts/ci/artifact-currency.mjs'));
     for (const f of ['mutation-proof-trailer.mjs', 'baseline-trailer.mjs']) {
       writeFileSync(join(repo, 'frontend/scripts/ci', f), '// fixture stub: the trailer gates are not this spec\'s subject\n');
@@ -697,53 +647,46 @@ describe('the PRODUCER: .githooks/pre-push builds E2E_PUSH_REFS from the REMOTE 
     expect(r.out).not.toMatch(/✘/);
   }
 
-  it('a plain branch push (`feat/x`), over the limit: the hook names feat/x, and the push lands', () => {
+  it('a plain branch push (`feat/x`, new on the remote): no range is exported, and the push lands', () => {
     const r = push('feat/x');
-    expect(r.refs, r.out).toEqual(['REFS[ refs/heads/feat/x]']);
+    expect(r.refs, r.out).toEqual(['RANGES[]']);
     expectDriftReported(r);
     expect(r.status, r.out).toBe(0);
     expect(fixtureGit(remote, 'rev-parse', 'refs/heads/feat/x')).toBe(tip);
   });
 
-  it('`feat/x:main` — a LOCAL branch name, a REMOTE main — the hook names main, and main moves past the limit', () => {
+  it('`feat/x:main` — a LOCAL branch name, a REMOTE main — the range is main\'s remote sha to the pushed tip, and it lands', () => {
     const r = push('feat/x:main');
-    expect(r.refs, r.out).toEqual(['REFS[ refs/heads/main]']);
+    expect(r.refs, r.out).toEqual([`RANGES[ ${base}..${tip}]`]);
     expectDriftReported(r);
     expect(r.status, r.out).toBe(0);
     expect(r.remoteMain, 'the push did not land').toBe(tip);
   });
 
-  it('`HEAD:refs/heads/main` — git hands the hook the literal local ref HEAD — the hook names main, and it lands', () => {
+  it('`HEAD:refs/heads/main` — git hands the hook the literal local ref HEAD — the same range, and it lands', () => {
     const r = push('HEAD:refs/heads/main');
-    expect(r.refs, r.out).toEqual(['REFS[ refs/heads/main]']);
+    expect(r.refs, r.out).toEqual([`RANGES[ ${base}..${tip}]`]);
     expectDriftReported(r);
     expect(r.status, r.out).toBe(0);
     expect(r.remoteMain, 'the push did not land').toBe(tip);
   });
 
-  // The hook ACCUMULATES one ref per stdin line. The cases above push ONE refspec each, so an edit that keeps only
-  // the last ref (`PUSH_REFS=" $_remote_ref"`) or only the first (`PUSH_REFS="${PUSH_REFS:- $_remote_ref}"`) passed
-  // every one of them. Git hands the hook the refs that EXIST on the remote first, in the order the remote
-  // advertises them (alphabetical), then the refs that are NEW there in refspec order; so main is first when main
-  // exists and the other branch is new, and last when both exist and the other branch sorts before main. Each case
-  // asserts that order too: a setup that stopped producing the order it names would otherwise quietly cover only
-  // one of the two mutants.
-  //
-  // Per target the hook runs the pipeline once, and both refs point at the same commit, so a push logs the same line
-  // twice; the Set collapses that, and what is compared is the one list the hook exported.
+  // The hook ACCUMULATES one range per stdin line whose remote side exists. Per target the hook runs the pipeline
+  // once, and both refs point at the same commit, so a push logs the same line twice; the Set collapses that, and
+  // what is compared is the one list the hook exported.
   const seen = (r) => [...new Set(r.refs)];
 
-  it('TWO refs, main listed FIRST (`feat/x:main feat/x:feat/y`, feat/y new): the list names both, and the push lands', () => {
+  it('TWO refs, feat/y NEW on the remote: only main, which the remote has, carries a range, and the push lands', () => {
     const r = push(['feat/x:main', 'feat/x:feat/y']);
-    expect(seen(r), r.out).toEqual(['REFS[ refs/heads/main refs/heads/feat/y]']);
+    expect(seen(r), r.out).toEqual([`RANGES[ ${base}..${tip}]`]);
     expectDriftReported(r);
     expect(r.status, r.out).toBe(0);
     expect(r.remoteMain, 'the push did not land').toBe(tip);
   });
 
-  it('TWO refs, main listed LAST (`feat/x:feat/y feat/x:main`, feat/y already on the remote): the list names both, and the push lands', () => {
+  it('TWO refs, both already on the remote: BOTH ranges are exported (keeping only the first or the last is one), and the push lands', () => {
     const r = push(['feat/x:feat/y', 'feat/x:main'], ['feat/y']);
-    expect(seen(r), r.out).toEqual(['REFS[ refs/heads/feat/y refs/heads/main]']);
+    expect(seen(r), r.out).toEqual([`RANGES[ ${base}..${tip} ${base}..${tip}]`]);
     expectDriftReported(r);
     expect(r.status, r.out).toBe(0);
     expect(r.remoteMain, 'the push did not land').toBe(tip);
@@ -762,7 +705,7 @@ describe('the PRODUCER: .githooks/pre-push builds E2E_PUSH_REFS from the REMOTE 
 
   it('a TREE DEFECT pushed to main (`feat/bad:main`) is REFUSED by the real hook, and main does not move', () => {
     const r = push('feat/bad:main');
-    expect(r.refs, `presence: the hook ran the pipeline\n${r.out}`).toEqual(['REFS[ refs/heads/main]']);
+    expect(r.refs, `presence: the hook ran the pipeline\n${r.out}`).toEqual([`RANGES[ ${base}..${bad}]`]);
     expectRefused(r);
     expect(r.remoteMain, 'the refused push moved main anyway').toBe(base);
     expect(r.remoteMain, 'the fixture: the defect commit is not main').not.toBe(bad);
@@ -770,22 +713,22 @@ describe('the PRODUCER: .githooks/pre-push builds E2E_PUSH_REFS from the REMOTE 
 
   it('the same defect on a BRANCH push (`feat/bad`) is refused too, and the branch is never created on the remote', () => {
     const r = push('feat/bad');
-    expect(r.refs, `presence: the hook ran the pipeline\n${r.out}`).toEqual(['REFS[ refs/heads/feat/bad]']);
+    expect(r.refs, `presence: the hook ran the pipeline\n${r.out}`).toEqual(['RANGES[]']);
     expectRefused(r);
     expect(fixtureGit(remote, 'for-each-ref', '--format=%(refname)', 'refs/heads/feat/bad'), 'the refused push created the branch anyway').toBe('');
     expect(r.remoteMain).toBe(base);
   });
 });
 
-// ── 3. THE CI CHECK ─────────────────────────────────────────────────────────────────────────────────────────
+// ── 3. NOT IN CI ────────────────────────────────────────────────────────────────────────────────────────────
 
-describe('the CI check: ci/pipeline.sh --tier=fast runs artifact-currency on a push to main, and nowhere else', () => {
+describe('ci/pipeline.sh --tier=fast runs artifact-currency on no event', () => {
   let bdir;
   beforeAll(() => { bdir = mkdtempSync(join(tmpdir(), 'artifact-scope-ci-')); });
   afterAll(() => { if (bdir) rmSync(bdir, { recursive: true, force: true }); });
 
   let n = 0;
-  /** The REAL pipeline, fast tier, with recording node/npm stubs first on PATH; undefined = the var is unset. */
+  /** The REAL pipeline, fast tier, with recording node/npm stubs first on PATH; undefined = the variable is unset. */
   function runFast(event, ref) {
     const bin = join(bdir, `bin-${++n}`);
     const log = join(bdir, `cmd-${n}.log`);
@@ -806,38 +749,34 @@ describe('the CI check: ci/pipeline.sh --tier=fast runs artifact-currency on a p
     return { ...r, gate: cmds.filter((c) => c.startsWith('node scripts/ci/artifact-currency.mjs')) };
   }
 
-  it('a push to main: runs it once', () => {
-    const r = runFast('push', 'refs/heads/main');
-    expect(r.gate).toEqual(['node scripts/ci/artifact-currency.mjs']);
-    expect(r.status, r.stdout + r.stderr).toBe(0);
-  });
-
-  it('a push to a branch, a pull_request, a dispatch ON main, and a hand run: it does not run, and says so', () => {
+  it('a push to main, a push to a branch, a pull_request, a dispatch on main, and a hand run: it never runs', () => {
     const cases = [
+      ['push', 'refs/heads/main'],
       ['push', 'refs/heads/feat/x'],
       ['pull_request', 'refs/pull/24/merge'],
-      ['workflow_dispatch', 'refs/heads/main'], // on main, but it moves nothing
+      ['workflow_dispatch', 'refs/heads/main'],
       [undefined, undefined],
     ];
     let ran = 0;
     for (const [event, ref] of cases) {
       const r = runFast(event, ref);
       expect(r.gate, `${event} ${ref}`).toEqual([]);
-      expect(r.stdout).toMatch(/skipped \(fast tier\): artifact-currency — CI runs it on a push to main only/);
+      expect(r.status, `${event} ${ref}\n${r.stdout}${r.stderr}`).toBe(0);
       ran++;
     }
-    expect(ran, 'denominator: every non-main-push case was run').toBe(4);
+    expect(ran, 'denominator: every event was run').toBe(5);
   });
 
-  it('the gates job — the one that runs the fast tier — checks out FULL history, or the drift cannot be counted', () => {
-    const yml = readFileSync(join(REPO_ROOT, '.github/workflows/ci.yml'), 'utf8');
-    const start = yml.indexOf('\n  gates:\n');
-    const end = yml.indexOf('\n  e2e:\n');
-    expect(start, 'the gates job').toBeGreaterThan(-1);
-    expect(end, 'the job after it').toBeGreaterThan(start);
-    // Comments stripped: the comment explaining fetch-depth must not be what satisfies this.
-    const job = yml.slice(start, end).split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
-    expect(job).toMatch(/run: bash ci\/pipeline\.sh --tier=fast/);
-    expect(job).toMatch(/- uses: actions\/checkout@v\d+\n\s+with:\n\s+fetch-depth: 0\n/);
+  it('control: the same stubs see the push tier run it', () => {
+    const bin = join(bdir, 'bin-push');
+    const log = join(bdir, 'cmd-push.log');
+    mkdirSync(bin);
+    for (const t of ['node', 'npm']) {
+      writeFileSync(join(bin, t), `#!/bin/sh\necho "${t} $*" >> "${log}"\nexit 0\n`);
+      chmodSync(join(bin, t), 0o755);
+    }
+    const r = spawnSync('bash', [PIPELINE, '--tier=push'], { encoding: 'utf8', env: cleanEnv({ PATH: `${bin}:${process.env.PATH}` }) });
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+    expect(readFileSync(log, 'utf8').split('\n')).toContain('node scripts/ci/artifact-currency.mjs');
   });
 });
