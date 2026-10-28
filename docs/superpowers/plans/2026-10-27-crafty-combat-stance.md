@@ -206,14 +206,21 @@ lines.
 
 ### Task 0: Preconditions (no code)
 
-- [ ] **Step 1: Phase 0c and 0f/0g are on main**
+- [x] **Step 1: Phase 0c and 0f/0g are on main**
 
 Run: `cd <repo> && git grep -n "pressPrimary" main -- frontend/src/Components.jsx && git grep -n "export function subscribeHudTick" main -- frontend/src/ui/hudTicker.js`
 Expected: both print a match. If `pressPrimary` is missing, Task 11's touch finisher cannot run: build Tasks 1-10
 and hold Task 11. If `hudTicker.js` is missing, hold Task 7 only. A held task holds the MERGE too (Task 12 Step 8):
 this lane never lands the stance without its chevrons, or without its touch proof.
 
-- [ ] **Step 2: Cut the worktree and record the bundle baseline**
+> **Done 2026-10-27, with a deviation.** Neither had reached `main` (cut at `a8ce0dd1`), so the lane MERGED the two
+> branches instead: `feat/steady-cool` (a fast-forward to `ed8e51d7`, carrying `hudTicker.js`), then
+> `feat/touch-hold` (`f78644b9`, carrying `pressPrimary`; the one conflict was the generated MEASURED block in
+> `.agent/AGENTS.md`, regenerated with `measure.mjs --write` and `gate-table.mjs --write`). Both greps match on the
+> branch: `Components.jsx:550,560,584` and `hudTicker.js:31`. This lane therefore cannot land before both of those
+> branches land on `main`.
+
+- [x] **Step 2: Cut the worktree and record the bundle baseline**
 
 Run: `cd <repo> && orca worktree create combat-stance --branch feat/combat-stance` (or `git worktree add .claude/worktrees/combat-stance -b feat/combat-stance main`)
 Then: `cd <repo>/.claude/worktrees/combat-stance/frontend && npm ci && npm run build && ls -l build/assets/index-*.js`
@@ -237,7 +244,7 @@ derivation in another file would be a second copy that drifts.
   aggro'd `'spider'` and 1.5 for any other aggro'd type. The charge multiplier stays `SHOULDER_CHARGE_SPEED`, applied
   by the worker as today.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 // frontend/src/game/mobMovement.test.js
@@ -262,24 +269,24 @@ it('the real worker steps an aggro\'d mob by speed x the chase multiplier x delt
 });
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `cd <repo>/frontend && npx vitest run src/game/mobMovement.test.js tests/gates/stance-pursuit-gates.test.js`
 Expected: FAIL, "chaseSpeedMult is not a function / not exported".
 
-- [ ] **Step 3: Implement `chaseSpeedMult` in `mobMovement.js`, and in `ai.worker.js:327` replace the literal ternary with `chaseSpeedMult(type, isAggro)`** (add it to the existing import at `:25`). The behaviour is byte-identical.
+- [x] **Step 3: Implement `chaseSpeedMult` in `mobMovement.js`, and in `ai.worker.js:327` replace the literal ternary with `chaseSpeedMult(type, isAggro)`** (add it to the existing import at `:25`). The behaviour is byte-identical.
 
-- [ ] **Step 4: Run them, then the whole unit suite**
+- [x] **Step 4: Run them, then the whole unit suite**
 
 Run: `npx vitest run src/game/mobMovement.test.js tests/gates/stance-pursuit-gates.test.js && npm run test:unit`
 Expected: PASS, and the suite total equals the pre-task total plus 2.
 
-- [ ] **Step 5: Mutation receipt.** Run `sh scripts/dev/mutate.sh src/game/mobMovement.js tests/gates/stance-pursuit-gates.test.js 1 K1 "? 2.0 :" "? 1.5 :"`.
+- [x] **Step 5: Mutation receipt.** Run `sh scripts/dev/mutate.sh src/game/mobMovement.js tests/gates/stance-pursuit-gates.test.js 1 K1 "? 2.0 :" "? 1.5 :"`.
 Expected: RED. The worker then steps the spider 3.0 × 1.5 × 0.1 = 0.45 against the literal 0.6, which proves the
 worker reads the shared function: a worker that still held its own `2.0` literal would step 0.6 and the mutant would
 SURVIVE. Put the observed line into the gate file's header as `Mutation-Proof:`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/game/mobMovement.js frontend/src/game/mobMovement.test.js frontend/src/workers/ai.worker.js frontend/tests/gates/stance-pursuit-gates.test.js
@@ -1094,6 +1101,12 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   with the ABSOLUTE `index` size on a build of this branch rebased on current `main` and the headroom it leaves, so
   the programme byte ledger can be checked against the lanes that land after. If it is over, move `WindupChevrons`
   behind a `React.lazy` boundary first; never raise the ceiling.
+
+  **`BASELINE_INDEX_BYTES = 719,428`** (Task 0 Step 2, measured 2026-10-27 on `f78644b9`, i.e. `main` `a8ce0dd1` plus
+  `feat/steady-cool` and `feat/touch-hold`: `build/assets/index-BCztZMl7.js`; `bundle-budget` printed
+  `index: 702.6KB / 742.2KB`). The headroom under the 760,000 B ceiling is therefore **40,572 B**, not the 63,076 B
+  the Global Constraints computed from the 696,924 B build: the two Phase 0 branches this lane sits on already spend
+  about 22.5 KB of it. That is a fact for the command session's programme byte ledger (Review amendments, finding 16).
 
 - [ ] **Step 4: GPU and frame cost, stated and spot-checked.** Added GPU cost is zero: no light, shader, draw call
   or render target.
