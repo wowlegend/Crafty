@@ -39,11 +39,12 @@
  *
  * --hold <seconds> is the power scenario (scripts/dev/power-ab.sh): one Chromium page at 1280x800, entered at spawn by
  * clicking Start Adventure and nothing else, in every build — never through the seam, which the A/B's baseline build
- * lacks — held for N seconds. Whether that put it in play is read the same way in every build (pointer lock held:
- * `inPlay`); a hold the click did not lock (Playwright's headless shell always refuses pointer lock) is NOT in play and
- * says so. It prints "LOOKBOOK
- * HOLD READY" (renderer, seam, entry, inPlay, headed) and writes hold.json (tier timeline, `partial: false`, the seconds
- * held). A hold stopped by a signal or an error writes what it had, marked `partial: true` with `stoppedBy`.
+ * lacks — held for N seconds. A click the browser refused a pointer lock (Playwright's headless shell always does) is
+ * followed by a page-level lock stand-in that opens the input gate through the game's own listener (`lock`: held,
+ * stood-in), because a started game with a dead gate is paused and holds its world. Whether play is live is read the
+ * same seam-free way in every build (`inPlay`); an arm not in play says so. It prints "LOOKBOOK HOLD READY" (renderer,
+ * seam, entry, lock, inPlay, headed) and writes hold.json (tier and mob timeline, `worldMoved`, `partial: false`, the
+ * seconds held). A hold stopped by a signal or an error writes what it had, marked `partial: true` with `stoppedBy`.
  * --headed shows the window.
  *
  * Needs a production build: `npm run build` first.
@@ -57,6 +58,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { serveVite, probePort } from './_serve.mjs';
+import { standInPointerLock, playLiveReading } from './_probe.mjs';
 import {
   TARGETS, CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, shotPlan, classifyRenderer, pickCandidate, shotVerdict, contactSheetHtml,
 } from './_lookbook.mjs';
@@ -317,6 +319,13 @@ async function pointerLockHeld(page, tries = 40) {
   return held >= 2;
 }
 
+/** Did the world run during the hold: a mob moved between two samples, or the count of mobs changed (one spawned or
+ *  died). A world with no mobs that never gains one reads false, which a held world and an empty one share. */
+function worldMovedOver(timeline) {
+  const first = timeline[0];
+  return !!first && timeline.some((s) => s.moved > 0 || s.mobs !== first.mobs);
+}
+
 /** The power scenario: one Chromium page entered by the click alone at spawn, and held. Any build, seam or none. */
 async function hold(launchOpts, launchId) {
   const out = { launch: launchId, headed: HEADED, seam: false, renderer: null, entry: null, timeline: [], notes: [] };
@@ -337,31 +346,55 @@ async function hold(launchOpts, launchId) {
     if (!built) { out.notes.push(`COULD NOT MEASURE: the world never built within ${WORLD_TIMEOUT_MS / 1000} s`); return out; }
     // ONE ENTRY FOR EVERY BUILD (review of PR #23, item 3). The A/B's baseline arm is a build from before the seam, so
     // it can enter play only by the click. Making input live through the seam in the other arm measured two different
-    // states wherever the click did not lock the pointer (Playwright's headless shell never does): the new build played
-    // through the seam while the old one sat behind its resume overlay. So no build's seam is used here, and both are read by the same seam-free instrument: whether the page
-    // holds pointer lock (Components.jsx sets the input gate from pointerlockchange). Not in play is recorded and said
-    // out loud, never fixed up; power-summary.mjs refuses to compare two arms whose scenario differs.
+    // states wherever the click did not lock the pointer (Playwright's headless shell never does). So no build's seam is
+    // used here. A click the browser refused a lock is followed by the page-level stand-in (_probe.mjs
+    // standInPointerLock), which opens the gate through every build's own lock listener: a started game whose gate stays
+    // dead is PAUSED and holds its world (the real pause), so without it the arm would measure a frozen world in a build
+    // with the pause and a running one in a build without it. Whether play is live is then read seam-free
+    // (playLiveReading), and the lock that got it there is recorded: power-summary.mjs compares only arms whose scenario
+    // matches, and refuses any arm not in play.
     if (!out.entry) out.notes.push('no Start Adventure button on the title: not entered at all');
-    out.inPlay = await pointerLockHeld(page);
-    if (!out.inPlay) {
-      out.notes.push(`NOT IN PLAY: the pointer was not locked after the click (${HEADED ? 'was the window in front?' : `headless, launch ${launchId}: Playwright's headless shell refuses pointer lock; new headless granted it to a plain click-to-lock page on 2026-10-27`}): the game runs behind its resume overlay. Every arm enters this way, so compare this arm only with one whose scenario matches.`);
+    out.lock = (await pointerLockHeld(page)) ? 'held' : await page.evaluate(standInPointerLock);
+    let live = 0;
+    for (let i = 0; i < 40 && live < 2; i++) {
+      const r = await page.evaluate(playLiveReading);
+      live = r.started && r.alive && !r.pauseSurface ? live + 1 : 0;
+      if (live < 2) await delay(250);
     }
-    console.log(`LOOKBOOK HOLD READY ${JSON.stringify({ renderer: out.renderer, gpu: classifyRenderer(out.renderer), seam: out.seam, entry: out.entry, inPlay: out.inPlay, headed: HEADED })}`);
+    out.inPlay = live >= 2 && (out.lock === 'held' || out.lock === 'stood-in');
+    if (out.lock === 'stood-in') {
+      out.notes.push(`the click was not granted a pointer lock (${HEADED ? 'was the window in front?' : `headless, launch ${launchId}`}), so the page stood one in: the game's own listener opened the input gate. The cursor stays visible; nothing the world simulates reads it.`);
+    }
+    if (!out.inPlay) {
+      out.notes.push(`NOT IN PLAY: lock ${out.lock}, ${JSON.stringify(await page.evaluate(playLiveReading))}. A started game with its input gate dead is paused, and from the real pause on (game/worldClock.js) its world is held: this arm measures no game, and power-summary.mjs refuses it.`);
+    }
+    console.log(`LOOKBOOK HOLD READY ${JSON.stringify({ renderer: out.renderer, gpu: classifyRenderer(out.renderer), seam: out.seam, entry: out.entry, lock: out.lock, inPlay: out.inPlay, headed: HEADED })}`);
     const t0 = Date.now();
     holdT0 = t0;
     while (Date.now() - t0 < HOLD_S * 1000) {
       // Seam-free reads, the same in every build: the store (exposed by every build) and the page itself. The pixel
       // ratio in force is the game canvas's backing width over its CSS width (the largest canvas on the page).
+      // `mobs` and `moved` read whether the world ran at all, through the store's minimap mirror of the mobs (every
+      // build writes it): how many there are, and how many stood somewhere else at the previous sample.
       const s = await page.evaluate(() => {
         const g = window.useGameStore.getState();
         const c = [...document.querySelectorAll('canvas')].sort((x, y) => y.width * y.height - x.width * x.height)[0];
+        const mobs = (g.mobEntities || []).filter((m) => m && m.position);
+        const prev = window.__lookbookHoldMobs || new Map();
+        let moved = 0;
+        for (const m of mobs) {
+          const p = prev.get(m.id);
+          if (p && Math.hypot(m.position[0] - p[0], m.position[2] - p[2]) > 0.01) moved += 1;
+        }
+        window.__lookbookHoldMobs = new Map(mobs.map((m) => [m.id, m.position]));
         return { tier: g.qualityTier, isAlive: g.isAlive, pointerLocked: !!document.pointerLockElement,
-          dpr: c && c.clientWidth ? Math.round((c.width / c.clientWidth) * 100) / 100 : null };
+          dpr: c && c.clientWidth ? Math.round((c.width / c.clientWidth) * 100) / 100 : null, mobs: mobs.length, moved };
       });
       out.timeline.push({ t: Math.round((Date.now() - t0) / 1000), ...s });
       await delay(Math.min(10000, Math.max(0, HOLD_S * 1000 - (Date.now() - t0))));
     }
     holdT1 = Date.now(); // the hold ran out here; closing the browser afterwards is not part of it
+    out.worldMoved = worldMovedOver(out.timeline);
     return out;
   } finally {
     await close(b);
@@ -408,6 +441,8 @@ try {
     const h = await hold(chromiumLaunch, chromiumLaunchId);
     writeHold({ partial: false, stoppedBy: null });
     for (const n of h.notes) console.log(`  ${n}`);
+    const last = h.timeline[h.timeline.length - 1];
+    console.log(`  world over the hold: ${h.worldMoved ? 'moving' : 'still'} (${h.timeline.length} samples; mobs ${h.timeline[0]?.mobs ?? '-'} -> ${last?.mobs ?? '-'}; moved per sample ${h.timeline.map((s) => s.moved).join(',')})`);
     console.log(`hold: ${join(OUT, 'hold.json')}`);
     if (h.notes.some((n) => n.startsWith('COULD NOT MEASURE'))) code = 3;
   } else {

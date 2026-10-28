@@ -8,8 +8,8 @@
  *
  * Exit 0 = summarised · 3 = COULD NOT SUMMARISE, named: a log with fewer than MIN_SAMPLES samples (powermetrics run
  * without sudo writes one error line and no samples), or with no GPU rail — the rail this A/B exists for; or, for two
- * arms, COULD NOT COMPARE: the `window:` or `scenario:` lines power-ab.sh writes into each arm's meta.txt differ (a
- * click that does not lock the pointer leaves an arm behind its resume overlay). A pair with those lines missing is
+ * arms, COULD NOT COMPARE: an arm's `scenario:` line (power-ab.sh writes it into each arm's meta.txt) says it ran NOT
+ * in play, or the `window:`, `scenario:` or `world:` lines of the two arms differ. A pair with those lines missing is
  * compared and flagged UNCHECKED.
  *
  * THE FORMAT, and how sure this is of it. `powermetrics -h` on the operator's Mac (macOS 27.0.1, M3 Max) lists the
@@ -102,27 +102,46 @@ function unusable(path, sum) {
 
 /**
  * The conditions an arm ran in, from the meta.txt power-ab.sh writes beside its powermetrics.txt: `window:` (headed or
- * headless) and `scenario:` (in play with the pointer locked, or not). Either is null when its line is absent.
+ * headless), `scenario:` (in play, and through which lock, or not) and `world:` (whether the world ran during the
+ * hold). Each is null when its line is absent.
  */
 export function armConditions(metaText) {
   const pick = (key) => {
     const m = String(metaText).match(new RegExp(`^${key}:[ \\t]*(\\S.*?)[ \\t]*$`, 'm'));
     return m ? m[1] : null;
   };
-  return { window: pick('window'), scenario: pick('scenario') };
+  return { window: pick('window'), scenario: pick('scenario'), world: pick('world') };
 }
 
 /**
- * Why two arms cannot be compared, or null. An arm whose click did not lock the pointer measures the game behind its
- * resume overlay; set beside an arm in play, the delta would be the overlay, not the build (review of PR #23, item 3).
- * Headed and headless differ in the renderer and the compositor as well, so the window must match too. A pair whose conditions are not both on record is compared, and `unchecked` names the arms without them.
+ * Why two arms cannot be compared, or null.
+ * An arm NOT in play is refused whatever the other arm did: a started game with its input gate dead is paused, and what
+ * a paused game does depends on the build (from the real pause on its world is held; before it the world ran behind
+ * the resume overlay), so such an arm measures no game, and two of them may not even measure the same thing.
+ * Then the window, the scenario and the world must match: an arm in play beside one that is not compares the overlay,
+ * not the build (review of PR #23, item 3); headed and headless differ in the renderer and the compositor; a world that
+ * ran beside one that did not compares the simulation, not the build. A pair whose window or scenario is not on record
+ * is compared, and `unchecked` names the arms without them; so is a pair where either arm has no world line
+ * (`uncheckedWorld`).
  */
 function conditionsVerdict(arms) {
+  const idle = arms.filter((a) => a.cond && /^NOT in play/.test(a.cond.scenario || ''));
+  if (idle.length) {
+    return {
+      refuse: `COULD NOT COMPARE: ${idle.map((a) => a.path).join(', ')} ran NOT in play — a paused game, whose world is held in a build with the real pause and ran in one without it, so it measures no game. Run the arm again in play.`,
+      unchecked: [], uncheckedWorld: [],
+    };
+  }
   const missing = arms.filter((a) => !a.cond || a.cond.window === null || a.cond.scenario === null);
-  if (missing.length) return { refuse: null, unchecked: missing.map((a) => a.path) };
+  if (missing.length) return { refuse: null, unchecked: missing.map((a) => a.path), uncheckedWorld: [] };
   const [a, b] = arms.map((x) => x.cond);
-  const diff = ['window', 'scenario'].filter((k) => a[k] !== b[k]).map((k) => `${k}: A ${a[k]}, B ${b[k]}`);
-  return { refuse: diff.length ? `COULD NOT COMPARE: the arms ran in different conditions — ${diff.join('; ')}` : null, unchecked: [] };
+  const keys = a.world !== null && b.world !== null ? ['window', 'scenario', 'world'] : ['window', 'scenario'];
+  const diff = keys.filter((k) => a[k] !== b[k]).map((k) => `${k}: A ${a[k]}, B ${b[k]}`);
+  return {
+    refuse: diff.length ? `COULD NOT COMPARE: the arms ran in different conditions — ${diff.join('; ')}` : null,
+    unchecked: [],
+    uncheckedWorld: arms.filter((x) => x.cond.world === null).map((x) => x.path),
+  };
 }
 
 /** The command. `io` is injected so a gate drives it without files or a process exit. Returns the exit code. */
@@ -152,7 +171,10 @@ export function main(argv, io = { read: (p) => readFileSync(p, 'utf8'), out: (s)
     if (v.unchecked.length) {
       io.err(`UNCHECKED: no window/scenario lines in meta.txt beside ${v.unchecked.join(', ')} — whether the two arms ran in the same conditions is not known`);
     } else {
-      io.out(`both arms: window ${arms[0].cond.window} · scenario ${arms[0].cond.scenario}`);
+      io.out(`both arms: window ${arms[0].cond.window} · scenario ${arms[0].cond.scenario}${v.uncheckedWorld.length ? '' : ` · world ${arms[0].cond.world}`}`);
+    }
+    if (v.uncheckedWorld.length) {
+      io.err(`UNCHECKED: no world line in meta.txt beside ${v.uncheckedWorld.join(', ')} — whether both worlds ran during the hold is not known`);
     }
     const [a, b] = arms.map((x) => x.sum);
     const w = [9, 8, 8, 8, 7];
