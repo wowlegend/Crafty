@@ -5,7 +5,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { renderHook, act, cleanup } from '@testing-library/react';
-import { SAVE_VERSION, RETIRED_QUEST_IDS, buildSaveData, splitTombstone } from '../../src/game/saveSchema.js';
+import { SAVE_VERSION, RETIRED_QUEST_IDS, buildSaveData, splitTombstone, migrateRetired } from '../../src/game/saveSchema.js';
 import { useQuestSystem, QUEST_LIST } from '../../src/QuestSystem.jsx';
 import { MAX_ACTIVE_QUESTS } from '../../src/game/questClaim.js';
 import { solveMeleeDamage, solveSpellDamage, mitigateDamage } from '../../src/utils/combat.js';
@@ -16,15 +16,17 @@ import { MOB_TYPES } from '../../src/game/mobTypes.js';
 // THE PRE-CUT SAVE (W2-F brief, Task 0 and Task 1; DECISIONS 2026-10-28 W1-H items 4-7 and 10).
 //
 // tests/fixtures/pre-cut-save.json is a localStorage world blob written at main c03186fe, before the Cut, by the real
-// save path (`saveActiveWorld` -> buildSaveData -> writeWorld) after the store's own actions played a profile to level
-// 5: six attribute points allocated, fireball and iceball upgraded through useSpellUpgrades, one talent rank, all four
-// banks non-zero, 12 crystals and the wand, the Stone Sword equipped, gameMode 'survival', four blocks placed through
-// the quest hook (Builder 4/20). It was generated in jsdom, not a browser, because local browser runs were barred that
-// day (load above 28); the serializer and the actions are the ones the DEV bridge drives. It is FROZEN: regenerating
-// it after the Cut would write a post-Cut save and test nothing. Every later Cut step must keep this file green.
+// save path (`saveActiveWorld` -> buildSaveData -> writeWorld) after the store's own actions, run in jsdom, brought a
+// profile to level 5: six attribute points allocated, fireball and iceball upgraded through useSpellUpgrades, one talent
+// rank, all four banks non-zero, 12 crystals and the wand, the Stone Sword equipped, gameMode 'survival'. Its quest
+// state counts four placements (Builder 4/20) made through the quest hook's onBlockPlace, not through Terrain's place():
+// world_data holds two stone blocks and the stone stack was never debited, so the fixture is a faithful SHAPE of a
+// pre-cut save, not a played one. It is FROZEN: regenerating it after the Cut would write a post-Cut save and test
+// nothing. Every later Cut step must keep this file green.
 //
 // WHAT THIS DOES NOT CHECK: the World Manager's Load button and localStorage in a real browser (tests/e2e/the-cut.spec.js),
-// or anything about a save older than SAVE_VERSION beyond its unknown keys being dropped.
+// a save produced by real play, or anything about a save older than SAVE_VERSION beyond its unknown keys being dropped
+// and its retired quests still being paid.
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = JSON.parse(readFileSync(resolve(HERE, '../fixtures/pre-cut-save.json'), 'utf8'));
@@ -182,5 +184,109 @@ describe('the pre-cut save after one costed mode', () => {
     expect(result.current.stats.blocks_placed, 'SETUP: the placements never reached the quest hook').toBe(29);
     const saved = onDisk();
     expect(ids(saved.questState.quests), 'the save lost the live feed or the held Builder quest').toEqual([...ids(result.current.quests), 'builder']);
+  });
+});
+
+// A RETIRED QUEST THE SAVE COMPLETED AND NEVER CLAIMED is paid on load, as the claim the player can no longer make
+// would have paid it, and becomes claimed. Builder's authored reward was 50 XP, 24 wood and 20 coins (questRewards: 0.4
+// of the XP); Architect's 150 XP and 60 coins; World Builder's 400 XP and 160 coins.
+describe('a completed, unclaimed retired quest', () => {
+  const ids = (quests) => (quests || []).map((q) => q && q.id);
+  const done = (f, id, target) => {
+    const q = f.questState.quests.find((e) => e.id === id) || f.questState.quests[f.questState.quests.push({ id, type: 'block_place', target }) - 1];
+    Object.assign(q, { progress: target, completed: true, claimed: false });
+    return f;
+  };
+  const read = () => {
+    const s = useGameStore.getState();
+    return { totalXP: s.totalXP, level: s.level, coins: s.coins, wood: s.inventory.blocks.wood, quests: ids(s.questState.quests), claimed: s.questState.completedQuestIds };
+  };
+  let notes;
+  beforeEach(() => {
+    notes = [];
+    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+  });
+
+  it('pays its reward once on load, and the quest comes back claimed, out of the feed and out of the held set', () => {
+    const before = { totalXP: FIXTURE.progression.totalXP, coins: FIXTURE.progression.coins, wood: FIXTURE.player_data.inventory.blocks.wood };
+    useGameStore.getState().loadWorldData(done(fixture(), 'builder', 20));
+    const s = read();
+    expect(s.totalXP - before.totalXP, 'the Builder XP was not paid, or paid twice').toBe(50);
+    expect(s.coins - before.coins, 'the Builder coins were not paid, or paid twice').toBe(20);
+    expect(s.wood - before.wood, 'the Builder wood was not paid, or paid twice').toBe(24);
+    expect(s.quests, 'the paid quest reached the live feed').toEqual(['first_blood', 'hunter']);
+    expect(s.claimed, 'the paid quest is not recorded as claimed').toEqual(['builder']);
+    expect(notes, 'the player was not told what the load paid').toEqual(['Quest reward (Builder): +50 XP, +20 coins, +24 wood!']);
+    const saved = onDisk();
+    expect(ids(saved.questState.quests), 'the paid quest is still held for a rollback to claim again').toEqual(['first_blood', 'hunter']);
+    expect(saved.questState.completedQuestIds, 'the save lost the claim').toEqual(['builder']);
+    expect(saved.migrated, 'the save does not record the migration').toEqual(['quests.builder']);
+  });
+
+  it('a second load of the save it wrote changes nothing', () => {
+    useGameStore.getState().loadWorldData(done(fixture(), 'builder', 20));
+    const first = read();
+    const once = onDisk();
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+    useGameStore.getState().loadWorldData(structuredClone(once));
+    expect(read(), 'the second load paid, or lost, something').toEqual(first);
+    expect(notes, 'the second load announced a payment').toHaveLength(1);
+    const twice = onDisk();
+    expect({ ...twice, save_name: null }, 'the second save differs from the first').toEqual({ ...once, save_name: null });
+  });
+
+  it('pays every retired quest, at each one\'s authored reward', () => {
+    const f = done(done(done(fixture(), 'builder', 20), 'architect', 100), 'world_builder', 500);
+    const xp0 = f.progression.totalXP;
+    const coins0 = f.progression.coins;
+    useGameStore.getState().loadWorldData(f);
+    expect(useGameStore.getState().totalXP - xp0, 'the three retired rewards were not paid in full').toBe(50 + 150 + 400);
+    expect(useGameStore.getState().coins - coins0).toBe(20 + 60 + 160);
+    expect(onDisk().migrated).toEqual(['quests.builder', 'quests.architect', 'quests.world_builder']);
+  });
+
+  it('pays nothing for one in progress or already claimed, and records nothing for it', () => {
+    const f = fixture();
+    f.questState.quests.push({ id: 'architect', type: 'block_place', target: 100, progress: 100, completed: true, claimed: true });
+    useGameStore.getState().loadWorldData(f);
+    expect(useGameStore.getState().totalXP, 'an incomplete or claimed retired quest was paid').toBe(FIXTURE.progression.totalXP);
+    expect(useGameStore.getState().coins).toBe(FIXTURE.progression.coins);
+    expect(notes, 'a load that paid nothing announced a payment').toEqual([]);
+    expect(onDisk().migrated, 'a migration that ran nothing was recorded').toEqual([]);
+  });
+
+  it('a save older than SAVE_VERSION is still paid, and its record is still read', () => {
+    const old = { ...done(fixture(), 'builder', 20), version: SAVE_VERSION - 1 };
+    useGameStore.getState().loadWorldData(structuredClone(old));
+    expect(useGameStore.getState().totalXP - FIXTURE.progression.totalXP, 'a pre-bump save lost what it was owed').toBe(50);
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    useGameStore.getState().loadWorldData({ ...structuredClone(old), migrated: ['quests.builder'] });
+    expect(useGameStore.getState().totalXP, 'a pre-bump save that records the payment was paid again').toBe(FIXTURE.progression.totalXP);
+  });
+});
+
+// THE RECORD, for a migration whose source the tombstone keeps writing back (the shape the later Cut steps take: a held
+// key summed into a live one). Without the record each load would pay again.
+describe('the migration record', () => {
+  const oldBank = [{ name: 'progression.oldBank', run: (s) => (s.progression?.oldBank ? { reward: { xp: 0, coins: s.progression.oldBank, item: null } } : null) }];
+
+  it('runs a migration once though its source key is still held and written back', () => {
+    const save = fixture();
+    save.progression.oldBank = 7;
+    const first = migrateRetired(save, oldBank);
+    expect(first.coins, 'SETUP: the migration did not run on the first load').toBe(7);
+    expect(first.migrated).toEqual(['progression.oldBank']);
+    const next = JSON.parse(JSON.stringify(buildSaveData({ _tombstone: { ...splitTombstone(save), migrated: first.migrated } }, POS)));
+    expect(next.progression.oldBank, 'SETUP: the tombstone stopped holding the source key').toBe(7);
+    expect(next.migrated, 'the save did not write the record').toEqual(['progression.oldBank']);
+    expect(migrateRetired(next, oldBank).coins, 'the migration ran again on the next load').toBe(0);
+  });
+
+  it('a load keeps the names it does not run, and a new world starts with none', () => {
+    useGameStore.getState().loadWorldData({ ...fixture(), migrated: ['progression.oldBank', 7, 'progression.oldBank'] });
+    expect(onDisk().migrated, 'a load dropped a recorded name, or kept a junk one').toEqual(['progression.oldBank']);
+    useGameStore.getState().startNewWorld('local_fresh');
+    expect(onDisk().migrated, 'a new world inherited the last world\'s record').toEqual([]);
   });
 });

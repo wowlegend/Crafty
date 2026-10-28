@@ -3,7 +3,7 @@ import { mitigateDamage } from '../utils/combat';
 import { computeEffective, deriveMaxStats, xpForLevel } from '../game/progression.js';
 import { foldTalentEffects, refundUnknownTalents, canUnlockTalent, respecTalents } from '../game/talentTree.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState } from '../game/saveSchema.js';
+import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -768,9 +768,9 @@ export const useGameStore = create((set, get) => ({
         }
     })),
 
-    // The ONE decision point for whether a placement is allowed and what it costs. Terrain.jsx place() delegates
-    // here so the debit reuses the single removeFromInventory writer (the floor-at-0 invariant cannot fork). Returns
-    // false to REFUSE the placement: no block of that kind to spend.
+    // The ONE decision point for whether a placement is allowed and what it costs. The place executor
+    // (world/placeAtHit.js) calls it per cell, so the debit reuses the single removeFromInventory writer (the
+    // floor-at-0 invariant cannot fork). Returns false to REFUSE the placement: no block of that kind to spend.
     consumeForPlacement: (blockName) => {
         const { inventory, removeFromInventory } = get();
         const { allowed, consume } = resolvePlacement(inventory.blocks[blockName]);
@@ -1076,6 +1076,7 @@ export const useGameStore = create((set, get) => ({
             set({ _sessionWorldId: loadedId });
             setActiveWorldId(loadedId);
         }
+        const owed = migrateRetired(saveData);
         set((state) => {
             const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
             // migrateSaveData already normalized inventory keys — use directly.
@@ -1143,7 +1144,7 @@ export const useGameStore = create((set, get) => ({
 
             return {
                 _worldEditsPending: !state.terrainWorker,
-                _tombstone: splitTombstone(saveData),
+                _tombstone: { ...splitTombstone(saveData, owed.claimedQuestIds), migrated: owed.migrated },
                 worldBlocks,
                 inventory,
                 selectedBlock,
@@ -1189,11 +1190,22 @@ export const useGameStore = create((set, get) => ({
                 // fresh reset save carries the key PRESENT with value null, and `null ?? state.questState`
                 // kept the OLD world's completed quests and achievements in the new one.
                 questState: Object.prototype.hasOwnProperty.call(saveData, 'questState')
-                    ? liveQuestState(saveData.questState)
+                    ? liveQuestState(saveData.questState, owed.claimedQuestIds)
                     : state.questState,
                 questLoadedAt: (state.questLoadedAt || 0) + 1,
             };
         });
+
+        // What the save was owed for retired quests, paid through the writers a claim uses, after the load so the XP
+        // levels up from the saved level. The record above (`_tombstone.migrated`) keeps a later load from paying it again.
+        const s = get();
+        if (owed.xp > 0) s.grantXP(owed.xp, 'Quest Reward');
+        if (owed.coins > 0) s.addCoins(owed.coins);
+        for (const it of owed.items) s.addToInventory(it.item, it.count);
+        if (owed.paidTitles.length) {
+            const parts = [owed.xp > 0 && `+${owed.xp} XP`, owed.coins > 0 && `+${owed.coins} coins`, ...owed.items.map((it) => `+${it.count} ${it.item}`)].filter(Boolean);
+            s.addNotification?.(`Quest reward (${owed.paidTitles.join(', ')}): ${parts.join(', ')}!`, 'reward');
+        }
 
         // Teleport the live Rapier body (imperative; outside the reactive set) if present, leaving any fight behind
         // (game/stanceState.js teleportPlayer resets the stance).
