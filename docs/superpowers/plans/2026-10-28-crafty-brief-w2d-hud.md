@@ -52,14 +52,20 @@ screen (W3-C); the hands (W2-E).
 ## One-way doors
 
 Save fields for the deleted panels' UI state, if any persist, stop being written: check `game/saveSchema.js` first and
-route them through the tombstone pass-through (plan row 20). Key rebinding (C1) is not built here; the new layout must
-not make it harder (keys stay in `KEY_MAP`).
+route them through the tombstone pass-through (plan row 20). Key rebinding (`STATUS:C1/d`) is not built here; the new
+layout must not make it harder (keys stay in `KEY_MAP`).
 
 ## Registry rows this lane closes
 
-`STATUS:C1` and `QUEUE:Q26` / `OPEN_ITEMS:OI-31` (the legend part; the reticle, hold-Alt build and rebinding stay open
-or are cut by entry), `STATUS:G-ledger:38`, `MASTERPIECE:seen:the-compass-labels-overprint-each/a`, `OPEN_ITEMS:OI-54`
-and `OPEN_ITEMS:OI-55` (touch HUD collisions; the 390x844 phone layout is checked, the iPad is the target).
+Each closes on the task named; a row whose task did not land stays open.
+
+- `STATUS:C1/c`, `QUEUE:Q26/c`, `OPEN_ITEMS:OI-31/c`: the persistent control legend (Task 6, the H controls panel in
+  place of the 8-second auto-fade). C1's reticle (`/a`), hold-Alt build (`/b`) and rebinding (`/d`) are not this lane's.
+- `STATUS:G-ledger:38/a`: the dusk toast covering the day-night widget (Task 4).
+- `STATUS:G-ledger:38/b` and `MASTERPIECE:seen:the-compass-labels-overprint-each/a`: compass labels overprinting
+  (Task 3). The golden-hour bloom glare (`/c`) is the light and colour lane's.
+- `OPEN_ITEMS:OI-55`: the touch HUD at 390x844 (Task 1's layout check). `OPEN_ITEMS:OI-54` (a lived look at the touch
+  rings) is not done here.
 
 ---
 
@@ -84,6 +90,8 @@ commit, and a lookbook pair (before, after) attached to the PR for any visible c
 - [ ] Touch keeps its tray: a jsdom test in touch mode still finds the tray. GREEN.
 - [ ] e2e: the existing HUD layout spec updated so health, mana and hotbar stay clear of each other at 1280x800 and at both
       iPad sizes.
+- [ ] e2e at 390x844 (`OPEN_ITEMS:OI-55`): no two visible touch targets overlap, and each lies inside the viewport.
+      Mutant: shift the bars down by their own height. RED.
 
 ### Task 2: One objective line
 
@@ -107,7 +115,8 @@ commit, and a lookbook pair (before, after) attached to the PR for any visible c
       the zh-CN string when the locale is zh-CN.
 - [ ] Convert the dusk warning to a key; dedupe by key; delete hardcoded English notification strings the i18n ratchet
       reports.
-- [ ] e2e: advance the clock through dusk; count dusk toasts (1); switch to zh-CN and repeat.
+- [ ] e2e: advance the clock through dusk; count dusk toasts (1); assert the toast's rect does not intersect the
+      day-night widget's (`STATUS:G-ledger:38/a`); switch to zh-CN and repeat.
 
 ### Task 5: Warm charcoal
 
@@ -121,8 +130,11 @@ commit, and a lookbook pair (before, after) attached to the PR for any visible c
       Put it in the PR description.
 - [ ] Red first: `KEY_MAP` lists Tab, J and B as the panel keys; the two-way keyMap gate fails until the handlers match.
 - [ ] Build Character (inventory, equipment, talents), Journal (quests with automatic claim, feats) and Build (building
-      tools and the block palette) from the existing panel components; delete the M, C, Q, L, U and H panel entries.
-      H opens a controls panel generated from `KEY_MAP`.
+      tools and the block palette) from the existing panel components; delete the E, M, Q, L and U panel entries (C
+      goes with the Forge in W2-F; B stays as Build; Tab becomes Character).
+- [ ] H keeps its key and opens a controls panel generated from `KEY_MAP`, in place of today's toggle and its
+      8-second auto-fade (`HUD.jsx:191`). jsdom test: H opens it and it lists every `KEY_MAP` entry; mutant: drop one
+      group from the generator. RED.
 - [ ] Touch tray: Character, Journal, Build. jsdom test for the tray's three entries.
 - [ ] Automatic claim: completing a quest pays once (the `reduceClaim` seam stays the only payer). A test drives two
       quests completing in one tick and asserts both pay exactly once.

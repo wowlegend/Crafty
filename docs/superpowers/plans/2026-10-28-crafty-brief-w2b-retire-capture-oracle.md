@@ -51,8 +51,10 @@ dependency, which is why `menu.png` stays.
 
 ## Registry rows this lane closes
 
-`OPEN_ITEMS:OI-68` (taste sign-offs move to lookbook frames). The oracle rows (QUEUE Q09-Q11, Q16, Q37-Q40, OI-09 to
-OI-13, OI-18, OI-27, OI-28, ACTIVE_PLAN T10, MASTERPIECE 0e) were closed as cancelled by the decision itself.
+None of its own. The oracle rows (QUEUE Q09-Q11, Q16, Q37-Q40, OI-09 to OI-13, OI-18, OI-27, OI-28, ACTIVE_PLAN T10,
+MASTERPIECE 0e) were closed as cancelled by the decision itself. The taste sign-offs (`OPEN_ITEMS:OI-68/a`, the v7
+spell look; `/b`, the D art pass) stay open: after this lane they are judged on lookbook frames, and this lane takes
+none of those frames.
 
 ---
 
@@ -110,7 +112,6 @@ Run from `frontend/` unless a path says otherwise. Re-verify every file:line at 
 - [ ] `CLAUDE.md` "visual" rows and the capture-determinism bullets: replace with one line naming the lookbook as the
       look acceptance surface. If W2-J (row 29) holds `CLAUDE.md`, hand it the text instead.
 - [ ] `.claude/rules/gates-and-probes.md`: drop the capture-specific rows that no longer apply.
-- [ ] `memory/registry.jsonl`: close `OPEN_ITEMS:OI-68` with the merge commit.
 - [ ] Commit: `docs(visual): the lookbook is the look acceptance surface`.
 
 ### Task 5: Land

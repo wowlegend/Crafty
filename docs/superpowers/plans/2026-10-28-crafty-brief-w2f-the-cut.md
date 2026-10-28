@@ -1,7 +1,8 @@
 # Brief: W2-F, the Cut (2026-10-28)
 
 **Plan:** `2026-10-28-crafty-sota-reset.md`, rows 19-24 and the rest of row 8, lane W2-F (Wave 2). **Decisions:**
-DECISIONS 2026-10-28 (W1-H) items 4 (one costed build mode), 5 (Ember), 6 (talents and relics), 7 (the Forge).
+DECISIONS 2026-10-28 (W1-H) items 4 (one costed build mode), 5 (Ember), 6 (talents and relics), 7 (the Forge), 10 (the
+placement-count quests).
 **Status:** unstarted. Starts after #24 (landed), combat stance (#6), the light and colour lane (#5) and W1-A, because
 those lanes own `store/useGameStore.jsx`, `HUD.jsx`, `MenuSystem.jsx` and `world/survivalSystem.js`. It shares the HUD's
 files with W2-D: run them in sequence, W2-F's HUD edits first (they only delete bars). **Owner:** the command session.
@@ -18,8 +19,9 @@ Forge shows what each upgrade costs. No hidden recipe grid, no hunger bar, and q
    one release, so a rollback loses nothing. Lands first; every later step relies on it.
 2. **One costed mode (row 19).** `resolvePlacement` always costs one block; the creative/survival toggle
    (`ui/GamePanels.jsx` Settings, the `setGameMode` button) and the Mode chip (`ui/GameHud.jsx:82-83`) go; `gameMode`
-   stops being written (`game/saveSchema.js:52`). The three free-placement quests (builder, architect, world_builder in
-   `QuestSystem.jsx` `QUEST_LIST`) go.
+   stops being written (`game/saveSchema.js:52`). The three placement-count quests (builder, architect, world_builder in
+   `QuestSystem.jsx` `QUEST_LIST`) go: with placement costed, placing and breaking one block completes them for free
+   (item 10).
 3. **Ember (row 21).** One `ember` bank replaces `ferocityBanked`, `kineticBanked`, `soulBanked` and `resonanceBanked`
    (`game/saveSchema.js:46-49`), with the four spends unchanged. Accrual: day kills (the `world/accrualHooks.js` bridges)
    and building (`game/resonance.js` `PLACE_GAIN`), with a per-day cap. Load migrates the four old banks into one (sum,
@@ -52,9 +54,12 @@ pre-cut fixture before step 2, never after.
 
 ## Registry rows this lane closes
 
-`STATUS:F4` and `OPEN_ITEMS:OI-45` (items keyed by display name: the Forge and relics replace the recipe table, so the
-decouple happens here), `OPEN_ITEMS:OI-60` and `STATUS:E-ter:item-sets-set-bonuses-affixes/b` (the denied-reason becomes
-"not enough ember").
+`OPEN_ITEMS:OI-60` and `STATUS:E-ter:item-sets-set-bonuses-affixes/b`: the aspect-underbanked denied-reason, built as
+"not enough ember" (Task 3).
+
+Not this lane's: the item-id decouple (`STATUS:F4`, `OPEN_ITEMS:OI-45`). Loot tables (`data/lootTables.js:6-8`) and
+`inventory.blocks` (`store/useGameStore.jsx:640`) stay keyed by display name through the Cut; deleting `recipes.js` and
+the pickaxe item only shrinks that work. W3-D owns it, and zh-CN content (`OPEN_ITEMS:OI-71`) waits on it.
 
 ---
 
@@ -83,7 +88,7 @@ the touched unit tests, one e2e in CI on a `land/` branch, a commit with `Mutati
 
 - [ ] Red first: `resolvePlacement` with any mode and 0 owned refuses; with 3 owned consumes 1.
 - [ ] Simplify `resolvePlacement` to one rule; delete the toggle, the chip and `gameMode`; delete builder, architect and
-      world_builder from `QUEST_LIST` and their lore.
+      world_builder from `QUEST_LIST` and their lore (item 10).
 - [ ] e2e (real input): place a block; the hotbar count falls by one; with zero left, placement is refused.
 - [ ] Fixture: still loads, level kept.
 
@@ -95,6 +100,10 @@ the touched unit tests, one e2e in CI on a `land/` branch, a commit with `Mutati
 - [ ] Store: one `ember` bank and its accrue/spend; the four spends read and spend `ember`; delete the four banks and
       their clamps; the Resonance build bridge feeds `ember`.
 - [ ] HUD: one ember-gold bar in place of four.
+- [ ] Red first: `game/deniedReason.js` gains a `no-ember` kind ("Not enough ember", through `t()` in both locales), and
+      a spend refused for want of ember shows it. Today such a refusal shows nothing: only `aspect-locked` and `no-mana`
+      reach `notifyDenied` (`Components.jsx:400-420`, `EnhancedMagicSystem.jsx:215`). Mutant: drop that `notifyDenied`
+      call. RED.
 - [ ] e2e: kill a mob by day, the bar rises; roar spends it; night kills add nothing.
 
 ### Task 4: Talents and relics (row 22, item 6)

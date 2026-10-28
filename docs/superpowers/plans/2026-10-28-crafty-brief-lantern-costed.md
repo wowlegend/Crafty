@@ -46,7 +46,8 @@ the Forge offer land in the same release as the block, never after it. Removing 
 
 ## Registry rows this lane closes
 
-`MASTERPIECE:the-lantern-and-a-baked` (the radius-rule half; the light field stays a later row).
+`MASTERPIECE:the-lantern-and-a-baked/a` (the costed lantern and the radius rule). `/b`, the baked block-light field,
+stays open for its own lane.
 
 ---
 
@@ -94,5 +95,5 @@ Run from `frontend/`. Re-verify every file:line at lane start (after W2-F and W2
 ### Task 6: Land together
 
 - [ ] Tasks 1-5 land in one release (the one-way door). Lookbook night clip of a lantern-ringed outpost attached.
-- [ ] Close `MASTERPIECE:the-lantern-and-a-baked` (radius half) in `memory/registry.jsonl` and open a row for the baked
-      light field lane.
+- [ ] Close `MASTERPIECE:the-lantern-and-a-baked/a` in `memory/registry.jsonl` with the merge commit; `/b` (the baked
+      light field) stays open.

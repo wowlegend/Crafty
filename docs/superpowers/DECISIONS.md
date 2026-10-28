@@ -82,15 +82,30 @@ that entry's items. Each stands while it earns its place; reversing one takes a 
 9. **`memory/registry.jsonl` is the one home for open work** (plan row 30). Supersedes the open-work role of STATUS §2,
    its G-ledger and the "Residue: memory/STATUS.md G-ledger" line in ACTIVE_PLAN. The registry holds every open item
    harvested from STATUS §2 and its G-ledger, the ACTIVE_PLAN task list and owed block, the sota-2026-09 QUEUE and
-   OPEN-ITEMS files and the masterpiece phase tables, one row each, with owner, severity, status and plan unit; done
-   items are closed with the commit that closed them, never dropped. Kevin owns a row only when it needs his device,
-   ear, money or an account sign-in. Until those sources leave HEAD (plan row 32), `frontend/scripts/ci/registry-harvest.mjs`
-   (run by `tests/scripts/registry-harvest.test.js` in every unit run) fails when a source holds an open item with no
-   registry row. New open work goes straight to the registry. The first lane briefs under item 3:
+   OPEN-ITEMS files and the masterpiece phase tables. It holds one row per closable item: a source item that bundles
+   several gets one row per part, with the id `key/part`. Rows follow the plan's schema (`{id, title, playerVisible,
+   severity, owner, state, evidence, opened, closedBy}`, plus the harvest key and the plan unit). `evidence` is the
+   source line, pinned to the commit on main it was harvested from. `opened` is the date that line was first written
+   (`git log -L`), so an item carried into a source when the source was created reads the creation date. A done item
+   is closed, never deleted: `closedBy` names the commit that closed it, or the decision or document that did when no
+   commit did (a cancellation by decision, a pull request closed unmerged). Kevin owns a row only when it needs his
+   device, ear, money, an account sign-in, his explicit OK for an external send, or a decision its source reserves for
+   him. Until those sources leave HEAD (plan row 32), `frontend/scripts/ci/registry-harvest.mjs` (run by
+   `tests/scripts/registry-harvest.test.js` in every unit run) fails when a source holds an open item with no registry
+   row, or yields fewer items than its floor in `frontend/scripts/ci/registry-floors.json`; closing items at the source
+   lowers that floor in the same change. `frontend/scripts/ci/registry-append-only.mjs` fails a push, in pre-push and in
+   CI, that deletes a row id. New open work goes straight to the registry. The first lane briefs under item 3:
    `docs/superpowers/plans/2026-10-28-crafty-brief-w2b-retire-capture-oracle.md`,
    `docs/superpowers/plans/2026-10-28-crafty-brief-w2d-hud.md`, `docs/superpowers/plans/2026-10-28-crafty-brief-w2f-the-cut.md`,
    `docs/superpowers/plans/2026-10-28-crafty-brief-lantern-costed.md` and
    `docs/superpowers/plans/2026-10-28-crafty-brief-quest-spine.md`.
+10. **The three placement-count quests go** (lane W2-F, with item 4). Builder, Architect and World Builder
+   (`frontend/src/QuestSystem.jsx`, `QUEST_LIST`: place 20, 100 and 500 blocks) are deleted. Why: under item 4 a placed
+   block costs one, but breaking it gives it back (`frontend/src/world/terrain.worker.js:120-130` reports the broken
+   block's type; `frontend/src/world/Terrain.jsx:732-742` adds it to the inventory), so placing and breaking one block
+   completes all three for 600 XP and 24 wood at no cost. Item 5 caps that loop for ember; a quest counter has no cap.
+   Building pays through ember and the siege, and the quest line moves to the spine (the quest-spine brief). Door:
+   their ids in saved quest progress ride the tombstone pass-through (plan row 20) for one release.
 
 ## 2026-10-28 — [KEVIN] One CLAUDE.md: the symlink and its directory are gone
 

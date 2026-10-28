@@ -61,7 +61,7 @@ pass-through (plan row 20) so a rollback keeps it.
 
 ## Registry rows this lane closes
 
-Part of `MASTERPIECE:relight-the-frontier` (the spine half). Open a registry row for the lane at its start.
+`MASTERPIECE:relight-the-frontier/b` (the quest spine). `/a`, the shrine events, is the relight plan's.
 
 ---
 
@@ -105,4 +105,4 @@ Run from `frontend/`. Re-verify file:lines at lane start; the Cut and the HUD la
 
 - [ ] The e2e from Acceptance, with its Bram control, green on the CI sha.
 - [ ] Live by hand to beat 3's offer on both engines; frames of the dialogue card in the PR.
-- [ ] `memory/registry.jsonl`: close the spine row with the merge commit.
+- [ ] `memory/registry.jsonl`: close `MASTERPIECE:relight-the-frontier/b` with the merge commit.
