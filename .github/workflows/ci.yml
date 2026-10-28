@@ -39,7 +39,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      # FULL HISTORY (2026-10-28). On a push to main the fast tier runs artifact-currency, whose drift is
+      # `rev-list --count syncedSha..HEAD`; a depth-1 clone holds no commit but HEAD, so that count cannot be taken.
+      # The script refuses an unmeasurable drift on a main push rather than skipping it, so a shallow checkout
+      # here would red main loudly, not pass it quietly.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:

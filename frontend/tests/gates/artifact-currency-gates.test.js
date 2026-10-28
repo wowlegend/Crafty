@@ -8,6 +8,9 @@ import { classify, driftVerdict, HARD_LIMIT, validateSource, surfaces, queuedCla
 // branch-only test RED; -> `refuse: false` turned the main and unknown-refs tests RED; -> `mainMoves === true`
 // turned the unknown-refs test RED. Replacing main()'s E2E_PUSH_REFS read with `null` SURVIVES here — this
 // file cannot see the wiring — and is killed by the process-level twin, tests/scripts/artifact-currency-scope.test.js.
+// 2026-10-28: the unmeasured verdict `refuse: mainMoves !== false` -> `refuse: false` turned the unmeasured test
+// RED (main, unknown); -> `refuse: true` turned it RED (branch-only); deleting the `behind === null` guard (null
+// then reads as a drift of 0..limit) turned it RED.
 
 describe('artifact-currency threshold', () => {
   it('at HEAD is current', () => {
@@ -60,6 +63,14 @@ describe('driftVerdict — the drift refusal guards main', () => {
       expect(driftVerdict(HARD_LIMIT, m)).toEqual({ level: 'drifting', refuse: false });
       expect(driftVerdict(0, m)).toEqual({ level: 'current', refuse: false });
     }
+  });
+
+  // `behind === null`: the recorded sha is not in this history (a shallow CI clone, a rewritten publish sha), so
+  // the drift cannot be counted. On a main move that is an UNBOUNDED drift, not a skip (2026-10-28).
+  it('an UNMEASURED drift refuses a main push and unknown refs, and only a branch-only push skips it', () => {
+    expect(driftVerdict(null, true)).toEqual({ level: 'unmeasured', refuse: true });
+    expect(driftVerdict(null, null)).toEqual({ level: 'unmeasured', refuse: true });
+    expect(driftVerdict(null, false)).toEqual({ level: 'unmeasured', refuse: false });
   });
 });
 

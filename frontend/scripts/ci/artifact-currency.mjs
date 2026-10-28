@@ -27,9 +27,18 @@
  * passes; the push that moves main is the one judged against the pages. Same shape as e2e-freshness's
  * main-only red-base rule (f0e84766), reading the same `E2E_PUSH_REFS` through the same `mainMovesFrom`.
  * NOT scoped: a missing or unusable source and a falsified Queued pill refuse EVERY push — those are
- * defects in the committed tree, which any branch can fix. NOT covered: a merge made in GitHub's UI moves
- * main without running a local hook, and CI never runs this gate (it reads a commit range; the fast tier
- * skips the push tier), so the next local push to main is the first to see that drift.
+ * defects in the committed tree, which any branch can fix.
+ *
+ * THE SERVER-SIDE MERGE (2026-10-28). Exempting branch pushes left one path to main unbounded: a merge made
+ * by `gh pr merge` or GitHub's UI runs no local hook. So CI runs this gate too, on a PUSH TO MAIN ONLY
+ * (ci/pipeline.sh's fast tier, with `E2E_PUSH_REFS=' refs/heads/main'`, from a full-history checkout).
+ * Never on pull_request: a PR's merge ref carries the lane's own commits, which is the #24 deadlock again.
+ * A drift that cannot be MEASURED — the recorded sha absent from this history, as in a shallow clone —
+ * refuses on the same terms as one over the limit: a main move whose bound cannot be computed is unbounded.
+ * A branch-only push still skips it, saying so.
+ *
+ * ERRS STRICT, known: the hook hands every pushed ref to each target it certifies, so a single push of
+ * main AND a lane branch judges the branch's tip as a main move too.
  *
  * Mutation-Proof: in driftVerdict, `refuse: !ok && mainMoves !== false` -> `refuse: !ok` (refuse whatever
  * moves) turned the branch-only cases RED; -> `refuse: false` turned the main and unknown-refs cases RED;
@@ -38,6 +47,12 @@
  * spec cannot see it, and stayed green). Specs: tests/gates/artifact-currency-gates.test.js (pure) and
  * tests/scripts/artifact-currency-scope.test.js (this script run as a process in a fixture repo); an
  * identity mutant (a comment edit) survived both.
+ * 2026-10-28: the unmeasured verdict `refuse: mainMoves !== false` -> `refuse: false` turned the pure unmeasured
+ * test and the process main / unknown-refs cases RED; -> `refuse: true` turned the pure test and the process
+ * branch-only case RED; deleting the `behind === null` guard turned both RED; dropping main()'s `failed = true`
+ * in the unmeasured branch turned the process main / unknown cases RED. Wrapping the Queued failure loops in
+ * `if (mainMoves !== false)` and adding `if (mainMoves === false) continue;` to the missing-source branch each
+ * turned a branch-push process case RED. An identity comment edit survived.
  *
  *   node scripts/ci/artifact-currency.mjs          check (informational under the limit; over it, refuses a push
  *                                                  that moves main or names no refs, and prints for any other)
@@ -71,6 +86,9 @@ export function classify(behind, limit = HARD_LIMIT) {
  * "the caller did not say", and null must stay strict or a hand run would silently stop checking anything.
  */
 export function driftVerdict(behind, mainMoves, limit = HARD_LIMIT) {
+  // `behind === null`: the drift could not be measured (the recorded sha is not in this history). Unmeasured
+  // is not current — on a push that moves main, or one naming no refs, it refuses exactly as stale does.
+  if (behind === null) return { level: 'unmeasured', refuse: mainMoves !== false };
   const { level, ok } = classify(behind, limit);
   return { level, refuse: !ok && mainMoves !== false };
 }
@@ -256,15 +274,29 @@ function main() {
       continue;
     }
 
-    let behind;
+    let behind = null;
     try {
       behind = Number(git('rev-list', '--count', `${from}..HEAD`));
     } catch {
-      console.log(`· ${s.id}: recorded sha ${from} is not in this history — skipping`);
-      continue;
+      // Left null: driftVerdict decides, so an unmeasurable drift cannot quietly read as a pass on main.
     }
 
     const { level, refuse } = driftVerdict(behind, mainMoves);
+    if (level === 'unmeasured') {
+      if (!refuse) {
+        console.log(`· ${s.id}: recorded sha ${from} is not in this history — skipping: this push moves only other`);
+        console.log('  branches, and a push that moves main at this state is refused');
+        continue;
+      }
+      console.error(`\n✘ ${s.id}: recorded sha ${from} is not in this history, so the drift cannot be measured.`);
+      console.error('  On a push that moves main (or names no refs) an unmeasured drift is an unbounded one. In CI this is a');
+      console.error('  shallow checkout (the gates job needs fetch-depth: 0); locally, a publish sha rewritten out of history.');
+      if (s.kind === 'artifact') {
+        console.error(`  Fix: republish ${s.source} to the SAME url, then \`node scripts/ci/artifact-currency.mjs --sync ${s.id}\`.\n`);
+      }
+      failed = true;
+      continue;
+    }
     if (level === 'current') {
       console.log(`  ✓ ${s.id}: at HEAD (${head})`);
       continue;
