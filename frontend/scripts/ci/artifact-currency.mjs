@@ -18,13 +18,36 @@
  * the same way scratchpad/findings.json was lost. The HTML is committed now
  * (docs/superpowers/era-review.html) so a cold start can rebuild the page instead of re-deriving it.
  *
- *   node scripts/ci/artifact-currency.mjs          check (informational under the limit, fails over it)
+ * SCOPE OF THE HARD LIMIT: MAIN (2026-10-27). The pages describe main — what landed, what is queued. The
+ * drift is `rev-list syncedSha..HEAD`, so a long-lived lane branch counts its OWN commits, and republishing
+ * from main cannot lower that count: feat/steady-cool (PR #24) was refused for a drift only main could
+ * repair, and no republish could clear it. So the drift refusal fires only when the push moves
+ * `refs/heads/main`, or when the pushed refs are UNKNOWN (a hand run, or any caller other than
+ * `.githooks/pre-push`), which stays strict. A push that moves only other branches prints the drift and
+ * passes; the push that moves main is the one judged against the pages. Same shape as e2e-freshness's
+ * main-only red-base rule (f0e84766), reading the same `E2E_PUSH_REFS` through the same `mainMovesFrom`.
+ * NOT scoped: a missing or unusable source and a falsified Queued pill refuse EVERY push — those are
+ * defects in the committed tree, which any branch can fix. NOT covered: a merge made in GitHub's UI moves
+ * main without running a local hook, and CI never runs this gate (it reads a commit range; the fast tier
+ * skips the push tier), so the next local push to main is the first to see that drift.
+ *
+ * Mutation-Proof: in driftVerdict, `refuse: !ok && mainMoves !== false` -> `refuse: !ok` (refuse whatever
+ * moves) turned the branch-only cases RED; -> `refuse: false` turned the main and unknown-refs cases RED;
+ * -> `mainMoves === true` (unknown refs read as branch-only) turned the unknown-refs cases RED; in main(),
+ * the E2E_PUSH_REFS read -> `null` turned the process spec's branch-only and main-push cases RED (the pure
+ * spec cannot see it, and stayed green). Specs: tests/gates/artifact-currency-gates.test.js (pure) and
+ * tests/scripts/artifact-currency-scope.test.js (this script run as a process in a fixture repo); an
+ * identity mutant (a comment edit) survived both.
+ *
+ *   node scripts/ci/artifact-currency.mjs          check (informational under the limit; over it, refuses a push
+ *                                                  that moves main or names no refs, and prints for any other)
  *   node scripts/ci/artifact-currency.mjs --sync   record HEAD as the published sha (run AFTER publishing)
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mainMovesFrom } from './e2e-freshness.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..');
@@ -40,6 +63,16 @@ export function classify(behind, limit = HARD_LIMIT) {
   if (behind === 0) return { level: 'current', ok: true };
   if (behind <= limit) return { level: 'drifting', ok: true };
   return { level: 'stale', ok: false };
+}
+
+/**
+ * PURE: does this drift REFUSE this push? Only a stale page on a push that moves main, or one whose refs are
+ * unknown — see SCOPE in the header. `mainMoves` is `mainMovesFrom(E2E_PUSH_REFS)`: true, false, or null for
+ * "the caller did not say", and null must stay strict or a hand run would silently stop checking anything.
+ */
+export function driftVerdict(behind, mainMoves, limit = HARD_LIMIT) {
+  const { level, ok } = classify(behind, limit);
+  return { level, refuse: !ok && mainMoves !== false };
 }
 
 export function readState() {
@@ -167,9 +200,14 @@ function main() {
   }
 
   let failed = false;
+  // The refs this push moves, exported by .githooks/pre-push; absent (a hand run) is null and stays strict.
+  const mainMoves = mainMovesFrom(process.env.E2E_PUSH_REFS);
+  const scope = mainMoves === true ? 'this push moves main'
+    : mainMoves === false ? 'this push moves only other branches: drift past the limit is informational'
+      : 'pushed refs unknown: strict';
   // Report the DENOMINATOR: a clean tick over a list that silently shrank to zero is the defect this
   // project keeps shipping.
-  console.log(`artifact-currency: ${all.length} surface(s) tracked`);
+  console.log(`artifact-currency: ${all.length} surface(s) tracked (${scope})`);
 
   for (const s of all) {
     const src = join(ROOT, s.source);
@@ -226,15 +264,21 @@ function main() {
       continue;
     }
 
-    const { level, ok } = classify(behind);
+    const { level, refuse } = driftVerdict(behind, mainMoves);
     if (level === 'current') {
       console.log(`  ✓ ${s.id}: at HEAD (${head})`);
       continue;
     }
     const what = s.kind === 'artifact' ? 'the published page' : 'this page';
     const line = `${s.id}: ${what} is ${behind} commit(s) behind (${s.kind === 'artifact' ? `published ${from}` : `last touched ${from}`}, HEAD ${head})`;
-    if (ok) {
+    if (level === 'drifting') {
       console.log(`  · ${line} — refresh it at session close${s.url ? `: ${s.url}` : ''}`);
+      continue;
+    }
+    if (!refuse) {
+      console.log(`  · ${line} — over the ${HARD_LIMIT}-commit limit, but this push does not move main.`);
+      console.log('    The pages describe main, and a branch cannot lower this count by republishing, so it is not refused');
+      console.log(`    here; a push that moves main at this drift is. Republish before landing${s.url ? `: ${s.url}` : ''}`);
       continue;
     }
     console.error(`\n✘ ${line}`);

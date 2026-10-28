@@ -1,8 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { classify, HARD_LIMIT, validateSource, surfaces, queuedClaims, verifyQueued } from '../../scripts/ci/artifact-currency.mjs';
+import { classify, driftVerdict, HARD_LIMIT, validateSource, surfaces, queuedClaims, verifyQueued } from '../../scripts/ci/artifact-currency.mjs';
 
 // Behavioural, not a source-grep: exercises the threshold function directly so gate-shape's
 // source-grep ratchet does not rise.
+//
+// Mutation-Proof: driftVerdict's `refuse: !ok && mainMoves !== false` -> `refuse: !ok` turned the
+// branch-only test RED; -> `refuse: false` turned the main and unknown-refs tests RED; -> `mainMoves === true`
+// turned the unknown-refs test RED. Replacing main()'s E2E_PUSH_REFS read with `null` SURVIVES here — this
+// file cannot see the wiring — and is killed by the process-level twin, tests/scripts/artifact-currency-scope.test.js.
 
 describe('artifact-currency threshold', () => {
   it('at HEAD is current', () => {
@@ -28,6 +33,33 @@ describe('artifact-currency threshold', () => {
   it('the limit is configurable, so the gate is not welded to one number', () => {
     expect(classify(5, 3).ok).toBe(false);
     expect(classify(2, 3).ok).toBe(true);
+  });
+});
+
+// The pages describe MAIN. A lane branch counts its own commits past the publish sha, which no republish
+// from main can lower, so refusing it was permanent (feat/steady-cool, PR #24). `mainMoves` is the
+// tri-state mainMovesFrom(E2E_PUSH_REFS) returns: true, false, or null when the caller named no refs.
+describe('driftVerdict — the drift refusal guards main', () => {
+  const over = HARD_LIMIT + 1;
+
+  it('over the limit, a push that moves main is refused', () => {
+    expect(driftVerdict(over, true)).toEqual({ level: 'stale', refuse: true });
+  });
+
+  it('over the limit, a push that moves only other branches is NOT refused — still reported stale', () => {
+    expect(driftVerdict(over, false)).toEqual({ level: 'stale', refuse: false });
+  });
+
+  it('over the limit, UNKNOWN refs stay strict — a hand run must not silently stop checking', () => {
+    expect(driftVerdict(over, null)).toEqual({ level: 'stale', refuse: true });
+    expect(driftVerdict(over, undefined).refuse).toBe(true);
+  });
+
+  it('at or under the limit nothing is refused, whatever the push moves', () => {
+    for (const m of [true, false, null]) {
+      expect(driftVerdict(HARD_LIMIT, m)).toEqual({ level: 'drifting', refuse: false });
+      expect(driftVerdict(0, m)).toEqual({ level: 'current', refuse: false });
+    }
   });
 });
 
