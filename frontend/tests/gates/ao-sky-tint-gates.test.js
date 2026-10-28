@@ -77,7 +77,8 @@ describe('S11 sky-coloured AO', () => {
     // A source assertion, and the weakest thing here — but the derivation above is worth nothing if the
     // fragment shader still multiplies by a constant. Both directions: the new form present, the old
     // form absent anywhere in the file.
-    const t = strip(readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8'));
+    // The shader term is in the material module, the per-frame writes in Terrain.jsx: read both.
+    const t = ['world/terrainMaterial.js', 'world/Terrain.jsx'].map((f) => strip(readFileSync(resolve(SRC, f), 'utf8'))).join('\n');
     expect(t, 'the AO term no longer mixes toward the uniform').toMatch(/mix\(uAoFloor, vec3\(1\.0\), clamp\(vAO/);
     expect(t, 'the flat grey AO multiply is back').not.toMatch(/mix\(0\.55, 1\.0, clamp\(vAO/);
     // The floor is the published sky frame's `aoFloor` (render/mood.js: aoFloorColor of the COMPOSED ambient, the

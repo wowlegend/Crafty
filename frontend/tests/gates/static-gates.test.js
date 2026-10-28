@@ -44,7 +44,7 @@ describe('static gates', () => {
   });
 
   it('S1-B: voxel texture sRGB decode present (washout fix)', () => {
-    const src = readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8');
+    const src = readFileSync(resolve(SRC, 'world/terrainMaterial.js'), 'utf8');
     expect(src, 'voxel color_fragment must sRGB-decode the sampled texColor (pow 2.2)')
       .toMatch(/pow\(\s*texColor\.rgb\s*,\s*vec3\(\s*2\.2\s*\)\s*\)/);
   });

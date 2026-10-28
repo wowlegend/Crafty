@@ -109,16 +109,16 @@ describe('grass biome tint (Q14)', () => {
     // Identity (weak, structural — neither consumer imports cleanly under node): both reference the shared
     // object and neither re-derives it. A re-derivation is how two copies drift.
     const grass = strip(readFileSync(resolve(SRC, 'OptimizedGrassSystem.jsx'), 'utf8'));
-    const terrain = strip(readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8'));
+    const terrain = strip(readFileSync(resolve(SRC, 'world/terrainMaterial.js'), 'utf8'));
     expect(grass).toMatch(/const biomeTint = BIOME_TINT;/);
     expect(terrain).toMatch(/const biomeTintUniform = BIOME_TINT;/);
     expect(grass + terrain, 'a consumer re-derives the table instead of sharing it').not.toMatch(/biomeTintTable\(/);
   });
 
-  it('R1.5/R1.6 — Terrain splices the GENERATED tint GLSL and binds its mask (weak, structural)', () => {
-    // terrain-tint-gates drives the generator; this pins that Terrain actually uses it, rather than a
+  it('R1.5/R1.6 — the terrain material splices the GENERATED tint GLSL and binds its mask (weak, structural)', () => {
+    // terrain-tint-gates drives the generator; this pins that the terrain material actually uses it, rather than a
     // literal array size or an unmasked multiply creeping back in beside it.
-    const terrain = strip(readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8'));
+    const terrain = strip(readFileSync(resolve(SRC, 'world/terrainMaterial.js'), 'utf8'));
     expect(terrain).toMatch(/\$\{TINT_GLSL\.decl\}/);
     expect(terrain).toMatch(/\$\{TINT_GLSL\.apply\}/);
     expect(terrain).toMatch(/shader\.uniforms\.uBiomeTintMask = \{ value: biomeTintMaskUniform \};/);
@@ -127,9 +127,9 @@ describe('grass biome tint (Q14)', () => {
 
   it('plan Task 1 — the terrain sampler reads raw vUv: fract() breaks the mip derivative at block edges', () => {
     // texture-mipmap-gates drives the texture itself; this is the sampler half, kept here because this file
-    // already reads Terrain.jsx. With mipmaps, fract(vUv) makes the derivative jump at every block edge and
+    // already reads the terrain material. With mipmaps, fract(vUv) makes the derivative jump at every block edge and
     // the GPU picks the smallest mip there — a grid line on every block. The texture wraps REPEAT instead.
-    const terrain = strip(readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8'));
+    const terrain = strip(readFileSync(resolve(SRC, 'world/terrainMaterial.js'), 'utf8'));
     expect(terrain).toMatch(/texture\(voxelTextures, vec3\(vUv\.x, vUv\.y, texLayer\)\)/);
     expect(terrain).not.toMatch(/fract\(vUv/);
   });

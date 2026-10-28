@@ -23,7 +23,7 @@ const MARKER = 'float dh = sin(floor(vWorldPos.x)';
 
 export function detileSources() {
   const js = readFileSync(resolve(SRC, 'world/detile.js'), 'utf8');
-  const shaderFile = readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8');
+  const shaderFile = readFileSync(resolve(SRC, 'world/terrainMaterial.js'), 'utf8');
   const at = shaderFile.indexOf(MARKER);
   return { js, glsl: at === -1 ? '' : shaderFile.slice(at, at + 260) };
 }

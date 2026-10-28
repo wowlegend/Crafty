@@ -39,7 +39,7 @@ import { realChunk, CHUNK, HEIGHT, idx } from './_terrainFixture.js';
  * BLIND SPOTS, named: (a) AO exactness is checked on TOP faces only — side and bottom faces share the
  * key and the occluder helper but are not sampled here; (b) chunk-boundary AO reads the neighbour as air
  * (getBlock returns 0 outside the chunk), which this suite mirrors rather than questions; (c) nothing here
- * proves Terrain.jsx reads colors.g as the biome — that seam is the shader's (QUEUE R1.6).
+ * proves the terrain material reads colors.g as the biome — that seam is the shader's (QUEUE R1.6).
  */
 
 const SEEDS = [[0, 0], [1, 0], [0, 1], [-1, -1], [5, 3], [-7, 2], [12, -9], [20, 20], [-30, 4], [3, -25]];

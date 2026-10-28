@@ -1,5 +1,5 @@
 // Statistics of one layer of a square RGBA layer stack ({ image: { width, height, depth, data } }), read the way the
-// terrain shader reads it: each byte decoded with pow(v / 255, 2.2) (Terrain.jsx, the <color_fragment> patch) and
+// terrain shader reads it: each byte decoded with pow(v / 255, 2.2) (world/terrainMaterial.js, the <color_fragment> patch) and
 // luminance weighted 0.2126 / 0.7152 / 0.0722.
 
 const decode = (v) => Math.pow(v / 255, 2.2);

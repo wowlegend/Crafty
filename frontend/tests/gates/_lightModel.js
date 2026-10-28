@@ -19,7 +19,7 @@
 //      only ADDS light, in the key's colour. The indirect specular is 0: with no envMap, `RE_IndirectSpecular_Physical`
 //      is fed iblIrradiance = 0 (lights_fragment_maps.glsl.js), so the indirect term is exactly the Lambert below.
 //   2. THE TERRAIN'S AO FLOOR. A fully occluded corner multiplies the ALBEDO by `uAoFloor` before lighting
-//      (Terrain.jsx: `diffuseColor.rgb *= mix(uAoFloor, vec3(1.0), clamp(vAO / 3.0, 0.0, 1.0))`, at vAO = 0).
+//      (world/terrainMaterial.js: `diffuseColor.rgb *= mix(uAoFloor, vec3(1.0), clamp(vAO / 3.0, 0.0, 1.0))`, at vAO = 0).
 //   3. THE AERIAL HAZE at full distance (render/aerialPerspective.js, the same constants imported here).
 //   4. THE POST CHAIN, which is what the player sees (GameScene.jsx: HueSaturation -> BrightnessContrast -> Bloom ->
 //      SMAA -> ToneMapping NEUTRAL -> Vignette), postprocessing 6.39.5:
