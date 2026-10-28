@@ -200,8 +200,9 @@ function installStanceHelpers() {
       return { median: Math.round(d[Math.floor(d.length / 2)]), n: d.length };
     },
     // Kill every hostile near, then wait for the stance to leave. That wait is a VERDICT, not a SETUP: a stance that
-    // never leaves is mutant T4, and a SETUP here would score it COULD NOT CHECK. Each part is waited on its own clock:
-    // the calm is CALM_MS of wall time from the last frame a threat qualified, and the exit blend EXIT_S of GAME time
+    // never leaves is mutant T4, and a SETUP here would score it COULD NOT CHECK. A dead threat with nothing else
+    // qualifying ends the fight on the next frame; the waits are the upper bounds for a threat that is not dead yet:
+    // the calm is CALM_MS of world time from the last frame a threat qualified, and the exit blend EXIT_S of GAME time
     // (the frame's capped step), which a stalled frame advances by at most 0.25 s. Only a page that stops advancing
     // game time inside `wallMs` is SETUP.
     async idle(medianMs, wallMs) {

@@ -22,6 +22,7 @@ import { LEAP_RANGE, mobSensePoint } from './mobSenses.js';
 import { rampVelocity, ACCEL_RATE, DECEL_RATE } from './gameFeel.js';
 import { isHostile } from '../combat/targeting.js';
 import { stance as _state, stallAnchors as _anchors, resetStance, teleportPlayer } from './stanceState.js';
+import { worldNow, isWorldFrozen } from './worldClock.js';
 
 export { BASE_MOVE_SPEED };
 
@@ -198,15 +199,19 @@ const _sweep = (a, id) => { if (a.seen !== _tag) _anchors.delete(id); };
  *           let swing (the plan's height-reference deviation). x and z are the body this frame, the point the frame's
  *           step starts from (stanceFrame builds it): the away vector and `gap` must be measured from there, not from
  *           the camera, which trails the body by about 1.2 frames (round-1 review b).
- *   nowMs   performance.now(): the stance is the player's real-time feel, like heavyAttack.js.
- *   dtS     the frame's seconds, for the blend: the controller's capped step (game/frameStep.js).
+ *   nowMs   the WORLD clock (game/worldClock.js worldNow): the calm and the stall clocks measure the fight, and a
+ *           pause or a hitstop holds the fight, so neither may spend them.
+ *   dtS     the frame's seconds, for the blend: the controller's capped step (game/frameStep.js), 0 while the world
+ *           is held (stanceFrame passes it so).
  * `atS` is the game time this frame's step starts at and `stepS` its length, so (playerX, playerZ) over atS is the body's
  * own speed in game time, which the e2e measures (a wall-clock sample of the camera is neither).
  *
  * A mob QUALIFIES when it is hostile (isHostile: not protected, passive or dead/dying), aggro'd, not a NON_PURSUER,
  * within ENGAGE_RADIUS_M horizontally and engageDyM(type) vertically, and not stalled. The threat is the current one
  * while it qualifies, unless another is more than THREAT_SWITCH_M nearer; else the nearest. With no qualifier the
- * last threat's position is kept, so the calm and the exit blend still clamp against where the fight was. `gap` is the
+ * last threat's position is kept, so the calm and the exit blend still clamp against where the fight was, while the
+ * threat lives. A threat that is dead or gone with nothing else qualifying ends the fight at once (w 0, no calm): a
+ * walk over the corpse must not be held to the retreat cap, and the walk ramp eases the speed back. `gap` is the
  * horizontal distance from the player point to the threat (0 with no threat), for stanceVelocity's step bound.
  */
 export function stanceStep(state, mobs, player, nowMs, dtS) {
@@ -217,9 +222,12 @@ export function stanceStep(state, mobs, player, nowMs, dtS) {
   const px = player.x, py = player.y, pz = player.z;
   let nearId = null, nearD = Infinity, nearX = 0, nearZ = 0;
   let curD = Infinity, curX = 0, curZ = 0;
+  let threatLives = false;
   for (let i = 0; i < mobs.length; i++) {
     const m = mobs[i];
-    if (!isHostile(m) || !m.isAggro || m.type in NON_PURSUERS) continue;
+    const hostile = isHostile(m);
+    if (hostile && m.id === state.threatId) threatLives = true;
+    if (!hostile || !m.isAggro || m.type in NON_PURSUERS) continue;
     const mx = m.position.x, mz = m.position.z;
     const dx = px - mx, dz = pz - mz;
     const d = Math.hypot(dx, dz);
@@ -245,6 +253,8 @@ export function stanceStep(state, mobs, player, nowMs, dtS) {
     } else {
       state.threatId = nearId; state.threatX = nearX; state.threatZ = nearZ;
     }
+  } else if (state.threatId !== null && !threatLives) {
+    state.lastEngagedAt = -Infinity; state.w = 0; state.threatId = null;
   }
   state.engaged = nowMs - state.lastEngagedAt < CALM_MS;
 
@@ -305,8 +315,9 @@ export function noteMoveTarget(rawX, rawZ, targetX, targetZ, appliedX, appliedZ,
 //   2. THE CALL SITES' ARGUMENTS in Components.jsx are pinned by no unit test: the unit tests hand the seam their own.
 //      Unpinned: stanceFrame's body (camera.position in its place brings back a low-frame-rate kite, the camera trailing
 //      the body), stanceWalk's walkMult (1 in its place stops the heavy-charge and swing slows from slowing the retreat),
-//      the order of the form and the walk slow, the KCC being fed what stanceWalk returns, the void guard teleporting
-//      through teleportPlayer, and the dodge branch marking its burst with dodgeBurst. In the e2e, case 0 pins only the
+//      the order of the form and the walk slow, the KCC being fed what stanceWalk returns, stanceFrame being handed no
+//      clock (a clock passed there overrides the world clock it reads), and the dodge branch marking its burst with
+//      dodgeBurst. A teleport needs no call site: stanceFrame resets on the jump. In the e2e, case 0 pins only the
 //      HEIGHT of stanceFrame's point: x and z are compared standing still, where the camera has converged on the body,
 //      and mobSensePoint is the camera's position. A wrong body or a bypassed stanceWalk can show only in a chase
 //      sub-assertion (the retreat chases are judged at every frame rate, the strafe's only at a fast one); no e2e case
@@ -317,6 +328,11 @@ export function noteMoveTarget(rawX, rawZ, targetX, targetZ, appliedX, appliedZ,
 //   4. A DODGE'S DECAY IS NOT BOUNDED. The dodge is the deliberate escape, so the ramp brings its burst down unbounded,
 //      as it does out of a fight, for at most the burst's carry window (dodgeBurst) and no longer than it takes to reach
 //      its target. Keys changed inside that window are clamped on the target only.
+
+/** Faster than anything moves the body (m/s): a terminal fall is 50, and a boss's 36 m/s shove on a 28 m/s dodge is 64. */
+export const TELEPORT_SPEED_MPS = 100;
+/** What moves the body with no speed behind it (m): the KCC's autostep (1.05) and snap (0.5), a form's grow lift. */
+export const TELEPORT_SLACK_M = 2;
 
 const _point = { x: 0, y: 0, z: 0 };
 const _clamped = { x: 0, z: 0 };
@@ -329,10 +345,22 @@ const _clamped = { x: 0, z: 0 };
  *   body    where the body's step starts this frame: its next translation, which includes a move given on a frame that
  *           took no world step (game/kinematicMove.js)
  *   camera  the game camera
+ *   dtS     the frame's capped step (realDelta)
+ *   nowMs, frozen  the world clock and whether the world is held this frame; the controller passes neither, so the
+ *           seam reads game/worldClock.js itself. A held world steps the stance by 0 s, so a pause or a hitstop spends
+ *           neither the calm, the stall clocks, the blend nor the stance's game clock (atS).
+ * A body further from where the last frame saw it than TELEPORT_SPEED_MPS covers in that frame's step, plus
+ * TELEPORT_SLACK_M, was put there by a teleport, whoever made it: the stance is reset before the frame is stepped, so
+ * a call site that moves the body without teleportPlayer cannot carry a fight to the new spot.
  */
-export function stanceFrame(mobs, body, camera, nowMs, dtS) {
+export function stanceFrame(mobs, body, camera, dtS, nowMs = worldNow(), frozen = isWorldFrozen()) {
+  const s = _state;
+  if (s.bodySeen && Math.hypot(body.x - s.bodyX, body.y - s.bodyY, body.z - s.bodyZ) > TELEPORT_SPEED_MPS * s.bodyStepS + TELEPORT_SLACK_M) {
+    resetStance();
+  }
+  s.bodyX = body.x; s.bodyY = body.y; s.bodyZ = body.z; s.bodyStepS = dtS > 0 ? dtS : 0; s.bodySeen = true;
   _point.x = body.x; _point.y = mobSensePoint(camera).y; _point.z = body.z;
-  return stanceStep(_state, mobs, _point, nowMs, dtS);
+  return stanceStep(s, mobs, _point, nowMs, frozen ? 0 : dtS);
 }
 
 /**

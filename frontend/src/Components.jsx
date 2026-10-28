@@ -941,7 +941,7 @@ export const Player = ({ isWorldBuilt }) => {
     // jump + gravity sites below.
     const locoState = useGameStore.getState();
     const loco = formLocomotion(locoState.beastFormActive ? locoState.activeBeastForm : null);
-    const now = performance.now(); // read once: the walk slows and the stance share it
+    const now = performance.now();
     const walkMult = heavyWalkMult(now) * stringWalkMult(now); // charging a heavy, or throwing a swing, slows the walk
     const speed = moveSpeed(loco) * walkMult;
     const currentTrans = rigidBodyRef.current.translation();
@@ -950,8 +950,8 @@ export const Player = ({ isWorldBuilt }) => {
     // so the stance and the worker agree on which mobs can reach the player, and the away vector is measured from this
     // frame's body, the point the frame's step starts from.
     // nextTranslation, not translation: a move given on a frame that took no world step is where this one starts from
-    // (game/kinematicMove.js).
-    const stance = stanceFrame(mobsQuery.entities, rigidBodyRef.current.nextTranslation(), camera, now, delta);
+    // (game/kinematicMove.js). The seam reads the world clock itself, so a pause holds the fight.
+    const stance = stanceFrame(mobsQuery.entities, rigidBodyRef.current.nextTranslation(), camera, delta);
 
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
     if (spawnPosSet.current && isVoidFall(currentTrans.y)) {

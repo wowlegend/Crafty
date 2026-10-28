@@ -24,7 +24,7 @@ describe('loadWorldData and the combat stance', () => {
   it('a load mid-fight teleports the body and resets the stance', () => {
     resetStance();
     const husk = { id: 'lt1', isMob: true, type: 'zombie', passive: false, isAggro: true, health: 50, position: { x: -3, y: 51.7, z: 0 } };
-    for (let t = 0; t <= 400; t += 16) stanceFrame([husk], { x: 0, y: 50.5, z: 0 }, { position: { x: 0, y: 51.7, z: 0 } }, t, 1 / 60);
+    for (let t = 0; t <= 400; t += 16) stanceFrame([husk], { x: 0, y: 50.5, z: 0 }, { position: { x: 0, y: 51.7, z: 0 } }, 1 / 60, t);
     expect([getStance().engaged, getStance().w], 'SETUP: the stance did not engage before the load').toEqual([true, 1]);
     const moved = [];
     useGameStore.setState({ playerRigidBodyRef: { current: { setTranslation: (p) => moved.push(p), setLinvel: () => {} } } });

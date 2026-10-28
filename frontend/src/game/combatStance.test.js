@@ -60,7 +60,10 @@
 //   form, which blends twice) -> RED; R9 the bound only while the stick moves -> RED; R10 the hard limit dropped -> RED;
 //   R11 the weight inverted, 1 - w -> RED; R12 the limit 1.5x the retreat cap -> RED; R0 identity (a comment edit) ->
 //   survived.
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { tickWorldClock, isWorldFrozen } from './worldClock.js';
+import { useGameStore } from '../store/useGameStore';
+import { setActive } from '../input/inputState';
 import {
   STANCE_CAPS, MIN_CLOSING_RATE, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
   stanceVelocity, stanceStep, getStance, resetStance, engageDyM, STALL_MS, CALM_MS, ENTER_S, EXIT_S,
@@ -284,9 +287,12 @@ describe('stanceStep — engage, calm, blend (Task 4)', () => {
 
   it('stays engaged for CALM_MS after the last engaged frame, then leaves', () => {
     resetStance();
-    expect(step([mob({ x: 5 })], 0).engaged).toBe(true);
-    expect(step([], 1999).engaged).toBe(true);
-    expect(step([], 2001).engaged).toBe(false);
+    // The threat lives on out of range: a threat dead or gone ends the fight at once (its own case, at the end).
+    const m = mob({ x: 5 });
+    expect(step([m], 0).engaged).toBe(true);
+    m.position.x = 20;
+    expect(step([m], 1999).engaged).toBe(true);
+    expect(step([m], 2001).engaged).toBe(false);
     expect(CALM_MS).toBe(2000);
   });
 
@@ -299,10 +305,11 @@ describe('stanceStep — engage, calm, blend (Task 4)', () => {
     expect(getStance().w).toBeGreaterThan(0.9); expect(getStance().w).toBeLessThan(1);
     tick(h); tick(h);
     expect(getStance().w).toBe(1);
-    while (tick([]).engaged) expect(getStance().w).toBe(1); // the calm holds the stance at full weight
-    for (let i = 1; i < 35; i++) tick([]);
+    h[0].position.x = 20; // out of range, alive
+    while (tick(h).engaged) expect(getStance().w).toBe(1); // the calm holds the stance at full weight
+    for (let i = 1; i < 35; i++) tick(h);
     expect(getStance().w).toBeGreaterThan(0); expect(getStance().w).toBeLessThan(0.1);
-    tick([]); tick([]); tick([]);
+    tick(h); tick(h); tick(h);
     expect(getStance().w).toBe(0);
     expect([getStance().threatId, getStance().awayX, getStance().awayZ], 'out of combat, no threat is kept').toEqual([null, 0, 0]);
     expect([ENTER_S, EXIT_S]).toEqual([0.2, 0.6]);
@@ -380,7 +387,7 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
     resetStance();
     const mobs = [husk(-3, 0)];
     let st;
-    for (let t = 0; t <= 400; t += 16) st = stanceFrame(mobs, { x: 0, y: 50.5, z: 0 }, cam(0, 51.7, 0), t, 1 / 60);
+    for (let t = 0; t <= 400; t += 16) st = stanceFrame(mobs, { x: 0, y: 50.5, z: 0 }, cam(0, 51.7, 0), 1 / 60, t);
     expect([st.w, st.awayX, st.awayZ], 'SETUP: the stance did not engage at full weight with away +x').toEqual([1, 1, 0]);
     return st;
   };
@@ -388,7 +395,7 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
   it('stanceFrame steps the LIVE stance and measures the height from the point the worker strikes from', () => {
     resetStance();
     const c = cam(0, 51.7, 0);
-    const st = stanceFrame([], { x: 0, y: 50.5, z: 0 }, c, 0, 1 / 60);
+    const st = stanceFrame([], { x: 0, y: 50.5, z: 0 }, c, 1 / 60, 0);
     expect(st).toBe(getStance());
     expect(st.playerY, 'the stance measured the player from a height the AI worker does not strike from').toBe(mobSensePoint(c).y);
   });
@@ -430,7 +437,7 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
     const s = getStance();
     expect([s.w, s.engaged, s.threatId, s.awayX, s.awayZ, s.gap], 'the stance came along on the teleport').toEqual([0, false, null, 0, 0, 0]);
     // the next frame at the new site, with no mob near: no calm carried, no clamp
-    const after = stanceFrame([], { x: 0, y: 120, z: 0 }, cam(0, 121.2, 0), 1000, 1 / 60);
+    const after = stanceFrame([], { x: 0, y: 120, z: 0 }, cam(0, 121.2, 0), 1 / 60, 1000);
     expect([after.engaged, after.w]).toEqual([false, 0]);
     const v = stanceWalk(MOVING(14, 0), after, { moveMult: 1 }, 1, { x: 14, z: 0 }, 1 / 60);
     expect(v.x, 'the walk at the new site was clamped against the old fight').toBe(14);
@@ -443,7 +450,7 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
 
   it('out of combat stanceWalk hands the ramp moveVector\'s output exactly, and a still stick ramps to 0', () => {
     resetStance();
-    const st = stanceFrame([], { x: 0, y: 50.5, z: 0 }, cam(0, 51.7, 0), 0, 1 / 60);
+    const st = stanceFrame([], { x: 0, y: 50.5, z: 0 }, cam(0, 51.7, 0), 1 / 60, 0);
     expect(st.w).toBe(0);
     stanceWalk(MOVING(-9.899494936611665, 9.899494936611665), st, { moveMult: 1 }, 1, { x: 0, z: 0 }, 1 / 60);
     const r = readMoveTarget();
@@ -509,7 +516,7 @@ describe('the F1 bound on the player\'s own step, at every frame interval (round
     const frames = Math.ceil(3 / dt);
     for (let f = 0; f < frames; f++) {
       const k = typeof keys === 'function' ? keys(f, dt) : keys;
-      const st = stanceFrame([mob], body, camera, now, dt);
+      const st = stanceFrame([mob], body, camera, dt, now);
       const lx = mob.position.x - camera.position.x, lz = mob.position.z - camera.position.z;
       const c = Math.cos(turn * f * dt), s = Math.sin(turn * f * dt);
       const mv = moveVector(face * (lx * c - lz * s), face * (lx * s + lz * c), k, BASE_MOVE_SPEED * form * walk);
@@ -775,5 +782,109 @@ describe('the stance\'s game clock: where each frame\'s step starts in game time
     stanceStep(st, [], { x: 5.6, y: 0, z: 0 }, 1e6 + 400, NaN);
     expect(st.atS).toBeCloseTo(base + 0.4, 12);
     expect(st.stepS).toBe(0);
+  });
+});
+
+// The controller's frame, as Components.jsx calls the seam (the world clock read inside it), and the seam on a clock a
+// test names.
+const seamFrame = (mobs, body, camera, dt) => stanceFrame(mobs, body, camera, dt);
+const seamAt = (mobs, body, camera, ms, dt) => stanceFrame(mobs, body, camera, dt, ms);
+
+describe('the stance holds while the world is held, and lets go when the fight is over', () => {
+  let nextId = 0;
+  const husk = (x, z, y = 51.7) => ({ id: `h${++nextId}`, isMob: true, type: 'zombie', passive: false, isAggro: true, health: 50, position: { x, y, z } });
+  const cam = (x, y, z) => ({ position: { x, y, z } });
+  const MOVING = (x, z) => ({ x, z, moving: true });
+  const BODY = { x: 0, y: 50.5, z: 0 };
+  const CAM = cam(0, 51.7, 0);
+  let wall = 3e9;
+  const playing = () => { useGameStore.setState({ gameStarted: true, isAlive: true, hitstopUntil: 0, hitstopStart: 0, hitstopFrozenTotal: 0 }); setActive(true); };
+  afterEach(() => { vi.restoreAllMocks(); playing(); tickWorldClock(wall += 1e6); useGameStore.setState({ gameStarted: false }); setActive(false); resetStance(); });
+
+  it('a 5 s pause mid-fight neither stalls the pursuer nor ends the calm: on resume the backpedal is still clamped', () => {
+    resetStance();
+    playing();
+    wall += 1e6;
+    const dt = 1 / 60;
+    const h = husk(-8, 0);
+    // The wall clock runs as it does in the game, through the pause: every reader of performance.now sees it.
+    const wallClock = vi.spyOn(performance, 'now').mockImplementation(() => wall);
+    // The husk chases at 3 m/s while the world runs and stands still while it is held, as the AI worker does.
+    const frame = () => { tickWorldClock(); if (!isWorldFrozen()) h.position.x += 3 * dt; const st = seamFrame([h], BODY, CAM, dt); wall += dt * 1000; return st; };
+    let st;
+    for (let i = 0; i < 60; i++) st = frame();
+    expect([st.w, st.threatId, -h.position.x > 3.5 + 1], 'SETUP: engaged at full weight on a husk outside its strike reach').toEqual([1, h.id, true]);
+    const atBefore = st.atS + st.stepS;
+    setActive(false);
+    for (let i = 0; i < 300; i++) st = frame();
+    expect(isWorldFrozen(), 'SETUP: dead input did not hold the world').toBe(true);
+    expect(st.w, 'the stance let go during the pause').toBe(1);
+    expect(st.atS + st.stepS, 'the stance\'s game clock ran through the pause').toBeCloseTo(atBefore, 9);
+    setActive(true);
+    st = frame();
+    expect([st.engaged, st.w, st.threatId], 'a 5 s pause ended the fight').toEqual([true, 1, h.id]);
+    const v = stanceWalk(MOVING(14, 0), st, { moveMult: 1 }, 1, { x: 2, z: 0 }, dt);
+    expect(v.x, 'the backpedal after the pause was not clamped').toBeLessThanOrEqual(STANCE_CAPS.retreat + 1e-9);
+    wallClock.mockRestore();
+  });
+
+  const engagedOn = (mobs) => {
+    resetStance();
+    let st;
+    for (let t = 0; t <= 400; t += 16) st = seamAt(mobs, BODY, CAM, t, 1 / 60);
+    expect([st.w, st.awayX], 'SETUP: not engaged at full weight with away +x').toEqual([1, 1]);
+    return st;
+  };
+
+  it('the last husk killed or gone: the next frame does not clamp a walk over where it stood', () => {
+    for (const end of ['killed', 'despawned']) {
+      const h = husk(-3, 0);
+      engagedOn([h]);
+      if (end === 'killed') h.health = 0;
+      const st = seamAt(end === 'killed' ? [h] : [], BODY, CAM, 416, 1 / 60);
+      expect([st.engaged, st.w, st.threatId], `the stance held on a ${end} husk`).toEqual([false, 0, null]);
+      const v = stanceWalk(MOVING(-14, 0), st, { moveMult: 1 }, 1, { x: -14, z: 0 }, 1 / 60);
+      expect(v.x, `a walk over a ${end} husk was clamped`).toBe(-14);
+    }
+  });
+
+  it('a threat killed beside another qualifier hands the fight to it, and a living threat that stops qualifying keeps the calm', () => {
+    const near = husk(-3, 0), far = husk(0, 6);
+    engagedOn([near, far]);
+    near.health = 0;
+    const st = seamAt([near, far], BODY, CAM, 416, 1 / 60);
+    expect([st.engaged, st.w, st.threatId], 'the fight did not move to the other husk').toEqual([true, 1, far.id]);
+    const live = husk(-3, 0);
+    engagedOn([live]);
+    live.isAggro = false;
+    const calm = seamAt([live], BODY, CAM, 416, 1 / 60);
+    expect([calm.engaged, calm.w, calm.threatId], 'a living threat out of the fight dropped the calm').toEqual([true, 1, live.id]);
+  });
+
+  it('a body that jumps further than any mover covers in a frame leaves the fight behind, whoever moved it', () => {
+    const h = husk(-3, 0);
+    engagedOn([h]);
+    const st = seamAt([h], { x: 40, y: 70.5, z: -25 }, cam(40, 71.7, -25), 432, 1 / 60);
+    expect([st.engaged, st.w, st.threatId], 'a teleport by a bare setTranslation kept the old fight').toEqual([false, 0, null]);
+    const v = stanceWalk(MOVING(14, 0), st, { moveMult: 1 }, 1, { x: 14, z: 0 }, 1 / 60);
+    expect(v.x).toBe(14);
+    // straight up, as the respawn coordinator places the body over the origin
+    const g = husk(-3, 0);
+    engagedOn([g]);
+    const up = seamAt([g], { x: 0, y: 120, z: 0 }, cam(0, 121.2, 0), 432, 1 / 60);
+    expect([up.engaged, up.w], 'a vertical teleport kept the old fight').toEqual([false, 0]);
+  });
+
+  it('a long frame\'s honest step is not a teleport: 4.9 m after a 0.25 s frame keeps the fight, after a 1/60 s frame it does not', () => {
+    const h = husk(-3, 0);
+    engagedOn([h]);
+    seamAt([h], BODY, CAM, 416, 0.25);
+    const kept = seamAt([h], { x: 0, y: 50.5, z: 4.9 }, cam(0, 51.7, 4.9), 666, 1 / 60);
+    expect([kept.engaged, kept.w, kept.threatId], 'a 0.25 s frame\'s step read as a teleport').toEqual([true, 1, h.id]);
+    const g = husk(-3, 0);
+    engagedOn([g]);
+    // The husk is still within reach of the new spot, so it engages again in the same frame, from a weight of 0.
+    const jumped = seamAt([g], { x: 0, y: 50.5, z: 4.9 }, cam(0, 51.7, 4.9), 432, 1 / 60);
+    expect(jumped.w, 'a 4.9 m jump after a 1/60 s frame did not read as a teleport').toBeCloseTo((1 / 60) / ENTER_S, 9);
   });
 });
