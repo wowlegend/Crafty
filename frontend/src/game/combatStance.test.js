@@ -6,7 +6,7 @@ import { tickWorldClock, isWorldFrozen } from './worldClock.js';
 import { useGameStore } from '../store/useGameStore';
 import { setActive } from '../input/inputState';
 import {
-  STANCE_CAPS, MIN_CLOSING_RATE, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
+  STANCE_CAPS, MIN_CLOSING_RATE, RETREAT_FLOOR, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
   stanceVelocity, stanceStep, getStance, resetStance, engageDyM, STALL_MS, CALM_MS, ENTER_S, EXIT_S,
   noteMoveTarget, readMoveTarget, stanceFrame, stanceWalk, teleportPlayer, dodgeBurst,
 } from './combatStance.js';
@@ -35,8 +35,17 @@ describe('the stance caps, derived from the roster (Task 2)', () => {
     expect(pursuitSpeed('moss_brute')).toBeCloseTo(5.4, 9);
     expect(MOB_TYPES.moss_brute.speed * chaseSpeedMult('moss_brute', true)).toBeLessThan(STANCE_CAPS.retreat);
   });
-  it('a slower pursuer added later fails the floor instead of making the backpedal a crawl', () => {
-    expect(() => deriveStanceCaps({ ...MOB_TYPES, slug: { speed: 1.2, passive: false } })).toThrow(/RETREAT_FLOOR/);
+  it('a slower pursuer added later is held at the floor and named, never thrown, so the game still loads', () => {
+    expect(deriveStanceCaps().violation, 'SETUP: today\'s roster already reports a violation').toBeNull();
+    const caps = deriveStanceCaps({ ...MOB_TYPES, slug: { speed: 1.2, passive: false } });
+    expect(caps.retreat, 'the backpedal became a crawl: the retreat was not held at the floor').toBe(RETREAT_FLOOR);
+    expect(caps.violation, 'the broken roster was not named').toMatch(/slug pursues at [\d.]+\) is under RETREAT_FLOOR 1\.5/);
+    expect(caps.slowest).toBe('slug');
+  });
+  it('a roster with no pursuer gets the floor and uncapped footwork, and is named', () => {
+    const caps = deriveStanceCaps({ cow: { speed: 2, passive: true }, skeleton: { speed: 3, passive: false } });
+    expect(caps).toMatchObject({ retreat: RETREAT_FLOOR, strafe: BASE_MOVE_SPEED, advance: BASE_MOVE_SPEED, slowest: null, fastest: null });
+    expect(caps.violation).toMatch(/no pursuer/);
   });
   it('out of combat travel is untouched: BASE_MOVE_SPEED is still 14', () => expect(BASE_MOVE_SPEED).toBe(14));
 });

@@ -28,7 +28,10 @@ section is the derivation). Every value below was printed from the modules on th
    pursuer, the zombie at 3.0, minus a 1.0 m/s closing rate), strafe and advance **6.5 m/s** (the fastest, the
    spider at 6.0, plus 0.5). The clamp acts on the away-from-threat component of the move velocity, whatever key or
    stick produced it. Strafe and advance scale with the form's `moveMult`; all three scale with the walk slows (the
-   heavy's charge 0.55, the string's swing slows). A slower pursuer added later fails `RETREAT_FLOOR` (1.5) at load.
+   heavy's charge 0.55, the string's swing slows). A slower pursuer added later reds
+   `frontend/tests/gates/stance-roster-gates.test.js`, which names it; the stance itself never refuses a roster at load
+   (the module is on App's import chain, so a throw there blanks the game), it holds the retreat at `RETREAT_FLOOR`
+   (1.5) and logs the violation.
 2. **Engagement**: an aggro'd hostile pursuer within **12 m** whose height difference is within its OWN vertical reach
    (`engageDyM`: 2.5 m, 3.2 for the brute, the 6 m leap for a climber). The height is measured from the point the AI
    worker strikes from (`mobSensePoint`, the eye, in `frontend/src/game/mobSenses.js`), one function for both readers.

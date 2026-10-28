@@ -13,8 +13,8 @@
 // WHAT THIS DOES NOT CHECK: terrain. heightGrid is null, so no wall, slope or A* detour enters the step; a mob
 // parked by a wall (ai.worker.js clampMove) is the stance's stall rule's business, unit-proven in
 // src/game/combatStance.test.js. The calm multiplier: every mob here is aggro'd (src/game/mobMovement.test.js has
-// it). The RETREAT_FLOOR throw and the strafe cap: today's roster never reaches the floor and nothing here measures
-// the strafe (src/game/combatStance.test.js has both).
+// it). RETREAT_FLOOR (tests/gates/stance-roster-gates.test.js has it) and the strafe cap, which nothing here measures
+// (src/game/combatStance.test.js has it).
 import { describe, it, expect, beforeAll } from 'vitest';
 import { buildMobPayload, applyMobUpdate } from '../../src/game/mobStateSync.js';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';

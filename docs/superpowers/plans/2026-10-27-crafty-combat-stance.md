@@ -311,8 +311,10 @@ git commit -m "refactor(ai): one chase multiplier, read by the worker and (next)
     Task 4's `stanceStep` skips these types too, so the exemption covers engagement and not only the derivation.
   - `pursuitSpeed(type, roster = MOB_TYPES) -> number`, meaning `roster[type].speed × chaseSpeedMult(type, true) × (archetypeFor(type).movement === 'shoulder' ? SHOULDER_CHARGE_SPEED : 1)`
   - `pursuers(roster = MOB_TYPES) -> string[]`: hostile (`!passive`) and not in `NON_PURSUERS`
-  - `deriveStanceCaps(roster = MOB_TYPES) -> { retreat, strafe, advance, slowest, fastest }`. It throws if
-    `retreat < RETREAT_FLOOR`.
+  - `deriveStanceCaps(roster = MOB_TYPES) -> { retreat, strafe, advance, slowest, fastest, violation }`. As built it
+    never throws: a retreat under `RETREAT_FLOOR` is held at the floor and named in `violation` (a throw at load
+    blanked the app, because the module is on App's import chain), and `tests/gates/stance-roster-gates.test.js` fails
+    the shipped roster on it. The throwing form in Step 1 below is the plan as first written.
   - `STANCE_CAPS`, frozen: `deriveStanceCaps()` evaluated once at load.
 
 - [x] **Step 1: Write the failing property tests**

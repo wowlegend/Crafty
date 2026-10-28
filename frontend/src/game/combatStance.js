@@ -11,8 +11,9 @@
 // velocity, whatever key produced it. The retreat cap sits MIN_CLOSING_RATE under the SLOWEST pursuer, so every
 // pursuer closes on any retreat; the strafe and advance caps sit STRAFE_MARGIN over the FASTEST, the footwork
 // pace of a fight: it out-circles any chaser's turn and cannot outrun one, because circling adds nothing to the
-// radial escape. A slower pursuer added later fails RETREAT_FLOOR at load rather than turning the backpedal into
-// a crawl.
+// radial escape. A slower pursuer added later reds tests/gates/stance-roster-gates.test.js rather than turning the
+// backpedal into a crawl; at load the stance never refuses, because this module is on App's import chain and a throw
+// here boots the game to a blank page.
 import { MOB_TYPES } from './mobTypes.js';
 import { archetypeFor } from './mobArchetypes.js';
 import { chaseSpeedMult, SHOULDER_CHARGE_SPEED } from './mobMovement.js';
@@ -28,7 +29,7 @@ export { BASE_MOVE_SPEED };
 
 /** Every pursuer closes at least this fast (m/s) on a player retreating at the cap. */
 export const MIN_CLOSING_RATE = 1.0;
-/** A derived retreat cap below this is refused at load: the backpedal would read as a crawl. */
+/** No retreat cap goes below this: the backpedal would read as a crawl. */
 export const RETREAT_FLOOR = 1.5;
 /** The strafe and advance caps sit this far (m/s) over the fastest pursuer. */
 export const STRAFE_MARGIN = 0.5;
@@ -53,27 +54,41 @@ export function pursuers(roster = MOB_TYPES) {
 }
 
 /**
- * The stance caps from a roster: { retreat, strafe, advance, slowest, fastest } (m/s, and the two type names the
- * caps were read from). Throws when the roster has no pursuer, or when the retreat cap falls under RETREAT_FLOOR.
+ * The stance caps from a roster: { retreat, strafe, advance, slowest, fastest, violation } (m/s, the two type names
+ * the caps were read from, and what the roster broke, or null). A broken roster still gets usable caps, never a throw:
+ *   - a retreat under RETREAT_FLOOR is held AT the floor, so the slowest pursuer closes slower than MIN_CLOSING_RATE
+ *     (or not at all) and that one fight can be outwalked;
+ *   - a roster with no pursuer gets the floor and uncapped strafe and advance; nothing engages the stance then.
  */
 export function deriveStanceCaps(roster = MOB_TYPES) {
   const ps = pursuers(roster);
-  if (ps.length === 0) throw new Error('deriveStanceCaps: the roster has no pursuer (empty denominator)');
+  if (ps.length === 0) {
+    return {
+      retreat: RETREAT_FLOOR, strafe: BASE_MOVE_SPEED, advance: BASE_MOVE_SPEED, slowest: null, fastest: null,
+      violation: 'deriveStanceCaps: the roster has no pursuer (empty denominator)',
+    };
+  }
   const speeds = ps.map((t) => pursuitSpeed(t, roster));
   const lo = Math.min(...speeds);
   const hi = Math.max(...speeds);
   const slowest = ps[speeds.indexOf(lo)];
   const fastest = ps[speeds.indexOf(hi)];
-  const retreat = lo - MIN_CLOSING_RATE;
-  if (retreat < RETREAT_FLOOR) {
-    throw new Error(`deriveStanceCaps: retreat ${retreat} m/s (${slowest} pursues at ${lo}) is under RETREAT_FLOOR ${RETREAT_FLOOR}`);
-  }
+  const derived = lo - MIN_CLOSING_RATE;
+  const violation = derived < RETREAT_FLOOR
+    ? `deriveStanceCaps: retreat ${derived} m/s (${slowest} pursues at ${lo}) is under RETREAT_FLOOR ${RETREAT_FLOOR}; held at the floor`
+    : null;
   const strafe = hi + STRAFE_MARGIN;
-  return { retreat, strafe, advance: strafe, slowest, fastest };
+  return { retreat: Math.max(derived, RETREAT_FLOOR), strafe, advance: strafe, slowest, fastest, violation };
 }
 
 /** Today's caps, derived once at load. */
 export const STANCE_CAPS = Object.freeze(deriveStanceCaps());
+
+/** What the shipped roster broke when this module loaded, or null. The caps above are already the clamped ones. */
+export const STANCE_ROSTER_VIOLATION = STANCE_CAPS.violation;
+// A production build drops every console call (vite.config.js esbuild.drop), so this reaches dev and tests only; the
+// roster gate is what keeps a broken roster from shipping.
+if (STANCE_ROSTER_VIOLATION) console.error(STANCE_ROSTER_VIOLATION);
 
 const lerp = (a, b, t) => a + (b - a) * t;
 

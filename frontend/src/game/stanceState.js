@@ -1,9 +1,9 @@
 // stanceState.js — the live combat stance and its stall clocks, without the caps (game/combatStance.js).
 //
 // The store teleports the body on a save load and must leave the fight behind with it, but it must not load
-// combatStance.js: that module derives its caps from the roster when it loads and throws on a roster it refuses, and
-// the menus, the saves and every panel read the store. So the state and the two calls the store needs live here,
-// with no roster import, and combatStance.js steps the same objects.
+// combatStance.js: that module imports worldClock.js, which imports the store, so the two would form an import cycle,
+// in which a top-level read of the other's exports meets a binding not yet initialised. So the state and the two calls
+// the store needs live here, with no roster or store import, and combatStance.js steps the same objects.
 
 /** The live stance (combatStance.js stanceStep documents each field). Never subscribed: read transiently. */
 export const stance = {
