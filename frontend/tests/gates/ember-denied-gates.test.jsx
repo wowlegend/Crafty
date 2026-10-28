@@ -15,8 +15,9 @@ import TouchControls from '../../src/ui/TouchControls.jsx';
 // in both locales, and drive the touch ring by its real pointer events.
 //
 // WHAT THIS DOES NOT CHECK: that the keydown handler calls it (a real R press in tests/e2e/ember.spec.js shows the
-// notice), or the refusals the Components spend sites give when a bind, a fuse or an armed imbue lands on a bar
-// another verb has emptied (no test drives those).
+// notice), the fuse's notice, which the frame loop raises (src/game/soulbind.test.js, and the X case of
+// tests/e2e/ember.spec.js), or the refusals the Components spend sites give when a bind, a fuse or an armed imbue lands
+// on a bar another verb has emptied (no test drives those at the call site).
 //
 // Mutation-Proof: see the commit trailer.
 
@@ -47,6 +48,9 @@ afterEach(() => {
 });
 
 describe('denyAspectPress', () => {
+  // Every press below is a live one (input held, player alive) unless the case says otherwise.
+  beforeEach(() => setActive(true));
+
   it('covers the four Aspect verbs', () => {
     expect(ASPECT_VERBS.map((a) => a.verb).sort()).toEqual(Object.keys(PRICE).sort());
   });
@@ -72,6 +76,25 @@ describe('denyAspectPress', () => {
     useGameStore.setState({ unlockedTalents: {}, ember: 0 });
     expect(denyAspectPress('roar', useGameStore.getState())).toBe('aspect-locked');
     expect(notes.map((n) => n.text)).toEqual(['WILDHEART not yet unlocked — open Talents (U)']);
+  });
+
+  // The keydown handler is on window, so R, V, X and Z typed into a text field (a world's name) or pressed while dead
+  // reach it. Those presses do nothing, so they say nothing, the way Shift arms no dodge then.
+  it('says nothing while input is released or the player is dead, for a short bar or a locked verb', () => {
+    const live = () => { setActive(true); useGameStore.setState({ isAlive: true }); };
+    for (const [why, enter] of [['input released', () => setActive(false)], ['dead', () => useGameStore.setState({ isAlive: false })]]) {
+      for (const [bar, talents] of [['short', ALL], ['locked', {}]]) {
+        live();
+        useGameStore.setState({ unlockedTalents: talents, ember: 0 });
+        expect(denyAspectPress('roar', useGameStore.getState()), `SETUP: a live ${bar} roar was not refused`).not.toBeNull();
+        notes.length = 0;
+        enter();
+        for (const verb of Object.keys(PRICE)) {
+          expect(denyAspectPress(verb, useGameStore.getState()), `${verb}, ${bar}, ${why}: refused with a reason`).toBeNull();
+        }
+        expect(notes, `a ${bar} press with ${why} raised a notice`).toEqual([]);
+      }
+    }
   });
 
   it('a press that releases is not a spend and says nothing', () => {
