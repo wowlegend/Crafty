@@ -109,6 +109,57 @@ that entry's items. Each stands while it earns its place; reversing one takes a 
    Building pays through ember and the siege, and the quest line moves to the spine (the quest-spine brief). Door:
    their ids in saved quest progress ride the tombstone pass-through (plan row 20) for one release.
 
+## 2026-10-28 — [LOOP] Close-quarters combat: the stance, the windup chevrons and the light string (`feat/combat-stance`)
+
+**Decided by the combat-stance lane under the standing grant; the constants an encounter or boss tuner balances
+against.** Plan: `docs/superpowers/plans/2026-10-27-crafty-combat-stance.md` (its "Why the numbers are what they are"
+section is the derivation). Every value below was printed from the modules on the branch, not copied from the plan.
+
+1. **The stance caps are derived, not typed** (`frontend/src/game/combatStance.js`): retreat **2.0 m/s** (the slowest
+   pursuer, the zombie at 3.0, minus a 1.0 m/s closing rate), strafe and advance **6.5 m/s** (the fastest, the
+   spider at 6.0, plus 0.5). The clamp acts on the away-from-threat component of the move velocity, whatever key or
+   stick produced it. Strafe and advance scale with the form's `moveMult`; all three scale with the walk slows (the
+   heavy's charge 0.55, the string's swing slows). A slower pursuer added later reds
+   `frontend/tests/gates/stance-roster-gates.test.js`, which names it; the stance itself never refuses a roster at load
+   (the module is on App's import chain, so a throw there blanks the game), it holds the retreat at `RETREAT_FLOOR`
+   (1.5) and logs the violation.
+2. **Engagement**: an aggro'd hostile pursuer within **12 m** whose height difference is within its OWN vertical reach
+   (`engageDyM`: 2.5 m, 3.2 for the brute, the 6 m leap for a climber). The height is measured from the point the AI
+   worker strikes from (`mobSensePoint`, the eye, in `frontend/src/game/mobSenses.js`), one function for both readers.
+   A mob outside its strike reach that makes less than **0.5 m** of its own progress in **1.5 s** stops qualifying
+   (the stall release). The stance leaves **2 s** after the last qualifier, blends in over 0.2 s and out over 0.6 s,
+   and keeps its threat until another is 1 m nearer.
+3. **Exceptions, by name**: the walking moss brute (1.8 m/s) can be backpedalled from on purpose (its threat is the 5.4
+   m/s charge), and the skeleton never engages the stance: it kites, and counting it would pin a player walking away
+   at the edge of its range.
+4. **The boss and the dragon are NOT in the stance**: it scans the ECS mobs, and the boss is not one. A dragon fight with
+   no adds keeps the 14 m/s walk. Whether the dragon joins (through its own seam, with a pursuit speed for a flier) is
+   the dragon lane's decision (`docs/superpowers/plans/2026-10-27-crafty-shadow-dragon.md`).
+5. **Travel stays Kevin's 14 m/s.** At stance weight 0 the controller's target equals `moveVector`'s exactly.
+6. **The combat zoom is accepted as intended**: the existing FOV formula reads the achieved speed, so engaging mid-run
+   narrows the view from about 88.5 to about 77.7 degrees. **The by-eye verdict on it is NOT yet taken** (the plan's
+   Task 12 dev-session check did not run). If it reads as a jolt, the named fallback is to feed the FOV the pre-clamp
+   speed while the stance is engaged.
+7. **The night-travel fraction with the stance engaged (refute F1:13) is NOT measured.** It is owed to a dev
+   session, together with how many engaged spans ended by the stall rule; a high fraction comes back here as a question,
+   never as a silent retune.
+8. **The light string** (`frontend/src/game/meleeString.js`): three steps, a **650 ms** window to the next swing, a
+   **200 ms** buffer before the 300 ms cooldown ends, a finisher at **1.5x** with a **140 degree** arc and a 2x shove, a
+   heavy-tier hitstop and the slam's thump, then **500 ms** of recovery. A dodge keeps an open window alive (the step is
+   kept); it never revives a lapsed one. **A thrown heavy ends the string and holds the next light swing 300 ms.** Lost
+   input, a beast form and death end it too. The string is the human sword's, not a form's.
+9. **The swing slows the walk out of combat too** (0.6 for 120 ms after a light swing, 0.4 for 220 ms after a
+   finisher), as the heavy's charge slow already did. It is the milestone's one out-of-combat movement change.
+10. **The windup chevrons** (`frontend/src/game/windupChevrons.js`, `frontend/src/ui/WindupChevrons.jsx`): at most 4,
+    for hostiles winding up within 12 m and off screen by the camera's projection (so a steep pitch counts), on a frame
+    inset 120 px from the top, 96 from the sides, 140 from the bottom on desktop and round(0.11 h) + 170 on touch. The
+    layer loads behind a `React.lazy` boundary: in the boot chunk the lane measured +9,024 B against its +9,000 B
+    share; lazy, +6,311 B (index 725,739 B on the branch, 34,261 B under the 760,000 B ceiling).
+
+**What is not proven yet, and blocks the merge**: every e2e verdict for the chevrons, the string and the touch proofs
+(their headers say `Mutation-Proof: OWED`), the chase sub-assertions at CI's frame rate, and the plan's reviews. Load
+above 115 on 14 cores ruled out local runs. The stance's own e2e has local verdicts (Task 5).
+
 ## 2026-10-28 — [KEVIN] One CLAUDE.md: the symlink and its directory are gone
 
 **Decided by Kevin, in his words:** "i don't really like how the agents.md symlinks to claude.md in this repo, let's just have one claude.md."

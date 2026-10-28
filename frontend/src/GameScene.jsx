@@ -194,8 +194,8 @@ export const GameScene = React.memo(function GameScene({
   const focused = useWindowFocused({ finePointer });
   const pace = paceFor({ frameCap, titleCovering, panelCovering, unfocused: !focused, harness: isCaptureMode || isPerfProbe() });
   // The PLAYER's frame cap in force, for the Show Stats readout (render/FrameStats.jsx): the setting, unless a harness
-  // steps its own frames. Not `pace.loop`: behind the title that is the TITLE_FPS pace, which the readout's own drawn-
-  // frame count already shows, and the cap line names the setting that play will run at.
+  // steps its own frames. Not `pace.loop`: behind the title, a panel or an unfocused window that is the reduced pace,
+  // which the readout's own drawn-frame count already shows, and the cap line names the setting that play will run at.
   const capActive = frameCap > 0 && !isCaptureMode && !isPerfProbe();
   const q = TIERS[qualityTier] || TIERS.low;
   const budgetDpr = usePixelBudgetDpr(qualityTier);

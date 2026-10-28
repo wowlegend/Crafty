@@ -1784,3 +1784,11 @@ colour, which is the style's own vocabulary — and the crawl disappears. The co
 showing their tile pattern. A still frame cannot show the crawl; walking with it off and then on will.
 
 **Answer:** ON / OFF. ON is a one-line change plus the lock test; I will do it on your word.
+
+## 2026-10-28 — FYI, no question: the close-quarters combat constants [LOOP]
+
+Once a fight is joined you can no longer outwalk it: an aggro'd mob within 12 m that can reach you caps the walk AWAY
+from it at 2.0 m/s (strafe and advance 6.5), travel stays your 14 m/s, the dodge is the escape. Off-screen windups get a chevron
+at the screen edge. The light attack is a three-step string whose third hit is a 1.5x finisher sweeping 140 degrees.
+The full constants and their reasons are in `DECISIONS.md` 2026-10-28, "Close-quarters combat". Not on main yet:
+`feat/combat-stance` waits on CI and its reviews.

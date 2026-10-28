@@ -22,7 +22,7 @@ import { rollWander } from '../game/mobWander.js';
 import { findLocalPath, clampMove, CLIMBERS, gridOrigin, cellOf, cellCentre } from '../game/localPath.js';
 import { isStaggered } from '../game/perfectDodge.js';
 import { dist3D, withinSense, canReach, LEAP_RANGE } from '../game/mobSenses.js';
-import { movementGoal, SHOULDER_CHARGE_SPEED } from '../game/mobMovement.js';
+import { movementGoal, chaseSpeedMult, SHOULDER_CHARGE_SPEED } from '../game/mobMovement.js';
 import { archetypeFor } from '../game/mobArchetypes.js';
 
 // PURE per-key stream factory only. Importing the module's FLAG would be meaningless here: a worker is
@@ -324,7 +324,8 @@ self.onmessage = function(e) {
         const dist = Math.sqrt(tdx * tdx + tdz * tdz);
         
         if (dist > 0.15) {
-          const speedMult = (isAggro ? (type === 'spider' ? 2.0 : 1.5) : 1.0) * (charging ? SHOULDER_CHARGE_SPEED : 1.0);
+          // The chase multiplier is the ONE in game/mobMovement.js, which the combat stance also reads.
+          const speedMult = chaseSpeedMult(type, isAggro) * (charging ? SHOULDER_CHARGE_SPEED : 1.0);
           const coverBoost = isCoverSeeking ? 1.2 : 1.0;
           const actualSpeed = speed * speedMult * coverBoost * delta;
           

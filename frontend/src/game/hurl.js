@@ -2,6 +2,7 @@
 // Rapier/store, node-testable, gate-clean). Mobs are COLLIDER-LESS, so impact is proximity math
 // over the caller's mob snapshot, never physics contacts. The hit event carries pos + normalized
 // flight dir — the seam M4's base-as-anvil wall ray consumes (this module stays wall-agnostic).
+import { MAX_FRAME_STEP_SEC } from './frameStep.js';
 
 export const HURL_SPEED = 22;        // m/s along camera-forward (M2 stand-in ballpark)
 const HURL_LIFT = 2;          // small initial vy lift -> readable arc (module-internal)
@@ -53,7 +54,7 @@ export function stepHurl(h, dt, mobs) {
 }
 
 const HURL_MAX_STEP_SEC = 0.05;  // 1.1m/substep at HURL_SPEED < HIT_RADIUS -> no tunneling (module-internal)
-const HURL_FRAME_CAP_SEC = 0.25; // a pathological frame advances the flight at most this much (module-internal)
+const HURL_FRAME_CAP_SEC = MAX_FRAME_STEP_SEC; // the world's one frame step (game/frameStep.js)
 
 /**
  * Frame-spike-safe stepping: integrates in substeps of ≤ HURL_MAX_STEP_SEC so a long frame

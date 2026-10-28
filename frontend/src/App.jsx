@@ -49,6 +49,8 @@ import { resolveSpawnGround, spawnTargetY, SPAWN_PROBE_MAX_FAILS } from './game/
 import { surfaceBlockAt } from './world/climate.js';
 import { HEARTH_Y } from './world/homeAnchor.js';
 import { FEET_OFFSET } from './render/BeastAvatar.jsx';
+import { getStance, readMoveTarget } from './game/combatStance.js';
+import { readString } from './game/meleeString.js';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
 // whole PrimitivesShowcase subtree (incl. showcase-scene.png + baked game-icons)
@@ -341,6 +343,14 @@ function GameApp({ experienceSystem }) {
       id: e.id, type: e.type, health: e.health, passive: !!e.passive, x: e.position.x, y: e.position.y, z: e.position.z,
       knockback: !!e.knockback, windupUntil: e.windupUntil || 0, staggerUntil: e.staggerUntil || 0,
     })));
+    // The combat stance (game/combatStance.js) and the controller's own move-target record, for the combat-stance E2E.
+    // The stance records the threat's and the player's positions as it read them, before deriving `away`, so the spec
+    // rebuilds the direction itself and judges the command against literal caps. Read-only copies; DEV-only.
+    registerTestHook('readStance', () => ({ ...getStance() }));
+    registerTestHook('readMoveTarget', () => ({ ...readMoveTarget() }));
+    // The light string (game/meleeString.js), for the melee-string and combat-touch E2Es: they judge a buffered fire by
+    // its state (lastSwingAt / lastSwingStep), not by a delay, and a dodge by its own stamp (cancelAt). A read-only copy.
+    registerTestHook('readString', () => ({ ...readString() }));
     // PLANT a windup on a live mob, due `dueMs` from now on the WORLD clock — for the perfect-dodge E2E, which must
     // press INTO a windup's last 220 ms. A natural windup is 380 ms; a loaded CI runner draws a frame every few
     // hundred, so a windup there is visible for one frame or none and a press cannot be timed into it (CI run

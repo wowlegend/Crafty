@@ -25,6 +25,9 @@ import { render, cleanup, act } from '@testing-library/react';
  *   G7 showStats ignored (FrameStats always mounted) -> "mounts the readout only with Show Stats on"
  *   I0 identity (a comment edit in GameScene.jsx) SURVIVED.
  *
+ * THE SEAM IN onCreated: glDiagnostics owns the listeners and game/contextRecovery.js the recovery (a loss releases a
+ * locked pointer, and a restore clears the loss only once three has drawn); the first test pins that both still act.
+ *
  * BLIND SPOT: the Canvas is a stub, so that R3F really calls onCreated once with the live WebGLRenderer, and that a real
  * GPU context loss reaches the canvas, is the e2e's (tests/e2e/lookbook-seam.spec.js: WEBGL_lose_context on the live
  * canvas, read back from the readout and the seam). The perf-probe leg of capActive is not driven (isPerfProbe reads
@@ -93,27 +96,40 @@ afterEach(() => {
 });
 
 describe('GameScene wires the diagnostics', () => {
-  it('attaches the context-loss listener to the canvas R3F created', () => {
-    render(<GameScene isWorldBuilt showStats={false} />);
-    expect(h.created, 'the Canvas stub never called onCreated — nothing below is measured').toBe(1);
-    expect(gl.contextLossCount(), 'presence: no loss yet').toBe(0);
-    const lost = new Event('webglcontextlost', { cancelable: true });
-    h.gl.domElement.dispatchEvent(lost);
-    expect(gl.contextLossCount(), 'a loss on the game canvas was not counted — no listener on it').toBe(1);
-    expect(lost.defaultPrevented, 'the loss was not preventDefault()ed: the browser will not restore the context').toBe(true);
-    expect(useGameStore.getState().isWebGLContextLost).toBe(true);
-    // The restore goes through the recovery (game/contextRecovery.js, #24): the flag, and so the context-loss panel, stays
-    // up until three has DRAWN since the restore, so the panel never drops over a blank canvas.
-    const rafs = [];
-    vi.stubGlobal('requestAnimationFrame', (fn) => { rafs.push(fn); return rafs.length; });
-    const flush = () => rafs.splice(0).forEach((fn) => fn());
-    h.gl.domElement.dispatchEvent(new Event('webglcontextrestored'));
-    flush();
-    expect(rafs.length, 'presence: the recovery is waiting on a frame, not finished or never started').toBe(1);
-    expect(useGameStore.getState().isWebGLContextLost, 'the flag cleared before three drew: the panel would drop over a blank canvas').toBe(true);
-    h.gl.info.render.frame = 1;
-    flush();
-    expect(useGameStore.getState().isWebGLContextLost, 'the restore did not clear the flag once three drew').toBe(false);
+  it('attaches the context-loss listener to the canvas R3F created, and the recovery acts on it', () => {
+    // A locked pointer, so the loss handler's release is observable (jsdom has no pointer lock of its own).
+    const exitPointerLock = vi.fn();
+    Object.defineProperty(document, 'pointerLockElement', { configurable: true, get: () => h.gl.domElement });
+    document.exitPointerLock = exitPointerLock;
+    try {
+      render(<GameScene isWorldBuilt showStats={false} />);
+      expect(h.created, 'the Canvas stub never called onCreated — nothing below is measured').toBe(1);
+      expect(gl.contextLossCount(), 'presence: no loss yet').toBe(0);
+      const lost = new Event('webglcontextlost', { cancelable: true });
+      h.gl.domElement.dispatchEvent(lost);
+      expect(gl.contextLossCount(), 'a loss on the game canvas was not counted — no listener on it').toBe(1);
+      expect(lost.defaultPrevented, 'the loss was not preventDefault()ed: the browser will not restore the context').toBe(true);
+      expect(useGameStore.getState().isWebGLContextLost).toBe(true);
+      expect(exitPointerLock, 'a loss left the pointer locked: a desktop player cannot click the way back')
+        .toHaveBeenCalledTimes(1);
+      // The restore goes through the recovery (game/contextRecovery.js, #24): the flag, and so the context-loss panel,
+      // stays up until three has DRAWN since the restore, so the panel never drops over a blank canvas. The frames are
+      // stepped by hand, so the wait is driven, not raced.
+      const rafs = [];
+      vi.stubGlobal('requestAnimationFrame', (fn) => { rafs.push(fn); return rafs.length; });
+      const flush = () => rafs.splice(0).forEach((fn) => fn());
+      h.gl.domElement.dispatchEvent(new Event('webglcontextrestored'));
+      flush();
+      expect(rafs.length, 'presence: the recovery is waiting on a frame, not finished or never started').toBe(1);
+      expect(useGameStore.getState().isWebGLContextLost,
+        'the restore cleared the loss before three drew a frame: the panel went away over a black canvas').toBe(true);
+      h.gl.info.render.frame = 1; // three draws
+      flush();
+      expect(useGameStore.getState().isWebGLContextLost, 'a drawn frame after the restore did not clear the flag').toBe(false);
+    } finally {
+      delete document.pointerLockElement;
+      delete document.exitPointerLock;
+    }
   });
 
   it('records the renderer R3F created, for the readout and the seam', () => {
