@@ -17,13 +17,33 @@ import {
 // around it moves when the paths arrive. Every baked icon shares this viewBox.
 const GAME_VIEWBOX = '0 0 512 512';
 let gameIcons = null;
+let pendingGameIcons = null;
+let gameIconFailureLogged = false;
 const gameIconListeners = new Set();
-import('./gameIcons.js').then(
-  (m) => { gameIcons = m.GAME_ICONS; for (const notify of gameIconListeners) notify(); },
-  // A failed fetch leaves the placeholders: a missing glyph must not take the UI down with it.
-  () => {},
-);
-const subscribeGameIcons = (notify) => { gameIconListeners.add(notify); return () => gameIconListeners.delete(notify); };
+
+// A rejected load is forgotten, so the next Icon to mount asks again (offline, a CDN hiccup, a deploy that 404s the
+// old hash) instead of every game icon staying a placeholder for the rest of the session. A failure is logged once:
+// a flaky network would otherwise print one error per retry.
+function requestGameIcons() {
+  if (gameIcons || pendingGameIcons) return;
+  pendingGameIcons = import('./gameIcons.js').then(
+    (m) => { gameIcons = m.GAME_ICONS; for (const notify of gameIconListeners) notify(); },
+    (err) => {
+      pendingGameIcons = null;
+      if (gameIconFailureLogged) return;
+      gameIconFailureLogged = true;
+      console.error('Icon: the game-icon chunk failed to load; game icons stay placeholders until a later icon retries it', err);
+    },
+  );
+}
+requestGameIcons();
+
+// Subscribing is the mount, so it is where a failed load gets its retry.
+const subscribeGameIcons = (notify) => {
+  gameIconListeners.add(notify);
+  requestGameIcons();
+  return () => gameIconListeners.delete(notify);
+};
 const readGameIcons = () => gameIcons;
 
 // Lucide chrome icons (outline, stroke-driven — not game content).
