@@ -29,9 +29,6 @@ async function bootAndPlay(page) {
   }
 }
 
-// CANDIDATE B (2026-10-28): held at 1280x800 under the smaller suite default — its premise is the 1280x800 screen on which the 4-column panel overflows.
-test.use({ viewport: { width: 1280, height: 800 } });
-
 test.describe('B5 — the Progression panel header + close button are reachable', () => {
   test('the panel header is within the viewport at default scroll (not clipped above)', async ({ page }) => {
     // 180s, matching tier-downgrade-reclaim. Two 90s boot waits plus a 45s modal wait cannot all max out

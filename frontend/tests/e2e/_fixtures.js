@@ -26,8 +26,7 @@ let seq = 0;
 // before any of its scripts run, so both R3F canvases are created under it; a spec that needs the canvas at its own
 // pixel ratio opts out with `test.use({ e2eDprCap: null })` and says why beside it. A fixture OPTION, not a constant:
 // the default is the one place it is set, and an opt-out is visible in the spec it changes.
-// CANDIDATE B of the runner-speed A/B (2026-10-28): the cap is OFF here so the smaller default viewport is measured alone.
-export const E2E_DPR_CAP = null;
+export const E2E_DPR_CAP = 0.5;
 
 /** The live canvases' drawing-buffer ratio (device px per CSS px), read off the DOM: what the cap actually did. */
 const readCanvasRatios = (page) =>
