@@ -1004,3 +1004,25 @@ grain is rings in a two-texel rim around a light pith; leaves are lit lobes over
 is vertical ridges with a staggered spine column; ores are two-to-four-texel nuggets with a darker rim; cobblestone
 is a running bond of rounded cobbles in two tones. The spine columns read as dotted lines on the sheet; they are left
 as they are, since a cactus side is small on screen.
+
+### Unit 2: the face grammar, measured
+
+- `src/world/materialGrammar.js`: the roles, the three variants above the id space, the remaps (grass underside to
+  dirt, snow underside to stone), `buildGrammar` and the generated GLSL. `LIP_TEXELS` is 6, not 4: at 4 the lip was a
+  hairline on the contact sheet, and six rows (about a fifth of a block) is the Minecraft-like proportion; the drips
+  reach one or two rows lower in about a third of the columns.
+- `src/world/mesher.js`: X faces push `(0,0, 0,w, h,w, h,0)`, so `v` rises with world Y on all four side directions.
+  `colors.b` stays 0. 64 `realChunk` fixtures, median of 15 interleaved runs: 171.0 ms before, 170.8 ms after (ratio
+  0.999, load average about 23, so the noise is wide; the change is the push order only).
+- `src/world/proceduralTextures.js`: 19 layers (`TEXTURE_LAYER_COUNT`); bark is vertical furrows in the wood tones;
+  the grass and snow sides are the dirt tile and the uncracked stone matrix under a lip of the grass and snow tiles
+  (a crack under bright snow would be under 0.35 of the layer's mean).
+- `src/world/Terrain.jsx`: `FACE_GLSL` spliced after `vUv = uv;` in the vertex `main()` and before the sample, which
+  reads `texLayer`; `layerIndex` stays the block type.
+- Bytes: index 641,213 to 643,640 (+2,427 for Unit 2, over the plan's +1,500 for it, because the three variant
+  painters live in the main chunk with the generator; +3,486 for the milestone, inside its +8,000 ceiling and the
+  700,000 budget, which was not raised). The worker chunk grew 30 B.
+- Gates: `material-grammar-gates` (16 tests), `mesher-geometry-gates` (14), the derived depth in
+  `proceduralTextures.test.js`, the sampler line in `grass-biome-tint-gates`, and `prod-smoke-gates`' mip-verdict
+  lines now read their counts off the texture (19 layers: 18 drawn, 103,740 B). Under the mutant that restores the
+  old X-face UVs, the orientation test goes red and the 1:1 UV-length test stays green, as the plan predicted.

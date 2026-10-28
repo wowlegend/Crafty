@@ -39,6 +39,29 @@ row 44 of the SOTA reset). Numbered on from that entry's last item. Each stands 
    clustering, seams, the frozen means, no texel under 0.35 of its layer's mean but a nugget, stone never glowing).
    **Cost:** no GPU change (same array, same fetch); the index chunk grew 1,059 B. Mutations are in the commit's
    trailers.
+26. **A block's top, sides and underside may show different tiles** (`frontend/src/world/materialGrammar.js`). Grass
+   sides show a turf lip over dirt (`grass_side`), snow sides a snow lip over stone (`snow_side`), trunk sides bark
+   (`wood_side`) while a cut top keeps its rings; the underside of turf is dirt and of snow is stone. The lip is
+   painted in the tile's top six rows (`LIP_TEXELS`), running one or two rows lower in about a third of the columns,
+   and the mesher now runs `v` up world Y on every side face (it ran `u` up the wall on X faces), so each block of a
+   stacked wall shows its own lip. **Why:** grass hills read as green cliffs with no soil under the turf, and every
+   trunk side showed end-grain bullseyes. **How it is chosen:** the terrain's vertex stage takes the face's role from
+   its normal and reads the layer from a const table generated from the same `Uint8Array` the node gates read; the
+   fragment stage samples that layer, and the biome tint, the ore glow and the leaf feel still key on the block type.
+   **Cost:** about five ALU per vertex and one flat varying, no extra texture fetch; the array is 19 layers (103,740 B
+   with its chain on the GPU, +16,380); the mesher's time is unchanged (64 real chunks, median ratio 0.999); the index
+   chunk grew 2,427 B more (3,486 B for items 25 and 26 together). **Gates:** `material-grammar-gates` (the table
+   against literals, the generated GLSL read back as JavaScript for every block and axis normal, the derivation for a
+   new id, the variants made of their parents, bark's vertical grain) and `mesher-geometry-gates` (every normal's
+   role; `v` rising 1:1 with world Y from a whole block height on all four side directions). **Not proven here:**
+   WebKit (iPad). The look on Chromium is in the plan's record, on eye-level lookbook frames.
+27. **The face layer is derived in the terrain's vertex stage, never baked into the mesh, and the array's depth is
+   derived.** `colors.b` stays unwritten, for the block-light level a later light field writes there (the lantern
+   plan, `docs/superpowers/plans/2026-10-27-crafty-lantern-block-light.md`, and its brief,
+   `docs/superpowers/plans/2026-10-28-crafty-brief-lantern-costed.md`); a gate fails if the generated GLSL reads it.
+   The texture array is the block id space plus the face variants (`TEXTURE_LAYER_COUNT`), with the variants above the
+   ids, so the lantern's id 16 makes the array 20 deep and moves the variants to 17-19 with no edit to the grammar.
+   `frontend/tests/world/proceduralTextures.test.js` held the count at a literal 16; it now asserts the derivation.
 
 ## 2026-10-28 — [LOOP] The SOTA reset's standing decisions (W1-H)
 

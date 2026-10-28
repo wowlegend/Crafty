@@ -44,6 +44,7 @@ import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE
 import { makeMobFloorProbe } from './mobFloorProbe.js';
 import { oreGlowTable, oreGlowGlsl, oreGlowTexture } from './oreGlow.js';
 import { leafFeelGlsl } from './leafFeel.js';
+import { faceLayerGlsl } from './materialGrammar.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
@@ -86,6 +87,7 @@ const compileShader = (shader) => {
         varying float vAO;
         varying vec3 vWorldPos; // S(tex) de-tile: world position for per-cell value variation
         ${LEAF_GLSL.vertexDecl}
+        ${FACE_GLSL.vertexDecl}
         #ifndef USE_UV
         varying vec2 vUv;
         #endif
@@ -100,6 +102,7 @@ const compileShader = (shader) => {
             vBiome = color.g; // Q14: biome id, baked into the free channel by the mesher
             vAO = aAO; // S1 vertex AO 0..3 -> fragment diffuse multiplier
             vUv = uv;
+            ${FACE_GLSL.vertex}
 `
     );
 
@@ -127,6 +130,7 @@ const compileShader = (shader) => {
         uniform vec3 uAoFloor;   // S11 the colour a fully-occluded corner reads as (sky HUE, fixed luminance)
         flat varying float vBlockType;
         flat varying float vBiome; // Q14 biome id from the vertex stage
+        ${FACE_GLSL.fragmentDecl}
         ${TINT_GLSL.decl}
         ${CLOUD_SHADOW_GLSL.decl}
         ${ORE_GLOW_GLSL.decl}
@@ -144,10 +148,13 @@ const compileShader = (shader) => {
         `
         float layerIndex = floor(vBlockType + 0.5); // Round to nearest integer to prevent floating-point interpolation drift/truncation to layer 0
         
+        // The tile this face shows (world/materialGrammar.js): a block's top, side or underside layer. layerIndex
+        // stays the block type, which the tint, the ore glow and the leaf feel key on.
+        ${FACE_GLSL.fragment}
         // Sample the tile from its array layer. Raw vUv, NOT fract(vUv): the texture wraps REPEAT, and fract
         // makes the UV derivative jump at every block edge, where the GPU would then pick the smallest mip
         // and draw a grid line around every block.
-        vec4 texColor = texture(voxelTextures, vec3(vUv.x, vUv.y, layerIndex));
+        vec4 texColor = texture(voxelTextures, vec3(vUv.x, vUv.y, texLayer));
         
         // Set the diffuse color to the sampled texture (before lighting calculations).
         // The block texture array (a CompressedArrayTexture of plain RGBA8 levels) stores sRGB-display bytes at
@@ -273,6 +280,7 @@ const LAND_GRADE_GLSL = landGradeGlsl(); // shared with the far field (world/Far
 const biomeTintMaskUniform = biomeTintMask(TEX_LAYERS);
 const ORE_GLOW_GLSL = oreGlowGlsl(TEX_LAYERS);
 const LEAF_GLSL = leafFeelGlsl();
+const FACE_GLSL = faceLayerGlsl();
 const oreGlowUniform = oreGlowTable(TEX_LAYERS);
 
 opaqueMaterial.onBeforeCompile = (shader) => {

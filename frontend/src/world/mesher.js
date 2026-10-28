@@ -287,7 +287,8 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
           //   no second attribute. `biomeIds` is per COLUMN, hence indexed by x/z only. Absent (an older
           //   caller, or a chunk meshed before the ids existed) -> 0, which the tint table maps to a real
           //   biome rather than to garbage.
-          // color.b = still unused, still 3-wide for the same reason as before.
+          // color.b = unused; reserved for a per-face block-light level. The face's texture layer is NOT
+          //   baked here: the terrain's vertex stage derives it from the normal (world/materialGrammar.js).
           // The biome comes out of the merge KEY (`faceKey`), so every cell this quad covers has it — the
           // quad cannot straddle a border. It used to be read off corner c0, which for four of six face
           // directions is a column OUTSIDE the quad (QUEUE R1.1).
@@ -305,8 +306,14 @@ export function generateMesh(cx, cz, blocks, biomeIds) {
           // directions walk their first edge by `w`. A single shared rect therefore fed `u` the h-edge and
           // `v` the w-edge on five of six faces — invisible whenever a merge is square, and stretching up
           // to 30:1 on the 16x1 strips that side faces actually merge into.
+          //
+          // On every side face `v` must also rise with world Y, so a tile's row 0 is each block's bottom and
+          // a side tile's top rows (a turf lip) sit at each block's top. X faces walk c0->c1 up world Y,
+          // so that edge takes `v`.
           if (d === 1 && dirFlag === 1) {
             uvs.push(0, 0, 0, h, w, h, w, 0); // +Y: c0->c1 spans h, c0->c3 spans w
+          } else if (d === 0) {
+            uvs.push(0, 0, 0, w, h, w, h, 0); // ±X: c0->c1 climbs Y by w (v), c0->c3 runs Z by h (u)
           } else {
             uvs.push(0, 0, w, 0, w, h, 0, h); // the rest: c0->c1 spans w, c0->c3 spans h
           }

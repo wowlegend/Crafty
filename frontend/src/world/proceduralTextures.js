@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BLOCK_NAME } from './blockIds.js';
+import { FACE_VARIANTS, LIP_TEXELS, TEXTURE_LAYER_COUNT, variantLayer } from './materialGrammar.js';
 
 const SIZE = 32;
 
@@ -35,20 +36,36 @@ export const MATERIAL_TONES = Object.freeze({
   glass: tones([214, 232, 244], [236, 248, 255], [244, 250, 255]), // pane, sheen, frame
 });
 
+/** What each side variant is made of: its lip's material over its body's (world/materialGrammar.js FACE_VARIANTS). */
+const VARIANT_PARTS = Object.freeze({
+  grass_side: Object.freeze({ lip: 'grass', body: 'dirt' }),
+  snow_side: Object.freeze({ lip: 'snow', body: 'stone' }),
+  wood_side: Object.freeze({ body: 'wood' }),
+});
+
 /**
  * How a layer must tile: 'periodic' wraps seamlessly in both axes (a face merged over many blocks repeats it);
- * 'framed' has a one-tone border (glass, the wood end grain); 'unused' is never sampled (air; water, whose surface
- * the ocean owns).
+ * 'lip' wraps along u only, since every block of a stacked wall shows its own lip; 'framed' has a one-tone border
+ * (glass, the wood end grain); 'unused' is never sampled (air; water, whose surface the ocean owns).
  */
 export const LAYER_TILING = Object.freeze([
   'unused', 'periodic', 'periodic', 'periodic', 'periodic', 'periodic', 'framed', 'periodic', 'periodic', 'unused',
   'periodic', 'periodic', 'periodic', 'periodic', 'periodic', 'framed',
+  ...FACE_VARIANTS.map((v) => (VARIANT_PARTS[v.name].lip ? 'lip' : 'periodic')),
 ]);
 
-/** Every tone a layer may contain: its material's, or for an ore the stone tones plus its nugget colour and rim. */
+/**
+ * Every tone a layer may contain: its material's; for an ore the stone tones plus its nugget colour and rim; for a
+ * face variant its parents' tones.
+ */
 export function declaredTones(layer) {
   const ore = ORE_TILES.find((o) => o.layer === layer);
   if (ore) return [...MATERIAL_TONES.stone, oreColour(ore), oreShade(ore)];
+  const variant = FACE_VARIANTS.find((v) => variantLayer(v.name) === layer);
+  if (variant) {
+    const { lip, body } = VARIANT_PARTS[variant.name];
+    return [...(lip ? MATERIAL_TONES[lip] : []), ...MATERIAL_TONES[body]];
+  }
   return [...(MATERIAL_TONES[BLOCK_NAME[layer]] || [])];
 }
 
@@ -156,6 +173,20 @@ function painters() {
     if (fx > 3 || fy > 3 || fx + fy > corner) return T.cobblestone[0];
     return hash(cell, row, 19) > 0.15 ? T.cobblestone[2] : T.cobblestone[1];
   };
+  // Bark: vertical furrows, long in v and narrow in u, wrapping both ways because a trunk is a stack of blocks.
+  p[variantLayer('wood_side')] = pick([T.wood[1], T.wood[0], T.wood[2]],
+    bands(field((x, y) => 0.7 * lattice(x, y, 4, 16, 31) + 0.3 * lattice(x, y, 2, 8, 32)), [0.4, 0.48, 0.12]));
+  // A side wall: its body's tile below, its lip's tile in the top LIP_TEXELS rows, and in about a third of the
+  // columns the lip runs one or two rows further down.
+  const lipped = (lip, body, seed) => (i) => {
+    const x = i % SIZE, y = Math.floor(i / SIZE);
+    const drip = hash(x, 0, seed);
+    const lipFrom = SIZE - LIP_TEXELS - (drip < 0.15 ? 2 : drip < 0.35 ? 1 : 0);
+    return y >= lipFrom ? lip(i) : body(i);
+  };
+  p[variantLayer('grass_side')] = lipped(p[1], p[2], 37);
+  // Under bright snow a stone crack would be the tile's darkest texel by far, so the body is the uncracked matrix.
+  p[variantLayer('snow_side')] = lipped(p[5], matrix, 41);
   // A pane in a two-texel frame, crossed by a diagonal sheen.
   p[15] = (i) => {
     const x = i % SIZE, y = Math.floor(i / SIZE);
@@ -216,8 +247,9 @@ export function sharedVoxelTextures() {
 
 export function createProceduralVoxelTextures() {
   const size = SIZE;
-  // Layer index == block code (src/world/blockIds.js). Layer 0 (air) is never painted.
-  const numLayers = 16;
+  // Layer index == block code (src/world/blockIds.js), then the face variants (world/materialGrammar.js). Layer 0
+  // (air) is never painted.
+  const numLayers = TEXTURE_LAYER_COUNT;
   const data = new Uint8Array(size * size * 4 * numLayers);
   const setPixel = (layer, i, [r, g, b]) => {
     const o = (layer * size * size + i) * 4;

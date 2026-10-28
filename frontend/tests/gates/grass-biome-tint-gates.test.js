@@ -130,7 +130,7 @@ describe('grass biome tint (Q14)', () => {
     // already reads Terrain.jsx. With mipmaps, fract(vUv) makes the derivative jump at every block edge and
     // the GPU picks the smallest mip there — a grid line on every block. The texture wraps REPEAT instead.
     const terrain = strip(readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8'));
-    expect(terrain).toMatch(/texture\(voxelTextures, vec3\(vUv\.x, vUv\.y, layerIndex\)\)/);
+    expect(terrain).toMatch(/texture\(voxelTextures, vec3\(vUv\.x, vUv\.y, texLayer\)\)/);
     expect(terrain).not.toMatch(/fract\(vUv/);
   });
 });
