@@ -16,7 +16,7 @@ before this that says AGENTS.md means `CLAUDE.md`. The generators (measure, gate
 commit (land/2026-10-28 until the required check is on), push main. Review cadence (DECISIONS item 13/the speed plan):
 one static+dynamic round on game code, then `/code-review xhigh` on the PR range; tests/claims-only fixes get the
 author's mutation run. Residue: memory/STATUS.md G-ledger (to become a single registry file, plan item #30).
-Since 2026-10-28 ~11:20Z main is branch-protected: required check `ci ok` (strict, admins included, no force push or
+Since 2026-10-28 ~11:12Z main is branch-protected: required check `ci ok` (strict, admins included, no force push or
 deletion). Land = merge into a land/<date> branch, push, green `ci ok` on that exact sha, `git merge --ff-only`, push.
 
 **Owed after Wave 1 lands (from the pause/cuts/public/instruments re-reviews, 2026-10-28; LOW, none blocks):**

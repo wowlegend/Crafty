@@ -253,8 +253,8 @@ footer p { max-width: 75ch; }
   <div class="state" aria-label="Current state">
     <div>
       <p class="label">Main CI</p>
-      <p class="pills"><span class="pill ok">head green</span><span class="pill run">main run running</span></p>
-      <p>Head <code>030ada1f</code> passed land run <code>40700481509</code> on that exact commit (13:52 to 14:06Z), which main now requires before it accepts a push. Main’s own run <code>40703024235</code> was still running at 14:20Z. Every completed main run since 07:40Z passed, except one cancelled by the next push.</p>
+      <p class="pills"><span class="pill ok">head green</span><span class="pill warn">one flaky spec</span></p>
+      <p>Head <code>030ada1f</code> passed land run <code>40700481509</code> on that exact commit (13:52 to 14:06Z), which main now requires before it accepts a push. Main’s own run <code>40703024235</code> failed its first attempt: <code>ore-glow.spec.js</code> saw the light change between its shots, three tries of three, on the same commit that had just passed the land run. The re-run of that shard passed at about 14:55Z, so main is green and the spec is flaky, not broken; a lane is finding what moves the light and will fix that, not loosen the check.</p>
     </div>
     <div>
       <p class="label">Production</p>
@@ -761,7 +761,7 @@ footer p { max-width: 75ch; }
         </thead>
         <tbody>
           <tr class="divider"><td colspan="4">Since the takeover, newest first</td></tr>
-          <tr><td><code>030ada1f</code></td><td><code>40703024235</code></td><td class="st"><span class="pill run">running</span></td><td>Wave 1. Land run <code>40700481509</code> passed on this exact commit.</td></tr>
+          <tr><td><code>030ada1f</code></td><td><code>40703024235</code></td><td class="st"><span class="pill warn">passed on re-run</span></td><td>Wave 1. Land run <code>40700481509</code> passed on this exact commit. Main’s first attempt failed <code>ore-glow.spec.js</code> (light drift between shots, 3 of 3); the re-run passed. Flake fix in progress.</td></tr>
           <tr><td><code>dc8b0d65</code></td><td><code>40691409278</code></td><td class="st"><span class="pill ok">success</span></td><td>Nothing is locked. Land run <code>40689226695</code>.</td></tr>
           <tr><td><code>d700e531</code></td><td><code>40680375511</code></td><td class="st"><span class="pill ok">success</span></td><td>One CLAUDE.md. Land run <code>40678345158</code>.</td></tr>
           <tr><td><code>1c4e3bc1</code></td><td><code>40678012103</code></td><td class="st"><span class="pill ok">success</span></td><td>The required check. Land run <code>40675354151</code>. Protection went on after this push.</td></tr>
@@ -914,7 +914,7 @@ footer p { max-width: 75ch; }
 
 <footer>
   <p>Sources: a fetch of <code>origin/main</code> read with git; GitHub runs, PRs, deployments, branch protection and repo settings read with <code>gh</code>; the live homepage read with curl; the repo’s DECISIONS.md, ACTIVE_PLAN.md (with the command session’s cursor edits), STATUS.md, the SOTA reset plan and the eye-level evidence index at <code>030ada1f</code>; and the session-truth ledger. Each claim carries its commit, PR or run id.</p>
-  <p>Not checked: whether main run <code>40703024235</code> ends green, that the live site serves <code>030ada1f</code>’s build, any play on the live site, and the uncommitted state of lane worktrees beyond their branch heads.</p>
+  <p>Main run <code>40703024235</code> was read again at about 14:55Z: its first attempt failed on <code>ore-glow.spec.js</code> and its re-run passed. Not checked: that the live site serves <code>030ada1f</code>’s build, any play on the live site, and the uncommitted state of lane worktrees beyond their branch heads.</p>
 </footer>
 
 </div>
