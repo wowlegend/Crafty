@@ -73,7 +73,8 @@ import { serveVite, probePort } from './_serve.mjs';
 import { standInPointerLock, playLiveReading } from './_probe.mjs';
 import {
   TARGETS, CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, EYE_HEADINGS, EYE_PITCH, shotPlan, eyeShotPlan, clipPlan, classifyRenderer,
-  pickCandidate, shotVerdict, eyeShotVerdict, clipVerdict, passSummary, contactSheetHtml, parseCycles,
+  pickCandidate, shotVerdict, eyeShotVerdict, clipVerdict, passSummary, contactSheetHtml, parseCycles, indexChunkOf,
+  servedBuildProblem,
 } from './_lookbook.mjs';
 
 const PORT = probePort(import.meta.url);
@@ -580,9 +581,18 @@ async function hold(launchOpts, launchId) {
   }
 }
 
+/** Throws, naming the cause, unless the port serves BUILD_DIR's build (_lookbook.mjs servedBuildProblem). */
+async function assertServedBuild() {
+  const expected = indexChunkOf(readFileSync(join(BUILD_DIR, 'index.html'), 'utf8'));
+  let html = null;
+  try { html = await (await fetch(url)).text(); } catch (e) { throw new Error(`the server on ${url} did not answer: ${e.message}`); }
+  const problem = servedBuildProblem(html, expected);
+  if (problem) throw new Error(problem);
+}
+
 function buildIdentity() {
   const html = readFileSync(join(BUILD_DIR, 'index.html'), 'utf8');
-  const chunk = (html.match(/assets\/(index-[\w-]+\.js)/) || [])[1] || null;
+  const chunk = indexChunkOf(html);
   let commit = null;
   try { commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim(); } catch { /* not a checkout */ }
   // The commit is the CHECKOUT's at run time; with --build-dir the served build may come from another commit, so the
@@ -593,6 +603,7 @@ function buildIdentity() {
 let code = 0;
 try {
   await waitReady();
+  await assertServedBuild();
   const report = { generatedAt: new Date().toISOString(), url, build: buildIdentity(), sets: SETS, chromiumCandidates: null, targets: [] };
   holdBase = report;
 
@@ -628,6 +639,7 @@ try {
     for (const id of WANT) {
       const target = TARGETS.find((t) => t.id === id);
       console.log(`\n── ${id} ─────────────────────────────`);
+      await assertServedBuild();
       let r;
       if (target.engine === 'chromium' && !chromiumLaunch) {
         r = { id, engine: 'chromium', renderer: null, gpu: 'unknown', shots: [], notes: [

@@ -8,6 +8,23 @@
  *  midnight. */
 export const LOOKBOOK_CYCLES = Object.freeze([0.30, 0.48, 0.55, 0.75]);
 
+/** The index chunk an index.html loads (`index-<hash>.js`), or null. Its content hash is the build's identity. */
+export function indexChunkOf(html) {
+  return (String(html ?? '').match(/assets\/(index-[\w-]+\.js)/) || [])[1] || null;
+}
+
+/**
+ * Is the server on the port serving THIS build? Every lookbook in every worktree shares one port, and vite's
+ * --strictPort fails silently when another run holds it, so a ready port can be someone else's build. Returns null when
+ * the served page loads the expected chunk, else the reason to stop.
+ */
+export function servedBuildProblem(servedHtml, expectedChunk) {
+  const served = indexChunkOf(servedHtml);
+  if (!expectedChunk) return 'the build to serve has no index chunk in its index.html';
+  if (served === expectedChunk) return null;
+  return `the port serves ${served ?? 'a page with no index chunk'}, not this build's ${expectedChunk}: another run holds the port`;
+}
+
 /**
  * `--cycles 0.02,0.25,0.5` as the times to shoot: dawn-origin cycle fractions in [0, 1), each named at most once, since
  * the file names carry two decimals. Absent (null or empty) is LOOKBOOK_CYCLES. Anything else throws, naming it: a
