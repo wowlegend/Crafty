@@ -64,7 +64,7 @@ export const DESCRIPTIONS = {
   'gate-shape': 'a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise)',
   'cli-guard': 'a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts',
   'unit + static gates': 'everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates',
-  'vitest related': 'on the commit only, a staged change that breaks a unit test which STATICALLY imports it (`vitest related`). It prints how many of the suite\'s test files it selected; a lazily imported module and a source-grep gate are not selected, and the full suite runs at the push, in `--tier=certify` and in CI',
+  'vitest related': 'on the commit only, a staged change that breaks a unit test which STATICALLY imports it (`vitest related`). It prints how many of the suite\'s test files it selected; a lazily imported module and a source-grep gate are not selected, a commit that stages nothing under `frontend/` (only `ci/`, `.githooks/`, `.github/`, `memory/` or docs) runs no unit test at all, and the full suite runs at the push, in `--tier=certify` and in CI',
   build: 'broken JSX/imports',
   'bundle byte budget': 'a chunk growing past its byte ceiling',
 };
@@ -174,6 +174,7 @@ export function renderBlock(gates, _ciText) {
     '',
     `**${n('commit')} run on every commit** (the static gates and the related unit tests) · **${n('push')} on every push** · **${n('ci')} in CI**.`,
     '`bash ci/pipeline.sh --tier=certify` runs the offline core by hand and writes a receipt for the tree, so a push of that tree skips the core.',
+    'On a push to main of a sha whose `ci ok` already passed in another run, CI runs only the quick gates and registry-append-only (`--sha-certified=true`, DECISIONS 2026-10-28 item 23).',
     'The columns are DERIVED from each step\'s tier guard in the script, not asserted here — they used to be,',
     'and all three network/browser gates were printed as pre-push gates they have never been.',
     '',

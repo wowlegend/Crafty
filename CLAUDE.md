@@ -116,6 +116,7 @@ add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.
 
 **6 run on every commit** (the static gates and the related unit tests) · **13 on every push** · **12 in CI**.
 `bash ci/pipeline.sh --tier=certify` runs the offline core by hand and writes a receipt for the tree, so a push of that tree skips the core.
+On a push to main of a sha whose `ci ok` already passed in another run, CI runs only the quick gates and registry-append-only (`--sha-certified=true`, DECISIONS 2026-10-28 item 23).
 The columns are DERIVED from each step's tier guard in the script, not asserted here — they used to be,
 and all three network/browser gates were printed as pre-push gates they have never been.
 
@@ -128,7 +129,7 @@ and all three network/browser gates were printed as pre-push gates they have nev
 | eslint | `npm run lint` | ✅ | ✅ | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
 | gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | ✅ | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise) |
 | cli-guard | `node scripts/ci/cli-guard.mjs` | ✅ | ✅ | ✅ | a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts |
-| vitest related | `node scripts/ci/related-tests.mjs --staged-list "$STAGED_LIST"` | ✅ | — | — | on the commit only, a staged change that breaks a unit test which STATICALLY imports it (`vitest related`). It prints how many of the suite's test files it selected; a lazily imported module and a source-grep gate are not selected, and the full suite runs at the push, in `--tier=certify` and in CI |
+| vitest related | `node scripts/ci/related-tests.mjs --staged-list "$STAGED_LIST"` | ✅ | — | — | on the commit only, a staged change that breaks a unit test which STATICALLY imports it (`vitest related`). It prints how many of the suite's test files it selected; a lazily imported module and a source-grep gate are not selected, a commit that stages nothing under `frontend/` (only `ci/`, `.githooks/`, `.github/`, `memory/` or docs) runs no unit test at all, and the full suite runs at the push, in `--tier=certify` and in CI |
 | unit + static gates | `npm run test:unit` | — | ✅ | ✅ | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates |
 | build | `npm run build` | — | ✅ | ✅ | broken JSX/imports |
 | bundle byte budget | `node scripts/ci/bundle-budget.mjs` | — | ✅ | ✅ | a chunk growing past its byte ceiling |
@@ -146,14 +147,15 @@ pipeline genuinely cannot see:
 
 | Gate | Command | pre-commit | pre-push | CI | What it actually stops |
 |---|---|:--:|:--:|:--:|---|
-| e2e (the suite) | `npm run test:e2e` (playwright, **sharded 8×** in CI) | — | — | ✅ | real-input regressions; `@local-only` specs are excluded in the workflow. Too slow for any local tier (~20 min, `workers: 1`), and no local tier asks for a receipt of it: CI is the arbiter, because main's required `ci ok` needs every shard on the exact sha (DECISIONS 2026-10-28 item 13(b)). Skipped in CI when every changed path is docs AND the base commit's own `ci ok` passed (`frontend/scripts/ci/change-scope.mjs`) |
-| `ci ok` | `node scripts/ci/ci-ok.mjs` (the last job in `ci.yml`) | — | — | ✅ | **THE REQUIRED CHECK on main** — the one context branch protection names. Needs every other job and fails unless each passed, or e2e was skipped under a docs-only verdict; also fails when `ci.yml` has a job missing from its needs. Runs under `always()`, so a cancelled run reads red, never skipped (a skipped check counts as passing) |
+| e2e (the suite) | `npm run test:e2e` (playwright, **sharded 8×** in CI) | — | — | ✅ | real-input regressions; `@local-only` specs are excluded in the workflow. Too slow for any local tier (~20 min, `workers: 1`), and no local tier asks for a receipt of it: CI is the arbiter, because main's required `ci ok` needs every shard on the exact sha (DECISIONS 2026-10-28 item 13(b)). Skipped in CI when every changed path is docs AND the base commit's own `ci ok` passed, and on a push to main of a sha whose `ci ok` already passed in another run (`frontend/scripts/ci/change-scope.mjs`) |
+| `ci ok` | `node scripts/ci/ci-ok.mjs` (the last job in `ci.yml`) | — | — | ✅ | **THE REQUIRED CHECK on main** — the one context branch protection names. Needs every other job and fails unless each passed, or e2e was skipped under a docs-only verdict or, on a push to main, because another run already passed this exact sha (it prints that run); also fails when `ci.yml` has a job missing from its needs. Runs under `always()`, so a cancelled run reads red, never skipped (a skipped check counts as passing) |
 | visual | `npm run test:visual` | — | — | — | **nothing runs it.** Manual, before a milestone or any render change — so a green pipeline says nothing about how Crafty LOOKS |
 
 - **Commit, certify, push.** A commit runs the static gates and only the unit tests that statically import a
   staged file (`vitest related`), and writes no receipt. Before a push, run `bash ci/pipeline.sh --tier=certify`
-  in the background on the committed tree: a green run records a receipt for that tree under
-  `.git/crafty-green-trees/`, and the push of that tree then runs only the commit-range gates. Without one, the
+  in the background on the committed tree, and make no commit, checkout or merge until it ends: a green run records a
+  receipt under `.git/crafty-green-trees/` only for the tree it read before its first step and still finds after its
+  last, and the push of that tree then runs only the commit-range gates. Without one, the
   push certifies the pushed tree in full in a fresh worktree. CI runs the whole suite on every sha either way.
 - `test:visual` is `capture.mjs && vitest`, i.e. it RE-CAPTURES. Never run it alongside another capture —
   both bind port 4178 with `--strictPort` and the collision fakes a failure.

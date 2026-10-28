@@ -50,9 +50,11 @@ jobs:
   # Change scope (2026-10-28). Decides whether this run may skip the browser jobs — the e2e matrix below and the
   # pipeline's prod-smoke step — and outputs `code=true|false`. `false` only when every changed path is docs or
   # Markdown AND the base it is measured against carries a passing `ci ok` of its own, so a skip borrows a verdict
-  # that exists rather than one assumed. Every unknown the script meets — a forced push, a base missing from the clone,
-  # an empty diff, an API error — makes it write `true`, and everything runs. The rule and its reasons:
-  # frontend/scripts/ci/change-scope.mjs.
+  # that exists rather than one assumed. On a push to main it also outputs `certified=true` (and `certified_by`, the
+  # run's URL) when this exact sha's newest `ci ok` from ANOTHER run passed — its land/** push or its pull request —
+  # and then e2e is skipped and the gates job runs only its quick steps. Every unknown the script meets — a forced push,
+  # a base missing from the clone, an empty diff, an API error — makes it write `code=true certified=false`, and
+  # everything runs. The rule and its reasons: frontend/scripts/ci/change-scope.mjs.
   # If this JOB fails or is cancelled (a checkout flake, the timeout), no output exists: GitHub skips gates and e2e,
   # because a job whose needs did not succeed is skipped, and `ci ok` FAILS on this job's result. That is a red run
   # with no gate or browser signal, not a run that tested everything.
@@ -63,9 +65,11 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      checks: read # the base commit's `ci ok` check runs are read through the API
+      checks: read # the `ci ok` check runs of the base commit, and of this sha on a push to main, are read through the API
     outputs:
       code: ${{ steps.scope.outputs.code }}
+      certified: ${{ steps.scope.outputs.certified }}
+      certified_by: ${{ steps.scope.outputs.certified_by }}
     steps:
       # Full history: github.event.before, the pull request's base and the merge-base with origin/main must all be
       # in the clone, or the ancestry check fails and the run falls back to everything.
@@ -129,14 +133,18 @@ jobs:
       # (a push's before, a pull request's base sha), which the full-history checkout holds.
       #
       # `--code-changed` carries the change-scope verdict: `false` skips prod-smoke (a browser step), anything else runs
-      # it. The step also exports CODE_CHANGED so the expression is not spliced into the script text, which means the
-      # unit suite this pipeline runs inherits it too, and it executes pipeline.sh under test. That is harmless only
-      # because pipeline.sh resets its own CODE_CHANGED before reading flags: the flag decides, never the inherited value.
+      # it. `--sha-certified=true` (a push to main of a sha another run passed) skips the unit suite, build, bundle
+      # budget, knip, npm audit and prod-smoke, and keeps the quick static gates and registry-append-only, whose base on
+      # this push is main's previous tip, a range the certifying run never read. The step exports both values so no
+      # expression is spliced into the script text, which means the unit suite this pipeline runs inherits them too, and
+      # it executes pipeline.sh under test. That is harmless only because pipeline.sh resets both before reading flags:
+      # the flags decide, never an inherited value.
       - name: Pipeline (fast tier — every deterministic gate, plus network/browser)
         working-directory: .
         env:
           CODE_CHANGED: ${{ needs.changes.outputs.code }}
-        run: bash ci/pipeline.sh --tier=fast --code-changed="$CODE_CHANGED"
+          SHA_CERTIFIED: ${{ needs.changes.outputs.certified }}
+        run: bash ci/pipeline.sh --tier=fast --code-changed="$CODE_CHANGED" --sha-certified="$SHA_CERTIFIED"
 
   # ---------------------------------------------------------------------------
   # E2E. Separate job so a slow browser run can't stall the fast gates.
@@ -157,14 +165,14 @@ jobs:
   # 25 -> 35 MINUTES 2026-10-28: main run 40642071917 ran shards 5/8 and 7/8 to 23 of 25 min (7/8 with three
   # attempts of one failing case), and a job that hits its cap reports `cancelled`, losing every finished verdict in
   # it. Shards run 5-23 min because specs differ tenfold in cost; the cap is headroom for retries, not a target.
-  # DOCS-ONLY SKIP: skipped only when the change-scope job said exactly `false`; an empty or unknown output runs it.
-  # A change-scope job that failed or was cancelled has no output at all and skips this job too (its needs did not
-  # succeed), which `ci ok` then fails. A skipped e2e is passed by `ci ok` only under that same `false`, so a
-  # mis-wired condition cannot turn into a permanent green.
+  # DOCS-ONLY OR CERTIFIED SKIP: skipped only when the change-scope job said exactly code `false` or certified `true`;
+  # an empty or unknown output runs it. A change-scope job that failed or was cancelled has no output at all and skips
+  # this job too (its needs did not succeed), which `ci ok` then fails. A skipped e2e is passed by `ci ok` only under
+  # those same words, so a mis-wired condition cannot turn into a permanent green.
   e2e:
     name: e2e (playwright) ${{ matrix.shard }}/8
     needs: changes
-    if: needs.changes.outputs.code != 'false'
+    if: needs.changes.outputs.code != 'false' && needs.changes.outputs.certified != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     strategy:
@@ -247,7 +255,8 @@ jobs:
   # ---------------------------------------------------------------------------
   # `ci ok` — THE REQUIRED CHECK (2026-10-28). Branch protection on main requires this job's name and nothing else.
   # It needs EVERY other job (ci-ok.mjs fails the run if ci.yml has a job missing from this list) and passes only
-  # when each one succeeded, or, for e2e alone, was skipped because the change-scope job said `false`.
+  # when each one succeeded, or, for e2e alone, was skipped because the change-scope job said code `false` or, on a push
+  # to main, certified `true` (it then prints the run that certified the sha).
   # `if: always()`, NEVER `!cancelled()`: a skipped job reports SUCCESS to branch protection, so an aggregate that
   # skipped itself on a cancelled run would pass the required check on a sha nothing finished testing. Under
   # always() it runs, reads the cancelled jobs, and fails. Rename this job and main's protection must follow.

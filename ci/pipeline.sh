@@ -69,18 +69,26 @@ APP="$ROOT/frontend"
 TIER="push"
 RANGE_ONLY=0
 CODE_CHANGED=""
-for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --range-only) RANGE_ONLY=1 ;; --code-changed=*) CODE_CHANGED="${a#--code-changed=}" ;; esac; done
+SHA_CERTIFIED=""
+for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --range-only) RANGE_ONLY=1 ;; --code-changed=*) CODE_CHANGED="${a#--code-changed=}" ;; --sha-certified=*) SHA_CERTIFIED="${a#--sha-certified=}" ;; esac; done
 # --code-changed=false: CI's change-scope job (frontend/scripts/ci/change-scope.mjs) found only docs changed since a
 # commit whose `ci ok` passed, so the fast tier skips prod-smoke, the one browser step here (the e2e job is skipped
 # by ci.yml itself). ONLY the exact word `false` skips; absent, `true`, empty or anything else runs it (fail SAFE).
 # The CI step also exports CODE_CHANGED, and the unit suite this pipeline runs inherits it and executes this file under
 # test. The reset above is what keeps a docs-only run from changing what that suite tests: the flag decides, an
 # inherited CODE_CHANGED never does.
+# --sha-certified=true: change-scope found this run is a push to main of a sha whose `ci ok` already passed in another
+# run, so the fast tier skips its six slow steps (the unit suite, build, bundle budget, knip, npm audit, prod-smoke) and
+# keeps the quick gates and registry-append-only, whose base here is main's previous tip, which that run never read.
+# ONLY the exact word `true` skips; reset above like CODE_CHANGED, so an inherited SHA_CERTIFIED decides nothing.
 # --range-only: pre-push's path when a receipt already certified this exact tree. The offline core is
 # skipped (and each skip PRINTED); the commit-range gates still run, because a receipt cannot speak for a
 # range it never saw.
 if [ "$RANGE_ONLY" = 1 ] && [ "$TIER" != "push" ]; then
   printf '\033[31m✖ pipeline: --range-only is only meaningful with --tier=push\033[0m\n' >&2; exit 2
+fi
+if [ -n "$SHA_CERTIFIED" ] && [ "$TIER" != "fast" ]; then
+  printf '\033[31m✖ pipeline: --sha-certified is only meaningful with --tier=fast\033[0m\n' >&2; exit 2
 fi
 case "$TIER" in
   commit|push|fast|certify) ;;
@@ -156,9 +164,13 @@ if [ "$TIER" = "commit" ]; then
   rm -f "$STAGED_LIST"
 fi
 if [ "$TIER" != "commit" ]; then
-  step "unit + static gates (vitest)" npm run --silent test:unit
-  step "build" npm run --silent build
-  step "bundle byte budget" node scripts/ci/bundle-budget.mjs
+  if [ "$SHA_CERTIFIED" = "true" ]; then
+    printf '\n\033[2m── skipped (--sha-certified=true): unit + static gates, build, bundle byte budget — this sha passed them in the run that certified it\033[0m\n'
+  else
+    step "unit + static gates (vitest)" npm run --silent test:unit
+    step "build" npm run --silent build
+    step "bundle byte budget" node scripts/ci/bundle-budget.mjs
+  fi
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -197,12 +209,16 @@ fi
 # neither, only a range, which the event names.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" = "fast" ]; then
-  step "knip (unused files / exports / deps)" npm run --silent knip
-  step "npm audit (high + critical)" npm audit --audit-level=high
-  if [ "$CODE_CHANGED" = "false" ]; then
-    printf '\n\033[2m── skipped (fast tier, --code-changed=false): prod-smoke — only docs changed since a commit CI passed, so the bundle is that commit'"'"'s\033[0m\n'
+  if [ "$SHA_CERTIFIED" = "true" ]; then
+    printf '\n\033[2m── skipped (--sha-certified=true): knip, npm audit, prod-smoke — this sha passed them in the run that certified it\033[0m\n'
   else
-    step "prod-smoke (the bundle that actually ships boots and renders)" node scripts/ci/prod-smoke.mjs
+    step "knip (unused files / exports / deps)" npm run --silent knip
+    step "npm audit (high + critical)" npm audit --audit-level=high
+    if [ "$CODE_CHANGED" = "false" ]; then
+      printf '\n\033[2m── skipped (fast tier, --code-changed=false): prod-smoke — only docs changed since a commit CI passed, so the bundle is that commit'"'"'s\033[0m\n'
+    else
+      step "prod-smoke (the bundle that actually ships boots and renders)" node scripts/ci/prod-smoke.mjs
+    fi
   fi
   # The event names the base (a push's before, a pull request's base sha, else the merge-base with origin/main), and the
   # gates job checks out full history, so every CI run can read the registry at both ends.

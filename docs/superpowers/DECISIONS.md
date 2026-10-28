@@ -367,6 +367,42 @@ longer finds the instructions there; none is configured to in this repo.
    either twilight blend in the sky, fog, hazed land, ground, or the pad 1 m from the brazier, whose light `HEARTH_FIRE`
    in `frontend/src/world/homeAnchor.js` the gate and the brazier share). G2 judges the model, so it does not see that
    red offset: the lavender-twilight keys pass it, and the evidence for the final colours is the lookbook reading.
+22. **B7: the commit runs a fast tier, and the full offline core moves to the push and `--tier=certify` (command
+   session, lane W2-C, 2026-10-28; harness plan U17, `a56f6d50`).** It supersedes the 2026-09-22 direction that put the
+   whole offline core on every commit, taken after Kevin pointed out that Agentic-Brain front-loads its suite onto the
+   commit and keeps the push fast (recorded until B7 in `ci/pipeline.sh` and `.githooks/pre-commit`, never here). A
+   commit now runs the static gates (opsec-scan, doc-currency, eslint, gate-shape, cli-guard) and `vitest related` over
+   the files staged under `frontend/`; the unit suite, build and bundle budget run at the push, in `--tier=certify` and
+   in CI. **Why:** the core cost every commit its full run (69 s as the gate table stated it, when the suite was
+   smaller than today's 537 test files), while the push and CI re-run it on the exact tree anyway. **What is lost:**
+   (a) an intermediate commit carries no unit, build or bundle result of its own, so a red commit in the middle of a
+   branch is recorded nowhere, and `git bisect` must run the suite itself; (b) `vitest related` follows static imports
+   only, so a module reached through `import()` or `React.lazy`, and a source-grep gate that reads a file by path, is
+   not selected; (c) a commit that stages nothing under `frontend/` (only `ci/`, `.githooks/`, `.github/`,
+   `memory/registry.jsonl` or docs) runs no unit test at all, although `frontend/tests/scripts/` tests those files;
+   (d) a commit writes no receipt, so a push skips the core only after a certify run. **Mitigations:** the push
+   certifies the tree it pushes, in full in a fresh worktree or by that tree's certify receipt, and since `c0bffdd2` a
+   receipt names the tree read before certify's first step and again after its last, so a commit, checkout or merge made
+   while it runs gets none; CI runs the whole suite on every land/** and pull-request sha; main moves only on a sha
+   whose `ci ok` passed (item 13(b)); and the commit tier prints its denominator ("N of M test files selected", and
+   "0 selected — SKIPPED, not a pass"). **Door:** two-way: the old shape is one tier guard in `ci/pipeline.sh`.
+   **Unmeasured:** whether pushes got slower in total; U17's push-cost metric needed U13's push log, which never landed.
+23. **A push to main passes on the verdict CI already reached for that exact sha (command session, 2026-10-28 18:35Z;
+   built in lane W2-C).** main moves only on a sha whose `ci ok` passed on its land/** push or its pull request, so the
+   run main's push starts tested that sha a second time: `13c600ad` passed land run 40740902822, and main run
+   40742070022 then ran its gates job again (its e2e was skipped only because that change was docs-only; a code change
+   would have run all eight shards again). Now the change-scope job (`frontend/scripts/ci/change-scope.mjs`) reads the
+   sha's `ci ok` check runs on a push to `refs/heads/main`, and outputs `certified=true` when the newest one from
+   ANOTHER workflow run (the run id in the check run's URL is not this run's `GITHUB_RUN_ID`) completed with success.
+   Then the e2e matrix is skipped, the gates job runs only opsec-scan, doc-currency, eslint, gate-shape, cli-guard and
+   registry-append-only (`ci/pipeline.sh --sha-certified=true`; registry-append-only stays because its base on this
+   push is main's previous tip, a range the certifying run never read), and `ci ok` passes on that verdict, printing
+   the certifying run's URL. Everything runs on an API error, a missing run id, a check run whose URL names no run, or
+   a newer `ci ok` from another run that failed or is still running. **What it trusts** is what branch protection
+   trusts: a check named `ci ok` from the GitHub Actions app; which workflow file produced it is not read. **A pull
+   request's verdict** sits on the head sha but tested the merge with its base; main fast-forwards to that head only
+   when the base is its ancestor, and then the merge's tree is the head's. **Door:** two-way: deleting the main-push
+   branch of `scope()` restores full runs. A dispatch, or a re-run of the main push's own run, still runs everything.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 
