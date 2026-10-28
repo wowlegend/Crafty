@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { buildSaveData } from '../../src/game/saveSchema.js';
 import { ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST, PLACE_GAIN, DAILY_BUILD_CAP, EMBER_MAX } from '../../src/game/ember.js';
@@ -15,6 +18,9 @@ import { ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST, PLACE_GAIN, DA
 
 const S = () => useGameStore.getState();
 const POS = { position: { x: 0, y: 18, z: 0 } };
+const HERE = dirname(fileURLToPath(import.meta.url));
+const PRE_CUT_JSON = JSON.parse(readFileSync(resolve(HERE, '../fixtures/pre-cut-save.json'), 'utf8'));
+const PRE_CUT = () => structuredClone(PRE_CUT_JSON); // a localStorage world blob written before the bar (preCutSave.test.js)
 
 beforeEach(() => useGameStore.setState(useGameStore.getInitialState(), true));
 afterEach(() => useGameStore.setState(useGameStore.getInitialState(), true));
@@ -115,6 +121,27 @@ describe('ember in the save', () => {
     const before = S().ember;
     S().accrueBuildEmber();
     expect(S().ember - before, 'a reload renewed the spent allowance').toBe(0);
+  });
+
+  it('a save written before the bar reads its own build-day record (none), not the session\'s', () => {
+    // The world loaded first spent today's allowance on the night count the pre-cut save also carries (0).
+    useGameStore.setState({ isDay: true, nightCount: 0, emberBuildDay: { night: 0, built: DAILY_BUILD_CAP } });
+    const pre = PRE_CUT();
+    expect('emberBuildDay' in pre.progression, 'SETUP: the fixture carries a build-day record').toBe(false);
+    expect(pre.progression.nightCount, 'SETUP: the fixture is not on night 0').toBe(0);
+    S().loadWorldData(pre);
+    expect(S().emberBuildDay, 'the pre-cut save took the session\'s spent allowance').toEqual({ night: 0, built: 0 });
+    useGameStore.setState({ isDay: true });
+    const before = S().ember;
+    S().accrueBuildEmber();
+    expect(S().ember - before, 'a placement in the loaded world was paid from the other world\'s allowance').toBe(PLACE_GAIN);
+  });
+
+  it('a save with no progression slice at all keeps the session\'s record, as it keeps every progression field', () => {
+    useGameStore.setState({ emberBuildDay: { night: 3, built: 12 } });
+    const { progression: _gone, ...bare } = PRE_CUT();
+    S().loadWorldData(bare);
+    expect(S().emberBuildDay).toEqual({ night: 3, built: 12 });
   });
 
   it('a new world starts with an empty bar and a fresh allowance', () => {

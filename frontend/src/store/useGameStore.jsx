@@ -1118,7 +1118,9 @@ export const useGameStore = create((set, get) => ({
             const lastRewardedNight = prog?.lastRewardedNight ?? state.lastRewardedNight;
             // A save written before the one meter carries four banks and no `ember`: they are summed into it.
             const ember = emberFromSave(prog, state.ember);
-            const emberBuildDay = readBuildDay(prog?.emberBuildDay ?? state.emberBuildDay);
+            // The save's own record, absent or not: a save older than the record has spent none of its day, and the
+            // session's record belongs to whichever world was loaded before it.
+            const emberBuildDay = readBuildDay(prog ? prog.emberBuildDay : state.emberBuildDay);
 
             const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
 
