@@ -15,6 +15,7 @@ import { useGameStore } from '../store/useGameStore';
 import { OUTLINE } from './characterStyle';
 import { MagicWand } from './spellVfx';
 import { heavyChargeLevel } from '../game/heavyAttack.js';
+import { readString, slashSweep } from '../game/meleeString.js';
 // The cast-hand light mounts per cast: from the fixed light pool (render/lightPool.jsx), so a cast re-links no shader.
 import { PooledLight } from './lightPool.jsx';
 
@@ -334,7 +335,14 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
       const time = state.clock.elapsedTime;
       const swingElapsed = attackStartTime.current > 0 ? (state.clock.getElapsedTime() - attackStartTime.current) : 0;
 
-      const isSwingingMelee = attackType === 'melee' && swingElapsed < 0.2;
+      // THE LIGHT STRING reads in the hand (game/meleeString.js, combat-stance Task 10): step 1 sweeps right to left,
+      // step 2 comes back left to right, the finisher sweeps wide and long. The swing in progress is a STRING swing only
+      // while the last light swing is within its own sweep; otherwise (a heavy, a beast form's swing, nothing recent)
+      // the hand plays today's step-1 sweep. Read transiently, once a frame; slashSweep returns frozen shapes.
+      const str = readString();
+      const strSweep = slashSweep(str.lastSwingStep);
+      const sw = str.lastSwingStep && performance.now() - str.lastSwingAt <= 1000 * strSweep.durationS ? strSweep : slashSweep(1);
+      const isSwingingMelee = attackType === 'melee' && swingElapsed < sw.durationS;
       const isCastingSpell = attackType === 'spell' && swingElapsed < 0.15;
 
       // Subtle high-frequency channeling vibrations on attack or cast
@@ -344,11 +352,11 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
 
       if (isSwingingMelee) {
         // Dynamic Bezier slash arc animation
-        const t = Math.min(1.0, swingElapsed / 0.2);
+        const t = Math.min(1.0, swingElapsed / sw.durationS);
         const ease = Math.sin(t * Math.PI * 0.5);
 
-        // Diagonal slash sweep from right to left across camera frame
-        const x = baseRightPos.x + Math.sin(t * Math.PI) * 0.16 - ease * 0.72;
+        // Diagonal slash sweep across the camera frame: right to left for dir +1, back for -1, wider for the finisher
+        const x = baseRightPos.x + Math.sin(t * Math.PI) * 0.16 - ease * 0.72 * sw.dir * sw.widthMult;
         const y = baseRightPos.y + Math.sin(t * Math.PI) * 0.42;
         const z = baseRightPos.z - Math.sin(t * Math.PI) * 0.42;
 
@@ -357,8 +365,8 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
         // Slash angular rotation sweep (Roll & Yaw rotation)
         rightHandRef.current.rotation.set(
           -0.45 + Math.sin(t * Math.PI) * 1.45,
-          -Math.sin(t * Math.PI) * 0.9,
-          Math.sin(t * Math.PI) * 1.15 - t * 2.15
+          -Math.sin(t * Math.PI) * 0.9 * sw.dir,
+          (Math.sin(t * Math.PI) * 1.15 - t * 2.15) * sw.dir // the roll mirrors with the sweep
         );
 
         // Left hand raises slightly to balance
@@ -442,9 +450,9 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
       // then fades over the 0.2s swing. Camera-attached (screen-space), so it reads like a blade arc.
       if (slashRef.current) {
         if (isSwingingMelee) {
-          const t = Math.min(1, swingElapsed / 0.2);
+          const t = Math.min(1, swingElapsed / sw.durationS);
           slashRef.current.visible = true;
-          slashRef.current.rotation.z = -1.15 + t * 2.3;                 // diagonal sweep
+          slashRef.current.rotation.z = (-1.15 + t * 2.3) * sw.dir;      // diagonal sweep, mirrored with the hand
           const s = 0.85 + t * 0.5; slashRef.current.scale.set(s, s, s); // grow through the arc
           slashRef.current.material.opacity = Math.sin(t * Math.PI) * 0.85; // bloom in -> fade out
         } else if (slashRef.current.visible) {
