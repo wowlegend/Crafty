@@ -33,6 +33,7 @@ import { CaptureClockTicker } from './devtest/CaptureClockTicker.jsx';
 import { WorldClockTicker } from './systems/WorldClockTicker.jsx';
 import { FrameCap, governorBounds } from './render/FrameCap.jsx';
 import { FrameStats } from './render/FrameStats.jsx';
+import { watchContextLoss, trackRenderer } from './render/glDiagnostics.js';
 import { paceFor } from './render/canvasPace.js';
 // particleProbe/weatherGate/stormBed/audioBridge/climate imports moved with WeatherSystem -> src/render/WeatherSystem.jsx (A2.5).
 
@@ -163,6 +164,10 @@ export const GameScene = React.memo(function GameScene({
   const titleCovering = useGameStore((s) => s.titleCovering);
   // How often this canvas draws — render/canvasPace.js, the one decision (the harnesses step or time their own frames).
   const pace = paceFor({ frameCap, titleCovering, harness: isCaptureMode || isPerfProbe() });
+  // The PLAYER's frame cap in force, for the Show Stats readout (render/FrameStats.jsx): the setting, unless a harness
+  // steps its own frames. Not `pace.loop`: behind the title that is the TITLE_FPS pace, which the readout's own drawn-
+  // frame count already shows, and the cap line names the setting that play will run at.
+  const capActive = frameCap > 0 && !isCaptureMode && !isPerfProbe();
   const q = TIERS[qualityTier] || TIERS.low;
   const [sunMesh, setSunMesh] = useState(null);
 
@@ -260,18 +265,11 @@ export const GameScene = React.memo(function GameScene({
 
           const canvasEl = gl.domElement;
           canvasRef.current = canvasEl; // the element requestPointerLock targets (desktop mouse-look)
-          const handleContextLost = (e) => {
-            e.preventDefault();
-            console.error('WebGL context lost detected in GameScene!');
-            useGameStore.getState().setIsWebGLContextLost(true);
-          };
-          const handleContextRestored = () => {
-            if (import.meta.env.DEV) console.log('WebGL context successfully restored in GameScene.');
-            useGameStore.getState().setIsWebGLContextLost(false);
-          };
-          
-          canvasEl.addEventListener('webglcontextlost', handleContextLost, false);
-          canvasEl.addEventListener('webglcontextrestored', handleContextRestored, false);
+          // Context loss/restore: the handlers that lived inline here moved, unchanged in effect, to
+          // render/glDiagnostics.js, where they also COUNT losses for the Show Stats readout and a gate can drive them.
+          watchContextLoss(canvasEl, useGameStore);
+          // The renderer the readout and the lookbook seam (render/lookbookSeam.js) report: GL renderer, dpr in force.
+          trackRenderer(gl);
         }}
       >
         <CaptureClockTicker />
@@ -422,7 +420,7 @@ export const GameScene = React.memo(function GameScene({
           <Preload all />
         </Suspense>
 
-        {showStats && <FrameStats />}
+        {showStats && <FrameStats capActive={capActive} />}
       </Canvas>
     </div>
   );
