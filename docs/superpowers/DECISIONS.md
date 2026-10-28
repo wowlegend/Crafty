@@ -18,6 +18,29 @@
 
 ---
 
+## 2026-10-28 — [LOOP, Kevin-delegated] Landing lifecycle: PRs with free CI, merges by merge commit, six e2e shards; PR #28 parked
+
+**Decided by the command session (Kevin asleep; standing authority).**
+
+1. **Every lane lands through a PR**, because main deploys to the live site on every push and the e2e suite runs
+   reliably only in CI (local receipts failed three times on 2026-10-27 on machine load, none on code). Actions are
+   free: the repository is public. Kevin asked for the milestone as a PR (#22) for his `/code-review ultra`; the
+   pattern is now general.
+2. **Merges are local merge commits, never cherry-picks or GitHub squashes** (the repository allows only squash in
+   the UI). A cherry-pick on 2026-10-27 left a branch git calls unmerged, deletable only by `git branch -D`, which is
+   denied estate-wide; AB's `worktree-reap` (now allowed for this repository only, Kevin 2026-10-27) deletes merged
+   branches with `-d`, and Kevin's K55(d) moves stale unmerged ones to `refs/backup/branches/`.
+3. **E2E runs in 6 shards** (`17e06ecd`): every shard of #22 hit its 25-minute limit with all finished tests green.
+4. **PR #28 is parked as a draft** after two review rounds. It let a docs-only commit borrow CI's e2e verdict from an
+   ancestor with the same app identity. Round 1 refuted it (identity ignored ci.yml; a newer red was skipped); round 2
+   closed that, and the dynamic review found nothing blocking, but a fail-open mutant (only a commit's newest run
+   read) and two pre-existing weaknesses (only each run's latest attempt is read; the base read has no event filter)
+   remain. It is a convenience; the landing headroom below allows one PR, which goes to #22. Revisit with a
+   fail-closed rule: any push or dispatch run with no verdict on a same-identity commit stops the walk.
+5. **Landing is capped by the published operator pages.** `artifact-currency` refuses a push more than 30 commits past
+   the pages' publish sha; era-review and sota-audit belong to account 1, which this session (account 2) cannot
+   write. Until Kevin's morning answer (ACTIVE_PLAN, "For Kevin" 1), at most one PR lands: #22 first.
+
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 
 **Why.** `e2e-freshness` refused every push because the base's CI e2e is red (57c45ae4: run 35845534213 cancelled at

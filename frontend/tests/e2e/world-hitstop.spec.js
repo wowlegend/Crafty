@@ -15,28 +15,77 @@ import { bootDev, startPlayActive } from './_boot.js';
 //
 // HOW IT SAMPLES, and why. Everything is measured INSIDE the page, one sample per rendered frame, in a
 // single evaluate. Measured locally at load 20: one host-side page.evaluate round-trip took 3.5 s, so any
-// timing built from host waits said nothing about which frames fell inside the freeze. The freeze length
-// is sized from the page's own measured frame time (16 frames, floor 2.5 s), so a slow runner still renders
-// several frozen frames; a real light hit freezes for 45 ms, which a 10 fps runner steps over entirely.
-// Stretching one hit's freeze with a second triggerHitstop is itself the burst rule: one long beat is
-// honoured whole (stackHitstop).
+// timing built from host waits said nothing about which frames fell inside the freeze. A real light hit
+// freezes for 45 ms, which a 10 fps runner steps over entirely, so each test freezes the world itself, with
+// triggerHitstop — stretching one hit's freeze with a second triggerHitstop is itself the burst rule: one long
+// beat is honoured whole (stackHitstop).
+//
+// THE FREEZE IS HELD FOR A FRAME COUNT, NOT A WALL-CLOCK WINDOW (2026-10-27). No window sized in advance can
+// promise frames, because frames INSIDE the freeze are far slower than the ones measured before it: the hit's
+// sparks and bloom are held at their peak, and a software renderer pays for that every frame. The window went
+// 2500 ms (CI run 35845534213: 2 frames inside it, three attempts running) -> an 8000 ms floor -> CI run
+// 40546819334: "2 frozen frames" inside 8000 ms, with 298 ms frames measured before the hit. A window stretched
+// AHEAD of the longest frame seen was tried first and rejected on a simulation against the real stackHitstop: one
+// 10 s frame after 1 s frames still outran it (2 frozen frames). So holdFreeze (below) opens the freeze as one long
+// beat through the store's own action (triggerHitstop: stackHitstop honours one long beat whole, up to the cap) and
+// ENDS it once both hold: HOLD_FRAMES frames have rendered inside it, and the old window has elapsed (16 measured
+// frames, floor 8000 ms, cap 30000 ms) — so a fast runner sees the same ~8 s freeze it always did, and a slow one a
+// longer one. It ends it by writing hitstopUntil = now: every reader (worldTimeScale, tickWorldClock, the player)
+// compares that value with the clock and nothing else, so this IS the clock reaching the end of a timed freeze, and
+// the next burst banks the span actually frozen. No frame length can make it lapse early, short of the 90 s cap.
+// The assertions are unchanged (at least 3 frozen frames, compared from the second on); the hold aims one past
+// that floor.
 //
 // Mutation-Proof: by hand against src/systems/AIWorkerSystem.jsx (cp backup, byte-verified restore), each
 // observed RED for the reason named, not another:
 //   E1 drainKnockback called on frozen frames too  -> "the shove was spent on a FROZEN frame"
 //   E2 the AI clock accumulates through the freeze -> "the mob moved while the world was frozen"
 //   E3 the hold never releases (ws > 1)            -> the presence control: "an UNFROZEN knockback was never spent"
-// THE FREEZE FLOOR (8000 ms, inlined in each page function — they run in the browser). 2500 ms was sized from the frame time measured BEFORE the hit — but frames INSIDE the freeze are
-// far slower: the hit's sparks and bloom are held at their peak, and a software renderer pays for that every frame.
-// Measured locally, on this tree and on 37d030a8 alike: the first frame after the hit lands 2.0-2.3 s later, with
-// 0.6-1.7 s long tasks after it; CI run 35845534213 then counted 2 frames inside 2500 ms, three attempts running.
-test.describe('world hitstop', () => {
-  test.setTimeout(180000);
+// RE-PROVEN on the held freeze, 2026-10-27 (scripts/dev/mutate-e2e.sh's contract on a throwaway :4291 config, load
+// 17-75 on 14 cores, 0.8-2.4 s frames before the hit, up to 10.6 s inside the freeze): identity survived 3/3; E1, E2,
+// E4, E5 RED with the messages named; E3 as `if (delta < 0)` RED on the presence control as named. Written as
+// `delta > 1` it is frame-rate dependent — a loaded machine renders frames over 1 s, so the drain still ran on some,
+// and the post-freeze check caught it instead ("the held knockback was never spent") — so prove E3 as `delta < 0`.
+// The flake itself, CONSTRUCTED rather than waited for: a page-side burner forcing 12 s frames inside the freeze
+// read "fewer than 3 frames rendered inside the freeze (frame 1034 ms, freeze 16547 ms, 1 frozen frames)" on the
+// old fixed window, and passed on the held freeze. (3 s frames did not reproduce it on a loaded box: its slow
+// pre-hit frames had already grown the old window to 16 x frame.)
+const HOLD_FRAMES = 4;
 
-  // One evaluate: hit the mob (optionally under a freeze sized from the measured frame time), then read
-  // it once per rendered frame while frozen and for `after` frames beyond. Returns the per-frame samples.
+// Installed into the page (page functions run in the browser and cannot share a closure): freeze the world, call
+// `read()` once per rendered frame while the freeze holds, and end the freeze once `need` frames have rendered
+// inside it and `minMs` has passed. A frame counts only when the freeze is still in force AFTER it rendered.
+const installHoldFreeze = (page) => page.evaluate(() => {
+  window.__e2eHoldFreeze = async ({ read, need, frameMs, capMs = 90000 }) => {
+    const frame = () => new Promise((r) => requestAnimationFrame(() => r(performance.now())));
+    const store = window.useGameStore;
+    const minMs = Math.min(30000, Math.max(8000, frameMs * 16)); // the window the spec used to size in advance
+    store.getState().triggerHitstop(capMs); // one long beat, honoured whole — ended below, never left to the cap
+    const start = store.getState().hitstopStart;
+    const frozen = [];
+    let longest = 0, prev = performance.now();
+    while (performance.now() < store.getState().hitstopUntil) {
+      const t = await frame();
+      longest = Math.max(longest, t - prev);
+      prev = t;
+      if (performance.now() >= store.getState().hitstopUntil) break;
+      frozen.push(read());
+      if (frozen.length >= need && performance.now() - start >= minMs) {
+        store.setState({ hitstopUntil: performance.now() }); // the timed freeze's end, reached now
+      }
+    }
+    return { frozen, minMs, freezeMs: store.getState().hitstopUntil - start, longest };
+  };
+});
+
+test.describe('world hitstop', () => {
+  // A held freeze can run long on a slow runner — that is its job — and test 1 already took 162 s of 180 on CI.
+  test.setTimeout(240000);
+
+  // One evaluate: hit the mob (optionally under a held freeze), then read it once per rendered frame while
+  // frozen and for `after` frames beyond. Returns the per-frame samples.
   const hitAndSample = (page, id, { freeze, after = 12 }) =>
-    page.evaluate(async ({ mid, freeze, after }) => {
+    page.evaluate(async ({ mid, freeze, after, need }) => {
       const read = () => {
         const m = window.__craftyTest.call('readMobs').find((e) => e.id === mid);
         return m ? { knockback: m.knockback, x: m.x, z: m.z, t: performance.now() } : null;
@@ -50,25 +99,23 @@ test.describe('world hitstop', () => {
       store.setState({ hitstopUntil: 0, hitstopStart: 0 });
       window.GameMethods.damageMob(mid, 1, 'physical', 'player');
       const stamped = read();
-      let freezeMs = 0;
-      if (freeze) {
-        freezeMs = Math.min(30000, Math.max(8000, frameMs * 16)) /* the floor: see FREEZE FLOOR above */;
-        store.getState().triggerHitstop(freezeMs);
-      }
-      const until = store.getState().hitstopUntil;
-      const frozen = [];
-      while (freeze && performance.now() < until) {
-        await frame();
-        if (performance.now() < until) frozen.push(read());
-      }
+      const held = freeze
+        ? await window.__e2eHoldFreeze({ read, need, frameMs })
+        : { frozen: [], minMs: 0, freezeMs: 0, longest: 0 };
       const later = [];
       for (let i = 0; i < after; i++) { await frame(); later.push(read()); }
-      return { frameMs, freezeMs, stamped, frozen, later };
-    }, { mid: id, freeze, after });
+      return { frameMs, stamped, later, ...held };
+    }, { mid: id, freeze, after, need: HOLD_FRAMES });
+
+  // The diagnosis every frozen-frame message carries: the frame rate before the hit, the freeze as held against
+  // the window it would once have been, and the longest frame inside it.
+  const freezeWhere = (r) => `frame ${r.frameMs.toFixed(0)} ms, freeze ${r.freezeMs.toFixed(0)} ms ` +
+    `(min ${r.minMs.toFixed(0)} ms, longest frame ${r.longest.toFixed(0)} ms), ${r.frozen.length} frozen frames`;
 
   test('a hit HOLDS the knockback through the freeze, then spends it', async ({ page }) => {
     await bootDev(page);
     await startPlayActive(page);
+    await installHoldFreeze(page);
     await page.evaluate(() => window.useGameStore.setState({ isAlive: true, playerHealth: window.useGameStore.getState().maxHealth }));
 
     // A zombie of our own, 4 units off the player. Identified by the id set it ADDS, not by position.
@@ -90,7 +137,7 @@ test.describe('world hitstop', () => {
 
     // THE SUBJECT: the same hit, under a freeze.
     const held = await hitAndSample(page, id, { freeze: true });
-    const where = `frame ${held.frameMs.toFixed(0)} ms, freeze ${held.freezeMs.toFixed(0)} ms, ${held.frozen.length} frozen frames`;
+    const where = freezeWhere(held);
     expect(held.stamped?.knockback, `the frozen hit stamped no knockback (${where})`).toBe(true);
     expect(held.frozen.length, `fewer than 3 frames rendered inside the freeze — nothing was measured (${where})`).toBeGreaterThanOrEqual(3);
     expect(held.frozen.every((m) => m && m.knockback === true),
@@ -113,7 +160,8 @@ test.describe('world hitstop', () => {
   test('the world clock holds through a freeze and moves after it', async ({ page }) => {
     await bootDev(page);
     await startPlayActive(page);
-    const r = await page.evaluate(async () => {
+    await installHoldFreeze(page);
+    const r = await page.evaluate(async (need) => {
       const frame = () => new Promise((res) => requestAnimationFrame(() => res(performance.now())));
       const wn = () => window.__craftyTest.call('worldNow');
       let t = await frame();
@@ -125,18 +173,11 @@ test.describe('world hitstop', () => {
       const free0 = wn();
       for (let i = 0; i < 6; i++) await frame();
       const free1 = wn();
-      const freezeMs = Math.min(30000, Math.max(8000, frameMs * 16)) /* the floor: see FREEZE FLOOR above */;
-      store.getState().triggerHitstop(freezeMs);
-      const until = store.getState().hitstopUntil;
-      const frozen = [];
-      while (performance.now() < until) {
-        await frame();
-        if (performance.now() < until) frozen.push(wn());
-      }
+      const held = await window.__e2eHoldFreeze({ read: wn, need, frameMs });
       for (let i = 0; i < 6; i++) await frame();
-      return { frameMs, freezeMs, free0, free1, frozen, after: wn() };
-    });
-    const where = `frame ${r.frameMs.toFixed(0)} ms, freeze ${r.freezeMs.toFixed(0)} ms, ${r.frozen.length} frozen frames`;
+      return { frameMs, free0, free1, after: wn(), ...held };
+    }, HOLD_FRAMES);
+    const where = freezeWhere(r);
     expect(r.free1 - r.free0, `the world clock never advanced unfrozen — the ticker is not running (${where})`).toBeGreaterThan(0);
     expect(r.frozen.length, `fewer than 3 frames inside the freeze (${where})`).toBeGreaterThanOrEqual(3);
     const [first, ...rest] = r.frozen.slice(1);
@@ -155,8 +196,9 @@ test.describe('world hitstop', () => {
     await bootDev(page);
     await startPlayActive(page);
     await page.evaluate(() => window.useGameStore.setState({ isAlive: true, playerHealth: window.useGameStore.getState().maxHealth }));
+    await installHoldFreeze(page);
 
-    const r = await page.evaluate(async () => {
+    const r = await page.evaluate(async (need) => {
       const frame = () => new Promise((res) => requestAnimationFrame(() => res(performance.now())));
       const orbs = () => window.__craftyTest.call('readOrbs');
       let t = await frame();
@@ -184,23 +226,18 @@ test.describe('world hitstop', () => {
       for (let i = 0; i < 20; i++) await frame();
       const freeEnd = freeIds ? ages(freeIds) : [];
 
-      // THE SUBJECT: the same kill, then a freeze sized from the measured frame time.
+      // THE SUBJECT: the same kill, then a held freeze.
       store.setState({ hitstopUntil: 0, hitstopStart: 0 });
       const ids = killForOrbs();
-      const freezeMs = Math.min(30000, Math.max(8000, frameMs * 16)) /* the floor: see FREEZE FLOOR above */;
-      store.getState().triggerHitstop(freezeMs);
-      const until = store.getState().hitstopUntil;
-      const frozen = [];
-      while (ids && performance.now() < until) {
-        await frame();
-        if (performance.now() < until) frozen.push(ages(ids));
-      }
+      const held = ids
+        ? await window.__e2eHoldFreeze({ read: () => ages(ids), need, frameMs })
+        : { frozen: [], minMs: 0, freezeMs: 0, longest: 0 };
       const later = [];
-      for (let i = 0; i < 12; i++) { await frame(); later.push(ages(ids)); }
-      return { frameMs, freezeMs, freeCount: freeIds ? freeIds.size : -1, freeStart, freeEnd, count: ids ? ids.size : -1, frozen, later };
-    });
+      for (let i = 0; ids && i < 12; i++) { await frame(); later.push(ages(ids)); }
+      return { frameMs, freeCount: freeIds ? freeIds.size : -1, freeStart, freeEnd, count: ids ? ids.size : -1, later, ...held };
+    }, HOLD_FRAMES);
 
-    const where = `frame ${r.frameMs.toFixed(0)} ms, freeze ${r.freezeMs.toFixed(0)} ms, ${r.frozen.length} frozen frames, ${r.count} orbs`;
+    const where = `${freezeWhere(r)}, ${r.count} orbs`;
     expect(r.freeCount, 'the presence kill scattered no orbs — nothing below could be seen').toBeGreaterThan(0);
     expect(r.freeEnd.length === 0 || Math.max(...r.freeEnd) > Math.max(...r.freeStart),
       'unfrozen orbs never aged — the instrument cannot see an orb step at all').toBe(true);
