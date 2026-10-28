@@ -72,6 +72,16 @@ describe('the light string', () => {
     expect(pressSwing(1100).action).toBe('buffer');
   });
 
+  it('a buffered press a late frame takes fires as the step it was promised, its times from that frame', () => {
+    pressSwing(1000); // ready at 1300, window to 1650
+    expect(pressSwing(1150)).toEqual({ action: 'buffer', step: 2 });
+    expect(takeBufferedSwing(1700)).toBe(2); // the first frame past readyAt is 400 ms late, past step 1's window
+    expect(readString().lastSwingStep).toBe(2);
+    expect(readString().lastSwingAt).toBe(1700);
+    expect(readString().readyAt).toBe(1700 + SWING_COOLDOWN_MS);
+    expect(pressSwing(2050)).toEqual({ action: 'fire', step: 3 }); // the string runs on from the swing that fired
+  });
+
   it('a second press while one is buffered is dropped', () => {
     pressSwing(1000);
     expect(pressSwing(1150).action).toBe('buffer');

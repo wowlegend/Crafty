@@ -49,8 +49,7 @@ const S = {
 
 const nextStep = (now) => (now <= S.windowEndsAt && S.last < STRING_STEPS ? S.last + 1 : 1);
 
-function fire(now) {
-  const step = nextStep(now);
+function fire(now, step = nextStep(now)) {
   const finisher = step === STRING_STEPS;
   S.readyAt = now + (finisher ? FINISHER_RECOVERY_MS : SWING_COOLDOWN_MS);
   S.windowEndsAt = now + STRING_WINDOW_MS;
@@ -90,11 +89,16 @@ export function pressSwing(now) {
   return DROP;
 }
 
-/** Called every frame: a buffered press fires once its cooldown has run. @returns the step it fired as, or 0 */
+/**
+ * Called every frame: a buffered press fires once its cooldown has run, as the step pressSwing promised it, the string's
+ * step when the cooldown ran out. A frame that takes it later than that (a long frame, a stall) does not move it: past
+ * the window, a step read at the frame's own time would restart a string the press was made inside.
+ * @returns the step it fired as, or 0
+ */
 export function takeBufferedSwing(now) {
   if (!S.buffered || now < S.readyAt) return 0;
   S.buffered = false;
-  return fire(now);
+  return fire(now, nextStep(S.readyAt));
 }
 
 /** The step a press at `now` WOULD fire or buffer as, with no side effect; 0 for a press that would drop. */
