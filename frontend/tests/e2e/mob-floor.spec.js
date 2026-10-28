@@ -2,7 +2,7 @@ import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 import { BURST_M, flown, stoppedShort } from './_spellEnd.js';
-import { MIN_UNDER, TEST_BUDGET_MS, colOf, floorEvidence, keepSampling } from './_floorSamples.js';
+import { MIN_UNDER, TEST_BUDGET_MS, colOf, floorEvidence, watchUntilEvidence } from './_floorSamples.js';
 
 // A MOB UNDER A ROOF STAYS ON THE GROUND (review #6, QUEUE R7.1).
 //
@@ -53,14 +53,19 @@ import { MIN_UNDER, TEST_BUDGET_MS, colOf, floorEvidence, keepSampling } from '.
 // roof burst after 1.3 m (2 frames)" on the old per-frame sampling — CI's shape — and passed on the end record.
 //
 // THE ZOMBIE IS WATCHED UNTIL ITS EVIDENCE EXISTS, NOT FOR A FLAT 10 s (2026-10-28). The same defect, in the zombie test:
-// it sampled every rendered frame for 10 s of wall clock and then demanded a worker reply and 2 post-reply samples under
-// the roof — a frame count read inside a time window. On CI the page drew nothing for ~9.6 s after the spawn (run
-// 40637608377, shard 5: screencast frames 0.4 s and 10.0 s after the spawn), so the window held 1-2 frames: "the zombie
-// never moved in 1 frames" / "only 1 post-reply samples under the roof, of 2 frames", three attempts of three on
-// feat/steady-cool, and the first attempt on main twice (995f1da2, d5375ac1), each passing on a retry. The page was in
-// play, focused and panel-free (canvas-pace-panels holds the 60 fps cap there on the same run): no pacing rule was
-// involved. It now samples at least the old 10 s, then on until the evidence exists, the zombie is gone, or 60 s
-// (_floorSamples.js keepSampling, driven by tests/gates/floor-sample-window-gates); nothing it asserts was relaxed.
+// it sampled once per requestAnimationFrame callback for 10 s of wall clock and then demanded a worker reply and 2
+// post-reply samples under the roof — a frame count read inside a time window. What CI measured (run 40637608377, shard
+// 5, both traces): that in-page loop ran 10.04 s and 10.05 s and returned 2 samples and 1, so in the ~10 s after spawnMob
+// the page ran at most ONE requestAnimationFrame callback, while in the retry the screencast shows compositor frames at
+// +0.44-0.51 s after the spawn. An episodic main-thread stall, then (inferred: rAF stopped and the compositor did not),
+// ~10 s long and starting at the spawn — not a slow steady frame rate. Its cause is unmeasured. It failed three attempts
+// of three on feat/steady-cool ("the zombie never moved in 1 frames" / "only 1 post-reply samples under the roof, of 2
+// frames"), and main's first attempt failed the same way twice (995f1da2, d5375ac1), each passing on a retry. It now
+// samples at least the old 10 s, then on until the evidence exists, the zombie is gone, or 60 s; nothing it asserts was
+// relaxed. The whole watch, its poll loop included, is _floorSamples.js watchUntilEvidence, which
+// tests/gates/floor-sample-window-gates drives on a fake clock; this spec supplies only the page reads, the clock and
+// the sleep. Whether it supplies them right (t0 right after the spawn, this test's own site) is the one seam no unit
+// gate sees: it is unverified until CI runs the pushed sha.
 // Local (throwaway :4307 config, 2026-10-28): the unmodified spec passed at load ~22 (13 frames in its 10 s). The CI
 // shape constructed with a page-side burner (a 9.6 s frame after the spawn, then 2.5 s frames), against the old spec and
 // this one, and this spec unburned, all died in SETUP ("the world never built ... within 90000 ms") at load 145-222, so
@@ -294,8 +299,8 @@ test.describe('mob floor', () => {
     expect(probe.under, 'under the roof, the floor is the ground').toBeCloseTo(ground, 2);
     expect(probe.onRoof, 'standing on the roof, the floor is the roof').toBeCloseTo(roofY + 1, 2);
 
-    // 5. A zombie spawned under the roof, sampled every rendered frame as the real reply loop snaps it: a recorder in the
-    //    page takes one sample per frame, and this reads it until the verdict's evidence exists (_floorSamples.js).
+    // 5. A zombie spawned under the roof, sampled as the real reply loop snaps it: a recorder in the page takes one sample
+    //    per requestAnimationFrame callback, and this reads it until the verdict's evidence exists (_floorSamples.js).
     const id = await page.evaluate(({ cx, cz, ground }) => {
       const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
       window.useGameStore.getState().spawnMob(cx + 0.4, cz + 0.4, 'zombie', ground);
@@ -315,22 +320,22 @@ test.describe('mob floor', () => {
     }, { cx: site.cx, cz: site.cz, ground });
     expect(id, 'spawnMob did not add exactly one mob').not.toBeNull();
     // HOW LONG: at least the old 10 s, then on until 2 post-reply samples under the roof exist, the zombie is gone, or
-    // 60 s have passed (_floorSamples.js keepSampling). A flat 10 s held 1-2 frames on CI, where the page drew nothing for
-    // ~9.6 s after the spawn, and failed as "never moved" / "only 1 post-reply samples" on main and on this branch alike.
-    const t0 = Date.now();
-    let rec;
+    // 60 s have passed (_floorSamples.js watchUntilEvidence: the loop is there, so the gate drives it). A flat 10 s held
+    // 1-2 samples on CI, where the page ran at most one requestAnimationFrame callback in the ~10 s after the spawn.
+    let watch;
     try {
-      for (;;) {
-        rec = await page.evaluate(() => ({ samples: window.__mobFloorRec.samples, gone: window.__mobFloorRec.gone }));
-        const elapsedMs = Date.now() - t0;
-        if (!keepSampling({ elapsedMs, gone: rec.gone, under: floorEvidence(rec.samples, site).under.length })) break;
-        await page.waitForTimeout(250);
-      }
+      watch = await watchUntilEvidence({
+        read: () => page.evaluate(() => ({ samples: window.__mobFloorRec.samples, gone: window.__mobFloorRec.gone })),
+        now: () => Date.now(),
+        sleep: (ms) => page.waitForTimeout(ms),
+        site,
+      });
     } finally {
       await page.evaluate(() => { window.__mobFloorRec.stop = true; }).catch(() => {}); // a closed page has no recorder to stop
     }
-    const watched = `${rec.samples.length} frames in ${Date.now() - t0} ms${rec.gone ? ', then the zombie was gone' : ''}`;
-    // Samples are per RENDERED frame, and a loaded runner renders few. So the denominator is not a frame count: it is the
+    const { rec, elapsedMs } = watch;
+    const watched = `${rec.samples.length} frames in ${elapsedMs} ms${rec.gone ? ', then the zombie was gone' : ''}`;
+    // Samples are per requestAnimationFrame callback, and a loaded runner runs few. So the denominator is not a frame count: it is the
     // samples taken AFTER a worker reply moved the zombie — the snap runs on every reply, so from that sample on the
     // zombie's y is the snap's answer — while still under the roof.
     const first = rec.samples[0], last = rec.samples[rec.samples.length - 1];
