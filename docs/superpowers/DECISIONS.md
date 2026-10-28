@@ -18,6 +18,97 @@
 
 ---
 
+## 2026-10-28 — [LOOP] The SOTA reset's standing decisions (W1-H)
+
+**Decided by the command session** under item 14 of the 2026-10-28 landing entry below, from the SOTA reset plan
+(`docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`, lane W1-H). Numbered on their own, so they cannot collide with
+that entry's items. Each stands while it earns its place; reversing one takes a new dated entry. The mipmaps decision
+(plan row 10) is W1-E's entry, written with its measurement, and is not repeated here.
+
+1. **The capture oracle retires** (plan row 4, lane W2-B). Supersedes "The 31 baselines remain a regression oracle"
+   (`docs/superpowers/masterpiece-2026-10/roadmap-2026-10-27.json:261`) and rule 2 of "How a move counts as done" in
+   `docs/superpowers/plans/2026-10-27-crafty-masterpiece.md:26-28`. Why: capture mode turns off weather, mobs, NPCs,
+   particles, spawning and the hands, so its frames show a build nobody plays, and shipped source carries 131
+   `isCaptureMode()` calls (`rg -c` over `frontend/src`, 2026-10-28) that no player needs. Looks are accepted on the eye-level lookbook (W1-D); DOM-only
+   checks use Playwright's `toHaveScreenshot`. No re-baseline is owed meanwhile, so ACTIVE_PLAN task T10 and masterpiece
+   Phase 0e are cancelled. `tests/visual/baseline/menu.png` stays until the media pipeline (W2-H) replaces the og-image source.
+2. **The umbrella is amended** (plan rows 12, 45-49; section 10). Supersedes the Phase 0-3 structure of the masterpiece plan
+   above. (a) A Cut wave (W2-F) removes the sandbox layer before Wave 3 builds, so no lane ports a dead system. (b) The
+   platform work (W2-G, W3-D) runs beside the game lanes, not in front of them: the refuter showed the dragon and
+   feedback-grammar plans need no ECS rewrite. (c) One HUD lane with one owner (W2-D) takes every HUD change from the
+   first-minute plan, the visuals lens and roadmap move 6. (d) Phase 0e and T10 are cancelled (item 1). Phase 3 regroups
+   into the First Night (W3-A) and the road of light (W3-B).
+3. **Lane briefs plus task scripts of 300 lines or less** (plan row 33). Supersedes Kevin's 2026-06-10 rule that every
+   milestone gets a full plan doc before it is built (`CLAUDE.md:248`). Why: the twelve 2026-10-27 lane plans run 771 to
+   1,720 lines against code the Cut will change, so their step scripts would be rewritten at lane start anyway. Now an
+   unstarted lane carries a brief of one page or less (8 KB) that links to its reset-plan row and states scope, files,
+   acceptance and one-way doors. At lane start it writes a task script of 300 lines or less against the code as it is
+   then, with red-first steps and the gates it runs. The 2026-10-27 designs stay as reference. Kevin's rule fixed
+   building from a spec with no build contract; the brief keeps that and drops the cost. Plan row 29 (W2-J) rewrites
+   `CLAUDE.md:248`; until then this entry governs. The first briefs are named in item 9.
+4. **One costed build mode** (plan row 19, lane W2-F). Supersedes the builder sandbox in
+   `frontend/src/world/placementEconomy.js:6-7` ("CREATIVE mode — the game's default — keeps free placement") and the
+   default `gameMode: 'creative'` (`frontend/src/store/useGameStore.jsx:694`). Placing a block spends one mined block in
+   every game; the creative/survival toggle and the Mode chip go. Why: free walls make holding a siege no choice, and free
+   placement would make build accrual (item 5) farmable. A free-build world may return later as a world type. Door: the
+   `gameMode` save field stops being written at the Cut; the tombstone pass-through (plan row 20) carries it one release.
+5. **Ember: one meter, and it keeps build accrual** (plan row 21, lane W2-F). Supersedes the four banks, Ferocity, Kinetic,
+   Soul and Resonance (`frontend/src/store/useGameStore.jsx:546-561`, `:824-826`), and their four HUD bars. One `ember`
+   bar feeds the four spends (roar, grab, snare, imbue). It accrues from day kills and from building, as Resonance does
+   today (`frontend/src/game/resonance.js:11`), with a per-day cap. Why: four meters that fill the same way read as one
+   meter drawn four times; the choice that matters is the spend. Building stays a source because placement now costs
+   blocks (item 4); the cap stops a build-and-break loop. Bank by day, spend by night, stays.
+6. **Progression becomes talents that change verbs, plus loot relics** (plan row 22, lane W2-F). Supersedes hand
+   attribute allocation (`frontend/src/store/useGameStore.jsx:326-333`, five points a level at `:450-456`), the free
+   spell-mastery click (`upgradeSpell`, `frontend/src/world/spellUpgrades.js:90`) and the crystal wallet with its wand
+   discount (`frontend/src/game/crystalWallet.js`, the 2026-07-14 B3b fix). A level grants one talent point; a talent
+   changes how a verb plays; relics come from loot; spells scale with level. Why: seven axes that each add a number give
+   a player nothing to choose. It needs a damage rebalance first, because `solveSpellDamage` reads attributes.
+   `frontend/src/game/affixes.js` (no importer) goes with it.
+7. **The Forge replaces the crafting grid** (plan row 23, lane W2-F). Supersedes the 3x3 grid
+   (`frontend/src/ui/panels/CraftingTable.jsx`, `frontend/src/data/recipes.js`, the C key, the touch-tray Craft slot,
+   the pickaxe item) and with it the 2026-07-14 grid fixes (B3a sword patterns, B3d escrow). A Forge card on Mara (G)
+   offers three things, each with its cost shown: a weapon upgrade, a relic upgrade and a lantern. Why: hidden recipe
+   shapes are guesswork, and a drag grid does not work on iPad. The pickaxe is a weapon stat stick (damage 8), so it
+   folds into the weapon line.
+8. **The lantern is costed, and the radius rule ships first** (plan row 15). Amends
+   `docs/superpowers/plans/2026-10-27-crafty-lantern-block-light.md` before block id 16 ships: its grid recipe (1 glass +
+   1 coal, Unit 5) and its spawn rule on the baked light field (Unit 6). The lantern is bought at the Forge (item 7), and
+   W3-A ships a radius rule: no natural hostile spawn within R of a placed lantern, R starting at 16 m. The light field
+   follows as its own lane. Why: a cheap lantern goes everywhere and stops meaning anything, and the radius rule is one
+   distance check the siege can build on now, where the light field is a mesher and shader change. Door: block id 16
+   enters saves at the first push that lets a player save one, so the radius rule and the Forge price land with the
+   block, never after it.
+9. **`memory/registry.jsonl` is the one home for open work** (plan row 30). Supersedes the open-work role of STATUS §2,
+   its G-ledger and the "Residue: memory/STATUS.md G-ledger" line in ACTIVE_PLAN. The registry holds every open item
+   harvested from STATUS §2 and its G-ledger, the ACTIVE_PLAN task list and owed block, the sota-2026-09 QUEUE and
+   OPEN-ITEMS files and the masterpiece phase tables. A source item that bundles several fixes is split into one row
+   per part (id `key/part`) where a lane closes part of it; some harvested rows (G-ledger 37, 39, 40, OI-47 and two
+   E-ter rows) are still bundles, and the lane that closes part of one splits it first, so a merge never closes an
+   unbuilt part. Rows follow the plan's schema (`{id, title, playerVisible,
+   severity, owner, state, evidence, opened, closedBy}`, plus the harvest key and the plan unit). `evidence` is the
+   source line, pinned to the commit on main it was harvested from. `opened` is the date that line was first written
+   (`git log -L`), so an item carried into a source when the source was created reads the creation date. A done item
+   is closed, never deleted: `closedBy` names the commit that closed it, or the decision or document that did when no
+   commit did (a cancellation by decision, a pull request closed unmerged). Kevin owns a row only when it needs his
+   device, ear, money, an account sign-in, his explicit OK for an external send, or a decision its source reserves for
+   him. Until those sources leave HEAD (plan row 32), `frontend/scripts/ci/registry-harvest.mjs` (run by
+   `tests/scripts/registry-harvest.test.js` in every unit run) fails when a source holds an open item with no registry
+   row, or yields fewer items than its floor in `frontend/scripts/ci/registry-floors.json`; closing items at the source
+   lowers that floor in the same change. `frontend/scripts/ci/registry-append-only.mjs` fails a push, in pre-push and in
+   CI, that deletes a row id. New open work goes straight to the registry. The first lane briefs under item 3:
+   `docs/superpowers/plans/2026-10-28-crafty-brief-w2b-retire-capture-oracle.md`,
+   `docs/superpowers/plans/2026-10-28-crafty-brief-w2d-hud.md`, `docs/superpowers/plans/2026-10-28-crafty-brief-w2f-the-cut.md`,
+   `docs/superpowers/plans/2026-10-28-crafty-brief-lantern-costed.md` and
+   `docs/superpowers/plans/2026-10-28-crafty-brief-quest-spine.md`.
+10. **The three placement-count quests go** (lane W2-F, with item 4). Builder, Architect and World Builder
+   (`frontend/src/QuestSystem.jsx`, `QUEST_LIST`: place 20, 100 and 500 blocks) are deleted. Why: under item 4 a placed
+   block costs one, but breaking it gives it back (`frontend/src/world/terrain.worker.js:120-130` reports the broken
+   block's type; `frontend/src/world/Terrain.jsx:732-742` adds it to the inventory), so placing and breaking one block
+   completes all three for 600 XP and 24 wood at no cost. Item 5 caps that loop for ember; a quest counter has no cap.
+   Building pays through ember and the siege, and the quest line moves to the spine (the quest-spine brief). Door:
+   their ids in saved quest progress ride the tombstone pass-through (plan row 20) for one release.
+
 ## 2026-10-28 — [LOOP] Close-quarters combat: the stance, the windup chevrons and the light string (`feat/combat-stance`)
 
 **Decided by the combat-stance lane under the standing grant; the constants an encounter or boss tuner balances
@@ -266,6 +357,67 @@ longer finds the instructions there; none is configured to in this repo.
    back from the GPU of the production build and fails unless it holds a full chain (6 levels for 32 px tiles) sampled
    through a mipmap minify filter, with every level filled and every byte equal to the chain the source builds.
    Mutations are in the commits' `Mutation-Proof:` trailers.
+21. **The light and colour lane, landing in Wave 1: the day lasts 480 s, the lane's capture-state work is dropped, and
+   the colour blend stays linear (command session, 2026-10-28; the SOTA reset, section 8, asked for each).**
+   (a) **Day length: 480 s, one constant** (`DAY_LENGTH_SECONDS`, `frontend/src/game/dayNight.js`; the game-unit rate
+   is derived from it). It supersedes the 300 s cycle (`GAME_UNITS_PER_SECOND = 4`) and the light plan's decision 8,
+   which kept 300 s for the lane. The reason is the First Night, the reset's ten-minute spine (one dusk, one siege held,
+   one golden dawn). A fresh profile starts at dawn (the store's `gameTime: 0`). At 480 s its first dusk falls at 4:00
+   of play and its first dawn at 8:00, so with the first minute in front the experience ends at 9:00. At 300 s night
+   fell at 2:30, before a new player could light a Hearth, and the ten minutes held two nights. At 600 s the first dawn
+   lands at 11:00. Measured in the same change: the golden blend (sunset key to dusk key) lasts 16.8 s, up from 10.5 s;
+   the sun's 0.5 deg shadow steps fall from about 2.4 to 1.51 renders a second (727 a cycle). What moves with it is
+   what reads game units: the day and night halves, the sky, the shadow steps, and the dusk warning, whose 0.18 of the
+   day half is now the last 43 s, up from 27 s. What runs on real time does not: the spawner checks once a real second
+   (`frontend/src/systems/SpawnerSystem.jsx`), so a night holds the siege at its mob cap for 240 s of real time instead
+   of 150 s, and night 1 ships in Wave 1 at that length, unmeasured. Rebalancing the siege for the longer night is
+   W3-A's, which can also move this one constant. Saves load unchanged, because `gameTime` is stored in units. The pause holds the
+   clock through the input gate and `isWorldFrozenNow`, and the sky clock catches up at most one tick and holds.
+   **Guard:** `tests/gates/day-length-gates.test.js` ticks a fresh profile from the store's own start: the first dusk
+   at 180 s or later, the first dawn plus a 60 s first minute within 600 s, and the golden blend 15 s or longer.
+   `daynight-clock-gates` drives the real hook for one cycle.
+   (b) **The lane's capture-state work is dropped.** This applies the reset's W2-B to this lane: the capture oracle
+   retires, and looks are accepted on W1-D's eye-level lookbook. The lane never added `explore-golden` to `capture.mjs`
+   or `VISUAL_STATES` (its Task 4, never built), and it will not re-shoot the baselines (its Task 9 Step 4). The code
+   built only to serve them is removed (`a0cac94a`): the `captureSolarFraction` store field, the DEV hook
+   `setCaptureSolar` and `captureCycle`'s declared-fraction branch. `captureCycle` keeps noon for a day state and
+   midnight for a night state, because night now comes from the clock, and a night capture state pinned at noon would
+   render daylight until W2-B deletes capture. The baselines are stale against the colour script, and nothing runs the
+   visual gate.
+   (c) **The colour blend stays in linear RGB.** The reset asked for an OKLab check of the dusk clip. What was
+   measured, and in what: (1) the colour model and the authored keys, not pixels. On every pair of adjacent keys and
+   every blended colour, the script's linear-RGB path is never darker than the straight OKLab line between the same
+   keys, and it loses at most 0.0147 chroma (the fog, from dusk to sunset), under 0.02, the OKLab step the gate takes as
+   one visible difference. An sRGB-byte lerp would run up to 0.006 darker, also under a step; linear is kept because it
+   is never darker and is three's own lerp. In the display model (the dome's horizon through the key's exposure, the
+   grade and NEUTRAL), the horizon's chroma bottoms at 0.051 between the sunset and dusk keys and 0.058 between preDawn
+   and sunrise. (2) The dusk clip's pixels, measured afterwards: in `after-walk-0.50.mp4` (the H.264 screencast, f 0.500
+   to 0.508, about a quarter of the 16.8 s blend), the sky band where it meets the land reads OKLab L 0.68-0.79 and
+   chroma 0.005-0.047, median 0.017, against the model's L 0.82-0.83 and chroma 0.051-0.068 for the dome's horizon. On
+   screen the band passes near neutral mid-clip, as the fog and the distance haze grey it; the model's "never grey" is a
+   claim about the dome colour, not about that band. Orange to violet passes near neutral in any straight blend
+   (OKLab's own midpoint is 0.040), so this is no case for a different blend space; whether the grey band reads as mud
+   is a look judgement for the lookbook. **Guard:** `colour-script-gates`, "the blend between keys, against OKLab", both
+   bounds one visible step (0.02): the claim is how the blend looks, and a tighter bound would gate how it is computed.
+   (d) **The ground at golden hour and through the twilight blends (command session, 2026-10-28, after the lane's
+   review).** The keys as first landed lit the ground at dawn and golden hour darker than at midnight and than on main
+   (the grey card's up face at L 0.225, against midnight's 0.337 and main's 0.374), because the sun grazes there (its
+   arc peaks at 32 deg) and the sunrise and sunset keys gave the indirect light 0.26 ambient and 0.60 hemisphere. The
+   pad by the Hearth read maroon at 0.50 (L 0.202 C 0.053 h 3): the fire's orange on the violet twilight. Retuned:
+   sunrise and sunset ambient x0.80 and hemisphere x1.80 in warm yellow-greys (#C6B698 / #C2BAAC, #C6B496 / #C2BAA8),
+   preDawn and dusk ambient x0.85 and hemisphere x1.50 in a steel blue (#7E8CA2 / #788AAC); exposure, the sky and the
+   sun are unchanged, so the dusk sky stays violet. The grey card's up face now reads L 0.418 at 0.02 and 0.415 at 0.48
+   (gold, hue 78-79), 0.381 at 0.50 and 0.337 at midnight. A first retune with lavender twilight light and redder greys
+   passed the model, but the real-GPU pad by the brazier read 10-20 deg redder than the model and touched maroon at
+   0.50 on one target (WebKit 1180x820, L 0.303 C 0.043 h 16), so the final colours were chosen to keep the model's
+   pad near chroma 0.02 in the maroon hue band (read 0.021 at hue 30 at f 0.502; no gate asserts that margin). Known
+   gaps, as registry rows: G2's pad sample uses the grey card, not the terrain stone the screen was calibrated on, reads
+   only 1 m from the brazier, and stops before the night keys (0.574, 0.926); and at midnight the pad within about 1 m
+   of the brazier reads on the maroon line on screen (C 0.037-0.040, h 313-331), as it did before this lane. **Guard:** `colour-script-gates` G1 (while the sun is up the ground, grey card and
+   terrain stone, is never darker than at midnight; golden hour at least 0.374 and gold) and G2 (no maroon through
+   either twilight blend in the sky, fog, hazed land, ground, or the pad 1 m from the brazier, whose light `HEARTH_FIRE`
+   in `frontend/src/world/homeAnchor.js` the gate and the brazier share). G2 judges the model, so it does not see that
+   red offset: the lavender-twilight keys pass it, and the evidence for the final colours is the lookbook reading.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 

@@ -177,6 +177,9 @@ export function PostTierDriver() {
         n8ao: live.n8ao ? live.n8ao.enabled : null,
         godRays: live.godRays ? !live.godRays.gated : null,
         bloomMipmap: live.bloom ? live.bloom.mipmapBlurPass.enabled : null,
+        // The LIVE threshold (BloomEffect keeps it on its luminance material; the prop is only the first value), for the
+        // light-colour plan's bloom grammar (read through Atmosphere's readSkyLight).
+        bloomThreshold: live.bloom ? live.bloom.luminanceMaterial.threshold : null,
         // three's live counters: textures/geometries resident on the GPU, programs linked.
         textures: gl ? gl.info.memory.textures : null,
         programs: gl && gl.info.programs ? gl.info.programs.length : null,

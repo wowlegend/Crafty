@@ -80,8 +80,12 @@ describe('S11 sky-coloured AO', () => {
     const t = strip(readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8'));
     expect(t, 'the AO term no longer mixes toward the uniform').toMatch(/mix\(uAoFloor, vec3\(1\.0\), clamp\(vAO/);
     expect(t, 'the flat grey AO multiply is back').not.toMatch(/mix\(0\.55, 1\.0, clamp\(vAO/);
-    expect(t, 'the uniform is declared but never written per-frame').toMatch(/uniforms\.uAoFloor\.value\.setRGB/);
-    expect(t, 'the AO floor is derived from a different mood sample than the haze — they can disagree')
-      .toMatch(/aoFloorColor\(\[sampled\.skyMid\.r/);
+    // The floor is the published sky frame's `aoFloor` (render/mood.js: aoFloorColor of the COMPOSED ambient, the
+    // authored shadow tint), written per frame from the SAME frame the haze reads, so AO and haze cannot disagree. A
+    // second derivation here (from skyMid, which is blue by day and navy at night) could drift from it.
+    expect(t, 'the uniform is declared but never written per-frame from the sky frame').toMatch(/uniforms\.uAoFloor\.value\.copy\(frame\.aoFloor\)/);
+    expect(t, 'the haze is not read from the same sky frame as the AO floor — they can disagree')
+      .toMatch(/uniforms\.skyHorizon\.value\.copy\(frame\.skyHorizon\)/);
+    expect(t, 'Terrain derives its own AO floor again (from skyMid?) instead of reading the frame\'s').not.toMatch(/\baoFloorColor\s*\(/);
   });
 });

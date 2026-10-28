@@ -99,7 +99,7 @@ source text is not a gate.
 
 ---
 
-## 2. THE REGISTRY — every open item (the loop's definition of done)
+## 2. THE HARVESTED RECORD — open work now lives in `memory/registry.jsonl` (DECISIONS 2026-10-28 (W1-H) item 9)
 
 Legend: **[LOOP]** = full loop authority · **[KEVIN]** = needs him, which now means only his two bright lines
 (spend no money; never force-push or rewrite pushed history) and what only he can do (real-device feel, the audio

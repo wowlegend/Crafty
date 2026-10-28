@@ -6,6 +6,7 @@ import {
 } from '../../src/render/cloudField.js';
 import { makeSkyDomeMaterial } from '../../src/render/skyDome.js';
 import { sampleMood } from '../../src/render/mood.js';
+import { STORM_MOOD_BOOST } from '../../src/game/weatherGate.js';
 import { carriersOf } from './_srcWalk.js';
 
 /**
@@ -45,6 +46,9 @@ import { carriersOf } from './_srcWalk.js';
  *   M22 the terrain shadow ignores the sky's cover (review)               -> no-shadow-without-cloud RED
  *   M23 no sun-elevation fade (review: a grazing sun samples ~3,400 m away) -> low-sun RED
  *   M24 Terrain never reads the cover                                     -> structural RED
+ *
+ * The cloud tint is keyed on the sky frame's `daylight`, and a storm dims the sunlit body. The tint cases pin design
+ * anchors, not the keying variable: a tint keyed on the key light's intensity also sits inside every anchor.
  *
  * BLIND SPOT: the GLSL is not compiled here — only a browser does that (the capture). How the clouds and
  * their shadows LOOK is judged from the captured frames. Atmosphere's and Terrain's per-frame writes are
@@ -89,20 +93,58 @@ const lum = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 describe('cloudTint — the clouds take the mood, they are not painted white', () => {
   // Design anchors, not the formula: a sunlit cloud is bright; a night cloud is a SHAPE, not a light —
   // dimmer than a lamp, and at least twice its sky's luminance or it does not read; the boss sky's are dark.
-  const at = (mood) => { const m = sampleMood(mood); return { m, t: cloudTint(m, new THREE.Color()) }; };
+  // Night is the CLOCK's, not mood 1 (mood 1 is a storm at whatever hour it is), so the night case samples midnight; the
+  // tint keys on the frame's `daylight`.
+  const at = (mood, cycle) => { const m = sampleMood(mood, cycle); return { m, t: cloudTint(m, new THREE.Color()) }; };
 
-  it('day clouds are bright', () => {
-    expect(lum(at(0).t)).toBeGreaterThan(0.7);
+  it('day clouds are bright, and near-white rather than sky-blue', () => {
+    const { t } = at(0);
+    expect(lum(t)).toBeGreaterThan(0.7);
+    // The day key's sky (#5A9AE0) lifted by the night body's 2.6 alone clears lum 0.7 as a saturated (0.27, 0.84, 1),
+    // so brightness alone cannot tell a sunlit cloud from a night one at noon. A sunlit body is carried most of the way
+    // to white: red within 0.6 of blue.
+    expect(t.r / t.b, 'a sunlit cloud is near-white, not the sky lifted').toBeGreaterThan(0.6);
   });
 
   it('night clouds are a shape, not a glow: lighter than their sky, far dimmer than day', () => {
-    const { m, t } = at(1);
+    const { m, t } = at(0, 0.75);
+    expect(m.daylight).toBe(0); // the case really is night
     expect(lum(t), 'a night cloud brighter than a third of a day cloud reads as a lamp').toBeLessThan(0.3);
     expect(lum(t), 'a night cloud under twice its sky\'s luminance does not read as a shape').toBeGreaterThan(2 * lum(m.skyMid));
   });
 
   it('the boss sky\'s clouds are dark', () => {
     expect(lum(at(2).t)).toBeLessThan(0.1);
+  });
+
+  // A STORM DARKENS THE CLOUDS. The tint keys on the frame's `daylight`, which the storm overlay never touches, so
+  // without its own storm term a daytime storm leaves the clouds sunlit white. The reference is MAIN'S OWN TINT, measured on main at
+  // 17e06ecd by running its mood.js and cloudField.js (sampleMood(mood) then cloudTint): noon cloud luminance 0.4610 at
+  // mood 0.5, 0.2526 at the storm boost 0.85 (game/weatherGate.js STORM_MOOD_BOOST), 0.1744 at mood 1. Three points
+  // along the storm's weight, so a wrong darkening CURVE with the right value at one point still fails (rule 3b).
+  // Main's mood 0 was 0.7876 against this branch's 0.8059: the calm sky moved, so the band is +-15%, not exact.
+  it('a storm darkens the clouds at noon, as main did: within 15% of main\'s tint at three storm weights', () => {
+    const MAIN = [[0.5, 0.4610], [STORM_MOOD_BOOST, 0.2526], [1, 0.1744]];
+    const calm = lum(at(0, 0.25).t);
+    let n = 0;
+    for (const [mood, mainL] of MAIN) {
+      const L = lum(at(mood, 0.25).t);
+      expect(L, `storm ${mood} at noon: cloud L ${L.toFixed(4)} vs main ${mainL}`).toBeGreaterThanOrEqual(mainL * 0.85);
+      expect(L, `storm ${mood} at noon: cloud L ${L.toFixed(4)} vs main ${mainL} (a daytime storm left the clouds sunlit)`).toBeLessThanOrEqual(mainL * 1.15);
+      n++;
+    }
+    expect(n).toBe(3);
+    expect(lum(at(STORM_MOOD_BOOST, 0.25).t), 'the storm cloud is not clearly darker than the calm one').toBeLessThan(0.5 * calm);
+  });
+
+  it('a storm at midnight leaves the night clouds a shape: the darkening is the SUNLIT body\'s, not the night body\'s', () => {
+    // Main never drew a storm at night (night was mood 1 already, and a storm's 0.85 sat under it), so a night storm
+    // cloud is held to the night anchors: within 15% of the calm night cloud, and still twice its sky or more.
+    const calmNight = lum(at(0, 0.75).t);
+    const { m, t } = at(STORM_MOOD_BOOST, 0.75);
+    expect(m.daylight).toBe(0);
+    expect(lum(t), `night storm cloud L ${lum(t).toFixed(4)} vs calm ${calmNight.toFixed(4)}`).toBeGreaterThanOrEqual(calmNight * 0.85);
+    expect(lum(t), 'a night storm cloud under twice its sky does not read as a shape').toBeGreaterThan(2 * lum(m.skyMid));
   });
 
   it('never leaves displayable range, at any mood', () => {

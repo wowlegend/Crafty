@@ -30,7 +30,7 @@ import { LOADED_MASK_SIZE, buildLoadedMask, loadedMaskGlsl, loadedChunkSet, load
 import { aerialGlsl } from '../render/aerialPerspective.js';
 import { landGradeGlsl } from '../render/landGrade.js';
 import { cloudShadowGlsl } from '../render/cloudField.js';
-import { moodRef, sampleMood, sunDirRef, cloudCoverRef } from '../render/mood.js';
+import { moodRef, skyFrameRef, sunDirRef, cloudCoverRef } from '../render/mood.js';
 import { frameElapsed } from '../devtest/captureClock.js';
 
 const AERIAL_GLSL = aerialGlsl();
@@ -112,7 +112,8 @@ export function FarField({ renderDistance }) {
   useFrame((state) => {
     const shader = mat.userData.shader;
     if (shader) {
-      shader.uniforms.skyHorizon.value.copy(sampleMood(moodRef.current).skyHorizon);
+      // The published sky frame's horizon, not a no-cycle re-sample (the noon horizon).
+      shader.uniforms.skyHorizon.value.copy(skyFrameRef.current.skyHorizon);
       shader.uniforms.mood.value = moodRef.current;
       shader.uniforms.uTime.value = frameElapsed(state.clock.elapsedTime);
       shader.uniforms.uSunDir.value.copy(sunDirRef.current);

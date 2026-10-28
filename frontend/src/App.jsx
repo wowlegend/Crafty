@@ -377,6 +377,12 @@ function GameApp({ experienceSystem }) {
     registerTestHook('worldNow', () => worldNow());
     // `setTimeOfDay` writes the same `isDay` state the day/night cycle reads.
     registerTestHook('setTimeOfDay', (t) => useGameStore.getState().setTimeOfDay(t));
+    // `setWeatherMoodBoost(n)` pins the storm overlay's input: the live weather flips clear and storm every 90 s
+    // (render/WeatherSystem.jsx), so a spec reading the sky pins it first. It reads back what the store now holds.
+    registerTestHook('setWeatherMoodBoost', (n) => {
+      useGameStore.getState().setWeatherMoodBoost(n);
+      return useGameStore.getState().weatherMoodBoost;
+    });
     // `enterCapture` flips the visual-regression capture-determinism layer ON: seeded
     // decorative RNG, paused physics, pinned follow-cam, suppressed mob spawns. Optional
     // { timeOfDay } pins the lighting in the same call. No-op in prod (bridge tree-shaken).

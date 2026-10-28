@@ -8,6 +8,42 @@
  *  midnight. */
 export const LOOKBOOK_CYCLES = Object.freeze([0.30, 0.48, 0.55, 0.75]);
 
+/** The index chunk an index.html loads (`index-<hash>.js`), or null. Its content hash is the build's identity. */
+export function indexChunkOf(html) {
+  return (String(html ?? '').match(/assets\/(index-[\w-]+\.js)/) || [])[1] || null;
+}
+
+/**
+ * Is the server on the port serving THIS build? Every lookbook in every worktree shares one port, and vite's
+ * --strictPort fails silently when another run holds it, so a ready port can be someone else's build. Returns null when
+ * the served page loads the expected chunk, else the reason to stop.
+ */
+export function servedBuildProblem(servedHtml, expectedChunk) {
+  const served = indexChunkOf(servedHtml);
+  if (!expectedChunk) return 'the build to serve has no index chunk in its index.html';
+  if (served === expectedChunk) return null;
+  return `the port serves ${served ?? 'a page with no index chunk'}, not this build's ${expectedChunk}: another run holds the port`;
+}
+
+/**
+ * `--cycles 0.02,0.25,0.5` as the times to shoot: dawn-origin cycle fractions in [0, 1), each named at most once, since
+ * the file names carry two decimals. Absent (null or empty) is LOOKBOOK_CYCLES. Anything else throws, naming it: a
+ * mistyped time must stop the run, never shoot a different set.
+ */
+export function parseCycles(arg) {
+  if (arg === null || arg === undefined || arg === '') return LOOKBOOK_CYCLES;
+  const parts = String(arg).split(',').map((s) => s.trim());
+  const out = parts.map((s) => {
+    const c = /^\d*\.?\d+$/.test(s) ? Number(s) : NaN;
+    if (!(c >= 0 && c < 1)) throw new Error(`--cycles: "${s}" is not a cycle fraction in [0, 1)`);
+    return c;
+  });
+  const names = out.map((c) => c.toFixed(2));
+  const dup = names.find((n, i) => names.indexOf(n) !== i);
+  if (dup) throw new Error(`--cycles: ${dup} is named twice (file names carry two decimals)`);
+  return Object.freeze(out);
+}
+
 /**
  * The four places. Seed 12345 is fixed (world/terrain.worker.js), so these are the same ground on every build.
  *   hearth, coast, snow-terrace — the capture harness's own poses (capture.mjs, the hearth / ocean-coast / biome-snow
@@ -42,7 +78,7 @@ export const CHROMIUM_CANDIDATES = Object.freeze([
   { id: 'headless-shell', launch: { headless: true } },
 ]);
 
-/** How far the live clock may drift from the asked-for time (cycle fraction; 0.01 is 3 s of a 300 s day). */
+/** How far the live clock may drift from the asked-for time (cycle fraction; 0.01 is 4.8 s of the 480 s day). */
 export const CYCLE_TOLERANCE = 0.01;
 
 /** Every shot, place-major: [{ place, cycle, file }]. */

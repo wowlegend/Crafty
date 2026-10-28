@@ -1,0 +1,3509 @@
+{
+  "generatedAt": "2026-10-28T16:29:02.881Z",
+  "url": "http://localhost:4238",
+  "build": {
+    "buildDir": "<worktree>/frontend/build",
+    "indexChunk": "index-FCdFRD2x.js",
+    "commitAtRun": "b031e0d6"
+  },
+  "sets": [
+    "eye"
+  ],
+  "chromiumCandidates": [
+    {
+      "id": "new-headless",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+      "gpu": "hardware"
+    },
+    {
+      "id": "new-headless+metal",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+      "gpu": "hardware"
+    },
+    {
+      "id": "headless-shell",
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+      "gpu": "software"
+    }
+  ],
+  "targets": [
+    {
+      "id": "chromium-1280x800",
+      "engine": "chromium",
+      "launch": "new-headless",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+      "gpu": "hardware",
+      "entry": "already live",
+      "shots": [],
+      "eye": [
+        {
+          "heading": 0,
+          "cycle": 0.02,
+          "file": "eye-000-0.02.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.022083333333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 66,
+                "meanMs": 2.029,
+                "p50Ms": 1.732,
+                "maxMs": 5.015,
+                "count": 66,
+                "sumMs": 133.918
+              },
+              {
+                "label": "depth blit",
+                "n": 66,
+                "meanMs": 1.501,
+                "p50Ms": 1.328,
+                "maxMs": 4.179,
+                "count": 66,
+                "sumMs": 99.065
+              },
+              {
+                "label": "1:N8AO",
+                "n": 66,
+                "meanMs": 3.041,
+                "p50Ms": 2.817,
+                "maxMs": 6.071,
+                "count": 66,
+                "sumMs": 200.69
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 66,
+                "meanMs": 3.085,
+                "p50Ms": 2.724,
+                "maxMs": 6.326,
+                "count": 66,
+                "sumMs": 203.578
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 66,
+                "meanMs": 3.186,
+                "p50Ms": 3.056,
+                "maxMs": 6.938,
+                "count": 66,
+                "sumMs": 210.249
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 66,
+                "meanMs": 2.221,
+                "p50Ms": 2.629,
+                "maxMs": 6.564,
+                "count": 66,
+                "sumMs": 146.605
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 66,
+                "meanMs": 2.457,
+                "p50Ms": 2.887,
+                "maxMs": 6.727,
+                "count": 66,
+                "sumMs": 162.178
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 66,
+                "meanMs": 2.544,
+                "p50Ms": 3.089,
+                "maxMs": 5.13,
+                "count": 66,
+                "sumMs": 167.875
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 66,
+                "meanMs": 2.643,
+                "p50Ms": 3.241,
+                "maxMs": 5.134,
+                "count": 66,
+                "sumMs": 174.459
+              }
+            ],
+            "frames": 66,
+            "framesTimed": 66,
+            "windowMs": 1555.2,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": null,
+            "gpuMs": 1498.617,
+            "sceneMs": 2.029,
+            "postMs": 20.677,
+            "plausible": true
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00010622917799900005,
+            54.15010374881572,
+            0.000014399415709148466
+          ],
+          "body": [
+            -0.00010623777052387595,
+            52.950103759765625,
+            0.000014457465113082435
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 16.681175658521326,
+            "within8m": 0
+          },
+          "cleared": 1,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.02,
+          "file": "eye-120-0.02.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.024166666666666666,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 67,
+                "meanMs": 2.235,
+                "p50Ms": 2.163,
+                "maxMs": 3.408,
+                "count": 67,
+                "sumMs": 149.732
+              },
+              {
+                "label": "depth blit",
+                "n": 67,
+                "meanMs": 1.672,
+                "p50Ms": 1.599,
+                "maxMs": 2.507,
+                "count": 67,
+                "sumMs": 112.018
+              },
+              {
+                "label": "1:N8AO",
+                "n": 67,
+                "meanMs": 3.36,
+                "p50Ms": 3.308,
+                "maxMs": 4.454,
+                "count": 67,
+                "sumMs": 225.11
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 67,
+                "meanMs": 3.512,
+                "p50Ms": 3.49,
+                "maxMs": 4.805,
+                "count": 67,
+                "sumMs": 235.28
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 67,
+                "meanMs": 4.015,
+                "p50Ms": 3.948,
+                "maxMs": 5.292,
+                "count": 67,
+                "sumMs": 269.014
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 67,
+                "meanMs": 2.971,
+                "p50Ms": 3.602,
+                "maxMs": 5.029,
+                "count": 67,
+                "sumMs": 199.077
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 67,
+                "meanMs": 3.117,
+                "p50Ms": 3.795,
+                "maxMs": 5.293,
+                "count": 67,
+                "sumMs": 208.847
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 67,
+                "meanMs": 2.896,
+                "p50Ms": 3.759,
+                "maxMs": 4.505,
+                "count": 67,
+                "sumMs": 194.049
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 67,
+                "meanMs": 2.971,
+                "p50Ms": 3.792,
+                "maxMs": 4.526,
+                "count": 67,
+                "sumMs": 199.07
+              }
+            ],
+            "frames": 68,
+            "framesTimed": 67,
+            "windowMs": 1579.3,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": "IMPLAUSIBLE: 1792.197 ms of GPU time in a 1579.3 ms window, so these are not GPU execution times",
+            "gpuMs": 1792.197,
+            "sceneMs": 2.235,
+            "postMs": 24.514,
+            "plausible": false
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00007715144614026798,
+            54.15010374693364,
+            0.00001232565695636909
+          ],
+          "body": [
+            -0.00007719580025877804,
+            52.950103759765625,
+            0.000012286895980651025
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 11.770920424448812,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.02,
+          "file": "eye-240-0.02.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.022083333333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 66,
+                "meanMs": 2.056,
+                "p50Ms": 1.98,
+                "maxMs": 3.292,
+                "count": 66,
+                "sumMs": 135.692
+              },
+              {
+                "label": "depth blit",
+                "n": 66,
+                "meanMs": 1.506,
+                "p50Ms": 1.422,
+                "maxMs": 2.719,
+                "count": 66,
+                "sumMs": 99.408
+              },
+              {
+                "label": "1:N8AO",
+                "n": 66,
+                "meanMs": 3.129,
+                "p50Ms": 3.108,
+                "maxMs": 5.446,
+                "count": 66,
+                "sumMs": 206.543
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 66,
+                "meanMs": 3.072,
+                "p50Ms": 3.195,
+                "maxMs": 4.524,
+                "count": 66,
+                "sumMs": 202.732
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 66,
+                "meanMs": 3.349,
+                "p50Ms": 3.592,
+                "maxMs": 5.057,
+                "count": 66,
+                "sumMs": 221.065
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 66,
+                "meanMs": 2.897,
+                "p50Ms": 3.324,
+                "maxMs": 4.968,
+                "count": 66,
+                "sumMs": 191.205
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 66,
+                "meanMs": 3.028,
+                "p50Ms": 3.515,
+                "maxMs": 5.209,
+                "count": 66,
+                "sumMs": 199.835
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 66,
+                "meanMs": 2.914,
+                "p50Ms": 3.441,
+                "maxMs": 4.273,
+                "count": 66,
+                "sumMs": 192.332
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 66,
+                "meanMs": 3,
+                "p50Ms": 3.492,
+                "maxMs": 4.324,
+                "count": 66,
+                "sumMs": 198.027
+              }
+            ],
+            "frames": 67,
+            "framesTimed": 66,
+            "windowMs": 1586.3,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": "IMPLAUSIBLE: 1646.839 ms of GPU time in a 1586.3 ms window, so these are not GPU execution times",
+            "gpuMs": 1646.839,
+            "sceneMs": 2.056,
+            "postMs": 22.896,
+            "plausible": false
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.00007775129424214783,
+            54.1501037471807,
+            0.000012947926363248475
+          ],
+          "body": [
+            -0.00007781459135003388,
+            52.950103759765625,
+            0.000012948484254593495
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 38.31993336825113,
+            "within8m": 0
+          },
+          "cleared": 1,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 0,
+          "cycle": 0.48,
+          "file": "eye-000-0.48.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.4820833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 66,
+                "meanMs": 2.228,
+                "p50Ms": 2.127,
+                "maxMs": 3.996,
+                "count": 66,
+                "sumMs": 147.047
+              },
+              {
+                "label": "depth blit",
+                "n": 66,
+                "meanMs": 1.706,
+                "p50Ms": 1.558,
+                "maxMs": 3.474,
+                "count": 66,
+                "sumMs": 112.606
+              },
+              {
+                "label": "1:N8AO",
+                "n": 66,
+                "meanMs": 3.376,
+                "p50Ms": 3.176,
+                "maxMs": 5.524,
+                "count": 66,
+                "sumMs": 222.791
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 66,
+                "meanMs": 3.592,
+                "p50Ms": 3.457,
+                "maxMs": 5.995,
+                "count": 66,
+                "sumMs": 237.057
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 66,
+                "meanMs": 3.685,
+                "p50Ms": 3.752,
+                "maxMs": 6.514,
+                "count": 66,
+                "sumMs": 243.202
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 66,
+                "meanMs": 2.341,
+                "p50Ms": 2.155,
+                "maxMs": 6.346,
+                "count": 66,
+                "sumMs": 154.526
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 66,
+                "meanMs": 2.566,
+                "p50Ms": 2.386,
+                "maxMs": 6.575,
+                "count": 66,
+                "sumMs": 169.342
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 66,
+                "meanMs": 2.548,
+                "p50Ms": 2.601,
+                "maxMs": 5.299,
+                "count": 66,
+                "sumMs": 168.136
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 66,
+                "meanMs": 2.63,
+                "p50Ms": 2.723,
+                "maxMs": 5.279,
+                "count": 66,
+                "sumMs": 173.612
+              }
+            ],
+            "frames": 66,
+            "framesTimed": 66,
+            "windowMs": 1569.7,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": "IMPLAUSIBLE: 1628.319 ms of GPU time in a 1569.7 ms window, so these are not GPU execution times",
+            "gpuMs": 1628.319,
+            "sceneMs": 2.228,
+            "postMs": 22.444,
+            "plausible": false
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00010621354014428491,
+            54.150103758081514,
+            0.000013208685140165411
+          ],
+          "body": [
+            -0.00010627630399540067,
+            52.950103759765625,
+            0.00001320213959843386
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 40.08841202726125,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.48,
+          "file": "eye-120-0.48.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.4841666666666667,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 66,
+                "meanMs": 2.062,
+                "p50Ms": 1.901,
+                "maxMs": 4.094,
+                "count": 66,
+                "sumMs": 136.094
+              },
+              {
+                "label": "depth blit",
+                "n": 66,
+                "meanMs": 1.555,
+                "p50Ms": 1.373,
+                "maxMs": 3.302,
+                "count": 66,
+                "sumMs": 102.612
+              },
+              {
+                "label": "1:N8AO",
+                "n": 66,
+                "meanMs": 3.186,
+                "p50Ms": 2.907,
+                "maxMs": 5.919,
+                "count": 66,
+                "sumMs": 210.295
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 66,
+                "meanMs": 3.369,
+                "p50Ms": 3.169,
+                "maxMs": 6.262,
+                "count": 66,
+                "sumMs": 222.323
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 66,
+                "meanMs": 3.826,
+                "p50Ms": 3.623,
+                "maxMs": 6.849,
+                "count": 66,
+                "sumMs": 252.542
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 66,
+                "meanMs": 2.84,
+                "p50Ms": 3.201,
+                "maxMs": 6.884,
+                "count": 66,
+                "sumMs": 187.413
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 66,
+                "meanMs": 3.072,
+                "p50Ms": 3.424,
+                "maxMs": 7.145,
+                "count": 66,
+                "sumMs": 202.749
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 66,
+                "meanMs": 2.826,
+                "p50Ms": 3.506,
+                "maxMs": 5.187,
+                "count": 66,
+                "sumMs": 186.5
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 66,
+                "meanMs": 2.807,
+                "p50Ms": 3.495,
+                "maxMs": 5.219,
+                "count": 66,
+                "sumMs": 185.257
+              }
+            ],
+            "frames": 66,
+            "framesTimed": 66,
+            "windowMs": 1576.4,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": "IMPLAUSIBLE: 1685.785 ms of GPU time in a 1576.4 ms window, so these are not GPU execution times",
+            "gpuMs": 1685.785,
+            "sceneMs": 2.062,
+            "postMs": 23.48,
+            "plausible": false
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00008115157822726924,
+            54.150103759839496,
+            0.00001233795965824402
+          ],
+          "body": [
+            -0.00008116091339616105,
+            52.950103759765625,
+            0.000012386163689370733
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 39.16176233357312,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.48,
+          "file": "eye-240-0.48.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.4820833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 66,
+                "meanMs": 2.151,
+                "p50Ms": 1.97,
+                "maxMs": 6.716,
+                "count": 66,
+                "sumMs": 141.958
+              },
+              {
+                "label": "depth blit",
+                "n": 66,
+                "meanMs": 1.579,
+                "p50Ms": 1.409,
+                "maxMs": 5.648,
+                "count": 66,
+                "sumMs": 104.244
+              },
+              {
+                "label": "1:N8AO",
+                "n": 66,
+                "meanMs": 3.216,
+                "p50Ms": 3.104,
+                "maxMs": 5.468,
+                "count": 66,
+                "sumMs": 212.247
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 66,
+                "meanMs": 3.252,
+                "p50Ms": 3.225,
+                "maxMs": 5.823,
+                "count": 66,
+                "sumMs": 214.659
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 66,
+                "meanMs": 3.339,
+                "p50Ms": 3.461,
+                "maxMs": 6.28,
+                "count": 66,
+                "sumMs": 220.35
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 66,
+                "meanMs": 2.885,
+                "p50Ms": 3.334,
+                "maxMs": 6.201,
+                "count": 66,
+                "sumMs": 190.44
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 66,
+                "meanMs": 3.121,
+                "p50Ms": 3.515,
+                "maxMs": 6.442,
+                "count": 66,
+                "sumMs": 205.999
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 66,
+                "meanMs": 3.065,
+                "p50Ms": 3.531,
+                "maxMs": 4.937,
+                "count": 66,
+                "sumMs": 202.29
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 66,
+                "meanMs": 3.02,
+                "p50Ms": 3.567,
+                "maxMs": 4.911,
+                "count": 66,
+                "sumMs": 199.338
+              }
+            ],
+            "frames": 66,
+            "framesTimed": 66,
+            "windowMs": 1575.4,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": "IMPLAUSIBLE: 1691.525 ms of GPU time in a 1575.4 ms window, so these are not GPU execution times",
+            "gpuMs": 1691.525,
+            "sceneMs": 2.151,
+            "postMs": 23.478,
+            "plausible": false
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.00007706109758321953,
+            54.15011017175784,
+            0.00001252098397757545
+          ],
+          "body": [
+            -0.00007713681407039985,
+            52.950111389160156,
+            0.000012458715900720563
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 36.79013674228774,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 0,
+          "cycle": 0.5,
+          "file": "eye-000-0.50.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.5041666666666667,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 69,
+                "meanMs": 2.681,
+                "p50Ms": 2.552,
+                "maxMs": 4.514,
+                "count": 69,
+                "sumMs": 184.973
+              },
+              {
+                "label": "depth blit",
+                "n": 69,
+                "meanMs": 2.11,
+                "p50Ms": 1.971,
+                "maxMs": 3.62,
+                "count": 69,
+                "sumMs": 145.593
+              },
+              {
+                "label": "1:N8AO",
+                "n": 69,
+                "meanMs": 4.02,
+                "p50Ms": 3.806,
+                "maxMs": 6.237,
+                "count": 69,
+                "sumMs": 277.348
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 69,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 69,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 69,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 69,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 69,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 69,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 69,
+                "meanMs": 3.98,
+                "p50Ms": 3.836,
+                "maxMs": 6.48,
+                "count": 69,
+                "sumMs": 274.624
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 69,
+                "meanMs": 3.153,
+                "p50Ms": 3.503,
+                "maxMs": 6.312,
+                "count": 69,
+                "sumMs": 217.541
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 69,
+                "meanMs": 3.341,
+                "p50Ms": 3.733,
+                "maxMs": 6.502,
+                "count": 69,
+                "sumMs": 230.535
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 69,
+                "meanMs": 3.296,
+                "p50Ms": 3.767,
+                "maxMs": 6.554,
+                "count": 69,
+                "sumMs": 227.431
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 69,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 69,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 69,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 69,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 69,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 69,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 69,
+                "meanMs": 3.395,
+                "p50Ms": 3.9,
+                "maxMs": 6.719,
+                "count": 69,
+                "sumMs": 234.225
+              }
+            ],
+            "frames": 70,
+            "framesTimed": 69,
+            "windowMs": 1579.4,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": "IMPLAUSIBLE: 1792.27 ms of GPU time in a 1579.4 ms window, so these are not GPU execution times",
+            "gpuMs": 1792.27,
+            "sceneMs": 2.681,
+            "postMs": 23.294,
+            "plausible": false
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00010306596916144386,
+            54.1501070022898,
+            0.000012474540508126026
+          ],
+          "body": [
+            -0.00010311877122148871,
+            52.95010757446289,
+            0.000012437046279956121
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 35.37649168268476,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.5,
+          "file": "eye-120-0.50.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.5020833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 68,
+                "meanMs": 2.591,
+                "p50Ms": 2.437,
+                "maxMs": 4.738,
+                "count": 68,
+                "sumMs": 176.185
+              },
+              {
+                "label": "depth blit",
+                "n": 68,
+                "meanMs": 2.018,
+                "p50Ms": 1.941,
+                "maxMs": 3.658,
+                "count": 68,
+                "sumMs": 137.222
+              },
+              {
+                "label": "1:N8AO",
+                "n": 67,
+                "meanMs": 3.994,
+                "p50Ms": 3.733,
+                "maxMs": 6.859,
+                "count": 67,
+                "sumMs": 267.569
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 67,
+                "meanMs": 3.957,
+                "p50Ms": 3.756,
+                "maxMs": 7.055,
+                "count": 67,
+                "sumMs": 265.122
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 67,
+                "meanMs": 3.282,
+                "p50Ms": 3.566,
+                "maxMs": 6.803,
+                "count": 67,
+                "sumMs": 219.925
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 67,
+                "meanMs": 3.468,
+                "p50Ms": 3.791,
+                "maxMs": 7.037,
+                "count": 67,
+                "sumMs": 232.386
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 67,
+                "meanMs": 3.434,
+                "p50Ms": 3.899,
+                "maxMs": 7.215,
+                "count": 67,
+                "sumMs": 230.096
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 67,
+                "meanMs": 3.516,
+                "p50Ms": 3.997,
+                "maxMs": 7.356,
+                "count": 67,
+                "sumMs": 235.562
+              }
+            ],
+            "frames": 68,
+            "framesTimed": 68,
+            "windowMs": 1599.6,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": "IMPLAUSIBLE: 1764.067 ms of GPU time in a 1599.6 ms window, so these are not GPU execution times",
+            "gpuMs": 1764.067,
+            "sceneMs": 2.591,
+            "postMs": 23.351,
+            "plausible": false
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00007706515637175076,
+            54.15010377291038,
+            0.000011978182406760741
+          ],
+          "body": [
+            -0.00007706896576564759,
+            52.950103759765625,
+            0.000012031955520797055
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 35.78615224687412,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.5,
+          "file": "eye-240-0.50.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.5041666666666667,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 66,
+                "meanMs": 2.486,
+                "p50Ms": 2.353,
+                "maxMs": 4.09,
+                "count": 66,
+                "sumMs": 164.079
+              },
+              {
+                "label": "depth blit",
+                "n": 66,
+                "meanMs": 1.885,
+                "p50Ms": 1.797,
+                "maxMs": 3.171,
+                "count": 66,
+                "sumMs": 124.431
+              },
+              {
+                "label": "1:N8AO",
+                "n": 66,
+                "meanMs": 3.818,
+                "p50Ms": 3.555,
+                "maxMs": 5.924,
+                "count": 66,
+                "sumMs": 251.96
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 66,
+                "meanMs": 3.776,
+                "p50Ms": 3.462,
+                "maxMs": 6.576,
+                "count": 66,
+                "sumMs": 249.199
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 66,
+                "meanMs": 2.906,
+                "p50Ms": 3.079,
+                "maxMs": 6.305,
+                "count": 66,
+                "sumMs": 191.824
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 66,
+                "meanMs": 3.155,
+                "p50Ms": 3.312,
+                "maxMs": 6.646,
+                "count": 66,
+                "sumMs": 208.255
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 66,
+                "meanMs": 3.308,
+                "p50Ms": 3.515,
+                "maxMs": 6.831,
+                "count": 66,
+                "sumMs": 218.3
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 66,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 66,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 66,
+                "meanMs": 3.4,
+                "p50Ms": 3.606,
+                "maxMs": 7.093,
+                "count": 66,
+                "sumMs": 224.388
+              }
+            ],
+            "frames": 67,
+            "framesTimed": 66,
+            "windowMs": 1588.9,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": "IMPLAUSIBLE: 1632.436 ms of GPU time in a 1588.9 ms window, so these are not GPU execution times",
+            "gpuMs": 1632.436,
+            "sceneMs": 2.486,
+            "postMs": 22.248,
+            "plausible": false
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.00007968248158396639,
+            54.150100030899054,
+            0.000012601372155369157
+          ],
+          "body": [
+            -0.00007968744466779754,
+            52.95009994506836,
+            0.000012595254702318925
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 35.85672073740574,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 0,
+          "cycle": 0.75,
+          "file": "eye-000-0.75.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.7541666666666667,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 67,
+                "meanMs": 2.344,
+                "p50Ms": 2.107,
+                "maxMs": 5.495,
+                "count": 67,
+                "sumMs": 157.057
+              },
+              {
+                "label": "depth blit",
+                "n": 67,
+                "meanMs": 1.799,
+                "p50Ms": 1.607,
+                "maxMs": 4.299,
+                "count": 67,
+                "sumMs": 120.528
+              },
+              {
+                "label": "1:N8AO",
+                "n": 67,
+                "meanMs": 3.524,
+                "p50Ms": 3.269,
+                "maxMs": 6.487,
+                "count": 67,
+                "sumMs": 236.105
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 67,
+                "meanMs": 3.5,
+                "p50Ms": 3.396,
+                "maxMs": 7.142,
+                "count": 67,
+                "sumMs": 234.489
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 67,
+                "meanMs": 2.721,
+                "p50Ms": 2.907,
+                "maxMs": 7.152,
+                "count": 67,
+                "sumMs": 182.308
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 67,
+                "meanMs": 2.916,
+                "p50Ms": 3.163,
+                "maxMs": 7.521,
+                "count": 67,
+                "sumMs": 195.384
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 67,
+                "meanMs": 3.06,
+                "p50Ms": 3.192,
+                "maxMs": 7.711,
+                "count": 67,
+                "sumMs": 205.053
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 67,
+                "meanMs": 3.129,
+                "p50Ms": 3.278,
+                "maxMs": 7.917,
+                "count": 67,
+                "sumMs": 209.672
+              }
+            ],
+            "frames": 68,
+            "framesTimed": 67,
+            "windowMs": 1591.3,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": null,
+            "gpuMs": 1540.596,
+            "sceneMs": 2.344,
+            "postMs": 20.65,
+            "plausible": true
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00010401664909869996,
+            54.15009994671627,
+            0.00001285392811841547
+          ],
+          "body": [
+            -0.0001040176284732297,
+            52.95009994506836,
+            0.000012852515283157118
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 40.68077329784405,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.75,
+          "file": "eye-120-0.75.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.7520833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 68,
+                "meanMs": 2.261,
+                "p50Ms": 2.119,
+                "maxMs": 4.449,
+                "count": 68,
+                "sumMs": 153.757
+              },
+              {
+                "label": "depth blit",
+                "n": 68,
+                "meanMs": 1.725,
+                "p50Ms": 1.603,
+                "maxMs": 3.653,
+                "count": 68,
+                "sumMs": 117.271
+              },
+              {
+                "label": "1:N8AO",
+                "n": 67,
+                "meanMs": 3.595,
+                "p50Ms": 3.281,
+                "maxMs": 6.887,
+                "count": 67,
+                "sumMs": 240.843
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 67,
+                "meanMs": 3.644,
+                "p50Ms": 3.403,
+                "maxMs": 7.541,
+                "count": 67,
+                "sumMs": 244.122
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 67,
+                "meanMs": 2.966,
+                "p50Ms": 3.203,
+                "maxMs": 7.386,
+                "count": 67,
+                "sumMs": 198.739
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 67,
+                "meanMs": 3.203,
+                "p50Ms": 3.405,
+                "maxMs": 7.62,
+                "count": 67,
+                "sumMs": 214.601
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 67,
+                "meanMs": 3.36,
+                "p50Ms": 3.568,
+                "maxMs": 7.799,
+                "count": 67,
+                "sumMs": 225.141
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 67,
+                "meanMs": 3.438,
+                "p50Ms": 3.703,
+                "maxMs": 7.911,
+                "count": 67,
+                "sumMs": 230.369
+              }
+            ],
+            "frames": 68,
+            "framesTimed": 68,
+            "windowMs": 1598.6,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": "IMPLAUSIBLE: 1624.843 ms of GPU time in a 1598.6 ms window, so these are not GPU execution times",
+            "gpuMs": 1624.843,
+            "sceneMs": 2.261,
+            "postMs": 21.634,
+            "plausible": false
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00007778095978677865,
+            54.15010374693448,
+            0.000012730624781420312
+          ],
+          "body": [
+            -0.0000778363028075546,
+            52.950103759765625,
+            0.000012738290934066754
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 40.68076709997775,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.75,
+          "file": "eye-240-0.75.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.7541666666666667,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2240,
+            1400
+          ],
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": true,
+            "passes": [
+              {
+                "label": "0:RenderPass",
+                "n": 67,
+                "meanMs": 2.148,
+                "p50Ms": 1.921,
+                "maxMs": 4.69,
+                "count": 67,
+                "sumMs": 143.936
+              },
+              {
+                "label": "depth blit",
+                "n": 67,
+                "meanMs": 1.615,
+                "p50Ms": 1.403,
+                "maxMs": 3.869,
+                "count": 67,
+                "sumMs": 108.234
+              },
+              {
+                "label": "1:N8AO",
+                "n": 67,
+                "meanMs": 3.415,
+                "p50Ms": 2.962,
+                "maxMs": 6.663,
+                "count": 67,
+                "sumMs": 228.783
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+                "n": 67,
+                "meanMs": 3.399,
+                "p50Ms": 2.813,
+                "maxMs": 7.31,
+                "count": 67,
+                "sumMs": 227.732
+              },
+              {
+                "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+                "n": 67,
+                "meanMs": 2.712,
+                "p50Ms": 2.401,
+                "maxMs": 7.115,
+                "count": 67,
+                "sumMs": 181.692
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+                "n": 67,
+                "meanMs": 2.859,
+                "p50Ms": 2.589,
+                "maxMs": 7.444,
+                "count": 67,
+                "sumMs": 191.571
+              },
+              {
+                "label": "3:EffectPass(SMAAEffect) > draw",
+                "n": 67,
+                "meanMs": 3.02,
+                "p50Ms": 2.776,
+                "maxMs": 7.624,
+                "count": 67,
+                "sumMs": 202.313
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+                "n": 67,
+                "meanMs": 0,
+                "p50Ms": 0,
+                "maxMs": 0,
+                "count": 67,
+                "sumMs": 0
+              },
+              {
+                "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+                "n": 67,
+                "meanMs": 3.184,
+                "p50Ms": 2.911,
+                "maxMs": 7.909,
+                "count": 67,
+                "sumMs": 213.328
+              }
+            ],
+            "frames": 67,
+            "framesTimed": 67,
+            "windowMs": 1596.3,
+            "disjoint": 0,
+            "skipped": 0,
+            "reason": null,
+            "gpuMs": 1497.589,
+            "sceneMs": 2.148,
+            "postMs": 20.204,
+            "plausible": true
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.0000791314402090222,
+            54.15010044461289,
+            0.000011537713420460452
+          ],
+          "body": [
+            -0.00007915371679700911,
+            52.95009994506836,
+            0.000011546761015779339
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 40.680768295262986,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        }
+      ],
+      "clips": [],
+      "stand": [
+        -0.00006804493750678375,
+        52.950103759765625,
+        0.0000126451559481211
+      ],
+      "hands": {
+        "free": 33,
+        "hidden": 2,
+        "back": 33
+      },
+      "notes": [],
+      "respawns": 0,
+      "console": {},
+      "pageErrors": []
+    },
+    {
+      "id": "webkit-820x1180",
+      "engine": "webkit",
+      "launch": "headless",
+      "renderer": "Apple GPU",
+      "gpu": "hardware",
+      "entry": "tap on Start Adventure",
+      "shots": [],
+      "eye": [
+        {
+          "heading": 0,
+          "cycle": 0.02,
+          "file": "eye-000-0.02.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.022083333333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00004273949229388699,
+            54.150100433379016,
+            0.000012451853429368053
+          ],
+          "body": [
+            -0.00004277936022845097,
+            52.95009994506836,
+            0.000012446876098692883
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 28.329922199260643,
+            "within8m": 0
+          },
+          "cleared": 1,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.02,
+          "file": "eye-120-0.02.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.022083333333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00004051840986512059,
+            54.15010375976563,
+            0.000012620692884176302
+          ],
+          "body": [
+            -0.00004052087024319917,
+            52.950103759765625,
+            0.000012682399756158702
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 28.32992444001818,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.02,
+          "file": "eye-240-0.02.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.022083333333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.0000409204154837029,
+            54.15010375955619,
+            0.000012300704661179112
+          ],
+          "body": [
+            -0.00004097367127542384,
+            52.950103759765625,
+            0.000012263002645340748
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 28.329924400454008,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 0,
+          "cycle": 0.48,
+          "file": "eye-000-0.48.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.4820833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00006845839878337072,
+            54.15010368491529,
+            0.00001248660027976821
+          ],
+          "body": [
+            -0.00006851657235529274,
+            52.950103759765625,
+            0.000012486697414715309
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 18.11519248013332,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.48,
+          "file": "eye-120-0.48.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.4841666666666667,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00004199267659021077,
+            54.150103685167906,
+            0.000007021169281390991
+          ],
+          "body": [
+            -0.000042001218389486894,
+            52.950103759765625,
+            0.000007022147201496409
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 18.066486912189767,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.48,
+          "file": "eye-240-0.48.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.4820833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.00004160947439769326,
+            54.15010375976563,
+            0.000011634583276982148
+          ],
+          "body": [
+            -0.00004161586912232451,
+            52.950103759765625,
+            0.000011630415428953711
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 18.03235255906305,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 0,
+          "cycle": 0.5,
+          "file": "eye-000-0.50.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.5020833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00006384792858221865,
+            54.1501074981434,
+            0.000010884785016449145
+          ],
+          "body": [
+            -0.0000639263162156567,
+            52.95010757446289,
+            0.000010816180292749777
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 17.975503360420593,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.5,
+          "file": "eye-120-0.50.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.5020833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00004238087115705245,
+            54.15010376112385,
+            0.000012310787931035761
+          ],
+          "body": [
+            -0.000042387484427308664,
+            52.950103759765625,
+            0.000012306240023463033
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 17.96819954818896,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.5,
+          "file": "eye-240-0.50.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.5020833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.000040242972179146395,
+            54.15010320014598,
+            0.000006495404933327483
+          ],
+          "body": [
+            -0.00004028603507322259,
+            52.950103759765625,
+            0.000006457577455876162
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 17.96315734420441,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 0,
+          "cycle": 0.75,
+          "file": "eye-000-0.75.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.7541666666666667,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00006325108689415738,
+            54.15010053915496,
+            0.000012700754550971505
+          ],
+          "body": [
+            -0.00006328424933599308,
+            52.95009994506836,
+            0.000012708093890978489
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 17.954560665458985,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.75,
+          "file": "eye-120-0.75.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.7520833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00004068729569081784,
+            54.15009994699953,
+            0.000007385010456297218
+          ],
+          "body": [
+            -0.00004072178853675723,
+            52.95009994506836,
+            0.00000735223602532642
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 17.953452284004012,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.75,
+          "file": "eye-240-0.75.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.7520833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            1435,
+            2065
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.00003763108639243415,
+            54.15010318948571,
+            0.000007458181209446098
+          ],
+          "body": [
+            -0.00003762901178561151,
+            52.950103759765625,
+            0.000007508411272283411
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 17.952675088526345,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        }
+      ],
+      "clips": [],
+      "stand": [
+        -0.00003681485395645723,
+        52.950103759765625,
+        0.000007729404387646355
+      ],
+      "hands": {
+        "free": 33,
+        "hidden": 2,
+        "back": 33
+      },
+      "notes": [
+        "WebKit MASKS its renderer as \"Apple GPU\": hardware is inferred from WebKit's ANGLE-Metal path on macOS, not proven by this string"
+      ],
+      "respawns": 0,
+      "console": {},
+      "pageErrors": []
+    },
+    {
+      "id": "webkit-1180x820",
+      "engine": "webkit",
+      "launch": "headless",
+      "renderer": "Apple GPU",
+      "gpu": "hardware",
+      "entry": "tap on Start Adventure",
+      "shots": [],
+      "eye": [
+        {
+          "heading": 0,
+          "cycle": 0.02,
+          "file": "eye-000-0.02.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.022083333333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00012300119028690052,
+            54.150023670244565,
+            0.000006238156745945198
+          ],
+          "body": [
+            -0.0001230116467922926,
+            52.950008392333984,
+            0.0000062166168390831444
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 32.184828364993756,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.02,
+          "file": "eye-120-0.02.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.022083333333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00008161487659631757,
+            54.1501004442791,
+            0.000012498375322160688
+          ],
+          "body": [
+            -0.00008162064477801323,
+            52.95009994506836,
+            0.000012503596735768951
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 33.737629028051245,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.02,
+          "file": "eye-240-0.02.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.022083333333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.00008144957187564219,
+            54.150100091096874,
+            0.000012531070146199243
+          ],
+          "body": [
+            -0.00008145029278239235,
+            52.95009994506836,
+            0.000012541669093479868
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 33.397807894329866,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 0,
+          "cycle": 0.48,
+          "file": "eye-000-0.48.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.4820833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00008228111223024994,
+            54.15009994506836,
+            0.000012520094969659112
+          ],
+          "body": [
+            -0.00008229072409449145,
+            52.95009994506836,
+            0.000012520094969659112
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 33.39780784388847,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.48,
+          "file": "eye-120-0.48.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.4841666666666667,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00008234722667554612,
+            54.150100029011334,
+            0.000012682382612125737
+          ],
+          "body": [
+            -0.00008234816777985543,
+            52.95009994506836,
+            0.00001268202413484687
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 33.32121245587951,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.48,
+          "file": "eye-240-0.48.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.4820833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.00007970512630425485,
+            54.15009994699953,
+            0.000012606312692358484
+          ],
+          "body": [
+            -0.00007971014565555379,
+            52.95009994506836,
+            0.00001259780128748389
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 32.79772049099533,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 0,
+          "cycle": 0.5,
+          "file": "eye-000-0.50.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.5020833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00011123643918563816,
+            54.15010375976563,
+            0.000013675697675404514
+          ],
+          "body": [
+            -0.00011123709555249661,
+            52.950103759765625,
+            0.000013685236808669288
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 28.50683985272698,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.5,
+          "file": "eye-120-0.50.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.5020833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00008449258518639923,
+            54.15010481644988,
+            0.00001117650092651693
+          ],
+          "body": [
+            -0.00008454582712147385,
+            52.950103759765625,
+            0.000011129943231935613
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 28.506864054428455,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.5,
+          "file": "eye-240-0.50.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.5041666666666667,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.00008232845264834535,
+            54.15010367593444,
+            0.000012373154378414622
+          ],
+          "body": [
+            -0.00008233420521719381,
+            52.950103759765625,
+            0.00001236802836501738
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 29.58658601325158,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 0,
+          "cycle": 0.75,
+          "file": "eye-000-0.75.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.7520833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 0,
+          "pitch": 0,
+          "eye": [
+            -0.00011322358222579994,
+            54.15010375976563,
+            0.000012016521668677519
+          ],
+          "body": [
+            -0.0001132845864049159,
+            52.950103759765625,
+            0.000012023281669826247
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 29.953996646587413,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 120,
+          "cycle": 0.75,
+          "file": "eye-120-0.75.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.7520833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 120,
+          "pitch": 0,
+          "eye": [
+            -0.00008099700287772297,
+            54.15010368840858,
+            0.000011308757732094728
+          ],
+          "body": [
+            -0.00008100508421193808,
+            52.950103759765625,
+            0.00001130211148847593
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 29.95402691668642,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        },
+        {
+          "heading": 240,
+          "cycle": 0.75,
+          "file": "eye-240-0.75.png",
+          "valid": true,
+          "why": [],
+          "cycleAtShot": 0.7520833333333333,
+          "active": true,
+          "isAlive": true,
+          "health": 100,
+          "tier": "high",
+          "frameCap": 60,
+          "dpr": 1.75,
+          "canvas": [
+            2065,
+            1435
+          ],
+          "renderer": "Apple GPU",
+          "contextLosses": 0,
+          "consoleErrors": 0,
+          "consoleSample": [],
+          "passMs": {
+            "available": false,
+            "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+            "sceneMs": null,
+            "postMs": null,
+            "plausible": null,
+            "passes": []
+          },
+          "hud": true,
+          "headingAtShot": 240,
+          "pitch": 0,
+          "eye": [
+            -0.00008227208739763873,
+            54.1500999562959,
+            0.000012500505501381014
+          ],
+          "body": [
+            -0.00008226324280258268,
+            52.95009994506836,
+            0.00001250060995516833
+          ],
+          "cameraNodes": 33,
+          "hostiles": {
+            "nearestM": 29.95402462454797,
+            "within8m": 0
+          },
+          "cleared": 0,
+          "eyeAboveBody": 1.2
+        }
+      ],
+      "clips": [],
+      "stand": [
+        -0.00007206127338577062,
+        52.950103759765625,
+        0.000012269027138245292
+      ],
+      "hands": {
+        "free": 33,
+        "hidden": 2,
+        "back": 33
+      },
+      "notes": [
+        "WebKit MASKS its renderer as \"Apple GPU\": hardware is inferred from WebKit's ANGLE-Metal path on macOS, not proven by this string"
+      ],
+      "respawns": 0,
+      "console": {},
+      "pageErrors": []
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import {
   SCENARIOS, scenarioEvents, SCENARIO_SEC, EDGE_PERIOD_SEC, HURL_PERIOD_SEC,
   SIEGE_NIGHTS, NIGHT_T, DAY_T, PROBE_DPR,
 } from './perfScenarios';
+import { GAME_UNITS_PER_SECOND, CYCLE_UNITS } from '../game/dayNight.js';
 
 describe('perfScenarios (S2-B2-M2)', () => {
   it('defines exactly the five review-prescribed scenarios', () => {
@@ -16,13 +17,15 @@ describe('perfScenarios (S2-B2-M2)', () => {
     expect(SCENARIOS.B.timeOfDay).toBe(NIGHT_T);
   });
 
-  it('night/day fractions actually map to night/day and survive the 60s window', () => {
+  it('night/day fractions actually map to night/day and survive the sampling window', () => {
     expect(NIGHT_T >= 0.75 || NIGHT_T < 0.25).toBe(true);
     expect(DAY_T).toBeGreaterThanOrEqual(0.25);
     expect(DAY_T).toBeLessThan(0.75);
-    // 60s at 4 units/s = 240 units = 0.2 of a cycle; neither start may cross its day/night boundary
-    expect(NIGHT_T + 0.2 < 1.25).toBe(true); // night spans [0.75, 1.25) unwrapped
-    expect(DAY_T + 0.2).toBeLessThan(0.75);
+    // The window as a fraction of the cycle, from the day length; neither start may cross its day/night boundary.
+    const span = (SCENARIO_SEC * GAME_UNITS_PER_SECOND) / CYCLE_UNITS;
+    expect(span).toBeGreaterThan(0);
+    expect(NIGHT_T + span < 1.25).toBe(true); // night spans [0.75, 1.25) unwrapped
+    expect(DAY_T + span).toBeLessThan(0.75);
   });
 
   it('steady-state scenarios have empty schedules', () => {

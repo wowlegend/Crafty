@@ -7,7 +7,7 @@
 export const SCENARIO_SEC = 60;     // sampling window per scenario
 export const PROBE_DPR = 1.5;       // pinned DPR while probing (AdaptiveDpr disabled)
 export const SIEGE_NIGHTS = 6;      // nightCount=6 saturates the siege ramp (24/4 cap)
-export const NIGHT_T = 0.8;         // deep night; +0.2 cycle over 60s never re-enters day
+export const NIGHT_T = 0.8;         // deep night; the sampling window never re-enters day (its span follows the day length)
 export const DAY_T = 0.4;           // mid-day for the A baseline
 export const EDGE_PERIOD_SEC = 2;   // D: grab/drop toggle cadence
 export const HURL_PERIOD_SEC = 3;   // E: hurl-stand-in cadence

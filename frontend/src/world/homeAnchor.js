@@ -17,6 +17,13 @@ export const HEARTH_Y = 51;       // a flush pad nestled in the ≈y45-53 origin
 export const HEARTH_RADIUS = 7;   // world [-7,7] in x/z -> a 15x15 standable platform
 const STONE = 3;                  // existing block id (no new blocks in M1 — palette is M4)
 
+/**
+ * The brazier's point light (world/Terrain.jsx HomeAnchorRender), with `height` its height above the pad's top. The
+ * colour gates light the pad with these same values (tests/gates/colour-script-gates.test.js), because the fire's
+ * orange on the pad is what turns a violet twilight maroon.
+ */
+export const HEARTH_FIRE = Object.freeze({ color: '#FF8A2A', intensity: 1.6, distance: 9, height: 1.6 });
+
 // The 4 origin chunks the plinth touches: cx,cz in {-1,0} (world [-16,16) spans the corner quad).
 export function isHearthChunk(cx, cz) {
   return (cx === -1 || cx === 0) && (cz === -1 || cz === 0);

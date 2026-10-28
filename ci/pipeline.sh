@@ -27,9 +27,11 @@
 #   push    reads a COMMIT RANGE            -> pre-push. Trailers, queue-ledger, artifact-currency,
 #                                              e2e-freshness: a runner on a squashed ref cannot
 #                                              reconstruct the range, so these belong to the chokepoint
-#                                              that has it. One exception: artifact-currency's range is
-#                                              syncedSha..HEAD, which a full-history runner on a push to
-#                                              main CAN count, so the fast tier runs it there too.
+#                                              that has it. Two exceptions run in the fast tier too:
+#                                              artifact-currency's range is syncedSha..HEAD, which a
+#                                              full-history runner on a push to main CAN count; and
+#                                              registry-append-only takes its base from the event (a
+#                                              push's before, a pull request's base), which CI has.
 #   fast    reads the NETWORK or a BROWSER  -> CI only. `npm audit` and `prod-smoke` must never sit on an
 #                                              edit path: a registry outage or a flaky browser reddening
 #                                              someone's commit is precisely how a gate gets bypassed,
@@ -142,15 +144,18 @@ step "bundle byte budget" node scripts/ci/bundle-budget.mjs
 # One of them, artifact-currency, ALSO runs in the fast tier on a CI push to main (see the CI-only block
 # below): its range is syncedSha..HEAD, which a full-history runner can count. In either tier its drift is a
 # report, never a refusal (DECISIONS 2026-10-28 item 12); only its three tree-defect checks fail a run.
+# registry-append-only runs in both tiers as well: here on the range pre-push hands it (PUSH_RANGES), in CI on the
+# event's base. A registry row deleted instead of closed is invisible to a tree check, so it needs the range.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" != "push" ]; then
-  printf '\n\033[2m── skipped (%s tier): queue-ledger, artifact-currency, e2e-freshness — they read a COMMIT RANGE (the fast tier runs artifact-currency on a CI push to main, below)\033[0m\n' "$TIER"
+  printf '\n\033[2m── skipped (%s tier): queue-ledger, artifact-currency, e2e-freshness, registry-append-only — they read a COMMIT RANGE (the fast tier runs artifact-currency on a CI push to main, and registry-append-only on every CI run, below)\033[0m\n' "$TIER"
 fi
 if [ "$TIER" = "push" ]; then
   SECTION=range
   step "queue-ledger (a finding with no marker)" node scripts/ci/queue-ledger.mjs
   step "artifact-currency (page sources, Queued pills, as-of stamps; drift is reported only)" node scripts/ci/artifact-currency.mjs
   step "e2e freshness (the suite CI runs, receipted against this tree)" node scripts/ci/e2e-freshness.mjs
+  step "registry-append-only (a registry row deleted instead of closed, on the pushed range)" node scripts/ci/registry-append-only.mjs
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -167,8 +172,9 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # TIER: CI-ONLY — knip, npm audit and prod-smoke need the network or a browser, so they must never sit in a
 # developer's push path. A registry outage or a flaky browser reddening someone's push is how a gate gets
-# bypassed. The artifact-currency step at the end of this block is in CI for a different reason: it needs
-# neither, it needs the state of main AFTER a merge GitHub made, which no local hook ever sees.
+# bypassed. The registry-append-only and artifact-currency steps at the end of this block are in CI for a different
+# reason: they need neither. registry-append-only needs a range, which the event names; artifact-currency needs the
+# state of main AFTER a merge GitHub made, which no local hook ever sees.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" = "fast" ]; then
   step "knip (unused files / exports / deps)" npm run --silent knip
@@ -178,6 +184,9 @@ if [ "$TIER" = "fast" ]; then
   else
     step "prod-smoke (the bundle that actually ships boots and renders)" node scripts/ci/prod-smoke.mjs
   fi
+  # The event names the base (a push's before, a pull request's base sha, else the merge-base with origin/main), and the
+  # gates job checks out full history, so every CI run can read the registry at both ends.
+  step "registry-append-only (on every CI run, against the event's base)" node scripts/ci/registry-append-only.mjs
   # THE SERVER-SIDE MERGE REPORT (2026-10-28) — `gh pr merge` and GitHub's UI move main without any local hook, so
   # this step is the one place main's state after such a merge is looked at. It runs on the push event, AFTER main
   # has moved and Vercel has deployed. It PRINTS how far each operator page is behind main and refuses no drift

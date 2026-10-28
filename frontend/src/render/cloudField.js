@@ -14,7 +14,6 @@
 // CAPTURE DETERMINISM: drift reads a time uniform the caller feeds from devtest/captureClock.frameElapsed,
 // so a gated frame always shows the same clouds.
 import * as THREE from 'three';
-import { MOOD_SCALARS } from './mood.js';
 
 /** Height of the cloud plane (world units, absolute y). Terrain surface sits around y 40-60. */
 export const CLOUD_HEIGHT = 220;
@@ -37,23 +36,42 @@ export const CLOUD_PARAMS = Object.freeze({
 const f = (n) => Number(n).toFixed(6);
 
 const WHITE = new THREE.Color(1, 1, 1);
-const DAY_SUN = MOOD_SCALARS.explore.sunIntensity;
+// A night cloud is its sky's colour lifted this many times: enough to read as a shape (at least twice the sky).
+const NIGHT_CLOUD_LIFT = 2.6;
+/**
+ * How much a full storm (the sky frame's `storm` = 1) darkens a cloud's SUNLIT body: an overcast cloud is lit through
+ * itself. Calibrated against main's own tint (17e06ecd), which darkened storm clouds through the dusk mood's weaker
+ * sun: at noon main drew 0.4610 / 0.2526 / 0.1744 cloud luminance at storm 0.5 / 0.85 (the live boost) / 1, and 0.8
+ * here gives 0.4835 / 0.2579 / 0.1612 (tests/gates/cloud-field-gates.test.js holds it within 15% of main at all three).
+ */
+export const STORM_CLOUD_DIM = 0.8;
 const _night = new THREE.Color();
+const _day = new THREE.Color();
 
 /**
  * The cloud colour for a sampled mood (render/mood.js sampleMood), written into `out`.
  *
  * By day, a sunlit body: the sky's mid colour carried most of the way to white. By night, the sky's own
- * colour lifted enough that a cloud still reads as a shape (about three times the sky's luminance), never
- * a glow. Blended by the sun's strength CUBED, so dusk (the sun at ~45%) is already night: a first version
- * blended linearly and put night clouds at six times the night sky's luminance, which is a lamp, not a
- * cloud. (A warm sun-tinted underside was tried and deleted: at the strength that kept night clouds dark
- * it changed nothing a test or an eye could tell apart.)
+ * colour lifted enough that a cloud still reads as a shape (NIGHT_CLOUD_LIFT times the sky's luminance), never
+ * a glow. Blended by the frame's `daylight` CUBED (render/colourScript.js: smoothstep from the twilight key to the
+ * day key, and 0 under the boss), so the horizon is already night: a first version blended linearly and put night
+ * clouds at six times the night sky's luminance, which is a lamp, not a cloud. (A warm sun-tinted underside was
+ * tried and deleted: at the strength that kept night clouds dark it changed nothing a test or an eye could tell
+ * apart.)
+ *
+ * Keyed on `daylight` (the sky frame carries no sun intensity). The night lift is 2.6: a true night (daylight 0)
+ * keeps none of the day's white, and at 1.8 a night cloud would sit under twice its sky's luminance and not read.
+ *
+ * A STORM DARKENS THE SUNLIT BODY: `daylight` never moves under a storm, so keying on it alone would leave a daytime
+ * storm's clouds sunlit white. The body is dimmed by STORM_CLOUD_DIM x the frame's `storm`. The night body is not: a
+ * night cloud is the sky's own glow, which a storm does not change.
  */
 export function cloudTint(m, out) {
-  const day = THREE.MathUtils.clamp(m.sunIntensity / DAY_SUN, 0, 1);
-  _night.copy(m.skyMid).multiplyScalar(1.8);
-  out.copy(m.skyMid).lerp(WHITE, 0.72).lerp(_night, 1 - day * day * day);
+  const day = THREE.MathUtils.clamp(m.daylight, 0, 1);
+  const storm = THREE.MathUtils.clamp(Number(m.storm) || 0, 0, 1);
+  _night.copy(m.skyMid).multiplyScalar(NIGHT_CLOUD_LIFT);
+  _day.copy(m.skyMid).lerp(WHITE, 0.72).multiplyScalar(1 - STORM_CLOUD_DIM * storm);
+  out.copy(_day).lerp(_night, 1 - day * day * day);
   out.r = Math.min(1, out.r); out.g = Math.min(1, out.g); out.b = Math.min(1, out.b);
   return out;
 }

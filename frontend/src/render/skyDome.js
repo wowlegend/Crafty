@@ -5,6 +5,7 @@
 // GLSL it generates. Atmosphere owns the per-frame writes.
 import * as THREE from 'three';
 import { cloudGlsl } from './cloudField.js';
+import { MOON_NOON } from './keyLight.js';
 
 // A 3-stop gradient skydome (horizon -> mid -> top) + soft sun glow. Always drawn
 // behind everything (depthTest/Write off, renderOrder -1, fog off) and follows the
@@ -18,7 +19,10 @@ export function makeSkyDomeMaterial() {
       horizonColor: { value: new THREE.Color('#FFD9A0') },
       sunColor: { value: new THREE.Color('#FFE9B0') },
       sunDir: { value: new THREE.Vector3(0.3, 0.6, 0.3) },
-      uStar: { value: 0 }, // twilight star/moon layer intensity (peaks at dusk; 0 at day/obsidian)
+      uStar: { value: 0 }, // star/moon layer intensity: the sky frame's `stars` (night 1, twilight 0.5, day and boss 0)
+      // The painted moon's direction: the sky frame's `moonDir` (render/keyLight.js), so the disc sits where the moon
+      // key light comes from. Starts at the moon's own noon.
+      uMoonDir: { value: new THREE.Vector3(...MOON_NOON).normalize() },
       uTime: { value: 0 }, // cloud drift clock — fed from devtest/captureClock.frameElapsed, never wall time
       uCloudTint: { value: new THREE.Color(1, 1, 1) }, // cloud colour, from the mood (cloudField.cloudTint)
       uCloudCover: { value: 1 }, // 0..1 — Atmosphere resets it to 0 for the sky-studio subject cards
@@ -32,6 +36,7 @@ export function makeSkyDomeMaterial() {
     `,
     fragmentShader: `
       uniform vec3 topColor, midColor, horizonColor, sunColor, sunDir;
+      uniform vec3 uMoonDir;
       uniform float uStar;
       uniform float uTime;
       uniform vec3 uCloudTint;
@@ -62,15 +67,19 @@ export function makeSkyDomeMaterial() {
           float d = length(f.xy - 0.5 - (jit - 0.5) * 0.6);
           float star = starOn * smoothstep(0.10, 0.0, d) * (0.45 + 0.55 * hb); // round point, varied
           col += vec3(0.85, 0.90, 1.0) * star * up * uStar * 2.2;             // cool-white stars
-          // MOON — a soft cool hero disc high in the FRONT-upper sky (-Z, toward the capture/explore
-          // view). The sun-disc technique (pow), cooler + static, so the global Bloom blows it out.
-          vec3 moonDir = normalize(vec3(0.32, 0.30, -0.90)); // upper-RIGHT, in-FOV, opposite the sun
+          // MOON — a soft cool hero disc on its own arc (uMoonDir, the sky frame's moonDir: the direction the
+          // moon key light comes from). The sun-disc technique (pow), cooler, so the global Bloom blows it out.
+          // Faded out just
+          // below the horizon, so the twilight window where stars still show and the moon has set draws no
+          // disc in the ground band.
+          vec3 moonDir = normalize(uMoonDir);
+          float moonUp = smoothstep(-0.03, 0.03, moonDir.y);
           float md = max(dot(normalize(vDir), moonDir), 0.0);
           // A DEFINED cool moon disc (bold-flat coherent — a clean disc reads as a moon even against
           // a brightish dusk sky, unlike a soft pow-glow). ~3deg radius with a soft edge, + a halo.
           float disc = smoothstep(0.9982, 0.9991, md);
-          col = mix(col, vec3(0.88, 0.92, 1.0), disc * uStar);               // clean cool moon disc
-          col += vec3(0.60, 0.66, 0.90) * pow(md, 26.0) * 0.40 * uStar;      // soft cool halo (blooms)
+          col = mix(col, vec3(0.88, 0.92, 1.0), disc * uStar * moonUp);               // clean cool moon disc
+          col += vec3(0.60, 0.66, 0.90) * pow(md, 26.0) * 0.40 * uStar * moonUp;      // soft cool halo (blooms)
         }
         // CLOUDS (EXTERNAL-BASELINE #5): the shared field (render/cloudField.js) seen along the view ray from
         // the camera — the SAME plane the terrain samples toward the sun for their shadows. Flat two-tone

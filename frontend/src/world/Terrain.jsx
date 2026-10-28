@@ -3,7 +3,7 @@ import { MINE_GAIN, PLACE_GAIN } from '../game/resonance.js';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
-import { BIOME_TINT, aoFloorColor, AO_FLOOR } from './biomeTable.js';
+import { BIOME_TINT, AO_FLOOR } from './biomeTable.js';
 import { biomeTintGlsl, biomeTintMask } from './terrainTint.js';
 import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
@@ -14,7 +14,8 @@ import { sharedVoxelTextures } from './proceduralTextures';
 import { isCaptureMode } from '../devtest/captureMode';
 import { GameMethods } from '../GameMethods';
 import { getInput } from '../input/inputState';
-import { moodRef, sampleMood, sunDirRef, cloudCoverRef } from '../render/mood';
+import { moodRef, skyFrameRef, sunDirRef, cloudCoverRef } from '../render/mood';
+import { registerTestHook } from '../devtest/testBridge.js';
 import { cloudShadowGlsl } from '../render/cloudField.js';
 import { aerialGlsl } from '../render/aerialPerspective.js';
 import { landGradeGlsl } from '../render/landGrade.js';
@@ -33,7 +34,7 @@ import { surfaceBlockAt } from './climate.js';
 import { blightHeartSite, blightHeartChunk } from './blightHeart.js';
 import { nearestLandmark } from './shrines.js';
 import { HubRender } from '../render/HubRender';
-import { HEARTH_Y } from './homeAnchor.js';
+import { HEARTH_Y, HEARTH_FIRE } from './homeAnchor.js';
 import { BLOCK_TYPES } from './Blocks';
 import { chestHasItems } from '../game/chestState.js';
 import { idForBlock, blockForId } from './blockIds';
@@ -62,7 +63,7 @@ const opaqueMaterial = new THREE.MeshStandardMaterial({
 const compileShader = (shader) => {
     shader.uniforms.mood = { value: 0.0 }; // 0 explore, 1 dusk, 2 obsidian (spec §4)
     shader.uniforms.voxelTextures = { value: voxelTextures };
-    shader.uniforms.skyHorizon = { value: new THREE.Color(0.6, 0.75, 0.9) }; // S2 aerial-perspective haze target (set per-frame from sampleMood)
+    shader.uniforms.skyHorizon = { value: new THREE.Color(0.6, 0.75, 0.9) }; // S2 aerial-perspective haze target (set per-frame from the sky frame, skyFrameRef)
     // S11 sky-coloured AO. Initialised to the exact grey the AO term used before this existed, so a
     // frame rendered before the first useFrame tick is byte-identical to the old behaviour rather than
     // flashing a wrong colour for one frame.
@@ -491,7 +492,7 @@ const HomeAnchorRender = () => {
                 {!isCaptureMode() && (
                     <>
                         <Emissive position={[0, 1.35, 0]} size={0.34} color="#FF7A1A" intensity={2.8} />
-                        <pointLight position={[0, 1.6, 0]} intensity={1.6} distance={9} color="#FF8A2A" />
+                        <pointLight position={[0, HEARTH_FIRE.height, 0]} intensity={HEARTH_FIRE.intensity} distance={HEARTH_FIRE.distance} color={HEARTH_FIRE.color} />
                     </>
                 )}
             </group>
@@ -656,23 +657,34 @@ export const MinecraftWorld = React.memo(() => {
     // capture-frozen wave time now, so the land material has no time-varying term.
     useFrame((state) => {
         const mood = moodRef.current;                                   // smoothed by <Atmosphere>
-        const sampled = sampleMood(mood); // shared scratch -> read/copy now, never retain
-        const sky = sampled.skyHorizon;   // S2 aerial haze target
+        // THE PUBLISHED SKY FRAME (render/mood.js skyFrameRef): the one frame <Atmosphere> resolved at the clock's
+        // cycle, so the land hazes toward the horizon of this hour; a re-sample with no cycle would be noon's. Read
+        // now, never retained.
+        const frame = skyFrameRef.current;
         const opaqueShader = opaqueMaterial.userData.shader;
         if (opaqueShader) {
             opaqueShader.uniforms.mood.value = mood;
-            opaqueShader.uniforms.skyHorizon.value.copy(sky);
-            // S11: derive the AO floor from the SAME mood sample, so AO and haze can never disagree
-            // about what the sky is doing. aoFloorColor keeps the luminance at AO_FLOOR and takes only
-            // the hue, so this shifts colour across the day without changing how dark a crevice is.
-            const ao = aoFloorColor([sampled.skyMid.r, sampled.skyMid.g, sampled.skyMid.b]);
-            opaqueShader.uniforms.uAoFloor.value.setRGB(ao[0], ao[1], ao[2]);
+            opaqueShader.uniforms.skyHorizon.value.copy(frame.skyHorizon); // S2 aerial haze target
+            // The AO floor is the frame's `aoFloor`, aoFloorColor of the COMPOSED AMBIENT (the authored shadow tint).
+            // It multiplies the albedo of every occluded corner, so a sky colour here (blue by day, navy at night)
+            // would tint them all. Its luminance is AO_FLOOR's; only the hue follows the light.
+            opaqueShader.uniforms.uAoFloor.value.copy(frame.aoFloor);
             // Cloud shadows: the sky dome's clock (the capture clock under capture) and the sun Atmosphere resolved.
             opaqueShader.uniforms.uTime.value = frameElapsed(state.clock.elapsedTime);
             opaqueShader.uniforms.uSunDir.value.copy(sunDirRef.current);
             opaqueShader.uniforms.uCloudCover.value = cloudCoverRef.current;
         }
     });
+    // DEV-only: the land material's LIVE sky uniforms, for tests/e2e/light-script.spec.js: `sunDir` must be the SUN at
+    // every hour (ore glow, leaf translucency and cloud shadows read it), never the moon key. Null until the material
+    // has compiled. Tree-shaken in production with the bridge.
+    useEffect(() => {
+        if (!import.meta.env.DEV) return;
+        registerTestHook('readTerrainSky', () => {
+            const u = opaqueMaterial.userData.shader?.uniforms;
+            return u ? { sunDir: u.uSunDir.value.toArray(), aoFloor: u.uAoFloor.value.toArray(), skyHorizon: u.skyHorizon.value.toArray() } : null;
+        });
+    }, []);
 
     const [chunks, setChunks] = useState({});
     // B2d: the streamer's in-flight/dedup bookkeeping. This USED to be a `new Set()` local to the

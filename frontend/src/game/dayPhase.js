@@ -15,7 +15,8 @@ export function halfCycleFraction(gameTime) {
 
 // True when it is currently DAY and within the final `leadFraction` of the day half -> night is imminent.
 // Gated on the caller's `isDay` (the store's authoritative phase, robust to the crossing logic) so it can
-// never fire at night. leadFraction 0.18 of a ~150s day half ~= the last ~27s of warning. Pure.
+// never fire at night. leadFraction is a share of the day half, so the warning scales with the day length
+// (game/dayNight.js DAY_LENGTH_SECONDS): 0.18 of a 240 s day half is the last 43 s. Pure.
 export function isDuskApproaching(gameTime, isDay, leadFraction = 0.18) {
   if (!isDay) return false;
   const lf = Math.min(Math.max(Number(leadFraction) || 0, 0), 1);

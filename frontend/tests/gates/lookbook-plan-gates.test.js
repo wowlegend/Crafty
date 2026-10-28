@@ -19,6 +19,9 @@ import {
   clipVerdict,
   passSummary,
   contactSheetHtml,
+  parseCycles,
+  indexChunkOf,
+  servedBuildProblem,
 } from '../../scripts/visual/_lookbook.mjs';
 import { viteArgv } from '../../scripts/visual/_serve.mjs';
 
@@ -202,6 +205,30 @@ describe('the eye-level set and the walking clips', () => {
     expect(plan[3]).toEqual({ heading: 0, cycle: 0.48, file: 'eye-000-0.48.png' });
     for (const c of LOOKBOOK_CYCLES) {
       expect(plan.filter((s) => s.cycle === c).map((s) => s.heading), `bearings at ${c}`).toEqual([0, 120, 240]);
+    }
+  });
+
+  it('a run refuses a port that serves another build (every worktree\'s lookbook shares the port)', () => {
+    // Another chunk is named first, so a reader that takes the first asset instead of the index chunk is seen.
+    const page = (chunk) => `<link rel="modulepreload" href="/assets/three-x.js"><script type="module" crossorigin src="/assets/${chunk}"></script>`;
+    expect(indexChunkOf(page('index-CmjXxhOu.js'))).toBe('index-CmjXxhOu.js');
+    expect(indexChunkOf('<html></html>')).toBeNull();
+    expect(servedBuildProblem(page('index-CmjXxhOu.js'), 'index-CmjXxhOu.js')).toBeNull();
+    expect(servedBuildProblem(page('index-DuGj5xO_.js'), 'index-CmjXxhOu.js')).toMatch(/index-DuGj5xO_\.js, not this build's index-CmjXxhOu\.js/);
+    expect(servedBuildProblem('<html>a vite error page</html>', 'index-CmjXxhOu.js')).toMatch(/no index chunk/);
+    expect(servedBuildProblem(page('index-CmjXxhOu.js'), null)).toMatch(/has no index chunk/);
+  });
+
+  it('--cycles names the times to shoot, and a mistyped one stops the run instead of shooting another set', () => {
+    expect(parseCycles(null)).toBe(LOOKBOOK_CYCLES);
+    expect(parseCycles('')).toBe(LOOKBOOK_CYCLES);
+    const asked = parseCycles('0.02, 0.25,0.5,0.75');
+    expect([...asked]).toEqual([0.02, 0.25, 0.5, 0.75]);
+    expect(eyeShotPlan(EYE_HEADINGS, asked).map((s) => s.file).slice(0, 3)).toEqual(['eye-000-0.02.png', 'eye-120-0.02.png', 'eye-240-0.02.png']);
+    expect(eyeShotPlan(EYE_HEADINGS, asked)).toHaveLength(12);
+    expect(clipPlan(asked).map((c) => c.file)).toEqual(['walk-0.02.mp4', 'walk-0.25.mp4', 'walk-0.50.mp4', 'walk-0.75.mp4']);
+    for (const bad of ['1', '1.0', '-0.1', 'dusk', '0.5,', '0.25,0.251', 'NaN']) {
+      expect(() => parseCycles(bad), `"${bad}" was accepted`).toThrow(/--cycles/);
     }
   });
 

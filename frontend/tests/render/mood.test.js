@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { moodTarget, sampleMood, moodRef, MOOD_GRADE } from '../../src/render/mood.js';
+import { moodTarget, sampleMood, moodRef, MOOD_GRADE, STORM_FOG, STORM_DESAT } from '../../src/render/mood.js';
+import { SCRIPT_KEYS } from '../../src/render/colourScript.js';
 import { PALETTE } from '../../src/theme/tokens.js';
 
+// The base palette is the colour script's, read from the clock (render/colourScript.js), and the mood is the danger
+// overlay on it: 0..1 a storm, 1..2 the obsidian boss state. So night is mood 0, mood 0 at noon is the day key, mood 1
+// is the storm overlay and mood 2 is obsidian.
 describe('moodTarget', () => {
   it('day + no danger = 0 (explore)', () => expect(moodTarget({ isDay: true, dangerLevel: 0 })).toBe(0));
-  it('night + no danger = 1 (dusk)', () => expect(moodTarget({ isDay: false, dangerLevel: 0 })).toBe(1));
+  it('night + no danger = 0: night is the clock\'s, not danger (light-colour plan decision 2)', () => expect(moodTarget({ isDay: false, dangerLevel: 0 })).toBe(0));
   it('dangerLevel overrides upward', () => expect(moodTarget({ isDay: true, dangerLevel: 2 })).toBe(2));
   it('takes the max of night and danger', () => expect(moodTarget({ isDay: false, dangerLevel: 2 })).toBe(2));
   it('clamps to [0,2]', () => {
@@ -16,25 +20,26 @@ describe('moodTarget', () => {
 
 describe('sampleMood', () => {
   const hex = (c) => '#' + c.getHexString();
-  it('mood 0 = explore palette exactly', () => {
-    const m = sampleMood(0);
-    expect(hex(m.fog)).toBe(PALETTE.explore.fog.toLowerCase());
-    expect(hex(m.sun)).toBe(PALETTE.explore.sun.toLowerCase());
-    expect(hex(m.skyTop)).toBe(PALETTE.explore.skyTop.toLowerCase());
-    expect(hex(m.skyHorizon)).toBe(PALETTE.explore.skyHorizon.toLowerCase());
+  it('mood 0 at noon = the colour script\'s day key exactly', () => {
+    const m = sampleMood(0), day = SCRIPT_KEYS.day;
+    expect(hex(m.fog)).toBe(hex(day.fog.color));
+    expect(hex(m.sunColor)).toBe(hex(day.sun.color));
+    expect(hex(m.skyTop)).toBe(hex(day.sky.top));         // the day key's exposure is 1
+    expect(hex(m.skyHorizon)).toBe(hex(day.sky.horizon));
   });
-  it('mood 1 = dusk palette exactly', () => {
-    const m = sampleMood(1);
-    expect(hex(m.fog)).toBe(PALETTE.dusk.fog.toLowerCase());
+  it('mood 1 at noon = the storm overlay on the day key: the fog keeps its colour and thickens', () => {
+    const m = sampleMood(1), day = SCRIPT_KEYS.day;
+    expect(hex(m.fog)).toBe(hex(day.fog.color));
+    expect(m.fogDensity).toBeCloseTo(day.fog.density * (1 + STORM_FOG), 9);
   });
   it('mood 2 = obsidian palette exactly', () => {
     const m = sampleMood(2);
     expect(hex(m.fog)).toBe(PALETTE.obsidian.fog.toLowerCase());
   });
-  it('blends between states (mood 0.5 fog is between explore and dusk)', () => {
-    const a = new THREE.Color(PALETTE.explore.fog);
-    const b = new THREE.Color(PALETTE.dusk.fog);
-    const m = sampleMood(0.5);
+  it('blends toward the boss (mood 1.5 fog is midway between the day key\'s and obsidian\'s)', () => {
+    const a = SCRIPT_KEYS.day.fog.color;
+    const b = new THREE.Color(PALETTE.obsidian.fog);
+    const m = sampleMood(1.5);
     expect(m.fog.r).toBeCloseTo((a.r + b.r) / 2, 5);
   });
   it('never returns undefined scalars and clamps out-of-range mood', () => {
@@ -50,11 +55,11 @@ describe('sampleMood', () => {
 
 // S1-D-M3: the per-mood magic-hour colour script.
 describe('sampleMood.grade (magic-hour colour script)', () => {
-  it('mood 0 grade = explore grade exactly', () => {
-    const g = sampleMood(0).grade;
-    expect(g.saturation).toBeCloseTo(MOOD_GRADE.explore.saturation, 6);
-    expect(g.brightness).toBeCloseTo(MOOD_GRADE.explore.brightness, 6);
-    expect(g.contrast).toBeCloseTo(MOOD_GRADE.explore.contrast, 6);
+  it('mood 0 grade at noon = the day key\'s grade exactly', () => {
+    const g = sampleMood(0).grade, d = SCRIPT_KEYS.day.grade;
+    expect(g.saturation).toBeCloseTo(d.saturation, 6);
+    expect(g.brightness).toBeCloseTo(d.brightness, 6);
+    expect(g.contrast).toBeCloseTo(d.contrast, 6);
   });
   it('mood 2 grade = obsidian grade exactly', () => {
     const g = sampleMood(2).grade;
@@ -62,10 +67,9 @@ describe('sampleMood.grade (magic-hour colour script)', () => {
     expect(g.brightness).toBeCloseTo(MOOD_GRADE.obsidian.brightness, 6);
     expect(g.contrast).toBeCloseTo(MOOD_GRADE.obsidian.contrast, 6);
   });
-  it('blends grade between states (mood 0.5 saturation is the explore↔dusk midpoint)', () => {
+  it('the storm desaturates the grade (mood 0.5 is the day key less half the storm\'s desaturation)', () => {
     const g = sampleMood(0.5).grade;
-    const mid = (MOOD_GRADE.explore.saturation + MOOD_GRADE.dusk.saturation) / 2;
-    expect(g.saturation).toBeCloseTo(mid, 6);
+    expect(g.saturation).toBeCloseTo(SCRIPT_KEYS.day.grade.saturation - STORM_DESAT / 2, 6);
   });
   it('explore is the most saturated + brightest (magic-hour premium-warm)', () => {
     expect(MOOD_GRADE.explore.saturation).toBeGreaterThan(MOOD_GRADE.dusk.saturation);
@@ -90,10 +94,14 @@ describe('W2-T1 warm magic-hour explore grade', () => {
     expect(MOOD_GRADE.explore.saturation).toBeGreaterThanOrEqual(0.28);
     expect(MOOD_GRADE.explore.brightness).toBeGreaterThanOrEqual(0.08);
   });
-  it('sampleMood(0) reflects the warmed explore grade', () => {
+  // sampleMood(0) reads neither the explore grade nor the fill: the day's warmth comes from the colour script's lights
+  // (a warm sun, golden keys), because a +0.30 global saturation, through the toe of NEUTRAL, turns the iPad's stone
+  // navy. The frame takes the day key's grade (saturation 0.12) and no fill light.
+  it('sampleMood(0) takes the day key\'s grade and no fill light (the W2 warmth moved into the script)', () => {
     const m = sampleMood(0);
-    expect(m.fillIntensity).toBeGreaterThanOrEqual(0.30);
-    expect(m.grade.saturation).toBeGreaterThanOrEqual(0.28);
+    expect(m.fillIntensity).toBe(0);
+    expect(m.grade.saturation).toBeCloseTo(SCRIPT_KEYS.day.grade.saturation, 6);
+    expect(m.sunColor.r).toBeGreaterThan(m.sunColor.b); // the day sun is warm
   });
 });
 

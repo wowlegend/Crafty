@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { HALF_CYCLE_UNITS, CYCLE_UNITS, GAME_UNITS_PER_SECOND, crossedHalfCycle, isDayAtUnit, shouldAdvanceClock, gameTimeForTimeOfDay } from './dayNight.js';
+import { HALF_CYCLE_UNITS, CYCLE_UNITS, GAME_UNITS_PER_SECOND, DAY_LENGTH_SECONDS, crossedHalfCycle, isDayAtUnit, shouldAdvanceClock, gameTimeForTimeOfDay } from './dayNight.js';
 
 describe('dayNight pure module', () => {
   describe('constants', () => {
@@ -10,8 +10,11 @@ describe('dayNight pure module', () => {
 
     it('the ticker step evenly divides a half-cycle (integer landings still align)', () => {
       expect(HALF_CYCLE_UNITS % GAME_UNITS_PER_SECOND).toBe(0);
-      // The plan asserts this exactly:
-      expect(600 % GAME_UNITS_PER_SECOND).toBe(0);
+      expect(Number.isInteger(HALF_CYCLE_UNITS / GAME_UNITS_PER_SECOND)).toBe(true);
+    });
+
+    it('the ticker step is derived from the one day-length constant', () => {
+      expect(GAME_UNITS_PER_SECOND * DAY_LENGTH_SECONDS).toBe(CYCLE_UNITS);
     });
   });
 

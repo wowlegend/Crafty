@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { PerspectiveCamera, Mesh, BoxGeometry, MeshBasicMaterial } from 'three';
 import { BloomEffect } from 'postprocessing';
-import { sunArcDirection, sampleMood, MOOD_SCALARS, SUN_ARC_SWING } from '../../src/render/mood.js';
-import { CAPTURE_SOLAR_FRACTION, SUN_HORIZON_EPS } from '../../src/render/Atmosphere.jsx';
+import { sunArcDirection, sampleMood, MOOD_SCALARS, SUN_ARC_SWING, CAPTURE_SOLAR, captureCycle } from '../../src/render/mood.js';
+import { SUN_HORIZON_EPS } from '../../src/render/Atmosphere.jsx';
 import { applyPostTier, GatedGodRaysEffect } from '../../src/render/postFx.jsx';
 import { TIERS } from '../../src/render/quality.js';
 
@@ -38,6 +38,7 @@ import { TIERS } from '../../src/render/quality.js';
  *   M5 sampleMood applies the arc even when cycle is omitted -> additive case RED
  *   M6 CAPTURE_SOLAR_FRACTION -> 0.0 (dawn)                  -> capture case RED
  * mood.js / Atmosphere.jsx restored from cp backups and diffed byte-identical after each.
+ * The capture constant is mood.js's CAPTURE_SOLAR; the arc lives in render/sunArc.js (re-exported by mood.js).
  *
  * BLIND SPOT, stated (R7): nothing here proves the sun LOOKS right moving, nor that the god rays stop
  * cleanly at the horizon in a real frame. Both need the re-baseline already owed since postprocessing
@@ -101,13 +102,19 @@ describe('sun arc geometry', () => {
     expect(arced[1]).toBeCloseTo(0, 6);                  // and the arc really did apply
   });
 
-  it('capture pins the solar angle to a DECLARED constant, and that constant is noon', () => {
+  it('capture pins the solar angle to a DECLARED constant: noon for a day state, midnight for a night state', () => {
     // CLAUDE.md: "a capture guard must RESET to a declared value, never early-return." Noon is the one
-    // fraction that leaves the mood bearing untouched, so committed baselines keep their sun direction.
-    expect(CAPTURE_SOLAR_FRACTION).toBe(0.25);
+    // fraction that leaves the mood bearing untouched, so committed day baselines keep their sun direction.
+    // The declared values live in render/mood.js (CAPTURE_SOLAR, captureCycle). Night comes from the clock, so a night
+    // state renders at its declared midnight; pinned at noon it would render daylight.
+    expect(CAPTURE_SOLAR.day).toBe(0.25);
     const noon = MOOD_SCALARS.explore.sunPos;
-    const pinned = sunArcDirection(noon, CAPTURE_SOLAR_FRACTION);
+    const pinned = sunArcDirection(noon, CAPTURE_SOLAR.day);
     expect(pinned.map((x, i) => Math.abs(x - unit(noon)[i]) < 1e-9).every(Boolean)).toBe(true);
+    expect(captureCycle({ isDay: true })).toBe(CAPTURE_SOLAR.day);
+    expect(captureCycle({ isDay: false })).toBe(CAPTURE_SOLAR.night);
+    expect(CAPTURE_SOLAR.night).toBe(0.75);
+    expect(sunArcDirection(noon, captureCycle({ isDay: false }))[1]).toBeLessThan(0); // the night state's sun is down
   });
 
   it('the GodRays pass is gated on the sun being above the horizon (three.js#18446 sign flip)', () => {

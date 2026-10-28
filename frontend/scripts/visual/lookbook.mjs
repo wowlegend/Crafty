@@ -61,7 +61,7 @@
  *
  * Needs a production build: `npm run build` first.
  * Usage:  node scripts/visual/lookbook.mjs [--out <dir>] [--targets chromium-1280x800,webkit-1180x820,webkit-820x1180]
- *                                          [--sets hero,eye,clips] [--allow-software]
+ *                                          [--sets hero,eye,clips] [--cycles 0.02,0.25,0.5,0.75] [--allow-software]
  *         node scripts/visual/lookbook.mjs --hold <seconds> [--headed] [--out <dir>]
  *         either form takes [--build-dir <dir>] to serve a production build kept outside build/.
  */
@@ -72,8 +72,9 @@ import { execFileSync } from 'node:child_process';
 import { serveVite, probePort } from './_serve.mjs';
 import { standInPointerLock, playLiveReading } from './_probe.mjs';
 import {
-  TARGETS, CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, EYE_PITCH, shotPlan, eyeShotPlan, clipPlan, classifyRenderer, pickCandidate,
-  shotVerdict, eyeShotVerdict, clipVerdict, passSummary, contactSheetHtml,
+  TARGETS, CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, EYE_HEADINGS, EYE_PITCH, shotPlan, eyeShotPlan, clipPlan, classifyRenderer,
+  pickCandidate, shotVerdict, eyeShotVerdict, clipVerdict, passSummary, contactSheetHtml, parseCycles, indexChunkOf,
+  servedBuildProblem,
 } from './_lookbook.mjs';
 
 const PORT = probePort(import.meta.url);
@@ -90,6 +91,14 @@ const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
 const SETS_KNOWN = ['hero', 'eye', 'clips'];
 const SETS = arg('--sets', SETS_KNOWN.join(',')).split(',');
+// --cycles: the times to shoot (dawn-origin fractions), for a before/after at hours the programme's four do not cover.
+let CYCLES;
+try {
+  CYCLES = parseCycles(arg('--cycles', null));
+} catch (e) {
+  console.error(`lookbook: COULD NOT MEASURE — ${e.message}`);
+  process.exit(3);
+}
 // --build-dir: serve a production build kept outside build/ (the power A/B's other arm). Default: this app's build/.
 const BUILD_DIR = resolve(arg('--build-dir', 'build'));
 const LAUNCHERS = { chromium, webkit };
@@ -390,7 +399,7 @@ async function shootTarget(target, launchOpts, launchId) {
     };
 
     let lastCycle = null;
-    for (const shot of SETS.includes('eye') && report.stand ? eyeShotPlan() : []) {
+    for (const shot of SETS.includes('eye') && report.stand ? eyeShotPlan(EYE_HEADINGS, CYCLES) : []) {
       const t0 = Date.now();
       await respawnIfDead(page, report);
       await standAndLook(shot.heading);
@@ -416,7 +425,7 @@ async function shootTarget(target, launchOpts, launchId) {
         eyeAboveBody: after.eye && after.body ? Math.round((after.eye[1] - after.body[1]) * 1000) / 1000 : null });
     }
 
-    for (const clip of SETS.includes('clips') && target.engine === 'chromium' && report.stand ? clipPlan() : []) {
+    for (const clip of SETS.includes('clips') && target.engine === 'chromium' && report.stand ? clipPlan(CYCLES) : []) {
       await respawnIfDead(page, report);
       await standAndLook(clip.heading);
       await setCycle(page, clip.cycle);
@@ -452,7 +461,7 @@ async function shootTarget(target, launchOpts, launchId) {
     for (const place of SETS.includes('hero') ? LOOKBOOK_PLACES : []) {
       await page.evaluate((p) => window.__craftyLookbook.pose(p), { position: place.position, lookAt: place.lookAt });
       await delay(STREAM_MS);
-      for (const shot of shotPlan([place])) {
+      for (const shot of shotPlan([place], CYCLES)) {
         const t0 = Date.now(); // console errors from here to the screenshot belong to this shot
         await respawnIfDead(page, report);
         await setCycle(page, shot.cycle);
@@ -572,9 +581,18 @@ async function hold(launchOpts, launchId) {
   }
 }
 
+/** Throws, naming the cause, unless the port serves BUILD_DIR's build (_lookbook.mjs servedBuildProblem). */
+async function assertServedBuild() {
+  const expected = indexChunkOf(readFileSync(join(BUILD_DIR, 'index.html'), 'utf8'));
+  let html = null;
+  try { html = await (await fetch(url)).text(); } catch (e) { throw new Error(`the server on ${url} did not answer: ${e.message}`); }
+  const problem = servedBuildProblem(html, expected);
+  if (problem) throw new Error(problem);
+}
+
 function buildIdentity() {
   const html = readFileSync(join(BUILD_DIR, 'index.html'), 'utf8');
-  const chunk = (html.match(/assets\/(index-[\w-]+\.js)/) || [])[1] || null;
+  const chunk = indexChunkOf(html);
   let commit = null;
   try { commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim(); } catch { /* not a checkout */ }
   // The commit is the CHECKOUT's at run time; with --build-dir the served build may come from another commit, so the
@@ -585,6 +603,7 @@ function buildIdentity() {
 let code = 0;
 try {
   await waitReady();
+  await assertServedBuild();
   const report = { generatedAt: new Date().toISOString(), url, build: buildIdentity(), sets: SETS, chromiumCandidates: null, targets: [] };
   holdBase = report;
 
@@ -620,6 +639,7 @@ try {
     for (const id of WANT) {
       const target = TARGETS.find((t) => t.id === id);
       console.log(`\n── ${id} ─────────────────────────────`);
+      await assertServedBuild();
       let r;
       if (target.engine === 'chromium' && !chromiumLaunch) {
         r = { id, engine: 'chromium', renderer: null, gpu: 'unknown', shots: [], notes: [
@@ -632,10 +652,10 @@ try {
       const valid = r.shots.filter((s) => s.valid).length;
       console.log(`  GL renderer   ${r.renderer} (${r.gpu})`);
       console.log(`  entered by    ${r.entry}`);
-      console.log(`  shots         ${valid}/${r.shots.length} valid (planned ${SETS.includes('hero') ? shotPlan().length : 0})${r.respawns ? `, ${r.respawns} respawn(s)` : ''}`);
+      console.log(`  shots         ${valid}/${r.shots.length} valid (planned ${SETS.includes('hero') ? shotPlan(LOOKBOOK_PLACES, CYCLES).length : 0})${r.respawns ? `, ${r.respawns} respawn(s)` : ''}`);
       for (const s of r.shots.filter((x) => !x.valid)) console.log(`    INVALID ${s.file}: ${s.why.join('; ')}`);
       if (r.eye) {
-        console.log(`  eye level     ${r.eye.filter((s) => s.valid).length}/${r.eye.length} valid (planned ${SETS.includes('eye') ? eyeShotPlan().length : 0}); stand ${JSON.stringify(r.stand)}; hands ${JSON.stringify(r.hands)}`);
+        console.log(`  eye level     ${r.eye.filter((s) => s.valid).length}/${r.eye.length} valid (planned ${SETS.includes('eye') ? eyeShotPlan(EYE_HEADINGS, CYCLES).length : 0}); stand ${JSON.stringify(r.stand)}; hands ${JSON.stringify(r.hands)}`);
         for (const s of r.eye.filter((x) => !x.valid)) console.log(`    INVALID ${s.file}: ${s.why.join('; ')}`);
       }
       if (r.clips?.length) {

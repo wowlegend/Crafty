@@ -57,10 +57,10 @@ master plan → repo ROOT (one level ABOVE `frontend/`). The compaction summary 
   `node frontend/scripts/ci/measure.mjs --write`; `doc-currency` re-measures on every push and fails on drift.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **365 source files / 42,224 LOC** in
-  `frontend/src`, plus 147 colocated `*.test.js(x)` files (counted separately —
+- **Size (measured):** **370 source files / 43,134 LOC** in
+  `frontend/src`, plus 146 colocated `*.test.js(x)` files (counted separately —
   tests are not the architecture).
-- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1540 · `src/store/useGameStore.jsx` 1261 · `src/world/Terrain.jsx` 1157 · `src/App.jsx` 1076 · `src/QuestSystem.jsx` 999.
+- **Files ≥ 900 LOC (5):** `src/Components.jsx` 1540 · `src/store/useGameStore.jsx` 1261 · `src/world/Terrain.jsx` 1169 · `src/App.jsx` 1082 · `src/QuestSystem.jsx` 1000.
   Its MEMBERSHIP is checked exactly by `doc-currency`; the LOC beside each name, and the counts above,
   sit under a ±10% band so ordinary churn does not redden the push — so a specific number here
   can be mildly stale and still green. Regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
@@ -110,11 +110,11 @@ Full procedure — the `finally` shape, `_serve.mjs`, the managed ports, deletin
 ## Build / Test / Gates (from `frontend/`)
 
 <!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->
-**16 gates, across three callers.** Generated from `ci/pipeline.sh` — the ONE definition
+**17 gates, across three callers.** Generated from `ci/pipeline.sh` — the ONE definition
 pre-commit, pre-push and GitHub Actions all call, so no two can drift. Do not edit the table by hand;
 add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.
 
-**8 run on every commit** (offline core, 69s) · **13 on every push** · **12 in CI**.
+**8 run on every commit** (offline core, 69s) · **14 on every push** · **13 in CI**.
 The columns are DERIVED from each step's tier guard in the script, not asserted here — they used to be,
 and all three network/browser gates were printed as pre-push gates they have never been.
 
@@ -133,6 +133,7 @@ and all three network/browser gates were printed as pre-push gates they have nev
 | queue-ledger | `node scripts/ci/queue-ledger.mjs` | — | ✅ | — | a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command |
 | artifact-currency | `node scripts/ci/artifact-currency.mjs` | — | ✅ | ✅ | on every push, an unusable operator-page source (missing, or a fetched copy of the published wrapper), a row still marked **Queued** whose declared `data-absent` artifact now EXISTS or that declares none — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped — and a page whose as-of stamp is missing, duplicated, or names a different commit from the publish `.artifact-sync.json` records (the hand-bumped-sha lie). The pages' DRIFT from HEAD is printed with each page's URL and refuses nothing, on any push or in CI (DECISIONS 2026-10-28 item 12: the old 30-commit refusal measured how far the writer was behind, and refused 8 pushes, 5 of them correct lane work, while stopping no recorded false claim; the pages now state their own commit and time). In CI it runs on a push to main only, to report main's drift after a merge GitHub made and refuse a tree defect such a merge brought in |
 | e2e freshness | `node scripts/ci/e2e-freshness.mjs` | — | ✅ | — | a push whose `src/` or `tests/e2e/` tree has changed since the last GREEN e2e run. The Playwright specs are CI-only (~20 min, serialized because they share in-page game state), so no local chokepoint can see an e2e regression — which is exactly how the 2026-09-22 damage-model change shipped green locally and broke `soft-death-protections`. This asserts the RECEIPT, content-keyed on the observed trees so editing a doc does not expire it and editing a store action does. Fails CLOSED on stale, OPEN on absent (a fresh clone must not be refused), exit 3 on an empty walk |
+| registry-append-only | `node scripts/ci/registry-append-only.mjs` | — | ✅ | ✅ | a row of `memory/registry.jsonl` DELETED instead of closed: every row id at the range's base must still be a row at its head. The tree check (`registry-harvest`, in the unit run) proves each open source item has at least one row, so it stays green when one part of a split key goes, and it sees nothing once the old sources leave HEAD. Runs on the pushed range in pre-push (`PUSH_RANGES`; a new branch measures from its merge-base with origin/main) and on the event's base on every CI run. Compares the two ends only, and not a row's content: reopening or retitling a row passes |
 | knip | `npm run knip` | — | — | ✅ | an unused file, export or dependency — the accretion that makes a codebase look larger than the part that runs. CI-only because it is slow and never a correctness failure |
 | npm audit | `npm audit --audit-level=high` | — | — | ✅ | a HIGH or CRITICAL advisory in the installed dependency set. CI-only ON PURPOSE (R5): this needs the registry, and a network outage reddening a local commit is how developers learn to pass --no-verify |
 | prod-smoke | `node scripts/ci/prod-smoke.mjs` | — | — | ✅ | the bundle that actually SHIPS failing to boot, render, or keep a live GL context. It is the only harness that loads the production build — `capture.mjs` and all 25 probes drive the DEV server, which measures LCP ~6.6x slower and cannot see a prod-only break. CI-only because it needs a browser. Skipped (`--code-changed=false`, printed) when CI's change-scope job finds only docs changed since a commit whose `ci ok` passed, the same condition that skips the e2e matrix |
@@ -304,12 +305,13 @@ hand-kept copies drifted three different ways while one of them claimed they "ca
 
 1. `git main` + **CI on `main`** — the code is the only truth that cannot lie — and CI IS PART OF THE TREE. `gh run list --workflow=ci.yml --branch main`; a push that leaves CI non-`success` is a RED TREE and outranks every queue item.
 2. `memory/ACTIVE_PLAN.md` — the live cursor — the ONE unit in flight right now.
-3. `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — **DRAINED 2026-08-12 — no longer a work queue.** 215 findings disposed of: 207 fixed, 8 dismissed with runnable proofs, 0 open. Read it as the RECORD of that campaign, not as the next thing to do; the live cursor is ACTIVE_PLAN. **This markdown is the ONLY copy** — the machine JSON it was regenerable from died with a session-scoped tmp scratchpad (verified absent 2026-07-27). Do not hunt for it; its absence is not a blocker.
-4. `memory/STATUS.md` — THE source of truth for WHERE WE ARE, and the SECONDARY queue (gameplay/content/UX items the code review did not cover). Both, without contradiction: it owns status, the review owns the work ladder. VERIFY an item is still open before working it — much of the older A-bis/V1 work is DRAINED.
-5. `docs/superpowers/LOOP-CHARTER.md` — the constitution — how the loop operates (esp. §0-B harness layer + §3 gates), plus `LOOP-KERNEL-PROMPT.md`, the durable copy of the `/loop` prompt and the cold/git-only recovery source.
-6. `docs/superpowers/DECISIONS.md` — the decision RECORD. `KEVIN-REVIEW-BATCH.md` is the append-only INBOX and structurally cannot tell you what is settled. A reversal is a NEW dated entry naming the one it supersedes — never a silent edit.
-7. `docs/superpowers/INDEX.md` — the doc map — what to read and what to IGNORE. A stale doc is a LIVE TRAP; never mine old plans for "what is next".
-8. `SOTA-INITIATIVE.md` — DIRECTION only. Its §3 status block is FROZEN — do not read status from it.
+3. `memory/registry.jsonl` — THE ONE HOME FOR OPEN WORK — one JSON row per closable item: id, title, playerVisible, severity, owner, state, evidence, opened, closedBy, plan unit. Read the open rows for what is owed; add a row for anything new; close a row, never delete it. `node frontend/scripts/ci/registry-harvest.mjs` proves every open item in the older sources (STATUS §2 and its G-ledger, ACTIVE_PLAN, the sota-2026-09 queue, the masterpiece tables) has a row, and `registry-append-only.mjs` refuses a push that deletes one.
+4. `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` — **DRAINED 2026-08-12 — no longer a work queue.** 215 findings disposed of: 207 fixed, 8 dismissed with runnable proofs, 0 open. Read it as the RECORD of that campaign, not as the next thing to do; the live cursor is ACTIVE_PLAN. **This markdown is the ONLY copy** — the machine JSON it was regenerable from died with a session-scoped tmp scratchpad (verified absent 2026-07-27). Do not hunt for it; its absence is not a blocker.
+5. `memory/STATUS.md` — THE source of truth for WHERE WE ARE. Its §2 and G-ledger are the record the registry was harvested from, not a work queue: open work lives in `memory/registry.jsonl`.
+6. `docs/superpowers/LOOP-CHARTER.md` — the constitution — how the loop operates (esp. §0-B harness layer + §3 gates), plus `LOOP-KERNEL-PROMPT.md`, the durable copy of the `/loop` prompt and the cold/git-only recovery source.
+7. `docs/superpowers/DECISIONS.md` — the decision RECORD. `KEVIN-REVIEW-BATCH.md` is the append-only INBOX and structurally cannot tell you what is settled. A reversal is a NEW dated entry naming the one it supersedes — never a silent edit.
+8. `docs/superpowers/INDEX.md` — the doc map — what to read and what to IGNORE. A stale doc is a LIVE TRAP; never mine old plans for "what is next".
+9. `SOTA-INITIATIVE.md` — DIRECTION only. Its §3 status block is FROZEN — do not read status from it.
 <!-- END READ-ORDER -->
 
 ## Post-compaction re-orientation (BLOCKING — before the first edit)

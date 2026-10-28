@@ -4,6 +4,7 @@ import {
 } from '../../src/render/shadowSchedule.js';
 import { resetShadowForConfig } from '../../src/render/shadowReset.js';
 import { sunArcDirection, MOOD_SCALARS } from '../../src/render/mood.js';
+import { DAY_LENGTH_SECONDS } from '../../src/game/dayNight.js';
 
 /**
  * THE SUN'S SHADOW RE-RENDERS ON DEMAND, NEVER ABOVE 30 Hz (plan 2026-10-27-crafty-steady-cool, item h; refute F2).
@@ -16,8 +17,8 @@ import { sunArcDirection, MOOD_SCALARS } from '../../src/render/mood.js';
  *     two frames), and on a tier change (shadowReset forces it itself);
  *   - otherwise when the sun has turned SUN_STEP_DEG (0.5 deg) since the LAST RENDER, the snapped frustum centre moved,
  *     or a dynamic caster is present — and never more than SHADOW_MAX_HZ (30) times a second.
- * F2: the sun turns 0.64-1.59 deg/s (measured below with the real arc, not the refute's estimate), so its steps alone are
- * ~2.4 Hz. HONESTLY: the player's own hands, the loaded square's mobs and villagers are a dynamic caster almost all the
+ * F2: the sun's steps alone are about 723 renders a cycle (measured below with the real arc, not the refute's estimate),
+ * so their rate follows the day length. HONESTLY: the player's own hands, the loaded square's mobs and villagers are a dynamic caster almost all the
  * time, so in play the saving is the 30 Hz cap (half the shadow renders at 60 fps); the static path pays off only when
  * nothing moves.
  * BLIND SPOT: the dynamic-caster SIGNAL (camera moved, ECS mobs/allies/loot, boss, beast, phantom) is Atmosphere's and is
@@ -92,18 +93,20 @@ describe('shadowDue', () => {
     expect(shadowWorldEpoch()).toBe(e0 + 1);
   });
 
-  it("with nothing moving, the REAL sun arc's 0.5 deg steps are ~2.4 renders a second (F2's rate, stated)", () => {
+  it("with nothing moving, the REAL sun arc's 0.5 deg steps over the game's day are under 2 renders a second", () => {
     const noon = MOOD_SCALARS.explore.sunPos;
     const s = createShadowSchedule();
     let renders = 0;
-    const FPS = 60, CYCLE_S = 300;
+    const FPS = 60, CYCLE_S = DAY_LENGTH_SECONDS;
     for (let i = 0; i < CYCLE_S * FPS; i++) {
       const now = (i * 1000) / FPS;
       if (shadowDue(s, frame({ now, sunDir: unit(sunArcDirection(noon, i / (CYCLE_S * FPS))) }))) renders += 1;
     }
     const hz = renders / CYCLE_S;
-    expect(hz, `${renders} renders over a 300 s cycle`).toBeGreaterThan(2);
-    expect(hz, `${renders} renders over a 300 s cycle`).toBeLessThan(3);
+    console.log(`[shadow-schedule] ${renders} sun-step renders over a ${CYCLE_S} s day: ${hz.toFixed(2)} Hz`);
+    expect(renders, 'renders per cycle (the step, not the day length, sets this)').toBeGreaterThan(650);
+    expect(renders, 'renders per cycle (the step, not the day length, sets this)').toBeLessThan(800);
+    expect(hz, `${renders} renders over a ${CYCLE_S} s day`).toBeLessThan(2);
   });
 });
 
