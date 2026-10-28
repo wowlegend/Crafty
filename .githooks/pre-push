@@ -74,6 +74,9 @@ fi
 # (artifact-currency read it too until 2026-10-28, when its drift refusal went: DECISIONS 2026-10-28 item 12.)
 # EXPORTED, or the node processes the pipeline starts never see it and read every push as "refs unknown".
 export E2E_PUSH_REFS="$PUSH_REFS"
+# The pushed ranges, for registry-append-only, which picks the one whose head is the sha it runs at. A new branch has no
+# range here, and the script measures from its merge-base with origin/main instead.
+export PUSH_RANGES="$RANGES"
 
 # ── mutation-proof trailer ──────────────────────────────────────────────────────
 # Cheap, and it runs FIRST: a commit that adds a gate without saying how it was proven to fail should be
@@ -102,7 +105,7 @@ done
 # WHAT THE RECEIPT DOES NOT AUTHORISE, and this is the part that makes it safe: it speaks only for the
 # OFFLINE CORE. The commit-shaped gates read a COMMIT RANGE that did not exist when the receipt was
 # written, so they run on EVERY push: the two trailers above, and queue-ledger / artifact-currency /
-# e2e-freshness via `pipeline.sh --tier=push --range-only` below.
+# e2e-freshness / registry-append-only via `pipeline.sh --tier=push --range-only` below.
 #
 # THAT LAST PART WAS FALSE UNTIL 2026-09-22. A receipt match used to `continue` straight past the
 # pipeline, and those three gates live in its push tier, so on every receipt-matched push they silently

@@ -116,17 +116,18 @@ describe('ci/pipeline.sh --range-only — the range gates run, every skipped cor
     return { ...r, cmds: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [] };
   }
 
-  it('runs exactly the three commit-range gates, and none of the offline core', () => {
+  it('runs exactly the four commit-range gates, and none of the offline core', () => {
     const r = runPipeline(['--tier=push', '--range-only']);
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.cmds).toEqual([
       'node scripts/ci/queue-ledger.mjs',
       'node scripts/ci/artifact-currency.mjs',
       'node scripts/ci/e2e-freshness.mjs',
+      'node scripts/ci/registry-append-only.mjs',
     ]);
     const skipped = r.stdout.match(/skipped \(certified by the pre-commit receipt/g) || [];
     expect(skipped.length).toBeGreaterThanOrEqual(8); // every core step is NAMED as skipped, not silently absent
-    expect(r.stdout).toMatch(/3 commit-range gate\(s\) passed/);
+    expect(r.stdout).toMatch(/4 commit-range gate\(s\) passed/);
   });
 
   it('positive control: without --range-only the same stubs see the offline core run', () => {

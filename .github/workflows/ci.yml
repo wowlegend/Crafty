@@ -126,9 +126,10 @@ jobs:
       #
       # `--tier=fast` adds the steps that need network or a browser (knip, npm audit, prod-smoke) and
       # skips the commit-shaped ones (queue-ledger, e2e-freshness), which need a push refspec a runner does not
-      # have. The one exception is artifact-currency: on a push to main it runs here too, to report the pages'
-      # drift after a merge GitHub made and to refuse a tree defect such a merge brought in (a pull_request or a
-      # workflow_dispatch run skips it).
+      # have. Two exceptions run here too. registry-append-only runs on every event, against the base the event
+      # names (a push's before, a pull request's base sha), which the full-history checkout holds. artifact-currency
+      # runs on a push to main, to report the pages' drift after a merge GitHub made and to refuse a tree defect such
+      # a merge brought in (a pull_request or a workflow_dispatch run skips it).
       #
       # `--code-changed` carries the change-scope verdict: `false` skips prod-smoke (a browser step), anything else runs
       # it. The step also exports CODE_CHANGED so the expression is not spliced into the script text, which means the
