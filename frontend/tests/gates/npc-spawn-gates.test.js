@@ -64,7 +64,8 @@ describe('hub NPC spawn + AI-skip', () => {
 
   it('makeNpcEntity stamps the three flags the rest of the wiring branches on', () => {
     // Driven, because those three booleans are what every downstream consumer keys off: isMob reuses the
-    // render, isNPC selects the minimap mirror, isStatic is the AI skip above.
+    // render, isNPC makes the NPC undamageable (combat/targeting.js) and drives its daytime patrol
+    // (systems/AIWorkerSystem.jsx), isStatic is the AI skip above.
     const e = makeNpcEntity(HUB_NPCS[0], 'npc-0', 42);
     expect({ isMob: e.isMob, isNPC: e.isNPC, isStatic: e.isStatic })
       .toEqual({ isMob: true, isNPC: true, isStatic: true });

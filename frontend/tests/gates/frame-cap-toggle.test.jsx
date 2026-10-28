@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 import { SettingsPanel } from '../../src/ui/GamePanels.jsx';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 
@@ -43,18 +43,52 @@ describe('Settings — Frame Rate', () => {
 });
 
 // A night siege is survived, never skipped: no control in the pause menu may turn night into day.
+//
+// Every control is driven, in each game mode, and the clock is read after each one, so the failure names the control.
+// The panel is rendered with every optional row it has. Buttons are re-queried after each click and the mode is put
+// back, so a row that one mode shows, or that a click mounts, is clicked in that mode instead of being unmounted before
+// its turn. Every slider is driven to its min and its max. A control of any other kind fails the census, since this
+// drives only buttons and sliders.
 describe('Settings — no control moves the clock', () => {
-  it('clicking every button in the panel leaves night as night and the clock where it was', () => {
-    useGameStore.setState({ isDay: false, gameTime: 0.75, frameCap: 60, masterMuted: false });
-    render(<SettingsPanel onClose={() => {}} showStats={false} setShowStats={() => {}} />);
-    const buttons = screen.getAllByRole('button');
-    expect(buttons.length, 'the panel rendered too few buttons for this to have clicked anything').toBeGreaterThanOrEqual(7);
-    for (const b of buttons) fireEvent.click(b);
+  const NIGHT = { isDay: false, gameTime: 0.75 };
+
+  it.each(['creative', 'survival'])('in %s mode, every button and every slider leaves night as night and the clock where it was', (mode) => {
+    useGameStore.setState({ ...NIGHT, gameMode: mode, frameCap: 60, masterMuted: false, lookSensitivity: 1 });
+    render(<SettingsPanel onClose={() => {}} showStats={false} setShowStats={() => {}}
+      onOpenWorldManager={() => {}} onOpenCredits={() => {}} />);
+    const held = (what) => {
+      const s = useGameStore.getState();
+      expect(s.isDay, `${what} turned night into day (${mode})`).toBe(false);
+      expect(s.gameTime, `${what} moved the clock (${mode})`).toBe(0.75);
+    };
+
+    const others = document.body.querySelectorAll('input:not([type="range"]), select, textarea, [role="switch"], [role="checkbox"], [role="combobox"]');
+    expect(others.length, 'the panel has a control this gate does not drive').toBe(0);
+
+    const clicked = new Set();
+    for (let next; (next = screen.queryAllByRole('button').find((b) => !clicked.has(b)));) {
+      clicked.add(next);
+      expect(clicked.size, 'a click keeps minting new buttons').toBeLessThan(60);
+      const name = next.getAttribute('aria-label') || next.textContent.trim();
+      fireEvent.click(next);
+      held(`the "${name}" button`);
+      act(() => { useGameStore.setState({ gameMode: mode }); }); // flushed, so the next query sees this mode's rows
+    }
+    expect(clicked.size, 'the panel rendered too few buttons for this to have clicked anything').toBeGreaterThanOrEqual(9);
+
+    const sliders = screen.getAllByRole('slider');
+    expect(sliders.length, 'the panel rendered too few sliders for this to have driven anything').toBeGreaterThanOrEqual(4);
+    for (const s of sliders) {
+      for (const v of [s.min, s.max]) {
+        fireEvent.change(s, { target: { value: v } });
+        held(`the "${s.getAttribute('aria-label')}" slider at ${v}`);
+      }
+    }
+
+    // Presence, same instruments: a click and a slider move both reach the store.
     const s = useGameStore.getState();
-    // The clicks landed: the two toggles whose effect is in the store changed.
     expect(s.frameCap, 'the Frame Rate click never landed').toBe(0);
     expect(s.masterMuted, 'the Mute All click never landed').toBe(true);
-    expect(s.isDay, 'a Settings control turned night into day').toBe(false);
-    expect(s.gameTime, 'a Settings control moved the clock').toBe(0.75);
+    expect(s.lookSensitivity, 'the Look Sensitivity slider never reached the store').toBe(2.5);
   });
 });
