@@ -1,5 +1,6 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
+import { installWorldHold } from './_worldHold.js';
 import { idForBlock } from '../../src/world/blockIds.js';
 
 // THE ORE GLOW, IN A RENDERED FRAME (plan 2026-09-23-crafty-emissive-ores, Task 3; EXTERNAL-BASELINE-R2 #3).
@@ -8,11 +9,12 @@ import { idForBlock } from '../../src/world/blockIds.js';
 // shape (weak). Neither sees a pixel. This does: a row of three blocks placed through the real build verb ahead of
 // and above the camera — STONE . DIAMOND . COAL, two apart — each face measured over its own screen region (a control
 // region, never the whole frame), with the glow ON, OFF and ON again inside ONE settled lighting state, at noon and at
-// midnight, with no clouds or motes (the sky-studio fixture).
+// midnight, with no clouds, motes or storm and the world held (the FIXTURES block below).
 //   - TREATMENT: at night the diamond face is brighter with the glow on than off.
 //   - DAY CONTROL: at noon the same switch changes nothing (the glow is gated on the night).
 //   - DRIFT CONTROL: stone and coal carry no glow, so they must not move across the three shots; if they do, the
 //     lighting moved between shots and the treatment measured that.
+// NOT CHECKED HERE: how the glow looks on a GPU, or in a cave.
 // The first version failed on correct code for two reasons. It compared ratios ACROSS noon and midnight (diamond/stone
 // must rise, coal/stone must not), and the night grade and the tone-mapping toe are not a power law, so a ratio of two
 // surfaces moves with the light level; on/off within one state cancels the curve. And it never measured the blocks:
@@ -20,11 +22,13 @@ import { idForBlock } from '../../src/world/blockIds.js';
 // eye-level cell above it — sky and far terrain. Found 2026-10-27 when an identity run read the diamond patch 85.0
 // with the glow on and 85.3 with it off, while the same table at x40 moved the whole frame 42 -> 76.
 //
-// Mutation-Proof: G1, G2, G3 and C1b observed RED against two surviving identity runs — the RECEIPTS block at the end.
+// Mutation-Proof: in commit trailers, not here (DECISIONS 2026-10-28 15c).
 test.describe('ore glow', () => {
-  test.setTimeout(480000);
+  const TIMEOUT_MS = 480000;
+  test.setTimeout(TIMEOUT_MS);
 
   test('at night the glow lifts a diamond face; at noon it does nothing; stone and coal hold still', async ({ page }) => {
+    await page.addInitScript(installWorldHold);
     await bootDev(page);
     await startPlayActive(page);
     await page.waitForFunction(() => window.GameMethods?.terrainVerbs?.place && window.__threeCamera && window.useGameStore.getState().getMobGroundLevel, null, { timeout: 60000 });
@@ -135,9 +139,8 @@ test.describe('ore glow', () => {
       const f = () => (drawn() >= until ? r() : requestAnimationFrame(f));
       requestAnimationFrame(f);
     }), n);
-    // The weather is pinned clear every shot: the storm toggles on a 90 s wall clock and grades the frame toward night.
     const shot = async (frac, on) => {
-      await page.evaluate((f) => { const s = window.useGameStore.getState(); s.setTimeOfDay(f); s.setWeatherMoodBoost(0); }, frac);
+      await page.evaluate((f) => window.useGameStore.getState().setTimeOfDay(f), frac);
       const found = await glow(on);
       expect(found, 'SETUP: no terrain material with a uOreGlow table in the scene').toBe(true);
       await frames(6);
@@ -145,7 +148,7 @@ test.describe('ore glow', () => {
     };
     // on, off, on again: the glow is the on/off difference; the second on bounds the drift between shots.
     const pair = async (frac) => {
-      await page.evaluate((f) => { const s = window.useGameStore.getState(); s.setTimeOfDay(f); s.setWeatherMoodBoost(0); }, frac);
+      await page.evaluate((f) => window.useGameStore.getState().setTimeOfDay(f), frac);
       // SETTLE, MEASURED: the sky and the sun ease on real time, at whatever rate this renderer draws — a fixed 2.5 s
       // left a noon "on" shot 25 darker on every face than the "off" after it (2026-10-27). Glow on, until stone and
       // coal each move under 1 across two consecutive shots, at most 20.
@@ -164,17 +167,46 @@ test.describe('ore glow', () => {
       const on2 = await shot(frac, true);
       return { on, off, on2 };
     };
-    // FIXTURE: no clouds and no light motes (the sky-studio switch, store captureStudio — it zeroes the cloud cover the
-    // terrain's cloud shadows obey, and unmounts the motes). With them, a cloud shadow drifting over the raised row
-    // took every face from 26 to 13 and back between consecutive noon shots (2026-10-27).
-    await page.evaluate(() => window.useGameStore.getState().setCaptureStudio(true));
+    // FIXTURES, set once and held for every shot: each is a light source this spec does not measure. Re-pinning one at
+    // the start of a shot leaves the shot itself open to it.
+    //  - Clouds and light motes: the sky-studio switch (store captureStudio) zeroes the cloud cover the terrain's cloud
+    //    shadows obey, and unmounts the motes. A cloud shadow over the raised row moves every face by half.
+    //  - The weather: WeatherSystem's 90 s interval starts a storm through setWeatherMoodBoost, which grades a noon
+    //    frame toward night and arms the lightning (LightningDriver reads a boost above 0 as a storm). The setter is
+    //    replaced, as lightning.spec holds its storm; the writes it refuses are kept for the log.
+    //  - The world: a hitstop held until release() (_worldHold.js) stops mobs, the spawner and the day/night clock, so
+    //    nothing can hurt the standing player; the hurt vignette and the death screen darken every face. The sky eases
+    //    on real time through it, as the settling below needs. The player starts full, so no low-health vignette shows.
+    const held = await page.evaluate((capMs) => {
+      const store = window.useGameStore;
+      const s = store.getState();
+      s.setCaptureStudio(true);
+      window.__oreGlowStormWrites = [];
+      store.setState({ weatherMoodBoost: 0, setWeatherMoodBoost: (n) => { window.__oreGlowStormWrites.push(n); } });
+      store.setState({ playerHealth: s.maxHealth });
+      window.__e2eHoldWorld({ capMs });
+      const h = store.getState();
+      return { alive: h.isAlive, hp: h.playerHealth };
+    }, TIMEOUT_MS);
+    expect(held.alive, `SETUP: the player died before the measurement began — the death screen covers the row: ${JSON.stringify(held)}`).toBe(true);
     const noon = await pair(0.5);
     const night = await pair(0.0);
     await page.screenshot({ path: test.info().outputPath('ore-glow-night.png') });
-    const where = JSON.stringify({ noon, night });
+    const end = await page.evaluate(() => {
+      const s = window.useGameStore.getState();
+      return { hold: window.__e2eWorldHold.release(), alive: s.isAlive, hp: s.playerHealth, boost: s.weatherMoodBoost, stormWrites: window.__oreGlowStormWrites };
+    });
+    const where = JSON.stringify({ noon, night, held, end });
     const f1 = (x) => x.toFixed(1);
     const line = (p) => ['stone', 'diamond', 'coal'].map((b) => `${b} ${f1(p.on[b])}/${f1(p.off[b])}/${f1(p.on2[b])}`).join(' ');
     console.log(`[ore-glow] on/off/on — noon: ${line(noon)} · night: ${line(night)}`); // the denominator, every run
+    console.log(`[ore-glow] world held ${end.hold.heldMs} ms over ${end.hold.frames} drawn frames (lapsed ${end.hold.lapsed}); player ${end.alive ? 'alive' : 'dead'} at ${end.hp}/${held.hp}; storm writes refused: ${JSON.stringify(end.stormWrites)}`);
+
+    // THE FIXTURES HELD, before any reading is judged: a lapsed hold or a hurt player names itself, never a drift.
+    expect(end.hold.lapsed, `SETUP: the world hold ran out before the last shot: ${where}`).toBe(false);
+    expect(end.hold.frames, `SETUP: the game drew no frame while the world was held: ${where}`).toBeGreaterThan(0);
+    expect(end.alive && end.hp === held.hp, `SETUP: the player was hurt while the world was held: ${where}`).toBe(true);
+    expect(end.boost, `SETUP: the weather grade moved off clear: ${where}`).toBe(0);
 
     expect(noon.on.stone, `SETUP: the stone face is not in frame — ${where}`).toBeGreaterThan(8);
     // At night the raised stone and coal faces fall under the night grade's black point (~3 measured), so there the
@@ -197,19 +229,3 @@ test.describe('ore glow', () => {
     expect(Math.abs(noon.on.diamond - noon.off.diamond), `the glow moved the diamond face at noon: ${where}`).toBeLessThan(3);
   });
 });
-
-// RECEIPTS (2026-10-27, local, this spec as committed, one at a time via a private-port copy of
-// scripts/dev/mutate-e2e.sh, load average 35-250, SwiftShader):
-//   identity (a comment edit in world/oreGlow.js), two runs, each SURVIVED: noon on/off/on stone 26.5/26.6/26.4 and
-//     26.7/26.7/26.6, diamond 82.7/82.7/82.8 and 82.1/82.3/81.9; night diamond 110.7/35.1/110.7 and 109.9/35.0/110.0
-//     (a +75 lift); night stone and coal ~3 (under the night grade's black point, hence the diamond's own on/on2 as
-//     the night drift instrument).
-//   G1 diamond's strength 0 (oreGlow.js) -> RED "did not brighten ... (+-0.0)"
-//   G2 the splice dropped from Terrain.jsx -> RED "did not brighten ... (+-0.0)"
-//   G3 plausible-wrong: the night factor inverted -> RED "did not brighten ... (+-0.1)" (noon diamond 140.6 on, 82.6 off)
-//   C1b the off shot taken a tenth of a day earlier (a light change between the shots, this spec mutated) -> RED
-//     "DRIFT: the stone face moved 14.7 across the noon shots"
-//   C1 as the diagnosis wrote it — setWeatherMoodBoost(0.85) and 2.5 s before the off shot — SURVIVED, and is not a
-//     hole: the light did not move (noon stone 26.4/26.3/26.7). The mood eases on real time and each shot re-pins the
-//     weather, so the injection never reached the frame; C1b injects a change that does.
-// NOT CHECKED HERE: how the glow looks on a GPU, or in a cave. On CI this spec's own first run is the verdict.
