@@ -3,8 +3,14 @@
 // WHY A PROD SEAM AT ALL (plan docs/superpowers/plans/2026-10-27-crafty-instruments.md). The masterpiece programme
 // judges looks on REAL-GPU, MOTION-ON frames of the SHIPPED bundle. The DEV test bridge and capture mode are compiled
 // out of that bundle, and capture is the wrong instrument anyway: it turns weather, mobs, NPCs, particles and spawning
-// off and pins the sun at noon. So the probe needs to pose the camera, set the time of day and make input live in the
+// off and pins the sun at noon. So the probe needs to pose the camera, stand the player and turn their head, set the
+// time of day, make input live, clear the hostiles in the player's face and read GPU time per post pass in the
 // production build — and nothing else.
+//
+// TWO WAYS TO FRAME A SHOT. pose() pins the camera for an elevated hero shot (below). stand() and look() frame what a
+// player sees instead: they move the player's body and turn the camera the way mouse look does (input/pointerLook.js
+// writes camera.rotation the same way), so the Player's own rig puts the eye where play puts it, with the hands and
+// the HUD on. They refuse while a pose is set, because the Player re-applies a pose every frame and would undo them.
 //
 // HOW PLAYERS CANNOT TRIP IT. Two locks, both required:
 //   1. Nothing is installed unless the page URL carries exactly `?lookbook=1` (parseLookbookParam).
@@ -28,6 +34,7 @@ const LOOKBOOK_PARAM = 'lookbook';
 
 let _pose = null;
 const _subs = new Set();
+let _passTimer = null; // the page-wide handle from render/passTimer.js, once the probe asked for timings
 
 /** PURE. True only for the exact `lookbook=1` parameter. */
 export function parseLookbookParam(search) {
@@ -100,15 +107,75 @@ export function applyLookbookPose(camera, pose) {
   camera.updateProjectionMatrix();
 }
 
+const DEG = Math.PI / 180;
+// The Player clamps pitch to just under straight up or down (Components.jsx); a look past it would be clamped away.
+const MAX_PITCH_DEG = 85;
+
+/**
+ * PURE. The camera yaw (rotation.y, order YXZ) that faces a compass bearing in degrees, in the HUD compass's
+ * convention (HUD.jsx): 0 is north (-Z), 90 east (+X), clockwise.
+ */
+export function yawForHeading(deg) {
+  return -deg * DEG;
+}
+
+/** PURE. The compass bearing in [0, 360) a camera faces, read from its world matrix as the HUD compass reads it. */
+export function headingOf(camera) {
+  const e = camera.matrixWorld.elements;
+  const deg = Math.atan2(-e[8], e[10]) / DEG;
+  return ((deg % 360) + 360) % 360;
+}
+
+/** How far around the eye hostiles are counted. */
+const HOSTILE_COUNT_M = 8;
+
+/**
+ * PURE. The nearest live hostile to `from` ([x, y, z]) and how many stand within 8 m: whether a frame shows the world
+ * or a fight in the player's face. Hostile is a mob with health that is neither passive nor a quest NPC, the same split
+ * the minimap's hostile count uses. `nearestM` is null when no hostile is alive.
+ */
+export function hostileReach(entities, from) {
+  let nearestM = null;
+  let within = 0;
+  for (const e of entities || []) {
+    if (!isLiveHostile(e)) continue;
+    const d = distanceFrom(e, from);
+    if (nearestM === null || d < nearestM) nearestM = d;
+    if (d <= HOSTILE_COUNT_M) within += 1;
+  }
+  return { nearestM, within8m: within };
+}
+
+function isLiveHostile(e) {
+  return !!e && e.health > 0 && !e.passive && !e.isNPC && !!e.position;
+}
+
+function distanceFrom(e, from) {
+  return Math.hypot(e.position.x - from[0], e.position.y - from[1], e.position.z - from[2]);
+}
+
+function finite(v, name) {
+  if (!Number.isFinite(v)) throw new TypeError(`lookbook: ${name} must be a finite number, got ${JSON.stringify(v)}`);
+  return v;
+}
+
 /**
  * Install `win.__craftyLookbook` when the URL carries `?lookbook=1`; otherwise do nothing and return false.
  * Collaborators are injected so a gate can drive the seam against the real store and input gate (index.jsx wires them).
  * @param {{location?: {search?: string}}} win
  * @param {{store: any, setActive: (v: boolean) => void, getActive: () => boolean, cycleOf: (gameTime: number) => number,
- *          glInfo: () => object|null, contextLosses: () => number}} deps
+ *          glInfo: () => object|null, contextLosses: () => number, hostiles?: () => Iterable<object>,
+ *          removeEntity?: (e: object) => void, loadPassTimer?: () => Promise<{installPassTimer: () => object}>}} deps
  */
-export function installLookbookSeam(win, { store, setActive, getActive, cycleOf, glInfo, contextLosses }) {
+export function installLookbookSeam(win, {
+  store, setActive, getActive, cycleOf, glInfo, contextLosses, hostiles, removeEntity, loadPassTimer,
+}) {
   if (!win || !parseLookbookParam(win.location && win.location.search)) return false;
+  const unposed = (verb) => {
+    if (_pose !== null) throw new Error(`lookbook: ${verb}() while a pose is set; clear() first`);
+  };
+  const body = () => store.getState().playerRigidBodyRef?.current ?? null;
+  const camera = () => store.getState().gameCamera ?? null;
   win.__craftyLookbook = Object.freeze({
     /** Pin the camera: { position: [x,y,z], lookAt: [x,y,z], fov? }. Throws on a malformed pose. */
     pose: (p) => { setPose(p); return copyPose(_pose); },
@@ -122,9 +189,61 @@ export function installLookbookSeam(win, { store, setActive, getActive, cycleOf,
     },
     /** Make input live without pointer lock (headless Chromium refuses it), as the DEV forcePlay hook does. */
     play: () => { setActive(true); return getActive(); },
+    /** Move the player's body to { position: [x, y, z] } and stop it. Returns where the body is now. */
+    stand: (p) => {
+      unposed('stand');
+      const [x, y, z] = finite3(p && p.position, 'position');
+      const rb = body();
+      if (!rb) throw new Error('lookbook: stand() before the player body exists');
+      rb.setTranslation({ x, y, z }, true);
+      rb.setLinvel?.({ x: 0, y: 0, z: 0 }, true);
+      const t = rb.translation();
+      return [t.x, t.y, t.z];
+    },
+    /** Turn the player's head to { heading (compass degrees), pitch (degrees, up positive) }. Returns the heading
+     *  read back from the camera. */
+    look: (p) => {
+      unposed('look');
+      const heading = finite(p && p.heading, 'heading');
+      const pitch = finite(p.pitch ?? 0, 'pitch');
+      if (Math.abs(pitch) > MAX_PITCH_DEG) throw new RangeError(`lookbook: pitch must be within +-${MAX_PITCH_DEG} degrees, got ${pitch}`);
+      const cam = camera();
+      if (!cam) throw new Error('lookbook: look() before the game camera exists');
+      cam.rotation.order = 'YXZ';
+      cam.rotation.set(pitch * DEG, yawForHeading(heading), 0);
+      cam.updateMatrixWorld();
+      return headingOf(cam);
+    },
+    /** Remove the live hostiles within `radius` metres of the eye (else the body), the way capture mode clears mobs
+     *  (ecs.remove, so no kill, XP or loot is counted), so a frame shows the world rather than a fight in the player's
+     *  face. Returns how many it removed. */
+    clearHostiles: ({ radius = 12 } = {}) => {
+      const r = finite(radius, 'radius');
+      if (!hostiles || !removeEntity) throw new Error('lookbook: clearHostiles() needs the mob query');
+      const cam = camera();
+      const t = body()?.translation();
+      if (!cam && !t) throw new Error('lookbook: clearHostiles() before the player exists');
+      const from = cam ? cam.position.toArray() : [t.x, t.y, t.z];
+      // A copy: removing an entity reorders the query's live array, so iterating it while removing skips entities.
+      const doomed = [...hostiles()].filter((e) => isLiveHostile(e) && distanceFrom(e, from) <= r);
+      for (const e of doomed) removeEntity(e);
+      return doomed.length;
+    },
+    /** GPU ms per post pass since the last reset, per WebGL context (render/passTimer.js). The first call loads the
+     *  timer, so nothing is timed until a script asks. */
+    passTimes: async ({ reset = false } = {}) => {
+      if (!loadPassTimer) return { installed: false, reason: 'no pass timer in this build' };
+      if (!_passTimer) _passTimer = (await loadPassTimer()).installPassTimer();
+      return _passTimer.report({ reset });
+    },
     /** What the probe records per shot. */
     info: () => {
       const s = store.getState();
+      const rb = s.playerRigidBodyRef?.current;
+      const cam = s.gameCamera;
+      let cameraNodes = 0;
+      cam?.traverse?.(() => { cameraNodes += 1; });
+      const t = rb?.translation?.();
       return {
         active: getActive(),
         cycle: cycleOf(s.gameTime),
@@ -137,6 +256,14 @@ export function installLookbookSeam(win, { store, setActive, getActive, cycleOf,
         gl: glInfo(),
         pose: copyPose(_pose),
         worldBuilt: s.isSpawnChunkLoaded === true,
+        body: t ? [t.x, t.y, t.z] : null,
+        eye: cam ? cam.position.toArray() : null,
+        heading: cam?.matrixWorld ? headingOf(cam) : null,
+        pitch: cam ? cam.rotation.x / DEG : null,
+        // The first-person hands hang off the camera, so this falls while they are hidden (a pose) and rises back.
+        cameraNodes,
+        // Measured from the eye (the camera), else the body; null when the build hands the seam no mob query.
+        hostiles: hostiles && (cam || t) ? hostileReach(hostiles(), cam ? cam.position.toArray() : [t.x, t.y, t.z]) : null,
       };
     },
   });
@@ -147,4 +274,5 @@ export function installLookbookSeam(win, { store, setActive, getActive, cycleOf,
 export function _resetLookbookForTest() {
   _pose = null;
   _subs.clear();
+  _passTimer = null;
 }

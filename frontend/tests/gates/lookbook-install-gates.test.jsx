@@ -23,11 +23,14 @@ import { act } from 'react';
  *
  * BLIND SPOT: App is a stub, so whether the GAME reads what the seam writes (the Player's pose, PositionTracker, the
  * readout) is tests/gates/player-lookbook-pose-gates.test.jsx, gamescene-diagnostics-wiring-gates.test.jsx and the
- * e2e (tests/e2e/lookbook-seam.spec.js, on the production build). That the shipped BUNDLE keeps this call (it is not
- * DEV-gated) is the e2e's: it opens `vite preview` with `?lookbook=1`.
+ * e2e (tests/e2e/lookbook-seam.spec.js, on the DEV server). That the shipped BUNDLE keeps this call (it is not
+ * DEV-gated) is scripts/ci/prod-smoke.mjs's seamVerdict, which loads the production build with and without
+ * `?lookbook=1`.
  */
 
 vi.mock('../../src/App', () => ({ default: () => null }));
+
+const mobsInWorld = (ecs) => [...ecs.with('isMob', 'position', 'type').entities];
 
 /** A fresh copy of the entry module and every module it imports, loaded on a page at `search`. */
 async function bootAt(search) {
@@ -59,7 +62,37 @@ describe('src/index.jsx installs the lookbook seam with the real collaborators',
     expect(plain.seam, 'a page without ?lookbook=1 got the seam — every player would carry it').toBeUndefined();
     const { seam } = await bootAt('?lookbook=1');
     expect(seam, 'the entry module did not install the seam on ?lookbook=1 — the probe has no door').toBeDefined();
-    expect(Object.keys(seam).sort()).toEqual(['clear', 'info', 'play', 'pose', 'setCycle']);
+    expect(Object.keys(seam).sort()).toEqual(['clear', 'clearHostiles', 'info', 'look', 'passTimes', 'play', 'pose', 'setCycle', 'stand']);
+  });
+
+  it('hands the seam the REAL mob query: a hostile added to the ECS world is measured from the eye', async () => {
+    const { seam, store } = await bootAt('?lookbook=1');
+    const { ecs } = await import('../../src/ecs/world.js');
+    const { PerspectiveCamera } = await import('three');
+    store.setState({ gameCamera: new PerspectiveCamera() });
+    expect(seam.info().hostiles, 'presence: an empty world reads as no hostile').toEqual({ nearestM: null, within8m: 0 });
+    const husk = ecs.add({ isMob: true, type: 'zombie', health: 100, passive: false, position: { x: 0, y: 0, z: 4 } });
+    try {
+      expect(seam.info().hostiles, 'the entry module gave the seam no mob query, or the wrong one').toEqual({ nearestM: 4, within8m: 1 });
+      expect(seam.clearHostiles(), 'clearHostiles() did not find the hostile').toBe(1);
+      expect(mobsInWorld(ecs), 'clearHostiles() did not remove it from the REAL world').not.toContain(husk);
+    } finally {
+      ecs.remove(husk);
+      store.setState({ gameCamera: null });
+    }
+  });
+
+  it('hands the seam the real pass timer, loaded on the first passTimes() and never before', async () => {
+    const { seam } = await bootAt('?lookbook=1');
+    const { EffectComposer } = await import('postprocessing');
+    const unpatched = EffectComposer.prototype.render;
+    const report = await seam.passTimes();
+    try {
+      expect(report, 'the entry module gave the seam no pass-timer loader').toEqual({ installed: true, contexts: [] });
+      expect(EffectComposer.prototype.render, 'the loaded timer did not patch the composer the game renders with').not.toBe(unpatched);
+    } finally {
+      (await import('../../src/render/passTimer.js')).installPassTimer().uninstall();
+    }
   });
 
   it('drives the REAL input gate: play() makes it live, and info() reads it back', async () => {

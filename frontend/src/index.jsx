@@ -59,6 +59,7 @@ import { installLookbookSeam } from './render/lookbookSeam.js';
 import { setActive, getActiveSnapshot } from './input/inputState.js';
 import { cycleFraction } from './game/dayPhase.js';
 import { glInfo, contextLossCount } from './render/glDiagnostics.js';
+import { ecs, mobsQuery } from './ecs/world.js';
 
 applyThemeVars(); // write --ui-* onto :root before first paint
 
@@ -76,6 +77,10 @@ if (typeof window !== 'undefined') {
   // and inert until a script calls it. Not DEV-gated on purpose — the probe shoots the shipped bundle.
   installLookbookSeam(window, {
     store: useGameStore, setActive, getActive: getActiveSnapshot, cycleOf: cycleFraction, glInfo, contextLosses: contextLossCount,
+    hostiles: () => mobsQuery.entities,
+    removeEntity: (e) => ecs.remove(e),
+    // A dynamic import, so the timer is its own chunk that no player downloads.
+    loadPassTimer: () => import('./render/passTimer.js'),
   });
 }
 
