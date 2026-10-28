@@ -9,6 +9,25 @@
 export const LOOKBOOK_CYCLES = Object.freeze([0.30, 0.48, 0.55, 0.75]);
 
 /**
+ * `--cycles 0.02,0.25,0.5` as the times to shoot: dawn-origin cycle fractions in [0, 1), each named at most once, since
+ * the file names carry two decimals. Absent (null or empty) is LOOKBOOK_CYCLES. Anything else throws, naming it: a
+ * mistyped time must stop the run, never shoot a different set.
+ */
+export function parseCycles(arg) {
+  if (arg === null || arg === undefined || arg === '') return LOOKBOOK_CYCLES;
+  const parts = String(arg).split(',').map((s) => s.trim());
+  const out = parts.map((s) => {
+    const c = /^\d*\.?\d+$/.test(s) ? Number(s) : NaN;
+    if (!(c >= 0 && c < 1)) throw new Error(`--cycles: "${s}" is not a cycle fraction in [0, 1)`);
+    return c;
+  });
+  const names = out.map((c) => c.toFixed(2));
+  const dup = names.find((n, i) => names.indexOf(n) !== i);
+  if (dup) throw new Error(`--cycles: ${dup} is named twice (file names carry two decimals)`);
+  return Object.freeze(out);
+}
+
+/**
  * The four places. Seed 12345 is fixed (world/terrain.worker.js), so these are the same ground on every build.
  *   hearth, coast, snow-terrace — the capture harness's own poses (capture.mjs, the hearth / ocean-coast / biome-snow
  *     states), so a lookbook frame and a regression frame of one place can be set side by side;

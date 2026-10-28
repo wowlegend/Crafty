@@ -19,6 +19,7 @@ import {
   clipVerdict,
   passSummary,
   contactSheetHtml,
+  parseCycles,
 } from '../../scripts/visual/_lookbook.mjs';
 import { viteArgv } from '../../scripts/visual/_serve.mjs';
 
@@ -202,6 +203,19 @@ describe('the eye-level set and the walking clips', () => {
     expect(plan[3]).toEqual({ heading: 0, cycle: 0.48, file: 'eye-000-0.48.png' });
     for (const c of LOOKBOOK_CYCLES) {
       expect(plan.filter((s) => s.cycle === c).map((s) => s.heading), `bearings at ${c}`).toEqual([0, 120, 240]);
+    }
+  });
+
+  it('--cycles names the times to shoot, and a mistyped one stops the run instead of shooting another set', () => {
+    expect(parseCycles(null)).toBe(LOOKBOOK_CYCLES);
+    expect(parseCycles('')).toBe(LOOKBOOK_CYCLES);
+    const asked = parseCycles('0.02, 0.25,0.5,0.75');
+    expect([...asked]).toEqual([0.02, 0.25, 0.5, 0.75]);
+    expect(eyeShotPlan(EYE_HEADINGS, asked).map((s) => s.file).slice(0, 3)).toEqual(['eye-000-0.02.png', 'eye-120-0.02.png', 'eye-240-0.02.png']);
+    expect(eyeShotPlan(EYE_HEADINGS, asked)).toHaveLength(12);
+    expect(clipPlan(asked).map((c) => c.file)).toEqual(['walk-0.02.mp4', 'walk-0.25.mp4', 'walk-0.50.mp4', 'walk-0.75.mp4']);
+    for (const bad of ['1', '1.0', '-0.1', 'dusk', '0.5,', '0.25,0.251', 'NaN']) {
+      expect(() => parseCycles(bad), `"${bad}" was accepted`).toThrow(/--cycles/);
     }
   });
 
