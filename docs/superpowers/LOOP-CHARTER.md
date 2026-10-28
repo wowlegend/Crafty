@@ -355,7 +355,7 @@ fire it on any deliberate `/compact`, or when Kevin says "wrap up". **Do not wai
    - `docs/superpowers/LOOP-PROGRESS.html` — the kernel calls this a session-close obligation and it had gone
      **17 commits stale** by 2026-08-07 (last touched `1b776ca`). It has NO gate. Refresh it here or it rots.
    - `docs/superpowers/era-review.html` → its published Artifact. This one DOES have a gate
-     (`node frontend/scripts/ci/artifact-currency.mjs`, informational under 30 commits, hard fail above on a push that moves main).
+     (`node frontend/scripts/ci/artifact-currency.mjs`: it prints the drift and refuses none, DECISIONS 2026-10-28 item 12).
      **Update IN PLACE via the URL in `.artifact-sync.json`, then `--sync`.** A fresh publish mints a new URL
      and strands the bookmark Kevin already has.
 3. **REMOTE / GitHub surfaces** *(this is the step that kept getting skipped)*:

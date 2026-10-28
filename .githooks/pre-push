@@ -55,7 +55,8 @@ while read -r _local_ref local_sha _remote_ref _remote_sha; do
   [ -z "$local_sha" ] && continue
   TARGETS="$TARGETS $local_sha"
   # The REMOTE ref, never the local one: `git push origin feat/x:main` and `git push origin HEAD:refs/heads/main`
-  # name a local branch or HEAD, and both move main. Pinned by tests/scripts/artifact-currency-scope.test.js.
+  # name a local branch or HEAD, and both move main. Pinned by tests/scripts/artifact-currency-scope.test.js (its
+  # PRODUCER cases, kept for e2e-freshness, which reads the list).
   PUSH_REFS="${PUSH_REFS:-} $_remote_ref"
   # The commits actually being introduced. A brand-new branch sends the zero-sha as the remote side, in
   # which case there is no meaningful range and the trailer check simply skips rather than scanning history.
@@ -70,7 +71,7 @@ if [ -z "$TARGETS" ]; then
 fi
 # The refs this push moves, for e2e-freshness: its red-base refusal guards MAIN (the branch Vercel deploys and whose
 # CI history a stacked change would hide in); a branch push is judged by CI on that branch (2026-10-27).
-# artifact-currency reads it too: its drift refusal guards main, since the operator pages describe main.
+# (artifact-currency read it too until 2026-10-28, when its drift refusal went: DECISIONS 2026-10-28 item 12.)
 # EXPORTED, or the node processes the pipeline starts never see it and read every push as "refs unknown".
 export E2E_PUSH_REFS="$PUSH_REFS"
 

@@ -41,10 +41,8 @@ jobs:
     steps:
       # FULL HISTORY (2026-10-28). On a push to main the fast tier runs artifact-currency, whose drift is
       # `rev-list --count syncedSha..HEAD`; a depth-1 clone holds no commit but HEAD, so that count cannot be taken.
-      # For an artifact surface the script refuses an unmeasurable drift on a main push rather than skipping it, so a
-      # shallow checkout here reds main for those; a surface with no recorded sha still skips, and a page-kind
-      # surface in a shallow checkout reads as current. The step runs after the push has landed: it detects drift,
-      # it does not bound a merge.
+      # The drift is a report, never a refusal (DECISIONS 2026-10-28 item 12): in a shallow checkout the line would
+      # only say "cannot be measured", which is why the history is fetched. The step runs after the push has landed.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -71,8 +69,9 @@ jobs:
       #
       # `--tier=fast` adds the steps that need network or a browser (knip, npm audit, prod-smoke) and
       # skips the commit-shaped ones (queue-ledger, e2e-freshness), which need a push refspec a runner does not
-      # have. The one exception is artifact-currency: on a push to main it runs here too, naming main, to detect
-      # drift after a merge GitHub made (a pull_request or a workflow_dispatch run skips it).
+      # have. The one exception is artifact-currency: on a push to main it runs here too, to report the pages'
+      # drift after a merge GitHub made and to refuse a tree defect such a merge brought in (a pull_request or a
+      # workflow_dispatch run skips it).
       - name: Pipeline (fast tier — every deterministic gate, plus network/browser)
         working-directory: .
         run: bash ci/pipeline.sh --tier=fast

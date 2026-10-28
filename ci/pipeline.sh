@@ -132,7 +132,8 @@ step "bundle byte budget" node scripts/ci/bundle-budget.mjs
 # TIER: PUSH — commit-shaped gates. They read a COMMIT RANGE, which a CI runner on a squashed or
 # rebased ref cannot reconstruct meaningfully, so they belong to the chokepoint that has the real range.
 # One of them, artifact-currency, ALSO runs in the fast tier on a CI push to main (see the CI-only block
-# below): its range is syncedSha..HEAD, which a full-history runner can count, but there it can only DETECT.
+# below): its range is syncedSha..HEAD, which a full-history runner can count. In either tier its drift is a
+# report, never a refusal (DECISIONS 2026-10-28 item 12); only its two tree-defect checks fail a run.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" != "push" ]; then
   printf '\n\033[2m── skipped (%s tier): queue-ledger, artifact-currency, e2e-freshness — they read a COMMIT RANGE (the fast tier runs artifact-currency on a CI push to main, below)\033[0m\n' "$TIER"
@@ -158,26 +159,26 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # TIER: CI-ONLY — knip, npm audit and prod-smoke need the network or a browser, so they must never sit in a
 # developer's push path. A registry outage or a flaky browser reddening someone's push is how a gate gets
-# bypassed. The artifact-currency step at the end of this block is CI-only for a different reason: it needs
+# bypassed. The artifact-currency step at the end of this block is in CI for a different reason: it needs
 # neither, it needs the state of main AFTER a merge GitHub made, which no local hook ever sees.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" = "fast" ]; then
   step "knip (unused files / exports / deps)" npm run --silent knip
   step "npm audit (high + critical)" npm audit --audit-level=high
   step "prod-smoke (the bundle that actually ships boots and renders)" node scripts/ci/prod-smoke.mjs
-  # THE SERVER-SIDE MERGE CHECK (2026-10-28) — it DETECTS drift; it does NOT bound the merge. artifact-currency's
-  # drift refusal guards main, and pre-push is the only place it stops a push — but `gh pr merge` and GitHub's UI
-  # move main without any local hook, so main can land any distance past the published operator pages. This step
-  # runs on the push event, AFTER main has moved and Vercel has deployed, and never on pull_request, so no check
-  # can refuse an over-limit merge: the gates job goes red on main until the pages are republished and `--sync`ed,
-  # and each further merge goes red the same way. A workflow_dispatch run on main skips it (the else branch), so
-  # a green dispatch run does not clear a red push run. On a push to main the range syncedSha..HEAD is the one the
-  # hook would have judged, provided the recorded sha is in the runner's history: the gates job checks out full
-  # history (fetch-depth: 0), and a sha only a squash-merged, deleted lane branch held is refused as unmeasured.
-  # NEVER on pull_request: a PR's merge ref carries the lane's own commits, and refusing those is the #24
-  # deadlock this gate was scoped to end. E2E_PUSH_REFS names main, so the strict rule applies.
+  # THE SERVER-SIDE MERGE REPORT (2026-10-28) — `gh pr merge` and GitHub's UI move main without any local hook, so
+  # this step is the one place main's state after such a merge is looked at. It runs on the push event, AFTER main
+  # has moved and Vercel has deployed. It PRINTS how far each operator page is behind main and refuses no drift
+  # (DECISIONS 2026-10-28 item 12: the cap measured the writer; the pages now state their own commit and time for
+  # the reader). It still reds the gates job if a merge brought in one of the two tree defects (a missing or
+  # unusable page source, a falsified or undeclared Queued pill), which pre-push refuses on every local push. The
+  # drift is counted from the recorded sha, so the gates job checks out full history (fetch-depth: 0); without it,
+  # or for a sha only a squash-merged, deleted lane branch held, the line reads "cannot be measured". It stays on a
+  # push to main only, as it was: a PR's merge ref would print the lane's own commits as drift, and a
+  # workflow_dispatch run on main moves nothing (both take the else branch). It no longer passes E2E_PUSH_REFS,
+  # which the script stopped reading when the drift refusal went.
   if [ "${GITHUB_EVENT_NAME:-}" = "push" ] && [ "${GITHUB_REF:-}" = "refs/heads/main" ]; then
-    step "artifact-currency (on a CI push to main: detects drift after a merge GitHub made)" env E2E_PUSH_REFS=' refs/heads/main' node scripts/ci/artifact-currency.mjs
+    step "artifact-currency (on a CI push to main: reports drift after a merge GitHub made)" node scripts/ci/artifact-currency.mjs
   else
     printf '\n\033[2m── skipped (fast tier): artifact-currency — CI runs it on a push to main only (event %s, ref %s)\033[0m\n' "${GITHUB_EVENT_NAME:-unset}" "${GITHUB_REF:-unset}"
   fi

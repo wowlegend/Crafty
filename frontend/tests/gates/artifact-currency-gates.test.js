@@ -4,31 +4,31 @@ import { classify, driftVerdict, HARD_LIMIT, validateSource, surfaces, queuedCla
 // Behavioural, not a source-grep: exercises the threshold function directly so gate-shape's
 // source-grep ratchet does not rise.
 //
-// Mutation-Proof: driftVerdict's `refuse: !ok && mainMoves !== false` -> `refuse: !ok` turned the
-// branch-only test RED; -> `refuse: false` turned the main and unknown-refs tests RED; -> `mainMoves === true`
-// turned the unknown-refs test RED. Replacing main()'s E2E_PUSH_REFS read with `null` SURVIVES here — this
-// file cannot see the wiring — and is killed by the process-level twin, tests/scripts/artifact-currency-scope.test.js.
-// 2026-10-28: the unmeasured verdict `refuse: mainMoves !== false` -> `refuse: false` turned the unmeasured test
-// RED (main, unknown); -> `refuse: true` turned it RED (branch-only); deleting the `behind === null` guard (null
-// then reads as a drift of 0..limit) turned it RED.
+// Mutation-Proof: 2026-10-28 (DECISIONS 2026-10-28 item 12: drift is reported, never refused), via
+// scripts/dev/mutate.sh. Restoring a drift refusal in driftVerdict (`refuse: false` -> `refuse: level === 'stale'`)
+// turned the verdict test RED; the unmeasured `refuse: false` -> `refuse: true` turned it RED; deleting the
+// `behind === null` guard (null then reads as a drift of 0, i.e. current) turned it RED. main() refusing a stale
+// drift whatever the verdict SURVIVES here — this file cannot see the wiring — and is killed by the process-level
+// twin, tests/scripts/artifact-currency-scope.test.js. An identity comment edit survived. The receipts for the
+// earlier main-only scope are in git history.
 
 describe('artifact-currency threshold', () => {
   it('at HEAD is current', () => {
     expect(classify(0)).toEqual({ level: 'current', ok: true });
   });
 
-  it('inside the limit it nudges but does not fail the push', () => {
+  it('inside the limit it is drifting: the report nudges a refresh at session close', () => {
     expect(classify(1).ok).toBe(true);
     expect(classify(HARD_LIMIT).ok).toBe(true);
     expect(classify(HARD_LIMIT).level).toBe('drifting');
   });
 
-  it('past the limit it FAILS — the whole point, since three nudges already went unheeded', () => {
+  it('past the limit it is STALE — the report says so (since 2026-10-28 it refuses nothing; see driftVerdict)', () => {
     expect(classify(HARD_LIMIT + 1).ok).toBe(false);
     expect(classify(HARD_LIMIT + 1).level).toBe('stale');
   });
 
-  it('the boundary is pinned from BOTH sides so a check that always passes cannot hide here', () => {
+  it('the boundary is pinned from BOTH sides, so the stale wording cannot drift off the limit unseen', () => {
     expect(classify(HARD_LIMIT).ok).toBe(true);
     expect(classify(HARD_LIMIT + 1).ok).toBe(false);
   });
@@ -39,38 +39,31 @@ describe('artifact-currency threshold', () => {
   });
 });
 
-// The pages describe MAIN. A lane branch counts its own commits past the publish sha, which no republish
-// from main can lower, so refusing it was permanent (feat/steady-cool, PR #24). `mainMoves` is the
-// tri-state mainMovesFrom(E2E_PUSH_REFS) returns: true, false, or null when the caller named no refs.
-describe('driftVerdict — the drift refusal guards main', () => {
-  const over = HARD_LIMIT + 1;
+// DRIFT IS REPORTED, NEVER REFUSED (DECISIONS 2026-10-28 item 12). The cap measured how far the WRITER was
+// behind; the reader's question is whether the page is current, which the page answers by stating its own commit.
+// The verdict still carries `refuse`, because main() routes it into the exit code: these cases are what go RED if
+// a refusal is put back. The main-vs-branch cases that used to live here are gone with the scope they tested —
+// the verdict no longer takes the pushed refs at all.
+describe('driftVerdict — no drift refuses, at any level', () => {
+  const cases = [
+    [0, 'current'],
+    [1, 'drifting'],
+    [HARD_LIMIT, 'drifting'],
+    [HARD_LIMIT + 1, 'stale'],
+    [HARD_LIMIT * 10, 'stale'],
+    // `behind === null`: the recorded sha is not in this history (a shallow clone, a squash-merged lane's sha), so
+    // the drift cannot be counted. It is reported as unknown, never as current, and refuses nothing.
+    [null, 'unmeasured'],
+  ];
 
-  it('over the limit, a push that moves main is refused', () => {
-    expect(driftVerdict(over, true)).toEqual({ level: 'stale', refuse: true });
-  });
-
-  it('over the limit, a push that moves only other branches is NOT refused — still reported stale', () => {
-    expect(driftVerdict(over, false)).toEqual({ level: 'stale', refuse: false });
-  });
-
-  it('over the limit, UNKNOWN refs stay strict — a hand run must not silently stop checking', () => {
-    expect(driftVerdict(over, null)).toEqual({ level: 'stale', refuse: true });
-    expect(driftVerdict(over, undefined).refuse).toBe(true);
-  });
-
-  it('at or under the limit nothing is refused, whatever the push moves', () => {
-    for (const m of [true, false, null]) {
-      expect(driftVerdict(HARD_LIMIT, m)).toEqual({ level: 'drifting', refuse: false });
-      expect(driftVerdict(0, m)).toEqual({ level: 'current', refuse: false });
+  it('every level, from current to unmeasured, is reported with refuse: false', () => {
+    let checked = 0;
+    for (const [behind, level] of cases) {
+      expect(driftVerdict(behind), `behind ${behind}`).toEqual({ level, refuse: false });
+      checked++;
     }
-  });
-
-  // `behind === null`: the recorded sha is not in this history (a shallow CI clone, a rewritten publish sha), so
-  // the drift cannot be counted. On a main move that is an UNBOUNDED drift, not a skip (2026-10-28).
-  it('an UNMEASURED drift refuses a main push and unknown refs, and only a branch-only push skips it', () => {
-    expect(driftVerdict(null, true)).toEqual({ level: 'unmeasured', refuse: true });
-    expect(driftVerdict(null, null)).toEqual({ level: 'unmeasured', refuse: true });
-    expect(driftVerdict(null, false)).toEqual({ level: 'unmeasured', refuse: false });
+    // The denominator: all six levels were judged, the stale and unmeasured ones included.
+    expect(checked).toBe(6);
   });
 });
 
