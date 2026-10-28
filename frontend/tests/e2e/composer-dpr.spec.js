@@ -13,33 +13,53 @@ import { pixelBudgetDpr } from '../../src/render/pixelBudget.js';
 // a tier step changes nothing and a missing sync is invisible. At 2 on a 1200x800 window the tiers land on their caps
 // (1.25 / 1.5 / 1.75), so every step changes the ratio while the CSS size stays put.
 //
-// Mutation-Proof: NOT YET RUN — this lane does not run e2e (port 4179 and the browser belong to the command session).
-// Intended batch, via scripts/dev/mutate-e2e.sh:
-//   E1 <ComposerPixelRatioSync /> removed from PostFX (GameScene.jsx)  -> RED expected: "the composer buffer is ... the canvas is ..."
-//   E2 the Canvas dpr back to [1, q.dprCap] (GameScene.jsx)            -> RED expected: "the renderer's pixel ratio is not the budget"
-//   E0 identity (a comment edit in postFx.js)                          -> must SURVIVE
+// Mutation-Proof: (2026-10-28, run on this spec as it stands: single-spec local runs through a throwaway config on a free
+// port, --retries=0):
+//   E0  identity (a comment edit in postFx.jsx)                                          -> SURVIVED
+//   E1b plausible-wrong: the sync compares but never resizes (`composer.setSize()` removed, postFx.jsx)
+//                                                                                        -> SURVIVED: all five steps
+//       still matched. So this spec does NOT show the sync is load-bearing: something else brings the composer to the
+//       drawing-buffer size on a tier step, or the sync is redundant. OPEN.
+//   The lane's E1 (<ComposerPixelRatioSync /> removed) also removes the readComposerSize hook this spec reads, so it
+//   fails as SETUP ("the page is not at deviceScaleFactor 2"), not as a kill. E2 not run here.
 // BLIND SPOT: a sync that resizes EVERY frame passes here (the buffer is always right); that is the unit gate's in-sync case.
 test.use({ viewport: { width: 1200, height: 800 }, deviceScaleFactor: 2 });
 
+/** Frames drawn after a tier step before the read: the Canvas re-render, R3F's setDpr, then the sync's resize frame. */
+const STEP_FRAMES = 4;
+
 test('after every tier step the renderer runs at the budget dpr and the composer buffer matches the canvas', async ({ page }) => {
-  test.setTimeout(240000);
+  // CI's software renderer ran this at 3.6-4.4 min an attempt (run 40615649137: two attempts out of their 240 s, the third
+  // passed at 3.6 min), against 1.6 min locally. Budget for the slow case: a timeout costs a whole retry.
+  test.setTimeout(420000);
   await bootDev(page);
   await startPlay(page);
   await page.waitForTimeout(3000); // the first compiles and the world's first meshes
 
-  const read = () => page.evaluate(() => ({ ...window.__craftyTest.call('readComposerSize'), tier: window.useGameStore.getState().qualityTier }));
+  // The read carries its preconditions (gate rule 4e): frames drawn so far and whether the context was lost — a frame loop
+  // that stopped and one that is merely slow fail the same wait, and only these tell them apart.
+  const read = () => page.evaluate(() => ({
+    ...window.__craftyTest.call('readComposerSize'),
+    tier: window.useGameStore.getState().qualityTier,
+    frames: window.__craftyTest.call('readFrameloop').frames,
+    lost: window.useGameStore.getState().isWebGLContextLost,
+  }));
   const first = await read();
   expect(first.input, `SETUP: the composer never mounted (readComposerSize returned no buffer): ${JSON.stringify(first)}`).not.toBeNull();
   expect(first.devicePixelRatio, `SETUP: the page is not at deviceScaleFactor 2 — no tier step would change the ratio: ${JSON.stringify(first)}`).toBe(2);
 
   const seen = [];
   for (const tier of ['high', 'low', 'med', 'high', 'low']) {
+    const f0 = await page.evaluate(() => window.__craftyTest.call('readFrameloop').frames);
     await page.evaluate((t) => window.__craftyTest.call('setQualityTier', t), tier);
-    await page.waitForTimeout(2500); // the tier change re-renders the Canvas; a few frames to apply the dpr and resize
+    // The tier change re-renders the Canvas, R3F applies the dpr, and the sync resizes on a later frame: wait for
+    // FRAMES drawn, not seconds. At DPR 2 on CI's software renderer a frame can outlast the 2.5 s this used to wait.
+    const drew = await page.waitForFunction(({ f, n }) => window.__craftyTest.call('readFrameloop').frames >= f + n, { f: f0, n: STEP_FRAMES }, { timeout: 90000, polling: 250 }).then(() => true, () => false);
     const r = await read();
     seen.push(r);
     const where = JSON.stringify(r);
     const budget = pixelBudgetDpr({ tier, devicePixelRatio: r.devicePixelRatio, cssWidth: r.css[0], cssHeight: r.css[1] });
+    expect(drew, `SETUP: the renderer drew fewer than ${STEP_FRAMES} frames in 90 s after the step to ${tier} (frames ${f0} -> ${r.frames}): ${where}`).toBe(true);
     expect(r.tier, `SETUP: the tier did not take (${tier}): ${where}`).toBe(tier);
     expect(r.pixelRatio, `at ${tier} the renderer's pixel ratio is not the budget ${budget}: ${where}`).toBeCloseTo(budget, 5);
     expect(r.input, `at ${tier} the composer buffer is ${r.input} while the canvas is ${r.canvas} — the composer did not follow the pixel ratio: ${where}`).toEqual(r.canvas);
