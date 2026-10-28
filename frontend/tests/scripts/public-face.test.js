@@ -5,14 +5,22 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 import {
-  TARGETS, TOPICS, LABELS, check, write, renderHead, renderManifest, renderFace, renderPitch,
-  planRequests, ghArgs, escapeAttr,
+  TARGETS, TOPICS, LABELS, check, write, renderHead, renderNoscript, renderManifest, renderFace, renderPitch,
+  planRequests, ghArgs, escapeAttr, NOSCRIPT_BEGIN, NOSCRIPT_END,
 } from '../../scripts/ci/public-face.mjs';
 import { BRAND, ICONS, MASKABLE_SAFE_RADIUS } from '../../src/brand.js';
 
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 const TRICKY = { ...BRAND, title: 'Crafty "beta" & <friends>', pitch: 'Fight & build "now".' };
+
+describe('the brand source', () => {
+  it('names the production URL the Vercel project serves', () => {
+    // Every other assertion in this file reads BRAND.url back, so a typo in it would pass them all while the
+    // README play link, og:url and both card images 404. This literal is the independent copy.
+    expect(BRAND.url).toBe('https://crafty-game.vercel.app/');
+  });
+});
 
 describe('public-face rendering', () => {
   it('puts the brand into every head tag that describes the page, escaped for an attribute', () => {
@@ -26,6 +34,20 @@ describe('public-face rendering', () => {
     }
     expect(head).toContain(`<meta property="og:image" content="${BRAND.url}og-image.png" />`);
     expect(head).toContain(`<meta name="theme-color" content="${BRAND.ground}" />`);
+  });
+
+  it('renders the no-JavaScript page from the brand: its name, ground, ink and accent, and what the game needs', () => {
+    const other = { ...BRAND, name: 'Kraft & "Co"', ground: '#010203', ink: '#040506', inkMuted: '#070809', accent: '#0A0B0C' };
+    const html = renderNoscript(other);
+    expect(html.startsWith(NOSCRIPT_BEGIN)).toBe(true);
+    expect(html.endsWith(NOSCRIPT_END)).toBe(true);
+    expect(html.match(/<noscript>/g)).toHaveLength(1);
+    expect(html).toContain('background: #010203; color: #040506;');
+    expect(html).toContain('color: #0A0B0C;">Kraft &amp; &quot;Co&quot;</p>');
+    expect(html).toContain('<p style="margin: 0 0 12px;">Kraft &amp; &quot;Co&quot; is a voxel action-RPG');
+    expect(html).toContain('color: #070809;">Turn JavaScript on');
+    expect(html).toContain('It needs JavaScript to start and WebGL 2 to draw the world.');
+    expect(html).not.toContain(BRAND.ground);
   });
 
   it('escapes the four characters an attribute value cannot carry raw', () => {
@@ -58,14 +80,14 @@ describe('public-face rendering', () => {
 describe('public-face check and write, on a scratch tree', () => {
   let root;
   const host = {
-    'frontend/index.html': (block) => `<html>\n  <head>\n    ${block}\n  </head>\n</html>\n`,
-    'README.md': (block) => `# Crafty\n\n${block}\n\nThe rest of the README.\n`,
+    'frontend/index.html': ([head, body]) => `<html>\n  <head>\n    ${head}\n  </head>\n  <body>\n    ${body}\n  </body>\n</html>\n`,
+    'README.md': ([block]) => `# Crafty\n\n${block}\n\nThe rest of the README.\n`,
   };
   const seed = () => {
-    for (const t of TARGETS) {
-      mkdirSync(dirname(join(root, t.rel)), { recursive: true });
-      const body = t.begin ? host[t.rel](`${t.begin}\nold\n${t.end}`) : 'old\n';
-      writeFileSync(join(root, t.rel), body);
+    for (const rel of new Set(TARGETS.map((t) => t.rel))) {
+      const blocks = TARGETS.filter((t) => t.rel === rel && t.begin).map((t) => `${t.begin}\nold\n${t.end}`);
+      mkdirSync(dirname(join(root, rel)), { recursive: true });
+      writeFileSync(join(root, rel), blocks.length ? host[rel](blocks) : 'old\n');
     }
   };
   beforeEach(() => {
@@ -76,10 +98,10 @@ describe('public-face check and write, on a scratch tree', () => {
 
   it('reports every target stale before a write, and none after, keeping text outside the markers', () => {
     const before = check(root);
-    expect(before.checked).toBe(4);
+    expect(before.checked).toBe(5);
     expect(before.stale.map((s) => s.rel).sort()).toEqual(TARGETS.map((t) => t.rel).sort());
     write(root);
-    expect(check(root)).toEqual({ checked: 4, stale: [] });
+    expect(check(root)).toEqual({ checked: 5, stale: [] });
     expect(readFileSync(join(root, 'README.md'), 'utf8')).toMatch(/^# Crafty\n\n[\s\S]*\n\nThe rest of the README\.\n$/);
     expect(readFileSync(join(root, 'README.md'), 'utf8')).toContain(BRAND.pitch);
   });
@@ -94,6 +116,17 @@ describe('public-face check and write, on a scratch tree', () => {
       { rel: 'frontend/public/manifest.webmanifest', reason: 'stale' },
       { rel: 'README.md', reason: 'stale' },
     ]);
+  });
+
+  it('a deleted or hand-edited noscript is reported, and the head block beside it is not', () => {
+    write(root);
+    const html = join(root, 'frontend/index.html');
+    const written = readFileSync(html, 'utf8');
+    writeFileSync(html, written.replace('WebGL 2', 'WebGL'));
+    expect(check(root).stale).toEqual([{ rel: 'frontend/index.html', reason: 'stale' }]);
+    const i = written.indexOf(NOSCRIPT_BEGIN);
+    writeFileSync(html, written.slice(0, i) + written.slice(written.indexOf(NOSCRIPT_END) + NOSCRIPT_END.length));
+    expect(check(root).stale).toEqual([{ rel: 'frontend/index.html', reason: 'markers missing or repeated' }]);
   });
 
   it('reports a missing file and a lost marker rather than passing over them', () => {
@@ -135,6 +168,15 @@ describe('public-face planRequests', () => {
     live.repo.has_discussions = true;
     expect(planRequests(face, live)).toEqual([
       { method: 'PATCH', path: 'repos/wowlegend/Crafty', fields: { description: face.description, has_discussions: false } },
+    ]);
+  });
+
+  it('patches the homepage and the Projects switch too, the two fields the case above leaves alone', () => {
+    const live = matching();
+    live.repo.homepage = 'https://crafty-sand.vercel.app/';
+    live.repo.has_projects = true;
+    expect(planRequests(face, live)).toEqual([
+      { method: 'PATCH', path: 'repos/wowlegend/Crafty', fields: { homepage: face.homepage, has_projects: false } },
     ]);
   });
 

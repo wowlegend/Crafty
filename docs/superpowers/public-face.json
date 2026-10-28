@@ -1,7 +1,7 @@
 {
   "repo": "wowlegend/Crafty",
   "description": "A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, and a dragon waiting at its far edge.",
-  "homepage": "https://crafty-sand.vercel.app/",
+  "homepage": "https://crafty-game.vercel.app/",
   "topics": [
     "browser-game",
     "action-rpg",

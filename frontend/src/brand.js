@@ -1,17 +1,19 @@
 import { UI } from './theme/tokens.js';
 
-// The page head, the web manifest, the README lead and the GitHub About line are rendered from this
-// module by scripts/ci/public-face.mjs, and doc-currency fails when any of them drifts from it.
+// The page head and noscript, the web manifest, the README lead and the GitHub About line are rendered
+// from this module by scripts/ci/public-face.mjs, and doc-currency fails when any of them drifts from it.
 export const BRAND = Object.freeze({
   name: 'Crafty',
   title: 'Crafty: a voxel action-RPG in your browser',
   pitch:
     'A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, ' +
     'and a dragon waiting at its far edge.',
-  url: 'https://crafty-sand.vercel.app/',
+  url: 'https://crafty-game.vercel.app/',
   ground: UI.color.panelInset,
   accent: UI.color.accent,
   accentDeep: UI.color.accentDeep,
+  ink: UI.color.text,
+  inkMuted: UI.color.textMuted,
   // Describes public/og-image.png; it changes whenever that card is re-shot.
   ogImageAlt: 'The Crafty title screen: a voxel wizard with a staff under a starry night sky, behind the Crafty wordmark.',
 });

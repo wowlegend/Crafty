@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
  * PUBLIC FACE — renders every outward description of Crafty from src/brand.js: the brand block of
- * index.html's head, the web manifest, the README's lead, and the GitHub repository metadata in
- * docs/superpowers/public-face.json. doc-currency fails when a committed copy differs from a fresh render.
+ * index.html's head, the page a browser without JavaScript shows, the web manifest, the README's lead, and the
+ * GitHub repository metadata in docs/superpowers/public-face.json. doc-currency fails when a committed copy
+ * differs from a fresh render.
  *
- *   node scripts/ci/public-face.mjs            exit 1 if any rendered file is stale
- *   node scripts/ci/public-face.mjs --write    re-render the four files
+ *   node scripts/ci/public-face.mjs            exit 1 if any rendered target is stale
+ *   node scripts/ci/public-face.mjs --write    re-render every target
  *   node scripts/ci/public-face.mjs --live     compare the live GitHub repository with public-face.json and
  *                                              print the requests --apply would send; changes nothing
  *   node scripts/ci/public-face.mjs --apply    send those requests through `gh api`
@@ -37,6 +38,8 @@ export const LABELS = Object.freeze([
 
 export const HEAD_BEGIN = '<!-- BEGIN BRAND (generated from src/brand.js: node scripts/ci/public-face.mjs --write) -->';
 export const HEAD_END = '<!-- END BRAND -->';
+export const NOSCRIPT_BEGIN = '<!-- BEGIN NOSCRIPT (generated from src/brand.js: node scripts/ci/public-face.mjs --write) -->';
+export const NOSCRIPT_END = '<!-- END NOSCRIPT -->';
 export const PITCH_BEGIN = '<!-- BEGIN PITCH (generated from frontend/src/brand.js: node frontend/scripts/ci/public-face.mjs --write) -->';
 export const PITCH_END = '<!-- END PITCH -->';
 
@@ -76,6 +79,25 @@ export function renderHead(brand = BRAND) {
     `<meta name="twitter:image" content="${a(og)}" />`,
     `<meta name="twitter:image:alt" content="${a(brand.ogImageAlt)}" />`,
     HEAD_END,
+  ];
+  return lines.map((l) => `    ${l}`).join('\n').trimStart();
+}
+
+// WebGL 2 because three r172's WebGLRenderer throws on a WebGL 1 context.
+export function renderNoscript(brand = BRAND) {
+  const a = escapeAttr;
+  const lines = [
+    NOSCRIPT_BEGIN,
+    '<noscript>',
+    `    <div style="position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: ${a(brand.ground)}; color: ${a(brand.ink)}; font: 17px/1.55 system-ui, sans-serif; text-align: center;">`,
+    '        <div style="max-width: 34em;">',
+    `            <p style="margin: 0 0 12px; font-size: 40px; font-weight: 800; color: ${a(brand.accent)};">${a(brand.name)}</p>`,
+    `            <p style="margin: 0 0 12px;">${a(brand.name)} is a voxel action-RPG that runs in your browser. It needs JavaScript to start and WebGL 2 to draw the world.</p>`,
+    `            <p style="margin: 0; color: ${a(brand.inkMuted)};">Turn JavaScript on for this site and reload the page. If it is already on, open the game in a current version of Chrome, Edge, Firefox or Safari.</p>`,
+    '        </div>',
+    '    </div>',
+    '</noscript>',
+    NOSCRIPT_END,
   ];
   return lines.map((l) => `    ${l}`).join('\n').trimStart();
 }
@@ -121,6 +143,7 @@ export function renderFace(brand = BRAND) {
 /** Every rendered file: `block` targets replace the text between markers, `file` targets the whole file. */
 export const TARGETS = Object.freeze([
   { rel: 'frontend/index.html', begin: HEAD_BEGIN, end: HEAD_END, render: renderHead },
+  { rel: 'frontend/index.html', begin: NOSCRIPT_BEGIN, end: NOSCRIPT_END, render: renderNoscript },
   { rel: 'frontend/public/manifest.webmanifest', render: renderManifest },
   { rel: 'README.md', begin: PITCH_BEGIN, end: PITCH_END, render: renderPitch },
   { rel: 'docs/superpowers/public-face.json', render: renderFace },
@@ -233,7 +256,7 @@ function main() {
   const argv = process.argv.slice(2);
   if (argv.includes('--write')) {
     write();
-    console.log(`public-face: rendered ${TARGETS.length} files from src/brand.js`);
+    console.log(`public-face: rendered ${TARGETS.length} targets from src/brand.js`);
     return;
   }
   if (argv.includes('--live') || argv.includes('--apply')) {
@@ -255,10 +278,10 @@ function main() {
   const { checked, stale } = check();
   if (stale.length) {
     for (const s of stale) console.error(`  ${s.rel}: ${s.reason}`);
-    console.error(`public-face: ${stale.length} of ${checked} rendered files differ from src/brand.js; run with --write`);
+    console.error(`public-face: ${stale.length} of ${checked} rendered targets differ from src/brand.js; run with --write`);
     process.exit(1);
   }
-  console.log(`public-face: ${checked} rendered files match src/brand.js`);
+  console.log(`public-face: ${checked} rendered targets match src/brand.js`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

@@ -5,16 +5,17 @@
 <!-- BEGIN PITCH (generated from frontend/src/brand.js: node frontend/scripts/ci/public-face.mjs --write) -->
 A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, and a dragon waiting at its far edge.
 
-**[Play it now](https://crafty-sand.vercel.app/)**: nothing to install.
+**[Play it now](https://crafty-game.vercel.app/)**: nothing to install.
 <!-- END PITCH -->
 
 ## The game
 
-You set out from a hub into a generated frontier of forests, deserts, snowfields, swamps and coast. Each night is more
-dangerous than the last, and the land turns more hostile the farther out you go. You fight with melee strikes, four
-elemental spells (fire, ice, lightning and arcane) and the Aspects you unlock with talents: Wildheart turns you into a
-beast, Voidhand grabs and hurls, Soulbind snares an enemy and binds it to your side, and Elemancer imbues your next
-cast. At the frontier's far edge the Shadow Dragon waits at the Blight Heart.
+You set out from a hub into a generated frontier of forests, deserts, snowfields, swamps and coast. Night brings
+sieges that grow with each of the first few nights you survive, and the land turns more hostile the farther out you
+go. You fight with melee strikes, four elemental spells (fire, ice, lightning and arcane) and the Aspects you unlock
+with talents: Wildheart turns you into a beast, Voidhand grabs and hurls, Soulbind snares an enemy and binds it to
+your side, and Elemancer imbues your next cast. At the frontier's far edge the Shadow Dragon waits at the Blight
+Heart.
 
 Progress saves in your browser. There is no account and nothing to download.
 
@@ -57,24 +58,24 @@ the button on the left edge opens the inventory, crafting, building and magic pa
 
 ## How it is built
 
-React 19 draws the interface, three.js through React Three Fiber draws the world, and Rapier moves the player and
+React draws the interface, three.js through React Three Fiber draws the world, and Rapier moves the player and
 resolves collisions. Terrain is generated and greedy-meshed with vertex ambient occlusion off the main thread, in
 `frontend/src/world/terrain.worker.js`; mob pathfinding runs in a second worker, `frontend/src/workers/ai.worker.js`.
 Mobs, loot and many effects are entities in a small miniplex ECS (`frontend/src/ecs/world.js`), and most of the game
 rules are plain modules under `frontend/src/game/` that run, and are unit-tested, without a browser.
 
-Every push runs the linter, the unit suite, a production build and a bundle-size budget. CI adds real-input Playwright
-tests and a boot check of the production bundle.
+CI runs on every push to main and on every pull request: the linter, the unit suite, a production build and a
+bundle-size budget, and, when code has changed, real-input Playwright tests and a boot check of the production bundle.
 
 ## Run it locally
 
-You need Node 24, the version `frontend/package.json` declares, and npm.
+You need npm and the Node version that `engines` in `frontend/package.json` declares.
 
 ```bash
 git clone https://github.com/wowlegend/Crafty.git
 cd Crafty/frontend
 npm ci
-npm run dev        # serves the game on http://localhost:3000 and opens it
+npm run dev        # serves the game and opens it in your browser
 npm run test:unit  # the unit suite
 ```
 
