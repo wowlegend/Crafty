@@ -1498,3 +1498,30 @@ What came back, and what this lane did with it:
      `input.moveB` inside it would be a ReferenceError, a crash rather than the plausible-wrong mutant.
 
    The batches are still OWED to the command session.
+
+## Implementation review, round 3 (2026-10-28)
+
+The two reviews of `9b22f69f` (workflow `wf_0aafd40d-0c4`) found no correctness defect in the post-ramp bound. They
+found three plausible wrong versions that passed the whole unit suite, two claims stated without their scope, and one
+feel change nobody had decided. What this lane did:
+
+1. **The dodge keeps its decay (command session decision).** At `9b22f69f` a dodge straight away from a threat ended
+   in a one-frame cut from about 8.5 m/s to the 2.0 retreat cap, because the first walk frame after the burst ramps
+   from the burst and `holdStepBound` then pulls it in, exactly as it pulls in a released backpedal. The stance caps
+   WALKING away; the dodge is the deliberate escape and is not clamped (the "dodge is the escape" decision above). The
+   exemption is explicit in the pure seam: `dodgeBurst(x, z)` in `frontend/src/game/combatStance.js` marks the
+   velocity the controller keeps during a dodge (`frontend/src/Components.jsx`, the dodge branch), with a carry window
+   of the burst's largest axis over the ramp's slower rate (60 u/s²), the time by which every axis has spent its part
+   of the burst. `stanceWalk` skips `holdStepBound` on a frame whose `planarVel` carries the mark, and carries it on
+   only while the window lasts and the ramp has not reached its target. So the decay is the plain ramp from the burst
+   (8.5, 7.0, 5.5, 4.0, 2.5 m/s at 60 fps, then the 2.0 backpedal or rest), as it was before the stance, and the walk
+   after it is bounded again. Known limit 4: keys changed inside the window are clamped on the target only.
+2. **The three surviving mutants are pinned.** M1 (the post-ramp bound handed the form's pace) and M4 (the bound
+   skipped when the fed velocity does not move away) now go red in the reversal sweep: it gained a reversal in each
+   beast form, S+D / S+A with the view turned from the husk, W+D / W+A with the view on it, and S held under a view
+   turning at 6 rad/s. M15 (the sideways part rebuilt with the wrong sign) goes red on a ray check: on every judged
+   frame where the bound changed what the ramp gave, the step must end on the ray from the threat through the ramp's
+   own step end.
+3. **Narrowed:** `holdStepBound`'s docblock and known limit 1 state the F1 property at full stance weight only, and
+   say that during the enter and exit blends the pull-in covers only w of the excess. Limit 1 names what the sweep
+   drives: every sequence in the human form, a strafe reversal in each beast form.

@@ -19,7 +19,7 @@ import { chaseSpeedMult, SHOULDER_CHARGE_SPEED } from './mobMovement.js';
 import { BASE_MOVE_SPEED } from './locomotion.js';
 import { CLIMBERS } from './localPath.js';
 import { LEAP_RANGE, mobSensePoint } from './mobSenses.js';
-import { rampVelocity } from './gameFeel.js';
+import { rampVelocity, ACCEL_RATE, DECEL_RATE } from './gameFeel.js';
 import { isHostile } from '../combat/targeting.js';
 
 export { BASE_MOVE_SPEED };
@@ -292,27 +292,32 @@ export function noteMoveTarget(rawX, rawZ, targetX, targetZ, appliedX, appliedZ,
 // stance measures from, the order of the form and walk multipliers, that the ramp is fed the clamped target, and that
 // the bound holds on what the ramp returns. What stays in Components.jsx is one call each, in the frame's order.
 //
-// KNOWN LIMITS (round-2 review, 2026-10-28; recorded, not fixed; plan "Implementation review, round 2"):
-//   1. F1 IS PROVEN FOR THE PLAYER'S OWN STEP ONLY: at every frame interval from 8 to 400 ms and every key sequence the
-//      unit sweep drives (held keys, strafe reversals, releases), the velocity stanceWalk returns never takes the body
-//      away from the threat faster than the retreat cap. F1 also needs the husk to close, and the AI worker caps a tick
-//      at 0.25 s (AIWorkerSystem.jsx) while the player steps by the whole frame: above 250 ms frames a mob covers speed x
+// KNOWN LIMITS:
+//   1. F1 IS PROVEN FOR THE PLAYER'S OWN STEP ONLY, AND ONLY AT FULL STANCE WEIGHT (w = 1): at every frame interval from
+//      8 to 400 ms, for every key sequence the unit sweep drives in the human form (held keys, strafe reversals,
+//      releases, a turning view) and for a strafe reversal in each beast form, the velocity stanceWalk returns never
+//      takes the body away from the threat faster than the retreat cap, except while it decays a dodge's burst
+//      (limit 4). During the enter and exit
+//      blends (w < 1) the post-ramp bound pulls the step in by only w of its excess (holdStepBound), so the body may
+//      leave faster than the cap there. F1 also needs the husk to close, and the AI worker caps a tick at 0.25 s
+//      (AIWorkerSystem.jsx) while the player steps by the whole frame: above 250 ms frames a mob covers speed x
 //      0.25 / dt per second, so above 375 ms (about 2.7 fps) a 3.0 m/s husk cannot close on the 2.0 backpedal at all. The
 //      husk's 15 Hz aim on A* cell centres lowers its closing speed further, and is not measured.
 //   2. THE CALL SITES' ARGUMENTS in Components.jsx are pinned by no unit test: the unit tests hand the seam their own.
-//      In the round-2 repro at 60665da1 each of these survived the full unit suite (4229 tests): stanceFrame handed
-//      camera.position as the body (CS1, which brings back round-1 b's low-frame-rate kite), stanceWalk handed a
-//      walkMult of 1 (CW1: the heavy-charge and swing slows stop slowing the retreat), the form and walk swapped at the
-//      call (CW2), the KCC fed the raw move after stanceWalk returns (CB1), and the void guard teleporting without
-//      teleportPlayer (CV1, the stance kept). In the e2e, case 0 is the one deterministic check on stanceFrame's point,
-//      and it pins only its HEIGHT (H1, H2): x and z are compared standing still, where the camera has converged on the
-//      body, and mobSensePoint IS the camera's position, so under CS1 the stance agrees with the worker exactly. CS1 and
-//      CB1 can show only in a chase sub-assertion, judged only at a median frame interval of 250 ms or less; no e2e
-//      case charges a heavy in a fight, so CW1 shows in none.
+//      Unpinned: stanceFrame's body (camera.position in its place brings back a low-frame-rate kite, the camera trailing
+//      the body), stanceWalk's walkMult (1 in its place stops the heavy-charge and swing slows from slowing the retreat),
+//      the order of the form and the walk slow, the KCC being fed what stanceWalk returns, the void guard teleporting
+//      through teleportPlayer, and the dodge branch marking its burst with dodgeBurst. In the e2e, case 0 pins only the
+//      HEIGHT of stanceFrame's point: x and z are compared standing still, where the camera has converged on the body,
+//      and mobSensePoint is the camera's position. A wrong body or a bypassed stanceWalk can show only in a chase
+//      sub-assertion, judged only at a median frame interval of 250 ms or less; no e2e case charges a heavy in a fight,
+//      or dodges in one.
 //   3. THE KCC IS DOWNSTREAM. The bound is on the velocity FED to computeColliderMovement, not on the movement it
-//      returns, and a slide along a wall can raise a step's away part (round-2 review: PLAUSIBLE by arithmetic,
-//      unmeasured). Knockback and hitstop are added after the stance on purpose: a blow that throws the player is not
-//      the player's own step.
+//      returns, and a slide along a wall can raise a step's away part (plausible by arithmetic, unmeasured). Knockback
+//      and hitstop are added after the stance on purpose: a blow that throws the player is not the player's own step.
+//   4. A DODGE'S DECAY IS NOT BOUNDED. The dodge is the deliberate escape, so the ramp brings its burst down unbounded,
+//      as it does out of a fight, for at most the burst's carry window (dodgeBurst) and no longer than it takes to reach
+//      its target. Keys changed inside that window are clamped on the target only.
 
 const _point = { x: 0, y: 0, z: 0 };
 const _clamped = { x: 0, z: 0 };
@@ -331,14 +336,25 @@ export function stanceFrame(mobs, body, camera, nowMs, dtS) {
 }
 
 /**
+ * The planar velocity a dodge's burst sets, marked as a burst. The controller writes it while the dodge runs; the burst
+ * itself never passes through stanceWalk. `carryS` is how long the walk ramp may take to bring it down: each axis moves
+ * toward its target at no less than the slower of the ramp's two rates, so by then the burst's largest axis is spent.
+ */
+export function dodgeBurst(x, z) {
+  return { x, z, carryS: Math.max(Math.abs(x), Math.abs(z)) / Math.min(ACCEL_RATE, DECEL_RATE) };
+}
+
+/**
  * The frame's walk (Components.jsx, the pointer-locked branch): moveVector's output `mv` clamped by the stance, then the
  * W4 ramp from `planarVel`, then the step bound held on the ramped velocity (holdStepBound). Records raw, target and
  * applied (noteMoveTarget) and returns the applied velocity (a fresh object, as rampVelocity's), which the controller
  * feeds the KCC and keeps as next frame's planarVel.
- *   loco     the form's locomotion (formLocomotion): its moveMult is the form's pace. The object, not a bare number,
- *            so the two cannot be transposed as two numbers (round-1 review d); what the call actually hands it is
- *            still pinned by no unit test (CW1, CW2: known limit 2).
- *   walkMult the product of the walk slows (heavyWalkMult x stringWalkMult)
+ *   loco      the form's locomotion (formLocomotion): its moveMult is the form's pace. The object, not a bare number,
+ *             so the form and the walk slow cannot be transposed as two numbers.
+ *   walkMult  the product of the walk slows (heavyWalkMult x stringWalkMult)
+ *   planarVel last frame's velocity. One made by dodgeBurst, or carried on from one, is a dodge's burst decaying: the
+ *             dodge is the deliberate escape, so the ramp brings it down unbounded, as it does out of a fight. The
+ *             carry ends when the ramp reaches its target or its window runs out, and the walk is bounded again.
  */
 export function stanceWalk(mv, stance, loco, walkMult, planarVel, dtS) {
   let tx = mv.moving ? mv.x : 0;
@@ -350,25 +366,29 @@ export function stanceWalk(mv, stance, loco, walkMult, planarVel, dtS) {
     tx = _clamped.x; tz = _clamped.z;
   }
   const ramped = rampVelocity(planarVel, { x: tx, z: tz }, dtS);
-  holdStepBound(ramped, stance, walkMult, tx, tz, dtS);
+  if (planarVel.carryS > 0) {
+    const left = planarVel.carryS - dtS;
+    if (left > 0 && (ramped.x !== tx || ramped.z !== tz)) ramped.carryS = left;
+  } else {
+    holdStepBound(ramped, stance, walkMult, tx, tz, dtS);
+  }
   noteMoveTarget(mv.x, mv.z, tx, tz, ramped.x, ramped.z, stance.w);
   return ramped;
 }
 
 /**
- * THE STEP BOUND, HELD ON THE VELOCITY THE BODY IS FED (round-2 review, reproduced). stanceVelocity bounds the TARGET,
- * but rampVelocity then moves each WORLD axis toward it on its own, so whenever the target turns (a strafe that changes
- * side, keys released mid-strafe) the two axes arrive at different times and the ramped velocity leans away from the
- * threat: 4.4 m/s at 8 ms frames with S+D and S+A swapped every 100 ms, against the 2.0 cap. So the bound runs again on
- * the ramped velocity `v`, in place. Ramping in the (away, tangent) frame instead would not hold it: that frame turns as
- * the player circles, and the bound is a disc about the threat, which a per-axis step between two points inside it can
- * still leave.
- *   The allowed reach is the larger of the hard one (gap + retreat x walkMult x dt) and the target's own (tx, tz): during
- *   the enter and exit blends the target itself may leave faster than the cap, by design, and what the ramp may not do
- *   is leave faster than its own target. The step's end is then pulled in radially by w of its excess, so w = 1 is the
- *   hard bound, w = 0 the identity, and nothing jumps as the weight moves. A settled velocity (v = target) is never
- *   touched, so the blend stays one linear blend at every frame interval. Radial only: the strafe and advance caps are
- *   held on the target, and the ramp may overshoot them while it turns (not measured).
+ * The step bound, held on the velocity the body is fed. stanceVelocity bounds the target, but rampVelocity moves each
+ * world axis toward it on its own, so when the target turns (a strafe that changes side, keys released mid-strafe) the
+ * two axes arrive at different times and the ramped velocity `v` leans away from the threat. So the bound runs again
+ * on `v`, in place. Ramping in the (away, tangent) frame would not hold it: that frame turns as the player circles, and
+ * the bound is a disc about the threat, which a per-axis step between two points inside it can still leave.
+ *   The allowed reach is the larger of the hard one (gap + retreat x walkMult x dt) and the target's own (tx, tz), and
+ *   the step's end is pulled in radially by w of its excess over it. Only at w = 1 is that the hard bound: the target's
+ *   own reach is then inside the hard one, so the fed velocity leaves no faster than the retreat cap. During the enter
+ *   and exit blends (w < 1) the pull-in covers only w of the excess, so the fed velocity may leave faster than both its
+ *   target and the cap, by (1 - w) of that excess. w = 0 is the identity, and nothing jumps as the weight moves. A
+ *   settled velocity (v = target) is never touched, so the blend stays one linear blend at every frame interval. Radial
+ *   only: the strafe and advance caps are held on the target, and the ramp may overshoot them while it turns.
  */
 function holdStepBound(v, stance, walkMult, tx, tz, dtS) {
   const w = stance.w, gap = stance.gap;

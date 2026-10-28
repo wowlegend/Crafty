@@ -22,7 +22,7 @@ import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
 import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { gateSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
-import { stanceFrame, stanceWalk, resetStance, teleportPlayer } from './game/combatStance.js';
+import { stanceFrame, stanceWalk, dodgeBurst, resetStance, teleportPlayer } from './game/combatStance.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -1281,7 +1281,8 @@ export const Player = ({ isWorldBuilt }) => {
         desiredVelZ = dodge.direction.z * spd;
         // W4: while dodging, the ramp is bypassed (burst velocity); keep the smoothed planar velocity in
         // sync with the dodge so the first post-dodge walk frame ramps from the real speed, not a stale 0.
-        planarVelRef.current = { x: desiredVelX, z: desiredVelZ };
+        // Marked as a burst, so the stance lets the ramp decay it instead of cutting it to the retreat cap.
+        planarVelRef.current = dodgeBurst(desiredVelX, desiredVelZ);
       }
     } else if (isLocked) {
       // Normal WASD movement — camera-relative planar velocity (pure, game/locomotion.moveVector),

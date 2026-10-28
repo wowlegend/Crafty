@@ -64,10 +64,11 @@ import { describe, it, expect } from 'vitest';
 import {
   STANCE_CAPS, MIN_CLOSING_RATE, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
   stanceVelocity, stanceStep, getStance, resetStance, engageDyM, STALL_MS, CALM_MS, ENTER_S, EXIT_S,
-  noteMoveTarget, readMoveTarget, stanceFrame, stanceWalk, teleportPlayer,
+  noteMoveTarget, readMoveTarget, stanceFrame, stanceWalk, teleportPlayer, dodgeBurst,
 } from './combatStance.js';
 import { mobSensePoint } from './mobSenses.js';
 import { moveVector } from './locomotion.js';
+import { rampVelocity, ACCEL_RATE, DECEL_RATE } from './gameFeel.js';
 import { MOB_TYPES } from './mobTypes.js';
 import { chaseSpeedMult } from './mobMovement.js';
 
@@ -462,8 +463,9 @@ describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c,
 // the PRE-move body, + 1.2), moveVector in a view kept on (or turned from) the husk, stanceWalk, then the body steps by
 // the applied velocity. The husk chases at its pursuit speed straight at the body AFTER the player's step, so it keeps
 // qualifying; the bound is read across the player's step alone.
-// WHAT THIS PROVES IS THE PLAYER'S HALF OF F1 ONLY (round-2 review): the player's own step never leaves the husk faster
-// than the retreat cap. F1 also needs the husk to close, and that is NOT MODELLED here: the husk moves at its full
+// WHAT THIS PROVES IS THE PLAYER'S HALF OF F1 ONLY, AT FULL STANCE WEIGHT: the player's own step never leaves the husk
+// faster than the retreat cap on a frame judged at w = 1, outside a dodge's decay. The enter and exit blends (w < 1)
+// are judged only by the blend cases at the end. F1 also needs the husk to close, and that is NOT MODELLED here: the husk moves at its full
 // pursuit speed every frame, while the real AI worker caps a tick at 0.25 s (AIWorkerSystem.jsx), so above 250 ms
 // frames a husk covers speed x 0.25 / dt per second and above 375 ms a 3.0 m/s husk cannot close on a 2.0 backpedal at
 // all; and its aim is refreshed at 15 Hz on octile A* cell centres, which lowers its closing speed further. The mob's
@@ -480,8 +482,12 @@ describe('the F1 bound on the player\'s own step, at every frame interval (round
     { name: 'S+D charging a heavy', keys: { moveB: true, moveR: true }, face: 1, walk: 0.55 },
   ];
   const SETTLE_S = 0.3;
-  // `keys` is a key set, or a function (frame, dt) -> key set for a sequence that changes them.
-  function run(dt, { keys, face, walk = 1 }) {
+  // A dodge's burst at its last frame (dodgeSpeed near the end of its 0.4 s at 60 fps), straight away from the husk.
+  const DODGE_END = 10.75;
+  // `keys` is a key set, or a function (frame, dt) -> key set for a sequence that changes them. `form` is a beast form's
+  // pace (its moveMult), `turn` turns the view at that many rad/s, and `dodgeAtS` ends a dodge at that time: that frame
+  // starts from the burst the controller leaves in planarVel.
+  function run(dt, { keys, face, walk = 1, form = 1, turn = 0, dodgeAtS = null }) {
     resetStance();
     const mob = { id: 'f1', isMob: true, type: 'zombie', passive: false, isAggro: true, health: 50, position: { x: 0, y: 50.5, z: -3 } };
     const body = { x: 0, y: 50.5, z: 0 };
@@ -491,22 +497,50 @@ describe('the F1 bound on the player\'s own step, at every frame interval (round
     // non-vacuity, read on the judged frames: how often the keys changed, how often the applied strafe changed side,
     // the slowest applied speed, and how many frames the record disagreed with what stanceWalk returned
     let keyFlips = 0, tanFlips = 0, minSpeed = Infinity, recordOff = 0, lastKeys = null, lastTan = 0;
+    // The bound's shape, on the judged frames: how often it changed what the ramp gave, and how often the step it left
+    // did not end on the ray from the threat through the ramp's own step end (the pull-in is radial).
+    let engaged = 0, offRay = 0;
+    // A dodge's decay, against this test's own reading of it: the burst is spent once the slower ramp rate has taken
+    // its largest axis, or once the ramp reaches its target, whichever is first. Until then the walk must be exactly
+    // the plain ramp (carryOff counts the frames that were not); after, it is judged like any other walk.
+    // A frame that starts within 1e-9 s of the window's end is judged by neither rule: the seam counts the window down
+    // by subtraction, and the two readings may round apart there.
+    let dodgeAt = -1, windowS = 0, carrying = false, carryFrames = 0, carryOff = 0, carryPeak = -Infinity;
     const frames = Math.ceil(3 / dt);
     for (let f = 0; f < frames; f++) {
       const k = typeof keys === 'function' ? keys(f, dt) : keys;
       const st = stanceFrame([mob], body, camera, now, dt);
-      const vx = mob.position.x - camera.position.x, vz = mob.position.z - camera.position.z;
-      const mv = moveVector(face * vx, face * vz, k, BASE_MOVE_SPEED * walk);
-      vel = stanceWalk(mv, st, { moveMult: 1 }, walk, vel, dt);
+      const lx = mob.position.x - camera.position.x, lz = mob.position.z - camera.position.z;
+      const c = Math.cos(turn * f * dt), s = Math.sin(turn * f * dt);
+      const mv = moveVector(face * (lx * c - lz * s), face * (lx * s + lz * c), k, BASE_MOVE_SPEED * form * walk);
+      const px = body.x - mob.position.x, pz = body.z - mob.position.z;
+      const g0 = Math.hypot(px, pz);
+      // the away direction THIS test rebuilds from the raw positions the frame's step starts from, never st.awayX/Z
+      const ux = px / g0, uz = pz / g0;
+      if (dodgeAtS !== null && dodgeAt < 0 && f * dt >= dodgeAtS) {
+        vel = dodgeBurst(ux * DODGE_END, uz * DODGE_END);
+        dodgeAt = f; carrying = true;
+        windowS = (DODGE_END * Math.max(Math.abs(ux), Math.abs(uz))) / Math.min(ACCEL_RATE, DECEL_RATE);
+      }
+      const edge = carrying && Math.abs((f - dodgeAt) * dt - windowS) < 1e-9;
+      if (carrying && (f - dodgeAt) * dt >= windowS - 1e-9) carrying = false;
+      const prev = vel;
+      vel = stanceWalk(mv, st, { moveMult: form }, walk, vel, dt);
+      const r = readMoveTarget();
+      const plain = rampVelocity(prev, { x: r.targetX, z: r.targetZ }, dt);
+      const carried = carrying || edge;
+      if (carrying) {
+        carryFrames++;
+        if (vel.x !== plain.x || vel.z !== plain.z) carryOff++;
+        carryPeak = Math.max(carryPeak, vel.x * ux + vel.z * uz);
+        if (plain.x === r.targetX && plain.z === r.targetZ) carrying = false;
+      }
       // the follow: Components.jsx lerps the camera toward the body translation read BEFORE this frame's step lands
       camera.position.x += (body.x - camera.position.x) * 0.85;
       camera.position.z += (body.z - camera.position.z) * 0.85;
-      const g0 = Math.hypot(body.x - mob.position.x, body.z - mob.position.z);
-      // the away direction THIS test rebuilds from the raw positions the frame's step starts from, never st.awayX/Z
-      const ux = (body.x - mob.position.x) / g0, uz = (body.z - mob.position.z) / g0;
       body.x += vel.x * dt; body.z += vel.z * dt;
       const g1 = Math.hypot(body.x - mob.position.x, body.z - mob.position.z);
-      if (st.w === 1 && f * dt >= SETTLE_S) {
+      if (st.w === 1 && f * dt >= SETTLE_S && !carried) {
         worst = Math.max(worst, (g1 - g0) / dt);
         worstV = Math.max(worstV, vel.x * ux + vel.z * uz);
         judged++;
@@ -514,9 +548,13 @@ describe('the F1 bound on the player\'s own step, at every frame interval (round
         const tan = -vel.x * uz + vel.z * ux;
         if (Math.abs(tan) > 0.5) { if (lastTan !== 0 && Math.sign(tan) !== lastTan) tanFlips++; lastTan = Math.sign(tan); }
         minSpeed = Math.min(minSpeed, Math.hypot(vel.x, vel.z));
-        const r = readMoveTarget();
         if (r.appliedX !== vel.x || r.appliedZ !== vel.z) recordOff++;
         lastKeys = k;
+        if (vel.x !== plain.x || vel.z !== plain.z) {
+          engaged++;
+          const ex = px + plain.x * dt, ez = pz + plain.z * dt, fx = px + vel.x * dt, fz = pz + vel.z * dt;
+          if (Math.abs(ex * fz - ez * fx) > 1e-9 * Math.hypot(ex, ez) * Math.hypot(fx, fz) || ex * fx + ez * fz <= 0) offRay++;
+        }
       }
       // the husk closes straight on the body, and stops at 1 m
       const step = Math.min(chase * dt, Math.max(0, g1 - 1));
@@ -524,7 +562,10 @@ describe('the F1 bound on the player\'s own step, at every frame interval (round
       gapMax = Math.max(gapMax, g1);
       now += dt * 1000;
     }
-    return { worst, worstV, judged, gapMax, frames, keyFlips, tanFlips, minSpeed, recordOff, cap: STANCE_CAPS.retreat * walk };
+    return {
+      worst, worstV, judged, gapMax, frames, keyFlips, tanFlips, minSpeed, recordOff, engaged, offRay, carryFrames, carryOff, carryPeak,
+      dodged: dodgeAt >= 0, cap: STANCE_CAPS.retreat * walk,
+    };
   }
 
   it('the player\'s own step never leaves the husk faster than the retreat cap, from 8 ms to 400 ms frames, any keys', () => {
@@ -549,24 +590,33 @@ describe('the F1 bound on the player\'s own step, at every frame interval (round
     }
   });
 
-  // Round-2 review (2026-10-28, REPRODUCED): the bound above held the stance's TARGET only. rampVelocity runs per WORLD
-  // axis after it, so when the strafe changes side the two axes ramp at different rates and the velocity the body is fed
-  // leans away from the threat: the review's probe read 4.4 m/s at 8 ms frames with S+D and S+A swapped every 100 ms.
-  // Releasing the keys mid-strafe does the same (each axis decelerates on its own). These sequences change the keys
-  // every `period` (at least every frame, so a long frame still sees them change) and judge what stanceWalk RETURNS,
-  // the velocity the controller feeds the KCC: its away component, and the away rate of the step it makes.
+  // rampVelocity runs per WORLD axis after the stance's clamp, so when the target turns (the strafe changes side, the
+  // keys are released mid-strafe, the view turns) the two axes ramp at different rates and the velocity the body is fed
+  // leans away from the threat, or overshoots sideways at close range so the step ends further out while the velocity
+  // itself points across or in. These sequences change the keys every `period` (at least every frame, so a long frame
+  // still sees them change) and judge what stanceWalk RETURNS, the velocity the controller feeds the KCC: its away
+  // component, and the away rate of the step it makes. The form rows run at the form's pace, because the retreat cap is
+  // form-invariant while the strafe it ramps out of is not.
   const every = (period, a, b) => (f, dt) => (Math.floor(f / Math.max(1, Math.round(period / dt))) % 2 === 0 ? a : b);
   const SD = { moveB: true, moveR: true }, SA = { moveB: true, moveL: true };
+  const WD = { moveF: true, moveR: true }, WA = { moveF: true, moveL: true };
   const REVERSALS = [
     { name: 'S+D / S+A every 100 ms, view on the husk', keys: every(0.1, SD, SA), face: 1, follows: 'reverse' },
     { name: 'S+D / S+A every 150 ms, view on the husk', keys: every(0.15, SD, SA), face: 1, follows: 'reverse' },
     { name: 'D / A every 100 ms, view on the husk', keys: every(0.1, { moveR: true }, { moveL: true }), face: 1, follows: 'reverse' },
-    { name: 'W+D / W+A every 100 ms, view turned from the husk', keys: every(0.1, { moveF: true, moveR: true }, { moveF: true, moveL: true }), face: -1, follows: 'reverse' },
+    { name: 'W+D / W+A every 100 ms, view turned from the husk', keys: every(0.1, WD, WA), face: -1, follows: 'reverse' },
     { name: 'S+D / released every 100 ms, view on the husk', keys: every(0.1, SD, {}), face: 1, follows: 'release' },
     { name: 'S+D / S+A every 100 ms charging a heavy', keys: every(0.1, SD, SA), face: 1, walk: 0.55, follows: 'reverse' },
+    { name: 'S+D / S+A every 100 ms, view turned from the husk', keys: every(0.1, SD, SA), face: -1, follows: 'reverse' },
+    { name: 'W+D / W+A every 100 ms, view on the husk', keys: every(0.1, WD, WA), face: 1, follows: 'reverse' },
+    { name: 'S held, the view turning at 6 rad/s', keys: { moveB: true }, face: 1, turn: 6, follows: 'turn' },
+    { name: 'S+D / S+A every 100 ms as the comet (1.4)', keys: every(0.1, SD, SA), face: 1, form: 1.4, follows: 'reverse' },
+    { name: 'S+D / S+A every 100 ms as the hawk (1.25)', keys: every(0.1, SD, SA), face: 1, form: 1.25, follows: 'reverse' },
+    { name: 'S+D / S+A every 100 ms as the bull (0.7)', keys: every(0.1, SD, SA), face: 1, form: 0.7, follows: 'reverse' },
+    { name: 'S+D / S+A every 100 ms as the golem (0.6)', keys: every(0.1, SD, SA), face: 1, form: 0.6, follows: 'reverse' },
   ];
 
-  it('the velocity fed to the body holds the bound through strafe reversals and releases, from 8 ms to 400 ms frames', () => {
+  it('the velocity fed to the body holds the bound through strafe reversals, releases, a turning view and a reversal in each beast form, from 8 ms to 400 ms frames', () => {
     const rows = [];
     for (const c of REVERSALS) for (const dt of DTS) rows.push({ c, dt, ...run(dt, c) });
     const table = rows.map((r) => `${r.c.name} @${Math.round(r.dt * 1000)} ms: step ${r.worst.toFixed(3)}, velocity ${r.worstV.toFixed(3)} m/s`).join('; ');
@@ -576,14 +626,49 @@ describe('the F1 bound on the player\'s own step, at every frame interval (round
       const at = `${r.c.name} at a ${Math.round(r.dt * 1000)} ms frame`;
       expect(r.judged, `SETUP: ${at}: no frame at full weight was judged`).toBeGreaterThan(0);
       expect(r.gapMax, `SETUP: ${at}: the husk left the engage radius`).toBeLessThan(12);
-      expect(r.keyFlips, `SETUP: ${at}: the keys never changed while frames were judged`).toBeGreaterThanOrEqual(2);
-      // The applied velocity followed the keys, so a bound that froze or killed the walk cannot pass.
-      if (r.c.follows === 'reverse') expect(r.tanFlips, `${at}: the applied strafe never changed side with the keys`).toBeGreaterThanOrEqual(2);
-      else expect(r.minSpeed, `${at}: the applied velocity never slowed when the keys were released`).toBeLessThan(1);
+      if (r.c.follows === 'turn') expect(r.judged * r.dt * r.c.turn, `SETUP: ${at}: the view did not turn a full circle while frames were judged`).toBeGreaterThanOrEqual(2 * Math.PI);
+      else expect(r.keyFlips, `SETUP: ${at}: the keys never changed while frames were judged`).toBeGreaterThanOrEqual(2);
+      // The applied velocity followed the keys or the view, so a bound that froze or killed the walk cannot pass.
+      if (r.c.follows === 'release') expect(r.minSpeed, `${at}: the applied velocity never slowed when the keys were released`).toBeLessThan(1);
+      else expect(r.tanFlips, `${at}: the applied strafe never changed side with the keys or the view`).toBeGreaterThanOrEqual(2);
       expect(r.recordOff, `${at}: readMoveTarget's applied is not what stanceWalk returned (the e2e reads the record)`).toBe(0);
+      // The bound pulls the step's end in toward the threat along its own ray, so it never turns the strafe around.
+      expect(r.offRay, `${at}: ${r.offRay} of ${r.engaged} bounded steps did not end on the ray from the threat through the ramp's own step end`).toBe(0);
+    }
+    for (const c of REVERSALS) {
+      const engaged = rows.filter((r) => r.c === c).reduce((n, r) => n + r.engaged, 0);
+      expect(engaged, `SETUP: ${c.name}: the bound never engaged at any frame interval, so this row cannot judge it`).toBeGreaterThan(0);
     }
     const over = rows.filter((r) => r.worst > r.cap + 1e-9 || r.worstV > r.cap + 1e-9);
     expect(over.map((r) => `${r.c.name} @${Math.round(r.dt * 1000)} ms step ${r.worst.toFixed(3)} velocity ${r.worstV.toFixed(3)} (cap ${r.cap})`), `the velocity fed to the body left the husk faster than the retreat cap — ${table}`).toEqual([]);
+  });
+
+  // The dodge is the deliberate escape: its burst decays through the walk ramp exactly as it does out of a fight, and
+  // the walk after it is bounded again. Each row ends a dodge straight away from the husk at 1 s, at full weight.
+  const DODGES = [
+    { name: 'S held', keys: { moveB: true }, face: 1, dodgeAtS: 1 },
+    { name: 'nothing held', keys: {}, face: 1, dodgeAtS: 1 },
+    { name: 'S+D / S+A every 100 ms', keys: every(0.1, SD, SA), face: 1, dodgeAtS: 1 },
+    { name: 'S+D / S+A every frame', keys: (f) => (f % 2 === 0 ? SD : SA), face: 1, dodgeAtS: 1 },
+  ];
+
+  it('a dodge away from the husk decays as the plain ramp decays it, and the walk after it holds the bound, from 8 ms to 400 ms frames', () => {
+    const rows = [];
+    for (const c of DODGES) for (const dt of DTS) rows.push({ c, dt, ...run(dt, c) });
+    expect(rows.length, 'the sweep shrank').toBe(DODGES.length * DTS.length);
+    for (const r of rows) {
+      const at = `${r.c.name} at a ${Math.round(r.dt * 1000)} ms frame`;
+      expect(r.dodged && r.carryFrames, `SETUP: ${at}: no frame decayed a dodge`).toBeGreaterThan(0);
+      expect(r.judged, `SETUP: ${at}: no frame at full weight was judged after the decay`).toBeGreaterThan(0);
+      expect(r.carryOff, `${at}: ${r.carryOff} of ${r.carryFrames} frames of the decay were not the plain ramp from the burst`).toBe(0);
+      expect(r.offRay, `${at}: a bounded step did not end on the ramp's own ray`).toBe(0);
+    }
+    for (const c of DODGES) {
+      const peak = Math.max(...rows.filter((r) => r.c === c).map((r) => r.carryPeak));
+      expect(peak, `${c.name}: no frame of the decay left faster than the cap, at any frame interval: the burst was cut`).toBeGreaterThan(STANCE_CAPS.retreat + 1);
+    }
+    const over = rows.filter((r) => r.worst > r.cap + 1e-9 || r.worstV > r.cap + 1e-9);
+    expect(over.map((r) => `${r.c.name} @${Math.round(r.dt * 1000)} ms step ${r.worst.toFixed(3)} velocity ${r.worstV.toFixed(3)} (cap ${r.cap})`), 'after the dodge\'s decay the walk left the husk faster than the retreat cap').toEqual([]);
   });
 
   // The bound after the ramp must not change the stance's blend. A bound that re-ran stanceVelocity on the ramped
@@ -618,5 +703,59 @@ describe('the F1 bound on the player\'s own step, at every frame interval (round
       expect(v.x, `w ${w}`).toBeCloseTo(plain - w * (plain - STANCE_CAPS.retreat), 9);
       expect(v.z, `w ${w}`).toBeCloseTo(0, 12);
     }
+  });
+
+  it('a dodge\'s burst decays at the ramp\'s own 90 u/s², where a walk at the same speed is pulled in to the cap at once', () => {
+    const st = { w: 1, awayX: 1, awayZ: 0, gap: 3 }, dt = 1 / 60, loco = { moveMult: 1 };
+    const still = { x: 0, z: 0, moving: false };
+    const decay = (mv, start) => {
+      const xs = [];
+      let v = start;
+      for (let i = 0; i < 8; i++) { v = stanceWalk(mv, st, loco, 1, v, dt); xs.push(Math.round(v.x * 1e9) / 1e9); }
+      return xs;
+    };
+    expect(decay(still, dodgeBurst(10, 0)), 'nothing held: the burst was cut instead of decaying').toEqual([8.5, 7, 5.5, 4, 2.5, 1, 0, 0]);
+    expect(decay(MOVING(14, 0), dodgeBurst(10, 0)), 'S held: the burst was cut instead of decaying to the retreat cap').toEqual([8.5, 7, 5.5, 4, 2.5, 2, 2, 2]);
+    expect(decay(still, { x: 10, z: 0 })[0], 'a walk at 10 m/s was let through as if it were a dodge').toBeCloseTo(STANCE_CAPS.retreat, 9);
+  });
+
+  // Away is diagonal to the world axes, so the per-axis ramp can lean a turning strafe away from the threat. A dodge
+  // away decays onto a held S in 5 frames, and its burst window is 8 frames long: S+D pressed on frame 6 is a walk.
+  it('a dodge\'s carry ends when the ramp reaches its target: a strafe pressed after that, inside the burst\'s window, is bounded', () => {
+    const ax = 0.6, az = 0.8, st = { w: 1, awayX: ax, awayZ: az, gap: 3 }, dt = 1 / 60, loco = { moveMult: 1 };
+    const away = (u) => u.x * ax + u.z * az;
+    let v = dodgeBurst(10 * ax, 10 * az);
+    expect(6 * dt, 'SETUP: the strafe frame is not inside the burst\'s window').toBeLessThan(v.carryS);
+    for (let i = 0; i < 5; i++) v = stanceWalk(MOVING(14 * ax, 14 * az), st, loco, 1, v, dt);
+    expect([v.x, v.z].map((n) => +n.toFixed(9)), 'SETUP: the decay did not settle on the held backpedal').toEqual([1.2, 1.6]);
+    const k = 14 * Math.SQRT1_2, sd = MOVING(k * (ax - az), k * (az + ax)); // S+D: away plus the tangential axis
+    const prev = v;
+    v = stanceWalk(sd, st, loco, 1, v, dt);
+    const r = readMoveTarget();
+    const plain = rampVelocity(prev, { x: r.targetX, z: r.targetZ }, dt);
+    expect(away(plain), 'SETUP: the plain ramp does not leave faster than the cap here, so this frame cannot judge the bound').toBeGreaterThan(STANCE_CAPS.retreat + 0.1);
+    expect(away(v), 'the strafe after the settled decay was let through unbounded').toBeLessThanOrEqual(STANCE_CAPS.retreat + 1e-9);
+  });
+
+  // A 10.5 m/s burst whose largest axis is 8.4 m/s is spent in 8.4 frames at 60 u/s² (frames 0-8). S+D held from the
+  // dodge keeps the ramp turning past that (one axis reverses 10 m/s at 1 m/s per frame), and S+A on frame 9 is the
+  // reversal the per-axis ramp leans out of.
+  it('a dodge\'s carry ends with its window even while the ramp is still turning: a strafe reversed after it is bounded', () => {
+    const ax = 0.6, az = 0.8, st = { w: 1, awayX: ax, awayZ: az, gap: 3 }, dt = 1 / 60, loco = { moveMult: 1 };
+    const away = (u) => u.x * ax + u.z * az;
+    const k = 14 * Math.SQRT1_2;
+    const sd = MOVING(k * (ax - az), k * (az + ax)), sa = MOVING(k * (ax + az), k * (az - ax)); // away -/+ the tangent
+    let v = dodgeBurst(10.5 * ax, 10.5 * az);
+    const frames = Math.floor(v.carryS / dt);
+    expect([frames, v.carryS / dt - frames > 0.1], 'SETUP: the burst window is not 8 frames and a part').toEqual([8, true]);
+    for (let i = 0; i <= frames; i++) v = stanceWalk(sd, st, loco, 1, v, dt);
+    const r0 = readMoveTarget();
+    expect(v.x === r0.targetX && v.z === r0.targetZ, 'SETUP: the ramp reached its target inside the window, so this cannot tell a window from a settle').toBe(false);
+    const prev = v;
+    v = stanceWalk(sa, st, loco, 1, v, dt);
+    const r = readMoveTarget();
+    const plain = rampVelocity(prev, { x: r.targetX, z: r.targetZ }, dt);
+    expect(away(plain), 'SETUP: the plain ramp does not leave faster than the cap here, so this frame cannot judge the bound').toBeGreaterThan(STANCE_CAPS.retreat + 0.1);
+    expect(away(v), 'the reversal after the burst\'s window was let through unbounded').toBeLessThanOrEqual(STANCE_CAPS.retreat + 1e-9);
   });
 });
