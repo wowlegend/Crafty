@@ -68,3 +68,49 @@ export function deriveStanceCaps(roster = MOB_TYPES) {
 
 /** Today's caps, derived once at load. */
 export const STANCE_CAPS = Object.freeze(deriveStanceCaps());
+
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/**
+ * The stance's velocity: the desired planar velocity (vx, vz) with its AWAY-FROM-THREAT component clamped to the
+ * retreat cap, its tangential (strafe) component to the strafe cap and its toward (advance) component to the
+ * advance cap, blended in by the stance weight w in [0, 1]. Allocation-free: it writes into `out` and returns it.
+ *
+ *   (vx, vz)        moveVector's output at moveSpeed(loco) x walkMult, exactly as the controller computes it, so it
+ *                   already carries the form and walk multipliers.
+ *   (awayX, awayZ)  the unit vector from the threat to the player, or (0, 0) when the threat has no direction: then
+ *                   the total speed is capped at the strafe cap instead (and no NaN is made).
+ *   formMult        the form's loco.moveMult; walkMult the product of the walk slows (heavyWalkMult, later the
+ *                   string's). The strafe and advance caps scale with both, so every form keeps its pace; the
+ *                   retreat cap with the walk slows only, so no form outwalks a fight. A clamp is positively
+ *                   homogeneous, so scaling the caps by walkMult equals applying the walk slow AFTER the clamp while
+ *                   the input path stays exactly today's.
+ *
+ * w === 0 returns (vx, vz) untouched, so out of combat the identity is exact rather than a float coincidence.
+ */
+export function stanceVelocity(vx, vz, awayX, awayZ, w, formMult = 1, walkMult = 1, caps = STANCE_CAPS, out = { x: 0, z: 0 }) {
+  if (w === 0) { out.x = vx; out.z = vz; return out; }
+  const pace = formMult * walkMult;
+  const retreat = caps.retreat * walkMult;
+  const strafe = caps.strafe * pace;
+  const advance = caps.advance * pace;
+  let cx, cz;
+  if (awayX === 0 && awayZ === 0) {
+    const s = Math.hypot(vx, vz);
+    const k = s > strafe ? strafe / s : 1;
+    cx = vx * k; cz = vz * k;
+  } else {
+    const tx = -awayZ, tz = awayX; // the tangential axis
+    let r = vx * awayX + vz * awayZ; // > 0 is away from the threat
+    let t = vx * tx + vz * tz;
+    if (r > retreat) r = retreat;
+    if (r < -advance) r = -advance;
+    if (t > strafe) t = strafe;
+    if (t < -strafe) t = -strafe;
+    cx = awayX * r + tx * t;
+    cz = awayZ * r + tz * t;
+  }
+  out.x = lerp(vx, cx, w);
+  out.z = lerp(vz, cz, w);
+  return out;
+}

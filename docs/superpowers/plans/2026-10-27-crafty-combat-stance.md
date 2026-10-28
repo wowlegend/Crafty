@@ -406,7 +406,7 @@ Expected: FAIL, "Cannot find module './combatStance.js'".
   - `w === 0` returns `(vx, vz)` untouched (an early return), so the identity is exact rather than a float
     coincidence.
 
-- [ ] **Step 1: Write the failing property tests**
+- [x] **Step 1: Write the failing property tests**
 
 ```js
 const FORMS = [0.6, 0.7, 1, 1.25, 1.4], HEAVY = [1, 0.55], DIRS = Array.from({ length: 360 }, (_, d) => d * Math.PI / 180);
@@ -445,10 +445,10 @@ it('a threat with no direction caps the total speed and makes no NaN', () => {
 it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBeCloseTo(8.0, 9));
 ```
 
-- [ ] **Step 2: Run and verify FAIL** ("stanceVelocity is not a function").
-- [ ] **Step 3: Implement `stanceVelocity`** to the Interfaces block.
-- [ ] **Step 4: Run and verify PASS.**
-- [ ] **Step 5: Mutation receipts, each RED:**
+- [x] **Step 2: Run and verify FAIL** ("stanceVelocity is not a function").
+- [x] **Step 3: Implement `stanceVelocity`** to the Interfaces block.
+- [x] **Step 4: Run and verify PASS.**
+- [x] **Step 5: Mutation receipts, each RED:**
   - S3a: the retreat clamp dropped. Only the strafe clamp remains, which is the camera-relative-backpedal design the
     derivation section rules out.
   - S3b: `lerp` weight inverted (`1 − w`).
@@ -457,7 +457,9 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - S3d: `formMult` ignored (absolute strafe and advance caps, the first draft's design). RED on `the clamp keeps
     the pace`.
   - S3e: the retreat cap also scaled by `formMult` (a comet retreats at 2.8). RED on `the retreat is form-invariant`.
-- [ ] **Step 6: Commit** with the title "feat(combat): the stance clamps the away-from-threat component, not the S key" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): the stance clamps the away-from-threat component, not the S key" and a trailer.
+
+> **Done 2026-10-27.** Built by a forked duplicate builder that died before committing; reviewed as a stranger's work, kept unchanged, and re-proven here: RED first (9 of 15 with "stanceVelocity is not a function"), then green. Two tests beyond the list above: the w = 0 early return is pinned by a non-finite away vector and a `-0` (the lerp alone returns finite input unchanged, so the identity case cannot tell the two apart), and `out` is written and returned. Receipts (mutate.sh): S3a, S3b, S3d, S3e RED; S3c SURVIVED as the equivalent mutant; added S3f (advance clamp dropped), S3g (early return dropped), S3h/S3i (no-direction cap dropped / at the retreat cap), S3j (walk slow off the retreat), S3k (one-sided strafe clamp), S3l (`w * w` blend), S3m (advance not scaled by the form), all RED; identity survived. Task 2's receipts were re-run clean on the committed `90863cc6` content first (its first run shared the file with another builder's mutate.sh): all reproduced, see the commit body.
 
 ---
 

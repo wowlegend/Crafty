@@ -20,9 +20,10 @@
 // K0 identity (a comment edit) -> survived. NOT killed here, by design: K1c (the calm multiplier), which only
 // src/game/mobMovement.test.js sees, because every mob in this file is aggro'd.
 // Task 2 (subject src/game/combatStance.js): S2a the slowest pick `Math.min` -> `Math.max` -> RED (retreat 5.0, no
-// pursuer closes 1 m/s on it); S2b the NON_PURSUERS skeleton entry deleted -> RED (the pursuer count reads 7, and
-// closingOver('skeleton', 10, 10) throws 'empty denominator': it stands and shoots in its 8-12 m band; the skeleton
-// does NOT become the slowest pursuer, its formula speed is 3.75 against the husk's 3.0); S2c
+// pursuer closes 1 m/s on it); S2b the NON_PURSUERS skeleton entry deleted -> RED on the pursuer count, which reads
+// 7 against 6 (observed in the clean re-run: that assertion runs first, so closingOver('skeleton', 10, 10), which
+// would throw 'empty denominator' on an archer standing in its 8-12 m band, is never reached; the skeleton does NOT
+// become the slowest pursuer, its formula speed is 3.75 against the husk's 3.0); S2c
 // `chaseSpeedMult(type, true)` -> `1` -> the module throws RETREAT_FLOOR at load, so this file fails to import
 // (observed by hand; mutate.sh scores it COULD NOT CHECK, 0 collected); S0 identity -> survived. SURVIVE here by
 // design, killed in src/game/combatStance.test.js: S2d (the floor throw disabled: today's roster never reaches the
