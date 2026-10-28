@@ -15,7 +15,7 @@ import { useGameStore } from '../store/useGameStore';
 import { OUTLINE } from './characterStyle';
 import { MagicWand } from './spellVfx';
 import { heavyChargeLevel } from '../game/heavyAttack.js';
-import { readString, slashSweep } from '../game/meleeString.js';
+import { handSwing } from '../game/meleeString.js';
 // The cast-hand light mounts per cast: from the fixed light pool (render/lightPool.jsx), so a cast re-links no shader.
 import { PooledLight } from './lightPool.jsx';
 
@@ -322,6 +322,7 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
   const leftHandRef = useRef();
   const wandRef = useRef();
   const magicAuraRef = useRef();
+  const swingLatch = useRef({ startS: -1, sweep: null, melee: false });
   const slashRef = useRef(); // M-bugfix: a bright crescent slash-arc on EVERY melee swing (the ribbon trail only fires when a weapon is equipped, so bare-handed F looked like "no effect" — Kevin 2026-06-18)
 
   const currentSpellColor = SPELL_COLORS[activeSpell] || SPELL_COLORS.fireball;
@@ -338,11 +339,9 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
       // THE LIGHT STRING reads in the hand (game/meleeString.js, combat-stance Task 10): step 1 sweeps right to left,
       // step 2 comes back left to right, the finisher sweeps wide and long. The swing in progress is a STRING swing only
       // while the last light swing is within its own sweep; otherwise (a heavy, a beast form's swing, nothing recent)
-      // the hand plays today's step-1 sweep. Read transiently, once a frame; slashSweep returns frozen shapes.
-      const str = readString();
-      const strSweep = slashSweep(str.lastSwingStep);
-      const sw = str.lastSwingStep && performance.now() - str.lastSwingAt <= 1000 * strSweep.durationS ? strSweep : slashSweep(1);
-      const isSwingingMelee = attackType === 'melee' && swingElapsed < sw.durationS;
+      // the hand plays today's step-1 sweep. handSwing chooses it once per swing and plays it out on this clock.
+      const sw = handSwing(swingLatch.current, attackStartTime.current, attackType === 'melee', performance.now(), swingElapsed);
+      const isSwingingMelee = sw !== null;
       const isCastingSpell = attackType === 'spell' && swingElapsed < 0.15;
 
       // Subtle high-frequency channeling vibrations on attack or cast

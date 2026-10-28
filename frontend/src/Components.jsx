@@ -262,7 +262,7 @@ export const Player = ({ isWorldBuilt }) => {
     store.playAttackSounds?.();
 
     setAttackType('melee');
-    // The hand's sweep runs its full duration: 280 ms for a finisher (render/playerRender.jsx reads slashSweep).
+    // The hand plays its sweep out on its own clock (game/meleeString.js handSwing); this clears the attack type after.
     setTimeout(() => setAttackType(null), step ? slashSweep(step).durationS * 1000 : 200);
 
     const effectiveStats = store.getEffectiveAttributes ? store.getEffectiveAttributes() : { strength: 10, agility: 10 };

@@ -20,7 +20,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   pressSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, gateSwing,
-  readString, _resetStringForTest,
+  readString, handSwing, _resetStringForTest,
   STRING_STEPS, SWING_COOLDOWN_MS, STRING_WINDOW_MS, BUFFER_MS, FINISHER_RECOVERY_MS, FINISHER_MULT, FINISHER_ARC_RAD,
   FINISHER_SHOVE_MULT, SWING_WALK_MULT, SWING_WALK_MS, FINISHER_WALK_MULT, FINISHER_WALK_MS,
 } from './meleeString.js';
@@ -254,5 +254,68 @@ describe('gateSwing — the press gate of triggerMeleeAttack', () => {
     expect(gateSwing(1000, { form: true, refused: 'cooldown' }), 'a refused form swing fired').toBe(-1);
     expect(gateSwing(1000, { heavy: true, refused: 'charging' }), 'a refused heavy fired').toBe(-1);
     expect(readString().readyAt, 'a refused swing still held the string').toBe(0);
+  });
+});
+
+describe('a live press and a buffered one', () => {
+  it('a live press after the cooldown consumes the buffered press a slow frame never took', () => {
+    expect(pressSwing(0)).toEqual({ action: 'fire', step: 1 });
+    expect(pressSwing(150).action, 'SETUP: the early press was not buffered').toBe('buffer');
+    // A 30 fps frame at 290 runs before the cooldown ends; the next press lands at 310, before the next frame.
+    expect(takeBufferedSwing(290)).toBe(0);
+    expect(pressSwing(310)).toEqual({ action: 'fire', step: 2 });
+    expect(readString().buffered, 'the buffered press survived the live swing that answered it').toBe(false);
+    // A press in the next buffer window is buffered, not dropped behind a stale one, and nothing fires on its own.
+    expect(pressSwing(450).action, 'a press in the buffer window was dropped behind the stale buffered press').toBe('buffer');
+    expect(takeBufferedSwing(609)).toBe(0);
+    expect(takeBufferedSwing(610), 'the press at 450 did not fire when the cooldown ended').toBe(3);
+    expect(takeBufferedSwing(1500), 'a second buffered swing fired from one press').toBe(0);
+  });
+});
+
+describe('handSwing — the FPV hand plays the sweep its swing started with, on its own clock', () => {
+  // The press stamps the string at once; the hand's clock stamps the swing's start when the controller's frame first
+  // sees it, one or two frames later. Frames every 1/60 s, the hand's start two frames after the press.
+  const FRAME_MS = 1000 / 60;
+  const play = (step, pressMs, timerMs) => {
+    const latch = { startS: -1, sweep: null, melee: false };
+    const startS = 7.0, startPerfMs = pressMs + 2 * FRAME_MS;
+    const frames = [];
+    for (let k = 0; k < 30; k++) {
+      const nowMs = startPerfMs + k * FRAME_MS, elapsedS = (k * FRAME_MS) / 1000;
+      // the controller clears the attack type on a timer on the press's clock, which the hand sees once React commits
+      // it, here two frames later
+      const sw = handSwing(latch, startS, nowMs < pressMs + timerMs + 2 * FRAME_MS, nowMs, elapsedS);
+      frames.push({ elapsedS, dir: sw?.dir ?? 0, widthMult: sw?.widthMult ?? 0 });
+    }
+    return frames;
+  };
+
+  it('a step-2 swing sweeps back (dir -1) for its whole 0.2 s and never flips to step 1\'s sweep', () => {
+    fires(1000);
+    expect(pressSwing(1350)).toEqual({ action: 'fire', step: 2 });
+    const f = play(2, 1350, 200);
+    const during = f.filter((x) => x.elapsedS < slashSweep(2).durationS);
+    expect(during.length, 'SETUP: no frame inside the swing').toBeGreaterThan(10);
+    expect(during.map((x) => x.dir), 'the step-2 sweep flipped mid-swing').toEqual(during.map(() => -1));
+    expect(f.filter((x) => x.elapsedS >= slashSweep(2).durationS).every((x) => x.dir === 0), 'the hand swung past its sweep').toBe(true);
+  });
+
+  it('a finisher plays its full 0.28 s wide sweep', () => {
+    fires(1000, 1350);
+    expect(pressSwing(1700)).toEqual({ action: 'fire', step: 3 });
+    const f = play(3, 1700, 280);
+    const during = f.filter((x) => x.elapsedS < slashSweep(3).durationS);
+    expect(during.map((x) => x.widthMult), 'the finisher was cut short or narrowed').toEqual(during.map(() => slashSweep(3).widthMult));
+  });
+
+  it('a swing with no light swing behind it (a heavy, a form) plays step 1\'s sweep, and a new swing is chosen anew', () => {
+    const latch = { startS: -1, sweep: null, melee: false };
+    fires(1000, 1350); // a step-2 swing, long before
+    expect(handSwing(latch, 3.0, true, 5000, 0.05)?.dir, 'a heavy long after a step-2 swing played the string\'s sweep').toBe(1);
+    fires(9000, 9350);
+    expect(handSwing(latch, 9.4, true, 9380, 0.0)?.dir, 'the next swing kept the last one\'s sweep').toBe(-1);
+    expect(handSwing(latch, 9.4, false, 9420, 0.04)?.dir, 'the attack type cleared mid-sweep stopped the hand').toBe(-1);
+    expect(handSwing(latch, 9.5, false, 9500, 0.0), 'a spell cast (its own start) swung the hand').toBe(null);
   });
 });

@@ -58,6 +58,9 @@ function fire(now, step = nextStep(now)) {
   S.lastSwingStep = step;
   S.walkUntil = now + (finisher ? FINISHER_WALK_MS : SWING_WALK_MS);
   S.walkMult = finisher ? FINISHER_WALK_MULT : SWING_WALK_MULT;
+  // A live press past the cooldown answers a buffered one a slow frame never took: kept, it fired a cooldown later
+  // and dropped every press in its buffer window.
+  S.buffered = false;
   return step;
 }
 
@@ -176,6 +179,25 @@ const SWEEPS = [
 /** The FPV hand's sweep for string step `step`: the arc alternates, and the finisher is wider and longer. */
 export function slashSweep(step) {
   return step === 2 ? SWEEPS[1] : step === STRING_STEPS ? SWEEPS[2] : SWEEPS[0];
+}
+
+/**
+ * The FPV hand's swing this frame: the sweep it plays, or null when the hand is not swinging. `latch` is the hand's
+ * own { startS, sweep, melee } record, `startS` the swing's start on the hand's clock (attackStartTime), `isMelee`
+ * whether the attack in progress is a melee swing, `nowMs` performance.now() and `elapsedS` the time since startS.
+ * The press stamps the string at once and the hand's clock stamps the start a frame or two later, so the sweep and
+ * whether it is a melee swing are chosen once, the first frame a start is seen, and held until elapsedS passes the
+ * sweep: read every frame on the press's clock, a step-2 sweep flipped to step 1's in its last frames, and the
+ * controller's timer that clears the attack type cut the finisher short.
+ */
+export function handSwing(latch, startS, isMelee, nowMs, elapsedS) {
+  if (latch.startS !== startS) {
+    latch.startS = startS;
+    latch.melee = isMelee;
+    const s = slashSweep(S.lastSwingStep);
+    latch.sweep = S.lastSwingStep && nowMs - S.lastSwingAt <= 1000 * s.durationS ? s : SWEEPS[0];
+  }
+  return latch.melee && elapsedS < latch.sweep.durationS ? latch.sweep : null;
 }
 
 /** The live state, for the DEV hook (which copies it) and the hand. Read-only. */
