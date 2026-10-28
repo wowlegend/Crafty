@@ -22,8 +22,24 @@ const ENABLED = process.env.COVERAGE !== '0';
 
 let seq = 0;
 
+// THE SUITE'S PIXEL-RATIO CAP (src/devtest/e2eDpr.js; numbers in the note atop playwright.config.js). Written on the page
+// before any of its scripts run, so both R3F canvases are created under it; a spec that needs the canvas at its own
+// pixel ratio opts out with `test.use({ e2eDprCap: null })` and says why beside it. A fixture OPTION, not a constant:
+// the default is the one place it is set, and an opt-out is visible in the spec it changes.
+export const E2E_DPR_CAP = 0.5;
+
+/** The live canvases' drawing-buffer ratio (device px per CSS px), read off the DOM: what the cap actually did. */
+const readCanvasRatios = (page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('canvas')]
+      .filter((c) => c.clientWidth > 0 && c.clientHeight > 0 && c.width > 1)
+      .map((c) => `${c.width}x${c.height}/${c.clientWidth}x${c.clientHeight}`),
+  );
+
 export const test = base.extend({
-  page: async ({ page }, use, testInfo) => {
+  e2eDprCap: [E2E_DPR_CAP, { option: true }],
+  page: async ({ page, e2eDprCap }, use, testInfo) => {
+    if (e2eDprCap != null) await page.addInitScript((cap) => { window.__craftyE2eDprCap = cap; }, e2eDprCap);
     let started = false;
     if (ENABLED) {
       try {
@@ -37,6 +53,17 @@ export const test = base.extend({
     }
 
     await use(page);
+
+    // Every test prints what its canvases were drawn at (drawing buffer / CSS box), cap or no cap: the denominator that
+    // says the cap reached the canvases, read off the DOM rather than off the setting.
+    // Bounded: a page stuck in a frame must not hold the teardown (a read that does not return in 5 s prints as such).
+    try {
+      const canvases = await Promise.race([readCanvasRatios(page), new Promise((r) => setTimeout(() => r(null), 5000))]);
+      const shown = canvases === null ? 'unread (the page did not answer in 5 s)' : canvases.join(' ') || 'none';
+      console.log(`[e2e-dpr] cap ${e2eDprCap ?? 'off'} · ${testInfo.title.slice(0, 60)} · canvases ${shown}`);
+    } catch {
+      // A closed or crashed page has nothing to read; the test's own verdict stands.
+    }
 
     if (!started) return;
     try {

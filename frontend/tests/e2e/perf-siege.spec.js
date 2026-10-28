@@ -20,6 +20,10 @@ import { test, expect } from './_fixtures.js';
 // runtime errors) — so the CI red was a false negative from a 2-core shared runner under software WebGL.
 // The frame floor is NOT lowered and the test is NOT skipped: it runs at full strength locally and in the
 // pre-merge gate, exactly where the visual gate already lives. CI excludes it by tag, visibly, in ci.yml.
+// OPTED OUT of the suite's pixel-ratio cap (tests/e2e/_fixtures.js): a perf probe measures the game at its pinned
+// PROBE_DPR (src/devtest/perfScenarios.js), and its frame floor was set at that ratio. Capped, it would read a cheaper
+// frame than the one it claims to measure.
+test.use({ e2eDprCap: null });
 test('survives a sustained night-siege without freezing or throwing (perf probe B)', { tag: '@local-only' }, async ({ page }) => {
   test.setTimeout(150000); // terrain stream + 4s settle + ~12s siege, with swiftshader-under-load headroom
   const PERF_SEC = 12;
