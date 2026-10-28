@@ -10,6 +10,9 @@
 //   SURVIVED. S8s / S8t (a buffered press's step read at the press, not at readyAt) SURVIVED and are EQUIVALENT: a fire
 //   sets the window 650 ms past a cooldown of at most 500, and only endString pushes readyAt past the window, which
 //   zeroes `last`, so the two reads give the same step in every reachable state.
+//   Round-1 review pins (2026-10-28, 17 tests): W3 a dodge inside an open window sets it to never expire -> RED; W5 a
+//   dropped press extends the window -> RED; W0 identity (a comment edit) -> survived. W3 was REPRODUCED against the
+//   lane's code first: a press 700 ms after the dodge fires step 1, so the game does not do it; the case pins that.
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   pressSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep,
@@ -97,6 +100,23 @@ describe('the light string', () => {
     cancelIntoDodge(1200);
     expect(readString().buffered).toBe(false);
     expect(takeBufferedSwing(1300)).toBe(0);
+  });
+
+  // Round-1 review (dynamic, W3): the case above presses INSIDE the restarted window, so a dodge that made an open
+  // window never expire passed it. The restart is one window long, from the dodge.
+  it('a dodge inside an open window restarts it once: past its own STRING_WINDOW_MS the string lapses', () => {
+    fires(1000, 1350); // window to 2000
+    cancelIntoDodge(1800); // window to 2450
+    expect(readString().windowEndsAt).toBe(1800 + STRING_WINDOW_MS);
+    expect(pressSwing(2500)).toEqual({ action: 'fire', step: 1 });
+  });
+
+  // Round-1 review (dynamic, W5): a press that drops changes nothing, the window included.
+  it('a dropped press leaves the window where it was', () => {
+    expect(pressSwing(1000)).toEqual({ action: 'fire', step: 1 }); // window to 1650
+    expect(pressSwing(1050)).toEqual({ action: 'drop', step: 0 }); // 250 ms of cooldown left: more than BUFFER_MS
+    expect(readString().windowEndsAt).toBe(1000 + STRING_WINDOW_MS);
+    expect(pressSwing(1660)).toEqual({ action: 'fire', step: 1 });
   });
 
   it('cancelIntoDodge after the window has lapsed revives nothing', () => {

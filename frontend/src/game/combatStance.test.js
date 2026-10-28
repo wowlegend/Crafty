@@ -34,6 +34,9 @@
 //   written from raw (the e2e's identity case could then never fail) -> RED; N2 the frame never written -> RED; N3 the
 //   stance's w recorded instead of the one the controller passed -> RED; N4 rawZ written from rawX -> RED; N0 identity
 //   -> survived. The wiring itself is proven in the running game: tests/e2e/combat-stance.spec.js.
+//   Round-1 review pins (2026-10-28, 33 tests): A4 the advance capped at the retreat cap -> RED; A3 the total speed
+//   also capped at the strafe cap -> RED; A1 the no-direction cap applied per world axis -> RED; A0 identity (a comment
+//   edit) -> survived.
 import { describe, it, expect } from 'vitest';
 import {
   STANCE_CAPS, MIN_CLOSING_RATE, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
@@ -117,6 +120,24 @@ describe('stanceVelocity — the radial clamp (Task 3)', () => {
   it('a threat with no direction caps the total speed and makes no NaN', () => {
     const o = stanceVelocity(14, 0, 0, 0, 1); expect(Number.isFinite(o.x) && Number.isFinite(o.z)).toBe(true);
     expect(Math.hypot(o.x, o.z)).toBeCloseTo(6.5, 9);
+  });
+  // Round-1 review (dynamic, A4): the w = 1 sweep bounds the advance from ABOVE only, so an advance capped at the 2.0
+  // retreat cap passed every test. Closing on an enemy is the footwork pace, 6.5 x the form x the walk slow.
+  it('a straight advance at 14 comes out at exactly the advance cap, for every form and walk slow', () => {
+    const a = stanceVelocity(-14, 0, 1, 0, 1); expect(a.x).toBeCloseTo(-6.5, 12); expect(a.z).toBeCloseTo(0, 12);
+    for (const m of FORMS) for (const h of HEAVY) {
+      expect(stanceVelocity(-14 * m * h, 0, 1, 0, 1, m, h).x).toBeCloseTo(-STANCE_CAPS.advance * m * h, 9);
+    }
+  });
+  // Round-1 review (dynamic, A1 and A3): every input above lies on an axis, where a per-axis clamp, a radial one and a
+  // total-speed cap all agree. A diagonal separates them: engaging mid-run keeps hypot(2.0, 6.5) = 6.8 m/s (the plan's
+  // FOV note), and a threat with no direction caps the TOTAL, not each world axis.
+  it('a diagonal comes out at exactly (retreat, strafe) with a direction, and at the strafe cap in total without one', () => {
+    const d = stanceVelocity(14 * Math.SQRT1_2, 14 * Math.SQRT1_2, 1, 0, 1);
+    expect(d.x).toBeCloseTo(2.0, 12); expect(d.z).toBeCloseTo(6.5, 12);
+    const n = stanceVelocity(14 * Math.SQRT1_2, 14 * Math.SQRT1_2, 0, 0, 1);
+    expect(Math.hypot(n.x, n.z)).toBeCloseTo(6.5, 12);
+    expect(n.x).toBeCloseTo(n.z, 12); // the direction is kept
   });
   it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBeCloseTo(8.0, 9));
   it('writes into the `out` it is handed (allocation-free) and returns it', () => {

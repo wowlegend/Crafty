@@ -32,6 +32,8 @@ import { claimHudTick, emitHudTick } from '../../src/ui/hudTicker.js';
  *   J10 the yaw ignored; J11 the opacity ignores the ramp; J12 the projection's view matrix left stale; J13 the tick
  *   never subscribed. J0 (a comment edit, the identity mutant) SURVIVED. J1b (the transform's guard dropped) SURVIVED:
  *   EQUIVALENT here, since a same-value style write makes no mutation record, so the behaviour this gate states holds.
+ *   Round-1 review pin (2026-10-28, 9 tests): P9 the camera-space point read as NDC (`applyMatrix4(matrixWorldInverse)`
+ *   for `project`) -> RED; P0 identity (a comment edit) -> survived.
  */
 let release = null;
 let added = [];
@@ -172,6 +174,24 @@ describe('WindupChevrons on the HUD ticker', () => {
     tick();
     expect(onOnes(root).length, 'a chevron stayed on in capture').toBe(0);
     for (const n of chevrons(root)) expect(n.style.opacity).toBe('0');
+  });
+
+  // Round-1 review (dynamic, P9): every mob above sits dead ahead, dead behind or square to the side, where view space
+  // and NDC agree, so a layer reading the camera-space point as NDC passed. These two are IN VIEW but off the axis (to
+  // the side, and below the eye), which only a perspective projection calls on screen.
+  it('a windup in view but off the view axis gets no chevron; the one behind still does', () => {
+    asDevice('desktop');
+    const side = addMob({ x: 2, y: 60, z: -4 });
+    const low = addMob({ x: 0, y: 58.4, z: -6 });
+    const behind = addMob({ z: 4 });
+    for (const m of [side, low]) {
+      const v = m.position.clone().project(camera);
+      expect(v.z <= 1 && Math.abs(v.x) < 0.9 && Math.abs(v.y) < 0.9, `SETUP: ${m.id} is not in view (ndc ${v.x.toFixed(2)}, ${v.y.toFixed(2)}, ${v.z.toFixed(2)})`).toBe(true);
+    }
+    const { getByTestId } = render(<WindupChevrons />);
+    const root = getByTestId('windup-chevrons');
+    tick();
+    expect(onOnes(root).map((n) => n.dataset.mob), 'a mob in plain view got a chevron, or the one behind lost its').toEqual([behind.id]);
   });
 
   it('turns with the camera: facing the other way, the mob that was ahead gets the chevron', () => {
