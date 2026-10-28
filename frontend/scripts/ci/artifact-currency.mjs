@@ -7,10 +7,11 @@
  *   - DRIFT IS REPORTED, NEVER REFUSED. Every surface prints how many commits its page is behind HEAD, with
  *     the page's URL, on every push and in CI. A drift this script cannot measure (the recorded sha is not in
  *     this history) prints as well, naming its two causes. Neither changes the exit code, on any push.
- *   - TWO TREE DEFECTS STILL REFUSE, on every push: a page source that is missing or unusable (a fetched copy
- *     of the publish wrapper rather than the authored page), and a row marked Queued whose declared
- *     `data-absent` path EXISTS, or that declares none. Both are wrong in the committed tree, and any branch
- *     can fix them.
+ *   - THREE TREE DEFECTS STILL REFUSE, on every push: a page source that is missing or unusable (a fetched copy
+ *     of the publish wrapper rather than the authored page); a row marked Queued whose declared `data-absent`
+ *     path EXISTS, or that declares none; and, for a page that declares `stampTokens`, an as-of stamp that is
+ *     missing, duplicated, or names a different commit from the recorded publish (`syncedSha`). All three are
+ *     wrong in the committed tree, and any branch can fix them.
  *
  * WHY THE DRIFT REFUSAL WENT. From 2026-08-07 (7d30ee27) a page more than HARD_LIMIT commits behind refused the
  * push; 2026-10-28 scoped that to a push moving main. It was built after three stale-page incidents, each one
@@ -45,7 +46,11 @@
  * Dropping `failed = true` from the missing-source, unusable-source, Queued-EXISTS and undeclared-Queued
  * branches each turned its process case RED, and skipping the missing-source check when the push names a
  * feat/ branch turned that case RED. Dropping the URL from the drift line turned the URL assertions RED. An
- * identity comment edit survived both specs. Specs: tests/gates/artifact-currency-gates.test.js (pure) and
+ * identity comment edit survived both specs. The stamp check (2026-10-28, round-1 review): skipping it, dropping its
+ * `failed = true`, running it on every artifact rather than those declaring stampTokens, dropping its mismatch branch,
+ * and refusing a page with no publish recorded each turned process cases RED; the mismatch branch dropped, the
+ * no-publish relaxation dropped, a prefix match for equality and a stampless page accepted each turned the pure
+ * stampVerdict cases RED. Specs: tests/gates/artifact-currency-gates.test.js (pure) and
  * tests/scripts/artifact-currency-scope.test.js (this script run as a process, through the real pre-push hook
  * and the real pipeline). The receipts for the earlier main-only scope (2026-10-27/28) are in git history.
  *
@@ -291,6 +296,28 @@ export function readStamp(html) {
   return { sha: m[1] };
 }
 
+/**
+ * PURE: does the page's stamp agree with the recorded publish? Checked on every push for a surface that declares
+ * `stampTokens`: exactly one stamp, and, once a publish is recorded, a stamp naming that same sha. Compared as TEXT,
+ * because `--sync` records the stamp's own text, so an honest sync makes them equal by construction. A mismatch is a
+ * tree defect in the class of the falsified Queued pill: the page and the record disagree about what was published,
+ * which is how a hand-bumped sha used to lie. With no publish recorded yet there is nothing for the stamp to
+ * contradict, so only its presence is required (the report says no publish is recorded).
+ * @returns {{ok: true, sha: string} | {ok: false, problem: string, fix: string}}
+ */
+export function stampVerdict(html, syncedSha) {
+  const st = readStamp(html);
+  if (st.error) return { ok: false, problem: st.error, fix: 'A page that declares stampTokens carries exactly one: run --stamp <id> --as-of <the commit it was written against>.' };
+  if (syncedSha && st.sha !== syncedSha) {
+    return {
+      ok: false,
+      problem: `has a stamp naming ${st.sha}, but .artifact-sync.json records ${syncedSha} as published`,
+      fix: `If the page stamped ${st.sha} was published, record it: --sync <id> --as-of ${st.sha}. If the record is right, re-stamp: --stamp <id> --as-of ${syncedSha}.`,
+    };
+  }
+  return { ok: true, sha: st.sha };
+}
+
 /** The value after `flag` on the command line; undefined when the flag is absent or the next word is another flag. */
 function argAfter(flag) {
   const i = process.argv.indexOf(flag);
@@ -416,7 +443,7 @@ function main() {
   let failed = false;
   // Report the DENOMINATOR: a clean tick over a list that silently shrank to zero is the defect this
   // project keeps shipping. The same on every push: nothing below reads which refs a push moves.
-  console.log(`artifact-currency: ${all.length} surface(s) tracked (drift is reported, never refused; a missing or unusable source and a false Queued pill refuse)`);
+  console.log(`artifact-currency: ${all.length} surface(s) tracked (drift is reported, never refused; a missing or unusable source, a false Queued pill, and a missing stamp or one that disagrees with the recorded publish refuse)`);
 
   for (const s of all) {
     const src = join(ROOT, s.source);
@@ -426,9 +453,10 @@ function main() {
       failed = true;
       continue;
     }
+    const html = readFileSync(src, 'utf8');
     // Guard this script's own input before trusting the drift number — artifact sources only.
     if (s.kind === 'artifact') {
-      const bad = validateSource(readFileSync(src, 'utf8'));
+      const bad = validateSource(html);
       if (bad) {
         console.error(`\n✘ artifact-currency: ${s.source} is ${bad}`);
         console.error('  A drift count over an unusable source would be a number about nothing.\n');
@@ -437,10 +465,24 @@ function main() {
       }
     }
 
+    // The as-of stamp, for a published page that declares stampTokens (see stampVerdict): the drift below is measured
+    // from syncedSha, so a page whose stamp disagrees with it makes that number, and the record, a claim about a page
+    // nobody published.
+    if (s.kind === 'artifact' && s.stampTokens) {
+      const v = stampVerdict(html, s.syncedSha);
+      if (!v.ok) {
+        console.error(`\n✘ ${s.id}: ${s.source} ${v.problem}.`);
+        console.error(`  ${v.fix}`);
+        failed = true;
+      } else {
+        console.log(`  · ${s.id}: stamped as of ${v.sha}${s.syncedSha ? ', the recorded publish' : '; no publish recorded yet'}`);
+      }
+    }
+
     // Verdict pills are checked BEFORE the drift number, because a page at HEAD that says "Queued" about
     // finished work is wrong in the way that actually reaches the operator — and a zero-drift page would
     // otherwise print `✓ at HEAD` and stop, which is how this was missed.
-    const claims = queuedClaims(readFileSync(src, 'utf8'));
+    const claims = queuedClaims(html);
     const q = verifyQueued(claims, (p) => existsSync(join(ROOT, p)));
     console.log(`  · ${s.id}: ${q.checked} queued row(s) claiming unfinished work`);
     for (const { sha, path } of q.stale) {

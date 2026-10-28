@@ -45,7 +45,9 @@
  * stale case RED; A7 the drift line's URL dropped turned the stale and drifting cases RED; A5, A6, Q1, Q2 (dropping
  * `failed = true` from the missing-source, unusable-source, Queued-EXISTS and undeclared-Queued branches) each turned
  * its own case RED; Q3 (the missing-source check skipped when E2E_PUSH_REFS names a feat/ branch) turned the
- * missing-source case RED. In .githooks/pre-push: P1 the list built from `$_local_ref`, P2 `export` dropped, P3 only
+ * missing-source case RED. The stamp check (round-1 review), each RED observed: C1 skipped; C2 its `failed = true`
+ * dropped; C3 run on every artifact surface, not only those declaring stampTokens; C4 its mismatch branch dropped; C5
+ * a page with no publish recorded refused. In .githooks/pre-push: P1 the list built from `$_local_ref`, P2 `export` dropped, P3 only
  * the LAST ref kept, P4 only the FIRST ref kept, each turned producer cases RED. In ci/pipeline.sh: C1 the guard
  * without its GITHUB_REF test, C2 without its GITHUB_EVENT_NAME test, C3 the step removed, each turned a CI case
  * RED; in ci.yml, Y1 `fetch-depth: 0` -> `1` turned the full-history case RED. Identity mutants (a comment edit in
@@ -65,7 +67,7 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
-import { HARD_LIMIT, STAMP_BEGIN, STAMP_END } from '../../scripts/ci/artifact-currency.mjs';
+import { HARD_LIMIT, STAMP_BEGIN, STAMP_END, stampBlock } from '../../scripts/ci/artifact-currency.mjs';
 
 const CI = resolve(dirname(fileURLToPath(import.meta.url)), '../../scripts/ci');
 const REPO_ROOT = resolve(CI, '../../..');
@@ -240,6 +242,63 @@ describe('the tree defects refuse on EVERY push', () => {
     expect(out).toMatch(/✓ fixture: at HEAD/);
     expect(out).not.toMatch(/✘/);
     expect(status, out).toBe(0);
+  });
+
+  // THE STAMP, read on every push for a surface that declares stampTokens: exactly one, naming the recorded publish.
+  // A page whose stamp disagrees with syncedSha is the hand-bumped-sha lie, and it is wrong in the tree.
+  describe('the as-of stamp: present once, and naming the recorded publish', () => {
+    const tokens = { text: '--t-x', rule: '--r-x', link: '--l-x', font: '--f-x' };
+    const when = new Date(Date.UTC(2026, 9, 28, 6, 5, 59));
+    const stamped = (...shaList) => `<title>fixture</title><div class="wrap">\n${shaList.map((sha) => stampBlock({ sha, when, tokens })).join('')}<p>body</p></div>`;
+    const stampSurface = (syncedSha, extra = {}) => ({ ...surface(syncedSha), stampTokens: tokens, ...extra });
+    const runStamped = (refs, html, s) => runScript({ refs, surfaces: [s], html });
+
+    it('control: the stamp names the recorded publish — exit 0, and the report says so', () => {
+      eachRefs(SPELLINGS, (refs) => {
+        const { status, out } = runStamped(refs, stamped(shas[OVER]), stampSurface(shas[OVER]));
+        expect(out, label(refs)).toMatch(new RegExp(`fixture: stamped as of ${shas[OVER]}, the recorded publish`));
+        expect(out, label(refs)).not.toMatch(/✘/);
+        expect(status, `${label(refs)}\n${out}`).toBe(0);
+      });
+    });
+
+    it('a stamp naming a DIFFERENT commit from the recorded publish exits 1, naming both', () => {
+      eachRefs(SPELLINGS, (refs) => {
+        const { status, out } = runStamped(refs, stamped(shas[0]), stampSurface(shas[OVER]));
+        expect(out, label(refs)).toMatch(new RegExp(`✘ fixture: docs/superpowers/page\\.html has a stamp naming ${shas[0]}, but \\.artifact-sync\\.json records ${shas[OVER]} as published`));
+        expect(status, `${label(refs)}\n${out}`).toBe(1);
+      });
+    });
+
+    it('a page with NO stamp, or with TWO, exits 1', () => {
+      eachRefs(SPELLINGS, (refs) => {
+        const none = runStamped(refs, PAGE, stampSurface(shas[OVER]));
+        expect(none.out, label(refs)).toMatch(/✘ fixture: docs\/superpowers\/page\.html has no as-of stamp/);
+        expect(none.status, `${label(refs)}\n${none.out}`).toBe(1);
+        const two = runStamped(refs, stamped(shas[OVER], shas[OVER]), stampSurface(shas[OVER]));
+        expect(two.out, label(refs)).toMatch(/✘ fixture: docs\/superpowers\/page\.html has 2 <!-- asof:begin --> and 2 <!-- asof:end --> markers/);
+        expect(two.status, `${label(refs)}\n${two.out}`).toBe(1);
+      });
+    });
+
+    it('no publish recorded yet: only the presence of one stamp is required — exit 0, and the report says none is recorded', () => {
+      const s = stampSurface(undefined);
+      delete s.syncedSha;
+      const { status, out } = runStamped(undefined, stamped(shas[0]), s);
+      expect(out).toMatch(new RegExp(`fixture: stamped as of ${shas[0]}; no publish recorded yet`));
+      expect(out).toMatch(/fixture: no publish recorded — --stamp fixture, publish the stamped source, then --sync fixture/);
+      expect(status, out).toBe(0);
+      const none = runStamped(undefined, PAGE, s);
+      expect(none.out, 'still refused without a stamp').toMatch(/✘ fixture: docs\/superpowers\/page\.html has no as-of stamp/);
+      expect(none.status, none.out).toBe(1);
+    });
+
+    it('control: a surface that declares NO stampTokens is not stamp-checked (an unstamped page at HEAD exits 0)', () => {
+      const { status, out } = run(undefined, shas[OVER]);
+      expect(out).toMatch(/✓ fixture: at HEAD/);
+      expect(out).not.toMatch(/stamped as of|as-of stamp/);
+      expect(status, out).toBe(0);
+    });
   });
 });
 

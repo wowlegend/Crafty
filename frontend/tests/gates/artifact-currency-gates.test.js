@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   classify, driftVerdict, HARD_LIMIT, validateSource, surfaces, queuedClaims, verifyQueued,
-  stampBlock, applyStamp, missingTokens, readStamp, STAMP_BEGIN, STAMP_END, STAMP_ROLES,
+  stampBlock, applyStamp, missingTokens, readStamp, stampVerdict, STAMP_BEGIN, STAMP_END, STAMP_ROLES,
 } from '../../scripts/ci/artifact-currency.mjs';
 
 // Behavioural, not a source-grep: exercises the threshold function directly so gate-shape's
@@ -315,5 +315,45 @@ describe('readStamp — the commit the page says it is as of', () => {
     expect(readStamp(`${one}${STAMP_END}`).error).toMatch(/has 1 <!-- asof:begin --> and 2 <!-- asof:end --> markers/);
     expect(readStamp(`${STAMP_BEGIN}As of commit abc1234, x`).error).toMatch(/has 1 <!-- asof:begin --> and 0 <!-- asof:end --> markers/);
     expect(readStamp(`${STAMP_END}As of commit abc1234, x${STAMP_BEGIN}`).error).toMatch(/end --> marker before its/);
+  });
+});
+
+// stampVerdict: what every push checks for a page that declares stampTokens. The stamp and the recorded publish must
+// agree, as TEXT, because --sync records the stamp's own text; a hand-bumped syncedSha is the lie this catches.
+//
+// Mutation-Proof (2026-10-28, via scripts/dev/mutate.sh, each RED observed here and in the process twin): the
+// mismatch branch dropped; the no-publish-recorded relaxation dropped (an unsynced page then refuses); a PREFIX
+// match in place of equality; a page with no stamp accepted. An identity comment edit survived.
+describe('stampVerdict — the stamp and the recorded publish agree', () => {
+  const tokens = { text: '--t-x', rule: '--r-x', link: '--l-x', font: '--f-x' };
+  const when = new Date(Date.UTC(2026, 9, 28, 6, 5, 59));
+  const page = (sha) => `<title>p</title><div class="wrap">\n${stampBlock({ sha, when, tokens })}<p>body</p></div>`;
+
+  it('agrees when the stamp names the recorded sha', () => {
+    expect(stampVerdict(page('32a55b75'), '32a55b75')).toEqual({ ok: true, sha: '32a55b75' });
+  });
+
+  it('refuses a stamp naming another commit, and says how to reconcile in both directions', () => {
+    const v = stampVerdict(page('03a59964'), '32a55b75');
+    expect(v.ok).toBe(false);
+    expect(v.problem).toBe('has a stamp naming 03a59964, but .artifact-sync.json records 32a55b75 as published');
+    expect(v.fix).toMatch(/--sync <id> --as-of 03a59964/);
+    expect(v.fix).toMatch(/--stamp <id> --as-of 32a55b75/);
+  });
+
+  it('compares the full text: a sha that is a PREFIX of the other, in either direction, is not the same record', () => {
+    expect(stampVerdict(page('32a55b75'), '32a55b7').ok).toBe(false);
+    expect(stampVerdict(page('32a55b7'), '32a55b75').ok).toBe(false);
+  });
+
+  it('with no publish recorded yet, requires only the one stamp', () => {
+    expect(stampVerdict(page('43d766e6'), undefined)).toEqual({ ok: true, sha: '43d766e6' });
+    expect(stampVerdict('<title>p</title><div class="wrap"><p>no stamp</p></div>', undefined).ok).toBe(false);
+  });
+
+  it('refuses a page with no stamp, naming the readStamp error', () => {
+    const v = stampVerdict('<title>p</title><div class="wrap"><p>no stamp</p></div>', '32a55b75');
+    expect(v).toMatchObject({ ok: false, problem: 'has no as-of stamp' });
+    expect(v.fix).toMatch(/run --stamp <id>/);
   });
 });
