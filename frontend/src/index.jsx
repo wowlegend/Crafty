@@ -55,6 +55,10 @@ import App from './App';
 import { useGameStore } from './store/useGameStore';
 import { GameMethods } from './GameMethods';
 import { ErrorBoundary } from './ui/ErrorBoundary.jsx';
+import { installLookbookSeam } from './render/lookbookSeam.js';
+import { setActive, getActiveSnapshot } from './input/inputState.js';
+import { cycleFraction } from './game/dayPhase.js';
+import { glInfo, contextLossCount } from './render/glDiagnostics.js';
 
 applyThemeVars(); // write --ui-* onto :root before first paint
 
@@ -68,6 +72,11 @@ if (typeof window !== 'undefined') {
   // four advertised entry surfaces. `import.meta.env.DEV` is statically false in prod, so this is
   // tree-shaken out of the shipped bundle.
   if (import.meta.env.DEV) window.GameMethods = GameMethods;
+  // The lookbook probe's door into the PRODUCTION build (render/lookbookSeam.js): installed only for `?lookbook=1`,
+  // and inert until a script calls it. Not DEV-gated on purpose — the probe shoots the shipped bundle.
+  installLookbookSeam(window, {
+    store: useGameStore, setActive, getActive: getActiveSnapshot, cycleOf: cycleFraction, glInfo, contextLosses: contextLossCount,
+  });
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

@@ -200,7 +200,8 @@ describe('worldNow — the WORLD clock does not advance through a freeze (QUEUE 
   });
 
   it('the worker, the telegraph and the dragon read it (weak, structural)', () => {
-    expect(carriersOf(/const now = worldNow\(\);/).sort()).toEqual(['render/BossEntity.jsx', 'systems/AIWorkerSystem.jsx']);
+    // + the storm lightning (2026-09-26): a hitstop holds a flash and a thunder in flight like the rest of the world.
+    expect(carriersOf(/const now = worldNow\(\);/).sort()).toEqual(['render/BossEntity.jsx', 'render/LightningDriver.jsx', 'systems/AIWorkerSystem.jsx']);
     expect(carriersOf(/entity\.windupUntil && wnow < entity\.windupUntil/)).toEqual(['render/MobModel.jsx']);
     expect(carriersOf(/performance\.now\(\) < entity\.windupUntil/), 'a wall-clock windup read is back').toEqual([]);
     expect(carriersOf(/telegraphUntil: worldNow\(\) \+ LAVA_WINDUP_MS/)).toEqual(['render/BossEntity.jsx']);

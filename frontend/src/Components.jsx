@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useSyncExternalStore } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { GameMethods } from './GameMethods';
 import * as THREE from 'three';
@@ -20,7 +20,7 @@ import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE
 import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
-import { pressHeavy, releaseHeavy, cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
+import { cancelHeavy, heavyWalkMult, isHeavyReady, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -53,9 +53,13 @@ import { routeExpressVerb } from './input/expressVerbs.js';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
+import { lookbookPose, applyLookbookPose, subscribeLookbook, lookbookPinned } from './render/lookbookSeam.js';
 import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive, resetInput } from './input/inputState';
 import { installBlurReset } from './input/blurReset';
+import { installPrimaryMouse } from './input/compatMouse.js';
+import { installPrimaryInput } from './input/primaryInput.js';
+import { registerTestHook } from './devtest/testBridge.js';
 import { notifyDenied } from './ui/denyToast';
 import { PLAYER_SPAWN } from './game/playerSpawn.js';
 
@@ -226,8 +230,10 @@ export const Player = ({ isWorldBuilt }) => {
     // While a heavy is CHARGING the arm is drawn back: no light swing (T tapped during a mouse hold, or LMB during a
     // T hold). It used to swing — and start the 300 ms cooldown that then silently ate the charged release (the T
     // tapped late in the hold, as it lands under load: release 0).
-    if (!heavy && isHeavyHeld()) return;
-    if (now - lastAttackTime.current < MELEE_COOLDOWN * formMeleeCooldownMult(beastEl)) return;
+    // The cooldown runs on this handler clock; a charged release is exempt from it (game/heavyAttack.meleeRefusal,
+    // review round 3): a press handled late and lifted soon after is a full charge on the finger, and the cooldown its
+    // own light swing started used to drop that heavy silently.
+    if (meleeRefusal(heavy, now, lastAttackTime.current, MELEE_COOLDOWN * formMeleeCooldownMult(beastEl))) return;
     { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.melee)); } // game-feel: melee recoil
     lastAttackTime.current = now;
     // M6: every committed swing whooshes (playAttackSounds = swing + attack; was DEFINED-BUT-NEVER-CALLED,
@@ -420,12 +426,12 @@ export const Player = ({ isWorldBuilt }) => {
       else if (express === 'melee' && !e.repeat) { // a held T CHARGES a heavy now; its key-repeat used to spam taps
         triggerMeleeAttack();
         // The heavy is the human sword's: not in a beast form (R9.2), not with the voidhand full (R9.3, as LMB).
-        const st = useGameStore.getState();
-        if (!st.voidhandHeld && !st.beastFormActive) pressHeavy(performance.now(), 'key');
+        // input/primaryInput.js pressKey, the charge counted from the keydown's own time (review round 3).
+        primary.pressKey(e.timeStamp);
       }
     };
     const handleKeyUp = (e) => {
-      if (e.code === 'KeyT') releaseHeavySwing('key');
+      if (e.code === 'KeyT') releaseHeavySwing('key', e.timeStamp);
       if (e.code === 'KeyW') setIntent('moveF', false);
       else if (e.code === 'KeyS') setIntent('moveB', false);
       else if (e.code === 'KeyA') setIntent('moveL', false);
@@ -528,25 +534,30 @@ export const Player = ({ isWorldBuilt }) => {
       else if (verb === 'interact') GameMethods.terrainVerbs?.open(hit);
       return verb;
     };
-    // HEAVY MELEE (game/heavyAttack.js): the tap has already swung inside performVerb; HOLDING the mouse button on an
-    // attack starts the charge, and the release throws the heavy. Only the REAL mouse presses it — the touch overlay
-    // calls performVerb with no release event, and a press it never releases would slow the walk forever.
+    // HEAVY MELEE (game/heavyAttack.js): the tap has already swung inside performVerb; HOLDING the primary on an attack
+    // starts the charge, and the release throws the heavy. ONE press path for every input that HAS a release: the real
+    // mouse here, and (Phase 0c) the touch overlay's action button through the store seams published below. Touch used
+    // to call performVerb with no release event at all — which is why it could never charge, and why a press it never
+    // released would have slowed the walk forever; its button now releases on up, cancel, lost capture and leave.
+    // `source` names the input holding the charge, so another input's release cannot end it (R9.3).
     // A beast form's hold charges nothing (R9.2): triggerMeleeAttack drops `heavy` in a form, so a charge there only
     // slowed the walk, ticked "ready" and threw a free extra light swing on release.
-    const handleMouseDown = (e) => {
-      const verb = performVerb(e.button);
-      const st = useGameStore.getState();
-      if (e.button === 0 && verb === 'attack' && !st.voidhandHeld && !st.beastFormActive) pressHeavy(performance.now(), 'mouse');
-    };
-    // `source` is the input coming up: only the one holding the charge can release it (R9.3 — T's keyup used to end a
-    // charge the mouse held).
-    const releaseHeavySwing = (source) => {
-      const now = performance.now();
-      if (!getInput().active || !useGameStore.getState().isAlive) { cancelHeavy(); return; }
-      if (releaseHeavy(now, source)) triggerMeleeAttack({ heavy: true });
-    };
-    const handleMouseUp = (e) => { if (e.button === 0) releaseHeavySwing('mouse'); };
-    useGameStore.setState({ performVerb }); // touch overlay (M1) dispatches via store.performVerb
+    // input/primaryInput.js owns the press, the release and their publication to the store (review round 3: inline here,
+    // a store wrapper that dropped the lift's time stayed green across the suite; tests/gates/primary-input-gates.test.jsx
+    // drives the published seams). Each takes `at`, the event's own time, so the hold is read on the input and not on a
+    // handler a stall delayed (heavyAttack inputTime): the touch overlay, the mouse pair (compatMouse) and T (pressKey,
+    // and its keyup through releasePrimary) all pass it. The touch
+    // overlay dispatches through the store: performVerb (M1: cast), pressPrimary / releasePrimary (Phase 0c: the held
+    // action button — the same press and release the mouse uses, as the 'touch' source).
+    const primary = installPrimaryInput({
+      performVerb,
+      setState: useGameStore.setState,
+      getState: useGameStore.getState,
+      isInputLive: () => getInput().active && useGameStore.getState().isAlive,
+      throwHeavy: () => triggerMeleeAttack({ heavy: true }),
+      now: () => performance.now(),
+    });
+    const { pressPrimary, releasePrimary: releaseHeavySwing } = primary;
     // Centralized active gate: the ONE pointer-lock read in the controller. Pointer-lock is the
     // KB+mouse "input is live" source today; setActive() routes it into the intent module so the
     // verb loop gates on getInput().active (a future touch layer sets active from its own focus).
@@ -566,21 +577,25 @@ export const Player = ({ isWorldBuilt }) => {
     handlePointerLockChange(); // sync initial active state on mount (single read above)
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp);
+    // REVIEW F2 (input/compatMouse.js): a touch tap is followed by compatibility mousedown / mouseup events, which reached
+    // the window mouse listeners and pressed the primary AGAIN as 'mouse' — the touch action button swung twice per tap,
+    // and a tap on any other touch control swung, mined or placed. An echo is not input: installPrimaryMouse is the
+    // echo-filtered mousedown / mouseup pair, and a mouseup takes its mousedown's verdict.
+    const primaryMouse = installPrimaryMouse({ pressPrimary, releaseHeavySwing, now: () => performance.now() });
+    // dev bridge: the e2e F2 case reads what was dropped per event type, and the presses per source
+    registerTestHook('readCompatMouse', () => ({ dropped: primaryMouse.dropped(), presses: primary.presses() }));
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     document.addEventListener('pointerlockerror', handlePointerLockError);
     // B8: clear held movement intents on focus loss (alt-tab drops the keyup -> keys stuck ON).
     const removeBlurReset = installBlurReset();
     return () => {
+      primaryMouse.remove();
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
       document.removeEventListener('pointerlockerror', handlePointerLockError);
       removeBlurReset();
-      useGameStore.setState({ performVerb: null }); // symmetry with the playerRigidBodyRef teardown — don't retain a stale closure across remount
+      primary.remove(); // clears performVerb / pressPrimary / releasePrimary: symmetry with the playerRigidBodyRef teardown — don't retain a stale closure across remount
     }
   }, [camera, triggerMeleeAttack, triggerSpellCast]);
 
@@ -601,6 +616,19 @@ export const Player = ({ isWorldBuilt }) => {
       camera.lookAt(lookAt[0], lookAt[1], lookAt[2]);
       camera.fov = 75;
       camera.updateProjectionMatrix();
+      return;
+    }
+
+    // The lookbook probe's camera pin (render/lookbookSeam.js): null unless the page was opened with ?lookbook=1 AND
+    // a script posed it, so this is one null read per frame in play. Same early-return shape as capture above, but
+    // the world is NOT paused: the physics step, mobs, weather and the clock keep running — motion-on frames are its
+    // whole point. What stops is THIS controller, from this return to the end of the callback: movement and the KCC,
+    // the death branch, the void-fall guard and the beast / voidhand / imbue state machines. And PositionTracker
+    // publishes camera.position as store.playerPosition, so while posed mobs, allies, chunk streaming and a manual
+    // save see the hero-shot camera, not the body (render/lookbookSeam.js).
+    const lookPose = lookbookPose();
+    if (lookPose) {
+      applyLookbookPose(state.camera, lookPose);
       return;
     }
 
@@ -1402,6 +1430,9 @@ export const Player = ({ isWorldBuilt }) => {
   // visual-regression fixture is a clean world vista (the render recipe operates on
   // terrain/sky/AO; the character render language is validated separately in S1-B M2).
   const inCapture = useGameStore((s) => s.isCaptureMode);
+  // The same for a lookbook pose (render/lookbookSeam.js): an elevated hero shot with the hands in the corner would
+  // misrepresent the frame. Changes only when the probe poses or clears, never per frame.
+  const lookbookOn = useSyncExternalStore(subscribeLookbook, lookbookPinned);
 
   return (
     <group>
@@ -1440,7 +1471,7 @@ export const Player = ({ isWorldBuilt }) => {
       <HurlSystem />
       <SnareTetherSystem />
       <primitive object={camera}>
-        {!inCapture && (
+        {!inCapture && !lookbookOn && (
           <StableMagicHands selectedBlock={selectedBlock} attackType={attackType} attackStartTime={attackStartTime} />
         )}
       </primitive>

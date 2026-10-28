@@ -14,6 +14,20 @@ export const TRAY_PANELS = [
   { id: 'magic',     labelKey: 'ui.magic',     icon: 'Sparkles', action: 'setShowMagic',         show: 'showMagic' },
 ];
 
+/**
+ * Open the Talents panel from touch — the KeyU open branch (InputManager.jsx), which a tablet has no key for. Until
+ * Phase 0c NOTHING on touch opened this panel, so no Aspect could ever be unlocked on an iPad (refute F9). The panel's
+ * open flag is App-local state (useInputManager), not a store key, which is why it is not a TRAY_PANELS row: App
+ * passes its setters in. Closes the other panels first, exactly as the key does.
+ */
+export const openTalents = (store, { setShowSpellUpgrades, setShowAchievements }) => {
+  for (const k of ['setShowInventory', 'setShowCrafting', 'setShowMagic', 'setShowBuildingTools', 'setShowSettings']) {
+    store?.[k]?.(false);
+  }
+  setShowAchievements?.(false);
+  setShowSpellUpgrades(true);
+};
+
 /** Flip one panel through its verified store setter (which accepts a fn updater). Returns false if unwired. */
 export const togglePanel = (panel, store) => {
   if (!panel || !store || typeof store[panel.action] !== 'function') return false;

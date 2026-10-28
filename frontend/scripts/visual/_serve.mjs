@@ -52,17 +52,20 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
  *
  * Never let a managed server open a browser. The harness brings its own; anything else is the operator's.
  */
-export function viteArgv(port, preview = false) {
+export function viteArgv(port, preview = false, outDir = null) {
   const base = preview ? ['vite', 'preview'] : ['vite'];
-  return [...base, '--port', String(port), '--strictPort', '--no-open'];
+  // `outDir` (preview only): serve a build kept elsewhere — the power A/B's other arm (scripts/dev/power-ab.sh
+  // --build-dir) — instead of build/. `vite preview --outDir <dir>` (vite 6.4.5 `vite preview --help`).
+  const out = preview && outDir ? ['--outDir', String(outDir)] : [];
+  return [...base, '--port', String(port), '--strictPort', '--no-open', ...out];
 }
 
-export function serveVite(port, { cwd, preview = false } = {}) {
+export function serveVite(port, { cwd, preview = false, outDir = null } = {}) {
   const url = `http://localhost:${port}`;
   // `preview: true` serves the BUILT bundle from build/ instead of the dev server. Same lifecycle, same
   // process-group kill — the whole point of this helper is that there is one correct way to do that, and
   // a fourth hand-rolled spawn would be a fourth chance to orphan vite on the port.
-  const server = spawn('npx', viteArgv(port, preview), { cwd: cwd || process.cwd(), stdio: 'ignore', detached: true });
+  const server = spawn('npx', viteArgv(port, preview, outDir), { cwd: cwd || process.cwd(), stdio: 'ignore', detached: true });
 
   const waitReady = async (tries = 60) => {
     for (let i = 0; i < tries; i++) {
@@ -71,6 +74,20 @@ export function serveVite(port, { cwd, preview = false } = {}) {
     }
     throw new Error(`vite did not start on ${port}`);
   };
+
+  // kill the whole vite process GROUP (npx wrapper + forked child); fall back to a plain kill. Synchronous, so it can
+  // run inside a process 'exit' listener.
+  const killGroup = () => {
+    try { process.kill(-server.pid, 'SIGKILL'); } catch { try { server.kill('SIGKILL'); } catch { /* already gone */ } }
+  };
+  // THE EXIT BACKSTOP (review of PR #23, item 2). shutdown() runs only if the caller gets to it, and a process can end
+  // without that: Playwright installs its own SIGINT handler while a browser is open (playwright-core 1.64.1
+  // processLauncher `sigintHandler`: gracefullyCloseAll(), then process.exit(130)), so Ctrl-C on lookbook.mjs exited
+  // before lookbook's own handler reached `await shutdown()` — and this group, detached and therefore out of reach of
+  // the terminal's SIGINT by design, kept the port. node runs 'exit' listeners on every process.exit and on an uncaught
+  // throw, so the group dies with its owner on all of those. It cannot cover a signal no listener handles (node's
+  // default action ends the process with no 'exit' event): a probe that wants Ctrl-C to clean up still installs one.
+  process.on('exit', killGroup);
 
   const shutdown = async (browser) => {
     if (browser) {
@@ -81,8 +98,8 @@ export function serveVite(port, { cwd, preview = false } = {}) {
       });
       try { const p = browser.process && browser.process(); if (p && !p.killed) p.kill('SIGKILL'); } catch { /* already gone */ }
     }
-    // kill the whole vite process GROUP (npx wrapper + forked child); fall back to a plain kill.
-    try { process.kill(-server.pid, 'SIGKILL'); } catch { try { server.kill('SIGKILL'); } catch { /* already gone */ } }
+    killGroup();
+    process.off('exit', killGroup);
   };
 
   return { server, url, waitReady, shutdown };
@@ -133,7 +150,8 @@ export const PROBE_PORTS = Object.freeze({
   'gpu-cost-probe.mjs': 4234,
   'godrays-probe.mjs': 4235,
   'ambient-floor-probe.mjs': 4236,
-  'ipad-probe.mjs': 4237
+  'ipad-probe.mjs': 4237,
+  'lookbook.mjs': 4238
 });
 
 /** Resolve THIS probe's port from its own `import.meta.url`. Throws if the file is unregistered. */

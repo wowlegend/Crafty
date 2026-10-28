@@ -98,6 +98,30 @@ describe('gate-table — parseHook is a COUNT, so its denominator is the whole p
     expect(callersFor({ tier: 'nonsense-tier' })).toEqual(CALLERS.core);
   });
 
+  // 2026-10-28: artifact-currency runs in the push tier AND, on a CI push to main, in the fast tier. Two rows
+  // would print 18 gates where 17 exist; the first row alone would print `CI: —` for a gate CI runs.
+  // Mutation-Proof (mutate.sh), each observed RED: G1 parseHook's merge deleted (every step is its own row) ->
+  // this case; G2 callersFor reads `[gate.tier]` only, ignoring `also` -> this case.
+  it('ONE gate run by two tiers is ONE row, and its callers are the UNION of both tiers', () => {
+    const two = parseHook(`if [ "$TIER" = "push" ]; then
+  step "twice (the push run)" node scripts/ci/twice.mjs
+fi
+if [ "$TIER" = "fast" ]; then
+  step "ci-only" node scripts/ci/ci-only.mjs
+  if [ "\${GITHUB_EVENT_NAME:-}" = "push" ]; then
+    step "twice (the CI run)" env X=1 node scripts/ci/twice.mjs
+  fi
+  step "after-nested" node scripts/ci/after.mjs
+fi
+`);
+    expect(two.map((g) => g.name)).toEqual(['twice', 'ci-only', 'after-nested']);
+    const twice = two.find((g) => g.name === 'twice');
+    expect(callersFor(twice)).toEqual({ commit: false, push: true, ci: true });
+    expect(twice.cmd, 'the row keeps the FIRST command').toBe('node scripts/ci/twice.mjs');
+    expect(callersFor(two.find((g) => g.name === 'after-nested')), 'an INDENTED nested fi must not reset the tier')
+      .toEqual(CALLERS.fast);
+  });
+
   it('renderBlock emits one row per gate, between the sentinels', () => {
     const block = renderBlock(gates, '');
     expect(block.startsWith(BEGIN)).toBe(true);

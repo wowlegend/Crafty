@@ -43,18 +43,36 @@ export const ASPECT_VERBS = KEY_MAP.filter((r) => r.group === 'Aspects' && r.ver
 export const TAP_HOLD_MS = 120;
 
 /**
- * Which Aspect verbs a player can actually use right now.
- *
- * GATED, NOT GREYED. The desktop path lets a locked verb through and fires a "denied" toast — reasonable
- * with a physical key you might press by accident. A ring is a menu the player chose to open, and offering a
- * sector that only ever refuses is a worse trade on a thumb-sized target than simply not offering it. A
- * player with nothing unlocked gets no ring at all, which is honest: there is nothing to show.
+ * Which Aspect verbs a player can actually use right now (rank > 0; a refunded talent sits at rank 0 and is LOCKED).
+ * The ring draws every Aspect (see `aspectRing`); this is the live subset, e.g. for the cooldown aggregate.
  *
  * @param {Record<string, number>|undefined} unlockedTalents store map talentId -> rank
  */
 export function unlockedAspectVerbs(unlockedTalents) {
   const t = unlockedTalents || {};
   return ASPECT_VERBS.filter((a) => (t[a.talent] ?? 0) > 0);
+}
+
+/**
+ * The ring's sectors: EVERY Aspect, in KEY_MAP order, each marked `locked` or not.
+ *
+ * SHOWN, LOCKED ONES MARKED — a reversal, Phase 0c (refute F9, plan docs/superpowers/plans/2026-10-27-crafty-touch-hold.md).
+ * This used to be GATED, NOT GREYED: "offering a sector that only ever refuses is a worse trade on a thumb-sized
+ * target than not offering it". That held only while the refusal was the end of the story. On desktop it is not — a
+ * locked key press teaches "open Talents (U)" (Components.jsx keydown, deniedReason.js). On touch there is no U and,
+ * until this phase, no other way to the Talents panel at all, so hiding a locked Aspect hid the only path that could
+ * lead a touch player to the game's signature: a new iPad player saw no ring, could unlock nothing, and never would.
+ * Now a locked sector is drawn dimmed with a lock, and tapping it opens the Talents panel — the touch form of the
+ * desktop's notice: the same trigger, the same purpose, delivered without naming a key the device lacks. The spell
+ * picker took the ungated side earlier for the same reason (TouchControls.jsx: touch must not be stricter than the
+ * keyboard). A locked sector writes NO intent.
+ *
+ * @param {Record<string, number>|undefined} unlockedTalents store map talentId -> rank
+ * @returns {Array<{verb:string, talent:string, key:string, aspect:string, locked:boolean}>}
+ */
+export function aspectRing(unlockedTalents) {
+  const t = unlockedTalents || {};
+  return ASPECT_VERBS.map((a) => ({ ...a, locked: !((t[a.talent] ?? 0) > 0) }));
 }
 
 /**
@@ -113,22 +131,65 @@ export function anyOnCooldown(abilityCooldowns, verbs) {
 // So the geometry is a straight FAN ROW extending inward from the anchor. It cannot leave the viewport on
 // either axis, adjacent items cannot overlap, it does not grow vertically into the other row's opener,
 // and it lands along the natural sweep of the thumb that just tapped the opener.
+//
+// WHERE THE ROWS SIT (review F1, 2026-10-27). The Aspect row used to sit at `11% + 104px`, which is the jump
+// button's own band (`11% + 96px`, 60px tall): its opener covered the jump's centre, so once Phase 0c showed the
+// opener to every player, a fresh player's jump tap opened the ring. The rows now stack ABOVE the jump, and they are
+// anchored to the JOYSTICK's 13% rather than the action cluster's 11%. That is not cosmetic: on a portrait phone the
+// fan reaches across the joystick base, and two different percentage anchors drift apart with the viewport height
+// (2% of 932px is 19px), so a px gap that clears on one phone overlaps on the next. On the shared anchor the gap to
+// the joystick is a constant 8px, and the gap to the jump (0.13H - 0.11H) only grows. The cost is height: the stack
+// (13% + 266px, then the 58px band the Pause and the HUD's Settings gear take at the top) is taller than a landscape
+// phone under ~373px of visible height. There the spell row moves inward past the Pause (TOP_BAND_PX below) instead of
+// rising into the band. tests/gates/touch-layout-gates.test.jsx checks every control, the gear included, against every
+// other in every viewport, and sweeps the heights either side of the switch.
 export const TOUCH_BTN = 52;               // hit-target edge, px — the whole layout is expressed in these
 export const FAN_STEP = TOUCH_BTN + 6;     // centre-to-centre; the +6 is the visible gutter between two
-export const FAN_ANCHOR_RIGHT = 26;        // the opener's own right offset — item 0 sits directly on it
-export const ASPECT_ROW_BOTTOM = 104;      // the Aspect opener's row
-export const SPELL_ROW_BOTTOM = 182;       // the spell-picker row, one thumb-height above
+export const FAN_ANCHOR_RIGHT = 26;        // the opener's own right offset; item 0 sits one FAN_STEP inward of it
+export const FAN_ROW_ANCHOR_PCT = 13;     // the rows' bottom anchor, % of the height: the joystick base's own (TouchControlsSurface)
+export const FAN_ROW_ANCHOR = `${FAN_ROW_ANCHOR_PCT}%`;
+export const ASPECT_ROW_BOTTOM = 156;      // the Aspect opener's row: 8px above the joystick base, clear of the jump
+export const SPELL_ROW_BOTTOM = 214;       // the spell-picker row, one row (and the 6px gutter) above
+
+// THE TOP BAND (review round 2). Raising the rows for F1 put the spell row's opener on the CENTRE of the HUD's Settings gear
+// in Safari's landscape on an iPhone 14 / 15 Pro / SE: the stack (13% + 266 px) is taller than those ~340 px viewports
+// leave below the top-right corner, where two controls live — the touch Pause (TouchControls: top safe-area + 10 px,
+// right 64, 46 px) and the gear (GameHud: top-4 right-4, 42 px). The gear sits in a z-20 layer UNDER this one, so a control
+// over it takes every tap meant for Settings. TOP_BAND_PX is their lowest edge, the gear's 16 + 42 px.
+export const TOP_BAND_PX = 58;
+// Where the stacked spell row would reach that band, it keeps its height and moves inward past the Pause's inner edge
+// (64 + 46 = 110 px from the right) by this much, leaving the 6 px gutter: its opener at 116 px. A clamp downward cannot
+// work there — at 320 to 343 px the jump, the Aspect row and the spell row do not fit under the band at all — and the
+// Aspect row cannot take the spell opener beside its fan on a 320 px portrait phone (6 slots of 58 px are 374 px).
+export const SPELL_SHORT_SHIFT = 90;
+
+/** PURE. Whether the stacked spell row (one row above the Aspect row, on the right edge) clears the top band in a viewport
+ *  `viewportH` px tall. False below ~373 px. The safe-area top inset is not an input: a viewport that short is a landscape
+ *  phone, whose top inset is 0; tests/gates/touch-layout-gates.test.jsx checks every viewport, insets included. */
+export function spellRowStacks(viewportH) {
+  return viewportH * (1 - FAN_ROW_ANCHOR_PCT / 100) - (SPELL_ROW_BOTTOM + TOUCH_BTN) >= TOP_BAND_PX;
+}
+
+/** PURE. The spell row's right anchor, px: the fans' own on the edge where the stack fits, else shifted inward past the
+ *  Pause. Read through input/useSpellAnchor.js by both touch layers. */
+export function spellAnchorRight(viewportH) {
+  return spellRowStacks(viewportH) ? FAN_ANCHOR_RIGHT : FAN_ANCHOR_RIGHT + SPELL_SHORT_SHIFT;
+}
 
 /**
  * PURE. Offsets for `count` items fanning INWARD from a bottom-right-anchored opener.
  *
  * Consumers place items with `right: anchor - x` and `bottom: row - y`, so x must be NEGATIVE to move
  * leftward (inward) and y stays 0 — the row does not climb, which is what keeps it clear of the other
- * opener 78px above and off the top edge of a short landscape viewport.
+ * row above and off the top edge of a short landscape viewport.
+ *
+ * Item 0 sits ONE STEP inward of the opener, not on it (review F4). On it, the open ring's first sector covered its
+ * own opener, so the opener could never close the ring: with every Aspect locked, every way out of an open ring opened
+ * Talents. Beside it, the opener stays a real toggle.
  */
 export function fanLayout(count, step = FAN_STEP) {
   if (!(count > 0) || !(step > 0)) return [];
-  return Array.from({ length: count }, (_, i) => ({ x: -i * step, y: 0 }));
+  return Array.from({ length: count }, (_, i) => ({ x: -(i + 1) * step, y: 0 }));
 }
 
 /**
@@ -138,27 +199,30 @@ export function fanLayout(count, step = FAN_STEP) {
  * is how a geometry bug can be true of the hit-target and invisible in the drawing, or the reverse. It is
  * also why the old gate could only assert that a glyph was in the jsdom document — there was no seam
  * carrying the number it needed to check. This is that seam.
+ *
+ * `anchorRight` is the row's own right anchor: FAN_ANCHOR_RIGHT, except the spell row on a short viewport
+ * (spellAnchorRight). Both layers pass the same value, read from input/useSpellAnchor.js.
  */
-export function fanItemStyle(row, q) {
+export function fanItemStyle(row, q, anchorRight = FAN_ANCHOR_RIGHT) {
   const x = (q && q.x) || 0;
   const y = (q && q.y) || 0;
   return {
-    right: `calc(env(safe-area-inset-right,0px) + ${FAN_ANCHOR_RIGHT - x}px)`,
-    bottom: `calc(11% + ${row - y}px)`,
+    right: `calc(env(safe-area-inset-right,0px) + ${anchorRight - x}px)`,
+    bottom: `calc(${FAN_ROW_ANCHOR} + ${row - y}px)`,
     width: TOUCH_BTN,
     height: TOUCH_BTN,
   };
 }
 
-/** The opener sits at the fan's origin — item 0 lands exactly on it, which is the affordance. */
-export function fanOpenerStyle(row) {
-  return fanItemStyle(row, { x: 0, y: 0 });
+/** The opener sits at the fan's origin; the items fan inward beside it, leaving it tappable to close the ring. */
+export function fanOpenerStyle(row, anchorRight = FAN_ANCHOR_RIGHT) {
+  return fanItemStyle(row, { x: 0, y: 0 }, anchorRight);
 }
 
 /**
  * The px offset of an item's OUTER (leftmost) edge from the right side of the viewport. The measurement
  * the whole finding is about: the old ring put this at 0 for item 1, i.e. entirely off-screen.
  */
-export function fanItemInnerEdge(q) {
-  return FAN_ANCHOR_RIGHT - ((q && q.x) || 0) + TOUCH_BTN;
+export function fanItemInnerEdge(q, anchorRight = FAN_ANCHOR_RIGHT) {
+  return anchorRight - ((q && q.x) || 0) + TOUCH_BTN;
 }
