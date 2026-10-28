@@ -23,7 +23,6 @@ import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { CombatLog } from './ui/CombatLog';
 import { BossHealthBar } from './ui/BossHealthBar';
 import DamageDirection from './ui/DamageDirection';
-import WindupChevrons from './ui/WindupChevrons';
 import LowHealthVignette from './ui/LowHealthVignette';
 import HeartbeatAudio from './ui/HeartbeatAudio';
 import DayNightAudio from './ui/DayNightAudio';
@@ -41,6 +40,12 @@ import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
 import { SNARE_COST, SOUL_MAX } from './game/soul.js';
 import { RESONANCE_MAX, ZONE_COST } from './game/resonance';
 import { subscribeHudTick } from './ui/hudTicker.js';
+
+// The windup chevrons (combat-stance Task 7) load behind a lazy boundary: the combat-stance lane's share of the index
+// chunk is +9,000 B (plan Global Constraints and Task 12 Step 3), and the build with it in the boot chunk measured
+// +9,024 B. The layer is DOM-only and reads nothing until a windup is off screen, so it arriving a moment after the HUD
+// mounts costs nothing a player can see.
+const WindupChevrons = React.lazy(() => import('./ui/WindupChevrons'));
 
 // M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
 // (HUD is a plain declarative component, not a per-frame useFrame system, so a
@@ -670,7 +675,7 @@ export function HUD({
       <DuskWarning />
       <MusicPlayer />
       <DamageDirection />
-      <WindupChevrons />{/* combat-stance Task 7: a chevron at the edge for a windup off screen; ticker-driven, refs only */}
+      <React.Suspense fallback={null}><WindupChevrons /></React.Suspense>{/* combat-stance Task 7: a chevron at the edge for a windup off screen; ticker-driven, refs only */}
       <UISounds />
       <AspectHintToast />
 
