@@ -1,10 +1,12 @@
 import { useGameStore } from './store/useGameStore';
 import { subscribeMobKill } from './game/mobKillBus.js';
 import { questMatches } from './game/questMatch.js';
+import { killXP } from './game/killReward.js';
 import { GameMethods } from './GameMethods';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isCaptureMode } from './devtest/captureMode';
+import { isWorldFrozenNow } from './game/worldClock.js';
 import { isTouchUIMode } from './input/touchDevice';
 import { Panel, Button, Icon, Toast, Modal } from './ui/primitives/index.js';
 import { useT } from './i18n/i18n.js';
@@ -29,7 +31,7 @@ export const QUEST_LIST = [
     { id: 'hunter', title: 'Hunter', icon: 'bow', description: 'Defeat 5 mobs', type: 'kill', target: 5, xpReward: 75, tier: 1, itemReward: { item: 'Iron Sword', count: 1 } },
     { id: 'builder', title: 'Builder', icon: 'hammer', description: 'Place 20 blocks', type: 'block_place', target: 20, xpReward: 50, tier: 1, itemReward: { item: 'wood', count: 24 } },
     { id: 'miner', title: 'Miner', icon: 'pickaxe', description: 'Break 30 blocks', type: 'block_break', target: 30, xpReward: 60, tier: 1, itemReward: { item: 'Iron Helmet', count: 1 } },
-    { id: 'spellcaster', title: 'Spellcaster', icon: 'magic', description: 'Cast 10 spells', type: 'spell_cast', target: 10, xpReward: 40, tier: 1 },
+    { id: 'spellcaster', title: 'Spellcaster', icon: 'magic', description: 'Land 10 spells on enemies', type: 'spell_hit', target: 10, xpReward: 40, tier: 1 },
 
     // Intermediate quests
     { id: 'zombie_slayer', title: 'Zombie Slayer', icon: 'zombie', description: 'Defeat 10 zombies', type: 'kill_type', mobType: 'zombie', target: 10, xpReward: 120, tier: 2 },
@@ -46,7 +48,7 @@ export const QUEST_LIST = [
 
     // Advanced quests
     { id: 'champion', title: 'Champion', icon: 'trophy', description: 'Defeat 50 mobs', type: 'kill', target: 50, xpReward: 300, tier: 3, itemReward: { item: 'Diamond Sword', count: 1 } },
-    { id: 'archmage', title: 'Archmage', icon: 'magic', description: 'Cast 100 spells', type: 'spell_cast', target: 100, xpReward: 250, tier: 3 },
+    { id: 'archmage', title: 'Archmage', icon: 'magic', description: 'Land 100 spells on enemies', type: 'spell_hit', target: 100, xpReward: 250, tier: 3 },
     { id: 'treasure_master', title: 'Treasure Master', icon: 'crown', description: 'Open 20 treasure chests', type: 'chest_open', target: 20, xpReward: 200, tier: 3 },
     { id: 'world_builder', title: 'World Builder', icon: 'globe', description: 'Place 500 blocks', type: 'block_place', target: 500, xpReward: 400, tier: 3 },
     { id: 'undead_destroyer', title: 'Undead Destroyer', icon: 'skull', description: 'Defeat 25 skeletons', type: 'kill_type', mobType: 'skeleton', target: 25, xpReward: 200, tier: 3 },
@@ -117,12 +119,19 @@ export const _statsOr = (v) => {
   };
 };
 
+// A save keeps a quest's progress; what the quest asks for comes from this file. Otherwise a quest retyped here would
+// sit in an old save waiting for an event nothing sends any more, under text that describes the old ask.
+const withCurrentAsk = (q) => {
+  const def = q && QUEST_LIST.find((d) => d.id === q.id);
+  return def ? { ...q, type: def.type, description: themedDescription(def) } : q;
+};
+
 export const useQuestSystem = () => {
     // S2a: seed the persistable working state from the store's questState mirror
     // (set by loadWorldData) when present, else the fresh-game defaults.
     const [quests, setQuests] = useState(() => {
         const saved = useGameStore.getState().questState;
-        if (saved && Array.isArray(saved.quests)) return saved.quests;
+        if (saved && Array.isArray(saved.quests)) return saved.quests.map(withCurrentAsk);
         // Initialize active quests (first 3 from tier 1)
         // M-NARRATIVE.2: enrich with the frontier lore/giver + a themed description (story flavor over the
         // generic chore). type/target/xpReward stay untouched (the {...q} spread), so every driver + the
@@ -181,7 +190,7 @@ export const useQuestSystem = () => {
         if (!didMountQuest.current) { didMountQuest.current = true; return; }
         const qs = useGameStore.getState().questState;
         if (!qs) return;
-        if (Array.isArray(qs.quests)) setQuests(qs.quests);
+        if (Array.isArray(qs.quests)) setQuests(qs.quests.map(withCurrentAsk));
         setCompletedQuestIds(new Set(_arrOr(qs.completedQuestIds, [])));
         if (_objOr(qs.stats, null)) {
             const restoredStats = _statsOr(qs.stats);
@@ -268,7 +277,7 @@ export const useQuestSystem = () => {
         const interval = setInterval(() => {
             // INSIDE the callback: this effect's deps are [] and the harness flips the capture flag AFTER
             // mount, so a guard on the setup path is provably false every time and suppresses nothing.
-            if (isCaptureMode()) return;
+            if (isCaptureMode() || isWorldFrozenNow()) return;
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
             const s = nearestLandmark(playerPos.x, playerPos.z);
@@ -377,16 +386,16 @@ export const useQuestSystem = () => {
     const onMobKill = useCallback((mobType, position, source) => {
         // S2-B3-M1: quest/achievement kill credit = YOUR kills only (ally kills bank nothing)
         if (source !== 'player') return;
-        // Update stats
-        applyStats(prev => ({
-            ...prev,
-            kills: prev.kills + 1,
-            kills_by_type: { ...prev.kills_by_type, [mobType]: (prev.kills_by_type[mobType] || 0) + 1 },
-        }));
-
-        // Update quest progress
-        updateQuestProgress('kill');
-        updateQuestProgress('kill_type', 1, { mobType });
+        // A kill worth no XP (a Settler) is not quarry: it counts toward no kill quest and no kill achievement either.
+        if (killXP(mobType) > 0) {
+            applyStats(prev => ({
+                ...prev,
+                kills: prev.kills + 1,
+                kills_by_type: { ...prev.kills_by_type, [mobType]: (prev.kills_by_type[mobType] || 0) + 1 },
+            }));
+            updateQuestProgress('kill');
+            updateQuestProgress('kill_type', 1, { mobType });
+        }
 
         // Generate loot drops
         const lootTable = LOOT_TABLES[mobType] || [];
@@ -410,11 +419,14 @@ export const useQuestSystem = () => {
         }
     }, [updateQuestProgress, applyStats, addNotification]);
 
-    // Record spell cast
+    // Record spell cast. Casting pays no quest progress: the spell quests count spells that land on an enemy.
     const onSpellCast = useCallback(() => {
         applyStats(prev => ({ ...prev, spells: prev.spells + 1 }));
-        updateQuestProgress('spell_cast');
-    }, [updateQuestProgress, applyStats]);
+    }, [applyStats]);
+
+    const onSpellHit = useCallback(() => {
+        updateQuestProgress('spell_hit');
+    }, [updateQuestProgress]);
 
     // Record block place
     const onBlockPlace = useCallback(() => {
@@ -453,6 +465,7 @@ export const useQuestSystem = () => {
     // Expose globally for other systems to call
     useEffect(() => {
         useGameStore.setState({ onSpellCast: onSpellCast });
+        useGameStore.setState({ onSpellHit: onSpellHit });
         useGameStore.setState({ onBlockPlace: onBlockPlace });
         useGameStore.setState({ onBlockBreak: onBlockBreak });
         useGameStore.setState({ onChestOpen: onChestOpen });
@@ -464,7 +477,7 @@ export const useQuestSystem = () => {
         // 'Shining Star' at 10) could never unlock — 2 of the 12 were dead on arrival. Every sibling event
         // above is published here for its emitter to call; this one was simply left out of the list.
         useGameStore.setState({ onLevelChanged: updateLevel });
-    }, [onSpellCast, onBlockPlace, onBlockBreak, onChestOpen, onDeath, onNightSurvived, addNotification, updateLevel]);
+    }, [onSpellCast, onSpellHit, onBlockPlace, onBlockBreak, onChestOpen, onDeath, onNightSurvived, addNotification, updateLevel]);
 
     // S2-B1-M3.5: mob kills now flow through the fan-out bus (was a single store.onMobKill slot a 2nd
     // consumer like ferocity would have clobbered). Quests subscribe; the kill-path emits. Unsub on unmount.
@@ -718,7 +731,7 @@ export const useTreasureChests = () => {
         const interval = setInterval(() => {
             // INSIDE the callback. Deps are [] and the harness flips the capture flag AFTER mount, so a
             // guard on the setup path is provably false every time and suppressed nothing.
-            if (isCaptureMode()) return;
+            if (isCaptureMode() || isWorldFrozenNow()) return;
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
 
@@ -803,7 +816,7 @@ export const useTreasureChests = () => {
     useEffect(() => {
         const interval = setInterval(() => {
             // INSIDE the callback — same reason as the two sibling pollers above.
-            if (isCaptureMode()) return;
+            if (isCaptureMode() || isWorldFrozenNow()) return;
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
             const s = nearestLandmark(playerPos.x, playerPos.z);

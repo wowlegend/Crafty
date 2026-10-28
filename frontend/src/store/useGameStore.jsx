@@ -469,6 +469,7 @@ export const useGameStore = create((set, get) => ({
     // (onMobKill moved to the src/game/mobKillBus.js fan-out in M3.5 — quests + ferocity both subscribe.)
     onSpellCast: null,
     setOnSpellCast: (fn) => set({ onSpellCast: fn }),
+    onSpellHit: null, // QuestSystem publishes it; the magic system calls it when a spell lands on an enemy
     onBlockPlace: null,
     setOnBlockPlace: (fn) => set({ onBlockPlace: fn }),
     onBlockBreak: null,
@@ -801,7 +802,6 @@ export const useGameStore = create((set, get) => ({
     setShowCredits: (show) => set((state) => ({ showCredits: typeof show === 'function' ? show(state.showCredits) : show })),
 
     isDay: true,
-    setIsDay: (isDayArg) => set((state) => ({ isDay: typeof isDayArg === 'function' ? isDayArg(state.isDay) : isDayArg })),
 
     // M3b night siege: nightCount (nights entered/survived) is the ONE source of
     // truth for siege intensity. Lifted out of useSurvivalMode's local useState so
@@ -1089,8 +1089,7 @@ export const useGameStore = create((set, get) => ({
             // new-world gate, not by anyone reading this line.
             const gameTime = saveData.game_state?.gameTime ?? state.gameTime;
             // Derive isDay from the restored gameTime so a resumed save is always
-            // phase-consistent (the clock is authoritative; the manual setIsDay toggle is
-            // transient by design). Fixes the edge where a save's stored isDay disagreed
+            // phase-consistent (the clock is authoritative). Fixes the edge where a save's stored isDay disagreed
             // with its gameTime and would not self-correct until the next half-cycle crossing.
             const isDay = isDayAtUnit(gameTime);
             const gameWon = saveData.game_state?.gameWon ?? state.gameWon; // S9c: the win persists across reload

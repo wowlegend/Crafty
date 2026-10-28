@@ -1,0 +1,51 @@
+Crafty
+Copyright 2025-2026 wowlegend. All rights reserved.
+
+Crafty's source code and its own assets in this repository are not licensed for copying, modification or
+redistribution. The third-party material listed below keeps its own licence.
+
+
+FONTS (frontend/public/fonts)
+
+Lilita One, lilita-one-v15-latin-regular.woff2
+  Copyright (c) 2011 Juan Montoreano (juan@remolacha.biz), with Reserved Font Name Lilita.
+  SIL Open Font License 1.1, LICENSES/OFL-LilitaOne.txt
+
+Space Grotesk, space-grotesk-v16-latin-regular.woff2
+  Copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk)
+  SIL Open Font License 1.1, LICENSES/OFL-SpaceGrotesk.txt
+
+Smiley Sans (得意黑), smiley-sans-v1.woff2
+  Copyright (c) 2022--2024, atelierAnchor <https://atelier-anchor.com>,
+  with Reserved Font Name <Smiley> and <得意黑>.
+  SIL Open Font License 1.1, LICENSES/OFL-SmileySans.txt
+
+Alibaba PuHuiTi 3.0 (阿里巴巴普惠体), puhuiti-regular.woff2, a subset of the 55 Regular weight
+  Copyright 2020-2023 Alibaba (China) Co., Ltd. All rights reserved.
+  Offered by Alibaba free of charge for commercial and non-commercial use under its Alibaba PuHuiTi 3.0
+  legal statement, published with the font at https://fonts.alibabagroup.com
+
+Mob nametags are drawn with a font that the troika-three-text library chooses and loads from
+cdn.jsdelivr.net (lojjic/unicode-font-resolver) while the game runs. That font is not stored here.
+
+
+ICONS
+
+The filled game icons in frontend/src/ui/primitives/gameIcons.js come from game-icons.net
+(https://game-icons.net), drawn by its contributors and published under the Creative Commons Attribution
+3.0 licence (https://creativecommons.org/licenses/by/3.0/). Crafty recolours them. The game credits them
+under Settings, Credits.
+
+The interface icons come from lucide-react (ISC licence), installed from npm.
+
+
+MUSIC
+
+The tracks in frontend/public/music were generated with ElevenLabs.
+
+
+LIBRARIES
+
+The JavaScript libraries Crafty runs on are installed from npm and keep their own licences, among them
+React, three.js and React Three Fiber (MIT) and the Rapier physics engine (Apache 2.0). frontend/package.json
+lists them, and each package carries its licence. The production bundle the live game serves includes them.

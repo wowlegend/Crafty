@@ -148,6 +148,22 @@ longer finds the instructions there; none is configured to in this repo.
    `do not relitigate` (any case). It prints file:line and points here. A line that cites item 16 may quote a label,
    which is how a doc quotes Kevin's directive; any other lock wording passes the check. This file is left out
    because it records and quotes such labels. The PASSED line prints both denominators: the phrasings and the docs.
+17. **The killability-ledger gate is retired (command session, 2026-10-28; item 15(c) decided it).** It demanded a
+   `Mutation-Proof:` line inside every new check file. Item 15(c) forbids mutation receipts in code, so every new test
+   raised its ratchet, and its only green path was a comment the comment pass would delete. The receipt now has one
+   home: the `Mutation-Proof:` commit trailer. The `mutation-proof-trailer` gate still demands it on every push, for a
+   commit that adds a gate or rewrites a gate's assertions. Removed: the pipeline step, the script, its ledger, its
+   test and its row in the gate table. The gate census keeps the population it shared with the ledger and no longer
+   scores a receipt inside a file. Neither the old gate nor the trailer gate can check that a receipt is true.
+18. **The Wave 1 cuts reach further than the plan first said (command session, 2026-10-28, on game-design grounds).**
+   A Settler kill pays 0 XP, banks no Aspect power, earns no kill-quest credit and does not count in `stats.kills`. A
+   spell hit on a NEUTRAL mob (a Settler or livestock) pays no per-hit XP. A livestock kill still pays its declared XP,
+   so hunting stays rewarded. Spellcaster and Archmage count spells that land on hostiles, once per spell, the Shadow
+   Dragon included; a cast, a ground hit or a sky shot counts nothing. One edge is not migrated: an old save that
+   finished Spellcaster under the old rule and has not claimed it still pays its 40 XP once.
+19. **The homepage is https://crafty-game.vercel.app (command session, 2026-10-28).** The command session added it as
+   an alias of the Vercel project the same day; Kevin clicked Add Domain. https://crafty-sand.vercel.app keeps working.
+   The play link, the README and the repo's homepage are rendered from `frontend/src/brand.js`.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 

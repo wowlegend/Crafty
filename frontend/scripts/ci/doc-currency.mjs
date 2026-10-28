@@ -42,6 +42,8 @@ import { fileURLToPath } from 'node:url';
 import { measure, parseBlock, TOLERANCE, LARGE_FILE_LOC } from './measure.mjs';
 import { checkBlock as checkGateBlock } from './gate-table.mjs';
 import { SURFACES as READ_ORDER_SURFACES, checkFile as checkReadOrderFile } from './read-order.mjs';
+import { checkBlock as checkControlsBlock } from './controls-table.mjs';
+import { check as checkPublicFaceFiles } from './public-face.mjs';
 
 import { DOC_ALIASES, sectionIds, itemIds, citations, unresolved } from './doc-anchors.mjs';
 
@@ -60,6 +62,8 @@ const RUNNERS = Object.freeze({
   gates: checkGates,
   measured: checkMeasured,
   'read-order': checkReadOrder,
+  controls: checkControls,
+  'public-face': checkPublicFace,
   sections: checkSections,
   locks: checkLocks,
 });
@@ -387,6 +391,30 @@ function checkReadOrder(root, out) {
     }
   }
   out.checked['read-order'] = examined;
+}
+
+// --- 4c. PUBLIC FACE ----------------------------------------------------------
+// The README's controls table comes from KEY_MAP, and the page head, noscript, manifest, README lead and repo
+// metadata from src/brand.js. A hand edit to any of them, or a rebound key, fails here until it is re-rendered.
+/** checked.controls = the KEY_MAP rows the README's CONTROLS block was compared over (0 when README is absent). */
+function checkControls(root, out) {
+  const readme = readDoc(root, 'README.md', out, 'its CONTROLS block');
+  if (readme === null) {
+    out.checked.controls = 0;
+    return;
+  }
+  const c = checkControlsBlock(readme);
+  if (!c.ok) out.errors.push(`README.md: ${c.reason} — regenerate: node frontend/scripts/ci/controls-table.mjs --write`);
+  out.checked.controls = c.rows;
+}
+
+/** checked['public-face'] = the rendered targets compared against a fresh render of src/brand.js. */
+function checkPublicFace(root, out) {
+  const { checked, stale } = checkPublicFaceFiles(root);
+  for (const s of stale) {
+    out.errors.push(`${s.rel}: ${s.reason} against src/brand.js — regenerate: node frontend/scripts/ci/public-face.mjs --write`);
+  }
+  out.checked['public-face'] = checked;
 }
 
 // --- cross-doc SECTION citations (`charter §6.4`, `STATUS §2`) ---------------

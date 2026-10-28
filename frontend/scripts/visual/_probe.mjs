@@ -366,3 +366,43 @@ export async function assertIntraPageDeterminism(page, label) {
   }
   return v;
 }
+
+/**
+ * IN-PAGE (hand it to `page.evaluate`, Playwright or puppeteer). Opens the game's input gate in a page whose click the
+ * browser refused a pointer lock (Playwright's headless shell always refuses; a headed window behind another may).
+ *
+ * WHY AN INSTRUMENT NEEDS IT. A game that has started with its input gate dead is PAUSED, and a paused game holds its
+ * world (game/worldClock.js isPlayPaused): no mob moves, nothing spawns, no AI ticks. So an instrument that latched play
+ * without opening the gate measures a frozen world, and before the real pause landed the same entry measured a running
+ * one: the same steps gave two different subjects either side of one commit.
+ *
+ * HOW. It answers `document.pointerLockElement` with the game canvas (the largest canvas) and fires
+ * `pointerlockchange`. Every build's player controller reads exactly that on exactly that event (Components.jsx, the one
+ * lock reader), so the gate opens through the game's own code, in a build with the lookbook seam or one from before it.
+ * What differs from a real lock: the browser does not capture the mouse, so the cursor stays visible and moving it does
+ * not turn the camera. Nothing the world simulates reads either.
+ *
+ * Returns 'held' when the browser holds a real lock (nothing is stood in), 'stood-in', or 'no-canvas'.
+ */
+export function standInPointerLock() {
+  if (document.pointerLockElement) return 'held';
+  const canvas = [...document.querySelectorAll('canvas')].sort((a, b) => b.width * b.height - a.width * a.height)[0];
+  if (!canvas) return 'no-canvas';
+  Object.defineProperty(document, 'pointerLockElement', { configurable: true, get: () => canvas });
+  document.dispatchEvent(new Event('pointerlockchange'));
+  return 'stood-in';
+}
+
+/**
+ * IN-PAGE. Whether the game is in play as any build shows it: play has started, the player is alive, and no pause
+ * surface is up (the resume overlay, or the pause panel the store opens on an unlock). Seam-free, like the stand-in
+ * above: it reads only the store every build exposes and the overlay's test id.
+ */
+export function playLiveReading() {
+  const s = window.useGameStore?.getState?.() || {};
+  return {
+    started: !!s.gameStarted,
+    alive: s.isAlive !== false,
+    pauseSurface: !!document.querySelector('[data-testid="resume-overlay"]') || !!s.showSettings,
+  };
+}

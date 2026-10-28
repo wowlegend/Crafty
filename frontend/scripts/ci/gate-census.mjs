@@ -26,8 +26,6 @@
  *   executes    the file IMPORTS its subject rather than reading it as text. A source-grep can only see
  *               that a line exists; it cannot see whether the line RUNS. The repo's own scar list has
  *               four same-day cases of shipped-compiling-gated-green-and-never-reached code.
- *   receipt     carries the literal `Mutation-Proof:` token naming what makes it fail. Shared with
- *               killability-ledger, whose POPULATION and survey() this file imports rather than restates.
  *   denominator asserts a COUNT of what it examined. "0 findings" and "never looked" are the same reading
  *               from outside; seventeen things in this repo have shipped a clean report over input they
  *               never examined.
@@ -35,33 +33,64 @@
  *               empty set is vacuously true, and that vacuity sits one layer in from the input.
  *   blindSpot   states in the file what it cannot see (R7).
  *
- * A check scoring 0 on all five is not necessarily WRONG — it may guard something trivial. It is
+ * A check scoring 0 on every dimension is not necessarily WRONG — it may guard something trivial. It is
  * UNEVIDENCED, which is a different and checkable claim, and the only one this file makes.
+ *
+ * A `Mutation-Proof:` line inside the file is not a dimension: the receipt lives in the commit trailer, and
+ * a check file carries none (DECISIONS 2026-10-28 items 15 and 17).
  *
  * ─────────────────────────────────────────────────────────────────────────────────────────────────────
  * WHAT IT DELIBERATELY CANNOT SEE, stated per R7
  *
- *   - whether a receipt is TRUE. Nothing can; the token is a claim by its author.
+ *   - whether a check has ever been shown to fail. That receipt is a commit trailer, which this file
+ *     does not read.
  *   - whether an executing test asserts anything MEANINGFUL. `expect(true).toBe(true)` imports nothing
  *     and would score 0, but a real import plus a weak assertion scores 1 and deserves no credit for it.
  *   - whether a weak gate is the LAST guard for a property. That is precisely the judgement that made the
  *     DELETE column unsafe, and it is why nothing here prints a disposition.
  *
- * Mutation-Proof: 5 mutations against tests/scripts/gate-census.test.js, 10/10 cases collected each run.
- *   M1 stop stripping comments             -> comment-immunity case RED (prose naming a dimension scores)
- *   M2 drop the harness-import lookahead   -> harness-import case RED (`import 'vitest'` would count as
- *      reaching the subject, scoring nearly every file in the repo)
- *   M3 scoreOf always counts 1             -> scoring + zero-score cases RED
- *   M5 empty population returns code 0     -> control-failure case RED (the guard must EXIT, not print)
- *   M6 receipt matches the bare word       -> receipt case RED (only the trailing colon makes it a claim)
- * Restored from a cp backup and diffed byte-identical after each.
- *
  * Exit: 0 = census produced · 3 = COULD NOT CHECK (empty population — the scan matched nothing).
  * Usage: node scripts/ci/gate-census.mjs [--json <path>] [--top N] [--group <name>]
  */
-import { writeFileSync, readFileSync } from 'node:fs';
-import { resolve, posix } from 'node:path';
-import { APP_ROOT, POPULATION, survey } from './killability-ledger.mjs';
+import { readdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { join, relative, resolve, dirname, posix } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const APP_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+
+/**
+ * Every file here asserts something, so it can be asked what makes it fail. `scripts/visual/*.mjs` is left
+ * out: those probes drive a browser and mostly assert nothing by design.
+ */
+export const POPULATION = [
+  { group: 'tests/gates', re: /^tests\/gates\/.+\.test\.jsx?$/ },
+  { group: 'tests/scripts', re: /^tests\/scripts\/.+\.test\.jsx?$/ },
+  { group: 'tests/store+data', re: /^tests\/(?!gates\/|scripts\/|e2e\/|visual\/).+\.test\.jsx?$/ },
+  { group: 'tests/visual', re: /^tests\/visual\/.+\.test\.jsx?$/ },
+  { group: 'tests/e2e', re: /^tests\/e2e\/.+\.spec\.js$/ },
+  { group: 'src colocated', re: /^src\/.+\.test\.jsx?$/ },
+  { group: 'scripts/ci', re: /^scripts\/ci\/.+\.mjs$/ },
+];
+
+function walk(dir, out = []) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    if (e.name === 'node_modules' || e.name === 'build' || e.name.startsWith('.')) continue;
+    const p = join(dir, e.name);
+    if (e.isDirectory()) walk(p, out);
+    else out.push(p);
+  }
+  return out;
+}
+
+/** The population under `root`, as sorted `{ file, group }` rows with repo-relative paths. */
+export function survey(root = APP_ROOT) {
+  const rows = [];
+  for (const rel of walk(root).map((f) => relative(root, f))) {
+    const hit = POPULATION.find((p) => p.re.test(rel));
+    if (hit) rows.push({ file: rel, group: hit.group });
+  }
+  return rows.sort((a, b) => a.file.localeCompare(b.file));
+}
 
 /** PURE: the weakness dimensions of one check file's text. */
 export function dimensions(src) {
@@ -81,7 +110,6 @@ export function dimensions(src) {
     // being merely incomplete.
     executes: /^\s*import\s[\s\S]*?from\s+'(?!vitest|node:|@testing-library|@playwright)[^']+'/m.test(code)
       || /\bimport\(\s*'(?!vitest|node:|@testing-library|@playwright)[^']+'\s*\)/.test(code),
-    receipt: src.includes('Mutation-Proof:'),
     denominator: /\b(toHaveLength|toBeGreaterThan|\.length\b[\s\S]{0,40}toBe|scanned|checked|count)\b/.test(code),
     // toBeGreaterThan(N) for ANY N, not just 0. Found by scoring a gate that asserted a source file was
     // longer than 400 chars — a STRONGER guard than `> 0`, scored as none because the detector only knew
@@ -96,28 +124,18 @@ export function dimensions(src) {
   };
 }
 
-export const SCORE_KEYS = ['executes', 'receipt', 'denominator', 'zeroGuard', 'blindSpot'];
+export const SCORE_KEYS = ['executes', 'denominator', 'zeroGuard', 'blindSpot'];
 export const scoreOf = (d) => SCORE_KEYS.reduce((n, k) => n + (d[k] ? 1 : 0), 0);
 
 /**
  * PURE: which of `files` (repo-relative) import `subject`, i.e. DRIVE it.
  *
- * Added 2026-09-22, and it fixes a category error in this file's own output. Five files under
- * `scripts/ci/` all scored 0/5 and read as one uniform class of "unevidenced". Four of them are pure
- * HELPER modules — `_density-ratchet` is imported by FOUR tests, `_gate-ratchet` by one — and scoring a
- * library on "does it carry a Mutation-Proof receipt" is asking the wrong question of it. Exactly one of
- * the five, `read-order.mjs`, was driven by nothing at all: the generator behind the orientation block
- * rendered into three surfaces, with no test anywhere.
- *
- * So the uniform low score CONVEYED NOTHING and hid the single real gap inside it. That is this repo's
- * own "read the count, not the tick" turned on the census itself. A helper's meaningful question is not
- * "does it have a receipt" but "does anything execute it", and that is mechanically answerable.
+ * A `scripts/ci` helper is a library, and a low score cannot tell a helper several tests drive from one
+ * nothing executes. Whether anything imports it is the question that separates them, and it is
+ * mechanically answerable.
  */
-//
-// RESOLVED, NOT MATCHED (QUEUE R1.7). The first version matched `…ci/<name>.mjs` in an import string, which
-// cannot see a SIBLING — `scripts/ci/gate-census.mjs` imports `'./killability-ledger.mjs'`, no `ci/` in it —
-// so a helper driven only by another CI script was listed UNDRIVEN. Every relative import specifier is now
-// resolved against its importer's directory and compared to the subject path, which is what an import IS.
+// Each relative import specifier is resolved against its importer's directory and compared to the subject
+// path, because a text match on `ci/<name>.mjs` cannot see a sibling's `'./<name>.mjs'`.
 const IMPORT_SPEC = /(?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+)['"](\.{1,2}\/[^'"]+)['"]/g;
 export function drivenBy(subjectFile, files, readText) {
   return files.filter((f) => {
@@ -131,9 +149,7 @@ export function drivenBy(subjectFile, files, readText) {
 }
 
 export function census(root = APP_ROOT) {
-  // survey() returns { rows, total, receipted, unreceipted } — not an array. Read the shape from the
-  // source rather than assuming it; the first draft called .map on the envelope and threw.
-  const rows = survey(root).rows;
+  const rows = survey(root);
   // Each file is read ONCE (R1.9): drivenBy scans the whole population per scripts/ci subject, which was
   // ~8,000 readFileSync per run for ~500 files.
   const cache = new Map();
@@ -166,7 +182,6 @@ export function verdict(rows) {
     '',
     '  DIMENSION      HOW MANY CARRY IT      what its absence means',
     `  executes       ${pct('executes').padEnd(22)} reads its subject as TEXT — cannot see whether the line RUNS`,
-    `  receipt        ${pct('receipt').padEnd(22)} never states what makes it fail`,
     `  denominator    ${pct('denominator').padEnd(22)} a clean report is indistinguishable from never looking`,
     `  zeroGuard      ${pct('zeroGuard').padEnd(22)} an empty subject set passes vacuously`,
     `  blindSpot      ${pct('blindSpot').padEnd(22)} does not say what it cannot see`,
@@ -174,7 +189,7 @@ export function verdict(rows) {
     ...(() => {
       // A scripts/ci file nothing imports is either a CLI (fine — it is executed, not imported) or a
       // helper with no driver (a real gap). Naming them separately is the whole point of the `driven`
-      // dimension: without it they sit indistinguishably among the 0/5 rows.
+      // dimension: without it they sit indistinguishably among the score-0 rows.
       // STRUCTURAL, not a name list. The first version of this filter matched `/_|-ratchet|read-order|
       // doc-anchors/` — an allowlist of shapes I happened to have in mind, which is the exact defect
       // this session spent the day deleting from other gates (a gate with a named exception is two
@@ -189,9 +204,9 @@ export function verdict(rows) {
     '',
     '  BY SCORE (0 = unevidenced on every dimension; it may still guard something real)',
   ];
-  for (let s = 0; s <= 5; s++) {
+  for (let s = 0; s <= SCORE_KEYS.length; s++) {
     const c = rows.filter((r) => r.score === s).length;
-    if (c) lines.push(`    ${s}/5  ${String(c).padStart(4)} files  ${'#'.repeat(Math.max(1, Math.round((c / n) * 50)))}`);
+    if (c) lines.push(`    ${s}/${SCORE_KEYS.length}  ${String(c).padStart(4)} files  ${'#'.repeat(Math.max(1, Math.round((c / n) * 50)))}`);
   }
   return { code: 0, lines };
 }
@@ -207,7 +222,7 @@ if (process.argv[1] && resolve(process.argv[1]).endsWith('gate-census.mjs')) {
     const top = Number(arg('--top') || 0);
     if (top) {
       console.log(`\n  WEAKEST ${top} (ranked; NO disposition — see the docblock on why this file refuses to issue one)`);
-      for (const r of rows.filter((x) => x.score === 0).slice(0, top)) console.log(`    0/5  ${r.file}`);
+      for (const r of rows.filter((x) => x.score === 0).slice(0, top)) console.log(`    0/${SCORE_KEYS.length}  ${r.file}`);
     }
     const json = arg('--json');
     if (json) { writeFileSync(json, `${JSON.stringify(rows, null, 2)}\n`); console.log(`\n  wrote ${json}`); }

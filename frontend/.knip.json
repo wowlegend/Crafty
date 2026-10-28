@@ -12,6 +12,8 @@
   "ignoreExportsUsedInFile": true,
   "ignoreBinaries": [
     "pgrep",
-    "pkill"
+    "pkill",
+    "ffmpeg",
+    "ffprobe"
   ]
 }

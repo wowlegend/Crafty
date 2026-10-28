@@ -259,7 +259,10 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
         // B7: the hit-target MUST mirror the visible Pause glyph (TouchControlsSurface `right: 64, 46x46`).
         // It used to sit at `right: 8` -- disjoint from its glyph AND on top of the GameHud Settings gear
         // (right-4), so tapping the glyph did nothing and tapping Settings paused the game.
-        <button data-touch-btn onPointerUp={() => setActive(false)} aria-label={t('a11y.pause')} data-testid="touch-pause"
+        // It pauses on the click, not the lift. Pausing on the lift mounts the full-screen resume overlay under the
+        // finger, and the click the browser sends after the lift is hit-tested there, so it resumed play at once
+        // wherever that click could take the pointer lock (CI's Chromium).
+        <button data-touch-btn onClick={() => setActive(false)} aria-label={t('a11y.pause')} data-testid="touch-pause"
           style={{ ...hit, top: 'calc(env(safe-area-inset-top,0px) + 10px)', right: 64, width: 46, height: 46 }} />
       )}
       {active && (

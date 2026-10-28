@@ -9,6 +9,9 @@ import { run, CHECKS, CANONICAL, LOCK_DOCS, LOCK_LABELS } from '../../scripts/ci
 import { derive as deriveGates, renderBlock as renderGates, END as GATES_END } from '../../scripts/ci/gate-table.mjs';
 import { measure, renderBlock as renderMeasured } from '../../scripts/ci/measure.mjs';
 import { SURFACES, renderBlock as renderReadOrder } from '../../scripts/ci/read-order.mjs';
+import { renderBlock as renderControls } from '../../scripts/ci/controls-table.mjs';
+import { renderHead, renderNoscript, renderManifest, renderPitch, renderFace, TARGETS as FACE_TARGETS } from '../../scripts/ci/public-face.mjs';
+import { KEY_MAP } from '../../src/game/keyMap.js';
 
 /**
  * DOC-CURRENCY IS TESTED WHERE ITS CHECKS CONNECT, not only in the pure helpers behind them (plan U8a).
@@ -96,7 +99,7 @@ const steady = (s) => s.replace(/committed in \d+ days/g, 'committed in N days')
 
 describe('doc-currency run() — the seam every check is wired into', () => {
   it('names its checks in run order, and the list is pinned (run() iterates exactly this list, so a check dropped from it stops running; this pin is what turns that red)', () => {
-    expect(CHECKS).toEqual(['dangling', 'packages', 'status', 'gates', 'measured', 'read-order', 'sections', 'locks']);
+    expect(CHECKS).toEqual(['dangling', 'packages', 'status', 'gates', 'measured', 'read-order', 'controls', 'public-face', 'sections', 'locks']);
     expect(Object.keys(run().checked), 'run() visits the checks in CHECKS order').toEqual([...CHECKS]);
   });
 
@@ -318,6 +321,48 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     });
     const r = run({ root, only: ['locks'] });
     expect(r.checked).toEqual({ locks: LOCK_DOCS.length });
+    expect(r.errors).toEqual([]);
+  });
+
+  it('controls: a README whose CONTROLS block lost a row errors', () => {
+    const block = renderControls();
+    const stale = block.replace(/\n\|[^\n]*Quest log[^\n]*\|/, '');
+    expect(stale, 'the red fixture differs from the current block').not.toBe(block);
+    const root = fixture({ 'README.md': `# Crafty\n\n${stale}\n` });
+    const r = run({ root, only: ['controls'] });
+    expect(r.checked).toEqual({ controls: KEY_MAP.length });
+    expect(r.errors).toEqual(['README.md: CONTROLS block is stale — regenerate: node frontend/scripts/ci/controls-table.mjs --write']);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it('controls: the current CONTROLS block passes (one row from the case above)', () => {
+    const root = fixture({ 'README.md': `# Crafty\n\n${renderControls()}\n` });
+    const r = run({ root, only: ['controls'] });
+    expect(r.checked).toEqual({ controls: KEY_MAP.length });
+    expect(r.errors).toEqual([]);
+  });
+
+  const faceFiles = () => ({
+    'frontend/index.html': `<head>\n    ${renderHead()}\n</head>\n<body>\n    ${renderNoscript()}\n</body>\n`,
+    'frontend/public/manifest.webmanifest': renderManifest(),
+    'README.md': `# Crafty\n\n${renderPitch()}\n`,
+    'docs/superpowers/public-face.json': renderFace(),
+  });
+
+  it('public-face: a hand-edited README lead errors, naming that file', () => {
+    const files = faceFiles();
+    files['README.md'] = files['README.md'].replace('nothing to install', 'no install');
+    const root = fixture(files);
+    const r = run({ root, only: ['public-face'] });
+    expect(r.checked).toEqual({ 'public-face': FACE_TARGETS.length });
+    expect(r.errors).toEqual(['README.md: stale against src/brand.js — regenerate: node frontend/scripts/ci/public-face.mjs --write']);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it('public-face: every target as rendered passes (one phrase from the case above)', () => {
+    const root = fixture(faceFiles());
+    const r = run({ root, only: ['public-face'] });
+    expect(r.checked).toEqual({ 'public-face': FACE_TARGETS.length });
     expect(r.errors).toEqual([]);
   });
 

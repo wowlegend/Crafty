@@ -85,7 +85,7 @@ Verdicts: delete, rewrite, redesign, new, keep. Sizes are the lens estimates. Th
 | 4 | Retire the capture-mode visual oracle; cancel umbrella 0e and T10 `[harn: retire oracle]` | delete | The light lane ships without a re-baseline; 129 test-only `isCaptureMode()` branches leave shipped code over time | L | #3 seam gate; a DECISIONS entry reversing roadmap :261; the og source replaced, or `menu.png` kept until it is | WEAKENED |
 | 5 | Land the light and colour script (in flight). Accept it on eye-level frames and clips; check an OKLab blend on the dusk clip `[vis: colour script]` | keep | A moonlit, readable night and a warm golden hour instead of maroon nights and navy ground | S | #4 | UNVERIFIED (branch not read by the refuter) |
 | 6 | Land combat stance as reviewed, without coupling it to encounters `[ref]` | keep | Off-screen windup chevrons, a 3-step string with a finisher; a fight can no longer be outwalked | S | #24 (DECISIONS item 10) | The game lens's coupling proposal is WEAKENED, so no coupling |
-| 7 | Gameplay quick deletions: delete the Settings Time row; delete the 3 XP per cast; Settler kills bank 0 Aspect power `[game: Time toggle, XP farms, Settlers]` | delete | No skipping a siege from the pause menu; levels mean fighting; no reward for killing a villager | S | none | STANDS, STANDS; WEAKENED for Settlers, so only the narrow banking fix is adopted |
+| 7 | Gameplay quick deletions: delete the Settings Time row; delete the 3 XP per cast; a Settler kill banks 0 Aspect power, pays 0 XP, and earns no kill-quest credit and no kill count; a spell hit on a NEUTRAL mob (a Settler or livestock) pays no per-hit XP, while a livestock KILL still pays its declared XP, so hunting stays rewarded; Spellcaster and Archmage count spells landed on hostiles (once per spell, the Shadow Dragon included), not casts `[game: Time toggle, XP farms, Settlers]` | delete | No skipping a siege from the pause menu; levels mean fighting; no reward for killing a villager | S | none | STANDS, STANDS; WEAKENED for Settlers. The command session approved the wider Settler and NEUTRAL scope on game-design grounds (2026-10-28, DECISIONS item 18) |
 | 8 | Delete hunger (the meter that kills while its bar is hidden) `[game: creative/hunger]` | delete | No unexplained damage late in a session | S | #2 (shares GameSystems.jsx) | WEAKENED for the creative half; the hunger half is confirmed |
 | 9 | Chain lightning queries `mobsQuery` live; later delete the 250 ms ECS-to-store mirror `[arch A17]` | delete | Arcs land where mobs are, never on a mob that already died | S | none | STANDS |
 | 10 | Terrain mipmaps on (one constant; an A/B has been on file since 2026-09-22) `[vis: mipmaps]` | rewrite | Distant ground and treelines stop crawling and sparkling | S | #3 for the clips; DECISIONS entry | STANDS |
@@ -136,7 +136,7 @@ Verdicts: delete, rewrite, redesign, new, keep. Sizes are the lens estimates. Th
 | 55 | GitHub Releases as the devlog `[pub: releases]` | new | A dated, illustrated history of the game | M | #1, #17 | not tested |
 | 56 | Flatten `frontend/` to the repo root, in one window with the Vercel root-directory change `[pub: flatten]` | redesign | none | L | all lanes landed; Kevin's Vercel dashboard | not tested |
 | 57 | Doc hygiene `[harn]` `[pub]`: declutter the root; generated ARCHITECTURE and CHANGELOG; ACTIVE_PLAN as a cursor; short DECISIONS entries; gates-and-probes as a checklist; the opsec ledger set to 0 | rewrite | none | S each | #32 | STANDS (declutter, low); the rest not tested |
-| 58 | A readable `*.vercel.app` alias; crafty-sand stays permanent `[pub: alias]` | new | A link people can remember | S | Kevin's dashboard; availability UNVERIFIED | not tested |
+| 58 | A readable `*.vercel.app` alias; crafty-sand stays permanent `[pub: alias]` | new | A link people can remember | S | Kevin's dashboard; done 2026-10-28: crafty-game.vercel.app | not tested |
 
 **Dropped as REFUTED** (kept here for traceability):
 - **A3's claim** that Phase 3 depends on the ECS/sim rewrite, and its hold on Phase 3 builds.
@@ -159,7 +159,8 @@ Verdicts: delete, rewrite, redesign, new, keep. Sizes are the lens estimates. Th
 ## 3. Waves
 
 **Live check.** "Live" means the landing sha shows as Production in
-`gh api repos/wowlegend/Crafty/deployments`, and the check runs against https://crafty-sand.vercel.app:
+`gh api repos/wowlegend/Crafty/deployments`, and the check runs against https://crafty-game.vercel.app (the public
+address since 2026-10-28; a check there after a deploy also shows the alias follows Production):
 - Chromium on ANGLE Metal on the M3 Max, through the production lookbook seam `[vis]`.
 - WebKit at 1180x820 and 820x1180 for iPad layout. WebKit is not iPad hardware; real-device feel stays Kevin-gated
   (AGENTS.md).
@@ -183,7 +184,7 @@ The files the in-flight lanes own are off limits to Wave 1 `[here]`:
 | **W1-A Required check** | #1 | `.github/workflows/ci.yml`, `ci/pipeline.sh` (the existing `fix/ci-required-check` branch); flaky specs under `frontend/tests/e2e/` (fold in `fix/touch-hold-freeze`, `fix/lightning-ci-budget`, `fix/e2e-hardening-2026-10-27`); the ruleset via `gh api` | **Precondition:** the last 10 `ci ok` runs on main contain no flake failure, or the flaky specs are quarantined out of the aggregate. **Then:** `gh api repos/wowlegend/Crafty/branches/main/protection` shows `ci ok` required, admins enforced and force push off; a deliberately red `land/` probe branch is refused a fast-forward of main; the next Production deployment's sha has `ci ok` = success. |
 | **W1-B Real pause** | #2, the hunger interval part of #8 | `game/worldClock.js`, `game/hitstop.js`, `GameSystems.jsx` (mana routed, hunger interval deleted), `game/burnManager.js`, `world/bossSystem.js`, `systems/SpawnerSystem.jsx`, `QuestSystem.jsx` polls, `game/useDayNightClock.js`; new `tests/e2e/pause-freezes-world.spec.js` | **First,** run the new spec on main to prove the defect: HP falls during pause. **Then, on the CI sha and live by hand:** paused beside an aggro mob for 5 s, HP and the mob's position stay unchanged; on resume the mob moves again. **On touch,** the pause path sets the same flag (WebKit iPad viewport). **Hunger** shows no starvation damage in a session over 83 minutes, by inference from the deleted interval. AIWorkerSystem needs no edit, because it already reads `worldDelta` `[up]`. |
 | **W1-C Gameplay deletions** | #7, the chain-lightning half of #9 | `ui/GamePanels.jsx` (Time row :776-787), `EnhancedMagicSystem.jsx` (:247-249 cast XP; :81-93 targets from `mobsQuery`), `game/mobTypes.js` or `world/accrualHooks.js` (Settler banking) | **Live:** Settings has no Time row. Casting 10 spells at the sky leaves the XP bar where it was. Killing a deliberately targeted Settler by day leaves the Aspect bars unchanged. **e2e on the CI sha:** chain-lightning arc endpoints sit within 0.3 m of the targets' current ECS positions, and none target a mob that died that frame. |
-| **W1-D Instruments** | #3 | `scripts/visual/_lookbook.mjs`, `scripts/visual/lookbook.mjs`, `src/render/lookbookSeam.js`, a new `src/render/passTimer.js` (EXT_disjoint_timer_query_webgl2, Chromium only), a new gate that the prod bundle installs the seam | **The lookbook against the production URL** writes the eye-level set (+1.6 m, hands and HUD on, three headings, four times of day), four 4 s walking clips, and ms per pass for each shot. **The seam gate is proven killable:** removing the install from a built bundle makes it red, recorded in a `Mutation-Proof:` trailer. |
+| **W1-D Instruments** | #3 | `scripts/visual/_lookbook.mjs`, `scripts/visual/lookbook.mjs`, `src/render/lookbookSeam.js`, a new `src/render/passTimer.js` (EXT_disjoint_timer_query_webgl2, Chromium only), a new gate that the prod bundle installs the seam | **The lookbook against the production URL** writes the eye-level set (+1.6 m, hands and HUD on, three headings, four times of day), four 4 s walking clips, and ms per pass for each shot. **The seam gate is proven killable:** removing the install from a built bundle makes it red, recorded in a `Mutation-Proof:` trailer. **Amended 2026-10-28, after the lane's review:** the eye-level set uses the game's own eye, about 2.15 m above the ground (the camera sits 1.2 m above the body's centre, which rests 0.95 m up: `Components.jsx`), not +1.6 m; the gap is W2-E's to decide, and the instrument does not fake it. The set was shot on a local production build. **Owed after merge and deploy:** the same run against `https://crafty-sand.vercel.app/?lookbook=1`, which W1-E's before and after clips need; `lookbook.mjs` serves a local build today and needs a `--url` mode for it. The per-pass GPU numbers of that first run are not usable (`masterpiece-2026-10/evidence/eye-level/index.md`). The probe's `plausible` flag can only refute a window: results that sum to more than the window lasted are not GPU time, but results that fit are not thereby GPU time, so the flag is necessary, not sufficient, and an idle machine may not remove the inflation, whose cause is not established. Before W2-I ranks or deletes a pass on these figures, it needs an independent whole-frame measurement that the segments agree with (the whole `composer.render` timed as one query, or the frame with one pass disabled); the probe has none yet. |
 | **W1-E Mipmaps** | #10 | `world/proceduralTextures.js:19`, `tests/world/proceduralTextures.test.js:73-77`; a DECISIONS entry superseding the "no mipmaps" lock | **Live:** an eye-level walking clip before and after on the deployed sha shows no leaf or stone sparkle at mid distance. Lands after W1-D. |
 | **W1-F Public text** | #18 | `README.md`, `NOTICE`, `LICENSES/OFL-*.txt`, `frontend/public/{apple-touch-icon.png, icon-192.png, icon-512.png, manifest.webmanifest}`, `frontend/index.html` (noscript; head tags from one brand source), a new `frontend/scripts/ci/controls-table.mjs` with a doc-currency marker check, a new `frontend/scripts/ci/public-face.mjs`, `.github/ISSUE_TEMPLATE/bug.yml` | **The GitHub repo page** renders the README with a generated controls table including Shift, hold-heavy and R/V/X/Z. **`gh api repos/wowlegend/Crafty`** shows the new About, the 13 topics and `has_discussions: false`. **The apple-touch-icon** on the live site resolves to a 180x180 PNG. **Live** `view-source` shows the new noscript copy. |
 | **W1-G Bundle, UI only** | part of #14 | `ui/primitives/{Panel,Button,Toast,cn}.js(x)` (drop tailwind-merge), `ui/primitives/gameIcons.js` (lazy sprite) | `node scripts/ci/bundle-budget.mjs` shows the index chunk shrinking. **Live:** title time-to-interactive on the WebKit iPad viewport before and after, from the lookbook report; every icon still draws (the eye-level HUD frames). |
@@ -308,7 +309,7 @@ signed in there; otherwise it costs Kevin one click. Everything else runs under 
 | The capture oracle: `scripts/visual/capture.mjs`, `test:visual`, the density ratchet and ledger, `scripts/ci/baseline-trailer.mjs`, visual-denominator-gates, `tests/visual/baseline/*.png` (`menu.png` last) `[harn]` | The eye-level lookbook, plus `toHaveScreenshot` for DOM-only checks |
 | `scripts/ci/artifact-currency.mjs` (562 LOC), `.artifact-sync.json`, the `--stamp`/`--sync` protocol `[harn]` | `scripts/report/record.mjs` |
 | `scripts/ci/queue-ledger.mjs` `[harn]` | A registry schema check in doc-currency |
-| `scripts/ci/killability-ledger.mjs` (already decided, 15c) | `Mutation-Proof:` trailers, which stay |
+| `scripts/ci/killability-ledger.mjs` (decided in 15c; done 2026-10-28, DECISIONS item 17) | `Mutation-Proof:` trailers, which stay |
 | `scripts/ci/cli-guard.mjs` (132 LOC) `[harn]` | `if (import.meta.main) main();`, engines `>=24.2.0` and a run-by-path test |
 | `scripts/ci/gate-shape.mjs` (only after Stryker is proven on this suite) `[harn]` | Stryker incremental reports |
 | `scripts/ci/doc-anchors.mjs`, `scripts/ci/read-order.mjs` `[harn]` | `npm run orient` |
@@ -397,7 +398,8 @@ with rotating questions.
 **About line and topics** (W1-F, applied idempotently by `scripts/ci/public-face.mjs`; `--check` reports drift and
 refuses nothing) `[pub: pitch source]`:
 - **About:** "A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, a dragon at
-  the edge of the world." Homepage: crafty-sand.vercel.app. The current "31-frame visual-regression gate" claim goes.
+  the edge of the world." Homepage: https://crafty-game.vercel.app (amended 2026-10-28: the readable alias of item 58,
+  added that day; crafty-sand.vercel.app keeps working). The current "31-frame visual-regression gate" claim goes.
 - **Topics:** browser-game, action-rpg, rpg-game, voxel, voxel-game, procedural-generation, threejs,
   react-three-fiber, webgl, webgl-game, rapier-physics, game-development, ipad.
 - **Dropped topics:** 3d-engine, voxel-engine, framer-motion, zustand, vite, react19, miniplex, ecs,
@@ -490,8 +492,10 @@ from `npm view` (lens-reported).
   and keeps build accrual feeding it `[ref]`.
 - **Fire and ice annihilating each other.** Documented as "THE DESIGN" (elementZones.js:4-6). The roadmap's reaction
   table (:263) extends it rather than undoing it `[ref]`.
-- **Soft death** (the decision of record), the audience-broad stance, and the killable NEUTRAL Settler tier
-  (targeting.js:16-23). Only the Settler banking side effect changes `[game]` `[ref]`.
+- **Soft death** (the decision of record), the audience-broad stance, and the killable NEUTRAL tier
+  (targeting.js:16-23). What a NEUTRAL hit or kill pays changes (#7, DECISIONS item 18): a Settler kill pays 0 XP, banks
+  nothing, and earns no kill-quest credit or kill count; a spell hit on a Settler or livestock pays no per-hit XP; a
+  livestock kill still pays its declared XP, so hunting stays rewarded `[game]` `[ref]`.
 - **First person as the default camera** (Kevin, 2026-06-07; transformCam.js:4-12). The 14 s third-person beast hold
   is already in Kevin's recorded scope. A persistent chase camera stays a flagged experiment `[ref]`.
 - **Rapier as the movement engine** until a flagged voxel controller wins a replay A/B. Movement feel is the game, and
@@ -500,7 +504,7 @@ from `npm view` (lens-reported).
 - **No GitHub Pages site, and no licence grant.** Both are reversible later; the grant is not `[pub]`.
 - **Deploy and repo rules:**
   - Vercel's auto-deploy of main on push.
-  - The permanent crafty-sand.vercel.app alias.
+  - crafty-game.vercel.app as the public address, with crafty-sand.vercel.app kept working beside it.
   - No force push and no amend; history stays and the records tag preserves it.
   - The opsec gate on a public repo.
 - **Code invariants:**

@@ -17,7 +17,7 @@ import { glVerdict } from '../../scripts/ci/prod-smoke.mjs';
  * WHY A RATCHET AND NOT A THRESHOLD. Nobody knows the post-fix number. The headless probe runs
  * SwiftShader, which reports MAX_SAMPLES 4 and emitted zero GL errors, so it cannot settle the question,
  * and a threshold chosen here would be a guess wearing a gate's clothes. The first run RECORDS; later runs
- * may FALL and never RISE — the shape the opsec, killability and source-grep ledgers already use here.
+ * may FALL and never RISE — the shape the opsec and source-grep ledgers already use here.
  * It makes the number falsifiable without pretending to know it.
  *
  * This is also what will ADJUDICATE the `multisampling={0}` change. A per-frame MSAA resolve is the only

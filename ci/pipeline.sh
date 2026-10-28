@@ -131,7 +131,6 @@ step "opsec-scan (a PUBLIC repo must not publish the operator machine)" node scr
 step "doc-currency (a canonical doc citing a path that no longer exists)" node scripts/ci/doc-currency.mjs
 step "eslint (crash-class bugs; no-unused-vars is an error)" npm run --silent lint
 step "gate-shape (no assertion satisfiable by a COMMENT)" node scripts/ci/gate-shape.mjs
-step "killability-ledger (a new check must name the mutation that reds it)" node scripts/ci/killability-ledger.mjs
 step "cli-guard (an exporting script must not run its CLI on import)" node scripts/ci/cli-guard.mjs
 step "unit + static gates (vitest)" npm run --silent test:unit
 step "build" npm run --silent build

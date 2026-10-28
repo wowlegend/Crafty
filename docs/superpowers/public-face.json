@@ -1,0 +1,59 @@
+{
+  "repo": "wowlegend/Crafty",
+  "description": "A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, and a dragon waiting at its far edge.",
+  "homepage": "https://crafty-game.vercel.app/",
+  "topics": [
+    "browser-game",
+    "action-rpg",
+    "rpg-game",
+    "voxel",
+    "voxel-game",
+    "procedural-generation",
+    "threejs",
+    "react-three-fiber",
+    "webgl",
+    "webgl-game",
+    "rapier-physics",
+    "game-development",
+    "ipad"
+  ],
+  "has_discussions": false,
+  "has_projects": false,
+  "labels": [
+    {
+      "name": "bug",
+      "color": "d73a4a",
+      "description": "Something isn't working"
+    },
+    {
+      "name": "ipad",
+      "color": "5aa9ff",
+      "description": "Touch, layout or performance on iPad"
+    },
+    {
+      "name": "looks",
+      "color": "c9a86a",
+      "description": "Light, colour, materials or UI that look wrong"
+    },
+    {
+      "name": "perf",
+      "color": "f2b33d",
+      "description": "Frame rate, load time, heat or battery"
+    },
+    {
+      "name": "dependencies",
+      "color": "0366d6",
+      "description": "Pull requests that update a dependency file"
+    },
+    {
+      "name": "javascript",
+      "color": "168700",
+      "description": "Pull requests that update javascript code"
+    },
+    {
+      "name": "github_actions",
+      "color": "000000",
+      "description": "Pull requests that update GitHub Actions code"
+    }
+  ]
+}

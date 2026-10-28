@@ -25,17 +25,7 @@ import { render } from '@testing-library/react';
  *   CLEANUP is proved by unmounting and advancing time: a leaked interval keeps ticking forever, which on
  *   a hook that writes to the store every second is a real leak and invisible to a source scan.
  *
- * Mutation-Proof: 5 mutations, denominator asserted (6/6 cases collected on every run).
- *   M1 drop the `!isCaptureMode()` gate     -> capture case RED (baselines would stop being byte-stable)
- *   M2 drop the `getInput().active` gate    -> pause case RED (time would run in menus)
- *   M3 read `active` once at mount AND USE that value -> live-read case RED (the stale-capture defect a
- *      grep for `getInput` can never see, since the token is still present). First attempt at this
- *      mutation captured the value and never used it — a no-op that SURVIVED, and the survivor was my
- *      mutation being wrong rather than the gate being weak. A mutation has to change BEHAVIOUR; adding
- *      an unused binding changes only the text.
- *   M4 return undefined instead of clearInterval -> cleanup case RED (a leaked 1Hz store writer)
- *   M5 interval 1000 -> 60000                -> cadence case RED
- * useDayNightClock.js restored from a cp backup and diffed byte-identical after each.
+ * Mutation-Proof: in commit trailers, not here (DECISIONS 2026-10-28 15c).
  *
  * BLIND SPOT, stated (R7): this drives the hook in isolation with the store, input and capture flag
  * mocked. It does not prove the hook is MOUNTED by the app — that is one call site, and `runtime-reach`
@@ -44,9 +34,10 @@ import { render } from '@testing-library/react';
 const setGameTime = vi.fn();
 let active = true;
 let capture = false;
+let world = {}; // the rest of the store the world clock reads: a hitstop's span
 
 vi.mock('../../src/store/useGameStore', () => ({
-  useGameStore: { getState: () => ({ setGameTime }) },
+  useGameStore: { getState: () => ({ setGameTime, ...world }) },
 }));
 vi.mock('../../src/input/inputState', () => ({ getInput: () => ({ active }) }));
 vi.mock('../../src/devtest/captureMode', () => ({ isCaptureMode: () => capture }));
@@ -58,7 +49,7 @@ const Host = ({ isWorldBuilt = true, isAlive = true }) => {
   return null;
 };
 
-beforeEach(() => { vi.useFakeTimers(); setGameTime.mockClear(); active = true; capture = false; });
+beforeEach(() => { vi.useFakeTimers(); setGameTime.mockClear(); active = true; capture = false; world = {}; });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('day/night clock — pause, determinism and loop isolation, driven', () => {
@@ -112,6 +103,21 @@ describe('day/night clock — pause, determinism and loop isolation, driven', ()
     active = true;
     vi.advanceTimersByTime(1000);
     expect(setGameTime).toHaveBeenCalledTimes(2); // and it resumes
+    unmount();
+  });
+
+  it('holds while the world is held by a hitstop, read live, and runs again the moment it ends', () => {
+    // A tick that lands inside a freeze is skipped, so over many hits the clock loses, on average, the time the world
+    // spent frozen: the same time worldNow loses.
+    const { unmount } = render(<Host />);
+    vi.advanceTimersByTime(1000);
+    expect(setGameTime).toHaveBeenCalledTimes(1);
+    world = { hitstopStart: 0, hitstopUntil: Number.MAX_SAFE_INTEGER };
+    vi.advanceTimersByTime(3000);
+    expect(setGameTime, 'the clock advanced through a hitstop').toHaveBeenCalledTimes(1);
+    world = { hitstopStart: 0, hitstopUntil: 0 };
+    vi.advanceTimersByTime(1000);
+    expect(setGameTime, 'the clock did not run again after the hitstop').toHaveBeenCalledTimes(2);
     unmount();
   });
 

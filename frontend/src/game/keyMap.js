@@ -40,6 +40,7 @@ export const KEY_MAP = [
   { key: 'Q',   code: 'KeyQ',   label: 'Claim completed quests', group: 'Panels' },
   { key: 'H',   code: 'KeyH',   label: 'Toggle controls',        group: 'Panels' },
   { key: 'Tab', code: 'Tab',    label: 'Achievements',           group: 'Panels', panelHide: true },
+  { key: 'F3',  code: 'F3',     label: 'Show stats',             group: 'Panels', panelHide: true },
   { key: 'ESC', code: 'Escape', label: 'Settings / pause',       group: 'Panels' },
 ];
 

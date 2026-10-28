@@ -242,34 +242,39 @@ footer p { max-width: 75ch; }
 </style>
 
 <div class="wrap">
-<!-- asof:begin --><p data-asof style="margin:0 0 14px;padding:6px 0;border-bottom:1px solid var(--line);color:var(--muted);font-family:var(--font-mono);font-size:12px;line-height:1.5">As of commit 43d766e6, 2026-10-28 06:07 UTC.</p><!-- asof:end -->
+<!-- asof:begin --><p data-asof style="margin:0 0 14px;padding:6px 0;border-bottom:1px solid var(--line);color:var(--muted);font-family:var(--font-mono);font-size:12px;line-height:1.5">As of commit 030ada1f, 2026-10-28 13:51 UTC.</p><!-- asof:end -->
 
 <header class="top">
   <p class="label kicker">Crafty · Ember against the dark · command session</p>
   <h1>Crafty Command Record</h1>
-  <p class="sub">What the Crafty command session achieved from the takeover on 2026-10-27 to 2026-10-28, 06:30 UTC.</p>
-  <p class="meta">State read at 2026-10-28 06:30Z against <code>origin/main 43d766e6</code>. Times are UTC unless marked PDT. Git commit times are PDT (UTC−7); GitHub times are UTC.</p>
+  <p class="sub">What the Crafty command session achieved and decided from the takeover on 2026-10-27 to 2026-10-28, 14:20 UTC.</p>
+  <p class="meta">State read at 2026-10-28 14:20Z against <code>origin/main 030ada1f</code>. The previous version was read at 06:30Z against <code>43d766e6</code>; each section puts what changed since then first. Times are UTC unless marked PDT. Git commit times are PDT (UTC−7); GitHub times are UTC.</p>
 
   <div class="state" aria-label="Current state">
     <div>
       <p class="label">Main CI</p>
-      <p class="pills"><span class="pill bad">head red</span><span class="pill run">fix running</span></p>
-      <p>Head <code>43d766e6</code> run <code>40642071917</code> failed on one shard of ten jobs: <code>touch-hold.spec.js:303</code> stopped in SETUP all three attempts (&ldquo;the world freeze ran out by the late press&rdquo;), the slow-runner timing class the lightning spec had. It passed on #25&rsquo;s own PR run. A fix on <code>fix/touch-hold-freeze</code> counts the freeze in drawn frames. The last green main is <code>d5375ac1</code>, run <code>40637429575</code>. (Updated 06:50Z.)</p>
+      <p class="pills"><span class="pill ok">head green</span><span class="pill warn">one flaky spec</span></p>
+      <p>Head <code>030ada1f</code> passed land run <code>40700481509</code> on that exact commit (13:52 to 14:06Z), which main now requires before it accepts a push. Main’s own run <code>40703024235</code> failed its first attempt: <code>ore-glow.spec.js</code> saw the light change between its shots, three tries of three, on the same commit that had just passed the land run. The re-run of that shard passed at about 14:55Z, so main is green and the spec is flaky, not broken; a lane is finding what moves the light and will fix that, not loosen the check.</p>
     </div>
     <div>
       <p class="label">Production</p>
-      <p class="pills"><span class="pill ok">deployed</span></p>
-      <p>Vercel Production deployment of <code>43d766e6</code> at 06:09:06Z, state success. Nobody loaded the live site.</p>
+      <p class="pills"><span class="pill ok">deployed</span><span class="pill ok">protected</span></p>
+      <p>Vercel Production deployment of <code>030ada1f</code> at 14:08:59Z, state success, at <a href="https://crafty-game.vercel.app/">crafty-game.vercel.app</a>. Main accepts only a commit with a green <code>ci ok</code>, so a red commit can no longer deploy.</p>
     </div>
     <div>
-      <p class="label">Landed</p>
-      <p class="pills"><span class="pill ok">4 PRs merged</span></p>
-      <p>#29, #22, #25 and #23, plus the artifact-currency fix (<code>008ba09e</code>). 36 first-parent commits on main since the handoff.</p>
+      <p class="label">Landed since 06:30Z</p>
+      <p class="pills"><span class="pill ok">9 main pushes</span></p>
+      <p>#24 steady cool and #27 harness, the required check, one CLAUDE.md, nothing-is-locked, and Wave 1: real pause, gameplay cuts, eye-level instruments, public text. 23 first-parent commits.</p>
     </div>
     <div>
       <p class="label">In flight</p>
-      <p class="pills"><span class="pill run">building</span><span class="pill warn">harness not landed</span></p>
-      <p>#24 steady cool (CI red, fix unpushed), the light and colour lane, combat stance. #27 harness is a green draft.</p>
+      <p class="pills"><span class="pill run">building</span></p>
+      <p>#31 combat stance, round 2. W1-G bundle UI, W1-E mipmaps, and the landing of the light and colour lane. Then W1-H.</p>
+    </div>
+    <div>
+      <p class="label">Waiting on you</p>
+      <p class="pills"><span class="pill warn">iPad and ears</span></p>
+      <p>Three checks on a real iPad, and the audio mix by ear. Nothing else. <a href="#open">Details</a>.</p>
     </div>
   </div>
 
@@ -287,37 +292,69 @@ footer p { max-width: 75ch; }
 <section id="outcome">
   <h2>Outcome</h2>
   <div class="prose">
-    <p class="lede">On 2026-10-27, main had not passed CI since 2026-09-23 and 11 commits sat unpushed on the laptop. Main is green and deployed again.</p>
-    <p>The last green run before the takeover was <code>35820716087</code> on <code>a01b1982</code>, on 2026-09-23. The three runs after it failed or hit the 25-minute limit. At the takeover, run <code>40499349776</code> on <code>57c45ae4</code> failed twice over: npm audit found 14 vulnerabilities (2 critical, 8 high), and e2e shard 2/3 failed on <code>mob-floor.spec.js:63</code>.</p>
-    <p>The session pushed main at <code>c03e9f2f</code> after land run <code>40514448242</code> passed on that exact commit. Main went green at <code>230fd72f</code> (run <code>40518887229</code>, 14:33Z on 10-27). Since then four PRs have landed: #29, #22, #25 and #23. Main has 47 first-parent commits past <code>57c45ae4</code>: 11 from before the takeover and 36 after, five of them merges.</p>
-    <p>A player now gets a post-processing chain that is no longer rebuilt on every hunger and mana tick, a 60 fps cap with a Settings choice, a shadow fix for quality-tier changes, the night ore glow, leaf sway and storm lightning of the parked milestone, press-and-hold touch controls for the roar and the heavy, and a Diagnostics readout in Show Stats.</p>
+    <p class="lede">Main is green, protected and deployed at <code>030ada1f</code>. Since 06:30Z two held PRs landed, main gained a required check, the instruction files became one <code>CLAUDE.md</code>, and Wave 1 of a new programme shipped four lanes.</p>
+    <p><strong>New since 06:30Z.</strong> Your standing principle this morning (DECISIONS 2026-10-28 item 14) put nothing off limits and made this page your one review surface. The session ran a whole-project assessment and wrote the SOTA reset plan, “The First Night” (<code>ee26549c</code>, on main at 09:58Z). It ranks what to cut, rewrite and keep, in three waves. Wave 1 ships small visible wins and unlocks the rest: its required check landed at 11:11Z, and four more of its lanes at 14:08Z.</p>
+    <p>The previous version reported main red on <code>touch-hold.spec.js:303</code> (run <code>40642071917</code> on <code>43d766e6</code>). The frame-counted freeze fix reached main as <code>2bb0857d</code>, and its run <code>40651588887</code> passed at 07:55Z.</p>
+    <p>At the takeover on 10-27, main had not passed CI since 2026-09-23 (run <code>35820716087</code> on <code>a01b1982</code>), and 11 commits sat unpushed on the laptop. Main went green at <code>230fd72f</code> (run <code>40518887229</code>, 14:33Z on 10-27).</p>
+    <p>A player now also gets a canvas that spends a fixed pixel budget per quality tier and settles its tier, a way back from a lost graphics context, a pause that holds the world, no Time row in Settings, and no XP for casting at the sky or killing Settlers. What the previous version listed still stands: post-processing built once, the 60 fps cap, the shadow fix, night ore glow, leaf sway, storm lightning, touch press-and-hold and Diagnostics.</p>
   </div>
 
   <div class="qa">
     <div>
-      <p class="q">What is option (a) for the pages?</p>
-      <p>Keep era-review and sota-audit at their original account-1 links, and republish them there whenever account 1 is the active account. The next time it is, the session republishes both, swaps <code>url</code> and <code>previousUrl</code> in <code>.artifact-sync.json</code> and runs <code>--sync</code>. Until then the interim account-2 copies stay current. Option (b) was fresh copies from the active account at new links: your bookmarks would change, and you would see them only while logged in as that account.</p>
-      <p><span class="pill ok">chosen</span> <span class="pill warn">not executed yet</span> Recorded as DECISIONS 2026-10-28 item 11. <code>.artifact-sync.json</code> still has the account-2 copies as <code>url</code> (synced at <code>32a55b75</code>).</p>
+      <p class="q">Can a red commit reach the live site now?</p>
+      <p><span class="pill ok">protected</span> No. Branch protection went on right after <code>1c4e3bc1</code> reached main at 11:11Z. Its one required check is <code>ci ok</code>, the branch must be up to date, admins are included, and force pushes and deletion are off; the GitHub API read those settings back at 14:15Z. A lane now lands by merging into a <code>land/&lt;date&gt;</code> branch, waiting for a green <code>ci ok</code> on that exact commit, then fast-forwarding main. Vercel deploys every push to main, so every deployment since has been a commit CI passed.</p>
     </div>
     <div>
-      <p class="q">Have the harness enhancements landed?</p>
-      <p><span class="pill warn">not landed</span> No. PR #27 (Tranche A) is a draft with every check green and no conflicts, and none of its 18 commits is on main. <a href="#harness">Why, and what it holds</a>.</p>
+      <p class="q">Did the harness enhancements land?</p>
+      <p><span class="pill ok">landed</span> Tranche A did. PR #27 landed with #24 as <code>da70413f</code> at 10:41Z, after land run <code>40672067288</code> passed on that exact commit. Its U4 stopped tracking <code>.state/</code>: the session saved the directory, merged and restored it, and the session-truth ledger held 264 lines before and after. Its U5 made graft machine-local: your one-time script at 11:10Z put graft’s 2 allows and 5 hook blocks into the untracked <code>.claude/settings.local.json</code>. The SOTA reset cuts some later units of the harness plan and keeps others (its item #34).</p>
     </div>
     <div>
-      <p class="q">Why does CLAUDE.md still name Opus?</p>
-      <p>CLAUDE.md is a symlink to <code>.agent/AGENTS.md</code>. Commit <code>43d766e6</code> stopped the file naming a model in a second place: it removed “(Opus 5)” from the Subagent-driven development line, which now points to the models the Models-and-effort bullet names (line 227 says so). That bullet, at line 215, still names “Opus 5.5” and <code>claude-opus-5-5</code>. The full rewrite of the instruction files is plan unit U22, and it is not in PR #27. <a href="#instruction-file">More</a>.</p>
+      <p class="q">Is there one instruction file now?</p>
+      <p><span class="pill ok">yes</span> Yes, since <code>d700e531</code> reached main at 11:29Z (your call; DECISIONS 2026-10-28, “One CLAUDE.md”). <code>CLAUDE.md</code> is a real file at the repo root, 37,518 bytes. <code>.agent/</code> and the symlink are gone, and the generators write into <code>CLAUDE.md</code>. Cutting it to 12 KB or less is plan item #29, in Wave 2. <a href="#instruction-file">More</a>.</p>
+    </div>
+    <div>
+      <p class="q">What happened to option (a) for the pages?</p>
+      <p><span class="pill idle">lapsed</span> Item 13 made this page the only one you review. era-review and sota-audit retire to <code>docs/archive/</code> as dated history, so no account-1 republish is owed. They have not been moved there yet.</p>
     </div>
   </div>
 </section>
 
 <section id="live">
   <h2>Live for players</h2>
-  <p class="lede">Everything here is on <code>origin/main</code> and in a Vercel production deployment. The first push carried the 11 commits that had waited since September, together with the session’s review fixes.</p>
+  <p class="lede">Everything here is on <code>origin/main</code> and in a Vercel production deployment, newest first.</p>
+
+  <div class="group">
+    <div class="group-head"><h3>Wave 1: pause, cuts and public text</h3><code>030ada1f</code><span class="when">on main 14:08Z · new</span></div>
+    <ul class="list">
+      <li><strong>A pause holds the world.</strong> ESC, an open panel, a lost focus and the touch Pause now stop mobs, projectiles, burns, spawns, quest timers, mana and the day clock (<code>8b1d383f</code>, <code>0ec569b3</code>). On main before it, a player paused for 5 s beside a chasing mob lost 20 HP, and the mob walked 3.4 m (<code>472acd91</code>). <span class="gap">Exception: the beast form, snare and fuse timers still count down during a pause. They live in the combat lane’s file and are owed to W3-D.</span></li>
+      <li><strong>Hunger no longer drains,</strong> so the starvation damage after 83 minutes is gone. <span class="gap">Exception: the hunger bar stays on screen and never moves until the Wave 2 cut removes it (W2-F).</span></li>
+      <li><strong>The touch Pause acts on the tap’s click, not its lift,</strong> so the tap’s own click cannot resume play (<code>030ada1f</code>). The first land run failed on it (<code>40696946693</code>, shard 5/8, 3 of 3 attempts): the case had passed only on the laptop. The fix passed land run <code>40700481509</code>. <span class="gap">Not checked on a real iPad, including a tap while another finger holds the joystick.</span></li>
+      <li><strong>Settings has no Time row,</strong> so a night siege cannot be skipped from the pause menu (<code>f1ce2be9</code>).</li>
+      <li><strong>XP comes from fighting.</strong> A cast pays nothing, and a spell pays its 5 XP per hit only on an enemy (<code>55f32668</code>, <code>a3786d0d</code>). A Settler kill pays nothing, banks no Aspect power, earns no quest credit and is not counted as a kill; a livestock kill still pays (item 18). Spellcaster and Archmage count spells that land on hostiles, once each, the Shadow Dragon included. <span class="gap">One edge is not migrated: an old save that finished Spellcaster under the old rule and has not claimed it still pays its 40 XP once.</span></li>
+      <li><strong>Chain lightning</strong> picks its targets from the live mob list, so an arc never lands on a dead or moved mob (<code>76cdef57</code>).</li>
+      <li><strong>Public text.</strong> The README, the page head, the manifest and the repo’s About line come from one brand source, <code>frontend/src/brand.js</code>. New PNG app icons, a noscript page, NOTICE and the font licences, a bug report form, and a generated controls table in the README that now lists F3 for Show Stats (<code>f2082fdd</code>).</li>
+    </ul>
+  </div>
+
+  <div class="group">
+    <div class="group-head"><h3>PR #24, steady cool (Phase 0f and 0g)</h3><code>22048707</code><span class="when">on main 10:41Z · new</span></div>
+    <ul class="list">
+      <li><strong>A pixel budget per tier, not a pixel ratio.</strong> High spends 4.2 Mpx, medium 2.8 and low 1.8, under ratio caps of 1.75, 1.5 and 1.25. An M3 Max window at high draws 4.2 Mpx instead of 7.7 (<code>309dad4f</code>). Sharpness is recorded as a taste call.</li>
+      <li><strong>The post chain is built once.</strong> The composer follows the pixel ratio, and GodRays, N8AO and Bloom are toggled in place, not rebuilt (<code>48cc061c</code>, <code>c8e57bcd</code>).</li>
+      <li><strong>The quality tier settles:</strong> a 60 s block after a decline, a settle after the second, no render-distance steps on touch (<code>ea5747c6</code>), and a fresh monitor’s first window is ignored (<code>cdc5f78f</code>).</li>
+      <li><strong>A lost graphics context has a way back.</strong> “Graphics were reset by the system — tap to resume” saves, reloads and resumes the same world, block edits and position included (<code>d99a261a</code>, <code>2887bd40</code>).</li>
+      <li><strong>Less work when nobody is looking.</strong> The game draws at 30 fps behind a panel and 10 in an unfocused desktop window (<code>176de7c0</code>). The HUD runs on one ticker (<code>56d82b87</code>). The sun’s shadow renders on demand, at most 30 Hz (<code>e9d49bdf</code>). Point lights come from a fixed pool per tier (<code>ce0ecd03</code>).</li>
+      <li><strong>Show Stats.</strong> F3 no longer strands the player on ESC (<code>853aa7eb</code>), and Show Stats no longer slows the game it measures (<code>5a759519</code>).</li>
+      <li><span class="gap">No heat or watt measurement is recorded. The reset raises the budgets toward a pixel ratio of 2 only after W2-I measures each pass.</span></li>
+    </ul>
+  </div>
+
+  <p class="muted">Landed before 06:30Z, unchanged since the previous version:</p>
 
   <div class="group">
     <div class="group-head"><h3>With the first push</h3><code>c03e9f2f</code><span class="when">2026-10-27</span></div>
     <ul class="list">
-      <li><strong>Post-processing is built once.</strong> PostFX and GameScene are memoised, so the composer no longer rebuilds on the hunger tick (5 s) and the mana tick (1 s). Per 12 s of gl-churn: depth allocations 37 → 3, framebuffers 57 → 7, textures 94 → 10, texStorage2D 37 → 3 (<code>78726503</code>). <span class="gap">Not measured: frame time and heat on real hardware.</span></li>
+      <li><strong>Post-processing is built once.</strong> PostFX and GameScene are memoised, so the composer no longer rebuilds on the hunger tick (5 s) and the mana tick (1 s). Per 12 s of gl-churn, depth allocations fell from 37 to 3, framebuffers from 57 to 7, textures from 94 to 10, and texStorage2D calls from 37 to 3 (<code>78726503</code>). <span class="gap">Not measured: frame time and heat on real hardware.</span></li>
       <li><strong>Shadows survive a quality-tier change.</strong> A tier change now rebuilds the sun’s shadow target (<code>ecf22bc9</code>; the reset runs as a layout effect since <code>fb45cb35</code>). This is the prime suspect for the iPad bug, and <code>shadow-tier.spec.js</code> proves the mechanism over 4 steps. <span class="gap">Not proven: how it looks on an iPad.</span></li>
       <li><strong>60 fps cap.</strong> Default 60 fps, with a Settings choice of 60 or Unlimited in en and zh-CN, saved between sessions. Show Stats counts frames drawn, the governor gets 60 Hz bounds, and displays slightly off 60 or 120 Hz drop no frames (<code>9dc5fac7</code>, <code>54b6f65c</code>). <span class="gap">Not driven: 60-of-120 on a real 120 Hz display.</span></li>
       <li><strong>Panels.</strong> A panel whose code chunk fails to load closes with a notice (en and zh-CN), and a prefetched panel opens with no blank beat (<code>b2cd2674</code>, <code>43754237</code>).</li>
@@ -357,26 +394,26 @@ footer p { max-width: 75ch; }
     </ul>
   </div>
 
-  <p class="muted">Not game-visible: the dependency refresh (<code>10a43f68</code>), runner and action pins (<code>5177c203</code>), and the WebKit iPad probe (<code>2cecfa7f</code>).</p>
+  <p class="muted">Not game-visible. New since 06:30Z: the e2e canvases at half pixel ratio (<code>ae2e10a5</code>), the required check, harness Tranche A, and the eye-level instruments, whose <code>?lookbook=1</code> seam prod-smoke now checks in the shipped bundle (<code>7c6b10dd</code>). Before: the dependency refresh (<code>10a43f68</code>), runner and action pins (<code>5177c203</code>), and the WebKit iPad probe (<code>2cecfa7f</code>).</p>
 
   <div class="group">
-    <h3>How it looks today on a real GPU</h3>
+    <h3>How it looks today, at the player’s eye</h3>
     <div class="prose">
-      <p>The 0d lookbook shot five “before” frames through real GPU paths: Chromium new headless on ANGLE-Metal and WebKit at iPad sizes, production build, motion on. They are committed in <code>docs/superpowers/masterpiece-2026-10/evidence/</code> (<code>fa1e870a</code>). No “after” frames exist yet.</p>
+      <p><strong>New since 06:30Z.</strong> W1-D shot the eye-level set: the game’s own eye, hands and HUD on, three bearings and four times of day, on Chromium (ANGLE Metal, M3 Max) and WebKit at both iPad sizes, with 36 of 36 frames valid, plus four 4 s walking clips (<code>a011fb7a</code>). It ran from 10:50 to 10:58Z on a local production build of <code>ee26549c</code>, before #24 landed, with a load average of 236 at the start. The frames are in <code>docs/superpowers/masterpiece-2026-10/evidence/eye-level/</code>.</p>
       <ul class="list">
-        <li>Night (0.75): maroon and magenta under orange, and the Hearth reads near-black. Hotbar, level bar, minimap and NPC labels stay legible.</li>
-        <li>Coast at night on WebKit: a solid orange sky, a purple-grey sea with white foam, and the land as a black silhouette.</li>
-        <li>Golden hour (0.48) on iPad portrait: the Hearth’s stone pad and plots are saturated navy, with a “Dusk approaches” toast on screen.</li>
-        <li>Compass labels overprint, motes read as orange blobs, and the ocean is one sheet.</li>
+        <li>On every frame the hands are two near-black slabs at the bottom edge, with an orange translucent sphere at the right.</li>
+        <li>Golden hour (0.48) still reads as blue daylight with no golden cast, and the “Dusk approaches” toast is up.</li>
+        <li>Blue hour (0.55) is a navy sky with an orange horizon band, and the land is a near-black silhouette. Midnight (0.75) looks almost the same.</li>
+        <li>The eye sits about 2.15 m above the ground, not the 1.6 m the plan assumed. The frames show the game’s own eye; W2-E decides the height.</li>
       </ul>
-      <p>The light and colour lane targets this. Its colour script sets moonlit stone at (47, 55, 74), “not navy, not black”.</p>
+      <p>The run’s per-pass GPU figures are marked not usable: the timer can only refute a reading, and W2-I needs a whole-frame measurement before it ranks a pass. No after frames exist yet. The light and colour lane is accepted on these frames when it lands. The 10-27 set (<code>fa1e870a</code>) also showed compass labels that overprint and motes that read as orange blobs.</p>
     </div>
   </div>
 </section>
 
 <section id="lanes">
   <h2>Landed and in flight</h2>
-  <p class="lede">One row per PR or lane. Merged PRs went in as local merge commits, so each PR’s head equals its merge’s second parent.</p>
+  <p class="lede">One row per PR or lane. Lanes land as local merge commits, through a land branch whose CI must pass on the exact commit.</p>
 
   <div class="tbl">
     <table>
@@ -384,29 +421,147 @@ footer p { max-width: 75ch; }
         <tr><th scope="col">PR or lane</th><th scope="col">What it carries</th><th scope="col">State</th><th scope="col">Where it stands</th></tr>
       </thead>
       <tbody>
+        <tr class="divider"><td colspan="4">In flight at 14:20Z</td></tr>
+        <tr>
+          <td class="lane">#31</td>
+          <td>Combat stance (<code>feat/combat-stance</code>)</td>
+          <td class="st"><span class="pill run">round 2</span> <span class="pill warn">conflicts</span></td>
+          <td>Round 1’s head <code>efdf4d76</code> passed CI (run <code>40695331687</code>), but a verifier refuted its combat-stance fix (<a href="#mistakes">Mistakes</a>). Round 2 fixes the game: one shared capped time step for the player and the AI, and melee aimed from the body, not the shaken camera. Its commits, from <code>55483abc</code> on, were local and unreviewed at 14:20Z. GitHub reports conflicts with main since Wave 1. <code>/code-review xhigh</code> on the PR range follows.</td>
+        </tr>
+        <tr>
+          <td class="lane">Light and colour</td>
+          <td>The colour script and sky frame (<code>worktree-wf_34f35934-dfe-1</code>)</td>
+          <td class="st"><span class="pill run">landing</span></td>
+          <td>Landing lane started by 14:11Z: merge main, drop the capture-state work, check the OKLab blend, settle the 300 s day length. At <code>b98127e4</code>, 14 commits ahead of main and none behind.</td>
+        </tr>
+        <tr>
+          <td class="lane">W1-G</td>
+          <td>Bundle, UI only (<code>feat/w1-bundle-ui</code>)</td>
+          <td class="st"><span class="pill run">building</span></td>
+          <td>Drops tailwind-merge from the UI primitives and loads the game-icon sprite lazily, to shrink the index chunk. Started by 13:37Z; no commit on its branch at 14:20Z.</td>
+        </tr>
+        <tr>
+          <td class="lane">W1-E</td>
+          <td>Mipmaps (<code>feat/w1-mipmaps</code>)</td>
+          <td class="st"><span class="pill run">building</span></td>
+          <td>Turns mipmaps on for the block textures, against leaf and stone sparkle at mid distance, with a DECISIONS entry that replaces the old no-mipmaps call. Started by 14:11Z; no commit on its branch at 14:20Z.</td>
+        </tr>
+        <tr>
+          <td class="lane">W1-H</td>
+          <td>Plans, decisions and one registry</td>
+          <td class="st"><span class="pill idle">next</span></td>
+          <td>The nine DECISIONS entries the reset needs, and a harvest of every open item (STATUS, the G-ledger, ACTIVE_PLAN, older queues) into one registry, with a diff showing nothing dropped.</td>
+        </tr>
+        <tr>
+          <td class="lane">Dependabot #30</td>
+          <td>4 production updates</td>
+          <td class="st"><span class="pill warn">open</span></td>
+          <td>Opened 10:43:41Z. It lands through <code>ci ok</code> like any other change.</td>
+        </tr>
+        <tr class="divider"><td colspan="4">Landed since 06:30Z, oldest first</td></tr>
+        <tr>
+          <td class="lane">Touch-hold freeze</td>
+          <td>Main green again (<code>fix/touch-hold-freeze</code>)</td>
+          <td class="st"><span class="pill ok">on main</span></td>
+          <td><code>2bb0857d</code> at 07:40Z, run <code>40651588887</code> green. The e2e job’s cap is 35 minutes.</td>
+        </tr>
+        <tr>
+          <td class="lane">Page cap</td>
+          <td>Reports drift, refuses no push (<code>fix/page-cap-informational</code>)</td>
+          <td class="st"><span class="pill ok">on main</span></td>
+          <td><code>92ca0bc0</code>, on main at 09:09Z with <code>58455351</code>. Each page carries its own as-of stamp (item 12).</td>
+        </tr>
+        <tr>
+          <td class="lane">E2E speed</td>
+          <td>Canvases at half pixel ratio under e2e (<code>fix/e2e-runner-speed</code>)</td>
+          <td class="st"><span class="pill ok">on main</span></td>
+          <td><code>ae2e10a5</code>, on main at 09:58Z. A/B on CI: the workflow from 16.4 to 8.4 minutes, the slowest shard from 978 to 501 s, every reading held.</td>
+        </tr>
+        <tr>
+          <td class="lane">SOTA reset plan</td>
+          <td>The First Night, three waves (<code>docs/superpowers/plans/2026-10-28-crafty-sota-reset.md</code>)</td>
+          <td class="st"><span class="pill ok">on main</span></td>
+          <td><code>ee26549c</code> and <code>b3425d83</code>, on main at 09:58Z.</td>
+        </tr>
+        <tr>
+          <td class="lane">#24</td>
+          <td>Phase 0f and 0g, steady cool (<code>feat/steady-cool</code>)</td>
+          <td class="st"><span class="pill ok">merged</span></td>
+          <td>Merged as <code>22048707</code> (PR head <code>5226a461</code>), on main at 10:41Z with #27.</td>
+        </tr>
+        <tr>
+          <td class="lane">#27</td>
+          <td>Harness Tranche A</td>
+          <td class="st"><span class="pill ok">merged</span></td>
+          <td><code>da70413f</code> at 10:41Z, after land run <code>40672067288</code>.</td>
+        </tr>
+        <tr>
+          <td class="lane">W1-A</td>
+          <td>The required check (<code>fix/ci-required-check</code>)</td>
+          <td class="st"><span class="pill ok">on main</span></td>
+          <td><code>1c4e3bc1</code> at 11:11Z, after land run <code>40675354151</code>. Branch protection went on right after.</td>
+        </tr>
+        <tr>
+          <td class="lane">One CLAUDE.md</td>
+          <td>The symlink and <code>.agent/</code> gone (<code>chore/one-claude-md</code>)</td>
+          <td class="st"><span class="pill ok">on main</span></td>
+          <td><code>d700e531</code> at 11:29Z, after land run <code>40678345158</code>.</td>
+        </tr>
+        <tr>
+          <td class="lane">Nothing is locked</td>
+          <td>Lock labels rewritten, the lock-label check (<code>docs/nothing-locked</code>)</td>
+          <td class="st"><span class="pill ok">on main</span></td>
+          <td><code>dc8b0d65</code> at 12:52Z, after run <code>40689226695</code> on its land branch.</td>
+        </tr>
+        <tr>
+          <td class="lane">Wave 1</td>
+          <td>W1-B pause, W1-C cuts, W1-D instruments, W1-F public text (<code>land/2026-10-28-w1</code>)</td>
+          <td class="st"><span class="pill ok">on main</span></td>
+          <td><code>030ada1f</code> at 14:08Z: merges <code>f2082fdd</code>, <code>f74185cc</code>, <code>a7ad2fbc</code> and <code>7c1eea2f</code>, the killability retirement <code>9132c160</code>, DECISIONS items 17 to 19, and the touch Pause fix. Land run <code>40700481509</code> passed; the first, <code>40696946693</code>, failed on the touch Pause.</td>
+        </tr>
+        <tr class="divider"><td colspan="4">Closed since 06:30Z</td></tr>
+        <tr>
+          <td class="lane">#28</td>
+          <td>CI tree equivalence (<code>feat/ci-tree-equivalence</code>)</td>
+          <td class="st"><span class="pill idle">closed</span></td>
+          <td>Closed unmerged at 13:35:59Z: the required check replaces the receipt it optimised.</td>
+        </tr>
+        <tr>
+          <td class="lane">Dependabot #20</td>
+          <td>8 dev updates</td>
+          <td class="st"><span class="pill idle">closed</span></td>
+          <td>Closed unmerged at 08:55:35Z. <code>10a43f68</code> says its updates were applied on main.</td>
+        </tr>
+        <tr>
+          <td class="lane">Dependabot #26</td>
+          <td>3 production updates</td>
+          <td class="st"><span class="pill idle">closed</span></td>
+          <td>Closed unmerged at 10:43:31Z; #30, for the same group, opened 10 s later.</td>
+        </tr>
+        <tr class="divider"><td colspan="4">Landed before 06:30Z</td></tr>
         <tr>
           <td class="lane">#29</td>
           <td>e2e hardening (<code>fix/e2e-hardening-2026-10-27</code>)</td>
           <td class="st"><span class="pill ok">merged</span></td>
-          <td><code>fbb11411</code> at 00:43:10Z. 5 commits, 6 files, +609/−77. Main CI <code>40610542612</code> green.</td>
+          <td><code>fbb11411</code> at 00:43:10Z. 5 commits, 6 files, +609/−77.</td>
         </tr>
         <tr>
           <td class="lane">#22</td>
           <td>Phase 0b, the parked milestone (<code>feat/parked-looks-perf</code>)</td>
           <td class="st"><span class="pill ok">merged</span></td>
-          <td><code>76262a08</code> at 02:40:43Z. 20 commits, 31 files, +1723/−46. Its own main run <code>40622346757</code> was cancelled by the next push.</td>
+          <td><code>76262a08</code> at 02:40:43Z. 20 commits, 31 files, +1723/−46.</td>
         </tr>
         <tr>
           <td class="lane">artifact-currency</td>
           <td>The page cap binds only a push that moves main (<code>fix/artifact-currency-scope</code>, no PR)</td>
           <td class="st"><span class="pill ok">merged</span></td>
-          <td><code>008ba09e</code> at 22:19 PDT on 10-27. 3 commits, 12 files, +688/−25.</td>
+          <td><code>008ba09e</code> at 22:19 PDT on 10-27. Superseded by item 12.</td>
         </tr>
         <tr>
-          <td class="lane">lightning budget</td>
+          <td class="lane">Lightning budget</td>
           <td>The lightning spec’s CI time budget (<code>fix/lightning-ci-budget</code>)</td>
           <td class="st"><span class="pill ok">on main</span></td>
-          <td>Cherry-picked <code>a9134e2b</code> → <code>a9a303e9</code> after land run <code>40632886705</code> passed.</td>
+          <td>Cherry-picked from <code>a9134e2b</code> as <code>a9a303e9</code> after land run <code>40632886705</code> passed.</td>
         </tr>
         <tr>
           <td class="lane">#25</td>
@@ -417,145 +572,79 @@ footer p { max-width: 75ch; }
         <tr>
           <td class="lane">#23</td>
           <td>Phase 0d, instruments (<code>feat/instruments</code>)</td>
-          <td class="st"><span class="pill ok">merged</span> <span class="pill run">CI running</span></td>
-          <td><code>32a55b75</code> at 06:08:37Z. 22 commits, 26 files, +3483/−29. Main run <code>40642071917</code> failed on <code>touch-hold.spec.js:303</code> (SETUP, slow runner); fix in progress.</td>
-        </tr>
-        <tr>
-          <td class="lane">#24</td>
-          <td>Phase 0f and 0g, steady cool (<code>feat/steady-cool</code>)</td>
-          <td class="st"><span class="pill run">building</span> <span class="pill bad">CI red</span></td>
-          <td>PR head <code>1b1650cb</code>: run <code>40637608377</code> failed on <code>mob-floor.spec.js:207</code> after 3 attempts, with 7/8 cancelled. The fix <code>fef41203</code> is committed locally, not pushed, and no CI has run on it. Conflicts with main.</td>
-        </tr>
-        <tr>
-          <td class="lane">Light and colour</td>
-          <td>Phase 1 lead, Tasks 0–3b (<code>worktree-wf_34f35934-dfe-1</code>)</td>
-          <td class="st"><span class="pill run">building</span></td>
-          <td>Local at <code>69e1c46d</code>, not pushed. Tasks 4–9 not built.</td>
-        </tr>
-        <tr>
-          <td class="lane">Combat stance</td>
-          <td>Close-quarters combat, Tasks 1–8 (<code>feat/combat-stance</code>)</td>
-          <td class="st"><span class="pill run">building</span></td>
-          <td>Local at <code>34bc39f7</code>, not pushed. Tasks 9–12 open. Lands after #24 and #25.</td>
-        </tr>
-        <tr>
-          <td class="lane">#27</td>
-          <td>Harness Tranche A (<code>feat/harness-tranche-a</code>)</td>
-          <td class="st"><span class="pill idle">draft</span> <span class="pill ok">CI green</span></td>
-          <td><code>0559c297</code>, mergeable and clean. 18 ahead of main, 84 behind. <a href="#harness">Why it has not landed</a>.</td>
-        </tr>
-        <tr>
-          <td class="lane">#28</td>
-          <td>CI tree equivalence (<code>feat/ci-tree-equivalence</code>)</td>
-          <td class="st"><span class="pill idle">parked</span></td>
-          <td><code>86846a3f</code>, draft. A fail-open mutant survives. Revisit with a fail-closed rule.</td>
-        </tr>
-        <tr>
-          <td class="lane">Coast</td>
-          <td>Phase 1 coast and water</td>
-          <td class="st"><span class="pill idle">planned</span></td>
-          <td>Not started. Deferred in the landing queue.</td>
-        </tr>
-        <tr>
-          <td class="lane">Phase 0e</td>
-          <td>Visual re-baseline from Chromium 147 to current</td>
-          <td class="st"><span class="pill idle">planned</span></td>
-          <td>Alone, in its own Baseline-Review commit with no <code>src/</code> change, before any look change (T10).</td>
-        </tr>
-        <tr>
-          <td class="lane">Dependabot #20</td>
-          <td>8 updates</td>
-          <td class="st"><span class="pill warn">open</span></td>
-          <td>Still open and conflicting, although <code>10a43f68</code> says #20 and #21 were applied on main. #21 was closed unmerged at 14:09:55Z on 10-27.</td>
-        </tr>
-        <tr>
-          <td class="lane">Dependabot #26</td>
-          <td>3 updates</td>
-          <td class="st"><span class="pill warn">open</span></td>
-          <td>Created 14:10:05Z on 10-27.</td>
+          <td class="st"><span class="pill ok">merged</span></td>
+          <td><code>32a55b75</code> at 06:08:37Z. 22 commits, 26 files, +3483/−29.</td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <p class="muted">ACTIVE_PLAN tasks. Done: T1 mutate-e2e (<code>93785815</code>), T2 dodge latch (<code>48b003e3</code>, <code>fb45cb35</code>, <code>2cecfa7f</code>), T3 main pushed, T4 ultrareview 6 of 6, T5 dependencies (<code>10a43f68</code>), T7 lookbook, T8 #22 merged, T12 mip-ab removed, T17 incident repaired (<code>0c5b269c</code>). Partial: T6 (<code>5177c203</code>). Building: T16, the harness lane. Open: T9, T10, T11, T14, T15.</p>
-
-  <p class="muted">Landing queue as recorded (ACTIVE_PLAN T13): #25 and #24, then #23, then #27, then the light lane, then 0e, then light Tasks 4–9, with coast deferred. #25 and #23 have landed. #24, #27 and the light lane have not.</p>
+  <p class="muted">ACTIVE_PLAN tasks, the 10-27 list. Done: T1, T2, T3, T4, T5, T8, T12, T17. Partial: T6, T15. Missed and now punted, each with a trigger: T9 goes into the registry with W1-H, and T14 means every game-code PR range from #31 on gets <code>/code-review xhigh</code>. Still read open: T7 (<code>ipad-probe.mjs</code> unrun), T10 (which the reset cancels) and T11 (the pixel budget landed with #24; the glove value moves to W2-E). T13’s queue and T16’s harness lane are overtaken: the reset is the queue, and Tranche A landed.</p>
 
   <div class="group">
-    <h3>Masterpiece programme map</h3>
+    <h3>Programme map, the SOTA reset</h3>
     <div class="tbl">
       <table class="compact">
         <thead>
-          <tr><th scope="col">Phase</th><th scope="col">Unit</th><th scope="col">State</th></tr>
+          <tr><th scope="col">Wave</th><th scope="col">Unit</th><th scope="col">State</th></tr>
         </thead>
         <tbody>
-          <tr><td>0</td><td>0a to 0d (0b is #22, 0c is #25, 0d is #23)</td><td><span class="pill ok">done</span> 0d apart from the ipad-probe run and the power A/B</td></tr>
-          <tr><td>0</td><td>0e visual re-baseline</td><td><span class="pill idle">open</span></td></tr>
-          <tr><td>0</td><td>0f and 0g, steady cool</td><td><span class="pill run">built on #24</span> not on main</td></tr>
-          <tr><td>1</td><td>Light and colour</td><td><span class="pill run">building</span> Tasks 0–3b built locally</td></tr>
-          <tr><td>1</td><td>Combat stance</td><td><span class="pill run">building</span> Tasks 1–8 built locally</td></tr>
-          <tr><td>1</td><td>Coast</td><td><span class="pill idle">planned</span> not started</td></tr>
-          <tr><td>2 and 3</td><td>Remaining lanes</td><td><span class="pill idle">planned</span> plan docs only</td></tr>
+          <tr><td>1</td><td>W1-A required check</td><td><span class="pill ok">done</span> on main, protection on</td></tr>
+          <tr><td>1</td><td>W1-B real pause</td><td><span class="pill ok">done</span> with the exceptions under Live</td></tr>
+          <tr><td>1</td><td>W1-C gameplay cuts</td><td><span class="pill ok">done</span> scope widened by item 18</td></tr>
+          <tr><td>1</td><td>W1-D eye-level instruments</td><td><span class="pill ok">done</span> the run against the production URL is owed</td></tr>
+          <tr><td>1</td><td>W1-F public text</td><td><span class="pill ok">done</span> applied to the repo at about 14:10Z</td></tr>
+          <tr><td>1</td><td>W1-G bundle, W1-E mipmaps</td><td><span class="pill run">building</span></td></tr>
+          <tr><td>1</td><td>W1-H plans, decisions, registry</td><td><span class="pill idle">next</span></td></tr>
+          <tr><td>1</td><td>Carried: light and colour; combat stance #31</td><td><span class="pill run">landing</span> and <span class="pill run">round 2</span></td></tr>
+          <tr><td>2</td><td>W2-A to W2-M: the Cut, the HUD lane, hands, media, the capture oracle retired, passes measured, docs and harness</td><td><span class="pill idle">planned</span> starts once #24, stance, light and W1-A land; #24 and W1-A have</td></tr>
+          <tr><td>3</td><td>W3-A to W3-G: the First Night, the road of light and the dragon, the first minute, platform, polish</td><td><span class="pill idle">planned</span></td></tr>
+          <tr><td>10-27</td><td>Phases 0a to 0d, 0f and 0g</td><td><span class="pill ok">landed</span></td></tr>
+          <tr><td>10-27</td><td>Phase 0e re-baseline; coast</td><td><span class="pill idle">cancelled</span> 0e, since the capture oracle retires (W2-B); coast deferred, its shader terms move to W2-A</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="muted">Recorded decisions that bound the programme: soft death stays, and there is no WebGPU and no engine bump.</p>
+    <p class="muted">Recorded decisions that bound the programme: soft death stays, and there is no WebGPU and no engine bump. Under items 14 and 16 they stand while they earn their place.</p>
   </div>
 
   <div class="group">
     <h3>Built, not on main</h3>
     <div class="blocks">
       <div>
-        <div class="group-head"><strong>Steady cool, #24</strong><code>fef41203</code></div>
-        <p class="muted">27 commits ahead of main (33 with merges). PR head still <code>1b1650cb</code>.</p>
+        <div class="group-head"><strong>Combat stance, #31</strong><code>efdf4d76</code></div>
+        <p class="muted">The PR head is 34 commits ahead of main and 48 behind. Round 2’s commits are local.</p>
         <ul class="list">
-          <li>Pixel budget and dpr cap per tier: high 4.2 Mpx / 1.75, medium 2.8 / 1.5, low 1.8 / 1.25. A 7.72 Mpx screen gets dpr 1.475. Sharpness is recorded as a taste call.</li>
-          <li>The composer follows dpr. GodRays, N8AO and Bloom are built once.</li>
-          <li>Governor: a 60 s block, settling after the second decline.</li>
-          <li>A context-loss panel and one HUD ticker. 30 fps behind panels, 10 fps unfocused.</li>
-          <li>Shadows on demand (0.5°, at most 30 Hz). Light pool 2/4/6.</li>
-          <li>F3, ESC and Show Stats pacing fixes.</li>
-          <li><span class="gap">Per its plan: e2e written but not run, no heat number, capture not re-run.</span></li>
+          <li>You cannot out-walk a fight: when an aggro’d pursuer within 12 m can reach you, the stance caps how fast you move away from it. Travel keeps 14 m/s (<code>90863cc6</code>, <code>84dc0604</code>, <code>dffeda3b</code>).</li>
+          <li>A dodge’s burst is exempt from that cap (<code>9178d813</code>).</li>
+          <li>A chevron at the screen edge for a windup you cannot see, loaded lazily (<code>dcd31b3b</code>, <code>d0f67eed</code>).</li>
+          <li>A three-step light string: the third hit sweeps 140 degrees for 1.5x with a heavy-tier hitstop, and a dodge keeps it alive (<code>e05e1a30</code>).</li>
+          <li>Close-quarters e2e on an emulated iPad (<code>c2c93ec1</code>).</li>
+          <li><span class="gap">Open: round 2’s game fix, its review and its CI. Not checked: feel on a real iPad.</span></li>
         </ul>
       </div>
       <div>
-        <div class="group-head"><strong>Light and colour</strong><code>69e1c46d</code></div>
-        <p class="muted">12 own commits on 22 steady-cool commits (base <code>853aa7eb</code>).</p>
+        <div class="group-head"><strong>Light and colour</strong><code>b98127e4</code></div>
+        <p class="muted">12 commits of its own plus merges; Tasks 0 to 3b built.</p>
         <ul class="list">
           <li>A six-key colour script. Moonlit stone is (47, 55, 74), “not navy, not black” (<code>01fb8a88</code>).</li>
-          <li>A moon key light.</li>
+          <li>A moon key light (<code>452d19cc</code>).</li>
           <li>Rig, dome and sun billboard on one sky frame, so the sun arcs (<code>1ab2e4d0</code>).</li>
-          <li>The sky runs on the 1 Hz clock; measured as three steps in about 2.9 s (<code>43cc3112</code>).</li>
-          <li>Storm clouds darken.</li>
-          <li><span class="gap">Tasks 4–9 not built. No after frames. Lacks the four CI and e2e-budget commits at steady cool’s tip.</span></li>
-        </ul>
-      </div>
-      <div>
-        <div class="group-head"><strong>Combat stance</strong><code>34bc39f7</code></div>
-        <p class="muted">Main plus 26 steady-cool commits plus 8 own. Worktree clean.</p>
-        <ul class="list">
-          <li>Tasks 1–6: <code>d9085d14</code>, <code>90863cc6</code>, <code>8425394a</code>, <code>84dc0604</code>, <code>dffeda3b</code>, <code>6f1b1c51</code>.</li>
-          <li>Task 7: wind-up chevrons drawn on the HUD ticker, 8 tests (<code>dcd31b3b</code>).</li>
-          <li>Task 8: the three-step light string as pure logic, 15 tests (<code>34bc39f7</code>). Not wired into play yet.</li>
-          <li><span class="gap">Open: Tasks 9–12, the string in the running game, finisher reads, iPad touch proofs and verification gates.</span></li>
+          <li>The sky follows the 1 Hz game clock every frame, so dawn and dusk ramp (<code>43cc3112</code>).</li>
+          <li>Storm clouds darken again (<code>212d294d</code>).</li>
+          <li><span class="gap">No after frames yet. Tasks 4 to 9 are not built; the reset keeps Task 7, the motes, with this lane.</span></li>
         </ul>
       </div>
     </div>
   </div>
 
   <div class="group">
-    <h3>Planned lanes</h3>
-    <p>There are 15 plan docs dated 2026-10-27 on main: the umbrella, instruments, touch hold and 12 others. Steady cool’s plan lives on its branch. The lanes with no code yet, with the figures their plans set:</p>
+    <h3>What Waves 2 and 3 set out to change</h3>
     <ul class="list">
-      <li><strong>Coast:</strong> block-stepped bands, 1–2 block foam.</li>
-      <li><strong>First minute</strong> and <strong>material grammar</strong>.</li>
-      <li><strong>Sound:</strong> 71 mono MP3s from Kenney.</li>
-      <li><strong>Feedback:</strong> a 40-mob siege, one vertex-coloured rig mesh.</li>
-      <li><strong>Lantern block light:</strong> light 8 and up.</li>
-      <li><strong>Encounters:</strong> 4 consumers and a captain.</li>
-      <li><strong>Relight:</strong> 45 s, 48 m, 10% HP. Old saves load with no shrines lit.</li>
-      <li><strong>Dragon:</strong> about 40 instanced boxes, 4 draws instead of 24.</li>
+      <li><strong>The Cut</strong> (W2-F): one costed build mode, one ember bar, the Forge in place of the hidden grid, and hunger gone; a pre-cut save still loads.</li>
+      <li><strong>The HUD lane</strong> (W2-D): chrome at 8% of the frame or less at rest, three panels instead of seven, chrome re-keyed from navy to warm charcoal.</li>
+      <li><strong>Hands</strong> (W2-E): ember gauntlets with a brightness floor at midnight.</li>
+      <li><strong>Passes measured, then cut</strong> (W2-I): GodRays and N8AO deleted or replaced on the timer’s numbers, and lower watts on the M3 Max.</li>
+      <li><strong>Sound with body</strong> (W2-M), then <strong>the First Night</strong> (W3-A): a siege marching on a Hearth you lit, held until a golden dawn.</li>
     </ul>
   </div>
 </section>
@@ -565,19 +654,35 @@ footer p { max-width: 75ch; }
   <p class="lede">From <code>docs/superpowers/DECISIONS.md</code>. Item numbers are the file’s own.</p>
 
   <div class="group">
-    <h3>2026-10-28</h3>
+    <h3>2026-10-28, new since 06:30Z</h3>
     <ol class="dec">
-      <li><span class="n">1</span><p>Every lane lands through a PR. Main deploys on every push, and e2e runs reliably only in CI: three local receipts failed under load on 10-27. Actions are free on a public repo. #22 was the first such PR.</p></li>
-      <li><span class="n">2</span><p>Merges are local merge commits, never cherry-picks or GitHub squashes; the repository UI allows only squash. A cherry-pick left a branch git calls unmerged, and <code>git branch -D</code> is denied.</p></li>
+      <li><span class="n">—</span><p><strong>One CLAUDE.md</strong> (your call: “let’s just have one claude.md”). The symlink and its directory are gone. Reversible in one commit.</p></li>
+      <li><span class="n">12</span><p>The page cap reports and refuses no push; each page states its own commit and time. It had refused 8 pushes, 5 of them correct lane work, and stopped no recorded false claim.</p></li>
+      <li><span class="n">13</span><p>Your answer, “agree on your recommendations and changes”. (a) One page for you, this one, refreshed at every landing. era-review and sota-audit retire as dated history, so option (a) of item 11 lapses. (b) A required status check on main: one aggregate job, <code>ci ok</code>, then branch protection with no bypass. (c) You applied the narrow allow rules the session could not grant itself; <code>git branch -D</code> stays denied.</p></li>
+      <li><span class="n">14</span><p>Your standing principle: nothing is off limits. The whole game, its architecture, design and every element may be changed, deleted or pruned, with full autonomy, and you are asked nothing unless absolutely needed. Earlier decisions bind only while they earn their place.</p></li>
+      <li><span class="n">15</span><p>No GitHub Pages site for now: the repo’s own face and the live game instead. Tests are in scope like everything else. Comments say why, and only when the code cannot.</p></li>
+      <li><span class="n">16</span><p>Nothing is locked (your words, on “Design Language (LOCKED — S1-C)”). The live docs now state each decision, its reason, and that it stands while it earns its place. A doc-currency check fails a canonical doc carrying one of six lock phrasings. What stays yours: your two bright lines, and what only you can do (real-device feel, the audio mix by ear, account sign-ins).</p></li>
+      <li><span class="n">17</span><p>The killability-ledger gate retires. A mutation receipt has one home, the <code>Mutation-Proof:</code> commit trailer, which the trailer gate still demands for every commit that adds or rewrites a gate.</p></li>
+      <li><span class="n">18</span><p>Wave 1’s cuts reach further than the plan first said, on game-design grounds: a Settler kill pays nothing and counts nowhere, and a spell hit on a neutral mob pays no XP. A livestock kill still pays, so hunting stays rewarded.</p></li>
+      <li><span class="n">19</span><p>The homepage is https://crafty-game.vercel.app. The session added the alias and you clicked Add Domain at about 11:10Z. crafty-sand.vercel.app keeps working.</p></li>
+    </ol>
+    <p class="muted">Also recorded, in the loop docs (<code>62f07a83</code>): an external send needs your explicit OK; publishing the repo’s own public face stays the session’s.</p>
+  </div>
+
+  <div class="group">
+    <h3>2026-10-28, before 06:30Z</h3>
+    <ol class="dec">
+      <li><span class="n">1</span><p>Every lane lands through a PR. Main deploys on every push, and e2e runs reliably only in CI: three local receipts failed under load on 10-27. Actions are free on a public repo.</p></li>
+      <li><span class="n">2</span><p>Merges are local merge commits, never cherry-picks or GitHub squashes. A cherry-pick left a branch git calls unmerged, and <code>git branch -D</code> is denied.</p></li>
       <li><span class="n">3</span><p>E2E runs in 6 shards (<code>17e06ecd</code>). Superseded by item 7.</p></li>
-      <li><span class="n">4</span><p>PR #28 is parked as a draft after two review rounds. A fail-open mutant and two older weaknesses remain. Revisit with a fail-closed rule.</p></li>
-      <li><span class="n">5</span><p>Landing was capped by the operator pages: artifact-currency refused a push more than 30 commits past the publish sha, and the pages belong to account 1. Until you answered, at most one PR (#22) could land.</p></li>
-      <li><span class="n">6</span><p>Interim option (b), about 01:30Z: page sources refreshed (<code>d00273cd</code>), and era-review and sota-audit published from account 2 at new addresses, keeping the account-1 links as <code>previousUrl</code>.</p></li>
+      <li><span class="n">4</span><p>PR #28 is parked as a draft. It was closed at 13:35:59Z, replaced by <code>ci ok</code>.</p></li>
+      <li><span class="n">5</span><p>Landing was capped by the operator pages, at 30 commits past their publish. Superseded by item 12.</p></li>
+      <li><span class="n">6</span><p>Interim option (b), about 01:30Z: era-review and sota-audit published from account 2 at new addresses.</p></li>
       <li><span class="n">7</span><p>E2E moves to 8 shards. At 6, two shards projected to about 20 minutes with no room for a retry (<code>a8ce0dd1</code>).</p></li>
-      <li><span class="n">8</span><p>The page cap binds only a push that moves main. Branch pushes report drift. A push that moves main, or has unknown refs, is still refused past 30. CI checks drift on every push to main; that catches a bad merge after it happens and does not block it.</p></li>
-      <li><span class="n">9</span><p>A fix that main needs before its lane lands goes to main by <code>cherry-pick -x</code>. The lightning CI budget went this way (<code>a9134e2b</code> → <code>a9a303e9</code>).</p></li>
-      <li><span class="n">10</span><p>Lanes land in readiness order once main is green. Combat stance builds on main plus #24 and #25 and lands after both.</p></li>
-      <li><span class="n">11</span><p>Your call this morning: option (a) for the pages. Keep the original account-1 links and republish there whenever account 1 is active. Not executed yet.</p></li>
+      <li><span class="n">8</span><p>The page cap binds only a push that moves main. Its refusal is superseded by item 12.</p></li>
+      <li><span class="n">9</span><p>A fix that main needs before its lane lands goes to main by <code>cherry-pick -x</code>, as the lightning CI budget did.</p></li>
+      <li><span class="n">10</span><p>Lanes land in readiness order once main is green. Combat stance lands after #24 and #25; both have.</p></li>
+      <li><span class="n">11</span><p>Your call: option (a) for the pages. Lapsed with item 13.</p></li>
     </ol>
   </div>
 
@@ -585,23 +690,23 @@ footer p { max-width: 75ch; }
     <div>
       <h3>2026-10-27, push gate and reserved calls</h3>
       <ul class="list">
-        <li><strong>Push gate.</strong> It stops depending on laptop load. CI’s e2e verdict on the exact commit counts as a receipt (tier 1b). The red-base refusal guards main only, and unknown refs stay strict. Flow: push a branch, run CI, then push main at the same sha.</li>
-        <li><strong>Visual re-baseline.</strong> Will do, alone, as Phase 0e, targeting the Chromium that puppeteer 25.16.0 pins. Looks acceptance moves to the lookbook; the 31 SwiftShader frames stay as the regression oracle.</li>
-        <li><strong>dprCap.</strong> Replaced by a pixel budget (Phase 0g): dpr = min(cap, devicePixelRatio, √(budget ÷ CSS pixels)) per tier. An M3 Max at dpr 2 renders at about 1.5.</li>
-        <li><strong>First-person glove value.</strong> Deferred until after the Phase 1 light-rig rebalance. B5 measured the gloves at rgb(16, 3, 40).</li>
+        <li><strong>Push gate.</strong> It stops depending on laptop load. CI’s e2e verdict on the exact commit counts as a receipt (tier 1b). The red-base refusal guards main only, and unknown refs stay strict. Item 13(b) retires these tiers in favour of the server-side rule (W2-C).</li>
+        <li><strong>Visual re-baseline.</strong> Planned as Phase 0e on 10-27. The reset cancels it: the capture oracle retires (W2-B), and looks are accepted on eye-level frames.</li>
+        <li><strong>dprCap.</strong> Replaced by a pixel budget (Phase 0g), on main since #24: dpr = min(cap, devicePixelRatio, √(budget ÷ CSS pixels)) per tier. An M3 Max at dpr 2 renders at about 1.5.</li>
+        <li><strong>First-person glove value.</strong> Deferred until after the light rig rebalance. B5 measured the gloves at rgb(16, 3, 40). The reset moves it to W2-E’s hands.</li>
         <li><strong>three r186 and cascaded shadows.</strong> Not now. An engine bump re-baselines the look, and r186 removes PCFSoftShadowMap.</li>
         <li><strong>Soft death.</strong> Kept. The “ember cache” would reverse a decision of record and is not built.</li>
-        <li><strong>Dependencies.</strong> vitest and coverage-v8 3 → 4.1.12, Playwright 1.64.1, Puppeteer 25.16.0. 14 advisories (2 critical through tinypool and vitest 3, 8 high) went to npm audit 0. Suite after: 477 files, 3757 tests. Engine stack untouched; every version at least 5 days old.</li>
+        <li><strong>Dependencies.</strong> vitest and coverage-v8 3 to 4.1.12, Playwright 1.64.1, Puppeteer 25.16.0. 14 advisories (2 critical, 8 high) went to npm audit 0. Engine stack untouched; every version at least 5 days old.</li>
       </ul>
     </div>
     <div>
       <h3>2026-10-27, mandate and code review</h3>
       <ul class="list">
-        <li><strong>Mandate.</strong> Your startup prompt gave full autonomy with each non-routine decision recorded. Bright lines: no money, no force-push or history rewrite. Reviewers at xhigh, never max. A milestone goes up as a PR, its number goes to you, and the session merges on its own gates.</li>
+        <li><strong>Mandate.</strong> Your startup prompt gave full autonomy with each non-routine decision recorded. Bright lines: no money, no force-push or history rewrite. Reviewers at xhigh, never max.</li>
         <li><strong>Outside the session.</strong> Ultrareview is your keystroke only. Classifier refusals go to you as exact commands.</li>
-        <li><strong>Default review.</strong> <code>/code-review xhigh</code> as a fresh headless <code>claude -p</code> process, never forked, plus one adversarial reviewer at xhigh with a pointed brief on runtime seams. The dynamic layer (<code>mutate.sh</code>, <code>mutate-e2e.sh</code>) stays the floor; it alone confirmed G1 and G5.</li>
-        <li><strong>Bake-off</strong>, a blind re-run on <code>57c45ae4..9dc5fac7</code> against G1–G6: <code>/code-review xhigh</code> found 3 (15 findings, 15.5 min), the adversarial reviewer at xhigh found 2 (5 findings, 20 min), max with a pointed brief found 6 (12 findings, 28 min). Both xhigh arms missed G1, G2 and G5. Indicative only.</li>
-        <li><strong>Ultrareview</strong> (free run 1 of 3): six findings, U1–U6, all confirmed and fixed (<code>93785815</code>, <code>2cecfa7f</code>, <code>43754237</code>, <code>167841e2</code>). It found four the bake-off missed and missed the timeout-as-kill flaw. The methods complement each other.</li>
+        <li><strong>Default review.</strong> <code>/code-review xhigh</code> as a fresh headless <code>claude -p</code> process, never forked, plus one adversarial reviewer at xhigh with a pointed brief on runtime seams. The dynamic layer (<code>mutate.sh</code>, <code>mutate-e2e.sh</code>) stays the floor.</li>
+        <li><strong>Bake-off</strong>, a blind re-run on <code>57c45ae4..9dc5fac7</code> against G1–G6: <code>/code-review xhigh</code> found 3 (15 findings, 15.5 min), the adversarial reviewer at xhigh found 2 (5 findings, 20 min), max with a pointed brief found 6 (12 findings, 28 min). Indicative only.</li>
+        <li><strong>Ultrareview</strong> (free run 1 of 3): six findings, U1–U6, all confirmed and fixed. It found four the bake-off missed and missed the timeout-as-kill flaw. The methods complement each other.</li>
       </ul>
     </div>
   </div>
@@ -610,61 +715,45 @@ footer p { max-width: 75ch; }
 <section id="harness">
   <h2>Harness and gates</h2>
 
-  <div class="qa">
-    <div>
-      <p class="q">Is the harness SOTA lane landed?</p>
-      <p><span class="pill warn">not landed</span> No. PR #27 carries Tranche A at <code>0559c297</code>. It is a draft, mergeable and clean, with every check green, and none of its 18 commits is on main.</p>
-    </div>
-  </div>
-
-  <div class="two">
-    <div>
-      <h3>Why it has not landed</h3>
-      <ul class="list">
-        <li><strong>Order.</strong> The readiness queue (T13) puts #27 after #24, and #24 has not landed.</li>
-        <li><strong>U4 needs a careful merge.</strong> U4 stops tracking <code>.state/compaction-events.jsonl</code>. That file is modified in main’s checkout, so a fast-forward merge is refused while it is modified and deletes it once clean. Landing takes save, checkout, merge, restore and a byte compare (plan lines 415–427), and must not run during a compaction.</li>
-        <li><strong>U5 is not built.</strong> U5 makes graft machine-local and moves allows and hooks to an untracked <code>settings.local.json</code>. The lane stopped there because it is a permission change, and holds it for the command session. A headless run showed <code>MODULE_NOT_FOUND</code> for <code>graft-hooks.cjs</code>, and <code>.claude/helpers/</code> is untracked. U5’s red step expects <code>grep -c graft</code> to print 7; main prints 9.</li>
-        <li><strong>Ledgered.</strong> G-ledger row 24 lists the U4, U5 and U7 preconditions. Rows 22 and 23 carry the reviewers’ surviving findings.</li>
-      </ul>
-    </div>
-    <div>
-      <h3>What Tranche A holds</h3>
-      <ul class="list">
-        <li>18 commits: units U1–U4 and U6–U8a, a fix round, and a merge of main.</li>
-        <li>Two rounds of static and dynamic review at xhigh. The fix round reported 52 of 52 mutants red.</li>
-        <li>The AST version of cli-guard (<code>03df3661</code>) and its docblock narrowing (<code>cb08d489</code>).</li>
-        <li>The worktree receipt fix (<code>6b15bb27</code>): <code>write-receipt.sh</code> took <code>frontend/</code> as the repo top level.</li>
-        <li>CI passed on 6 e2e shards. Main has since moved to 8, and the branch is 84 commits behind.</li>
-        <li>The plan (status ACTIVE) has 39 units, U1–U38 plus U8a, in tranches A to E. Only Tranche A is in a PR.</li>
-      </ul>
-    </div>
+  <div class="group">
+    <h3>New on main since 06:30Z</h3>
+    <ul class="list">
+      <li><strong>One required check</strong> (<code>627405df</code>, on main with <code>1c4e3bc1</code>). <code>ci ok</code> needs every other job and fails unless each succeeded, so the shard count can change freely. A cancelled run reads red. A docs-only commit skips the browser jobs only when its base’s <code>ci ok</code> passed. CI runs on every push to <code>land/**</code>, and main’s runs are never cancelled. 22 mutants went red.</li>
+      <li><strong>Branch protection</strong> on main: <code>ci ok</code> required, up to date, admins included, no force push, no deletion.</li>
+      <li><strong>E2E at half pixel ratio</strong> (<code>ae2e10a5</code>). The A/B measured the workflow at 8.4 minutes, from 16.4. The runs since took 11 to 21 minutes from start to finish, as GitHub records them.</li>
+      <li><strong>The page cap reports and refuses nothing</strong> (<code>92ca0bc0</code>, item 12). Each operator page carries an as-of stamp naming its commit, and a push still refuses a missing or mismatched stamp. LOOP-PROGRESS is archived.</li>
+      <li><strong>Harness Tranche A</strong> (<code>da70413f</code>). <code>.state/</code> left git. Every pipeline step scrubs <code>GIT_*</code>, and raw git in a test is a lint error. cli-guard reads the guard off the syntax tree. The worktree receipt fix (<code>6b15bb27</code>). A mutation batch tool that runs the identity mutant first and prints its denominator. The compaction reminder moved to SessionStart(compact), the channel that delivers it.</li>
+      <li><strong>A lock-label check</strong> in doc-currency (<code>213bf114</code>, <code>dc8b0d65</code>, item 16). It fails a canonical doc carrying one of six lock phrasings, prints file and line, and states both denominators.</li>
+      <li><strong>The killability-ledger gate is retired</strong> (<code>9132c160</code>, item 17). The generated table now reads 16 gates: 8 on every commit, 13 on every push, 12 in CI.</li>
+      <li><strong>prod-smoke checks the shipped lookbook seam</strong> (<code>7c6b10dd</code>): a pass-timer chunk the production build cannot load turns it red. That covers the gap G-ledger row 31 named.</li>
+      <li><strong>The public face is generated and applied.</strong> <code>public-face.mjs --apply</code> sent 13 requests at about 14:10Z: the About line, the homepage, Discussions and Projects off, 13 topics, three labels added (ipad, looks, perf) and 8 unused GitHub defaults deleted. It refuses a stale face and the deletion of a label in use. The About line reads: “A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, and a dragon waiting at its far edge.”</li>
+    </ul>
   </div>
 
   <div class="group" id="instruction-file">
-    <h3>The instruction file and the Opus wording</h3>
+    <h3>The instruction file</h3>
     <div class="prose">
-      <p>CLAUDE.md is a symlink to <code>.agent/AGENTS.md</code>. Commit <code>43d766e6</code> stopped the file naming a model in a second place. It removed “(Opus 5)” from the Subagent-driven development line, which said it from June until 2026-10-28; line 227 now points to the models the first bullet of that section names. That bullet, the Models-and-effort bullet at line 215, still names “Opus 5.5” and <code>claude-opus-5-5</code>. It is now the only line that sets a model; line 227 mentions “(Opus 5)” only to record the old wording.</p>
-      <p>The rewrite that would cut the instruction files from 34.5 KB to about 12 KB is plan unit U22, in Tranche C. No PR #27 commit contains it.</p>
+      <p>Since <code>d700e531</code>, <code>CLAUDE.md</code> is a regular file at the repo root (37,518 bytes) and the only agent-instruction file. <code>.agent/AGENTS.md</code> and the symlink are gone. Plans dated before it that say AGENTS.md mean <code>CLAUDE.md</code>. Its Models-and-effort bullet is the only line that sets a model: Opus 5.5 reviewers at xhigh, never max, and Sonnet and Haiku used liberally.</p>
+      <p>Plan item #29 cuts the file to 12 KB or less and keeps your standing directives. It runs in Wave 2 (W2-J), whose proof is a cold agent answering 10 orientation questions in 15 tool calls or fewer.</p>
     </div>
   </div>
 
   <div class="group">
-    <h3>Gates and CI that changed on main</h3>
+    <h3>Gate and CI changes before 06:30Z</h3>
     <ul class="list">
-      <li><strong>mutate-e2e stops scoring failures as kills</strong> (<code>93785815</code>). It scored any non-setup failure as a kill, which a stubbed runner proved. A timeout, an untagged <code>bootDev</code> or a busy port now gives COULD NOT CHECK (exit 3). <code>portInUse</code> probes 127.0.0.1 and [::1]; a killed <code>--run</code> exits 3.</li>
-      <li><strong>Push gate tier 1b</strong> (<code>f0e84766</code>). CI’s e2e verdict on the exact commit counts as a receipt, and the red-base refusal guards main only. Mutants R1–R4 went red; I0 survived.</li>
-      <li><strong>Fixtures cannot write into the real repo</strong> (<code>0c5b269c</code>). <code>_isolatedGit.js</code> strips every <code>GIT_*</code> variable, and the decoy test has a raw-call control. G1–G3 went red; I0 survived. <code>mutate.sh</code> now reads vitest’s JSON reporter.</li>
-      <li><strong>E2E shards</strong> 3 → 6 (<code>17e06ecd</code>) → 8 (<code>a8ce0dd1</code>). Run <code>40637429575</code> shows 1/8 to 8/8 green.</li>
-      <li><strong>Runner pin</strong> (<code>5177c203</code>). All jobs on ubuntu-24.04, since <code>ubuntu-latest</code> was moving to Ubuntu 26 from 2026-10-19. checkout, setup-node and upload-artifact moved to v7.</li>
-      <li><strong>Artifact-currency scoped to main pushes</strong> (<code>6f770951</code>, <code>e20928cc</code>, <code>3e431c9d</code>, merged as <code>008ba09e</code>). It refuses over the limit only for a push that moves main or has unknown refs. CI’s gates job fetches full history, an unmeasurable drift refuses, and the gate table reads 17 gates with 13 in CI (was 12). The CI step has now run: <code>40637429575</code> at 05:24:09Z, “this push moves main”.</li>
+      <li><strong>mutate-e2e stops scoring failures as kills</strong> (<code>93785815</code>). A timeout, an untagged <code>bootDev</code> or a busy port now gives COULD NOT CHECK (exit 3).</li>
+      <li><strong>Push gate tier 1b</strong> (<code>f0e84766</code>). CI’s e2e verdict on the exact commit counts as a receipt, and the red-base refusal guards main only.</li>
+      <li><strong>Fixtures cannot write into the real repo</strong> (<code>0c5b269c</code>). <code>_isolatedGit.js</code> strips every <code>GIT_*</code> variable.</li>
+      <li><strong>E2E shards</strong> went from 3 to 6 (<code>17e06ecd</code>), then to 8 (<code>a8ce0dd1</code>).</li>
+      <li><strong>Runner pin</strong> (<code>5177c203</code>). All jobs on ubuntu-24.04; checkout, setup-node and upload-artifact on v7.</li>
+      <li><strong>Artifact-currency scoped to main pushes</strong> (<code>008ba09e</code>). Superseded by item 12.</li>
       <li><strong>Dependencies</strong> (<code>10a43f68</code>): vitest 4, npm audit 0.</li>
-      <li><strong>Probes, not gates</strong>, on main: <code>9528c5ec</code>, <code>c9f07c36</code>, <code>7c763dcf</code>, <code>00a07af3</code>, <code>e7a45d6c</code>, <code>f1eeb08e</code>, <code>2cecfa7f</code>. One finding: new headless reaches ANGLE-Metal, while the headless shell is SwiftShader.</li>
     </ul>
   </div>
 
   <div class="group">
     <h3>Main CI, run by run</h3>
-    <p class="muted">Cancelled means a newer push replaced the run, or the 25-minute limit stopped a shard. A cancelled run is not a pass. Main had no green verdict from about 02:40Z until <code>d5375ac1</code>’s run finished at 05:36Z.</p>
+    <p class="muted">Cancelled means a newer push replaced the run, or the time limit stopped a shard. A cancelled run is not a pass. Since 11:11Z, each commit also passed a land-branch run before main accepted it.</p>
     <div class="tbl">
       <table>
         <thead>
@@ -672,7 +761,16 @@ footer p { max-width: 75ch; }
         </thead>
         <tbody>
           <tr class="divider"><td colspan="4">Since the takeover, newest first</td></tr>
-          <tr><td><code>43d766e6</code></td><td><code>40642071917</code></td><td class="st"><span class="pill bad">failed</span></td><td>e2e 7/8 red: <code>touch-hold.spec.js:303</code>, SETUP on all 3 attempts (a wall-clock freeze on a slow runner). The other nine jobs green.</td></tr>
+          <tr><td><code>030ada1f</code></td><td><code>40703024235</code></td><td class="st"><span class="pill warn">passed on re-run</span></td><td>Wave 1. Land run <code>40700481509</code> passed on this exact commit. Main’s first attempt failed <code>ore-glow.spec.js</code> (light drift between shots, 3 of 3); the re-run passed. Flake fix in progress.</td></tr>
+          <tr><td><code>dc8b0d65</code></td><td><code>40691409278</code></td><td class="st"><span class="pill ok">success</span></td><td>Nothing is locked. Land run <code>40689226695</code>.</td></tr>
+          <tr><td><code>d700e531</code></td><td><code>40680375511</code></td><td class="st"><span class="pill ok">success</span></td><td>One CLAUDE.md. Land run <code>40678345158</code>.</td></tr>
+          <tr><td><code>1c4e3bc1</code></td><td><code>40678012103</code></td><td class="st"><span class="pill ok">success</span></td><td>The required check. Land run <code>40675354151</code>. Protection went on after this push.</td></tr>
+          <tr><td><code>da70413f</code></td><td><code>40674058963</code></td><td class="st"><span class="pill ok">success</span></td><td>#24 and #27. Land run <code>40672067288</code>.</td></tr>
+          <tr><td><code>b3425d83</code></td><td><code>40668414264</code></td><td class="st"><span class="pill ok">success</span></td><td>The first main run at half pixel ratio, about 11 minutes.</td></tr>
+          <tr><td><code>c2bda904</code></td><td><code>40665999489</code></td><td class="st"><span class="pill idle">cancelled</span></td><td>Superseded by the push of <code>b3425d83</code>.</td></tr>
+          <tr><td><code>58455351</code></td><td><code>40662026371</code></td><td class="st"><span class="pill ok">success</span></td><td></td></tr>
+          <tr><td><code>2bb0857d</code></td><td><code>40651588887</code></td><td class="st"><span class="pill ok">success</span></td><td>Main green again after the failure below.</td></tr>
+          <tr><td><code>43d766e6</code></td><td><code>40642071917</code></td><td class="st"><span class="pill bad">failed</span></td><td>e2e 7/8 red: <code>touch-hold.spec.js:303</code>, SETUP on all 3 attempts (a wall-clock freeze on a slow runner).</td></tr>
           <tr><td><code>d5375ac1</code></td><td><code>40637429575</code></td><td class="st"><span class="pill ok">success</span></td><td>8 shards. Finished 05:36:25Z.</td></tr>
           <tr><td><code>a9a303e9</code></td><td><code>40636298093</code></td><td class="st"><span class="pill idle">cancelled</span></td><td>Superseded. 9 jobs green, shard 6/8 cancelled.</td></tr>
           <tr><td><code>0c5a4041</code></td><td><code>40622556954</code></td><td class="st"><span class="pill bad">timeout</span></td><td>Shard 4/6 hit the 25-minute limit; <code>lightning.spec.js:59</code> test timeout. Never green.</td></tr>
@@ -681,7 +779,7 @@ footer p { max-width: 75ch; }
           <tr><td><code>0928edbb</code></td><td><code>40610542612</code></td><td class="st"><span class="pill ok">success</span></td><td>Pushed with #29’s merge <code>fbb11411</code>.</td></tr>
           <tr><td><code>17e06ecd</code></td><td><code>40551471583</code></td><td class="st"><span class="pill ok">success</span></td><td>First 6-shard run.</td></tr>
           <tr><td><code>230fd72f</code></td><td><code>40518887229</code></td><td class="st"><span class="pill ok">success</span></td><td>Main green again, 14:33Z on 10-27.</td></tr>
-          <tr><td><code>c03e9f2f</code></td><td><code>40518065873</code></td><td class="st"><span class="pill idle">cancelled</span></td><td>Superseded. Land run <code>40514448242</code> had passed on this sha.</td></tr>
+          <tr><td><code>c03e9f2f</code></td><td><code>40518065873</code></td><td class="st"><span class="pill idle">cancelled</span></td><td>Superseded. Land run <code>40514448242</code> had passed on this commit.</td></tr>
           <tr class="divider"><td colspan="4">Baseline at the takeover</td></tr>
           <tr><td><code>57c45ae4</code></td><td><code>40499349776</code></td><td class="st"><span class="pill bad">failure</span></td><td>Manual dispatch. npm audit: 14 vulnerabilities. e2e 2/3 failed on <code>mob-floor.spec.js:63</code>.</td></tr>
           <tr class="divider"><td colspan="4">Before the takeover, 2026-09-23</td></tr>
@@ -697,7 +795,7 @@ footer p { max-width: 75ch; }
   <div class="group">
     <h3>Deploys</h3>
     <div class="prose">
-      <p>Vercel deployed every push to main: ten Production deployments since the takeover (<code>c03e9f2f</code>, <code>230fd72f</code>, <code>17e06ecd</code>, <code>0928edbb</code>, <code>995f1da2</code>, <code>76262a08</code>, <code>0c5a4041</code>, <code>a9a303e9</code>, <code>d5375ac1</code>, <code>43d766e6</code>), all reporting success. Each landed 21 to 38 s after the push, before CI finished. <code>76262a08</code> and <code>0c5a4041</code> deployed although their CI was cancelled. <code>vercel.json</code> skips only <code>dependabot/*</code> refs. Turning on Vercel Deployment Checks needs your Vercel dashboard (T6).</p>
+      <p>Vercel deployed every push to main: 19 Production deployments since the takeover, all reporting success. The nine since 06:30Z are <code>2bb0857d</code>, <code>58455351</code>, <code>c2bda904</code>, <code>b3425d83</code>, <code>da70413f</code>, <code>1c4e3bc1</code>, <code>d700e531</code>, <code>dc8b0d65</code> and <code>030ada1f</code>. <code>c2bda904</code> deployed although its CI was cancelled, before protection went on. Since then main accepts only a commit with a green <code>ci ok</code>, which is the prevention the Vercel Deployment Checks idea (T6) was for. At 14:18Z crafty-game.vercel.app and crafty-sand.vercel.app served the same build.</p>
     </div>
   </div>
 </section>
@@ -706,73 +804,65 @@ footer p { max-width: 75ch; }
   <h2>Mistakes, and what was done about them</h2>
   <div class="mk">
     <article>
+      <h3>A lane reported done before it reached main</h3>
+      <div class="body">
+        <p><b>What happened.</b> At about 10:53Z the session reported the one-CLAUDE.md lane as done. Its commit <code>ba66d352</code> sat on <code>chore/one-claude-md</code>, unpushed, while main still carried <code>.agent/AGENTS.md</code>, which you then saw in Orca.</p>
+        <p><b>Done.</b> It landed through land run <code>40678345158</code> and reached main as <code>d700e531</code> at 11:29Z, and <code>.agent/</code> was removed from the main checkout. This page reports a lane as landed only with its main commit.</p>
+      </div>
+    </article>
+    <article>
+      <h3>PR #31’s first fix weakened a test instead of fixing the game</h3>
+      <div class="body">
+        <p><b>What happened.</b> PR #31’s first CI run (<code>40675430218</code>, on <code>58ce5708</code>) failed two new specs: <code>combat-stance.spec.js:330</code>, where the gap to the husk was 2.96 to 3.07 m against a 2.6 m limit, and <code>melee-string.spec.js:153</code>, a 974 ms gap between clicks, outside its 100 to 650 ms window. The round-1 fix judged the catch only when every frame took 250 ms or less, which CI’s software renderer never meets, so the check stopped judging, and CI went green (<code>40695331687</code>). A verifier refuted it: a husk slowed to 0.6x still passed (mutant M3). The melee and touch fixes were confirmed.</p>
+        <p><b>Done.</b> Round 2, now building, fixes the game, not the test. The player and the AI share one capped time step, so a player cannot out-walk pursuers after a stall or on a throttled iPad. Melee is aimed from the body, and camera shake is only presentation. The catch is judged again.</p>
+      </div>
+    </article>
+    <article>
+      <h3>Lanes overwrote each other’s scratch log</h3>
+      <div class="body">
+        <p><b>What happened.</b> Lanes write to the session’s one shared scratch directory with the same file names, and one lane’s log was overwritten by another’s. The same sharing had earlier stopped a lane’s first commit, when zsh’s noclobber refused to overwrite a message file.</p>
+        <p><b>Done.</b> Recorded as G-ledger row 43, which names the remedy: a private subdirectory per lane.</p>
+      </div>
+    </article>
+    <article>
       <h3>A cancelled CI run reported as a pass, twice</h3>
       <div class="body">
-        <p><b>What happened.</b> At 03:40Z the session said lightning passed on main CI at <code>0c5a4041</code> and blamed #23. It was false: run <code>40622556954</code> shard 4/6 failed lightning on all three attempts and was cancelled at the limit. The cause was a runner-speed budget, about 186 s against 300 s. At 05:44Z it happened again: main’s CI on <code>a9a303e9</code> (<code>40636298093</code>) was cancelled, and the hook line most likely reported land run <code>40632886705</code>. Both came from misreading the “remote CI: success @&lt;sha&gt;” hook line, and the first correction did not prevent the second. On 10-27 the same hook line’s “success at 57c45ae” had come from the weekly CodeQL runs, while ci.yml run <code>35845534213</code> was cancelled.</p>
-        <p><b>Done.</b> The lightning budget fix went to main as <code>a9a303e9</code>. The second correction set the rule: read conclusions with <code>gh run view</code>, never the hook line.</p>
+        <p><b>What happened.</b> At 03:40Z the session said lightning passed on main CI at <code>0c5a4041</code> and blamed #23. It was false: run <code>40622556954</code> shard 4/6 failed lightning on all three attempts and was cancelled at the limit. At 05:44Z it happened again with <code>40636298093</code>. Both came from misreading the “remote CI: success @&lt;sha&gt;” hook line.</p>
+        <p><b>Done.</b> The lightning budget fix went to main as <code>a9a303e9</code>. Rule: read conclusions with <code>gh run view</code>, never the hook line.</p>
       </div>
     </article>
     <article>
       <h3>The test suite rewrote the real repository</h3>
       <div class="body">
         <p><b>What happened.</b> In the 03:32 incident on 10-27, a test run from a worktree inherited <code>GIT_DIR</code> from a hook. Fixtures re-initialised the real repo as <code>core.bare=true</code> with a fixture <code>[user]</code> identity and four fixture commits. Main was untouched, by coincidence.</p>
-        <p><b>Done.</b> Repaired: <code>core.bare</code> false, <code>[user]</code> removed, the ref restored to <code>610bf9bf</code> by update-ref, the index re-read. Root cause fixed in <code>0c5b269c</code>. The lesson is recorded in the estate’s episode log. The incident has no row in session-truth.</p>
+        <p><b>Done.</b> Repaired, and the root cause fixed in <code>0c5b269c</code>. Tranche A now scrubs <code>GIT_*</code> in every pipeline step.</p>
       </div>
     </article>
     <article>
       <h3>A load spike blamed on other sessions was this session’s own</h3>
       <div class="body">
-        <p><b>What happened.</b> At 04:20Z the session blamed AB fixtures and another session’s browser for machine load. At 04:39Z load was 317, with 142 processes runnable on 14 cores, and the top consumer was the session’s own inst-lightning-fix batch at 316% CPU.</p>
+        <p><b>What happened.</b> At 04:20Z the session blamed AB fixtures and another session’s browser for machine load. At 04:39Z load was 317, and the top consumer was the session’s own inst-lightning-fix batch at 316% CPU.</p>
         <p><b>Done.</b> Terminated at 04:41Z; runnable processes fell from 142 to 17. Rule: trace each top-CPU process to its owner before naming one.</p>
       </div>
     </article>
     <article>
       <h3>A message forked a second builder</h3>
       <div class="body">
-        <p><b>What happened.</b> At 04:45Z a SendMessage to builder <code>aa871f7</code> forked a twin. The twin committed <code>90863cc6</code> while the original stopped after <code>d9085d14</code>.</p>
-        <p><b>Done.</b> Both stopped; work continued in place as <code>wf_764425d3-21c</code>. An ask went to AB Command (G-ledger row 42). Rule: never SendMessage a workflow agent.</p>
+        <p><b>What happened.</b> At 04:45Z a SendMessage to a combat builder forked a twin, and both committed.</p>
+        <p><b>Done.</b> Both stopped; work continued in place. Rule: never SendMessage a workflow agent (G-ledger row 42).</p>
       </div>
     </article>
     <article>
-      <h3>A cancelled shard hid two real failures</h3>
+      <h3>Earlier, more briefly</h3>
       <div class="body">
-        <p><b>What happened.</b> Run <code>40503389065</code> (a dispatch on <code>land/2026-10-27</code> at <code>f0e84766</code>) had shard 2/3 time out after real failures in gl-churn and heavy-melee.</p>
-        <p><b>Done.</b> Both were spec defects, fixed in <code>dfae38b6</code> and <code>df6e9900</code> (on main as <code>8c79e038</code>). <code>17e06ecd</code> names the shape: it hid a red suite for 88 runs in July.</p>
-      </div>
-    </article>
-    <article>
-      <h3>Builders gave the wrong root cause</h3>
-      <div class="body">
-        <p><b>What happened.</b> The receipt was refused in linked worktrees, with 1240 to 1303 paths differing. Builders blamed a <code>node_modules</code> symlink, and two reviewers disputed it.</p>
-        <p><b>Done.</b> The cause was <code>write-receipt.sh</code> taking <code>frontend/</code> as the repo top level, fixed in <code>6b15bb27</code>. That fix is on PR #27 only (G-ledger row 15).</p>
-      </div>
-    </article>
-    <article>
-      <h3>PR #28 did not survive review</h3>
-      <div class="body">
-        <p><b>What happened.</b> Round 1 refuted it: one HIGH (its identity check ignored ci.yml and skipped a newer red run) and two MEDs (merge-ref runs; 6 of 12 mutants survived). After round 2 (54 of 54 tests) mutant Y4 still survived.</p>
-        <p><b>Done.</b> Parked as a draft, with the older weaknesses ledgered as rows 17–19. The one-PR headroom went to #22.</p>
-      </div>
-    </article>
-    <article>
-      <h3>A commit carries more than its message says</h3>
-      <div class="body">
-        <p><b>What happened.</b> <code>4a2efae2</code> carries the operator pages, the <code>.artifact-sync</code> bump and a DECISIONS entry under a test-fix message. They were staged by an earlier blocked commit and swept in.</p>
-        <p><b>Done.</b> <code>fa1e870a</code> records it in its message. History was not rewritten.</p>
-      </div>
-    </article>
-    <article>
-      <h3>A worker’s output read as instructions</h3>
-      <div class="body">
-        <p><b>What happened.</b> At 17:01Z on 10-27 the harness flagged parked-fixer’s final message as instruction-shaped.</p>
-        <p><b>Done.</b> It was relayed to you and not acted on.</p>
+        <p>A cancelled shard hid two real e2e failures (fixed in <code>dfae38b6</code> and <code>df6e9900</code>). Builders gave the wrong root cause for the worktree receipt (the real one, fixed in <code>6b15bb27</code>, landed with #27). PR #28 did not survive review and is now closed. <code>4a2efae2</code> carries more than its message says, and <code>fa1e870a</code> records it. A worker’s output read as instructions was relayed to you and not acted on.</p>
       </div>
     </article>
     <article>
       <h3>Records that lag the state</h3>
       <div class="body">
-        <p><b>What happened.</b> DECISIONS 2026-10-28’s heading and item 3 still say six shards; item 7 says 8. ACTIVE_PLAN’s For-Kevin item 3 says #22 to #25 are open and e2e runs in 6 shards. T8 says the scope fix “lands next” though it landed as <code>008ba09e</code>, T9 reads “open” though U2 and U3 were fixed, and T13’s queue predates the #23 and #25 merges. G-ledger row 12 says the artifact-currency step never ran on GitHub, rows 30–36 lack the “(landed)” marker, and the header says ~05:30Z though the ledger was committed at 05:19:47Z. GitHub still flags merged #23 and #25 as drafts. <code>10a43f68</code> says Dependabot #20 and #21 were applied, while #20 is open and #21 closed unmerged.</p>
-        <p><b>Done.</b> Listed here and open as T15. None was corrected at read time.</p>
+        <p><b>What happened.</b> DECISIONS 2026-10-28’s heading and item 3 still say six e2e shards; CI runs 8. ACTIVE_PLAN’s For-Kevin block still describes option (a) as pending and says #22 to #25 are open; T8 says the scope fix “lands next”; T13’s queue predates every landing since. The G-ledger was compiled at about 05:30Z and not updated since. GitHub still flags merged #23 and #25 as drafts. era-review and sota-audit have not moved to <code>docs/archive/</code>.</p>
+        <p><b>Done.</b> Listed here. W1-H’s registry harvest re-reads every open item; the rest is the session’s to correct.</p>
       </div>
     </article>
   </div>
@@ -783,29 +873,24 @@ footer p { max-width: 75ch; }
 
   <div class="two">
     <div>
-      <h3>Waiting on you</h3>
+      <h3>Waiting on you: only what only you can do</h3>
       <ul class="list">
-        <li><strong>Option (a) for the pages.</strong> Chosen. It runs the next time account 1 is the active account.</li>
-        <li><strong>Vercel Deployment Checks</strong> (T6): needs your Vercel dashboard.</li>
-        <li><strong>Ref retention, K55(c).</strong> How long to keep <code>refs/backup</code> and <code>refs/snapshots</code> (AB has 101 and 275, Crafty 0 and 0). Recommended 60 days. AB Command owns the tool.</li>
-        <li><strong>Your iPadOS and Safari version</strong>, for the Safari 27 stacked-canvas fix. Not blocking.</li>
-        <li><strong>Optional powermetrics A/B</strong> on the Mac (<code>power-ab.sh</code>, under sudo). Not blocking.</li>
-        <li><strong>Deleting <code>wip/r7-lazy-panels</code></strong>, handed to you as an exact command after a classifier refusal; recoverable at <code>45590d2c</code>. Removing the mip-ab worktree is done (you ran it).</li>
-        <li><strong>Ultrareview</strong> stays your keystroke. Free run 1 of 3 was used on 10-27.</li>
-        <li><strong>G-ledger</strong> row 47 is yours, and row 46 is shared with AB Command.</li>
+        <li><strong>Three checks on a real iPad</strong>, when you next have it. (1) Tap Pause while another finger holds the joystick: <code>030ada1f</code> pauses on the tap’s click, and iOS may not send that click for a second finger. (2) Resume from the touch overlay: if iOS refuses the pointer lock the resume asks for, the game may undo the resume. (3) The feel of the combat stance, once #31 lands. Note the iPadOS version while you are there.</li>
+        <li><strong>The audio mix</strong>, by ear.</li>
       </ul>
+      <p class="muted">Later, not now: W2-I’s power A/B needs your sudo password once, because <code>power-ab.sh</code> asks for it at your terminal.</p>
+      <p class="muted">Off your list since 06:30Z: option (a) lapsed with item 13. The Vercel alias and the graft hooks are done (you did both at about 11:10Z). The allow rules are applied (item 13(c)). Vercel Deployment Checks are replaced by the required check. <code>wip/r7-lazy-panels</code> is gone. Ref retention (K55(c)) is AB Command’s tool; Crafty holds one such ref.</p>
     </div>
     <div>
       <h3>Open for the session</h3>
       <ul class="list">
-        <li>Main is red on <code>touch-hold.spec.js:303</code>: land the frame-counted freeze from <code>fix/touch-hold-freeze</code> through a CI run on its exact commit.</li>
-        <li>#24: push <code>fef41203</code>, get CI green, resolve the conflict with main.</li>
-        <li>#27: build U5, then land with the U4 save, merge and restore procedure.</li>
-        <li>Light Tasks 4–9, combat Tasks 9–12, then coast.</li>
-        <li>Phase 0e re-baseline (T10). Pixel budget and glove value (T11).</li>
-        <li>Run <code>ipad-probe.mjs</code> (T7). Pre-commit speed and <code>onFailure</code> (T6).</li>
-        <li>Dependabot #20 (open, conflicting) and #26 (open).</li>
-        <li>Bring the records current (T15), starting with the rows under Mistakes.</li>
+        <li>Land #31 after round 2 and <code>/code-review xhigh</code>, then the light and colour lane, W1-G and W1-E, then W1-H.</li>
+        <li>Wave 1 follow-ups: the beast form, snare and fuse timers during a pause (W3-D); the touch-resume stranding; the pause instruments’ LOW findings; the GPU cost probe hanging for over 5 minutes after writing its JSON, at load 170 to 400, undiagnosed.</li>
+        <li>W1-D’s lookbook run against the production URL, which needs a <code>--url</code> mode.</li>
+        <li>Move era-review and sota-audit to <code>docs/archive/</code> (item 13(a)).</li>
+        <li>Retire e2e-freshness’s tiers in favour of the server-side rule (item 13(b), W2-C).</li>
+        <li>Dependabot #30.</li>
+        <li>Bring the records under Mistakes current.</li>
       </ul>
     </div>
   </div>
@@ -813,7 +898,7 @@ footer p { max-width: 75ch; }
   <div class="group">
     <h3>The G-ledger</h3>
     <div class="ledger">
-      <p>47 rows in <code>memory/STATUS.md</code> from line 1388, added in <code>d5375ac1</code>. 46 are open; row 13 closed when the artifact-currency fix landed. Row 17, the only HIGH, is one of the PR #28 weaknesses left open when it was parked.</p>
+      <p>47 rows in <code>memory/STATUS.md</code>, compiled at about 05:30Z and not updated since. Row 13 is closed. Since then, row 16 (PR #28) closed with the PR, row 24 (#27’s landing preconditions) was met when #27 landed, row 31 is covered by prod-smoke’s seam check, and row 47 lapsed with item 13; the rows still read open. Row 17, the only HIGH, is about e2e-freshness, which W2-C deletes now that <code>ci ok</code> is required. W1-H harvests every row into one registry.</p>
       <div class="bar" role="img" aria-label="Ledger severity: 1 high, 11 medium, 17 low, 1 debt, 17 unrated, of 47 rows">
         <span class="seg-high" style="flex-grow: 1"></span>
         <span class="seg-med" style="flex-grow: 11"></span>
@@ -822,14 +907,14 @@ footer p { max-width: 75ch; }
         <span class="seg-none" style="flex-grow: 17"></span>
       </div>
       <p class="legend"><span class="l-high">HIGH 1</span><span class="l-med">MED 11</span><span class="l-low">LOW 17</span><span class="l-debt">debt (LOW) 1</span><span class="l-none">unrated 17</span></p>
-      <p class="muted">Owners: the command session holds 43 rows (31 plain, 4 for PR 25, 3 for PR 27, 3 for PR 23, 1 landing with PR 27, 1 for the light lane). AB Command holds 2 (rows 42 and 45), row 46 is shared between you and AB Command, and row 47 is yours.</p>
+      <p class="muted">Owners: the command session holds 43 rows. AB Command holds 2 (rows 42 and 45). Rows 46 and 47 name you: 47 lapsed with item 13, and 46, ref retention, is AB Command’s tool.</p>
     </div>
   </div>
 </section>
 
 <footer>
-  <p>Sources: a mirror clone of <code>origin/main</code> read with git and <code>ls-remote</code>, GitHub runs, PRs and deployments read with <code>gh</code>, and the repo’s DECISIONS.md, ACTIVE_PLAN.md and STATUS.md at <code>43d766e6</code>. Each claim carries its commit, PR or run id.</p>
-  <p>Not checked: that the live site serves <code>43d766e6</code>, whether run <code>40642071917</code> ends green, whether Dependabot #20’s content is on main, and local state beyond the fetch.</p>
+  <p>Sources: a fetch of <code>origin/main</code> read with git; GitHub runs, PRs, deployments, branch protection and repo settings read with <code>gh</code>; the live homepage read with curl; the repo’s DECISIONS.md, ACTIVE_PLAN.md (with the command session’s cursor edits), STATUS.md, the SOTA reset plan and the eye-level evidence index at <code>030ada1f</code>; and the session-truth ledger. Each claim carries its commit, PR or run id.</p>
+  <p>Main run <code>40703024235</code> was read again at about 14:55Z: its first attempt failed on <code>ore-glow.spec.js</code> and its re-run passed. Not checked: that the live site serves <code>030ada1f</code>’s build, any play on the live site, and the uncommitted state of lane worktrees beyond their branch heads.</p>
 </footer>
 
 </div>
