@@ -7,7 +7,9 @@
       "source": "docs/superpowers/era-review.html",
       "syncedSha": "32a55b75",
       "syncedAt": "2026-10-28",
-      "note": "Update the source, republish to the SAME url, then run scripts/ci/artifact-currency.mjs --sync era-review. Bumping the sha without republishing makes the check lie.",
+      "stampTokens": { "text": "--fg-dim", "rule": "--line", "link": "--teal", "font": "--mono" },
+      "currentStatus": { "label": "the Command Record", "url": "https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f" },
+      "note": "Update the source, run scripts/ci/artifact-currency.mjs --sync era-review (it writes the as-of stamp at the top of the page and records HEAD), republish the stamped source to the SAME url, then commit both. Bumping the sha without republishing makes the record lie.",
       "previousUrl": "https://claude.ai/code/artifact/ccdc987f-fef7-4eda-9a65-b5d6cb60529c",
       "movedNote": "2026-10-28: republished from account 2 at a new URL because the previous artifact belongs to account 1, which the session could not write (DECISIONS 2026-10-28). Repoint to previousUrl once account 1 is active again, republishing the same source there first."
     },
@@ -24,6 +26,8 @@
       "source": "docs/superpowers/sota-audit.html",
       "syncedSha": "32a55b75",
       "syncedAt": "2026-10-28",
+      "stampTokens": { "text": "--ink-2", "rule": "--rule", "link": "--accent", "font": "--mono" },
+      "currentStatus": { "label": "the Command Record", "url": "https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f" },
       "note": "Source was NEVER committed until 2026-08-09 — it existed only as a published artifact, the exact loss mode this script's header describes. Recovered by fetching the published page and stripping the publish wrapper (validateSource confirms the stored copy is the authored page, not the fetched shell).",
       "previousUrl": "https://claude.ai/code/artifact/036fab8d-57db-409e-80a9-4ca0a3786ba4",
       "movedNote": "2026-10-28: republished from account 2 at a new URL because the previous artifact belongs to account 1, which the session could not write (DECISIONS 2026-10-28). Repoint to previousUrl once account 1 is active again, republishing the same source there first."

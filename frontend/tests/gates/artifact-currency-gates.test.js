@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { classify, driftVerdict, HARD_LIMIT, validateSource, surfaces, queuedClaims, verifyQueued } from '../../scripts/ci/artifact-currency.mjs';
+import {
+  classify, driftVerdict, HARD_LIMIT, validateSource, surfaces, queuedClaims, verifyQueued,
+  stampBlock, applyStamp, missingTokens, STAMP_BEGIN, STAMP_END, STAMP_ROLES,
+} from '../../scripts/ci/artifact-currency.mjs';
 
 // Behavioural, not a source-grep: exercises the threshold function directly so gate-shape's
 // source-grep ratchet does not rise.
@@ -185,5 +188,100 @@ describe('queuedClaims — a Queued pill must be falsifiable, and false when the
     expect(verifyQueued(queuedClaims(html), (p) => p === 'b.js').stale).toEqual([
       { sha: 'bbb2222', path: 'b.js' },
     ]);
+  });
+});
+
+// THE READER-SIDE STAMP (DECISIONS 2026-10-28 item 12). The operator's question was whether the page he READS is
+// current, so the page says, in one generated line at the top: "As of commit <sha>, <UTC time>." `--sync` writes it;
+// the wiring is pinned as a process in tests/scripts/artifact-currency-scope.test.js.
+//
+// Mutation-Proof (the stamp, 2026-10-28, via scripts/dev/mutate.sh, each RED observed): a re-sync that keeps the old
+// stamp (`html.slice(e + STAMP_END.length)` -> `html.slice(b)`); a replace that leaves a dangling end marker
+// (-> `html.slice(e)`); the first stamp placed before the wrapper (`m.index + m[0].length` -> `m.index`); the time to
+// the hour (`slice(11, 16)` -> `slice(11, 13)`); local time printed as UTC (run under TZ America/Los_Angeles: in a UTC
+// zone that mutant cannot be told apart, which is why the fixed instant sits on the 28th in UTC and the 27th west of
+// it); the currentStatus pointer dropped; a literal colour in place of the text token; the token match without its
+// left bound; the label not escaped. An identity comment edit survived.
+describe('the as-of stamp — a page states its own age', () => {
+  const tokens = { text: '--t-x', rule: '--r-x', link: '--l-x', font: '--f-x' };
+  // 06:05:59 UTC: seconds are dropped, and in any zone west of UTC this is still the 27th, so a stamp printed in
+  // local time, or to the hour, reads differently.
+  const when = new Date(Date.UTC(2026, 9, 28, 6, 5, 59));
+  const status = { label: 'the Command Record', url: 'https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f' };
+  const WRAP = '<div class="wrap">';
+  const page = `<title>p</title><style>:root{--t-x:#111;--r-x:#222;--l-x:#333;--f-x:ui-monospace}</style>\n${WRAP}\n<header>h</header>\n<p>body</p>\n</div>\n`;
+  const at = page.indexOf(WRAP) + WRAP.length;
+  const visible = (block) => block.replace(/<[^>]+>/g, '');
+
+  it('the line reads "As of commit <sha>, <YYYY-MM-DD HH:MM> UTC.", between the two markers', () => {
+    const b = stampBlock({ sha: 'abc12345', when, tokens });
+    expect(b.startsWith(STAMP_BEGIN) && b.endsWith(STAMP_END)).toBe(true);
+    expect(visible(b)).toBe('As of commit abc12345, 2026-10-28 06:05 UTC.');
+  });
+
+  it('a page that is mostly history adds the pointer to the current-status page, as a link', () => {
+    const b = stampBlock({ sha: 'abc12345', when, tokens, currentStatus: status });
+    expect(visible(b)).toBe('As of commit abc12345, 2026-10-28 06:05 UTC. Most of this page is history; current status: the Command Record.');
+    expect(b).toMatch(/<a href="https:\/\/claude\.ai\/artifact\/BgjzwJJqjnPvaUfxkUtU7f"[^>]*>the Command Record<\/a>/);
+  });
+
+  it('is styled ONLY by the page\'s own tokens: each of the four roles as var(<token>), and no literal colour', () => {
+    const b = stampBlock({ sha: 'abc12345', when, tokens, currentStatus: status });
+    let checked = 0;
+    for (const role of STAMP_ROLES) { expect(b, role).toContain(`var(${tokens[role]})`); checked++; }
+    expect(checked).toBe(4);
+    expect(b).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i);
+  });
+
+  it('escapes what it prints', () => {
+    const b = stampBlock({ sha: 'abc12345', when, tokens, currentStatus: { label: '<b>R&D</b>', url: 'https://x.invalid/?a="1"' } });
+    expect(b).toContain('&lt;b&gt;R&amp;D&lt;/b&gt;');
+    expect(b).toContain('href="https://x.invalid/?a=&quot;1&quot;"');
+  });
+
+  it('WRITES the first stamp right after the content wrapper, before the header, and the rest stays byte-identical', () => {
+    const block = stampBlock({ sha: 'aaaa1111', when, tokens });
+    const r = applyStamp(page, block);
+    expect(r.error).toBeUndefined();
+    expect(r.html).toBe(`${page.slice(0, at)}\n${block}${page.slice(at)}`);
+    expect(r.html.indexOf(STAMP_BEGIN)).toBeLessThan(r.html.indexOf('<header>'));
+  });
+
+  it('REPLACES an existing stamp on a re-sync, never duplicates it, and is idempotent', () => {
+    const a = stampBlock({ sha: 'aaaa1111', when, tokens });
+    const b = stampBlock({ sha: 'bbbb2222', when: new Date(Date.UTC(2026, 9, 29, 7, 0)), tokens, currentStatus: status });
+    const first = applyStamp(page, a).html;
+    const second = applyStamp(first, b).html;
+    expect(second.split(STAMP_BEGIN)).toHaveLength(2); // exactly one begin marker
+    expect(second.split(STAMP_END)).toHaveLength(2); // and exactly one end marker
+    expect(second).not.toContain('aaaa1111');
+    // Byte-identical outside the markers: the whole page is the original with only the new block inserted.
+    expect(second).toBe(`${page.slice(0, at)}\n${b}${page.slice(at)}`);
+    expect(applyStamp(second, b).html).toBe(second);
+  });
+
+  it('replaces a stamp WHEREVER it sits, touching nothing outside its markers', () => {
+    const block = stampBlock({ sha: 'cccc3333', when, tokens });
+    const moved = `A\n${STAMP_BEGIN}a hand edit${STAMP_END}\nB ${WRAP}C`;
+    expect(applyStamp(moved, block).html).toBe(`A\n${block}\nB ${WRAP}C`);
+  });
+
+  it('falls back to <body>, and refuses a page it cannot place a stamp in rather than guessing', () => {
+    const block = stampBlock({ sha: 'dddd4444', when, tokens });
+    expect(applyStamp('<body class="x">hi', block).html).toBe(`<body class="x">\n${block}hi`);
+    expect(applyStamp(`${STAMP_BEGIN}x`, block).error).toMatch(/with no <!-- asof:end -->/);
+    expect(applyStamp(`${STAMP_BEGIN}${STAMP_END}${STAMP_BEGIN}${STAMP_END}`, block).error).toMatch(/more than one/);
+    expect(applyStamp(`x${STAMP_END}`, block).error).toMatch(/with no <!-- asof:begin -->/);
+    expect(applyStamp('<title>t</title><main>no wrapper</main>', block).error).toMatch(/no content wrapper/);
+  });
+
+  it('missingTokens names each role whose token the page does not DECLARE — a prefix or a suffix is not a declaration', () => {
+    expect(missingTokens(page, tokens)).toEqual([]);
+    expect(missingTokens(page, { ...tokens, link: '--nope' })).toEqual(['link']);
+    expect(missingTokens(page, { ...tokens, text: '--t' })).toEqual(['text']); // `--t-x:` does not declare `--t`
+    expect(missingTokens(`${page}<style>:root{--a--x:1}</style>`, { ...tokens, rule: '--x' })).toEqual(['rule']); // nor `--a--x:` `--x`
+    expect(missingTokens(page, { text: '--t-x' })).toEqual(['rule', 'link', 'font']);
+    expect(missingTokens(page, { ...tokens, font: 'monospace' })).toEqual(['font']); // not a custom property at all
+    expect(missingTokens(page, undefined)).toEqual(STAMP_ROLES);
   });
 });

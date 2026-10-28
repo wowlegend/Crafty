@@ -9,6 +9,9 @@
  *      under several E2E_PUSH_REFS spellings (main, a branch, both, unset, empty). The script no longer reads that
  *      variable, so the spellings are there to catch a push scope creeping back in: it would show as a case
  *      whose verdict changes with the refs.
+ *   1b. --sync — main() writes the as-of stamp into the page itself and records HEAD, replaces the stamp on a
+ *      re-sync rather than adding a second, and writes nothing at all when the page lacks a token the stamp names.
+ *      The stamp's pure functions are pinned in the gates spec; this is the call site they cannot see.
  *   2. THE PRODUCER — the real .githooks/pre-push, run by a real `git push` from a fixture repo to a bare
  *      remote, with DISTINCT local and remote ref names (`feat/x:main`, `HEAD:refs/heads/main`) and with TWO
  *      refs in one push, main listed first and main listed last. The hook must build E2E_PUSH_REFS from the
@@ -45,6 +48,10 @@
  * RED; in ci.yml, Y1 `fetch-depth: 0` -> `1` turned the full-history case RED. Identity mutants (a comment edit in
  * artifact-currency.mjs, run in both batches, in pre-push and in pipeline.sh) survived. The receipts for the
  * pre-2026-10-28 main-only scope are in git history.
+ * The --sync stamp (1b), each RED observed: --sync not writing the page; --sync skipping the token check; --sync
+ * going on to record the sha after a failed stamp (its `process.exit(1)` dropped); a re-sync that keeps the old
+ * stamp; the first stamp placed before the wrapper; the time printed to the hour; the currentStatus pointer
+ * dropped. An identity comment edit survived.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync, realpathSync, readFileSync, existsSync, chmodSync } from 'node:fs';
@@ -53,7 +60,7 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
-import { HARD_LIMIT } from '../../scripts/ci/artifact-currency.mjs';
+import { HARD_LIMIT, STAMP_BEGIN, STAMP_END } from '../../scripts/ci/artifact-currency.mjs';
 
 const CI = resolve(dirname(fileURLToPath(import.meta.url)), '../../scripts/ci');
 const REPO_ROOT = resolve(CI, '../../..');
@@ -240,6 +247,62 @@ describe('a drift that cannot be MEASURED (the recorded sha is not in this histo
       expect(out, label(refs)).not.toMatch(/✘/);
       expect(status, `${label(refs)}\n${out}`).toBe(0);
     });
+  });
+});
+
+// ── 1b. --sync WRITES THE STAMP ─────────────────────────────────────────────────────────────────────────────
+// The pure stamp functions are pinned in tests/gates/artifact-currency-gates.test.js; these prove main() CALLS them:
+// that `--sync` writes the stamp into the page itself, records HEAD, and writes nothing when it cannot stamp.
+
+describe('--sync: the page gets its as-of stamp and the state file gets HEAD', () => {
+  const tokens = { text: '--t-x', rule: '--r-x', link: '--l-x', font: '--f-x' };
+  const status = { label: 'the Command Record', url: 'https://example.invalid/status' };
+  const STAMP_PAGE = '<title>fixture</title><style>:root{--t-x:#111;--r-x:#222;--l-x:#333;--f-x:ui-monospace}</style>\n<div class="wrap">\n<p>body</p>\n</div>\n';
+  const pagePath = () => join(root, 'docs/superpowers/page.html');
+  const statePath = () => join(root, 'docs/superpowers/.artifact-sync.json');
+
+  /** `--sync fixture` over `html`, the surface published at shas[0] with `extra` fields. */
+  function sync(extra, html = STAMP_PAGE) {
+    writeFileSync(pagePath(), html);
+    writeFileSync(statePath(), JSON.stringify({ surfaces: [{ ...surface(shas[0]), stampTokens: tokens, ...extra }] }));
+    const r = spawnSync('node', [join(root, 'frontend/scripts/ci/artifact-currency.mjs'), '--sync', 'fixture'], { cwd: root, env: cleanEnv(), encoding: 'utf8' });
+    return {
+      status: r.status,
+      out: `${r.stdout}${r.stderr}`,
+      page: readFileSync(pagePath(), 'utf8'),
+      synced: JSON.parse(readFileSync(statePath(), 'utf8')).surfaces[0].syncedSha,
+    };
+  }
+  const count = (s, needle) => s.split(needle).length - 1;
+
+  it('writes the stamp at the top of the content, records HEAD, and leaves the rest of the page byte-identical', () => {
+    const head = fixtureGit(root, 'rev-parse', '--short', 'HEAD');
+    const r = sync({ currentStatus: status });
+    expect(r.status, r.out).toBe(0);
+    expect(r.synced).toBe(head);
+    expect(r.page).toMatch(new RegExp(`<div class="wrap">\\n${STAMP_BEGIN}<p [^>]*>As of commit ${head}, \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2} UTC\\. Most of this page is history; current status: <a href="https://example\\.invalid/status"`));
+    const b = r.page.indexOf(STAMP_BEGIN);
+    const e = r.page.indexOf(STAMP_END) + STAMP_END.length;
+    expect(b, 'presence: the stamp was written').toBeGreaterThan(-1);
+    expect(`${r.page.slice(0, b)}${r.page.slice(e)}`).toBe(STAMP_PAGE.replace('<div class="wrap">', '<div class="wrap">\n'));
+  });
+
+  it('a second --sync replaces the stamp: still exactly one, and nothing else moved', () => {
+    const first = sync({}).page;
+    const second = sync({}, first).page;
+    expect(count(first, STAMP_BEGIN), 'presence: the first sync stamped').toBe(1);
+    expect(count(second, STAMP_BEGIN)).toBe(1);
+    expect(count(second, STAMP_END)).toBe(1);
+    expect(second.replace(/<!-- asof:begin -->[\s\S]*<!-- asof:end -->/, '')).toBe(first.replace(/<!-- asof:begin -->[\s\S]*<!-- asof:end -->/, ''));
+  });
+
+  it('a page that does not declare a named token: exit 1, and NOTHING is written — not the stamp, not the sha', () => {
+    const r = sync({ stampTokens: { ...tokens, link: '--not-declared' } });
+    expect(r.status, r.out).toBe(1);
+    expect(r.out).toMatch(/stampTokens in \.artifact-sync\.json must name a token .* for: link/);
+    expect(r.out).toMatch(/Nothing was written/);
+    expect(r.page).toBe(STAMP_PAGE);
+    expect(r.synced).toBe(shas[0]);
   });
 });
 

@@ -49,8 +49,20 @@
  * tests/scripts/artifact-currency-scope.test.js (this script run as a process, through the real pre-push hook
  * and the real pipeline). The receipts for the earlier main-only scope (2026-10-27/28) are in git history.
  *
- *   node scripts/ci/artifact-currency.mjs          check: report every surface's drift; refuse the tree defects
- *   node scripts/ci/artifact-currency.mjs --sync   record HEAD as the published sha (run AFTER publishing)
+ * THE PAGES STATE THEIR OWN AGE (item 12, the reader's half). `--sync` writes one generated line at the top of each
+ * page's visible content, between `<!-- asof:begin -->` and `<!-- asof:end -->`: "As of commit <sha>, <UTC time>.",
+ * plus, for a surface that declares `currentStatus`, a pointer to the page that carries current status. It is
+ * styled only with the page's own tokens, named per surface in `stampTokens`, and refused if the page does not
+ * declare them. Re-syncing replaces the line and never duplicates it; the rest of the page stays byte-identical.
+ * So the ORDER is: update the source, `--sync <id>` (it stamps the page and records HEAD), publish the stamped
+ * source to the SAME url, commit. The stamp travels with the content, so even a copy left stale says how old it is.
+ *
+ * Mutation-Proof (the stamp, 2026-10-28): listed in tests/gates/artifact-currency-gates.test.js (pure) and
+ * tests/scripts/artifact-currency-scope.test.js (the --sync process cases).
+ *
+ *   node scripts/ci/artifact-currency.mjs              check: report every surface's drift; refuse the tree defects
+ *   node scripts/ci/artifact-currency.mjs --sync [id]  stamp the page(s) with HEAD and the time, and record HEAD as
+ *                                                      published (then publish the stamped source)
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -184,6 +196,70 @@ export function verifyQueued(claims, exists) {
   return { ok: stale.length === 0 && undeclared.length === 0, stale, undeclared, checked: claims.length };
 }
 
+/**
+ * THE READER-SIDE STAMP (DECISIONS 2026-10-28 item 12). The question the operator asked about these pages was
+ * whether what he READS is current, so each page states its own age at the top of its visible content, in one
+ * generated line between two marker comments. `--sync` writes it; nothing else does, and nobody types it.
+ */
+export const STAMP_BEGIN = '<!-- asof:begin -->';
+export const STAMP_END = '<!-- asof:end -->';
+/** The four roles the stamp is styled by. Each surface names, in `stampTokens`, which of ITS OWN tokens fills each. */
+export const STAMP_ROLES = ['text', 'rule', 'link', 'font'];
+
+const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/**
+ * PURE: the stamp block, markers included. `when` is a Date, printed in UTC to the minute. `currentStatus`
+ * ({label, url}) is for a page that is mostly history: it adds the pointer to the page that carries current status.
+ * Styled only through `var(<the page's token>)`, so it follows the page's theme, dark mode included.
+ */
+export function stampBlock({ sha, when, tokens, currentStatus }) {
+  const iso = when.toISOString();
+  const at = `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
+  let text = `As of commit ${escapeHtml(sha)}, ${at} UTC.`;
+  if (currentStatus) {
+    text += ` Most of this page is history; current status: <a href="${escapeHtml(currentStatus.url)}" style="color:var(${tokens.link})">${escapeHtml(currentStatus.label)}</a>.`;
+  }
+  const style = `margin:0 0 14px;padding:6px 0;border-bottom:1px solid var(${tokens.rule});`
+    + `color:var(${tokens.text});font-family:var(${tokens.font});font-size:12px;line-height:1.5`;
+  return `${STAMP_BEGIN}<p data-asof style="${style}">${text}</p>${STAMP_END}`;
+}
+
+/**
+ * PURE: which of the stamp's roles name a token the page does not DECLARE (`--name:` in its CSS). A stamp styled
+ * with a token the page lacks renders in browser defaults, which is the failure "styled with the page's tokens"
+ * exists to rule out; so a missing or undeclared role refuses the sync rather than shipping an unstyled line.
+ */
+export function missingTokens(html, tokens) {
+  return STAMP_ROLES.filter((role) => {
+    const t = tokens && tokens[role];
+    if (typeof t !== 'string' || !/^--[\w-]+$/.test(t)) return true;
+    // Bounded on the left, so `--a--x:` does not declare `--x`; the colon bounds it on the right (`--t-x:` is not `--t`).
+    return !new RegExp(`(?<![\\w-])${t}\\s*:`).test(html);
+  });
+}
+
+/**
+ * PURE: put `block` at the top of the page's visible content, or replace the stamp already there. Everything outside
+ * the markers stays byte-identical. The first stamp goes right after the content wrapper's opening tag
+ * (`<div class="wrap">`, which every operator page opens with, or `<body>`), on its own line.
+ * @returns {{html: string} | {error: string}}
+ */
+export function applyStamp(html, block) {
+  const b = html.indexOf(STAMP_BEGIN);
+  if (b !== -1) {
+    if (html.indexOf(STAMP_BEGIN, b + STAMP_BEGIN.length) !== -1) return { error: `more than one ${STAMP_BEGIN} marker` };
+    const e = html.indexOf(STAMP_END, b);
+    if (e === -1) return { error: `a ${STAMP_BEGIN} marker with no ${STAMP_END}` };
+    return { html: html.slice(0, b) + block + html.slice(e + STAMP_END.length) };
+  }
+  if (html.includes(STAMP_END)) return { error: `a ${STAMP_END} marker with no ${STAMP_BEGIN}` };
+  const m = /<div class="wrap"[^>]*>|<body[^>]*>/.exec(html);
+  if (!m) return { error: 'no content wrapper (<div class="wrap"> or <body>) to put the stamp under' };
+  const at = m.index + m[0].length;
+  return { html: `${html.slice(0, at)}\n${block}${html.slice(at)}` };
+}
+
 function main() {
   const head = git('rev-parse', '--short', 'HEAD');
   const state = readState();
@@ -197,14 +273,39 @@ function main() {
       console.error(`artifact-currency: no artifact surface matching ${which || '(any)'} — nothing to sync`);
       process.exit(1);
     }
+    const now = new Date();
+    // Stamp every target FIRST, in memory, and write nothing unless all of them stamp: a sync that stamped one page
+    // and failed on the next would leave the pages and the state file telling different stories.
+    const stamped = [];
+    const problems = [];
+    for (const t of targets) {
+      const src = join(ROOT, t.source);
+      if (!existsSync(src)) { problems.push(`${t.id}: ${t.source} is missing`); continue; }
+      const html = readFileSync(src, 'utf8');
+      const missing = missingTokens(html, t.stampTokens);
+      if (missing.length) {
+        problems.push(`${t.id}: stampTokens in .artifact-sync.json must name a token ${t.source} declares, for: ${missing.join(', ')}`);
+        continue;
+      }
+      const r = applyStamp(html, stampBlock({ sha: head, when: now, tokens: t.stampTokens, currentStatus: t.currentStatus }));
+      if (r.error) { problems.push(`${t.id}: ${t.source} has ${r.error}`); continue; }
+      stamped.push({ src, html: r.html });
+    }
+    if (problems.length) {
+      for (const p of problems) console.error(`✘ artifact-currency --sync: ${p}`);
+      console.error('  Nothing was written: no page stamped, no sha recorded.');
+      process.exit(1);
+    }
+    for (const { src, html } of stamped) writeFileSync(src, html);
     const next = JSON.parse(JSON.stringify(state));
     const list = Array.isArray(next.surfaces) ? next.surfaces : [next];
     for (const t of targets) {
       const row = list.find((r) => (r.id || r.source) === t.id);
-      if (row) { row.syncedSha = head; row.syncedAt = new Date().toISOString().slice(0, 10); }
+      if (row) { row.syncedSha = head; row.syncedAt = now.toISOString().slice(0, 10); }
     }
     writeFileSync(STATE, `${JSON.stringify(next, null, 2)}\n`);
-    console.log(`artifact-currency: recorded ${head} as published for ${targets.map((t) => t.id).join(', ')}`);
+    console.log(`artifact-currency: stamped and recorded ${head} for ${targets.map((t) => t.id).join(', ')}`);
+    console.log('  Now publish each stamped source to its SAME url, then commit the sources with the state file.');
     return;
   }
 
