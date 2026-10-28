@@ -20,13 +20,14 @@ import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE
 import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
-import { cancelHeavy, heavyWalkMult, isHeavyReady, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
+import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
+import { pressSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
 import { stanceStep, stanceVelocity, getStance, resetStance, noteMoveTarget, STANCE_CAPS } from './game/combatStance.js';
 import { mobSensePoint } from './game/mobSenses.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
-import { shakeOffset, SHAKE_WEIGHT_MAX } from './game/trauma.js';
+import { shakeOffset, SHAKE_WEIGHT_MAX, HITSTOP } from './game/trauma.js';
 import { shakeTrauma, shakeDir, decayShake } from './game/cameraShakeChannel.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC, squadCapFor } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
@@ -154,7 +155,7 @@ export const Player = ({ isWorldBuilt }) => {
   const lastAttackTime = useRef(0);
   const lastAttackTypeRef = useRef(null);
   const heavyReadyRef = useRef(false); // the heavy's READY tick plays once per charge
-  const MELEE_COOLDOWN = 300; // milliseconds
+  const MELEE_COOLDOWN = SWING_COOLDOWN_MS; // milliseconds: the light string's cooldown (game/meleeString.js)
 
   // Expose camera globally for magic system
   useEffect(() => {
@@ -236,7 +237,25 @@ export const Player = ({ isWorldBuilt }) => {
     // The cooldown runs on this handler clock; a charged release is exempt from it (game/heavyAttack.meleeRefusal,
     // review round 3): a press handled late and lifted soon after is a full charge on the finger, and the cooldown its
     // own light swing started used to drop that heavy silently.
-    if (meleeRefusal(heavy, now, lastAttackTime.current, MELEE_COOLDOWN * formMeleeCooldownMult(beastEl))) return;
+    // THE LIGHT STRING (game/meleeString.js): a human light swing asks the string, which owns its cooldown, its buffer and
+    // its step. It does NOT also check lastAttackTime: a 300 ms check in front of pressSwing would refuse every press
+    // inside the cooldown before it could buffer. A buffered press (bufferedStep) has already been through the string,
+    // and IS the tap of the hold the charge refusal would see, so it skips both. The heavy and a beast form's swing keep
+    // today's cooldown; a thrown heavy ends the string and holds the next light swing 300 ms (endString(now)).
+    let step = 0; // the string step of this swing; 0 for a heavy or a beast form's swing
+    if (!heavy && !beastEl) {
+      if (opts?.bufferedStep) step = opts.bufferedStep;
+      else {
+        if (isHeavyHeld()) return; // charging: the arm is drawn back
+        const press = pressSwing(now);
+        if (press.action !== 'fire') return;
+        step = press.step;
+      }
+    } else {
+      if (meleeRefusal(heavy, now, lastAttackTime.current, MELEE_COOLDOWN * formMeleeCooldownMult(beastEl))) return;
+      if (heavy) endString(now);
+    }
+    const shape = swingShape(step); // step 0 -> the light cone
     { const _kf = new THREE.Vector3(); camera.getWorldDirection(_kf); addKick(kickRef.current, localToWorldKick(_kf.x, _kf.z, KICK_PROFILES.melee)); } // game-feel: melee recoil
     lastAttackTime.current = now;
     // M6: every committed swing whooshes (playAttackSounds = swing + attack; was DEFINED-BUT-NEVER-CALLED,
@@ -245,7 +264,8 @@ export const Player = ({ isWorldBuilt }) => {
     store.playAttackSounds?.();
 
     setAttackType('melee');
-    setTimeout(() => setAttackType(null), 200);
+    // The hand's sweep runs its full duration: 280 ms for a finisher (render/playerRender.jsx reads slashSweep).
+    setTimeout(() => setAttackType(null), step ? slashSweep(step).durationS * 1000 : 200);
 
     const effectiveStats = store.getEffectiveAttributes ? store.getEffectiveAttributes() : { strength: 10, agility: 10 };
     
@@ -259,7 +279,8 @@ export const Player = ({ isWorldBuilt }) => {
     // activeBeastForm) — NOT the live activeSpell, so spell-switching mid-form can't desync the spark
     // from the body (Digit1-4 is ungated in-form). Unit-locked in beasts.test.js (the wiring contract).
     const { dealt, sparkType } = resolveFormMelee(damage, beastEl);
-    const swing = heavy ? Math.round(dealt * HEAVY_MULT) : dealt;
+    // The string's finisher hits for FINISHER_MULT; steps 1-2 and a beast form's swing deal `dealt` as today.
+    const swing = heavy ? Math.round(dealt * HEAVY_MULT) : shape.finisher ? Math.round(dealt * shape.damageMult) : dealt;
 
     if (GameMethods.checkMobsInMeleeCone && GameMethods.damageMob) {
       const lookDir = new THREE.Vector3();
@@ -272,7 +293,7 @@ export const Player = ({ isWorldBuilt }) => {
       playerPos.y -= 0.8; // shift down to chest/feet level
 
       const range = 4.5;
-      const angleRad = Math.PI / 2; // 90-degree front arc sweep
+      const angleRad = shape.arcRad; // the full arc: 90 degrees, 140 for the string's finisher
 
       const hitMobs = GameMethods.checkMobsInMeleeCone(playerPos, lookDir, range, angleRad);
 
@@ -287,6 +308,8 @@ export const Player = ({ isWorldBuilt }) => {
             mob.windupUntil = 0;
             if (mob.knockback) mob.knockback = [mob.knockback[0] * HEAVY_SHOVE_MULT, mob.knockback[1], mob.knockback[2] * HEAVY_SHOVE_MULT];
           }
+          // The FINISHER shoves harder (no stagger: that is the heavy's).
+          if (shape.finisher && mob.knockback) mob.knockback = [mob.knockback[0] * shape.shoveMult, mob.knockback[1], mob.knockback[2] * shape.shoveMult];
         });
         hitSomething = true;
       }
@@ -322,6 +345,11 @@ export const Player = ({ isWorldBuilt }) => {
 
       if (hitSomething && isCrit && store.triggerCameraShake) {
         store.triggerCameraShake(1.6); // Visceral Crit camera shake
+      }
+      // A finisher that lands: a heavy-tier hitstop and the slam's thump at the player.
+      if (hitSomething && shape.finisher) {
+        store.triggerHitstop?.(HITSTOP.heavy * (store.juiceIntensity ?? 1));
+        store.playSpatialSound?.('slam', [camera.position.x, camera.position.y, camera.position.z], 1, 30);
       }
       // (the swing whoosh now plays on EVERY swing via playAttackSounds above -- no miss-only sound)
     }
@@ -488,14 +516,18 @@ export const Player = ({ isWorldBuilt }) => {
       const playerPos = camera.position.clone();
       playerPos.y -= 0.8;
 
-      // meleeHit — the EXACT live-damage test (mobs + boss)
+      // meleeHit — the EXACT live-damage test (mobs + boss). The arc is the one this press would swing: the string's
+      // finisher sweeps 140 degrees (game/meleeString.js peekStep, no side effect), so a mob only it reaches still
+      // routes the click to 'attack' instead of letting the ground behind win it for 'mine'. A human light swing only.
+      const lightSwing = !store.voidhandHeld && !store.beastFormActive;
+      const meleeArc = lightSwing && peekStep(performance.now()) === 3 ? FINISHER_ARC_RAD : Math.PI / 2;
       let meleeHit = false;
       if (GameMethods.checkMobsInMeleeCone) {
-        meleeHit = GameMethods.checkMobsInMeleeCone(playerPos, lookDir, 4.5, Math.PI / 2).length > 0;
+        meleeHit = GameMethods.checkMobsInMeleeCone(playerPos, lookDir, 4.5, meleeArc).length > 0;
       }
       if (!meleeHit && store.isBossActive?.() && store.getBossPosition) {
         const bp = store.getBossPosition();
-        if (bp) meleeHit = isPointInCone(playerPos, lookDir, { x: bp[0], y: bp[1], z: bp[2] }, 4.5, Math.PI / 2);
+        if (bp) meleeHit = isPointInCone(playerPos, lookDir, { x: bp[0], y: bp[1], z: bp[2] }, 4.5, meleeArc);
       }
 
       // aimedMobDist — nearest mob/boss in the narrow aim cone (pure math; mobs have no colliders)
@@ -883,6 +915,7 @@ export const Player = ({ isWorldBuilt }) => {
     const isPlayerAlive = useGameStore.getState().isAlive;
     if (!isPlayerAlive) {
       cancelHeavy(); // a heavy's charge dies with the player (this branch returns before the input checks below)
+      endString(); // and so does the light string, with any buffered press
       resetStance(); // and so does the stance: no fight carries across a respawn
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       const translation = rigidBodyRef.current.translation();
@@ -898,7 +931,7 @@ export const Player = ({ isWorldBuilt }) => {
     const locoState = useGameStore.getState();
     const loco = formLocomotion(locoState.beastFormActive ? locoState.activeBeastForm : null);
     const now = performance.now(); // read once: the walk slows and the stance share it
-    const walkMult = heavyWalkMult(now); // charging a heavy slows the walk
+    const walkMult = heavyWalkMult(now) * stringWalkMult(now); // charging a heavy, or throwing a swing, slows the walk
     const speed = moveSpeed(loco) * walkMult;
     const currentTrans = rigidBodyRef.current.translation();
     // COMBAT STANCE (game/combatStance.js): once a fight is joined you cannot outwalk it. One transient step per frame
@@ -997,7 +1030,10 @@ export const Player = ({ isWorldBuilt }) => {
     const dodge = dodgeStateRef.current;
     const nowTime = state.clock.getElapsedTime();
     // A heavy's charge dies with the input (a release then throws nothing); death is handled above.
-    if (!isLocked || locoState.beastFormActive) cancelHeavy(); // a form entered mid-charge drops it too (R9.2)
+    if (!isLocked || locoState.beastFormActive) {
+      cancelHeavy(); // a form entered mid-charge drops it too (R9.2)
+      endString(); // the light string is the human sword's: lost input or a form ends it, buffered press and all
+    }
     const heavyReady = isHeavyReady(performance.now());
     if (heavyReady && !heavyReadyRef.current) useGameStore.getState().playSpatialSound?.('heavyReady', currentTrans, 0.7, 8);
     heavyReadyRef.current = heavyReady;
@@ -1020,6 +1056,7 @@ export const Player = ({ isWorldBuilt }) => {
         });
 
         cancelHeavy(); // a dodge drops a heavy's charge
+        cancelIntoDodge(performance.now()); // and keeps the light string alive (an open window restarts; the step is kept)
         // Initialize dodge
         dodge.isActive = true;
         dodge.timeElapsed = 0;
@@ -1056,6 +1093,11 @@ export const Player = ({ isWorldBuilt }) => {
         }
       }
     }
+
+    // THE LIGHT STRING's buffered press (game/meleeString.js) fires the frame its cooldown ends. Lost input, a form and
+    // death have already ended the string above, so a press buffered before them fires nothing.
+    const bufferedStep = takeBufferedSwing(performance.now());
+    if (bufferedStep) triggerMeleeAttack({ bufferedStep });
 
     // W3 M-HUD.2: Mirror the Aspect/dodge cooldown timers into the store ~6.7x/s so the HUD ability bar
     // can sweep them WITHOUT reading these component-local SM refs (Game-Loop-Isolation: a throttled
