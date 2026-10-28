@@ -67,6 +67,18 @@
    `previousUrl`, swaps `url` and `previousUrl`, and runs `--sync`. Until then the interim copies stay current, because
    a main push more than 30 commits past their publish point is refused (item 8).
 12. **The page cap reports and no longer refuses; the pages state their own age** (supersedes the hard-fail half of the 2026-08-07 artifact-currency decision, 7d30ee27; holistic review wf_16b54287-0f9). Measured: the cap refused 8 pushes, 5 of them correct lane work; it stopped no recorded false claim, and it passed a false "Queued" pill on a page that was at HEAD (41c40c6d). It measures how far the WRITER is behind; Kevin's question in August was whether what he READS is current, which a page answers by printing its own commit and time. After item 8, merging a lane still counted the lane's commits into main's drift, so every landing needed a republish from whichever account owns the pages. Now: drift prints on every push and in CI and refuses nothing; a missing or unusable source, a falsified or undeclared Queued pill, and a missing, duplicated or mismatched as-of stamp still refuse; `--stamp` writes a generated "As of <commit>, <UTC time>" line at the top of each page, naming the commit the page was written against and that commit's time, and `--sync`, run after the publish, records it only when the committed source's stamp names the same commit (it cannot read the published page, so the record is honest only if the stamped source was published first); LOOP-PROGRESS (no URL, no reader) is archived; the Command Record page (`docs/superpowers/command-record.html`) is tracked as a surface. Whether era-review and sota-audit stay living pages or are frozen as dated history is Kevin's call (they are his reading surface); option (a) stands until he says otherwise. This also supersedes items 5, 8 and 11 of this entry where they state the refusal (no push is refused any longer for being more than 30 commits past the pages' publish sha), and under option (a) the Command Record, which the era-review and sota-audit stamps point to, must be readable from the account the pages are published from.
+13. **Kevin, 2026-10-28: "agree on your recommendations and changes."** It answers the two calls put to him with
+   items 8-12. (a) **era-review and sota-audit are frozen as dated history.** No more per-landing notes or republishes;
+   the next time account 1 is active, both are published once more at their original links (`previousUrl`) with a
+   frozen banner pointing at the Command Record, which is the one living status page and is refreshed at landings.
+   (b) **GitHub required status check on main.** First a CI change: one aggregate job is the only required context
+   (required checks match job names, so eight shard names would block main whenever the shard count changes),
+   docs-only commits skip the e2e jobs (a skipped check counts as passing), and CI runs on every push to `land/**`.
+   Then branch protection through the API: that check required, branches up to date, "do not allow bypassing" on
+   (every push here comes from the admin account, which bypasses it otherwise), no force pushes, no deletion. Then
+   e2e-freshness's tiers retire in favour of the server-side rule. (c) Kevin applied the narrow allow rules the
+   classifier would not let the session grant itself (`git branch -d`, remote deletes of `land/`, `feat/`, `fix/`,
+   `gh pr close`, the protection call); `git branch -D` stays denied.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 
