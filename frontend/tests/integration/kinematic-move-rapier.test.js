@@ -10,11 +10,6 @@ import { BASE_CAPSULE } from '../../src/game/beasts.js';
 // accumulator with the frame's delta clamped to 0.5 s; stepLikePhysics below is that loop. A frame that takes no step
 // leaves the previous kinematic target unapplied, and a plain write replaced it: the player lost that frame's move.
 // The controller's KCC settings are Components.jsx's (offset 0.05, autostep 1.05 / 0.2, snap 0.5, 45 degree slope).
-//
-// Mutation-Proof: each RED, restored from a cp backup
-//   K1 kinematicMove.js: the pending move not added (_d = d)                -> the 120 Hz, 144 Hz and jitter cases
-//   K2 kinematicMove.js: the target written from nextTranslation (double-counts the pending move) -> the same cases
-//   K0 a comment edit in kinematicMove.js (identity)                          -> SURVIVES
 
 const SPEED = 14; // the travel speed, m/s (game/locomotion.js BASE_MOVE_SPEED)
 

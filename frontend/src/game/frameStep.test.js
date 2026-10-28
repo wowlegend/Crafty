@@ -6,13 +6,7 @@ import { makeHurl, stepHurlChunked } from './hurl.js';
 import { useGameStore } from '../store/useGameStore';
 
 // ONE CAPPED STEP FOR EVERY MOVER. The player controller takes realDelta, the AI bridge worldDelta and takeTick. When
-// only the AI was capped, a 3.9 s stall (observed on CI, run 40675430218) moved the player 3.9 s and the husk 0.25 s.
-//
-// Mutation-Proof: each RED, restored from a cp backup
-//   F1 worldClock.realDelta back to the identity (the player takes the whole frame)          -> the stall cases
-//   F2 takeTick drops the remainder (acc.current = 0, the old AIWorkerSystem)                 -> the conservation case
-//   F3 worldClock.worldDelta uncapped (delta * scale)                                         -> the stall cases
-//   F0 a comment edit in frameStep.js (identity)                                               -> SURVIVES
+// only the AI was capped, a 3.9 s stall moved the player 3.9 s and the husk 0.25 s.
 
 const AI_TICK_SEC = 1 / 15; // AIWorkerSystem's cadence (a literal: the yardstick must not move with the subject)
 

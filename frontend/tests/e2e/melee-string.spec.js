@@ -12,7 +12,8 @@ import { bootDev, startPlayActive } from './_boot.js';
 // brute 2.2 m dead ahead and a zombie 2.0 m at 60 degrees off the view axis: outside the 90 degree light cone, inside
 // the 140 degree finisher's. Screen shake ON, the default setting: the shake moves the camera by metres at its peak (2.43 m
 // off the body in the frame a dodge started), and every cone starts at the body (src/combat/swingOrigin.js), so the shake
-// is presentation only. The mobs are staged from the body for the same reason.
+// is presentation only. The mobs are staged from the body for the same reason, and case 7 swings with the camera
+// carried 3 m off the body.
 //
 // TIMING IS JUDGED AGAINST MEASURED TIMES, NEVER INTENDED ONES (plan review finding 8). Each click is stamped on the
 // page clock by a capture listener, each case states the semantic interval its intent needs (from the string's own
@@ -436,6 +437,33 @@ test.describe('melee string', () => {
       expect(c6.ground !== null, `SETUP: case 6: the pitched view meets no ground — ${JSON.stringify(c6)}`).toBe(true);
       expect(c6.gap3 >= 100 && c6.gap3 <= WINDOW, `SETUP: case 6: click 3 came ${Math.round(c6.gap3)} ms after step 2, outside [100, 650]`).toBe(true);
       expect(c6.z3, `the finisher click mined a block instead of sweeping the off-axis husk — ${JSON.stringify(c6)}`).toBeGreaterThan(0);
+
+      // CASE 7: the camera does not aim the swing. A shake's peak carries the camera metres off the body (2.43 m in the
+      // frame a dodge started), so here the camera is put 3 m ahead of the body, past the brute, and the click lands
+      // with no frame between: only the swing's own cone can say where it started. A direct offset stands in for the
+      // shake so the displacement is known rather than whatever the noise drew; shake, kick and bob all move the camera
+      // the same way, and all are presentation.
+      await page.evaluate(() => window.__stringSpec.rest());
+      const c7 = await page.evaluate(async () => {
+        const H = window.__stringSpec;
+        const st = await H.stage();
+        if (st.why) return st;
+        const cam = window.__threeCamera, f = { x: -Math.sin(H.yaw), z: -Math.cos(H.yaw) };
+        const body = window.useGameStore.getState().playerRigidBodyRef.current.translation();
+        const b0 = H.hp(st.brute);
+        const home = cam.position.clone();
+        cam.position.x += f.x * 3;
+        cam.position.z += f.z * 3;
+        const off = Math.hypot(cam.position.x - body.x, cam.position.z - body.z);
+        const t0 = H.click();
+        cam.position.copy(home);
+        const s = await H.swingAfter(t0 - 1);
+        return { st, off: +off.toFixed(2), s, dealt: b0 - H.hp(st.brute) };
+      });
+      expect(c7.why, c7.why).toBeUndefined();
+      expect(c7.off, `SETUP: case 7: the camera was not carried past the brute — ${JSON.stringify(c7)}`).toBeGreaterThan(2.5);
+      expect(c7.s.fired, `SETUP: case 7: the click fired no swing — ${JSON.stringify(c7)}`).toBe(true);
+      expect(c7.dealt, `a swing with the camera 3 m off the body missed the brute 2.2 m ahead of the body — ${JSON.stringify(c7)}`).toBeGreaterThan(0);
     } finally {
       await page.evaluate(() => window.__stringSpec?.thaw()).catch(() => {});
     }

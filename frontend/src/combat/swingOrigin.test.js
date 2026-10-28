@@ -3,9 +3,6 @@ import { swingOrigin, steadyEye, EYE_HEIGHT_M, SWING_DROP_M } from './swingOrigi
 import { isPointInCone } from './cone.js';
 import { FINISHER_ARC_RAD } from '../game/meleeString.js';
 
-// Mutation-Proof: the apex taken 2.43 m off the body (a shaken camera's) -> the finisher case RED; EYE_HEIGHT_M - SWING_DROP_M
-// replaced by EYE_HEIGHT_M (no drop) -> the apex case RED; a comment edit (identity) -> SURVIVES.
-
 describe('swingOrigin: a swing is aimed from the body, whatever the camera is doing', () => {
   it('the apex is the body\'s eye dropped to the chest, and the steady eye is the camera follow\'s height', () => {
     const body = { x: 3, y: 10, z: -2 };

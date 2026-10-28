@@ -21,8 +21,9 @@ import { bootDev, startPlayActive } from './_boot.js';
 //     advance by the same capped step (src/game/frameStep.js), so a long frame slows both alike and a retreat chase is
 //     judged at every frame rate. A hold lasts 8 s of game time on the stance's own clock (readStance().atS), so a stall
 //     cannot use up the husk's time; a page that cannot advance that far inside HOLD_WALL_MS is SETUP. Speeds are the
-//     body's own (readStance().playerX/Z, where each frame's step starts) over that clock: a wall-clock sample of the
-//     camera mixes frame timing into the speed (case 3 read 8 to 23 m/s for a 14 m/s walk). The strafe chase is still
+//     body's own (readStance().playerX/Z, where each frame's step starts) over that clock. Case 3 read 8 to 23 m/s for a
+//     14 m/s walk from wall-clock samples of the camera, which mix frame timing into the speed, while frames that took
+//     no world step lost their move (src/game/kinematicMove.js). The strafe chase is still
 //     judged only at a median frame interval of 61 ms or less (STRAFE_CHASE_MAX_INTERVAL_MS, the husk's 15 Hz aim),
 //     else reported as not judged. Every run logs its median frame interval, and each chase its worst frame.
 //
@@ -199,14 +200,23 @@ function installStanceHelpers() {
       return { median: Math.round(d[Math.floor(d.length / 2)]), n: d.length };
     },
     // Kill every hostile near, then wait for the stance to leave. That wait is a VERDICT, not a SETUP: a stance that
-    // never leaves is mutant T4, and a SETUP here would score it COULD NOT CHECK.
-    async idle(medianMs) {
+    // never leaves is mutant T4, and a SETUP here would score it COULD NOT CHECK. Each part is waited on its own clock:
+    // the calm is CALM_MS of wall time from the last frame a threat qualified, and the exit blend EXIT_S of GAME time
+    // (the frame's capped step), which a stalled frame advances by at most 0.25 s. Only a page that stops advancing
+    // game time inside `wallMs` is SETUP.
+    async idle(medianMs, wallMs) {
       H.killHostiles(40);
       const t0 = performance.now();
-      const deadline = 2000 + 600 + 300 + 2 * medianMs; // CALM_MS + EXIT_S + a margin, plus two frames
-      while (performance.now() - t0 < deadline && call('readStance')?.w !== 0) await frame();
-      const st = call('readStance');
-      return { w: st?.w, engaged: st?.engaged, ms: Math.round(performance.now() - t0) };
+      const calmBy = 2000 + 300 + 2 * medianMs; // CALM_MS + a margin, plus two frames
+      let st = call('readStance');
+      while (performance.now() - t0 < calmBy && st?.engaged) { await frame(); st = call('readStance'); }
+      if (st?.engaged) { await frame(); await frame(); st = call('readStance'); } // a frame begun before the deadline
+      if (!st || st.engaged) return { w: st?.w, engaged: st?.engaged, ms: Math.round(performance.now() - t0), gameS: 0 };
+      const g0 = st.atS + st.stepS;
+      const exitBy = 0.6 + 0.3; // EXIT_S + a margin, game seconds
+      while (st.w !== 0 && st.atS + st.stepS - g0 < exitBy && performance.now() - t0 < wallMs) { await frame(); st = call('readStance'); }
+      const gameS = +(st.atS + st.stepS - g0).toFixed(2);
+      return { w: st.w, engaged: st.engaged, ms: Math.round(performance.now() - t0), gameS, stalled: st.w !== 0 && gameS < exitBy };
     },
     async spawn(where, dist, yaw = H.yaw) {
       H.heal();
@@ -378,11 +388,12 @@ test.describe('combat stance', () => {
     };
 
     const idleFirst = async (label) => {
-      const r = await page.evaluate((ms) => window.__stanceSpec.idle(ms), fi.median);
+      const r = await page.evaluate(({ ms, wallMs }) => window.__stanceSpec.idle(ms, wallMs), { ms: fi.median, wallMs: HOLD_WALL_MS });
+      expect(r.stalled, `SETUP: ${label}: the game advanced ${r.gameS} s of its exit blend in ${r.ms} ms`).not.toBe(true);
       // Not SETUP: a game with no stance to read is the defect red-first exists to see (observed before the wiring).
       expect(r.w, r.w === undefined
         ? `${label}: readStance returned nothing — the stance is not wired into the running game (App.jsx registers no readStance hook)`
-        : `the stance never left before ${label}: w ${r.w} (engaged ${r.engaged}) ${r.ms} ms after every hostile near died`).toBe(0);
+        : `the stance never left before ${label}: w ${r.w} (engaged ${r.engaged}) ${r.ms} ms after every hostile near died, ${r.gameS} s of game time after the calm ended`).toBe(0);
       const home = await page.evaluate(() => window.__stanceSpec.home());
       expect(home, `SETUP: ${label}: the player could not be put back on the stand point`).toBe(true);
     };
@@ -461,19 +472,28 @@ test.describe('combat stance', () => {
       expect(seen.length, `SETUP: case 3: ${seen.length} frames had that frame's move target with the key seen (need 10)`).toBeGreaterThanOrEqual(10);
       const off = seen.filter(({ st, mt }) => st.w !== 0 || !Object.is(mt.targetX, mt.rawX) || !Object.is(mt.targetZ, mt.rawZ));
       expect(off.length, `out of combat the controller's target is not moveVector's on ${off.length} of ${seen.length} frames — ${JSON.stringify(off.slice(0, 3).map(({ st, mt }) => ({ w: st.w, mt })))}`).toBe(0);
-      // The window, in game time on the body: past the walk ramp (60 u/s² reaches 14 m/s in 0.23 s, game/gameFeel.js) and
-      // inside the flat 8 m.
-      const win = r.samples.filter((s) => s.st && s.a >= 0.3 && Math.hypot(s.st.playerX - prep.stand.x, s.st.playerZ - prep.stand.z) <= 8);
-      const span = win.length >= 2 ? win[win.length - 1].a - win[0].a : 0;
-      if (h.judge && span >= 0.1) {
+      // The travel, per FRAME on the body: each pair of consecutive samples one controller frame apart (the later one's
+      // `atS` is the earlier one's plus its step) is that frame's move over that frame's step, exactly, at any frame
+      // rate. A frame counts once the walk ramp is done by its end (60 u/s² reaches 14 m/s in 0.233 s of game time,
+      // game/gameFeel.js) and when it starts and ends inside the flat 8 m. At CI's 227 ms frames that is one frame or two.
+      const near = (st) => Math.hypot(st.playerX - prep.stand.x, st.playerZ - prep.stand.z) <= 8;
+      let dist = 0, secs = 0, frames = 0;
+      for (let i = 1; i < r.samples.length; i++) {
+        const p = r.samples[i - 1], q = r.samples[i];
+        if (!p.st || !q.st || q.a < 0.24 || !near(p.st) || !near(q.st)) continue;
+        if (!(p.st.stepS > 0) || Math.abs(q.st.atS - (p.st.atS + p.st.stepS)) > 1e-9) continue;
+        dist += Math.hypot(q.st.playerX - p.st.playerX, q.st.playerZ - p.st.playerZ);
+        secs += p.st.stepS;
+        frames++;
+      }
+      if (h.judge && frames > 0) {
         expect(r.moved, `SETUP: case 3: the player moved ${r.moved.toFixed(2)} m holding S out of combat (blocked?)`).toBeGreaterThanOrEqual(3);
-        const a = win[0].st, b = win[win.length - 1].st;
-        const speed = Math.hypot(b.playerX - a.playerX, b.playerZ - a.playerZ) / span;
-        chaseNotes.push(`case 3: ${seen.length} identity frames, travel ${speed.toFixed(2)} m/s over ${span.toFixed(2)} s of game time (${win.length} frames)`);
-        expect(speed, `out of combat a held S moved the body at ${speed.toFixed(2)} m/s of game time (${win.length} frames over ${span.toFixed(2)} s on the flat)`).toBeGreaterThanOrEqual(12);
+        const speed = dist / secs;
+        chaseNotes.push(`case 3: ${seen.length} identity frames, travel ${speed.toFixed(2)} m/s over ${frames} frames (${secs.toFixed(2)} s of game time)`);
+        expect(speed, `out of combat a held S moved the body at ${speed.toFixed(2)} m/s of game time (${frames} frames, ${secs.toFixed(2)} s, on the flat)`).toBeGreaterThanOrEqual(12);
       } else {
-        if (h.judge) testInfo.annotations.push({ type: 'not judged', description: `case 3: travel speed (${win.length} frames on the flat 8 m past the ramp)` });
-        chaseNotes.push(`case 3: ${seen.length} identity frames (travel speed not judged: ${win.length} frames in the window)`);
+        if (h.judge) testInfo.annotations.push({ type: 'not judged', description: `case 3: travel speed (no whole frame past the ramp on the flat 8 m, ${r.samples.length} sampled)` });
+        chaseNotes.push(`case 3: ${seen.length} identity frames (travel speed not judged: no whole frame past the ramp on the flat 8 m)`);
       }
     }
     console.log(`combat-stance: ${chaseNotes.join(' · ')}`);

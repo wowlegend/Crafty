@@ -20,7 +20,13 @@ import { bootDev, startPlayActive } from './_boot.js';
 //      must swing (the browser's touch path into the overlay); the three timed taps are pointer events dispatched on
 //      the button IN THE PAGE, each gap placed by a busy wait on the clock the string reads. From outside the page a
 //      gap cannot be placed: every CDP touch and every evaluate waits for the main thread, which a SwiftShader frame
-//      holds for hundreds of ms (CI run 40675430218: taps aimed 350 ms apart were handled 2477-4941 ms apart). What
+//      holds for hundreds of ms (CI run 40675430218: taps aimed 350 ms apart were handled 2477-4941 ms apart). A CDP
+//      `timestamp` does not place them either: it sets only the event's timeStamp, which the game reads for the heavy's
+//      hold (input/primaryInput.js `at`), while the string judges a press when its handler runs (Components.jsx
+//      triggerMeleeAttack reads performance.now()); in that run each swing fired within 3 ms of its handler. Measured
+//      locally on SwiftShader (84 ms median frame): three CDP taps stamped exactly 350 ms apart reached the page with
+//      timeStamps 350 ms apart and handlers 390-916 ms apart, one rep of three outside the 650 ms window; sent without
+//      awaiting, the handlers ran 0-1 ms apart. What
 //      the substitution changes: the timed taps skip the browser's touch-to-pointer translation and the compatibility
 //      mouse events after it (input/compatMouse.js filters those), so only the real tap exercises that path.
 //   3  CHEVRONS CLEAR EVERY TOUCH CONTROL, landscape then portrait (834 x 1194), with the tray open. For 8 bearings
@@ -156,12 +162,19 @@ function installTouchCombatHelpers() {
       const c = cam().position;
       return Math.hypot(c.x - H.stand.x, c.z - H.stand.z) < 0.5;
     },
+    // The calm on the wall clock (CALM_MS), then the exit blend on the game's capped step (EXIT_S): combat-stance.spec.js
+    // idle(), whose reasons apply. Returns w, or null when the page stopped advancing game time (SETUP).
     async idle() {
       H.killHostiles(40);
       const t0 = performance.now();
-      const deadline = 2000 + 600 + 300 + 2 * H.median;
-      while (performance.now() - t0 < deadline && call('readStance')?.w !== 0) await frame();
-      return call('readStance')?.w;
+      const calmBy = 2000 + 300 + 2 * H.median;
+      let st = call('readStance');
+      while (performance.now() - t0 < calmBy && st?.engaged) { await frame(); st = call('readStance'); }
+      if (st?.engaged) { await frame(); await frame(); st = call('readStance'); }
+      if (!st || st.engaged) return st?.w;
+      const g0 = st.atS + st.stepS;
+      while (st.w !== 0 && st.atS + st.stepS - g0 < 0.9 && performance.now() - t0 < 120000) { await frame(); st = call('readStance'); }
+      return st.w !== 0 && st.atS + st.stepS - g0 < 0.9 ? null : st.w;
     },
     async spawnZombie(where, dist) {
       H.heal();
@@ -318,6 +331,7 @@ test.describe('combat on touch', () => {
     const stick = { x: Math.round(vp.width * 0.15), y: Math.round(vp.height * 0.7) };
     for (const [label, where, dy, intent] of [['1 (stick down, husk ahead)', 'ahead', 60, 'moveB'], ['1b (stick up, husk behind)', 'behind', -60, 'moveF']]) {
       const w = await page.evaluate(() => window.__touchCombat.idle());
+      expect(w, `SETUP: case ${label}: the game stopped advancing its exit blend`).not.toBeNull();
       expect(w, `the stance never left before case ${label}`).toBe(0);
       expect(await page.evaluate(() => window.__touchCombat.home()), `SETUP: case ${label}: the player could not be put back on the stand point`).toBe(true);
       const sp = await page.evaluate((wh) => window.__touchCombat.spawnZombie(wh, 5), where);
@@ -342,7 +356,7 @@ test.describe('combat on touch', () => {
     }
   });
 
-  test('three taps on the action button make a finisher that sweeps the husk 60 degrees off-axis', async ({ page }) => {
+  test('a real tap on the action button swings, and three in-page taps on it make a finisher that sweeps the husk 60 degrees off-axis', async ({ page }) => {
     await boot(page);
     const prep = await page.evaluate(() => window.__touchCombat.prepare());
     expect(prep.why, prep.why).toBeUndefined();
