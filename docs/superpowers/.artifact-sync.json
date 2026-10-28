@@ -5,7 +5,7 @@
       "kind": "artifact",
       "url": "https://claude.ai/artifact/Q1QQLYLxPVYZ8A7Srm1BMF",
       "source": "docs/superpowers/era-review.html",
-      "syncedSha": "03a59964",
+      "syncedSha": "32a55b75",
       "syncedAt": "2026-10-28",
       "stampTokens": {
         "text": "--fg-dim",
@@ -26,7 +26,7 @@
       "kind": "artifact",
       "url": "https://claude.ai/artifact/NuwFDNnfZG3gRHv6LH1krr",
       "source": "docs/superpowers/sota-audit.html",
-      "syncedSha": "03a59964",
+      "syncedSha": "32a55b75",
       "syncedAt": "2026-10-28",
       "stampTokens": {
         "text": "--ink-2",
@@ -53,9 +53,7 @@
         "link": "--accent",
         "font": "--font-mono"
       },
-      "note": "The operator's CURRENT status page (the command session's record); era-review and sota-audit point here from their stamps. Tracked as a surface from 2026-10-28 (DECISIONS 2026-10-28 item 12). Refresh the source, run scripts/ci/artifact-currency.mjs --stamp command-record, republish the stamped source to the SAME url, run --sync command-record, then commit both.",
-      "syncedSha": "03a59964",
-      "syncedAt": "2026-10-28"
+      "note": "The operator's CURRENT status page (the command session's record); era-review and sota-audit point here from their stamps. Tracked as a surface from 2026-10-28 (DECISIONS 2026-10-28 item 12). Refresh the source, run scripts/ci/artifact-currency.mjs --stamp command-record, republish the stamped source to the SAME url, run --sync command-record, then commit both."
     }
   ]
 }
