@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * change-scope.mjs — may this CI run skip the browser jobs (the e2e matrix and prod-smoke)?
+ * change-scope.mjs — may this CI run skip the browser jobs (the e2e matrix and prod-smoke), or, on a push to main, the
+ * heavy work altogether?
  *
  * WHY (DECISIONS 2026-10-28 item 13(b)). main gets ONE required status check, `ci ok`, and a docs-only commit
  * should not wait twenty minutes for eight e2e shards that cannot see what it changed. A skipped job counts as
@@ -34,9 +35,20 @@
  * not equal, and certified() cannot tell it from a push's. Main is not exposed: a head that differs from the tested
  * merge is behind main and cannot be fast-forwarded onto it.
  *
+ * A PUSH TO MAIN OF A SHA THAT ALREADY PASSED (command session, 2026-10-28 18:35Z; DECISIONS 2026-10-28 item 23).
+ * main moves only on a sha whose `ci ok` passed, on its land/** push or its pull request, so the run main's push starts
+ * re-tests a sha with a verdict. certified=true when the event is a push to refs/heads/main and the sha's NEWEST `ci ok`
+ * check run from ANOTHER workflow run (its run id, read from the check run's URL, is not GITHUB_RUN_ID) completed with
+ * success. Then the e2e matrix is skipped and the gates job runs only its quick steps (pipeline.sh --sha-certified=true),
+ * and `ci ok` passes on the verdict, naming the run. A check run whose run id cannot be read, a missing GITHUB_RUN_ID or
+ * an API error certifies nothing, and everything runs. A pull_request run's `ci ok` lands on the head sha but tested
+ * the merge with its base; when main fast-forwards to that head, the base was an ancestor of it, so the merge's tree
+ * IS the head's.
+ *
  * WHAT IT DOES NOT CHECK (R9). Whether a docs file can break the GATES job — it cannot skip that job, which always
- * runs (doc-currency, opsec-scan, the unit suite and artifact-currency read docs). Whether the newest `ci ok` on
- * the base was a FLAKE-green: one green verdict is what the required check itself accepts.
+ * runs (doc-currency, opsec-scan and the unit suite read docs). Whether the newest `ci ok` on the base was a
+ * FLAKE-green: one green verdict is what the required check itself accepts. Which workflow produced a `ci ok`: the
+ * name and the GitHub Actions app are all branch protection trusts too.
  *
  * Mutation-Proof: tests/scripts/ci-required-check.test.js, each observed RED with scripts/dev/mutate.sh:
  *   C1 isDocsPath accepts a frontend/ Markdown file          -> the frontend-md case
@@ -49,8 +61,9 @@
  *   C8 a thrown error reads as docs-only                      -> the could-not-classify case
  *   identity (a comment edit) SURVIVED in the same batch.
  *
- *   node scripts/ci/change-scope.mjs     in CI: reads GITHUB_EVENT_NAME / GITHUB_EVENT_PATH / GITHUB_REPOSITORY,
- *                                        writes `code=true|false` to GITHUB_OUTPUT, prints why. Exit 0 always —
+ *   node scripts/ci/change-scope.mjs     in CI: reads GITHUB_EVENT_NAME / GITHUB_EVENT_PATH / GITHUB_REPOSITORY /
+ *                                        GITHUB_REF / GITHUB_RUN_ID, writes `code=true|false`, `certified=true|false`
+ *                                        and `certified_by=<run url>` to GITHUB_OUTPUT, prints why. Exit 0 always —
  *                                        the decision is the output; only a broken output file exits non-zero.
  */
 import { appendFileSync, readFileSync } from 'node:fs';
@@ -62,6 +75,8 @@ import { fileURLToPath } from 'node:url';
 export const REQUIRED_CHECK = 'ci ok';
 
 const ZERO_SHA = /^0+$/;
+export const MAIN_REF = 'refs/heads/main';
+const RUN_URL = /\/actions\/runs\/(\d+)\/job\//;
 
 /**
  * PURE. A path that cannot affect the app, its build, its browser jobs, or how CI runs them. Anything not
@@ -108,13 +123,42 @@ export function certified(checkRuns) {
 }
 
 /**
- * The decision. `git(args)` returns stdout and throws on a non-zero exit; `checkRuns(sha)` returns that sha's
- * check runs and may throw. Every throw lands in the catch and reads code=true: an error is never a docs-only.
+ * PURE. Did ANOTHER workflow run pass this sha — the newest `ci ok` check run from the GitHub Actions app whose run id
+ * is not `runId` completed with success? A check run whose URL names no run id certifies nothing, since it could be
+ * this run's own.
  */
-export function scope({ event, payload, git, checkRuns }) {
+export function shaCertified(checkRuns, runId) {
+  if (!runId) return { ok: false, why: 'GITHUB_RUN_ID is unset, so this run\'s own check runs cannot be told apart' };
+  const named = (checkRuns || []).filter((r) => r && r.name === REQUIRED_CHECK && r.app && r.app.slug === 'github-actions');
+  const runOf = (r) => (RUN_URL.exec(String(r.html_url || r.details_url || '')) || [])[1];
+  const unread = named.find((r) => !runOf(r));
+  if (unread) return { ok: false, why: `check run ${unread.id} names no workflow run, so it may be this run's own` };
+  const others = named.filter((r) => runOf(r) !== String(runId));
+  if (others.length === 0) return { ok: false, why: `no other workflow run left a "${REQUIRED_CHECK}" on it (${named.length} from this run)` };
+  const newest = others.reduce((a, b) => (Number(b.id) > Number(a.id) ? b : a));
+  const run = runOf(newest);
+  if (newest.status !== 'completed') return { ok: false, why: `the newest "${REQUIRED_CHECK}" from another run (run ${run}) is ${newest.status}` };
+  if (newest.conclusion !== 'success') return { ok: false, why: `the newest "${REQUIRED_CHECK}" from another run (run ${run}) concluded ${newest.conclusion}` };
+  return { ok: true, run, url: newest.html_url || newest.details_url, why: `run ${run} passed "${REQUIRED_CHECK}" on it (check run ${newest.id}, the newest of ${others.length} from other runs)` };
+}
+
+/**
+ * The decision. `git(args)` returns stdout and throws on a non-zero exit; `checkRuns(sha)` returns that sha's
+ * check runs and may throw. Every throw lands in the catch and reads code=true, certified=false: an error is never a
+ * skip.
+ */
+export function scope({ event, payload, git, checkRuns, ref = '', runId = '' }) {
   const lines = [];
-  const full = (why) => ({ code: true, lines: [...lines, `change-scope: code=true — ${why}; everything runs`] });
+  const full = (why) => ({ code: true, certified: false, certifiedBy: '', lines: [...lines, `change-scope: code=true — ${why}; everything runs`] });
   try {
+    if (event === 'push' && ref === MAIN_REF) {
+      const head = git(['rev-parse', 'HEAD']).trim();
+      const cert = shaCertified(checkRuns(head), runId);
+      if (cert.ok) {
+        return { code: true, certified: true, certifiedBy: cert.url, lines: [...lines, `change-scope: certified=true — a push to main of ${head.slice(0, 12)}, which ${cert.why}: ${cert.url}; the e2e matrix and the gates' slow steps are skipped`] };
+      }
+      lines.push(`change-scope: a push to main of ${head.slice(0, 12)}, not certified by another run: ${cert.why}`);
+    }
     const c = candidateBase({ event, payload, mergeBase: () => git(['merge-base', 'HEAD', 'origin/main']).trim() });
     if (!c.base) return full(c.why);
     const short = c.base.slice(0, 12);
@@ -130,7 +174,7 @@ export function scope({ event, payload, git, checkRuns }) {
     lines.push(`change-scope: ${k.why}`);
     const cert = certified(checkRuns(c.base));
     if (!cert.ok) return full(`the base ${short} is not certified: ${cert.why}`);
-    return { code: false, lines: [...lines, `change-scope: code=false — the base is certified: ${cert.why}; the e2e matrix and prod-smoke are skipped`] };
+    return { code: false, certified: false, certifiedBy: '', lines: [...lines, `change-scope: code=false — the base is certified: ${cert.why}; the e2e matrix and prod-smoke are skipped`] };
   } catch (e) {
     return full(`COULD NOT CLASSIFY (${String((e && e.message) || e).split('\n')[0]})`);
   }
@@ -153,8 +197,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const out = execFileSync('gh', ['api', `repos/${repo}/commits/${sha}/check-runs?check_name=${encodeURIComponent(REQUIRED_CHECK)}&filter=all&per_page=100`], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
     return JSON.parse(out).check_runs;
   };
-  const r = scope({ event, payload, git, checkRuns });
+  const r = scope({ event, payload, git, checkRuns, ref: process.env.GITHUB_REF || '', runId: process.env.GITHUB_RUN_ID || '' });
   for (const l of r.lines) console.log(l);
-  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `code=${r.code}\n`);
+  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `code=${r.code}\ncertified=${r.certified}\ncertified_by=${r.certifiedBy}\n`);
   else console.log(`change-scope: no GITHUB_OUTPUT (a hand run) — the decision above was printed, not written`);
 }

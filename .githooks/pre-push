@@ -1,36 +1,22 @@
 #!/bin/sh
-# Crafty pre-push gate.
+# Crafty pre-push gate: the checks that need the COMMIT RANGE being pushed, or that must run before the push
+# publishes anything.
 #
-# WHY: Vercel auto-deploys EVERY push to `main`. Until 2026-07-13 there was no CI and no hook, so a red
-# push shipped straight to the live demo and nothing stopped it. CI (.github/workflows/ci.yml) is the
-# backstop; this hook is the fast local one, so you find out in 40s instead of after the deploy.
+# WHAT RUNS, per pushed ref: mutation-proof-trailer over the commits the push introduces, then
+# `ci/pipeline.sh --tier=push` (opsec-scan, queue-ledger, artifact-currency, registry-append-only) on the pushed
+# commit. The range arrives on this hook's stdin and exists nowhere else, so no CI runner can run these the same way;
+# opsec-scan is here because CI sees the content only once it is public.
 #
-# ─────────────────────────────────────────────────────────────────────────────────────────────────────
-# REWRITTEN 2026-08-02 — it now certifies THE COMMITS BEING PUSHED, not the working tree.
+# WHAT DOES NOT RUN: the static gates, the unit suite, build and bundle budget. CI runs them on the exact sha, and
+# main's branch protection requires that sha's `ci ok`, so running them here only repeated them, in a fresh worktree
+# with a full build, on an SSD writing four times its daily budget (DECISIONS 2026-10-28 item 24). The cost: no local
+# result before CI. `bash ci/pipeline.sh --tier=certify` gives one by hand. e2e never ran here, and the eye-level lookbook
+# (`node scripts/visual/lookbook.mjs`) is read by a person, not a hook.
 #
-# The original ran `cd frontend && npm run lint / test:unit / build` against whatever happened to be on
-# disk. Git tells a pre-push hook what is actually being pushed, on STDIN, and the old hook never read it.
-# So a dirty working tree could certify a broken commit: the gates saw the fixed files while the pushed
-# commit still contained the break.
-#
-# That is not hypothetical. On 2026-07-21 commit a72bffd removed an import that `input-abstraction-gates`
-# requires. It pushed GREEN, because the fix was already sitting uncommitted in the tree; the break landed
-# on main and was cleaned up afterwards in b443141. The hook reported success on a commit it never tested.
-#
-# Fix: check the pushed sha out into a detached worktree and run the gates THERE. node_modules is symlinked
-# from the main checkout when the lockfile is identical (the common case, and what makes this ~40s instead
-# of minutes); when the push changes the lockfile, the worktree installs its own so the gates run against
-# the dependency set the push actually declares.
-#
-# SECOND HOLE, also closed: the old hook skipped lint, tests, build and the bundle budget entirely for any
-# push touching no `frontend/` path. The whole gate set runs in well under a minute, so the "optimisation"
-# bought nothing and left a docs-only push able to move CLAUDE.md, a workflow file, or a hook
-# with zero verification. There is no skip path any more.
-# ─────────────────────────────────────────────────────────────────────────────────────────────────────
-#
-# Runs the FAST, deterministic gates only. Deliberately NOT here:
-#   * e2e (browser boot ~60s; CI runs it, and e2e-freshness checks the receipt here)
-#   * the eye-level lookbook (`node scripts/visual/lookbook.mjs`), which a person reads
+# THE PUSHED COMMIT, NOT THE WORKING TREE. The range gates read files, so they must read the pushed commit's: a dirty
+# working tree can hold the fix a pushed commit lacks. When the pushed commit is this checkout's HEAD and `git status`
+# lists nothing, the checkout IS that commit's tree and the gates run in place; otherwise the commit is checked out
+# into a detached worktree first, and removed after.
 #
 # Escape hatch: `git push --no-verify`.
 # ⚠️ Using --no-verify to dodge a red gate is a reward-hack (LOOP-CHARTER §3). If a gate is genuinely
@@ -43,20 +29,15 @@ set -e
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
-APP="$REPO_ROOT/frontend"
 ZERO="0000000000000000000000000000000000000000"
 
 # git feeds pre-push one line per ref: <local_ref> <local_sha> <remote_ref> <remote_sha>
 TARGETS=""
 RANGES=""
 while read -r _local_ref local_sha _remote_ref _remote_sha; do
-  [ "$local_sha" = "$ZERO" ] && continue   # branch deletion: nothing to certify
+  [ "$local_sha" = "$ZERO" ] && continue   # branch deletion: nothing to check
   [ -z "$local_sha" ] && continue
   TARGETS="$TARGETS $local_sha"
-  # The REMOTE ref, never the local one: `git push origin feat/x:main` and `git push origin HEAD:refs/heads/main`
-  # name a local branch or HEAD, and both move main. Pinned by tests/scripts/artifact-currency-scope.test.js (its
-  # PRODUCER cases, kept for e2e-freshness, which reads the list).
-  PUSH_REFS="${PUSH_REFS:-} $_remote_ref"
   # The commits actually being introduced. A brand-new branch sends the zero-sha as the remote side, in
   # which case there is no meaningful range and the trailer check simply skips rather than scanning history.
   if [ "$_remote_sha" != "$ZERO" ] && [ -n "$_remote_sha" ]; then
@@ -65,108 +46,52 @@ while read -r _local_ref local_sha _remote_ref _remote_sha; do
 done
 
 if [ -z "$TARGETS" ]; then
-  printf '\n✓ pre-push: nothing to certify (deletion, or no refs on stdin)\n\n'
+  printf '\n✓ pre-push: nothing to check (deletion, or no refs on stdin)\n\n'
   exit 0
 fi
-# The refs this push moves, for e2e-freshness: its red-base refusal guards MAIN (the branch Vercel deploys and whose
-# CI history a stacked change would hide in); a branch push is judged by CI on that branch (2026-10-27).
-# (artifact-currency read it too until 2026-10-28, when its drift refusal went: DECISIONS 2026-10-28 item 12.)
-# EXPORTED, or the node processes the pipeline starts never see it and read every push as "refs unknown".
-export E2E_PUSH_REFS="$PUSH_REFS"
 # The pushed ranges, for registry-append-only, which picks the one whose head is the sha it runs at. A new branch has no
-# range here, and the script measures from its merge-base with origin/main instead.
+# range here, and the script measures from its merge-base with origin/main instead. EXPORTED, or the node processes the
+# pipeline starts never see it. Pinned by the PRODUCER cases in tests/scripts/artifact-currency-scope.test.js.
 export PUSH_RANGES="$RANGES"
 
 # ── mutation-proof trailer ──────────────────────────────────────────────────────
-# Cheap, and it runs FIRST: a commit that adds a gate without saying how it was proven to fail should be
-# rejected in milliseconds, not after a full worktree build. LOOP-CHARTER §3's rule finally has an enforcer.
+# Cheap, and it runs FIRST: a commit that adds a gate without saying how it was proven to fail is rejected in
+# milliseconds. LOOP-CHARTER §3's rule has an enforcer.
 for RANGE in $RANGES; do
   node "$REPO_ROOT/frontend/scripts/ci/mutation-proof-trailer.mjs" "$RANGE" || exit 1
 done
 
-# ── green-tree receipt (AB's shape, adopted 2026-09-22 on Kevin's direction) ────────────────────────
-#
-# pre-commit certifies the offline core against the staged tree and records the INDEX TREE HASH. git's
-# index tree IS the tree the resulting commit stores — verified, not assumed: `git write-tree` and
-# `git rev-parse HEAD^{tree}` returned the same sha on a clean index. So when the tree being pushed is
-# already in the receipt, spinning up a worktree to re-derive that answer buys nothing.
-#
-# WHAT THE RECEIPT DOES NOT AUTHORISE, and this is the part that makes it safe: it speaks only for the
-# OFFLINE CORE. The commit-shaped gates read a COMMIT RANGE that did not exist when the receipt was
-# written, so they run on EVERY push: the trailer above, and queue-ledger / artifact-currency /
-# e2e-freshness / registry-append-only via `pipeline.sh --tier=push --range-only` below.
-#
-# THAT LAST PART WAS FALSE UNTIL 2026-09-22. A receipt match used to `continue` straight past the
-# pipeline, and those three gates live in its push tier, so on every receipt-matched push they silently
-# never ran — while this comment said they "run unconditionally, above". Only the trailers were above.
-# Found when a partial-stage fix stopped the receipt being written, the full path ran for once, and
-# artifact-currency surfaced 74 commits of drift that had accumulated past a gate nobody was running.
-#
-# The receipt lives in .git/ and so cannot survive a clone — a fresh checkout has certified nothing, which
-# is the correct default. A missing or stale receipt costs a full certification: it fails toward WORK, not
-# toward trust.
-RECEIPT="$(git rev-parse --git-common-dir)/crafty-pipeline-green-tree"
-GREEN_TREE=""
-GREEN_TIER=""
-GREEN_AT=""
-if [ -f "$RECEIPT" ]; then
-  GREEN_TREE=$(cut -d' ' -f1 "$RECEIPT" 2>/dev/null || true)
-  GREEN_TIER=$(cut -d' ' -f2 "$RECEIPT" 2>/dev/null || true)
-  GREEN_AT=$(cut -d' ' -f3 "$RECEIPT" 2>/dev/null || true)
-fi
-
+# ── the push tier, on each pushed commit ────────────────────────────────────────
+HEAD_SHA=$(git rev-parse --verify --quiet HEAD || true)
 for SHA in $TARGETS; do
   SHORT=$(git rev-parse --short "$SHA")
-  PUSHED_TREE=$(git rev-parse "$SHA^{tree}" 2>/dev/null || true)
+  # --no-optional-locks: a status run here must not rewrite the index. A status that fails reads as dirty.
+  DIRTY=$(git --no-optional-locks status --porcelain) || DIRTY="(git status failed)"
 
-  RANGE_FLAG=""
-  if [ -n "$GREEN_TREE" ] && [ "$GREEN_TIER" = "commit" ] && [ -n "$PUSHED_TREE" ] && [ "$PUSHED_TREE" = "$GREEN_TREE" ]; then
-    printf '\n══ pre-push: %s — offline core already certified on this exact tree (%s) ══\n' "$SHORT" "$GREEN_AT"
-    printf '  tree %s matches the pre-commit receipt; the core is skipped, the commit-range gates still run.\n' "$(printf '%.10s' "$PUSHED_TREE")"
-    RANGE_FLAG="--range-only"
-  elif [ -n "$GREEN_TREE" ]; then
-    printf '\n  (receipt present but for tree %s, not %s — certifying in full)\n' \
-      "$(printf '%.10s' "$GREEN_TREE")" "$(printf '%.10s' "${PUSHED_TREE:-unknown}")"
+  if [ "$SHA" = "$HEAD_SHA" ] && [ -z "$DIRTY" ]; then
+    printf '\n══ pre-push: %s is this checkout'"'"'s HEAD, with nothing modified or untracked: the push tier runs in place ══\n' "$SHORT"
+    cd "$REPO_ROOT/frontend"
+    # A failing pipeline REFUSES the push through `set -e`, so nothing may swallow this call's exit status: pinned by the
+    # refusal cases in tests/scripts/prepush-range-gates.test.js and artifact-currency-scope.test.js.
+    bash "$REPO_ROOT/ci/pipeline.sh" --tier=push
+    cd "$REPO_ROOT"
   else
-    printf '\n  (no green receipt on this machine — certifying in full)\n'
+    printf '\n══ pre-push: %s is not this clean checkout'"'"'s HEAD: checking out the PUSHED COMMIT into a detached worktree ══\n' "$SHORT"
+    WT="$(mktemp -d "${TMPDIR:-/tmp}/crafty-prepush-XXXXXX")"
+    # Always tear the worktree down, on success, failure or interrupt.
+    trap 'cd "$REPO_ROOT" 2>/dev/null; git worktree remove --force "$WT" >/dev/null 2>&1 || rm -rf "$WT"' EXIT INT TERM
+    git worktree add --detach --quiet "$WT" "$SHA"
+    # A pushed commit older than DECISIONS 2026-10-28 item 24 runs its own pipeline, whose push tier still has the
+    # offline core and needs dependencies. A link costs nothing; the current push tier imports none.
+    if [ -d "$REPO_ROOT/frontend/node_modules" ]; then ln -s "$REPO_ROOT/frontend/node_modules" "$WT/frontend/node_modules"; fi
+    cd "$WT/frontend"
+    bash "$WT/ci/pipeline.sh" --tier=push
+    cd "$REPO_ROOT"
+    git worktree remove --force "$WT" >/dev/null 2>&1 || rm -rf "$WT"
+    trap - EXIT INT TERM
   fi
-  if [ -z "$RANGE_FLAG" ]; then
-    printf '\n══ pre-push: certifying the PUSHED COMMIT %s (not the working tree) ══\n' "$SHORT"
-  fi
 
-  WT="$(mktemp -d "${TMPDIR:-/tmp}/crafty-prepush-XXXXXX")"
-  # Always tear the worktree down, on success, failure or interrupt.
-  trap 'cd "$REPO_ROOT" 2>/dev/null; git worktree remove --force "$WT" >/dev/null 2>&1 || rm -rf "$WT"' EXIT INT TERM
-
-  git worktree add --detach --quiet "$WT" "$SHA"
-
-  # node_modules: symlink when the pushed lockfile matches the installed one, else install in-worktree.
-  LOCK_TMP="$WT/.pushed-lock.json"
-  git show "$SHA:frontend/package-lock.json" > "$LOCK_TMP" 2>/dev/null || : > "$LOCK_TMP"
-  if [ -d "$APP/node_modules" ] && cmp -s "$LOCK_TMP" "$APP/package-lock.json"; then
-    ln -s "$APP/node_modules" "$WT/frontend/node_modules"
-  else
-    printf '  … lockfile differs from the installed tree — installing inside the worktree\n'
-    (cd "$WT/frontend" && npm install --no-audit --no-fund --silent)
-  fi
-  rm -f "$LOCK_TMP"
-
-  cd "$WT/frontend"
-
-  # THE PIPELINE, not a copy of it. This block used to restate 13 gates while .github/workflows/ci.yml
-  # restated a DIFFERENT set; they disagreed, and the drift surfaced as CI mailing about a commit that
-  # passed locally (2026-09-22: a damage-model change broke an E2E spec only the workflow ran).
-  # ci/pipeline.sh is now the definition and both callers invoke it, so neither can drift.
-  # A failing pipeline REFUSES the push through `set -e`, so nothing may swallow this call's exit status: pinned by the
-  # refusal cases in tests/scripts/artifact-currency-scope.test.js (a tree defect pushed through this hook).
-  # shellcheck disable=SC2086 -- RANGE_FLAG is empty or one word, by construction above
-  bash "$WT/ci/pipeline.sh" --tier=push $RANGE_FLAG
-
-  cd "$REPO_ROOT"
-  git worktree remove --force "$WT" >/dev/null 2>&1 || rm -rf "$WT"
-  trap - EXIT INT TERM
-
-  printf '\n✓ pre-push: %s certified green\n' "$SHORT"
+  printf '\n✓ pre-push: %s passed the push tier\n' "$SHORT"
 done
 
-printf '\n✓ pre-push: all pushed commits certified — pushing\n\n'
+printf '\n✓ pre-push: every pushed commit passed — pushing\n\n'

@@ -50,20 +50,20 @@ export const END = '<!-- END GATES -->';
  * Keyed by the gate name as it appears in the hook.
  */
 export const DESCRIPTIONS = {
-  'e2e freshness': 'a push whose `src/` or `tests/e2e/` tree has changed since the last GREEN e2e run. The Playwright specs are CI-only (~20 min, serialized because they share in-page game state), so no local chokepoint can see an e2e regression — which is exactly how the 2026-09-22 damage-model change shipped green locally and broke `soft-death-protections`. This asserts the RECEIPT, content-keyed on the observed trees so editing a doc does not expire it and editing a store action does. Fails CLOSED on stale, OPEN on absent (a fresh clone must not be refused), exit 3 on an empty walk',
   'knip': 'an unused file, export or dependency — the accretion that makes a codebase look larger than the part that runs. CI-only because it is slow and never a correctness failure',
   'npm audit': 'a HIGH or CRITICAL advisory in the installed dependency set. CI-only ON PURPOSE (R5): this needs the registry, and a network outage reddening a local commit is how developers learn to pass --no-verify',
   'prod-smoke': 'the bundle that actually SHIPS failing to boot, render, or keep a live GL context. It is the only harness that loads the production build — the probes and the e2e suite drive the DEV server, which measures LCP ~6.6x slower and cannot see a prod-only break. CI-only because it needs a browser. Skipped (`--code-changed=false`, printed) when CI\'s change-scope job finds only docs changed since a commit whose `ci ok` passed, the same condition that skips the e2e matrix',
-  'opsec-scan': 'an operator home path, a credential shape, or agent attribution reaching a PUBLIC repo. Built after a third-party statusline tool injected `/Users/<user>/...` into a TRACKED `.claude/settings.json` on its own — a convention cannot stop a tool that edits your config unprompted. Deliberately does NOT flag the operator first name (~196 files of design attribution): a gate that cries wolf gets bypassed, and a bypassed gate on a publish boundary is worse than none',
+  'opsec-scan': 'an operator home path, a credential shape, or agent attribution reaching a PUBLIC repo. Built after a third-party statusline tool injected `/Users/<user>/...` into a TRACKED `.claude/settings.json` on its own — a convention cannot stop a tool that edits your config unprompted. Deliberately does NOT flag the operator first name (~196 files of design attribution): a gate that cries wolf gets bypassed, and a bypassed gate on a publish boundary is worse than none. The one push gate that reads no range: the push publishes, and CI sees the content only once it is on GitHub',
   'mutation-proof-trailer': 'a commit that ADDS a gate under `tests/gates/` or `scripts/ci/`, or REWRITES the ASSERTIONS of an existing one, without a `Mutation-Proof:` trailer stating what was broken and that it went RED',
   'doc-currency': 'a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, drift in the generated MEASURED and GATES blocks, and one of six lock-label phrasings (`(LOCKED`, `LOCKED —`, `IRREDUCIBLE`, `MUST NOT be split`, `KEEP, don\'t rewrite`, `do not relitigate`) in a canonical doc other than DECISIONS, unless the line cites item 16 (DECISIONS 2026-10-28 item 16). Any other lock wording passes it',
   'queue-ledger': 'a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command',
   'registry-append-only': 'a row of `memory/registry.jsonl` DELETED instead of closed: every row id at the range\'s base must still be a row at its head. The tree check (`registry-harvest`, in the unit run) proves each open source item has at least one row, so it stays green when one part of a split key goes, and it sees nothing once the old sources leave HEAD. Runs on the pushed range in pre-push (`PUSH_RANGES`; a new branch measures from its merge-base with origin/main) and on the event\'s base on every CI run. Compares the two ends only, and not a row\'s content: reopening or retitling a row passes',
-  'artifact-currency': 'on every push, an unusable operator-page source (missing, or a fetched copy of the published wrapper), a row still marked **Queued** whose declared `data-absent` artifact now EXISTS or that declares none — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped — and a page whose as-of stamp is missing, duplicated, or names a different commit from the publish `.artifact-sync.json` records (the hand-bumped-sha lie). The pages\' DRIFT from HEAD is printed with each page\'s URL and refuses nothing, on any push or in CI (DECISIONS 2026-10-28 item 12: the old 30-commit refusal measured how far the writer was behind, and refused 8 pushes, 5 of them correct lane work, while stopping no recorded false claim; the pages now state their own commit and time). In CI it runs on a push to main only, to report main\'s drift after a merge GitHub made and refuse a tree defect such a merge brought in',
+  'artifact-currency': 'on every push, an unusable operator-page source (missing, or a fetched copy of the published wrapper), a row still marked **Queued** whose declared `data-absent` artifact now EXISTS or that declares none — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped — and a page whose as-of stamp is missing, duplicated, or names a different commit from the publish `.artifact-sync.json` records (the hand-bumped-sha lie). The pages\' DRIFT from HEAD is printed with each page\'s URL and refuses nothing (DECISIONS 2026-10-28 item 12: the pages state their own commit and time). Push tier only: a merge made on GitHub runs no hook, so nothing checks the pages it brings in',
   eslint: 'crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component',
   'gate-shape': 'a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise)',
   'cli-guard': 'a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts',
-  'unit + static gates': 'everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates',
+  'unit + static gates': 'everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates. In CI on every sha, and by hand in `--tier=certify`; no hook runs it',
+  'vitest related': 'on the commit only, a staged change that breaks a unit test which STATICALLY imports it (`vitest related`). It prints how many of the suite\'s test files it selected; a lazily imported module and a source-grep gate are not selected, a commit that stages nothing under `frontend/` (only `ci/`, `.githooks/`, `.github/`, `memory/` or docs) runs no unit test at all, and the full suite runs in CI and, by hand, in `--tier=certify`',
   build: 'broken JSX/imports',
   'bundle byte budget': 'a chunk growing past its byte ceiling',
 };
@@ -97,26 +97,32 @@ export function parseHook(src) {
     // which is a scope defect in the exact form R9 names (a gate's LABEL is a claim with a scope).
     // Derive the tier from the structure the script already provides, never from prose.
     // A `!=` GUARD IS AN EXCLUSION, NOT AN ABSENCE OF ONE. This used to collapse `!=` to 'core', whose
-    // CALLERS entry says commit+push+ci — so a step inside `if [ "$TIER" != "push" ]` would have been
-    // printed as a pre-push gate while the script explicitly skips it there. No live step sits in such a
-    // block today (the one `!=` block in pipeline.sh holds only a printf), so the current table is
-    // correct and this is a LATENT defect — but it is latent in exactly the class this generator exists
-    // to prevent: a column that is fiction. Found 2026-09-22 by writing the first test for this file.
+    // CALLERS entry says commit+push+ci — so a step inside `if [ "$TIER" != "push" ]` (the static gates) would be
+    // printed as a pre-push gate while the script explicitly skips it there.
     const guard = line.match(/^if \[ "\$TIER" (=|!=) "(\w+)" \]; then$/);
     if (guard) { tier = guard[1] === '=' ? guard[2] : `not-${guard[2]}`; return; }
+    // `if [ "$TIER" = "a" ] || [ "$TIER" = "b" ]; then`: a step two tiers run (the certify and fast block). Its tiers
+    // are a list, and callersFor unions them as it does for a step two blocks state (`also`, below).
+    if (/^if \[ "\$TIER" = "\w+" \](?: \|\| \[ "\$TIER" = "\w+" \])+; then$/.test(line)) {
+      tier = [...line.matchAll(/"\$TIER" = "(\w+)"/g)].map((m) => m[1]);
+      return;
+    }
+    // Any other guard on the tier would leave its steps printed under the tier before it: refuse to render that.
+    if (/^if \[ "\$TIER"/.test(line)) throw new Error(`gate-table: line ${i + 1} guards on $TIER in a form this parser cannot read: ${line}`);
     if (/^fi$/.test(line)) { tier = 'core'; return; }
 
     const m = line.match(/^\s*step "([^"]+)"\s+(.+)$/);
     if (!m) return;
     const name = m[1].replace(/\s*\([^)]*\)\s*$/, '').trim();
     const cmd = m[2].trim().replace(/^npm run --silent /, 'npm run ').replace(/\s*\|\|.*$/, '');
-    // ONE GATE, TWO TIERS (2026-10-28): artifact-currency runs in the push tier AND, on a CI push to main, in
-    // the fast tier (where it reports drift and refuses only tree defects, as it does everywhere). A second row would print 18 gates where 17 exist, and the first row alone would print
-    // `CI: —` for a gate CI runs. So a step whose name an earlier step already took adds its tier to that
-    // row (`also`), and callersFor unions them; the row keeps the first command.
+    // ONE GATE, TWO TIERS: registry-append-only runs in the push tier AND in the fast tier. A second row would
+    // count it twice, and the first row alone would print `CI: —` for a gate CI runs. So a step whose name an
+    // earlier step already took adds its tier to that row (`also`), and callersFor unions them; the row keeps the
+    // first command.
+    const [first, ...rest] = [].concat(tier);
     const prior = gates.find((g) => g.name === name);
-    if (prior) { (prior.also ||= []).push(tier); return; }
-    gates.push({ name, cmd, tier, line: i + 1 });
+    if (prior) { (prior.also ||= []).push(first, ...rest); return; }
+    gates.push({ name, cmd, tier: first, ...(rest.length ? { also: rest } : {}), line: i + 1 });
   });
   return gates;
 }
@@ -125,15 +131,19 @@ export function parseHook(src) {
  * PURE: which of the three callers run a gate, derived from its tier. The mapping IS the pipeline's
  * contract, stated once:
  *   core  — no tier guard      -> every caller
+ *   commit — the staged change   -> pre-commit only (the push and CI run the whole suite instead)
  *   push  — reads a commit RANGE -> pre-push only (a CI runner on a squashed ref cannot rebuild it)
  *   fast  — needs network/browser -> CI only (never on an edit path, R5)
+ *   certify — run by hand        -> no caller (a step it shares with fast is a CI gate through fast)
  * A range-reading pre-banner gate (the trailers) is `range`: the hook owns it, and this file says so
  * rather than claiming the pipeline runs it.
  */
 export const CALLERS = {
   core:  { commit: true,  push: true,  ci: true  },
+  commit: { commit: true, push: false, ci: false },
   push:  { commit: false, push: true,  ci: false },
   fast:  { commit: false, push: false, ci: true  },
+  certify: { commit: false, push: false, ci: false },
   range: { commit: false, push: true,  ci: false },
   // The exclusions. Derived from the same three tiers, so adding a tier cannot leave one unmapped
   // silently — `callersFor` falls back to `core` and that fallback is now asserted in the test.
@@ -169,7 +179,10 @@ export function renderBlock(gates, _ciText) {
     'pre-commit, pre-push and GitHub Actions all call, so no two can drift. Do not edit the table by hand;',
     'add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.',
     '',
-    `**${n('commit')} run on every commit** (offline core, 69s) · **${n('push')} on every push** · **${n('ci')} in CI**.`,
+    `**${n('commit')} run on every commit** (the static gates and the related unit tests) · **${n('push')} on every push** (opsec-scan and the gates that read the pushed range) · **${n('ci')} in CI**.`,
+    'A push runs no static gate, unit suite, build or bundle budget: CI runs them on the exact sha and main moves only on its `ci ok` (DECISIONS 2026-10-28 item 24).',
+    '`bash ci/pipeline.sh --tier=certify` runs those offline steps by hand, for a local result before CI; nothing waits for it.',
+    'On a push to main of a sha whose `ci ok` already passed in another run, CI runs only the quick gates and registry-append-only (`--sha-certified=true`, DECISIONS 2026-10-28 item 23).',
     'The columns are DERIVED from each step\'s tier guard in the script, not asserted here — they used to be,',
     'and all three network/browser gates were printed as pre-push gates they have never been.',
     '',

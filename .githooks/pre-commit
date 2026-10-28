@@ -1,10 +1,10 @@
 #!/bin/sh
-# Crafty pre-commit gate — the offline pipeline core, on the COMMIT.
+# Crafty pre-commit gate — the fast commit tier, on the COMMIT.
 #
-# WHY THE COMMIT AND NOT ONLY THE PUSH. Until 2026-09-22 every gate in this repo ran at pre-push and none
-# at pre-commit, which is backwards: a break is cheapest to fix in the minute you wrote it, and by push
-# time it may be buried under three more commits. Agentic-Brain front-loads its suite onto the commit and
-# keeps the push to a differential plus a tree receipt; this adopts that shape.
+# WHY THE COMMIT AND NOT ONLY THE PUSH. A break is cheapest to fix in the minute you wrote it, and by push time it may
+# be buried under three more commits. From 2026-09-22 the whole offline core ran here; B7 cut it to the static gates and
+# the unit tests that import the staged files, and moved the rest to the push and certify (DECISIONS 2026-10-28 item
+# 22, which names what a commit no longer proves).
 #
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # WHY THIS FILE EXISTS AT ALL, which is the part worth reading.
@@ -27,17 +27,15 @@
 # growing a Crafty limb.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 #
-# WHAT RUNS: `ci/pipeline.sh --tier=commit` — the offline, deterministic core (opsec, doc-currency,
-# eslint, gate-shape, cli-guard, the unit suite, build, bundle budget). 69s measured.
+# WHAT RUNS: `ci/pipeline.sh --tier=commit` — the static gates (opsec, doc-currency, eslint, gate-shape,
+# cli-guard) and the unit tests that statically import a staged file (`vitest related`). The full suite,
+# build and bundle budget run in CI on every sha (and by hand in `--tier=certify`), never in a hook
+# (DECISIONS 2026-10-28 item 24).
 # Deliberately NOT the network or browser gates: a registry outage reddening a commit teaches people to
 # pass --no-verify, and a bypassed gate is worth less than no gate.
 #
-# WHAT IT BUYS AT PUSH TIME: a green run records the index tree hash (ci/write-receipt.sh — REFUSED when the
-# tested working tree differs from the index, i.e. a partial stage), and pre-push skips re-deriving the
-# same answer in a fresh worktree when the tree matches. Commit-then-push is therefore near-instant.
-#
-# ESCAPE HATCH, and its cost: `git commit --no-verify` skips this AND writes no receipt, so the push pays
-# the full certification instead. Nothing is bypassed by skipping here — it is only deferred.
+# ESCAPE HATCH, and its cost: `git commit --no-verify` skips this. The push re-runs only opsec-scan of these, so
+# the other static gates first see such a commit in CI.
 
 set -u
 
@@ -55,22 +53,21 @@ else
   printf '\033[33m⚠ attribution guard NOT FOUND at %s — identity is UNCHECKED on this commit\033[0m\n' "$GUARD" >&2
 fi
 
-# ── 2. the offline pipeline core ──
-# Only when something is actually staged. An empty commit has nothing to certify, and a receipt written
-# for a tree nobody changed would be true and useless.
+# ── 2. the commit tier ──
+# Only when something is actually staged. An empty commit has nothing to check.
 if git diff --cached --quiet; then
   exit 0
 fi
 
 if [ ! -f "$ROOT/ci/pipeline.sh" ]; then
-  printf '\033[33m⚠ ci/pipeline.sh NOT FOUND — the offline core is UNRUN on this commit\033[0m\n' >&2
+  printf '\033[33m⚠ ci/pipeline.sh NOT FOUND — the commit tier is UNRUN on this commit\033[0m\n' >&2
   exit 0
 fi
 
 if ! sh "$ROOT/ci/pipeline.sh" --tier=commit; then
-  printf '\n\033[31m✖ commit blocked — the offline pipeline core is RED on the staged tree\033[0m\n' >&2
+  printf '\n\033[31m✖ commit blocked — the commit tier is RED on the staged change\033[0m\n' >&2
   printf '  Fix it now, while the change is one commit old. Deliberate override: git commit --no-verify\n' >&2
-  printf '  (overriding writes NO green receipt, so pre-push certifies the commit in full instead)\n\n' >&2
+  printf '  (the push will not re-run these: CI is the next check)\n\n' >&2
   exit 1
 fi
 

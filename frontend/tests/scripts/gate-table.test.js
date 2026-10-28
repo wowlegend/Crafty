@@ -91,15 +91,16 @@ describe('gate-table — parseHook is a COUNT, so its denominator is the whole p
   });
 
   it('callersFor maps every tier, and defaults to core for an unknown one', () => {
-    expect(Object.keys(CALLERS).sort()).toEqual(['core', 'fast', 'not-commit', 'not-fast', 'not-push', 'push', 'range']);
+    expect(Object.keys(CALLERS).sort()).toEqual(['certify', 'commit', 'core', 'fast', 'not-commit', 'not-fast', 'not-push', 'push', 'range']);
+    expect(callersFor({ tier: 'certify' }), 'certify is run by hand: no caller').toEqual({ commit: false, push: false, ci: false });
     expect(callersFor({ tier: 'core' })).toEqual({ commit: true, push: true, ci: true });
     expect(callersFor({ tier: 'fast' }), 'a CI-only gate must not be printed as a pre-push gate')
       .toEqual({ commit: false, push: false, ci: true });
     expect(callersFor({ tier: 'nonsense-tier' })).toEqual(CALLERS.core);
   });
 
-  // 2026-10-28: artifact-currency runs in the push tier AND, on a CI push to main, in the fast tier. Two rows
-  // would print 18 gates where 17 exist; the first row alone would print `CI: —` for a gate CI runs.
+  // registry-append-only runs in the push tier AND in the fast tier. Two rows would count it twice; the first row
+  // alone would print `CI: —` for a gate CI runs.
   // Mutation-Proof (mutate.sh), each observed RED: G1 parseHook's merge deleted (every step is its own row) ->
   // this case; G2 callersFor reads `[gate.tier]` only, ignoring `also` -> this case.
   it('ONE gate run by two tiers is ONE row, and its callers are the UNION of both tiers', () => {
@@ -120,6 +121,34 @@ fi
     expect(twice.cmd, 'the row keeps the FIRST command').toBe('node scripts/ci/twice.mjs');
     expect(callersFor(two.find((g) => g.name === 'after-nested')), 'an INDENTED nested fi must not reset the tier')
       .toEqual(CALLERS.fast);
+  });
+
+  it('a step inside `if [ "$TIER" = "commit" ]` is a commit-only gate, not a core one', () => {
+    const [only] = parseHook('if [ "$TIER" = "commit" ]; then\n  step "related" node scripts/ci/related-tests.mjs\nfi\n');
+    expect(only.tier).toBe('commit');
+    expect(callersFor(only), 'the push and CI do not run it').toEqual({ commit: true, push: false, ci: false });
+  });
+
+  // The certify-and-fast block. Read as no guard, its steps were printed as commit and push gates.
+  it('a step inside `if [ "$TIER" = "certify" ] || [ "$TIER" = "fast" ]` is a CI gate only, and the tier resets after', () => {
+    const out = parseHook('if [ "$TIER" = "certify" ] || [ "$TIER" = "fast" ]; then\n  step "unit" npm run --silent test:unit\nfi\nstep "after" node scripts/ci/after.mjs\n');
+    expect(out.map((g) => g.name)).toEqual(['unit', 'after']);
+    expect(callersFor(out[0])).toEqual({ commit: false, push: false, ci: true });
+    expect(callersFor(out[1]), 'the fi did not reset the tier').toEqual(CALLERS.core);
+  });
+
+  it('a $TIER guard in a form the parser cannot read is REFUSED, never printed under the previous tier', () => {
+    const unreadable = [
+      'if [ "$TIER" = "certify" ] && [ "$X" = 1 ]; then',
+      'if [ "$TIER" != "commit" ] || [ "$TIER" = "fast" ]; then',
+      'if [ "$TIER" == "fast" ]; then',
+    ];
+    let refused = 0;
+    for (const guard of unreadable) {
+      expect(() => parseHook(`${guard}\n  step "x" node scripts/ci/x.mjs\nfi\n`), guard).toThrow(/cannot read/);
+      refused++;
+    }
+    expect(refused, 'denominator: every unreadable form was run').toBe(unreadable.length);
   });
 
   it('renderBlock emits one row per gate, between the sentinels', () => {

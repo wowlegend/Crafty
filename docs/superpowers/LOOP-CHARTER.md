@@ -417,7 +417,7 @@ reconstructible, sitting directly above rule 2 below.)
 - Every rule requiring a SEPARATE experiment whose only consumer was this document's own prose — mutation-prove,
   independent evaluation, "CI green", STATUS currency, the priority ladder — was obeyed erratically or never.
   "MUTATION-PROOF EVERY NEW GATE" was stated repeatedly across two files with **zero** checkers, and appeared
-  in 0 of 479 June code commits. **It has an enforcer now** — `.githooks/pre-push:73`,
+  in 0 of 479 June code commits. **It has an enforcer now** — `.githooks/pre-push` (its first gate),
   `mutation-proof-trailer.mjs`, run FIRST, with the `[MECH:]` pointer in §3. Count the proofs, do not recall
   them: `git log --format=%b | grep -c '^Mutation-Proof:'` (28 on 2026-08-07).
 - **⚠️ The counterexample this section used to hide, because it is evidence AGAINST the thesis above:**

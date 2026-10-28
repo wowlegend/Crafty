@@ -135,7 +135,8 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
 - **`tests/gates/**` — behavioural gates.** Adding one requires a `Mutation-Proof:` trailer
   (`scripts/ci/mutation-proof-trailer.mjs`). A gate here that calls `readFileSync` joins the frozen
   source-grep population (`tests/gates/.source-grep-ledger.json`, **106** as of 2026-08-13) which may FALL
-  and never RISE — so a new source-reading gate sited here reds the push.
+  and never RISE — so a new source-reading gate sited here reds the commit and CI (`gate-shape`; the push no longer
+  runs it).
 - **`tests/scripts/**` — checks whose subject IS a file.** (`ls frontend/tests/scripts/*.test.js | wc -l`
   — the count is deliberately not written here; this line said "16" and the next edit typed "18" against
   an actual 17, in the file whose subject is numbers that rot): config, tooling and
@@ -148,6 +149,11 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
   the WCAG work put the arithmetic in `tests/gates/` and the usage scan in `tests/scripts/`.
 
 - `scripts/ci/*.mjs` counts as a GATE path too, with the same trailer requirement.
+- **Prove heavy suites on CI, not here** (SSD order, Kevin 2026-10-28; CLAUDE.md, Method, SSD-light lanes). The push
+  runs no unit suite or build, and CI runs everything on the exact sha. A mutation run needs only the spec it names
+  (`scripts/dev/mutate.sh`); a throwaway copy for one is `cp -c -R` of the worktree with `frontend/node_modules`
+  symlinked, never `git clone` + `npm ci`; a local e2e or lookbook run only for a look question that needs a real GPU,
+  one at a time.
 - Probes go in `scripts/visual/`, use `_serve.mjs` for the vite+browser lifecycle and `_probe.mjs` for
   honest taps and baselines. **Anything you launch, you kill** — close the browser in a `finally`, kill the
   vite process GROUP, then sweep `scripts/dev/kill-test-procs.sh`.

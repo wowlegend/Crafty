@@ -1010,8 +1010,7 @@ the original review, kept as the record.
   colour script, the moon key, bloom > 1, motes, the new frame). No `frontend/src/` path goes in the commit. With the
   move in Task 4, none is needed. At this commit the states list, the baselines and a full `current/` all hold 32 frames,
   so `visual-denominator-gates` is green in pre-commit.
-- [ ] **Step 5: The e2e receipt.** The push needs a green e2e receipt on this tree (`e2e-freshness`); run the CI e2e
-  or the local receipt, then push.
+- [ ] **Step 5: e2e in CI.** e2e is certified by CI's `ci ok` on the exact sha (push to a `land/` branch), since W2-C deleted e2e-freshness; no local receipt exists.
 - [ ] **Step 6: Reviews.** `/code-review xhigh` over the range; one adversarial reviewer at xhigh on the seams
   (`sunDirRef` versus the key; the shadow schedule's input; the fog chunk's reach; the one-frame read order).
 - [ ] **Step 7: Docs.** ACTIVE_PLAN pointer, CHANGELOG entry (state the e2e and lookbook as run in this turn, never
