@@ -1,6 +1,7 @@
 import { useGameStore } from './store/useGameStore';
 import { subscribeMobKill } from './game/mobKillBus.js';
 import { questMatches } from './game/questMatch.js';
+import { MOB_TYPES } from './game/mobTypes.js';
 import { GameMethods } from './GameMethods';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -384,9 +385,11 @@ export const useQuestSystem = () => {
             kills_by_type: { ...prev.kills_by_type, [mobType]: (prev.kills_by_type[mobType] || 0) + 1 },
         }));
 
-        // Update quest progress
-        updateQuestProgress('kill');
-        updateQuestProgress('kill_type', 1, { mobType });
+        // A kill the mob table pays no XP for pays none through a quest either: a Settler is not quarry.
+        if (MOB_TYPES[mobType]?.xp !== 0) {
+            updateQuestProgress('kill');
+            updateQuestProgress('kill_type', 1, { mobType });
+        }
 
         // Generate loot drops
         const lootTable = LOOT_TABLES[mobType] || [];

@@ -77,4 +77,14 @@ describe('B6 wiring — the real hook credits kills correctly', () => {
     expect(progressOf(result, 'zslayer')).toBe(3); // the RIGHT mob still advances it
     expect(progressOf(result, 'hunter')).toBe(7);  // and every kill still counts once for the generic quest
   });
+
+  it('a Settler kill earns no quest credit; a Husk or a Boar kill does', () => {
+    // A Settler kill pays no XP (mobTypes xp 0), so it may not pay XP through "Defeat N mobs" either.
+    const { result } = renderHook(() => useQuestSystem());
+    kill('villager', 3);
+    expect(progressOf(result, 'hunter'), 'killing Settlers advanced a kill quest').toBe(0);
+    kill('zombie', 1);
+    kill('pig', 1);
+    expect(progressOf(result, 'hunter'), 'a Husk or a Boar kill earned no credit — the kill path is dead').toBe(2);
+  });
 });
