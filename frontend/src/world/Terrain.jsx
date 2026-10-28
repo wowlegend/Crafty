@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { BIOME_TINT, AO_FLOOR } from './biomeTable.js';
+import { TERRAIN_SURFACE } from './terrainSurface.js';
 import { biomeTintGlsl, biomeTintMask } from './terrainTint.js';
 import { useGameSounds } from '../SoundManager';
 import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
@@ -52,8 +53,7 @@ const voxelTextures = sharedVoxelTextures(); // the ONE block texture array (the
 // Shared SOTA opaque-LAND terrain material (W2: water is owned by the Ocean.jsx Gerstner plane now;
 // this material renders only land — de-tile, vertex AO, danger-mood grade, aerial perspective).
 const opaqueMaterial = new THREE.MeshStandardMaterial({
-    roughness: 0.85,
-    metalness: 0.1,
+    ...TERRAIN_SURFACE,
     vertexColors: true,
     transparent: false,
     depthWrite: true,
