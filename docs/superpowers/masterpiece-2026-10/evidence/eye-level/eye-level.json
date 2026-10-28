@@ -1,0 +1,4050 @@
+{
+ "generatedAt": "2026-10-28T10:50:11.330Z",
+ "build": {
+  "indexChunk": "index-RgqgJmVN.js",
+  "commitAtRun": "ee26549c"
+ },
+ "sets": [
+  "hero",
+  "eye",
+  "clips"
+ ],
+ "chromiumCandidates": [
+  {
+   "id": "new-headless",
+   "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+   "gpu": "hardware"
+  },
+  {
+   "id": "new-headless+metal",
+   "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+   "gpu": "hardware"
+  },
+  {
+   "id": "headless-shell",
+   "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+   "gpu": "software"
+  }
+ ],
+ "targets": [
+  {
+   "id": "chromium-1280x800",
+   "engine": "chromium",
+   "launch": "new-headless",
+   "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+   "gpu": "hardware",
+   "entry": "already live",
+   "stand": [
+    -0.00010591150930849835,
+    52.950103759765625,
+    0.000004258953595126513
+   ],
+   "hands": {
+    "free": 33,
+    "hidden": 2,
+    "back": 33
+   },
+   "respawns": 0,
+   "notes": [],
+   "pageErrors": 0,
+   "eye": [
+    {
+     "heading": 0,
+     "cycle": 0.3,
+     "file": "eye-000-0.30.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.30666666666666664,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 24.265,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 68,
+        "meanMs": 1.619,
+        "p50Ms": 1.574,
+        "maxMs": 1.994
+       },
+       {
+        "label": "depth blit",
+        "n": 68,
+        "meanMs": 0.984,
+        "p50Ms": 0.958,
+        "maxMs": 1.323
+       },
+       {
+        "label": "1:N8AO",
+        "n": 68,
+        "meanMs": 2.905,
+        "p50Ms": 2.978,
+        "maxMs": 3.455
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+        "n": 68,
+        "meanMs": 3.087,
+        "p50Ms": 3.164,
+        "maxMs": 3.852
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 68,
+        "meanMs": 3.481,
+        "p50Ms": 3.697,
+        "maxMs": 4.395
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 68,
+        "meanMs": 2.746,
+        "p50Ms": 3.393,
+        "maxMs": 4.347
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 68,
+        "meanMs": 2.941,
+        "p50Ms": 3.482,
+        "maxMs": 4.459
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 68,
+        "meanMs": 3.169,
+        "p50Ms": 3.708,
+        "maxMs": 4.605
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 68,
+        "meanMs": 3.333,
+        "p50Ms": 3.871,
+        "maxMs": 4.73
+       }
+      ],
+      "frames": 69,
+      "disjoint": 0,
+      "skipped": 0
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.00014457200349756529,
+      54.1501047357967,
+      0.000006393532557153295
+     ],
+     "body": [
+      -0.0001446362875867635,
+      52.950103759765625,
+      0.000006385577307810308
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 34.303938077849146,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.3,
+     "file": "eye-120-0.30.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.30333333333333334,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 23.291,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 70,
+        "meanMs": 1.583,
+        "p50Ms": 1.521,
+        "maxMs": 4.747
+       },
+       {
+        "label": "depth blit",
+        "n": 70,
+        "meanMs": 0.969,
+        "p50Ms": 0.924,
+        "maxMs": 3.852
+       },
+       {
+        "label": "1:N8AO",
+        "n": 70,
+        "meanMs": 2.884,
+        "p50Ms": 2.856,
+        "maxMs": 6.929
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+        "n": 70,
+        "meanMs": 3.02,
+        "p50Ms": 3.098,
+        "maxMs": 4.77
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 70,
+        "meanMs": 3.3,
+        "p50Ms": 3.415,
+        "maxMs": 5.364
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 70,
+        "meanMs": 2.584,
+        "p50Ms": 3,
+        "maxMs": 5.468
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 70,
+        "meanMs": 2.857,
+        "p50Ms": 3.326,
+        "maxMs": 5.82
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 69,
+        "meanMs": 2.984,
+        "p50Ms": 3.517,
+        "maxMs": 6.067
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 69,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 69,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 69,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 69,
+        "meanMs": 3.11,
+        "p50Ms": 3.634,
+        "maxMs": 5.997
+       }
+      ],
+      "frames": 70,
+      "disjoint": 0,
+      "skipped": 0
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00011718996089764474,
+      54.15010342540118,
+      1.6452627826537532e-7
+     ],
+     "body": [
+      -0.00011719383473973721,
+      52.950103759765625,
+      2.172664466115748e-7
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 32.652760036895536,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.3,
+     "file": "eye-240-0.30.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.30666666666666664,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 23.444,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 71,
+        "meanMs": 1.63,
+        "p50Ms": 1.454,
+        "maxMs": 3.927
+       },
+       {
+        "label": "depth blit",
+        "n": 71,
+        "meanMs": 0.896,
+        "p50Ms": 0.82,
+        "maxMs": 3.01
+       },
+       {
+        "label": "1:N8AO",
+        "n": 71,
+        "meanMs": 2.935,
+        "p50Ms": 2.994,
+        "maxMs": 6.079
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+        "n": 70,
+        "meanMs": 3.084,
+        "p50Ms": 3.206,
+        "maxMs": 4.638
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 70,
+        "meanMs": 3.377,
+        "p50Ms": 3.594,
+        "maxMs": 5.129
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 70,
+        "meanMs": 2.511,
+        "p50Ms": 2.818,
+        "maxMs": 5.234
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 70,
+        "meanMs": 2.819,
+        "p50Ms": 3.135,
+        "maxMs": 5.572
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 70,
+        "meanMs": 3.038,
+        "p50Ms": 3.318,
+        "maxMs": 5.852
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 70,
+        "meanMs": 3.154,
+        "p50Ms": 3.475,
+        "maxMs": 6.027
+       }
+      ],
+      "frames": 71,
+      "disjoint": 0,
+      "skipped": 0
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00011577899640651122,
+      54.15010375976184,
+      0.00001000107170372915
+     ],
+     "body": [
+      -0.00011578363046282902,
+      52.950103759765625,
+      0.000010054159247374628
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 32.65276941499801,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 0,
+     "cycle": 0.48,
+     "file": "eye-000-0.48.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.4866666666666667,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 24.243,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 70,
+        "meanMs": 1.589,
+        "p50Ms": 1.53,
+        "maxMs": 2.259
+       },
+       {
+        "label": "depth blit",
+        "n": 70,
+        "meanMs": 0.974,
+        "p50Ms": 0.935,
+        "maxMs": 1.574
+       },
+       {
+        "label": "1:N8AO",
+        "n": 70,
+        "meanMs": 2.904,
+        "p50Ms": 2.924,
+        "maxMs": 3.402
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+        "n": 70,
+        "meanMs": 3.14,
+        "p50Ms": 3.186,
+        "maxMs": 3.862
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 70,
+        "meanMs": 3.382,
+        "p50Ms": 3.563,
+        "maxMs": 4.451
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 70,
+        "meanMs": 2.721,
+        "p50Ms": 3.279,
+        "maxMs": 4.299
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 70,
+        "meanMs": 3.017,
+        "p50Ms": 3.602,
+        "maxMs": 4.536
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 70,
+        "meanMs": 3.248,
+        "p50Ms": 3.898,
+        "maxMs": 4.663
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 70,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 70,
+        "meanMs": 3.268,
+        "p50Ms": 3.983,
+        "maxMs": 4.869
+       }
+      ],
+      "frames": 71,
+      "disjoint": 0,
+      "skipped": 0
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.00013849486891752007,
+      54.15010093069064,
+      0.000012995422187278501
+     ],
+     "body": [
+      -0.00013850489631295204,
+      52.95009994506836,
+      0.000013003191270399839
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 27.34374325194055,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.48,
+     "file": "eye-120-0.48.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.48333333333333334,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 23.35,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 71,
+        "meanMs": 1.607,
+        "p50Ms": 1.55,
+        "maxMs": 4.56
+       },
+       {
+        "label": "depth blit",
+        "n": 71,
+        "meanMs": 1.032,
+        "p50Ms": 0.983,
+        "maxMs": 3.59
+       },
+       {
+        "label": "1:N8AO",
+        "n": 71,
+        "meanMs": 2.831,
+        "p50Ms": 2.791,
+        "maxMs": 7.205
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+        "n": 71,
+        "meanMs": 2.954,
+        "p50Ms": 2.973,
+        "maxMs": 4.112
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 71,
+        "meanMs": 3.214,
+        "p50Ms": 3.445,
+        "maxMs": 4.449
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 71,
+        "meanMs": 2.589,
+        "p50Ms": 3.147,
+        "maxMs": 4.356
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 71,
+        "meanMs": 2.893,
+        "p50Ms": 3.414,
+        "maxMs": 4.615
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 71,
+        "meanMs": 3.025,
+        "p50Ms": 3.645,
+        "maxMs": 4.79
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 71,
+        "meanMs": 3.205,
+        "p50Ms": 3.832,
+        "maxMs": 4.842
+       }
+      ],
+      "frames": 71,
+      "disjoint": 0,
+      "skipped": 0
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00011675321974858195,
+      54.15009994507573,
+      0.000006865101473075063
+     ],
+     "body": [
+      -0.00011679227463901043,
+      52.95009994506836,
+      0.000006864931947347941
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 28.623138974247183,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.48,
+     "file": "eye-240-0.48.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.4866666666666667,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 23.336,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 71,
+        "meanMs": 1.542,
+        "p50Ms": 1.466,
+        "maxMs": 3.778
+       },
+       {
+        "label": "depth blit",
+        "n": 71,
+        "meanMs": 0.924,
+        "p50Ms": 0.872,
+        "maxMs": 2.8
+       },
+       {
+        "label": "1:N8AO",
+        "n": 71,
+        "meanMs": 2.924,
+        "p50Ms": 2.936,
+        "maxMs": 5.109
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+        "n": 71,
+        "meanMs": 3.133,
+        "p50Ms": 3.255,
+        "maxMs": 5.415
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 71,
+        "meanMs": 3.409,
+        "p50Ms": 3.686,
+        "maxMs": 5.963
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 71,
+        "meanMs": 2.544,
+        "p50Ms": 3.301,
+        "maxMs": 4.388
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 71,
+        "meanMs": 2.828,
+        "p50Ms": 3.618,
+        "maxMs": 4.552
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 71,
+        "meanMs": 2.935,
+        "p50Ms": 3.566,
+        "maxMs": 4.677
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 71,
+        "meanMs": 3.097,
+        "p50Ms": 3.757,
+        "maxMs": 4.685
+       }
+      ],
+      "frames": 72,
+      "disjoint": 0,
+      "skipped": 0
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00011739600713584397,
+      54.15010431795305,
+      0.000006337092673199128
+     ],
+     "body": [
+      -0.00011740136687876657,
+      52.950103759765625,
+      0.000006389767349901376
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 29.957104333524736,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 0,
+     "cycle": 0.55,
+     "file": "eye-000-0.55.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.5533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 23.261,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 68,
+        "meanMs": 2.108,
+        "p50Ms": 2.056,
+        "maxMs": 4.564
+       },
+       {
+        "label": "depth blit",
+        "n": 68,
+        "meanMs": 1.456,
+        "p50Ms": 1.416,
+        "maxMs": 3.674
+       },
+       {
+        "label": "1:N8AO",
+        "n": 68,
+        "meanMs": 3.615,
+        "p50Ms": 3.554,
+        "maxMs": 6.392
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 68,
+        "meanMs": 3.575,
+        "p50Ms": 3.754,
+        "maxMs": 6.209
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 68,
+        "meanMs": 2.748,
+        "p50Ms": 3.236,
+        "maxMs": 6.105
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 68,
+        "meanMs": 3.051,
+        "p50Ms": 3.555,
+        "maxMs": 6.389
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 68,
+        "meanMs": 3.288,
+        "p50Ms": 3.847,
+        "maxMs": 6.622
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 68,
+        "meanMs": 3.42,
+        "p50Ms": 3.793,
+        "maxMs": 6.798
+       }
+      ],
+      "frames": 69,
+      "disjoint": 0,
+      "skipped": 483
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.00014145284602922102,
+      54.15010433168054,
+      0.000011781383826138395
+     ],
+     "body": [
+      -0.00014151798677630723,
+      52.950103759765625,
+      0.000011772030120482668
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 29.368747664849042,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.55,
+     "file": "eye-120-0.55.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.5533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 24.435,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 68,
+        "meanMs": 2.082,
+        "p50Ms": 1.953,
+        "maxMs": 3.705
+       },
+       {
+        "label": "depth blit",
+        "n": 68,
+        "meanMs": 1.458,
+        "p50Ms": 1.341,
+        "maxMs": 2.865
+       },
+       {
+        "label": "1:N8AO",
+        "n": 68,
+        "meanMs": 3.755,
+        "p50Ms": 3.566,
+        "maxMs": 6.295
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 68,
+        "meanMs": 3.792,
+        "p50Ms": 3.635,
+        "maxMs": 6.68
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 68,
+        "meanMs": 2.974,
+        "p50Ms": 3.438,
+        "maxMs": 6.736
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 68,
+        "meanMs": 3.251,
+        "p50Ms": 3.729,
+        "maxMs": 7.062
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 68,
+        "meanMs": 3.509,
+        "p50Ms": 4.025,
+        "maxMs": 7.363
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 68,
+        "meanMs": 3.614,
+        "p50Ms": 4.004,
+        "maxMs": 7.485
+       }
+      ],
+      "frames": 69,
+      "disjoint": 0,
+      "skipped": 483
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00011737952250569973,
+      54.150104248064075,
+      0.000006303931813917165
+     ],
+     "body": [
+      -0.00011739377077901736,
+      52.950103759765625,
+      0.000006348836905090138
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 27.975873475594263,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.55,
+     "file": "eye-240-0.55.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.5566666666666666,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 22.484,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 71,
+        "meanMs": 1.945,
+        "p50Ms": 1.901,
+        "maxMs": 4.475
+       },
+       {
+        "label": "depth blit",
+        "n": 71,
+        "meanMs": 1.303,
+        "p50Ms": 1.262,
+        "maxMs": 3.598
+       },
+       {
+        "label": "1:N8AO",
+        "n": 71,
+        "meanMs": 3.548,
+        "p50Ms": 3.572,
+        "maxMs": 7.074
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 71,
+        "meanMs": 3.603,
+        "p50Ms": 3.731,
+        "maxMs": 7.308
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 71,
+        "meanMs": 2.662,
+        "p50Ms": 2.987,
+        "maxMs": 5.06
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 71,
+        "meanMs": 2.947,
+        "p50Ms": 3.259,
+        "maxMs": 5.363
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 71,
+        "meanMs": 3.176,
+        "p50Ms": 3.445,
+        "maxMs": 5.64
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 71,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 71,
+        "meanMs": 3.3,
+        "p50Ms": 3.617,
+        "maxMs": 5.806
+       }
+      ],
+      "frames": 71,
+      "disjoint": 0,
+      "skipped": 497
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00011867371526054354,
+      54.15010377260134,
+      0.000006710333809198683
+     ],
+     "body": [
+      -0.00011867851571878418,
+      52.950103759765625,
+      0.000006773186214559246
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 26.43632618122983,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 0,
+     "cycle": 0.75,
+     "file": "eye-000-0.75.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.7533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 23.666,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 69,
+        "meanMs": 2.092,
+        "p50Ms": 2.04,
+        "maxMs": 4.569
+       },
+       {
+        "label": "depth blit",
+        "n": 69,
+        "meanMs": 1.447,
+        "p50Ms": 1.407,
+        "maxMs": 3.666
+       },
+       {
+        "label": "1:N8AO",
+        "n": 68,
+        "meanMs": 3.709,
+        "p50Ms": 3.547,
+        "maxMs": 6.051
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 68,
+        "meanMs": 3.81,
+        "p50Ms": 3.738,
+        "maxMs": 6.408
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 68,
+        "meanMs": 2.828,
+        "p50Ms": 3.45,
+        "maxMs": 5.637
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 68,
+        "meanMs": 3.08,
+        "p50Ms": 3.672,
+        "maxMs": 5.935
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 68,
+        "meanMs": 3.286,
+        "p50Ms": 3.902,
+        "maxMs": 6.216
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 68,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 68,
+        "meanMs": 3.414,
+        "p50Ms": 4.05,
+        "maxMs": 6.325
+       }
+      ],
+      "frames": 69,
+      "disjoint": 0,
+      "skipped": 483
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.00014682412684403868,
+      54.15010700225193,
+      0.000015493672713157683
+     ],
+     "body": [
+      -0.00014689090312458575,
+      52.95010757446289,
+      0.000015445433746208437
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 26.436319997942444,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.75,
+     "file": "eye-120-0.75.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.7566666666666667,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 22.822,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 69,
+        "meanMs": 1.947,
+        "p50Ms": 1.873,
+        "maxMs": 3.634
+       },
+       {
+        "label": "depth blit",
+        "n": 69,
+        "meanMs": 1.331,
+        "p50Ms": 1.254,
+        "maxMs": 3.012
+       },
+       {
+        "label": "1:N8AO",
+        "n": 69,
+        "meanMs": 3.545,
+        "p50Ms": 3.389,
+        "maxMs": 6.147
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 69,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 69,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 69,
+        "meanMs": 3.602,
+        "p50Ms": 3.554,
+        "maxMs": 6.59
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 69,
+        "meanMs": 2.794,
+        "p50Ms": 3.169,
+        "maxMs": 6.41
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 69,
+        "meanMs": 3.045,
+        "p50Ms": 3.438,
+        "maxMs": 6.718
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 69,
+        "meanMs": 3.228,
+        "p50Ms": 3.646,
+        "maxMs": 6.972
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 69,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 69,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 69,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 69,
+        "meanMs": 3.33,
+        "p50Ms": 3.663,
+        "maxMs": 7.152
+       }
+      ],
+      "frames": 70,
+      "disjoint": 0,
+      "skipped": 490
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00011689900969998704,
+      54.15010707686214,
+      0.0000069997082056313285
+     ],
+     "body": [
+      -0.0001169640599982813,
+      52.95010757446289,
+      0.000006951574960112339
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 26.436328149082243,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.75,
+     "file": "eye-240-0.75.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.7533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2560,
+      1600
+     ],
+     "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 23.679,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 67,
+        "meanMs": 2.027,
+        "p50Ms": 1.938,
+        "maxMs": 3.22
+       },
+       {
+        "label": "depth blit",
+        "n": 67,
+        "meanMs": 1.37,
+        "p50Ms": 1.303,
+        "maxMs": 2.068
+       },
+       {
+        "label": "1:N8AO",
+        "n": 67,
+        "meanMs": 3.682,
+        "p50Ms": 3.663,
+        "maxMs": 4.685
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 67,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 67,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 67,
+        "meanMs": 3.709,
+        "p50Ms": 3.835,
+        "maxMs": 5.041
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 66,
+        "meanMs": 2.896,
+        "p50Ms": 3.579,
+        "maxMs": 4.876
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 66,
+        "meanMs": 3.12,
+        "p50Ms": 3.721,
+        "maxMs": 5.194
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 66,
+        "meanMs": 3.352,
+        "p50Ms": 3.742,
+        "maxMs": 5.496
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 66,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 66,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 66,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 66,
+        "meanMs": 3.523,
+        "p50Ms": 3.823,
+        "maxMs": 5.687
+       }
+      ],
+      "frames": 67,
+      "disjoint": 0,
+      "skipped": 469
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00011652746696097342,
+      54.150107013448064,
+      0.000007411133619798637
+     ],
+     "body": [
+      -0.00011659090523608029,
+      52.95010757446289,
+      0.000007365561486949446
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 26.436328660565625,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    }
+   ],
+   "clips": [
+    {
+     "cycle": 0.3,
+     "heading": 180,
+     "ms": 4000,
+     "file": "walk-0.30.mp4",
+     "valid": true,
+     "why": [],
+     "movedM": 47.99657368549378,
+     "heldMs": 4016,
+     "cleared": 0,
+     "frames": 101,
+     "durationS": 4.04,
+     "videoSize": [
+      1280,
+      800
+     ],
+     "videoFps": "25/1",
+     "gameFrames": 318,
+     "start": {
+      "body": [
+       -0.0001369721576338634,
+       52.950103759765625,
+       9.70966425484221e-7
+      ],
+      "cycle": 0.30333333333333334,
+      "heading": 180,
+      "hostiles": {
+       "nearestM": 26.43631198623469,
+       "within8m": 0
+      }
+     },
+     "end": {
+      "body": [
+       -0.005080686416476965,
+       51.95009994506836,
+       47.99657440185547
+      ],
+      "cycle": 0.32,
+      "heading": 180,
+      "isAlive": true,
+      "hostiles": {
+       "nearestM": 39.920525784726564,
+       "within8m": 0
+      }
+     },
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 26.153,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 240,
+        "meanMs": 1.789,
+        "p50Ms": 1.7,
+        "maxMs": 5.073
+       },
+       {
+        "label": "depth blit",
+        "n": 240,
+        "meanMs": 1.158,
+        "p50Ms": 1.082,
+        "maxMs": 4.049
+       },
+       {
+        "label": "1:N8AO",
+        "n": 240,
+        "meanMs": 3.219,
+        "p50Ms": 3.083,
+        "maxMs": 6.252
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+        "n": 240,
+        "meanMs": 3.49,
+        "p50Ms": 3.273,
+        "maxMs": 6.727
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 240,
+        "meanMs": 3.778,
+        "p50Ms": 3.656,
+        "maxMs": 7.403
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 240,
+        "meanMs": 2.871,
+        "p50Ms": 3.207,
+        "maxMs": 5.703
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 240,
+        "meanMs": 3.139,
+        "p50Ms": 3.505,
+        "maxMs": 5.93
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 240,
+        "meanMs": 3.296,
+        "p50Ms": 3.707,
+        "maxMs": 5.956
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 240,
+        "meanMs": 3.413,
+        "p50Ms": 3.87,
+        "maxMs": 6.02
+       }
+      ],
+      "frames": 318,
+      "disjoint": 0,
+      "skipped": 4452
+     }
+    },
+    {
+     "cycle": 0.48,
+     "heading": 180,
+     "ms": 4000,
+     "file": "walk-0.48.mp4",
+     "valid": true,
+     "why": [],
+     "movedM": 46.46102593667034,
+     "heldMs": 4012,
+     "cleared": 0,
+     "frames": 101,
+     "durationS": 4.04,
+     "videoSize": [
+      1280,
+      800
+     ],
+     "videoFps": "25/1",
+     "gameFrames": 642,
+     "start": {
+      "body": [
+       -0.00014407210983335972,
+       52.95010757446289,
+       0.000006968784418859286
+      ],
+      "cycle": 0.48333333333333334,
+      "heading": 180,
+      "hostiles": {
+       "nearestM": 27.96559077627567,
+       "within8m": 0
+      }
+     },
+     "end": {
+      "body": [
+       -0.0020237492863088846,
+       51.95009994506836,
+       46.46103286743164
+      ],
+      "cycle": 0.5166666666666667,
+      "heading": 180,
+      "isAlive": true,
+      "hostiles": {
+       "nearestM": 40.11962409044635,
+       "within8m": 0
+      }
+     },
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 64.278,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 240,
+        "meanMs": 4.899,
+        "p50Ms": 4.397,
+        "maxMs": 7.476
+       },
+       {
+        "label": "depth blit",
+        "n": 240,
+        "meanMs": 3.815,
+        "p50Ms": 3.491,
+        "maxMs": 6.191
+       },
+       {
+        "label": "1:N8AO",
+        "n": 240,
+        "meanMs": 8.313,
+        "p50Ms": 7.934,
+        "maxMs": 10.588
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > GodRaysEffect.update",
+        "n": 227,
+        "meanMs": 3.405,
+        "p50Ms": 3.518,
+        "maxMs": 4.573
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 227,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 227,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 227,
+        "meanMs": 3.754,
+        "p50Ms": 4.029,
+        "maxMs": 5.168
+       },
+       {
+        "label": "2:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 227,
+        "meanMs": 2.971,
+        "p50Ms": 3.598,
+        "maxMs": 4.688
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 240,
+        "meanMs": 7.106,
+        "p50Ms": 8.608,
+        "maxMs": 11.923
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 240,
+        "meanMs": 7.181,
+        "p50Ms": 8.795,
+        "maxMs": 12.383
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 240,
+        "meanMs": 7.527,
+        "p50Ms": 9.162,
+        "maxMs": 12.762
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 240,
+        "meanMs": 8.633,
+        "p50Ms": 8.743,
+        "maxMs": 11.474
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 240,
+        "meanMs": 6.674,
+        "p50Ms": 8.273,
+        "maxMs": 11.472
+       }
+      ],
+      "frames": 642,
+      "disjoint": 0,
+      "skipped": 11893
+     }
+    },
+    {
+     "cycle": 0.55,
+     "heading": 180,
+     "ms": 4000,
+     "file": "walk-0.55.mp4",
+     "valid": true,
+     "why": [],
+     "movedM": 41.22501478781177,
+     "heldMs": 4009,
+     "cleared": 0,
+     "frames": 101,
+     "durationS": 4.04,
+     "videoSize": [
+      1280,
+      800
+     ],
+     "videoFps": "25/1",
+     "gameFrames": 380,
+     "start": {
+      "body": [
+       -0.000128294006572105,
+       52.950103759765625,
+       0.000013403916454990394
+      ],
+      "cycle": 0.55,
+      "heading": 180,
+      "hostiles": {
+       "nearestM": 30.163661624757225,
+       "within8m": 0
+      }
+     },
+     "end": {
+      "body": [
+       -0.03465552628040314,
+       50.95008850097656,
+       41.225013732910156
+      ],
+      "cycle": 0.57,
+      "heading": 180,
+      "isAlive": true,
+      "hostiles": {
+       "nearestM": 38.6552465734577,
+       "within8m": 0
+      }
+     },
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 55.923,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 240,
+        "meanMs": 5.833,
+        "p50Ms": 5.424,
+        "maxMs": 7.906
+       },
+       {
+        "label": "depth blit",
+        "n": 240,
+        "meanMs": 4.676,
+        "p50Ms": 3.685,
+        "maxMs": 6.466
+       },
+       {
+        "label": "1:N8AO",
+        "n": 240,
+        "meanMs": 9.155,
+        "p50Ms": 8.474,
+        "maxMs": 11.253
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 240,
+        "meanMs": 8.772,
+        "p50Ms": 9.085,
+        "maxMs": 11.768
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 240,
+        "meanMs": 6.561,
+        "p50Ms": 8.381,
+        "maxMs": 11.803
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 240,
+        "meanMs": 6.867,
+        "p50Ms": 8.724,
+        "maxMs": 12.247
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 240,
+        "meanMs": 6.9,
+        "p50Ms": 8.935,
+        "maxMs": 12.545
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 240,
+        "meanMs": 7.159,
+        "p50Ms": 9.189,
+        "maxMs": 12.923
+       }
+      ],
+      "frames": 380,
+      "disjoint": 0,
+      "skipped": 7980
+     }
+    },
+    {
+     "cycle": 0.75,
+     "heading": 180,
+     "ms": 4000,
+     "file": "walk-0.75.mp4",
+     "valid": true,
+     "why": [],
+     "movedM": 42.524355805571375,
+     "heldMs": 4017,
+     "cleared": 0,
+     "frames": 101,
+     "durationS": 4.04,
+     "videoSize": [
+      1280,
+      800
+     ],
+     "videoFps": "25/1",
+     "gameFrames": 351,
+     "start": {
+      "body": [
+       -0.00013051081623416394,
+       52.95009994506836,
+       0.000012770630746672396
+      ],
+      "cycle": 0.75,
+      "heading": 180,
+      "hostiles": {
+       "nearestM": 32.13396323647409,
+       "within8m": 0
+      }
+     },
+     "end": {
+      "body": [
+       -0.04071184992790222,
+       50.95000076293945,
+       42.524349212646484
+      ],
+      "cycle": 0.77,
+      "heading": 180,
+      "isAlive": true,
+      "hostiles": {
+       "nearestM": 39.30799388116843,
+       "within8m": 0
+      }
+     },
+     "passMs": {
+      "available": true,
+      "reason": null,
+      "totalMs": 57.271,
+      "passes": [
+       {
+        "label": "0:RenderPass",
+        "n": 240,
+        "meanMs": 5.701,
+        "p50Ms": 4.972,
+        "maxMs": 7.855
+       },
+       {
+        "label": "depth blit",
+        "n": 240,
+        "meanMs": 4.625,
+        "p50Ms": 3.868,
+        "maxMs": 6.61
+       },
+       {
+        "label": "1:N8AO",
+        "n": 240,
+        "meanMs": 9.4,
+        "p50Ms": 8.671,
+        "maxMs": 12.374
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > HueSaturationEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BrightnessContrastEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > BloomEffect.update",
+        "n": 240,
+        "meanMs": 8.983,
+        "p50Ms": 9.23,
+        "maxMs": 12.239
+       },
+       {
+        "label": "2:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect) > draw",
+        "n": 240,
+        "meanMs": 6.859,
+        "p50Ms": 8.404,
+        "maxMs": 12.225
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > SMAAEffect.update",
+        "n": 240,
+        "meanMs": 7.109,
+        "p50Ms": 8.695,
+        "maxMs": 14.717
+       },
+       {
+        "label": "3:EffectPass(SMAAEffect) > draw",
+        "n": 240,
+        "meanMs": 7.125,
+        "p50Ms": 8.84,
+        "maxMs": 15.005
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > ToneMappingEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > NoiseEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > VignetteEffect.update",
+        "n": 240,
+        "meanMs": 0,
+        "p50Ms": 0,
+        "maxMs": 0
+       },
+       {
+        "label": "4:EffectPass(ToneMappingEffect+NoiseEffect+VignetteEffect) > draw",
+        "n": 240,
+        "meanMs": 7.469,
+        "p50Ms": 9.172,
+        "maxMs": 15.376
+       }
+      ],
+      "frames": 351,
+      "disjoint": 0,
+      "skipped": 7371
+     }
+    }
+   ],
+   "hero": [
+    {
+     "file": "hearth-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 68.155,
+     "postWhy": null
+    },
+    {
+     "file": "hearth-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 28.98,
+     "postWhy": null
+    },
+    {
+     "file": "hearth-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 25.291,
+     "postWhy": null
+    },
+    {
+     "file": "hearth-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 23.488,
+     "postWhy": null
+    },
+    {
+     "file": "forest-edge-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 26.42,
+     "postWhy": null
+    },
+    {
+     "file": "forest-edge-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 27.523,
+     "postWhy": null
+    },
+    {
+     "file": "forest-edge-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 28.073,
+     "postWhy": null
+    },
+    {
+     "file": "forest-edge-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 45.844,
+     "postWhy": null
+    },
+    {
+     "file": "coast-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 38.393,
+     "postWhy": null
+    },
+    {
+     "file": "coast-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 32.721,
+     "postWhy": null
+    },
+    {
+     "file": "coast-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 40.418,
+     "postWhy": null
+    },
+    {
+     "file": "coast-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 23.622,
+     "postWhy": null
+    },
+    {
+     "file": "snow-terrace-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 31.243,
+     "postWhy": null
+    },
+    {
+     "file": "snow-terrace-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 31.661,
+     "postWhy": null
+    },
+    {
+     "file": "snow-terrace-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 27.354,
+     "postWhy": null
+    },
+    {
+     "file": "snow-terrace-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": 28.402,
+     "postWhy": null
+    }
+   ]
+  },
+  {
+   "id": "webkit-1180x820",
+   "engine": "webkit",
+   "launch": "headless",
+   "renderer": "Apple GPU",
+   "gpu": "hardware",
+   "entry": "tap on Start Adventure",
+   "stand": [
+    -0.00007701723370701075,
+    52.950111389160156,
+    0.000012092795259377453
+   ],
+   "hands": {
+    "free": 33,
+    "hidden": 2,
+    "back": 33
+   },
+   "respawns": 0,
+   "notes": [
+    "WebKit MASKS its renderer as \"Apple GPU\": hardware is inferred from WebKit's ANGLE-Metal path on macOS, not proven by this string"
+   ],
+   "pageErrors": 0,
+   "eye": [
+    {
+     "heading": 0,
+     "cycle": 0.3,
+     "file": "eye-000-0.30.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.30333333333333334,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.00013191054784485295,
+      54.15010376029585,
+      -0.0000024608330147272933
+     ],
+     "body": [
+      -0.00013191573088988662,
+      52.950103759765625,
+      -0.000002397852313151816
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 27.351507556847583,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.3,
+     "file": "eye-120-0.30.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.30333333333333334,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00008790979873295711,
+      54.15010748862666,
+      0.00001203421138658795
+     ],
+     "body": [
+      -0.00008796502515906468,
+      52.95010757446289,
+      0.000011985925993940327
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 27.351496080205607,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.3,
+     "file": "eye-240-0.30.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.30666666666666664,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00008730810948404978,
+      54.15010333347335,
+      0.000012745471887555873
+     ],
+     "body": [
+      -0.00008734712173463777,
+      52.950103759765625,
+      0.000012712877833109815
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 27.351494703217963,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 0,
+     "cycle": 0.48,
+     "file": "eye-000-0.48.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.48333333333333334,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.0001176798857820369,
+      54.15010327339171,
+      0.000012910490209782885
+     ],
+     "body": [
+      -0.00011771510617109016,
+      52.950103759765625,
+      0.000012912635611428414
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 27.351493042490826,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.48,
+     "file": "eye-120-0.48.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.4866666666666667,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00008228638895425116,
+      54.15009994506836,
+      0.000012607190001290292
+     ],
+     "body": [
+      -0.00008229717059293762,
+      52.95009994506836,
+      0.000012607190001290292
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 27.351494509294085,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.48,
+     "file": "eye-240-0.48.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.48333333333333334,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00008597464753980787,
+      54.15010002925754,
+      0.000012275847355256791
+     ],
+     "body": [
+      -0.000085980020230636,
+      52.95009994506836,
+      0.000012271910236449912
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 27.35149466900974,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 0,
+     "cycle": 0.55,
+     "file": "eye-000-0.55.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.5533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.00008223150699657277,
+      54.15009994506836,
+      0.000012555819921544753
+     ],
+     "body": [
+      -0.00008222256292356178,
+      52.95009994506836,
+      0.000012555819921544753
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 26.56044176228877,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.55,
+     "file": "eye-120-0.55.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.5566666666666666,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00008478126526566287,
+      54.1501037597648,
+      0.00001211646745730097
+     ],
+     "body": [
+      -0.00008483690908178687,
+      52.950103759765625,
+      0.0000120690674521029
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 24.453568074261035,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.55,
+     "file": "eye-240-0.55.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.5533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00008495472436792303,
+      54.150102919189784,
+      0.000012535601160124249
+     ],
+     "body": [
+      -0.00008499362593283877,
+      52.950103759765625,
+      0.00001250152308784891
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 23.069883027232873,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 0,
+     "cycle": 0.75,
+     "file": "eye-000-0.75.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.7533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.00011763596412415472,
+      54.15010381989056,
+      0.000012274213678234376
+     ],
+     "body": [
+      -0.00011764984810724854,
+      52.950103759765625,
+      0.00001231915575772291
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 24.451086541177318,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.75,
+     "file": "eye-120-0.75.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.7533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00008711323439688046,
+      54.15010043144324,
+      0.00001229765517272094
+     ],
+     "body": [
+      -0.0000871582014951855,
+      52.95009994506836,
+      0.000012258561582711991
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 24.584835753269342,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.75,
+     "file": "eye-240-0.75.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.7566666666666667,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      2360,
+      1640
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00008771721076975415,
+      54.150103686804,
+      0.000012352949229762633
+     ],
+     "body": [
+      -0.00008775677270023152,
+      52.950103759765625,
+      0.000012326811884122435
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 27.093383283234523,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    }
+   ],
+   "clips": [],
+   "hero": [
+    {
+     "file": "hearth-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "hearth-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "hearth-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "hearth-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "forest-edge-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "forest-edge-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "forest-edge-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "forest-edge-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "coast-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "coast-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "coast-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "coast-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "snow-terrace-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "snow-terrace-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "snow-terrace-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "snow-terrace-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    }
+   ]
+  },
+  {
+   "id": "webkit-820x1180",
+   "engine": "webkit",
+   "launch": "headless",
+   "renderer": "Apple GPU",
+   "gpu": "hardware",
+   "entry": "tap on Start Adventure",
+   "stand": [
+    -0.0000830854187370278,
+    52.95009994506836,
+    0.000012847215657529887
+   ],
+   "hands": {
+    "free": 33,
+    "hidden": 2,
+    "back": 33
+   },
+   "respawns": 0,
+   "notes": [
+    "WebKit MASKS its renderer as \"Apple GPU\": hardware is inferred from WebKit's ANGLE-Metal path on macOS, not proven by this string"
+   ],
+   "pageErrors": 0,
+   "eye": [
+    {
+     "heading": 0,
+     "cycle": 0.3,
+     "file": "eye-000-0.30.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.30333333333333334,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.00011999316480115459,
+      54.15010377074209,
+      0.000012533251404302465
+     ],
+     "body": [
+      -0.00011999908019788563,
+      52.950103759765625,
+      0.000012593987776199356
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 32.709325355195865,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.3,
+     "file": "eye-120-0.30.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.30666666666666664,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00009176857592789315,
+      54.15010375837034,
+      0.000012468749926097495
+     ],
+     "body": [
+      -0.00009177232277579606,
+      52.950103759765625,
+      0.00001253167192771798
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 30.86491057092374,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.3,
+     "file": "eye-240-0.30.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.30333333333333334,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00009346539615600923,
+      54.15010377263371,
+      0.000010915895128813228
+     ],
+     "body": [
+      -0.00009347220475319773,
+      52.950103759765625,
+      0.000010911144272540696
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 28.47997566298326,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 0,
+     "cycle": 0.48,
+     "file": "eye-000-0.48.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.48333333333333334,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.00012251863122423226,
+      54.15010383460945,
+      0.00001278826216470164
+     ],
+     "body": [
+      -0.000122479468700476,
+      52.950103759765625,
+      0.00001278694071515929
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 28.549246359749564,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.48,
+     "file": "eye-120-0.48.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.48333333333333334,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00009336354128724267,
+      54.15010424613868,
+      0.000011197055267486307
+     ],
+     "body": [
+      -0.00009341597615275532,
+      52.950103759765625,
+      0.000011152469596709125
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 28.549251409888672,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.48,
+     "file": "eye-240-0.48.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.4866666666666667,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00009278903908999407,
+      54.150103748575155,
+      0.000012511984355427425
+     ],
+     "body": [
+      -0.00009279072401113808,
+      52.950103759765625,
+      0.000012519018127932213
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 28.823799964319324,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 0,
+     "cycle": 0.55,
+     "file": "eye-000-0.55.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.5533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.00012233459028385677,
+      54.15010374718153,
+      0.000014146338898288011
+     ],
+     "body": [
+      -0.00012236977636348456,
+      52.950103759765625,
+      0.00001414631333318539
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 30.436177738065755,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.55,
+     "file": "eye-120-0.55.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.5533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00009178217566577604,
+      54.150103686809544,
+      0.00001217594262277876
+     ],
+     "body": [
+      -0.0000917925572139211,
+      52.950103759765625,
+      0.000012223773410369176
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 30.436180823382827,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.55,
+     "file": "eye-240-0.55.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.5566666666666666,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00009382758921108454,
+      54.15010368680317,
+      0.000012793687762320776
+     ],
+     "body": [
+      -0.00009387865429744124,
+      52.950103759765625,
+      0.000012748870176437777
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 30.43618013642818,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 0,
+     "cycle": 0.75,
+     "file": "eye-000-0.75.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.7533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 0,
+     "pitch": 0,
+     "eye": [
+      -0.00012077201186911103,
+      54.150103832722564,
+      0.000012513537997316988
+     ],
+     "body": [
+      -0.00012078577856300399,
+      52.950103759765625,
+      0.00001256608811672777
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 31.533730095909444,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 120,
+     "cycle": 0.75,
+     "file": "eye-120-0.75.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.7533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 120,
+     "pitch": 0,
+     "eye": [
+      -0.00009095170299472423,
+      54.15010051727295,
+      0.000014114654038182661
+     ],
+     "body": [
+      -0.00009095982386497781,
+      52.95009994506836,
+      0.000014131072020973079
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 32.16867497827199,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    },
+    {
+     "heading": 240,
+     "cycle": 0.75,
+     "file": "eye-240-0.75.png",
+     "valid": true,
+     "why": [],
+     "cycleAtShot": 0.7533333333333333,
+     "active": true,
+     "isAlive": true,
+     "health": 100,
+     "tier": "high",
+     "frameCap": 60,
+     "dpr": 2,
+     "canvas": [
+      1640,
+      2360
+     ],
+     "renderer": "Apple GPU",
+     "contextLosses": 0,
+     "consoleErrors": 0,
+     "passMs": {
+      "available": false,
+      "reason": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser",
+      "totalMs": null,
+      "passes": []
+     },
+     "hud": true,
+     "headingAtShot": 240,
+     "pitch": 0,
+     "eye": [
+      -0.00008945909748474745,
+      54.15010326052266,
+      0.000014110006304334944
+     ],
+     "body": [
+      -0.00008950587653089315,
+      52.950103759765625,
+      0.000014067264601180796
+     ],
+     "cameraNodes": 33,
+     "hostiles": {
+      "nearestM": 32.16867501839545,
+      "within8m": 0
+     },
+     "cleared": 0,
+     "eyeAboveBody": 1.2
+    }
+   ],
+   "clips": [],
+   "hero": [
+    {
+     "file": "hearth-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "hearth-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "hearth-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "hearth-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "forest-edge-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "forest-edge-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "forest-edge-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "forest-edge-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "coast-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "coast-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "coast-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "coast-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "snow-terrace-0.30.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "snow-terrace-0.48.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "snow-terrace-0.55.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    },
+    {
+     "file": "snow-terrace-0.75.png",
+     "valid": true,
+     "why": [],
+     "tier": "high",
+     "dpr": 2,
+     "postMs": null,
+     "postWhy": "EXT_disjoint_timer_query_webgl2 is not exposed by this browser"
+    }
+   ]
+  }
+ ]
+}
