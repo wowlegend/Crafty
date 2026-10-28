@@ -5,10 +5,18 @@
       "kind": "artifact",
       "url": "https://claude.ai/artifact/Q1QQLYLxPVYZ8A7Srm1BMF",
       "source": "docs/superpowers/era-review.html",
-      "syncedSha": "32a55b75",
+      "syncedSha": "03a59964",
       "syncedAt": "2026-10-28",
-      "stampTokens": { "text": "--fg-dim", "rule": "--line", "link": "--teal", "font": "--mono" },
-      "currentStatus": { "label": "the Command Record", "url": "https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f" },
+      "stampTokens": {
+        "text": "--fg-dim",
+        "rule": "--line",
+        "link": "--teal",
+        "font": "--mono"
+      },
+      "currentStatus": {
+        "label": "the Command Record",
+        "url": "https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f"
+      },
       "note": "Update the source, run scripts/ci/artifact-currency.mjs --sync era-review (it writes the as-of stamp at the top of the page and records HEAD), republish the stamped source to the SAME url, then commit both. Bumping the sha without republishing makes the record lie.",
       "previousUrl": "https://claude.ai/code/artifact/ccdc987f-fef7-4eda-9a65-b5d6cb60529c",
       "movedNote": "2026-10-28: republished from account 2 at a new URL because the previous artifact belongs to account 1, which the session could not write (DECISIONS 2026-10-28). Repoint to previousUrl once account 1 is active again, republishing the same source there first."
@@ -18,13 +26,36 @@
       "kind": "artifact",
       "url": "https://claude.ai/artifact/NuwFDNnfZG3gRHv6LH1krr",
       "source": "docs/superpowers/sota-audit.html",
-      "syncedSha": "32a55b75",
+      "syncedSha": "03a59964",
       "syncedAt": "2026-10-28",
-      "stampTokens": { "text": "--ink-2", "rule": "--rule", "link": "--accent", "font": "--mono" },
-      "currentStatus": { "label": "the Command Record", "url": "https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f" },
+      "stampTokens": {
+        "text": "--ink-2",
+        "rule": "--rule",
+        "link": "--accent",
+        "font": "--mono"
+      },
+      "currentStatus": {
+        "label": "the Command Record",
+        "url": "https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f"
+      },
       "note": "Source was NEVER committed until 2026-08-09 — it existed only as a published artifact, the exact loss mode this script's header describes. Recovered by fetching the published page and stripping the publish wrapper (validateSource confirms the stored copy is the authored page, not the fetched shell).",
       "previousUrl": "https://claude.ai/code/artifact/036fab8d-57db-409e-80a9-4ca0a3786ba4",
       "movedNote": "2026-10-28: republished from account 2 at a new URL because the previous artifact belongs to account 1, which the session could not write (DECISIONS 2026-10-28). Repoint to previousUrl once account 1 is active again, republishing the same source there first."
+    },
+    {
+      "id": "command-record",
+      "kind": "artifact",
+      "url": "https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f",
+      "source": "docs/superpowers/command-record.html",
+      "stampTokens": {
+        "text": "--muted",
+        "rule": "--line",
+        "link": "--accent",
+        "font": "--font-mono"
+      },
+      "note": "The operator's CURRENT status page (the command session's record); era-review and sota-audit point here from their stamps. Tracked as a surface from 2026-10-28 (DECISIONS 2026-10-28 item 12). Update the source, run scripts/ci/artifact-currency.mjs --sync command-record, republish the stamped source to the SAME url, then commit both.",
+      "syncedSha": "03a59964",
+      "syncedAt": "2026-10-28"
     }
   ]
 }
