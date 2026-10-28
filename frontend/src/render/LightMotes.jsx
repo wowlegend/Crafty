@@ -1,8 +1,7 @@
-// S1-D-M3 Atmosphere elevation — ALWAYS-ON warm light MOTES (spec §5① "drifting
-// light motes"). Slow additive billboards floating in the camera frustum, warm-tinted
-// by the continuous `mood`. Reuses the GPUSparkSystem pattern: ONE instanced plane mesh
-// with custom InstancedBufferAttributes + GPU billboarding in the vertex shader (NOT
-// per-instance React meshes — that would thrash the reconciler at 100+ instances).
+// LightMotes — fireflies: slow additive billboards drifting in a box around the camera, present only where the colour
+// script says the hour has them (render/motePresence.js: at night, a share at dusk and before dawn, none by day, none
+// under the boss), and faded out near the camera so none sits on the lens. ONE instanced plane mesh with GPU
+// billboarding in the vertex shader; per-instance React meshes would thrash the reconciler at 100+ instances.
 //
 // CAPTURE-DETERMINISM (load-bearing): the mote drift is driven by a `uTime` uniform that
 // is FROZEN to a fixed flattering phase (CAPTURE_TIME) in capture mode, so every capture
@@ -12,14 +11,16 @@
 // not bunched at a seam or clipped) rather than at t=0 where they'd all sit at their seed.
 //
 // PERF: count is tier-gated (low << med << high). Each mote is a tiny additive quad with
-// depthWrite off — fill-rate is the only cost, and the quads are small. The vertex shader
-// does the motion + billboarding on the GPU, so the CPU cost is one buffer set-up on mount
-// and a single uniform write per frame.
-import React, { useRef, useMemo, useLayoutEffect } from 'react';
+// depthWrite off — fill-rate is the only cost, and by day the mesh is not drawn at all. The
+// vertex shader does the motion + billboarding on the GPU, so the CPU cost is one buffer
+// set-up on mount and a few uniform writes per frame.
+import React, { useRef, useMemo, useLayoutEffect, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { isCaptureMode, makeSeededRandom } from '../devtest/captureMode.js';
-import { moodRef } from './mood.js';
+import { registerTestHook } from '../devtest/testBridge.js';
+import { skyFrameRef } from './mood.js';
+import { FIREFLY_COLOR, FIREFLY_OPACITY, MOTE_MIN_PRESENCE, motePresence, moteNearFadeGlsl } from './motePresence.js';
 
 // Mote count is supplied by the caller from the active quality tier (`TIERS[tier].moteCount`
 // in quality.js): low 36 / med 80 / high 140. Fill-rate scales with count, so low-end
@@ -52,6 +53,7 @@ const vertexShader = /* glsl */ `
   attribute vec3 aSeed;     // base position within [-box, +box]
   attribute vec4 aPhase;    // x=riseSpeed y=swayFreq z=swayPhase w=twinkleSeed
   varying float vTwinkle;
+  varying float vNear;
   varying vec2 vUv;
   void main() {
     vUv = uv;
@@ -78,57 +80,28 @@ const vertexShader = /* glsl */ `
     // the twinkle seed gives depth — a few big soft bokeh motes among smaller ones.
     float sizeVar = 0.6 + aPhase.w * 0.8;
     vec4 mv = modelViewMatrix * vec4(worldCenter, 1.0);
+    vNear = ${moteNearFadeGlsl('length(mv.xyz)')};
     mv.xyz += position * uScale * sizeVar;
     gl_Position = projectionMatrix * mv;
   }
 `;
 
-// Fragment shader: a soft round additive dot, mood-tinted, twinkle-modulated. Radial
-// feather (no hard quad edge) keeps motes reading as glowing dust, not squares.
+// Fragment shader: a soft round additive dot, twinkle-modulated, faded near the camera (vNear). Radial feather (no
+// hard quad edge) keeps a mote reading as a glow, not a square.
 const fragmentShader = /* glsl */ `
   uniform vec3 uColor;
   uniform float uOpacity;
   varying float vTwinkle;
+  varying float vNear;
   varying vec2 vUv;
   void main() {
     float d = distance(vUv, vec2(0.5));
     float a = smoothstep(0.5, 0.0, d);     // soft round falloff (bokeh dot)
     a = a * a;                               // tighten the core
-    // Bright warm core so motes read against BOTH bright sky and dark boss backdrops.
     vec3 col = uColor * (1.1 + vTwinkle * 1.0);
-    gl_FragColor = vec4(col, a * uOpacity * (0.6 + vTwinkle * 0.4));
+    gl_FragColor = vec4(col, a * uOpacity * vNear * (0.6 + vTwinkle * 0.4));
   }
 `;
-
-// Warm magic-hour tint per mood. Explore = warm gold (the premium magic-hour signature);
-// dusk = ember amber; obsidian = dim ember-red (motes nearly fade so the boss reads dark).
-// KNOB (warmth of the mote cloud): these three colours + MOTE_OPACITY below.
-const MOTE_COLOR = {
-  explore: new THREE.Color('#FFE3A8'),   // warm gold
-  dusk: new THREE.Color('#FFB070'),      // ember amber
-  obsidian: new THREE.Color('#C24A3A'),  // dim ember-red
-};
-// KNOB (overall presence): per-mood opacity, MULTIPLIED by uScale (size) for total
-// prominence. Motes are the explore "wow" lever, so they read as a clear soft bokeh layer.
-// Additive over the BRIGHT explore sky is the hardest case (needs the most presence);
-// dusk/obsidian backgrounds are darker so the same motes read stronger there — obsidian is
-// pulled back so the boss stays dark + dread, but kept present as drifting embers.
-const MOTE_OPACITY = { explore: 0.60, dusk: 0.52, obsidian: 0.45 };
-
-// Scratch (no per-frame alloc).
-const _color = new THREE.Color();
-
-// Resolve mote tint/opacity for a continuous mood in [0,2] (mirrors mood.js bracketing).
-function moteAppearance(mood) {
-  const m = THREE.MathUtils.clamp(Number(mood) || 0, 0, 2);
-  const i = Math.min(Math.floor(m), 1);
-  const t = m - i;
-  const states = ['explore', 'dusk', 'obsidian'];
-  const a = states[i], b = states[i + 1];
-  _color.copy(MOTE_COLOR[a]).lerp(MOTE_COLOR[b], t);
-  const opacity = THREE.MathUtils.lerp(MOTE_OPACITY[a], MOTE_OPACITY[b], t);
-  return { color: _color, opacity };
-}
 
 export function LightMotes({ count = DEFAULT_COUNT }) {
   const { camera } = useThree();
@@ -163,9 +136,23 @@ export function LightMotes({ count = DEFAULT_COUNT }) {
     // — smaller is invisible because additive over a bright sky needs area to register).
     // Lower for finer dust, raise for chunkier orbs. THIS is the main "presence" lever.
     uScale: { value: 2.2 },
-    uColor: { value: new THREE.Color('#FFE3A8') },
-    uOpacity: { value: 0.60 },
+    uColor: { value: new THREE.Color(FIREFLY_COLOR) },
+    uOpacity: { value: 0 },
   }), []);
+
+  // DEV-only read for the e2e: the live mesh and its compiled source, so a mesh that ignores the presence or a shader
+  // without the fade is seen in the running game, where the pure gates cannot look.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+    registerTestHook('readMotes', () => {
+      const mesh = meshRef.current;
+      return mesh ? {
+        visible: mesh.visible, opacity: uniforms.uOpacity.value,
+        nearFade: mesh.material.vertexShader.includes(moteNearFadeGlsl('length(mv.xyz)')),
+      } : null;
+    });
+    return () => registerTestHook('readMotes', () => null);
+  }, [uniforms]);
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;
@@ -178,13 +165,13 @@ export function LightMotes({ count = DEFAULT_COUNT }) {
   useFrame(() => {
     const mesh = meshRef.current;
     if (!mesh) return;
+    const presence = motePresence(skyFrameRef.current);
+    mesh.visible = presence >= MOTE_MIN_PRESENCE;
+    uniforms.uOpacity.value = FIREFLY_OPACITY * presence;
     // Capture: freeze the drift clock to a fixed flattering phase (byte-stable frames).
     // Gameplay: live elapsed time -> slow continuous drift.
     uniforms.uTime.value = isCaptureMode() ? CAPTURE_TIME : clockRef.current.getElapsedTime();
     uniforms.uOrigin.value.copy(camera.position);
-    const ap = moteAppearance(moodRef.current);
-    uniforms.uColor.value.copy(ap.color);
-    uniforms.uOpacity.value = ap.opacity;
   });
 
   return (

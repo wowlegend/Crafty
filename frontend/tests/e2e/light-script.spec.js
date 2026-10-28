@@ -15,7 +15,8 @@ import { KEY_S } from '../../src/render/colourScript.js';
 //   noon      the key is the sun: not the moon, its direction IS the sun's, and it is lit.
 //   midnight  the sun is under the ground (sunDirY < 0) and the key is the MOON above it (keyDirY > 0, keyIsMoon, lit);
 //             the stars are out; the terrain still reads the SUN (ore glow, leaves and cloud shadows mean the sun,
-//             refute F5); and the shadow map was rendered from the moon's key, not from the sun under the ground.
+//             refute F5); the shadow map was rendered from the moon's key, not from the sun under the ground; and the
+//             firefly mesh is drawn with its near-camera fade compiled in, where at noon it is not drawn at all.
 //   moon mask the dome's painted moon shows 0.06 above the horizon and not 0.06 below it (the shader itself, sampled
 //             alone with declared uniforms through the DEV hook sampleDome).
 //   storm     the overlay hides the stars (one read, then the weather is reset).
@@ -233,6 +234,11 @@ test('the light script in the running game: a sun key at noon, a moon key at mid
   expect(night.stars, `midnight: no stars — ${atNight}`).toBeGreaterThan(0.9);
   expect(night.terrainSunDirY, `midnight: the terrain's uSunDir is not the sun (ore glow, leaves and cloud shadows would follow the moon) — ${atNight}`).toBeLessThan(0);
   expect(shadow?.schedSun?.[1], `midnight: the shadow map last rendered from below the horizon, not from the moon's key — ${atNight}`).toBeGreaterThan(0);
+  // THE FIREFLIES: the live mote mesh is drawn at midnight (presence first), not at noon, and its compiled shader fades
+  // a mote out near the camera.
+  expect(night.motes?.visible, `midnight: no fireflies — ${atNight}`).toBe(true);
+  expect(night.motes?.nearFade, `midnight: the mote shader has no near-camera fade — ${atNight}`).toBe(true);
+  expect(noon.motes?.visible, `noon: motes drawn by day — ${atNoon}`).toBe(false);
 
   const cardNight = await greyCard(page, 'midnight', { timeOfDay: 0.0, key: 'night' });
   console.log(`[light-script] grey card at midnight: screen ${fmt(cardNight.screen)} model ${fmt(cardNight.model)} (diffuse only ${fmt(cardNight.diffuseOnly)}) view ${fmt(cardNight.viewDir)} median ${cardNight.median} over ${cardNight.pixels} px`);

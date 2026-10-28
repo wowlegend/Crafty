@@ -253,6 +253,7 @@ export function Atmosphere({ shadowConfig }) {
         keyIntensity: sunRef.current ? sunRef.current.intensity : null, stars: domeMat.uniforms.uStar.value,
         terrainSunDirY: callTestHook('readTerrainSky')?.sunDir?.[1] ?? null,
         bloomThreshold: callTestHook('readPostFx')?.bloomThreshold ?? null,
+        motes: callTestHook('readMotes') ?? null,
         mood: moodRef.current, weatherBoost: st.weatherMoodBoost, tier: st.qualityTier,
         cycle: cycleRef.current, gameTime: st.gameTime, frame: framesRef.current,
       };
