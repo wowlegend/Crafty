@@ -29,15 +29,9 @@ export const useSurvivalMode = (isDay) => {
         }
 
         if (!prevIsDay.current && isDay) {
-            // S2-B1-M4: Ferocity bleeds to zero at dawn — banked combat-fury doesn't carry across
-            // nights (prevents a second-night power spike + a stale bank auto-arming the next roar).
-            useGameStore.getState().setFerocityBanked(0);
-            // S2-B2-M4: Kinetic mirrors Ferocity at dawn (Kevin Decision #2) — no carry across nights.
-            useGameStore.getState().setKineticBanked(0);
-            // S2-B3-M2: Soul joins the dawn bleed (the same no-carry contract).
-            useGameStore.getState().setSoulBanked(0);
-            // S2-B4-M2: Resonance joins too — yesterday's building charge doesn't carry.
-            useGameStore.getState().setResonanceBanked(0);
+            // Ember empties at dawn: a bar banked by day is spent by night or lost, so no night opens with the last
+            // one's leftovers (a second-night power spike, or a stale full bar arming the next roar).
+            useGameStore.getState().setEmber(0);
             // Dawn: reward surviving the night just passed. nightCount was bumped at
             // nightfall, so it equals the night survived. grantDawnReward guards
             // once-per-night INTERNALLY (via the persisted lastRewardedNight), so a

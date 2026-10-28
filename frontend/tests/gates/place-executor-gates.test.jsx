@@ -9,6 +9,7 @@ import { HOTBAR_BLOCKS } from '../../src/world/Blocks.js';
 import { RECIPES } from '../../src/data/recipes.js';
 import { blockForId } from '../../src/world/blockIds.js';
 import { CHUNK_SIZE } from '../../src/world/loadedChunks.js';
+import { PLACE_GAIN } from '../../src/game/ember.js';
 
 // THE PLACE VERB, THROUGH THE FUNCTION THE VERB ROUTER CALLS (DECISIONS 2026-10-28 W1-H item 4: every placement spends
 // a block). Terrain.jsx's place() is `placeAtHit(h, { post: worker.postMessage, playPlace })`, so these drive the real
@@ -83,6 +84,22 @@ describe('placeAtHit spends the block it places', () => {
     expect(posted, 'the worker got more edits than the blocks paid for').toHaveLength(5);
     expect(S().worldBlocks.size, 'the store recorded more cells than were paid for').toBe(5);
     expect(notes, 'a placement that placed something raised a refusal').toEqual([]);
+  });
+
+  // EMBER (DECISIONS 2026-10-28 W1-H item 5): building by day fills the ember bar, once per placement action, under the
+  // day's allowance (game/ember.js); the store applies the day and the cap, this proves the executor asks it to.
+  it('a day placement adds PLACE_GAIN ember once per action, a footprint included; a night or refused one adds none', () => {
+    useGameStore.setState({ selectedBlock: 'stone', buildingMode: 'cube', buildSize: 3, isDay: true, nightCount: 1, ember: 0 });
+    withBlocks({ stone: 30 });
+    expect(placeAtHit(hitAt(), { post }), 'SETUP: the footprint placed one cell or none').toBeGreaterThan(1);
+    expect(S().ember, 'a day placement did not add PLACE_GAIN once').toBe(PLACE_GAIN);
+    useGameStore.setState({ isDay: false, buildingMode: 'single' });
+    expect(placeAtHit(hitAt(12.5, 12.5), { post }), 'SETUP: the night placement placed nothing').toBe(1);
+    expect(S().ember, 'a night placement added ember').toBe(PLACE_GAIN);
+    useGameStore.setState({ isDay: true });
+    withBlocks({ stone: 0 });
+    expect(placeAtHit(hitAt(14.5, 14.5), { post })).toBe(0);
+    expect(S().ember, 'a refused placement added ember').toBe(PLACE_GAIN);
   });
 
   it('a chest places as one cell at the aimed cell in any build mode, and that cell is its storage chest', () => {

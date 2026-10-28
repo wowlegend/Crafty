@@ -482,7 +482,7 @@ export const useQuestSystem = () => {
     }, [onSpellCast, onSpellHit, onBlockPlace, onBlockBreak, onChestOpen, onDeath, onNightSurvived, addNotification, updateLevel]);
 
     // S2-B1-M3.5: mob kills now flow through the fan-out bus (was a single store.onMobKill slot a 2nd
-    // consumer like ferocity would have clobbered). Quests subscribe; the kill-path emits. Unsub on unmount.
+    // consumer like the meter accrual would have clobbered). Quests subscribe; the kill-path emits. Unsub on unmount.
     useEffect(() => subscribeMobKill(onMobKill), [onMobKill]);
 
     return {

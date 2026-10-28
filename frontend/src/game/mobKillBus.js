@@ -3,7 +3,7 @@
  *
  * Replaces the single-slot `store.onMobKill` (only ONE consumer could register it — a last-writer-wins
  * trap: a 2nd registrant silently clobbered the first, flagged by the M1 review). Now quests AND the
- * WILDHEART Ferocity accrual — and future Aspects (SOULBIND captures a low-HP mob on its death) — all
+ * ember accrual — and future Aspects (SOULBIND captures a low-HP mob on its death) — all
  * SUBSCRIBE; the single mob-death code path EMITS once. The Aspect-meta kill-event scaffold.
  *
  * Singleton module (like inputState): the kill-path imports `emitMobKill`; consumers import

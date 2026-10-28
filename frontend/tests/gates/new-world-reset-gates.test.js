@@ -68,10 +68,10 @@ describe('startNewWorld resets quest progress; loadWorldData still tolerates old
   it('a new world also resets the other progression the reset is built to clear', () => {
     // Guards the reset path more broadly, so a future change to loadWorldData's merge cannot quietly
     // reintroduce the same class on a different field.
-    useGameStore.setState({ level: 9, ferocityBanked: 80 });
+    useGameStore.setState({ level: 9, ember: 80 });
     useGameStore.getState().startNewWorld('world-3');
     const s = useGameStore.getState();
     expect(s.level, 'level survived a new world').toBe(useGameStore.getInitialState().level);
-    expect(s.ferocityBanked, 'banked ferocity survived a new world').toBe(useGameStore.getInitialState().ferocityBanked);
+    expect(s.ember, 'banked ember survived a new world').toBe(useGameStore.getInitialState().ember);
   });
 });

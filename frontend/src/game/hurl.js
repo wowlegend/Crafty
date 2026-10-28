@@ -104,7 +104,7 @@ export function resolveSlam(center, mobs, radius = SLAM_RADIUS) {
  *
  * The consumer used to write `if (req && !flightRef.current)`, and the consume is destructive -- the
  * channel nulls its slot on read -- so a request arriving mid-flight was DESTROYED whether or not it was
- * used, after the producer had already spent 25 Kinetic and cleared the held phantom. Nothing reported
+ * used, after the producer had already spent 25 ember and cleared the held phantom. Nothing reported
  * the loss. The window is real: the SM allows a throw every 0.95s, stepHurl has no terrain collision at
  * all, so a miss stays airborne the full 1.5s TTL.
  *

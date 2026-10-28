@@ -10,7 +10,7 @@ import { MOB_TYPES } from '../../src/game/mobTypes';
 import { solveChainTargets } from '../../src/game/chainLightning';
 import { isProtected, isAutoTargetable, canPlayerDamage } from '../../src/combat/targeting';
 import { useGameStore } from '../../src/store/useGameStore';
-import { useFerocityAccrual, useKineticAccrual, useSoulAccrual } from '../../src/world/accrualHooks';
+import { useEmberAccrual } from '../../src/world/accrualHooks';
 import { useQuestSystem } from '../../src/QuestSystem';
 
 // B1 — FRIEND/FOE. The 18-domain review's #1 CRITICAL: the player could permanently kill all four hub
@@ -162,16 +162,12 @@ describe('B1 friend/foe — auto-targeters may not pick their own victims', () =
 });
 
 // A Settler is NEUTRAL: killable when you aim at one, but killing villagers must never be a way to power up. The kill
-// runs through the real damage path and the real kill bus into the three accrual hooks the game mounts.
+// runs through the real damage path and the real kill bus into the ember accrual hook the game mounts.
 describe('the NEUTRAL tier banks no Aspect power', () => {
-  const Accrual = () => { useFerocityAccrual(); useKineticAccrual(); useSoulAccrual(); return null; };
-  const banks = () => {
-    const s = useGameStore.getState();
-    return { ferocity: s.ferocityBanked, kinetic: s.kineticBanked, soul: s.soulBanked };
-  };
+  const Accrual = () => { useEmberAccrual(); return null; };
   beforeEach(() => {
     clearWorld();
-    useGameStore.setState({ isDay: true, ferocityBanked: 0, kineticBanked: 0, soulBanked: 0 });
+    useGameStore.setState({ isDay: true, ember: 0 });
     render(<><CombatSystem setDamageNumbers={() => {}} setShockwaves={() => {}} damageId={{ current: 0 }} /><Accrual /></>);
   });
 
@@ -179,16 +175,31 @@ describe('the NEUTRAL tier banks no Aspect power', () => {
     const settler = spawn({ id: 9201, type: 'villager', pos: [0, 0, -2] });
     GameMethods.damageMob(settler.id, 9999, 'physical', 'player');
     expect(settler.health, 'the Settler did not die — nothing below is about a kill').toBeLessThanOrEqual(0);
-    expect(banks(), 'killing a Settler banked Aspect power').toEqual({ ferocity: 0, kinetic: 0, soul: 0 });
+    expect(useGameStore.getState().ember, 'killing a Settler banked Aspect power').toBe(0);
 
     // The same instrument, same frame of mind: a hostile day kill does bank, so a zero above is not a dead bus.
     const husk = spawn({ id: 9202, type: 'zombie', pos: [0, 0, -3] });
     GameMethods.damageMob(husk.id, 9999, 'physical', 'player');
     expect(husk.health).toBeLessThanOrEqual(0);
-    const after = banks();
-    expect(after.ferocity, 'a Husk kill banked no Ferocity — the accrual path is dead').toBeGreaterThan(0);
-    expect(after.kinetic, 'a Husk kill banked no Kinetic').toBeGreaterThan(0);
-    expect(after.soul, 'a Husk kill banked no Soul').toBeGreaterThan(0);
+    expect(useGameStore.getState().ember, 'a Husk kill banked no ember — the accrual path is dead').toBeGreaterThan(0);
+  });
+
+  // EMBER (DECISIONS 2026-10-28 W1-H item 5): bank by day, by your own hand. The same Husk kill through the same bus,
+  // made by an ally, or made by the player at night, adds nothing; the day kill above is the presence it is read against.
+  it('a Husk kill by an ally, or by the player at night, adds no ember', () => {
+    const allyKill = spawn({ id: 9203, type: 'zombie', pos: [0, 0, -2] });
+    GameMethods.damageMob(allyKill.id, 9999, 'physical', 'ally');
+    expect(allyKill.health, 'SETUP: the ally did not kill the Husk').toBeLessThanOrEqual(0);
+    expect(useGameStore.getState().ember, 'an ally\'s kill banked ember').toBe(0);
+    useGameStore.setState({ isDay: false });
+    const night = spawn({ id: 9204, type: 'zombie', pos: [0, 0, -3] });
+    GameMethods.damageMob(night.id, 9999, 'physical', 'player');
+    expect(night.health, 'SETUP: the night Husk did not die').toBeLessThanOrEqual(0);
+    expect(useGameStore.getState().ember, 'a night kill banked ember').toBe(0);
+    useGameStore.setState({ isDay: true });
+    const day = spawn({ id: 9205, type: 'zombie', pos: [0, 0, -4] });
+    GameMethods.damageMob(day.id, 9999, 'physical', 'player');
+    expect(useGameStore.getState().ember, 'the same instrument cannot see a day kill, so the zeros above prove nothing').toBe(16);
   });
 
   it('a Settler kill drops no XP; a Husk or a Boar kill drops its whole declared worth', () => {

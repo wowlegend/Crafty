@@ -35,7 +35,7 @@ export function makeTransformState() {
  * action: 'none' | 'startCharge' | 'cancel' | 'enter' | 'exitTimer' | 'exitManual'
  *   - 'enter'  -> Components reads activeSpell -> enterBeastForm(element)
  *   - 'exit*'  -> Components calls exitBeastForm()
- * `canEnter` is the gate other milestones layer on (M4 ferocity threshold, M6 wildheart_roar unlock);
+ * `canEnter` is the gate other layers compose (a full ember bar, the wildheart_roar talent);
  * true in M3 so the verb is independently playable.
  */
 export function decideTransform(sm, ctx) {

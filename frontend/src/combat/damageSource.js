@@ -26,7 +26,7 @@ export function isDirectPlayerHit(source) {
 
 /**
  * Collapse to the vocabulary the kill bus publishes ('player' | 'ally' | 'hazard'). Subscribers count
- * quest kills and bank Resonance off that string, so a burn kill has to reach them as a player kill;
+ * quest kills and bank ember off that string, so a burn kill has to reach them as a player kill;
  * the direct/indirect distinction is a concern of the damage path, not of everyone downstream of it.
  */
 export function attributionSource(source) {

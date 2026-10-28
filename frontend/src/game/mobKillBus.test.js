@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { subscribeMobKill, emitMobKill, mobKillSubscriberCount, _resetMobKillBus } from './mobKillBus.js';
 
 // S2-B1-M3.5: the kill-event fan-out bus replaces the single-slot store.onMobKill (which only ONE
-// consumer could own — a last-writer-wins trap the M1 review flagged). Quests + ferocity (+ future
+// consumer could own — a last-writer-wins trap the M1 review flagged). Quests + ember (+ future
 // Aspects, e.g. SOULBIND capture-on-kill) all subscribe; the kill-path emits once.
 
 beforeEach(() => _resetMobKillBus());
@@ -15,7 +15,7 @@ describe('mobKillBus', () => {
     expect(seen).toEqual([['zombie', [1, 2, 3]]]);
   });
 
-  it('fans out to ALL subscribers (the whole point — quests AND ferocity)', () => {
+  it('fans out to ALL subscribers (the whole point — quests AND ember)', () => {
     let a = 0, b = 0;
     subscribeMobKill(() => a++);
     subscribeMobKill(() => b++);

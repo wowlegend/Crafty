@@ -13,7 +13,7 @@ import { useQuestSystem, useTreasureChests } from './QuestSystem';
 import { useBossSystem } from './world/bossSystem';
 import { useSpellUpgrades } from './world/spellUpgrades';
 import { useSurvivalMode } from './world/survivalSystem';
-import { useFerocityAccrual, useKineticAccrual, useSoulAccrual } from './world/accrualHooks';
+import { useEmberAccrual } from './world/accrualHooks';
 
 import { HUD } from './HUD';
 import { useInputManager } from './InputManager';
@@ -157,9 +157,7 @@ function GameApp({ experienceSystem }) {
   const questSystem = useQuestSystem();
   const treasureChests = useTreasureChests();
   const survivalMode = useSurvivalMode(gameState.isDay);
-  useFerocityAccrual(); // S2-B1-M4: subscribe the kill-bus -> bank Ferocity on day kills
-  useKineticAccrual(); // S2-B2-M4: twin — bank Kinetic on day kills (spent per combat grab)
-  useSoulAccrual(); // S2-B3-M2: twin — bank Soul on day kills (spent per bind/fuse)
+  useEmberAccrual(); // day kills by the player's own hand fill the ember bar
   const bossSystem = useBossSystem(experienceSystem.playerLevel);
   const spellUpgrades = useSpellUpgrades();
 
@@ -260,10 +258,8 @@ function GameApp({ experienceSystem }) {
         s.gameWon !== prevS.gameWon || // beating the boss and closing the tab must not lose the win
         s.nightCount !== prevS.nightCount || // the siege ratchet + its dawn-reward guard
         s.lastRewardedNight !== prevS.lastRewardedNight ||
-        s.ferocityBanked !== prevS.ferocityBanked || // S2-B1-M4: a day-banked roar survives a tab-close
-        s.kineticBanked !== prevS.kineticBanked || // S2-B2-M4: a day-banked kinetic charge survives a tab-close
-        s.soulBanked !== prevS.soulBanked || // S2-B3-M2: twin
-        s.resonanceBanked !== prevS.resonanceBanked || // S2-B4-M2: twin
+        s.ember !== prevS.ember || // a day's banked ember survives a tab-close
+        s.emberBuildDay !== prevS.emberBuildDay || // and so does the building allowance it has used
         // GAME_STATE, not just progression. The gate below derived its expectation from saveSchema's
         // `progression` block ONLY, so every field of `game_state` sat outside its denominator -- and
         // bossState is rewritten on every damage tick by bossSystem's mirror effect while none of

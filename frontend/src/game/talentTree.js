@@ -21,7 +21,7 @@ export const ASPECT_TREES = [
       { id: 'voidhand_horizon', name: 'Event Horizon', desc: '+14 Armor — nothing reaches you through the orbit. Excludes Singularity.', limit: 1, prereq: 'voidhand_crush', excludes: 'voidhand_singularity', effect: { stat: 'armor', perRank: 14 } },
       // S2-B2-M4: the grab UNLOCK — effect-LESS like wildheart_roar (the stat-fold skips it;
       // rank is read at the SM entry gate in Components). Gates the whole VOIDHAND verb kit.
-      { id: 'voidhand_grasp', name: 'Kinetic Grasp', desc: 'Unlocks the VOIDHAND grab — press V in combat to seize a phantom block (costs 25 banked Kinetic); hurl it (attack) or slam it down (cast).', limit: 1, prereq: 'voidhand_force' },
+      { id: 'voidhand_grasp', name: 'Kinetic Grasp', desc: 'Unlocks the VOIDHAND grab — press V in combat to seize a phantom block (costs 25 ember); hurl it (attack) or slam it down (cast).', limit: 1, prereq: 'voidhand_force' },
     ],
   },
   {
@@ -31,7 +31,7 @@ export const ASPECT_TREES = [
       { id: 'wildheart_swift', name: 'Feral Swiftness', desc: '+4 Agility per rank — faster, deadlier strikes (more crit).', limit: 3, prereq: null, effect: { stat: 'agility', perRank: 4 } },
       { id: 'wildheart_frenzy', name: 'Blood Frenzy', desc: '+3 Agility per rank — the kill-rush sharpens your edge.', limit: 2, prereq: 'wildheart_swift', effect: { stat: 'agility', perRank: 3 } },
       // S2-B1-M6 SIGNATURE nodes (effect-less — skipped by the stat-fold; rank read at THEIR OWN site):
-      { id: 'wildheart_roar', name: 'Primal Roar', desc: 'Unlocks the WILDHEART transformation — hold R with a full Ferocity bank in the night siege to become an element-beast (your loaded spell picks the form).', limit: 1, prereq: 'wildheart_vigor' },
+      { id: 'wildheart_roar', name: 'Primal Roar', desc: 'Unlocks the WILDHEART transformation — hold R with a full ember bar in the night siege to become an element-beast (your loaded spell picks the form).', limit: 1, prereq: 'wildheart_vigor' },
       { id: 'wildheart_endurance', name: 'Primal Endurance', desc: '+3s beast-form duration per rank — stay feral longer (read at the duration timer, not the stat-fold).', limit: 3, prereq: 'wildheart_roar' },
       { id: 'wildheart_apex', name: 'Apex Predator', desc: '+8 Strength — the beast hits like the thing other beasts run from. Excludes Untamed.', limit: 1, prereq: 'wildheart_frenzy', excludes: 'wildheart_untamed', effect: { stat: 'strength', perRank: 8 } },
       { id: 'wildheart_untamed', name: 'Untamed', desc: '+10 Agility — too fast to corner. Excludes Apex Predator.', limit: 1, prereq: 'wildheart_frenzy', excludes: 'wildheart_apex', effect: { stat: 'agility', perRank: 10 } },

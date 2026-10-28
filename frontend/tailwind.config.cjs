@@ -40,9 +40,7 @@ module.exports = {
         success: c('--ui-success'),
         warn: c('--ui-warn'),
         info: c('--ui-info'),
-        ferocity: c('--ui-ferocity'),
-        kinetic: c('--ui-kinetic'),
-        soul: c('--ui-soul'),
+        ember: c('--ui-ember'),
         resonance: c('--ui-resonance'),
         rarity: {
           common: c('--ui-rarity-common'),

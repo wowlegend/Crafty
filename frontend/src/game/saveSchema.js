@@ -154,10 +154,10 @@ export function buildSaveData(state, { position } = {}) {
       // grants already persist above — these keep the producer durable too).
       nightCount: state.nightCount,
       lastRewardedNight: state.lastRewardedNight,
-      ferocityBanked: state.ferocityBanked, // S2-B1-M4 (clamped+rounded on load)
-      kineticBanked: state.kineticBanked, // S2-B2-M4 (twin; clamped+rounded on load)
-      soulBanked: state.soulBanked, // S2-B3-M2 (twin)
-      resonanceBanked: state.resonanceBanked, // S2-B4-M2 (twin)
+      // The one Aspect meter and the day's building allowance it has used (game/ember.js). The four banks it replaced
+      // are not written: a save that holds them keeps them in the tombstone, and loading it sums them into `ember`.
+      ember: state.ember,
+      emberBuildDay: state.emberBuildDay,
     },
     game_state: {
       ...tomb.game_state,

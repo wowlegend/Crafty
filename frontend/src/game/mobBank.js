@@ -1,4 +1,4 @@
-// The ONE derivation of "how much does killing this mob bank" — shared by all three Aspect meters.
+// The ONE derivation of "how much does killing this mob bank" — read by the ember bar (game/ember.js).
 //
 // WHY IT EXISTS. ferocity.js, kinetic.js and soul.js each carried a byte-identical hand-maintained
 // PER_KILL table with a silent `?? PER_KILL_DEFAULT` fallback and no link to MOB_TYPES. The tables listed

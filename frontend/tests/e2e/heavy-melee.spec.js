@@ -188,7 +188,7 @@ test.describe('heavy melee', () => {
     r.crossAfter = await read();
     // R9.2 (review #8): a hold in a BEAST form. The heavy is the human sword's; a form's hold used to slow the walk,
     // tick "ready", and throw a free extra light swing on release. Now the release adds nothing.
-    // The form is entered through the REAL roar (R held past the anticipation, a full Ferocity bank, the talent): a
+    // The form is entered through the REAL roar (R held past the anticipation, a full ember bar, the talent): a
     // store-called enterBeastForm lasts ONE frame — the transform state machine never started its timer, so its next
     // tick exits the form. The first version of this case did that, held a HUMAN sword, and survived its own mutant.
     // A FRESH brute, frozen where the first stood: the first one is nearly spent, and the roar's burst lands on it.
@@ -201,7 +201,7 @@ test.describe('heavy melee', () => {
       const fresh = window.__craftyTest.call('readMobs').find((m) => !before.has(m.id));
       window.__heavyMob = fresh?.id ?? null;
       window.useGameStore.setState({
-        ferocityBanked: 100,
+        ember: 100,
         unlockedTalents: { ...s.unlockedTalents, wildheart_roar: 1, wildheart_endurance: endurance },
       });
       return window.__heavyMob;
@@ -247,7 +247,7 @@ test.describe('heavy melee', () => {
           // Past the transform's cooldown (it starts at the exit, which was before we saw it), the bank refilled, R again.
           const until = performance.now() + cooldownMs;
           while (performance.now() < until) await frame();
-          window.useGameStore.setState({ ferocityBanked: 100 });
+          window.useGameStore.setState({ ember: 100 });
           key('keydown');
         }
         // 1. The roar commits. `human` and `formAt` bracket the commit: it landed between the two reads.
