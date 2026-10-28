@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { act } from 'react';
 
 /**
  * THE LOOKBOOK SEAM'S PRODUCTION INSTALL (src/index.jsx; review of PR #23, item 5). tests/gates/lookbook-seam-gates
@@ -34,7 +35,11 @@ async function bootAt(search) {
   delete window.__craftyLookbook;
   window.history.replaceState(null, '', `/${search}`);
   document.body.innerHTML = '<div id="root"></div>';
-  await import('../../src/index.jsx');
+  // index.jsx renders into a React 19 root at import. Flushed inside act() so no scheduled render outlives the test:
+  // left to the scheduler it ran after jsdom's teardown and threw 'window is not defined' five times, which fails the
+  // push tier's vitest run even with every assertion green (instruments push of 2026-10-28).
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  await act(async () => { await import('../../src/index.jsx'); });
   return {
     seam: window.__craftyLookbook,
     input: await import('../../src/input/inputState.js'),
