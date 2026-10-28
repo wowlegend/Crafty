@@ -944,3 +944,32 @@ lines, and the DECISIONS.md channel entry (scheduled in Unit 2).
 | 11 | LOW | Pairing Unit 5's re-baseline with coast-water contradicts the umbrella's phase order | Umbrella `:64,75` (coast in Phase 1), `:78,83` (this in Phase 2), `:7-8` (umbrella wins); `DECISIONS.md:44-48`; confirmed | **Applied.** Unit 5 re-baselines alone; Risk 10 updated |
 | 12 | LOW | A new `tests/e2e/*.spec.js` needs a `Mutation-Proof:` line at pre-commit | `killability-ledger.mjs:71` puts e2e specs in the population; `:28-29` new files need a receipt; confirmed | **Applied.** The spec's header carries its receipts; the Global Constraint now names the ledger's whole population (`:66-74`), which also covers the new `textureStats.test.js` |
 | 13 | LOW | Six citation and fact errors | (a) the no-mipmaps lock is `proceduralTextures.test.js:73-77` (`:76` `generateMipmaps` false), not `:65-69`; (b) `castWorldRay(origin, dir, maxToi)` at `Terrain.jsx:1053`, ray built from `origin` at `:1056`; (c) stride 2 reaches even row 14 whenever rows 0-12 hold fewer than 50 lattice grass columns (`grassField.js:48-54`); (d) `DECISIONS.md:44-48` names puppeteer 25.16.0's Chromium, not 151; (e) three generates mips on the GPU (`WebGLTextures.js:114-116`), the JS copy is level 0 (`proceduralTextures.js:37`); (f) `mutate.sh:4` takes one subject, `BLOCK_ID` is frozen (`blockIds.js:27`). All confirmed | **Applied.** (a) both citations fixed; (b) the call passes the camera position as a plain vector; (c) the lived test counts odd local x and local z of 13 or 15, both 0 today by construction; (d) the precondition names the pinned Chromium and points at `.capture-meta.json`; (e) the table heading and the M4 and Unit 4 cost lines say the JS heap keeps level 0 only (77,824 B); (f) `buildGrammar(blockIds)` factory, M6 mutates `materialGrammar.js` alone against a permanent derivation test |
+
+## Record (lane W2-K, 2026-10-28)
+
+### The material sights and the BEFORE frames
+
+Shot on the production build of `6a926fce` (index chunk 640,154 B), Chromium 1280x800 at dpr 2 on ANGLE-Metal
+(Apple M3 Max), `--sets material --cycles 0.30,0.48,0.75`; all six shots valid by the eye-shot verdict (input live,
+alive, hands and HUD on, the body at the stand, the bearing within 1 degree, the clock within 0.01). The finder chose,
+20 m out from the Hearth:
+
+| sight | form | face | stand (feet) | look |
+|---|---|---|---|---|
+| turf-wall | a one-block grass step, 3 blocks wide | z = -2, facing -Z | (-19.5, 45, -5.5) | bearing 180, pitch -25 |
+| trunk | a wood trunk 3 blocks tall | z = -14, facing -Z | (-11.5, 47, -17.5) | bearing 180, pitch -10.5 |
+
+The committed frames are 960x600, reduced to 256 colours without dithering to stay under 300 KB; the judgements were
+made on the full 2560x1600 frames.
+
+- `evidence/w2k/before-turf-wall-0.30.png` (afternoon): the step's side is the same green speckle as its top, so
+  the step reads only by the shading change; the terraces behind are stacked green cliffs; a trunk on the right shows
+  a full bullseye on each block of its side.
+- `before-turf-wall-0.48.png` (golden hour): the same; warm light on the far terraces, the step's side a flat dark
+  green under the selection box; the trunk's rings still read at 6 m.
+- `before-turf-wall-0.75.png` (midnight): top and side merge into one dark green; the trunk's rings show red in the
+  moonlight.
+- `before-trunk-0.30.png`: the trunk fills the centre at 3.5 m with three stacked bullseyes, one per block, the
+  end-grain pattern on a side face.
+- `before-trunk-0.48.png`: the same bullseyes under golden light.
+- `before-trunk-0.75.png`: the bullseyes in dark red at midnight.
