@@ -26,9 +26,11 @@ export function makeSoulbindState() {
   return { channeling: false, channelStart: 0, targetId: null, cooldownUntil: 0 };
 }
 
-/** decideSoulbind(sm, ctx) -> { sm, action }; action: 'none'|'startChannel'|'channelBreak'|'bind'|'cancel'.
- *  ctx: { snareEdge, active, alive, now, canSnare, targetId } — targetId = the CURRENT valid snareable
- *  target id or null (apply-site computes it; a different id than locked = validity loss). */
+/** decideSoulbind(sm, ctx) -> { sm, action }; action: 'none'|'startChannel'|'channelBreak'|'bind'|'unpaid'|'cancel'.
+ *  ctx: { snareEdge, active, alive, now, canSnare, canPay, targetId } — targetId = the CURRENT valid snareable
+ *  target id or null (apply-site computes it; a different id than locked = validity loss). canPay: the bar holds
+ *  SNARE_COST now. One bar pays every verb, so a channel vetted at its start can end with the bar spent by another; that
+ *  bind is 'unpaid' and, having done nothing, arms no cooldown. */
 export function decideSoulbind(sm, ctx) {
   const out = { ...sm };
 
@@ -42,6 +44,7 @@ export function decideSoulbind(sm, ctx) {
     // in floats, and a frame landing exactly on the boundary must bind, not slip to the next frame.
     if (ctx.now - sm.channelStart >= SNARE_CHANNEL_SEC - 1e-9) {
       out.channeling = false;
+      if (!ctx.canPay) { out.targetId = null; return { sm: out, action: 'unpaid' }; }
       out.cooldownUntil = ctx.now + SNARE_COOLDOWN_SEC;
       return { sm: out, action: 'bind' }; // apply-site spends SNARE_COST + converts the entity (M3/M4)
     }
@@ -65,11 +68,11 @@ export function makeFuseState() {
   return { channeling: false, channelStart: 0, cooldownUntil: 0 };
 }
 
-/** decideFuse(sm, ctx) -> { sm, action }; action: 'none'|'startFuse'|'short'|'fuseBreak'|'fuse'|'cancel'.
+/** decideFuse(sm, ctx) -> { sm, action }; action: 'none'|'startFuse'|'short'|'fuseBreak'|'fuse'|'unpaid'|'cancel'.
  *  ctx: { fuseEdge, active, alive, now, canStart, canPay, pairNear }. canStart: a pair near the player whose fusion has
  *  a recipe, so the channel starts only when fusion can complete. canPay: the bar holds FUSE_COST now. A press that would
  *  start the channel but for the price is 'short', so the press can say why it did nothing; a pair with no recipe is not,
- *  since no bar would start that fuse. */
+ *  since no bar would start that fuse. A channel whose price is gone when it ends is 'unpaid', as the bind's is. */
 export function decideFuse(sm, ctx) {
   const out = { ...sm };
 
@@ -78,6 +81,7 @@ export function decideFuse(sm, ctx) {
     if (!ctx.pairNear) { out.channeling = false; return { sm: out, action: 'fuseBreak' }; } // free
     if (ctx.now - sm.channelStart >= FUSE_CHANNEL_SEC - 1e-9) { // boundary-inclusive (the snare epsilon)
       out.channeling = false;
+      if (!ctx.canPay) return { sm: out, action: 'unpaid' };
       out.cooldownUntil = ctx.now + SNARE_COOLDOWN_SEC;
       return { sm: out, action: 'fuse' };
     }

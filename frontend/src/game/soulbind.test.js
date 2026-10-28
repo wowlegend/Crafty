@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, SNARE_COOLDOWN_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './soulbind';
 
-const base = { snareEdge: false, active: true, alive: true, now: 10, canSnare: true, targetId: null };
+const base = { snareEdge: false, active: true, alive: true, now: 10, canSnare: true, canPay: true, targetId: null };
 
 describe('S2-B3-M2: the snare-channel SM (voidhand twin, CHANNEL-shaped)', () => {
   it('idle + snareEdge + a valid target + canSnare -> startChannel (locks targetId)', () => {
@@ -49,6 +49,39 @@ describe('S2-B3-M4: the bind action preserves targetId for the apply-site', () =
     const done = decideSoulbind(s, { ...base, now: 10 + SNARE_CHANNEL_SEC, targetId: 7 });
     expect(done.action).toBe('bind');
     expect(done.sm.targetId).toBe(7); // Components reads ssm.targetId to captureMob the RIGHT entity
+  });
+});
+
+// One bar pays every verb, so a price vetted when a channel started may be gone when it ends (a grab or an imbue spent
+// it meanwhile). The refused verb did nothing, so it charges no cooldown: a press as soon as the bar is refilled works.
+describe('a bind or a fuse the bar no longer pays for when its channel ends', () => {
+  it('the bind is refused as unpaid: the channel ends with no cooldown, and a fresh press at once starts again', () => {
+    const s = decideSoulbind(makeSoulbindState(), { ...base, snareEdge: true, targetId: 7 }).sm;
+    const end = 10 + SNARE_CHANNEL_SEC;
+    const done = decideSoulbind(s, { ...base, now: end, targetId: 7, canPay: false });
+    expect(done.action, 'an unpaid bind landed, or ended silently').toBe('unpaid');
+    expect(done.sm.channeling).toBe(false);
+    expect(done.sm.cooldownUntil, 'a refused bind charged its cooldown').toBe(0);
+    expect(decideSoulbind(done.sm, { ...base, now: end + 0.1, snareEdge: true, targetId: 7 }).action).toBe('startChannel');
+  });
+
+  it('the fuse is refused the same way', () => {
+    const f = { fuseEdge: true, active: true, alive: true, now: 10, canStart: true, canPay: true, pairNear: true };
+    const s = decideFuse(makeFuseState(), f).sm;
+    const end = 10 + FUSE_CHANNEL_SEC;
+    const done = decideFuse(s, { ...f, fuseEdge: false, now: end, canPay: false });
+    expect(done.action, 'an unpaid fuse landed, or ended silently').toBe('unpaid');
+    expect(done.sm.channeling).toBe(false);
+    expect(done.sm.cooldownUntil, 'a refused fuse charged its cooldown').toBe(0);
+    expect(decideFuse(done.sm, { ...f, now: end + 0.1 }).action).toBe('startFuse');
+  });
+
+  it('a paid bind and a paid fuse still charge it', () => {
+    const s = decideSoulbind(makeSoulbindState(), { ...base, snareEdge: true, targetId: 7 }).sm;
+    expect(decideSoulbind(s, { ...base, now: 10 + SNARE_CHANNEL_SEC, targetId: 7 }).sm.cooldownUntil).toBeGreaterThan(10 + SNARE_CHANNEL_SEC);
+    const f = { fuseEdge: true, active: true, alive: true, now: 10, canStart: true, canPay: true, pairNear: true };
+    const fs = decideFuse(makeFuseState(), f).sm;
+    expect(decideFuse(fs, { ...f, fuseEdge: false, now: 10 + FUSE_CHANNEL_SEC }).sm.cooldownUntil).toBeGreaterThan(10 + FUSE_CHANNEL_SEC);
   });
 });
 

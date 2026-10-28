@@ -830,16 +830,17 @@ export const Player = ({ isWorldBuilt }) => {
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
         canSnare: canAfford(stv.ember, SNARE_COST) && (stv.unlockedTalents?.['soulbind_snare'] > 0) && alliesQuery.entities.length < squadCap,
+        // canSnare was vetted when the channel started; another verb may have spent from the bar during it. Read now,
+        // not from stv: this frame's grab may already have spent.
+        canPay: canAfford(useGameStore.getState().ember, SNARE_COST),
         targetId: snareTargetId,
       });
       soulbindSMRef.current = ssm;
-      // canSnare was vetted when the channel started; another verb may have spent from the bar during it, so the bind
-      // lands only if the bar still pays for it.
-      const bindPaid = saction === 'bind' && stv.spendEmber(SNARE_COST);
-      if (saction === 'bind' && !bindPaid) {
+      if (saction === 'unpaid') {
         notifyDenied('no-ember');
         clearSnareState();
-      } else if (bindPaid) {
+      } else if (saction === 'bind') {
+        stv.spendEmber(SNARE_COST); // canPay above read the bar with nothing spent since
         const ally = GameMethods.captureMob ? GameMethods.captureMob(ssm.targetId ?? snareTargetId) : null;
         if (ally) {
           // the jade re-tint: lerp the body color 45% toward the SOULBIND identity (design §2)
@@ -884,12 +885,12 @@ export const Player = ({ isWorldBuilt }) => {
         pairNear: !!fusePair,
       });
       fuseSMRef.current = fsm;
-      // The keydown's notice covers a bar below the snare's price; between the two prices only this frame knows X was a fuse.
-      if (faction === 'short') notifyDenied('no-ember');
-      // As the bind: vetted when the channel started, paid only if the bar still covers it now.
-      else if (faction === 'fuse' && fusePair && !stv.spendEmber(FUSE_COST)) {
+      // The keydown's notice covers a bar below the snare's price; between the two prices only this frame knows X was a
+      // fuse. 'unpaid' is a channel whose price another verb spent while it ran, as the bind's.
+      if (faction === 'short' || faction === 'unpaid') {
         notifyDenied('no-ember');
       } else if (faction === 'fuse' && fusePair) {
+        stv.spendEmber(FUSE_COST); // canPay above read the bar with nothing spent since
         const hy = applyFusion(ecs, fusePair[0], fusePair[1]);
         if (hy && stv.playSpatialSound) {
           // the bind chime down-pitched = the v1 fuse swell (deliberate reuse; M7 may upgrade)
