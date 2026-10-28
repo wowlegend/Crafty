@@ -127,7 +127,7 @@ describe('doc-currency run() — the seam every check is wired into', () => {
   });
 
   it('sections: a citation of a section the cited doc does not have errors, with the full message', () => {
-    const root = fixture({ 'memory/STATUS.md': '## 2. THE REGISTRY\n', 'memory/ARCHITECTURE.md': 'see STATUS §9 for it\n' });
+    const root = fixture({ 'memory/STATUS.md': '## 2. THE HARVESTED RECORD\n', 'memory/ARCHITECTURE.md': 'see STATUS §9 for it\n' });
     const r = run({ root, only: ['sections'] });
     expect(r.checked).toEqual({ sections: 1 });
     expect(r.danglingSections).toBe(1);
@@ -139,7 +139,7 @@ describe('doc-currency run() — the seam every check is wired into', () => {
   });
 
   it('sections: the same citation of a section that exists passes (one token from the case above)', () => {
-    const root = fixture({ 'memory/STATUS.md': '## 2. THE REGISTRY\n', 'memory/ARCHITECTURE.md': 'see STATUS §2 for it\n' });
+    const root = fixture({ 'memory/STATUS.md': '## 2. THE HARVESTED RECORD\n', 'memory/ARCHITECTURE.md': 'see STATUS §2 for it\n' });
     const r = run({ root, only: ['sections'] });
     expect(r.checked).toEqual({ sections: 1 });
     expect(r.errors).toEqual([]);
@@ -149,7 +149,7 @@ describe('doc-currency run() — the seam every check is wired into', () => {
   // tree is current for all five (the real-tree case below says so), so a check that read this checkout instead of
   // `root` reports nothing on the red fixture. Each red case pins the exact `errors` and the exact `warnings`, so a
   // finding downgraded to a warning, or its error line deleted, goes red too. Each has a one-token green twin.
-  const STATUS_WHOLE = "The single source of truth.\n## 2. THE REGISTRY\n## 3. What's next\n- [LOOP] a\n- [KEVIN] b\n";
+  const STATUS_WHOLE = "The single source of truth.\n## 2. THE HARVESTED RECORD\n## 3. What's next\n- [LOOP] a\n- [KEVIN] b\n";
   // The fixture root is not a git checkout, so the STATUS age is unknown: the one warning a status run sets up itself.
   const AGE_UNKNOWN = 'STATUS.md age is unknown here: git log is unavailable, so staleness went unchecked.';
 

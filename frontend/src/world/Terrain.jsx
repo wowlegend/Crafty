@@ -148,9 +148,9 @@ const compileShader = (shader) => {
         vec4 texColor = texture(voxelTextures, vec3(vUv.x, vUv.y, layerIndex));
         
         // Set the diffuse color to the sampled texture (before lighting calculations).
-        // The DataArrayTexture stores sRGB-display bytes but is sampled through a
-        // custom sampler2DArray (so material.colorSpace is a no-op). Decode to linear
-        // here, upstream of lighting, so PBR + the renderer's sRGB output are correct.
+        // The block texture array (a CompressedArrayTexture of plain RGBA8 levels) stores sRGB-display bytes at
+        // every mip level, and is sampled through a custom sampler2DArray (so material.colorSpace is a no-op).
+        // Decode to linear here, upstream of lighting, so PBR + the renderer's sRGB output are correct.
         // W2: every quad is opaque LAND now (the Ocean.jsx plane owns the water surface), so the
         // old water transparency/depth-tint path is gone — alpha is always opaque.
         diffuseColor = vec4(diffuse * pow(texColor.rgb, vec3(2.2)), texColor.a);

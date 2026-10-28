@@ -18,6 +18,97 @@
 
 ---
 
+## 2026-10-28 — [LOOP] The SOTA reset's standing decisions (W1-H)
+
+**Decided by the command session** under item 14 of the 2026-10-28 landing entry below, from the SOTA reset plan
+(`docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`, lane W1-H). Numbered on their own, so they cannot collide with
+that entry's items. Each stands while it earns its place; reversing one takes a new dated entry. The mipmaps decision
+(plan row 10) is W1-E's entry, written with its measurement, and is not repeated here.
+
+1. **The capture oracle retires** (plan row 4, lane W2-B). Supersedes "The 31 baselines remain a regression oracle"
+   (`docs/superpowers/masterpiece-2026-10/roadmap-2026-10-27.json:261`) and rule 2 of "How a move counts as done" in
+   `docs/superpowers/plans/2026-10-27-crafty-masterpiece.md:26-28`. Why: capture mode turns off weather, mobs, NPCs,
+   particles, spawning and the hands, so its frames show a build nobody plays, and shipped source carries 131
+   `isCaptureMode()` calls (`rg -c` over `frontend/src`, 2026-10-28) that no player needs. Looks are accepted on the eye-level lookbook (W1-D); DOM-only
+   checks use Playwright's `toHaveScreenshot`. No re-baseline is owed meanwhile, so ACTIVE_PLAN task T10 and masterpiece
+   Phase 0e are cancelled. `tests/visual/baseline/menu.png` stays until the media pipeline (W2-H) replaces the og-image source.
+2. **The umbrella is amended** (plan rows 12, 45-49; section 10). Supersedes the Phase 0-3 structure of the masterpiece plan
+   above. (a) A Cut wave (W2-F) removes the sandbox layer before Wave 3 builds, so no lane ports a dead system. (b) The
+   platform work (W2-G, W3-D) runs beside the game lanes, not in front of them: the refuter showed the dragon and
+   feedback-grammar plans need no ECS rewrite. (c) One HUD lane with one owner (W2-D) takes every HUD change from the
+   first-minute plan, the visuals lens and roadmap move 6. (d) Phase 0e and T10 are cancelled (item 1). Phase 3 regroups
+   into the First Night (W3-A) and the road of light (W3-B).
+3. **Lane briefs plus task scripts of 300 lines or less** (plan row 33). Supersedes Kevin's 2026-06-10 rule that every
+   milestone gets a full plan doc before it is built (`CLAUDE.md:248`). Why: the twelve 2026-10-27 lane plans run 771 to
+   1,720 lines against code the Cut will change, so their step scripts would be rewritten at lane start anyway. Now an
+   unstarted lane carries a brief of one page or less (8 KB) that links to its reset-plan row and states scope, files,
+   acceptance and one-way doors. At lane start it writes a task script of 300 lines or less against the code as it is
+   then, with red-first steps and the gates it runs. The 2026-10-27 designs stay as reference. Kevin's rule fixed
+   building from a spec with no build contract; the brief keeps that and drops the cost. Plan row 29 (W2-J) rewrites
+   `CLAUDE.md:248`; until then this entry governs. The first briefs are named in item 9.
+4. **One costed build mode** (plan row 19, lane W2-F). Supersedes the builder sandbox in
+   `frontend/src/world/placementEconomy.js:6-7` ("CREATIVE mode — the game's default — keeps free placement") and the
+   default `gameMode: 'creative'` (`frontend/src/store/useGameStore.jsx:694`). Placing a block spends one mined block in
+   every game; the creative/survival toggle and the Mode chip go. Why: free walls make holding a siege no choice, and free
+   placement would make build accrual (item 5) farmable. A free-build world may return later as a world type. Door: the
+   `gameMode` save field stops being written at the Cut; the tombstone pass-through (plan row 20) carries it one release.
+5. **Ember: one meter, and it keeps build accrual** (plan row 21, lane W2-F). Supersedes the four banks, Ferocity, Kinetic,
+   Soul and Resonance (`frontend/src/store/useGameStore.jsx:546-561`, `:824-826`), and their four HUD bars. One `ember`
+   bar feeds the four spends (roar, grab, snare, imbue). It accrues from day kills and from building, as Resonance does
+   today (`frontend/src/game/resonance.js:11`), with a per-day cap. Why: four meters that fill the same way read as one
+   meter drawn four times; the choice that matters is the spend. Building stays a source because placement now costs
+   blocks (item 4); the cap stops a build-and-break loop. Bank by day, spend by night, stays.
+6. **Progression becomes talents that change verbs, plus loot relics** (plan row 22, lane W2-F). Supersedes hand
+   attribute allocation (`frontend/src/store/useGameStore.jsx:326-333`, five points a level at `:450-456`), the free
+   spell-mastery click (`upgradeSpell`, `frontend/src/world/spellUpgrades.js:90`) and the crystal wallet with its wand
+   discount (`frontend/src/game/crystalWallet.js`, the 2026-07-14 B3b fix). A level grants one talent point; a talent
+   changes how a verb plays; relics come from loot; spells scale with level. Why: seven axes that each add a number give
+   a player nothing to choose. It needs a damage rebalance first, because `solveSpellDamage` reads attributes.
+   `frontend/src/game/affixes.js` (no importer) goes with it.
+7. **The Forge replaces the crafting grid** (plan row 23, lane W2-F). Supersedes the 3x3 grid
+   (`frontend/src/ui/panels/CraftingTable.jsx`, `frontend/src/data/recipes.js`, the C key, the touch-tray Craft slot,
+   the pickaxe item) and with it the 2026-07-14 grid fixes (B3a sword patterns, B3d escrow). A Forge card on Mara (G)
+   offers three things, each with its cost shown: a weapon upgrade, a relic upgrade and a lantern. Why: hidden recipe
+   shapes are guesswork, and a drag grid does not work on iPad. The pickaxe is a weapon stat stick (damage 8), so it
+   folds into the weapon line.
+8. **The lantern is costed, and the radius rule ships first** (plan row 15). Amends
+   `docs/superpowers/plans/2026-10-27-crafty-lantern-block-light.md` before block id 16 ships: its grid recipe (1 glass +
+   1 coal, Unit 5) and its spawn rule on the baked light field (Unit 6). The lantern is bought at the Forge (item 7), and
+   W3-A ships a radius rule: no natural hostile spawn within R of a placed lantern, R starting at 16 m. The light field
+   follows as its own lane. Why: a cheap lantern goes everywhere and stops meaning anything, and the radius rule is one
+   distance check the siege can build on now, where the light field is a mesher and shader change. Door: block id 16
+   enters saves at the first push that lets a player save one, so the radius rule and the Forge price land with the
+   block, never after it.
+9. **`memory/registry.jsonl` is the one home for open work** (plan row 30). Supersedes the open-work role of STATUS §2,
+   its G-ledger and the "Residue: memory/STATUS.md G-ledger" line in ACTIVE_PLAN. The registry holds every open item
+   harvested from STATUS §2 and its G-ledger, the ACTIVE_PLAN task list and owed block, the sota-2026-09 QUEUE and
+   OPEN-ITEMS files and the masterpiece phase tables. A source item that bundles several fixes is split into one row
+   per part (id `key/part`) where a lane closes part of it; some harvested rows (G-ledger 37, 39, 40, OI-47 and two
+   E-ter rows) are still bundles, and the lane that closes part of one splits it first, so a merge never closes an
+   unbuilt part. Rows follow the plan's schema (`{id, title, playerVisible,
+   severity, owner, state, evidence, opened, closedBy}`, plus the harvest key and the plan unit). `evidence` is the
+   source line, pinned to the commit on main it was harvested from. `opened` is the date that line was first written
+   (`git log -L`), so an item carried into a source when the source was created reads the creation date. A done item
+   is closed, never deleted: `closedBy` names the commit that closed it, or the decision or document that did when no
+   commit did (a cancellation by decision, a pull request closed unmerged). Kevin owns a row only when it needs his
+   device, ear, money, an account sign-in, his explicit OK for an external send, or a decision its source reserves for
+   him. Until those sources leave HEAD (plan row 32), `frontend/scripts/ci/registry-harvest.mjs` (run by
+   `tests/scripts/registry-harvest.test.js` in every unit run) fails when a source holds an open item with no registry
+   row, or yields fewer items than its floor in `frontend/scripts/ci/registry-floors.json`; closing items at the source
+   lowers that floor in the same change. `frontend/scripts/ci/registry-append-only.mjs` fails a push, in pre-push and in
+   CI, that deletes a row id. New open work goes straight to the registry. The first lane briefs under item 3:
+   `docs/superpowers/plans/2026-10-28-crafty-brief-w2b-retire-capture-oracle.md`,
+   `docs/superpowers/plans/2026-10-28-crafty-brief-w2d-hud.md`, `docs/superpowers/plans/2026-10-28-crafty-brief-w2f-the-cut.md`,
+   `docs/superpowers/plans/2026-10-28-crafty-brief-lantern-costed.md` and
+   `docs/superpowers/plans/2026-10-28-crafty-brief-quest-spine.md`.
+10. **The three placement-count quests go** (lane W2-F, with item 4). Builder, Architect and World Builder
+   (`frontend/src/QuestSystem.jsx`, `QUEST_LIST`: place 20, 100 and 500 blocks) are deleted. Why: under item 4 a placed
+   block costs one, but breaking it gives it back (`frontend/src/world/terrain.worker.js:120-130` reports the broken
+   block's type; `frontend/src/world/Terrain.jsx:732-742` adds it to the inventory), so placing and breaking one block
+   completes all three for 600 XP and 24 wood at no cost. Item 5 caps that loop for ember; a quest counter has no cap.
+   Building pays through ember and the siege, and the quest line moves to the spine (the quest-spine brief). Door:
+   their ids in saved quest progress ride the tombstone pass-through (plan row 20) for one release.
+
 ## 2026-10-28 — [KEVIN] One CLAUDE.md: the symlink and its directory are gone
 
 **Decided by Kevin, in his words:** "i don't really like how the agents.md symlinks to claude.md in this repo, let's just have one claude.md."
@@ -164,7 +255,58 @@ longer finds the instructions there; none is configured to in this repo.
 19. **The homepage is https://crafty-game.vercel.app (command session, 2026-10-28).** The command session added it as
    an alias of the Vercel project the same day; Kevin clicked Add Domain. https://crafty-sand.vercel.app keeps working.
    The play link, the README and the repo's homepage are rendered from `frontend/src/brand.js`.
-20. **The light and colour lane, landing in Wave 1: the day lasts 480 s, the lane's capture-state work is dropped, and
+20. **The block textures are mipmapped, in linear light (command session, lane W1-E, 2026-10-28; plan item #10).** It
+   supersedes the "no mipmaps" half of the bold-flat texture lock (`tests/world/proceduralTextures.test.js`,
+   2026-06-15, `90c3edf0`) and answers the 2026-09-22 KEVIN-REVIEW-BATCH entry "Distant-terrain mipmaps: one constant,
+   your taste call", which items 14 and 16 make the session's call. **Why it was refused:** taste, not a defect.
+   The 2026-06-15 gate recorded mipmaps as drift toward "realistic filtering"; `6a33a101` (2026-09-22) built the option
+   and fixed the one technical trap, then left it off for Kevin's word. **Each reason, and how it is handled:**
+   (a) *the pixel look up close*: magnification stays NEAREST, and minification is NEAREST within a mip level and
+   LINEAR between levels. What holds: a face seen head-on keeps level 0's crisp texels out to about 16-28 blocks. What
+   does not: the GPU picks the level from the larger of the two screen derivatives, and three r172 applies no
+   anisotropy under a NEAREST magnify filter, so ground seen at a low angle from eye height blends toward level 1 from
+   about 6-10 blocks out while its texels are still several pixels wide (the meadow grass tops in the evidence crop go
+   from speckle to flat colour). The lower figures are at device pixel ratio 1 and the higher at 1.75, estimated from
+   the screen geometry (fov 75, eye height) by the two reviews of this lane, not measured per distance. The flattening
+   is accepted as the standard voxel trade for no sparkle. A sharper level choice, a negative LOD bias or a shader that
+   picks the level from the smaller derivative, is a Wave 2 evaluation, judged on eye-level frames; (b) *a grid line at
+   every block edge*: the sampler reads raw `vUv` with REPEAT wrapping (since `6a33a101`), so the UV derivative does not
+   jump at block edges; (c) *bleeding between tiles*: this is a texture array, not an atlas, and the chain is built per
+   layer; (d) *cutout leaves thinning*: there are none to thin, since the leaf tile is opaque (its "holes" are dark
+   texels) and the terrain material has no alpha test; (e) *tone*: the GPU's `generateMipmap` filters the stored bytes,
+   which here are sRGB-encoded, and a box filter over those bytes, computed for every tile, darkens at the 1x1 level
+   leaves by 4.4%, cobblestone 9.7%, cactus 11.5% and gold ore 17.1% in luminance (grass, dirt, stone, sand, snow and
+   water move under 1%). So the chain is built in JS from level 0, in the
+   linear light the shader decodes into (pow 2.2), and its 1x1 level equals the far field's per-layer mean, which closes
+   the tone step where the near terrain meets the far field. three r172 uploads caller-built levels for an array texture
+   only through `CompressedArrayTexture` with `RGBAFormat` (an uncompressed `texSubImage3D` per level), so the texture is
+   that class; `image.data` stays level 0 for the far field. (f) *anisotropy*: not available. three r172 skips it while
+   magFilter is NEAREST, and a linear magFilter would blur the close-up look; that is why the ground flattening in (a)
+   is the remaining ceiling. **Cost:** GPU texture memory 65,536 to 87,360 bytes (+21,824, +33%); the chain builds once
+   at boot, about 3.5-4.6 ms for the cold first call and about 0.6 ms warm (node, measured by the repro review at a
+   load of 59-77); the index chunk grows 551 bytes. **Frame time:** not established. The walking-clip figures (16.67 ms
+   per frame over 1,053 frames before, 16.64 ms over 1,315 after, both at the 60 fps cap) and the scene pass's
+   timer-query readings come from two lookbook runs at 14:53-15:00Z, inside the window (about 14:53-15:17Z) in which a
+   lookbook port collision between lanes may have served another lane's build, so they are unverified. **Look:** on one
+   production page at the player's eye, with only the GPU's minify filter switched, high-frequency energy falls 5-9%
+   over the frame against a noise floor of 0.6-2.2%, by 54% on the patch of meadow grass in the evidence crop (seen at a
+   grazing angle), and by at most 1.0% in the sky; read back from the GPU, all 87,360 bytes of the chain equal the one
+   built in node. That comparison is within one page, so the collision cannot touch it. The crawl in motion is not
+   measured: a still frame's energy is not temporal stability, and the before and after walking clips come from the
+   unverified lookbook pair. The live acceptance clip on the deployed sha is still owed. Frames, crops, clips and the
+   method: `docs/superpowers/masterpiece-2026-10/evidence/mipmaps/index.md`. **Known side effect, not fixed here:** the
+   ore-glow mask reads the texel the sampler returns (`oreGlow.js`), and a mipped texel mixes nugget and stone, which
+   the mask's smoothstep does not average linearly. Averaged over a face, night glow at the 4x4 level moves iron -61%,
+   gold +42%, diamond +80% against level 0, so distant diamond blooms harder at night while distant iron nearly goes
+   dark; close up nothing changes. Owner: W2-A (shared-file quick fixes) or the light lane's successor. The likely fix
+   is to derive the glow mask from level-0 texels and mip it separately, so the mask is averaged rather than recomputed
+   from mixed colour. **Gates:** `tests/world/proceduralTextures.test.js` pins the filters and the full chain;
+   `tests/gates/texture-mipmap-gates.test.js` pins every texel of every level as the linear-light mean of its block and
+   the 1x1 level as the far field's colour; `scripts/ci/prod-smoke.mjs` (`mipVerdict`, CI only) reads the block texture
+   back from the GPU of the production build and fails unless it holds a full chain (6 levels for 32 px tiles) sampled
+   through a mipmap minify filter, with every level filled and every byte equal to the chain the source builds.
+   Mutations are in the commits' `Mutation-Proof:` trailers.
+21. **The light and colour lane, landing in Wave 1: the day lasts 480 s, the lane's capture-state work is dropped, and
    the colour blend stays linear (command session, 2026-10-28; the SOTA reset, section 8, asked for each).**
    (a) **Day length: 480 s, one constant** (`DAY_LENGTH_SECONDS`, `frontend/src/game/dayNight.js`; the game-unit rate
    is derived from it). It supersedes the 300 s cycle (`GAME_UNITS_PER_SECOND = 4`) and the light plan's decision 8,

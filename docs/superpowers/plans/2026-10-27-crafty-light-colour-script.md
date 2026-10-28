@@ -183,7 +183,7 @@ So every colour gate in this plan is stated on the DISPLAYED colour, through `di
    blooms only emissive pushed past 1 and the sun disc; the bright day sky (horizon linear luminance about 0.77) stops
    blooming, which removes the milky horizon wall the roadmap measured. Every intended glow source is audited in the
    same unit, and the ore glow is re-tuned there (F6).
-8. **Superseded 2026-10-28: the day is 480 s** (DECISIONS 2026-10-28 item 20a; Task 8). The original text: "Day
+8. **Superseded 2026-10-28: the day is 480 s** (DECISIONS 2026-10-28 item 21a; Task 8). The original text: "Day
    length stays 300 s in this lane (Task 8 records the review). The lever with no balance cost is where the keys sit in
    `s`; the cycle length moves the siege length and belongs with roadmap move 10."
 
@@ -726,7 +726,7 @@ it('captureCycle: declared, then by isDay', () => {
 
 ### Task 4: Capture renders night as night, and guards golden hour
 
-**DROPPED 2026-10-28, never built** (SOTA reset, section 8; DECISIONS 2026-10-28 item 20b). The capture oracle
+**DROPPED 2026-10-28, never built** (SOTA reset, section 8; DECISIONS 2026-10-28 item 21b). The capture oracle
 retires; looks are accepted on the eye-level lookbook. The code built only for this task (`captureSolarFraction`,
 `setCaptureSolar`, `captureCycle`'s declared fraction) was removed in `a0cac94a`. The text below is kept as the record.
 
@@ -959,7 +959,7 @@ it('every MEANT source reaches 1.2 x threshold (imported constants, one per sour
 
 ### Task 8: Day length, reviewed
 
-**DECIDED 2026-10-28: 480 s, not 300 s** (`14c9707b`; DECISIONS 2026-10-28 item 20a). The SOTA reset gave this lane
+**DECIDED 2026-10-28: 480 s, not 300 s** (`14c9707b`; DECISIONS 2026-10-28 item 21a). The SOTA reset gave this lane
 the decision, and the First Night (one dusk, one siege, one golden dawn in ten minutes) settled it. The text below is
 the original review, kept as the record.
 
@@ -997,7 +997,7 @@ the original review, kept as the record.
   on CI's software renderer.
 - [ ] **Step 3: Build a side-by-side sheet** (before | after, per target and time) and publish it for Kevin's async
   review; link it in `KEVIN-REVIEW-BATCH.md`.
-- [ ] **Step 4 (DROPPED 2026-10-28 with the capture oracle; DECISIONS 2026-10-28 item 20b): The capture re-baseline,
+- [ ] **Step 4 (DROPPED 2026-10-28 with the capture oracle; DECISIONS 2026-10-28 item 21b): The capture re-baseline,
   alone.** First add `'explore-golden'` to `VISUAL_STATES` (now
   `tests/visual/visualStates.js`, Task 4 Step 0). Then capture twice (`npm run visual:capture`, one run at a time,
   port 4178), copying `tests/visual/current/` to `<scratchpad>/runA` and `<scratchpad>/runB` after each run. Review
@@ -1035,7 +1035,7 @@ the original review, kept as the record.
 | Motes: presence, near fade | `tests/gates/mote-presence-gates.test.js` | T1-T2 | T0 survives |
 | The whole suite, lint, build, bundle budget | `npm run test:unit`, `npm run lint`, `npm run build`, `node scripts/ci/bundle-budget.mjs` | — | — |
 | **ACCEPTANCE:** the real-GPU lookbook, Chromium ANGLE-Metal and WebKit at 1180x820 and 820x1180, four times of day, opened side by side with the before | `scripts/visual/lookbook.mjs` (Task 9) | by eye, the list in Task 9 Step 2 | — |
-| ~~Regression oracle: 32 asserted capture frames, re-baselined alone~~ DROPPED 2026-10-28 with the capture oracle (DECISIONS 2026-10-28 item 20b) | — | — | — |
+| ~~Regression oracle: 32 asserted capture frames, re-baselined alone~~ DROPPED 2026-10-28 with the capture oracle (DECISIONS 2026-10-28 item 21b) | — | — | — |
 | Blend against OKLab: no key-to-key blend darker than the OKLab line or greyer by 0.02; the displayed dusk and dawn horizon above C 0.04 | `tests/gates/colour-script-gates.test.js` | OB1-OB3 | OB0 survives |
 | Day length: the First Night budget from a fresh profile; a full cycle of the real ticker | `tests/gates/day-length-gates.test.js`, `daynight-clock-gates.test.jsx` | DL1-DL5 | DL0 survives |
 
@@ -1265,9 +1265,9 @@ disagree with this section, this section wins.
 |---|---|---|
 | 0-3b (script, moon key, one sky frame, wiring, the 1 Hz follow, the storm clouds, the readers' gates, the dawn read) | Built before the reset | `01fb8a88`, `452d19cc`, `5631bfde`, `1ab2e4d0`, `43cc3112`, `212d294d`, `864e615d`, `4af495ae`, `822589a7`, `9f5b3c7e`, `39891c83`, `69e1c46d` |
 | Merge of main at `030ada1f` | Done; this lane never edited `.agent/AGENTS.md`, so nothing was ported to `CLAUDE.md` | `b98127e4` |
-| 4 (explore-golden) and 9 Step 4 (the capture re-baseline) | **Dropped**: the declared-fraction code built only for them is removed | `a0cac94a`; DECISIONS 2026-10-28 item 20b |
+| 4 (explore-golden) and 9 Step 4 (the capture re-baseline) | **Dropped**: the declared-fraction code built only for them is removed | `a0cac94a`; DECISIONS 2026-10-28 item 21b |
 | 5 (bloom only for HDR) and 6 (sun-glow fog) | **Not in this landing.** W2-I measures, and may delete, GodRays, the sun billboard and N8AO first (reset #16). Task 5 raises the billboard and audits glow sources that W2-I may remove, and Task 6 adds fragment cost before W2-I has its numbers | owed, after W2-I |
 | 7 (motes become fireflies) | **Built**: present by the script's hour, never by day or under the boss, faded between 6 m and 2.5 m from the camera | `037ce81a`; `tests/gates/mote-presence-gates.test.jsx`; e2e lines in `light-script.spec.js` (CI) |
-| 8 (day length) | **Decided: 480 s**, one constant (`DAY_LENGTH_SECONDS`) | `14c9707b`; DECISIONS 2026-10-28 item 20a |
-| OKLab blend check (the reset's ask) | **Measured; the blend stays in linear RGB**: never darker than OKLab, at most 0.0147 chroma short | `428cb4d5`; DECISIONS 2026-10-28 item 20c |
+| 8 (day length) | **Decided: 480 s**, one constant (`DAY_LENGTH_SECONDS`) | `14c9707b`; DECISIONS 2026-10-28 item 21a |
+| OKLab blend check (the reset's ask) | **Measured; the blend stays in linear RGB**: never darker than OKLab, at most 0.0147 chroma short | `428cb4d5`; DECISIONS 2026-10-28 item 21c |
 | 9 (acceptance) | On the eye-level lookbook with `--cycles` for dawn and noon (`340b47fa`). See the evidence index | `docs/superpowers/masterpiece-2026-10/evidence/light-colour/index.md` |

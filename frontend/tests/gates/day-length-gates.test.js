@@ -4,7 +4,7 @@ import { KEY_S } from '../../src/render/colourScript.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 
 /**
- * The day length against what it was chosen for (DECISIONS 2026-10-28 item 20). The First Night is one ten-minute
+ * The day length against what it was chosen for (DECISIONS 2026-10-28 item 21). The First Night is one ten-minute
  * experience: the first minute, a day to light a Hearth, one dusk, one siege, one golden dawn
  * (docs/superpowers/plans/2026-10-28-crafty-sota-reset.md, section 1). So a fresh profile, ticked from the store's own
  * starting clock at the real ticker's rate, must see its first dusk no sooner than the day floor and its first dawn

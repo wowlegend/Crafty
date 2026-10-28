@@ -1,6 +1,27 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// The game-icon set is a lazy chunk so its ~75 KB of path data stays out of the boot chunk, but the title button's
+// sword needs it by the end of the button's 0.9 s fade-in. A dynamic import is requested only once the boot chunk
+// has downloaded and run; a modulepreload in index.html starts the fetch beside the boot chunk's own.
+const GAME_ICONS_MODULE = '/src/ui/primitives/gameIcons.js';
+function preloadGameIcons() {
+    let base = '/';
+    return {
+        name: 'crafty:preload-game-icons',
+        apply: 'build',
+        configResolved(config) { base = config.base; },
+        transformIndexHtml: {
+            order: 'post',
+            handler(html, ctx) {
+                const chunk = Object.values(ctx.bundle ?? {}).find((c) => c.type === 'chunk' && c.facadeModuleId?.endsWith(GAME_ICONS_MODULE));
+                if (!chunk) throw new Error(`crafty:preload-game-icons: no chunk is built from ${GAME_ICONS_MODULE}, so there is nothing to preload`);
+                return [{ tag: 'link', attrs: { rel: 'modulepreload', crossorigin: true, href: `${base}${chunk.fileName}` }, injectTo: 'head' }];
+            },
+        },
+    };
+}
+
 // `command` is 'serve' for `vite dev` / `vite preview`'s server, and 'build' for a production build.
 // The config is a FUNCTION so `esbuild.drop` can depend on it — see the block below for why that matters.
 export default defineConfig(({ command }) => ({
@@ -8,6 +29,7 @@ export default defineConfig(({ command }) => ({
         react({
             include: '**/*.{js,jsx}',
         }),
+        preloadGameIcons(),
     ],
     esbuild: {
         // BUILD ONLY. Top-level `esbuild` options apply to the dev server's transform as well, so

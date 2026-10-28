@@ -1,5 +1,10 @@
 # The Lantern and a Baked Block-Light Field — Implementation Plan
 
+> **Amended 2026-10-28** (DECISIONS 2026-10-28 (W1-H) item 8; brief `2026-10-28-crafty-brief-lantern-costed.md`): the
+> lantern is bought at Mara's Forge, not crafted from Unit 5's grid recipe, and a radius rule (no natural hostile spawn
+> within 16 m of a placed lantern) ships with the block, in place of Unit 6. Units 1-4 and 7, the baked light field,
+> become a later lane after the First Night. The design below stands as reference.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** At night the player can craft a lantern, place it with the same touch or mouse verb as any block, and watch a

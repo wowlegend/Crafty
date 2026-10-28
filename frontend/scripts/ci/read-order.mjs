@@ -14,10 +14,8 @@
  * that ("never re-state a rule instead of enforcing it"). So the order lives HERE and is rendered into
  * all three; doc-currency fails on drift, the same contract measure.mjs and gate-table.mjs already have.
  *
- * RECONCILIATION NOTE (the one real conflict): CLAUDE.md/charter call STATUS.md "THE source of truth"
- * while the kernel calls it the SECONDARY queue. Both are right about different things and the
- * imprecision is what made them look contradictory — STATUS is the source of truth for WHERE WE ARE;
- * HOLISTIC-REVIEW is the primary WORK QUEUE. Stated separately below so neither has to lose.
+ * STATUS and the work queue are separate entries because they answer different questions: STATUS says
+ * WHERE WE ARE; `memory/registry.jsonl` holds every open item (DECISIONS 2026-10-28 (W1-H) item 9).
  *
  *   node scripts/ci/read-order.mjs           print the canonical block
  *   node scripts/ci/read-order.mjs --write   write it into all three surfaces
@@ -43,8 +41,9 @@ export const SURFACES = [
 export const ORDER = [
   { path: '`git main` + **CI on `main`**', note: 'the code is the only truth that cannot lie — and CI IS PART OF THE TREE. `gh run list --workflow=ci.yml --branch main`; a push that leaves CI non-`success` is a RED TREE and outranks every queue item.' },
   { path: '`memory/ACTIVE_PLAN.md`', note: 'the live cursor — the ONE unit in flight right now.' },
+  { path: '`memory/registry.jsonl`', note: 'THE ONE HOME FOR OPEN WORK — one JSON row per closable item: id, title, playerVisible, severity, owner, state, evidence, opened, closedBy, plan unit. Read the open rows for what is owed; add a row for anything new; close a row, never delete it. `node frontend/scripts/ci/registry-harvest.mjs` proves every open item in the older sources (STATUS §2 and its G-ledger, ACTIVE_PLAN, the sota-2026-09 queue, the masterpiece tables) has a row, and `registry-append-only.mjs` refuses a push that deletes one.' },
   { path: '`docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md`', note: '**DRAINED 2026-08-12 — no longer a work queue.** 215 findings disposed of: 207 fixed, 8 dismissed with runnable proofs, 0 open. Read it as the RECORD of that campaign, not as the next thing to do; the live cursor is ACTIVE_PLAN. **This markdown is the ONLY copy** — the machine JSON it was regenerable from died with a session-scoped tmp scratchpad (verified absent 2026-07-27). Do not hunt for it; its absence is not a blocker.' },
-  { path: '`memory/STATUS.md`', note: 'THE source of truth for WHERE WE ARE, and the SECONDARY queue (gameplay/content/UX items the code review did not cover). Both, without contradiction: it owns status, the review owns the work ladder. VERIFY an item is still open before working it — much of the older A-bis/V1 work is DRAINED.' },
+  { path: '`memory/STATUS.md`', note: 'THE source of truth for WHERE WE ARE. Its §2 and G-ledger are the record the registry was harvested from, not a work queue: open work lives in `memory/registry.jsonl`.' },
   { path: '`docs/superpowers/LOOP-CHARTER.md`', note: 'the constitution — how the loop operates (esp. §0-B harness layer + §3 gates), plus `LOOP-KERNEL-PROMPT.md`, the durable copy of the `/loop` prompt and the cold/git-only recovery source.' },
   { path: '`docs/superpowers/DECISIONS.md`', note: 'the decision RECORD. `KEVIN-REVIEW-BATCH.md` is the append-only INBOX and structurally cannot tell you what is settled. A reversal is a NEW dated entry naming the one it supersedes — never a silent edit.' },
   { path: '`docs/superpowers/INDEX.md`', note: 'the doc map — what to read and what to IGNORE. A stale doc is a LIVE TRAP; never mine old plans for "what is next".' },

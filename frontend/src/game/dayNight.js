@@ -19,7 +19,7 @@ export const CYCLE_UNITS = 1200;
  * THE day-length knob: real seconds per full day+night cycle. 480 s puts a fresh profile's first dusk at 4:00 of play
  * and its first dawn at 8:00, so the First Night (one dusk, one siege, one golden dawn) fits ten minutes with the first
  * minute in front of it; 300 s brought night at 2:30, before a new player could light a Hearth. DECISIONS 2026-10-28
- * item 20 holds the measurements.
+ * item 21 holds the measurements.
  */
 export const DAY_LENGTH_SECONDS = 480;
 

@@ -83,7 +83,7 @@ export const GameUI = ({ gameState }) => {
           <span className="text-sm font-bold text-success">{gameState.gameMode}</span>
         </Panel>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" aria-label={t('ui.settings')} data-testid="hud-settings" className="w-[42px] h-[42px] p-0 text-text-muted" onClick={() => gameState.setShowSettings(true)}>
+          <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.settings')} data-testid="hud-settings" className="w-[42px] h-[42px]" onClick={() => gameState.setShowSettings(true)}>
             <Icon name="settings" size={20} />
           </Button>
         </div>
@@ -94,10 +94,10 @@ export const GameUI = ({ gameState }) => {
       {!isTouchUIMode() && (
       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-auto">
         <Panel variant="base" className="flex flex-col gap-2 p-2">
-          <Button variant="ghost" size="sm" aria-label={t('ui.inventory')} className="w-[42px] h-[42px] p-0 text-text" onClick={() => gameState.setShowInventory(true)}><Package size={20} /></Button>
-          <Button variant="ghost" size="sm" aria-label={t('a11y.crafting')} className="w-[42px] h-[42px] p-0 text-text" onClick={() => gameState.setShowCrafting(true)}><Hammer size={20} /></Button>
-          <Button variant="ghost" size="sm" aria-label={t('ui.magic')} className="w-[42px] h-[42px] p-0 text-text" onClick={() => gameState.setShowMagic(true)}><Wand2 size={20} /></Button>
-          <Button variant="ghost" size="sm" aria-label={t('a11y.buildingTools')} className="w-[42px] h-[42px] p-0 text-text" onClick={() => gameState.setShowBuildingTools(true)}><Grid size={20} /></Button>
+          <Button variant="ghost" size="icon" aria-label={t('ui.inventory')} className="w-[42px] h-[42px]" onClick={() => gameState.setShowInventory(true)}><Package size={20} /></Button>
+          <Button variant="ghost" size="icon" aria-label={t('a11y.crafting')} className="w-[42px] h-[42px]" onClick={() => gameState.setShowCrafting(true)}><Hammer size={20} /></Button>
+          <Button variant="ghost" size="icon" aria-label={t('ui.magic')} className="w-[42px] h-[42px]" onClick={() => gameState.setShowMagic(true)}><Wand2 size={20} /></Button>
+          <Button variant="ghost" size="icon" aria-label={t('a11y.buildingTools')} className="w-[42px] h-[42px]" onClick={() => gameState.setShowBuildingTools(true)}><Grid size={20} /></Button>
         </Panel>
       </div>
       )}

@@ -1,6 +1,6 @@
 # Crafty — the masterpiece programme ("Ember against the dark")
 
-> **Status: ACTIVE, umbrella plan.** Kevin, 2026-10-27: *"make Crafty a masterpiece you'd be proud of. be creative and
+> **Status: amended 2026-10-28; the SOTA reset plan is the programme now (see the end of this file).** Kevin, 2026-10-27: *"make Crafty a masterpiece you'd be proud of. be creative and
 > go all out ... free to enhance / prune / revise anything."* Every milestone below gets its OWN plan doc under
 > `docs/superpowers/plans/` before it is built (the writing-plans rule in `.agent/AGENTS.md`); this file is the map,
 > not a build contract. Design inputs, kept verbatim: `docs/superpowers/masterpiece-2026-10/` (four survey lanes, the
@@ -112,3 +112,12 @@ opened side by side, on both engines and both iPad orientations.
 - His iPad's iPadOS and Safari version (Safari 27 fixed a WebGL stacked-canvas regression; Crafty stacks two canvases
   at the title).
 - Optional: one powermetrics A/B run on his M3 Max with the script from 0d, to measure the heat before and after.
+
+## Amended 2026-10-28
+
+DECISIONS 2026-10-28 (W1-H) items 1-3 amend this umbrella; `2026-10-28-crafty-sota-reset.md` (section 10) maps every
+move above to its new lane. In short: a Cut wave (W2-F) lands before Phase 3's lanes build; the platform work runs beside
+the game lanes; one HUD lane (W2-D) owns every HUD change; Phase 0e and the capture oracle are retired, and looks are
+accepted on the eye-level lookbook, which replaces rule 2 of "How a move counts as done". Unstarted lanes carry a brief
+and write a task script of 300 lines or less at lane start; the 2026-10-27 lane plans stay as design reference. Open work
+from this file's tables lives in `memory/registry.jsonl` (keys `MASTERPIECE:*`).

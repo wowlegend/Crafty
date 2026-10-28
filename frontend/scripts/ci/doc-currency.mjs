@@ -254,7 +254,7 @@ function checkStatus(root, out) {
   const status = readFileSync(statusAbs, 'utf8');
   const REQUIRED = [
     { re: /single source of truth/i, what: 'the source-of-truth declaration' },
-    { re: /##\s*2\.\s*THE REGISTRY/i, what: 'the §2 REGISTRY (the loop’s definition of done)' },
+    { re: /##\s*2\.\s*THE HARVESTED RECORD/i, what: 'the §2 harvested record (open work lives in memory/registry.jsonl)' },
     { re: /##\s*3\.\s*What.s next/i, what: 'the §3 cursor' },
     { re: /\[LOOP\]/, what: 'at least one [LOOP]-tagged item' },
     { re: /\[KEVIN\]|KEVIN-ONLY/, what: 'the KEVIN-only partition' },

@@ -11,11 +11,12 @@ import { RARITY_FILL } from '../../theme/tokens.js';
 const INK = 'rgb(var(--ui-ink))';
 const ACCENT = 'rgb(var(--ui-accent))';
 
+// `display` replaces the grid default by name, since a display class in className would not reliably win.
 export const Slot = forwardRef(function Slot(
-  { rarity, gear, selected = false, className, children, ...props }, ref) {
+  { rarity, gear, selected = false, display = 'grid', className, children, ...props }, ref) {
   const fill = gear ? RARITY_FILL.gear : (rarity ? RARITY_FILL[rarity] : null);
 
-  const base = 'relative grid place-items-center aspect-square border-chrome rounded-md overflow-hidden';
+  const base = cn('relative', display, 'place-items-center aspect-square border-chrome rounded-md overflow-hidden');
   const borderCls = selected ? 'border-accent-raise' : 'border-ink';
 
   const style = {};

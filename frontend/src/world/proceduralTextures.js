@@ -10,13 +10,44 @@ const ORE_TILES = [
   { layer: 13, seed: 57.3, r: 79,  g: 208, b: 231 }, // diamond #4FD0E7
 ];
 
+// The terrain shader decodes a texel with pow(rgb, 2.2) and the far field averages tiles the same way
+// (farField.js layerMeanLinear), so a mip texel must be the mean in THAT linear light. The GPU's generateMipmap
+// averages the stored bytes instead, which darkens every high-contrast tile at distance: at the 1x1 level,
+// leaves -4%, cobblestone -10%, gold ore -17% in luminance, and the near terrain would no longer meet the far field.
+const DECODE = Float64Array.from({ length: 256 }, (_, v) => Math.pow(v / 255, 2.2));
+const encode = (linear) => Math.round(Math.pow(linear, 1 / 2.2) * 255);
+
 /**
- * Distant-terrain mipmapping (EXTERNAL-BASELINE #2). OFF, because "no mipmaps" is part of the bold-flat
- * design lock (tests/world/proceduralTextures.test.js) and crossing it is Kevin's taste call, queued with a
- * same-renderer A/B in KEVIN-REVIEW-BATCH. Flipping this one constant is the whole change: the sampler in
- * Terrain.jsx already reads raw vUv, which mipmapping needs and which is identical without it.
+ * The full mip chain of a square RGBA layer stack, each level the linear-light box mean of the level-0 texels it
+ * covers. Built from level 0 every time, not from the level above, so 8-bit rounding never compounds. Layers are
+ * reduced independently: a texture array has no neighbours to bleed from, unlike an atlas.
  */
-const TERRAIN_MIPMAPS = false;
+function linearLightMipChain(data, size, layers) {
+  const chain = [{ data, width: size, height: size }];
+  for (let block = 2; block <= size; block *= 2) {
+    const n = size / block;
+    const out = new Uint8Array(n * n * 4 * layers);
+    const area = block * block;
+    for (let l = 0; l < layers; l++) {
+      for (let y = 0; y < n; y++) {
+        for (let x = 0; x < n; x++) {
+          let r = 0, g = 0, b = 0, a = 0;
+          for (let v = y * block; v < (y + 1) * block; v++) {
+            for (let u = x * block; u < (x + 1) * block; u++) {
+              const i = ((l * size + v) * size + u) * 4;
+              r += DECODE[data[i]]; g += DECODE[data[i + 1]]; b += DECODE[data[i + 2]]; a += data[i + 3];
+            }
+          }
+          const o = ((l * n + y) * n + x) * 4;
+          out[o] = encode(r / area); out[o + 1] = encode(g / area); out[o + 2] = encode(b / area);
+          out[o + 3] = Math.round(a / area);
+        }
+      }
+    }
+    chain.push({ data: out, width: n, height: n });
+  }
+  return chain;
+}
 
 let shared = null;
 /**
@@ -28,7 +59,7 @@ export function sharedVoxelTextures() {
   return shared;
 }
 
-export function createProceduralVoxelTextures({ mipmaps = TERRAIN_MIPMAPS } = {}) {
+export function createProceduralVoxelTextures() {
   const size = 32; // 32x32 resolution per texture slice
   // Layer index == block code (see src/world/blockIds.js + BLOCK_COLORS in terrain.worker.js).
   // 0..9 base block types · 10..13 ore tiles (S6: coal/iron/gold/diamond) · 14 cobblestone · 15 glass (R4a).
@@ -217,23 +248,28 @@ export function createProceduralVoxelTextures({ mipmaps = TERRAIN_MIPMAPS } = {}
     }
   }
 
-  const texture = new THREE.DataArrayTexture(data, size, size, numLayers);
-  texture.format = THREE.RGBAFormat;
-  texture.type = THREE.UnsignedByteType;
-  
-  // Up close always NEAREST: the pixel-perfect voxel look. Far away, with `mipmaps`: without a mip chain every
-  // distant face samples one texel of a 32x32 tile per pixel and crawls as the camera moves, which no
-  // post-process AA can fix. NEAREST within a level, LINEAR between levels (Minecraft's choice).
-  // No anisotropy: three r172 skips it whenever magFilter is Nearest (WebGLTextures.js), so grazing ground
-  // reaches the small mips sooner than it would with a linear mag filter. That is the known ceiling.
+  // A CompressedArrayTexture only because three r172 uploads caller-built mip levels for an array texture on that
+  // path alone (WebGLTextures.js: with RGBAFormat it calls texSubImage3D per level, uncompressed); its
+  // DataArrayTexture path uploads level 0 and can only fill the rest with the GPU's byte-space generateMipmap.
+  const texture = new THREE.CompressedArrayTexture(
+    linearLightMipChain(data, size, numLayers), size, size, numLayers, THREE.RGBAFormat, THREE.UnsignedByteType,
+  );
+  texture.image.data = data; // level 0, where the far field reads its per-layer means
+
+  // Up close NEAREST, the pixel-art voxel look. Without a mip chain every distant face samples one texel of a
+  // 32x32 tile per screen pixel, and leaves and stone sparkle and crawl as the camera moves, which no
+  // post-process AA can fix. NEAREST within a level keeps texels crisp where they are still about a pixel wide;
+  // LINEAR between levels hides the step from one level to the next.
+  // No anisotropy: three r172 skips it whenever magFilter is Nearest (WebGLTextures.js setTextureParameters),
+  // so grazing ground reaches the small mips sooner than it would with a linear mag filter.
   // REPEAT is load-bearing: the terrain sampler reads raw vUv (no fract), so the derivative is continuous
   // across block edges and the GPU does not pick the smallest mip at every seam.
-  texture.minFilter = mipmaps ? THREE.NearestMipmapLinearFilter : THREE.NearestFilter;
+  texture.minFilter = THREE.NearestMipmapLinearFilter;
   texture.magFilter = THREE.NearestFilter;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.generateMipmaps = mipmaps;
+  texture.generateMipmaps = false;
   texture.needsUpdate = true;
-  
+
   return texture;
 }

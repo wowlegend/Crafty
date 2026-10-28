@@ -3,7 +3,7 @@
 This lane is `worktree-wf_34f35934-dfe-1`, and its plan is `docs/superpowers/plans/2026-10-27-crafty-light-colour-script.md`
 (see "As built for the Wave 1 landing"). The SOTA reset accepts the look on W1-D's eye-level frames and dusk clip. It
 also asks for an OKLab check of the blend and for a decision on the day length. The decisions are DECISIONS
-2026-10-28 item 20.
+2026-10-28 item 21.
 
 ## The OKLab blend
 
@@ -110,7 +110,7 @@ away from any fire is the next reading to take before the golden-hour keys are t
 ## The ground retune (after the lane's review, 2026-10-28)
 
 The review found the dawn and golden-hour ground darker than at midnight and than on main, and the iPad pad maroon at
-0.50 (DECISIONS 2026-10-28 item 20 (d)). The keys were retuned twice; the second retune is the one committed.
+0.50 (DECISIONS 2026-10-28 item 21 (d)). The keys were retuned twice; the second retune is the one committed.
 
 **The model** (`tests/gates/_lightModel.js`, render/mood.js `sampleMood` at mood 0: the grey card's key-lit up face,
 displayed OKLCH, no fire):
