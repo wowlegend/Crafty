@@ -100,14 +100,17 @@ fi
 echo "powermetrics needs root. Enter your password once (sudo -v), before anything launches:"
 sudo -v || fail "sudo was refused"
 
-HOLD=$((WARMUP + SAMPLES + 40))
+# The hold outlasts the warm-up and the sampling by MARGIN: READY is polled every 2 s and powermetrics starts a beat late.
+# The arm waits the hold out (below), so the margin is also how long the scenario runs on after sampling ends.
+MARGIN=40
+HOLD=$((WARMUP + SAMPLES + MARGIN))
 # shellcheck disable=SC2086 # HEADED is one flag or nothing
 node scripts/visual/lookbook.mjs --hold "$HOLD" $HEADED --build-dir "$BUILD_DIR" --out "$OUT" > "$OUT/scenario.log" 2>&1 &
 DRIVER=$!
 
 # shellcheck disable=SC2329 # invoked by the EXIT trap below
 cleanup() {
-  if kill -0 "$DRIVER" 2>/dev/null; then
+  if [ -n "$DRIVER" ] && kill -0 "$DRIVER" 2>/dev/null; then
     kill -TERM "$DRIVER" 2>/dev/null   # lookbook.mjs closes its browser and vite on TERM
     wait "$DRIVER" 2>/dev/null
   fi
@@ -141,6 +144,32 @@ sudo powermetrics --samplers cpu_power,gpu_power,thermal -i 1000 -n "$SAMPLES" >
   || fail "powermetrics failed: $(head -3 "$OUT/powermetrics.err")"
 # A scenario that died mid-window measured an idle Mac for part of it: refuse the arm rather than average it in.
 kill -0 "$DRIVER" 2>/dev/null || fail "the scenario ended before sampling finished — this arm is not comparable (log: $OUT/scenario.log)"
+
+# Wait the hold out rather than TERM it: the driver writes hold.json — the quality tier across the whole window — when
+# its hold ends, and a TERM gets a record marked partial. (Review of PR #23, item 1: every normal arm used to TERM the
+# driver about MARGIN seconds before its hold ended, and the TERM handler wrote nothing at all.)
+echo "sampling done; the scenario holds on until its ${HOLD} s hold ends (at most $((MARGIN + 60)) s) ..."
+waited=0
+while kill -0 "$DRIVER" 2>/dev/null; do
+  [ "$waited" -lt $((MARGIN + 60)) ] || fail "the scenario did not end its ${HOLD} s hold within $((MARGIN + 60)) s of sampling (log: $OUT/scenario.log)"
+  sleep 1
+  waited=$((waited + 1))
+done
+wait "$DRIVER"
+DRC=$?
+DRIVER=""   # reaped: the EXIT trap must not signal a pid the system may have reused
+[ "$DRC" -eq 0 ] || fail "the scenario exited $DRC at the end of its hold (log: $OUT/scenario.log)"
+grep -q '"partial": false' "$OUT/hold.json" 2>/dev/null || fail "the scenario's hold record is missing or marked partial ($OUT/hold.json)"
+# The tier the quality governor held across the hold: two arms compare only at the same tier.
+# shellcheck disable=SC2016 # JavaScript template literals, not shell expansions
+node -e '
+  const t = require(process.argv[1]).hold.timeline || [];
+  const c = {};
+  for (const s of t) c[s.tier] = (c[s.tier] || 0) + 1;
+  const k = Object.keys(c);
+  console.log(`quality tier during the hold: ${k.map((x) => `${x} x${c[x]}`).join(", ") || "no samples"}`);
+  if (k.length > 1) console.log("power-ab: WARNING — the tier moved during the hold; an arm compares only with one held at the same tier");
+' "$OUT/hold.json"
 
 node scripts/dev/power-summary.mjs "$OUT/powermetrics.txt" > "$OUT/summary.txt" 2>&1
 RC=$?

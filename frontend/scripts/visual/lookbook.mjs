@@ -39,7 +39,9 @@
  *
  * --hold <seconds> is the power scenario (scripts/dev/power-ab.sh): one Chromium page at 1280x800, entered into play
  * at spawn by clicking Start Adventure (plus the seam's play() where the build has the seam), held for N seconds; it
- * prints "LOOKBOOK HOLD READY" when play is entered and writes hold.json (tier timeline). --headed shows the window.
+ * prints "LOOKBOOK HOLD READY" when play is entered and writes hold.json (tier timeline, `partial: false`, the seconds
+ * held). A hold stopped by a signal or an error writes what it had, marked `partial: true` with `stoppedBy`.
+ * --headed shows the window.
  *
  * Needs a production build: `npm run build` first.
  * Usage:  node scripts/visual/lookbook.mjs [--out <dir>] [--targets chromium-1280x800,webkit-1180x820,webkit-820x1180]
@@ -103,10 +105,34 @@ const { url, waitReady, shutdown } = serveVite(PORT, { preview: true, outDir: BU
 const OWN_SIGNALS = Object.freeze({ handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false });
 let liveBrowser = null;
 let stopping = false;
+
+// The --hold record, at module scope so a signal can write what the hold has so far (review of PR #23, item 1: the
+// TERM handler used to exit without writing anything, so every power-ab.sh arm, which TERMed the driver before its
+// hold ended, lost the tier timeline). `partial: true` with `stoppedBy` names a hold that did not run out.
+let holdBase = null; // the report header (generatedAt, url, build, chromiumCandidates)
+let holdOut = null; // hold()'s record, filled as the hold goes
+let holdT0 = null; // when the hold loop started (ms)
+let holdT1 = null; // when it ran out (ms); null while it runs — a signal measures to the moment it lands
+function writeHold({ partial, stoppedBy }) {
+  const heldS = holdT0 === null ? 0 : Math.round(((holdT1 ?? Date.now()) - holdT0) / 1000);
+  const path = join(OUT, 'hold.json');
+  writeFileSync(path, JSON.stringify({ ...holdBase, hold: { ...holdOut, partial, stoppedBy, requestedS: HOLD_S, heldS } }, null, 2));
+  return { path, heldS };
+}
+
 async function stopAll(code, signal) {
   if (stopping) process.exit(code);
   stopping = true;
   console.error(`lookbook: ${signal} — closing the browser and vite`);
+  if (HOLD_S > 0) {
+    // Before anything async: the record must not depend on the browser closing cleanly.
+    try {
+      const { path, heldS } = writeHold({ partial: true, stoppedBy: signal });
+      console.error(`hold: PARTIAL — stopped by ${signal} after ${heldS} s of ${HOLD_S}: ${path}`);
+    } catch (e) {
+      console.error(`hold: could not write the partial record — ${e.message}`);
+    }
+  }
   await shutdown(liveBrowser);
   process.exit(code);
 }
@@ -281,6 +307,7 @@ async function shootTarget(target, launchOpts, launchId) {
 /** The power scenario: one Chromium page entered into play at spawn and held. Works on builds without the seam. */
 async function hold(launchOpts, launchId) {
   const out = { launch: launchId, headed: HEADED, seam: false, renderer: null, entry: null, timeline: [], notes: [] };
+  holdOut = out;
   const b = await launch('chromium', launchOpts);
   try {
     const page = await (await b.newContext(contextOptions(TARGETS[0]))).newPage();
@@ -304,6 +331,7 @@ async function hold(launchOpts, launchId) {
     }
     console.log(`LOOKBOOK HOLD READY ${JSON.stringify({ renderer: out.renderer, gpu: classifyRenderer(out.renderer), seam: out.seam, entry: out.entry })}`);
     const t0 = Date.now();
+    holdT0 = t0;
     while (Date.now() - t0 < HOLD_S * 1000) {
       const s = await page.evaluate(() => {
         const g = window.useGameStore.getState();
@@ -313,6 +341,7 @@ async function hold(launchOpts, launchId) {
       out.timeline.push({ t: Math.round((Date.now() - t0) / 1000), ...s });
       await delay(Math.min(10000, Math.max(0, HOLD_S * 1000 - (Date.now() - t0))));
     }
+    holdT1 = Date.now(); // the hold ran out here; closing the browser afterwards is not part of it
     return out;
   } finally {
     await close(b);
@@ -333,6 +362,7 @@ let code = 0;
 try {
   await waitReady();
   const report = { generatedAt: new Date().toISOString(), url, build: buildIdentity(), chromiumCandidates: null, targets: [] };
+  holdBase = report;
 
   let chromiumLaunch = null, chromiumLaunchId = null;
   if (HOLD_S > 0 || WANT.some((id) => id.startsWith('chromium'))) {
@@ -356,7 +386,7 @@ try {
   if (HOLD_S > 0) {
     if (!chromiumLaunch) throw new Error('no Chromium launch gives a hardware renderer (pass --headed, or --allow-software to measure SwiftShader)');
     const h = await hold(chromiumLaunch, chromiumLaunchId);
-    writeFileSync(join(OUT, 'hold.json'), JSON.stringify({ ...report, hold: h }, null, 2));
+    writeHold({ partial: false, stoppedBy: null });
     for (const n of h.notes) console.log(`  ${n}`);
     console.log(`hold: ${join(OUT, 'hold.json')}`);
     if (h.notes.some((n) => n.startsWith('COULD NOT MEASURE'))) code = 3;
@@ -398,6 +428,10 @@ try {
 } catch (e) {
   console.error(`lookbook: COULD NOT MEASURE — ${e.message}`);
   code = 3;
+  // A hold that died part-way still leaves what it had, marked partial, like a signalled one.
+  if (HOLD_S > 0 && holdOut) {
+    try { writeHold({ partial: true, stoppedBy: `error: ${String(e.message).split('\n')[0]}` }); } catch { /* the error above is the report */ }
+  }
 } finally {
   await shutdown(liveBrowser);
 }
