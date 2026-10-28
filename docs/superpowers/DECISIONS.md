@@ -46,6 +46,8 @@
    https://claude.ai/artifact/Q1QQLYLxPVYZ8A7Srm1BMF, sota-audit https://claude.ai/artifact/NuwFDNnfZG3gRHv6LH1krr —
    with `.artifact-sync.json` repointed and synced at `d00273cd`. The old account-1 addresses stay in the file as
    `previousUrl`. Reversible: once account 1 is active, republish the same sources there and point back.
+7. **E2E moves to 8 shards** (from 6): with the Phase 0 lanes' specs merged, two shards projected to about 20 minutes
+   on a first pass with no room for a retry (PR #24 prep). Runner minutes are unchanged and free; wall time per shard falls.
 
 ## 2026-10-27 (later) — [LOOP, Kevin-delegated harness authority] The push gate stops depending on a laptop's load
 
