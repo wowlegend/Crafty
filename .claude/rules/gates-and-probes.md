@@ -186,7 +186,8 @@ still pass if the feature were simply deleted; if the answer is "everything", yo
 **CORRECTION 2026-08-13.** This section originally opened "Every harness in this repo drives the DEV
 server ... the build Vercel serves is loaded by nothing." That was FALSE when written.
 `scripts/ci/prod-smoke.mjs` loads the PRODUCTION build (`serveVite(PORT, { preview: true })`) and runs
-as a CI gate — `.github/workflows/ci.yml:106`. I read an older line in `.agent/AGENTS.md`, repeated it,
+as a CI gate — a step of `ci/pipeline.sh`'s fast tier, which the CI gates job runs (a docs-only change skips it,
+with a printed line; this pointer named a `ci.yml` line until the step moved). I read an older line in `.agent/AGENTS.md`, repeated it,
 and never ran `ls`. The gate's own docblock says "nothing has ever LOADED it", because it was written
 to CLOSE that gap: I quoted the problem statement of the fix as if it were current state.
 
