@@ -21,6 +21,7 @@ import { CLIMBERS } from './localPath.js';
 import { LEAP_RANGE, mobSensePoint } from './mobSenses.js';
 import { rampVelocity, ACCEL_RATE, DECEL_RATE } from './gameFeel.js';
 import { isHostile } from '../combat/targeting.js';
+import { stance as _state, stallAnchors as _anchors, resetStance, teleportPlayer } from './stanceState.js';
 
 export { BASE_MOVE_SPEED };
 
@@ -179,17 +180,11 @@ export function engageDyM(type) {
   return reachOf(type).dy;
 }
 
-const _state = {
-  w: 0, engaged: false, threatId: null, awayX: 0, awayZ: 0, gap: 0, lastEngagedAt: -Infinity,
-  threatX: 0, threatZ: 0, playerX: 0, playerY: 0, playerZ: 0, frame: 0, atS: 0, stepS: 0,
-};
-
 // The stall clocks: id -> { ax, az, at, seen }, the mob's position when it last made STALL_PROGRESS_M of its own
 // progress, and when. Kept for EVERY aggro'd hostile pursuer, not only those in range (a deviation from the plan,
 // which scoped them to range): a range-scoped clock restarts each time a stranded mob flickers across the 12 m radius
 // or its reach bound (the eye bobs a few cm a step), so a mob that never gains could hold the stance forever. A clock
 // whose mob was not an aggro'd hostile this frame is dropped, so the map is bounded by the live mobs.
-const _anchors = new Map();
 let _tag = 0;
 const _sweep = (a, id) => { if (a.seen !== _tag) _anchors.delete(id); };
 
@@ -416,21 +411,5 @@ export function readMoveTarget() {
   return _moveTarget;
 }
 
-/**
- * A NON-DEATH TELEPORT: the void-fall guard (Components.jsx) and a save load (useGameStore loadWorldData). The body is
- * moved, stopped when `stop` (the void guard's falling body; a load's kinematic body carries none), and the stance is
- * reset: the fight it was in is somewhere else now. Round-1 review f: both sites teleported and kept the stance, so for
- * up to CALM_MS + EXIT_S (2.6 s) the walk at the new site was clamped against the old fight's threat, with no mob near.
- */
-export function teleportPlayer(rb, pos, stop = false) {
-  rb.setTranslation(pos, true);
-  if (stop) rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
-  resetStance();
-}
-
-/** Death: no weight, no engagement, no threat, no calm carried over, and every stall clock dropped. */
-export function resetStance() {
-  _state.w = 0; _state.engaged = false; _state.threatId = null; _state.awayX = 0; _state.awayZ = 0; _state.gap = 0;
-  _state.lastEngagedAt = -Infinity;
-  _anchors.clear();
-}
+// The state, the reset and the teleport live in stanceState.js, which the store loads without the roster.
+export { resetStance, teleportPlayer };
