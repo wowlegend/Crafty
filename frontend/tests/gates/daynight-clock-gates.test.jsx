@@ -43,6 +43,7 @@ vi.mock('../../src/input/inputState', () => ({ getInput: () => ({ active }) }));
 vi.mock('../../src/devtest/captureMode', () => ({ isCaptureMode: () => capture }));
 
 const { useDayNightClock } = await import('../../src/game/useDayNightClock.js');
+const dayNight = await import('../../src/game/dayNight.js');
 
 const Host = ({ isWorldBuilt = true, isAlive = true }) => {
   useDayNightClock({ isWorldBuilt, isAlive });
@@ -118,6 +119,22 @@ describe('day/night clock — pause, determinism and loop isolation, driven', ()
     world = { hitstopStart: 0, hitstopUntil: 0 };
     vi.advanceTimersByTime(1000);
     expect(setGameTime, 'the clock did not run again after the hitstop').toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
+  it('one full day and night takes DAY_LENGTH_SECONDS of real time, and night falls at exactly half of it', () => {
+    const { DAY_LENGTH_SECONDS, CYCLE_UNITS, HALF_CYCLE_UNITS, isDayAtUnit } = dayNight;
+    const at = () => setGameTime.mock.calls.reduce((t, [step]) => step(t), 0);
+    const { unmount } = render(<Host />);
+    const half = DAY_LENGTH_SECONDS / 2;
+    vi.advanceTimersByTime((half - 1) * 1000);
+    expect(isDayAtUnit(at()), `still day one second before dusk (t ${at()})`).toBe(true);
+    vi.advanceTimersByTime(1000);
+    expect(at(), 'dusk is not at the half-cycle boundary').toBe(HALF_CYCLE_UNITS);
+    expect(isDayAtUnit(at())).toBe(false);
+    vi.advanceTimersByTime(half * 1000);
+    expect(setGameTime, 'ticks in one cycle').toHaveBeenCalledTimes(DAY_LENGTH_SECONDS);
+    expect(at(), 'a full cycle of ticks is not one cycle of game time').toBe(CYCLE_UNITS);
     unmount();
   });
 

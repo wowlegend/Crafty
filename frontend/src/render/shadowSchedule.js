@@ -10,8 +10,8 @@
 //   - otherwise when the sun has turned SUN_STEP_DEG since the LAST RENDER, the snapped frustum centre moved, or a dynamic
 //     caster is present — and never more often than SHADOW_MAX_HZ.
 //
-// F2, with the real arc: the sun turns 0.64-1.59 deg/s (mood.js sunArcDirection over a 300 s cycle), so 0.5 deg steps
-// alone are ~2.4 renders a second (723 a cycle, 3.2 Hz at the fastest point). HONESTLY: the player's own hands, the
+// F2, with the real arc: 0.5 deg steps of the sun (mood.js sunArcDirection) are about 723 renders a cycle, whatever the
+// day length; at the 480 s day (game/dayNight.js) that is about 1.5 a second. HONESTLY: the player's own hands, the
 // loaded square's mobs and villagers make a dynamic caster present almost all the time in play, so the real saving is
 // the 30 Hz cap — half the shadow renders at 60 fps. The static path pays off only when nothing moves. A moving caster's
 // shadow updates at 30 Hz; a long shadow can step by up to 0.5 deg between sun steps.

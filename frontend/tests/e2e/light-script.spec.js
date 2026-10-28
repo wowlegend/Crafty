@@ -146,7 +146,7 @@ async function greyCard(page, label, { away = false, timeOfDay, key } = {}) {
     // tick landed there once (measured: mood 0.06, boost 0.85, the screen 0.08 under the model). So the weather is read
     // again AFTER the screenshot, and a read it moved is taken again (two tries, then SETUP).
     //
-    // SO CAN THE CLOCK (review of the light-colour lane, MED). It runs at 4 units a second through the whole read, and
+    // SO CAN THE CLOCK. It runs through the whole read, and
     // the absolute night bounds mean what B2 means only inside the NIGHT key (s <= KEY_S.night; the script is flat
     // there): the away read came tens of seconds after midnight was set and nothing checked it was still night. So each
     // try sets its own time first, and after the screenshot the fraction the sky RENDERED at (readSkyLight.cycle) must

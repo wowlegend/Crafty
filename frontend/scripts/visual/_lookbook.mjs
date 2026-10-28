@@ -42,7 +42,7 @@ export const CHROMIUM_CANDIDATES = Object.freeze([
   { id: 'headless-shell', launch: { headless: true } },
 ]);
 
-/** How far the live clock may drift from the asked-for time (cycle fraction; 0.01 is 3 s of a 300 s day). */
+/** How far the live clock may drift from the asked-for time (cycle fraction; 0.01 is 4.8 s of the 480 s day). */
 export const CYCLE_TOLERANCE = 0.01;
 
 /** Every shot, place-major: [{ place, cycle, file }]. */

@@ -3,14 +3,14 @@
 // WHY IT EXISTS (review of the light-colour lane, 2026-10-27, HIGH). The game clock is a 1 Hz setInterval
 // (game/useDayNightClock.js: +GAME_UNITS_PER_SECOND each second; a per-frame store write would be a render storm), and
 // <Atmosphere> rendered the colour script and the key light straight from it. So the whole sky STEPPED once a second:
-// at dawn and dusk, where the key ramps from 0 to full in about 2.9 s (render/keyLight.js HORIZON_FADE), the light,
+// at dawn and dusk, where the key ramps from 0 to full in a few seconds (render/keyLight.js HORIZON_FADE), the light,
 // the exposure and every colour jumped three times instead of ramping. A 1 Hz value may drive a per-frame visual only
 // through a per-frame interpolation; this is that interpolation.
 //
 // THE RULE. Each frame the sky clock moves TOWARD the game clock at the game clock's own rate (GAME_UNITS_PER_SECOND
 // per real second), faster only when it has fallen more than one tick behind, and NEVER past it. So between two ticks
-// the sky keeps moving at a constant speed, it lags the game clock by at most about one tick (4 units of a 1200-unit
-// cycle: a third of a percent), and a paused clock (a menu, death) is caught up to and held, never extrapolated past.
+// the sky keeps moving at a constant speed, it lags the game clock by at most about one tick (one real second of the
+// cycle), and a paused clock (a menu, death, the pause) is caught up to and held, never extrapolated past.
 // A step backwards or a jump larger than SKY_CLOCK_SNAP (setTimeOfDay, a save load, sleeping through the night) is a
 // cut, not a pan: the sky snaps to it.
 import { GAME_UNITS_PER_SECOND } from '../game/dayNight.js';

@@ -68,11 +68,12 @@ const UPS = GAME_UNITS_PER_SECOND;
 describe('followSkyClock: the sky follows the 1 Hz game clock every frame', () => {
   it('between two ticks it moves at the clock\'s own rate, and never past the game clock', () => {
     const c = makeSkyClock();
+    const tick = 100 + UPS;
     expect(followSkyClock(c, 100, 1 / 60)).toBe(100); // first frame: nothing to follow from, so it takes the clock
-    expect(followSkyClock(c, 104, 0.25)).toBeCloseTo(101, 9); // a tick: a quarter second later the sky is 1 unit on
-    expect(followSkyClock(c, 104, 0.25)).toBeCloseTo(102, 9);
-    expect(followSkyClock(c, 104, 0.75)).toBe(104); // caught up, and clamped there
-    expect(followSkyClock(c, 104, 5)).toBe(104); // a paused clock is held, never extrapolated past
+    expect(followSkyClock(c, tick, 0.25)).toBeCloseTo(100 + UPS / 4, 9); // a tick: a quarter second later, a quarter on
+    expect(followSkyClock(c, tick, 0.25)).toBeCloseTo(100 + UPS / 2, 9);
+    expect(followSkyClock(c, tick, 0.75)).toBe(tick); // caught up, and clamped there
+    expect(followSkyClock(c, tick, 5)).toBe(tick); // a paused clock is held, never extrapolated past
   });
 
   it('more than one tick behind, it catches up faster than real time (the lag stays about one tick)', () => {

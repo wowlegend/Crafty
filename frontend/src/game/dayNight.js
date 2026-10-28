@@ -16,14 +16,19 @@ export const HALF_CYCLE_UNITS = 600;
 export const CYCLE_UNITS = 1200;
 
 /**
- * The ONE feel/balance knob (batched to Kevin): how many `gameTime` units the
- * real-time ticker advances per second. 4 units/s => HALF_CYCLE_UNITS / 4 = 150 s
- * per half => a 5-minute full cycle (2.5 min day / 2.5 min night). 600 % 4 === 0,
- * so integer landings still align on the boundary (the crossing-fix makes exact
- * landing unnecessary, but keeping the divisor clean is tidy). Kevin-tunable:
- * 8-min cozier ~= 2.5, 3-min frantic ~= 6.7.
+ * THE day-length knob: real seconds per full day+night cycle. 480 s puts a fresh profile's first dusk at 4:00 of play
+ * and its first dawn at 8:00, so the First Night (one dusk, one siege, one golden dawn) fits ten minutes with the first
+ * minute in front of it; 300 s brought night at 2:30, before a new player could light a Hearth. DECISIONS 2026-10-28
+ * item 20 holds the measurements.
  */
-export const GAME_UNITS_PER_SECOND = 4;
+export const DAY_LENGTH_SECONDS = 480;
+
+/**
+ * `gameTime` units the real-time ticker advances per second, derived from the day length. Every timed system reads
+ * game units, so the day length moves them all together. HALF_CYCLE_UNITS divides by it (240 ticks a half), so a tick
+ * lands exactly on each dusk and dawn.
+ */
+export const GAME_UNITS_PER_SECOND = CYCLE_UNITS / DAY_LENGTH_SECONDS;
 
 /**
  * True iff advancing `gameTime` from `prevTime` to `nextTime` crosses a half-cycle
