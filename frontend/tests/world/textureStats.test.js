@@ -41,10 +41,32 @@ describe('layerStats on layers with known statistics', () => {
     expect(leftRight.wrapChangeV).toBe(0);
     expect(leftRight.wrapChange).toBeGreaterThan(0);
     expect(leftRight.border.size).toBe(2);
+    // A vertical split changes tone along u only: one differing pair in each of the 32 rows, none along v.
+    expect(leftRight.interiorChangeU).toBe(SIZE / (PAIRS / 2));
+    expect(leftRight.interiorChangeV).toBe(0);
+    expect(leftRight.interiorChange).toBe(SIZE / PAIRS);
     const topBottom = layerStats(stack((x, y) => (y < SIZE / 2 ? A : B)), 0);
     expect(topBottom.sameNeighbour).toBe(1952 / PAIRS);
     expect(topBottom.wrapChangeU).toBe(0);
     expect(topBottom.wrapChangeV).toBe(1);
+    expect(topBottom.interiorChangeU).toBe(0);
+    expect(topBottom.interiorChangeV).toBe(SIZE / (PAIRS / 2));
+  });
+
+  it('the border is every tone on the outer ring, each side read, and no tone from inside it', () => {
+    const [C, D, E, F] = [[40, 200, 40], [200, 200, 40], [40, 200, 200], [200, 40, 200]];
+    const s = layerStats(stack((x, y) => {
+      if (x === 0 && y === 9) return B; // left column only
+      if (x === SIZE - 1 && y === 20) return C; // right column only
+      if (y === 0 && x === 5) return E; // top row only
+      if (y === SIZE - 1 && x === 7) return F; // bottom row only
+      if (x === 5 && y === 5) return D; // interior
+      return A;
+    }), 0);
+    const hex = ([r, g, b]) => (r << 16) | (g << 8) | b;
+    const byValue = (a, b) => a - b;
+    expect([...s.border].sort(byValue)).toEqual([A, B, C, E, F].map(hex).sort(byValue));
+    expect(s.distinct, 'the interior tone is in the layer, so its absence from the border is the ring\'s doing').toBe(6);
   });
 
   it('luminance weights each decoded channel by 0.2126 / 0.7152 / 0.0722', () => {
