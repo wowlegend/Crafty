@@ -17,13 +17,12 @@ import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
 import { resolveSpawnGround, resolveResumeSpawn, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
-import { rampVelocity, coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
+import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
 import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { pressSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
-import { stanceStep, stanceVelocity, getStance, resetStance, noteMoveTarget, STANCE_CAPS } from './game/combatStance.js';
-import { mobSensePoint } from './game/mobSenses.js';
+import { stanceFrame, stanceWalk, resetStance } from './game/combatStance.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -87,7 +86,6 @@ export const Player = ({ isWorldBuilt }) => {
 
   const velocityY = useRef(0);
   const planarVelRef = useRef({ x: 0, z: 0 }); // W4 game-feel: smoothed horizontal velocity (accel/decel ramp)
-  const stanceOutRef = useRef({ x: 0, z: 0 }); // the combat stance's velocity, written in place per frame
   const lastGroundedAtRef = useRef(0);     // W4 coyote-time: performance.now()/1000 of the last grounded frame
   const lastJumpPressRef = useRef(null);   // W4 jump-buffer: performance.now()/1000 of the last jump-intent rising edge
   const prevJumpIntentRef = useRef(false); // edge-detect the jump intent so a held key only stamps the buffer once
@@ -949,9 +947,9 @@ export const Player = ({ isWorldBuilt }) => {
     const speed = moveSpeed(loco) * walkMult;
     const currentTrans = rigidBodyRef.current.translation();
     // COMBAT STANCE (game/combatStance.js): once a fight is joined you cannot outwalk it. One transient step per frame
-    // (Game-Loop-Isolation). The player point is the one the AI worker strikes from (mobSensePoint, the eye), not the
-    // body, so the stance and the worker agree on which mobs can reach the player.
-    const stance = stanceStep(getStance(), mobsQuery.entities, mobSensePoint(camera), now, delta);
+    // (Game-Loop-Isolation), through the seam stanceFrame, which measures the player from the point the AI worker
+    // strikes from, so the stance and the worker agree on which mobs can reach the player.
+    const stance = stanceFrame(mobsQuery.entities, currentTrans, camera, now, delta);
 
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
     if (spawnPosSet.current && isVoidFall(currentTrans.y)) {
@@ -1295,17 +1293,9 @@ export const Player = ({ isWorldBuilt }) => {
       const cameraDir = new THREE.Vector3();
       camera.getWorldDirection(cameraDir);
       const mv = moveVector(cameraDir.x, cameraDir.z, input, speed);
-      let targetX = mv.moving ? mv.x : 0;
-      let targetZ = mv.moving ? mv.z : 0;
-      if (mv.moving) {
-        // The stance clamps the AWAY-from-threat component of the move, whatever key produced it; at w = 0 it is
-        // the identity, so travel keeps 14 m/s.
-        const sv = stanceVelocity(mv.x, mv.z, stance.awayX, stance.awayZ, stance.w, loco.moveMult, walkMult, STANCE_CAPS, stanceOutRef.current);
-        targetX = sv.x;
-        targetZ = sv.z;
-      }
-      noteMoveTarget(mv.x, mv.z, targetX, targetZ, stance.w);
-      const ramped = rampVelocity(planarVelRef.current, { x: targetX, z: targetZ }, delta);
+      // The stance's clamp, then the ramp (game/combatStance.js stanceWalk, the unit-tested seam): at w = 0 the clamp is
+      // the identity, so travel keeps 14 m/s. The ramped velocity is what the KCC is fed below.
+      const ramped = stanceWalk(mv, stance, loco, walkMult, planarVelRef.current, delta);
       planarVelRef.current = ramped;
       desiredVelX = ramped.x;
       desiredVelZ = ramped.z;

@@ -37,12 +37,18 @@
 //   Round-1 review pins (2026-10-28, 33 tests): A4 the advance capped at the retreat cap -> RED; A3 the total speed
 //   also capped at the strafe cap -> RED; A1 the no-direction cap applied per world axis -> RED; A0 identity (a comment
 //   edit) -> survived.
+//   Round-1 review c/d, the controller's seam (stanceFrame / stanceWalk; 37 tests): C1 the ramp fed the raw move after
+//   the record -> RED; C2 the target recorded as applied -> RED; C3 the form and walk multipliers swapped -> RED; C4 the
+//   height measured 1.2 m under the sense point (review H-b) -> RED; C5 a copy of the stance stepped -> RED; C6 the
+//   stance's output ignored -> RED; C7 the clamped target scaled by 0.9 -> RED; C0 identity -> survived. The record's
+//   N1-N4 receipts above were taken on its five-argument form; the case now checks the applied slots too.
 import { describe, it, expect } from 'vitest';
 import {
   STANCE_CAPS, MIN_CLOSING_RATE, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
   stanceVelocity, stanceStep, getStance, resetStance, engageDyM, STALL_MS, CALM_MS, ENTER_S, EXIT_S,
-  noteMoveTarget, readMoveTarget,
+  noteMoveTarget, readMoveTarget, stanceFrame, stanceWalk,
 } from './combatStance.js';
+import { mobSensePoint } from './mobSenses.js';
 import { MOB_TYPES } from './mobTypes.js';
 import { chaseSpeedMult } from './mobMovement.js';
 
@@ -328,16 +334,79 @@ describe('stanceStep — engage, calm, blend (Task 4)', () => {
 // Task 5: the controller's own record of what it commanded, read by the e2e (readMoveTarget). The e2e's identity case
 // compares rawX/Z with targetX/Z by Object.is, so a field written to the wrong slot would make it lie.
 describe('noteMoveTarget / readMoveTarget — the controller\'s move-target record (Task 5)', () => {
-  it('records raw and final targets with the stance frame, in one live object rewritten in place', () => {
+  it('records raw, target and applied with the stance frame, in one live object rewritten in place', () => {
     resetStance();
     stanceStep(getStance(), [], { x: 0, y: 0, z: 0 }, 0, 1 / 60);
     const f = getStance().frame;
-    noteMoveTarget(1, -2, 0.5, -0.25, 0.75);
+    noteMoveTarget(1, -2, 0.5, -0.25, 0.125, -0.0625, 0.75);
     const r = readMoveTarget();
-    expect(r).toEqual({ rawX: 1, rawZ: -2, targetX: 0.5, targetZ: -0.25, w: 0.75, frame: f });
+    expect(r).toEqual({ rawX: 1, rawZ: -2, targetX: 0.5, targetZ: -0.25, appliedX: 0.125, appliedZ: -0.0625, w: 0.75, frame: f });
     stanceStep(getStance(), [], { x: 0, y: 0, z: 0 }, 16, 1 / 60);
-    noteMoveTarget(3, 4, 5, 6, 0);
+    noteMoveTarget(3, 4, 5, 6, 7, 8, 0);
     expect(readMoveTarget()).toBe(r);
-    expect(r).toEqual({ rawX: 3, rawZ: 4, targetX: 5, targetZ: 6, w: 0, frame: f + 1 });
+    expect(r).toEqual({ rawX: 3, rawZ: 4, targetX: 5, targetZ: 6, appliedX: 7, appliedZ: 8, w: 0, frame: f + 1 });
+  });
+});
+
+// Round-1 review c and d: the controller's call sites, as a seam. Components.jsx calls stanceFrame once a frame and
+// stanceWalk in the pointer-locked branch; everything between its inputs and the velocity it feeds the KCC is here.
+describe('stanceFrame / stanceWalk — the controller\'s seam (round-1 review c, d)', () => {
+  let nextId = 0;
+  const husk = (x, z, y = 51.7) => ({ id: `s${++nextId}`, isMob: true, type: 'zombie', passive: false, isAggro: true, health: 50, position: { x, y, z } });
+  const cam = (x, y, z) => ({ position: { x, y, z } });
+  const MOVING = (x, z) => ({ x, z, moving: true });
+  // Engaged at full weight against a husk 3 m along -x from a player at the origin: away is +x.
+  const engaged = () => {
+    resetStance();
+    const mobs = [husk(-3, 0)];
+    let st;
+    for (let t = 0; t <= 400; t += 16) st = stanceFrame(mobs, { x: 0, y: 50.5, z: 0 }, cam(0, 51.7, 0), t, 1 / 60);
+    expect([st.w, st.awayX, st.awayZ], 'SETUP: the stance did not engage at full weight with away +x').toEqual([1, 1, 0]);
+    return st;
+  };
+
+  it('stanceFrame steps the LIVE stance and measures the height from the point the worker strikes from', () => {
+    resetStance();
+    const c = cam(0, 51.7, 0);
+    const st = stanceFrame([], { x: 0, y: 50.5, z: 0 }, c, 0, 1 / 60);
+    expect(st).toBe(getStance());
+    expect(st.playerY, 'the stance measured the player from a height the AI worker does not strike from').toBe(mobSensePoint(c).y);
+  });
+
+  it('stanceWalk feeds the ramp the CLAMPED target and returns, and records, what the ramp gave', () => {
+    const st = engaged();
+    // Settled at the retreat cap: a held backpedal at 14 stays at exactly 2.0, it does not ramp toward 14.
+    const v = stanceWalk(MOVING(14, 0), st, { moveMult: 1 }, 1, { x: 2, z: 0 }, 1 / 60);
+    expect([v.x, v.z], 'the velocity handed to the KCC is not the clamped one').toEqual([2, 0]);
+    const r = readMoveTarget();
+    expect([r.rawX, r.targetX, r.appliedX, r.appliedZ, r.w]).toEqual([14, 2, 2, 0, 1]);
+    // From rest the ramp is visible: 60 u/s² over 1/60 s is 1 m/s, toward the clamped 2.0.
+    const u = stanceWalk(MOVING(14, 0), st, { moveMult: 1 }, 1, { x: 0, z: 0 }, 1 / 60);
+    expect(u.x).toBeCloseTo(1, 12);
+    expect(readMoveTarget().appliedX).toBe(u.x);
+    expect(readMoveTarget().targetX).toBe(2);
+  });
+
+  it('stanceWalk passes the form and the walk slow in their own places: a comet retreats at 2.0, a heavy charge at 1.1', () => {
+    const st = engaged();
+    const SNAP = 1; // a 1 s frame: the ramp reaches the target, so the target is read directly
+    const comet = stanceWalk(MOVING(14 * 1.4, 0), st, { moveMult: 1.4 }, 1, { x: 0, z: 0 }, SNAP);
+    expect(comet.x, 'a beast form outwalked the fight (the form multiplier reached the retreat cap)').toBeCloseTo(STANCE_CAPS.retreat, 12);
+    const cometStrafe = stanceWalk(MOVING(0, 14 * 1.4), st, { moveMult: 1.4 }, 1, { x: 0, z: 0 }, SNAP);
+    expect(cometStrafe.z, 'the form lost its pace').toBeCloseTo(STANCE_CAPS.strafe * 1.4, 12);
+    const charging = stanceWalk(MOVING(14 * 0.55, 0), st, { moveMult: 1 }, 0.55, { x: 0, z: 0 }, SNAP);
+    expect(charging.x, 'the heavy\'s walk slow did not reach the retreat').toBeCloseTo(STANCE_CAPS.retreat * 0.55, 12);
+  });
+
+  it('out of combat stanceWalk hands the ramp moveVector\'s output exactly, and a still stick ramps to 0', () => {
+    resetStance();
+    const st = stanceFrame([], { x: 0, y: 50.5, z: 0 }, cam(0, 51.7, 0), 0, 1 / 60);
+    expect(st.w).toBe(0);
+    stanceWalk(MOVING(-9.899494936611665, 9.899494936611665), st, { moveMult: 1 }, 1, { x: 0, z: 0 }, 1 / 60);
+    const r = readMoveTarget();
+    expect(Object.is(r.targetX, r.rawX) && Object.is(r.targetZ, r.rawZ), 'out of combat the target is not moveVector\'s').toBe(true);
+    const still = stanceWalk({ x: 0, z: 0, moving: false }, st, { moveMult: 1 }, 1, { x: 3, z: 0 }, 1 / 60);
+    expect(still.x).toBeCloseTo(1.5, 12); // 90 u/s² down
+    expect([readMoveTarget().targetX, readMoveTarget().targetZ]).toEqual([0, 0]);
   });
 });

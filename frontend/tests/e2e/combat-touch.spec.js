@@ -32,12 +32,18 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   U3 src/game/windupChevrons.js  SIDE_INSET_PX = 8                                           -> case 3, portrait (the tray column)
 //   U4 src/Components.jsx          stanceVelocity called only when input.moveB                  -> case 1b
 //   U0 src/game/windupChevrons.js  a comment edit (identity)                                    -> must SURVIVE
+// Round-1 review c (2026-10-28): case 1 and 1b also judge `applied`, the velocity the ramp fed the body, from SETTLE_MS
+// on. U4's call site moved into src/game/combatStance.js stanceWalk, which src/game/combatStance.test.js drives directly.
 
 const IPAD = devices['iPad Pro 11 landscape'];
 test.use({ viewport: IPAD.viewport, userAgent: IPAD.userAgent, isMobile: IPAD.isMobile, hasTouch: IPAD.hasTouch, deviceScaleFactor: 1 });
 
 const RETREAT = 2.0; // LITERALS: the yardstick must not move with the subject
 const EPS = 1e-6;
+// The applied velocity (readMoveTarget's `applied`, what the ramp fed the body) is judged from SETTLE_MS of sampling on,
+// within APPLIED_TOL: combat-stance.spec.js's numbers and reasons (round-1 review c).
+const SETTLE_MS = 300;
+const APPLIED_TOL = 0.1;
 const FINISHER_MULT = 1.5;
 const WINDOW = 650;
 
@@ -158,7 +164,7 @@ function installTouchCombatHelpers() {
         const st = call('readStance'), mt = call('readMoveTarget'), c = cam().position;
         const m = call('readMobs').find((x) => x.id === id);
         if (!intents) intents = call('readIntents');
-        out.push({ st, mt, gap: m ? Math.hypot(m.x - c.x, m.z - c.z) : null });
+        out.push({ t: performance.now() - t0, st, mt, gap: m ? Math.hypot(m.x - c.x, m.z - c.z) : null });
         if (performance.now() - t0 > maxMs) break;
         if (out[out.length - 1].gap != null && out[out.length - 1].gap <= 2.6) break;
       }
@@ -232,17 +238,23 @@ function installTouchCombatHelpers() {
   window.__touchCombat = H;
 }
 
-/** The target on every frame at full weight, judged against a direction rebuilt from the positions that frame used. */
+/**
+ * The target on every frame at full weight, and the applied velocity from SETTLE_MS on, judged against a direction
+ * rebuilt from the positions that frame used.
+ */
 function judgeTarget(samples) {
-  let judged = 0, worstAway = -Infinity;
-  for (const { st, mt } of samples) {
+  let judged = 0, worstAway = -Infinity, applied = 0, worstAppliedAway = -Infinity;
+  for (const { t, st, mt } of samples) {
     if (!st || !mt || st.w !== 1 || mt.frame !== st.frame || Math.hypot(mt.rawX, mt.rawZ) < 1) continue;
     const ax = st.playerX - st.threatX, az = st.playerZ - st.threatZ, l = Math.hypot(ax, az);
     if (l < 1e-3) continue;
     worstAway = Math.max(worstAway, (mt.targetX * ax + mt.targetZ * az) / l);
     judged++;
+    if (t < SETTLE_MS) continue;
+    worstAppliedAway = Math.max(worstAppliedAway, (mt.appliedX * ax + mt.appliedZ * az) / l);
+    applied++;
   }
-  return { judged, worstAway: +worstAway.toFixed(6) };
+  return { judged, worstAway: +worstAway.toFixed(6), applied, worstAppliedAway: +worstAppliedAway.toFixed(6) };
 }
 
 async function boot(page) {
@@ -291,6 +303,8 @@ test.describe('combat on touch', () => {
       const t = judgeTarget(run.out);
       expect(t.judged, `SETUP: case ${label}: no frame at full weight with the stick's target recorded`).toBeGreaterThan(0);
       expect(t.worstAway, `case ${label}: the stick's target left the husk at ${t.worstAway} m/s (${t.judged} frames)`).toBeLessThanOrEqual(RETREAT + EPS);
+      expect(t.applied, `SETUP: case ${label}: no frame at full weight from ${SETTLE_MS} ms of sampling on`).toBeGreaterThan(0);
+      expect(t.worstAppliedAway, `case ${label}: the velocity fed to the body left the husk at ${t.worstAppliedAway} m/s (${t.applied} settled frames)`).toBeLessThanOrEqual(RETREAT + APPLIED_TOL);
     }
   });
 

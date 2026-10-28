@@ -18,7 +18,8 @@ import { archetypeFor } from './mobArchetypes.js';
 import { chaseSpeedMult, SHOULDER_CHARGE_SPEED } from './mobMovement.js';
 import { BASE_MOVE_SPEED } from './locomotion.js';
 import { CLIMBERS } from './localPath.js';
-import { LEAP_RANGE } from './mobSenses.js';
+import { LEAP_RANGE, mobSensePoint } from './mobSenses.js';
+import { rampVelocity } from './gameFeel.js';
 import { isHostile } from '../combat/targeting.js';
 
 export { BASE_MOVE_SPEED };
@@ -244,16 +245,62 @@ export function getStance() {
 }
 
 // The controller's own record of the frame's movement command (Task 5): `raw` is moveVector's output, `target` what
-// the controller handed rampVelocity, `frame` the stance frame it belongs to. Read by the DEV hook readMoveTarget, so
-// the e2e sees a wrong away vector, a key-gated call or a blanket scale wherever it sits between the two. Four number
-// writes per frame into one object; no allocation.
-const _moveTarget = { rawX: 0, rawZ: 0, targetX: 0, targetZ: 0, w: 0, frame: 0 };
+// the stance handed rampVelocity, `applied` what the ramp returned, which is the planar velocity the KCC is fed (before
+// knockback and hitstop), and `frame` the stance frame it belongs to. Read by the DEV hook readMoveTarget. Round-1
+// review c: the e2e judged only `target`, so a bypass placed AFTER the record (the ramp fed the raw move) passed every
+// frame-rate-independent assertion; it judges `applied` now. Number writes into one object; no allocation.
+const _moveTarget = { rawX: 0, rawZ: 0, targetX: 0, targetZ: 0, appliedX: 0, appliedZ: 0, w: 0, frame: 0 };
 
-/** Record this frame's raw and final planar targets and the weight they were blended with. */
-export function noteMoveTarget(rawX, rawZ, targetX, targetZ, w) {
+/** Record this frame's raw, target and applied planar velocities and the weight they were blended with. */
+export function noteMoveTarget(rawX, rawZ, targetX, targetZ, appliedX, appliedZ, w) {
   _moveTarget.rawX = rawX; _moveTarget.rawZ = rawZ;
   _moveTarget.targetX = targetX; _moveTarget.targetZ = targetZ;
+  _moveTarget.appliedX = appliedX; _moveTarget.appliedZ = appliedZ;
   _moveTarget.w = w; _moveTarget.frame = _state.frame;
+}
+
+// ---- The controller's seam (round-1 review c) ---------------------------------------------------------------------
+// Everything between the Player controller's inputs and the planar velocity it hands the KCC runs through these two,
+// so a unit test drives the wiring that only the e2e could see before: which point the stance measures from, the order
+// of the form and walk multipliers, and that the ramp is fed the clamped target. What stays in Components.jsx is one
+// call each, in the frame's order.
+
+const _point = { x: 0, y: 0, z: 0 };
+const _clamped = { x: 0, z: 0 };
+
+/**
+ * One frame of the stance, as the controller runs it: stanceStep on the live stance, measuring the player from the
+ * point the AI worker strikes from (mobSensePoint(camera)). Returns the live stance.
+ *   mobs    mobsQuery.entities
+ *   body    the rigid body's translation this frame
+ *   camera  the game camera
+ */
+export function stanceFrame(mobs, body, camera, nowMs, dtS) {
+  const sense = mobSensePoint(camera);
+  _point.x = sense.x; _point.y = sense.y; _point.z = sense.z;
+  return stanceStep(_state, mobs, _point, nowMs, dtS);
+}
+
+/**
+ * The frame's walk (Components.jsx, the pointer-locked branch): moveVector's output `mv` clamped by the stance, then the
+ * W4 ramp from `planarVel`. Records raw, target and applied (noteMoveTarget) and returns the ramped velocity (a fresh
+ * object, as rampVelocity's), which the controller feeds the KCC.
+ *   loco     the form's locomotion (formLocomotion): its moveMult is the form's pace. The object, not a bare number,
+ *            so the form and walk multipliers cannot be swapped at the call site (round-1 review d).
+ *   walkMult the product of the walk slows (heavyWalkMult x stringWalkMult)
+ */
+export function stanceWalk(mv, stance, loco, walkMult, planarVel, dtS) {
+  let tx = mv.moving ? mv.x : 0;
+  let tz = mv.moving ? mv.z : 0;
+  if (mv.moving) {
+    // The stance clamps the AWAY-from-threat component of the move, whatever key produced it; at w = 0 it is the
+    // identity, so travel keeps 14 m/s.
+    stanceVelocity(mv.x, mv.z, stance.awayX, stance.awayZ, stance.w, loco.moveMult, walkMult, STANCE_CAPS, _clamped);
+    tx = _clamped.x; tz = _clamped.z;
+  }
+  const ramped = rampVelocity(planarVel, { x: tx, z: tz }, dtS);
+  noteMoveTarget(mv.x, mv.z, tx, tz, ramped.x, ramped.z, stance.w);
+  return ramped;
 }
 
 /** The live move-target record (the DEV hook copies it). */

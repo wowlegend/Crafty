@@ -8,11 +8,15 @@ import { bootDev, startPlayActive } from './_boot.js';
 // Player loop calling stanceStep and stanceVelocity once a frame.
 //
 // TWO KINDS OF VERDICT, ON PURPOSE.
-//   - THE TARGET, every frame, at any frame rate. `readMoveTarget` is the controller's own record of what it handed
-//     rampVelocity (`target`) beside moveVector's output (`raw`). Its away-from-threat component is judged against a
-//     direction THIS SPEC rebuilds from the positions that frame used (`readStance().threatX/Z` and `playerX/Z`, the
-//     same `frame`), never from `readStance().awayX/Z`, which a negated away (T5) would negate too; and against
-//     LITERAL caps (2.0, 6.5), never STANCE_CAPS, which a mutant of the derivation (T2) would move with the subject.
+//   - THE TARGET AND THE APPLIED VELOCITY, every frame, at any frame rate. `readMoveTarget` is the controller's own
+//     record (game/combatStance.js stanceWalk): moveVector's output (`raw`), what the stance handed rampVelocity
+//     (`target`), and what the ramp returned (`applied`), the planar velocity the KCC is fed. Each away-from-threat
+//     component is judged against a direction THIS SPEC rebuilds from the positions that frame used
+//     (`readStance().threatX/Z` and `playerX/Z`, the same `frame`), never from `readStance().awayX/Z`, which a negated
+//     away (T5) would negate too; and against LITERAL caps (2.0, 6.5), never STANCE_CAPS, which a mutant of the
+//     derivation (T2) would move with the subject. `applied` is judged once the ramp has settled (SETTLE_MS after the
+//     key went down; round-1 review c: judging `target` alone let a bypass placed AFTER the record pass every run whose
+//     chase went unjudged).
 //   - THE CHASE, only at >= 4 fps (median frame interval <= 250 ms; the strafe's at <= 61 ms, see
 //     STRAFE_CHASE_MAX_INTERVAL_MS): whether the husk actually closes. Below that,
 //     AIWorkerSystem caps an AI tick at 0.25 s, so mobs move slower than their speed and a chase cannot be judged; it
@@ -58,6 +62,10 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   T7 src/Components.jsx         stanceVelocity called only when input.moveB                     RED case 2b: target 14 m/s
 //   T8 src/Components.jsx         the call passes Math.max(stance.w, 0.1) (a w floor)             RED case 3: 10 of 10 frames
 //   T9 src/Components.jsx         the target scaled by 0.9 after the stance call                  RED case 3: 10 of 10 frames
+// Round-1 review c, OWED (not run here; the stance's call sites moved into game/combatStance.js stanceFrame/stanceWalk,
+// whose unit seam src/game/combatStance.test.js pins these by mutate.sh): T10 the ramp fed the raw move after the record
+// (`rampVelocity(planarVel, { x: mv.x, z: mv.z }, dtS)` in stanceWalk) -> expected RED at the applied check, at any frame
+// rate; T0 identity -> must SURVIVE.
 //   H1 src/Components.jsx         stanceStep fed currentTrans (the body), not mobSensePoint      RED case 0: 1.200 m apart
 //   H2 src/systems/AIWorkerSystem.jsx  playerPos posted as the body centre (sense.y - 1.2)        RED case 0: 1.200 m apart
 //   H3 src/game/mobSenses.js      mobSensePoint returns a point 1.2 m lower, for both readers     SURVIVED, as designed
@@ -70,6 +78,12 @@ const RETREAT = 2.0; // LITERALS: the yardstick must not move with the subject (
 const STRAFE = 6.5;
 const EPS = 1e-6;
 const CHASE_MAX_INTERVAL_MS = 250;
+// The applied velocity is judged from here on: 60 u/s² (game/gameFeel.js) takes either axis from rest to 6.5 m/s in
+// 0.11 s, and at a slower frame the ramp reaches its target in one frame.
+const SETTLE_MS = 300;
+// On a frame where the target turned faster than the ramp's 60 u/s² x the frame interval, the applied velocity lags it
+// by that much. 0.1 m/s is under a hundredth of the 14 m/s a bypassed stance reads.
+const APPLIED_TOL = 0.1;
 const CAUGHT_GAP_M = 2.6;
 // A STRAFE CHASE NEEDS A FASTER FRAME THAN A RETREAT. Within one frame the player moves in a straight line, so a
 // tangential step L at gap g grows the gap by sqrt(g² + L²) - g ≈ L²/2g: a leak of STRAFE² · Δ / (2g) m/s that only
@@ -248,10 +262,14 @@ function installStanceHelpers() {
   window.__stanceSpec = H;
 }
 
-/** The target on every frame the stance was at full weight, its move target was that frame's, and the key was seen. */
+/**
+ * The target and the applied velocity on every frame the stance was at full weight, its move target was that frame's,
+ * and the key was seen; the applied one only from SETTLE_MS on.
+ */
 function judgeTarget(samples) {
   let judged = 0, worstAway = -Infinity, worstTan = 0;
-  for (const { st, mt } of samples) {
+  let applied = 0, worstAppliedAway = -Infinity, worstAppliedTan = 0;
+  for (const { t, st, mt } of samples) {
     if (!st || !mt || st.w !== 1 || mt.frame !== st.frame || Math.hypot(mt.rawX, mt.rawZ) < 1) continue;
     const ax = st.playerX - st.threatX, az = st.playerZ - st.threatZ, l = Math.hypot(ax, az);
     if (l < 1e-3) continue;
@@ -259,8 +277,15 @@ function judgeTarget(samples) {
     worstAway = Math.max(worstAway, mt.targetX * ux + mt.targetZ * uz);
     worstTan = Math.max(worstTan, Math.abs(-mt.targetX * uz + mt.targetZ * ux));
     judged++;
+    if (t < SETTLE_MS) continue;
+    worstAppliedAway = Math.max(worstAppliedAway, mt.appliedX * ux + mt.appliedZ * uz);
+    worstAppliedTan = Math.max(worstAppliedTan, Math.abs(-mt.appliedX * uz + mt.appliedZ * ux));
+    applied++;
   }
-  return { judged, worstAway: +worstAway.toFixed(6), worstTan: +worstTan.toFixed(6) };
+  return {
+    judged, worstAway: +worstAway.toFixed(6), worstTan: +worstTan.toFixed(6),
+    applied, worstAppliedAway: +worstAppliedAway.toFixed(6), worstAppliedTan: +worstAppliedTan.toFixed(6),
+  };
 }
 
 /** The achieved speed away from the threat over the frames at full weight, m/s; and a compact per-frame trace. */
@@ -336,8 +361,11 @@ test.describe('combat stance', () => {
       expect(j.judged, `SETUP: ${label}: no frame at w === 1 with that frame's move target and the key seen (${r.samples.length} sampled)`).toBeGreaterThan(0);
       expect(j.worstAway, `${label}: the target left the husk at ${j.worstAway} m/s (cap ${RETREAT}; ${j.judged} frames judged)`).toBeLessThanOrEqual(RETREAT + EPS);
       if (strafe) expect(j.worstTan, `${label}: the target circled at ${j.worstTan} m/s (cap ${STRAFE}; ${j.judged} frames judged)`).toBeLessThanOrEqual(STRAFE + EPS);
+      expect(j.applied, `SETUP: ${label}: no frame at w === 1 from ${SETTLE_MS} ms on with that frame's move target (${r.samples.length} sampled)`).toBeGreaterThan(0);
+      expect(j.worstAppliedAway, `${label}: the velocity fed to the body left the husk at ${j.worstAppliedAway} m/s while the target said ${j.worstAway} (cap ${RETREAT}; ${j.applied} settled frames)`).toBeLessThanOrEqual(RETREAT + APPLIED_TOL);
+      if (strafe) expect(j.worstAppliedTan, `${label}: the velocity fed to the body circled at ${j.worstAppliedTan} m/s (cap ${STRAFE}; ${j.applied} settled frames)`).toBeLessThanOrEqual(STRAFE + APPLIED_TOL);
       const ch = chase(r.samples);
-      chaseNotes.push(`${label}: ${j.judged} frames judged, worst away ${j.worstAway}, retreat ${ch.retreat} m/s, closest ${ch.gapMin} m, chase ${judgeChase ? 'judged' : 'not judged'}`);
+      chaseNotes.push(`${label}: ${j.judged} frames judged, worst away ${j.worstAway} (applied ${j.worstAppliedAway} over ${j.applied}), retreat ${ch.retreat} m/s, closest ${ch.gapMin} m, chase ${judgeChase ? 'judged' : 'not judged'}`);
       if (judgeChase) {
         expect(ch.gapMin, `${label}: the husk never caught up (closest ${ch.gapMin} m) — [ms, gap, playerSpeed, w] ${JSON.stringify(ch.trace)}`).toBeLessThanOrEqual(CAUGHT_GAP_M);
         if (!strafe) expect(ch.retreat, `${label}: the achieved retreat was ${ch.retreat} m/s — ${JSON.stringify(ch.trace)}`).toBeLessThanOrEqual(2.3);
