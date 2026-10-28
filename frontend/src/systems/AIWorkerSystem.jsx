@@ -23,6 +23,7 @@ import { spellSlowFactor } from '../game/freeze.js';
 import AIWorker from '../workers/ai.worker.js?worker';
 import { drainKnockback } from '../game/captureRest.js';
 import { worldDelta, worldNow } from '../game/worldClock.js';
+import { takeTick } from '../game/frameStep.js';
 import { damageArgsForAttack } from '../game/mobDamage.js';
 import { buildMobPayload, applyMobUpdate } from '../game/mobStateSync.js';
 
@@ -200,12 +201,12 @@ export const AIWorkerSystem = () => {
     // 81-cell aggro heightGrids and the reply ground-snap raycasts all drop from 60-120Hz to 15Hz
     // (4-8× cut; 120Hz ProMotion iPads no longer pay double). MobModel's render-side damp keeps
     // 15Hz authority updates reading as smooth motion. The worker receives the ACCUMULATED
-    // seconds since the last tick (movement-speed parity), clamped vs tab-stall spikes.
+    // seconds since the last tick (movement-speed parity). Each frame's delta is already capped (worldDelta), and a
+    // tick takes at most one capped step and carries the rest, so the mobs get the same time the player walked.
     // (Knockback above stays render-rate — instant hit feel.)
     tickAccumRef.current += delta; // the AI clock stops with the world
-    if (tickAccumRef.current < AI_TICK_SEC) return;
-    const tickDelta = Math.min(tickAccumRef.current, 0.25);
-    tickAccumRef.current = 0;
+    const tickDelta = takeTick(tickAccumRef, AI_TICK_SEC);
+    if (tickDelta === 0) return;
 
     const store = useGameStore.getState();
     const getMobFloor = store.getMobFloor;

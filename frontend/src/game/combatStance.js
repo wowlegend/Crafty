@@ -181,7 +181,7 @@ export function engageDyM(type) {
 
 const _state = {
   w: 0, engaged: false, threatId: null, awayX: 0, awayZ: 0, gap: 0, lastEngagedAt: -Infinity,
-  threatX: 0, threatZ: 0, playerX: 0, playerY: 0, playerZ: 0, frame: 0,
+  threatX: 0, threatZ: 0, playerX: 0, playerY: 0, playerZ: 0, frame: 0, atS: 0, stepS: 0,
 };
 
 // The stall clocks: id -> { ax, az, at, seen }, the mob's position when it last made STALL_PROGRESS_M of its own
@@ -204,7 +204,9 @@ const _sweep = (a, id) => { if (a.seen !== _tag) _anchors.delete(id); };
  *           step starts from (stanceFrame builds it): the away vector and `gap` must be measured from there, not from
  *           the camera, which trails the body by about 1.2 frames (round-1 review b).
  *   nowMs   performance.now(): the stance is the player's real-time feel, like heavyAttack.js.
- *   dtS     the frame's seconds, for the blend.
+ *   dtS     the frame's seconds, for the blend: the controller's capped step (game/frameStep.js).
+ * `atS` is the game time this frame's step starts at and `stepS` its length, so (playerX, playerZ) over atS is the body's
+ * own speed in game time, which the e2e measures (a wall-clock sample of the camera is neither).
  *
  * A mob QUALIFIES when it is hostile (isHostile: not protected, passive or dead/dying), aggro'd, not a NON_PURSUER,
  * within ENGAGE_RADIUS_M horizontally and engageDyM(type) vertically, and not stalled. The threat is the current one
@@ -214,6 +216,8 @@ const _sweep = (a, id) => { if (a.seen !== _tag) _anchors.delete(id); };
  */
 export function stanceStep(state, mobs, player, nowMs, dtS) {
   state.frame++;
+  state.atS += state.stepS;
+  state.stepS = dtS > 0 ? dtS : 0;
   _tag = state.frame;
   const px = player.x, py = player.y, pz = player.z;
   let nearId = null, nearD = Infinity, nearX = 0, nearZ = 0;
@@ -299,10 +303,10 @@ export function noteMoveTarget(rawX, rawZ, targetX, targetZ, appliedX, appliedZ,
 //      takes the body away from the threat faster than the retreat cap, except while it decays a dodge's burst
 //      (limit 4). During the enter and exit
 //      blends (w < 1) the post-ramp bound pulls the step in by only w of its excess (holdStepBound), so the body may
-//      leave faster than the cap there. F1 also needs the husk to close, and the AI worker caps a tick at 0.25 s
-//      (AIWorkerSystem.jsx) while the player steps by the whole frame: above 250 ms frames a mob covers speed x
-//      0.25 / dt per second, so above 375 ms (about 2.7 fps) a 3.0 m/s husk cannot close on the 2.0 backpedal at all. The
-//      husk's 15 Hz aim on A* cell centres lowers its closing speed further, and is not measured.
+//      leave faster than the cap there. F1 also needs the husk to close: the player and the AI worker advance by the
+//      same capped step (game/frameStep.js), so in game time a husk closes at its chase speed less the retreat cap at
+//      any frame rate, and a long frame slows both alike. The husk's 15 Hz aim on A* cell centres lowers its closing
+//      speed further, and is not measured.
 //   2. THE CALL SITES' ARGUMENTS in Components.jsx are pinned by no unit test: the unit tests hand the seam their own.
 //      Unpinned: stanceFrame's body (camera.position in its place brings back a low-frame-rate kite, the camera trailing
 //      the body), stanceWalk's walkMult (1 in its place stops the heavy-charge and swing slows from slowing the retreat),
@@ -310,9 +314,8 @@ export function noteMoveTarget(rawX, rawZ, targetX, targetZ, appliedX, appliedZ,
 //      through teleportPlayer, and the dodge branch marking its burst with dodgeBurst. In the e2e, case 0 pins only the
 //      HEIGHT of stanceFrame's point: x and z are compared standing still, where the camera has converged on the body,
 //      and mobSensePoint is the camera's position. A wrong body or a bypassed stanceWalk can show only in a chase
-//      sub-assertion, judged only at a median frame interval of 250 ms or less (the catch only when every frame of the
-//      hold up to it was); no e2e case charges a heavy in a fight,
-//      or dodges in one.
+//      sub-assertion (the retreat chases are judged at every frame rate, the strafe's only at a fast one); no e2e case
+//      charges a heavy in a fight, or dodges in one.
 //   3. THE KCC IS DOWNSTREAM. The bound is on the velocity FED to computeColliderMovement, not on the movement it
 //      returns, and a slide along a wall can raise a step's away part (plausible by arithmetic, unmeasured). Knockback
 //      and hitstop are added after the stance on purpose: a blow that throws the player is not the player's own step.
@@ -328,7 +331,8 @@ const _clamped = { x: 0, z: 0 };
  * this frame's BODY across (the point the frame's step starts from, so the away vector and the gap are this frame's)
  * and the height the AI worker strikes from (mobSensePoint(camera).y). Returns the live stance.
  *   mobs    mobsQuery.entities
- *   body    the rigid body's translation this frame
+ *   body    where the body's step starts this frame: its next translation, which includes a move given on a frame that
+ *           took no world step (game/kinematicMove.js)
  *   camera  the game camera
  */
 export function stanceFrame(mobs, body, camera, nowMs, dtS) {

@@ -71,6 +71,11 @@ const camera = (from, dir) => {
   return cam;
 };
 const frame = (seconds) => act(() => { frameCb({}, seconds); });
+// The world advances at most MAX_FRAME_STEP_SEC (0.25 s, src/game/frameStep.js) per frame, so long spans are driven as
+// frames at that step.
+const STEP = 0.25;
+const frames = (n) => { for (let i = 0; i < n; i++) frame(STEP); };
+const ageOut = () => frames(13); // 3250 ms > maxAge 3000: every spell cast before it ends in the 13th frame
 const spent = () => callTestHook('readSpentProjectiles');
 const live = () => callTestHook('readProjectiles');
 const cast = (type) => {
@@ -119,7 +124,9 @@ describe('the end record stores where a spell ENDED, what ended it, and its age'
     // Down and across on all three axes with different magnitudes, so a crossed axis or a sign cannot pass.
     useGameStore.setState({ gameCamera: camera([3, 20.05, 7], [0.48, -0.36, -0.8]) });
     const muzzle = cast('fireball');
-    frame(1); // 25 m of flight in one frame: the spell must stop where it landed, not where the frame ended
+    frames(3); // 18.75 m of flight, 0.08 m short of the floor
+    expect(spent(), 'the spell landed before the frame under test').toEqual([]);
+    frame(STEP); // 6.25 m more in one frame: the spell must stop where it landed, not where the frame ended
     const rec = spent();
     expect(rec.length, 'a landed spell left no end record').toBe(1);
     const [end] = rec;
@@ -134,9 +141,10 @@ describe('the end record stores where a spell ENDED, what ended it, and its age'
     expect(end.y).toBeLessThanOrEqual(FLOOR + 0.5);
     expect(end.y - landed.y).toBeGreaterThan(0); // the probe asks a hair under the spell (mobFloor's feet epsilon)
     expect(end.y - landed.y).toBeLessThan(0.25);
-    // The distance the e2e reads off the record: 19 m here (38 half-metre substeps until y <= 12.5), not 0 (the muzzle)
-    // and not 25 (the frame's whole move).
-    expect(dist(end, muzzle)).toBeCloseTo(19, 4);
+    // The distance the e2e reads off the record. The muzzle stands at y 19.33 (2 m along the view from 20.05) and falls
+    // 0.36 per metre, so y <= 12.5 needs 18.97 m: the first substep past it (13 per frame of 6.25 m) is the 40th, at
+    // 19.23 m; not 18.75 (the last frame's start) and not 25 (its end).
+    expect(dist(end, muzzle)).toBeCloseTo((40 * 6.25) / 13, 4);
     expect(live(), 'the landed spell is still live').toEqual([]);
   });
 
@@ -145,16 +153,16 @@ describe('the end record stores where a spell ENDED, what ended it, and its age'
     useGameStore.setState({ gameCamera: camera([-5, 30, 2], [0.6, 0, 0.8]) }); // level, high: never lands
     const muzzle = cast('fireball');
     const seen = [];
-    for (let i = 0; i < 6; i++) { frame(0.5); seen.push(live().find((p) => p.id === muzzle.id)); }
+    for (let i = 0; i < 12; i++) { frame(STEP); seen.push(live().find((p) => p.id === muzzle.id)); }
     expect(seen.every(Boolean), 'the spell ended before its age ran out — the scenario is not an age-out').toBe(true);
     expect(spent()).toEqual([]);
-    frame(0.5); // 3500 ms > maxAge 3000
+    frame(STEP); // 3250 ms > maxAge 3000
     const [end, ...rest] = spent();
     expect(rest).toEqual([]);
     expect(end.by).toBe('age');
-    expect(end.age).toBe(3500);
+    expect(end.age).toBe(3250);
     // The reference: equal frames of straight flight, so the last frame moved it as far as the one before.
-    const a = seen[4], b = seen[5];
+    const a = seen[10], b = seen[11];
     expect(end.x).toBeCloseTo(b.x + (b.x - a.x), 6);
     expect(end.y).toBeCloseTo(b.y + (b.y - a.y), 6);
     expect(end.z).toBeCloseTo(b.z + (b.z - a.z), 6);
@@ -221,7 +229,7 @@ describe('the record is bounded, and a read cannot change it', () => {
     const ids = [];
     for (let i = 0; i < 20; i++) ids.push(cast('fireball').id);
     expect(new Set(ids).size, 'the casts did not produce 20 distinct spells').toBe(20);
-    frame(3.5); // every one ages out in the same frame
+    ageOut(); // every one ages out in the same frame
     const rec = spent();
     expect(rec.length, 'the record grew past its cap').toBe(16);
     expect(rec.map((r) => r.id), 'kept the wrong spells').toEqual(ids.slice(4));
@@ -231,7 +239,7 @@ describe('the record is bounded, and a read cannot change it', () => {
     mount();
     useGameStore.setState({ gameCamera: camera([0, 30, 0], [0, 0, -1]) });
     cast('fireball');
-    frame(3.5);
+    ageOut();
     const first = spent()[0];
     expect(first.by).toBe('age');
     first.by = 'mob'; first.x = 1e9;
@@ -246,12 +254,12 @@ describe('DEV only', () => {
     useGameStore.setState({ gameCamera: camera([0, 30, 0], [0, 0, -1]) });
     vi.stubEnv('DEV', false);
     cast('fireball');
-    frame(3.5);
+    ageOut();
     expect(live(), 'the spell did not end — nothing below is about the record').toEqual([]);
     expect(spent(), 'wrote a record with DEV off').toEqual([]);
     vi.stubEnv('DEV', true); // PRESENCE, same mount, same instrument
     cast('fireball');
-    frame(3.5);
+    ageOut();
     expect(spent().length).toBe(1);
   });
 

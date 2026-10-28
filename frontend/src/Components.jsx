@@ -50,6 +50,8 @@ import { SnareTetherSystem } from './world/SnareTetherSystem.jsx';
 import { SquadAISystem } from './world/SquadAISystem.jsx';
 import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
+import { swingOrigin, steadyEye, EYE_HEIGHT_M } from './combat/swingOrigin.js';
+import { moveKinematic } from './game/kinematicMove.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { routeExpressVerb } from './input/expressVerbs.js';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
@@ -278,15 +280,14 @@ export const Player = ({ isWorldBuilt }) => {
     // The string's finisher hits for FINISHER_MULT; steps 1-2 and a beast form's swing deal `dealt` as today.
     const swing = heavy ? Math.round(dealt * HEAVY_MULT) : shape.finisher ? Math.round(dealt * shape.damageMult) : dealt;
 
-    if (GameMethods.checkMobsInMeleeCone && GameMethods.damageMob) {
+    if (GameMethods.checkMobsInMeleeCone && GameMethods.damageMob && rigidBodyRef.current) {
       const lookDir = new THREE.Vector3();
       camera.getWorldDirection(lookDir);
       
       lookDir.y = 0;
       lookDir.normalize();
 
-      const playerPos = camera.position.clone();
-      playerPos.y -= 0.8; // shift down to chest/feet level
+      const playerPos = swingOrigin(rigidBodyRef.current.translation(), new THREE.Vector3());
 
       const range = 4.5;
       const angleRad = shape.arcRad; // the full arc: 90 degrees, 140 for the string's finisher
@@ -504,13 +505,13 @@ export const Player = ({ isWorldBuilt }) => {
       // KEVIN-FIX C2: fire shares movement's gates — dead players don't shoot (the old
       // asymmetry presented as "can fire but cannot move" whenever the booleans disagreed).
       if (!store.isAlive) return;
+      if (!rigidBodyRef.current) return;
 
       const lookDir = new THREE.Vector3();
       camera.getWorldDirection(lookDir);
       const aimDir = lookDir.clone();              // true aim (vertical kept) for the aim cone
       lookDir.y = 0; lookDir.normalize();          // the flattened melee-arc dir (damage parity)
-      const playerPos = camera.position.clone();
-      playerPos.y -= 0.8;
+      const playerPos = swingOrigin(rigidBodyRef.current.translation(), new THREE.Vector3()); // the swing's own apex
 
       // meleeHit — the EXACT live-damage test (mobs + boss). The arc is the one this press would swing: the string's
       // finisher sweeps 140 degrees (game/meleeString.js peekStep, no side effect), so a mob only it reaches still
@@ -775,7 +776,7 @@ export const Player = ({ isWorldBuilt }) => {
         // launch along camera-forward from just ahead of the head (the phantom visually snaps to it)
         const hd = new THREE.Vector3();
         camera.getWorldDirection(hd);
-        const ho = camera.position.clone().add(hd.clone().multiplyScalar(1.2));
+        const ho = steadyEye(rigidBodyRef.current.translation(), new THREE.Vector3()).add(hd.clone().multiplyScalar(1.2));
         requestHurl({ x: ho.x, y: ho.y, z: ho.z }, { x: hd.x, y: hd.y, z: hd.z }, stv.heldPhantom && stv.heldPhantom.color);
         if (stv.playSpatialSound) stv.playSpatialSound('hurl', [ho.x, ho.y, ho.z], 1, 25); // AUDIO: launch whoosh
         stv.setVoidhandHeld(false);
@@ -811,12 +812,13 @@ export const Player = ({ isWorldBuilt }) => {
       if (GameMethods.checkMobsInMeleeCone) {
         const sDir = new THREE.Vector3();
         camera.getWorldDirection(sDir); // unflattened — aim where you LOOK (the aimedMobDist precedent)
-        const candidates = GameMethods.checkMobsInMeleeCone(camera.position, sDir, SNARE_RANGE, Math.PI / 8) || [];
+        const sFrom = steadyEye(rigidBodyRef.current.translation(), new THREE.Vector3());
+        const candidates = GameMethods.checkMobsInMeleeCone(sFrom, sDir, SNARE_RANGE, Math.PI / 8) || [];
         // nearest snareable: weakened (<=30% HP), hostile (not passive; villager converter-blocked too)
         let best = null, bestD = Infinity;
         for (const e of candidates) {
           if (!e || e.passive || e.health > 0.3 * e.maxHealth || e.health <= 0) continue;
-          const dx = e.position.x - camera.position.x, dz = e.position.z - camera.position.z;
+          const dx = e.position.x - sFrom.x, dz = e.position.z - sFrom.z;
           const d = dx * dx + dz * dz;
           if (d < bestD) { bestD = d; best = e; }
         }
@@ -947,7 +949,9 @@ export const Player = ({ isWorldBuilt }) => {
     // (Game-Loop-Isolation), through the seam stanceFrame: the player's height is the point the AI worker strikes from,
     // so the stance and the worker agree on which mobs can reach the player, and the away vector is measured from this
     // frame's body, the point the frame's step starts from.
-    const stance = stanceFrame(mobsQuery.entities, currentTrans, camera, now, delta);
+    // nextTranslation, not translation: a move given on a frame that took no world step is where this one starts from
+    // (game/kinematicMove.js).
+    const stance = stanceFrame(mobsQuery.entities, rigidBodyRef.current.nextTranslation(), camera, now, delta);
 
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
     if (spawnPosSet.current && isVoidFall(currentTrans.y)) {
@@ -1137,8 +1141,7 @@ export const Player = ({ isWorldBuilt }) => {
       // cooldown mirror above (piggybacks _lastCdMirror).
       const _aimDir = new THREE.Vector3();
       camera.getWorldDirection(_aimDir);
-      const _aimPos = camera.position.clone();
-      _aimPos.y -= 0.8;
+      const _aimPos = swingOrigin(currentTrans, new THREE.Vector3()); // performVerb's aim apex
       let _aimed = null;
       let _aimedDist = Infinity;
       if (GameMethods.checkMobsInMeleeCone) {
@@ -1350,29 +1353,13 @@ export const Player = ({ isWorldBuilt }) => {
       }
     }
 
-    // Call Rapier WASM Kinematic collision sweeps
+    // The Rapier KCC sweep and the frame's one kinematic write (game/kinematicMove.js: it also sweeps a move given on a
+    // frame that took no world step, which a plain write would lose). growDeltaY (from a just-applied enlarging
+    // form-swap) is folded into THIS write -- never a competing setNextKinematic from a subscribe callback -- so a
+    // larger capsule never spawns intersecting the ground.
     const collider = rigidBodyRef.current.collider(0);
     if (collider && controllerRef.current) {
-      controllerRef.current.computeColliderMovement(
-        collider,
-        displacement,
-        undefined,
-        undefined,
-        filterPredicate
-      );
-
-      // Get corrected movements
-      const corrected = controllerRef.current.computedMovement();
-
-      // Set next kinematic translation coordinates. growDeltaY (from a just-applied enlarging
-      // form-swap) is folded into THIS frame's single write -- never a competing setNextKinematic
-      // from a subscribe callback -- so a larger capsule never spawns intersecting the ground.
-      const currentPos = rigidBodyRef.current.translation();
-      rigidBodyRef.current.setNextKinematicTranslation({
-        x: currentPos.x + corrected.x,
-        y: currentPos.y + corrected.y + growDeltaY,
-        z: currentPos.z + corrected.z
-      });
+      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, growDeltaY, filterPredicate);
     }
 
     // Phase 9: Dynamic FOV Momentum & Camera Bobbing
@@ -1469,7 +1456,7 @@ export const Player = ({ isWorldBuilt }) => {
 
     if (!tc.active) {
       const targetX = translation.x + shakeX + kick.x;
-      const targetY = translation.y + 1.2 + bobOffset + shakeY + kick.y;
+      const targetY = translation.y + EYE_HEIGHT_M + bobOffset + shakeY + kick.y;
       const targetZ = translation.z + shakeZ + kick.z;
 
       // Use 0.85 lerp factor: eliminates camera coupling latency entirely while absorbing micro-stutter

@@ -759,3 +759,21 @@ describe('the F1 bound on the player\'s own step, at every frame interval (round
     expect(away(v), 'the reversal after the burst\'s window was let through unbounded').toBeLessThanOrEqual(STANCE_CAPS.retreat + 1e-9);
   });
 });
+
+describe('the stance\'s game clock: where each frame\'s step starts in game time, for the e2e\'s speed', () => {
+  it('atS is the sum of the steps before this frame and stepS this frame\'s step', () => {
+    const st = getStance();
+    const base = st.atS + st.stepS;
+    stanceStep(st, [], { x: 0, y: 0, z: 0 }, 1e6, 0.1);
+    expect(st.atS).toBeCloseTo(base, 12);
+    expect(st.stepS).toBe(0.1);
+    stanceStep(st, [], { x: 1.4, y: 0, z: 0 }, 1e6 + 100, 0.25);
+    expect(st.atS).toBeCloseTo(base + 0.1, 12);
+    stanceStep(st, [], { x: 4.9, y: 0, z: 0 }, 1e6 + 350, 0.05);
+    expect(st.atS).toBeCloseTo(base + 0.35, 12);
+    expect(st.stepS).toBe(0.05);
+    stanceStep(st, [], { x: 5.6, y: 0, z: 0 }, 1e6 + 400, NaN);
+    expect(st.atS).toBeCloseTo(base + 0.4, 12);
+    expect(st.stepS).toBe(0);
+  });
+});
