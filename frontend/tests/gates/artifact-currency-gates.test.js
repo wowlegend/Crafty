@@ -323,6 +323,11 @@ describe('the as-of stamp — a page states its own age', () => {
 // Mutation-Proof (2026-10-28, via scripts/dev/mutate.sh, each RED observed): the commit searched in the whole page
 // rather than between the markers (`.exec(html.slice(b, e))` -> `.exec(html)`); a lone end marker accepted
 // (`begins !== 1 || ends !== 1` -> `begins !== 1`); the end-before-begin guard dropped. An identity comment edit survived.
+// Round-2 review (2026-10-28, via scripts/dev/mutate.sh from a script file, each RED observed against this file): MG the
+// commit pattern loosened from hex to anything (`([0-9a-f]{4,40})` -> `(\S+)`), which let a stamp naming HEAD or a branch
+// read as a commit, killed by the hex-only case; MG2 the pattern widened to every letter (`[0-9a-f]` -> `[0-9a-z]`), killed
+// by the same case through `main`, `feat/x` and `g123456`. Both survived the whole suite before that case. An identity
+// comment edit survived, run in the same batch.
 describe('readStamp — the commit the page says it is as of', () => {
   const tokens = { text: '--t-x', rule: '--r-x', link: '--l-x', font: '--f-x' };
   const when = new Date(Date.UTC(2026, 9, 28, 6, 5, 59));
@@ -337,6 +342,23 @@ describe('readStamp — the commit the page says it is as of', () => {
   it('reads only BETWEEN the markers: a sha in the page\'s prose is not a stamp', () => {
     const html = `<p>As of commit 1111111, a sentence.</p>${STAMP_BEGIN}<p>a hand edit</p>${STAMP_END}`;
     expect(readStamp(html)).toEqual({ error: 'has an as-of stamp that names no commit' });
+  });
+
+  // The commit is HEX: a stamp that names a ref instead of a commit is refused, because `--sync` would record the ref
+  // text and every later check would print the page as "at" a name that moves with the branch ("HEAD" is always
+  // current). resolveCommit accepts a ref in --sync, so this pattern is the only thing standing between a hand-edited
+  // stamp and a syncedSha that is a branch name. Each token below is one a person would plausibly type.
+  it('names a commit only in hex: HEAD, a branch, a tag, a remote ref or a relative ref is not a commit and is refused', () => {
+    const noCommit = { error: 'has an as-of stamp that names no commit' };
+    const tokens = ['HEAD', 'main', 'feat/x', 'origin/main', 'HEAD~1', 'v1.2.3', 'g123456'];
+    let refused = 0;
+    for (const ref of tokens) {
+      expect(readStamp(`${STAMP_BEGIN}<p>As of commit ${ref}, 2026-10-28 06:05 UTC.</p>${STAMP_END}`), ref).toEqual(noCommit);
+      refused++;
+    }
+    expect(refused, 'denominator: every non-hex token was judged').toBe(tokens.length);
+    // Presence: the same line shape with a hex commit reads, so the refusals above are the token's doing and not the shape's.
+    expect(readStamp(`${STAMP_BEGIN}<p>As of commit 32a55b75, 2026-10-28 06:05 UTC.</p>${STAMP_END}`)).toEqual({ sha: '32a55b75' });
   });
 
   it('refuses anything but exactly one begin marker followed by exactly one end marker', () => {

@@ -359,9 +359,14 @@ fire it on any deliberate `/compact`, or when Kevin says "wrap up". **Do not wai
      (DECISIONS 2026-10-28 item 12). **Refresh the source, run `--stamp <id>` (it writes the page's as-of stamp: the
      commit the page was written against, `--as-of <sha>`, default HEAD, and that commit's time), republish the
      stamped source IN PLACE via the URL in `.artifact-sync.json`, then run `--sync <id>` (it records the publish, and
-     refuses unless the page's stamp names the same commit), then commit the source with the state file.** A fresh
-     publish mints a new URL and strands the bookmark Kevin already has. Never `--sync` a page you have not
-     published: the recorded sha is what every later drift line is measured from.
+     refuses unless the committed source's stamp names the same commit), then commit the source with the state file.**
+     A fresh publish mints a new URL and strands the bookmark Kevin already has. **`--sync` cannot see the published
+     page: it reads the stamp in the committed source, so `--stamp` then `--sync` with no publish between them records
+     a sha the published page does not carry, and the push-time check passes it.** The record is honest only if this
+     order was followed. Never `--sync` a page you have not published: the recorded sha is what every later drift line
+     is measured from. While a publish waits on another account, do not commit a re-stamped page: a stamp ahead of the
+     recorded sha refuses every push until `--sync` runs. Hold the refresh uncommitted, or commit it still carrying the
+     recorded stamp and `--stamp` again just before publishing.
    - `LOOP-PROGRESS.html`, the ungated progress page that had gone **17 commits stale** by 2026-08-07, is retired:
      it had no URL and no reader (archived 2026-10-28 as `docs/archive/LOOP-PROGRESS-2026-10-28.html`).
 3. **REMOTE / GitHub surfaces** *(this is the step that kept getting skipped)*:

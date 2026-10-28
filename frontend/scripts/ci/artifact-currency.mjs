@@ -36,7 +36,7 @@
  *
  * IN CI the fast tier runs this on a push to main (ci/pipeline.sh), from a full-history checkout so the drift can
  * be counted. There it prints main's drift after a merge GitHub made (which runs no local hook), and refuses the
- * two tree defects if a merge brought one in.
+ * three tree defects if a merge brought one in.
  *
  * Mutation-Proof: 2026-10-28 (item 12), each via scripts/dev/mutate.sh against both specs below. Restoring a
  * drift refusal in driftVerdict (`refuse: false` -> `refuse: level === 'stale'`) turned the pure verdict test
@@ -51,8 +51,11 @@
  * and refusing a page with no publish recorded each turned process cases RED; the mismatch branch dropped, the
  * no-publish relaxation dropped, a prefix match for equality and a stampless page accepted each turned the pure
  * stampVerdict cases RED. Specs: tests/gates/artifact-currency-gates.test.js (pure) and
- * tests/scripts/artifact-currency-scope.test.js (this script run as a process, through the real pre-push hook
- * and the real pipeline). The receipts for the earlier main-only scope (2026-10-27/28) are in git history.
+ * tests/scripts/artifact-currency-scope.test.js (this script run as a process). What its process cases do and do not
+ * reach: a tree defect is pushed through the real pre-push hook over a STUB pipeline that runs only this script, and
+ * the real ci/pipeline.sh is run only with node and npm stubbed to exit 0, so which push runs this step is pinned but
+ * a pipeline that swallowed this step's failure is not (no spec runs the real pipeline over a failing step). The
+ * receipts for the earlier main-only scope (2026-10-27/28) are in git history.
  *
  * THE PAGES STATE THEIR OWN AGE (item 12, the reader's half). `--stamp` writes one generated line at the top of each
  * page's visible content, between `<!-- asof:begin -->` and `<!-- asof:end -->`: "As of commit <sha>, <YYYY-MM-DD
@@ -64,11 +67,18 @@
  *
  * TWO STEPS, because publishing happens between them and can wait (a page owned by another claude.ai account waits
  * until that account is active). `--stamp` writes the page and nothing else. `--sync` runs AFTER the publish and
- * records the sha as published; it refuses unless the page's stamp names that same commit, so the state file can
- * only record what the published page itself says. Recording before publishing would make every later drift line
- * understate how old the page the operator reads is. So the ORDER is: refresh the source, `--stamp <id>`, publish
- * the stamped source to the SAME url, `--sync <id>`, commit the source with the state file. The stamp travels with
- * the content, so even a copy left stale says how old it is.
+ * records the sha as published. WHAT IT CAN SEE: the stamp in the COMMITTED SOURCE, never the published page (no
+ * hook can read a claude.ai page). It refuses unless that stamp names the `--as-of` commit, so the record is honest
+ * ONLY IF the documented order was followed. Nothing here sees whether the stamped source was ever published:
+ * `--stamp` then `--sync` with no publish between them records a sha the published page does not carry, and the
+ * push-time check then passes it, because the record and the source's stamp agree by construction. What that check
+ * does catch is narrower: a `syncedSha` edited by hand without its page, or a page edited without its record.
+ * Recording before publishing would make every later drift line understate how old the page the operator reads is.
+ * So the ORDER is: refresh the source, `--stamp <id>`, publish the stamped source to the SAME url, `--sync <id>`,
+ * commit the source with the state file. The stamp travels with the content, so even a copy left stale says how old
+ * it is. While a publish waits, do not commit a re-stamped page: a stamp that is ahead of the record refuses every
+ * push until `--sync` runs (stampVerdict). Hold the refresh uncommitted, or commit it still carrying the recorded
+ * stamp and `--stamp` again just before publishing.
  *
  * Mutation-Proof (the stamp and the two steps, 2026-10-28): listed in tests/gates/artifact-currency-gates.test.js
  * (pure) and tests/scripts/artifact-currency-scope.test.js (the --stamp and --sync process cases).
@@ -393,9 +403,10 @@ function stampPages(all) {
 
 /**
  * `--sync`: AFTER a publish, record the sha as published. It refuses unless each page's stamp names the `--as-of`
- * commit, so the state file records only what the published page itself says; and, like `--stamp`, it records
- * nothing unless every target passes. The recorded sha is the stamp's own text, which is what the push-time check
- * compares it with.
+ * commit, so the state file records what the committed source's stamp says; it cannot read the published page, so
+ * that this is also what was published rests on the operator having published that source first (see the header).
+ * Like `--stamp`, it records nothing unless every target passes. The recorded sha is the stamp's own text, which is
+ * what the push-time check compares it with.
  */
 function syncPublished(state, all) {
   const { targets, asOf } = writeTargets('--sync', all);
@@ -408,8 +419,8 @@ function syncPublished(state, all) {
     if (st.error) { problems.push(`${t.id}: ${t.source} ${st.error}. Run --stamp ${t.id} and publish the stamped source first.`); continue; }
     const named = resolveCommit(st.sha);
     if (!named || named.full !== asOf.full) {
-      problems.push(`${t.id}: the page's stamp names ${st.sha}, not ${asOf.short}. The published page says it is as of ${st.sha}; `
-        + `record that (--as-of ${st.sha}), or re-stamp it at ${asOf.short} and republish first.`);
+      problems.push(`${t.id}: the page's stamp names ${st.sha}, not ${asOf.short}. The source's stamp says it is as of ${st.sha}; `
+        + `if that stamped source is what you published, record it (--as-of ${st.sha}); otherwise re-stamp at ${asOf.short}, publish, then --sync.`);
       continue;
     }
     recorded.push({ id: t.id, sha: st.sha });

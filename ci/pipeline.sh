@@ -133,7 +133,7 @@ step "bundle byte budget" node scripts/ci/bundle-budget.mjs
 # rebased ref cannot reconstruct meaningfully, so they belong to the chokepoint that has the real range.
 # One of them, artifact-currency, ALSO runs in the fast tier on a CI push to main (see the CI-only block
 # below): its range is syncedSha..HEAD, which a full-history runner can count. In either tier its drift is a
-# report, never a refusal (DECISIONS 2026-10-28 item 12); only its two tree-defect checks fail a run.
+# report, never a refusal (DECISIONS 2026-10-28 item 12); only its three tree-defect checks fail a run.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" != "push" ]; then
   printf '\n\033[2m── skipped (%s tier): queue-ledger, artifact-currency, e2e-freshness — they read a COMMIT RANGE (the fast tier runs artifact-currency on a CI push to main, below)\033[0m\n' "$TIER"
@@ -141,7 +141,7 @@ fi
 if [ "$TIER" = "push" ]; then
   SECTION=range
   step "queue-ledger (a finding with no marker)" node scripts/ci/queue-ledger.mjs
-  step "artifact-currency (a published page drifting from HEAD)" node scripts/ci/artifact-currency.mjs
+  step "artifact-currency (page sources, Queued pills, as-of stamps; drift is reported only)" node scripts/ci/artifact-currency.mjs
   step "e2e freshness (the suite CI runs, receipted against this tree)" node scripts/ci/e2e-freshness.mjs
 fi
 
@@ -170,15 +170,15 @@ if [ "$TIER" = "fast" ]; then
   # this step is the one place main's state after such a merge is looked at. It runs on the push event, AFTER main
   # has moved and Vercel has deployed. It PRINTS how far each operator page is behind main and refuses no drift
   # (DECISIONS 2026-10-28 item 12: the cap measured the writer; the pages now state their own commit and time for
-  # the reader). It still reds the gates job if a merge brought in one of the two tree defects (a missing or
-  # unusable page source, a falsified or undeclared Queued pill), which pre-push refuses on every local push. The
-  # drift is counted from the recorded sha, so the gates job checks out full history (fetch-depth: 0); without it,
-  # or for a sha only a squash-merged, deleted lane branch held, the line reads "cannot be measured". It stays on a
-  # push to main only, as it was: a PR's merge ref would print the lane's own commits as drift, and a
-  # workflow_dispatch run on main moves nothing (both take the else branch). It no longer passes E2E_PUSH_REFS,
-  # which the script stopped reading when the drift refusal went.
+  # the reader). It still reds the gates job if a merge brought in one of the three tree defects (a missing or
+  # unusable page source, a falsified or undeclared Queued pill, a missing, duplicated or mismatched as-of stamp),
+  # which pre-push refuses on every local push. The drift is counted from the recorded sha, so the gates job checks
+  # out full history (fetch-depth: 0); without it, or for a sha only a squash-merged, deleted lane branch held, the
+  # line reads "cannot be measured". It stays on a push to main only, as it was: a PR's merge ref would print the
+  # lane's own commits as drift, and a workflow_dispatch run on main moves nothing (both take the else branch). It
+  # no longer passes E2E_PUSH_REFS, which the script stopped reading when the drift refusal went.
   if [ "${GITHUB_EVENT_NAME:-}" = "push" ] && [ "${GITHUB_REF:-}" = "refs/heads/main" ]; then
-    step "artifact-currency (on a CI push to main: reports drift after a merge GitHub made)" node scripts/ci/artifact-currency.mjs
+    step "artifact-currency (on a CI push to main: reports drift, refuses tree defects, after a merge GitHub made)" node scripts/ci/artifact-currency.mjs
   else
     printf '\n\033[2m── skipped (fast tier): artifact-currency — CI runs it on a push to main only (event %s, ref %s)\033[0m\n' "${GITHUB_EVENT_NAME:-unset}" "${GITHUB_REF:-unset}"
   fi

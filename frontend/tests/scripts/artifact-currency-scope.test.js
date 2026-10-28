@@ -64,6 +64,17 @@
  * Y4 --sync writing the state despite a refusal; B1 --stamp and --sync accepted together; S7 each page written as soon
  * as it stamps rather than after every target has (killed only by the two-surface case). An identity comment edit
  * survived. (The earlier one-step --sync receipts are in git history.)
+ * Round-2 review (2026-10-28), via scripts/dev/mutate.sh from a script file, each RED observed against this file, the
+ * batch run sequentially with an identity mutant beside it: MG the stamp's commit pattern loosened from hex to anything
+ * (`([0-9a-f]{4,40})` -> `(\S+)`) turned the check-mode REF case and the --sync REF case RED, and MG2 (`[0-9a-f]` ->
+ * `[0-9a-z]`) turned the --sync REF case RED; ML `--as-of` with no value falling back to HEAD
+ * (`const ref = argAfter('--as-of') || 'HEAD'`) turned the value-less --as-of case RED; MA --sync recording the passing
+ * targets and dropping the failing ones' refusal (`if (problems.length)` -> `if (problems.length && !recorded.length)`)
+ * turned the two-surface --sync case RED. ML and MA both SURVIVE the pure gates spec, which cannot see main()'s argument
+ * handling or its recording, so they are killed here and only here. An identity comment edit survived this file and the
+ * gates spec. NOT pinned, and said so: a real ci/pipeline.sh that swallowed a failing step (its `fail=1` dropped). No spec
+ * runs the real pipeline over a failing step: the hook cases use a stub pipeline, and the fast-tier cases stub node to
+ * exit 0.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, rmSync, realpathSync, readFileSync, existsSync, chmodSync } from 'node:fs';
@@ -286,6 +297,15 @@ describe('the tree defects refuse on EVERY push', () => {
       });
     });
 
+    it('a stamp that names a REF (HEAD), not a commit, exits 1 even when the record holds the same name', () => {
+      // The page and the record AGREE here, as text, and git resolves the name to HEAD, whose drift is zero: only the
+      // stamp reader's hex-only pattern separates this from a page honestly at HEAD (round-2 review).
+      const { status, out } = runStamped(undefined, stamped('HEAD'), stampSurface('HEAD'));
+      expect(out).toMatch(/✘ fixture: docs\/superpowers\/page\.html has an as-of stamp that names no commit/);
+      expect(out).not.toMatch(/stamped as of HEAD/);
+      expect(status, out).toBe(1);
+    });
+
     it('no publish recorded yet: only the presence of one stamp is required — exit 0, and the report says none is recorded', () => {
       const s = stampSurface(undefined);
       delete s.syncedSha;
@@ -486,6 +506,99 @@ describe('--stamp and --sync: two steps, with the publish between them', () => {
     expect(both.out).toMatch(/separate steps/);
     expect(both.page).toBe(STAMP_PAGE);
     expect(both.stateChanged).toBe(false);
+  });
+
+  // ROUND-2 REVIEW (2026-10-28): three properties no case pinned, each shown to survive the whole suite as a mutant.
+
+  it('--sync REFUSES a stamp that names a REF, not a commit (HEAD, main): git would resolve the name, so only the stamp reader stops it', () => {
+    // resolveCommit() takes any ref, so --sync's own comparison with --as-of passes `HEAD` at HEAD and `main` at main's
+    // tip. Were the name recorded, syncedSha would be "HEAD" and every later check would print the page as current,
+    // whatever it had been published at. readStamp's hex-only pattern is the one thing that refuses it.
+    const names = ['HEAD', 'main'];
+    let refused = 0;
+    for (const name of names) {
+      // Presence: the name resolves to the very commit --sync is asked to record, so the refusal below is the stamp's
+      // shape and not an unresolvable name.
+      expect(fixtureGit(root, 'rev-parse', '--verify', `${name}^{commit}`), name).toBe(fixtureGit(root, 'rev-parse', 'HEAD'));
+      prepare({ html: STAMP_PAGE.replace('<div class="wrap">', `<div class="wrap">\n${STAMP_BEGIN}<p data-asof>As of commit ${name}, 2026-10-28 06:05 UTC.</p>${STAMP_END}`) });
+      const r = cli('--sync', 'fixture');
+      expect(r.status, `${name}\n${r.out}`).toBe(1);
+      expect(r.out, name).toMatch(/has an as-of stamp that names no commit\. Run --stamp fixture/);
+      expect(r.out, name).toMatch(/Nothing was recorded/);
+      expect(r.stateChanged, name).toBe(false);
+      expect(r.synced, name).toBe(shas[OVER - EXTRA]);
+      refused++;
+    }
+    expect(refused, 'denominator: every ref name was run').toBe(names.length);
+  });
+
+  it('--as-of with NO value is refused, never read as HEAD: nothing is stamped and nothing is recorded', () => {
+    // A forgotten value must not stamp HEAD: that would claim a page written against an older commit is current.
+    const noValue = /--as-of \(no value\) is not a commit in this history/;
+    let refused = 0;
+    prepare();
+    for (const args of [['--stamp', 'fixture', '--as-of'], ['--stamp', 'fixture', '--as-of', '--x']]) {
+      const r = cli(...args);
+      expect(r.status, `${args.join(' ')}\n${r.out}`).toBe(1);
+      expect(r.out, args.join(' ')).toMatch(noValue);
+      expect(r.out, args.join(' ')).toMatch(/Nothing was written/);
+      expect(r.page, args.join(' ')).toBe(STAMP_PAGE);
+      expect(r.stateChanged, args.join(' ')).toBe(false);
+      refused++;
+    }
+    // --sync takes the same --as-of: on a page stamped at HEAD, a value-less --as-of must not fall back to recording HEAD.
+    const stamped = cli('--stamp', 'fixture').page;
+    expect(stamped, 'presence: the page is stamped at HEAD, which a fallback to HEAD would happily record').toContain(STAMP_BEGIN);
+    const s = cli('--sync', 'fixture', '--as-of');
+    expect(s.status, s.out).toBe(1);
+    expect(s.out).toMatch(noValue);
+    expect(s.stateChanged).toBe(false);
+    expect(s.page).toBe(stamped);
+    refused++;
+    expect(refused, 'denominator: every value-less --as-of spelling was run').toBe(3);
+    // Control: the same --sync WITH its value records, so the refusal above is the missing value's doing.
+    const ok = cli('--sync', 'fixture', '--as-of', fixtureGit(root, 'rev-parse', '--short', 'HEAD'));
+    expect(ok.status, ok.out).toBe(0);
+    expect(ok.synced).toBe(fixtureGit(root, 'rev-parse', '--short', 'HEAD'));
+  });
+
+  it('--sync over TWO surfaces is all-or-nothing: the second page names another commit, so the FIRST is not recorded either', () => {
+    // The --stamp half has a two-surface case; --sync did not (round-2 review). The first page here CAN be recorded; it
+    // must not be because the second cannot, or the state file would say one page was published and stay silent about
+    // the other's refusal.
+    const second = join(root, 'docs/superpowers/page2.html');
+    const head = fixtureGit(root, 'rev-parse', '--short', 'HEAD');
+    const before = shas[OVER - EXTRA];
+    const rows = () => JSON.parse(readFileSync(statePath(), 'utf8')).surfaces.map((r) => r.syncedSha);
+    try {
+      writeFileSync(pagePath(), STAMP_PAGE);
+      writeFileSync(second, STAMP_PAGE);
+      writeFileSync(statePath(), JSON.stringify({ surfaces: [
+        { ...surface(before), stampTokens: tokens },
+        { ...surface(before, 'docs/superpowers/page2.html'), id: 'fixture2', stampTokens: tokens },
+      ] }));
+      const all = cli('--stamp'); // no id: both pages stamped at HEAD
+      expect(all.status, all.out).toBe(0);
+      const old = cli('--stamp', 'fixture2', '--as-of', shas[0]); // the second page now names an older commit
+      expect(old.status, old.out).toBe(0);
+      expect(readFileSync(pagePath(), 'utf8'), 'presence: the first page names HEAD').toContain(`As of commit ${head},`);
+      expect(readFileSync(second, 'utf8'), 'presence: the second names shas[0]').toContain(`As of commit ${shas[0]},`);
+
+      const r = cli('--sync'); // no id: every artifact surface, --as-of HEAD
+      expect(r.status, r.out).toBe(1);
+      expect(r.out).toMatch(new RegExp(`fixture2: the page's stamp names ${shas[0]}, not ${head}`));
+      expect(r.out).toMatch(/Nothing was recorded/);
+      expect(r.stateChanged, 'the first page, which could be recorded, was recorded anyway').toBe(false);
+      expect(rows()).toEqual([before, before]);
+
+      // Control: with the second page re-stamped at HEAD both are recorded, so the refusal above is the second page's doing.
+      expect(cli('--stamp', 'fixture2').status).toBe(0);
+      const ok = cli('--sync');
+      expect(ok.status, ok.out).toBe(0);
+      expect(rows()).toEqual([head, head]);
+    } finally {
+      rmSync(second, { force: true });
+    }
   });
 });
 
