@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { PNG } from 'pngjs';
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
@@ -27,24 +28,43 @@ import { bootDev, startPlayActive } from './_boot.js';
 // which that run outlived, so the clock ran again under the A/B — the planted peak read flash 0.00 and a dark shot
 // 0.30, a natural strike. So here: the world is frozen for longer than the test may run and released explicitly; the
 // storm and the night are HELD rather than re-asked (WeatherSystem flips the storm every 90 s, which a long A/B
-// straddles); each shot is three drawn frames and a screenshot CLIPPED to its box, decoded here; there is no settle
+// straddles); each shot is three drawn frames and one screenshot, its box decoded here; there is no settle
 // loop — the sky eases on real time at a rate this renderer cannot outrun (below), and a pair of dark shots that
 // disagree retakes that view's A/B, at most twice, rather than failing it.
 //
+// AND SIZED BY ITS PIXELS (2026-10-28). That version passed once on CI (run 40615468485, 3.1 min, 134 s from play to
+// its log line) and then timed out at 300 s on all three attempts in the next two runs — 40622556954 on main, the SAME
+// frontend tree as the green run, and 40623104162 with #23 merged — on runners that ran every other spec in the shard
+// 1.5-2x slower. The last attempt of the second got through the whole A/B and printed its line at 264 s. Nothing hung; the cost had 1.6x headroom and the runners took it. Where the cost is
+// (measured locally, SwiftShader, load 25): the main thread blocks 0-1 ms a frame and an evaluate returns in 2 ms, so
+// the time is in the GPU process. A drawn frame took 126-219 ms at 1280x800 and 59-67 ms at 640x400; a screenshot
+// 0.59-2.67 s at 1280x800 and 0.34-0.45 s at 640x400, and one clipped to the box measured no cheaper than the whole
+// frame. So the window is 640x400 (same aspect, so the camera frames the same sky and ground), and each shot takes
+// ONE whole-frame screenshot that serves as both the measurement and the diagnostic image. The extra full-page
+// screenshot each view used to take is gone. The HUD is hidden: its panels keep their CSS size, and in this window the
+// quest panel, the goal card and the XP bar covered about two thirds of the box (dark sky 29.4 for 8.4, the flash +45
+// for +136, in the first run at this size). Hidden, the box sees the 3D frame whatever the HUD's layout.
+//
 // Mutation-Proof: LH, LD, LC and LT observed RED against a surviving identity run — the RECEIPTS block at the end.
+test.use({ viewport: { width: 640, height: 400 } });
 const BOX = [0.3, 0.3, 0.4, 0.35];
-/** Mean luminance of the centre box, from a screenshot clipped to it and decoded in Node: no round trip into a page
- *  that is drawing a frame a second. */
+/** One screenshot of the whole frame, and the mean luminance of its centre box decoded in Node: no round trip into a
+ *  page that is drawing a frame a second. Returns the PNG too: the peak's is the diagnostic image. */
 const boxLuma = async (page) => {
-  const vp = page.viewportSize();
+  const buf = await page.screenshot();
+  const png = PNG.sync.read(buf);
   const [fx, fy, fw, fh] = BOX;
-  const clip = { x: Math.round(fx * vp.width), y: Math.round(fy * vp.height), width: Math.round(fw * vp.width), height: Math.round(fh * vp.height) };
-  const png = PNG.sync.read(await page.screenshot({ clip }));
+  const x0 = Math.round(fx * png.width), y0 = Math.round(fy * png.height), w = Math.round(fw * png.width), h = Math.round(fh * png.height);
   let sum = 0;
-  for (let i = 0; i < png.data.length; i += 4) sum += 0.2126 * png.data[i] + 0.7152 * png.data[i + 1] + 0.0722 * png.data[i + 2];
-  return sum / (png.data.length / 4);
+  for (let y = y0; y < y0 + h; y++) {
+    for (let x = x0; x < x0 + w; x++) {
+      const i = (y * png.width + x) * 4;
+      sum += 0.2126 * png.data[i] + 0.7152 * png.data[i + 1] + 0.0722 * png.data[i + 2];
+    }
+  }
+  return { v: sum / (w * h), buf };
 };
-// TWO VIEWS, ONE BOX EACH, both the frame's centre (clear of the HUD's panels, compass and hotbar). SKY: the camera
+// TWO VIEWS, ONE BOX EACH, both the frame's centre (the HUD hidden, above). SKY: the camera
 // pitched almost straight up, so the box is the dome and nothing the hemisphere lights — the first version's sky band
 // sat across a tree canopy at spawn, so the hemisphere's flash on the leaves passed it with the dome's flash removed.
 // GROUND: pitched 45 degrees down, the box is the up-facing ground at the player's feet, which the hemisphere lights.
@@ -82,6 +102,9 @@ test('a storm strike lights the sky and the ground, lets go, and thunders; under
     // FIXTURE: no clouds and no motes (the sky-studio switch, store captureStudio). The dome's clouds drift on their
     // own clock, and overhead they swung the sky view 10 <-> 56 between consecutive dark shots (2026-10-27).
     s.setCaptureStudio(true);
+    // FIXTURE: no HUD (the capture fixtures' own switch, store hudHidden). Its panels are sized in CSS pixels, so in
+    // this window they cover the centre (below, AND SIZED BY ITS PIXELS); the subject is the 3D frame under them.
+    s.setHudHidden(true);
     window.__voiced = [];
     const play = s.playSpatialSound;
     window.useGameStore.setState({ playSpatialSound: (name, ...rest) => { window.__voiced.push({ name, t: performance.now() }); return play?.(name, ...rest); } });
@@ -103,7 +126,8 @@ test('a storm strike lights the sky and the ground, lets go, and thunders; under
   await frames(SHOT_FRAMES);
   // One shot through one view of the frozen world: the night re-pinned (the day clock still ticks), the camera aimed,
   // a strike planted `agoMs` in the past (null: none), SHOT_FRAMES drawn, the box read, and the driver's state beside it.
-  const shot = async (view, agoMs) => {
+  // `save` names a file for the frame (the peak's, for a reader of the run).
+  const shot = async (view, agoMs, save = null) => {
     await page.evaluate(([[ahead, up], ago]) => {
       window.useGameStore.getState().setTimeOfDay?.(0.0);
       const cam = window.__threeCamera;
@@ -111,7 +135,8 @@ test('a storm strike lights the sky and the ground, lets go, and thunders; under
       if (ago !== null) window.__craftyTest.call('strikeLightning', ago);
     }, [VIEWS[view], agoMs]);
     await frames(SHOT_FRAMES);
-    const v = await boxLuma(page);
+    const { v, buf } = await boxLuma(page);
+    if (save) writeFileSync(test.info().outputPath(save), buf);
     const held = await call('readLightning');
     return { v, flash: held.flash, sinceStrike: held.sinceStrike };
   };
@@ -120,8 +145,7 @@ test('a storm strike lights the sky and the ground, lets go, and thunders; under
     const tries = [];
     for (let i = 0; i < 3; i++) {
       const dark = await shot(view, 5000);
-      const peak = await shot(view, 40);
-      if (i === 0) await page.screenshot({ path: test.info().outputPath(`lightning-peak-${view}.png`) });
+      const peak = await shot(view, 40, i === 0 ? `lightning-peak-${view}.png` : null);
       const dark2 = await shot(view, 5000);
       tries.push({ dark, peak, dark2 });
       if (Math.abs(dark2.v - dark.v) < 2) break;
@@ -174,22 +198,24 @@ test('a storm strike lights the sky and the ground, lets go, and thunders; under
   expect(captured.thunderPending, `a strike under capture scheduled thunder: ${JSON.stringify(captured)}`).toBe(0);
 });
 
-// RECEIPTS (2026-10-28 UTC, local, this spec as committed, via a private-port copy of scripts/dev/mutate-e2e.sh,
-// SwiftShader, COVERAGE=0, load average 75-200 from other sessions; "body" is the time from play to the log line):
-//   identity (a comment edit in render/Atmosphere.jsx) SURVIVED: sky 8.4 -> 144.8 -> 8.4, ground 5.1 -> 62.7 -> 5.1
-//     (dark, peak, dark; flash 0.00/1.60/0.00 in both views, one take each), let-go 8.4, thunder voiced; body 100.9 s.
+// RECEIPTS (2026-10-28 UTC, local, this spec as committed: 640x400, HUD hidden; a private-port copy of
+// scripts/dev/mutate-e2e.sh on 4193, SwiftShader, coverage ON as in CI, E2E_WORLD_TIMEOUT=240000, load 25-170 from other
+// sessions; "body" is the time from play to the log line). Six runs in one batch, identities first and last:
+//   identity (a comment edit in render/Atmosphere.jsx) SURVIVED: sky 8.3 -> 144.5 -> 8.3, ground 5.7 -> 62.2 -> 5.7
+//     (dark, peak, dark; flash 0.00/1.60/0.00 in both views, one take each), let-go 8.3, thunder voiced; body 24.4 s.
+//     The same boxes at 1280x800 with the HUD shown read sky 8.4 -> 144.9 -> 8.4, ground 5.1 -> 62.5 -> 5.1.
 //   LH the hemisphere's flash dropped (Atmosphere hands hemiWithFlash 0) -> RED "the flash did not light the ground"
-//     (ground 5.1 -> 5.1 -> 5.1 while the sky still went 8.4 -> 144.9; body 37.9 s). The same mutant is the shipped
-//     defect's shape: the first version's flash left the ground where this leaves it.
-//   LD the dome's flash dropped -> RED "the flash did not light the sky" (sky 8.4 -> 8.4 -> 8.4 while the ground went
-//     5.1 -> 62.8; body 81.0 s). It SURVIVED the version before the last, whose sky band lay across a tree canopy.
+//     (ground 5.7 -> 5.7 -> 5.7 while the sky still went 8.3 -> 144.5). The same mutant is the shipped defect's shape:
+//     the first version's flash left the ground where this leaves it.
+//   LD the dome's flash dropped -> RED "the flash did not light the sky" (sky 8.3 -> 8.3 -> 8.3 while the ground went
+//     5.7 -> 62.2). It SURVIVED the version before the last, whose sky band lay across a tree canopy.
 //   LT the thunder never voiced (the voice call replaced by a no-op) -> RED "no thunder was voiced after the strike".
 //   LC LightningDriver's capture reset reading the store mirror again -> RED "a strike under capture flashed" (flash
-//     1.6, sinceStrike 40 — held — and a thunder pending). With the control under a 5 s freeze it went RED only on the
-//     pending thunder: the frames outlived the freeze (sinceStrike 410 ms, the flash already decayed), so the control
-//     freezes for FREEZE_MS too. Re-run after that change with a second identity, which SURVIVED (sky 8.4 -> 144.9 ->
-//     8.4, ground 5.1 -> 63.4 -> 5.1; body 64.2 s). The four runs above preceded it; it touches only the control,
-//     which runs after every assertion they went RED on.
-// The previous version's receipts (2026-10-27, the same four RED) were on a spec that could not finish on CI.
+//     1.6, sinceStrike 40 — held — and two thunders pending).
+//   identity 2 (another comment edit there) SURVIVED: sky 8.3 -> 144.5 -> 8.3, ground 5.7 -> 63.6 -> 5.7; body 22.3 s.
+// The 1280x800 version's receipts (the same four RED, two identities SURVIVED) are in 44869aca; it could not finish on
+// a slow CI runner. Cost, the two versions interleaved in one window (coverage on, load 40-220), two runs each: the
+// screenshots took 9 in 53.6 and 12.6 s at 1280x800, 7 in 4.0 and 6.0 s at 640x400; the whole test 5.3 and 1.5 min
+// at 1280x800, 55 and 52 s at 640x400. CI is the measurement that counts; these say only which way it moves.
 // NOT CHECKED HERE: how bright the flash reads on a GPU at night or in a day storm (the ground at the peak read like
 // daylight in this renderer) — that is a look decision for the light-and-colour lane.
