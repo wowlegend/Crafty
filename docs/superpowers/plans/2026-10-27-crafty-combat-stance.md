@@ -747,7 +747,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     It intersects the ray from the container's centre at screen angle `angle` with the inset rectangle
     `[SIDE, w−SIDE] × [TOP, h−bottomInset]`. `rotDeg = angle·180/π`, so the chevron points outward toward the mob.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `a windup behind the player is off screen, at angle ±π`
   - `a windup dead ahead and in the frustum is not listed`
   - `a windup ahead but above the frustum is off screen` (the fake projector returns `y = 1.4`; Review Focus 4)
@@ -759,15 +759,21 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     the four edges.
   - `placement at angle 0 is top-centre, π/2 right-centre, π bottom-centre`
 
-- [ ] **Step 2: Run and verify FAIL.**
-- [ ] **Step 3: Implement** to the Interfaces block. Allocation-free: `out` holds 4 preallocated objects.
-- [ ] **Step 4: Run and verify PASS.**
-- [ ] **Step 5: Mutation receipts, each RED:**
+- [x] **Step 2: Run and verify FAIL.**
+- [x] **Step 3: Implement** to the Interfaces block. Allocation-free: `out` holds 4 preallocated objects.
+- [x] **Step 4: Run and verify PASS.**
+- [x] **Step 5: Mutation receipts, each RED:**
   - C6a: the off-screen predicate negated.
   - C6b: the `|y|` term dropped, which kills the steep-pitch test.
   - C6c: `out` not sorted.
   - C6d: the bottom inset ignored.
-- [ ] **Step 6: Commit** with the title "feat(combat): the windups a player cannot see, and an edge frame clear of the HUD to show them on" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): the windups a player cannot see, and an edge frame clear of the HUD to show them on" and a trailer.
+
+> **Done 2026-10-27 (`6f1b1c51`).** 11 tests, RED first (the module did not exist). Receipts: C6a-C6d as listed plus
+> C6e-C6r (14 plausible-wrong mutants: the range flat or strict, the margin, the stagger, the windup edge, the ramp,
+> the sort reversed, the cap keeping the latest four, the ray from the frame's centre, rotDeg negated, the yaw
+> ignored, screen y flipped, the far boundary, the hostile check), all RED; the identity mutant survived. Deviations:
+> `chevronPlacement` takes an optional preallocated `out`, and each slot carries the `until` it was sorted by.
 
 ---
 
@@ -792,7 +798,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   inner marker track, and `:500` the `pointer-events-none` outer wrapper) gains `data-testid="hud-compass"` (one attribute)
   so the e2e can test for overlap with it.
 
-- [ ] **Step 1: Write the failing jsdom gate** (`windup-chevrons-gates.test.jsx`). Stub `subscribeHudTick` to capture
+- [x] **Step 1: Write the failing jsdom gate** (`windup-chevrons-gates.test.jsx`). Stub `subscribeHudTick` to capture
   the tick, a store with a fake `gameCamera` (a `project` behind the camera returns `z > 1`), and `mobsQuery` with
   one hostile winding up behind. Render once, call the captured tick:
   - `one chevron is on, at about 180 degrees, the other three off`
@@ -801,9 +807,9 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - `the component renders once across 30 ticks` (a render counter: Game-Loop isolation)
   - `under capture mode it renders nothing`
 
-- [ ] **Step 2: Run and verify FAIL** ("Cannot find module '../../src/ui/WindupChevrons.jsx'").
+- [x] **Step 2: Run and verify FAIL** ("Cannot find module '../../src/ui/WindupChevrons.jsx'").
 
-- [ ] **Step 3: Implement `WindupChevrons`.**
+- [x] **Step 3: Implement `WindupChevrons`.**
   - The tick runs on every HUD frame. It reads the camera, the player position (`camera.position`) and `worldNow()`,
     calls `offscreenWindups`, and places each node.
   - It writes `style.transform`, `style.opacity` and the `data-*` attributes only when the quantised values change:
@@ -813,7 +819,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     already bounds the DOM cost.
   - Wire it into `HUD.jsx`.
 
-- [ ] **Step 4: Run the gate (PASS), then write the e2e** (`windup-chevron.spec.js`, desktop 1280×800). Stage as in
+- [x] **Step 4: Run the gate (PASS), then write the e2e** (`windup-chevron.spec.js`, desktop 1280×800). Stage as in
   Task 5. Freeze the world (`triggerHitstop(60000)`), wait 3 s real time, so `performance.now() − worldNow() > 2000`,
   which is what makes C4 below killable.
   1. Spawn a zombie 2 m **behind** (`camera − forward·2`), wait 3 frames, `plantWindup(id, 2000)`. Within 10 frames,
@@ -845,7 +851,18 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   | C6 | `src/game/windupChevrons.js` | `TOP_INSET_PX = 40` (the chevron climbs into the compass) | case 4 |
   | C0 | `src/ui/WindupChevrons.jsx` | a comment edit (`--identity`) | must SURVIVE |
 
-- [ ] **Step 6: Commit** with the title "feat(hud): a chevron at the screen edge for a windup you cannot see — on the HUD ticker, refs only" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(hud): a chevron at the screen edge for a windup you cannot see — on the HUD ticker, refs only" and a trailer.
+
+> **Done 2026-10-27, with its e2e OWED (`dcd31b3b`, then `d0f67eed`).** The jsdom gate (8 tests) drives the REAL
+> HUD ticker (claimHudTick + emitHudTick) instead of a stubbed subscribeHudTick, and declares the device class per
+> test, because jsdom answers isTouchDevice() as touch. Receipts: J1-J13 RED (12 mutants), the identity mutant survived,
+> and J1b (the transform's write-on-change guard dropped) survived as an EQUIVALENT mutant: a same-value style write
+> makes no mutation record. The compass frame is HUD.jsx:528 and the mount :673 (the plan's :501/:645 had moved). C5's
+> subject is `game/windupChevrons.js`, where the windupUntil test lives. The e2e runs case 2 (no windup) BEFORE case 1
+> on the same zombie: a windup cannot be un-planted in a frozen world without leaving an expired one the worker would
+> strike with when the freeze ends. **Step 5 is OWED**: the machine's load average was 77-161 on 14 cores, so the e2e
+> and its C0-C6 batch were not run. Its header says `Mutation-Proof: OWED`. Task 12 then moved the layer behind a
+> `React.lazy` boundary for the byte share (see Task 12 Step 3).
 
 ---
 
@@ -902,7 +919,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     against it).
   - `_resetStringForTest()`
 
-- [ ] **Step 1: Write the failing tests** (each calls `_resetStringForTest()` first):
+- [x] **Step 1: Write the failing tests** (each calls `_resetStringForTest()` first):
   - `three presses 350 ms apart are steps 1, 2, 3, and the fourth starts again at 1`
   - `a press after STRING_WINDOW_MS restarts at step 1` (presses at 0, 700 give steps 1, 1)
   - `a press inside the cooldown with more than BUFFER_MS left is dropped` (0, 50 gives drop)
@@ -923,10 +940,10 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - (The first draft's `a heavy's minimum hold outlasts the string window` test is deleted. It pinned 700 > 650, an
     inequality that does not carry the claim; `endString(now)` on the heavy's release carries it now.)
 
-- [ ] **Step 2: Run and verify FAIL.**
-- [ ] **Step 3: Implement** to the Interfaces block.
-- [ ] **Step 4: Run and verify PASS.**
-- [ ] **Step 5: Mutation receipts, each RED:**
+- [x] **Step 2: Run and verify FAIL.**
+- [x] **Step 3: Implement** to the Interfaces block.
+- [x] **Step 4: Run and verify PASS.**
+- [x] **Step 5: Mutation receipts, each RED:**
   - S8a: the window check dropped (every third swing finishes).
   - S8b: `cancelIntoDodge` resets the step.
   - S8c: `BUFFER_MS` → 0.
@@ -934,7 +951,14 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - S8e: `cancelIntoDodge`'s open-window guard dropped. RED on `after the window has lapsed revives nothing`.
   - S8f: `endString(now)` ignores `now` (no cooldown after a heavy). RED on `cannot finish on the heavy's heels`.
   - S8g: `peekStep` records the press (a side effect). RED on `changes nothing`.
-- [ ] **Step 6: Commit** with the title "feat(combat): a three-step light string — window, buffer, finisher, cancel into dodge (pure)" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): a three-step light string — window, buffer, finisher, cancel into dodge (pure)" and a trailer.
+
+> **Done 2026-10-27 (`34bc39f7`).** 15 tests (the plan's 14 plus Task 10's `slashSweep alternates`), RED first. S8a-S8g
+> RED, plus S8h-S8r and S8u (12 more plausible-wrong mutants), all RED; the identity mutant survived. S8s/S8t (a
+> buffered press's step read at the press, not at readyAt) SURVIVED and are EQUIVALENT in every reachable state: a
+> fire sets the window 650 ms past a cooldown of at most 500 ms, and only endString pushes readyAt past the window,
+> which zeroes `last`. pressSwing returns shared frozen results; readString returns the live state object (the DEV
+> hook copies it).
 
 ---
 
@@ -976,7 +1000,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     player. The riposte still stacks inside `damageMob` (`CombatSystem.jsx:40`), so a finisher on a perfectly dodged
     mob deals 2.25×. That is intended: reading a telegraph is the best answer.
 
-- [ ] **Step 1: Write the failing e2e** (`melee-string.spec.js`, desktop). Stage as in `heavy-melee.spec.js`: a frozen
+- [x] **Step 1: Write the failing e2e** (`melee-string.spec.js`, desktop). Stage as in `heavy-melee.spec.js`: a frozen
   world (`triggerHitstop(60000)`), `Math.random` pinned high (no crit).
   - A **moss brute** 2.2 m dead ahead.
   - A **zombie** 2.0 m at **60° off-axis**: outside the 90° cone, inside the 140° finisher.
@@ -1023,7 +1047,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
 
 - [ ] **Step 2: Run it to verify it fails.** Expected: FAIL at case 1, with `d3 === d1` (no finisher yet).
 
-- [ ] **Step 3: Wire it** per the Files and Interfaces blocks. In `useFrame`, right after the dodge block
+- [x] **Step 3: Wire it** per the Files and Interfaces blocks. In `useFrame`, right after the dodge block
   (`:1010`), add `const bs = takeBufferedSwing(performance.now()); if (bs) triggerMeleeAttack({ bufferedStep: bs });`.
   Task 5's `walkMult` at `:881` becomes `heavyWalkMult(now) * stringWalkMult(now)`, with `now` read once; it feeds
   both `speed` and `stanceVelocity`'s `walkMult`, so the swing slow survives the clamp. The swing slow applies out of
@@ -1048,7 +1072,17 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   Also re-run `tests/e2e/heavy-melee.spec.js` and `tests/e2e/perfect-dodge.spec.js` unmutated on this branch. Both
   must stay green: the light swing's path changed under them.
 
-- [ ] **Step 6: Commit** with the title "feat(combat): the light string in play — the third hit sweeps 140 degrees for 1.5x with a heavy-tier hitstop; a dodge keeps it alive" and a trailer.
+- [x] **Step 6: Commit** with the title "feat(combat): the light string in play — the third hit sweeps 140 degrees for 1.5x with a heavy-tier hitstop; a dodge keeps it alive" and a trailer.
+
+> **Done 2026-10-27, with its e2e OWED (`e05e1a30`).** Deviations: `releaseHeavySwing` no longer throws the heavy
+> itself (since the touch-hold lane it is `input/primaryInput.js` releasePrimary -> throwHeavy -> triggerMeleeAttack
+> `{ heavy: true }`), so `endString(now)` sits in triggerMeleeAttack's heavy branch, which every thrown heavy passes;
+> S6 is "that line removed". Case 4 stamps the dodge start from the 'swing' sound the dodge site plays, because S4
+> would never stamp `cancelAt`. Case 5 judges by `lastSwingStep`, not damage, because the heavy's stagger holds in a
+> frozen world and the riposte multiplies the next hit. **Steps 2, 4 (the e2e half) and 5 are OWED**: no e2e ran (load
+> above 115). That covers the red-first run, the green run, S0-S7, and the unmutated heavy-melee and perfect-dodge
+> re-runs. Unit: the 25 gate files that read Components.jsx (213 tests) and the full suite are green. Read from the code,
+> not observed: touch-hold's and heavy-melee's measured presses stay at steps 1-2.
 
 ---
 
@@ -1058,12 +1092,12 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
 
 **Interfaces:** Consumes `readString()` and `slashSweep(step)` (Task 8), read transiently inside the existing `useFrame`.
 
-- [ ] **Step 1: Write the failing test.** In `meleeString.test.js`: `slashSweep alternates dir for steps 1 and 2 and
+- [x] **Step 1: Write the failing test.** In `meleeString.test.js`: `slashSweep alternates dir for steps 1 and 2 and
   widens the finisher` (already in Task 8). The hand's wiring has no unit seam. Its proof is a by-eye frame-step in a
   dev session, stated in the commit, and it is NOT claimed as e2e-proven. A swing never appears in the 31 capture
   frames (capture runs no input).
 
-- [ ] **Step 2: Implement.**
+- [x] **Step 2: Implement.**
   - Read `const s = readString()` once. The swing in progress is a STRING swing only when
     `performance.now() − s.lastSwingAt ≤ 1000 × slashSweep(s.lastSwingStep).durationS`; then
     `sw = slashSweep(s.lastSwingStep)`. Otherwise (a heavy, a beast-form swing, or no recent light swing)
@@ -1081,7 +1115,11 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
 - [ ] **Step 3: Verify.** Run `npm run test:unit && npm run lint && npm run build`. Then, in a dev session, three
   swings must show right-to-left, left-to-right, then a wide sweep. Record "by eye, dev, <date>" in the commit body.
 
-- [ ] **Step 4: Commit** with the title "feat(fpv): the string reads — the arc alternates and the finisher sweeps wide".
+- [x] **Step 4: Commit** with the title "feat(fpv): the string reads — the arc alternates and the finisher sweeps wide".
+
+> **Done 2026-10-27 (`49513058`), NOT checked by eye.** The yaw term and the slash crescent are mirrored by `sw.dir`
+> too, and the crescent runs over `sw.durationS`. **Step 3's by-eye frame-step is OWED** to the command session or
+> Kevin: this lane has no browser for it, and the load ruled out a dev session. The unit suite, lint and build are green.
 
 ---
 
@@ -1098,7 +1136,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   - The CDP touch helpers and `aimAt` hit-test of `tests/e2e/touch-hold.spec.js` (copy the two helpers; do not
     import a spec).
 
-- [ ] **Step 1: Write the spec** with `devices['iPad Pro 11 landscape']`, `deviceScaleFactor: 1` and chromium, as the
+- [x] **Step 1: Write the spec** with `devices['iPad Pro 11 landscape']`, `deviceScaleFactor: 1` and chromium, as the
   touch-hold spec does. Its header says this is not WebKit; real Safari is Kevin's device.
   1. **Joystick backpedal is caught.** Same staging as Task 5. CDP `touchStart` at (15% w, 70% h), then `touchMove`
      60 px down (moveB), held. A zombie 5 m ahead: `readStance().w === 1`, the `readMoveTarget()` away component is
@@ -1140,7 +1178,13 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   | U4 | `src/Components.jsx` | `stanceVelocity` called only when `input.moveB` | case 1b |
   | U0 | `src/game/windupChevrons.js` | a comment edit (`--identity`) | must SURVIVE |
 
-- [ ] **Step 4: Commit** with the title "test(e2e): close-quarters combat on an emulated iPad — joystick backpedal, three-tap finisher, chevrons clear of every control" and a trailer.
+- [x] **Step 4: Commit** with the title "test(e2e): close-quarters combat on an emulated iPad — joystick backpedal, three-tap finisher, chevrons clear of every control" and a trailer.
+
+> **Done 2026-10-27, run OWED (`c2c93ec1`).** The WebKit look is its own file, `tests/e2e/combat-touch-webkit.spec.js`
+> (@local-only), because Playwright refuses `browserName` inside a describe group. U2 is rewritten: the plan's
+> handleMouseDown no longer exists (mouse and touch share pressPrimary), so a desktop-only string is the light-path
+> guard gaining `&& !navigator.maxTouchPoints`. On touch only the target is judged, not the chase. **Steps 2 and 3 are
+> OWED**: no run, no U0-U4 batch, no WebKit frames (load above 115). Both headers say `Mutation-Proof: OWED`.
 
 ---
 
@@ -1151,10 +1195,10 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   Expected: all 14 pre-push gates green. `killability-ledger` must not rise, so every new check file carries its
   receipt. `gate-shape` must not rise, since no source-grep was added.
 
-- [ ] **Step 2: The suite and lint.** Run `npm run test:unit && npm run lint`. Expected: green, with the total equal
+- [x] **Step 2: The suite and lint.** Run `npm run test:unit && npm run lint`. Expected: green, with the total equal
   to the pre-milestone total plus the new tests (state both numbers in the commit).
 
-- [ ] **Step 3: Bytes.** Run `npm run build && node scripts/ci/bundle-budget.mjs && ls -l build/assets/index-*.js`.
+- [x] **Step 3: Bytes.** Run `npm run build && node scripts/ci/bundle-budget.mjs && ls -l build/assets/index-*.js`.
   Expected: `bundle-budget` green, and the index delta vs `BASELINE_INDEX_BYTES` (Task 0) ≤ **+9,000 B**, this
   lane's share (Global Constraints). The estimate is +6 to +9 KB raw: three pure modules of about 1.5-2.5 KB minified
   each, one DOM component of about 2 KB, and the call sites. Record the measured delta in the CHANGELOG, together
@@ -1210,7 +1254,7 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
     4. "a mob that cannot reach the player releases the stance within `STALL_MS + CALM_MS`".
   - Fix rounds are new commits.
 
-- [ ] **Step 7: Records.**
+- [x] **Step 7: Records.**
   - **DECISIONS.md:** a `[LOOP]` entry for the stance constants and the decisions an encounter or boss tuner will
     balance against:
     - retreat 2.0 / strafe 6.5 / advance 6.5, derived; strafe and advance scale with the form's `moveMult`, and all
@@ -1238,6 +1282,28 @@ it('blends linearly in w', () => expect(stanceVelocity(14, 0, 1, 0, 0.5).x).toBe
   Task 7 or Task 11 is held (Task 0): the stance without its chevrons, or without any touch proof, is a broken
   intermediate. REFUSE while the Step 5 `OWED` grep prints anything. Report the PR number so Kevin can run
   `/code-review ultra <PR#>`.
+
+> **Task 12 as run, 2026-10-28, by the authoring lane** (which may not push, open a PR or edit the main checkout):
+> - **Step 2 DONE.** 4014 unit tests before the milestone, 4084 after (+70: combatStance 31, meleeString 15,
+>   windupChevrons 11, windup-chevrons-gates 8, stance-pursuit-gates 3, mobMovement 1, mobSenses +1), all green; lint
+>   clean; knip clean.
+> - **Step 3 DONE, with the plan's remedy.** The first build of the finished lane measured index 728,452 B, **+9,024 B**:
+>   24 B over the share. So `WindupChevrons` moved behind a `React.lazy` boundary (`d0f67eed`). After that the index is
+>   **725,739 B, +6,311 B**, with `WindupChevrons-*.js` at 3,174 B; bundle-budget PASSED. Headroom on this branch is
+>   34,261 B. The absolute size on a build rebased on current `main` was NOT measured: this lane may not rebase, and
+>   main was 33 commits ahead.
+> - **Step 4 STATED, NOT SPOT-CHECKED.** Added GPU cost is zero by construction: no light, shader, draw call or render
+>   target; the chevrons are four DOM nodes writing transform and opacity. The 30 s frame-time p50 A/B, the night-travel
+>   fraction and the combat-zoom verdict were **not measured**. They need a dev session the machine's load ruled out.
+> - **Step 5 NOT RUN** (no push from this lane). `git grep -n "Mutation-Proof: OWED" HEAD -- frontend/tests` prints the
+>   four new specs, so Step 8 is blocked.
+> - **Step 6 NOT RUN.** A review from the authoring context would be a self-review. The fresh `/code-review xhigh` on
+>   `main..feat/combat-stance` and the adversarial reviewer on the controller seam (Tasks 5 and 9) are the command
+>   session's.
+> - **Step 7 DONE**: `DECISIONS.md`, `memory/CHANGELOG.md`, the ACTIVE_PLAN row T18 and a `KEVIN-REVIEW-BATCH.md` FYI.
+>   The dragon-lane note goes to the command session in the lane's report.
+> - **Step 8 REFUSED, as the plan requires**: the OWED grep prints lines, CI has not run, and the reviews have not run.
+>   Tasks 7 and 11 are not held, since both preconditions were met in Task 0.
 
 ---
 
