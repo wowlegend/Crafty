@@ -14,8 +14,8 @@ import { layerMeanLinear } from '../../src/world/farField.js';
  *     average, as the same face up close and as the far field.
  * These gates pin the second.
  *
- * BLIND SPOT: nothing here renders. Whether three uploads every level is read from the installed r172
- * (WebGLTextures.js, the CompressedArrayTexture branch with RGBAFormat) and seen in the eye-level lookbook frames.
+ * BLIND SPOT: nothing here renders. Whether three uploads every level is checked on the GPU of the production build
+ * by scripts/ci/prod-smoke.mjs (mipVerdict), in CI only.
  */
 const tex = createProceduralVoxelTextures();
 const SIZE = tex.image.width;
