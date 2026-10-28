@@ -49,6 +49,7 @@ Click into the game to capture the mouse, then move the mouse to look. Esc relea
 |  | <kbd>Q</kbd> | Claim completed quests |
 |  | <kbd>H</kbd> | Toggle controls |
 |  | <kbd>Tab</kbd> | Achievements |
+|  | <kbd>F3</kbd> | Show stats |
 |  | <kbd>Esc</kbd> | Settings / pause |
 <!-- END CONTROLS -->
 
