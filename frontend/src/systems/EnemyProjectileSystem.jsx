@@ -4,6 +4,9 @@ import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { stepEnemyProjectiles } from '../game/enemyProjectiles.js';
 import { worldDelta } from '../game/worldClock.js';
+import { playerSensePoint } from './playerSensePoint.js';
+
+const _hitPoint = { x: 0, y: 0, z: 0 };
 
 // EnemyProjectileSystem -- ranged-mob projectiles. Extracted VERBATIM from SimplifiedNPCSystem.jsx
 // (v6 de-monolith A1.2); behavior unchanged. Self-contained: only top-level imports, no shared
@@ -37,8 +40,9 @@ export const EnemyProjectileSystem = () => {
     const delta = worldDelta(frameDelta); // an enemy bolt cannot land on you while the world is frozen (R2.6)
     const list = liveRef.current;
     if (list.length === 0) return;
-    if (!camera) return; // early-frame guard (mirrors sibling systems) — camera.position below would throw
-    const { survivors, hits } = stepEnemyProjectiles(list, delta, camera.position);
+    if (!camera) return; // early-frame guard (mirrors sibling systems) — the camera stands in before the body exists
+    // A bolt is aimed at the point the mobs sense the player from, and lands there (systems/playerSensePoint.js).
+    const { survivors, hits } = stepEnemyProjectiles(list, delta, playerSensePoint(camera, _hitPoint));
     if (hits > 0) {
       const damagePlayer = useGameStore.getState().damagePlayer;
       if (damagePlayer) for (let i = 0; i < hits; i++) damagePlayer(15, 'projectile');

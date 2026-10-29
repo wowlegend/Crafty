@@ -12,6 +12,7 @@
  * component). All numbers are Kevin-tunable — the exact shape + the aura dial are judged IN-WORLD at M7d.
  * The LEAD form (comet/fire) is shaped with the most care; the other 3 are first-pass, refined at M8.
  */
+import { EYE_HEIGHT_M } from '../combat/swingOrigin.js';
 
 // element -> { DARK ink body (the crisp silhouette — never blooms), bright element glow+rim, near-white
 // core tint }. The Hades+Genshin fusion: the body is DARK (ink), the ELEMENT color lives in the rim /
@@ -114,12 +115,59 @@ export function beastAvatarParts(element) {
 export const BEAST_AVATAR_ELEMENTS = Object.keys(FORM_PARTS);
 
 /**
- * In first person the eye rides the body's centre + EYE_HEIGHT_M (combat/swingOrigin.js), which is inside the hawk's
- * and the golem's heads and a hand's width above the golem's torso and the dragon's neck. A part of the player's own
- * beast nearer the eye than this fills the view or is cut by the camera's 0.1 m near plane, so BeastAvatar draws it
- * into the shadow map only; in the transform-cam's reveal the camera stands metres off and every part draws.
+ * In first person the eye rides the body's centre + EYE_HEIGHT_M (combat/swingOrigin.js), inside the hawk's and the
+ * golem's heads, with the dragon's wings a third of a metre off. The boxes are shaped to read from the reveal's 4.5 m;
+ * from the eye they are slabs and fragments (the dragon's wings fill the upper corners, the hawk's beak floats under the
+ * crosshair) and the halo washes the lower view, so in first person the avatar draws only into the shadow map and its
+ * light stays on (DECISIONS 2026-10-29 item 80). Away from the eye, in the reveal, a part nearer the camera than this
+ * is not drawn either: it would fill the view or be cut by the camera's 0.1 m near plane.
  */
 export const SELF_CLEARANCE_M = 0.25;
+
+/** The rigid body's origin is the capsule's centre; the avatar's feet sit this far under it. */
+export const FEET_OFFSET = -0.9;
+
+/** The element glow's strength: it scales the rim, the core, the halo and the core's light, never the ink body. */
+export const BEAST_GLOW = 1.7;
+
+/** The core's breathing pulse peaks at this scale (BeastAvatar.jsx), so its clearance is judged at it. */
+export const CORE_PULSE_MAX = 1.08;
+
+/** The first-person eye over the avatar's feet, in metres: on its axis, EYE_HEIGHT_M over the body's centre. */
+export const EYE_LOCAL_Y = EYE_HEIGHT_M - FEET_OFFSET;
+
+/** When the follow did not place the camera (render/followView.js), it counts as first person while it is within this
+ *  of the steady eye, in world metres: the roar's reveal (4.7 m off at its hold) leaves it within its first fifth and
+ *  comes back inside it in its last, and an eye pose stands at it. The follow itself is first person however far its
+ *  shake carries the camera. */
+export const FIRST_PERSON_M = 1.0;
+
+/** The glow spheres each form draws at its core, at their largest drawn radius: the core with its pulse, the white
+ *  hot spot inside it, and the faint back halo. */
+export function beastAvatarSpheres(parts) {
+  const r = parts.core.radius;
+  return {
+    core: { pos: parts.core.pos, radius: r * 0.6 * CORE_PULSE_MAX },
+    hotspot: { pos: parts.core.pos, radius: r * 0.32 * CORE_PULSE_MAX },
+    halo: { pos: parts.core.pos, radius: haloRadius(parts) },
+  };
+}
+
+/** The back halo's radius (BeastAvatar.jsx draws it at this). */
+export function haloRadius(parts) {
+  return parts.core.radius * 1.7 * parts.aura * (0.9 + 0.1 * BEAST_GLOW);
+}
+
+/** The distance from point (x, y, z) to a sphere { pos, radius }'s solid, 0 inside it. */
+export function sphereDistance(sphere, x, y, z) {
+  return Math.max(Math.hypot(x - sphere.pos[0], y - sphere.pos[1], z - sphere.pos[2]) - sphere.radius, 0);
+}
+
+/** Whether a camera (dx, dy, dz) world metres from the steady eye stands at the player's own eye: within FIRST_PERSON_M.
+ *  World metres, not the avatar's: on the form's first frames its entrance draws it at half scale. */
+export function nearEye(dx, dy, dz) {
+  return Math.hypot(dx, dy, dz) <= FIRST_PERSON_M;
+}
 
 /** The distance from point (x, y, z) to a box { pos, size, rot (Euler XYZ) }, 0 inside it. Same local space. */
 export function boxDistance(box, x, y, z) {

@@ -10,6 +10,9 @@ import {
   applyLookbookPose,
   subscribeLookbook,
   lookbookPinned,
+  lookbookHidesHands,
+  lookbookHandPose,
+  lookbookHandPoseKind,
   yawForHeading,
   headingOf,
   hostileReach,
@@ -101,7 +104,7 @@ describe('the gate: ?lookbook=1 exactly, and nothing installed without it', () =
     expect(closed.__craftyLookbook).toBeUndefined();
     const open = fakeWin('?lookbook=1');
     expect(installLookbookSeam(open, deps())).toBe(true);
-    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
+    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'form', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
     // Installing changes nothing by itself: no pose is set until a script asks.
     expect(lookbookPose()).toBeNull();
     expect(lookbookPinned()).toBe(false);
@@ -133,16 +136,30 @@ describe('the pose', () => {
     expect(() => w.__craftyLookbook.pose({ position: [1, 2, 3], lookAt: [0, 0] })).toThrow(/lookAt/);
     expect(lookbookPose(), 'a refused pose must leave nothing set').toBeNull();
     w.__craftyLookbook.pose(HEARTH);
-    expect(lookbookPose()).toEqual({ position: [13, 81, 13], lookAt: [0, 51, 0], fov: 75 });
+    expect(lookbookPose()).toEqual({ position: [13, 81, 13], lookAt: [0, 51, 0], fov: 75, hands: false });
     w.__craftyLookbook.clear();
     expect(lookbookPose()).toBeNull();
+  });
+
+  it('a hero pose hides the hands and an eye pose (hands: true) keeps them; only `true` keeps them', () => {
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, deps());
+    const seen = [];
+    const off = subscribeLookbook(() => seen.push(lookbookHidesHands()));
+    expect(lookbookHidesHands(), 'with no pose the hands show').toBe(false);
+    w.__craftyLookbook.pose(HEARTH);
+    w.__craftyLookbook.pose({ ...HEARTH, hands: true });
+    w.__craftyLookbook.pose({ ...HEARTH, hands: 'yes' });
+    w.__craftyLookbook.clear();
+    off();
+    expect(seen, 'hero, eye, a truthy non-true flag, clear').toEqual([true, false, true, false]);
   });
 
   it('pose() and info() hand back COPIES: writing NaN into what they return cannot reach the live pose (F3)', () => {
     const w = fakeWin('?lookbook=1');
     installLookbookSeam(w, deps());
     // fov 50, not the default 75: a copy that rebuilt the fov from the default would pass at 75.
-    const expected = { position: [13, 81, 13], lookAt: [0, 51, 0], fov: 50 };
+    const expected = { position: [13, 81, 13], lookAt: [0, 51, 0], fov: 50, hands: false };
     // A copy that is empty or null would pass the mutation checks below, so first: what comes back IS the pose.
     const returned = w.__craftyLookbook.pose({ ...HEARTH, fov: 50 });
     expect(JSON.parse(JSON.stringify(returned)), 'pose() must return the pose it set').toEqual(expected);
@@ -174,6 +191,50 @@ describe('the pose', () => {
     off();
     w.__craftyLookbook.pose(HEARTH);
     expect(seen.length, 'an unsubscribed listener still heard the pose').toBe(2);
+  });
+});
+
+describe('the self stills: a beast form under a pose, a hand pose held in place of the clock', () => {
+  afterEach(() => { useGameStore.setState({ beastFormActive: false, activeBeastForm: null, isAlive: true }); });
+
+  it('form() refuses without a pose, enters and leaves through the real store under one, and names a refusal', () => {
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, deps());
+    useGameStore.setState({ beastFormActive: false, activeBeastForm: null, isAlive: true });
+    expect(() => w.__craftyLookbook.form('arcane'), 'an unposed form, which the beast state machine ends next tick').toThrow(/pose/);
+    expect(useGameStore.getState().beastFormActive, 'a refused form() still entered the form').toBe(false);
+    w.__craftyLookbook.pose({ ...HEARTH, hands: true });
+    expect(w.__craftyLookbook.form('arcane')).toBe('arcane');
+    expect(useGameStore.getState().beastFormActive).toBe(true);
+    expect(w.__craftyLookbook.info().form).toBe('arcane');
+    expect(w.__craftyLookbook.form('arcane'), 'asking for the form already held is not a refusal').toBe('arcane');
+    expect(() => w.__craftyLookbook.form('fire'), 'switching forms without leaving: the store refuses it').toThrow(/refused/);
+    expect(w.__craftyLookbook.form(null)).toBeNull();
+    expect(useGameStore.getState().beastFormActive).toBe(false);
+    expect(() => w.__craftyLookbook.form('griffin')).toThrow(/refused/);
+  });
+
+  it('handPose() validates each kind, notifies the subscribers, and null hands the hands back to the clock', () => {
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, deps());
+    const kinds = [];
+    const off = subscribeLookbook(() => kinds.push(lookbookHandPoseKind()));
+    expect(lookbookHandPose(), 'installing holds no pose').toBeNull();
+    const bad = [
+      { kind: 'kick', t: 0.5 }, { kind: 'swing', step: 4, t: 0.5 }, { kind: 'swing', step: 1, t: 1.2 },
+      { kind: 'swing', step: 1, t: NaN }, { kind: 'cast', t: -0.1 }, { kind: 'charge', level: 2 }, undefined,
+    ];
+    for (const p of bad) expect(() => w.__craftyLookbook.handPose(p), JSON.stringify(p)).toThrow();
+    expect(lookbookHandPose(), 'a refused pose must leave nothing held').toBeNull();
+    expect(w.__craftyLookbook.handPose({ kind: 'swing', step: 2, t: 0.5, extra: 1 })).toEqual({ kind: 'swing', step: 2, t: 0.5 });
+    expect(lookbookHandPose()).toEqual({ kind: 'swing', step: 2, t: 0.5 });
+    w.__craftyLookbook.handPose({ kind: 'cast', t: 0.25 });
+    w.__craftyLookbook.handPose({ kind: 'charge', level: 1 });
+    expect(w.__craftyLookbook.info().handPose).toEqual({ kind: 'charge', level: 1 });
+    w.__craftyLookbook.handPose(null);
+    off();
+    expect(lookbookHandPose()).toBeNull();
+    expect(kinds, 'each held pose and the release must reach the hands').toEqual(['swing', 'cast', 'charge', null]);
   });
 });
 

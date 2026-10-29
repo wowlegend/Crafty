@@ -10,6 +10,7 @@ import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elem
 import { makeTransformState, decideTransform } from './game/beastTransform.js';
 import { canAfford, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST } from './game/ember.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
+import { markFollowView } from './render/followView.js';
 import { BeastAvatar } from './render/BeastAvatar';
 import { StableMagicHands } from './render/playerRender';
 import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
@@ -59,7 +60,7 @@ import { routeExpressVerb } from './input/expressVerbs.js';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
-import { lookbookPose, applyLookbookPose, subscribeLookbook, lookbookPinned } from './render/lookbookSeam.js';
+import { lookbookPose, applyLookbookPose, subscribeLookbook, lookbookHidesHands } from './render/lookbookSeam.js';
 import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive, resetInput } from './input/inputState';
 import { installBlurReset } from './input/blurReset';
@@ -643,6 +644,9 @@ export const Player = ({ isWorldBuilt }) => {
     // R2.6: the player controller runs on REAL time — the camera and input never freeze — and applies the
     // hitstop to its own motion below (hitstopScale), so the blow lands without the view seizing up.
     const delta = realDelta(frameDelta);
+    // Cleared every frame, set only where the follow places the camera below (render/followView.js): every other branch
+    // that places it, and every early return, leaves the view marked as not the follow.
+    markFollowView(false);
     if (!rigidBodyRef.current) return;
 
     // Dev capture mode: pin the follow-cam to a fixed pose so frames are byte-stable.
@@ -664,8 +668,8 @@ export const Player = ({ isWorldBuilt }) => {
     // the world is NOT paused: the physics step, mobs, weather and the clock keep running — motion-on frames are its
     // whole point. What stops is THIS controller, from this return to the end of the callback: movement and the KCC,
     // the death branch, the void-fall guard and the beast / voidhand / imbue state machines. And PositionTracker
-    // publishes camera.position as store.playerPosition, so while posed mobs, allies, chunk streaming and a manual
-    // save see the hero-shot camera, not the body (render/lookbookSeam.js).
+    // publishes camera.position as store.playerPosition, so while posed allies, chunk streaming, the spawner and a
+    // manual save see the hero-shot camera, not the body; the mobs' senses read the body (render/lookbookSeam.js).
     const lookPose = lookbookPose();
     if (lookPose) {
       applyLookbookPose(state.camera, lookPose);
@@ -992,7 +996,7 @@ export const Player = ({ isWorldBuilt }) => {
     // frame's body, the point the frame's step starts from.
     // nextTranslation, not translation: a move given on a frame that took no world step is where this one starts from
     // (game/kinematicMove.js). The seam reads the world clock itself, so a pause holds the fight.
-    const stance = stanceFrame(mobsQuery.entities, rigidBodyRef.current.nextTranslation(), camera, delta);
+    const stance = stanceFrame(mobsQuery.entities, rigidBodyRef.current.nextTranslation(), delta);
 
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
     if (spawnPosSet.current && isVoidFall(currentTrans.y)) {
@@ -1504,6 +1508,7 @@ export const Player = ({ isWorldBuilt }) => {
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.85);
       camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.85);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.85);
+      markFollowView(true);
     }
 
     // Defensive camera pitch clamp to prevent gimbal lock or out-of-bounds rotation
@@ -1528,9 +1533,9 @@ export const Player = ({ isWorldBuilt }) => {
 
   // Hide the first-person hands and held FX during capture, so the capture frame is the world alone.
   const inCapture = useGameStore((s) => s.isCaptureMode);
-  // The same for a lookbook pose (render/lookbookSeam.js): an elevated hero shot with the hands in the corner would
-  // misrepresent the frame. Changes only when the probe poses or clears, never per frame.
-  const lookbookOn = useSyncExternalStore(subscribeLookbook, lookbookPinned);
+  // The same for a lookbook hero pose (render/lookbookSeam.js): an elevated shot with the hands in the corner would
+  // misrepresent the frame. An eye pose keeps them. Changes only when the probe poses or clears, never per frame.
+  const lookbookOn = useSyncExternalStore(subscribeLookbook, lookbookHidesHands);
 
   return (
     <group>

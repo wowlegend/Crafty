@@ -7,7 +7,7 @@ import { ANTICIPATION_SEC } from '../../src/game/beastTransform.js';
 import { FUSE_CHANNEL_SEC } from '../../src/game/soulbind.js';
 import { MAX_HOLD_SEC } from '../../src/game/voidhand.js';
 import { KIND_BY_SPELL } from '../../src/game/elemancer.js';
-import { EYE_HEIGHT_M } from '../../src/combat/swingOrigin.js';
+import { EYE_HEIGHT_M, EYE_BOB_M } from '../../src/combat/swingOrigin.js';
 
 // EMBER, IN THE BOOTED GAME (W2-F step 3; DECISIONS 2026-10-28 W1-H item 5; plan
 // docs/superpowers/plans/2026-10-28-crafty-w2f-ember.md). One bar in the HUD's stat stack, filled by a day kill made with
@@ -104,9 +104,10 @@ async function frames(n) {
   for (let i = 0; i < n; i++) await frame();
 }
 
-/** In the page: true once the camera has sat at the player's head (`eyeM` over the body's centre) for two frames (the
- *  roar's reveal camera hands it back), false after 45 s. */
-async function backAtHead(eyeM) {
+/** In the page: true once the camera has sat at the player's head (`eyeM` over the body's centre, within the walk bob's
+ *  `bobM`) for two frames (the roar's reveal camera hands it back), false after 45 s. The bound is the follow's own: a
+ *  follow that puts the eye elsewhere never comes back to the head. */
+async function backAtHead({ eyeM, bobM }) {
   const frame = () => new Promise((r) => requestAnimationFrame(r));
   const cam = window.__threeCamera;
   const t0 = performance.now();
@@ -115,7 +116,7 @@ async function backAtHead(eyeM) {
     if (performance.now() - t0 > 45000) return false;
     await frame();
     const b = window.useGameStore.getState().playerRigidBodyRef?.current?.translation?.();
-    const ok = b && Math.hypot(cam.position.x - b.x, cam.position.z - b.z) < 1 && Math.abs(cam.position.y - b.y - eyeM) < 0.6;
+    const ok = b && Math.hypot(cam.position.x - b.x, cam.position.z - b.z) < 1 && Math.abs(cam.position.y - b.y - eyeM) <= bobM;
     streak = ok ? streak + 1 : 0;
   }
   return true;
@@ -276,7 +277,7 @@ test.describe('ember', () => {
     expect(drained.form, `a roar whose bar was drained during its charge still transformed: ${JSON.stringify(drained)}`).toBe(false);
     expect(drained.ember, 'a roar whose bar was drained took ember').toBe(ROAR_COST - 1);
     await expectNotice(page, mark, `a roar whose bar was drained during its charge was refused in silence: ${JSON.stringify(drained)}`);
-    expect(await page.evaluate(backAtHead, EYE_HEIGHT_M), 'SETUP: the camera never came back to the head after the drained charge').toBe(true);
+    expect(await page.evaluate(backAtHead, { eyeM: EYE_HEIGHT_M, bobM: EYE_BOB_M }), 'SETUP: the camera never came back to the head after the drained charge').toBe(true);
     await page.evaluate((v) => window.useGameStore.setState({ ember: v }), SEED);
 
     // 3. A DAY KILL FILLS IT, by a real left click on a 1-HP zombie.
@@ -305,7 +306,7 @@ test.describe('ember', () => {
     await page.keyboard.down('r');
     await expect.poll(async () => (await S()).form, { message: 'R in the form did not end it', timeout: 30000 }).toBe(false);
     await release(page, 'r');
-    expect(await page.evaluate(backAtHead, EYE_HEIGHT_M), 'SETUP: the camera never came back to the head after the form').toBe(true);
+    expect(await page.evaluate(backAtHead, { eyeM: EYE_HEIGHT_M, bobM: EYE_BOB_M }), 'SETUP: the camera never came back to the head after the form').toBe(true);
 
     // 5. A NIGHT KILL ADDS NOTHING, by the same click on the same kind of zombie, onto a bar that could show a gain.
     expect(await page.evaluate(setTime, 0.0), 'SETUP: midnight did not read as night').toBe(false);

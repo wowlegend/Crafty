@@ -1,9 +1,13 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { MobToonMaterial } from './MobToonMaterial';
-import { beastAvatarParts, boxDistance, SELF_CLEARANCE_M } from './beastAvatarParts.js';
+import {
+  beastAvatarParts, beastAvatarSpheres, boxDistance, sphereDistance, nearEye, haloRadius,
+  SELF_CLEARANCE_M, FEET_OFFSET, BEAST_GLOW, EYE_LOCAL_Y,
+} from './beastAvatarParts.js';
+import { followHoldsView } from './followView.js';
 import { elementForSpell } from '../game/beasts.js';
 // The beast core's light mounts with the form: from the fixed light pool (render/lightPool.jsx).
 import { PooledLight } from './lightPool.jsx';
@@ -30,12 +34,53 @@ const CHARGE_BASE_OPACITY = 0.85;
  * states unaffected). Mounted as a RigidBody child (at the player). Capture FREEZES to the SETTLED beast
  * (no entrance, no burst, no charge) -> byte-stable frame. Transient clock refs (Game-Loop-Isolation).
  */
-export const FEET_OFFSET = -0.9; // the RigidBody origin is the capsule CENTER; drop the feet to the base
+export { FEET_OFFSET };
 const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 // S2-B1-M7d: Kevin's "punchy" glow pick, BAKED (the dev dial is gone). Scales the element glow
 // (rim/core/halo/point-light) ONLY — never the dark-ink body, so the silhouette stays crisp.
-const GLOW = 1.7;
+const GLOW = BEAST_GLOW;
+const BURST_RADIUS = 0.5;
+
+const _inv = new THREE.Matrix4();
 const _eye = new THREE.Vector3();
+const _feet = new THREE.Vector3();
+const _cam = new THREE.Vector3();
+/** The camera drawing this frame, in the avatar group's own space (`group.matrixWorld` is current at draw time). */
+function eyeInAvatar(group, camera) {
+  _inv.copy(group.matrixWorld).invert();
+  return _eye.setFromMatrixPosition(camera.matrixWorld).applyMatrix4(_inv);
+}
+
+/** Whether `camera` draws the player's own view: the follow placed it, or it stands at the steady eye, judged in world
+ *  space (the group's origin is the avatar's feet, and its scale is the entrance's). */
+function firstPerson(group, camera) {
+  if (followHoldsView()) return true;
+  _feet.setFromMatrixPosition(group.matrixWorld);
+  _cam.setFromMatrixPosition(camera.matrixWorld);
+  return nearEye(_cam.x - _feet.x, _cam.y - _feet.y - EYE_LOCAL_Y, _cam.z - _feet.z);
+}
+
+/** The group's uniform world scale: a distance measured in its space times this is metres. */
+function worldScale(group) {
+  const m = group.matrixWorld.elements;
+  return Math.hypot(m[0], m[1], m[2]);
+}
+
+/**
+ * The player's own beast, seen from the camera that draws it (beastAvatarParts.js SELF_CLEARANCE_M): in first person
+ * nothing of it draws but its shadow (its light stays), and away from the eye a part nearer the camera than the
+ * clearance, in metres, is not drawn. Judged in each mesh's onBeforeRender, after the Player's loop has placed the
+ * camera this frame, so the reveal handing the view back to the eye hides the beast on that same frame. A hidden part
+ * writes neither colour nor depth; a box still casts its shadow (the shadow pass reads no colour mask).
+ * `distanceOf(e)` is the part's distance from `e`, a point in the avatar group's space.
+ */
+function hideNearEye(mesh, group, distanceOf) {
+  mesh.onBeforeRender = (renderer, scene, camera) => {
+    const seen = !firstPerson(group, camera) && distanceOf(eyeInAvatar(group, camera)) * worldScale(group) >= SELF_CLEARANCE_M;
+    mesh.material.colorWrite = seen;
+    mesh.material.depthWrite = seen && mesh.userData.writesDepth === true;
+  };
+}
 
 export function BeastAvatar() {
   const active = useGameStore((s) => s.beastFormActive);
@@ -45,6 +90,7 @@ export function BeastAvatar() {
   const groupRef = useRef();
   const boxRefs = useRef([]);
   const coreRef = useRef();
+  const haloRef = useRef();
   const burstRef = useRef();
   const chargeRef = useRef();
   const entryRef = useRef(-1);       // clock time the beast became active (-1 = not yet)
@@ -52,6 +98,7 @@ export function BeastAvatar() {
   const { camera } = useThree();
 
   const parts = active ? beastAvatarParts(element) : null;
+  const spheres = useMemo(() => (active ? beastAvatarSpheres(beastAvatarParts(element)) : null), [active, element]);
 
   // Publish the avatar's own group so a capture fixture can frame from WHERE IT RENDERS.
   // Same idiom as `playerRigidBodyRef` (transient ref in the store, read via getState — never a reactive
@@ -63,6 +110,31 @@ export function BeastAvatar() {
     useGameStore.setState({ beastGroupRef: groupRef });
     return () => useGameStore.setState({ beastGroupRef: null });
   }, [!!parts]);
+
+  // Each part judges, as it is drawn, whether the camera drawing it may see it (hideNearEye). Set once per form.
+  useLayoutEffect(() => {
+    const g = groupRef.current;
+    if (!active || !g || !spheres) return;
+    const boxes = beastAvatarParts(element).boxes;
+    boxes.forEach((b, i) => {
+      const m = boxRefs.current[i];
+      if (!m) return;
+      m.userData.writesDepth = true;
+      hideNearEye(m, g, (e) => boxDistance(b, e.x, e.y, e.z));
+    });
+    const core = coreRef.current;
+    if (core) {
+      hideNearEye(core, g, (e) => sphereDistance(spheres.core, e.x, e.y, e.z));
+      const hot = core.children.find((c) => c.isMesh);
+      if (hot) hideNearEye(hot, g, (e) => sphereDistance(spheres.hotspot, e.x, e.y, e.z));
+    }
+    if (haloRef.current) hideNearEye(haloRef.current, g, (e) => sphereDistance(spheres.halo, e.x, e.y, e.z));
+    const burst = burstRef.current;
+    if (burst) {
+      hideNearEye(burst, g, (e) => Math.hypot(e.x - spheres.core.pos[0], e.y - spheres.core.pos[1], e.z - spheres.core.pos[2])
+        - BURST_RADIUS * burst.scale.x);
+    }
+  }, [active, element, spheres]);
   const chargeEl = charging && !active ? elementForSpell(activeSpell) : null;
   const chargeColor = chargeEl ? beastAvatarParts(chargeEl)?.glowColor : null;
 
@@ -98,17 +170,6 @@ export function BeastAvatar() {
     const ent = morphEntrance(elapsed);
     groupRef.current.scale.setScalar(ent.scale);
 
-    // The player's own beast, seen from its eye (beastAvatarParts.js SELF_CLEARANCE_M): a part nearer the eye than the
-    // clearance writes neither colour nor depth, and still casts its shadow.
-    groupRef.current.updateWorldMatrix(true, false);
-    groupRef.current.worldToLocal(camera.getWorldPosition(_eye));
-    for (let i = 0; i < parts.boxes.length; i++) {
-      const mesh = boxRefs.current[i];
-      if (!mesh) continue;
-      const seen = boxDistance(parts.boxes[i], _eye.x, _eye.y, _eye.z) >= SELF_CLEARANCE_M;
-      mesh.material.colorWrite = seen;
-      mesh.material.depthWrite = seen;
-    }
     if (coreRef.current) {
       const pulse = capture ? 1.08 : 1 + Math.sin(now * 3) * 0.08;
       coreRef.current.scale.setScalar(pulse + ent.flash * 0.9); // entry flash boosts the core
@@ -164,8 +225,8 @@ export function BeastAvatar() {
           </mesh>
 
           {/* (3) a single faint back-halo (BackSide) — a touch of aura behind the silhouette */}
-          <mesh position={parts.core.pos} renderOrder={1}>
-            <sphereGeometry args={[parts.core.radius * 1.7 * parts.aura * (0.9 + 0.1 * GLOW), 16, 16]} />
+          <mesh ref={haloRef} position={parts.core.pos} renderOrder={1}>
+            <sphereGeometry args={[haloRadius(parts), 16, 16]} />
             <meshBasicMaterial color={parts.glowColor} toneMapped={false} transparent opacity={Math.min(0.55, 0.3 * GLOW)}
               blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.BackSide} />
           </mesh>
@@ -177,7 +238,7 @@ export function BeastAvatar() {
               blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
           </mesh>
 
-          <PooledLight color={parts.glowColor} intensity={3 * GLOW} distance={6} decay={2} position={parts.core.pos} />
+          <PooledLight color={parts.glowColor} intensity={3 * GLOW} distance={6} decay={2} position={parts.core.pos} lightsHands={false} />
         </group>
       )}
     </group>

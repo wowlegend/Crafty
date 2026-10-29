@@ -209,7 +209,7 @@ const _sweep = (a, id) => { if (a.seen !== _tag) _anchors.delete(id); };
  * object per newly aggro'd mob, for its stall clock.
  *
  *   mobs    the live mob entities (mobsQuery.entities), read only.
- *   player  { x, y, z }. y is THE HEIGHT MOBS MEASURE THE PLAYER FROM: mobSensePoint(camera).y (game/mobSenses.js),
+ *   player  { x, y, z }. y is THE HEIGHT MOBS MEASURE THE PLAYER FROM: mobSensePoint(body).y (game/mobSenses.js),
  *           the point AIWorkerSystem posts to the worker, so a mob counted as able to reach you is one the worker would
  *           let swing (the plan's height-reference deviation). x and z are the body this frame, the point the frame's
  *           step starts from (stanceFrame builds it): the away vector and `gap` must be measured from there, not from
@@ -334,7 +334,7 @@ export function noteMoveTarget(rawX, rawZ, targetX, targetZ, appliedX, appliedZ,
 //      clock (a clock passed there overrides the world clock it reads), and the dodge branch marking its burst with
 //      dodgeBurst. A teleport needs no call site: stanceFrame resets on the jump. In the e2e, case 0 pins only the
 //      HEIGHT of stanceFrame's point: x and z are compared standing still, where the camera has converged on the body,
-//      and mobSensePoint is the camera's position. A wrong body or a bypassed stanceWalk can show only in a chase
+//      and mobSensePoint is the body's steady eye. A wrong body or a bypassed stanceWalk can show only in a chase
 //      sub-assertion (the retreat chases are judged at every frame rate, the strafe's only at a fast one); no e2e case
 //      charges a heavy in a fight, or dodges in one.
 //   3. THE KCC IS DOWNSTREAM. The bound is on the velocity FED to computeColliderMovement, not on the movement it
@@ -355,11 +355,10 @@ const _clamped = { x: 0, z: 0 };
 /**
  * One frame of the stance, as the controller runs it: stanceStep on the live stance, with the player point built from
  * this frame's BODY across (the point the frame's step starts from, so the away vector and the gap are this frame's)
- * and the height the AI worker strikes from (mobSensePoint(camera).y). Returns the live stance.
+ * and the height the AI worker strikes from (mobSensePoint(body).y). Returns the live stance.
  *   mobs    mobsQuery.entities
  *   body    where the body's step starts this frame: its next translation, which includes a move given on a frame that
  *           took no world step (game/kinematicMove.js)
- *   camera  the game camera
  *   dtS     the frame's capped step (realDelta)
  *   nowMs, frozen  the world clock and whether the world is held this frame; the controller passes neither, so the
  *           seam reads game/worldClock.js itself. A held world steps the stance by 0 s, so a pause or a hitstop spends
@@ -368,13 +367,13 @@ const _clamped = { x: 0, z: 0 };
  * TELEPORT_SLACK_M, was put there by a teleport, whoever made it: the stance is reset before the frame is stepped, so
  * a call site that moves the body without teleportPlayer cannot carry a fight to the new spot.
  */
-export function stanceFrame(mobs, body, camera, dtS, nowMs = worldNow(), frozen = isWorldFrozen()) {
+export function stanceFrame(mobs, body, dtS, nowMs = worldNow(), frozen = isWorldFrozen()) {
   const s = _state;
   if (s.bodySeen && Math.hypot(body.x - s.bodyX, body.y - s.bodyY, body.z - s.bodyZ) > TELEPORT_SPEED_MPS * s.bodyStepS + TELEPORT_SLACK_M) {
     resetStance();
   }
   s.bodyX = body.x; s.bodyY = body.y; s.bodyZ = body.z; s.bodyStepS = dtS > 0 ? dtS : 0; s.bodySeen = true;
-  _point.x = body.x; _point.y = mobSensePoint(camera).y; _point.z = body.z;
+  mobSensePoint(body, _point);
   return stanceStep(s, mobs, _point, nowMs, frozen ? 0 : dtS);
 }
 

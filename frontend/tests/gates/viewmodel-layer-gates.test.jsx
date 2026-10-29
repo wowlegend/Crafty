@@ -37,7 +37,9 @@ const { skyFrameRef, lightningFlashRef } = await import('../../src/render/mood.j
 const { TIERS } = await import('../../src/render/quality.js');
 const { CHUNK_SIZE } = await import('../../src/world/chunkLayout.js');
 const { MagicWand } = await import('../../src/render/spellVfx.jsx');
+const { WorldPointLight, worldPointLights, PointLightPool, PooledLight, POOL_SIZE } = await import('../../src/render/lightPool.jsx');
 const { WAND_CONFIGS } = await import('../../src/game/spellVisualProfiles.js');
+const { useGameStore } = await import('../../src/store/useGameStore');
 
 let r = null;
 afterEach(async () => {
@@ -150,6 +152,66 @@ describe('ViewmodelLayer, stepped through R3F', () => {
       expect(vm.rig.hemi.intensity, 'a lightning flash lit the world and not the hands').toBeGreaterThan(f.hemiIntensity + 0.5);
     } finally {
       lightningFlashRef.current = 0;
+    }
+  });
+
+  it('takes a world point light mounted beside it (a brazier) onto the hands, at its place in the view, and lets it go', async () => {
+    const vm = getViewmodel();
+    const Scene = ({ lit }) => (
+      <>
+        {lit && <WorldPointLight position={[1.2, -0.5, -0.8]} color="#FF8A2A" intensity={1.6} distance={9} />}
+        <ViewmodelLayer />
+      </>
+    );
+    r = await mountR3F(<Scene lit />);
+    const cam = r.three().camera;
+    cam.position.set(0, 0, 0);
+    cam.rotation.set(0, 0.6, 0, 'YXZ');
+    cam.updateMatrixWorld(true);
+    await r.step(1);
+    expect(worldPointLights().length, 'SETUP: the brazier did not register').toBe(1);
+    const want = cam.worldToLocal(new THREE.Vector3(1.2, -0.5, -0.8));
+    expect(vm.rig.points[0].intensity, 'the brazier did not reach the hands').toBe(1.6);
+    expect(vm.rig.points[0].color.getHexString()).toBe('ff8a2a');
+    expect(vm.rig.points[0].position.distanceTo(want), 'the brazier is not where it stands relative to the view').toBeLessThan(1e-6);
+    await r.unmount();
+    r = await mountR3F(<Scene lit={false} />);
+    await r.step(1);
+    expect(worldPointLights().length, 'an unmounted light stayed registered').toBe(0);
+    expect(vm.rig.points.every((p) => p.intensity === 0), 'the hands kept the light of a brazier that is gone').toBe(true);
+  });
+
+  it('takes a pooled light (a spell light, a chest beacon) onto the hands through the pool\'s own lights, and lets them go', async () => {
+    const vm = getViewmodel();
+    const saved = useGameStore.getState().qualityTier;
+    useGameStore.setState({ qualityTier: 'med' });
+    try {
+      r = await mountR3F(
+        <>
+          <PointLightPool />
+          <PooledLight position={[-1.5, 0.4, -2]} color="#4FC3FF" intensity={2.5} distance={8} />
+          <ViewmodelLayer />
+        </>,
+      );
+      const cam = r.three().camera;
+      cam.position.set(0, 0, 0);
+      cam.rotation.set(0, -0.4, 0, 'YXZ');
+      cam.updateMatrixWorld(true);
+      await r.step(2); // the pool places its lights in its frame; the layer reads them in its own
+      const pool = [];
+      r.three().scene.traverse((o) => { if (o.isPointLight) pool.push(o); });
+      expect(pool.length, 'SETUP: the pool did not mount its tier\'s lights').toBe(POOL_SIZE.med);
+      expect(worldPointLights().length, 'the pool\'s lights are not registered for the hands').toBe(POOL_SIZE.med);
+      expect(pool.every((L) => worldPointLights().includes(L)), 'a registered light is not one of the pool\'s').toBe(true);
+      const want = cam.worldToLocal(new THREE.Vector3(-1.5, 0.4, -2));
+      expect(vm.rig.points[0].intensity, 'the pooled light did not reach the hands').toBe(2.5);
+      expect(vm.rig.points[0].color.getHexString()).toBe('4fc3ff');
+      expect(vm.rig.points[0].position.distanceTo(want), 'the pooled light is not where it stands relative to the view').toBeLessThan(1e-6);
+      await r.unmount();
+      r = null;
+      expect(worldPointLights().length, 'the pool\'s lights stayed registered after it unmounted').toBe(0);
+    } finally {
+      useGameStore.setState({ qualityTier: saved });
     }
   });
 });

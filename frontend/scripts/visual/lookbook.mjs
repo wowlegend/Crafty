@@ -32,6 +32,9 @@
  *   hud    (opt-in) the HUD lane's poses (_lookbookHud.mjs): HOME and Mara a few degrees apart on the compass, label
  *          boxes read for overlap; the dusk warning in English, then after a night in zh-CN, each frame shot with the
  *          toast up and its box read against the day-phase dial's.
+ *   self   (opt-in) what the player sees of their own body: each beast form at the steady eye, the light string, the
+ *          cast and the heavy charge held at their apex by the seam, and the hands beside the Hearth's brazier at
+ *          midnight (shootSelf).
  * Every eye shot also records its CHROME footprint (_lookbook.mjs chromeFootprint): on a page held still, the pixels
  * the HUD's own elements change (against a twin with them hidden), the touch layer's apart, and the colour count as a
  * second column. A frame with a toast up is not at rest and is set aside (_lookbook.mjs atRest).
@@ -53,9 +56,9 @@
  * thermals): a defect seen here is real in WebKit; a clean frame does not clear the iPad. Hero shots PIN the camera
  * above the scene; only the eye set and the clips are the player's eye. A pose does not pause the world (physics, mobs, weather, particles and
  * the clock run) but it does stop the Player's controller (movement and the KCC, the death branch, the void guard, the
- * beast / voidhand / imbue ticks), and PositionTracker publishes the posed CAMERA as store.playerPosition: mobs, allies
- * and chunk streaming see the camera, not the body (src/render/lookbookSeam.js). So mobs aim at the camera, a night
- * shot can kill the player: the shot is marked invalid and the store's own respawn() runs before the next. First-session onboarding toasts are
+ * beast / voidhand / imbue ticks), and PositionTracker publishes the posed CAMERA as store.playerPosition: allies, the
+ * spawner and chunk streaming see the camera, not the body (src/render/lookbookSeam.js), while the mobs' senses read
+ * the body. So a night shot can kill the player: the shot is marked invalid and the store's own respawn() runs before the next. First-session onboarding toasts are
  * suppressed (crafty_onboarded) so they do not cover the frames.
  *
  * --hold <seconds> is the power scenario (scripts/dev/power-ab.sh): one Chromium page at 1280x800, entered at spawn by
@@ -138,7 +141,7 @@ const PASS_TIMES_RUN = (() => {
 const HEADED = flag('--headed');
 const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
-const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands', 'hud'];
+const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands', 'hud', 'self'];
 const SETS = arg('--sets', 'hero,eye,clips').split(',');
 // --cycles: the times to shoot (dawn-origin fractions), for a before/after at hours the programme's four do not cover.
 let CYCLES;
@@ -303,9 +306,107 @@ function encodeClip(webm, mp4, { fromS, forS }) {
   }
 }
 
+// THE SELF SET: what the player sees of their own body, as stills the seam holds (render/lookbookSeam.js form,
+// handPose and the eye pose). Each beast form at the steady eye (the body + EYE_HEIGHT_M, no bob) under an eye pose,
+// which keeps the hands and stops the beast state machine that would end a form it did not start; the body rests where
+// the human capsule rests, so the world sits up to 0.3 m off where that form's capsule would put it, and the beast
+// against the eye is exact. The light string's three steps at their apex and near their end, the cast at its peak and
+// the full heavy charge, held in place of the clock. The hands beside the Hearth's brazier at midnight.
+const SELF_FORMS = Object.freeze(['fire', 'ice', 'lightning', 'arcane']);
+const SELF_FORM_CYCLES = Object.freeze([0.3, 0.75]);
+const SELF_POSE_CYCLE = 0.3;
+const SELF_POSES = Object.freeze([
+  ['rest', null],
+  ['swing1-apex', { kind: 'swing', step: 1, t: 0.5 }], ['swing1-end', { kind: 'swing', step: 1, t: 0.9 }],
+  ['swing2-apex', { kind: 'swing', step: 2, t: 0.5 }], ['swing2-end', { kind: 'swing', step: 2, t: 0.9 }],
+  ['finisher-apex', { kind: 'swing', step: 3, t: 0.5 }], ['finisher-end', { kind: 'swing', step: 3, t: 0.9 }],
+  ['cast', { kind: 'cast', t: 0.5 }], ['charge', { kind: 'charge', level: 1 }],
+]);
+const EYE_OVER_BODY_M = 0.67; // combat/swingOrigin.js EYE_HEIGHT_M, the steady eye
+// The Hearth's brazier (world/Terrain.jsx HomeAnchorRender, at the origin; its fire at bearing 135 from the stand, 1.4 m
+// off): the player faces it low on the right (110), with it beside them (45) and behind their right shoulder (345).
+const BRAZIER_XZ = Object.freeze([2.4, 2.4]);
+const BRAZIER_STAND_XZ = Object.freeze([1.0, 1.0]);
+const BRAZIER_HEADINGS = Object.freeze([110, 45, 345]);
+const BRAZIER_CYCLE = 0.75;
+
+async function shootSelf(page, report, dir, target) {
+  const lb = (verb, arg) => page.evaluate(([v, a]) => window.__craftyLookbook[v](a), [verb, arg]);
+  const shoot = async (file, extra) => {
+    await clearHostiles(page);
+    await play(page);
+    const a = await info(page);
+    await page.screenshot({ path: join(dir, file) });
+    const row = { file, cycle: a.cycle, form: a.form, handPose: a.handPose, eye: a.eye, body: a.body, heading: a.heading,
+      pitch: a.pitch, handNodes: a.handNodes, isAlive: a.isAlive, active: a.active, tier: a.tier, ...extra };
+    report.self.push(row);
+    console.log(`lookbook self ${target.id} ${file}: cycle ${a.cycle?.toFixed(3)} form ${a.form} hands ${a.handNodes} `
+      + `eye-body ${a.eye && a.body ? (a.eye[1] - a.body[1]).toFixed(3) : '?'}${a.isAlive ? '' : ' DEAD'}`);
+    return row;
+  };
+  const standFacing = async (position, heading) => {
+    await respawnIfDead(page, report);
+    await lb('stand', { position });
+    return lb('look', { heading, pitch: 0 });
+  };
+
+  if (target.engine === 'chromium') {
+    for (const c of SELF_FORM_CYCLES) {
+      await standFacing(report.stand, HANDS_HEADING);
+      await setCycle(page, c);
+      await delay(SETTLE_MS);
+      const at = await info(page);
+      const eye = [at.body[0], at.body[1] + EYE_OVER_BODY_M, at.body[2]];
+      const f = facing(at.heading, 0);
+      await lb('pose', { position: eye, lookAt: [eye[0] + f[0] * 10, eye[1], eye[2] + f[2] * 10], hands: true });
+      // The roar's reveal at its hold (game/transformCam.js: 4.5 m behind the body, 2.2 m over its centre, looking at
+      // 0.6 m over it): what the first person hides must still draw from there.
+      const reveal = { position: [at.body[0] - f[0] * 4.5, at.body[1] + 2.2, at.body[2] - f[2] * 4.5], lookAt: [at.body[0], at.body[1] + 0.6, at.body[2]] };
+      for (const el of SELF_FORMS) {
+        await lb('form', el);
+        await setCycle(page, c);
+        await delay(EYE_FRAME_MS + 600); // past the entrance pop and the burst (game/beastMorph.js MORPH_SEC, BURST_SEC)
+        await shoot(`self-form-${el}-${c.toFixed(2)}.png`, { kind: 'form' });
+        if (c === SELF_FORM_CYCLES[0]) {
+          await lb('pose', reveal);
+          await delay(EYE_FRAME_MS);
+          await shoot(`self-reveal-${el}-${c.toFixed(2)}.png`, { kind: 'reveal' });
+          await lb('pose', { position: eye, lookAt: [eye[0] + f[0] * 10, eye[1], eye[2] + f[2] * 10], hands: true });
+        }
+        await lb('form', null);
+      }
+      await lb('clear');
+    }
+  }
+
+  await standFacing(report.stand, HANDS_HEADING);
+  await setCycle(page, SELF_POSE_CYCLE);
+  await delay(SETTLE_MS);
+  for (const [name, p] of SELF_POSES) {
+    await lb('handPose', p);
+    await setCycle(page, SELF_POSE_CYCLE);
+    await delay(600);
+    await shoot(`self-pose-${name}-${SELF_POSE_CYCLE.toFixed(2)}.png`, { kind: 'pose' });
+  }
+  await lb('handPose', null);
+
+  if (target.engine === 'chromium') {
+    const off = BRAZIER_STAND_XZ.map((v, i) => BRAZIER_XZ[i] - v);
+    await standFacing([off[0], report.stand[1] + 0.2, off[1]], BRAZIER_HEADINGS[0]);
+    await setCycle(page, BRAZIER_CYCLE);
+    await delay(SETTLE_MS);
+    for (const heading of BRAZIER_HEADINGS) {
+      await lb('look', { heading, pitch: 0 });
+      await setCycle(page, BRAZIER_CYCLE);
+      await delay(EYE_FRAME_MS);
+      await shoot(`self-brazier-${heading}-${BRAZIER_CYCLE.toFixed(2)}.png`, { kind: 'brazier' });
+    }
+  }
+}
+
 async function shootTarget(target, launchOpts, launchId) {
   const report = { id: target.id, engine: target.engine, launch: launchId, renderer: null, gpu: 'unknown', entry: null,
-    shots: [], eye: [], clips: [], material: [], handShots: [], pointBlank: null, sights: null, stand: null, hands: null, notes: [],
+    shots: [], eye: [], clips: [], material: [], handShots: [], self: [], pointBlank: null, sights: null, stand: null, hands: null, notes: [],
     respawns: 0, console: {},
     pageErrors: [] };
   const dir = join(OUT, target.id);
@@ -375,7 +476,7 @@ async function shootTarget(target, launchOpts, launchId) {
 
     // The eye set and the clips go first: after the hero set's night shots, the night's mobs crowd the player at the
     // Hearth and the eye frames show a mob at arm's length instead of the world.
-    if (SETS.includes('eye') || SETS.includes('material') || SETS.includes('hands') || (SETS.includes('clips') && target.engine === 'chromium')) {
+    if (SETS.includes('eye') || SETS.includes('material') || SETS.includes('hands') || SETS.includes('self') || (SETS.includes('clips') && target.engine === 'chromium')) {
       report.hands = await handsBaseline(page);
       await respawnIfDead(page, report);
       report.stand = await restingBody(page);
@@ -519,6 +620,8 @@ async function shootTarget(target, launchOpts, launchId) {
           + `climbed ${report.pointBlank.climbedM?.toFixed(2)} m, hand pixels near/far ${close.pixels}/${far.pixels} = ${report.pointBlank.ratio?.toFixed(2)}`);
       }
     }
+
+    if (SETS.includes('self') && report.stand) await shootSelf(page, report, dir, target);
 
     for (const clip of SETS.includes('clips') && target.engine === 'chromium' && report.stand ? clipPlan(CYCLES) : []) {
       await respawnIfDead(page, report);
