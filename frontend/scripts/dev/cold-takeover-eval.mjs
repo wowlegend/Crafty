@@ -59,12 +59,15 @@ const NOT = /\b(?:never|not|no|nor|nothing|none|neither|without|instead of|rathe
 const CUT = /[,;:—–]|\s-\s|\b(?:but|whereas|however|yet|then|so|while|though|although)\b/gi;
 const CUT_ONE = new RegExp(CUT.source, 'i');
 const WINDOW = 60;
+// Just after the term: "X is not / is optional / isn't", or a prohibition word anywhere in the rest of its sub-clause
+// ("force-pushing and history rewrites are forbidden"). A bare "is not" further on belongs to another predicate
+// ("print N things checked and assert N is not 0"), so it does not negate the term.
 const POST_NOT = new RegExp(
   [
     String.raw`^[\s"'\x60)\]*]*(?:never|not|no|nothing)\b`,
-    String.raw`\b(?:is|are|was|were|be|stays?|remains?)\s+(?:strictly\s+|always\s+|also\s+|still\s+)?(?:never|not|forbidden|banned|prohibited|disallowed|discouraged|optional|off|denied|unnecessary|refused)\b`,
+    String.raw`^[\s"'\x60)\]*]*(?:is|are|was|were|be|stays?|remains?)\s+(?:strictly\s+|always\s+|also\s+|still\s+)?(?:never|not(?!\s+(?:optional|negotiable)\b)|forbidden|banned|prohibited|disallowed|discouraged|optional|off|denied|unnecessary|refused)\b`,
+    String.raw`^[\s"'\x60)\]*]*\w+n't\b`,
     String.raw`\b(?:forbidden|banned|prohibited|disallowed|discouraged)\b`,
-    String.raw`\w+n't\b`,
   ].join('|'),
   'i',
 );
@@ -168,7 +171,7 @@ export const QUESTIONS = [
       ['DECISIONS items 14 / 16', /items?\s+1[46]\b/i, NEG],
     ],
     forbidden: [
-      ['a named lock', /\b(?:locked|frozen)\b/i, { inSpan: false }],
+      ['a named lock', /\b(?:locked|frozen)\b(?!\s+labels?\b)/i, { inSpan: false }],
       ['change waits on Kevin', /\buntil Kevin\b|\bKevin (?:must|has to) (?:approve|review|sign)/i],
     ],
   },
@@ -355,11 +358,14 @@ export function scoreAll(answers, ctx) {
   return { correct: results.filter((r) => r.ok).length, total: QUESTIONS.length, results };
 }
 
-/** PURE: the successful tool calls that oriented: running `npm run orient` or reading the cursor. */
+/** PURE: the successful tool calls that oriented: running `npm run orient`, or reading the cursor file (a search inside it is not a read). */
 export function orientEvidence(uses) {
-  return uses.filter((u) => u.isError === false && Object.values(u.input || {}).some(
-    (v) => typeof v === 'string' && (/ACTIVE_PLAN/.test(v) || (u.name === 'Bash' && /\borient\b/.test(v))),
-  ));
+  return uses.filter((u) => {
+    if (u.isError !== false) return false;
+    if (u.name === 'Read') return /ACTIVE_PLAN\.md$/.test(String(u.input?.file_path || ''));
+    if (u.name === 'Bash') return /\borient\b|\b(?:cat|head|sed|less|more|tail)\b[^|;&]*ACTIVE_PLAN\.md/.test(String(u.input?.command || ''));
+    return false;
+  });
 }
 
 // --- the transcript ---------------------------------------------------------------------------------------------------
@@ -406,8 +412,45 @@ export function extractAnswers(text) {
   return found;
 }
 
+/**
+ * PURE: walk one input string from a cwd `depth` levels below the copy root: `escapes` are the `..` paths (a cd target
+ * included) that climb above the root, and `depth` is the cwd after its relative `cd`s. An absolute, home-relative or
+ * computed cd target leaves the depth as it was; the path audit judges that target itself.
+ */
+export function dotEscapes(v, depth = 0) {
+  const escapes = [];
+  let d = depth;
+  for (const seg of String(v).split(/&&|\|\||[;|\n]/)) {
+    const cd = seg.match(/^\s*cd\s+(\S+)/);
+    if (cd) {
+      if (/^[/~$"'`]/.test(cd[1])) continue;
+      for (const part of cd[1].split('/')) {
+        if (part === '..') d -= 1;
+        else if (part && part !== '.') d += 1;
+        if (d < 0) {
+          escapes.push(`${cd[1]} (..)`);
+          d = 0;
+          break;
+        }
+      }
+      continue;
+    }
+    for (const token of seg.split(/[\s'"`=(:]+/)) {
+      if (!/(?:^|\/)\.\.(?:\/|$)/.test(token)) continue;
+      let level = d;
+      let lowest = d;
+      for (const part of token.split('/')) {
+        if (part === '..') lowest = Math.min(lowest, (level -= 1));
+        else if (part && part !== '.') level += 1;
+      }
+      if (lowest < 0) escapes.push(`${token} (..)`);
+    }
+  }
+  return { escapes, depth: d };
+}
+
 /** PURE: every absolute path, home-relative path (`~`, `$HOME`) or `..` escape in a tool call's input that is not inside the copy. */
-export function outsidePaths(use, copyRoots) {
+export function outsidePaths(use, copyRoots, depth = 0) {
   const hits = [];
   for (const v of Object.values(use.input || {})) {
     if (typeof v !== 'string') continue;
@@ -415,9 +458,24 @@ export function outsidePaths(use, copyRoots) {
       if (!copyRoots.some((r) => m[1] === r || m[1].startsWith(`${r}/`))) hits.push(m[1]);
     }
     for (const m of v.matchAll(/(?:^|[\s'"=(:`])((?:~[\w.-]*|\$\{?HOME\}?)(?:\/[^\s'"`;|&)]*)?)(?=$|[\s'"`;|&)])/g)) hits.push(m[1]);
-    if (/(?:^|[\s/'"])\.\.(?:\/|$)/.test(v)) hits.push(`${v.slice(0, 60)} (..)`);
+    hits.push(...dotEscapes(v, depth).escapes);
   }
   return hits;
+}
+
+/**
+ * PURE: the audit over a whole run. Claude Code keeps the Bash cwd between calls, and every tool resolves a relative
+ * path against it, so a successful `cd frontend` lets a later `cd ..` return to the copy root without escaping.
+ */
+export function auditUses(uses, copyRoots) {
+  let depth = 0;
+  const out = [];
+  for (const u of uses) {
+    const hits = outsidePaths(u, copyRoots, depth);
+    if (hits.length) out.push({ u, hits });
+    if (u.name === 'Bash' && u.isError === false) depth = dotEscapes(String(u.input?.command || ''), depth).depth;
+  }
+  return out;
 }
 
 // --- the copy and the run ---------------------------------------------------------------------------------------------
@@ -469,7 +527,14 @@ function applyPlants(copy, ids) {
   }
 }
 
-const READ_ONLY_BASH = ['npm run orient', 'npm run orient:*', 'npm --prefix frontend run orient', 'node frontend/scripts/dev/orient.mjs', 'node scripts/dev/orient.mjs', 'ls:*', 'cat:*', 'head:*', 'tail:*', 'wc:*', 'grep:*', 'find:*'];
+// Read-only commands an orienting agent reaches for. A denied compound command can end an agent's attempt to orient, so
+// a narrower list measures the harness rather than the instructions. `cd` is here because CLAUDE.md's first instruction
+// is `cd frontend && npm run orient`; the path audit catches a cd out of the copy.
+const READ_ONLY_BASH = [
+  'cd:*', 'pwd', 'echo:*', 'npm run orient', 'npm run orient:*', 'npm --prefix frontend run orient',
+  'node frontend/scripts/dev/orient.mjs', 'node scripts/dev/orient.mjs', 'ls:*', 'cat:*', 'head:*', 'tail:*', 'wc:*',
+  'grep:*', 'find:*', 'sed -n:*', 'git rev-parse:*', 'git status:*', 'git log:*',
+];
 
 function childEnv() {
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('CLAUDE') && !k.startsWith('GIT_')));
@@ -522,7 +587,7 @@ async function main() {
 
   const { uses, finalText, model: served } = parseStream(readFileSync(streamPath, 'utf8'));
   const roots = [copy, realpathSync(copy)];
-  const outside = uses.map((u) => ({ u, hits: outsidePaths(u, roots) })).filter((x) => x.hits.length);
+  const outside = auditUses(uses, roots);
   const leaked = outside.filter((x) => x.u.isError === false);
   const oriented = orientEvidence(uses);
   const answers = extractAnswers(finalText);

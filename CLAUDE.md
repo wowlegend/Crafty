@@ -1,8 +1,10 @@
 # Crafty: agent instructions
 
-The one instruction file, loaded every session and after every compaction. One home per fact: a number here is
-generated or absent, and history lives in git and `docs/superpowers/DECISIONS.md`. **Start every session with
-`cd frontend && npm run orient`**: live state and the cursor (read order below).
+**First, before anything else, run `cd frontend && npm run orient`.** It prints HEAD, GitHub's main and its CI, the
+live deploy, open PRs, the cursor's task table and the registry's counts: answer questions about project state from it.
+
+This is the one instruction file, loaded every session and after every compaction. One home per fact: a number here is
+generated or absent, and history lives in git and `docs/superpowers/DECISIONS.md`.
 
 ## Standing principle (Kevin, DECISIONS 2026-10-28 items 14 and 16)
 

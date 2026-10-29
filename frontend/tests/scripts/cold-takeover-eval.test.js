@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   QUESTIONS, PROMPT, STALE, PLANTS, plant, plantAt, scoreAnswer, scoreAll, parseStream, extractAnswers, outsidePaths,
-  orientEvidence, copyList, negated, clauses, KEY_FILES,
+  orientEvidence, copyList, negated, clauses, dotEscapes, auditUses, KEY_FILES,
 } from '../../scripts/dev/cold-takeover-eval.mjs';
 
 // Sited in tests/scripts/: the subject is the eval's scorer, a tooling script. Every question has an answer that is right
@@ -75,6 +75,8 @@ const PARAPHRASES = [
   ['q4', 'Commits carry no AI footer ("Generated with", "Co-Authored-By"). Never `--amend` or `reset`: a fix-up is a new commit. Spend no money (no usage credits, no paid service); never force-push or rewrite pushed history.'],
   ['q4', 'Amend is forbidden; force-pushing and history rewrites are forbidden; spend no money; no Co-Authored-By footer.'],
   ['q5', 'No part is locked: items 14 and 16 make every decision re-openable.'],
+  // Verbatim from a 2026-10-28 control run, where it was scored wrong because of the quoted label.
+  ['q5', "Nothing is locked. Kevin's standing principle (DECISIONS 2026-10-28 items 14 and 16) says the game, architecture, design and every element may be changed or deleted at the command session's discretion. A decision stands only while it earns its place; reverse it with a new dated DECISIONS entry. A LOCKED label in a dated plan binds nothing."],
   ['q6', 'Open work lives in memory/registry.jsonl, not STATUS; 240 open or in flight.'],
   ['q7', 'cp -c -R with `frontend/node_modules` symlinked, never `git clone` + `npm ci`; CI runs the heavy suites.'],
   ['q8', 'Anything you launch, you kill, then run kill-test-procs.sh; never "close the tab" and never "all clean": say you cannot see whether a tab was left.'],
@@ -83,6 +85,8 @@ const PARAPHRASES = [
   ['q11', 'Record each non-routine decision in DECISIONS; never cut a large player-facing feature without a record and e2e proof.'],
   ['q12', 'Never add a new guard; an existing one must reset to a declared value, never early-return.'],
   ['q13', 'probePort(import.meta.url) from the table in _serve.mjs, never a literal port; print and assert the denominator.'],
+  ['q13', "serveVite(probePort(import.meta.url)) from _serve.mjs; every gate must print 'N things checked' and assert N is not 0 or below the ratchet."],
+  ['q8', 'Kill what you launch; kill-test-procs.sh is not optional; you cannot see a tab left open.'],
   ['q14', 'Read the target lines first; before committing check for debug output and secrets, never --no-verify, and run npm run build after a JSX change.'],
 ];
 
@@ -212,8 +216,11 @@ describe('cold-takeover-eval — orientation and the copy', () => {
   it('orientation is a successful orient run or a read of the cursor; anything else is not', () => {
     expect(orientEvidence([use('Bash', { command: 'cd frontend && npm run orient' })])).toHaveLength(1);
     expect(orientEvidence([use('Read', { file_path: '/c/repo/memory/ACTIVE_PLAN.md' })])).toHaveLength(1);
+    expect(orientEvidence([use('Bash', { command: 'head -40 memory/ACTIVE_PLAN.md' })])).toHaveLength(1);
     expect(orientEvidence([use('Bash', { command: 'npm run orient' }, true)]), 'a denied run did not orient').toHaveLength(0);
+    expect(orientEvidence([use('Bash', { command: 'npm run orient' }, null)]), 'a call with no result did not orient').toHaveLength(0);
     expect(orientEvidence([use('Grep', { pattern: 'orient', path: 'CLAUDE.md' }), use('Read', { file_path: '/c/repo/CLAUDE.md' })])).toHaveLength(0);
+    expect(orientEvidence([use('Grep', { pattern: 'registry', path: '/c/repo/memory/ACTIVE_PLAN.md' })]), 'a search inside the cursor is not a read').toHaveLength(0);
   });
 
   it('the copy never carries a nested worktree, installed modules, git itself or the answer key', () => {
@@ -254,5 +261,25 @@ describe('cold-takeover-eval — reading the transcript', () => {
     expect(outsidePaths({ input: { command: 'ls ${HOME}' } }, ['/c/repo'])).toEqual(['${HOME}']);
     expect(outsidePaths({ input: { file_path: '~/.claude/CLAUDE.md' } }, ['/c/repo'])).toEqual(['~/.claude/CLAUDE.md']);
     expect(outsidePaths({ input: { command: 'grep -rn "x~y" memory/STATUS.md' } }, ['/c/repo'])).toEqual([]);
+  });
+
+  it('a `..` that a relative cd into the copy covers stays inside; one that climbs higher is flagged', () => {
+    const at = (command) => outsidePaths({ input: { command } }, ['/c/repo']);
+    expect(at('cd frontend 2>/dev/null && npm run orient 2>&1 | tail -40; ls ../memory')).toEqual([]);
+    expect(at('cd frontend && cat ../../x')).toEqual(['../../x (..)']);
+    expect(at('cd .. && cat CLAUDE.md')).toEqual(['.. (..)']);
+    expect(at('cat frontend/../../secret')).toEqual(['frontend/../../secret (..)']);
+    expect(at('cat frontend/../memory/STATUS.md')).toEqual([]);
+  });
+
+  it('the Bash cwd carries between calls: a later `cd ..` from frontend/ is the copy root, a failed cd moves nothing', () => {
+    const bash = (command, isError = false) => ({ name: 'Bash', input: { command }, isError });
+    const run = [bash('cd frontend && npm run orient 2>&1 | head -60'), bash('cd .. && ls .claude/rules'), bash('sed -n 1,5p CLAUDE.md')];
+    expect(auditUses(run, ['/c/repo'])).toEqual([]);
+    const climbed = auditUses([...run, bash('cd .. && cat secret')], ['/c/repo']);
+    expect(climbed.map((x) => x.hits)).toEqual([['.. (..)']]);
+    const failed = auditUses([bash('cd frontend', true), bash('cd .. && ls')], ['/c/repo']);
+    expect(failed.map((x) => x.hits)).toEqual([['.. (..)']]);
+    expect(dotEscapes('cd frontend/scripts && ls ../../memory', 0)).toEqual({ escapes: [], depth: 2 });
   });
 });
