@@ -11,6 +11,7 @@
  */
 import { GRAB_COST } from './ember.js';
 import { ENDURANCE_SEC_PER_RANK } from './beastTransform.js';
+import { SNARE_ARC } from './soulbind.js';
 
 export const ASPECT_TREES = [
   {
@@ -36,7 +37,7 @@ export const ASPECT_TREES = [
     aspect: 'soulbind', title: 'Soulbind', icon: 'shield', accent: 'text-stat-def', dot: 'bg-stat-def',
     nodes: [
       { id: 'soulbind_snare', name: 'Soul Snare', desc: 'Unlocks the SNARE verb: bind a weakened creature to your squad (X).', limit: 1, prereq: null },
-      { id: 'soulbind_wide', name: 'Wide Snare', desc: 'The snare\'s aim is twice as wide.', limit: 1, prereq: 'soulbind_snare', mod: { key: 'snareArc', add: Math.PI / 8 } },
+      { id: 'soulbind_wide', name: 'Wide Snare', desc: 'The snare\'s aim is twice as wide.', limit: 1, prereq: 'soulbind_snare', mod: { key: 'snareArc', add: SNARE_ARC } },
       { id: 'soulbind_pack', name: 'Pack Warden', desc: '+1 squad slot: a third creature may walk beside you.', limit: 1, prereq: 'soulbind_snare', mod: { key: 'squadCap', add: 1 } },
       { id: 'soulbind_communion', name: 'Communion', desc: 'The snare binds a creature at half health, not a third. Excludes Warden Bulwark.', limit: 1, prereq: 'soulbind_wide', excludes: 'soulbind_bulwark', mod: { key: 'snareHpFrac', add: 0.2 } },
       { id: 'soulbind_bulwark', name: 'Warden Bulwark', desc: '+1 more squad slot. Excludes Communion.', limit: 1, prereq: 'soulbind_wide', excludes: 'soulbind_communion', mod: { key: 'squadCap', add: 1 } },
@@ -69,35 +70,34 @@ export function talentNode(id) {
 }
 
 /**
- * Load-time refund: every rank the trees no longer allow comes back as a point. A rank is not allowed when its id is
- * not a node, when it is over the node's limit, when the node's prerequisite is not held, or when its exclusive rival
- * is held too (the id that sorts later comes back, so the same save always keeps the same capstone). Prerequisites are
- * re-checked until nothing changes, so a refunded root takes its branch with it.
+ * Load-time refund: every rank the trees no longer allow comes back as a point. The kept build is rebuilt rank by rank
+ * through canUnlockTalent, the predicate the store spends through, so a loaded save keeps exactly what a player could
+ * take now and a rule added there reaches loads too. Ids go in sorted order, and the passes repeat until nothing is
+ * added: a branch waits for its root, a branch whose root is gone comes back with it, and of two rival capstones the one
+ * that sorts first keeps its rank, so the same save always keeps the same capstone.
  */
 export function refundUnknownTalents(unlockedTalents, talentPoints) {
-  const kept = {};
-  let refunded = 0;
+  const held = {};
+  let heldRanks = 0;
   for (const id in (unlockedTalents || {})) {
     const rank = Math.max(0, Math.floor(Number(unlockedTalents[id]) || 0));
-    const node = NODE_BY_ID[id];
-    if (!node) { refunded += rank; continue; }
-    const allowed = Math.min(rank, node.limit);
-    refunded += rank - allowed;
-    if (allowed > 0) kept[id] = allowed;
+    heldRanks += rank;
+    if (NODE_BY_ID[id] && rank > 0) held[id] = rank;
   }
-  for (const id of Object.keys(kept)) {
-    const node = NODE_BY_ID[id];
-    if (node.excludes && kept[node.excludes] && id > node.excludes) { refunded += kept[id]; delete kept[id]; }
-  }
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const id of Object.keys(kept)) {
-      const pre = NODE_BY_ID[id].prereq;
-      if (pre && !kept[pre]) { refunded += kept[id]; delete kept[id]; changed = true; }
+  const ids = Object.keys(held).sort();
+  const kept = {};
+  let keptRanks = 0;
+  for (let added = true; added;) {
+    added = false;
+    for (const id of ids) {
+      while ((kept[id] || 0) < held[id] && canUnlockTalent(id, kept, Infinity)) {
+        kept[id] = (kept[id] || 0) + 1;
+        keptRanks++;
+        added = true;
+      }
     }
   }
-  return { unlockedTalents: kept, talentPoints: (Number(talentPoints) || 0) + refunded };
+  return { unlockedTalents: kept, talentPoints: (Number(talentPoints) || 0) + heldRanks - keptRanks };
 }
 
 /**
