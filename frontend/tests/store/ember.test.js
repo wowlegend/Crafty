@@ -147,6 +147,16 @@ describe('ember in the save', () => {
     expect(S().emberBuildDay).toEqual({ night: 3, built: 12 });
   });
 
+  it('a save with no progression slice loads an empty bar, not the bar of the world played before it', () => {
+    const { progression: _gone, ...bare } = PRE_CUT();
+    useGameStore.setState({ ember: 90 });
+    S().loadWorldData(PRE_CUT());
+    expect(S().ember, 'SETUP: the control load with a slice did not read its own ember').toBe(75);
+    useGameStore.setState({ ember: 90 });
+    S().loadWorldData(bare);
+    expect(S().ember, 'a save with no slice took another world\'s ember').toBe(0);
+  });
+
   it('a new world starts with an empty bar and a fresh allowance', () => {
     useGameStore.setState({ ember: 80, emberBuildDay: { night: 6, built: 30 } });
     S().startNewWorld('ember-fresh');

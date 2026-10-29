@@ -85,10 +85,12 @@ export function migrateBanks(progression) {
 
 /**
  * A save's ember. A save that has the key is read as is; one that predates the bar gets its four banks summed. The
- * tombstone writes the retired banks back on every save, so reading them again would refill an emptied bar.
+ * tombstone writes the retired banks back on every save, so reading them again would refill an emptied bar. A save with
+ * no progression slice predates the banks too and has no ember of its own: it reads 0, never the session's, which
+ * belongs to whichever world was played before it.
  */
-export function emberFromSave(progression, fallback = 0) {
-  if (!isPlainObject(progression)) return clampEmber(fallback);
+export function emberFromSave(progression) {
+  if (!isPlainObject(progression)) return 0;
   if (Object.prototype.hasOwnProperty.call(progression, 'ember')) return clampEmber(progression.ember);
   return migrateBanks(progression);
 }

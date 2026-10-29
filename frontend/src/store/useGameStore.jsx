@@ -1118,8 +1118,10 @@ export const useGameStore = create((set, get) => ({
             // Siege progression (durable across reload): siege intensity + reward scaling.
             const nightCount = prog?.nightCount ?? state.nightCount;
             const lastRewardedNight = prog?.lastRewardedNight ?? state.lastRewardedNight;
-            // A save written before the one meter carries four banks and no `ember`: they are summed into it.
-            const ember = emberFromSave(prog, state.ember);
+            // A save written before the one meter carries four banks and no `ember`: they are summed into it. Unlike the
+            // fields above, a save with no slice does not keep the session's: ember is spendable, and another world's
+            // bar would be spent in this one.
+            const ember = emberFromSave(prog);
             // The save's own record, absent or not: a save older than the record has spent none of its day, and the
             // session's record belongs to whichever world was loaded before it.
             const emberBuildDay = readBuildDay(prog ? prog.emberBuildDay : state.emberBuildDay);

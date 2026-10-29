@@ -153,8 +153,11 @@ describe('an old save\'s four banks become one', () => {
     expect(emberFromSave({ ...PRE_CUT.progression, ember: NaN })).toBe(0);
   });
 
-  it('a save with no progression slice keeps the fallback', () => {
-    expect(emberFromSave(undefined, 33)).toBe(33);
-    expect(emberFromSave(null)).toBe(0);
+  // A save with no progression slice predates the bar and the four banks alike, so it has no ember of its own; the
+  // session's belongs to whichever world was played before it.
+  it('a save with no progression slice reads an empty bar, whatever the session holds', () => {
+    expect(emberFromSave(undefined, 33), 'a save with no slice borrowed the session\'s ember').toBe(0);
+    expect(emberFromSave(null, 90)).toBe(0);
+    expect(emberFromSave({ ember: 33 }, 90), 'the control: a save with a slice reads its own').toBe(33);
   });
 });
