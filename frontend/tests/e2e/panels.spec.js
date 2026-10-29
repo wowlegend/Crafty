@@ -16,7 +16,16 @@ const press = async (page, key) => { await startPlayActive(page); await page.key
 test.describe('desktop', () => {
   test('Tab, J, B and H open their panels; the strips switch tabs; the old keys open nothing; the controls hint clears', async ({ page }) => {
     test.setTimeout(300000);
-    await page.addInitScript(() => { try { localStorage.removeItem('crafty_controls_seen'); } catch { /* blocked */ } });
+    // A fresh profile on the first load only: an init script runs on every navigation, so the reload below would clear
+    // the flag again (CI run 40937922439 read exactly that); sessionStorage survives the reload and marks it done.
+    await page.addInitScript(() => {
+      try {
+        if (!sessionStorage.getItem('e2e-fresh-profile')) {
+          localStorage.removeItem('crafty_controls_seen');
+          sessionStorage.setItem('e2e-fresh-profile', '1');
+        }
+      } catch { /* storage blocked */ }
+    });
     await bootDev(page);
     await startPlayActive(page);
     await expect(shown(page, 'controls-card'), 'a fresh profile is not shown the controls card').toBeVisible({ timeout: 20000 });
