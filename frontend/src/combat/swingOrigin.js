@@ -17,9 +17,9 @@
  */
 export const EYE_HEIGHT_M = 0.67;
 
-/** The cone apex sits this far below the eye: chest height, 0.4 m over the body's centre, so a swing reaches a mob's
- *  body rather than over it. */
-export const SWING_DROP_M = 0.27;
+/** The cone apex over the body's centre: chest height, so a swing reaches a mob's body rather than over it. Set from the
+ *  body, not the eye, so a change of eye height leaves melee reach where it is. */
+export const SWING_APEX_OVER_BODY_M = 0.4;
 
 /** The eye without bob, shake or kick, written into `out`, which is returned: the snare's aim and the hurl's launch. */
 export function steadyEye(body, out) {
@@ -32,7 +32,7 @@ export function steadyEye(body, out) {
 /** The apex of the melee cone and the aim cone, written into `out`, which is returned. */
 export function swingOrigin(body, out) {
   out.x = body.x;
-  out.y = body.y + EYE_HEIGHT_M - SWING_DROP_M;
+  out.y = body.y + SWING_APEX_OVER_BODY_M;
   out.z = body.z;
   return out;
 }

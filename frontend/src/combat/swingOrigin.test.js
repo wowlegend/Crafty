@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { swingOrigin, steadyEye, EYE_HEIGHT_M, SWING_DROP_M } from './swingOrigin.js';
+import { swingOrigin, steadyEye, EYE_HEIGHT_M, SWING_APEX_OVER_BODY_M } from './swingOrigin.js';
 import { isPointInCone } from './cone.js';
 import { FINISHER_ARC_RAD } from '../game/meleeString.js';
 
 describe('swingOrigin: a swing is aimed from the body, whatever the camera is doing', () => {
   it('the apex is the body\'s eye dropped to the chest, and the steady eye is the camera follow\'s height', () => {
     const body = { x: 3, y: 10, z: -2 };
-    expect(swingOrigin(body, {})).toEqual({ x: 3, y: 10 + EYE_HEIGHT_M - SWING_DROP_M, z: -2 });
+    expect(swingOrigin(body, {})).toEqual({ x: 3, y: 10 + SWING_APEX_OVER_BODY_M, z: -2 });
     expect(swingOrigin(body, {}).y).toBeCloseTo(10.4, 9);
     expect(steadyEye(body, {}).y).toBeCloseTo(10.67, 9);
     expect(steadyEye(body, {})).toMatchObject({ x: 3, z: -2 });
@@ -28,7 +28,7 @@ describe('swingOrigin: a swing is aimed from the body, whatever the camera is do
     const look = { x: 0, y: 0, z: 1 };
     const brute = { x: 0, y: 9.6, z: 2.2 };
     const shakenCamera = { x: 1.0, y: body.y + EYE_HEIGHT_M, z: 2.2 + 0.6 };
-    const shakenApex = { x: shakenCamera.x, y: shakenCamera.y - SWING_DROP_M, z: shakenCamera.z };
+    const shakenApex = { x: shakenCamera.x, y: shakenCamera.y - (EYE_HEIGHT_M - SWING_APEX_OVER_BODY_M), z: shakenCamera.z };
     expect(Math.hypot(shakenCamera.x - body.x, shakenCamera.y - (body.y + EYE_HEIGHT_M), shakenCamera.z - body.z)).toBeGreaterThan(2.4);
     expect(isPointInCone(shakenApex, look, brute, 4.5, FINISHER_ARC_RAD), 'the shaken camera\'s cone reaches the brute: the case shows nothing').toBe(false);
     expect(isPointInCone(swingOrigin(body, {}), look, brute, 4.5, FINISHER_ARC_RAD)).toBe(true);
