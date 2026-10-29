@@ -49,6 +49,8 @@ describe('the Forge card', () => {
   it('lists the weapon, relic and goods lines, each price beside what the player holds', () => {
     useGameStore.setState({ coins: 12 });
     render(<ForgePanel onClose={() => {}} />);
+    // The id tests/e2e/forge.spec.js waits on after G: the card, by the dialog's own name.
+    expect(screen.getByRole('dialog', { name: "Mara's Forge" }).contains(tid('forge-panel')), 'the card is not inside its dialog').toBe(true);
     expect(tid('forge-offer-weapon:Iron Sword').textContent, 'the weapon line does not name the blade it reforges').toContain('Stone Sword');
     expect(tid('forge-price-weapon:Iron Sword-iron').textContent).toBe('4 Iron Ore (have 4)');
     expect(tid('forge-price-weapon:Iron Sword-coins').textContent).toBe('30 coins (have 12)');
