@@ -111,10 +111,13 @@ const textOf = (c) => {
   return chunkText.get(c.file);
 };
 const holdersOf = (marker) => chunks.filter((c) => textOf(c).includes(marker));
+// A testid marker is matched as the minified string literal, quotes included, so a renamed testid that merely starts
+// with it ("relic-sloth") is not mistaken for it. A minifier that changes its quoting finds it nowhere and fails.
+const testidHoldersOf = (testid) => holdersOf(`"${testid}"`);
 const panelChunks = new Set();
 let lazyBad = 0;
 for (const marker of LAZY_PANEL_MARKERS) {
-  const holders = holdersOf(marker);
+  const holders = testidHoldersOf(marker);
   if (bootChunk && holders.includes(bootChunk)) {
     console.error(`✘ lazy panels: "${marker}" is in the BOOT chunk (${bootChunk.file}) — a panel is statically imported again`);
     failed = true; lazyBad++;
