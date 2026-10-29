@@ -8,6 +8,7 @@ import { getToonGradient } from './characterStyle.js';
 import { FLASH_COLOR, hemiWithFlash } from '../game/lightning.js';
 import { TIERS } from './quality.js';
 import { CHUNK_SIZE } from '../world/chunkLayout.js';
+import { ELEMENT_COLOR } from './beastAvatarParts.js';
 
 /**
  * fov: vertical degrees, fixed, so the main camera's speed FOV (75 to 85) does not stretch the hands.
@@ -323,6 +324,40 @@ export function makeGauntletMaterials() {
   const toon = (hex) => installValueFloor(new THREE.MeshToonMaterial({ color: hex, gradientMap: getToonGradient() }));
   const core = new THREE.MeshBasicMaterial({ color: new THREE.Color(GAUNTLET.core).multiplyScalar(GAUNTLET.coreGain) });
   return { plate: toon(GAUNTLET.plate), leather: toon(GAUNTLET.leather), trim: toon(GAUNTLET.trim), core };
+}
+
+/**
+ * The form's colour on the gauntlets (DECISIONS 2026-10-29 item 88). In first person the player's own beast draws
+ * nothing but its shadow, so while a form is on the ember core in each gauntlet takes the form's element glow
+ * (render/beastAvatarParts.js ELEMENT_COLOR, the beast's own rim and core) at the core's gain, which the bloom carries,
+ * and the plates glow `plateGlow` of it. Both ease toward the form with time constant `tauS`, in and out.
+ */
+export const FORM_TINT = Object.freeze({ tauS: 0.12, plateGlow: 0.35 });
+
+const _emberCore = new THREE.Color(GAUNTLET.core).multiplyScalar(GAUNTLET.coreGain);
+const _formGlow = Object.freeze(Object.fromEntries(Object.entries(ELEMENT_COLOR).map(([el, c]) => [el, new THREE.Color(c.glow)])));
+const _formCore = new THREE.Color();
+
+/**
+ * One frame of the form's colour on the gauntlet materials `mats` (makeGauntletMaterials): `tint` ({ w, el }, the
+ * caller's) eases its weight `w` toward 1 while the form `el` is on and toward 0 when `el` is null, over `dtS` seconds,
+ * keeping the colour of the form that is fading until it has faded. Writes in place; allocates nothing.
+ */
+export function stepFormTint(tint, el, dtS, mats) {
+  const glow = el ? _formGlow[el] : null;
+  if (glow) tint.el = el;
+  const k = 1 - Math.exp(-(dtS > 0 ? dtS : 0) / FORM_TINT.tauS);
+  tint.w += ((glow ? 1 : 0) - tint.w) * k;
+  if (!glow && tint.w < 1e-3) { tint.w = 0; tint.el = null; }
+  const shown = tint.el ? _formGlow[tint.el] : null;
+  if (shown) {
+    mats.core.color.copy(_emberCore).lerp(_formCore.copy(shown).multiplyScalar(GAUNTLET.coreGain), tint.w);
+    mats.plate.emissive.copy(shown).multiplyScalar(FORM_TINT.plateGlow * tint.w);
+  } else {
+    mats.core.color.copy(_emberCore);
+    mats.plate.emissive.setRGB(0, 0, 0);
+  }
+  return tint;
 }
 
 /** A toon material with the floor, for anything else the hands hold (the selected block). */

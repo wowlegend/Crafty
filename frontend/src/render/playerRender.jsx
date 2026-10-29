@@ -17,7 +17,7 @@ import { heavyChargeLevel } from '../game/heavyAttack.js';
 import { handSwing, slashSweep } from '../game/meleeString.js';
 import { lookbookHandPose, lookbookHandPoseKind, subscribeLookbook } from './lookbookSeam.js';
 import {
-  GAUNTLET, GAUNTLET_PARTS, HAND_REST_ROT, VIEWMODEL, handAnchors, installValueFloor, makeGauntletMaterials, makeHeldMaterial,
+  GAUNTLET, GAUNTLET_PARTS, HAND_REST_ROT, VIEWMODEL, handAnchors, installValueFloor, makeGauntletMaterials, makeHeldMaterial, stepFormTint,
 } from './viewmodel.js';
 import { frameScale, swingPose, swingFit, chargePose, chargeFit, castPose } from './handPose.js';
 
@@ -287,6 +287,8 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
 
   const mats = useMemo(() => makeGauntletMaterials(), []);
   useEffect(() => () => { for (const m of Object.values(mats)) m.dispose(); }, [mats]);
+  // The beast form's colour on the gauntlets (render/viewmodel.js stepFormTint), eased per frame.
+  const formTint = useMemo(() => ({ w: 0, el: null }), []);
 
   // The fists' rest positions follow the window's aspect (render/viewmodel.js handAnchors), so both stay in frame on a
   // portrait iPad, and so do the swing and the charge (render/handPose.js): their frame scale and their fits are
@@ -300,7 +302,10 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
   const restR = HAND_REST_ROT.right;
   const restL = HAND_REST_ROT.left;
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
+    // Read transiently: the form changes the materials, never the render (Game-Loop Isolation).
+    const form = useGameStore.getState();
+    stepFormTint(formTint, form.beastFormActive ? form.activeBeastForm : null, delta, mats);
     if (rightHandRef.current && leftHandRef.current) {
       const aspect = state.size.height > 0 ? state.size.width / state.size.height : 1;
       if (aspect !== anchors.aspect) {
