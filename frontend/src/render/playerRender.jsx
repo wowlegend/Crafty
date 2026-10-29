@@ -288,8 +288,22 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
 
   const mats = useMemo(() => makeGauntletMaterials(), []);
   useEffect(() => () => { for (const m of Object.values(mats)) m.dispose(); }, [mats]);
-  // The beast form's colour on the gauntlets (render/viewmodel.js stepFormTint), eased per frame.
+  // The beast form's colour on the gauntlets (render/viewmodel.js stepFormTint), eased per frame: the core in `mats`
+  // and the gauntlets' own outlines, found once they have mounted (drei's Outlines adds each outline mesh as a child of
+  // a group inside the part it outlines; the held item's outlines are not the gauntlets').
   const formTint = useMemo(() => ({ w: 0, el: null }), []);
+  const rims = useRef([]);
+  useEffect(() => {
+    const parts = Object.values(mats);
+    const found = [];
+    for (const hand of [rightHandRef.current, leftHandRef.current]) {
+      hand?.traverse((o) => {
+        const part = o.parent?.parent;
+        if (o.isMesh && o.material?.uniforms?.color && part && parts.includes(part.material)) found.push(o.material);
+      });
+    }
+    rims.current = found;
+  }, [mats]);
 
   // The fists' rest positions follow the window's aspect (render/viewmodel.js handAnchors), so both stay in frame on a
   // portrait iPad, and so do the swing and the charge (render/handPose.js): their frame scale and their fits are
@@ -307,7 +321,7 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
     // Read transiently: the form changes the materials, never the render (Game-Loop Isolation). World time: a hitstop
     // holds the ease with the form it follows, as it holds the hands' key fade (render/ViewmodelLayer.jsx).
     const form = useGameStore.getState();
-    stepFormTint(formTint, form.beastFormActive ? form.activeBeastForm : null, worldDelta(delta), mats);
+    stepFormTint(formTint, form.beastFormActive ? form.activeBeastForm : null, worldDelta(delta), mats, rims.current);
     if (rightHandRef.current && leftHandRef.current) {
       const aspect = state.size.height > 0 ? state.size.width / state.size.height : 1;
       if (aspect !== anchors.aspect) {

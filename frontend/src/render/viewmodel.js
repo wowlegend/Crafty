@@ -328,23 +328,26 @@ export function makeGauntletMaterials() {
 
 /**
  * The form's colour on the gauntlets (DECISIONS 2026-10-29 item 87). In first person the player's own beast draws
- * nothing but its shadow, so while a form is on the ember core in each gauntlet takes the form's element glow
- * (render/beastAvatarParts.js ELEMENT_COLOR, the beast's own rim and core) at the core's gain, which the bloom carries.
- * The core alone: added to the ember-gold plates, a cool glow reads salmon or pink, not the form. It eases toward the
- * form with time constant `tauS`, in and out.
+ * nothing but its shadow, so while a form is on the gauntlets carry the form's element glow
+ * (render/beastAvatarParts.js ELEMENT_COLOR, the beast's own rim and core) as the beast does: on their ink outlines, the
+ * rim that runs round every edge the player sees, and in the ember core at the core's gain, which the bloom carries. Not
+ * on the plates: added to their ember gold, a cool glow reads salmon or pink, not the form. It eases toward the form with
+ * time constant `tauS`, in and out.
  */
 export const FORM_TINT = Object.freeze({ tauS: 0.12 });
 
 const _emberCore = new THREE.Color(GAUNTLET.core).multiplyScalar(GAUNTLET.coreGain);
+const _ink = new THREE.Color(GAUNTLET.ink);
 const _formGlow = Object.freeze(Object.fromEntries(Object.entries(ELEMENT_COLOR).map(([el, c]) => [el, new THREE.Color(c.glow)])));
 const _formCore = new THREE.Color();
 
 /**
- * One frame of the form's colour on the gauntlet materials `mats` (makeGauntletMaterials): `tint` ({ w, el }, the
- * caller's) eases its weight `w` toward 1 while the form `el` is on and toward 0 when `el` is null, over `dtS` seconds,
- * keeping the colour of the form that is fading until it has faded. Writes in place; allocates nothing.
+ * One frame of the form's colour on the gauntlet materials `mats` (makeGauntletMaterials) and their outline materials
+ * `rims` (each with a `uniforms.color`, drei's Outlines): `tint` ({ w, el }, the caller's) eases its weight `w` toward 1
+ * while the form `el` is on and toward 0 when `el` is null, over `dtS` seconds, keeping the colour of the form that is
+ * fading until it has faded. Writes in place; allocates nothing.
  */
-export function stepFormTint(tint, el, dtS, mats) {
+export function stepFormTint(tint, el, dtS, mats, rims) {
   const glow = el ? _formGlow[el] : null;
   if (glow) tint.el = el;
   const k = 1 - Math.exp(-(dtS > 0 ? dtS : 0) / FORM_TINT.tauS);
@@ -353,6 +356,10 @@ export function stepFormTint(tint, el, dtS, mats) {
   const shown = tint.el ? _formGlow[tint.el] : null;
   if (shown) mats.core.color.copy(_emberCore).lerp(_formCore.copy(shown).multiplyScalar(GAUNTLET.coreGain), tint.w);
   else mats.core.color.copy(_emberCore);
+  for (let i = 0; i < rims.length; i++) {
+    const c = rims[i].uniforms.color.value.copy(_ink);
+    if (shown) c.lerp(shown, tint.w);
+  }
   return tint;
 }
 
