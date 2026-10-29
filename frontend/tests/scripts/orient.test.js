@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { registryCounts, cursorHead, parseWorktrees, ciVerdict, prLine, liveProduction } from '../../scripts/dev/orient.mjs';
+import { registryCounts, cursorSummary, mainLine, productionNote, parseWorktrees, ciVerdict, prLine, liveProduction } from '../../scripts/dev/orient.mjs';
 
 // Sited in tests/scripts/: the subject is a tooling script. The pure parts are driven with fixtures whose answers are
 // known by construction; the last case EXECUTES the CLI in a tree with no git and no `gh`, where it must still print.
@@ -19,11 +19,40 @@ describe('orient — registry counts', () => {
   });
 });
 
-describe('orient — the cursor head', () => {
-  it('starts at the first `## ` heading and keeps up to n non-empty lines', () => {
-    const md = 'preamble\n## CURSOR — today\n\nline a\nline b\n\nline c\n';
-    expect(cursorHead(md, 3)).toEqual(['## CURSOR — today', 'line a', 'line b']);
-    expect(cursorHead('no heading at all')).toEqual([]);
+describe('orient — the cursor', () => {
+  it('prints the heading, every task-table row and the whole Next paragraph, and no preamble prose', () => {
+    const md = [
+      'preamble', '## CURSOR — today', '', 'A long paragraph of prose', 'that wraps.', '',
+      '| # | Task | State |', '|---|---|---|', '| T6 | first | open |', '| T7 | second | PARTIAL |', '',
+      '**Next:** land the open PRs', 'in readiness order.', '', 'trailing prose',
+    ].join('\n');
+    expect(cursorSummary(md)).toEqual([
+      '## CURSOR — today', '| # | Task | State |', '| T6 | first | open |', '| T7 | second | PARTIAL |',
+      '**Next:** land the open PRs', 'in readiness order.',
+    ]);
+    expect(cursorSummary('no heading at all')).toEqual([]);
+    expect(cursorSummary('## C\nno table, no next\n')).toEqual(['## C']);
+  });
+});
+
+describe('orient — main as GitHub has it, and drift', () => {
+  const A = 'a'.repeat(40);
+  const B = 'b'.repeat(40);
+  it('names GitHub\'s main and says when the local refs match it', () => {
+    expect(mainLine({ remote: A, tracking: A, local: A })).toBe('main        aaaaaaaaaa on GitHub; the local refs match');
+  });
+  it('flags a stale origin/main and a stale local main as drift', () => {
+    expect(mainLine({ remote: A, tracking: B, local: A })).toBe('main        aaaaaaaaaa on GitHub; DRIFT: local origin/main is bbbbbbbbbb, run git fetch');
+    expect(mainLine({ remote: A, tracking: A, local: B })).toBe('main        aaaaaaaaaa on GitHub; DRIFT: local main is bbbbbbbbbb');
+    expect(mainLine({ remote: A, tracking: null, local: null })).toBe('main        aaaaaaaaaa on GitHub; DRIFT: no local origin/main');
+  });
+  it('without GitHub, says the local ref may be stale rather than presenting it as main', () => {
+    expect(mainLine({ remote: null, tracking: B, why: 'git timed out' })).toBe("main        GitHub's main not read (git timed out); the local origin/main bbbbbbbbbb may be stale");
+  });
+  it('production is main, or the drift between them is named', () => {
+    expect(productionNote(A, A)).toBe('; this is main');
+    expect(productionNote(B, A)).toBe('; DRIFT: main is aaaaaaaaaa, so its deploy is pending, failed or not triggered');
+    expect(productionNote(null, A)).toBe('');
   });
 });
 
@@ -82,7 +111,7 @@ describe('orient — the CLI never crashes', () => {
   it('in a tree with no git and no gh on PATH it prints why, the cursor and the registry, and exits 0', () => {
     const root = mkdtempSync(join(tmpdir(), 'orient-'));
     mkdirSync(join(root, 'memory'));
-    writeFileSync(join(root, 'memory/ACTIVE_PLAN.md'), '## CURSOR — fixture\nnext: the thing\n');
+    writeFileSync(join(root, 'memory/ACTIVE_PLAN.md'), '## CURSOR — fixture\nprose\n\n| T1 | a task | open |\n\n**Next:** the thing\n');
     writeFileSync(join(root, 'memory/registry.jsonl'), `${row('open')}\n${row('closed')}\n`);
     const out = execFileSync(process.execPath, [resolve('scripts/dev/orient.mjs'), `--root=${root}`], {
       encoding: 'utf8',
@@ -90,7 +119,7 @@ describe('orient — the CLI never crashes', () => {
     });
     expect(out).toContain('not a git checkout here');
     expect(out).toContain('production  unknown');
-    expect(out).toContain('  ## CURSOR — fixture');
+    expect(out).toContain('  ## CURSOR — fixture\n  | T1 | a task | open |\n  **Next:** the thing');
     expect(out).toContain('2 rows: 1 open (command session 1), 0 in flight, 1 closed');
   });
 });

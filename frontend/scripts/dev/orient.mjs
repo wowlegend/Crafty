@@ -2,10 +2,12 @@
 /**
  * orient — the state a cold agent needs before its first edit, read live, never from prose.
  *
- * Prints: HEAD, the CI verdict for main and for HEAD, the sha the live Production deployment serves, open PRs with
- * their `ci ok`, worktrees whose branch holds commits main does not, the first lines of the ACTIVE_PLAN cursor, and
- * the registry's counts. Each source that cannot be read (no git, no `gh`, no network, not authenticated) prints
- * why on its own line; nothing here exits non-zero, because orientation that crashes orients no one.
+ * Prints: HEAD; main as GitHub has it (`git ls-remote`, so a checkout that has not fetched is not mistaken for current),
+ * with any drift of the local `origin/main` and `main` refs from it; the CI verdict for that main and for HEAD; the sha
+ * the live Production deployment serves, and whether it is main; open PRs with their `ci ok`; worktrees whose branch
+ * holds commits main does not; the cursor's heading, task table and Next paragraph; and the registry's counts. Each
+ * source that cannot be read (no git, no `gh`, no network, not authenticated) prints why on its own line; nothing here
+ * exits non-zero, because orientation that crashes orients no one.
  *
  * A CI verdict is green only when the newest completed `ci.yml` run on that sha concluded `success`. GitHub reports a
  * job that hit its own time limit as `cancelled`, the same word as a superseded run, so `cancelled`, `timed_out`,
@@ -22,7 +24,6 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..');
 const TIMEOUT_MS = 20_000;
-const CURSOR_LINES = 10;
 
 /** PURE: counts by state, and open rows by owner, from `memory/registry.jsonl` text. A bad line is counted, not thrown. */
 export function registryCounts(text) {
@@ -47,12 +48,33 @@ export function registryCounts(text) {
   return out;
 }
 
-/** PURE: the cursor's opening lines: from the first `## ` heading, up to `n` non-empty lines. */
-export function cursorHead(md, n = CURSOR_LINES) {
+/** PURE: the cursor's heading (its first `## ` line), every task-table row (separator rows dropped) and its Next paragraph. */
+export function cursorSummary(md) {
   const lines = String(md).split('\n');
   const start = lines.findIndex((l) => /^## /.test(l));
   if (start < 0) return [];
-  return lines.slice(start).filter((l) => l.trim()).slice(0, n);
+  const body = lines.slice(start + 1);
+  const out = [lines[start], ...body.filter((l) => /^\|/.test(l) && !/^\|[\s:|-]+\|\s*$/.test(l))];
+  const next = body.findIndex((l) => /^\*\*Next:?\*\*/.test(l));
+  for (let j = next; next >= 0 && j < body.length && body[j].trim(); j += 1) out.push(body[j]);
+  return out;
+}
+
+/** PURE: the main line: GitHub's main, and how the local refs differ from it. Shas are full or null. */
+export function mainLine({ remote, tracking, local, why }) {
+  const s = (sha) => sha.slice(0, 10);
+  if (!remote) return `main        GitHub's main not read (${why || 'unknown'}); the local origin/main ${tracking ? s(tracking) : 'is absent'} may be stale`;
+  const drift = [];
+  if (tracking && tracking !== remote) drift.push(`local origin/main is ${s(tracking)}, run git fetch`);
+  if (!tracking) drift.push('no local origin/main');
+  if (local && local !== remote) drift.push(`local main is ${s(local)}`);
+  return `main        ${s(remote)} on GitHub; ${drift.length ? `DRIFT: ${drift.join('; ')}` : 'the local refs match'}`;
+}
+
+/** PURE: what the production line adds about main: equal, or the drift between them. */
+export function productionNote(prod, main) {
+  if (!prod || !main) return '';
+  return prod === main ? '; this is main' : `; DRIFT: main is ${main.slice(0, 10)}, so its deploy is pending, failed or not triggered`;
 }
 
 /** PURE: `git worktree list --porcelain` -> [{ path, branch|null, head }]. */
@@ -154,13 +176,19 @@ export async function report(root = ROOT) {
   const inGit = git(['rev-parse', '--is-inside-work-tree']);
   const slug = inGit.ok ? repoSlug(git) : null;
 
+  let main = null;
   if (!inGit.ok) lines.push('HEAD        not a git checkout here, so HEAD, CI, PRs and worktrees cannot be read');
   else {
     const head = git(['log', '-1', '--format=%H %s']).out?.trim() || '?';
     const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']).out?.trim();
     const dirty = (git(['status', '--porcelain']).out || '').split('\n').filter(Boolean).length;
     lines.push(`HEAD        ${head.slice(0, 10)} ${head.slice(41)} (branch ${branch}; ${dirty ? `${dirty} uncommitted path(s)` : 'clean'})`);
-    const main = git(['rev-parse', '--verify', '--quiet', 'origin/main']).out?.trim() || git(['rev-parse', '--verify', '--quiet', 'main']).out?.trim();
+    const tracking = git(['rev-parse', '--verify', '--quiet', 'origin/main']).out?.trim() || null;
+    const local = git(['rev-parse', '--verify', '--quiet', 'refs/heads/main']).out?.trim() || null;
+    const ls = git(['ls-remote', 'origin', 'refs/heads/main']);
+    const remote = ls.ok ? ls.out.trim().split(/\s+/)[0] || null : null;
+    lines.push(mainLine({ remote, tracking, local, why: ls.ok ? 'origin has no main' : ls.why }));
+    main = remote || tracking || local;
     const headSha = head.slice(0, 40);
     for (const [label, sha] of [['main CI', main], ['HEAD CI', headSha !== main ? headSha : null]]) {
       if (!sha) continue;
@@ -173,7 +201,7 @@ export async function report(root = ROOT) {
   if (!slug) lines.push('production  unknown: no GitHub remote here to read deployments from');
   else {
     const p = await productionSha(slug);
-    lines.push(p.sha ? `production  ${p.sha.slice(0, 10)} live since ${p.at} (GitHub deployments, environment Production)` : `production  unknown: ${p.why}`);
+    lines.push(p.sha ? `production  ${p.sha.slice(0, 10)} live since ${p.at} (GitHub deployments, environment Production)${productionNote(p.sha, main)}` : `production  unknown: ${p.why}`);
   }
 
   if (inGit.ok) {
@@ -192,7 +220,7 @@ export async function report(root = ROOT) {
 
   const plan = join(root, 'memory/ACTIVE_PLAN.md');
   lines.push('cursor      memory/ACTIVE_PLAN.md');
-  if (existsSync(plan)) lines.push(...cursorHead(readFileSync(plan, 'utf8')).map((l) => `  ${l}`));
+  if (existsSync(plan)) lines.push(...cursorSummary(readFileSync(plan, 'utf8')).map((l) => `  ${l}`));
   else lines.push('  (missing)');
 
   const reg = join(root, 'memory/registry.jsonl');
