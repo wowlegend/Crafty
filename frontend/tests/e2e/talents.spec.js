@@ -1,6 +1,8 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { installWorldHold } from './_worldHold.js';
+import { stageMeleeZombie } from './_meleeTarget.js';
+import { SWING_APEX_OVER_BODY_M } from '../../src/combat/swingOrigin.js';
 import { xpForLevel } from '../../src/game/progression.js';
 import { killXP } from '../../src/game/killReward.js';
 import { FORM_DURATION_SEC, ENDURANCE_SEC_PER_RANK } from '../../src/game/beastTransform.js';
@@ -35,25 +37,10 @@ import { ROAR_COST } from '../../src/game/ember.js';
 const ZOMBIE_XP = killXP('zombie');
 const LONGER_SEC = FORM_DURATION_SEC + ENDURANCE_SEC_PER_RANK;
 
-/** In the page: a zombie 2.5 m ahead at 1 HP, the camera turned to it. */
-async function stageZombie() {
+/** In the page: wait out the player's spawn grace (5 s from `_spawnTime`) before a zombie is staged. */
+async function afterSpawnGrace() {
   const frame = () => new Promise((r) => requestAnimationFrame(r));
   while (Date.now() - (window.useGameStore.getState()._spawnTime || 0) < 5500) await frame();
-  const s = window.useGameStore.getState();
-  const cam = window.__threeCamera;
-  cam.rotation.order = 'YXZ'; cam.rotation.x = 0; cam.updateMatrixWorld();
-  const d = new cam.position.constructor();
-  cam.getWorldDirection(d); d.y = 0; d.normalize();
-  const gx = cam.position.x + d.x * 2.5, gz = cam.position.z + d.z * 2.5;
-  const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
-  s.spawnMob(gx, gz, 'zombie', s.getMobFloor(gx, gz, cam.position.y - 1.6));
-  const m = window.__craftyTest.call('readMobs').find((e) => !before.has(e.id));
-  if (!m) return { why: 'SETUP: spawnMob added no zombie' };
-  window.GameMethods.damageMob(m.id, m.health - 1, 'physical', 'ally');
-  const left = window.__craftyTest.call('readMobs').find((e) => e.id === m.id)?.health;
-  if (left !== 1) return { why: `SETUP: the staged zombie has ${left} HP, not 1` };
-  cam.lookAt(m.x, m.y + 0.8, m.z);
-  return { id: m.id };
 }
 
 /** In the page: set the time of day and let the frames the day/night hooks run on go by. */
@@ -191,7 +178,8 @@ test.describe('talents', () => {
     await page.waitForTimeout(1600); // the roar's cooldown (COOLDOWN_SEC 1.5 s) before the next press can charge
 
     // 3. A LEVEL PAYS ONE TALENT POINT, from a real kill's own XP.
-    const z = await page.evaluate(stageZombie);
+    await page.evaluate(afterSpawnGrace);
+    const z = await page.evaluate(stageMeleeZombie, { apex: SWING_APEX_OVER_BODY_M });
     expect(z.why, z.why).toBeUndefined();
     await page.mouse.move(640, 400);
     await page.mouse.click(640, 400);

@@ -1,6 +1,7 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { installWorldHold } from './_worldHold.js';
+import { stageMeleeZombie } from './_meleeTarget.js';
 import { HUB_NPC_ANCHORS } from '../../src/world/hubLayout.js';
 import { TALK_RANGE } from '../../src/input/talk.js';
 import { getWeaponBaseDamage } from '../../src/game/equipment.js';
@@ -216,45 +217,10 @@ test.describe('the Forge', () => {
 
     // 7. IT STILL FIGHTS: a real T press (the melee key) kills a staged 1-HP zombie, with the world held from the staging
     // so neither it nor anything else moves or strikes before the press (tests/e2e/talents.spec.js stages its kill so).
-    // The zombie stands 2.5 m from the player on the player's own floor, in a heading clear of Mara, and the staging
-    // checks the game's own melee cone (GameMethods.checkMobsInMeleeCone, from the swing's apex) holds it before the
-    // press: the hub's raised grade put a zombie staged at a fixed quarter turn on another level, outside the cone's
-    // vertical reach, and a left click there mined the ground instead (run 40853867973: the page's Stone 17).
-    const z = await page.evaluate(({ capMs, apex }) => {
-      const s = window.useGameStore.getState();
-      const cam = window.__threeCamera;
-      const body = s.playerRigidBodyRef?.current?.translation();
-      if (!body) return { why: 'SETUP: no player body' };
-      window.__e2eHoldWorld({ capMs });
-      const origin = { x: body.x, y: body.y + apex, z: body.z };
-      const feet = cam.position.y - 1.6; // as talents.spec.js stages its zombie
-      const own = s.getMobFloor(body.x, body.z, feet);
-      const floor = Number.isFinite(own) ? own : feet;
-      const mara = window.__craftyTest.call('readMobs').find((e) => e.role === 'smith');
-      const tried = [];
-      for (let k = 0; k < 12; k++) {
-        const yaw = (k * Math.PI) / 6;
-        const dir = { x: -Math.sin(yaw), y: 0, z: -Math.cos(yaw) };
-        if (mara) {
-          const mx = mara.x - body.x, mz = mara.z - body.z, ml = Math.hypot(mx, mz) || 1;
-          if ((dir.x * mx + dir.z * mz) / ml > 0.5) { tried.push(`${k}: toward Mara`); continue; }
-        }
-        const gx = body.x + dir.x * 2.5, gz = body.z + dir.z * 2.5;
-        const f = s.getMobFloor(gx, gz, feet);
-        if (!Number.isFinite(f) || Math.abs(f - floor) > 0.6) { tried.push(`${k}: floor ${f} vs ${floor}`); continue; }
-        const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
-        s.spawnMob(gx, gz, 'zombie', f);
-        const m = window.__craftyTest.call('readMobs').find((e) => !before.has(e.id));
-        if (!m) return { why: 'SETUP: spawnMob added no zombie' };
-        window.GameMethods.damageMob(m.id, m.health - 1, 'physical', 'ally');
-        cam.rotation.order = 'YXZ'; cam.rotation.x = 0; cam.rotation.y = yaw; cam.updateMatrixWorld();
-        const inCone = window.GameMethods.checkMobsInMeleeCone(origin, dir, 4.5, Math.PI / 2).some((e) => e.id === m.id);
-        if (inCone) return { id: m.id, k };
-        tried.push(`${k}: outside the melee cone`);
-        window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
-      }
-      return { why: `SETUP: no heading near the player holds a zombie in the melee cone (${tried.join('; ')})` };
-    }, { capMs: test.info().timeout || 240000, apex: SWING_APEX_OVER_BODY_M });
+    // The zombie is staged by tests/e2e/_meleeTarget.js (on the player's floor, clear of Mara, inside the game's own
+    // melee cone, checked before the press); its header says why.
+    await page.evaluate((capMs) => window.__e2eHoldWorld({ capMs }), test.info().timeout || 240000);
+    const z = await page.evaluate(stageMeleeZombie, { apex: SWING_APEX_OVER_BODY_M, avoidRole: 'smith' });
     expect(z.why, z.why).toBeUndefined();
     await page.keyboard.press('t');
     await page.evaluate(frames, 3);
