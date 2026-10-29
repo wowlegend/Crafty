@@ -684,7 +684,8 @@ export const Player = ({ isWorldBuilt }) => {
     // `canPay` a full ember bar. set() fires only on transitions.
     //
     // NOT ENOUGH EMBER is said here, once a frame at most, from the Aspect reducers below: each returns 'short' for a
-    // press only the price refused and 'unpaid' for a started verb whose price another verb spent before it landed. The
+    // press only the price refused and 'unpaid' for a started verb whose price another verb spent before it landed (the
+    // imbue's 'unpaid', which needs the cast's outcome, is said in triggerSpellCast instead). The
     // reducers hold every other gate, so a press that would do nothing at any bar says nothing, and the keyboard and the
     // touch ring, which write the same intents, are told alike.
     let emberShort = false;
@@ -781,7 +782,7 @@ export const Player = ({ isWorldBuilt }) => {
       });
       voidhandSMRef.current = vsm;
       if (vaction === 'grab') {
-        stv.spendEmber(GRAB_COST); // canGrab vetted it this frame
+        stv.spendEmber(GRAB_COST); // canPay vetted it this frame
         // M3: tint from the looked-at block when it's a KNOWN voxel (worldBlocks); else placeholder.
         const gHit = GameMethods.castBuildRay ? GameMethods.castBuildRay() : null;
         const known = gHit ? stv.worldBlocks?.get(gHit.targetCoords) : undefined;
