@@ -2,30 +2,40 @@
 import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
 
 /**
- * MOBS SENSE THE BODY, NOT THE CAMERA (game/mobSenses.js mobSensePoint, systems/AIWorkerSystem.jsx).
+ * MOBS SENSE THE BODY, NOT THE CAMERA (game/mobSenses.js mobSensePoint, systems/playerSensePoint.js).
  *
  * The camera carries the walk bob, the shake, the verb kicks and, for the roar, a reveal pose 4.5 m behind and 2.2 m up.
  * When the AI posted the camera as the player's position, a zombie beside the player could not swing during the roar
- * and one beside the reveal camera could. This mounts the real AIWorkerSystem through R3F (tests/gates/_r3f.jsx) with
- * its Web Worker stubbed, stages the reveal (the camera at transformCamPose's hold), and reads the playerPos the system
- * POSTS; then it runs the real worker (workers/ai.worker.js, its `self` shimmed) on that point: a zombie beside the body
- * lands a blow, and a moss brute beside the reveal camera does not (from the camera, both verdicts flip). The arrow's hit test (systems/EnemyProjectileSystem.jsx)
- * reads the same point, and so does the combat stance (combatStance.test.js).
- * BLIND SPOT: the Player's own loop is not mounted; the body is the store's playerRigidBodyRef, stubbed.
+ * and one beside the reveal camera could. Each case stages the reveal (the camera at transformCamPose's hold) and the
+ * body as the Player's loop samples it every live frame (game/combatStance.js stanceFrame), then drives a real reader
+ * through R3F (tests/gates/_r3f.jsx):
+ *   - the AI tick (systems/AIWorkerSystem.jsx, its Web Worker stubbed): the playerPos it posts, run through the real
+ *     worker (workers/ai.worker.js, its `self` shimmed): a zombie beside the body lands a blow, a moss brute beside the
+ *     reveal camera does not;
+ *   - the worker's reply: an archer's arrow is aimed at the body's eye, and a spider's leap runs toward the body;
+ *   - an arrow in flight (systems/EnemyProjectileSystem.jsx): one flying at the body's eye lands, one flying through the
+ *     reveal camera does not.
+ * From the camera each verdict flips, so every case tells the two points apart.
+ * BLIND SPOT: the Player's own loop is not mounted; the body sample is staged by calling stanceFrame as the loop does.
  */
 vi.mock('@react-three/fiber', () => import('@react-three/fiber/dist/react-three-fiber.esm.js'));
-const worker = vi.hoisted(() => ({ posts: [] }));
+const worker = vi.hoisted(() => ({ posts: [], live: null }));
 vi.mock('../../src/workers/ai.worker.js?worker', () => ({
   default: class FakeAIWorker {
+    constructor() { worker.live = this; }
     postMessage(m) { worker.posts.push(m); }
     terminate() {}
   },
 }));
 const { mountR3F } = await import('./_r3f.jsx');
 const { AIWorkerSystem } = await import('../../src/systems/AIWorkerSystem.jsx');
+const { EnemyProjectileSystem } = await import('../../src/systems/EnemyProjectileSystem.jsx');
 const { useGameStore } = await import('../../src/store/useGameStore');
 const { transformCamPose } = await import('../../src/game/transformCam.js');
+const { stanceFrame } = await import('../../src/game/combatStance.js');
+const { stance } = await import('../../src/game/stanceState.js');
 const { EYE_HEIGHT_M } = await import('../../src/combat/swingOrigin.js');
+const { ecs } = await import('../../src/ecs/world.js');
 
 // The real worker, run in this process: it assigns self.onmessage and replies through self.postMessage.
 const replies = [];
@@ -53,40 +63,95 @@ function lands(playerPos, mob) {
   return first + replies[replies.length - 1].attacks.length > 0;
 }
 
+// The body's centre 0.95 m over a floor at y 50, the eye EYE_HEIGHT_M over it; the reveal camera at the transform-cam's
+// hold, facing +Z.
+const BODY = { x: 4, y: 50.95, z: -2 };
+const EYE = [BODY.x, BODY.y + EYE_HEIGHT_M, BODY.z];
+const REVEAL = transformCamPose([BODY.x, BODY.y, BODY.z], [0, 0, 1], 0.5).position;
+
+/** Mount `el` with the camera at the reveal and the body sampled where the Player's loop would sample it. */
+async function mountAtReveal(el) {
+  stanceFrame([], BODY, 1 / 60);
+  r = await mountR3F(el);
+  const cam = r.three().camera;
+  cam.position.set(...REVEAL);
+  cam.updateMatrixWorld(true);
+  return cam;
+}
+
+const realStore = useGameStore.getState();
 let r = null;
+const added = [];
 afterEach(async () => {
   if (r) await r.unmount();
   r = null;
   worker.posts.length = 0;
-  useGameStore.setState({ playerRigidBodyRef: null });
+  for (const e of added.splice(0)) ecs.remove(e);
+  stance.bodySeen = false;
+  useGameStore.setState({ spawnEnemyProjectile: realStore.spawnEnemyProjectile, damagePlayer: realStore.damagePlayer });
 });
 
 describe('the point the AI posts during the roar\'s reveal', () => {
   it('is the body\'s steady eye, and a zombie beside the body reaches it while one beside the reveal camera does not', async () => {
-    // The body's centre 0.95 m over a floor at y 50; the reveal camera at the transform-cam's hold, facing +Z.
-    const body = { x: 4, y: 50.95, z: -2 };
-    useGameStore.setState({ playerRigidBodyRef: { current: { translation: () => ({ ...body }) } } });
-    r = await mountR3F(<AIWorkerSystem />);
-    const reveal = transformCamPose([body.x, body.y, body.z], [0, 0, 1], 0.5).position;
-    const cam = r.three().camera;
-    cam.position.set(...reveal);
-    cam.updateMatrixWorld(true);
+    await mountAtReveal(<AIWorkerSystem />);
     await r.step(8); // the bridge ticks at 15 Hz
     const ticks = worker.posts.filter((m) => m.type === 'TICK');
     expect(ticks.length, 'SETUP: the AI system posted no tick').toBeGreaterThan(0);
     const posted = ticks[ticks.length - 1].playerPos;
-    expect(Math.hypot(reveal[0] - body.x, reveal[2] - body.z), 'SETUP: the reveal camera must stand metres off the body').toBeGreaterThan(4);
-    expect(posted, 'the AI senses the player from somewhere other than the body\'s eye').toEqual([body.x, body.y + EYE_HEIGHT_M, body.z]);
+    expect(Math.hypot(REVEAL[0] - BODY.x, REVEAL[2] - BODY.z), 'SETUP: the reveal camera must stand metres off the body').toBeGreaterThan(4);
+    expect(posted, 'the AI senses the player from somewhere other than the body\'s eye').toEqual(EYE);
 
     // On the player's floor (a mob's centre 0.5 m over it): a zombie 1.5 m across from the body, and a moss brute (reach
     // 3.2 m across and up) 1.5 m across from the reveal camera, whose 2.2 m of height an ordinary mob cannot reach.
-    const floor = body.y - 0.95;
-    const zombie = mobAt('zombie', body.x + 1.5, floor + 0.5, body.z);
-    const brute = mobAt('moss_brute', reveal[0] + 1.5, floor + 0.5, reveal[2]);
+    const floor = BODY.y - 0.95;
+    const zombie = mobAt('zombie', BODY.x + 1.5, floor + 0.5, BODY.z);
+    const brute = mobAt('moss_brute', REVEAL[0] + 1.5, floor + 0.5, REVEAL[2]);
     expect(lands(posted, zombie), 'a zombie beside the player cannot swing during the reveal').toBe(true);
     expect(lands(posted, brute), 'a brute beside the reveal camera lands a blow on a player 4.7 m away').toBe(false);
     // The controls: from the camera each verdict flips, so the two cases tell the points apart.
-    expect(lands(reveal, zombie), 'SETUP: from the camera, the zombie beside the body must be out of reach').toBe(false);
-    expect(lands(reveal, brute), 'SETUP: from the camera, the brute beside it must reach').toBe(true);
+    expect(lands(REVEAL, zombie), 'SETUP: from the camera, the zombie beside the body must be out of reach').toBe(false);
+    expect(lands(REVEAL, brute), 'SETUP: from the camera, the brute beside it must reach').toBe(true);
+  });
+});
+
+describe('the worker\'s strikes during the reveal', () => {
+  it('an archer\'s arrow is aimed at the body\'s eye, and a spider\'s leap runs toward the body', async () => {
+    const aimed = [];
+    useGameStore.setState({ spawnEnemyProjectile: (pos, target) => aimed.push({ pos, target }) });
+    await mountAtReveal(<AIWorkerSystem />);
+    expect(typeof worker.live?.onmessage, 'SETUP: the AI system did not listen to its worker').toBe('function');
+    // A spider 3 m across from the body: toward the body is straight along -x, toward the reveal camera mostly along -z.
+    const spider = ecs.add({ isMob: true, id: 'leaper', type: 'spider', position: { x: BODY.x + 3, y: BODY.y - 0.45, z: BODY.z }, health: 50 });
+    added.push(spider);
+    worker.live.onmessage({ data: { type: 'TICK_RESULT', updates: [], attacks: [
+      { type: 'projectile', id: 'archer', position: [BODY.x - 8, BODY.y, BODY.z + 3] },
+      { type: 'leap', id: 'leaper' },
+    ] } });
+    expect(aimed.length, 'SETUP: the archer\'s strike spawned no arrow').toBe(1);
+    expect(aimed[0].target, 'the arrow is aimed somewhere other than the body\'s eye').toEqual(EYE);
+    expect(spider.knockback, 'SETUP: the leap set no impulse').toBeTruthy();
+    const [kx, , kz] = spider.knockback;
+    const toBody = [BODY.x - spider.position.x, BODY.z - spider.position.z];
+    const toCam = [REVEAL[0] - spider.position.x, REVEAL[2] - spider.position.z];
+    const cos = (a, b) => (a[0] * b[0] + a[1] * b[1]) / (Math.hypot(...a) * Math.hypot(...b));
+    expect(cos(toBody, toCam), 'SETUP: the body and the camera must lie in different directions from the spider').toBeLessThan(0.7);
+    expect(cos([kx, kz], toBody), 'the spider leaps somewhere other than at the body').toBeGreaterThan(0.9999);
+  });
+});
+
+describe('an arrow in flight during the reveal', () => {
+  it('lands on the body, and passes through the reveal camera without landing', async () => {
+    const hits = [];
+    useGameStore.setState({ damagePlayer: (amount, source) => hits.push({ amount, source }) });
+    await mountAtReveal(<EnemyProjectileSystem />);
+    const spawn = useGameStore.getState().spawnEnemyProjectile;
+    expect(typeof spawn, 'SETUP: the projectile system did not install its spawner').toBe('function');
+    // 6 m off along +x, each flying straight at its point: the one at the camera never comes within 4 m of the body.
+    spawn([REVEAL[0] + 6, REVEAL[1], REVEAL[2]], REVEAL);
+    await r.step(90);
+    expect(hits.length, 'an arrow flying through the reveal camera landed on a body 4.7 m from it').toBe(0);
+    spawn([EYE[0] + 6, EYE[1], EYE[2]], EYE);
+    await r.step(90);
+    expect(hits, 'an arrow flying at the body\'s eye did not land').toEqual([{ amount: 15, source: 'projectile' }]);
   });
 });

@@ -91,8 +91,9 @@ export function swingPose(t, sweep, anchor, aspect, fit = 1, out = { position: n
 /** The pose at charge `level` (0 to 1) from `anchor`, with its offset scaled by `fit`. */
 export function chargePose(level, anchor, aspect, fit = 1, out = { position: new THREE.Vector3(), rotation: [0, 0, 0] }, rest = [0, 0, 0]) {
   const k = frameScale(aspect, VIEWMODEL.fov, _k);
-  const [ox, oy, oz] = CHARGE.offset;
-  out.position.set(anchor.x + fit * level * k.x * ox, anchor.y + fit * level * k.y * oy, anchor.z + fit * level * oz);
+  // Read by index: destructuring an array builds an iterator on every call, and this runs every frame of a charge.
+  const o = CHARGE.offset;
+  out.position.set(anchor.x + fit * level * k.x * o[0], anchor.y + fit * level * k.y * o[1], anchor.z + fit * level * o[2]);
   out.rotation[0] = rest[0] + CHARGE.turn[0] * level;
   out.rotation[1] = rest[1] + CHARGE.turn[1] * level;
   out.rotation[2] = rest[2] + CHARGE.turn[2] * level;
