@@ -1,4 +1,9 @@
 {
   "outputDirectory": "build",
-  "ignoreCommand": "bash -c '[[ \"$VERCEL_GIT_COMMIT_REF\" == dependabot/* ]] && exit 0 || exit 1'"
+  "git": {
+    "deploymentEnabled": {
+      "**": false,
+      "main": true
+    }
+  }
 }

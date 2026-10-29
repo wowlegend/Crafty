@@ -30,8 +30,8 @@ const DIRS = ['scripts/visual', 'scripts/perf'].map((d) => resolve(APP, d));
 /**
  * Every script here that STARTS A SERVER — classified by what the file does, not by its name.
  *
- * Not a filename exclusion list: a non-server script such as make-og-image.mjs, which reads a PNG and
- * writes a PNG, would be reported as a probe with no port allocation. An exclusion list is a denominator
+ * Not a filename exclusion list: a non-server script such as make-icons.mjs, which draws its icons in a
+ * browser page and writes PNGs, would be reported as a probe with no port allocation. An exclusion list is a denominator
  * that rots — it has to be edited by whoever adds a file, which is exactly the person not thinking about
  * this gate. Asking whether the file spawns vite cannot go stale that way.
  */

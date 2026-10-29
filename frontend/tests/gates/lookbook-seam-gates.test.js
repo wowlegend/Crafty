@@ -13,6 +13,7 @@ import {
   yawForHeading,
   headingOf,
   hostileReach,
+  mobList,
   lookbookPassesOff,
   sunBearing,
   _resetLookbookForTest,
@@ -100,7 +101,7 @@ describe('the gate: ?lookbook=1 exactly, and nothing installed without it', () =
     expect(closed.__craftyLookbook).toBeUndefined();
     const open = fakeWin('?lookbook=1');
     expect(installLookbookSeam(open, deps())).toBe(true);
-    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'info', 'look', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
+    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
     // Installing changes nothing by itself: no pose is set until a script asks.
     expect(lookbookPose()).toBeNull();
     expect(lookbookPinned()).toBe(false);
@@ -332,6 +333,31 @@ describe('the eye level: stand() and look() frame what a player sees', () => {
     ];
     expect(hostileReach(entities, [0, 0, 0])).toEqual({ nearestM: 2, within8m: 2 });
     expect(hostileReach([], [0, 0, 0])).toEqual({ nearestM: null, within8m: 0 });
+  });
+
+  it('mobList and mobs(): every live mob as plain data, the named NPCs by name, hostiles split as hostileReach splits them', () => {
+    const at = (x, y, z, more = {}) => ({ type: 'zombie', health: 50, passive: false, position: { x, y, z }, ...more });
+    const entities = [
+      null,
+      at(1, 2, 3),
+      at(4, 5, 6, { type: 'ox', passive: true }),
+      at(7, 8, 9, { type: 'villager', passive: true, isNPC: true, npcName: 'Old Pike the Warden' }),
+      at(0, 0, 0, { health: 0 }),
+      { type: 'zombie', health: 50 },
+    ];
+    expect(mobList(entities)).toEqual([
+      { type: 'zombie', hostile: true, npc: null, position: [1, 2, 3] },
+      { type: 'ox', hostile: false, npc: null, position: [4, 5, 6] },
+      { type: 'villager', hostile: false, npc: 'Old Pike the Warden', position: [7, 8, 9] },
+    ]);
+    expect(mobList([])).toEqual([]);
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, { ...deps(), hostiles: () => entities });
+    expect(w.__craftyLookbook.mobs()).toEqual(mobList(entities));
+    _resetLookbookForTest();
+    const bare = fakeWin('?lookbook=1');
+    installLookbookSeam(bare, deps());
+    expect(bare.__craftyLookbook.mobs(), 'no mob query is no reading, never an empty one').toBeNull();
   });
 
   it('info() measures hostiles from the eye, and reports null when the build hands the seam no mob query', () => {

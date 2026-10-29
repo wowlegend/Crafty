@@ -1,6 +1,6 @@
 # Crafty
 
-<!-- HERO: the media pipeline (reset plan item 17) places a frame of the real game here, linked to the live game. Until that frame exists, this page carries no image. -->
+[![Crafty at golden hour, looking down on the Hearth: Bram the Trader at his market stall, a house and the brazier's fire on the stone pad, snow-dusted forested hills beyond and a low sun setting over the trees.](docs/media/hero.jpg)](https://crafty-game.vercel.app/)
 
 <!-- BEGIN PITCH (generated from frontend/src/brand.js: node frontend/scripts/ci/public-face.mjs --write) -->
 A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, and a dragon waiting at its far edge.

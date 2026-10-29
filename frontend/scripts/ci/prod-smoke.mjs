@@ -102,8 +102,8 @@ export function glVerdict(count, frames, ledger) {
   return { ok: true, line: `GL errors: ${count} over ${frames} frames (ceiling ${cap}${count < cap ? ' — FELL, re-freeze with --write-gl' : ''})` };
 }
 
-/** The seam methods scripts/visual/lookbook.mjs calls. */
-export const LOOKBOOK_SEAM_METHODS = Object.freeze(['clear', 'clearHostiles', 'info', 'look', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
+/** The seam methods the probes call (scripts/visual/lookbook.mjs and media.mjs). */
+export const LOOKBOOK_SEAM_METHODS = Object.freeze(['clear', 'clearHostiles', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
 
 /**
  * PURE: the verdict on the lookbook seam in the production bundle. The lookbook judges looks on this bundle, through
