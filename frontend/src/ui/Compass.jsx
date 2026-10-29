@@ -75,14 +75,12 @@ export const Compass = React.memo(({ treasureChests, bossSystem }) => {
         const p = placed.get(slot.id);
         const pip = p ? `translateX(${p.x.toFixed(1)}px)` : null;
         const label = p && p.labelVisible ? `translateX(${(p.labelX - (w.width || 0) / 2).toFixed(1)}px)` : null;
-        if (w.pip !== pip) {
-          w.pip = pip;
-          if (pip) { s.pip.style.transform = pip; s.pip.style.visibility = 'visible'; } else s.pip.style.visibility = 'hidden';
-        }
-        if (w.label !== label) {
-          w.label = label;
-          if (label) { s.label.style.transform = label; s.label.style.visibility = 'visible'; } else s.label.style.visibility = 'hidden';
-        }
+        // Each property is written only when it changes: a style write of the value already there is still a write
+        // (the browser records it), and standing still this strip should write nothing.
+        if (pip && w.pip !== pip) { w.pip = pip; s.pip.style.transform = pip; }
+        if (w.pipShown !== !!pip) { w.pipShown = !!pip; s.pip.style.visibility = pip ? 'visible' : 'hidden'; }
+        if (label && w.label !== label) { w.label = label; s.label.style.transform = label; }
+        if (w.labelShown !== !!label) { w.labelShown = !!label; s.label.style.visibility = label ? 'visible' : 'hidden'; }
       }
     };
     tick();

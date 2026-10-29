@@ -39,6 +39,8 @@ async function enterPlayWithHud(page, touch) {
     attached = await page.evaluate(() => !!document.querySelector('[data-testid="stat-health"]'));
   }
   if (!attached) throw new Error('SETUP: the in-game HUD never mounted after forcePlay');
+  // The ember bar shows only with ember banked (ui/EmberBar.jsx); bank some, so the layout read includes it.
+  await page.evaluate(() => window.useGameStore.setState({ ember: 25 }));
   await page.waitForTimeout(1500); // the compass, the dial and the minimap draw on their first ticks
 }
 
