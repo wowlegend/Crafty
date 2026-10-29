@@ -5,6 +5,7 @@ import { bankForKill } from '../../src/game/mobBank.js';
 import { EMBER_MAX, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST } from '../../src/game/ember.js';
 import { ANTICIPATION_SEC } from '../../src/game/beastTransform.js';
 import { FUSE_CHANNEL_SEC } from '../../src/game/soulbind.js';
+import { MAX_HOLD_SEC } from '../../src/game/voidhand.js';
 import { KIND_BY_SPELL } from '../../src/game/elemancer.js';
 
 // EMBER, IN THE BOOTED GAME (W2-F step 3; DECISIONS 2026-10-28 W1-H item 5; plan
@@ -271,6 +272,7 @@ test.describe('ember', () => {
 
     // 7. A GRAB THE BAR CANNOT PAY FOR SAYS SO; A PRESS THAT RELEASES DOES NOT. V again drops the held block (a release,
     // nothing to pay); past the grab's cooldown, V on a bar one short of it raises the notice and grabs nothing.
+    expect((await S()).held, `SETUP: the block grabbed in step 6 was dropped before the release press (MAX_HOLD_SEC is ${MAX_HOLD_SEC} s)`).toBe(true);
     await page.keyboard.down('v');
     await expect.poll(async () => (await S()).held, { message: 'V on a held block did not drop it', timeout: 15000 }).toBe(false);
     await page.keyboard.up('v');
