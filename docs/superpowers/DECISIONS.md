@@ -67,8 +67,8 @@ continue the numbering after W2-I's (its last is 32). Readings and frames:
    depth buffer into the texture GodRays tests the sun against (postprocessing 6.39.5 `EffectComposer.render`,
    `GodRaysEffect.update`), and `ViewmodelPass` sets it so that a gauntlet in front of the sun hides it. After a clear
    that copy would hold the hands alone and the sun would shine through every wall; with the hands left out of the
-   copy a clear would work, and the sun would show through the hands. The world's `RenderPass` copies just before, so
-   a frame with GodRays mounted pays a second full-resolution depth copy (`REVIEW:w2e:viewmodel-pass-gpu-cost`).
+   copy a clear would work, and the sun would show through the hands. The world's `RenderPass` would copy just before
+   it, a second full-resolution copy every frame with GodRays mounted; item 40 keeps it to one.
    The viewmodel camera maps its depth into the front 2% of the buffer instead, so the hands are nearer than any world
    surface beyond 0.102 m (the main near plane is 0.1 m) and still test against each other. It has its own fixed 60
    degree FOV (the main camera's moves 75 to 85 with speed), anchors that follow the aspect so both fists stay in
@@ -83,7 +83,8 @@ continue the numbering after W2-I's (its last is 32). Readings and frames:
    high; the margin over the declared floor is twice the floor): at midnight (0.75) the mean luma of the
    hand pixels went from 28.7 to 100.2 and the median from 7 to 106, against the floor declared before shooting (mean
    48, median 40). Warm at every time (red over blue: 2.9 at midnight). At point blank, against a tree trunk with the
-   body 0.45 m from it, the hand pixels near/far went from 0.02 (the old hands sank into the trunk) to 1.14.
+   body 0.45 m from it, the hand pixels near/far went from 0.02 (the old hands sank into the trunk) to 1.14, and on the
+   build after review to 0.97 (declared at least 0.9; `evidence/w2e/index.md`).
 34. **The eye sits 1.62 m over the ground: `EYE_HEIGHT_M` 0.67 over the body's centre, not 1.2** (the question W1-D
    left this lane). The capsule is 1.8 m and its centre rests 0.95 m up, so the old eye stood 2.15 m up, 0.30 m above
    the top of the head: blocks read small, the player looked down on every mob, and in any two-block passage the
@@ -111,8 +112,42 @@ continue the numbering after W2-I's (its last is 32). Readings and frames:
    still keeps ordinary melee out, a step no longer does, and the brute keeps its longer reach. The other choice was
    to measure from the body plus a fixed 1.2 m and keep the old table, which would have kept the one-step refuge and
    tied the AI to a height the camera no longer has. `tests/gates/mob-senses-gates.test.js` holds the table, driven
-   through the real worker from `steadyEye`, so a later change to the eye, a reach or the sense point lands there. It
+   through the real worker from `steadyEye`, so a later change to the eye height or a reach lands there. The point the
+   game posts, `mobSensePoint`, is the camera's position, which the gate does not read (`mobSenses.test.js` pins it);
+   that it carries the camera's shake, kick and the roar's reveal pose is `REVIEW:w2e:mob-sense-from-camera`. It
    stands while it earns its place.
+37. **The swing and the heavy charge keep the fist in frame** (`frontend/src/render/handPose.js`). Their offsets were
+   authored in metres for the world camera at 75 degrees on a 16:10 window and played unchanged at the viewmodel's 60,
+   so the charged fist left a 16:10 frame by half and an iPad's portrait frame whole, and step 2 and the portrait
+   finisher swept it off the edge. Each offset is now the same share of the frame at the viewmodel's FOV and the
+   window's aspect, and each gesture is then shrunk as a whole, once per aspect, until the fist's projected box stays 95%
+   inside at every step (or as inside as at its rest, on a phone in portrait). The cost is travel where the anchor
+   leaves no room: step 2 sweeps right from a fist already right of centre, so it crosses a third of the half-width on
+   16:10 and 8% on an iPad in portrait, and the charge keeps 78% of its draw on 16:10 and 22% in portrait; the turns are
+   whole everywhere. The other choice, starting step 2 at the left so it can sweep right, would pop the fist at the
+   swing's start, since every swing begins at the rest anchor. The held item now carries its own rest pose, so the
+   swing no longer zeroes the wand's tilt, and an equipped sword or pickaxe takes the hands' value floor. Gated by
+   `tests/gates/hand-pose-gates.test.jsx`. It stands while it earns its place.
+38. **The key light on the hands follows the world's shadow, and the storm's flash reaches them.** The hands receive no
+   shadow, so `frontend/src/render/ViewmodelLayer.jsx` casts one ray from the eye toward the key light every 0.1 s
+   against the world's fixed colliders, out to the loaded square's far corner at the largest render distance (102 m),
+   and eases the key on the hands to 0 where it is blocked and back where it is open over 0.12 s: in a cave, under a
+   roof or a tree the gauntlets no longer take the full sun. The flash rides the hands' sky light as it rides the
+   world's. The world's fill and its pooled point lights (the hearth, spell lights) are not mirrored
+   (`REVIEW:w2e:hand-light-fill-and-point-lights`). It stands while it earns its place.
+39. **The player's own beast draws no part within 0.25 m of the first-person eye** (`frontend/src/render/BeastAvatar.jsx`,
+   `beastAvatarParts.js` `SELF_CLEARANCE_M`). Item 34's eye sits inside the hawk's and the golem's heads and a hand's
+   width from the golem's torso and the dragon's neck; such a part writes neither colour nor depth and still casts its
+   shadow, and in the transform-cam's reveal every part draws. The other choice was a beast eye at the old 1.2 m. It was
+   not taken: the camera is the AI's sense point, so mobs would read the old refuge table in beast form, and the roar's
+   reveal hands back to the human eye, so the camera would pop 0.53 m as it settled. It stands while it earns its place.
+40. **One depth copy a frame, no draw of an empty viewmodel scene, and the cone apex set from the body.** With GodRays
+   mounted, `oneDepthCopy` (`frontend/src/render/viewmodel.js`, applied each frame by `PostTierDriver`) keeps the
+   world's `RenderPass` from copying while the viewmodel pass is enabled and follows it, and lets it copy in any other
+   arrangement. `ViewmodelPass` draws nothing while the hands group is empty. `SWING_APEX_OVER_BODY_M` (0.4) replaces
+   the drop from the eye that item 34 retuned, so an eye change leaves melee reach alone. And a treasure chest that comes
+   or goes marks the sun's shadow due, as nothing did once item 35 stopped the camera counting as a caster. It stands
+   while it earns its place.
 
 ## 2026-10-28 — [LOOP] W2-J phase 1: a short CLAUDE.md, `npm run orient`, a cursor, and the loop docs retired
 
