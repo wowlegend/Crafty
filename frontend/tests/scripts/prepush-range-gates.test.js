@@ -180,13 +180,13 @@ describe('ci/pipeline.sh --tier=push — opsec-scan and the commit-range gates, 
       'node scripts/ci/artifact-currency.mjs',
       'node scripts/ci/registry-append-only.mjs',
     ]);
-    expect(r.stdout).toMatch(/skipped \(push tier\): doc-currency, eslint, gate-shape, cli-guard, the unit suite, build, bundle byte budget/);
+    expect(r.stdout).toMatch(/skipped \(push tier\): doc-currency, eslint, gate-shape, cli-guard, registry-dedupe, the unit suite, build, bundle byte budget/);
   });
 
   it('control: the certify tier, under the same stubs, runs the offline core and no range gate', () => {
     const r = runPipeline(['--tier=certify']);
     expect(r.status, r.stdout + r.stderr).toBe(0);
-    for (const c of ['npm run --silent lint', 'npm run --silent test:unit', 'npm run --silent build', 'node scripts/ci/bundle-budget.mjs']) {
+    for (const c of ['npm run --silent lint', 'node scripts/ci/registry-dedupe.mjs --check', 'npm run --silent test:unit', 'npm run --silent build', 'node scripts/ci/bundle-budget.mjs']) {
       expect(r.cmds, c).toContain(c);
     }
     expect(r.cmds).not.toContain('node scripts/ci/artifact-currency.mjs');

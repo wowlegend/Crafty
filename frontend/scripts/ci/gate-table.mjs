@@ -65,6 +65,7 @@ export const DESCRIPTIONS = {
   eslint: 'crash-class bugs and dead code (`no-unused-vars` and `no-undef` are errors)',
   'gate-shape': 'an assertion a comment could satisfy; the source-grep gate count may only fall',
   'cli-guard': 'a script that runs its CLI when imported',
+  'registry-dedupe': 'a `memory/registry.jsonl` id a merge left twice (`registry-dedupe.mjs` collapses it)',
   'unit + static gates': 'the whole vitest suite: `tests/**` and colocated `src/**/*.test.js`',
   'vitest related': 'a staged change that breaks a unit test statically importing it',
   build: 'broken JSX or imports',

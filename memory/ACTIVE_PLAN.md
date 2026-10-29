@@ -8,7 +8,7 @@ row; a keyword read of the older cursors found two more, now rows too. A full re
 
 **Governing:** Kevin's standing principle (DECISIONS 2026-10-28 item 14; `CLAUDE.md`): nothing is locked, full
 autonomy, Kevin reviews one page, the Command Record (`docs/superpowers/command-record.html`, published at
-https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f).
+https://claude.ai/artifact/AdWhiwq9utxaUdUQBEcfCA).
 
 **Programme:** `docs/superpowers/plans/2026-10-28-crafty-sota-reset.md` ("The First Night"): Wave 1 has landed;
 Wave 2 lanes run as PRs (section 3 of the plan names each lane and its acceptance); Wave 3 follows.
