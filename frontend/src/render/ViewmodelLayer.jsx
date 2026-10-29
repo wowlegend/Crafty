@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { getViewmodel, mirrorSkyLight, easeKeyVisibility, HAND_SHADE } from './viewmodel.js';
 import { skyFrameRef, lightningFlashRef } from './mood.js';
 import { registerTestHook } from '../devtest/testBridge.js';
+import { worldDelta } from '../game/worldClock.js';
 
 export function ViewmodelLayer({ children }) {
   const vm = getViewmodel();
@@ -30,7 +31,9 @@ export function ViewmodelLayer({ children }) {
     }
     cam.getWorldQuaternion(q);
     const f = skyFrameRef.current;
-    shade.sinceProbe += delta;
+    // World time: a hitstop or a pause holds the fade where it is, with the world it follows.
+    const dt = worldDelta(delta);
+    shade.sinceProbe += dt;
     if (shade.sinceProbe >= HAND_SHADE.everyS && world && rapier) {
       shade.sinceProbe = 0;
       const d = f.keyDir;
@@ -43,7 +46,7 @@ export function ViewmodelLayer({ children }) {
         | rapier.QueryFilterFlags.EXCLUDE_SENSORS;
       shade.open = !world.castRay(ray, HAND_SHADE.reachM, true, fixedOnly);
     }
-    shade.visibility = easeKeyVisibility(shade.visibility, shade.open, delta);
+    shade.visibility = easeKeyVisibility(shade.visibility, shade.open, dt);
     mirrorSkyLight(f, q, vm.rig, shade.visibility, lightningFlashRef.current);
   });
   return createPortal(children, vm.hands);

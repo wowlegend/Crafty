@@ -6,9 +6,9 @@
 export const FRAMES = 4;
 const DEG = Math.PI / 180;
 /** The sky's up must come back to the world's up within this, after the view is turned 1.1 rad and tilted 0.3 rad. */
-export const SKY_SLACK_DEG = 3;
+const SKY_SLACK_DEG = 3;
 /** The key moves with the game's clock between the light's frame and the read. */
-export const KEY_SLACK_DEG = 8;
+const KEY_SLACK_DEG = 8;
 
 /**
  * Every failed check on a reading, in order: { setup, line }. `setup` marks a reading that cannot judge the hands (a
