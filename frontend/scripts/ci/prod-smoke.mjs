@@ -367,11 +367,13 @@ export function programVerdict(readings, watched = WATCHED_PROGRAMS) {
 }
 
 /**
- * THE POST CHAIN THE SHIPPED BUNDLE RENDERS (DECISIONS 2026-10-28 item 29). The pass timer lists the chain each
- * composer.render runs, with or without a timer extension (src/render/passTimer.js `chain`), so this reads the
+ * THE POST CHAIN THE SHIPPED BUNDLE RENDERS (DECISIONS 2026-10-28 item 29). The pass timer lists the chain of the
+ * composer that last rendered, with or without a timer extension (src/render/passTimer.js `chain`), so this reads the
  * composer the production build actually built, on the game canvas, after play began: postprocessing's own effect
  * names, which survive the minifier. `present` is the presence half: a chain the reader cannot see (no composer, a
- * renamed effect) fails as COULD NOT CHECK instead of passing the absence half on nothing.
+ * renamed effect) fails as COULD NOT CHECK instead of passing the absence half on nothing. `tier` is the quality tier
+ * the chain was read at: a pass can be mounted at some tiers only, and `high` mounts every tier-gated one, so the
+ * absence half is checked at `high` or not at all.
  */
 export const CHAIN_PRESENT = Object.freeze(['RenderPass', 'BloomEffect', 'SMAAEffect', 'ToneMappingEffect']);
 // N8AO was deleted on its measured GPU cost; render/passTimer.js labels a pass of its shape `N8AO` whatever
@@ -379,8 +381,9 @@ export const CHAIN_PRESENT = Object.freeze(['RenderPass', 'BloomEffect', 'SMAAEf
 export const CHAIN_ABSENT = Object.freeze(['N8AO']);
 
 /** PURE: the verdict on the largest canvas's chain out of a passTimes() report. */
-export function chainVerdict(report, { present = CHAIN_PRESENT, absent = CHAIN_ABSENT } = {}) {
+export function chainVerdict(report, { present = CHAIN_PRESENT, absent = CHAIN_ABSENT, tier } = {}) {
   const fail = (why, control = false) => ({ ok: false, control, line: `post chain: ${why}` });
+  if (tier !== 'high') return fail(`COULD NOT CHECK — read at tier ${tier}, not high: a pass mounted at higher tiers only is not in it`, true);
   const area = (c) => (Array.isArray(c) ? c[0] * c[1] : 0);
   const ctx = [...(report?.contexts || [])].filter((c) => Array.isArray(c.chain)).sort((a, b) => area(b.canvas) - area(a.canvas))[0];
   if (!ctx) return fail('COULD NOT CHECK — no composer reported a chain', true);
@@ -390,7 +393,7 @@ export function chainVerdict(report, { present = CHAIN_PRESENT, absent = CHAIN_A
   if (missing.length) return fail(`COULD NOT CHECK — the chain [${labels.join(', ')}] lacks ${missing.join(', ')}`, true);
   const back = absent.filter(has);
   if (back.length) return fail(`${back.join(', ')} is back in the chain the shipped bundle renders: [${labels.join(', ')}]`);
-  return { ok: true, line: `post chain: [${labels.join(', ')}]${absent.length ? `; none of ${absent.join(', ')}` : ''}` };
+  return { ok: true, line: `post chain at tier high: [${labels.join(', ')}]${absent.length ? `; none of ${absent.join(', ')}` : ''}` };
 }
 
 /** PURE: is this console/page message worth failing over? */
@@ -605,12 +608,17 @@ if (isCli) {
     console.log(`prod-smoke: ${pv.line}`);
     if (!pv.ok) errors.push(pv.control ? `${pv.line} (world built: ${worldBuilt}; ${staged}; eye ${JSON.stringify(eye)})` : pv.line);
 
-    // THE POST CHAIN — see chainVerdict. The timer installed by the seam check above has listed every composer.render
-    // since, so this is the chain the game canvas just drew.
-    const chainReport = await page.evaluate(async () => {
-      try { return await window.__craftyLookbook.passTimes(); } catch (e) { return { contexts: [], error: String((e && e.message) || e) }; }
+    // THE POST CHAIN — see chainVerdict. The tier goes to high first, which mounts every tier-gated pass, and a few
+    // frames render in it (SwiftShader draws about one a second). A tier step mounts a fresh performance monitor whose
+    // first decision window (at least 2.5 s) the governor ignores (render/tierGovernor.js rule 4), so the read lands
+    // before it can step down; the read records the tier it saw either way.
+    await page.evaluate(() => window.useGameStore.getState().setQualityTier('high'));
+    await new Promise((r) => setTimeout(r, 3000));
+    const chainRead = await page.evaluate(async () => {
+      const tier = window.__craftyLookbook?.info?.().tier ?? null;
+      try { return { tier, report: await window.__craftyLookbook.passTimes() }; } catch (e) { return { tier, report: { contexts: [], error: String((e && e.message) || e) } }; }
     });
-    const cv = chainVerdict(chainReport);
+    const cv = chainVerdict(chainRead.report, { tier: chainRead.tier });
     console.log(`prod-smoke: ${cv.line}`);
     if (!cv.ok) errors.push(cv.control ? `${cv.line} (world built: ${worldBuilt}; ${staged})` : cv.line);
   } catch (e) {

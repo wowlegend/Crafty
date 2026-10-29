@@ -26,7 +26,7 @@
 //
 // Loaded only when the lookbook seam is asked for timings (render/lookbookSeam.js passTimes), never for a player and
 // never for the power A/B hold, which must not pay the queries' cost in one arm only.
-import { EffectComposer, EffectPass } from 'postprocessing';
+import { EffectComposer, EffectPass, BlendFunction } from 'postprocessing';
 
 const EXT_NAME = 'EXT_disjoint_timer_query_webgl2';
 const SAMPLES_PER_LABEL = 240;
@@ -223,8 +223,17 @@ function instrumentComposer(composer, timer) {
   }
 }
 
-/** The composer's passes as rendered: label and whether the composer runs it. */
-const chainOf = (composer) => composer.passes.map((p, i) => ({ label: `${i}:${passLabel(p, i)}`, enabled: p.enabled !== false }));
+/** The composer's passes: label, whether the composer runs it and, for an EffectPass, which of its effects are skipped
+ *  (blend function SKIP: left out of the merged shader, as render/passesOff.js switches one off). */
+function chainOf(composer) {
+  return composer.passes.map((p, i) => {
+    const entry = { label: `${i}:${passLabel(p, i)}`, enabled: p.enabled !== false };
+    if (p instanceof EffectPass) {
+      entry.skipped = p.effects.filter((e) => e.blendMode?.blendFunction === BlendFunction.SKIP).map((e) => e.name);
+    }
+    return entry;
+  });
+}
 
 const syncPixel = new Uint8Array(4);
 /**
@@ -242,11 +251,13 @@ let installed = null;
 /**
  * Patch EffectComposer.prototype.render (once per page) and return the page-wide timing handle: one timer per WebGL
  * context, so the title diorama's composer and the game's are reported apart, each with its canvas size and the chain
- * it last rendered. `now` is the wall clock (injected by the gates).
+ * of the composer that last rendered on it, read when the report is. The frame itself only notes which composer that
+ * was: the chain's labels are built at the read, so the frame a utilization reading runs over is not slowed by them.
+ * `now` is the wall clock (injected by the gates).
  */
 export function installPassTimer(ComposerClass = EffectComposer, { now = wallClock } = {}) {
   if (installed) return installed;
-  const timers = new Map(); // context -> { timer, canvas, chain }
+  const timers = new Map(); // context -> { timer, canvas, composer }
   const proto = ComposerClass.prototype;
   const render = proto.render;
   proto.render = function timedComposerRender(deltaTime) {
@@ -254,11 +265,11 @@ export function installPassTimer(ComposerClass = EffectComposer, { now = wallClo
     const gl = renderer?.getContext?.();
     let entry = gl ? timers.get(gl) : null;
     if (gl && !entry) {
-      entry = { timer: createPassTimer(gl, now), canvas: gl.canvas, chain: null };
+      entry = { timer: createPassTimer(gl, now), canvas: gl.canvas, composer: null };
       timers.set(gl, entry);
     }
     if (!entry) return render.call(this, deltaTime);
-    entry.chain = chainOf(this);
+    entry.composer = this;
     const timer = entry.timer;
     if (mode === 'frame') {
       timer.poll();
@@ -286,15 +297,19 @@ export function installPassTimer(ComposerClass = EffectComposer, { now = wallClo
     return render.call(this, deltaTime);
   };
   installed = {
-    /** Every context's report, with the canvas size in device pixels; `reset` starts a fresh window after reading. */
-    report({ reset = false } = {}) {
-      const contexts = [...timers.values()].map(({ timer, canvas, chain }) => {
+    /** Every context's report, with the canvas size in device pixels. `reset` starts a fresh window after reading, and
+     *  `mode` switches it from then on, so the report is labelled with the mode its window ran in. */
+    report({ reset = false, mode: next } = {}) {
+      if (next !== undefined && !MODES.includes(next)) throw new RangeError(`passTimer: mode must be one of ${MODES.join(', ')}, got ${JSON.stringify(next)}`);
+      const contexts = [...timers.values()].map(({ timer, canvas, composer }) => {
         timer.poll();
-        const r = { canvas: canvas ? [canvas.width, canvas.height] : null, mode, chain, ...timer.report() };
+        const r = { canvas: canvas ? [canvas.width, canvas.height] : null, mode, chain: composer ? chainOf(composer) : null, ...timer.report() };
         if (reset) timer.reset();
         return r;
       });
-      return { installed: true, mode, contexts };
+      const out = { installed: true, mode, contexts };
+      if (next !== undefined) mode = next;
+      return out;
     },
     /** 'segments', 'frame' or 'count', from the next composer.render on. */
     setMode(m) {

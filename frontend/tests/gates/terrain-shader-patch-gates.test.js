@@ -240,4 +240,25 @@ describe('the terrain shader patch, run on three\'s standard-material source', (
     expect(checked).toBe(TEXTURE_LAYER_COUNT * 3);
     console.log(`[gate] terrain patch: the sample's layer run for ${checked} values of vTexLayer`);
   });
+
+  it('the biome tint\'s mask reads the layer the face samples, so a remapped face takes its tile\'s tint, not its block\'s', () => {
+    const reads = [...fragment.main.matchAll(/\buBiomeTintMask\s*\[/g)];
+    expect(reads.length, 'reads of uBiomeTintMask in the fragment main()').toBe(1);
+    const open = reads[0].index + reads[0][0].length - 1;
+    let depth = 0;
+    let close = -1;
+    for (let i = open; i < fragment.main.length && close < 0; i++) {
+      if (fragment.main[i] === '[') depth += 1;
+      else if (fragment.main[i] === ']' && --depth === 0) close = i;
+    }
+    const index = fragment.main.slice(open + 1, close).trim();
+    const resolved = resolveLocals(fragment.main, index, reads[0].index, new Set(['vTexLayer', 'floor', 'float', 'int', 'clamp']));
+    expect(resolved.unresolved, `the mask's index \`${index}\` reads \`${resolved.unresolved}\`, not the face layer alone`).toBeUndefined();
+    let checked = 0;
+    for (let L = 0; L < TEXTURE_LAYER_COUNT; L++) {
+      expect(runGlsl(resolved.declarations, index, { vTexLayer: L + 0.3 }), `vTexLayer ${L}`).toBe(L);
+      checked++;
+    }
+    expect(checked).toBe(TEXTURE_LAYER_COUNT);
+  });
 });

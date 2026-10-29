@@ -409,6 +409,7 @@ function main() {
     console.error(`\n✖ registry-harvest: ${r.errors.length} problem(s)`);
     for (const e of r.errors) console.error(`  • ${e}`);
     console.error(`\nAdd a row to ${REGISTRY} for each missing item (key = the quoted key); a row is closed there with closedBy, never deleted.`);
+    if (r.errors.some((e) => e.includes('repeats line'))) console.error('A repeated id after a merge: node frontend/scripts/ci/registry-dedupe.mjs keeps the copy furthest along.');
     process.exit(1);
   }
   const total = r.perSource.reduce((a, s) => a + s.total, 0);

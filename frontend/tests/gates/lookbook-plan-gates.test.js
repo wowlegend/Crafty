@@ -34,8 +34,17 @@ import {
   parseGpuUtil,
   gpuMsPerFrame,
   altDifferential,
+  PASS_ALT_MIN_READINGS,
+  PASS_MIN_TIMED,
+  PASS_MIN_UTIL,
+  windowReadings,
+  armAppliedWhy,
+  passWindowWhy,
+  passRendererProblem,
+  checkoutState,
+  targetSummaryLines,
 } from '../../scripts/visual/_lookbook.mjs';
-import { LOOKBOOK_PASS_NAMES } from '../../src/render/passesOff.js';
+import { LOOKBOOK_PASS_NAMES, lookbookEffectNames } from '../../src/render/passesOff.js';
 import { viteArgv } from '../../scripts/visual/_serve.mjs';
 
 /**
@@ -473,6 +482,26 @@ describe('the whole-frame differential and the rule it is judged by', () => {
     ];
     const du = passDifferential(withU, 'grade');
     expect([du.reps, du.u.n, du.u.median, du.onU]).toEqual([2, 1, 1, 5]);
+    // And the other way: a window whose timer query read nothing (no extension) still counts for U and W.
+    const noQuery = [
+      win('vignette', 0, 'on', null, 9, { u: 5 }), win('vignette', 0, 'off', null, 8, { u: 4 }),
+      win('vignette', 1, 'off', null, 8, { u: 4.1 }), win('vignette', 1, 'on', null, 9.2, { u: 5.3 }),
+    ];
+    const dn = passDifferential(noQuery, 'vignette');
+    expect([dn.reps, dn.q.n, dn.u.n, dn.w.n], 'U was dropped with the query').toEqual([2, 0, 2, 2]);
+    expect(dn.u.median).toBeCloseTo(1.1, 9);
+    expect(dn.onQ).toBeNull();
+  });
+
+  it('a window keeps each instrument that read enough samples and drops only the one that did not', () => {
+    const q = { ms: 6, n: PASS_MIN_TIMED }, w = { ms: 8, n: 80 }, util = { u: 4, uN: PASS_MIN_UTIL };
+    expect(windowReadings({ q, w, util })).toEqual({ q: 6, w: 8, u: 4, dropped: [] });
+    const noTimer = windowReadings({ q: null, w, util });
+    expect([noTimer.q, noTimer.w, noTimer.u], 'no timer query took U and W with it').toEqual([null, 8, 4]);
+    expect(noTimer.dropped.join(' ')).toMatch(/Q: 0 timed frames/);
+    const thin = windowReadings({ q: { ms: 6, n: PASS_MIN_TIMED - 1 }, w, util: { u: 4, uN: PASS_MIN_UTIL - 1 } });
+    expect([thin.q, thin.w, thin.u]).toEqual([null, 8, null]);
+    expect(thin.dropped).toHaveLength(2);
   });
 
   it('material: U at least 0.5 ms AND 10% of the frame, 4 of 5 positive, no admitted instrument contradicting; else named', () => {
@@ -554,11 +583,13 @@ describe('the GPU\'s own utilization: an instrument with no timer query in it', 
 });
 
 describe('the fast alternation: one differential per adjacent on/off pair of halves, within one power state', () => {
-  const half = (state, pcts) => ({ state, samples: pcts.map((p, i) => ({ t: i * 200, util: { device: p } })) });
+  // Readings every 200 ms: the first three (0, 200, 400 ms) are inside the driver's lag. 100 frames in 1600 ms is a
+  // 16 ms frame interval unless a half says otherwise.
+  const half = (state, pcts, extra = {}) => ({ state, samples: pcts.map((p, i) => ({ t: i * 200, util: { device: p } })), frames: 100, windowMs: 1600, ...extra });
   it('takes each half after the driver lag, pairs neighbours whatever their order, and reads ms at the frame interval', () => {
-    // Halves at 600 ms and after: 88 / 80 / 88 / 80 % at 16 ms a frame. The first two readings of each are lag.
+    // Halves at 600 ms and after: 88 / 80 / 88 / 80 % at 16 ms a frame.
     const halves = [half('on', [10, 10, 10, 88, 88, 88]), half('off', [99, 99, 99, 80, 80, 80]), half('on', [0, 0, 0, 88, 88, 88]), half('off', [0, 0, 0, 80, 80, 80])];
-    const d = altDifferential(halves, 16);
+    const d = altDifferential(halves);
     expect(d.u.n, 'three adjacent pairs from four halves').toBe(3);
     expect(d.u.values.map((x) => Math.round(x * 100) / 100)).toEqual([1.28, 1.28, 1.28]);
     expect(d.onU).toBeCloseTo(0.88 * 16, 9);
@@ -566,11 +597,118 @@ describe('the fast alternation: one differential per adjacent on/off pair of hal
   it('a step in the GPU\'s power state between pairs leaves each pair\'s differential alone', () => {
     // The state jumps from about 47% to 87% busy between the second and third halves: the one pair across the jump
     // reads it (4.2 ms), and the median of the four pairs holds at the in-state 0.2 ms.
-    const halves = [half('on', [0, 0, 0, 48, 48]), half('off', [0, 0, 0, 46, 46]), half('on', [0, 0, 0, 88, 88]), half('off', [0, 0, 0, 86, 86]), half('on', [0, 0, 0, 88, 88])];
-    const d = altDifferential(halves, 10);
+    const ten = { frames: 100, windowMs: 1000 };
+    const halves = [half('on', [0, 0, 0, 48, 48, 48], ten), half('off', [0, 0, 0, 46, 46, 46], ten), half('on', [0, 0, 0, 88, 88, 88], ten), half('off', [0, 0, 0, 86, 86, 86], ten), half('on', [0, 0, 0, 88, 88, 88], ten)];
+    const d = altDifferential(halves);
     expect(d.u.values.map((x) => Math.round(x * 100) / 100)).toEqual([0.2, 4.2, 0.2, 0.2]);
     expect(d.u.median).toBeCloseTo(0.2, 9);
-    expect(altDifferential([half('on', [0, 0, 0, 50]), half('on', [0, 0, 0, 40])], 10).u.n, 'two halves in the same state are no pair').toBe(0);
-    expect(altDifferential(halves, null).u.n, 'no frame interval, no ms').toBe(0);
+    expect(altDifferential([half('on', [0, 0, 0, 50, 50, 50]), half('on', [0, 0, 0, 40, 40, 40])]).u.n, 'two halves in the same state are no pair').toBe(0);
+    expect(altDifferential(halves.map((h) => ({ ...h, frames: 0 }))).u.n, 'no frame interval, no ms').toBe(0);
+  });
+
+  it('each half is read at its OWN frame interval: an arm that raises the frame rate at the same busy percent is a cost', () => {
+    // The GPU is busy 90% of the time either way, but with the arm off the frame takes 12 ms instead of 16: the arm
+    // costs 0.9 x 4 ms a frame. One interval for the whole window would read 0.
+    const halves = [half('on', [0, 0, 0, 90, 90, 90]), half('off', [0, 0, 0, 90, 90, 90], { frames: 100, windowMs: 1200 }), half('on', [0, 0, 0, 90, 90, 90])];
+    const d = altDifferential(halves);
+    expect(d.u.values.map((x) => Math.round(x * 100) / 100)).toEqual([3.6, 3.6]);
+    expect(d.onU).toBeCloseTo(0.9 * 16, 9);
+  });
+
+  it('a half the window check refused, or one with too few readings after the lag, counts for nothing and is named', () => {
+    expect(PASS_ALT_MIN_READINGS).toBeGreaterThanOrEqual(3);
+    const ok = (state) => half(state, [0, 0, 0, state === 'on' ? 88 : 80, state === 'on' ? 88 : 80, state === 'on' ? 88 : 80]);
+    const refused = { ...ok('off'), why: ['tier med'] };
+    const thin = half('off', [0, 0, 0, 10]);
+    const d = altDifferential([ok('on'), refused, ok('on'), thin, ok('on'), ok('off')]);
+    expect(d.u.n, 'only the last pair has two counted halves').toBe(1);
+    expect(d.u.values[0]).toBeCloseTo(0.08 * 16, 9);
+    expect(d.dropped).toHaveLength(2);
+    expect(d.dropped.join(' | ')).toMatch(/half 1 \(off\): tier med/);
+    expect(d.dropped.join(' | ')).toMatch(/half 3 \(off\): 1 readings after the lag/);
+  });
+});
+
+describe('a --passes window measures the state it claims', () => {
+  const POSE = { stand: [0.5, 50, 0.5], heading: 0 };
+  const AT = { active: true, isAlive: true, tier: 'high', cycle: 0.25, body: [0.5, 50.1, 0.5], heading: 0.2 };
+  const fx = (label, skipped) => ({ label, enabled: true, skipped });
+  const CHAIN = (skipped = []) => [
+    { label: '0:RenderPass', enabled: true },
+    fx('1:EffectPass(GodRaysEffect+HueSaturationEffect+BrightnessContrastEffect+BloomEffect)', skipped.filter((n) => n !== 'SMAAEffect')),
+    fx('2:EffectPass(SMAAEffect)', skipped.filter((n) => n === 'SMAAEffect')),
+  ];
+  const why = (o) => passWindowWhy({ cycle: 0.25, pose: POSE, at: AT, chain: CHAIN(), expectEffects: [], ...o });
+
+  it('a window at the pose, tier high, alive, input live, on time, with nothing off, is valid', () => {
+    expect(why({})).toEqual([]);
+  });
+
+  it('each failure is named, the pose and the arm included', () => {
+    const cases = [
+      [{ at: { ...AT, active: false } }, /input not live/],
+      [{ at: { ...AT, isAlive: false } }, /player dead/],
+      [{ at: { ...AT, tier: 'med' } }, /tier med/],
+      [{ at: { ...AT, cycle: 0.27 } }, /clock at 0\.2700/],
+      [{ at: { ...AT, body: [3, 50, 0.5] } }, /from the stand/],
+      [{ at: { ...AT, heading: 30 } }, /facing 30\.0/],
+      [{ expectEffects: ['BloomEffect'] }, /BloomEffect not off/],
+      [{ chain: CHAIN(['SMAAEffect']) }, /SMAAEffect off in the chain/],
+      [{ chain: null }, /unread/],
+      [{ chain: [{ label: '0:RenderPass', enabled: true }] }, /unread/],
+    ];
+    for (const [o, re] of cases) expect(why(o).join('; ')).toMatch(re);
+    expect(cases.length).toBe(10);
+    // The clock tolerance is circular, as everywhere else in the probe.
+    expect(passWindowWhy({ cycle: 0.995, pose: POSE, at: { ...AT, cycle: 0.003 }, chain: CHAIN(), expectEffects: [] })).toEqual([]);
+  });
+
+  it('the arm is applied when exactly its effects show skipped: the seam\'s names, matched against the chain', () => {
+    const grade = lookbookEffectNames(['grade']);
+    expect(grade).toEqual(['BrightnessContrastEffect', 'HueSaturationEffect']);
+    expect(armAppliedWhy(CHAIN(grade), grade)).toEqual([]);
+    expect(armAppliedWhy(CHAIN(['HueSaturationEffect']), grade).join(' ')).toMatch(/BrightnessContrastEffect not off/);
+    // 'sun' is the billboard, not an effect: the godrays+sun arm is checked on GodRays alone.
+    expect(lookbookEffectNames(['godrays', 'sun'])).toEqual(['GodRaysEffect']);
+    expect(lookbookEffectNames(['sun'])).toEqual([]);
+    // Every arm the plan measures names at least one effect the chain can show.
+    for (const a of [...PASS_ARMS, PASS_CONTROL]) expect(lookbookEffectNames(a.off).length, a.id).toBeGreaterThan(0);
+  });
+
+  it('--passes refuses a game renderer that is not hardware, unless software was asked for', () => {
+    expect(passRendererProblem(ANGLE_METAL)).toBeNull();
+    expect(passRendererProblem(SWIFTSHADER_ANGLE)).toMatch(/software/);
+    expect(passRendererProblem(SWIFTSHADER_ANGLE, { allowSoftware: true })).toBeNull();
+    expect(passRendererProblem(null)).toMatch(/unknown/);
+    expect(passRendererProblem(null, { allowSoftware: true }), 'an unread renderer passed as software').toMatch(/unknown/);
+  });
+});
+
+describe('the run records which checkout it measured, and whether it was clean', () => {
+  it('names the commit, and marks a tree with changes dirty with their paths', () => {
+    expect(checkoutState('2fef2f32\n', '')).toEqual({ commitAtRun: '2fef2f32', dirty: false, dirtyPaths: [], dirtyCount: 0 });
+    const d = checkoutState('2fef2f32\n', ' M frontend/scripts/visual/lookbook.mjs\n?? frontend/scripts/visual/new-probe.mjs\n');
+    expect(d).toMatchObject({ commitAtRun: '2fef2f32', dirty: true, dirtyCount: 2 });
+    expect(d.dirtyPaths).toEqual(['frontend/scripts/visual/lookbook.mjs', 'frontend/scripts/visual/new-probe.mjs']);
+    expect(checkoutState(null, null), 'not a checkout: unknown, never clean').toMatchObject({ commitAtRun: null, dirty: null });
+  });
+});
+
+describe('the run\'s printed summary covers every set it shot', () => {
+  const shot = (file, valid, why = []) => ({ file, valid, why, passMs: { postMs: 1, plausible: true } });
+  it('the material set prints its valid count against its plan, every invalid frame, and joins the post-pass count', () => {
+    const r = {
+      shots: [], eye: [], clips: [], respawns: 0,
+      material: [shot('turf-wall-0.30.png', false, ['the body never came to rest at the sight']), shot('trunk-0.30.png', true)],
+      sights: { 'turf-wall': { form: 'hill', rangeM: 21.2 }, trunk: null },
+    };
+    const text = targetSummaryLines(r, { hero: 0, eye: 0, material: 8 }).join('\n');
+    expect(text).toMatch(/material +1\/2 valid \(planned 8\); sights: turf-wall hill at 21\.2 m, trunk none/);
+    expect(text).toMatch(/INVALID turf-wall-0\.30\.png: the body never came to rest at the sight/);
+    expect(text).toMatch(/post-pass ms +2\/2 frame/);
+    // Asked for and shot nothing: 0 of 8, not silence.
+    expect(targetSummaryLines({ shots: [], material: [] }, { material: 8 }).join('\n')).toMatch(/material +0\/0 valid \(planned 8\)/);
+    // Not asked for: no line.
+    expect(targetSummaryLines({ shots: [], material: [] }, { material: 0 }).join('\n')).not.toMatch(/material/);
   });
 });
