@@ -5,7 +5,7 @@ import { refundUnknownTalents, canUnlockTalent, respecTalents } from '../game/ta
 import { spellStatsAt } from '../game/spellTiers.js';
 import { foldVerbMods } from '../game/verbMods.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests } from '../game/saveSchema.js';
+import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, TALENT_CUT } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -109,8 +109,9 @@ export const useGameStore = create((set, get) => ({
     _sessionWorldId: null,
 
     // The save keys this build does not write, as loaded (game/saveSchema.js splitTombstone); buildSaveData writes them
-    // back. Replaced wholesale by every load, so a new world never inherits the last one's.
-    _tombstone: {},
+    // back. Replaced wholesale by every load, so a new world never inherits the last one's. A session that has loaded
+    // nothing plays a post-Cut build, so its saves record the Cut's refund as run (saveSchema.js TALENT_CUT).
+    _tombstone: { migrated: [TALENT_CUT] },
 
     // Capture-only: hide the gameplay HUD for clean character-studio shots
     // (e.g. the character-closeup visual fixture). Default false -> HUD always shows
@@ -1142,6 +1143,11 @@ export const useGameStore = create((set, get) => ({
                 playerHealth: maxHealth,
                 mana: maxMana,
                 playerPosition: position || state.playerPosition,
+                // A grabbed block belongs to the world it was grabbed in, and the loaded build may not hold the grab at
+                // all (the Cut's respec, a rank refunded as unknown): the held branch of game/voidhand.js reads no
+                // talent, so a block carried through the load would be thrown by a verb the player does not have.
+                voidhandHeld: false,
+                heldPhantom: null,
                 // S2a: restore the quest/achievement mirror (tolerate pre-questState
                 // saves by falling back) and bump the resync tick so useQuestSystem
                 // re-seeds its local working state from the loaded snapshot.
@@ -1168,8 +1174,10 @@ export const useGameStore = create((set, get) => ({
             const parts = [owed.xp > 0 && `+${owed.xp} XP`, owed.coins > 0 && `+${owed.coins} coins`, ...owed.items.map((it) => `+${it.count} ${it.item}`)].filter(Boolean);
             s.addNotification?.(`Quest reward (${owed.paidTitles.join(', ')}): ${parts.join(', ')}!`, 'reward');
         }
-        if (owed.respec) {
-            s.addNotification?.(`Talents now change your Aspects: ${s.talentPoints} talent points to spend (U)`, 'reward');
+        // Read after the grants above: a retired quest's XP can level the player up, and each level adds a point.
+        const points = get().talentPoints;
+        if (owed.respec && points > 0) {
+            s.addNotification?.(`Talents now change your Aspects: ${points} talent ${points === 1 ? 'point' : 'points'} to spend (U)`, 'reward');
         }
 
         // Teleport the live Rapier body (imperative; outside the reactive set) if present, leaving any fight behind

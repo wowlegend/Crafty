@@ -84,11 +84,17 @@ export function attributePointsHeld(attributes) {
   return Math.floor(points);
 }
 
+/** The name the Cut's talent refund is recorded under. A store that has loaded nothing starts with it recorded too. */
+export const TALENT_CUT = 'talents.cut';
+
 const talentCutMigration = Object.freeze({
-  name: 'talents.cut',
+  name: TALENT_CUT,
   run(saveData) {
     const prog = saveData?.progression;
-    if (!isPlainObject(prog) || !isPlainObject(prog.attributes)) return null;
+    // A save with no `attributes` holds a post-Cut build and is owed nothing, and is recorded all the same: a build from
+    // before the Cut writes `attributes` into every save it touches, so after a rollback the record is the only thing
+    // that keeps the next load here from respeccing the player's post-Cut choices.
+    if (!isPlainObject(prog) || !isPlainObject(prog.attributes)) return {};
     return { talentPoints: Math.floor(attributePointsHeld(prog.attributes) / ATTRIBUTE_POINTS_PER_TALENT), respec: true };
   },
 });

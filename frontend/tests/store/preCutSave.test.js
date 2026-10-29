@@ -9,6 +9,7 @@ import { SAVE_VERSION, RETIRED_QUEST_IDS, buildSaveData, splitTombstone, migrate
 import { useQuestSystem, QUEST_LIST } from '../../src/QuestSystem.jsx';
 import { MAX_ACTIVE_QUESTS } from '../../src/game/questClaim.js';
 import { solveMeleeDamage, solveSpellDamage, mitigateDamage } from '../../src/utils/combat.js';
+import { xpForLevel } from '../../src/game/progression.js';
 import { getWeaponBaseDamage } from '../../src/game/equipment.js';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';
 
@@ -325,7 +326,7 @@ describe('the migration record', () => {
     useGameStore.getState().loadWorldData({ ...fixture(), migrated: ['progression.oldBank', 7, 'progression.oldBank'] });
     expect(onDisk().migrated, 'a load dropped a recorded name, or kept a junk one').toEqual(['progression.oldBank', 'talents.cut']);
     useGameStore.getState().startNewWorld('local_fresh');
-    expect(onDisk().migrated, 'a new world inherited the last world\'s record').toEqual([]);
+    expect(onDisk().migrated, 'a new world inherited the last world\'s record').toEqual(['talents.cut']);
   });
 });
 
@@ -425,5 +426,94 @@ describe('the pre-cut save after talents and relics', () => {
     expect(attributePointsHeld({ strength: 10, agility: 10, intellect: 10, armor: 3, attributePoints: 2 })).toBe(5);
     expect(attributePointsHeld({ strength: NaN, agility: -4, intellect: '12', armor: null, attributePoints: Infinity })).toBe(0);
     expect(attributePointsHeld(null)).toBe(0);
+  });
+});
+
+// THE CUT'S RECORD, THE HELD GRAB AND THE NOTICE. A pre-Cut build writes `attributes` into every save it touches, so a
+// rollback makes a post-Cut save look pre-Cut to the next load here; only the record (talents.cut, written on every save
+// this build makes or loads) tells the two apart.
+describe('the Cut is recorded on every save, a load ends a held grab, and the notice counts what is spendable', () => {
+  const PRE_CUT_DEFAULTS = { strength: 10, agility: 10, intellect: 10, armor: 0 };
+  const postCut = () => {
+    useGameStore.setState({ level: 6, talentPoints: 1, unlockedTalents: { wildheart_roar: 1, wildheart_endurance: 2 } });
+    const blob = onDisk();
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    return blob;
+  };
+  // What a pre-Cut build writes back when it loads and saves a world: its own attributes record, the rest as it was.
+  const rolledBack = (blob, attributePoints) => {
+    const back = structuredClone(blob);
+    back.progression.attributes = { ...PRE_CUT_DEFAULTS, attributePoints };
+    return back;
+  };
+  let notes;
+  const cutNotes = () => notes.filter((n) => n.startsWith('Talents now change'));
+  beforeEach(() => {
+    notes = [];
+    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+  });
+
+  it('a session that has loaded nothing writes the record, and so does a new world', () => {
+    expect(onDisk().migrated, 'a save from a session that loaded nothing lacks the record').toEqual(['talents.cut']);
+    useGameStore.getState().startNewWorld('local_fresh');
+    expect(onDisk().migrated).toEqual(['talents.cut']);
+  });
+
+  it('a post-Cut save loaded here is recorded, so a rollback writing attributes into it cannot respec it', () => {
+    const unrecorded = { ...postCut(), migrated: [] }; // a post-Cut save written before the record was kept on every save
+    expect(migrateRetired(unrecorded).migrated, 'a post-Cut save loaded here was not recorded').toEqual(['talents.cut']);
+    useGameStore.getState().loadWorldData(unrecorded);
+    const reloaded = onDisk();
+    expect(reloaded.migrated).toEqual(['talents.cut']);
+    for (const blob of [postCut(), reloaded]) {
+      useGameStore.setState(useGameStore.getInitialState(), true);
+      useGameStore.setState({ addNotification: (text) => notes.push(text) });
+      useGameStore.getState().loadWorldData(rolledBack(blob, 10));
+      const s = useGameStore.getState();
+      expect(s.unlockedTalents, 'a post-Cut build was respecced after a rollback wrote attributes').toEqual({ wildheart_roar: 1, wildheart_endurance: 2 });
+      expect(s.talentPoints, 'a post-Cut save was paid the refund after a rollback').toBe(1);
+    }
+    expect(cutNotes()).toEqual([]);
+    // The control: the same rolled-back blob with no record is taken for a pre-Cut save and refunded.
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    useGameStore.getState().loadWorldData({ ...rolledBack(postCut(), 10), migrated: [] });
+    expect(useGameStore.getState().talentPoints, 'SETUP: an unrecorded save with attributes was not refunded').toBe(1 + 3 + 2);
+  });
+
+  it('every load ends a held grab: the refund\'s respec, and any other world', () => {
+    for (const blob of [fixture(), postCut()]) {
+      useGameStore.setState({ voidhandHeld: true, heldPhantom: { color: '#8A8E94' } });
+      useGameStore.getState().loadWorldData(blob);
+      const s = useGameStore.getState();
+      expect(s.voidhandHeld, 'a grabbed block was carried through a load').toBe(false);
+      expect(s.heldPhantom).toBe(null);
+    }
+  });
+
+  it('the refund notice counts the points after the load paid a retired quest\'s XP', () => {
+    const f = fixture();
+    const q = f.questState.quests.find((e) => e.id === 'builder');
+    Object.assign(q, { progress: q.target, completed: true, claimed: false });
+    f.progression.currentXP = xpForLevel(f.progression.level) - 10; // the Builder's 50 XP crosses a level
+    useGameStore.getState().loadWorldData(f);
+    const s = useGameStore.getState();
+    expect(s.level, 'SETUP: the Builder XP did not level the player').toBe(6);
+    expect(s.talentPoints).toBe(8 + 1);
+    expect(cutNotes()).toEqual(['Talents now change your Aspects: 9 talent points to spend (U)']);
+  });
+
+  it('one point reads singular, and a refund with nothing to spend raises no notice', () => {
+    const one = fixture();
+    Object.assign(one.progression, { talentPoints: 0, unlockedTalents: {}, attributes: { ...PRE_CUT_DEFAULTS, attributePoints: 5 } });
+    useGameStore.getState().loadWorldData(one);
+    expect(cutNotes()).toEqual(['Talents now change your Aspects: 1 talent point to spend (U)']);
+    notes.length = 0;
+    const none = fixture();
+    Object.assign(none.progression, { talentPoints: 0, unlockedTalents: {}, attributes: { ...PRE_CUT_DEFAULTS, attributePoints: 4 } });
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+    useGameStore.getState().loadWorldData(none);
+    expect(useGameStore.getState().talentPoints, 'SETUP: a save holding 4 attribute points was paid a talent point').toBe(0);
+    expect(cutNotes(), 'a refund with nothing to spend told the player to spend points').toEqual([]);
   });
 });
