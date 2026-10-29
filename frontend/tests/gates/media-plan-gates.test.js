@@ -8,6 +8,7 @@ import {
   MEDIA_BUDGETS,
   MEDIA_TIMES,
   OG_CARD,
+  BUNDLE_OUTPUTS,
   SOCIAL_PREVIEW,
   shotTableProblems,
   pngSize,
@@ -134,7 +135,11 @@ describe('the declared shot table', () => {
     // Which of the six keys brackets each named time (render/colourScript.js scriptKeysAt): a "golden hour" moved to
     // noon, or a "blue hour" moved past midnight, reads its name falsely and fails here.
     const keys = (name) => { const k = scriptKeysAt(MEDIA_TIMES[name]); return [k.from, k.to]; };
-    expect(keys('golden hour')).toContain('sunset');
+    // Golden hour sits just after the sunset key: between sunset and day and nearer sunset. The afternoon (0.30) is
+    // bracketed by the same two keys at the day key, so the bracket alone cannot tell the two names apart.
+    const golden = scriptKeysAt(MEDIA_TIMES['golden hour']);
+    expect(golden).toMatchObject({ from: 'sunset', to: 'day' });
+    expect(golden.t, 'golden hour is nearer the day key than the sunset key').toBeLessThan(0.5);
     expect(keys('blue hour')).toContain('dusk');
     expect(scriptKeysAt(MEDIA_TIMES.afternoon)).toMatchObject({ to: 'day', t: 1 });
     expect(scriptKeysAt(MEDIA_TIMES.midnight)).toMatchObject({ from: 'night', t: 0 });
@@ -229,12 +234,17 @@ describe('the manifest check', () => {
     const drift = goodSet();
     pick(drift)[0].cycleAtShot = MEDIA_TIMES[hero.time] + 0.03;
     expect(mediaProblems(drift).problems.join('\n')).toMatch(/hero\.jpg: the clock read/);
+    // Listed at blue hour with golden hour's cycle and clock: only the time's name disagrees with the table.
+    expect(hero.time).toBe('golden hour');
+    const label = goodSet();
+    pick(label)[0].time = 'blue hour';
+    expect(mediaProblems(label).problems).toEqual([`${hero.out}: shot at blue hour, the table says golden hour`]);
   });
 
   it('compares every file by its sha256, so a re-encode of the same size and length fails', () => {
     const set = goodSet();
     set.files[0].sha256 = sha256Hex('a re-encoded frame');
-    expect(mediaProblems(set).problems.join('\n')).toMatch(new RegExp(`${set.files[0].path.replace(/\./g, '\\.')}: media\.json says sha256`));
+    expect(mediaProblems(set).problems).toContain(`${set.files[0].path}: media.json says sha256 ${set.manifest.files[0].sha256}, the file has ${set.files[0].sha256}`);
   });
 
   it('refuses a stray dotfile among the media, even one media.json lists', () => {
@@ -372,12 +382,32 @@ describe('the per-shot verdict', () => {
     const fight = MEDIA_SHOTS.find((s) => s.recipe.kind === 'fight');
     expect(fight, 'the table declares no fight shot').toBeTruthy();
     const fc = MEDIA_TIMES[fight.time];
-    const v = (nearestM) => mediaShotVerdict({ shot: fight, heading: 90, stand, handsHidden: 0, hudSeenOn: true, hudVisible: false,
-      mobs: liveFeed([at(6, 'zombie')]), before: reading({ cycle: fc }), after: reading({ cycle: fc, heading: 90, hostiles: { nearestM, within8m: 1 } }) });
+    const found = fightTarget([...hearthNpcs(EYE), at(6, 'zombie')], EYE, fight.recipe);
+    const v = (nearestM, search = found) => mediaShotVerdict({ shot: fight, heading: 90, stand, handsHidden: 0, hudSeenOn: true,
+      hudVisible: false, search, mobs: liveFeed([at(6, 'zombie')]), before: reading({ cycle: fc }),
+      after: reading({ cycle: fc, heading: 90, hostiles: { nearestM, within8m: 1 } }) });
     expect(v(6).valid).toBe(true);
     expect(v(fight.recipe.maxM + 3).why.join('\n')).toMatch(/hostile/);
     expect(v(null).why.join('\n')).toMatch(/hostile/);
     expect(v(OBSTRUCTION_M - 1).why.join('\n')).toMatch(/hostile/);
+  });
+
+  it('counts a fight whose target search could not read the mob feed as COULD NOT CHECK, in the verdict itself', () => {
+    const fight = MEDIA_SHOTS.find((s) => s.recipe.kind === 'fight');
+    const fc = MEDIA_TIMES[fight.time];
+    // The frame itself reads well: a live feed, a hostile 6 m out. Only the search's reading is missing or dead.
+    const v = (search) => mediaShotVerdict({ shot: fight, heading: 90, stand, handsHidden: 0, hudSeenOn: true, hudVisible: false,
+      search, mobs: liveFeed([at(6, 'zombie')]), before: reading({ cycle: fc }),
+      after: reading({ cycle: fc, heading: 90, hostiles: { nearestM: 6, within8m: 1 } }) });
+    expect(v(fightTarget([...hearthNpcs(EYE), at(6, 'zombie')], EYE, fight.recipe)).valid).toBe(true);
+    for (const search of [fightTarget([], EYE, fight.recipe), fightTarget(null, EYE, fight.recipe), undefined]) {
+      const r = v(search);
+      expect(r.valid, JSON.stringify(search)).toBe(false);
+      expect(r.couldNotCheck, JSON.stringify(search)).toBe(true);
+      expect(r.why.join('\n')).toMatch(new RegExp(`^${COULD_NOT_CHECK}`, 'm'));
+    }
+    // A shot that is not a fight runs no search, and is not asked for one.
+    expect(eye(reading())).toEqual({ valid: true, why: [], couldNotCheck: false });
   });
 });
 
@@ -421,8 +451,16 @@ describe('the provenance a run may stamp', () => {
 
   it('stamps HEAD only on a bundle the run built from a clean tree at a HEAD that held still', () => {
     expect(runProvenance(clean)).toEqual({ sha: HEAD, dirty: false, provenance: BUILT_CLEAN });
-    expect(runProvenance({ ...clean, porcelainBefore: ' M docs/media/hero.jpg\n M frontend/public/og-image.png\n' }).sha,
-      'the run\'s own outputs do not make the tree dirty').toBe(HEAD);
+  });
+
+  it('stamps HEAD on a tree changed only in the run\'s own outputs, since the build identity leaves them out', () => {
+    // A rejected run leaves its card in frontend/public, which vite copies into the bundle: the stamp holds only
+    // because the identity does not hash that file, so a bundle built from HEAD names the same identity.
+    const porcelain = ' M docs/media/hero.jpg\n M frontend/public/og-image.png\nR  docs/media/stills/a.jpg -> docs/media/stills/b.jpg\n';
+    expect(runProvenance({ ...clean, porcelainBefore: porcelain, porcelainAfter: porcelain }).sha).toBe(HEAD);
+    const served = (card) => [{ path: 'index.html', sha256: sha256Hex('<html>') }, { path: 'og-image.png', sha256: sha256Hex(card) }];
+    expect(buildIdentity(served('the rejected run\'s card')), 'a dirty og card changes the stamped identity')
+      .toBe(buildIdentity(served('the committed card')));
   });
 
   it('stamps no sha on a handed build, a dirty tree, a HEAD that moved or an unread HEAD', () => {
@@ -431,6 +469,7 @@ describe('the provenance a run may stamp', () => {
       [{ ownBuild: undefined }, /--build-dir/],
       [{ porcelainBefore: ' M frontend/src/App.jsx\n' }, /dirty.*App\.jsx/],
       [{ porcelainAfter: '?? frontend/src/new.js\n' }, /dirty.*new\.js/],
+      [{ porcelainBefore: 'R  frontend/src/App.jsx -> docs/media/App.jsx\n' }, /dirty.*frontend\/src\/App\.jsx/],
       [{ headAfter: 'd'.repeat(40) }, /moved/],
       [{ headBefore: 'HEAD', headAfter: 'HEAD' }, /not read/],
     ];
@@ -443,7 +482,7 @@ describe('the provenance a run may stamp', () => {
     }
   });
 
-  it('names a build by every byte it serves, in any listing order', () => {
+  it('names a build by every byte it serves (the run\'s own outputs aside, below), in any listing order', () => {
     const files = [{ path: 'index.html', sha256: sha256Hex('<html>') }, { path: 'assets/index-a.js', sha256: sha256Hex('js') }];
     const id = buildIdentity(files);
     expect(id).toMatch(/^[0-9a-f]{64}$/);
@@ -451,6 +490,17 @@ describe('the provenance a run may stamp', () => {
     expect(buildIdentity([files[0], { ...files[1], sha256: sha256Hex('js ') }])).not.toBe(id);
     expect(buildIdentity([files[0], { ...files[1], path: 'assets/index-b.js' }])).not.toBe(id);
     expect(buildIdentity(files.slice(0, 1))).not.toBe(id);
+  });
+
+  it('leaves out of the identity exactly the run\'s own outputs that vite copies into the bundle, and no other file', () => {
+    // The og card is the one output under frontend/public, served at the bundle's root.
+    expect(BUNDLE_OUTPUTS).toEqual([OG_CARD.file.slice('frontend/public/'.length)]);
+    const files = [{ path: 'index.html', sha256: sha256Hex('<html>') }, { path: 'favicon.svg', sha256: sha256Hex('svg') }];
+    const id = buildIdentity(files);
+    expect(buildIdentity([...files, { path: 'og-image.png', sha256: sha256Hex('a card') }])).toBe(id);
+    // The same name anywhere but the root is served bytes like any other, and so is every other public file.
+    expect(buildIdentity([...files, { path: 'assets/og-image.png', sha256: sha256Hex('a card') }])).not.toBe(id);
+    expect(buildIdentity([files[0], { ...files[1], sha256: sha256Hex('svg ') }])).not.toBe(id);
   });
 });
 
@@ -506,10 +556,13 @@ describe('the og card', () => {
 });
 
 describe('the tree check and the encoder argv', () => {
-  it('counts a dirty file outside the outputs, and not the outputs a re-shoot rewrites', () => {
+  it('counts a dirty file outside the outputs, on either side of a rename, and not the outputs a re-shoot rewrites', () => {
     const porcelain = [' M docs/media/hero.jpg', '?? docs/media/stills/coast.jpg', ' M frontend/public/og-image.png',
-      ' M frontend/src/App.jsx', ''].join('\n');
+      'R  docs/media/stills/a.jpg -> docs/media/stills/b.jpg', ' M frontend/src/App.jsx', ''].join('\n');
     expect(dirtyOutsideOutputs(porcelain)).toEqual(['frontend/src/App.jsx']);
+    // A rename out of src into the outputs takes a file out of what the bundle is built from: its old side counts.
+    expect(dirtyOutsideOutputs('R  frontend/src/App.jsx -> docs/media/App.jsx\n')).toEqual(['frontend/src/App.jsx']);
+    expect(dirtyOutsideOutputs('R  docs/media/hero.jpg -> frontend/src/hero.jpg\n')).toEqual(['frontend/src/hero.jpg']);
     expect(dirtyOutsideOutputs('')).toEqual([]);
   });
 

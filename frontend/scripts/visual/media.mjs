@@ -15,7 +15,8 @@
  * WHAT IT WRITES. Each frame is a lossless PNG master at device scale 2 (kept in --work). ImageMagick downsamples it and
  * encodes the JPEGs to their byte targets (jpeg:extent) and the og card, composed in the same browser from ogCardHtml,
  * to a palette PNG. Then docs/media/media.json: per file its shot, purpose, time of day, the provenance runProvenance
- * allows (the commit the bundle was built from, or none), the bundle's index chunk and content identity (buildIdentity),
+ * allows (the commit the bundle was built from, or none), the bundle's index chunk and content identity (buildIdentity:
+ * every file it serves but the run's own outputs),
  * the renderer read from the game's own WebGL context, the tier, the size, the bytes and their sha256; entries for shots
  * this run did not shoot are kept, entries for shots the table no longer declares are dropped.
  * tests/scripts/media.test.js checks the committed files against it on every run.
@@ -95,7 +96,7 @@ async function shootOnce(page, shot, ctx, attempt) {
   const r = shot.recipe;
   let heading = r.heading ?? null;
   let target = null;
-  let targetWhy = null;
+  let search = null;
   let waitedS = 0;
   if (r.kind === 'pose') {
     const place = posePlace(r);
@@ -129,9 +130,9 @@ async function shootOnce(page, shot, ctx, attempt) {
         await respawnIfDead(page, report);
         await page.evaluate((p) => window.__craftyLookbook.stand(p), { position: stand });
         await setCycle(page, cycle);
-        const found = fightTarget(await mobsNow(page), (await info(page)).eye, r);
-        if (!found.checked) { targetWhy = found.why; break; }
-        target = found.target;
+        search = fightTarget(await mobsNow(page), (await info(page)).eye, r);
+        if (!search.checked) break;
+        target = search.target;
         if (target) break;
         await delay(1000);
       }
@@ -155,8 +156,7 @@ async function shootOnce(page, shot, ctx, attempt) {
   const master = join(WORK, `${shot.name}-${attempt}.png`);
   writeFileSync(master, png);
   const mobs = mobFeed(list, before.eye);
-  const verdict = mediaShotVerdict({ shot, before, after, stand, heading, handsHidden: hands.hidden, hudSeenOn, hudVisible, mobs });
-  if (targetWhy) verdict.why.push(targetWhy);
+  const verdict = mediaShotVerdict({ shot, before, after, stand, heading, handsHidden: hands.hidden, hudSeenOn, hudVisible, mobs, search });
   return { shot, verdict, master, after, heading, target, waitedS, mobs };
 }
 

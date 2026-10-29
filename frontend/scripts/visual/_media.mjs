@@ -39,7 +39,9 @@ const MAX_PITCH_DEG = 85; // the seam's look() refuses more (render/lookbookSeam
 const HEADING_TOLERANCE_DEG = 1;
 const STAND_TOLERANCE_M = 0.5;
 /** A pose looks down on the ground from tens of metres up, so the hostiles it would show as specks are cleared this far
- *  from its camera (the seam's clearHostiles; passive animals and the named NPCs stay). */
+ *  from its camera (the seam's clearHostiles; passive animals and the named NPCs stay). The clear runs once, before the
+ *  seam's play() and the frame's settle, so a hostile that spawns or walks in after it can be in the frame, within 60 m
+ *  of the camera (media.json records each frame's nearest mob). */
 export const POSE_CLEAR_M = 60;
 
 const isPoint = (p) => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite);
@@ -64,8 +66,10 @@ const still = (name, time, recipe, alt, extra = {}) => ({
  *          `waitS` seconds, then a fireball cast with the real F key. The seam cannot spawn a mob, so a fight depends
  *          on the night and is optional.
  * No shot shows the HUD, and the hero and the og card show no hands (DECISIONS 2026-10-29 item 50). Day shots go before
- * the night ones: after dusk the night's mobs crowd the Hearth (lookbook.mjs). The fight goes first of those, since a
- * pose clears the hostiles within POSE_CLEAR_M of its camera and an eye shot those within 12 m of the eye. From the
+ * the night ones: after dusk the night's mobs crowd the Hearth (lookbook.mjs). The fight goes first of the night shots,
+ * so their own clears (a pose's within POSE_CLEAR_M of its camera, an eye shot's within 12 m of the eye) come after it;
+ * the golden-hour poses before it have already cleared the hostiles within 60 m of their cameras, the Hearth included,
+ * so it waits on hostiles that spawn or walk in after them. From the
  * spawn the golden-hour sun sets at a bearing of about 43 degrees, 3.5 degrees up, so the golden poses look north-east
  * across the Hearth into it, from high enough that the outpost's roofs stay inside the frame; the eye stills pitch up 8
  * to 15 degrees, which keeps the pad at the player's feet out of frame.
@@ -86,7 +90,7 @@ export const MEDIA_SHOTS = deepFreeze([
     size: [SOCIAL_PREVIEW.width, SOCIAL_PREVIEW.height], format: 'jpg', out: `${MEDIA_DIR}/social-preview.jpg`, targetBytes: 300_000,
     alt: 'The Hearth at blue hour from above: fireflies over the outpost, Bram the Trader\'s stall, the brazier\'s fire on the stone pad, Sister Wren by her cabin and snow-dusted forest under a violet sky.' },
   still('blue-hour', 'blue hour', { kind: 'eye', heading: 135, pitch: 8 },
-    'The Hearth at blue hour, from the player\'s eye: gauntleted hands either side of the glowing brazier, Sister Wren and an ox by her cabin, a shrine\'s beam rising into the starry sky, fireflies in the dusk.'),
+    'The Hearth at blue hour, from the player\'s eye: gauntleted hands either side of the glowing brazier, Sister Wren and an ox beyond it, a shrine\'s beam rising into the starry sky, fireflies in the dusk.'),
 ]);
 
 function recipeProblems(label, r) {
@@ -226,9 +230,18 @@ export function filesUnder(dir, base = dir) {
   return out.sort();
 }
 
-/** A build's content identity: the sha256 of its sorted `path<TAB>sha256` lines, so it names every byte it serves. */
+/** Vite copies frontend/public into the bundle's root (vite.config.js sets no publicDir). */
+const PUBLIC_DIR = 'frontend/public/';
+/** The run's own outputs as the bundle serves them: the shots it writes under frontend/public (the og card). */
+export const BUNDLE_OUTPUTS = Object.freeze(MEDIA_SHOTS.filter((s) => s.out.startsWith(PUBLIC_DIR)).map((s) => s.out.slice(PUBLIC_DIR.length)));
+
+/**
+ * A build's content identity: the sha256 of its sorted `path<TAB>sha256` lines over every file it serves but the run's
+ * own outputs (BUNDLE_OUTPUTS). Those are written by the run, the tree check exempts them (dirtyOutsideOutputs) and no
+ * frame draws them, so whichever card the tree held, a bundle built from the stamped commit names the same identity.
+ */
 export function buildIdentity(files) {
-  const lines = [...(files || [])].map((f) => `${f.path}\t${f.sha256}`).sort();
+  const lines = [...(files || [])].filter((f) => !BUNDLE_OUTPUTS.includes(f.path)).map((f) => `${f.path}\t${f.sha256}`).sort();
   return sha256Hex(`${lines.join('\n')}\n`);
 }
 
@@ -375,10 +388,11 @@ export function fightTarget(list, from, { minM, maxM }) {
  * whether it is on screen now (it must not be): an absence counts only after the same check has seen the presence.
  * `mobs`: mobFeed of the seam's mob list read with the frame, for every kind of shot. For eye and fight shots, `stand`
  * is where the body was stood, `heading` the bearing asked for (a fight's is found at run time) and `handsHidden` the
- * hands' node count with them hidden, measured in the same page.
+ * hands' node count with them hidden, measured in the same page. For a fight, `search` is the last fightTarget reading
+ * of its wait: one that could not read the feed (or none at all) leaves the fight COULD NOT CHECK.
  * Returns { valid, why, couldNotCheck }: `couldNotCheck` when a reading was missing rather than wrong.
  */
-export function mediaShotVerdict({ shot, before, after, stand, heading, handsHidden, hudSeenOn, hudVisible, mobs }) {
+export function mediaShotVerdict({ shot, before, after, stand, heading, handsHidden, hudSeenOn, hudVisible, mobs, search }) {
   const why = [...shotVerdict({ cycle: MEDIA_TIMES[shot.time], before, after }).why];
   if (hudSeenOn !== true) why.push(`${COULD_NOT_CHECK} the HUD: this run never saw it on screen, so not seeing it proves nothing`);
   else if (hudVisible !== false) why.push('HUD on screen, or not checked');
@@ -407,6 +421,7 @@ export function mediaShotVerdict({ shot, before, after, stand, heading, handsHid
   }
   const near = after?.hostiles?.nearestM;
   if (kind === 'fight') {
+    if (!search?.checked) why.push(search?.why ?? `${COULD_NOT_CHECK} the fight's target: no search reading`);
     if (!(near >= OBSTRUCTION_M && near <= shot.recipe.maxM)) why.push(`no hostile between ${OBSTRUCTION_M} and ${shot.recipe.maxM} m of the eye (nearest ${near ?? 'none'})`);
   } else if (!after?.hostiles) why.push('hostiles not checked');
   else if (near != null && near < OBSTRUCTION_M) why.push(`a hostile ${near.toFixed(1)} m from the eye: a fight, not the view`);
@@ -465,11 +480,12 @@ html, body { margin: 0; padding: 0; width: ${width}px; height: ${height}px; over
 </div></div></body></html>`;
 }
 
-/** The paths `git status --porcelain` names outside the files a media run writes. A run refuses a tree dirty
- *  elsewhere, since the sha it stamps would not name what it shot. */
+/** The paths `git status --porcelain` names outside the files a media run writes, both sides of a rename or copy
+ *  (`R  old -> new`): a file renamed out of the source is gone from what the bundle is built from. A run refuses a tree
+ *  dirty elsewhere, since the sha it stamps would not name what it shot. */
 export function dirtyOutsideOutputs(porcelain) {
   return String(porcelain ?? '').split('\n').filter((l) => l.trim())
-    .map((l) => { const p = l.slice(3); const arrow = p.indexOf(' -> '); return arrow >= 0 ? p.slice(arrow + 4) : p; })
+    .flatMap((l) => l.slice(3).split(' -> '))
     .filter((p) => !p.startsWith(`${MEDIA_DIR}/`) && p !== OG_CARD.file);
 }
 
