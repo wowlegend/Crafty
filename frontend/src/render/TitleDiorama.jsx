@@ -156,13 +156,10 @@ export function TitleDiorama() {
         // DIFFERENT state each run. Stable is not deterministic.
         // e2eDpr (devtest/e2eDpr.js): the e2e suite's pixel-ratio cap — this canvas is up for the whole world build.
         dpr={e2eDpr(isCaptureMode() ? 1 : [1, 2])}
-        // `demand` in capture, and NOT for the reason you might assume. Switching this to `always` was
-        // tried on 2026-08-08 as a determinism fix -- the theory being that a timing-dependent
-        // invalidation count left the frame on an arbitrary pose -- and it did NOT work: the title frame's
-        // run-to-run self-diff went 0.359% -> 0.557%. Reverted. Note the honest limit: that frame has measured
-        // 0.984 / 0.359 / 0.557 across three rounds, so the metric is itself noisy and one A/B cannot
-        // rank the two modes. What IS established is that `always` does not fix it, so the residual is
-        // not the render-scheduling mode. Do not retry this without a new reason.
+        // `demand` in capture. The render-scheduling mode is not what makes the title frame differ between
+        // runs: under `always` its run-to-run self-diff is 0.557% against 0.359% under `demand`, so a
+        // timing-dependent invalidation count is not the cause. The metric has read 0.984%, 0.359% and 0.557%
+        // across three rounds, too noisy for one A/B to rank the two modes; change the mode only for a new reason.
         frameloop={capture || capped ? 'demand' : 'always'}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         camera={{ fov: 34, near: 0.1, far: 100, position: CAPTURE_CAM }}
