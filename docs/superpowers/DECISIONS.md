@@ -34,9 +34,9 @@ Frames: `docs/superpowers/masterpiece-2026-10/evidence/w2e-follow/` (`index.md` 
    on their own. The boxes are shaped to read from the reveal's 4.5 m (`beast-reveal-after.jpg`), not from inside, so
    in first person no part writes colour or depth, the glow spheres and the entrance's burst included, and every box
    still casts its shadow. First person is the follow placing the camera, marked by the Player's loop each frame
-   (`render/followView.js`), not the drawn camera standing near the eye: a crit's shake (weight 1.6, trauma 0.8) carries
-   the follow's camera a median 1.5 m off the eye, and a rule of 1 m from the eye let the boxes flash back in during
-   fights. When another branch placed the camera (the reveal's ends, an eye pose), it is first person within 1 m of the
+   (`render/followView.js`), not the drawn camera standing near the eye: a crit's shake (weight 1.6, trauma 0.8) puts
+   the follow's target a median 1.5 m off the eye and, after the follow's 0.85 lerp, the camera outside 1 m on three
+   crits in four (2000 seeds), and a rule of 1 m from the eye let the boxes flash back in during fights. When another branch placed the camera (the reveal's ends, an eye pose), it is first person within 1 m of the
    steady eye (`beastAvatarParts.js FIRST_PERSON_M`; the reveal leaves it in its first fifth), measured in world space,
    and the clearance is in metres: on a form's first frames the entrance draws the avatar at half scale. The eye stays
    at body + `EYE_HEIGHT_M` in every form: a per-form eye would put the dragon's 2.15 m up, inside the ceiling of a
@@ -96,9 +96,12 @@ Frames: `docs/superpowers/masterpiece-2026-10/evidence/w2e-follow/` (`index.md` 
      (`OptimizedGrassSystem.jsx`), the fuse pair search and the footstep surface (`Components.jsx`), the manual save's
      position (`WorldManager.jsx`; `App.jsx` and `game/contextRecovery.js` already save the body), the minimap's
      centre (`ui/RadialMinimap.jsx`) and the hit-direction cue's origin (`store/useGameStore.jsx`), the last two in the
-     HUD lane's files. Each is off only while the camera is off the body: the 1.2 s reveal and a lookbook hero pose.
-     The talk target (`input/talk.js`) and the spawner's ring (`SpawnerSystem.jsx`) stay on the camera: within the bob
-     of the body in play, and spawning around the view is safe.
+     HUD lane's files. Each is off whenever the camera is off the body's eye: the 1.2 s reveal, a lookbook hero pose,
+     and every frame the follow carries the shake or a verb kick (`Components.jsx:1503-1505`; a crit's shake puts the
+     follow's target a median 1.5 m off the eye, item 80), which the footstep surface (`Components.jsx:1430`) reads
+     from the camera the frame before placed. The talk target (`input/talk.js`) and the spawner's ring
+     (`SpawnerSystem.jsx`) stay on the camera: in play it stands within the bob of the eye but for the shake and the
+     kicks, and spawning around the view is safe.
    Gated by `tests/gates/mob-sense-body-gates.test.jsx` (the tick, an arrow's aim and its hit test, the leap and the
    blow, each with the reveal staged) and, for the allocation, `hot-path-alloc-gates.test.js`. It stands while it earns
    its place.
@@ -135,11 +138,16 @@ Frames: `docs/superpowers/masterpiece-2026-10/evidence/w2e-follow/` (`index.md` 
    `tests/gates/form-gauntlet-gates.test.jsx`, with drei's real Outlines.
    It stands while it earns its place.
 88. **Per-frame code is gated for allocation by a young-generation heap probe** (`tests/gates/_youngGrowth.js`,
-   `tests/gates/hot-path-alloc-gates.test.js`): new-space growth over 5000 calls after a warm-up, the median of seven
-   runs, under 8 bytes a call, beside a control (a real Rapier `translation()`, about 108 bytes) that shows the probe
-   sees an allocation. It measures what V8's optimiser leaves: an object it elides (a literal passed to an inlined
+   `tests/gates/hot-path-alloc-gates.test.js`): new-space growth over runs of 5000 calls that no collection interrupted
+   (`node:v8` GCProfiler), with no fixed warm-up: runs continue until the median of the last five kept runs is under
+   8 bytes a call or 3 s have passed, and that median is returned, so the runs before the optimiser installs its code
+   are outlasted and a call whose compiled code allocates reads high to the end of its budget. Under 8 bytes a call
+   passes, beside a control that takes its first five runs (a real Rapier `translation()`, 172 to 189 bytes a call on
+   Node 24.13.0, the first probe the highest) and shows the probe sees an allocation. It measures what V8's optimiser leaves: an object it elides (a literal passed to an inlined
    call, a `new THREE.Color()` that does not escape) reads as none, and is none in that process. It covers the hand
-   poses, the mobs' sense point and the gauntlets' form tint. It stands while it earns its place.
+   poses, the mobs' sense point and the gauntlets' form tint. Left allocating, as a registry row
+   (`REVIEW:w2e-follow:per-frame-alloc-untouched`): the snare search's two vectors and its `translation()` every frame
+   in play, and the box distance's rotation read at every draw away from the eye. It stands while it earns its place.
 
 ## 2026-10-29 — [LOOP] W2-F step 7: quests name the creatures on screen
 
