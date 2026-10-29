@@ -184,7 +184,7 @@ async function shootCard(page, label, away) {
 }
 
 test('the light script in the running game: a sun key at noon, a moon key at midnight, the stars, the shadow map, and the grey card', async ({ page }) => {
-  test.setTimeout(300000);
+  test.setTimeout(420000);
   await bootDev(page);
   await startPlayActive(page);
 
@@ -277,12 +277,13 @@ test('the light script in the running game: a sun key at noon, a moon key at mid
   await call(page, 'setQualityTier', 'low');
   try {
     await call(page, 'setWeatherMoodBoost', 0);
+    // The mood eases per drawn frame, so the wait is counted in frames: a CI software renderer can draw a few frames a
+    // second, and a wall-clock wait there ends with the mood still decaying.
     const settle = Date.now();
     let calm = null;
-    while (Date.now() - settle < 15000) {
+    for (let drawn = 0; drawn < 900 && Date.now() - settle < 150000; drawn += await frames(page, 10, 30000)) {
       calm = await call(page, 'readSkyLight');
       if (calm && calm.mood < 1e-4) break;
-      await page.waitForTimeout(200);
     }
     if (!(calm && calm.mood < 1e-4)) throw new Error(`SETUP: dawn: the mood never settled under 1e-4 — ${fmt({ ...calm, ...(await preconditions(page)) })}`);
     await frames(page, 5); // the tier step recompiles programs; the first frames after it are the slowest
