@@ -206,6 +206,13 @@ describe('which eye frames are the HUD at rest, and what the run prints', () => 
     expect(CHROME_BUDGET).toBe(0.08);
   });
 
+  it('a first-session run reports the frames with the first-run card up apart, against the same budget', () => {
+    const withCard = (share, card) => ({ ...shot(share), chromeCard: { share: card, toasts: 0 } });
+    const lines = chromeSummaryLines([withCard(0.05, 0.07), withCard(0.06, 0.12), { ...withCard(0.05, 0.2), valid: false }]);
+    expect(lines.find((l) => l.includes('first-run card'))).toMatch(/2 frame\(s\) with the card up: footprint max 12\.00%, median 9\.50%; 1 over the budget/);
+    expect(chromeSummaryLines([shot(0.05)]).some((l) => l.includes('first-run card')), 'a returning run reports a card').toBe(false);
+  });
+
   it('no frame at rest is NOT MEASURED, never a pass', () => {
     expect(chromeSummaryLines([shot(0.2, { toasts: 1 })])[0]).toMatch(/NOT MEASURED/);
   });

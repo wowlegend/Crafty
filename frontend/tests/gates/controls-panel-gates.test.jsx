@@ -4,36 +4,46 @@ import { render, screen, cleanup, act } from '@testing-library/react';
 import { renderHook } from '@testing-library/react';
 
 // THE CONTROLS ARE A PANEL H OPENS, GENERATED FROM KEY_MAP, AND A FIRST-TIME PLAYER IS SHOWN THEM (the HUD lane,
-// DECISIONS 2026-10-29 item 96; closes STATUS C1/c, QUEUE Q26/c, OPEN_ITEMS OI-31/c). The sheet it replaces faded after
-// 8 seconds, so a returning player had nothing to find the keys by. Driven through the real InputManager key handler,
-// the real store and the real localStorage flag.
+// DECISIONS 2026-10-29 item 96; closes STATUS C1/c, QUEUE Q26/c, OPEN_ITEMS OI-31/c). A fresh profile sees the controls
+// card at rest until it presses H or has played 30 s with the card on screen; then the card folds to the one-line
+// "H Controls" hint, on a keyboard only, until H opens the panel once. Driven through the real InputManager key
+// handler, the real store, the real localStorage flags and the card's own timer (fake clock).
 //
-// NOT CHECKED HERE: the HUD's own wiring of the card and hint (HUD.jsx has no jsdom harness; the e2e
+// NOT CHECKED HERE: HUD.jsx's mounting of the card off touch (no jsdom harness for the HUD; the e2e
 // tests/e2e/panels.spec.js boots a fresh profile in a browser and reloads it).
 vi.mock('../../src/input/touchDevice', () => ({ isTouchUIMode: vi.fn(() => false), isTouchDevice: vi.fn(() => false) }));
 import { KEY_MAP, KEY_GROUPS } from '../../src/game/keyMap.js';
 import { STRINGS } from '../../src/i18n/strings.js';
-import { ControlsPanel, ControlsCardUntilSeen } from '../../src/ui/CombatInstructions.jsx';
+import { ControlsPanel, ControlsCardUntilSeen, CARD_ON_SCREEN_MS } from '../../src/ui/CombatInstructions.jsx';
+import { isTouchUIMode } from '../../src/input/touchDevice';
 import { GameUI } from '../../src/ui/GameHud.jsx';
 import { useInputManager } from '../../src/InputManager.jsx';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { setActive } from '../../src/input/inputState.js';
-import { readControlsSeen } from '../../src/ui/controlsSeen.js';
+import { readControlsSeen, readControlsCardDone } from '../../src/ui/controlsSeen.js';
 
 const HUD_STATE = {
   selectedBlock: null, inventory: { blocks: {} },
   setSelectedBlock: () => {}, setShowSettings: () => {}, setShowInventory: () => {}, setShowForge: () => {},
   setShowMagic: () => {}, setShowBuildingTools: () => {},
 };
-/** What a new session reads on boot (the store seeds controlsSeen from storage when it is created). */
-const newSession = () => useGameStore.setState({ controlsSeen: readControlsSeen(), showControls: false });
-const firstRun = () => {
-  render(<><ControlsCardUntilSeen /><GameUI gameState={HUD_STATE} level={1} xpProgress={0} controlsHint={!useGameStore.getState().controlsSeen} /></>);
-  return { card: !!screen.queryByTestId('controls-card'), hint: !!screen.queryByTestId('controls-hint') };
-};
+/** What a new session reads on boot (the store seeds both flags from storage when it is created). */
+const newSession = () => useGameStore.setState({
+  controlsSeen: readControlsSeen(), controlsCardDone: readControlsCardDone(), controlsCardMs: 0, showControls: false,
+});
+const screenNow = () => ({ card: !!screen.queryByTestId('controls-card'), hint: !!screen.queryByTestId('controls-hint') });
+/** The HUD at rest: the card and the hotbar, which draws the hint. */
+const hud = () => render(<><ControlsCardUntilSeen /><GameUI gameState={HUD_STATE} level={1} xpProgress={0} /></>);
+const firstRun = () => { hud(); return screenNow(); };
+const play = (ms) => act(() => { vi.advanceTimersByTime(ms); });
 
-beforeEach(() => { localStorage.clear(); document.exitPointerLock = vi.fn(); document.body.requestPointerLock = vi.fn(); });
-afterEach(() => { cleanup(); setActive(false); useGameStore.setState({ locale: 'en', showControls: false }); });
+beforeEach(() => {
+  localStorage.clear();
+  isTouchUIMode.mockReturnValue(false);
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+  document.exitPointerLock = vi.fn(); document.body.requestPointerLock = vi.fn();
+});
+afterEach(() => { cleanup(); vi.useRealTimers(); setActive(false); useGameStore.setState({ locale: 'en', showControls: false }); });
 
 describe('the controls panel', () => {
   it('lists every key a player is taught, in every group, each with its label through t()', () => {
@@ -57,9 +67,9 @@ describe('the controls panel', () => {
 });
 
 describe('a first-time player finds the controls', () => {
-  it('a fresh profile shows the card and the hint; after one H press a new session shows neither', () => {
+  it('a fresh profile sees the card, not yet the hint; after one H press a new session shows neither', () => {
     newSession();
-    expect(firstRun(), 'a fresh profile is not shown the controls').toEqual({ card: true, hint: true });
+    expect(firstRun(), 'a fresh profile is not shown the controls card').toEqual({ card: true, hint: false });
     cleanup();
     setActive(true);
     renderHook(() => useInputManager({}, {}));
@@ -70,10 +80,42 @@ describe('a first-time player finds the controls', () => {
     expect(firstRun(), 'the card or the hint came back after the panel was opened').toEqual({ card: false, hint: false });
   });
 
-  it('a session that has not opened the panel keeps both, however often it is started', () => {
+  it('after 30 s of play with the card on screen it folds to the hint, which a new session keeps, and H clears', () => {
     newSession();
+    hud();
+    play(CARD_ON_SCREEN_MS - 1000);
+    expect(screenNow(), 'the card folded early').toEqual({ card: true, hint: false });
+    play(1000);
+    expect(screenNow(), 'the card did not fold to the hint after its time on screen').toEqual({ card: false, hint: true });
     cleanup();
     newSession();
-    expect(firstRun()).toEqual({ card: true, hint: true });
+    expect(firstRun(), 'a new session showed the card again, or lost the hint').toEqual({ card: false, hint: true });
+    act(() => useGameStore.getState().markControlsSeen());
+    expect(screenNow(), 'the hint stayed after the panel was opened').toEqual({ card: false, hint: false });
+  });
+
+  it('only time with the card on screen counts: a pause does not run its clock', () => {
+    newSession();
+    const first = hud();
+    play(20000);
+    first.unmount(); // the HUD (and the card with it) is hidden: paused, in a panel
+    play(60000);
+    expect(useGameStore.getState().controlsCardDone, 'the card\'s time ran while it was off screen').toBe(false);
+    hud();
+    play(9000);
+    expect(screenNow(), 'the card folded before 30 s on screen').toEqual({ card: true, hint: false });
+    play(1000);
+    expect(screenNow(), 'the card did not fold at 30 s on screen in total').toEqual({ card: false, hint: true });
+  });
+
+  it('the hint is a keyboard player\'s: on touch the hotbar draws none', () => {
+    useGameStore.setState({ controlsSeen: false, controlsCardDone: true });
+    isTouchUIMode.mockReturnValue(true);
+    render(<GameUI gameState={HUD_STATE} level={1} xpProgress={0} />);
+    expect(screen.queryByTestId('controls-hint'), 'the H hint shows on touch, where there is no H').toBeNull();
+    cleanup();
+    isTouchUIMode.mockReturnValue(false);
+    render(<GameUI gameState={HUD_STATE} level={1} xpProgress={0} />);
+    expect(screen.queryByTestId('controls-hint'), 'SETUP: the hint does not show on desktop either').not.toBeNull();
   });
 });

@@ -45,7 +45,7 @@ const XpEdge = ({ level, xpProgress }) => {
   );
 };
 
-const MinecraftHotbar = React.memo(({ gameState, level, xpProgress, controlsHint }) => {
+const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
   if (!gameState) return null;
   // The slim hotbar (the HUD lane): 48 px slots, 9 × 48 + gaps + padding = 500 px, the largest single piece of chrome at
   // rest, sized so the eye-level frames hold the chrome share under 8% (lookbook chrome count). B7 (18-domain review): a
@@ -54,7 +54,7 @@ const MinecraftHotbar = React.memo(({ gameState, level, xpProgress, controlsHint
   return (
     <div data-hud-interactive data-testid="hotbar" className="absolute bottom-4 left-1/2 transform -translate-x-1/2 origin-bottom max-[640px]:scale-[0.72] pointer-events-auto">
       {level != null && <XpEdge level={level} xpProgress={xpProgress} />}
-      {controlsHint && <ControlsHint />}
+      <ControlsHint />
       <Panel variant="base" className="flex gap-1.5 p-1.5">
         {HOTBAR_BLOCKS.map((blockType, index) => {
           const blockConfig = BLOCK_TYPES[blockType];
@@ -94,7 +94,7 @@ const MinecraftHotbar = React.memo(({ gameState, level, xpProgress, controlsHint
   );
 });
 
-export const GameUI = ({ gameState, level, xpProgress, controlsHint = false }) => {
+export const GameUI = ({ gameState, level, xpProgress }) => {
   const t = useT();
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 pointer-events-none z-20">
@@ -105,7 +105,7 @@ export const GameUI = ({ gameState, level, xpProgress, controlsHint = false }) =
           </Button>
         </div>
       </div>
-      <MinecraftHotbar gameState={gameState} level={level} xpProgress={xpProgress} controlsHint={controlsHint} />
+      <MinecraftHotbar gameState={gameState} level={level} xpProgress={xpProgress} />
     </motion.div>
   );
 };

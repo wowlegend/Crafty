@@ -59,7 +59,7 @@ export function unlockedAspectVerbs(unlockedTalents) {
  * SHOWN, LOCKED ONES MARKED — a reversal, Phase 0c (refute F9, plan docs/superpowers/plans/2026-10-27-crafty-touch-hold.md).
  * This used to be GATED, NOT GREYED: "offering a sector that only ever refuses is a worse trade on a thumb-sized
  * target than not offering it". That held only while the refusal was the end of the story. On desktop it is not — a
- * locked key press teaches "open Talents (U)" (Components.jsx keydown, deniedReason.js). On touch there is no U and,
+ * locked key press teaches "open Talents in Character (Tab)" (Components.jsx keydown, deniedReason.js). On touch there is no Tab and,
  * until this phase, no other way to the Talents panel at all, so hiding a locked Aspect hid the only path that could
  * lead a touch player to the game's signature: a new iPad player saw no ring, could unlock nothing, and never would.
  * Now a locked sector is drawn dimmed with a lock, and tapping it opens the Talents panel — the touch form of the

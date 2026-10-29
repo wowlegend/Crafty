@@ -11,6 +11,11 @@ import { MAX_ACTIVE_QUESTS } from '../../src/game/questClaim.js';
 import { solveMeleeDamage, solveSpellDamage, mitigateDamage } from '../../src/utils/combat.js';
 import { xpForLevel } from '../../src/game/progression.js';
 import { getWeaponBaseDamage } from '../../src/game/equipment.js';
+import { STRINGS } from '../../src/i18n/strings.js';
+import { tIn } from '../../src/i18n/i18n.js';
+
+// A notice as the toast stack shows it in English: a dictionary key with its vars, or plain text as written.
+const noteText = (msg, o) => (Object.prototype.hasOwnProperty.call(STRINGS.en, msg) ? tIn('en', msg, o?.vars) : msg);
 import { MOB_TYPES } from '../../src/game/mobTypes.js';
 
 // THE PRE-CUT SAVE (W2-F brief, Task 0 and Task 1; DECISIONS 2026-10-28 W1-H items 4-7 and 10).
@@ -242,7 +247,7 @@ describe('a completed, unclaimed retired quest', () => {
   const questNotes = () => notes.filter((n) => n.startsWith('Quest reward'));
   beforeEach(() => {
     notes = [];
-    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+    useGameStore.setState({ addNotification: (msg, _type, o) => notes.push(noteText(msg, o)) });
   });
 
   it('pays its reward once on load, and the quest comes back claimed, out of the feed and out of the held set', () => {
@@ -267,7 +272,7 @@ describe('a completed, unclaimed retired quest', () => {
     const first = read();
     const once = onDisk();
     useGameStore.setState(useGameStore.getInitialState(), true);
-    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+    useGameStore.setState({ addNotification: (msg, _type, o) => notes.push(noteText(msg, o)) });
     const announced = notes.length;
     useGameStore.getState().loadWorldData(structuredClone(once));
     expect(read(), 'the second load paid, or lost, something').toEqual(first);
@@ -451,7 +456,7 @@ describe('the Cut is recorded on every save, a load ends a held grab, and the no
   const cutNotes = () => notes.filter((n) => n.startsWith('Talents now change'));
   beforeEach(() => {
     notes = [];
-    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+    useGameStore.setState({ addNotification: (msg, _type, o) => notes.push(noteText(msg, o)) });
   });
 
   it('a session that has loaded nothing writes the record, and so does a new world', () => {
@@ -468,7 +473,7 @@ describe('the Cut is recorded on every save, a load ends a held grab, and the no
     expect(reloaded.migrated).toEqual(['talents.cut']);
     for (const blob of [postCut(), reloaded]) {
       useGameStore.setState(useGameStore.getInitialState(), true);
-      useGameStore.setState({ addNotification: (text) => notes.push(text) });
+      useGameStore.setState({ addNotification: (msg, _type, o) => notes.push(noteText(msg, o)) });
       useGameStore.getState().loadWorldData(rolledBack(blob, 10));
       const s = useGameStore.getState();
       expect(s.unlockedTalents, 'a post-Cut build was respecced after a rollback wrote attributes').toEqual({ wildheart_roar: 1, wildheart_endurance: 2 });
@@ -500,19 +505,19 @@ describe('the Cut is recorded on every save, a load ends a held grab, and the no
     const s = useGameStore.getState();
     expect(s.level, 'SETUP: the Builder XP did not level the player').toBe(6);
     expect(s.talentPoints).toBe(8 + 1);
-    expect(cutNotes()).toEqual(['Talents now change your Aspects: 9 talent points to spend (U)']);
+    expect(cutNotes()).toEqual(['Talents now change your Aspects: 9 talent points to spend in Character (Tab)']);
   });
 
   it('one point reads singular, and a refund with nothing to spend raises no notice', () => {
     const one = fixture();
     Object.assign(one.progression, { talentPoints: 0, unlockedTalents: {}, attributes: { ...PRE_CUT_DEFAULTS, attributePoints: 5 } });
     useGameStore.getState().loadWorldData(one);
-    expect(cutNotes()).toEqual(['Talents now change your Aspects: 1 talent point to spend (U)']);
+    expect(cutNotes()).toEqual(['Talents now change your Aspects: 1 talent point to spend in Character (Tab)']);
     notes.length = 0;
     const none = fixture();
     Object.assign(none.progression, { talentPoints: 0, unlockedTalents: {}, attributes: { ...PRE_CUT_DEFAULTS, attributePoints: 4 } });
     useGameStore.setState(useGameStore.getInitialState(), true);
-    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+    useGameStore.setState({ addNotification: (msg, _type, o) => notes.push(noteText(msg, o)) });
     useGameStore.getState().loadWorldData(none);
     expect(useGameStore.getState().talentPoints, 'SETUP: a save holding 4 attribute points was paid a talent point').toBe(0);
     expect(cutNotes(), 'a refund with nothing to spend told the player to spend points').toEqual([]);

@@ -4,7 +4,7 @@ import { useT } from '../i18n/i18n.js';
 import { useGameStore } from '../store/useGameStore.jsx';
 import { questTitle, questDescription } from '../game/questText.js';
 
-// The full quest LOG panel (L). Reuses the AchievementsPanel Modal grammar (bold-flat,
+// The full quest LOG panel (the Journal's Quests tab, J). Reuses the AchievementsPanel Modal grammar (bold-flat,
 // Escape/backdrop close via the Modal primitive). Each active quest shows its giver + lore
 // (questLore.js, applied in QuestSystem at M-NARRATIVE.2) + the themed objective + progress.
 // Read-only narrative surface — claiming still happens via Q in the QuestTracker. Mounted in
@@ -68,7 +68,7 @@ export const QuestLog = React.memo(({ quests = [], onClose }) => {
 
                 {/* Footer Tip */}
                 <div className="text-[10px] text-text-muted uppercase tracking-widest text-center border-t-chrome border-ink px-5 py-2 bg-panel-inset flex-none">
-                    Press L to close • Q claims a finished quest from the tracker
+                    {t('panel.footer.journal')}
                 </div>
             </Panel>
         </Modal>

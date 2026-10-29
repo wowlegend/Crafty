@@ -443,7 +443,7 @@ export const Inventory = ({ onClose }) => {
 
                 {/* Footer Tip */}
                 <div className="text-[10px] text-text-muted uppercase tracking-widest text-center border-t-chrome border-ink px-5 py-2 bg-panel-inset">
-                    Press E to close • Click gear to equip • Hover to inspect • Click equipped gear to unequip
+                    {t('panel.footer.gear')}
                 </div>
             </Panel>
         </Modal>
@@ -512,7 +512,7 @@ export const MagicSystem = ({ onClose }) => {
 
                 {/* Footer Tip */}
                 <div className="text-[10px] text-text-muted uppercase tracking-widest text-center border-t-chrome border-ink px-5 py-2 bg-panel-inset">
-                    Press M to close • Right-Click to cast selected spell
+                    {t('panel.footer.spells')}
                 </div>
             </Panel>
         </Modal>
@@ -527,11 +527,11 @@ export const BuildingTools = React.memo(({ onClose }) => {
     const t = useT();
     // ToolIcon = lucide chrome glyph per build mode (app-chrome, not game-icon content).
     const tools = [
-        { id: 'single', name: 'Single Block', ToolIcon: Square, description: 'Place one block at a time', hotkey: '1' },
-        { id: 'wall', name: 'Wall Builder', ToolIcon: Layers, description: `Build ${buildSize}-high walls`, hotkey: '2' },
-        { id: 'floor', name: 'Floor Builder', ToolIcon: Grid3x3, description: `Create ${buildSize}x${buildSize} floors`, hotkey: '3' },
-        { id: 'cube', name: 'Cube Builder', ToolIcon: Box, description: `Build ${buildSize}x${buildSize}x${buildSize} cubes`, hotkey: '4' },
-        { id: 'delete', name: 'Delete Tool', ToolIcon: Trash2, description: 'Remove multiple blocks', hotkey: '5' },
+        { id: 'single', name: 'Single Block', ToolIcon: Square, description: 'Place one block at a time' },
+        { id: 'wall', name: 'Wall Builder', ToolIcon: Layers, description: `Build ${buildSize}-high walls` },
+        { id: 'floor', name: 'Floor Builder', ToolIcon: Grid3x3, description: `Create ${buildSize}x${buildSize} floors` },
+        { id: 'cube', name: 'Cube Builder', ToolIcon: Box, description: `Build ${buildSize}x${buildSize}x${buildSize} cubes` },
+        { id: 'delete', name: 'Delete Tool', ToolIcon: Trash2, description: 'Remove multiple blocks' },
     ];
 
     // Set global building mode
@@ -596,7 +596,6 @@ export const BuildingTools = React.memo(({ onClose }) => {
                                             <div className="text-[11px] text-text-muted leading-tight">{tool.description}</div>
                                         </div>
                                     </div>
-                                    <div className="text-[10px] text-text-muted uppercase tracking-widest mt-1.5">Press {tool.hotkey}</div>
                                 </button>
                             );
                         })}
@@ -617,7 +616,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
 
                 {/* Footer Tip */}
                 <div className="text-[10px] text-text-muted uppercase tracking-widest text-center border-t-chrome border-ink px-5 py-2 bg-panel-inset">
-                    Press B to close • Right-click to build • Left-click to remove
+                    {t('panel.footer.build')}
                 </div>
             </Panel>
         </Modal>
@@ -827,7 +826,7 @@ export const SettingsPanel = React.memo(({ onClose, showStats, setShowStats, onO
 
                 {/* Footer Tip */}
                 <div className="text-[10px] text-text-muted uppercase tracking-widest text-center border-t-chrome border-ink px-5 py-2 bg-panel-inset">
-                    Press ESC to return to game
+                    {t('panel.footer.settings')}
                 </div>
             </Panel>
         </Modal>

@@ -9,6 +9,7 @@ import { bootDev, startPlayActive } from './_boot.js';
 //     compass, the objective line, the minimap, the dial, the gear and the coin count, and on the iPads every touch
 //     control a player can see at rest (the joystick's ring and each of the touch layer's buttons: Pause, the action,
 //     cast, dodge and jump, the tray, the Aspect and spell openers): no two intersect.
+//   desktop: a fresh profile's controls card (or the H hint it folds to) clears every rect above.
 //   iPad 820x1180: a finger's tap on the quest line opens the list (the touch layer leaves the tracker its taps).
 //   390x844 touch: the same HUD rects and touch controls, no two intersecting; every touch target inside the viewport.
 // NOT CHECKED: a toast's place (tests/e2e/dusk-warning.spec.js), the touch tray or a fan opened, the panels, a phone in
@@ -110,11 +111,16 @@ test.describe('desktop 1280x800', () => {
   });
 });
 
+// A first-session profile's desktop also carries the controls card (or, once it has folded, the H hint): read when on
+// screen, so the at-rest layout of a new player is checked too.
+const FIRST_SESSION_IDS = ['controls-card', 'controls-hint'];
+
 /** The HUD rects and, on touch, the touch controls, read together: [seen, missing]. */
 async function layout(page, touch) {
   const all = await rects(page, RECT_IDS);
   const missing = all.filter((r) => r.missing || !(r.w > 0 && r.h > 0)).map((r) => r.id);
   const seen = all.filter((r) => !r.missing && r.w > 0 && r.h > 0);
+  seen.push(...(await rects(page, FIRST_SESSION_IDS)).filter((r) => !r.missing && r.w > 0 && r.h > 0));
   const controls = touch ? await touchControls(page) : [];
   if (touch) missing.push(...TOUCH_AT_REST.filter((id) => !controls.some((c) => c.id === id)));
   return { seen: [...seen, ...controls], missing };

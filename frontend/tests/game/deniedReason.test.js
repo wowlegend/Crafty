@@ -10,7 +10,7 @@ describe('deniedReason — denial toast copy', () => {
     const t = deniedReason('aspect-locked', 'WILDHEART');
     expect(t).toContain('WILDHEART');
     expect(t).toContain('Talents');
-    expect(t).toContain('U');
+    expect(t, 'the key that opens Talents (Character)').toContain('(Tab)');
   });
   it('aspect-locked without context still teaches the unlock path', () => {
     expect(deniedReason('aspect-locked')).toContain('Talents');

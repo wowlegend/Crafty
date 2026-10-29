@@ -1,4 +1,4 @@
-// The Talents page (U): the four Aspect trees, the points to spend, and respec. Spells scale with level and have no
+// The Talents page (Character's third tab, on Tab): the four Aspect trees, the points to spend, and respec. Spells scale with level and have no
 // section here (DECISIONS 2026-10-28 W1-H item 6).
 import React from 'react';
 import { motion } from 'framer-motion';

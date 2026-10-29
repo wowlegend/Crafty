@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { isTouchUIMode } from '../input/touchDevice';
 import { Panel, Modal, Button, Icon } from './primitives/index.js';
 import { KEY_MAP, KEY_GROUPS, KEY_GROUP_LABEL_KEYS } from '../game/keyMap.js';
 import { useT } from '../i18n/i18n.js';
@@ -6,9 +7,9 @@ import { useGameStore } from '../store/useGameStore';
 
 // The controls, generated from KEY_MAP (the binding single source of truth): grouped Move / Combat / Aspects / Panels,
 // each key a keycap chip in the talent panel's vocabulary, each label through t(). Three surfaces show it (the HUD lane's
-// task script, decision 7): the controls PANEL that H opens, in place of the sheet that faded after 8 seconds (STATUS
-// C1/c), the controls CARD a profile sees at rest until it has opened the panel once, and the "H Controls" HINT at the
-// hotbar's edge until then. Static: no useFrame, no per-frame cost.
+// task script, decision 7): the controls PANEL that H opens (STATUS C1/c: a returning player needs somewhere to find
+// the keys), the first-run controls CARD, and the "H Controls" HINT the card folds to. Static: no useFrame, no per-frame
+// cost.
 
 /** Every KEY_MAP row a player is taught (not `panelHide`), grouped in KEY_GROUPS order. */
 export const ControlsList = React.memo(({ size = 'sm' }) => {
@@ -44,12 +45,25 @@ export const ControlsCard = React.memo(() => {
   );
 });
 
-// Until this browser has opened the controls panel (H) once, the card sits at rest on the left, in the room the side
-// rail left, and the hotbar carries the hint (STATUS C1/c: the sheet that faded after 8 seconds left a returning player
-// nothing to find the keys by).
+/** How long the first-run card stays on screen in play before it folds to the "H Controls" hint. */
+export const CARD_ON_SCREEN_MS = 30000;
+
+// A profile that has not opened the controls panel (H) sees the card at rest on the left, in the room the side rail
+// left, for its first CARD_ON_SCREEN_MS of play with the card on screen (time paused or in a panel does not count: the
+// card is mounted only while the HUD is), then the one-line hint at the hotbar's edge, until H opens the panel once.
+// Desktop only: the keys are a keyboard player's (HUD.jsx mounts the card off touch; the hint asks for itself).
 export const ControlsCardUntilSeen = React.memo(() => {
   const seen = useGameStore((s) => s.controlsSeen);
-  return seen ? null : <ControlsCard />;
+  const done = useGameStore((s) => s.controlsCardDone);
+  const showing = !seen && !done;
+  useEffect(() => {
+    if (!showing) return undefined;
+    const since = Date.now();
+    const left = Math.max(0, CARD_ON_SCREEN_MS - useGameStore.getState().controlsCardMs);
+    const id = setTimeout(() => useGameStore.getState().markControlsCardDone(), left);
+    return () => { clearTimeout(id); useGameStore.getState().addControlsCardMs(Date.now() - since); };
+  }, [showing]);
+  return showing ? <ControlsCard /> : null;
 });
 
 /** The controls panel H opens. */
@@ -71,9 +85,13 @@ export const ControlsPanel = ({ onClose }) => {
   );
 };
 
-/** The hint at the hotbar's edge until the panel has been opened once: drawn inside the hotbar, above its XP edge. */
+/** The hint at the hotbar's edge once the first-run card has folded, until the panel has been opened once; on a
+ *  keyboard only. Drawn inside the hotbar, above its XP edge. */
 export const ControlsHint = React.memo(() => {
   const t = useT();
+  const seen = useGameStore((s) => s.controlsSeen);
+  const done = useGameStore((s) => s.controlsCardDone);
+  if (seen || !done || isTouchUIMode()) return null;
   return (
     <div data-testid="controls-hint" className="absolute right-1 bottom-full mb-6 pointer-events-none flex items-center gap-1.5">
       <span className="font-display px-1.5 py-0.5 rounded border-chrome border-ink bg-slot text-text text-[10px]">H</span>

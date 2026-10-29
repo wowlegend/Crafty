@@ -47,11 +47,19 @@ export function contextOptions(target) {
   return o;
 }
 
-/** Before any page script: skip the first-session toasts and the first-run controls card (a returning player's screen at
- *  rest is what the frames judge); on touch, remove Pointer Lock as iOS has none. */
-export function initScript(touch) {
+/** Before any page script: skip the first-session toasts; for a returning player (the default) mark the controls panel
+ *  opened, so the first-run controls card and its hint stay away, and for a first-session player (`firstSession`)
+ *  clear both controls flags; on touch, remove Pointer Lock as iOS has none. */
+export function initScript({ touch = false, firstSession = false } = {}) {
   try { localStorage.setItem('crafty_onboarded', '1'); } catch { /* storage blocked: toasts may show */ }
-  try { localStorage.setItem('crafty_controls_seen', '1'); } catch { /* storage blocked: the controls card shows */ }
+  try {
+    if (firstSession) {
+      localStorage.removeItem('crafty_controls_seen');
+      localStorage.removeItem('crafty_controls_card_done');
+    } else {
+      localStorage.setItem('crafty_controls_seen', '1');
+    }
+  } catch { /* storage blocked: the controls card shows */ }
   if (touch) {
     delete Element.prototype.requestPointerLock;
     delete HTMLElement.prototype.requestPointerLock;

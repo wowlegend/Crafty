@@ -136,6 +136,10 @@ const PASS_TIMES_RUN = (() => {
   return want ? PASS_TIMES.filter((t) => want.split(',').includes(t.id)) : PASS_TIMES;
 })();
 const HEADED = flag('--headed');
+// --first-session: the player's first session (no controls flags). Each eye frame is then shot as the game has it (the
+// first-run card folded to the H hint once it has had its 30 s on screen) and again with the card up, as in the first
+// 30 s of play (`chromeCard`).
+const FIRST_SESSION = flag('--first-session');
 const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
 const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands', 'hud'];
@@ -326,7 +330,7 @@ async function shootTarget(target, launchOpts, launchId) {
       log.push({ t: Date.now(), type: 'pageerror', text });
       report.pageErrors.push(text);
     });
-    await page.addInitScript(initScript, target.touch);
+    await page.addInitScript(initScript, { touch: target.touch, firstSession: FIRST_SESSION });
     await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     const hasSeam = await page.waitForFunction(() => !!window.__craftyLookbook, null, { timeout: 30000 }).then(() => true, () => false);
     if (!hasSeam) {
@@ -404,10 +408,18 @@ async function shootTarget(target, launchOpts, launchId) {
       const before = await info(page);
       const hud = await hudOn(page);
       const chrome = await shootWithChrome(page, join(dir, shot.file));
+      let chromeCard;
+      if (FIRST_SESSION) {
+        await page.evaluate(() => window.useGameStore.setState({ controlsCardDone: false, controlsCardMs: 0 }));
+        await delay(600);
+        chromeCard = await shootWithChrome(page, join(dir, shot.file.replace(/\.png$/, '-card.png')));
+        chromeCard.card = await page.evaluate(() => !!document.querySelector('[data-testid="controls-card"]'));
+        await page.evaluate(() => window.useGameStore.setState({ controlsCardDone: true }));
+      }
       const after = await info(page);
       const pt = await passTimes(page);
       const v = eyeShotVerdict({ cycle: shot.cycle, heading: shot.heading, stand: report.stand, before, after, handsBaseline: report.hands?.hidden, hud });
-      report.eye.push({ ...shot, valid: v.valid, why: v.why, ...facts(after, t0, pt), hud, chrome, heading: shot.heading,
+      report.eye.push({ ...shot, valid: v.valid, why: v.why, ...facts(after, t0, pt), hud, chrome, chromeCard, heading: shot.heading,
         headingAtShot: after.heading, pitch: after.pitch, eye: after.eye, body: after.body, cameraNodes: after.cameraNodes,
         hostiles: after.hostiles, cleared,
         eyeAboveBody: after.eye && after.body ? Math.round((after.eye[1] - after.body[1]) * 1000) / 1000 : null });
@@ -655,7 +667,7 @@ async function hold(launchOpts, launchId) {
   const b = await launch('chromium', launchOpts);
   try {
     const page = await (await b.newContext(contextOptions(TARGETS[0]))).newPage();
-    await page.addInitScript(initScript, false);
+    await page.addInitScript(initScript, { touch: false });
     await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     await page.waitForFunction(() => typeof window.useGameStore === 'function', null, { timeout: 60000 });
     out.seam = await page.evaluate(() => !!window.__craftyLookbook);
@@ -875,7 +887,7 @@ async function measurePasses(launchOpts, launchId) {
   try {
     const page = await (await b.newContext(contextOptions(PASS_TARGET))).newPage();
     page.on('pageerror', (e) => out.pageErrors.push(String(e.message).slice(0, 200)));
-    await page.addInitScript(initScript, false);
+    await page.addInitScript(initScript, { touch: false });
     await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     if (!(await page.waitForFunction(() => !!window.__craftyLookbook?.passesOff, null, { timeout: 30000 }).then(() => true, () => false))) {
       out.notes.push('COULD NOT MEASURE: this build has no passesOff on its lookbook seam');

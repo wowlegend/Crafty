@@ -4,8 +4,8 @@ import { bootDev, startPlayActive } from './_boot.js';
 // THREE PANELS, THE CONTROLS PANEL AND THE TRAY, BY REAL INPUT (the HUD lane, DECISIONS 2026-10-29 item 96).
 //   desktop: Tab opens Character on its gear tab, its strip reaches spells and talents, Tab closes it; J opens the
 //     Journal on its quests, its strip reaches the feats, J closes it; B opens Build; H opens the controls panel; E, M,
-//     U, L and Q open nothing. A fresh profile shows the controls card and the "H Controls" hint; once H has opened the
-//     panel, a reload shows neither (STATUS C1/c).
+//     U, L and Q open nothing. A fresh profile shows the controls card (the "H Controls" hint it folds to after 30 s
+//     on screen is gated in controls-panel-gates); once H has opened the panel, a reload shows neither (STATUS C1/c).
 //   phone 390x844: the tray's Character and Journal buttons, by real taps, open the gear and the quest log.
 // NOT RUN LOCALLY (no local e2e); its browser mutants are argued from tests/gates/panel-groups-gates and
 // controls-panel-gates.
@@ -22,6 +22,7 @@ test.describe('desktop', () => {
       try {
         if (!sessionStorage.getItem('e2e-fresh-profile')) {
           localStorage.removeItem('crafty_controls_seen');
+          localStorage.removeItem('crafty_controls_card_done');
           sessionStorage.setItem('e2e-fresh-profile', '1');
         }
       } catch { /* storage blocked */ }
@@ -29,7 +30,7 @@ test.describe('desktop', () => {
     await bootDev(page);
     await startPlayActive(page);
     await expect(shown(page, 'controls-card'), 'a fresh profile is not shown the controls card').toBeVisible({ timeout: 20000 });
-    await expect(shown(page, 'controls-hint'), 'a fresh profile is not shown the H hint').toBeVisible();
+    await expect(shown(page, 'controls-hint'), 'the hint shows beside the card, before the card has folded').toHaveCount(0);
 
     for (const k of ['e', 'm', 'u', 'l', 'q']) {
       await press(page, k);

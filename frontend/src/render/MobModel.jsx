@@ -17,6 +17,8 @@ import { flashableMaterial, OUTLINE, RIM } from './characterStyle';
 import { TIERS } from './quality';
 import { rememberAuthoredColor, restoreAuthoredColor } from './mobFlash.js';
 import { featureColor } from '../game/mobFeatures.js';
+import { VILLAGER_GREETINGS } from '../game/villagerGreetings.js';
+import { useT } from '../i18n/i18n.js';
 
 // MobModel + HealthBar — the mob render cluster, extracted BYTE-EXACT from SimplifiedNPCSystem.jsx
 // (S3-M6 NPC de-monolith). OUTLINE_RIM_STRENGTH moved here (its only user). NPCSystem imports MobModel.
@@ -26,6 +28,7 @@ const OUTLINE_RIM_STRENGTH = RIM.strength;
 // ribs), 'dark' = the body color crushed ~55% (shoulder slabs, moss-crown), else the body color.
 
 const MobModel = React.memo(({ entity }) => {
+  const t = useT();
   const groupRef = useRef();
   const legRefs = useRef([]);
   const prevPos = useRef(null);
@@ -59,16 +62,7 @@ const MobModel = React.memo(({ entity }) => {
   useEffect(() => {
     if (entity.type !== 'villager') return;
 
-    const greetings = [
-      "Greetings traveler! Left-Click attacks, Right-Click casts active magic!",
-      "A storm is brewing. Every level earns a talent point: press U to spend it!",
-      "Unopened chests hold rich loot. Stand close and press G to unlock!",
-      "The deep ocean hides many secrets... Sand beaches are safe!",
-      "I heard rumors of a Shadow Dragon... Train and prepare!",
-      "Keep practicing your dodge-rolls. Snapping up voxel blocks is easy now!"
-    ];
-
-    const myGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+    const myGreeting = VILLAGER_GREETINGS[Math.floor(Math.random() * VILLAGER_GREETINGS.length)];
 
     const interval = setInterval(() => {
       const playerPos = useGameStore.getState().playerPosition;
@@ -370,9 +364,9 @@ const MobModel = React.memo(({ entity }) => {
             style={{ minWidth: '160px', maxWidth: '240px', whiteSpace: 'normal', wordBreak: 'break-word' }}
           >
             <div className="flex items-center gap-1 text-accent font-display mb-0.5 text-[10px] tracking-wider uppercase">
-              <Icon name="rune" size={12} /> Villager
+              <Icon name="rune" size={12} /> {t('compass.villager')}
             </div>
-            <div className="text-[11px] leading-snug">{dialogue}</div>
+            <div className="text-[11px] leading-snug">{t(dialogue)}</div>
           </Panel>
         </Html>
       )}

@@ -63,7 +63,7 @@ describe('denyAspectPress', () => {
         notes.length = 0;
         useGameStore.setState({ unlockedTalents: {}, ember });
         expect(denyAspectPress(a.verb, useGameStore.getState()), `${a.verb} locked at ${ember}`).toBe('aspect-locked');
-        expect(notes, `${a.verb} locked at ${ember}`).toEqual([{ text: `${a.aspect} not yet unlocked — open Talents (U)`, type: 'warn' }]);
+        expect(notes, `${a.verb} locked at ${ember}`).toEqual([{ text: `${a.aspect} not yet unlocked — open Talents in Character (Tab)`, type: 'warn' }]);
       }
     }
   });

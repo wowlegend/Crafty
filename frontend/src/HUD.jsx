@@ -256,14 +256,12 @@ export function HUD({
 }) {
   // S9c: the post-climax victory beat is dismissed once ("Keep exploring" -> endless handoff).
   const victoryPending = useGameStore((s) => s.victoryPending); // a rare event, not a per-frame value
-  const controlsSeen = useGameStore((s) => s.controlsSeen);
   return (
     <>
       <AnimatePresence>
         {isPointerLocked && gameSystems.isAlive && isWorldBuilt && (
           <>
-            <GameUI gameState={gameState} level={experienceSystem.playerLevel} xpProgress={experienceSystem.xpProgress}
-              controlsHint={!controlsSeen && !isTouchUIMode()} />
+            <GameUI gameState={gameState} level={experienceSystem.playerLevel} xpProgress={experienceSystem.xpProgress} />
             {!isTouchUIMode() && <ControlsCardUntilSeen />}{/* keys are a desktop player's; touch has its controls on screen */}
 
             <Compass treasureChests={treasureChests} bossSystem={bossSystem} />

@@ -338,12 +338,12 @@ export const useQuestSystem = () => {
     }, [updateQuestProgress]);
 
     // R1 — LIVE MIRRORS of the claim-relevant state ("latest ref" pattern).
-    // React state is asynchronous and batched. The Q key claims EVERY completed quest in ONE synchronous
-    // forEach (InputManager.jsx), and quests routinely complete in pairs (one zombie kill finishes both
-    // `first_blood` and `zombie_slayer`). The old code read `completedQuestIds` from a stale closure and
-    // captured the claimed quest by mutating a variable from inside a setState updater — so the 2nd claim
-    // in a tick silently granted NO reward and ERASED the 1st quest from the save. These refs are the
-    // synchronous truth WITHIN a tick; state stays the render truth. Locked by quest-multiclaim-gates.
+    // React state is asynchronous and batched. Quests claim themselves on completion (below), and they routinely
+    // complete in pairs (one zombie kill finishes both `first_blood` and `zombie_slayer`), so two claims land in one
+    // tick. Reading `completedQuestIds` from a render closure, or capturing the claimed quest from inside a setState
+    // updater, would let the 2nd claim in a tick grant NO reward and ERASE the 1st quest from the save. These refs are
+    // the synchronous truth WITHIN a tick; state stays the render truth. Locked by quest-multiclaim-gates and
+    // quest-autoclaim-gates.
     questsRef.current = quests;
     completedRef.current = completedQuestIds;
 

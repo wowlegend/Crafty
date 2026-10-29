@@ -890,6 +890,12 @@ export function chromeSummaryLines(eye) {
   if (colour.length) lines.push(`  chrome colour ${colour.length} frame(s): max ${pct(Math.max(...colour))}, median ${pct(medianOf(colour))} (second column; it reads the palette)`);
   const touch = rest.map((s) => s.chrome.touchShare).filter(Number.isFinite);
   if (touch.length) lines.push(`  touch layer   ${touch.length} frame(s): max ${pct(Math.max(...touch))}, median ${pct(medianOf(touch))} (scrim, ring and buttons; not in the footprint)`);
+  const card = eye.filter((s) => atRest(s) && s.chromeCard && atRest({ valid: true, chrome: s.chromeCard })).map((s) => s.chromeCard.share);
+  if (eye.some((s) => s.chromeCard)) {
+    lines.push(card.length
+      ? `  first-run card ${card.length} frame(s) with the card up: footprint max ${pct(Math.max(...card))}, median ${pct(medianOf(card))}; ${card.filter((x) => x > CHROME_BUDGET).length} over the budget`
+      : '  first-run card NOT MEASURED on any frame at rest');
+  }
   return lines;
 }
 

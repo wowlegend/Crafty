@@ -266,7 +266,7 @@ async function main() {
     const page = await context.newPage();
     let pageErrors = 0;
     page.on('pageerror', () => { pageErrors += 1; });
-    await page.addInitScript(initScript, false);
+    await page.addInitScript(initScript, { touch: false });
     await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
     const hasSeam = await page.waitForFunction(() => typeof window.__craftyLookbook?.mobs === 'function', null, { timeout: 30000 }).then(() => true, () => false);
     if (!hasSeam) fail('this build has no lookbook seam with mobs() (window.__craftyLookbook)');
