@@ -76,7 +76,7 @@ export const EnhancedMagicSystem = React.memo(() => {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     registerTestHook('readProjectiles', () => projectilesRef.current.map((p) => ({
-      id: p.id, type: p.type, age: p.age, x: p.position.x, y: p.position.y, z: p.position.z,
+      id: p.id, type: p.type, age: p.age, x: p.position.x, y: p.position.y, z: p.position.z, imbueKind: p.imbueKind ?? null,
     })));
     registerTestHook('readSpentProjectiles', () => spentRef.current.map((s) => ({ ...s })));
     registerTestHook('readChainArcs', () => chainRef.current.map((c) => ({ ...c })));
@@ -258,6 +258,8 @@ export const EnhancedMagicSystem = React.memo(() => {
       if (window.playSpellCastSound) {
         window.playSpellCastSound(spellType);
       }
+      // True only here, with the projectile out: Components applies an armed imbue's spend to a cast that went out.
+      return true;
     }});
 
     // S1-D-M2: deterministic cast injector for the `spell-cast` visual-regression state.

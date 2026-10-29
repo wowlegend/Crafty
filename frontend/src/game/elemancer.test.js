@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeImbueState, decideImbue } from './elemancer';
 
-const base = { imbueEdge: false, castFired: false, active: true, alive: true, canIgnite: true };
+const base = { imbueEdge: false, castFired: false, active: true, alive: true, canIgnite: true, canPay: true };
 
 describe('S2-B4-M2: the imbue LATCH (simpler than every prior SM — armed until cast or cancel)', () => {
   it('Z with bank+talent (ctx.canIgnite) -> arm; Z again -> disarm (a toggle)', () => {
@@ -19,6 +19,14 @@ describe('S2-B4-M2: the imbue LATCH (simpler than every prior SM — armed until
     const armed = decideImbue(makeImbueState(), { ...base, imbueEdge: true }).sm;
     const used = decideImbue(armed, { ...base, castFired: true });
     expect(used.action).toBe('consume');
+    expect(used.sm.armed).toBe(false);
+  });
+  // One bar pays every verb, so the price vetted at the arm may be gone by the cast (a grab or a bind spent it). The cast
+  // still goes out, plain: the stance ends and nothing is spent, and the caller says why the imbue did not ride it.
+  it('cast while armed with the price gone -> unpaid: the latch clears and nothing is consumed', () => {
+    const armed = decideImbue(makeImbueState(), { ...base, imbueEdge: true }).sm;
+    const used = decideImbue(armed, { ...base, castFired: true, canPay: false });
+    expect(used.action, 'an imbue the bar no longer pays for was consumed').toBe('unpaid');
     expect(used.sm.armed).toBe(false);
   });
   it('cast while NOT armed -> none (normal casts unaffected)', () => {

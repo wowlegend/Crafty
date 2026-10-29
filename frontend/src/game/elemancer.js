@@ -11,8 +11,11 @@ export function makeImbueState() {
   return { armed: false };
 }
 
-/** decideImbue(sm, ctx) -> { sm, action }; action: 'none'|'arm'|'disarm'|'consume'.
- *  ctx: { imbueEdge, castFired, active, alive, canIgnite, owned }
+/** decideImbue(sm, ctx) -> { sm, action }; action: 'none'|'arm'|'disarm'|'consume'|'unpaid'.
+ *  ctx: { imbueEdge, castFired, active, alive, canIgnite, owned, canPay }
+ *  canPay: the ember bar holds IMBUE_COST now. One bar pays every verb, so the price vetted at the arm may be gone by
+ *  the cast; that cast is 'unpaid': the stance ends, nothing is consumed, and the cast goes out plain. A 'consume' or an
+ *  'unpaid' is the caller's to apply only if the cast goes out (castSpell refuses one it has no mana for).
  *  `owned` (the elemancer_imbue talent) is checked on the ARMED branch too: canIgnite is only read at
  *  arm-time, so without it a respec that refunds the talent left the stance armed in this ref while the
  *  store's reticle flag went dark — the next cast consumed an imbue the player no longer owns (R1.4).
@@ -22,7 +25,7 @@ export function decideImbue(sm, ctx) {
 
   if (sm.armed) {
     if (!ctx.alive || !ctx.active || ctx.owned === false) { out.armed = false; return { sm: out, action: 'disarm' }; }
-    if (ctx.castFired) { out.armed = false; return { sm: out, action: 'consume' }; }
+    if (ctx.castFired) { out.armed = false; return { sm: out, action: ctx.canPay ? 'consume' : 'unpaid' }; }
     if (ctx.imbueEdge) { out.armed = false; return { sm: out, action: 'disarm' }; }
     return { sm: out, action: 'none' };
   }

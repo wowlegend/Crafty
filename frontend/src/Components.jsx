@@ -30,7 +30,7 @@ import { shakeOffset, SHAKE_WEIGHT_MAX, HITSTOP } from './game/trauma.js';
 import { shakeTrauma, shakeDir, decayShake } from './game/cameraShakeChannel.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC, squadCapFor } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
-import { armImbueCast } from './game/elemancerChannel.js';
+import { armImbueCast, consumeImbueCast } from './game/elemancerChannel.js';
 
 // music-motif v2: the stinger rarity guards (a stinger repeats no sooner than this)
 const MOTIF_COOLDOWN_SEC = 10;
@@ -358,39 +358,39 @@ export const Player = ({ isWorldBuilt }) => {
 
     const store = useGameStore.getState();
 
-    // ELEMANCER (S2-B4-M5): the imbue latch resolves HERE, before the spawn below, because the thing it
-    // decides -- which element this projectile carries -- is read AT spawn. It used to resolve in useFrame
-    // one frame later, so the cast that PAID got imbueKind:null and the kind sat parked for the next cast
-    // to take for free (an off-by-one, not a missing feature). The consume also used to depend on the
-    // mouse branch stamping a ref, which the F key -- the advertised prime cast key -- never did, so on
-    // that path the stance idled armed forever. Both routes call this function, so owning the consume
-    // here closes both. The reducer stays the single decision authority; only the timing of its
-    // `castFired` input moved from "next frame" to "this instant".
-    {
-      const { sm, action } = decideImbue(imbueSMRef.current, {
-        imbueEdge: false,          // arming is the frame loop's job; this call is only ever a cast
-        castFired: true,
-        active: getInput().active,
-        alive: store.isAlive,
-        canIgnite: canAfford(store.ember, IMBUE_COST) && (store.unlockedTalents?.['elemancer_imbue'] > 0),
-        owned: (store.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0,
-      });
-      imbueSMRef.current = sm;
-      if (action === 'consume') {
-        store.setImbueArmed(false);
-        // The bar was vetted at arm-time, but another verb may have spent from it since: an imbue it can no longer pay
-        // for is dropped and the cast goes out plain.
-        if (store.spendEmber(IMBUE_COST)) armImbueCast(KIND_BY_SPELL[store.activeSpell] || 'burning');
-        else notifyDenied('no-ember');
-      } else if (action === 'disarm') {
-        store.setImbueArmed(false); // cast while dead or with input released -- drop the stance, charge nothing
-      }
-    }
+    // ELEMANCER: the imbue latch resolves here, before the spawn, because the element a projectile carries is read at
+    // its spawn; a latch resolved in the frame loop would tag the next cast instead of this one. The mouse and the F key
+    // both cast through this function, so neither can leave the stance armed. The reducer decides; this call is its
+    // `castFired` input.
+    const imbue = decideImbue(imbueSMRef.current, {
+      imbueEdge: false,          // arming is the frame loop's job; this call is only ever a cast
+      castFired: true,
+      active: getInput().active,
+      alive: store.isAlive,
+      canIgnite: canAfford(store.ember, IMBUE_COST) && (store.unlockedTalents?.['elemancer_imbue'] > 0),
+      owned: (store.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0,
+      canPay: canAfford(store.ember, IMBUE_COST),
+    });
+    if (imbue.action === 'consume') armImbueCast(KIND_BY_SPELL[store.activeSpell] || 'burning');
 
+    let cast = false;
     if (store.castSpell) {
       const currentSpell = store.activeSpell || 'fireball';
-      store.castSpell(currentSpell);
+      cast = store.castSpell(currentSpell) === true;
       if (store.onSpellCast) store.onSpellCast();
+    }
+
+    // The latch's decision is applied only to a cast that went out. castSpell refuses one it has no mana for, and says
+    // so: that press takes no ember, the stance stays armed, and the kind parked for it is withdrawn so no later cast
+    // carries it.
+    if ((imbue.action === 'consume' || imbue.action === 'unpaid') && !cast) {
+      consumeImbueCast();
+    } else {
+      imbueSMRef.current = imbue.sm;
+      // consume, unpaid and disarm all end the stance; disarm is a cast while dead or with input released, and charges nothing
+      if (imbue.action !== 'none') store.setImbueArmed(false);
+      if (imbue.action === 'consume') store.spendEmber(IMBUE_COST); // canPay above read the bar with nothing spent since
+      else if (imbue.action === 'unpaid') notifyDenied('no-ember'); // spent by another verb since the arm: the cast went out plain
     }
 
     setAttackType('spell');
