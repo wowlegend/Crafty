@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { MobToonMaterial } from './MobToonMaterial';
-import { beastAvatarParts } from './beastAvatarParts.js';
+import { beastAvatarParts, boxDistance, SELF_CLEARANCE_M } from './beastAvatarParts.js';
 import { elementForSpell } from '../game/beasts.js';
 // The beast core's light mounts with the form: from the fixed light pool (render/lightPool.jsx).
 import { PooledLight } from './lightPool.jsx';
@@ -35,6 +35,7 @@ const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 // S2-B1-M7d: Kevin's "punchy" glow pick, BAKED (the dev dial is gone). Scales the element glow
 // (rim/core/halo/point-light) ONLY — never the dark-ink body, so the silhouette stays crisp.
 const GLOW = 1.7;
+const _eye = new THREE.Vector3();
 
 export function BeastAvatar() {
   const active = useGameStore((s) => s.beastFormActive);
@@ -42,6 +43,7 @@ export function BeastAvatar() {
   const element = useGameStore((s) => s.activeBeastForm);
   const activeSpell = useGameStore((s) => s.activeSpell);
   const groupRef = useRef();
+  const boxRefs = useRef([]);
   const coreRef = useRef();
   const burstRef = useRef();
   const chargeRef = useRef();
@@ -95,6 +97,18 @@ export function BeastAvatar() {
     const elapsed = capture ? MORPH_SEC + 1 : now - entryRef.current;
     const ent = morphEntrance(elapsed);
     groupRef.current.scale.setScalar(ent.scale);
+
+    // The player's own beast, seen from its eye (beastAvatarParts.js SELF_CLEARANCE_M): a part nearer the eye than the
+    // clearance writes neither colour nor depth, and still casts its shadow.
+    groupRef.current.updateWorldMatrix(true, false);
+    groupRef.current.worldToLocal(camera.getWorldPosition(_eye));
+    for (let i = 0; i < parts.boxes.length; i++) {
+      const mesh = boxRefs.current[i];
+      if (!mesh) continue;
+      const seen = boxDistance(parts.boxes[i], _eye.x, _eye.y, _eye.z) >= SELF_CLEARANCE_M;
+      mesh.material.colorWrite = seen;
+      mesh.material.depthWrite = seen;
+    }
     if (coreRef.current) {
       const pulse = capture ? 1.08 : 1 + Math.sin(now * 3) * 0.08;
       coreRef.current.scale.setScalar(pulse + ent.flash * 0.9); // entry flash boosts the core
@@ -131,7 +145,7 @@ export function BeastAvatar() {
         <group ref={groupRef} position={[0, FEET_OFFSET, 0]}>
           {/* (1) SILHOUETTE — dark-ink toon body + element rim (toneMapped, crisp) */}
           {parts.boxes.map((b, i) => (
-            <mesh key={i} position={b.pos} rotation={b.rot} castShadow>
+            <mesh key={i} ref={(m) => { boxRefs.current[i] = m; }} position={b.pos} rotation={b.rot} castShadow>
               <boxGeometry args={b.size} />
               <MobToonMaterial color={parts.bodyColor} rimColor={parts.glowColor} rimStrength={1.15 * GLOW * parts.rimBoost} />
             </mesh>
