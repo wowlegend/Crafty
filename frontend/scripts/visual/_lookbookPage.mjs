@@ -1,0 +1,122 @@
+// _lookbookPage.mjs — the browser half the lookbook (lookbook.mjs) and the media pipeline (media.mjs) share: launching a
+// Chromium that gives the game a hardware renderer, entering play and reading the production seam
+// (src/render/lookbookSeam.js). One way to do each, so the media frames come from the same capture path as the lookbook
+// frames. Each takes the Playwright page it acts on; nothing here launches or keeps a browser of its own, so the caller
+// owns the lifecycle (_serve.mjs shutdown). Leading underscore: a helper, not a probe; it binds no port.
+import { devices } from '@playwright/test';
+import { CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, classifyRenderer, pickCandidate, handCount } from './_lookbook.mjs';
+
+const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** The GL renderer string of a fresh WebGL context on this page. */
+export const freshRenderer = (page) => page.evaluate(() => {
+  const c = document.createElement('canvas');
+  const gl = c.getContext('webgl2') || c.getContext('webgl');
+  if (!gl) return 'no webgl2';
+  const ext = gl.getExtension('WEBGL_debug_renderer_info');
+  return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+});
+
+/**
+ * Try every Chromium candidate; record each renderer; pick the first hardware one. `launch(engine, opts)` and
+ * `close(browser)` are the caller's, so its signal handlers can reach a browser this opens.
+ */
+export async function resolveChromium({ launch, close }) {
+  const results = [];
+  for (const cand of CHROMIUM_CANDIDATES) {
+    let b = null;
+    try {
+      b = await launch('chromium', cand.launch);
+      const page = await b.newPage();
+      await page.goto('about:blank');
+      const renderer = await freshRenderer(page);
+      results.push({ id: cand.id, renderer, gpu: classifyRenderer(renderer) });
+    } catch (e) {
+      results.push({ id: cand.id, error: String(e.message || e).split('\n')[0] });
+    } finally {
+      await close(b);
+    }
+  }
+  const chosen = pickCandidate(results);
+  return { results, chosen: chosen ? CHROMIUM_CANDIDATES.find((c) => c.id === chosen.id) : null };
+}
+
+export function contextOptions(target) {
+  const o = { viewport: target.viewport, deviceScaleFactor: target.deviceScaleFactor };
+  if (target.touch) Object.assign(o, { isMobile: true, hasTouch: true, userAgent: devices['iPad Pro 11'].userAgent });
+  return o;
+}
+
+/** Before any page script: skip the first-session toasts; on touch, remove Pointer Lock as iOS has none. */
+export function initScript(touch) {
+  try { localStorage.setItem('crafty_onboarded', '1'); } catch { /* storage blocked: toasts may show */ }
+  if (touch) {
+    delete Element.prototype.requestPointerLock;
+    delete HTMLElement.prototype.requestPointerLock;
+    try { Object.defineProperty(document, 'pointerLockElement', { get: () => null }); } catch { /* read-only */ }
+    document.exitPointerLock = () => {};
+  }
+}
+
+export const info = (page) => page.evaluate(() => window.__craftyLookbook.info());
+export const setCycle = (page, c) => page.evaluate((x) => window.__craftyLookbook.setCycle(x), c);
+// Hostiles within this radius are removed before each eye shot and clip, so the frame is the world and not a mob at
+// arm's length; farther ones stay in view. Each record says how many went.
+const CLEAR_RADIUS_M = 12;
+export const clearHostiles = (page) => page.evaluate((radius) => window.__craftyLookbook.clearHostiles({ radius }), CLEAR_RADIUS_M);
+export const play = (page) => page.evaluate(() => window.__craftyLookbook.play());
+/** The vitals stack is on screen: the HUD a player sees, not merely mounted. */
+export const hudOn = (page) => page.evaluate(() => {
+  const r = document.querySelector('[data-testid="stat-stack"]')?.getBoundingClientRect();
+  return !!(r && r.width > 0 && r.height > 0);
+});
+
+/** Respawn a dead player through the store; true when it did. */
+export async function respawnIfDead(page, report) {
+  if ((await info(page)).isAlive) return false;
+  await page.evaluate(() => window.useGameStore?.getState?.().respawn?.());
+  report.respawns += 1;
+  await delay(1500);
+  return true;
+}
+
+/** Where the body rests: two reads 500 ms apart within 5 cm (not falling, not respawning), or null after ~20 s. */
+export async function restingBody(page) {
+  let prev = null;
+  for (let i = 0; i < 40; i++) {
+    const b = (await info(page)).body;
+    if (b && prev && Math.hypot(b[0] - prev[0], b[1] - prev[1], b[2] - prev[2]) < 0.05) return b;
+    prev = b;
+    await delay(500);
+  }
+  return null;
+}
+
+/**
+ * The hands' node count (_lookbook.mjs handCount) with the hands hidden (posed) and back (cleared), measured in this
+ * page: the eye verdict's baseline, because an older build hangs the hands on the camera beside its other children
+ * (the audio listener), and the hands' own count varies by item.
+ */
+export async function handsBaseline(page) {
+  const free = handCount(await info(page));
+  const at = LOOKBOOK_PLACES[0];
+  await page.evaluate((p) => window.__craftyLookbook.pose(p), { position: at.position, lookAt: at.lookAt });
+  await delay(800);
+  const hidden = handCount(await info(page));
+  await page.evaluate(() => window.__craftyLookbook.clear());
+  await delay(1200);
+  const back = handCount(await info(page));
+  return { free, hidden, back };
+}
+
+/** Hold the input gate live through the seam: two consecutive live reads 250 ms apart (tests/e2e/_boot.js). */
+export async function holdActive(page) {
+  let held = 0, plays = 0;
+  for (let i = 0; i < 40 && held < 2; i++) {
+    const live = await page.evaluate(() => window.__craftyLookbook.info().active === true);
+    if (live) held += 1;
+    else { held = 0; plays += 1; await page.evaluate(() => window.__craftyLookbook.play()); }
+    await delay(250);
+  }
+  return { held: held >= 2, plays };
+}

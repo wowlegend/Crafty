@@ -81,7 +81,7 @@
  *         node scripts/visual/lookbook.mjs --passes [--reps N] [--arms godrays+sun,bloom] [--times noon,golden] [--out <dir>]
  *         either form takes [--build-dir <dir>] to serve a production build kept outside build/.
  */
-import { chromium, webkit, devices } from '@playwright/test';
+import { chromium, webkit } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -89,8 +89,12 @@ import os from 'node:os';
 import { serveVite, probePort } from './_serve.mjs';
 import { standInPointerLock, playLiveReading } from './_probe.mjs';
 import {
+  freshRenderer, resolveChromium, contextOptions, initScript, info, setCycle, clearHostiles, play, hudOn, respawnIfDead,
+  restingBody, handsBaseline, holdActive,
+} from './_lookbookPage.mjs';
+import {
   TARGETS, CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, EYE_HEADINGS, EYE_PITCH, shotPlan, eyeShotPlan, clipPlan, classifyRenderer,
-  pickCandidate, shotVerdict, eyeShotVerdict, clipVerdict, passSummary, contactSheetHtml, parseCycles, indexChunkOf,
+  shotVerdict, eyeShotVerdict, clipVerdict, passSummary, contactSheetHtml, parseCycles, indexChunkOf,
   servedBuildProblem, PASS_ARMS, PASS_TIMES, PASS_REPS, PASS_TARGET, PASS_LOOK_PAIRS, PASS_MAX_LOAD,
   passWindowPlan, windowMedian, passDifferential, passVerdict, admittedInstruments, PASS_CONTROL, parseGpuUtil, gpuMsPerFrame,
   altDifferential, PASS_ALT_SKIP_MS, windowReadings, passWindowWhy, poseWhy, passRendererProblem, checkoutState, medianOf,
@@ -223,106 +227,9 @@ async function close(b) {
   if (liveBrowser === b) liveBrowser = null;
 }
 
-/** The GL renderer string of a fresh WebGL context on this page. */
-const freshRenderer = (page) => page.evaluate(() => {
-  const c = document.createElement('canvas');
-  const gl = c.getContext('webgl2') || c.getContext('webgl');
-  if (!gl) return 'no webgl2';
-  const ext = gl.getExtension('WEBGL_debug_renderer_info');
-  return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
-});
-
-/** Try every Chromium candidate; record each renderer; pick the first hardware one. */
-async function resolveChromium() {
-  const results = [];
-  for (const cand of CHROMIUM_CANDIDATES) {
-    let b = null;
-    try {
-      b = await launch('chromium', cand.launch);
-      const page = await b.newPage();
-      await page.goto('about:blank');
-      const renderer = await freshRenderer(page);
-      results.push({ id: cand.id, renderer, gpu: classifyRenderer(renderer) });
-    } catch (e) {
-      results.push({ id: cand.id, error: String(e.message || e).split('\n')[0] });
-    } finally {
-      await close(b);
-    }
-  }
-  const chosen = pickCandidate(results);
-  return { results, chosen: chosen ? CHROMIUM_CANDIDATES.find((c) => c.id === chosen.id) : null };
-}
-
-function contextOptions(target) {
-  const o = { viewport: target.viewport, deviceScaleFactor: target.deviceScaleFactor };
-  if (target.touch) Object.assign(o, { isMobile: true, hasTouch: true, userAgent: devices['iPad Pro 11'].userAgent });
-  return o;
-}
-
-/** Before any page script: skip the first-session toasts; on touch, remove Pointer Lock as iOS has none. */
-function initScript(touch) {
-  try { localStorage.setItem('crafty_onboarded', '1'); } catch { /* storage blocked: toasts may show */ }
-  if (touch) {
-    delete Element.prototype.requestPointerLock;
-    delete HTMLElement.prototype.requestPointerLock;
-    try { Object.defineProperty(document, 'pointerLockElement', { get: () => null }); } catch { /* read-only */ }
-    document.exitPointerLock = () => {};
-  }
-}
-
-const info = (page) => page.evaluate(() => window.__craftyLookbook.info());
 // A failed timer load is recorded on the shot, never fatal to the run.
 const passTimes = (page, opts = {}) => page.evaluate((o) => window.__craftyLookbook.passTimes(o), opts)
   .catch((e) => ({ installed: false, reason: `passTimes threw: ${String(e.message).split('\n')[0]}` }));
-const setCycle = (page, c) => page.evaluate((x) => window.__craftyLookbook.setCycle(x), c);
-// Hostiles within this radius are removed before each eye shot and clip, so the frame is the world and not a mob at
-// arm's length; farther ones stay in view. Each record says how many went.
-const CLEAR_RADIUS_M = 12;
-const clearHostiles = (page) => page.evaluate((radius) => window.__craftyLookbook.clearHostiles({ radius }), CLEAR_RADIUS_M);
-const play = (page) => page.evaluate(() => window.__craftyLookbook.play());
-/** The vitals stack is on screen: the HUD a player sees, not merely mounted. */
-const hudOn = (page) => page.evaluate(() => {
-  const r = document.querySelector('[data-testid="stat-stack"]')?.getBoundingClientRect();
-  return !!(r && r.width > 0 && r.height > 0);
-});
-
-/** Respawn a dead player through the store; true when it did. */
-async function respawnIfDead(page, report) {
-  if ((await info(page)).isAlive) return false;
-  await page.evaluate(() => window.useGameStore?.getState?.().respawn?.());
-  report.respawns += 1;
-  await delay(1500);
-  return true;
-}
-
-/** Where the body rests: two reads 500 ms apart within 5 cm (not falling, not respawning), or null after ~20 s. */
-async function restingBody(page) {
-  let prev = null;
-  for (let i = 0; i < 40; i++) {
-    const b = (await info(page)).body;
-    if (b && prev && Math.hypot(b[0] - prev[0], b[1] - prev[1], b[2] - prev[2]) < 0.05) return b;
-    prev = b;
-    await delay(500);
-  }
-  return null;
-}
-
-/**
- * The hands' node count (_lookbook.mjs handCount) with the hands hidden (posed) and back (cleared), measured in this
- * page: the eye verdict's baseline, because an older build hangs the hands on the camera beside its other children
- * (the audio listener), and the hands' own count varies by item.
- */
-async function handsBaseline(page) {
-  const free = handCount(await info(page));
-  const at = LOOKBOOK_PLACES[0];
-  await page.evaluate((p) => window.__craftyLookbook.pose(p), { position: at.position, lookAt: at.lookAt });
-  await delay(800);
-  const hidden = handCount(await info(page));
-  await page.evaluate(() => window.__craftyLookbook.clear());
-  await delay(1200);
-  const back = handCount(await info(page));
-  return { free, hidden, back };
-}
 
 /**
  * webm -> mp4 (H.264, yuv420p, faststart), cut to `fromS`..`fromS + forS` (the span the key was held: the recording
@@ -343,18 +250,6 @@ function encodeClip(webm, mp4, { fromS, forS }) {
   } catch (e) {
     return { file: basename(webm), frames: NaN, error: `ffmpeg/ffprobe: ${String(e.stderr || e.message).split('\n')[0]}` };
   }
-}
-
-/** Hold the input gate live through the seam: two consecutive live reads 250 ms apart (tests/e2e/_boot.js). */
-async function holdActive(page) {
-  let held = 0, plays = 0;
-  for (let i = 0; i < 40 && held < 2; i++) {
-    const live = await page.evaluate(() => window.__craftyLookbook.info().active === true);
-    if (live) held += 1;
-    else { held = 0; plays += 1; await page.evaluate(() => window.__craftyLookbook.play()); }
-    await delay(250);
-  }
-  return { held: held >= 2, plays };
 }
 
 async function shootTarget(target, launchOpts, launchId) {
@@ -1073,7 +968,7 @@ try {
       chromiumLaunch = { channel: 'chromium', headless: false };
       chromiumLaunchId = 'headed';
     } else {
-      const r = await resolveChromium();
+      const r = await resolveChromium({ launch, close });
       report.chromiumCandidates = r.results;
       console.log('Chromium launch candidates (renderer of a fresh context on about:blank):');
       for (const c of r.results) console.log(`  ${c.id.padEnd(20)} ${c.error ? `LAUNCH FAILED: ${c.error}` : `${c.gpu.padEnd(9)} ${c.renderer}`}`);
