@@ -10,7 +10,7 @@ export function callTestHook(name, ...args) {
 }
 export function _resetBridge() { registry = {}; } // test-only
 
-/** Expose window.__craftyTest in dev so Puppeteer can call registered hooks. */
+/** Expose window.__craftyTest in dev so a Playwright spec or probe can call registered hooks. */
 export function installTestBridge() {
   if (typeof window === 'undefined') return;
   if (!import.meta.env || !import.meta.env.DEV) return; // dev-only

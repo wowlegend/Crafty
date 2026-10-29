@@ -2,7 +2,7 @@
 // actually sees on the ground (the diorama capture camera looks from orbit, so it never shows this).
 // Lets me visually inspect the in-game world myself. Saves PNGs to /tmp/crafty-pov/.
 import { mkdirSync } from 'node:fs';
-import puppeteer from 'puppeteer';
+import { chromium } from '@playwright/test';
 import { serveVite, probePort } from './_serve.mjs';
 const PORT = probePort(import.meta.url);
 const OUT = '/tmp/crafty-pov';
@@ -12,15 +12,16 @@ const { url, waitReady, shutdown } = serveVite(PORT);
 let browser = null, code = 0;
 try {
   await waitReady();
-  browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
-  const page = await browser.newPage();
+  browser = await chromium.launch({ channel: 'chromium', headless: true, args: ['--use-angle=swiftshader'] });
+  const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
-  await page.setViewport({ width: 1280, height: 800 });
-  await page.goto(url, { waitUntil: 'networkidle2' });
-  await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", { timeout: 25000 });
+  // domcontentloaded, then the bridge's own readiness, the condition the probe needs. The game streams chunks
+  // continuously, so a network-idle wait need not settle (gpu-cost-probe.mjs saw that on the production build).
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", null, { timeout: 25000 });
   await page.evaluate(() => window.__craftyTest.call('start'));
   await page.evaluate(() => window.__craftyTest.call('setTimeOfDay', 0.5)); // midday for clarity
-  await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", null, { timeout: 15000 }).catch(() => {});
   await delay(5000); // let terrain stream + player settle on the ground
   // acquire pointer lock (retry — headless flaky) so we can aim the camera like a player
   let locked = false;

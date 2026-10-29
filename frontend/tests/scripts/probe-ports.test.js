@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PROBE_PORTS, probePort } from '../../scripts/visual/_serve.mjs';
 
-const VISUAL = resolve(dirname(fileURLToPath(import.meta.url)), '../../scripts/visual');
+const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+// Every directory whose scripts start a server through the allocator; the table is keyed by basename across all of them.
+const DIRS = ['scripts/visual', 'scripts/perf'].map((d) => resolve(APP, d));
 
 // FIFTEEN PROBES SHARED SIX PORTS, AND EVERY ONE OF THEM BINDS --strictPort.
 //
@@ -21,7 +23,7 @@ const VISUAL = resolve(dirname(fileURLToPath(import.meta.url)), '../../scripts/v
 // SITING, stated rather than hidden: this lives in tests/scripts/ next to node-runtime-declared.test.js,
 // not in tests/gates/, because the last assertion below must read probe SOURCE and the gate-shape
 // ratchet (tests/gates/.source-grep-ledger.json) freezes that population so it may only fall. There is
-// no behavioural substitute for "the file calls the allocator" short of executing 25 probes, each of
+// no behavioural substitute for "the file calls the allocator" short of executing every probe, each of
 // which spawns vite plus headless Chromium. The other three assertions ARE behavioural — they drive the
 // real exported table and the real function, including its failure path.
 
@@ -35,15 +37,15 @@ const VISUAL = resolve(dirname(fileURLToPath(import.meta.url)), '../../scripts/v
  */
 const bindsAPort = (src) => /serveVite\s*\(|['"]vite['"]\s*,\s*'--port'|'--port'/.test(src);
 
-const probeFiles = () =>
-  readdirSync(VISUAL)
-    .filter((f) => f.endsWith('.mjs') && !f.startsWith('_'))
-    .filter((f) => bindsAPort(readFileSync(resolve(VISUAL, f), 'utf8')));
+const probePaths = () =>
+  DIRS.flatMap((dir) => readdirSync(dir).filter((f) => f.endsWith('.mjs') && !f.startsWith('_')).map((f) => resolve(dir, f)))
+    .filter((path) => bindsAPort(readFileSync(path, 'utf8')));
+const probeFiles = () => probePaths().map((path) => basename(path));
 
 describe('probe ports are allocated centrally, one per probe', () => {
   it('no two probes are assigned the same port', () => {
     const entries = Object.entries(PROBE_PORTS);
-    expect(entries.length, 'PROBE_PORTS is empty — every assertion below would be vacuous').toBeGreaterThan(20);
+    expect(entries.length, 'PROBE_PORTS is nearly empty — every assertion below would be vacuous').toBeGreaterThanOrEqual(5);
 
     const byPort = new Map();
     for (const [file, port] of entries) {
@@ -63,7 +65,8 @@ describe('probe ports are allocated centrally, one per probe', () => {
     // unregistered probe ship, and checking only that files are registered lets the table rot with
     // entries for deleted probes, silently reserving ports.
     const onDisk = probeFiles();
-    expect(onDisk.length, 'no probe files found — the path moved and this test is asserting nothing').toBeGreaterThan(20);
+    expect(onDisk.length, 'no probe files found — the path moved and this test is asserting nothing').toBeGreaterThanOrEqual(5);
+    expect(onDisk.length - new Set(onDisk).size, 'two probes share a basename, and the table is keyed by basename').toBe(0);
 
     const registered = new Set(Object.keys(PROBE_PORTS));
     const unregistered = onDisk.filter((f) => !registered.has(f));
@@ -85,10 +88,11 @@ describe('probe ports are allocated centrally, one per probe', () => {
   });
 
   it('every probe takes its port from the allocator, never a literal', () => {
-    const files = probeFiles();
+    const files = probePaths();
     let checked = 0;
-    for (const f of files) {
-      const src = readFileSync(resolve(VISUAL, f), 'utf8');
+    for (const path of files) {
+      const f = basename(path);
+      const src = readFileSync(path, 'utf8');
       expect(
         /const PORT = probePort\(import\.meta\.url\)/.test(src),
         `${f} does not take its port from probePort(import.meta.url)`,
@@ -100,6 +104,6 @@ describe('probe ports are allocated centrally, one per probe', () => {
       checked++;
     }
     expect(checked, 'the denominator drifted from the directory listing').toBe(files.length);
-    expect(checked).toBeGreaterThan(20);
+    expect(checked).toBeGreaterThanOrEqual(5);
   });
 });

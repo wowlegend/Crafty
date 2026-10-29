@@ -39,9 +39,8 @@
  *
  * Usage:  node scripts/visual/gpu-cost-probe.mjs [--json <path>] [--seconds N] [--dpr N]
  */
-import puppeteer from 'puppeteer';
+import { chromium } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import os from 'node:os';
 import { serveVite, probePort } from './_serve.mjs';
 import { standInPointerLock, playLiveReading } from './_probe.mjs';
@@ -69,14 +68,10 @@ async function main() {
   let browser;
   try {
     await waitReady();
-    browser = await puppeteer.launch({
-      headless: true,
-      // Matched to prod-smoke, which is the one harness here proven to boot this bundle headless:
-      // --use-angle=swiftshader (not --use-gl), and see the goto below.
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'],
-    });
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: DPR });
+    // Matched to prod-smoke, which is the one harness here proven to boot this bundle headless: Chromium's new
+    // headless mode with --use-angle=swiftshader (not --use-gl), and see the goto below.
+    browser = await chromium.launch({ channel: 'chromium', headless: true, args: ['--use-angle=swiftshader'] });
+    const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: DPR })).newPage();
     // `networkidle2` never settles here — the game streams chunks continuously, so the first version of
     // this probe died on a 90s navigation timeout against a bundle that was rendering fine. prod-smoke
     // uses domcontentloaded for the same reason; readiness is then proven by entering play and by frames.
@@ -107,6 +102,7 @@ async function main() {
     try {
       await page.waitForFunction(
         () => window.useGameStore.getState().isSpawnChunkLoaded === true,
+        null,
         { timeout: 180000, polling: 1000 },
       );
     } catch {
@@ -268,6 +264,4 @@ async function main() {
   }
 }
 
-// Do not run on import. `cli-guard` exists for exactly this, and an `import()` smoke-check of this file
-// spawned vite AND puppeteer before the guard was added.
-if (process.argv[1] && resolve(process.argv[1]).endsWith('gpu-cost-probe.mjs')) main();
+if (import.meta.main) main();

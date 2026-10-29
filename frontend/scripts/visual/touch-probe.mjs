@@ -6,7 +6,7 @@
 // the LEFT (move) + RIGHT (look) zones with real touch and assert the player moves + camera rotates.
 // Screenshots the touch HUD to /tmp/crafty-touch/ so I can LOOK at it. Exit 0 only if every check passes.
 import { mkdirSync } from 'node:fs';
-import puppeteer, { KnownDevices } from 'puppeteer';
+import { chromium, devices } from '@playwright/test';
 import { serveVite, probePort } from './_serve.mjs';
 import { tapTestId as honestTap } from './_probe.mjs';
 
@@ -22,19 +22,23 @@ const check = (name, ok, detail) => { results.push({ name, ok }); console.log(`$
 
 try {
   await waitReady();
-  browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
-  const page = await browser.newPage();
+  browser = await chromium.launch({ channel: 'chromium', headless: true, args: ['--use-angle=swiftshader'] });
+  // touch + mobile viewport + iOS UA → isTouchDevice() true. Chromium on purpose: the WebKit probe is ipad-probe.mjs.
+  const context = await browser.newContext(devices['iPhone 13']);
+  const page = await context.newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
-  await page.emulate(KnownDevices['iPhone 13']);   // touch + mobile viewport + iOS UA → isTouchDevice() true
+  // Playwright's touchscreen only taps; a held drag is CDP's touch stream, the same events a finger sends.
+  const cdp = await context.newCDPSession(page);
+  const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
   // iOS Safari has NO Pointer Lock. Remove it so the probe can't accidentally pass via a desktop-only path.
-  await page.evaluateOnNewDocument(() => {
+  await page.addInitScript(() => {
     delete Element.prototype.requestPointerLock;
     delete HTMLElement.prototype.requestPointerLock;
     try { Object.defineProperty(document, 'pointerLockElement', { get: () => null }); } catch {}
     document.exitPointerLock = () => {};
   });
-  await page.goto(url, { waitUntil: 'networkidle2' });
-  await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", { timeout: 25000 });
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", null, { timeout: 25000 });
 
   // 0) precondition — touch emulated + NO pointer lock (faithful iOS)
   const env = await page.evaluate(() => ({ mtp: navigator.maxTouchPoints, coarse: matchMedia('(any-pointer: coarse)').matches, noLock: !document.body.requestPointerLock, w: innerWidth, h: innerHeight }));
@@ -61,7 +65,7 @@ try {
   //    masquerade as a real cold-start failure (the gate must be deterministic to be trustworthy).
   let playable = false, tapToPlay = false;
   for (let attempt = 0; attempt < 3 && !playable; attempt++) {
-    if (startHandle) { try { await startHandle.tap(); } catch {} }
+    if (startHandle) { try { await startHandle.tap({ force: true, timeout: 5000 }); } catch {} }
     for (let i = 0; i < 12 && !playable; i++) {
       await delay(250);
       const st = await page.evaluate(() => ({
@@ -86,7 +90,7 @@ try {
 
   // Let the player spawn + the physics body initialize before driving movement: the diorama streams in,
   // and moving before the KCC/rigidbody exists throws Rapier `setTranslation` -> Δpos=0, a false move-fail.
-  await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", { timeout: 12000 }).catch(() => {});
+  await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", null, { timeout: 12000 }).catch(() => {});
   await delay(3500);
 
   // 3) MOVE — LEFT-zone joystick drag = walk. Intent persists once set, so hold it while the player moves.
@@ -100,12 +104,12 @@ try {
   let moveDelta = 0;
   for (let attempt = 0; attempt < 2 && moveDelta <= 0.5; attempt++) {
     const before = await snap();
-    await page.touchscreen.touchStart(W * 0.25, H * 0.62);
-    await page.touchscreen.touchMove(W * 0.25, H * 0.40);
-    await page.touchscreen.touchMove(W * 0.25, H * 0.38);
+    await touch('touchStart', W * 0.25, H * 0.62);
+    await touch('touchMove', W * 0.25, H * 0.40);
+    await touch('touchMove', W * 0.25, H * 0.38);
     await delay(1500);
     const moved = await snap();
-    await page.touchscreen.touchEnd();
+    await touch('touchEnd');
     moveDelta = before.pos && moved.pos ? Math.hypot(moved.pos.x - before.pos.x, moved.pos.z - before.pos.z) : 0;
     if (moveDelta <= 0.5) await delay(800);
   }
@@ -113,11 +117,11 @@ try {
 
   // 4) LOOK — RIGHT-zone drag rotates the camera (delta-based; a few moves accumulate yaw).
   const lookBefore = await snap();
-  await page.touchscreen.touchStart(W * 0.72, H * 0.5);
-  for (let i = 1; i <= 7; i++) { await page.touchscreen.touchMove(W * 0.72 + i * 16, H * 0.5); await delay(50); }
+  await touch('touchStart', W * 0.72, H * 0.5);
+  for (let i = 1; i <= 7; i++) { await touch('touchMove', W * 0.72 + i * 16, H * 0.5); await delay(50); }
   await delay(150);
   const looked = await snap();
-  await page.touchscreen.touchEnd();
+  await touch('touchEnd');
   const yawDelta = lookBefore.yaw != null && looked.yaw != null ? Math.abs(looked.yaw - lookBefore.yaw) : 0;
   check('RIGHT-zone drag rotates the camera', yawDelta > 0.03, `Δyaw=${yawDelta.toFixed(3)}`);
   await page.screenshot({ path: `${OUT}/touch-2-playing.png` });
@@ -125,7 +129,7 @@ try {
   // 5) VERB — the Action hit-area taps without throwing (performVerb smoke)
   let verbOk = false;
   const actionBtn = await page.$('[data-testid="touch-action"]');
-  if (actionBtn) { try { await actionBtn.tap(); verbOk = true; } catch { verbOk = false; } }
+  if (actionBtn) { try { await actionBtn.tap({ force: true, timeout: 5000 }); verbOk = true; } catch { verbOk = false; } }
   check('Action verb button taps without error', verbOk, '');
 
   // 6) X3 — does a tap on the HOTBAR reach its onClick, or does the full-screen touch layer swallow it?
@@ -162,9 +166,8 @@ try {
   }));
   await delay(400);
 
-  // Tap by COORDINATES, not handle.tap(). These hit-targets are transparent (opacity:0) overlays and
-  // puppeteer's clickablePoint() heuristic rejects them ("Node is either not clickable or not an Element"),
-  // which is a property of the harness, not of the control — a real thumb lands on them fine. The hotbar
+  // Tap by COORDINATES, not handle.tap(). These hit-targets are transparent (opacity:0) overlays, which an element
+  // tap's own point heuristics can reject — a property of the harness, not of the control: a real thumb lands on them. The hotbar
   // check above already uses this pattern for the same reason.
   // 2026-08-05: this used to check only that the element had non-zero SIZE, then tap its centre and return
   // true. Size is not reachability. It tapped an Aspect sector whose centre is the SPELL TOGGLE's box and

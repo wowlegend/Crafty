@@ -128,11 +128,11 @@ reversal, is the command session's since Kevin's 2026-10-27 mandate, restated as
   **Two defects only the FRAME showed:** the first draft used `text-text-inverse` (`#231708`, *"text on gold
   fills"*) on a near-black scrim — every jsdom assertion passed and it rendered dark-brown-on-black; and the
   S1-C design-language gate correctly rejected a frosted-glass backdrop.
-  **⚠️ Why no gate caught this for months:** `scripts/visual/esc-pause-probe.mjs` presses ESC **once**, and at
-  its line 54 substitutes `document.exitPointerLock()` for the native ESC — the one path MDN says does *not*
-  trigger the refusal. It is green over exactly the half of the flow the bug lives in. New
-  `scripts/visual/pause-resume-probe.mjs` covers the second press and asserts a working movement BASELINE
-  before asserting the freeze (without that denominator, "did not move" proves nothing).
+  **⚠️ Why no gate caught this for months:** the esc-pause probe (deleted 2026-10-29 with the stale probes) pressed ESC **once**, and at
+  its line 54 substituted `document.exitPointerLock()` for the native ESC — the one path MDN says does *not*
+  trigger the refusal. It was green over exactly the half of the flow the bug lives in. The pause-resume probe written
+  then (also deleted 2026-10-29; the panel-state gate and `tests/integration/esc-resume-recovery.test.jsx` hold the
+  flow) covered the second press and asserted a working movement BASELINE before asserting the freeze.
 - ▣✓ **R1 — FIXED + SHIPPED `926751e` (2026-07-13).** RED-first: 3 behavioral tests reproduced it exactly
   (`expected [30] to equal [30,120]` = the 2nd reward swallowed · `expected ['zombie_slayer'] to equal
   ['first_blood','zombie_slayer']` = the save corrupted · first_blood re-offered at progress 0). Fixed with a

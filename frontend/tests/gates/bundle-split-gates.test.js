@@ -44,7 +44,7 @@ describe('M6 #20 bundle code-split (manualChunks vendor split, zero-stutter pres
 });
 
 // M6 #20: the dead blind-rubber-stamp removed. `npm test` was already repointed to real vitest (locked by
-// m1-bugfix-gates), and the only remaining reference to the superseded puppeteer rubber-stamp was the
+// m1-bugfix-gates), and the only remaining reference to the superseded browser rubber-stamp was the
 // non-default `test:swarm` script -> the file + that script are gone (the real visual gate supersedes it).
 describe('M6 #20 dead rubber-stamp removed', () => {
   it('test_swarm.js no longer exists', () => {

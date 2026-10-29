@@ -25,8 +25,8 @@ const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
  * that consumes it is GLSL inside a JS template literal, which `npm run test:unit` cannot compile and no
  * gate in this repo can execute. Whether the mix is wired to the right uniform, whether the uniform
  * updates, and above all whether the result LOOKS like shadow rather than dirt are all unchecked here —
- * the last one is a judgement no test can hold. The shader was compiled in a real browser via
- * scripts/visual/grass-probe.mjs before this shipped, and the frame was opened.
+ * the last one is a judgement no test can hold. prod-smoke links the shipped terrain program in CI; how
+ * the result looks is read on eye-level lookbook frames.
  *
  * Mutation-Proof: 4 mutations, recorded on the commit.
  */

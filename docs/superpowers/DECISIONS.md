@@ -19,6 +19,28 @@
 
 ---
 
+## 2026-10-29 — [LOOP] W2-J phase 2: one browser library (Playwright)
+
+**Decided by the command session** (SOTA reset row 39; plan `docs/superpowers/plans/2026-10-29-crafty-w2j-phase2.md`,
+which holds the per-probe table). Each stands while it earns its place.
+
+1. **`puppeteer` is removed as a dependency.** `@playwright/test` is the repo's one browser library: e2e, the lookbook,
+   prod-smoke, the perf runner and the probes. The lockfile is the committed one less puppeteer's own 24-package subtree;
+   npm 11.6.2 regenerating it from that state changes nothing further about puppeteer (it re-marks peer flags and drops
+   two `@emnapi` entries on the unchanged lock too, so those were left out).
+2. **prod-smoke keeps every check it made**, on Playwright's Chromium in its new headless mode with SwiftShader, and
+   reads each program's link status at first use, so a canvas the page discards (the title diorama, which R3F 9.5
+   unmounts with `forceContextLoss()` before disposing it) no longer reads as "no LINK_STATUS" (the flake on run
+   40814659930, attempt 1). CI's gates job installs Playwright's Chromium when the pipeline will run prod-smoke.
+3. **22 probes are deleted**, with their port rows: each had no caller in a live doc, gate, script or current lane
+   plan, and its last real use was between 2026-06-16 and 2026-09-22. Ported, not deleted: `gpu-cost-probe`,
+   `pov-probe`, `ocean-probe` (named by current lane plans), `touch-probe` (the reset plan keeps it), `look-e2e`
+   (`npm run test:look`, named by `.claude/rules/physics.md`) and `scripts/perf/run-scenarios.mjs` (`npm run perf:m2`,
+   now given a port from the allocator instead of e2e's 4179). Every deleted probe is at `1691217b`
+   (`git show 1691217b:frontend/scripts/visual/<name>`).
+
+**Door:** two-way; the files and the dependency are in git history.
+
 ## 2026-10-28 — [LOOP] W2-J phase 1: a short CLAUDE.md, `npm run orient`, a cursor, and the loop docs retired
 
 **Decided by the command session** (SOTA reset rows 29, 38 and 57, and the orient half of 31; plan

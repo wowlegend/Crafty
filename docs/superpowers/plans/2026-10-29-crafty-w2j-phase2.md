@@ -53,7 +53,8 @@ in place of a 132-line AST checker that accepts guards that gate nothing (regist
 
 Ported means moved to `@playwright/test`'s `chromium` with the same checks. Deleted means no live doc, gate, script or
 current lane plan calls it; its last real use is the last commit that changed what it does (the 2026-08-12 port
-allocation, the 2026-08-09 headless flag and the 2026-10-28 capture-oracle retirement were sweeps over all probes).
+allocation, the 2026-08-09 headless flag, the 2026-08-02 data-testid change, the 2026-07-21 `_serve.mjs` adoption and the
+2026-10-28 capture-oracle retirement were sweeps over many probes).
 
 | Script | Decision | Why |
 |---|---|---|
@@ -65,7 +66,7 @@ allocation, the 2026-08-09 headless flag and the 2026-10-28 capture-oracle retir
 | `touch-probe.mjs` | ported | reset plan section 4 keeps it; the only lived check of the touch rings (OI-54) |
 | `look-e2e.mjs` | ported | `npm run test:look`, named by `.claude/rules/physics.md`; no e2e spec moves the mouse under lock and reads the camera |
 | `ambient-floor-probe.mjs` | deleted | one use, 2026-09-22 (8e1c17ac), answered in sota-2026-09 |
-| `dayphase-probe.mjs` | deleted | last real use 2026-08-02 (data-testid sweep); the day-phase dial shipped 2026-06-16 |
+| `dayphase-probe.mjs` | deleted | written for the day-phase dial, 2026-06-16; touched since only by sweeps |
 | `death-probe.mjs` | deleted | last real use 2026-07-21; Death overlay shipped 2026-06-16 |
 | `drive-elemancer.mjs`, `drive-mobs.mjs` | deleted | reset plan section 6 deletes them; last real use 2026-07-21 |
 | `esc-pause-probe.mjs` | deleted | last real use 2026-07-21; esc-resume-recovery.test.jsx and the panel-state gate hold the behaviour |
@@ -74,7 +75,7 @@ allocation, the 2026-08-09 headless flag and the 2026-10-28 capture-oracle retir
 | `hands-probe.mjs`, `heldf-probe.mjs` | deleted | last real use 2026-06-17; heldf's premise is stale (OI-52) |
 | `hub-probe.mjs`, `hud-probe.mjs` | deleted | last real use 2026-06-18 |
 | `magic-panel-probe.mjs`, `quest-log-probe.mjs`, `settings-probe.mjs` | deleted | last real use 2026-06-16 to 2026-06-18 |
-| `mobdeath-probe.mjs`, `spell-elements-probe.mjs`, `soulbind-eyes-probe.mjs` | deleted | last real use 2026-06-17 to 2026-08-02 |
+| `mobdeath-probe.mjs`, `spell-elements-probe.mjs`, `soulbind-eyes-probe.mjs` | deleted | last real use 2026-06-17 to 2026-07-21; touched since only by sweeps |
 | `pause-resume-probe.mjs` | deleted | last real use 2026-08-05; the pause e2e and panel-state gate hold it |
 | `spawn-legibility-probe.mjs`, `storm-probe.mjs` | deleted | last real use 2026-06-18 |
 

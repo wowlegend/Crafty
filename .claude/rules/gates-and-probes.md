@@ -233,8 +233,9 @@ chrome-devtools list_console_messages
 chrome-devtools stop
 ```
 
-`puppeteer` is already a devDependency and speaks the same CDP, so a committed probe should use that
-rather than adding a tool to the gate path. Required CLI params are POSITIONAL, not flags.
+`@playwright/test` is the repo's one browser library (prod-smoke, the probes, the lookbook and e2e all use
+it) and reaches the same CDP, so a committed probe uses that rather than adding a tool to the gate path. Required
+`chrome-devtools` CLI params are POSITIONAL, not flags.
 
 ## The meta-rule
 
