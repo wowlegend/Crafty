@@ -154,7 +154,7 @@ export function handAnchors(aspect, fov = VIEWMODEL.fov, out = { right: new THRE
  * light above the floor is untouched, so the day's shading is the world's.
  */
 export const HAND_VALUE_FLOOR = 0.45;
-const VALUE_FLOOR_GLSL ='outgoingLight = max( outgoingLight, diffuseColor.rgb * uValueFloor );';
+const VALUE_FLOOR_GLSL = 'outgoingLight = max( outgoingLight, diffuseColor.rgb * uValueFloor );';
 
 /** Patch `material` (a three lit material whose fragment declares `outgoingLight` before `opaque_fragment`, as toon,
  *  lambert, phong and standard do) with the floor. Keeps any earlier onBeforeCompile and keys its program apart. */
