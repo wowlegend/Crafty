@@ -26,8 +26,8 @@
  *     --plant  plant every entry of PLANTS, or the listed ones
  *
  * Blind spots: the scorer reads words and their local polarity, not understanding; one run is one sample of a
- * stochastic agent; a directive no question asks about is not tested; and the run writes Claude Code's own per-project
- * state under the real HOME (it needs the real login), with auto-memory and session persistence switched off.
+ * stochastic agent; a directive no question asks about is not tested; and the run needs the real HOME for its login,
+ * so whatever Claude Code writes there for a session is not contained (auto-memory and session persistence are off).
  */
 import { spawn, execFileSync } from 'node:child_process';
 import {

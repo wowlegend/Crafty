@@ -41,12 +41,14 @@
    git's; its open items are registry rows, two of them added by hand from the old cursors.
 5. **The cold-takeover eval checks the instruction surface after a rewrite** (`frontend/scripts/dev/cold-takeover-eval.mjs`).
    What it measures: whether Sonnet 5.5, with only a copy of the repo, orients (runs `npm run orient` or reads the
-   cursor) and states 14 directives without inverting any, four of them from the `.claude/rules/` files or the restored
-   rules, within 15 tool calls, scored by fixed patterns that read each answer's local polarity. What it does not
-   measure: whether an agent then acts on a directive, any directive no question names, or more than one sample of a
-   stochastic agent. Results and the planted controls (a stale line on four questions, each of which must fail) are
-   in the lane plan. The first version's results (10/10 after, 9/10 before) were scored by a scorer that passed
-   inverted answers on 9 of 10 questions; they are superseded, not evidence.
+   cursor) and answers 14 questions within 15 tool calls without inverting a rule, scored by fixed patterns that read
+   each answer's local polarity. Twelve are directives: two live only in `.claude/rules/` files (capture guards, probe
+   ports and denominators) and two are rules the first rewrite dropped (recording decisions, what to check before an
+   edit and a commit). What it does not measure: whether an agent then acts on a directive, any directive no question
+   names, or more than a few samples of a stochastic agent. At `bee75223`: two after-runs PASS (14/14, 5 and 7 tool
+   calls, both ran orient); a control with stale lines planted on four questions (three in `CLAUDE.md`, one in
+   `game-code.md`) FAILs on exactly those four. The first version's results (10/10 after, 9/10 before) were scored by
+   a scorer that passed inverted answers on 9 of 10 questions; they are superseded, not evidence.
 6. **Kevin's 2026-10-27 mandate to record every non-routine decision is in `CLAUDE.md` again**, with the charter's
    rules that went with it: a hard delete of a referenced file, a new dependency, an external send he approved and a
    reversal are recorded; a large player-facing deletion also records its lived or e2e proof (also in

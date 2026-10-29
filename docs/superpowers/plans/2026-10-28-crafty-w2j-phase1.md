@@ -67,7 +67,8 @@ tested in `frontend/tests/scripts/cold-takeover-eval.test.js`.
   --permission-mode dontAsk --output-format stream-json --verbose --no-session-persistence`, with an allow-list of
   read-only Bash (`npm run orient`, `ls`, `cat`, `head`, `tail`, `wc`, `grep`, `find`), cwd = the copy, and
   `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` (read by Claude Code 2.1.312) so the run writes no memory. It still needs the
-  real HOME for its login, so Claude Code's own per-project state is written under it.
+  real HOME for its login; in the 2026-10-28 runs it created no directory under `~/.claude/projects`, and whatever else
+  Claude Code writes under HOME for a session was not measured.
 - **Count.** Every `tool_use` block in the stream is a tool call; paths in their inputs are audited against the copy.
 - **Score.** The agent ends with one JSON object `{ "q1": ..., "q14": ... }`. An answer passes when every required
   pattern matches where it is not negated (a pattern that is itself the rule's negative statement, such as "never
@@ -113,30 +114,49 @@ tested in `frontend/tests/scripts/cold-takeover-eval.test.js`.
 
 ## Results
 
-**Order changed:** `npm run orient` was built before the eval (step 4 before step 2), because the eval scores question 6
-with orient's own registry count. The before-run copy is `git archive 2fef2f32`, so nothing this lane added is in it.
+### After the PR #42 review: the eval as committed at `bee75223`
+
+| Run | Tree | CLAUDE.md | Served | Tool calls | Oriented by | Score | Verdict |
+|---|---|---:|---|---:|---|---:|---|
+| after | this branch at `bee75223` | 11,146 B | claude-sonnet-5-5 | 5 | `cd frontend && npm run orient` | 14/14 | **PASS** |
+| after, second sample | the same | 11,146 B | claude-sonnet-5-5 | 7 | the same | 14/14 | **PASS** |
+| control (`--plant=q3,q7,q11,q12`) | the same, four stale lines: three in `CLAUDE.md`, one in `.claude/rules/game-code.md` | 10,491 B | claude-sonnet-5-5 | 8 | the same | 10/14 | **FAIL** on q3, q7, q11 and q12, and on nothing else |
+
+- Every run read the copy's registry as 231 open rows; no run read outside the copy. With auto-memory and session
+  persistence off, no run created a directory under `~/.claude/projects`.
+- The control's four wrong answers were each caught by a forbidden pattern (effort max; a git clone, `npm ci` and
+  local heavy suites; "no record needed"; an early return and a new guard). On q11 and q12 the agent also found the
+  true rule elsewhere (DECISIONS W2-J item 6, the rule files) and reported the conflict; the answer still repeated the
+  stale rule, so it fails, which is the point of the control.
+- **On the way, seven runs on earlier states of the harness** (transcripts in the session scratchpad,
+  `w2j/fix/eval/`, not committed). Every after-run answered 14/14 and every control failed exactly the four planted
+  questions, re-scored with the final scorer. Three verdicts were decided by the harness, and each is fixed in
+  `bee75223`: the allow-list denied the agent's own `cd frontend && npm run orient`, after which it stopped trying to
+  orient; a later `cd ..` from `frontend/` (Claude Code keeps the Bash cwd between calls) was flagged as a read
+  outside the copy; and two right answers were scored wrong ("assert N is not 0" read as negating "N things
+  checked", and a quoted "LOCKED label" read as a lock). The orient instruction also moved to `CLAUDE.md`'s first
+  line after one sample tried to orient by hand instead.
+- **Limits.** Two after samples and one control of a stochastic agent; the scorer reads words and their local
+  polarity, not understanding; it does not test whether the agent then acts on a directive, or any directive no
+  question names.
+
+### Phase 1 as first built (superseded)
+
+These runs were scored by the first scorer, which both reviews of PR #42 showed passing inverted answers on 9 of 10
+questions, and PASS did not require orientation, so they are not evidence that the rewrite kept the directives.
+The before-run copy was `git archive 2fef2f32`, so nothing this lane added was in it; `npm run orient` was built before
+the eval (task step 4 before step 2) because the eval scores q6 with orient's registry count.
 
 | Run | Tree | CLAUDE.md | Served | Tool calls | Score | Verdict |
 |---|---|---:|---|---:|---:|---|
-| before | main `2fef2f32` (`--rev`) | 37,820 B | claude-sonnet-5-5 | 6 | 9/10 | **FAIL** |
-| after | this branch at `193a6f4d` | 11,976 B | claude-sonnet-5-5 | 2 | 10/10 | **PASS** |
-| after, second sample | the same | 11,976 B | claude-sonnet-5-5 | 2 | 10/10 | **PASS** |
-| control (`--plant`) | the same, reviewer line stale | 11,663 B | claude-sonnet-5-5 | 2 | 9/10 | **FAIL** (q3) |
-| control, second sample | the same | 11,663 B | claude-sonnet-5-5 | 2 | 9/10 | **FAIL** (q3) |
+| before | main `2fef2f32` (`--rev`) | 37,820 B | claude-sonnet-5-5 | 6 | 9/10 | FAIL (q2) |
+| after | this branch at `193a6f4d` | 11,976 B | claude-sonnet-5-5 | 2 | 10/10 | PASS |
+| after, second sample | the same | 11,976 B | claude-sonnet-5-5 | 2 | 10/10 | PASS |
+| control (`--plant`, q3 only) | this branch at `193a6f4d`, reviewer line stale; registry 239 open | 11,663 B | claude-sonnet-5-5 | 2 | 9/10 | FAIL (q3) |
+| control, second sample | the working tree after `193a6f4d`, with the eight registry closures uncommitted; registry 231 open | 11,663 B | claude-sonnet-5-5 | 2 | 9/10 | FAIL (q3) |
 
-- **Before.** Wrong: q2 (how a change reaches main). The answer had CI on the exact sha and `ci ok`, but no pull request,
-  no branch protection and no merge-then-fast-forward: main's `CLAUDE.md` states the gates but not the landing route,
-  which lived only in the ACTIVE_PLAN cursor. 0 reads outside the copy (one denied `cd` was flagged by the audit).
-  Transcript: the session scratchpad, `w2j/eval/before/stream.jsonl` (not committed).
-- **After.** All ten right, in two read-only Bash calls (both counted the registry by grep; neither ran
-  `npm run orient`, which the read order names first, so orient's use is not yet shown by the eval). 0 reads outside the
-  copy.
-- **Control.** The planted line ("Reviewers and verifiers run on Opus 5.5 at effort max, the estate default") was
-  repeated as the answer both times, so q3 failed on the forbidden pattern and the missing "never max". The other nine
-  stayed right: the eval detects the one stale directive, not a general degradation.
-- **Limits.** Two samples per arm of a stochastic agent; a keyword scorer (paraphrase and stale-answer cases are in its
-  test); only `CLAUDE.md` is planted, so a stale line in a doc the agent did not open is not tested. The agent answered
-  most questions from the auto-loaded `CLAUDE.md` without a tool call, so tool-call counts mostly measure q6 and q10.
+The two control samples ran on different trees (the dynamic review's note 8); the table said "the same" until the
+review.
 
 ## Where each standing directive lives now
 
