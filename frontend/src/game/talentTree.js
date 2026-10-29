@@ -58,17 +58,21 @@ export const TALENT_LIMITS = Object.fromEntries(
   ASPECT_TREES.flatMap((t) => t.nodes).map((n) => [n.id, n.limit])
 );
 
-const NODE_BY_ID = Object.fromEntries(ASPECT_TREES.flatMap((t) => t.nodes).map((n) => [n.id, n]));
+// No prototype: a saved talent map is untrusted input, and an id such as `constructor` or `toString` would otherwise
+// find a function here and fold its undefined limit into NaN talent points.
+const NODE_BY_ID = Object.freeze(Object.assign(Object.create(null),
+  Object.fromEntries(ASPECT_TREES.flatMap((t) => t.nodes).map((n) => [n.id, n]))));
 
 /** The node with this id, or null. */
 export function talentNode(id) {
-  return Object.prototype.hasOwnProperty.call(NODE_BY_ID, id) ? NODE_BY_ID[id] : null;
+  return NODE_BY_ID[id] || null;
 }
 
 /**
  * Load-time refund: every rank the trees no longer allow comes back as a point. A rank is not allowed when its id is
  * not a node, when it is over the node's limit, when the node's prerequisite is not held, or when its exclusive rival
- * was taken first. Prerequisites are re-checked until nothing changes, so a refunded root takes its branch with it.
+ * is held too (the id that sorts later comes back, so the same save always keeps the same capstone). Prerequisites are
+ * re-checked until nothing changes, so a refunded root takes its branch with it.
  */
 export function refundUnknownTalents(unlockedTalents, talentPoints) {
   const kept = {};

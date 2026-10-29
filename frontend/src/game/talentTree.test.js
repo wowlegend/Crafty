@@ -99,4 +99,17 @@ describe('refundUnknownTalents (load)', () => {
     const build = { voidhand_grasp: 1, voidhand_twin: 1, voidhand_singularity: 1, elemancer_imbue: 1, elemancer_chain: 2 };
     expect(refundUnknownTalents(build, 4)).toEqual({ unlockedTalents: build, talentPoints: 4 });
   });
+
+  it('refunds an id that names an Object.prototype member as an unknown id, never as NaN points', () => {
+    // A corrupt save; the game never writes these keys. JSON.parse makes each an own key, as a loaded save would.
+    const corrupt = JSON.parse('{"constructor": 2, "toString": 1, "__proto__": 1, "hasOwnProperty": 1, "wildheart_roar": 1}');
+    const r = refundUnknownTalents(corrupt, 3);
+    expect(r.talentPoints, 'a prototype-named id broke the refund').toBe(3 + 2 + 1 + 1 + 1);
+    expect(r.unlockedTalents).toEqual({ wildheart_roar: 1 });
+    for (const id of ['constructor', 'toString', '__proto__']) {
+      expect(talentNode(id), id).toBe(null);
+      expect(canUnlockTalent(id, {}, 5), `${id} could be ranked`).toBe(false);
+      expect(talentBlockedBy(id, {}), id).toBe(null);
+    }
+  });
 });

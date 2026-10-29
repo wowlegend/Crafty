@@ -366,6 +366,17 @@ describe('the pre-cut save after talents and relics', () => {
     expect(useGameStore.getState().talentPoints, 'the refund was paid a second time').toBe(8);
   });
 
+  it('gives back a rank the new trees still allow, because the node changed meaning', () => {
+    // The fixture's own rank (voidhand_force) is no node any more, so the unknown-id refund pays it whatever the rule
+    // says; these two are live nodes, and only the respec half of the rule brings them back.
+    const f = fixture();
+    f.progression.unlockedTalents = { wildheart_roar: 1, wildheart_endurance: 2 };
+    useGameStore.getState().loadWorldData(f);
+    const s = useGameStore.getState();
+    expect(s.unlockedTalents, 'a pre-cut rank on a live node survived the respec').toEqual({});
+    expect(s.talentPoints, 'the refund paid other than 20 / 5 + 3 unspent + 3 ranks').toBe(4 + 3 + 3);
+  });
+
   it('never respecs a save written after the Cut, whose ranks are the player\'s choices in the new trees', () => {
     useGameStore.setState({ level: 3, talentPoints: 0, unlockedTalents: { wildheart_roar: 1, wildheart_endurance: 1 } });
     const post = onDisk();

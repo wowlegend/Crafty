@@ -59,6 +59,17 @@ describe('foldVerbMods', () => {
     expect(foldVerbMods({}, 'toString')).toEqual(VERB_BASE);
   });
 
+  it('each relic changes its verb by the amount DECISIONS 2026-10-29 item 37 names', () => {
+    // Pinned as data, so a relic that adds nothing or moves the wrong key fails here rather than in a playtest.
+    expect(Object.fromEntries(Object.entries(RELICS).map(([name, r]) => [name, { verb: r.verb, ...r.mod }]))).toEqual({
+      'Ember Fang': { verb: 'roar', key: 'roarSec', add: 4 },
+      Lodestone: { verb: 'grab', key: 'grabThrows', add: 1 },
+      'Snare Knot': { verb: 'snare', key: 'snareArc', add: Math.PI / 8 },
+      'Prism Shard': { verb: 'imbue', key: 'imbueChain', add: 1 },
+    });
+    expect(foldVerbMods({}, 'Snare Knot').snareArc, 'Snare Knot does not double the cone').toBeCloseTo(2 * VERB_BASE.snareArc, 10);
+  });
+
   it('ignores an unknown id and a junk rank', () => {
     expect(foldVerbMods({ voidhand_force: 3, wildheart_endurance: 'x', soulbind_wide: -2 }, null)).toEqual(VERB_BASE);
   });

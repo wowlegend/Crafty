@@ -3,6 +3,7 @@ import { solveMeleeDamage, solveSpellDamage } from '../../src/utils/combat.js';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';
 import { getWeaponBaseDamage } from '../../src/game/equipment.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
+import { levelAttributes } from '../../src/game/progression.js';
 
 // THE DAMAGE REBALANCE (W2-F step 4; DECISIONS 2026-10-28 W1-H item 6; docs/superpowers/plans/2026-10-29-crafty-w2f-talents.md
 // decisions 1-3). Player damage stops reading hand-allocated attributes and scales with level alone. This table records
@@ -118,6 +119,18 @@ describe('player damage before the rebalance (the recorded table)', () => {
       }
     }
     expect(checked).toBe(3 * LEVELS.length * ATTACKS.length);
+  });
+});
+
+describe('the player\'s own stats by level', () => {
+  it('are 10 each at level 1 and gain +2 strength, +1 agility and +2 intellect a level (DECISIONS 2026-10-29 item 33)', () => {
+    // Literals, not LEVEL_GROWTH: the band below is ±10%, wide enough to hold a split with no agility growth at all.
+    expect(Object.fromEntries(LEVELS.map((L) => [L, levelAttributes(L)]))).toEqual({
+      1: { strength: 10, agility: 10, intellect: 10, armor: 0 },
+      5: { strength: 18, agility: 14, intellect: 18, armor: 0 },
+      10: { strength: 28, agility: 19, intellect: 28, armor: 0 },
+      20: { strength: 48, agility: 29, intellect: 48, armor: 0 },
+    });
   });
 });
 
