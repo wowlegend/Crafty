@@ -1,5 +1,6 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
+import { FRAMES, viewmodelVerdict } from './_viewmodelVerdict.js';
 
 // THE RUNNING GAME'S COMPOSER DRAWS THE HANDS (W2-E; DECISIONS 2026-10-28 item 33).
 //
@@ -10,19 +11,10 @@ import { bootDev, startPlayActive } from './_boot.js';
 // Read in the DEV game through the bridge: readPostFx (the live composer's pass names, render/postFx.jsx), `viewmodel`
 // (the live viewmodel, render/ViewmodelLayer.jsx) and readSkyLight (the world key, render/Atmosphere.jsx). The pass's
 // render is wrapped in the page to count its calls against R3F's own frame count (readFrameloop), and waits are counted
-// in drawn frames: a CI frame can last seconds.
-//
-// Mutation-Proof: NOT RUN locally (this lane runs no local e2e; CI is the arbiter). Intended, against CI:
-//   E1 the pass deleted from GameScene PostFX                    -> RED "the viewmodel pass is not right after the world"
-//   E2 the pass disabled (enabled = false in ViewmodelPass)       -> RED "the composer drew N frames and ran the pass on M"
-//   E3 the aspect sync removed (ViewmodelLayer.jsx)               -> RED "the viewmodel camera is not on the canvas's aspect"
-//   E4 the light mirrored with an identity rotation               -> RED "the sky on the hands is not the world's up"
-//   E0 identity (a comment edit in viewmodel.js)                  -> must SURVIVE
+// in drawn frames: a CI frame can last seconds. The verdict on the reading is tests/e2e/_viewmodelVerdict.js, which
+// tests/gates/viewmodel-verdict-gates.test.js drives with the readings a deleted, disabled, unsynced or unturned pass
+// produces; this file's own share is the reading in the page.
 // BLIND SPOT: no pixel is read (CI renders in software); how the hands look is the lookbook's hands set.
-
-/** Frames the pass is counted over. */
-const FRAMES = 4;
-const DEG = Math.PI / 180;
 
 test('the live composer runs the viewmodel pass right after the world on every frame, at the view\'s aspect and light', async ({ page }) => {
   test.setTimeout(300000);
@@ -76,20 +68,5 @@ test('the live composer runs the viewmodel pass right after the world on every f
   const where = JSON.stringify(r);
   console.log(`viewmodel: ${where}`);
 
-  expect(r.lost, `SETUP: the WebGL context was lost: ${where}`).toBe(false);
-  expect(r.drawn, `SETUP: R3F drew fewer than ${FRAMES} frames in 120 s: ${where}`).toBeGreaterThanOrEqual(FRAMES);
-  expect(r.hands, `SETUP: no hands mounted in the viewmodel: ${where}`).toBeGreaterThan(0);
-  expect(Math.abs(r.pitch + 0.3), `SETUP: the view did not keep the tilt the light check needs: ${where}`).toBeLessThan(0.05);
-  expect(r.passes?.[0], `the composer's first pass is not its RenderPass: ${where}`).toBe('RenderPass');
-  expect(r.passes?.[1], `the viewmodel pass is not right after the world: ${where}`).toBe('ViewmodelPass');
-  expect(r.passes.length, `no effect pass after the hands: ${where}`).toBeGreaterThan(2);
-  expect(r.enabled, `the viewmodel pass is disabled: ${where}`).toBe(true);
-  expect(r.calls, `the composer drew ${r.drawn} frames and ran the pass on ${r.calls}: ${where}`).toBeGreaterThanOrEqual(r.drawn - 1);
-  expect(Math.abs(r.aspect - r.canvasAspect), `the viewmodel camera is not on the canvas's aspect: ${where}`).toBeLessThan(1e-6);
-  // The sky's up comes back to the world's up within 3 degrees; without the turn it is off by the 17-degree tilt.
-  expect(r.skyUp, `the sky on the hands is not the world's up in this view: ${where}`).toBeGreaterThan(Math.cos(3 * DEG));
-  expect(r.worldKey, `SETUP: readSkyLight reports no key: ${where}`).not.toBeNull();
-  const dot = r.key[0] * r.worldKey[0] + r.key[1] * r.worldKey[1] + r.key[2] * r.worldKey[2];
-  // The key moves with the game's clock between the light's frame and this read: 8 degrees of slack.
-  expect(dot, `the key on the hands is not the world's key in this view: ${where}`).toBeGreaterThan(Math.cos(8 * DEG));
+  expect(viewmodelVerdict(r, FRAMES).map((f) => f.line), `viewmodel: ${where}`).toEqual([]);
 });
