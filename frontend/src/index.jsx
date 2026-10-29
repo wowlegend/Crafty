@@ -60,6 +60,7 @@ import { setActive, getActiveSnapshot } from './input/inputState.js';
 import { cycleFraction } from './game/dayPhase.js';
 import { glInfo, contextLossCount } from './render/glDiagnostics.js';
 import { ecs, mobsQuery } from './ecs/world.js';
+import { skyFrameRef } from './render/mood.js';
 
 applyThemeVars(); // write --ui-* onto :root before first paint
 
@@ -81,6 +82,7 @@ if (typeof window !== 'undefined') {
     removeEntity: (e) => ecs.remove(e),
     // A dynamic import, so the timer is its own chunk that no player downloads.
     loadPassTimer: () => import('./render/passTimer.js'),
+    sunDir: () => skyFrameRef.current.sunDir,
   });
 }
 

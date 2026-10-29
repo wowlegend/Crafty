@@ -27,6 +27,73 @@ no mipmap entry in DECISIONS.md), `upside-2026-10-27.md:88,95` (L3, L10). Where 
 
 ---
 
+## Amendment 2026-10-28 (lane W2-K): read this first
+
+The SOTA reset (`2026-10-28-crafty-sota-reset.md`, row 44, lane W2-K) pulls Units 0-2 forward. Every "current state"
+citation below was re-read against main at `6a926fce`. The scope and the instrument changes were fixed before the
+build; the figures were measured during it. Where this amendment and the text below disagree, the amendment wins.
+
+**Scope.**
+- **Units 0, 1 and 2 are this lane.**
+- **Unit 3 (grass spread) is out of this lane.** Its design stands; its registry row stays open with no lane named.
+- **Unit 4 (mipmaps) landed in `d201c073` (W1-E; DECISIONS 2026-10-28 item 20), built differently.** There is no
+  `TERRAIN_MIPMAPS` constant and no `{ mipmaps }` option: the texture is a `CompressedArrayTexture` whose chain is
+  built in JS in linear light (`linearLightMipChain`), minified NEAREST within a level and LINEAR between levels, and
+  the JS heap keeps the whole chain (`texture.mipmaps`), not level 0 alone. Re-checked premises: the chain is rebuilt
+  from whatever level 0 holds, so the repaint and the three new layers are mipped with no edit; `prod-smoke`'s
+  `mipVerdict` reads the layer count from the texture (`scripts/ci/prod-smoke.mjs:491-494`), so a deeper array needs
+  no edit there; the ore glow map is baked from level 0 (`oreGlow.js` `oreGlowTexture`), so it follows the repainted
+  ore tiles. Nothing of Unit 4 is rebuilt. With 19 layers the chain is 19 x 1,365 texels x 4 B = 103,740 B on the GPU
+  and the same in the JS heap.
+- **Unit 5 (the capture re-baseline) is void.** The capture oracle retires (DECISIONS 2026-10-28 item 1, lane W2-B, PR
+  #32); `tests/visual/baseline` is not touched. Acceptance is on eye-level lookbook frames (below).
+
+**Instruments (Unit 0, changed).**
+- The material lookbook set is **eye-level**, not hero poses: `--sets material` (opt-in; the default sets are
+  unchanged) stands the player in front of a grass hill's side and a tree trunk and turns their head to it, with the
+  hands and the HUD on, and the eye-shot verdict judges each frame. The two sights are found in the live world's own
+  mesh (`_lookbook.mjs` `findMaterialSights`, run in the page on `useGameStore.getState().debugChunks`), at least
+  20 m from the Hearth because the outpost's buildings are not in the terrain mesh, with ground at the wall's base
+  under the stand point and a clear line to the face. The seed is fixed and the mesher's geometry does not change in
+  this lane (only UVs), so BEFORE and AFTER find the same two sights.
+- The BEFORE fixture is `tests/world/material-before-2026-10-28.json`.
+- **No `Mutation-Proof:` line inside any file.** The killability-ledger gate that demanded them is retired
+  (DECISIONS 2026-10-28 items 15(c) and 17); receipts live only in commit trailers.
+- Local GPU runs are Chromium 1280x800 only (ANGLE-Metal), one at a time under the shared lock; WebKit is not shot.
+
+**Tone grammar (Unit 1, changed).**
+- Stone tones stay `r = g, b - r <= 3`, the shape `ore-glow-gates.test.js` reads as matrix, so the crack tone is
+  `78,78,81`, not `82`. The ore tiles' matrix is stone without cracks: a crack (luminance 0.074) is darker than 0.35 of
+  the brighter ore layers' means. `NUGGET_CHROMA` is on main (`oreGlow.js:23`).
+- `ore-glow-gates`' presence control asked the old per-texel mask to move 40% at 4x4; clustered nuggets keep more of
+  their colour in a mip texel, so it now asks for 20% at some level (iron moves 47%, gold 51%, diamond 74%), ten times
+  the 2% bound. The same file now also ties the uploaded level 0 to the map it checks.
+- The look is recorded in this file, not in `memory/ACTIVE_PLAN.md` (the command session's cursor).
+
+**Face grammar (Unit 2, changed).**
+- (At the lane's start; since the fix round the material and its `onBeforeCompile` live in `src/world/terrainMaterial.js`, an exported singleton, and `tests/gates/terrain-shader-patch-gates.test.js` runs that patch on three's own shader source: it gates the splice, the qualifiers and the sample in node. CI's prod-smoke links the program with SwiftShader, a CPU renderer, and no real-GPU compile is automated; registry `REVIEW:w2k:no-running-world-check`.) The terrain GLSL was in `src/world/Terrain.jsx`: the vertex `main()` patch is at
+  `:95-104` (`vBlockType = color.r` at `:99`), the sample at `:145-150`, `TEX_LAYERS` at `:268`. The ore glow and the
+  leaf feel are on main (`Terrain.jsx:45-46`) and read `layerIndex` (block type), as Risk 4 expects.
+- **Steps 7-9 are not built in this lane** (the probe page, the running-world e2e, `material-probe.mjs`): no local e2e
+  (the SSD order). In their place: `prod-smoke` (CI) links and draws the shipped terrain program
+  (`WATCHED_PROGRAMS`, `prod-smoke.mjs:260`), and the AFTER lookbook frames show the grammar on a real GPU in the
+  production build. WebKit (iPad) is not proven here: Risk 11's fallback stays untested, and the row stays open.
+- Step 6 adds no new source-grep assertion (DECISIONS 2026-10-28 item 15(b)); it re-points the existing sampler line
+  in `grass-biome-tint-gates.test.js` to `texLayer`.
+- Unit 1's and Unit 2's DECISIONS entries are one 2026-10-28 entry.
+
+**The lantern.** The lantern brief (`2026-10-28-crafty-brief-lantern-costed.md`) ships the radius rule first; the block
+(id 16, Task 4) takes its layer after this layout: `BLOCK_LAYER_COUNT` 17, the variants at 17-19, the array 20 deep,
+all derived. `colors.b` stays free for the baked light field that comes later. The brief's Task 4 now says so.
+
+**Acceptance (replaces Unit 5 and the capture parts of Acceptance).** Eye-level lookbook frames of the material set
+on the production build (`node scripts/visual/lookbook.mjs --targets chromium-1280x800 --sets material --cycles
+0.30,0.48,0.75`), before and after, at most 12 PNGs of at most 300 KB under
+`docs/superpowers/masterpiece-2026-10/evidence/w2k/`, each opened and judged in words in this file (the record at the
+end).
+
+---
+
 ## Current state (cited, verified by reading on 2026-10-27)
 
 Repo layout: ROOT = `<repo>`, APP = `<repo>/frontend`. All paths below are relative to
@@ -877,3 +944,108 @@ lines, and the DECISIONS.md channel entry (scheduled in Unit 2).
 | 11 | LOW | Pairing Unit 5's re-baseline with coast-water contradicts the umbrella's phase order | Umbrella `:64,75` (coast in Phase 1), `:78,83` (this in Phase 2), `:7-8` (umbrella wins); `DECISIONS.md:44-48`; confirmed | **Applied.** Unit 5 re-baselines alone; Risk 10 updated |
 | 12 | LOW | A new `tests/e2e/*.spec.js` needs a `Mutation-Proof:` line at pre-commit | `killability-ledger.mjs:71` puts e2e specs in the population; `:28-29` new files need a receipt; confirmed | **Applied.** The spec's header carries its receipts; the Global Constraint now names the ledger's whole population (`:66-74`), which also covers the new `textureStats.test.js` |
 | 13 | LOW | Six citation and fact errors | (a) the no-mipmaps lock is `proceduralTextures.test.js:73-77` (`:76` `generateMipmaps` false), not `:65-69`; (b) `castWorldRay(origin, dir, maxToi)` at `Terrain.jsx:1053`, ray built from `origin` at `:1056`; (c) stride 2 reaches even row 14 whenever rows 0-12 hold fewer than 50 lattice grass columns (`grassField.js:48-54`); (d) `DECISIONS.md:44-48` names puppeteer 25.16.0's Chromium, not 151; (e) three generates mips on the GPU (`WebGLTextures.js:114-116`), the JS copy is level 0 (`proceduralTextures.js:37`); (f) `mutate.sh:4` takes one subject, `BLOCK_ID` is frozen (`blockIds.js:27`). All confirmed | **Applied.** (a) both citations fixed; (b) the call passes the camera position as a plain vector; (c) the lived test counts odd local x and local z of 13 or 15, both 0 today by construction; (d) the precondition names the pinned Chromium and points at `.capture-meta.json`; (e) the table heading and the M4 and Unit 4 cost lines say the JS heap keeps level 0 only (77,824 B); (f) `buildGrammar(blockIds)` factory, M6 mutates `materialGrammar.js` alone against a permanent derivation test |
+
+## Record (lane W2-K, 2026-10-28)
+
+### The material sights and the BEFORE frames
+
+Shot on the production build of `6a926fce` (index chunk 640,154 B), Chromium 1280x800 at dpr 2 on ANGLE-Metal
+(Apple M3 Max), `--sets material --cycles 0.30,0.48,0.75`; all six shots valid by the eye-shot verdict (input live,
+alive, hands and HUD on, the body at the stand, the bearing within 1 degree, the clock within 0.01). The finder chose,
+20 m out from the Hearth:
+
+| sight | form | face | stand (feet) | look |
+|---|---|---|---|---|
+| turf-wall | a one-block grass step, 3 blocks wide | z = -2, facing -Z | (-19.5, 45, -5.5) | bearing 180, pitch -25 |
+| trunk | a wood trunk 3 blocks tall | z = -14, facing -Z | (-11.5, 47, -17.5) | bearing 180, pitch -10.5 |
+
+The committed frames are 960x600, reduced to 256 colours without dithering to stay under 300 KB; the judgements were
+made on the full 2560x1600 frames.
+
+- `evidence/w2k/before-turf-wall-0.30.png` (afternoon): the step's side is the same green speckle as its top, so
+  the step reads only by the shading change; the terraces behind are stacked green cliffs; a trunk on the right shows
+  a full bullseye on each block of its side.
+- `before-turf-wall-0.48.png` (golden hour): the same; warm light on the far terraces, the step's side a flat dark
+  green under the selection box; the trunk's rings still read at 6 m.
+- `before-turf-wall-0.75.png` (midnight): top and side merge into one dark green; the trunk's rings show red in the
+  moonlight.
+- `before-trunk-0.30.png`: the trunk fills the centre at 3.5 m with three stacked bullseyes, one per block, the
+  end-grain pattern on a side face.
+- `before-trunk-0.48.png`: the same bullseyes under golden light.
+- `before-trunk-0.75.png`: the bullseyes in dark red at midnight.
+
+### Unit 1: the tone grammar, measured
+
+Every sampled layer, against the frozen reference (linear luminance; chromaticity of the linear mean; tones and the
+same-tone neighbour ratio from `tests/world/_textureStats.js`):
+
+| layer | before lum | after lum | change | chroma r, g change | tones before / after | same-tone neighbours before / after |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 grass | 0.1410 | 0.1481 | 5.0% | -0.003, 0.004 | 68 / 3 | 0.016 / 0.850 |
+| 2 dirt | 0.1668 | 0.1670 | 0.1% | -0.010, 0.004 | 123 / 3 | 0.012 / 0.883 |
+| 3 stone | 0.1580 | 0.1618 | 2.4% | 0.000, 0.000 | 54 / 3 | 0.042 / 0.864 |
+| 4 sand | 0.4782 | 0.4752 | -0.6% | -0.001, -0.002 | 107 / 3 | 0.033 / 0.803 |
+| 5 snow | 0.8926 | 0.8713 | -2.4% | -0.006, -0.000 | 22 / 3 | 0.053 / 0.865 |
+| 6 wood | 0.0488 | 0.0473 | -3.2% | 0.004, 0.000 | 50 / 3 | 0.031 / 0.654 |
+| 7 leaves | 0.1310 | 0.1373 | 4.8% | 0.006, -0.012 | 71 / 3 | 0.015 / 0.846 |
+| 8 cactus | 0.1672 | 0.1764 | 5.5% | 0.002, -0.003 | 52 / 3 | 0.030 / 0.744 |
+| 10 coal | 0.1207 | 0.1231 | 2.0% | 0.000, 0.000 | 69 / 4 | 0.025 / 0.751 |
+| 11 iron | 0.2542 | 0.2503 | -1.5% | -0.008, 0.001 | 170 / 4 | 0.017 / 0.740 |
+| 12 gold | 0.3321 | 0.3395 | 2.2% | 0.007, -0.007 | 140 / 4 | 0.023 / 0.751 |
+| 13 diamond | 0.2576 | 0.2570 | -0.2% | -0.000, -0.001 | 165 / 4 | 0.025 / 0.741 |
+| 14 cobblestone | 0.1747 | 0.1656 | -5.2% | -0.000, -0.000 | 56 / 3 | 0.060 / 0.806 |
+| 15 glass | 0.8395 | 0.8439 | 0.5% | -0.000, -0.000 | 24 / 3 | 0.110 / 0.897 |
+
+The ore tiles paint four of their five declared tones: their stone matrix has no cracks. The index chunk grew 1,059 B
+(640,154 to 641,213; the plan allowed 4,000). The tiles were opened as an 8x contact sheet before the commit: grass
+is clumped shade and light over a mid green; dirt is clods of shade with a few light pebbles; stone is light and base
+facets with broken one-texel cracks; sand is diagonal ripples; snow is soft blue drifts with rare glints; the wood end
+grain is rings in a two-texel rim around a light pith; leaves are lit lobes over dark gaps with no black holes; cactus
+is vertical ridges with a staggered spine column; ores are nugget clusters a few texels across with a darker rim; cobblestone
+is a running bond of rounded cobbles in two tones. The spine columns read as dotted lines on the sheet; they are left
+as they are, since a cactus side is small on screen.
+
+### Unit 2: the face grammar, measured
+
+- `src/world/materialGrammar.js`: the roles, the three variants above the id space, the remaps (grass underside to
+  dirt, snow underside to stone), `buildGrammar` and the generated GLSL. `LIP_TEXELS` is 6, not 4: at 4 the lip was a
+  hairline on the contact sheet; six rows are about a fifth of a block; the drips
+  reach one or two rows lower in about a third of the columns.
+- `src/world/mesher.js`: X faces push `(0,0, 0,w, h,w, h,0)`, so `v` rises with world Y on all four side directions.
+  `colors.b` stays 0. 64 `realChunk` fixtures, median of 15 interleaved runs: 171.0 ms before, 170.8 ms after (ratio
+  0.999, load average about 23, so the noise is wide; the change is the push order only).
+- `src/world/proceduralTextures.js`: 19 layers (`TEXTURE_LAYER_COUNT`); bark is vertical furrows in the wood tones;
+  the grass and snow sides are the dirt tile and the uncracked stone matrix under a lip of the grass and snow tiles
+  (a crack under bright snow would be under 0.35 of the layer's mean).
+- `src/world/Terrain.jsx`: `FACE_GLSL` spliced after `vUv = uv;` in the vertex `main()` and before the sample, which
+  reads `texLayer`; `layerIndex` stays the block type.
+- Bytes: index 641,213 to 643,640 (+2,427 for Unit 2, over the plan's +1,500 for it, because the three variant
+  painters live in the main chunk with the generator; +3,486 for the milestone, inside its +8,000 ceiling and the
+  700,000 budget, which was not raised). The worker chunk grew 30 B.
+- Gates: `material-grammar-gates` (16 tests), `mesher-geometry-gates` (14), the derived depth in
+  `proceduralTextures.test.js`, the sampler line in `grass-biome-tint-gates`, and `prod-smoke-gates`' mip-verdict
+  lines now read their counts off the texture (19 layers: 18 drawn, 103,740 B). Under the mutant that restores the
+  old X-face UVs, the orientation test goes red and the 1:1 UV-length test stays green, as the plan predicted.
+
+### The AFTER frames, and the look judged
+
+Shot the same way on the production build of `8978bc4b` (index chunk 643,640 B): the finder chose the same two sights
+(same faces, stands and bearings), and all six shots are valid by the eye-shot verdict with no console errors. Each
+frame was opened beside its BEFORE.
+
+- `evidence/w2k/after-turf-wall-0.30.png` (afternoon): the step's side is now a dirt body of light and dark clods
+  under a green turf lip about a fifth of the block deep, with short drips; the lip is at the top of the wall, so the
+  row orientation holds on the GPU. The terraces behind read as stacked soil steps, each with its own lip, where they
+  were green cliffs. The trunk on the right shows vertical bark, no rings.
+- `after-turf-wall-0.48.png` (golden hour): the same, warm; the dirt body reads as soil against the grass top, the
+  lip as grass. The grass top is clumped in two greens instead of static.
+- `after-turf-wall-0.75.png` (midnight): the lip stays green and the body dark brown, so the step keeps its shape
+  where BEFORE it merged into one dark green.
+- `after-trunk-0.30.png`: the trunk's side is vertical bark furrows, no bullseyes; the stone wall behind reads as
+  chunky facets with cracks instead of fine speckle.
+- `after-trunk-0.48.png`: bark under golden light; the furrows are low-contrast but read as grain.
+- `after-trunk-0.75.png`: bark in dark red at midnight, the grain faint; no rings.
+
+What these frames do not show: a cut trunk top (its rings), a snow side, a distant hillside where the near terrain
+meets the far ring (which still averages the grass top, Review Focus 3), and anything on WebKit. The dirt body takes
+the grass biome's tint, as dirt blocks already did.

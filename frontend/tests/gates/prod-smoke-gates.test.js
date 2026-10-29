@@ -4,6 +4,7 @@ import {
   isFatalMessage, seamVerdict, LOOKBOOK_SEAM_METHODS,
   installArrayTextureRecorder, readBlockTextureArray, mipVerdict,
   WATCHED_PROGRAMS, OCEAN_STAGE, installProgramRecorder, readProgramLinks, programVerdict,
+  chainVerdict, CHAIN_PRESENT, CHAIN_ABSENT,
 } from '../../scripts/ci/prod-smoke.mjs';
 import { installLookbookSeam, _resetLookbookForTest } from '../../src/render/lookbookSeam.js';
 import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
@@ -175,6 +176,12 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
   const source = createProceduralVoxelTextures();
   const dims = { size: source.image.width, layers: source.image.depth };
   const expected = { ...dims, chain: source.mipmaps };
+  // The verdict's counts, read off the texture the source builds, so a layer added to the array moves them with it.
+  const DIMS = `${dims.size}x${dims.size}x${dims.layers}`;
+  const layerBytes = dims.size * dims.size * 4;
+  const DRAWN = Array.from({ length: dims.layers }, (_, l) => source.image.data.subarray(l * layerBytes, (l + 1) * layerBytes))
+    .filter((slice) => slice.some((b) => b !== 0)).length;
+  const CHAIN_BYTES = source.mipmaps.reduce((sum, m) => sum + m.data.length, 0).toLocaleString('en-US');
 
   /** Upload each texture into one fake context through the recorder, then read the block array back. */
   function gpu(textures, opts) {
@@ -196,7 +203,8 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
     const { reading, restored } = gpu([source]);
     const v = mipVerdict(reading, expected);
     expect(v.ok, v.line).toBe(true);
-    expect(v.line).toBe('block texture mips: 6 levels on the GPU (NEAREST_MIPMAP_LINEAR), every level filled in all 15 drawn layers, all 87,360 bytes equal the chain the source builds');
+    expect(DRAWN, 'SETUP: every layer but air is drawn').toBe(dims.layers - 1);
+    expect(v.line).toBe(`block texture mips: 6 levels on the GPU (NEAREST_MIPMAP_LINEAR), every level filled in all ${DRAWN} drawn layers, all ${CHAIN_BYTES} bytes equal the chain the source builds`);
     expect(restored).toBe(true);
   });
 
@@ -210,7 +218,7 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
     const v = mipVerdict({ ...readBlockTextureArray(dims, sink.__craftySmokeArrays || []), worldBuilt: true }, expected);
     expect(v.ok).toBe(false);
     expect(v.control).toBe(true);
-    expect(v.line).toMatch(/COULD NOT CHECK — no 32x32x16 TEXTURE_2D_ARRAY was allocated by texStorage3D \(arrays seen: none; spawn chunk loaded: true\)/);
+    expect(v.line).toContain(`COULD NOT CHECK — no ${DIMS} TEXTURE_2D_ARRAY was allocated by texStorage3D (arrays seen: none; spawn chunk loaded: true)`);
   });
 
   it('the chain cut to level 0, in the source as well, fails on the level count', () => {
@@ -223,7 +231,7 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
   it('levels allocated and never filled fail as EMPTY, at level 1', () => {
     const v = mipVerdict(gpu([source], { fillLevels: 1 }).reading, expected);
     expect(v.ok).toBe(false);
-    expect(v.line).toMatch(/^block texture mips: level 1 is EMPTY on the GPU in 15 of the 15 drawn layers/);
+    expect(v.line.startsWith(`block texture mips: level 1 is EMPTY on the GPU in ${DRAWN} of the ${DRAWN} drawn layers`), v.line).toBe(true);
   });
 
   it('one empty layer at one level fails and names it', () => {
@@ -232,7 +240,7 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
     holed[3].data.fill(0, 5 * n * n * 4, 6 * n * n * 4);
     const v = mipVerdict(gpu([withMips(holed)]).reading, expected);
     expect(v.ok).toBe(false);
-    expect(v.line).toBe('block texture mips: level 3 is EMPTY on the GPU in 1 of the 15 drawn layers (5)');
+    expect(v.line).toBe(`block texture mips: level 3 is EMPTY on the GPU in 1 of the ${DRAWN} drawn layers (5)`);
   });
 
   it("a byte-space chain (what the GPU's generateMipmap computes) fails on the bytes", () => {
@@ -255,7 +263,7 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
     });
     const v = mipVerdict(gpu([withMips(byteSpace)]).reading, expected);
     expect(v.ok).toBe(false);
-    expect(v.line).toMatch(/^block texture mips: level 1: \d+ of 16384 bytes on the GPU differ from the chain the source builds/);
+    expect(v.line).toMatch(new RegExp(`^block texture mips: level 1: \\d+ of ${source.mipmaps[1].data.length} bytes on the GPU differ from the chain the source builds`));
   });
 
   it('a minify filter that reads level 0 alone fails, whatever the levels hold', () => {
@@ -267,7 +275,7 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
   it('two block-sized arrays, or a reader that saw nothing at level 0, are COULD NOT CHECK', () => {
     const twice = mipVerdict(gpu([source, source]).reading, expected);
     expect(twice.ok).toBe(false);
-    expect(twice.line).toMatch(/2 32x32x16 arrays were allocated; cannot tell which is the block texture/);
+    expect(twice.line).toContain(`2 ${DIMS} arrays were allocated; cannot tell which is the block texture`);
     const { reading } = gpu([source]);
     const blind = mipVerdict({ ...reading, levels: reading.levels.map((l) => l.map(() => 0)) }, expected);
     expect(blind.ok).toBe(false);
@@ -438,5 +446,44 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
     expect(OCEAN_STAGE?.id).toBe('coast');
     expect(drawsAt(OCEAN_STAGE.position), 'the ocean is not drawn at the coast stage').toBe(true);
     expect(drawsAt(PLAYER_SPAWN), 'SETUP: the ocean draws at the spawn, so staging proves nothing').toBe(false);
+  });
+});
+
+/**
+ * THE CHAIN THE SHIPPED BUNDLE RENDERS (W2-I). chainVerdict reads the pass labels the pass timer records for each
+ * composer.render (src/render/passTimer.js `chain`, written with or without a timer extension), so a deleted pass that
+ * returns to the composer goes red on the production build, whatever the source around it says.
+ */
+describe('prod-smoke: the post chain the production build renders', () => {
+  const ctx = (canvas, labels) => ({ canvas, chain: labels.map((label) => ({ label, enabled: true })) });
+  const KEPT = ['0:RenderPass', '1:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect)', '2:EffectPass(SMAAEffect)', '3:EffectPass(ToneMappingEffect+VignetteEffect)'];
+
+  it('passes the chain with every kept pass and none named absent, reading the game canvas, not the title\'s', () => {
+    const r = { contexts: [ctx([300, 200], ['0:RenderPass', '1:EffectPass(GodRaysEffect+BloomEffect)']), ctx([2549, 1647], KEPT)] };
+    const v = chainVerdict(r, { present: CHAIN_PRESENT, absent: ['GodRaysEffect', 'N8AO'] });
+    expect(v.ok, v.line).toBe(true);
+    expect(CHAIN_PRESENT.length).toBeGreaterThan(0);
+    // The run's own default: the deleted N8AO is named absent, so the chain it rendered goes red the day it returns.
+    expect(CHAIN_ABSENT).toContain('N8AO');
+    const back = { contexts: [ctx([2549, 1647], [KEPT[0], '1:N8AO', ...KEPT.slice(1)])] };
+    expect(chainVerdict(back), 'the default lists do not refuse N8AO back in the chain').toMatchObject({ ok: false, control: false });
+    expect(chainVerdict({ contexts: [ctx([2549, 1647], KEPT)] }).ok, 'the default lists refuse the kept chain').toBe(true);
+  });
+
+  it('goes red when a named pass is back, merged into an EffectPass or as a pass of its own', () => {
+    const merged = { contexts: [ctx([2549, 1647], [KEPT[0], '1:EffectPass(GodRaysEffect+HueSaturationEffect+BloomEffect)', ...KEPT.slice(2)])] };
+    expect(chainVerdict(merged, { absent: ['GodRaysEffect'] })).toMatchObject({ ok: false, control: false });
+    const own = { contexts: [ctx([2549, 1647], [KEPT[0], '1:N8AO', ...KEPT.slice(1)])] };
+    expect(chainVerdict(own, { absent: ['N8AO'] })).toMatchObject({ ok: false, control: false });
+    // A name is matched whole: GodRaysEffectLite is not GodRaysEffect, and a label that only CONTAINS N8AO is not it.
+    const near = { contexts: [ctx([2549, 1647], [...KEPT, '4:EffectPass(GodRaysEffectLite)', '5:N8AOish'])] };
+    expect(chainVerdict(near, { absent: ['GodRaysEffect', 'N8AO'] }).ok).toBe(true);
+  });
+
+  it('cannot pass on a chain it cannot see: no composer, or a kept pass missing, is COULD NOT CHECK', () => {
+    expect(chainVerdict({ contexts: [] })).toMatchObject({ ok: false, control: true });
+    expect(chainVerdict({ contexts: [{ canvas: [1, 1], chain: null }] })).toMatchObject({ ok: false, control: true });
+    const blind = { contexts: [ctx([2549, 1647], ['0:RenderPass'])] };
+    expect(chainVerdict(blind, { absent: ['GodRaysEffect'] })).toMatchObject({ ok: false, control: true });
   });
 });

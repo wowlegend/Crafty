@@ -190,7 +190,7 @@ export function biomeTintTable(strength = BIOME_TINT_STRENGTH) {
 }
 
 /**
- * THE table — computed once, read by BOTH the ground shader's uniform (Terrain.jsx) and the grass blades
+ * THE table — computed once, read by BOTH the ground shader's uniform (terrainMaterial.js) and the grass blades
  * (OptimizedGrassSystem). They must agree, since a blade the ground's colour disagrees with reads as a
  * lighting fault, and the surest way to agree is to be the same object. The grass used to rebuild it per
  * chunk and allocate an array per blade (QUEUE R1.10). A Float32Array cannot be frozen; treat it as

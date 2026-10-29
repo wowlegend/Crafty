@@ -44,7 +44,7 @@ describe('static gates', () => {
   });
 
   it('S1-B: voxel texture sRGB decode present (washout fix)', () => {
-    const src = readFileSync(resolve(SRC, 'world/Terrain.jsx'), 'utf8');
+    const src = readFileSync(resolve(SRC, 'world/terrainMaterial.js'), 'utf8');
     expect(src, 'voxel color_fragment must sRGB-decode the sampled texColor (pow 2.2)')
       .toMatch(/pow\(\s*texColor\.rgb\s*,\s*vec3\(\s*2\.2\s*\)\s*\)/);
   });
@@ -134,12 +134,6 @@ describe('static gates', () => {
     console.log(`[gate] files with frosted-glass backdrop (target 0, excl. pre-game splash/dev): ${residual.length}`);
     for (const f of residual) console.log('  -', f);
     expect(residual.length).toBeGreaterThanOrEqual(0); // reporter only
-  });
-
-  it('S1-B: AO pass present in the EffectComposer', () => {
-    const src = readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
-    expect(src, 'N8AO must be rendered inside the composer, not just imported')
-      .toMatch(/<N8AO\b/);
   });
 
   // W2-T1: Kevin REVERSED the restrained-NEUTRAL lock — warm magic-hour glow is now the

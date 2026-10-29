@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateMesh } from '../../src/world/mesher.js';
+import { faceRoleOfNormal, FACE_ROLE } from '../../src/world/materialGrammar.js';
 
 // The FIRST behavioural gate on the greedy mesher. Until `generateMesh` was extracted from
 // terrain.worker.js it could not be imported at all (the worker assigns `self.onmessage` at module scope
@@ -240,5 +241,82 @@ describe('greedy mesher — the no-water-faces invariant', () => {
     expect(ao.length, 'no AO emitted').toBeGreaterThan(0);
     expect(Math.min(...ao), 'every AO corner is fully lit — the AO pass is doing nothing').toBeLessThan(3);
     for (const v of ao) expect(v >= 0 && v <= 3, `AO value ${v} is outside 0..3`).toBe(true);
+  });
+});
+
+// THE FACE GRAMMAR'S SEAM WITH THE MESHER. The terrain picks a face's tile from its normal (world/materialGrammar.js),
+// and a side tile's lip is authored in its top rows, so two things must hold on every quad the mesher emits: its
+// normal says which role it plays, and on a side face `v` rises 1:1 with world Y from a whole number at a whole
+// block height, so a tile's row 0 is each block's bottom however many blocks the quad covers.
+describe('greedy mesher — face roles and side-face orientation', () => {
+  const G = 1, DIRT = 2, STONE = 3, SNOW = 5, WOOD = 6;
+  /** Ground: stone, dirt, grass with its top at y 12. A grass step facing -X with its +X wall on the chunk's
+   *  border (x = 15), a grass step facing +Z and -Z, a three-high grass pillar, a snow step, a four-high trunk and a
+   *  floating grass block (its underside). */
+  const world = (() => {
+    const b = new Uint8Array(CHUNK * CHUNK * HEIGHT);
+    const set = (x, y, z, v) => { b[idx(x, y, z)] = v; };
+    for (let z = 0; z < CHUNK; z++) for (let x = 0; x < CHUNK; x++) {
+      for (let y = 0; y < 10; y++) set(x, y, z, STONE);
+      set(x, 10, z, DIRT);
+      set(x, 11, z, G);
+    }
+    for (let z = 0; z < 4; z++) for (let x = 12; x < 16; x++) set(x, 12, z, G);
+    for (let z = 6; z < 9; z++) for (let x = 0; x < 4; x++) set(x, 12, z, G);
+    for (let y = 12; y < 15; y++) set(6, y, 12, G);
+    set(10, 12, 12, SNOW);
+    for (let y = 12; y < 16; y++) set(8, y, 4, WOOD);
+    set(12, 20, 12, G);
+    return generateMesh(0, 0, b);
+  })();
+  const quads = world.positions.length / 12;
+  const normalOf = (q) => [world.normals[q * 12], world.normals[q * 12 + 1], world.normals[q * 12 + 2]];
+
+  it('every quad\'s four normals are one axis unit vector whose role agrees with faceRoleOfNormal; grass shows all three roles', () => {
+    const roles = { [FACE_ROLE.top]: 0, [FACE_ROLE.side]: 0, [FACE_ROLE.bottom]: 0 };
+    let checked = 0, borderWall = 0;
+    for (let q = 0; q < quads; q++) {
+      const n = normalOf(q);
+      for (let k = 1; k < 4; k++) {
+        expect([world.normals[q * 12 + k * 3], world.normals[q * 12 + k * 3 + 1], world.normals[q * 12 + k * 3 + 2]]).toEqual(n);
+      }
+      expect(n.filter((c) => c !== 0).length, `quad ${q} normal ${n}`).toBe(1);
+      expect(Math.abs(n[0] + n[1] + n[2])).toBe(1);
+      const local = n[1] === 1 ? FACE_ROLE.top : n[1] === -1 ? FACE_ROLE.bottom : FACE_ROLE.side;
+      expect(faceRoleOfNormal(n[1]), `quad ${q} normal ${n}`).toBe(local);
+      if (world.colors[q * 12] === G) roles[local]++;
+      if (world.colors[q * 12] === G && n[0] === 1 && world.positions[q * 12] === 16) {
+        expect(faceRoleOfNormal(n[1]), 'the chunk-border grass wall').toBe(FACE_ROLE.side);
+        borderWall++;
+      }
+      checked++;
+    }
+    expect(checked).toBe(quads);
+    expect(quads).toBeGreaterThan(0);
+    for (const r of Object.keys(roles)) expect(roles[r], `grass quads with role ${r}`).toBeGreaterThan(0);
+    expect(borderWall, 'presence: the border wall at x = 15 was meshed').toBeGreaterThan(0);
+  });
+
+  it('side faces carry v up the world: v - y is a whole number at every corner, on all four directions', () => {
+    const perDirection = { '1,0,0': 0, '-1,0,0': 0, '0,0,1': 0, '0,0,-1': 0 };
+    const bad = [];
+    for (let q = 0; q < quads; q++) {
+      const n = normalOf(q);
+      if (n[1] !== 0) continue;
+      const P = (k, c) => world.positions[q * 12 + k * 3 + c];
+      const UV = (k, c) => world.uvs[q * 8 + k * 2 + c];
+      for (let k = 0; k < 4; k++) {
+        if (UV(k, 1) - UV(0, 1) !== P(k, 1) - P(0, 1) || !Number.isInteger(UV(k, 1) - P(k, 1))) {
+          bad.push({ q, n, corner: k, y: P(k, 1), v: UV(k, 1) });
+        }
+        // u runs along the face, so it never changes up a vertical edge.
+        for (let j = 0; j < 4; j++) {
+          if (P(j, 0) === P(k, 0) && P(j, 2) === P(k, 2) && UV(j, 0) !== UV(k, 0)) bad.push({ q, n, corners: [j, k], why: 'u changes up a vertical edge' });
+        }
+      }
+      perDirection[n.join(',')]++;
+    }
+    for (const [dir, count] of Object.entries(perDirection)) expect(count, `side quads facing ${dir}`).toBeGreaterThan(0);
+    expect(bad).toEqual([]);
   });
 });

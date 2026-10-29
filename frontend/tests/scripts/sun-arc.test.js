@@ -125,7 +125,6 @@ describe('sun arc geometry', () => {
     // work skipped, its blend opacity 0). So this now drives that gate with the arc's own noon and midnight, through
     // Atmosphere's horizon predicate, on a real GodRaysEffect.
     const fx = {
-      n8ao: null,
       bloom: new BloomEffect(),
       godRays: new GatedGodRaysEffect(new PerspectiveCamera(), new Mesh(new BoxGeometry(), new MeshBasicMaterial()), {}),
     };

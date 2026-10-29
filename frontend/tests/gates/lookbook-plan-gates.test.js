@@ -22,7 +22,20 @@ import {
   parseCycles,
   indexChunkOf,
   servedBuildProblem,
+  PASS_ARMS,
+  PASS_TIMES,
+  PASS_REPS,
+  passWindowPlan,
+  windowMedian,
+  passDifferential,
+  passVerdict,
+  admittedInstruments,
+  PASS_CONTROL,
+  parseGpuUtil,
+  gpuMsPerFrame,
+  altDifferential,
 } from '../../scripts/visual/_lookbook.mjs';
+import { LOOKBOOK_PASS_NAMES } from '../../src/render/passesOff.js';
 import { viteArgv } from '../../scripts/visual/_serve.mjs';
 
 /**
@@ -398,5 +411,166 @@ describe('the contact sheet shows the eye-level set and the clips', () => {
     expect(html, 'a reason reached the page unescaped').not.toContain('<oops>');
     expect(html).toContain('passTimes threw: &lt;oops&gt;');
     expect((html.match(/<figure/g) || []).length, 'one figure per eye shot and clip').toBe(3);
+  });
+});
+
+/**
+ * THE WHOLE-FRAME DIFFERENTIAL (lookbook.mjs --passes; plan docs/superpowers/plans/2026-10-28-crafty-w2i-passes.md). A
+ * pass is judged by the whole frame with it on minus off, in interleaved repetitions, on two instruments, by a rule
+ * written before the measurement. These pin what that rule says, on windows whose answer is known by construction.
+ */
+describe('the whole-frame differential and the rule it is judged by', () => {
+  const win = (arm, rep, state, q, w, extra = {}) => ({ arm, rep, state, q, w, valid: true, ...extra });
+
+  it('the plan: every arm once per repetition, on and off alternating by repetition, at least 5 repetitions', () => {
+    expect(PASS_REPS).toBeGreaterThanOrEqual(5);
+    const plan = passWindowPlan(PASS_ARMS, PASS_REPS);
+    expect(plan.length).toBe(PASS_ARMS.length * PASS_REPS * 2);
+    const arm = PASS_ARMS[0].id;
+    const mine = plan.filter((x) => x.arm === arm);
+    expect(mine.map((x) => x.state)).toEqual(['on', 'off', 'off', 'on', 'on', 'off', 'off', 'on', 'on', 'off']);
+    expect(mine.filter((x) => x.state === 'off').every((x) => x.off.length > 0)).toBe(true);
+    expect(mine.filter((x) => x.state === 'on').every((x) => x.off.length === 0)).toBe(true);
+    // Repetition-major: an arm's repetitions spread over the block rather than running back to back.
+    expect(plan.slice(0, PASS_ARMS.length * 2).map((x) => x.rep).every((r) => r === 0)).toBe(true);
+    // Every name an arm switches off is one the seam accepts, and the plan's arms are the composer's passes.
+    for (const a of PASS_ARMS) for (const n of a.off) expect(LOOKBOOK_PASS_NAMES).toContain(n);
+    expect(PASS_ARMS.map((a) => a.id)).toEqual(['godrays+sun', 'bloom', 'smaa', 'tonemapping', 'grade', 'vignette']);
+    expect(PASS_TIMES.map((t) => t.cycle)).toEqual([0.25, 0.48, 0.75]);
+  });
+
+  it('a window\'s value is the timer\'s median for the label; a window with no such label has none', () => {
+    const r = { contexts: [{ canvas: [100, 100], passes: [{ label: 'frame', p50Ms: 6.5, n: 80 }, { label: 'frame:wall', p50Ms: 9, n: 80 }] }] };
+    expect(windowMedian(r, 'frame', [100, 100])).toEqual({ ms: 6.5, n: 80 });
+    expect(windowMedian(r, 'frame:wall', [100, 100])).toEqual({ ms: 9, n: 80 });
+    expect(windowMedian(r, 'frame', [5, 5]), 'the largest canvas when none matches').toEqual({ ms: 6.5, n: 80 });
+    expect(windowMedian({ contexts: [{ canvas: [1, 1], passes: [] }] }, 'frame', [1, 1])).toBeNull();
+    expect(windowMedian(null, 'frame')).toBeNull();
+  });
+
+  it('pairs on and off within a repetition, whatever their order, and refuses invalid or half pairs', () => {
+    const ws = [
+      win('bloom', 0, 'on', 7, 9), win('bloom', 0, 'off', 6, 8.2),
+      win('bloom', 1, 'off', 6.1, 8), win('bloom', 1, 'on', 7.3, 9.1),
+      win('bloom', 2, 'on', 7, 9), win('bloom', 2, 'off', 5.8, 7.9, { valid: false }),
+      win('bloom', 3, 'on', 6.8, 9),
+      win('n8ao', 0, 'on', 7, 9), win('n8ao', 0, 'off', 4, 6),
+    ];
+    const d = passDifferential(ws, 'bloom');
+    expect(d.reps).toBe(2);
+    expect(d.q.values.map((x) => Math.round(x * 100) / 100)).toEqual([1, 1.2]);
+    expect(d.q.median).toBeCloseTo(1.1, 9);
+    expect(d.q).toMatchObject({ min: 1, positive: 2, n: 2 });
+    expect(d.q.max).toBeCloseTo(1.2, 9);
+    expect(d.w.values.map((x) => Math.round(x * 100) / 100)).toEqual([0.8, 1.1]);
+    expect(d.onQ).toBeCloseTo(7.15, 9);
+    expect(d.offQ).toBeCloseTo(6.05, 9);
+    expect(passDifferential(ws, 'smaa').reps).toBe(0);
+    // U has pairs of its own: a repetition whose utilization read failed on one side counts for Q and W, not for U.
+    const withU = [
+      win('grade', 0, 'on', 7, 9, { u: 5 }), win('grade', 0, 'off', 6, 8, { u: 4 }),
+      win('grade', 1, 'on', 7, 9, { u: 5.2 }), win('grade', 1, 'off', 6, 8, { u: null }),
+    ];
+    const du = passDifferential(withU, 'grade');
+    expect([du.reps, du.u.n, du.u.median, du.onU]).toEqual([2, 1, 1, 5]);
+  });
+
+  it('material: U at least 0.5 ms AND 10% of the frame, 4 of 5 positive, no admitted instrument contradicting; else named', () => {
+    // Each repetition: on and off windows with U (GPU busy ms), Q and W, the differential on each instrument given.
+    const five = (arm, du, { on = 6, dq = du, dw = du } = {}) => du.flatMap((d, i) => [
+      win(arm, i, 'on', on + 4, on + 2, { u: on }),
+      win(arm, i, 'off', on + 4 - dq[i], on + 2 - dw[i], { u: on - d }),
+    ]);
+    const all = { u: true, w: true, q: true };
+    const v = (ws, arm, adm = all) => passVerdict(passDifferential(ws, arm), adm);
+    expect(v(five('a', [1, 1.1, 0.9, 1.2, 1]), 'a')).toMatchObject({ material: true, contradicted: [] });
+    // 0.5 ms is the floor: 0.45 ms is not material even at 10% of a 4.5 ms frame.
+    const small = v(five('b', [0.45, 0.45, 0.45, 0.45, 0.45], { on: 4.5 }), 'b');
+    expect(small.material).toBe(false);
+    expect(small.why.join(' ')).toMatch(/0\.5 ms/);
+    // 10% is the share OF THE FRAME WITH THE PASS ON: 0.65 ms of a 7 ms frame is 9.3%, not material (of the 6.35 ms
+    // frame without it, it would read 10.2%).
+    const share = v(five('c', [0.65, 0.65, 0.65, 0.65, 0.65], { on: 7 }), 'c');
+    expect(share.material).toBe(false);
+    expect(share.why.join(' ')).toMatch(/10%/);
+    // Sign consistency: 3 of 5 positive is not enough, however big the median.
+    const noisy = v(five('d', [2, 2, 2, -1, -1]), 'd');
+    expect(noisy.material).toBe(false);
+    expect(noisy.why.join(' ')).toMatch(/positive/);
+    // An admitted instrument that says the pass SAVES time contradicts it; a near-zero one does not.
+    const against = v(five('e', [2, 2, 2, 2, 2], { dw: [-1, -1, -1, -1, -1] }), 'e');
+    expect(against).toMatchObject({ material: false, contradicted: ['w'] });
+    expect(v(five('f', [2, 2, 2, 2, 2], { dw: [-0.2, -0.2, -0.2, -0.2, -0.2] }), 'f').material).toBe(true);
+    // ...but only an ADMITTED one: an instrument the control could not move says nothing either way.
+    expect(v(five('e', [2, 2, 2, 2, 2], { dw: [-1, -1, -1, -1, -1] }), 'e', { u: true, w: false, q: true }).material).toBe(true);
+    // No decision at all without U admitted.
+    const blind = v(five('a', [1, 1.1, 0.9, 1.2, 1]), 'a', { u: false, w: true, q: true });
+    expect(blind.material).toBe(false);
+    expect(blind.why.join(' ')).toMatch(/not admitted/);
+    // Fewer than 5 complete repetitions is no verdict at all.
+    const short = v(five('g', [1, 1, 1, 1]), 'g');
+    expect(short.material).toBe(false);
+    expect(short.why.join(' ')).toMatch(/repetitions/);
+  });
+
+  it('the control admits an instrument it moves materially, and refuses Q once Q outlasts the wall clock', () => {
+    const stats = (median, positive = 5, n = 5) => ({ median, positive, n });
+    const control = { u: stats(3), w: stats(0.1, 3), q: stats(4) };
+    expect(admittedInstruments(control)).toEqual({ u: true, w: false, q: true });
+    expect(admittedInstruments(control, { qOverW: 1 })).toEqual({ u: true, w: false, q: false });
+    expect(admittedInstruments({ u: stats(3, 3), w: stats(1), q: stats(0.4) })).toEqual({ u: false, w: true, q: false });
+    expect(admittedInstruments({ u: stats(3, 4, 4), w: stats(1), q: stats(1) }).u, 'four repetitions admitted').toBe(false);
+  });
+});
+
+describe('the GPU\'s own utilization: an instrument with no timer query in it', () => {
+  it('reads the driver\'s device, renderer and tiler percents out of ioreg\'s text, and nothing out of other text', () => {
+    const text = '"PerformanceStatistics" = {"Tiler Utilization %"=12,"recoveryCount"=0,"Renderer Utilization %"=37,"Device Utilization %"=41,"SplitSceneCount"=0}';
+    expect(parseGpuUtil(text)).toEqual({ device: 41, renderer: 37, tiler: 12 });
+    expect(parseGpuUtil('"Device Utilization %"=0')).toEqual({ device: 0, renderer: null, tiler: null });
+    expect(parseGpuUtil('no accelerator here')).toBeNull();
+    expect(parseGpuUtil(undefined)).toBeNull();
+  });
+
+  it('GPU ms per frame is the median busy percent after the lag, times the window\'s mean frame interval', () => {
+    const at = (t, device) => ({ t, util: { device } });
+    // 60 frames in 1000 ms is 16.67 ms a frame; the median of 30, 40, 90 is 40%; the reading at 100 ms is lag, skipped.
+    const g = gpuMsPerFrame([at(100, 100), at(600, 30), at(800, 90), at(900, 40), { t: 950, util: null }], { frames: 60, windowMs: 1000 });
+    expect(g.pct).toBe(40);
+    expect(g.n).toBe(3);
+    expect(g.ms).toBeCloseTo(0.4 * (1000 / 60), 9);
+    // At 30 fps the same busy percent is twice the GPU time per frame: the interval, not a 60 Hz constant.
+    expect(gpuMsPerFrame([at(600, 40)], { frames: 30, windowMs: 1000 }).ms).toBeCloseTo(0.4 * (1000 / 30), 9);
+    expect(gpuMsPerFrame([at(600, 40)], { frames: 0, windowMs: 1000 })).toBeNull();
+    expect(gpuMsPerFrame([at(100, 40)], { frames: 60, windowMs: 1000 }), 'only lagging readings').toBeNull();
+  });
+
+  it('the positive control switches every pass the arms do, and is never a decision arm', () => {
+    const named = new Set(PASS_ARMS.flatMap((a) => a.off));
+    expect(new Set(PASS_CONTROL.off)).toEqual(named);
+    expect(PASS_CONTROL.control).toBe(true);
+    expect(PASS_ARMS.some((a) => a.id === PASS_CONTROL.id)).toBe(false);
+  });
+});
+
+describe('the fast alternation: one differential per adjacent on/off pair of halves, within one power state', () => {
+  const half = (state, pcts) => ({ state, samples: pcts.map((p, i) => ({ t: i * 200, util: { device: p } })) });
+  it('takes each half after the driver lag, pairs neighbours whatever their order, and reads ms at the frame interval', () => {
+    // Halves at 600 ms and after: 88 / 80 / 88 / 80 % at 16 ms a frame. The first two readings of each are lag.
+    const halves = [half('on', [10, 10, 10, 88, 88, 88]), half('off', [99, 99, 99, 80, 80, 80]), half('on', [0, 0, 0, 88, 88, 88]), half('off', [0, 0, 0, 80, 80, 80])];
+    const d = altDifferential(halves, 16);
+    expect(d.u.n, 'three adjacent pairs from four halves').toBe(3);
+    expect(d.u.values.map((x) => Math.round(x * 100) / 100)).toEqual([1.28, 1.28, 1.28]);
+    expect(d.onU).toBeCloseTo(0.88 * 16, 9);
+  });
+  it('a step in the GPU\'s power state between pairs leaves each pair\'s differential alone', () => {
+    // The state jumps from about 47% to 87% busy between the second and third halves: the one pair across the jump
+    // reads it (4.2 ms), and the median of the four pairs holds at the in-state 0.2 ms.
+    const halves = [half('on', [0, 0, 0, 48, 48]), half('off', [0, 0, 0, 46, 46]), half('on', [0, 0, 0, 88, 88]), half('off', [0, 0, 0, 86, 86]), half('on', [0, 0, 0, 88, 88])];
+    const d = altDifferential(halves, 10);
+    expect(d.u.values.map((x) => Math.round(x * 100) / 100)).toEqual([0.2, 4.2, 0.2, 0.2]);
+    expect(d.u.median).toBeCloseTo(0.2, 9);
+    expect(altDifferential([half('on', [0, 0, 0, 50]), half('on', [0, 0, 0, 40])], 10).u.n, 'two halves in the same state are no pair').toBe(0);
+    expect(altDifferential(halves, null).u.n, 'no frame interval, no ms').toBe(0);
   });
 });

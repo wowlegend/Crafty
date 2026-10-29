@@ -5,15 +5,15 @@
 // those cost seconds (setTier 2.9-3.5 s mean, the 700 ms wait 3.1-3.5 s, readPostFx 7.5-8.8 s mean and up to 14.0 s), so
 // a measured step took ~14 s, the warm-up ended at 132-146 s, and the 300 s timeout fired with 11 or 12 of the 20 steps
 // read, three attempts of three, naming nothing. Every read those attempts did get (37, the three warm reads among them) showed the
-// constructions flat and the GPU textures at 50, with N8AO off at `low` and on at `med`/`high`: the game did nothing
-// wrong that the run could see. The SPEC ran out of time.
+// constructions flat and the GPU textures at 50, with the chain following the tier: the game did nothing wrong that
+// the run could see. The SPEC ran out of time.
 //
 // What this drives: walkPostFx — the function the spec hands to page.evaluate — with a fake `io`, on a page whose R3F
 // frames take a given time, the REAL tier table (src/render/quality.js) deciding what the driver applies. Two pages:
-// the built-once wiring (nothing constructed), and E1 (`withAO={q.ao}` in GameScene: N8AO built again at every rise of
-// `ao`). In the fake, React commits the R3F root `commitFrames` frames after a tier change, rendering the store as it
+// the built-once wiring (nothing constructed), and E2 (`withGodRays={q.godRays}` in GameScene: GodRays built again at
+// every rise of `godRays`). In the fake, React commits the R3F root `commitFrames` frames after a tier change, rendering the store as it
 // is THEN (steps applied faster than that coalesce, as React's would), the construction is visible from that commit, and
-// its render targets are allocated by the frame after it. The walk covers a commit up to STEP_FRAMES frames late. The walk must let E1 show on a CI-slow page AND a fast one,
+// its render targets are allocated by the frame after it. The walk covers a commit up to STEP_FRAMES frames late. The walk must let E2 show on a CI-slow page AND a fast one,
 // or the spec's assertions could pass on a walk that never let a step be drawn.
 //
 // WHAT THIS DOES NOT CHECK: that the spec hands walkPostFx to page.evaluate whole and reads `warm`, `toggles` and `after`
@@ -21,15 +21,15 @@
 // one per R3F frame (FrameCap.jsx says so; tier-governor's phase A reads the same count); how many frames React really
 // takes to commit after a tier step (the model's 1-2 is an assumption, read from how R3F schedules its root — a task
 // after the store change — not measured); how long CI's frames are during THIS walk (the CI-shaped page is a stand-in from tier-governor's phase A in
-// run 40652010997, 68 frames in 122.9 s at med, and the 3 s added to a tier step's first frame is unmeasured); E1 in a
+// run 40652010997, 68 frames in 122.9 s at med, and the 3 s added to a tier step's first frame is unmeasured); E2 in a
 // browser (the spec's own header lists it as not yet run).
 //
 // Mutation-Proof: (2026-10-28) through scripts/dev/mutate.sh against tests/e2e/_postFxWalk.js, 8 tests collected each
 //   run, every RED confirmed against a green baseline, the subject byte-identical afterwards. Identity (a comment edit)
 //   SURVIVED four times: first and last in the batch, and either side of W18's re-run. All 20 of these went RED:
-//   THE OLD DEFECT — W1 the wait wall-clock only, the old waitForTimeout's shape -> RED (CI-slow page, E1 on it, the
+//   THE OLD DEFECT — W1 the wait wall-clock only, the old waitForTimeout's shape -> RED (CI-slow page, E2 on it, the
 //   frame-less page); W13 TEST_TIMEOUT_MS 300000, the old value -> RED ("the walk cap overruns").
-//   THE FRAMES — W2 counted from the page's epoch; W3 STEP_FRAMES 1; W4 one frame short in the loop -> RED (E1 on the
+//   THE FRAMES — W2 counted from the page's epoch; W3 STEP_FRAMES 1; W4 one frame short in the loop -> RED (E2 on the
 //   CI-slow page: its rise coalesces away or its targets are read before they are drawn).
 //   THE FLOORS AND THE CAP — W5 the time floor dropped; W6 the wait loop's cap removed; W7 a capped step counted done;
 //   W8 the SETUP refusal removed; W9 the cap measured per step -> RED; W10 WALK_CAP_MS 600000, W11 300000, W12
@@ -60,34 +60,33 @@ const sunUp = (time) => time > 0.25 && time < 0.75;
 /**
  * A fake page. R3F frames are drawn back to back, `frameMs` each, plus `stepCostMs` on the first frame after a tier
  * change. Each frame draws the store's tier (PostTierDriver) and the horizon as published by the frame before
- * (Atmosphere publishes it from its own frame). With `e1`, React commits `commitFrames` frames after a tier change,
- * rendering the store's tier at that moment, and builds N8AO again whenever that rendering turns `ao` on. wake(ms) returns
+ * (Atmosphere publishes it from its own frame). With `e2`, React commits `commitFrames` frames after a tier change,
+ * rendering the store's tier at that moment, and builds GodRays again whenever that rendering turns `godRays` on. wake(ms) returns
  * at the next frame's end or after `ms`, whichever is first — the page's wake races a requestAnimationFrame with a timeout.
  */
-function fakePage({ frameMs = 16, stepCostMs = 0, e1 = false, commitFrames = 1, noFrames = false, onApply } = {}) {
+function fakePage({ frameMs = 16, stepCostMs = 0, e2 = false, commitFrames = 1, noFrames = false, onApply } = {}) {
   let clock = PAGE_T;
   let frames = 0;
   let nextFrameAt = clock + frameMs;
   const store = { tier: 'low', time: NOON };
   let horizonUp = sunUp(store.time);
   let horizonDue = null;
-  const drawn = { ao: TIERS.low.ao, rays: false, mip: TIERS.low.bloomMipmap };
+  const drawn = { rays: false, mip: TIERS.low.bloomMipmap };
   let commitsDue = [];
-  let committedAo = TIERS.low.ao;
-  const rebuilds = []; // the frame count at each E1 construction
+  let committedRays = TIERS.low.godRays;
+  const rebuilds = []; // the frame count at each E2 construction
   let wakes = 0; // a walk that never ends must fail here, not spin the microtask queue forever
   const drawFrame = () => {
     frames += 1;
     const q = TIERS[store.tier];
-    drawn.ao = q.ao;
     drawn.rays = q.godRays && horizonUp;
     drawn.mip = q.bloomMipmap;
     if (horizonDue !== null) { horizonUp = horizonDue; horizonDue = null; }
     if (commitsDue.some((d) => d <= frames)) {
       commitsDue = commitsDue.filter((d) => d > frames);
-      const ao = TIERS[store.tier].ao;
-      if (ao && !committedAo) rebuilds.push(frames);
-      committedAo = ao;
+      const rays = TIERS[store.tier].godRays;
+      if (rays && !committedRays) rebuilds.push(frames);
+      committedRays = rays;
     }
   };
   return {
@@ -105,14 +104,14 @@ function fakePage({ frameMs = 16, stepCostMs = 0, e1 = false, commitFrames = 1, 
       if (step.time !== undefined && sunUp(step.time) !== sunUp(store.time)) horizonDue = sunUp(step.time);
       if (step.time !== undefined) store.time = step.time;
       if (step.tier !== undefined) {
-        if (e1) commitsDue.push(frames + commitFrames);
+        if (e2) commitsDue.push(frames + commitFrames);
         if (step.tier !== store.tier) nextFrameAt += stepCostMs; // the frame after the step pays for it
         store.tier = step.tier;
       }
     },
     read: () => ({
-      builds: { bloom: 2, godRays: 1, n8ao: 2 + rebuilds.length },
-      n8ao: drawn.ao, godRays: drawn.rays, bloomMipmap: drawn.mip,
+      builds: { bloom: 2, godRays: 1 + rebuilds.length },
+      godRays: drawn.rays, bloomMipmap: drawn.mip,
       textures: 50 + 3 * rebuilds.filter((f) => frames >= f + 1).length,
       programs: 117,
     }),
@@ -126,13 +125,13 @@ function specView(w) {
   const warm = w.reads.find((x) => x.kind === 'warm').r;
   const after = w.reads.find((x) => x.kind === 'after').r;
   const toggles = w.reads.filter((x) => x.kind === 'step')
-    .map(({ i, r }) => `${TIER_CYCLE[i % 3]}:ao=${r.n8ao},rays=${r.godRays},mip=${r.bloomMipmap}`);
+    .map(({ i, r }) => `${TIER_CYCLE[i % 3]}:mip=${r.bloomMipmap},rays=${r.godRays}`);
   return { warm, after, toggles };
 }
 /** The spec's own assertions, as a verdict: true when every one of them would pass. */
 function specPasses({ warm, after, toggles }) {
-  return toggles.some((t) => t.startsWith('low:ao=false')) && toggles.some((t) => t.startsWith('med:ao=true'))
-    && after.builds.bloom === warm.builds.bloom && after.builds.n8ao === warm.builds.n8ao
+  return toggles.some((t) => t.startsWith('low:mip=false')) && toggles.some((t) => t.startsWith('med:mip=true'))
+    && after.builds.bloom === warm.builds.bloom
     && after.builds.godRays === warm.builds.godRays && after.textures - warm.textures <= 6;
 }
 
@@ -180,32 +179,32 @@ describe('post-fx-once: the step walk, what it lets the page draw, and the spec 
     expect(w.ms, 'the CI-slow walk ran past its cap').toBeLessThanOrEqual(WALK_CAP_MS);
     const v = specView(w);
     expect(specPasses(v), `the built-once page failed the spec's assertions: ${JSON.stringify(v)}`).toBe(true);
-    expect(v.toggles.filter((t) => t.startsWith('low:ao=false')).length, 'a low step was read before it was drawn').toBe(7);
-    expect(v.toggles.filter((t) => t.startsWith('med:ao=true')).length, 'a med step was read before it was drawn').toBe(7);
+    expect(v.toggles.filter((t) => t.startsWith('low:mip=false')).length, 'a low step was read before it was drawn').toBe(7);
+    expect(v.toggles.filter((t) => t.startsWith('med:mip=true')).length, 'a med step was read before it was drawn').toBe(7);
     expect(w.reads.map((x) => x.kind).join(','), 'the reads').toBe(['warm', ...Array(20).fill('step'), 'after'].join(','));
   });
 
   // THE LIMIT: a commit later than STEP_FRAMES frames renders the NEXT step's tier, so a step lasting STEP_FRAMES
   // frames can coalesce away (the `low` before a `med`, and with it the rise). That is the bound STEP_FRAMES sets; it is
   // stated here, not gated, since a larger STEP_FRAMES is slower and not wrong.
-  it('E1 (N8AO rebuilt at every rise of ao) FAILS the spec on a CI-slow page, its commit 1 or 2 frames after the step', async () => {
+  it('E2 (GodRays rebuilt at every rise of godRays) FAILS the spec on a CI-slow page, its commit 1 or 2 frames after the step', async () => {
     scenarios++;
     for (const commitFrames of [1, COMMIT_WITHIN]) {
-      const w = await walk(fakePage({ frameMs: CI_FRAME_MS, stepCostMs: CI_STEP_COST_MS, e1: true, commitFrames }));
+      const w = await walk(fakePage({ frameMs: CI_FRAME_MS, stepCostMs: CI_STEP_COST_MS, e2: true, commitFrames }));
       const v = specView(w);
       // 7 rises in the measured steps (low -> med at i = 1, 4, ..., 19), none in the final step (med -> high).
-      expect(v.after.builds.n8ao - v.warm.builds.n8ao, `commit ${commitFrames} frames late: E1's rebuilds were not read`).toBe(7);
-      expect(v.after.textures - v.warm.textures, `commit ${commitFrames} frames late: E1's render targets were not read`).toBe(21);
-      expect(specPasses(v), `E1 passed: ${JSON.stringify(v)}`).toBe(false);
+      expect(v.after.builds.godRays - v.warm.builds.godRays, `commit ${commitFrames} frames late: E2's rebuilds were not read`).toBe(7);
+      expect(v.after.textures - v.warm.textures, `commit ${commitFrames} frames late: E2's render targets were not read`).toBe(21);
+      expect(specPasses(v), `E2 passed: ${JSON.stringify(v)}`).toBe(false);
     }
   });
 
-  it('E1 FAILS the spec on a fast page too, and the built-once page passes there with every old floor kept', async () => {
+  it('E2 FAILS the spec on a fast page too, and the built-once page passes there with every old floor kept', async () => {
     scenarios++;
-    const w = await walk(fakePage({ frameMs: 16, e1: true, commitFrames: 3 }));
+    const w = await walk(fakePage({ frameMs: 16, e2: true, commitFrames: 3 }));
     const v = specView(w);
     expect(w.done).toBe(postFxPlan().length);
-    expect(v.after.builds.n8ao - v.warm.builds.n8ao).toBe(7);
+    expect(v.after.builds.godRays - v.warm.builds.godRays).toBe(7);
     expect(specPasses(v)).toBe(false);
     const ok = await walk(fakePage({ frameMs: 16 }));
     expect(specPasses(specView(ok))).toBe(true);

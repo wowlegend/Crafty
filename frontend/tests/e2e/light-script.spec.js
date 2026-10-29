@@ -37,8 +37,8 @@ import { KEY_S } from '../../src/render/colourScript.js';
 //             the model and the screen together still fails. The camera is turned to face the key first (a declared
 //             view, not the spawn yaw), and the model includes three's direct specular for that view: seen at a
 //             grazing 15 deg toward the key, GGX adds about displayed L 0.1, which a diffuse-only model would miss.
-//             Read on the LOW tier (pinned for the read, then restored): N8AO and GodRays (med/high) are passes the
-//             model does not hold, and moved this card up to L 0.10 either way when measured.
+//             Read on the LOW tier (pinned for the read, then restored): med and high add GodRays, a pass the model
+//             does not hold; with N8AO, then also on at med and high, the two moved this card up to L 0.10 either way.
 //
 // THE WEATHER IS PINNED before every read: the live weather flips clear and storm every 90 s
 // (render/WeatherSystem.jsx) and a storm's boost (about 0.85) scales the stars by (1 - t1). Each read sets the boost to
@@ -116,8 +116,8 @@ async function faceTheKey(page, label, away = false) {
 }
 
 /** The grey card: the model's displayed colour against the median pixel of the card on screen, read on the LOW tier.
- *  The model is the whole chain there (rig, grade, NEUTRAL). Med and high add N8AO and GodRays, screen-space passes the
- *  model does not hold: measured 2026-10-27 on this card, high read up to L 0.10 off the model in both directions while
+ *  The model is the whole chain there (rig, grade, NEUTRAL). Med and high add GodRays, a screen-space pass the model
+ *  does not hold (and then N8AO): measured 2026-10-27 on this card, high read up to L 0.10 off the model in both directions while
  *  low agreed within 0.006 at three facings, noon and midnight. The tier the game had is restored after. */
 async function greyCard(page, label, { away = false, timeOfDay, key } = {}) {
   const priorTier = await page.evaluate(() => window.useGameStore.getState().qualityTier);

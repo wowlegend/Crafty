@@ -123,7 +123,7 @@ describe('the script: six keys, continuous, keyed on the sun', () => {
 // L 0.30 is about 46/255.
 describe('the look, as DISPLAYED', () => {
   it('B1 flat ambient: a shadowed and a fully occluded stone up face are near-neutral at every hour', () => {
-    // On the low tier (no N8AO, no god rays) these two terms are the whole shade of every face the key does not reach.
+    // On the low tier (no god rays) these two terms are the whole shade of every face the key does not reach.
     let n = 0;
     for (let i = 0; i < 360; i++) {
       const fr = sampleScript(i / 360), cap = fr.s >= KEY_S.day ? 0.05 : 0.07;
@@ -214,8 +214,8 @@ const groundAt = (f, extra = null, albedo = null) => {
   const fr = sampleMood(0, f);
   return { fr, c: stoneFaceUnder(fr, { normal: UP, keyDir: fr.keyDir, extra, albedo }) };
 };
-// The terrain's stone as it renders: world/proceduralTextures.js layer 3 (base 104, veins 132, strata +6, noise
-// x0.9-1.08), and the grey a fit of the lookbook's pad patch lands on. NEUTRAL's toe pulls a darker albedo down faster,
+// The terrain's stone as it renders: world/proceduralTextures.js layer 3 (MATERIAL_TONES.stone, clusters of a 104 base,
+// a 132 light and a 78 crack), and the grey a fit of the lookbook's pad patch lands on. NEUTRAL's toe pulls a darker albedo down faster,
 // so a floor the grey card clears by a hair this stone can miss.
 const TERRAIN_STONE = '#707070';
 // The up face at the lookbook's golden frames under the flat-day rig this script replaced (main 030ada1f's mood 0, read

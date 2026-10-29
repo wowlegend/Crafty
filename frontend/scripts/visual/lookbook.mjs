@@ -26,7 +26,9 @@
  *          `cleared`): left alone, they hold melee range at the Hearth and the frame is a mob at arm's length;
  *   clips  Chromium only: holds W for 4 s from the Hearth at each time, a real key through the browser's input
  *          pipeline, recorded with Playwright's screencast and encoded to mp4 with ffmpeg;
- *   hero   for each of four places, pins the camera above it and shoots the programme's four times of day.
+ *   hero   for each of four places, pins the camera above it and shoots the programme's four times of day;
+ *   material  (opt-in, not in the default) stands the player in front of a grass hill's side and a tree trunk found
+ *          in the live mesh near the Hearth (_lookbook.mjs findMaterialSights) and looks at each, at each time.
  * The clock keeps running, so before each shot it sets the time, lets the sky settle, sets it again and shoots, and
  * records where the clock actually was. Every shot and clip also records timer-query ms per pass over its window
  * (src/render/passTimer.js, EXT_disjoint_timer_query_webgl2: Chromium only; WebKit says it cannot time). Those are not
@@ -60,22 +62,35 @@
  * seconds held). A hold stopped by a signal or an error writes what it had, marked `partial: true` with `stoppedBy`.
  * --headed shows the window.
  *
+ * --passes is the whole-frame differential (plan docs/superpowers/plans/2026-10-28-crafty-w2i-passes.md): one Chromium
+ * page at Kevin's window (_lookbook.mjs PASS_TARGET), the player stood at the Hearth, and at each of PASS_TIMES every
+ * arm of PASS_ARMS switched off and on through the seam (passesOff) in interleaved repetitions (passWindowPlan), each
+ * window timed in the timer's whole-frame mode: `q`, one query per composer.render, and `w`, the synced wall clock. A
+ * window is valid only at tier high, alive, input live, with the clock where it was set and the chain showing the arm
+ * off. Then before/after frames (PASS_LOOK_PAIRS). No block starts while the 1-minute load is over PASS_MAX_LOAD. It
+ * writes passes.json (every window, raw) and the frames, and prints each arm's differential and verdict (passVerdict).
+ *
  * Needs a production build: `npm run build` first.
  * Usage:  node scripts/visual/lookbook.mjs [--out <dir>] [--targets chromium-1280x800,webkit-1180x820,webkit-820x1180]
  *                                          [--sets hero,eye,clips] [--cycles 0.02,0.25,0.5,0.75] [--allow-software]
  *         node scripts/visual/lookbook.mjs --hold <seconds> [--headed] [--out <dir>]
+ *         node scripts/visual/lookbook.mjs --passes [--reps N] [--arms godrays+sun,bloom] [--times noon,golden] [--out <dir>]
  *         either form takes [--build-dir <dir>] to serve a production build kept outside build/.
  */
 import { chromium, webkit, devices } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import os from 'node:os';
 import { serveVite, probePort } from './_serve.mjs';
 import { standInPointerLock, playLiveReading } from './_probe.mjs';
 import {
   TARGETS, CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, EYE_HEADINGS, EYE_PITCH, shotPlan, eyeShotPlan, clipPlan, classifyRenderer,
   pickCandidate, shotVerdict, eyeShotVerdict, clipVerdict, passSummary, contactSheetHtml, parseCycles, indexChunkOf,
-  servedBuildProblem,
+  servedBuildProblem, CYCLE_TOLERANCE, PASS_ARMS, PASS_TIMES, PASS_REPS, PASS_TARGET, PASS_LOOK_PAIRS, PASS_MAX_LOAD,
+  passWindowPlan, windowMedian, passDifferential, passVerdict, admittedInstruments, PASS_CONTROL, parseGpuUtil, gpuMsPerFrame,
+  altDifferential,
+  MATERIAL_SIGHT_KINDS, MATERIAL_STAND_M, MATERIAL_MIN_M, materialShotPlan, findMaterialSights, aimAt,
 } from './_lookbook.mjs';
 
 const PORT = probePort(import.meta.url);
@@ -87,11 +102,24 @@ const flag = (k) => process.argv.includes(k);
 const STAMP = new Date().toISOString().replace(/[:.]/g, '-');
 const OUT = resolve(arg('--out', `/tmp/crafty-lookbook-${STAMP}`));
 const HOLD_S = Number(arg('--hold', 0));
+const PASSES = flag('--passes');
+const PASS_REPS_RUN = Number(arg('--reps', PASS_REPS));
+// --alt: the fast alternation instead of the windowed differential (altWindow), in --alt-reps windows per arm.
+const PASS_ALT = flag('--alt');
+const PASS_ALT_REPS = Number(arg('--alt-reps', 2));
+const PASS_ARMS_RUN = (() => {
+  const want = arg('--arms', null);
+  return want ? PASS_ARMS.filter((a) => want.split(',').includes(a.id)) : PASS_ARMS;
+})();
+const PASS_TIMES_RUN = (() => {
+  const want = arg('--times', null);
+  return want ? PASS_TIMES.filter((t) => want.split(',').includes(t.id)) : PASS_TIMES;
+})();
 const HEADED = flag('--headed');
 const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
-const SETS_KNOWN = ['hero', 'eye', 'clips'];
-const SETS = arg('--sets', SETS_KNOWN.join(',')).split(',');
+const SETS_KNOWN = ['hero', 'eye', 'clips', 'material'];
+const SETS = arg('--sets', 'hero,eye,clips').split(',');
 // --cycles: the times to shoot (dawn-origin fractions), for a before/after at hours the programme's four do not cover.
 let CYCLES;
 try {
@@ -320,7 +348,8 @@ async function holdActive(page) {
 
 async function shootTarget(target, launchOpts, launchId) {
   const report = { id: target.id, engine: target.engine, launch: launchId, renderer: null, gpu: 'unknown', entry: null,
-    shots: [], eye: [], clips: [], stand: null, hands: null, notes: [], respawns: 0, console: {}, pageErrors: [] };
+    shots: [], eye: [], clips: [], material: [], sights: null, stand: null, hands: null, notes: [], respawns: 0, console: {},
+    pageErrors: [] };
   const dir = join(OUT, target.id);
   mkdirSync(dir, { recursive: true });
   const b = await launch(target.engine, launchOpts);
@@ -388,7 +417,7 @@ async function shootTarget(target, launchOpts, launchId) {
 
     // The eye set and the clips go first: after the hero set's night shots, the night's mobs crowd the player at the
     // Hearth and the eye frames show a mob at arm's length instead of the world.
-    if (SETS.includes('eye') || (SETS.includes('clips') && target.engine === 'chromium')) {
+    if (SETS.includes('eye') || SETS.includes('material') || (SETS.includes('clips') && target.engine === 'chromium')) {
       report.hands = await handsBaseline(page);
       await respawnIfDead(page, report);
       report.stand = await restingBody(page);
@@ -457,6 +486,45 @@ async function shootTarget(target, launchOpts, launchId) {
         start: { body: start.body, cycle: start.cycle, heading: start.heading, hostiles: start.hostiles },
         end: { body: end.body, cycle: end.cycle, heading: end.heading, isAlive: end.isAlive, hostiles: end.hostiles },
         passMs });
+    }
+
+    if (SETS.includes('material') && report.stand) {
+      report.sights = await page.evaluate(findMaterialSights, { from: report.stand, standM: MATERIAL_STAND_M, minM: MATERIAL_MIN_M });
+      for (const kind of MATERIAL_SIGHT_KINDS) {
+        if (!report.sights[kind]) report.notes.push(`COULD NOT MEASURE the ${kind} sight: none in the loaded mesh near the Hearth`);
+      }
+    }
+    let lastMaterialCycle = null;
+    for (const shot of report.sights ? materialShotPlan(MATERIAL_SIGHT_KINDS.filter((k) => report.sights[k]), CYCLES) : []) {
+      const t0 = Date.now();
+      const sight = report.sights[shot.kind];
+      await respawnIfDead(page, report);
+      // Dropped a little above its ground, the body settles onto it; the verdict compares where it came to rest.
+      await page.evaluate((p) => window.__craftyLookbook.stand(p), { position: [sight.stand[0], sight.ground + 1.5, sight.stand[2]] });
+      const rest = await restingBody(page);
+      const aim = aimAt((await info(page)).eye, sight.target);
+      await page.evaluate((a) => window.__craftyLookbook.look(a), { heading: aim.heading, pitch: aim.pitch });
+      if (shot.cycle !== lastMaterialCycle) {
+        await setCycle(page, shot.cycle);
+        await delay(SETTLE_MS);
+        lastMaterialCycle = shot.cycle;
+      }
+      const cleared = await clearHostiles(page);
+      await play(page);
+      await setCycle(page, shot.cycle);
+      await passTimes(page, { reset: true });
+      await delay(EYE_FRAME_MS);
+      const before = await info(page);
+      const hud = await hudOn(page);
+      await page.screenshot({ path: join(dir, shot.file) });
+      const after = await info(page);
+      const pt = await passTimes(page);
+      const v = eyeShotVerdict({ cycle: shot.cycle, heading: aim.heading, stand: [sight.stand[0], sight.ground, sight.stand[2]], before, after,
+        handsBaseline: report.hands?.hidden, hud });
+      if (!rest) v.why.push('the body never came to rest at the sight');
+      report.material.push({ ...shot, valid: v.valid && !!rest, why: v.why, ...facts(after, t0, pt), hud, sight, aim, rest,
+        headingAtShot: after.heading, pitch: after.pitch, eye: after.eye, body: after.body, cameraNodes: after.cameraNodes,
+        hostiles: after.hostiles, cleared });
     }
 
     for (const place of SETS.includes('hero') ? LOOKBOOK_PLACES : []) {
@@ -582,6 +650,253 @@ async function hold(launchOpts, launchId) {
   }
 }
 
+const PASS_SWITCH_MS = 800; // a pass switched: the merged pass recompiles and a few frames run before the window opens
+const PASS_WINDOW_MS = 1500; // one window: about 90 frames at 60 fps
+const PASS_CLEAR_M = 24; // hostiles cleared this far out before each window, so no fight runs through the block
+const PASS_LOAD_WAIT_MS = 20 * 60 * 1000;
+
+/** Wait (up to 20 min) until the 1-minute load is at most PASS_MAX_LOAD; returns the load and the seconds waited. */
+async function loadBelowCap() {
+  const t0 = Date.now();
+  while (os.loadavg()[0] > PASS_MAX_LOAD && Date.now() - t0 < PASS_LOAD_WAIT_MS) await delay(15000);
+  const load = os.loadavg()[0];
+  return { load: Math.round(load * 100) / 100, waitedS: Math.round((Date.now() - t0) / 1000), ok: load <= PASS_MAX_LOAD };
+}
+
+const PASS_UTIL_MS = 2500; // the free-running window the GPU's utilization is read over
+const PASS_UTIL_EVERY_MS = 200;
+
+/** One `ioreg` read of the GPU's PerformanceStatistics (no root), or null. */
+function readGpuUtil() {
+  try {
+    return parseGpuUtil(execFileSync('ioreg', ['-r', '-d', '1', '-w', '0', '-c', 'IOAccelerator'], { encoding: 'utf8', timeout: 2000 }));
+  } catch {
+    return null;
+  }
+}
+
+/** The driver's GPU utilization sampled over PASS_UTIL_MS while the page runs free (the timer counting frames only). */
+async function utilWindow(page, canvasOf) {
+  await passTimes(page, { mode: 'count', reset: true });
+  const t0 = Date.now();
+  const samples = [];
+  while (Date.now() - t0 < PASS_UTIL_MS) {
+    samples.push({ t: Date.now() - t0, util: readGpuUtil() });
+    await delay(PASS_UTIL_EVERY_MS);
+  }
+  const r = await passTimes(page);
+  const canvas = canvasOf();
+  const ctx = (r.contexts || []).find((c) => c.canvas && canvas && c.canvas[0] === canvas[0] && c.canvas[1] === canvas[1]) || null;
+  const g = gpuMsPerFrame(samples, { frames: ctx?.frames, windowMs: ctx?.windowMs });
+  return { u: g?.ms ?? null, uPct: g?.pct ?? null, uN: g?.n ?? 0, uFrames: ctx?.frames ?? null, uWindowMs: ctx?.windowMs ?? null,
+    uSamples: samples.map((s) => [s.t, s.util?.device ?? null, s.util?.renderer ?? null, s.util?.tiler ?? null]) };
+}
+
+/** One measured window: the arm's passes off (or none), then (in frame mode) the GPU's utilization running free, then
+ *  the timer in `mode` over PASS_WINDOW_MS. */
+async function passWindow(page, report, { cycle, off, mode }) {
+  await respawnIfDead(page, report);
+  await setCycle(page, cycle);
+  await page.evaluate((radius) => window.__craftyLookbook.clearHostiles({ radius }), PASS_CLEAR_M);
+  await play(page);
+  const applied = await page.evaluate((o) => window.__craftyLookbook.passesOff(o), off);
+  await delay(PASS_SWITCH_MS);
+  let util = {};
+  if (mode === 'frame') {
+    const gl = (await info(page)).gl;
+    util = await utilWindow(page, () => gl?.canvas);
+    // The utilization window ran the clock about 3 s on; set it back so the timed window starts at the asked time and
+    // the whole window stays within CYCLE_TOLERANCE of it (4.8 s of the 480 s day).
+    await setCycle(page, cycle);
+  }
+  await passTimes(page, { mode, reset: true });
+  await delay(PASS_WINDOW_MS);
+  const r = await passTimes(page);
+  const i = await info(page);
+  const canvas = i.gl?.canvas;
+  const ctx = (r.contexts || []).find((c) => c.canvas && canvas && c.canvas[0] === canvas[0] && c.canvas[1] === canvas[1]) || null;
+  const q = windowMedian(r, 'frame', canvas), w = windowMedian(r, 'frame:wall', canvas);
+  const why = [];
+  if (!i.active) why.push('input not live');
+  if (!i.isAlive) why.push('player dead');
+  if (i.tier !== 'high') why.push(`tier ${i.tier}`);
+  const drift = Math.abs(i.cycle - cycle);
+  if (!(Math.min(drift, 1 - drift) <= CYCLE_TOLERANCE)) why.push(`clock at ${i.cycle}`);
+  if (!ctx) why.push('no composer on the game canvas');
+  if (mode === 'frame' && (!q || !w || q.n < 30 || w.n < 30)) why.push(`too few timed frames (query ${q?.n ?? 0}, wall ${w?.n ?? 0})`);
+  if (mode === 'frame' && !(util.uN >= 5)) why.push(`too few GPU utilization readings (${util.uN ?? 0})`);
+  return {
+    applied, ...util, q: q?.ms ?? null, w: w?.ms ?? null, nQ: q?.n ?? 0, nW: w?.n ?? 0, frames: ctx?.frames ?? null,
+    windowMs: ctx?.windowMs ?? null, disjoint: ctx?.disjoint ?? null, chain: ctx?.chain ?? null,
+    segments: mode === 'segments' ? passSummary(r, canvas) : undefined,
+    tier: i.tier, dpr: i.gl?.dpr ?? null, canvas, cycleAt: i.cycle, frameCap: i.frameCap,
+    load: Math.round(os.loadavg()[0] * 100) / 100, valid: why.length === 0, why,
+  };
+}
+
+const PASS_ALT_HALVES = 10;
+const PASS_ALT_HALF_MS = 1500;
+const PASS_ALT_EVERY_MS = 150;
+
+/** The fast alternation (--alt): the arm off and on every PASS_ALT_HALF_MS through one window, the GPU's utilization
+ *  read through each half (_lookbook.mjs altDifferential). */
+async function altWindow(page, report, { cycle, off }) {
+  await respawnIfDead(page, report);
+  await page.evaluate((radius) => window.__craftyLookbook.clearHostiles({ radius }), PASS_CLEAR_M);
+  await play(page);
+  await passTimes(page, { mode: 'count', reset: true });
+  const halves = [];
+  for (let i = 0; i < PASS_ALT_HALVES; i++) {
+    const state = i % 2 === 0 ? 'on' : 'off';
+    await setCycle(page, cycle);
+    await page.evaluate((o) => window.__craftyLookbook.passesOff(o), state === 'off' ? off : []);
+    const t0 = Date.now();
+    const samples = [];
+    while (Date.now() - t0 < PASS_ALT_HALF_MS) {
+      samples.push({ t: Date.now() - t0, util: readGpuUtil() });
+      await delay(PASS_ALT_EVERY_MS);
+    }
+    halves.push({ state, samples });
+  }
+  const r = await passTimes(page);
+  const i = await info(page);
+  const canvas = i.gl?.canvas;
+  const ctx = (r.contexts || []).find((c) => c.canvas && canvas && c.canvas[0] === canvas[0] && c.canvas[1] === canvas[1]) || null;
+  const intervalMs = ctx?.frames > 0 ? ctx.windowMs / ctx.frames : null;
+  return {
+    d: altDifferential(halves, intervalMs), intervalMs, frames: ctx?.frames ?? null, tier: i.tier, isAlive: i.isAlive,
+    active: i.active, cycleAt: i.cycle, load: Math.round(os.loadavg()[0] * 100) / 100,
+    halves: halves.map((h) => ({ state: h.state, device: h.samples.map((s) => [s.t, s.util?.device ?? null]) })),
+  };
+}
+
+/** The whole-frame differential (--passes): see the header. */
+async function measurePasses(launchOpts, launchId) {
+  const out = { target: PASS_TARGET, launch: launchId, renderer: null, stand: null, tierAtWarmup: null, respawns: 0,
+    reps: PASS_REPS_RUN, arms: PASS_ARMS_RUN, blocks: [], looks: [], notes: [], pageErrors: [] };
+  const report = out; // respawnIfDead counts on `.respawns`
+  const dir = join(OUT, 'frames');
+  mkdirSync(dir, { recursive: true });
+  const b = await launch('chromium', launchOpts);
+  try {
+    const page = await (await b.newContext(contextOptions(PASS_TARGET))).newPage();
+    page.on('pageerror', (e) => out.pageErrors.push(String(e.message).slice(0, 200)));
+    await page.addInitScript(initScript, false);
+    await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    if (!(await page.waitForFunction(() => !!window.__craftyLookbook?.passesOff, null, { timeout: 30000 }).then(() => true, () => false))) {
+      out.notes.push('COULD NOT MEASURE: this build has no passesOff on its lookbook seam');
+      return out;
+    }
+    await delay(TITLE_WAIT_MS);
+    const built = await page.waitForFunction(() => window.__craftyLookbook.info().worldBuilt, null, { timeout: WORLD_TIMEOUT_MS, polling: 1000 })
+      .then(() => true, () => false);
+    if (!built) { out.notes.push('COULD NOT MEASURE: the world never built'); return out; }
+    if (!(await holdActive(page)).held) { out.notes.push('COULD NOT MEASURE: the input gate never held live'); return out; }
+    await delay(WARMUP_MS);
+    const warm = await info(page);
+    out.renderer = warm.gl?.renderer ?? null;
+    out.tierAtWarmup = warm.tier;
+    if (warm.tier !== 'high') {
+      // The tier this machine selects (render/quality.js selectTier) and holds while the frame rate does.
+      await page.evaluate(() => window.useGameStore.getState().setQualityTier('high'));
+      out.notes.push(`the governor had the tier at ${warm.tier} after warm-up; set to high`);
+      await delay(SETTLE_MS);
+    }
+    await passTimes(page);
+    await respawnIfDead(page, report);
+    out.stand = await restingBody(page);
+    if (!out.stand) { out.notes.push('COULD NOT MEASURE: the player never came to rest'); return out; }
+    const face = async (time) => {
+      await setCycle(page, time.cycle);
+      await delay(SETTLE_MS);
+      const sun = (await info(page)).sun;
+      const heading = time.face === 'sun' && sun ? Math.round(sun.heading) : 0;
+      await page.evaluate((p) => window.__craftyLookbook.stand(p), { position: out.stand });
+      await page.evaluate((h) => window.__craftyLookbook.look(h), { heading, pitch: 0 });
+      await setCycle(page, time.cycle);
+      await delay(SETTLE_MS);
+      return { heading, sun };
+    };
+    for (const time of PASS_TIMES_RUN) {
+      const gate = await loadBelowCap();
+      if (!gate.ok) { out.notes.push(`COULD NOT MEASURE ${time.id}: the load stayed at ${gate.load} for ${gate.waitedS} s`); continue; }
+      const { heading, sun } = await face(time);
+      const block = { time: time.id, cycle: time.cycle, heading, sun, loadAtStart: gate.load, waitedS: gate.waitedS,
+        startedAt: new Date().toISOString(), segments: [], windows: [] };
+      console.log(`  ${time.id} (cycle ${time.cycle}, facing ${heading}, sun ${sun ? `${Math.round(sun.heading)} at ${sun.elevationDeg.toFixed(1)} deg` : '?'}), load ${gate.load}`);
+      if (PASS_ALT) {
+        block.alt = [];
+        for (let rep = 0; rep < PASS_ALT_REPS; rep++) {
+          for (const arm of [...PASS_ARMS_RUN, PASS_CONTROL]) block.alt.push({ arm: arm.id, rep, ...(await altWindow(page, report, { cycle: time.cycle, off: arm.off })) });
+        }
+        await page.evaluate(() => window.__craftyLookbook.passesOff([]));
+        block.endedAt = new Date().toISOString();
+        block.loadAtEnd = Math.round(os.loadavg()[0] * 100) / 100;
+        for (const arm of [...PASS_ARMS_RUN, PASS_CONTROL]) {
+          const runs = block.alt.filter((x) => x.arm === arm.id);
+          const d = runs.flatMap((x) => x.d.u.values);
+          const f = (x) => (x == null ? '-' : x.toFixed(2));
+          const med = (xs) => { const t = [...xs].sort((a, b) => a - b); return t.length ? (t.length % 2 ? t[(t.length - 1) / 2] : (t[t.length / 2 - 1] + t[t.length / 2]) / 2) : null; };
+          console.log(`    alt ${arm.id.padEnd(12)} dU ${f(med(d))} [${f(Math.min(...d))}..${f(Math.max(...d))}] (${d.filter((x) => x > 0).length}/${d.length} +) of ${f(med(runs.map((x) => x.d.onU)))}`);
+        }
+        out.blocks.push(block);
+        writeFileSync(join(OUT, 'passes.json'), JSON.stringify({ ...passBase, passes: out }, null, 2));
+        continue;
+      }
+      // The segments check: segment mode, everything on, each beside a whole-frame window, three times.
+      for (let i = 0; i < 3; i++) {
+        const seg = await passWindow(page, report, { cycle: time.cycle, off: [], mode: 'segments' });
+        const whole = await passWindow(page, report, { cycle: time.cycle, off: [], mode: 'frame' });
+        block.segments.push({ segments: seg, whole });
+      }
+      for (const w of passWindowPlan([...PASS_ARMS_RUN, PASS_CONTROL], PASS_REPS_RUN)) {
+        block.windows.push({ ...w, ...(await passWindow(page, report, { cycle: time.cycle, off: w.off, mode: 'frame' })) });
+      }
+      await page.evaluate(() => window.__craftyLookbook.passesOff([]));
+      block.endedAt = new Date().toISOString();
+      block.loadAtEnd = Math.round(os.loadavg()[0] * 100) / 100;
+      // Q cannot be GPU execution time in a window where it outlasts the synced wall clock that brackets it.
+      block.qOverW = block.windows.filter((x) => Number.isFinite(x.q) && Number.isFinite(x.w) && x.q > x.w).length;
+      block.admitted = admittedInstruments(passDifferential(block.windows, PASS_CONTROL.id), { qOverW: block.qOverW });
+      console.log(`    instruments admitted by the control: ${JSON.stringify(block.admitted)}; windows with Q > W: ${block.qOverW} of ${block.windows.length}`);
+      block.verdicts = [...PASS_ARMS_RUN, PASS_CONTROL].map((a) => {
+        const d = passDifferential(block.windows, a.id);
+        return { arm: a.id, ...d, verdict: passVerdict(d, block.admitted) };
+      });
+      for (const v of block.verdicts) {
+        const f = (x) => (x == null ? '-' : x.toFixed(2));
+        console.log(`    ${v.arm.padEnd(12)} dU ${f(v.u.median)} [${f(v.u.min)}..${f(v.u.max)}] (${v.u.positive}/${v.u.n} +) of ${f(v.onU)}  dQ ${f(v.q.median)} [${f(v.q.min)}..${f(v.q.max)}] of ${f(v.onQ)}  dW ${f(v.w.median)} [${f(v.w.min)}..${f(v.w.max)}] of ${f(v.onW)}  ${v.verdict.material ? 'MATERIAL' : `not material: ${v.verdict.why.join('; ')}`}`);
+      }
+      out.blocks.push(block);
+      writeFileSync(join(OUT, 'passes.json'), JSON.stringify({ ...passBase, passes: out }, null, 2));
+    }
+    // The look pairs, after the measurement so no screenshot falls inside a window.
+    for (const pair of PASS_ALT ? [] : PASS_LOOK_PAIRS) {
+      const time = PASS_TIMES.find((t) => t.id === pair.time);
+      const arm = PASS_ARMS.find((a) => a.id === pair.arm);
+      if (!PASS_TIMES_RUN.includes(time)) continue;
+      const { heading } = await face({ ...time, face: pair.face });
+      for (const state of ['on', 'off']) {
+        await respawnIfDead(page, report);
+        await setCycle(page, time.cycle);
+        await page.evaluate((radius) => window.__craftyLookbook.clearHostiles({ radius }), PASS_CLEAR_M);
+        await play(page);
+        await page.evaluate((o) => window.__craftyLookbook.passesOff(o), state === 'off' ? arm.off : []);
+        await delay(PASS_SWITCH_MS + 700);
+        const file = `${pair.time}-${String(heading).padStart(3, '0')}-${pair.arm.replace('+', '-')}-${state}.jpg`;
+        await page.screenshot({ path: join(dir, file), type: 'jpeg', quality: 86, scale: 'css' });
+        const i = await info(page);
+        out.looks.push({ ...pair, heading, state, file: `frames/${file}`, cycleAt: i.cycle, tier: i.tier, isAlive: i.isAlive, active: i.active });
+      }
+    }
+    await page.evaluate(() => window.__craftyLookbook.passesOff([]));
+    return out;
+  } finally {
+    await close(b);
+  }
+}
+let passBase = null;
+
 /** Throws, naming the cause, unless the port serves BUILD_DIR's build (_lookbook.mjs servedBuildProblem). */
 async function assertServedBuild() {
   const expected = indexChunkOf(readFileSync(join(BUILD_DIR, 'index.html'), 'utf8'));
@@ -607,9 +922,10 @@ try {
   await assertServedBuild();
   const report = { generatedAt: new Date().toISOString(), url, build: buildIdentity(), sets: SETS, chromiumCandidates: null, targets: [] };
   holdBase = report;
+  passBase = report;
 
   let chromiumLaunch = null, chromiumLaunchId = null;
-  if (HOLD_S > 0 || WANT.some((id) => id.startsWith('chromium'))) {
+  if (PASSES || HOLD_S > 0 || WANT.some((id) => id.startsWith('chromium'))) {
     if (HEADED) {
       chromiumLaunch = { channel: 'chromium', headless: false };
       chromiumLaunchId = 'headed';
@@ -627,7 +943,17 @@ try {
     }
   }
 
-  if (HOLD_S > 0) {
+  if (PASSES) {
+    if (!chromiumLaunch) throw new Error('no Chromium launch gives a hardware renderer (pass --allow-software to measure SwiftShader)');
+    report.loadAtStart = Math.round(os.loadavg()[0] * 100) / 100;
+    const r = await measurePasses(chromiumLaunch, chromiumLaunchId);
+    report.loadAtEnd = Math.round(os.loadavg()[0] * 100) / 100;
+    writeFileSync(join(OUT, 'passes.json'), JSON.stringify({ ...report, passes: r }, null, 2));
+    console.log(`  GL renderer   ${r.renderer} (${classifyRenderer(r.renderer)}); tier at warm-up ${r.tierAtWarmup}; respawns ${r.respawns}; page errors ${r.pageErrors.length}`);
+    for (const n of r.notes) console.log(`  ${n}`);
+    console.log(`passes: ${join(OUT, 'passes.json')}`);
+    if (r.notes.some((n) => n.startsWith('COULD NOT MEASURE')) || r.blocks.length === 0) code = 3;
+  } else if (HOLD_S > 0) {
     if (!chromiumLaunch) throw new Error('no Chromium launch gives a hardware renderer (pass --headed, or --allow-software to measure SwiftShader)');
     const h = await hold(chromiumLaunch, chromiumLaunchId);
     writeHold({ partial: false, stoppedBy: null });

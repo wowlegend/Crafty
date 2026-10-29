@@ -1,6 +1,6 @@
 // Bold-flat de-tile: a bounded, deterministic per-world-cell value offset that breaks the
 // repeated-identical-tile monotony of the voxel terrain WITHOUT leaving the flat-shaded look.
-// The GLSL terrain shader (Terrain.jsx compileShader) mirrors this exact formula on
+// The GLSL terrain shader (world/terrainMaterial.js compileShader) mirrors this exact formula on
 // floor(worldPos) so the JS unit test and the GPU agree on the same numbers.
 // Pure (no state, no GL) -> unit-testable; depends only on the static integer world cell -> capture-deterministic.
 export function tileValueOffset(wx, wy, wz) {

@@ -3,6 +3,7 @@ paths:
   - "frontend/src/world/mesher.js"
   - "frontend/src/world/terrain.worker.js"
   - "frontend/src/world/Terrain.jsx"
+  - "frontend/src/world/terrainMaterial.js"
   - "frontend/src/world/vertexAO.js"
 ---
 # Greedy voxel meshing — the winding and UV invariants
@@ -21,7 +22,7 @@ on *reading* it. `frontend/tests/gates/mesher-geometry-gates.test.js` is the beh
 
 ## 1. Winding — CCW from outside, on ALL SIX directions
 
-`Terrain.jsx` renders `FrontSide`. A clockwise face is culled, i.e. invisible — that is the bug that once
+The terrain material (`terrainMaterial.js`) renders `FrontSide`. A clockwise face is culled, i.e. invisible — that is the bug that once
 made terrain see-through. Falling back to `DoubleSide` is not a fix: it costs overdraw and invites
 z-fighting and chunk-boundary cracks.
 
@@ -65,18 +66,19 @@ carries type 9 while the seabed still draws). It had to be, because three things
 a finding proposed deleting all three as "dead":
 
 - the mesher's own `if (blockType === 9) { ao.push(3); continue; }` in the AO corner loop — deleted;
-- Terrain.jsx's TWO `abs(vBlockType - 9.0) >= 0.1` fragment guards, always true — deleted;
+- the terrain shader's TWO `abs(vBlockType - 9.0) >= 0.1` fragment guards, always true — deleted;
 - the shader comment "Water faces carry AO 3", describing a case that cannot occur — deleted.
 
 **If you ever re-introduce water faces, that gate goes red first** — which is the point. Deleting code
 because you traced today's callers is a bet on nobody changing the premise; asserting the premise is what
 makes the deletion safe. `colors.r` carries the blockType per vertex, so the claim is directly measurable.
 
-**AND: a shader edit is not covered by the unit suite.** `Terrain.jsx` builds GLSL inside a JS template
-literal — a green `npm run test:unit` says nothing about whether it compiles. Compile it in a real
-browser (`node scripts/visual/pov-probe.mjs`, then OPEN the frames) before believing a shader change.
-**Never put a backtick inside that template literal**; it terminates the string and the parse error lands
-far from the edit.
+**AND: the unit suite does not compile the shader.** `terrainMaterial.js` builds the terrain GLSL inside JS
+template literals. `tests/gates/terrain-shader-patch-gates.test.js` runs its `onBeforeCompile` on three's own
+source and checks how the face layer crosses the stages (declared alike in both, written in the vertex `main()`,
+read by the sample); it does not compile anything. CI's `prod-smoke` links the shipped program with SwiftShader, a CPU renderer (no real-GPU compile is automated), and the
+look is judged in lookbook frames. **Never put a backtick inside those template literals**; it terminates the
+string and the parse error lands far from the edit.
 
 ## 3c. Structure stamping: derive the chunk radius, never hardcode it
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { biomeTintGlsl, biomeTintMask, BIOME_TINTED_BLOCKS } from '../../src/world/terrainTint.js';
 import { BIOME_NAMES, BIOME_TINT } from '../../src/world/biomeTable.js';
 import { BLOCK_ID } from '../../src/world/blockIds.js';
+import { TEXTURE_LAYER_COUNT } from '../../src/world/materialGrammar.js';
 
 /**
  * WHICH BLOCKS TAKE THE BIOME TINT, AND HOW MANY BIOMES THE SHADER CAN INDEX (QUEUE R1.5, R1.6).
@@ -45,6 +46,7 @@ describe('R1.6 — the shader is sized from the biome table, not from a literal'
     const g = biomeTintGlsl();
     expect(g.decl).toContain(`uniform vec3 uBiomeTint[${BIOME_NAMES.length}];`);
     expect(BIOME_TINT.length / 3).toBe(BIOME_NAMES.length);
+    expect(g.decl, 'the default mask is not sized to the texture array').toContain(`uniform float uBiomeTintMask[${TEXTURE_LAYER_COUNT}];`);
   });
 
   it('an ELEVENTH biome is addressable — the case the literal [10] / 9.0 could not serve', () => {

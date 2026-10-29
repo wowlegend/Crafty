@@ -30,11 +30,21 @@
 // Module state on purpose: the pose is read every frame by the Player (a transient read — Game-Loop Isolation), and
 // it changes only when a script asks.
 
+import { LOOKBOOK_PASS_NAMES } from './passesOff.js';
+
 const LOOKBOOK_PARAM = 'lookbook';
 
 let _pose = null;
 const _subs = new Set();
 let _passTimer = null; // the page-wide handle from render/passTimer.js, once the probe asked for timings
+// The post passes a script switched off (render/passesOff.js applies them in the composer; render/Sun.jsx reads 'sun').
+// Replaced, never mutated, so a reader that kept the previous set keeps a consistent one.
+let _passesOff = new Set();
+
+/** The named passes switched off, for the per-frame readers. Empty unless a lookbook script asked. */
+export function lookbookPassesOff() {
+  return _passesOff;
+}
 
 /** PURE. True only for the exact `lookbook=1` parameter. */
 export function parseLookbookParam(search) {
@@ -154,6 +164,14 @@ function distanceFrom(e, from) {
   return Math.hypot(e.position.x - from[0], e.position.y - from[1], e.position.z - from[2]);
 }
 
+/** PURE. A unit direction as the HUD compass bearing it lies on (0 north, -Z; clockwise) and its elevation, degrees. */
+export function sunBearing(dir) {
+  if (!Array.isArray(dir) || dir.length !== 3 || !dir.every(Number.isFinite)) return null;
+  const [x, y, z] = dir;
+  const deg = Math.atan2(x, -z) / DEG;
+  return { heading: ((deg % 360) + 360) % 360, elevationDeg: Math.asin(Math.max(-1, Math.min(1, y / (Math.hypot(x, y, z) || 1)))) / DEG };
+}
+
 function finite(v, name) {
   if (!Number.isFinite(v)) throw new TypeError(`lookbook: ${name} must be a finite number, got ${JSON.stringify(v)}`);
   return v;
@@ -165,10 +183,11 @@ function finite(v, name) {
  * @param {{location?: {search?: string}}} win
  * @param {{store: any, setActive: (v: boolean) => void, getActive: () => boolean, cycleOf: (gameTime: number) => number,
  *          glInfo: () => object|null, contextLosses: () => number, hostiles?: () => Iterable<object>,
- *          removeEntity?: (e: object) => void, loadPassTimer?: () => Promise<{installPassTimer: () => object}>}} deps
+ *          removeEntity?: (e: object) => void, loadPassTimer?: () => Promise<{installPassTimer: () => object}>,
+ *          sunDir?: () => number[]}} deps  `sunDir`: the sun's direction this frame (render/mood.js skyFrameRef)
  */
 export function installLookbookSeam(win, {
-  store, setActive, getActive, cycleOf, glInfo, contextLosses, hostiles, removeEntity, loadPassTimer,
+  store, setActive, getActive, cycleOf, glInfo, contextLosses, hostiles, removeEntity, loadPassTimer, sunDir,
 }) {
   if (!win || !parseLookbookParam(win.location && win.location.search)) return false;
   const unposed = (verb) => {
@@ -232,10 +251,23 @@ export function installLookbookSeam(win, {
     /** Timer-query ms per pass since the last reset, per WebGL context (render/passTimer.js); not established as GPU
      *  execution times (scripts/visual/_lookbook.mjs passSummary can only refute them). The first call loads the
      *  timer, so nothing is timed until a script asks. */
-    passTimes: async ({ reset = false } = {}) => {
+    passTimes: async ({ reset = false, mode } = {}) => {
       if (!loadPassTimer) return { installed: false, reason: 'no pass timer in this build' };
       if (!_passTimer) _passTimer = (await loadPassTimer()).installPassTimer();
+      // Before the read, so `{ mode, reset: true }` opens a window in that mode ('segments' or 'frame').
+      if (mode !== undefined) _passTimer.setMode(mode);
       return _passTimer.report({ reset });
+    },
+    /** Switch the named post passes off (render/passesOff.js LOOKBOOK_PASS_NAMES) and every other one back on, from
+     *  the next frame. `[]` restores the chain. Throws on an unknown name, leaving the set as it was. */
+    passesOff: (names) => {
+      const list = Array.isArray(names) ? names : [];
+      const unknown = list.filter((n) => !LOOKBOOK_PASS_NAMES.includes(n));
+      if (!Array.isArray(names) || unknown.length) {
+        throw new TypeError(`lookbook: passesOff takes names from ${LOOKBOOK_PASS_NAMES.join(', ')}; got ${JSON.stringify(names)}`);
+      }
+      _passesOff = new Set(list);
+      return [..._passesOff].sort();
     },
     /** What the probe records per shot. */
     info: () => {
@@ -265,6 +297,8 @@ export function installLookbookSeam(win, {
         cameraNodes,
         // Measured from the eye (the camera), else the body; null when the build hands the seam no mob query.
         hostiles: hostiles && (cam || t) ? hostileReach(hostiles(), cam ? cam.position.toArray() : [t.x, t.y, t.z]) : null,
+        // Where the sun is, so a shot can face it (GodRays shows only near it); null when the build hands no reader.
+        sun: sunDir ? sunBearing(sunDir()) : null,
       };
     },
   });
@@ -276,4 +310,5 @@ export function _resetLookbookForTest() {
   _pose = null;
   _subs.clear();
   _passTimer = null;
+  _passesOff = new Set();
 }

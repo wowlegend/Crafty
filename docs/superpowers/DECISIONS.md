@@ -18,6 +18,96 @@
 
 ---
 
+## 2026-10-28 — [LOOP] W2-I: the post passes measured on the GPU's own busy time; N8AO deleted, the rest kept
+
+**Decided by the W2-I lane under the standing grant** (DECISIONS 2026-10-28 item 14), by the rule in
+`docs/superpowers/plans/2026-10-28-crafty-w2i-passes.md`, written before the measurement and amended twice before the
+runs it decides on. The items continue the numbering after the material-grammar entry below (its last is 27), so
+"DECISIONS 2026-10-28 item 29" names one item. Readings: `docs/superpowers/masterpiece-2026-10/evidence/w2i/`. Why the lane exists:
+Kevin heard his M3 Max run hot on the live site; #24 cut the pixels, this cuts GPU work per frame.
+
+28. **What a pass costs is read from the GPU's own busy time, not from timer queries.** The per-pass timer segments
+   summed to 55-63 ms per frame at 60 frames a second, and the whole-frame query (one query per composer.render, opened
+   after a sync) read more than the synced wall clock that brackets it in 214 of 240 windows: neither is GPU execution
+   time on ANGLE-Metal. The decision instrument is U, the driver's "Device Utilization %" (`ioreg`, no root) times the
+   frame interval, in a free-running window, admitted at each time by an all-post control that moved it by 4.6 to 10.3
+   ms. The GPU sat at one of two busy levels (about 45% and 87% at the same 60 frames a second), switching every tens of
+   seconds, so the windowed run (5 interleaved repetitions of 5 s pairs) under-reads a pass whose pair straddles a
+   switch; a fast alternation (the pass off and on every 1.5 s, 18 pairs per arm and time) reads inside one level and,
+   by the rule, can only block a deletion. Both stay in the lookbook (`--passes`, `--alt`) for the next pass question.
+29. **N8AO is deleted.** U, windowed: 0.32 ms at noon and golden hour (4%), **2.31 ms at midnight (26% of the frame,
+   5 of 5 positive)**, material by the rule; the alternation does not block it: 3.41 ms at noon (29%), 3.67 at golden
+   hour (25%), 2.58 at midnight (24%), every one of 18 pairs positive each time. The look loss is small: a slight
+   darkening under the leaf canopy at noon and golden hour, nothing at midnight, and the mesher's baked vertex AO still
+   darkens every block corner. No ink-edge pass replaces it. The r3f chunk loses 141,581 B (829,540 to 687,959 B, 77 KB
+   gzipped) and its budget ceiling falls by that, 900,000 to 760,000 B; `n8ao` leaves `package.json` (it stays installed
+   as `@react-three/postprocessing`'s own dependency). Two gates keep it out: `scripts/ci/bundle-budget.mjs` fails on
+   either of two strings only n8ao's code carries in any chunk, and `scripts/ci/prod-smoke.mjs` fails when the chain the
+   production build renders has a pass of N8AO's shape (`chainVerdict`, `CHAIN_ABSENT`). Door: two-way; restoring it is
+   one dependency and one element in `GameScene.jsx`, with the ceiling raised back in its own commit.
+30. **GodRays and the Sun billboard stay.** U, windowed: 0.17, -0.48 and 0.14 ms (2 to 3 of 5 positive: the busy-level
+   switches); not material. The alternation reads 1.33 ms at noon and golden hour, 9% of the frame, under the 10% line,
+   and it can only block. The look loss would be large: at golden hour, facing the sun, the sun disc and its warm glow
+   are the frame, and without them the sky has no sun and the scene reads as flat overcast. At noon facing the sun the
+   shafts wash the upper half of the frame (the lodge roof pale pink-beige instead of maroon), a look note for the light
+   and colour lane, not a deletion under this rule. It is the largest remaining pass and the first candidate when
+   steady-cool's pixel budgets rise toward dpr 2. **No dynamic import:** `GodRaysEffect` lives in postprocessing's single
+   module in the r3f chunk, which boot loads for the composer, Bloom and SMAA anyway, and GameScene already builds the
+   effect only when a tier first needs it, so a dynamic import would move nothing off the boot path.
+31. **Bloom, SMAA, tone mapping, the grade and the vignette stay.** U, windowed, largest of the three times: Bloom 1.19
+   ms (8.1%), SMAA 0.88 (6.6%), tone mapping 0.12, the grade 0.15, the vignette 0.12; none material. The alternation
+   reads Bloom 1.17 ms (8%) and SMAA 0.67 to 0.75 (5%).
+32. **Not proven, and owed.** Watts: `scripts/dev/power-ab.sh` needs root and stays Kevin's optional row; the GPU-time
+   saving is measured, the temperature and fan change are not. The iPad: WebKit was not measured (no timer extension,
+   and utilization was read only for Chromium), though `low` never ran N8AO. Other machines, and which busy level a
+   player's Mac settles at. Steady-cool's budgets rising toward dpr 2 with the freed time is #24's follow-up, not done
+   here. Rapier lazy behind the title (plan row 28) has its own open registry row (`PLAN:sota-reset:28`).
+
+## 2026-10-28 — [LOOP] One material grammar: clustered tones, and top, side and bottom faces (lane W2-K)
+
+**Decided by the command session's W2-K lane** under items 14 and 16 of the 2026-10-28 landing entry, building Units
+0-2 of `docs/superpowers/plans/2026-10-27-crafty-material-grammar.md` as its 2026-10-28 amendment scopes them (plan
+row 44 of the SOTA reset). Numbered on from that entry's last item. Each stands while it earns its place.
+
+25. **The block textures speak a tone grammar** (`frontend/src/world/proceduralTextures.js`). The bold-flat texture
+   look (solid fills, NEAREST up close, no PBR or normal maps) now reads: each material is two to four
+   solid tones (`MATERIAL_TONES`), painted in clustered shapes from value noise on a lattice whose cells divide the
+   32-texel tile, never per-texel static. **Why:** every layer was per-texel noise (22 to 170 distinct colours, a
+   texel sharing its neighbour's colour 1-11% of the time), which reads as static up close and, before the mipmaps,
+   crawled at distance; the leaves' 15% near-black "holes" read as mould. **Value held:** each layer keeps its linear
+   mean within 15% in luminance and 0.03 in chromaticity of a reference frozen before the repaint
+   (`frontend/tests/world/material-before-2026-10-28.json`); measured, every layer is within 5.5% in luminance and 0.012 in chromaticity. The far field,
+   the biome tint, the grass blades' match to their turf, the ore glow and the light rig keep their inputs, so the
+   light and colour lane's tuning stands. The tones are shaded by rank, not by threshold, so a layer's mean is set by
+   its shares. Stone stays grey (`r = g`, `b - r <= 3`) under the ore glow's chroma edge, and the ore tiles' matrix
+   is stone without its cracks. **Gates:** `frontend/tests/gates/material-grammar-gates.test.js` (declared tones,
+   clustering, seams, the frozen means, no texel under 0.35 of its layer's mean but a nugget, stone never glowing).
+   **Cost:** no GPU change (same array, same fetch); the index chunk grew 1,059 B. Mutations are in the commit's
+   trailers.
+26. **A block's top, sides and underside may show different tiles** (`frontend/src/world/materialGrammar.js`). Grass
+   sides show a turf lip over dirt (`grass_side`), snow sides a snow lip over stone (`snow_side`), trunk sides bark
+   (`wood_side`) while a cut top keeps its rings; the underside of turf is dirt and of snow is stone. The lip is
+   painted in the tile's top six rows (`LIP_TEXELS`), running one or two rows lower in about a third of the columns,
+   and the mesher now runs `v` up world Y on every side face (it ran `u` up the wall on X faces), so each block of a
+   stacked wall shows its own lip. **Why:** grass hills read as green cliffs with no soil under the turf, and every
+   trunk side showed end-grain bullseyes. **How it is chosen:** the terrain's vertex stage takes the face's role from
+   its normal and reads the layer from a const table generated from the same `Uint8Array` the node gates read; the
+   fragment stage samples that layer, and the biome tint, the ore glow and the leaf feel still key on the block type.
+   **Cost:** about five ALU per vertex and one flat varying, no extra texture fetch; the array is 19 layers (103,740 B
+   with its chain on the GPU, +16,380); the mesher's time is unchanged (64 real chunks, median ratio 0.999); the index
+   chunk grew 2,427 B more (3,486 B for items 25 and 26 together). **Gates:** `material-grammar-gates` (the table
+   against literals, the generated GLSL read back as JavaScript for every block and axis normal, the derivation for a
+   new id, the variants made of their parents, bark's vertical grain) and `mesher-geometry-gates` (every normal's
+   role; `v` rising 1:1 with world Y from a whole block height on all four side directions). **Not proven here:**
+   WebKit (iPad). The look on Chromium is in the plan's record, on eye-level lookbook frames.
+27. **The face layer is derived in the terrain's vertex stage, never baked into the mesh, and the array's depth is
+   derived.** `colors.b` stays unwritten, for the block-light level a later light field writes there (the lantern
+   plan, `docs/superpowers/plans/2026-10-27-crafty-lantern-block-light.md`, and its brief,
+   `docs/superpowers/plans/2026-10-28-crafty-brief-lantern-costed.md`); a gate fails if the generated GLSL reads it.
+   The texture array is the block id space plus the face variants (`TEXTURE_LAYER_COUNT`), with the variants above the
+   ids, so the lantern's id 16 makes the array 20 deep and moves the variants to 17-19 with no edit to the grammar.
+   `frontend/tests/world/proceduralTextures.test.js` held the count at a literal 16; it now asserts the derivation.
+
 ## 2026-10-28 — [LOOP] The SOTA reset's standing decisions (W1-H)
 
 **Decided by the command session** under item 14 of the 2026-10-28 landing entry below, from the SOTA reset plan

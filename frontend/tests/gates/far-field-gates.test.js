@@ -187,11 +187,11 @@ describe('the far field is drawn, from the real world, hazed like the terrain (w
   });
 
   it('ONE aerial-haze definition, spliced by both the terrain and the far field', () => {
-    expect(carriersOf(/\$\{AERIAL_GLSL\}/).sort()).toEqual(['world/FarField.jsx', 'world/Terrain.jsx']);
+    expect(carriersOf(/\$\{AERIAL_GLSL\}/).sort()).toEqual(['world/FarField.jsx', 'world/terrainMaterial.js']);
     expect(carriersOf(/smoothstep\(38\.0, 165\.0/), 'a hand-typed copy of the haze is back').toEqual([]);
   });
   it('R3.7: ONE danger-mood grade, spliced after the albedo by both materials — no seam in the boss fight', () => {
-    expect(carriersOf(/\$\{LAND_GRADE_GLSL\}/).sort()).toEqual(['world/FarField.jsx', 'world/Terrain.jsx']);
+    expect(carriersOf(/\$\{LAND_GRADE_GLSL\}/).sort()).toEqual(['world/FarField.jsx', 'world/terrainMaterial.js']);
     expect(carriersOf(/coolGrey = vec3\(/), 'a hand-typed copy of the grade is back').toEqual(['render/landGrade.js']);
     expect(carriersOf(/'#include <color_fragment>',\s*`#include <color_fragment>\s*\$\{LAND_GRADE_GLSL\}/)).toEqual(['world/FarField.jsx']);
     expect(carriersOf(/shader\.uniforms\.mood\.value = moodRef\.current;/)).toEqual(['world/FarField.jsx']);
@@ -259,22 +259,22 @@ describe('R3.8 — which surfaces carry the canopy (read off the worker\'s flora
 // the probe's (plan Task 3).
 describe('the ore glow is spliced into the near terrain only (weak, structural)', () => {
   it('Terrain splices ORE_GLOW_GLSL right after <emissivemap_fragment>, with its table as a uniform', () => {
-    expect(carriersOf(/'#include <emissivemap_fragment>',\s*`\s*#include <emissivemap_fragment>\s*\$\{ORE_GLOW_GLSL\.apply\}/)).toEqual(['world/Terrain.jsx']);
-    expect(carriersOf(/shader\.uniforms\.uOreGlow = \{ value: oreGlowUniform \}/)).toEqual(['world/Terrain.jsx']);
-    expect(carriersOf(/\$\{ORE_GLOW_GLSL\.decl\}/)).toEqual(['world/Terrain.jsx']);
+    expect(carriersOf(/'#include <emissivemap_fragment>',\s*`\s*#include <emissivemap_fragment>\s*\$\{ORE_GLOW_GLSL\.apply\}/)).toEqual(['world/terrainMaterial.js']);
+    expect(carriersOf(/shader\.uniforms\.uOreGlow = \{ value: oreGlowUniform \}/)).toEqual(['world/terrainMaterial.js']);
+    expect(carriersOf(/\$\{ORE_GLOW_GLSL\.decl\}/)).toEqual(['world/terrainMaterial.js']);
   });
   it('nothing else — the far field included — imports the ore glow', () => {
-    expect(carriersOf(/from '\.\/oreGlow\.js'|from '\.\.\/world\/oreGlow\.js'/)).toEqual(['world/Terrain.jsx']);
+    expect(carriersOf(/from '\.\/oreGlow\.js'|from '\.\.\/world\/oreGlow\.js'/)).toEqual(['world/terrainMaterial.js']);
   });
   // LEAF SWAY + TRANSLUCENCY (plan 2026-09-23-crafty-leaf-sway-translucency, Task 2; leaf-feel-gates drives the maths).
   // Mutation-Proof (mutate.sh), each observed RED: S3 the sway dropped from the <begin_vertex> splice; S4 the
   // translucency dropped from the emissive splice; S5 the far field imports leafFeel. WEAK the same way.
   it('Terrain splices the leaf sway after <begin_vertex> and the translucency after the ore glow', () => {
-    expect(carriersOf(/\$\{LEAF_GLSL\.vertexDecl\}/)).toEqual(['world/Terrain.jsx']);
-    expect(carriersOf(/'#include <begin_vertex>',\s*`\s*#include <begin_vertex>[\s\S]{0,1200}?\$\{LEAF_GLSL\.vertex\}\s*`/)).toEqual(['world/Terrain.jsx']);
-    expect(carriersOf(/\$\{ORE_GLOW_GLSL\.apply\}\s*\$\{LEAF_GLSL\.fragment\}/)).toEqual(['world/Terrain.jsx']);
+    expect(carriersOf(/\$\{LEAF_GLSL\.vertexDecl\}/)).toEqual(['world/terrainMaterial.js']);
+    expect(carriersOf(/'#include <begin_vertex>',\s*`\s*#include <begin_vertex>[\s\S]{0,1200}?\$\{LEAF_GLSL\.vertex\}\s*`/)).toEqual(['world/terrainMaterial.js']);
+    expect(carriersOf(/\$\{ORE_GLOW_GLSL\.apply\}\s*\$\{LEAF_GLSL\.fragment\}/)).toEqual(['world/terrainMaterial.js']);
   });
   it('nothing else — the far field included — imports the leaf terms', () => {
-    expect(carriersOf(/from '\.\/leafFeel\.js'|from '\.\.\/world\/leafFeel\.js'/)).toEqual(['world/Terrain.jsx']);
+    expect(carriersOf(/from '\.\/leafFeel\.js'|from '\.\.\/world\/leafFeel\.js'/)).toEqual(['world/terrainMaterial.js']);
   });
 });

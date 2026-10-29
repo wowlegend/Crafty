@@ -114,6 +114,143 @@ export function eyeShotPlan(headings = EYE_HEADINGS, cycles = LOOKBOOK_CYCLES) {
 }
 
 /**
+ * THE MATERIAL SET (opt-in, `--sets material`): the block surfaces the material grammar changes, seen at the player's
+ * eye with the hands and the HUD on. Two sights, each found in the live world's own mesh near the Hearth:
+ *   turf-wall  the side of a grass hill (a grass block over exposed dirt, else a one-block grass step), where the
+ *              tiles' top / side roles show as a turf lip over a dirt wall;
+ *   trunk      the side of a tree trunk (wood, at least three blocks tall), where bark replaces end-grain rings.
+ * The player is stood MATERIAL_STAND_M in front of the face on the ground it rises from, with a clear line to it, and
+ * turned to look at it.
+ */
+export const MATERIAL_SIGHT_KINDS = Object.freeze(['turf-wall', 'trunk']);
+export const MATERIAL_STAND_M = 3.5;
+/** The outpost's buildings ring the Hearth out to about 15 m (world/hubLayout.js) and are not in the terrain mesh, so
+ *  the finder cannot see them in a sight line: sights are taken from at least this far out. */
+export const MATERIAL_MIN_M = 20;
+
+/** Every material shot, sight-major (one stand per sight): [{ kind, cycle, file }]. */
+export function materialShotPlan(kinds = MATERIAL_SIGHT_KINDS, cycles = LOOKBOOK_CYCLES) {
+  const out = [];
+  for (const kind of kinds) for (const c of cycles) out.push({ kind, cycle: c, file: `${kind}-${c.toFixed(2)}.png` });
+  return out;
+}
+
+/**
+ * The compass bearing (HUD convention: 0 north = -Z, 90 east = +X) and pitch (degrees, up positive) that point an
+ * eye at `eye` toward `target`.
+ */
+export function aimAt(eye, target) {
+  const dx = target[0] - eye[0], dz = target[2] - eye[2];
+  const heading = ((Math.atan2(dx, -dz) * 180) / Math.PI + 360) % 360;
+  const pitch = (Math.atan2(target[1] - eye[1], Math.hypot(dx, dz)) * 180) / Math.PI;
+  return { heading, pitch };
+}
+
+/**
+ * The nearest turf-wall and trunk sights to `from` (the Hearth stand, [x, y, z]) in a set of chunk meshes, or null
+ * for a kind with none between `minM` and `maxM` of it. `chunks`: [{ cx, cz, meshData: { positions, normals, colors } }] (the shape of
+ * the store's debugChunks); omitted, it reads them from the page (`window.useGameStore`), so this runs unchanged
+ * through Playwright's page.evaluate. It therefore reads nothing from module scope: every input arrives in `arg`.
+ *
+ * Read from the mesh: a side quad is a wall face (its block in colour.r); a +Y quad marks a column's ground at its
+ * height. A sight's stand column must have ground exactly at the wall's base, and every column from the face to the
+ * stand must be clear of blocks over the 2 m above that base.
+ */
+export function findMaterialSights(arg) {
+  const { from, ids = { grass: 1, dirt: 2, wood: 6 }, standM = 3.5, minM = 0, maxM = 40, chunkSize = 16 } = arg;
+  const list = arg.chunks || Object.values(window.useGameStore.getState().debugChunks || {});
+  const sides = [];
+  const tops = new Map();
+  const key = (x, z) => `${x},${z}`;
+  for (const c of list) {
+    const m = c.meshData || c;
+    const P = m.positions, N = m.normals, C = m.colors;
+    if (!P || !N || !C) continue;
+    const ox = c.cx * chunkSize, oz = c.cz * chunkSize;
+    for (let v = 0; v + 4 <= P.length / 3; v += 4) {
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (let k = 0; k < 4; k++) {
+        const i = (v + k) * 3;
+        x0 = Math.min(x0, P[i] + ox); x1 = Math.max(x1, P[i] + ox);
+        y0 = Math.min(y0, P[i + 1]); y1 = Math.max(y1, P[i + 1]);
+        z0 = Math.min(z0, P[i + 2] + oz); z1 = Math.max(z1, P[i + 2] + oz);
+      }
+      const nx = N[v * 3], ny = N[v * 3 + 1], nz = N[v * 3 + 2];
+      if (ny > 0.5) {
+        for (let x = Math.round(x0); x < Math.round(x1); x++) {
+          for (let z = Math.round(z0); z < Math.round(z1); z++) {
+            const k = key(x, z);
+            if (!tops.has(k)) tops.set(k, []);
+            tops.get(k).push(Math.round(y1));
+          }
+        }
+      } else if (ny >= -0.5) {
+        sides.push({ block: Math.round(C[v * 3]), nx: Math.round(nx), nz: Math.round(nz),
+          x0: Math.round(x0), x1: Math.round(x1), y0: Math.round(y0), y1: Math.round(y1), z0: Math.round(z0), z1: Math.round(z1) });
+      }
+    }
+  }
+  const groundAt = (x, z) => tops.get(key(Math.floor(x), Math.floor(z))) || [];
+  const clearAbove = (x, z, base) => !groundAt(x, z).some((t) => t > base && t <= base + 2);
+  // Vertical vertex AO splits one wall face into several quads, so the face is read per column of its plane: every
+  // side quad's [y0, y1] is filed under (direction, plane, column along the face).
+  const planeOf = (q) => (q.nx !== 0 ? q.x0 : q.z0);
+  const spanOf = (q) => (q.nx !== 0 ? [q.z0, q.z1] : [q.x0, q.x1]);
+  const columns = new Map();
+  for (const q of sides) {
+    const [a0, a1] = spanOf(q);
+    for (let a = a0; a < a1; a++) {
+      const k = `${q.nx},${q.nz},${planeOf(q)},${a}`;
+      if (!columns.has(k)) columns.set(k, []);
+      columns.get(k).push(q);
+    }
+  }
+  const below = (q, a, y) => (columns.get(`${q.nx},${q.nz},${planeOf(q)},${a}`) || []).find((d) => d.y1 === y);
+  const above = (q, a, y, block) => (columns.get(`${q.nx},${q.nz},${planeOf(q)},${a}`) || []).find((d) => d.y0 === y && d.block === block);
+  // The point on the face at its centre column, and the stand point in front of it on the wall's base.
+  const frame = (q, a, targetY, base) => {
+    const target = q.nx !== 0 ? [q.x0, targetY, a + 0.5] : [a + 0.5, targetY, q.z0];
+    const stand = [target[0] + q.nx * standM, base, target[2] + q.nz * standM];
+    if (!groundAt(stand[0], stand[2]).includes(base)) return null;
+    for (let s = 0.5; s <= standM; s += 0.25) {
+      if (!clearAbove(target[0] + q.nx * s, target[2] + q.nz * s, base)) return null;
+    }
+    const rangeM = Math.hypot(stand[0] - from[0], stand[2] - from[2]);
+    if (!(rangeM >= minM && rangeM <= maxM)) return null;
+    const span = spanOf(q);
+    return { target, stand, ground: base, normal: [q.nx, 0, q.nz], span: span[1] - span[0], rangeM };
+  };
+  const candidates = { 'turf-wall': [], trunk: [] };
+  for (const q of sides) {
+    const [a0, a1] = spanOf(q);
+    const a = Math.floor((a0 + a1) / 2);
+    if (q.block === ids.grass) {
+      const under = below(q, a, q.y0);
+      let base = q.y0;
+      for (let d = under; d; d = below(q, a, d.y0)) base = d.y0;
+      const hill = !!under && under.block === ids.dirt;
+      const f = frame(q, a, q.y0 + 0.5, base);
+      if (f) candidates['turf-wall'].push({ kind: 'turf-wall', form: hill ? 'hill' : 'step', ...f, rank: [hill ? 0 : 1, f.span >= 2 ? 0 : 1] });
+    } else if (q.block === ids.wood && !(below(q, a, q.y0)?.block === ids.wood)) {
+      let top = q.y1;
+      for (let u = above(q, a, top, ids.wood); u; u = above(q, a, top, ids.wood)) top = u.y1;
+      if (top - q.y0 < 3) continue;
+      const f = frame(q, a, q.y0 + 1.5, q.y0);
+      if (f) candidates.trunk.push({ kind: 'trunk', form: 'trunk', ...f, height: top - q.y0, rank: [0, 0] });
+    }
+  }
+  const order = (a, b) => a.rank[0] - b.rank[0] || a.rank[1] - b.rank[1] || a.rangeM - b.rangeM
+    || a.stand[0] - b.stand[0] || a.stand[2] - b.stand[2];
+  const pick = (list) => {
+    const best = [...list].sort(order)[0];
+    if (!best) return null;
+    const { rank, ...sight } = best;
+    return sight;
+  };
+  return { 'turf-wall': pick(candidates['turf-wall']), trunk: pick(candidates.trunk) };
+}
+
+/**
  * THE WALKING CLIPS: W held for 4 s from the Hearth along one bearing, a real key through the browser's input
  * pipeline, once per programme time. Bearing 180 crosses open plains for at least 48 m, while forest starts 12 to 20 m
  * out on bearings 150 to 165, to the left of the view (world/climate.js surfaceBlockAt, seed 12345): an open path with
@@ -202,7 +339,7 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
 /**
  * The game canvas's pass times out of a passTimes() report: the context whose canvas is the game's (the seam's
  * glInfo canvas), else the largest. Per timed frame, from every result that landed in the window, so a pass rebuilt
- * mid-window (a tier first mounting N8AO or GodRays) counts each frame once, under whichever label drew it: `sceneMs`, the
+ * mid-window (a tier first mounting GodRays) counts each frame once, under whichever label drew it: `sceneMs`, the
  * RenderPass that draws the world, and `postMs`, every segment after it. `plausible` is false when the results sum to
  * more GPU time (`gpuMs`) than the window lasted (`windowMs`): segments that run one after another cannot, so the
  * numbers are then not GPU execution times and no decision about a pass may rest on them.
@@ -234,6 +371,177 @@ export function passSummary(report, gameCanvas) {
     postMs: r3((gpuMs - sceneSum) / ctx.framesTimed),
     plausible,
   };
+}
+
+/**
+ * THE WHOLE-FRAME DIFFERENTIAL (lookbook.mjs --passes; plan docs/superpowers/plans/2026-10-28-crafty-w2i-passes.md).
+ * Each arm switches the named passes off through the seam (src/render/passesOff.js LOOKBOOK_PASS_NAMES).
+ */
+export const PASS_ARMS = Object.freeze([
+  { id: 'godrays+sun', off: ['godrays', 'sun'] },
+  { id: 'bloom', off: ['bloom'] },
+  { id: 'smaa', off: ['smaa'] },
+  { id: 'tonemapping', off: ['tonemapping'] },
+  { id: 'grade', off: ['grade'] },
+  { id: 'vignette', off: ['vignette'] },
+]);
+/** Noon, golden hour (GodRays is horizon-gated, so it runs only while the sun is up) and midnight, dawn-origin. At
+ *  golden hour the player faces the sun, where GodRays shows; otherwise north, the lodge wall and the forest edge. */
+export const PASS_TIMES = Object.freeze([
+  { id: 'noon', cycle: 0.25, face: 'north' },
+  { id: 'golden', cycle: 0.48, face: 'sun' },
+  { id: 'midnight', cycle: 0.75, face: 'north' },
+]);
+export const PASS_REPS = 5;
+/** Kevin's laptop window, the case render/quality.js derives the pixel budgets from: at tier high, dpr 1.475, 4.2 Mpx. */
+export const PASS_TARGET = Object.freeze({ id: 'chromium-1728x1117', engine: 'chromium', viewport: { width: 1728, height: 1117 }, deviceScaleFactor: 2, touch: false });
+/** The before/after frames shot for the plan's two named candidates, at the times their look depends on. */
+export const PASS_LOOK_PAIRS = Object.freeze([
+  { time: 'golden', arm: 'godrays+sun', face: 'sun' },
+  { time: 'noon', arm: 'godrays+sun', face: 'sun' },
+]);
+/** No block starts while the 1-minute load average is above this (the lane's measurement rule). */
+export const PASS_MAX_LOAD = 12;
+/** A positive control, not a decision: every post pass off at once, which must move every instrument a long way. */
+export const PASS_CONTROL = Object.freeze({ id: 'all-post', off: ['bloom', 'godrays', 'grade', 'smaa', 'sun', 'tonemapping', 'vignette'], control: true });
+
+/**
+ * PURE. The GPU's own busy figures out of `ioreg -r -d 1 -w 0 -c IOAccelerator` (the driver's PerformanceStatistics,
+ * readable without root; Activity Monitor's GPU history reads the same): percent of the last driver interval the GPU
+ * was busy, whole device and the renderer and tiler stages. Null when the text carries no device figure.
+ */
+export function parseGpuUtil(text) {
+  const n = (key) => {
+    const m = String(text ?? '').match(new RegExp(`"${key} %"=(\\d+)`));
+    return m ? Number(m[1]) : null;
+  };
+  const device = n('Device Utilization');
+  return device === null ? null : { device, renderer: n('Renderer Utilization'), tiler: n('Tiler Utilization') };
+}
+
+/**
+ * PURE. GPU busy ms per frame over a utilization window: the median device percent of the samples taken after
+ * `skipMs` (the driver's figure lags), times the window's mean frame interval. Null without frames or samples.
+ */
+export function gpuMsPerFrame(samples, { frames, windowMs, skipMs = 500 } = {}) {
+  const pct = medianOf((samples || []).filter((s) => s.t >= skipMs && s.util).map((s) => s.util.device));
+  if (pct === null || !(frames > 0) || !(windowMs > 0)) return null;
+  return { pct, intervalMs: windowMs / frames, ms: (pct / 100) * (windowMs / frames), n: (samples || []).filter((s) => s.t >= skipMs && s.util).length };
+}
+
+/** The windows for one time of day, repetition-major (each arm once per repetition), on and off alternating by
+ *  repetition so a drift over the block lands on both arms alike: [{ arm, off, rep, state }]. */
+export function passWindowPlan(arms = PASS_ARMS, reps = PASS_REPS) {
+  const out = [];
+  for (let rep = 0; rep < reps; rep++) {
+    for (const arm of arms) {
+      const order = rep % 2 === 0 ? ['on', 'off'] : ['off', 'on'];
+      for (const state of order) out.push({ arm: arm.id, off: state === 'off' ? [...arm.off] : [], rep, state });
+    }
+  }
+  return out;
+}
+
+/** The game canvas's median for `label` out of a passTimes() report (the timer's p50 over the window), or null. */
+export function windowMedian(report, label, gameCanvas) {
+  const ctxs = report?.contexts || [];
+  const same = (c) => Array.isArray(c) && Array.isArray(gameCanvas) && c[0] === gameCanvas[0] && c[1] === gameCanvas[1];
+  const area = (c) => (Array.isArray(c) ? c[0] * c[1] : 0);
+  const ctx = ctxs.find((x) => same(x.canvas)) || [...ctxs].sort((x, y) => area(y.canvas) - area(x.canvas))[0];
+  const p = ctx?.passes?.find((x) => x.label === label);
+  return p && Number.isFinite(p.p50Ms) ? { ms: p.p50Ms, n: p.n } : null;
+}
+
+const medianOf = (xs) => {
+  const s = [...xs].sort((a, b) => a - b);
+  if (!s.length) return null;
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+const statsOf = (values) => ({
+  values, n: values.length, median: medianOf(values),
+  min: values.length ? Math.min(...values) : null, max: values.length ? Math.max(...values) : null,
+  positive: values.filter((v) => v > 0).length,
+});
+
+/**
+ * PURE. One arm's differential from measured windows ([{ arm, rep, state, q, w, valid }], `q` the whole-frame query
+ * median and `w` the synced wall median of each window): per repetition with both a valid `on` and a valid `off`,
+ * `d = on - off` on each instrument. A repetition missing either half counts for nothing.
+ */
+export function passDifferential(windows, arm) {
+  const reps = new Map();
+  for (const x of windows) {
+    if (x.arm !== arm || !x.valid || !Number.isFinite(x.q) || !Number.isFinite(x.w)) continue;
+    if (!reps.has(x.rep)) reps.set(x.rep, {});
+    reps.get(x.rep)[x.state] = x;
+  }
+  const pairs = [...reps.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v).filter((v) => v.on && v.off);
+  // `u`, GPU busy ms per frame from the driver's utilization, where the windows carry it; its own pairs.
+  const uPairs = pairs.filter((p) => Number.isFinite(p.on.u) && Number.isFinite(p.off.u));
+  return {
+    arm,
+    reps: pairs.length,
+    q: statsOf(pairs.map((p) => p.on.q - p.off.q)),
+    w: statsOf(pairs.map((p) => p.on.w - p.off.w)),
+    u: statsOf(uPairs.map((p) => p.on.u - p.off.u)),
+    onQ: medianOf(pairs.map((p) => p.on.q)), offQ: medianOf(pairs.map((p) => p.off.q)),
+    onW: medianOf(pairs.map((p) => p.on.w)), offW: medianOf(pairs.map((p) => p.off.w)),
+    onU: medianOf(uPairs.map((p) => p.on.u)), offU: medianOf(uPairs.map((p) => p.off.u)),
+  };
+}
+
+/**
+ * PURE. The fast alternation (lookbook.mjs --passes --alt): one window of halves, the arm switched on and off every
+ * half, the GPU's utilization read through each. The GPU moves between power states over tens of seconds, which the
+ * windowed design lands on either arm at random; within a few seconds it does not, so each adjacent on/off pair of
+ * halves is one differential within one state. A half's value is its median busy percent after `skipMs` (the driver
+ * lags), in ms at the window's frame interval. `halves`: [{ state: 'on'|'off', samples: [{ t, util }] }].
+ */
+export function altDifferential(halves, intervalMs, { skipMs = 600 } = {}) {
+  const value = (h) => {
+    const pct = medianOf((h.samples || []).filter((s) => s.t >= skipMs && s.util).map((s) => s.util.device));
+    return pct === null || !(intervalMs > 0) ? null : (pct / 100) * intervalMs;
+  };
+  const vals = (halves || []).map((h) => ({ state: h.state, ms: value(h) }));
+  const d = [];
+  for (let i = 1; i < vals.length; i++) {
+    const [a, b] = [vals[i - 1], vals[i]];
+    if (a.ms === null || b.ms === null || a.state === b.state) continue;
+    d.push(a.state === 'on' ? a.ms - b.ms : b.ms - a.ms);
+  }
+  const onMs = medianOf(vals.filter((v) => v.state === 'on' && v.ms !== null).map((v) => v.ms));
+  return { u: statsOf(d), onU: onMs, halves: vals.map((v) => v.ms) };
+}
+
+/** The rule (plan 2026-10-28-crafty-w2i-passes, "The decision rule" and its amendment), fixed before the measurement. */
+export const PASS_RULE = Object.freeze({ minReps: 5, minMs: 0.5, minShare: 0.10, minPositiveShare: 0.8, contradictMs: 0.25 });
+
+const enoughPositive = (s, rule) => s.n > 0 && s.positive >= Math.ceil(rule.minPositiveShare * s.n);
+
+/**
+ * PURE. Which instruments can see post-processing at all at this time of day: those on which the positive control
+ * (PASS_CONTROL, every pass off) moves the frame by a material amount in enough repetitions. Q is also refused when any
+ * window read more GPU time than the synced wall clock that brackets it (`qOverW`).
+ */
+export function admittedInstruments(control, { qOverW = 0 } = {}, rule = PASS_RULE) {
+  const ok = (s) => !!s && s.n >= rule.minReps && s.median >= rule.minMs && enoughPositive(s, rule);
+  return { u: ok(control?.u), w: ok(control?.w), q: ok(control?.q) && qOverW === 0 };
+}
+
+/** PURE. Whether an arm's cost is material by PASS_RULE, decided on U, with every reason it is not. */
+export function passVerdict(d, admitted, rule = PASS_RULE) {
+  const why = [];
+  const u = d.u.median;
+  if (!admitted?.u) why.push('U (GPU busy time) is not admitted: the control did not move it');
+  if (d.u.n < rule.minReps) why.push(`${d.u.n} complete repetitions, fewer than ${rule.minReps}`);
+  const share = Number.isFinite(u) && d.onU > 0 ? u / d.onU : null;
+  if (!(u >= rule.minMs)) why.push(`under ${rule.minMs} ms (U ${u})`);
+  if (!(share >= rule.minShare)) why.push(`under ${Math.round(rule.minShare * 100)}% of the frame (${share === null ? '?' : `${(share * 100).toFixed(1)}%`})`);
+  if (!enoughPositive(d.u, rule)) why.push(`${d.u.positive} of ${d.u.n} repetitions positive`);
+  const contradicted = ['w', 'q'].filter((k) => admitted?.[k] && d[k].median < -rule.contradictMs);
+  for (const k of contradicted) why.push(`${k.toUpperCase()} contradicts it (${d[k].median})`);
+  return { share, contradicted, material: why.length === 0, why };
 }
 
 const SOFTWARE_RE = /swiftshader|llvmpipe|softpipe|software rasterizer|microsoft basic render/i;
@@ -306,6 +614,7 @@ export function contactSheetHtml(report) {
     };
     const figs = (t.shots || []).map((s) => figure(s, s.place, `${s.place} at ${s.cycle}`)).join('\n');
     const eye = (t.eye || []).map((s) => figure(s, `eye, facing ${s.heading}`, `eye level facing ${s.heading} at ${s.cycle}`)).join('\n');
+    const material = (t.material || []).map((s) => figure(s, `${s.kind}, eye level`, `${s.kind} at eye level at ${s.cycle}`)).join('\n');
     const clips = (t.clips || []).map((c) => {
       const src = `${esc(t.id)}/${esc(c.file)}`;
       const facts = [`cycle ${esc(c.cycle)}`, `facing ${esc(c.heading)}`, `walked ${esc(Number(c.movedM).toFixed(1))} m`, `${esc(c.frames)} frames`].join(' · ');
@@ -316,7 +625,7 @@ export function contactSheetHtml(report) {
     const sub = (title, body) => (body ? `<h3>${title}</h3><div class="grid">${body}</div>` : '');
     return `<section><h2>${esc(t.id)}</h2><p class="gl">${esc(t.engine)} · GL renderer: <code>${esc(t.renderer)}</code> (${esc(t.gpu)})` +
       `${t.launch ? ` · launch ${esc(t.launch)}` : ''}${t.entry ? ` · entered play by ${esc(t.entry)}` : ''}</p>${gpuNote}${notes}` +
-      `${sub('Hero shots', figs)}${sub('Eye level, hands and HUD on', eye)}${sub('Walking, real input', clips)}</section>`;
+      `${sub('Hero shots', figs)}${sub('Eye level, hands and HUD on', eye)}${sub('Material sights, eye level', material)}${sub('Walking, real input', clips)}</section>`;
   }).join('\n');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

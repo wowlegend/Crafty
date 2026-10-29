@@ -276,8 +276,7 @@ export function Atmosphere({ shadowConfig }) {
         new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
         // depthFunc ALWAYS, not depthTest false: WebGL writes no depth while the depth test is disabled, so the depth
         // buffer under the card would hold the terrain behind it for every depth-reading pass. ALWAYS passes the test
-        // and writes the card's own depth. (The e2e still reads the card on the LOW tier: at high, N8AO and GodRays moved
-        // it up to L 0.10 off the model either way, with this setting or without it.)
+        // and writes the card's own depth. (The e2e reads the card on the LOW tier: at high, GodRays moves it off the model.)
         new THREE.MeshStandardMaterial({ color: '#8C8C8C', ...TERRAIN_SURFACE, depthFunc: THREE.AlwaysDepth }),
       );
       card.castShadow = false;

@@ -128,7 +128,7 @@ test.describe('ore glow', () => {
       }, { b64: png.toString('base64'), centres, R: PATCH });
     };
     // THE GLOW ON AND OFF, IN ONE LIGHTING STATE. Every chunk shares one material whose uOreGlow uniform IS the
-    // module's Float32Array (world/Terrain.jsx), and three re-uploads a float-array uniform each time it binds the
+    // module's Float32Array (world/terrainMaterial.js), and three re-uploads a float-array uniform each time it binds the
     // material (WebGLUniforms setValueV1fArray, no cache) — so zeroing the table in place switches the glow off for the
     // next frame, and restoring it switches it back, with nothing else in the frame touched.
     const glow = (on) => page.evaluate((on) => {
