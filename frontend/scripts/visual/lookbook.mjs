@@ -32,8 +32,9 @@
  *   hud    (opt-in) the HUD lane's poses (_lookbookHud.mjs): HOME and Mara a few degrees apart on the compass, label
  *          boxes read for overlap; the dusk warning in English, then after a night in zh-CN, each frame shot with the
  *          toast up and its box read against the day-phase dial's.
- * Every eye shot also records its CHROME share (_lookbook.mjs chromeShare): the pixels in the page's own chrome surface
- * colours, against a twin shot with the DOM hidden but the game canvas, so the world's own matches are set aside.
+ * Every eye shot also records its CHROME footprint (_lookbook.mjs chromeFootprint): on a page held still, the pixels
+ * the HUD's own elements change (against a twin with them hidden), the touch layer's apart, and the colour count as a
+ * second column. A frame with a toast up is not at rest and is set aside (_lookbook.mjs atRest).
  * The clock keeps running, so before each shot it sets the time, lets the sky settle, sets it again and shoots, and
  * records where the clock actually was. Every shot and clip also records timer-query ms per pass over its window
  * (src/render/passTimer.js, EXT_disjoint_timer_query_webgl2: Chromium only; WebKit says it cannot time). Those are not
@@ -95,7 +96,7 @@ import { serveVite, probePort } from './_serve.mjs';
 import { standInPointerLock, playLiveReading } from './_probe.mjs';
 import {
   freshRenderer, resolveChromium, contextOptions, initScript, info, setCycle, clearHostiles, play, hudOn, respawnIfDead,
-  restingBody, handsBaseline, holdActive, chromeVars, worldOnlyShot,
+  restingBody, handsBaseline, holdActive, chromeVars, holdFrames, releaseFrames, twinShot,
 } from './_lookbookPage.mjs';
 import {
   TARGETS, CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, EYE_HEADINGS, EYE_PITCH, shotPlan, eyeShotPlan, clipPlan, classifyRenderer,
@@ -106,6 +107,7 @@ import {
   targetSummaryLines,
   MATERIAL_SIGHT_KINDS, MATERIAL_STAND_M, MATERIAL_MIN_M, materialShotPlan, findMaterialSights, aimAt,
   HAND_MASK, HANDS_HEADING, handPixelStats, facing, handCount, CYCLE_TOLERANCE, chromeShare, chromeColoursFrom,
+  chromeFootprint, framesMoved, HELD_MOVED_MAX,
 } from './_lookbook.mjs';
 import { PNG } from 'pngjs';
 import { shootHudSet } from './_lookbookHud.mjs';
@@ -158,15 +160,47 @@ const SETTLE_MS = 3000; // sky, fog and grade settle at a new time of day
 const EYE_FRAME_MS = 1000; // a new bearing: the HUD compass redraws, and the pass timer gathers about a second of frames
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** The chrome share of a shot (_lookbook.mjs chromeShare): its frame against the world-only twin shot right after, in
- *  the surface colours the page defines at that moment. Rounded for the report; `colours` names what was counted. */
-async function chromeOf(page, onBuf) {
-  const colours = chromeColoursFrom(await chromeVars(page));
-  if (colours.length === 0) return { share: null, why: 'the page defines none of the chrome variables' };
-  const [on, off] = [onBuf, await worldOnlyShot(page)].map((x) => PNG.sync.read(x));
-  const r = chromeShare(on.data, off.data, { width: on.width, height: on.height, colours });
-  return { share: Math.round(r.share * 10000) / 10000, world: r.world, checked: r.checked, byColour: r.byColour,
-    colours: colours.map((c) => `${c.name} ${c.rgb.join(' ')}`) };
+/**
+ * Shoot an eye frame to `path` and read its chrome (_lookbook.mjs chromeFootprint): with the page held still
+ * (holdFrames), the frame, its twin with the HUD's own elements hidden, its canvas-only twin and the frame again; the
+ * footprint is read only when the first and last shots agree, so nothing that moved between them is counted as HUD. The
+ * colour count (chromeShare, the second column) reads the same frame against the canvas-only twin in the surface
+ * colours the page defines at that moment. The toast count is read on the held page, where the shot was.
+ */
+async function shootWithChrome(page, path) {
+  await holdFrames(page);
+  let pngs, touch, toasts, vars;
+  try {
+    const on = await page.screenshot({ path });
+    const hudOff = await twinShot(page, 'touch');
+    const world = await twinShot(page, 'world');
+    const again = await page.screenshot();
+    touch = hudOff.touch;
+    toasts = await page.evaluate(() => (document.querySelector('[data-testid="notification-stack"]')
+      || document.querySelector('.absolute.top-20.right-4.space-y-2'))?.children.length ?? 0);
+    vars = await chromeVars(page);
+    pngs = [on, hudOff.png, world.png, again].map((x) => PNG.sync.read(x));
+  } finally {
+    await releaseFrames(page);
+  }
+  const [on, hudOff, world, again] = pngs;
+  const size = { width: on.width, height: on.height };
+  const moved = framesMoved(on.data, again.data, size);
+  const chrome = { toasts, moved, touchLayer: touch };
+  if (moved > HELD_MOVED_MAX * on.width * on.height) {
+    Object.assign(chrome, { share: null, why: `the page did not hold still: ${moved} px changed between the first and last shot` });
+  } else {
+    const f = chromeFootprint(on.data, hudOff.data, touch ? world.data : null, size);
+    Object.assign(chrome, { share: Math.round(f.share * 10000) / 10000, pixels: f.pixels, checked: f.checked,
+      touchShare: f.touchShare === null ? null : Math.round(f.touchShare * 10000) / 10000 });
+  }
+  const colours = chromeColoursFrom(vars);
+  if (colours.length) {
+    const c = chromeShare(on.data, world.data, { ...size, colours });
+    Object.assign(chrome, { colourShare: Math.round(c.share * 10000) / 10000, colourWorld: c.world, byColour: c.byColour,
+      colours: colours.map((x) => `${x.name} ${x.rgb.join(' ')}`) });
+  }
+  return chrome;
 }
 
 if (!existsSync(join(BUILD_DIR, 'index.html'))) {
@@ -369,11 +403,7 @@ async function shootTarget(target, launchOpts, launchId) {
       await delay(EYE_FRAME_MS);
       const before = await info(page);
       const hud = await hudOn(page);
-      const onBuf = await page.screenshot({ path: join(dir, shot.file) });
-      const chrome = await chromeOf(page, onBuf);
-      // Toasts on screen: a frame with one up is not the HUD at rest (the chrome summary sets it aside).
-      chrome.toasts = await page.evaluate(() => (document.querySelector('[data-testid="notification-stack"]')
-        || document.querySelector('.absolute.top-20.right-4.space-y-2'))?.children.length ?? 0);
+      const chrome = await shootWithChrome(page, join(dir, shot.file));
       const after = await info(page);
       const pt = await passTimes(page);
       const v = eyeShotVerdict({ cycle: shot.cycle, heading: shot.heading, stand: report.stand, before, after, handsBaseline: report.hands?.hidden, hud });

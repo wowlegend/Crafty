@@ -237,6 +237,7 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
   return (
     <div
       ref={rootRef}
+      data-touch-layer
       style={{
         position: 'fixed', inset: 0, zIndex: 40, touchAction: 'none',
         // X3: pointerEvents 'none' is LOAD-BEARING, not cosmetic. This layer is inset:0 over the whole

@@ -78,26 +78,81 @@ export const chromeVars = (page) => page.evaluate((names) => {
 }, CHROME_VARS);
 
 /**
- * The view behind the HUD: every DOM element hidden but the game canvas (the largest), shot, then shown again. The
- * chrome count's twin frame (_lookbook.mjs chromeShare): what it matches here is the world, not interface.
+ * Hold the page still for the chrome footprint's shots (_lookbook.mjs chromeFootprint): the page's own
+ * requestAnimationFrame is replaced by one that queues its callbacks, so the game canvas (R3F's loop and the frame cap
+ * draw only from animation frames), the physics step and the HUD ticker stop and the canvas shows one rendered frame
+ * until releaseFrames. The callbacks already registered run once and land in the queue; two native frames are waited so
+ * they have. Screenshots do not need the page's animation frames (Playwright prepares a shot in its own world).
  */
-export async function worldOnlyShot(page) {
+export async function holdFrames(page) {
   await page.evaluate(() => {
-    const c = [...document.querySelectorAll('canvas')].sort((x, y) => y.width * y.height - x.width * x.height)[0];
-    c?.setAttribute('data-lookbook-world', '');
-    const s = document.createElement('style');
-    s.id = 'lookbook-world-only';
-    s.textContent = 'body * { visibility: hidden !important; } [data-lookbook-world] { visibility: visible !important; }';
-    document.head.appendChild(s);
+    if (window.__lookbookHeld) return;
+    const native = window.requestAnimationFrame.bind(window);
+    const nativeCancel = window.cancelAnimationFrame.bind(window);
+    const queue = new Map();
+    let next = 0;
+    window.__lookbookHeld = { native, nativeCancel, queue };
+    window.requestAnimationFrame = (cb) => { next -= 1; queue.set(next, cb); return next; };
+    window.cancelAnimationFrame = (id) => { if (id < 0) queue.delete(id); else nativeCancel(id); };
   });
+  await nativeFrames(page);
+}
+
+/** Hand the page its animation frames back and run what was queued while it was held. */
+export async function releaseFrames(page) {
+  await page.evaluate(() => {
+    const held = window.__lookbookHeld;
+    if (!held) return;
+    window.requestAnimationFrame = held.native;
+    window.cancelAnimationFrame = held.nativeCancel;
+    delete window.__lookbookHeld;
+    for (const cb of held.queue.values()) held.native(cb);
+  });
+}
+
+/** Two of the browser's own animation frames, whether or not the page's are held. */
+const nativeFrames = (page) => page.evaluate(() => new Promise((r) => {
+  const raf = window.__lookbookHeld?.native || window.requestAnimationFrame.bind(window);
+  raf(() => raf(r));
+}));
+
+/** The touch layer's root (ui/TouchControls.jsx): marked in this lane's builds, else the parent of its pause button. */
+const TOUCH_ROOT = '[data-touch-layer]';
+
+/**
+ * A twin of the current view for the chrome footprint, shot and then undone: `keep: 'touch'` hides the HUD's own
+ * elements and shows the game canvas (the largest) and the touch layer; `keep: 'world'` shows the canvas alone. A touch
+ * element hidden before the twin stays hidden in it. Returns the PNG and whether a touch layer was there to keep.
+ */
+export async function twinShot(page, keep) {
+  const touch = await page.evaluate(({ keepTouch, touchSel }) => {
+    const c = [...document.querySelectorAll('canvas')].sort((x, y) => y.width * y.height - x.width * x.height)[0];
+    c?.setAttribute('data-lookbook-keep', '');
+    const root = keepTouch
+      ? (document.querySelector(touchSel) || document.querySelector('[data-testid="touch-pause"]')?.parentElement || null) : null;
+    if (root) {
+      root.setAttribute('data-lookbook-keep', '');
+      for (const el of root.querySelectorAll('*')) if (getComputedStyle(el).visibility === 'hidden') el.setAttribute('data-lookbook-was-hidden', '');
+    }
+    const s = document.createElement('style');
+    s.id = 'lookbook-twin';
+    s.textContent = 'body * { visibility: hidden !important; } [data-lookbook-keep], [data-lookbook-keep] * { visibility: visible !important; }'
+      + ' [data-lookbook-keep] [data-lookbook-was-hidden] { visibility: hidden !important; }';
+    document.head.appendChild(s);
+    return !!root;
+  }, { keepTouch: keep === 'touch', touchSel: TOUCH_ROOT });
   try {
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-    return await page.screenshot();
+    await nativeFrames(page);
+    return { png: await page.screenshot(), touch };
   } finally {
     await page.evaluate(() => {
-      document.getElementById('lookbook-world-only')?.remove();
-      document.querySelector('[data-lookbook-world]')?.removeAttribute('data-lookbook-world');
+      document.getElementById('lookbook-twin')?.remove();
+      for (const el of document.querySelectorAll('[data-lookbook-keep], [data-lookbook-was-hidden]')) {
+        el.removeAttribute('data-lookbook-keep');
+        el.removeAttribute('data-lookbook-was-hidden');
+      }
     });
+    await nativeFrames(page);
   }
 }
 
