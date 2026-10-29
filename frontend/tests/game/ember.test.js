@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 import {
   EMBER_MAX, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST, PLACE_GAIN, DAILY_BUILD_CAP,
   clampEmber, canAfford, emberForKill, emberForPlace, dailyCap, accrueBuild, readBuildDay, migrateBanks, emberFromSave,
-  emberShort,
 } from '../../src/game/ember.js';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';
 
@@ -157,32 +156,5 @@ describe('an old save\'s four banks become one', () => {
   it('a save with no progression slice keeps the fallback', () => {
     expect(emberFromSave(undefined, 33)).toBe(33);
     expect(emberFromSave(null)).toBe(0);
-  });
-});
-
-describe('a press the bar cannot pay for', () => {
-  const at = (ember, extra = {}) => ({ ember, beastFormActive: false, voidhandHeld: false, imbueArmed: false, ...extra });
-
-  it('is short exactly when the verb\'s spend costs more than the bar holds', () => {
-    for (const [verb, cost] of [['roar', ROAR_COST], ['grab', GRAB_COST], ['snare', SNARE_COST], ['imbue', IMBUE_COST]]) {
-      expect(emberShort(verb, at(cost - 1)), `${verb} one short`).toBe(true);
-      expect(emberShort(verb, at(cost)), `${verb} at its price`).toBe(false);
-    }
-  });
-
-  it('a press that releases is not a spend: ending a beast form, dropping a held block, disarming an imbue', () => {
-    expect(emberShort('roar', at(0, { beastFormActive: true }))).toBe(false);
-    expect(emberShort('grab', at(0, { voidhandHeld: true }))).toBe(false);
-    expect(emberShort('imbue', at(0, { imbueArmed: true }))).toBe(false);
-  });
-
-  it('X is short at the press below the snare\'s price, the cheaper of its spends; from there a fuse\'s want is the frame loop\'s to say', () => {
-    expect(emberShort('snare', at(SNARE_COST - 1))).toBe(true);
-    expect(emberShort('snare', at(SNARE_COST))).toBe(false);
-    expect(FUSE_COST).toBeGreaterThan(SNARE_COST);
-  });
-
-  it('an unknown verb is never short', () => {
-    expect(emberShort('cast', at(0))).toBe(false);
   });
 });

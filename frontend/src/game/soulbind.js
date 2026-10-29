@@ -26,11 +26,12 @@ export function makeSoulbindState() {
   return { channeling: false, channelStart: 0, targetId: null, cooldownUntil: 0 };
 }
 
-/** decideSoulbind(sm, ctx) -> { sm, action }; action: 'none'|'startChannel'|'channelBreak'|'bind'|'unpaid'|'cancel'.
+/** decideSoulbind(sm, ctx) -> { sm, action }; action: 'none'|'startChannel'|'short'|'channelBreak'|'bind'|'unpaid'|'cancel'.
  *  ctx: { snareEdge, active, alive, now, canSnare, canPay, targetId } — targetId = the CURRENT valid snareable
- *  target id or null (apply-site computes it; a different id than locked = validity loss). canPay: the bar holds
- *  SNARE_COST now. One bar pays every verb, so a channel vetted at its start can end with the bar spent by another; that
- *  bind is 'unpaid' and, having done nothing, arms no cooldown. */
+ *  target id or null (apply-site computes it; a different id than locked = validity loss). canSnare: every gate but the
+ *  price (the soulbind_snare talent, room in the squad). canPay: the bar holds SNARE_COST now. A press that would start
+ *  the channel but for the price is 'short'. One bar pays every verb, so a channel vetted at its start can end with the
+ *  bar spent by another; that bind is 'unpaid'. Neither does anything, so neither arms a cooldown. */
 export function decideSoulbind(sm, ctx) {
   const out = { ...sm };
 
@@ -52,6 +53,7 @@ export function decideSoulbind(sm, ctx) {
   }
 
   if (ctx.snareEdge && ctx.now >= sm.cooldownUntil && ctx.alive && ctx.active && ctx.canSnare && ctx.targetId != null) {
+    if (!ctx.canPay) return { sm: out, action: 'short' };
     out.channeling = true;
     out.channelStart = ctx.now;
     out.targetId = ctx.targetId;

@@ -42,12 +42,14 @@ export function makeVoidhandState() {
 
 /**
  * decideVoidhand(sm, ctx) -> { sm, action }.
- * ctx: { held, grabEdge(pressed this frame), attack(edge), cast(edge), active(input live), alive, now, canGrab }
- * action: 'none' | 'startGrab' | 'cancel' | 'grab' | 'hurl' | 'slam' | 'drop'
+ * ctx: { held, grabEdge(pressed this frame), attack(edge), cast(edge), active(input live), alive, now, canGrab, canPay }
+ * action: 'none' | 'startGrab' | 'short' | 'cancel' | 'unpaid' | 'grab' | 'hurl' | 'slam' | 'drop'
  *   - 'grab'  -> Components spawns the phantom + setVoidhandHeld(true) + spends GRAB_COST from the ember bar
  *   - 'hurl'/'slam' -> launch the phantom (the 2 attack intents re-skinned) + setVoidhandHeld(false)
- *   - 'drop'/'cancel' -> despawn the phantom + setVoidhandHeld(false)
- * `canGrab` is the gate other layers compose (the ember bar holding GRAB_COST + the voidhand_grasp talent).
+ *   - 'drop'/'cancel'/'unpaid' -> despawn the phantom + setVoidhandHeld(false)
+ * `canGrab` is every gate but the price (the voidhand_grasp talent); `canPay` is the ember bar holding GRAB_COST on the
+ * frame it is read. A press that would start the charge but for the price is 'short'; a charge whose price another verb
+ * spent before it committed is 'unpaid'. Neither starts anything nor arms a cooldown.
  */
 export function decideVoidhand(sm, ctx) {
   const out = { ...sm };
@@ -68,14 +70,17 @@ export function decideVoidhand(sm, ctx) {
     if (!ctx.alive || !ctx.active) { out.charging = false; return { sm: out, action: 'cancel' }; }
     if (ctx.now - sm.chargeStart >= GRAB_CHARGE_SEC) {
       out.charging = false;
-      if (ctx.canGrab) { out.heldUntil = ctx.now + MAX_HOLD_SEC; return { sm: out, action: 'grab' }; }
-      return { sm: out, action: 'cancel' };
+      if (!ctx.canGrab) return { sm: out, action: 'cancel' };
+      if (!ctx.canPay) return { sm: out, action: 'unpaid' };
+      out.heldUntil = ctx.now + MAX_HOLD_SEC;
+      return { sm: out, action: 'grab' };
     }
     return { sm: out, action: 'none' };
   }
 
-  // IDLE: a fresh grab press (off cooldown, all conditions, bank has GRAB_COST) starts the charge.
+  // IDLE: a fresh grab press (off cooldown, all conditions, the bar holding GRAB_COST) starts the charge.
   if (ctx.grabEdge && ctx.now >= sm.cooldownUntil && ctx.alive && ctx.active && ctx.canGrab) {
+    if (!ctx.canPay) return { sm: out, action: 'short' };
     out.charging = true;
     out.chargeStart = ctx.now;
     return { sm: out, action: 'startGrab' };

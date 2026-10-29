@@ -8,7 +8,6 @@ import { useSpellAnchorRight } from '../input/useSpellAnchor';
 import { setIntent, setActive, getInput } from '../input/inputState';
 import { aspectRing, fanLayout, fanItemStyle, fanOpenerStyle, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, TAP_HOLD_MS } from '../input/aspectWheel';
 import { makeIntentHold, makePointerClaim } from '../input/touchHold';
-import { denyAspectPress } from '../input/aspectDeny.js';
 import { cancelHeavy } from '../game/heavyAttack';
 import { SPELL_ORDER, spellLabelKey } from '../input/spellPicker';
 import { makeTouchRouter } from '../input/touchMath';
@@ -357,12 +356,7 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
           // The ring stays open while held — closing it on the press would unmount the sector under the finger.
           return (
             <button key={a.verb} data-touch-btn data-locked="false" data-testid={`touch-aspect-${a.verb}`} aria-label={a.aspect}
-              onPointerDown={(e) => {
-                if (!panelOpen && roarHold.press(e.pointerId)) {
-                  capturePointer(e);
-                  denyAspectPress(a.verb, useGameStore.getState()); // a press the bar cannot pay for says so, as R does
-                }
-              }}
+              onPointerDown={(e) => { if (!panelOpen && roarHold.press(e.pointerId)) capturePointer(e); }}
               {...releaseHandlers((e) => { if (roarHold.release(e.pointerId)) setWheelOpen(false); })}
               onContextMenu={noMenu}
               style={place} />
@@ -375,7 +369,6 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
               // edge-triggered with no charge, so a tap is all they need.
               setIntent(a.verb, true);
               setTimeout(() => setIntent(a.verb, false), TAP_HOLD_MS);
-              denyAspectPress(a.verb, useGameStore.getState()); // the keyboard's notice, on the thumb
               setWheelOpen(false);
             }}
             style={place} />

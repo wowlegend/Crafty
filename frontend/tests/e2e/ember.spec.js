@@ -124,8 +124,11 @@ test.describe('ember', () => {
     await expect(bar).toContainText(`${SEED}/${EMBER_MAX}`);
     expect(await page.getByTestId('stat-stack').textContent(), 'a retired meter is still on the HUD').not.toMatch(/ROAR!|GRAB!|SNARE!|IMBUE!/);
 
-    // 2. A SHORT PRESS SAYS SO. R on a bar the roar cannot pay for: the notice, no charge, nothing taken.
-    await page.keyboard.press('r');
+    // 2. A SHORT PRESS SAYS SO. R on a bar the roar cannot pay for: the notice, no charge, nothing taken. The notice is
+    // the frame loop's, from the reducer, so the key is held across frames (a press shorter than a frame starts nothing).
+    await page.keyboard.down('r');
+    await page.evaluate(frames, 10);
+    await page.keyboard.up('r');
     await expect(page.getByText('Not enough ember').first(), 'a roar the bar cannot pay for was refused in silence').toBeVisible({ timeout: 15000 });
     const refused = await S();
     expect(refused.charging || refused.form, `a short roar started anyway: ${JSON.stringify(refused)}`).toBe(false);

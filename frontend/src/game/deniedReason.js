@@ -9,7 +9,7 @@ export function deniedReason(kind, ctx = '') {
   switch (kind) {
     case 'no-mana':
       return 'Not enough mana';
-    // An unlocked Aspect verb the ember bar cannot pay for (game/ember.js emberShort).
+    // An unlocked Aspect verb the ember bar cannot pay for: an Aspect reducer's 'short' or 'unpaid' (Components.jsx).
     case 'no-ember':
       return t('deny.noEmber');
     case 'aspect-locked':

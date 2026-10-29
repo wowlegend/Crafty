@@ -39,6 +39,26 @@ describe('S2-B4-M2: the imbue LATCH (simpler than every prior SM — armed until
   });
 });
 
+describe('the imbue\'s price at the arm', () => {
+  it('Z with the talent but the price short -> short: the stance does not arm', () => {
+    const { sm, action } = decideImbue(makeImbueState(), { ...base, imbueEdge: true, canPay: false });
+    expect(action, 'an imbue the bar cannot pay for was refused in silence, or armed').toBe('short');
+    expect(sm.armed).toBe(false);
+  });
+  it('a Z that would not arm at any price, or that disarms, is not short', () => {
+    const armed = decideImbue(makeImbueState(), { ...base, imbueEdge: true }).sm;
+    for (const [why, sm, over] of [
+      ['no talent', makeImbueState(), { canIgnite: false }],
+      ['dead', makeImbueState(), { alive: false }],
+      ['input released', makeImbueState(), { active: false }],
+      ['armed (a release)', armed, {}],
+    ]) {
+      expect(decideImbue(sm, { ...base, imbueEdge: true, canPay: false, ...over }).action, `${why} blamed the bar`).not.toBe('short');
+    }
+    expect(decideImbue(armed, { ...base, imbueEdge: true, canPay: false }).action).toBe('disarm');
+  });
+});
+
 describe('S2-B4-M5: KIND_BY_SPELL (the element->zone mapping)', () => {
   it('maps all four spells to their zone kinds', async () => {
     const { KIND_BY_SPELL } = await import('./elemancer');

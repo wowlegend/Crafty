@@ -87,6 +87,28 @@ describe('a bind or a fuse the bar no longer pays for when its channel ends', ()
   });
 });
 
+describe('a snare the bar cannot pay for', () => {
+  it('a press with a target in the aim and room in the squad but the price short -> short: no channel, no cooldown', () => {
+    const { sm, action } = decideSoulbind(makeSoulbindState(), { ...base, snareEdge: true, targetId: 7, canPay: false });
+    expect(action, 'a bind the bar cannot pay for was refused in silence, or started').toBe('short');
+    expect(sm.channeling).toBe(false);
+    expect(sm.cooldownUntil).toBe(0);
+  });
+  it('a press that would not start the channel at any price is not short', () => {
+    const press = { ...base, snareEdge: true, targetId: 7, canPay: false };
+    for (const [why, ctx] of [
+      ['nothing to snare in the aim', { ...press, targetId: null }],
+      ['a full squad or no talent', { ...press, canSnare: false }],
+      ['no press', { ...press, snareEdge: false }],
+      ['input released', { ...press, active: false }],
+      ['dead', { ...press, alive: false }],
+    ]) {
+      expect(decideSoulbind(makeSoulbindState(), ctx).action, `${why} blamed the bar`).toBe('none');
+    }
+    expect(decideSoulbind({ ...makeSoulbindState(), cooldownUntil: 20 }, { ...press, now: 19 }).action, 'a press in the cooldown blamed the bar').toBe('none');
+  });
+});
+
 describe('a fuse the bar cannot pay for', () => {
   // canStart: a pair near the player whose fusion has a recipe; canPay: the bar holds FUSE_COST.
   const press = { fuseEdge: true, active: true, alive: true, now: 10, canStart: true, canPay: false, pairKey: PAIR };

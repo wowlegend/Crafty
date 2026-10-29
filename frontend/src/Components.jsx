@@ -32,6 +32,10 @@ import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, de
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
 import { armImbueCast, consumeImbueCast } from './game/elemancerChannel.js';
 
+// Whether the ember bar holds `cost` now. Each Aspect verb reads the bar live, never from a store snapshot taken earlier
+// in the frame: the verbs ticked before it on this frame may already have spent from the one bar.
+const barPays = (cost) => canAfford(useGameStore.getState().ember, cost);
+
 // music-motif v2: the stinger rarity guards (a stinger repeats no sooner than this)
 const MOTIF_COOLDOWN_SEC = 10;
 let _lastWildheartMotif = -Infinity;
@@ -367,7 +371,7 @@ export const Player = ({ isWorldBuilt }) => {
       castFired: true,
       active: getInput().active,
       alive: store.isAlive,
-      canIgnite: canAfford(store.ember, IMBUE_COST) && (store.unlockedTalents?.['elemancer_imbue'] > 0),
+      canIgnite: store.unlockedTalents?.['elemancer_imbue'] > 0,
       owned: (store.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0,
       canPay: canAfford(store.ember, IMBUE_COST),
     });
@@ -421,30 +425,31 @@ export const Player = ({ isWorldBuilt }) => {
       }
 
       // S2-B1-M3: roar -> the abstract 'roar' intent (consumed by the transform SM in useFrame).
-      // UX-legibility: a not-yet-unlocked Aspect verb used to fail SILENTLY — teach the unlock path.
+      // A locked Aspect verb teaches the unlock path at the press, once: a held key's auto-repeat says nothing more. An
+      // unlocked verb the bar cannot pay for is told by the frame loop, where its reducer sees every other gate.
       if (e.code === 'KeyR') {
         setIntent('roar', true);
-        denyAspectPress('roar', useGameStore.getState());
+        if (!e.repeat) denyAspectPress('roar', useGameStore.getState());
       }
 
       // S2-B2-M1: grab -> the abstract 'grab' intent (VOIDHAND SM in useFrame). KeyV (KeyG = chest/trade).
       if (e.code === 'KeyV') {
         setIntent('grab', true);
-        denyAspectPress('grab', useGameStore.getState());
+        if (!e.repeat) denyAspectPress('grab', useGameStore.getState());
       }
 
       // S2-B3-M4: snare -> the abstract 'snare' intent (SOULBIND SM in useFrame).
       // The Aspect-verb row: R=roar, V=grab, X=snare. (KeyT is the melee-attack key below — not an Aspect verb.)
       if (e.code === 'KeyX') {
         setIntent('snare', true);
-        denyAspectPress('snare', useGameStore.getState());
+        if (!e.repeat) denyAspectPress('snare', useGameStore.getState());
       }
 
       // S2-B4-M5: imbue -> the abstract 'imbue' intent (the ELEMANCER latch in useFrame).
       // The Aspect-verb row completes: R=roar, V=grab, X=snare, Z=imbue.
       if (e.code === 'KeyZ') {
         setIntent('imbue', true);
-        denyAspectPress('imbue', useGameStore.getState());
+        if (!e.repeat) denyAspectPress('imbue', useGameStore.getState());
       }
 
       // 2026-06-28 (Kevin): magic spells are the marquee feature -> the prime F key CASTS the
@@ -675,8 +680,14 @@ export const Player = ({ isWorldBuilt }) => {
     // authority; the store's beastFormActive is the single active-truth, the SM owns only the charge +
     // duration/cooldown timers. `active` (input-live) is the deliberate modal proxy — every modal-open
     // path exits pointer-lock -> active=false -> no transform mid-menu. (No setIntent('roar',false) on
-    // exit: the roarEdge + cooldown already block instant re-trigger.) `canEnter` is a full ember bar and the
-    // wildheart_roar talent. set() fires only on transitions.
+    // exit: the roarEdge + cooldown already block instant re-trigger.) `canEnter` is the wildheart_roar talent and
+    // `canPay` a full ember bar. set() fires only on transitions.
+    //
+    // NOT ENOUGH EMBER is said here, once a frame at most, from the Aspect reducers below: each returns 'short' for a
+    // press only the price refused and 'unpaid' for a started verb whose price another verb spent before it landed. The
+    // reducers hold every other gate, so a press that would do nothing at any bar says nothing, and the keyboard and the
+    // touch ring, which write the same intents, are told alike.
+    let emberShort = false;
     {
       const rin = getInput();
       const roar = rin.roar;
@@ -690,9 +701,10 @@ export const Player = ({ isWorldBuilt }) => {
         active: rin.active,
         alive: st.isAlive,
         now: state.clock.getElapsedTime(),
-        // A full ember bar AND the Primal Roar talent (the roar is a signature ability, not free). canEnter gates BOTH
-        // startCharge and commit, and is read this frame, so the spend below is covered.
-        canEnter: canAfford(st.ember, ROAR_COST) && (st.unlockedTalents?.['wildheart_roar'] > 0),
+        // The Primal Roar talent and a full ember bar (the roar is a signature ability, not free); both gate the charge's
+        // start and its commit, and canPay is read this frame, so the spend below is covered.
+        canEnter: st.unlockedTalents?.['wildheart_roar'] > 0,
+        canPay: barPays(ROAR_COST),
         // M6: Primal Endurance extends the form duration — read the rank at THIS site (not the fold).
         formDurationSec: formDurationFor(st.unlockedTalents?.['wildheart_endurance'] || 0),
       });
@@ -724,11 +736,15 @@ export const Player = ({ isWorldBuilt }) => {
           }
         }
         st.setBeastCharging(false); // M7c: anticipation -> BURST + the avatar entrance take over
-      } else if (action === 'cancel') {
-        // M7a: roar released early -> ease the transform-cam back to FPV (jump it to the return phase).
+      } else if (action === 'cancel' || action === 'unpaid') {
+        // M7a: roar released early, or its price spent by another verb -> ease the transform-cam back to FPV (jump it
+        // to the return phase).
         const tc = transformCamRef.current;
         if (tc.active) tc.t = Math.max(tc.t, 0.78 * TRANSFORM_CAM_SEC);
         st.setBeastCharging(false); // M7c: charge cancelled
+        if (action === 'unpaid') emberShort = true;
+      } else if (action === 'short') {
+        emberShort = true;
       } else if (action === 'exitTimer' || action === 'exitManual') {
         st.exitBeastForm();
       }
@@ -736,8 +752,9 @@ export const Player = ({ isWorldBuilt }) => {
 
     // S2-B2-M1: the VOIDHAND grab SM — tap V to grab a phantom block (orbits as a shield), re-press V to
     // release. Transient intent reads; the store holds the single held-truth; set() only on transitions
-    // (Game-Loop-Isolation). A grab is ALWAYS a phantom (never a voxel edit -> no re-mesh). canGrab is the ember
-    // bar + the voidhand_grasp talent; release is a hurl or slam (the attack/cast edges), a re-press, or the max-hold timer.
+    // (Game-Loop-Isolation). A grab is ALWAYS a phantom (never a voxel edit -> no re-mesh). canGrab is the
+    // voidhand_grasp talent and canPay the ember bar; release is a hurl or slam (the attack/cast edges), a re-press, or
+    // the max-hold timer.
     // S2-B2-M2: under perf-probe mode the runner writes `voidhandHeld` directly (no real grab happened,
     // so the SM's heldUntil=0 would max-hold-auto-drop it on the first frame) — the probe's store-driven
     // held state is authoritative, so the SM tick is skipped. isPerfProbe() is constant-false in prod.
@@ -758,8 +775,9 @@ export const Player = ({ isWorldBuilt }) => {
         active: vin.active,
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
-        // The bar + the talent; read this frame, which is the frame a 'grab' commits, so the spend below is covered.
-        canGrab: canAfford(stv.ember, GRAB_COST) && (stv.unlockedTalents?.['voidhand_grasp'] > 0),
+        canGrab: stv.unlockedTalents?.['voidhand_grasp'] > 0,
+        // Read this frame, which is the frame a 'grab' commits, so the spend below is covered.
+        canPay: barPays(GRAB_COST),
       });
       voidhandSMRef.current = vsm;
       if (vaction === 'grab') {
@@ -794,10 +812,11 @@ export const Player = ({ isWorldBuilt }) => {
         }
         stv.setVoidhandHeld(false);
         stv.setHeldPhantom(null);
-      } else if (vaction === 'drop' || vaction === 'cancel') {
+      } else if (vaction === 'drop' || vaction === 'cancel' || vaction === 'unpaid') {
         stv.setVoidhandHeld(false);
         stv.setHeldPhantom(null);
       }
+      if (vaction === 'short' || vaction === 'unpaid') emberShort = true;
 
       // S2-B3-M4: the SOULBIND snare SM — the voidhand block's sibling. Target validity is computed
       // PER FRAME (the mob keeps moving; holding aim IS the skill — design §2).
@@ -829,15 +848,14 @@ export const Player = ({ isWorldBuilt }) => {
         active: vin.active,
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
-        canSnare: canAfford(stv.ember, SNARE_COST) && (stv.unlockedTalents?.['soulbind_snare'] > 0) && alliesQuery.entities.length < squadCap,
-        // canSnare was vetted when the channel started; another verb may have spent from the bar during it. Read now,
-        // not from stv: this frame's grab may already have spent.
-        canPay: canAfford(useGameStore.getState().ember, SNARE_COST),
+        canSnare: (stv.unlockedTalents?.['soulbind_snare'] > 0) && alliesQuery.entities.length < squadCap,
+        // Read at the start and again at the bind: another verb may spend from the bar while the channel runs.
+        canPay: barPays(SNARE_COST),
         targetId: snareTargetId,
       });
       soulbindSMRef.current = ssm;
+      if (saction === 'short' || saction === 'unpaid') emberShort = true;
       if (saction === 'unpaid') {
-        notifyDenied('no-ember');
         clearSnareState();
       } else if (saction === 'bind') {
         stv.spendEmber(SNARE_COST); // canPay above read the bar with nothing spent since
@@ -880,15 +898,12 @@ export const Player = ({ isWorldBuilt }) => {
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
         canStart: !!fusePair && !!lookupHybrid(fusePair[0].baseType || fusePair[0].type, fusePair[1].baseType || fusePair[1].type),
-        // Read now, not from stv: this frame's grab or bind may already have spent from the bar.
-        canPay: canAfford(useGameStore.getState().ember, FUSE_COST),
+        canPay: barPays(FUSE_COST),
         pairKey: fusePair ? fuseKey(fusePair[0].id, fusePair[1].id) : null,
       });
       fuseSMRef.current = fsm;
-      // The keydown's notice covers a bar below the snare's price; between the two prices only this frame knows X was a
-      // fuse. 'unpaid' is a channel whose price another verb spent while it ran, as the bind's.
       if (faction === 'short' || faction === 'unpaid') {
-        notifyDenied('no-ember');
+        emberShort = true;
       } else if (faction === 'fuse' && fusePair) {
         const hy = applyFusion(ecs, fusePair[0], fusePair[1]);
         if (hy) {
@@ -911,7 +926,7 @@ export const Player = ({ isWorldBuilt }) => {
         });
       }
 
-      // ELEMANCER (S2-B4-M5): the imbue LATCH — Z arms the next cast (bank- and talent-gated), and
+      // ELEMANCER (S2-B4-M5): the imbue LATCH — Z arms the next cast (talent- and ember-gated), and
       // death or released input drops the stance. The CONSUME is not decided here: it belongs to
       // triggerSpellCast, which is the call that spawns the projectile that reads the element. Deciding
       // it here meant deciding it one frame after the projectile had already been built. `castFired` is
@@ -925,13 +940,16 @@ export const Player = ({ isWorldBuilt }) => {
         castFired: false,
         active: vin.active,
         alive: stv.isAlive,
-        canIgnite: canAfford(stv.ember, IMBUE_COST) && (stv.unlockedTalents?.['elemancer_imbue'] > 0),
+        canIgnite: stv.unlockedTalents?.['elemancer_imbue'] > 0,
         owned: (stv.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0,
+        canPay: barPays(IMBUE_COST),
       });
       imbueSMRef.current = ism;
       if (iaction === 'arm') stv.setImbueArmed(true);
       else if (iaction === 'disarm') stv.setImbueArmed(false);
+      else if (iaction === 'short') emberShort = true;
     }
+    if (emberShort) notifyDenied('no-ember');
 
     // Phase 29: Freeze physics body on death to prevent void-falling loops and camera jitter
     const isPlayerAlive = useGameStore.getState().isAlive;

@@ -9,7 +9,7 @@ import {
 // Components.jsx holds the state in a ref + applies the returned action (enter/exitBeastForm).
 
 const base = (over = {}) => ({
-  isBeast: false, roar: false, roarEdge: false, active: true, alive: true, now: 100, canEnter: true, ...over,
+  isBeast: false, roar: false, roarEdge: false, active: true, alive: true, now: 100, canEnter: true, canPay: true, ...over,
 });
 
 describe('decideTransform — starting the charge (idle human)', () => {
@@ -131,5 +131,41 @@ describe('M6 Primal Endurance — form-duration lever (rank read at the duration
     const { sm, action } = decideTransform(charging, ctx);
     expect(action).toBe('enter');
     expect(sm.activeUntil).toBe(ctx.now + FORM_DURATION_SEC);
+  });
+});
+
+// One ember bar pays every Aspect verb, so the reducer is the one place that knows whether a press would have started
+// the roar but for its price. 'short' and 'unpaid' start nothing and arm no cooldown; the caller says why.
+describe('decideTransform — the price', () => {
+  it('a roar edge that would start the charge but for the price -> short: nothing starts', () => {
+    const { sm, action } = decideTransform(makeTransformState(), base({ roar: true, roarEdge: true, canPay: false }));
+    expect(action, 'a roar the bar cannot pay for was refused in silence, or started').toBe('short');
+    expect(sm.charging).toBe(false);
+    expect(sm.cooldownUntil).toBe(0);
+  });
+  it('a press that would not start the charge at any price is not short', () => {
+    for (const [why, over, sm] of [
+      ['no edge (R held)', { roar: true, roarEdge: false }],
+      ['dead', { roarEdge: true, alive: false }],
+      ['input released', { roarEdge: true, active: false }],
+      ['no talent', { roarEdge: true, canEnter: false }],
+      ['in the cooldown', { roarEdge: true, now: 104 }, { ...makeTransformState(), cooldownUntil: 105 }],
+      ['in a form (a release)', { roarEdge: true, isBeast: true }, { ...makeTransformState(), activeUntil: 200 }],
+    ]) {
+      const { action } = decideTransform(sm || makeTransformState(), base({ roar: true, canPay: false, ...over }));
+      expect(action, `${why} blamed the bar`).not.toBe('short');
+    }
+  });
+  it('a charge whose price another verb spent before it committed -> unpaid, not enter, and no cooldown', () => {
+    const charging = { ...makeTransformState(), charging: true, chargeStart: 100 };
+    const { sm, action } = decideTransform(charging, base({ roar: true, now: 100 + ANTICIPATION_SEC, canPay: false }));
+    expect(action, 'an unpaid roar entered, or ended silently').toBe('unpaid');
+    expect(sm.charging).toBe(false);
+    expect(sm.cooldownUntil).toBe(0);
+  });
+  it('a charge released, or with the talent gone, before it commits is a cancel, not unpaid, whatever the bar holds', () => {
+    const charging = { ...makeTransformState(), charging: true, chargeStart: 100 };
+    expect(decideTransform(charging, base({ roar: false, now: 100.1, canPay: false })).action).toBe('cancel');
+    expect(decideTransform(charging, base({ roar: true, now: 100 + ANTICIPATION_SEC, canEnter: false, canPay: false })).action).toBe('cancel');
   });
 });
