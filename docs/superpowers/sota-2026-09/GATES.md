@@ -393,7 +393,7 @@ where it becomes visible.
 | `tests/gates/dynamic-light-gates.test.js` | dynamic-light gate | 3 | — | example | reads the module as TEXT while the module is importable — drive it instead |
 | `tests/gates/elemancer-noremesh-gates.test.js` | elemancer no-re-mesh gate | 3 | — | example | reads the module as TEXT while the module is importable — drive it instead |
 | `tests/gates/equipment-dry-gates.test.js` | equipment DRY gates | 3 | — | example | reads the module as TEXT while the module is importable — drive it instead |
-| `tests/gates/hands-render-gates.test.js` | W2-T6 stylized FPV hands (character render language) | 3 | — | example | reads the module as TEXT while the module is importable — drive it instead |
+| `tests/gates/hands-render-gates.test.js` (deleted by W2-E, 2026-10-29: the hands it read became the viewmodel, driven by `tests/gates/viewmodel-gates.test.js`) | W2-T6 stylized FPV hands (character render language) | 3 | — | example | reads the module as TEXT while the module is importable — drive it instead |
 | `tests/gates/home-anchor-gates.test.js` | Home Anchor (the Hearth) gates | 3 | — | example | reads the module as TEXT while the module is importable — drive it instead |
 | `tests/gates/hub-render-gates.test.js` | hub render gates | 3 | — | example | reads the module as TEXT while the module is importable — drive it instead |
 | `tests/gates/hud-declutter-gates.test.js` | hud declutter gates | 3 | — | example | reads the module as TEXT while the module is importable — drive it instead |

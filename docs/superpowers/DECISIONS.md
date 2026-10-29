@@ -32,16 +32,24 @@ continue the numbering after W2-I's (its last is 32). Readings and frames:
    only SMAA can smooth the gauntlets' edges; the grade and the Neutral tone mapping keep them in the world's colour;
    and bloom carries the ember core, which is what replaces the hand's point light. Drawn after the composer they
    would be aliased, ungraded and untone-mapped (R3F's composer sets `gl.toneMapping = NoToneMapping`). Why a depth
-   range and not the depth clear the plan row named: GodRays reads the composer's depth texture to occlude the sun
-   (postprocessing 6.39.5 `GodRaysEffect`, `EffectAttribute.DEPTH`), and a clear would empty it where the world is.
+   range and not the depth clear the plan row named: after each pass that sets `needsDepthBlit` the composer copies the
+   depth buffer into the texture GodRays tests the sun against (postprocessing 6.39.5 `EffectComposer.render`,
+   `GodRaysEffect.update`), and `ViewmodelPass` sets it so that a gauntlet in front of the sun hides it. After a clear
+   that copy would hold the hands alone and the sun would shine through every wall; with the hands left out of the
+   copy a clear would work, and the sun would show through the hands. The world's `RenderPass` copies just before, so
+   a frame with GodRays mounted pays a second full-resolution depth copy (`REVIEW:w2e:viewmodel-pass-gpu-cost`).
    The viewmodel camera maps its depth into the front 2% of the buffer instead, so the hands are nearer than any world
    surface beyond 0.102 m (the main near plane is 0.1 m) and still test against each other. It has its own fixed 60
    degree FOV (the main camera's moves 75 to 85 with speed), anchors that follow the aspect so both fists stay in
    frame on a portrait iPad, the world's ambient, hemisphere and key light mirrored into view space, a value floor
    (`max(lit, albedo x 0.45)` in the toon shader), and an HDR ember core above Bloom's threshold. The aura sphere, the
-   hand's pooled point light and every shadow flag on the hands are gone. It stands while it earns its place.
+   hand's pooled point light and every shadow flag on the hands are gone; the wand the right hand holds by default
+   draws its wood and tip with the same floor, and its translucent aura sphere, the orange sphere the task script's
+   goal named, is gone too (the gem stays). It stands while it earns its place.
    **Measured** (local production build, Chromium on ANGLE-Metal, M3 Max, 1280x800 at dpr 2, the eye at bearing 240;
-   hand pixels are what the hands change against a pose twin at the same eye): at midnight (0.75) the mean luma of the
+   hand pixels are what the hands change against a pose twin at the same eye, by more than 24 in some channel, so a
+   hand pixel about as dark as the ground behind it, an ink outline on dark turf, is not counted and the readings lean
+   high; the margin over the declared floor is twice the floor): at midnight (0.75) the mean luma of the
    hand pixels went from 28.7 to 100.2 and the median from 7 to 106, against the floor declared before shooting (mean
    48, median 40). Warm at every time (red over blue: 2.9 at midnight). At point blank, against a tree trunk with the
    body 0.45 m from it, the hand pixels near/far went from 0.02 (the old hands sank into the trunk) to 1.14.
@@ -53,13 +61,16 @@ continue the numbering after W2-I's (its last is 32). Readings and frames:
    the body's centre) and melee reach is unchanged; the snare's aim and the hurl's launch start at the new eye, which
    is where the player now sees from. `playerPosition` (the camera, rounded) reads the same integer at rest. It
    stands while it earns its place.
-35. **REVIEW:w2k:dark-polygon-between-hands was the old hands' shadow, and it is gone with them.** In the before build
-   the turf-wall frame shows the flat dark polygon between the slabs; its pose twin (the same eye, hands hidden)
-   shows the turf block there instead, so it belongs to the hands. It is not the held block, which shows separately
-   at the left as a flat green box. The old hands cast shadows (`castShadow` on every mesh) and the turf block's face
-   stood in front of them; the viewmodel hands are in a scene with no shadow-casting light, and the after build's
-   turf-wall frame shows no polygon. A moved camera also stops counting as a shadow caster (`render/Atmosphere.jsx`),
-   since the hands were the reason it did (e9d49bdf): turning the view no longer re-renders the sun's shadow map.
+35. **REVIEW:w2k:dark-polygon-between-hands was a mesh of the old hands, and it went with them.** Corrected after
+   review: the first reading, the old hands' shadow, rested on a frame that was not W2-K's framing, and the textured
+   darkening its pose twin removes is not W2-K's polygon. W2-K's polygon, cropped from its own frames
+   (`docs/superpowers/masterpiece-2026-10/evidence/w2k/after-turf-wall-*.png`), is flat and untextured, carries an ink
+   outline along its top edge, and is the colour of the old slab beside it at each time (dark brown at 0.30, navy at
+   0.75): the old hands' toon material and outline, so one of their meshes, not their shadow. Every one of those
+   meshes is deleted, and none of the after frames looked at shows a flat dark shape between the gauntlets (the list
+   is in `evidence/w2e/index.md`). Not done: a frame at W2-K's exact sight, which today's sight finder no longer picks.
+   A moved camera also stops counting as a shadow caster (`render/Atmosphere.jsx`), since the hands were the reason it
+   did (e9d49bdf): turning the view no longer re-renders the sun's shadow map.
 36. **Mobs keep measuring the player from the eye, so item 34 moves which ledges are refuge, and the new table is
    kept.** The AI worker's reach test compares the camera (`game/mobSenses.js` `mobSensePoint`) with the mob's centre,
    0.5 m over its floor. With the eye at 2.15 m a single step onto a block put a player out of an ordinary mob's 2.5

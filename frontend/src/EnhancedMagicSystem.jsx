@@ -27,7 +27,7 @@ import { registerTestHook } from './devtest/testBridge.js';
 import { mobsQuery } from './ecs/world';
 import { isHostile } from './combat/targeting';
 // (A dead `export { MagicWand } from './render/spellVfx'` pass-through lived here. Every consumer
-// imports MagicWand from render/spellVfx directly — playerRender.jsx:16 is the only one — so this
+// imports MagicWand from render/spellVfx directly — render/playerRender.jsx is the only one — so this
 // re-export was a second import path nobody took. knip 6.32 flags it; 6.17 did not.)
 
 // Per-frame scratch for the boss proximity test below. See its call site: it held three numbers for

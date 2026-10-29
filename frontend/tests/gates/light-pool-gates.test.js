@@ -5,7 +5,8 @@ import { POOL_SIZE, poolFrame, registerPooledLight, pooledLightCount, makeLightR
 /**
  * DYNAMIC POINT LIGHTS COME FROM A FIXED POOL (plan 2026-10-27-crafty-steady-cool, item i; refute F3).
  *
- * Every treasure chest carried a beacon pointLight, the cast hand mounted one per cast, every spell projectile and every
+ * Every treasure chest carried a beacon pointLight, the cast hand mounted one per cast (it carries none now: the hands
+ * draw in the viewmodel scene, render/viewmodel.js), every spell projectile and every
  * impact mounted one, the beast core and the boss (and each boss fireball) another — each mount and unmount changes
  * three's NUM_POINT_LIGHTS, which re-links EVERY lit shader program: a hitch at every cast, chest spawn and chest open,
  * and ~5 beacon lights in every lit fragment for the whole session. Now those sites register a REQUEST (an anchor, a

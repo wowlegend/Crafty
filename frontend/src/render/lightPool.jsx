@@ -1,7 +1,8 @@
 // lightPool — dynamic point lights come from a fixed pool (plan docs/superpowers/plans/2026-10-27-crafty-steady-cool.md,
 // item i; refute F3).
 //
-// Every treasure chest carried a beacon <pointLight>, the cast hand mounted one per cast, every spell projectile and every
+// Every treasure chest carried a beacon <pointLight>, the cast hand mounted one per cast (it carries none now: the hands
+// draw in the viewmodel scene, render/viewmodel.js), every spell projectile and every
 // spell impact mounted one, and so did the beast core, the boss and each boss fireball. three bakes the point-light COUNT
 // into every lit shader (NUM_POINT_LIGHTS), so each of those mounts and unmounts re-linked every lit program — a hitch at
 // every cast, every chest spawn and every chest open — and at steady state ~5 chest beacons sat in every lit fragment

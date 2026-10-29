@@ -11,10 +11,11 @@
 //     caster is present — and never more often than SHADOW_MAX_HZ.
 //
 // F2, with the real arc: 0.5 deg steps of the sun (mood.js sunArcDirection) are about 723 renders a cycle, whatever the
-// day length; at the 480 s day (game/dayNight.js) that is about 1.5 a second. HONESTLY: the player's own hands, the
-// loaded square's mobs and villagers make a dynamic caster present almost all the time in play, so the real saving is
-// the 30 Hz cap — half the shadow renders at 60 fps. The static path pays off only when nothing moves. A moving caster's
-// shadow updates at 30 Hz; a long shadow can step by up to 0.5 deg between sun steps.
+// day length; at the 480 s day (game/dayNight.js) that is about 1.5 a second. The loaded square's mobs and villagers
+// make a dynamic caster present most of the time in play, so the main saving there is the 30 Hz cap — half the shadow
+// renders at 60 fps; the static path pays off when no caster is loaded. The player's own hands cast no shadow (they draw
+// in the viewmodel scene, render/viewmodel.js), so turning the view is not a reason to render. A moving caster's shadow
+// updates at 30 Hz; a long shadow can step by up to 0.5 deg between sun steps.
 
 export const SHADOW_MAX_HZ = 30;
 export const SUN_STEP_DEG = 0.5;
