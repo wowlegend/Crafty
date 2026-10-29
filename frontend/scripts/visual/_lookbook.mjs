@@ -749,6 +749,12 @@ export function targetSummaryLines(r, planned = {}) {
     }).join(', ');
     set('material', r.material || [], planned.material ?? 0, `; sights: ${sights}`);
   }
+  if (r.hud) {
+    const c = r.hud.compass;
+    lines.push(c?.labels ? `  hud compass   ${c.labels.length} label(s) shown, ${c.overlaps.length} overlapping${c.overlaps.length ? ` (${c.overlaps.join('; ')})` : ''}; pips ${c.pips.join(', ')}`
+      : `  hud compass   NOT MEASURED: ${c?.why}`);
+    for (const d of r.hud.dusk || []) lines.push(`  hud dusk ${d.locale.padEnd(5)} ${d.count} warning(s), ${d.coversDial ? 'COVERS the dial' : 'clear of the dial'}; "${d.text ?? ''}"`);
+  }
   if (r.clips?.length) {
     lines.push(`  clips         ${r.clips.filter((c) => c.valid).length}/${r.clips.length} valid`);
     for (const c of r.clips) {

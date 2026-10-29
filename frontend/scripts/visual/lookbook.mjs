@@ -29,6 +29,11 @@
  *   hero   for each of four places, pins the camera above it and shoots the programme's four times of day;
  *   material  (opt-in, not in the default) stands the player in front of a grass hill's side and a tree trunk found
  *          in the live mesh near the Hearth (_lookbook.mjs findMaterialSights) and looks at each, at each time.
+ *   hud    (opt-in) the HUD lane's poses (_lookbookHud.mjs): HOME and Mara a few degrees apart on the compass, label
+ *          boxes read for overlap; the dusk warning in English, then after a night in zh-CN, each frame shot with the
+ *          toast up and its box read against the day-phase dial's.
+ * Every eye shot also records its CHROME share (_lookbook.mjs chromeShare): the pixels in the page's own chrome surface
+ * colours, against a twin shot with the DOM hidden but the game canvas, so the world's own matches are set aside.
  * The clock keeps running, so before each shot it sets the time, lets the sky settle, sets it again and shoots, and
  * records where the clock actually was. Every shot and clip also records timer-query ms per pass over its window
  * (src/render/passTimer.js, EXT_disjoint_timer_query_webgl2: Chromium only; WebKit says it cannot time). Those are not
@@ -103,6 +108,7 @@ import {
   HAND_MASK, HANDS_HEADING, handPixelStats, facing, handCount, CYCLE_TOLERANCE, chromeShare, chromeColoursFrom,
 } from './_lookbook.mjs';
 import { PNG } from 'pngjs';
+import { shootHudSet } from './_lookbookHud.mjs';
 import { BLOCK_ID } from '../../src/world/blockIds.js';
 
 const PORT = probePort(import.meta.url);
@@ -130,7 +136,7 @@ const PASS_TIMES_RUN = (() => {
 const HEADED = flag('--headed');
 const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
-const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands'];
+const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands', 'hud'];
 const SETS = arg('--sets', 'hero,eye,clips').split(',');
 // --cycles: the times to shoot (dawn-origin fractions), for a before/after at hours the programme's four do not cover.
 let CYCLES;
@@ -552,6 +558,13 @@ async function shootTarget(target, launchOpts, launchId) {
       report.material.push({ ...shot, valid: v.valid && !!rest, why: v.why, ...facts(after, t0, pt), hud, sight, aim, rest,
         headingAtShot: after.heading, pitch: after.pitch, eye: after.eye, body: after.body, cameraNodes: after.cameraNodes,
         hostiles: after.hostiles, cleared });
+    }
+
+    // THE HUD SET (_lookbookHud.mjs): HOME and Mara a few degrees apart on the compass; the dusk warning in English and
+    // in Chinese. Opt-in (`--sets hud`); it moves the player, so it runs after every set that stands at the Hearth.
+    if (SETS.includes('hud') && report.stand) {
+      await respawnIfDead(page, report);
+      report.hud = await shootHudSet(page, dir, { prep: async () => { await clearHostiles(page); await play(page); } });
     }
 
     for (const place of SETS.includes('hero') ? LOOKBOOK_PLACES : []) {
