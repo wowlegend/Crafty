@@ -1,4 +1,5 @@
-// A 1-HP zombie staged where the player's next swing will meet it, for the specs that need one kill (talents, forge).
+// A 1-HP zombie staged where the player's next swing will meet it, for a spec that needs one kill from a key press
+// (tests/e2e/forge.spec.js, on T). A click's kill aims on its own mousedown instead (tests/e2e/talents.spec.js).
 //
 // WHY THE CONE IS CHECKED. The melee cone (combat/cone.js isPointInCone, through GameMethods.checkMobsInMeleeCone)
 // measures from the swing's apex over the BODY and drops a target more than 2.2 m above or below it or past 4.5 m. A

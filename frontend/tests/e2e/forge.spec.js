@@ -220,7 +220,8 @@ test.describe('the Forge', () => {
     expect((await read(page)).panels, 'C opened a panel').toEqual([]);
 
     // 7. IT STILL FIGHTS: a real T press (the melee key) kills a staged 1-HP zombie, with the world held from the staging
-    // so neither it nor anything else moves or strikes before the press (tests/e2e/talents.spec.js stages its kill so).
+    // so neither it nor anything else moves or strikes before the press (tests/e2e/talents.spec.js holds the world over
+    // its kill too).
     // The zombie is staged by tests/e2e/_meleeTarget.js (on the player's floor, clear of Mara, inside the game's own
     // melee cone, checked before the press); its header says why.
     await page.evaluate((capMs) => window.__e2eHoldWorld({ capMs }), test.info().timeout || 240000);
