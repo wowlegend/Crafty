@@ -27,7 +27,9 @@ import { resolveChestHeights } from './game/captureRest.js';
 export { LOOT_TABLES, CHEST_LOOT };
 
 // A hunt kills one creature (game/questText.js). Its title and objective are written in English from the creature's
-// display name, so the text a save keeps, which an older build reads, names the creature as the tracker does.
+// display name, so the title a save keeps, which a build from before this one still shows, names the creature as the
+// tracker does. That build rewrites the objective from its own list, so after a rollback the title reads "Husk Slayer"
+// over "Defeat 10 zombies".
 const enT = (key, vars) => tIn('en', key, vars);
 function hunt(q) {
     return { ...q, type: 'kill_type', title: questTitle(enT, 'en', q), description: questDescription(enT, 'en', q) };

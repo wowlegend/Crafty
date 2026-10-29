@@ -48,6 +48,8 @@ function readHunt() {
 
 test('a hunt names the creature on screen: a saved Zombie Slayer reads "Defeat 10 Husks", a real kill finishes it, zh-CN reads Chinese, the save keeps the count', async ({ page }) => {
   // A boot, then a load whose world re-streams two chunks a tick (minutes on CI's software renderer), then the kill.
+  // The budget includes the ground wait after the load, which allows up to 150 s. It is a precondition with its own
+  // SETUP message, so no assertion is looser for the longer budget.
   test.setTimeout(360000);
   await page.addInitScript(installWorldHold);
   await bootDev(page);

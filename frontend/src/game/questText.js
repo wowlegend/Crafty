@@ -1,6 +1,8 @@
-// questText.js — what a quest says, in a locale. A hunt (a quest with a `mobType`) names its creature by the word on
-// that creature's nametag: the locale's `mob.<type>.<form>` noun, whose English is MOB_TYPES[type].displayName
-// (src/i18n/strings.js), with the count in the plural form the locale's rules pick. Its title is `quest.<id>.title`.
+// questText.js — what a quest says, in a locale. A hunt (a quest with a `mobType`) names its creature by the locale's
+// `mob.<type>.<form>` noun, with the count in the plural form the locale's rules pick. In English that noun is
+// MOB_TYPES[type].displayName, the word on the creature's nametag; every other locale's nouns are written by hand in
+// src/i18n/strings.js and the nametag shows the English word in every locale, so they can differ from it. Its title is
+// `quest.<id>.title`.
 // Every other quest keeps the text it was authored with. A hunt's text is built from its id and mob key alone, never
 // from the words a save carried, so a hunt saved under an older name reads the current one.
 // Pure: `t(key, vars)` translates in `locale`, the caller's pairing (useT() and the store's locale, or i18n's tIn).

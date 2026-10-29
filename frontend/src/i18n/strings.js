@@ -4,7 +4,8 @@
 import { MOB_TYPES } from '../game/mobTypes.js';
 
 // A creature's English name is the word on its nametag, MOB_TYPES[type].displayName, so renaming it in the registry
-// renames it in every quest (game/questText.js). Its plural adds "s" except where English does not.
+// renames it in every English quest (game/questText.js). Its plural adds "s" except where English does not. The zh-CN
+// nouns below are written by hand and the nametag stays English in every locale, so they can differ from it.
 const IRREGULAR_PLURAL = Object.freeze({ Ox: 'Oxen' });
 const ENGLISH_MOB_NOUNS = Object.fromEntries(Object.entries(MOB_TYPES).flatMap(([type, { displayName }]) => [
   [`mob.${type}.one`, displayName],

@@ -8,12 +8,14 @@ import { emitMobKill } from '../../src/game/mobKillBus';
 import { questTitle, questDescription } from '../../src/game/questText.js';
 import { tIn } from '../../src/i18n/i18n.js';
 
-// THE KEY MAP (W2-F step 7; DECISIONS 2026-10-29 item 76). Quest text moved to the creatures' display names; no key a
-// save holds moved with it. A saved quest is found by its id, a hunt counts the kills of its `mobType`, and the kill
+// THE KEY MAP (W2-F step 7; DECISIONS 2026-10-29 item 76). Quest text moved to the creatures' names; no key a save
+// holds moved with it. A saved quest is found by its id, a hunt counts the kills of its `mobType`, and the kill
 // counter `stats.kills_by_type` is keyed by the same MOB_TYPES key. So the map from the keys a save written before this
 // change holds to the keys this build reads is the identity, and it is frozen here as literals: a later rename of a
-// quest id or a mob key goes red until it adds a migration. The text a save carries (`title`, `description`) is never
-// read for display; it is rendered from the id and the mob key.
+// quest id or a mob key goes red and stays red until this test is edited. The edit that clears it has to change the
+// identity check below too (it fails for any pair whose two sides differ), and nothing here checks that the edit
+// also adds a migration. The text a save carries (`title`, `description`) is never read for display; it is rendered
+// from the id and the mob key.
 //
 // WHAT THIS DOES NOT CHECK: the tracker's DOM (tests/gates/quest-text-gates.test.jsx), or a kill in the running game
 // (tests/e2e/quest-text.spec.js).

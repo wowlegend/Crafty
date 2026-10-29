@@ -5,9 +5,10 @@ import { MOB_TYPES } from './mobTypes.js';
 import { QUEST_LIST } from '../QuestSystem.jsx';
 
 // QUEST TEXT FROM THE CREATURES' NAMES (W2-F step 7; reset-plan row 24; DECISIONS 2026-10-29 items 75-78). A quest
-// that hunts one creature names it by the word on its nametag, MOB_TYPES[type].displayName, through the locale's
-// t() keys, with the count in the plural form the locale's rules pick. The English nouns are generated from
-// displayName (src/i18n/strings.js), so a creature renamed in the registry is renamed in every quest.
+// that hunts one creature names it through the locale's t() keys, with the count in the plural form the locale's rules
+// pick. The English nouns are generated from MOB_TYPES[type].displayName, the word on the nametag (src/i18n/strings.js),
+// so a creature renamed in the registry is renamed in every English quest. The zh-CN nouns are written by hand and the
+// nametag stays English in every locale, so a zh-CN quest and a nametag can name one creature in two words.
 //
 // WHAT THIS DOES NOT CHECK: the HUD tracker and the quest log rendering this text (tests/gates/quest-text-gates.test.jsx),
 // or a saved quest seeding the hook (tests/store/questKeyMap.test.js).
@@ -52,7 +53,7 @@ describe('a hunt names the creature on screen', () => {
       .toEqual(['First Blood', 'Cut down the first horror']);
   });
 
-  it('the saved English of a hunt is the rendered English, so a rollback build reads the creature\'s name too', () => {
+  it('the saved English of a hunt is the rendered English, so a rollback build shows the creature\'s name in the title (it rewrites the objective from its own list)', () => {
     for (const q of HUNTS) expect([q.title, q.description], q.id).toEqual([questTitle(en, 'en', q), questDescription(en, 'en', q)]);
   });
 });
