@@ -11,7 +11,6 @@ import { makeAttackSoundPlayer } from './game/attackSounds.js';
 import { isCaptureMode } from './devtest/captureMode';
 import { useQuestSystem, useTreasureChests } from './QuestSystem';
 import { useBossSystem } from './world/bossSystem';
-import { useSpellUpgrades } from './world/spellUpgrades';
 import { useSurvivalMode } from './world/survivalSystem';
 import { useEmberAccrual } from './world/accrualHooks';
 
@@ -160,7 +159,6 @@ function GameApp({ experienceSystem }) {
   const survivalMode = useSurvivalMode(gameState.isDay);
   useEmberAccrual(); // day kills by the player's own hand fill the ember bar
   const bossSystem = useBossSystem(experienceSystem.playerLevel);
-  const spellUpgrades = useSpellUpgrades();
 
   const {
     showStats, setShowStats,
@@ -247,12 +245,10 @@ function GameApp({ experienceSystem }) {
         s.currentXP !== prevS.currentXP ||
         s.totalXP !== prevS.totalXP ||
         s.coins !== prevS.coins ||
-        s.attributes !== prevS.attributes ||
         s.equipment !== prevS.equipment ||
         s.chests !== prevS.chests ||
         s.talentPoints !== prevS.talentPoints ||
         s.unlockedTalents !== prevS.unlockedTalents ||
-        s.spellLevels !== prevS.spellLevels ||
         s.worldBlocks !== prevS.worldBlocks ||
         s.inventory !== prevS.inventory ||
         s.questState !== prevS.questState ||
@@ -1023,7 +1019,6 @@ function GameApp({ experienceSystem }) {
           treasureChests={treasureChests}
           survivalMode={survivalMode}
           bossSystem={bossSystem}
-          spellUpgrades={spellUpgrades}
         />
       )}
 

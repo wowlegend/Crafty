@@ -143,11 +143,11 @@ export function buildSaveData(state, { position } = {}) {
       level: state.level,
       currentXP: state.currentXP,
       totalXP: state.totalXP,
-      attributes: state.attributes,
+      // `attributes` and `spellLevels` are not written: stats and spell tiers derive from the level (DECISIONS
+      // 2026-10-28 W1-H item 6). A save that holds them keeps them in the tombstone for one SAVE_VERSION.
       equipment: state.equipment,
       talentPoints: state.talentPoints,
       unlockedTalents: state.unlockedTalents,
-      spellLevels: state.spellLevels,
       coins: state.coins,
       // Siege progression: nightCount drives siege intensity AND dawn-reward scaling;
       // lastRewardedNight is the once-per-night reward guard. Both must persist so the

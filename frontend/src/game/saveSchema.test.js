@@ -5,9 +5,8 @@ const stateLike = {
   worldBlocks: new Map([['1_2_3', 'stone']]),
   chests: new Map([['10_0_10', { inventory: { 'Iron Sword': 1 } }]]),
   inventory: { blocks: { grass: 64 }, tools: { pickaxe: 1 }, magic: {} },
-  attributes: { strength: 12, agility: 10, intellect: 10, armor: 0, attributePoints: 2 },
-  equipment: { head: null, chest: null, boots: null, weapon: 'Diamond Sword', offhand: null },
-  talentPoints: 1, unlockedTalents: { frost_shield: 2 }, spellLevels: { fireball: 3 },
+  equipment: { head: null, chest: null, boots: null, weapon: 'Diamond Sword', offhand: null, relic: null },
+  talentPoints: 1, unlockedTalents: { frost_shield: 2 },
   level: 4, currentXP: 25, totalXP: 400,
   selectedBlock: 'grass', activeSpell: 'fireball', isDay: true, gameTime: 12, achievements: ['first_block'],
   questState: { quests: { first_blood: { progress: 3, claimed: false } }, achievements: ['first_kill'] },
@@ -27,9 +26,12 @@ describe('buildSaveData', () => {
     expect(s.player_data.position).toEqual({ x: 5, y: 18, z: -3 });
     expect(s.progression).toEqual({
       level: 4, currentXP: 25, totalXP: 400,
-      attributes: stateLike.attributes, equipment: stateLike.equipment,
-      talentPoints: 1, unlockedTalents: { frost_shield: 2 }, spellLevels: { fireball: 3 },
+      equipment: stateLike.equipment,
+      talentPoints: 1, unlockedTalents: { frost_shield: 2 },
     });
+    // Stats and spell tiers derive from the level (DECISIONS 2026-10-28 W1-H item 6): neither is written.
+    expect('attributes' in s.progression, 'attributes are written again').toBe(false);
+    expect('spellLevels' in s.progression, 'spellLevels are written again').toBe(false);
   });
   it('serializes Maps (worldBlocks + chests) as entry arrays', () => {
     const s = buildSaveData(stateLike, { position: { x: 0, y: 18, z: 0 } });

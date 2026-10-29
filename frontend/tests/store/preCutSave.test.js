@@ -10,7 +10,6 @@ import { useQuestSystem, QUEST_LIST } from '../../src/QuestSystem.jsx';
 import { MAX_ACTIVE_QUESTS } from '../../src/game/questClaim.js';
 import { solveMeleeDamage, solveSpellDamage, mitigateDamage } from '../../src/utils/combat.js';
 import { getWeaponBaseDamage } from '../../src/game/equipment.js';
-import { SPELL_UPGRADES } from '../../src/world/spellUpgrades.js';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';
 
 // THE PRE-CUT SAVE (W2-F brief, Task 0 and Task 1; DECISIONS 2026-10-28 W1-H items 4-7 and 10).
@@ -54,8 +53,7 @@ describe('the pre-cut save loads and fights', () => {
 
     const zombie = MOB_TYPES.zombie;
     const eff = s.getEffectiveAttributes();
-    const spellLevel = s.spellLevels?.fireball || 1;
-    const spellBase = SPELL_UPGRADES.fireball.levels[spellLevel - 1].damage;
+    const spellBase = s.getSpellStats('fireball').damage;
     for (const roll of [0, 0.999]) { // a crit and a plain hit: both branches of each solver
       Math.random = () => roll;
       const melee = mitigateDamage({ armor: zombie.armor || 0 }, solveMeleeDamage(eff, getWeaponBaseDamage(s.equipment?.weapon)).damage);
@@ -115,8 +113,9 @@ describe('the tombstone pass-through', () => {
 
   it('never holds a key this build writes, and a held value never shadows a live one', () => {
     const bag = splitTombstone(planted());
-    // The four Aspect banks are keys this build stopped writing at Ember (W1-H item 5), so they are held like the planted one.
-    expect(Object.keys(bag.progression), 'the bag took keys this build writes').toEqual(['ferocityBanked', 'kineticBanked', 'soulBanked', 'resonanceBanked', 'futureField']);
+    // attributes and spellLevels (W1-H item 6) and the four Aspect banks (item 5) are keys this build stopped writing, so
+    // they are held like the planted one.
+    expect(Object.keys(bag.progression), 'the bag took keys this build writes').toEqual(['attributes', 'spellLevels', 'ferocityBanked', 'kineticBanked', 'soulBanked', 'resonanceBanked', 'futureField']);
     // gameMode is a key this build stopped writing at the Cut (W1-H item 4), so it is held like the planted one.
     expect(Object.keys(bag.game_state), 'the bag took keys this build writes').toEqual(['gameMode', 'futureFlag']);
     const built = buildSaveData({ level: 7, isDay: false, _tombstone: { progression: { level: 99 }, game_state: { isDay: true } } }, POS);

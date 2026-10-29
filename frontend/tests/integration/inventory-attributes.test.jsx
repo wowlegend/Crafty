@@ -1,61 +1,43 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, afterEach } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/react';
 import { Inventory } from '../../src/ui/GamePanels.jsx';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
+import { levelAttributes } from '../../src/game/progression.js';
+import { getWeaponBaseDamage } from '../../src/game/equipment.js';
 
-// The audit flagged "attribute-point allocation buttons never E2E'd". The "+" buttons render only when
-// attributePoints > 0 and call the REAL allocateAttribute store action (bumps the base attr +1, spends
-// one point, re-derives max stats). This renders the REAL Inventory panel and clicks the REAL "+"
-// buttons (by aria-label), asserting the store mutated. jsdom needs no SoundProvider here — Inventory
-// uses store actions directly, not useGameSounds (proven by inventory-consume.test.jsx).
+// THE INVENTORY HAS NO ATTRIBUTE PANEL (DECISIONS 2026-10-28 W1-H item 6). Hand allocation is gone: the "+" buttons, the
+// "points to spend" line and the Core Attributes block. The combat readout stays, and it is derived from the level, so
+// reaching a level moves it with no click. This renders the real Inventory and reads the readout's melee line.
 const g = () => useGameStore.getState();
-const ORIGINAL = {
-  attributes: g().attributes,
-  maxHealth: g().maxHealth,
-  maxMana: g().maxMana,
-  playerHealth: g().playerHealth,
-};
-const seedPoints = (attributePoints) =>
-  useGameStore.setState({ attributes: { strength: 10, agility: 10, intellect: 10, armor: 0, attributePoints } });
+const ORIGINAL = { level: g().level, equipment: g().equipment };
 
-beforeEach(() => {
-  seedPoints(3);
-});
 afterEach(() => {
   cleanup();
   useGameStore.setState({ ...ORIGINAL });
 });
 
-describe('Inventory attribute allocation (jsdom) — real "+" buttons spend points', () => {
-  it('clicking + on Strength raises strength by 1 and spends one point', () => {
+const expectedMelee = (level) => Math.round(getWeaponBaseDamage(null) + levelAttributes(level).strength * 1.5);
+
+describe('the Inventory (jsdom): no allocation, a readout that follows the level', () => {
+  it('renders no allocate button and no Core Attributes block', () => {
     render(<Inventory onClose={() => {}} />);
-    expect(g().attributes.attributePoints).toBe(3);
-
-    fireEvent.click(screen.getByTestId('alloc-strength'));
-
-    expect(g().attributes.strength).toBe(11);
-    expect(g().attributes.attributePoints).toBe(2);
+    expect(screen.getByTestId('inventory-modal'), 'SETUP: the Inventory did not render').toBeTruthy();
+    for (const id of ['alloc-strength', 'alloc-agility', 'alloc-intellect']) expect(screen.queryByTestId(id), id).toBeNull();
+    expect(screen.queryByText(/Core Attributes/i)).toBeNull();
+    expect(screen.queryByText(/to spend/i)).toBeNull();
   });
 
-  it('allocating across attributes decrements the shared point pool each time', () => {
+  it('shows melee damage from the level\'s own strength, and a higher level shows more', () => {
+    useGameStore.setState({ level: 1, equipment: { head: null, chest: null, boots: null, weapon: null, offhand: null, relic: null } });
+    const { unmount } = render(<Inventory onClose={() => {}} />);
+    const atOne = screen.getAllByText(/ DMG$/)[0].textContent;
+    expect(atOne).toBe(`${expectedMelee(1)} DMG`);
+    unmount();
+    useGameStore.setState({ level: 10 });
     render(<Inventory onClose={() => {}} />);
-    fireEvent.click(screen.getByTestId('alloc-agility'));
-    fireEvent.click(screen.getByTestId('alloc-intellect'));
-
-    const a = g().attributes;
-    expect(a.agility).toBe(11);
-    expect(a.intellect).toBe(11);
-    expect(a.attributePoints).toBe(1); // 3 - 2
-  });
-
-  it('with zero points the allocate buttons are not rendered (gated on attributePoints > 0)', () => {
-    seedPoints(0);
-    render(<Inventory onClose={() => {}} />);
-
-    expect(screen.queryByLabelText('Allocate point to Strength')).toBeNull();
-    expect(screen.queryByLabelText('Allocate point to Agility')).toBeNull();
-    expect(screen.queryByLabelText('Allocate point to Intellect')).toBeNull();
-    expect(g().attributes.attributePoints).toBe(0); // unchanged
+    const atTen = screen.getAllByText(/ DMG$/)[0].textContent;
+    expect(atTen, 'the readout did not move with the level').toBe(`${expectedMelee(10)} DMG`);
+    expect(expectedMelee(10)).toBeGreaterThan(expectedMelee(1));
   });
 });

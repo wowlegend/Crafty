@@ -14,7 +14,6 @@ const g = () => useGameStore.getState();
 const ORIGINAL = {
   talentPoints: g().talentPoints,
   unlockedTalents: g().unlockedTalents,
-  attributes: g().attributes,
   maxHealth: g().maxHealth,
   maxMana: g().maxMana,
   playerHealth: g().playerHealth,
@@ -24,7 +23,6 @@ const seed = (talentPoints) =>
   useGameStore.setState({
     talentPoints,
     unlockedTalents: {},
-    attributes: { strength: 10, agility: 10, intellect: 10, armor: 0, attributePoints: 0 },
   });
 
 beforeEach(() => {
@@ -49,7 +47,7 @@ function clickUpgradeInNode(nodeName) {
 }
 
 describe('SpellUpgradePanel talent tree (jsdom) — real Upgrade buttons spend talent points', () => {
-  it('unlocking a no-prereq node spends a point, ranks it up, and folds into effective stats', () => {
+  it('unlocking a no-prereq node spends a point and ranks it up, and folds no stat', () => {
     render(<SpellUpgradePanel onClose={() => {}} />);
     const strBefore = g().getEffectiveAttributes().strength;
 
@@ -57,7 +55,7 @@ describe('SpellUpgradePanel talent tree (jsdom) — real Upgrade buttons spend t
 
     expect(g().unlockedTalents.voidhand_force).toBe(1);
     expect(g().talentPoints).toBe(1);
-    expect(g().getEffectiveAttributes().strength).toBe(strBefore + 3); // talent fold (rank 1 x +3)
+    expect(g().getEffectiveAttributes().strength, 'a talent added a stat').toBe(strBefore);
   });
 
   it('a prereq node becomes upgradeable only after its parent is unlocked (dynamic gate)', () => {
@@ -73,7 +71,7 @@ describe('SpellUpgradePanel talent tree (jsdom) — real Upgrade buttons spend t
     expect(g().unlockedTalents.voidhand_force).toBe(1);
     expect(g().unlockedTalents.voidhand_crush).toBe(1);
     expect(g().talentPoints).toBe(0); // both points spent
-    expect(g().getEffectiveAttributes().strength).toBe(strBefore + 5); // +3 force +2 crush
+    expect(g().getEffectiveAttributes().strength, 'a talent added a stat').toBe(strBefore);
   });
 
   it('with zero talent points the node Upgrade button is disabled and the click is a no-op', () => {
