@@ -5,8 +5,8 @@ import { HUB_NPC_ANCHORS } from './hubLayout.js';
 // ecs entities (isNPC+isStatic) the AI/movement tick skips — they stand at their post and interact
 // via the existing G-seam (merchant -> TradingInterface; others -> their panels). Named + flavored to
 // the solo-frontier fiction (a tiny outpost at the edge of the Blight). They reuse type:'villager' so
-// the existing MobModel villager render (green eyes + nose), the type==='villager' npcEntities minimap
-// mirror, and the G-interact all work unchanged; isStatic is the new AI-skip gate.
+// the existing MobModel villager render (green eyes + nose), the minimap and compass (which find them in
+// mobsQuery by that type) and the G-interact all work unchanged; isStatic is the new AI-skip gate.
 export const HUB_NPCS = [
   { role: 'merchant', name: 'Bram the Trader', color: '#8b5a2b', glyph: '?' },
   { role: 'smith', name: 'Mara the Smith', color: '#7A5230', glyph: '!' },
@@ -25,7 +25,7 @@ export function makeNpcEntity(npc, id, groundY) {
     isNPC: true,
     isStatic: true,
     id,
-    type: 'villager',   // reuse the villager body/eyes/nose render + the npcEntities minimap mirror
+    type: 'villager',   // reuse the villager body/eyes/nose render; the minimap and compass find NPCs by this type
     role: npc.role,
     npcName: npc.name,
     glyph: npc.glyph,

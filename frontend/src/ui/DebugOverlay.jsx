@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/useGameStore';
+import { mobsQuery } from '../ecs/world';
 import { Bug, X, Copy, RefreshCw, Trash2, ShieldAlert, Navigation } from 'lucide-react';
 
 // Fetch WebGL info once per page load to avoid creating redundant WebGL contexts on every render
@@ -48,7 +49,6 @@ export function DebugOverlay({ isWorldBuilt }) {
   const playerPosition = useGameStore(state => state.playerPosition);
   const isSpawnChunkLoaded = useGameStore(state => state.isSpawnChunkLoaded);
   const debugChunks = useGameStore(state => state.debugChunks);
-  const mobEntities = useGameStore(state => state.mobEntities);
   const isDay = useGameStore(state => state.isDay);
 
   useEffect(() => {
@@ -122,7 +122,7 @@ export function DebugOverlay({ isWorldBuilt }) {
         playerPosition,
         loadedChunks: Object.keys(debugChunks || {}),
         loadedChunksCount: Object.keys(debugChunks || {}).length,
-        mobEntitiesCount: (mobEntities || []).length,
+        liveMobCount: mobsQuery.entities.filter((e) => e.health > 0).length,
         isDay,
         groundLevelAtOrigin: storeGetGroundLevel()
       },

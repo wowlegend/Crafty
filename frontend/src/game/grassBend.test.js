@@ -12,7 +12,7 @@ describe('readPosition — both position shapes this codebase actually carries',
     expect(readPosition(new THREE.Vector3(1, 2, 3))).toEqual({ x: 1, y: 2, z: 3 });
   });
 
-  it('reads an [x,y,z] array (what the store mirror stores — MinimapSyncSystem)', () => {
+  it('reads an [x,y,z] array (the plain-data shape: the lookbook seam\'s mobList)', () => {
     expect(readPosition([4, 5, 6])).toEqual({ x: 4, y: 5, z: 6 });
   });
 

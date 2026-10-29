@@ -27,7 +27,7 @@ it earns its place (DECISIONS 2026-10-28 items 14 and 16), and changing one is r
   frame budget, or input parity, still holds, recorded in DECISIONS.
 - **Frame cost.** Every new render or physics feature states its cost story: pooled, capped, tier-gated, no
   allocation in the hot path. Measure the change against a baseline when in doubt. Derive values; do not bake them.
-- **ECS.** miniplex is a narrow slice (mobs, loot, XP, grass, minimap sync, nametags, element zones, hurl, squad AI:
+- **ECS.** miniplex is a narrow slice (mobs, loot, XP, grass, the minimap and compass, nametags, element zones, hurl, squad AI:
   `grep -rln "ecs/world" frontend/src | grep -v test`), not the whole architecture. The store owns persisted state.
 - **Design language** (S1-C bold-flat, 2026-06-01). Tokens: `src/theme/tokens.js` to `src/theme/cssVars.js`
   (`--ui-*`, `applyThemeVars()`) to `tailwind.config.cjs`. Filled two-tone game-icons (`src/ui/primitives/gameIcons.js`,

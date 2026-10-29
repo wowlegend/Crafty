@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { SRC, strip, carriersOf } from './_srcWalk.js';
 import { HUB_NPCS, makeNpcEntity } from '../../src/world/npcSpawn.js';
-import { ecs } from '../../src/ecs/world.js';
+import { ecs, mobsQuery } from '../../src/ecs/world.js';
 import { talkToNearest } from '../../src/input/talk.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 
@@ -78,25 +78,22 @@ describe('hub NPC spawn + AI-skip', () => {
     expect(e.damage, 'a hub NPC that can damage the player is not passive').toBe(0);
   });
 
-  it('the store owns the npcEntities mirror, and the sync system builds its payload', () => {
-    // THE OLD VERSION OF THIS CASE WAS GREEN ON A COMMENT. It asserted `npcEntities` appears in
-    // MinimapSyncSystem.jsx, reading the file WITHOUT stripping comments. Measured 2026-09-22: that
-    // token appears there exactly twice and BOTH are in comments (a header note and a line explaining
-    // what RadialMinimap consumes). Zero occurrences in code. The state it was guarding lives in the
-    // store; the sync system builds the payload and calls the store action. The gate named the wrong
-    // file and was kept alive by prose describing the right one — the fourth instance of that shape
-    // found in this corpus in a single session.
-    expect(read('store/useGameStore.jsx'), 'the npcEntities mirror is gone — minimap and nametags go blank')
-      .toMatch(/npcEntities:/);
-    // TWO modules, not three. `world/npcSpawn.js` was in this list an hour after it was written, on the
-    // strength of a TRAILING comment — the shared `strip` helper removed block and full-line comments
-    // but not `code; // trailing`, so a comment-derived entry got into a list whose whole purpose is to
-    // pin real ones. Fixed in `_srcWalk.js`; this is the assertion that caught it.
-    expect(carriersOf(/npcEntities/), 'the set of modules touching the NPC mirror changed')
-      .toEqual(['store/useGameStore.jsx', 'ui/RadialMinimap.jsx']);
-    // The sync payload must carry `role`, which routes the G-interact. Asserted in CODE, which is what the old
-    // case could not do.
-    const sync = read('systems/MinimapSyncSystem.jsx');
-    expect(sync, 'the mirror payload no longer carries role — G cannot route by it').toMatch(/role: e\.role/);
+  it('the hub NPCs are read where they live: the mob query finds them, and no module reads a store copy', () => {
+    // The 250 ms store mirror (mobEntities, npcEntities) is deleted (reset plan row 9): the minimap, the compass and
+    // the G-talk read the ECS. A hub NPC must therefore be IN the query they loop over, as a villager.
+    const npc = makeNpcEntity(HUB_NPCS[0], 99001, 52);
+    ecs.add(npc);
+    try {
+      const found = mobsQuery.entities.find((e) => e.id === 99001);
+      expect(found, 'a hub NPC is not in mobsQuery — the minimap and compass would never show it').toBeDefined();
+      expect(found.type).toBe('villager');
+    } finally {
+      ecs.remove(npc);
+    }
+    // Presence before absence: the same walker finds the live query readers it is meant to see.
+    expect(carriersOf(/\bmobsQuery\.entities\b/), 'SETUP: the walker sees no reader of the live mob query')
+      .toEqual(expect.arrayContaining(['HUD.jsx', 'ui/RadialMinimap.jsx', 'input/talk.js']));
+    expect(carriersOf(/\b(mobEntities|npcEntities|setMobEntities|setNpcEntities)\b/),
+      'a module reads or writes a store copy of the mobs again').toEqual([]);
   });
 });

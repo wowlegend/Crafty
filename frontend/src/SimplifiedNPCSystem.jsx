@@ -6,7 +6,6 @@ import { XPOrbRender, LootDropRender, LootPopRender } from './render/pickupVfx';
 import { DeathFxRender } from './render/deathVfx';
 import { getItemRarity } from './data/items.js';
 import { MobModel } from './render/MobModel';
-import { MinimapSyncSystem } from './systems/MinimapSyncSystem';
 import { EnemyProjectileSystem } from './systems/EnemyProjectileSystem';
 import { SpawnerSystem } from './systems/SpawnerSystem';
 import { isRenderableMob } from './systems/corpseSweep.js';
@@ -33,8 +32,6 @@ import { CombatSystem } from './systems/CombatSystem';
 // SpawnerSystem extracted -> src/systems/SpawnerSystem.jsx (v6 de-monolith A1.3).
 
 // AIWorkerSystem extracted -> src/systems/AIWorkerSystem.jsx (v6 de-monolith A1.4).
-
-// MinimapSyncSystem extracted -> src/systems/MinimapSyncSystem.jsx (v6 de-monolith A1.1).
 
 // CombatSystem extracted -> src/systems/CombatSystem.jsx (v6 de-monolith A1.8).
 
@@ -119,7 +116,6 @@ export const NPCSystem = React.memo(() => {
     <group>
       <SpawnerSystem />
       <AIWorkerSystem />
-      <MinimapSyncSystem />
       <CombatSystem setDamageNumbers={setDamageNumbers} setShockwaves={setShockwaves} damageId={damageId} />
       <EnemyProjectileSystem />
       <XPOrbSystem />

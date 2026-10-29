@@ -162,7 +162,7 @@ function isLiveHostile(e) {
 
 /**
  * PURE. Every live mob in `entities` (the ECS mob query: hostiles, livestock and the Hearth's named NPCs) as plain
- * data: { type, hostile, npc (the NPC's name, else null), position: [x, y, z] }. Hostile is hostileReach's split. A
+ * data: { id, type, hostile, npc (the NPC's name, else null), position: [x, y, z] }. Hostile is hostileReach's split. A
  * mob with no health left is not listed, so the list is what a frame can show.
  */
 export function mobList(entities) {
@@ -170,6 +170,7 @@ export function mobList(entities) {
   for (const e of entities || []) {
     if (!e || !(e.health > 0) || !e.position) continue;
     out.push({
+      id: e.id ?? null,
       type: e.type ?? null,
       hostile: isLiveHostile(e),
       npc: e.isNPC ? String(e.npcName ?? e.type ?? 'npc') : null,

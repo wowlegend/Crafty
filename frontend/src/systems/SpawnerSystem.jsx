@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { ecs, mobsQuery } from '../ecs/world';
 import { sweepExpiredCorpses } from './corpseSweep.js';
+import { countLiveHostiles } from './hostileCount.js';
 import { HUB_NPCS, makeNpcEntity } from '../world/npcSpawn.js';
 import { HEARTH_Y } from '../world/homeAnchor.js';
 import { isCaptureMode } from '../devtest/captureMode';
@@ -103,8 +104,8 @@ export const SpawnerSystem = () => {
           spawnMob(x, z);
         }
         // M-NPCS.2: spawn the 4 static hub NPCs ONCE (non-capture path — line 164 returns under capture,
-        // so they never appear in the deterministic baselines). They reuse the mob render + the
-        // type==='villager' npcEntities minimap mirror; the worker tick + knockback loop skip them
+        // so they never appear in the deterministic baselines). They reuse the mob render, and the minimap
+        // and compass find them in mobsQuery as type 'villager'; the worker tick + knockback loop skip them
         // (isStatic) so they hold their post. Placed on the flushed grade via the ground raycast.
         if (!_npcSpawned.current) {
           _npcSpawned.current = true;
@@ -198,6 +199,9 @@ export const SpawnerSystem = () => {
           ecs.remove(entity);
         }
       }
+      // Written only when it changes: the music subscribes to it, and an unchanged write would re-render that provider.
+      const hostiles = countLiveHostiles(mobsQuery.entities);
+      if (store.activeHostilesCount !== hostiles) store.setActiveHostilesCount(hostiles);
     }
   });
   return null;

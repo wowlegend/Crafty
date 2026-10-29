@@ -1,4 +1,5 @@
 import { useGameStore } from './store/useGameStore';
+import { mobsQuery } from './ecs/world';
 import { isCaptureMode } from './devtest/captureMode';
 import { bearingToMarker, bearingDeg } from './game/compass';
 import { nearestLandmark } from './world/shrines.js';
@@ -443,11 +444,10 @@ const Compass = React.memo(({ treasureChests, bossSystem }) => {
       });
 
       // 4. Render Villager NPC Markers
-      const mobEntities = state.mobEntities || [];
-      mobEntities.forEach(mob => {
-        if (mob.type !== 'villager') return;
-        const dx = mob.position[0] - playerPos.x;
-        const dz = mob.position[2] - playerPos.z;
+      mobsQuery.entities.forEach(mob => {
+        if (mob.type !== 'villager' || !(mob.health > 0)) return;
+        const dx = mob.position.x - playerPos.x;
+        const dz = mob.position.z - playerPos.z;
         const dist = Math.round(Math.sqrt(dx * dx + dz * dz));
         if (dist > 60) return; // Hide distant NPCs
 

@@ -335,20 +335,21 @@ describe('the eye level: stand() and look() frame what a player sees', () => {
     expect(hostileReach([], [0, 0, 0])).toEqual({ nearestM: null, within8m: 0 });
   });
 
-  it('mobList and mobs(): every live mob as plain data, the named NPCs by name, hostiles split as hostileReach splits them', () => {
+  it('mobList and mobs(): every live mob as plain data with its id, the named NPCs by name, hostiles split as hostileReach splits them', () => {
+    // The id is what the lookbook hold matches samples by (a mob that moved between two samples), so it is listed.
     const at = (x, y, z, more = {}) => ({ type: 'zombie', health: 50, passive: false, position: { x, y, z }, ...more });
     const entities = [
       null,
-      at(1, 2, 3),
-      at(4, 5, 6, { type: 'ox', passive: true }),
-      at(7, 8, 9, { type: 'villager', passive: true, isNPC: true, npcName: 'Old Pike the Warden' }),
-      at(0, 0, 0, { health: 0 }),
+      at(1, 2, 3, { id: 11 }),
+      at(4, 5, 6, { id: 12, type: 'ox', passive: true }),
+      at(7, 8, 9, { id: 13, type: 'villager', passive: true, isNPC: true, npcName: 'Old Pike the Warden' }),
+      at(0, 0, 0, { id: 14, health: 0 }),
       { type: 'zombie', health: 50 },
     ];
     expect(mobList(entities)).toEqual([
-      { type: 'zombie', hostile: true, npc: null, position: [1, 2, 3] },
-      { type: 'ox', hostile: false, npc: null, position: [4, 5, 6] },
-      { type: 'villager', hostile: false, npc: 'Old Pike the Warden', position: [7, 8, 9] },
+      { id: 11, type: 'zombie', hostile: true, npc: null, position: [1, 2, 3] },
+      { id: 12, type: 'ox', hostile: false, npc: null, position: [4, 5, 6] },
+      { id: 13, type: 'villager', hostile: false, npc: 'Old Pike the Warden', position: [7, 8, 9] },
     ]);
     expect(mobList([])).toEqual([]);
     const w = fakeWin('?lookbook=1');

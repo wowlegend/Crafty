@@ -4,11 +4,12 @@ import { isCaptureMode } from '../devtest/captureMode';
 import { nearestLandmark } from '../world/shrines.js';
 import { blightHeartSite } from '../world/blightHeart.js';
 import { Panel } from './primitives/index.js';
+import { mobsQuery, alliesQuery } from '../ecs/world';
 
 // A circular clipped radial minimap with persistent destination blips. Reuses the seams the compass
-// already consumes (nearestLandmark / blightHeartSite / HOME at origin) + the mobEntities + npcEntities
-// store mirrors. A self-contained 250ms canvas redraw (Game-Loop-Isolation: transient getState reads,
-// no per-frame React state). Out-of-range destination blips are clamped to the rim with a small arrow.
+// already consumes (nearestLandmark / blightHeartSite / HOME at origin) + the live ECS queries (mobsQuery for mobs
+// and the hub NPCs, type 'villager'; alliesQuery for bound allies). A self-contained 250ms canvas redraw
+// (Game-Loop-Isolation: transient reads of the store and the queries, no per-frame React state). Out-of-range destination blips are clamped to the rim with a small arrow.
 // Capture-SUPPRESSED (the canvas redraw never starts) so the 20 visual baselines stay byte-identical.
 const SIZE = 132, RANGE = 64;
 
@@ -36,10 +37,12 @@ export const RadialMinimap = React.memo(({ position = 'bottom-20 right-4' }) => 
       // circular clip
       ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
       ctx.fillStyle = 'rgba(12,10,18,0.88)'; ctx.fillRect(0, 0, SIZE, SIZE);
-      // mobs
-      (useGameStore.getState().mobEntities || []).forEach((m) => blip(m.position[0], m.position[2], pp.x, pp.z, m.passive ? '#4ade80' : '#ef4444', false));
-      // NPCs
-      (useGameStore.getState().npcEntities || []).forEach((n) => blip(n.position[0], n.position[2], pp.x, pp.z, '#F5D76E', false));
+      // mobs, and the NPCs (hub villagers and bound allies) in gold
+      for (const m of mobsQuery.entities) {
+        if (!(m.health > 0)) continue;
+        blip(m.position.x, m.position.z, pp.x, pp.z, m.type === 'villager' ? '#F5D76E' : (m.passive ? '#4ade80' : '#ef4444'), false);
+      }
+      for (const a of alliesQuery.entities) if (a.health > 0) blip(a.position.x, a.position.z, pp.x, pp.z, '#F5D76E', false);
       // destinations (clamped to rim)
       blip(0, 0, pp.x, pp.z, '#FBBF24', true); // HOME
       const now = performance.now();

@@ -650,12 +650,15 @@ async function hold(launchOpts, launchId) {
     while (Date.now() - t0 < HOLD_S * 1000) {
       // Seam-free reads, the same in every build: the store (exposed by every build) and the page itself. The pixel
       // ratio in force is the game canvas's backing width over its CSS width (the largest canvas on the page).
-      // `mobs` and `moved` read whether the world ran at all, through the store's minimap mirror of the mobs (every
-      // build writes it): how many there are, and how many stood somewhere else at the previous sample.
+      // `mobs` and `moved` read whether the world ran at all: how many mobs there are, and how many stood somewhere
+      // else at the previous sample. A build with the seam's read-only mob list (mobList, with ids) is read through it;
+      // an older build, which kept a store mirror of the mobs (`mobEntities`) and may predate the list's ids, through that.
       const s = await page.evaluate(() => {
         const g = window.useGameStore.getState();
         const c = [...document.querySelectorAll('canvas')].sort((x, y) => y.width * y.height - x.width * x.height)[0];
-        const mobs = (g.mobEntities || []).filter((m) => m && m.position);
+        const seamMobs = window.__craftyLookbook?.mobs?.();
+        const listed = Array.isArray(seamMobs) && seamMobs.every((m) => m.id != null) ? seamMobs : null;
+        const mobs = (listed || g.mobEntities || []).filter((m) => m && m.position);
         const prev = window.__lookbookHoldMobs || new Map();
         let moved = 0;
         for (const m of mobs) {

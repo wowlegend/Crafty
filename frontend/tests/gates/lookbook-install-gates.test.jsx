@@ -86,10 +86,10 @@ describe('src/index.jsx installs the lookbook seam with the real collaborators',
     const { seam } = await bootAt('?lookbook=1');
     const { ecs } = await import('../../src/ecs/world.js');
     expect(seam.mobs(), 'presence: an empty world lists no mob').toEqual([]);
-    const npc = ecs.add({ isMob: true, isNPC: true, npcName: 'Sister Wren', type: 'villager', health: 200, passive: true, position: { x: 3, y: 50, z: -2 } });
+    const npc = ecs.add({ id: 77, isMob: true, isNPC: true, npcName: 'Sister Wren', type: 'villager', health: 200, passive: true, position: { x: 3, y: 50, z: -2 } });
     try {
       expect(seam.mobs(), 'the entry module gave mobs() no mob query, or the wrong one')
-        .toEqual([{ type: 'villager', hostile: false, npc: 'Sister Wren', position: [3, 50, -2] }]);
+        .toEqual([{ id: 77, type: 'villager', hostile: false, npc: 'Sister Wren', position: [3, 50, -2] }]);
     } finally {
       ecs.remove(npc);
     }

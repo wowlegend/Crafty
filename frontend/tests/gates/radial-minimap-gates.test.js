@@ -36,16 +36,16 @@ describe('radial-minimap gates', () => {
       .toBeGreaterThan(1500);
   });
 
-  it('it plots from the live store mirrors, not from a snapshot it owns', () => {
-    // The minimap is a VIEW. If it kept its own copy of entity positions it would drift from the world
-    // silently, which on a compass reads as the world being wrong rather than the HUD.
-    // Anchored to the READ SHAPE, not the bare token: the token also appears in this component's own
-    // header comment, and a gate satisfied by its own documentation is the defect this corpus keeps
-    // shipping. `getState().<store>` is the live read — a snapshot held in a ref would not match.
-    expect(mm, 'the minimap no longer reads mobEntities live — mob blips go blank or go stale')
-      .toMatch(/getState\(\)\.mobEntities/);
-    expect(mm, 'the minimap no longer reads npcEntities live — the gold NPC blips go blank')
-      .toMatch(/getState\(\)\.npcEntities/);
+  it('it plots from the live ECS queries, not from a copy of them', () => {
+    // The minimap is a VIEW. A copy of entity positions drifts from the world (the 250 ms store mirror it read until
+    // the HUD lane deleted it), which on a map reads as the world being wrong rather than the HUD.
+    // Anchored to the READ SHAPE, not the bare token: the token also appears in this component's own header
+    // comment, and a gate satisfied by its own documentation is the defect this corpus keeps shipping. A loop over
+    // `<query>.entities` is the live read; a snapshot held in a ref would not match.
+    expect(mm, 'the minimap no longer loops over the live mob query — mob and NPC blips go blank or go stale')
+      .toMatch(/for \(const \w+ of mobsQuery\.entities\)/);
+    expect(mm, 'the minimap no longer loops over the live ally query — the bound allies go unplotted')
+      .toMatch(/for \(const \w+ of alliesQuery\.entities\)/);
   });
 
   it('it plots the three destination classes a player navigates by', () => {
