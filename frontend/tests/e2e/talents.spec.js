@@ -16,8 +16,9 @@ import { ROAR_COST } from '../../src/game/ember.js';
 // on past FORM_DURATION_SEC and ends by the longer length; (6) the save the store writes holds the talent and no
 // attributes or spellLevels.
 //
-// Each form is timed in the page, frame by frame, from the first frame it is seen on to the first frame it is seen off.
-// A CI frame can last seconds, so the length read is the form's own plus up to one frame each side: the base form must
+// Each form is timed in the page, frame by frame, from the first frame it is seen on to the first frame it is seen off,
+// inside the same evaluate that waits for it, so the clock starts within a frame of the commit. A CI frame can last
+// seconds, so the length read is the form's own plus up to one frame each side: the base form must
 // be off by FORM_DURATION_SEC + the longest frame + 1 s, and the talented form must still be on at FORM_DURATION_SEC +
 // 1 s (a frame boundary between there and its end is needed to see it, and the gap is ENDURANCE_SEC_PER_RANK - 1 s).
 //
@@ -100,13 +101,15 @@ async function release(page, key) {
   await page.evaluate(frames, 3);
 }
 
-/** R held until the form commits, then released; the bar refilled first, since the roar takes it all. */
-async function roar(page) {
+/** The roar on the real R key, timed in the page from the first frame its form is on (timeForm), so no round trip sits
+ *  between the commit and the start of the clock. R stays down through the form: a held key makes no new edge, and only
+ *  an edge ends a form by hand. The bar is refilled first, since the roar takes it all. */
+async function roarAndTime(page, probeMs) {
   await page.evaluate((v) => window.useGameStore.setState({ ember: v }), ROAR_COST);
   await page.keyboard.down('r');
-  await expect.poll(() => page.evaluate(() => window.useGameStore.getState().beastFormActive),
-    { message: 'R held on a full bar never committed the beast form', timeout: 30000 }).toBe(true);
+  const timed = await page.evaluate(timeForm, { limitMs: (LONGER_SEC + 10) * 1000, probeMs });
   await release(page, 'r');
+  return timed;
 }
 
 test.describe('talents', () => {
@@ -162,8 +165,7 @@ test.describe('talents', () => {
     await startPlayActive(page);
 
     // 2. THE BASE ROAR: the form entered on R ends at FORM_DURATION_SEC (the instrument sees an end, and the base length).
-    await roar(page);
-    const base = await page.evaluate(timeForm, { limitMs: (LONGER_SEC + 10) * 1000, probeMs: (FORM_DURATION_SEC + 1) * 1000 });
+    const base = await roarAndTime(page, (FORM_DURATION_SEC + 1) * 1000);
     expect(base.why, base.why).toBeUndefined();
     expect(base.endedMs, `the base form never ended: ${JSON.stringify(base)}`).not.toBeNull();
     expect(base.endedMs, `the base form outlasted ${FORM_DURATION_SEC} s by more than a frame: ${JSON.stringify(base)}`)
@@ -203,8 +205,7 @@ test.describe('talents', () => {
     await startPlayActive(page);
 
     // 5. THE VERB CHANGED: the same roar outlasts FORM_DURATION_SEC and ends by the longer length.
-    await roar(page);
-    const longer = await page.evaluate(timeForm, { limitMs: (LONGER_SEC + 10) * 1000, probeMs: (FORM_DURATION_SEC + 1) * 1000 });
+    const longer = await roarAndTime(page, (FORM_DURATION_SEC + 1) * 1000);
     expect(longer.why, longer.why).toBeUndefined();
     expect(longer.onAtProbe, `the talented form was off by ${FORM_DURATION_SEC + 1} s: ${JSON.stringify(longer)} (base ${JSON.stringify(base)})`).toBe(true);
     expect(longer.endedMs, `the talented form never ended: ${JSON.stringify(longer)}`).not.toBeNull();
