@@ -2,27 +2,38 @@ import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { installWorldHold } from './_worldHold.js';
 import { bankForKill } from '../../src/game/mobBank.js';
-import { EMBER_MAX, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST } from '../../src/game/ember.js';
+import { EMBER_MAX, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST } from '../../src/game/ember.js';
 import { ANTICIPATION_SEC } from '../../src/game/beastTransform.js';
+import { FUSE_CHANNEL_SEC } from '../../src/game/soulbind.js';
+import { KIND_BY_SPELL } from '../../src/game/elemancer.js';
 
 // EMBER, IN THE BOOTED GAME (W2-F step 3; DECISIONS 2026-10-28 W1-H item 5; plan
 // docs/superpowers/plans/2026-10-28-crafty-w2f-ember.md). One bar in the HUD's stat stack, filled by a day kill made with
-// a real left click, spent by a roar held on the real R key and by a grab on the real V key, refused with its notice on a
-// real R press it cannot pay for, held shut on an R held past the charge window one kill short, and not filled by a night
-// kill made the same way. The second case spends it on the X key: a bind held on a weakened zombie, a fuse held beside a
-// pair with a recipe, and the notice on a fuse the bar cannot pay for, which a pair with no recipe never raises.
+// a real left click, spent by a roar held on the real R key and by a grab on the real V key, and not filled by a night
+// kill made the same way. "Not enough ember" is the frame loop's, from each Aspect reducer's 'short' (a press only the
+// price refused) or 'unpaid' (a started verb whose price was spent before it landed), so every press here is a key held
+// across frames, and each verb's notice is read: R one kill short, R whose full bar is drained while it charges, V one
+// short. The second case spends the bar on the X key: a snare and a fuse it cannot pay for say so; a bind and a fuse
+// take their price; a fuse whose nearest pair changes while it channels breaks and takes nothing; a pair with no recipe
+// says nothing at any bar, below the snare's price included. The third spends it on Z and F: an imbue it cannot arm says
+// so, an imbued cast takes its price and carries its element, and a cast refused for mana takes nothing, keeps the
+// stance armed and leaves no element for a later cast.
 //
 // The bar is read off the DOM (the value the player sees) and the store; the kills are real clicks on staged zombies left
 // at 1 HP by an ally-sourced hit (ally kills bank nothing, so only the click's kill can pay). The world is held still for
 // the whole spec (_worldHold.js), so no mob or ally moves and the clock never reaches dawn, which would empty the bar.
 //
-// WHAT THIS DOES NOT CHECK: building's accrual and its daily cap (tests/store/ember.test.js and
-// tests/gates/place-executor-gates.test.jsx), a bind or a fuse refused because another verb emptied the bar during its
-// channel (the reducers' refusal is src/game/soulbind.test.js; the notice at that call site is driven by nothing), the
-// dawn bleed (tests/store/ember.test.js), a save's migration (tests/e2e/the-cut.spec.js and
-// tests/store/preCutSave.test.js), or touch.
+// The drained roar's bar is emptied by a store write standing for another verb's spend: what the reducer reads at the
+// commit is the bar, whoever emptied it. The fuse's pair is changed by binding a third ally nearer than one of the two.
 //
-// Mutation-Proof: see the commit trailer. These cases need a browser, so CI runs them; no local run was allowed.
+// WHAT THIS DOES NOT CHECK: building's accrual and its daily cap (tests/store/ember.test.js and
+// tests/gates/place-executor-gates.test.jsx), a grab, bind or fuse whose bar is drained mid-charge or mid-channel (the
+// reducers' 'unpaid' is src/game/voidhand.test.js and soulbind.test.js; the call site's routing of it is the roar's, read
+// here), an armed imbue whose bar is drained before the cast (src/game/elemancer.test.js), the dawn bleed
+// (tests/store/ember.test.js), a save's migration (tests/e2e/the-cut.spec.js and tests/store/preCutSave.test.js), or
+// touch, whose ring writes the same intents the keys do (tests/gates/ember-denied-gates.test.jsx).
+//
+// Mutation-Proof: see the commit trailer. These cases need a browser, so CI runs them.
 
 const ZOMBIE = bankForKill('zombie');
 const SEED = ROAR_COST - ZOMBIE; // one day kill short of the roar
@@ -57,13 +68,13 @@ async function setTime(t) {
   return window.useGameStore.getState().isDay;
 }
 
-/** In the page: a `type` spawned 2 m to the player's side at full health and bound straight into the squad. */
-function bindBeside({ type, side }) {
+/** In the page: a `type` spawned `dist` m to the player's side at full health and bound straight into the squad. */
+function bindBeside({ type, side, dist = 2 }) {
   const s = window.useGameStore.getState();
   const cam = window.__threeCamera;
   const d = new cam.position.constructor();
   cam.getWorldDirection(d); d.y = 0; d.normalize();
-  const gx = cam.position.x - d.z * 2 * side, gz = cam.position.z + d.x * 2 * side;
+  const gx = cam.position.x - d.z * dist * side, gz = cam.position.z + d.x * dist * side;
   const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
   s.spawnMob(gx, gz, type, s.getMobFloor(gx, gz, cam.position.y - 1.6));
   const m = window.__craftyTest.call('readMobs').find((e) => !before.has(e.id));
@@ -82,6 +93,45 @@ function lookUp() {
 async function frames(n) {
   const frame = () => new Promise((r) => requestAnimationFrame(r));
   for (let i = 0; i < n; i++) await frame();
+}
+
+/** In the page: true once the camera has sat at the player's head for two frames (the roar's reveal camera hands it
+ *  back), false after 20 s. */
+async function backAtHead() {
+  const frame = () => new Promise((r) => requestAnimationFrame(r));
+  const cam = window.__threeCamera;
+  const t0 = performance.now();
+  let streak = 0;
+  while (streak < 2) {
+    if (performance.now() - t0 > 20000) return false;
+    await frame();
+    const b = window.useGameStore.getState().playerRigidBodyRef?.current?.translation?.();
+    const ok = b && Math.hypot(cam.position.x - b.x, cam.position.z - b.z) < 1 && Math.abs(cam.position.y - b.y - 1.2) < 0.6;
+    streak = ok ? streak + 1 : 0;
+  }
+  return true;
+}
+
+/** In the page: once the roar's charge is seen, the bar is drained to `left` (another verb's spend), and the frames run
+ *  on past the charge window. Returns what the charge did. */
+async function drainDuringCharge({ left, ms }) {
+  const frame = () => new Promise((r) => requestAnimationFrame(r));
+  const S = () => window.useGameStore.getState();
+  const t0 = performance.now();
+  while (!S().beastCharging && !S().beastFormActive) {
+    if (performance.now() - t0 > 15000) return { why: 'SETUP: R held on a full bar never started the charge' };
+    await frame();
+  }
+  if (S().beastFormActive) return { why: 'SETUP: the form committed before the drain (one frame outlasted the charge window)' };
+  window.useGameStore.setState({ ember: left });
+  const t1 = performance.now();
+  let n = 0, form = false;
+  while (performance.now() - t1 < ms || n < 10) {
+    await frame();
+    n += 1;
+    if (S().beastFormActive) form = true;
+  }
+  return { frames: n, form, charging: S().beastCharging, ember: S().ember };
 }
 
 test.describe('ember', () => {
@@ -155,6 +205,22 @@ test.describe('ember', () => {
     expect(heldShort.started, `R held on ${SEED} ember started the roar: ${JSON.stringify(heldShort)}`).toBe(false);
     expect(heldShort.ember, 'a held short roar took ember').toBe(SEED);
 
+    // 2c. A ROAR WHOSE BAR IS DRAINED WHILE IT CHARGES SAYS SO. R held on a full bar starts the charge; the bar drops to
+    // one short before the commit: no form, nothing taken, and the notice.
+    const notice = page.getByText('Not enough ember');
+    await expect(notice, 'SETUP: the step 2 notice is still on screen').toHaveCount(0, { timeout: 15000 });
+    await page.evaluate((v) => window.useGameStore.setState({ ember: v }), ROAR_COST);
+    await page.keyboard.down('r');
+    const drained = await page.evaluate(drainDuringCharge, { left: ROAR_COST - 1, ms: Math.round(ANTICIPATION_SEC * 1000) + 800 });
+    await page.keyboard.up('r');
+    expect(drained.why, drained.why).toBeUndefined();
+    expect(drained.form, `a roar whose bar was drained during its charge still transformed: ${JSON.stringify(drained)}`).toBe(false);
+    expect(drained.ember, 'a roar whose bar was drained took ember').toBe(ROAR_COST - 1);
+    await expect(notice.first(), `a roar whose bar was drained during its charge was refused in silence: ${JSON.stringify(drained)}`)
+      .toBeVisible({ timeout: 15000 });
+    expect(await page.evaluate(backAtHead), 'SETUP: the camera never came back to the head after the drained charge').toBe(true);
+    await page.evaluate((v) => window.useGameStore.setState({ ember: v }), SEED);
+
     // 3. A DAY KILL FILLS IT, by a real left click on a 1-HP zombie.
     const day = await page.evaluate(stageZombie);
     expect(day.why, day.why).toBeUndefined();
@@ -181,21 +247,7 @@ test.describe('ember', () => {
     await page.keyboard.down('r');
     await expect.poll(async () => (await S()).form, { message: 'R in the form did not end it', timeout: 30000 }).toBe(false);
     await page.keyboard.up('r');
-    const atHead = await page.evaluate(async () => {
-      const frame = () => new Promise((r) => requestAnimationFrame(r));
-      const cam = window.__threeCamera;
-      const t0 = performance.now();
-      let streak = 0;
-      while (streak < 2) {
-        if (performance.now() - t0 > 20000) return false;
-        await frame();
-        const b = window.useGameStore.getState().playerRigidBodyRef?.current?.translation?.();
-        const ok = b && Math.hypot(cam.position.x - b.x, cam.position.z - b.z) < 1 && Math.abs(cam.position.y - b.y - 1.2) < 0.6;
-        streak = ok ? streak + 1 : 0;
-      }
-      return true;
-    });
-    expect(atHead, 'SETUP: the camera never came back to the head after the form').toBe(true);
+    expect(await page.evaluate(backAtHead), 'SETUP: the camera never came back to the head after the form').toBe(true);
 
     // 5. A NIGHT KILL ADDS NOTHING, by the same click on the same kind of zombie, onto a bar that could show a gain.
     expect(await page.evaluate(setTime, 0.0), 'SETUP: midnight did not read as night').toBe(false);
@@ -216,6 +268,23 @@ test.describe('ember', () => {
     await page.keyboard.up('v');
     expect((await S()).ember, 'the grab did not spend its price').toBe(NIGHT_SEED - GRAB_COST);
     await expect(bar).toContainText(`${NIGHT_SEED - GRAB_COST}/${EMBER_MAX}`);
+
+    // 7. A GRAB THE BAR CANNOT PAY FOR SAYS SO; A PRESS THAT RELEASES DOES NOT. V again drops the held block (a release,
+    // nothing to pay); past the grab's cooldown, V on a bar one short of it raises the notice and grabs nothing.
+    await page.keyboard.down('v');
+    await expect.poll(async () => (await S()).held, { message: 'V on a held block did not drop it', timeout: 15000 }).toBe(false);
+    await page.keyboard.up('v');
+    await page.waitForTimeout(1500);
+    await expect(notice, 'a press that dropped the held block blamed the bar').toHaveCount(0);
+    await page.evaluate((v) => window.useGameStore.setState({ ember: v }), GRAB_COST - 1);
+    await page.keyboard.down('v');
+    await page.evaluate(frames, 10);
+    await page.keyboard.up('v');
+    await expect(notice.first(), `a grab the bar cannot pay for was refused in silence (gates ${JSON.stringify(await S())})`)
+      .toBeVisible({ timeout: 15000 });
+    const shortGrab = await S();
+    expect(shortGrab.held, 'a grab the bar cannot pay for grabbed').toBe(false);
+    expect(shortGrab.ember, 'a refused grab took ember').toBe(GRAB_COST - 1);
 
     const hold = await page.evaluate(() => window.__e2eWorldHold.release());
     console.log(`[ember] world held ${hold.heldMs} ms over ${hold.frames} drawn frames (longest ${hold.longestFrameMs} ms, cap ${hold.capMs}, lapsed ${hold.lapsed})`);
@@ -241,7 +310,7 @@ test.describe('ember', () => {
     const BIND_SEED = SNARE_COST + 5; // pays a bind, not a fuse
     const FUSE_SEED = FUSE_COST + 10;
 
-    // Noon, no mob within 40 m, the world held, the snare unlocked, a bar that pays a bind and not a fuse.
+    // Noon, no mob within 40 m, the world held, the snare and Pack Warden unlocked, a bar one short of the snare.
     expect(await page.evaluate(setTime, 0.5), 'SETUP: noon did not read as day').toBe(true);
     const staged = await page.evaluate(({ seed, capMs }) => {
       const s = window.useGameStore.getState();
@@ -251,15 +320,28 @@ test.describe('ember', () => {
       }
       if (!window.__e2eHoldWorld) return { why: 'SETUP: the world hold was never installed (page.addInitScript(installWorldHold))' };
       window.__e2eHoldWorld({ capMs });
-      window.useGameStore.setState({ ember: seed, unlockedTalents: { ...s.unlockedTalents, soulbind_snare: 1 } });
+      // Pack Warden: room for three, so step 3 can bind a third ally beside a pair.
+      window.useGameStore.setState({ ember: seed, unlockedTalents: { ...s.unlockedTalents, soulbind_snare: 1, soulbind_pack: 1 } });
       return {};
-    }, { seed: BIND_SEED, capMs: test.info().timeout || 180000 });
+    }, { seed: SNARE_COST - 1, capMs: test.info().timeout || 180000 });
     expect(staged.why, staged.why).toBeUndefined();
     expect((await S()).allies, 'SETUP: the squad is not empty at the start').toEqual([]);
 
-    // 1. A BIND SPENDS THE SNARE'S PRICE: X held on a staged 1-HP zombie in the aim until it joins the squad.
+    // 0. A SNARE THE BAR CANNOT PAY FOR SAYS SO. A staged 1-HP zombie in the aim, room in the squad, a bar one short of
+    // the snare: X held across frames raises the notice, starts no channel and takes nothing.
     const z = await page.evaluate(stageZombie);
     expect(z.why, z.why).toBeUndefined();
+    await page.keyboard.down('x');
+    await page.evaluate(frames, 10);
+    await page.keyboard.up('x');
+    await expect(notice.first(), `a snare the bar cannot pay for was refused in silence (gates ${JSON.stringify(await S())})`)
+      .toBeVisible({ timeout: 15000 });
+    const shortSnare = await S();
+    expect(shortSnare.allies, 'a snare the bar cannot pay for bound').toEqual([]);
+    expect(shortSnare.ember, 'a refused snare took ember').toBe(SNARE_COST - 1);
+
+    // 1. A BIND SPENDS THE SNARE'S PRICE: X held on the same zombie, the bar now paying a bind, until it joins the squad.
+    await page.evaluate((v) => window.useGameStore.setState({ ember: v }), BIND_SEED);
     await page.keyboard.down('x');
     await expect.poll(async () => (await S()).allies.map((a) => a.id), {
       message: `X held on a weakened zombie never bound it (gates ${JSON.stringify(await S())})`, timeout: 30000,
@@ -268,8 +350,7 @@ test.describe('ember', () => {
     expect((await S()).ember, 'the bind did not spend the snare\'s price').toBe(BIND_SEED - SNARE_COST);
 
     // 2. A FUSE THE BAR CANNOT PAY FOR SAYS SO. A spider bound beside the zombie (spider + zombie has a recipe), the aim on
-    // the sky, a bar that pays a bind and not a fuse: X held across frames raises the notice and starts nothing. Below the
-    // snare's price the keydown says it whatever X starts, so this bar is the one only the frame loop can answer for.
+    // the sky, a bar that pays a bind and not a fuse: X held across frames raises the notice and starts nothing.
     const spider = await page.evaluate(bindBeside, { type: 'spider', side: 1 });
     expect(spider.why, spider.why).toBeUndefined();
     await page.evaluate(lookUp);
@@ -284,33 +365,156 @@ test.describe('ember', () => {
     expect(short.ember, 'a refused fuse took ember').toBe(BIND_SEED);
     expect(short.allies.map((a) => a.id).sort(), 'a refused fuse changed the squad').toEqual([z.id, spider.id].sort());
 
-    // 3. A FUSE SPENDS ITS PRICE: the same pair, the bar refilled past the fuse, X held until one hybrid stands for both.
+    // 3. A FUSE HOLDS THE PAIR IT STARTED ON. The bar pays a fuse; X held starts the channel on the spider and the zombie;
+    // while it runs, a third zombie is bound nearer than either, so the nearest pair is now the new zombie and the spider.
+    // The channel breaks: no hybrid, nothing taken, though X stays held past the channel's length.
     await page.evaluate((v) => window.useGameStore.setState({ ember: v }), FUSE_SEED);
     await page.keyboard.down('x');
-    await expect.poll(async () => (await S()).allies.map((a) => a.hybridId), {
+    const started = await page.evaluate(async () => {
+      const frame = () => new Promise((r) => requestAnimationFrame(r));
+      const t0 = performance.now();
+      while (!window.__craftyTest.call('readSnareState').channeling) {
+        if (performance.now() - t0 > 15000) return false;
+        await frame();
+      }
+      return true;
+    });
+    expect(started, `SETUP: X held beside a pair with a recipe never started the fuse channel (gates ${JSON.stringify(await S())})`).toBe(true);
+    const third = await page.evaluate(bindBeside, { type: 'zombie', side: -1, dist: 1.2 });
+    expect(third.why, third.why).toBeUndefined();
+    await page.evaluate(frames, 10);
+    await page.waitForTimeout(Math.round(FUSE_CHANNEL_SEC * 1000) + 600);
+    await page.keyboard.up('x');
+    const held = await S();
+    expect(held.allies.map((a) => a.hybridId), `a fuse completed on a pair it did not start on (gates ${JSON.stringify(held)})`)
+      .toEqual([null, null, null]);
+    expect(held.ember, 'a fuse whose pair changed took ember').toBe(FUSE_SEED);
+
+    // 4. A FUSE SPENDS ITS PRICE: X pressed afresh beside the nearest pair (the new zombie and the spider, a recipe), held
+    // until one hybrid stands for both.
+    await page.keyboard.down('x');
+    await expect.poll(async () => (await S()).allies.map((a) => a.hybridId).sort(), {
       message: `X held beside a pair with a recipe never fused it (gates ${JSON.stringify(await S())})`, timeout: 30000,
-    }).toEqual(['dreadweaver']);
+    }).toEqual(['dreadweaver', null]);
     await page.keyboard.up('x');
     expect((await S()).ember, 'the fuse did not spend its price').toBe(FUSE_SEED - FUSE_COST);
 
-    // 4. A PAIR WITH NO RECIPE SAYS NOTHING. A zombie bound beside the hybrid (no recipe pairs them), the same short bar:
-    // X held the same way, after the notice in step 2 showed this instrument can see one, raises none.
-    const second = await page.evaluate(bindBeside, { type: 'zombie', side: -1 });
-    expect(second.why, second.why).toBeUndefined();
+    // 5. A PAIR WITH NO RECIPE SAYS NOTHING, AT ANY BAR. The hybrid and the first zombie are the pair near the player and no
+    // recipe pairs them; nothing is in the aim. X held the same way, after the notices above showed this instrument can see
+    // one, raises none: on a bar that pays a bind, and on one below the snare's price, where no bar would start anything.
     await page.evaluate(lookUp);
-    await page.evaluate((v) => window.useGameStore.setState({ ember: v }), BIND_SEED);
-    await expect(notice, 'SETUP: the step 2 notice is still on screen').toHaveCount(0, { timeout: 15000 });
-    await page.keyboard.down('x');
-    await page.evaluate(frames, 10);
-    await page.keyboard.up('x');
-    await page.waitForTimeout(1500);
-    await expect(notice, 'a pair with no recipe blamed the ember bar').toHaveCount(0);
-    const none = await S();
-    expect(none.ember, 'a press beside a pair with no recipe took ember').toBe(BIND_SEED);
-    expect(none.allies.length, `a pair with no recipe fused (gates ${JSON.stringify(none)})`).toBe(2);
+    for (const ember of [BIND_SEED, SNARE_COST - 1]) {
+      await page.evaluate((v) => window.useGameStore.setState({ ember: v }), ember);
+      await expect(notice, 'SETUP: an earlier notice is still on screen').toHaveCount(0, { timeout: 15000 });
+      await page.keyboard.down('x');
+      await page.evaluate(frames, 10);
+      await page.keyboard.up('x');
+      await page.waitForTimeout(1500);
+      await expect(notice, `a press with nothing to start blamed the ember bar at ${ember}`).toHaveCount(0);
+      const none = await S();
+      expect(none.ember, `a press with nothing to start took ember at ${ember}`).toBe(ember);
+      expect(none.allies.length, `a pair with no recipe fused at ${ember} (gates ${JSON.stringify(none)})`).toBe(2);
+    }
 
     const hold = await page.evaluate(() => window.__e2eWorldHold.release());
     console.log(`[ember-x] world held ${hold.heldMs} ms over ${hold.frames} drawn frames (longest ${hold.longestFrameMs} ms, cap ${hold.capMs}, lapsed ${hold.lapsed})`);
+    expect(hold.lapsed, `SETUP: the world hold ran out before the last read: ${JSON.stringify(hold)}`).toBe(false);
+    expect(hold.frames, `SETUP: the game drew no frame while the world was held: ${JSON.stringify(hold)}`).toBeGreaterThan(0);
+  });
+
+  test('Z and F spend it: an imbue the bar cannot arm says so; a cast refused for mana takes nothing and leaves no element', async ({ page }) => {
+    await page.addInitScript(installWorldHold);
+    await bootDev(page);
+    await startPlayActive(page);
+    await page.waitForFunction(() => Array.isArray(window.__craftyTest?.call('readProjectiles'))
+      && typeof window.useGameStore.getState().castSpell === 'function', null, { timeout: 60000 })
+      .catch((e) => { throw new Error(`SETUP: the projectile hook and castSpell never came up — ${e.message}`); });
+
+    const S = () => page.evaluate(() => {
+      const s = window.useGameStore.getState();
+      return { ember: s.ember, armed: s.imbueArmed, mana: s.mana, alive: s.isAlive,
+        active: window.__craftyTest.call('readIntents').active };
+    });
+    const notice = page.getByText('Not enough ember');
+    const KIND = KIND_BY_SPELL.fireball;
+    const ARMED_SEED = 2 * IMBUE_COST + 10;
+    // In the page: F pressed as a synthetic keydown, so the listener, the latch, the spawn and the spend all run inside
+    // this call and nothing can come between them; returns what it made.
+    const castF = (mana) => page.evaluate((m) => {
+      const s = () => window.useGameStore.getState();
+      if (m === 'full') window.useGameStore.setState({ mana: s().maxMana });
+      else window.useGameStore.setState({ mana: m });
+      const before = new Set(window.__craftyTest.call('readProjectiles').map((p) => p.id));
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyF', bubbles: true }));
+      const made = window.__craftyTest.call('readProjectiles').filter((p) => !before.has(p.id));
+      return { made: made.map((p) => ({ type: p.type, imbueKind: p.imbueKind })), ember: s().ember, armed: s().imbueArmed };
+    }, mana);
+    const pressZ = async () => {
+      await page.keyboard.down('z');
+      await page.evaluate(frames, 10);
+      await page.keyboard.up('z');
+    };
+
+    // Noon, no mob within 40 m, the world held (no dawn can empty the bar), the imbue unlocked, fireball loaded, a bar one
+    // short of the imbue.
+    expect(await page.evaluate(setTime, 0.5), 'SETUP: noon did not read as day').toBe(true);
+    const staged = await page.evaluate(({ seed, capMs }) => {
+      const s = window.useGameStore.getState();
+      const cam = window.__threeCamera;
+      for (const m of window.__craftyTest.call('readMobs')) {
+        if (m.health > 0 && Math.hypot(m.x - cam.position.x, m.z - cam.position.z) < 40) window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
+      }
+      if (!window.__e2eHoldWorld) return { why: 'SETUP: the world hold was never installed (page.addInitScript(installWorldHold))' };
+      window.__e2eHoldWorld({ capMs });
+      window.useGameStore.setState({ ember: seed, activeSpell: 'fireball', unlockedTalents: { ...s.unlockedTalents, elemancer_imbue: 1 } });
+      return {};
+    }, { seed: IMBUE_COST - 1, capMs: test.info().timeout || 180000 });
+    expect(staged.why, staged.why).toBeUndefined();
+
+    // 1. AN IMBUE THE BAR CANNOT ARM SAYS SO. Z held across frames on a bar one short: the notice, no stance, nothing taken.
+    await pressZ();
+    await expect(notice.first(), `an imbue the bar cannot pay for was refused in silence (gates ${JSON.stringify(await S())})`)
+      .toBeVisible({ timeout: 15000 });
+    const shortZ = await S();
+    expect(shortZ.armed, 'an imbue the bar cannot pay for armed').toBe(false);
+    expect(shortZ.ember, 'a refused imbue took ember').toBe(IMBUE_COST - 1);
+
+    // 2. AN IMBUED CAST TAKES ITS PRICE AND CARRIES ITS ELEMENT. Z arms on a bar that pays two imbues; F with the mana for
+    // it casts a projectile carrying the fireball's element, takes the price and ends the stance. This is the reading the
+    // later steps' "no element" is judged against.
+    await page.evaluate((v) => window.useGameStore.setState({ ember: v }), ARMED_SEED);
+    await pressZ();
+    await expect.poll(async () => (await S()).armed, { message: 'Z on a bar that pays the imbue never armed it', timeout: 15000 }).toBe(true);
+    const imbued = await castF('full');
+    expect(imbued.made, `SETUP: the armed cast made no single projectile: ${JSON.stringify(imbued)}`).toHaveLength(1);
+    expect(imbued.made[0].imbueKind, 'the armed cast did not carry its element').toBe(KIND);
+    expect(imbued.ember, 'the armed cast did not take the imbue\'s price').toBe(ARMED_SEED - IMBUE_COST);
+    expect(imbued.armed, 'the armed cast left the stance armed').toBe(false);
+
+    // 3. A CAST REFUSED FOR MANA TAKES NOTHING AND KEEPS THE STANCE. Z arms again; F with no mana: "Not enough mana", no
+    // projectile, the bar untouched, the stance still armed.
+    await page.waitForTimeout(400); // the cast cooldown is 333 ms; a swallowed press would fake the reads below
+    await pressZ();
+    await expect.poll(async () => (await S()).armed, { message: 'Z did not arm the stance a second time', timeout: 15000 }).toBe(true);
+    await expect(notice, 'SETUP: the step 1 notice is still on screen, and its throttle could swallow the mana notice').toHaveCount(0, { timeout: 15000 });
+    const refused = await castF(0);
+    expect(refused.made, 'a cast with no mana made a projectile').toEqual([]);
+    expect(refused.ember, 'a cast refused for mana took the imbue\'s ember').toBe(ARMED_SEED - IMBUE_COST);
+    expect(refused.armed, 'a cast refused for mana dropped the armed stance').toBe(true);
+    await expect(page.getByText('Not enough mana').first(), 'the refused cast did not say why').toBeVisible({ timeout: 15000 });
+
+    // 4. THE REFUSED CAST LEAVES NO ELEMENT FOR A LATER ONE. Z disarms (a release, nothing to pay); F with mana casts a
+    // plain fireball: no element, nothing taken.
+    await pressZ();
+    await expect.poll(async () => (await S()).armed, { message: 'Z did not disarm the stance', timeout: 15000 }).toBe(false);
+    await page.waitForTimeout(400);
+    const plain = await castF('full');
+    expect(plain.made, `SETUP: the plain cast made no single projectile: ${JSON.stringify(plain)}`).toHaveLength(1);
+    expect(plain.made[0].imbueKind, 'a plain cast carried the element parked for a refused one').toBeNull();
+    expect(plain.ember, 'a plain cast took ember').toBe(ARMED_SEED - IMBUE_COST);
+
+    const hold = await page.evaluate(() => window.__e2eWorldHold.release());
+    console.log(`[ember-z] world held ${hold.heldMs} ms over ${hold.frames} drawn frames (longest ${hold.longestFrameMs} ms, cap ${hold.capMs}, lapsed ${hold.lapsed})`);
     expect(hold.lapsed, `SETUP: the world hold ran out before the last read: ${JSON.stringify(hold)}`).toBe(false);
     expect(hold.frames, `SETUP: the game drew no frame while the world was held: ${JSON.stringify(hold)}`).toBeGreaterThan(0);
   });

@@ -36,6 +36,7 @@ import { ContextLossPanel } from './ui/ContextLossPanel.jsx';
 import { ecs, mobsQuery, alliesQuery } from './ecs/world';
 import { worldNow } from './game/worldClock.js';
 import { applyFusion } from './game/hybrids';
+import { readSnareState } from './game/snareChannel';
 import { getLiveZones } from './world/ElementZoneSystem';
 import { spawnZone, clearZones } from './game/elementZones';
 import { GameMethods } from './GameMethods';
@@ -332,6 +333,12 @@ function GameApp({ experienceSystem }) {
     registerTestHook('readAllies', () => alliesQuery.entities.map((e) => ({
       id: e.id, type: e.type, baseType: e.baseType || null, hybridId: e.hybridId || null, x: e.position.x, z: e.position.z,
     })));
+    // The snare tether's channel state, which a fuse channel writes too (its thread drawn from the pair's first ally):
+    // the ember E2E sees a fuse channel running before it moves the squad around it. A copy of the scalar fields.
+    registerTestHook('readSnareState', () => {
+      const s = readSnareState();
+      return { channeling: s.channeling, targetId: s.targetId, progress: s.progress };
+    });
     // The combat stance (game/combatStance.js) and the controller's own move-target record, for the combat-stance E2E.
     // The stance records the threat's and the player's positions as it read them, before deriving `away`, so the spec
     // rebuilds the direction itself and judges the command against literal caps. Read-only copies; DEV-only.
