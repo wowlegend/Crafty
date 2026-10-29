@@ -371,6 +371,9 @@ async function shootTarget(target, launchOpts, launchId) {
       const hud = await hudOn(page);
       const onBuf = await page.screenshot({ path: join(dir, shot.file) });
       const chrome = await chromeOf(page, onBuf);
+      // Toasts on screen: a frame with one up is not the HUD at rest (the chrome summary sets it aside).
+      chrome.toasts = await page.evaluate(() => (document.querySelector('[data-testid="notification-stack"]')
+        || document.querySelector('.absolute.top-20.right-4.space-y-2'))?.children.length ?? 0);
       const after = await info(page);
       const pt = await passTimes(page);
       const v = eyeShotVerdict({ cycle: shot.cycle, heading: shot.heading, stand: report.stand, before, after, handsBaseline: report.hands?.hidden, hud });
