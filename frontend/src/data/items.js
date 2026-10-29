@@ -11,14 +11,9 @@
 // emoji-prefix + cross-file-divergence cases by routing through this registry.
 
 export const ITEMS = {
-  raw_porkchop:       { name: 'Raw Porkchop',        icon: 'meat',       rarity: 'common' },
-  raw_beef:           { name: 'Raw Beef',            icon: 'meat',       rarity: 'common' },
-  cooked_porkchop:    { name: 'Cooked Porkchop',     icon: 'meat',       rarity: 'rare' },
-  cooked_beef:        { name: 'Cooked Beef',         icon: 'meat',       rarity: 'rare' },
   bone:               { name: 'Bone',                icon: 'bone',       rarity: 'common' },
   leather:            { name: 'Leather',             icon: 'leather',    rarity: 'rare' },
-  rotten_flesh:       { name: 'Rotten Flesh',        icon: 'meat',       rarity: 'common' },
-  iron_nugget:        { name: 'Iron Nugget',         icon: 'ore',        rarity: 'epic' },
+  iron_nugget:       { name: 'Iron Nugget',         icon: 'ore',        rarity: 'epic' },
   emerald:            { name: 'Emerald',             icon: 'emerald',    rarity: 'epic' },
   arrow:              { name: 'Arrow',               icon: 'arrow',      rarity: 'common' },
   spider_eye:         { name: 'Spider Eye',          icon: 'eye',        rarity: 'common' },

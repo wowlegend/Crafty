@@ -9,7 +9,7 @@ import { deriveMaxStats, computeEffective, levelAttributes } from '../../src/gam
 // the (now emoji-free) registry-keyed runtime. Built with \u escapes so this test
 // file's source stays emoji-free where practical (the prefix bytes are DATA here).
 
-const MEAT = '\u{1F969}'; // a meat glyph (legacy Raw Porkchop / Raw Beef prefix)
+const BONE = '\u{1F9B4}'; // a bone glyph (legacy Bone prefix)
 const HEART = '\u{2764}\u{FE0F}'; // a heart glyph + variation selector (legacy Health Potion prefix)
 
 describe('M3-T3 save normalizer (loadWorldData)', () => {
@@ -22,15 +22,15 @@ describe('M3-T3 save normalizer (loadWorldData)', () => {
     useGameStore.getState().loadWorldData({
       player_data: {
         inventory: {
-          blocks: { [`${MEAT} Raw Porkchop`]: 3, 'Iron Sword': 1, grass: 64 },
+          blocks: { [`${BONE} Bone`]: 3, 'Iron Sword': 1, grass: 64 },
           tools: { sword: 1 },
           magic: { 'Mana Potion': 1 },
         },
       },
     });
     const inv = useGameStore.getState().inventory;
-    expect(inv.blocks['Raw Porkchop']).toBe(3);
-    expect(inv.blocks[`${MEAT} Raw Porkchop`]).toBeUndefined();
+    expect(inv.blocks.Bone).toBe(3);
+    expect(inv.blocks[`${BONE} Bone`]).toBeUndefined();
     // Already-clean keys pass through untouched.
     expect(inv.blocks['Iron Sword']).toBe(1);
     expect(inv.blocks.grass).toBe(64);
@@ -63,7 +63,7 @@ describe('M3-T3 save normalizer (loadWorldData)', () => {
   });
 
   it('normalizeItemName itself strips a single leading emoji + space', () => {
-    expect(normalizeItemName(`${MEAT} Raw Beef`)).toBe('Raw Beef');
+    expect(normalizeItemName(`${BONE} Bone`)).toBe('Bone');
     expect(normalizeItemName(`${HEART} Health Potion`)).toBe('Health Potion');
     expect(normalizeItemName('Iron Sword')).toBe('Iron Sword'); // no-op when clean
   });

@@ -72,8 +72,6 @@ const RARITY_CASES = [
   ['Leather Chestplate',  'rare', 'rare'],
   ['Leather Boots',       'rare', 'rare'],
   ['Health Potion',       'rare', 'rare'],
-  ['Cooked Porkchop',     'rare', 'rare'],
-  ['Cooked Beef',         'rare', 'rare'],
 
   // --- common (no match) ---
   ['Wooden Shield', 'common', 'common'],
@@ -108,10 +106,7 @@ const RARITY_CASES = [
   ['🌟 Star Fragment','legendary', 'legendary'], // FIX: was common at runtime -> registry strips -> 'Star Fragment' legendary
   ['💙 Mana Potion',  'epic',      'epic'],       // FIX: was common (💙 not in NPC fallback) -> registry strips -> 'Mana Potion' epic
   ['⚔️ Damage Scroll','rare',      'rare'],       // FIX: was common -> registry 'Damage Scroll' rare (buff consumable)
-  ['🥩 Raw Porkchop', 'common', 'common'],  // unchanged: clean 'Raw Porkchop' -> common
-  ['🥩 Raw Beef',     'common', 'common'],  // unchanged: clean 'Raw Beef' -> common
   ['🦴 Bone',         'common', 'common'],  // unchanged
-  ['🧟 Rotten Flesh', 'common', 'common'],  // unchanged
   ['🏹 Arrow',        'common', 'common'],  // unchanged
   ['🕸️ Spider Eye',   'common', 'common'],  // unchanged
   ['🧵 String',       'common', 'common'],  // unchanged
@@ -172,11 +167,6 @@ describe('characterization: LOOT_TABLES structure', () => {
       {
         "cow": [
           {
-            "chance": 0.8,
-            "item": "Raw Beef",
-            "xp": 5,
-          },
-          {
             "chance": 0.5,
             "item": "Leather",
             "xp": 3,
@@ -197,11 +187,6 @@ describe('characterization: LOOT_TABLES structure', () => {
             "chance": 0.5,
             "item": "Leather",
             "xp": 4,
-          },
-          {
-            "chance": 0.3,
-            "item": "Raw Beef",
-            "xp": 5,
           },
           {
             "chance": 0.04,
@@ -254,11 +239,6 @@ describe('characterization: LOOT_TABLES structure', () => {
           },
         ],
         "pig": [
-          {
-            "chance": 0.8,
-            "item": "Raw Porkchop",
-            "xp": 5,
-          },
           {
             "chance": 0.3,
             "item": "Bone",
@@ -332,11 +312,6 @@ describe('characterization: LOOT_TABLES structure', () => {
           },
         ],
         "zombie": [
-          {
-            "chance": 0.7,
-            "item": "Rotten Flesh",
-            "xp": 3,
-          },
           {
             "chance": 0.3,
             "item": "Iron Nugget",
@@ -432,9 +407,6 @@ describe('characterization: loot identity strings are emoji-free (decouple done)
         "Lodestone",
         "Mana Potion",
         "Prism Shard",
-        "Raw Beef",
-        "Raw Porkchop",
-        "Rotten Flesh",
         "Snare Knot",
         "Spider Eye",
         "Star Fragment",
@@ -444,9 +416,10 @@ describe('characterization: loot identity strings are emoji-free (decouple done)
   });
 
   it('counts the unique loot item identity strings', () => {
-    // 20 unique identity strings across LOOT_TABLES + CHEST_LOOT: the 16 the W1 purge left (the dead
-    // Damage Scroll + Shield Scroll chest drops went) and the four relics (game/relics.js).
-    expect([...new Set(allLootItemNames)].length).toBe(20);
+    // 17 unique identity strings across LOOT_TABLES + CHEST_LOOT: the 16 the W1 purge left (the dead
+    // Damage Scroll + Shield Scroll chest drops went), the four relics (game/relics.js), less the three foods the
+    // hunger cut took out of the mob tables (Raw Porkchop, Raw Beef, Rotten Flesh; DECISIONS 2026-10-29 item 71).
+    expect([...new Set(allLootItemNames)].length).toBe(17);
   });
 });
 

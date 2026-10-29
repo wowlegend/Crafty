@@ -879,7 +879,6 @@ export const useGameStore = create((set, get) => ({
     maxHealth: 100,
     mana: 100,
     maxMana: 100,
-    hunger: 100,
     isAlive: true,
     // W1 BUG-FIX: `gameStarted` was read at 5 guard-sites (App ESC=pause + 3 MenuSystem relock guards)
     // but never defined -> always undefined -> all 5 dead. One-way latch: set true the first time the
@@ -903,7 +902,6 @@ export const useGameStore = create((set, get) => ({
     setMaxHealth: (max) => set({ maxHealth: max }),
     setMana: (manaArg) => set((state) => ({ mana: typeof manaArg === 'function' ? manaArg(state.mana) : manaArg })),
     setMaxMana: (max) => set({ maxMana: max }),
-    setHunger: (hungerArg) => set((state) => ({ hunger: typeof hungerArg === 'function' ? hungerArg(state.hunger) : hungerArg })),
     setIsAlive: (alive) => set({ isAlive: alive }),
     setDamageFlash: (flash) => set({ damageFlash: flash }),
     setScreenShake: (shake) => set({ screenShake: shake }),
@@ -1012,27 +1010,11 @@ export const useGameStore = create((set, get) => ({
         return false;
     },
 
-    consumeHunger: (amount = 0.5) => {
-        const state = get();
-        if (!state.isAlive) return;
-        const newHunger = Math.max(0, state.hunger - amount);
-        set({ hunger: newHunger });
-        if (newHunger <= 0) {
-            state.damagePlayer(1, 'starvation');
-        }
-    },
-
-    feedPlayer: (amount) => {
-        const state = get();
-        set({ hunger: Math.min(100, state.hunger + amount) });
-    },
-
     respawn: () => {
         const state = get();
         set({
             playerHealth: state.maxHealth,
             mana: state.maxMana,
-            hunger: 100,
             isAlive: true
         });
         useGameStore.setState({ _spawnTime: Date.now() });

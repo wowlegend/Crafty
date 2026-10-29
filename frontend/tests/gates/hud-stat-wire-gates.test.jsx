@@ -66,7 +66,8 @@ describe('HUD stat-bar wiring — context-key integrity', () => {
 
   it('every stat key the HUD needs is present on the context it ACTUALLY provides', () => {
     const ctx = captureContext();
-    const REQUIRED = ['playerHealth', 'maxHealth', 'mana', 'maxMana', 'hunger', 'isAlive'];
+    // No `hunger`: the meter left the game with its bar (DECISIONS 2026-10-29 item 70), and the HUD reads no hunger.
+    const REQUIRED = ['playerHealth', 'maxHealth', 'mana', 'maxMana', 'isAlive'];
     expect(REQUIRED.length).toBeGreaterThan(0);
     for (const k of REQUIRED) expect(Object.keys(ctx), k).toContain(k);
   });

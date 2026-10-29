@@ -114,7 +114,7 @@ export function PrimitivesShowcase() {
         <Panel variant="base" className="flex flex-col gap-1.5 p-3">
           <StatBar kind="health" icon="health" value={84} max={100} showValue className="w-full" />
           <StatBar kind="mana" icon="water" value={62} max={100} showValue className="w-full" />
-          <StatBar kind="hunger" icon="meat" value={73} max={100} showValue className="w-full" />
+          <StatBar kind="ember" icon="fire" value={73} max={100} showValue className="w-full" />
         </Panel>
       </div>
 

@@ -103,7 +103,7 @@ describe('B1 friend/foe — the hub questgivers are not target practice', () => 
     expect(hits).toContain(cow);
 
     GameMethods.damageMob(cow.id, 30, 'physical', 'player');
-    expect(cow.health).toBeLessThan(cow.maxHealth);   // you can still hunt for food
+    expect(cow.health).toBeLessThan(cow.maxHealth);   // you can still hunt livestock
   });
 
   it('an aimed projectile resolves against the NEAREST target, not first-in-ECS', () => {
@@ -212,7 +212,7 @@ describe('the NEUTRAL tier banks no Aspect power', () => {
       return orbXP() - before;
     };
     expect(killFor(9203, 'villager', [0, 0, -2]), 'killing a Settler dropped XP').toBe(0);
-    // Presence, same instrument: a hostile, and livestock hunted for food, still pay what the table declares.
+    // Presence, same instrument: a hostile, and hunted livestock, still pay what the table declares.
     expect(killFor(9204, 'zombie', [0, 0, -3]), 'a Husk kill dropped less than its declared XP — the orb path is dead')
       .toBeGreaterThanOrEqual(MOB_TYPES.zombie.xp);
     expect(killFor(9205, 'pig', [1, 0, -3]), 'a Boar kill dropped less than its declared XP')

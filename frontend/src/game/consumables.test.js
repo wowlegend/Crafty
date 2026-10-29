@@ -2,10 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { isConsumable, consumeEffect, CONSUMABLE_EFFECTS } from './consumables.js';
 
 describe('isConsumable — exact-name (fixes the substring consume-trap)', () => {
-  it('true for real consumables (potions/food/XP tokens)', () => {
-    for (const name of ['Health Potion', 'Mana Potion', 'Cooked Porkchop', 'Cooked Beef',
-      'Raw Porkchop', 'Raw Beef', 'Rotten Flesh', 'Diamond', 'Golden Crown', 'Star Fragment']) {
+  it('true for real consumables (potions/XP tokens)', () => {
+    for (const name of ['Health Potion', 'Mana Potion', 'Diamond', 'Golden Crown', 'Star Fragment']) {
       expect(isConsumable(name)).toBe(true);
+    }
+  });
+  // The food left with the hunger meter (DECISIONS 2026-10-29 item 71): a meat would be a Use button that spends the
+  // item for nothing.
+  it('false for the retired foods', () => {
+    for (const food of ['Raw Porkchop', 'Raw Beef', 'Cooked Porkchop', 'Cooked Beef', 'Rotten Flesh']) {
+      expect(isConsumable(food), food).toBe(false);
     }
   });
   it('FALSE for equippable Diamond gear — the bug (substring .includes("Diamond") matched these)', () => {
@@ -26,10 +32,6 @@ describe('consumeEffect — exact per-name effect', () => {
   it('maps each consumable to its effect', () => {
     expect(consumeEffect('Health Potion')).toEqual({ heal: 30 });
     expect(consumeEffect('Mana Potion')).toEqual({ mana: 40 });
-    expect(consumeEffect('Cooked Porkchop')).toEqual({ feed: 40, heal: 10 });
-    expect(consumeEffect('Cooked Beef')).toEqual({ feed: 40, heal: 10 });
-    expect(consumeEffect('Raw Porkchop')).toEqual({ feed: 15 });
-    expect(consumeEffect('Rotten Flesh')).toEqual({ feed: 10 });
     expect(consumeEffect('Diamond')).toEqual({ xp: 50 });
     expect(consumeEffect('Golden Crown')).toEqual({ xp: 200 });
     expect(consumeEffect('Star Fragment')).toEqual({ xp: 100 });

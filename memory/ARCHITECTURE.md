@@ -55,7 +55,7 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 - NPC/Mob system with **10** mob types (`game/mobTypes.js`), AI movement, health bars, hostile chase AI
 - Day/night cycle
 - Creative mode gameplay
-- Player stats: health, mana, hunger with regeneration
+- Player stats: health and mana (mana regenerates); no hunger, no food (W2-F step 6)
 - XP and leveling system with visual feedback
 - Sound system with procedurally generated audio
 - Save/Load — localStorage ONLY, no auth and no backend (`game/worldSaves.js`; zero network calls in src/)
@@ -97,7 +97,7 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
     ├── Components.jsx            # Player, UI panels, block types
     ├── SimplifiedNPCSystem.jsx   # Mob spawning, AI, chase behavior, combat
     ├── EnhancedMagicSystem.jsx   # Spell projectiles, effects, hand visuals
-    ├── GameSystems.jsx           # Player stats (HP/MP/hunger), combat, UI bars
+    ├── GameSystems.jsx           # Player stats (HP/MP), combat, UI bars
     ├── SimpleExperienceSystem.jsx # XP, leveling, visual gain/level-up effects
     ├── SoundManager.jsx          # Procedural audio (combat, magic, ambient)
     ├── QuestSystem.jsx           # Quests, loot drops, treasure chests, achievements
@@ -181,7 +181,6 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 | ------ | ------- |
 | Health | Hearts display, damage overlay on hit, death screen + respawn |
 | Mana | 100 max, regenerates over world time (held while paused), spells consume per cast |
-| Hunger | Chicken leg icons; nothing drains it over time, and the meter is cut in the SOTA reset's Wave 2 |
 | XP | Level-based progression, visual +XP popups, level-up effect |
 | Sound | Procedurally generated: footsteps, block place/break, combat, magic, ambient |
 
@@ -230,7 +229,7 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 - ✅ Animated main menu
 - ✅ Minimap with mob tracking
 - ✅ Terrain variety (flowers, ores, birch trees)
-- ✅ Player health/mana/hunger bars
+- ✅ Player health/mana bars and the ember bar
 - ✅ XP and leveling system
 - ✅ Death screen + respawn
 - ✅ Sound effects

@@ -18,7 +18,7 @@
  *                          high HP" mob, not a "they respawn" mob: an invariant. A player must not be
  *                          able to delete the game's service layer by mashing left-click.
  *   NEUTRAL    (`passive`, not isNPC) — livestock (Boar, Ox) and wild Settlers. Killable when you
- *                          DELIBERATELY aim at them (they are food and loot), but NEVER auto-selected
+ *                          DELIBERATELY aim at them (they are loot and XP), but NEVER auto-selected
  *                          by an auto-targeter. Chain lightning hopping to a cow you didn't aim at is
  *                          the bug; walking up and hunting the cow is the feature.
  *   HOSTILE    (everything else) — fully targetable, fully auto-targetable.

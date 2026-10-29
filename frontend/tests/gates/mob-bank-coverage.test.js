@@ -37,7 +37,7 @@ describe('every mob type banks a declared amount — no silent fallback', () => 
     const hostile = types.filter((t) => !MOB_TYPES[t].passive);
     for (const t of hostile) expect(bankForKill(t), `${t} banks nothing`).toBeGreaterThan(0);
     expect(bankForKill('villager'), 'a Settler kill banks Aspect power').toBe(0);
-    // Every other passive mob is livestock, hunted for food, and keeps its bank.
+    // Every other passive mob is livestock, hunted for its loot and XP, and keeps its bank.
     const livestock = types.filter((t) => MOB_TYPES[t].passive && t !== 'villager');
     expect(livestock, 'the livestock this checks are not the Boar and the Ox').toEqual(expect.arrayContaining(['pig', 'cow']));
     for (const t of livestock) expect(bankForKill(t), `${t} lost its bank with the Settler`).toBeGreaterThan(0);

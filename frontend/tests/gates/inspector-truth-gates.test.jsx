@@ -86,7 +86,7 @@ describe('an item that is not gear says what it is for', () => {
     ['coal', 'A block to build with.'],
     ['chest', 'A storage chest: place it and keep items in it.'],
     ['Health Potion', 'Consumable: restores health or mana.'],
-    ['Raw Beef', 'Consumable: use it from your inventory.'],
+    ['Star Fragment', 'Consumable: use it from your inventory.'],
   ];
 
   it('each in the bag reads its own use', () => {

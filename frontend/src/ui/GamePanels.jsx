@@ -90,7 +90,7 @@ const STAT_TONE = { strength: 'text-stat-atk', agility: 'text-stat-spd', intelle
 /** What an item that is not gear is for, in words, each decided by the registry the game itself reads. */
 function itemUse(t, itemName) {
     if (itemName.includes('Potion')) return t('inspect.potion');
-    // The consumable registry, so raw meats, rotten flesh and the XP gems read as consumables, not as blocks.
+    // The consumable registry, so the XP gems read as consumables, not as blocks.
     if (isConsumable(itemName)) return t('inspect.consumable');
     if (itemName === 'chest') return t('inspect.chest');
     // A voxel the place verb puts in the world (world/blockIds.js); Leather and the like have none.
@@ -208,7 +208,6 @@ export const Inventory = ({ onClose }) => {
         const s = useGameStore.getState();
         if (fx.heal && s.healPlayer) s.healPlayer(fx.heal);
         if (fx.mana && s.restoreMana) s.restoreMana(fx.mana);
-        if (fx.feed && s.feedPlayer) s.feedPlayer(fx.feed);
         if (fx.xp && GameMethods.grantXP) GameMethods.grantXP(fx.xp, item);
         gameState.removeFromInventory(item, 1);
     };

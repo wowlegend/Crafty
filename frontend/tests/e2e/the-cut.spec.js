@@ -18,9 +18,13 @@ import { installWorldHold } from './_worldHold.js';
 // hotbar's DOM. The empty stack's refusal must show its notice. A left click on a staged zombie shows the game still
 // fights; the autosave's action shows it still saves.
 //
+// Hunger (step 6) is gone through the HUD's own stat stack and ten minutes of the page's clock: see FOOD below.
+//
 // WHAT THIS DOES NOT CHECK: the Load button's click (the World Manager UI), a reload of the page between a save and its
 // read, touch placement (the overlay's cast button reaches the same performVerb), or the Building Tools' multi-block
-// footprint (tests/e2e/build-placement.spec.js).
+// footprint (tests/e2e/build-placement.spec.js). In the hunger window: a timer faster than JUMP_MS at its real rate
+// (it fires once a jump), the world's motion over ten minutes (about one capped frame step a jump), and the AI worker's
+// own timers, which run in a worker thread the page clock does not reach.
 //
 // Mutation-Proof: see the commit trailers (the unit mutants, run against tests/store/preCutSave.test.js and
 // tests/gates/free-placement-gates.test.js). These cases need a browser, so CI runs them; no local mutation run.
@@ -74,6 +78,39 @@ function aimAt({ yaw, pitch }) {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PRE_CUT = JSON.parse(readFileSync(resolve(HERE, '../fixtures/pre-cut-save.json'), 'utf8'));
 
+// Step 6, hunger (DECISIONS 2026-10-29 items 70-73). The world clock is the page's own: Playwright's clock is installed
+// before boot, so every timer the game makes is the fake clock's, and once play is live the clock is paused and moved
+// in JUMPS jumps of JUMP_MS (page.clock.fastForward fires each due timer at most once a jump). A timer JUMP_MS or more
+// apart therefore fires at its real rate, and the deleted hunger interval was exactly that far apart; a faster one
+// (mana regen, the day clock: 1 s) fires once a jump, and the frame loop draws about one frame a jump, its step capped
+// at MAX_FRAME_STEP_SEC. Hostiles are swept after every jump, so no mob is what the health read measures.
+const FOOD = ['Raw Porkchop', 'Raw Beef', 'Cooked Porkchop', 'Cooked Beef', 'Rotten Flesh'];
+const HUNGER_KEYS = ['hunger', 'setHunger', 'consumeHunger', 'feedPlayer'];
+const JUMP_MS = 5000;
+const JUMPS = 120; // ten minutes
+const DAY_UNITS_PER_TICK = 2.5; // GAME_UNITS_PER_SECOND (src/game/dayNight.js), a literal so the yardstick holds still
+
+/** In the page: kill every hostile within 80 m and read the player's health with the gates the world runs on. */
+function sweepAndRead() {
+  const s = window.useGameStore.getState();
+  const cam = window.__threeCamera.position;
+  let swept = 0;
+  for (const m of window.__craftyTest.call('readMobs')) {
+    if (!m.passive && m.health > 0 && Math.hypot(m.x - cam.x, m.z - cam.z) < 80) {
+      window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
+      swept += 1;
+    }
+  }
+  return { health: s.playerHealth, max: s.maxHealth, alive: s.isAlive, active: window.__craftyTest.call('readIntents').active, swept };
+}
+
+/** In the page: the readings the window is judged against (the clocks, the frames drawn, the regen it drove). */
+function readClocks() {
+  const s = window.useGameStore.getState();
+  return { now: performance.now(), wall: Date.now(), gameTime: s.gameTime, frames: window.__craftyTest.call('readFrameloop')?.frames ?? null,
+    mana: s.mana, maxMana: s.maxMana, health: s.playerHealth, maxHealth: s.maxHealth, hits: window.__e2eHits || [] };
+}
+
 test.describe('the Cut', () => {
   test.setTimeout(180000);
 
@@ -84,9 +121,13 @@ test.describe('the Cut', () => {
       const g = () => window.useGameStore.getState();
       save.progression.futureField = { nested: [1, 2], word: 'kept' };
       save.game_state.futureFlag = 'kept';
+      // Step 6: an empty stomach and a stack of meat, as a save could hold them (tests/store/hungerCut.test.js states the rule).
+      save.progression.hunger = 0;
+      save.player_data.inventory.blocks['Raw Beef'] = 4;
       g().loadWorldData(save);
       const loaded = { level: g().level, maxHealth: g().maxHealth, ember: g().ember, talentPoints: g().talentPoints,
-        talents: g().unlockedTalents, hasAttributes: 'attributes' in g(), liveBag: g().inventory.blocks };
+        talents: g().unlockedTalents, hasAttributes: 'attributes' in g(), liveBag: g().inventory.blocks,
+        hasHunger: 'hunger' in g(), health: g().playerHealth };
       const storeHasMode = 'gameMode' in g();
       const liveQuestIds = (g().questState?.quests || []).map((q) => q && q.id);
       g().saveActiveWorld({ x: 3, y: 21, z: 6 });
@@ -126,6 +167,13 @@ test.describe('the Cut', () => {
     expect([r.blob.player_data.inventory.blocks.crystals, r.blob.player_data.inventory.blocks.wand], 'the crystals and wand were not written back')
       .toEqual([PRE_CUT.player_data.inventory.blocks.crystals, PRE_CUT.player_data.inventory.blocks.wand]);
     expect(r.blob.migrated, 'the refund was not recorded').toContain('talents.cut');
+    // Step 6 (hunger, DECISIONS 2026-10-29 item 72): the store reads no hunger and the meat leaves the live bag; both
+    // ride the save back unchanged.
+    expect(r.loaded.hasHunger, 'the store took the save\'s hunger').toBe(false);
+    expect(r.loaded.health, 'loading an empty stomach cost health').toBe(r.loaded.maxHealth);
+    expect('Raw Beef' in r.loaded.liveBag, 'a retired food is in the live bag').toBe(false);
+    expect(r.blob.progression.hunger, 'the held hunger key was not written back').toBe(0);
+    expect(r.blob.player_data.inventory.blocks['Raw Beef'], 'the held meat was not written back').toBe(4);
   });
 
   test('one costed mode: no Mode chip or toggle; a right-click spends one block, an empty stack refuses; it fights and saves', async ({ page }) => {
@@ -240,5 +288,136 @@ test.describe('the Cut', () => {
     console.log(`[the-cut] world held ${hold.heldMs} ms over ${hold.frames} drawn frames (longest ${hold.longestFrameMs} ms, cap ${hold.capMs}, lapsed ${hold.lapsed})`);
     expect(hold.lapsed, `SETUP: the world hold ran out before the last read: ${JSON.stringify(hold)}`).toBe(false);
     expect(hold.frames, `SETUP: the game drew no frame while the world was held: ${JSON.stringify(hold)}`).toBeGreaterThan(0);
+  });
+
+  test('hunger is gone: no bar, no food, and ten minutes of world clock cost no health; it fights and saves', async ({ page }) => {
+    // Boot, ten minutes of jumps (each a drawn frame, about 227 ms on CI's software renderer) and the fight: the
+    // describe's 180 s is sized for one boot and a few seconds of play.
+    test.setTimeout(360000);
+    await page.clock.install(); // before boot, so the game's timers are the fake clock's
+    await bootDev(page);
+    await startPlayActive(page);
+    await page.waitForFunction(() => window.__craftyTest?.call('readMobs') && window.__craftyTest?.call('readFrameloop') && window.__threeCamera
+      && window.GameMethods?.damageMob && window.useGameStore.getState().spawnMob && window.useGameStore.getState().getMobFloor, null, { timeout: 60000 })
+      .catch((e) => { throw new Error(`SETUP: the mob hooks, frame counter and camera never came up — ${e.message}`); });
+
+    // 1. THE SURFACE IS GONE. Presence first: the stack renders its health bar, and the ember bar once ember is held.
+    const fresh = await page.evaluate(({ keys, food }) => {
+      const s = window.useGameStore.getState();
+      window.useGameStore.setState({ ember: 20 });
+      const bagFood = Object.entries(s.inventory).flatMap(([bag, items]) => food.filter((k) => items && k in items).map((k) => `${bag}:${k}`));
+      return { storeKeys: keys.filter((k) => k in s), bagFood, bags: Object.keys(s.inventory).length };
+    }, { keys: HUNGER_KEYS, food: FOOD });
+    expect(fresh.bags, 'SETUP: the fresh profile has no inventory to read').toBeGreaterThan(0);
+    expect(fresh.storeKeys, 'the store still carries hunger').toEqual([]);
+    expect(fresh.bagFood, 'a fresh profile starts with food').toEqual([]);
+    const stack = page.getByTestId('stat-stack');
+    await expect(stack.getByTestId('stat-health'), 'SETUP: the HUD stat stack never rendered its health bar').toBeVisible();
+    await expect(stack.getByTestId('ember-bar'), 'SETUP: the ember bar did not show with ember held').toBeVisible();
+    const bars = await stack.evaluate((el) => [...el.children].map((c) => c.getAttribute('data-testid')));
+    expect(bars, 'the HUD stat stack holds a bar beyond health, mana and ember').toEqual(['stat-health', 'stat-mana', 'ember-bar']);
+
+    // 2. TEN MINUTES OF WORLD CLOCK WITH NOTHING TO EAT. Noon, no hostile near, full health, empty mana; every hit the
+    // player takes from here is logged with its source, so a failure names what hurt.
+    const staged = await page.evaluate(async () => {
+      const store = window.useGameStore;
+      const frame = () => new Promise((r) => requestAnimationFrame(r));
+      while (Date.now() - (store.getState()._spawnTime || 0) < 5500) await frame();
+      const s = store.getState();
+      s.setTimeOfDay?.(0.5);
+      store.setState({ playerHealth: s.maxHealth, mana: 0 });
+      window.__e2eHits = [];
+      const hit = s.damagePlayer;
+      store.setState({ damagePlayer: (amount, source, ...rest) => {
+        window.__e2eHits.push({ amount, source: String(source), at: Math.round(performance.now()) });
+        return hit(amount, source, ...rest);
+      } });
+      return { active: window.__craftyTest.call('readIntents').active, alive: store.getState().isAlive };
+    });
+    expect(staged, 'SETUP: the input gate or life was down at the window\'s start, so the world would be paused').toEqual({ active: true, alive: true });
+    await page.evaluate(sweepAndRead);
+    const before = await page.evaluate(readClocks);
+    await page.clock.pauseAt(before.wall + 1000);
+    const readings = [];
+    for (let i = 0; i < JUMPS; i += 1) {
+      await page.clock.fastForward(JUMP_MS);
+      readings.push(await page.evaluate(sweepAndRead));
+    }
+    const after = await page.evaluate(readClocks);
+    await page.clock.resume();
+
+    const fell = readings.findIndex((r) => r.health < r.max);
+    const gatesDown = readings.filter((r) => !r.active || !r.alive).length;
+    const swept = readings.reduce((n, r) => n + r.swept, 0);
+    const window10 = { advancedMs: Math.round(after.now - before.now), frames: after.frames - before.frames, dayUnits: after.gameTime - before.gameTime,
+      mana: [after.mana, after.maxMana], gatesDown, swept };
+    console.log(`[the-cut] hunger window: ${JSON.stringify(window10)}`);
+    expect(fell, `health fell at jump ${fell + 1} of ${JUMPS} with nothing to eat and every hostile swept (reading ${JSON.stringify(readings[fell])}; hits ${JSON.stringify(after.hits)}; window ${JSON.stringify(window10)})`).toBe(-1);
+    expect(after.hits, 'something hit the player during the window').toEqual([]);
+    expect(after.health, 'the player ended the window short of full health').toBe(after.maxHealth);
+    // The denominator, read after the subject so a starved player is scored as a defect, not as a broken setup.
+    expect(window10.advancedMs, `SETUP: the page clock moved ${window10.advancedMs} ms, not ten minutes`).toBeGreaterThanOrEqual(JUMPS * JUMP_MS);
+    expect(gatesDown, `SETUP: the input gate or life dropped during the window, so the world was paused (${JSON.stringify(window10)})`).toBe(0);
+    expect(window10.frames, `SETUP: the game drew ${window10.frames} frames over ${JUMPS} jumps`).toBeGreaterThanOrEqual(JUMPS / 2);
+    expect(after.mana, `SETUP: mana emptied before the window was not refilled, so the provider's timers did not run (${JSON.stringify(window10)})`).toBe(after.maxMana);
+    expect(window10.dayUnits, `SETUP: the day clock fired on too few jumps (${JSON.stringify(window10)})`).toBeGreaterThanOrEqual(JUMPS * DAY_UNITS_PER_TICK * 0.9);
+    // The instrument is live: a staged hit after the window lowers the same health reading.
+    const probe = await page.evaluate(() => {
+      const store = window.useGameStore;
+      const was = store.getState().playerHealth;
+      store.getState().damagePlayer(10, 'e2e-probe');
+      const now = store.getState().playerHealth;
+      store.setState({ playerHealth: store.getState().maxHealth });
+      return { was, now };
+    });
+    expect(probe.now, `SETUP: a staged hit after the window did not lower health, so the reading above is no instrument (${JSON.stringify(probe)})`).toBeLessThan(probe.was);
+
+    // 3. IT FIGHTS. A zombie 2.5 m ahead and a real left click; the aim is set on the click's own mousedown, so a view
+    // the headless page turns between the aim and the press cannot carry the swing off it.
+    await startPlayActive(page); // the paused clock held the page; ask for the input gate again as play resumes
+    const z = await page.evaluate(() => {
+      const s = window.useGameStore.getState();
+      s.setTimeOfDay?.(0.5);
+      const cam = window.__threeCamera;
+      cam.rotation.x = 0; cam.updateMatrixWorld();
+      const d = new cam.position.constructor();
+      cam.getWorldDirection(d); d.y = 0; d.normalize();
+      const gx = cam.position.x + d.x * 2.5, gz = cam.position.z + d.z * 2.5;
+      const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
+      s.spawnMob(gx, gz, 'zombie', s.getMobFloor(gx, gz, cam.position.y - 1.6));
+      const m = window.__craftyTest.call('readMobs').find((e) => !before.has(e.id));
+      if (!m) return { why: 'SETUP: spawnMob added no zombie' };
+      window.__clickAim = { atDown: null };
+      window.addEventListener('mousedown', () => {
+        const live = window.__craftyTest.call('readMobs').find((e) => e.id === m.id);
+        if (live) cam.lookAt(live.x, live.y + 0.8, live.z);
+        const st = window.useGameStore.getState();
+        window.__clickAim.atDown = { hp: live ? live.health : null, active: window.__craftyTest.call('readIntents').active, alive: st.isAlive };
+      }, { capture: true, once: true });
+      return { id: m.id, hp: m.health };
+    });
+    expect(z.why, z.why).toBeUndefined();
+    await page.mouse.click(640, 400);
+    const atDown = await page.evaluate(() => window.__clickAim.atDown);
+    expect(atDown, 'SETUP: the click\'s mousedown never reached the window').not.toBeNull();
+    expect({ active: atDown.active, alive: atDown.alive }, `SETUP: on the click's own mousedown a swing could not land (${JSON.stringify(atDown)})`).toEqual({ active: true, alive: true });
+    const hpAfter = () => page.evaluate((id) => window.__craftyTest.call('readMobs').find((e) => e.id === id)?.health ?? null, z.id);
+    await expect.poll(async () => { const h = await hpAfter(); return h === null || h < z.hp; }, { message: `a left click on the zombie dealt nothing (${JSON.stringify(atDown)})` }).toBe(true);
+
+    // 4. IT SAVES, through the autosave's action and localStorage: no hunger anywhere in the blob, and no food.
+    const saved = await page.evaluate((food) => {
+      window.useGameStore.getState().saveActiveWorld({ x: 0, y: 18, z: 0 });
+      const id = localStorage.getItem('crafty_active_world');
+      const blob = id ? JSON.parse(localStorage.getItem('crafty_world_save_' + id) || 'null') : null;
+      if (!blob) return null;
+      const slices = { progression: blob.progression, game_state: blob.game_state, player_data: blob.player_data };
+      return { version: blob.version, level: blob.progression?.level,
+        hunger: Object.entries(slices).filter(([, v]) => v && 'hunger' in v).map(([k]) => k),
+        food: Object.entries(blob.player_data?.inventory || {}).flatMap(([bag, items]) => food.filter((k) => items && k in items).map((k) => `${bag}:${k}`)) };
+    }, FOOD);
+    expect(saved, 'SETUP: saveActiveWorld wrote no world blob').not.toBeNull();
+    expect(Number.isFinite(saved.level), `SETUP: the blob holds no level (${JSON.stringify(saved)})`).toBe(true);
+    expect(saved.hunger, 'the save wrote a hunger field').toEqual([]);
+    expect(saved.food, 'the save holds food').toEqual([]);
   });
 });

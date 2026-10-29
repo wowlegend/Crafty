@@ -8,11 +8,6 @@
 export const CONSUMABLE_EFFECTS = {
   'Health Potion': { heal: 30 },
   'Mana Potion': { mana: 40 },
-  'Cooked Porkchop': { feed: 40, heal: 10 },
-  'Cooked Beef': { feed: 40, heal: 10 },
-  'Raw Porkchop': { feed: 15 },
-  'Raw Beef': { feed: 15 },
-  'Rotten Flesh': { feed: 10 },
   'Diamond': { xp: 50 },        // the raw legendary gem (items.js diamond_gem) — NOT 'Diamond Sword' etc.
   'Golden Crown': { xp: 200 },  // intentionally dual: an equippable helmet OR cash-in for XP
   'Star Fragment': { xp: 100 },
