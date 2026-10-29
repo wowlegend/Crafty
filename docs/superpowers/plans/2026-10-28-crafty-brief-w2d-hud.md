@@ -1,7 +1,8 @@
 # Brief: W2-D, the HUD lane (2026-10-28)
 
 **Plan:** `2026-10-28-crafty-sota-reset.md`, rows 12 and 24 and lane W2-D (Wave 2). **Decision:** DECISIONS 2026-10-28
-(W1-H) item 2(c): one HUD lane with one owner. **Status:** unstarted. Starts after #24 (landed), combat stance (#6, which
+(W1-H) item 2(c): one HUD lane with one owner. **Status:** started 2026-10-29; task script `2026-10-29-crafty-w2d-hud.md` (its first table re-reads every citation
+below on `63fe4035`). Starts after #24 (landed), combat stance (#6, which
 owns `ui/WindupChevrons` and edits `HUD.jsx`), the light and colour lane (#5) and plan row 9's mirror deletion, since all
 of them edit the HUD's files. **Owner:** the command session; one builder holds every file below for the whole lane.
 
@@ -21,19 +22,19 @@ HUD notes, the game lens's panel sprawl and architecture finding A18 (the `inner
 
 ## Scope
 
-- **At rest:** delete the desktop tool rail (`ui/GameHud.jsx:94-101`; touch keeps its tray). Fold the level card
+- **At rest:** delete the desktop tool rail (`ui/GameHud.jsx:87-98`; touch keeps its tray). Fold the level card
   (`SimpleExperienceSystem.jsx:165`, a card at `bottom-32`) into a 4 px XP bar on the hotbar's top edge with the level
-  number beside it. Collapse the quest tracker (`QuestSystem.jsx:492`) to one objective line that expands on hover or J.
-- **Compass:** rewrite the `innerHTML` compass (`HUD.jsx`, the block that writes `container.innerHTML`) as a React
+  number beside it. Collapse the quest tracker (`QuestSystem.jsx:504`) to one objective line that expands on hover or J.
+- **Compass:** rewrite the `innerHTML` compass (`HUD.jsx:254-508`, the write at `:476`) as a React
   component on the HUD ticker: markers from data, labels de-overlapped (a later marker yields when two labels would
   overlap within their pixel width), every label through `t()`, icons from `ui/primitives/gameIcons.js`.
 - **Notifications:** one channel. `addNotification` dedupes by key within a window and renders through `t()`; the dusk
   warning (`ui/DuskWarning.jsx:31`, a hardcoded English string) becomes a key, shown once per dusk.
 - **Re-key the chrome:** the navy surface ladder in `theme/tokens.js` (`panel`, `panelRaise`, `panelFrame`, `panelInset`)
   moves to warm charcoal; the token chain (`tokens.js` -> `cssVars.js` -> `tailwind.config.cjs`) carries it everywhere.
-- **Panels:** E, M, C, B, U, L, Q, H and Tab (`game/keyMap.js:33-42`) become Tab (Character), J (Journal) and B (Build).
-  C goes with the Forge (W2-F). H opens a controls panel generated from `KEY_MAP`. Q's manual claim goes: quests claim
-  automatically on completion. The touch tray (`ui/touchTray.js`) offers the same three.
+- **Panels:** E, M, B, U, L, Q, H and Tab (`game/keyMap.js:32-43`) become Tab (Character), J (Journal) and B (Build).
+  C went with the Forge (W2-F step 5); G talks (Mara's Forge) and stays. H opens a controls panel generated from `KEY_MAP`. Q's manual claim goes: quests claim
+  automatically on completion. The touch tray (`ui/touchTray.js`, whose Talk button replaced Craft) offers the same three, beside Talk.
 - **Feats (row 24):** the 12 counter achievements become 8 skill feats shown in the Journal; "Survivor" (die 3 times)
   is deleted.
 
@@ -131,9 +132,9 @@ commit, and a lookbook pair (before, after) attached to the PR for any visible c
 - [ ] Red first: `KEY_MAP` lists Tab, J and B as the panel keys; the two-way keyMap gate fails until the handlers match.
 - [ ] Build Character (inventory, equipment, talents), Journal (quests with automatic claim, feats) and Build (building
       tools and the block palette) from the existing panel components; delete the E, M, Q, L and U panel entries (C
-      goes with the Forge in W2-F; B stays as Build; Tab becomes Character).
+      went with the Forge in W2-F step 5; B stays as Build; Tab becomes Character).
 - [ ] H keeps its key and opens a controls panel generated from `KEY_MAP`, in place of today's toggle and its
-      8-second auto-fade (`HUD.jsx:191`). jsdom test: H opens it and it lists every `KEY_MAP` entry; mutant: drop one
+      8-second auto-fade (`HUD.jsx:159-170`, the timer at `:165`). jsdom test: H opens it and it lists every `KEY_MAP` entry; mutant: drop one
       group from the generator. RED. A first-time player must still find it: the panel auto-shows on a profile's first
       play, and a small "H Controls" hint stays at the hotbar edge until the player has opened the panel once (saved
       per profile). jsdom test: fresh profile shows panel and hint; after one H press, a new session shows neither;
