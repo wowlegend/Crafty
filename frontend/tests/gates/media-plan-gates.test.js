@@ -13,6 +13,7 @@ import {
   mediaProblems,
   mediaShotVerdict,
   nearestHostile,
+  nearestMobM,
   mergeManifest,
   ogCardHtml,
   cardSubtitle,
@@ -192,7 +193,7 @@ describe('the per-shot verdict', () => {
     gl: { renderer: HW }, pose: null, handNodes: 9, body: [0.1, 52.95, 0], heading: hero.recipe.heading,
     hostiles: { nearestM: 20, within8m: 0 }, ...over });
   const eye = (after, over = {}) => mediaShotVerdict({ shot: hero, heading: hero.recipe.heading, stand, handsHidden: 0,
-    hudVisible: false, before: reading(), after, ...over });
+    hudVisible: false, nearestMobM: 20, before: reading(), after, ...over });
 
   it('passes an eye shot with the hands mounted, the HUD hidden, the body stood and the bearing held', () => {
     expect(eye(reading())).toEqual({ valid: true, why: [] });
@@ -205,6 +206,20 @@ describe('the per-shot verdict', () => {
     expect(eye(reading({ tier: 'med' })).why.join('\n')).toMatch(/tier/);
     expect(eye(reading({ heading: hero.recipe.heading + 5 })).why.join('\n')).toMatch(/facing/);
     expect(eye(reading({ body: [3, 52.95, 0] })).why.join('\n')).toMatch(/stand/);
+  });
+
+  it('refuses an eye shot with any mob in the eye, a passive animal too, and one whose mobs were not read', () => {
+    // An ox at arm's length passed every check above in the first shoot: the seam counts hostiles only.
+    expect(eye(reading(), { nearestMobM: OBSTRUCTION_M - 1 }).why.join('\n')).toMatch(/mob .* from the eye/);
+    expect(eye(reading(), { nearestMobM: undefined }).why.join('\n')).toMatch(/mobs not checked/);
+    expect(eye(reading(), { nearestMobM: null }).valid).toBe(true);
+    expect(eye(reading(), { nearestMobM: OBSTRUCTION_M + 0.5 }).valid).toBe(true);
+  });
+
+  it('measures the nearest mob of any kind from the eye', () => {
+    const mobs = [{ type: 'ox', passive: true, position: [0, 50, 2] }, { type: 'zombie', passive: false, position: [5, 50, 0] }];
+    expect(nearestMobM(mobs, [0, 50, 0])).toBeCloseTo(2, 5);
+    expect(nearestMobM([], [0, 50, 0])).toBe(null);
   });
 
   it('refuses any shot on a software renderer, a dead player or a clock that drifted', () => {
@@ -226,7 +241,7 @@ describe('the per-shot verdict', () => {
     const fight = MEDIA_SHOTS.find((s) => s.recipe.kind === 'fight');
     expect(fight, 'the table declares no fight shot').toBeTruthy();
     const fc = MEDIA_TIMES[fight.time];
-    const v = (nearestM) => mediaShotVerdict({ shot: fight, heading: 90, stand, handsHidden: 0, hudVisible: false,
+    const v = (nearestM) => mediaShotVerdict({ shot: fight, heading: 90, stand, handsHidden: 0, hudVisible: false, nearestMobM: 6,
       before: reading({ cycle: fc }), after: reading({ cycle: fc, heading: 90, hostiles: { nearestM, within8m: 1 } }) });
     expect(v(6).valid).toBe(true);
     expect(v(fight.recipe.maxM + 3).why.join('\n')).toMatch(/hostile/);

@@ -52,10 +52,10 @@ const still = (name, time, recipe, alt, extra = {}) => ({
  * crowd the Hearth (lookbook.mjs).
  */
 export const MEDIA_SHOTS = deepFreeze([
-  { name: 'hero', purpose: 'hero', time: 'golden hour', recipe: { kind: 'eye', heading: 240, pitch: 3 }, size: [1600, 900],
+  { name: 'hero', purpose: 'hero', time: 'golden hour', recipe: { kind: 'eye', heading: 205, pitch: 6 }, size: [1600, 900],
     format: 'jpg', out: `${MEDIA_DIR}/hero.jpg`, targetBytes: 330_000,
     alt: 'Crafty at golden hour, seen from the player\'s eye at the Hearth: gauntleted hands in the foreground, the outpost\'s watchtower and a voxel meadow under a low sun.' },
-  { name: 'og', purpose: 'og', time: 'golden hour', recipe: { kind: 'eye', heading: 240, pitch: 3 },
+  { name: 'og', purpose: 'og', time: 'golden hour', recipe: { kind: 'eye', heading: 200, pitch: 6 },
     size: [OG_CARD.width, OG_CARD.height], format: 'png', out: OG_CARD.file, targetBytes: 390_000, alt: BRAND.ogImageAlt },
   still('golden-forest', 'golden hour', { kind: 'eye', heading: 120, pitch: 0 },
     'The forest beside the Hearth at golden hour, from the player\'s eye, with the shrine beam on the horizon.'),
@@ -65,10 +65,10 @@ export const MEDIA_SHOTS = deepFreeze([
     'The edge of a voxel forest in the afternoon: turf, trunks and leaves over the plains.'),
   still('snow-terrace', 'golden hour', { kind: 'pose', place: 'snow-terrace' },
     'Snow-covered voxel terraces in the hills north of the Hearth at golden hour.'),
-  { name: 'social-preview', purpose: 'social', time: 'blue hour', recipe: { kind: 'eye', heading: 0, pitch: 2 },
+  { name: 'social-preview', purpose: 'social', time: 'blue hour', recipe: { kind: 'eye', heading: 100, pitch: 4 },
     size: [SOCIAL_PREVIEW.width, SOCIAL_PREVIEW.height], format: 'jpg', out: `${MEDIA_DIR}/social-preview.jpg`, targetBytes: 300_000,
     alt: 'The Hearth outpost at blue hour, from the player\'s eye, the buildings dark against the dusk sky.' },
-  still('blue-hour', 'blue hour', { kind: 'eye', heading: 120, pitch: 0 },
+  still('blue-hour', 'blue hour', { kind: 'eye', heading: 50, pitch: 2 },
     'The Hearth at blue hour from the player\'s eye, looking toward the forest and the shrine beam.'),
   still('night-fight', 'blue hour', { kind: 'fight', minM: 4, maxM: 14, waitS: 60 },
     'A fight at the Hearth after dusk: a fireball leaving the player\'s hand toward a hostile mob.', { optional: true }),
@@ -232,10 +232,11 @@ const near3 = (a, b, tol = 0.01) => Array.isArray(a) && Array.isArray(b) && a.ev
 /**
  * Whether a frame shows what its shot declares. `before` / `after`: the seam's info() just before and after the
  * screenshot. `hudVisible`: whether the HUD's vitals stack is on screen (it must not be). For eye and fight shots,
- * `stand` is where the body was stood, `heading` the bearing asked for (a fight's is found at run time), and
- * `handsHidden` the hands' node count with them hidden, measured in the same page.
+ * `stand` is where the body was stood, `heading` the bearing asked for (a fight's is found at run time),
+ * `handsHidden` the hands' node count with them hidden, measured in the same page, and `nearestMobM` the nearest mob
+ * of any kind to the eye (nearestMobM below; null when there is none), since the seam counts hostiles only.
  */
-export function mediaShotVerdict({ shot, before, after, stand, heading, handsHidden, hudVisible }) {
+export function mediaShotVerdict({ shot, before, after, stand, heading, handsHidden, hudVisible, nearestMobM }) {
   const why = [...shotVerdict({ cycle: MEDIA_TIMES[shot.time], before, after }).why];
   if (hudVisible !== false) why.push('HUD on screen, or not checked');
   if (after?.tier !== 'high') why.push(`render tier ${after?.tier ?? '?'}, not high`);
@@ -258,6 +259,8 @@ export function mediaShotVerdict({ shot, before, after, stand, heading, handsHid
   if (!(after?.heading != null && Number.isFinite(at) && circularDeg(at, heading) <= HEADING_TOLERANCE_DEG)) {
     why.push(`facing ${Number.isFinite(at) ? at.toFixed(1) : '?'}, asked ${heading}`);
   }
+  if (nearestMobM === undefined) why.push('mobs not checked');
+  else if (nearestMobM !== null && nearestMobM < OBSTRUCTION_M) why.push(`a mob ${nearestMobM.toFixed(1)} m from the eye fills the frame`);
   const near = after?.hostiles?.nearestM;
   if (kind === 'fight') {
     if (!(near >= OBSTRUCTION_M && near <= shot.recipe.maxM)) why.push(`no hostile between ${OBSTRUCTION_M} and ${shot.recipe.maxM} m of the eye (nearest ${near ?? 'none'})`);
@@ -277,6 +280,17 @@ export function nearestHostile(mobs, from, { minM, maxM }) {
     const d = Math.hypot(m.position[0] - from[0], m.position[1] - from[1], m.position[2] - from[2]);
     if (d < minM || d > maxM) continue;
     if (!best || d < best.distance) best = { type: m.type, position: [...m.position], distance: d };
+  }
+  return best;
+}
+
+/** The distance from `from` to the nearest mob of any kind in the store's minimap mirror, or null when there is none. */
+export function nearestMobM(mobs, from) {
+  let best = null;
+  for (const m of mobs || []) {
+    if (!m || !Array.isArray(m.position)) continue;
+    const d = Math.hypot(m.position[0] - from[0], m.position[1] - from[1], m.position[2] - from[2]);
+    if (best === null || d < best) best = d;
   }
   return best;
 }

@@ -34,7 +34,7 @@ import {
   resolveChromium, initScript, info, setCycle, clearHostiles, play, hudOn, respawnIfDead, restingBody, handsBaseline, holdActive,
 } from './_lookbookPage.mjs';
 import {
-  MEDIA_SHOTS, MEDIA_TIMES, MEDIA_MANIFEST, shotTableProblems, mediaShotVerdict, nearestHostile, mergeManifest, ogCardHtml,
+  MEDIA_SHOTS, MEDIA_TIMES, MEDIA_MANIFEST, shotTableProblems, mediaShotVerdict, nearestHostile, nearestMobM, mergeManifest, ogCardHtml,
   dirtyOutsideOutputs, jpegEncodeArgv, pngPaletteArgv, imageSize,
 } from './_media.mjs';
 
@@ -134,12 +134,14 @@ async function shootOnce(page, shot, ctx, attempt) {
   }
   const before = await info(page);
   const hudVisible = await hudOn(page);
+  const mobs = await page.evaluate(() => window.useGameStore.getState().mobEntities);
   const png = await page.screenshot({ type: 'png' });
   const after = await info(page);
   const master = join(WORK, `${shot.name}-${attempt}.png`);
   writeFileSync(master, png);
-  const verdict = mediaShotVerdict({ shot, before, after, stand, heading, handsHidden: hands.hidden, hudVisible });
-  return { shot, verdict, master, after, heading, target, waitedS };
+  const mobM = before.eye ? nearestMobM(mobs, before.eye) : undefined;
+  const verdict = mediaShotVerdict({ shot, before, after, stand, heading, handsHidden: hands.hidden, hudVisible, nearestMobM: mobM });
+  return { shot, verdict, master, after, heading, target, waitedS, mobM };
 }
 
 /** The og card: the master under the ink scrim and the wordmark, composed in this browser, then a palette PNG under
@@ -240,7 +242,7 @@ async function main() {
       for (let attempt = 1; attempt <= 2 && !r?.verdict.valid; attempt++) {
         r = await shootOnce(page, shot, { stand, hands, report }, attempt);
         const extra = r.target ? `; ${r.target.type} at ${r.target.distance.toFixed(1)} m after ${r.waitedS} s` : (shot.recipe.kind === 'fight' ? `; no hostile in range after ${r.waitedS} s` : '');
-        console.log(`  ${shot.name.padEnd(15)} try ${attempt}: ${r.verdict.valid ? 'valid' : `INVALID (${r.verdict.why.join('; ')})`}; clock ${round(r.after.cycle)}, tier ${r.after.tier}${extra}`);
+        console.log(`  ${shot.name.padEnd(15)} try ${attempt}: ${r.verdict.valid ? 'valid' : `INVALID (${r.verdict.why.join('; ')})`}; clock ${round(r.after.cycle)}, tier ${r.after.tier}, nearest mob ${r.mobM == null ? 'none' : `${r.mobM.toFixed(1)} m`}${extra}`);
       }
       shots.push(r);
     }
