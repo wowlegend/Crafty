@@ -5,7 +5,7 @@ import { xpForLevel } from '../../src/game/progression.js';
 import { killXP } from '../../src/game/killReward.js';
 import { FORM_DURATION_SEC, ENDURANCE_SEC_PER_RANK } from '../../src/game/beastTransform.js';
 import { ROAR_COST } from '../../src/game/ember.js';
-import { SWING_APEX_OVER_BODY_M } from '../../src/combat/swingOrigin.js';
+import { SWING_APEX_OVER_BODY_M, EYE_HEIGHT_M, EYE_BOB_M } from '../../src/combat/swingOrigin.js';
 import { TALENT_LIMITS } from '../../src/game/talentTree.js';
 
 // TALENTS THAT CHANGE VERBS, IN THE BOOTED GAME (W2-F step 4; DECISIONS 2026-10-28 W1-H item 6; plan
@@ -20,20 +20,35 @@ import { TALENT_LIMITS } from '../../src/game/talentTree.js';
 //
 // Each form is timed in the page, frame by frame, on the GAME's clock: R3F's, the clock the transform's timer compares
 // (Components.jsx decideTransform, `now: state.clock.getElapsedTime()`), read with the count of frames drawn
-// (readFrameloop), so each reading is the clock of the frame whose state it saw. A wall clock started when the page
-// first saw the form on starts after that frame's render, which a software renderer can stretch by seconds, and every
-// length it reads is short by that much. The base form's last frame on must read under FORM_DURATION_SEC + 1 s; the
-// talented form must have a frame on at FORM_DURATION_SEC + 1 s or later. A frame drawn between there and its end is
-// needed to see it, and a beast form on CI's software renderer draws its frames up to 10 s apart, so the rank is taken to
-// its limit: the window is then ENDURANCE_SEC_PER_RANK x the limit - 1 s wide (8 s), not 2 s. A run that draws no frame
-// in it is SETUP, not a verdict.
+// (readFrameloop). What readFrameloop returns is R3F's `clock.elapsedTime`, which @react-three/fiber 9.5 sets at each
+// frame's start (getDelta) and every getElapsedTime() call in the frame moves on, so a reading taken between frames is
+// the time of the last such call in the last frame drawn, by whichever subscriber made it: ahead of that frame's
+// transform `now` by the work done after it in the frame. The form's start is read that way, so a seen length can be
+// short of the game's by that much: of 28 forms recorded on CI, two were seen off before their length, a 14 s form at
+// 13.78 s and a 23 s one at 22.75 s. A wall clock started when the page first saw the form on starts after that frame's
+// render, which a software renderer can stretch by seconds, and every length it reads is short by that much.
+//
+// So each form is bounded on both sides: its last frame on must read under its length + 1 s, and its first frame off at
+// least its length - SEEN_END_MARGIN_S (1 s, four times the largest reading error above), since a form cannot be seen
+// off before it ends. The talented form must also have a frame on at FORM_DURATION_SEC + 1 s or later. A frame drawn
+// between there and its end is needed to see it, and a beast form on CI's software renderer draws its frames up to 10 s
+// apart, so the rank is taken to its limit: the window is then ENDURANCE_SEC_PER_RANK x the limit - 1 s wide (8 s), not
+// 2 s. A run that draws no frame in it is SETUP, not a verdict. A form ends only on a frame drawn, so a game that applies
+// fewer ranks is seen only on a run that draws a frame between its shorter end and LONGER_SEC - SEEN_END_MARGIN_S: with
+// none there, that game holds the form on as long as the right one does.
 //
 // THE CLICK'S AIM IS SET ON ITS OWN MOUSEDOWN, by a capture listener on window, which runs before the game's handler.
-// Under pointer lock a mouse move IS a look (src/input/pointerLook.js), the lock can be held here, and Playwright's
-// synthetic mouse delivers moves this spec never makes: between an aim and the next mousedown the camera turns by
-// multiples of 640 x 400 px (1.28 rad and 0.80 rad at 0.002 rad/px), with the cursor already where the click lands. So an
-// aim set before the click does not survive to it; the listener records the facing it found, turns the camera to the
-// zombie, and reads the swing's gates and cone, so the click is judged with the view it is made with.
+// Under pointer lock a mouse move IS a look (src/input/pointerLook.js), the lock can be held here, and between an aim and
+// the next mousedown the camera turns with no move this spec makes. Measured on CI at 0.002 rad/px: with nothing turning
+// the view between the aim and the click, it turned by exactly 640 px of yaw and 400 px of pitch in 6 attempts of 6, in
+// two runs; a mutant that turned it 640 x 400 px itself after the aim read, at the mousedown, a further 640 x 400 in 1
+// attempt of 3 and in 2 no further yaw and about 105 px of pitch the other way, so the turn is not always that size.
+// 640 x 400 is the point the click lands on, which points at Playwright's synthetic mouse (a move to that point read as
+// a look delta), but the turn also comes with the cursor moved to that point before play: the source is inferred, not
+// traced. So an aim set before the click does not survive to it; the listener records the facing it found, turns the
+// camera to the zombie, and reads the swing's gates and cone, so the click is judged with the view it is made with. A
+// second listener, after the game's handler, reads what the press became (readCompatMouse): whether the compat filter
+// dropped it, and the verb it was routed to, so a dropped or misrouted press is named in the failure.
 //
 // The XP is the kill's own: the zombie's orbs are collected by the XP orb system, which holds them still through a held
 // world, so the world is let go after the kill and held again once the level is reached.
@@ -48,6 +63,9 @@ import { TALENT_LIMITS } from '../../src/game/talentTree.js';
 const ZOMBIE_XP = killXP('zombie');
 const ENDURANCE_RANKS = TALENT_LIMITS.wildheart_endurance;
 const LONGER_SEC = FORM_DURATION_SEC + ENDURANCE_SEC_PER_RANK * ENDURANCE_RANKS;
+// How far before its length a form may be seen off: the start's reading error (the header), 0.25 s at most on CI, with
+// room. Under ENDURANCE_SEC_PER_RANK, so one rank short is outside it.
+const SEEN_END_MARGIN_S = 1;
 
 /** In the page: a zombie 2.5 m ahead at 1 HP, the camera turned to it. */
 async function stageZombie() {
@@ -74,7 +92,10 @@ async function stageZombie() {
  *  camera to the staged zombie, as stageZombie does, and read the light swing's gates against it into
  *  window.__clickAim.atDown: input live, alive, no form, no voidhand, the string's cooldown, and whether the zombie stands
  *  in the cone the swing tests (apex over the body, the camera's flattened facing, 4.5 m, 90 degrees). `found` is the
- *  facing and pitch the listener found before it turned the camera. */
+ *  facing and pitch the listener found before it turned the camera. A second listener, in the bubble phase and added
+ *  after the game's own (Components.jsx, at mount), runs after the game's handler and adds `press`: from
+ *  readCompatMouse, the mouse presses and the compat filter's dropped mousedowns this event added, and the verb the
+ *  press was routed to. Pressed 0 and dropped 0 means the game's handler had not run when it was read. */
 function armClickAim({ id, apexM }) {
   const call = (n) => window.__craftyTest.call(n);
   const r = (v) => Math.round(v * 100) / 100;
@@ -87,7 +108,18 @@ function armClickAim({ id, apexM }) {
     return { d, facing: [r(d.x), r(d.z)], pitch };
   };
   window.__clickAim = { atDown: null };
+  let before = null;
   window.addEventListener('mousedown', () => {
+    const a = window.__clickAim.atDown;
+    const after = call('readCompatMouse');
+    if (!a) return;
+    if (!before || !after) { a.press = { unread: 'readCompatMouse is not registered' }; return; }
+    const pressed = after.presses.mouse - before.presses.mouse;
+    a.press = { pressed, dropped: after.dropped.mousedown - before.dropped.mousedown,
+      verb: pressed > 0 ? (after.verbs?.mouse ?? null) : 'none: not pressed' };
+  }, { once: true });
+  window.addEventListener('mousedown', () => {
+    before = call('readCompatMouse') ?? null;
     const found = view();
     const m = call('readMobs').find((e) => e.id === id);
     if (m) cam.lookAt(m.x, m.y + 0.8, m.z);
@@ -153,21 +185,28 @@ async function timeForm({ limitMs, probeS }) {
   return { lastOnS: r2(lastOnS), endedS: endedS === null ? null : r2(endedS), onAtProbe, gaps };
 }
 
-/** In the page: true once the camera has sat at the player's head for two frames (the roar's reveal camera hands it
- *  back), false after 45 s. A zombie staged before that is placed in front of the reveal camera, not the player. */
-async function backAtHead() {
+/** In the page: { ok: true } once the camera has sat at the player's head on two R3F frames in a row (the roar's reveal
+ *  camera hands it back), else { ok: false, last } after 45 s. The head is where the camera follow puts the view: within
+ *  1 m of the body across, and `eyeM` (EYE_HEIGHT_M) over it give or take `bobM` (EYE_BOB_M, the walk bob the loop
+ *  adds). A zombie staged before that is placed in front of the reveal camera, not the player. */
+async function backAtHead({ eyeM, bobM }) {
   const frame = () => new Promise((r) => requestAnimationFrame(r));
   const cam = window.__threeCamera;
+  const drawn = () => window.__craftyTest.call('readFrameloop')?.frames ?? null;
   const t0 = performance.now();
-  let streak = 0;
+  let streak = 0, seen = drawn(), last = null;
   while (streak < 2) {
-    if (performance.now() - t0 > 45000) return false;
+    if (performance.now() - t0 > 45000) return { ok: false, last };
     await frame();
+    const d = drawn();
+    if (d !== null && d === seen) continue; // no R3F frame drawn since the last look
+    seen = d;
     const b = window.useGameStore.getState().playerRigidBodyRef?.current?.translation?.();
-    const ok = b && Math.hypot(cam.position.x - b.x, cam.position.z - b.z) < 1 && Math.abs(cam.position.y - b.y - 1.2) < 0.6;
-    streak = ok ? streak + 1 : 0;
+    const across = b ? Math.hypot(cam.position.x - b.x, cam.position.z - b.z) : null, up = b ? cam.position.y - b.y : null;
+    last = b ? { across: +across.toFixed(3), up: +up.toFixed(3) } : null;
+    streak = b && across < 1 && Math.abs(up - eyeM) <= bobM ? streak + 1 : 0;
   }
-  return true;
+  return { ok: true };
 }
 
 /** A key released, then frames drawn, so the frame loop sees the release before the next press. */
@@ -246,7 +285,10 @@ test.describe('talents', () => {
     expect(base.endedS, `the base form never ended: ${JSON.stringify(base)}`).not.toBeNull();
     expect(base.lastOnS, `the base form was on ${base.lastOnS} s into it on the game clock, past its ${FORM_DURATION_SEC} s: ${JSON.stringify(base)}`)
       .toBeLessThan(FORM_DURATION_SEC + 1);
-    expect(await page.evaluate(backAtHead), 'SETUP: the camera never came back to the head after the base form').toBe(true);
+    expect(base.endedS, `the base form was seen off ${base.endedS} s into it on the game clock, before its ${FORM_DURATION_SEC} s less the ${SEEN_END_MARGIN_S} s reading margin: ${JSON.stringify(base)}`)
+      .toBeGreaterThanOrEqual(FORM_DURATION_SEC - SEEN_END_MARGIN_S);
+    const head = await page.evaluate(backAtHead, { eyeM: EYE_HEIGHT_M, bobM: EYE_BOB_M });
+    expect(head.ok, `SETUP: the camera never came back to the head after the base form (last frame, m from the body: ${JSON.stringify(head.last)}; the head is ${EYE_HEIGHT_M} up, +/- ${EYE_BOB_M})`).toBe(true);
     await page.waitForTimeout(1600); // the roar's cooldown (COOLDOWN_SEC 1.5 s) before the next press can charge
 
     // 3. A LEVEL PAYS ONE TALENT POINT, from a real kill's own XP.
@@ -256,6 +298,7 @@ test.describe('talents', () => {
     await page.mouse.click(640, 400);
     const atDown = await page.evaluate(() => window.__clickAim.atDown);
     expect(atDown, 'SETUP: the click\'s mousedown never reached the window').not.toBeNull();
+    console.log(`[talents] the click's mousedown: ${JSON.stringify(atDown)}`);
     const swingCan = atDown.inCone && atDown.active && atDown.alive && !atDown.form && !atDown.held && atDown.readyInMs <= 0;
     expect(swingCan, `SETUP: on the click's own mousedown, aimed at the staged zombie, a light swing could not reach it: ${JSON.stringify(atDown)}`).toBe(true);
     await expect.poll(() => page.evaluate((id) => {
@@ -304,6 +347,8 @@ test.describe('talents', () => {
       `SETUP: no frame was drawn from ${longer.lastOnS} s to ${longer.endedS} s of the talented form, across the ${probeS} s probe, so whether it was on there is unseen: ${JSON.stringify(longer)} (base ${JSON.stringify(base)})`).toBe(false);
     expect(longer.onAtProbe, `the talented form was off by ${probeS} s of the game clock: ${JSON.stringify(longer)} (base ${JSON.stringify(base)})`).toBe(true);
     expect(longer.endedS, `the talented form never ended: ${JSON.stringify(longer)}`).not.toBeNull();
+    expect(longer.endedS, `the talented form was seen off ${longer.endedS} s into it on the game clock, before its ${LONGER_SEC} s less the ${SEEN_END_MARGIN_S} s reading margin, shorter than the store's roarSec says (fewer than ${ENDURANCE_RANKS} ranks applied, or an early exit): ${JSON.stringify(longer)} (base ${JSON.stringify(base)})`)
+      .toBeGreaterThanOrEqual(LONGER_SEC - SEEN_END_MARGIN_S);
     expect(longer.lastOnS, `the talented form was on ${longer.lastOnS} s into it on the game clock, past its ${LONGER_SEC} s: ${JSON.stringify(longer)}`)
       .toBeLessThan(LONGER_SEC + 1);
 

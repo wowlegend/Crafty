@@ -52,7 +52,7 @@ import { SnareTetherSystem } from './world/SnareTetherSystem.jsx';
 import { SquadAISystem } from './world/SquadAISystem.jsx';
 import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
-import { swingOrigin, steadyEye, EYE_HEIGHT_M } from './combat/swingOrigin.js';
+import { swingOrigin, steadyEye, EYE_HEIGHT_M, EYE_BOB_M } from './combat/swingOrigin.js';
 import { moveKinematic } from './game/kinematicMove.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { routeExpressVerb } from './input/expressVerbs.js';
@@ -1416,7 +1416,7 @@ export const Player = ({ isWorldBuilt }) => {
     const time = state.clock.elapsedTime;
     let bobOffset = 0;
     if (isGrounded && horizontalSpeed > 1) {
-      bobOffset = Math.sin(time * 15) * 0.06;
+      bobOffset = Math.sin(time * 15) * EYE_BOB_M;
     }
 
     // Locomotion audio (interleave): surface-keyed footsteps in stride + a landing thud. Game-Loop
