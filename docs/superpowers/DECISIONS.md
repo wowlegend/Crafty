@@ -40,8 +40,13 @@ Each stands while it earns its place.
    generated from KEY_MAP (every row's label now a key in both dictionaries) in place of the sheet that faded after 8
    seconds (STATUS C1/c). **A first session (the command session's call):** a desktop player who has not opened the
    panel sees the controls card at rest until they press H or have played 30 s with the card on screen (time paused or
-   in a panel does not count); the card then folds to the one-line "H Controls" hint above the hotbar, which stays, on a
-   keyboard only, until H opens the panel once (`tests/gates/controls-panel-gates.test.jsx`: the fold at 30 s, the clock
+   in a panel does not count); the card is one bare line above the hotbar, six essential keys drawn as the hint is (WASD,
+   LMB, RMB, Tab, J, H, each a KEY_MAP key), because the whole list in a panel read 8.47% of a 1280x800 frame at rest by
+   the footprint; it then folds to the one-line "H Controls" hint, which stays, on a keyboard only, until H opens the
+   panel once. **Measured at rest on this branch** (lookbook eye set, footprint, 2026-10-29 23:47-23:54Z): a returning
+   player at most 6.68% on Chromium 1280x800 and 7.69% on WebKit 1180x820 and 820x1180; a first session at most 7.40%
+   with the card up and 6.79% once it folds (the card shows on a keyboard only, so the iPads read as for a returning
+   player) (`tests/gates/controls-panel-gates.test.jsx`: the fold at 30 s, the clock
    paused off screen, the fold remembered, the hint never on touch). **Seen per browser profile, not per save:**
    `crafty_controls_seen` and `crafty_controls_card_done` sit beside `crafty_onboarded` in localStorage because they
    belong to the person at the browser, so no save field is added and
@@ -121,8 +126,9 @@ items. Each stands while it earns its place.
    and touch layer shown, a twin with the canvas alone and the frame again, and counts the pixels where the first two
    differ by more than 2 in any channel, if the first and last agree. The touch layer (its scrim, ring and buttons) is
    reported apart, as the pixels where the two twins differ; the colour count (pixels within 3 of the page's own
-   `--ui-*` surface colours) stays as a second column. A frame with a toast in the stack is not at rest and is set aside
-   by rule (`scripts/visual/_lookbook.mjs` `atRest`), the siege notice included. **Why:** a count of surface colours
+   `--ui-*` surface colours) stays as a second column. A frame with a toast in the stack or a target frame up (a mob in
+   the aim cone) is not at rest and is set aside by rule (`scripts/visual/_lookbook.mjs` `atRest`), the siege notice
+   included. **Why:** a count of surface colours
    reads the palette in both directions: a warm stone texture within 3 of the warm ladder counted as chrome (7.46% on a
    world with none) and a translucent panel whose blend misses every token did not count at all. The footprint reads no
    colour (`tests/gates/lookbook-chrome-gates.test.js`: a warm stone world with no chrome reads 0, a 10% panel reads 10%
