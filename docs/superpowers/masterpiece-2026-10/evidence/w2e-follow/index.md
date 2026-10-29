@@ -15,3 +15,14 @@ whole frame unless named a crop. DECISIONS 2026-10-29 items 80-86.
 | `hand-poses-portrait-before.jpg`, `-after.jpg` | the same nine poses on an iPad in portrait |
 | `cast-before-after.jpg` | crops of the cast at its peak, before on the left: 16:10 above, portrait below; the red cone shard and the hand pulled back, then the wand pushed and tipped forward |
 | `hands-brazier-midnight-before-after.jpg` | beside the Hearth's brazier at midnight, facing 110 with the fire low on the right; whole frames above, crops of the right gauntlet below, before on the left: after, its faces toward the fire warm |
+
+## PR #52 fix round: the beast form's colour on the gauntlets (DECISIONS 2026-10-29 item 87)
+
+Shot on 2026-10-29 after 21:00Z by the `self` set, Chromium on ANGLE-Metal (Apple M3 Max) at 1280x800, device scale 2,
+each form at the steady eye at 0.30. Before = a production build of `ec0394ce` (no form colour); after = `7c3cffef`.
+
+| file | what it shows |
+|---|---|
+| `gauntlet-form-colour-before-after.jpg` | whole frames, dragon, bull, hawk and golem left to right, before above and after below: in the after row the gauntlets' outlines and the right core carry the form's colour |
+| `gauntlet-form-colour-crops.jpg` | the left gauntlet at full scale, before above and after below: ink outlines before; orange-red, cyan, yellow and violet rims after, the held block's outline still ink |
+| `gauntlet-plate-glow-rejected.jpg` | the right gauntlet, before above and the first after arm below (the core plus 0.35 of the glow on the plates): the plates read salmon for the bull and pink for the golem, so the plates were left out |

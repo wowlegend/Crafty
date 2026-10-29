@@ -119,14 +119,21 @@ Frames: `docs/superpowers/masterpiece-2026-10/evidence/w2e-follow/` (`index.md` 
    midnight. What a still changes against play: no bob, no FOV kick, and the body rests where the human capsule rests,
    so in a form the world sits up to 0.3 m off where that form's capsule would put it (the beast against the eye is
    exact). It stands while it earns its place.
-87. **The gauntlets take the beast form's colour while it is on** (`render/viewmodel.js stepFormTint`, `FORM_TINT`):
-   the ember core in each gauntlet takes the form's element glow (`beastAvatarParts.js ELEMENT_COLOR`, the beast's own
-   rim and core) at the core's HDR gain, which the bloom carries, and the plates glow 0.35 of it, eased in by the end of
-   the form's 0.55 s entrance and out after it, the fading form keeping its colour until it has gone. It answers item
-   80's loss: in first person the beast draws nothing, and now the hands say which form is on. Chosen over a beast
-   viewmodel (claws in place of the gauntlets), which would need four new hand models, and over the core's own light on
-   the hands, which bleached them at 0.6 m. Gated by `tests/gates/form-gauntlet-gates.test.jsx`. It
-   stands while it earns its place.
+87. **The gauntlets take the beast form's colour while it is on** (`render/viewmodel.js stepFormTint`, `FORM_TINT`,
+   driven per frame by `render/playerRender.jsx`): as the beast is a dark ink body with an element rim, the gauntlets'
+   ink outlines take the form's element glow (`beastAvatarParts.js ELEMENT_COLOR`, the beast's own rim), and so does the
+   ember core in each, at the core's HDR gain, eased in by the end of the form's 0.55 s entrance and out after it, the
+   fading form keeping its colour until it has gone; the held item's outline stays ink. It answers item 80's loss: in
+   first person the beast draws nothing, and now the hands say which form is on. Frames
+   (`evidence/w2e-follow/gauntlet-form-colour-*.jpg`, 0.30): the rims read orange-red, cyan, yellow and violet round both
+   gauntlets. Two arms were shot and dropped: 0.35 of the glow on the plates read salmon for the bull and pink for the
+   golem on their ember gold (`gauntlet-plate-glow-rejected.jpg`), and the core alone shows only a sliver at rest, which
+   read for the bull and the golem and not for the hawk or the dragon. Also passed over: a beast viewmodel (claws in place
+   of the gauntlets: four new hand models) and the core's own light on the hands (it bleached them at 0.6 m). drei's
+   Outlines writes the ink back whenever the hands re-render (an attack starting does it); the tint writes the colour
+   again every frame callback, ahead of that frame's draw (not measured in a browser). Gated by
+   `tests/gates/form-gauntlet-gates.test.jsx`, with drei's real Outlines.
+   It stands while it earns its place.
 88. **Per-frame code is gated for allocation by a young-generation heap probe** (`tests/gates/_youngGrowth.js`,
    `tests/gates/hot-path-alloc-gates.test.js`): new-space growth over 5000 calls after a warm-up, the median of seven
    runs, under 8 bytes a call, beside a control (a real Rapier `translation()`, about 108 bytes) that shows the probe
