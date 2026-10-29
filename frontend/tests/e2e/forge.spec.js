@@ -250,9 +250,12 @@ test.describe('the Forge', () => {
       window.useGameStore.getState().saveActiveWorld({ x: 0, y: 18, z: 0 });
       const id = localStorage.getItem('crafty_active_world');
       const blob = id ? JSON.parse(localStorage.getItem('crafty_world_save_' + id) || 'null') : null;
-      return blob && { weapon: blob.progression.equipment.weapon, coins: blob.progression.coins, relicTiers: blob.progression.relicTiers };
+      return blob && { weapon: blob.progression.equipment.weapon, coins: blob.progression.coins, relicTiers: blob.progression.relicTiers,
+        held: window.useGameStore.getState().coins };
     });
     expect(saved, 'SETUP: saveActiveWorld wrote no world blob').not.toBeNull();
-    expect(saved).toEqual({ weapon: 'Iron Sword', coins: 0, relicTiers: {} });
+    // The kill in step 7 can finish First Blood, which claims itself and pays its coins (the HUD lane), so the save holds
+    // what the player holds, not 0.
+    expect(saved).toEqual({ weapon: 'Iron Sword', coins: saved.held, relicTiers: {}, held: saved.held });
   });
 });

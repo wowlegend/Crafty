@@ -40,10 +40,13 @@ function preChangeSave() {
 }
 
 /** In the page: the hunt as the store's mirror holds it. */
+// A finished quest claims itself (the HUD lane, DECISIONS 2026-10-29 item 96) and leaves the active list for the completed
+// one, so the hunt is read in both places.
 function readHunt() {
   const qs = window.useGameStore.getState().questState;
   const q = (qs?.quests || []).find((e) => e && e.id === 'zombie_slayer');
-  return q ? { progress: q.progress, completed: q.completed, title: q.title, zombies: qs.stats?.kills_by_type?.zombie ?? null } : null;
+  return { active: q ? { progress: q.progress, completed: q.completed, title: q.title } : null,
+    claimed: (qs?.completedQuestIds || []).includes('zombie_slayer'), zombies: qs?.stats?.kills_by_type?.zombie ?? null };
 }
 
 test('a hunt names the creature on screen: a saved Zombie Slayer reads "Defeat 10 Husks", a real kill finishes it, zh-CN reads Chinese, the save keeps the count', async ({ page }) => {
@@ -67,6 +70,11 @@ test('a hunt names the creature on screen: a saved Zombie Slayer reads "Defeat 1
   await expect(tracker, 'the tracker does not name the hunt by the Husk').toContainText('Husk Slayer');
   await expect(tracker, 'the tracker\'s objective does not read "Defeat 10 Husks"').toContainText('Defeat 10 Husks');
   expect(await tracker.textContent(), 'the saved words reached the tracker').not.toMatch(/Zombie Slayer|zombies/);
+  // zh-CN, read while the hunt is still on the tracker (once finished it claims itself and leaves it).
+  await page.evaluate(() => window.useGameStore.getState().setLocale('zh-CN'));
+  await expect(tracker, 'the tracker\'s zh-CN objective is not "击败 10 个尸傀"').toContainText('击败 10 个尸傀');
+  await expect(tracker, 'the tracker\'s zh-CN title is not "尸傀杀手"').toContainText('尸傀杀手');
+  await page.evaluate(() => window.useGameStore.getState().setLocale('en'));
   // A load wipes the live chunks and re-streams them with the save's edits (tests/e2e/world-rebuild-after-load.spec.js),
   // so until the chunks around the player and their colliders are back the player can fall into the void and there is
   // no floor to stand a zombie on. Wait for one, as a precondition, sweeping hostiles meanwhile so none ends the run.
@@ -136,7 +144,7 @@ test('a hunt names the creature on screen: a saved Zombie Slayer reads "Defeat 1
   }, test.info().timeout || 360000);
   expect(z.why, z.why).toBeUndefined();
   expect(await page.evaluate(readHunt), 'SETUP: the kill counter did not hold the save\'s nine zombies before the kill')
-    .toEqual({ progress: 9, completed: false, title: 'Husk Slayer', zombies: 9 });
+    .toEqual({ active: { progress: 9, completed: false, title: 'Husk Slayer' }, claimed: false, zombies: 9 });
   await page.mouse.click(640, 400);
   const atDown = await page.evaluate(() => window.__clickAim.atDown);
   expect(atDown, 'SETUP: the click\'s mousedown never reached the window').not.toBeNull();
@@ -145,27 +153,19 @@ test('a hunt names the creature on screen: a saved Zombie Slayer reads "Defeat 1
     const m = window.__craftyTest.call('readMobs').find((e) => e.id === id);
     return !m || m.health <= 0;
   }, z.id), { message: `the click did not kill the 1-HP zombie (${JSON.stringify(atDown)})`, timeout: 20000 }).toBe(true);
-  await expect.poll(() => page.evaluate(readHunt), { message: 'the kill did not finish the saved hunt under its own id and counter key', timeout: 20000 })
-    .toEqual({ progress: 10, completed: true, title: 'Husk Slayer', zombies: 10 });
-  await expect(tracker, 'the tracker does not show the finished hunt').toContainText('10/10');
+  await expect.poll(() => page.evaluate(readHunt), { message: 'the kill did not finish the saved hunt (and claim it) under its own id and counter key', timeout: 20000 })
+    .toEqual({ active: null, claimed: true, zombies: 10 });
 
-  // 3. zh-CN: the same tracker reads the hunt in Chinese.
-  await page.evaluate(() => window.useGameStore.getState().setLocale('zh-CN'));
-  await expect(tracker, 'the tracker\'s zh-CN objective is not "击败 10 个尸傀"').toContainText('击败 10 个尸傀');
-  await expect(tracker, 'the tracker\'s zh-CN title is not "尸傀杀手"').toContainText('尸傀杀手');
-  await page.evaluate(() => window.useGameStore.getState().setLocale('en'));
-
-  // 4. IT SAVES, through the autosave's action and localStorage, under the same keys.
+  // 3. IT SAVES, through the autosave's action and localStorage, under the same keys.
   const saved = await page.evaluate(() => {
     window.useGameStore.getState().saveActiveWorld({ x: 0, y: 18, z: 0 });
     const id = localStorage.getItem('crafty_active_world');
     const blob = id ? JSON.parse(localStorage.getItem('crafty_world_save_' + id) || 'null') : null;
-    const q = (blob?.questState?.quests || []).find((e) => e && e.id === 'zombie_slayer');
-    return blob && { level: blob.progression?.level, hunt: q && { progress: q.progress, completed: q.completed, title: q.title, mobType: q.mobType }, zombies: blob.questState?.stats?.kills_by_type?.zombie };
+    return blob && { level: blob.progression?.level, claimed: (blob.questState?.completedQuestIds || []).includes('zombie_slayer'), zombies: blob.questState?.stats?.kills_by_type?.zombie };
   });
   expect(saved, 'SETUP: saveActiveWorld wrote no world blob').not.toBeNull();
-  expect(saved.level, 'the save lost its level').toBe(5);
-  expect(saved.hunt, 'the save lost the hunt or moved its keys').toEqual({ progress: 10, completed: true, title: 'Husk Slayer', mobType: 'zombie' });
+  expect(saved.level, 'the save lost its level (the hunt\'s reward may raise it)').toBeGreaterThanOrEqual(5);
+  expect(saved.claimed, 'the save lost the finished hunt or moved its id').toBe(true);
   expect(saved.zombies, 'the save\'s kill counter moved to another key').toBe(10);
 
   // Every read is taken: the hold is released, and its span is the denominator of every reading above.
