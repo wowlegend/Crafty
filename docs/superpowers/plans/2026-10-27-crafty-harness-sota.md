@@ -346,7 +346,7 @@ The five conditions the spec implies that no unit's happy path exercises, each p
   - `an unknown file type is COULD NOT CHECK`.
 - [ ] Run `npx vitest run tests/scripts/mutate-batch.test.js`. Expected: FAIL (module not found).
 - [ ] Implement it with the `isCli` guard pattern (`queue-ledger.mjs:86`), so `cli-guard` passes.
-- [ ] Run the test, then `node scripts/ci/cli-guard.mjs`. Expected: PASS.
+- [ ] Run the test, then `npx vitest run tests/scripts/cli-entry.test.js`. Expected: PASS.
 - [ ] **Mutants** (run by hand through `mutate.sh`, since the batch runner is the subject):
   - M-U1a: `summarize` ignores the identity outcome. "identity RED voids" goes RED.
   - M-U1b: delete the `expect` check. "rejects without expect" goes RED.
@@ -587,7 +587,7 @@ and mutant; and `mutate.sh` runs only a vitest spec, so "doc-currency goes RED" 
   - `dangling: a fixture canonical doc citing a missing path errors` and `the same doc citing an existing path passes` (one token apart);
   - `every check reports a non-zero denominator on the real tree`: each `checked[name] > 0`.
 - [ ] Run `npx vitest run tests/scripts/doc-currency-wiring.test.js`. Expected: FAIL (`run` is not exported).
-- [ ] Refactor. **Green:** the tests pass; `node scripts/ci/cli-guard.mjs` passes; `node scripts/ci/doc-currency.mjs` exits as before.
+- [ ] Refactor. **Green:** the tests pass; `npx vitest run tests/scripts/cli-entry.test.js` passes; `node scripts/ci/doc-currency.mjs` exits as before.
 - [ ] **Mutants (U1):** M-U8a1: `run` skips the dangling loop, and the dangling case goes RED; the identity mutant survives.
 - [ ] Commit with `Mutation-Proof:` (a `scripts/ci` file) and an in-file line.
 - [ ] **Standing rule for later units:** every unit that wires a check into doc-currency adds one case to
@@ -1594,7 +1594,7 @@ owed: no unit renders anything, and the lookbook itself belongs to `feat/instrum
 - [ ] `node scripts/ci/doc-currency.mjs`: PASSED. Rules are canonical, and the INDEX map, plan banners, cursor cap,
   AGENTS cap, RULES block and DECISIONS TOC all hold.
 - [ ] `npm run lint`, `node scripts/ci/gate-shape.mjs`, `node scripts/ci/killability-ledger.mjs` (the count does not
-  rise; every new file is receipted), and `node scripts/ci/cli-guard.mjs`.
+  rise; every new file is receipted), and `npx vitest run tests/scripts/cli-entry.test.js`.
 - [ ] `npx vitest run tests/scripts`: all pass. This includes harness-integrity, which prints non-zero H/E/R/G/D.
 - [ ] `node scripts/ci/queue-ledger.mjs`: STATUS and the umbrella plan both counted, with non-zero denominators.
 - [ ] `node scripts/ci/read-order.mjs` (1 surface current) and `node scripts/ci/artifact-currency.mjs` (exit 0).

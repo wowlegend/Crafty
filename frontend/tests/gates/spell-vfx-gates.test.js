@@ -13,7 +13,7 @@ import { ENERGY_PROFILE } from '../../src/game/spellVisualProfiles.js';
 // with a non-blocking store-flag hitstop, and deletes the per-instance React-sphere slop.
 //
 // These gates are STATIC (source-text) so they run GPU-free in CI. They assert the
-// structural outcome, not pixels (the puppeteer visual gate covers pixels).
+// structural outcome, not pixels (pixels are read on eye-level lookbook frames).
 
 const SRC = resolve(process.cwd(), 'src');
 // The spell-VFX system spans TWO files since the S3 de-monolith (iter 152): the main system in
@@ -119,7 +119,7 @@ describe('S1-D-M1 spell-VFX spine', () => {
 // gate-verifiable and eyeball-able for the first time.
 //
 // Static gates (source-text, GPU-free). The pixel content of the cast frame is
-// covered by the puppeteer visual gate + a human eyeball of current/spell-cast.png.
+// read by eye on lookbook frames.
 describe('S1-D-M2 cast-arc + deterministic spell-cast capture state', () => {
   // (A1) The GPU spark burst is capture-DETERMINISTIC + VISIBLE. In capture the M1
   //      burst pushed sparks to the clip void (aStartTime = live wall-clock while
@@ -179,7 +179,7 @@ describe('S1-D-M2 cast-arc + deterministic spell-cast capture state', () => {
 
 // S1-D POLISH: the projectile + telegraph + impact read as PREMIUM ENERGY, not a flat
 // pastel ball. Static gates (source-text, GPU-free) for the structural outcome; the pixel
-// read is the controller's eyeball of current/spell-cast.png + the puppeteer visual gate.
+// read is by eye, on lookbook frames.
 describe('S1-D-polish premium-energy spell read', () => {
   // (P1) The projectile is now a LAYERED emissive energy body — a hot near-white inner
   //      core plus a saturated element-colored outer glow shell — not a single sphere.

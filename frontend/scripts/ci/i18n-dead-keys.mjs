@@ -45,8 +45,7 @@ export function report() {
   };
 }
 
-const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isCli) {
+if (import.meta.main) {
   const r = report();
   const t = r.tally;
   console.log(`i18n reachability: ${r.keys.length} keys over ${r.srcFiles} src + ${r.testFiles} test files`);

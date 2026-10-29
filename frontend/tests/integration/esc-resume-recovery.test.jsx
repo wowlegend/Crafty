@@ -21,8 +21,8 @@ import { shouldShowResumeOverlay, shouldShowTitleMenu, isAnyPanelOpen } from '..
 // mobs, which gate on none of it, kept swinging.
 //
 // These tests drive the REAL InputManager keydown handler with a REFUSING requestPointerLock, which is
-// the half of the flow the existing esc-pause-probe.mjs steps over: at its line 54 it substitutes
-// document.exitPointerLock() for the native ESC — the one path MDN says does NOT trigger the refusal.
+// the half of the flow a probe that substitutes document.exitPointerLock() for the native ESC steps over:
+// that is the one path MDN says does NOT trigger the refusal.
 
 const QUEST_STUB = { achievements: [], unlockedAchievements: [], stats: {}, quests: [] };
 const NOOP = () => {};

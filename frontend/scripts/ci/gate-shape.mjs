@@ -400,4 +400,4 @@ console.log(
 );
 }
 
-if (process.argv[1] && resolve(process.argv[1]).endsWith('gate-shape.mjs')) main();
+if (import.meta.main) main();

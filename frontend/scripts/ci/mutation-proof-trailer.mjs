@@ -101,8 +101,7 @@ export function commitsInRange(range) {
   }));
 }
 
-const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isCli) {
+if (import.meta.main) {
   const range = process.argv[2];
   if (!range || !range.includes('..')) {
     console.log('mutation-proof: no range given — nothing to check');

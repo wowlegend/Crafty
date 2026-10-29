@@ -24,8 +24,7 @@
  * app's builds on one machine — which is the only use here.
  */
 import { readFileSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 export const MIN_SAMPLES = 10;
 const SAMPLE_HEAD = /^\*\*\* Sampled system activity/m;
@@ -190,6 +189,6 @@ export function main(argv, io = { read: (p) => readFileSync(p, 'utf8'), out: (s)
   return 0;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (import.meta.main) {
   process.exit(main(process.argv.slice(2)));
 }

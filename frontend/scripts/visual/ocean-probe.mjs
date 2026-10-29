@@ -4,7 +4,7 @@
 // capture camera at coast/surface/underwater angles near the x≈-40 ocean, screenshots to /tmp/crafty-ocean/.
 // Reusable across the milestone's slices (re-run after each water change to eyeball the result myself).
 import { mkdirSync } from 'node:fs';
-import puppeteer from 'puppeteer';
+import { chromium } from '@playwright/test';
 import { serveVite, probePort } from './_serve.mjs';
 const PORT = probePort(import.meta.url), URL = `http://localhost:${PORT}`, OUT = '/tmp/crafty-ocean';
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -22,14 +22,13 @@ const { waitReady, shutdown } = serveVite(PORT);
 let browser = null, code = 0;
 try {
   await waitReady(180); // 45s -- vite needs ~20s to listen on a loaded box, and quiet failure here is what misled the last three runs
-  browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'] });
-  const page = await browser.newPage();
+  browser = await chromium.launch({ channel: 'chromium', headless: true, args: ['--use-angle=swiftshader'] });
+  const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
   page.on('pageerror', (e) => console.error('PAGEERROR:', e.message));
-  await page.setViewport({ width: 1280, height: 800 });
-  await page.goto(URL, { waitUntil: 'networkidle2' });
-  await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", { timeout: 25000 });
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", null, { timeout: 25000 });
   await page.evaluate(() => window.__craftyTest.call('start'));
-  await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction("window.useGameStore.getState().isSpawnChunkLoaded === true", null, { timeout: 15000 }).catch(() => {});
   await delay(1500);
   // W2-T7 de-island moved the coast out (threshold -0.15 -> -0.35): the -X shoreline now sits at
   // x~-90..-110, the deep basin at x~-120..-150 (was x~-40). These shots track the NEW coast.

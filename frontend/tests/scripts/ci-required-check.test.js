@@ -623,7 +623,7 @@ describe('pipeline.sh --sha-certified — only the exact word `true` skips the s
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
   let n = 0;
   const SLOW = ['npm run --silent test:unit', 'npm run --silent build', 'node scripts/ci/bundle-budget.mjs', 'npm run --silent knip', 'npm audit --audit-level=high', 'node scripts/ci/prod-smoke.mjs'];
-  const QUICK = ['node scripts/ci/opsec-scan.mjs --all', 'node scripts/ci/doc-currency.mjs', 'npm run --silent lint', 'node scripts/ci/gate-shape.mjs', 'node scripts/ci/cli-guard.mjs', 'node scripts/ci/registry-append-only.mjs'];
+  const QUICK = ['node scripts/ci/opsec-scan.mjs --all', 'node scripts/ci/doc-currency.mjs', 'npm run --silent lint', 'node scripts/ci/gate-shape.mjs', 'node scripts/ci/registry-append-only.mjs'];
   const runWith = (extraEnv, ...args) => {
     const bin = join(dir, `bin-${++n}`);
     const log = join(dir, `cmd-${n}.log`);

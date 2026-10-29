@@ -205,7 +205,7 @@ export function verdict(findings, scanned, accepted = 0) {
   return { code: 1, line: `${head}\n${body}\n\nThis repo is PUBLIC. A push is not reversible: force-push does NOT erase history on GitHub.` };
 }
 
-if (process.argv[1] && resolve(process.argv[1]).endsWith('opsec-scan.mjs')) {
+if (import.meta.main) {
   const all = process.argv.includes('--all');
   let files;
   try {

@@ -12,7 +12,7 @@
 //   import { serveVite } from './_serve.mjs';
 //   const { url, waitReady, shutdown } = serveVite(PORT);
 //   let browser = null, code = 0;
-//   try { await waitReady(); browser = await puppeteer.launch(...); /* probe */ }
+//   try { await waitReady(); browser = await chromium.launch(...); /* probe */ }
 //   catch (e) { console.error(e); code = 1; }
 //   finally { await shutdown(browser); }
 //   process.exit(code);
@@ -117,39 +117,18 @@ export function serveVite(port, { cwd, preview = false, outDir = null } = {}) {
  * at the moment of the mistake, a convention is read before it. A probe that forgets to register throws
  * with its own filename in the message instead of silently colliding with whatever 4196 is today.
  *
- * The block is contiguous so a gap is visible. The e2e (4179) and prod-smoke (4180) servers are managed
- * outside it.
+ * The block holds every server a script under scripts/visual or scripts/perf starts, and is contiguous so a gap
+ * is visible. The e2e (4179) and prod-smoke (4180) servers are managed outside it.
  */
 export const PROBE_PORTS = Object.freeze({
-  'dayphase-probe.mjs': 4210,
-  'death-probe.mjs': 4211,
-  'drive-elemancer.mjs': 4212,
-  'drive-mobs.mjs': 4213,
-  'esc-pause-probe.mjs': 4214,
-  'grass-probe.mjs': 4215,
-  'grass-swatch-probe.mjs': 4216,
-  'hands-probe.mjs': 4217,
-  'heldf-probe.mjs': 4218,
-  'hub-probe.mjs': 4219,
-  'hud-probe.mjs': 4220,
-  'look-e2e.mjs': 4221,
-  'magic-panel-probe.mjs': 4222,
-  'mobdeath-probe.mjs': 4223,
-  'ocean-probe.mjs': 4224,
-  'pause-resume-probe.mjs': 4225,
-  'pov-probe.mjs': 4226,
-  'quest-log-probe.mjs': 4227,
-  'settings-probe.mjs': 4228,
-  'soulbind-eyes-probe.mjs': 4229,
-  'spawn-legibility-probe.mjs': 4230,
-  'spell-elements-probe.mjs': 4231,
-  'storm-probe.mjs': 4232,
-  'touch-probe.mjs': 4233,
-  'gpu-cost-probe.mjs': 4234,
-  'godrays-probe.mjs': 4235,
-  'ambient-floor-probe.mjs': 4236,
-  'ipad-probe.mjs': 4237,
-  'lookbook.mjs': 4238
+  'gpu-cost-probe.mjs': 4210,
+  'ipad-probe.mjs': 4211,
+  'look-e2e.mjs': 4212,
+  'lookbook.mjs': 4213,
+  'ocean-probe.mjs': 4214,
+  'pov-probe.mjs': 4215,
+  'touch-probe.mjs': 4216,
+  'run-scenarios.mjs': 4217
 });
 
 /** Resolve THIS probe's port from its own `import.meta.url`. Throws if the file is unregistered. */

@@ -1,4 +1,4 @@
-// run-scenarios.mjs — S2-B2-M2: drive the five perf scenarios (A..E) through a HEADLESS Chrome (headless: true)
+// run-scenarios.mjs — S2-B2-M2: drive the five perf scenarios (A..E) through a HEADLESS Chromium
 // (real GPU — SwiftShader numbers would be meaningless) and collect window.__craftyPerfResult
 // per scenario. Writes the report JSON to <repo-root>/memory/perf/ (committed evidence) and
 // prints the C−B gate verdict using the same tested budget module the app uses.
@@ -7,14 +7,14 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import os from 'node:os';
-import puppeteer from 'puppeteer';
+import { chromium } from '@playwright/test';
 import { compareScenarios, withinBudget, M2_BUDGET } from '../../src/devtest/frameStats.js';
-import { serveVite } from '../visual/_serve.mjs';
+import { serveVite, probePort } from '../visual/_serve.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '../..');         // frontend/
 const OUT_DIR = resolve(ROOT, '../memory/perf');  // repo-root memory/perf/
-const PORT = 4179;
+const PORT = probePort(import.meta.url);
 const arg = process.argv.find((a) => a.startsWith('--scenarios='));
 const IDS = (arg ? arg.split('=')[1].split(',') : ['A', 'B', 'C', 'D', 'E']).map((s) => s.trim().toUpperCase());
 
@@ -26,22 +26,18 @@ process.on('exit', () => { try { process.kill(-server.pid, 'SIGKILL'); } catch {
 
 try {
   await waitReady();
-  // HEADLESS 'new': a headed window launched from an agent/CI context gets macOS-occlusion-
+  // HEADLESS (Chromium's new headless mode, channel 'chromium'): a headed window launched from an agent/CI context gets macOS-occlusion-
   // suspended (rAF starves -> CDP timeouts; observed 2x on 2026-06-10), while headless runs a
   // 60Hz begin-frame clock reliably. GPU is requested explicitly; the ACTUAL WebGL renderer
   // string is captured into the report — if it says SwiftShader the run is a CPU-raster proxy
   // (overstates render cost -> conservative gate), and the report says so honestly. The C−B
   // DELTA methodology holds either way (both sides of every delta use the same renderer).
-  browser = await puppeteer.launch({
-    headless: true,
-    protocolTimeout: 300000, // a 60s rAF sample must never trip the default CDP timeout
-    args: ['--window-size=1380,1100', '--enable-gpu', '--use-angle=metal'],
-    defaultViewport: { width: 1366, height: 1024 }, // iPad-ish canvas aspect
-  });
+  browser = await chromium.launch({ channel: 'chromium', headless: true, args: ['--window-size=1380,1100', '--enable-gpu', '--use-angle=metal'] });
+  const context = await browser.newContext({ viewport: { width: 1366, height: 1024 } }); // iPad-ish canvas aspect
   const results = {};
   let renderer = null;
   for (const id of IDS) {
-    const page = await browser.newPage();
+    const page = await context.newPage();
     await page.goto(`${url}/?perf=${id}`, { waitUntil: 'domcontentloaded' });
     if (!renderer) {
       renderer = await page.evaluate(() => {
@@ -52,7 +48,7 @@ try {
       console.log(`WebGL renderer: ${renderer}`);
     }
     process.stdout.write(`scenario ${id}: running…`);
-    await page.waitForFunction('Boolean(window.__craftyPerfResult)', { timeout: 240000, polling: 1000 });
+    await page.waitForFunction('Boolean(window.__craftyPerfResult)', null, { timeout: 240000, polling: 1000 });
     results[id] = await page.evaluate(() => window.__craftyPerfResult);
     const r = results[id];
     console.log(` done — fps ${r.fps.toFixed(1)} · median ${r.medianMs.toFixed(2)}ms · p95 ${r.p95Ms.toFixed(2)}ms · long ${r.longFrames}`);

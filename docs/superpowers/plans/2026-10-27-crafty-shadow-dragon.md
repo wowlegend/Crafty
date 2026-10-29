@@ -1163,7 +1163,7 @@ The milestone is done when **all** of these are true, each seen. A green unit su
 | build | `npm run build` | succeeds |
 | bundle | `node scripts/ci/bundle-budget.mjs` | `✓ index` under 760,000 B; `✓ dragon` marker only in the lazy chunk (from Unit 1 on) |
 | doc-currency | `node scripts/ci/doc-currency.mjs` | PASS. Plans are not in its canonical list (`doc-currency.mjs:38-50`), so this file's not-yet-created paths do not red it. `memory/ACTIVE_PLAN.md` and `ARCHITECTURE.md` are in the list, and must cite only paths that exist |
-| gate-shape, killability, cli-guard | `node scripts/ci/gate-shape.mjs && node scripts/ci/killability-ledger.mjs && node scripts/ci/cli-guard.mjs` | PASS; the killability count does not rise (every new check file carries its `Mutation-Proof:` line) |
+| gate-shape, killability, cli-guard | `node scripts/ci/gate-shape.mjs && node scripts/ci/killability-ledger.mjs && npx vitest run tests/scripts/cli-entry.test.js` | PASS; the killability count does not rise (every new check file carries its `Mutation-Proof:` line) |
 | opsec | `node scripts/ci/opsec-scan.mjs --all` | PASS |
 | trailers (push) | `node scripts/ci/mutation-proof-trailer.mjs <range>` and `node scripts/ci/baseline-trailer.mjs <range>` | PASS: gate commits carry `Mutation-Proof:`, and baseline commits carry `Baseline-Review:` and no `src/` |
 | e2e (CI) | `ci ok` on the land branch's exact sha | PASS: every shard green (e2e-freshness was deleted by W2-C) |

@@ -104,7 +104,7 @@ export function verdict(needs, jobs) {
   return { ok: true, lines: [head, ...lines, tail] };
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (import.meta.main) {
   let needs;
   try {
     needs = JSON.parse(process.env.NEEDS_JSON || '');

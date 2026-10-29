@@ -24,8 +24,6 @@
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { REGISTRY } from './registry-harvest.mjs';
 import { candidateBase } from './change-scope.mjs';
 
@@ -151,4 +149,4 @@ function main() {
   console.log(`✓ registry-append-only: all ${r.baseCount} row ids at base are still rows at head`);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+if (import.meta.main) main();

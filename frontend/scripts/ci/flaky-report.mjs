@@ -86,10 +86,9 @@ export function summarizeFlaky(report) {
   };
 }
 
-// CLI kept behind this guard so importing the seam does not run the tool — `cli-guard.mjs` is a pre-push
-// gate over exactly that mistake, because a module-scope CLI corrupts the vitest run that imports it.
-const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isCli) {
+// CLI kept behind import.meta.main so importing the seam does not run the tool: a module-scope CLI corrupts the
+// vitest run that imports it (tests/scripts/cli-entry.test.js imports every exporting script to check).
+if (import.meta.main) {
   const p = resolve(ROOT, process.argv[2] || 'test-results/results.json');
   if (!existsSync(p)) {
     console.log(`flaky-report: no report at ${p} — nothing to read (this is not a failure)`);

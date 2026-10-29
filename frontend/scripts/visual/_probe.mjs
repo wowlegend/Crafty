@@ -55,7 +55,7 @@ export function tapVerdict(id, info, viewport) {
  * Returns the same {ok, why} shape as `tapVerdict` so a caller can report WHY a tap did not happen. A probe
  * that cannot say why is how a layout defect gets recorded as a behavioural one.
  *
- * @param {import('puppeteer').Page} page
+ * @param {import('@playwright/test').Page} page
  * @param {string} id  data-testid
  * @param {{settleMs?:number}} [opts]
  */
@@ -119,7 +119,7 @@ export async function assertBaseline(measure, { label, min = 0.5, attempts = 4, 
 }
 
 /**
- * IN-PAGE (hand it to `page.evaluate`, Playwright or puppeteer). Opens the game's input gate in a page whose click the
+ * IN-PAGE (hand it to `page.evaluate`). Opens the game's input gate in a page whose click the
  * browser refused a pointer lock (Playwright's headless shell always refuses; a headed window behind another may).
  *
  * WHY AN INSTRUMENT NEEDS IT. A game that has started with its input gate dead is PAUSED, and a paused game holds its
