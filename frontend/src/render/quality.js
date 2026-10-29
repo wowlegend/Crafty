@@ -21,7 +21,7 @@
 // render/pixelBudget.js pixelBudgetDpr — clamp(min(dprCap, devicePixelRatio, sqrt(budgetPx / cssPx)), 1, dprCap).
 // DERIVATION. high 4.2 Mpx is ~55% of the 7.72 Mpx an M3 Max window drew at dpr 2 (1728x1117 CSS), the case Kevin
 // heard as fans at full speed: the per-pixel chain is the cost, so the budget is set where that machine sits at
-// dpr ~1.48. med and low step down by ~2/3 each (2.8, 1.8 Mpx), the same ratio as their shadow cuts. The caps
+// dpr ~1.48. med and low each keep about two thirds of the tier above (2.8, 1.8 Mpx). The caps
 // fall 1.75 / 1.5 / 1.25 so a small screen, where the budget alone would allow dpr 2+, still pays less per tier:
 // an iPad Pro 11 (1194x834) gets exactly the cap at each tier, a 1080p monitor stays at 1, a 5K display at high
 // drops to ~1.07. Sharpness at ~1.5 on Retina is the taste call; the lookbook's side-by-side crops decide it.

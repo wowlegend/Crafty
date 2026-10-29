@@ -51,9 +51,9 @@ describe('greedy mesher — geometry contract', () => {
   });
 
   it('EVERY triangle winds counter-clockwise as seen from outside its own face', () => {
-    // Terrain.jsx renders FrontSide. A clockwise face is culled — invisible terrain, the exact defect
-    // recorded in .claude/rules/r3f-pointer-lock-voxel-meshing.md. This is the gate that catches a
-    // regression in any of the six coordinate permutations, which source-reading has never reliably done.
+    // The land material (world/terrainMaterial.js) renders FrontSide, so a clockwise face is culled: invisible
+    // terrain (.claude/rules/voxel-mesher.md section 1). This catches a regression in any of the six coordinate
+    // permutations, which reading the source does not reliably do.
     const m = generateMesh(0, 0, slab(4));
     const P = m.positions, N = m.normals, I = m.indices;
     let checked = 0;

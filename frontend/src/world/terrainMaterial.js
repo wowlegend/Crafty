@@ -16,13 +16,22 @@ import { aerialGlsl } from '../render/aerialPerspective.js';
 import { landGradeGlsl } from '../render/landGrade.js';
 import { oreGlowTable, oreGlowGlsl, oreGlowTexture } from './oreGlow.js';
 import { leafFeelGlsl } from './leafFeel.js';
-import { faceLayerGlsl } from './materialGrammar.js';
+import { faceLayerGlsl, TEXTURE_LAYER_COUNT } from './materialGrammar.js';
 
-const voxelTextures = sharedVoxelTextures(); // the ONE block texture array (the far field averages the same one)
-const oreGlowTex = oreGlowTexture(voxelTextures); // the nuggets' glow, baked from its level 0 and mipped on its own
+// The textures are baked on the first compile, not at import: Terrain.jsx imports this module before it spawns the
+// terrain worker, so a bake here would hold the main thread ahead of the worker instead of running beside it.
+let baked = null;
+function bakedTextures() {
+    if (!baked) {
+        const voxelTextures = sharedVoxelTextures(); // the ONE block texture array (the far field averages the same one)
+        // The nuggets' glow, baked from the array's level 0 and mipped on its own.
+        baked = { voxelTextures, oreGlowTex: oreGlowTexture(voxelTextures) };
+    }
+    return baked;
+}
 
-// Shared SOTA opaque-LAND terrain material (W2: water is owned by the Ocean.jsx Gerstner plane now;
-// this material renders only land — de-tile, vertex AO, danger-mood grade, aerial perspective).
+// The opaque land material: water is the Ocean.jsx plane's, so every quad drawn here is land (de-tile, vertex AO,
+// danger-mood grade, aerial perspective).
 export const terrainMaterial = new THREE.MeshStandardMaterial({
     ...TERRAIN_SURFACE,
     vertexColors: true,
@@ -32,12 +41,12 @@ export const terrainMaterial = new THREE.MeshStandardMaterial({
 });
 
 const compileShader = (shader) => {
+    const { voxelTextures, oreGlowTex } = bakedTextures();
     shader.uniforms.mood = { value: 0.0 }; // 0 explore, 1 dusk, 2 obsidian (spec §4)
     shader.uniforms.voxelTextures = { value: voxelTextures };
     shader.uniforms.skyHorizon = { value: new THREE.Color(0.6, 0.75, 0.9) }; // S2 aerial-perspective haze target (set per-frame from the sky frame, skyFrameRef)
-    // S11 sky-coloured AO. Initialised to the exact grey the AO term used before this existed, so a
-    // frame rendered before the first useFrame tick is byte-identical to the old behaviour rather than
-    // flashing a wrong colour for one frame.
+    // S11 sky-coloured AO. Initialised to a neutral grey at the floor's luminance, so a frame drawn before the first
+    // useFrame tick writes the sky colour shows no wrong colour.
     shader.uniforms.uAoFloor = { value: new THREE.Color(AO_FLOOR, AO_FLOOR, AO_FLOOR) };
     // EXTERNAL-BASELINE #5: cloud shadows. The clock and the sun are written per frame (Terrain.jsx's useFrame).
     shader.uniforms.uTime = { value: 0 };
@@ -81,8 +90,6 @@ const compileShader = (shader) => {
         #include <begin_vertex>
         vWorldY = (modelMatrix * vec4(position, 1.0)).y; // world height (drives the land aerial-perspective grade)
         vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz; // S(tex) de-tile: world cell for per-cell value variation
-        // W2: voxel water faces are no longer emitted (Ocean.jsx owns the surface), so the old per-vertex
-        // water wave-displacement is gone. Every emitted quad is opaque LAND.
         // LEAF SWAY (EXTERNAL-BASELINE-R2 #2; world/leafFeel.js): leaves-only, phase from WORLD position so a merged
         // canopy moves as a mass. vWorldPos above stays the rest position (the de-tile jitter must not crawl).
         ${LEAF_GLSL.vertex}
@@ -90,7 +97,7 @@ const compileShader = (shader) => {
     );
 
     // Fragment Shader: land albedo (texture-array sample + linear decode), de-tile jitter, vertex AO,
-    // danger-mood grade, and the distance aerial-perspective haze. (W2: the old water render path is gone.)
+    // danger-mood grade, and the distance aerial-perspective haze.
     shader.fragmentShader = `
         precision highp sampler2DArray;
         uniform sampler2DArray voxelTextures;
@@ -118,7 +125,7 @@ const compileShader = (shader) => {
         float layerIndex = floor(vBlockType + 0.5); // Round to nearest integer to prevent floating-point interpolation drift/truncation to layer 0
         
         // The tile this face shows (world/materialGrammar.js): a block's top, side or underside layer. layerIndex
-        // stays the block type, which the tint, the ore glow and the leaf feel key on.
+        // stays the block type, which the ore glow and the leaf feel key on; the biome tint keys on texLayer.
         ${FACE_GLSL.fragment}
         // Sample the tile from its array layer. Raw vUv, NOT fract(vUv): the texture wraps REPEAT, and fract
         // makes the UV derivative jump at every block edge, where the GPU would then pick the smallest mip
@@ -129,8 +136,6 @@ const compileShader = (shader) => {
         // The block texture array (a CompressedArrayTexture of plain RGBA8 levels) stores sRGB-display bytes at
         // every mip level, and is sampled through a custom sampler2DArray (so material.colorSpace is a no-op).
         // Decode to linear here, upstream of lighting, so PBR + the renderer's sRGB output are correct.
-        // W2: every quad is opaque LAND now (the Ocean.jsx plane owns the water surface), so the
-        // old water transparency/depth-tint path is gone — alpha is always opaque.
         diffuseColor = vec4(diffuse * pow(texColor.rgb, vec3(2.2)), texColor.a);
 
         // Danger-mood grade (spec §4): terrain cools + desaturates toward dusk, near-monochrome
@@ -139,35 +144,29 @@ const compileShader = (shader) => {
 
         // S(tex) de-tile: subtle per-world-cell value jitter (mirrors world/detile.js tileValueOffset) so a
         // field of one block type stops reading as stamped identical tiles. Bounded +/-0.08, flat (no normal
-        // map -> respects the bold-flat lock). Non-water. Static world cell -> capture-deterministic.
-        // The "if (abs(vBlockType - 9.0) >= 0.1)" that wrapped this is gone: it is always true. W2 moved
-        // the water surface to Ocean.jsx and the mesher emits no water faces at all, so nothing typed 9
-        // ever reaches this material. Asserted, not assumed — mesher-geometry-gates.test.js drives water
-        // above stone, beside stone, under stone and pocketed in stone and checks no vertex carries type
-        // 9. Restore the guard if that gate ever has to be relaxed.
+        // map). Static world cell -> capture-deterministic. No water guard: the mesher emits no water faces,
+        // which mesher-geometry-gates.test.js asserts (water above, beside, under and pocketed in stone, no
+        // vertex typed 9); a water face reaching this material needs a guard here first.
         float dh = sin(floor(vWorldPos.x) * 12.989 + floor(vWorldPos.y) * 78.233 + floor(vWorldPos.z) * 37.719) * 43758.5453;
         diffuseColor.rgb *= (1.0 + (fract(dh) - 0.5) * 0.16);
 
         // S1 vertex ambient occlusion: per-corner AO (aAO 0..3 from the mesher cornerAO) darkens concave
         // corners / crevices / under-overhangs so the voxel terrain reads with FORM (soft contact-shadow)
-        // instead of flat-shaded-per-face. Applied to the albedo BEFORE lighting. (This used to add
-        // "Water faces carry AO 3 (vAO/3=1 -> no-op)" — describing a case that cannot occur, since the
-        // mesher emits no water faces; the short-circuit that produced that 3 is deleted.) Static
-        // geometry attribute -> capture-deterministic.
-        // S11: the floor is a COLOUR now, not a grey scalar. A contact shadow is lit by the sky, so a
+        // instead of flat-shaded-per-face. Applied to the albedo BEFORE lighting. Static geometry attribute
+        // -> capture-deterministic.
+        // The floor is a COLOUR, not a grey scalar: a contact shadow is lit by the sky, so a
         // crevice at noon is blue and at dusk is warm — the single cheapest thing that stops voxel AO
-        // reading as dirt. Its LUMINANCE is pinned to the old 0.55 in every mood (see aoFloorColor):
+        // reading as dirt. Its LUMINANCE is held at 0.55 in every mood (see aoFloorColor):
         // multiplying by the sky colour directly would crush crevices toward black at dusk and at night,
         // which is the opposite of the intent. Static vAO attribute + a mood-driven uniform that snaps
         // with mood -> capture-deterministic, same contract as skyHorizon two terms below.
         diffuseColor.rgb *= mix(uAoFloor, vec3(1.0), clamp(vAO / 3.0, 0.0, 1.0));
 
-        // Q14 BIOME TINT. Six of ten biomes share surfaceBlock 1 and rendered pixel-identical at ground
-        // level; this is the consumer the biomeTable tint field never had. The multiplier arrives
-        // luminance-normalised from the CPU, so this shifts HUE without darkening — one multiply, no
-        // branch, no texture fetch. Index clamped: a corrupt attribute must not read out of bounds.
-        // R1.5/R1.6: only the natural surface blocks take it (world/terrainTint.js), and the array and the
-        // clamp are sized from BIOME_NAMES rather than typed as 10 and 9.0.
+        // BIOME TINT. Six of ten biomes share surfaceBlock 1, so without it they read alike at ground level.
+        // The multiplier arrives luminance-normalised from the CPU, so this shifts HUE without darkening —
+        // one multiply, no branch, no texture fetch. Index clamped: a corrupt attribute must not read out of
+        // bounds. Only the natural surface tiles take it, keyed by the tile the face shows
+        // (world/terrainTint.js); the array and the clamp are sized from BIOME_NAMES.
         ${TINT_GLSL.apply}
         `
     );
@@ -200,15 +199,11 @@ const compileShader = (shader) => {
         `
         #include <opaque_fragment>
 
-        // W2: the in-mesher water render path is gone — the Ocean.jsx Gerstner plane owns the animated
-        // water surface now, so the mesher emits no water faces and this material renders only land.
-
         // S2 aerial perspective (non-water LAND): distant terrain hazes toward the sky-horizon colour so far
         // mountains read as atmospheric DEPTH, not an oppressive dark wall (complements the height-fog, which
         // only fogs LOW areas, so tall distant terrain never faded). Pure view-distance + a gentle distance
         // desaturation -> capture-deterministic (camera pinned in capture; skyHorizon snaps with mood). Tunables:
         // the 38->165 distance band + the 0.22 desat / 0.55 haze strengths (eyeball explore/hearth/landmark).
-        // Same always-true water guard removed here — see the vertex-dither block above.
         // The arithmetic lives in render/aerialPerspective.js — the far field hazes by the SAME lines.
         ${AERIAL_GLSL}
         `
@@ -216,25 +211,15 @@ const compileShader = (shader) => {
 };
 
 /**
- * Q14 BIOME TINT — the uniform, precomputed on the CPU so the shader is one multiply.
- *
- * `tintPreservingLuminance` normalises each biome's tint to unit luminance, so BIOME_TINT_STRENGTH
- * controls HUE SHIFT only and never brightness. That is what lets a tint land on a LOCKED bold-flat art
- * direction without dimming it: a plain `c * tint` darkens every biome here, because all ten tints have
- * luminance below white, and a darker world reads as dirt rather than as a biome.
- *
- * Computed here rather than in GLSL on purpose — there is then no shader-side copy of the arithmetic to
- * drift from it, and the maths lives somewhere a node test can drive it.
- *
- * STRENGTH IS KEVIN'S DIAL. 0.35 is the middle rung of TERRAIN-GRASS-SOTA-PLAN's 25/35/50 ladder, and 0
- * is an exact no-op, so reverting is one number.
+ * BIOME TINT — the uniform, precomputed on the CPU (world/biomeTable.js BIOME_TINT) so the shader is one multiply.
+ * Each biome's tint is normalised to unit luminance, so the strength dial shifts HUE only and never brightness: a
+ * plain `c * tint` would darken every biome, since all ten tints have luminance below white. One table, which the
+ * wind-grass blades read too, so the ground and the blades cannot drift apart.
  */
-// The dial and the table both live in biomeTable.js now — the wind-grass blades need the identical
-// multipliers, and two copies of this arithmetic would drift silently.
-const biomeTintUniform = BIOME_TINT; // the one table the grass blades also read (R1.10)
-// R1.5/R1.6: the tint GLSL is sized from the biome table, and the per-block mask from the texture array's
-// OWN depth — neither is a literal that can fall out of step with the data it indexes.
-const TEX_LAYERS = voxelTextures.image.depth;
+const biomeTintUniform = BIOME_TINT;
+// Sized from the biome table and from the grammar's layer count, which the texture array is built to
+// (material-grammar-gates.test.js holds the two equal), so no literal can fall out of step with the data it indexes.
+const TEX_LAYERS = TEXTURE_LAYER_COUNT;
 const TINT_GLSL = biomeTintGlsl(undefined, TEX_LAYERS);
 const CLOUD_SHADOW_GLSL = cloudShadowGlsl(); // the same field the sky dome draws (render/skyDome.js)
 const AERIAL_GLSL = aerialGlsl(); // shared with the far field (world/FarField.jsx)

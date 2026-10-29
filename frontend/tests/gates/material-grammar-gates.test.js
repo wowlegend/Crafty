@@ -217,6 +217,16 @@ describe('the face grammar: which layer each face of each block shows', () => {
     expect(all).not.toContain('`');
   });
 
+  it('a grammar naming a block the id space lacks throws, naming it, rather than dropping the write', () => {
+    const { snow, ...noSnow } = BLOCK_ID;
+    expect(snow).toBe(BLOCK_ID.snow);
+    expect(() => buildGrammar(noSnow)).toThrow(/"snow"/);
+    const { stone, ...noStone } = BLOCK_ID;
+    expect(stone, 'SETUP: stone is only a remap target here').toBe(BLOCK_ID.stone);
+    expect(() => buildGrammar(noStone), 'a missing remap target').toThrow(/"stone"/);
+    expect(() => buildGrammar(BLOCK_ID)).not.toThrow();
+  });
+
   it('the derivation follows the id space: a new block id moves the variants up by one', () => {
     const g = buildGrammar({ ...BLOCK_ID, lantern: 16 });
     expect(g.BLOCK_LAYER_COUNT).toBe(17);
@@ -251,6 +261,37 @@ describe('the face variants are made of their parents', () => {
       expect(texels(L).filter((t) => !either(t)).length).toBe(0);
     });
   }
+
+  // Each variant region stands where its parent's layer stood before the grammar (a hill wall showed the grass layer,
+  // a trunk side the wood layer, and the far field still averages the parents), so each is held to its parent's frozen
+  // mean as the sampled layers are: a repaint that keeps the parent's tones and shifts their shares moves it.
+  const regionMean = (layer, from, to) => {
+    const ts = rowsOf(layer, from, to);
+    return [0, 1, 2].map((c) => ts.reduce((a, t) => a + dec(t[c]), 0) / ts.length);
+  };
+  const lumLinear = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  it('each variant region keeps the linear luminance (15%) and chromaticity (0.03) of the parent layer it stands for', () => {
+    const regions = [
+      ['grass_side lip', faceLayer(BLOCK_ID.grass, side), SIZE - LIP_TEXELS, SIZE - 1, BLOCK_ID.grass],
+      ['grass_side body', faceLayer(BLOCK_ID.grass, side), 0, SIZE - LIP_TEXELS - 3, BLOCK_ID.dirt],
+      ['snow_side lip', faceLayer(BLOCK_ID.snow, side), SIZE - LIP_TEXELS, SIZE - 1, BLOCK_ID.snow],
+      ['snow_side body', faceLayer(BLOCK_ID.snow, side), 0, SIZE - LIP_TEXELS - 3, BLOCK_ID.stone],
+      ['wood_side', faceLayer(BLOCK_ID.wood, side), 0, SIZE - 1, BLOCK_ID.wood],
+    ];
+    let checked = 0;
+    for (const [name, L, from, to, parent] of regions) {
+      expect(VARIANTS, `${name}: SETUP: the face table does not name a variant`).toContain(L);
+      const m = regionMean(L, from, to);
+      const [cr, cg] = chromaOf(m);
+      const b = BEFORE[parent];
+      console.log(`[gate] ${name}: luminance x${(lumLinear(m) / b.lum).toFixed(3)} of layer ${parent}, chromaticity off by ${Math.abs(cr - b.chroma[0]).toFixed(3)}, ${Math.abs(cg - b.chroma[1]).toFixed(3)}`);
+      expect(Math.abs(lumLinear(m) / b.lum - 1), `${name}: luminance ${lumLinear(m).toFixed(4)} against layer ${parent}'s ${b.lum.toFixed(4)}`).toBeLessThanOrEqual(0.15);
+      expect(Math.abs(cr - b.chroma[0]), `${name}: red chromaticity against layer ${parent}`).toBeLessThanOrEqual(0.03);
+      expect(Math.abs(cg - b.chroma[1]), `${name}: green chromaticity against layer ${parent}`).toBeLessThanOrEqual(0.03);
+      checked++;
+    }
+    expect(checked).toBe(FACE_VARIANTS.length + 2);
+  });
 
   it('a wood side, as the face table names it, is bark: wood tones in vertical grain that wraps both ways', () => {
     const L = faceLayer(BLOCK_ID.wood, side);
