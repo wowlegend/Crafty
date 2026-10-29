@@ -327,12 +327,13 @@ export function makeGauntletMaterials() {
 }
 
 /**
- * The form's colour on the gauntlets (DECISIONS 2026-10-29 item 88). In first person the player's own beast draws
+ * The form's colour on the gauntlets (DECISIONS 2026-10-29 item 87). In first person the player's own beast draws
  * nothing but its shadow, so while a form is on the ember core in each gauntlet takes the form's element glow
- * (render/beastAvatarParts.js ELEMENT_COLOR, the beast's own rim and core) at the core's gain, which the bloom carries,
- * and the plates glow `plateGlow` of it. Both ease toward the form with time constant `tauS`, in and out.
+ * (render/beastAvatarParts.js ELEMENT_COLOR, the beast's own rim and core) at the core's gain, which the bloom carries.
+ * The core alone: added to the ember-gold plates, a cool glow reads salmon or pink, not the form. It eases toward the
+ * form with time constant `tauS`, in and out.
  */
-export const FORM_TINT = Object.freeze({ tauS: 0.12, plateGlow: 0.35 });
+export const FORM_TINT = Object.freeze({ tauS: 0.12 });
 
 const _emberCore = new THREE.Color(GAUNTLET.core).multiplyScalar(GAUNTLET.coreGain);
 const _formGlow = Object.freeze(Object.fromEntries(Object.entries(ELEMENT_COLOR).map(([el, c]) => [el, new THREE.Color(c.glow)])));
@@ -350,13 +351,8 @@ export function stepFormTint(tint, el, dtS, mats) {
   tint.w += ((glow ? 1 : 0) - tint.w) * k;
   if (!glow && tint.w < 1e-3) { tint.w = 0; tint.el = null; }
   const shown = tint.el ? _formGlow[tint.el] : null;
-  if (shown) {
-    mats.core.color.copy(_emberCore).lerp(_formCore.copy(shown).multiplyScalar(GAUNTLET.coreGain), tint.w);
-    mats.plate.emissive.copy(shown).multiplyScalar(FORM_TINT.plateGlow * tint.w);
-  } else {
-    mats.core.color.copy(_emberCore);
-    mats.plate.emissive.setRGB(0, 0, 0);
-  }
+  if (shown) mats.core.color.copy(_emberCore).lerp(_formCore.copy(shown).multiplyScalar(GAUNTLET.coreGain), tint.w);
+  else mats.core.color.copy(_emberCore);
   return tint;
 }
 

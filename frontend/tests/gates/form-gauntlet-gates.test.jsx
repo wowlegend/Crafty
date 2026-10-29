@@ -7,16 +7,16 @@ import * as THREE from 'three';
  *
  * In first person the player's own beast draws nothing but its shadow (DECISIONS 2026-10-29 item 80), so nothing on
  * screen said which form was on. While a form is on, the ember core set in each gauntlet takes the form's element glow
- * (render/beastAvatarParts.js ELEMENT_COLOR, the colour of the beast's own rim and core) at the core's HDR gain, and the
- * plates glow faintly in it; both ease in with the form and out after it, the fading form keeping its own colour until
- * it is gone. Checked as a function (each form's colour, the ease both ways, no allocation per frame, measured as in
+ * (render/beastAvatarParts.js ELEMENT_COLOR, the colour of the beast's own rim and core) at the core's HDR gain, easing
+ * in with the form and out after it, the fading form keeping its own colour until it is gone. The plates take no colour:
+ * added to their ember gold, the cool glows read salmon and pink in the lookbook frames (DECISIONS 2026-10-29 item 87). Checked as a function (each form's colour, the ease both ways, no allocation per frame, measured as in
  * hot-path-alloc-gates) and mounted: StableMagicHands through R3F (tests/gates/_r3f.jsx), the form set in the store.
  * BLIND SPOT: nothing is drawn; how the colour reads in the world is the lookbook's self set (the evidence frames).
  */
 vi.mock('@react-three/fiber', () => import('@react-three/fiber/dist/react-three-fiber.esm.js'));
 vi.mock('@react-three/drei', () => ({ Outlines: () => null }));
 const { mountR3F } = await import('./_r3f.jsx');
-const { stepFormTint, makeGauntletMaterials, GAUNTLET, GAUNTLET_PARTS, FORM_TINT } = await import('../../src/render/viewmodel.js');
+const { stepFormTint, makeGauntletMaterials, GAUNTLET, GAUNTLET_PARTS } = await import('../../src/render/viewmodel.js');
 const { ELEMENT_COLOR, BEAST_AVATAR_ELEMENTS } = await import('../../src/render/beastAvatarParts.js');
 const { StableMagicHands } = await import('../../src/render/playerRender.jsx');
 const { useGameStore } = await import('../../src/store/useGameStore');
@@ -24,7 +24,7 @@ const { youngBytesPerCall, NO_ALLOCATION_BYTES } = await import('./_youngGrowth.
 
 const EMBER_CORE = new THREE.Color(GAUNTLET.core).multiplyScalar(GAUNTLET.coreGain);
 const coreOf = (el) => new THREE.Color(ELEMENT_COLOR[el].glow).multiplyScalar(GAUNTLET.coreGain);
-const plateOf = (el, w = 1) => new THREE.Color(ELEMENT_COLOR[el].glow).multiplyScalar(FORM_TINT.plateGlow * w);
+const PLATE = new THREE.Color(GAUNTLET.plate);
 const near = (a, b, eps = 1e-6) => Math.abs(a.r - b.r) < eps && Math.abs(a.g - b.g) < eps && Math.abs(a.b - b.b) < eps;
 const hex = (c) => `${c.r.toFixed(3)},${c.g.toFixed(3)},${c.b.toFixed(3)}`;
 
@@ -35,9 +35,7 @@ function run(tint, el, s, mats) {
 }
 
 describe('stepFormTint', () => {
-  it('eases each form\'s glow into the core and the plates, and back to the ember after the form', () => {
-    expect(FORM_TINT.plateGlow, 'the plates would take no colour').toBeGreaterThan(0);
-    expect(FORM_TINT.plateGlow, 'the plates would bloom out').toBeLessThan(1);
+  it('eases each form\'s glow into the core, and back to the ember after the form; the plates take none of it', () => {
     let checked = 0;
     for (const el of BEAST_AVATAR_ELEMENTS) {
       const mats = makeGauntletMaterials();
@@ -50,15 +48,16 @@ describe('stepFormTint', () => {
       expect(tint.w, `${el}: the glow is not in by the end of the form's entrance (game/beastMorph.js MORPH_SEC)`).toBeGreaterThan(0.98);
       run(tint, el, 0.7, mats);
       expect(near(mats.core.color, coreOf(el), 1e-3), `${el}: the core is ${hex(mats.core.color)}, not the form's glow ${hex(coreOf(el))}`).toBe(true);
-      expect(near(mats.plate.emissive, plateOf(el), 1e-3), `${el}: the plates glow ${hex(mats.plate.emissive)}, not ${hex(plateOf(el))}`).toBe(true);
+      expect(mats.plate.emissive.getHex(), `${el}: the plates glow ${hex(mats.plate.emissive)} in the form`).toBe(0);
+      expect(near(mats.plate.color, PLATE), `${el}: the plates are ${hex(mats.plate.color)}, not their ember gold`).toBe(true);
       // The form ends: a few frames in, the fading glow is still the form's own hue, dimmer; then the ember is back.
       run(tint, null, 0.1, mats);
       const w = tint.w;
       expect(w, `${el}: the glow left at once`).toBeGreaterThan(0.2);
-      expect(near(mats.plate.emissive, plateOf(el, w), 1e-6), `${el}: the fading plates are not the form's colour`).toBe(true);
+      const fading = EMBER_CORE.clone().lerp(coreOf(el), w);
+      expect(near(mats.core.color, fading, 1e-6), `${el}: the fading core is ${hex(mats.core.color)}, not the form's colour going`).toBe(true);
       run(tint, null, 1.5, mats);
       expect(near(mats.core.color, EMBER_CORE), `${el}: the core did not come back to the ember`).toBe(true);
-      expect(mats.plate.emissive.getHex(), `${el}: the plates still glow after the form`).toBe(0);
       for (const m of Object.values(mats)) m.dispose();
       checked += 1;
     }
