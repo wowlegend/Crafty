@@ -41,8 +41,9 @@
    git's; its open items are registry rows, two of them added by hand from the old cursors.
 5. **The cold-takeover eval checks the instruction surface after a rewrite** (`frontend/scripts/dev/cold-takeover-eval.mjs`).
    What it measures: whether Sonnet 5.5, with only a copy of the repo, orients (runs `npm run orient` or reads the
-   cursor) and answers 14 questions within 15 tool calls without inverting a rule, scored by fixed patterns that read
-   each answer's local polarity. Twelve are directives: two live only in `.claude/rules/` files (capture guards, probe
+   cursor) and answers 14 questions within 15 tool calls without stating an inversion its forbidden patterns name, scored by fixed
+   patterns that read each answer's local polarity. A rule inverted in other words can still pass: the scorer reads
+   the polarity of named phrasings, not of the concept, and its planted control is worded to match those patterns. Twelve are directives: two live only in `.claude/rules/` files (capture guards, probe
    ports and denominators) and two are rules the first rewrite dropped (recording decisions, what to check before an
    edit and a commit). What it does not measure: whether an agent then acts on a directive, any directive no question
    names, or more than a few samples of a stochastic agent. At `bee75223`: two after-runs PASS (14/14, 5 and 7 tool

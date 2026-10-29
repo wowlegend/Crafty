@@ -15,11 +15,11 @@
 
 ---
 
-## ✅ CANONICAL — read these, in this order
+## ✅ CANONICAL — the docs CLAUDE.md's read order names (its "Where state lives" holds the order; `npm run orient` comes first)
 
 | Doc | Role |
 |---|---|
-| **`memory/STATUS.md`** | **Where we are · what's next.** THE source of truth for status. Its §2 and G-ledger are the record the registry was harvested from. |
+| **`memory/STATUS.md`** | Where we are, in prose. Its §2 and G-ledger are the record the registry was harvested from; current state comes from `npm run orient` and open work from the registry. |
 | **`memory/ACTIVE_PLAN.md`** | The live cursor: the ONE unit in flight right now. |
 | **`memory/registry.jsonl`** | **The one home for open work**: one row per closable item, with id, title, playerVisible, severity, owner, state, evidence, opened, closedBy and plan unit. A row is closed, never deleted. `node frontend/scripts/ci/registry-harvest.mjs` proves every open item in the old sources has a row; `registry-append-only.mjs` refuses a push that deletes one. |
 | **`plans/2026-10-28-crafty-sota-reset.md`** | The programme: what to build, in which wave and lane. |

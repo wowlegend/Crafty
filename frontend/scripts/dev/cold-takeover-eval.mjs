@@ -363,7 +363,7 @@ export function orientEvidence(uses) {
   return uses.filter((u) => {
     if (u.isError !== false) return false;
     if (u.name === 'Read') return /ACTIVE_PLAN\.md$/.test(String(u.input?.file_path || ''));
-    if (u.name === 'Bash') return /\borient\b|\b(?:cat|head|sed|less|more|tail)\b[^|;&]*ACTIVE_PLAN\.md/.test(String(u.input?.command || ''));
+    if (u.name === 'Bash') return /\bnpm\s+run\s+orient\b|\borient\.mjs\b|\b(?:cat|head|sed|less|more|tail)\b[^|;&]*ACTIVE_PLAN\.md/.test(String(u.input?.command || ''));
     return false;
   });
 }

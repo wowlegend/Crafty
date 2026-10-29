@@ -109,7 +109,8 @@ An unstarted lane carries a brief of one page or less linked to its reset-plan r
 script of 300 lines or less with red-first steps and its gates (DECISIONS 2026-10-28 W1-H item 3): extend the gate
 first and see it red, then build. Looks are judged on lookbook frames (`game-code.md`); the coherence pillars
 (`docs/superpowers/specs/crafty-coherence-pillars.md`) bound every addition; drive the real app before calling a
-feature done.
+feature done. Update the cursor before a unit starts. A finding closes as a false positive only with a proof command in
+its row; a spec claim reality falsifies is corrected in the same unit.
 
 ## Gates
 

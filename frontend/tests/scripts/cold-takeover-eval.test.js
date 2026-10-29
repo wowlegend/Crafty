@@ -221,6 +221,8 @@ describe('cold-takeover-eval — orientation and the copy', () => {
     expect(orientEvidence([use('Bash', { command: 'npm run orient' }, null)]), 'a call with no result did not orient').toHaveLength(0);
     expect(orientEvidence([use('Grep', { pattern: 'orient', path: 'CLAUDE.md' }), use('Read', { file_path: '/c/repo/CLAUDE.md' })])).toHaveLength(0);
     expect(orientEvidence([use('Grep', { pattern: 'registry', path: '/c/repo/memory/ACTIVE_PLAN.md' })]), 'a search inside the cursor is not a read').toHaveLength(0);
+    expect(orientEvidence([use('Bash', { command: 'grep -n orient CLAUDE.md' })]), 'a command that only names orient did not run it').toHaveLength(0);
+    expect(orientEvidence([use('Bash', { command: 'cd frontend && node scripts/dev/orient.mjs' })])).toHaveLength(1);
   });
 
   it('the copy never carries a nested worktree, installed modules, git itself or the answer key', () => {
