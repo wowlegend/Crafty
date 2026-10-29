@@ -77,6 +77,28 @@ describe('castSpell says whether the projectile went out', () => {
     useGameStore.setState({ isAlive: false });
     expect(cast().out).not.toBe(true);
   });
+
+  it('a name that is not a spell (a corrupt save\'s constructor) casts nothing, spends nothing and says nothing', () => {
+    const notes = [];
+    let t = 1e9;
+    const clock = vi.spyOn(performance, 'now').mockImplementation(() => (t += 5000)); // each call is past the denial throttle
+    try {
+      useGameStore.setState({ mana: 0, addNotification: (text) => notes.push(text) });
+      cast();
+      expect(notes.length, 'SETUP: a cast refused for mana raised no notice, so this instrument sees none').toBe(1);
+      notes.length = 0;
+      useGameStore.setState({ mana: 50 });
+      for (const name of ['constructor', 'toString', 'hasOwnProperty']) {
+        const { out, made } = cast(name);
+        expect(made, name).toEqual([]);
+        expect(out, name).not.toBe(true);
+      }
+      expect(useGameStore.getState().mana, 'a name that is not a spell spent mana').toBe(50);
+      expect(notes, 'a name that is not a spell was refused as if for mana').toEqual([]);
+    } finally {
+      clock.mockRestore();
+    }
+  });
 });
 
 describe('the projectile reports the element it carries', () => {

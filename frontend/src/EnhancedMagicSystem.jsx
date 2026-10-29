@@ -11,7 +11,7 @@ import { solveSpellDamage } from './utils/combat';
 import { resolveCastBaseDamage, resolveCastManaCost } from './utils/spellCast';
 import { projectileGravity, projectileGrounded, advanceProjectile } from './game/projectilePhysics';
 import { freezeSlowMult } from './game/freeze';
-import { SPELL_TYPES } from './game/spells';
+import { SPELL_TYPES, spellTypeOf } from './game/spells';
 import { solveChainTargets } from './game/chainLightning';
 import { SPARK_PROFILE } from './game/spellVisualProfiles';
 import { isCaptureMode } from './devtest/captureMode';
@@ -203,7 +203,7 @@ export const EnhancedMagicSystem = React.memo(() => {
 
   useEffect(() => {
     useGameStore.setState({ castSpell: (spellType = 'fireball') => {
-      const spell = SPELL_TYPES[spellType];
+      const spell = spellTypeOf(spellType);
       const camera = useGameStore.getState().gameCamera;
 
       if (!camera || !spell) return;

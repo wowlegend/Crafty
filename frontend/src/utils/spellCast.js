@@ -1,8 +1,9 @@
 // spellCast.js — pure cast-resolution helpers (no React/store) so the load-bearing damage line is gate-able.
 // The cast reads its base damage from the store's getSpellStats, the tier its caster's level has reached
 // (game/spellTiers.js), not the static SPELL_TYPES base, so a level's tier reaches combat. A spell with no tier row
-// (getSpellStats returns null) falls back to spell.damage; a spellType the game does not know is stopped upstream by
-// the caller's !spell guard. Tier I equals the static base for all four spells.
+// (getSpellStats returns null) falls back to spell.damage; a spellType the game does not know never reaches here, since
+// the caller looks the spell up by its own keys (game/spells.js spellTypeOf) and stops on null. Tier I equals the static
+// base for all four spells.
 export function resolveCastBaseDamage(getSpellStats, spell, spellType) {
   const leveled = typeof getSpellStats === 'function' ? getSpellStats(spellType) : null;
   return leveled?.damage ?? spell.damage;
