@@ -6,7 +6,7 @@
 import { FORM_DURATION_SEC } from './beastTransform.js';
 import { MAX_HOLD_SEC } from './voidhand.js';
 import { SLAM_RADIUS } from './hurl.js';
-import { BASE_SQUAD_CAP } from './soulbind.js';
+import { BASE_SQUAD_CAP, SNARE_ARC, SNARE_HP_FRAC } from './soulbind.js';
 import { talentNode } from './talentTree.js';
 import { relicByName } from './relics.js';
 
@@ -17,8 +17,8 @@ export const VERB_BASE = Object.freeze({
   grabThrows: 1, // hurls or slams one grab holds
   holdSec: MAX_HOLD_SEC, // how long a grabbed block stays in hand
   slamRadius: SLAM_RADIUS, // the slam's reach around the held block
-  snareArc: Math.PI / 8, // the snare's aim cone, full arc
-  snareHpFrac: 0.3, // a hostile binds at or below this share of its health
+  snareArc: SNARE_ARC, // the snare's aim cone, full arc
+  snareHpFrac: SNARE_HP_FRAC, // a hostile binds at or below this share of its health
   squadCap: BASE_SQUAD_CAP, // bound creatures held at once
   imbueChain: 0, // further hostiles an imbued zone leaps to
   zoneRadiusMult: 1, // an imbued zone's radius, as a multiple of its kind's

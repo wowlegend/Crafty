@@ -16,6 +16,11 @@ export const SNARE_COOLDOWN_SEC = 1.5; // after a completed bind (anti-spam; bre
  */
 export const BASE_SQUAD_CAP = 2;
 
+/** The snare's aim cone with no talent or relic, full arc. Wide Snare and Snare Knot each add one more, so each doubles it. */
+export const SNARE_ARC = Math.PI / 8;
+/** A hostile binds at or below this share of its health with no talent (Communion raises it; the nametag's jade tell). */
+export const SNARE_HP_FRAC = 0.3;
+
 export function makeSoulbindState() {
   return { channeling: false, channelStart: 0, targetId: null, cooldownUntil: 0 };
 }

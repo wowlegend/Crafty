@@ -1,4 +1,5 @@
 import { MOB_TYPES } from './mobTypes.js';
+import { SNARE_HP_FRAC } from './soulbind.js';
 
 // Pure nametag model: given an ECS entity + planar distance to the player, returns the billboard
 // label model (text/color/health-bar). Hostiles show name+bar within ~30m; NPCs/passives show
@@ -8,7 +9,7 @@ const NPC_RANGE = 24;
 
 // `snareHpFrac` is the share of health a hostile binds at (game/verbMods.js; Communion raises it), so the jade tell below
 // marks exactly the hostiles the snare would take.
-export function nametagFor(entity, dist, snareHpFrac = 0.3) {
+export function nametagFor(entity, dist, snareHpFrac = SNARE_HP_FRAC) {
   if (!entity) return { visible: false };
   const cfg = MOB_TYPES[entity.type] || {};
   const isPassive = entity.passive ?? cfg.passive;

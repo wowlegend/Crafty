@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { nametagFor } from '../../src/game/nametagData.js';
+import { VERB_BASE } from '../../src/game/verbMods.js';
 
 describe('nametagFor', () => {
   it('hostile mob -> name + health bar + danger color, only within range', () => {
@@ -42,5 +43,9 @@ describe('nametagFor follows the snare\'s health threshold', () => {
     expect(at(40).color).toBe('#3DFFB0');
     expect(at(51).color).not.toBe('#3DFFB0');
     expect(nametagFor({ type: 'zombie', health: 40, maxHealth: 100, passive: false }, 10).color, 'the default threshold moved').not.toBe('#3DFFB0');
+    // With no threshold passed, the tell sits at the snare's own base threshold, wherever that is tuned.
+    const base = VERB_BASE.snareHpFrac * 1000;
+    expect(nametagFor({ type: 'zombie', health: base, maxHealth: 1000, passive: false }, 10).color, 'the default is not the snare\'s base threshold').toBe('#3DFFB0');
+    expect(nametagFor({ type: 'zombie', health: base + 1, maxHealth: 1000, passive: false }, 10).color).not.toBe('#3DFFB0');
   });
 });

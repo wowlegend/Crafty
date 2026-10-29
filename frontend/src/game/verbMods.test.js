@@ -68,6 +68,7 @@ describe('foldVerbMods', () => {
       'Prism Shard': { verb: 'imbue', key: 'imbueChain', add: 1 },
     });
     expect(foldVerbMods({}, 'Snare Knot').snareArc, 'Snare Knot does not double the cone').toBeCloseTo(2 * VERB_BASE.snareArc, 10);
+    expect(foldVerbMods({ soulbind_snare: 1, soulbind_wide: 1 }, null).snareArc, 'Wide Snare does not double the cone').toBeCloseTo(2 * VERB_BASE.snareArc, 10);
   });
 
   it('ignores an unknown id and a junk rank', () => {
