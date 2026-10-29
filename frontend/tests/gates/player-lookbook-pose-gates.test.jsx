@@ -47,6 +47,9 @@ vi.mock('@react-three/rapier', async () => {
   };
 });
 vi.mock('../../src/render/playerRender', () => ({ StableMagicHands: () => <i data-testid="hands" /> }));
+// The hands mount through the viewmodel portal; here it passes them straight through, so the DOM shows whether the
+// Player mounts them, and its own frame callback stays the one this file drives.
+vi.mock('../../src/render/ViewmodelLayer.jsx', () => ({ ViewmodelLayer: ({ children }) => <>{children}</> }));
 vi.mock('../../src/render/BeastAvatar', () => ({ BeastAvatar: () => null }));
 vi.mock('../../src/world/PhantomBlockSystem', () => ({ PhantomBlockSystem: () => null, phantomWorldPos: { x: 0, y: 0, z: 0 } }));
 vi.mock('../../src/world/HurlSystem', () => ({ HurlSystem: () => null }));

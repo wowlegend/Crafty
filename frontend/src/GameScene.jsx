@@ -39,6 +39,7 @@ import { watchContextLoss, trackRenderer } from './render/glDiagnostics.js';
 import { paceFor } from './render/canvasPace.js';
 import { usePixelBudgetDpr, CAPTURE_DPR_CAP } from './render/pixelBudget.js';
 import { ComposerPixelRatioSync, PostTierDriver, GodRays, Bloom } from './render/postFx.jsx';
+import { getViewmodel } from './render/viewmodel.js';
 import { createGovernor, governorDecline, governorIncline, governorSamples, governorWarm, renderDistanceFor } from './render/tierGovernor.js';
 import { registerTestHook } from './devtest/testBridge.js';
 import { FrameStall } from './devtest/FrameStall.jsx';
@@ -110,6 +111,10 @@ import { onContextLost, onContextRestored } from './game/contextRecovery.js';
 const PostFX = React.memo(function PostFX({ sunMesh, withGodRays }) {
   return (
     <EffectComposer multisampling={0}>
+      {/* The first-person hands, drawn over the world before any effect, so they take the grade, SMAA, tone mapping
+          and bloom like the world (render/viewmodel.js ViewmodelPass; the composer adds a Pass child as a pass, in
+          order). A process-lifetime singleton, hence dispose={null}. */}
+      <primitive object={getViewmodel().pass} dispose={null} />
       {/* HORIZON GATE (2026-09-22, with the sun arc). GodRays is a screen-space effect whose light
           source is the sun BILLBOARD, and three.js#18446 records the official godrays example
           flipping its shaft downwards when "the signs of the sun's screen space position vector
