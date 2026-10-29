@@ -15,6 +15,9 @@ import { hitstopForHit } from '../game/hitstop.js';
 import { riposteDamage } from '../game/perfectDodge.js';
 import { worldNow } from '../game/worldClock.js';
 import { nextSpawnId } from './_npcShared';
+import { playerSensePoint } from './playerSensePoint.js';
+
+const _from = { x: 0, y: 0, z: 0 };
 
 // CombatSystem -- registers damageMob / captureMob / checkMobCollision / checkMobsInMeleeCone on the
 // store + GameMethods (the melee/spell hit-resolution + death/XP-drop + capture seam). Extracted VERBATIM
@@ -63,7 +66,9 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
 
       // Hit direction (away-from-player, world unit) -- computed up-front so the camera shake, the
       // spark cone, AND the flinch tilt all share the SAME vector (pure pulls -> game/mobHitFx.js).
-      const { knockback, hitDir } = hitKnockback(entity.position, store.gameCamera ? store.gameCamera.position : null);
+      // Away from the body, where the mobs sense the player (systems/playerSensePoint.js), not from the camera:
+      // the roar's reveal stands the camera 4.5 m behind the body, and a mob is knocked away from the blow.
+      const { knockback, hitDir } = hitKnockback(entity.position, store.gameCamera ? playerSensePoint(store.gameCamera, _from) : null);
       if (knockback) entity.knockback = knockback;
       entity.hitDirection = new THREE.Vector3(hitDir[0], hitDir[1], hitDir[2]);
 

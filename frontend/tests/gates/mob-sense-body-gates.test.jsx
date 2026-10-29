@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
+import * as THREE from 'three';
+import { render, cleanup, act } from '@testing-library/react';
 
 /**
  * MOBS SENSE THE BODY, NOT THE CAMERA (game/mobSenses.js mobSensePoint, systems/playerSensePoint.js).
@@ -14,11 +16,14 @@ import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest
  *     reveal camera does not;
  *   - the worker's reply: an archer's arrow is aimed at the body's eye, and a spider's leap runs toward the body;
  *   - an arrow in flight (systems/EnemyProjectileSystem.jsx): one flying at the body's eye lands, one flying through the
- *     reveal camera does not.
+ *     reveal camera does not;
+ *   - the player's blow (systems/CombatSystem.jsx damageMob, mounted with react-dom): the mob is knocked away from the
+ *     body.
  * From the camera each verdict flips, so every case tells the two points apart.
  * BLIND SPOT: the Player's own loop is not mounted; the body sample is staged by calling stanceFrame as the loop does.
  */
 vi.mock('@react-three/fiber', () => import('@react-three/fiber/dist/react-three-fiber.esm.js'));
+vi.mock('../../src/SoundManager', () => ({ useGameSounds: () => ({ playHit: () => {} }) }));
 const worker = vi.hoisted(() => ({ posts: [], live: null }));
 vi.mock('../../src/workers/ai.worker.js?worker', () => ({
   default: class FakeAIWorker {
@@ -36,6 +41,8 @@ const { stanceFrame } = await import('../../src/game/combatStance.js');
 const { stance } = await import('../../src/game/stanceState.js');
 const { EYE_HEIGHT_M } = await import('../../src/combat/swingOrigin.js');
 const { ecs } = await import('../../src/ecs/world.js');
+const { CombatSystem } = await import('../../src/systems/CombatSystem.jsx');
+const { GameMethods } = await import('../../src/GameMethods');
 
 // The real worker, run in this process: it assigns self.onmessage and replies through self.postMessage.
 const replies = [];
@@ -88,7 +95,9 @@ afterEach(async () => {
   worker.posts.length = 0;
   for (const e of added.splice(0)) ecs.remove(e);
   stance.bodySeen = false;
-  useGameStore.setState({ spawnEnemyProjectile: realStore.spawnEnemyProjectile, damagePlayer: realStore.damagePlayer });
+  cleanup();
+  useGameStore.setState({ spawnEnemyProjectile: realStore.spawnEnemyProjectile, damagePlayer: realStore.damagePlayer,
+    gameCamera: realStore.gameCamera });
 });
 
 describe('the point the AI posts during the roar\'s reveal', () => {
@@ -147,11 +156,33 @@ describe('an arrow in flight during the reveal', () => {
     const spawn = useGameStore.getState().spawnEnemyProjectile;
     expect(typeof spawn, 'SETUP: the projectile system did not install its spawner').toBe('function');
     // 6 m off along +x, each flying straight at its point: the one at the camera never comes within 4 m of the body.
-    spawn([REVEAL[0] + 6, REVEAL[1], REVEAL[2]], REVEAL);
+    act(() => { spawn([REVEAL[0] + 6, REVEAL[1], REVEAL[2]], REVEAL); }); // the spawn renders the bolt
     await r.step(90);
     expect(hits.length, 'an arrow flying through the reveal camera landed on a body 4.7 m from it').toBe(0);
-    spawn([EYE[0] + 6, EYE[1], EYE[2]], EYE);
+    act(() => { spawn([EYE[0] + 6, EYE[1], EYE[2]], EYE); });
     await r.step(90);
     expect(hits, 'an arrow flying at the body\'s eye did not land').toEqual([{ amount: 15, source: 'projectile' }]);
+  });
+});
+
+describe('the player\'s blow during the reveal', () => {
+  it('knocks the mob away from the body, not away from the reveal camera', () => {
+    stanceFrame([], BODY, 1 / 60);
+    const cam = new THREE.PerspectiveCamera();
+    cam.position.set(...REVEAL);
+    useGameStore.setState({ gameCamera: cam });
+    render(<CombatSystem setDamageNumbers={() => {}} setShockwaves={() => {}} damageId={{ current: 0 }} />);
+    // A zombie 2.5 m across from the body: away from the body is +x, away from the reveal camera mostly +z.
+    const mob = ecs.add({ isMob: true, id: 'struck', type: 'zombie', passive: false, health: 100, maxHealth: 100, xp: 1,
+      position: new THREE.Vector3(BODY.x + 2.5, BODY.y - 0.45, BODY.z) });
+    added.push(mob);
+    GameMethods.damageMob('struck', 5, 'physical', 'player');
+    expect(mob.health, 'SETUP: the blow did not land').toBe(95);
+    expect(mob.knockback, 'SETUP: the blow set no knockback').toBeTruthy();
+    const away = [mob.position.x - BODY.x, mob.position.z - BODY.z];
+    const fromCam = [mob.position.x - REVEAL[0], mob.position.z - REVEAL[2]];
+    const cos = (a, b) => (a[0] * b[0] + a[1] * b[1]) / (Math.hypot(...a) * Math.hypot(...b));
+    expect(cos(away, fromCam), 'SETUP: away from the body and away from the camera must differ').toBeLessThan(0.7);
+    expect(cos([mob.knockback[0], mob.knockback[2]], away), 'the mob is knocked away from somewhere other than the body').toBeGreaterThan(0.9999);
   });
 });
