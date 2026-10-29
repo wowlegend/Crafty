@@ -468,6 +468,7 @@ async function shootTarget(target, launchOpts, launchId) {
       await setCycle(page, cycle);
       await delay(EYE_FRAME_MS);
       const a = await info(page);
+      if (report.renderer === null && a.gl?.renderer) report.renderer = a.gl.renderer;
       const onBuf = await page.screenshot();
       const f = facing(a.heading, a.pitch ?? 0);
       const at = [a.eye[0] + f[0] * 10, a.eye[1] + f[1] * 10, a.eye[2] + f[2] * 10];
@@ -515,13 +516,26 @@ async function shootTarget(target, launchOpts, launchId) {
       await shootHands(c.toFixed(2), c);
     }
 
-    // POINT BLANK: the hands at a wall. The player is stood at the turf-wall sight, shot there, then walks into the
-    // wall with a real W key until the controller stops them, and is shot again facing it.
+    // POINT BLANK: the hands at a wall. The player is stood at the trunk sight (at least three blocks tall, so the
+    // controller cannot step onto it, as it steps up a turf wall's terraces), shot there, then walks into the trunk
+    // with a real W key until the controller stops them, and is shot again facing it. Then the turf-wall sight from its
+    // stand, the frame W2-K's dark polygon was seen in.
     if (SETS.includes('hands') && report.stand && target.engine === 'chromium') {
       const sights = report.sights ?? await page.evaluate(findMaterialSights, { from: report.stand, standM: MATERIAL_STAND_M, minM: MATERIAL_MIN_M });
-      const sight = sights['turf-wall'];
+      const sight = sights.trunk;
+      if (sights['turf-wall']) {
+        const turf = sights['turf-wall'];
+        await respawnIfDead(page, report);
+        await page.evaluate((p) => window.__craftyLookbook.stand(p), { position: [turf.stand[0], turf.ground + 1.5, turf.stand[2]] });
+        await restingBody(page);
+        const aim = aimAt((await info(page)).eye, turf.target);
+        await page.evaluate((h) => window.__craftyLookbook.look(h), { heading: aim.heading, pitch: 0 });
+        await setCycle(page, CYCLES[0]);
+        await delay(SETTLE_MS);
+        await shootHands('turf-wall', CYCLES[0]);
+      }
       if (!sight) {
-        report.notes.push('COULD NOT MEASURE point blank: no turf-wall sight in the loaded mesh near the Hearth');
+        report.notes.push('COULD NOT MEASURE point blank: no trunk sight in the loaded mesh near the Hearth');
       } else {
         const c = CYCLES[0];
         await respawnIfDead(page, report);
@@ -541,8 +555,11 @@ async function shootTarget(target, launchOpts, launchId) {
         const close = await shootHands('wall-near', c);
         // The body's horizontal distance from the face plane, along the face's outward normal.
         const faceM = near ? (near[0] - sight.target[0]) * sight.normal[0] + (near[2] - sight.target[2]) * sight.normal[2] : null;
-        report.pointBlank = { sight, rest, near, faceM, climbedM: rest && near ? near[1] - rest[1] : null,
-          ratio: far.pixels > 0 ? close.pixels / far.pixels : null };
+        const climbedM = rest && near ? near[1] - rest[1] : null;
+        const atWall = faceM != null && faceM >= 0 && faceM <= 1 && climbedM != null && Math.abs(climbedM) < 0.5;
+        if (!atWall) close.why.push(`not at the wall: body ${faceM?.toFixed(2)} m from the face, climbed ${climbedM?.toFixed(2)} m`);
+        close.valid = close.why.length === 0;
+        report.pointBlank = { sight, rest, near, faceM, climbedM, atWall, ratio: far.pixels > 0 ? close.pixels / far.pixels : null };
         console.log(`lookbook hands ${target.id} point blank: body ${faceM == null ? '?' : faceM.toFixed(2)} m from the face, `
           + `climbed ${report.pointBlank.climbedM?.toFixed(2)} m, hand pixels near/far ${close.pixels}/${far.pixels} = ${report.pointBlank.ratio?.toFixed(2)}`);
       }
