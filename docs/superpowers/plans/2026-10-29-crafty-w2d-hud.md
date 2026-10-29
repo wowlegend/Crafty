@@ -76,8 +76,10 @@ colour; A changes no save field and no key.
    track, which carry the same navy) and `RARITY_FILL.common`; text tokens move only where the contrast gate says.
 7. **Three panels (PR B).** Character (Tab): the Inventory (gear and equipment), Spells and Talents as tabs. Journal (J):
    the quest log and the feats as tabs. Build (B) unchanged. E, M, U, L, Q and the Tab achievements panel leave
-   `KEY_MAP` and the handlers. H opens a controls panel generated from `KEY_MAP`, shown on a profile's first play, with a
-   "H Controls" hint at the hotbar edge until it has been opened once (`controlsSeen`, per profile). Quests claim on
+   `KEY_MAP` and the handlers. H opens a controls panel generated from `KEY_MAP`. A profile's first play shows the controls
+   card at rest until H is pressed or the card has had 30 s on screen, then the "H Controls" hint at the hotbar edge (a
+   keyboard's only) until the panel has been opened once (`controlsSeen`, `controlsCardDone`, per profile). Every key a
+   string teaches is a key `KEY_MAP` binds (DECISIONS item 98). Quests claim on
    completion through `reduceClaim` (still the only payer).
 8. **Feats (PR B).** Eight skill feats as data with a pure unlock check (dodge, heavy, perfect dodge, each of the four
    Aspects, a siege held); the twelve counter achievements and "Survivor" go; saved unlocked ids ride the tombstone.

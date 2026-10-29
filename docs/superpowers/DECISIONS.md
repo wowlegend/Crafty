@@ -38,9 +38,13 @@ Each stands while it earns its place.
    quests, achievements; feats when item 97's work lands) are groups of the panels that were there, each tab opened by its own flag, with a strip of tabs above
    the open panel; Build stays on B; the touch tray offers Character, Talk, Build and Journal. H opens a controls panel
    generated from KEY_MAP (every row's label now a key in both dictionaries) in place of the sheet that faded after 8
-   seconds (STATUS C1/c); until this browser has opened it once, a desktop player sees the controls card at rest and an
-   "H Controls" hint above the hotbar. **Seen per browser profile, not per save:** `crafty_controls_seen` sits beside
-   `crafty_onboarded` in localStorage because it belongs to the person at the browser, so no save field is added and
+   seconds (STATUS C1/c). **A first session (the command session's call):** a desktop player who has not opened the
+   panel sees the controls card at rest until they press H or have played 30 s with the card on screen (time paused or
+   in a panel does not count); the card then folds to the one-line "H Controls" hint above the hotbar, which stays, on a
+   keyboard only, until H opens the panel once (`tests/gates/controls-panel-gates.test.jsx`: the fold at 30 s, the clock
+   paused off screen, the fold remembered, the hint never on touch). **Seen per browser profile, not per save:**
+   `crafty_controls_seen` and `crafty_controls_card_done` sit beside `crafty_onboarded` in localStorage because they
+   belong to the person at the browser, so no save field is added and
    the one-way door the brief names (deleted panels' UI state in saves) is not opened: no panel's open state was ever
    saved (`game/saveSchema.js`). Quests claim on completion through `reduceClaim`, the only payer
    (`tests/gates/quest-autoclaim-gates.test.jsx`). **Proof that nothing promised depends on the deleted keys:**
@@ -50,6 +54,13 @@ Each stands while it earns its place.
    perfect dodge, the four Aspects) at the seams in the Player loop (`Components.jsx`) and the Aspect verbs, which this
    lane could not change and prove in a browser in the time it had; the Journal's second tab is labelled Achievements
    and shows the existing panel meanwhile, and "Survivor" stays. Registry `REVIEW:w2d:feats` carries it whole.
+98. **Every key the game teaches is a key it binds.** The panel footers (Character's gear and spells, Build, Settings,
+   the Journal's quests), the locked-Aspect denial, the respec notice and the villagers' lines named E, M, L, Q and U
+   after item 96 removed them; they now name Tab, J, B and Esc, through t() in both locales. The Build panel's "Press 1"
+   to "Press 5" under its five tools are deleted: no handler ever bound them (the digits pick a spell, and only with no
+   panel open). `tests/gates/taught-keys-gates.test.jsx` reads every dictionary string, the rendered panels and card,
+   every denial, the villagers' lines, the Aspect guide and the talent trees in en and zh-CN, and fails on a key named
+   after "press", in parentheses or after 按 that KEY_MAP does not bind.
 
 ## 2026-10-29 — [LOOP] W2-D PR A: the HUD at rest, the compass, one notification channel, and no mob mirror
 
