@@ -5,6 +5,7 @@ import { xpForLevel } from '../../src/game/progression.js';
 import { killXP } from '../../src/game/killReward.js';
 import { FORM_DURATION_SEC, ENDURANCE_SEC_PER_RANK } from '../../src/game/beastTransform.js';
 import { ROAR_COST } from '../../src/game/ember.js';
+import { SWING_APEX_OVER_BODY_M } from '../../src/combat/swingOrigin.js';
 
 // TALENTS THAT CHANGE VERBS, IN THE BOOTED GAME (W2-F step 4; DECISIONS 2026-10-28 W1-H item 6; plan
 // docs/superpowers/plans/2026-10-29-crafty-w2f-talents.md, S8). A level-1 player one Husk short of level 2, with the roar
@@ -54,6 +55,37 @@ async function stageZombie() {
   if (left !== 1) return { why: `SETUP: the staged zombie has ${left} HP, not 1` };
   cam.lookAt(m.x, m.y + 0.8, m.z);
   return { id: m.id };
+}
+
+/** In the page: the click's gates and aim, read now and again on the click's own mousedown, in a capture listener on
+ *  window before the game's handler and a bubble listener after it. */
+function armClickRead({ id, apexM }) {
+  const call = (n) => window.__craftyTest.call(n);
+  const r = (v) => Math.round(v * 100) / 100;
+  const read = () => {
+    const st = window.useGameStore.getState();
+    const cam = window.__threeCamera;
+    const b = st.playerRigidBodyRef?.current?.translation?.();
+    const m = call('readMobs').find((e) => e.id === id);
+    const d = new cam.position.constructor();
+    cam.getWorldDirection(d);
+    const pitchDeg = r((Math.asin(d.y) * 180) / Math.PI);
+    d.y = 0; d.normalize();
+    const apex = b ? { x: b.x, y: b.y + apexM, z: b.z } : null;
+    const cone = apex && window.GameMethods.checkMobsInMeleeCone ? window.GameMethods.checkMobsInMeleeCone(apex, d, 4.5, Math.PI / 2) : [];
+    const s = call('readString');
+    return {
+      t: Math.round(performance.now()), hp: m ? m.health : null, inCone: cone.some((e) => e.id === id), active: call('readIntents').active,
+      alive: st.isAlive, form: st.beastFormActive, held: !!st.voidhandHeld, readyIn: r(s.readyAt - performance.now()), last: s.last,
+      presses: call('readCompatMouse'), body: b && [r(b.x), r(b.y), r(b.z)], cam: [r(cam.position.x), r(cam.position.y), r(cam.position.z)],
+      facing: [r(d.x), r(d.z)], pitchDeg, mob: m && [r(m.x), r(m.y), r(m.z)], toi: window.GameMethods.castBuildRay?.()?.toi ?? null,
+    };
+  };
+  const out = { pre: null, post: null, target: null };
+  window.addEventListener('mousedown', (e) => { out.pre = read(); out.target = e.target?.tagName ?? null; }, { capture: true, once: true });
+  window.addEventListener('mousedown', () => { out.post = read(); }, { once: true });
+  window.__clickRead = out;
+  return read();
 }
 
 /** In the page: set the time of day and let the frames the day/night hooks run on go by. */
@@ -193,12 +225,23 @@ test.describe('talents', () => {
     // 3. A LEVEL PAYS ONE TALENT POINT, from a real kill's own XP.
     const z = await page.evaluate(stageZombie);
     expect(z.why, z.why).toBeUndefined();
+    const armed = await page.evaluate((id) => {
+      const m = window.__craftyTest.call('readMobs').find((e) => e.id === id);
+      const c = window.__threeCamera;
+      const d = new c.position.constructor();
+      c.getWorldDirection(d);
+      return { t: Math.round(performance.now()), mob: m && [m.x, m.y, m.z], cam: [c.position.x, c.position.y, c.position.z], dir: [d.x, d.y, d.z] };
+    }, z.id);
     await page.mouse.move(640, 400);
+    const moved = await page.evaluate(armClickRead, { id: z.id, apexM: SWING_APEX_OVER_BODY_M });
     await page.mouse.click(640, 400);
+    await page.waitForTimeout(500);
+    const clickRead = await page.evaluate(() => window.__clickRead);
+    console.log(`[talents-diag] armed ${JSON.stringify(armed)} moved ${JSON.stringify(moved)} click ${JSON.stringify(clickRead)}`);
     await expect.poll(() => page.evaluate((id) => {
       const m = window.__craftyTest.call('readMobs').find((e) => e.id === id);
       return !m || m.health <= 0;
-    }, z.id), { message: `the click did not kill the staged zombie (${JSON.stringify(await S())})`, timeout: 20000 }).toBe(true);
+    }, z.id), { message: `the click did not kill the staged zombie (${JSON.stringify(await S())}) armed ${JSON.stringify(armed)} moved ${JSON.stringify(moved)} click ${JSON.stringify(clickRead)}`, timeout: 20000 }).toBe(true);
     const held = await page.evaluate(() => window.__e2eWorldHold.release());
     await expect.poll(async () => (await S()).level, { message: `the kill's ${ZOMBIE_XP} XP did not reach level 2 (hold ${JSON.stringify(held)})`, timeout: 30000 }).toBe(2);
     await page.evaluate((capMs) => window.__e2eHoldWorld({ capMs }), test.info().timeout || 300000);

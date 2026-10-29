@@ -366,6 +366,7 @@ test.describe('combat stance', () => {
     };
     const caught = async (code, id, label, judgeChase, { strafe = false } = {}) => {
       const r = await page.evaluate(({ code, id, catchS, wallMs }) => window.__stanceSpec.hold(code, id, { catchS, wallMs }), { code, id, catchS: SETTLE_MS / 1000 + 0.25, wallMs: HOLD_WALL_MS });
+      console.log(`[stance-diag] ${label}: moved ${r.moved.toFixed(3)} gameS ${r.gameS} wallMs ${r.wallMs} n ${r.samples.length} ${JSON.stringify(r.samples.slice(0, 12).map((s) => [Math.round(s.t), +s.g.toFixed(3), +s.a.toFixed(3), s.gap == null ? null : +s.gap.toFixed(2), +s.px.toFixed(2), +s.pz.toFixed(2), s.st ? [+s.st.playerX.toFixed(2), +s.st.playerZ.toFixed(2), +s.st.w.toFixed(2), s.st.frame] : null, s.mt ? [+s.mt.appliedX.toFixed(2), +s.mt.appliedZ.toFixed(2), s.mt.frame] : null]))}`);
       expect(r.stalled, `SETUP: ${label}: the game advanced ${r.gameS} s in ${r.wallMs} ms of holding, short of the hold's 8 s`).toBe(false);
       expect(r.moved, `SETUP: ${label}: the player moved ${r.moved.toFixed(2)} m (blocked by terrain?)`).toBeGreaterThanOrEqual(0.5);
       const j = judgeTarget(r.samples);
