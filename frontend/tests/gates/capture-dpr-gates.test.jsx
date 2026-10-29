@@ -10,8 +10,7 @@ import { render } from '@testing-library/react';
 //
 // With the adaptive range, the title screen's frame measured 0.984% run-to-run against a < 0.15% bar, and
 // the diff was outlines tracing every edge of the diorama plus the borders of motes that had not moved.
-// GameScene already disabled AdaptiveDpr under isCaptureMode and pinned PROBE_DPR for the perf probe;
-// TitleDiorama never got the same treatment.
+// TitleDiorama therefore pins its canvas to one number in capture and keeps the range in normal play.
 //
 // WORTH KEEPING STRAIGHT: the frame stopped changing in BOTH runs, at a different state each time.
 // Stable is not deterministic, and this covers the half stability cannot.

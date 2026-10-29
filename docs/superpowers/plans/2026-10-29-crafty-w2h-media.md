@@ -46,8 +46,9 @@ sunny midday with the hands filling 40% of it; DECISIONS item 50.) `docs/media/s
 
 The times are the light script's (`frontend/src/render/colourScript.js` `LOOK_TIMES`). Day shots go before the night
 ones, because after dusk the night's mobs crowd the Hearth (lookbook.mjs); the fight goes first of those, since a pose
-clears the hostiles within 60 m of its camera. The coast and snow-terrace stills of the first table are dropped (item
-50: a flat band of haze over the top third in either light).
+clears the hostiles within 60 m of its camera. The golden-hour poses before it clear that radius too; that this is why
+the second table's shoots found no fight is the likely reading, not a measurement (item 54). The coast and snow-terrace
+stills of the first table are dropped (item 50: a flat band of haze over the top third in either light).
 
 ## Decisions this lane makes (each a DECISIONS item)
 

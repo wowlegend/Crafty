@@ -30,8 +30,11 @@ export const SOCIAL_PREVIEW = Object.freeze({ width: 1280, height: 640 });
 
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const SHA256_HEX = /^[0-9a-f]{64}$/;
-/** What a file's media.json entry says when the run built the bundle it shot, from a clean tree at one commit. */
-export const BUILT_CLEAN = 'built by media.mjs from a clean tree';
+/**
+ * What a file's media.json entry says when the run built the bundle it shot at one commit, from a tree clean outside the
+ * media outputs: a rejected run's own card in frontend/public is exempt from the tree check (see runProvenance).
+ */
+export const BUILT_CLEAN = 'built by media.mjs from a tree clean outside the media outputs';
 
 const PURPOSES = ['hero', 'og', 'social', 'still'];
 const RECIPE_KINDS = ['eye', 'pose', 'fight'];

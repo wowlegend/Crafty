@@ -39,13 +39,13 @@ and 59 are this lane's (W2-F talents 41-49, 58 another change's, the Forge from 
    world, no flat band of sky or haze over a third of the frame. Tolerated, since the committed frames carry them and
    none of them hides the subject: a secondary building cut at a side edge (the healer's cabin at the hero's right
    edge), a roof tip of a few pixels at the bottom edge (the watchtower's, in the hero, the og card and the social
-   preview), trees cut by any edge, and small fixed objects on the pad. The two small green tiles on the Hearth's pad
-   in the three poses are its two leaf planters: 0.6 m cubes in leaf green (`#3E7D32`) that `HomeAnchorRender` in
-   `frontend/src/world/Terrain.jsx` sets either side of the lodge, at (-2.5, 1.4) and (2.7, -1.4); projected through
-   the hero's pose (fov 75) each lands within about 12 px of a tile, and from above a cube that small reads as a flat
-   tile (registry `REVIEW:w2h:pad-slabs`). (d) the og card's left third, under the wordmark, carries no subject. A
-   frame that fails one is re-shot once with a new recipe or dropped from the table. It stands while it earns its
-   place.
+   preview), trees cut by any edge, the og card's subtitle crossing Bram's stall, and small fixed objects on the pad.
+   The two small green tiles on the Hearth's pad in the three poses are its two leaf planters: 0.6 m cubes in leaf
+   green (`#3E7D32`) that `HomeAnchorRender` in `frontend/src/world/Terrain.jsx` sets either side of the lodge, at
+   (-2.5, 1.4) and (2.7, -1.4); projected through the hero's pose (fov 75) each lands within about 12 px of a tile, and
+   from above a cube that small reads as a flat tile (registry `REVIEW:w2h:pad-slabs`). (d) the og card's left third,
+   under the wordmark, carries no subject. A frame that fails one is re-shot once with a new recipe or dropped from
+   the table. It stands while it earns its place.
 51. **ImageMagick encodes, at shoot time only.** The browser shoots each frame as a lossless PNG master at device scale
    2; `magick` downsamples it (Lanczos) and encodes each JPEG to its byte target with `jpeg:extent`, and the og card to
    an 8-bit palette PNG (a photograph as a truecolour PNG is about 1 MB against the card's 400 KB ceiling). No npm
@@ -76,10 +76,12 @@ and 59 are this lane's (W2-F talents 41-49, 58 another change's, the Forge from 
 55. **The lookbook's page helpers are shared** (`frontend/scripts/visual/_lookbookPage.mjs`): launching a Chromium that
    gives the game a hardware renderer, entering play and reading the seam, moved out of `lookbook.mjs` unchanged in body.
    The media are shot through the lookbook's own path, not a second one, at the same four times, which the light script
-   names (`frontend/src/render/colourScript.js` `LOOK_TIMES`) and both read. A golden hour moved before the sunset key,
-   or nearer the day key than the sunset key, fails a gate (`media-plan-gates`); the afternoon (0.30) sits between the
-   same two keys at the day key, so the bracket alone does not tell the two names apart. It stands while it earns its
-   place.
+   names (`frontend/src/render/colourScript.js` `LOOK_TIMES`) and both read. A golden hour outside the window the gate
+   pins fails (`media-plan-gates`): the setting branch between the sunset key and the day key, nearer the sunset key,
+   which is cycle fractions from about 0.4557 (halfway to the day key, s = 0.275) to 0.4841 (the sunset key at
+   s = 0.10 is f = 0.5 - asin(0.10)/2pi = 0.4841), both ends excluded; 0.48 sits inside it. The afternoon (0.30) sits
+   between the same two keys at the day key, so the bracket alone does not tell the two names apart. It stands while it
+   earns its place.
 56. **Any mob within 3 m of the camera refuses a frame, a passive animal and a named NPC too, and a mob feed that
    cannot be the world's refuses it as COULD NOT CHECK.** The first shoot passed all nine shots with an ox at arm's
    length in the blue-hour still, because the seam counted hostiles only. The verdict reads every live mob from the ECS
