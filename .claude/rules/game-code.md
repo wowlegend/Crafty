@@ -39,4 +39,7 @@ it earns its place (DECISIONS 2026-10-28 items 14 and 16), and changing one is r
   feel is Kevin's.
 - **Player lens.** A fresh player must be able to find a feature: the key is taught, the HUD is honest, a denied
   action gives feedback. Depth and coherence over feature count; the audience is broad, and accessibility never vetoes
-  depth.
+  depth. Audio is a first-class axis: a feature that should sound and does not is unfinished.
+- **Before calling a change done:** after any JSX or module-structure change, `npm run build` passes (no hook builds;
+  CI is the first full build otherwise); a large player-facing deletion is recorded in DECISIONS with the lived or e2e
+  proof that nothing still promised depends on what was cut.

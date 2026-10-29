@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isolatedGitEnv } from './_isolatedGit.js';
-import { run, CHECKS, CANONICAL, LOCK_DOCS, LOCK_LABELS } from '../../scripts/ci/doc-currency.mjs';
-import { derive as deriveGates, renderBlock as renderGates, END as GATES_END } from '../../scripts/ci/gate-table.mjs';
+import { run, CHECKS, CANONICAL, LOCK_DOCS, LOCK_LABELS, CLAUDE_MAX_BYTES } from '../../scripts/ci/doc-currency.mjs';
+import { derive as deriveGates, renderBlock as renderGates, END as GATES_END, TARGET as GATES_REL } from '../../scripts/ci/gate-table.mjs';
 import { measure, renderBlock as renderMeasured } from '../../scripts/ci/measure.mjs';
 import { SURFACES, renderBlock as renderReadOrder } from '../../scripts/ci/read-order.mjs';
 import { renderBlock as renderControls } from '../../scripts/ci/controls-table.mjs';
@@ -99,7 +99,7 @@ const steady = (s) => s.replace(/committed in \d+ days/g, 'committed in N days')
 
 describe('doc-currency run() — the seam every check is wired into', () => {
   it('names its checks in run order, and the list is pinned (run() iterates exactly this list, so a check dropped from it stops running; this pin is what turns that red)', () => {
-    expect(CHECKS).toEqual(['dangling', 'packages', 'status', 'gates', 'measured', 'read-order', 'controls', 'public-face', 'sections', 'locks']);
+    expect(CHECKS).toEqual(['dangling', 'packages', 'status', 'gates', 'measured', 'read-order', 'controls', 'public-face', 'sections', 'locks', 'headings', 'size']);
     expect(Object.keys(run().checked), 'run() visits the checks in CHECKS order').toEqual([...CHECKS]);
   });
 
@@ -126,6 +126,59 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     expect(r.errors).toEqual([]);
   });
 
+  it('dangling: a rule file is scanned, and a `.claude/` path in CLAUDE.md is a citation', () => {
+    const root = fixture({
+      '.claude/rules/probes.md': 'helper: `scripts/visual/gone.mjs`\n',
+      'CLAUDE.md': 'rules: `.claude/rules/missing.md`\n',
+    });
+    const r = run({ root, only: ['dangling'] });
+    expect(r.checked).toEqual({ dangling: 2 });
+    expect(r.errors).toEqual([
+      'DANGLING path in CLAUDE.md: ".claude/rules/missing.md" does not exist',
+      'DANGLING path in .claude/rules/probes.md: "scripts/visual/gone.mjs" does not exist',
+    ]);
+  });
+
+  it('dangling: the rule file and CLAUDE.md citing paths that exist pass (one token each from the case above)', () => {
+    const root = fixture({
+      '.claude/rules/probes.md': 'helper: `scripts/visual/here.mjs`\n',
+      'frontend/scripts/visual/here.mjs': 'x\n',
+      'CLAUDE.md': 'rules: `.claude/rules/probes.md`\n',
+    });
+    const r = run({ root, only: ['dangling'] });
+    expect(r.checked).toEqual({ dangling: 2 });
+    expect(r.errors).toEqual([]);
+  });
+
+  it('headings: a `CLAUDE.md` "Heading" citation in a rule file or canonical doc must begin a ## heading of CLAUDE.md', () => {
+    const md = '# x\n\n## Landing: how a change reaches main\n\nMethod: a body line, not a heading.\n\n## SSD-light lanes (Kevin)\n';
+    const red = fixture({
+      'CLAUDE.md': md,
+      '.claude/rules/probes.md': 'see `CLAUDE.md` "Method"\n',
+      'memory/ACTIVE_PLAN.md': 'merged as `CLAUDE.md` "Landing" states\n',
+    });
+    const r = run({ root: red, only: ['headings'] });
+    expect(r.checked).toEqual({ headings: 2 });
+    expect(r.errors).toEqual(['DANGLING heading citation in .claude/rules/probes.md: CLAUDE.md has no "## Method" heading']);
+    const green = fixture({
+      'CLAUDE.md': md,
+      '.claude/rules/probes.md': 'see `CLAUDE.md` "SSD-light lanes"\n',
+      'memory/ACTIVE_PLAN.md': 'merged as `CLAUDE.md` "Landing" states\n',
+    });
+    expect(run({ root: green, only: ['headings'] })).toMatchObject({ checked: { headings: 2 }, errors: [] });
+  });
+
+  it('size: CLAUDE.md one byte over its ceiling errors, and at the ceiling passes', () => {
+    const over = run({ root: fixture({ 'CLAUDE.md': 'x'.repeat(CLAUDE_MAX_BYTES + 1) }), only: ['size'] });
+    expect(over.checked).toEqual({ size: 1 });
+    expect(over.errors).toEqual([
+      'CLAUDE.md is 12,001 bytes, over its 12,000-byte ceiling (DECISIONS 2026-10-28, W2-J item 1): move detail into the .claude/rules file that loads at the moment of use',
+    ]);
+    const at = run({ root: fixture({ 'CLAUDE.md': 'x'.repeat(CLAUDE_MAX_BYTES) }), only: ['size'] });
+    expect(at).toMatchObject({ checked: { size: 1 }, errors: [] });
+    expect(CLAUDE_MAX_BYTES).toBe(12_000);
+  });
+
   it('sections: a citation of a section the cited doc does not have errors, with the full message', () => {
     const root = fixture({ 'memory/STATUS.md': '## 2. THE HARVESTED RECORD\n', 'memory/ARCHITECTURE.md': 'see STATUS §9 for it\n' });
     const r = run({ root, only: ['sections'] });
@@ -143,6 +196,16 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     const r = run({ root, only: ['sections'] });
     expect(r.checked).toEqual({ sections: 1 });
     expect(r.errors).toEqual([]);
+  });
+
+  it('sections: a rule file is scanned for § citations too', () => {
+    const red = fixture({ 'memory/STATUS.md': '## 2. THE HARVESTED RECORD\n', '.claude/rules/probes.md': 'see STATUS §9 for it\n' });
+    const r = run({ root: red, only: ['sections'] });
+    expect(r.checked).toEqual({ sections: 1 });
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0]).toContain('.claude/rules/probes.md: status §9');
+    const green = fixture({ 'memory/STATUS.md': '## 2. THE HARVESTED RECORD\n', '.claude/rules/probes.md': 'see STATUS §2 for it\n' });
+    expect(run({ root: green, only: ['sections'] })).toMatchObject({ checked: { sections: 1 }, errors: [] });
   });
 
   // The five checks below each get a red case that is an ERROR only when the check reads the FIXTURE root: the real
@@ -192,21 +255,21 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     expect(r.warnings).toEqual([AGE_UNKNOWN]);
   });
 
-  it('gates: a stale GATES block in the fixture CLAUDE.md errors', () => {
+  it('gates: a stale GATES block in the fixture gates rule file errors', () => {
     const { gates } = deriveGates();
     const stale = renderGates(gates).replace(GATES_END, `| stale | row |\n${GATES_END}`);
-    const root = fixture({ 'CLAUDE.md': `# claude\n\n${stale}\n` });
+    const root = fixture({ [GATES_REL]: `# gates\n\n${stale}\n` });
     const r = run({ root, only: ['gates'] });
     expect(r.checked).toEqual({ gates: gates.length });
     expect(r.errors).toEqual([
-      `CLAUDE.md: GATES block is stale (hook defines ${gates.length} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`,
+      `${GATES_REL}: GATES block is stale (hook defines ${gates.length} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`,
     ]);
     expect(r.warnings).toEqual([]);
   });
 
   it('gates: the current GATES block passes (one row from the case above)', () => {
     const { gates } = deriveGates();
-    const root = fixture({ 'CLAUDE.md': `# claude\n\n${renderGates(gates)}\n` });
+    const root = fixture({ [GATES_REL]: `# gates\n\n${renderGates(gates)}\n` });
     const r = run({ root, only: ['gates'] });
     expect(r.checked).toEqual({ gates: gates.length });
     expect(r.errors).toEqual([]);
@@ -402,7 +465,10 @@ describe('doc-currency CLI — the call site the pipeline runs', () => {
     const warned = p.stderr.split('\n').filter((l) => l.startsWith('⚠ '));
     expect(warned.map(steady)).toEqual(r.warnings.map((w) => steady(`⚠ ${w}`)));
     if (r.errors.length === 0) {
-      expect(p.stdout.trim()).toMatch(new RegExp(`^✓ doc-currency PASSED \\(${CANONICAL.length} canonical docs checked; `));
+      expect(p.stdout.trim()).toMatch(/^✓ doc-currency PASSED \(CLAUDE\.md [\d,]+ of 12,000 bytes; /);
+      expect(p.stdout, 'the pointer checks print their denominators').toContain(
+        `${r.checked.dangling} path and ${r.checked.headings} CLAUDE.md heading citations in ${CANONICAL.length} canonical docs`,
+      );
       expect(p.stdout, 'the lock check prints both denominators').toContain(
         `lock labels: 0 (${LOCK_LABELS.length} phrasings, ${r.checked.locks} docs)`,
       );

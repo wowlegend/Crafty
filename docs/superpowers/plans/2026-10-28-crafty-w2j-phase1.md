@@ -15,59 +15,80 @@ the records tag (row 32), the gate roster (35), Stryker (36), cli-guard (37), Pl
 
 **Goal.** A cold agent that has only the repo orients correctly and fast, and keeps every standing directive.
 
-**Metric.** The cold-takeover eval (below): a fresh `claude -p --model sonnet` run from a throwaway copy of the repo,
-with no user-level instructions, MCP servers or memory, answers 10 orientation questions. PASS = 10 of 10 correct
-within 15 tool calls, scored by fixed rules in the script and by `npm run orient`'s own registry count.
+**Metric (what the eval measures, narrowed after the PR #42 review).** The cold-takeover eval (below): a fresh
+`claude -p --model sonnet` run from a throwaway copy of the repo, with no user-level instructions, MCP servers or
+auto-memory, must (a) orient, by running `npm run orient` or reading the cursor, and (b) answer 14 questions without
+inverting any rule, within 15 tool calls. Two questions are "where is X" (q1 layout; q6 open work, with the live count
+`npm run orient` prints); twelve are directives. Of those, two live only in `.claude/rules/` files (q12 capture guards,
+in `game-code.md`; q13 probe ports and denominators, in `gates-and-probes.md`) and two are rules the first rewrite
+dropped and the review found (q11 recording non-routine decisions; q14 what to check before an edit and a commit).
+**What it does not measure:** whether an agent then acts on a directive; any directive no question names; more than
+one sample of a stochastic agent; understanding beyond words and their local polarity.
 
 **Anti-attack (GF-L2).**
-- A short CLAUDE.md that drops a load-bearing rule passes a speed metric while making agents worse. So 9 of the 10
-  questions are directives and bright lines (landing, reviewers, bright lines, locks, open work, SSD-light, browser
-  hygiene, Game-Loop Isolation, no emoji), and only one is "where is X".
-- Goodhart on the scorer: an answer that lists every keyword passes a keyword scorer. So each rule also carries
-  forbidden patterns (an answer that says reviewers run at max, or that something is locked, or that open work lives in
-  STATUS, fails), and the open-work answer must state the live open-row count, which the scorer computes from the copy
-  with the same function `npm run orient` prints.
-- Contamination: the answer key lives in the eval script and in this plan. The copy deletes both before the agent
-  starts, has no `.git`, and the run audits every path the agent touched: a read outside the copy voids the run.
-- **PASS-but-wrong control (GF-L3).** The same eval on a copy with one planted stale line in `CLAUDE.md` (reviewers at
-  effort max, the pre-2026-10-27 wording) must FAIL. An eval that passes it measures speed, not truth.
-- **FAIL-but-right sample.** An answer that is right in other words ("reviewers: xhigh, max is never used") must pass;
-  the scorer's unit test carries such paraphrases, and the forbidden patterns are anchored so "never max" is not "max".
+- A short CLAUDE.md that drops a load-bearing rule passes a speed metric while making agents worse. So twelve of the
+  fourteen questions are directives, four of them on rules a rewrite could lose without noticing (two in rule files,
+  two the first rewrite did lose), and the directive table below names a home, or a reason to drop, for every rule
+  the retired docs held.
+- Goodhart on the scorer: an answer that lists every keyword passes a keyword scorer, and the first scorer passed
+  inverted answers on 9 of 10 questions (both reviews of PR #42). So every question carries forbidden patterns; each
+  required and forbidden match is read for polarity scoped to the matched phrase (a negation just before it in the
+  same clause, inside it, or a "... is not / is forbidden" just after it), never for the whole clause; and the
+  scorer's test holds, for every question, an inverted answer that must fail and right answers in other words that
+  must pass, including verbatim every inverted answer the reviews showed passing.
+- Speed without orientation: the first after-runs answered from the auto-loaded file in two grep calls and never ran
+  `npm run orient`. PASS now requires a successful orient run or a read of the cursor.
+- Contamination: the answer key lives in the eval script, its test and this plan. The copy is git's own list of the
+  tree (tracked, or untracked and not ignored), so it carries no `.git`, no nested `.claude/worktrees/` (each of which
+  holds a copy of the key) and no ignored file; the key files are deleted from it before the agent starts; every
+  absolute, `~` or `$HOME` path and `..` escape in a tool call is audited, and a successful read outside the copy
+  voids the run.
+- **PASS-but-wrong control (GF-L3).** The same eval on a copy with stale lines planted on four questions (q3 reviewers
+  at effort max, q7 a git clone and local heavy suites, q11 decisions need no record, all in `CLAUDE.md`; q12 add
+  capture guards that return early, in `.claude/rules/game-code.md`) must FAIL each planted question.
+- **FAIL-but-right sample.** Right answers in other words pass; the scorer's test carries them.
 
-**Strategy (GF-L4), derived from the metric.** Directives the eval asks about must be findable in the auto-loaded
-`CLAUDE.md` in one place each; state that a tool can compute (HEAD, CI, PRs, worktrees, the cursor, registry counts) is
-printed by `npm run orient` instead of written as prose; long rationale moves to the path-scoped `.claude/rules/` file
-that fires at the moment of use, or stays in the script header it explains; the eval runs before the rewrite (on main's
-37,820-byte `CLAUDE.md`), after it, and on the planted control.
+**Strategy (GF-L4), derived from the metric.** Directives the eval asks about must be findable in one place each: in
+the auto-loaded `CLAUDE.md`, or in the rule file that loads at the moment of use, which `CLAUDE.md` names; state that a
+tool can compute (HEAD, GitHub's main, CI, PRs, worktrees, the cursor, registry counts) is printed by `npm run orient`
+instead of written as prose; detail moves to the path-scoped rule file, and `CLAUDE.md` stays under 12,000 bytes,
+enforced by doc-currency.
 
 ## The eval
 
-`frontend/scripts/dev/cold-takeover-eval.mjs`; scoring and parsing are pure and tested in
-`frontend/tests/scripts/cold-takeover-eval.test.js`.
+`frontend/scripts/dev/cold-takeover-eval.mjs`; scoring, the copy list, the plant and the transcript parsing are pure and
+tested in `frontend/tests/scripts/cold-takeover-eval.test.js`.
 
-- **Copy.** `cp -c -R` of the tree (APFS clonefile, no data written), `.git` left out, `frontend/node_modules` a symlink
-  to the main checkout's; the eval script, its test and this plan deleted from the copy. `--plant` writes the stale
-  line into the copy's `CLAUDE.md` after the copy, never into the tree.
+- **Copy.** The files `git ls-files --cached --others --exclude-standard` lists, each copied as an APFS clonefile (no
+  data written), minus `.git`, `.claude/worktrees/`, `frontend/node_modules/` and the answer key;
+  `frontend/node_modules` is a symlink to the checkout's. `--rev=<sha>` builds the copy from `git archive` instead.
+  `--plant[=q3,q7,q11,q12]` writes the stale lines into the copy after it is built, never into the tree.
 - **Run.** `claude -p --model sonnet --setting-sources project,local --strict-mcp-config --tools Read,Grep,Glob,Bash
   --permission-mode dontAsk --output-format stream-json --verbose --no-session-persistence`, with an allow-list of
-  read-only Bash (`npm run orient`, `ls`, `cat`, `head`, `wc`, `grep`, `find`) and cwd = the copy. The project
-  `CLAUDE.md` loads as it would for any session; nothing from `~/.claude` does.
+  read-only Bash (`npm run orient`, `ls`, `cat`, `head`, `tail`, `wc`, `grep`, `find`), cwd = the copy, and
+  `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` (read by Claude Code 2.1.312) so the run writes no memory. It still needs the
+  real HOME for its login, so Claude Code's own per-project state is written under it.
 - **Count.** Every `tool_use` block in the stream is a tool call; paths in their inputs are audited against the copy.
-- **Score.** The agent ends with one JSON object `{ "q1": ..., "q10": ... }`. Each answer passes when it matches every
-  required pattern and no forbidden one.
+- **Score.** The agent ends with one JSON object `{ "q1": ..., "q14": ... }`. An answer passes when every required
+  pattern matches where it is not negated (a pattern that is itself the rule's negative statement, such as "never
+  max", counts anywhere) and no forbidden pattern matches where it is not negated.
 
-| # | Asks | Required (all) | Forbidden |
+| # | Asks | Required | Forbidden (where not negated) |
 |---|---|---|---|
-| 1 | where source and tests live, where npm runs | `frontend/src`, `frontend/tests`, npm from `frontend` | |
-| 2 | how a change lands on main | PR, `ci ok`, exact sha, branch protection, merge main in / ff | squash, cherry-pick as the way |
+| 1 | where source and tests live, where npm runs | `frontend/src`, `frontend/tests`, npm from `frontend` | npm or the tests from the repo root |
+| 2 | how a change lands on main | PR, `ci ok`, exact sha, branch protection, merge main in / ff | squash, cherry-pick, a direct commit or push to main, the merge button or a rebase merge |
 | 3 | reviewer models and effort | xhigh, never max, Sonnet, Haiku | effort max as the setting |
-| 4 | bright lines and commit rules | no money, no force-push or history rewrite, no AI footer, no amend | |
-| 5 | what is locked | nothing, items 14/16 | a named lock |
-| 6 | where open work lives, how many open rows | `memory/registry.jsonl`, the live open count | STATUS as the home |
-| 7 | SSD-light rules | `cp -c`, node_modules symlinked, no clone + `npm ci`, CI for heavy suites | |
-| 8 | browser and test-process hygiene | kill what you launch, `kill-test-procs.sh`, never claim "all clean" | |
-| 9 | Game-Loop Isolation | `useFrame`/Rapier, no reactive state, refs/`getState()` | |
-| 10 | emoji | none in `frontend/src`, the gate that enforces it | |
+| 4 | bright lines and commit rules | money, force-push, history rewrite, footer, amend (mentioned) | spending money, a force-push, a history rewrite, adding an AI footer, amending |
+| 5 | what is locked | nothing is locked, items 14/16 | locked or frozen, change waiting on Kevin |
+| 6 | where open work lives, how many open rows | `memory/registry.jsonl`, the live open count | STATUS as the home, the registry as retired |
+| 7 | SSD-light rules | `cp -c`, node_modules symlinked, CI for heavy suites | a git clone, `npm ci`, heavy suites run locally |
+| 8 | browser and test-process hygiene | kill what you launch, `kill-test-procs.sh`, cannot see / never "all clean" | an "all clean" claim, leaving it running, "close the tab" |
+| 9 | Game-Loop Isolation | the frame loop, reactive state (mentioned), refs / `getState()` | reactive state bound to the loop |
+| 10 | emoji | no emoji, `frontend/src`, `static-gates` | emoji allowed |
+| 11 | recording a non-routine decision (restored rule) | DECISIONS, lived or e2e proof | no record needed, ask Kevin first |
+| 12 | capture guards (`.claude/rules/game-code.md`) | no new guard, reset to a declared value | an early return, a new guard added |
+| 13 | probe ports and denominators (`.claude/rules/gates-and-probes.md`) | `probePort` / `_serve.mjs`, the denominator | a chosen or literal port, PASS without a count |
+| 14 | before an edit and a commit (rehomed rule) | read the target first, debug output or secrets, a build | `--no-verify` or `git add -A`, editing without reading |
 
 ## Task script
 
@@ -152,4 +173,15 @@ with orient's own registry count. The before-run copy is `git archive 2fef2f32`,
 | Recorded decisions (F=cast/T=melee, bloom 0.65, audience broad, ...) | charter §0-C, kernel | DECISIONS (unchanged); CLAUDE.md says DECISIONS settles |
 | Vision (SOTA in every aspect, taste the highest bar, broad audience, S4 legal lines) | SOTA-INITIATIVE §1 (root) | `docs/superpowers/SOTA-INITIATIVE.md` §1 |
 | The archived-skills OPEN note (cleanup ratchet, dependency upgrades) | CLAUDE.md | registry QUEUE:Q42, OPEN_ITEMS:OI-97 (STALE-13 closed: Dependabot exists) |
-| Dropped on purpose: the per-task skill list (brainstorming, pre-commit-kz, session-archivist-kz), Read-Before-Write | CLAUDE.md | nowhere in the repo: the harness lists skills every turn and the estate rules carry both; neither was a Kevin directive for Crafty |
+| **Restored after the PR #42 review** (static finding 1): record every non-routine decision in DECISIONS (Kevin, 2026-10-27); a hard delete of a referenced file, a new dependency, an external send, a reversal; a large player-facing deletion with its lived or e2e proof; archive over delete for docs | DECISIONS 2026-10-27 [KEVIN]; charter §0-C and §4; kernel | CLAUDE.md, Standing principle; `game-code.md` (player-facing deletion); DECISIONS W2-J items 3 and 6 |
+| Builders that share files run one after another | CLAUDE.md, Method ("sequential where files are shared") | CLAUDE.md, Layout |
+| Whole code, never `// ... rest of code`; verify behaviour, not implementation | CLAUDE.md, Execution | CLAUDE.md, Invariants (Edits; A green gate is not a lived result) |
+| Read the target lines before an edit; before a commit, the staged diff for debug output and secrets, and a build after a JSX or structure change | CLAUDE.md, Execution (Read-Before-Write); Core Agent Skills (`pre-commit-kz`); kernel (BUILD-FIRST) | CLAUDE.md, Invariants (Edits); `game-code.md` (the build). No auto-loaded estate surface carries them: 0 hits in `~/.claude/CLAUDE.md` and AB `rules-global/` (static finding 7) |
+| Extend the gate first, see it red, then build | charter §3 | CLAUDE.md, Building and judging; `gates-and-probes.md` item 0 |
+| Check the compositor (rAF count, about 3 s) before planning browser work | kernel | `gates-and-probes.md`, Where things go (no helper does it; said so) |
+| Prefer a fresh session to a deeply compacted one | charter §0-B item 5 | CLAUDE.md, Compaction |
+| Session close: STATUS and CHANGELOG, list orphan preview tabs | charter §6.5 steps 0 and 2 | CLAUDE.md, Session close |
+| Session close: mark-truth, the native-memory snapshot, re-arm the loop | charter §6.5 steps 4 and 5 | Dropped: mark-truth and the memory snapshot are estate tools outside this repo, carried for the sessions that load it by the estate `CLAUDE.md` (its CR-L1 rule names mark-truth); a cold agent with only the repo has neither; the loop is retired |
+| Audio is a first-class axis | charter §4 | `game-code.md`, Player lens |
+| The gate table (every gate and where it runs) | CLAUDE.md, Gates (generated) | `gates-and-probes.md`, generated by `gate-table.mjs`; CLAUDE.md keeps the tiers in three lines |
+| Dropped on purpose: the per-task skill list (brainstorming, session-archivist-kz) | CLAUDE.md | Nowhere in the repo: they name estate skills a cold agent with only the repo does not have, the harness lists the available skills every turn, and neither was a Kevin directive for Crafty |

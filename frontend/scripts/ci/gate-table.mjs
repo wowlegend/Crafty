@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * GATE TABLE — generate the "what authorizes a push" table in CLAUDE.md from the HOOK ITSELF.
+ * GATE TABLE — generate the table of every gate and where it runs from the HOOK ITSELF, into TARGET (the gates rule
+ * file that loads when a test or script is edited; CLAUDE.md keeps a three-line summary of the tiers).
  *
  * WHY THIS EXISTS. That paragraph has now undercounted its own gates THREE TIMES:
  *   "three gates"  ->  "Six"  ->  "NINE"  ->  live TEN
@@ -20,7 +21,7 @@
  * below; a gate with no entry renders a TODO marker, so a new gate is visible rather than silent.
  *
  *   node scripts/ci/gate-table.mjs           print the derived table (check mode)
- *   node scripts/ci/gate-table.mjs --write   regenerate the block inside CLAUDE.md
+ *   node scripts/ci/gate-table.mjs --write   regenerate the block inside TARGET
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
@@ -40,7 +41,9 @@ const HOOK = join(ROOT, 'ci/pipeline.sh');
 // was hand-kept). Parsing both surfaces is the fix; asserting the count here would just be a fourth guess.
 const PUSH_HOOK = join(ROOT, '.githooks/pre-push');
 const CI = join(ROOT, '.github/workflows/ci.yml');
-const CLAUDE_MD = join(ROOT, 'CLAUDE.md');
+/** Where the block lives, relative to the repo root; doc-currency reads the same constant. */
+export const TARGET = '.claude/rules/gates-and-probes.md';
+const TARGET_ABS = join(ROOT, TARGET);
 
 export const BEGIN = '<!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->';
 export const END = '<!-- END GATES -->';
@@ -55,7 +58,7 @@ export const DESCRIPTIONS = {
   'prod-smoke': 'the production build failing to boot, render or keep a GL context',
   'opsec-scan': 'a home path, credential shape or agent attribution reaching this public repo',
   'mutation-proof-trailer': 'a commit that adds a gate or changes its assertions with no `Mutation-Proof:` trailer',
-  'doc-currency': 'a dangling path or § citation in a canonical doc, a stale generated block, a lock label',
+  'doc-currency': 'a dangling path, § or `CLAUDE.md` heading citation in a canonical doc or rule file, a stale generated block, a lock label, `CLAUDE.md` over 12,000 bytes',
   'queue-ledger': 'a queue finding with no `▣✓/▢/⊘` marker, or a dismissal with no proof command',
   'registry-append-only': 'a `memory/registry.jsonl` row deleted instead of closed',
   'artifact-currency': 'an unusable operator-page source, a falsified Queued pill, a wrong as-of stamp',
@@ -170,7 +173,7 @@ export function renderBlock(gates, _ciText) {
   const rows = gates.map((g) => {
     const desc = DESCRIPTIONS[g.name] || '**TODO — describe what this stops** (a new gate landed with no description)';
     const c = callersFor(g);
-    // A gate whose command is the default spelling prints its name alone, which keeps the block small in CLAUDE.md.
+    // A gate whose command is the default spelling prints its name alone, which keeps the block small.
     const cell = g.cmd === `node scripts/ci/${g.name}.mjs` ? g.name : `${g.name}: \`${g.cmd}\``;
     return `| ${cell} | ${tick(c.commit)} | ${tick(c.push)} | ${tick(c.ci)} | ${desc} |`;
   });
@@ -212,15 +215,15 @@ function main() {
   const { gates, ciText } = derive();
   const block = renderBlock(gates, ciText);
   if (process.argv.includes('--write')) {
-    const md = readFileSync(CLAUDE_MD, 'utf8');
+    const md = readFileSync(TARGET_ABS, 'utf8');
     const i = md.indexOf(BEGIN);
     const j = md.indexOf(END);
     if (i < 0 || j < 0) {
-      console.error(`gate-table: no ${BEGIN} / ${END} markers in CLAUDE.md — add them around the gate table first`);
+      console.error(`gate-table: no ${BEGIN} / ${END} markers in ${TARGET} — add them around the gate table first`);
       process.exit(1);
     }
-    writeFileSync(CLAUDE_MD, md.slice(0, i) + block + md.slice(j + END.length));
-    console.log(`gate-table: wrote ${gates.length} gates into CLAUDE.md`);
+    writeFileSync(TARGET_ABS, md.slice(0, i) + block + md.slice(j + END.length));
+    console.log(`gate-table: wrote ${gates.length} gates into ${TARGET}`);
     return;
   }
   console.log(block);

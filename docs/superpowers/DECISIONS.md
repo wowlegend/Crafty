@@ -11,10 +11,11 @@
 > entry it answers is marked `→ DECIDED (see DECISIONS.md)`. A decision is never silently reversed — a
 > reversal is a NEW dated entry that names the one it supersedes.
 >
-> **Authority.** Kevin's standing grant (2026-06-10, expanded 2026-07-20) lets the loop decide anything
-> inside the master plan, self-gated by the charter. Entries marked **[LOOP]** were decided under that
-> grant; **[KEVIN]** entries were decided by the owner directly. Anything irreversible or outward-facing
-> stays Kevin's regardless.
+> **Authority.** Kevin's standing grant (2026-06-10, expanded 2026-07-20, and his 2026-10-27 mandate to the command
+> session, below) lets the session decide anything, within the bright lines and rules `CLAUDE.md` states (the loop
+> charter that held them until 2026-10-28 is retired). Entries marked **[LOOP]** were decided under that grant;
+> **[KEVIN]** entries were decided by the owner directly. What `CLAUDE.md` reserves for Kevin (money, account
+> sign-ins, an external send beyond the repo's own public face) stays his.
 
 ---
 
@@ -23,20 +24,39 @@
 **Decided by the command session** (SOTA reset rows 29, 38 and 57, and the orient half of 31; plan
 `docs/superpowers/plans/2026-10-28-crafty-w2j-phase1.md`). Each stands while it earns its place.
 
-1. **`CLAUDE.md` is 12 KB or less** and states each standing directive once and each invariant with its enforcer.
-   Long rationale lives in the path-scoped `.claude/rules/` file that loads when its code is touched (new:
-   `game-code.md`) or in the header of the script it explains. Numbers in it are generated or absent.
+1. **`CLAUDE.md` is 12,000 bytes or less** (enforced: doc-currency's `size` check) and states each standing directive,
+   or names the `.claude/rules/` file that carries it at the moment of use, and each invariant with its enforcer.
+   Detail and long rationale live in the path-scoped rule file that loads when its code is touched (new:
+   `.claude/rules/game-code.md`; the generated table of every gate moved into `.claude/rules/gates-and-probes.md`, which
+   loads when a test or script is edited, and `CLAUDE.md` keeps the tiers in three lines) or in the header of the
+   script it explains. Numbers in it are generated or absent.
 2. **`npm run orient` is the first read** (`frontend/scripts/dev/orient.mjs`): HEAD, CI on main and HEAD, the live
    Production sha, open PRs, unmerged worktrees, the cursor and the registry's counts, read live. The generated read
    order starts with it and no longer names the charter, the drained holistic review or SOTA-INITIATIVE.
 3. **LOOP-CHARTER and LOOP-KERNEL-PROMPT retire**, and `SOTA-KICKOFF-PROMPT.md` is deleted; `SOTA-INITIATIVE.md` moves
-   to `docs/superpowers/`. Their rules that still bind moved first; git keeps the files.
+   to `docs/superpowers/`. Their rules that still bind moved first (the plan's directive table names each rule's new
+   home, or why it was dropped). All three stay reachable at `2fef2f32` on main (`git show 2fef2f32:<old path>`), which
+   is the archive the restored archive-over-delete rule asks for.
 4. **`memory/ACTIVE_PLAN.md` is a cursor** of 60 lines or fewer: the live task table and the next step. Its history is
    git's; its open items are registry rows, two of them added by hand from the old cursors.
-5. **The acceptance test is the cold-takeover eval** (`frontend/scripts/dev/cold-takeover-eval.mjs`): Sonnet 5.5, only
-   the repo, ten questions (nine of them directives), 10/10 within 15 tool calls. Main's 37,820-byte file scored 9/10
-   (the landing route was in no instruction file); the rewrite scored 10/10 in 2 tool calls on two runs; a copy with
-   the reviewer-effort line planted stale (effort max) fails. Run it after any rewrite of the instruction surface.
+5. **The cold-takeover eval checks the instruction surface after a rewrite** (`frontend/scripts/dev/cold-takeover-eval.mjs`).
+   What it measures: whether Sonnet 5.5, with only a copy of the repo, orients (runs `npm run orient` or reads the
+   cursor) and states 14 directives without inverting any, four of them from the `.claude/rules/` files or the restored
+   rules, within 15 tool calls, scored by fixed patterns that read each answer's local polarity. What it does not
+   measure: whether an agent then acts on a directive, any directive no question names, or more than one sample of a
+   stochastic agent. Results and the planted controls (a stale line on four questions, each of which must fail) are
+   in the lane plan. The first version's results (10/10 after, 9/10 before) were scored by a scorer that passed
+   inverted answers on 9 of 10 questions; they are superseded, not evidence.
+6. **Kevin's 2026-10-27 mandate to record every non-routine decision is in `CLAUDE.md` again**, with the charter's
+   rules that went with it: a hard delete of a referenced file, a new dependency, an external send he approved and a
+   reversal are recorded; a large player-facing deletion also records its lived or e2e proof (also in
+   `.claude/rules/game-code.md`); a retired doc stays reachable by a named commit or tag. The rewrite had dropped them,
+   and the review of PR #42 found it.
+7. **`npm run orient` judges main as GitHub has it** (`git ls-remote`), names any drift of the local `origin/main` and
+   `main` from it and of the live Production sha from main, and prints the cursor's task table and Next paragraph.
+8. **doc-currency also reads the rule files** (`.claude/rules/*.md`) for dangling paths and § citations, counts a
+   `.claude/`, `.github/`, `.githooks/` or `ci/` path as a citation, and checks every citation of a CLAUDE.md heading
+   (the file name in backticks, then the heading's opening words in double quotes) against CLAUDE.md's `## ` headings.
 
 **Door:** two-way; every removed file is in git history.
 
@@ -282,8 +302,9 @@ above 115 on 14 cores ruled out local runs. The stance's own e2e has local verdi
 **What shipped.** `CLAUDE.md` is now a real file at the repo root, with the former AGENTS.md text unchanged apart from its header, its layout block and
 the generated blocks (the file's earlier history is under the old path; git cannot pair it with a path that already existed as a link). The
 directory is removed; it held nothing else tracked (its two workflow notes were already deleted in `974f9a54`). The three generators (`measure.mjs`,
-`gate-table.mjs`, `read-order.mjs`) write into `CLAUDE.md`; `doc-currency` lists it as canonical; `ci/write-receipt.sh` no longer names the
-removed directory as an input root; the opsec ledger entry moved with the file.
+`gate-table.mjs`, `read-order.mjs`) write into `CLAUDE.md`; `doc-currency` lists it as canonical;
+`ci/write-receipt.sh` (itself removed later by item 24) no longer names the removed directory as an input root; the
+opsec ledger entry moved with the file.
 
 **Door.** Reversible: a link can be added back in one commit. **What it costs.** A harness that read the old directory (Antigravity, Gemini) no
 longer finds the instructions there; none is configured to in this repo.
