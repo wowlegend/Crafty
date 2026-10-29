@@ -19,6 +19,23 @@
 
 ---
 
+## 2026-10-29 — [LOOP] Vercel deploys main only
+
+**Decided by the command session under the standing grant** (DECISIONS 2026-10-28 item 14). Item 58; the W2-H media
+lane holds 50-57 and the Forge lane 60 on.
+
+58. **Only main deploys; previews are off** (`frontend/vercel.json` `git.deploymentEnabled`: `"**": false`,
+   `"main": true`). Supersedes the dependabot-only `ignoreCommand` of 2026-07. Why: the Hobby plan allows 100
+   deployments per rolling 24 h, and the 24 h to 10:10Z held 136 (105 Preview, 31 Production, read from the GitHub
+   deployments API), so PR #46's preview was refused at 09:30Z ("Deployment rate limited — retry in 24 hours") and the
+   next production deploy of main would be refused the same way. No check reads a preview: CI runs the suites and
+   prod-smoke on the exact sha, and `ci ok` is the only required check. An `ignoreCommand` cannot fix it, because a
+   build it cancels still counts toward the quota (Vercel's Ignored Build Step docs); `git.deploymentEnabled` creates
+   no deployment, and a branch that matches several keys deploys when any of them is true (Vercel's git-configuration
+   docs), so main deploys and every other branch does not. `tests/scripts/supply-chain.test.js` evaluates that rule
+   over main, lane, land and dependabot branches. Not proven until observed: a lane push creating no Vercel deployment,
+   and the first main push after the quota window drains deploying (registry `DECISIONS:2026-10-29:58`).
+
 ## 2026-10-29 — [LOOP] W2-F step 4: talents that change verbs, loot relics, and damage from level
 
 **Decided by the W2-F talents lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H item 6 by
