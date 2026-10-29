@@ -65,8 +65,8 @@ export const GameSystemsProvider = ({ children }) => {
     // useInputManager and to <HUD>, and neither names either key. They are residue of a documented
     // replacement: EnhancedMagicSystem's old window.getSpellDamageMultiplier global gave way to
     // intellect-based solveSpellDamage scaling, and progression.js already carries the (lv-1)*10 health
-    // term verbatim. Level still scales spell damage, through the +5 attribute points per level that feed
-    // intellect. eslint and knip cannot see this class -- the values ARE "used", by being placed in an
+    // term verbatim. Level still scales spell damage, through the intellect each level adds (game/progression.js
+    // levelAttributes). eslint and knip cannot see this class -- the values ARE "used", by being placed in an
     // object literal -- which is why it took reading every line to find.
     //
     // attributes / equipment / getEffectiveAttributes DELETED 2026-08-12, same class and one layer worse.

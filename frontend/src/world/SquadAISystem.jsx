@@ -30,7 +30,7 @@ export function SquadAISystem() {
     if (alliesQuery.entities.length === 0) return;
     const store = useGameStore.getState();
     // R1.4: the cap is an invariant held every tick, so ANY way the cap falls (a respec refunding Pack
-    // Warden, a load, a relic unequipped) shrinks the squad — not only the snare gate that stops new binds.
+    // Warden or Warden Bulwark, a load) shrinks the squad — not only the snare gate that stops new binds.
     releaseOverCap(ecs, alliesQuery.entities, store.getVerbMods().squadCap);
     if (alliesQuery.entities.length === 0) return;
     const p = store.playerPosition;

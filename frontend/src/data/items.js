@@ -123,8 +123,7 @@ export function getItemName(id) {
  *
  * These are the genuine exceptions: CURRENCIES with real consumers, not placeable and not equippable. Each
  * entry names its consumer, because an unjustified entry here turns a gate that catches that class into an
- * allowlist that hides it. (crystals and the wand left with the crystal wallet, DECISIONS 2026-10-28 W1-H
- * item 6.)
+ * allowlist that hides it.
  *
  *   coins    — the shop currency (ui/TradingInterface.jsx)
  */

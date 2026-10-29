@@ -24,8 +24,8 @@ export function convertMobToAlly(world, entity) {
  * releaseOverCap(world, allies, cap) -> the entities released (removed from the world).
  *
  * The squad cap is an INVARIANT, not a gate on new binds only (QUEUE R1.4): a respec that refunds Pack
- * Bond lowers the cap, and a squad above it must shrink, or the refund is a free, repeatable exploit —
- * take Pack Bond, bind a third, respec, keep it. Released creatures DEPART (the bond breaks) rather than
+ * Warden lowers the cap, and a squad above it must shrink, or the refund is a free, repeatable exploit —
+ * take Pack Warden, bind a third, respec, keep it. Released creatures DEPART (the bond breaks) rather than
  * turning hostile at your side, which would punish a menu choice with a fight.
  *
  * Who leaves is deterministic: plain binds before hybrids (a fusion cost 50 Soul), then the weakest

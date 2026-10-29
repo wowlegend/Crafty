@@ -47,4 +47,9 @@ describe('spellStatsAt', () => {
     expect(spellStatsAt('fireball', undefined)).toBe(SPELL_TIERS.fireball.tiers[0]);
     expect(spellStatsAt('shield', 10)).toBeNull();
   });
+
+  it('reads a spell name that is an Object.prototype member as a spell with no tiers', () => {
+    // activeSpell comes back from a save unvalidated; a corrupt one must not throw at the cast.
+    for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) expect(spellStatsAt(name, 5), name).toBeNull();
+  });
 });

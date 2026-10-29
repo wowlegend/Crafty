@@ -42,8 +42,8 @@ export const SPELL_TIERS = Object.freeze({
 
 /** The tier row `spellType` casts at for a caster of `level`, or null for a spell with no tiers. */
 export function spellStatsAt(spellType, level) {
+  if (!Object.prototype.hasOwnProperty.call(SPELL_TIERS, spellType)) return null;
   const spell = SPELL_TIERS[spellType];
-  if (!spell) return null;
   const lv = Number.isFinite(level) ? level : 1;
   let row = spell.tiers[0];
   for (const t of spell.tiers) if (lv >= t.minLevel) row = t;

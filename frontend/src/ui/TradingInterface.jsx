@@ -6,8 +6,7 @@ import { useGameSounds } from '../SoundManager';
 import { Panel, Button, Icon, Toast, Modal } from './primitives/index.js';
 import { useT } from '../i18n/i18n.js';
 
-// The villager merchant sells consumables for coins. The ore-to-crystal and crystal-to-wand trades went with the
-// crystal wallet (DECISIONS 2026-10-28 W1-H item 6); mined blocks are spent at the Forge.
+// The villager merchant sells consumables for coins; mined blocks buy nothing here.
 export const TradingInterface = React.memo(({ villager, onClose }) => {
   const t = useT();
   const gameState = useGameStore(useShallow(state => ({

@@ -901,7 +901,7 @@ function GameApp({ experienceSystem }) {
       else if (which === 'crafting') store.setShowCrafting(true);
       else if (which === 'settings') store.setShowSettings(true);
       else if (which === 'credits') store.setShowCredits(true);
-      // #51 S2: the progression panel (talents + Spell Mastery). showSpellUpgrades is a useState setter
+      // #51 S2: the progression panel (the Talents page). showSpellUpgrades is a useState setter
       // in the input-manager hook (not the store), so drive it directly like openAchievements below.
       // Close the sibling panels first so the captured frame is a clean progression panel.
       else if (which === 'spellUpgrades') { store.setShowInventory?.(false); setShowAchievements?.(false); setShowSpellUpgrades(true); }
