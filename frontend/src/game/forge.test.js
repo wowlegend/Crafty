@@ -178,7 +178,8 @@ describe('buy', () => {
     const s = rich();
     const r = buy(s, { ...weaponOffer(s), price: { blocks: {}, coins: 0, blade: 'Stone Sword' } });
     expect(r.ok).toBe(true);
-    expect(r.state.coins).toBe(0);
+    expect(r.state.coins, 'the coins charged were the passed offer\'s').toBe(0);
+    expect(r.state.inventory.blocks.iron, 'the blocks charged were the passed offer\'s').toBe(0);
   });
 
   it('a NaN, negative or fractional count holds what it floors to, at least nothing', () => {

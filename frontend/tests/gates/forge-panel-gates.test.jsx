@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, fireEvent, cleanup, screen, act } from '@testing-library/react';
+import { render, renderHook, fireEvent, cleanup, screen, act } from '@testing-library/react';
 import * as THREE from 'three';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
+import { useInputManager } from '../../src/InputManager.jsx';
+import { setActive } from '../../src/input/inputState.js';
 import { ecs } from '../../src/ecs/world.js';
 import { HUB_NPCS, makeNpcEntity } from '../../src/world/npcSpawn.js';
-import { talkToNearest, TALK_RANGE } from '../../src/input/talk.js';
+import { talk, talkToNearest, TALK_RANGE } from '../../src/input/talk.js';
 import { TRAY_PANELS, activateTrayRow } from '../../src/ui/touchTray.js';
 import { getWeaponBaseDamage } from '../../src/game/equipment.js';
 
@@ -13,11 +15,12 @@ import { getWeaponBaseDamage } from '../../src/game/equipment.js';
 // real store: each line shows its price beside what the player holds, a press on Buy spends exactly that and puts the
 // new blade in hand with the craft sound, and a press the player cannot pay for says what is short and changes nothing.
 // A double press on a line buys one thing: the line's Buy rests, disabled, for the double-click time after a purchase,
-// and a bought tier's button leaves the card with its offer. The talk verb (input/talk.js, which G and the touch tray's Talk button both call) is driven against real NPC entities
-// in the ECS, as the G handler reads them.
+// and a bought tier's button leaves the card with its offer. The talk verb (input/talk.js, which G and the touch tray's
+// Talk button both call) is driven against real NPC entities in the ECS, as the G handler reads them, and the G handler
+// itself (InputManager) is driven by a keydown on the window: the Forge releases the pointer, a heal keeps it.
 //
-// WHAT THIS DOES NOT CHECK: the G keydown or a tap in the running game, the lazy panel chunk, or MenuSystem mounting the
-// card (tests/e2e/forge.spec.js walks to Mara, presses G and buys on CI).
+// WHAT THIS DOES NOT CHECK: a G press or a tap in the running game, a real browser's pointer lock or double click, the
+// lazy panel chunk, or MenuSystem mounting the card (tests/e2e/forge.spec.js walks to Mara, presses G and buys on CI).
 //
 // Mutation-Proof: see the commit trailer.
 
@@ -187,6 +190,42 @@ describe('the talk verb', () => {
     expect(S().showForge).toBe(false);
   });
 
+  it('talks within 4 m on the ground plane and not beyond (DECISIONS 2026-10-29 item 65)', () => {
+    // Literal distances, not TALK_RANGE: the range itself is what this pins. The camera stands 1.6 m above Mara's
+    // origin, so a talk measured in three dimensions would refuse the 3.9 m press.
+    npc('smith', [8, -7]);
+    at(8 + 3.9, -7);
+    expect(talkToNearest(S()), 'Mara 3.9 m away on the ground was out of reach').toBe('forge');
+    useGameStore.setState({ showForge: false });
+    at(8 + 4.1, -7);
+    expect(talkToNearest(S()), 'Mara 4.1 m away was talked to').toBe(null);
+  });
+
+  it('with nobody near, a chest in reach opens; with neither, the player is told nobody is near', () => {
+    const notes = [];
+    let opened = 0;
+    useGameStore.setState({ addNotification: (text, kind) => notes.push([text, kind]) });
+    // notifyDenied throttles on performance.now(); each press below reads a clock well past the last.
+    const now = vi.spyOn(performance, 'now');
+    try {
+      at(100, 100);
+      now.mockReturnValue(1e9);
+      expect(talk(S()), 'a talk with nothing in reach reported something').toBe(null);
+      expect(notes, 'a G press with nothing in reach said nothing').toEqual([['Nobody near enough to talk to', 'warn']]);
+      useGameStore.setState({ openNearbyChest: () => { opened++; return true; } });
+      now.mockReturnValue(2e9);
+      expect(talk(S()), 'a chest beside the player did not open on the talk verb').toBe('chest');
+      expect(opened).toBe(1);
+      expect(notes, 'a chest opened and the player was still told nobody was near').toHaveLength(1);
+      npc('healer', [100, 100.5]);
+      now.mockReturnValue(3e9);
+      expect(talk(S()), 'the chest outranked a villager in reach').toBe('heal');
+      expect(opened, 'a talk to a villager opened the chest too').toBe(1);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
   it('reads the nearest living villager in range, live from the ECS', () => {
     const mara = npc('smith', [8, -7]);
     at(8 + TALK_RANGE + 0.5, -7);
@@ -197,5 +236,37 @@ describe('the talk verb', () => {
     mara.health = 200;
     mara.position.set(8, 20, -100);
     expect(talkToNearest(S()), 'the talk read a stale position, not the entity').toBe(null);
+  });
+});
+
+describe('the G key (the InputManager handler, as a keyboard reaches it)', () => {
+  const QUEST_STUB = { achievements: [], unlockedAchievements: [], stats: {}, quests: [] };
+  // A living player: the hook releases the pointer on mount for a dead one, which would count as the G press's release.
+  const ALIVE = { isAlive: true };
+  const at = (x, z) => useGameStore.setState({ gameCamera: { position: new THREE.Vector3(x, 21.6, z) }, openNearbyChest: () => null });
+  const pressG = () => act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyG', key: 'g', bubbles: true })); });
+  beforeEach(() => {
+    document.exitPointerLock = vi.fn();
+    setActive(true);
+  });
+  afterEach(() => { setActive(false); });
+
+  it('beside Mara opens the Forge and releases the pointer, so the cursor can reach the card', () => {
+    npc('smith', [8, -7]);
+    at(8, -6);
+    renderHook(() => useInputManager({}, ALIVE, QUEST_STUB));
+    pressG();
+    expect(S().showForge, 'G beside Mara did not open the Forge').toBe(true);
+    expect(document.exitPointerLock, 'the Forge opened with the pointer still locked, so the card cannot be clicked').toHaveBeenCalledTimes(1);
+  });
+
+  it('beside the healer heals and keeps the pointer, so the player stays in play', () => {
+    npc('healer', [10, 8]);
+    at(10, 9);
+    useGameStore.setState({ playerHealth: 10 });
+    renderHook(() => useInputManager({}, ALIVE, QUEST_STUB));
+    pressG();
+    expect(S().playerHealth, 'SETUP: G beside the healer did not reach the talk verb').toBe(S().maxHealth);
+    expect(document.exitPointerLock, 'a talk that opened no panel released the pointer').not.toHaveBeenCalled();
   });
 });
