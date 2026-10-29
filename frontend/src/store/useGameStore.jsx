@@ -5,7 +5,7 @@ import { refundUnknownTalents, canUnlockTalent, respecTalents } from '../game/ta
 import { spellStatsAt } from '../game/spellTiers.js';
 import { foldVerbMods } from '../game/verbMods.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory } from '../game/saveSchema.js';
+import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -1093,7 +1093,8 @@ export const useGameStore = create((set, get) => ({
             // session's record belongs to whichever world was loaded before it.
             const emberBuildDay = readBuildDay(prog ? prog.emberBuildDay : state.emberBuildDay);
 
-            const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
+            // The retired currency keys leave every chest too (the tombstone holds them for the save).
+            const chests = saveData.chests ? new Map(liveChests(saveData.chests)) : state.chests;
 
             // Derived caps from the level and the gear (never baked); a loaded character arrives at full HP and mana, as a
             // respawn does.

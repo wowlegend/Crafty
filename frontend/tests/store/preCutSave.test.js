@@ -399,6 +399,26 @@ describe('the pre-cut save after talents and relics', () => {
     expect(saved.stone).toBe(16);
   });
 
+  it('takes the retired keys out of every bag and every chest, so no chest hands one back, and the save keeps them all', () => {
+    const f = fixture();
+    f.chests = [['4_17_2', { inventory: { crystals: 5, stone: 3 } }], ['9_17_9', { inventory: { dirt: 2 } }]];
+    f.player_data.inventory.magic = { crystals: 2 };
+    useGameStore.getState().loadWorldData(f);
+    const st = useGameStore.getState();
+    expect(st.chests.get('4_17_2')?.inventory, 'a retired key stayed in a live chest').toEqual({ stone: 3 });
+    expect(st.inventory.magic, 'a retired key stayed in the live magic bag').toEqual({});
+    st.transferItem('4_17_2', 'crystals', 1, 'from_chest');
+    st.transferItem('4_17_2', 'stone', 1, 'from_chest');
+    const bag = useGameStore.getState().inventory.blocks;
+    expect('crystals' in bag, 'a chest handed a retired crystal back to the bag').toBe(false);
+    expect(bag.stone, 'SETUP: a live item no longer moves from the chest').toBe(17);
+    const saved = onDisk();
+    expect(saved.player_data.inventory.blocks.crystals, 'the held bag crystals did not reach the save').toBe(12);
+    expect(saved.player_data.inventory.magic, 'the held magic-bag crystals did not reach the save').toEqual({ crystals: 2 });
+    expect(Object.fromEntries(saved.chests), 'a chest\'s held crystals did not reach the save, or a live item was lost')
+      .toEqual({ '4_17_2': { inventory: { crystals: 5, stone: 2 } }, '9_17_9': { inventory: { dirt: 2 } } });
+  });
+
   it('counts allocated and unspent points alike, and a broken field adds nothing', () => {
     expect(attributePointsHeld({ strength: 10, agility: 10, intellect: 10, armor: 0, attributePoints: 0 })).toBe(0);
     expect(attributePointsHeld({ strength: 15, agility: 10, intellect: 10, armor: 0, attributePoints: 0 })).toBe(5);
