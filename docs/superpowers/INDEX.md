@@ -34,7 +34,7 @@ superseded by STATUS.md**), and **`CLAUDE.md`** = the project's agent constituti
 
 | Page | Role |
 |---|---|
-| **`docs/superpowers/command-record.html`** | **The current status page** — what the command session has done and what waits on Kevin, as a page he reads (https://claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f). Open work lives in `memory/registry.jsonl`. |
+| **`docs/superpowers/command-record.html`** | **The current status page** — what the command session has done and what waits on Kevin, as a page he reads (https://claude.ai/artifact/AdWhiwq9utxaUdUQBEcfCA). Open work lives in `memory/registry.jsonl`. |
 | `docs/superpowers/era-review.html` | The loop era's review. Mostly history; its stamp points to the Command Record. |
 | `docs/superpowers/sota-audit.html` | The visual-test harness SOTA audit. History: the capture oracle it audits retired 2026-10-28 (DECISIONS W1-H item 1), and looks are now judged on the eye-level lookbook (`frontend/scripts/visual/lookbook.mjs`). Its stamp points to the Command Record. |
 
