@@ -41,10 +41,9 @@ Click into the game to capture the mouse, then move the mouse to look. Esc relea
 |  | <kbd>Z</kbd> | ELEMANCER — imbue cast |
 | **Panels** | <kbd>E</kbd> | Inventory |
 |  | <kbd>M</kbd> | Magic |
-|  | <kbd>C</kbd> | Crafting |
 |  | <kbd>B</kbd> | Building |
 |  | <kbd>U</kbd> | Talents &amp; Aspect guide |
-|  | <kbd>G</kbd> | Open chest / trade |
+|  | <kbd>G</kbd> | Talk (Mara: the Forge) / open chest |
 |  | <kbd>L</kbd> | Quest log |
 |  | <kbd>Q</kbd> | Claim completed quests |
 |  | <kbd>H</kbd> | Toggle controls |
@@ -55,7 +54,8 @@ Click into the game to capture the mouse, then move the mouse to look. Esc relea
 
 On a touchscreen, drag on the left half of the screen to move and on the right half to look. The buttons on the right
 attack (hold for a heavy blow), cast, jump and dodge. One ring holds the four Aspects and another the four spells, and
-the button on the left edge opens the inventory, crafting, building and magic panels.
+the button on the left edge opens the inventory, building and magic panels and talks to the villager beside you (Mara
+the Smith runs the Forge).
 
 ## How it is built
 

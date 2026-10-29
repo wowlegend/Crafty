@@ -24,13 +24,6 @@ describe('M1 bug cluster', () => {
     expect(g.includes('0.93 + Math.random() * 0.14')).toBe(true);
   });
 
-  it('crafting is no longer silent: playCraft is bridged onto window AND called in doCraft', () => {
-    const app = read('src/App.jsx');
-    expect(/window\.playCraft\s*=\s*playCraft/.test(app)).toBe(true);
-    const ct = read('src/ui/panels/CraftingTable.jsx');
-    expect(ct.includes('window.playCraft()')).toBe(true);
-  });
-
   it('`npm test` runs the real vitest suite, not the test_swarm.js rubber-stamp', () => {
     const pkg = JSON.parse(read('package.json'));
     expect(pkg.scripts.test).toBe('vitest run');

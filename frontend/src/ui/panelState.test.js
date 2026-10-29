@@ -39,7 +39,7 @@ describe('isAnyPanelOpen — single source of truth for panel-open', () => {
     // M-NARRATIVE.3: showQuestLog added (the quest LOG panel, L).
     // 2026-10-27: showStats REMOVED — the F3 readout is not a panel (panelState.js header: it stranded a player on ESC).
     expect(PANEL_FLAGS).toEqual([
-      'showInventory', 'showCrafting', 'showMagic', 'showBuildingTools', 'showSettings',
+      'showInventory', 'showForge', 'showMagic', 'showBuildingTools', 'showSettings',
       'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits', 'showQuestLog',
       'showSpellUpgrades', 'showAchievements',
     ]);

@@ -13,7 +13,7 @@ import { SPELL_ORDER, spellLabelKey } from '../input/spellPicker';
 import { makeTouchRouter } from '../input/touchMath';
 import { ownsTouch } from '../input/touchOwnership';
 import { handleTouchMove, handleTouchEnd, MOVE_KEYS } from '../input/touchHandlers';
-import { TRAY_PANELS, togglePanel } from './touchTray';
+import { TRAY_PANELS, activateTrayRow } from './touchTray';
 import TouchControlsSurface from './TouchControlsSurface';
 import { isAnyPanelOpen } from './panelState.js';
 
@@ -87,7 +87,7 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
   // M3a: while any tray panel is open the control surface yields (active=false) so the panel is natively
   // interactive (no camera-drag fight, no preventDefault eating panel scroll). anyPanel also suppresses
   // tap-to-play so taps reach the panel; the panel's own close (X) returns to the tap-to-play state.
-  const anyPanel = useGameStore((s) => s.showInventory || s.showCrafting || s.showBuildingTools || s.showMagic);
+  const anyPanel = useGameStore((s) => s.showInventory || s.showForge || s.showBuildingTools || s.showMagic);
   // EVERY panel, from the one canonical list (panelState.js), plus the App-local flags the store cannot see. A held
   // control must not outlive a panel opening (review F3): the WORLD opener (a chest, through the interact verb) does not
   // lower `active` on touch — there is no pointer lock to lose — so a roar held across it kept charging and committed
@@ -310,14 +310,15 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
           style={{ ...hit, right: 'calc(env(safe-area-inset-right,0px) + 124px)', bottom: 'calc(9% + 86px)', width: 60, height: 60 }} />
       )}
 
-      {/* M3a panel-access tray: grid icon toggles the column; each opener toggles its panel + yields control */}
+      {/* M3a panel-access tray: grid icon toggles the column; each opener toggles its panel or talks, and yields control
+          when a panel took it */}
       {active && (
         <button data-touch-btn onPointerUp={() => setTrayOpen((o) => !o)} aria-label={t('a11y.panels')} data-testid="touch-panels"
           style={{ ...hit, top: 'calc(50% - 140px)', left: 'calc(env(safe-area-inset-left,0px) + 10px)', width: 46, height: 46 }} />
       )}
       {active && trayOpen && TRAY_PANELS.map((p, i) => (
         <button key={p.id} data-touch-btn aria-label={t(p.labelKey)} data-testid={`touch-tray-${p.id}`}
-          onPointerUp={() => { togglePanel(p, useGameStore.getState()); setTrayOpen(false); setActive(false); }}
+          onPointerUp={() => { const yielded = activateTrayRow(p, useGameStore.getState()); setTrayOpen(false); if (yielded) setActive(false); }}
           style={{ ...hit, top: `calc(50% - 84px + ${i * 56}px)`, left: 'calc(env(safe-area-inset-left,0px) + 12px)', width: 52, height: 52 }} />
       ))}
 

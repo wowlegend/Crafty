@@ -7,10 +7,11 @@ import { BLOCK_TYPES } from './Blocks';
 import { idForBlock } from './blockIds';
 import { buildFootprint } from '../game/buildFootprint.js';
 import { chunkOf, CHUNK_SIZE } from './loadedChunks.js';
-import { RECIPES } from '../data/recipes.js';
+import { GOODS } from '../game/forge.js';
 import { notifyDenied } from '../ui/denyToast.js';
 
-const CRAFTED = new Set(RECIPES.flatMap((r) => Object.keys(r.output)));
+// The blocks only Mara's Forge makes: their refusal says where more come from.
+const FORGED = new Set(GOODS.map((g) => g.give));
 
 /**
  * @param {{hitPoint: THREE.Vector3, normal: ({x:number,y:number,z:number}|null), direction: THREE.Vector3}|null} h the build-ray hit
@@ -50,7 +51,7 @@ export function placeAtHit(h, { post, playPlace }) {
     }
     if (placed === 0) {
         // Not one cell affordable: say so, or an empty stack reads as a dead button.
-        notifyDenied(CRAFTED.has(type) ? 'no-block-craftable' : 'no-block', BLOCK_TYPES[type]?.name || type);
+        notifyDenied(FORGED.has(type) ? 'no-block-forge' : 'no-block', BLOCK_TYPES[type]?.name || type);
         return 0;
     }
 

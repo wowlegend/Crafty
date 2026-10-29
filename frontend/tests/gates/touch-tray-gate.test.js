@@ -16,10 +16,12 @@ import { STRINGS } from '../../src/i18n/strings.js';
 //
 // Converting it also removes a member from the frozen source-grep population, which may fall freely.
 describe('touch tray openers drive the real store', () => {
-  it('every TRAY_PANELS entry toggles its own panel through the real setter', () => {
-    expect(TRAY_PANELS.length, 'the tray registry is empty — this test would assert nothing').toBeGreaterThan(0);
+  it('every TRAY_PANELS panel entry toggles its own panel through the real setter', () => {
+    const panels = TRAY_PANELS.filter((p) => !p.talk);
+    // The talk row opens what the villager in reach offers (tests/gates/forge-panel-gates.test.jsx drives it).
+    expect(panels.length, 'the tray holds fewer panel openers — this test would assert less').toBe(3);
 
-    for (const p of TRAY_PANELS) {
+    for (const p of panels) {
       const store = useGameStore.getState();
       expect(typeof store[p.action], `${p.id}: ${p.action} is not a function on the store`).toBe('function');
       expect(typeof store[p.show], `${p.id}: ${p.show} is not a boolean on the store`).toBe('boolean');

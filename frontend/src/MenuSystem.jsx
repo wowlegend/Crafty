@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 // moment instead of unmounting its siblings, and AnimatePresence still sees one keyed child per panel.
 import {
   Inventory,
-  CraftingTable,
+  ForgePanel,
   BuildingTools,
   SettingsPanel,
   MagicSystem,
@@ -151,12 +151,13 @@ export function MenuSystem({
             />
           </Suspense>
         )}
-        {gameState.showCrafting && (
-          <Suspense key="CraftingTable" fallback={null}>
-            <CraftingTable
-              gameState={gameState}
+        {gameState.showForge && (
+          <Suspense key="ForgePanel" fallback={null}>
+            <ForgePanel
+              villager={gameState.selectedVillager}
               onClose={() => {
-                gameState.setShowCrafting(false);
+                gameState.setShowForge(false);
+                gameState.setSelectedVillager(null);
                 enterPlay();
               }}
             />

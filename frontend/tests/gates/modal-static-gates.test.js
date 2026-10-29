@@ -11,7 +11,7 @@ const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
 // replacing their hand-rolled backdrop divs. Zero-pixel (the backdrop classes pass through verbatim).
 const S1_PANELS = [
   ['ui/CreditsScreen.jsx', 'CreditsScreen'],
-  ['ui/panels/CraftingTable.jsx', 'CraftingTable'],
+  ['ui/panels/ForgePanel.jsx', 'ForgePanel'],
   ['ui/TradingInterface.jsx', 'TradingInterface'],
   ['ui/GamePanels.jsx', 'GamePanels (BuildingTools + Settings)'],
 ];

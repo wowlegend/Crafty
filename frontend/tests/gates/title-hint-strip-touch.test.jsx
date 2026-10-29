@@ -21,7 +21,7 @@ import { STRINGS } from '../../src/i18n/strings.js';
 const NOOP = () => {};
 const QUEST_STUB = { achievements: [], unlockedAchievements: [], stats: {}, quests: [] };
 const PANELS_CLOSED = {
-  showInventory: false, showCrafting: false, showMagic: false, showBuildingTools: false,
+  showInventory: false, showForge: false, showMagic: false, showBuildingTools: false,
   showSettings: false, showChestInterface: false, showTradingInterface: false,
   showWorldManager: false, showCredits: false, showQuestLog: false,
 };

@@ -13,7 +13,6 @@ import { gearStatRows } from '../game/gearCompare.js';
 import { isConsumable, consumeEffect } from '../game/consumables.js';
 import { replayOnboardingTips } from '../game/onboardingTips.js';
 import { ItemIcon } from './panels/itemUi';
-export { CraftingTable } from './panels/CraftingTable';
 
 // Re-exported for the M3 loot/rarity characterization tests, which import
 // getItemRarity from this module. M3-T3 routed rarity through the single registry
@@ -110,7 +109,7 @@ const GearInspector = ({ itemName, equippedGear }) => {
         // rotten flesh, and XP gems (Diamond / Golden Crown / Star Fragment) aren't mislabelled as building
         // material (the old hardcoded 2-item food list only caught Cooked cuts).
         const isPotion = itemName.includes('Potion');
-        let desc = 'Standard building voxel or crafting element.';
+        let desc = 'Standard building voxel or Forge material.';
         if (isConsumable(itemName)) desc = 'Consumable: use it from your inventory.';
         if (isPotion) desc = 'Consumable: Restores Health or Mana.';
 

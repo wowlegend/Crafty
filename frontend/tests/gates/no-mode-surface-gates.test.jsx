@@ -28,7 +28,7 @@ afterEach(() => {
 
 const HUD_STATE = {
   selectedBlock: 'grass', inventory: { blocks: { grass: 3 } },
-  setSelectedBlock: () => {}, setShowSettings: () => {}, setShowInventory: () => {}, setShowCrafting: () => {},
+  setSelectedBlock: () => {}, setShowSettings: () => {}, setShowInventory: () => {}, setShowForge: () => {},
   setShowMagic: () => {}, setShowBuildingTools: () => {},
 };
 const MODE_TEXT = /\bMode\b|creative|survival/i;

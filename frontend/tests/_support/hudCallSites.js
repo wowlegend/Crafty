@@ -36,7 +36,7 @@ function srcFiles(dir = SRC, out = []) {
 /**
  * Handlers called on a `gameState` that ARRIVED AS A PROP — i.e. the HUD slice.
  *
- * GamePanels, TradingInterface and CraftingTable each build their own `const gameState =
+ * GamePanels and TradingInterface each build their own `const gameState =
  * useGameStore(useShallow(...))`, so their ~20 call sites are a different contract; folding them in would
  * be a scan that reports on the wrong object.
  *

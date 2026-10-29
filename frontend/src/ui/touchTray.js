@@ -1,15 +1,17 @@
 /**
- * touchTray.js — the touch panel-access registry (touch M3a). On desktop E/C/B/M open these panels;
- * touch has no keyboard, so the tray surface (<TouchControlsSurface>) calls togglePanel for each. PURE
+ * touchTray.js — the touch panel-access registry (touch M3a). On desktop E/B/M open these panels and G talks;
+ * touch has no keyboard, so the tray surface (<TouchControlsSurface>) offers each as a button. PURE
  * producer — the panels themselves already render (MenuSystem). Icons are lucide names
  * (the 2-tone game-icons don't tint; M2a switched touch chrome to lucide).
  */
+import { talk, talkOpenedPanel } from '../input/talk.js';
 
-// id -> { labelKey (the i18n key every surface renders through), lucide icon name,
-//         store action (value-or-fn updater), the boolean store key }
+// id -> { labelKey (the i18n key every surface renders through), lucide icon name, and either
+//         the store action (value-or-fn updater) and boolean store key of a panel, or `talk` for the G verb }
 export const TRAY_PANELS = [
   { id: 'inventory', labelKey: 'ui.inventory', icon: 'Package',  action: 'setShowInventory',    show: 'showInventory' },
-  { id: 'craft',     labelKey: 'ui.craft',     icon: 'Hammer',   action: 'setShowCrafting',      show: 'showCrafting' },
+  // The talk verb (input/talk.js): Mara's Forge, the merchant, the healer and the warden, as G reaches them.
+  { id: 'talk',      labelKey: 'ui.talk',      icon: 'MessageCircle', talk: true },
   { id: 'build',     labelKey: 'ui.build',     icon: 'Blocks',   action: 'setShowBuildingTools', show: 'showBuildingTools' },
   { id: 'magic',     labelKey: 'ui.magic',     icon: 'Sparkles', action: 'setShowMagic',         show: 'showMagic' },
 ];
@@ -21,7 +23,7 @@ export const TRAY_PANELS = [
  * passes its setters in. Closes the other panels first, exactly as the key does.
  */
 export const openTalents = (store, { setShowSpellUpgrades, setShowAchievements }) => {
-  for (const k of ['setShowInventory', 'setShowCrafting', 'setShowMagic', 'setShowBuildingTools', 'setShowSettings']) {
+  for (const k of ['setShowInventory', 'setShowForge', 'setShowMagic', 'setShowBuildingTools', 'setShowSettings']) {
     store?.[k]?.(false);
   }
   setShowAchievements?.(false);
@@ -34,3 +36,9 @@ export const togglePanel = (panel, store) => {
   store[panel.action]((prev) => !prev);
   return true;
 };
+
+/**
+ * A tray button pressed: a panel row toggles its panel, the talk row talks. Returns whether a panel took the input, so
+ * the overlay yields control only then (a heal or a hint leaves the player in play).
+ */
+export const activateTrayRow = (row, store) => (row?.talk ? talkOpenedPanel(talk(store)) : togglePanel(row, store));

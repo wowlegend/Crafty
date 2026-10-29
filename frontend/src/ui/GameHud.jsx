@@ -4,7 +4,7 @@ import React from 'react';
 import { useT } from '../i18n/i18n.js';
 import { motion } from 'framer-motion';
 import { Panel, Slot, Button, Icon } from './primitives/index.js';
-import { Package, Hammer, Wand2, Grid } from 'lucide-react';
+import { Package, Wand2, Grid } from 'lucide-react';
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from '../world/Blocks';
 import { isTouchUIMode } from '../input/touchDevice';
 
@@ -90,7 +90,6 @@ export const GameUI = ({ gameState }) => {
       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-auto">
         <Panel variant="base" className="flex flex-col gap-2 p-2">
           <Button variant="ghost" size="icon" aria-label={t('ui.inventory')} className="w-[42px] h-[42px]" onClick={() => gameState.setShowInventory(true)}><Package size={20} /></Button>
-          <Button variant="ghost" size="icon" aria-label={t('a11y.crafting')} className="w-[42px] h-[42px]" onClick={() => gameState.setShowCrafting(true)}><Hammer size={20} /></Button>
           <Button variant="ghost" size="icon" aria-label={t('ui.magic')} className="w-[42px] h-[42px]" onClick={() => gameState.setShowMagic(true)}><Wand2 size={20} /></Button>
           <Button variant="ghost" size="icon" aria-label={t('a11y.buildingTools')} className="w-[42px] h-[42px]" onClick={() => gameState.setShowBuildingTools(true)}><Grid size={20} /></Button>
         </Panel>

@@ -749,8 +749,9 @@ export const useGameStore = create((set, get) => ({
     showQuestLog: false,
     setShowQuestLog: (show) => set((state) => ({ showQuestLog: typeof show === 'function' ? show(state.showQuestLog) : show })),
 
-    showCrafting: false,
-    setShowCrafting: (show) => set((state) => ({ showCrafting: typeof show === 'function' ? show(state.showCrafting) : show })),
+    // Mara's Forge (ui/panels/ForgePanel.jsx), opened by talking to her (input/talk.js).
+    showForge: false,
+    setShowForge: (show) => set((state) => ({ showForge: typeof show === 'function' ? show(state.showForge) : show })),
 
     showMagic: false,
     setShowMagic: (show) => set((state) => ({ showMagic: typeof show === 'function' ? show(state.showMagic) : show })),

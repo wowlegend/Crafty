@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { SRC, strip, carriersOf } from './_srcWalk.js';
 import { HUB_NPCS, makeNpcEntity } from '../../src/world/npcSpawn.js';
+import { ecs } from '../../src/ecs/world.js';
+import { talkToNearest } from '../../src/input/talk.js';
+import { useGameStore } from '../../src/store/useGameStore.jsx';
 
 const read = (rel) => strip(readFileSync(resolve(SRC, rel), 'utf8'));
 
@@ -17,16 +20,15 @@ const read = (rel) => strip(readFileSync(resolve(SRC, rel), 'utf8'));
  * `makeNpcEntity` is not re-tested here: it is pure and `tests/data/npcSpawn.test.js` already drives it.
  * This gate owns the WIRING, and the case worth the most is one the old version could not have had.
  *
- * THE COUPLING: every role in HUB_NPCS must be ROUTABLE. The roster is data and the G-interact router is
- * a chain of `role === '...'` branches in another file, and nothing connected them. Add a fifth villager
- * to the roster with no matching branch and they spawn, stand at their anchor, show a nametag, and do
- * nothing at all when you press G — a feature that looks shipped and is inert. That is this repo's
- * most-repeated defect class (four in one day: compiling, gated green, never reached), and it is a
- * relationship a tuner could break without noticing, which R9 ranks above an example.
+ * THE COUPLING: every role in HUB_NPCS must be ROUTABLE. The roster is data and the talk verb (input/talk.js) is a
+ * chain of role branches in another file, and nothing connected them. Add a fifth villager to the roster with no
+ * matching branch and they spawn, stand at their anchor, show a nametag, and do the merchant's thing or nothing when
+ * you press G — a feature that looks shipped and is inert. That is this repo's most-repeated defect class (four in one
+ * day: compiling, gated green, never reached), and it is a relationship a tuner could break without noticing, which
+ * R9 ranks above an example.
  *
- * BLIND SPOT, stated (R7): the router half reads source. It proves a branch EXISTS for each role, not
- * that pressing G reaches it in a running game, nor that the panel it opens is the right one. Nothing
- * here spawns an NPC into a world either.
+ * BLIND SPOT, stated (R7): the router half drives talkToNearest against NPC entities in the ECS, not a G press in a
+ * running game (tests/e2e/forge.spec.js presses G beside Mara on CI).
  *
  * Mutation-Proof: 4 mutations, recorded on the commit.
  */
@@ -41,18 +43,21 @@ describe('hub NPC spawn + AI-skip', () => {
       .toBe(HUB_NPCS.length);
   });
 
-  it('EVERY roster role has a G-interact branch — a new NPC cannot ship inert', () => {
-    // The coupling. `merchant` is the fall-through (the legacy role-less quest path), so it is routable
-    // by construction; every other role needs its own branch or pressing G does nothing.
-    const im = read('InputManager.jsx');
-    const unroutable = HUB_NPCS
-      .map((n) => n.role)
-      .filter((role) => role !== 'merchant' && !new RegExp(`role === '${role}'`).test(im));
-    expect(unroutable, 'a hub NPC role has no interact branch — it would spawn and do nothing on G')
-      .toEqual([]);
-    // And the router must read the role off the NPC, not off something ambient.
-    expect(im, 'the interact no longer reads the role from the targeted villager')
-      .toMatch(/const role = nearestVillager\.role/);
+  it('EVERY roster role does its own thing when talked to — a new NPC cannot ship inert', () => {
+    // The coupling, driven: each roster NPC spawned into the ECS beside the camera and talked to through the talk verb G
+    // and the touch tray call (input/talk.js). `merchant` is the fall-through (the legacy role-less quest path); every
+    // other role needs its own branch, or it would share the merchant's and open trading.
+    const outcomes = {};
+    for (const n of HUB_NPCS) {
+      for (const e of [...ecs.entities]) ecs.remove(e);
+      const e = ecs.add(makeNpcEntity(n, `npc-${n.role}`, 20));
+      useGameStore.setState({ gameCamera: { position: { x: e.position.x + 1, y: 21.6, z: e.position.z } } });
+      outcomes[n.role] = talkToNearest(useGameStore.getState());
+      useGameStore.setState({ showForge: false, showTradingInterface: false });
+    }
+    for (const e of [...ecs.entities]) ecs.remove(e);
+    expect(outcomes, 'a hub NPC role has no talk branch of its own — it does nothing, or the merchant\'s thing, on G')
+      .toEqual({ merchant: 'trade', smith: 'forge', guide: 'hint', healer: 'heal' });
   });
 
   it('the AI tick SKIPS static NPCs, at the one line that builds the mob payload', () => {

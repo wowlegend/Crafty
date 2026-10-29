@@ -425,8 +425,8 @@ that entry's items. Each stands while it earns its place; reversing one takes a 
    seven axes that each add a number give a player nothing to choose. It needs a damage rebalance first, because
    `solveSpellDamage` reads attributes. `frontend/src/game/affixes.js` (no importer, REMOVED by W2-F step 4) goes with it.
 7. **The Forge replaces the crafting grid** (plan row 23, lane W2-F). Supersedes the 3x3 grid
-   (`frontend/src/ui/panels/CraftingTable.jsx`, `frontend/src/data/recipes.js`, the C key, the touch-tray Craft slot,
-   the pickaxe item) and with it the 2026-07-14 grid fixes (B3a sword patterns, B3d escrow). A Forge card on Mara (G)
+   (`frontend/src/ui/panels/CraftingTable.jsx`, `frontend/src/data/recipes.js`, both REMOVED by W2-F step 5, the C
+   key, the touch-tray Craft slot, the pickaxe item) and with it the 2026-07-14 grid fixes (B3a sword patterns, B3d escrow). A Forge card on Mara (G)
    offers three things, each with its cost shown: a weapon upgrade, a relic upgrade and a lantern. Why: hidden recipe
    shapes are guesswork, and a drag grid does not work on iPad. The pickaxe is a weapon stat stick (damage 8), so it
    folds into the weapon line.

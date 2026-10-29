@@ -94,7 +94,7 @@ export function prefetchPanels() {
 
 const lazyPanel = panels.lazyPanel;
 export const Inventory = lazyPanel('Inventory');
-export const CraftingTable = lazyPanel('CraftingTable');
+export const ForgePanel = lazyPanel('ForgePanel');
 export const BuildingTools = lazyPanel('BuildingTools');
 export const SettingsPanel = lazyPanel('SettingsPanel');
 export const MagicSystem = lazyPanel('MagicSystem');

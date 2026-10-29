@@ -90,7 +90,7 @@ function GameApp({ experienceSystem }) {
   const hudHidden = useGameStore(s => s.hudHidden);
   const showcaseView = useGameStore(s => s.showcaseView);
   const { musicEnabled, playBackgroundMusic, resumeAudio } = useSounds();
-  const { playAttack, playSwing, playHit, playDefeat, playLevelUpSound, playFanfare, playVictory, playCraft } = useGameSounds();
+  const { playAttack, playSwing, playHit, playDefeat, playLevelUpSound, playFanfare, playVictory } = useGameSounds();
 
   // Reward-beat sound bridge: the codebase triggers reward sounds via window.* globals
   // (SimpleExperienceSystem's window.playLevelUpSound, QuestSystem's window.playFanfare), but nothing
@@ -100,8 +100,7 @@ function GameApp({ experienceSystem }) {
     window.playLevelUpSound = playLevelUpSound;
     window.playFanfare = playFanfare;
     window.playVictory = playVictory; // the climax sting, fired on VictoryOverlay mount
-    window.playCraft = playCraft;     // crafting was silent (dead voice, zero callers) -> wire it to doCraft
-  }, [playLevelUpSound, playFanfare, playVictory, playCraft]);
+  }, [playLevelUpSound, playFanfare, playVictory]);
 
   const [isWorldBuilt, setIsWorldBuilt] = useState(false);
 
@@ -892,14 +891,14 @@ function GameApp({ experienceSystem }) {
       useGameStore.getState().setHudHidden(false);
       useGameStore.getState().setCaptureStudio(false); // leaving capture -> motes return
     });
-    // Open a modal (inventory/crafting) for the visual gate. DEV-only. The panels are a lazy chunk now, so this
+    // Open a modal (inventory/the Forge) for the visual gate. DEV-only. The panels are a lazy chunk now, so this
     // WAITS for it first (page.evaluate awaits the promise): a capture must never shoot the empty Suspense frame.
     registerTestHook('openModal', async (which = 'inventory') => {
       await loadPanels();
       const store = useGameStore.getState();
       store.setCaptureStudio(false); // modal OVER the explore world is an in-world frame -> motes on
       if (which === 'inventory') store.setShowInventory(true);
-      else if (which === 'crafting') store.setShowCrafting(true);
+      else if (which === 'forge') store.setShowForge(true);
       else if (which === 'settings') store.setShowSettings(true);
       else if (which === 'credits') store.setShowCredits(true);
       // #51 S2: the progression panel (the Talents page). showSpellUpgrades is a useState setter
