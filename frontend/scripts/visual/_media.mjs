@@ -63,27 +63,29 @@ const still = (name, time, recipe, alt, extra = {}) => ({
  *          `waitS` seconds, then a fireball cast with the real F key. The seam cannot spawn a mob, so a fight depends
  *          on the night and is optional.
  * No shot shows the HUD, and the hero and the og card show no hands (DECISIONS 2026-10-29 item 50). Day shots go before
- * the night ones: after dusk the night's mobs crowd the Hearth (lookbook.mjs). From the spawn the golden-hour sun sets
- * at a bearing of about 43 degrees, 3.5 degrees up, so the golden poses look north-east across the Hearth into it; the
- * eye stills pitch up 8 to 12 degrees, which keeps the pad at the player's feet out of frame.
+ * the night ones: after dusk the night's mobs crowd the Hearth (lookbook.mjs). The fight goes first of those, since a
+ * pose clears the hostiles within POSE_CLEAR_M of its camera and an eye shot those within 12 m of the eye. From the
+ * spawn the golden-hour sun sets at a bearing of about 43 degrees, 3.5 degrees up, so the golden poses look north-east
+ * across the Hearth into it, from high enough that the outpost's roofs stay inside the frame; the eye stills pitch up 8
+ * to 15 degrees, which keeps the pad at the player's feet out of frame.
  */
 export const MEDIA_SHOTS = deepFreeze([
-  { name: 'hero', purpose: 'hero', time: 'golden hour', recipe: { kind: 'pose', position: [-13, 59, 5], lookAt: [6, 56, -12] }, size: [1600, 900],
+  { name: 'hero', purpose: 'hero', time: 'golden hour', recipe: { kind: 'pose', position: [-13, 62, 5], lookAt: [3, 56, -14] }, size: [1600, 900],
     format: 'jpg', out: `${MEDIA_DIR}/hero.jpg`, targetBytes: 330_000,
     alt: 'Crafty at golden hour, from the player\'s eye at the Hearth: gauntleted hands holding a grass block and a wand, the outpost\'s watchtower and Old Pike the Warden ahead, forest on the left and sunlit hills under a warm sky.' },
-  { name: 'og', purpose: 'og', time: 'golden hour', recipe: { kind: 'pose', position: [-13, 61, 2], lookAt: [-2, 55, -22] },
+  { name: 'og', purpose: 'og', time: 'golden hour', recipe: { kind: 'pose', position: [-14, 66, 6], lookAt: [-2, 56, -18] },
     size: [OG_CARD.width, OG_CARD.height], format: 'png', out: OG_CARD.file, targetBytes: 390_000, alt: BRAND.ogImageAlt },
-  still('golden-forest', 'golden hour', { kind: 'eye', heading: 60, pitch: 12 },
+  still('golden-forest', 'golden hour', { kind: 'eye', heading: 60, pitch: 15 },
     'The forest beside the Hearth at golden hour, from the player\'s eye: gauntleted hands, the Hearth\'s glowing brazier and Sister Wren, a shrine\'s beam above the trees.'),
   still('forest-edge', 'afternoon', { kind: 'pose', place: 'forest-edge' },
     'The edge of a voxel forest in the afternoon, seen from above the plains: turf, trunks and leaf canopies under a blue sky.'),
-  { name: 'social-preview', purpose: 'social', time: 'blue hour', recipe: { kind: 'pose', position: [-13, 59, 5], lookAt: [5, 56, -12] },
+  still('night-fight', 'blue hour', { kind: 'fight', minM: 4, maxM: 14, waitS: 90 },
+    'A fight at the Hearth after dusk, from the player\'s eye: a fireball flying toward a hostile mob beside the Hearth\'s glowing brazier.', { optional: true }),
+  { name: 'social-preview', purpose: 'social', time: 'blue hour', recipe: { kind: 'pose', position: [-13, 62, 5], lookAt: [3, 56, -14] },
     size: [SOCIAL_PREVIEW.width, SOCIAL_PREVIEW.height], format: 'jpg', out: `${MEDIA_DIR}/social-preview.jpg`, targetBytes: 300_000,
     alt: 'The Hearth at blue hour from the player\'s eye: gauntleted hands, Mara the Smith and Sister Wren among the trees, a shrine\'s beam rising into the dusk sky.' },
   still('blue-hour', 'blue hour', { kind: 'eye', heading: 135, pitch: 8 },
     'The forest beside the Hearth at blue hour, from the player\'s eye: a shrine\'s beam over the trees, Mara the Smith by a fire, fireflies in the dusk.'),
-  still('night-fight', 'blue hour', { kind: 'fight', minM: 4, maxM: 14, waitS: 60 },
-    'A fight at the Hearth after dusk, from the player\'s eye: a fireball flying toward a hostile mob beside the Hearth\'s glowing brazier.', { optional: true }),
 ]);
 
 function recipeProblems(label, r) {
