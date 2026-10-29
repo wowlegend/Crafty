@@ -332,13 +332,19 @@ export function makeGauntletMaterials() {
  * (render/beastAvatarParts.js ELEMENT_COLOR, the beast's own rim and core) as the beast does: on their ink outlines, the
  * rim that runs round every edge the player sees, and in the ember core at the core's gain, which the bloom carries. Not
  * on the plates: added to their ember gold, a cool glow reads salmon or pink, not the form. It eases toward the form with
- * time constant `tauS`, in and out.
+ * time constant `tauS`, in and out. `colour` is each form's colour on the gauntlets: the beast's own glow, but for fire,
+ * whose orange glow (#FF6A2C) stands 24 degrees of OKLCH hue and 0.04 of lightness off the plates and 21 degrees and
+ * 0.07 off the ember core, so it vanished into them; a crimson stands 41 degrees and 0.19 under the plates and 38
+ * degrees and 0.22 under the ember core.
  */
-export const FORM_TINT = Object.freeze({ tauS: 0.12 });
+export const FORM_TINT = Object.freeze({
+  tauS: 0.12,
+  colour: Object.freeze({ ...Object.fromEntries(Object.entries(ELEMENT_COLOR).map(([el, c]) => [el, c.glow])), fire: '#D4142C' }),
+});
 
 const _emberCore = new THREE.Color(GAUNTLET.core).multiplyScalar(GAUNTLET.coreGain);
 const _ink = new THREE.Color(GAUNTLET.ink);
-const _formGlow = Object.freeze(Object.fromEntries(Object.entries(ELEMENT_COLOR).map(([el, c]) => [el, new THREE.Color(c.glow)])));
+const _formGlow = Object.freeze(Object.fromEntries(Object.entries(FORM_TINT.colour).map(([el, hex]) => [el, new THREE.Color(hex)])));
 const _formCore = new THREE.Color();
 
 /**

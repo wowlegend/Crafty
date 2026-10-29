@@ -6,30 +6,44 @@ import * as THREE from 'three';
  * THE GAUNTLETS SAY WHICH FORM THE PLAYER IS IN (render/viewmodel.js stepFormTint, render/playerRender.jsx).
  *
  * In first person the player's own beast draws nothing but its shadow (DECISIONS 2026-10-29 item 80), so nothing on
- * screen said which form was on. While a form is on, the gauntlets carry the form's element glow
- * (render/beastAvatarParts.js ELEMENT_COLOR, the colour of the beast's own rim and core) as the beast does: on their ink
- * outlines and in the ember core at the core's HDR gain, easing in with the form and out after it, the fading form
- * keeping its own colour until it is gone. The plates take no colour: added to their ember gold, the cool glows read
- * salmon and pink in the lookbook frames (DECISIONS 2026-10-29 item 87). Checked as a function (each form's colour, the
- * ease both ways, no allocation per frame, measured as in hot-path-alloc-gates) and mounted: StableMagicHands through
- * R3F (tests/gates/_r3f.jsx) with drei's real Outlines and a held block, the form set in the store.
- * BLIND SPOT: nothing is drawn; how the colour reads in the world is the lookbook's self set (the evidence frames).
+ * screen said which form was on. While a form is on, the gauntlets carry the form's colour (render/viewmodel.js
+ * FORM_TINT.colour: the beast's own element glow, render/beastAvatarParts.js ELEMENT_COLOR, but a crimson for fire, whose
+ * orange vanished into the ember gold) on their ink outlines and in the ember core at the core's HDR gain, easing in with
+ * the form and out after it, the fading form keeping its own colour until it is gone. The plates take no colour: added
+ * to their ember gold, the cool glows read salmon and pink in the lookbook frames (DECISIONS 2026-10-29 item 87).
+ * Checked as a function (each form's colour, the ease both ways, each colour standing off the ember gold as displayed
+ * through the grade and NEUTRAL (tests/gates/_lightModel.js), no allocation per frame, measured as in
+ * hot-path-alloc-gates) and mounted: StableMagicHands through R3F (tests/gates/_r3f.jsx) with drei's real Outlines and
+ * a held block, the form set in the store.
+ * BLIND SPOT: nothing is drawn; the plate is measured at its albedo, unlit, and the bloom is left out; how the colour
+ * reads in the world is the lookbook's self set (the evidence frames).
  */
 vi.mock('@react-three/fiber', () => import('@react-three/fiber/dist/react-three-fiber.esm.js'));
 // drei's real Outlines (the rim is its material), without the rest of drei; its own fiber import takes the mock above.
 vi.mock('@react-three/drei', async () => ({ Outlines: (await import('@react-three/drei/core/Outlines.js')).Outlines }));
 const { mountR3F } = await import('./_r3f.jsx');
-const { stepFormTint, makeGauntletMaterials, GAUNTLET, GAUNTLET_PARTS } = await import('../../src/render/viewmodel.js');
+const { stepFormTint, makeGauntletMaterials, GAUNTLET, GAUNTLET_PARTS, FORM_TINT } = await import('../../src/render/viewmodel.js');
 const { ELEMENT_COLOR, BEAST_AVATAR_ELEMENTS } = await import('../../src/render/beastAvatarParts.js');
 const { StableMagicHands } = await import('../../src/render/playerRender.jsx');
 const { useGameStore } = await import('../../src/store/useGameStore');
 const { youngBytesPerCall, NO_ALLOCATION_BYTES } = await import('./_youngGrowth.js');
+const { oklch, displayed, linearFromHex } = await import('./_lightModel.js');
+const { sampleScript } = await import('../../src/render/colourScript.js');
+
+// The lookbook's self set shoots the forms at these cycles (scripts/visual/lookbook.mjs SELF_FORM_CYCLES).
+const SELF_CYCLES = [0.3, 0.75];
+// OKLab distance a form's colour must stand off the plate as displayed: the fire rim that did not read in the 0.30
+// frames stood 0.10 to 0.11 off, the hawk's yellow rim that did read 0.15 (evidence/w2e-follow, DECISIONS item 87).
+const STAND_OFF = 0.15;
+const lin = (c) => [c.r, c.g, c.b];
+const dE = (p, q) => Math.hypot(p.L - q.L, p.a - q.a, p.b - q.b);
+const hueGap = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
 
 const EMBER_CORE = new THREE.Color(GAUNTLET.core).multiplyScalar(GAUNTLET.coreGain);
-const coreOf = (el) => new THREE.Color(ELEMENT_COLOR[el].glow).multiplyScalar(GAUNTLET.coreGain);
+const coreOf = (el) => new THREE.Color(FORM_TINT.colour[el]).multiplyScalar(GAUNTLET.coreGain);
 const PLATE = new THREE.Color(GAUNTLET.plate);
 const INK = new THREE.Color(GAUNTLET.ink);
-const glowOf = (el) => new THREE.Color(ELEMENT_COLOR[el].glow);
+const glowOf = (el) => new THREE.Color(FORM_TINT.colour[el]);
 /** Two outline materials, as drei's Outlines makes them: a colour uniform. */
 const fakeRims = () => [0, 1].map(() => ({ uniforms: { color: { value: INK.clone() } } }));
 const near = (a, b, eps = 1e-6) => Math.abs(a.r - b.r) < eps && Math.abs(a.g - b.g) < eps && Math.abs(a.b - b.b) < eps;
@@ -75,6 +89,45 @@ describe('stepFormTint', () => {
     expect(checked).toBe(4);
     const hues = BEAST_AVATAR_ELEMENTS.map((el) => coreOf(el).getHSL({}).h);
     expect(new Set(hues.map((h) => h.toFixed(2))).size, 'SETUP: two forms share a hue').toBe(4);
+  });
+
+  it('each form\'s colour stands off the ember gold it is drawn on, as displayed; fire by hue and lightness off the plates and the ember core', () => {
+    // Pins the OKLab matrices on hue as well as lightness (Ottosson's published sRGB primaries).
+    const red = oklch(linearFromHex('#FF0000')), blue = oklch(linearFromHex('#0000FF'));
+    expect([+red.L.toFixed(2), +red.h.toFixed(1), +blue.L.toFixed(2), +blue.h.toFixed(1)], 'SETUP: the OKLab conversion is off')
+      .toEqual([0.63, 29.2, 0.45, 264.1]);
+    const landed = {};
+    for (const el of BEAST_AVATAR_ELEMENTS) {
+      const mats = makeGauntletMaterials();
+      const rims = fakeRims();
+      run({ w: 0, el: null }, el, 1.5, mats, rims);
+      landed[el] = { rim: lin(rims[0].uniforms.color.value), core: lin(mats.core.color) };
+      for (const m of Object.values(mats)) m.dispose();
+    }
+    let checked = 0;
+    for (const cycle of SELF_CYCLES) {
+      const g = sampleScript(cycle).grade;
+      const D = (c) => oklch(displayed(c, g));
+      const plate = D(lin(PLATE));
+      for (const el of BEAST_AVATAR_ELEMENTS) {
+        const rim = dE(D(landed[el].rim), plate), core = dE(D(landed[el].core), plate);
+        expect(rim, `${el} at ${cycle}: the outline stands ${rim.toFixed(3)} (OKLab) off the plate, under ${STAND_OFF}`).toBeGreaterThanOrEqual(STAND_OFF);
+        expect(core, `${el} at ${cycle}: the core stands ${core.toFixed(3)} (OKLab) off the plate, under ${STAND_OFF}`).toBeGreaterThanOrEqual(STAND_OFF);
+        checked += 1;
+      }
+    }
+    expect(checked).toBe(2 * 4);
+    const fire = oklch(landed.fire.rim);
+    for (const [name, ref] of [['plate', PLATE], ['ember core', new THREE.Color(GAUNTLET.core)]]) {
+      const o = oklch(lin(ref));
+      expect(hueGap(fire.h, o.h), `fire's hue is ${hueGap(fire.h, o.h).toFixed(1)} degrees off the ${name}'s`).toBeGreaterThanOrEqual(30);
+      expect(o.L - fire.L, `fire's lightness is ${(o.L - fire.L).toFixed(3)} under the ${name}'s`).toBeGreaterThanOrEqual(0.1);
+    }
+    // The other three forms keep the beast's own rim.
+    for (const el of ['ice', 'lightning', 'arcane']) {
+      const want = lin(new THREE.Color(ELEMENT_COLOR[el].glow));
+      expect(landed[el].rim.every((v, i) => Math.abs(v - want[i]) < 1e-3), `${el} no longer takes the beast's rim`).toBe(true);
+    }
   });
 
   it('allocates nothing per frame, easing or held', () => {
