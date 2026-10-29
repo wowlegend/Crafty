@@ -287,8 +287,12 @@ export function installProgramRecorder(watched = [], proto = globalThis.WebGL2Re
     entryOf.set(program, entry);
     return linkProgram.call(this, program);
   };
+  // The status is also asked at a program's first use, while its context is certainly alive (three asks the same there,
+  // WebGLProgram.js onFirstUse). A canvas the app unmounts loses its context first: R3F 9's unmount calls
+  // forceContextLoss and then disposes the scene, so the title diorama's programs have no status by the time of the read.
   proto.useProgram = function recordUseProgram(program) {
     const entry = program && entryOf.get(program);
+    if (entry && !entry.used) entry.firstUse = this.getProgramParameter(program, this.LINK_STATUS);
     if (entry) entry.used = true;
     return useProgram.call(this, program);
   };
@@ -308,16 +312,22 @@ export function installProgramRecorder(watched = [], proto = globalThis.WebGL2Re
 
 export function readProgramLinks(watched = [], sink = globalThis) {
   const logs = sink.__craftySmokeShaderLogs;
+  const known = (s) => s === true || s === false;
   return (sink.__craftySmokePrograms || []).map((e) => {
     const { gl } = e;
-    const status = e.deleted ? e.deleted.linked : gl.getProgramParameter(e.program, gl.LINK_STATUS);
-    const out = { hits: e.hits, used: e.used, deleted: !!e.deleted, linked: status === true || status === false ? status : null };
+    const lost = typeof gl.isContextLost === 'function' && gl.isContextLost() === true;
+    const asked = e.deleted ? e.deleted.linked : gl.getProgramParameter(e.program, gl.LINK_STATUS); // null once lost
+    const status = known(asked) ? asked : e.firstUse;
+    const out = {
+      hits: e.hits, used: e.used, deleted: !!e.deleted, lost, atFirstUse: !known(asked) && known(e.firstUse),
+      canvas: gl.canvas ? `${gl.canvas.width}x${gl.canvas.height}` : null, linked: known(status) ? status : null,
+    };
     if (out.linked === false) {
       const shaderLog = e.shaders.map((s) => (logs && logs.has(s) ? logs.get(s) : gl.isShader(s) ? String(gl.getShaderInfoLog(s) || '') : ''));
       const programLog = e.deleted ? e.deleted.log : String(gl.getProgramInfoLog(e.program) || '');
       out.log = [...shaderLog, programLog].filter(Boolean).join(' | ').replace(/\s+/g, ' ').trim().slice(0, 400);
     }
-    if (out.linked === true && out.used && !out.deleted) {
+    if (out.linked === true && out.used && !out.deleted && !lost) {
       out.uniforms = {};
       for (const w of watched) {
         if (!e.hits.includes(w.name)) continue;
@@ -344,14 +354,18 @@ export function programVerdict(readings, watched = WATCHED_PROGRAMS) {
     const names = failed.map((r) => (r.hits.length ? r.hits.join('+') : 'unwatched')).join(', ');
     return fail(`${failed.length} of ${n} FAILED to link (${names}): ${failed[0].log || 'no info log'}`);
   }
-  const unread = readings.filter((r) => r.linked !== true).length;
-  if (unread) return fail(`COULD NOT CHECK — ${unread} of ${n} gave no LINK_STATUS (a lost context reads this way)`, true);
+  const unread = readings.filter((r) => r.linked !== true);
+  if (unread.length) {
+    const lost = unread.filter((r) => r.lost || r.deleted).length;
+    return fail(`COULD NOT CHECK — ${unread.length} of ${n} gave no LINK_STATUS, before the read or at first use `
+      + `(${lost} of them deleted or in a context lost by then, on canvas ${[...new Set(unread.map((r) => r.canvas))].join(', ')})`, true);
+  }
   const drawnCounts = [];
   for (const w of watched) {
     const mine = readings.filter((r) => r.hits.includes(w.name));
     if (!mine.length) return fail(`COULD NOT CHECK the ${w.name} — no program carrying \`${w.mark}\` was linked`, true);
-    const drawn = mine.filter((r) => r.used && !r.deleted);
-    if (!drawn.length) return fail(`COULD NOT CHECK the ${w.name} — ${mine.length} program(s) linked, none drawn`, true);
+    const drawn = mine.filter((r) => r.used && !r.deleted && !r.lost);
+    if (!drawn.length) return fail(`COULD NOT CHECK the ${w.name} — ${mine.length} program(s) linked, none drawn in a live context`, true);
     for (const r of drawn) {
       for (const [name, want] of Object.entries(w.uniforms || {})) {
         const got = r.uniforms?.[name];
@@ -363,7 +377,11 @@ export function programVerdict(readings, watched = WATCHED_PROGRAMS) {
     drawnCounts.push(`${w.name} x${drawn.length}`);
   }
   const deleted = readings.filter((r) => r.deleted).length;
-  return { ok: true, line: `shader programs: all ${n} linked (${deleted} deleted before the read); drawn with their uniforms: ${drawnCounts.join(', ')}` };
+  const firstUse = readings.filter((r) => r.atFirstUse);
+  const early = firstUse.length
+    ? `; ${firstUse.length} read at first use, their context lost by the read (canvas ${[...new Set(firstUse.map((r) => r.canvas))].join(', ')})`
+    : '';
+  return { ok: true, line: `shader programs: all ${n} linked (${deleted} deleted before the read${early}); drawn with their uniforms: ${drawnCounts.join(', ')}` };
 }
 
 /**

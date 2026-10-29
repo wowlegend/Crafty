@@ -316,7 +316,9 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
           for (const m of s.source.matchAll(/^\s*uniform\s+(float|vec3)\s+(\w+)\s*;/gm)) program.declared.set(m[2], m[1]);
         }
       }
-      getProgramParameter(program, pname) { return program.deleted ? null : pname === this.LINK_STATUS ? program.linked : null; }
+      // A lost context answers no query (WebGL 2: getProgramParameter returns null), as after R3F's forceContextLoss.
+      getProgramParameter(program, pname) { return program.deleted || this.lost ? null : pname === this.LINK_STATUS ? program.linked : null; }
+      isContextLost() { return this.lost === true; }
       getProgramInfoLog(program) { return program.deleted ? null : program.log; }
       useProgram(program) { this.current = program; }
       getUniformLocation(program, name) { return program.linked && program.declared.has(name) ? { program, name } : null; }
@@ -412,7 +414,7 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
     expect(inland.verdict.line).toBe('shader programs: COULD NOT CHECK the ocean — no program carrying `uniform vec3 uFoamColor;` was linked');
     const undrawn = scene(only('ocean', (p) => ({ ...p, draw: false })));
     expect(undrawn.verdict.ok).toBe(false);
-    expect(undrawn.verdict.line).toBe('shader programs: COULD NOT CHECK the ocean — 1 program(s) linked, none drawn');
+    expect(undrawn.verdict.line).toBe('shader programs: COULD NOT CHECK the ocean — 1 program(s) linked, none drawn in a live context');
     const empty = programVerdict([], WATCHED_PROGRAMS);
     expect(empty.ok).toBe(false);
     expect(empty.line).toMatch(/COULD NOT CHECK — the recorder saw no program linked/);
@@ -429,6 +431,63 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
     expect(rough.verdict.line).toBe("shader programs: the ocean program's roughness is [0.5], expected 0.22");
     const ring = scene(only('far ring', (p) => ({ ...p, uniforms: { ...p.uniforms, metalness: 0.1 } })));
     expect(ring.verdict.line).toBe("shader programs: the far ring program's metalness is [0.1], expected 0");
+  });
+
+  // THE TITLE DIORAMA'S CANVAS (CI run 40823265907: "5 of 92 gave no LINK_STATUS"). It is a second R3F canvas, and when
+  // play starts R3F 9 unmounts it by calling forceContextLoss and then disposing its scene, so by the read its programs
+  // answer nothing, and their deletion is asked on a lost context. Their status is the one read at first use.
+  function withTitleCanvas({ titleDraw = true, titleBroken = false, loseGame = false } = {}) {
+    const Gl = fakeProgramGL();
+    const sink = {};
+    installProgramRecorder(WATCHED_PROGRAMS, Gl.prototype, sink);
+    const game = new Gl();
+    game.canvas = { width: 640, height: 400 };
+    const title = new Gl();
+    title.canvas = { width: 300, height: 150 };
+    const titleFragment = titleBroken ? broken(basic.fragment) : basic.fragment;
+    const t1 = drawLikeThreeR172(title, { vertex: basic.vertex, fragment: titleFragment, draw: titleDraw });
+    const t2 = drawLikeThreeR172(title, { ...basic, draw: titleDraw });
+    for (const prog of [
+      { ...ocean, uniforms: oceanUniforms }, { ...terrain, uniforms: terrainUniforms },
+      { ...farRing, uniforms: { metalness: TERRAIN_SURFACE.metalness, roughness: 1 } },
+    ]) drawLikeThreeR172(game, prog);
+    title.lost = true; // the unmount: forceContextLoss, then the scene's dispose
+    title.deleteProgram(t1);
+    title.deleteProgram(t2);
+    if (loseGame) game.lost = true;
+    const reading = readProgramLinks(WATCHED_PROGRAMS, sink);
+    return { reading, verdict: programVerdict(reading, WATCHED_PROGRAMS) };
+  }
+
+  it('a canvas the app unmounted (lost, then disposed) passes on the status its programs gave at first use, and says so', () => {
+    const { reading, verdict } = withTitleCanvas();
+    expect(reading).toHaveLength(5);
+    expect(reading.filter((r) => r.lost).map((r) => r.canvas), 'SETUP: the title context is not lost at the read').toEqual(['300x150', '300x150']);
+    expect(verdict.ok, verdict.line).toBe(true);
+    expect(verdict.line).toBe('shader programs: all 5 linked (2 deleted before the read; 2 read at first use, their context lost by the read '
+      + '(canvas 300x150)); drawn with their uniforms: ocean x1, terrain x1, far ring x1');
+  });
+
+  it('a program that failed to link on that canvas still fails, from its first-use status', () => {
+    const { verdict } = withTitleCanvas({ titleBroken: true });
+    expect(verdict.ok).toBe(false);
+    expect(verdict.control).toBe(false);
+    expect(verdict.line).toMatch(/^shader programs: 1 of 5 FAILED to link \(unwatched\)/);
+  });
+
+  it('a program its canvas lost before it was ever used is COULD NOT CHECK, naming the lost context', () => {
+    const { verdict } = withTitleCanvas({ titleDraw: false });
+    expect(verdict.ok).toBe(false);
+    expect(verdict.control).toBe(true);
+    expect(verdict.line).toBe('shader programs: COULD NOT CHECK — 2 of 5 gave no LINK_STATUS, before the read or at first use '
+      + '(2 of them deleted or in a context lost by then, on canvas 300x150)');
+  });
+
+  it('the watched programs in a lost game context are COULD NOT CHECK, not read from their first use', () => {
+    const { verdict } = withTitleCanvas({ loseGame: true });
+    expect(verdict.ok).toBe(false);
+    expect(verdict.control).toBe(true);
+    expect(verdict.line).toBe('shader programs: COULD NOT CHECK the ocean — 1 program(s) linked, none drawn in a live context');
   });
 
   it("each watched mark is a line this repo's own patch puts in the shader", () => {
