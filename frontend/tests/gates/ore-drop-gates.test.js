@@ -12,7 +12,7 @@
 // duplicate id maps were the very bug — a second, drifted copy is what made a placed diamond come out as
 // stone), replaced it with a single shared table, and the behaviour became provably CORRECT — at which point
 // this gate went RED. A gate that goes red when the code gets fixed is anti-correlated with correctness
-// (LOOP-CHARTER §3). It now asserts the BEHAVIOUR through the real resolver, so it survives any refactor and
+// (CLAUDE.md, Invariants). It now asserts the BEHAVIOUR through the real resolver, so it survives any refactor and
 // still fails if an ore ever stops dropping its item.
 import { describe, it, expect } from 'vitest';
 import { blockForId, idForBlock } from '../../src/world/blockIds.js';

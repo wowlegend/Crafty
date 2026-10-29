@@ -21,7 +21,7 @@
 #        CURRENT shell via a heredoc — not a pipe subshell — so `exit` actually stops the script).
 #
 # MANUAL / explicitly-invoked tool. The autonomous loop must NOT auto-run --close (a destructive CLI whose
-# default target is the caller is not fired unattended — LOOP-CHARTER §6.4). Default mode LISTS only.
+# default target is the caller is not fired unattended; .claude/rules/gates-and-probes.md). Default mode LISTS only.
 #
 # Usage:
 #   sh close-preview-tabs.sh            # LIST orphan preview tabs (never closes) — safe default

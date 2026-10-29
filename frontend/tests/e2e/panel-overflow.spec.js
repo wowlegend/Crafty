@@ -67,5 +67,5 @@ test.describe('B5 — the Progression panel header + close button are reachable'
   // buttons) on its own overflow-y-auto -- the "+" measured at top=572, hittable=true, and stayed reachable
   // through two layout mutations (taller body; smaller body + no column scroll). No permanent gate is kept
   // for it: a reachability assertion here could not be made to fail (the design is robustly reachable + a
-  // scrollIntoView masks any break), so per the charter it would be decoration. The registry is corrected.
+  // scrollIntoView masks any break), so it would be decoration (a gate must be able to fail). The registry is corrected.
 });

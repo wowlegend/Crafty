@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * GATE TABLE — generate the "what authorizes a push" table in CLAUDE.md from the HOOK ITSELF.
+ * GATE TABLE — generate the table of every gate and where it runs from the HOOK ITSELF, into TARGET (the gates rule
+ * file that loads when a test or script is edited; CLAUDE.md keeps a three-line summary of the tiers).
  *
  * WHY THIS EXISTS. That paragraph has now undercounted its own gates THREE TIMES:
  *   "three gates"  ->  "Six"  ->  "NINE"  ->  live TEN
@@ -20,7 +21,7 @@
  * below; a gate with no entry renders a TODO marker, so a new gate is visible rather than silent.
  *
  *   node scripts/ci/gate-table.mjs           print the derived table (check mode)
- *   node scripts/ci/gate-table.mjs --write   regenerate the block inside CLAUDE.md
+ *   node scripts/ci/gate-table.mjs --write   regenerate the block inside TARGET
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
@@ -40,7 +41,9 @@ const HOOK = join(ROOT, 'ci/pipeline.sh');
 // was hand-kept). Parsing both surfaces is the fix; asserting the count here would just be a fourth guess.
 const PUSH_HOOK = join(ROOT, '.githooks/pre-push');
 const CI = join(ROOT, '.github/workflows/ci.yml');
-const CLAUDE_MD = join(ROOT, 'CLAUDE.md');
+/** Where the block lives, relative to the repo root; doc-currency reads the same constant. */
+export const TARGET = '.claude/rules/gates-and-probes.md';
+const TARGET_ABS = join(ROOT, TARGET);
 
 export const BEGIN = '<!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->';
 export const END = '<!-- END GATES -->';
@@ -50,23 +53,23 @@ export const END = '<!-- END GATES -->';
  * Keyed by the gate name as it appears in the hook.
  */
 export const DESCRIPTIONS = {
-  'knip': 'an unused file, export or dependency — the accretion that makes a codebase look larger than the part that runs. CI-only because it is slow and never a correctness failure',
-  'npm audit': 'a HIGH or CRITICAL advisory in the installed dependency set. CI-only ON PURPOSE (R5): this needs the registry, and a network outage reddening a local commit is how developers learn to pass --no-verify',
-  'prod-smoke': 'the bundle that actually SHIPS failing to boot, render, or keep a live GL context. It is the only harness that loads the production build — the probes and the e2e suite drive the DEV server, which measures LCP ~6.6x slower and cannot see a prod-only break. CI-only because it needs a browser. Skipped (`--code-changed=false`, printed) when CI\'s change-scope job finds only docs changed since a commit whose `ci ok` passed, the same condition that skips the e2e matrix',
-  'opsec-scan': 'an operator home path, a credential shape, or agent attribution reaching a PUBLIC repo. Built after a third-party statusline tool injected `/Users/<user>/...` into a TRACKED `.claude/settings.json` on its own — a convention cannot stop a tool that edits your config unprompted. Deliberately does NOT flag the operator first name (~196 files of design attribution): a gate that cries wolf gets bypassed, and a bypassed gate on a publish boundary is worse than none. The one push gate that reads no range: the push publishes, and CI sees the content only once it is on GitHub',
-  'mutation-proof-trailer': 'a commit that ADDS a gate under `tests/gates/` or `scripts/ci/`, or REWRITES the ASSERTIONS of an existing one, without a `Mutation-Proof:` trailer stating what was broken and that it went RED',
-  'doc-currency': 'a canonical doc citing a path that no longer exists (incl. bare, non-backticked paths), a cross-doc section citation aimed at a section that does not exist, drift in the generated MEASURED and GATES blocks, and one of six lock-label phrasings (`(LOCKED`, `LOCKED —`, `IRREDUCIBLE`, `MUST NOT be split`, `KEEP, don\'t rewrite`, `do not relitigate`) in a canonical doc other than DECISIONS, unless the line cites item 16 (DECISIONS 2026-10-28 item 16). Any other lock wording passes it',
-  'queue-ledger': 'a finding in the queue-of-record with no `▣✓/▢/⊘` marker, or a `⊘ DISMISSED` with no proof command',
-  'registry-append-only': 'a row of `memory/registry.jsonl` DELETED instead of closed: every row id at the range\'s base must still be a row at its head. The tree check (`registry-harvest`, in the unit run) proves each open source item has at least one row, so it stays green when one part of a split key goes, and it sees nothing once the old sources leave HEAD. Runs on the pushed range in pre-push (`PUSH_RANGES`; a new branch measures from its merge-base with origin/main) and on the event\'s base on every CI run. Compares the two ends only, and not a row\'s content: reopening or retitling a row passes',
-  'artifact-currency': 'on every push, an unusable operator-page source (missing, or a fetched copy of the published wrapper), a row still marked **Queued** whose declared `data-absent` artifact now EXISTS or that declares none — a status pill is a claim, and one nothing can falsify is how `d90a6b1` read Queued for a day after it shipped — and a page whose as-of stamp is missing, duplicated, or names a different commit from the publish `.artifact-sync.json` records (the hand-bumped-sha lie). The pages\' DRIFT from HEAD is printed with each page\'s URL and refuses nothing (DECISIONS 2026-10-28 item 12: the pages state their own commit and time). Push tier only: a merge made on GitHub runs no hook, so nothing checks the pages it brings in',
-  eslint: 'crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component',
-  'gate-shape': 'a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise)',
-  'cli-guard': 'a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts',
-  'registry-dedupe': 'a `memory/registry.jsonl` id that a merge left twice. The registry merges by union, so a row one side closed while the other side moved it comes out of the merge as two copies; on the commit it stops the merge commit, and `node scripts/ci/registry-dedupe.mjs` keeps the copy furthest along',
-  'unit + static gates': 'everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates. In CI on every sha, and by hand in `--tier=certify`; no hook runs it',
-  'vitest related': 'on the commit only, a staged change that breaks a unit test which STATICALLY imports it (`vitest related`). It prints how many of the suite\'s test files it selected; a lazily imported module and a source-grep gate are not selected, a commit that stages nothing under `frontend/` (only `ci/`, `.githooks/`, `.github/`, `memory/` or docs) runs no unit test at all, and the full suite runs in CI and, by hand, in `--tier=certify`',
-  build: 'broken JSX/imports',
-  'bundle byte budget': 'a chunk growing past its byte ceiling',
+  'knip': 'an unused file, export or dependency',
+  'npm audit': 'a HIGH or CRITICAL advisory (CI only: it needs the registry)',
+  'prod-smoke': 'the production build failing to boot, render or keep a GL context',
+  'opsec-scan': 'a home path, credential shape or agent attribution reaching this public repo',
+  'mutation-proof-trailer': 'a commit that adds a gate or changes its assertions with no `Mutation-Proof:` trailer',
+  'doc-currency': 'a dangling path, § or `CLAUDE.md` heading citation in a canonical doc or rule file, a stale generated block, a lock label, `CLAUDE.md` over 12,000 bytes',
+  'queue-ledger': 'a queue finding with no `▣✓/▢/⊘` marker, or a dismissal with no proof command',
+  'registry-append-only': 'a `memory/registry.jsonl` row deleted instead of closed',
+  'artifact-currency': 'an unusable operator-page source, a falsified Queued pill, a wrong as-of stamp',
+  eslint: 'crash-class bugs and dead code (`no-unused-vars` and `no-undef` are errors)',
+  'gate-shape': 'an assertion a comment could satisfy; the source-grep gate count may only fall',
+  'cli-guard': 'a script that runs its CLI when imported',
+  'registry-dedupe': 'a `memory/registry.jsonl` id a merge left twice (`registry-dedupe.mjs` collapses it)',
+  'unit + static gates': 'the whole vitest suite: `tests/**` and colocated `src/**/*.test.js`',
+  'vitest related': 'a staged change that breaks a unit test statically importing it',
+  build: 'broken JSX or imports',
+  'bundle byte budget': 'a chunk past its byte ceiling',
 };
 
 /** PURE: pull the ordered gate list out of the hook source. */
@@ -171,24 +174,19 @@ export function renderBlock(gates, _ciText) {
   const rows = gates.map((g) => {
     const desc = DESCRIPTIONS[g.name] || '**TODO — describe what this stops** (a new gate landed with no description)';
     const c = callersFor(g);
-    return `| ${g.name} | \`${g.cmd}\` | ${tick(c.commit)} | ${tick(c.push)} | ${tick(c.ci)} | ${desc} |`;
+    // A gate whose command is the default spelling prints its name alone, which keeps the block small.
+    const cell = g.cmd === `node scripts/ci/${g.name}.mjs` ? g.name : `${g.name}: \`${g.cmd}\``;
+    return `| ${cell} | ${tick(c.commit)} | ${tick(c.push)} | ${tick(c.ci)} | ${desc} |`;
   });
   const n = (t) => gates.filter((g) => (callersFor(g))[t]).length;
   return [
     BEGIN,
-    `**${gates.length} gates, across three callers.** Generated from \`ci/pipeline.sh\` — the ONE definition`,
-    'pre-commit, pre-push and GitHub Actions all call, so no two can drift. Do not edit the table by hand;',
-    'add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.',
+    `**${gates.length} gates; ${n('commit')} run on a commit, ${n('push')} on a push, ${n('ci')} in CI.** Generated by \`gate-table.mjs\` from \`ci/pipeline.sh\``,
+    'and `.githooks/pre-push`; edit it, never the table. A bare name runs as `node scripts/ci/<name>.mjs` from `frontend/`.',
+    'A push runs no unit suite, build or bundle: CI runs them on the exact sha (DECISIONS 2026-10-28 items 23, 24).',
     '',
-    `**${n('commit')} run on every commit** (the static gates and the related unit tests) · **${n('push')} on every push** (opsec-scan and the gates that read the pushed range) · **${n('ci')} in CI**.`,
-    'A push runs no static gate, unit suite, build or bundle budget: CI runs them on the exact sha and main moves only on its `ci ok` (DECISIONS 2026-10-28 item 24).',
-    '`bash ci/pipeline.sh --tier=certify` runs those offline steps by hand, for a local result before CI; nothing waits for it.',
-    'On a push to main of a sha whose `ci ok` already passed in another run, CI runs only the quick gates and registry-append-only (`--sha-certified=true`, DECISIONS 2026-10-28 item 23).',
-    'The columns are DERIVED from each step\'s tier guard in the script, not asserted here — they used to be,',
-    'and all three network/browser gates were printed as pre-push gates they have never been.',
-    '',
-    '| Gate | Command | pre-commit | pre-push | CI | What it actually stops |',
-    '|---|---|:--:|:--:|:--:|---|',
+    '| Gate | commit | push | CI | Stops |',
+    '|---|:--:|:--:|:--:|---|',
     ...rows,
     END,
   ].join('\n');
@@ -218,15 +216,15 @@ function main() {
   const { gates, ciText } = derive();
   const block = renderBlock(gates, ciText);
   if (process.argv.includes('--write')) {
-    const md = readFileSync(CLAUDE_MD, 'utf8');
+    const md = readFileSync(TARGET_ABS, 'utf8');
     const i = md.indexOf(BEGIN);
     const j = md.indexOf(END);
     if (i < 0 || j < 0) {
-      console.error(`gate-table: no ${BEGIN} / ${END} markers in CLAUDE.md — add them around the gate table first`);
+      console.error(`gate-table: no ${BEGIN} / ${END} markers in ${TARGET} — add them around the gate table first`);
       process.exit(1);
     }
-    writeFileSync(CLAUDE_MD, md.slice(0, i) + block + md.slice(j + END.length));
-    console.log(`gate-table: wrote ${gates.length} gates into CLAUDE.md`);
+    writeFileSync(TARGET_ABS, md.slice(0, i) + block + md.slice(j + END.length));
+    console.log(`gate-table: wrote ${gates.length} gates into ${TARGET}`);
     return;
   }
   console.log(block);

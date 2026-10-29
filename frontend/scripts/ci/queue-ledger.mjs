@@ -127,7 +127,7 @@ if (isCli) {
   if (errors.length) {
     console.error(`\n✖ queue-ledger: ${errors.length} problem(s)\n`);
     for (const e of errors) console.error('  • ' + e + '\n');
-    console.error('  LOOP-CHARTER Rule 5(c): a category is not done until every item carries its own marker.\n');
+    console.error('  A category is not done until every item carries its own marker.\n');
     process.exit(1);
   }
   const totalUnmarked = Object.values(now).reduce((a, b) => a + b, 0);

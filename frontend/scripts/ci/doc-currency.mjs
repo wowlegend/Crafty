@@ -2,8 +2,8 @@
 /**
  * DOC-CURRENCY LINT — mechanical enforcement that the docs still describe reality.
  *
- * WHY (LOOP-CHARTER §0-B.6): this repo carries 142 docs / ~44k lines. An agent cannot read them all, and a
- * STALE DOC IS A LIVE TRAP: on 2026-07-13 a single stale line in LOOP-CHARTER ("@react-three/test-renderer —
+ * WHY: this repo carries 142 docs / ~44k lines. An agent cannot read them all, and a
+ * STALE DOC IS A LIVE TRAP: on 2026-07-13 a single stale line in the loop charter (retired 2026-10-28) ("@react-three/test-renderer —
  * approved + landed") caused an agent to propose a week-sized campaign to "wire the installed E2E substrate"
  * for a package that had been REMOVED months earlier. Doc rot is not cosmetic; it manufactures dead work.
  *
@@ -35,12 +35,12 @@
  *   node scripts/ci/doc-currency.mjs               check this checkout; exit 1 on any error
  *   node scripts/ci/doc-currency.mjs --root=<dir>  check the docs under <dir> (a test seam)
  */
-import { readFileSync, existsSync, realpathSync } from 'node:fs';
+import { readFileSync, existsSync, realpathSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { measure, parseBlock, TOLERANCE, LARGE_FILE_LOC } from './measure.mjs';
-import { checkBlock as checkGateBlock } from './gate-table.mjs';
+import { checkBlock as checkGateBlock, TARGET as GATES_REL } from './gate-table.mjs';
 import { SURFACES as READ_ORDER_SURFACES, checkFile as checkReadOrderFile } from './read-order.mjs';
 import { checkBlock as checkControlsBlock } from './controls-table.mjs';
 import { check as checkPublicFaceFiles } from './public-face.mjs';
@@ -66,6 +66,8 @@ const RUNNERS = Object.freeze({
   'public-face': checkPublicFace,
   sections: checkSections,
   locks: checkLocks,
+  headings: checkHeadings,
+  size: checkSize,
 });
 export const CHECKS = Object.freeze(Object.keys(RUNNERS));
 
@@ -78,8 +80,6 @@ export const CANONICAL = [
   'memory/STATUS.md',
   'memory/ACTIVE_PLAN.md',
   'memory/ARCHITECTURE.md',
-  'docs/superpowers/LOOP-CHARTER.md',
-  'docs/superpowers/LOOP-KERNEL-PROMPT.md',
   'docs/superpowers/INDEX.md',
   // Added 2026-08-09. DECISIONS.md is read-order #6 and the ONLY thing that settles who owns a decision,
   // yet it was the one canonical surface this gate did not check — found while running the gate on an
@@ -87,7 +87,7 @@ export const CANONICAL = [
   // are expected to age, a RECORD is cited as ground truth. Superseding entries name the entry they
   // supersede and are append-only, so the corpus only grows and un-checked citations only accumulate.
   'docs/superpowers/DECISIONS.md',
-  'SOTA-INITIATIVE.md',
+  'docs/superpowers/SOTA-INITIATIVE.md',
   'README.md',
   'CLAUDE.md',
 ];
@@ -98,6 +98,21 @@ const CLAIM_VERBS = /(installed|landed|added|approved \+ landed|is wired|now ava
 const WATCHED_PACKAGES = ['@react-three/test-renderer', '@playwright/test', 'knip', 'puppeteer'];
 
 const CLAUDE_REL = 'CLAUDE.md';
+
+/**
+ * The path-scoped rule files load into a session at the moment of use, so a dangling pointer in one misleads exactly
+ * when it is read. They are scanned beside CANONICAL by the pointer checks (dangling, sections, headings).
+ */
+const RULES_DIR = '.claude/rules';
+export function rulesDocs(root) {
+  const dir = join(root, RULES_DIR);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).filter((f) => f.endsWith('.md')).sort().map((f) => `${RULES_DIR}/${f}`);
+}
+const pointerDocs = (root) => [...CANONICAL, ...rulesDocs(root)];
+
+/** CLAUDE.md loads into every session and after every compaction; detail beyond this moves to a rule file. */
+export const CLAUDE_MAX_BYTES = 12_000;
 
 /**
  * Run the named checks (all of them by default) over the docs under `root`.
@@ -145,7 +160,7 @@ function readDoc(root, rel, out, what) {
 // path lists on purpose: that directory is retired, so a canonical doc that still cites a path under it dangles
 // and fails here instead of passing unexamined.
 const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
-const CODEPATH_RE = /`((?:memory|docs|frontend|src|\.agent|scripts|tests)\/[A-Za-z0-9._\-/]+\.[a-z]{2,5})`/g;
+const CODEPATH_RE = /`((?:memory|docs|frontend|src|\.agent|\.claude|\.github|\.githooks|ci|scripts|tests)\/[A-Za-z0-9._\-/]+\.[a-z]{2,5})`/g;
 // BARE paths — not in backticks, not a markdown link. This repo's prose is full of them:
 //   "(plan docs/superpowers/plans/2026-06-14-crafty-ocean-coast.md, 4 slices)"
 // and until 2026-08-02 the lint could not see a single one. Archiving that very file left ARCHITECTURE.md
@@ -153,7 +168,7 @@ const CODEPATH_RE = /`((?:memory|docs|frontend|src|\.agent|scripts|tests)\/[A-Za
 // checked)" — a clean bill of health over text it never examined, which is the failure mode this lint
 // exists to prevent in the DOCS. INDEX.md even asserted that moving such a file "trips doc-currency";
 // it did not, and that false confidence is what made the hole worth closing rather than noting.
-const BAREPATH_RE = /(?<![`(\w/.-])((?:memory|docs|frontend|src|\.agent|scripts|tests)\/[A-Za-z0-9._\-/]+\.[a-z]{2,5})/g;
+const BAREPATH_RE = /(?<![`(\w/.-])((?:memory|docs|frontend|src|\.agent|\.claude|\.github|\.githooks|ci|scripts|tests)\/[A-Za-z0-9._\-/]+\.[a-z]{2,5})/g;
 
 // Some docs deliberately cite a WRONG path as a cautionary example (e.g. CLAUDE.md warns that
 // `memory/SOTA-INITIATIVE.md` is the classic false-absence mistake — "it's at root"). Flagging those
@@ -163,7 +178,7 @@ const NEGATED = /\b(a wrong|wrong|incorrect|is at root|not at|does not exist|fal
 /** checked.dangling = the citations actually resolved against the disk (after the external/negated/glob skips). */
 function checkDangling(root, out) {
   let examined = 0;
-  for (const rel of CANONICAL) {
+  for (const rel of pointerDocs(root)) {
     const abs = join(root, rel);
     if (!existsSync(abs)) {
       out.errors.push(`MISSING CANONICAL DOC: ${rel}`);
@@ -297,12 +312,12 @@ function checkStatus(root, out) {
 /** checked.gates = the gates the hook defines, which the block is compared against. */
 function checkGates(root, out) {
   out.checked.gates = 0;
-  const md = readDoc(root, CLAUDE_REL, out, 'the GATES block');
+  const md = readDoc(root, GATES_REL, out, 'the GATES block');
   if (md === null) return;
   const r = checkGateBlock(md);
   out.checked.gates = r.count;
   if (!r.ok) {
-    out.errors.push(`${CLAUDE_REL}: ${r.reason} (hook defines ${r.count} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`);
+    out.errors.push(`${GATES_REL}: ${r.reason} (hook defines ${r.count} gates) — regenerate: node frontend/scripts/ci/gate-table.mjs --write`);
   }
 }
 
@@ -373,11 +388,8 @@ function checkMeasured(root, out) {
 }
 
 // --- 4b. READ-ORDER BLOCK PARITY ---------------------------------------------
-// Three documents each carried their own hand-kept copy of the orientation read order, and all three
-// disagreed — while `CLAUDE.md` asserted "Order matches LOOP-CHARTER.md §0-A so the two documents
-// cannot disagree". §0-A omitted DECISIONS.md entirely; only the kernel named the PRIMARY work queue or put
-// CI in the orientation. A cold-start agent's first act is to follow one of these, so which copy it happened
-// to read determined what it believed the work was. Generated from one source now; drift fails the push.
+// Hand-kept copies of the orientation read order drifted apart, and a cold agent follows whichever one it reads
+// first. The order is generated from one source; a stale rendered block fails here.
 /** checked['read-order'] = the surfaces read and compared against the one generated block. */
 function checkReadOrder(root, out) {
   let examined = 0;
@@ -417,7 +429,7 @@ function checkPublicFace(root, out) {
   out.checked['public-face'] = checked;
 }
 
-// --- cross-doc SECTION citations (`charter §6.4`, `STATUS §2`) ---------------
+// --- cross-doc SECTION citations (`STATUS §2`) ---------------------------------
 // Paths were the only thing this lint checked. Docs also point at each other by SECTION, and those rot the
 // same way: a section is renumbered or removed and the pointer aims at nothing. STATUS §G1 records that ONE
 // stale line in the charter "regenerated a week-sized proposal"; a dangling § is that failure, smaller.
@@ -446,7 +458,7 @@ function checkSections(root, out) {
   }
   const dangling = [];
   let examined = 0;
-  for (const rel of CANONICAL) {
+  for (const rel of pointerDocs(root)) {
     let src;
     try { src = readFileSync(join(root, rel), 'utf8'); } catch { continue; }
     examined += citations(src).length;
@@ -507,6 +519,54 @@ function checkLocks(root, out) {
   out.checked.locks = scanned;
 }
 
+// --- 6. CLAUDE.md HEADING CITATIONS -------------------------------------------
+// The rule files and the cursor point into CLAUDE.md by heading, written `CLAUDE.md` "Landing". A heading that is
+// renamed or dropped leaves the pointer aimed at nothing, and no path check can see it. The cited text must begin a
+// `## ` heading of CLAUDE.md (case-insensitive), so "Landing" names "Landing: how a change reaches main".
+// Blind spot: a pointer written any other way ("CLAUDE.md, Method") is not recognised as a citation.
+const HEADING_CITE_RE = /`?CLAUDE\.md`?\s+"([^"\n]{2,80})"/g;
+
+/** checked.headings = the `CLAUDE.md` "Heading" citations found in the pointer docs; each is resolved or reported. */
+function checkHeadings(root, out) {
+  out.checked.headings = 0;
+  const md = readDoc(root, CLAUDE_REL, out, 'its heading citations');
+  if (md === null) return;
+  const headings = md.split('\n').filter((l) => /^##\s/.test(l)).map((l) => l.replace(/^##\s+/, '').toLowerCase());
+  let examined = 0;
+  for (const rel of pointerDocs(root)) {
+    const abs = join(root, rel);
+    if (!existsSync(abs)) continue;
+    for (const m of readFileSync(abs, 'utf8').matchAll(HEADING_CITE_RE)) {
+      examined += 1;
+      const cited = m[1].trim().toLowerCase();
+      if (!headings.some((h) => h.startsWith(cited))) {
+        out.errors.push(`DANGLING heading citation in ${rel}: CLAUDE.md has no "## ${m[1].trim()}" heading`);
+      }
+    }
+  }
+  out.checked.headings = examined;
+}
+
+// --- 7. CLAUDE.md SIZE --------------------------------------------------------
+/** checked.size = the files measured against their byte ceiling (CLAUDE.md, so 1 when it exists). */
+function checkSize(root, out) {
+  out.checked.size = 0;
+  const abs = join(root, CLAUDE_REL);
+  if (!existsSync(abs)) {
+    out.errors.push(`${CLAUDE_REL}: does not exist, so its size could not be checked`);
+    return;
+  }
+  out.checked.size = 1;
+  const bytes = readFileSync(abs).length;
+  out.claudeBytes = bytes;
+  if (bytes > CLAUDE_MAX_BYTES) {
+    out.errors.push(
+      `${CLAUDE_REL} is ${bytes.toLocaleString('en-US')} bytes, over its ${CLAUDE_MAX_BYTES.toLocaleString('en-US')}-byte ` +
+        `ceiling (DECISIONS 2026-10-28, W2-J item 1): move detail into the .claude/rules file that loads at the moment of use`,
+    );
+  }
+}
+
 // --- report -----------------------------------------------------------------
 // The CLI is a printer around run(): what it prints and its exit code come from run()'s result and nothing else.
 //
@@ -524,7 +584,7 @@ function invokedDirectly() {
 }
 if (invokedDirectly()) {
   const rootArg = process.argv.slice(2).find((a) => a.startsWith('--root='));
-  const { errors, warnings, checked, danglingSections } = run(rootArg ? { root: resolve(rootArg.slice('--root='.length)) } : {});
+  const { errors, warnings, checked, danglingSections, claudeBytes } = run(rootArg ? { root: resolve(rootArg.slice('--root='.length)) } : {});
 
   for (const w of warnings) console.warn(`⚠ ${w}`);
 
@@ -539,7 +599,9 @@ if (invokedDirectly()) {
   }
 
   console.log(
-    `✓ doc-currency PASSED (${CANONICAL.length} canonical docs checked; ${danglingSections} dangling ` +
+    `✓ doc-currency PASSED (CLAUDE.md ${claudeBytes.toLocaleString('en-US')} of ${CLAUDE_MAX_BYTES.toLocaleString('en-US')} ` +
+      `bytes; ${checked.dangling} path and ${checked.headings} CLAUDE.md heading citations in ${CANONICAL.length} ` +
+      `canonical docs and the rule files; ${danglingSections} dangling ` +
       `\u00a7 citation(s), ratchet ${ANCHOR_FROZEN}; lock labels: 0 (${LOCK_LABELS.length} phrasings, ${checked.locks} docs))`,
   );
 }

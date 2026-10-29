@@ -12,7 +12,7 @@ import { BIOMES, BIOME_NAMES, BIOME_ID, BIOME_TINT_RGB, hexToRgb01, tintPreservi
  * WHY LUMINANCE-PRESERVING, and why that is the load-bearing decision rather than the tint itself. The
  * obvious implementation — `mix(c, c * tint, s)` — darkens every biome whose tint is not white, because
  * every one of these tints has luminance below 1. On a bold-flat art direction that reads as dirt, not as
- * a biome, and it would quietly undo a LOCKED look (CLAUDE.md §Design Language). Normalising the tint to
+ * a biome, and it would quietly undo the design language's look (`.claude/rules/game-code.md`). Normalising the tint to
  * unit luminance first means `strength` controls HUE SHIFT only. The assertion below pins that: the
  * multiplier's luminance is 1 at every strength, for every biome.
  *
