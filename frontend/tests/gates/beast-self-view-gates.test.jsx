@@ -73,9 +73,25 @@ afterEach(async () => {
   useGameStore.setState({ beastFormActive: false, activeBeastForm: null });
 });
 
-/** Every mesh of the avatar, and the distance from `cam` to each, from three's own geometry and world matrices. */
-function partReadings(scene, cam) {
+/**
+ * Draw the scene from `cam` as three's renderer does: world matrices brought up to date, then each object that will be
+ * drawn handed to its onBeforeRender with the camera that draws it. Nothing is rasterised (the renderer is a stub).
+ */
+function draw(scene, cam) {
   scene.updateMatrixWorld(true);
+  cam.updateMatrixWorld(true);
+  const visit = (o) => {
+    if (!o.visible) return;
+    if (o.isMesh) o.onBeforeRender(null, scene, cam, o.geometry, o.material, null);
+    for (const c of o.children) visit(c);
+  };
+  visit(scene);
+}
+
+/** Every mesh of the avatar, and the distance from `cam` to each, from three's own geometry and world matrices, as the
+ *  frame drawn from `cam` leaves them. */
+function partReadings(scene, cam) {
+  draw(scene, cam);
   const eye = cam.getWorldPosition(new THREE.Vector3());
   const out = [];
   scene.traverse((o) => {
@@ -172,6 +188,20 @@ describe('BeastAvatar in first person and in the reveal (mounted through R3F, th
     expect(near.length, 'SETUP: the camera is in the wing').toBeGreaterThan(0);
     expect(near.filter((x) => x.drawn).length, 'a box the camera stands in is drawn').toBe(0);
     expect(parts.filter((x) => x.d >= SELF_CLEARANCE_M && !x.drawn).length, 'a box clear of the camera is hidden').toBe(0);
+  });
+});
+
+describe('the parts hidden from the eye are judged from the camera that draws the frame', () => {
+  it('the Player loop moves the camera after the avatar\'s frame (the reveal ending at the eye): that frame already hides the beast', async () => {
+    const cam = await mountForm('arcane');
+    const fwd = [Math.sin(0.7), 0, Math.cos(0.7)];
+    await at(cam, transformCamPose([0, 0, 0], fwd, 0.5).position);
+    expect(partReadings(r.three().scene, cam).filter((x) => x.drawn).length, 'SETUP: at the reveal\'s hold the beast draws').toBeGreaterThan(5);
+    // The avatar's frame has run; the Player's loop, later in the same frame, puts the camera back at the eye.
+    cam.position.set(0, EYE_HEIGHT_M, 0);
+    cam.updateMatrixWorld(true);
+    const drawn = partReadings(r.three().scene, cam).filter((x) => x.drawn);
+    expect(drawn.map((x) => `${x.type} ${x.d.toFixed(2)} m`), 'the frame drawn at the eye shows parts judged from the reveal camera').toEqual([]);
   });
 });
 

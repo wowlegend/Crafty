@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
@@ -38,8 +38,32 @@ const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 // S2-B1-M7d: Kevin's "punchy" glow pick, BAKED (the dev dial is gone). Scales the element glow
 // (rim/core/halo/point-light) ONLY — never the dark-ink body, so the silhouette stays crisp.
 const GLOW = BEAST_GLOW;
-const _eye = new THREE.Vector3();
 const BURST_RADIUS = 0.5;
+
+const _inv = new THREE.Matrix4();
+const _eye = new THREE.Vector3();
+/** The camera drawing this frame, in the avatar group's own space (`group.matrixWorld` is current at draw time). */
+function eyeInAvatar(group, camera) {
+  _inv.copy(group.matrixWorld).invert();
+  return _eye.setFromMatrixPosition(camera.matrixWorld).applyMatrix4(_inv);
+}
+
+/**
+ * The player's own beast, seen from the camera that draws it (beastAvatarParts.js SELF_CLEARANCE_M): in first person
+ * nothing of it draws but its shadow (its light stays), and away from the eye a part nearer the camera than the
+ * clearance is not drawn. Judged in each mesh's onBeforeRender, after the Player's loop has moved the camera this frame,
+ * so the reveal handing the view back to the eye hides the beast on that same frame. A hidden part writes neither colour
+ * nor depth; a box still casts its shadow (the shadow pass reads no colour mask).
+ * `distanceOf(e)` is the part's distance from `e`, a point in the avatar group's space.
+ */
+function hideNearEye(mesh, group, distanceOf) {
+  mesh.onBeforeRender = (renderer, scene, camera) => {
+    const e = eyeInAvatar(group, camera);
+    const seen = !isFirstPerson(e.x, e.y, e.z) && distanceOf(e) >= SELF_CLEARANCE_M;
+    mesh.material.colorWrite = seen;
+    mesh.material.depthWrite = seen && mesh.userData.writesDepth === true;
+  };
+}
 
 export function BeastAvatar() {
   const active = useGameStore((s) => s.beastFormActive);
@@ -69,6 +93,31 @@ export function BeastAvatar() {
     useGameStore.setState({ beastGroupRef: groupRef });
     return () => useGameStore.setState({ beastGroupRef: null });
   }, [!!parts]);
+
+  // Each part judges, as it is drawn, whether the camera drawing it may see it (hideNearEye). Set once per form.
+  useLayoutEffect(() => {
+    const g = groupRef.current;
+    if (!active || !g || !spheres) return;
+    const boxes = beastAvatarParts(element).boxes;
+    boxes.forEach((b, i) => {
+      const m = boxRefs.current[i];
+      if (!m) return;
+      m.userData.writesDepth = true;
+      hideNearEye(m, g, (e) => boxDistance(b, e.x, e.y, e.z));
+    });
+    const core = coreRef.current;
+    if (core) {
+      hideNearEye(core, g, (e) => sphereDistance(spheres.core, e.x, e.y, e.z));
+      const hot = core.children.find((c) => c.isMesh);
+      if (hot) hideNearEye(hot, g, (e) => sphereDistance(spheres.hotspot, e.x, e.y, e.z));
+    }
+    if (haloRef.current) hideNearEye(haloRef.current, g, (e) => sphereDistance(spheres.halo, e.x, e.y, e.z));
+    const burst = burstRef.current;
+    if (burst) {
+      hideNearEye(burst, g, (e) => Math.hypot(e.x - spheres.core.pos[0], e.y - spheres.core.pos[1], e.z - spheres.core.pos[2])
+        - BURST_RADIUS * burst.scale.x);
+    }
+  }, [active, element, spheres]);
   const chargeEl = charging && !active ? elementForSpell(activeSpell) : null;
   const chargeColor = chargeEl ? beastAvatarParts(chargeEl)?.glowColor : null;
 
@@ -104,32 +153,13 @@ export function BeastAvatar() {
     const ent = morphEntrance(elapsed);
     groupRef.current.scale.setScalar(ent.scale);
 
-    // The player's own beast, seen from the camera (beastAvatarParts.js SELF_CLEARANCE_M): in first person nothing of it
-    // draws but its shadow (and its light, which stays), and away from the eye a part nearer the camera than the
-    // clearance is not drawn. A hidden box writes neither colour nor depth and still casts its shadow; a hidden glow
-    // sphere is not drawn.
-    groupRef.current.updateWorldMatrix(true, false);
-    groupRef.current.worldToLocal(camera.getWorldPosition(_eye));
-    const away = !isFirstPerson(_eye.x, _eye.y, _eye.z);
-    for (let i = 0; i < parts.boxes.length; i++) {
-      const mesh = boxRefs.current[i];
-      if (!mesh) continue;
-      const seen = away && boxDistance(parts.boxes[i], _eye.x, _eye.y, _eye.z) >= SELF_CLEARANCE_M;
-      mesh.material.colorWrite = seen;
-      mesh.material.depthWrite = seen;
-    }
     if (coreRef.current) {
       const pulse = capture ? 1.08 : 1 + Math.sin(now * 3) * 0.08;
       coreRef.current.scale.setScalar(pulse + ent.flash * 0.9); // entry flash boosts the core
-      coreRef.current.visible = away && sphereDistance(spheres.core, _eye.x, _eye.y, _eye.z) >= SELF_CLEARANCE_M;
-    }
-    if (haloRef.current) {
-      haloRef.current.visible = away && sphereDistance(spheres.halo, _eye.x, _eye.y, _eye.z) >= SELF_CLEARANCE_M;
     }
     if (burstRef.current) {
       const bf = burstFlash(capture ? BURST_SEC + 1 : elapsed);
-      const d = Math.hypot(_eye.x - parts.core.pos[0], _eye.y - parts.core.pos[1], _eye.z - parts.core.pos[2]);
-      burstRef.current.visible = bf.active && away && d - BURST_RADIUS * bf.scale >= SELF_CLEARANCE_M;
+      burstRef.current.visible = bf.active;
       if (bf.active) {
         burstRef.current.scale.setScalar(bf.scale);
         if (burstRef.current.material) burstRef.current.material.opacity = bf.opacity;
