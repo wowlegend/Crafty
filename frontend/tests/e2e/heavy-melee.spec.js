@@ -4,6 +4,7 @@ import { HEAVY_HOLD_MS, HEAVY_CHARGE_MS, HEAVY_MULT } from '../../src/game/heavy
 import { formDurationFor, COOLDOWN_SEC } from '../../src/game/beastTransform.js';
 import { TALENT_LIMITS } from '../../src/game/talentTree.js';
 import { TRANSFORM_CAM_SEC } from '../../src/game/transformCam.js';
+import { EYE_HEIGHT_M } from '../../src/combat/swingOrigin.js';
 
 // HEAVY MELEE THROUGH A REAL MOUSE HOLD (plan 2026-09-23-crafty-heavy-melee, Task 4).
 //
@@ -227,7 +228,7 @@ test.describe('heavy melee', () => {
     // Measured locally (load ~35-60, three runs) without a probe: the commit read stalled 0-4 s, the press landed 4-10 s
     // after the commit — inside the 23 s form, and inside 14 s too, once the fixed wait and the real-mouse hold are gone.
     await page.keyboard.down('r');
-    r.beast = await page.evaluate(async ({ holdMs, camMs, roarMs, lastsMs, cooldownMs }) => {
+    r.beast = await page.evaluate(async ({ holdMs, camMs, roarMs, lastsMs, cooldownMs, eyeM }) => {
       const st = () => window.useGameStore.getState();
       const frame = () => new Promise((res) => requestAnimationFrame(res));
       const drawn = () => window.__craftyTest.call('readFrameloop')?.frames ?? null; // R3F frames drawn (DEV hook)
@@ -238,7 +239,7 @@ test.describe('heavy melee', () => {
       const since = (t) => Math.round(t - t0);
       const head = () => {
         const b = st().playerRigidBodyRef?.current?.translation?.();
-        return b ? { across: +Math.hypot(cam.position.x - b.x, cam.position.z - b.z).toFixed(2), up: +(cam.position.y - b.y - 1.2).toFixed(2) } : null;
+        return b ? { across: +Math.hypot(cam.position.x - b.x, cam.position.z - b.z).toFixed(2), up: +(cam.position.y - b.y - eyeM).toFixed(2) } : null;
       };
       const roars = [];
       let h = null;
@@ -306,7 +307,7 @@ test.describe('heavy melee', () => {
       window.__heavyLog.splice(0);
       return { press: h0 - h1, release: h1 - h2, form: [f0, f1], heldMs: Math.round(tr - tp), roars, pressAt: since(tp), head: h };
     }, { holdMs: HEAVY_HOLD_MS + HEAVY_CHARGE_MS + 200, camMs: TRANSFORM_CAM_SEC * 1000, roarMs: 20000,
-      lastsMs: formDurationFor(TALENT_LIMITS.wildheart_endurance) * 1000, cooldownMs: COOLDOWN_SEC * 1000 + 200 });
+      lastsMs: formDurationFor(TALENT_LIMITS.wildheart_endurance) * 1000, cooldownMs: COOLDOWN_SEC * 1000 + 200, eyeM: EYE_HEIGHT_M });
     await page.keyboard.up('r'); // Playwright's own key state; the roar intent is already down (inert either way)
     await page.waitForTimeout(120);
     r.beast.after = await read();
