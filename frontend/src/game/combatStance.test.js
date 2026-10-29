@@ -331,24 +331,24 @@ describe('noteMoveTarget / readMoveTarget — the controller\'s move-target reco
 describe('stanceFrame / stanceWalk — the controller\'s seam', () => {
   let nextId = 0;
   const husk = (x, z, y = 51.7) => ({ id: `s${++nextId}`, isMob: true, type: 'zombie', passive: false, isAggro: true, health: 50, position: { x, y, z } });
-  const cam = (x, y, z) => ({ position: { x, y, z } });
   const MOVING = (x, z) => ({ x, z, moving: true });
   // Engaged at full weight against a husk 3 m along -x from a player at the origin: away is +x.
   const engaged = () => {
     resetStance();
     const mobs = [husk(-3, 0)];
     let st;
-    for (let t = 0; t <= 400; t += 16) st = stanceFrame(mobs, { x: 0, y: 50.5, z: 0 }, cam(0, 51.7, 0), 1 / 60, t);
+    for (let t = 0; t <= 400; t += 16) st = stanceFrame(mobs, { x: 0, y: 50.5, z: 0 }, 1 / 60, t);
     expect([st.w, st.awayX, st.awayZ], 'SETUP: the stance did not engage at full weight with away +x').toEqual([1, 1, 0]);
     return st;
   };
 
   it('stanceFrame steps the LIVE stance and measures the height from the point the worker strikes from', () => {
     resetStance();
-    const c = cam(0, 51.7, 0);
-    const st = stanceFrame([], { x: 0, y: 50.5, z: 0 }, c, 1 / 60, 0);
+    const body = { x: 0, y: 50.5, z: 0 };
+    const st = stanceFrame([], body, 1 / 60, 0);
     expect(st).toBe(getStance());
-    expect(st.playerY, 'the stance measured the player from a height the AI worker does not strike from').toBe(mobSensePoint(c).y);
+    expect(st.playerY, 'the stance measured the player from a height the AI worker does not strike from').toBe(mobSensePoint(body, {}).y);
+    expect(st.playerY, 'SETUP: the sense point is the body\'s eye, above its centre').toBeGreaterThan(body.y);
   });
 
   it('stanceWalk feeds the ramp the CLAMPED target and returns, and records, what the ramp gave', () => {
@@ -388,7 +388,7 @@ describe('stanceFrame / stanceWalk — the controller\'s seam', () => {
     const s = getStance();
     expect([s.w, s.engaged, s.threatId, s.awayX, s.awayZ, s.gap], 'the stance came along on the teleport').toEqual([0, false, null, 0, 0, 0]);
     // the next frame at the new site, with no mob near: no calm carried, no clamp
-    const after = stanceFrame([], { x: 0, y: 120, z: 0 }, cam(0, 121.2, 0), 1 / 60, 1000);
+    const after = stanceFrame([], { x: 0, y: 120, z: 0 }, 1 / 60, 1000);
     expect([after.engaged, after.w]).toEqual([false, 0]);
     const v = stanceWalk(MOVING(14, 0), after, { moveMult: 1 }, 1, { x: 14, z: 0 }, 1 / 60);
     expect(v.x, 'the walk at the new site was clamped against the old fight').toBe(14);
@@ -401,7 +401,7 @@ describe('stanceFrame / stanceWalk — the controller\'s seam', () => {
 
   it('out of combat stanceWalk hands the ramp moveVector\'s output exactly, and a still stick ramps to 0', () => {
     resetStance();
-    const st = stanceFrame([], { x: 0, y: 50.5, z: 0 }, cam(0, 51.7, 0), 1 / 60, 0);
+    const st = stanceFrame([], { x: 0, y: 50.5, z: 0 }, 1 / 60, 0);
     expect(st.w).toBe(0);
     stanceWalk(MOVING(-9.899494936611665, 9.899494936611665), st, { moveMult: 1 }, 1, { x: 0, z: 0 }, 1 / 60);
     const r = readMoveTarget();
@@ -467,7 +467,7 @@ describe('the F1 bound on the player\'s own step, at every frame interval', () =
     const frames = Math.ceil(3 / dt);
     for (let f = 0; f < frames; f++) {
       const k = typeof keys === 'function' ? keys(f, dt) : keys;
-      const st = stanceFrame([mob], body, camera, dt, now);
+      const st = stanceFrame([mob], body, dt, now);
       const lx = mob.position.x - camera.position.x, lz = mob.position.z - camera.position.z;
       const c = Math.cos(turn * f * dt), s = Math.sin(turn * f * dt);
       const mv = moveVector(face * (lx * c - lz * s), face * (lx * s + lz * c), k, BASE_MOVE_SPEED * form * walk);
@@ -738,8 +738,8 @@ describe('the stance\'s game clock: where each frame\'s step starts in game time
 
 // The controller's frame, as Components.jsx calls the seam (the world clock read inside it), and the seam on a clock a
 // test names.
-const seamFrame = (mobs, body, camera, dt) => stanceFrame(mobs, body, camera, dt);
-const seamAt = (mobs, body, camera, ms, dt) => stanceFrame(mobs, body, camera, dt, ms);
+const seamFrame = (mobs, body, camera, dt) => stanceFrame(mobs, body, dt);
+const seamAt = (mobs, body, camera, ms, dt) => stanceFrame(mobs, body, dt, ms);
 
 describe('the stance holds while the world is held, and lets go when the fight is over', () => {
   let nextId = 0;

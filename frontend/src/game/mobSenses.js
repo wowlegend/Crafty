@@ -26,8 +26,10 @@
  * than the player keeps ordinary melee out, and a single step onto a rock does not. Kevin may want it tighter or
  * looser once the siege is felt.
  *
- * Pure: no worker globals, no store, no Three. Every function takes deltas and returns a number or a bool.
+ * Pure: no worker globals, no store, no Three. Every function takes deltas or a point and returns a number, a bool or
+ * the point.
  */
+import { steadyEye } from '../combat/swingOrigin.js';
 
 /** How far above or below itself a mob can land a melee blow or a leap, in blocks. Taste call — see above. */
 export const VERTICAL_REACH = 2.5;
@@ -65,17 +67,17 @@ export function canReach(dx, dy, dz, range, verticalReach = VERTICAL_REACH) {
 }
 
 /**
- * THE POINT MOBS MEASURE THE PLAYER FROM: the camera's position, the player's eye. The camera rides the body's centre
- * + EYE_HEIGHT_M (combat/swingOrigin.js) plus bob, shake and kick (Components.jsx, the camera follow), so on one floor
- * a mob reads dy about 1.1 from here and 0.45 from the body. AIWorkerSystem posts this point as the worker's
- * playerPos, so every sense and reach test above runs against it; the combat stance (game/combatStance.js stanceStep)
- * reads the SAME point for its own reach test, so a mob the stance counts as able to reach you is one the worker would
- * let swing. One function for both readers: move the origin here and both move together.
- * tests/e2e/combat-stance.spec.js case 0 gates the agreement; moving the eye moves which ledges are refuge
- * (tests/gates/mob-senses-gates.test.js, the ledge table).
+ * THE POINT MOBS MEASURE THE PLAYER FROM: the body's steady eye, its centre + EYE_HEIGHT_M (combat/swingOrigin.js
+ * steadyEye), so on one floor a mob reads dy about 1.1 from here. Not the camera, which adds the walk bob, the shake,
+ * the verb kicks and the roar's reveal pose, 4.5 m behind and 2.2 m up (DECISIONS 2026-10-29 item 83).
+ * AIWorkerSystem posts this point as the worker's playerPos, so every sense and reach test above runs against it, and
+ * the arrows aim at it and are tested against it; the combat stance (game/combatStance.js stanceFrame) reads the SAME
+ * point for its own reach test, so a mob the stance counts as able to reach you is one the worker would let swing. One
+ * function for every reader: move the origin here and all move together. tests/gates/mob-sense-body-gates.test.jsx
+ * reads the point the AI posts; moving the eye moves which ledges are refuge (tests/gates/mob-senses-gates.test.js).
  *
- * Returns the camera's own position object, not a copy (it runs every frame): read it, never write it.
+ * `body` is any {x, y, z} (the rigid body's translation); the point is written into `out`, which is returned.
  */
-export function mobSensePoint(camera) {
-  return camera.position;
+export function mobSensePoint(body, out) {
+  return steadyEye(body, out);
 }

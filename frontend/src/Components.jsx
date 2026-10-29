@@ -664,8 +664,8 @@ export const Player = ({ isWorldBuilt }) => {
     // the world is NOT paused: the physics step, mobs, weather and the clock keep running — motion-on frames are its
     // whole point. What stops is THIS controller, from this return to the end of the callback: movement and the KCC,
     // the death branch, the void-fall guard and the beast / voidhand / imbue state machines. And PositionTracker
-    // publishes camera.position as store.playerPosition, so while posed mobs, allies, chunk streaming and a manual
-    // save see the hero-shot camera, not the body (render/lookbookSeam.js).
+    // publishes camera.position as store.playerPosition, so while posed allies, chunk streaming, the spawner and a
+    // manual save see the hero-shot camera, not the body; the mobs' senses read the body (render/lookbookSeam.js).
     const lookPose = lookbookPose();
     if (lookPose) {
       applyLookbookPose(state.camera, lookPose);
@@ -992,7 +992,7 @@ export const Player = ({ isWorldBuilt }) => {
     // frame's body, the point the frame's step starts from.
     // nextTranslation, not translation: a move given on a frame that took no world step is where this one starts from
     // (game/kinematicMove.js). The seam reads the world clock itself, so a pause holds the fight.
-    const stance = stanceFrame(mobsQuery.entities, rigidBodyRef.current.nextTranslation(), camera, delta);
+    const stance = stanceFrame(mobsQuery.entities, rigidBodyRef.current.nextTranslation(), delta);
 
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
     if (spawnPosSet.current && isVoidFall(currentTrans.y)) {

@@ -7,7 +7,11 @@ import { routinePositionInto, npcFollowT } from '../game/npcRoutine.js';
 import { heightGridAt, snapMob } from '../game/localPath.js';
 import { groundForMover } from '../game/mobFloor.js';
 import { strikesToApply, holdStagger } from '../game/perfectDodge.js';
-import { mobSensePoint } from '../game/mobSenses.js';
+import { playerSensePoint } from './playerSensePoint.js';
+
+// The point the tick posts, and the one an arrow or a leap aims at: scratch, written in place.
+const _sense = { x: 0, y: 0, z: 0 };
+const _target = { x: 0, y: 0, z: 0 };
 
 // Per-frame scratch + probe cadence for the ambient hub-NPC routine below. The routine ran a Rapier
 // castRay PER NPC PER RENDER FRAME and allocated two object literals per NPC per frame, for a lerp that
@@ -62,16 +66,18 @@ export const AIWorkerSystem = () => {
           if (attack.type === 'projectile') {
             // Phase 12: Archer System - Spawn Arrow
             if (store.spawnEnemyProjectile) {
-              store.spawnEnemyProjectile(attack.position, [camera.position.x, camera.position.y, camera.position.z]);
+              const p = playerSensePoint(camera, _target);
+              store.spawnEnemyProjectile(attack.position, [p.x, p.y, p.z]);
             }
           } else if (attack.type === 'leap') {
             // Phase 12: Leap System - Physics Impulse
             const entity = mobsQuery.entities.find(ent => ent.id === attack.id);
             if (entity) {
+                const p = playerSensePoint(camera, _target);
                 const dir = [
-                    camera.position.x - entity.position.x,
+                    p.x - entity.position.x,
                     0, // no vertical term: the knockback consumer (below) applies X/Z only, so the leap is horizontal
-                    camera.position.z - entity.position.z
+                    p.z - entity.position.z
                 ];
                 const mag = Math.sqrt(dir[0]*dir[0] + dir[2]*dir[2]) || 1; // guard: mob directly under player -> 0 -> NaN position
                 entity.knockback = [dir[0]/mag * 15, dir[1], dir[2]/mag * 15]; // Reuse knockback for leap
@@ -225,7 +231,7 @@ export const AIWorkerSystem = () => {
 
     // The worker measures every sense and reach test from this point, and the combat stance reads the same one
     // (game/mobSenses.js mobSensePoint), so the two cannot disagree about which mobs can reach the player.
-    const sense = mobSensePoint(camera);
+    const sense = playerSensePoint(camera, _sense);
     workerRef.current.postMessage({
       type: 'TICK',
       playerPos: [sense.x, sense.y, sense.z],

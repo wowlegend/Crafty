@@ -24,8 +24,9 @@
 // while a pose is set: movement and the kinematic character controller, the death branch, the void-fall guard and the
 // beast, voidhand and imbue state machines. And the camera is the game's position source: PositionTracker mirrors
 // camera.position into store.playerPosition, so while posed the store's player position is the HERO-SHOT CAMERA, not
-// the body, and mobs, ally squads, chunk streaming and a manual save all see the camera. The first-person hands hide
-// while a pose is set (an elevated hero shot with hands in the corner misleads).
+// the body, and ally squads, chunk streaming, the spawner, the boss and a manual save all see the camera; the mobs'
+// senses, their arrows and the combat stance read the body (game/mobSenses.js mobSensePoint). The first-person hands
+// hide while a hero pose is set (an elevated shot with hands in the corner misleads); an eye pose keeps them.
 //
 // Module state on purpose: the pose is read every frame by the Player (a transient read — Game-Loop Isolation), and
 // it changes only when a script asks.
