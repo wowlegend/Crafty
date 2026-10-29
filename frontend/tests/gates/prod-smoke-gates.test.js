@@ -307,7 +307,8 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
       getShaderInfoLog(shader) { return shader.deleted ? null : shader.log; }
       isShader(shader) { return !shader.deleted; }
       deleteShader(shader) { shader.deleted = true; }
-      createProgram() { return { shaders: [], linked: null, log: '', deleted: false, declared: new Map(), values: new Map() }; }
+      // A restored context starts a new generation: the programs of the one before answer nothing (WebGL 2).
+      createProgram() { return { shaders: [], linked: null, log: '', deleted: false, declared: new Map(), values: new Map(), gen: this.gen || 0 }; }
       attachShader(program, shader) { program.shaders.push(shader); }
       linkProgram(program) {
         program.linked = program.shaders.every((s) => s.compiled);
@@ -316,15 +317,21 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
           for (const m of s.source.matchAll(/^\s*uniform\s+(float|vec3)\s+(\w+)\s*;/gm)) program.declared.set(m[2], m[1]);
         }
       }
-      getProgramParameter(program, pname) { return this.lost || program.deleted ? null : pname === this.LINK_STATUS ? program.linked : null; }
+      getProgramParameter(program, pname) {
+        return this.lost || program.deleted || program.gen !== (this.gen || 0) ? null : pname === this.LINK_STATUS ? program.linked : null;
+      }
       getProgramInfoLog(program) { return this.lost || program.deleted ? null : program.log; }
       useProgram(program) { this.current = program; }
-      getUniformLocation(program, name) { return !this.lost && program.linked && program.declared.has(name) ? { program, name } : null; }
+      getUniformLocation(program, name) {
+        return !this.lost && program.gen === (this.gen || 0) && program.linked && program.declared.has(name) ? { program, name } : null;
+      }
       isContextLost() { return !!this.lost; }
       // One extension object per context, as a browser returns; loseContext is what three's forceContextLoss calls.
       getExtension(name) {
         if (name !== 'WEBGL_lose_context') return null;
-        if (!this.loseExt) this.loseExt = { loseContext: () => { this.lost = true; } };
+        if (!this.loseExt) {
+          this.loseExt = { loseContext: () => { this.lost = true; }, restoreContext: () => { this.lost = false; this.gen = (this.gen || 0) + 1; } };
+        }
         return this.loseExt;
       }
       uniform(at, value) { at.program.values.set(at.name, value); }
@@ -461,6 +468,44 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
     expect(verdict.line).toBe('shader programs: 3 of 6 linked, 3 never drawn before the page discarded its canvas (3 deleted before the read); drawn with their uniforms: ocean x1, terrain x1, far ring x1');
   });
 
+  /**
+   * The game canvas loses its context through the page and gets it back (game/contextRecovery.js re-links in place and
+   * leaves the old programs undeleted). The old programs keep their first-use status, but they are not the ones drawing:
+   * with only them carrying a watched mark the check is COULD NOT CHECK, and once the scene is linked again in the
+   * restored context the new programs are the ones read.
+   */
+  function restoredGame({ relink }) {
+    const Gl = fakeProgramGL();
+    const sink = {};
+    installProgramRecorder(WATCHED_PROGRAMS, Gl.prototype, sink);
+    const gl = new Gl();
+    const draw = () => {
+      drawLikeThreeR172(gl, { ...ocean, uniforms: oceanUniforms });
+      drawLikeThreeR172(gl, { ...terrain, uniforms: terrainUniforms });
+      drawLikeThreeR172(gl, { ...farRing, uniforms: { metalness: TERRAIN_SURFACE.metalness, roughness: 1 } });
+    };
+    draw();
+    const ext = gl.getExtension('WEBGL_lose_context');
+    ext.loseContext();
+    ext.restoreContext();
+    if (relink) draw();
+    const reading = readProgramLinks(WATCHED_PROGRAMS, sink);
+    return { reading, verdict: programVerdict(reading, WATCHED_PROGRAMS) };
+  }
+
+  it('programs from before a restored context are never read as drawn: COULD NOT CHECK alone, the new ones once linked', () => {
+    const stale = restoredGame({ relink: false });
+    expect(stale.reading.map((r) => [r.retired, r.linked]), 'SETUP: the old programs did not keep their first-use status')
+      .toEqual([[true, true], [true, true], [true, true]]);
+    expect(stale.reading.map((r) => r.uniforms), 'an old program\'s uniforms were read: it answers nothing').toEqual([undefined, undefined, undefined]);
+    expect(stale.verdict.ok).toBe(false);
+    expect(stale.verdict.control, stale.verdict.line).toBe(true);
+    expect(stale.verdict.line).toBe('shader programs: COULD NOT CHECK the ocean — 1 program(s) linked, none drawn in a live context');
+    const relinked = restoredGame({ relink: true });
+    expect(relinked.verdict.ok, relinked.verdict.line).toBe(true);
+    expect(relinked.verdict.line).toBe('shader programs: all 6 linked (0 deleted before the read; 3 read at first use on a canvas the page discarded); drawn with their uniforms: ocean x1, terrain x1, far ring x1');
+  });
+
   it('an ocean never linked, or linked and never drawn, is COULD NOT CHECK, never a pass', () => {
     const inland = scene((p) => (p.name === 'ocean' ? null : p));
     expect(inland.verdict.ok).toBe(false);
@@ -468,7 +513,7 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
     expect(inland.verdict.line).toBe('shader programs: COULD NOT CHECK the ocean — no program carrying `uniform vec3 uFoamColor;` was linked');
     const undrawn = scene(only('ocean', (p) => ({ ...p, draw: false })));
     expect(undrawn.verdict.ok).toBe(false);
-    expect(undrawn.verdict.line).toBe('shader programs: COULD NOT CHECK the ocean — 1 program(s) linked, none drawn');
+    expect(undrawn.verdict.line).toBe('shader programs: COULD NOT CHECK the ocean — 1 program(s) linked, none drawn in a live context');
     const empty = programVerdict([], WATCHED_PROGRAMS);
     expect(empty.ok).toBe(false);
     expect(empty.line).toMatch(/COULD NOT CHECK — the recorder saw no program linked/);
