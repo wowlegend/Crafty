@@ -4,6 +4,7 @@ import { installWorldHold } from './_worldHold.js';
 import { HUB_NPC_ANCHORS } from '../../src/world/hubLayout.js';
 import { TALK_RANGE } from '../../src/input/talk.js';
 import { getWeaponBaseDamage } from '../../src/game/equipment.js';
+import { SWING_APEX_OVER_BODY_M } from '../../src/combat/swingOrigin.js';
 
 // MARA'S FORGE, IN THE BOOTED GAME (W2-F step 5; DECISIONS 2026-10-28 W1-H item 7, 2026-10-29 items 60-68; plan
 // docs/superpowers/plans/2026-10-29-crafty-w2f-forge.md, step 4). A fresh profile at noon with a Stone Sword in hand and
@@ -11,8 +12,8 @@ import { getWeaponBaseDamage } from '../../src/game/equipment.js';
 // instrument below sees the card when it opens); (2) W held, the camera steered at her live position each drawn frame
 // (she walks a 2 m circle round her post by day), walks the player into reach; (3) G opens the Forge card; (4) a real click on the weapon line's Buy puts the Iron Sword in hand, the hand's
 // base damage rises from the Stone Sword's, and the price is spent; (5) a click on the next blade's Buy, with nothing
-// left to pay, says what is short and changes nothing; (6) Esc closes the card, and C opens no panel; (7) a real left
-// click still kills a staged 1-HP zombie; (8) the save the autosave's action writes holds the Iron Sword in hand.
+// left to pay, says what is short and changes nothing; (6) Esc closes the card, and C opens no panel; (7) a real T
+// press still kills a staged 1-HP zombie; (8) the save the autosave's action writes holds the Iron Sword in hand.
 //
 // Every wait after a key release is counted in drawn frames, never wall time: a CI frame can last seconds. The card's
 // refusal is a line in the card itself (data-testid forge-message), not a short-lived toast. The world is held
@@ -204,35 +205,54 @@ test.describe('the Forge', () => {
     await page.evaluate(frames, 10);
     expect((await read(page)).panels, 'C opened a panel').toEqual([]);
 
-    // 7. IT STILL FIGHTS: a real left click kills a staged 1-HP zombie ahead, with the world held from the staging, so
-    // neither it nor anything else moves or strikes between the staging and the click (tests/e2e/talents.spec.js stages
-    // its kill so). A hold kept from the walk through the card failed this step on all three attempts of run
-    // 40861397262 (the zombie aimed at 1 HP, the click not landing), where a hold begun here passed on run 40859622498;
-    // the cause is not known, and the hold begun here is the measured configuration.
-    const z = await page.evaluate(({ capMs }) => {
+    // 7. IT STILL FIGHTS: a real T press (the melee key) kills a staged 1-HP zombie, with the world held from the staging
+    // so neither it nor anything else moves or strikes before the press (tests/e2e/talents.spec.js stages its kill so).
+    // The zombie stands 2.5 m from the player on the player's own floor, in a heading clear of Mara, and the staging
+    // checks the game's own melee cone (GameMethods.checkMobsInMeleeCone, from the swing's apex) holds it before the
+    // press: the hub's raised grade put a zombie staged at a fixed quarter turn on another level, outside the cone's
+    // vertical reach, and a left click there mined the ground instead (run 40853867973: the page's Stone 17).
+    const z = await page.evaluate(({ capMs, apex }) => {
       const s = window.useGameStore.getState();
       const cam = window.__threeCamera;
+      const body = s.playerRigidBodyRef?.current?.translation();
+      if (!body) return { why: 'SETUP: no player body' };
       window.__e2eHoldWorld({ capMs });
-      // A quarter turn away from Mara, so the zombie stands in open ground beside her post, not on her.
-      cam.rotation.order = 'YXZ'; cam.rotation.x = 0; cam.rotation.y += Math.PI / 2; cam.updateMatrixWorld();
-      const d = new cam.position.constructor();
-      cam.getWorldDirection(d); d.y = 0; d.normalize();
-      const gx = cam.position.x + d.x * 2.5, gz = cam.position.z + d.z * 2.5;
-      const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
-      s.spawnMob(gx, gz, 'zombie', s.getMobFloor(gx, gz, cam.position.y - 1.6));
-      const m = window.__craftyTest.call('readMobs').find((e) => !before.has(e.id));
-      if (!m) return { why: 'SETUP: spawnMob added no zombie' };
-      window.GameMethods.damageMob(m.id, m.health - 1, 'physical', 'ally');
-      cam.lookAt(m.x, m.y + 0.8, m.z);
-      return { id: m.id };
-    }, { capMs: test.info().timeout || 240000 });
+      const origin = { x: body.x, y: body.y + apex, z: body.z };
+      const feet = cam.position.y - 1.6; // as talents.spec.js stages its zombie
+      const own = s.getMobFloor(body.x, body.z, feet);
+      const floor = Number.isFinite(own) ? own : feet;
+      const mara = window.__craftyTest.call('readMobs').find((e) => e.role === 'smith');
+      const tried = [];
+      for (let k = 0; k < 12; k++) {
+        const yaw = (k * Math.PI) / 6;
+        const dir = { x: -Math.sin(yaw), y: 0, z: -Math.cos(yaw) };
+        if (mara) {
+          const mx = mara.x - body.x, mz = mara.z - body.z, ml = Math.hypot(mx, mz) || 1;
+          if ((dir.x * mx + dir.z * mz) / ml > 0.5) { tried.push(`${k}: toward Mara`); continue; }
+        }
+        const gx = body.x + dir.x * 2.5, gz = body.z + dir.z * 2.5;
+        const f = s.getMobFloor(gx, gz, feet);
+        if (!Number.isFinite(f) || Math.abs(f - floor) > 0.6) { tried.push(`${k}: floor ${f} vs ${floor}`); continue; }
+        const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
+        s.spawnMob(gx, gz, 'zombie', f);
+        const m = window.__craftyTest.call('readMobs').find((e) => !before.has(e.id));
+        if (!m) return { why: 'SETUP: spawnMob added no zombie' };
+        window.GameMethods.damageMob(m.id, m.health - 1, 'physical', 'ally');
+        cam.rotation.order = 'YXZ'; cam.rotation.x = 0; cam.rotation.y = yaw; cam.updateMatrixWorld();
+        const inCone = window.GameMethods.checkMobsInMeleeCone(origin, dir, 4.5, Math.PI / 2).some((e) => e.id === m.id);
+        if (inCone) return { id: m.id, k };
+        tried.push(`${k}: outside the melee cone`);
+        window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
+      }
+      return { why: `SETUP: no heading near the player holds a zombie in the melee cone (${tried.join('; ')})` };
+    }, { capMs: test.info().timeout || 240000, apex: SWING_APEX_OVER_BODY_M });
     expect(z.why, z.why).toBeUndefined();
-    await page.mouse.move(640, 400);
-    await page.mouse.click(640, 400);
+    await page.keyboard.press('t');
+    await page.evaluate(frames, 3);
     await expect.poll(() => page.evaluate((id) => {
       const m = window.__craftyTest.call('readMobs').find((e) => e.id === id);
       return !m || m.health <= 0;
-    }, z.id), { message: 'a left click with the Iron Sword did not kill a 1-HP zombie', timeout: 20000 }).toBe(true);
+    }, z.id), { message: 'a T press with the Iron Sword did not kill a 1-HP zombie in the melee cone', timeout: 20000 }).toBe(true);
     const hold = await page.evaluate(() => window.__e2eWorldHold.release());
     console.log(`[forge] world held ${hold.heldMs} ms over ${hold.frames} drawn frames for the kill (longest ${hold.longestFrameMs} ms, lapsed ${hold.lapsed})`);
     expect(hold.lapsed, 'SETUP: the world hold ran out before the kill was read').toBe(false);
