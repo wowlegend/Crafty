@@ -10,6 +10,7 @@ import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elem
 import { makeTransformState, decideTransform } from './game/beastTransform.js';
 import { canAfford, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST } from './game/ember.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
+import { markFollowView } from './render/followView.js';
 import { BeastAvatar } from './render/BeastAvatar';
 import { StableMagicHands } from './render/playerRender';
 import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
@@ -643,6 +644,9 @@ export const Player = ({ isWorldBuilt }) => {
     // R2.6: the player controller runs on REAL time — the camera and input never freeze — and applies the
     // hitstop to its own motion below (hitstopScale), so the blow lands without the view seizing up.
     const delta = realDelta(frameDelta);
+    // Cleared every frame, set only where the follow places the camera below (render/followView.js): every other branch
+    // that places it, and every early return, leaves the view marked as not the follow.
+    markFollowView(false);
     if (!rigidBodyRef.current) return;
 
     // Dev capture mode: pin the follow-cam to a fixed pose so frames are byte-stable.
@@ -1504,6 +1508,7 @@ export const Player = ({ isWorldBuilt }) => {
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetX, 0.85);
       camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetY, 0.85);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.85);
+      markFollowView(true);
     }
 
     // Defensive camera pitch clamp to prevent gimbal lock or out-of-bounds rotation

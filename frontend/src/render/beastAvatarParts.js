@@ -133,11 +133,13 @@ export const BEAST_GLOW = 1.7;
 /** The core's breathing pulse peaks at this scale (BeastAvatar.jsx), so its clearance is judged at it. */
 export const CORE_PULSE_MAX = 1.08;
 
-/** The first-person eye in the avatar's own space: on its axis, EYE_HEIGHT_M over the body's centre. */
+/** The first-person eye over the avatar's feet, in metres: on its axis, EYE_HEIGHT_M over the body's centre. */
 export const EYE_LOCAL_Y = EYE_HEIGHT_M - FEET_OFFSET;
 
-/** The camera counts as first person while it is within this of the steady eye: the walk bob, the verb kicks and an
- *  ordinary shake stay inside it, and the roar's reveal (4.7 m off at its hold) leaves it within its first fifth. */
+/** When the follow did not place the camera (render/followView.js), it counts as first person while it is within this
+ *  of the steady eye, in world metres: the roar's reveal (4.7 m off at its hold) leaves it within its first fifth and
+ *  comes back inside it in its last, and an eye pose stands at it. The follow itself is first person however far its
+ *  shake carries the camera. */
 export const FIRST_PERSON_M = 1.0;
 
 /** The glow spheres each form draws at its core, at their largest drawn radius: the core with its pulse, the white
@@ -161,10 +163,10 @@ export function sphereDistance(sphere, x, y, z) {
   return Math.max(Math.hypot(x - sphere.pos[0], y - sphere.pos[1], z - sphere.pos[2]) - sphere.radius, 0);
 }
 
-/** Whether a camera at (x, y, z) in the avatar's own space is the player's first-person eye: within FIRST_PERSON_M of
- *  the steady eye. */
-export function isFirstPerson(x, y, z) {
-  return Math.hypot(x, y - EYE_LOCAL_Y, z) <= FIRST_PERSON_M;
+/** Whether a camera (dx, dy, dz) world metres from the steady eye stands at the player's own eye: within FIRST_PERSON_M.
+ *  World metres, not the avatar's: on the form's first frames its entrance draws it at half scale. */
+export function nearEye(dx, dy, dz) {
+  return Math.hypot(dx, dy, dz) <= FIRST_PERSON_M;
 }
 
 /** The distance from point (x, y, z) to a box { pos, size, rot (Euler XYZ) }, 0 inside it. Same local space. */
