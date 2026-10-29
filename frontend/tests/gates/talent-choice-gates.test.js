@@ -33,10 +33,8 @@ const NODES = ASPECT_TREES.flatMap((t) => t.nodes);
  * greys out an excluded node, or offers the respec at all, is unchecked — the store refusing the spend
  * is the invariant, and a panel that lets you click a dead button is a separate (milder) defect.
  *
- * Mutation-Proof: 5 mutations, recorded on the commit.
- *
- * Since W2-F step 4 (DECISIONS 2026-10-28 W1-H item 6) every node changes a verb rather than adding a stat, so a
- * capstone is checked through game/verbMods.js and a respec moves no health or mana cap.
+ * Every node changes a verb rather than adding a stat (DECISIONS 2026-10-28 W1-H item 6), so a capstone is checked
+ * through game/verbMods.js and a respec moves no health or mana cap.
  */
 describe('C4 the talent tree is a choice', () => {
   beforeEach(() => {

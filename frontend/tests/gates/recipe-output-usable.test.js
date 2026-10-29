@@ -60,7 +60,7 @@ describe('every recipe output resolves to something the game can actually use', 
     expect(isPlaceable('stone') || isConsumable('stone') || isIngredient('stone')).toBe(true);
     const fabricated = 'definitely_not_a_real_item_key_9f3a';
     expect(isCurrency('coins')).toBe(true);
-    // crystals and the wand left with the crystal wallet (DECISIONS 2026-10-28 W1-H item 6): no recipe may mint them.
+    // crystals and the wand are no currency (DECISIONS 2026-10-28 W1-H item 6): no recipe may mint them.
     expect(isCurrency('crystals')).toBe(false);
     expect(isCurrency('wand')).toBe(false);
     expect(isPlaceable(fabricated)).toBe(false);

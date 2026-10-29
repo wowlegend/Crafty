@@ -27,8 +27,8 @@ describe('#51 S1 cast-wire (gameplay cast reads leveled damage)', () => {
 describe('#9 mana-wire (gameplay cast charges leveled manaCost)', () => {
   it('imports + uses resolveCastManaCost for the gameplay cast mana charge', () => {
     expect(ems).toMatch(/import \{ resolveCastBaseDamage, resolveCastManaCost \} from '\.\/utils\/spellCast'/);
-    // resolveCastManaCost is the whole mana charge: no discount sits between it and useMana (the wand focus went
-    // with the crystal wallet, DECISIONS 2026-10-28 W1-H item 6).
+    // resolveCastManaCost is the whole mana charge: no discount sits between it and useMana (no wand focus,
+    // DECISIONS 2026-10-28 W1-H item 6).
     expect(ems).toMatch(/const manaCost = resolveCastManaCost\(useGameStore\.getState\(\)\.getSpellStats, spellType, SPELL_MANA_COSTS\[spellType\]\)/);
   });
 

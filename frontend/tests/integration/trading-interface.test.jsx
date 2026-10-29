@@ -5,8 +5,8 @@ import { TradingInterface } from '../../src/ui/TradingInterface.jsx';
 import { SoundProvider } from '../../src/SoundManager.jsx';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 
-// The villager merchant sells consumables for coins, and only that: the ore-to-crystal and crystal-to-wand trades went
-// with the crystal wallet (DECISIONS 2026-10-28 W1-H item 6). This renders the REAL TradingInterface, clicks the REAL
+// The villager merchant sells consumables for coins, and only that: there is no ore-to-crystal or crystal-to-wand trade
+// (DECISIONS 2026-10-28 W1-H item 6). This renders the REAL TradingInterface, clicks the REAL
 // "Trade" button for a row, and asserts the store mutated (spendCoins + addToInventory).
 // jsdom has no AudioContext, so useGameSounds' playSound early-returns (guarded) — render-safe.
 const ORIGINAL_INV = useGameStore.getState().inventory;

@@ -110,7 +110,7 @@ describe('the currency escape hatch is narrow and justified', () => {
 
   it('isDeliverableKey rejects the shapes that shipped as orphans', () => {
     // The three that were removed on 2026-08-09, plus the nonsense a bare string map happily accepts.
-    // crystals and the wand were currencies until the crystal wallet went (DECISIONS 2026-10-28 W1-H item 6).
+    // crystals and the wand are no currency and no recipe makes them (DECISIONS 2026-10-28 W1-H item 6).
     for (const bad of ['Bow', 'torch', 'planks', 'crystals', 'wand', '', null, undefined, 42, {}]) {
       expect(isDeliverableKey(bad), `${String(bad)} was accepted as deliverable`).toBe(false);
     }

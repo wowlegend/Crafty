@@ -190,8 +190,8 @@ test.describe('heavy melee', () => {
     // R9.2 (review #8): a hold in a BEAST form. The heavy is the human sword's; a form's hold used to slow the walk,
     // tick "ready", and throw a free extra light swing on release. Now the release adds nothing.
     // The form is entered through the REAL roar (R held past the anticipation, a full ember bar, the talent): a
-    // store-called enterBeastForm lasts ONE frame — the transform state machine never started its timer, so its next
-    // tick exits the form. The first version of this case did that, held a HUMAN sword, and survived its own mutant.
+    // store-called enterBeastForm starts no transform timer, so the form ends on the first tick at which the canvas
+    // clock reads past the form's length (at once, in a page that has run that long) and the hold tests the human sword.
     // A FRESH brute, frozen where the first stood: the first one is nearly spent, and the roar's burst lands on it.
     r.beastId = await page.evaluate(({ mid, endurance }) => {
       const s = window.useGameStore.getState();

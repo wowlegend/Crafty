@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, act } from '@testing-library/react';
 import { Inventory } from '../../src/ui/GamePanels.jsx';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { levelAttributes } from '../../src/game/progression.js';
@@ -28,16 +28,15 @@ describe('the Inventory (jsdom): no allocation, a readout that follows the level
     expect(screen.queryByText(/to spend/i)).toBeNull();
   });
 
-  it('shows melee damage from the level\'s own strength, and a higher level shows more', () => {
+  it('shows melee damage from the level\'s own strength, and an open Inventory moves when the level does', () => {
     useGameStore.setState({ level: 1, equipment: { head: null, chest: null, boots: null, weapon: null, offhand: null, relic: null } });
-    const { unmount } = render(<Inventory onClose={() => {}} />);
+    render(<Inventory onClose={() => {}} />);
     const atOne = screen.getAllByText(/ DMG$/)[0].textContent;
     expect(atOne).toBe(`${expectedMelee(1)} DMG`);
-    unmount();
-    useGameStore.setState({ level: 10 });
-    render(<Inventory onClose={() => {}} />);
+    // The same mounted panel: a level reached while it is open re-renders it through its store subscription.
+    act(() => { useGameStore.setState({ level: 10 }); });
     const atTen = screen.getAllByText(/ DMG$/)[0].textContent;
-    expect(atTen, 'the readout did not move with the level').toBe(`${expectedMelee(10)} DMG`);
+    expect(atTen, 'the open readout did not move with the level').toBe(`${expectedMelee(10)} DMG`);
     expect(expectedMelee(10)).toBeGreaterThan(expectedMelee(1));
   });
 });
