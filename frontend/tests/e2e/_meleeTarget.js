@@ -1,12 +1,10 @@
 // A 1-HP zombie staged where the player's next swing will meet it, for the specs that need one kill (talents, forge).
 //
-// WHY A SHARED HELPER. Both specs staged their zombie 2.5 m along the camera's facing on whatever floor stood there, then
-// turned the camera at it. The melee cone (combat/cone.js isPointInCone, through GameMethods.checkMobsInMeleeCone)
-// measures from the swing's apex over the BODY and drops a target more than 2.2 m above or below it or past 4.5 m, so a
-// zombie on another level of the hub's raised grade, or one placed from a camera that was not at the body, sat outside
-// the cone; the click then fell through the verb router to the ground and mined it. CI showed it in both specs: the
-// talents spec failed three attempts of run 40869763411 and the forge spec runs 40853867973 and 40864829848, each page
-// with one more stone or grass in the hotbar than it started with and the zombie still at 1/100.
+// WHY THE CONE IS CHECKED. The melee cone (combat/cone.js isPointInCone, through GameMethods.checkMobsInMeleeCone)
+// measures from the swing's apex over the BODY and drops a target more than 2.2 m above or below it or past 4.5 m. A
+// zombie placed 2.5 m along the camera's facing on whatever floor stands there can sit on another level of the hub's
+// raised grade, or be placed from a camera that is not at the body, and so lie outside the cone; the swing then misses,
+// and a click falls through the verb router to the ground and mines it, leaving the zombie at 1 HP.
 //
 // THE RULE. Walk twelve headings around the body for a column 2.5 m out whose floor is within 0.6 m of the player's,
 // skipping any within 60 degrees of a mob of `avoidRole`; spawn there, bring it to 1 HP, turn the camera level along

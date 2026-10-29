@@ -16,8 +16,10 @@ import { SWING_APEX_OVER_BODY_M } from '../../src/combat/swingOrigin.js';
 // left to pay, says what is short and changes nothing; (6) Esc closes the card, and C opens no panel; (7) a real T
 // press still kills a staged 1-HP zombie; (8) the save the autosave's action writes holds the Iron Sword in hand.
 //
-// Every wait after a key release is counted in drawn frames, never wall time: a CI frame can last seconds. The card's
-// refusal is a line in the card itself (data-testid forge-message), not a short-lived toast. The world is held
+// Every wait for the game to act on a key is counted in drawn frames, never wall time: a CI frame can last seconds. The
+// card's first appearance after G waits on its lazy chunk and the purchase after a click on React, so those two use
+// Playwright's own waits. The card's refusal is a line in the card itself (data-testid forge-message), not a short-lived
+// toast. The world is held
 // (_worldHold.js) twice: from the frame the walk reaches Mara until the card is up, and from the zombie's staging until
 // the kill is read.
 //
@@ -106,9 +108,8 @@ function faceMara() {
  *  in that same frame let W go and hold the world (_worldHold.js), which stops the player's own motion from the next
  *  frame, Mara's circle with it, and every hostile, until the spec releases it once G has opened the card. The press is
  *  the real key. Its release is dispatched here (the game's own keyup handler takes it, as heavy-melee.spec.js's
- *  in-page T and R are taken) and the hold is here because a CI frame is up to a 0.25 s step of a 14 m/s walk: run
- *  40857037845 measured the player carried 4.5-5.4 m past her by the round trip back to Playwright, and run
- *  40859622498 measured 4.3 m after an in-page keyup alone. */
+ *  in-page T and R are taken) and the hold is here because a CI frame can be a 0.25 s step of a 14 m/s walk: a keyup
+ *  sent back from Playwright, or one sent here with no hold, lands after the player has walked metres past her. */
 async function walkTo({ stopAt, maxFrames, capMs }) {
   const frame = () => new Promise((r) => requestAnimationFrame(r));
   const cam = window.__threeCamera;
@@ -198,16 +199,19 @@ test.describe('the Forge', () => {
     expect({ weapon: refused.weapon, coins: refused.coins, diamond: refused.diamond }, 'a refused purchase changed the player').toEqual({ weapon: 'Iron Sword', coins: 0, diamond: after.diamond });
 
     // 6. ESC CLOSES THE CARD; C OPENS NO PANEL.
-    // The card's flag drops on the key; its exit tween runs on drawn frames, which on CI have lasted 8 s each (run
-    // 40867682586), so the DOM's removal is waited for in frames, not seconds.
+    // The card's flag drops on the key; its exit tween runs on drawn frames, and a CI frame can last seconds, so the
+    // DOM's removal is waited for in frames, not seconds.
     await page.keyboard.press('Escape');
-    await expect.poll(async () => (await read(page)).forge, { message: 'Esc did not close the Forge', timeout: 15000 }).toBe(false);
     const gone = await page.evaluate(async () => {
       const frame = () => new Promise((r) => requestAnimationFrame(r));
+      const flag = () => window.useGameStore.getState().showForge;
       let n = 0;
+      while (flag() && n < 120) { await frame(); n++; }
+      const flagFrames = n;
       while (document.querySelector('[data-testid="forge-panel"]') && n < 600) { await frame(); n++; }
-      return { gone: !document.querySelector('[data-testid="forge-panel"]'), frames: n };
+      return { closed: !flag(), flagFrames, gone: !document.querySelector('[data-testid="forge-panel"]'), frames: n };
     });
+    expect(gone.closed, `Esc did not close the Forge in ${gone.flagFrames} drawn frames`).toBe(true);
     expect(gone.gone, `the Forge card stayed in the page ${gone.frames} drawn frames after Esc`).toBe(true);
     await page.evaluate(clearHostiles, 80);
     await startPlayActive(page);
@@ -222,12 +226,20 @@ test.describe('the Forge', () => {
     await page.evaluate((capMs) => window.__e2eHoldWorld({ capMs }), test.info().timeout || 240000);
     const z = await page.evaluate(stageMeleeZombie, { apex: SWING_APEX_OVER_BODY_M, avoidRole: 'smith' });
     expect(z.why, z.why).toBeUndefined();
+    // The kill is read in drawn frames after the release, not on the clock: T's keydown swings at once (Components.jsx,
+    // routeExpressVerb then triggerMeleeAttack), so 120 frames is far past the hit however long CI takes to draw them.
     await page.keyboard.press('t');
-    await page.evaluate(frames, 3);
-    await expect.poll(() => page.evaluate((id) => {
-      const m = window.__craftyTest.call('readMobs').find((e) => e.id === id);
-      return !m || m.health <= 0;
-    }, z.id), { message: 'a T press with the Iron Sword did not kill a 1-HP zombie in the melee cone', timeout: 20000 }).toBe(true);
+    const kill = await page.evaluate(async (id) => {
+      const frame = () => new Promise((r) => requestAnimationFrame(r));
+      const dead = () => {
+        const m = window.__craftyTest.call('readMobs').find((e) => e.id === id);
+        return !m || m.health <= 0;
+      };
+      let n = 0;
+      while (!dead() && n < 120) { await frame(); n++; }
+      return { dead: dead(), frames: n };
+    }, z.id);
+    expect(kill.dead, `a T press with the Iron Sword did not kill a 1-HP zombie in the melee cone in ${kill.frames} drawn frames`).toBe(true);
     const hold = await page.evaluate(() => window.__e2eWorldHold.release());
     console.log(`[forge] world held ${hold.heldMs} ms over ${hold.frames} drawn frames for the kill (longest ${hold.longestFrameMs} ms, lapsed ${hold.lapsed})`);
     expect(hold.lapsed, 'SETUP: the world hold ran out before the kill was read').toBe(false);
