@@ -5,6 +5,7 @@ import { xpForLevel } from '../../src/game/progression.js';
 import { killXP } from '../../src/game/killReward.js';
 import { FORM_DURATION_SEC, ENDURANCE_SEC_PER_RANK } from '../../src/game/beastTransform.js';
 import { ROAR_COST } from '../../src/game/ember.js';
+import { SWING_APEX_OVER_BODY_M } from '../../src/combat/swingOrigin.js';
 
 // TALENTS THAT CHANGE VERBS, IN THE BOOTED GAME (W2-F step 4; DECISIONS 2026-10-28 W1-H item 6; plan
 // docs/superpowers/plans/2026-10-29-crafty-w2f-talents.md, S8). A level-1 player one Husk short of level 2, with the roar
@@ -16,11 +17,19 @@ import { ROAR_COST } from '../../src/game/ember.js';
 // on past FORM_DURATION_SEC and ends by the longer length; (6) the save the store writes holds the talent and no
 // attributes or spellLevels.
 //
-// Each form is timed in the page, frame by frame, from the first frame it is seen on to the first frame it is seen off,
-// inside the same evaluate that waits for it, so the clock starts within a frame of the commit. A CI frame can last
-// seconds, so the length read is the form's own plus up to one frame each side: the base form must
-// be off by FORM_DURATION_SEC + the longest frame + 1 s, and the talented form must still be on at FORM_DURATION_SEC +
-// 1 s (a frame boundary between there and its end is needed to see it, and the gap is ENDURANCE_SEC_PER_RANK - 1 s).
+// Each form is timed in the page, frame by frame, on the GAME's clock: R3F's, the clock the transform's timer compares
+// (Components.jsx decideTransform, `now: state.clock.getElapsedTime()`), read with the count of frames drawn
+// (readFrameloop), so each reading is the clock of the frame whose state it saw. A wall clock started when the page
+// first saw the form on starts after that frame's render, which a software renderer can stretch by seconds, and every
+// length it reads is short by that much. The base form's last frame on must read under FORM_DURATION_SEC + 1 s; the
+// talented form must have a frame on at FORM_DURATION_SEC + 1 s or later (a frame drawn between there and its end is
+// needed to see it: a run that draws none is SETUP, not a verdict).
+//
+// THE CURSOR SITS WHERE THE CLICK LANDS BEFORE PLAY BEGINS, and nothing moves it between the aim and the click. Under
+// pointer lock a mouse move IS a look (src/input/pointerLook.js), and the lock can be held here; Playwright's cursor
+// starts at (0, 0), so a click at the centre would first turn the view 640 x 400 px (1.28 rad right, 0.80 rad down at
+// 0.002 rad/px) and swing at whatever that faces. The aim is read again on the click's own mousedown, so a turned view
+// fails as one rather than as a swing that did not kill.
 //
 // The XP is the kill's own: the zombie's orbs are collected by the XP orb system, which holds them still through a held
 // world, so the world is let go after the kill and held again once the level is reached.
@@ -56,6 +65,35 @@ async function stageZombie() {
   return { id: m.id };
 }
 
+/** In the page: the light swing's gates and aim against the staged zombie — input live, alive, no form, no voidhand,
+ *  the string's cooldown, and whether the zombie stands in the cone the swing tests (apex over the body, the camera's
+ *  flattened facing, 4.5 m, 90 degrees) — read now, and again on the click's own mousedown by a capture listener on
+ *  window, which runs before the game's handler (window.__clickRead.atDown). */
+function armClickRead({ id, apexM }) {
+  const call = (n) => window.__craftyTest.call(n);
+  const r = (v) => Math.round(v * 100) / 100;
+  const read = () => {
+    const st = window.useGameStore.getState();
+    const cam = window.__threeCamera;
+    const b = st.playerRigidBodyRef?.current?.translation?.();
+    const m = call('readMobs').find((e) => e.id === id);
+    const d = new cam.position.constructor();
+    cam.getWorldDirection(d);
+    const pitch = Math.asin(d.y);
+    d.y = 0; d.normalize();
+    const apex = b ? { x: b.x, y: b.y + apexM, z: b.z } : null;
+    const cone = apex ? window.GameMethods.checkMobsInMeleeCone(apex, d, 4.5, Math.PI / 2) : [];
+    return {
+      hp: m ? m.health : null, inCone: cone.some((e) => e.id === id), active: call('readIntents').active, alive: st.isAlive,
+      form: st.beastFormActive, held: !!st.voidhandHeld, readyInMs: Math.round(call('readString').readyAt - performance.now()),
+      facing: [r(d.x), r(d.z)], pitch: r(pitch), body: b ? [r(b.x), r(b.y), r(b.z)] : null, mob: m ? [r(m.x), r(m.y), r(m.z)] : null,
+    };
+  };
+  window.__clickRead = { atDown: null };
+  window.addEventListener('mousedown', () => { window.__clickRead.atDown = read(); }, { capture: true, once: true });
+  return read();
+}
+
 /** In the page: set the time of day and let the frames the day/night hooks run on go by. */
 async function setTime(t) {
   const frame = () => new Promise((r) => requestAnimationFrame(r));
@@ -70,29 +108,38 @@ async function frames(n) {
   for (let i = 0; i < n; i++) await frame();
 }
 
-/** In the page: the beast form timed frame by frame, from the first frame it is on to the first it is off, or until
- *  `limitMs` after it came on. Returns the span, whether it was still on at `probeMs` after the start, and the longest
- *  frame seen. */
-async function timeForm({ limitMs, probeMs }) {
+/** In the page: the beast form timed on the game's clock, one reading per frame drawn, from the first frame it is on to
+ *  the first frame it is off, or until `limitMs` of wall time after it came on. Returns, in game seconds since the first
+ *  frame on: the last frame on, the first frame off, whether a frame at or past `probeS` was on, and every gap between
+ *  drawn frames over a second as [start, length]. */
+async function timeForm({ limitMs, probeS }) {
   const frame = () => new Promise((r) => requestAnimationFrame(r));
-  const S = () => window.useGameStore.getState();
+  const on = () => window.useGameStore.getState().beastFormActive;
+  const loop = () => window.__craftyTest.call('readFrameloop');
+  if (!loop()) return { why: 'SETUP: readFrameloop is not registered, so there is no game clock to time the form on' };
   const t0w = performance.now();
-  while (!S().beastFormActive) {
+  while (!on()) {
     if (performance.now() - t0w > 30000) return { why: 'SETUP: the form never came on' };
     await frame();
   }
-  const t0 = performance.now();
-  let prev = t0, longest = 0, onAtProbe = null, endedAt = null;
-  while (performance.now() - t0 < limitMs) {
+  const first = loop();
+  const r2 = (v) => Math.round(v * 100) / 100;
+  let seen = first.frames, prev = first.clock, lastOnS = 0, endedS = null, onAtProbe = false;
+  const gaps = [];
+  const tw = performance.now();
+  while (performance.now() - tw < limitMs) {
     await frame();
-    const t = performance.now();
-    longest = Math.max(longest, t - prev);
-    prev = t;
-    const on = S().beastFormActive;
-    if (on && t - t0 >= probeMs) onAtProbe = true;
-    if (!on) { endedAt = t - t0; if (onAtProbe === null) onAtProbe = false; break; }
+    const f = loop();
+    if (f.frames === seen) continue; // no frame drawn since the last reading: the same clock and the same state
+    seen = f.frames;
+    if (f.clock - prev > 1) gaps.push([r2(prev - first.clock), r2(f.clock - prev)]);
+    prev = f.clock;
+    const s = f.clock - first.clock;
+    if (!on()) { endedS = s; break; }
+    lastOnS = s;
+    if (s >= probeS) onAtProbe = true;
   }
-  return { endedMs: endedAt === null ? null : Math.round(endedAt), onAtProbe, longestFrameMs: Math.round(longest) };
+  return { lastOnS: r2(lastOnS), endedS: endedS === null ? null : r2(endedS), onAtProbe, gaps };
 }
 
 /** In the page: true once the camera has sat at the player's head for two frames (the roar's reveal camera hands it
@@ -121,10 +168,10 @@ async function release(page, key) {
 /** The roar on the real R key, timed in the page from the first frame its form is on (timeForm), so no round trip sits
  *  between the commit and the start of the clock. R stays down through the form: a held key makes no new edge, and only
  *  an edge ends a form by hand. The bar is refilled first, since the roar takes it all. */
-async function roarAndTime(page, probeMs) {
+async function roarAndTime(page, probeS) {
   await page.evaluate((v) => window.useGameStore.setState({ ember: v }), ROAR_COST);
   await page.keyboard.down('r');
-  const timed = await page.evaluate(timeForm, { limitMs: (LONGER_SEC + 10) * 1000, probeMs });
+  const timed = await page.evaluate(timeForm, { limitMs: (LONGER_SEC + 10) * 1000, probeS });
   await release(page, 'r');
   return timed;
 }
@@ -135,6 +182,7 @@ test.describe('talents', () => {
   test('a level pays one talent point, and Primal Endurance lengthens the roar in the running game', async ({ page }) => {
     await page.addInitScript(installWorldHold);
     await bootDev(page);
+    await page.mouse.move(640, 400); // where step 3's click lands, before play can hold the pointer lock (see the header)
     await startPlayActive(page);
     await page.waitForFunction(() => window.__craftyTest?.call('readMobs') && window.__threeCamera && window.GameMethods?.damageMob
       && window.useGameStore.getState().spawnMob && window.useGameStore.getState().getMobFloor, null, { timeout: 60000 })
@@ -182,23 +230,28 @@ test.describe('talents', () => {
     await startPlayActive(page);
 
     // 2. THE BASE ROAR: the form entered on R ends at FORM_DURATION_SEC (the instrument sees an end, and the base length).
-    const base = await roarAndTime(page, (FORM_DURATION_SEC + 1) * 1000);
+    const base = await roarAndTime(page, FORM_DURATION_SEC + 1);
     expect(base.why, base.why).toBeUndefined();
-    expect(base.endedMs, `the base form never ended: ${JSON.stringify(base)}`).not.toBeNull();
-    expect(base.endedMs, `the base form outlasted ${FORM_DURATION_SEC} s by more than a frame: ${JSON.stringify(base)}`)
-      .toBeLessThanOrEqual(FORM_DURATION_SEC * 1000 + base.longestFrameMs + 1000);
+    console.log(`[talents] base form, game seconds: ${JSON.stringify(base)}`);
+    expect(base.endedS, `the base form never ended: ${JSON.stringify(base)}`).not.toBeNull();
+    expect(base.lastOnS, `the base form was on ${base.lastOnS} s into it on the game clock, past its ${FORM_DURATION_SEC} s: ${JSON.stringify(base)}`)
+      .toBeLessThan(FORM_DURATION_SEC + 1);
     expect(await page.evaluate(backAtHead), 'SETUP: the camera never came back to the head after the base form').toBe(true);
     await page.waitForTimeout(1600); // the roar's cooldown (COOLDOWN_SEC 1.5 s) before the next press can charge
 
     // 3. A LEVEL PAYS ONE TALENT POINT, from a real kill's own XP.
     const z = await page.evaluate(stageZombie);
     expect(z.why, z.why).toBeUndefined();
-    await page.mouse.move(640, 400);
+    const swingCan = (g) => !!g && g.inCone && g.active && g.alive && !g.form && !g.held && g.readyInMs <= 0;
+    const aim = await page.evaluate(armClickRead, { id: z.id, apexM: SWING_APEX_OVER_BODY_M });
+    expect(swingCan(aim), `SETUP: before the click a light swing could not reach the staged zombie: ${JSON.stringify(aim)}`).toBe(true);
     await page.mouse.click(640, 400);
+    const atDown = await page.evaluate(() => window.__clickRead.atDown);
+    expect(swingCan(atDown), `at the click's own mousedown a light swing could not reach the staged zombie (a view turned since the aim reads inCone false and a new facing): aim ${JSON.stringify(aim)}, mousedown ${JSON.stringify(atDown)}`).toBe(true);
     await expect.poll(() => page.evaluate((id) => {
       const m = window.__craftyTest.call('readMobs').find((e) => e.id === id);
       return !m || m.health <= 0;
-    }, z.id), { message: `the click did not kill the staged zombie (${JSON.stringify(await S())})`, timeout: 20000 }).toBe(true);
+    }, z.id), { message: `the click did not kill the staged zombie, in the swing's cone with every gate open at its mousedown (${JSON.stringify(atDown)}; ${JSON.stringify(await S())})`, timeout: 20000 }).toBe(true);
     const held = await page.evaluate(() => window.__e2eWorldHold.release());
     await expect.poll(async () => (await S()).level, { message: `the kill's ${ZOMBIE_XP} XP did not reach level 2 (hold ${JSON.stringify(held)})`, timeout: 30000 }).toBe(2);
     await page.evaluate((capMs) => window.__e2eHoldWorld({ capMs }), test.info().timeout || 300000);
@@ -223,12 +276,16 @@ test.describe('talents', () => {
     await startPlayActive(page);
 
     // 5. THE VERB CHANGED: the same roar outlasts FORM_DURATION_SEC and ends by the longer length.
-    const longer = await roarAndTime(page, (FORM_DURATION_SEC + 1) * 1000);
+    const probeS = FORM_DURATION_SEC + 1;
+    const longer = await roarAndTime(page, probeS);
     expect(longer.why, longer.why).toBeUndefined();
-    expect(longer.onAtProbe, `the talented form was off by ${FORM_DURATION_SEC + 1} s: ${JSON.stringify(longer)} (base ${JSON.stringify(base)})`).toBe(true);
-    expect(longer.endedMs, `the talented form never ended: ${JSON.stringify(longer)}`).not.toBeNull();
-    expect(longer.endedMs, `the talented form outlasted ${LONGER_SEC} s by more than a frame: ${JSON.stringify(longer)}`)
-      .toBeLessThanOrEqual(LONGER_SEC * 1000 + longer.longestFrameMs + 1000);
+    console.log(`[talents] talented form, game seconds: ${JSON.stringify(longer)}`);
+    expect(!longer.onAtProbe && longer.endedS !== null && longer.endedS >= probeS,
+      `SETUP: no frame was drawn from ${longer.lastOnS} s to ${longer.endedS} s of the talented form, across the ${probeS} s probe, so whether it was on there is unseen: ${JSON.stringify(longer)} (base ${JSON.stringify(base)})`).toBe(false);
+    expect(longer.onAtProbe, `the talented form was off by ${probeS} s of the game clock: ${JSON.stringify(longer)} (base ${JSON.stringify(base)})`).toBe(true);
+    expect(longer.endedS, `the talented form never ended: ${JSON.stringify(longer)}`).not.toBeNull();
+    expect(longer.lastOnS, `the talented form was on ${longer.lastOnS} s into it on the game clock, past its ${LONGER_SEC} s: ${JSON.stringify(longer)}`)
+      .toBeLessThan(LONGER_SEC + 1);
 
     // 6. IT SAVES, through the autosave's action and localStorage: the talent, and no attributes or spell levels.
     const saved = await page.evaluate(() => {

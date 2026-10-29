@@ -709,7 +709,7 @@ export const Player = ({ isWorldBuilt }) => {
         canEnter: st.unlockedTalents?.['wildheart_roar'] > 0,
         canPay: barPays(ROAR_COST),
         // A longer roar (Primal Endurance, Untamed, Ember Fang): the form's length from the verb numbers.
-        formDurationSec: st.getVerbMods().roarSec,
+        formDurationSec: 14, // MUTANT T-len
       });
       beastSMRef.current = sm;
       if (action === 'startCharge') {
@@ -1365,9 +1365,9 @@ export const Player = ({ isWorldBuilt }) => {
 
     // Calculate displacement vector
     const displacement = new THREE.Vector3(
-      nextVelX * delta * hitstopScale,
+      0 * nextVelX * delta * hitstopScale, // MUTANT S-blocked
       velocityY.current * delta * hitstopScale,
-      nextVelZ * delta * hitstopScale
+      0 * nextVelZ * delta * hitstopScale
     );
 
     // S2-B1-M1: consume the one-shot beast-form ENTER swap HERE -- after every early-return

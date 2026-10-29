@@ -131,9 +131,31 @@ test.describe('heavy melee', () => {
     expect(r.start.dist > 0.8 && r.start.dist < 3.5, `SETUP: the brute is not in front, in reach — ${JSON.stringify(r.start)}`).toBe(true);
     // WARM-UP. The page's FIRST swing stalls the main thread (measured: a 490 ms hold read 2602 ms on the game's own
     // clock, the release handled two seconds late) — whatever the first hit initialises, it is not the charge under
-    // test. So one quick click first, unmeasured.
+    // test. So one tap first, unmeasured. A TAP BY CONSTRUCTION: both events are made before either is dispatched, so
+    // they carry the same timeStamp and the hold the game reads on them (heavyAttack inputTime) is 0 ms whatever the
+    // first swing stalls. A real-mouse click is not one on a loaded page: Playwright sends the up only after the page
+    // has handled the down, so the stall becomes the hold, a full charge throws a heavy, and its stagger, which a frozen
+    // world never lets run out, would read as the CONTROL's below.
     await aim();
-    r.warm = await hold(40);
+    r.warm = await page.evaluate((mid) => {
+      const hp = () => window.__craftyTest.call('readMobs').find((e) => e.id === mid)?.health ?? null;
+      const opts = { button: 0, bubbles: true, cancelable: true };
+      const down = new MouseEvent('mousedown', opts), up = new MouseEvent('mouseup', opts);
+      const h0 = hp();
+      window.dispatchEvent(down);
+      const h1 = hp();
+      const until = performance.now() + 900; while (performance.now() < until) { /* MUTANT H-warm */ }
+      const late = new MouseEvent('mouseup', opts); void up;
+      window.dispatchEvent(late);
+      window.__heavyLog.splice(0);
+      return { press: h0 - h1, release: h1 - hp(), stampedMs: late.timeStamp - down.timeStamp };
+    }, id);
+    await page.waitForTimeout(120);
+    r.warm.after = await read();
+    // The control's verdict reads the brute's stagger, which only a heavy sets: so the warm-up must leave none behind.
+    expect(r.warm.press, `SETUP: the warm-up tap did not reach the brute (aim, range, or the gate): ${JSON.stringify(r)}`).toBeGreaterThan(0);
+    expect(r.warm.release, `SETUP: the warm-up threw a heavy, so the control below would read its stagger: ${JSON.stringify(r)}`).toBe(0);
+    expect(r.warm.after.staggered, `SETUP: the brute is staggered before the control's press: ${JSON.stringify(r)}`).toBe(false);
     await page.waitForTimeout(400); // past the light swing's 300 ms cooldown
     // The CONTROL: released half-way through the charge — past the light cooldown, not ready. THIS ONE IS HELD IN THE
     // PAGE, timed by a busy-wait on the game's own clock: under load the page draws a frame every few hundred ms and a
