@@ -32,7 +32,7 @@ const REPO = resolve(process.cwd(), '..');
 describe('read-order — the generator behind the orientation block', () => {
   it('the canonical lists are non-empty and their sizes are pinned', () => {
     // R3a: every assertion below quantifies over these. Emptied, they pass vacuously.
-    expect(ORDER.length).toBe(9);
+    expect(ORDER.length).toBe(6);
     expect(ORDER.map((o) => o.path)).toContain('`memory/registry.jsonl`');
     expect(SURFACES.length).toBe(3);
     expect(new Set(SURFACES).size, 'a duplicated surface is a silently halved denominator').toBe(SURFACES.length);
