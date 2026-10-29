@@ -2,6 +2,8 @@ import React from 'react';
 import { isCaptureMode } from '../devtest/captureMode';
 import { isTouchUIMode } from '../input/touchDevice';
 import { Icon } from './primitives/index.js';
+import { useT } from '../i18n/i18n.js';
+import { notificationText } from './notifications.js';
 
 // A compact bottom-left scrolling combat-log ticker. Renders the LAST N entries of the existing
 // addNotification stream (QuestSystem.jsx) — the same data the corner toasts use — as a quiet,
@@ -20,18 +22,21 @@ const TYPE_ICON = {
 };
 
 export const CombatLog = React.memo(({ notifications = [] }) => {
+  const t = useT();
   if (isCaptureMode()) return null;
   const lines = notifications.slice(-(isTouchUIMode() ? 4 : 8));
   if (lines.length === 0) return null;
   return (
-    <div className="absolute bottom-24 left-4 z-10 pointer-events-none space-y-0.5 max-w-[320px]">
+    // Above the vitals stack wherever it sits (HUD.jsx stat-stack: lifted over the hotbar on a tablet in portrait and on
+    // a phone).
+    <div data-testid="combat-log" className="absolute bottom-[136px] min-[641px]:max-[1040px]:bottom-[256px] max-[640px]:bottom-[216px] left-4 z-10 pointer-events-none space-y-0.5 max-w-[320px]">
       {lines.map((n) => (
         // text-shadow + icon drop-shadow keep the quiet (no-panel) feed legible over ANY world backdrop
         // (e.g. green "Quest Complete" over bright grass) without a heavy toast panel.
         <div key={n.id} className="flex items-center gap-1.5 text-[11px] font-medium opacity-90"
              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.85)' }}>
           <Icon name={TYPE_ICON[n.type] || 'sparkles'} size={11} className={`flex-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] ${TYPE_COLOR[n.type] || 'text-text-muted'}`} />
-          <span className={TYPE_COLOR[n.type] || 'text-text'}>{n.text}</span>
+          <span className={TYPE_COLOR[n.type] || 'text-text'}>{notificationText(n, t)}</span>
         </div>
       ))}
     </div>

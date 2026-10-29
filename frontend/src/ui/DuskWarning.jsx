@@ -28,7 +28,7 @@ export default function DuskWarning() {
       if (isDuskApproaching(s.gameTime, s.isDay)) {
         if (armed.current) {
           armed.current = false;
-          s.addNotification?.('Dusk approaches — night falls soon. Ready your defenses!', 'warn');
+          s.addNotification?.('notice.dusk', 'warn');
         }
       } else if (!s.isDay) {
         armed.current = true; // night has fallen -> re-arm for the next day

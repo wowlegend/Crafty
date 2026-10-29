@@ -20,6 +20,7 @@ import { tierLootChance } from './game/lootTier.js';
 import { questRewards } from './game/questRewards.js';
 import { reduceClaim, MAX_ACTIVE_QUESTS } from './game/questClaim.js';
 import { resolveChestHeights } from './game/captureRest.js';
+import { toNotification, admits, notificationText, TOAST_MS } from './ui/notifications.js';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
 // Loot DATA (LOOT_TABLES + CHEST_LOOT) lives in src/data/lootTables.js (pure module).
@@ -239,13 +240,19 @@ export const useQuestSystem = () => {
         setUnlockedAchievements(restored);
     }, [questLoadedAt]);
 
-    // Add notification popup
-    const addNotification = useCallback((text, type = 'info') => {
+    // The one notification channel (ui/notifications.js): a dictionary key or a plain string, dropped when the same news
+    // showed inside one toast's life.
+    const recentNotifications = useRef(new Map());
+    const addNotification = useCallback((message, type = 'info', opts = {}) => {
+        const n = toNotification(message, type, opts);
+        const now = Date.now();
+        if (!admits(recentNotifications.current, n.dedupe, now)) return;
+        recentNotifications.current.set(n.dedupe, now);
         const id = notifId.current++;
-        setNotifications(prev => [...prev, { id, text, type, timestamp: Date.now() }]);
+        setNotifications(prev => [...prev, { id, ...n, timestamp: now }]);
         setTimeout(() => {
-            setNotifications(prev => prev.filter(n => n.id !== id));
-        }, 4000);
+            setNotifications(prev => prev.filter(x => x.id !== id));
+        }, TOAST_MS);
     }, []);
 
     // Check and unlock achievements.
@@ -636,6 +643,7 @@ const NOTIF_ICON = {
 };
 
 export const NotificationStack = React.memo(({ notifications }) => {
+    const t = useT();
     // Below the day-phase dial (top 68 px, 84 px tall) it used to cover (STATUS G-ledger 38/a); on touch, below the
     // minimap that sits under the dial there.
     return (
@@ -647,6 +655,8 @@ export const NotificationStack = React.memo(({ notifications }) => {
                     return (
                         <motion.div
                             key={notif.id}
+                            data-testid="notification"
+                            data-notification-key={notif.key || ''}
                             initial={{ opacity: 0, x: 100, scale: 0.8 }}
                             animate={{ opacity: 1, x: 0, scale: 1 }}
                             exit={{ opacity: 0, x: 100, scale: 0.8 }}
@@ -654,7 +664,7 @@ export const NotificationStack = React.memo(({ notifications }) => {
                         >
                             <Toast status={status} className="w-full text-sm font-bold">
                                 <Icon name={iconName} size={16} className="flex-none" />
-                                <span>{notif.text}</span>
+                                <span>{notificationText(notif, t)}</span>
                             </Toast>
                         </motion.div>
                     );

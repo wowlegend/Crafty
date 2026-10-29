@@ -31,6 +31,7 @@ export const STRINGS = {
     // A lost WebGL context (ui/ContextLossPanel.jsx): one tap saves and reloads into the same world.
     'ui.contextLost': 'Graphics were reset by the system — tap to resume',
     'notice.panelLoadFailed': 'That panel could not load. Check your connection, or reload if the game just updated.',
+    'notice.dusk': 'Dusk approaches. Night falls soon: ready your defenses!',
     'ui.level': 'Level {n}',
     'ui.gold': 'Gold',
     'ui.locale': '中文',
@@ -253,6 +254,7 @@ export const STRINGS = {
     'ui.resume_hint': '浏览器已释放鼠标控制，点击画面重新接管角色。',
     'ui.contextLost': '画面已被系统重置，点击继续游戏',
     'notice.panelLoadFailed': '面板加载失败。请检查网络；如果游戏刚刚更新，请刷新页面。',
+    'notice.dusk': '黄昏将至，夜幕即将降临，快做好防御！',
     'ui.level': '等级 {n}',
     'ui.gold': '金币',
     'ui.locale': 'EN',
