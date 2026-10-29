@@ -59,7 +59,7 @@ import { routeExpressVerb } from './input/expressVerbs.js';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
-import { lookbookPose, applyLookbookPose, subscribeLookbook, lookbookPinned } from './render/lookbookSeam.js';
+import { lookbookPose, applyLookbookPose, subscribeLookbook, lookbookHidesHands } from './render/lookbookSeam.js';
 import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive, resetInput } from './input/inputState';
 import { installBlurReset } from './input/blurReset';
@@ -1528,9 +1528,9 @@ export const Player = ({ isWorldBuilt }) => {
 
   // Hide the first-person hands and held FX during capture, so the capture frame is the world alone.
   const inCapture = useGameStore((s) => s.isCaptureMode);
-  // The same for a lookbook pose (render/lookbookSeam.js): an elevated hero shot with the hands in the corner would
-  // misrepresent the frame. Changes only when the probe poses or clears, never per frame.
-  const lookbookOn = useSyncExternalStore(subscribeLookbook, lookbookPinned);
+  // The same for a lookbook hero pose (render/lookbookSeam.js): an elevated shot with the hands in the corner would
+  // misrepresent the frame. An eye pose keeps them. Changes only when the probe poses or clears, never per frame.
+  const lookbookOn = useSyncExternalStore(subscribeLookbook, lookbookHidesHands);
 
   return (
     <group>

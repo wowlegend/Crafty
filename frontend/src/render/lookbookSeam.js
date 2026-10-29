@@ -35,6 +35,7 @@ import { LOOKBOOK_PASS_NAMES, lookbookEffectNames } from './passesOff.js';
 const LOOKBOOK_PARAM = 'lookbook';
 
 let _pose = null;
+let _handPose = null;
 const _subs = new Set();
 let _passTimer = null; // the page-wide handle from render/passTimer.js, once the probe asked for timings
 // The post passes a script switched off (render/passesOff.js applies them in the composer; render/Sun.jsx reads 'sun').
@@ -73,6 +74,22 @@ export function lookbookPinned() {
   return _pose !== null;
 }
 
+/** For useSyncExternalStore: whether the first-person hands hide. A hero pose hides them; an eye pose (`hands: true`)
+ *  keeps them, so a still at the eye shows what the player sees. */
+export function lookbookHidesHands() {
+  return _pose !== null && !_pose.hands;
+}
+
+/** The hand pose a script holds in place of the hand rig's clock (render/playerRender.jsx), or null. Read per frame. */
+export function lookbookHandPose() {
+  return _handPose;
+}
+
+/** For useSyncExternalStore: the held hand pose's kind ('swing', 'cast', 'charge') or null. */
+export function lookbookHandPoseKind() {
+  return _handPose === null ? null : _handPose.kind;
+}
+
 /** For useSyncExternalStore: notified on every pose and clear. Returns an unsubscribe function. */
 export function subscribeLookbook(cb) {
   _subs.add(cb);
@@ -94,7 +111,7 @@ function setPose(p) {
     const position = finite3(p && p.position, 'position');
     const lookAt = finite3(p && p.lookAt, 'lookAt');
     const fov = Number.isFinite(p.fov) ? p.fov : 75; // the game's own base fov (GameScene camera, capture pin)
-    _pose = { position, lookAt, fov };
+    _pose = { position, lookAt, fov, hands: p.hands === true };
   }
   for (const cb of _subs) cb();
 }
@@ -105,7 +122,28 @@ function setPose(p) {
  * NaN camera that PositionTracker would then publish as the player's position. (Review F3.)
  */
 function copyPose(p) {
-  return p === null ? null : { position: [...p.position], lookAt: [...p.lookAt], fov: p.fov };
+  return p === null ? null : { position: [...p.position], lookAt: [...p.lookAt], fov: p.fov, hands: p.hands };
+}
+
+const HAND_POSE_KINDS = Object.freeze(['swing', 'cast', 'charge']);
+const SWING_STEPS = Object.freeze([1, 2, 3]);
+
+/** Validate a hand pose: { kind: 'swing', step (1-3, the light string's step), t (0-1) }, { kind: 'cast', t (0-1) } or
+ *  { kind: 'charge', level (0-1) }; null clears it. Throws on anything else, leaving the held pose as it was. */
+function checkHandPose(p) {
+  if (p === null) return null;
+  if (!p || !HAND_POSE_KINDS.includes(p.kind)) {
+    throw new TypeError(`lookbook: handPose kind must be one of ${HAND_POSE_KINDS.join(', ')}, got ${JSON.stringify(p && p.kind)}`);
+  }
+  const unit = (v, name) => {
+    const n = finite(v, name);
+    if (n < 0 || n > 1) throw new RangeError(`lookbook: handPose ${name} must be within 0 and 1, got ${n}`);
+    return n;
+  };
+  if (p.kind === 'charge') return { kind: 'charge', level: unit(p.level, 'level') };
+  if (p.kind === 'cast') return { kind: 'cast', t: unit(p.t, 't') };
+  if (!SWING_STEPS.includes(p.step)) throw new RangeError(`lookbook: handPose step must be 1, 2 or 3, got ${JSON.stringify(p.step)}`);
+  return { kind: 'swing', step: p.step, t: unit(p.t, 't') };
 }
 
 /** Pin `camera` to `pose`: position, a level up vector, the look target, the fov, and a rebuilt projection. */
@@ -254,6 +292,25 @@ export function installLookbookSeam(win, {
       cam.updateMatrixWorld();
       return headingOf(cam);
     },
+    /** Enter a beast form ('fire', 'ice', 'lightning', 'arcane') or leave it (null) through the store's own actions.
+     *  Only under a pose: the Player's beast state machine, which does not run while posed, ends a form it did not
+     *  start on its next tick, so an eye pose (`hands: true`) at the body's eye is how a form is shot in first person.
+     *  Returns the form the store holds. */
+    form: (element) => {
+      if (_pose === null) throw new Error('lookbook: form() needs a pose; the beast state machine ends an unposed form');
+      const s = store.getState();
+      if (element === null) s.exitBeastForm();
+      else if (!s.enterBeastForm(element) && s.activeBeastForm !== element) {
+        throw new Error(`lookbook: the store refused the form ${JSON.stringify(element)} (in another form, dead, or unknown)`);
+      }
+      return store.getState().activeBeastForm ?? null;
+    },
+    /** Hold the first-person hands in a pose (checkHandPose), or let the clock drive them again (null). */
+    handPose: (p) => {
+      _handPose = checkHandPose(p);
+      for (const cb of _subs) cb();
+      return _handPose === null ? null : { ..._handPose };
+    },
     /** Remove the live hostiles within `radius` metres of the eye (else the body), the way capture mode clears mobs
      *  (ecs.remove, so no kill, XP or loot is counted), so a frame shows the world rather than a fight in the player's
      *  face. Returns how many it removed. */
@@ -311,6 +368,8 @@ export function installLookbookSeam(win, {
         contextLosses: contextLosses(),
         gl: glInfo(),
         pose: copyPose(_pose),
+        form: s.activeBeastForm ?? null,
+        handPose: _handPose === null ? null : { ..._handPose },
         worldBuilt: s.isSpawnChunkLoaded === true,
         body: t ? [t.x, t.y, t.z] : null,
         eye: cam ? cam.position.toArray() : null,
@@ -336,6 +395,7 @@ export function installLookbookSeam(win, {
 /** Test-only. */
 export function _resetLookbookForTest() {
   _pose = null;
+  _handPose = null;
   _subs.clear();
   _passTimer = null;
   _passesOff = new Set();

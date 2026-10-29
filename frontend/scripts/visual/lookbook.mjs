@@ -29,6 +29,9 @@
  *   hero   for each of four places, pins the camera above it and shoots the programme's four times of day;
  *   material  (opt-in, not in the default) stands the player in front of a grass hill's side and a tree trunk found
  *          in the live mesh near the Hearth (_lookbook.mjs findMaterialSights) and looks at each, at each time.
+ *   self   (opt-in) what the player sees of their own body: each beast form at the steady eye, the light string, the
+ *          cast and the heavy charge held at their apex by the seam, and the hands beside the Hearth's brazier at
+ *          midnight (shootSelf).
  * The clock keeps running, so before each shot it sets the time, lets the sky settle, sets it again and shoots, and
  * records where the clock actually was. Every shot and clip also records timer-query ms per pass over its window
  * (src/render/passTimer.js, EXT_disjoint_timer_query_webgl2: Chromium only; WebKit says it cannot time). Those are not
@@ -130,7 +133,7 @@ const PASS_TIMES_RUN = (() => {
 const HEADED = flag('--headed');
 const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
-const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands'];
+const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands', 'self'];
 const SETS = arg('--sets', 'hero,eye,clips').split(',');
 // --cycles: the times to shoot (dawn-origin fractions), for a before/after at hours the programme's four do not cover.
 let CYCLES;
@@ -252,9 +255,96 @@ function encodeClip(webm, mp4, { fromS, forS }) {
   }
 }
 
+// THE SELF SET: what the player sees of their own body, as stills the seam holds (render/lookbookSeam.js form,
+// handPose and the eye pose). Each beast form at the steady eye (the body + EYE_HEIGHT_M, no bob) under an eye pose,
+// which keeps the hands and stops the beast state machine that would end a form it did not start; the body rests where
+// the human capsule rests, so the world sits up to 0.3 m off where that form's capsule would put it, and the beast
+// against the eye is exact. The light string's three steps at their apex and near their end, the cast at its peak and
+// the full heavy charge, held in place of the clock. The hands beside the Hearth's brazier at midnight.
+const SELF_FORMS = Object.freeze(['fire', 'ice', 'lightning', 'arcane']);
+const SELF_FORM_CYCLES = Object.freeze([0.3, 0.75]);
+const SELF_POSE_CYCLE = 0.3;
+const SELF_POSES = Object.freeze([
+  ['rest', null],
+  ['swing1-apex', { kind: 'swing', step: 1, t: 0.5 }], ['swing1-end', { kind: 'swing', step: 1, t: 0.9 }],
+  ['swing2-apex', { kind: 'swing', step: 2, t: 0.5 }], ['swing2-end', { kind: 'swing', step: 2, t: 0.9 }],
+  ['finisher-apex', { kind: 'swing', step: 3, t: 0.5 }], ['finisher-end', { kind: 'swing', step: 3, t: 0.9 }],
+  ['cast', { kind: 'cast', t: 0.5 }], ['charge', { kind: 'charge', level: 1 }],
+]);
+const EYE_OVER_BODY_M = 0.67; // combat/swingOrigin.js EYE_HEIGHT_M, the steady eye
+// The Hearth's brazier (world/Terrain.jsx HomeAnchorRender, at the origin): the player stands 1.3 m from it on each
+// axis, turned so the fire is at the frame's right.
+const BRAZIER_XZ = Object.freeze([2.4, 2.4]);
+const BRAZIER_STAND_XZ = Object.freeze([1.1, 1.1]);
+const BRAZIER_HEADING = 110;
+const BRAZIER_CYCLE = 0.75;
+
+async function shootSelf(page, report, dir, target) {
+  const lb = (verb, arg) => page.evaluate(([v, a]) => window.__craftyLookbook[v](a), [verb, arg]);
+  const shoot = async (file, extra) => {
+    await clearHostiles(page);
+    await play(page);
+    const a = await info(page);
+    await page.screenshot({ path: join(dir, file) });
+    const row = { file, cycle: a.cycle, form: a.form, handPose: a.handPose, eye: a.eye, body: a.body, heading: a.heading,
+      pitch: a.pitch, handNodes: a.handNodes, isAlive: a.isAlive, active: a.active, tier: a.tier, ...extra };
+    report.self.push(row);
+    console.log(`lookbook self ${target.id} ${file}: cycle ${a.cycle?.toFixed(3)} form ${a.form} hands ${a.handNodes} `
+      + `eye-body ${a.eye && a.body ? (a.eye[1] - a.body[1]).toFixed(3) : '?'}${a.isAlive ? '' : ' DEAD'}`);
+    return row;
+  };
+  const standFacing = async (position, heading) => {
+    await respawnIfDead(page, report);
+    await lb('stand', { position });
+    return lb('look', { heading, pitch: 0 });
+  };
+
+  if (target.engine === 'chromium') {
+    for (const c of SELF_FORM_CYCLES) {
+      await standFacing(report.stand, HANDS_HEADING);
+      await setCycle(page, c);
+      await delay(SETTLE_MS);
+      const at = await info(page);
+      const eye = [at.body[0], at.body[1] + EYE_OVER_BODY_M, at.body[2]];
+      const f = facing(at.heading, 0);
+      await lb('pose', { position: eye, lookAt: [eye[0] + f[0] * 10, eye[1], eye[2] + f[2] * 10], hands: true });
+      for (const el of SELF_FORMS) {
+        await lb('form', el);
+        await setCycle(page, c);
+        await delay(EYE_FRAME_MS + 600); // past the entrance pop and the burst (game/beastMorph.js MORPH_SEC, BURST_SEC)
+        await shoot(`self-form-${el}-${c.toFixed(2)}.png`, { kind: 'form' });
+        await lb('form', null);
+      }
+      await lb('clear');
+    }
+  }
+
+  await standFacing(report.stand, HANDS_HEADING);
+  await setCycle(page, SELF_POSE_CYCLE);
+  await delay(SETTLE_MS);
+  for (const [name, p] of SELF_POSES) {
+    await lb('handPose', p);
+    await setCycle(page, SELF_POSE_CYCLE);
+    await delay(600);
+    await shoot(`self-pose-${name}-${SELF_POSE_CYCLE.toFixed(2)}.png`, { kind: 'pose' });
+  }
+  await lb('handPose', null);
+
+  if (target.engine === 'chromium') {
+    const off = BRAZIER_STAND_XZ.map((v, i) => BRAZIER_XZ[i] - v);
+    await standFacing([off[0], report.stand[1] + 0.2, off[1]], BRAZIER_HEADING);
+    await setCycle(page, BRAZIER_CYCLE);
+    await delay(SETTLE_MS);
+    await lb('look', { heading: BRAZIER_HEADING, pitch: 0 });
+    await setCycle(page, BRAZIER_CYCLE);
+    await delay(EYE_FRAME_MS);
+    await shoot(`self-brazier-${BRAZIER_CYCLE.toFixed(2)}.png`, { kind: 'brazier' });
+  }
+}
+
 async function shootTarget(target, launchOpts, launchId) {
   const report = { id: target.id, engine: target.engine, launch: launchId, renderer: null, gpu: 'unknown', entry: null,
-    shots: [], eye: [], clips: [], material: [], handShots: [], pointBlank: null, sights: null, stand: null, hands: null, notes: [],
+    shots: [], eye: [], clips: [], material: [], handShots: [], self: [], pointBlank: null, sights: null, stand: null, hands: null, notes: [],
     respawns: 0, console: {},
     pageErrors: [] };
   const dir = join(OUT, target.id);
@@ -468,6 +558,8 @@ async function shootTarget(target, launchOpts, launchId) {
           + `climbed ${report.pointBlank.climbedM?.toFixed(2)} m, hand pixels near/far ${close.pixels}/${far.pixels} = ${report.pointBlank.ratio?.toFixed(2)}`);
       }
     }
+
+    if (SETS.includes('self') && report.stand) await shootSelf(page, report, dir, target);
 
     for (const clip of SETS.includes('clips') && target.engine === 'chromium' && report.stand ? clipPlan(CYCLES) : []) {
       await respawnIfDead(page, report);

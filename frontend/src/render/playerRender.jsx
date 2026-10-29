@@ -2,7 +2,7 @@
 // ProceduralRibbonTrail and the spell hand FX. It renders inside the viewmodel scene (render/ViewmodelLayer.jsx), in
 // view space, so nothing here casts or receives a shadow and nothing here lights the world: the gauntlets' ember cores
 // are HDR colours the composer's bloom carries (render/viewmodel.js).
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useMemo, useEffect, useSyncExternalStore } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Outlines } from '@react-three/drei';
 import * as THREE from 'three';
@@ -14,7 +14,8 @@ import { useGameStore } from '../store/useGameStore';
 import { OUTLINE } from './characterStyle';
 import { MagicWand } from './spellVfx';
 import { heavyChargeLevel } from '../game/heavyAttack.js';
-import { handSwing } from '../game/meleeString.js';
+import { handSwing, slashSweep } from '../game/meleeString.js';
+import { lookbookHandPose, lookbookHandPoseKind, subscribeLookbook } from './lookbookSeam.js';
 import {
   GAUNTLET, GAUNTLET_PARTS, HAND_REST_ROT, VIEWMODEL, handAnchors, installValueFloor, makeGauntletMaterials, makeHeldMaterial,
 } from './viewmodel.js';
@@ -264,11 +265,16 @@ const HeldBlock = ({ blockId }) => {
 
 // The cast orb is an HDR colour so the composer's bloom gives it its glow.
 const ORB_GAIN = 2.5;
+// The cast's gesture lasts while the Player holds attackType 'spell' (Components.jsx, 150 ms).
+const CAST_S = 0.15;
 
 // The ember gauntlets, in view space (the viewmodel camera sits at the origin looking down -z).
 export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime }) => {
   const activeSpell = useGameStore(state => state.activeSpell) || 'fireball';
   const equippedWeapon = useGameStore(state => state.equipment?.weapon);
+  // A held lookbook pose shows the cast's orb and the swing's trail as the attack it stands for; null in play.
+  const stillKind = useSyncExternalStore(subscribeLookbook, lookbookHandPoseKind);
+  const shownAttack = stillKind === 'cast' ? 'spell' : stillKind === 'swing' ? 'melee' : attackType;
 
   const rightHandRef = useRef();
   const leftHandRef = useRef();
@@ -307,15 +313,21 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
       const pose = anchors.pose;
       const held = wandRef.current?.userData.rest;
       const time = state.clock.elapsedTime;
-      const swingElapsed = attackStartTime.current > 0 ? (state.clock.getElapsedTime() - attackStartTime.current) : 0;
+      // A lookbook still holds a pose in place of the clock (render/lookbookSeam.js handPose); null in play.
+      const still = lookbookHandPose();
+      const stillSweep = still?.kind === 'swing' ? slashSweep(still.step) : null;
+      const swingElapsed = stillSweep ? still.t * stillSweep.durationS
+        : still?.kind === 'cast' ? still.t * CAST_S
+          : attackStartTime.current > 0 ? (state.clock.getElapsedTime() - attackStartTime.current) : 0;
 
       // THE LIGHT STRING reads in the hand (game/meleeString.js): step 1 sweeps right to left, step 2 comes back left to
       // right, the finisher sweeps wide and long. The swing in progress is a STRING swing only while the last light swing
       // is within its own sweep; otherwise (a heavy, a beast form's swing, nothing recent) the hand plays the step-1
       // sweep. handSwing chooses it once per swing and plays it out on this clock.
-      const sw = handSwing(swingLatch.current, attackStartTime.current, attackType === 'melee', performance.now(), swingElapsed);
+      const sw = still ? stillSweep
+        : handSwing(swingLatch.current, attackStartTime.current, attackType === 'melee', performance.now(), swingElapsed);
       const isSwingingMelee = sw !== null;
-      const isCastingSpell = attackType === 'spell' && swingElapsed < 0.15;
+      const isCastingSpell = still ? still.kind === 'cast' : attackType === 'spell' && swingElapsed < CAST_S;
 
       // Subtle high-frequency channeling vibrations on attack or cast
       const noiseX = (isSwingingMelee || isCastingSpell) ? (Math.sin(time * 65) + Math.cos(time * 87)) * 0.005 : 0;
@@ -350,7 +362,7 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
           wandRef.current.position.y = held.position[1];
         }
       } else if (isCastingSpell) {
-        const attackTime = time * 6;
+        const attackTime = still ? still.t * Math.PI : time * 6;
         rightHandRef.current.position.set(
           baseRightPos.x + noiseX,
           baseRightPos.y + noiseY,
@@ -376,7 +388,7 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
         // HEAVY MELEE charge (game/heavyAttack.js): the sword hand draws back and up as the charge builds, and trembles
         // once it is ready — the tell that the release will land heavy. Fitted so the fist stays in frame at this
         // aspect. Level 0 (no hold, and always under capture).
-        const charge = heavyChargeLevel(performance.now());
+        const charge = still?.kind === 'charge' ? still.level : heavyChargeLevel(performance.now());
         if (charge > 0) {
           const shake = charge >= 1 ? Math.sin(time * 90) * 0.006 : 0;
           chargePose(charge, baseRightPos, aspect, anchors.chargeFit, pose, restR);
@@ -416,7 +428,7 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
       {isWeaponEquipped && (
         <ProceduralRibbonTrail
           rightHandRef={rightHandRef}
-          isSwinging={attackType === 'melee'}
+          isSwinging={shownAttack === 'melee'}
           weaponType={equippedWeapon}
         />
       )}
@@ -442,18 +454,18 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
               </group>
             </group>
           )}
-          {attackType === 'spell' && <SpellHandEffects spellType={activeSpell} />}
+          {shownAttack === 'spell' && <SpellHandEffects spellType={activeSpell} />}
         </Gauntlet>
       </group>
       <group ref={leftHandRef} rotation={restL}>
         <Gauntlet mats={mats}>
-          {attackType === 'spell' && (
+          {shownAttack === 'spell' && (
             <mesh position={[0, 0.14, -0.12]}>
               <sphereGeometry args={[0.07, 10, 10]} />
               <meshBasicMaterial color={orbColor} transparent opacity={0.9} />
             </mesh>
           )}
-          {attackType !== 'spell' && selectedBlock && <HeldBlock blockId={selectedBlock} />}
+          {shownAttack !== 'spell' && selectedBlock && <HeldBlock blockId={selectedBlock} />}
         </Gauntlet>
       </group>
     </group>

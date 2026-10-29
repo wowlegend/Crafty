@@ -62,7 +62,7 @@ describe('src/index.jsx installs the lookbook seam with the real collaborators',
     expect(plain.seam, 'a page without ?lookbook=1 got the seam — every player would carry it').toBeUndefined();
     const { seam } = await bootAt('?lookbook=1');
     expect(seam, 'the entry module did not install the seam on ?lookbook=1 — the probe has no door').toBeDefined();
-    expect(Object.keys(seam).sort()).toEqual(['clear', 'clearHostiles', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
+    expect(Object.keys(seam).sort()).toEqual(['clear', 'clearHostiles', 'form', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
   });
 
   it('hands the seam the REAL mob query: a hostile added to the ECS world is measured from the eye', async () => {

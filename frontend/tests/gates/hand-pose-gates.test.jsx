@@ -24,6 +24,8 @@ const { swingPose, swingFit, chargePose, chargeFit, frameScale, CHARGE } = await
 const { slashSweep, pressSwing, _resetStringForTest } = await import('../../src/game/meleeString.js');
 const { pressHeavy, cancelHeavy, HEAVY_HOLD_MS, HEAVY_CHARGE_MS } = await import('../../src/game/heavyAttack.js');
 const { StableMagicHands, HELD_REST } = await import('../../src/render/playerRender.jsx');
+const { installLookbookSeam, _resetLookbookForTest } = await import('../../src/render/lookbookSeam.js');
+const { act } = await import('react');
 const { useGameStore } = await import('../../src/store/useGameStore');
 
 const REST = HAND_REST_ROT.right;
@@ -271,5 +273,44 @@ describe('StableMagicHands plays the fitted poses (mounted through R3F at an iPa
     expect(right.position.distanceTo(want.position), 'the hand is not at the fitted charge').toBeLessThan(0.007);
     expect(right.rotation.x).toBeCloseTo(want.rotation[0], 6);
     expect(anchor.z - right.position.z, 'SETUP: the charge did not move the hand').toBeLessThan(-0.02);
+  });
+
+  it('a lookbook still holds each pose in place of the clock: step 2, the cast with its orb, the full charge, then rest', async () => {
+    const win = { location: { search: '?lookbook=1' } };
+    installLookbookSeam(win, { store: useGameStore, setActive: () => {}, getActive: () => true, cycleOf: () => 0, glInfo: () => null, contextLosses: () => 0 });
+    const seam = win.__craftyLookbook;
+    try {
+      r = await mountR3F(<StableMagicHands selectedBlock={null} attackType={null} attackStartTime={{ current: 0 }} />, { width: 820, height: 1180 });
+      await r.step(2);
+      const right = () => findHands(r.three().scene).find((h) => h.children.some((c) => c.userData.rest));
+      const orbs = () => { const o = []; r.three().scene.traverse((m) => { if (m.isMesh && m.geometry?.type === 'SphereGeometry' && m.geometry.parameters.radius === 0.07) o.push(m); }); return o; };
+      const aspect = 820 / 1180;
+      const anchor = handAnchors(aspect).right;
+      expect(right().position.distanceTo(anchor), 'SETUP: no attack, the hand rests at its anchor').toBeLessThan(1e-9);
+      expect(orbs().length, 'SETUP: no cast, no orb').toBe(0);
+
+      const sweep = slashSweep(2);
+      await act(async () => { seam.handPose({ kind: 'swing', step: 2, t: 0.5 }); });
+      await r.step(1);
+      const want = swingPose(0.5, sweep, anchor, aspect, swingFit(sweep, anchor, aspect, REST), undefined, REST);
+      expect(right().position.distanceTo(want.position), 'the held swing is not step 2 at its apex').toBeLessThan(0.012);
+
+      await act(async () => { seam.handPose({ kind: 'cast', t: 0.5 }); });
+      await r.step(1);
+      expect(orbs().length, 'the held cast shows no orb in the left hand').toBe(1);
+      expect(right().position.z - anchor.z, 'the held cast is not at its peak (+0.04 m)').toBeCloseTo(0.04, 2);
+
+      await act(async () => { seam.handPose({ kind: 'charge', level: 1 }); });
+      await r.step(1);
+      const charged = chargePose(1, anchor, aspect, chargeFit(anchor, aspect, REST), undefined, REST);
+      expect(right().position.distanceTo(charged.position), 'the held charge is not the full charge').toBeLessThan(0.007);
+      expect(orbs().length, 'the orb outlived the cast').toBe(0);
+
+      await act(async () => { seam.handPose(null); });
+      await r.step(1);
+      expect(right().position.distanceTo(anchor), 'released, the hand did not return to rest').toBeLessThan(1e-9);
+    } finally {
+      _resetLookbookForTest();
+    }
   });
 });
