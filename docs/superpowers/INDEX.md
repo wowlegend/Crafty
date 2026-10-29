@@ -25,7 +25,7 @@
 | **`plans/2026-10-28-crafty-sota-reset.md`** | The programme: what to build, in which wave and lane. |
 | **`KEVIN-REVIEW-BATCH.md`** | Kevin's decision/eyeball queue. Append; never block on it. |
 
-Plus, at the repo root: **`SOTA-INITIATIVE.md`** = DIRECTION/vision only (**its §3 status block is FROZEN —
+Plus **`SOTA-INITIATIVE.md`** (here, moved from the repo root 2026-10-28) = DIRECTION/vision only (**its §3 status block is FROZEN —
 superseded by STATUS.md**), and **`CLAUDE.md`** = the project's agent constitution (one real file, no copy or link).
 
 ---
@@ -89,7 +89,7 @@ plan for "what to do next" — that is what `memory/registry.jsonl` and the SOTA
   `2026-06-17-crafty-W{1,2,3,4}-*` (the big rebuild, 503 steps).
 - **`2026-06-15-crafty-world-purpose-sota` is NOT archivable and is not really a plan any more.**
   The retired loop charter cited it twice as the live **Source** for current design (tier-by-distance, shrines,
-  the climax; vertex AO / aerial perspective / landmark emissive crowns) and `SOTA-INITIATIVE.md` §3 is its
+  the climax; vertex AO / aerial perspective / landmark emissive crowns) and `docs/superpowers/SOTA-INITIATIVE.md` §3 is its
   master-plan registration. It functions as a DESIGN OF RECORD — treat it like the specs above, not like a
   finished build contract.
 - **Everything dated ≤ 2026-06-16** is shipped-and-historical (S1/S2/S2-B/S3/world/touch/interleaves).

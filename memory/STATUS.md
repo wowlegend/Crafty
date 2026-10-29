@@ -12,7 +12,7 @@
 > | `memory/ACTIVE_PLAN.md` | The LIVE cursor — the one unit in flight right now | the registry (points here) |
 > | `memory/CHANGELOG.md` | History (reverse-chron). Append-only | current status |
 > | `memory/ARCHITECTURE.md` | The current code blueprint | status, plans |
-> | `SOTA-INITIATIVE.md` | DIRECTION / vision / the S-ladder | status (its §3 is FROZEN — see below) |
+> | `docs/superpowers/SOTA-INITIATIVE.md` | DIRECTION / vision / the S-ladder | status (its §3 is FROZEN — see below) |
 > | `docs/superpowers/KEVIN-REVIEW-BATCH.md` | Kevin's decision/eyeball queue | anything the loop can decide |
 > | `docs/superpowers/INDEX.md` | The MAP of every doc + its status tag | content |
 > | `docs/superpowers/{specs,plans}/` | Per-milestone design + build contracts | global status |

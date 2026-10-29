@@ -85,7 +85,7 @@ export const CANONICAL = [
   // are expected to age, a RECORD is cited as ground truth. Superseding entries name the entry they
   // supersede and are append-only, so the corpus only grows and un-checked citations only accumulate.
   'docs/superpowers/DECISIONS.md',
-  'SOTA-INITIATIVE.md',
+  'docs/superpowers/SOTA-INITIATIVE.md',
   'README.md',
   'CLAUDE.md',
 ];

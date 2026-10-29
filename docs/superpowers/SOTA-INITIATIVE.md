@@ -13,8 +13,8 @@
 > **v2 rewrite 2026-06-10** (authority: Kevin's 2026-06-10 grant — the loop/agent may enhance/delete/fix this
 > plan as judged best). v1 (the 2026-05-30 brainstorm-kickoff brief) is HISTORICAL — in git history at tag-time
 > `ddfdf96` and superseded in full; its S0 audit / S1 brainstorm process sections completed weeks ago.
-> **This is a LIVING document:** the autonomous build loop refreshes the §3 status line at every milestone
-> (doc-currency is a persist-step obligation).
+> Moved from the repo root to `docs/superpowers/` on 2026-10-28 (SOTA reset, lane W2-J). The programme now is
+> `docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`; §3 below is a frozen snapshot.
 > **Ground-truth precedence:** git `main` → `memory/ACTIVE_PLAN.md` (resume pointer) → specs/plans in
 > `docs/superpowers/` → `memory/STATE-REVIEW-2026-06-10.md` (risk map) →
 > `CLAUDE.md` (operating rules — outrank this plan on process conflicts) →
@@ -72,7 +72,7 @@ layered on a day-build / night-siege survival loop. All four Aspects SHIPPED (20
 8. **No AI footers in commits; no `git add -A`; absolute paths (TWO-LEVEL repo).** Own repo + own
    initiative — **self-contained**: no other project's rules, ledgers or acceptable-use frame apply here.
 
-## 3. Status (LIVING — refresh at every milestone; last: 2026-06-18)
+## 3. Status (FROZEN 2026-06-18: a snapshot; live state is `npm run orient` and `memory/STATUS.md`)
 
 **🟢 2026-06-18 REBUILD COMPLETE — W1-W4 ALL DONE (the whole Comprehensive SOTA Rebuild is complete, pending Kevin's playtest).** The 2026-06-17 trust-first rebuild (W1 purge/fix → W2 look → W3 living-frontier → W4 polish; 503 TDD steps) is landing on `main` + auto-deploying: **W1 (Purge & Fix) ✅** (`8b6e3a4` — dead auth + pet/tame deleted, ESC/pause resurrected, M-panel, SFX limiter routing) · **W2 (The Look) ✅** (warm magic-hour grade [the restrained-NEUTRAL lock REVERSED, glowier], gloved FPV hands, 4 distinct spell silhouettes, continuous toon-Caribbean ocean plane, cinematic 3D title vista, de-islanded continent, 9-biome data-model) · **W3 (Living-Frontier) ✅ COMPLETE 2026-06-18** (`ca26383` — M-HUD full classic-RPG HUD [cooldown ability bar · combat-log · nametags · target-frame · radial minimap · decluttered chrome] · M-HUB Hearth frontier outpost [forge/stall/watchtower/cabin on flush terraces] · M-NPCS 4 named role NPCs [Bram/Mara/Old Pike/Sister Wren] with G-interactions · M-AMBIENT ambient NPC day-patrol/night-retreat life · M-NARRATIVE giver+lore quest chain + themed objectives + the **L** quest-log panel; **1615 unit / 21 visual / build + eslint green**) · plus Kevin's 4 live-feedback bugs fixed (green-confetti kill-FX → warm-gold, F slash-arc, ESC single-pause, blight travel speed). **W4 (Polish) ✅ COMPLETE 2026-06-18** (`8e5497e`): movement game-feel (T1-T3: accel/decel velocity ramp + coyote-time + jump-buffer in the Player loop), weather (T5-T8: storm sky-darken via a mood-boost MAXed into moodTarget + the mount-density bug fix + biome-gated precip), storm audio (T9a pure synth + T9b WeatherSystem wire through the masterBus, capture-gated — audio *quality* is Kevin's ear), item-affix model (T10, pure foundation), touch joystick nub-follow (T11, imperative GLI-safe knob), boot chrome (T12: favicon/PWA/OG + de-Minecraft copy). **1656 unit / 21 visual / build + eslint green; every visible slice LIVE-LOOK-verified.** (T4 movement-probe skipped — optional/low-value, headless can't drive WASD.) **PENDING KEVIN: a holistic PLAYTEST** of the whole rebuild — movement feel, storm look + AUDIO (his ear), touch, the living frontier + quest log (KEVIN-REVIEW). The next frontier S4 (multiplayer + monetization) is Kevin's call to start. Live cursor: `memory/ACTIVE_PLAN.md`. The 2026-06-17 kickoff context follows.
 
