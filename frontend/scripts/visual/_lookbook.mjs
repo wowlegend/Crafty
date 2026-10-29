@@ -736,11 +736,13 @@ export function targetSummaryLines(r, planned = {}) {
   };
   set('shots', r.shots || [], planned.hero ?? 0, r.respawns ? `, ${r.respawns} respawn(s)` : '');
   if (r.eye) set('eye level', r.eye, planned.eye ?? 0, `; stand ${JSON.stringify(r.stand)}; hands ${JSON.stringify(r.hands)}`);
-  const chrome = (r.eye || []).filter((s) => s.valid && Number.isFinite(s.chrome?.share)).map((s) => s.chrome.share);
+  // At rest: a valid eye frame with no toast up (a dusk warning or a night notice is not the HUD at rest).
+  const measured = (r.eye || []).filter((s) => s.valid && Number.isFinite(s.chrome?.share));
+  const chrome = measured.filter((s) => !(s.chrome.toasts > 0)).map((s) => s.chrome.share);
   if (r.eye?.length) {
     lines.push(chrome.length
-      ? `  chrome        ${chrome.length} valid eye frame(s): max ${(Math.max(...chrome) * 100).toFixed(2)}%, median ${(medianOf(chrome) * 100).toFixed(2)}%; ${chrome.filter((x) => x > CHROME_BUDGET).length} over the ${CHROME_BUDGET * 100}% budget`
-      : '  chrome        NOT MEASURED on any valid eye frame');
+      ? `  chrome        ${chrome.length} valid eye frame(s) at rest: max ${(Math.max(...chrome) * 100).toFixed(2)}%, median ${(medianOf(chrome) * 100).toFixed(2)}%; ${chrome.filter((x) => x > CHROME_BUDGET).length} over the ${CHROME_BUDGET * 100}% budget; ${measured.length - chrome.length} with a toast up set aside`
+      : '  chrome        NOT MEASURED on any valid eye frame at rest');
   }
   if (r.material?.length || planned.material) {
     const sights = MATERIAL_SIGHT_KINDS.map((k) => {

@@ -47,14 +47,15 @@ const XpEdge = ({ level, xpProgress }) => {
 
 const MinecraftHotbar = React.memo(({ gameState, level, xpProgress, controlsHint }) => {
   if (!gameState) return null;
-  // B7 (18-domain review): the 9-slot hotbar (9 × w-[62px] + gaps + padding ≈ 622px) overflowed a phone
-  // viewport — ~2 slots ran off each edge, unreachable in a voxel BUILDING game. Scale it down to fit on
-  // narrow screens (≤640px) while tablets/desktop keep full size; origin-bottom keeps it anchored + centered.
+  // The slim hotbar (the HUD lane): 48 px slots, 9 × 48 + gaps + padding = 500 px, the largest single piece of chrome at
+  // rest, sized so the eye-level frames hold the chrome share under 8% (lookbook chrome count). B7 (18-domain review): a
+  // full hotbar overflowed a phone, two slots off each edge; on narrow screens (≤640px) it scales to fit, keeping a
+  // phone's slot about 35 px; origin-bottom keeps it anchored and centred.
   return (
-    <div data-hud-interactive data-testid="hotbar" className="absolute bottom-4 left-1/2 transform -translate-x-1/2 origin-bottom max-[640px]:scale-[0.56] pointer-events-auto">
+    <div data-hud-interactive data-testid="hotbar" className="absolute bottom-4 left-1/2 transform -translate-x-1/2 origin-bottom max-[640px]:scale-[0.72] pointer-events-auto">
       {level != null && <XpEdge level={level} xpProgress={xpProgress} />}
       {controlsHint && <ControlsHint />}
-      <Panel variant="base" className="flex gap-2 p-2.5">
+      <Panel variant="base" className="flex gap-1.5 p-1.5">
         {HOTBAR_BLOCKS.map((blockType, index) => {
           const blockConfig = BLOCK_TYPES[blockType];
           if (!blockConfig) return null;
@@ -64,7 +65,7 @@ const MinecraftHotbar = React.memo(({ gameState, level, xpProgress, controlsHint
             <Slot
               key={blockType}
               selected={isSelected}
-              className="w-[62px] cursor-pointer"
+              className="w-12 cursor-pointer"
               onClick={() => gameState.setSelectedBlock(blockType)}
               title={`${blockConfig.name} (${quantity})`}
               // stable seam for the input-driven E2E (X3)
@@ -74,13 +75,13 @@ const MinecraftHotbar = React.memo(({ gameState, level, xpProgress, controlsHint
                   empty slot is dimmed and every count is drawn: a last block and none must not look alike. */}
               <div
                 data-hotbar-swatch
-                className={`w-9 h-9 rounded-sm border-chrome border-ink${quantity > 0 ? '' : ' opacity-30'}`}
+                className={`w-7 h-7 rounded-sm border-chrome border-ink${quantity > 0 ? '' : ' opacity-30'}`}
                 style={{ backgroundColor: blockConfig.color || '#567C35' }}
               />
-              <span className="absolute top-1 left-1.5 text-[11px] font-bold text-text-muted tabular-nums">{index + 1}</span>
+              <span className="absolute top-0.5 left-1 text-[10px] font-bold text-text-muted tabular-nums">{index + 1}</span>
               <span
                 data-hotbar-count
-                className={`absolute bottom-1 right-1.5 text-[13px] font-bold tabular-nums ${quantity > 0 ? 'text-text' : 'text-text-muted'}`}
+                className={`absolute bottom-0.5 right-1 text-[12px] font-bold tabular-nums ${quantity > 0 ? 'text-text' : 'text-text-muted'}`}
                 style={{ textShadow: '0 1px 2px #000' }}
               >
                 {quantity > 999 ? '999+' : quantity}
