@@ -621,8 +621,9 @@ export const Player = ({ isWorldBuilt }) => {
     // and a tap on any other touch control swung, mined or placed. An echo is not input: installPrimaryMouse is the
     // echo-filtered mousedown / mouseup pair, and a mouseup takes its mousedown's verdict.
     const primaryMouse = installPrimaryMouse({ pressPrimary, releaseHeavySwing, now: () => performance.now() });
-    // dev bridge: the e2e F2 case reads what was dropped per event type, and the presses per source
-    registerTestHook('readCompatMouse', () => ({ dropped: primaryMouse.dropped(), presses: primary.presses() }));
+    // dev bridge: the e2e F2 case reads what was dropped per event type, and the presses per source; talents.spec reads
+    // the verb its click's press was routed to
+    registerTestHook('readCompatMouse', () => ({ dropped: primaryMouse.dropped(), presses: primary.presses(), verbs: primary.verbs() }));
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     document.addEventListener('pointerlockerror', handlePointerLockError);
     // B8: clear held movement intents on focus loss (alt-tab drops the keyup -> keys stuck ON).

@@ -32,15 +32,18 @@ import { pressHeavy, releaseHeavy, cancelHeavy } from '../game/heavyAttack.js';
  *           isInputLive: () => boolean, throwHeavy: () => void, now: () => number }} deps
  * @returns {{ pressPrimary(button: number, source: string, at?: number): string | undefined,
  *             releasePrimary(source: string, at?: number): void, pressKey(at?: number): void,
- *             presses(): Record<string, number>, remove(): void }}
+ *             presses(): Record<string, number>, verbs(): Record<string, string | null>, remove(): void }}
  */
 export function installPrimaryInput({ performVerb, setState, getState, isInputLive, throwHeavy, now }) {
   // Presses per source, for the dev test bridge: the e2e F2 case asserts a real tap presses once as 'touch' and never
-  // as 'mouse'. One integer per press, not per frame.
+  // as 'mouse'. One integer per press, not per frame. `verbs` is the verb each source's last press was routed to, null
+  // when the router refused it (input dead, no body): a failed click then names the verb it became.
   const presses = { mouse: 0, touch: 0 };
+  const verbs = { mouse: null, touch: null };
   const pressPrimary = (button, source, at) => {
     presses[source] = (presses[source] || 0) + 1;
     const verb = performVerb(button);
+    verbs[source] = verb ?? null;
     const st = getState();
     if (button === 0 && verb === 'attack' && !st.voidhandHeld && !st.beastFormActive) pressHeavy(now(), source, at);
     return verb;
@@ -64,6 +67,7 @@ export function installPrimaryInput({ performVerb, setState, getState, isInputLi
     releasePrimary,
     pressKey,
     presses: () => ({ ...presses }),
+    verbs: () => ({ ...verbs }),
     remove: () => setState({ performVerb: null, pressPrimary: null, releasePrimary: null }),
   };
 }
