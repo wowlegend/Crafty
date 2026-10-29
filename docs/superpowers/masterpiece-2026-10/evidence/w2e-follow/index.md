@@ -19,10 +19,13 @@ whole frame unless named a crop. DECISIONS 2026-10-29 items 80-86.
 ## PR #52 fix round: the beast form's colour on the gauntlets (DECISIONS 2026-10-29 item 87)
 
 Shot on 2026-10-29 after 21:00Z by the `self` set, Chromium on ANGLE-Metal (Apple M3 Max) at 1280x800, device scale 2,
-each form at the steady eye at 0.30. Before = a production build of `ec0394ce` (no form colour); after = `7c3cffef`.
+each form at the steady eye at 0.30. Before = a production build of `ec0394ce` (no form colour); after = `7c3cffef`,
+whose dragon rim read as a thin orange-red line on the orange plates, so the after row is now the crimson fire build
+(`46010095`, shot at 22:32Z; the bull, hawk and golem tiles match `7c3cffef`'s to JPEG noise).
 
 | file | what it shows |
 |---|---|
 | `gauntlet-form-colour-before-after.jpg` | whole frames, dragon, bull, hawk and golem left to right, before above and after below: in the after row the gauntlets' outlines and the right core carry the form's colour |
-| `gauntlet-form-colour-crops.jpg` | the left gauntlet at full scale, before above and after below: ink outlines before; orange-red, cyan, yellow and violet rims after, the held block's outline still ink |
+| `gauntlet-form-colour-crops.jpg` | the left gauntlet at half scale, before above and after below: ink outlines before; crimson, cyan, yellow and violet rims after, the held block's outline still ink |
+| `gauntlet-fire-colour-before-after.jpg` | the dragon form only, left and right gauntlets, the beast's orange (`7c3cffef`) above and the crimson (`46010095`) below: the orange rim and core sit in the plates' orange; the crimson rim is a red line round both gauntlets and the core a red plate |
 | `gauntlet-plate-glow-rejected.jpg` | the right gauntlet, before above and the first after arm below (the core plus 0.35 of the glow on the plates): the plates read salmon for the bull and pink for the golem, so the plates were left out |

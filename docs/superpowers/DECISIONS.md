@@ -36,7 +36,8 @@ Frames: `docs/superpowers/masterpiece-2026-10/evidence/w2e-follow/` (`index.md` 
    still casts its shadow. First person is the follow placing the camera, marked by the Player's loop each frame
    (`render/followView.js`), not the drawn camera standing near the eye: a crit's shake (weight 1.6, trauma 0.8) puts
    the follow's target a median 1.5 m off the eye and, after the follow's 0.85 lerp, the camera outside 1 m on three
-   crits in four (2000 seeds), and a rule of 1 m from the eye let the boxes flash back in during fights. When another branch placed the camera (the reveal's ends, an eye pose), it is first person within 1 m of the
+   crits in four (2000 seeds), and a rule of 1 m from the eye let the boxes flash back in during fights. When another
+   branch placed the camera (the reveal's ends, an eye pose), it is first person within 1 m of the
    steady eye (`beastAvatarParts.js FIRST_PERSON_M`; the reveal leaves it in its first fifth), measured in world space,
    and the clearance is in metres: on a form's first frames the entrance draws the avatar at half scale. The eye stays
    at body + `EYE_HEIGHT_M` in every form: a per-form eye would put the dragon's 2.15 m up, inside the ceiling of a
@@ -124,19 +125,28 @@ Frames: `docs/superpowers/masterpiece-2026-10/evidence/w2e-follow/` (`index.md` 
    exact). It stands while it earns its place.
 87. **The gauntlets take the beast form's colour while it is on** (`render/viewmodel.js stepFormTint`, `FORM_TINT`,
    driven per frame by `render/playerRender.jsx`): as the beast is a dark ink body with an element rim, the gauntlets'
-   ink outlines take the form's element glow (`beastAvatarParts.js ELEMENT_COLOR`, the beast's own rim), and so does the
-   ember core in each, at the core's HDR gain, eased in by the end of the form's 0.55 s entrance and out after it, the
-   fading form keeping its colour until it has gone; the held item's outline stays ink. It answers item 80's loss: in
-   first person the beast draws nothing, and now the hands say which form is on. Frames
-   (`evidence/w2e-follow/gauntlet-form-colour-*.jpg`, 0.30): the rims read orange-red, cyan, yellow and violet round both
-   gauntlets. Two arms were shot and dropped: 0.35 of the glow on the plates read salmon for the bull and pink for the
-   golem on their ember gold (`gauntlet-plate-glow-rejected.jpg`), and the core alone shows only a sliver at rest, which
-   read for the bull and the golem and not for the hawk or the dragon. Also passed over: a beast viewmodel (claws in place
+   ink outlines take the form's colour (`FORM_TINT.colour`: the beast's own rim, `beastAvatarParts.js ELEMENT_COLOR`, for
+   the bull, the hawk and the golem), and so does the ember core in each, at the core's HDR gain, eased in by the end of
+   the form's 0.55 s entrance and out after it, the fading form keeping its colour until it has gone; the held item's
+   outline stays ink. It answers item 80's loss: in first person the beast draws nothing, and now the hands say which
+   form is on. Fire takes a crimson, `#D4142C`, on the hands only: the beast's orange `#FF6A2C` stands 24 degrees of OKLCH
+   hue and 0.04 of lightness off the plates (`#E8963A`) and 21 degrees and 0.07 off the ember core (`#FF9A2E`), and in the
+   frames its rim was a 1-2 px orange-red line on orange and its core sat in the plates' orange; the crimson stands 41
+   degrees and 0.19 under the plates and 38 degrees and 0.22 under the ember core (authored), and against the lit plate
+   as rendered (`#D26B00`) the rim moved from OKLab 0.065 off to 0.131 and the core from 0.091 to 0.133
+   (`gauntlet-fire-colour-before-after.jpg`). Frames (`evidence/w2e-follow/gauntlet-form-colour-*.jpg`, 0.30): the rims
+   read crimson, cyan, yellow and violet round both gauntlets. As displayed, the hawk's core stands 0.04 to 0.07 (OKLab) off
+   the ember core (both go yellow-white through the core's HDR gain and NEUTRAL), so its rim carries it. Two arms were shot and
+   dropped: 0.35 of the glow on the plates read salmon for the bull and pink for the golem on their ember gold
+   (`gauntlet-plate-glow-rejected.jpg`), and the core alone shows only a sliver at rest, which read for the bull and the
+   golem and not for the hawk or the dragon. Also passed over: a beast viewmodel (claws in place
    of the gauntlets: four new hand models) and the core's own light on the hands (it bleached them at 0.6 m). drei's
    Outlines writes the ink back whenever the hands re-render (an attack starting does it); the tint writes the colour
    again every frame callback, ahead of that frame's draw (not measured in a browser). Gated by
-   `tests/gates/form-gauntlet-gates.test.jsx`, with drei's real Outlines.
-   It stands while it earns its place.
+   `tests/gates/form-gauntlet-gates.test.jsx`, with drei's real Outlines, and each form's outline and core standing 0.15
+   (OKLab) off the plate as displayed at 0.30 and 0.75 (the fire rim that did not read stood 0.10 to 0.11 off, the hawk's
+   that did 0.15), fire 30 degrees of hue and 0.1 of lightness off the plates and the ember core. It stands while it
+   earns its place.
 88. **Per-frame code is gated for allocation by a young-generation heap probe** (`tests/gates/_youngGrowth.js`,
    `tests/gates/hot-path-alloc-gates.test.js`): new-space growth over runs of 5000 calls that no collection interrupted
    (`node:v8` GCProfiler), with no fixed warm-up: runs continue until the median of the last five kept runs is under
