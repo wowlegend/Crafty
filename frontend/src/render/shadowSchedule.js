@@ -6,7 +6,7 @@
 // `shadow.autoUpdate === false && shadow.needsUpdate === false` (renderers/webgl/WebGLShadowMap.js), so render/Atmosphere
 // turns autoUpdate off and asks this schedule each frame. A render is due:
 //   - IMMEDIATELY when the world's meshes changed (a chunk mounted, remeshed or left: a placed block must cast within two
-//     frames). A tier change forces its own render (render/shadowReset.js).
+//     frames; a treasure chest came or went). A tier change forces its own render (render/shadowReset.js).
 //   - otherwise when the sun has turned SUN_STEP_DEG since the LAST RENDER, the snapped frustum centre moved, or a dynamic
 //     caster is present — and never more often than SHADOW_MAX_HZ.
 //
@@ -24,7 +24,7 @@ const COS_STEP = Math.cos((SUN_STEP_DEG * Math.PI) / 180);
 const MIN_INTERVAL_MS = 1000 / SHADOW_MAX_HZ - 0.5;
 
 let worldEpoch = 0;
-/** A chunk's mesh mounted, changed or left (world/Terrain.jsx). */
+/** A chunk's mesh mounted, changed or left, or a treasure chest came or went (world/Terrain.jsx). */
 export function markShadowWorldChanged() {
   worldEpoch += 1;
 }

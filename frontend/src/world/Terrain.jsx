@@ -178,12 +178,19 @@ const TargetOutline = () => {
 };
 
 // --- 3D TREASURE CHEST RENDERER ---
-const TreasureChestsRender = () => {
+export const TreasureChestsRender = () => {
     // Fallback OUTSIDE the selector: inside it, `|| []` allocates a fresh array on every evaluation and
     // the reference-equality check can never hold. The key is declared in the store, so this is belt only.
     const chests = useGameStore(state => state.treasureChestsList) || [];
     const qualityTier = useGameStore(state => state.qualityTier) || 'low';
     const charOutline = (TIERS[qualityTier] || TIERS.low).charOutline;
+    // A chest casts the sun's shadow and is none of the dynamic casters Atmosphere watches, so the shadow map renders on
+    // demand (render/shadowSchedule.js) when one comes or goes, as it does for a chunk's mesh.
+    const chestKey = chests.map((c) => c.id).join('|');
+    React.useLayoutEffect(() => {
+        markShadowWorldChanged();
+        return () => markShadowWorldChanged();
+    }, [chestKey]);
 
     return (
         <group>
