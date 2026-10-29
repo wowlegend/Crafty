@@ -7,8 +7,8 @@ describe('isConsumable — exact-name (fixes the substring consume-trap)', () =>
       expect(isConsumable(name)).toBe(true);
     }
   });
-  // The food left with the hunger meter (DECISIONS 2026-10-29 item 71): a meat would be a Use button that spends the
-  // item for nothing.
+  // No food is consumable, because nothing feeds (DECISIONS 2026-10-29 item 71): a consumable meat would be a Use button
+  // that spends the item for nothing.
   it('false for the retired foods', () => {
     for (const food of ['Raw Porkchop', 'Raw Beef', 'Cooked Porkchop', 'Cooked Beef', 'Rotten Flesh']) {
       expect(isConsumable(food), food).toBe(false);

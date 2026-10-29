@@ -1,6 +1,8 @@
 import React from 'react';
 import { Modal, Panel, Icon, Button } from './primitives/index.js';
 import { useT } from '../i18n/i18n.js';
+import { useGameStore } from '../store/useGameStore.jsx';
+import { questTitle, questDescription } from '../game/questText.js';
 
 // The full quest LOG panel (L). Reuses the AchievementsPanel Modal grammar (bold-flat,
 // Escape/backdrop close via the Modal primitive). Each active quest shows its giver + lore
@@ -9,6 +11,7 @@ import { useT } from '../i18n/i18n.js';
 // MenuSystem's panel AnimatePresence; capture-irrelevant (a modal, never in the world baselines).
 export const QuestLog = React.memo(({ quests = [], onClose }) => {
     const t = useT();
+    const locale = useGameStore((s) => s.locale) || 'en';
     return (
         <Modal
             testId="quest-log-panel"
@@ -42,12 +45,12 @@ export const QuestLog = React.memo(({ quests = [], onClose }) => {
                             <Panel key={q.id} variant="inset" bg="bg-slot" className="p-3">
                                 <div className="flex items-center gap-2 text-text font-bold text-sm">
                                     {q.icon && <Icon name={q.icon} size={16} className="text-accent flex-none" />}
-                                    <span className="flex-1 min-w-0">{q.title}</span>
+                                    <span className="flex-1 min-w-0">{questTitle(t, locale, q)}</span>
                                     {q.completed && <Icon name="check" size={15} className="text-success flex-none" />}
                                 </div>
                                 {q.giver && <div className="text-[11px] text-accent uppercase tracking-wider mt-0.5">{q.giver}</div>}
                                 {q.lore && <div className="text-xs text-text-muted italic mt-1 leading-snug">{q.lore}</div>}
-                                <div className="text-[11px] text-text-muted mt-2">{q.description}</div>
+                                <div className="text-[11px] text-text-muted mt-2">{questDescription(t, locale, q)}</div>
                                 {/* Objective progress */}
                                 <div className="mt-1.5">
                                     <div className="h-2 rounded-sm bg-panel-inset border-chrome border-ink overflow-hidden">

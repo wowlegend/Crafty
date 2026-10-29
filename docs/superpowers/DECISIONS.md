@@ -88,6 +88,44 @@ Frames: `docs/superpowers/masterpiece-2026-10/evidence/w2e-follow/` (`index.md` 
    so in a form the world sits up to 0.3 m off where that form's capsule would put it (the beast against the eye is
    exact). It stands while it earns its place.
 
+## 2026-10-29 — [LOOP] W2-F step 7: quests name the creatures on screen
+
+**Decided by the W2-F quest-text lane under the standing grant** (DECISIONS 2026-10-28 item 14), building the
+quest-text half of reset-plan row 24 by the task script `docs/superpowers/plans/2026-10-29-crafty-w2f-hunger-quests.md`.
+Stacks on step 6 (items 70-74). Each stands while it earns its place.
+
+75. **A hunt's text comes from its creature's display name.** A quest with a `mobType` (five: Zombie Slayer, Spider
+   Hunter, Ember Hunter, Undead Destroyer, Brute Breaker) renders its title from `quest.<id>.title` and its objective
+   from `quest.defeatType` ("Defeat {count} {mob}") through `t()` (`frontend/src/game/questText.js`). The noun is the
+   locale's `mob.<type>.<one|other>`, the form picked by `Intl.PluralRules` for the count; the English nouns are
+   generated in `frontend/src/i18n/strings.js` from `MOB_TYPES[type].displayName`, plus "s" except where English does
+   not (Ox to Oxen), so in English the nametag and every quest share one word. The zh-CN nouns are written by hand
+   (item 77) and the nametag shows the English `displayName` in every locale, so in zh-CN a quest and a nametag can
+   name one creature in two words (registry `REVIEW:w2f:quest-text-zh-rest-english`). The zombie quest reads "Husk
+   Slayer", "Defeat 10 Husks"; one Husk reads "Defeat 1 Husk". Undead Destroyer keeps its title, which names no one
+   creature. Every other quest renders the text it was authored with. **Why:** a quest that says "zombies" beside a
+   nametag that says Husk tells the player two names for one creature (reset plan row 24).
+76. **No save key moves; the key map is the identity.** A saved quest is found by its id, a hunt counts its
+   `mobType`, and `stats.kills_by_type` is keyed by the same MOB_TYPES key, so renaming `zombie_slayer` or `zombie`
+   would need a migration and buy the player nothing. The map is frozen as literals in
+   `frontend/tests/store/questKeyMap.test.js`, where a pre-change save's hunt at 7 of 10 loads, reads "Defeat 10
+   Husks", and three Husk kills finish it under `kills_by_type.zombie`. A hunt's text is never read from the save; a
+   load also takes each quest's English title from `QUEST_LIST` (`withCurrentAsk`), so the save and the completion
+   notice, which stays English, say "Husk Slayer". **A rollback is half-covered:** a build from before this change
+   keeps the saved title and rewrites the objective from its own list (`withCurrentAsk` at `QuestSystem.jsx:122` of
+   `1882bd5b`, the list's `'Defeat 10 zombies'` at `:36`), so it shows "Husk Slayer" over "Defeat 10 zombies".
+77. **zh-CN names every creature** (Boar 野猪, Ox 牛, Husk 尸傀, Bonepicker 拾骨者, Frontier Spider 边境蜘蛛, Settler 定居者,
+   Skitterling 窜蛛, Duskhound 暮犬, Moss Brute 苔藓蛮兽, Ember Husk 余烬尸傀) and the hunts ("击败 10 个尸傀", "尸傀杀手");
+   the coverage test makes a new creature name itself in both. The rest of the quest text (the other quests, their
+   lore and givers, the notices, the tracker's chrome) stays English in zh-CN (registry
+   `REVIEW:w2f:quest-text-zh-rest-english`); the names were chosen here and no native reader has seen them yet. They
+   are the quests' words, not the nametags': the nametag stays English in every locale (`nametagFor` reads
+   `displayName`), so a zh-CN player reads 尸傀 in the tracker over a nametag that says Husk, and the two would
+   disagree again if a nametag were ever translated differently.
+78. **The tracker is not restyled** (W2-D collapses it to one line): the HUD tracker and the quest log swap only the
+   source of their two text lines. **Not proven, and owed:** the e2e's browser mutants
+   (`REVIEW:w2f:quest-text-e2e-mutants-unrun`) and the quest log in a browser (jsdom only).
+
 ## 2026-10-29 — [LOOP] W2-F step 6: hunger and the food leave the game
 
 **Decided by the W2-F hunger lane under the standing grant** (DECISIONS 2026-10-28 item 14), finishing reset-plan row

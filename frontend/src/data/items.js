@@ -13,7 +13,7 @@
 export const ITEMS = {
   bone:               { name: 'Bone',                icon: 'bone',       rarity: 'common' },
   leather:            { name: 'Leather',             icon: 'leather',    rarity: 'rare' },
-  iron_nugget:       { name: 'Iron Nugget',         icon: 'ore',        rarity: 'epic' },
+  iron_nugget:        { name: 'Iron Nugget',         icon: 'ore',        rarity: 'epic' },
   emerald:            { name: 'Emerald',             icon: 'emerald',    rarity: 'epic' },
   arrow:              { name: 'Arrow',               icon: 'arrow',      rarity: 'common' },
   spider_eye:         { name: 'Spider Eye',          icon: 'eye',        rarity: 'common' },

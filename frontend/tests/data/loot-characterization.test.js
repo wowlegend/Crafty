@@ -416,9 +416,9 @@ describe('characterization: loot identity strings are emoji-free (decouple done)
   });
 
   it('counts the unique loot item identity strings', () => {
-    // 17 unique identity strings across LOOT_TABLES + CHEST_LOOT: the 16 the W1 purge left (the dead
-    // Damage Scroll + Shield Scroll chest drops went), the four relics (game/relics.js), less the three foods the
-    // hunger cut took out of the mob tables (Raw Porkchop, Raw Beef, Rotten Flesh; DECISIONS 2026-10-29 item 71).
+    // 17 unique identity strings across LOOT_TABLES + CHEST_LOOT, the four relics (game/relics.js) among them. No food
+    // is among them because nothing feeds (DECISIONS 2026-10-29 item 71). A drop added or removed moves the count, so
+    // a change to what the tables hand out is a deliberate edit here and in the snapshot above.
     expect([...new Set(allLootItemNames)].length).toBe(17);
   });
 });

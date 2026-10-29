@@ -36,12 +36,13 @@ import { GameSystemsProvider, useGameSystems, PlayerHealthBar } from '../../src/
  * (what the context provides) and the RENDER (what a bar does with a value) — the two ends the defect
  * lived between.
  *
- * Mutation-Proof: 4 mutations, denominator asserted (5/5 cases collected on every run).
+ * Mutation-Proof: 5 mutations, denominator asserted (6/6 cases collected on every run).
  *   M1 rename `playerHealth` to `health` in the provider's value -> contract case RED
  *   M2 HUD.jsx binds `gameSystems.health` again (the original defect) -> binding case RED
  *   M3 StatBar's value default 0 made to swallow a real value -> render case RED
  *   M4 delete `isAlive` from the provider value -> contract case RED (the required-key list is real, not
  *      a subset that happens to pass)
+ *   M5 `hunger: 100` back in the provider's value -> absence case RED (the required list cannot see an extra key)
  * Subjects restored from cp backups and diffed byte-identical after each.
  */
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -70,6 +71,13 @@ describe('HUD stat-bar wiring — context-key integrity', () => {
     const REQUIRED = ['playerHealth', 'maxHealth', 'mana', 'maxMana', 'isAlive'];
     expect(REQUIRED.length).toBeGreaterThan(0);
     for (const k of REQUIRED) expect(Object.keys(ctx), k).toContain(k);
+  });
+
+  it('there is NO `hunger` key — the meter left the game (DECISIONS 2026-10-29 item 70), and a key left on the context is a reader waiting for a value', () => {
+    // The required list above names what must be present and cannot see a key that should be gone; this is the other half.
+    const keys = Object.keys(captureContext());
+    expect(keys, 'SETUP: the context lists no stat keys, so the absence below would hold of any object').toContain('playerHealth');
+    expect(keys).not.toContain('hunger');
   });
 
   it('there is NO `health` key — the name the HUD once read, whose absence caused the 0/100 bar', () => {

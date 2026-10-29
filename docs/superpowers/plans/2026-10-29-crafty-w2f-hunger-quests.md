@@ -10,8 +10,8 @@ PR A's head, landing after it. DECISIONS items for this lane start at 70 (41-69 
 
 No meter that never moves and can still kill, and no food to carry for it: the hunger field, its last readers and the
 four meats and rotten flesh leave the game, and a long session costs no health with nothing in the bag to eat. Quests
-call the creatures by the names their nametags show: "Defeat 10 Husks", not "Defeat 10 zombies", in English and in
-Chinese, and a hunt begun before the change keeps its count.
+call the creatures by the names their nametags show in English ("Defeat 10 Husks", not "Defeat 10 zombies") and by
+hand-written names in Chinese (the nametags stay English), and a hunt begun before the change keeps its count.
 
 ## Decisions this script makes (routine calls, stated; DECISIONS items 70 on record them)
 
@@ -64,8 +64,8 @@ Chinese, and a hunt begun before the change keeps its count.
    undead_destroyer (title unchanged, "Undead Destroyer"), brute_breaker. The rest of the quest text stays English in
    zh-CN (registry row).
 9. **The tracker is not restyled** (W2-D owns it): `QuestTracker` and `ui/QuestLog.jsx` swap only their text source;
-   the "Quest Complete" notice names the quest by `questTitle`. The saved quest keeps English `title`/`description`
-   so a rollback build still reads them.
+   the "Quest Complete" notice names the quest by `questTitle`. The saved quest keeps English `title`/`description`;
+   a rollback build keeps the title and rewrites the objective from its own list.
 
 ## PR A steps (red first; run from `frontend/`)
 

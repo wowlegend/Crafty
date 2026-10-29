@@ -9,7 +9,8 @@ import { isCaptureMode } from './devtest/captureMode';
 import { isWorldFrozenNow } from './game/worldClock.js';
 import { isTouchUIMode } from './input/touchDevice';
 import { Panel, Button, Icon, Toast, Modal } from './ui/primitives/index.js';
-import { useT } from './i18n/i18n.js';
+import { useT, tIn } from './i18n/i18n.js';
+import { questTitle, questDescription } from './game/questText.js';
 import { LOOT_TABLES, CHEST_LOOT } from './data/lootTables.js';
 import { zoneTier } from './world/zoneTier.js';
 import { nearestLandmark } from './world/shrines.js';
@@ -25,6 +26,15 @@ import { resolveChestHeights } from './game/captureRest.js';
 // Re-exported here so existing importers of these names from QuestSystem keep working.
 export { LOOT_TABLES, CHEST_LOOT };
 
+// A hunt kills one creature (game/questText.js). Its title and objective are written in English from the creature's
+// display name, so the title a save keeps, which a build from before this one still shows, names the creature as the
+// tracker does. That build rewrites the objective from its own list, so after a rollback the title reads "Husk Slayer"
+// over "Defeat 10 zombies".
+const enT = (key, vars) => tIn('en', key, vars);
+function hunt(q) {
+    return { ...q, type: 'kill_type', title: questTitle(enT, 'en', q), description: questDescription(enT, 'en', q) };
+}
+
 export const QUEST_LIST = [
     // Beginner quests
     { id: 'first_blood', title: 'First Blood', icon: 'sword', description: 'Defeat your first mob', type: 'kill', target: 1, xpReward: 30, tier: 1 },
@@ -33,25 +43,25 @@ export const QUEST_LIST = [
     { id: 'spellcaster', title: 'Spellcaster', icon: 'magic', description: 'Land 10 spells on enemies', type: 'spell_hit', target: 10, xpReward: 40, tier: 1 },
 
     // Intermediate quests
-    { id: 'zombie_slayer', title: 'Zombie Slayer', icon: 'zombie', description: 'Defeat 10 zombies', type: 'kill_type', mobType: 'zombie', target: 10, xpReward: 120, tier: 2 },
-    { id: 'spider_hunter', title: 'Spider Hunter', icon: 'spider', description: 'Defeat 8 spiders', type: 'kill_type', mobType: 'spider', target: 8, xpReward: 100, tier: 2 },
+    hunt({ id: 'zombie_slayer', icon: 'zombie', mobType: 'zombie', target: 10, xpReward: 120, tier: 2 }),
+    hunt({ id: 'spider_hunter', icon: 'spider', mobType: 'spider', target: 8, xpReward: 100, tier: 2 }),
     { id: 'pilgrim', title: 'Pilgrimage', icon: 'compass', description: 'Reach a frontier shrine', type: 'reach_shrine', target: 1, xpReward: 100, tier: 2, itemReward: { item: 'Iron Chestplate', count: 1 } },
     { id: 'collector', title: 'Collector', icon: 'coins', description: 'Open 5 treasure chests', type: 'chest_open', target: 5, xpReward: 80, tier: 2 },
     // Surviving the night siege is a tracked goal, driven by the dawn transition (onNightSurvived). Tier 2 keeps it out
     // of a new game's first three quests, which are the first three tier-1 rows above.
     { id: 'nightwatch', title: 'Nightwatch', icon: 'star', description: 'Survive 3 nights', type: 'survive_nights', target: 3, xpReward: 120, tier: 2 },
     // A targeted hunt for the charred siege husk (the night-siege themed hostile).
-    { id: 'ember_hunter', title: 'Ember Hunter', icon: 'skull', description: 'Defeat 10 emberhusks', type: 'kill_type', mobType: 'emberhusk', target: 10, xpReward: 130, tier: 2 },
+    hunt({ id: 'ember_hunter', icon: 'skull', mobType: 'emberhusk', target: 10, xpReward: 130, tier: 2 }),
 
     // Advanced quests
     { id: 'champion', title: 'Champion', icon: 'trophy', description: 'Defeat 50 mobs', type: 'kill', target: 50, xpReward: 300, tier: 3, itemReward: { item: 'Diamond Sword', count: 1 } },
     { id: 'archmage', title: 'Archmage', icon: 'magic', description: 'Land 100 spells on enemies', type: 'spell_hit', target: 100, xpReward: 250, tier: 3 },
     { id: 'treasure_master', title: 'Treasure Master', icon: 'crown', description: 'Open 20 treasure chests', type: 'chest_open', target: 20, xpReward: 200, tier: 3 },
-    { id: 'undead_destroyer', title: 'Undead Destroyer', icon: 'skull', description: 'Defeat 25 skeletons', type: 'kill_type', mobType: 'skeleton', target: 25, xpReward: 200, tier: 3 },
+    hunt({ id: 'undead_destroyer', icon: 'skull', mobType: 'skeleton', target: 25, xpReward: 200, tier: 3 }),
     // The endurance capstone of the survival dimension.
     { id: 'siege_veteran', title: 'Siege Veteran', icon: 'shield', description: 'Survive 7 nights', type: 'survive_nights', target: 7, xpReward: 350, tier: 3 },
     // An elite-hunt goal for the rare 220-HP moss brute (the heavy-tank kill the loot pass rewards richly).
-    { id: 'brute_breaker', title: 'Brute Breaker', icon: 'trophy', description: 'Defeat 5 moss brutes', type: 'kill_type', mobType: 'moss_brute', target: 5, xpReward: 220, tier: 3 },
+    hunt({ id: 'brute_breaker', icon: 'trophy', mobType: 'moss_brute', target: 5, xpReward: 220, tier: 3 }),
 ];
 
 // Endless end-game BOUNTY: once the authored QUEST_LIST is exhausted, claimQuest falls back to these so the
@@ -115,11 +125,11 @@ export const _statsOr = (v) => {
   };
 };
 
-// A save keeps a quest's progress; what the quest asks for comes from this file. Otherwise a quest retyped here would
+// A save keeps a quest's progress; what the quest asks for, and its English title, come from this file. Otherwise a quest retyped here would
 // sit in an old save waiting for an event nothing sends any more, under text that describes the old ask.
 const withCurrentAsk = (q) => {
   const def = q && QUEST_LIST.find((d) => d.id === q.id);
-  return def ? { ...q, type: def.type, description: themedDescription(def) } : q;
+  return def ? { ...q, type: def.type, title: def.title, description: themedDescription(def) } : q;
 };
 
 // The quest offered when one is claimed: the next authored quest neither claimed nor active, else an endless scaling
@@ -499,6 +509,8 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
     const touch = isTouchUIMode();
     const [userToggled, setUserToggled] = useState(null);
     const expanded = userToggled === null ? !touch : userToggled;
+    const t = useT();
+    const locale = useGameStore((s) => s.locale) || 'en';
 
     return (
         <div data-testid="quest-tracker" className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: touch ? 220 : 280 }}>
@@ -529,9 +541,9 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
                                         <div className="flex-1 mr-2">
                                             <div className="flex items-center gap-1.5 text-text text-xs font-bold">
                                                 {quest.icon && <Icon name={quest.icon} size={14} className="flex-none text-accent" />}
-                                                <span>{quest.title}</span>
+                                                <span>{questTitle(t, locale, quest)}</span>
                                             </div>
-                                            <div className="text-text-muted text-xs">{quest.description}</div>
+                                            <div className="text-text-muted text-xs">{questDescription(t, locale, quest)}</div>
                                         </div>
                                         {quest.completed && !quest.claimed && (
                                             <Button
