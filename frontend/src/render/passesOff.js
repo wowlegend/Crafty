@@ -21,6 +21,14 @@ const EFFECTS = {
 /** Every name the seam accepts: the effects above and the Sun billboard (render/Sun.jsx reads that one). */
 export const LOOKBOOK_PASS_NAMES = Object.freeze([...Object.keys(EFFECTS), 'sun'].sort());
 
+/** The postprocessing effect names a set of LOOKBOOK_PASS_NAMES switches off, sorted: what the composer's chain must
+ *  show skipped while they are off. 'sun' is a mesh, not an effect, and adds none. */
+export function lookbookEffectNames(names) {
+  const out = new Set();
+  for (const n of names) for (const e of EFFECTS[n] || []) out.add(e);
+  return [...out].sort();
+}
+
 const NOOP_UPDATE = () => {};
 
 function offNamesOf(effect, off) {

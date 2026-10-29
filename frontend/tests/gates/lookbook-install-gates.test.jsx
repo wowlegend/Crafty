@@ -95,6 +95,23 @@ describe('src/index.jsx installs the lookbook seam with the real collaborators',
     }
   });
 
+  it('hands the seam the sky frame\'s sun: info().sun follows the direction the sky publishes', async () => {
+    const { seam } = await bootAt('?lookbook=1');
+    const { skyFrameRef } = await import('../../src/render/mood.js');
+    const dir = skyFrameRef.current.sunDir;
+    const was = [...dir];
+    try {
+      for (const [d, heading, elevation] of [[[-Math.SQRT1_2, Math.SQRT1_2, 0], 270, 45], [[0.6, 0, 0.8], 143, 0]]) {
+        for (let j = 0; j < 3; j++) dir[j] = d[j];
+        const sun = seam.info().sun;
+        expect(sun, 'the entry module gave the seam no sun reader').not.toBeNull();
+        expect([Math.round(sun.heading), Math.round(sun.elevationDeg)], 'info().sun does not follow the sky frame').toEqual([heading, elevation]);
+      }
+    } finally {
+      for (let j = 0; j < 3; j++) dir[j] = was[j];
+    }
+  });
+
   it('drives the REAL input gate: play() makes it live, and info() reads it back', async () => {
     const { seam, input } = await bootAt('?lookbook=1');
     input.setActive(false);
