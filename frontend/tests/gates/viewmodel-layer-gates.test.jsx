@@ -12,8 +12,7 @@ import * as THREE from 'three';
  * the key fades where the physics world blocks a ray from the eye toward the key light (a fake world here, so the ray's
  * origin, direction, reach, filter and cadence are read back), and the storm's flash reaches the hands' sky light.
  * It also mounts the item the right hand holds by default (render/spellVfx.jsx MagicWand): its wood and tip carry the
- * hands' value floor, and the gem is its only unlit part (the translucent aura sphere the task script's goal named is
- * gone).
+ * hands' value floor, and the gem is its only unlit part (no translucent aura sphere).
  * BLIND SPOT: nothing is drawn. The pass's place in GameScene's composer is viewmodel-composer-gates, and that the live
  * composer draws it every frame is tests/e2e/viewmodel.spec.js.
  */

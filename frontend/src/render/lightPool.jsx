@@ -1,8 +1,7 @@
 // lightPool — dynamic point lights come from a fixed pool (plan docs/superpowers/plans/2026-10-27-crafty-steady-cool.md,
 // item i; refute F3).
 //
-// Every treasure chest carried a beacon <pointLight>, the cast hand mounted one per cast (it carries none now: the hands
-// draw in the viewmodel scene, render/viewmodel.js), every spell projectile and every
+// Every treasure chest carried a beacon <pointLight>, the cast hand mounted one per cast, every spell projectile and every
 // spell impact mounted one, and so did the beast core, the boss and each boss fireball. three bakes the point-light COUNT
 // into every lit shader (NUM_POINT_LIGHTS), so each of those mounts and unmounts re-linked every lit program — a hitch at
 // every cast, every chest spawn and every chest open — and at steady state ~5 chest beacons sat in every lit fragment
@@ -12,7 +11,8 @@
 // <PointLightPool> mounts a fixed number of real lights per tier and, each frame, gives them to the requests whose light
 // reaches nearest the camera (distance minus reach, so a boss light 20 m away outranks a chest beacon 10 m away); the rest
 // go dark. The light count changes only on a tier step. Always-mounted lights (Atmosphere's fill, the Hearth brazier, the
-// phantom block's intensity-gated light) never changed the count and stay as they are.
+// phantom block's intensity-gated light) never changed the count and stay as they are. The first-person hands request
+// none: they draw in the viewmodel scene (render/viewmodel.js), whose ember cores the bloom carries.
 //
 // COST, stated: pool lights at intensity 0 still cost every lit fragment (the shader loops NUM_POINT_LIGHTS). At high the
 // pool's 6 is one more than today's 5-beacon steady state; at low (2) and med (4) it is fewer. The point is the constant.

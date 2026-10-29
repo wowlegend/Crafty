@@ -9,8 +9,8 @@ import { render, cleanup } from '@testing-library/react';
  *
  * The viewmodel draws only if GameScene's <EffectComposer> carries its pass: @react-three/postprocessing 3.0.4 adds the
  * composer's own RenderPass first, then each child that is a Pass as a pass and each run of Effects as one EffectPass,
- * in child order (dist/index.js, the composer's layout effect). Deleting the pass from PostFX, with its import, left
- * lint and every unit test green (review of W2-E, dynamic finding 2). This renders the real PostFX with the composer
+ * in child order (dist/index.js, the composer's layout effect), so deleting the pass from PostFX, with its import, is a
+ * change only a reading of the composer's children can see. This renders the real PostFX with the composer
  * stubbed to keep the children it is handed, and reads them: the viewmodel's own pass object is the first child, ahead
  * of every effect, with GodRays mounted and without.
  * BLIND SPOT: that the package turns that child into a pass, and that the live composer calls it every frame, is

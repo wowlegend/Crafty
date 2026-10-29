@@ -1,7 +1,6 @@
 // The right fist's swing and heavy-charge poses in view space, for the viewmodel camera (render/viewmodel.js).
 //
-// Their offsets were authored in metres under the world camera the hands used to ride: 75 degrees vertical on a 16:10
-// window. The viewmodel draws at 60 degrees, and the window can be anything from a phone in portrait to 32:9, so here
+// Their offsets are authored in metres for a world camera at 75 degrees vertical on a 16:10 window (AUTHORED_CAMERA). The viewmodel draws at 60 degrees, and the window can be anything from a phone in portrait to 32:9, so here
 // each offset is first turned into the same share of the visible half-width (x) or half-height (y) at the viewmodel's
 // FOV and the window's aspect. That alone still carries the fist out of frame where the anchor leaves little room (step
 // 2 sweeps right from an anchor already right of centre; the charge pulls the fist toward the camera, where the frame
