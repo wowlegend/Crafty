@@ -44,6 +44,13 @@ import { aoFloorColor } from '../world/biomeTable.js';
 /** Where each key sits in `s`. `twilight` is preDawn (rising) and dusk (setting); `golden` is sunrise and sunset. */
 export const KEY_S = Object.freeze({ night: -0.45, twilight: -0.12, golden: 0.10, day: 0.45 });
 
+/**
+ * The four times of day the script is judged at, as dawn-origin cycle fractions, in the order the programme lists them
+ * (roadmap move 4): the lookbook shoots each place at these and the media name their shots by them. Golden hour sits
+ * just after the sunset key and blue hour between dusk and night (tests/gates/colour-script-gates.test.js).
+ */
+export const LOOK_TIMES = Object.freeze({ afternoon: 0.30, 'golden hour': 0.48, 'blue hour': 0.55, midnight: 0.75 });
+
 const AUTHORED = {
   night: {
     sun: { color: '#FFB062', intensity: 0 },

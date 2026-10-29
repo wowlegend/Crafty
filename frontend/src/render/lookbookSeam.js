@@ -4,8 +4,8 @@
 // judges looks on REAL-GPU, MOTION-ON frames of the SHIPPED bundle. The DEV test bridge and capture mode are compiled
 // out of that bundle, and capture is the wrong instrument anyway: it turns weather, mobs, NPCs, particles and spawning
 // off and pins the sun at noon. So the probe needs to pose the camera, stand the player and turn their head, set the
-// time of day, make input live, clear the hostiles in the player's face and read GPU time per post pass in the
-// production build — and nothing else.
+// time of day, make input live, clear the hostiles in the player's face, list the mobs a frame could show and read GPU
+// time per post pass in the production build — and nothing else.
 //
 // TWO WAYS TO FRAME A SHOT. pose() pins the camera for an elevated hero shot (below). stand() and look() frame what a
 // player sees instead: they move the player's body and turn the camera the way mouse look does (input/pointerLook.js
@@ -160,6 +160,25 @@ function isLiveHostile(e) {
   return !!e && e.health > 0 && !e.passive && !e.isNPC && !!e.position;
 }
 
+/**
+ * PURE. Every live mob in `entities` (the ECS mob query: hostiles, livestock and the Hearth's named NPCs) as plain
+ * data: { type, hostile, npc (the NPC's name, else null), position: [x, y, z] }. Hostile is hostileReach's split. A
+ * mob with no health left is not listed, so the list is what a frame can show.
+ */
+export function mobList(entities) {
+  const out = [];
+  for (const e of entities || []) {
+    if (!e || !(e.health > 0) || !e.position) continue;
+    out.push({
+      type: e.type ?? null,
+      hostile: isLiveHostile(e),
+      npc: e.isNPC ? String(e.npcName ?? e.type ?? 'npc') : null,
+      position: [e.position.x, e.position.y, e.position.z],
+    });
+  }
+  return out;
+}
+
 function distanceFrom(e, from) {
   return Math.hypot(e.position.x - from[0], e.position.y - from[1], e.position.z - from[2]);
 }
@@ -184,9 +203,9 @@ function finite(v, name) {
  * @param {{store: any, setActive: (v: boolean) => void, getActive: () => boolean, cycleOf: (gameTime: number) => number,
  *          glInfo: () => object|null, contextLosses: () => number, hostiles?: () => Iterable<object>,
  *          removeEntity?: (e: object) => void, loadPassTimer?: () => Promise<{installPassTimer: () => object}>,
- *          sunDir?: () => number[], handNodes?: () => number}} deps  `sunDir`: the sun's direction this frame
- *          (render/mood.js skyFrameRef). `handNodes`: the objects mounted in the viewmodel's hands group
- *          (render/viewmodel.js handNodeCount).
+ *          sunDir?: () => number[], handNodes?: () => number}} deps  `hostiles`: the ECS mob query, every mob (the
+ *          seam picks the hostiles out). `sunDir`: the sun's direction this frame (render/mood.js skyFrameRef).
+ *          `handNodes`: the objects mounted in the viewmodel's hands group (render/viewmodel.js handNodeCount).
  */
 export function installLookbookSeam(win, {
   store, setActive, getActive, cycleOf, glInfo, contextLosses, hostiles, removeEntity, loadPassTimer, sunDir, handNodes,
@@ -250,6 +269,8 @@ export function installLookbookSeam(win, {
       for (const e of doomed) removeEntity(e);
       return doomed.length;
     },
+    /** Every live mob, read from the ECS (mobList), or null when the build hands the seam no mob query. Read-only. */
+    mobs: () => (hostiles ? mobList(hostiles()) : null),
     /** Timer-query ms per pass since the last reset, per WebGL context (render/passTimer.js); not established as GPU
      *  execution times (scripts/visual/_lookbook.mjs passSummary can only refute them). The first call loads the
      *  timer, so nothing is timed until a script asks. */

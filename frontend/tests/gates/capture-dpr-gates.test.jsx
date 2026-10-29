@@ -8,8 +8,8 @@ import { render } from '@testing-library/react';
 // re-antialiases every edge, and the visual gate byte-compares — so the whole frame differs for a
 // reason unrelated to the code under test.
 //
-// This cost the 2026-08-08 re-baseline: menu.png measured 0.984% run-to-run against a < 0.15% bar, and
-// the diff was outlines tracing every edge of the diorama plus the borders of motes that had not moved.
+// The title screen's frame measured 0.984% run-to-run against a < 0.15% bar under the range, and the diff
+// was outlines tracing every edge of the diorama plus the borders of motes that had not moved.
 // GameScene already disabled AdaptiveDpr under isCaptureMode and pinned PROBE_DPR for the perf probe;
 // TitleDiorama never got the same treatment.
 //

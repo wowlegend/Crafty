@@ -1,16 +1,19 @@
-// _media.mjs — the PURE half of the media pipeline (scripts/visual/media.mjs): the declared shot table, the byte
-// budgets, the image size readers, the manifest check, the per-shot verdict, the og card and the encoder argv. No
-// browser, no server and no file writes, so a gate drives every decision (tests/gates/media-plan-gates.test.js) and the
-// committed files are checked with the same code (tests/scripts/media.test.js). Leading underscore: a helper, not a
-// probe; it binds no port.
+// _media.mjs — the decisions of the media pipeline (scripts/visual/media.mjs): the declared shot table, the byte
+// budgets, the image size readers, the provenance a run may stamp, the manifest check, the per-shot verdict, the mob
+// feed, the og card and the encoder argv. No browser, no server and no file writes (filesUnder only reads a folder),
+// so a gate drives every decision (tests/gates/media-plan-gates.test.js) and the committed files are checked with the
+// same code (tests/scripts/media.test.js). Leading underscore: a helper, not a probe; it binds no port.
 
-import { LOOKBOOK_CYCLES, LOOKBOOK_PLACES, OBSTRUCTION_M, classifyRenderer, shotVerdict, handCount } from './_lookbook.mjs';
+import { createHash } from 'node:crypto';
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { LOOKBOOK_PLACES, OBSTRUCTION_M, classifyRenderer, shotVerdict, handCount } from './_lookbook.mjs';
+import { LOOK_TIMES } from '../../src/render/colourScript.js';
+import { HUB_NPCS } from '../../src/world/npcSpawn.js';
 import { BRAND } from '../../src/brand.js';
 
-/** The lookbook's four times by name (its LOOKBOOK_CYCLES, dawn-origin cycle fractions, in the same order). */
-export const MEDIA_TIMES = Object.freeze(Object.fromEntries(
-  ['afternoon', 'golden hour', 'blue hour', 'midnight'].map((name, i) => [name, LOOKBOOK_CYCLES[i]]),
-));
+/** The times of day by name, dawn-origin cycle fractions: the light script's own (render/colourScript.js LOOK_TIMES). */
+export const MEDIA_TIMES = LOOK_TIMES;
 
 /** Ceilings, in bytes (1 KB = 1000 bytes): each JPEG, the og card, and everything under docs/media together. */
 export const MEDIA_BUDGETS = Object.freeze({ jpgBytes: 350_000, ogPngBytes: 400_000, docsMediaBytes: 3_000_000 });
@@ -25,11 +28,21 @@ export const OG_CARD = Object.freeze({ file: 'frontend/public/og-image.png', wid
 /** GitHub's documented social preview size (2:1). */
 export const SOCIAL_PREVIEW = Object.freeze({ width: 1280, height: 640 });
 
+const FULL_SHA = /^[0-9a-f]{40}$/;
+/** What a file's media.json entry says when the run built the bundle it shot, from a clean tree at one commit. */
+export const BUILT_CLEAN = 'built by media.mjs from a clean tree';
+
 const PURPOSES = ['hero', 'og', 'social', 'still'];
 const RECIPE_KINDS = ['eye', 'pose', 'fight'];
 const MAX_PITCH_DEG = 85; // the seam's look() refuses more (render/lookbookSeam.js)
 const HEADING_TOLERANCE_DEG = 1;
 const STAND_TOLERANCE_M = 0.5;
+/** A pose looks down on the ground from tens of metres up, so the hostiles it would show as specks are cleared this far
+ *  from its camera (the seam's clearHostiles; passive animals and the named NPCs stay). */
+export const POSE_CLEAR_M = 60;
+
+const isPoint = (p) => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite);
+const distance3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 const deepFreeze = (o) => {
   for (const v of Object.values(o)) if (v && typeof v === 'object') deepFreeze(v);
@@ -44,31 +57,30 @@ const still = (name, time, recipe, alt, extra = {}) => ({
  * THE SHOT TABLE, shot in this order. Recipes:
  *   eye    the player's own eye, stood at the Hearth where the spawn settles, turned to `heading` (compass degrees,
  *          0 north) and `pitch`, with the first-person hands on;
- *   pose   the camera pinned at a lookbook place (LOOKBOOK_PLACES), the hands hidden by the pose;
+ *   pose   the camera pinned at a lookbook place (`place`, LOOKBOOK_PLACES) or at its own `position` and `lookAt`
+ *          (posePlace), the hands hidden by the pose and the hostiles within POSE_CLEAR_M of the camera removed;
  *   fight  the eye at the Hearth turned to the nearest hostile between `minM` and `maxM` metres out, waited for up to
  *          `waitS` seconds, then a fireball cast with the real F key. The seam cannot spawn a mob, so a fight depends
  *          on the night and is optional.
- * No shot shows the HUD (DECISIONS 2026-10-29 item 50). Day shots go before the night ones: after dusk the night's mobs
- * crowd the Hearth (lookbook.mjs).
+ * No shot shows the HUD, and the hero and the og card show no hands (DECISIONS 2026-10-29 item 50). Day shots go before
+ * the night ones: after dusk the night's mobs crowd the Hearth (lookbook.mjs). From the spawn the golden-hour sun sets
+ * at a bearing of about 43 degrees, 3.5 degrees up, so the golden poses look north-east across the Hearth into it; the
+ * eye stills pitch up 8 to 12 degrees, which keeps the pad at the player's feet out of frame.
  */
 export const MEDIA_SHOTS = deepFreeze([
-  { name: 'hero', purpose: 'hero', time: 'golden hour', recipe: { kind: 'eye', heading: 205, pitch: 6 }, size: [1600, 900],
+  { name: 'hero', purpose: 'hero', time: 'golden hour', recipe: { kind: 'pose', position: [-13, 59, 5], lookAt: [6, 56, -12] }, size: [1600, 900],
     format: 'jpg', out: `${MEDIA_DIR}/hero.jpg`, targetBytes: 330_000,
     alt: 'Crafty at golden hour, from the player\'s eye at the Hearth: gauntleted hands holding a grass block and a wand, the outpost\'s watchtower and Old Pike the Warden ahead, forest on the left and sunlit hills under a warm sky.' },
-  { name: 'og', purpose: 'og', time: 'golden hour', recipe: { kind: 'eye', heading: 200, pitch: 6 },
+  { name: 'og', purpose: 'og', time: 'golden hour', recipe: { kind: 'pose', position: [-13, 61, 2], lookAt: [-2, 55, -22] },
     size: [OG_CARD.width, OG_CARD.height], format: 'png', out: OG_CARD.file, targetBytes: 390_000, alt: BRAND.ogImageAlt },
-  still('golden-forest', 'golden hour', { kind: 'eye', heading: 120, pitch: 0 },
+  still('golden-forest', 'golden hour', { kind: 'eye', heading: 60, pitch: 12 },
     'The forest beside the Hearth at golden hour, from the player\'s eye: gauntleted hands, the Hearth\'s glowing brazier and Sister Wren, a shrine\'s beam above the trees.'),
-  still('coast', 'golden hour', { kind: 'pose', place: 'coast' },
-    'A voxel coast at golden hour seen from above: a dry grassland slope running down into the sea under a warm haze.'),
   still('forest-edge', 'afternoon', { kind: 'pose', place: 'forest-edge' },
     'The edge of a voxel forest in the afternoon, seen from above the plains: turf, trunks and leaf canopies under a blue sky.'),
-  still('snow-terrace', 'golden hour', { kind: 'pose', place: 'snow-terrace' },
-    'Snow-covered terraces and trees in the hills near the Hearth at golden hour, seen from above, an outpost roof in the corner.'),
-  { name: 'social-preview', purpose: 'social', time: 'blue hour', recipe: { kind: 'eye', heading: 100, pitch: 4 },
+  { name: 'social-preview', purpose: 'social', time: 'blue hour', recipe: { kind: 'pose', position: [-13, 59, 5], lookAt: [5, 56, -12] },
     size: [SOCIAL_PREVIEW.width, SOCIAL_PREVIEW.height], format: 'jpg', out: `${MEDIA_DIR}/social-preview.jpg`, targetBytes: 300_000,
     alt: 'The Hearth at blue hour from the player\'s eye: gauntleted hands, Mara the Smith and Sister Wren among the trees, a shrine\'s beam rising into the dusk sky.' },
-  still('blue-hour', 'blue hour', { kind: 'eye', heading: 50, pitch: 2 },
+  still('blue-hour', 'blue hour', { kind: 'eye', heading: 135, pitch: 8 },
     'The forest beside the Hearth at blue hour, from the player\'s eye: a shrine\'s beam over the trees, Mara the Smith by a fire, fireflies in the dusk.'),
   still('night-fight', 'blue hour', { kind: 'fight', minM: 4, maxM: 14, waitS: 60 },
     'A fight at the Hearth after dusk, from the player\'s eye: a fireball flying toward a hostile mob beside the Hearth\'s glowing brazier.', { optional: true }),
@@ -81,11 +93,23 @@ function recipeProblems(label, r) {
     if (!(Number.isFinite(r.heading) && r.heading >= 0 && r.heading < 360)) out.push(`${label}: heading ${r.heading} is not a compass bearing in [0, 360)`);
     if (!(Number.isFinite(r.pitch) && Math.abs(r.pitch) <= MAX_PITCH_DEG)) out.push(`${label}: pitch ${r.pitch} is not within +-${MAX_PITCH_DEG} degrees`);
   } else if (r.kind === 'pose') {
-    if (!LOOKBOOK_PLACES.some((p) => p.id === r.place)) out.push(`${label}: no lookbook place "${r.place}"`);
+    const own = r.position !== undefined || r.lookAt !== undefined;
+    if (own && r.place !== undefined) out.push(`${label}: a pose names a place or its own camera, not both`);
+    else if (own && !(isPoint(r.position) && isPoint(r.lookAt))) out.push(`${label}: a pose's position and lookAt are [x, y, z] of finite numbers`);
+    else if (!own && !LOOKBOOK_PLACES.some((p) => p.id === r.place)) out.push(`${label}: no lookbook place "${r.place}"`);
   } else if (!(r.minM >= OBSTRUCTION_M && r.maxM > r.minM && r.waitS > 0)) {
     out.push(`${label}: a fight needs ${OBSTRUCTION_M} <= minM < maxM and waitS > 0`);
   }
   return out;
+}
+
+/** Where a pose recipe pins the camera: its lookbook place, or its own position and lookAt; null when it names neither. */
+export function posePlace(recipe) {
+  if (recipe?.position !== undefined || recipe?.lookAt !== undefined) {
+    return isPoint(recipe.position) && isPoint(recipe.lookAt) ? { position: [...recipe.position], lookAt: [...recipe.lookAt] } : null;
+  }
+  const place = LOOKBOOK_PLACES.find((p) => p.id === recipe?.place);
+  return place ? { position: [...place.position], lookAt: [...place.lookAt] } : null;
 }
 
 /** Why the table cannot be shot as declared: one line per problem, [] when it can. */
@@ -174,6 +198,54 @@ export function imageSize(bytes) {
   return jpg ? { format: 'jpg', ...jpg } : null;
 }
 
+/** A file's sha256, lower-case hex. */
+export const sha256Hex = (bytes) => createHash('sha256').update(bytes).digest('hex');
+
+/** macOS writes this into any folder Finder opens; it is never committed (.gitignore), so no check counts it. */
+const OS_METADATA = '.DS_Store';
+
+/**
+ * Every file under `dir` as a forward-slash path relative to `base`, sorted: dotfiles and dot-folders included, since
+ * one committed beside the media ships with them; only .DS_Store is left out. Reads the folder, writes nothing.
+ */
+export function filesUnder(dir, base = dir) {
+  const rel = (p) => p.slice(base.length + 1).split('\\').join('/');
+  const out = [];
+  const walk = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (e.name === OS_METADATA) continue;
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else out.push(rel(p));
+    }
+  };
+  walk(dir);
+  return out.sort();
+}
+
+/** A build's content identity: the sha256 of its sorted `path<TAB>sha256` lines, so it names every byte it serves. */
+export function buildIdentity(files) {
+  const lines = [...(files || [])].map((f) => `${f.path}\t${f.sha256}`).sort();
+  return sha256Hex(`${lines.join('\n')}\n`);
+}
+
+/**
+ * The provenance a run may stamp on what it writes. `ownBuild`: the run built the bundle itself (true) or was handed
+ * one with --build-dir (false). `headBefore` / `headAfter`: HEAD as the build began and once it finished;
+ * `porcelainBefore` / `porcelainAfter`: `git status --porcelain` at the same two moments. Only a bundle this run built
+ * from a tree clean outside the media outputs, at a HEAD that held still through the build, is stamped with that HEAD;
+ * anything else is stamped with no sha, so tests/scripts/media.test.js refuses the files it wrote.
+ * Returns { sha, dirty, provenance }.
+ */
+export function runProvenance({ ownBuild, headBefore, headAfter, porcelainBefore, porcelainAfter }) {
+  if (ownBuild !== true) return { sha: null, dirty: 'unknown', provenance: 'a bundle this run was handed (--build-dir): the tree it came from is unknown' };
+  if (!FULL_SHA.test(String(headBefore))) return { sha: null, dirty: 'unknown', provenance: `HEAD was not read as a full sha (${headBefore})` };
+  if (headAfter !== headBefore) return { sha: null, dirty: 'unknown', provenance: `HEAD moved from ${headBefore} to ${headAfter} while the bundle built` };
+  const dirty = [...new Set([...dirtyOutsideOutputs(porcelainBefore), ...dirtyOutsideOutputs(porcelainAfter)])];
+  if (dirty.length) return { sha: null, dirty: true, provenance: `the tree was dirty while the bundle built (${dirty.slice(0, 5).join(', ')})` };
+  return { sha: headBefore, dirty: false, provenance: BUILT_CLEAN };
+}
+
 /**
  * Whether media.json and the files agree. `manifest`: the parsed media.json. `files`: what is on disk, every image
  * under docs/media and the og card, as [{ path (repo-relative), bytes, width, height, format }], measured from the
@@ -229,24 +301,76 @@ const circularDeg = (a, b) => {
 };
 const near3 = (a, b, tol = 0.01) => Array.isArray(a) && Array.isArray(b) && a.every((v, i) => Math.abs(v - b[i]) <= tol);
 
+/** The verdict's prefix for a reading it could not take: such a frame is not judged, and the run says COULD NOT SHOOT. */
+export const COULD_NOT_CHECK = 'COULD NOT CHECK';
+
+
+/**
+ * What the seam's mob list (render/lookbookSeam.js mobs(): [{ type, hostile, npc, position: [x, y, z] }], read from
+ * the ECS) says about a frame taken from `from` (the eye, or a pose's camera). The Hearth's named NPCs (world/npcSpawn.js
+ * HUB_NPCS) are always in the world and cannot be hurt, so a list missing any of them is not the world's mob list (no
+ * query, the wrong one, a world not built), and that is COULD NOT CHECK, never "no mob near".
+ * Returns { checked, why (when not checked), named, nearestM, nearestType }.
+ */
+export function mobFeed(list, from) {
+  const none = (why) => ({ checked: false, why: `${COULD_NOT_CHECK} the mobs: ${why}`, named: 0, nearestM: null, nearestType: null });
+  if (!Array.isArray(list)) return none(`the seam gave no mob list (${list === null ? 'null' : typeof list})`);
+  if (!isPoint(from)) return none('no eye to measure from');
+  const names = new Set(list.map((m) => m?.npc).filter(Boolean));
+  const missing = HUB_NPCS.map((n) => n.name).filter((n) => !names.has(n));
+  if (missing.length) return none(`the feed lists ${list.length} mob(s) without ${missing.join(', ')}, so it is not the world's mob list`);
+  let nearestM = null;
+  let nearestType = null;
+  for (const m of list) {
+    if (!isPoint(m?.position)) continue;
+    const d = distance3(m.position, from);
+    if (nearestM === null || d < nearestM) { nearestM = d; nearestType = m.npc ?? m.type; }
+  }
+  return { checked: true, why: null, named: names.size, nearestM, nearestType };
+}
+
+/**
+ * The night fight's target: the nearest hostile between `minM` and `maxM` metres of `from` in the seam's mob list.
+ * Livestock and named NPCs are not hostile. A dead feed (mobFeed) is COULD NOT CHECK, not "no hostile came".
+ * Returns { checked, why, target: { type, position, distance } | null }.
+ */
+export function fightTarget(list, from, { minM, maxM }) {
+  const feed = mobFeed(list, from);
+  if (!feed.checked) return { checked: false, why: feed.why, target: null };
+  let target = null;
+  for (const m of list) {
+    if (!m?.hostile || m.npc || !isPoint(m.position)) continue;
+    const d = distance3(m.position, from);
+    if (d < minM || d > maxM) continue;
+    if (!target || d < target.distance) target = { type: m.type, position: [...m.position], distance: d };
+  }
+  return { checked: true, why: null, target };
+}
+
 /**
  * Whether a frame shows what its shot declares. `before` / `after`: the seam's info() just before and after the
- * screenshot. `hudVisible`: whether the HUD's vitals stack is on screen (it must not be). For eye and fight shots,
- * `stand` is where the body was stood, `heading` the bearing asked for (a fight's is found at run time),
- * `handsHidden` the hands' node count with them hidden, measured in the same page, and `nearestMobM` the nearest mob
- * of any kind to the eye (nearestMobM below; null when there is none), since the seam counts hostiles only.
+ * screenshot. `hudSeenOn`: whether this run saw the HUD's vitals stack on screen before hiding it, and `hudVisible`
+ * whether it is on screen now (it must not be): an absence counts only after the same check has seen the presence.
+ * `mobs`: mobFeed of the seam's mob list read with the frame, for every kind of shot. For eye and fight shots, `stand`
+ * is where the body was stood, `heading` the bearing asked for (a fight's is found at run time) and `handsHidden` the
+ * hands' node count with them hidden, measured in the same page.
+ * Returns { valid, why, couldNotCheck }: `couldNotCheck` when a reading was missing rather than wrong.
  */
-export function mediaShotVerdict({ shot, before, after, stand, heading, handsHidden, hudVisible, nearestMobM }) {
+export function mediaShotVerdict({ shot, before, after, stand, heading, handsHidden, hudSeenOn, hudVisible, mobs }) {
   const why = [...shotVerdict({ cycle: MEDIA_TIMES[shot.time], before, after }).why];
-  if (hudVisible !== false) why.push('HUD on screen, or not checked');
+  if (hudSeenOn !== true) why.push(`${COULD_NOT_CHECK} the HUD: this run never saw it on screen, so not seeing it proves nothing`);
+  else if (hudVisible !== false) why.push('HUD on screen, or not checked');
   if (after?.tier !== 'high') why.push(`render tier ${after?.tier ?? '?'}, not high`);
   const gpu = classifyRenderer(after?.gl?.renderer);
   if (gpu !== 'hardware') why.push(`renderer ${gpu} (${after?.gl?.renderer ?? 'none read'})`);
+  if (!mobs?.checked) why.push(mobs?.why ?? `${COULD_NOT_CHECK} the mobs: no reading`);
+  else if (mobs.nearestM !== null && mobs.nearestM < OBSTRUCTION_M) why.push(`a mob (${mobs.nearestType}) ${mobs.nearestM.toFixed(1)} m from the eye fills the frame`);
+  const done = () => ({ valid: why.length === 0, why, couldNotCheck: why.some((w) => w.startsWith(COULD_NOT_CHECK)) });
   const kind = shot.recipe.kind;
   if (kind === 'pose') {
-    const place = LOOKBOOK_PLACES.find((p) => p.id === shot.recipe.place);
-    if (!place || !near3(after?.pose?.position, place.position)) why.push(`camera not pinned at the ${shot.recipe.place} pose`);
-    return { valid: why.length === 0, why };
+    const place = posePlace(shot.recipe);
+    if (!place || !near3(after?.pose?.position, place.position)) why.push(`camera not pinned at the ${shot.recipe.place ?? 'declared'} pose`);
+    return done();
   }
   if (after?.pose) why.push('camera pinned by a pose, not at the player\'s eye');
   const hands = handCount(after);
@@ -259,40 +383,12 @@ export function mediaShotVerdict({ shot, before, after, stand, heading, handsHid
   if (!(after?.heading != null && Number.isFinite(at) && circularDeg(at, heading) <= HEADING_TOLERANCE_DEG)) {
     why.push(`facing ${Number.isFinite(at) ? at.toFixed(1) : '?'}, asked ${heading}`);
   }
-  if (nearestMobM === undefined) why.push('mobs not checked');
-  else if (nearestMobM !== null && nearestMobM < OBSTRUCTION_M) why.push(`a mob ${nearestMobM.toFixed(1)} m from the eye fills the frame`);
   const near = after?.hostiles?.nearestM;
   if (kind === 'fight') {
     if (!(near >= OBSTRUCTION_M && near <= shot.recipe.maxM)) why.push(`no hostile between ${OBSTRUCTION_M} and ${shot.recipe.maxM} m of the eye (nearest ${near ?? 'none'})`);
   } else if (!after?.hostiles) why.push('hostiles not checked');
   else if (near != null && near < OBSTRUCTION_M) why.push(`a hostile ${near.toFixed(1)} m from the eye: a fight, not the view`);
-  return { valid: why.length === 0, why };
-}
-
-/**
- * The nearest hostile between `minM` and `maxM` metres of `from`, from the store's minimap mirror (`mobEntities`:
- * [{ type, passive, npcName, position: [x, y, z] }]), or null. Passive animals and named NPCs are not hostile.
- */
-export function nearestHostile(mobs, from, { minM, maxM }) {
-  let best = null;
-  for (const m of mobs || []) {
-    if (!m || m.passive || m.npcName || !Array.isArray(m.position)) continue;
-    const d = Math.hypot(m.position[0] - from[0], m.position[1] - from[1], m.position[2] - from[2]);
-    if (d < minM || d > maxM) continue;
-    if (!best || d < best.distance) best = { type: m.type, position: [...m.position], distance: d };
-  }
-  return best;
-}
-
-/** The distance from `from` to the nearest mob of any kind in the store's minimap mirror, or null when there is none. */
-export function nearestMobM(mobs, from) {
-  let best = null;
-  for (const m of mobs || []) {
-    if (!m || !Array.isArray(m.position)) continue;
-    const d = Math.hypot(m.position[0] - from[0], m.position[1] - from[1], m.position[2] - from[2]);
-    if (best === null || d < best) best = d;
-  }
-  return best;
+  return done();
 }
 
 /** media.json after a run: the fresh entries, the previous ones for shots not re-shot, nothing for a shot the table
@@ -321,9 +417,11 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(String(hex).slice(i, i + 2), 16)).join(', ');
 
 /**
- * The og card as one self-contained page: the frame under an ink scrim from the left, the wordmark in the game's own
- * Lilita One in the brand gold, and the subtitle. `frame`, `wordmarkFont` and `textFont` are data URLs, so the page
- * loads nothing. No buttons and no controls text (reset plan section 6).
+ * The og card as one page: the frame under an ink scrim from the left, the wordmark in the game's own Lilita One in the
+ * brand gold, and the subtitle. `frame` is the frame's URL relative to the page (media.mjs writes it beside the page),
+ * drawn by the one `img.frame` so the caller can check it loaded; `wordmarkFont` and `textFont` are data URLs. No
+ * buttons and no controls text (reset plan section 6). The scrim is dark only behind the words (the left third) and
+ * clear from the middle on, so the frame's own colour carries the rest.
  */
 export function ogCardHtml({ frame, wordmarkFont, textFont, width, height, brand = BRAND }) {
   const ink = rgb(brand.ground);
@@ -332,14 +430,15 @@ export function ogCardHtml({ frame, wordmarkFont, textFont, width, height, brand
 @font-face { font-family: 'Lilita One'; src: url(${wordmarkFont}) format('woff2'); }
 @font-face { font-family: 'Space Grotesk'; src: url(${textFont}) format('woff2'); }
 html, body { margin: 0; padding: 0; width: ${width}px; height: ${height}px; overflow: hidden; background: ${brand.ground}; }
-.card { position: relative; width: ${width}px; height: ${height}px; background: ${brand.ground} url(${frame}) center / cover no-repeat; }
-.scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(${ink}, 0.9) 0%, rgba(${ink}, 0.72) 30%, rgba(${ink}, 0) 62%); }
+.card { position: relative; width: ${width}px; height: ${height}px; background: ${brand.ground}; }
+.frame { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(${ink}, 0.82) 0%, rgba(${ink}, 0.55) 26%, rgba(${ink}, 0) 50%); }
 .mark { position: absolute; left: ${Math.round(width * 0.06)}px; bottom: ${Math.round(height * 0.14)}px; }
 .word { font-family: 'Lilita One', sans-serif; font-size: ${Math.round(height * 0.21)}px; line-height: 1; color: ${brand.accent};
-  text-shadow: 0 ${Math.max(1, Math.round(height * 0.006))}px 0 rgba(${ink}, 0.85); }
+  text-shadow: 0 ${Math.max(1, Math.round(height * 0.006))}px 0 rgba(${ink}, 0.85), 0 0 ${Math.round(height * 0.03)}px rgba(${ink}, 0.6); }
 .sub { margin-top: ${Math.round(height * 0.022)}px; font-family: 'Space Grotesk', sans-serif; font-size: ${Math.round(height * 0.052)}px;
-  line-height: 1.2; color: ${brand.ink}; }
-</style></head><body><div class="card"><div class="scrim"></div><div class="mark">
+  line-height: 1.2; color: ${brand.ink}; text-shadow: 0 1px ${Math.max(2, Math.round(height * 0.006))}px rgba(${ink}, 0.9); }
+</style></head><body><div class="card"><img class="frame" src="${esc(frame)}" alt=""><div class="scrim"></div><div class="mark">
 <div class="word">${esc(brand.name)}</div><div class="sub">${esc(cardSubtitle(brand))}</div>
 </div></div></body></html>`;
 }

@@ -147,7 +147,7 @@ export function TitleDiorama() {
         shadows={false}
         // PIN THE DEVICE PIXEL RATIO IN CAPTURE. `[1, 2]` is an adaptive RANGE, so the canvas can
         // rasterise at a different ratio between runs and every edge in the frame re-antialiases --
-        // which is precisely what menu.png's 0.984% run-to-run diff looked like: outlines tracing
+        // which is precisely what the title frame's 0.984% run-to-run diff looked like: outlines tracing
         // every edge of the geometry plus the borders of motes that never moved. The main canvas
         // already does this (GameScene.jsx disables AdaptiveDpr under isCaptureMode and pins
         // PROBE_DPR for the perf probe); this canvas never got the same treatment.
@@ -158,8 +158,8 @@ export function TitleDiorama() {
         dpr={e2eDpr(isCaptureMode() ? 1 : [1, 2])}
         // `demand` in capture, and NOT for the reason you might assume. Switching this to `always` was
         // tried on 2026-08-08 as a determinism fix -- the theory being that a timing-dependent
-        // invalidation count left the frame on an arbitrary pose -- and it did NOT work: menu.png's
-        // run-to-run self-diff went 0.359% -> 0.557%. Reverted. Note the honest limit: menu has measured
+        // invalidation count left the frame on an arbitrary pose -- and it did NOT work: the title frame's
+        // run-to-run self-diff went 0.359% -> 0.557%. Reverted. Note the honest limit: that frame has measured
         // 0.984 / 0.359 / 0.557 across three rounds, so the metric is itself noisy and one A/B cannot
         // rank the two modes. What IS established is that `always` does not fix it, so the residual is
         // not the render-scheduling mode. Do not retry this without a new reason.

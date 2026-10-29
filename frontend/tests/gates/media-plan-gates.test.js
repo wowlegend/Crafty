@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { PNG } from 'pngjs';
 import {
   MEDIA_SHOTS,
@@ -12,8 +15,15 @@ import {
   imageSize,
   mediaProblems,
   mediaShotVerdict,
-  nearestHostile,
-  nearestMobM,
+  mobFeed,
+  fightTarget,
+  posePlace,
+  runProvenance,
+  buildIdentity,
+  filesUnder,
+  sha256Hex,
+  BUILT_CLEAN,
+  COULD_NOT_CHECK,
   mergeManifest,
   ogCardHtml,
   cardSubtitle,
@@ -21,7 +31,9 @@ import {
   jpegEncodeArgv,
   pngPaletteArgv,
 } from '../../scripts/visual/_media.mjs';
-import { LOOKBOOK_PLACES, OBSTRUCTION_M } from '../../scripts/visual/_lookbook.mjs';
+import { LOOKBOOK_PLACES, LOOKBOOK_CYCLES, OBSTRUCTION_M } from '../../scripts/visual/_lookbook.mjs';
+import { LOOK_TIMES, scriptKeysAt } from '../../src/render/colourScript.js';
+import { HUB_NPCS } from '../../src/world/npcSpawn.js';
 import { BRAND } from '../../src/brand.js';
 
 // The pure half of the media pipeline (scripts/visual/media.mjs): the declared shot table, the size readers the file
@@ -29,6 +41,7 @@ import { BRAND } from '../../src/brand.js';
 // tests/scripts/media.test.js; this file drives the logic on fixtures whose answer is known by construction.
 
 const SHA = 'a'.repeat(40);
+const BUILD_ID = 'b'.repeat(64);
 const HW = 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)';
 
 /** A JPEG header a decoder would stop reading after: SOI, an APP0 and a DQT segment to skip, then the frame header. */
@@ -52,9 +65,11 @@ function goodSet({ shots = MEDIA_SHOTS, skip = [] } = {}) {
     if (skip.includes(s.name)) continue;
     const [width, height] = s.size;
     const bytes = Math.min(s.targetBytes, 100_000);
-    files.push({ path: s.out, bytes, width, height, format: s.format });
-    entries.push({ file: s.out, shot: s.name, purpose: s.purpose, sha: SHA, dirty: false, renderer: HW, time: s.time,
-      cycle: MEDIA_TIMES[s.time], width, height, bytes, format: s.format });
+    const sha256 = sha256Hex(s.name);
+    files.push({ path: s.out, bytes, width, height, format: s.format, sha256 });
+    entries.push({ file: s.out, shot: s.name, purpose: s.purpose, sha: SHA, dirty: false, provenance: BUILT_CLEAN,
+      build: 'index-BqaKcxrk.js', buildId: BUILD_ID, renderer: HW, time: s.time, cycle: MEDIA_TIMES[s.time],
+      cycleAtShot: MEDIA_TIMES[s.time] + 0.002, width, height, bytes, format: s.format, sha256 });
   }
   return { manifest: { files: entries }, files, manifestBytes: 4000 };
 }
@@ -96,11 +111,34 @@ describe('the declared shot table', () => {
     expect(shotTableProblems([...MEDIA_SHOTS, { ...pose }]).join('\n')).toMatch(/named twice/);
   });
 
-  it('names its places from the lookbook, so a still and a lookbook frame of one place stand on the same ground', () => {
-    const ids = LOOKBOOK_PLACES.map((p) => p.id);
+  it('pins each pose at a lookbook place or at a camera of its own, and refuses a pose that names both or neither', () => {
     const poses = MEDIA_SHOTS.filter((s) => s.recipe.kind === 'pose');
     expect(poses.length).toBeGreaterThan(0);
-    for (const s of poses) expect(ids).toContain(s.recipe.place);
+    for (const s of poses) expect(posePlace(s.recipe), s.name).not.toBe(null);
+    const place = LOOKBOOK_PLACES[0];
+    expect(posePlace({ kind: 'pose', place: place.id })).toEqual({ position: place.position, lookAt: place.lookAt });
+    expect(posePlace({ kind: 'pose', position: [1, 2, 3], lookAt: [4, 5, 6] })).toEqual({ position: [1, 2, 3], lookAt: [4, 5, 6] });
+    const pose = poses[0];
+    const swap = (recipe) => shotTableProblems(MEDIA_SHOTS.map((s) => (s === pose ? { ...s, recipe } : s))).join('\n');
+    expect(swap({ kind: 'pose', position: [1, 2, 3], lookAt: [4, 5, 6] })).toBe('');
+    expect(swap({ kind: 'pose', place: place.id, position: [1, 2, 3], lookAt: [4, 5, 6] })).toMatch(/not both/);
+    expect(swap({ kind: 'pose', position: [1, 2, NaN], lookAt: [4, 5, 6] })).toMatch(/finite/);
+    expect(swap({ kind: 'pose', position: [1, 2, 3] })).toMatch(/finite/);
+    expect(swap({ kind: 'pose' })).toMatch(/no lookbook place/);
+    expect(posePlace({ kind: 'pose', position: [1, 2, 3] })).toBe(null);
+  });
+
+  it('names its times from the light script, and each name sits where the light script\'s keys say it is', () => {
+    expect(MEDIA_TIMES).toBe(LOOK_TIMES);
+    expect([...LOOKBOOK_CYCLES], 'the lookbook and the media shoot the same four times').toEqual(Object.values(LOOK_TIMES));
+    // Which of the six keys brackets each named time (render/colourScript.js scriptKeysAt): a "golden hour" moved to
+    // noon, or a "blue hour" moved past midnight, reads its name falsely and fails here.
+    const keys = (name) => { const k = scriptKeysAt(MEDIA_TIMES[name]); return [k.from, k.to]; };
+    expect(keys('golden hour')).toContain('sunset');
+    expect(keys('blue hour')).toContain('dusk');
+    expect(scriptKeysAt(MEDIA_TIMES.afternoon)).toMatchObject({ to: 'day', t: 1 });
+    expect(scriptKeysAt(MEDIA_TIMES.midnight)).toMatchObject({ from: 'night', t: 0 });
+    for (const s of MEDIA_SHOTS) expect(Object.keys(LOOK_TIMES), s.name).toContain(s.time);
   });
 });
 
@@ -184,19 +222,46 @@ describe('the manifest check', () => {
   });
 });
 
+/** The Hearth's named NPCs, standing 20 m and more from `at`: what a live mob feed always lists. */
+const hearthNpcs = (at) => HUB_NPCS.map((n, i) => ({ type: 'villager', hostile: false, npc: n.name, position: [at[0] + 20 + i, at[1], at[2]] }));
+const EYE = [0, 54.6, 0];
+/** The seam's mob list as mobFeed reads it: the Hearth's NPCs plus `mobs`. */
+const liveFeed = (mobs = [], at = EYE) => mobFeed([...hearthNpcs(at), ...mobs], at);
+
+describe('the mob feed', () => {
+  it('measures the nearest mob of any kind from the eye, a named NPC included', () => {
+    const f = liveFeed([{ type: 'ox', hostile: false, npc: null, position: [0, 54.6, 2] }, { type: 'zombie', hostile: true, npc: null, position: [5, 54.6, 0] }]);
+    expect(f).toMatchObject({ checked: true, named: HUB_NPCS.length, nearestType: 'ox' });
+    expect(f.nearestM).toBeCloseTo(2, 5);
+    expect(liveFeed().nearestM).toBeCloseTo(20, 5);
+  });
+
+  it('calls a feed that cannot be the world\'s COULD NOT CHECK, never "no mob near": none, empty, nameless, an NPC short', () => {
+    expect(HUB_NPCS.length, 'no named NPC to look for: the presence check is vacuous').toBeGreaterThan(0);
+    const dead = [null, undefined, [], [{ type: 'zombie', hostile: true, npc: null, position: [9, 54.6, 0] }], hearthNpcs(EYE).slice(1)];
+    for (const list of dead) {
+      const f = mobFeed(list, EYE);
+      expect(f.checked, JSON.stringify(list)).toBe(false);
+      expect(f.why).toMatch(new RegExp(`^${COULD_NOT_CHECK}`));
+    }
+    expect(mobFeed(hearthNpcs(EYE), null).checked, 'no eye to measure from').toBe(false);
+  });
+});
+
 describe('the per-shot verdict', () => {
   const hero = MEDIA_SHOTS.find((s) => s.recipe.kind === 'eye');
-  const pose = MEDIA_SHOTS.find((s) => s.recipe.kind === 'pose');
+  const pose = MEDIA_SHOTS.find((s) => s.recipe.kind === 'pose' && s.recipe.place);
   const cycle = MEDIA_TIMES[hero.time];
   const stand = [0, 52.95, 0];
   const reading = (over = {}) => ({ active: true, isAlive: true, worldBuilt: true, cycle, contextLosses: 0, tier: 'high',
-    gl: { renderer: HW }, pose: null, handNodes: 9, body: [0.1, 52.95, 0], heading: hero.recipe.heading,
+    gl: { renderer: HW }, pose: null, handNodes: 9, body: [0.1, 52.95, 0], eye: EYE, heading: hero.recipe.heading,
     hostiles: { nearestM: 20, within8m: 0 }, ...over });
   const eye = (after, over = {}) => mediaShotVerdict({ shot: hero, heading: hero.recipe.heading, stand, handsHidden: 0,
-    hudVisible: false, nearestMobM: 20, before: reading(), after, ...over });
+    hudSeenOn: true, hudVisible: false, mobs: liveFeed(), before: reading(), after, ...over });
+  const at = (m, type = 'boar') => ({ type, hostile: false, npc: null, position: [EYE[0] + m, EYE[1], EYE[2]] });
 
   it('passes an eye shot with the hands mounted, the HUD hidden, the body stood and the bearing held', () => {
-    expect(eye(reading())).toEqual({ valid: true, why: [] });
+    expect(eye(reading())).toEqual({ valid: true, why: [], couldNotCheck: false });
   });
 
   it('refuses an eye shot with the HUD on screen, the hands hidden, a hostile in the face or a lower tier', () => {
@@ -208,18 +273,24 @@ describe('the per-shot verdict', () => {
     expect(eye(reading({ body: [3, 52.95, 0] })).why.join('\n')).toMatch(/stand/);
   });
 
-  it('refuses an eye shot with any mob in the eye, a passive animal too, and one whose mobs were not read', () => {
-    // An ox at arm's length passed every check above in the first shoot: the seam counts hostiles only.
-    expect(eye(reading(), { nearestMobM: OBSTRUCTION_M - 1 }).why.join('\n')).toMatch(/mob .* from the eye/);
-    expect(eye(reading(), { nearestMobM: undefined }).why.join('\n')).toMatch(/mobs not checked/);
-    expect(eye(reading(), { nearestMobM: null }).valid).toBe(true);
-    expect(eye(reading(), { nearestMobM: OBSTRUCTION_M + 0.5 }).valid).toBe(true);
+  it('counts the HUD hidden only after this run saw it on screen', () => {
+    const blind = eye(reading(), { hudSeenOn: false, hudVisible: false });
+    expect(blind.valid).toBe(false);
+    expect(blind.couldNotCheck).toBe(true);
+    expect(blind.why.join('\n')).toMatch(/never saw it on screen/);
+    expect(eye(reading(), { hudSeenOn: undefined }).valid).toBe(false);
   });
 
-  it('measures the nearest mob of any kind from the eye', () => {
-    const mobs = [{ type: 'ox', passive: true, position: [0, 50, 2] }, { type: 'zombie', passive: false, position: [5, 50, 0] }];
-    expect(nearestMobM(mobs, [0, 50, 0])).toBeCloseTo(2, 5);
-    expect(nearestMobM([], [0, 50, 0])).toBe(null);
+  it('a dead mob feed must not pass; a mob at 2 m fails the frame; one at 8 m passes it', () => {
+    const dead = eye(reading(), { mobs: mobFeed([], EYE) });
+    expect(dead.valid).toBe(false);
+    expect(dead.couldNotCheck).toBe(true);
+    expect(eye(reading(), { mobs: undefined }).valid, 'no reading at all').toBe(false);
+    const close = eye(reading(), { mobs: liveFeed([at(2)]) });
+    expect(close.valid).toBe(false);
+    expect(close.couldNotCheck).toBe(false);
+    expect(close.why.join('\n')).toMatch(/a mob \(boar\) 2\.0 m from the eye/);
+    expect(eye(reading(), { mobs: liveFeed([at(8)]) })).toEqual({ valid: true, why: [], couldNotCheck: false });
   });
 
   it('refuses any shot on a software renderer, a dead player or a clock that drifted', () => {
@@ -228,21 +299,30 @@ describe('the per-shot verdict', () => {
     expect(eye(reading({ cycle: cycle + 0.05 })).why.join('\n')).toMatch(/clock/);
   });
 
-  it('wants a pose shot pinned at its place, and does not ask a pose for hands', () => {
-    const place = LOOKBOOK_PLACES.find((p) => p.id === pose.recipe.place);
+  it('wants a pose shot pinned at its place, does not ask a pose for hands, and holds it to the mob rule too', () => {
+    const place = posePlace(pose.recipe);
     const pc = MEDIA_TIMES[pose.time];
-    const pinned = reading({ cycle: pc, handNodes: 0, pose: { position: place.position, lookAt: place.lookAt, fov: 75 } });
-    const v = (after) => mediaShotVerdict({ shot: pose, before: reading({ cycle: pc }), after, hudVisible: false });
-    expect(v(pinned)).toEqual({ valid: true, why: [] });
+    const pinned = reading({ cycle: pc, handNodes: 0, eye: place.position, pose: { position: place.position, lookAt: place.lookAt, fov: 75 } });
+    const v = (after, mobs = liveFeed([], place.position)) => mediaShotVerdict({ shot: pose, before: reading({ cycle: pc }), after,
+      hudSeenOn: true, hudVisible: false, mobs });
+    expect(v(pinned)).toEqual({ valid: true, why: [], couldNotCheck: false });
     expect(v({ ...pinned, pose: null }).why.join('\n')).toMatch(/pose/);
+    expect(v(pinned, mobFeed(null, place.position)).couldNotCheck).toBe(true);
+    const goat = { type: 'goat', hostile: false, npc: null, position: [place.position[0] + 1.5, place.position[1], place.position[2]] };
+    expect(v(pinned, liveFeed([goat], place.position)).why.join('\n')).toMatch(/goat/);
+    const own = { ...pose, recipe: { kind: 'pose', position: [-13, 60, 5], lookAt: [8, 53, -8] } };
+    const at = (position) => mediaShotVerdict({ shot: own, before: reading({ cycle: pc }), hudSeenOn: true, hudVisible: false,
+      mobs: liveFeed([], position), after: { ...pinned, eye: position, pose: { position, lookAt: own.recipe.lookAt, fov: 75 } } });
+    expect(at([-13, 60, 5]).valid, 'pinned at its own camera').toBe(true);
+    expect(at(place.position).why.join('\n')).toMatch(/not pinned at the declared pose/);
   });
 
   it('wants a fight shot to have a hostile in range, not past it and not in the eye', () => {
     const fight = MEDIA_SHOTS.find((s) => s.recipe.kind === 'fight');
     expect(fight, 'the table declares no fight shot').toBeTruthy();
     const fc = MEDIA_TIMES[fight.time];
-    const v = (nearestM) => mediaShotVerdict({ shot: fight, heading: 90, stand, handsHidden: 0, hudVisible: false, nearestMobM: 6,
-      before: reading({ cycle: fc }), after: reading({ cycle: fc, heading: 90, hostiles: { nearestM, within8m: 1 } }) });
+    const v = (nearestM) => mediaShotVerdict({ shot: fight, heading: 90, stand, handsHidden: 0, hudSeenOn: true, hudVisible: false,
+      mobs: liveFeed([at(6, 'zombie')]), before: reading({ cycle: fc }), after: reading({ cycle: fc, heading: 90, hostiles: { nearestM, within8m: 1 } }) });
     expect(v(6).valid).toBe(true);
     expect(v(fight.recipe.maxM + 3).why.join('\n')).toMatch(/hostile/);
     expect(v(null).why.join('\n')).toMatch(/hostile/);
@@ -251,21 +331,88 @@ describe('the per-shot verdict', () => {
 });
 
 describe('the fight target', () => {
-  it('picks the nearest hostile in range, never a passive animal, a quest NPC or one out of range', () => {
+  const from = [0, 50, 0];
+  const range = { minM: 4, maxM: 14 };
+
+  it('picks the nearest hostile in range, never a passive animal, a named NPC or one out of range', () => {
     // The animal and the NPC stand inside the range and nearer than any hostile, so only their own exclusion keeps
     // them out; the zombie is nearer still but inside the eye's obstruction distance.
     const mobs = [
-      { type: 'cow', passive: true, position: [4.5, 50, 0] },
-      { type: 'guide', passive: false, npcName: 'Old Pike', position: [5, 50, 0] },
-      { type: 'zombie', passive: false, position: [1, 50, 0] },
-      { type: 'skeleton', passive: false, position: [0, 50, 9] },
-      { type: 'spider', passive: false, position: [0, 50, 6] },
-      { type: 'brute', passive: false, position: [40, 50, 0] },
+      ...hearthNpcs(from),
+      { type: 'cow', hostile: false, npc: null, position: [4.5, 50, 0] },
+      { type: 'villager', hostile: true, npc: HUB_NPCS[0].name, position: [5, 50, 0] },
+      { type: 'zombie', hostile: true, npc: null, position: [1, 50, 0] },
+      { type: 'skeleton', hostile: true, npc: null, position: [0, 50, 9] },
+      { type: 'spider', hostile: true, npc: null, position: [0, 50, 6] },
+      { type: 'brute', hostile: true, npc: null, position: [40, 50, 0] },
     ];
-    const t = nearestHostile(mobs, [0, 50, 0], { minM: 4, maxM: 14 });
-    expect(t.type).toBe('spider');
-    expect(t.distance).toBeCloseTo(6, 5);
-    expect(nearestHostile(mobs.slice(0, 3), [0, 50, 0], { minM: 4, maxM: 14 })).toBe(null);
+    const t = fightTarget(mobs, from, range);
+    expect(t.checked).toBe(true);
+    expect(t.target.type).toBe('spider');
+    expect(t.target.distance).toBeCloseTo(6, 5);
+    expect(fightTarget(mobs.slice(0, HUB_NPCS.length + 3), from, range)).toEqual({ checked: true, why: null, target: null });
+  });
+
+  it('on a dead feed says COULD NOT CHECK, never "no hostile came"', () => {
+    const zombie = { type: 'zombie', hostile: true, npc: null, position: [0, 50, 6] };
+    for (const list of [null, [], [zombie]]) {
+      const t = fightTarget(list, from, range);
+      expect(t.checked).toBe(false);
+      expect(t.target).toBe(null);
+      expect(t.why).toMatch(new RegExp(`^${COULD_NOT_CHECK}`));
+    }
+  });
+});
+
+describe('the provenance a run may stamp', () => {
+  const HEAD = 'c'.repeat(40);
+  const clean = { ownBuild: true, headBefore: HEAD, headAfter: HEAD, porcelainBefore: '', porcelainAfter: '' };
+
+  it('stamps HEAD only on a bundle the run built from a clean tree at a HEAD that held still', () => {
+    expect(runProvenance(clean)).toEqual({ sha: HEAD, dirty: false, provenance: BUILT_CLEAN });
+    expect(runProvenance({ ...clean, porcelainBefore: ' M docs/media/hero.jpg\n M frontend/public/og-image.png\n' }).sha,
+      'the run\'s own outputs do not make the tree dirty').toBe(HEAD);
+  });
+
+  it('stamps no sha on a handed build, a dirty tree, a HEAD that moved or an unread HEAD', () => {
+    const cases = [
+      [{ ownBuild: false }, /--build-dir/],
+      [{ ownBuild: undefined }, /--build-dir/],
+      [{ porcelainBefore: ' M frontend/src/App.jsx\n' }, /dirty.*App\.jsx/],
+      [{ porcelainAfter: '?? frontend/src/new.js\n' }, /dirty.*new\.js/],
+      [{ headAfter: 'd'.repeat(40) }, /moved/],
+      [{ headBefore: 'HEAD', headAfter: 'HEAD' }, /not read/],
+    ];
+    for (const [over, re] of cases) {
+      const p = runProvenance({ ...clean, ...over });
+      expect(p.sha, JSON.stringify(over)).toBe(null);
+      expect(p.dirty).not.toBe(false);
+      expect(p.provenance).not.toBe(BUILT_CLEAN);
+      expect(p.provenance).toMatch(re);
+    }
+  });
+
+  it('names a build by every byte it serves, in any listing order', () => {
+    const files = [{ path: 'index.html', sha256: sha256Hex('<html>') }, { path: 'assets/index-a.js', sha256: sha256Hex('js') }];
+    const id = buildIdentity(files);
+    expect(id).toMatch(/^[0-9a-f]{64}$/);
+    expect(buildIdentity([...files].reverse())).toBe(id);
+    expect(buildIdentity([files[0], { ...files[1], sha256: sha256Hex('js ') }])).not.toBe(id);
+    expect(buildIdentity([files[0], { ...files[1], path: 'assets/index-b.js' }])).not.toBe(id);
+    expect(buildIdentity(files.slice(0, 1))).not.toBe(id);
+  });
+});
+
+describe('the folder listing the file check and the build identity count', () => {
+  it('lists every file, dotfiles and dot-folders included, and leaves out only .DS_Store', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'media-walk-'));
+    mkdirSync(join(dir, 'stills'));
+    mkdirSync(join(dir, '.cache'));
+    for (const f of ['hero.jpg', '.stray', 'stills/a.jpg', 'stills/.b.jpg', '.cache/c.bin', '.DS_Store', 'stills/.DS_Store']) {
+      writeFileSync(join(dir, f), 'x');
+    }
+    expect(filesUnder(dir)).toEqual(['.cache/c.bin', '.stray', 'hero.jpg', 'stills/.b.jpg', 'stills/a.jpg']);
+    expect(filesUnder(join(dir, 'stills'), dir)).toEqual(['stills/.b.jpg', 'stills/a.jpg']);
   });
 });
 
@@ -282,7 +429,7 @@ describe('merging a re-shoot into the manifest', () => {
 });
 
 describe('the og card', () => {
-  const html = ogCardHtml({ frame: 'data:image/png;base64,AAAA', wordmarkFont: 'data:font/woff2;base64,BBBB',
+  const html = ogCardHtml({ frame: 'og-frame.png', wordmarkFont: 'data:font/woff2;base64,BBBB',
     textFont: 'data:font/woff2;base64,CCCC', width: OG_CARD.width, height: OG_CARD.height });
 
   it('carries the wordmark in the game\'s Lilita One, gold on ink, with the brand subtitle and the frame', () => {
@@ -291,7 +438,8 @@ describe('the og card', () => {
     expect(html).toContain(BRAND.accent);
     expect(html).toContain(BRAND.ground);
     expect(html).toContain(cardSubtitle());
-    expect(html).toContain('data:image/png;base64,AAAA');
+    expect(html.match(/<img class="frame" src="og-frame\.png"/g), 'the frame is drawn by exactly one img.frame, which media.mjs checks loaded')
+      .toHaveLength(1);
     expect(html).toContain(`width: ${OG_CARD.width}px`);
   });
 

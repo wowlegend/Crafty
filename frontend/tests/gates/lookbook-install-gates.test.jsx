@@ -62,7 +62,7 @@ describe('src/index.jsx installs the lookbook seam with the real collaborators',
     expect(plain.seam, 'a page without ?lookbook=1 got the seam — every player would carry it').toBeUndefined();
     const { seam } = await bootAt('?lookbook=1');
     expect(seam, 'the entry module did not install the seam on ?lookbook=1 — the probe has no door').toBeDefined();
-    expect(Object.keys(seam).sort()).toEqual(['clear', 'clearHostiles', 'info', 'look', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
+    expect(Object.keys(seam).sort()).toEqual(['clear', 'clearHostiles', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
   });
 
   it('hands the seam the REAL mob query: a hostile added to the ECS world is measured from the eye', async () => {
@@ -79,6 +79,19 @@ describe('src/index.jsx installs the lookbook seam with the real collaborators',
     } finally {
       ecs.remove(husk);
       store.setState({ gameCamera: null });
+    }
+  });
+
+  it('hands the seam the REAL mob query for mobs(): a named NPC added to the ECS world is listed with its name', async () => {
+    const { seam } = await bootAt('?lookbook=1');
+    const { ecs } = await import('../../src/ecs/world.js');
+    expect(seam.mobs(), 'presence: an empty world lists no mob').toEqual([]);
+    const npc = ecs.add({ isMob: true, isNPC: true, npcName: 'Sister Wren', type: 'villager', health: 200, passive: true, position: { x: 3, y: 50, z: -2 } });
+    try {
+      expect(seam.mobs(), 'the entry module gave mobs() no mob query, or the wrong one')
+        .toEqual([{ type: 'villager', hostile: false, npc: 'Sister Wren', position: [3, 50, -2] }]);
+    } finally {
+      ecs.remove(npc);
     }
   });
 

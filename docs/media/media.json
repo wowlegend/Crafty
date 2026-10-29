@@ -74,29 +74,6 @@
       }
     },
     {
-      "file": "docs/media/stills/coast.jpg",
-      "shot": "coast",
-      "purpose": "still",
-      "time": "golden hour",
-      "cycle": 0.48,
-      "cycleAtShot": 0.4842,
-      "sha": "1cf94186c102eb94a167ac11f3cd992a985cb042",
-      "dirty": false,
-      "build": "index-BqaKcxrk.js",
-      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
-      "tier": "high",
-      "dpr": 1.620185174601965,
-      "width": 1600,
-      "height": 1000,
-      "bytes": 228856,
-      "format": "jpg",
-      "quality": 91,
-      "recipe": {
-        "kind": "pose",
-        "place": "coast"
-      }
-    },
-    {
       "file": "docs/media/stills/forest-edge.jpg",
       "shot": "forest-edge",
       "purpose": "still",
@@ -117,29 +94,6 @@
       "recipe": {
         "kind": "pose",
         "place": "forest-edge"
-      }
-    },
-    {
-      "file": "docs/media/stills/snow-terrace.jpg",
-      "shot": "snow-terrace",
-      "purpose": "still",
-      "time": "golden hour",
-      "cycle": 0.48,
-      "cycleAtShot": 0.4842,
-      "sha": "1cf94186c102eb94a167ac11f3cd992a985cb042",
-      "dirty": false,
-      "build": "index-BqaKcxrk.js",
-      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
-      "tier": "high",
-      "dpr": 1.620185174601965,
-      "width": 1600,
-      "height": 1000,
-      "bytes": 236524,
-      "format": "jpg",
-      "quality": 85,
-      "recipe": {
-        "kind": "pose",
-        "place": "snow-terrace"
       }
     },
     {

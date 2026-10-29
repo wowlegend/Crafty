@@ -1,7 +1,3 @@
-# Visual-regression run artifacts (transient; baselines under tests/visual/baseline/ ARE committed)
-tests/visual/current/
-tests/visual/diff/
-
 # Coverage output — an instrument, regenerated on demand; never committed
 coverage/
 

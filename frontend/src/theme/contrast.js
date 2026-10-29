@@ -6,9 +6,9 @@
  * surface. It was caught once by eye on the PAUSED overlay and written up in .claude/rules — and the
  * identical mistake sat 35 lines away on the title screen's controls strip, unnoticed, for months.
  *
- * MEASURED on the committed menu.png baseline before the fix: glyph rgb(29,19,8) against ground
- * rgb(16,12,8) is a contrast ratio of 1.07:1. WCAG AA wants 4.5:1 for normal text and 3.0:1 even for
- * large text. The first thing a new player reads was effectively invisible.
+ * MEASURED on a frame of the title screen: glyph rgb(29,19,8) against ground rgb(16,12,8) is a contrast
+ * ratio of 1.07:1. WCAG AA wants 4.5:1 for normal text and 3.0:1 even for large text: the first thing a
+ * new player reads, effectively invisible.
  *
  * NOTHING IN THIS REPO COULD SEE IT. Verified by grep 2026-08-12: zero occurrences of wcag,
  * contrastRatio or relativeLuminance across src, tests and scripts. A jsdom test asserts the text
