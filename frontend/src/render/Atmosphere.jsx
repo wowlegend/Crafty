@@ -186,7 +186,6 @@ export function Atmosphere({ shadowConfig }) {
   // THE SHADOW RENDERS ON DEMAND (render/shadowSchedule.js; plan 2026-10-27-crafty-steady-cool item h): three skips a
   // light whose shadow.autoUpdate and needsUpdate are both false; the useFrame below sets needsUpdate when one is due.
   const shadowSched = useMemo(createShadowSchedule, []);
-  const shadowCamAt = useMemo(() => new THREE.Matrix4(), []); // the camera when the shadow last rendered
   const sunUnit = useMemo(() => [0, 0, 0], []);
   useLayoutEffect(() => {
     const sh = sunRef.current?.shadow;
@@ -475,8 +474,10 @@ export function Atmosphere({ shadowConfig }) {
       const sp = sunWorldPosition(shadowCentreRef.current, m.keyDir);
       sunRef.current.position.set(sp.x, sp.y, sp.z);
       // SHADOW ON DEMAND. Capture renders it every frame, as before (the oracle is not this change's to move). In play,
-      // a dynamic caster is: the camera moved since the last shadow render (the player's own hands cast), any ECS mob,
-      // villager, ally or pickup, the boss, the beast form, or a held phantom block. Transient reads only.
+      // a dynamic caster is any ECS mob, villager, ally or pickup, the boss, the beast form, or a held phantom block.
+      // The camera is not one: nothing in the world scene rides it (the hands are in the viewmodel scene and cast no
+      // shadow, render/viewmodel.js), and the frustum's following the player is the schedule's centre check.
+      // Transient reads only.
       const sh = sunRef.current.shadow;
       if (cap) {
         sh.needsUpdate = true;
@@ -485,13 +486,11 @@ export function Atmosphere({ shadowConfig }) {
         // moves, and the dawn and dusk swaps (a step far past SUN_STEP_DEG) render at once.
         const p = m.keyDir, len = Math.hypot(p[0], p[1], p[2]) || 1;
         sunUnit[0] = p[0] / len; sunUnit[1] = p[1] / len; sunUnit[2] = p[2] / len;
-        const dynamic = !camera.matrixWorld.equals(shadowCamAt)
-          || mobsQuery.entities.length > 0 || alliesQuery.entities.length > 0
+        const dynamic = mobsQuery.entities.length > 0 || alliesQuery.entities.length > 0
           || lootQuery.entities.length > 0 || orbQuery.entities.length > 0
           || !!st.bossActive || !!st.beastFormActive || !!st.voidhandHeld;
         if (shadowDue(shadowSched, { now: performance.now(), sunDir: sunUnit, centre: shadowCentreRef.current, worldEpoch: shadowWorldEpoch(), dynamic })) {
           sh.needsUpdate = true;
-          shadowCamAt.copy(camera.matrixWorld);
         }
       }
     }
