@@ -18,6 +18,48 @@
 
 ---
 
+## 2026-10-28 — [LOOP] W2-E: the hands become a viewmodel, and the eye drops to 1.62 m
+
+**Decided by the W2-E lane under the standing grant** (item 14), by the task script
+`docs/superpowers/plans/2026-10-29-crafty-w2e-hands.md`, whose metric was written before any frame was shot. The items
+continue the numbering after W2-I's (its last is 32). Readings and frames:
+`docs/superpowers/masterpiece-2026-10/evidence/w2e/`.
+
+33. **The hands render inside the composer, as a second render pass with its own camera.** `ViewmodelPass`
+   (`frontend/src/render/viewmodel.js`) draws the viewmodel scene right after the world's `RenderPass`, before every
+   effect (`GameScene.jsx` PostFX). Why inside: the canvas has no MSAA (`antialias: false`, `multisampling={0}`), so
+   only SMAA can smooth the gauntlets' edges; the grade and the Neutral tone mapping keep them in the world's colour;
+   and bloom carries the ember core, which is what replaces the hand's point light. Drawn after the composer they
+   would be aliased, ungraded and untone-mapped (R3F's composer sets `gl.toneMapping = NoToneMapping`). Why a depth
+   range and not the depth clear the plan row named: GodRays reads the composer's depth texture to occlude the sun
+   (postprocessing 6.39.5 `GodRaysEffect`, `EffectAttribute.DEPTH`), and a clear would empty it where the world is.
+   The viewmodel camera maps its depth into the front 2% of the buffer instead, so the hands are nearer than any world
+   surface beyond 0.102 m (the main near plane is 0.1 m) and still test against each other. It has its own fixed 60
+   degree FOV (the main camera's moves 75 to 85 with speed), anchors that follow the aspect so both fists stay in
+   frame on a portrait iPad, the world's ambient, hemisphere and key light mirrored into view space, a value floor
+   (`max(lit, albedo x 0.45)` in the toon shader), and an HDR ember core above Bloom's threshold. The aura sphere, the
+   hand's pooled point light and every shadow flag on the hands are gone. It stands while it earns its place.
+   **Measured** (local production build, Chromium on ANGLE-Metal, M3 Max, 1280x800 at dpr 2, the eye at bearing 240;
+   hand pixels are what the hands change against a pose twin at the same eye): at midnight (0.75) the mean luma of the
+   hand pixels went from 28.7 to 100.2 and the median from 7 to 106, against the floor declared before shooting (mean
+   48, median 40). Warm at every time (red over blue: 2.9 at midnight). At point blank, against a tree trunk with the
+   body 0.45 m from it, the hand pixels near/far went from 0.02 (the old hands sank into the trunk) to 1.14.
+34. **The eye sits 1.62 m over the ground: `EYE_HEIGHT_M` 0.67 over the body's centre, not 1.2** (the question W1-D
+   left this lane). The capsule is 1.8 m and its centre rests 0.95 m up, so the old eye stood 2.15 m up, 0.30 m above
+   the top of the head: blocks read small, the player looked down on every mob, and in any two-block passage the
+   body fits through (1.9 m with the controller's gaps) the eye sat 0.15 m inside the ceiling block. 1.62 m is the
+   eye of a 1.8 m figure. The swing's cone apex keeps its height (`SWING_DROP_M` 0.8 to 0.27, so it stays 0.4 m over
+   the body's centre) and melee reach is unchanged; the snare's aim and the hurl's launch start at the new eye, which
+   is where the player now sees from. `playerPosition` (the camera, rounded) reads the same integer at rest. It
+   stands while it earns its place.
+35. **REVIEW:w2k:dark-polygon-between-hands was the old hands' shadow, and it is gone with them.** In the before build
+   the turf-wall frame shows the flat dark polygon between the slabs; its pose twin (the same eye, hands hidden)
+   shows the turf block there instead, so it belongs to the hands. It is not the held block, which shows separately
+   at the left as a flat green box. The old hands cast shadows (`castShadow` on every mesh) and the turf block's face
+   stood in front of them; the viewmodel hands are in a scene with no shadow-casting light, and the after build's
+   turf-wall frame shows no polygon. A moved camera also stops counting as a shadow caster (`render/Atmosphere.jsx`),
+   since the hands were the reason it did (e9d49bdf): turning the view no longer re-renders the sun's shadow map.
+
 ## 2026-10-28 — [LOOP] W2-I: the post passes measured on the GPU's own busy time; N8AO deleted, the rest kept
 
 **Decided by the W2-I lane under the standing grant** (DECISIONS 2026-10-28 item 14), by the rule in

@@ -1,0 +1,769 @@
+{
+ "plan": "docs/superpowers/plans/2026-10-29-crafty-w2e-hands.md",
+ "declared": {
+  "midnightMeanLuma": 48,
+  "midnightMedianLuma": 40,
+  "warmRedOverBlue": 1.3,
+  "pointBlankRatio": 0.9
+ },
+ "mask": {
+  "threshold": 24,
+  "fromY": 0.55,
+  "minShare": 0.015,
+  "stableWithin": 12
+ },
+ "runs": {
+  "before": {
+   "target": "chromium-1280x800",
+   "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+   "gpu": "hardware",
+   "build": {
+    "source": "c3a0a7cb (main, before this lane)",
+    "indexChunk": "index-B0R4Bngc.js"
+   },
+   "generatedAt": "2026-10-29T03:12:01.394Z",
+   "handShots": [
+    {
+     "label": "0.30",
+     "cycle": 0.3,
+     "cycleAtShot": 0.3021,
+     "heading": 240,
+     "pitch": 0,
+     "twinHeading": 240.0,
+     "eye": [
+      -0.001,
+      54.15,
+      0.0
+     ],
+     "body": [
+      -0.001,
+      52.95,
+      0.0
+     ],
+     "eyeAboveBody": 1.2,
+     "handNodes": 33,
+     "twinHandNodes": 2,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 412488,
+     "checked": 1843200,
+     "share": 0.1007,
+     "unstable": 21129,
+     "left": 197370,
+     "right": 215118,
+     "meanLuma": 35.269,
+     "medianLuma": 6,
+     "meanRGB": [
+      52.845,
+      32.189,
+      14.024
+     ]
+    },
+    {
+     "label": "0.48",
+     "cycle": 0.48,
+     "cycleAtShot": 0.4821,
+     "heading": 240,
+     "pitch": 0,
+     "twinHeading": 240.0,
+     "eye": [
+      -0.001,
+      54.15,
+      0.0
+     ],
+     "body": [
+      -0.001,
+      52.95,
+      0.0
+     ],
+     "eyeAboveBody": 1.2,
+     "handNodes": 33,
+     "twinHandNodes": 2,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 426253,
+     "checked": 1843200,
+     "share": 0.1041,
+     "unstable": 24371,
+     "left": 204892,
+     "right": 221361,
+     "meanLuma": 33.4446,
+     "medianLuma": 6,
+     "meanRGB": [
+      56.077,
+      29.596,
+      4.927
+     ]
+    },
+    {
+     "label": "0.55",
+     "cycle": 0.55,
+     "cycleAtShot": 0.5521,
+     "heading": 240,
+     "pitch": 0,
+     "twinHeading": 240.0,
+     "eye": [
+      -0.001,
+      54.15,
+      0.0
+     ],
+     "body": [
+      -0.001,
+      52.95,
+      0.0
+     ],
+     "eyeAboveBody": 1.2,
+     "handNodes": 33,
+     "twinHandNodes": 2,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 397542,
+     "checked": 1843200,
+     "share": 0.0971,
+     "unstable": 6672,
+     "left": 178751,
+     "right": 218791,
+     "meanLuma": 27.0482,
+     "medianLuma": 3,
+     "meanRGB": [
+      37.886,
+      24.64,
+      18.991
+     ]
+    },
+    {
+     "label": "0.75",
+     "cycle": 0.75,
+     "cycleAtShot": 0.7521,
+     "heading": 240,
+     "pitch": 0,
+     "twinHeading": 240.0,
+     "eye": [
+      -0.001,
+      54.15,
+      0.0
+     ],
+     "body": [
+      -0.001,
+      52.95,
+      0.0
+     ],
+     "eyeAboveBody": 1.2,
+     "handNodes": 33,
+     "twinHandNodes": 2,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 415757,
+     "checked": 1843200,
+     "share": 0.1015,
+     "unstable": 8260,
+     "left": 199417,
+     "right": 216340,
+     "meanLuma": 28.7039,
+     "medianLuma": 7,
+     "meanRGB": [
+      37.667,
+      26.381,
+      25.318
+     ]
+    },
+    {
+     "label": "turf-wall",
+     "cycle": 0.3,
+     "cycleAtShot": 0.3021,
+     "heading": 180,
+     "pitch": 0,
+     "twinHeading": 180,
+     "eye": [
+      -19.5,
+      47.15,
+      -5.5
+     ],
+     "body": [
+      -19.5,
+      45.95,
+      -5.5
+     ],
+     "eyeAboveBody": 1.2,
+     "handNodes": 33,
+     "twinHandNodes": 2,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 425403,
+     "checked": 1843200,
+     "share": 0.1039,
+     "unstable": 12963,
+     "left": 204258,
+     "right": 221145,
+     "meanLuma": 44.3264,
+     "medianLuma": 20,
+     "meanRGB": [
+      62.066,
+      42.149,
+      13.659
+     ]
+    },
+    {
+     "label": "wall-far",
+     "cycle": 0.3,
+     "cycleAtShot": 0.3021,
+     "heading": 180.0,
+     "pitch": 0,
+     "twinHeading": 180.0,
+     "eye": [
+      -11.5,
+      49.15,
+      -17.5
+     ],
+     "body": [
+      -11.5,
+      47.95,
+      -17.5
+     ],
+     "eyeAboveBody": 1.2,
+     "handNodes": 33,
+     "twinHandNodes": 2,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 422838,
+     "checked": 1843200,
+     "share": 0.1032,
+     "unstable": 45886,
+     "left": 211308,
+     "right": 211530,
+     "meanLuma": 49.5604,
+     "medianLuma": 24,
+     "meanRGB": [
+      65.246,
+      48.628,
+      12.613
+     ]
+    },
+    {
+     "label": "wall-near",
+     "cycle": 0.3,
+     "cycleAtShot": 0.3021,
+     "heading": 180.0,
+     "pitch": 0,
+     "twinHeading": 180.0,
+     "eye": [
+      -11.5,
+      49.15,
+      -14.45
+     ],
+     "body": [
+      -11.5,
+      47.95,
+      -14.45
+     ],
+     "eyeAboveBody": 1.2,
+     "handNodes": 33,
+     "twinHandNodes": 2,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": false,
+     "why": [
+      "COULD NOT MEASURE: 8907 hand pixels, under 1.5% of the frame"
+     ],
+     "pixels": 8907,
+     "checked": 1843200,
+     "share": 0.0022,
+     "unstable": 1618,
+     "left": 7467,
+     "right": 1440,
+     "meanLuma": 59.1219,
+     "medianLuma": 51,
+     "meanRGB": [
+      62.932,
+      63.119,
+      8.306
+     ]
+    }
+   ],
+   "pointBlank": {
+    "faceM": 0.4501008987426758,
+    "climbedM": 0,
+    "atWall": true,
+    "ratio": 0.021064804960765116
+   },
+   "notes": []
+  },
+  "after": {
+   "target": "chromium-1280x800",
+   "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
+   "gpu": "hardware",
+   "build": {
+    "source": "891a050f (this lane's tree)",
+    "indexChunk": "index-Cb33QRzn.js"
+   },
+   "generatedAt": "2026-10-29T03:14:16.205Z",
+   "handShots": [
+    {
+     "label": "0.30",
+     "cycle": 0.3,
+     "cycleAtShot": 0.3021,
+     "heading": 240,
+     "pitch": 0,
+     "twinHeading": 240.0,
+     "eye": [
+      -0.001,
+      53.62,
+      0.0
+     ],
+     "body": [
+      -0.001,
+      52.95,
+      0.0
+     ],
+     "eyeAboveBody": 0.67,
+     "handNodes": 47,
+     "twinHandNodes": 0,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 547675,
+     "checked": 1843200,
+     "share": 0.1337,
+     "unstable": 13101,
+     "left": 265317,
+     "right": 282358,
+     "meanLuma": 126.2666,
+     "medianLuma": 135,
+     "meanRGB": [
+      180.97,
+      120.295,
+      24.345
+     ]
+    },
+    {
+     "label": "0.48",
+     "cycle": 0.48,
+     "cycleAtShot": 0.4821,
+     "heading": 240,
+     "pitch": 0,
+     "twinHeading": 240.0,
+     "eye": [
+      -0.001,
+      53.62,
+      0.0
+     ],
+     "body": [
+      -0.001,
+      52.95,
+      0.0
+     ],
+     "eyeAboveBody": 0.67,
+     "handNodes": 47,
+     "twinHandNodes": 0,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 536802,
+     "checked": 1843200,
+     "share": 0.1311,
+     "unstable": 17121,
+     "left": 261410,
+     "right": 275392,
+     "meanLuma": 115.2293,
+     "medianLuma": 124,
+     "meanRGB": [
+      192.986,
+      102.285,
+      14.488
+     ]
+    },
+    {
+     "label": "0.55",
+     "cycle": 0.55,
+     "cycleAtShot": 0.5521,
+     "heading": 240,
+     "pitch": 0,
+     "twinHeading": 240.0,
+     "eye": [
+      -0.001,
+      53.62,
+      0.001
+     ],
+     "body": [
+      -0.001,
+      52.95,
+      0.001
+     ],
+     "eyeAboveBody": 0.67,
+     "handNodes": 47,
+     "twinHandNodes": 0,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 545665,
+     "checked": 1843200,
+     "share": 0.1332,
+     "unstable": 5266,
+     "left": 266656,
+     "right": 279009,
+     "meanLuma": 99.133,
+     "medianLuma": 107,
+     "meanRGB": [
+      131.503,
+      95.67,
+      38.114
+     ]
+    },
+    {
+     "label": "0.75",
+     "cycle": 0.75,
+     "cycleAtShot": 0.7521,
+     "heading": 240,
+     "pitch": 0,
+     "twinHeading": 240.0,
+     "eye": [
+      -0.001,
+      53.62,
+      0.0
+     ],
+     "body": [
+      -0.001,
+      52.95,
+      0.0
+     ],
+     "eyeAboveBody": 0.67,
+     "handNodes": 47,
+     "twinHandNodes": 0,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 543551,
+     "checked": 1843200,
+     "share": 0.1327,
+     "unstable": 2501,
+     "left": 264183,
+     "right": 279368,
+     "meanLuma": 100.1756,
+     "medianLuma": 106,
+     "meanRGB": [
+      132.06,
+      96.217,
+      45.504
+     ]
+    },
+    {
+     "label": "turf-wall",
+     "cycle": 0.3,
+     "cycleAtShot": 0.3021,
+     "heading": 180,
+     "pitch": 0,
+     "twinHeading": 180,
+     "eye": [
+      -19.5,
+      46.62,
+      -5.5
+     ],
+     "body": [
+      -19.5,
+      45.95,
+      -5.5
+     ],
+     "eyeAboveBody": 0.67,
+     "handNodes": 47,
+     "twinHandNodes": 0,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 547841,
+     "checked": 1843200,
+     "share": 0.1338,
+     "unstable": 41035,
+     "left": 272936,
+     "right": 274905,
+     "meanLuma": 127.5091,
+     "medianLuma": 135,
+     "meanRGB": [
+      177.426,
+      123.137,
+      23.834
+     ]
+    },
+    {
+     "label": "wall-far",
+     "cycle": 0.3,
+     "cycleAtShot": 0.3021,
+     "heading": 180.0,
+     "pitch": 0,
+     "twinHeading": 180.0,
+     "eye": [
+      -11.5,
+      48.62,
+      -17.5
+     ],
+     "body": [
+      -11.5,
+      47.95,
+      -17.5
+     ],
+     "eyeAboveBody": 0.67,
+     "handNodes": 47,
+     "twinHandNodes": 0,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 491733,
+     "checked": 1843200,
+     "share": 0.1201,
+     "unstable": 121237,
+     "left": 209383,
+     "right": 282350,
+     "meanLuma": 119.1327,
+     "medianLuma": 115,
+     "meanRGB": [
+      165.628,
+      115.329,
+      19.898
+     ]
+    },
+    {
+     "label": "wall-near",
+     "cycle": 0.3,
+     "cycleAtShot": 0.3021,
+     "heading": 180.0,
+     "pitch": 0,
+     "twinHeading": 180.0,
+     "eye": [
+      -11.5,
+      48.62,
+      -14.45
+     ],
+     "body": [
+      -11.5,
+      47.95,
+      -14.45
+     ],
+     "eyeAboveBody": 0.67,
+     "handNodes": 47,
+     "twinHandNodes": 0,
+     "size": [
+      2560,
+      1600
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 559688,
+     "checked": 1843200,
+     "share": 0.1366,
+     "unstable": 4492,
+     "left": 278090,
+     "right": 281598,
+     "meanLuma": 127.1117,
+     "medianLuma": 128,
+     "meanRGB": [
+      180.992,
+      121.75,
+      21.572
+     ]
+    }
+   ],
+   "pointBlank": {
+    "faceM": 0.4501333236694336,
+    "climbedM": 0,
+    "atWall": true,
+    "ratio": 1.1381949147199801
+   },
+   "notes": []
+  },
+  "before-ipad": {
+   "target": "webkit-820x1180",
+   "renderer": "Apple GPU",
+   "gpu": "hardware",
+   "build": {
+    "source": "c3a0a7cb (main, before this lane)",
+    "indexChunk": "index-B0R4Bngc.js"
+   },
+   "generatedAt": "2026-10-29T03:13:46.370Z",
+   "handShots": [
+    {
+     "label": "0.30",
+     "cycle": 0.3,
+     "cycleAtShot": 0.3021,
+     "heading": 240,
+     "pitch": 0,
+     "twinHeading": 240.0,
+     "eye": [
+      -0.0,
+      54.15,
+      0.0
+     ],
+     "body": [
+      -0.0,
+      52.95,
+      0.0
+     ],
+     "eyeAboveBody": 1.2,
+     "handNodes": 33,
+     "twinHandNodes": 2,
+     "size": [
+      1640,
+      2360
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 368057,
+     "checked": 1741680,
+     "share": 0.0951,
+     "unstable": 11909,
+     "left": 267270,
+     "right": 100787,
+     "meanLuma": 18.0706,
+     "medianLuma": 5,
+     "meanRGB": [
+      25.542,
+      16.387,
+      12.744
+     ]
+    }
+   ],
+   "pointBlank": null,
+   "notes": [
+    "WebKit MASKS its renderer as \"Apple GPU\": hardware is inferred from WebKit's ANGLE-Metal path on macOS, not proven by this string"
+   ]
+  },
+  "after-ipad": {
+   "target": "webkit-820x1180",
+   "renderer": "Apple GPU",
+   "gpu": "hardware",
+   "build": {
+    "source": "891a050f (this lane's tree)",
+    "indexChunk": "index-Cb33QRzn.js"
+   },
+   "generatedAt": "2026-10-29T03:15:27.806Z",
+   "handShots": [
+    {
+     "label": "0.30",
+     "cycle": 0.3,
+     "cycleAtShot": 0.3021,
+     "heading": 240,
+     "pitch": 0,
+     "twinHeading": 240.0,
+     "eye": [
+      -0.001,
+      53.62,
+      0.0
+     ],
+     "body": [
+      -0.001,
+      52.95,
+      0.0
+     ],
+     "eyeAboveBody": 0.67,
+     "handNodes": 47,
+     "twinHandNodes": 0,
+     "size": [
+      1640,
+      2360
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 714896,
+     "checked": 1741680,
+     "share": 0.1847,
+     "unstable": 6027,
+     "left": 374453,
+     "right": 340443,
+     "meanLuma": 110.3268,
+     "medianLuma": 109,
+     "meanRGB": [
+      152.83,
+      106.241,
+      25.645
+     ]
+    },
+    {
+     "label": "0.75",
+     "cycle": 0.75,
+     "cycleAtShot": 0.7521,
+     "heading": 240,
+     "pitch": 0,
+     "twinHeading": 240.0,
+     "eye": [
+      -0.001,
+      53.62,
+      0.0
+     ],
+     "body": [
+      -0.001,
+      52.95,
+      0.0
+     ],
+     "eyeAboveBody": 0.67,
+     "handNodes": 47,
+     "twinHandNodes": 0,
+     "size": [
+      1640,
+      2360
+     ],
+     "valid": true,
+     "why": [],
+     "pixels": 703287,
+     "checked": 1741680,
+     "share": 0.1817,
+     "unstable": 2719,
+     "left": 364417,
+     "right": 338870,
+     "meanLuma": 86.6575,
+     "medianLuma": 82,
+     "meanRGB": [
+      110.708,
+      84.174,
+      40.437
+     ]
+    }
+   ],
+   "pointBlank": null,
+   "notes": [
+    "WebKit MASKS its renderer as \"Apple GPU\": hardware is inferred from WebKit's ANGLE-Metal path on macOS, not proven by this string"
+   ]
+  }
+ }
+}

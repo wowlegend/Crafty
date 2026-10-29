@@ -19,21 +19,21 @@ Instrument: a new `hands` set in `frontend/scripts/visual/lookbook.mjs` on the p
 Chromium on ANGLE-Metal, 1280x800 CSS at device scale 2, plus one WebKit iPad portrait frame.
 
 - **Hand pixels.** At each time, two frames at the same eye and bearing: the player's eye (hands on), then a lookbook
-  pose at that exact eye and direction (a pose hides the hands). A pixel in the lower 60% of the frame is a hand pixel
-  when any channel differs by more than 24 (8-bit). The HUD is in both frames and drops out. Denominator: at least
+  pose at that exact eye and direction (a pose hides the hands). A pixel below 55% of the frame height is a hand pixel
+  when any channel differs by more than 24 (8-bit) and a second hidden frame agrees with the first there within 12. The HUD is in both frames and drops out. Denominator: at least
   1.5% of the frame's pixels, or the shot is COULD NOT MEASURE.
 - **Value floor, at midnight (cycle 0.75).** Mean luma of the hand pixels in the hands-on frame, Rec. 709 weights on
   the 8-bit encoded values: **at least 48**, and the median **at least 40**. Before this lane it is about 10.
 - **Warm.** At 0.30, 0.48, 0.55 and 0.75: mean red at least 1.3 times mean blue over the hand pixels.
-- **No clipping.** The player walks into a wall (a real W key at the `turf-wall` material sight, held until the
-  controller stops them). Hand pixels at point blank divided by hand pixels in open ground at the same time and
+- **No clipping.** The player walks into a wall (a real W key at the `trunk` material sight, held until the
+  controller stops them; the first run used the `turf-wall` sight, whose one-block terraces the controller climbs). Hand pixels at point blank divided by hand pixels in open ground at the same time and
   bearing: **at least 0.9** after (before, the wall swallows most of them).
 - **Touch.** WebKit 820x1180 (iPad portrait): both gauntlets inside the frame, by eye and by the mask's left and
   right halves both holding hand pixels.
 
 Anti-attack (what would pass and be wrong): a bright emissive core alone could lift the mean while the plates stay
-black, so the median is declared too; a diff mask can catch a mob or a cloud, so the mask is limited to the lower
-60% and its size is printed; the pose twin must face the same direction (heading and pitch read back within 0.5
+black, so the median is declared too; a diff mask can catch a mob, a cloud or swaying grass, so the mask is limited to
+the lower 45%, unstable pixels are dropped, and its size is printed; the pose twin must face the same direction (heading and pitch read back within 0.5
 degrees) or the pair is refused.
 
 ## Decisions this lane records (DECISIONS, items after the last on main)
@@ -98,7 +98,8 @@ degrees) or the pair is refused.
 9. **Shoot**, one GPU run at a time under the lock, load under 28: before build (c3a0a7cb) and after build,
    `--sets hands`. Frames to `masterpiece-2026-10/evidence/w2e/`, 12 at most, none over 300 KB.
 10. **Eye height**, its own commit. **Shadow camera term**, its own commit.
-11. DECISIONS, registry, `memory/ACTIVE_PLAN.md` pointer; verify; merge origin/main; push; PR; CI on the head sha.
+11. DECISIONS, registry; verify; merge origin/main; push; PR; CI on the head sha. (`memory/ACTIVE_PLAN.md` is the
+    command session's cursor and is left to it.)
 
 ## Verification
 
