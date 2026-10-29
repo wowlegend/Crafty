@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   makeZoneRegistry, spawnZone, stepZones, clearZones,
   MAX_ZONES, ZONE_DEFS, AMP_RADIUS_MULT, AMP_TTL_MULT,
+  chainTargets, CHAIN_RANGE, CHAIN_MIN_DIST,
 } from './elementZones';
 
 const at = (x, z) => ({ x, y: 50, z });
@@ -116,5 +117,34 @@ describe('S2-B4-M4: applyZoneEffects (chemistry acts on combat)', () => {
     expect(lured.isAggro).toBe(true);
     expect(far.isAggro).toBe(false);
     expect(dead.isAggro).toBe(false);
+  });
+});
+
+// An imbue that chains (DECISIONS 2026-10-28 W1-H item 6; Chain Imbue, Wildfire, Prism Shard): the zone leaps to the n
+// nearest hostiles within CHAIN_RANGE, outside CHAIN_MIN_DIST; Conflux widens a painted zone by radiusMult.
+describe('chainTargets and a widened zone', () => {
+  const at = (id, x, z, extra = {}) => ({ id, position: { x, y: 1, z }, health: 10, ...extra });
+  const hostile = (e) => e.health > 0 && !e.passive && !e.isAlly;
+  const mobs = [at('near', 3, 0), at('mid', 0, 5), at('far', 7.9, 0), at('out', 9, 0), at('in', 1, 0),
+    at('pig', 2.5, 0, { passive: true }), at('ally', 0, 3, { isAlly: true }), at('dead', 0, -3, { health: 0 })];
+
+  it('returns the n nearest accepted mobs in range, nearest first, skipping one inside the zone it leaps from', () => {
+    expect(chainTargets({ x: 0, y: 1, z: 0 }, mobs, 1, CHAIN_RANGE, hostile)).toEqual([{ x: 3, y: 1, z: 0 }]);
+    expect(chainTargets({ x: 0, y: 1, z: 0 }, mobs, 2, CHAIN_RANGE, hostile)).toEqual([{ x: 3, y: 1, z: 0 }, { x: 0, y: 1, z: 5 }]);
+    const all = chainTargets({ x: 0, y: 1, z: 0 }, mobs, 9, CHAIN_RANGE, hostile);
+    expect(all.length, 'the leap took a passive, an ally, a corpse, one out of range or one inside the first zone').toBe(3);
+    expect(all.map((p) => p.x)).toEqual([3, 0, 7.9]);
+    expect(CHAIN_MIN_DIST).toBeGreaterThan(1);
+  });
+
+  it('leaps nowhere with a chain of 0 or a junk count', () => {
+    for (const n of [0, -1, NaN, undefined]) expect(chainTargets({ x: 0, y: 1, z: 0 }, mobs, n, CHAIN_RANGE, hostile)).toEqual([]);
+  });
+
+  it('a radiusMult widens a new zone; none or junk leaves its kind\'s radius', () => {
+    const reg = makeZoneRegistry();
+    expect(spawnZone(reg, { kind: 'burning', pos: { x: 0, y: 0, z: 0 }, radiusMult: 1.5 }, 0).radius).toBeCloseTo(ZONE_DEFS.burning.radius * 1.5, 10);
+    expect(spawnZone(reg, { kind: 'frozen', pos: { x: 50, y: 0, z: 0 } }, 0).radius).toBe(ZONE_DEFS.frozen.radius);
+    expect(spawnZone(reg, { kind: 'conductive', pos: { x: 90, y: 0, z: 0 }, radiusMult: -2 }, 0).radius).toBe(ZONE_DEFS.conductive.radius);
   });
 });

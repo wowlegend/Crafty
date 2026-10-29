@@ -7,9 +7,14 @@
  */
 let _request = null;
 
-/** requestZone({ kind, pos }) — the imbued impact's ask. */
+/** requestZone({ kind, pos, chain?, radiusMult? }) — the imbued impact's ask, with the imbue's verb numbers (verbMods). */
 export function requestZone(spec) {
-  _request = { kind: spec.kind, pos: { x: spec.pos.x, y: spec.pos.y, z: spec.pos.z } };
+  _request = {
+    kind: spec.kind,
+    pos: { x: spec.pos.x, y: spec.pos.y, z: spec.pos.z },
+    chain: Number.isFinite(spec.chain) ? spec.chain : 0,
+    radiusMult: Number.isFinite(spec.radiusMult) ? spec.radiusMult : 1,
+  };
 }
 
 /** consumeZoneRequest() -> the pending request or null (single-shot). */

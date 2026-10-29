@@ -8,6 +8,8 @@
 // loot-coverage gate enforces that invariant; add new drop items to the ITEMS registry first.
 
 // Per-mob drop tables. Keyed by MOB_TYPES key. Each row: { item, chance (0..1], xp }.
+// Relics (game/relics.js) drop from hostiles, each from the creatures whose verb it echoes: Ember Fang from emberhusks
+// and duskhounds, Lodestone from moss brutes, Snare Knot from spiders and skitterlings, Prism Shard from skeletons.
 export const LOOT_TABLES = {
     pig: [
         { item: 'Raw Porkchop', chance: 0.8, xp: 5 },
@@ -27,11 +29,13 @@ export const LOOT_TABLES = {
         { item: 'Bone', chance: 0.9, xp: 3 },
         { item: 'Arrow', chance: 0.6, xp: 4 },
         { item: 'Iron Nugget', chance: 0.2, xp: 8 },
+        { item: 'Prism Shard', chance: 0.04, xp: 20 },
     ],
     spider: [
         { item: 'Spider Eye', chance: 0.6, xp: 5 },
         { item: 'String', chance: 0.8, xp: 3 },
         { item: 'Ender Pearl', chance: 0.03, xp: 30 },
+        { item: 'Snare Knot', chance: 0.04, xp: 20 },
     ],
     // --- content-coherence pass (2026-06-14): loot for the variety/content hostiles ---
     // skitterling: tiny purple spider-kin swarmer -> spider-flavoured low loot + a rare purple pearl.
@@ -39,24 +43,28 @@ export const LOOT_TABLES = {
         { item: 'String', chance: 0.7, xp: 3 },
         { item: 'Spider Eye', chance: 0.4, xp: 4 },
         { item: 'Ender Pearl', chance: 0.02, xp: 30 },
+        { item: 'Snare Knot', chance: 0.04, xp: 20 },
     ],
     // duskhound: fast quadruped predator -> a beast's meat + hide + bone.
     duskhound: [
         { item: 'Bone', chance: 0.8, xp: 3 },
         { item: 'Leather', chance: 0.5, xp: 4 },
         { item: 'Raw Beef', chance: 0.3, xp: 5 },
+        { item: 'Ember Fang', chance: 0.04, xp: 20 },
     ],
     // moss_brute: rare 220-HP heavy tank -> the high-value kill (iron + emerald + a rare diamond payoff).
     moss_brute: [
         { item: 'Iron Nugget', chance: 0.7, xp: 10 },
         { item: 'Emerald', chance: 0.35, xp: 25 },
         { item: 'Diamond', chance: 0.06, xp: 60 },
+        { item: 'Lodestone', chance: 0.06, xp: 20 },
     ],
     // emberhusk: charred night-siege husk -> a burnt scavenger's bone + salvaged metal.
     emberhusk: [
         { item: 'Bone', chance: 0.7, xp: 4 },
         { item: 'Iron Nugget', chance: 0.4, xp: 8 },
         { item: 'Emerald', chance: 0.08, xp: 25 },
+        { item: 'Ember Fang', chance: 0.05, xp: 20 },
     ],
 };
 

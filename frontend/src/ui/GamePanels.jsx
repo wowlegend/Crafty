@@ -8,6 +8,7 @@ import { Panel, Button, Slot, Icon, SpellRing, Slider, Modal } from './primitive
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon } from 'lucide-react';
 import { getItemRarity } from '../data/items.js';
 import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
+import { relicByName } from '../game/relics.js';
 import { gearStatRows } from '../game/gearCompare.js';
 import { isConsumable, consumeEffect } from '../game/consumables.js';
 import { replayOnboardingTips } from '../game/onboardingTips.js';
@@ -90,6 +91,19 @@ const GearInspector = ({ itemName, equippedGear }) => {
     const slot = getItemSlot(itemName);
     const rarity = getItemRarity(itemName);
     const rarityText = RARITY_TEXT[rarity];
+
+    const relic = relicByName(itemName);
+    if (relic) {
+        // A relic changes a verb rather than adding a stat, so it reads its change in words.
+        return (
+            <Panel variant="inset" className="p-3 text-center select-none" data-testid="relic-inspect">
+                <div className="grid place-items-center mb-1"><ItemIcon itemName={itemName} size={36} /></div>
+                <div className="font-bold text-sm text-text truncate">{itemName}</div>
+                <div className={`text-[10px] font-bold capitalize mt-0.5 ${rarityText}`}>{rarity} {slot}</div>
+                <div className="text-[10px] text-text mt-2 border-t-chrome border-ink pt-2">{relic.desc}</div>
+            </Panel>
+        );
+    }
 
     if (!stats) {
         // Fallback for blocks/consumables. Drive the consumable label off the shared registry so raw meats,
@@ -297,14 +311,26 @@ export const Inventory = ({ onClose }) => {
                                         onHover={setHoveredItem}
                                     />
                                 </div>
-                                {/* Boots Slot */}
-                                <PaperDollSlot
-                                    label="Boots"
-                                    placeholderIcon="boots"
-                                    equippedItem={gameState.equipment?.boots}
-                                    onUnequip={() => handleUnequip('boots')}
-                                    onHover={setHoveredItem}
-                                />
+                                <div className="flex gap-2 w-full justify-center">
+                                    {/* Boots Slot */}
+                                    <PaperDollSlot
+                                        label="Boots"
+                                        placeholderIcon="boots"
+                                        equippedItem={gameState.equipment?.boots}
+                                        onUnequip={() => handleUnequip('boots')}
+                                        onHover={setHoveredItem}
+                                    />
+                                    {/* Relic Slot: one relic, which changes an Aspect verb (game/relics.js) */}
+                                    <div data-testid="relic-slot">
+                                        <PaperDollSlot
+                                            label="Relic"
+                                            placeholderIcon="pendant"
+                                            equippedItem={gameState.equipment?.relic}
+                                            onUnequip={() => handleUnequip('relic')}
+                                            onHover={setHoveredItem}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

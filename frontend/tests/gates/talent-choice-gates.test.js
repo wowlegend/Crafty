@@ -3,9 +3,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { SRC, strip } from './_srcWalk.js';
 import {
-  ASPECT_TREES, TALENT_LIMITS, foldTalentEffects,
+  ASPECT_TREES, TALENT_LIMITS,
   canUnlockTalent, talentBlockedBy, respecTalents,
 } from '../../src/game/talentTree.js';
+import { VERB_BASE, foldVerbMods } from '../../src/game/verbMods.js';
 import { useGameStore } from '../../src/store/useGameStore';
 
 const NODES = ASPECT_TREES.flatMap((t) => t.nodes);
@@ -33,6 +34,9 @@ const NODES = ASPECT_TREES.flatMap((t) => t.nodes);
  * is the invariant, and a panel that lets you click a dead button is a separate (milder) defect.
  *
  * Mutation-Proof: 5 mutations, recorded on the commit.
+ *
+ * Since W2-F step 4 (DECISIONS 2026-10-28 W1-H item 6) every node changes a verb rather than adding a stat, so a
+ * capstone is checked through game/verbMods.js and a respec moves no health or mana cap.
  */
 describe('C4 the talent tree is a choice', () => {
   beforeEach(() => {
@@ -41,7 +45,7 @@ describe('C4 the talent tree is a choice', () => {
 
   it('every node id is unique and every limit is a positive integer', () => {
     // R3a: the sweeps below quantify over NODES. An empty or duplicated table makes them vacuous.
-    expect(NODES.length).toBeGreaterThanOrEqual(26);
+    expect(NODES.length).toBeGreaterThanOrEqual(18);
     expect(new Set(NODES.map((n) => n.id)).size).toBe(NODES.length);
     for (const n of NODES) expect(Number.isInteger(n.limit) && n.limit > 0, `${n.id} has a bad limit`).toBe(true);
     expect(Object.keys(TALENT_LIMITS).length).toBe(NODES.length);
@@ -66,8 +70,8 @@ describe('C4 the talent tree is a choice', () => {
     // Driven through the real action, not the pure predicate: the predicate is worth nothing if
     // spendTalentPoint does not consult it.
     const s = () => useGameStore.getState();
-    s().spendTalentPoint('voidhand_force');
-    s().spendTalentPoint('voidhand_crush');
+    s().spendTalentPoint('voidhand_grasp');
+    s().spendTalentPoint('voidhand_twin');
     s().spendTalentPoint('voidhand_singularity');
     expect(s().unlockedTalents.voidhand_singularity, 'the capstone could not be taken at all').toBe(1);
     const pointsBefore = s().talentPoints;
@@ -78,41 +82,44 @@ describe('C4 the talent tree is a choice', () => {
 
   it('the STORE refuses a node whose prereq is untaken — it used to allow it', () => {
     const s = () => useGameStore.getState();
-    s().spendTalentPoint('voidhand_crush');
-    expect(s().unlockedTalents.voidhand_crush, 'a gated node was ranked with no prereq').toBeUndefined();
+    s().spendTalentPoint('voidhand_twin');
+    expect(s().unlockedTalents.voidhand_twin, 'a gated node was ranked with no prereq').toBeUndefined();
     expect(s().talentPoints).toBe(20);
   });
 
-  it('RESPEC refunds every rank and the derived caps FALL — never a free heal', () => {
+  it('RESPEC refunds every rank and moves no health or mana cap (no talent adds a stat)', () => {
     const s = () => useGameStore.getState();
-    s().spendTalentPoint('voidhand_force');
-    s().spendTalentPoint('voidhand_ward');
+    s().spendTalentPoint('voidhand_grasp');
+    s().spendTalentPoint('voidhand_twin');
     const spent = 20 - s().talentPoints;
     expect(spent).toBe(2);
     const maxBefore = s().maxHealth;
     s().respecTalentPoints();
     expect(s().unlockedTalents, 'respec left ranks behind').toEqual({});
     expect(s().talentPoints, 'respec did not refund every point').toBe(20);
-    expect(s().maxHealth, 'the caps did not fall when the stat talents went').toBeLessThanOrEqual(maxBefore);
-    expect(s().playerHealth, 'a respec healed the player past the new cap').toBeLessThanOrEqual(s().maxHealth);
+    expect(s().maxHealth, 'a respec moved the health cap').toBe(maxBefore);
+    expect(s().playerHealth, 'a respec healed the player past the cap').toBeLessThanOrEqual(s().maxHealth);
   });
 
-  it('capstones FOLD through the stat pipeline — no dead config', () => {
-    // An effect-less capstone would need a call site, and a table entry nothing reads is dead config
-    // that looks like a feature. Every exclusive node must carry a real effect.
+  it('capstones CHANGE A VERB through the verbMods fold — no dead config', () => {
+    // A capstone with no modifier would need a call site, and a table entry nothing reads is dead config
+    // that looks like a feature. Every exclusive node must move one verb number when taken.
+    let checked = 0;
     for (const n of NODES.filter((x) => x.excludes)) {
-      expect(n.effect, `${n.id} is exclusive but has no effect — it would do nothing when taken`).toBeTruthy();
-      const folded = foldTalentEffects({ strength: 0, agility: 0, intellect: 0, armor: 0 }, { [n.id]: 1 });
-      expect(folded[n.effect.stat], `${n.id} folds to nothing`).toBe(n.effect.perRank);
+      expect(n.mod, `${n.id} is exclusive but changes no verb — it would do nothing when taken`).toBeTruthy();
+      const folded = foldVerbMods({ [n.id]: 1 }, null);
+      expect(folded[n.mod.key], `${n.id} folds to nothing`).toBeCloseTo(VERB_BASE[n.mod.key] + n.mod.add, 10);
+      checked++;
     }
+    expect(checked).toBe(8);
   });
 
   it('the pure predicate and the store agree — one authority, not two', () => {
-    expect(canUnlockTalent('voidhand_crush', {}, 5), 'prereq untaken must be refused').toBe(false);
-    expect(canUnlockTalent('voidhand_force', {}, 0), 'no points must be refused').toBe(false);
-    expect(canUnlockTalent('voidhand_force', {}, 5)).toBe(true);
+    expect(canUnlockTalent('voidhand_twin', {}, 5), 'prereq untaken must be refused').toBe(false);
+    expect(canUnlockTalent('voidhand_grasp', {}, 0), 'no points must be refused').toBe(false);
+    expect(canUnlockTalent('voidhand_grasp', {}, 5)).toBe(true);
     expect(talentBlockedBy('voidhand_horizon', { voidhand_singularity: 1 })).toBe('voidhand_singularity');
-    expect(talentBlockedBy('voidhand_force', { voidhand_singularity: 1 })).toBe(null);
+    expect(talentBlockedBy('voidhand_grasp', { voidhand_singularity: 1 })).toBe(null);
     expect(respecTalents({ a: 2, b: 1 }, 3)).toEqual({ unlockedTalents: {}, talentPoints: 6 });
   });
 
@@ -149,9 +156,9 @@ describe('C4 the respec and the exclusion are REACHABLE, not just implemented', 
 
   it('SquadAISystem ENFORCES the squad cap every tick (R1.4) — the store cannot reach the ECS world', () => {
     // The weak, structural half of respec-unwind-gates: the frame loop is an R3F useFrame and is not
-    // rendered in a unit test. The behaviour of releaseOverCap + squadCapFor is driven there for real.
+    // rendered in a unit test. The behaviour of releaseOverCap + the verbMods squadCap is driven there for real.
     const sq = strip(readFileSync(resolve(SRC, 'world/SquadAISystem.jsx'), 'utf8'));
-    expect(sq).toMatch(/releaseOverCap\(ecs, alliesQuery\.entities, squadCapFor\(store\.unlockedTalents\)\);/);
+    expect(sq).toMatch(/releaseOverCap\(ecs, alliesQuery\.entities, store\.getVerbMods\(\)\.squadCap\);/);
   });
 
   it('the respec action has a CALL SITE — it shipped with none', () => {

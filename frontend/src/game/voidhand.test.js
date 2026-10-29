@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { makeVoidhandState, decideVoidhand, GRAB_CHARGE_SEC, MAX_HOLD_SEC, GRAB_COOLDOWN_SEC, PHANTOM_BLOCK_COLORS } from './voidhand.js';
+import { HURL_TTL_SEC } from './hurl.js';
 
 // S2-B2-M1: the VOIDHAND grab SM (pure reducer). Twin of beastTransform.js. The store owns `held`
 // (ctx.held); this SM owns charge + hold/cooldown timers. IDLE -> CHARGING -> HELD -> hurl/slam/drop.
@@ -102,5 +103,48 @@ describe('the price', () => {
     expect(action, 'an unpaid grab committed, or ended silently').toBe('unpaid');
     expect(sm.charging).toBe(false);
     expect(sm.cooldownUntil).toBe(0);
+  });
+});
+
+// Twin Grasp and Lodestone (DECISIONS 2026-10-28 W1-H item 6, game/verbMods.js grabThrows): a grab that holds two blocks
+// hurls or slams the first and keeps the second in hand; Long Hold and Event Horizon (holdSec) lengthen the hold.
+describe('a grab that holds more than one block', () => {
+  const charging = { ...makeVoidhandState(), charging: true, chargeStart: 0 };
+  const commit = (ctx) => decideVoidhand(charging, { ...base, now: GRAB_CHARGE_SEC, ...ctx });
+
+  it('commits with the throws and the hold it is given, and defaults to one throw and MAX_HOLD_SEC', () => {
+    expect(commit({}).sm).toMatchObject({ throwsLeft: 1, heldUntil: GRAB_CHARGE_SEC + MAX_HOLD_SEC });
+    expect(commit({ throws: 2, holdSec: 12 }).sm).toMatchObject({ throwsLeft: 2, heldUntil: GRAB_CHARGE_SEC + 12 });
+    expect(commit({ throws: NaN, holdSec: undefined }).sm).toMatchObject({ throwsLeft: 1, heldUntil: GRAB_CHARGE_SEC + MAX_HOLD_SEC });
+  });
+
+  it('hurls the first block and keeps the second held, with no cooldown, then releases on the second throw', () => {
+    const held = commit({ throws: 2 }).sm;
+    const first = decideVoidhand(held, { ...base, held: true, attack: true, now: 1 });
+    expect(first.action).toBe('hurl');
+    expect(first.keep, 'the second block left the hand with the first').toBe(true);
+    expect(first.sm.cooldownUntil, 'a kept block armed the release cooldown').toBe(held.cooldownUntil);
+    expect(first.sm.heldUntil).toBe(held.heldUntil);
+    // The hurl system flies one block at a time: the kept block waits out the first one's flight.
+    expect(decideVoidhand(first.sm, { ...base, held: true, cast: true, now: 1 + HURL_TTL_SEC - 0.01 }).action, 'a throw inside the first one\'s flight went out').toBe('none');
+    const t2 = 1 + HURL_TTL_SEC;
+    const second = decideVoidhand(first.sm, { ...base, held: true, cast: true, now: t2 });
+    expect(second.action).toBe('slam');
+    expect(second.keep).toBeUndefined();
+    expect(second.sm.cooldownUntil).toBe(t2 + GRAB_COOLDOWN_SEC);
+  });
+
+  it('a one-throw grab releases on its first throw, as before', () => {
+    const held = commit({ throws: 1 }).sm;
+    const r = decideVoidhand(held, { ...base, held: true, attack: true, now: 1 });
+    expect(r.action).toBe('hurl');
+    expect(r.keep).toBeUndefined();
+  });
+
+  it('a held block still drops at its hold timer, on death, and on a re-press, with throws left', () => {
+    const held = commit({ throws: 3, holdSec: 4 }).sm;
+    expect(decideVoidhand(held, { ...base, held: true, now: GRAB_CHARGE_SEC + 4 }).action).toBe('drop');
+    expect(decideVoidhand(held, { ...base, held: true, now: 1, alive: false }).action).toBe('drop');
+    expect(decideVoidhand(held, { ...base, held: true, now: 1, grabEdge: true }).action).toBe('drop');
   });
 });

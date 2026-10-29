@@ -6,8 +6,8 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 
 // The audit flagged "talent-tree spend never E2E'd". The SpellUpgradePanel renders one "Upgrade" button
 // per unlockable talent node (gated by talentPoints + prereq + rank-cap) and calls the REAL
-// spendTalentPoint store action, which both decrements the pool AND folds the talent's stat effect into
-// getEffectiveAttributes. This renders the REAL panel and clicks the REAL node-Upgrade buttons,
+// spendTalentPoint store action, which decrements the pool and ranks the node; a node changes a verb
+// (getVerbMods), never a stat. This renders the REAL panel and clicks the REAL node-Upgrade buttons,
 // asserting the store mutated and the prereq chain unlocks dynamically. No SoundProvider needed (the
 // panel uses store selectors only, not useGameSounds).
 const g = () => useGameStore.getState();
@@ -34,8 +34,8 @@ afterEach(() => {
 });
 
 // Click the "Upgrade" button inside the talent-node card whose heading is `nodeName` — robust to the
-// many sibling "Upgrade" buttons (one per node + spell-mastery row): climb to the nearest ancestor
-// that owns exactly this node's Upgrade button.
+// many sibling "Upgrade" buttons (one per node): climb to the nearest ancestor that owns exactly this
+// node's Upgrade button.
 function clickUpgradeInNode(nodeName) {
   const label = screen.getByText(nodeName);
   let row = label.parentElement;
@@ -47,40 +47,45 @@ function clickUpgradeInNode(nodeName) {
 }
 
 describe('SpellUpgradePanel talent tree (jsdom) — real Upgrade buttons spend talent points', () => {
-  it('unlocking a no-prereq node spends a point and ranks it up, and folds no stat', () => {
+  it('unlocking a root spends a point, ranks it up, and folds no stat', () => {
     render(<SpellUpgradePanel onClose={() => {}} />);
     const strBefore = g().getEffectiveAttributes().strength;
 
-    clickUpgradeInNode('Kinetic Force'); // voidhand_force: +3 STR/rank, prereq null
+    clickUpgradeInNode('Primal Roar'); // wildheart_roar: the verb unlock, prereq null
 
-    expect(g().unlockedTalents.voidhand_force).toBe(1);
+    expect(g().unlockedTalents.wildheart_roar).toBe(1);
     expect(g().talentPoints).toBe(1);
     expect(g().getEffectiveAttributes().strength, 'a talent added a stat').toBe(strBefore);
   });
 
-  it('a prereq node becomes upgradeable only after its parent is unlocked (dynamic gate)', () => {
+  it('a modifier becomes upgradeable only after its root, and taking it changes the verb', () => {
     render(<SpellUpgradePanel onClose={() => {}} />);
-    const strBefore = g().getEffectiveAttributes().strength;
+    const roarBefore = g().getVerbMods().roarSec;
 
-    // Crushing Pull (voidhand_crush, +2 STR/rank) requires voidhand_force — locked at first render.
-    expect(g().unlockedTalents.voidhand_crush).toBeUndefined();
-    clickUpgradeInNode('Kinetic Force'); // satisfy the prereq
-    // now the panel re-renders and Crushing Pull exposes its Upgrade button
-    clickUpgradeInNode('Crushing Pull');
+    expect(screen.queryByTestId('talent-take-wildheart_endurance'), 'a gated node offered its button before its root').toBeNull();
+    clickUpgradeInNode('Primal Roar'); // satisfy the prereq
+    fireEvent.click(screen.getByTestId('talent-take-wildheart_endurance'));
 
-    expect(g().unlockedTalents.voidhand_force).toBe(1);
-    expect(g().unlockedTalents.voidhand_crush).toBe(1);
+    expect(g().unlockedTalents.wildheart_roar).toBe(1);
+    expect(g().unlockedTalents.wildheart_endurance).toBe(1);
     expect(g().talentPoints).toBe(0); // both points spent
-    expect(g().getEffectiveAttributes().strength, 'a talent added a stat').toBe(strBefore);
+    expect(g().getVerbMods().roarSec, 'Primal Endurance did not lengthen the roar').toBe(roarBefore + 3);
   });
 
   it('with zero talent points the node Upgrade button is disabled and the click is a no-op', () => {
     seed(0);
     render(<SpellUpgradePanel onClose={() => {}} />);
 
-    clickUpgradeInNode('Kinetic Force'); // button rendered but disabled (canUpgrade=false)
+    clickUpgradeInNode('Primal Roar'); // button rendered but disabled (canUpgrade=false)
 
-    expect(g().unlockedTalents.voidhand_force).toBeUndefined();
+    expect(g().unlockedTalents.wildheart_roar).toBeUndefined();
     expect(g().talentPoints).toBe(0);
+  });
+
+  it('the page has no Spell Mastery section and no stat node', () => {
+    render(<SpellUpgradePanel onClose={() => {}} />);
+    expect(screen.getByTestId('progression-panel'), 'SETUP: the page did not render').toBeTruthy();
+    expect(screen.queryByText(/Spell Mastery/i)).toBeNull();
+    expect(screen.queryByText(/\+\d+ (Strength|Agility|Intellect|Armor)/)).toBeNull();
   });
 });

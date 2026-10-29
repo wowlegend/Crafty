@@ -3,7 +3,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 import { World } from 'miniplex';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
-import { squadCapFor, BASE_SQUAD_CAP } from '../../src/game/soulbind.js';
+import { BASE_SQUAD_CAP } from '../../src/game/soulbind.js';
+import { foldVerbMods } from '../../src/game/verbMods.js';
 import { releaseOverCap } from '../../src/game/allegiance.js';
 import { makeImbueState, decideImbue } from '../../src/game/elemancer.js';
 import { SpellUpgradePanel, RESPEC_ARM_MS } from '../../src/ui/SpellUpgradePanel.jsx';
@@ -31,7 +32,8 @@ import { SpellUpgradePanel, RESPEC_ARM_MS } from '../../src/ui/SpellUpgradePanel
  *   M9 panel: the arm never expires                                   -> disarm-timeout RED
  *
  * BLIND SPOT: SquadAISystem's frame loop is an R3F useFrame and is not rendered here; that it CALLS
- * releaseOverCap with squadCapFor is asserted structurally in talent-choice-gates, the weak kind.
+ * releaseOverCap with the store's getVerbMods().squadCap is asserted structurally in talent-choice-gates, the weak kind.
+ * Since W2-F step 4 the squad cap is game/verbMods.js squadCap (Pack Warden and Warden Bulwark each add a slot).
  */
 
 const s = () => useGameStore.getState();
@@ -42,7 +44,7 @@ describe('R1.4 — the store unwinds live grants on respec', () => {
   beforeEach(() => {
     useGameStore.setState({
       talentPoints: 0,
-      unlockedTalents: { wildheart_vigor: 1, wildheart_roar: 1, voidhand_grasp: 1 },
+      unlockedTalents: { wildheart_roar: 1, wildheart_endurance: 1, voidhand_grasp: 1 },
       beastFormActive: true, activeBeastForm: 'fire', beastCharging: false,
       voidhandHeld: true, heldPhantom: { color: '#A9966E' },
     });
@@ -60,10 +62,12 @@ describe('R1.4 — the store unwinds live grants on respec', () => {
 });
 
 describe('R1.4 — the squad cap is an invariant, not a gate on new binds', () => {
-  it('Pack Bond adds exactly one slot to the base', () => {
-    expect(squadCapFor({})).toBe(BASE_SQUAD_CAP);
-    expect(squadCapFor(undefined)).toBe(BASE_SQUAD_CAP);
-    expect(squadCapFor({ soulbind_pack: 1 })).toBe(BASE_SQUAD_CAP + 1);
+  it('Pack Warden adds exactly one slot to the base, and the store reads the same cap', () => {
+    expect(foldVerbMods({}, null).squadCap).toBe(BASE_SQUAD_CAP);
+    expect(foldVerbMods(undefined, null).squadCap).toBe(BASE_SQUAD_CAP);
+    expect(foldVerbMods({ soulbind_snare: 1, soulbind_pack: 1 }, null).squadCap).toBe(BASE_SQUAD_CAP + 1);
+    useGameStore.setState({ unlockedTalents: { soulbind_snare: 1, soulbind_pack: 1 } });
+    expect(s().getVerbMods().squadCap).toBe(BASE_SQUAD_CAP + 1);
   });
 
   function squad() {
@@ -86,12 +90,12 @@ describe('R1.4 — the squad cap is an invariant, not a gate on new binds', () =
     expect(allies.entities).toHaveLength(3);
   });
 
-  it('the respec path end to end: Pack Bond refunded -> the cap falls -> the third ally departs', () => {
+  it('the respec path end to end: Pack Warden refunded -> the cap falls -> the third ally departs', () => {
     const { world, allies } = squad();
     useGameStore.setState({ talentPoints: 0, unlockedTalents: { soulbind_snare: 1, soulbind_pack: 1 } });
-    expect(releaseOverCap(world, allies.entities, squadCapFor(s().unlockedTalents))).toEqual([]);
+    expect(releaseOverCap(world, allies.entities, s().getVerbMods().squadCap)).toEqual([]);
     s().respecTalentPoints();
-    releaseOverCap(world, allies.entities, squadCapFor(s().unlockedTalents));
+    releaseOverCap(world, allies.entities, s().getVerbMods().squadCap);
     expect(allies.entities).toHaveLength(BASE_SQUAD_CAP);
   });
 });

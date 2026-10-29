@@ -1,170 +1,102 @@
 import { describe, it, expect } from 'vitest';
-import { ASPECT_TREES, TALENT_LIMITS, foldTalentEffects, refundUnknownTalents } from './talentTree.js';
+import { ASPECT_TREES, TALENT_LIMITS, talentNode, refundUnknownTalents, canUnlockTalent, talentBlockedBy, respecTalents } from './talentTree.js';
+import { VERB_BASE } from './verbMods.js';
+import { KEY_MAP } from './keyMap.js';
 
+// THE TREES (DECISIONS 2026-10-28 W1-H item 6): every node changes a verb. A root unlocks its Aspect's verb (the one
+// KEY_MAP gates on it) and needs no prerequisite; every other node carries one modifier in the verbMods vocabulary;
+// two capstones per tree exclude each other.
 const allNodes = ASPECT_TREES.flatMap((t) => t.nodes);
+const VERB_TALENTS = KEY_MAP.filter((r) => r.verb).map((r) => r.talent);
 
 describe('ASPECT_TREES shape', () => {
-  it('has exactly 4 aspect trees', () => {
-    expect(ASPECT_TREES).toHaveLength(4);
+  it('has exactly 4 aspect trees with unique node ids, each prerequisite a real node', () => {
     expect(ASPECT_TREES.map((t) => t.aspect)).toEqual(['voidhand', 'wildheart', 'soulbind', 'elemancer']);
-  });
-  it('every node has id/name/limit; effect is OPTIONAL (M6 signature/unlock nodes may omit it) and when present is {stat, perRank}', () => {
-    for (const n of allNodes) {
-      expect(typeof n.id).toBe('string');
-      expect(typeof n.name).toBe('string');
-      expect(n.limit).toBeGreaterThan(0);
-      if (n.effect) { // effect-ful stat node
-        expect(['strength', 'agility', 'intellect', 'armor']).toContain(n.effect.stat);
-        expect(n.effect.perRank).toBeGreaterThan(0);
-      }
-    }
-  });
-  it('node ids are unique', () => {
     const ids = allNodes.map((n) => n.id);
     expect(new Set(ids).size).toBe(ids.length);
-  });
-  it('every prereq references a real node id', () => {
-    const ids = new Set(allNodes.map((n) => n.id));
-    for (const n of allNodes) if (n.prereq) expect(ids.has(n.prereq)).toBe(true);
-  });
-  it('TALENT_LIMITS is derived from the trees (single source — no dual map)', () => {
+    for (const n of allNodes) if (n.prereq) expect(ids, `${n.id}'s prerequisite`).toContain(n.prereq);
     for (const n of allNodes) expect(TALENT_LIMITS[n.id]).toBe(n.limit);
   });
+
+  it('roots are the four verb unlocks, need nothing, carry no modifier, and every other node changes a verb', () => {
+    let roots = 0, mods = 0;
+    for (const n of allNodes) {
+      if (VERB_TALENTS.includes(n.id)) {
+        roots++;
+        expect(n.prereq, `${n.id} needs a prerequisite, so a level-2 player cannot take it`).toBeNull();
+        expect(n.mod, `${n.id} is an unlock and also a modifier`).toBeUndefined();
+        expect(n.limit).toBe(1);
+      } else {
+        mods++;
+        expect(n.mod, `${n.id} changes no verb`).toBeTruthy();
+        expect(Object.keys(VERB_BASE), `${n.id}'s key is not in the vocabulary`).toContain(n.mod.key);
+        expect(n.mod.add, `${n.id} changes its verb by nothing`).toBeGreaterThan(0);
+        expect('effect' in n, `${n.id} adds a stat`).toBe(false);
+      }
+    }
+    expect(roots).toBe(4);
+    expect(mods).toBe(allNodes.length - 4);
+  });
+
+  it('names the four changes the decision asks for: a longer roar, a second grab, a wider snare, an imbue that chains', () => {
+    expect(talentNode('wildheart_endurance').mod.key).toBe('roarSec');
+    expect(talentNode('voidhand_twin').mod).toEqual({ key: 'grabThrows', add: 1 });
+    expect(talentNode('soulbind_wide').mod.key).toBe('snareArc');
+    expect(talentNode('elemancer_chain').mod).toEqual({ key: 'imbueChain', add: 1 });
+  });
+
+  it('gives every tree exactly one pair of capstones, each excluding the other and sharing a prerequisite', () => {
+    for (const tree of ASPECT_TREES) {
+      const caps = tree.nodes.filter((n) => n.excludes);
+      expect(caps.length, `${tree.aspect} capstones`).toBe(2);
+      const [a, b] = caps;
+      expect(a.excludes).toBe(b.id);
+      expect(b.excludes).toBe(a.id);
+      expect(a.prereq).toBe(b.prereq);
+      expect(a.prereq, `${tree.aspect}'s capstones sit on its root`).not.toBe(tree.nodes[0].id);
+    }
+  });
 });
 
-describe('foldTalentEffects (derive, never mutate base)', () => {
-  it('adds perRank * rank to the matching effective stat', () => {
-    const base = { strength: 10, agility: 10, intellect: 10, armor: 0 };
-    const out = foldTalentEffects(base, { voidhand_force: 2 }); // +3 STR/rank
-    expect(out.strength).toBe(16);
-    expect(base.strength).toBe(10); // base untouched
+describe('canUnlockTalent, exclusivity and respec', () => {
+  it('takes a root at once, a modifier only after its root, and a capstone only while its rival is untaken', () => {
+    expect(canUnlockTalent('wildheart_roar', {}, 1)).toBe(true);
+    expect(canUnlockTalent('wildheart_endurance', {}, 1)).toBe(false);
+    expect(canUnlockTalent('wildheart_endurance', { wildheart_roar: 1 }, 1)).toBe(true);
+    expect(canUnlockTalent('wildheart_endurance', { wildheart_roar: 1, wildheart_endurance: 3 }, 1), 'over the limit').toBe(false);
+    const built = { wildheart_roar: 1, wildheart_endurance: 1 };
+    expect(canUnlockTalent('wildheart_apex', built, 1)).toBe(true);
+    expect(canUnlockTalent('wildheart_apex', { ...built, wildheart_untamed: 1 }, 1)).toBe(false);
+    expect(talentBlockedBy('wildheart_apex', { ...built, wildheart_untamed: 1 })).toBe('wildheart_untamed');
+    expect(canUnlockTalent('wildheart_roar', {}, 0), 'no points').toBe(false);
+    expect(canUnlockTalent('voidhand_force', {}, 5), 'a retired id').toBe(false);
   });
-  it('sums multiple talents + ignores unknown ids', () => {
-    const out = foldTalentEffects({ strength: 10, agility: 10, intellect: 10, armor: 0 },
-      { voidhand_ward: 3, wildheart_swift: 1, bogus_id: 5 }); // +18 armor, +4 agi
-    expect(out.armor).toBe(18);
-    expect(out.agility).toBe(14);
-  });
-  it('is read-idempotent (folding twice off the same base gives the same result)', () => {
-    const base = { strength: 10, agility: 10, intellect: 10, armor: 0 };
-    expect(foldTalentEffects(base, { soulbind_aegis: 2 }).armor).toBe(10);
-    expect(foldTalentEffects(base, { soulbind_aegis: 2 }).armor).toBe(10);
+
+  it('respec returns every rank as a point', () => {
+    expect(respecTalents({ wildheart_roar: 1, wildheart_endurance: 2 }, 3)).toEqual({ unlockedTalents: {}, talentPoints: 6 });
   });
 });
 
-describe('refundUnknownTalents (migration)', () => {
-  it('refunds ranks of stale (non-ASPECT_TREES) ids back into points + drops them', () => {
-    const { unlockedTalents, talentPoints } = refundUnknownTalents({ frost_shield: 2, voidhand_force: 1 }, 0);
-    expect(unlockedTalents).toEqual({ voidhand_force: 1 });
-    expect(talentPoints).toBe(2);
+describe('refundUnknownTalents (load)', () => {
+  it('refunds retired ids, ranks over a limit, orphans of a missing prerequisite, and the later of two rival capstones', () => {
+    const r = refundUnknownTalents({
+      voidhand_force: 2, // retired
+      wildheart_roar: 1, wildheart_endurance: 5, // 2 over the limit of 3
+      elemancer_chain: 1, // its root elemancer_imbue is not held
+      soulbind_snare: 1, soulbind_wide: 1, soulbind_communion: 1, soulbind_bulwark: 1, // both rivals
+    }, 1);
+    expect(r.unlockedTalents).toEqual({ wildheart_roar: 1, wildheart_endurance: 3, soulbind_snare: 1, soulbind_wide: 1, soulbind_bulwark: 1 });
+    expect(r.talentPoints).toBe(1 + 2 + 2 + 1 + 1);
   });
-  it('no-op when all ids are valid', () => {
-    const r = refundUnknownTalents({ voidhand_force: 1 }, 3);
-    expect(r.unlockedTalents).toEqual({ voidhand_force: 1 });
+
+  it('takes a refunded root\'s whole branch with it', () => {
+    const r = refundUnknownTalents({ wildheart_endurance: 2, wildheart_apex: 1 }, 0);
+    expect(r.unlockedTalents).toEqual({});
     expect(r.talentPoints).toBe(3);
   });
-});
 
-describe('M6 signature nodes + effect-less fold-tolerance', () => {
-  const wild = ASPECT_TREES.find((t) => t.aspect === 'wildheart');
-  const roar = wild.nodes.find((n) => n.id === 'wildheart_roar');
-  const endurance = wild.nodes.find((n) => n.id === 'wildheart_endurance');
-
-  it('wildheart_roar is a pure unlock (effect-less, limit 1, prereq Beast Vigor)', () => {
-    expect(roar).toBeDefined();
-    expect(roar.effect).toBeUndefined();
-    expect(roar.limit).toBe(1);
-    expect(roar.prereq).toBe('wildheart_vigor');
-  });
-
-  it('wildheart_endurance is an effect-less ability-lever (prereq Primal Roar)', () => {
-    expect(endurance).toBeDefined();
-    expect(endurance.effect).toBeUndefined();
-    expect(endurance.prereq).toBe('wildheart_roar');
-    expect(endurance.limit).toBeGreaterThan(0);
-  });
-
-  it('TALENT_LIMITS includes the new nodes', () => {
-    expect(TALENT_LIMITS.wildheart_roar).toBe(1);
-    expect(TALENT_LIMITS.wildheart_endurance).toBe(endurance.limit);
-  });
-
-  it('REGRESSION: foldTalentEffects does NOT throw with an effect-less node unlocked (the crash fix)', () => {
-    const base = { strength: 10, agility: 10, intellect: 10, armor: 0 };
-    expect(() => foldTalentEffects(base, { wildheart_roar: 1 })).not.toThrow();
-    expect(foldTalentEffects(base, { wildheart_roar: 1 })).toEqual(base); // the unlock folds to NOTHING (skipped)
-    // ...and a co-unlocked stat node still folds normally (the unlock doesn't break the fold)
-    const out = foldTalentEffects(base, { wildheart_roar: 1, wildheart_vigor: 2 });
-    expect(out.strength).toBe(10 + 3 * 2); // Beast Vigor +3 STR/rank
-  });
-
-  it('refundUnknownTalents KEEPS the new nodes (they are known) + still drops stale ids', () => {
-    const { unlockedTalents, talentPoints } = refundUnknownTalents({ wildheart_roar: 1, wildheart_endurance: 2, stale_id: 3 }, 0);
-    expect(unlockedTalents.wildheart_roar).toBe(1);
-    expect(unlockedTalents.wildheart_endurance).toBe(2);
-    expect(unlockedTalents.stale_id).toBeUndefined();
-    expect(talentPoints).toBe(3);
-  });
-});
-
-describe('S2-B2-M4: voidhand_grasp (the grab unlock)', () => {
-  const voidhand = ASPECT_TREES.find((t) => t.aspect === 'voidhand');
-  const grasp = voidhand.nodes.find((n) => n.id === 'voidhand_grasp');
-
-  it('is a pure unlock (effect-less, limit 1, prereq Kinetic Force) — the wildheart_roar pattern', () => {
-    expect(grasp).toBeDefined();
-    expect(grasp.effect).toBeUndefined();
-    expect(grasp.limit).toBe(1);
-    expect(grasp.prereq).toBe('voidhand_force');
-  });
-
-  it('folds to NOTHING when unlocked (fold-tolerance — the crash-fix regression class)', () => {
-    const base = { strength: 10, agility: 10, intellect: 10, armor: 0 };
-    expect(() => foldTalentEffects(base, { voidhand_grasp: 1 })).not.toThrow();
-    expect(foldTalentEffects(base, { voidhand_grasp: 1 })).toEqual(base);
-    // a co-unlocked stat node still folds normally
-    const out = foldTalentEffects(base, { voidhand_grasp: 1, voidhand_force: 2 });
-    expect(out.strength).toBe(10 + 3 * 2); // Kinetic Force +3 STR/rank
-  });
-});
-
-describe('S2-B3-M2: soulbind_snare + soulbind_pack (the snare unlock + the +1-cap node)', () => {
-  const soulbind = ASPECT_TREES.find((t) => t.aspect === 'soulbind');
-  const snare = soulbind.nodes.find((n) => n.id === 'soulbind_snare');
-  const pack = soulbind.nodes.find((n) => n.id === 'soulbind_pack');
-
-  it('snare is a pure unlock (effect-less, limit 1, prereq Soul Bond) — the voidhand_grasp pattern', () => {
-    expect(snare).toBeDefined();
-    expect(snare.effect).toBeUndefined();
-    expect(snare.limit).toBe(1);
-    expect(snare.prereq).toBe('soulbind_bond');
-  });
-  it('pack is a pure capacity unlock (effect-less, limit 1, prereq snare)', () => {
-    expect(pack).toBeDefined();
-    expect(pack.effect).toBeUndefined();
-    expect(pack.limit).toBe(1);
-    expect(pack.prereq).toBe('soulbind_snare');
-  });
-  it('both fold to NOTHING when unlocked (fold-tolerance — the crash-fix regression class)', () => {
-    const base = { strength: 10, agility: 10, intellect: 10, armor: 0 };
-    expect(() => foldTalentEffects(base, { soulbind_snare: 1, soulbind_pack: 1 })).not.toThrow();
-    expect(foldTalentEffects(base, { soulbind_snare: 1, soulbind_pack: 1 })).toEqual(base);
-  });
-});
-
-describe('S2-B4-M2: elemancer_imbue (the imbue unlock)', () => {
-  const elemancer = ASPECT_TREES.find((t) => t.aspect === 'elemancer');
-  const imbue = elemancer.nodes.find((n) => n.id === 'elemancer_imbue');
-
-  it('is a pure unlock (effect-less, limit 1, prereq Elemental Focus) — the 4x pattern', () => {
-    expect(imbue).toBeDefined();
-    expect(imbue.effect).toBeUndefined();
-    expect(imbue.limit).toBe(1);
-    expect(imbue.prereq).toBe('elemancer_focus');
-  });
-  it('folds to NOTHING when unlocked (fold-tolerance)', () => {
-    const base = { strength: 10, agility: 10, intellect: 10, armor: 0 };
-    expect(() => foldTalentEffects(base, { elemancer_imbue: 1 })).not.toThrow();
-    expect(foldTalentEffects(base, { elemancer_imbue: 1 })).toEqual(base);
+  it('keeps a valid build unchanged', () => {
+    const build = { voidhand_grasp: 1, voidhand_twin: 1, voidhand_singularity: 1, elemancer_imbue: 1, elemancer_chain: 2 };
+    expect(refundUnknownTalents(build, 4)).toEqual({ unlockedTalents: build, talentPoints: 4 });
   });
 });

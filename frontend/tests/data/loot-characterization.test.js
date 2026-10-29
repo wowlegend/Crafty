@@ -203,6 +203,11 @@ describe('characterization: LOOT_TABLES structure', () => {
             "item": "Raw Beef",
             "xp": 5,
           },
+          {
+            "chance": 0.04,
+            "item": "Ember Fang",
+            "xp": 20,
+          },
         ],
         "emberhusk": [
           {
@@ -220,6 +225,11 @@ describe('characterization: LOOT_TABLES structure', () => {
             "item": "Emerald",
             "xp": 25,
           },
+          {
+            "chance": 0.05,
+            "item": "Ember Fang",
+            "xp": 20,
+          },
         ],
         "moss_brute": [
           {
@@ -236,6 +246,11 @@ describe('characterization: LOOT_TABLES structure', () => {
             "chance": 0.06,
             "item": "Diamond",
             "xp": 60,
+          },
+          {
+            "chance": 0.06,
+            "item": "Lodestone",
+            "xp": 20,
           },
         ],
         "pig": [
@@ -266,6 +281,11 @@ describe('characterization: LOOT_TABLES structure', () => {
             "item": "Iron Nugget",
             "xp": 8,
           },
+          {
+            "chance": 0.04,
+            "item": "Prism Shard",
+            "xp": 20,
+          },
         ],
         "skitterling": [
           {
@@ -283,6 +303,11 @@ describe('characterization: LOOT_TABLES structure', () => {
             "item": "Ender Pearl",
             "xp": 30,
           },
+          {
+            "chance": 0.04,
+            "item": "Snare Knot",
+            "xp": 20,
+          },
         ],
         "spider": [
           {
@@ -299,6 +324,11 @@ describe('characterization: LOOT_TABLES structure', () => {
             "chance": 0.03,
             "item": "Ender Pearl",
             "xp": 30,
+          },
+          {
+            "chance": 0.04,
+            "item": "Snare Knot",
+            "xp": 20,
           },
         ],
         "zombie": [
@@ -392,16 +422,20 @@ describe('characterization: loot identity strings are emoji-free (decouple done)
         "Arrow",
         "Bone",
         "Diamond",
+        "Ember Fang",
         "Emerald",
         "Ender Pearl",
         "Golden Crown",
         "Health Potion",
         "Iron Nugget",
         "Leather",
+        "Lodestone",
         "Mana Potion",
+        "Prism Shard",
         "Raw Beef",
         "Raw Porkchop",
         "Rotten Flesh",
+        "Snare Knot",
         "Spider Eye",
         "Star Fragment",
         "String",
@@ -410,10 +444,9 @@ describe('characterization: loot identity strings are emoji-free (decouple done)
   });
 
   it('counts the unique loot item identity strings', () => {
-    // 16 unique identity strings across LOOT_TABLES + CHEST_LOOT (W1 purged the dead
-    // Damage Scroll + Shield Scroll chest drops — buff_damage/buff_defense effects were
-    // never applied — dropping the count from 18 to 16).
-    expect([...new Set(allLootItemNames)].length).toBe(16);
+    // 20 unique identity strings across LOOT_TABLES + CHEST_LOOT: the 16 the W1 purge left (the dead
+    // Damage Scroll + Shield Scroll chest drops went) and the four relics (game/relics.js).
+    expect([...new Set(allLootItemNames)].length).toBe(20);
   });
 });
 

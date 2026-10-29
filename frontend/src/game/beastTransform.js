@@ -13,16 +13,9 @@
 export const ANTICIPATION_SEC = 0.45; // hold-roar charge window before the transform commits
 export const FORM_DURATION_SEC = 14;  // how long a beast form lasts before auto-exit
 export const COOLDOWN_SEC = 1.5;      // after exit, before roar can charge again
-export const ENDURANCE_SEC_PER_RANK = 3; // S2-B1-M6: each Primal Endurance rank extends the form (Kevin-tunable, Decision #4)
-
-/**
- * formDurationFor(enduranceRank) -> the effective beast-form duration in seconds. The Primal Endurance
- * talent is an ability-LEVER: its rank is read HERE (the duration site), NOT the stat-fold (the node is
- * effect-less). rank<=0 (no talent) -> the base FORM_DURATION_SEC. Pure + unit-tested.
- */
-export function formDurationFor(enduranceRank) {
-  return FORM_DURATION_SEC + Math.max(0, enduranceRank || 0) * ENDURANCE_SEC_PER_RANK;
-}
+// Each Primal Endurance rank lengthens the form by this much (its `mod` in game/talentTree.js); the form's length for
+// a build is game/verbMods.js roarSec, passed in as ctx.formDurationSec.
+export const ENDURANCE_SEC_PER_RANK = 3;
 
 /** The SM's own state (charge + timers). The active/human truth lives in the store, not here. */
 export function makeTransformState() {

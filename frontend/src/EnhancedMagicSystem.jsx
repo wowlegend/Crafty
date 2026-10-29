@@ -32,6 +32,13 @@ import { isHostile } from './combat/targeting';
 // one comparison and was allocated once per projectile per frame.
 const _bossVec = new THREE.Vector3();
 
+// An imbued impact asks for its zone with the imbue's verb numbers (game/verbMods.js): how many hostiles it leaps to
+// (imbueChain) and how wide it paints (zoneRadiusMult).
+function requestImbuedZone(projectile) {
+  const mods = useGameStore.getState().getVerbMods();
+  requestZone({ kind: projectile.imbueKind, pos: projectile.position, chain: mods.imbueChain, radiusMult: mods.zoneRadiusMult });
+}
+
 // The spell quests count spells, not hits: a bolt that pierces three enemies, or arcs through them, is one spell landed.
 const countLanding = (projectile) => {
   if (projectile.landedOnEnemy) return;
@@ -350,7 +357,7 @@ export const EnhancedMagicSystem = React.memo(() => {
           // S2-B4-M5: the imbued impact paints the element zone (the age-out above is a
           // FIZZLE by design — no zone, no refund; recorded in the M5 plan).
           if (projectile.imbueKind) {
-            requestZone({ kind: projectile.imbueKind, pos: projectile.position });
+            requestImbuedZone(projectile);
             projectile.imbueKind = null;
           }
           keep = false;
@@ -380,7 +387,7 @@ export const EnhancedMagicSystem = React.memo(() => {
             // S2-B4-M5: a mob hit grounds the zone at the impact point (zone effects are
             // 2D x/z); null-out so a piercing projectile spawns at most ONE zone.
             if (projectile.imbueKind) {
-              requestZone({ kind: projectile.imbueKind, pos: projectile.position });
+              requestImbuedZone(projectile);
               projectile.imbueKind = null;
             }
 

@@ -219,3 +219,15 @@ describe('M5 melee re-skin WIRING (resolveFormMelee + spellForElement — the re
     expect(resolveFormMelee.length).toBe(2); // (rawDamage, element) — guards against re-adding a spell arg
   });
 });
+
+// Apex Predator (DECISIONS 2026-10-28 W1-H item 6, game/verbMods.js beastMeleeMult): a form's swing scales by it on top
+// of the element's multiplier; a human swing never does.
+describe('resolveFormMelee with a beast multiplier', () => {
+  it('scales a form\'s swing, never a human one, and reads junk as 1', () => {
+    expect(resolveFormMelee(100, 'fire', 1.25).dealt).toBe(Math.round(100 * BEAST_FORMS.fire.damageMult * 1.25));
+    expect(resolveFormMelee(100, 'ice', 1.25).dealt).toBe(Math.round(100 * BEAST_FORMS.ice.damageMult * 1.25));
+    expect(resolveFormMelee(100, null, 1.25)).toEqual({ dealt: 100, sparkType: 'physical' });
+    expect(resolveFormMelee(100, 'fire', NaN).dealt).toBe(Math.round(100 * BEAST_FORMS.fire.damageMult));
+    expect(resolveFormMelee(100, 'fire').dealt).toBe(Math.round(100 * BEAST_FORMS.fire.damageMult));
+  });
+});

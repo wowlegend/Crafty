@@ -1,7 +1,8 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { HEAVY_HOLD_MS, HEAVY_CHARGE_MS, HEAVY_MULT } from '../../src/game/heavyAttack.js';
-import { formDurationFor, COOLDOWN_SEC } from '../../src/game/beastTransform.js';
+import { COOLDOWN_SEC } from '../../src/game/beastTransform.js';
+import { foldVerbMods } from '../../src/game/verbMods.js';
 import { TALENT_LIMITS } from '../../src/game/talentTree.js';
 import { TRANSFORM_CAM_SEC } from '../../src/game/transformCam.js';
 
@@ -306,7 +307,7 @@ test.describe('heavy melee', () => {
       window.__heavyLog.splice(0);
       return { press: h0 - h1, release: h1 - h2, form: [f0, f1], heldMs: Math.round(tr - tp), roars, pressAt: since(tp), head: h };
     }, { holdMs: HEAVY_HOLD_MS + HEAVY_CHARGE_MS + 200, camMs: TRANSFORM_CAM_SEC * 1000, roarMs: 20000,
-      lastsMs: formDurationFor(TALENT_LIMITS.wildheart_endurance) * 1000, cooldownMs: COOLDOWN_SEC * 1000 + 200 });
+      lastsMs: foldVerbMods({ wildheart_roar: 1, wildheart_endurance: TALENT_LIMITS.wildheart_endurance }, null).roarSec * 1000, cooldownMs: COOLDOWN_SEC * 1000 + 200 });
     await page.keyboard.up('r'); // Playwright's own key state; the roar intent is already down (inert either way)
     await page.waitForTimeout(120);
     r.beast.after = await read();

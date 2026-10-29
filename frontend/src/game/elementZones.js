@@ -60,17 +60,41 @@ export function spawnZone(reg, spec, now) {
     }
   }
 
+  // Conflux (game/verbMods.js zoneRadiusMult) widens a zone the player painted; a missing or junk value is 1.
+  const radiusMult = Number.isFinite(spec.radiusMult) && spec.radiusMult > 0 ? spec.radiusMult : 1;
   const zone = {
     id: reg.nextId++,
     kind: spec.kind,
     pos: { x: spec.pos.x, y: spec.pos.y, z: spec.pos.z },
-    radius: def.radius * (amplified ? AMP_RADIUS_MULT : 1),
+    radius: def.radius * (amplified ? AMP_RADIUS_MULT : 1) * radiusMult,
     expiresAt: now + def.ttl * (amplified ? AMP_TTL_MULT : 1),
     amplified,
   };
   reg.zones.push(zone);
   if (reg.zones.length > MAX_ZONES) reg.zones.shift(); // oldest-evict
   return zone;
+}
+
+/** How far an imbued zone leaps to the next hostile (Chain Imbue, Wildfire, Prism Shard). */
+export const CHAIN_RANGE = 8;
+/** A leap lands outside the zone it leapt from: a hostile nearer than this to the impact is already in it. */
+export const CHAIN_MIN_DIST = 2;
+
+/**
+ * The positions an imbued zone leaps to: the `n` nearest mobs that `isTarget` accepts, between CHAIN_MIN_DIST and
+ * `range` of `origin` on the ground plane, nearest first. Pure; the caller says what a target is.
+ */
+export function chainTargets(origin, mobs, n, range, isTarget) {
+  const count = Number.isFinite(n) ? Math.floor(n) : 0;
+  if (count <= 0 || !origin) return [];
+  const near = [];
+  for (const e of mobs || []) {
+    if (!e || !e.position || !isTarget(e)) continue;
+    const d2 = (e.position.x - origin.x) ** 2 + (e.position.z - origin.z) ** 2;
+    if (d2 <= range * range && d2 >= CHAIN_MIN_DIST * CHAIN_MIN_DIST) near.push({ d2, pos: e.position });
+  }
+  near.sort((a, b) => a.d2 - b.d2);
+  return near.slice(0, count).map((o) => ({ x: o.pos.x, y: o.pos.y, z: o.pos.z }));
 }
 
 /** stepZones(reg, now) -> { expired } — the bridge ticks this at 15Hz (M4). */

@@ -49,6 +49,11 @@ export const ITEMS = {
   diamond_chestplate: { name: 'Diamond Chestplate',  icon: 'chestplate', rarity: 'legendary' },
   diamond_boots:      { name: 'Diamond Boots',       icon: 'boots',      rarity: 'legendary' },
   crown_dragon_king:  { name: 'Crown of the Dragon King', icon: 'crown',  rarity: 'legendary' },
+  // Relics (game/relics.js): one goes in the relic slot and changes an Aspect verb.
+  relic_ember_fang:   { name: 'Ember Fang',          icon: 'fire',       rarity: 'epic' },
+  relic_lodestone:    { name: 'Lodestone',           icon: 'force',      rarity: 'epic' },
+  relic_snare_knot:   { name: 'Snare Knot',          icon: 'string',     rarity: 'epic' },
+  relic_prism_shard:  { name: 'Prism Shard',         icon: 'rune',       rarity: 'epic' },
   dragon_scale:       { name: 'Dragon Scale',             icon: 'shield', rarity: 'epic' },
 };
 

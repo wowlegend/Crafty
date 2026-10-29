@@ -72,22 +72,17 @@ describe('talent ranks through the store (limits, prerequisites, unknown ids)', 
     equipment: { head: null, chest: null, boots: null, weapon: null, offhand: null, relic: null },
     talentPoints: 5, unlockedTalents: {},
   }));
-  it('enforces the per-node limit from ASPECT_TREES (voidhand_crush limit 2)', () => {
-    // RE-POINTED 2026-09-22 (C4/Q24), and the reason is the finding. This spent nine points straight
-    // into `voidhand_crush` and expected 2 ranks — but that node declares `prereq: 'voidhand_force'`,
-    // and the store NEVER ENFORCED prereq. It checked points and limit only, so the tree's own shape
-    // was advisory, held up by whatever the panel chose to grey out. The test passed because the bug
-    // existed. Taking the prereq first is what makes this a limit test rather than a record of a hole.
-    useGameStore.getState().spendTalentPoint('voidhand_force');
-    expect(useGameStore.getState().unlockedTalents.voidhand_force, 'the prereq itself must be takeable').toBe(1);
-    for (let i = 0; i < 9; i++) useGameStore.getState().spendTalentPoint('voidhand_crush');
-    expect(useGameStore.getState().unlockedTalents.voidhand_crush).toBe(2);
+  it('enforces the per-node limit from ASPECT_TREES (voidhand_reach limit 2)', () => {
+    useGameStore.getState().spendTalentPoint('voidhand_grasp');
+    expect(useGameStore.getState().unlockedTalents.voidhand_grasp, 'the prereq itself must be takeable').toBe(1);
+    for (let i = 0; i < 9; i++) useGameStore.getState().spendTalentPoint('voidhand_reach');
+    expect(useGameStore.getState().unlockedTalents.voidhand_reach).toBe(2);
   });
 
   it('the store REFUSES a node whose prereq is untaken — it used to allow it', () => {
-    expect(useGameStore.getState().unlockedTalents.voidhand_force || 0).toBe(0);
-    useGameStore.getState().spendTalentPoint('voidhand_crush');
-    expect(useGameStore.getState().unlockedTalents.voidhand_crush, 'a gated node was ranked with no prereq')
+    expect(useGameStore.getState().unlockedTalents.voidhand_grasp || 0).toBe(0);
+    useGameStore.getState().spendTalentPoint('voidhand_reach');
+    expect(useGameStore.getState().unlockedTalents.voidhand_reach, 'a gated node was ranked with no prereq')
       .toBeUndefined();
   });
   it('an unknown/stale talent id cannot be spent (limit 0)', () => {
@@ -101,12 +96,12 @@ describe('loadWorldData refunds stale talent ids (pre-A4 saves)', () => {
   beforeEach(() => useGameStore.setState({ terrainWorker: null, playerRigidBodyRef: null }));
   it('drops non-tree ids on load and refunds their ranks into talentPoints', () => {
     useGameStore.getState().loadWorldData({
-      progression: { talentPoints: 1, unlockedTalents: { frost_shield: 2, voidhand_force: 1 } },
+      progression: { talentPoints: 1, unlockedTalents: { frost_shield: 2, voidhand_grasp: 1 } },
       world_data: { blocks: [] }, player_data: { inventory: { blocks: {} }, stats: {} }, game_state: {},
     });
     const s = useGameStore.getState();
     expect(s.unlockedTalents.frost_shield).toBeUndefined(); // stale dropped
-    expect(s.unlockedTalents.voidhand_force).toBe(1);        // valid kept
+    expect(s.unlockedTalents.voidhand_grasp).toBe(1);        // valid kept
     expect(s.talentPoints).toBe(3);                           // 1 + 2 refunded
   });
 });

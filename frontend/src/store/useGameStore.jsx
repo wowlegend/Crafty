@@ -3,6 +3,7 @@ import { mitigateDamage } from '../utils/combat';
 import { computeEffective, deriveMaxStats, xpForLevel, levelAttributes } from '../game/progression.js';
 import { refundUnknownTalents, canUnlockTalent, respecTalents } from '../game/talentTree.js';
 import { spellStatsAt } from '../game/spellTiers.js';
+import { foldVerbMods } from '../game/verbMods.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
 import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
@@ -56,6 +57,17 @@ export const EQUIPMENT_STATS = {
 // for every damage solver and maxStats derivation; getEffectiveAttributes is the get()-based equivalent, and this one
 // takes explicit pending args for the in-reducer recomputes where state is not committed yet.
 const effectiveWith = (level, equipment) => computeEffective(levelAttributes(level), equipment, EQUIPMENT_STATS);
+
+// getVerbMods is read every frame by the verb sites; the fold is redone only when the talent map (replaced on every
+// change, never mutated) or the relic changes, so a frame allocates nothing. Frozen, since every caller shares it.
+let _verbModsKey = { talents: undefined, relic: undefined, mods: null };
+function verbModsFor(unlockedTalents, relic) {
+  const k = _verbModsKey;
+  if (!k.mods || k.talents !== unlockedTalents || k.relic !== relic) {
+    _verbModsKey = { talents: unlockedTalents, relic, mods: Object.freeze(foldVerbMods(unlockedTalents, relic)) };
+  }
+  return _verbModsKey.mods;
+}
 
 // The terrain worker's `load_modifications` message for the store's block edits (`x_y_z` -> block id): one
 // [cx, cz, voxelIndex, blockType] per edit. The worker REPLACES its edit table with this, so an empty map clears it.
@@ -535,6 +547,9 @@ export const useGameStore = create((set, get) => ({
     // Phase 23: Skill Talent Tree & Placeable Container Chests
     talentPoints: 0,
     unlockedTalents: {},
+    // The Aspect verbs' numbers for the player's talents and equipped relic (game/verbMods.js). Every verb site reads it
+    // through getState(), so a talent or a relic changes a verb with no subscription in the frame loop.
+    getVerbMods: () => verbModsFor(get().unlockedTalents, get().equipment?.relic),
     aspectHint: null, // just-in-time teaching toast on a fresh Aspect-verb unlock (auto-cleared by AspectHintToast)
     setAspectHint: (v) => set({ aspectHint: v }),
     // S2a: serializable mirror of useQuestSystem's persistable state (quest
