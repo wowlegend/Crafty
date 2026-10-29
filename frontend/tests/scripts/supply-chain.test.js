@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, matchesGlob } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -155,21 +155,27 @@ describe('the supply chain is scanned at all', () => {
       .not.toMatch(/open-pull-requests-limit:\s*0/);
   });
 
-  it('Vercel does not build a PREVIEW for dependabot branches', () => {
-    // THE ROOT CAUSE OF THREE DEPLOY-FAILURE EMAILS TO THE OWNER. Vercel builds a preview per PR, so
-    // every Dependabot PR produced a deployment — and a bump that legitimately cannot install (eslint 10
-    // against eslint-plugin-react's <=9.7 peer; @react-three/postprocessing 3.0.5 against a pinned
-    // three@0.172) fails that build and emails him. Three times, twice after midnight his time.
-    //
-    // Nothing about a dependency bump needs a hosted preview: CI already runs unit, lint, knip, build and
-    // three e2e shards on the branch. The preview added an email and no signal. `ignoreCommand` exits 0
-    // to SKIP a build, so matching dependabot/* and exiting 0 is the whole fix.
+  it('Vercel deploys main and nothing else', () => {
+    // The Hobby plan allows 100 deployments per rolling 24 h, and a build cancelled by `ignoreCommand`
+    // still counts (vercel.com/docs/project-configuration/project-settings, "Ignored Build Step").
+    // Every lane push made a preview nothing reads (CI runs the suites and prod-smoke on the exact sha),
+    // so previews spent the quota production needs. `git.deploymentEnabled` creates no deployment at all
+    // for a disabled branch. Vercel's rule, evaluated here as documented
+    // (vercel.com/docs/project-configuration/git-configuration): a branch deploys when no key matches
+    // it, or when any matching key is true.
     const cfg = JSON.parse(readFileSync(resolve(APP, 'vercel.json'), 'utf8'));
-    expect(cfg.ignoreCommand, 'vercel.json has no ignoreCommand — dependabot branches will deploy again').toBeTruthy();
-    expect(cfg.ignoreCommand, 'the ignoreCommand does not match dependabot branches').toContain('dependabot/');
-    expect(cfg.ignoreCommand, 'the ignoreCommand never exits 0, so it can never skip a build').toContain('exit 0');
-    // And production must still deploy — an ignoreCommand that skips everything is a silent outage.
-    expect(cfg.outputDirectory, 'the build output directory went missing alongside the ignore rule').toBe('build');
+    const rules = cfg.git?.deploymentEnabled;
+    expect(rules && typeof rules, 'vercel.json has no git.deploymentEnabled map').toBe('object');
+    const deploys = (branch) => {
+      const hits = Object.entries(rules).filter(([pattern]) => matchesGlob(branch, pattern));
+      return hits.length === 0 || hits.some(([, on]) => on === true);
+    };
+    const branches = { main: true, 'feat/w2h-media': false, 'land/2026-10-29-cr7': false,
+      'dependabot/npm_and_yarn/three-0.180.0': false, 'fix/ore-glow-stone-frame': false, 'chore/x/y': false };
+    for (const [branch, expected] of Object.entries(branches)) {
+      expect(deploys(branch), `${branch} ${expected ? 'must deploy' : 'must not deploy'}`).toBe(expected);
+    }
+    expect(cfg.outputDirectory, 'the build output directory went missing').toBe('build');
   });
 
   it('the workflow actions are covered too', () => {
