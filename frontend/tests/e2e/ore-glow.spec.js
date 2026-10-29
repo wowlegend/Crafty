@@ -15,7 +15,7 @@ import { idForBlock } from '../../src/world/blockIds.js';
 //   - DRIFT CONTROL: stone and coal carry no glow, so they must not move across the three shots; if they do, the
 //     lighting moved between shots and the treatment measured that.
 // NOT CHECKED HERE: how the glow looks on a GPU, or in a cave; nor whether a HUD panel or an entity between the eye and
-// the row covers a square (the squares are checked against the faces' outlines and the camera against its hands only).
+// the row covers a square (the squares are checked against the faces' outlines, and the view against the hands only).
 // The first version failed on correct code for two reasons. It compared ratios ACROSS noon and midnight (diamond/stone
 // must rise, coal/stone must not), and the night grade and the tone-mapping toe are not a power law, so a ratio of two
 // surfaces moves with the light level; on/off within one state cancels the curve. And it never measured the blocks:
@@ -84,8 +84,8 @@ test.describe('ore glow', () => {
       // The camera is pinned at the centre of the eye's cell, facing the middle block's near face square. The eye
       // spawns on a cell corner (game/playerSpawn.js, x 0 z 0), so floor() above picks one of the four cells around
       // it by the sign of float noise, and the row then sits at a different offset from the unpinned eye in each;
-      // pinned, every run frames the row the same. The pin also takes the first-person hands off the camera
-      // (Components.jsx), whose left glove otherwise covers half the stone face's square in one of those framings.
+      // pinned, every run frames the row the same. The pin also hides the first-person hands (Components.jsx), whose
+      // left glove otherwise covers half the stone face's square in one of those framings.
       const pose = { position: [cx + 0.5, eye + 0.5, cz + 0.5], lookAt: [bx + 0.5 - ax[0] * 0.5, by + 0.5, bz + 0.5 - ax[1] * 0.5] };
       return { cells, ax, tried, by, pose, rigEye: cam.position.toArray() };
     }, RAISE);
@@ -174,26 +174,22 @@ test.describe('ore glow', () => {
       const on2 = await shot(frac, true);
       return { on, off, on2 };
     };
-    // THE CAMERA, pinned before any shot. Drawables hanging off the camera are counted before and after the pin; the
-    // first count shows the counter sees the hands while they are there.
-    const onCamera = () => page.evaluate(() => {
-      let drawn = 0;
-      window.__threeCamera.traverse((o) => {
-        if (!(o.isMesh || o.isSprite || o.isPoints || o.isLine)) return;
-        for (let p = o; p; p = p.parent) if (!p.visible) return;
-        drawn += 1;
-      });
-      return { drawn, eye: window.__threeCamera.position.toArray() };
-    });
+    // THE CAMERA, pinned before any shot. The first-person hands (mounted in the viewmodel scene, which the composer
+    // draws over the world: render/viewmodel.js) are counted before and after the pin through the seam; the first count
+    // shows the counter sees the hands while they are there.
+    const onCamera = () => page.evaluate(() => ({
+      drawn: window.__craftyLookbook.info().handNodes,
+      eye: window.__threeCamera.position.toArray(),
+    }));
     const offPin = (eye) => Math.hypot(eye[0] - row.pose.position[0], eye[1] - row.pose.position[1], eye[2] - row.pose.position[2]);
     const free = await onCamera();
-    expect(free.drawn, `SETUP: nothing is drawn on the unpinned camera, so the hands check below cannot see hands: ${JSON.stringify(free)}`).toBeGreaterThan(0);
+    expect(free.drawn, `SETUP: no hands are mounted on the unpinned view, so the hands check below cannot see hands: ${JSON.stringify(free)}`).toBeGreaterThan(0);
     await page.evaluate((p) => window.__craftyLookbook.pose(p), row.pose);
     // The hands leave when React commits the pose, which can be before the evaluate returns; the camera moves only on
     // the Player's next frame. So wait for both, not for the first.
     let pinned = await onCamera();
     for (let i = 0; i < 30 && (pinned.drawn > 0 || offPin(pinned.eye) >= 0.01); i++) { await frames(2); pinned = await onCamera(); }
-    expect(pinned.drawn, `SETUP: ${pinned.drawn} drawables still hang off the pinned camera — the first-person hands are in the frame: ${JSON.stringify({ free, pinned })}`).toBe(0);
+    expect(pinned.drawn, `SETUP: ${pinned.drawn} hand nodes still mounted on the pinned view — the first-person hands are in the frame: ${JSON.stringify({ free, pinned })}`).toBe(0);
     expect(offPin(pinned.eye), `SETUP: the camera is not at the pin: ${JSON.stringify({ pin: row.pose, pinned })}`).toBeLessThan(0.01);
     // Each measurement square lies inside its own face's outline on screen, so it averages that face and nothing else.
     const faces = await page.evaluate(({ cells, ax }) => {
