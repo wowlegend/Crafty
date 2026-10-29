@@ -18,6 +18,53 @@
 
 ---
 
+## 2026-10-29 — [LOOP] W2-F step 4: talents that change verbs, loot relics, and damage from level
+
+**Decided by the W2-F talents lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H item 6 by
+the task script `docs/superpowers/plans/2026-10-29-crafty-w2f-talents.md`. Numbered on from the W2-I entry below (its
+last is 32). Each stands while it earns its place.
+
+33. **Damage, health and mana scale with level alone.** The player's own strength, agility and intellect are 10 each at
+   level 1 and gain +2, +1 and +2 a level (`frontend/src/game/progression.js` `levelAttributes`): the five points a level
+   paid, placed by rule. Gear folds on top; no talent adds a stat; the solvers and `deriveMaxStats` are unchanged. **The
+   band, stated before the change** (`frontend/tests/game/levelDamage.test.js`): at level 1 every attack deals what it
+   dealt; at 5, 10 and 20 each attack's expected damage sits between today's unspent and focused builds and within 10%
+   of the even build (five points a level shared three ways). Measured: +4% to +9% over even, every hostile's hits to
+   kill between the two bounds. **Why:** with allocation gone, a level must still be worth its old five points, and
+   the even build is the one a player who spread points had.
+34. **Spells scale with level:** a spell casts at the tier its caster's level reached (`frontend/src/game/spellTiers.js`:
+   II at level 2 for fireball and iceball, 3 for lightning and arcane, III at 5), the levels the free mastery click
+   allowed, with the same damage and mana table. No player loses a tier the click would have bought.
+35. **The refund rule for a save from before the Cut**, recorded once as `talents.cut` (`frontend/src/game/saveSchema.js`):
+   a save whose progression holds `attributes` gets floor(P / 5) talent points, P being its unspent attribute points
+   plus every point it allocated, and every talent rank back as a point, since every node's meaning changed. The pre-cut
+   fixture loads at level 5 with 8 points (20 / 5 = 4, plus 3 unspent and 1 rank) and no ranks; a post-Cut save is never
+   respecced. **Why five to one:** a level paid five attribute points beside its talent point, so a normal save converts
+   to one point per level gained; the stats those points bought now come from the level, so the player gets both back.
+   **Doors:** `attributes` and `spellLevels` ride the progression tombstone, and `crystals` and `wand` a new `blocks`
+   bag written back under the live inventory, each for one SAVE_VERSION.
+36. **The trees** (`frontend/src/game/talentTree.js`): each root unlocks its verb and needs no prerequisite (a level-2
+   player can take one); every other node is one modifier in `frontend/src/game/verbMods.js`'s vocabulary. Wildheart:
+   Primal Endurance (+3 s roar, 3 ranks), then Apex Predator (the form's swing +25%) or Untamed (+8 s). Voidhand: Twin
+   Grasp (a grab holds two blocks), Long Hold (+4 s, 2 ranks), then Singularity (slam +1.5 m) or Event Horizon (+8 s
+   hold). Soulbind: Wide Snare (the aim cone doubles), Pack Warden (+1 slot), then Communion (binds at half health) or
+   Warden Bulwark (+1 slot). Elemancer: Chain Imbue (the zone leaps to one more hostile within 8 m, 2 ranks), then
+   Conflux (zones 50% wider) or Wildfire (+2 leaps). Exclusivity and respec keep their code; a loaded rank whose node is
+   gone, over its limit, behind a missing prerequisite, or beside its rival comes back as a point. Ember's prices do not
+   move. A kept grab's next throw waits out the last one's flight (1.5 s), because the hurl system flies one block and a
+   new throw replaces it.
+37. **Relics:** one slot (`equipment.relic`, through the existing equip actions), four relics in the same vocabulary
+   (`frontend/src/game/relics.js`): Ember Fang (+4 s roar) from emberhusks and duskhounds, Lodestone (+1 grab throw) from
+   moss brutes, Snare Knot (the snare cone doubles) from spiders and skitterlings, Prism Shard (+1 leap) from skeletons,
+   each at 4-6%, `epic`, so the zone tier raises them far from spawn. A relic and a talent on one key add up.
+38. **Crystals and the wand go whole,** with the wand's mana discount, the four ore-to-crystal trades, the wand trade, the
+   starting 8 crystals and wand, and the Magic Crystal recipe row. The merchant sells potions for coins; mined blocks
+   wait for the Forge (W1-H item 7). `affixes.js` went with them (no importer).
+39. **Not proven, and owed.** The feel of the trees and the relic drop rates (no playtest); the Talents page fitting one
+   screen; the grab's second throw, the wider snare, the chained imbue, Apex Predator, the slam radius and the relics in
+   the running game (proven at their reducers and pure helpers, not by a browser); the e2e's browser mutants; WebKit and
+   touch for the Talents page. Each has a registry row.
+
 ## 2026-10-28 — [LOOP] W2-I: the post passes measured on the GPU's own busy time; N8AO deleted, the rest kept
 
 **Decided by the W2-I lane under the standing grant** (DECISIONS 2026-10-28 item 14), by the rule in
