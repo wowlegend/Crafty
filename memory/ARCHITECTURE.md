@@ -45,7 +45,7 @@ A 3D browser game built with React and Three.js, featuring Minecraft-style gamep
 - **Styling**: Tailwind CSS 3.x, Framer Motion 12.x
 - **State**: Zustand 5.x (global store), React hooks
 - **Build**: Vite 6.x (migrated from CRA Feb 2026)
-- **UI Design System (S1-C COMPLETE, bold-flat)**: single SoT chain — `src/theme/tokens.js` (semantic tokens) → `src/theme/cssVars.js` (`--ui-*` CSS vars via `applyThemeVars()` at boot + `TW_COLORS`/`TW_SCALES`) → `tailwind.config.cjs` `theme.extend` referencing the vars (parity-tested by `tests/theme/tailwind-wiring.test.js`). Component primitives in `src/ui/primitives/` — read the set from its `index.js` rather than this line (there is no Tooltip; there ARE Slider and Modal; `cn` is deliberately not re-exported). ONE bold-flat language across the whole in-game UI (the legacy minecraft-bevel/glass/neon languages are gone; `tests/gates/static-gates.test.js` hard-asserts single-language + zero-emoji). i18n in `src/i18n/` (`t()`/`useT()`, en default + lazy-CJK zh-CN). **Icon system (M3):** filled 2-tone game-icons (`src/ui/primitives/gameIcons.js`, 49 glyphs baked from game-icons.net **CC BY 3.0** via the Iconify API) for game CONTENT + lucide-outline chrome for affordances; resolved by the `Icon` primitive's GAME_NAMES/CHROME maps. **Item registry `src/data/items.js`** = the single source for item name/icon/rarity (stable ids, `getItemRarity`/`getItemIcon`/`getItemName`/`normalizeItemName`); LOOT_TABLES/CHEST_LOOT/crafting use emoji-free names, with a `loadWorldData` save normalizer for legacy emoji keys. **Zero emoji in `src/`** (hard-gated). `CreditsScreen.jsx` attributes game-icons.net + fonts. DEV-only `PrimitivesShowcase` renders every primitive on one screen; no automated check reads it (its two visual-regression states retired with the capture oracle, DECISIONS 2026-10-28 W1-H item 1), and its only entry is the `showPrimitivesShowcase` test hook (registry `REVIEW:w2b:capture-only-dev-hooks`).
+- **UI Design System (S1-C COMPLETE, bold-flat)**: single SoT chain — `src/theme/tokens.js` (semantic tokens) → `src/theme/cssVars.js` (`--ui-*` CSS vars via `applyThemeVars()` at boot + `TW_COLORS`/`TW_SCALES`) → `tailwind.config.cjs` `theme.extend` referencing the vars (parity-tested by `tests/theme/tailwind-wiring.test.js`). Component primitives in `src/ui/primitives/` — read the set from its `index.js` rather than this line (there is no Tooltip; there ARE Slider and Modal; `cn` is deliberately not re-exported). ONE bold-flat language across the whole in-game UI (the legacy minecraft-bevel/glass/neon languages are gone; `tests/gates/static-gates.test.js` hard-asserts single-language + zero-emoji). i18n in `src/i18n/` (`t()`/`useT()`, en default + lazy-CJK zh-CN). **Icon system (M3):** filled 2-tone game-icons (`src/ui/primitives/gameIcons.js`, 49 glyphs baked from game-icons.net **CC BY 3.0** via the Iconify API) for game CONTENT + lucide-outline chrome for affordances; resolved by the `Icon` primitive's GAME_NAMES/CHROME maps. **Item registry `src/data/items.js`** = the single source for item name/icon/rarity (stable ids, `getItemRarity`/`getItemIcon`/`getItemName`/`normalizeItemName`); LOOT_TABLES/CHEST_LOOT use emoji-free names, with a `loadWorldData` save normalizer for legacy emoji keys. **Zero emoji in `src/`** (hard-gated). `CreditsScreen.jsx` attributes game-icons.net + fonts. DEV-only `PrimitivesShowcase` renders every primitive on one screen; no automated check reads it (its two visual-regression states retired with the capture oracle, DECISIONS 2026-10-28 W1-H item 1), and its only entry is the `showPrimitivesShowcase` test hook (registry `REVIEW:w2b:capture-only-dev-hooks`).
 
 ## Core Features
 
@@ -125,14 +125,13 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 | 1-4 | Select spell type |
 | E | Inventory |
 | M | Magic |
-| C | Crafting |
 | B | Building |
 | ESC | Settings |
 | Space | Jump |
 | Left Click | Break block |
 | Right Click | Place block |
 | Tab | Achievements panel |
-| G | Open treasure chest |
+| G | Talk to the villager beside you (Mara the Smith: the Forge) / open a treasure chest |
 | T | Melee attack |
 | U | Talents & Aspect guide |
 
@@ -218,7 +217,7 @@ The render layer was rebuilt in S1 against the visual-direction spec (`docs/supe
 - ✅ Mob movement AI + hostile aggro
 - ✅ E key Inventory (glassmorphic)
 - ✅ M key Magic panel (glassmorphic)
-- ✅ C key Crafting panel (glassmorphic)
+- ✅ G beside Mara: the Forge card (`ui/panels/ForgePanel.jsx`, prices from `game/forge.js`)
 - ✅ B key Building panel (glassmorphic)
 - ✅ ESC key Settings (glassmorphic)
 - ✅ F key spell casting (reliable)
@@ -365,7 +364,7 @@ To deliver premium, sensory-rich combat loops, `Components.jsx` and `GPUSparkSys
 - **Fully GPU-Driven Billboarding Particles**: Instantiates an optimized `<GPUSparkSystem />` managing up to 1200 simultaneous embers. Employs a highly custom WebGL2 `ShaderMaterial` that handles gravity trajectory offsets, lifetime scaling size shrinkage, and view-space billboard rendering entirely on the GPU (`mvPosition.xyz += pos;`), reducing the CPU frame budget overhead to exactly 0ms.
 - **Dynamic Camera-Local Ribbon Geometry**: Tracks sword tip and base positions relative to the camera-space right arm group, compiling a dynamic triangle quad strip mesh geometry inside `useFrame`. Uses a custom energy shader executing a linear length fadeout paired with soft width feathering and a glowing white-hot center core.
 - **Stylized Bezier Sweep Swing Animation**: Animates the player's right hand holding the weapon inside a sweeping, diagonal Bezier slash arc (moving right-to-left, tilted down) to convey visual weight and velocity, replacing the standard forward poke.
-- **Procedural 3D Weapon Model Branching**: Conditionally renders detailed, multi-element group models for equipped weapons (`Stone Sword`, `Iron Sword`, `Diamond Sword`, `pickaxe`) inside a modular `<ProceduralWeapon />` component. Meshes utilize flared guard wings, diamond-pointed tip extrusions, leather-wrapped hilts, and distinct metallic/emissive properties.
+- **Procedural 3D Weapon Model Branching**: Conditionally renders detailed, multi-element group models for equipped weapons (`sword`, `Stone Sword`, `Iron Sword`, `Diamond Sword`) inside a modular `<ProceduralWeapon />` component. Meshes utilize flared guard wings, diamond-pointed tip extrusions, leather-wrapped hilts, and distinct metallic/emissive properties.
 - **Critical Strike Sensory Pulses**: Upgrades the hit registry in `damageMob` to trigger high-velocity, color-coded GPU particle cascades (crimson/yellow for slashes, orange/gold for fireballs, cyan/silver for iceballs, fast neon-yellow/white for lightning, and purple/magenta for arcane spells) and visceral camera shakes. The critical floating damage numbers scale by 1.3x and apply high-frequency coordinate vibration shakes and cosine breathing scale pulses.
 
 ## S2-B1 WILDHEART — Beast-Transform Aspect (June 2026) — the LEAD signature Aspect

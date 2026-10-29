@@ -19,6 +19,64 @@
 
 ---
 
+## 2026-10-29 — [LOOP] W2-F step 5: Mara's Forge replaces the crafting grid
+
+**Decided by the W2-F Forge lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H items 7 and 8
+by the task script `docs/superpowers/plans/2026-10-29-crafty-w2f-forge.md`. Numbered from 60 (41-49 are the talents
+lane's, 50-59 the media lane's). Item 64 amends W1-H item 7's list of three offers. Each stands while it earns its place.
+
+60. **The Forge is one card on Mara, on G** (`frontend/src/game/forge.js`, `frontend/src/ui/panels/ForgePanel.jsx`). It
+   lists what she can make for the player now: the weapon line's next blade, the worn relic's next tier, and three
+   goods, each price in mined blocks and coins beside what the player holds, a short part marked. `buy` charges the
+   price listed under the offer's id (never one carried on the object passed in) or refuses and returns the same
+   state; an offer bought or outgrown is no longer listed, so it cannot be bought twice. A press the player cannot pay
+   for stays pressable and says what is short ("Not enough: 80 coins (have 0)"), so the button is never dead. **Why:**
+   one place that shows every price, in place of recipe shapes nobody can see (W1-H item 7).
+61. **Starting prices** (`forge.js`): Stone Sword 4 stone and 10 coins, Iron Sword 4 iron and 30, Diamond Sword 4
+   diamond and 80; a relic's tier II 3 gold and 40, tier III 3 diamond and 100. A fresh profile's 4 iron pays the Iron
+   Sword's blocks, so its first reforge waits only on coins (a night survived pays 10 a night number, a quest 0.4 a
+   point of XP). Untested by play: registry `REVIEW:w2f:forge-prices-unplaytested`.
+62. **The weapon line reforges the best blade held** (`WEAPON_LINE`: sword 10, Stone Sword 12, Iron Sword 20, Diamond
+   Sword 35, damage unchanged in `frontend/src/game/equipment.js`), in hand or in any bag, into the next one: the price
+   names that blade and the purchase takes it, adds the next and puts it in hand (what the hand held before goes back
+   to the bag). A player with no blade is sold the sword for 4 wood. **Why:** an upgrade, not a second sword in the bag,
+   and the hand always ends above every blade owned, so the purchase is never a sidegrade. The pickaxe (damage 8, below
+   the sword every profile holds) leaves the game: the registry, the weapon slot, the loadout, the held model.
+63. **The relic line tempers the worn relic** to tier II and III (`RELIC_MAX_TIER` 3, `frontend/src/game/relics.js`):
+   its modifier counts once per tier in `foldVerbMods`, so a tier-III Ember Fang adds 12 s to the roar. The tier
+   belongs to the relic, not the slot (`relicTiers`, a persisted progression field and an autosave trigger), so a
+   relic swapped out keeps it. A top-tier Lodestone gives a grab five throws, so the hurl pool's bound, derived in
+   `hurl.test.js` from the trees and the relics at their top tier, rises and `MAX_FLIGHTS` goes from 6 to 10 (idle
+   meshes are hidden). Ember's prices and the talents' numbers do not move.
+64. **Goods, and what the grid made that nothing replaces.** The grid was the only source of the storage chest and of
+   cobblestone and the renewable one of glass, and the hotbar gate (every hotbar block obtainable) went red without
+   them, so the card sells them at the grid's rates and no coins: a Wooden Chest for 8 wood, 4 cobblestone for 4 stone,
+   4 glass for 4 sand. This adds a third line to W1-H item 7's list and leaves its lantern for item 67. Cut with no
+   successor: armour and shields (crafted only; registry `REVIEW:w2f:forge-armour-no-source`), the Health Potion recipe
+   (the merchant and chest loot still give potions), cooked meat (step 6 deletes meat), and the ingredient uses of
+   Leather, Iron Nugget, Spider Eye and Emerald (registry `REVIEW:w2f:forge-orphan-loot`). **The proof nothing still
+   promised depends on the grid:** the hotbar gate now walks each good's price down to the starting loadout or an ore
+   drop (`tests/gates/place-executor-gates.test.jsx`), `tests/gates/forge-output-gates.test.js` buys every offer the
+   Forge can list and checks it gives a thing the game uses, the full unit suite was green with the grid deleted (557
+   files, 4825 tests), and `tests/e2e/forge.spec.js` walks to Mara and buys on CI.
+65. **Talking is one verb** (`frontend/src/input/talk.js`): G and the touch tray's Talk button (in the Craft button's
+   place) find the nearest living villager within 4 m in the ECS (`mobsQuery`), not the store's 250 ms mirror, and
+   route by role as before, the smith now to the Forge; with no villager and no chest in reach a notice says so. The
+   tray yields control only when talking opened a panel. Touch had no way to talk to a villager before. The C key and
+   the HUD rail's hammer go, the controls panel and the README teach G, and `showCrafting` becomes `showForge`.
+66. **Old saves:** a pickaxe in any bag or chest is dropped (`pickaxe` joins `RETIRED_INVENTORY_KEYS`, so it rides the
+   tombstone back for one SAVE_VERSION), and one in hand becomes the sword (`saveSchema.js` `liveEquipment`), so no
+   hand gets weaker (8 to 10). **Dropped, not credited:** every profile holds one beside a better sword, so a credit
+   would be a free tier for everyone. The grid kept no saved state (its escrow lived in React state and went back to the
+   bag on close and on pagehide), so nothing else needs a rule. The pre-cut fixture loads at level 5 with its Stone
+   Sword in hand and no pickaxe (`tests/store/forge.test.js`).
+67. **No lantern offer yet.** Block id 16 does not exist (`frontend/src/world/blockIds.js` ends at 15), and the Forge
+   sells nothing that does nothing; W3-A adds the offer with the block, at the lantern brief's price, in the same
+   release (registry `MASTERPIECE:the-lantern-and-a-baked/a`).
+68. **Not proven, and owed:** the prices' feel (no playtest); the card on touch outside jsdom and on an iPad
+   (`REVIEW:w2f:forge-touch-unproven`); the e2e's browser mutants (`REVIEW:w2f:forge-e2e-mutants-unrun`); the relic line
+   and the goods in a browser (proven at the store and the card in jsdom); whether a five-throw grab is too strong.
+
 ## 2026-10-29 — [LOOP] W2-F step 4: talents that change verbs, loot relics, and damage from level
 
 **Decided by the W2-F talents lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H item 6 by
