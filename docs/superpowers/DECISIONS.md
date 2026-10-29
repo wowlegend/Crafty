@@ -30,9 +30,15 @@ last is 32). Each stands while it earns its place.
    paid, placed by rule. Gear folds on top; no talent adds a stat; the solvers and `deriveMaxStats` are unchanged. **The
    band, stated before the change** (`frontend/tests/game/levelDamage.test.js`): at level 1 every attack deals what it
    dealt; at 5, 10 and 20 each attack's expected damage sits between today's unspent and focused builds and within 10%
-   of the even build (five points a level shared three ways). Measured: +4% to +9% over even, every hostile's hits to
-   kill between the two bounds. **Why:** with allocation gone, a level must still be worth its old five points, and
-   the even build is the one a player who spread points had.
+   of the even build (five points a level shared three ways). Measured: +1% to +8% over even (spells +1% to +4%, melee
+   +3% to +8%), every hostile's hits to kill between the two bounds; the level's own stats are pinned as literals beside
+   the band, which is wide enough to hold a split with no agility growth. **Why:** with allocation gone, a level must
+   still be worth its old five points, and the even build is the one a player who spread points had. **What the band
+   leaves out:** its builds hold no talent ranks, and before the Cut 20 of the 26 talent nodes added a stat. A level-10
+   player with the even build and nine points in intellect nodes (Elemental Focus 3, Cataclysm 2, Conflux, Soul Bond 3:
+   +35) cast a non-crit Fireball III for 264; that level casts 187 now (-29%). The four armour nodes (up to 59 armour,
+   which takes armor / (armor + 100) off a hit) have no successor, and armour is outside the band. Whether a stat build
+   is owed anything is registry `REVIEW:w2f:talents-stat-build-loss`.
 34. **Spells scale with level:** a spell casts at the tier its caster's level reached (`frontend/src/game/spellTiers.js`:
    II at level 2 for fireball and iceball, 3 for lightning and arcane, III at 5), the levels the free mastery click
    allowed, with the same damage and mana table. No player loses a tier the click would have bought.
@@ -52,19 +58,35 @@ last is 32). Each stands while it earns its place.
    Warden Bulwark (+1 slot). Elemancer: Chain Imbue (the zone leaps to one more hostile within 8 m, 2 ranks), then
    Conflux (zones 50% wider) or Wildfire (+2 leaps). Exclusivity and respec keep their code; a loaded rank whose node is
    gone, over its limit, behind a missing prerequisite, or beside its rival comes back as a point. Ember's prices do not
-   move. A kept grab's next throw waits out the last one's flight (1.5 s), because the hurl system flies one block and a
-   new throw replaces it.
+   move. A kept grab's next block goes on the next click, hurl or slam, beside the first in the air (item 40).
 37. **Relics:** one slot (`equipment.relic`, through the existing equip actions), four relics in the same vocabulary
    (`frontend/src/game/relics.js`): Ember Fang (+4 s roar) from emberhusks and duskhounds, Lodestone (+1 grab throw) from
    moss brutes, Snare Knot (the snare cone doubles) from spiders and skitterlings, Prism Shard (+1 leap) from skeletons,
    each at 4-6%, `epic`, so the zone tier raises them far from spawn. A relic and a talent on one key add up.
 38. **Crystals and the wand go whole,** with the wand's mana discount, the four ore-to-crystal trades, the wand trade, the
-   starting 8 crystals and wand, and the Magic Crystal recipe row. The merchant sells potions for coins; mined blocks
-   wait for the Forge (W1-H item 7). `affixes.js` went with them (no importer).
+   starting 8 crystals and wand, and the Magic Crystal recipe row (so a level-1 Fireball costs 15 mana, which was 14
+   with the starting wand's 6%). The merchant sells potions for coins; mined blocks wait for the Forge (W1-H item 7).
+   `affixes.js` went with them (no importer).
 39. **Not proven, and owed.** The feel of the trees and the relic drop rates (no playtest); the Talents page fitting one
    screen; the grab's second throw, the wider snare, the chained imbue, Apex Predator, the slam radius and the relics in
    the running game (proven at their reducers and pure helpers, not by a browser); the e2e's browser mutants; WebKit and
    touch for the Talents page. Each has a registry row.
+40. **Review round 1 changed four rules** (each fix commit carries its mutation receipt):
+   - **The hurl system flies up to six blocks at once** (`frontend/src/game/hurl.js` `MAX_FLIGHTS`, `flightSlot`;
+     `frontend/src/world/HurlSystem.jsx`). This replaces item 36's first version, in which a kept block waited out the
+     first throw's 1.5 s flight: that wait also blocked a slam, which never flies, ate the click with no cue, and ran on
+     R3F's clock while the flight runs on `worldDelta`, so a pause or a hitstop let the second throw replace the first
+     anyway. Six holds two grabs of three blocks inside one flight (`frontend/src/game/hurl.test.js` derives it from the
+     trees and relics); a full pool gives up the block flying longest. **Why:** the wait was a workaround for a single
+     flight, and the single flight was the cause.
+   - **A verb reads its numbers every tick.** The roar's length and the grab's throws and hold are compared against
+     `getVerbMods()` as it stands on each frame (`beastTransform.js` `activeSince`, `voidhand.js` `heldSince` and
+     `thrown`), as the imbue's chain, the snare and the squad cap already were. **Why:** latched at a verb's start, a
+     number outlived its relic: roar with Ember Fang, swap to Lodestone mid-form, grab, and one slot gave both.
+   - **The retired crystals and wand leave every bag and every chest** on load, held per bag and per chest
+     (`frontend/src/game/saveSchema.js` `liveInventory`, `liveChests`), so no chest can hand one back to the bag.
+   - **A saved talent map and a saved spell name are untrusted keys:** the node table has no prototype and
+     `spellStatsAt` answers only its own keys, so `constructor` refunds as an unknown id and casts nothing.
 
 ## 2026-10-28 — [LOOP] W2-J phase 1: a short CLAUDE.md, `npm run orient`, a cursor, and the loop docs retired
 
