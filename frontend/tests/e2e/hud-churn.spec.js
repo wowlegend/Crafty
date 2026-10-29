@@ -33,9 +33,10 @@ test('standing still the compass writes nothing; turning, it updates', async ({ 
   await bootDev(page);
   await startPlayActive(page);
   await page.waitForTimeout(2000); // let the spawn settle: the player lands, the camera stops easing
-  // The compass's game icons (ui/primitives/Icon.jsx) load as their own chunk and redraw each icon slot when it lands,
-  // which is the icon set arriving, not the compass writing. Two first attempts on CI counted 15 identical writes, one
-  // per game-icon slot, and their retries none; so the strip is observed once every slot's icon is drawn.
+  // The compass's game icons (ui/primitives/Icon.jsx) load as their own chunk; the strip is observed once every slot's
+  // icon is drawn, so their arrival is not counted as the compass writing. (The 15 identical writes CI counted on first
+  // attempts were not that: they were React re-applying each icon's innerHTML on every re-render of the compass, fixed in
+  // ui/Compass.jsx and gated by tests/gates/compass-render-gates.test.jsx.)
   await page.waitForFunction(() => {
     const svgs = [...document.querySelectorAll('[data-compass-label] svg')];
     return svgs.length > 0 && svgs.every((s) => s.querySelector('g, path'));
