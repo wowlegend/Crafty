@@ -14,6 +14,7 @@ import { useGameStore } from '../store/useGameStore';
 import { OUTLINE } from './characterStyle';
 import { MagicWand } from './spellVfx';
 import { heavyChargeLevel } from '../game/heavyAttack.js';
+import { worldDelta } from '../game/worldClock.js';
 import { handSwing, slashSweep } from '../game/meleeString.js';
 import { lookbookHandPose, lookbookHandPoseKind, subscribeLookbook } from './lookbookSeam.js';
 import {
@@ -303,9 +304,10 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
   const restL = HAND_REST_ROT.left;
 
   useFrame((state, delta) => {
-    // Read transiently: the form changes the materials, never the render (Game-Loop Isolation).
+    // Read transiently: the form changes the materials, never the render (Game-Loop Isolation). World time: a hitstop
+    // holds the ease with the form it follows, as it holds the hands' key fade (render/ViewmodelLayer.jsx).
     const form = useGameStore.getState();
-    stepFormTint(formTint, form.beastFormActive ? form.activeBeastForm : null, delta, mats);
+    stepFormTint(formTint, form.beastFormActive ? form.activeBeastForm : null, worldDelta(delta), mats);
     if (rightHandRef.current && leftHandRef.current) {
       const aspect = state.size.height > 0 ? state.size.width / state.size.height : 1;
       if (aspect !== anchors.aspect) {

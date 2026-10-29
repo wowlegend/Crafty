@@ -14,8 +14,8 @@ import { EYE_HEIGHT_M } from '../../src/combat/swingOrigin.js';
  *
  * Each subject runs every frame of something the player does: the hand poses every frame of a swing, a cast and a heavy
  * charge (render/handPose.js), and the point the mobs sense the player from every frame an arrow flies and at the AI's
- * 15 Hz (systems/playerSensePoint.js). Measured as young-generation growth over 5000 calls after a warm-up
- * (tests/gates/_youngGrowth.js), against a control in the same run that shows the probe sees an allocation of the size
+ * 15 Hz (systems/playerSensePoint.js). Measured as young-generation growth over runs of 5000 calls no collection
+ * interrupted, once the optimiser has compiled the call (tests/gates/_youngGrowth.js), against a control in the same run that shows the probe sees an allocation of the size
  * that matters: a Rapier body's translation(), which builds a wasm vector and an object per call (rapier3d-compat 0.19.2,
  * the build the game ships, run for real here).
  * BLIND SPOT: what the JIT does in a browser is not this process's; a call that allocates only on a path these inputs
@@ -37,7 +37,7 @@ afterEach(() => {
 describe('the probe', () => {
   it('reads an allocation as one, and a call that allocates nothing as nothing', () => {
     let sink = null;
-    const translation = youngBytesPerCall(() => { sink = body.translation(); });
+    const translation = youngBytesPerCall(() => { sink = body.translation(); }, { budgetMs: 0 });
     expect(sink.x, 'SETUP: the control did not read the body').toBe(4);
     expect(translation, 'the probe cannot see a Rapier translation() allocate').toBeGreaterThan(8 * NO_ALLOCATION_BYTES);
     const v = new THREE.Vector3();
