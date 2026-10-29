@@ -406,23 +406,17 @@ describe('passTimes(): nothing is timed until a script asks', () => {
       expect(await w.__craftyLookbook.passTimes()).toEqual({ installed: true, mode: 'segments', contexts: [] });
       expect(await w.__craftyLookbook.passTimes({ reset: true })).toEqual({ installed: true, mode: 'segments', contexts: [] });
       expect(loads, 'the timer was loaded more than once').toBe(1);
-      // The mode is set before the window the call starts, so `{ mode, reset: true }` opens a window in that mode.
-      expect((await w.__craftyLookbook.passTimes({ mode: 'frame', reset: true })).mode).toBe('frame');
+      // `{ mode, reset: true }` reports the window that closed in the mode it ran in, then opens the next in `mode`.
+      expect((await w.__craftyLookbook.passTimes({ mode: 'frame', reset: true })).mode, 'the closed window was labelled with the next one\'s mode').toBe('segments');
       expect((await w.__craftyLookbook.passTimes()).mode).toBe('frame');
       await expect(w.__craftyLookbook.passTimes({ mode: 'often' })).rejects.toThrow(/mode/);
+      expect((await w.__craftyLookbook.passTimes()).mode, 'a refused mode changed the mode').toBe('frame');
     } finally {
       installPassTimer().uninstall();
     }
   });
 });
 
-/**
- * passesOff(): one named pass switched off for the whole-frame differential (plan 2026-10-28-crafty-w2i-passes). The seam
- * only holds the set; render/postFx.jsx applyPassesOff and render/Sun.jsx read it. Driven here on REAL postprocessing
- * effects in a real EffectPass, because what makes "off" mean what a deletion would is postprocessing's own behaviour:
- * an effect whose blend function is SKIP leaves the merged shader, and a pass with nothing left skips its draw, but
- * EffectPass.render still calls every effect's update(), which is where Bloom's and GodRays' own render passes run.
- */
 describe('info().sun: the bearing a shot faces to have the sun in view', () => {
   it('reads a direction in the HUD compass convention, with its elevation, and null without a reader', () => {
     const r = (d) => { const b = sunBearing(d); return [Math.round(b.heading), Math.round(b.elevationDeg)]; };
@@ -440,6 +434,13 @@ describe('info().sun: the bearing a shot faces to have the sun in view', () => {
   });
 });
 
+/**
+ * passesOff(): one named pass switched off for the whole-frame differential (plan 2026-10-28-crafty-w2i-passes). The seam
+ * only holds the set; render/postFx.jsx applyPassesOff and render/Sun.jsx read it. Driven here on REAL postprocessing
+ * effects in a real EffectPass, because what makes "off" mean what a deletion would is postprocessing's own behaviour:
+ * an effect whose blend function is SKIP leaves the merged shader, and a pass with nothing left skips its draw, but
+ * EffectPass.render still calls every effect's update(), which is where Bloom's and GodRays' own render passes run.
+ */
 describe('passesOff(): a named pass off for the differential, everything restored after', () => {
   it('holds the names the seam knows, refuses an unknown one, and is empty for every player', () => {
     const w = fakeWin('?lookbook=1');
@@ -452,6 +453,42 @@ describe('passesOff(): a named pass off for the differential, everything restore
     expect(w.__craftyLookbook.passesOff([])).toEqual([]);
     expect(lookbookPassesOff().size).toBe(0);
     expect(LOOKBOOK_PASS_NAMES.length, 'no pass can be switched off').toBeGreaterThan(0);
+  });
+
+  it('info() reports the set and the effects the chain must show skipped while it holds', () => {
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, deps());
+    expect(w.__craftyLookbook.info().passesOff).toEqual({ names: [], effects: [] });
+    w.__craftyLookbook.passesOff(['sun', 'grade', 'godrays']);
+    expect(w.__craftyLookbook.info().passesOff).toEqual({
+      names: ['godrays', 'grade', 'sun'], effects: ['BrightnessContrastEffect', 'GodRaysEffect', 'HueSaturationEffect'],
+    });
+    w.__craftyLookbook.passesOff([]);
+    expect(w.__craftyLookbook.info().passesOff).toEqual({ names: [], effects: [] });
+  });
+
+  it('an effect whose update() lives on its prototype gets that update back when switched on again', () => {
+    let updates = 0;
+    class CountedVignette extends VignetteEffect {
+      update() { updates += 1; }
+    }
+    const vignette = new CountedVignette();
+    expect(vignette.name, 'SETUP: the subclass keeps postprocessing\'s name').toBe('VignetteEffect');
+    expect(Object.prototype.hasOwnProperty.call(vignette, 'update'), 'SETUP: update() is the prototype\'s').toBe(false);
+    const fx = new EffectPass(new PerspectiveCamera(), vignette);
+    const composer = { passes: [fx] };
+    const state = new Map();
+    const renderer = { setRenderTarget() {}, render() {} };
+    const frame = () => fx.render(renderer, { texture: {} }, { texture: {} }, 0.016);
+    frame();
+    expect(updates, 'the rig does not call update()').toBe(1);
+    applyPassesOff(composer, new Set(['vignette']), state);
+    frame();
+    expect(updates, 'switched off, it still updated').toBe(1);
+    applyPassesOff(composer, new Set(), state);
+    frame();
+    expect(updates, 'switched back on, it never updated again').toBe(2);
+    expect(Object.prototype.hasOwnProperty.call(vignette, 'update'), 'the restore left an own update() shadowing the prototype\'s').toBe(false);
   });
 
   it('applyPassesOff skips an effect\'s blend and its update(), leaves a pass with no effects alone, and restores both', () => {
@@ -739,8 +776,11 @@ describe('the pass timer through the real EffectComposer.prototype.render', () =
       expect(handle.report().contexts[0].chain).toEqual([
         { label: '0:RenderPass', enabled: true },
         { label: '1:N8AO', enabled: true },
-        { label: '2:EffectPass(VignetteEffect+ToneMappingEffect)', enabled: true },
+        { label: '2:EffectPass(VignetteEffect+ToneMappingEffect)', enabled: true, skipped: [] },
       ]);
+      // An effect switched off the way the lookbook switches one (blend SKIP) shows in the chain read after it.
+      applyPassesOff(composer, new Set(['vignette']), new Map());
+      expect(handle.report().contexts[0].chain[2].skipped).toEqual(['VignetteEffect']);
     } finally {
       handle.uninstall();
     }
@@ -834,6 +874,51 @@ describe('the pass timer\'s whole-frame mode', () => {
       const counted = handle.report().contexts[0];
       expect(counted).toMatchObject({ mode: 'count', frames: 5, passes: [] });
       expect([gl.begun - begun, gl.syncs - syncs], 'count mode opened a query or synced').toEqual([0, 0]);
+    } finally {
+      handle.uninstall();
+    }
+  });
+
+  it('a frame adds no read of the chain: the chain is built when the report is read', () => {
+    const gl = fakeTimerGl({ ext: false });
+    const composer = rigFrame(gl);
+    const passes = composer.passes;
+    let reads = 0;
+    Object.defineProperty(composer, 'passes', { get() { reads += 1; return passes; } });
+    composer.render(0.016); // the unpatched render's own reads, the baseline
+    const own = reads;
+    expect(own, 'SETUP: the render reads its passes').toBeGreaterThan(0);
+    const handle = installPassTimer(EffectComposer, { now: () => gl.clock });
+    try {
+      for (const m of ['count', 'frame']) {
+        handle.setMode(m);
+        reads = 0;
+        for (let i = 0; i < 10; i++) composer.render(0.016);
+        expect(reads, `${m} mode read the chain on every frame`).toBe(10 * own);
+      }
+      reads = 0;
+      const chain = handle.report().contexts[0].chain;
+      expect(reads, 'the report did not read the composer it names').toBeGreaterThan(0);
+      expect(chain.map((p) => p.label)).toEqual(['0:RenderPass', '1:N8AO', '2:EffectPass(VignetteEffect+ToneMappingEffect)']);
+    } finally {
+      handle.uninstall();
+    }
+  });
+
+  it('a report taken while switching the mode carries the mode its window ran in, per context too', () => {
+    const gl = fakeTimerGl();
+    const composer = rigFrame(gl);
+    const handle = installPassTimer(EffectComposer, { now: () => gl.clock });
+    try {
+      handle.setMode('frame');
+      for (let i = 0; i < 3; i++) composer.render(0.016);
+      const closed = handle.report({ reset: true, mode: 'segments' });
+      expect([closed.mode, closed.contexts[0].mode]).toEqual(['frame', 'frame']);
+      composer.render(0.016);
+      const next = handle.report();
+      expect([next.mode, next.contexts[0].mode]).toEqual(['segments', 'segments']);
+      expect(() => handle.report({ mode: 'often' })).toThrow(/mode/);
+      expect(handle.report().mode, 'a refused mode changed the mode').toBe('segments');
     } finally {
       handle.uninstall();
     }

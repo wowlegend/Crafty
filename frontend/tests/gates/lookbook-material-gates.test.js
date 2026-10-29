@@ -12,6 +12,9 @@ import { BLOCK_ID } from '../../src/world/blockIds.js';
  * probe's eye-shot verdict and an opened frame decide.
  */
 const { grass, dirt, stone, wood } = BLOCK_ID;
+/** The ids the probe hands the finder (scripts/visual/lookbook.mjs, from BLOCK_ID). */
+const IDS = { grass, dirt, wood };
+const find = (arg) => findMaterialSights({ ids: IDS, ...arg });
 
 /** One chunk at (0, 0): a low terrace (x < 8, ground top y 50) and a high one (x >= 8, top y 52) whose -X wall at
  *  x = 8 shows grass (y 51) over dirt (y 50); `high` raises it, `extra(set)` adds blocks. */
@@ -34,7 +37,7 @@ const FROM = [2, 51, 2];
 
 describe('the material sights found in a meshed world', () => {
   it('the turf wall is the grass-over-dirt hill side, with the player stood on the ground it rises from', () => {
-    const s = findMaterialSights({ chunks: world(), from: FROM })['turf-wall'];
+    const s = find({ chunks: world(), from: FROM })['turf-wall'];
     expect(s, 'no turf wall found where the fixture built one').not.toBeNull();
     expect(s.form).toBe('hill');
     expect(s.normal).toEqual([-1, 0, 0]);
@@ -46,40 +49,75 @@ describe('the material sights found in a meshed world', () => {
   it('a hill outranks a nearer one-block step', () => {
     // Two blocks wide, so the wall's width cannot decide it.
     const step = world((set) => { set(2, 50, 4, grass); set(3, 50, 4, grass); });
-    const steps = findMaterialSights({ chunks: step, from: FROM })['turf-wall'];
+    const steps = find({ chunks: step, from: FROM })['turf-wall'];
     expect(steps.form, 'the step must not win over the hill').toBe('hill');
     const onlyStep = world((set) => {
       for (let z = 0; z < CHUNK_SIZE; z++) for (let x = 8; x < CHUNK_SIZE; x++) set(x, 50, z, grass);
       for (let z = 0; z < CHUNK_SIZE; z++) for (let x = 8; x < CHUNK_SIZE; x++) set(x, 51, z, 0);
     });
-    const s = findMaterialSights({ chunks: onlyStep, from: FROM })['turf-wall'];
+    const s = find({ chunks: onlyStep, from: FROM })['turf-wall'];
     expect(s.form, 'with no dirt exposed under the turf, the wall is a step').toBe('step');
     expect(s.ground).toBe(50);
   });
 
   it('a turf lip over two rows of dirt stands the player on the ground below both', () => {
     // Vertex AO gives each dirt row its own quad, so the wall's base is found by walking down the face.
-    const s = findMaterialSights({ chunks: world(() => {}, { high: 52, dirtRows: 2 }), from: FROM })['turf-wall'];
+    const s = find({ chunks: world(() => {}, { high: 52, dirtRows: 2 }), from: FROM })['turf-wall'];
     expect(s.form).toBe('hill');
     expect(s.ground).toBe(50);
     expect(s.target).toEqual([8, 52.5, 8.5]);
   });
 
-  it('a block standing in the line of sight rules the wall out', () => {
+  it('a block standing in the line of sight rules the wall out, however tall it is', () => {
     const blocked = world((set) => { set(6, 50, 8, stone); set(6, 51, 8, stone); });
-    expect(findMaterialSights({ chunks: blocked, from: FROM })['turf-wall']).toBeNull();
+    expect(find({ chunks: blocked, from: FROM })['turf-wall']).toBeNull();
+    // Taller than the 2 m checked above the base: its top face is out of reach, its sides are not.
+    const wall = world((set) => { for (let y = 50; y < 53; y++) set(6, y, 8, stone); });
+    expect(find({ chunks: wall, from: FROM })['turf-wall'], 'a 3-high wall across the sight line was seen through').toBeNull();
+    // A trunk under its canopy: the column's only top face is the leaves, far above.
+    const tree = world((set) => {
+      for (let y = 50; y < 56; y++) set(6, y, 8, wood);
+      for (let x = 5; x <= 7; x++) for (let z = 7; z <= 9; z++) set(x, 56, z, BLOCK_ID.leaves);
+    });
+    expect(find({ chunks: tree, from: FROM })['turf-wall'], 'a trunk under its canopy was seen through').toBeNull();
+  });
+
+  it('a block overhead, clear of the 2 m above the base, leaves the sight open', () => {
+    const over = world((set) => { set(6, 53, 8, stone); });
+    const s = find({ chunks: over, from: FROM })['turf-wall'];
+    expect(s, 'a floating block above the sight line hid the wall').not.toBeNull();
+    expect(s.target).toEqual([8, 51.5, 8.5]);
+  });
+
+  it('reads the block ids it is handed, and refuses to guess them', () => {
+    expect(() => findMaterialSights({ chunks: world(), from: FROM }), 'no ids: the finder guessed').toThrow(/ids\.grass/);
+    expect(() => findMaterialSights({ chunks: world(), from: FROM, ids: { grass, dirt } })).toThrow(/ids\.wood/);
+    // A world whose turf and soil carry other ids (sand over snow here) is found under those ids only.
+    const other = world((set) => {
+      for (let z = 0; z < CHUNK_SIZE; z++) {
+        for (let x = 0; x < CHUNK_SIZE; x++) {
+          const top = x < 8 ? 49 : 51;
+          set(x, top, z, BLOCK_ID.sand);
+          set(x, top - 1, z, BLOCK_ID.snow);
+        }
+      }
+    });
+    expect(find({ chunks: other, from: FROM })['turf-wall'], 'the game\'s grass id matched a world with none').toBeNull();
+    const s = findMaterialSights({ chunks: other, from: FROM, ids: { grass: BLOCK_ID.sand, dirt: BLOCK_ID.snow, wood } })['turf-wall'];
+    expect(s?.form).toBe('hill');
+    expect(s.target).toEqual([8, 51.5, 8.5]);
   });
 
   it('the trunk is a wood face at least three blocks tall, stood in front of on its own ground, nearest first', () => {
     const forest = world((set) => { for (let y = 50; y < 54; y++) set(3, y, 12, wood); });
-    const t = findMaterialSights({ chunks: forest, from: FROM }).trunk;
+    const t = find({ chunks: forest, from: FROM }).trunk;
     expect(t, 'no trunk found where the fixture built one').not.toBeNull();
     expect(t.normal).toEqual([0, 0, -1]);
     expect(t.ground).toBe(50);
     expect(t.target).toEqual([3.5, 51.5, 12]);
     expect(t.stand).toEqual([3.5, 50, 12 - MATERIAL_STAND_M]);
     const stump = world((set) => { for (let y = 50; y < 52; y++) set(3, y, 12, wood); });
-    expect(findMaterialSights({ chunks: stump, from: FROM }).trunk, 'a two-block stump is not a trunk').toBeNull();
+    expect(find({ chunks: stump, from: FROM }).trunk, 'a two-block stump is not a trunk').toBeNull();
   });
 
   it('a sight closer to the Hearth than minM is passed over for a farther one', () => {
@@ -87,15 +125,15 @@ describe('the material sights found in a meshed world', () => {
       for (let y = 50; y < 54; y++) set(3, y, 12, wood);
       for (let y = 50; y < 54; y++) set(3, y, 2, wood);
     });
-    expect(findMaterialSights({ chunks: forest, from: FROM }).trunk.target[2], 'SETUP: the near trunk is the nearest').toBeLessThan(4);
-    const t = findMaterialSights({ chunks: forest, from: FROM, minM: 6 }).trunk;
+    expect(find({ chunks: forest, from: FROM }).trunk.target[2], 'SETUP: the near trunk is the nearest').toBeLessThan(4);
+    const t = find({ chunks: forest, from: FROM, minM: 6 }).trunk;
     expect(t.rangeM).toBeGreaterThanOrEqual(6);
     expect(t.target[2]).toBe(12);
   });
 
   it('nothing is chosen from a face whose stand would be off the loaded ground', () => {
     // The chunk's border faces (getBlock reads air outside the chunk) have no ground in front of them.
-    const s = findMaterialSights({ chunks: world(), from: [-5, 51, -5], maxM: 40 })['turf-wall'];
+    const s = find({ chunks: world(), from: [-5, 51, -5], maxM: 40 })['turf-wall'];
     expect(s.target[0], 'a border face was chosen').toBe(8);
   });
 });

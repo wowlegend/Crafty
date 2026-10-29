@@ -30,7 +30,7 @@
 // Module state on purpose: the pose is read every frame by the Player (a transient read — Game-Loop Isolation), and
 // it changes only when a script asks.
 
-import { LOOKBOOK_PASS_NAMES } from './passesOff.js';
+import { LOOKBOOK_PASS_NAMES, lookbookEffectNames } from './passesOff.js';
 
 const LOOKBOOK_PARAM = 'lookbook';
 
@@ -256,9 +256,9 @@ export function installLookbookSeam(win, {
     passTimes: async ({ reset = false, mode } = {}) => {
       if (!loadPassTimer) return { installed: false, reason: 'no pass timer in this build' };
       if (!_passTimer) _passTimer = (await loadPassTimer()).installPassTimer();
-      // Before the read, so `{ mode, reset: true }` opens a window in that mode ('segments' or 'frame').
-      if (mode !== undefined) _passTimer.setMode(mode);
-      return _passTimer.report({ reset });
+      // The report covers the window that just closed, in the mode it ran in; `{ mode, reset: true }` then opens the
+      // next window in `mode` ('segments', 'frame' or 'count').
+      return _passTimer.report({ reset, mode });
     },
     /** Switch the named post passes off (render/passesOff.js LOOKBOOK_PASS_NAMES) and every other one back on, from
      *  the next frame. `[]` restores the chain. Throws on an unknown name, leaving the set as it was. */
@@ -304,6 +304,8 @@ export function installLookbookSeam(win, {
         hostiles: hostiles && (cam || t) ? hostileReach(hostiles(), cam ? cam.position.toArray() : [t.x, t.y, t.z]) : null,
         // Where the sun is, so a shot can face it (GodRays shows only near it); null when the build hands no reader.
         sun: sunDir ? sunBearing(sunDir()) : null,
+        // The passes switched off, and the postprocessing effects that must show skipped in the chain while they are.
+        passesOff: { names: [..._passesOff].sort(), effects: lookbookEffectNames(_passesOff) },
       };
     },
   });

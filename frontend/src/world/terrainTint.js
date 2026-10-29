@@ -11,10 +11,11 @@
 //         right — exactly the ground/blade disagreement the tint was built to remove.
 //
 // Both are now DATA derived here and drivable by a test: the array length comes from BIOME_NAMES, and the
-// per-block mask is a table indexed by the texture layer (= block id).
+// mask is a table indexed by the texture layer a face shows (world/materialGrammar.js), so a face takes the tint of
+// the tile it draws: a snow block's underside shows stone and keeps stone's colour.
 import { BIOME_NAMES } from './biomeTable.js';
 import { BLOCK_ID } from './blockIds.js';
-import { TEXTURE_LAYER_COUNT } from './materialGrammar.js';
+import { TEXTURE_LAYER_COUNT, FACE_VARIANTS, variantLayer } from './materialGrammar.js';
 
 /**
  * The natural SURFACE blocks a biome colours: its ground (grass, dirt, sand, snow) and its canopy (leaves —
@@ -22,19 +23,19 @@ import { TEXTURE_LAYER_COUNT } from './materialGrammar.js';
  */
 export const BIOME_TINTED_BLOCKS = Object.freeze(['grass', 'dirt', 'sand', 'snow', 'leaves']);
 
-/** Per-layer 0/1 mask, `layers` long (the texture-array depth). 1 = take the biome tint. */
+/** Per-layer 0/1 mask, `layers` long (the texture-array depth). 1 = take the biome tint. A block's own layer is tinted
+ *  when the block is; a face variant (a turf or snow lip over its body) when the block it belongs to is. */
 export function biomeTintMask(layers) {
   const out = new Float32Array(layers);
-  for (const name of BIOME_TINTED_BLOCKS) {
-    const id = BLOCK_ID[name];
-    if (Number.isInteger(id) && id >= 0 && id < layers) out[id] = 1;
-  }
+  const set = (layer) => { if (Number.isInteger(layer) && layer >= 0 && layer < layers) out[layer] = 1; };
+  for (const name of BIOME_TINTED_BLOCKS) set(BLOCK_ID[name]);
+  for (const v of FACE_VARIANTS) if (BIOME_TINTED_BLOCKS.includes(v.block)) set(variantLayer(v.name));
   return out;
 }
 
 /**
  * The GLSL for the tint, sized from the biome table. `decl` goes with the other fragment uniforms; `apply`
- * goes after the albedo is built and needs `layerIndex` and `vBiome` in scope.
+ * goes after the albedo is built and needs `texLayer` (the layer the face samples) and `vBiome` in scope.
  *
  * The mask is MIXED, not branched: the multiplier is luminance-normalised, so mix(1, tint, 0/1) either
  * shifts hue or leaves the texel alone, with no divergence in the fragment shader.
@@ -48,7 +49,7 @@ export function biomeTintGlsl(biomeCount = BIOME_NAMES.length, layers = TEXTURE_
       `uniform float uBiomeTintMask[${layers}];`,
     ].join('\n'),
     apply: [
-      `float biomeTintOn = uBiomeTintMask[int(clamp(layerIndex, 0.0, ${lastLayer}))];`,
+      `float biomeTintOn = uBiomeTintMask[int(clamp(texLayer, 0.0, ${lastLayer}))];`,
       `diffuseColor.rgb *= mix(vec3(1.0), uBiomeTint[int(clamp(vBiome, 0.0, ${lastBiome}))], biomeTintOn);`,
     ].join('\n'),
   };

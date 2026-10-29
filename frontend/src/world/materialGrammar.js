@@ -35,10 +35,16 @@ const FACE_REMAPS = Object.freeze([
  *  the lip still reads at 8 m. */
 export const LIP_TEXELS = 6;
 
-/** The grammar for an id space: its layer counts and the face table, indexed block * 3 + role. */
+/** The grammar for an id space: its layer counts and the face table, indexed block * 3 + role. Throws on a block the
+ *  grammar names that the id space lacks: a typed array drops a write at a NaN index without a word. */
 export function buildGrammar(blockIds) {
   const BLOCK_LAYER_COUNT = Math.max(...Object.values(blockIds)) + 1;
   const TEXTURE_LAYER_COUNT = BLOCK_LAYER_COUNT + FACE_VARIANTS.length;
+  const idOf = (name) => {
+    const id = blockIds[name];
+    if (!Number.isInteger(id) || id < 0) throw new Error(`materialGrammar: the id space has no block "${name}"`);
+    return id;
+  };
   const variantLayer = (name) => {
     const i = FACE_VARIANTS.findIndex((v) => v.name === name);
     if (i < 0) throw new Error(`materialGrammar: no face variant "${name}"`);
@@ -46,8 +52,8 @@ export function buildGrammar(blockIds) {
   };
   const faceLayerTable = new Uint8Array(BLOCK_LAYER_COUNT * 3);
   for (let b = 0; b < BLOCK_LAYER_COUNT; b++) faceLayerTable.fill(b, b * 3, b * 3 + 3);
-  for (const m of FACE_REMAPS) faceLayerTable[blockIds[m.block] * 3 + FACE_ROLE[m.role]] = blockIds[m.to];
-  for (const v of FACE_VARIANTS) faceLayerTable[blockIds[v.block] * 3 + FACE_ROLE[v.role]] = variantLayer(v.name);
+  for (const m of FACE_REMAPS) faceLayerTable[idOf(m.block) * 3 + FACE_ROLE[m.role]] = idOf(m.to);
+  for (const v of FACE_VARIANTS) faceLayerTable[idOf(v.block) * 3 + FACE_ROLE[v.role]] = variantLayer(v.name);
   const faceLayer = (block, role) => faceLayerTable[block * 3 + role];
   return { BLOCK_LAYER_COUNT, TEXTURE_LAYER_COUNT, variantLayer, faceLayer, faceLayerTable };
 }

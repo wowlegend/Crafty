@@ -41,6 +41,13 @@ rect therefore fed `u` the h-edge and `v` the w-edge on five of six faces (`d676
 whenever a merge is square — which is why reading the constant never settled it, and why the review item
 that prompted the fix wrongly called −Y correct.
 
+**On every side face `v` rises 1:1 with world Y**, from a whole number at a whole block height, so a tile's row 0
+is each block's bottom and a side tile's top rows (the turf and snow lips, `world/materialGrammar.js`) sit at each
+block's top. That is why there are **three** UV branches, not two: on ±X faces `c0→c1` climbs world Y, so that
+edge takes `v` (`(0,0, 0,w, h,w, h,0)`), while ±Z and −Y share `(0,0, w,0, w,h, 0,h)`. Folding ±X into the
+shared branch keeps every rect the right size and moves every lip on an X wall to the side of the block; of
+`mesher-geometry-gates.test.js`, only "side faces carry v up the world" goes red (mutation run 2026-10-28).
+
 **The fixture matters more than the assertion here.** A single 16×16 slab catches only 4 of the 5 broken
 directions and looks complete, because on a square merge a transposed rect is identical to a correct one.
 Use an asymmetric footprint too.

@@ -456,34 +456,46 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
  */
 describe('prod-smoke: the post chain the production build renders', () => {
   const ctx = (canvas, labels) => ({ canvas, chain: labels.map((label) => ({ label, enabled: true })) });
+  const HIGH = { tier: 'high' };
   const KEPT = ['0:RenderPass', '1:EffectPass(HueSaturationEffect+BrightnessContrastEffect+BloomEffect)', '2:EffectPass(SMAAEffect)', '3:EffectPass(ToneMappingEffect+VignetteEffect)'];
 
   it('passes the chain with every kept pass and none named absent, reading the game canvas, not the title\'s', () => {
     const r = { contexts: [ctx([300, 200], ['0:RenderPass', '1:EffectPass(GodRaysEffect+BloomEffect)']), ctx([2549, 1647], KEPT)] };
-    const v = chainVerdict(r, { present: CHAIN_PRESENT, absent: ['GodRaysEffect', 'N8AO'] });
+    const v = chainVerdict(r, { present: CHAIN_PRESENT, absent: ['GodRaysEffect', 'N8AO'], tier: 'high' });
     expect(v.ok, v.line).toBe(true);
     expect(CHAIN_PRESENT.length).toBeGreaterThan(0);
     // The run's own default: the deleted N8AO is named absent, so the chain it rendered goes red the day it returns.
     expect(CHAIN_ABSENT).toContain('N8AO');
     const back = { contexts: [ctx([2549, 1647], [KEPT[0], '1:N8AO', ...KEPT.slice(1)])] };
-    expect(chainVerdict(back), 'the default lists do not refuse N8AO back in the chain').toMatchObject({ ok: false, control: false });
-    expect(chainVerdict({ contexts: [ctx([2549, 1647], KEPT)] }).ok, 'the default lists refuse the kept chain').toBe(true);
+    expect(chainVerdict(back, HIGH), 'the default lists do not refuse N8AO back in the chain').toMatchObject({ ok: false, control: false });
+    expect(chainVerdict({ contexts: [ctx([2549, 1647], KEPT)] }, HIGH).ok, 'the default lists refuse the kept chain').toBe(true);
   });
 
   it('goes red when a named pass is back, merged into an EffectPass or as a pass of its own', () => {
     const merged = { contexts: [ctx([2549, 1647], [KEPT[0], '1:EffectPass(GodRaysEffect+HueSaturationEffect+BloomEffect)', ...KEPT.slice(2)])] };
-    expect(chainVerdict(merged, { absent: ['GodRaysEffect'] })).toMatchObject({ ok: false, control: false });
+    expect(chainVerdict(merged, { absent: ['GodRaysEffect'], tier: 'high' })).toMatchObject({ ok: false, control: false });
     const own = { contexts: [ctx([2549, 1647], [KEPT[0], '1:N8AO', ...KEPT.slice(1)])] };
-    expect(chainVerdict(own, { absent: ['N8AO'] })).toMatchObject({ ok: false, control: false });
+    expect(chainVerdict(own, { absent: ['N8AO'], tier: 'high' })).toMatchObject({ ok: false, control: false });
     // A name is matched whole: GodRaysEffectLite is not GodRaysEffect, and a label that only CONTAINS N8AO is not it.
     const near = { contexts: [ctx([2549, 1647], [...KEPT, '4:EffectPass(GodRaysEffectLite)', '5:N8AOish'])] };
-    expect(chainVerdict(near, { absent: ['GodRaysEffect', 'N8AO'] }).ok).toBe(true);
+    expect(chainVerdict(near, { absent: ['GodRaysEffect', 'N8AO'], tier: 'high' }).ok).toBe(true);
   });
 
   it('cannot pass on a chain it cannot see: no composer, or a kept pass missing, is COULD NOT CHECK', () => {
-    expect(chainVerdict({ contexts: [] })).toMatchObject({ ok: false, control: true });
-    expect(chainVerdict({ contexts: [{ canvas: [1, 1], chain: null }] })).toMatchObject({ ok: false, control: true });
+    expect(chainVerdict({ contexts: [] }, HIGH)).toMatchObject({ ok: false, control: true });
+    expect(chainVerdict({ contexts: [{ canvas: [1, 1], chain: null }] }, HIGH)).toMatchObject({ ok: false, control: true });
     const blind = { contexts: [ctx([2549, 1647], ['0:RenderPass'])] };
-    expect(chainVerdict(blind, { absent: ['GodRaysEffect'] })).toMatchObject({ ok: false, control: true });
+    expect(chainVerdict(blind, { absent: ['GodRaysEffect'], tier: 'high' })).toMatchObject({ ok: false, control: true });
+  });
+
+  it('checks the absence only at tier high, where every tier-gated pass mounts: a lower tier, or none read, is COULD NOT CHECK', () => {
+    const back = { contexts: [ctx([2549, 1647], [KEPT[0], '1:N8AO', ...KEPT.slice(1)])] };
+    for (const tier of ['low', 'med', null, undefined]) {
+      const v = chainVerdict({ contexts: [ctx([2549, 1647], KEPT)] }, { tier });
+      expect(v, `a chain read at tier ${tier} passed the absence half`).toMatchObject({ ok: false, control: true });
+      expect(v.line).toMatch(/not high/);
+    }
+    expect(chainVerdict(back, HIGH)).toMatchObject({ ok: false, control: false });
+    expect(chainVerdict({ contexts: [ctx([2549, 1647], KEPT)] }, HIGH).line).toMatch(/at tier high/);
   });
 });

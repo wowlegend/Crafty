@@ -152,15 +152,22 @@ export function aimAt(eye, target) {
  * the store's debugChunks); omitted, it reads them from the page (`window.useGameStore`), so this runs unchanged
  * through Playwright's page.evaluate. It therefore reads nothing from module scope: every input arrives in `arg`.
  *
- * Read from the mesh: a side quad is a wall face (its block in colour.r); a +Y quad marks a column's ground at its
- * height. A sight's stand column must have ground exactly at the wall's base, and every column from the face to the
- * stand must be clear of blocks over the 2 m above that base.
+ * Read from the mesh: a side quad is a wall face (its block in colour.r) and marks the block behind it as solid over
+ * its height; a +Y quad marks a column's ground at its height. A sight's stand column must have ground exactly at the
+ * wall's base, and every column from the face to the stand must be clear of blocks over the 2 m above that base: no
+ * ground rising into it and no block whose side shows within it, however tall that block is.
+ * `ids`: { grass, dirt, wood }, the game's block ids (src/world/blockIds.js BLOCK_ID); required, since the page
+ * evaluation this runs in cannot import them.
  */
 export function findMaterialSights(arg) {
-  const { from, ids = { grass: 1, dirt: 2, wood: 6 }, standM = 3.5, minM = 0, maxM = 40, chunkSize = 16 } = arg;
+  const { from, ids, standM = 3.5, minM = 0, maxM = 40, chunkSize = 16 } = arg;
+  for (const k of ['grass', 'dirt', 'wood']) {
+    if (!Number.isInteger(ids?.[k])) throw new TypeError(`findMaterialSights: ids.${k} must be the game's block id, got ${JSON.stringify(ids?.[k])}`);
+  }
   const list = arg.chunks || Object.values(window.useGameStore.getState().debugChunks || {});
   const sides = [];
   const tops = new Map();
+  const solid = new Map(); // column -> [y0, y1] of every block whose side face shows there
   const key = (x, z) => `${x},${z}`;
   for (const c of list) {
     const m = c.meshData || c;
@@ -190,8 +197,19 @@ export function findMaterialSights(arg) {
       }
     }
   }
+  // A side face lies on its block's boundary; the block is the column on the side away from its normal.
+  for (const q of sides) {
+    const along = q.nx !== 0 ? [q.z0, q.z1] : [q.x0, q.x1];
+    for (let a = along[0]; a < along[1]; a++) {
+      const k = q.nx !== 0 ? key(q.nx > 0 ? q.x0 - 1 : q.x0, a) : key(a, q.nz > 0 ? q.z0 - 1 : q.z0);
+      if (!solid.has(k)) solid.set(k, []);
+      solid.get(k).push([q.y0, q.y1]);
+    }
+  }
   const groundAt = (x, z) => tops.get(key(Math.floor(x), Math.floor(z))) || [];
-  const clearAbove = (x, z, base) => !groundAt(x, z).some((t) => t > base && t <= base + 2);
+  const solidAt = (x, z) => solid.get(key(Math.floor(x), Math.floor(z))) || [];
+  const clearAbove = (x, z, base) => !groundAt(x, z).some((t) => t > base && t <= base + 2)
+    && !solidAt(x, z).some(([y0, y1]) => y0 < base + 2 && y1 > base);
   // Vertical vertex AO splits one wall face into several quads, so the face is read per column of its plane: every
   // side quad's [y0, y1] is filed under (direction, plane, column along the face).
   const planeOf = (q) => (q.nx !== 0 ? q.x0 : q.z0);
@@ -459,7 +477,7 @@ export function windowMedian(report, label, gameCanvas) {
   return p && Number.isFinite(p.p50Ms) ? { ms: p.p50Ms, n: p.n } : null;
 }
 
-const medianOf = (xs) => {
+export const medianOf = (xs) => {
   const s = [...xs].sort((a, b) => a - b);
   if (!s.length) return null;
   const m = Math.floor(s.length / 2);
@@ -472,45 +490,153 @@ const statsOf = (values) => ({
 });
 
 /**
- * PURE. One arm's differential from measured windows ([{ arm, rep, state, q, w, valid }], `q` the whole-frame query
- * median and `w` the synced wall median of each window): per repetition with both a valid `on` and a valid `off`,
- * `d = on - off` on each instrument. A repetition missing either half counts for nothing.
+ * PURE. One arm's differential from measured windows ([{ arm, rep, state, q, w, u, valid }], `q` the whole-frame query
+ * median, `w` the synced wall median and `u` the GPU's busy ms per frame of each window): per repetition with both a
+ * valid `on` and a valid `off`, `d = on - off` on each instrument that read both halves. Each instrument pairs on its
+ * own, so a window whose timer query read nothing still counts for U. A repetition missing either half counts for
+ * nothing.
  */
 export function passDifferential(windows, arm) {
   const reps = new Map();
   for (const x of windows) {
-    if (x.arm !== arm || !x.valid || !Number.isFinite(x.q) || !Number.isFinite(x.w)) continue;
+    if (x.arm !== arm || !x.valid) continue;
     if (!reps.has(x.rep)) reps.set(x.rep, {});
     reps.get(x.rep)[x.state] = x;
   }
   const pairs = [...reps.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v).filter((v) => v.on && v.off);
-  // `u`, GPU busy ms per frame from the driver's utilization, where the windows carry it; its own pairs.
-  const uPairs = pairs.filter((p) => Number.isFinite(p.on.u) && Number.isFinite(p.off.u));
+  const read = (k) => pairs.filter((p) => Number.isFinite(p.on[k]) && Number.isFinite(p.off[k]));
+  const [qPairs, wPairs, uPairs] = [read('q'), read('w'), read('u')];
   return {
     arm,
     reps: pairs.length,
-    q: statsOf(pairs.map((p) => p.on.q - p.off.q)),
-    w: statsOf(pairs.map((p) => p.on.w - p.off.w)),
+    q: statsOf(qPairs.map((p) => p.on.q - p.off.q)),
+    w: statsOf(wPairs.map((p) => p.on.w - p.off.w)),
     u: statsOf(uPairs.map((p) => p.on.u - p.off.u)),
-    onQ: medianOf(pairs.map((p) => p.on.q)), offQ: medianOf(pairs.map((p) => p.off.q)),
-    onW: medianOf(pairs.map((p) => p.on.w)), offW: medianOf(pairs.map((p) => p.off.w)),
+    onQ: medianOf(qPairs.map((p) => p.on.q)), offQ: medianOf(qPairs.map((p) => p.off.q)),
+    onW: medianOf(wPairs.map((p) => p.on.w)), offW: medianOf(wPairs.map((p) => p.off.w)),
     onU: medianOf(uPairs.map((p) => p.on.u)), offU: medianOf(uPairs.map((p) => p.off.u)),
   };
 }
+
+/** A timer-query instrument (`q`, `w`) is read from at least this many frames of its window. */
+export const PASS_MIN_TIMED = 30;
+/** U is read from at least this many post-lag GPU utilization readings. */
+export const PASS_MIN_UTIL = 5;
+
+/**
+ * PURE. A frame window's three readings, each kept only where it had enough samples: `q` (the whole-frame query),
+ * `w` (the synced wall clock, which needs no timer extension) and `u` (the driver's busy time, which needs neither).
+ * One instrument short of samples drops that instrument, never the window. `dropped` names each one dropped.
+ */
+export function windowReadings({ q, w, util }) {
+  const dropped = [];
+  const keep = (name, r) => {
+    if (r && Number.isFinite(r.ms) && r.n >= PASS_MIN_TIMED) return r.ms;
+    dropped.push(`${name}: ${r?.n ?? 0} timed frames`);
+    return null;
+  };
+  const qMs = keep('Q', q);
+  const wMs = keep('W', w);
+  let u = null;
+  if (util && Number.isFinite(util.u) && util.uN >= PASS_MIN_UTIL) u = util.u;
+  else dropped.push(`U: ${util?.uN ?? 0} GPU utilization readings`);
+  return { q: qMs, w: wMs, u, dropped };
+}
+
+/**
+ * PURE. Why the composer is not in the state an arm asked for, or []. `chain` is the pass timer's chain (each
+ * EffectPass carries `skipped`: its effects whose blend function is SKIP); `expectEffects` the effect names the seam
+ * says the arm switches off (render/passesOff.js lookbookEffectNames). Exactly those must be skipped: a renamed effect
+ * that the arm no longer matches, or a missing composer, would otherwise measure the on state twice. The Sun billboard
+ * is not an effect, so the 'sun' half of an arm is not checked here.
+ */
+export function armAppliedWhy(chain, expectEffects) {
+  if (!Array.isArray(chain) || !chain.some((p) => Array.isArray(p?.skipped))) {
+    return ['the chain shows no effect pass, so whether the arm is off is unread'];
+  }
+  if (!Array.isArray(expectEffects)) return ['the seam names no effects for the arm'];
+  const skipped = [...new Set(chain.flatMap((p) => p.skipped || []))];
+  const missing = expectEffects.filter((n) => !skipped.includes(n));
+  const extra = skipped.filter((n) => !expectEffects.includes(n));
+  const why = [];
+  if (missing.length) why.push(`the arm's ${missing.join(', ')} not off in the chain`);
+  if (extra.length) why.push(`${extra.join(', ')} off in the chain, which the arm does not name`);
+  return why;
+}
+
+/** PURE. Why the body or the gaze moved off the pose a block measures from ({ stand, heading }), or []. */
+export function poseWhy(at, pose) {
+  const why = [];
+  const stood = offStand(at?.body, pose?.stand, 'at the read');
+  if (stood) why.push(stood);
+  const facing = offHeading(at?.heading, pose?.heading, '');
+  if (facing) why.push(facing);
+  return why;
+}
+
+/**
+ * PURE. Why a --passes window (or one half of an alternation) does not measure what it claims, or []: `at` is the
+ * seam's info() read as it closed, `chain` the pass timer's chain read with it. Valid only with input live, the player
+ * alive, the tier high, the clock within CYCLE_TOLERANCE of `cycle`, the body at the block's stand facing its
+ * heading, and exactly the arm's effects off.
+ */
+export function passWindowWhy({ cycle, pose, at, chain, expectEffects }) {
+  const why = [];
+  if (!at?.active) why.push('input not live');
+  if (!at?.isAlive) why.push('player dead');
+  if (at?.tier !== 'high') why.push(`tier ${at?.tier}`);
+  const c = Number(at?.cycle);
+  if (!Number.isFinite(c) || circular(c, cycle) > CYCLE_TOLERANCE) why.push(`clock at ${Number.isFinite(c) ? c.toFixed(4) : '?'}, asked ${cycle}`);
+  why.push(...poseWhy(at, pose));
+  why.push(...armAppliedWhy(chain, expectEffects));
+  return why;
+}
+
+/** PURE. Why --passes cannot read the GPU it measures through this renderer, or null. The driver's utilization is the
+ *  hardware GPU's, so a software renderer leaves it idle whatever the arm does. */
+export function passRendererProblem(renderer, { allowSoftware = false } = {}) {
+  const gpu = classifyRenderer(renderer);
+  if (gpu === 'hardware' || (gpu === 'software' && allowSoftware)) return null;
+  return `the GAME's renderer is ${gpu} (${renderer ?? 'none read'}): the GPU utilization would read an idle device`;
+}
+
+/**
+ * PURE. Which checkout a run measured: `rev` from `git rev-parse --short HEAD`, `porcelain` from `git status
+ * --porcelain`. A dirty tree means the probe or the build can differ from the commit named, so the paths are kept.
+ */
+export function checkoutState(rev, porcelain) {
+  const commitAtRun = typeof rev === 'string' && rev.trim() ? rev.trim() : null;
+  if (typeof porcelain !== 'string') return { commitAtRun, dirty: null, dirtyPaths: [] };
+  const paths = porcelain.split('\n').filter((l) => l.trim()).map((l) => l.slice(3));
+  return { commitAtRun, dirty: paths.length > 0, dirtyPaths: paths.slice(0, 20), dirtyCount: paths.length };
+}
+
+/** The driver's utilization lags: an alternation half is read from this far in. */
+export const PASS_ALT_SKIP_MS = 600;
+/** An alternation half counts with at least this many readings after the lag. */
+export const PASS_ALT_MIN_READINGS = 3;
 
 /**
  * PURE. The fast alternation (lookbook.mjs --passes --alt): one window of halves, the arm switched on and off every
  * half, the GPU's utilization read through each. The GPU moves between power states over tens of seconds, which the
  * windowed design lands on either arm at random; within a few seconds it does not, so each adjacent on/off pair of
  * halves is one differential within one state. A half's value is its median busy percent after `skipMs` (the driver
- * lags), in ms at the window's frame interval. `halves`: [{ state: 'on'|'off', samples: [{ t, util }] }].
+ * lags), in ms at that half's own frame interval (`windowMs / frames`, counted over the same post-lag span), so an arm
+ * that changes the frame rate at the same busy percent still reads as a cost. A half counts for nothing when the window
+ * check refused it (`why` non-empty), when it has fewer than `minReadings` readings after the lag, or no interval.
+ * Adjacent pairs share halves, so the differentials are not independent: one odd half moves the two pairs it is in.
+ * `halves`: [{ state: 'on'|'off', samples: [{ t, util }], frames, windowMs, why? }].
  */
-export function altDifferential(halves, intervalMs, { skipMs = 600 } = {}) {
+export function altDifferential(halves, { skipMs = PASS_ALT_SKIP_MS, minReadings = PASS_ALT_MIN_READINGS } = {}) {
   const value = (h) => {
-    const pct = medianOf((h.samples || []).filter((s) => s.t >= skipMs && s.util).map((s) => s.util.device));
-    return pct === null || !(intervalMs > 0) ? null : (pct / 100) * intervalMs;
+    if (h.why?.length) return { ms: null, dropped: h.why.join('; ') };
+    const readings = (h.samples || []).filter((s) => s.t >= skipMs && s.util).map((s) => s.util.device);
+    if (readings.length < minReadings) return { ms: null, dropped: `${readings.length} readings after the lag` };
+    const intervalMs = h.frames > 0 && h.windowMs > 0 ? h.windowMs / h.frames : null;
+    if (intervalMs === null) return { ms: null, dropped: 'no frame interval' };
+    return { ms: (medianOf(readings) / 100) * intervalMs, intervalMs };
   };
-  const vals = (halves || []).map((h) => ({ state: h.state, ms: value(h) }));
+  const vals = (halves || []).map((h) => ({ state: h.state, ...value(h) }));
   const d = [];
   for (let i = 1; i < vals.length; i++) {
     const [a, b] = [vals[i - 1], vals[i]];
@@ -518,7 +644,10 @@ export function altDifferential(halves, intervalMs, { skipMs = 600 } = {}) {
     d.push(a.state === 'on' ? a.ms - b.ms : b.ms - a.ms);
   }
   const onMs = medianOf(vals.filter((v) => v.state === 'on' && v.ms !== null).map((v) => v.ms));
-  return { u: statsOf(d), onU: onMs, halves: vals.map((v) => v.ms) };
+  return {
+    u: statsOf(d), onU: onMs, halves: vals.map((v) => v.ms),
+    dropped: vals.map((v, i) => (v.ms === null ? `half ${i} (${v.state}): ${v.dropped}` : null)).filter(Boolean),
+  };
 }
 
 /** The rule (plan 2026-10-28-crafty-w2i-passes, "The decision rule" and its amendment), fixed before the measurement. */
@@ -590,6 +719,40 @@ export function shotVerdict({ cycle, before, after }) {
   if (!Number.isFinite(at) || circular(at, cycle) > CYCLE_TOLERANCE) why.push(`clock at ${Number.isFinite(at) ? at.toFixed(4) : '?'}, asked ${cycle}`);
   if ((after?.contextLosses ?? 0) !== (before?.contextLosses ?? 0)) why.push('context lost during the shot');
   return { valid: why.length === 0, why };
+}
+
+/**
+ * PURE. The lines the run prints for one target: each set's valid count against its plan with every invalid frame
+ * named, the clips, and how many frames of every set carried post-pass timings. `planned`: { hero, eye, material },
+ * the shots each set was asked for; a set that was asked for and shot nothing still prints its 0 of N.
+ */
+export function targetSummaryLines(r, planned = {}) {
+  const lines = [];
+  const set = (label, list, plan, tail = '') => {
+    lines.push(`  ${label.padEnd(13)} ${list.filter((s) => s.valid).length}/${list.length} valid (planned ${plan})${tail}`);
+    for (const s of list.filter((x) => !x.valid)) lines.push(`    INVALID ${s.file}: ${(s.why || []).join('; ')}`);
+  };
+  set('shots', r.shots || [], planned.hero ?? 0, r.respawns ? `, ${r.respawns} respawn(s)` : '');
+  if (r.eye) set('eye level', r.eye, planned.eye ?? 0, `; stand ${JSON.stringify(r.stand)}; hands ${JSON.stringify(r.hands)}`);
+  if (r.material?.length || planned.material) {
+    const sights = MATERIAL_SIGHT_KINDS.map((k) => {
+      const s = r.sights?.[k];
+      return s ? `${k} ${s.form} at ${Number(s.rangeM).toFixed(1)} m` : `${k} none`;
+    }).join(', ');
+    set('material', r.material || [], planned.material ?? 0, `; sights: ${sights}`);
+  }
+  if (r.clips?.length) {
+    lines.push(`  clips         ${r.clips.filter((c) => c.valid).length}/${r.clips.length} valid`);
+    for (const c of r.clips) {
+      lines.push(`    ${c.file}: walked ${Number(c.movedM).toFixed(2)} m, ${c.frames} video / ${c.gameFrames} game frames${c.valid ? '' : `, INVALID: ${(c.why || []).join('; ')}`}`);
+    }
+  }
+  const all = [...(r.shots || []), ...(r.eye || []), ...(r.material || []), ...(r.clips || [])].map((s) => s.passMs);
+  const timed = all.filter((p) => p?.postMs != null);
+  const implausible = timed.filter((p) => !p.plausible).length;
+  const why = [...new Set(all.filter((p) => p?.postMs == null).map((p) => p?.reason).filter(Boolean))];
+  lines.push(`  post-pass ms  ${timed.length}/${all.length} frame(s) and clip(s) timed, ${implausible} of them IMPLAUSIBLE (more GPU ms than the window lasted)${why.length ? `; untimed: ${why.join('; ')}` : ''}`);
+  return lines;
 }
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };

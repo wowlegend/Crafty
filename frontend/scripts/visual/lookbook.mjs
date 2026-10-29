@@ -66,9 +66,13 @@
  * page at Kevin's window (_lookbook.mjs PASS_TARGET), the player stood at the Hearth, and at each of PASS_TIMES every
  * arm of PASS_ARMS switched off and on through the seam (passesOff) in interleaved repetitions (passWindowPlan), each
  * window timed in the timer's whole-frame mode: `q`, one query per composer.render, and `w`, the synced wall clock. A
- * window is valid only at tier high, alive, input live, with the clock where it was set and the chain showing the arm
- * off. Then before/after frames (PASS_LOOK_PAIRS). No block starts while the 1-minute load is over PASS_MAX_LOAD. It
- * writes passes.json (every window, raw) and the frames, and prints each arm's differential and verdict (passVerdict).
+ * window is valid only at tier high, alive, input live, with the clock where it was set, the body on the block's stand
+ * facing its heading (a respawn or a drift is stood back before the next window) and the chain showing exactly the
+ * arm's effects off (_lookbook.mjs passWindowWhy); an instrument short of samples is dropped from its window, not the
+ * window. A game renderer that is not hardware stops the run (COULD NOT MEASURE), since the GPU utilization would read
+ * an idle device; --allow-software lets a SwiftShader run through, and its U then admits no instrument. Then before/after frames (PASS_LOOK_PAIRS). No block starts while the 1-minute load is over
+ * PASS_MAX_LOAD. It writes passes.json (every window, raw) and the frames, and prints each arm's differential and
+ * verdict (passVerdict).
  *
  * Needs a production build: `npm run build` first.
  * Usage:  node scripts/visual/lookbook.mjs [--out <dir>] [--targets chromium-1280x800,webkit-1180x820,webkit-820x1180]
@@ -87,13 +91,15 @@ import { standInPointerLock, playLiveReading } from './_probe.mjs';
 import {
   TARGETS, CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, EYE_HEADINGS, EYE_PITCH, shotPlan, eyeShotPlan, clipPlan, classifyRenderer,
   pickCandidate, shotVerdict, eyeShotVerdict, clipVerdict, passSummary, contactSheetHtml, parseCycles, indexChunkOf,
-  servedBuildProblem, CYCLE_TOLERANCE, PASS_ARMS, PASS_TIMES, PASS_REPS, PASS_TARGET, PASS_LOOK_PAIRS, PASS_MAX_LOAD,
+  servedBuildProblem, PASS_ARMS, PASS_TIMES, PASS_REPS, PASS_TARGET, PASS_LOOK_PAIRS, PASS_MAX_LOAD,
   passWindowPlan, windowMedian, passDifferential, passVerdict, admittedInstruments, PASS_CONTROL, parseGpuUtil, gpuMsPerFrame,
-  altDifferential,
+  altDifferential, PASS_ALT_SKIP_MS, windowReadings, passWindowWhy, poseWhy, passRendererProblem, checkoutState, medianOf,
+  targetSummaryLines,
   MATERIAL_SIGHT_KINDS, MATERIAL_STAND_M, MATERIAL_MIN_M, materialShotPlan, findMaterialSights, aimAt,
-  HAND_MASK, HANDS_HEADING, handPixelStats, facing, handCount,
+  HAND_MASK, HANDS_HEADING, handPixelStats, facing, handCount, CYCLE_TOLERANCE,
 } from './_lookbook.mjs';
 import { PNG } from 'pngjs';
+import { BLOCK_ID } from '../../src/world/blockIds.js';
 
 const PORT = probePort(import.meta.url);
 const arg = (k, d) => {
@@ -280,11 +286,13 @@ const hudOn = (page) => page.evaluate(() => {
   return !!(r && r.width > 0 && r.height > 0);
 });
 
+/** Respawn a dead player through the store; true when it did. */
 async function respawnIfDead(page, report) {
-  if ((await info(page)).isAlive) return;
+  if ((await info(page)).isAlive) return false;
   await page.evaluate(() => window.useGameStore?.getState?.().respawn?.());
   report.respawns += 1;
   await delay(1500);
+  return true;
 }
 
 /** Where the body rests: two reads 500 ms apart within 5 cm (not falling, not respawning), or null after ~20 s. */
@@ -521,7 +529,8 @@ async function shootTarget(target, launchOpts, launchId) {
     // with a real W key until the controller stops them, and is shot again facing it. Then the turf-wall sight from its
     // stand, the frame W2-K's dark polygon was seen in.
     if (SETS.includes('hands') && report.stand && target.engine === 'chromium') {
-      const sights = report.sights ?? await page.evaluate(findMaterialSights, { from: report.stand, standM: MATERIAL_STAND_M, minM: MATERIAL_MIN_M });
+      const sights = report.sights ?? await page.evaluate(findMaterialSights, { from: report.stand, standM: MATERIAL_STAND_M, minM: MATERIAL_MIN_M,
+        ids: { grass: BLOCK_ID.grass, dirt: BLOCK_ID.dirt, wood: BLOCK_ID.wood } });
       const sight = sights.trunk;
       if (sights['turf-wall']) {
         const turf = sights['turf-wall'];
@@ -599,7 +608,8 @@ async function shootTarget(target, launchOpts, launchId) {
     }
 
     if (SETS.includes('material') && report.stand) {
-      report.sights = await page.evaluate(findMaterialSights, { from: report.stand, standM: MATERIAL_STAND_M, minM: MATERIAL_MIN_M });
+      report.sights = await page.evaluate(findMaterialSights, { from: report.stand, standM: MATERIAL_STAND_M, minM: MATERIAL_MIN_M,
+        ids: { grass: BLOCK_ID.grass, dirt: BLOCK_ID.dirt, wood: BLOCK_ID.wood } });
       for (const kind of MATERIAL_SIGHT_KINDS) {
         if (!report.sights[kind]) report.notes.push(`COULD NOT MEASURE the ${kind} sight: none in the loaded mesh near the Hearth`);
       }
@@ -785,6 +795,9 @@ function readGpuUtil() {
   }
 }
 
+/** The report's context on the game canvas, or null. */
+const gameContext = (r, canvas) => (r?.contexts || []).find((c) => c.canvas && canvas && c.canvas[0] === canvas[0] && c.canvas[1] === canvas[1]) || null;
+
 /** The driver's GPU utilization sampled over PASS_UTIL_MS while the page runs free (the timer counting frames only). */
 async function utilWindow(page, canvasOf) {
   await passTimes(page, { mode: 'count', reset: true });
@@ -795,17 +808,29 @@ async function utilWindow(page, canvasOf) {
     await delay(PASS_UTIL_EVERY_MS);
   }
   const r = await passTimes(page);
-  const canvas = canvasOf();
-  const ctx = (r.contexts || []).find((c) => c.canvas && canvas && c.canvas[0] === canvas[0] && c.canvas[1] === canvas[1]) || null;
+  const ctx = gameContext(r, canvasOf());
   const g = gpuMsPerFrame(samples, { frames: ctx?.frames, windowMs: ctx?.windowMs });
   return { u: g?.ms ?? null, uPct: g?.pct ?? null, uN: g?.n ?? 0, uFrames: ctx?.frames ?? null, uWindowMs: ctx?.windowMs ?? null,
     uSamples: samples.map((s) => [s.t, s.util?.device ?? null, s.util?.renderer ?? null, s.util?.tiler ?? null]) };
 }
 
+/**
+ * Put the player back on the block's pose ({ stand, heading }) when a respawn or anything else moved them off it, so
+ * every window of a block measures one view. Returns whether it had to.
+ */
+async function standBack(page, report, pose) {
+  const respawned = await respawnIfDead(page, report);
+  if (!respawned && poseWhy(await info(page), pose).length === 0) return false;
+  await page.evaluate((p) => window.__craftyLookbook.stand(p), { position: pose.stand });
+  await page.evaluate((h) => window.__craftyLookbook.look(h), { heading: pose.heading, pitch: 0 });
+  await delay(SETTLE_MS);
+  return true;
+}
+
 /** One measured window: the arm's passes off (or none), then (in frame mode) the GPU's utilization running free, then
  *  the timer in `mode` over PASS_WINDOW_MS. */
-async function passWindow(page, report, { cycle, off, mode }) {
-  await respawnIfDead(page, report);
+async function passWindow(page, report, { cycle, off, mode, pose }) {
+  const stoodBack = await standBack(page, report, pose);
   await setCycle(page, cycle);
   await page.evaluate((radius) => window.__craftyLookbook.clearHostiles({ radius }), PASS_CLEAR_M);
   await play(page);
@@ -824,23 +849,17 @@ async function passWindow(page, report, { cycle, off, mode }) {
   const r = await passTimes(page);
   const i = await info(page);
   const canvas = i.gl?.canvas;
-  const ctx = (r.contexts || []).find((c) => c.canvas && canvas && c.canvas[0] === canvas[0] && c.canvas[1] === canvas[1]) || null;
+  const ctx = gameContext(r, canvas);
   const q = windowMedian(r, 'frame', canvas), w = windowMedian(r, 'frame:wall', canvas);
-  const why = [];
-  if (!i.active) why.push('input not live');
-  if (!i.isAlive) why.push('player dead');
-  if (i.tier !== 'high') why.push(`tier ${i.tier}`);
-  const drift = Math.abs(i.cycle - cycle);
-  if (!(Math.min(drift, 1 - drift) <= CYCLE_TOLERANCE)) why.push(`clock at ${i.cycle}`);
+  const why = passWindowWhy({ cycle, pose, at: i, chain: ctx?.chain, expectEffects: i.passesOff?.effects });
   if (!ctx) why.push('no composer on the game canvas');
-  if (mode === 'frame' && (!q || !w || q.n < 30 || w.n < 30)) why.push(`too few timed frames (query ${q?.n ?? 0}, wall ${w?.n ?? 0})`);
-  if (mode === 'frame' && !(util.uN >= 5)) why.push(`too few GPU utilization readings (${util.uN ?? 0})`);
+  const readings = mode === 'frame' ? windowReadings({ q, w, util }) : { q: null, w: null, u: null, dropped: [] };
   return {
-    applied, ...util, q: q?.ms ?? null, w: w?.ms ?? null, nQ: q?.n ?? 0, nW: w?.n ?? 0, frames: ctx?.frames ?? null,
-    windowMs: ctx?.windowMs ?? null, disjoint: ctx?.disjoint ?? null, chain: ctx?.chain ?? null,
+    applied, ...util, q: readings.q, w: readings.w, u: readings.u, dropped: readings.dropped, nQ: q?.n ?? 0, nW: w?.n ?? 0,
+    frames: ctx?.frames ?? null, windowMs: ctx?.windowMs ?? null, disjoint: ctx?.disjoint ?? null, chain: ctx?.chain ?? null,
     segments: mode === 'segments' ? passSummary(r, canvas) : undefined,
-    tier: i.tier, dpr: i.gl?.dpr ?? null, canvas, cycleAt: i.cycle, frameCap: i.frameCap,
-    load: Math.round(os.loadavg()[0] * 100) / 100, valid: why.length === 0, why,
+    tier: i.tier, dpr: i.gl?.dpr ?? null, canvas, cycleAt: i.cycle, frameCap: i.frameCap, body: i.body, heading: i.heading,
+    stoodBack, load: Math.round(os.loadavg()[0] * 100) / 100, valid: why.length === 0, why,
   };
 }
 
@@ -849,9 +868,10 @@ const PASS_ALT_HALF_MS = 1500;
 const PASS_ALT_EVERY_MS = 150;
 
 /** The fast alternation (--alt): the arm off and on every PASS_ALT_HALF_MS through one window, the GPU's utilization
- *  read through each half (_lookbook.mjs altDifferential). */
-async function altWindow(page, report, { cycle, off }) {
-  await respawnIfDead(page, report);
+ *  read through each half, and each half's own frame count over the same post-lag span and its own window check
+ *  (_lookbook.mjs altDifferential). */
+async function altWindow(page, report, { cycle, off, pose }) {
+  const stoodBack = await standBack(page, report, pose);
   await page.evaluate((radius) => window.__craftyLookbook.clearHostiles({ radius }), PASS_CLEAR_M);
   await play(page);
   await passTimes(page, { mode: 'count', reset: true });
@@ -862,21 +882,29 @@ async function altWindow(page, report, { cycle, off }) {
     await page.evaluate((o) => window.__craftyLookbook.passesOff(o), state === 'off' ? off : []);
     const t0 = Date.now();
     const samples = [];
+    let counting = false;
     while (Date.now() - t0 < PASS_ALT_HALF_MS) {
-      samples.push({ t: Date.now() - t0, util: readGpuUtil() });
+      const t = Date.now() - t0;
+      // The frame count restarts where the utilization readings start counting, so both cover one span.
+      if (!counting && t >= PASS_ALT_SKIP_MS) { await passTimes(page, { reset: true }); counting = true; }
+      samples.push({ t, util: readGpuUtil() });
       await delay(PASS_ALT_EVERY_MS);
     }
-    halves.push({ state, samples });
+    const r = await passTimes(page);
+    const at = await info(page);
+    const ctx = gameContext(r, at.gl?.canvas);
+    const why = passWindowWhy({ cycle, pose, at, chain: ctx?.chain, expectEffects: at.passesOff?.effects });
+    if (!ctx) why.push('no composer on the game canvas');
+    if (!counting) why.push('the half ended before the lag did');
+    halves.push({ state, samples, frames: ctx?.frames ?? null, windowMs: ctx?.windowMs ?? null, why,
+      tier: at.tier, isAlive: at.isAlive, active: at.active, cycleAt: at.cycle });
   }
-  const r = await passTimes(page);
-  const i = await info(page);
-  const canvas = i.gl?.canvas;
-  const ctx = (r.contexts || []).find((c) => c.canvas && canvas && c.canvas[0] === canvas[0] && c.canvas[1] === canvas[1]) || null;
-  const intervalMs = ctx?.frames > 0 ? ctx.windowMs / ctx.frames : null;
+  const d = altDifferential(halves);
   return {
-    d: altDifferential(halves, intervalMs), intervalMs, frames: ctx?.frames ?? null, tier: i.tier, isAlive: i.isAlive,
-    active: i.active, cycleAt: i.cycle, load: Math.round(os.loadavg()[0] * 100) / 100,
-    halves: halves.map((h) => ({ state: h.state, device: h.samples.map((s) => [s.t, s.util?.device ?? null]) })),
+    d, stoodBack, load: Math.round(os.loadavg()[0] * 100) / 100,
+    valid: d.dropped.length === 0, why: d.dropped,
+    halves: halves.map((h) => ({ state: h.state, frames: h.frames, windowMs: h.windowMs, why: h.why, tier: h.tier,
+      isAlive: h.isAlive, active: h.active, cycleAt: h.cycleAt, device: h.samples.map((s) => [s.t, s.util?.device ?? null]) })),
   };
 }
 
@@ -906,6 +934,8 @@ async function measurePasses(launchOpts, launchId) {
     const warm = await info(page);
     out.renderer = warm.gl?.renderer ?? null;
     out.tierAtWarmup = warm.tier;
+    const rendererProblem = passRendererProblem(out.renderer, { allowSoftware: ALLOW_SOFTWARE });
+    if (rendererProblem) { out.notes.push(`COULD NOT MEASURE: ${rendererProblem}`); return out; }
     if (warm.tier !== 'high') {
       // The tier this machine selects (render/quality.js selectTier) and holds while the frame rate does.
       await page.evaluate(() => window.useGameStore.getState().setQualityTier('high'));
@@ -931,23 +961,25 @@ async function measurePasses(launchOpts, launchId) {
       const gate = await loadBelowCap();
       if (!gate.ok) { out.notes.push(`COULD NOT MEASURE ${time.id}: the load stayed at ${gate.load} for ${gate.waitedS} s`); continue; }
       const { heading, sun } = await face(time);
+      const pose = { stand: out.stand, heading };
       const block = { time: time.id, cycle: time.cycle, heading, sun, loadAtStart: gate.load, waitedS: gate.waitedS,
         startedAt: new Date().toISOString(), segments: [], windows: [] };
       console.log(`  ${time.id} (cycle ${time.cycle}, facing ${heading}, sun ${sun ? `${Math.round(sun.heading)} at ${sun.elevationDeg.toFixed(1)} deg` : '?'}), load ${gate.load}`);
       if (PASS_ALT) {
         block.alt = [];
         for (let rep = 0; rep < PASS_ALT_REPS; rep++) {
-          for (const arm of [...PASS_ARMS_RUN, PASS_CONTROL]) block.alt.push({ arm: arm.id, rep, ...(await altWindow(page, report, { cycle: time.cycle, off: arm.off })) });
+          for (const arm of [...PASS_ARMS_RUN, PASS_CONTROL]) block.alt.push({ arm: arm.id, rep, ...(await altWindow(page, report, { cycle: time.cycle, off: arm.off, pose })) });
         }
         await page.evaluate(() => window.__craftyLookbook.passesOff([]));
         block.endedAt = new Date().toISOString();
         block.loadAtEnd = Math.round(os.loadavg()[0] * 100) / 100;
         for (const arm of [...PASS_ARMS_RUN, PASS_CONTROL]) {
           const runs = block.alt.filter((x) => x.arm === arm.id);
+          // A half the window check refused is already out of its pairs (altDifferential).
           const d = runs.flatMap((x) => x.d.u.values);
-          const f = (x) => (x == null ? '-' : x.toFixed(2));
-          const med = (xs) => { const t = [...xs].sort((a, b) => a - b); return t.length ? (t.length % 2 ? t[(t.length - 1) / 2] : (t[t.length / 2 - 1] + t[t.length / 2]) / 2) : null; };
-          console.log(`    alt ${arm.id.padEnd(12)} dU ${f(med(d))} [${f(Math.min(...d))}..${f(Math.max(...d))}] (${d.filter((x) => x > 0).length}/${d.length} +) of ${f(med(runs.map((x) => x.d.onU)))}`);
+          const dropped = runs.flatMap((x) => x.d.dropped);
+          const f = (x) => (x == null || !Number.isFinite(x) ? '-' : x.toFixed(2));
+          console.log(`    alt ${arm.id.padEnd(12)} dU ${f(medianOf(d))} [${f(Math.min(...d))}..${f(Math.max(...d))}] (${d.filter((x) => x > 0).length}/${d.length} +) of ${f(medianOf(runs.map((x) => x.d.onU).filter((x) => x !== null)))}${dropped.length ? `; ${dropped.length} half(s) dropped: ${dropped.slice(0, 3).join(' | ')}` : ''}`);
         }
         out.blocks.push(block);
         writeFileSync(join(OUT, 'passes.json'), JSON.stringify({ ...passBase, passes: out }, null, 2));
@@ -955,12 +987,12 @@ async function measurePasses(launchOpts, launchId) {
       }
       // The segments check: segment mode, everything on, each beside a whole-frame window, three times.
       for (let i = 0; i < 3; i++) {
-        const seg = await passWindow(page, report, { cycle: time.cycle, off: [], mode: 'segments' });
-        const whole = await passWindow(page, report, { cycle: time.cycle, off: [], mode: 'frame' });
+        const seg = await passWindow(page, report, { cycle: time.cycle, off: [], mode: 'segments', pose });
+        const whole = await passWindow(page, report, { cycle: time.cycle, off: [], mode: 'frame', pose });
         block.segments.push({ segments: seg, whole });
       }
       for (const w of passWindowPlan([...PASS_ARMS_RUN, PASS_CONTROL], PASS_REPS_RUN)) {
-        block.windows.push({ ...w, ...(await passWindow(page, report, { cycle: time.cycle, off: w.off, mode: 'frame' })) });
+        block.windows.push({ ...w, ...(await passWindow(page, report, { cycle: time.cycle, off: w.off, mode: 'frame', pose })) });
       }
       await page.evaluate(() => window.__craftyLookbook.passesOff([]));
       block.endedAt = new Date().toISOString();
@@ -968,7 +1000,8 @@ async function measurePasses(launchOpts, launchId) {
       // Q cannot be GPU execution time in a window where it outlasts the synced wall clock that brackets it.
       block.qOverW = block.windows.filter((x) => Number.isFinite(x.q) && Number.isFinite(x.w) && x.q > x.w).length;
       block.admitted = admittedInstruments(passDifferential(block.windows, PASS_CONTROL.id), { qOverW: block.qOverW });
-      console.log(`    instruments admitted by the control: ${JSON.stringify(block.admitted)}; windows with Q > W: ${block.qOverW} of ${block.windows.length}`);
+      const invalid = block.windows.filter((x) => !x.valid);
+      console.log(`    instruments admitted by the control: ${JSON.stringify(block.admitted)}; windows with Q > W: ${block.qOverW} of ${block.windows.length}; invalid windows ${invalid.length}${invalid.length ? ` (${[...new Set(invalid.flatMap((x) => x.why))].slice(0, 4).join('; ')})` : ''}`);
       block.verdicts = [...PASS_ARMS_RUN, PASS_CONTROL].map((a) => {
         const d = passDifferential(block.windows, a.id);
         return { arm: a.id, ...d, verdict: passVerdict(d, block.admitted) };
@@ -1019,11 +1052,11 @@ async function assertServedBuild() {
 function buildIdentity() {
   const html = readFileSync(join(BUILD_DIR, 'index.html'), 'utf8');
   const chunk = indexChunkOf(html);
-  let commit = null;
-  try { commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim(); } catch { /* not a checkout */ }
-  // The commit is the CHECKOUT's at run time; with --build-dir the served build may come from another commit, so the
-  // index chunk's content hash is the build's real identity.
-  return { buildDir: BUILD_DIR, indexChunk: chunk, commitAtRun: commit };
+  const git = (args) => { try { return execFileSync('git', args, { encoding: 'utf8' }); } catch { return null; } };
+  // The commit is the CHECKOUT's at run time, marked dirty with the paths that differ from it, since a probe edited
+  // after the commit is not the probe that commit names. With --build-dir the served build may come from another
+  // commit, so the index chunk's content hash is the build's real identity.
+  return { buildDir: BUILD_DIR, indexChunk: chunk, ...checkoutState(git(['rev-parse', '--short', 'HEAD']), git(['status', '--porcelain'])) };
 }
 
 let code = 0;
@@ -1086,24 +1119,13 @@ try {
         r = await shootTarget(target, launchOpts, target.engine === 'chromium' ? chromiumLaunchId : (HEADED ? 'headed' : 'headless'));
       }
       report.targets.push(r);
-      const valid = r.shots.filter((s) => s.valid).length;
       console.log(`  GL renderer   ${r.renderer} (${r.gpu})`);
       console.log(`  entered by    ${r.entry}`);
-      console.log(`  shots         ${valid}/${r.shots.length} valid (planned ${SETS.includes('hero') ? shotPlan(LOOKBOOK_PLACES, CYCLES).length : 0})${r.respawns ? `, ${r.respawns} respawn(s)` : ''}`);
-      for (const s of r.shots.filter((x) => !x.valid)) console.log(`    INVALID ${s.file}: ${s.why.join('; ')}`);
-      if (r.eye) {
-        console.log(`  eye level     ${r.eye.filter((s) => s.valid).length}/${r.eye.length} valid (planned ${SETS.includes('eye') ? eyeShotPlan(EYE_HEADINGS, CYCLES).length : 0}); stand ${JSON.stringify(r.stand)}; hands ${JSON.stringify(r.hands)}`);
-        for (const s of r.eye.filter((x) => !x.valid)) console.log(`    INVALID ${s.file}: ${s.why.join('; ')}`);
-      }
-      if (r.clips?.length) {
-        console.log(`  clips         ${r.clips.filter((c) => c.valid).length}/${r.clips.length} valid`);
-        for (const c of r.clips) console.log(`    ${c.file}: walked ${Number(c.movedM).toFixed(2)} m, ${c.frames} video / ${c.gameFrames} game frames${c.valid ? '' : `, INVALID: ${c.why.join('; ')}`}`);
-      }
-      const all = [...r.shots, ...(r.eye || []), ...(r.clips || [])].map((s) => s.passMs);
-      const timed = all.filter((p) => p?.postMs != null);
-      const implausible = timed.filter((p) => !p.plausible).length;
-      const why = [...new Set(all.filter((p) => p?.postMs == null).map((p) => p?.reason).filter(Boolean))];
-      console.log(`  post-pass ms  ${timed.length}/${all.length} shot(s) and clip(s) timed, ${implausible} of them IMPLAUSIBLE (more GPU ms than the window lasted)${why.length ? `; untimed: ${why.join('; ')}` : ''}`);
+      for (const line of targetSummaryLines(r, {
+        hero: SETS.includes('hero') ? shotPlan(LOOKBOOK_PLACES, CYCLES).length : 0,
+        eye: SETS.includes('eye') ? eyeShotPlan(EYE_HEADINGS, CYCLES).length : 0,
+        material: SETS.includes('material') ? materialShotPlan(MATERIAL_SIGHT_KINDS, CYCLES).length : 0,
+      })) console.log(line);
       const tiers = [...new Set(r.shots.map((s) => `${s.tier}@${s.dpr}`))];
       console.log(`  tier@dpr      ${tiers.join(', ') || '-'}`);
       console.log(`  page errors   ${r.pageErrors?.length ?? 0}`);
