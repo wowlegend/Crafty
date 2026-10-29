@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { biomeTintGlsl, biomeTintMask, BIOME_TINTED_BLOCKS } from '../../src/world/terrainTint.js';
 import { BIOME_NAMES, BIOME_TINT } from '../../src/world/biomeTable.js';
 import { BLOCK_ID } from '../../src/world/blockIds.js';
-import { TEXTURE_LAYER_COUNT } from '../../src/world/materialGrammar.js';
+import {
+  TEXTURE_LAYER_COUNT, BLOCK_LAYER_COUNT, FACE_VARIANTS, FACE_ROLE, faceLayer, variantLayer,
+} from '../../src/world/materialGrammar.js';
 
 /**
  * WHICH BLOCKS TAKE THE BIOME TINT, AND HOW MANY BIOMES THE SHADER CAN INDEX (QUEUE R1.5, R1.6).
@@ -24,7 +26,7 @@ import { TEXTURE_LAYER_COUNT } from '../../src/world/materialGrammar.js';
  *   M5 the mask indexed by BIOME instead of layer        -> apply RED
  */
 describe('R1.5 — only the natural surface blocks take a biome tint', () => {
-  const mask = biomeTintMask(16);
+  const mask = biomeTintMask(BLOCK_LAYER_COUNT);
 
   it('grass, dirt, sand, snow and leaves are tinted', () => {
     for (const b of ['grass', 'dirt', 'sand', 'snow', 'leaves']) expect(mask[BLOCK_ID[b]], b).toBe(1);
@@ -32,6 +34,27 @@ describe('R1.5 — only the natural surface blocks take a biome tint', () => {
 
   it('stone, wood, cactus and every ore keep their own colour', () => {
     for (const b of ['stone', 'wood', 'cactus', 'coal', 'iron', 'gold']) expect(mask[BLOCK_ID[b]], b).toBe(0);
+  });
+
+  it('the mask covers the face variants: a variant takes its block\'s tint, and only the grammar\'s variants do', () => {
+    const full = biomeTintMask(TEXTURE_LAYER_COUNT);
+    let checked = 0;
+    for (const v of FACE_VARIANTS) {
+      expect(full[variantLayer(v.name)], v.name).toBe(BIOME_TINTED_BLOCKS.includes(v.block) ? 1 : 0);
+      checked++;
+    }
+    expect(checked).toBe(FACE_VARIANTS.length);
+    expect(full[variantLayer('grass_side')], 'SETUP: the turf lip takes the grass tint').toBe(1);
+    expect(full[variantLayer('wood_side')], 'SETUP: bark keeps its own colour').toBe(0);
+    expect([...full.slice(0, BLOCK_LAYER_COUNT)]).toEqual([...mask]);
+  });
+
+  it('a face takes the tint of the tile it shows: a snow underside shows stone and keeps stone\'s colour', () => {
+    const full = biomeTintMask(TEXTURE_LAYER_COUNT);
+    const { bottom } = FACE_ROLE;
+    expect(faceLayer(BLOCK_ID.snow, bottom), 'SETUP: the snow underside is the stone layer').toBe(BLOCK_ID.stone);
+    expect(full[faceLayer(BLOCK_ID.snow, bottom)]).toBe(0);
+    expect(full[faceLayer(BLOCK_ID.grass, bottom)], 'a grass underside shows dirt, which is tinted').toBe(1);
   });
 
   it('the mask is exactly the declared set — no block tinted by accident', () => {
@@ -55,10 +78,11 @@ describe('R1.6 — the shader is sized from the biome table, not from a literal'
     expect(g.apply).toContain('clamp(vBiome, 0.0, 10.0)');
   });
 
-  it('the mask is indexed by the texture LAYER and gates the multiply', () => {
+  it('the mask is indexed by the layer the face samples, not by the block, and gates the multiply', () => {
     const g = biomeTintGlsl(10, 16);
     expect(g.decl).toContain('uniform float uBiomeTintMask[16];');
-    expect(g.apply).toContain('uBiomeTintMask[int(clamp(layerIndex, 0.0, 15.0))]');
+    expect(g.apply).toContain('uBiomeTintMask[int(clamp(texLayer, 0.0, 15.0))]');
+    expect(g.apply, 'the mask is keyed by the block type').not.toMatch(/\blayerIndex\b/);
     expect(g.apply).toMatch(/mix\(vec3\(1\.0\), uBiomeTint\[[^\]]+\], biomeTintOn\)/);
   });
 });
