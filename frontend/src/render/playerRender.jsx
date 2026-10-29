@@ -19,8 +19,8 @@ import { GAUNTLET, VIEWMODEL, handAnchors, makeGauntletMaterials, makeHeldMateri
 
 // Swing-ribbon scratch, allocated once at the ring's capacity: re-filled in place with needsUpdate, because swapping a
 // BufferAttribute re-uploads the whole buffer anyway. The anchors are the blade's base and tip in the hand's frame.
-const TRAIL_TIP_LOCAL = Object.freeze({ x: 0, y: 1.35, z: -0.04 });
-const TRAIL_BASE_LOCAL = Object.freeze({ x: 0, y: 0.25, z: -0.04 });
+const TRAIL_TIP_LOCAL = Object.freeze({ x: 0, y: 0.84, z: -0.04 });
+const TRAIL_BASE_LOCAL = Object.freeze({ x: 0, y: 0.15, z: -0.04 });
 const _ribbonTip = new THREE.Vector3();
 const _ribbonBase = new THREE.Vector3();
 const _ribbonPositions = new Float32Array(TRAIL_CAPACITY * 2 * 3);
@@ -36,8 +36,13 @@ const GLOVE_OUTLINE_T = OUTLINE.prop.thickness;
  */
 export const HELD_REST = Object.freeze({
   weapon: Object.freeze({ position: Object.freeze([0, 0.02, -0.04]), rotation: Object.freeze([0, 0, 0]) }),
-  wand: Object.freeze({ position: Object.freeze([0, 0.22, -0.06]), rotation: Object.freeze([0.1, 0, -0.12]) }),
+  wand: Object.freeze({ position: Object.freeze([0, 0.1, -0.05]), rotation: Object.freeze([0.1, 0, -0.12]) }),
 });
+
+// The sword and the wand are modelled at world scale (a 1.25 m blade, a 0.8 m wand handle); in the fist, at 0.9 m from
+// the eye, that size fills half the frame, so they are drawn smaller in the hand. The swing trail's anchors above sit
+// on the scaled blade.
+const HELD_SCALE = Object.freeze({ weapon: 0.6, wand: 0.55 });
 
 /** Each hand's rest rotation: the forearm runs back and down toward the camera, the fist turned a little inward. */
 const HAND_REST_ROT = Object.freeze({ right: Object.freeze([0.35, 0.12, 0]), left: Object.freeze([0.35, -0.12, 0]) });
@@ -327,7 +332,7 @@ const HeldBlock = ({ blockId }) => {
   const material = useMemo(() => makeHeldMaterial(color), [color]);
   useEffect(() => () => material.dispose(), [material]);
   return (
-    <group position={[0, 0.17, -0.07]} scale={[0.2, 0.2, 0.2]}>
+    <group position={[0, 0.14, -0.06]} scale={[0.13, 0.13, 0.13]}>
       <mesh material={material}>
         <boxGeometry args={[1, 1, 1]} />
         <Outlines thickness={GLOVE_OUTLINE_T} color={GAUNTLET.ink} toneMapped={false} />
@@ -500,11 +505,15 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
           {/* The transforms come from HELD_REST so the authored pose and the idle reset in useFrame cannot disagree. */}
           {isWeaponEquipped ? (
             <group ref={wandRef} position={HELD_REST.weapon.position} rotation={HELD_REST.weapon.rotation}>
-              <ProceduralWeapon type={equippedWeapon} />
+              <group scale={HELD_SCALE.weapon}>
+                <ProceduralWeapon type={equippedWeapon} />
+              </group>
             </group>
           ) : (
             <group ref={wandRef} position={HELD_REST.wand.position} rotation={HELD_REST.wand.rotation}>
-              <MagicWand wandType={activeSpell} />
+              <group scale={HELD_SCALE.wand}>
+                <MagicWand wandType={activeSpell} />
+              </group>
             </group>
           )}
           {attackType === 'spell' && <SpellHandEffects spellType={activeSpell} />}

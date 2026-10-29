@@ -124,8 +124,8 @@ export function handNodeCount() {
 
 /** Where the fists rest in view space on a landscape window, authored for VIEWMODEL.fov. */
 export const HAND_ANCHORS = Object.freeze({
-  right: Object.freeze([0.5, -0.4, -0.9]),
-  left: Object.freeze([-0.48, -0.38, -0.88]),
+  right: Object.freeze([0.44, -0.34, -0.9]),
+  left: Object.freeze([-0.44, -0.33, -0.88]),
 });
 
 /** A fist's centre stays within this share of the visible half-width at its depth, so it is in frame at any aspect. */
