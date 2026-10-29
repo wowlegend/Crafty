@@ -95,6 +95,23 @@ async function timeForm({ limitMs, probeMs }) {
   return { endedMs: endedAt === null ? null : Math.round(endedAt), onAtProbe, longestFrameMs: Math.round(longest) };
 }
 
+/** In the page: true once the camera has sat at the player's head for two frames (the roar's reveal camera hands it
+ *  back), false after 45 s. A zombie staged before that is placed in front of the reveal camera, not the player. */
+async function backAtHead() {
+  const frame = () => new Promise((r) => requestAnimationFrame(r));
+  const cam = window.__threeCamera;
+  const t0 = performance.now();
+  let streak = 0;
+  while (streak < 2) {
+    if (performance.now() - t0 > 45000) return false;
+    await frame();
+    const b = window.useGameStore.getState().playerRigidBodyRef?.current?.translation?.();
+    const ok = b && Math.hypot(cam.position.x - b.x, cam.position.z - b.z) < 1 && Math.abs(cam.position.y - b.y - 1.2) < 0.6;
+    streak = ok ? streak + 1 : 0;
+  }
+  return true;
+}
+
 /** A key released, then frames drawn, so the frame loop sees the release before the next press. */
 async function release(page, key) {
   await page.keyboard.up(key);
@@ -170,7 +187,8 @@ test.describe('talents', () => {
     expect(base.endedMs, `the base form never ended: ${JSON.stringify(base)}`).not.toBeNull();
     expect(base.endedMs, `the base form outlasted ${FORM_DURATION_SEC} s by more than a frame: ${JSON.stringify(base)}`)
       .toBeLessThanOrEqual(FORM_DURATION_SEC * 1000 + base.longestFrameMs + 1000);
-    await page.waitForTimeout(2500); // the roar's cooldown and the reveal camera's return
+    expect(await page.evaluate(backAtHead), 'SETUP: the camera never came back to the head after the base form').toBe(true);
+    await page.waitForTimeout(1600); // the roar's cooldown (COOLDOWN_SEC 1.5 s) before the next press can charge
 
     // 3. A LEVEL PAYS ONE TALENT POINT, from a real kill's own XP.
     const z = await page.evaluate(stageZombie);
