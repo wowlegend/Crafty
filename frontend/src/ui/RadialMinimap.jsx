@@ -11,7 +11,7 @@ import { mobsQuery, alliesQuery } from '../ecs/world';
 // and the hub NPCs, type 'villager'; alliesQuery for bound allies). A self-contained 250ms canvas redraw
 // (Game-Loop-Isolation: transient reads of the store and the queries, no per-frame React state). Out-of-range destination blips are clamped to the rim with a small arrow.
 // Capture-SUPPRESSED (the canvas redraw never starts) so the 20 visual baselines stay byte-identical.
-const SIZE = 132, RANGE = 64;
+const SIZE = 112, RANGE = 64;
 
 export const RadialMinimap = React.memo(({ position = 'bottom-20 right-4' }) => {
   const canvasRef = useRef(null);
@@ -69,7 +69,7 @@ export const RadialMinimap = React.memo(({ position = 'bottom-20 right-4' }) => 
   // applied to a component that had been opting out of the oracle entirely.
   return (
     <div data-testid="radial-minimap" className={`absolute ${position} z-20 pointer-events-none`}>
-      <Panel variant="base" radius="rounded-full" className="overflow-hidden p-0 leading-none" style={{ borderRadius: '50%' }}>
+      <Panel variant="base" radius="rounded-full" shadow="shadow-none" className="overflow-hidden p-0 leading-none" style={{ borderRadius: '50%' }}>
         <canvas ref={canvasRef} width={SIZE} height={SIZE} className="block" style={{ borderRadius: '50%' }} />
       </Panel>
       <div className="text-center text-xs mt-1 tabular-nums text-text-muted">{coords.x}, {coords.z}</div>

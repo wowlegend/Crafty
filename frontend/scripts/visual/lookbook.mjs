@@ -110,7 +110,7 @@ import {
   targetSummaryLines,
   MATERIAL_SIGHT_KINDS, MATERIAL_STAND_M, MATERIAL_MIN_M, materialShotPlan, findMaterialSights, aimAt,
   HAND_MASK, HANDS_HEADING, handPixelStats, facing, handCount, CYCLE_TOLERANCE, chromeShare, chromeColoursFrom,
-  chromeFootprint, framesMoved, HELD_MOVED_MAX,
+  chromeFootprint, framesMoved, HELD_MOVED_MAX, footprintByRect,
 } from './_lookbook.mjs';
 import { PNG } from 'pngjs';
 import { shootHudSet } from './_lookbookHud.mjs';
@@ -174,15 +174,24 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
  * colour count (chromeShare, the second column) reads the same frame against the canvas-only twin in the surface
  * colours the page defines at that moment. The toast count is read on the held page, where the shot was.
  */
+// The HUD's surfaces the footprint is attributed to, in this order (a pixel goes to the first whose box holds it).
+const HUD_RECT_IDS = ['controls-card', 'controls-hint', 'notification-stack', 'hotbar-xp-row', 'hotbar', 'quest-tracker',
+  'hud-compass', 'objective-tracker', 'stat-stack', 'radial-minimap', 'day-phase-dial', 'hud-settings', 'coin-readout'];
+
 async function shootWithChrome(page, path) {
   await holdFrames(page);
-  let pngs, touch, toasts, vars;
+  let pngs, touch, toasts, vars, rects;
   try {
     const on = await page.screenshot({ path });
     const hudOff = await twinShot(page, 'touch');
     const world = await twinShot(page, 'world');
     const again = await page.screenshot();
     touch = hudOff.touch;
+    rects = await page.evaluate((ids) => ids.map((id) => {
+      const el = document.querySelector(`[data-testid="${id}"]`);
+      const r = el?.getBoundingClientRect();
+      return r && r.width > 0 ? { id, x: r.x, y: r.y, right: r.right, bottom: r.bottom } : null;
+    }).filter(Boolean), HUD_RECT_IDS);
     toasts = await page.evaluate(() => (document.querySelector('[data-testid="notification-stack"]')
       || document.querySelector('.absolute.top-20.right-4.space-y-2'))?.children.length ?? 0);
     vars = await chromeVars(page);
@@ -197,9 +206,11 @@ async function shootWithChrome(page, path) {
   if (moved > HELD_MOVED_MAX * on.width * on.height) {
     Object.assign(chrome, { share: null, why: `the page did not hold still: ${moved} px changed between the first and last shot` });
   } else {
-    const f = chromeFootprint(on.data, hudOff.data, touch ? world.data : null, size);
+    const f = chromeFootprint(on.data, hudOff.data, touch ? world.data : null, { ...size, keepMask: true });
+    const scale = on.width / (await page.evaluate(() => window.innerWidth));
     Object.assign(chrome, { share: Math.round(f.share * 10000) / 10000, pixels: f.pixels, checked: f.checked,
-      touchShare: f.touchShare === null ? null : Math.round(f.touchShare * 10000) / 10000 });
+      touchShare: f.touchShare === null ? null : Math.round(f.touchShare * 10000) / 10000,
+      byElement: footprintByRect(f.mask, { ...size, rects, scale }) });
   }
   const colours = chromeColoursFrom(vars);
   if (colours.length) {
@@ -502,6 +513,14 @@ async function shootTarget(target, launchOpts, launchId) {
         lastCycle = shot.cycle;
       }
       const cleared = await clearHostiles(page);
+      // At rest is unhurt: a wound draws the low-health vignette and the damage flash over the whole frame, which are
+      // not the HUD at rest; the store's own fields restore it.
+      const healed = await page.evaluate(() => {
+        const st = window.useGameStore.getState();
+        if (!(st.maxHealth > 0) || st.playerHealth >= st.maxHealth) return false;
+        window.useGameStore.setState({ playerHealth: st.maxHealth });
+        return true;
+      });
       await play(page);
       await setCycle(page, shot.cycle);
       await passTimes(page, { reset: true });
@@ -520,7 +539,7 @@ async function shootTarget(target, launchOpts, launchId) {
       const after = await info(page);
       const pt = await passTimes(page);
       const v = eyeShotVerdict({ cycle: shot.cycle, heading: shot.heading, stand: report.stand, before, after, handsBaseline: report.hands?.hidden, hud });
-      report.eye.push({ ...shot, valid: v.valid, why: v.why, ...facts(after, t0, pt), hud, chrome, chromeCard, heading: shot.heading,
+      report.eye.push({ ...shot, valid: v.valid, why: v.why, ...facts(after, t0, pt), hud, chrome, chromeCard, healed, heading: shot.heading,
         headingAtShot: after.heading, pitch: after.pitch, eye: after.eye, body: after.body, cameraNodes: after.cameraNodes,
         hostiles: after.hostiles, cleared,
         eyeAboveBody: after.eye && after.body ? Math.round((after.eye[1] - after.body[1]) * 1000) / 1000 : null });
@@ -712,7 +731,8 @@ async function shootTarget(target, launchOpts, launchId) {
     // in Chinese. Opt-in (`--sets hud`); it moves the player, so it runs after every set that stands at the Hearth.
     if (SETS.includes('hud') && report.stand) {
       await respawnIfDead(page, report);
-      report.hud = await shootHudSet(page, dir, { prep: async () => { await clearHostiles(page); await play(page); } });
+      report.hud = await shootHudSet(page, dir, { prep: async () => { await clearHostiles(page); await play(page); },
+        home: async () => { await standAndLook(EYE_HEADINGS[1]); } });
     }
 
     for (const place of SETS.includes('hero') ? LOOKBOOK_PLACES : []) {

@@ -128,6 +128,17 @@ items. Each stands while it earns its place.
    colour (`tests/gates/lookbook-chrome-gates.test.js`: a warm stone world with no chrome reads 0, a 10% panel reads 10%
    on either ladder, a panel at alpha 0.6 still counts, the scrim is its own class). **Blind spot:** an opaque surface
    over a world pixel of its own colour, within 2, reads as unchanged.
+99. **The HUD at rest is flat and smaller, because the footprint said where the screen went.** With the slim hotbar
+   the footprint read 9.91% of a Chromium 1280x800 frame at rest and 10.21% of WebKit 820x1180, over the budget, and
+   gave each surface its share: the hotbar 3.4%, the minimap 1.6%, the compass 1.3%, the quest line 1.3%, the vitals
+   0.7%, the dial 0.6%, the objective line 0.6%, the XP edge 0.4%. So the hotbar is nine slots with nothing behind them
+   (40 px on a keyboard, 48 px on touch, where each is a tap target); the HUD's own surfaces at rest drop the hard offset
+   shadow the panels keep (the quest line, the compass, the minimap, the dial, the coin count); the minimap is 112 px
+   (was 132), the compass 288 px (was 320), the dial's ring 36 px (was 44), the quest line at most 280 px on a keyboard
+   (was 320). **Measured after** (lookbook eye set, every valid frame at rest, real GPU, 2026-10-29 23:22Z): Chromium
+   1280x800 at most 6.69%, WebKit 1180x820 7.69%, WebKit 820x1180 7.69%; main before this lane read 22.14% and 11.87%
+   at 1280x800 and 820x1180. **Why:** the brief's acceptance is the share of the screen at rest; the hard shadow is the
+   panels' elevation, and a HUD that sits on the world reads as one plane without it.
 
 ## 2026-10-29 — [LOOP] W2-E follow: the beast in first person, the cast, mobs that sense the body, the hands by the fire
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   chromeShare, chromeColoursFrom, CHROME_VARS, CHROME_TOLERANCE, chromeFootprint, framesMoved, FOOTPRINT_TOLERANCE,
-  atRest, chromeSummaryLines, CHROME_BUDGET,
+  atRest, chromeSummaryLines, CHROME_BUDGET, footprintByRect,
 } from '../../scripts/visual/_lookbook.mjs';
 
 /**
@@ -180,6 +180,19 @@ describe('the chrome footprint: the pixels the HUD changes, whatever its colours
     expect(framesMoved(stone(), over(stone(), SKY, 0, 3), { width: W, height: H })).toBe(300);
     expect(() => chromeFootprint(stone(), stone().subarray(4), null, { width: W, height: H })).toThrow(RangeError);
     expect(() => chromeFootprint(stone(), null, null, { width: W, height: H })).toThrow(RangeError);
+  });
+});
+
+describe('where the footprint lies', () => {
+  it('each counted pixel goes to the first surface whose padded box holds it, at the device scale; the rest is other', () => {
+    // A 100x100 device frame at 2 device px per CSS px: a 10x10 CSS panel at (5, 5) is 20x20 device px at (10, 10).
+    const { mask } = chromeFootprint(over(over(stone(), PANEL.rgb, 10, 30), PANEL.rgb, 90, 92), stone(), null, { width: W, height: H, keepMask: true });
+    const by = footprintByRect(mask, { width: W, height: H, scale: 2, pad: 0, rects: [{ id: 'panel', x: 0, y: 5, right: 50, bottom: 15 }] });
+    expect(by).toEqual({ panel: 0.2, other: 0.02 });
+    expect(Object.keys(footprintByRect(mask, { width: W, height: H, scale: 2, pad: 0, rects: [
+      { id: 'first', x: 0, y: 5, right: 50, bottom: 15 }, { id: 'second', x: 0, y: 0, right: 50, bottom: 50 }] }))).toEqual(['first', 'second']);
+    expect(footprintByRect(mask, { width: W, height: H, scale: 2, pad: 1, rects: [{ id: 'panel', x: 0, y: 6, right: 50, bottom: 14 }] }).panel,
+      'the pad reaches the rows a 1 CSS px shadow covers').toBeCloseTo(0.2, 6);
   });
 });
 
