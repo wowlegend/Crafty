@@ -123,7 +123,7 @@ describe('player damage before the rebalance (the recorded table)', () => {
 });
 
 describe('the player\'s own stats by level', () => {
-  it('are 10 each at level 1 and gain +2 strength, +1 agility and +2 intellect a level (DECISIONS 2026-10-29 item 33)', () => {
+  it('are 10 each at level 1 and gain +2 strength, +1 agility and +2 intellect a level (DECISIONS 2026-10-29 item 37)', () => {
     // Literals, not LEVEL_GROWTH: the band below is ±10%, wide enough to hold a split with no agility growth at all.
     expect(Object.fromEntries(LEVELS.map((L) => [L, levelAttributes(L)]))).toEqual({
       1: { strength: 10, agility: 10, intellect: 10, armor: 0 },

@@ -59,7 +59,7 @@ describe('foldVerbMods', () => {
     expect(foldVerbMods({}, 'toString')).toEqual(VERB_BASE);
   });
 
-  it('each relic changes its verb by the amount DECISIONS 2026-10-29 item 37 names', () => {
+  it('each relic changes its verb by the amount DECISIONS 2026-10-29 item 41 names', () => {
     // Pinned as data, so a relic that adds nothing or moves the wrong key fails here rather than in a playtest.
     expect(Object.fromEntries(Object.entries(RELICS).map(([name, r]) => [name, { verb: r.verb, ...r.mod }]))).toEqual({
       'Ember Fang': { verb: 'roar', key: 'roarSec', add: 4 },
