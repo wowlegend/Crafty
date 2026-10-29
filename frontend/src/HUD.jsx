@@ -239,7 +239,7 @@ export const ObjectiveTracker = React.memo(() => {
   if (isCaptureMode()) return null;
 
   return (
-    <div ref={rootRef} data-testid="objective-tracker" className="absolute top-12 max-[640px]:top-[104px] left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+    <div ref={rootRef} data-testid="objective-tracker" className="absolute top-12 max-[900px]:top-[104px] left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
       <div className="flex items-center gap-2 px-2.5 py-1 bg-panel-raise border-chrome border-ink rounded-sm whitespace-nowrap">
         <span ref={arrowRef} className="inline-block w-2.5 h-2.5 flex-none" style={{ background: '#46E0FF', clipPath: 'polygon(50% 0,100% 100%,0 100%)' }}></span>
         <span ref={textRef} className="text-[11px] font-bold text-text">{t('hud.objectiveShrine')}</span>
