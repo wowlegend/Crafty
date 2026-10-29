@@ -38,7 +38,7 @@ let _lastWildheartMotif = -Infinity;
 let _lastVoidhandMotif = -Infinity;
 import { ecs, alliesQuery, mobsQuery } from './ecs/world';
 import { writeSnareState, clearSnareState, fireBindCeremony } from './game/snareChannel.js';
-import { lookupHybrid, applyFusion, FUSE_RADIUS } from './game/hybrids.js';
+import { lookupHybrid, applyFusion, fuseKey, FUSE_RADIUS } from './game/hybrids.js';
 import { requestHurl, requestSlam } from './game/hurlChannel';
 import { phantomWorldPos } from './world/PhantomBlockSystem';
 import { PhantomBlockSystem } from './world/PhantomBlockSystem';
@@ -882,7 +882,7 @@ export const Player = ({ isWorldBuilt }) => {
         canStart: !!fusePair && !!lookupHybrid(fusePair[0].baseType || fusePair[0].type, fusePair[1].baseType || fusePair[1].type),
         // Read now, not from stv: this frame's grab or bind may already have spent from the bar.
         canPay: canAfford(useGameStore.getState().ember, FUSE_COST),
-        pairNear: !!fusePair,
+        pairKey: fusePair ? fuseKey(fusePair[0].id, fusePair[1].id) : null,
       });
       fuseSMRef.current = fsm;
       // The keydown's notice covers a bar below the snare's price; between the two prices only this frame knows X was a
@@ -890,15 +890,17 @@ export const Player = ({ isWorldBuilt }) => {
       if (faction === 'short' || faction === 'unpaid') {
         notifyDenied('no-ember');
       } else if (faction === 'fuse' && fusePair) {
-        stv.spendEmber(FUSE_COST); // canPay above read the bar with nothing spent since
         const hy = applyFusion(ecs, fusePair[0], fusePair[1]);
-        if (hy && stv.playSpatialSound) {
-          // the bind chime down-pitched = the v1 fuse swell (deliberate reuse; M7 may upgrade)
-          stv.playSpatialSound('bind', [hy.position.x, hy.position.y, hy.position.z], 0.7, 25);
-          // music-motif v2: a soul JOINS — the fuse is SOULBIND's signature (rare by its 50-ember price)
-          stv.playSpatialSound('motifSoulbind', [hy.position.x, hy.position.y, hy.position.z], 1, 40);
+        if (hy) {
+          stv.spendEmber(FUSE_COST); // only for a hybrid made; canPay above read the bar with nothing spent since
+          if (stv.playSpatialSound) {
+            // the bind chime down-pitched = the v1 fuse swell (deliberate reuse; M7 may upgrade)
+            stv.playSpatialSound('bind', [hy.position.x, hy.position.y, hy.position.z], 0.7, 25);
+            // music-motif v2: a soul JOINS — the fuse is SOULBIND's signature (rare by its 50-ember price)
+            stv.playSpatialSound('motifSoulbind', [hy.position.x, hy.position.y, hy.position.z], 1, 40);
+          }
+          fireBindCeremony(hy.position); // the halo marks the hybrid's birth too
         }
-        if (hy) fireBindCeremony(hy.position); // the halo marks the hybrid's birth too
       } else if (fsm.channeling && fusePair) {
         // the tether doubles as the fusion thread — drawn BETWEEN the two creatures
         writeSnareState({

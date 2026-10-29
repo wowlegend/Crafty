@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, SNARE_COOLDOWN_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './soulbind';
 
+// The key of the pair a fuse braids (hybrids.js fuseKey over the two allies' ids).
+const PAIR = '3+4';
 const base = { snareEdge: false, active: true, alive: true, now: 10, canSnare: true, canPay: true, targetId: null };
 
 describe('S2-B3-M2: the snare-channel SM (voidhand twin, CHANNEL-shaped)', () => {
@@ -66,7 +68,7 @@ describe('a bind or a fuse the bar no longer pays for when its channel ends', ()
   });
 
   it('the fuse is refused the same way', () => {
-    const f = { fuseEdge: true, active: true, alive: true, now: 10, canStart: true, canPay: true, pairNear: true };
+    const f = { fuseEdge: true, active: true, alive: true, now: 10, canStart: true, canPay: true, pairKey: PAIR };
     const s = decideFuse(makeFuseState(), f).sm;
     const end = 10 + FUSE_CHANNEL_SEC;
     const done = decideFuse(s, { ...f, fuseEdge: false, now: end, canPay: false });
@@ -79,7 +81,7 @@ describe('a bind or a fuse the bar no longer pays for when its channel ends', ()
   it('a paid bind and a paid fuse still charge it', () => {
     const s = decideSoulbind(makeSoulbindState(), { ...base, snareEdge: true, targetId: 7 }).sm;
     expect(decideSoulbind(s, { ...base, now: 10 + SNARE_CHANNEL_SEC, targetId: 7 }).sm.cooldownUntil).toBeGreaterThan(10 + SNARE_CHANNEL_SEC);
-    const f = { fuseEdge: true, active: true, alive: true, now: 10, canStart: true, canPay: true, pairNear: true };
+    const f = { fuseEdge: true, active: true, alive: true, now: 10, canStart: true, canPay: true, pairKey: PAIR };
     const fs = decideFuse(makeFuseState(), f).sm;
     expect(decideFuse(fs, { ...f, fuseEdge: false, now: 10 + FUSE_CHANNEL_SEC }).sm.cooldownUntil).toBeGreaterThan(10 + FUSE_CHANNEL_SEC);
   });
@@ -87,7 +89,7 @@ describe('a bind or a fuse the bar no longer pays for when its channel ends', ()
 
 describe('a fuse the bar cannot pay for', () => {
   // canStart: a pair near the player whose fusion has a recipe; canPay: the bar holds FUSE_COST.
-  const press = { fuseEdge: true, active: true, alive: true, now: 10, canStart: true, canPay: false, pairNear: true };
+  const press = { fuseEdge: true, active: true, alive: true, now: 10, canStart: true, canPay: false, pairKey: PAIR };
 
   it('a press that would start the channel but for the price is short: nothing starts and no cooldown is charged', () => {
     const { sm, action } = decideFuse(makeFuseState(), press);
@@ -103,7 +105,7 @@ describe('a fuse the bar cannot pay for', () => {
   it('a press that would not start the channel whatever the bar holds is not short', () => {
     for (const [why, ctx] of [
       ['a pair with no recipe', { ...press, canStart: false }],
-      ['no pair near', { ...press, pairNear: false }],
+      ['no pair near', { ...press, pairKey: null }],
       ['no press', { ...press, fuseEdge: false }],
       ['input released', { ...press, active: false }],
       ['dead', { ...press, alive: false }],
@@ -115,23 +117,36 @@ describe('a fuse the bar cannot pay for', () => {
 });
 
 describe('S2-B3-M6: the FUSE channel (the snare reducer twin)', () => {
-  const fbase = { fuseEdge: false, active: true, alive: true, now: 10, canStart: false, canPay: true, pairNear: false };
-  it('arms ONLY when canStart && pairNear (bank + roster entry + proximity all pre-vetted)', () => {
+  const fbase = { fuseEdge: false, active: true, alive: true, now: 10, canStart: false, canPay: true, pairKey: null };
+  it('arms ONLY when canStart and a pair is near (a recipe for the pair, both within FUSE_RADIUS)', () => {
     expect(decideFuse(makeFuseState(), { ...fbase, fuseEdge: true }).action).toBe('none');
-    expect(decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairNear: true }).action).toBe('startFuse');
+    expect(decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairKey: PAIR }).action).toBe('startFuse');
   });
   it('pair scatters mid-channel -> break (free); held to completion -> fuse + cooldown', () => {
-    let s = decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairNear: true }).sm;
-    const broke = decideFuse(s, { ...fbase, now: 10.5, pairNear: false });
+    let s = decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairKey: PAIR }).sm;
+    const broke = decideFuse(s, { ...fbase, now: 10.5, pairKey: null });
     expect(broke.action).toBe('fuseBreak');
     expect(broke.sm.cooldownUntil).toBe(0); // breaks are free
-    s = decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairNear: true }).sm;
-    const done = decideFuse(s, { ...fbase, now: 10 + FUSE_CHANNEL_SEC, pairNear: true });
+    s = decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairKey: PAIR }).sm;
+    const done = decideFuse(s, { ...fbase, now: 10 + FUSE_CHANNEL_SEC, pairKey: PAIR });
     expect(done.action).toBe('fuse');
     expect(done.sm.cooldownUntil).toBeCloseTo(10 + FUSE_CHANNEL_SEC + SNARE_COOLDOWN_SEC);
   });
+  // The channel braids the pair it started on. The pair is re-picked by distance every frame, and allies move, so a third
+  // one can come nearer than one of the two; the thread would then join another pair, which may have no recipe at all.
+  it('the channel holds the pair it started on: another nearest pair breaks it, free, and it never completes on that one', () => {
+    const s = decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairKey: PAIR }).sm;
+    expect(s.pairKey, 'the channel did not record the pair it started on').toBe(PAIR);
+    for (const now of [10.5, 10 + FUSE_CHANNEL_SEC]) {
+      const other = decideFuse(s, { ...fbase, now, pairKey: '3+9' });
+      expect(other.action, `another pair at ${now} did not break the channel`).toBe('fuseBreak');
+      expect(other.sm.channeling).toBe(false);
+      expect(other.sm.cooldownUntil, 'a broken fuse charged its cooldown').toBe(0);
+    }
+    expect(decideFuse(s, { ...fbase, now: 10 + FUSE_CHANNEL_SEC, pairKey: PAIR }).action, 'the same pair held to the end did not fuse').toBe('fuse');
+  });
   it('death/menu cancels', () => {
-    const s = decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairNear: true }).sm;
-    expect(decideFuse(s, { ...fbase, now: 10.5, pairNear: true, alive: false }).action).toBe('cancel');
+    const s = decideFuse(makeFuseState(), { ...fbase, fuseEdge: true, canStart: true, pairKey: PAIR }).sm;
+    expect(decideFuse(s, { ...fbase, now: 10.5, pairKey: PAIR, alive: false }).action).toBe('cancel');
   });
 });
