@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
+import { WorldPointLight } from '../render/lightPool.jsx';
 
 /**
  * PhantomBlockSystem — S2-B2-M1: the VOIDHAND held "phantom block". A pooled VISUAL proxy of the grabbed
@@ -69,7 +70,7 @@ export function PhantomBlockSystem() {
         </mesh>
       )}
       {/* LIGHT POOL: always mounted; intensity-gated (NEVER conditionally mounted — see header) */}
-      <pointLight color="#B36BFF" intensity={active ? LIGHT_INTENSITY : 0} distance={4} decay={2} />
+      <WorldPointLight color="#B36BFF" intensity={active ? LIGHT_INTENSITY : 0} distance={4} decay={2} />
     </group>
   );
 }

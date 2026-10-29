@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {
   VIEWMODEL, squashDepth, ViewmodelCamera, ViewmodelPass, getViewmodel, HAND_ANCHORS, handAnchors, HAND_REST_ROT, oneDepthCopy,
   GAUNTLET_PARTS, HAND_VALUE_FLOOR, installValueFloor, GAUNTLET, makeGauntletMaterials, makeHeldMaterial, mirrorSkyLight,
-  makeHandLightRig,
+  makeHandLightRig, mirrorPointLights, lightAtEye, HAND_POINT_LIGHTS,
 } from '../../src/render/viewmodel.js';
 import { getToonGradient } from '../../src/render/characterStyle.js';
 import { RenderPass, EffectPass } from 'postprocessing';
@@ -378,5 +378,72 @@ describe('the light on the hands is the world\'s, turned into the camera\'s view
   it('the rig casts no shadow', () => {
     const rig = makeHandLightRig();
     expect(rig.key.castShadow).toBe(false);
+  });
+});
+
+describe('the world\'s point lights on the hands: the strongest at the eye, mirrored into view space', () => {
+  /** A world point light at `pos`, as three draws it. */
+  const lamp = (pos, { color = 0xff8a2a, intensity = 1.6, distance = 9, decay = 2 } = {}) => {
+    const L = new THREE.PointLight(color, intensity, distance, decay);
+    L.position.set(...pos);
+    L.updateMatrixWorld(true);
+    return L;
+  };
+  /** A camera at the eye, turned to `yaw`, with its world matrix current. */
+  const eyeAt = (pos, yaw) => {
+    const cam = new THREE.PerspectiveCamera(75, 1.6, 0.1, 500);
+    cam.position.set(...pos);
+    cam.rotation.set(0, yaw, 0, 'YXZ');
+    cam.updateMatrixWorld(true);
+    return cam;
+  };
+
+  it('a brazier 1.5 m off lands in the rig at its place in the view, with its colour, intensity, reach and decay', () => {
+    const rig = makeHandLightRig();
+    expect(rig.points.length, 'the rig\'s point-light count is fixed, so no hand shader relinks').toBe(HAND_POINT_LIGHTS);
+    const cam = eyeAt([10, 53.6, 10], 0.9);
+    const brazier = lamp([11.2, 53.1, 9.2]);
+    const used = mirrorPointLights([brazier], cam, rig.points);
+    expect(used, 'the brazier was not taken').toBe(1);
+    const want = cam.worldToLocal(brazier.position.clone());
+    expect(rig.points[0].position.distanceTo(want), 'the light is not where the brazier is relative to the view').toBeLessThan(1e-9);
+    expect(rig.points[0].color.getHex()).toBe(0xff8a2a);
+    expect([rig.points[0].intensity, rig.points[0].distance, rig.points[0].decay]).toEqual([1.6, 9, 2]);
+    expect(rig.points.slice(1).every((p) => p.intensity === 0), 'an unused rig light is lit').toBe(true);
+    expect(rig.points.every((p) => !p.castShadow)).toBe(true);
+  });
+
+  it('takes the strongest at the eye, by three\'s own falloff, and leaves out what cannot reach or is dark', () => {
+    const rig = makeHandLightRig();
+    const cam = eyeAt([0, 50, 0], 0);
+    const near = lamp([1, 50, 0], { intensity: 1 }); // 1 m: 1 / 1^2, windowed
+    const bright = lamp([3, 50, 0], { intensity: 20, distance: 0 }); // 3 m, no cut-off: 20 / 9
+    const far = lamp([0, 50, 6], { intensity: 2, distance: 0 }); // 6 m: 2 / 36
+    const beyond = lamp([0, 50, -8], { intensity: 50, distance: 7.5 }); // past its own reach
+    const dark = lamp([0.5, 50, 0], { intensity: 0 });
+    const mid = lamp([0, 52, 0], { intensity: 1.5, distance: 0 }); // 2 m: 1.5 / 4
+    const own = lamp([0, 49.4, -0.2], { intensity: 5.1, distance: 6 }); // the player's own beast core, kept off the hands
+    own.userData.lightsHands = false;
+    const used = mirrorPointLights([far, beyond, own, dark, mid, near, bright], cam, rig.points);
+    expect(used).toBe(3);
+    const at = (L) => cam.worldToLocal(L.position.clone());
+    expect(rig.points.map((p) => p.intensity), 'not the three strongest, strongest first').toEqual([20, 1, 1.5]);
+    expect(rig.points[0].position.distanceTo(at(bright))).toBeLessThan(1e-9);
+    expect(rig.points[1].position.distanceTo(at(near))).toBeLessThan(1e-9);
+    expect(rig.points[2].position.distanceTo(at(mid))).toBeLessThan(1e-9);
+    expect(lightAtEye(beyond, new THREE.Vector3(0, 50, 0)), 'a light past its reach still counts').toBe(0);
+    // Fewer lights than the rig holds: the rest go dark, and a later frame with none darkens them all.
+    expect(mirrorPointLights([near], cam, rig.points)).toBe(1);
+    expect(rig.points.map((p) => p.intensity)).toEqual([1, 0, 0]);
+    expect(mirrorPointLights([], cam, rig.points)).toBe(0);
+    expect(rig.points.map((p) => p.intensity)).toEqual([0, 0, 0]);
+  });
+
+  it('the scene the hands draw in carries the rig\'s point lights', () => {
+    const vm = getViewmodel();
+    const inScene = [];
+    vm.scene.traverse((o) => { if (o.isPointLight) inScene.push(o); });
+    expect(inScene.length).toBe(HAND_POINT_LIGHTS);
+    expect(inScene.every((p) => vm.rig.points.includes(p))).toBe(true);
   });
 });

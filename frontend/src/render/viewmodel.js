@@ -8,6 +8,7 @@ import { getToonGradient } from './characterStyle.js';
 import { FLASH_COLOR, hemiWithFlash } from '../game/lightning.js';
 import { TIERS } from './quality.js';
 import { CHUNK_SIZE } from '../world/chunkLayout.js';
+import { ELEMENT_COLOR } from './beastAvatarParts.js';
 
 /**
  * fov: vertical degrees, fixed, so the main camera's speed FOV (75 to 85) does not stretch the hands.
@@ -96,13 +97,83 @@ export function oneDepthCopy(composer, pass) {
   return changed;
 }
 
-/** The light on the hands: the world's ambient, hemisphere and key, mirrored each frame. None casts a shadow. */
+/**
+ * The world's point lights the hands take: the strongest at the eye, this many. A fixed count, because three compiles the
+ * point-light count into every lit shader: the gauntlets' programs link once, and an unused light sits at intensity 0.
+ */
+export const HAND_POINT_LIGHTS = 3;
+
+/** The light on the hands: the world's ambient, hemisphere and key, and its strongest point lights at the eye, mirrored
+ *  each frame. None casts a shadow. */
 export function makeHandLightRig() {
   const ambient = new THREE.AmbientLight(0xffffff, 0.6);
   const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.55);
   const key = new THREE.DirectionalLight(0xffffff, 1.5);
   key.castShadow = false;
-  return { ambient, hemi, key };
+  const points = Array.from({ length: HAND_POINT_LIGHTS }, () => new THREE.PointLight(0xffffff, 0));
+  return { ambient, hemi, key, points };
+}
+
+const _lw = new THREE.Vector3();
+
+/** The light a point light `L` puts on a point at world `eye`, by three's own falloff (its distance cut-off, windowed,
+ *  and its decay), ignoring colour and facing. 0 past its reach, when dark, or for a light kept off the hands
+ *  (userData.lightsHands false: the player's own beast core, render/lightPool.jsx PooledLight). */
+export function lightAtEye(L, eye) {
+  if (!(L.intensity > 0) || L.userData.lightsHands === false) return 0;
+  const d = L.getWorldPosition(_lw).distanceTo(eye);
+  let falloff = 1 / Math.max(Math.pow(d, L.decay), 0.01);
+  if (L.distance > 0) {
+    const q = d / L.distance;
+    const w = Math.min(Math.max(1 - q * q * q * q, 0), 1);
+    falloff *= w * w;
+  }
+  return L.intensity * falloff;
+}
+
+// The strongest lights so far, strongest first, and their light at the eye: fixed arrays, filled in place each frame.
+const _top = new Array(HAND_POINT_LIGHTS).fill(null);
+const _topScore = new Array(HAND_POINT_LIGHTS).fill(0);
+const _eyeW = new THREE.Vector3();
+
+/**
+ * Mirror the world's point lights (`lights`, an array of three PointLights) that put the most light on the eye into
+ * the rig's `points` (at most HAND_POINT_LIGHTS), each at its place relative to `camera` (view space, where the hands
+ * are drawn), with its colour, intensity, reach and decay; the rest of the rig goes dark. Returns how many were taken.
+ * The ranking is an insertion into fixed arrays, so a frame allocates nothing.
+ */
+export function mirrorPointLights(lights, camera, points) {
+  camera.getWorldPosition(_eyeW);
+  const cap = Math.min(points.length, HAND_POINT_LIGHTS);
+  let n = 0;
+  for (let j = 0; j < lights.length; j++) {
+    const L = lights[j];
+    const s = lightAtEye(L, _eyeW);
+    if (!(s > 0) || (n === cap && s <= _topScore[cap - 1])) continue;
+    let i = n < cap ? n++ : cap - 1;
+    while (i > 0 && _topScore[i - 1] < s) {
+      _top[i] = _top[i - 1];
+      _topScore[i] = _topScore[i - 1];
+      i -= 1;
+    }
+    _top[i] = L;
+    _topScore[i] = s;
+  }
+  for (let i = 0; i < points.length; i++) {
+    const P = points[i];
+    if (i < n) {
+      const L = _top[i];
+      camera.worldToLocal(L.getWorldPosition(P.position));
+      P.color.copy(L.color);
+      P.intensity = L.intensity;
+      P.distance = L.distance;
+      P.decay = L.decay;
+    } else if (P.intensity !== 0) {
+      P.intensity = 0;
+    }
+  }
+  _top.fill(null);
+  return n;
 }
 
 /**
@@ -157,7 +228,7 @@ export function getViewmodel() {
   const rig = makeHandLightRig();
   const hands = new THREE.Group();
   hands.name = 'hands';
-  scene.add(rig.ambient, rig.hemi, rig.key, rig.key.target, hands);
+  scene.add(rig.ambient, rig.hemi, rig.key, rig.key.target, ...rig.points, hands);
   const pass = new ViewmodelPass(scene, camera, hands);
   _vm = { scene, camera, pass, rig, hands };
   return _vm;
@@ -253,6 +324,49 @@ export function makeGauntletMaterials() {
   const toon = (hex) => installValueFloor(new THREE.MeshToonMaterial({ color: hex, gradientMap: getToonGradient() }));
   const core = new THREE.MeshBasicMaterial({ color: new THREE.Color(GAUNTLET.core).multiplyScalar(GAUNTLET.coreGain) });
   return { plate: toon(GAUNTLET.plate), leather: toon(GAUNTLET.leather), trim: toon(GAUNTLET.trim), core };
+}
+
+/**
+ * The form's colour on the gauntlets (DECISIONS 2026-10-29 item 87). In first person the player's own beast draws
+ * nothing but its shadow, so while a form is on the gauntlets carry the form's element glow
+ * (render/beastAvatarParts.js ELEMENT_COLOR, the beast's own rim and core) as the beast does: on their ink outlines, the
+ * rim that runs round every edge the player sees, and in the ember core at the core's gain, which the bloom carries. Not
+ * on the plates: added to their ember gold, a cool glow reads salmon or pink, not the form. It eases toward the form with
+ * time constant `tauS`, in and out. `colour` is each form's colour on the gauntlets: the beast's own glow, but for fire,
+ * whose orange glow (#FF6A2C) stands 24 degrees of OKLCH hue and 0.04 of lightness off the plates and 21 degrees and
+ * 0.07 off the ember core, so it vanished into them; a crimson stands 41 degrees and 0.19 under the plates and 38
+ * degrees and 0.22 under the ember core.
+ */
+export const FORM_TINT = Object.freeze({
+  tauS: 0.12,
+  colour: Object.freeze({ ...Object.fromEntries(Object.entries(ELEMENT_COLOR).map(([el, c]) => [el, c.glow])), fire: '#D4142C' }),
+});
+
+const _emberCore = new THREE.Color(GAUNTLET.core).multiplyScalar(GAUNTLET.coreGain);
+const _ink = new THREE.Color(GAUNTLET.ink);
+const _formGlow = Object.freeze(Object.fromEntries(Object.entries(FORM_TINT.colour).map(([el, hex]) => [el, new THREE.Color(hex)])));
+const _formCore = new THREE.Color();
+
+/**
+ * One frame of the form's colour on the gauntlet materials `mats` (makeGauntletMaterials) and their outline materials
+ * `rims` (each with a `uniforms.color`, drei's Outlines): `tint` ({ w, el }, the caller's) eases its weight `w` toward 1
+ * while the form `el` is on and toward 0 when `el` is null, over `dtS` seconds, keeping the colour of the form that is
+ * fading until it has faded. Writes in place; allocates nothing.
+ */
+export function stepFormTint(tint, el, dtS, mats, rims) {
+  const glow = el ? _formGlow[el] : null;
+  if (glow) tint.el = el;
+  const k = 1 - Math.exp(-(dtS > 0 ? dtS : 0) / FORM_TINT.tauS);
+  tint.w += ((glow ? 1 : 0) - tint.w) * k;
+  if (!glow && tint.w < 1e-3) { tint.w = 0; tint.el = null; }
+  const shown = tint.el ? _formGlow[tint.el] : null;
+  if (shown) mats.core.color.copy(_emberCore).lerp(_formCore.copy(shown).multiplyScalar(GAUNTLET.coreGain), tint.w);
+  else mats.core.color.copy(_emberCore);
+  for (let i = 0; i < rims.length; i++) {
+    const c = rims[i].uniforms.color.value.copy(_ink);
+    if (shown) c.lerp(shown, tint.w);
+  }
+  return tint;
 }
 
 /** A toon material with the floor, for anything else the hands hold (the selected block). */

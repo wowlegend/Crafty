@@ -128,6 +128,16 @@ describe('the Player under a lookbook pose', () => {
     expect(hands(), 'the hands did not come back after clear()').not.toBeNull();
   });
 
+  it('an eye pose (hands: true) keeps the hands, and still stops the controller', () => {
+    render(<Player isWorldBuilt />);
+    act(() => { seam.pose({ ...POSE, hands: true }); });
+    expect(hands(), 'an eye pose hid the hands the still is meant to show').not.toBeNull();
+    expect(frame().started, 'under an eye pose the controller (and the beast state machine) ran').toBe(false);
+    act(() => { seam.pose(POSE); });
+    expect(hands(), 'a hero pose after an eye pose kept the hands').toBeNull();
+    act(() => { seam.clear(); });
+  });
+
   it('keeps the capture-mode hand hiding it already had (a control for the pose case)', () => {
     useGameStore.setState({ isCaptureMode: true });
     render(<Player isWorldBuilt />);

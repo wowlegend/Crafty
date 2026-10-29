@@ -26,6 +26,8 @@ function fakeRenderer(canvas) {
     domElement: canvas, shadowMap: { enabled: false, type: THREE.PCFShadowMap }, xr: null,
     outputColorSpace: THREE.SRGBColorSpace, toneMapping: THREE.NoToneMapping, toneMappingExposure: 1,
     setPixelRatio() {}, getPixelRatio: () => 1, setSize() {}, render() {}, dispose() {},
+    // drei's Outlines reads the drawing buffer's size when it mounts.
+    getDrawingBufferSize: (target) => target.set(canvas.width, canvas.height),
   };
 }
 

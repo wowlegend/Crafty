@@ -20,7 +20,7 @@ import { TIERS } from '../render/quality';
 import { renderDistanceFor } from '../render/tierGovernor.js';
 import { markShadowWorldChanged } from '../render/shadowSchedule.js';
 // A chest beacon mounts and unmounts with its chest: from the fixed light pool, so the light count never changes.
-import { PooledLight } from '../render/lightPool.jsx';
+import { PooledLight, WorldPointLight } from '../render/lightPool.jsx';
 import { Cube, Emissive } from '../render/mascots/voxelKit';
 import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
 import { shrineParts } from './shrineShape.js';
@@ -257,7 +257,7 @@ const HomeAnchorRender = () => {
                 {!isCaptureMode() && (
                     <>
                         <Emissive position={[0, 1.35, 0]} size={0.34} color="#FF7A1A" intensity={2.8} />
-                        <pointLight position={[0, HEARTH_FIRE.height, 0]} intensity={HEARTH_FIRE.intensity} distance={HEARTH_FIRE.distance} color={HEARTH_FIRE.color} />
+                        <WorldPointLight position={[0, HEARTH_FIRE.height, 0]} intensity={HEARTH_FIRE.intensity} distance={HEARTH_FIRE.distance} color={HEARTH_FIRE.color} />
                     </>
                 )}
             </group>

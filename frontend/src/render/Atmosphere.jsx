@@ -25,6 +25,7 @@ import { registerTestHook, callTestHook } from '../devtest/testBridge.js';
 import { createShadowSchedule, shadowDue, shadowWorldEpoch } from './shadowSchedule.js';
 import { ecs, mobsQuery, alliesQuery } from '../ecs/world';
 import { FLASH_COLOR, hemiWithFlash } from '../game/lightning.js';
+import { WorldPointLight } from './lightPool.jsx';
 
 // The shadow's DYNAMIC CASTERS that live in the ECS (render/shadowSchedule.js): mobs and villagers, squad allies, and the
 // loot and XP pickups (pickupVfx casts). The same component sets the systems use; miniplex reuses a query per key.
@@ -544,7 +545,7 @@ export function Atmosphere({ shadowConfig }) {
         shadow-camera-far={shadowConfig.camera.far}
         shadow-bias={-0.0001}
       />
-      <pointLight ref={fillRef} position={[0, 20, 0]} intensity={0} distance={50} />
+      <WorldPointLight ref={fillRef} position={[0, 20, 0]} intensity={0} distance={50} />
       <hemisphereLight ref={hemiRef} intensity={0.55} />
     </>
   );

@@ -29,11 +29,21 @@ const FIT_STEPS = 14;
 
 const tanHalf = (fovDeg) => Math.tan(THREE.MathUtils.degToRad(fovDeg) / 2);
 
-/** How much an authored metre of offset moves at this aspect and FOV so it crosses the same share of the frame. */
-export function frameScale(aspect, fov = VIEWMODEL.fov) {
+/** How much an authored metre of offset moves at this aspect and FOV so it crosses the same share of the frame, written
+ *  into `out`, which is returned. */
+export function frameScale(aspect, fov = VIEWMODEL.fov, out = { x: 1, y: 1 }) {
   const y = tanHalf(fov) / tanHalf(AUTHORED_CAMERA.fov);
-  return { x: (y * aspect) / AUTHORED_CAMERA.aspect, y };
+  out.x = (y * aspect) / AUTHORED_CAMERA.aspect;
+  out.y = y;
+  return out;
 }
+
+// The poses run every frame of a gesture and hundreds of times per fit, so their frame scale is written here.
+const _k = { x: 1, y: 1 };
+
+/** The cast: the wand hand pushes toward the target, lifts a little and tips the wand forward, peaking halfway through
+ *  the cast (metres and radians; the lift at AUTHORED_CAMERA). */
+export const CAST = Object.freeze({ pushZ: 0.12, liftY: 0.03, tipX: 0.35 });
 
 const _e = new THREE.Euler();
 const _q = new THREE.Quaternion();
@@ -64,7 +74,7 @@ export function fistShareInFrame(position, rotation, aspect, fov = VIEWMODEL.fov
 
 /** The step-`t` pose of a sweep { dir, widthMult } from `anchor`, with its offset scaled by `fit`. */
 export function swingPose(t, sweep, anchor, aspect, fit = 1, out = { position: new THREE.Vector3(), rotation: [0, 0, 0] }, rest = [0, 0, 0]) {
-  const k = frameScale(aspect);
+  const k = frameScale(aspect, VIEWMODEL.fov, _k);
   const arc = Math.sin(t * Math.PI);
   const ease = Math.sin(t * Math.PI * 0.5);
   out.position.set(
@@ -80,12 +90,24 @@ export function swingPose(t, sweep, anchor, aspect, fit = 1, out = { position: n
 
 /** The pose at charge `level` (0 to 1) from `anchor`, with its offset scaled by `fit`. */
 export function chargePose(level, anchor, aspect, fit = 1, out = { position: new THREE.Vector3(), rotation: [0, 0, 0] }, rest = [0, 0, 0]) {
-  const k = frameScale(aspect);
-  const [ox, oy, oz] = CHARGE.offset;
-  out.position.set(anchor.x + fit * level * k.x * ox, anchor.y + fit * level * k.y * oy, anchor.z + fit * level * oz);
+  const k = frameScale(aspect, VIEWMODEL.fov, _k);
+  // Read by index: destructuring an array builds an iterator on every call, and this runs every frame of a charge.
+  const o = CHARGE.offset;
+  out.position.set(anchor.x + fit * level * k.x * o[0], anchor.y + fit * level * k.y * o[1], anchor.z + fit * level * o[2]);
   out.rotation[0] = rest[0] + CHARGE.turn[0] * level;
   out.rotation[1] = rest[1] + CHARGE.turn[1] * level;
   out.rotation[2] = rest[2] + CHARGE.turn[2] * level;
+  return out;
+}
+
+/** The pose at step `t` (0 to 1) of a cast from `anchor`: on the cast's own clock, so every cast plays the same push. */
+export function castPose(t, anchor, aspect, out = { position: new THREE.Vector3(), rotation: [0, 0, 0] }, rest = [0, 0, 0]) {
+  const k = frameScale(aspect, VIEWMODEL.fov, _k);
+  const c = Math.sin(Math.PI * Math.min(1, Math.max(0, t)));
+  out.position.set(anchor.x, anchor.y + k.y * CAST.liftY * c, anchor.z - CAST.pushZ * c);
+  out.rotation[0] = rest[0] - CAST.tipX * c;
+  out.rotation[1] = rest[1];
+  out.rotation[2] = rest[2];
   return out;
 }
 

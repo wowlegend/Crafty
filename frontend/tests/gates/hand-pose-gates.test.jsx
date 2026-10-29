@@ -20,10 +20,14 @@ vi.mock('@react-three/fiber', () => import('@react-three/fiber/dist/react-three-
 vi.mock('@react-three/drei', () => ({ Outlines: () => null }));
 const { mountR3F } = await import('./_r3f.jsx');
 const { ViewmodelCamera, handAnchors, HAND_REST_ROT, GAUNTLET_PARTS, VIEWMODEL, HAND_VALUE_FLOOR } = await import('../../src/render/viewmodel.js');
-const { swingPose, swingFit, chargePose, chargeFit, frameScale, CHARGE } = await import('../../src/render/handPose.js');
+const { swingPose, swingFit, chargePose, chargeFit, castPose, frameScale, fistShareInFrame, CHARGE, CAST, FIST_SHARE_MIN } = await import('../../src/render/handPose.js');
+/** Halfway through the cast (the Player holds attackType 'spell' 150 ms, render/playerRender.jsx CAST_S). */
+const CAST_MID_S = 0.075;
 const { slashSweep, pressSwing, _resetStringForTest } = await import('../../src/game/meleeString.js');
 const { pressHeavy, cancelHeavy, HEAVY_HOLD_MS, HEAVY_CHARGE_MS } = await import('../../src/game/heavyAttack.js');
 const { StableMagicHands, HELD_REST } = await import('../../src/render/playerRender.jsx');
+const { installLookbookSeam, _resetLookbookForTest } = await import('../../src/render/lookbookSeam.js');
+const { act } = await import('react');
 const { useGameStore } = await import('../../src/store/useGameStore');
 
 const REST = HAND_REST_ROT.right;
@@ -271,5 +275,70 @@ describe('StableMagicHands plays the fitted poses (mounted through R3F at an iPa
     expect(right.position.distanceTo(want.position), 'the hand is not at the fitted charge').toBeLessThan(0.007);
     expect(right.rotation.x).toBeCloseTo(want.rotation[0], 6);
     expect(anchor.z - right.position.z, 'SETUP: the charge did not move the hand').toBeLessThan(-0.02);
+  });
+
+  it('the cast pushes the wand hand toward the target on the cast\'s own clock, the same at any time of day', async () => {
+    const attackStartTime = { current: 0 };
+    r = await mountR3F(<StableMagicHands selectedBlock={null} attackType="spell" attackStartTime={attackStartTime} />, { width: 820, height: 1180 });
+    const right = () => findHands(r.three().scene).find((h) => h.children.some((c) => c.userData.rest));
+    const aspect = 820 / 1180;
+    const anchor = handAnchors(aspect).right;
+    const want = castPose(0.5, anchor, aspect, undefined, REST);
+    const seen = [];
+    // Two casts started at different points of the session's clock (0.5 s and 1.3 s in), each read at its midpoint.
+    for (const warm of [30, 48]) {
+      await r.step(warm);
+      const clock = r.three().clock;
+      attackStartTime.current = clock.elapsedTime - CAST_MID_S + 1 / 60;
+      await r.step(1);
+      expect(clock.elapsedTime - attackStartTime.current, 'SETUP: not read at the cast\'s midpoint').toBeCloseTo(CAST_MID_S, 6);
+      seen.push(right().position.clone());
+      expect(right().position.distanceTo(want.position), `the cast at ${clock.elapsedTime.toFixed(2)} s is not at its pushed peak`).toBeLessThan(0.016);
+      expect(right().rotation.x, 'the wand did not tip forward').toBeCloseTo(want.rotation[0], 1);
+      // Read against the authored tip, not castPose's own output, so a pose that drops the tip cannot pass by agreeing.
+      expect(REST[0] - right().rotation.x, 'the wrist did not tip the wand forward at the cast\'s peak').toBeGreaterThan(CAST.tipX * 0.9);
+    }
+    expect(anchor.z - want.position.z, 'SETUP: the peak must push the hand away from the camera').toBeGreaterThan(0.1);
+    expect(fistShareInFrame(want.position, want.rotation, aspect), 'the pushed fist leaves the portrait frame').toBeGreaterThanOrEqual(
+      Math.min(FIST_SHARE_MIN, fistShareInFrame(anchor, REST, aspect)));
+  });
+
+  it('a lookbook still holds each pose in place of the clock: step 2, the cast with its orb, the full charge, then rest', async () => {
+    const win = { location: { search: '?lookbook=1' } };
+    installLookbookSeam(win, { store: useGameStore, setActive: () => {}, getActive: () => true, cycleOf: () => 0, glInfo: () => null, contextLosses: () => 0 });
+    const seam = win.__craftyLookbook;
+    try {
+      r = await mountR3F(<StableMagicHands selectedBlock={null} attackType={null} attackStartTime={{ current: 0 }} />, { width: 820, height: 1180 });
+      await r.step(2);
+      const right = () => findHands(r.three().scene).find((h) => h.children.some((c) => c.userData.rest));
+      const orbs = () => { const o = []; r.three().scene.traverse((m) => { if (m.isMesh && m.geometry?.type === 'SphereGeometry' && m.geometry.parameters.radius === 0.07) o.push(m); }); return o; };
+      const aspect = 820 / 1180;
+      const anchor = handAnchors(aspect).right;
+      expect(right().position.distanceTo(anchor), 'SETUP: no attack, the hand rests at its anchor').toBeLessThan(1e-9);
+      expect(orbs().length, 'SETUP: no cast, no orb').toBe(0);
+
+      const sweep = slashSweep(2);
+      await act(async () => { seam.handPose({ kind: 'swing', step: 2, t: 0.5 }); });
+      await r.step(1);
+      const want = swingPose(0.5, sweep, anchor, aspect, swingFit(sweep, anchor, aspect, REST), undefined, REST);
+      expect(right().position.distanceTo(want.position), 'the held swing is not step 2 at its apex').toBeLessThan(0.012);
+
+      await act(async () => { seam.handPose({ kind: 'cast', t: 0.5 }); });
+      await r.step(1);
+      expect(orbs().length, 'the held cast shows no orb in the left hand').toBe(1);
+      expect(right().position.distanceTo(castPose(0.5, anchor, aspect, undefined, REST).position), 'the held cast is not at its peak').toBeLessThan(0.016);
+
+      await act(async () => { seam.handPose({ kind: 'charge', level: 1 }); });
+      await r.step(1);
+      const charged = chargePose(1, anchor, aspect, chargeFit(anchor, aspect, REST), undefined, REST);
+      expect(right().position.distanceTo(charged.position), 'the held charge is not the full charge').toBeLessThan(0.007);
+      expect(orbs().length, 'the orb outlived the cast').toBe(0);
+
+      await act(async () => { seam.handPose(null); });
+      await r.step(1);
+      expect(right().position.distanceTo(anchor), 'released, the hand did not return to rest').toBeLessThan(1e-9);
+    } finally {
+      _resetLookbookForTest();
+    }
   });
 });
