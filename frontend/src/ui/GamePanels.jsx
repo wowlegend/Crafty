@@ -87,7 +87,7 @@ const PaperDollSlot = ({ label, placeholderIcon, equippedItem, onUnequip, onHove
 const STAT_ICON = { strength: 'sword', agility: 'run', intellect: 'magic', armor: 'shield' };
 const STAT_TONE = { strength: 'text-stat-atk', agility: 'text-stat-spd', intellect: 'text-spell-arcane', armor: 'text-stat-def' };
 
-/** What an item that is not gear is for, in words: each claim is one the game makes true. */
+/** What an item that is not gear is for, in words, each decided by the registry the game itself reads. */
 function itemUse(t, itemName) {
     if (itemName.includes('Potion')) return t('inspect.potion');
     // The consumable registry, so raw meats, rotten flesh and the XP gems read as consumables, not as blocks.
@@ -108,7 +108,8 @@ const GearInspector = ({ itemName, equippedGear }) => {
 
     if (relicByName(itemName)) {
         // A relic changes a verb rather than adding a stat, so it reads its change in words, at the tier the Forge
-        // tempered it to (the tier is the relic's, worn or in the bag).
+        // tempered it to (the tier is the relic's, worn or in the bag). The words are the relic's own share: a talent on
+        // the same verb is not in them (ui/relicText.js).
         const tier = relicTier(relicTiers, itemName);
         return (
             <Panel variant="inset" className="p-3 text-center select-none" data-testid="relic-inspect">

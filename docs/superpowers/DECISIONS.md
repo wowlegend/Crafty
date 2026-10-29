@@ -29,10 +29,11 @@ lane's, 50-59 the media lane's). Item 64 amends W1-H item 7's list of three offe
    lists what she can make for the player now: the weapon line's next blade, the worn relic's next tier, and three
    goods, each price in mined blocks and coins beside what the player holds, a short part marked. `buy` charges the
    price listed under the offer's id (never one carried on the object passed in) or refuses and returns the same
-   state; a blade or relic tier bought or outgrown is no longer listed, so it cannot be bought twice (the goods stay
-   listed, to be bought as often as the player pays). A press the player cannot pay
-   for stays pressable and says what is short ("Not enough: 80 coins (have 0)"), so the button is never dead. **Why:**
-   one place that shows every price, in place of recipe shapes nobody can see (W1-H item 7).
+   state; a relic tier bought or outgrown, and a blade held in hand or in a bag, is no longer listed, so it cannot be
+   bought twice (a blade stored in a chest is not read: registry `REVIEW:w2f:forge-chest-blade-resold`; the goods stay
+   listed, to be bought as often as the player pays). A press the player cannot pay for stays pressable and says what
+   is short ("Not enough: 80 coins (have 0)"), so the button is never dead. **Why:** one place that shows every price,
+   in place of recipe shapes nobody can see (W1-H item 7).
 61. **Starting prices** (`forge.js`): Stone Sword 4 stone and 10 coins, Iron Sword 4 iron and 30, Diamond Sword 4
    diamond and 80; a relic's tier II 3 gold and 40, tier III 3 diamond and 100. A fresh profile's 4 iron pays the Iron
    Sword's blocks, so its first reforge waits only on coins (a night survived pays 10 a night number, a quest 0.4 a
@@ -41,8 +42,9 @@ lane's, 50-59 the media lane's). Item 64 amends W1-H item 7's list of three offe
    Sword 35, damage unchanged in `frontend/src/game/equipment.js`), in hand or in any bag, into the next one: the price
    names that blade and the purchase takes it, adds the next and puts it in hand (what the hand held before goes back
    to the bag). A player with no blade is sold the sword for 4 wood. **Why:** an upgrade, not a second sword in the bag,
-   and the hand always ends above every blade owned, so the purchase is never a sidegrade. The pickaxe (damage 8, below
-   the sword every profile holds) leaves the game: the registry, the weapon slot, the loadout, the held model.
+   and the hand always ends above every blade held in hand or in a bag (one stored in a chest is not counted: registry
+   `REVIEW:w2f:forge-chest-blade-resold`), so the purchase is never a sidegrade. The pickaxe (damage 8, below the
+   sword every profile holds) leaves the game: the registry, the weapon slot, the loadout, the held model.
 63. **The relic line tempers the worn relic** to tier II and III (`RELIC_MAX_TIER` 3, `frontend/src/game/relics.js`):
    its modifier counts once per tier in `foldVerbMods`, so a tier-III Ember Fang adds 12 s to the roar. The tier
    belongs to the relic, not the slot (`relicTiers`, a persisted progression field and an autosave trigger), so a
@@ -86,9 +88,11 @@ lane's, 50-59 the media lane's). Item 64 amends W1-H item 7's list of three offe
    purchase the row's Buy rests for 500 ms, disabled where the player sees it: the two clicks of a double press fall
    inside the system's double-click time, 500 ms by default on Windows (`SetDoubleClickTime`, learn.microsoft.com),
    and no longer a rest leaves repeat purchases of goods unhurried. Each row is keyed by its offer, so a bought tier's
-   button leaves the card and a button keyboard focus still holds cannot buy what replaced it; a pointer press does not
-   focus Buy, so Space or Enter pressed for the game cannot fire the last Buy clicked (a Buy reached by Tab keeps its
-   keys). Proven in jsdom (`tests/gates/forge-panel-gates.test.jsx`); a real browser's double click is not.
+   button leaves the card and a button that held focus cannot buy what replaced it; a pointer press does not focus Buy,
+   so Space or Enter pressed for the game cannot fire the last Buy clicked. Keyboard focus does not reach a Buy in the
+   game: `InputManager.jsx` catches Tab on the window while a panel is open and closes the Forge. The gate shows a
+   focused Buy keeps its keys if a later build lets focus reach it. Proven in jsdom
+   (`tests/gates/forge-panel-gates.test.jsx`); a real browser's double click is not.
 
 ## 2026-10-29 — [LOOP] W2-F step 4: talents that change verbs, loot relics, and damage from level
 

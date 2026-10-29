@@ -46,8 +46,9 @@ function priceParts(t, state, offer) {
   return parts;
 }
 
-// A pointer press does not focus Buy, so Space or Enter pressed for the game cannot fire the last Buy clicked; a Buy
-// reached by Tab keeps its keys.
+// A pointer press does not focus Buy, so Space or Enter pressed for the game cannot fire the last Buy clicked. Keyboard
+// focus does not reach a Buy in the game (InputManager closes the Forge on Tab); a Buy focused some other way keeps its
+// keys.
 const keepFocus = (e) => e.preventDefault();
 
 const OfferRow = ({ offer, state, onBuy, resting }) => {
@@ -167,8 +168,9 @@ export const ForgePanel = React.memo(({ villager, onClose }) => {
                 {message.text}
               </Toast>
             )}
-            {/* Each row is keyed by its offer, so a bought tier's button leaves with it: a button keyboard focus still
-                holds cannot buy the offer that replaced it. */}
+            {/* Each row is keyed by its offer, so a bought tier's button leaves with it: a button that held focus
+                cannot buy the offer that replaced it. Tab does not reach a Buy in the game today (InputManager closes
+                the Forge on it), so this guards a focus a later build allows. */}
             <Section label={t('forge.weapon')}>
               {weapon
                 ? <OfferRow key={weapon.id} offer={weapon} state={state} onBuy={onBuy} resting={resting.has(rowOf(weapon))} />

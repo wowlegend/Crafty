@@ -1,5 +1,6 @@
 // relicText.js — a relic's change in words at a given tier. The amount comes from foldVerbMods, the fold every verb site
-// reads (game/verbMods.js), so the words and the game cannot disagree as tiers or modifiers change.
+// reads (game/verbMods.js), folded over the relic alone: the words are the relic's own share and follow its tier and
+// modifier. They leave out a talent that moves the same key (Wide Snare adds to snareArc, game/talentTree.js).
 import { relicByName } from '../game/relics.js';
 import { foldVerbMods, VERB_BASE } from '../game/verbMods.js';
 

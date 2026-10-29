@@ -16,7 +16,7 @@ describe('B6 starting loadout — humble frontier start (the loot and the Forge 
     expect(blocks['Diamond Sword']).toBeUndefined(); // the endgame weapon — never handed out
   });
 
-  it('hands out NO armor / shields — the player earns every piece', () => {
+  it('hands out NO armor / shields — a quest or a chest gives the few that remain', () => {
     for (const piece of [
       'Golden Crown', 'Iron Helmet', 'Iron Chestplate', 'Leather Chestplate',
       'Leather Boots', 'Iron Boots', 'Wooden Shield', 'Iron Shield',

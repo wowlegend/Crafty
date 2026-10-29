@@ -4,8 +4,9 @@
  *
  * State: `{ inventory: { blocks, tools, magic }, coins, equipment, relicTiers }`, the store's own fields.
  * Offer: `{ id, line: 'weapon'|'relic'|'goods', give, count, tier?, price: { blocks: { key: n }, coins, blade? } }`.
- * The id names the tier it sells, so a blade or relic tier bought or outgrown is no longer listed and cannot be bought
- * again; the goods stay listed, to be bought as often as the player pays.
+ * The id names the tier it sells, so a relic tier bought or outgrown, and a blade held in hand or in a bag, is no longer
+ * listed and cannot be bought again. A blade stored in a chest is not read (registry REVIEW:w2f:forge-chest-blade-resold).
+ * The goods stay listed, to be bought as often as the player pays.
  */
 import { RELIC_MAX_TIER, relicByName, relicTier } from './relics.js';
 
@@ -52,7 +53,7 @@ const count = (v) => {
 const heldIn = (state, bag, key) => count(state?.inventory?.[bag]?.[key]);
 const holdsBlade = (state, blade) => state?.equipment?.weapon === blade || BAGS.some((bag) => heldIn(state, bag, blade) > 0);
 
-/** The highest blade on the line the player holds, in hand or in any bag, or null. */
+/** The highest blade on the line the player holds, in hand or in any bag (not one stored in a chest), or null. */
 export function bestBlade(state) {
   for (let i = WEAPON_LINE.length - 1; i >= 0; i--) if (holdsBlade(state, WEAPON_LINE[i])) return WEAPON_LINE[i];
   return null;

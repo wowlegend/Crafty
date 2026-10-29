@@ -1,7 +1,8 @@
 /**
  * verbMods.js — the one vocabulary in which talents and relics change the Aspect verbs (DECISIONS 2026-10-28 W1-H item
- * 6). A modifier is `{ key, add }`; a talent adds it once per rank, a relic once. Folding the player's ranks and relic
- * over VERB_BASE gives the numbers every verb site reads (the store's getVerbMods). Pure: no React, store or THREE.
+ * 6). A modifier is `{ key, add }`; a talent adds it once per rank, a relic once per tier (DECISIONS 2026-10-29 item 63).
+ * Folding the player's ranks and relic over VERB_BASE gives the numbers every verb site reads (the store's
+ * getVerbMods). Pure: no React, store or THREE.
  */
 import { FORM_DURATION_SEC } from './beastTransform.js';
 import { MAX_HOLD_SEC } from './voidhand.js';

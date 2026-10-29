@@ -135,8 +135,8 @@ describe('a double press buys one thing', () => {
     expect(S().equipment.weapon, `a click ${DOUBLE_CLICK_MS - 1} ms after a purchase bought again`).toBe('Iron Sword');
     wait(1);
     expect(lineBuy('weapon').disabled, `the line's Buy still rests ${DOUBLE_CLICK_MS} ms after the purchase`).toBe(false);
-    // The Iron Sword's own button, as keyboard focus would hold it: it left the card with its offer, so a press on it
-    // cannot buy the offer that took its place.
+    // The Iron Sword's own button, held as a focused button would be if a later build let focus reach a Buy: it left the
+    // card with its offer, so a press on it cannot buy the offer that took its place.
     fireEvent.click(ironBuy);
     expect(S().equipment.weapon, 'the Iron Sword\'s button stayed in the card and bought the Diamond Sword').toBe('Iron Sword');
     fireEvent.click(lineBuy('weapon'));
@@ -164,9 +164,11 @@ describe('a double press buys one thing', () => {
     expect(S().relicTiers, 'a click after the window did not temper to tier III').toEqual({ 'Prism Shard': 3 });
   });
 
-  it('a pointer press on Buy does not take focus, so a key meant for the game cannot press it; Tab still reaches it', () => {
+  it('a pointer press on Buy does not take focus, so a key meant for the game cannot press it; a Buy focused by hand holds focus', () => {
     render(<ForgePanel onClose={() => {}} />);
     const chest = tid('forge-buy-goods:chest');
+    // In the game Tab never reaches a Buy (InputManager closes the Forge on it), so focus is set by hand: this shows a
+    // focused Buy holds focus and keeps its keys if a later build lets focus reach it.
     chest.focus();
     expect(document.activeElement, 'SETUP: a Buy cannot hold focus at all, so the check below would mean nothing').toBe(chest);
     chest.blur();

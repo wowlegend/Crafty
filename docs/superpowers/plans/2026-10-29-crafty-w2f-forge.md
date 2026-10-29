@@ -25,7 +25,7 @@ are short and changes nothing.
 2. **The weapon line** is `['sword', 'Stone Sword', 'Iron Sword', 'Diamond Sword']`, damage 10, 12, 20, 35
    (`game/equipment.js`, unchanged). The offer reforges the best blade the player holds, in hand or in any bag, into
    the next one; the price lists that blade, and buying takes it, adds the next and equips it, so the hand's damage
-   rises to a number above every blade owned. Prices climb: Stone Sword 4 stone and 10 coins, Iron Sword 4 iron and 30,
+   rises to a number above every blade held in hand or in a bag. Prices climb: Stone Sword 4 stone and 10 coins, Iron Sword 4 iron and 30,
    Diamond Sword 4 diamond and 80. At the Diamond Sword the line says so and offers nothing. Holding no blade, the
    offer is the sword itself (no blade taken).
 3. **The pickaxe goes.** Damage 8, below the sword (10) every profile starts with, so it is a weapon stat stick the
