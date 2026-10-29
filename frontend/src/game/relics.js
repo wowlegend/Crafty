@@ -17,3 +17,24 @@ export const RELICS = Object.freeze({
 export function relicByName(name) {
   return (typeof name === 'string' && Object.prototype.hasOwnProperty.call(RELICS, name)) ? RELICS[name] : null;
 }
+
+// Mara's Forge tempers a relic (game/forge.js): at tier N its modifier counts N times. The tier belongs to the relic, not
+// the slot, so a relic swapped out keeps it.
+export const RELIC_MAX_TIER = 3;
+
+/** The tier of relic `name` in a saved `relicTiers` map: 1 for a relic never tempered or an unreadable entry. */
+export function relicTier(relicTiers, name) {
+  if (!relicByName(name) || !relicTiers || typeof relicTiers !== 'object') return 1;
+  const raw = Object.prototype.hasOwnProperty.call(relicTiers, name) ? Math.floor(Number(relicTiers[name])) : 1;
+  return Number.isFinite(raw) ? Math.min(RELIC_MAX_TIER, Math.max(1, raw)) : 1;
+}
+
+/** A saved `relicTiers` map kept to the relics that exist, each tier read by relicTier, tier I left out. Pure. */
+export function normalizeRelicTiers(relicTiers) {
+  const out = {};
+  for (const name of Object.keys(RELICS)) {
+    const tier = relicTier(relicTiers, name);
+    if (tier > 1) out[name] = tier;
+  }
+  return out;
+}
