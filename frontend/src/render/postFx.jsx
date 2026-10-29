@@ -153,6 +153,8 @@ export function PostTierDriver() {
         // The LIVE threshold (BloomEffect keeps it on its luminance material; the prop is only the first value), for the
         // light-colour plan's bloom grammar (read through Atmosphere's readSkyLight).
         bloomThreshold: live.bloom ? live.bloom.luminanceMaterial.threshold : null,
+        // The live composer's passes in the order it runs them (tests/e2e/viewmodel.spec.js: the hands right after the world).
+        passes: ctx && ctx.composer ? ctx.composer.passes.map((p) => p.name) : null,
         // three's live counters: textures/geometries resident on the GPU, programs linked.
         textures: gl ? gl.info.memory.textures : null,
         programs: gl && gl.info.programs ? gl.info.programs.length : null,
