@@ -80,7 +80,7 @@ const CoinReadout = React.memo(() => {
   if (!coins || coins <= 0) return null;
   return (
     <div data-testid="coin-readout" className={`absolute ${isTouchUIMode() ? 'top-[332px] right-2' : 'top-4 right-[68px]'} z-20 pointer-events-none`}>
-      <Panel variant="base" className="px-3 py-1.5 flex items-center gap-1.5">
+      <Panel variant="base" shadow="shadow-none" className="px-3 py-1.5 flex items-center gap-1.5">
         <Icon name="coins" size={18} className="flex-none text-warn" />
         <span className="font-bold tabular-nums text-text">{coins}</span>
       </Panel>
@@ -124,8 +124,8 @@ export const DayPhaseDial = React.memo(() => {
   const init = dayPhase(useGameStore.getState().gameTime, isDay);
   return (
     <div data-testid="day-phase-dial" className="absolute top-[68px] right-4 z-20 pointer-events-none">
-      <Panel variant="base" className="px-2 py-2 flex flex-col items-center gap-1">
-        <div className="relative w-11 h-11 rounded-full border-chrome border-ink bg-slot overflow-hidden">
+      <Panel variant="base" shadow="shadow-none" className="px-1.5 py-1.5 flex flex-col items-center gap-1">
+        <div className="relative w-9 h-9 rounded-full border-chrome border-ink bg-slot overflow-hidden">
           {/* horizon line: above = sky (sun/moon high), below = night/ground -> the orbit reads as a sky arc */}
           <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-ink opacity-50" />
           <div ref={orbitRef} className="absolute inset-0" style={{ transform: `rotate(${init.markerAngleDeg}deg)` }}>
@@ -295,12 +295,12 @@ export function HUD({
 
             {/* The vitals: a `flex flex-col` column (StatBar's root is `inline-flex`), `w-44` giving every bar one width.
                 Desktop: the bottom-left corner, lifted above the hotbar's XP edge where the centred hotbar would reach
-                it: under 900 px wide, the hotbar's 500 px plus, on each side, this stack's 176 px, its 16 px margin and
+                it: under 808 px wide, the hotbar's 408 px plus, on each side, this stack's 176 px, its 16 px margin and
                 an 8 px gap. Touch: the joystick and the action buttons hold both bottom corners (ui/TouchControls.jsx)
                 and the tray opens down the left edge from its middle, so the stack sits at the top left, below the
                 quest line and, where the compass drops below the top band (under 900 px), below the objective line,
-                which ends near 126 px. */}
-            <div data-testid="stat-stack" className={`absolute left-4 pointer-events-none z-20 flex flex-col gap-2 w-44 ${isTouchUIMode() ? 'top-[136px]' : 'bottom-4 max-[900px]:bottom-[104px]'}`}>
+                which ends at 137 px (top 104 px, 33 px tall). */}
+            <div data-testid="stat-stack" className={`absolute left-4 pointer-events-none z-20 flex flex-col gap-2 w-44 ${isTouchUIMode() ? 'top-[148px]' : 'bottom-4 max-[808px]:bottom-[88px]'}`}>
               <PlayerHealthBar health={gameSystems.playerHealth} maxHealth={gameSystems.maxHealth} />
               <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
               <EmberBar />

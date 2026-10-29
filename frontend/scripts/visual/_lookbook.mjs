@@ -781,7 +781,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
  */
 export const FOOTPRINT_TOLERANCE = 2;
 
-export function chromeFootprint(on, hudOff, world, { width, height, tolerance = FOOTPRINT_TOLERANCE } = {}) {
+export function chromeFootprint(on, hudOff, world, { width, height, tolerance = FOOTPRINT_TOLERANCE, keepMask = false } = {}) {
   const n = width * height * 4;
   for (const [name, buf] of [['on', on], ['hudOff', hudOff], ['world', world]]) {
     if (name === 'world' && buf == null) continue;
@@ -792,12 +792,34 @@ export function chromeFootprint(on, hudOff, world, { width, height, tolerance = 
   const differs = (a, b, i) => Math.abs(a[i] - b[i]) > tolerance || Math.abs(a[i + 1] - b[i + 1]) > tolerance
     || Math.abs(a[i + 2] - b[i + 2]) > tolerance;
   let pixels = 0, touchPixels = 0;
+  const mask = keepMask ? new Uint8Array(width * height) : null;
   for (let i = 0; i < n; i += 4) {
-    if (differs(on, hudOff, i)) pixels += 1;
+    if (differs(on, hudOff, i)) { pixels += 1; if (mask) mask[i / 4] = 1; }
     if (world && differs(hudOff, world, i)) touchPixels += 1;
   }
   const checked = width * height;
-  return { share: pixels / checked, pixels, touchShare: world ? touchPixels / checked : null, touchPixels: world ? touchPixels : null, checked };
+  return { share: pixels / checked, pixels, touchShare: world ? touchPixels / checked : null, touchPixels: world ? touchPixels : null, checked,
+    ...(mask ? { mask } : {}) };
+}
+
+/**
+ * PURE. Where the HUD's footprint lies: each counted pixel of `mask` (width x height, 1 = HUD) given to the first of
+ * `rects` ([{ id, x, y, right, bottom }] in CSS px) whose box, grown by `pad` CSS px on every side (an offset shadow,
+ * a glow), holds it at `scale` device px per CSS px; the rest is `other`. Returns { [id]: share of the frame }, largest
+ * first, so a run can say which surface holds the screen.
+ */
+export function footprintByRect(mask, { width, height, rects, scale = 1, pad = 8 }) {
+  const boxes = rects.map((r) => ({ id: r.id, x0: (r.x - pad) * scale, y0: (r.y - pad) * scale, x1: (r.right + pad) * scale, y1: (r.bottom + pad) * scale }));
+  const count = Object.fromEntries([...boxes.map((b) => [b.id, 0]), ['other', 0]]);
+  for (let p = 0; p < width * height; p++) {
+    if (!mask[p]) continue;
+    const x = p % width, y = (p - x) / width;
+    const hit = boxes.find((b) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1);
+    count[hit ? hit.id : 'other'] += 1;
+  }
+  const total = width * height;
+  return Object.fromEntries(Object.entries(count).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => [k, Math.round((v / total) * 10000) / 10000]));
 }
 
 /** How many pixels of two shots of the held page differ (by more than FOOTPRINT_TOLERANCE): 0 when the page was still. */

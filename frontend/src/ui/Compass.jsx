@@ -115,13 +115,13 @@ export const Compass = React.memo(({ treasureChests, bossSystem }) => {
   }).current;
 
   return (
-    // Below the top band wherever the centred strip would reach the quest line (left, up to 252 px) or the gear: under
-    // 900 px wide (a tablet in portrait, a phone).
+    // Below the top band wherever the centred strip would reach the quest line (left, up to 296 px) or the gear: under
+    // 900 px wide (a tablet in portrait, a phone). Flat at rest, as the HUD's surfaces are (DECISIONS 2026-10-29 item 99).
     <div className="absolute top-3 max-[900px]:top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
-      <div data-testid="hud-compass" className="w-[320px] max-[640px]:w-[200px] h-[34px] bg-panel-frame border-chrome border-ink rounded-md shadow-elev-md relative flex items-center justify-center overflow-hidden">
+      <div data-testid="hud-compass" className="w-[288px] max-[640px]:w-[200px] h-[34px] bg-panel-frame border-chrome border-ink rounded-md relative flex items-center justify-center overflow-hidden">
         {/* Alignment reticle line */}
         <div className="absolute top-0 bottom-0 w-[1.5px] bg-info z-20"></div>
-        <div ref={trackRef} data-testid="compass-track" className="w-[280px] max-[640px]:w-[160px] h-full relative overflow-hidden">
+        <div ref={trackRef} data-testid="compass-track" className="w-[248px] max-[640px]:w-[160px] h-full relative overflow-hidden">
           <CompassSlots setRef={setRef} />
         </div>
       </div>

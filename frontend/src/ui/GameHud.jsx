@@ -4,7 +4,8 @@
 import React from 'react';
 import { useT } from '../i18n/i18n.js';
 import { motion } from 'framer-motion';
-import { Panel, Slot, Button, Icon } from './primitives/index.js';
+import { Slot, Button, Icon } from './primitives/index.js';
+import { isTouchUIMode } from '../input/touchDevice';
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from '../world/Blocks';
 
 // X3 — FIXED 2026-08-05, and CONFIRMED by a lived browser run before the fix was written.
@@ -46,14 +47,16 @@ const XpEdge = ({ level, xpProgress }) => {
 
 const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
   if (!gameState) return null;
-  // The slim hotbar (the HUD lane): 48 px slots, 9 × 48 + gaps + padding = 500 px, the largest single piece of chrome at
-  // rest, sized so the eye-level frames hold the chrome share under 8% (lookbook chrome count). B7 (18-domain review): a
-  // full hotbar overflowed a phone, two slots off each edge; on narrow screens (≤640px) it scales to fit, keeping a
-  // phone's slot about 35 px; origin-bottom keeps it anchored and centred.
+  // The hotbar is the largest piece of chrome at rest, so it is nine slots and nothing behind them: no panel, 40 px
+  // slots on a keyboard (9 x 40 + 8 gaps of 6 = 408 px), 48 px on touch, where each slot is a tap target. The lookbook's
+  // footprint holds the eye-level frames at rest under 8% with it (DECISIONS 2026-10-29 item 99). B7 (18-domain
+  // review): a full hotbar overflowed a phone; on narrow screens (≤640px) it scales to fit, keeping a phone's slot about
+  // 35 px; origin-bottom keeps it anchored and centred.
+  const touch = isTouchUIMode();
   return (
     <div data-hud-interactive data-testid="hotbar" className="absolute bottom-4 left-1/2 transform -translate-x-1/2 origin-bottom max-[640px]:scale-[0.72] pointer-events-auto">
       {level != null && <XpEdge level={level} xpProgress={xpProgress} />}
-      <Panel variant="base" className="flex gap-1.5 p-1.5">
+      <div className="flex gap-1.5">
         {HOTBAR_BLOCKS.map((blockType, index) => {
           const blockConfig = BLOCK_TYPES[blockType];
           if (!blockConfig) return null;
@@ -63,7 +66,7 @@ const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
             <Slot
               key={blockType}
               selected={isSelected}
-              className="w-12 cursor-pointer"
+              className={`${touch ? 'w-12' : 'w-10'} cursor-pointer`}
               onClick={() => gameState.setSelectedBlock(blockType)}
               title={`${blockConfig.name} (${quantity})`}
               // stable seam for the input-driven E2E (X3)
@@ -73,7 +76,7 @@ const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
                   empty slot is dimmed and every count is drawn: a last block and none must not look alike. */}
               <div
                 data-hotbar-swatch
-                className={`w-7 h-7 rounded-sm border-chrome border-ink${quantity > 0 ? '' : ' opacity-30'}`}
+                className={`${touch ? 'w-7 h-7' : 'w-6 h-6'} rounded-sm border-chrome border-ink${quantity > 0 ? '' : ' opacity-30'}`}
                 style={{ backgroundColor: blockConfig.color || '#567C35' }}
               />
               <span className="absolute top-0.5 left-1 text-[10px] font-bold text-text-muted tabular-nums">{index + 1}</span>
@@ -87,7 +90,7 @@ const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
             </Slot>
           );
         })}
-      </Panel>
+      </div>
     </div>
   );
 });

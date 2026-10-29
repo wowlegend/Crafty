@@ -3,9 +3,10 @@
 //   compass  the player stood 22 m beyond Mara the Smith on the line from HOME (the world origin) through her, facing
 //            HOME, so HOME and her marker sit a few degrees apart on the strip: the label boxes are read and their
 //            overlaps counted (STATUS G-ledger 38/b);
-//   dusk     the clock set just short of the dusk window and left to run into it, every toast logged from before the
-//            edge; one frame with the warning up, its box against the day-phase dial's (G-ledger 38/a); then a night,
-//            zh-CN, the next dusk and its frame; English restored after.
+//   dusk     back at the eye set's stand, facing its second heading (`home`), so every build's dusk frames are shot from
+//            one place: the clock set just short of the dusk window and left to run into it, every toast logged from
+//            before the edge; one frame with the warning up, its box against the day-phase dial's (G-ledger 38/a); then a
+//            night, zh-CN, the next dusk and its frame; English restored after.
 // Each reads the build it is pointed at: a build from before the HUD lane has no marker or toast test ids, so the
 // readers fall back to the old markup (the compass track's spans, a toast found by its words, the dial by its place).
 // A helper, not a probe: it binds no port and launches nothing (lookbook.mjs owns the browser).
@@ -86,8 +87,9 @@ const duskBoxes = (page) => page.evaluate((src) => {
 
 const intersects = (a, b) => !!(a && b) && !(a.right <= b.x || b.right <= a.x || a.bottom <= b.y || b.bottom <= a.y);
 
-/** Shoot the hud set into `dir`; `prep` clears hostiles and holds input before a frame. Returns the report's `hud`. */
-export async function shootHudSet(page, dir, { prep, settleMs = 1500 }) {
+/** Shoot the hud set into `dir`; `prep` clears hostiles and holds input before a frame, `home` stands the player at the
+ *  eye set's place before each dusk. Returns the report's `hud`. */
+export async function shootHudSet(page, dir, { prep, home, settleMs = 1500 }) {
   const out = { compass: null, dusk: [] };
   // COMPASS: HOME and Mara a few degrees apart.
   const mara = await page.evaluate(() => (window.__craftyLookbook.mobs() || []).find((m) => /^Mara/.test(m.npc || '')) || null);
@@ -112,6 +114,7 @@ export async function shootHudSet(page, dir, { prep, settleMs = 1500 }) {
   for (const [locale, dayStart, file] of [['en', 0, 'hud-dusk-en.png'], ['zh-CN', HALF_CYCLE_UNITS * 2, 'hud-dusk-zh.png']]) {
     await page.evaluate((l) => window.useGameStore.getState().setLocale?.(l), locale);
     const before = await duskCount(page);
+    if (home) await home();
     await prep();
     await page.evaluate((t) => window.useGameStore.setState({ gameTime: t, isDay: true }), dayStart + DUSK_EDGE - 8);
     let seen = false;

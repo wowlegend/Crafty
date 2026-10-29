@@ -557,8 +557,8 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
     const lead = leadQuest(quests);
 
     return (
-        <div data-testid="quest-tracker" data-hud-interactive className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: touch ? 236 : 320 }}>
-            <Panel variant="raise" className="overflow-hidden p-0">
+        <div data-testid="quest-tracker" data-hud-interactive className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: touch ? 236 : 280 }}>
+            <Panel variant="raise" shadow="shadow-none" className="overflow-hidden p-0">
                 <div className="flex items-center bg-panel-raise">
                     <button
                         type="button"
