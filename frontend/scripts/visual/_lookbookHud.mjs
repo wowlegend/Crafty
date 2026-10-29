@@ -62,7 +62,11 @@ const installToastLog = (page) => page.evaluate((src) => {
         if (!(n instanceof Element)) continue;
         const keyed = n.matches('[data-testid="notification"]') ? [n] : [...n.querySelectorAll('[data-testid="notification"]')];
         for (const el of keyed) log.push({ key: el.getAttribute('data-notification-key'), text: el.textContent });
-        if (keyed.length === 0 && words.test(n.textContent || '') && (n.textContent || '').length < 200) log.push({ key: null, text: n.textContent });
+        // An older build's toast has no test id: it is the dusk words added under the toast stack (right-aligned, spaced),
+        // not the same words echoed in the combat log at the bottom left.
+        const stack = n.parentElement;
+        const inStack = !!stack && stack.classList.contains('right-4') && stack.classList.contains('space-y-2');
+        if (keyed.length === 0 && inStack && words.test(n.textContent || '')) log.push({ key: null, text: n.textContent });
       }
     }
   }).observe(document.body, { childList: true, subtree: true });
