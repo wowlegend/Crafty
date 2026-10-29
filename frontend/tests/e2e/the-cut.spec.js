@@ -66,13 +66,27 @@ function stageBuild({ want, capMs }) {
   return { aims };
 }
 
-function aimAt({ yaw, pitch }) {
+// A placement rebuilds its chunk's trimesh collider, and the build ray is a Rapier scene query, which sees a collider
+// only once a physics step has put it in the broad phase (rapier.rs, "Simulation structures": queries use the state at
+// the end of the last step). So the aim right after a press can miss terrain for a frame; it is cast again after each
+// frame the game draws (FrameCap's counter: the R3F frames, whose useFrame steps the physics), up to AIM_FRAMES, before
+// the aim is called lost.
+const AIM_FRAMES = 30;
+
+async function aimAt({ yaw, pitch, frames }) {
   const cam = window.__threeCamera;
-  cam.rotation.order = 'YXZ'; cam.rotation.y = yaw; cam.rotation.x = pitch; cam.updateMatrixWorld();
-  const hit = window.GameMethods.castBuildRay();
-  if (!hit || !hit.normal) return null;
-  const p = hit.hitPoint.clone().add(new cam.position.constructor(hit.normal.x, hit.normal.y, hit.normal.z).multiplyScalar(0.01));
-  return `${Math.floor(p.x)}_${Math.floor(p.y)}_${Math.floor(p.z)}`;
+  const drawn = () => window.__craftyTest.call('readFrameloop')?.frames ?? 0;
+  for (let k = 0; ; k += 1) {
+    cam.rotation.order = 'YXZ'; cam.rotation.y = yaw; cam.rotation.x = pitch; cam.updateMatrixWorld();
+    const hit = window.GameMethods.castBuildRay();
+    if (hit && hit.normal) {
+      const p = hit.hitPoint.clone().add(new cam.position.constructor(hit.normal.x, hit.normal.y, hit.normal.z).multiplyScalar(0.01));
+      return `${Math.floor(p.x)}_${Math.floor(p.y)}_${Math.floor(p.z)}`;
+    }
+    if (k >= frames) return null;
+    const from = drawn();
+    for (let polls = 0; drawn() === from && polls < 600; polls += 1) await new Promise((r) => requestAnimationFrame(r));
+  }
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -217,8 +231,8 @@ test.describe('the Cut', () => {
     await expect.poll(slotCount, { message: 'SETUP: the hotbar never showed the staged stack of 3' }).toBe(3);
     const presses = [];
     for (const [i, aim] of stage.aims.entries()) {
-      const cell = await page.evaluate(aimAt, aim);
-      expect(cell, `SETUP: aim ${i + 1} no longer reaches terrain`).not.toBeNull();
+      const cell = await page.evaluate(aimAt, { ...aim, frames: AIM_FRAMES });
+      expect(cell, `SETUP: aim ${i + 1} no longer reaches terrain after ${AIM_FRAMES} drawn frames`).not.toBeNull();
       const before = await page.evaluate((c) => ({ size: window.useGameStore.getState().worldBlocks.size, at: window.useGameStore.getState().worldBlocks.get(c) ?? null }), cell);
       expect(before.at, `SETUP: aim ${i + 1} targets a cell that already holds a placed block`).toBeNull();
       await page.mouse.click(640, 400, { button: 'right' });
