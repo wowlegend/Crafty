@@ -278,6 +278,27 @@ function judgeTarget(samples) {
   };
 }
 
+/**
+ * The body's travel over a hold against the travel the stance fed it, over pairs of samples one controller frame apart
+ * (the later one's `atS` is the earlier one's plus its step) whose earlier move-target record is that frame's: `fed` sums
+ * the applied planar velocity times the frame's step, `went` the body's move from where that frame's step started to
+ * where the next one's did. A body that terrain stops goes a fraction of what it was fed, at any hold length. A fixed
+ * camera displacement cannot say that: a hold the husk ends at its second sample covers one capped 0.25 s step, 0.5 m at
+ * the 2 m/s retreat cap, of which the camera, following the body, shows about 0.42 m.
+ */
+function travel(samples) {
+  let fed = 0, went = 0, frames = 0;
+  for (let i = 1; i < samples.length; i++) {
+    const p = samples[i - 1], s = samples[i];
+    if (!p.st || !p.mt || !s.st || p.mt.frame !== p.st.frame) continue;
+    if (!(p.st.stepS > 0) || Math.abs(s.st.atS - (p.st.atS + p.st.stepS)) > 1e-9) continue;
+    fed += Math.hypot(p.mt.appliedX, p.mt.appliedZ) * p.st.stepS;
+    went += Math.hypot(s.st.playerX - p.st.playerX, s.st.playerZ - p.st.playerZ);
+    frames++;
+  }
+  return { fed: +fed.toFixed(3), went: +went.toFixed(3), frames };
+}
+
 /** The samples up to and including the first one at which the husk had caught up (all of them if it never did). */
 function caughtFrames(samples) {
   const i = samples.findIndex((s) => s.gap != null && s.gap <= CAUGHT_GAP_M);
@@ -367,7 +388,9 @@ test.describe('combat stance', () => {
     const caught = async (code, id, label, judgeChase, { strafe = false } = {}) => {
       const r = await page.evaluate(({ code, id, catchS, wallMs }) => window.__stanceSpec.hold(code, id, { catchS, wallMs }), { code, id, catchS: SETTLE_MS / 1000 + 0.25, wallMs: HOLD_WALL_MS });
       expect(r.stalled, `SETUP: ${label}: the game advanced ${r.gameS} s in ${r.wallMs} ms of holding, short of the hold's 8 s`).toBe(false);
-      expect(r.moved, `SETUP: ${label}: the player moved ${r.moved.toFixed(2)} m (blocked by terrain?)`).toBeGreaterThanOrEqual(0.5);
+      const tr = travel(r.samples);
+      expect(tr.frames > 0 && tr.fed > 0, `SETUP: ${label}: no frame of the hold fed the body a velocity (${JSON.stringify(tr)}, ${r.samples.length} sampled)`).toBe(true);
+      expect(tr.went, `SETUP: ${label}: the body went ${tr.went} m of the ${tr.fed} m the stance fed it over ${tr.frames} frames (blocked by terrain?)`).toBeGreaterThanOrEqual(0.5 * tr.fed);
       const j = judgeTarget(r.samples);
       expect(j.judged, `SETUP: ${label}: no frame at w === 1 with that frame's move target and the key seen (${r.samples.length} sampled)`).toBeGreaterThan(0);
       expect(j.worstAway, `${label}: the target left the husk at ${j.worstAway} m/s (cap ${RETREAT}; ${j.judged} frames judged)`).toBeLessThanOrEqual(RETREAT + EPS);
