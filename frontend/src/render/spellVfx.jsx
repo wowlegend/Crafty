@@ -17,7 +17,7 @@ const ICE_SHARDS = buildIceShards();
 // Defined HERE, in the module that uses them: they were orphaned in EnhancedMagicSystem
 // during the iter-152 spellVfx extraction, throwing `_trailDir is not defined` EVERY frame a
 // spell projectile rendered (live + capture) — a broken-main hidden by the stale-diff hole.
-// This is the dep-completeness pass the charter mandates after a byte-exact extraction.
+// An extraction moves every dependency of the code it moves.
 const _trailDir = new THREE.Vector3();
 const _trailMid = new THREE.Vector3();
 const _trailQuat = new THREE.Quaternion();

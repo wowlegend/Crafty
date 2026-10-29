@@ -14,7 +14,7 @@
  * WHY A CHECKER AND NOT A SWEEP. The sweep was done 2026-08-03 and found nothing left to fix — six
  * exporting files under `scripts/`, five guarded, and `_serve.mjs` correctly needing none. But a snapshot
  * is not a ratchet: nothing stopped the NEXT script shipping without a guard, and this class had already
- * recurred once before anyone noticed. A rule names its enforcer or it is not a rule (LOOP-CHARTER §8).
+ * recurred once before anyone noticed. A rule names its enforcer or it is not a rule.
  *
  * THE TEST IS DELIBERATELY NARROW. Flagged only when ALL THREE hold:
  *   1. the file has an `export` — so something can import it, which is the whole precondition;

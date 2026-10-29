@@ -2,8 +2,8 @@
 /**
  * DOC-CURRENCY LINT — mechanical enforcement that the docs still describe reality.
  *
- * WHY (LOOP-CHARTER §0-B.6): this repo carries 142 docs / ~44k lines. An agent cannot read them all, and a
- * STALE DOC IS A LIVE TRAP: on 2026-07-13 a single stale line in LOOP-CHARTER ("@react-three/test-renderer —
+ * WHY: this repo carries 142 docs / ~44k lines. An agent cannot read them all, and a
+ * STALE DOC IS A LIVE TRAP: on 2026-07-13 a single stale line in the loop charter (retired 2026-10-28) ("@react-three/test-renderer —
  * approved + landed") caused an agent to propose a week-sized campaign to "wire the installed E2E substrate"
  * for a package that had been REMOVED months earlier. Doc rot is not cosmetic; it manufactures dead work.
  *
@@ -78,8 +78,6 @@ export const CANONICAL = [
   'memory/STATUS.md',
   'memory/ACTIVE_PLAN.md',
   'memory/ARCHITECTURE.md',
-  'docs/superpowers/LOOP-CHARTER.md',
-  'docs/superpowers/LOOP-KERNEL-PROMPT.md',
   'docs/superpowers/INDEX.md',
   // Added 2026-08-09. DECISIONS.md is read-order #6 and the ONLY thing that settles who owns a decision,
   // yet it was the one canonical surface this gate did not check — found while running the gate on an
@@ -373,11 +371,8 @@ function checkMeasured(root, out) {
 }
 
 // --- 4b. READ-ORDER BLOCK PARITY ---------------------------------------------
-// Three documents each carried their own hand-kept copy of the orientation read order, and all three
-// disagreed — while `CLAUDE.md` asserted "Order matches LOOP-CHARTER.md §0-A so the two documents
-// cannot disagree". §0-A omitted DECISIONS.md entirely; only the kernel named the PRIMARY work queue or put
-// CI in the orientation. A cold-start agent's first act is to follow one of these, so which copy it happened
-// to read determined what it believed the work was. Generated from one source now; drift fails the push.
+// Hand-kept copies of the orientation read order drifted apart, and a cold agent follows whichever one it reads
+// first. The order is generated from one source; a stale rendered block fails here.
 /** checked['read-order'] = the surfaces read and compared against the one generated block. */
 function checkReadOrder(root, out) {
   let examined = 0;
@@ -417,7 +412,7 @@ function checkPublicFace(root, out) {
   out.checked['public-face'] = checked;
 }
 
-// --- cross-doc SECTION citations (`charter §6.4`, `STATUS §2`) ---------------
+// --- cross-doc SECTION citations (`STATUS §2`) ---------------------------------
 // Paths were the only thing this lint checked. Docs also point at each other by SECTION, and those rot the
 // same way: a section is renumbered or removed and the pointer aims at nothing. STATUS §G1 records that ONE
 // stale line in the charter "regenerated a week-sized proposal"; a dangling § is that failure, smaller.

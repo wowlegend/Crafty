@@ -232,10 +232,10 @@ describe('doc-currency run() — the seam every check is wired into', () => {
     expect(r.errors).toEqual([]);
   });
 
-  it('read-order: one stale surface among the current ones errors, naming that surface', () => {
-    expect(SURFACES.length, 'the red surface below must not be the only one read').toBeGreaterThan(1);
+  it('read-order: a stale surface errors, naming that surface', () => {
+    expect(SURFACES.length, 'a run over no surface would read as a pass').toBeGreaterThan(0);
     const files = Object.fromEntries(SURFACES.map((rel) => [rel, `# doc\n\n${renderReadOrder()}\n`]));
-    const red = SURFACES[1];
+    const red = SURFACES[SURFACES.length - 1];
     files[red] = files[red].replace('\n1. ', '\n1.  ');
     const root = fixture(files);
     const r = run({ root, only: ['read-order'] });

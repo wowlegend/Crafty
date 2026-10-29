@@ -1,24 +1,14 @@
 #!/usr/bin/env node
 /**
- * READ ORDER — one canonical orientation order, generated into all three surfaces that state it.
+ * READ ORDER — the orientation order, generated into CLAUDE.md so it has one home.
  *
- * WHY. Three documents each carried their own copy and all three disagreed:
- *   CLAUDE.md          git → STATUS → ACTIVE_PLAN → CHARTER → DECISIONS → INDEX
- *   LOOP-CHARTER §0-A  git → STATUS → ACTIVE_PLAN → charter → INDEX → SOTA-INITIATIVE
- *   LOOP-KERNEL        ACTIVE_PLAN → HOLISTIC-REVIEW → STATUS → CHARTER → DECISIONS → INDEX
- * CLAUDE.md asserted "Order matches LOOP-CHARTER.md §0-A **so the two documents cannot disagree**" —
- * while they disagreed. §0-A omits DECISIONS entirely; the kernel is the only one that names the
- * PRIMARY work queue at all; only the kernel puts CI in the orientation.
- *
- * A rule stated in three places is three places to drift, and the charter's own §8 forbids exactly
- * that ("never re-state a rule instead of enforcing it"). So the order lives HERE and is rendered into
- * all three; doc-currency fails on drift, the same contract measure.mjs and gate-table.mjs already have.
- *
- * STATUS and the work queue are separate entries because they answer different questions: STATUS says
- * WHERE WE ARE; `memory/registry.jsonl` holds every open item (DECISIONS 2026-10-28 (W1-H) item 9).
+ * Hand-kept copies of this order in three documents drifted apart, and a cold agent follows whichever it reads
+ * first. The order lives here; doc-currency fails when the rendered block drifts, the same contract measure.mjs
+ * and gate-table.mjs have. State a tool can print (HEAD, CI, PRs, worktrees, registry counts) is `npm run orient`,
+ * the first entry, never prose.
  *
  *   node scripts/ci/read-order.mjs           print the canonical block
- *   node scripts/ci/read-order.mjs --write   write it into all three surfaces
+ *   node scripts/ci/read-order.mjs --write   write it into every surface
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
@@ -33,8 +23,6 @@ export const END = '<!-- END READ-ORDER -->';
 /** Every surface that states the orientation order. Adding one here is all it takes. */
 export const SURFACES = [
   'CLAUDE.md',
-  'docs/superpowers/LOOP-CHARTER.md',
-  'docs/superpowers/LOOP-KERNEL-PROMPT.md',
 ];
 
 /** THE canonical order. Edit here, regenerate, never edit a rendered copy. */

@@ -78,7 +78,7 @@ function main() {
   for (const g of r.newGates) console.error(`      + (new)       ${g}`);
   for (const g of r.rewritten) console.error(`      ~ (assertions) ${g}`);
   console.error(
-    '\n  LOOP-CHARTER §3: a gate green on day one against unfixed code is a RUBBER STAMP, and the slice\n' +
+    '\n  CLAUDE.md, Invariants: a gate green on day one against unfixed code is a RUBBER STAMP, and the slice\n' +
       '  that shipped it is VOID. Break what it guards, watch it go RED, restore from a cp-backup\n' +
       '  (never `git checkout <file>`), then add the trailer to this message:\n\n' +
       '      Mutation-Proof: <what you broke> -> <the gate> went RED (<the message it printed>)\n\n' +

@@ -13,7 +13,7 @@ const REPO = resolve(process.cwd(), '..');
  * census's own output.
  *
  * WHY IT MATTERS MORE THAN ITS SIZE SUGGESTS. This module is the single source of the orientation read
- * order, rendered into `CLAUDE.md`, `LOOP-CHARTER.md` and `LOOP-KERNEL-PROMPT.md`. It exists
+ * order, rendered into `CLAUDE.md` (until 2026-10-28 also into the retired loop charter and kernel). It exists
  * because those three each kept their own copy and all three drifted — while one of them asserted the
  * two "cannot disagree". `doc-currency` checks the RENDERED blocks against `checkFile`, so if
  * `checkFile` ever returns ok for a stale or missing block, the drift it was built to stop becomes
@@ -34,7 +34,7 @@ describe('read-order — the generator behind the orientation block', () => {
     // R3a: every assertion below quantifies over these. Emptied, they pass vacuously.
     expect(ORDER.length).toBe(6);
     expect(ORDER.map((o) => o.path)).toContain('`memory/registry.jsonl`');
-    expect(SURFACES.length).toBe(3);
+    expect(SURFACES).toEqual(['CLAUDE.md']);
     expect(new Set(SURFACES).size, 'a duplicated surface is a silently halved denominator').toBe(SURFACES.length);
   });
 

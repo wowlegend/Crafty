@@ -3,7 +3,7 @@
 > **Purpose:** this repo carries more docs than any one context can hold (count them: `git ls-files '*.md' | wc -l`
 > — hand-typed here as "142" until 2026-08-09, when the real number was 172). An agent that tries to read them all burns its context
 > and still gets a stale picture. This is the map. **Read the CANONICAL set. Consult the rest on demand.
-> Never treat a HISTORICAL doc as current — several are live traps** (a stale line in the charter regenerated a
+> Never treat a HISTORICAL doc as current — several are live traps** (a stale line in the since-retired loop charter regenerated a
 > week-sized dead proposal on 2026-07-13).
 >
 > Status for the whole project lives in **`memory/STATUS.md`**, and every open item lives in **`memory/registry.jsonl`**
@@ -23,8 +23,6 @@
 | **`memory/ACTIVE_PLAN.md`** | The live cursor: the ONE unit in flight right now. |
 | **`memory/registry.jsonl`** | **The one home for open work**: one row per closable item, with id, title, playerVisible, severity, owner, state, evidence, opened, closedBy and plan unit. A row is closed, never deleted. `node frontend/scripts/ci/registry-harvest.mjs` proves every open item in the old sources has a row; `registry-append-only.mjs` refuses a push that deletes one. |
 | **`plans/2026-10-28-crafty-sota-reset.md`** | The programme: what to build, in which wave and lane. |
-| **`LOOP-CHARTER.md`** | The loop's constitution — how it operates, what it may/may not do. |
-| **`LOOP-KERNEL-PROMPT.md`** | Durable copy of the `/loop` prompt (cold/git-only recovery source). |
 | **`KEVIN-REVIEW-BATCH.md`** | Kevin's decision/eyeball queue. Append; never block on it. |
 
 Plus, at the repo root: **`SOTA-INITIATIVE.md`** = DIRECTION/vision only (**its §3 status block is FROZEN —
@@ -90,7 +88,7 @@ plan for "what to do next" — that is what `memory/registry.jsonl` and the SOTA
 - **Most recent / most relevant:** `2026-06-29-crafty-{de-monolith,spell-vfx-redesign}`,
   `2026-06-17-crafty-W{1,2,3,4}-*` (the big rebuild, 503 steps).
 - **`2026-06-15-crafty-world-purpose-sota` is NOT archivable and is not really a plan any more.**
-  `LOOP-CHARTER.md` cites it twice as the live **Source** for current design (tier-by-distance, shrines,
+  The retired loop charter cited it twice as the live **Source** for current design (tier-by-distance, shrines,
   the climax; vertex AO / aerial perspective / landmark emissive crowns) and `SOTA-INITIATIVE.md` §3 is its
   master-plan registration. It functions as a DESIGN OF RECORD — treat it like the specs above, not like a
   finished build contract.
@@ -129,8 +127,7 @@ plan for "what to do next" — that is what `memory/registry.jsonl` and the SOTA
 
 `IN_DEPTH_AUDIT.md` · `REALITY-AUDIT-2026-05-30.md` · `REALITY-AUDIT-S1-2026-06-02.md` ·
 `PRE-S2B-CONTENT-AUDIT-2026-06-03.md` · `STATE-REVIEW-2026-06-10.md` ·
-`MONETIZATION-VIRALITY-SCAN-2026-05-30.md` · `S2B1-M2-PERF.md` · `S2B1-M5-MOTION.md` · `S2B2-M2-PERF.md` ·
-`SOTA-KICKOFF-PROMPT.md`
+`MONETIZATION-VIRALITY-SCAN-2026-05-30.md` · `S2B1-M2-PERF.md` · `S2B1-M5-MOTION.md` · `S2B2-M2-PERF.md`
 
 *(Each is cited by 1–7 other docs, so they stay in place. They are snapshots, not status.)*
 

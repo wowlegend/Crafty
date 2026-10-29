@@ -14,10 +14,10 @@
 > plan as judged best). v1 (the 2026-05-30 brainstorm-kickoff brief) is HISTORICAL — in git history at tag-time
 > `ddfdf96` and superseded in full; its S0 audit / S1 brainstorm process sections completed weeks ago.
 > **This is a LIVING document:** the autonomous build loop refreshes the §3 status line at every milestone
-> (doc-currency is a persist-step obligation — see `docs/superpowers/LOOP-CHARTER.md` §1.6).
+> (doc-currency is a persist-step obligation).
 > **Ground-truth precedence:** git `main` → `memory/ACTIVE_PLAN.md` (resume pointer) → specs/plans in
 > `docs/superpowers/` → `memory/STATE-REVIEW-2026-06-10.md` (risk map) →
-> `docs/superpowers/LOOP-CHARTER.md` (operating constitution — outranks this plan on process conflicts) →
+> `CLAUDE.md` (operating rules — outrank this plan on process conflicts) →
 > this plan (direction-canonical).
 
 ## 0. TL;DR
@@ -114,10 +114,10 @@ truth, not this line.** Known managed item: the dependabot build-toolchain vuln 
 
 | Stream | Scope | Status / entry criteria |
 |---|---|---|
-| **S2-B Aspect spine** | The signature: 4 Aspects, sequential, deep-before-next — **B1 Wildheart ✅ → B2 Voidhand (M2→M8) → B3 Soulbind (capture-creatures; mobKillBus seam pre-built) → B4 Elemancer (reactive terrain — the ONLY re-mesh-risk Aspect, perf-gated, deliberately last)** | ✅ COMPLETE (all 4 Aspects shipped 2026-06-10/11). Method per Aspect: grounded design workflow → committed spec (self-gate per charter §5) → per-milestone plan docs → build → adversarial review. |
-| **§5 SOTA-experience axes** | Audio · game-feel · visual polish · content variety · UX legibility · i18n | LIVE — interleaved (≥1 unit every 2–3 milestones, charter §2.5). |
+| **S2-B Aspect spine** | The signature: 4 Aspects, sequential, deep-before-next — **B1 Wildheart ✅ → B2 Voidhand (M2→M8) → B3 Soulbind (capture-creatures; mobKillBus seam pre-built) → B4 Elemancer (reactive terrain — the ONLY re-mesh-risk Aspect, perf-gated, deliberately last)** | ✅ COMPLETE (all 4 Aspects shipped 2026-06-10/11). Method per Aspect: grounded design workflow → committed spec (self-gated) → per-milestone plan docs → build → adversarial review. |
+| **§5 SOTA-experience axes** | Audio · game-feel · visual polish · content variety · UX legibility · i18n | LIVE — interleaved (≥1 unit every 2–3 milestones). |
 | **S3 engine + platform** | De-monolith god-files (characterization-first) · partial-ECS resolution · **touch/mobile input + UI** (the third-person control pivot likely fuses here — Kevin 2026-06-07) · real perf numbers + adaptive-quality hardening · gen-system perf | **LIVE — the entry gate is MET (all 4 Aspects ✅, 2026-06-11), so the recorded "AFTER S2-B complete" condition is satisfied (the ≥3-Aspect relaxation was never needed).** De-monolith M1-M4 + M5 parts 1-2 shipped; **touch/mobile input DESIGN-GATED + M0+M1+M2a+M3a ✅ shipped (iters 128-147) — the game is now core-playable + VISIBLE on touch AND panels are reachable (the panel-access tray); touch is now COMPLETE/probe-exhausted (2026-06-14: iOS cold-start bridged via `enterPlay()` + phone-HUD declutter + deterministic `touch-probe.mjs`; only real-device finger-feel = Kevin); M2b/M3b/M3c are optional polish**; perf-number hardening + partial-ECS resolution still queued. Backlog in ROADMAP §S3-deferred. |
-| **S4 multiplayer + business** | Netcode, accounts, persistence-at-scale, payments, monetization model (Kevin decision), distribution (web-first → app stores later, Kevin 2026-06-04) | LAST. Entry: single-player core SOTA + S3 platform base. The dead client auth/cloud stubs are **deletable any time as dead code** (charter §4 — they fire a failing XHR every load today); whatever S4 needs gets rebuilt properly here. |
+| **S4 multiplayer + business** | Netcode, accounts, persistence-at-scale, payments, monetization model (Kevin decision), distribution (web-first → app stores later, Kevin 2026-06-04) | LAST. Entry: single-player core SOTA + S3 platform base. The dead client auth/cloud stubs are **deletable any time as dead code** (they fire a failing XHR every load today); whatever S4 needs gets rebuilt properly here. |
 
 **Named content passes (re-anchored from v1):** per-Aspect **music motif** → owned by §5 AUDIO (backfill
 WILDHEART, fold into every Aspect's LOOK milestone) · **bestiary design+behavior pass** → after B3 Soulbind
@@ -147,9 +147,8 @@ gen-perf hardening in S3.
 
 ## 6. Process (how this plan executes)
 
-- **Autonomous build loop:** `docs/superpowers/LOOP-CHARTER.md` is the operating constitution (orientation,
-  one-verified-unit-per-iteration, priority order, self-gated taste discipline, doc-currency, parking rules).
-  Kevin reviews ASYNC via `docs/superpowers/KEVIN-REVIEW-BATCH.md` + CHANGELOG; only his two bright lines (spend
+- **Operating rules:** `CLAUDE.md` (the loop charter and kernel prompt it replaced retired 2026-10-28). Kevin
+  reviews one page, the Command Record; only his two bright lines (spend
   no money; never force-push or rewrite pushed history) and what only he can do (real-device runs, account sign-ins)
   stay his. Publishing the repo's public face is the session's (DECISIONS 2026-10-28 item 15). Reversing one of his
   recorded directional decisions became the command session's call by Kevin's 2026-10-27 mandate, restated as the
@@ -166,7 +165,7 @@ gen-perf hardening in S3.
 - `memory/ACTIVE_PLAN.md` (resume) · `memory/CHANGELOG.md` / `ARCHITECTURE.md` / `ROADMAP.md` (4-piece)
 - `memory/STATE-REVIEW-2026-06-10.md` (latest full reconciliation + risk map) · `memory/REALITY-AUDIT-2026-05-30.md` (S0) · `memory/PRE-S2B-CONTENT-AUDIT-2026-06-03.md`
 - `docs/superpowers/specs/2026-06-02-crafty-s2-game-design-design.md` (the S2 design of record) ·
-  `crafty-coherence-pillars.md` (P0–P5) · per-Aspect specs · `docs/superpowers/LOOP-CHARTER.md`
+  `crafty-coherence-pillars.md` (P0–P5) · per-Aspect specs · `CLAUDE.md`
 - `docs/superpowers/KEVIN-REVIEW-BATCH.md` (Kevin's async review surface)
 - **2026-06-15 mega-directive docs:** `docs/superpowers/plans/2026-06-15-crafty-world-purpose-sota.md`
   (world+purpose milestone — the Ember Frontier build contract) · `docs/superpowers/research/2026-06-15-crafty-codebase-reality-audit.md`

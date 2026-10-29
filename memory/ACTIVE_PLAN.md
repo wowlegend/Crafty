@@ -32,7 +32,7 @@ PR range; tests/claims-only fixes get the author's mutation run. Open work lives
   frames (possible flake); worst-case retry time of pause-freezes-world (2x3x420 s) exceeds the 35-min shard cap.
 - gpu-cost-probe hung >5 min after writing its JSON at load 170-400; undiagnosed.
 
-**W2-B (the capture oracle retired) deleted tests, noted here per the test ratchet (LOOP-CHARTER §3).** The justification
+**W2-B (the capture oracle retired) deleted tests, noted here per the test ratchet (CLAUDE.md, Invariants: never weaken to pass).** The justification
 is in the bodies of edee0d4d and 42fbe84e. Ten unit test files, each removed because its only subject was harness code that
 went with the oracle: capture-preflight, density-ratchet, density-ledger-measured and freeze-density (removed from tests/scripts);
 visual-denominator, diff-density, subject-on-screen and baseline-trailer gates (removed from tests/gates); captureFreshness and

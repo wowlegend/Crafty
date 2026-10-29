@@ -11,7 +11,7 @@
 //
 // The invariant, stated once: for every block the engine can place, place(x) must read back as x.
 // This is a PROPERTY test over the whole block set, not a spot-check — and it is BEHAVIORAL (it exercises
-// the real resolvers), not a source-grep (LOOP-CHARTER §3).
+// the real resolvers), not a source-grep (CLAUDE.md, Invariants).
 import { describe, it, expect } from 'vitest';
 import { BLOCK_ID, BLOCK_NAME, BLOCK_ALIAS, UNPLACEABLE, idForBlock, blockForId } from '../../src/world/blockIds.js';
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from '../../src/world/Blocks.js';

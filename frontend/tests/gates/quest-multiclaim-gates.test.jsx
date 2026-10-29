@@ -6,7 +6,7 @@
 // The pre-existing `quest-rewards-gates.test.js` "covers" quest rewards by asserting the SOURCE TEXT
 // contains `store.addCoins(r.coins)`. That proves the LINE EXISTS. It cannot prove the line RUNS — and it
 // sat green while the bug below stole every second quest reward and corrupted the save. A gate that greps
-// source text is not a gate (LOOP-CHARTER §3).
+// source text is not a gate (CLAUDE.md, Invariants).
 //
 // THE BUG (QuestSystem.jsx claimQuest + InputManager.jsx:136-140):
 //   1. `claimQuest` mutates the closure variable `claimedQuest` from INSIDE the `setQuests` updater, then
