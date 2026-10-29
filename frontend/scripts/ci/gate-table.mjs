@@ -62,6 +62,7 @@ export const DESCRIPTIONS = {
   eslint: 'crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component',
   'gate-shape': 'a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise)',
   'cli-guard': 'a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts',
+  'registry-dedupe': 'a `memory/registry.jsonl` id that a merge left twice. The registry merges by union, so a row one side closed while the other side moved it comes out of the merge as two copies; on the commit it stops the merge commit, and `node scripts/ci/registry-dedupe.mjs` keeps the copy furthest along',
   'unit + static gates': 'everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates. In CI on every sha, and by hand in `--tier=certify`; no hook runs it',
   'vitest related': 'on the commit only, a staged change that breaks a unit test which STATICALLY imports it (`vitest related`). It prints how many of the suite\'s test files it selected; a lazily imported module and a source-grep gate are not selected, a commit that stages nothing under `frontend/` (only `ci/`, `.githooks/`, `.github/`, `memory/` or docs) runs no unit test at all, and the full suite runs in CI and, by hand, in `--tier=certify`',
   build: 'broken JSX/imports',

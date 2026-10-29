@@ -110,11 +110,11 @@ Full procedure — the `finally` shape, `_serve.mjs`, the managed ports, deletin
 ## Build / Test / Gates (from `frontend/`)
 
 <!-- BEGIN GATES (regenerate: node frontend/scripts/ci/gate-table.mjs --write) -->
-**16 gates, across three callers.** Generated from `ci/pipeline.sh` — the ONE definition
+**17 gates, across three callers.** Generated from `ci/pipeline.sh` — the ONE definition
 pre-commit, pre-push and GitHub Actions all call, so no two can drift. Do not edit the table by hand;
 add the description to `DESCRIPTIONS` in `gate-table.mjs` and regenerate.
 
-**6 run on every commit** (the static gates and the related unit tests) · **5 on every push** (opsec-scan and the gates that read the pushed range) · **12 in CI**.
+**7 run on every commit** (the static gates and the related unit tests) · **5 on every push** (opsec-scan and the gates that read the pushed range) · **13 in CI**.
 A push runs no static gate, unit suite, build or bundle budget: CI runs them on the exact sha and main moves only on its `ci ok` (DECISIONS 2026-10-28 item 24).
 `bash ci/pipeline.sh --tier=certify` runs those offline steps by hand, for a local result before CI; nothing waits for it.
 On a push to main of a sha whose `ci ok` already passed in another run, CI runs only the quick gates and registry-append-only (`--sha-certified=true`, DECISIONS 2026-10-28 item 23).
@@ -129,6 +129,7 @@ and all three network/browser gates were printed as pre-push gates they have nev
 | eslint | `npm run lint` | ✅ | — | ✅ | crash-class bugs + dead code; `no-unused-vars` is an **error**, and `no-undef` catches a hook wired into the wrong component |
 | gate-shape | `node scripts/ci/gate-shape.mjs` | ✅ | — | ✅ | a test assertion satisfiable by a COMMENT alone; also ratchets the source-grep gate population (may fall, never rise) |
 | cli-guard | `node scripts/ci/cli-guard.mjs` | ✅ | — | ✅ | a script under `scripts/` that EXPORTS a seam yet runs its CLI at module scope — importing it executes the tool. Runs BEFORE `test:unit` because that is the run it corrupts |
+| registry-dedupe | `node scripts/ci/registry-dedupe.mjs --check` | ✅ | — | ✅ | a `memory/registry.jsonl` id that a merge left twice. The registry merges by union, so a row one side closed while the other side moved it comes out of the merge as two copies; on the commit it stops the merge commit, and `node scripts/ci/registry-dedupe.mjs` keeps the copy furthest along |
 | vitest related | `node scripts/ci/related-tests.mjs --staged-list "$STAGED_LIST"` | ✅ | — | — | on the commit only, a staged change that breaks a unit test which STATICALLY imports it (`vitest related`). It prints how many of the suite's test files it selected; a lazily imported module and a source-grep gate are not selected, a commit that stages nothing under `frontend/` (only `ci/`, `.githooks/`, `.github/`, `memory/` or docs) runs no unit test at all, and the full suite runs in CI and, by hand, in `--tier=certify` |
 | unit + static gates | `npm run test:unit` | — | — | ✅ | everything in `tests/**` + `src/**/*.test.js` — incl. the i18n adoption ratchet and key-resolution gates. In CI on every sha, and by hand in `--tier=certify`; no hook runs it |
 | build | `npm run build` | — | — | ✅ | broken JSX/imports |
