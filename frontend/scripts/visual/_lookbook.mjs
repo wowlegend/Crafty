@@ -736,6 +736,12 @@ export function targetSummaryLines(r, planned = {}) {
   };
   set('shots', r.shots || [], planned.hero ?? 0, r.respawns ? `, ${r.respawns} respawn(s)` : '');
   if (r.eye) set('eye level', r.eye, planned.eye ?? 0, `; stand ${JSON.stringify(r.stand)}; hands ${JSON.stringify(r.hands)}`);
+  const chrome = (r.eye || []).filter((s) => s.valid && Number.isFinite(s.chrome?.share)).map((s) => s.chrome.share);
+  if (r.eye?.length) {
+    lines.push(chrome.length
+      ? `  chrome        ${chrome.length} valid eye frame(s): max ${(Math.max(...chrome) * 100).toFixed(2)}%, median ${(medianOf(chrome) * 100).toFixed(2)}%; ${chrome.filter((x) => x > CHROME_BUDGET).length} over the ${CHROME_BUDGET * 100}% budget`
+      : '  chrome        NOT MEASURED on any valid eye frame');
+  }
   if (r.material?.length || planned.material) {
     const sights = MATERIAL_SIGHT_KINDS.map((k) => {
       const s = r.sights?.[k];
@@ -759,6 +765,63 @@ export function targetSummaryLines(r, planned = {}) {
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
+
+/**
+ * THE CHROME COUNT (plan docs/superpowers/plans/2026-10-29-crafty-w2d-hud.md, decision 1). The HUD lane's acceptance is
+ * a share of the screen: how many of an eye-level frame's pixels are interface surface. The surfaces are the colours
+ * the BUILD UNDER TEST gives these CSS variables (src/theme/cssVars.js), read from its page at shot time, so a re-key
+ * moves the instrument with it instead of slipping out of a list held here.
+ */
+export const CHROME_VARS = Object.freeze([
+  '--ui-ink', '--ui-panel', '--ui-panel-raise', '--ui-panel-frame', '--ui-panel-inset', '--ui-well', '--ui-slot',
+  '--ui-control', '--ui-track',
+]);
+/** The largest per-channel difference at which a pixel still reads as a surface colour (a flat fill, an encoder's
+ *  rounding); anti-aliased edges and text fall outside it. */
+export const CHROME_TOLERANCE = 3;
+
+/** `{ '--ui-panel': '22 33 58', ... }` (the channel strings cssVars.js writes) to `[{ name, rgb }]`, in CHROME_VARS
+ *  order. A variable the build does not define, or one that does not parse as three channels, is left out. */
+export function chromeColoursFrom(vars) {
+  const out = [];
+  for (const name of CHROME_VARS) {
+    const parts = String(vars?.[name] ?? '').trim().split(/[\s,]+/).map(Number);
+    if (parts.length === 3 && parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) out.push({ name, rgb: parts });
+  }
+  return out;
+}
+
+/**
+ * The share of an RGBA8 frame's pixels in the chrome colours. A pixel counts when every channel lies within
+ * `tolerance` of one colour, unless `off` is given and its pixel at the same place lies within `tolerance` of that same
+ * colour: `off` is the same view with every DOM element hidden but the game canvas, so a dusk sky or a night that
+ * happens to sit on a surface colour is the WORLD and is not counted (`world`). Returns the share, the counted pixels
+ * by colour, the world matches set aside and the denominator.
+ */
+export function chromeShare(on, off, { width, height, colours, tolerance = CHROME_TOLERANCE } = {}) {
+  const n = width * height * 4;
+  if (!(width > 0 && height > 0) || on.length !== n || (off && off.length !== n)) {
+    throw new RangeError(`chromeShare: ${width}x${height} RGBA frames needed, got ${on.length}${off ? ` and ${off.length}` : ''} bytes`);
+  }
+  if (!Array.isArray(colours) || colours.length === 0) throw new RangeError('chromeShare: no chrome colours to count');
+  const byColour = Object.fromEntries(colours.map((c) => [c.name, 0]));
+  let pixels = 0, world = 0;
+  const near = (buf, i, rgb) => Math.abs(buf[i] - rgb[0]) <= tolerance && Math.abs(buf[i + 1] - rgb[1]) <= tolerance
+    && Math.abs(buf[i + 2] - rgb[2]) <= tolerance;
+  for (let i = 0; i < n; i += 4) {
+    for (const c of colours) {
+      if (!near(on, i, c.rgb)) continue;
+      if (off && near(off, i, c.rgb)) world += 1;
+      else { pixels += 1; byColour[c.name] += 1; }
+      break;
+    }
+  }
+  const checked = width * height;
+  return { share: pixels / checked, pixels, checked, world, byColour };
+}
+
+/** The chrome budget the HUD lane accepts against (brief "Acceptance on the live game"): 8% of an eye-level frame. */
+export const CHROME_BUDGET = 0.08;
 
 /**
  * THE HANDS SET (plan docs/superpowers/plans/2026-10-29-crafty-w2e-hands.md). At each time the player's eye is shot
@@ -837,7 +900,8 @@ export function contactSheetHtml(report) {
     };
     const figure = (s, title, alt) => {
       const src = `${esc(t.id)}/${esc(s.file)}`;
-      const facts = [`cycle ${esc(s.cycle)} (at ${esc(Number(s.cycleAtShot).toFixed(3))})`, `tier ${esc(s.tier)}`, `dpr ${esc(s.dpr)}`, `console errors ${esc(s.consoleErrors)}`].join(' · ');
+      const facts = [`cycle ${esc(s.cycle)} (at ${esc(Number(s.cycleAtShot).toFixed(3))})`, `tier ${esc(s.tier)}`, `dpr ${esc(s.dpr)}`, `console errors ${esc(s.consoleErrors)}`,
+        ...(Number.isFinite(s.chrome?.share) ? [`chrome ${esc((s.chrome.share * 100).toFixed(2))}%`] : [])].join(' · ');
       const bad = s.valid ? '' : `<p class="bad">INVALID: ${esc((s.why || []).join('; '))}</p>`;
       return `<figure class="${s.valid ? 'ok' : 'invalid'}"><a href="${src}"><img src="${src}" alt="${esc(alt)}" loading="lazy"></a>` +
         `<figcaption><b>${esc(title)}</b> · ${facts}${passNote(s.passMs)}${bad}</figcaption></figure>`;

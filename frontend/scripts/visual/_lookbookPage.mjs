@@ -4,7 +4,7 @@
 // frames. Each takes the Playwright page it acts on; nothing here launches or keeps a browser of its own, so the caller
 // owns the lifecycle (_serve.mjs shutdown). Leading underscore: a helper, not a probe; it binds no port.
 import { devices } from '@playwright/test';
-import { CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, classifyRenderer, pickCandidate, handCount } from './_lookbook.mjs';
+import { CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, CHROME_VARS, classifyRenderer, pickCandidate, handCount } from './_lookbook.mjs';
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -70,6 +70,36 @@ export const hudOn = (page) => page.evaluate(() => {
   const r = document.querySelector('[data-testid="stat-stack"]')?.getBoundingClientRect();
   return !!(r && r.width > 0 && r.height > 0);
 });
+
+/** The page's chrome surface variables (_lookbook.mjs CHROME_VARS) as its root style holds them now. */
+export const chromeVars = (page) => page.evaluate((names) => {
+  const cs = getComputedStyle(document.documentElement);
+  return Object.fromEntries(names.map((n) => [n, cs.getPropertyValue(n)]));
+}, CHROME_VARS);
+
+/**
+ * The view behind the HUD: every DOM element hidden but the game canvas (the largest), shot, then shown again. The
+ * chrome count's twin frame (_lookbook.mjs chromeShare): what it matches here is the world, not interface.
+ */
+export async function worldOnlyShot(page) {
+  await page.evaluate(() => {
+    const c = [...document.querySelectorAll('canvas')].sort((x, y) => y.width * y.height - x.width * x.height)[0];
+    c?.setAttribute('data-lookbook-world', '');
+    const s = document.createElement('style');
+    s.id = 'lookbook-world-only';
+    s.textContent = 'body * { visibility: hidden !important; } [data-lookbook-world] { visibility: visible !important; }';
+    document.head.appendChild(s);
+  });
+  try {
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    return await page.screenshot();
+  } finally {
+    await page.evaluate(() => {
+      document.getElementById('lookbook-world-only')?.remove();
+      document.querySelector('[data-lookbook-world]')?.removeAttribute('data-lookbook-world');
+    });
+  }
+}
 
 /** Respawn a dead player through the store; true when it did. */
 export async function respawnIfDead(page, report) {

@@ -90,7 +90,7 @@ import { serveVite, probePort } from './_serve.mjs';
 import { standInPointerLock, playLiveReading } from './_probe.mjs';
 import {
   freshRenderer, resolveChromium, contextOptions, initScript, info, setCycle, clearHostiles, play, hudOn, respawnIfDead,
-  restingBody, handsBaseline, holdActive,
+  restingBody, handsBaseline, holdActive, chromeVars, worldOnlyShot,
 } from './_lookbookPage.mjs';
 import {
   TARGETS, CHROMIUM_CANDIDATES, LOOKBOOK_PLACES, EYE_HEADINGS, EYE_PITCH, shotPlan, eyeShotPlan, clipPlan, classifyRenderer,
@@ -100,7 +100,7 @@ import {
   altDifferential, PASS_ALT_SKIP_MS, windowReadings, passWindowWhy, poseWhy, passRendererProblem, checkoutState, medianOf,
   targetSummaryLines,
   MATERIAL_SIGHT_KINDS, MATERIAL_STAND_M, MATERIAL_MIN_M, materialShotPlan, findMaterialSights, aimAt,
-  HAND_MASK, HANDS_HEADING, handPixelStats, facing, handCount, CYCLE_TOLERANCE,
+  HAND_MASK, HANDS_HEADING, handPixelStats, facing, handCount, CYCLE_TOLERANCE, chromeShare, chromeColoursFrom,
 } from './_lookbook.mjs';
 import { PNG } from 'pngjs';
 import { BLOCK_ID } from '../../src/world/blockIds.js';
@@ -151,6 +151,17 @@ const STREAM_MS = 6000; // chunks stream in around a newly posed camera (Positio
 const SETTLE_MS = 3000; // sky, fog and grade settle at a new time of day
 const EYE_FRAME_MS = 1000; // a new bearing: the HUD compass redraws, and the pass timer gathers about a second of frames
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** The chrome share of a shot (_lookbook.mjs chromeShare): its frame against the world-only twin shot right after, in
+ *  the surface colours the page defines at that moment. Rounded for the report; `colours` names what was counted. */
+async function chromeOf(page, onBuf) {
+  const colours = chromeColoursFrom(await chromeVars(page));
+  if (colours.length === 0) return { share: null, why: 'the page defines none of the chrome variables' };
+  const [on, off] = [onBuf, await worldOnlyShot(page)].map((x) => PNG.sync.read(x));
+  const r = chromeShare(on.data, off.data, { width: on.width, height: on.height, colours });
+  return { share: Math.round(r.share * 10000) / 10000, world: r.world, checked: r.checked, byColour: r.byColour,
+    colours: colours.map((c) => `${c.name} ${c.rgb.join(' ')}`) };
+}
 
 if (!existsSync(join(BUILD_DIR, 'index.html'))) {
   console.error(`lookbook: COULD NOT MEASURE — no production build at ${join(BUILD_DIR, 'index.html')}. Run \`npm run build\` first.`);
@@ -352,11 +363,12 @@ async function shootTarget(target, launchOpts, launchId) {
       await delay(EYE_FRAME_MS);
       const before = await info(page);
       const hud = await hudOn(page);
-      await page.screenshot({ path: join(dir, shot.file) });
+      const onBuf = await page.screenshot({ path: join(dir, shot.file) });
+      const chrome = await chromeOf(page, onBuf);
       const after = await info(page);
       const pt = await passTimes(page);
       const v = eyeShotVerdict({ cycle: shot.cycle, heading: shot.heading, stand: report.stand, before, after, handsBaseline: report.hands?.hidden, hud });
-      report.eye.push({ ...shot, valid: v.valid, why: v.why, ...facts(after, t0, pt), hud, heading: shot.heading,
+      report.eye.push({ ...shot, valid: v.valid, why: v.why, ...facts(after, t0, pt), hud, chrome, heading: shot.heading,
         headingAtShot: after.heading, pitch: after.pitch, eye: after.eye, body: after.body, cameraNodes: after.cameraNodes,
         hostiles: after.hostiles, cleared,
         eyeAboveBody: after.eye && after.body ? Math.round((after.eye[1] - after.body[1]) * 1000) / 1000 : null });
