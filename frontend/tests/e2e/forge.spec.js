@@ -197,8 +197,17 @@ test.describe('the Forge', () => {
     expect({ weapon: refused.weapon, coins: refused.coins, diamond: refused.diamond }, 'a refused purchase changed the player').toEqual({ weapon: 'Iron Sword', coins: 0, diamond: after.diamond });
 
     // 6. ESC CLOSES THE CARD; C OPENS NO PANEL.
+    // The card's flag drops on the key; its exit tween runs on drawn frames, which on CI have lasted 8 s each (run
+    // 40867682586), so the DOM's removal is waited for in frames, not seconds.
     await page.keyboard.press('Escape');
-    await expect(page.getByTestId('forge-panel')).toHaveCount(0, { timeout: 15000 });
+    await expect.poll(async () => (await read(page)).forge, { message: 'Esc did not close the Forge', timeout: 15000 }).toBe(false);
+    const gone = await page.evaluate(async () => {
+      const frame = () => new Promise((r) => requestAnimationFrame(r));
+      let n = 0;
+      while (document.querySelector('[data-testid="forge-panel"]') && n < 600) { await frame(); n++; }
+      return { gone: !document.querySelector('[data-testid="forge-panel"]'), frames: n };
+    });
+    expect(gone.gone, `the Forge card stayed in the page ${gone.frames} drawn frames after Esc`).toBe(true);
     await page.evaluate(clearHostiles, 80);
     await startPlayActive(page);
     await page.keyboard.press('c');
