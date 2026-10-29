@@ -19,6 +19,75 @@
 
 ---
 
+## 2026-10-29 — [LOOP] W2-E follow: the beast in first person, the cast, mobs that sense the body, the hands by the fire
+
+**Decided by the W2-E follow lane under the standing grant** (item 14), by its task script
+`docs/superpowers/plans/2026-10-29-crafty-w2e-follow.md`. Items 80-86 (41-69 are taken and the Cut lane holds 70-79).
+Frames: `docs/superpowers/masterpiece-2026-10/evidence/w2e-follow/` (`index.md` there), shot by the lookbook's new
+`self` set on production builds, Chromium on ANGLE-Metal at 1280x800 and WebKit at 820x1180.
+
+80. **In first person the player's own beast draws nothing but its shadow; its light stays.** Supersedes item 39 for
+   first person (its 0.25 m clearance still holds away from the eye). The before frames: the dragon's wings fill the
+   upper corners as two flat orange slabs at noon and midnight, and the bull's halo washes a cyan band behind the hotbar;
+   the golem's halo tints the bottom edge; with the head hidden (item 39) the hawk's beak and the dragon's head would float
+   on their own. The boxes are shaped to read from the reveal's 4.5 m (`beast-reveal-after.jpg`), not from inside, so
+   within 1 m of the steady eye (`beastAvatarParts.js FIRST_PERSON_M`; the bob, the kicks and an ordinary shake stay
+   inside it, the reveal leaves it in its first fifth) no part writes colour, the glow spheres included, and every box
+   still casts its shadow. The eye stays at body + `EYE_HEIGHT_M` in every form: a per-form eye would put the dragon's
+   2.15 m up, inside the ceiling of a two-block passage its 1.44 m capsule fits, and pop at the reveal's handover. What
+   is lost: nothing on screen says which form the player is in, beyond the ground the core lights and the movement; a
+   beast viewmodel (claws in place of the gauntlets) is registry `REVIEW:w2e-follow:beast-viewmodel`. The core's light
+   is kept off the hands (`lightsHands={false}`, item 82): 0.6 m from them it bleached the gauntlets yellow and salmon.
+   Gated by `tests/gates/beast-self-view-gates.test.jsx`. It stands while it earns its place.
+81. **The cast pushes the wand toward the target, on the cast's own clock, and the fireball cone is gone**
+   (`frontend/src/render/handPose.js castPose`). Seen at its apex for the first time, the cast bobbed the wand hand 4 cm
+   on the session's wall clock, so it pulled back as often as it pushed, and the fireball's translucent red cone drew as
+   a flat shard beside the wand (no outline, no toon, spun per frame). Now the hand pushes 0.12 m, lifts and tips the wand
+   forward, peaking halfway through the 150 ms cast; the off hand lifts its orb. The swings and the heavy charge read as
+   authored at their apex and near their end on 16:10 and in iPad portrait (no hand through the camera, no impossible
+   wrist, the fist inside the frame) and are unchanged; `handPose.js` no longer allocates per call. Gated by
+   `tests/gates/hand-pose-gates.test.jsx`. It stands while it earns its place.
+82. **The hands take the world's point lights: the three that put the most light on the eye, mirrored into view
+   space** (`render/viewmodel.js mirrorPointLights`, `HAND_POINT_LIGHTS` 3, a fixed count so no hand shader relinks).
+   The brazier's light is not pooled, so "the pool's nearest" would have missed the light the row named; every world
+   point light now registers (`render/lightPool.jsx`: the pool's lights and `WorldPointLight`, used by the Hearth's
+   brazier, the danger fill and the phantom block). Ranked by three's own falloff (cut-off window and decay), by an
+   insertion into fixed arrays, no allocation per frame. Beside the brazier at midnight the gauntlets' faces toward the
+   fire now warm (`hands-brazier-midnight-before-after.jpg`). Supersedes the "fill and point lights not mirrored" clause of
+   item 38. Gated by `tests/gates/viewmodel-gates.test.js` and `viewmodel-layer-gates.test.jsx`. It stands while it earns
+   its place.
+83. **Mobs, their arrows and the combat stance sense the player's body, not the camera.** Supersedes the sense point of
+   item 36 (its ledge table, built from `steadyEye`, is unchanged). `game/mobSenses.js mobSensePoint` is the body's
+   steady eye (centre + `EYE_HEIGHT_M`), read from the store's rigid body (`systems/playerSensePoint.js`, the camera only
+   before the body exists); the AI tick, an arrow's aim and its hit test, the leap's direction and `stanceFrame` read it,
+   so the roar's reveal, the shake and the kicks move no mob's reach. What else reads the camera as the player's
+   position, and why it stays: `PositionTracker` (store `playerPosition`, read by ally squads, chunk streaming and the
+   save; streaming should follow the view), `Terrain.jsx` chunk centring and its occlusion rays (the view's), the
+   spawner's ring (`SpawnerSystem.jsx`: within a few metres of the body, and spawning around the view is safe), the
+   nearest villager for G (`input/talk.js`: within the bob of the body in play), the snare tether's start (drawn from
+   the view), the windup chevrons and spatial audio (screen and listener: the camera is right). Two readers carry the
+   same defect class and are left as registry rows: the boss's target, fireball aim and distance
+   (`render/BossEntity.jsx`, `REVIEW:w2e-follow:boss-senses-camera`), and XP orbs and loot, which are pulled to and
+   collected at the camera (`XPOrbSystem.jsx`, `LootSystem.jsx`), so during the reveal a drop beside the reveal camera
+   is collected and one beside the body is not (`REVIEW:w2e-follow:pickups-at-camera`). Gated by `tests/gates/mob-sense-body-gates.test.jsx`. It stands while it earns
+   its place.
+84. **The beast's hidden parts are judged by the camera that draws the frame** (`render/BeastAvatar.jsx`): each part
+   decides in its `onBeforeRender`, which three r172 calls with the drawing camera after the Player's loop has moved it,
+   so the reveal handing back to the eye hides the beast on that same frame; the shadow pass calls `onBeforeShadow`, so
+   the boxes still cast. It stands while it earns its place.
+85. **The first-person follow is gated at the eye within the walk bob** (`tests/e2e/ember.spec.js backAtHead`): the
+   camera must come back to body + `EYE_HEIGHT_M` within `EYE_BOB_M`, not 0.6 m. On CI run 40921754876 (a dispatched
+   run of branch `mut/w2e-follow-eye`, the follow at + 1.2 m) it went red on all three attempts, and so did
+   `talents.spec.js`'s head check, already at `EYE_BOB_M`. The same tightening in `heavy-melee.spec.js` let the mutant
+   through (its wait is met by the reveal's closing frames, which stand at the eye by `transformCam.js` itself) and was
+   not kept. It stands while it earns its place.
+86. **The lookbook has a `self` set** (`scripts/visual/lookbook.mjs shootSelf`): each beast form at the steady eye and
+   from the reveal's hold, the light string, the cast and the full charge held at their apex by the seam
+   (`render/lookbookSeam.js` `form`, `handPose`, an eye pose with `hands: true`), and the hands beside the brazier at
+   midnight. What a still changes against play: no bob, no FOV kick, and the body rests where the human capsule rests,
+   so in a form the world sits up to 0.3 m off where that form's capsule would put it (the beast against the eye is
+   exact). It stands while it earns its place.
+
 ## 2026-10-29 — [LOOP] Vercel deploys main only
 
 **Decided by the command session under the standing grant** (DECISIONS 2026-10-28 item 14). Item 58; the W2-H media
