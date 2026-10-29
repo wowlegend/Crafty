@@ -153,7 +153,7 @@ discarded context that was never used is counted apart and named in the line, ne
 |---|---|---|---|
 | 1 | Task script | done | b1e35ae4 |
 | 2 | prod-smoke on Playwright, LINK_STATUS fix | done | c20efc98; CI run 40820378987 printed every verdict line on Playwright's Chromium; PS1-PS6 RED |
-| 3 | Probes ported | done, unrun | 581f2fb3; registry REVIEW:w2j:ported-probes-unrun |
+| 3 | Probes ported | done; 4 of 6 shown working | 581f2fb3; one local run each: touch 12/12, look-e2e PASS, pov and gpu-cost ran; ocean-probe frames show the title (stale entry), run-scenarios unrun: REVIEW:w2j:ported-probes-unrun |
 | 4 | 22 stale probes deleted; PROBE_PORTS; probe-ports | done | 581f2fb3; PP1-PP4 RED |
 | 5 | puppeteer out of package.json and the lock; kill-test-procs; CI installs Chromium | done | 581f2fb3, c20efc98 |
 | 6 | `import.meta.main`, engines, cli-entry test, cli-guard deleted | done | f4f37d4a; CE1-CE6 RED, PT1 survived (doc-currency catches it) |
