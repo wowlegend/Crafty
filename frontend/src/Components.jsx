@@ -709,7 +709,7 @@ export const Player = ({ isWorldBuilt }) => {
         canEnter: st.unlockedTalents?.['wildheart_roar'] > 0,
         canPay: barPays(ROAR_COST),
         // A longer roar (Primal Endurance, Untamed, Ember Fang): the form's length from the verb numbers.
-        formDurationSec: st.getVerbMods().roarSec,
+        formDurationSec: st.getVerbMods().roarSec + 6, // MUTANT T-base
       });
       beastSMRef.current = sm;
       if (action === 'startCharge') {
