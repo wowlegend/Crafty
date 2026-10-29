@@ -7,8 +7,8 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0D1320",
-  "theme_color": "#0D1320",
+  "background_color": "#181411",
+  "theme_color": "#181411",
   "icons": [
     {
       "src": "/icon-192.png",

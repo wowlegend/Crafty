@@ -46,19 +46,20 @@ export const MAGIC = {
 // element · hard blur-0 offset shadows · radius <=14 · NO glass/blur/gradient-chrome.
 export const UI = {
   color: {
-    ink: '#0B0E14',
-    // navy surface ladder (from the bold-flat comp — lighter slate so the ink pops)
-    panel:      '#16213A',   // modal / main card body
-    panelRaise: '#22304E',   // header bar / raised surface
-    panelFrame: '#1C2942',   // HUD panel / toast / hotbar frame fill
-    panelInset: '#0D1320',   // deep page background / behind-panels
-    well:       '#1A2740',   // inset well (paper-doll, deep grooves)
-    slot:       '#233458',   // empty slot / tile / statbox / spell-ring fill (the key lighter slate)
-    control:    '#2A3C61',   // icon-button / close / secondary-button fill
-    track:      '#0A0F1A',   // stat-bar / xp track groove
+    ink: '#120E0B',
+    // Warm charcoal surface ladder (the HUD lane, DECISIONS 2026-10-29 item 95): the world's ember and gold palette reads
+    // against a warm dark; the navy it replaced read as a second, cold palette laid over the game.
+    panel:      '#2A2420',   // modal / main card body
+    panelRaise: '#38302A',   // header bar / raised surface
+    panelFrame: '#302924',   // HUD panel / toast / hotbar frame fill
+    panelInset: '#181411',   // deep page background / behind-panels
+    well:       '#2D2621',   // inset well (paper-doll, deep grooves)
+    slot:       '#3D342C',   // empty slot / tile / statbox / spell-ring fill (the key lighter step)
+    control:    '#4A3F35',   // icon-button / close / secondary-button fill
+    track:      '#100D0B',   // stat-bar / xp track groove
     // text
     text:       '#ECECEF',
-    textMuted:  '#9AA0AD',
+    textMuted:  '#A8A096',
     textInverse:'#231708',   // text on gold fills
     // warm-gold accent
     accent:     '#C9A86A',
@@ -73,7 +74,7 @@ export const UI = {
     resonance:'#F5D76E',  // ELEMANCER — white-gold catalyst (the armed imbue reticle)
     // rarity (border / inner-ring / text color)
     rarity: {
-      common:    '#8A93A6',
+      common:    '#9C948A',
       rare:      '#4F9BE0',
       epic:      '#B36BFF',
       legendary: '#FFC23D',
@@ -135,7 +136,7 @@ export const UI = {
 // a thin colored INNER ring + the 2-tone icon color. Consumed by the Slot primitive
 // (inline style — gradients don't map to the single-color --ui-* var layer).
 export const RARITY_FILL = {
-  common:    { from: '#3A4664', to: '#2A344C', ring: 'rgba(174,184,204,0.65)', icon: '#E6EBF4' },
+  common:    { from: '#4A4038', to: '#352D27', ring: 'rgba(196,184,170,0.65)', icon: '#F1EBE3' },
   rare:      { from: '#1F5A92', to: '#143A60', ring: '#4F9BE0',               icon: '#A6D6FF' },
   epic:      { from: '#4F2C7C', to: '#301A4E', ring: '#B36BFF',               icon: '#DEBEFF' },
   legendary: { from: '#A06E12', to: '#523807', ring: '#FFC23D',               icon: '#FFE9A8' },

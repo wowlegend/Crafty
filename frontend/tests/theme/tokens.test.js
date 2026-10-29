@@ -35,16 +35,21 @@ import { UI, RARITY_FILL } from '../../src/theme/tokens.js';
 describe('UI design-system tokens (S1-C bold-flat)', () => {
   const HEX6 = /^#[0-9A-Fa-f]{6}$/;
 
-  it('ink is the locked near-black', () => {
-    expect(UI.color.ink).toBe('#0B0E14');
+  it('ink is the warm near-black', () => {
+    expect(UI.color.ink).toBe('#120E0B');
   });
 
-  it('the navy surface ladder matches the locked comp (lighter slate)', () => {
-    expect(UI.color.panel).toBe('#16213A');
-    expect(UI.color.slot).toBe('#233458');
-    expect(UI.color.panelFrame).toBe('#1C2942');
-    expect(UI.color.control).toBe('#2A3C61');
-    expect(UI.color.track).toBe('#0A0F1A');
+  it('the surface ladder is warm charcoal (DECISIONS 2026-10-29 item 95), each step warmer than it is blue', () => {
+    expect(UI.color.panel).toBe('#2A2420');
+    expect(UI.color.slot).toBe('#3D342C');
+    expect(UI.color.panelFrame).toBe('#302924');
+    expect(UI.color.control).toBe('#4A3F35');
+    expect(UI.color.track).toBe('#100D0B');
+    const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    for (const k of ['ink', 'panel', 'panelRaise', 'panelFrame', 'panelInset', 'well', 'slot', 'control', 'track']) {
+      const [r, , b] = rgb(UI.color[k]);
+      expect(r, `${k} ${UI.color[k]} is not warm (red above blue)`).toBeGreaterThan(b);
+    }
   });
 
   it('every color leaf is a valid 6-digit hex', () => {

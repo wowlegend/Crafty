@@ -9,7 +9,7 @@ describe('cssVars', () => {
   });
 
   it('CSS_VAR_MAP emits --ui-ink as RGB channels and a px scalar for radius', () => {
-    expect(CSS_VAR_MAP['--ui-ink']).toBe('11 14 20');
+    expect(CSS_VAR_MAP['--ui-ink']).toBe('18 14 11'); // #120E0B, the warm ink
     expect(CSS_VAR_MAP['--ui-radius-md']).toBe('10px');
     expect(CSS_VAR_MAP['--ui-elev-md']).toContain('var(--ui-ink)');
   });
