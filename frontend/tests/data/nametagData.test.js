@@ -33,3 +33,14 @@ describe('nametagFor', () => {
     expect(nametagFor({ type: 'zombie', health: 60, maxHealth: 60, passive: false }, 10).color).toBe('#F2F2F2');
   });
 });
+
+// Communion (DECISIONS 2026-10-28 W1-H item 6) raises the share of health a hostile binds at; the jade tell follows it.
+describe('nametagFor follows the snare\'s health threshold', () => {
+  const at = (health) => nametagFor({ type: 'zombie', health, maxHealth: 100, passive: false, isAlly: false }, 10, 0.5);
+  it('marks a hostile at or under the threshold jade, and one over it not', () => {
+    expect(at(50).color).toBe('#3DFFB0');
+    expect(at(40).color).toBe('#3DFFB0');
+    expect(at(51).color).not.toBe('#3DFFB0');
+    expect(nametagFor({ type: 'zombie', health: 40, maxHealth: 100, passive: false }, 10).color, 'the default threshold moved').not.toBe('#3DFFB0');
+  });
+});
