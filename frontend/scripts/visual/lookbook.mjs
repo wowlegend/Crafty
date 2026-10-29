@@ -50,9 +50,9 @@
  * thermals): a defect seen here is real in WebKit; a clean frame does not clear the iPad. Hero shots PIN the camera
  * above the scene; only the eye set and the clips are the player's eye. A pose does not pause the world (physics, mobs, weather, particles and
  * the clock run) but it does stop the Player's controller (movement and the KCC, the death branch, the void guard, the
- * beast / voidhand / imbue ticks), and PositionTracker publishes the posed CAMERA as store.playerPosition: mobs, allies
- * and chunk streaming see the camera, not the body (src/render/lookbookSeam.js). So mobs aim at the camera, a night
- * shot can kill the player: the shot is marked invalid and the store's own respawn() runs before the next. First-session onboarding toasts are
+ * beast / voidhand / imbue ticks), and PositionTracker publishes the posed CAMERA as store.playerPosition: allies, the
+ * spawner and chunk streaming see the camera, not the body (src/render/lookbookSeam.js), while the mobs' senses read
+ * the body. So a night shot can kill the player: the shot is marked invalid and the store's own respawn() runs before the next. First-session onboarding toasts are
  * suppressed (crafty_onboarded) so they do not cover the frames.
  *
  * --hold <seconds> is the power scenario (scripts/dev/power-ab.sh): one Chromium page at 1280x800, entered at spawn by
@@ -272,11 +272,11 @@ const SELF_POSES = Object.freeze([
   ['cast', { kind: 'cast', t: 0.5 }], ['charge', { kind: 'charge', level: 1 }],
 ]);
 const EYE_OVER_BODY_M = 0.67; // combat/swingOrigin.js EYE_HEIGHT_M, the steady eye
-// The Hearth's brazier (world/Terrain.jsx HomeAnchorRender, at the origin): the player stands 1.3 m from it on each
-// axis, turned so the fire is at the frame's right.
+// The Hearth's brazier (world/Terrain.jsx HomeAnchorRender, at the origin; its fire at bearing 135 from the stand, 1.4 m
+// off): the player faces it low on the right (110), with it beside them (45) and behind their right shoulder (345).
 const BRAZIER_XZ = Object.freeze([2.4, 2.4]);
-const BRAZIER_STAND_XZ = Object.freeze([1.1, 1.1]);
-const BRAZIER_HEADING = 110;
+const BRAZIER_STAND_XZ = Object.freeze([1.0, 1.0]);
+const BRAZIER_HEADINGS = Object.freeze([110, 45, 345]);
 const BRAZIER_CYCLE = 0.75;
 
 async function shootSelf(page, report, dir, target) {
@@ -332,13 +332,15 @@ async function shootSelf(page, report, dir, target) {
 
   if (target.engine === 'chromium') {
     const off = BRAZIER_STAND_XZ.map((v, i) => BRAZIER_XZ[i] - v);
-    await standFacing([off[0], report.stand[1] + 0.2, off[1]], BRAZIER_HEADING);
+    await standFacing([off[0], report.stand[1] + 0.2, off[1]], BRAZIER_HEADINGS[0]);
     await setCycle(page, BRAZIER_CYCLE);
     await delay(SETTLE_MS);
-    await lb('look', { heading: BRAZIER_HEADING, pitch: 0 });
-    await setCycle(page, BRAZIER_CYCLE);
-    await delay(EYE_FRAME_MS);
-    await shoot(`self-brazier-${BRAZIER_CYCLE.toFixed(2)}.png`, { kind: 'brazier' });
+    for (const heading of BRAZIER_HEADINGS) {
+      await lb('look', { heading, pitch: 0 });
+      await setCycle(page, BRAZIER_CYCLE);
+      await delay(EYE_FRAME_MS);
+      await shoot(`self-brazier-${heading}-${BRAZIER_CYCLE.toFixed(2)}.png`, { kind: 'brazier' });
+    }
   }
 }
 
@@ -414,7 +416,7 @@ async function shootTarget(target, launchOpts, launchId) {
 
     // The eye set and the clips go first: after the hero set's night shots, the night's mobs crowd the player at the
     // Hearth and the eye frames show a mob at arm's length instead of the world.
-    if (SETS.includes('eye') || SETS.includes('material') || SETS.includes('hands') || (SETS.includes('clips') && target.engine === 'chromium')) {
+    if (SETS.includes('eye') || SETS.includes('material') || SETS.includes('hands') || SETS.includes('self') || (SETS.includes('clips') && target.engine === 'chromium')) {
       report.hands = await handsBaseline(page);
       await respawnIfDead(page, report);
       report.stand = await restingBody(page);
