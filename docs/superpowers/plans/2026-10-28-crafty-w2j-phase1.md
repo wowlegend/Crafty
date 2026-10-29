@@ -98,8 +98,58 @@ with orient's own registry count. The before-run copy is `git archive 2fef2f32`,
 | Run | Tree | CLAUDE.md | Served | Tool calls | Score | Verdict |
 |---|---|---:|---|---:|---:|---|
 | before | main `2fef2f32` (`--rev`) | 37,820 B | claude-sonnet-5-5 | 6 | 9/10 | **FAIL** |
+| after | this branch at `193a6f4d` | 11,976 B | claude-sonnet-5-5 | 2 | 10/10 | **PASS** |
+| after, second sample | the same | 11,976 B | claude-sonnet-5-5 | 2 | 10/10 | **PASS** |
+| control (`--plant`) | the same, reviewer line stale | 11,663 B | claude-sonnet-5-5 | 2 | 9/10 | **FAIL** (q3) |
+| control, second sample | the same | 11,663 B | claude-sonnet-5-5 | 2 | 9/10 | **FAIL** (q3) |
 
 - **Before.** Wrong: q2 (how a change reaches main). The answer had CI on the exact sha and `ci ok`, but no pull request,
   no branch protection and no merge-then-fast-forward: main's `CLAUDE.md` states the gates but not the landing route,
   which lived only in the ACTIVE_PLAN cursor. 0 reads outside the copy (one denied `cd` was flagged by the audit).
   Transcript: the session scratchpad, `w2j/eval/before/stream.jsonl` (not committed).
+- **After.** All ten right, in two read-only Bash calls (both counted the registry by grep; neither ran
+  `npm run orient`, which the read order names first, so orient's use is not yet shown by the eval). 0 reads outside the
+  copy.
+- **Control.** The planted line ("Reviewers and verifiers run on Opus 5.5 at effort max, the estate default") was
+  repeated as the answer both times, so q3 failed on the forbidden pattern and the missing "never max". The other nine
+  stayed right: the eval detects the one stale directive, not a general degradation.
+- **Limits.** Two samples per arm of a stochastic agent; a keyword scorer (paraphrase and stale-answer cases are in its
+  test); only `CLAUDE.md` is planted, so a stale line in a doc the agent did not open is not tested. The agent answered
+  most questions from the auto-loaded `CLAUDE.md` without a tool call, so tool-call counts mostly measure q6 and q10.
+
+## Where each standing directive lives now
+
+| Directive | Before | Now |
+|---|---|---|
+| Item 14: nothing is off limits, full autonomy, ask Kevin nothing unless needed, one review page | CLAUDE.md header | CLAUDE.md, Standing principle |
+| Item 16: nothing is locked; lock labels bind nothing; `doc-currency` refuses six phrasings | CLAUDE.md header | CLAUDE.md, Standing principle (enforcer: doc-currency `locks`) |
+| Bright lines: no money; no force-push or history rewrite | charter, kernel, DECISIONS | CLAUDE.md, Bright lines |
+| No AI footer; no `--amend`/`reset` (fix-ups are new commits); no `--no-verify` | CLAUDE.md, Commit Conventions; pre-push comment | CLAUDE.md, Bright lines |
+| What stays Kevin's (real-device feel, audio by ear, sign-ins, S4, ultrareview, external sends but the public face) | charter §4, kernel | CLAUDE.md, Bright lines |
+| Landing: PR, merge main in, CI once on the exact sha, ff main; branch protection on `ci ok` | ACTIVE_PLAN cursor only | CLAUDE.md, Landing |
+| Models and effort: xhigh never max; Sonnet and Haiku liberally, explicit effort, never low | CLAUDE.md, Method | CLAUDE.md, Review and models |
+| `/code-review xhigh` fresh per range + one pointed reviewer on seams; no self-review | DECISIONS 2026-10-27 | CLAUDE.md, Review and models |
+| SSD-light lanes | CLAUDE.md, Method | CLAUDE.md, SSD-light lanes; `.claude/rules/gates-and-probes.md` |
+| Browser and test-process hygiene | CLAUDE.md (long), charter §6.4 | CLAUDE.md (short) + `.claude/rules/gates-and-probes.md` (full) |
+| Game-Loop Isolation | CLAUDE.md, Execution | CLAUDE.md, Invariants; `.claude/rules/game-code.md` (render JSX never reads loop-mutated fields) |
+| No emoji in `frontend/src` | CLAUDE.md, Design Language | CLAUDE.md, Invariants (enforcer: `tests/gates/static-gates.test.js`) |
+| Comments say why (item 15c) | CLAUDE.md, Execution | CLAUDE.md, Invariants |
+| Mutation-prove a new gate; a source grep is not a gate | charter §3, kernel rule 1 | CLAUDE.md, Invariants (enforcers: mutation-proof-trailer, gate-shape) |
+| Never weaken to pass; test changes justified in the commit body | charter §3, kernel rule 4 | CLAUDE.md, Invariants |
+| A green gate is not a lived result; read the denominator | CLAUDE.md (long) | CLAUDE.md, Invariants + gates-and-probes.md |
+| Remote claims observed in the same turn; CI green only on `success` | kernel step 0 | CLAUDE.md, Landing and Invariants; `npm run orient` |
+| A queue cite is a hypothesis; a deferral is a registry row | kernel; charter §3 | CLAUDE.md, Invariants |
+| AST-safe edits; stage by name; small commits; escalate a broken rule to a gate | CLAUDE.md, Execution; kernel | CLAUDE.md, Invariants |
+| Lane briefs and task scripts of 300 lines or less (W1-H item 3) | CLAUDE.md:236 (superseded) | CLAUDE.md, Building and judging |
+| Look changes on lookbook frames; reference first; pillars; audio first-class; drive the real app | charter §4, CLAUDE.md | CLAUDE.md, Building and judging; game-code.md |
+| Capture guards reset, never return; no new guard | CLAUDE.md, Gates | game-code.md |
+| Player loop frame order; engine-core bar; P4 constraints; frame cost; ECS slice | CLAUDE.md, Tech; charter; SOTA-INITIATIVE §2 | game-code.md |
+| Design language (tokens, icons, i18n, credits); touch | CLAUDE.md | game-code.md |
+| Session-close ritual at the watermark (Kevin, 2026-07-13) | charter §6.5, kernel | CLAUDE.md, Session close |
+| Compaction: keep the command, never the result; re-orient | CLAUDE.md (long) | CLAUDE.md, Compaction |
+| Subagents start blank: restate ROOT and APP | CLAUDE.md, Method | CLAUDE.md, Layout |
+| Auto-memory ranks below the repo | CLAUDE.md | CLAUDE.md, Where state lives |
+| Recorded decisions (F=cast/T=melee, bloom 0.65, audience broad, ...) | charter §0-C, kernel | DECISIONS (unchanged); CLAUDE.md says DECISIONS settles |
+| Vision (SOTA in every aspect, taste the highest bar, broad audience, S4 legal lines) | SOTA-INITIATIVE §1 (root) | `docs/superpowers/SOTA-INITIATIVE.md` §1 |
+| The archived-skills OPEN note (cleanup ratchet, dependency upgrades) | CLAUDE.md | registry QUEUE:Q42, OPEN_ITEMS:OI-97 (STALE-13 closed: Dependabot exists) |
+| Dropped on purpose: the per-task skill list (brainstorming, pre-commit-kz, session-archivist-kz), Read-Before-Write | CLAUDE.md | nowhere in the repo: the harness lists skills every turn and the estate rules carry both; neither was a Kevin directive for Crafty |

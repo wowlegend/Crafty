@@ -18,6 +18,28 @@
 
 ---
 
+## 2026-10-28 — [LOOP] W2-J phase 1: a short CLAUDE.md, `npm run orient`, a cursor, and the loop docs retired
+
+**Decided by the command session** (SOTA reset rows 29, 38 and 57, and the orient half of 31; plan
+`docs/superpowers/plans/2026-10-28-crafty-w2j-phase1.md`). Each stands while it earns its place.
+
+1. **`CLAUDE.md` is 12 KB or less** and states each standing directive once and each invariant with its enforcer.
+   Long rationale lives in the path-scoped `.claude/rules/` file that loads when its code is touched (new:
+   `game-code.md`) or in the header of the script it explains. Numbers in it are generated or absent.
+2. **`npm run orient` is the first read** (`frontend/scripts/dev/orient.mjs`): HEAD, CI on main and HEAD, the live
+   Production sha, open PRs, unmerged worktrees, the cursor and the registry's counts, read live. The generated read
+   order starts with it and no longer names the charter, the drained holistic review or SOTA-INITIATIVE.
+3. **LOOP-CHARTER and LOOP-KERNEL-PROMPT retire**, and `SOTA-KICKOFF-PROMPT.md` is deleted; `SOTA-INITIATIVE.md` moves
+   to `docs/superpowers/`. Their rules that still bind moved first; git keeps the files.
+4. **`memory/ACTIVE_PLAN.md` is a cursor** of 60 lines or fewer: the live task table and the next step. Its history is
+   git's; its open items are registry rows, two of them added by hand from the old cursors.
+5. **The acceptance test is the cold-takeover eval** (`frontend/scripts/dev/cold-takeover-eval.mjs`): Sonnet 5.5, only
+   the repo, ten questions (nine of them directives), 10/10 within 15 tool calls. Main's 37,820-byte file scored 9/10
+   (the landing route was in no instruction file); the rewrite scored 10/10 in 2 tool calls on two runs; a copy with
+   the reviewer-effort line planted stale (effort max) fails. Run it after any rewrite of the instruction surface.
+
+**Door:** two-way; every removed file is in git history.
+
 ## 2026-10-28 — [LOOP] W2-I: the post passes measured on the GPU's own busy time; N8AO deleted, the rest kept
 
 **Decided by the W2-I lane under the standing grant** (DECISIONS 2026-10-28 item 14), by the rule in
