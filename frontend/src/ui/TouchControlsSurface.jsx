@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Sword, Zap, ChevronUp, Pause, LayoutGrid, Package, MessageCircle, Blocks, Sparkles, Wind, Flame, Lock } from 'lucide-react';
+import { Sword, Zap, ChevronUp, Pause, LayoutGrid, User, MessageCircle, Blocks, BookOpen, Sparkles, Wind, Flame, Lock } from 'lucide-react';
 import { TRAY_PANELS } from './touchTray';
 import { aspectRing, unlockedAspectVerbs, fanLayout, fanItemStyle, fanOpenerStyle, ASPECT_ROW_BOTTOM, SPELL_ROW_BOTTOM, cooldownFraction, anyOnCooldown } from '../input/aspectWheel';
 import { SPELL_ORDER, spellLabelKey, spellAccent } from '../input/spellPicker';
@@ -14,10 +14,10 @@ import { useSpellAnchorRight } from '../input/useSpellAnchor';
 // M3a: the panel-access tray openers (lucide, tintable) keyed by registry id -> the live overlay
 // drives togglePanel on tap; this surface only draws the glyphs (grid icon always; openers when open).
 // KEYED BY THE REGISTRY'S OWN `icon` NAME, not by panel id. This used to be an INDEPENDENT id->component
-// map, which meant touchTray.js's `icon: 'Package'` field was never read by anything and the glyph for a
+// map, which meant touchTray.js's `icon` field was never read by anything and the glyph for a
 // panel was declared in two places that could disagree silently. Explicit imports stay (tree-shaking
 // needs the named bindings); only the key changes, so the registry field is now the single source.
-export const TRAY_ICON = { Package, MessageCircle, Blocks, Sparkles };
+export const TRAY_ICON = { User, MessageCircle, Blocks, BookOpen };
 
 // S1-C: 4px ink chrome, navy fill, GOLD glyph. Touch CONTROLS are app-chrome -> lucide outline icons
 // (they tint via currentColor, unlike the 2-tone game-icons whose baked fills ignored `color` and

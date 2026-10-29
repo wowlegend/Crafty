@@ -39,15 +39,11 @@ Click into the game to capture the mouse, then move the mouse to look. Esc relea
 |  | <kbd>V</kbd> | VOIDHAND — grab &amp; hurl |
 |  | <kbd>X</kbd> | SOULBIND — snare &amp; fuse |
 |  | <kbd>Z</kbd> | ELEMANCER — imbue cast |
-| **Panels** | <kbd>E</kbd> | Inventory |
-|  | <kbd>M</kbd> | Magic |
-|  | <kbd>B</kbd> | Building |
-|  | <kbd>U</kbd> | Talents &amp; Aspect guide |
+| **Panels** | <kbd>Tab</kbd> | Character: gear, spells, talents |
+|  | <kbd>J</kbd> | Journal: quests, feats |
+|  | <kbd>B</kbd> | Build |
 |  | <kbd>G</kbd> | Talk (Mara: the Forge) / open chest |
-|  | <kbd>L</kbd> | Quest log |
-|  | <kbd>Q</kbd> | Claim completed quests |
-|  | <kbd>H</kbd> | Toggle controls |
-|  | <kbd>Tab</kbd> | Achievements |
+|  | <kbd>H</kbd> | Controls |
 |  | <kbd>F3</kbd> | Show stats |
 |  | <kbd>Esc</kbd> | Settings / pause |
 <!-- END CONTROLS -->

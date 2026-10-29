@@ -163,7 +163,7 @@ function GameApp({ experienceSystem }) {
     showStats, setShowStats,
     showAchievements, setShowAchievements,
     showSpellUpgrades, setShowSpellUpgrades
-  } = useInputManager(gameState, gameSystems, questSystem);
+  } = useInputManager(gameState, gameSystems);
 
   // Reactive projection of inputState.active (the single pointer-lock/active SoT).
   // active changes only on a rare pointer-lock enter/exit gesture (NOT per-frame),

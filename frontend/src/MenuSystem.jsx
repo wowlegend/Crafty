@@ -18,6 +18,9 @@ import {
 } from './ui/panels/lazyPanels.js';
 import { Icon, Button } from './ui/primitives/index.js';
 import { AchievementsPanel } from './QuestSystem';
+import { PanelTabs } from './ui/PanelTabs.jsx';
+import { ControlsPanel } from './ui/CombatInstructions.jsx';
+import { panelWrites, applyPanelWrites } from './ui/panelGroups.js';
 import { shouldShowTitleMenu, shouldShowResumeOverlay, isAnyPanelOpen } from './ui/panelState.js';
 import { isCaptureMode } from './devtest/captureMode.js';
 import { isTouchDevice, isTouchUIMode } from './input/touchDevice';
@@ -84,8 +87,25 @@ export function MenuSystem({
     useGameStore.getState().markGameStarted();
   };
 
+  // A tab in the Character or Journal strip opens its panel and closes the group's others (ui/panelGroups.js).
+  const tabFlags = { ...gameState, showSpellUpgrades, showAchievements };
+  const selectTab = (flag) => applyPanelWrites(panelWrites(flag), useGameStore.getState(), { setShowSpellUpgrades, setShowAchievements });
+
   return (
     <>
+      <PanelTabs group="character" flags={tabFlags} onSelect={selectTab} />
+      <PanelTabs group="journal" flags={tabFlags} onSelect={selectTab} />
+      <AnimatePresence>
+        {gameState.showControls && (
+          <ControlsPanel
+            key="ControlsPanel"
+            onClose={() => {
+              gameState.setShowControls(false);
+              enterPlay();
+            }}
+          />
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {showAchievements && (
           <AchievementsPanel

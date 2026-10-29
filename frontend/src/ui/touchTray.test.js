@@ -9,7 +9,7 @@ const fakeStore = () => ({
 
 describe('touchTray — the panel-access registry', () => {
   it('registers the 3 core touch-openable panels and the talk verb, with complete fields', () => {
-    expect(TRAY_PANELS.map(p => p.id)).toEqual(['inventory', 'talk', 'build', 'magic']);
+    expect(TRAY_PANELS.map(p => p.id)).toEqual(['character', 'talk', 'build', 'journal']);
     for (const p of TRAY_PANELS) {
       expect(p.labelKey, `${p.id} labelKey`).toBeTruthy();
       expect(p.icon, `${p.id} icon`).toBeTruthy();
@@ -21,7 +21,7 @@ describe('touchTray — the panel-access registry', () => {
   });
   it('togglePanel flips the panel via the store setter (open when closed, close when open)', () => {
     const s = fakeStore();
-    const inv = TRAY_PANELS.find(p => p.id === 'inventory');
+    const inv = TRAY_PANELS.find(p => p.id === 'character');
     expect(togglePanel(inv, s)).toBe(true);
     expect(s.showInventory).toBe(true);   // opened
     togglePanel(inv, s);

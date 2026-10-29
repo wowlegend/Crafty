@@ -9,11 +9,10 @@ import { shouldShowTitleMenu } from '../../src/ui/panelState.js';
 // INTERACTION guard for the 2026-06-07 bug class: pressing U opened the Aspect tree, but the title MENU
 // popped OVER it (the menu gate had an incomplete panel list). Pure-logic tests can't catch this — it only
 // shows up when a real keypress opens a panel + releases the cursor. This drives the REAL InputManager
-// keydown handler in jsdom and asserts the full chain: U -> Aspect panel opens + cursor released -> the
+// keydown handler in jsdom and asserts the full chain: a panel key -> its panel opens + cursor released -> the
 // menu gate reports HIDDEN. The invariant for the whole class: a keypress that opens a panel must never
-// leave the title/pause menu visible.
-
-const QUEST_STUB = { achievements: [], unlockedAchievements: [], stats: {}, quests: [] };
+// leave the title/pause menu visible. Since the HUD lane the keys are Tab (Character: gear, spells, talents),
+// J (Journal: quests, feats), B (Build) and H (controls); the Aspect tree is Character's Talents tab.
 
 function pressKey(code) {
   act(() => {
@@ -34,30 +33,48 @@ beforeEach(() => {
 afterEach(() => { cleanup(); setActive(false); vi.restoreAllMocks(); }); // unmount the hook so its keydown listener can't leak into the next test (handler stopImmediatePropagation would swallow the event)
 
 describe('keyboard -> panel -> menu interaction (jsdom)', () => {
-  it('U opens the Aspect tree, releases the cursor, and the title menu stays HIDDEN (the bug)', () => {
-    const { result } = renderHook(() => useInputManager({}, {}, QUEST_STUB));
-    expect(result.current.showSpellUpgrades).toBe(false);
+  it('Tab opens Character on its gear tab, releases the cursor, and the title menu stays HIDDEN (the bug)', () => {
+    renderHook(() => useInputManager({}, {}));
+    expect(useGameStore.getState().showInventory).toBe(false);
 
-    pressKey('KeyU');
+    pressKey('Tab');
 
-    // (a) the keypress opened the Aspect panel + released the cursor so the UI is clickable
-    expect(result.current.showSpellUpgrades).toBe(true);
+    // (a) the keypress opened the panel + released the cursor so the UI is clickable
+    expect(useGameStore.getState().showInventory).toBe(true);
     expect(document.exitPointerLock).toHaveBeenCalled();
 
     // (b) given the resulting state (panel open + pointer now unlocked), the menu gate is HIDDEN.
-    // Before the fix this returned true -> the main menu rendered over the Aspect tree.
-    expect(shouldShowTitleMenu({
-      isPointerLocked: false,
-      showSpellUpgrades: result.current.showSpellUpgrades,
-    })).toBe(false);
+    expect(shouldShowTitleMenu({ isPointerLocked: false, ...useGameStore.getState() })).toBe(false);
   });
 
-  it('U again toggles the Aspect tree closed', () => {
-    const { result } = renderHook(() => useInputManager({}, {}, QUEST_STUB));
-    pressKey('KeyU');
-    expect(result.current.showSpellUpgrades).toBe(true);
-    pressKey('KeyU');
-    expect(result.current.showSpellUpgrades).toBe(false);
+  it('Tab again closes Character from ANY of its tabs, the Aspect tree (Talents) included', () => {
+    const { result } = renderHook(() => useInputManager({}, {}));
+    act(() => result.current.setShowSpellUpgrades(true));
+    pressKey('Tab');
+    expect(result.current.showSpellUpgrades, 'Tab left the Talents tab open').toBe(false);
+    expect(useGameStore.getState().showInventory, 'Tab on an open group opened its first tab instead of closing').toBe(false);
+  });
+
+  it('J opens the Journal on Quests and closes it; H opens the controls panel and marks it seen; B toggles Build', () => {
+    useGameStore.setState({ showQuestLog: false, showControls: false, controlsSeen: false });
+    renderHook(() => useInputManager({}, {}));
+    pressKey('KeyJ');
+    expect(useGameStore.getState().showQuestLog).toBe(true);
+    pressKey('KeyJ');
+    expect(useGameStore.getState().showQuestLog).toBe(false);
+    pressKey('KeyH');
+    expect(useGameStore.getState().showControls).toBe(true);
+    expect(useGameStore.getState().controlsSeen, 'opening the controls panel did not mark it seen').toBe(true);
+    pressKey('KeyB');
+    expect(useGameStore.getState().showBuildingTools).toBe(true);
+    expect(useGameStore.getState().showControls, 'B left the controls panel open under Build').toBe(false);
+  });
+
+  it('E, M, U, L and Q open nothing any more', () => {
+    const { result } = renderHook(() => useInputManager({}, {}));
+    for (const c of ['KeyE', 'KeyM', 'KeyU', 'KeyL', 'KeyQ']) pressKey(c);
+    const s = useGameStore.getState();
+    expect([s.showInventory, s.showMagic, s.showQuestLog, result.current.showSpellUpgrades]).toEqual([false, false, false, false]);
   });
 
   it('control: with no panel open and the pointer unlocked, the title menu DOES show', () => {
@@ -77,18 +94,17 @@ describe('keyboard -> panel -> menu interaction (jsdom)', () => {
  *   I0 identity (a comment edit)                                              -> must SURVIVE
  */
 describe('with Show Stats on, gameplay keys still act', () => {
-  it('F3 shows the readout; Digit2 selects a spell, Q claims a finished quest, the wheel scrolls the hotbar', () => {
-    const claimQuest = vi.fn();
-    const quests = { ...QUEST_STUB, quests: [{ id: 'q1', progress: 5, target: 5, claimed: false }], claimQuest };
-    useGameStore.setState({ activeSpell: 'fireball', selectedBlock: 'grass' });
-    const { result } = renderHook(() => useInputManager({}, {}, quests));
+  it('F3 shows the readout; Digit2 selects a spell, J opens the Journal, the wheel scrolls the hotbar', () => {
+    useGameStore.setState({ activeSpell: 'fireball', selectedBlock: 'grass', showQuestLog: false });
+    const { result } = renderHook(() => useInputManager({}, {}));
     // The F3 handler matches event.key (pressKey sets only event.code).
     act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F3', code: 'F3', bubbles: true })); });
     expect(result.current.showStats, 'SETUP: F3 did not turn the readout on — the stats case was not exercised').toBe(true);
     pressKey('Digit2');
     expect(useGameStore.getState().activeSpell, 'a spell key did nothing with the readout up').toBe('iceball');
-    pressKey('KeyQ');
-    expect(claimQuest, 'Q claimed nothing with the readout up').toHaveBeenCalledWith('q1');
+    pressKey('KeyJ');
+    expect(useGameStore.getState().showQuestLog, 'J opened nothing with the readout up').toBe(true);
+    pressKey('KeyJ');
     const before = useGameStore.getState().selectedBlock;
     act(() => { window.dispatchEvent(new WheelEvent('wheel', { deltaY: 100 })); });
     expect(useGameStore.getState().selectedBlock, 'the wheel did not scroll the hotbar with the readout up').not.toBe(before);

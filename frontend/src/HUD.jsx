@@ -8,7 +8,7 @@ import { useT } from './i18n/i18n.js';
 import React, { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { GameUI } from './ui/GameHud';
-import { CombatInstructions } from './ui/CombatInstructions';
+import { ControlsCardUntilSeen } from './ui/CombatInstructions';
 import { isTouchUIMode } from './input/touchDevice';
 import {
   PlayerHealthBar,
@@ -147,26 +147,6 @@ const DayPhaseDial = React.memo(() => {
   );
 });
 
-// W3 M-HUD.9: the controls cheatsheet is DEMOTED from always-on to a toggle/auto-fade. A returning
-// player no longer stares at a permanent keycap legend cluttering the top-right; it auto-shows for the
-// first ~8s of play (onboarding), then fades, and H (InputManager) re-summons it on demand. The visible
-// state is the store `showControls` flag; this wrapper owns the one-shot auto-fade timer. Game-Loop-
-// Isolation-safe: a plain useEffect timer (not bound to useFrame), and capture-SUPPRESSED so the timer
-// never fires under isCaptureMode() -> the deterministic baselines render a clean, sheet-free HUD
-// (the explore frames lose the old always-on sheet, a deliberate re-baseline).
-const ControlsSheet = React.memo(() => {
-  const showControls = useGameStore((s) => s.showControls);
-  useEffect(() => {
-    if (isCaptureMode()) return undefined; // never auto-show/fade in capture -> deterministic frames
-    const st = useGameStore.getState();
-    st.setShowControls(true); // onboarding: show on enter
-    const id = setTimeout(() => useGameStore.getState().setShowControls(false), 8000);
-    return () => clearTimeout(id);
-  }, []);
-  if (!showControls) return null;
-  return <CombatInstructions />;
-});
-
 // ObjectiveTracker -- the PERSISTENT spawn-direction cue (Kevin 2026-06-16: "I spawn with no guide; where
 // do I go?"). Unlike the FOV-gated Compass markers (which vanish when you face away) and the localStorage-
 // once onboarding toast (dead for a returning player), this ALWAYS shows on spawn: it NAMES the current
@@ -275,13 +255,15 @@ export function HUD({
 }) {
   // S9c: the post-climax victory beat is dismissed once ("Keep exploring" -> endless handoff).
   const victoryPending = useGameStore((s) => s.victoryPending); // a rare event, not a per-frame value
+  const controlsSeen = useGameStore((s) => s.controlsSeen);
   return (
     <>
       <AnimatePresence>
         {isPointerLocked && gameSystems.isAlive && isWorldBuilt && (
           <>
-            <GameUI gameState={gameState} level={experienceSystem.playerLevel} xpProgress={experienceSystem.xpProgress} />
-            {!isTouchUIMode() && <ControlsSheet />}{/* W3 M-HUD.9: keyboard cheatsheet demoted to auto-fade + H-toggle (desktop-only; touch has on-screen controls) */}
+            <GameUI gameState={gameState} level={experienceSystem.playerLevel} xpProgress={experienceSystem.xpProgress}
+              controlsHint={!controlsSeen && !isTouchUIMode()} />
+            {!isTouchUIMode() && <ControlsCardUntilSeen />}{/* keys are a desktop player's; touch has its controls on screen */}
 
             <Compass treasureChests={treasureChests} bossSystem={bossSystem} />
             <ImbueTell />
@@ -327,7 +309,7 @@ export function HUD({
 
             <TargetFrame />{/* W3 M-HUD.7: top-center unit nameplate off the aim-cone seam; self-gates on store.targetEntity + isCaptureMode (touch-safe, top-center clear of the action cluster) */}
 
-            <QuestTracker quests={questSystem.quests} onClaim={questSystem.claimQuest} />
+            <QuestTracker quests={questSystem.quests} />
 
             <NotificationStack notifications={questSystem.notifications} />
 

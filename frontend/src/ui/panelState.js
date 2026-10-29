@@ -23,7 +23,7 @@
 export const PANEL_FLAGS = [
   // store-backed
   'showInventory', 'showForge', 'showMagic', 'showBuildingTools', 'showSettings',
-  'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits', 'showQuestLog',
+  'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits', 'showQuestLog', 'showControls',
   // React-local (passed in by the caller)
   'showSpellUpgrades', 'showAchievements',
 ];

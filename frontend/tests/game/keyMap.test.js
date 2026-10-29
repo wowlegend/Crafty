@@ -83,10 +83,25 @@ describe('KEY_MAP — the binding single-source-of-truth (anti-drift)', () => {
     }
   });
 
-  it('the M key (the regression that prompted this pass) is advertised AND handled', () => {
-    const m = KEY_MAP.find((r) => r.key === 'M');
-    expect(m?.code).toBe('KeyM');
-    expect(read('InputManager.jsx').includes("'KeyM'")).toBe(true); // wired in T2
+  it('the panels are three keys and H: Tab (Character), J (Journal), B (Build), each advertised AND handled', () => {
+    // The HUD lane (DECISIONS 2026-10-29 item 96) folded E, M, U, L and Q into Character and Journal. The panel rows
+    // are exactly these, so a fold half-undone (a key back in the table, or a handler left behind) is red here or in
+    // the two-way cases.
+    const panels = KEY_MAP.filter((r) => r.group === 'Panels').map((r) => r.code);
+    expect(panels).toEqual(['Tab', 'KeyJ', 'KeyB', 'KeyG', 'KeyH', 'F3', 'Escape']);
+    const handled = handledCodes();
+    for (const c of ['Tab', 'KeyJ', 'KeyB', 'KeyH']) expect(handled.has(c), `${c} has no live handler`).toBe(true);
+    for (const c of ['KeyE', 'KeyM', 'KeyU', 'KeyL', 'KeyQ']) expect(handled.has(c), `${c} is handled again`).toBe(false);
+  });
+
+  it('every row a player is taught has a label key both dictionaries carry', async () => {
+    const { STRINGS } = await import('../../src/i18n/strings.js');
+    const taught = KEY_MAP.filter((r) => !r.panelHide);
+    expect(taught.length, 'SETUP: no taught rows').toBeGreaterThan(15);
+    for (const r of KEY_MAP) {
+      expect(STRINGS.en[r.labelKey], `${r.key} has no English label key`).toBeTruthy();
+      expect(STRINGS['zh-CN'][r.labelKey], `${r.key} has no zh-CN label`).toBeTruthy();
+    }
   });
 });
 
@@ -139,10 +154,11 @@ describe('KEY_MAP — the REVERSE direction, which was never guarded', () => {
     expect(handledCodes().has('F3'), 'F3 must have a live handler').toBe(true);
   });
 
-  it('teaches both quest bindings, which is the gap that motivated this gate', () => {
+  it('teaches the quest binding, which is the gap that motivated this gate: J opens the Journal\'s quests', () => {
+    // L and Q were handled and advertised nowhere (8a5e008). The quest log is now the Journal's first tab (J), and quests
+    // claim themselves on completion, so no claim key is left to teach.
     const byCode = Object.fromEntries(KEY_MAP.filter((r) => r.code).map((r) => [r.code, r]));
-    expect(byCode.KeyL, 'L (quest log) must be advertised').toBeDefined();
-    expect(byCode.KeyQ, 'Q (claim completed quests) must be advertised').toBeDefined();
-    for (const c of ['KeyL', 'KeyQ']) expect(KEY_GROUPS).toContain(byCode[c].group);
+    expect(byCode.KeyJ, 'J (the Journal: quests) must be advertised').toBeDefined();
+    expect(KEY_GROUPS).toContain(byCode.KeyJ.group);
   });
 });

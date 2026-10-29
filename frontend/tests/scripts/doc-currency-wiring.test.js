@@ -389,7 +389,7 @@ describe('doc-currency run() — the seam every check is wired into', () => {
 
   it('controls: a README whose CONTROLS block lost a row errors', () => {
     const block = renderControls();
-    const stale = block.replace(/\n\|[^\n]*Quest log[^\n]*\|/, '');
+    const stale = block.replace(/\n\|[^\n]*Journal[^\n]*\|/, '');
     expect(stale, 'the red fixture differs from the current block').not.toBe(block);
     const root = fixture({ 'README.md': `# Crafty\n\n${stale}\n` });
     const r = run({ root, only: ['controls'] });

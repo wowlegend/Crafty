@@ -1,5 +1,5 @@
 /**
- * touchTray.js — the touch panel-access registry (touch M3a). On desktop E/B/M open these panels and G talks;
+ * touchTray.js — the touch panel-access registry (touch M3a). On desktop Tab, J and B open these panels and G talks;
  * touch has no keyboard, so the tray surface (<TouchControlsSurface>) offers each as a button. PURE
  * producer — the panels themselves already render (MenuSystem). Icons are lucide names
  * (the 2-tone game-icons don't tint; M2a switched touch chrome to lucide).
@@ -8,12 +8,15 @@ import { talk, talkOpenedPanel } from '../input/talk.js';
 
 // id -> { labelKey (the i18n key every surface renders through), lucide icon name, and either
 //         the store action (value-or-fn updater) and boolean store key of a panel, or `talk` for the G verb }
+// Character opens on its gear tab and Journal on its quests (ui/panelGroups.js); the strip above each switches tabs, so
+// the spells and the talents are a tap from Character and the feats from Journal (the HUD lane, DECISIONS 2026-10-29
+// item 96).
 export const TRAY_PANELS = [
-  { id: 'inventory', labelKey: 'ui.inventory', icon: 'Package',  action: 'setShowInventory',    show: 'showInventory' },
+  { id: 'character', labelKey: 'ui.character', icon: 'User',     action: 'setShowInventory',    show: 'showInventory' },
   // The talk verb (input/talk.js): Mara's Forge, the merchant, the healer and the warden, as G reaches them.
   { id: 'talk',      labelKey: 'ui.talk',      icon: 'MessageCircle', talk: true },
   { id: 'build',     labelKey: 'ui.build',     icon: 'Blocks',   action: 'setShowBuildingTools', show: 'showBuildingTools' },
-  { id: 'magic',     labelKey: 'ui.magic',     icon: 'Sparkles', action: 'setShowMagic',         show: 'showMagic' },
+  { id: 'journal',   labelKey: 'ui.journal',   icon: 'BookOpen', action: 'setShowQuestLog',      show: 'showQuestLog' },
 ];
 
 /**

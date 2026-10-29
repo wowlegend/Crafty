@@ -36,7 +36,7 @@ describe('controls-table renderBlock', () => {
   it('renders every row of the real KEY_MAP, including dodge, hold-heavy and the four Aspect keys', () => {
     const block = renderBlock();
     expect(bodyRows(block)).toHaveLength(KEY_MAP.length);
-    expect(KEY_MAP.length).toBeGreaterThan(20);
+    expect(KEY_MAP.length).toBeGreaterThan(18); // 20 since the HUD lane folded five panel keys into Tab and J
     expect(block).toContain('<kbd>Shift</kbd> | Dodge-roll');
     expect(block).toMatch(/<kbd>Left click<\/kbd> \| Attack \(hold: heavy\)/);
     for (const k of ['R', 'V', 'X', 'Z']) expect(block).toContain(`| <kbd>${k}</kbd> |`);

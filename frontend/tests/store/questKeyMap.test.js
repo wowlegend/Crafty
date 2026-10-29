@@ -66,7 +66,8 @@ describe('a hunt begun before the change', () => {
     expect([questTitle(en, 'en', z()), questDescription(en, 'en', z())]).toEqual(['Husk Slayer', 'Defeat 10 Husks']);
 
     for (let i = 0; i < 3; i += 1) act(() => emitMobKill('zombie', [0, 0, 0], 'player'));
-    expect({ progress: z().progress, completed: z().completed }, 'three Husk kills did not finish the saved hunt').toEqual({ progress: 10, completed: true });
+    // A finished quest claims itself (the HUD lane), so the finished hunt is read from the completed list.
+    expect(useGameStore.getState().questState.completedQuestIds, 'three Husk kills did not finish the saved hunt').toContain('zombie_slayer');
     const stats = useGameStore.getState().questState.stats;
     expect(stats.kills_by_type, 'the kill counter moved to a different key').toEqual({ zombie: 10 });
   });

@@ -7,6 +7,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { QuestLog } from '../../src/ui/QuestLog.jsx';
 import { KEY_MAP } from '../../src/game/keyMap.js';
+import { PANEL_GROUPS } from '../../src/ui/panelGroups.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(resolve(HERE, '../../src', p), 'utf8');
@@ -120,12 +121,13 @@ describe('the quest log is a real modal, closable the ways a modal must be', () 
 });
 
 describe('the log is REACHABLE — the half a render test cannot see', () => {
-  it('L is advertised in the binding table', () => {
-    // Two live keybinds once shipped advertised NOWHERE (8a5e008), L among them. The keyMap suite gates
-    // the advertised<->handled correspondence in both directions; this pins that the row still exists,
-    // since a log nobody can open is the same as no log.
-    const row = KEY_MAP.find((r) => r.code === 'KeyL');
-    expect(row, 'L is no longer advertised — the quest log becomes undiscoverable').toBeTruthy();
+  it('J, which opens the Journal on its Quests tab, is advertised in the binding table', () => {
+    // Two live keybinds once shipped advertised NOWHERE (8a5e008), L among them. The log is the Journal's first tab
+    // since the HUD lane; the keyMap suite gates the advertised<->handled correspondence in both directions, and this
+    // pins that the row still exists, since a log nobody can open is the same as no log.
+    const row = KEY_MAP.find((r) => r.code === 'KeyJ');
+    expect(row, 'J is no longer advertised — the quest log becomes undiscoverable').toBeTruthy();
+    expect(PANEL_GROUPS.journal[0].flag, 'the Journal no longer opens on the quest log').toBe('showQuestLog');
   });
 
   it('the store carries the flag, and the panel is mounted where the flag is read', () => {

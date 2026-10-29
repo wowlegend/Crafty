@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { readControlsSeen, writeControlsSeen } from '../ui/controlsSeen.js';
 import { mitigateDamage } from '../utils/combat';
 import { computeEffective, deriveMaxStats, xpForLevel, levelAttributes } from '../game/progression.js';
 import { refundUnknownTalents, canUnlockTalent, respecTalents } from '../game/talentTree.js';
@@ -662,8 +663,11 @@ export const useGameStore = create((set, get) => ({
     // W3 M-HUD.9: the controls cheatsheet (CombatInstructions) is now a toggle/auto-fade, not always-on.
     // HUD auto-fades it after the first ~8s of play; H re-summons it (InputManager). Default false so the
     // deterministic visual capture (which never runs the fade timer) renders a clean, sheet-free HUD.
+    // The controls panel (H), generated from KEY_MAP; `controlsSeen` is whether this browser has opened it once.
     showControls: false,
     setShowControls: (v) => set({ showControls: v }),
+    controlsSeen: readControlsSeen(),
+    markControlsSeen: () => { writeControlsSeen(); set({ controlsSeen: true }); },
 
     selectedBlock: 'grass',
     setSelectedBlock: (block) => set({ selectedBlock: block }),

@@ -34,13 +34,14 @@ describe('isAnyPanelOpen — single source of truth for panel-open', () => {
     }
   });
 
-  it('is the COMPLETE set of 12 panels (catch a forgotten new panel)', () => {
+  it('is the COMPLETE set of 13 panels (catch a forgotten new panel)', () => {
     // W1: the auth panel was deleted (auth subsystem purge) -> the auth flag is gone.
-    // M-NARRATIVE.3: showQuestLog added (the quest LOG panel, L).
+    // M-NARRATIVE.3: showQuestLog added (the quest LOG panel, now the Journal's Quests tab).
     // 2026-10-27: showStats REMOVED — the F3 readout is not a panel (panelState.js header: it stranded a player on ESC).
+    // 2026-10-29: showControls added — H opens a controls panel with a scrim and a close button (the HUD lane).
     expect(PANEL_FLAGS).toEqual([
       'showInventory', 'showForge', 'showMagic', 'showBuildingTools', 'showSettings',
-      'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits', 'showQuestLog',
+      'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits', 'showQuestLog', 'showControls',
       'showSpellUpgrades', 'showAchievements',
     ]);
   });

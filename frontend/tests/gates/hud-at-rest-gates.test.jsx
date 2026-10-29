@@ -13,6 +13,7 @@ vi.mock('../../src/input/touchDevice', () => ({ isTouchUIMode: vi.fn(() => false
 import { isTouchUIMode } from '../../src/input/touchDevice';
 import { GameUI } from '../../src/ui/GameHud.jsx';
 import { TRAY_PANELS } from '../../src/ui/touchTray.js';
+import { PANEL_GROUPS } from '../../src/ui/panelGroups.js';
 import { HOTBAR_BLOCKS } from '../../src/world/Blocks';
 
 const HUD_STATE = {
@@ -34,8 +35,9 @@ describe('no side rail', () => {
     expect(rail.map((b) => b.getAttribute('aria-label') || b.textContent), 'a button beside Settings and the hotbar: the rail is back').toEqual([]);
   });
 
-  it('the rail\'s three panels are still a tap away on touch', () => {
-    expect(TRAY_PANELS.map((r) => r.show).filter(Boolean)).toEqual(expect.arrayContaining(['showInventory', 'showMagic', 'showBuildingTools']));
+  it('the rail\'s three panels are still a tap away on touch: gear and spells in Character, and Build', () => {
+    expect(TRAY_PANELS.map((r) => r.show).filter(Boolean)).toEqual(expect.arrayContaining(['showInventory', 'showBuildingTools']));
+    expect(PANEL_GROUPS.character.map((tab) => tab.flag)).toEqual(expect.arrayContaining(['showInventory', 'showMagic']));
   });
 });
 

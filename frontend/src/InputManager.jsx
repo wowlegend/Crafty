@@ -8,6 +8,7 @@ import { HOTBAR_BLOCKS } from './world/Blocks';
 import { getInput, setActive } from './input/inputState';
 import { isAnyPanelOpen } from './ui/panelState.js';
 import { talk, talkOpenedPanel } from './input/talk.js';
+import { toggleGroupTarget, panelWrites, applyPanelWrites } from './ui/panelGroups.js';
 
 const requestPointerLockSafely = (state) => {
   if (state.requestPointerLock) {
@@ -22,7 +23,7 @@ const requestPointerLockSafely = (state) => {
   }
 };
 
-export function useInputManager(gameState, gameSystems, questSystem) {
+export function useInputManager(gameState, gameSystems) {
   const [showStats, setShowStats] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
   const [showSpellUpgrades, setShowSpellUpgrades] = useState(false);
@@ -55,16 +56,16 @@ export function useInputManager(gameState, gameSystems, questSystem) {
   // Declared clean state-bound pointer lock requester
 
   // Keep latest values in refs to avoid rebinding event listener
-  const localRefs = useRef({ showStats, showAchievements, showSpellUpgrades, questSystem });
+  const localRefs = useRef({ showStats, showAchievements, showSpellUpgrades });
   useEffect(() => {
-    localRefs.current = { showStats, showAchievements, showSpellUpgrades, questSystem };
+    localRefs.current = { showStats, showAchievements, showSpellUpgrades };
   });
 
   useEffect(() => {
     const handleKeyDown = (event) => {
       const state = useGameStore.getState();
       const active = getInput().active;
-      const { showStats, showAchievements, showSpellUpgrades, questSystem } = localRefs.current;
+      const { showStats, showAchievements, showSpellUpgrades } = localRefs.current;
 
       // Show Stats is not a panel (ui/panelState.js): spells, claims and every other key act with the readout up.
       const anyPanelOpen = isAnyPanelOpen({ ...state, showAchievements, showSpellUpgrades });
@@ -80,6 +81,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           state.setShowBuildingTools(false);
           state.setShowSettings(false);
           state.setShowQuestLog(false);
+          state.setShowControls(false);
           state.setShowTradingInterface(false);
           state.setSelectedVillager(null);
           state.setShowChestInterface(false);
@@ -110,6 +112,9 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           state.setShowBuildingTools(false);
           state.setShowSettings(false);
           state.setShowQuestLog(false);
+          state.setShowControls(false);
+          setShowSpellUpgrades(false);
+          setShowAchievements(false);
 
           const newValue = !currentValue;
           setter(newValue);
@@ -123,10 +128,21 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           }
         };
 
-        if (event.code === 'KeyE') toggleUI(state.setShowInventory, state.showInventory);
         if (event.code === 'KeyB') toggleUI(state.setShowBuildingTools, state.showBuildingTools);
-        if (event.code === 'KeyM') toggleUI(state.setShowMagic, state.showMagic); // UX-legibility: the advertised M key now opens Magic (was an unhandled HUD lie)
-        if (event.code === 'KeyL') toggleUI(state.setShowQuestLog, state.showQuestLog); // M-NARRATIVE.3: the quest LOG (lore/giver/objective)
+        // Tab opens Character (gear, spells, talents) and J the Journal (quests, feats), each on its first tab, or closes
+        // the group when one of its tabs is up (ui/panelGroups.js). H opens the controls panel the same way.
+        const group = event.code === 'Tab' ? 'character' : event.code === 'KeyJ' ? 'journal' : null;
+        if (group || event.code === 'KeyH') {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          const flags = { ...state, showAchievements, showSpellUpgrades };
+          const target = group ? toggleGroupTarget(group, flags) : (state.showControls ? null : 'showControls');
+          applyPanelWrites(panelWrites(target), state, { setShowSpellUpgrades, setShowAchievements });
+          if (target === 'showControls') state.markControlsSeen?.();
+          if (target) document.exitPointerLock();
+          else requestPointerLockSafely(state);
+          return;
+        }
       }
 
       if (active && !anyPanelOpen) {
@@ -136,38 +152,9 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         if (event.code === 'Digit4') state.setActiveSpell('arcane');
       }
 
-      if (event.code === 'KeyQ' && active && !anyPanelOpen) {
-        event.preventDefault();
-        if (questSystem && questSystem.quests) {
-          questSystem.quests.forEach(quest => {
-            if (quest.progress >= quest.target && !quest.claimed) {
-              questSystem.claimQuest(quest.id);
-            }
-          });
-        }
-        return;
-      }
-
       if (event.key === 'F3') {
         setShowStats(!showStats);
         event.preventDefault();
-        return;
-      }
-
-      if (event.code === 'Tab' && (active || anyPanelOpen)) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        state.setShowInventory(false);
-        state.setShowForge(false);
-        state.setShowMagic(false);
-        state.setShowBuildingTools(false);
-        state.setShowSettings(false);
-        const newVal = !showAchievements;
-        setShowAchievements(newVal);
-        if (newVal) document.exitPointerLock();
-        if (!newVal) {
-          requestPointerLockSafely(state);
-        }
         return;
       }
 
@@ -179,31 +166,6 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         return;
       }
 
-      // W3 M-HUD.9: H toggles the controls cheatsheet (CombatInstructions), which is now auto-fade +
-      // on-demand rather than always-on. Gameplay-only (no panel open) so it never fights a panel hotkey.
-      if (event.code === 'KeyH' && active && !anyPanelOpen) {
-        event.preventDefault();
-        state.setShowControls(!state.showControls);
-        return;
-      }
-
-      if (event.code === 'KeyU' && (active || anyPanelOpen)) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        state.setShowInventory(false);
-        state.setShowForge(false);
-        state.setShowMagic(false);
-        state.setShowBuildingTools(false);
-        state.setShowSettings(false);
-        setShowAchievements(false);
-        const newVal = !showSpellUpgrades;
-        setShowSpellUpgrades(newVal);
-        if (newVal) document.exitPointerLock();
-        if (!newVal) {
-          requestPointerLockSafely(state);
-        }
-        return;
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown, { capture: true, passive: false });

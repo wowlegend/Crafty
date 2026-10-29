@@ -47,9 +47,11 @@ export function contextOptions(target) {
   return o;
 }
 
-/** Before any page script: skip the first-session toasts; on touch, remove Pointer Lock as iOS has none. */
+/** Before any page script: skip the first-session toasts and the first-run controls card (a returning player's screen at
+ *  rest is what the frames judge); on touch, remove Pointer Lock as iOS has none. */
 export function initScript(touch) {
   try { localStorage.setItem('crafty_onboarded', '1'); } catch { /* storage blocked: toasts may show */ }
+  try { localStorage.setItem('crafty_controls_seen', '1'); } catch { /* storage blocked: the controls card shows */ }
   if (touch) {
     delete Element.prototype.requestPointerLock;
     delete HTMLElement.prototype.requestPointerLock;

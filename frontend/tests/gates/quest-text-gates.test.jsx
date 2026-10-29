@@ -27,7 +27,7 @@ afterEach(() => { cleanup(); useGameStore.setState({ locale: 'en' }); });
 describe.each([
   // The tracker rests as one line (the HUD lane); opened, it lists every quest the way the log does.
   ['the HUD tracker, opened', (quests) => {
-    const r = render(<QuestTracker quests={quests} onClaim={() => {}} />);
+    const r = render(<QuestTracker quests={quests} />);
     fireEvent.click(screen.getByTestId('quest-tracker-line'));
     return r;
   }],
@@ -64,7 +64,7 @@ describe('the completion notice', () => {
     // The feed is topped up on load (QuestSystem.jsx fillFeed), so the same kill may finish First Blood beside it.
     const done = notices.filter((s) => s.startsWith('Quest Complete'));
     expect(done.length, `SETUP: the kill completed no quest (${JSON.stringify(notices)})`).toBeGreaterThan(0);
-    expect(done, 'the hunt\'s completion notice does not name the Husk').toContain('Quest Complete: Husk Slayer! Click Q to claim reward.');
+    expect(done, 'the hunt\'s completion notice does not name the Husk').toContain('Quest Complete: Husk Slayer!');
     expect(done.join(' '), 'a completion notice used the saved words').not.toMatch(/Zombie/);
   });
 });

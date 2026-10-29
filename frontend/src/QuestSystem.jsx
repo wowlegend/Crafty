@@ -303,7 +303,7 @@ export const useQuestSystem = () => {
             const nowComplete = newProgress >= quest.target;
 
             if (nowComplete && !quest.completed) {
-                addNotification(`Quest Complete: ${quest.title}! Click Q to claim reward.`, 'quest');
+                addNotification(`Quest Complete: ${quest.title}!`, 'quest');
                 if (window.playFanfare) window.playFanfare(); // reward beat: the completion is now HEARD, not just seen
             }
 
@@ -378,6 +378,13 @@ export const useQuestSystem = () => {
         if (r.item) parts.push(`+${r.item.count} ${r.item.item}`);
         if (parts.length) addNotification(`Quest reward: ${parts.join(', ')}!`, 'reward');
     }, [addNotification]);
+
+    // Quests claim themselves on completion (the HUD lane, DECISIONS 2026-10-29 item 96): there is no claim key or button
+    // any more. claimQuest reduces from the live refs and reduceClaim is still the only payer, so two quests completing
+    // in one tick each pay once, and a quest already claimed is a no-op.
+    useEffect(() => {
+        for (const q of quests) if (q.completed && !q.claimed) claimQuest(q.id);
+    }, [quests, claimQuest]);
 
     /**
      * Apply a stat delta, then check achievements ONCE.
@@ -511,7 +518,7 @@ export const useQuestSystem = () => {
 /** The quest the one-line tracker shows: the first not yet claimed (a completed one waits there for its claim). */
 export const leadQuest = (quests) => (quests || []).find((q) => !q.claimed) || null;
 
-const QuestRow = ({ quest, t, locale, touch, onClaim }) => (
+const QuestRow = ({ quest, t, locale }) => (
     <div className="relative">
         <div className="flex items-start justify-between">
             <div className="flex-1 mr-2">
@@ -521,11 +528,6 @@ const QuestRow = ({ quest, t, locale, touch, onClaim }) => (
                 </div>
                 <div className="text-text-muted text-xs">{questDescription(t, locale, quest)}</div>
             </div>
-            {quest.completed && !quest.claimed && (
-                <Button variant="primary" size={null} onClick={() => onClaim(quest.id)} className="gap-2 px-2 py-0.5 text-xs">
-                    {touch ? 'Claim' : 'Press Q'}
-                </Button>
-            )}
         </div>
         {/* Progress bar — bold-flat inset track + flat fill */}
         <div className="mt-1 h-2 bg-track rounded-sm border-chrome border-ink overflow-hidden">
@@ -547,8 +549,8 @@ const QuestRow = ({ quest, t, locale, touch, onClaim }) => (
 // ONE OBJECTIVE LINE AT REST (the HUD lane's task script, decision 3). The tracker was a 280 px panel of three quests
 // with progress bars, always open on desktop: about a tenth of a 1280x800 frame. It now rests as one line on every device
 // (the lead quest's title, its objective and its count) and opens to the full list on its chevron, a tap, or the
-// pointer resting over it. A completed quest's claim button stays beside the line.
-export const QuestTracker = React.memo(({ quests, onClaim }) => {
+// pointer resting over it. A quest claims itself when it completes, so nothing here waits on a key.
+export const QuestTracker = React.memo(({ quests }) => {
     const touch = isTouchUIMode();
     const [pinned, setPinned] = useState(false);
     const [hovered, setHovered] = useState(false);
@@ -583,11 +585,6 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
                         {lead && !expanded && <span className="flex-none text-xs tabular-nums text-text-muted">{lead.progress}/{lead.target}</span>}
                         <Icon name="chevron" size={12} className={`flex-none text-text-muted transition-transform ${expanded ? 'rotate-90' : ''}`} />
                     </button>
-                    {lead && lead.completed && !lead.claimed && !expanded && (
-                        <Button variant="primary" size={null} onClick={() => onClaim(lead.id)} className="flex-none mr-1.5 px-2 py-0.5 text-xs">
-                            {touch ? 'Claim' : 'Press Q'}
-                        </Button>
-                    )}
                 </div>
 
                 <AnimatePresence>
@@ -601,7 +598,7 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
                             className="px-3 py-2 space-y-2 border-t-chrome border-ink overflow-hidden"
                         >
                             {quests.map((quest) => (
-                                <QuestRow key={quest.id} quest={quest} t={t} locale={locale} touch={touch} onClaim={onClaim} />
+                                <QuestRow key={quest.id} quest={quest} t={t} locale={locale} />
                             ))}
                             {quests.length === 0 && (
                                 <div className="flex items-center justify-center gap-1.5 text-text-muted text-xs text-center py-2">

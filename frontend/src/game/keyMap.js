@@ -11,37 +11,35 @@
 //   • `code` rows are keydown-handled — the anti-drift gate asserts each appears LIVE in a handler.
 //   • Move / mouse / wheel rows are informational (no `code`).
 //   • the four signature Aspect verbs carry `verb` (a live INTENT_KEYS intent) + `talent` (its unlock).
-// EN-first; route `label` through t() for the zh-CN toggle later (#73).
+// `labelKey` is what the controls panel shows, through t(); `label` is the English the gates and the source read.
 export const KEY_MAP = [
   // --- Move (continuous intents, Components keydown) ---
-  { key: 'WASD',  label: 'Move',                    group: 'Move' },
-  { key: 'Space', label: 'Jump',                    group: 'Move' },
-  { key: 'Shift', label: 'Dodge-roll (at a lunge: perfect)', group: 'Move' },
+  { key: 'WASD',  label: 'Move',                    labelKey: 'controls.move',   group: 'Move' },
+  { key: 'Space', label: 'Jump',                    labelKey: 'controls.jump',   group: 'Move' },
+  { key: 'Shift', label: 'Dodge-roll (at a lunge: perfect)', labelKey: 'controls.dodge', group: 'Move' },
   // --- Combat ---
-  { key: 'LMB',   label: 'Attack (hold: heavy) / mine', group: 'Combat' },
-  { key: 'RMB',   label: 'Cast / place / interact',  group: 'Combat' },
-  { key: 'F',     code: 'KeyF', label: 'Cast spell', group: 'Combat' },
-  { key: 'T',     code: 'KeyT', label: 'Melee (hold: heavy)', group: 'Combat' },
-  { key: '1–4',   label: 'Select spell',            group: 'Combat' },
-  { key: 'Wheel', label: 'Cycle block',             group: 'Combat', panelHide: true },
+  { key: 'LMB',   label: 'Attack (hold: heavy) / mine', labelKey: 'controls.attack', group: 'Combat' },
+  { key: 'RMB',   label: 'Cast / place / interact',  labelKey: 'controls.use',    group: 'Combat' },
+  { key: 'F',     code: 'KeyF', label: 'Cast spell', labelKey: 'controls.cast',   group: 'Combat' },
+  { key: 'T',     code: 'KeyT', label: 'Melee (hold: heavy)', labelKey: 'controls.melee', group: 'Combat' },
+  { key: '1–4',   label: 'Select spell',            labelKey: 'controls.spell',  group: 'Combat' },
+  { key: 'Wheel', label: 'Cycle block',             labelKey: 'controls.wheel',  group: 'Combat', panelHide: true },
   // --- Aspects (the signature identity — R/V/X/Z) ---
-  { key: 'R', code: 'KeyR', verb: 'roar',  talent: 'wildheart_roar',  label: 'WILDHEART — roar',        group: 'Aspects' },
-  { key: 'V', code: 'KeyV', verb: 'grab',  talent: 'voidhand_grasp',  label: 'VOIDHAND — grab & hurl',  group: 'Aspects' },
-  { key: 'X', code: 'KeyX', verb: 'snare', talent: 'soulbind_snare',  label: 'SOULBIND — snare & fuse', group: 'Aspects' },
-  { key: 'Z', code: 'KeyZ', verb: 'imbue', talent: 'elemancer_imbue', label: 'ELEMANCER — imbue cast',  group: 'Aspects' },
-  // --- Panels ---
-  { key: 'E',   code: 'KeyE',   label: 'Inventory',              group: 'Panels' },
-  { key: 'M',   code: 'KeyM',   label: 'Magic',                  group: 'Panels' },
-  { key: 'B',   code: 'KeyB',   label: 'Building',               group: 'Panels' },
-  { key: 'U',   code: 'KeyU',   label: 'Talents & Aspect guide', group: 'Panels' },
-  { key: 'G',   code: 'KeyG',   label: 'Talk (Mara: the Forge) / open chest', group: 'Panels' },
-  { key: 'L',   code: 'KeyL',   label: 'Quest log',              group: 'Panels' },
-  { key: 'Q',   code: 'KeyQ',   label: 'Claim completed quests', group: 'Panels' },
-  { key: 'H',   code: 'KeyH',   label: 'Toggle controls',        group: 'Panels' },
-  { key: 'Tab', code: 'Tab',    label: 'Achievements',           group: 'Panels', panelHide: true },
-  { key: 'F3',  code: 'F3',     label: 'Show stats',             group: 'Panels', panelHide: true },
-  { key: 'ESC', code: 'Escape', label: 'Settings / pause',       group: 'Panels' },
+  { key: 'R', code: 'KeyR', verb: 'roar',  talent: 'wildheart_roar',  label: 'WILDHEART — roar',        labelKey: 'controls.roar',  group: 'Aspects' },
+  { key: 'V', code: 'KeyV', verb: 'grab',  talent: 'voidhand_grasp',  label: 'VOIDHAND — grab & hurl',  labelKey: 'controls.grab',  group: 'Aspects' },
+  { key: 'X', code: 'KeyX', verb: 'snare', talent: 'soulbind_snare',  label: 'SOULBIND — snare & fuse', labelKey: 'controls.snare', group: 'Aspects' },
+  { key: 'Z', code: 'KeyZ', verb: 'imbue', talent: 'elemancer_imbue', label: 'ELEMANCER — imbue cast',  labelKey: 'controls.imbue', group: 'Aspects' },
+  // --- Panels: three where there were seven (the HUD lane, DECISIONS 2026-10-29 item 96) ---
+  { key: 'Tab', code: 'Tab',    label: 'Character: gear, spells, talents', labelKey: 'controls.character', group: 'Panels' },
+  { key: 'J',   code: 'KeyJ',   label: 'Journal: quests, feats',           labelKey: 'controls.journal',   group: 'Panels' },
+  { key: 'B',   code: 'KeyB',   label: 'Build',                            labelKey: 'controls.build',     group: 'Panels' },
+  { key: 'G',   code: 'KeyG',   label: 'Talk (Mara: the Forge) / open chest', labelKey: 'controls.talk',   group: 'Panels' },
+  { key: 'H',   code: 'KeyH',   label: 'Controls',                         labelKey: 'controls.controls',  group: 'Panels' },
+  { key: 'F3',  code: 'F3',     label: 'Show stats',                       labelKey: 'controls.stats',     group: 'Panels', panelHide: true },
+  { key: 'ESC', code: 'Escape', label: 'Settings / pause',                 labelKey: 'controls.pause',     group: 'Panels' },
 ];
 
 // Display order of the groups in the controls panel.
 export const KEY_GROUPS = ['Move', 'Combat', 'Aspects', 'Panels'];
+/** Each group's heading key, for the controls panel. */
+export const KEY_GROUP_LABEL_KEYS = { Move: 'controls.group.move', Combat: 'controls.group.combat', Aspects: 'controls.group.aspects', Panels: 'controls.group.panels' };

@@ -75,9 +75,11 @@ test('30 fps behind a panel, 10 unfocused, 60 otherwise, and never paced under c
   await page.keyboard.press('F3');
   await settle();
 
-  // A React-LOCAL panel (InputManager's useState, not the store): achievements, on Tab while in play (InputManager.jsx).
-  // Last before capture, because closing it asks for the pointer lock back, which a headless page refuses.
-  await page.keyboard.press('Tab');
+  // A React-LOCAL panel (InputManager's useState, not the store): the Journal's feats tab, opened by J and a click on the
+  // tab (the HUD lane folded the Tab achievements panel into the Journal). Last before capture, because closing it asks
+  // for the pointer lock back, which a headless page refuses.
+  await page.keyboard.press('KeyJ');
+  await page.getByTestId('panel-tab-feats').click();
   await settle();
   const achievements = await loop();
   const achievementsOpen = await page.evaluate(() => !!document.querySelector('[role="dialog"][aria-label="Achievements"]'));
@@ -91,7 +93,7 @@ test('30 fps behind a panel, 10 unfocused, 60 otherwise, and never paced under c
   console.log(`canvas-pace-panels: ${where}`);
   expect(inventory, `not paced behind the inventory: ${where}`).toEqual({ loop: 'demand', fps: 30 });
   expect(closed, `still paced after the inventory closed: ${where}`).toEqual({ loop: 'demand', fps: 60 });
-  expect(achievementsOpen, `SETUP: Tab did not open the achievements panel — the React-local case was not exercised: ${where}`).toBe(true);
+  expect(achievementsOpen, `SETUP: J and the feats tab did not open the achievements panel — the React-local case was not exercised: ${where}`).toBe(true);
   expect(achievements, `not paced behind the achievements panel: ${where}`).toEqual({ loop: 'demand', fps: 30 });
   expect(blurred, `not paced in an unfocused window: ${where}`).toEqual({ loop: 'demand', fps: 10 });
   expect(refocused, `still paced after the window regained focus: ${where}`).toEqual({ loop: 'demand', fps: 60 });

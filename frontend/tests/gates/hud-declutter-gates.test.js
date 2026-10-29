@@ -21,24 +21,15 @@ describe('hud declutter gates', () => {
     expect(read('HUD.jsx').length, 'HUD.jsx read as empty — the exclusions are vacuous').toBeGreaterThan(2000);
   });
 
-  it('CombatInstructions is gated on a showControls store flag (not always-on)', () => {
-    const hud = read('HUD.jsx');
-    expect(hud).toMatch(/showControls.*CombatInstructions|CombatInstructions.*showControls/s);
-    expect(read('store/useGameStore.jsx')).toMatch(/showControls:/);
+  it('the controls are a panel (showControls, a store flag) and the HUD mounts the first-run card, not an always-on sheet', () => {
+    // The panel's behaviour (what H opens, what it lists, when the card and hint leave) is driven in
+    // controls-panel-gates.test.jsx; this pins only that the HUD mounts the until-seen card as a JSX element.
+    expect(read('HUD.jsx')).toMatch(/<ControlsCardUntilSeen\b/);
+    expect(read('store/useGameStore.jsx')).toMatch(/\bshowControls:/);
   });
-  it('H TOGGLES the controls sheet — the handler, not the token', () => {
-    // `/KeyH/` matched the string appearing anywhere in a 900-line file, including in the comment
-    // listing the keybinds. Anchored to the comparison form AND to the toggle it performs, so a keybind
-    // that is advertised but wired to nothing reds — which is exactly how two live keybinds once shipped
-    // advertised nowhere, and its mirror image, advertised and dead, fails the same way.
-    const im = strip(read('InputManager.jsx'));
-    expect(im, 'H is no longer bound').toMatch(/code === 'KeyH'/);
-    // WORD-BOUNDED. Without \b this matched `showControlsX` — a mutation renaming the toggle away left
-    // the gate green, because the mutated identifier still CONTAINS the original. That is the second
-    // time this exact prefix defect appeared in one session (the first: `.hostileChance` matching
-    // `.hostileChanceX` in siege-gates), which is enough to call it a habit rather than a slip.
-    expect(im, 'H is bound but toggles nothing').toMatch(/KeyH'[\s\S]{0,200}?\b(showControls|setShowControls)\b/);
-  });
+  // 'H toggles the controls sheet' was a source-text case here; H is now driven through the real key handler in
+  // tests/integration/menu-panel-interaction.test.jsx and tests/gates/controls-panel-gates.test.jsx (it opens the
+  // controls panel and marks it seen), which a regex over InputManager.jsx could only approximate.
   it('the standalone top-center spell label band is removed (folded into the action bar)', () => {
     const hud = read('HUD.jsx');
     // the old persistent band read "Spell: " in a centered Panel; assert it is gone

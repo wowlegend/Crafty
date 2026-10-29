@@ -463,7 +463,7 @@ export const MagicSystem = ({ onClose }) => {
     ];
 
     return (
-        <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label={t('panel.magicSpells')} onClose={onClose}>
+        <Modal testId="magic-panel" className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label={t('panel.magicSpells')} onClose={onClose}>
             <Panel
                 variant="raise"
                 shadow="shadow-elev-xl"
@@ -540,7 +540,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
     }, [selectedTool, buildSize, gameState.selectedBlock]);
 
     return (
-        <Modal className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Building Tools" onClose={onClose}>
+        <Modal testId="building-panel" className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Building Tools" onClose={onClose}>
             <Panel
                 variant="raise"
                 shadow="shadow-elev-xl"

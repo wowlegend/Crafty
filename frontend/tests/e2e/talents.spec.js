@@ -280,21 +280,23 @@ test.describe('talents', () => {
     expect(start, 'SETUP: the seeded player is not level 1 with the roar alone').toMatchObject({ level: 1, talentPoints: 0, talents: { wildheart_roar: 1 } });
     expect(start.roarSec, 'SETUP: the roar is not at its base length').toBe(FORM_DURATION_SEC);
 
-    // 1. THE REMOVED SURFACES ARE GONE. The Inventory on E, the Talents page on U, each closed the way it opened.
-    await page.keyboard.press('e');
-    await expect(page.getByTestId('inventory-modal'), 'E did not open the Inventory').toBeVisible({ timeout: 15000 });
+    // 1. THE REMOVED SURFACES ARE GONE. The Inventory on Tab (Character's gear tab), the Talents page on Character's
+    // Talents tab, each closed by Tab again (the HUD lane folded E and U into Character).
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('inventory-modal'), 'Tab did not open the Inventory').toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('relic-slot'), 'the Inventory has no relic slot').toBeVisible();
     await expect(page.getByTestId('alloc-strength'), 'the Inventory still offers to allocate a point').toHaveCount(0);
     await expect(page.getByText(/Core Attributes/i)).toHaveCount(0);
-    await page.keyboard.press('e');
+    await page.keyboard.press('Tab');
     await expect(page.getByTestId('inventory-modal')).toHaveCount(0);
     await startPlayActive(page);
-    await page.keyboard.press('u');
-    await expect(page.getByTestId('progression-panel'), 'U did not open the Talents page').toBeVisible({ timeout: 15000 });
+    await page.keyboard.press('Tab');
+    await page.getByTestId('panel-tab-talents').click();
+    await expect(page.getByTestId('progression-panel'), 'Character\'s Talents tab did not open the Talents page').toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/Spell Mastery/i), 'the Talents page still has Spell Mastery').toHaveCount(0);
     await expect(page.getByTestId('talent-take-wildheart_endurance'), 'SETUP: Primal Endurance offers no button').toBeVisible();
     await expect(page.getByTestId('talent-take-wildheart_endurance'), 'Primal Endurance can be taken with no point').toBeDisabled();
-    await page.keyboard.press('u');
+    await page.keyboard.press('Tab');
     await expect(page.getByTestId('progression-panel')).toHaveCount(0);
     await startPlayActive(page);
 
@@ -336,8 +338,9 @@ test.describe('talents', () => {
 
     // 4. THE POINTS ON A VERB TALENT, by real clicks on the Talents page: the level's point, then the two seeded beside it
     // that take the rank to its limit (the header says why the limit).
-    await page.keyboard.press('u');
-    await expect(page.getByTestId('progression-panel'), 'U did not reopen the Talents page').toBeVisible({ timeout: 15000 });
+    await page.keyboard.press('Tab');
+    await page.getByTestId('panel-tab-talents').click();
+    await expect(page.getByTestId('progression-panel'), 'Character\'s Talents tab did not reopen the Talents page').toBeVisible({ timeout: 15000 });
     const take = page.getByTestId('talent-take-wildheart_endurance');
     await expect(take, 'Primal Endurance cannot be taken with the point').toBeEnabled();
     await take.click();
@@ -354,7 +357,7 @@ test.describe('talents', () => {
     const maxed = await S();
     expect(maxed.talentPoints, 'the ranks did not cost a point each').toBe(0);
     expect(maxed.roarSec, `the store does not say the roar lasts ${LONGER_SEC} s at rank ${ENDURANCE_RANKS}`).toBe(LONGER_SEC);
-    await page.keyboard.press('u');
+    await page.keyboard.press('Tab');
     await expect(page.getByTestId('progression-panel')).toHaveCount(0);
     await startPlayActive(page);
 

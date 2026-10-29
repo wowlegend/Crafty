@@ -6,6 +6,7 @@ import { useT } from '../i18n/i18n.js';
 import { motion } from 'framer-motion';
 import { Panel, Slot, Button, Icon } from './primitives/index.js';
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from '../world/Blocks';
+import { ControlsHint } from './CombatInstructions.jsx';
 
 // X3 — FIXED 2026-08-05, and CONFIRMED by a lived browser run before the fix was written.
 //
@@ -44,7 +45,7 @@ const XpEdge = ({ level, xpProgress }) => {
   );
 };
 
-const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
+const MinecraftHotbar = React.memo(({ gameState, level, xpProgress, controlsHint }) => {
   if (!gameState) return null;
   // B7 (18-domain review): the 9-slot hotbar (9 × w-[62px] + gaps + padding ≈ 622px) overflowed a phone
   // viewport — ~2 slots ran off each edge, unreachable in a voxel BUILDING game. Scale it down to fit on
@@ -52,6 +53,7 @@ const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
   return (
     <div data-hud-interactive data-testid="hotbar" className="absolute bottom-4 left-1/2 transform -translate-x-1/2 origin-bottom max-[640px]:scale-[0.56] pointer-events-auto">
       {level != null && <XpEdge level={level} xpProgress={xpProgress} />}
+      {controlsHint && <ControlsHint />}
       <Panel variant="base" className="flex gap-2 p-2.5">
         {HOTBAR_BLOCKS.map((blockType, index) => {
           const blockConfig = BLOCK_TYPES[blockType];
@@ -91,7 +93,7 @@ const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
   );
 });
 
-export const GameUI = ({ gameState, level, xpProgress }) => {
+export const GameUI = ({ gameState, level, xpProgress, controlsHint = false }) => {
   const t = useT();
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 pointer-events-none z-20">
@@ -102,7 +104,7 @@ export const GameUI = ({ gameState, level, xpProgress }) => {
           </Button>
         </div>
       </div>
-      <MinecraftHotbar gameState={gameState} level={level} xpProgress={xpProgress} />
+      <MinecraftHotbar gameState={gameState} level={level} xpProgress={xpProgress} controlsHint={controlsHint} />
     </motion.div>
   );
 };
