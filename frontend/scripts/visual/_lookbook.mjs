@@ -277,6 +277,12 @@ function offStand(body, stand, when) {
   return d <= STAND_TOLERANCE_M ? null : `the body ${Number.isFinite(d) ? d.toFixed(2) : '?'} m from the stand ${when}`;
 }
 
+/** The hands' node count from a seam info() reading: the viewmodel's `handNodes` where the build reports it, else the
+ *  camera's subtree, where a build from before the viewmodel hung the hands. */
+export function handCount(info) {
+  return info?.handNodes ?? info?.cameraNodes;
+}
+
 /** Why a heading reading is not the asked-for bearing, or null. */
 function offHeading(reading, heading, when) {
   const at = Number(reading);
@@ -286,10 +292,10 @@ function offHeading(reading, heading, when) {
 
 /**
  * Whether an eye-level shot shows what a player sees: everything shotVerdict asks, plus no hero pose pinned, no
- * hostile in the player's face, the hands on the camera (more nodes on it than the same page measured with them
- * hidden: `handsBaseline`), the HUD on screen, the body where it was stood (`stand`, the resting body read once per
- * target), and the camera facing the asked-for bearing. A frame that passes still wants looking at: the hands count
- * says they are mounted, not that they are inside the frame.
+ * hostile in the player's face, the hands mounted (more hand nodes than the same page measured with them hidden:
+ * `handsBaseline`), the HUD on screen, the body where it was stood (`stand`, the resting body read once per target),
+ * and the camera facing the asked-for bearing. A frame that passes still wants looking at: the hands count says they
+ * are mounted, not that they are inside the frame.
  */
 export function eyeShotVerdict({ cycle, heading, stand, before, after, handsBaseline, hud }) {
   const why = [...shotVerdict({ cycle, before, after }).why];
@@ -297,8 +303,9 @@ export function eyeShotVerdict({ cycle, heading, stand, before, after, handsBase
   const near = after?.hostiles?.nearestM;
   if (!after?.hostiles) why.push('hostiles not checked');
   else if (near != null && near < OBSTRUCTION_M) why.push(`a hostile ${near.toFixed(1)} m from the eye: a fight, not the view`);
+  const hands = handCount(after);
   if (!Number.isFinite(handsBaseline)) why.push('hands not checked: no baseline with them hidden');
-  else if (!(after?.cameraNodes > handsBaseline)) why.push(`hands not on the camera (${after?.cameraNodes} nodes; ${handsBaseline} with them hidden)`);
+  else if (!(hands > handsBaseline)) why.push(`hands not mounted (${hands} nodes; ${handsBaseline} with them hidden)`);
   if (hud !== true) why.push('HUD not on screen');
   const stood = offStand(after?.body, stand, 'at the shot');
   if (stood) why.push(stood);
@@ -587,6 +594,64 @@ export function shotVerdict({ cycle, before, after }) {
 
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
+
+/**
+ * THE HANDS SET (plan docs/superpowers/plans/2026-10-29-crafty-w2e-hands.md). At each time the player's eye is shot
+ * with the hands on, then twice more through a pose at that exact eye and direction (a pose hides the hands). A hand
+ * pixel lies below `fromY` of the frame, differs from the first hidden frame by more than `threshold` in some 8-bit
+ * channel, and is STABLE: the two hidden frames agree there within `threshold / 2`, so grass sway, motes and cloud
+ * drift between the shots are not counted as hands. The HUD is in every frame and drops out.
+ */
+export const HAND_MASK = Object.freeze({ threshold: 24, fromY: 0.55, minShare: 0.015 });
+/** The bearing the hands set faces: Old Pike's tower over open meadow, ground under the hands. */
+export const HANDS_HEADING = 240;
+
+/**
+ * Hand-pixel statistics over three RGBA8 frames of `width` x `height`: `on` (hands shown), `off` and `off2` (hidden).
+ * Luma is Rec. 709 weights on the encoded 8-bit values of `on`. Returns the mask's size and the denominator it was
+ * drawn from, the mean and median luma, the mean colour, the hand pixels in the frame's left and right halves, and
+ * how many pixels were dropped as unstable.
+ */
+export function handPixelStats(on, off, off2, { width, height, threshold = HAND_MASK.threshold, fromY = HAND_MASK.fromY } = {}) {
+  const n = width * height * 4;
+  if (!(width > 0 && height > 0) || on.length !== n || off.length !== n || off2.length !== n) {
+    throw new RangeError(`handPixelStats: three ${width}x${height} RGBA frames needed, got ${on.length}, ${off.length}, ${off2.length} bytes`);
+  }
+  const hist = new Uint32Array(256);
+  let pixels = 0, unstable = 0, r = 0, g = 0, b = 0, left = 0, right = 0;
+  const y0 = Math.floor(height * fromY);
+  for (let y = y0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const d = Math.max(Math.abs(on[i] - off[i]), Math.abs(on[i + 1] - off[i + 1]), Math.abs(on[i + 2] - off[i + 2]));
+      if (d <= threshold) continue;
+      const noise = Math.max(Math.abs(off[i] - off2[i]), Math.abs(off[i + 1] - off2[i + 1]), Math.abs(off[i + 2] - off2[i + 2]));
+      if (noise > threshold / 2) { unstable += 1; continue; }
+      pixels += 1;
+      r += on[i]; g += on[i + 1]; b += on[i + 2];
+      hist[Math.round(0.2126 * on[i] + 0.7152 * on[i + 1] + 0.0722 * on[i + 2])] += 1;
+      if (x < width / 2) left += 1; else right += 1;
+    }
+  }
+  let median = null;
+  if (pixels > 0) {
+    let seen = 0;
+    for (let v = 0; v < 256; v++) { seen += hist[v]; if (seen * 2 >= pixels) { median = v; break; } }
+  }
+  const checked = (height - y0) * width;
+  return {
+    pixels, checked, share: pixels / (width * height), unstable, left, right,
+    meanLuma: pixels ? (0.2126 * r + 0.7152 * g + 0.0722 * b) / pixels : null,
+    medianLuma: median,
+    meanRGB: pixels ? [r / pixels, g / pixels, b / pixels] : null,
+  };
+}
+
+/** The unit vector a camera at compass `heading` (0 north = -Z, 90 east = +X) and `pitch` (degrees, up positive) faces. */
+export function facing(heading, pitch = 0) {
+  const h = (heading * Math.PI) / 180, p = (pitch * Math.PI) / 180;
+  return [Math.sin(h) * Math.cos(p), Math.sin(p), -Math.cos(h) * Math.cos(p)];
+}
 
 /**
  * The contact sheet: one section per target (its renderer, classified, and any COULD NOT MEASURE notes), one figure

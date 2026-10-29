@@ -91,7 +91,9 @@ import {
   passWindowPlan, windowMedian, passDifferential, passVerdict, admittedInstruments, PASS_CONTROL, parseGpuUtil, gpuMsPerFrame,
   altDifferential,
   MATERIAL_SIGHT_KINDS, MATERIAL_STAND_M, MATERIAL_MIN_M, materialShotPlan, findMaterialSights, aimAt,
+  HAND_MASK, HANDS_HEADING, handPixelStats, facing, handCount,
 } from './_lookbook.mjs';
+import { PNG } from 'pngjs';
 
 const PORT = probePort(import.meta.url);
 const arg = (k, d) => {
@@ -118,7 +120,7 @@ const PASS_TIMES_RUN = (() => {
 const HEADED = flag('--headed');
 const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
-const SETS_KNOWN = ['hero', 'eye', 'clips', 'material'];
+const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands'];
 const SETS = arg('--sets', 'hero,eye,clips').split(',');
 // --cycles: the times to shoot (dawn-origin fractions), for a before/after at hours the programme's four do not cover.
 let CYCLES;
@@ -298,18 +300,19 @@ async function restingBody(page) {
 }
 
 /**
- * The camera's node count with the hands hidden (posed) and back (cleared), measured in this page: the eye verdict's
- * baseline, because the camera carries other children (the audio listener) and the hands' own count varies by item.
+ * The hands' node count (_lookbook.mjs handCount) with the hands hidden (posed) and back (cleared), measured in this
+ * page: the eye verdict's baseline, because an older build hangs the hands on the camera beside its other children
+ * (the audio listener), and the hands' own count varies by item.
  */
 async function handsBaseline(page) {
-  const free = (await info(page)).cameraNodes;
+  const free = handCount(await info(page));
   const at = LOOKBOOK_PLACES[0];
   await page.evaluate((p) => window.__craftyLookbook.pose(p), { position: at.position, lookAt: at.lookAt });
   await delay(800);
-  const hidden = (await info(page)).cameraNodes;
+  const hidden = handCount(await info(page));
   await page.evaluate(() => window.__craftyLookbook.clear());
   await delay(1200);
-  const back = (await info(page)).cameraNodes;
+  const back = handCount(await info(page));
   return { free, hidden, back };
 }
 
@@ -348,7 +351,8 @@ async function holdActive(page) {
 
 async function shootTarget(target, launchOpts, launchId) {
   const report = { id: target.id, engine: target.engine, launch: launchId, renderer: null, gpu: 'unknown', entry: null,
-    shots: [], eye: [], clips: [], material: [], sights: null, stand: null, hands: null, notes: [], respawns: 0, console: {},
+    shots: [], eye: [], clips: [], material: [], handShots: [], pointBlank: null, sights: null, stand: null, hands: null, notes: [],
+    respawns: 0, console: {},
     pageErrors: [] };
   const dir = join(OUT, target.id);
   mkdirSync(dir, { recursive: true });
@@ -417,7 +421,7 @@ async function shootTarget(target, launchOpts, launchId) {
 
     // The eye set and the clips go first: after the hero set's night shots, the night's mobs crowd the player at the
     // Hearth and the eye frames show a mob at arm's length instead of the world.
-    if (SETS.includes('eye') || SETS.includes('material') || (SETS.includes('clips') && target.engine === 'chromium')) {
+    if (SETS.includes('eye') || SETS.includes('material') || SETS.includes('hands') || (SETS.includes('clips') && target.engine === 'chromium')) {
       report.hands = await handsBaseline(page);
       await respawnIfDead(page, report);
       report.stand = await restingBody(page);
@@ -453,6 +457,95 @@ async function shootTarget(target, launchOpts, launchId) {
         headingAtShot: after.heading, pitch: after.pitch, eye: after.eye, body: after.body, cameraNodes: after.cameraNodes,
         hostiles: after.hostiles, cleared,
         eyeAboveBody: after.eye && after.body ? Math.round((after.eye[1] - after.body[1]) * 1000) / 1000 : null });
+    }
+
+    // THE HANDS SET (_lookbook.mjs handPixelStats): the eye with the hands, then two frames through a pose at the same
+    // eye and direction, which hides them. The pose twin must face where the eye did, or the pair is refused.
+    const shootHands = async (label, cycle) => {
+      const t0 = Date.now();
+      await clearHostiles(page);
+      await play(page);
+      await setCycle(page, cycle);
+      await delay(EYE_FRAME_MS);
+      const a = await info(page);
+      const onBuf = await page.screenshot();
+      const f = facing(a.heading, a.pitch ?? 0);
+      const at = [a.eye[0] + f[0] * 10, a.eye[1] + f[1] * 10, a.eye[2] + f[2] * 10];
+      await page.evaluate((p) => window.__craftyLookbook.pose(p), { position: a.eye, lookAt: at });
+      await delay(800);
+      const offBuf = await page.screenshot();
+      const b = await info(page);
+      await delay(400);
+      const off2Buf = await page.screenshot();
+      await page.evaluate(() => window.__craftyLookbook.clear());
+      await delay(1200);
+      const [on, off, off2] = [onBuf, offBuf, off2Buf].map((x) => PNG.sync.read(x));
+      const stats = handPixelStats(on.data, off.data, off2.data, { width: on.width, height: on.height });
+      const why = [];
+      if (!a.isAlive) why.push('player dead');
+      if (Math.abs((a.cycle ?? NaN) - cycle) > CYCLE_TOLERANCE) why.push(`clock at ${a.cycle}, asked ${cycle}`);
+      const turn = Math.abs((((b.heading - a.heading) % 360) + 540) % 360 - 180);
+      if (!(turn <= 0.5)) why.push(`pose twin faced ${b.heading}, the eye ${a.heading}`);
+      if (Number.isFinite(a.pitch) && Number.isFinite(b.pitch) && Math.abs(a.pitch - b.pitch) > 0.5) why.push(`pose twin pitch ${b.pitch}, the eye ${a.pitch}`);
+      const hidden = report.hands?.hidden;
+      if (!(handCount(a) > hidden)) why.push(`hands not mounted at the eye (${handCount(a)} nodes; ${hidden} hidden)`);
+      if (!(handCount(b) <= hidden)) why.push(`hands still mounted in the pose twin (${handCount(b)} nodes)`);
+      if (stats.share < HAND_MASK.minShare) why.push(`COULD NOT MEASURE: ${stats.pixels} hand pixels, under ${HAND_MASK.minShare * 100}% of the frame`);
+      writeFileSync(join(dir, `hands-${label}.png`), onBuf);
+      writeFileSync(join(dir, `hands-${label}-hidden.png`), offBuf);
+      const errs = log.filter((e) => e.t >= t0 && e.type !== 'warning');
+      const shot = { label, cycle, cycleAtShot: a.cycle, heading: a.heading, pitch: a.pitch, twinHeading: b.heading,
+        eye: a.eye, body: a.body, eyeAboveBody: a.eye && a.body ? Math.round((a.eye[1] - a.body[1]) * 1000) / 1000 : null,
+        handNodes: handCount(a), twinHandNodes: handCount(b), size: [on.width, on.height], valid: why.length === 0, why,
+        consoleErrors: errs.length, ...stats };
+      report.handShots.push(shot);
+      const n = (v) => (v == null ? '?' : v.toFixed(1));
+      console.log(`lookbook hands ${target.id} ${label}: ${stats.pixels} px (${(stats.share * 100).toFixed(1)}%, ${stats.unstable} unstable) `
+        + `mean ${n(stats.meanLuma)} median ${stats.medianLuma ?? '?'} rgb ${stats.meanRGB ? stats.meanRGB.map((x) => x.toFixed(0)).join('/') : '?'} `
+        + `L/R ${stats.left}/${stats.right}${why.length ? ` INVALID: ${why.join('; ')}` : ''}`);
+      return shot;
+    };
+
+    for (const c of SETS.includes('hands') && report.stand ? CYCLES : []) {
+      await respawnIfDead(page, report);
+      await page.evaluate((p) => window.__craftyLookbook.stand(p), { position: report.stand });
+      await page.evaluate((h) => window.__craftyLookbook.look(h), { heading: HANDS_HEADING, pitch: 0 });
+      await setCycle(page, c);
+      await delay(SETTLE_MS);
+      await shootHands(c.toFixed(2), c);
+    }
+
+    // POINT BLANK: the hands at a wall. The player is stood at the turf-wall sight, shot there, then walks into the
+    // wall with a real W key until the controller stops them, and is shot again facing it.
+    if (SETS.includes('hands') && report.stand && target.engine === 'chromium') {
+      const sights = report.sights ?? await page.evaluate(findMaterialSights, { from: report.stand, standM: MATERIAL_STAND_M, minM: MATERIAL_MIN_M });
+      const sight = sights['turf-wall'];
+      if (!sight) {
+        report.notes.push('COULD NOT MEASURE point blank: no turf-wall sight in the loaded mesh near the Hearth');
+      } else {
+        const c = CYCLES[0];
+        await respawnIfDead(page, report);
+        await page.evaluate((p) => window.__craftyLookbook.stand(p), { position: [sight.stand[0], sight.ground + 1.5, sight.stand[2]] });
+        const rest = await restingBody(page);
+        const aim = aimAt((await info(page)).eye, sight.target);
+        await page.evaluate((h) => window.__craftyLookbook.look(h), { heading: aim.heading, pitch: 0 });
+        await setCycle(page, c);
+        await delay(SETTLE_MS);
+        const far = await shootHands('wall-far', c);
+        await play(page);
+        await page.keyboard.down('KeyW');
+        await delay(700);
+        await page.keyboard.up('KeyW');
+        const near = await restingBody(page);
+        await page.evaluate((h) => window.__craftyLookbook.look(h), { heading: aim.heading, pitch: 0 });
+        const close = await shootHands('wall-near', c);
+        // The body's horizontal distance from the face plane, along the face's outward normal.
+        const faceM = near ? (near[0] - sight.target[0]) * sight.normal[0] + (near[2] - sight.target[2]) * sight.normal[2] : null;
+        report.pointBlank = { sight, rest, near, faceM, climbedM: rest && near ? near[1] - rest[1] : null,
+          ratio: far.pixels > 0 ? close.pixels / far.pixels : null };
+        console.log(`lookbook hands ${target.id} point blank: body ${faceM == null ? '?' : faceM.toFixed(2)} m from the face, `
+          + `climbed ${report.pointBlank.climbedM?.toFixed(2)} m, hand pixels near/far ${close.pixels}/${far.pixels} = ${report.pointBlank.ratio?.toFixed(2)}`);
+      }
     }
 
     for (const clip of SETS.includes('clips') && target.engine === 'chromium' && report.stand ? clipPlan(CYCLES) : []) {

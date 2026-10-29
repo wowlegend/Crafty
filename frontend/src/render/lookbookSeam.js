@@ -184,10 +184,12 @@ function finite(v, name) {
  * @param {{store: any, setActive: (v: boolean) => void, getActive: () => boolean, cycleOf: (gameTime: number) => number,
  *          glInfo: () => object|null, contextLosses: () => number, hostiles?: () => Iterable<object>,
  *          removeEntity?: (e: object) => void, loadPassTimer?: () => Promise<{installPassTimer: () => object}>,
- *          sunDir?: () => number[]}} deps  `sunDir`: the sun's direction this frame (render/mood.js skyFrameRef)
+ *          sunDir?: () => number[], handNodes?: () => number}} deps  `sunDir`: the sun's direction this frame
+ *          (render/mood.js skyFrameRef). `handNodes`: the objects mounted in the viewmodel's hands group
+ *          (render/viewmodel.js handNodeCount).
  */
 export function installLookbookSeam(win, {
-  store, setActive, getActive, cycleOf, glInfo, contextLosses, hostiles, removeEntity, loadPassTimer, sunDir,
+  store, setActive, getActive, cycleOf, glInfo, contextLosses, hostiles, removeEntity, loadPassTimer, sunDir, handNodes,
 }) {
   if (!win || !parseLookbookParam(win.location && win.location.search)) return false;
   const unposed = (verb) => {
@@ -293,8 +295,11 @@ export function installLookbookSeam(win, {
         eye: cam ? cam.position.toArray() : null,
         heading: cam?.matrixWorld ? headingOf(cam) : null,
         pitch: cam ? cam.rotation.x / DEG : null,
-        // The first-person hands hang off the camera, so this falls while they are hidden (a pose) and rises back.
+        // The camera's own subtree (the audio listener). The hands are not on it: they are in the viewmodel scene.
         cameraNodes,
+        // The objects mounted as the first-person hands: 0 while they are hidden (a pose), null when the build hands the
+        // seam no reader. A build from before the viewmodel reports no field, and its hands counted in cameraNodes.
+        handNodes: handNodes ? handNodes() : null,
         // Measured from the eye (the camera), else the body; null when the build hands the seam no mob query.
         hostiles: hostiles && (cam || t) ? hostileReach(hostiles(), cam ? cam.position.toArray() : [t.x, t.y, t.z]) : null,
         // Where the sun is, so a shot can face it (GodRays shows only near it); null when the build hands no reader.

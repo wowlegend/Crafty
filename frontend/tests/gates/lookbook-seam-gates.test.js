@@ -305,6 +305,19 @@ describe('the eye level: stand() and look() frame what a player sees', () => {
     expect(w.__craftyLookbook.info().body).toBeNull();
   });
 
+  it('info().handNodes reads the viewmodel\'s hands, live, and is null when the build hands the seam no reader', () => {
+    const w = fakeWin('?lookbook=1');
+    let mounted = 14;
+    installLookbookSeam(w, { ...deps(), handNodes: () => mounted });
+    expect(w.__craftyLookbook.info().handNodes).toBe(14);
+    mounted = 0;
+    expect(w.__craftyLookbook.info().handNodes, 'the count must fall when the hands are hidden').toBe(0);
+    _resetLookbookForTest();
+    const bare = fakeWin('?lookbook=1');
+    installLookbookSeam(bare, deps());
+    expect(bare.__craftyLookbook.info().handNodes).toBeNull();
+  });
+
   it('hostileReach: the nearest live hostile in 3D and the count within 8 m, ignoring the passive, NPCs and the dead', () => {
     const at = (x, y, z, more = {}) => ({ health: 50, passive: false, position: { x, y, z }, ...more });
     const entities = [

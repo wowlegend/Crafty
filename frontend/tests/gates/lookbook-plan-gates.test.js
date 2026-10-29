@@ -34,6 +34,11 @@ import {
   parseGpuUtil,
   gpuMsPerFrame,
   altDifferential,
+  handCount,
+  handPixelStats,
+  HAND_MASK,
+  HANDS_HEADING,
+  facing,
 } from '../../scripts/visual/_lookbook.mjs';
 import { LOOKBOOK_PASS_NAMES } from '../../src/render/passesOff.js';
 import { viteArgv } from '../../scripts/visual/_serve.mjs';
@@ -282,7 +287,9 @@ describe('an eye-level shot is valid only if it shows what a player sees', () =>
   it('each failure is named, the hero-shot ones included', () => {
     const cases = [
       [{ after: { ...ok, pose: { position: [1, 2, 3], lookAt: [0, 0, 0], fov: 75 } } }, /hero pose/],
-      [{ after: { ...ok, cameraNodes: 2 } }, /hands not on the camera/],
+      [{ after: { ...ok, cameraNodes: 2 } }, /hands not mounted \(2 nodes; 2 with them hidden\)/],
+      // A viewmodel build reports handNodes, and it decides even when the camera's own subtree is large.
+      [{ after: { ...ok, cameraNodes: 9, handNodes: 0 }, handsBaseline: 0 }, /hands not mounted \(0 nodes; 0 with them hidden\)/],
       [{ after: ok, handsBaseline: undefined }, /no baseline/],
       [{ after: ok, hud: false }, /HUD not on screen/],
       [{ after: { ...ok, heading: 121.5 } }, /facing 121.5, asked 120/],
@@ -299,6 +306,70 @@ describe('an eye-level shot is valid only if it shows what a player sees', () =>
       expect(v.valid, JSON.stringify(c)).toBe(false);
       expect(v.why.join('; ')).toMatch(re);
     }
+  });
+  it('a viewmodel build\'s hands count from handNodes, an older build\'s from the camera', () => {
+    expect(handCount({ cameraNodes: 1, handNodes: 14 })).toBe(14);
+    expect(handCount({ cameraNodes: 1, handNodes: 0 })).toBe(0);
+    expect(handCount({ cameraNodes: 9 })).toBe(9);
+    expect(handCount({ cameraNodes: 9, handNodes: null })).toBe(9);
+    expect(eyeShotVerdict({ ...base, handsBaseline: 0, after: { ...ok, cameraNodes: 1, handNodes: 14 } })).toEqual({ valid: true, why: [] });
+  });
+});
+
+describe('the hands set: hand pixels are what the hands change, below the horizon, where the hidden frames agree', () => {
+  const W = 10, H = 10;
+  const frame = (fill) => {
+    const b = new Uint8Array(W * H * 4);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) b.set(fill(x, y), (y * W + x) * 4);
+    return b;
+  };
+  const grey = () => [40, 40, 40, 255];
+  // The hands: an ember block at x 1-3 and x 6-8, rows 6-9 (the lower part of the frame).
+  const hand = (x, y) => (y >= 6 && ((x >= 1 && x <= 3) || (x >= 6 && x <= 8)) ? [200, 120, 40, 255] : grey());
+
+  it('counts exactly the changed pixels below fromY, with their mean and median luma and colour', () => {
+    const s = handPixelStats(frame(hand), frame(grey), frame(grey), { width: W, height: H });
+    expect(HAND_MASK.fromY).toBe(0.55);
+    expect(s.checked, 'the rows from fromY down').toBe(50);
+    expect(s.pixels).toBe(24);
+    expect(s.left).toBe(12);
+    expect(s.right).toBe(12);
+    const y = 0.2126 * 200 + 0.7152 * 120 + 0.0722 * 40;
+    expect(s.meanLuma).toBeCloseTo(y, 6);
+    expect(s.medianLuma).toBe(Math.round(y));
+    expect(s.meanRGB).toEqual([200, 120, 40]);
+    expect(s.share).toBeCloseTo(0.24, 9);
+  });
+
+  it('ignores a change above fromY, and a change no larger than the threshold', () => {
+    const sky = (x, y) => (y < 5 ? [255, 255, 255, 255] : hand(x, y));
+    expect(handPixelStats(frame(sky), frame(grey), frame(grey), { width: W, height: H }).pixels).toBe(24);
+    const faint = (x, y) => (y >= 6 ? [40 + HAND_MASK.threshold, 40, 40, 255] : grey());
+    expect(handPixelStats(frame(faint), frame(grey), frame(grey), { width: W, height: H }).pixels).toBe(0);
+  });
+
+  it('drops a pixel the two hidden frames disagree on, and counts it as unstable', () => {
+    const sway = (x, y) => (y === 9 && x === 2 ? [90, 90, 90, 255] : grey());
+    const s = handPixelStats(frame(hand), frame(grey), frame(sway), { width: W, height: H });
+    expect(s.pixels).toBe(23);
+    expect(s.unstable).toBe(1);
+  });
+
+  it('refuses frames of the wrong size, and reports no luma over an empty mask', () => {
+    expect(() => handPixelStats(new Uint8Array(4), frame(grey), frame(grey), { width: W, height: H })).toThrow(/RGBA/);
+    const s = handPixelStats(frame(grey), frame(grey), frame(grey), { width: W, height: H });
+    expect(s.pixels).toBe(0);
+    expect(s.meanLuma).toBeNull();
+    expect(s.medianLuma).toBeNull();
+  });
+
+  it('facing: compass 0 is -Z, 90 is +X, pitch tips the vector up', () => {
+    const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) < 1e-9);
+    expect(near(facing(0), [0, 0, -1])).toBe(true);
+    expect(near(facing(90), [1, 0, 0])).toBe(true);
+    expect(near(facing(180), [0, 0, 1])).toBe(true);
+    expect(near(facing(0, 90), [0, 1, 0])).toBe(true);
+    expect(HANDS_HEADING).toBe(240);
   });
 });
 
