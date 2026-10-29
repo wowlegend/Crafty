@@ -31,7 +31,7 @@ export const KEY_MAP = [
   { key: 'Z', code: 'KeyZ', verb: 'imbue', talent: 'elemancer_imbue', label: 'ELEMANCER — imbue cast',  labelKey: 'controls.imbue', group: 'Aspects' },
   // --- Panels: three where there were seven (the HUD lane, DECISIONS 2026-10-29 item 96) ---
   { key: 'Tab', code: 'Tab',    label: 'Character: gear, spells, talents', labelKey: 'controls.character', group: 'Panels' },
-  { key: 'J',   code: 'KeyJ',   label: 'Journal: quests, feats',           labelKey: 'controls.journal',   group: 'Panels' },
+  { key: 'J',   code: 'KeyJ',   label: 'Journal: quests, achievements',           labelKey: 'controls.journal',   group: 'Panels' },
   { key: 'B',   code: 'KeyB',   label: 'Build',                            labelKey: 'controls.build',     group: 'Panels' },
   { key: 'G',   code: 'KeyG',   label: 'Talk (Mara: the Forge) / open chest', labelKey: 'controls.talk',   group: 'Panels' },
   { key: 'H',   code: 'KeyH',   label: 'Controls',                         labelKey: 'controls.controls',  group: 'Panels' },

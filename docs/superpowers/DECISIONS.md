@@ -19,6 +19,38 @@
 
 ---
 
+## 2026-10-29 — [LOOP] W2-D PR B: warm charcoal, three panels, the controls panel, automatic claims
+
+**Decided by the W2-D HUD lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H item 2(c) and
+reset-plan row 12 by the task script `docs/superpowers/plans/2026-10-29-crafty-w2d-hud.md`, stacked on PR A (items 90-94).
+Each stands while it earns its place.
+
+95. **The chrome is warm charcoal.** The whole navy ladder moves (panel #2A2420, panelRaise #38302A, panelFrame #302924,
+   panelInset #181411, and well, slot, control and track, which carried the same navy), the ink to #120E0B, textMuted
+   to #A8A096 and the common rarity tile with them; the public face (theme-color, the no-JavaScript page, the manifest,
+   the app icons) follows its ground. **Why:** the world's palette is ember and gold, and the navy read as a second,
+   cold palette laid over it (the visuals lens). `tests/theme/tokens.test.js` holds every surface step warmer than it is
+   blue; the contrast gate holds every text pair at its floor. The README hero and the og card are frames of the
+   production build and still show the navy until the media pipeline (W2-H) re-shoots them (registry
+   `REVIEW:w2d:media-after-rekey`).
+96. **Three panels where there were seven, a controls panel on H, and quests that claim themselves.** Supersedes the
+   E, M, U, L and Q bindings and the Tab achievements panel. Character (Tab: gear, spells, talents) and Journal (J:
+   quests, achievements; feats when item 97's work lands) are groups of the panels that were there, each tab opened by its own flag, with a strip of tabs above
+   the open panel; Build stays on B; the touch tray offers Character, Talk, Build and Journal. H opens a controls panel
+   generated from KEY_MAP (every row's label now a key in both dictionaries) in place of the sheet that faded after 8
+   seconds (STATUS C1/c); until this browser has opened it once, a desktop player sees the controls card at rest and an
+   "H Controls" hint above the hotbar. **Seen per browser profile, not per save:** `crafty_controls_seen` sits beside
+   `crafty_onboarded` in localStorage because it belongs to the person at the browser, so no save field is added and
+   the one-way door the brief names (deleted panels' UI state in saves) is not opened: no panel's open state was ever
+   saved (`game/saveSchema.js`). Quests claim on completion through `reduceClaim`, the only payer
+   (`tests/gates/quest-autoclaim-gates.test.jsx`). **Proof that nothing promised depends on the deleted keys:**
+   `tests/e2e/panels.spec.js` reaches every panel the old keys opened through Tab, J and their tabs, by real keys and
+   taps; `talents.spec.js` and `canvas-pace-panels.spec.js` reach the talents and the feats the same way; all run by CI.
+97. **The feats are not built in this lane.** Reset-plan row 24's feats need a counter for each verb (dodge, heavy,
+   perfect dodge, the four Aspects) at the seams in the Player loop (`Components.jsx`) and the Aspect verbs, which this
+   lane could not change and prove in a browser in the time it had; the Journal's second tab is labelled Achievements
+   and shows the existing panel meanwhile, and "Survivor" stays. Registry `REVIEW:w2d:feats` carries it whole.
+
 ## 2026-10-29 — [LOOP] W2-D PR A: the HUD at rest, the compass, one notification channel, and no mob mirror
 
 **Decided by the W2-D HUD lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H item 2(c) and

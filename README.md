@@ -40,7 +40,7 @@ Click into the game to capture the mouse, then move the mouse to look. Esc relea
 |  | <kbd>X</kbd> | SOULBIND — snare &amp; fuse |
 |  | <kbd>Z</kbd> | ELEMANCER — imbue cast |
 | **Panels** | <kbd>Tab</kbd> | Character: gear, spells, talents |
-|  | <kbd>J</kbd> | Journal: quests, feats |
+|  | <kbd>J</kbd> | Journal: quests, achievements |
 |  | <kbd>B</kbd> | Build |
 |  | <kbd>G</kbd> | Talk (Mara: the Forge) / open chest |
 |  | <kbd>H</kbd> | Controls |
