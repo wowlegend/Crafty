@@ -94,7 +94,9 @@ export const Compass = React.memo(({ treasureChests, bossSystem }) => {
   };
 
   return (
-    <div className="absolute top-3 max-[640px]:top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
+    // Below the top band wherever the centred strip would reach the quest line (left, up to 252 px) or the gear: under
+    // 900 px wide (a tablet in portrait, a phone).
+    <div className="absolute top-3 max-[900px]:top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
       <div data-testid="hud-compass" className="w-[320px] max-[640px]:w-[200px] h-[34px] bg-panel-frame border-chrome border-ink rounded-md shadow-elev-md relative flex items-center justify-center overflow-hidden">
         {/* Alignment reticle line */}
         <div className="absolute top-0 bottom-0 w-[1.5px] bg-info z-20"></div>
