@@ -5,6 +5,9 @@
 import * as THREE from 'three';
 import { RenderPass } from 'postprocessing';
 import { getToonGradient } from './characterStyle.js';
+import { FLASH_COLOR, hemiWithFlash } from '../game/lightning.js';
+import { TIERS } from './quality.js';
+import { CHUNK_SIZE } from '../world/chunkLayout.js';
 
 /**
  * fov: vertical degrees, fixed, so the main camera's speed FOV (75 to 85) does not stretch the hands.
@@ -80,24 +83,41 @@ export function makeHandLightRig() {
   return { ambient, hemi, key };
 }
 
+/**
+ * The hands receive no shadow, so the world's shadow reaches them through this instead: a ray from the eye toward the
+ * key light, every `everyS`, against the world's fixed colliders; where it is blocked (a cave, a roof, a tree) the key
+ * on the hands fades out over `easeS`, as the world around them is in the sun's shadow. `reachM` is the far corner of
+ * the loaded square at the largest render distance, so every chunk collider that can stand in the sun's way is in
+ * reach; one ray at 10 Hz.
+ */
+const LOADED_CORNER_M = (Math.max(...Object.values(TIERS).map((t) => t.renderDistance)) + 0.5) * CHUNK_SIZE * Math.SQRT2;
+export const HAND_SHADE = Object.freeze({ everyS: 0.1, reachM: Math.ceil(LOADED_CORNER_M), easeS: 0.12 });
+
+/** The share of the key light on the hands after `dtS`, eased from `current` toward 1 (`open`) or 0. */
+export function easeKeyVisibility(current, open, dtS, easeS = HAND_SHADE.easeS) {
+  const target = open ? 1 : 0;
+  return current + (target - current) * (1 - Math.exp(-Math.max(0, dtS) / easeS));
+}
+
 const _inv = new THREE.Quaternion();
 const _v = new THREE.Vector3();
+const _flashColor = new THREE.Color(FLASH_COLOR);
 
 /**
  * Copy the sky frame's light (render/mood.js makeSkyFrame: ambient, hemiSky, hemiGround, keyColor, keyDir and their
  * intensities) onto the hand rig. The hands sit in view space, so the key's world direction and the sky's up are turned
  * by the inverse of the camera's world rotation: the key lights the side of the gauntlet that faces the sun.
+ * `keyVisibility` scales the key (the world's shadow, HAND_SHADE); `flash` is the storm's lightning on the sky term,
+ * added as the world's hemisphere takes it (game/lightning.js hemiWithFlash).
  */
-export function mirrorSkyLight(frame, cameraQuaternion, rig) {
+export function mirrorSkyLight(frame, cameraQuaternion, rig, keyVisibility = 1, flash = 0) {
   _inv.copy(cameraQuaternion).invert();
   rig.ambient.color.copy(frame.ambient);
   rig.ambient.intensity = frame.ambientIntensity;
-  rig.hemi.color.copy(frame.hemiSky);
-  rig.hemi.groundColor.copy(frame.hemiGround);
-  rig.hemi.intensity = frame.hemiIntensity;
+  hemiWithFlash(rig.hemi, frame.hemiSky, frame.hemiGround, frame.hemiIntensity, flash, _flashColor);
   rig.hemi.position.copy(_v.set(0, 1, 0).applyQuaternion(_inv));
   rig.key.color.copy(frame.keyColor);
-  rig.key.intensity = frame.keyIntensity;
+  rig.key.intensity = frame.keyIntensity * keyVisibility;
   const d = frame.keyDir;
   rig.key.position.copy(_v.set(d[0], d[1], d[2]).normalize().applyQuaternion(_inv).multiplyScalar(5));
   return rig;
