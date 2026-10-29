@@ -15,9 +15,9 @@ import { getWeaponBaseDamage } from '../../src/game/equipment.js';
 // click still kills a staged 1-HP zombie; (8) the save the autosave's action writes holds the Iron Sword in hand.
 //
 // Every wait after a key release is counted in drawn frames, never wall time: a CI frame can last seconds. The card's
-// refusal is a line in the card itself (data-testid forge-message), not a short-lived toast. From the frame the walk
-// reaches Mara to the kill the world is held (_worldHold.js): the player, Mara and every hostile stand still while the
-// card is used, which none of steps 3-6 needs world time for.
+// refusal is a line in the card itself (data-testid forge-message), not a short-lived toast. The world is held
+// (_worldHold.js) twice: from the frame the walk reaches Mara until the card is up, and from the zombie's staging until
+// the kill is read.
 //
 // WHAT THIS DOES NOT CHECK: the touch tray's Talk button in a browser (tests/gates/forge-panel-gates.test.jsx drives
 // activateTrayRow against the real store), the relic line and the goods in a browser (the same gate, and
@@ -102,7 +102,7 @@ function faceMara() {
 
 /** In the page, with W held: steer at Mara where she stands every drawn frame until the camera is within `stopAt`, then
  *  in that same frame let W go and hold the world (_worldHold.js), which stops the player's own motion from the next
- *  frame, Mara's circle with it, and every hostile, until the spec releases it after the kill in step 7. The press is
+ *  frame, Mara's circle with it, and every hostile, until the spec releases it once G has opened the card. The press is
  *  the real key. Its release is dispatched here (the game's own keyup handler takes it, as heavy-melee.spec.js's
  *  in-page T and R are taken) and the hold is here because a CI frame is up to a 0.25 s step of a 14 m/s walk: run
  *  40857037845 measured the player carried 4.5-5.4 m past her by the round trip back to Playwright, and run
@@ -174,6 +174,9 @@ test.describe('the Forge', () => {
     expect(reach, `SETUP: Mara or the player moved out of reach after the walk (${reach} m)`).toBeLessThan(TALK_RANGE);
     await page.keyboard.press('g');
     await expect(page.getByTestId('forge-panel'), 'G beside Mara did not open the Forge').toBeVisible({ timeout: 20000 });
+    // The walk's hold has done its job (the player stood in reach for G); the card's steps run with the world going.
+    const walkHold = await page.evaluate(() => window.__e2eWorldHold.release());
+    expect(walkHold.lapsed, `SETUP: the walk's world hold ran out before G (${JSON.stringify(walkHold)})`).toBe(false);
     await expect(page.getByTestId('forge-price-weapon:Iron Sword-coins')).toHaveText('30 coins (have 30)');
 
     // 4. A REAL CLICK ON BUY: the Iron Sword in hand, the hand's base damage up, the price spent.
@@ -201,13 +204,15 @@ test.describe('the Forge', () => {
     await page.evaluate(frames, 10);
     expect((await read(page)).panels, 'C opened a panel').toEqual([]);
 
-    // 7. IT STILL FIGHTS: a real left click kills a staged 1-HP zombie ahead, with the world still held from the end of
-    // the walk, so neither it nor anything else moves or strikes between the staging and the click
-    // (tests/e2e/talents.spec.js stages its kill so).
-    const z = await page.evaluate(() => {
+    // 7. IT STILL FIGHTS: a real left click kills a staged 1-HP zombie ahead, with the world held from the staging, so
+    // neither it nor anything else moves or strikes between the staging and the click (tests/e2e/talents.spec.js stages
+    // its kill so). A hold kept from the walk through the card failed this step on all three attempts of run
+    // 40861397262 (the zombie aimed at 1 HP, the click not landing), where a hold begun here passed on run 40859622498;
+    // the cause is not known, and the hold begun here is the measured configuration.
+    const z = await page.evaluate(({ capMs }) => {
       const s = window.useGameStore.getState();
       const cam = window.__threeCamera;
-      if (!(s.hitstopUntil > performance.now())) return { why: 'SETUP: the world hold from the walk ended before the kill' };
+      window.__e2eHoldWorld({ capMs });
       // A quarter turn away from Mara, so the zombie stands in open ground beside her post, not on her.
       cam.rotation.order = 'YXZ'; cam.rotation.x = 0; cam.rotation.y += Math.PI / 2; cam.updateMatrixWorld();
       const d = new cam.position.constructor();
@@ -220,7 +225,7 @@ test.describe('the Forge', () => {
       window.GameMethods.damageMob(m.id, m.health - 1, 'physical', 'ally');
       cam.lookAt(m.x, m.y + 0.8, m.z);
       return { id: m.id };
-    });
+    }, { capMs: test.info().timeout || 240000 });
     expect(z.why, z.why).toBeUndefined();
     await page.mouse.move(640, 400);
     await page.mouse.click(640, 400);
@@ -229,7 +234,7 @@ test.describe('the Forge', () => {
       return !m || m.health <= 0;
     }, z.id), { message: 'a left click with the Iron Sword did not kill a 1-HP zombie', timeout: 20000 }).toBe(true);
     const hold = await page.evaluate(() => window.__e2eWorldHold.release());
-    console.log(`[forge] world held ${hold.heldMs} ms over ${hold.frames} drawn frames from the walk's end to the kill (longest ${hold.longestFrameMs} ms, lapsed ${hold.lapsed})`);
+    console.log(`[forge] world held ${hold.heldMs} ms over ${hold.frames} drawn frames for the kill (longest ${hold.longestFrameMs} ms, lapsed ${hold.lapsed})`);
     expect(hold.lapsed, 'SETUP: the world hold ran out before the kill was read').toBe(false);
 
     // 8. IT SAVES the Iron Sword in hand, through the autosave's action and localStorage.
