@@ -19,7 +19,7 @@ vi.mock('@react-three/fiber', () => import('@react-three/fiber/dist/react-three-
 // drei's own build reaches a second copy of R3F, whose hooks see no Canvas; the ink outline draws nothing here anyway.
 vi.mock('@react-three/drei', () => ({ Outlines: () => null }));
 const { mountR3F } = await import('./_r3f.jsx');
-const { ViewmodelCamera, handAnchors, HAND_REST_ROT, GAUNTLET_PARTS, VIEWMODEL } = await import('../../src/render/viewmodel.js');
+const { ViewmodelCamera, handAnchors, HAND_REST_ROT, GAUNTLET_PARTS, VIEWMODEL, HAND_VALUE_FLOOR } = await import('../../src/render/viewmodel.js');
 const { swingPose, swingFit, chargePose, chargeFit, frameScale, CHARGE } = await import('../../src/render/handPose.js');
 const { slashSweep, pressSwing, _resetStringForTest } = await import('../../src/game/meleeString.js');
 const { pressHeavy, cancelHeavy, HEAVY_HOLD_MS, HEAVY_CHARGE_MS } = await import('../../src/game/heavyAttack.js');
@@ -233,6 +233,25 @@ describe('StableMagicHands plays the fitted poses (mounted through R3F at an iPa
         await r.step(1);
         expect(held[0].rotation.toArray().slice(0, 3), `${weapon ?? 'the wand'}: the idle frame did not restore its rotation`).toEqual([...want.rotation]);
         expect(held[0].position.y).toBe(want.position[1]);
+        await r.unmount();
+        r = null;
+      }
+    } finally {
+      useGameStore.setState({ equipment: saved });
+    }
+  });
+
+  it('an equipped sword or pickaxe is drawn with the hands\' value floor on every part', async () => {
+    const saved = useGameStore.getState().equipment;
+    try {
+      for (const [weapon, parts] of [['Iron Sword', 9], ['Diamond Sword', 9], ['pickaxe', 4]]) {
+        useGameStore.setState({ equipment: { ...saved, weapon } });
+        r = await mountR3F(<StableMagicHands selectedBlock={null} attackType={null} attackStartTime={{ current: 0 }} />);
+        const meshes = [];
+        r.three().scene.traverse((o) => { if (o.userData.rest) o.traverse((c) => { if (c.isMesh) meshes.push(c); }); });
+        expect(meshes.length, `SETUP: ${weapon}: the held group's parts`).toBe(parts);
+        const bare = meshes.filter((c) => c.material.userData.valueFloor?.value !== HAND_VALUE_FLOOR);
+        expect(bare.length, `${weapon}: ${bare.length} part(s) without the value floor read near black at night`).toBe(0);
         await r.unmount();
         r = null;
       }

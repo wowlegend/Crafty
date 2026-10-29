@@ -15,7 +15,9 @@ import { OUTLINE } from './characterStyle';
 import { MagicWand } from './spellVfx';
 import { heavyChargeLevel } from '../game/heavyAttack.js';
 import { handSwing } from '../game/meleeString.js';
-import { GAUNTLET, GAUNTLET_PARTS, HAND_REST_ROT, VIEWMODEL, handAnchors, makeGauntletMaterials, makeHeldMaterial } from './viewmodel.js';
+import {
+  GAUNTLET, GAUNTLET_PARTS, HAND_REST_ROT, VIEWMODEL, handAnchors, installValueFloor, makeGauntletMaterials, makeHeldMaterial,
+} from './viewmodel.js';
 import { frameScale, swingPose, swingFit, chargePose, chargeFit } from './handPose.js';
 
 // Swing-ribbon scratch, allocated once at the ring's capacity: re-filled in place with needsUpdate, because swapping a
@@ -46,66 +48,48 @@ export const HELD_REST = Object.freeze({
 // on the scaled blade.
 const HELD_SCALE = Object.freeze({ weapon: 0.6, wand: 0.55 });
 
-const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0, 0, 0], rotation = [0, 0, 0] }) => {
-  const bladeColor = useMemo(() => {
-    switch (type) {
-      case 'Stone Sword': return '#555555';
-      case 'Iron Sword': return '#dcdcdc';
-      case 'Diamond Sword': return '#00ffff';
-      case 'pickaxe': return '#b0c4de';
-      case 'sword':
-      default: return '#cccccc';
-    }
-  }, [type]);
-
-  const bladeEmissive = useMemo(() => {
-    if (type === 'Diamond Sword') return '#00faff';
-    if (type === 'Iron Sword') return '#204060';
-    return '#000000';
-  }, [type]);
-
-  const hiltColor = useMemo(() => {
-    switch (type) {
-      case 'Diamond Sword': return '#3c1053';
-      case 'Iron Sword': return '#4e2f1d';
-      case 'Stone Sword': return '#7c4d28';
-      default: return '#7c3f00';
-    }
-  }, [type]);
-
-  const guardColor = useMemo(() => {
-    switch (type) {
-      case 'Diamond Sword': return '#ffca00';
-      case 'Iron Sword': return '#697a8a';
-      case 'Stone Sword': return '#3a3a3a';
-      default: return '#b0b0b0';
-    }
-  }, [type]);
-
+/** The held weapon's materials by type: standard materials with the hands' value floor, since the viewmodel has no
+ *  environment map and a 0.95-metal blade lit by the moon alone reads near black. */
+function makeWeaponMaterials(type) {
+  const bladeColor = { 'Stone Sword': '#555555', 'Iron Sword': '#dcdcdc', 'Diamond Sword': '#00ffff', pickaxe: '#b0c4de' }[type] || '#cccccc';
+  const bladeEmissive = { 'Diamond Sword': '#00faff', 'Iron Sword': '#204060' }[type] || '#000000';
+  const hiltColor = { 'Diamond Sword': '#3c1053', 'Iron Sword': '#4e2f1d', 'Stone Sword': '#7c4d28' }[type] || '#7c3f00';
+  const guardColor = { 'Diamond Sword': '#ffca00', 'Iron Sword': '#697a8a', 'Stone Sword': '#3a3a3a' }[type] || '#b0b0b0';
   const metalness = type === 'Stone Sword' ? 0.05 : 0.95;
   const roughness = type === 'Stone Sword' ? 0.88 : 0.08;
+  const floored = (params) => installValueFloor(new THREE.MeshStandardMaterial(params));
+  return {
+    blade: floored({ color: bladeColor, metalness, roughness, emissive: bladeEmissive, emissiveIntensity: type === 'Diamond Sword' ? 0.38 : type === 'Iron Sword' ? 0.15 : 0 }),
+    edge: floored({ color: bladeColor, metalness, roughness }),
+    tip: floored({ color: bladeColor, metalness, roughness, emissive: bladeEmissive, emissiveIntensity: type === 'Diamond Sword' ? 0.38 : 0 }),
+    guard: floored({ color: guardColor, roughness: 0.35, metalness: 0.8 }),
+    hilt: floored({ color: hiltColor, roughness: 0.88, metalness: 0.1 }),
+    handle: floored({ color: hiltColor, roughness: 0.8, metalness: 0.1 }),
+    head: floored({ color: bladeColor, roughness: 0.2, metalness: 0.9 }),
+  };
+}
+
+const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0, 0, 0], rotation = [0, 0, 0] }) => {
+  const m = useMemo(() => makeWeaponMaterials(type), [type]);
+  useEffect(() => () => { for (const mat of Object.values(m)) mat.dispose(); }, [m]);
 
   if (type === 'pickaxe') {
     return (
       <group position={position} rotation={rotation}>
         {/* Handle */}
-        <mesh position={[0, 0, 0]}>
+        <mesh position={[0, 0, 0]} material={m.handle}>
           <cylinderGeometry args={[0.024, 0.028, 1.05, 8]} />
-          <meshStandardMaterial color={hiltColor} roughness={0.8} metalness={0.1} />
         </mesh>
         {/* Pickaxe Curved Cross Head */}
-        <mesh position={[0, 0.44, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <mesh position={[0, 0.44, 0]} rotation={[0, 0, Math.PI / 2]} material={m.head}>
           <cylinderGeometry args={[0.038, 0.038, 0.76, 4, 1, true, 0, Math.PI]} />
-          <meshStandardMaterial color={bladeColor} roughness={0.2} metalness={0.9} />
         </mesh>
         {/* Tips */}
-        <mesh position={[0.36, 0.41, 0]} rotation={[0, 0, -Math.PI / 6]}>
+        <mesh position={[0.36, 0.41, 0]} rotation={[0, 0, -Math.PI / 6]} material={m.head}>
           <boxGeometry args={[0.046, 0.11, 0.046]} />
-          <meshStandardMaterial color={bladeColor} roughness={0.2} metalness={0.9} />
         </mesh>
-        <mesh position={[-0.36, 0.41, 0]} rotation={[0, 0, Math.PI / 6]}>
+        <mesh position={[-0.36, 0.41, 0]} rotation={[0, 0, Math.PI / 6]} material={m.head}>
           <boxGeometry args={[0.046, 0.11, 0.046]} />
-          <meshStandardMaterial color={bladeColor} roughness={0.2} metalness={0.9} />
         </mesh>
       </group>
     );
@@ -114,58 +98,37 @@ const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0, 0, 0]
   return (
     <group position={position} rotation={rotation}>
       {/* Blade Core */}
-      <mesh position={[0, 0.72, 0]}>
+      <mesh position={[0, 0.72, 0]} material={m.blade}>
         <boxGeometry args={[0.07, 1.25, 0.02]} />
-        <meshStandardMaterial
-          color={bladeColor}
-          metalness={metalness}
-          roughness={roughness}
-          emissive={bladeEmissive}
-          emissiveIntensity={type === 'Diamond Sword' ? 0.38 : type === 'Iron Sword' ? 0.15 : 0}
-        />
       </mesh>
       {/* Beveled edges */}
-      <mesh position={[0.04, 0.72, 0]} rotation={[0, 0, -0.04]}>
+      <mesh position={[0.04, 0.72, 0]} rotation={[0, 0, -0.04]} material={m.edge}>
         <boxGeometry args={[0.013, 1.23, 0.007]} />
-        <meshStandardMaterial color={bladeColor} metalness={metalness} roughness={roughness} />
       </mesh>
-      <mesh position={[-0.04, 0.72, 0]} rotation={[0, 0, 0.04]}>
+      <mesh position={[-0.04, 0.72, 0]} rotation={[0, 0, 0.04]} material={m.edge}>
         <boxGeometry args={[0.013, 1.23, 0.007]} />
-        <meshStandardMaterial color={bladeColor} metalness={metalness} roughness={roughness} />
       </mesh>
       {/* Diamond Pointed Tip */}
-      <mesh position={[0, 1.365, 0]} rotation={[0, 0, Math.PI / 4]}>
+      <mesh position={[0, 1.365, 0]} rotation={[0, 0, Math.PI / 4]} material={m.tip}>
         <boxGeometry args={[0.058, 0.058, 0.018]} />
-        <meshStandardMaterial
-          color={bladeColor}
-          metalness={metalness}
-          roughness={roughness}
-          emissive={bladeEmissive}
-          emissiveIntensity={type === 'Diamond Sword' ? 0.38 : 0}
-        />
       </mesh>
       {/* Guard */}
-      <mesh position={[0, 0.12, 0]}>
+      <mesh position={[0, 0.12, 0]} material={m.guard}>
         <boxGeometry args={[0.28, 0.05, 0.065]} />
-        <meshStandardMaterial color={guardColor} roughness={0.35} metalness={0.8} />
       </mesh>
-      <mesh position={[0.13, 0.15, 0]} rotation={[0, 0, 0.45]}>
+      <mesh position={[0.13, 0.15, 0]} rotation={[0, 0, 0.45]} material={m.guard}>
         <boxGeometry args={[0.05, 0.07, 0.05]} />
-        <meshStandardMaterial color={guardColor} roughness={0.35} metalness={0.8} />
       </mesh>
-      <mesh position={[-0.13, 0.15, 0]} rotation={[0, 0, -0.45]}>
+      <mesh position={[-0.13, 0.15, 0]} rotation={[0, 0, -0.45]} material={m.guard}>
         <boxGeometry args={[0.05, 0.07, 0.05]} />
-        <meshStandardMaterial color={guardColor} roughness={0.35} metalness={0.8} />
       </mesh>
       {/* Leather/Wood wrapped Hilt */}
-      <mesh position={[0, -0.09, 0]}>
+      <mesh position={[0, -0.09, 0]} material={m.hilt}>
         <cylinderGeometry args={[0.03, 0.034, 0.32, 8]} />
-        <meshStandardMaterial color={hiltColor} roughness={0.88} metalness={0.1} />
       </mesh>
       {/* Pommel */}
-      <mesh position={[0, -0.27, 0]}>
+      <mesh position={[0, -0.27, 0]} material={m.guard}>
         <sphereGeometry args={[0.052, 8, 8]} />
-        <meshStandardMaterial color={guardColor} roughness={0.35} metalness={0.8} />
       </mesh>
     </group>
   );
