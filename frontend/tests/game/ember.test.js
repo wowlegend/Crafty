@@ -120,6 +120,25 @@ describe('the daily build cap', () => {
     expect(r.record).toEqual(rec);
   });
 
+  // The store keeps the record it returns, and App's autosave trigger compares it by identity; a placement that changed
+  // nothing must not read as a change.
+  it('a placement that adds nothing returns the record it was given, the same object', () => {
+    for (const [why, ember, rec, night, isDay] of [
+      ['at night', 20, { night: 2, built: 6 }, 2, false],
+      ['with the day\'s allowance spent', 20, { night: 2, built: DAILY_BUILD_CAP }, 2, true],
+      ['at a full bar', EMBER_MAX, { night: 2, built: 6 }, 2, true],
+      ['at a full bar on a new day', EMBER_MAX, { night: 1, built: DAILY_BUILD_CAP }, 2, true],
+    ]) {
+      const r = accrueBuild(ember, rec, night, isDay);
+      expect(r.ember, `${why}: the bar moved`).toBe(ember);
+      expect(r.record, `${why}: a new record for a placement that changed nothing`).toBe(rec);
+    }
+    const rec = { night: 2, built: 6 };
+    const paid = accrueBuild(20, rec, 2, true);
+    expect(paid.record, 'the control: a paying placement did not record what it added').toEqual({ night: 2, built: 6 + PLACE_GAIN });
+    expect(paid.record).not.toBe(rec);
+  });
+
   it('a saved record is sanitized: a bad night reads 0, the built amount is clamped to [0, cap]', () => {
     expect(readBuildDay(undefined)).toEqual({ night: 0, built: 0 });
     expect(readBuildDay({ night: 5, built: 12 })).toEqual({ night: 5, built: 12 });

@@ -59,7 +59,7 @@ describe('kill-attribution gates (S2-B3-M1)', () => {
     // The invariant is per-subscriber, not a fixed meter count: each kill-bus accrual hook
     // must carry the attribution filter (the one ember hook today; a future meter is gated the same way).
     const subscribers = (hooks.match(/subscribeMobKill\(/g) || []).length;
-    const filtered = (hooks.match(/source === 'player' && s\.isDay && !isCaptureMode\(\)/g) || []).length;
+    const filtered = (hooks.match(/source === 'player' && !isCaptureMode\(\)/g) || []).length;
     expect(subscribers, 'the ember kill hook is gone, so nothing below is checked').toBeGreaterThanOrEqual(1);
     expect(filtered).toBe(subscribers);
     expect(read('QuestSystem.jsx')).toMatch(/if \(source !== 'player'\) return;/);

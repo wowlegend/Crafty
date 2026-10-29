@@ -808,7 +808,12 @@ export const useGameStore = create((set, get) => ({
     // (setGameTime, on the clock's crossing into day). Both fields are persisted.
     ember: 0,
     setEmber: (v) => set({ ember: clampEmber(v) }),
-    gainEmber: (n) => set((s) => ({ ember: clampEmber(s.ember + n) })),
+    // A gain or a placement that changes nothing returns the same state, so zustand notifies no subscriber and App's
+    // autosave trigger sees no change.
+    gainEmber: (n) => set((s) => {
+        const ember = clampEmber(s.ember + n);
+        return ember === s.ember ? s : { ember };
+    }),
     // One bank pays four verbs, so a price vetted when a verb started (a bind's channel, an armed imbue) may no longer
     // be covered when it lands: the spend checks again and refuses, taking nothing, rather than selling it for less.
     spendEmber: (cost) => {
@@ -819,7 +824,7 @@ export const useGameStore = create((set, get) => ({
     emberBuildDay: { night: 0, built: 0 },
     accrueBuildEmber: () => set((s) => {
         const r = accrueBuild(s.ember, s.emberBuildDay, s.nightCount, s.isDay);
-        return { ember: r.ember, emberBuildDay: r.record };
+        return r.ember === s.ember && r.record === s.emberBuildDay ? s : { ember: r.ember, emberBuildDay: r.record };
     }),
 
     // M3b survive-to-dawn reward: grant ALL THREE (Kevin's decision) -- scaled bonus

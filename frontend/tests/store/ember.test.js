@@ -64,6 +64,35 @@ describe('each spend reads and spends ember at its old price', () => {
   }
 });
 
+// A store write wakes every subscriber and App's autosave trigger; one that changes nothing must not write.
+describe('a gain or a placement that changes nothing leaves the store as it was', () => {
+  it('a night placement, a placement past the day\'s cap and a gain at a full bar notify no subscriber', () => {
+    let calls = 0;
+    const off = useGameStore.subscribe(() => { calls += 1; });
+    try {
+      useGameStore.setState({ isDay: true, nightCount: 2, ember: 10, emberBuildDay: { night: 2, built: 6 } });
+      calls = 0;
+      S().accrueBuildEmber();
+      expect(calls, 'the control: a paying placement did not write').toBe(1);
+      for (const [why, set, act] of [
+        ['a night placement', { isDay: false }, () => S().accrueBuildEmber()],
+        ['a placement past the cap', { isDay: true, emberBuildDay: { night: 2, built: DAILY_BUILD_CAP } }, () => S().accrueBuildEmber()],
+        ['a gain at a full bar', { ember: EMBER_MAX }, () => S().gainEmber(16)],
+        ['a gain of nothing', { ember: 30 }, () => S().gainEmber(0)],
+      ]) {
+        useGameStore.setState(set);
+        const before = S();
+        calls = 0;
+        act();
+        expect(calls, `${why} wrote the store`).toBe(0);
+        expect(S(), `${why} replaced the state`).toBe(before);
+      }
+    } finally {
+      off();
+    }
+  });
+});
+
 describe('building by day, under the daily cap', () => {
   it('each day placement adds PLACE_GAIN until the day\'s allowance is spent, then nothing', () => {
     useGameStore.setState({ isDay: true, nightCount: 2 });

@@ -63,13 +63,14 @@ export function dailyCap(record, night) {
 
 /**
  * One placement action's accrual: `{ ember, record }` after it. The allowance is charged with what ENTERED the bar, so a
- * placement at a full bar spends none of it.
+ * placement at a full bar spends none of it. When nothing enters (night, the day's allowance spent, a full bar) the
+ * record given comes back as the same object: the store keeps it, and App's autosave trigger compares it by identity.
  */
 export function accrueBuild(ember, record, night, isDay) {
   const before = clampEmber(ember);
   const gain = Math.min(emberForPlace(isDay), dailyCap(record, night));
-  if (gain <= 0) return { ember: before, record: readBuildDay(record) };
-  const after = clampEmber(before + gain);
+  const after = gain > 0 ? clampEmber(before + gain) : before;
+  if (after === before) return { ember: before, record };
   const r = readBuildDay(record);
   const built = (r.night === night ? r.built : 0) + (after - before);
   return { ember: after, record: { night, built } };
