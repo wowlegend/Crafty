@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import {
-  VIEWMODEL, squashDepth, ViewmodelCamera, ViewmodelPass, getViewmodel, HAND_ANCHORS, handAnchors, HAND_REST_ROT,
+  VIEWMODEL, squashDepth, ViewmodelCamera, ViewmodelPass, getViewmodel, HAND_ANCHORS, handAnchors, HAND_REST_ROT, oneDepthCopy,
   GAUNTLET_PARTS, HAND_VALUE_FLOOR, installValueFloor, GAUNTLET, makeGauntletMaterials, makeHeldMaterial, mirrorSkyLight,
   makeHandLightRig,
 } from '../../src/render/viewmodel.js';
 import { getToonGradient } from '../../src/render/characterStyle.js';
+import { RenderPass, EffectPass } from 'postprocessing';
 import { UI } from '../../src/theme/tokens.js';
 
 /**
@@ -124,6 +125,39 @@ describe('the viewmodel pass draws over the scene without clearing it', () => {
     r.render = () => { throw new Error('lost context'); };
     expect(() => pass.render(r, {}, null, 0, false)).toThrow('lost context');
     expect(r.autoClear).toBe(true);
+  });
+
+  it('with its hands group empty it draws nothing, and with a hand mounted it draws', () => {
+    const scene = new THREE.Scene();
+    const hands = new THREE.Group();
+    scene.add(hands);
+    const pass = new ViewmodelPass(scene, new ViewmodelCamera(), hands);
+    const calls = [];
+    pass.render(fakeRenderer(calls), {}, null, 0, false);
+    expect(calls.filter((c) => c.op === 'render'), 'an empty viewmodel scene was drawn').toHaveLength(0);
+    hands.add(new THREE.Mesh());
+    pass.render(fakeRenderer(calls), {}, null, 0, false);
+    expect(calls.filter((c) => c.op === 'render'), 'the mounted hand was not drawn').toHaveLength(1);
+    expect(getViewmodel().pass.hands, 'the live pass does not watch the live hands group').toBe(getViewmodel().hands);
+  });
+
+  it('one depth copy a frame: the world\'s pass stops copying while the viewmodel pass follows it, and copies again otherwise', () => {
+    const world = new RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
+    const vm = new ViewmodelPass(new THREE.Scene(), new ViewmodelCamera());
+    const effects = new EffectPass(new THREE.PerspectiveCamera());
+    expect(world.needsDepthBlit, 'SETUP: a RenderPass copies depth by default').toBe(true);
+    const composer = { passes: [world, vm, effects] };
+    expect(oneDepthCopy(composer, vm)).toBe(true);
+    expect([world.needsDepthBlit, vm.needsDepthBlit]).toEqual([false, true]);
+    expect(oneDepthCopy(composer, vm), 'an unchanged frame changed something').toBe(false);
+    vm.enabled = false;
+    oneDepthCopy(composer, vm);
+    expect(world.needsDepthBlit, 'the hands are off and the world no longer copies its depth: GodRays tests a stale one').toBe(true);
+    vm.enabled = true;
+    composer.passes = [world, effects, vm];
+    oneDepthCopy(composer, vm);
+    expect(world.needsDepthBlit, 'an effect between them reads the depth the world pass no longer copied').toBe(true);
+    expect(oneDepthCopy(null, vm)).toBe(false);
   });
 
   it('getViewmodel hands out one scene, camera and pass, wired to each other', () => {

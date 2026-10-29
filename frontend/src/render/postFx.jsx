@@ -11,6 +11,7 @@ import { useGameStore } from '../store/useGameStore';
 import { TIERS } from './quality.js';
 import { lookbookPassesOff } from './lookbookSeam.js';
 import { applyPassesOff } from './passesOff.js';
+import { getViewmodel, oneDepthCopy } from './viewmodel.js';
 
 /**
  * ITEM c — EACH EFFECT BUILT ONCE, TOGGLED IN PLACE, DISPOSED ON UNMOUNT.
@@ -125,7 +126,8 @@ export function liveEffects(composer, out = { godRays: null, bloom: null }) {
 }
 
 /**
- * Mount inside <EffectComposer>. Each frame: find the live effects and apply the tier and the horizon — transient
+ * Mount inside <EffectComposer>. Each frame: find the live effects and apply the tier and the horizon, and keep the
+ * composer to one depth copy a frame (render/viewmodel.js oneDepthCopy) — transient
  * getState() reads (Game-Loop Isolation), and write-on-change, so an unchanged frame costs a few comparisons. Per frame
  * rather than in an effect because the composer builds its passes in ITS layout effect, after its children's, and a
  * sticky first mount (GodRays) arrives with defaults that must be corrected before it draws.
@@ -140,6 +142,7 @@ export function PostTierDriver() {
     liveEffects(ctx && ctx.composer, fx);
     applyPostTier(fx, TIERS[st.qualityTier] || TIERS.low, st.sunAboveHorizon);
     applyPassesOff(ctx && ctx.composer, lookbookPassesOff(), offHeld);
+    oneDepthCopy(ctx && ctx.composer, getViewmodel().pass);
   });
   useEffect(() => {
     if (!import.meta.env.DEV) return;

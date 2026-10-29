@@ -45,33 +45,55 @@ export class ViewmodelCamera extends THREE.PerspectiveCamera {
 /**
  * Draws the viewmodel scene over the composer's input buffer: no clear pass and no background, and the renderer's
  * autoClear off for the draw, because R3F's composer turns autoClear ON around composer.render (its `autoClear` prop
- * defaults to true) and three would then clear the world before drawing the hands.
+ * defaults to true) and three would then clear the world before drawing the hands. With `hands` given and empty (the
+ * lookbook, capture, no Player) it draws nothing; the composer's depth copy after it still runs, as the frame's one.
  */
 export class ViewmodelPass extends RenderPass {
-  constructor(scene, camera) {
+  constructor(scene, camera, hands = null) {
     super(scene, camera);
     this.name = 'ViewmodelPass';
+    this.hands = hands;
     this.clearPass.enabled = false;
     this.ignoreBackground = true;
+    // RenderPass.render turns the shadow map's autoUpdate off for the draw and restores it after.
     this.skipShadowMapUpdate = true;
     // After this pass the composer copies the depth buffer into the stable depth texture (postprocessing 6.39.5
     // EffectComposer.render, blitDepthBuffer), which GodRays copies under its light pass so the sun is drawn only where
     // nothing nearer stands (GodRaysEffect.update). With the hands in that copy, a gauntlet in front of the sun hides it.
-    // The world's RenderPass copies too, just before; that copy is overwritten (REVIEW:w2e:viewmodel-pass-gpu-cost).
+    // The world's RenderPass, just before, is kept from copying too (oneDepthCopy).
     this.needsDepthBlit = true;
   }
 
   render(renderer, inputBuffer, outputBuffer, deltaTime, stencilTest) {
+    if (this.hands && this.hands.children.length === 0) return;
     const autoClear = renderer.autoClear;
-    const shadowAuto = renderer.shadowMap.autoUpdate;
     renderer.autoClear = false;
     try {
       super.render(renderer, inputBuffer, outputBuffer, deltaTime, stencilTest);
     } finally {
       renderer.autoClear = autoClear;
-      renderer.shadowMap.autoUpdate = shadowAuto;
     }
   }
+}
+
+/**
+ * One depth copy a frame. The composer copies the depth buffer after every pass that sets needsDepthBlit, and the
+ * world's RenderPass sets it as ViewmodelPass does, so with GodRays mounted the world's copy was always overwritten by
+ * the one after the hands. While `pass` is enabled and follows a RenderPass directly, that RenderPass does not copy; in
+ * any other arrangement it copies again. Returns whether it changed anything. Called each frame by render/postFx.jsx.
+ */
+export function oneDepthCopy(composer, pass) {
+  const passes = composer && composer.passes;
+  if (!passes) return false;
+  const i = passes.indexOf(pass);
+  let changed = false;
+  for (let j = 0; j < passes.length; j++) {
+    const p = passes[j];
+    if (!(p instanceof RenderPass) || p === pass) continue;
+    const copies = !(pass.enabled && i === j + 1);
+    if (p.needsDepthBlit !== copies) { p.needsDepthBlit = copies; changed = true; }
+  }
+  return changed;
 }
 
 /** The light on the hands: the world's ambient, hemisphere and key, mirrored each frame. None casts a shadow. */
@@ -136,7 +158,7 @@ export function getViewmodel() {
   const hands = new THREE.Group();
   hands.name = 'hands';
   scene.add(rig.ambient, rig.hemi, rig.key, rig.key.target, hands);
-  const pass = new ViewmodelPass(scene, camera);
+  const pass = new ViewmodelPass(scene, camera, hands);
   _vm = { scene, camera, pass, rig, hands };
   return _vm;
 }
