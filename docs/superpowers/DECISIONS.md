@@ -45,8 +45,8 @@ its place.
    exporting script in a child process with output, exit, spawn, file writes and fetch trapped, runs a fixture and a
    real gate by path (also through a symlinked directory), and checks the engines floor. It executes the imports, so
    the guards cli-guard accepted while they gated nothing (an always-true guard, a bare `process.argv[1]` test:
-   registry STATUS:G-ledger:22) now fail. The pipeline step and the gate-table row go with it; the generated tables
-   say 15 gates. cli-guard.mjs is at `1691217b`.
+   registry STATUS:G-ledger:22) now fail. The pipeline step and the gate-table row go with it, and the generated tables
+   are regenerated without it. cli-guard.mjs is at `1691217b`.
 
 **Door:** two-way; the files and the dependency are in git history.
 
