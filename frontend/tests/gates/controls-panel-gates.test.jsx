@@ -14,7 +14,7 @@ import { renderHook } from '@testing-library/react';
 vi.mock('../../src/input/touchDevice', () => ({ isTouchUIMode: vi.fn(() => false), isTouchDevice: vi.fn(() => false) }));
 import { KEY_MAP, KEY_GROUPS } from '../../src/game/keyMap.js';
 import { STRINGS } from '../../src/i18n/strings.js';
-import { ControlsPanel, ControlsCardUntilSeen, CARD_ON_SCREEN_MS } from '../../src/ui/CombatInstructions.jsx';
+import { ControlsPanel, ControlsCard, ControlsCardUntilSeen, CARD_ON_SCREEN_MS } from '../../src/ui/CombatInstructions.jsx';
 import { isTouchUIMode } from '../../src/input/touchDevice';
 import { GameUI } from '../../src/ui/GameHud.jsx';
 import { useInputManager } from '../../src/InputManager.jsx';
@@ -63,6 +63,17 @@ describe('the controls panel', () => {
     act(() => useGameStore.setState({ locale: 'zh-CN' }));
     render(<ControlsPanel onClose={() => {}} />);
     expect(document.querySelector('[data-controls-key="J"]').textContent).toContain(STRINGS['zh-CN']['controls.journal']);
+  });
+});
+
+describe('the first-run card', () => {
+  it('is one line of the six essentials, each a key KEY_MAP binds, labelled in the selected language', () => {
+    act(() => useGameStore.setState({ locale: 'zh-CN' }));
+    render(<ControlsCard />);
+    const keys = [...document.querySelectorAll('[data-testid="controls-card"] [data-controls-key]')].map((el) => el.getAttribute('data-controls-key'));
+    expect(keys).toEqual(['WASD', 'LMB', 'RMB', 'Tab', 'J', 'H']);
+    expect(keys.every((k) => KEY_MAP.some((r) => r.key === k)), 'the card names a key nothing binds').toBe(true);
+    expect(screen.getByTestId('controls-card').textContent).toContain(STRINGS['zh-CN']['controls.short.character']);
   });
 });
 

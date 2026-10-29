@@ -39,10 +39,10 @@ const CLASS_PROPS = { Panel: ['variant', ...NAMED.Panel], Button: ['variant', ..
 const SENTINEL = '§named-prop-sentinel§';
 // The population this gate was written against (133 call sites, 1,560 judged pairs, no primitive used as a value),
 // less the honest deletions since: the HUD lane's toasts that now go through the notification stack (the survival
-// banner, the boss banner, the Aspect hint's own toast) and the hotbar's panel (its slots stand alone), 117 sites after
-// them, and 1,352 judged pairs.
-const SITE_FLOOR = 117;
-const PAIR_FLOOR = 1350;
+// banner, the boss banner, the Aspect hint's own toast), the hotbar's panel (its slots stand alone) and the first-run
+// controls card's panel (it is bare keycaps now), 116 sites after them, and 1,348 judged pairs.
+const SITE_FLOOR = 116;
+const PAIR_FLOOR = 1345;
 const KNOWN_REFERENCES = [];
 
 const tokensOf = (s) => String(s ?? '').split(/\s+/).filter(Boolean);

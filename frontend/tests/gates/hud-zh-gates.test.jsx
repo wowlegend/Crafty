@@ -127,7 +127,7 @@ describe('the play screen at rest under zh-CN', () => {
     expect(found.get('objective line').join(' ')).toMatch(/\d*m\b|Shatter/);
     expect(found.get('hotbar level')).toContain('Lv');
     expect(found.get('quest list (desktop)')).toEqual(expect.arrayContaining(['Quests']));
-    expect(found.get('controls card')).toEqual(expect.arrayContaining(['Controls']));
+    expect(found.get('controls card')).toEqual(expect.arrayContaining(['Move', 'Attack']));
     expect(found.get('controls hint')).toEqual(['Controls']);
   });
 });

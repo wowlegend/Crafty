@@ -888,11 +888,12 @@ export function chromeShare(on, off, { width, height, colours, tolerance = CHROM
 /** The chrome budget the HUD lane accepts against (brief "Acceptance on the live game"): 8% of an eye-level frame. */
 export const CHROME_BUDGET = 0.08;
 
-/** PURE. Whether an eye shot's chrome reading is the HUD at rest: a valid frame whose footprint was read on a held page
- *  and with no toast in the notification stack (every toast the game raises goes there: ui/notifications.js), so a
- *  dusk warning, a night's siege notice or a boss's call is never counted as the screen at rest. */
+/** PURE. Whether an eye shot's chrome reading is the HUD at rest: a valid frame whose footprint was read on a held page,
+ *  with no toast in the notification stack (every toast the game raises goes there: ui/notifications.js) and no target
+ *  frame up (a mob in the aim cone names itself, ui/TargetFrame.jsx), so a dusk warning, a siege notice, a boss's call
+ *  or a hound wandering into the crosshair is never counted as the screen at rest. */
 export function atRest(s) {
-  return !!s?.valid && Number.isFinite(s.chrome?.share) && !(s.chrome.toasts > 0);
+  return !!s?.valid && Number.isFinite(s.chrome?.share) && !(s.chrome.toasts > 0) && !s.chrome.target;
 }
 
 /** PURE. The run's chrome lines for a target's eye shots: the footprint over the frames at rest (the acceptance
@@ -901,13 +902,13 @@ export function chromeSummaryLines(eye) {
   const pct = (x) => `${(x * 100).toFixed(2)}%`;
   const rest = eye.filter(atRest);
   const unread = eye.filter((s) => s.valid && !Number.isFinite(s.chrome?.share));
-  const toasted = eye.filter((s) => s.valid && Number.isFinite(s.chrome?.share) && s.chrome.toasts > 0);
+  const toasted = eye.filter((s) => s.valid && Number.isFinite(s.chrome?.share) && (s.chrome.toasts > 0 || s.chrome.target));
   if (!rest.length) {
-    return [`  chrome        NOT MEASURED on any valid eye frame at rest (${toasted.length} with a toast up, ${unread.length} unread: ${[...new Set(unread.map((s) => s.chrome?.why))].join('; ')})`];
+    return [`  chrome        NOT MEASURED on any valid eye frame at rest (${toasted.length} with a toast or a target up, ${unread.length} unread: ${[...new Set(unread.map((s) => s.chrome?.why))].join('; ')})`];
   }
   const share = rest.map((s) => s.chrome.share);
   const lines = [`  chrome        ${rest.length} valid eye frame(s) at rest: footprint max ${pct(Math.max(...share))}, median ${pct(medianOf(share))}; `
-    + `${share.filter((x) => x > CHROME_BUDGET).length} over the ${CHROME_BUDGET * 100}% budget; ${toasted.length} with a toast up and ${unread.length} unread set aside`];
+    + `${share.filter((x) => x > CHROME_BUDGET).length} over the ${CHROME_BUDGET * 100}% budget; ${toasted.length} with a toast or a target up and ${unread.length} unread set aside`];
   const colour = rest.map((s) => s.chrome.colourShare).filter(Number.isFinite);
   if (colour.length) lines.push(`  chrome colour ${colour.length} frame(s): max ${pct(Math.max(...colour))}, median ${pct(medianOf(colour))} (second column; it reads the palette)`);
   const touch = rest.map((s) => s.chrome.touchShare).filter(Number.isFinite);

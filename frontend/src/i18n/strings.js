@@ -229,6 +229,8 @@ export const STRINGS = {
     'controls.pause': 'Settings / pause',
     'controls.group.move': 'Move', 'controls.group.combat': 'Combat', 'controls.group.aspects': 'Aspects', 'controls.group.panels': 'Panels',
     'controls.hint': 'Controls',
+    'controls.short.attack': 'Attack', 'controls.short.use': 'Cast', 'controls.short.character': 'Character',
+    'controls.short.journal': 'Journal', 'controls.short.all': 'All controls',
     'panel.tab.gear': 'Gear', 'panel.tab.spells': 'Spells', 'panel.tab.talents': 'Talents', 'panel.tab.quests': 'Quests', 'panel.tab.feats': 'Achievements',
     'ui.character': 'Character', 'ui.journal': 'Journal',
     // The keys a panel's footer and a hint name are keys KEY_MAP binds (tests/gates/taught-keys-gates.test.jsx).
@@ -493,6 +495,8 @@ export const STRINGS = {
     'controls.pause': '设置 / 暂停',
     'controls.group.move': '移动', 'controls.group.combat': '战斗', 'controls.group.aspects': '化身之力', 'controls.group.panels': '面板',
     'controls.hint': '操作说明',
+    'controls.short.attack': '攻击', 'controls.short.use': '施法', 'controls.short.character': '角色',
+    'controls.short.journal': '日志', 'controls.short.all': '全部操作',
     'panel.tab.gear': '装备', 'panel.tab.spells': '法术', 'panel.tab.talents': '天赋', 'panel.tab.quests': '任务', 'panel.tab.feats': '成就',
     'ui.character': '角色', 'ui.journal': '日志',
     'panel.footer.gear': '按 Tab 或 Esc 关闭 • 点击装备以穿戴 • 悬停查看详情 • 点击已穿戴的装备以卸下',

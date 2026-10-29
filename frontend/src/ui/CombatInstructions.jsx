@@ -34,22 +34,35 @@ export const ControlsList = React.memo(({ size = 'sm' }) => {
   );
 });
 
-/** The card a profile sees at rest until it has opened the controls panel once: it takes no input. */
+// The first-run card's six: the keys a new player needs before anything else, each a KEY_MAP key (so a rebinding or a
+// removal shows here), with a short label; H names the panel that holds the rest.
+const ESSENTIALS = [['WASD', 'controls.move'], ['LMB', 'controls.short.attack'], ['RMB', 'controls.short.use'],
+  ['Tab', 'controls.short.character'], ['J', 'controls.short.journal'], ['H', 'controls.short.all']];
+const ESSENTIAL_ROWS = ESSENTIALS.filter(([key]) => KEY_MAP.some((r) => r.key === key));
+
+/** The first-run card: one line of the essential keys above the hotbar's XP edge, drawn as the H hint is (keycaps and
+ *  shadowed labels on the world, no panel behind them), taking no input. One bare line rather than the whole list in a
+ *  panel, because it is chrome at rest while it shows (DECISIONS 2026-10-29 item 99). */
 export const ControlsCard = React.memo(() => {
   const t = useT();
   return (
-    <Panel variant="base" data-testid="controls-card" className="absolute left-4 top-1/2 -translate-y-1/2 p-2.5 text-text pointer-events-none z-hud w-56">
-      <div className="font-display uppercase text-[11px] tracking-wider text-accent mb-1.5">{t('panel.controls')}</div>
-      <ControlsList />
-    </Panel>
+    <div data-testid="controls-card"
+      className="absolute left-1/2 -translate-x-1/2 bottom-[92px] pointer-events-none z-hud flex items-center gap-3 whitespace-nowrap">
+      {ESSENTIAL_ROWS.map(([key, labelKey]) => (
+        <span key={key} data-controls-key={key} className="flex items-center gap-1 leading-none">
+          <span className="font-display px-1.5 py-0.5 rounded border-chrome border-ink bg-slot text-text text-[10px]">{key}</span>
+          <span className="text-[11px] font-bold text-text" style={{ textShadow: '0 1px 2px rgb(var(--ui-ink))' }}>{t(labelKey)}</span>
+        </span>
+      ))}
+    </div>
   );
 });
 
 /** How long the first-run card stays on screen in play before it folds to the "H Controls" hint. */
 export const CARD_ON_SCREEN_MS = 30000;
 
-// A profile that has not opened the controls panel (H) sees the card at rest on the left, in the room the side rail
-// left, for its first CARD_ON_SCREEN_MS of play with the card on screen (time paused or in a panel does not count: the
+// A profile that has not opened the controls panel (H) sees the card at rest above the hotbar for its first
+// CARD_ON_SCREEN_MS of play with the card on screen (time paused or in a panel does not count: the
 // card is mounted only while the HUD is), then the one-line hint at the hotbar's edge, until H opens the panel once.
 // Desktop only: the keys are a keyboard player's (HUD.jsx mounts the card off touch; the hint asks for itself).
 export const ControlsCardUntilSeen = React.memo(() => {

@@ -210,10 +210,11 @@ describe('which eye frames are the HUD at rest, and what the run prints', () => 
   it('a frame with a toast up, an invalid frame and an unread one are set aside, and the summary says so', () => {
     expect(atRest(shot(0.05))).toBe(true);
     expect(atRest(shot(0.05, { toasts: 1 }))).toBe(false);
+    expect(atRest(shot(0.05, { target: true })), 'a target frame up is not the HUD at rest').toBe(false);
     expect(atRest({ ...shot(0.05), valid: false })).toBe(false);
     expect(atRest(shot(null, { why: 'moved' }))).toBe(false);
     const lines = chromeSummaryLines([shot(0.05), shot(0.09), shot(0.2, { toasts: 2 }), shot(null, { why: 'the page did not hold still' })]);
-    expect(lines[0]).toMatch(/2 valid eye frame\(s\) at rest: footprint max 9\.00%, median 7\.00%; 1 over the 8% budget; 1 with a toast up and 1 unread set aside/);
+    expect(lines[0]).toMatch(/2 valid eye frame\(s\) at rest: footprint max 9\.00%, median 7\.00%; 1 over the 8% budget; 1 with a toast or a target up and 1 unread set aside/);
     expect(lines[1]).toMatch(/chrome colour 2 frame\(s\): max 4\.50%/);
     expect(lines[2]).toMatch(/touch layer {3}2 frame\(s\): max 3\.00%/);
     expect(CHROME_BUDGET).toBe(0.08);
