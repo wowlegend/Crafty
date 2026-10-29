@@ -9,12 +9,12 @@ import { BLOCK_TYPES } from '../../world/Blocks';
 import { forgeOffers, bestBlade, WEAPON_LINE } from '../../game/forge.js';
 import { relicTier, RELIC_MAX_TIER } from '../../game/relics.js';
 import { ItemIcon } from './itemUi';
+import { relicEffectText, TIER_NUMERAL } from '../relicText.js';
 
 // Mara's Forge (DECISIONS 2026-10-28 W1-H item 7; 2026-10-29 items 60-65): one card listing what she can make now, each
 // line with its price beside what the player holds. A purchase the player cannot pay for is still pressable, so the
 // press says what is short instead of a dead button; game/forge.js decides what is listed and what a purchase spends.
 
-const TIER_NUMERAL = ['', 'I', 'II', 'III'];
 const nameOf = (key) => BLOCK_TYPES[key]?.name || key;
 
 /**
@@ -60,6 +60,11 @@ const OfferRow = ({ offer, state, onBuy, resting }) => {
         <ItemIcon itemName={offer.give} size={30} />
         <div className="flex flex-col min-w-0">
           <span className="text-sm font-display tracking-wide text-text">{title}</span>
+          {offer.line === 'relic' && (
+            <span className="text-xs text-text mt-0.5" data-testid={`forge-effect-${offer.id}`}>
+              {t('forge.temperEffect', { effect: relicEffectText(t, offer.give, offer.tier) })}
+            </span>
+          )}
           <span className="text-xs mt-0.5 flex flex-wrap gap-x-2">
             {parts.map((p) => (
               <span key={p.key} data-testid={`forge-price-${offer.id}-${p.key}`} data-short={p.have < p.need ? 'true' : 'false'}

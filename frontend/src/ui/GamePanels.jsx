@@ -8,7 +8,10 @@ import { Panel, Button, Slot, Icon, SpellRing, Slider, Modal } from './primitive
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon } from 'lucide-react';
 import { getItemRarity } from '../data/items.js';
 import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
-import { relicByName } from '../game/relics.js';
+import { relicByName, relicTier } from '../game/relics.js';
+import { isForgeMaterial } from '../game/forge.js';
+import { idForBlock } from '../world/blockIds.js';
+import { relicEffectText, TIER_NUMERAL } from './relicText.js';
 import { gearStatRows } from '../game/gearCompare.js';
 import { isConsumable, consumeEffect } from '../game/consumables.js';
 import { replayOnboardingTips } from '../game/onboardingTips.js';
@@ -84,41 +87,47 @@ const PaperDollSlot = ({ label, placeholderIcon, equippedItem, onUnequip, onHove
 const STAT_ICON = { strength: 'sword', agility: 'run', intellect: 'magic', armor: 'shield' };
 const STAT_TONE = { strength: 'text-stat-atk', agility: 'text-stat-spd', intellect: 'text-spell-arcane', armor: 'text-stat-def' };
 
+/** What an item that is not gear is for, in words: each claim is one the game makes true. */
+function itemUse(t, itemName) {
+    if (itemName.includes('Potion')) return t('inspect.potion');
+    // The consumable registry, so raw meats, rotten flesh and the XP gems read as consumables, not as blocks.
+    if (isConsumable(itemName)) return t('inspect.consumable');
+    if (itemName === 'chest') return t('inspect.chest');
+    // A voxel the place verb puts in the world (world/blockIds.js); Leather and the like have none.
+    if (idForBlock(itemName) !== null) return isForgeMaterial(itemName) ? t('inspect.blockForge') : t('inspect.block');
+    return t('inspect.noUse');
+}
+
 const GearInspector = ({ itemName, equippedGear }) => {
     const t = useT();
+    const relicTiers = useGameStore((s) => s.relicTiers);
     const stats = EQUIPMENT_STATS[itemName];
     const slot = getItemSlot(itemName);
     const rarity = getItemRarity(itemName);
     const rarityText = RARITY_TEXT[rarity];
 
-    const relic = relicByName(itemName);
-    if (relic) {
-        // A relic changes a verb rather than adding a stat, so it reads its change in words.
+    if (relicByName(itemName)) {
+        // A relic changes a verb rather than adding a stat, so it reads its change in words, at the tier the Forge
+        // tempered it to (the tier is the relic's, worn or in the bag).
+        const tier = relicTier(relicTiers, itemName);
         return (
             <Panel variant="inset" className="p-3 text-center select-none" data-testid="relic-inspect">
                 <div className="grid place-items-center mb-1"><ItemIcon itemName={itemName} size={36} /></div>
                 <div className="font-bold text-sm text-text truncate">{itemName}</div>
                 <div className={`text-[10px] font-bold capitalize mt-0.5 ${rarityText}`}>{rarity} {slot}</div>
-                <div className="text-[10px] text-text mt-2 border-t-chrome border-ink pt-2">{relic.desc}</div>
+                <div className="text-[10px] font-bold text-accent mt-0.5" data-testid="relic-tier">{t('relic.tier', { tier: TIER_NUMERAL[tier] })}</div>
+                <div className="text-[10px] text-text mt-2 border-t-chrome border-ink pt-2" data-testid="relic-effect">{relicEffectText(t, itemName, tier)}</div>
             </Panel>
         );
     }
 
     if (!stats) {
-        // Fallback for blocks/consumables. Drive the consumable label off the shared registry so raw meats,
-        // rotten flesh, and XP gems (Diamond / Golden Crown / Star Fragment) aren't mislabelled as building
-        // material (the old hardcoded 2-item food list only caught Cooked cuts).
-        const isPotion = itemName.includes('Potion');
-        let desc = 'Standard building voxel or Forge material.';
-        if (isConsumable(itemName)) desc = 'Consumable: use it from your inventory.';
-        if (isPotion) desc = 'Consumable: Restores Health or Mana.';
-
         return (
             <Panel variant="inset" className="p-3 text-center select-none">
                 <div className="grid place-items-center mb-1"><ItemIcon itemName={itemName} size={36} /></div>
                 <div className="font-bold text-sm text-text truncate">{itemName}</div>
                 <div className={`text-[10px] font-bold capitalize mt-0.5 ${rarityText}`}>{rarity} Item</div>
-                <div className="text-[10px] text-text-muted italic mt-2 border-t-chrome border-ink pt-2">{desc}</div>
+                <div className="text-[10px] text-text-muted italic mt-2 border-t-chrome border-ink pt-2" data-testid="item-use">{itemUse(t, itemName)}</div>
             </Panel>
         );
     }

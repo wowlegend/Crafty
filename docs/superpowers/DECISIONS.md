@@ -47,7 +47,9 @@ lane's, 50-59 the media lane's). Item 64 amends W1-H item 7's list of three offe
    belongs to the relic, not the slot (`relicTiers`, a persisted progression field and an autosave trigger), so a
    relic swapped out keeps it. A top-tier Lodestone gives a grab five throws, so the hurl pool's bound, derived in
    `hurl.test.js` from the trees and the relics at their top tier, rises and `MAX_FLIGHTS` goes from 6 to 10 (idle
-   meshes are hidden). Ember's prices and the talents' numbers do not move.
+   meshes are hidden). Ember's prices and the talents' numbers do not move. The inventory's inspector reads a relic's
+   change at its own tier, and the temper offer says what the next tier does (`frontend/src/ui/relicText.js`, from
+   `foldVerbMods`, through the locale), so a tempered relic never reads as tier I.
 64. **Goods, and what the grid made that nothing replaces.** The grid was the only source of the storage chest and of
    cobblestone and the renewable one of glass, and the hotbar gate (every hotbar block obtainable) went red without
    them, so the card sells them at the grid's rates and no coins: a Wooden Chest for 8 wood, 4 cobblestone for 4 stone,

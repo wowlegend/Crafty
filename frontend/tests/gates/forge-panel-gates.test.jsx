@@ -55,7 +55,8 @@ describe('the Forge card', () => {
     render(<ForgePanel onClose={() => {}} />);
     // The id tests/e2e/forge.spec.js waits on after G: the card, by the dialog's own name.
     expect(screen.getByRole('dialog', { name: "Mara's Forge" }).contains(tid('forge-panel')), 'the card is not inside its dialog').toBe(true);
-    expect(tid('forge-offer-weapon:Iron Sword').textContent, 'the weapon line does not name the blade it reforges').toContain('Stone Sword');
+    expect(tid('forge-offer-weapon:Iron Sword').textContent, 'the weapon line does not read as the reforge it sells')
+      .toContain('Reforge Stone Sword into Iron Sword');
     expect(tid('forge-price-weapon:Iron Sword-iron').textContent).toBe('4 Iron Ore (have 4)');
     expect(tid('forge-price-weapon:Iron Sword-coins').textContent).toBe('30 coins (have 12)');
     expect(tid('forge-price-weapon:Iron Sword-coins').dataset.short, 'a price the player is short of is not marked').toBe('true');
@@ -95,6 +96,16 @@ describe('the Forge card', () => {
     fireEvent.click(tid('forge-buy-relic:Prism Shard:2'));
     expect(S().relicTiers).toEqual({ 'Prism Shard': 2 });
     expect(tid('forge-offer-relic:Prism Shard:3')).toBeTruthy();
+  });
+
+  it('the temper offer says what the next tier does, in the player\'s locale', () => {
+    useGameStore.setState({ equipment: { ...S().equipment, relic: 'Ember Fang' } });
+    render(<ForgePanel onClose={() => {}} />);
+    expect(tid('forge-effect-relic:Ember Fang:2').textContent, 'the tier II offer does not say what tier II does').toBe('Tempered: Your roar lasts 8 s longer.');
+    cleanup();
+    useGameStore.setState({ relicTiers: { 'Ember Fang': 2 }, locale: 'zh-CN' });
+    render(<ForgePanel onClose={() => {}} />);
+    expect(tid('forge-effect-relic:Ember Fang:3').textContent).toBe('淬炼后：你的咆哮多持续 12 秒。');
   });
 });
 

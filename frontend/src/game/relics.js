@@ -6,11 +6,12 @@
  */
 import { SNARE_ARC } from './soulbind.js';
 
+// What each does in words, at the tier it is tempered to, is ui/relicText.js, through the locale.
 export const RELICS = Object.freeze({
-  'Ember Fang': Object.freeze({ verb: 'roar', desc: 'Your roar lasts 4 s longer.', mod: Object.freeze({ key: 'roarSec', add: 4 }) }),
-  Lodestone: Object.freeze({ verb: 'grab', desc: 'A grab holds one more block to hurl.', mod: Object.freeze({ key: 'grabThrows', add: 1 }) }),
-  'Snare Knot': Object.freeze({ verb: 'snare', desc: 'Your snare\'s aim is twice as wide.', mod: Object.freeze({ key: 'snareArc', add: SNARE_ARC }) }),
-  'Prism Shard': Object.freeze({ verb: 'imbue', desc: 'An imbued zone leaps to one more hostile.', mod: Object.freeze({ key: 'imbueChain', add: 1 }) }),
+  'Ember Fang': Object.freeze({ verb: 'roar', mod: Object.freeze({ key: 'roarSec', add: 4 }) }),
+  Lodestone: Object.freeze({ verb: 'grab', mod: Object.freeze({ key: 'grabThrows', add: 1 }) }),
+  'Snare Knot': Object.freeze({ verb: 'snare', mod: Object.freeze({ key: 'snareArc', add: SNARE_ARC }) }),
+  'Prism Shard': Object.freeze({ verb: 'imbue', mod: Object.freeze({ key: 'imbueChain', add: 1 }) }),
 });
 
 /** The relic named `name`, or null. */

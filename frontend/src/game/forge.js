@@ -34,6 +34,13 @@ export const GOODS = Object.freeze([
   Object.freeze({ id: 'goods:glass', line: 'goods', give: 'glass', count: 4, price: price({ sand: 4 }, 0) }),
 ]);
 
+// Every block some Forge price takes.
+const MATERIALS = new Set([...Object.values(WEAPON_PRICE), ...Object.values(RELIC_PRICE), ...GOODS.map((g) => g.price)]
+  .flatMap((p) => Object.keys(p.blocks)));
+
+/** Does any Forge price take block `key`? */
+export const isForgeMaterial = (key) => MATERIALS.has(key);
+
 const BAGS = ['blocks', 'tools', 'magic'];
 
 /** A count as the Forge reads it: floored, and 0 for anything not a positive finite number. */
