@@ -1,8 +1,19 @@
 // Flat dotted-key string tables. en is the source/fallback; zh-CN must cover
 // every en key (enforced by tests/i18n/i18n.test.js). Keep keys stable —
 // user-facing copy goes through t(key), never hardcoded.
+import { MOB_TYPES } from '../game/mobTypes.js';
+
+// A creature's English name is the word on its nametag, MOB_TYPES[type].displayName, so renaming it in the registry
+// renames it in every quest (game/questText.js). Its plural adds "s" except where English does not.
+const IRREGULAR_PLURAL = Object.freeze({ Ox: 'Oxen' });
+const ENGLISH_MOB_NOUNS = Object.fromEntries(Object.entries(MOB_TYPES).flatMap(([type, { displayName }]) => [
+  [`mob.${type}.one`, displayName],
+  [`mob.${type}.other`, IRREGULAR_PLURAL[displayName] || `${displayName}s`],
+]));
+
 export const STRINGS = {
   en: {
+    ...ENGLISH_MOB_NOUNS,
     'ui.inventory': 'Inventory',
     'ui.equip': 'Equip',
     'ui.unequip': 'Unequip',
@@ -93,6 +104,13 @@ export const STRINGS = {
     'panel.questLog': 'Quest Log',
     'panel.controls': 'Controls',
     'quest.none': 'No active quests. Speak to the warden at the gate.',
+    // A hunt's objective and titles (game/questText.js): {mob} is the creature's name in the count's plural form.
+    'quest.defeatType': 'Defeat {count} {mob}',
+    'quest.zombie_slayer.title': '{mob} Slayer',
+    'quest.spider_hunter.title': '{mob} Hunter',
+    'quest.ember_hunter.title': '{mob} Hunter',
+    'quest.undead_destroyer.title': 'Undead Destroyer',
+    'quest.brute_breaker.title': '{mob} Breaker',
     // Mara's Forge (ui/panels/ForgePanel.jsx) + villager trading. Item and block names stay English until the item-id
     // decouple (registry OPEN_ITEMS:OI-45).
     'forge.title': "Mara's Forge",
@@ -286,6 +304,23 @@ export const STRINGS = {
     'panel.questLog': '任务日志',
     'panel.controls': '操作说明',
     'quest.none': '暂无进行中的任务。去与门口的守卫谈谈。',
+    'quest.defeatType': '击败 {count} 个{mob}',
+    'quest.zombie_slayer.title': '{mob}杀手',
+    'quest.spider_hunter.title': '{mob}猎人',
+    'quest.ember_hunter.title': '{mob}猎人',
+    'quest.undead_destroyer.title': '亡灵毁灭者',
+    'quest.brute_breaker.title': '{mob}克星',
+    // Chinese has one plural form, so each creature's two nouns are the same word.
+    'mob.pig.one': '野猪', 'mob.pig.other': '野猪',
+    'mob.cow.one': '牛', 'mob.cow.other': '牛',
+    'mob.zombie.one': '尸傀', 'mob.zombie.other': '尸傀',
+    'mob.skeleton.one': '拾骨者', 'mob.skeleton.other': '拾骨者',
+    'mob.spider.one': '边境蜘蛛', 'mob.spider.other': '边境蜘蛛',
+    'mob.villager.one': '定居者', 'mob.villager.other': '定居者',
+    'mob.skitterling.one': '窜蛛', 'mob.skitterling.other': '窜蛛',
+    'mob.duskhound.one': '暮犬', 'mob.duskhound.other': '暮犬',
+    'mob.moss_brute.one': '苔藓蛮兽', 'mob.moss_brute.other': '苔藓蛮兽',
+    'mob.emberhusk.one': '余烬尸傀', 'mob.emberhusk.other': '余烬尸傀',
     'forge.title': '玛拉的锻炉',
     'forge.weapon': '武器',
     'forge.relic': '遗物',
