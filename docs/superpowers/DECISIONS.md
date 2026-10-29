@@ -19,6 +19,53 @@
 
 ---
 
+## 2026-10-29 — [LOOP] W2-D PR A: the HUD at rest, the compass, one notification channel, and no mob mirror
+
+**Decided by the W2-D HUD lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H item 2(c) and
+reset-plan rows 9 (its rest) and 12 by the task script `docs/superpowers/plans/2026-10-29-crafty-w2d-hud.md`. Numbered
+from 90 (41-79 are taken; the W2-E follow-up lane holds 80-89). PR B (the re-key, the panels, the feats) records its own
+items. Each stands while it earns its place.
+
+90. **The desktop rail is deleted, the level card folds into the hotbar, and quests rest on one line.** The rail's three
+   buttons (Inventory, Magic, Building) opened panels that keep their keys (E, M, B; `keyMap.test.js` holds each key to a
+   live handler) and their touch-tray buttons (`tests/gates/hud-at-rest-gates.test.jsx` holds the tray rows); the level
+   card at `bottom-32` and the touch level readout become one 4 px XP edge above the hotbar with the level beside it;
+   the quest tracker rests as the lead quest's line and opens to the list on a click, tap or hover. The coin readout,
+   the dial, the toast stack, the touch minimap, the Aspect bar and, where the hotbar would reach them, the vitals move
+   so nothing at rest overlaps. **Why:** about a fifth of a 1280x800 frame was interface (survey-2026-10-27 finding 11);
+   the acceptance is the chrome share on lookbook frames (item 94). **Proof that nothing promised depends on the rail:**
+   `tests/e2e/hud-at-rest.spec.js` (no rail button on screen in a browser; a real grant moves the XP edge; at 1280x800,
+   1180x820 and 820x1180 no two of eleven HUD rects intersect; at 390x844 no two visible touch targets overlap or leave
+   the viewport), run by CI on the PR's head.
+91. **The compass is a component, and its capture guards are not carried over.** `ui/Compass.jsx` renders a fixed pool
+   of marker slots once; the HUD ticker writes each slot's transform and text only on change; `ui/compassLayout.js`
+   places labels in priority order (boss, HOME, shrine, Blight Heart, NPC, chest, cardinal) and a later label that
+   would come within 4 px of a placed one yields, its pip staying. Every label is a `compass.*` key (en, zh-CN); an NPC
+   shows its short name. **The guards:** the old block suppressed HOME, shrine, Blight Heart and chests and stopped
+   ticking under capture, to keep the retired capture baselines byte-stable (W1-H item 1); the rule says a guard leaves
+   when its subject next moves (reset plan row 48), so the component has none. Three source-grep gates that read the
+   old strings (shrine-marker, blight-marker, compass-hearth's wiring half) are replaced by
+   `tests/gates/compass-markers-gates.test.js`, which drives the real marker builder; the source-grep ledger falls 101
+   to 98.
+92. **One notification channel: a key renders through t() when shown, and the same news inside 4 s shows once.**
+   `addNotification(message, type, { key, vars })` takes a dictionary key or a plain string; `ui/notifications.js`
+   decides what it says and whether it shows. **The behaviour change, stated:** identical plain-text toasts inside one
+   toast's life now collapse to one (two "Looted: Bone" from one swing read as one line in the toasts and the combat
+   log). The dusk warning is `notice.dusk`, once per dusk, below the dial it covered. The other English notification
+   literals (weather, boss, loot, talk, quest, store) still pass plain strings (registry
+   `REVIEW:w2d:notifications-english-literals`).
+93. **The 250 ms mob mirror is deleted** (reset plan row 9; arch A17). The minimap and the compass read `mobsQuery` and
+   `alliesQuery` on their own clocks; the lookbook hold reads the seam's `mobs()` (with ids) and falls back to the mirror
+   only for an older build. `activeHostilesCount` stays, because the music subscribes to it, and is now written on
+   change by SpawnerSystem's 1 s pass (it was 4 Hz): the soundtrack can start up to a second after the first hostile
+   instead of a quarter second.
+94. **The chrome share is measured in the build's own surface colours, against a world-only twin.** The acceptance
+   number (8% or less of an eye-level frame) counts pixels within 3 per channel of `--ui-ink, panel, panel-raise,
+   panel-frame, panel-inset, well, slot, control, track` as the page defines them at shot time, less the pixels that
+   match the same colour in a twin shot with the DOM hidden but the game canvas. **Why:** the warm re-key (PR B) must not
+   pass by moving its colours out of a list the instrument holds, and a dusk sky or a night on the navy is the world,
+   not interface. **Blind spot:** a translucent surface counts only where its blend lands within 3 of a token.
+
 ## 2026-10-29 — [LOOP] W2-F step 7: quests name the creatures on screen
 
 **Decided by the W2-F quest-text lane under the standing grant** (DECISIONS 2026-10-28 item 14), building the
