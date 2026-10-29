@@ -101,6 +101,9 @@ step() { # step <name> <cmd...>
 
 cd "$APP"
 
+# Node 24.2+ before any step: below it every gate's import.meta.main guard is undefined and each gate passes unrun.
+node scripts/ci/node-floor.mjs || exit 1
+
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # TIER: PUBLISH GUARD — runs FIRST in every tier. This repo is PUBLIC and Vercel auto-deploys every
 # push, so a leak is unrecoverable: force-push does not erase history on GitHub.

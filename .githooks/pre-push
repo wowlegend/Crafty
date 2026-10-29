@@ -54,6 +54,9 @@ fi
 # pipeline starts never see it. Pinned by the PRODUCER cases in tests/scripts/artifact-currency-scope.test.js.
 export PUSH_RANGES="$RANGES"
 
+# Node 24.2+ first: below it every gate's import.meta.main guard is undefined and each gate would pass unrun.
+node "$REPO_ROOT/frontend/scripts/ci/node-floor.mjs" || exit 1
+
 # ── mutation-proof trailer ──────────────────────────────────────────────────────
 # Cheap, and it runs FIRST: a commit that adds a gate without saying how it was proven to fail is rejected in
 # milliseconds. The mutation-proof rule in CLAUDE.md has an enforcer.

@@ -1154,7 +1154,7 @@ npm run test:unit                      # Expected: the suite total printed, 0 fa
 npm run lint                           # Expected: 0 errors (no-unused-vars is an error)
 node scripts/ci/gate-shape.mjs         # Expected: PASS; the source-grep population does not rise
 node scripts/ci/killability-ledger.mjs # Expected: PASS; every new gate file states what makes it fail
-node scripts/ci/cli-guard.mjs          # Expected: PASS; the bench exports nothing
+npx vitest run tests/scripts/cli-entry.test.js          # Expected: PASS; the bench exports nothing
 node scripts/ci/opsec-scan.mjs --all   # Expected: PASS
 npm run build && node scripts/ci/bundle-budget.mjs   # Expected: index <= 760,000; record the delta
 ```
