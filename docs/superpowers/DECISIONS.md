@@ -47,11 +47,12 @@ items. Each stands while it earns its place.
    old strings (shrine-marker, blight-marker, compass-hearth's wiring half) are replaced by
    `tests/gates/compass-markers-gates.test.js`, which drives the real marker builder; the source-grep ledger falls 101
    to 98.
-92. **One notification channel: a key renders through t() when shown, and the same news inside 4 s shows once.**
+92. **One notification channel: a key renders through t() when shown, and the same key inside 4 s shows once.**
    `addNotification(message, type, { key, vars })` takes a dictionary key or a plain string; `ui/notifications.js`
-   decides what it says and whether it shows. **The behaviour change, stated:** identical plain-text toasts inside one
-   toast's life now collapse to one (two "Looted: Bone" from one swing read as one line in the toasts and the combat
-   log). The dusk warning is `notice.dusk`, once per dusk, below the dial it covered. The other English notification
+   decides what it says and whether it shows. **Plain text is not deduped:** the denial notices (`ui/denyToast.js`) are
+   plain strings that answer each press, and a first build that dropped a repeated one inside 4 s made
+   `tests/e2e/ember.spec.js` read a refused roar as "refused in silence" (CI run 40940672590, first attempt). The dusk
+   warning is `notice.dusk`, once per dusk, below the dial it covered. The other English notification
    literals (weather, boss, loot, talk, quest, store) still pass plain strings (registry
    `REVIEW:w2d:notifications-english-literals`).
 93. **The 250 ms mob mirror is deleted** (reset plan row 9; arch A17). The minimap and the compass read `mobsQuery` and

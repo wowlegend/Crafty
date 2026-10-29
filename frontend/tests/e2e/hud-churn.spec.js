@@ -38,13 +38,16 @@ test('standing still the compass writes nothing; turning, it updates', async ({ 
     const c = { writes: 0, identical: 0, found: !!el };
     window.__compass = c;
     if (!el) return;
+    // A node's markup, so a child swapped for a different one with the same (empty) text, such as an icon's placeholder
+    // <svg> for the drawn one when the game icons arrive, is not counted as a rewrite of the same thing.
+    const markup = (n) => (n.nodeType === 1 ? n.outerHTML : n.textContent);
     new MutationObserver((records) => {
       for (const r of records) {
         c.writes += 1;
         const same = (r.type === 'attributes' && r.oldValue === r.target.getAttribute(r.attributeName))
           || (r.type === 'characterData' && r.oldValue === r.target.data)
           || (r.type === 'childList' && r.removedNodes.length === 1 && r.addedNodes.length === 1
-            && r.removedNodes[0].textContent === r.addedNodes[0].textContent);
+            && markup(r.removedNodes[0]) === markup(r.addedNodes[0]));
         if (same) c.identical += 1;
       }
     }).observe(el, { childList: true, subtree: true, attributes: true, attributeOldValue: true, characterData: true, characterDataOldValue: true });

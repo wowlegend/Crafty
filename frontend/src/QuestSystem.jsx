@@ -240,14 +240,14 @@ export const useQuestSystem = () => {
         setUnlockedAchievements(restored);
     }, [questLoadedAt]);
 
-    // The one notification channel (ui/notifications.js): a dictionary key or a plain string, dropped when the same news
-    // showed inside one toast's life.
+    // The one notification channel (ui/notifications.js): a dictionary key or a plain string; a key is dropped when the
+    // same one showed inside one toast's life.
     const recentNotifications = useRef(new Map());
     const addNotification = useCallback((message, type = 'info', opts = {}) => {
         const n = toNotification(message, type, opts);
         const now = Date.now();
         if (!admits(recentNotifications.current, n.dedupe, now)) return;
-        recentNotifications.current.set(n.dedupe, now);
+        if (n.dedupe != null) recentNotifications.current.set(n.dedupe, now);
         const id = notifId.current++;
         setNotifications(prev => [...prev, { id, ...n, timestamp: now }]);
         setTimeout(() => {

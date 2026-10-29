@@ -32,10 +32,15 @@ describe('the notification channel', () => {
     expect(dusk().map((n) => n.id), 'the same news after the window was dropped').toEqual([first + 1]);
   });
 
-  it('different news inside the window both show', () => {
+  it('different news inside the window both show, and a plain-text denial repeated at once shows twice', () => {
+    // A denial (ui/denyToast.js) is plain text and answers each press; dropping the second would refuse a press in silence.
     const { result } = renderHook(() => useQuestSystem());
-    act(() => { useGameStore.getState().addNotification('notice.dusk', 'warn'); useGameStore.getState().addNotification('Looted: Bone', 'loot'); });
-    expect(result.current.notifications.map((n) => n.key || n.text)).toEqual(['notice.dusk', 'Looted: Bone']);
+    act(() => {
+      useGameStore.getState().addNotification('notice.dusk', 'warn');
+      useGameStore.getState().addNotification('Not enough ember', 'warn');
+      useGameStore.getState().addNotification('Not enough ember', 'warn');
+    });
+    expect(result.current.notifications.map((n) => n.key || n.text)).toEqual(['notice.dusk', 'Not enough ember', 'Not enough ember']);
   });
 
   it('a keyed toast reads in Chinese when zh-CN is selected, and in English when it is not', () => {

@@ -14,11 +14,11 @@ describe('one notification channel', () => {
     expect(admits(recent, a.dedupe, 1000 + TOAST_MS)).toBe(true);
   });
 
-  it('plain text dedupes by its words, and an explicit key overrides both', () => {
-    const recent = new Map([['Looted: Bone', 0]]);
-    expect(admits(recent, toNotification('Looted: Bone', 'loot').dedupe, 10)).toBe(false);
-    expect(admits(recent, toNotification('Looted: Arrow', 'loot').dedupe, 10)).toBe(true);
-    expect(toNotification('Looted: Bone', 'loot', { key: 'loot' }).dedupe).toBe('loot');
+  it('plain text is never dropped (a repeated denial answers each press); an explicit key dedupes it', () => {
+    const recent = new Map([['Looted: Bone', 0], ['loot', 0]]);
+    expect(toNotification('Looted: Bone', 'loot').dedupe).toBeNull();
+    expect(admits(recent, toNotification('Looted: Bone', 'loot').dedupe, 10)).toBe(true);
+    expect(admits(recent, toNotification('Looted: Bone', 'loot', { key: 'loot' }).dedupe, 10)).toBe(false);
   });
 
   it('a key renders in the current language when shown; plain text renders as written', () => {
