@@ -1,5 +1,6 @@
 // notifications.js — the one notification channel's rules (the HUD lane's task script, decision 5). Every toast the
-// game raises goes through the store's addNotification (QuestSystem's useQuestSystem publishes it), and two things are
+// game raises goes through the store's addNotification (QuestSystem's useQuestSystem publishes it): the quest and loot
+// news, the dusk warning, the siege and dawn notices, the dragon's calls and an Aspect's first unlock. Two things are
 // decided here, purely: what a notification says (a dictionary key renders through t() when it is SHOWN, so a toast reads
 // in the language the player has now; a plain string shows as written), and whether it is shown at all (the same key
 // inside one toast's life is the same news, and is dropped). A plain string is never dropped: the denial notices say why
@@ -26,5 +27,9 @@ export const admits = (recent, dedupe, now, windowMs = TOAST_MS) => {
   return at === undefined || now - at >= windowMs;
 };
 
-/** The words a notification shows: its key in the current language, else its text. */
-export const notificationText = (n, t = translate) => (n.key ? t(n.key, n.vars) : n.text);
+/** A notification's vars with every `{ key, vars }` value (a name: a boss, an item) translated by `t`. */
+const shownVars = (vars, t) => (vars ? Object.fromEntries(Object.entries(vars).map(([k, v]) =>
+  [k, v && typeof v === 'object' && typeof v.key === 'string' ? t(v.key, v.vars) : v])) : vars);
+
+/** The words a notification shows: its key in the current language, its names in it too, else its text. */
+export const notificationText = (n, t = translate) => (n.key ? t(n.key, shownVars(n.vars, t)) : n.text);

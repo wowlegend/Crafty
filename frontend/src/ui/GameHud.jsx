@@ -1,6 +1,6 @@
 // The HUD chrome: MinecraftHotbar (the bottom block hotbar, with the level and a 4 px XP edge along its top) and GameUI
-// (the HUD overlay: settings and the hotbar). Both take their values as props, with no store coupling. The desktop side
-// rail is gone (the HUD lane's task script, decision 3): its panels keep their keys, and touch keeps its tray.
+// (the HUD overlay: settings and the hotbar). Both take their values as props, with no store coupling. No panel buttons
+// sit at rest: on desktop the panels open by their keys (game/keyMap.js), on touch from the tray (ui/touchTray.js).
 import React from 'react';
 import { useT } from '../i18n/i18n.js';
 import { motion } from 'framer-motion';

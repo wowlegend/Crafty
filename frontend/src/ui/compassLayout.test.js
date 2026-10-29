@@ -65,6 +65,19 @@ describe('the compass layout', () => {
     expect(out[0].x).toBeGreaterThan(STRIP - 30);
   });
 
+  it('two labels that would not touch but come within the 4 px gap: the later yields; 5 px apart both show', () => {
+    // A strip 180 px wide over a 180-degree view: one degree is one pixel, so a label 40 px wide centred 42 px from
+    // another leaves 2 px between their boxes, and centred 45 px away leaves 5.
+    const view = { heading: 0, fov: Math.PI, stripPx: 180 };
+    const pair = (apartDeg) => layoutCompass([
+      { id: 'home', kind: 'home', bearing: 0, labelWidth: 40 },
+      { id: 'npc:a', kind: 'npc', bearing: apartDeg * DEG, labelWidth: 40 },
+    ], view).map((m) => m.labelVisible);
+    expect(GAP_PX).toBe(4);
+    expect(pair(42), '2 px apart is inside the gap').toEqual([true, false]);
+    expect(pair(45), '5 px apart is clear of it').toEqual([true, true]);
+  });
+
   it('bearings use the heading convention (north is -Z, east +X), and NPCs are named short', () => {
     expect(bearingTo(0, -10, 0, 0)).toBeCloseTo(0, 9);
     expect(bearingTo(10, 0, 0, 0)).toBeCloseTo(90 * DEG, 9);

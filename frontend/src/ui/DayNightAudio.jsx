@@ -4,7 +4,7 @@ import { useGameSounds } from '../SoundManager';
 
 /**
  * DayNightAudio — the one-shot AUDIO punctuation for the day/night TRANSITION beats (pairs with the
- * SurvivalWarning banner + the gradual DAY/NIGHT music shift). On day->night it sounds an ominous siege
+ * nightfall and dawn notices + the gradual DAY/NIGHT music shift). On day->night it sounds an ominous siege
  * HORN (the night siege begins — the beat the onboarding nudge promises); on night->day a bright dawn
  * CHIME (you survived). Mirrors HeartbeatAudio/UISounds: a tiny store-watcher that fires a sound on a
  * low-frequency edge (a reactive read on isDay -> Game-Loop-safe). No sound on mount (the ref seeds to the

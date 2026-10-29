@@ -140,20 +140,21 @@ export function siegeParams(nightCount, zoneTier = 0) {
 }
 
 /**
- * The nightfall warning message, NUMBERED + tiered by nightCount, so the siege has a readable ladder
- * (which night am I on? how bad is it now?) + a survival score. The intensity actually ramps via
- * siegeParams; this surfaces it. A nullish / <=0 / NaN night clamps to night 1 (never "Night 0").
+ * The nightfall notice, NUMBERED + tiered by nightCount, so the siege has a readable ladder (which night am I on? how bad
+ * is it now?) + a survival score. The intensity actually ramps via siegeParams; this surfaces it. A nullish / <=0 / NaN
+ * night clamps to night 1 (never "Night 0"). A dictionary key and its vars, for the notification channel
+ * (ui/notifications.js), so it reads in the player's language when it shows.
  * @param {number} nightCount
- * @returns {string}
+ * @returns {{ key: string, vars: { n: number } }}
  */
+const SIEGE_TIERS = Object.freeze([
+  [1, 'notice.siege.first'], [2, 'notice.siege.harder'], [4, 'notice.siege.intensifies'], [6, 'notice.siege.ferocious'],
+  [Infinity, 'notice.siege.relentless'],
+]);
+
 export function siegeWarning(nightCount) {
   const n = Math.max(1, Math.floor(Number(nightCount) || 0) || 1);
-  const phrase = n <= 1 ? 'the first siege begins'
-    : n <= 2 ? 'the horde presses harder'
-    : n <= 4 ? 'the siege intensifies'
-    : n <= 6 ? 'a ferocious siege descends'
-    : 'a relentless siege howls';
-  return `Night ${n} — ${phrase}. Hold until dawn!`;
+  return { key: SIEGE_TIERS.find(([upTo]) => n <= upTo)[1], vars: { n } };
 }
 
 // --- M3b SURVIVE-TO-DAWN reward --------------------------------------------

@@ -155,7 +155,7 @@ function GameApp({ experienceSystem }) {
   useDayNightClock({ isWorldBuilt, isAlive: gameSystems?.isAlive });
   const questSystem = useQuestSystem();
   const treasureChests = useTreasureChests();
-  const survivalMode = useSurvivalMode(gameState.isDay);
+  useSurvivalMode(gameState.isDay);
   useEmberAccrual(); // day kills by the player's own hand fill the ember bar
   const bossSystem = useBossSystem(experienceSystem.playerLevel);
 
@@ -1017,7 +1017,6 @@ function GameApp({ experienceSystem }) {
           experienceSystem={experienceSystem}
           questSystem={questSystem}
           treasureChests={treasureChests}
-          survivalMode={survivalMode}
           bossSystem={bossSystem}
         />
       )}

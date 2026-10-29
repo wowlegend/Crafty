@@ -3,15 +3,22 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { GameMethods } from '../GameMethods';
-import { bossTierStats, bossCanReturn, BOSS_BASE_LEVEL } from '../game/bossTier.js';
+import { bossTierStats, bossCanReturn, BOSS_BASE_LEVEL, ROMAN } from '../game/bossTier.js';
 import { blightHeartSite } from './blightHeart.js';
 import { HITSTOP } from '../game/trauma.js';
 import { applyBossDamage, runBossKillEffects } from '../game/bossKill.js';
 import { runIsolatedEffects } from '../game/isolatedEffects.js';
 import { bossEntranceBeat, ENTRANCE } from '../game/bossEntrance.js';
 import { phaseForHealth } from '../game/bossPersistence.js';
-import { makeNotifClearTracker } from './bossNotifTimers.js';
 import { isWorldFrozenNow } from '../game/worldClock.js';
+
+/** The dragon's name at `tier` as a dictionary key (with its numeral), translated when its notice shows. */
+const bossNameKey = (tier) => (tier >= 2 ? { key: 'boss.dragonRisenN', vars: { roman: ROMAN[tier] || tier, n: tier } }
+  : { key: tier === 1 ? 'boss.dragonRisen' : 'boss.dragon' });
+
+// The dragon's calls go to the one notification channel (ui/notifications.js) as dictionary keys; a toast there clears
+// itself, so nothing here is left to set state after an unmount.
+const bossNotice = (key, vars) => useGameStore.getState().addNotification?.(key, 'danger', { vars });
 
 export const useBossSystem = (playerLevel) => {
     // A-bis B2g: seed from the STORE, which is what the save restores into, instead of from BOSS_CONFIG.
@@ -31,16 +38,9 @@ export const useBossSystem = (playerLevel) => {
     // passed before they quit. Same derivation the effect uses, so mount produces no change to announce.
     const [bossPhase, setBossPhase] = useState(() =>
         phaseForHealth(useGameStore.getState().bossHealth, bossTierStats(useGameStore.getState().bossTier || 0).health));
-    const [bossNotification, setBossNotification] = useState(null);
     const bossSpawned = useRef(false);
     const bossKilledRef = useRef(false); // idempotency latch: kill side-effects fire EXACTLY once even if damageBoss is called twice in a frame (melee + spell) or the updater double-invokes under StrictMode
 
-    // Track the boss-notification auto-clear timeouts so they can't fire setBossNotification AFTER unmount
-    // (the audit's setState-after-unmount leak). Extracted to bossNotifTimers.js (behavioral test, V1).
-    const notifTracker = useRef(null);
-    if (!notifTracker.current) notifTracker.current = makeNotifClearTracker(setBossNotification);
-    const scheduleNotifClear = useCallback((ms) => notifTracker.current.schedule(ms), []);
-    useEffect(() => () => notifTracker.current.clearAll(), []);
 
     // S9: the Shadow Dragon now AWAITS at the fixed Blight Heart lair (NOT a level-5 ambush at the player).
     // Once you are strong enough (level 5), poll for ARRIVAL at the lair (~24 blocks) -- the dragon awakens
@@ -63,8 +63,7 @@ export const useBossSystem = (playerLevel) => {
                 if (!bossCanReturn({ tier: bossTier, killNight: s.bossKillNight, nightCount: s.nightCount, level: playerLevel })) return;
                 if (!returnAnnounced.current) {
                     returnAnnounced.current = true;
-                    setBossNotification(`The Blight Heart stirs again -- the ${stats.name} waits at the lair.`);
-                    scheduleNotifClear(6000);
+                    bossNotice('notice.bossReturns', { boss: bossNameKey(bossTier) });
                 }
             }
             const playerPos = useGameStore.getState().playerPosition;
@@ -77,7 +76,7 @@ export const useBossSystem = (playerLevel) => {
             // would make those frames non-deterministic (same guard the A5 dangerLevel bridge uses).
             const bStore = useGameStore.getState();
             runIsolatedEffects(bossEntranceBeat({
-                notify: () => { setBossNotification(`The Blight Heart stirs -- the ${stats.name} awakens! [Climax]`); scheduleNotifClear(6000); },
+                notify: () => bossNotice('notice.bossAwakens', { boss: bossNameKey(bossTier) }),
                 // The REAL camera shake, not setScreenShake -- that one drives DamageOverlay's red vignette,
                 // so the arrival used to paint the take-damage cue over the climax. No clear timeout is
                 // needed any more: trauma decays itself, frame-rate independently.
@@ -107,7 +106,7 @@ export const useBossSystem = (playerLevel) => {
             setBossActive(true);
         }, 1500);
         return () => clearInterval(interval);
-    }, [playerLevel, bossDefeated, bossTier, stats, scheduleNotifClear]);
+    }, [playerLevel, bossDefeated, bossTier, stats]);
 
     useEffect(() => {
         // The threshold walk moved to game/bossPersistence.phaseForHealth so the rehydrate seeds the phase
@@ -116,18 +115,10 @@ export const useBossSystem = (playerLevel) => {
         const i = phaseForHealth(bossHealth, bossMaxHealth);
         if (bossPhase !== i) {
             setBossPhase(i);
-            let alertMsg = '';
-            if (i === 1) {
-                alertMsg = 'PHASE 2: The Shadow Dragon lands! Pushing you back with ROARS!';
-            } else if (i === 2) {
-                alertMsg = 'PHASE 3: The Shadow Dragon is ENRAGED! Watch out for LAVA ZONES and Skeleton Summons!';
-            }
-            if (alertMsg) {
-                setBossNotification(alertMsg);
-                scheduleNotifClear(5000);
-            }
+            if (i === 1) bossNotice('notice.bossPhase2');
+            else if (i === 2) bossNotice('notice.bossPhase3');
         }
-    }, [bossHealth, bossMaxHealth, bossPhase, scheduleNotifClear]);
+    }, [bossHealth, bossMaxHealth, bossPhase]);
 
     // B2h: the updater is now PURE — it only computes the new health. The kill's ~8 side effects moved to
     // the post-commit effect below, so a throwing reward can no longer void the win (they used to run inside
@@ -148,7 +139,7 @@ export const useBossSystem = (playerLevel) => {
         runBossKillEffects([
             ['deactivate', () => setBossActive(false)],
             ['defeated', () => setBossDefeated(true)],
-            ['notify', () => { setBossNotification(`BOSS DEFEATED! You have slain the ${stats.name}! +${stats.xpReward} XP!`); scheduleNotifClear(6000); }],
+            ['notify', () => bossNotice('notice.bossDefeated', { boss: bossNameKey(bossTier), xp: stats.xpReward })],
             ['grantXP', () => GameMethods.grantXP && GameMethods.grantXP(stats.xpReward, `${stats.name} Defeated!`)],
             ['loot', () => { if (store.addToInventory) for (const [item, qty] of stats.loot) store.addToInventory(item, qty); }],
             // C3: the next dragon is a tier stronger, and its return is counted from TONIGHT. Before the win
@@ -169,7 +160,7 @@ export const useBossSystem = (playerLevel) => {
             ['victory', () => { if (bossTier === 0) useGameStore.setState({ victoryPending: true }); }],
             ['win', () => store.markGameWon && store.markGameWon()], // S9c: the persisted win — LAST + idempotent
         ]);
-    }, [bossActive, bossHealth, scheduleNotifClear, stats, bossTier]);
+    }, [bossActive, bossHealth, stats, bossTier]);
 
     useEffect(() => {
         useGameStore.setState({ damageBoss: damageBoss });
@@ -216,7 +207,7 @@ export const useBossSystem = (playerLevel) => {
 
     return {
         bossActive, bossHealth, bossMaxHealth, bossPositionRef,
-        bossDefeated, bossPhase, bossNotification, damageBoss,
+        bossDefeated, bossPhase, damageBoss,
         bossTier, bossName: stats.name,
     };
 };

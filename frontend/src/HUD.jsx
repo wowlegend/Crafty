@@ -29,12 +29,11 @@ import DuskWarning from './ui/DuskWarning';
 import MusicPlayer from './ui/MusicPlayer';
 import UISounds from './ui/UISounds';
 import AspectHintToast from './ui/AspectHintToast';
-import { SurvivalWarning } from './ui/SurvivalWarning';
 import { AbilityBar } from './ui/AbilityBar';
 import { TargetFrame } from './ui/TargetFrame';
 import { RadialMinimap } from './ui/RadialMinimap';
 import { Compass } from './ui/Compass.jsx';
-import { Panel, Toast, Icon } from './ui/primitives/index.js';
+import { Panel, Icon } from './ui/primitives/index.js';
 import { EmberBar } from './ui/EmberBar.jsx';
 import { subscribeHudTick } from './ui/hudTicker.js';
 import { PanelBoundary, onceRetrying } from './ui/panels/lazyPanels.js';
@@ -73,13 +72,14 @@ export function WindupChevronsSlot() {
 // M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
 // (HUD is a plain declarative component, not a per-frame useFrame system, so a
 // store subscription here is fine + Game-Loop-Isolation-safe). Gated on coins > 0
-// so the default-zero wallet renders NOTHING -- the capture harness never grants
-// coins, so the explore-day/night baselines stay byte-identical (no drift).
+// so the default-zero wallet renders NOTHING. On desktop it sits left of the Settings gear; on touch the Pause button
+// takes that place (ui/TouchControls.jsx, right 64 px, 46 px wide), so it sits under the minimap, which ends at about
+// 164 + 159 px there.
 const CoinReadout = React.memo(() => {
   const coins = useGameStore((s) => s.coins);
   if (!coins || coins <= 0) return null;
   return (
-    <div className="absolute top-4 right-[68px] z-20 pointer-events-none">
+    <div data-testid="coin-readout" className={`absolute ${isTouchUIMode() ? 'top-[332px] right-2' : 'top-4 right-[68px]'} z-20 pointer-events-none`}>
       <Panel variant="base" className="px-3 py-1.5 flex items-center gap-1.5">
         <Icon name="coins" size={18} className="flex-none text-warn" />
         <span className="font-bold tabular-nums text-text">{coins}</span>
@@ -96,7 +96,8 @@ const CoinReadout = React.memo(() => {
 // is driven by a self-contained 1s interval (a clock needs ~1s granularity) reading getState() transiently
 // + writing a ref transform -- NO per-frame React state; only the rare isDay flip re-renders (sun<->moon).
 // Capture-SUPPRESSED (return null + interval never starts) -> the visual baselines stay byte-identical.
-const DayPhaseDial = React.memo(() => {
+export const DayPhaseDial = React.memo(() => {
+  const t = useT();
   const isDay = useGameStore((s) => s.isDay);
   const orbitRef = useRef(null);
   const labelRef = useRef(null);
@@ -108,14 +109,14 @@ const DayPhaseDial = React.memo(() => {
       const p = dayPhase(st.gameTime, st.isDay);
       if (orbitRef.current) orbitRef.current.style.transform = `rotate(${p.markerAngleDeg}deg)`;
       if (labelRef.current) {
-        labelRef.current.textContent = p.duskApproaching ? 'DUSK' : (!p.isDay ? 'NIGHT' : '');
+        labelRef.current.textContent = p.duskApproaching ? t('hud.dusk') : (!p.isDay ? t('hud.night') : '');
         labelRef.current.style.color = p.duskApproaching ? 'rgb(var(--ui-warn))' : '';
       }
     };
     apply();
     const id = setInterval(apply, 1000); // ~1.2deg/s orbit -> 1s steps read smooth; clock-appropriate
     return () => clearInterval(id);
-  }, []);
+  }, [t]);
 
   if (isCaptureMode()) return null;
 
@@ -140,7 +141,7 @@ const DayPhaseDial = React.memo(() => {
           className="text-[9px] font-bold tabular-nums text-text-muted h-3 leading-3"
           style={{ color: init.duskApproaching ? 'rgb(var(--ui-warn))' : undefined }}
         >
-          {init.duskApproaching ? 'DUSK' : (!init.isDay ? 'NIGHT' : '')}
+          {init.duskApproaching ? t('hud.dusk') : (!init.isDay ? t('hud.night') : '')}
         </span>
       </Panel>
     </div>
@@ -205,7 +206,7 @@ export const ObjectiveTracker = React.memo(() => {
       // Full-circle bearing -> the arrow points to the objective regardless of which way the player faces.
       const b = bearingToMarker(targetX, targetZ, playerPos.x, playerPos.z, heading, Math.PI * 2);
       // Written only on change (plan 2026-10-27-crafty-steady-cool item f): standing still, nothing here moves.
-      const rot = `rotate(${bearingDeg(b.pct)}deg)`, m = `${Math.round(b.dist)}m`;
+      const rot = `rotate(${bearingDeg(b.pct)}deg)`, m = t('hud.distance', { m: Math.round(b.dist) });
       if (arrow.dataset.rot !== rot) { arrow.dataset.rot = rot; arrow.style.transform = rot; }
       if (arrow.dataset.color !== color) { arrow.dataset.color = color; arrow.style.background = color; }
       if (txt.textContent !== label) txt.textContent = label;
@@ -231,13 +232,14 @@ export const ObjectiveTracker = React.memo(() => {
 
 // S2-B4-M5: the IMBUE tell, a white-gold ring at screen centre while the latch is armed (it haloes the crosshair).
 // imbueArmed is edge-written, so this re-renders only on the edge.
-const ImbueTell = React.memo(() => {
+export const ImbueTell = React.memo(() => {
+  const t = useT();
   const imbueArmed = useGameStore((s) => s.imbueArmed);
   if (!imbueArmed) return null;
   return (
     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center">
       <div className="w-5 h-5 rounded-full border-2 border-resonance shadow-elev-sm"></div>
-      <span className="mt-1 text-[10px] font-bold tracking-widest text-resonance">IMBUE</span>
+      <span className="mt-1 text-[10px] font-bold tracking-widest text-resonance">{t('hud.imbue')}</span>
     </div>
   );
 });
@@ -250,7 +252,6 @@ export function HUD({
   experienceSystem,
   questSystem,
   treasureChests,
-  survivalMode,
   bossSystem
 }) {
   // S9c: the post-climax victory beat is dismissed once ("Keep exploring" -> endless handoff).
@@ -274,14 +275,14 @@ export function HUD({
 
             <DayPhaseDial />
 
-            {/* B5 (18-domain review, "HUD lies"): moved from `top-16 left-4` (buried under the QuestTracker
-                panel — the health bar was 100% invisible) to the free bottom-left corner (conventional RPG
-                placement). And the container is now a real `flex flex-col` column: StatBar's root is
-                `inline-flex`, so the old `space-y-2` (margin-top on inline-level boxes) laid the bars out
-                as a horizontal RIBBON — flex-col stacks them vertically. `w-44` gives all bars one width. */}
-            {/* Where the centred hotbar would reach it (a tablet in portrait, a phone), the stack sits above the hotbar's
-                XP edge: 1040 px is the hotbar's 622 px plus this stack and its margins on both sides. */}
-            <div data-testid="stat-stack" className="absolute bottom-4 min-[641px]:max-[1040px]:bottom-[136px] max-[640px]:bottom-[96px] left-4 pointer-events-none z-20 flex flex-col gap-2 w-44">
+            {/* The vitals: a `flex flex-col` column (StatBar's root is `inline-flex`), `w-44` giving every bar one width.
+                Desktop: the bottom-left corner, lifted above the hotbar's XP edge where the centred hotbar would reach
+                it: under 900 px wide, the hotbar's 500 px plus, on each side, this stack's 176 px, its 16 px margin and
+                an 8 px gap. Touch: the joystick and the action buttons hold both bottom corners (ui/TouchControls.jsx)
+                and the tray opens down the left edge from its middle, so the stack sits at the top left, below the
+                quest line and, where the compass drops below the top band (under 900 px), below the objective line,
+                which ends near 126 px. */}
+            <div data-testid="stat-stack" className={`absolute left-4 pointer-events-none z-20 flex flex-col gap-2 w-44 ${isTouchUIMode() ? 'top-[136px]' : 'bottom-4 max-[900px]:bottom-[104px]'}`}>
               <PlayerHealthBar health={gameSystems.playerHealth} maxHealth={gameSystems.maxHealth} />
               <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
               <EmberBar />
@@ -322,16 +323,6 @@ export function HUD({
               openedChestIds={treasureChests.openedChestIds}
             />
 
-            {/* The CONDITION has to be here, not inside the component. SurvivalWarning self-nulls on an
-                empty message, and AnimatePresence cannot observe a component's own return value -- it
-                diffs the ELEMENTS it is given, and this one was always a valid element with a stable key.
-                So it could never enter the exiting set, and the toast's `exit` tween never once played:
-                after survivalSystem's setTimeout cleared the message, it just blinked out while
-                everything around it stayed mounted. */}
-            <AnimatePresence>
-              {survivalMode.survivalWarning && <SurvivalWarning message={survivalMode.survivalWarning} />}
-            </AnimatePresence>
-
             <BossHealthBar
               bossActive={bossSystem.bossActive}
               bossHealth={bossSystem.bossHealth}
@@ -339,12 +330,6 @@ export function HUD({
               bossPhase={bossSystem.bossPhase}
               bossName={bossSystem.bossName}
             />
-
-            {bossSystem.bossNotification && (
-              <div className="absolute top-48 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
-                <Toast status="danger">{bossSystem.bossNotification}</Toast>
-              </div>
-            )}
           </>
         )}
       </AnimatePresence>
@@ -358,7 +343,7 @@ export function HUD({
       <DamageDirection />
       <WindupChevronsSlot />{/* combat-stance Task 7: a chevron at the edge for a windup off screen; ticker-driven, refs only */}
       <UISounds />
-      <AspectHintToast />
+      <AspectHintToast live={isPointerLocked && gameSystems.isAlive && isWorldBuilt} />
 
       {!gameSystems.isAlive && (
         <DeathScreen onRespawn={() => {

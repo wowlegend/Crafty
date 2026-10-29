@@ -567,7 +567,7 @@ export const makeHeartbeat = (ctx) => {
     return buffer;
 };
 
-// Day/night TRANSITION one-shots (pair with the SurvivalWarning banner + the gradual DAY/NIGHT music shift).
+// Day/night TRANSITION one-shots (pair with the nightfall and dawn notices + the gradual DAY/NIGHT music shift).
 // The SIEGE HORN: an ominous war-horn CALL fired when night falls -- a low brassy note that lifts a fifth
 // ("to arms"), with a detuned twin for unease + an octave-below body + a slow horn vibrato. Slow swell-in =
 // a distant horn. Marks the night-siege onset (the beat the onboarding nudge promises).

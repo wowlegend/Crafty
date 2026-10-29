@@ -5,15 +5,18 @@
 // INTERNALLY (persisted lastRewardedNight) and returns its descriptor ONLY when it actually granted (null
 // on a re-fired transition / hook remount / mid-run reload). Crediting the quest is therefore gated on that
 // descriptor, NOT on nightCount>0 — otherwise a duplicate dawn double-counts the quest. grantDawnReward is
-// injected (it has the grant side effect); this module owns only the DECISION + message.
+// injected (it has the grant side effect); this module owns only the DECISION + notice.
+// The dawn loot's name by its rarity (game/dayNight.js DAWN_LOOT_BY_RARITY), as a dictionary key.
+const DAWN_LOOT_KEYS = Object.freeze({ rare: 'loot.dawn.rare', epic: 'loot.dawn.epic', legendary: 'loot.dawn.legendary' });
+
 export function resolveDawn(nightCount, grantDawnReward) {
   const survived = nightCount;
   const reward = survived > 0 ? grantDawnReward(survived) : null;
   return {
     reward,
     creditSurvivedNight: !!reward, // fire onNightSurvived IFF the reward actually granted (once-per-night)
-    message: reward
-      ? `Dawn! +${reward.xp} XP, +${reward.coins} coins, ${reward.lootItem}!`
-      : 'Dawn breaks! You survived the night!',
+    notice: reward
+      ? { key: 'notice.dawnReward', vars: { xp: reward.xp, coins: reward.coins, item: { key: DAWN_LOOT_KEYS[reward.lootRarity] } } }
+      : { key: 'notice.dawn' },
   };
 }

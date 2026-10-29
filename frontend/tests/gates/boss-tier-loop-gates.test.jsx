@@ -6,6 +6,12 @@ import { useGameStore } from '../../src/store/useGameStore';
 import { GameMethods } from '../../src/GameMethods';
 import { blightHeartSite } from '../../src/world/blightHeart';
 import { bossTierStats, RETURN_NIGHTS, LEVEL_STEP, BOSS_BASE_LEVEL } from '../../src/game/bossTier.js';
+import { tIn } from '../../src/i18n/i18n.js';
+import { notificationText } from '../../src/ui/notifications.js';
+
+// The dragon's calls go to the notification channel: what the hook sent, as the toast stack shows it in English.
+const notices = () => (useGameStore.getState().addNotification?.mock?.calls ?? [])
+  .map(([key, , o]) => notificationText({ key, vars: o?.vars }, (k, v) => tIn('en', k, v)));
 import { carriersOf } from './_srcWalk.js';
 
 /**
@@ -38,6 +44,7 @@ const atLair = { x: lair.x, y: 40, z: lair.z };
 const poll = () => act(() => { vi.advanceTimersByTime(1600); });
 
 const arm = (over = {}) => useGameStore.setState({
+  addNotification: vi.fn(),
   playerPosition: atLair, gameWon: false, isCaptureMode: false, hitstopUntil: 0, hitstopStart: 0,
   bossHealth: bossTierStats(0).health, bossActive: false, bossDefeated: false, bossTier: 0, bossKillNight: 0,
   nightCount: 5, getMobGroundLevel: null, unlockedTalents: {}, ...over,
@@ -129,7 +136,7 @@ describe('C3 — the slain dragon waits, then returns at its tier', () => {
     expect(hook.result.current.bossMaxHealth).toBe(bossTierStats(1).health);
     expect(hook.result.current.bossName).toBe(bossTierStats(1).name);
     // The ENTRANCE names the tier too (review 2026-09-22: it still said "the Shadow Dragon awakens").
-    expect(hook.result.current.bossNotification).toBe(`The Blight Heart stirs -- the ${bossTierStats(1).name} awakens! [Climax]`);
+    expect(notices()).toContain(`The Blight Heart stirs -- the ${bossTierStats(1).name} awakens! [Climax]`);
   });
 
   it('killing the return pays the TIER\'s reward and makes the next one tier 2', () => {
@@ -161,17 +168,9 @@ describe('C3 — the slain dragon waits, then returns at its tier', () => {
     const hook = fightAndKill(BOSS_BASE_LEVEL);
     act(() => useGameStore.setState({ nightCount: 8, playerPosition: { x: lair.x + 500, y: 40, z: lair.z } }));
     hook.rerender({ l: due });
-    // Count RISING EDGES of the toast, sampled every 100 ms for 15 s. A single end-state check was
-    // coincidence-prone: the toast's clear timers are never cancelled, so a re-announce every poll can
-    // happen to be cleared at the instant it is sampled — that mutant survived the first version of this.
-    let edges = 0, was = false;
-    for (let i = 0; i < 150; i++) {
-      act(() => { vi.advanceTimersByTime(100); });
-      const on = /stirs again/i.test(hook.result.current.bossNotification || '');
-      if (on && !was) edges++;
-      was = on;
-    }
-    expect(edges, 'the reawakening was announced more than once (or never)').toBe(1);
+    // Every call the hook makes to the channel over 15 s is counted: a re-announce on each 1.5 s poll would be ten.
+    act(() => { vi.advanceTimersByTime(15000); });
+    expect(notices().filter((x) => /stirs again/i.test(x)), 'the reawakening was announced more than once (or never)').toHaveLength(1);
     expect(useGameStore.getState().bossActive, 'announced, but it must wait for the player at the lair').toBe(false);
   });
 });

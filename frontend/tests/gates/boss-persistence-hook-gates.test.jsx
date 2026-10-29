@@ -4,6 +4,12 @@ import { renderHook, cleanup, act } from '@testing-library/react';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { useBossSystem } from '../../src/world/bossSystem.js';
 import { BOSS_CONFIG } from '../../src/game/bossConfig.js';
+import { tIn } from '../../src/i18n/i18n.js';
+import { notificationText } from '../../src/ui/notifications.js';
+
+// The dragon's calls go to the notification channel: what the hook sent, as the toast stack shows it in English.
+const notices = () => (useGameStore.getState().addNotification?.mock?.calls ?? [])
+  .map(([key, , o]) => notificationText({ key, vars: o?.vars }, (k, v) => tIn('en', k, v)));
 
 // A-bis B2g — the half that the store round-trip CANNOT prove.
 //
@@ -18,7 +24,7 @@ const MAX = BOSS_CONFIG.health;
 
 describe('B2g — the hook is seeded from the RESTORED store, not from the config', () => {
   beforeEach(() => {
-    useGameStore.setState({ bossHealth: MAX, bossActive: false, bossDefeated: false, gameWon: false });
+    useGameStore.setState({ bossHealth: MAX, bossActive: false, bossDefeated: false, gameWon: false, addNotification: vi.fn() });
   });
   afterEach(() => {
     cleanup();
@@ -38,7 +44,7 @@ describe('B2g — the hook is seeded from the RESTORED store, not from the confi
     useGameStore.setState({ bossHealth: MAX * 0.17, bossActive: true, bossDefeated: false });
     const { result } = renderHook(() => useBossSystem(9));
     expect(result.current.bossPhase).toBe(2);
-    expect(result.current.bossNotification).toBeNull();
+    expect(notices()).toEqual([]);
   });
 
   it('still announces a phase change that happens DURING play', () => {
@@ -50,7 +56,7 @@ describe('B2g — the hook is seeded from the RESTORED store, not from the confi
     act(() => result.current.damageBoss(MAX * 0.5));
     rerender();
     expect(result.current.bossPhase).toBe(1);
-    expect(result.current.bossNotification).toMatch(/PHASE 2/);
+    expect(notices()).toEqual([expect.stringMatching(/PHASE 2/)]);
   });
 
   it('mounts a fresh encounter at full health when nothing was restored', () => {

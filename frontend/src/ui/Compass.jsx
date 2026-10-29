@@ -1,7 +1,6 @@
-// Compass — the strip at the top of the HUD (the HUD lane's task script, decision 4). It rendered markup into
-// `innerHTML` every HUD frame; it is now a fixed pool of marker slots rendered once by React, and the HUD ticker
-// (ui/hudTicker.js) moves each slot and writes its text only when a value changed: no React state per frame
-// (Game-Loop Isolation), and standing still writes nothing. Labels go through t() and sit where compassLayout.js puts
+// Compass — the strip at the top of the HUD (the HUD lane's task script, decision 4): a fixed pool of marker slots
+// rendered once by React, which the HUD ticker (ui/hudTicker.js) moves and relabels only when a value changes, so there
+// is no React state per frame (Game-Loop Isolation) and standing still writes nothing. Labels go through t() and sit where compassLayout.js puts
 // them, so two markers close together never print one label over the other.
 import React, { useEffect, useRef } from 'react';
 import { useGameStore } from '../store/useGameStore';
@@ -109,7 +108,7 @@ export const Compass = React.memo(({ treasureChests, bossSystem }) => {
 
   // One ref setter for the life of the component, handed to the memoized slots, so a re-render of the compass (its props
   // change identity with every App render) never re-renders them: React 19 re-applies an icon's innerHTML on every
-  // render, and hud-churn counted those 15 rewrites (one per game-icon slot) as writes of what was already there.
+  // render, a write of what is already there in each of the 15 game-icon slots.
   const setRef = useRef((id, part, node) => {
     const s = slotRefs.current[id] || (slotRefs.current[id] = {});
     s[part] = node;

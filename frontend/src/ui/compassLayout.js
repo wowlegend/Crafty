@@ -1,9 +1,9 @@
 // compassLayout.js — where each compass marker and its label sit on the strip (the HUD lane's task script, decision 4).
 //
 // The strip shows the half of the horizon ahead: a bearing `fov / 2` either side of the heading maps to the strip's
-// edges. Labels are wider than their pips, so two markers a few degrees apart printed one label over the other (STATUS
-// G-ledger 38/b: HOME over an NPC at the Hearth). Here each label is placed in priority order, and a later one whose box
-// would come within GAP_PX of a placed label yields: its label is hidden, its pip stays, so the direction is still shown.
+// edges. Labels are wider than their pips, so two markers a few degrees apart (HOME and an NPC at the Hearth) would print
+// one label over the other. Each label is placed in priority order, and a later one whose box would come within GAP_PX
+// of a placed label yields: its label is hidden, its pip stays, so the direction is still shown.
 
 /** Marker kinds, most important first: a later kind's label yields to an earlier one's. */
 export const COMPASS_PRIORITY = Object.freeze(['boss', 'home', 'shrine', 'blight', 'npc', 'chest', 'cardinal']);

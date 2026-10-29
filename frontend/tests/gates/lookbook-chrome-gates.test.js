@@ -1,18 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { chromeShare, chromeColoursFrom, CHROME_VARS, CHROME_TOLERANCE } from '../../scripts/visual/_lookbook.mjs';
+import {
+  chromeShare, chromeColoursFrom, CHROME_VARS, CHROME_TOLERANCE, chromeFootprint, framesMoved, FOOTPRINT_TOLERANCE,
+  atRest, chromeSummaryLines, CHROME_BUDGET,
+} from '../../scripts/visual/_lookbook.mjs';
 
 /**
- * The HUD lane's acceptance number is a share of the screen in the chrome surface colours (plan
- * docs/superpowers/plans/2026-10-29-crafty-w2d-hud.md, decision 1). These drive the count over synthetic frames whose
- * answer is known by construction.
+ * The HUD lane's acceptance number is the chrome's FOOTPRINT: the share of an eye-level frame the HUD's own elements
+ * change, read on a held page against a twin with them hidden (plan docs/superpowers/plans/2026-10-29-crafty-w2d-hud.md,
+ * decision 1). The colour count is its second column. These drive both over synthetic frames whose answer is known by
+ * construction, on the navy ladder and on the warm one, over a warm stone world that sits within the tolerance of the
+ * warm tokens.
  *
- * NOT CHECKED HERE: that the lookbook reads the colours from the page and shoots the twin with the DOM hidden; the
- * probe's report records both (`chrome.colours`, `chrome.world`), and an opened frame pair shows the twin.
+ * NOT CHECKED HERE: that the lookbook holds the page still and hides the right elements in a browser; each shot records
+ * `chrome.moved` (pixels changed between the first and last shot of the held page) and an opened frame shows the HUD.
  */
 const W = 100, H = 100;
 const SKY = [120, 170, 220];
 const PANEL = { name: '--ui-panel', rgb: [22, 33, 58] };
 const SLOT = { name: '--ui-slot', rgb: [35, 52, 88] };
+// The warm ladder (theme/tokens.js after the re-key): panel, panel-raise, panel-frame, panel-inset.
+const WARM = [
+  { name: '--ui-panel', rgb: [42, 36, 32] }, { name: '--ui-panel-raise', rgb: [56, 48, 42] },
+  { name: '--ui-panel-frame', rgb: [48, 41, 36] }, { name: '--ui-panel-inset', rgb: [24, 20, 17] },
+];
 
 /** A W x H RGBA frame filled with `bg`, then each `[x0, y0, x1, y1, rgb]` rectangle painted over it. */
 function frame(bg, rects = []) {
@@ -76,5 +86,127 @@ describe('the chrome colours read from a page', () => {
     const out = chromeColoursFrom(vars);
     expect(out.map((c) => c.name)).toEqual(CHROME_VARS.filter((v) => v !== '--ui-well' && v !== '--ui-slot'));
     expect(out[0]).toEqual({ name: '--ui-ink', rgb: [0, 1, 2] });
+  });
+});
+
+/** A warm grey stone texture: every pixel a deterministic step from the warm ladder's mid tones, so many sit within the
+ *  colour count's tolerance of a warm token while none is interface. `bright` lifts every channel (a twin one shade off). */
+function stone(bright = 0) {
+  const buf = new Uint8Array(W * H * 4);
+  for (let p = 0; p < W * H; p++) {
+    const k = (p * 2654435761) >>> 0;
+    const base = [40 + (k % 20), 34 + ((k >>> 5) % 18), 30 + ((k >>> 10) % 16)];
+    buf.set([base[0] + bright, base[1] + bright, base[2] + bright, 255], p * 4);
+  }
+  return buf;
+}
+
+/** `world` with `rgb` laid over the rows [y0, y1) at `alpha` (1: opaque), as a browser composites a panel. */
+function over(world, rgb, y0, y1, alpha = 1) {
+  const buf = world.slice();
+  for (let y = y0; y < y1; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      for (let c = 0; c < 3; c++) buf[i + c] = Math.round(alpha * rgb[c] + (1 - alpha) * world[i + c]);
+    }
+  }
+  return buf;
+}
+
+describe('the chrome footprint: the pixels the HUD changes, whatever its colours', () => {
+  it('a warm stone world with no chrome reads 0, where the colour count reads the stone as chrome', () => {
+    const world = stone();
+    const f = chromeFootprint(world, world, world, { width: W, height: H });
+    expect(f.checked).toBe(W * H);
+    expect(f.share).toBe(0);
+    expect(f.touchShare).toBe(0);
+    // The same frame through the colour count on the warm ladder, with a twin one shade brighter (a world that moved):
+    // the stone is counted. This is the palette dependence the footprint does not have.
+    const c = chromeShare(world, stone(1), { width: W, height: H, colours: WARM });
+    expect(c.share, 'the colour count no longer reads the warm stone: this fixture lost its point').toBeGreaterThan(0.05);
+  });
+
+  it('a twin one shade off the frame (an encoder or compositor step) still reads 0', () => {
+    const f = chromeFootprint(stone(), stone(1), null, { width: W, height: H });
+    expect(f.share).toBe(0);
+    expect(f.touchShare, 'no touch shot, no touch reading').toBeNull();
+  });
+
+  it('a 10% panel reads 10% on either ladder, over the same stone', () => {
+    for (const rgb of [PANEL.rgb, WARM[0].rgb, WARM[1].rgb]) {
+      const f = chromeFootprint(over(stone(), rgb, 0, 10), stone(), null, { width: W, height: H });
+      // Each stone pixel the opaque panel lands on within the tolerance of its own colour reads unchanged: the footprint's
+      // one blind spot, so the warm panels over warm stone read a little under 10%; never more.
+      expect(f.share, `panel ${rgb}`).toBeLessThanOrEqual(0.10);
+      expect(f.share, `panel ${rgb}`).toBeGreaterThan(0.09);
+    }
+    expect(chromeFootprint(over(stone(), PANEL.rgb, 0, 10), stone(), null, { width: W, height: H }).share).toBeCloseTo(0.10, 6);
+  });
+
+  it('a translucent panel at alpha 0.6 still counts, where the colour count misses its blend', () => {
+    const on = over(stone(), WARM[0].rgb, 50, 60, 0.6);
+    const f = chromeFootprint(on, stone(), null, { width: W, height: H });
+    expect(f.share).toBeGreaterThan(0.09);
+    expect(chromeShare(over(frame(SKY), PANEL.rgb, 50, 60, 0.6), frame(SKY), { width: W, height: H, colours: [PANEL] }).share,
+      'the colour count reads a translucent navy panel over sky').toBe(0);
+    expect(chromeFootprint(over(frame(SKY), PANEL.rgb, 50, 60, 0.6), frame(SKY), null, { width: W, height: H }).share).toBeCloseTo(0.10, 6);
+  });
+
+  it('a pixel changed in one channel alone counts past the tolerance and not at it, in each channel', () => {
+    for (let ch = 0; ch < 3; ch++) {
+      const base = frame([80, 80, 80]);
+      const at = base.slice(), past = base.slice();
+      for (let p = 0; p < 300; p++) at[p * 4 + ch] += FOOTPRINT_TOLERANCE;
+      for (let p = 300; p < 700; p++) past[p * 4 + ch] += FOOTPRINT_TOLERANCE + 1;
+      expect(chromeFootprint(at, base, null, { width: W, height: H }).pixels, `channel ${ch} at the tolerance`).toBe(0);
+      expect(chromeFootprint(past, base, null, { width: W, height: H }).pixels, `channel ${ch} past it`).toBe(400);
+    }
+  });
+
+  it('the touch layer is its own class: its scrim is not the HUD, and the HUD over it is', () => {
+    const world = stone();
+    const touchOnly = over(world, [0, 0, 0], 80, 100, 0.34); // the thumb-corner scrim
+    const withHud = over(touchOnly, WARM[0].rgb, 0, 10); // a 10% panel above it
+    const f = chromeFootprint(withHud, touchOnly, world, { width: W, height: H });
+    expect(f.touchShare).toBeCloseTo(0.20, 6);
+    expect(f.share).toBeLessThanOrEqual(0.10);
+    expect(f.share).toBeGreaterThan(0.09);
+    const none = chromeFootprint(touchOnly, touchOnly, world, { width: W, height: H });
+    expect(none.share, 'a scrim alone is no HUD').toBe(0);
+  });
+
+  it('a held page that moved is seen, and frames of the wrong size are refused rather than read as 0', () => {
+    expect(framesMoved(stone(), stone(), { width: W, height: H })).toBe(0);
+    expect(framesMoved(stone(), over(stone(), SKY, 0, 3), { width: W, height: H })).toBe(300);
+    expect(() => chromeFootprint(stone(), stone().subarray(4), null, { width: W, height: H })).toThrow(RangeError);
+    expect(() => chromeFootprint(stone(), null, null, { width: W, height: H })).toThrow(RangeError);
+  });
+});
+
+describe('the colour count, the second column', () => {
+  it('two coincident token colours count a pixel once, under the first', () => {
+    const twin = [{ name: '--ui-panel', rgb: [42, 36, 32] }, { name: '--ui-panel-frame', rgb: [42, 36, 32] }];
+    const r = chromeShare(frame(SKY, [[0, 0, 100, 10, [42, 36, 32]]]), null, { width: W, height: H, colours: twin });
+    expect(r.share).toBeCloseTo(0.10, 6);
+    expect(r.byColour).toEqual({ '--ui-panel': 1000, '--ui-panel-frame': 0 });
+  });
+});
+
+describe('which eye frames are the HUD at rest, and what the run prints', () => {
+  const shot = (share, extra = {}) => ({ valid: true, chrome: { share, colourShare: share / 2, touchShare: 0.03, toasts: 0, ...extra } });
+  it('a frame with a toast up, an invalid frame and an unread one are set aside, and the summary says so', () => {
+    expect(atRest(shot(0.05))).toBe(true);
+    expect(atRest(shot(0.05, { toasts: 1 }))).toBe(false);
+    expect(atRest({ ...shot(0.05), valid: false })).toBe(false);
+    expect(atRest(shot(null, { why: 'moved' }))).toBe(false);
+    const lines = chromeSummaryLines([shot(0.05), shot(0.09), shot(0.2, { toasts: 2 }), shot(null, { why: 'the page did not hold still' })]);
+    expect(lines[0]).toMatch(/2 valid eye frame\(s\) at rest: footprint max 9\.00%, median 7\.00%; 1 over the 8% budget; 1 with a toast up and 1 unread set aside/);
+    expect(lines[1]).toMatch(/chrome colour 2 frame\(s\): max 4\.50%/);
+    expect(lines[2]).toMatch(/touch layer {3}2 frame\(s\): max 3\.00%/);
+    expect(CHROME_BUDGET).toBe(0.08);
+  });
+
+  it('no frame at rest is NOT MEASURED, never a pass', () => {
+    expect(chromeSummaryLines([shot(0.2, { toasts: 1 })])[0]).toMatch(/NOT MEASURED/);
   });
 });

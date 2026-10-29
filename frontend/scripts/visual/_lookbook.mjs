@@ -736,14 +736,7 @@ export function targetSummaryLines(r, planned = {}) {
   };
   set('shots', r.shots || [], planned.hero ?? 0, r.respawns ? `, ${r.respawns} respawn(s)` : '');
   if (r.eye) set('eye level', r.eye, planned.eye ?? 0, `; stand ${JSON.stringify(r.stand)}; hands ${JSON.stringify(r.hands)}`);
-  // At rest: a valid eye frame with no toast up (a dusk warning or a night notice is not the HUD at rest).
-  const measured = (r.eye || []).filter((s) => s.valid && Number.isFinite(s.chrome?.share));
-  const chrome = measured.filter((s) => !(s.chrome.toasts > 0)).map((s) => s.chrome.share);
-  if (r.eye?.length) {
-    lines.push(chrome.length
-      ? `  chrome        ${chrome.length} valid eye frame(s) at rest: max ${(Math.max(...chrome) * 100).toFixed(2)}%, median ${(medianOf(chrome) * 100).toFixed(2)}%; ${chrome.filter((x) => x > CHROME_BUDGET).length} over the ${CHROME_BUDGET * 100}% budget; ${measured.length - chrome.length} with a toast up set aside`
-      : '  chrome        NOT MEASURED on any valid eye frame at rest');
-  }
+  if (r.eye?.length) lines.push(...chromeSummaryLines(r.eye));
   if (r.material?.length || planned.material) {
     const sights = MATERIAL_SIGHT_KINDS.map((k) => {
       const s = r.sights?.[k];
@@ -775,10 +768,52 @@ const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
 
 /**
- * THE CHROME COUNT (plan docs/superpowers/plans/2026-10-29-crafty-w2d-hud.md, decision 1). The HUD lane's acceptance is
- * a share of the screen: how many of an eye-level frame's pixels are interface surface. The surfaces are the colours
- * the BUILD UNDER TEST gives these CSS variables (src/theme/cssVars.js), read from its page at shot time, so a re-key
- * moves the instrument with it instead of slipping out of a list held here.
+ * THE CHROME FOOTPRINT (plan docs/superpowers/plans/2026-10-29-crafty-w2d-hud.md, decision 1). The HUD lane's acceptance
+ * is a share of the screen: how many of an eye-level frame's pixels the interface changes. Three shots of one held page
+ * (lookbook.mjs chromeOf: the page's animation frames are held, so the canvas shows one rendered frame throughout):
+ * `on`, the frame as a player sees it; `hudOff`, the same with the HUD's own elements hidden and the canvas and the touch
+ * layer shown; `world`, the canvas alone. A pixel is the HUD's when `on` and `hudOff` differ there by more than
+ * `tolerance` in any channel, and the touch layer's (its scrim, ring and buttons, reported apart) when `hudOff` and
+ * `world` do. The rule reads no colour, so no palette can hide a surface from it or lend the world to it: a translucent
+ * panel counts wherever it changes what is under it. Its blind spot: a pixel where an opaque surface lands on a world
+ * pixel of its own colour, within `tolerance`, reads as unchanged.
+ * Returns the HUD's share and pixels, the touch layer's (null without a `world` shot) and the denominator.
+ */
+export const FOOTPRINT_TOLERANCE = 2;
+
+export function chromeFootprint(on, hudOff, world, { width, height, tolerance = FOOTPRINT_TOLERANCE } = {}) {
+  const n = width * height * 4;
+  for (const [name, buf] of [['on', on], ['hudOff', hudOff], ['world', world]]) {
+    if (name === 'world' && buf == null) continue;
+    if (!(width > 0 && height > 0) || !buf || buf.length !== n) {
+      throw new RangeError(`chromeFootprint: ${width}x${height} RGBA frames needed, got ${buf ? buf.length : buf} bytes for ${name}`);
+    }
+  }
+  const differs = (a, b, i) => Math.abs(a[i] - b[i]) > tolerance || Math.abs(a[i + 1] - b[i + 1]) > tolerance
+    || Math.abs(a[i + 2] - b[i + 2]) > tolerance;
+  let pixels = 0, touchPixels = 0;
+  for (let i = 0; i < n; i += 4) {
+    if (differs(on, hudOff, i)) pixels += 1;
+    if (world && differs(hudOff, world, i)) touchPixels += 1;
+  }
+  const checked = width * height;
+  return { share: pixels / checked, pixels, touchShare: world ? touchPixels / checked : null, touchPixels: world ? touchPixels : null, checked };
+}
+
+/** How many pixels of two shots of the held page differ (by more than FOOTPRINT_TOLERANCE): 0 when the page was still. */
+export function framesMoved(a, b, { width, height, tolerance = FOOTPRINT_TOLERANCE } = {}) {
+  return chromeFootprint(a, b, null, { width, height, tolerance }).pixels;
+}
+
+/** The share of a frame that may change between the first and last shot of a held page before its footprint is not
+ *  read: a page that did not hold still would lend its motion to the HUD's count. */
+export const HELD_MOVED_MAX = 0.001;
+
+/**
+ * THE COLOUR COUNT, the footprint's second column: the pixels within CHROME_TOLERANCE of the surface colours the BUILD
+ * UNDER TEST gives these CSS variables (src/theme/cssVars.js), read from its page at shot time. It depends on the
+ * palette in both directions (a world texture within 3 of a token counts; a translucent panel's blend does not), which
+ * is why it is not the acceptance number.
  */
 export const CHROME_VARS = Object.freeze([
   '--ui-ink', '--ui-panel', '--ui-panel-raise', '--ui-panel-frame', '--ui-panel-inset', '--ui-well', '--ui-slot',
@@ -800,11 +835,11 @@ export function chromeColoursFrom(vars) {
 }
 
 /**
- * The share of an RGBA8 frame's pixels in the chrome colours. A pixel counts when every channel lies within
- * `tolerance` of one colour, unless `off` is given and its pixel at the same place lies within `tolerance` of that same
- * colour: `off` is the same view with every DOM element hidden but the game canvas, so a dusk sky or a night that
- * happens to sit on a surface colour is the WORLD and is not counted (`world`). Returns the share, the counted pixels
- * by colour, the world matches set aside and the denominator.
+ * The share of an RGBA8 frame's pixels in the chrome colours. A pixel counts once, under the first colour in the list it
+ * lies within `tolerance` of on every channel, unless `off` is given and its pixel at the same place lies within
+ * `tolerance` of that same colour: `off` is the canvas-only shot, so a dusk sky that happens to sit on a surface colour
+ * is the WORLD and is not counted (`world`). Returns the share, the counted pixels by colour, the world matches set
+ * aside and the denominator.
  */
 export function chromeShare(on, off, { width, height, colours, tolerance = CHROME_TOLERANCE } = {}) {
   const n = width * height * 4;
@@ -830,6 +865,33 @@ export function chromeShare(on, off, { width, height, colours, tolerance = CHROM
 
 /** The chrome budget the HUD lane accepts against (brief "Acceptance on the live game"): 8% of an eye-level frame. */
 export const CHROME_BUDGET = 0.08;
+
+/** PURE. Whether an eye shot's chrome reading is the HUD at rest: a valid frame whose footprint was read on a held page
+ *  and with no toast in the notification stack (every toast the game raises goes there: ui/notifications.js), so a
+ *  dusk warning, a night's siege notice or a boss's call is never counted as the screen at rest. */
+export function atRest(s) {
+  return !!s?.valid && Number.isFinite(s.chrome?.share) && !(s.chrome.toasts > 0);
+}
+
+/** PURE. The run's chrome lines for a target's eye shots: the footprint over the frames at rest (the acceptance
+ *  number), then the colour count and the touch layer over the same frames, and what was set aside and why. */
+export function chromeSummaryLines(eye) {
+  const pct = (x) => `${(x * 100).toFixed(2)}%`;
+  const rest = eye.filter(atRest);
+  const unread = eye.filter((s) => s.valid && !Number.isFinite(s.chrome?.share));
+  const toasted = eye.filter((s) => s.valid && Number.isFinite(s.chrome?.share) && s.chrome.toasts > 0);
+  if (!rest.length) {
+    return [`  chrome        NOT MEASURED on any valid eye frame at rest (${toasted.length} with a toast up, ${unread.length} unread: ${[...new Set(unread.map((s) => s.chrome?.why))].join('; ')})`];
+  }
+  const share = rest.map((s) => s.chrome.share);
+  const lines = [`  chrome        ${rest.length} valid eye frame(s) at rest: footprint max ${pct(Math.max(...share))}, median ${pct(medianOf(share))}; `
+    + `${share.filter((x) => x > CHROME_BUDGET).length} over the ${CHROME_BUDGET * 100}% budget; ${toasted.length} with a toast up and ${unread.length} unread set aside`];
+  const colour = rest.map((s) => s.chrome.colourShare).filter(Number.isFinite);
+  if (colour.length) lines.push(`  chrome colour ${colour.length} frame(s): max ${pct(Math.max(...colour))}, median ${pct(medianOf(colour))} (second column; it reads the palette)`);
+  const touch = rest.map((s) => s.chrome.touchShare).filter(Number.isFinite);
+  if (touch.length) lines.push(`  touch layer   ${touch.length} frame(s): max ${pct(Math.max(...touch))}, median ${pct(medianOf(touch))} (scrim, ring and buttons; not in the footprint)`);
+  return lines;
+}
 
 /**
  * THE HANDS SET (plan docs/superpowers/plans/2026-10-29-crafty-w2e-hands.md). At each time the player's eye is shot
@@ -909,7 +971,10 @@ export function contactSheetHtml(report) {
     const figure = (s, title, alt) => {
       const src = `${esc(t.id)}/${esc(s.file)}`;
       const facts = [`cycle ${esc(s.cycle)} (at ${esc(Number(s.cycleAtShot).toFixed(3))})`, `tier ${esc(s.tier)}`, `dpr ${esc(s.dpr)}`, `console errors ${esc(s.consoleErrors)}`,
-        ...(Number.isFinite(s.chrome?.share) ? [`chrome ${esc((s.chrome.share * 100).toFixed(2))}%`] : [])].join(' · ');
+        ...(Number.isFinite(s.chrome?.share) ? [`chrome ${esc((s.chrome.share * 100).toFixed(2))}%`] : []),
+        ...(Number.isFinite(s.chrome?.colourShare) ? [`colour ${esc((s.chrome.colourShare * 100).toFixed(2))}%`] : []),
+        ...(Number.isFinite(s.chrome?.touchShare) ? [`touch ${esc((s.chrome.touchShare * 100).toFixed(2))}%`] : []),
+        ...(s.chrome?.toasts > 0 ? [`${esc(s.chrome.toasts)} toast(s) up: not at rest`] : [])].join(' · ');
       const bad = s.valid ? '' : `<p class="bad">INVALID: ${esc((s.why || []).join('; '))}</p>`;
       return `<figure class="${s.valid ? 'ok' : 'invalid'}"><a href="${src}"><img src="${src}" alt="${esc(alt)}" loading="lazy"></a>` +
         `<figcaption><b>${esc(title)}</b> · ${facts}${passNote(s.passMs)}${bad}</figcaption></figure>`;
