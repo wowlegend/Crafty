@@ -38,11 +38,12 @@ function Tag({ entity }) {
   useFrame(() => {
     const g = groupRef.current;
     if (!g) return;
-    const pp = useGameStore.getState().playerPosition;
+    const st = useGameStore.getState();
+    const pp = st.playerPosition;
     if (!pp || !entity.position) { g.visible = false; return; }
     const dx = entity.position.x - pp.x, dz = entity.position.z - pp.z;
     const dist = Math.hypot(dx, dz);
-    const tag = nametagFor(entity, dist);
+    const tag = nametagFor(entity, dist, st.getVerbMods().snareHpFrac);
     g.visible = tag.visible && entity.health > 0;
     if (!g.visible) return;
     g.position.set(entity.position.x, entity.position.y + 2.4, entity.position.z);

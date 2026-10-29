@@ -516,8 +516,7 @@ export function HUD({
   questSystem,
   treasureChests,
   survivalMode,
-  bossSystem,
-  spellUpgrades
+  bossSystem
 }) {
   // S9c: the post-climax victory beat is dismissed once ("Keep exploring" -> endless handoff).
   const victoryPending = useGameStore((s) => s.victoryPending); // a rare event, not a per-frame value
@@ -617,11 +616,6 @@ export function HUD({
             {bossSystem.bossNotification && (
               <div className="absolute top-48 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
                 <Toast status="danger">{bossSystem.bossNotification}</Toast>
-              </div>
-            )}
-            {spellUpgrades.upgradeNotification && (
-              <div className="absolute top-64 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
-                <Toast status="info">{spellUpgrades.upgradeNotification}</Toast>
               </div>
             )}
           </>

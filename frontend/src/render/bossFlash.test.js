@@ -15,8 +15,8 @@ import { fileURLToPath } from 'node:url';
 // lava spawns, so a hit whose 180ms window happened to contain one DID flash. That is worse than invisible
 // — it is a cue that fires on someone else's schedule.
 //
-// The fix is a membership transition, the pattern HurlSystem already uses for inFlight: setState on the
-// rare event, never per frame. A boss hit is rare, so Game-Loop-Isolation holds.
+// The fix is a membership transition: setState on the rare event, never per frame. A boss hit is rare, so
+// Game-Loop-Isolation holds.
 const SRC = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), 'BossEntity.jsx'), 'utf8');
 
 /*

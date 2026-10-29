@@ -49,6 +49,11 @@ export const ITEMS = {
   diamond_chestplate: { name: 'Diamond Chestplate',  icon: 'chestplate', rarity: 'legendary' },
   diamond_boots:      { name: 'Diamond Boots',       icon: 'boots',      rarity: 'legendary' },
   crown_dragon_king:  { name: 'Crown of the Dragon King', icon: 'crown',  rarity: 'legendary' },
+  // Relics (game/relics.js): one goes in the relic slot and changes an Aspect verb.
+  relic_ember_fang:   { name: 'Ember Fang',          icon: 'fire',       rarity: 'epic' },
+  relic_lodestone:    { name: 'Lodestone',           icon: 'force',      rarity: 'epic' },
+  relic_snare_knot:   { name: 'Snare Knot',          icon: 'string',     rarity: 'epic' },
+  relic_prism_shard:  { name: 'Prism Shard',         icon: 'rune',       rarity: 'epic' },
   dragon_scale:       { name: 'Dragon Scale',             icon: 'shield', rarity: 'epic' },
 };
 
@@ -116,15 +121,13 @@ export function getItemName(id) {
  * recipe outputs whose keys resolved on no path in the entire frontend, so the item appeared in the bag
  * and then did nothing, while the ingredients had already been debited.
  *
- * These three are the genuine exceptions: CURRENCIES with real consumers, not placeable and not
- * equippable. Each entry names its consumer, because an unjustified entry here turns a gate that catches
- * that class into an allowlist that hides it.
+ * These are the genuine exceptions: CURRENCIES with real consumers, not placeable and not equippable. Each
+ * entry names its consumer, because an unjustified entry here turns a gate that catches that class into an
+ * allowlist that hides it.
  *
- *   crystals — spent 15-for-1 on the wand trade, and minted by four ore trades (ui/TradingInterface.jsx)
- *   wand     — bought with crystals; read by the spell-damage focus (EnhancedMagicSystem applyWandFocus)
  *   coins    — the shop currency (ui/TradingInterface.jsx)
  */
-export const CURRENCY_KEYS = Object.freeze(['crystals', 'wand', 'coins']);
+export const CURRENCY_KEYS = Object.freeze(['coins']);
 
 /**
  * Can the game actually DELIVER this inventory key -- is there any path on which it means something?

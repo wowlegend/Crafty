@@ -101,7 +101,7 @@ if (splitMissing.length) {
 // other chunk, the same one for every marker — the presence half proves the split happened rather than the panel
 // having been deleted, and one chunk means one request. A second STATIC importer of any panel module would pull it
 // back into the boot chunk; this is what sees that.
-const LAZY_PANEL_MARKERS = ['alloc-strength', 'progression-panel']; // GamePanels, SpellUpgradePanel
+const LAZY_PANEL_MARKERS = ['relic-slot', 'progression-panel']; // GamePanels, SpellUpgradePanel
 const bootChunk = findChunk('index');
 // Each chunk is read ONCE, lazily, and kept: the per-marker scan re-read every chunk (the 2.2 MB rapier one too) once
 // per marker (review #8, R9.9).
@@ -111,10 +111,13 @@ const textOf = (c) => {
   return chunkText.get(c.file);
 };
 const holdersOf = (marker) => chunks.filter((c) => textOf(c).includes(marker));
+// A testid marker is matched as the minified string literal, quotes included, so a renamed testid that merely starts
+// with it ("relic-sloth") is not mistaken for it. A minifier that changes its quoting finds it nowhere and fails.
+const testidHoldersOf = (testid) => holdersOf(`"${testid}"`);
 const panelChunks = new Set();
 let lazyBad = 0;
 for (const marker of LAZY_PANEL_MARKERS) {
-  const holders = holdersOf(marker);
+  const holders = testidHoldersOf(marker);
   if (bootChunk && holders.includes(bootChunk)) {
     console.error(`✘ lazy panels: "${marker}" is in the BOOT chunk (${bootChunk.file}) — a panel is statically imported again`);
     failed = true; lazyBad++;

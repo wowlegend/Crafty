@@ -7,7 +7,7 @@ import { getWeaponBaseDamage } from './game/equipment.js';
 import { worldTimeScale, hitstopForHit } from './game/hitstop.js';
 import { realDelta, worldNow } from './game/worldClock.js';
 import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
-import { makeTransformState, decideTransform, formDurationFor } from './game/beastTransform.js';
+import { makeTransformState, decideTransform } from './game/beastTransform.js';
 import { canAfford, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST } from './game/ember.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
@@ -29,7 +29,7 @@ import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
 import { shakeOffset, SHAKE_WEIGHT_MAX, HITSTOP } from './game/trauma.js';
 import { shakeTrauma, shakeDir, decayShake } from './game/cameraShakeChannel.js';
-import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC, squadCapFor } from './game/soulbind.js';
+import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
 import { armImbueCast, consumeImbueCast } from './game/elemancerChannel.js';
 
@@ -278,8 +278,9 @@ export const Player = ({ isWorldBuilt }) => {
     // M5: resolveFormMelee applies the form damage mult on TOP of getEffectiveAttributes() (derive-
     // never-bake; x1 for human) AND derives the spark from the LOCKED form element (beastEl ==
     // activeBeastForm) — NOT the live activeSpell, so spell-switching mid-form can't desync the spark
-    // from the body (Digit1-4 is ungated in-form). Unit-locked in beasts.test.js (the wiring contract).
-    const { dealt, sparkType } = resolveFormMelee(damage, beastEl);
+    // from the body (Digit1-4 is ungated in-form). Unit-locked in beasts.test.js (the wiring contract). Apex Predator's
+    // beastMeleeMult (game/verbMods.js) scales a form's swing only.
+    const { dealt, sparkType } = resolveFormMelee(damage, beastEl, store.getVerbMods ? store.getVerbMods().beastMeleeMult : 1);
     // The string's finisher hits for FINISHER_MULT; steps 1-2 and a beast form's swing deal `dealt` as today.
     const swing = heavy ? Math.round(dealt * HEAVY_MULT) : shape.finisher ? Math.round(dealt * shape.damageMult) : dealt;
 
@@ -707,8 +708,8 @@ export const Player = ({ isWorldBuilt }) => {
         // start and its commit, and canPay is read this frame, so the spend below is covered.
         canEnter: st.unlockedTalents?.['wildheart_roar'] > 0,
         canPay: barPays(ROAR_COST),
-        // M6: Primal Endurance extends the form duration — read the rank at THIS site (not the fold).
-        formDurationSec: formDurationFor(st.unlockedTalents?.['wildheart_endurance'] || 0),
+        // A longer roar (Primal Endurance, Untamed, Ember Fang): the form's length from the verb numbers.
+        formDurationSec: st.getVerbMods().roarSec,
       });
       beastSMRef.current = sm;
       if (action === 'startCharge') {
@@ -758,7 +759,7 @@ export const Player = ({ isWorldBuilt }) => {
     // voidhand_grasp talent and canPay the ember bar; release is a hurl or slam (the attack/cast edges), a re-press, or
     // the max-hold timer.
     // S2-B2-M2: under perf-probe mode the runner writes `voidhandHeld` directly (no real grab happened,
-    // so the SM's heldUntil=0 would max-hold-auto-drop it on the first frame) — the probe's store-driven
+    // so the SM's hold timer never started and would auto-drop it) — the probe's store-driven
     // held state is authoritative, so the SM tick is skipped. isPerfProbe() is constant-false in prod.
     if (!isPerfProbe()) {
       const vin = getInput();
@@ -769,7 +770,8 @@ export const Player = ({ isWorldBuilt }) => {
       const vAtk = voidhandVerbRef.current.attack; voidhandVerbRef.current.attack = false;
       const vCast = voidhandVerbRef.current.cast; voidhandVerbRef.current.cast = false;
       const stv = useGameStore.getState();
-      const { sm: vsm, action: vaction } = decideVoidhand(voidhandSMRef.current, {
+      const vmods = stv.getVerbMods(); // the grab's and the snare's numbers for this frame (talents and relic)
+      const { sm: vsm, action: vaction, keep: vkeep } = decideVoidhand(voidhandSMRef.current, {
         held: stv.voidhandHeld,
         grabEdge,
         attack: vAtk,
@@ -780,6 +782,8 @@ export const Player = ({ isWorldBuilt }) => {
         canGrab: stv.unlockedTalents?.['voidhand_grasp'] > 0,
         // Read this frame, which is the frame a 'grab' commits, so the spend below is covered.
         canPay: barPays(GRAB_COST),
+        throws: vmods.grabThrows, // a second grab (Twin Grasp, Lodestone): a hurl or slam keeps the next block
+        holdSec: vmods.holdSec,
       });
       voidhandSMRef.current = vsm;
       if (vaction === 'grab') {
@@ -798,8 +802,10 @@ export const Player = ({ isWorldBuilt }) => {
         const ho = steadyEye(rigidBodyRef.current.translation(), new THREE.Vector3()).add(hd.clone().multiplyScalar(1.2));
         requestHurl({ x: ho.x, y: ho.y, z: ho.z }, { x: hd.x, y: hd.y, z: hd.z }, stv.heldPhantom && stv.heldPhantom.color);
         if (stv.playSpatialSound) stv.playSpatialSound('hurl', [ho.x, ho.y, ho.z], 1, 25); // AUDIO: launch whoosh
-        stv.setVoidhandHeld(false);
-        stv.setHeldPhantom(null);
+        if (!vkeep) { // a grab that held another block keeps it in hand
+          stv.setVoidhandHeld(false);
+          stv.setHeldPhantom(null);
+        }
       } else if (vaction === 'slam') {
         requestSlam({ x: phantomWorldPos.x, y: phantomWorldPos.y, z: phantomWorldPos.z }, stv.heldPhantom && stv.heldPhantom.color);
         if (stv.playSpatialSound) stv.playSpatialSound('slam', [phantomWorldPos.x, phantomWorldPos.y, phantomWorldPos.z], 1, 30); // AUDIO: the heavy thump
@@ -812,8 +818,10 @@ export const Player = ({ isWorldBuilt }) => {
             stv.playSpatialSound('motifVoidhand', [phantomWorldPos.x, phantomWorldPos.y, phantomWorldPos.z], 1, 40);
           }
         }
-        stv.setVoidhandHeld(false);
-        stv.setHeldPhantom(null);
+        if (!vkeep) {
+          stv.setVoidhandHeld(false);
+          stv.setHeldPhantom(null);
+        }
       } else if (vaction === 'drop' || vaction === 'cancel' || vaction === 'unpaid') {
         stv.setVoidhandHeld(false);
         stv.setHeldPhantom(null);
@@ -833,18 +841,19 @@ export const Player = ({ isWorldBuilt }) => {
         const sDir = new THREE.Vector3();
         camera.getWorldDirection(sDir); // unflattened — aim where you LOOK (the aimedMobDist precedent)
         const sFrom = steadyEye(rigidBodyRef.current.translation(), new THREE.Vector3());
-        const candidates = GameMethods.checkMobsInMeleeCone(sFrom, sDir, SNARE_RANGE, Math.PI / 8) || [];
-        // nearest snareable: weakened (<=30% HP), hostile (not passive; villager converter-blocked too)
+        // A wider snare (Wide Snare, Snare Knot) widens the aim cone; Communion raises the share of health a target binds at.
+        const candidates = GameMethods.checkMobsInMeleeCone(sFrom, sDir, SNARE_RANGE, vmods.snareArc) || [];
+        // nearest snareable: weakened (at or under snareHpFrac of its health), hostile (not passive; villager converter-blocked too)
         let best = null, bestD = Infinity;
         for (const e of candidates) {
-          if (!e || e.passive || e.health > 0.3 * e.maxHealth || e.health <= 0) continue;
+          if (!e || e.passive || e.health <= 0 || e.health > vmods.snareHpFrac * e.maxHealth) continue;
           const dx = e.position.x - sFrom.x, dz = e.position.z - sFrom.z;
           const d = dx * dx + dz * dz;
           if (d < bestD) { bestD = d; best = e; }
         }
         if (best) { snareTargetId = best.id; snareTarget = best; }
       }
-      const squadCap = squadCapFor(stv.unlockedTalents);
+      const squadCap = vmods.squadCap;
       const { sm: ssm, action: saction } = decideSoulbind(soulbindSMRef.current, {
         snareEdge,
         active: vin.active,

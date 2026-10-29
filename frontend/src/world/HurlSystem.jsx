@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
@@ -6,26 +6,26 @@ import { GameMethods } from '../GameMethods';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
 import { consumeHurlRequest, consumeSlamRequest } from '../game/hurlChannel';
-import { adoptHurlRequest, stepHurlChunked, resolveSlam, resolveAnvil, HURL_DAMAGE, HURL_KNOCK, SLAM_DAMAGE_MULT } from '../game/hurl';
+import { adoptHurlRequest, flightSlot, stepHurlChunked, resolveSlam, resolveAnvil, HURL_DAMAGE, HURL_KNOCK, SLAM_DAMAGE_MULT, MAX_FLIGHTS } from '../game/hurl';
 import { warnIfNotWorldSpace } from './sceneSpace.js';
 import { worldDelta } from '../game/worldClock.js';
 
 /**
  * HurlSystem — S2-B2-M3: consumes hurlChannel requests and runs the PURE flight/impact core.
- * Single-flight (one phantom in M1-M3). Impact application: damageMob(id, dmg, activeSpell) —
- * the element is read AT IMPACT (spec §3c: mid-hold spell-switch can't desync; activeSpell IS
- * the spark-type string) — plus the entity.knockback nudge (consumed by the NPC main loop).
- * Render = ONE transient mesh, visible only in flight (Game-Loop-Isolation: setState only on
- * the rare flight start/end membership transitions, never per frame). Capture-safe: requests
- * can't be produced in capture (clicks never route) and the stepper is also hard-gated below.
- * NO voxel/worker seams — gated by voidhand-noremesh-gates.
+ * Up to MAX_FLIGHTS blocks fly at once, so a grab that keeps a second block throws it at once without cutting the first
+ * short (game/hurl.js flightSlot). Impact application: damageMob(id, dmg, activeSpell) — the element is read AT IMPACT
+ * (spec §3c: mid-hold spell-switch can't desync; activeSpell IS the spark-type string) — plus the entity.knockback
+ * nudge (consumed by the NPC main loop). Render = a pool of MAX_FLIGHTS meshes, always mounted, shown, moved and tinted
+ * by transient writes (Game-Loop-Isolation: no setState). Capture-safe: requests can't be produced in capture (clicks
+ * never route) and the stepper is also hard-gated below. NO voxel/worker seams — gated by voidhand-noremesh-gates.
  */
 const FLASH_SEC = 0.18; // M7: the one-shot white-hot impact core (the SpellProjectileCore recipe)
+const BLOCK_COLOR = '#A9966E';
 
 export function HurlSystem() {
-  const flightRef = useRef(null); // { h, color }
-  const meshRef = useRef();
-  const [inFlight, setInFlight] = useState(false);
+  const slotsRef = useRef(Array.from({ length: MAX_FLIGHTS }, () => null)); // each { h, color } or null
+  const meshesRef = useRef([]);
+  const setMesh = useMemo(() => Array.from({ length: MAX_FLIGHTS }, (_, i) => (m) => { meshesRef.current[i] = m; }), []);
   // M7 impact flash: ONE always-mounted additive core, driven transiently (visible/scale/opacity
   // in useFrame — the #68 cover-aura pattern; zero setState, zero light-count change). Fired at
   // hurl impacts (small) + slam resolves (wider). Capture-inert: impacts never occur in capture.
@@ -41,7 +41,7 @@ export function HurlSystem() {
     const delta = worldDelta(frameDelta); // a hurled block hangs mid-flight through a hitstop (R2.6)
     // DEV guard: this component writes WORLD coordinates, so its parent must be untransformed.
     // It was mounted inside the player's RigidBody until 2026-08-09 and rendered at player+world.
-    if (import.meta.env.DEV) warnIfNotWorldSpace(meshRef.current, 'HurlSystem');
+    if (import.meta.env.DEV) warnIfNotWorldSpace(meshesRef.current[0], 'HurlSystem');
     if (isCaptureMode()) return;
     const store = useGameStore.getState();
 
@@ -62,61 +62,61 @@ export function HurlSystem() {
     const slam = consumeSlamRequest();
     if (slam) {
       const element = store.activeSpell; // read at impact
-      fireFlash(slam.center, 3.0); // the AoE verb flashes wide (~the 3m slam radius as it expands)
+      const radius = store.getVerbMods().slamRadius; // Singularity widens it (game/verbMods.js)
+      fireFlash(slam.center, radius); // the AoE verb flashes as wide as the slam reaches
       // M8 feel-distinctness: SLAM is the HEAVY verb — a camera kick the ranged hurl doesn't get
       // (hurl impacts already carry hitstop via damageMob; this is the slam's own signature).
       if (store.triggerCameraShake) store.triggerCameraShake(1.4);
-      for (const ev of resolveSlam(slam.center, mobsQuery.entities)) {
+      for (const ev of resolveSlam(slam.center, mobsQuery.entities, radius)) {
         if (GameMethods.damageMob) GameMethods.damageMob(ev.id, Math.round(HURL_DAMAGE * SLAM_DAMAGE_MULT), element);
         const entity = mobsQuery.entities.find((e) => e.id === ev.id);
         if (entity) entity.knockback = [ev.dir.x * HURL_KNOCK, 2, ev.dir.z * HURL_KNOCK];
       }
     }
 
-    // LAST-THROW-WINS, the family convention already stated on the sibling channel: a second request
-    // arriving mid-flight REPLACES the phantom rather than being dropped. The consume is unconditional
-    // (the slot nulls on read), so the old `&& !flightRef.current` destroyed the request whether or not
-    // it was used -- and by then the producer had already spent the grab's ember and cleared the held phantom.
-    // The window is real: the SM allows a throw every 0.95s, stepHurl has no terrain collision at all, so
-    // a miss stays airborne the full 1.5s TTL. Nothing reported the loss. Still exactly one phantom.
+    const slots = slotsRef.current;
     const adopted = adoptHurlRequest(consumeHurlRequest());
     if (adopted) {
-      flightRef.current = adopted;
-      setInFlight(true); // membership transition only
+      const i = flightSlot(slots);
+      slots[i] = adopted;
+      const m = meshesRef.current[i];
+      if (m) {
+        m.material.color.set(adopted.color);
+        m.material.emissive.set(adopted.color);
+        m.visible = true;
+      }
     }
 
-    const f = flightRef.current;
-    if (!f) return;
-    const r = stepHurlChunked(f.h, delta, mobsQuery.entities); // substepped: frame spikes can't tunnel
-    if (import.meta.env.DEV) {
-      // observability transient (the __threeScene precedent): exact flight truth for smokes/devtools
-      window.__hurlDebug = { age: f.h.age, x: f.h.position.x, y: f.h.position.y, z: f.h.position.z, done: r.done, hit: r.hit ? r.hit.id : null, delta };
-    }
-    if (meshRef.current) {
-      meshRef.current.position.set(f.h.position.x, f.h.position.y, f.h.position.z);
-      meshRef.current.rotation.x += delta * 6;
-      meshRef.current.rotation.y += delta * 9;
-    }
-    if (r.hit) {
-      const element = store.activeSpell; // read at impact
-      // M4 BASE-AS-ANVIL: a wall within ANVIL_RANGE along the hurl line past the impact -> 3x
-      // total ("building MATTERS in combat" — the design-closure loop, spec §3e). Walls stay
-      // PRISTINE (Decision #3 rec). The gold "WALL HIT!" label is M7-T3.
-      const anvil = GameMethods.castWorldRay ? resolveAnvil(GameMethods.castWorldRay, r.hit) : 1;
-      fireFlash(r.hit.pos, anvil > 1 ? 2.2 : 1.6); // M7: the impact core (anvil hits flash bigger)
-      if (anvil > 1 && GameMethods.spawnAnvilText) GameMethods.spawnAnvilText(r.hit.pos); // M7-T3: gold WALL HIT!
-      if (anvil > 1 && store.playSpatialSound) store.playSpatialSound('anvilHit', [r.hit.pos.x, r.hit.pos.y, r.hit.pos.z], 1, 35); // AUDIO: the gold ping
-      if (GameMethods.damageMob) GameMethods.damageMob(r.hit.id, HURL_DAMAGE * anvil, element);
-      const entity = mobsQuery.entities.find((e) => e.id === r.hit.id);
-      if (entity) entity.knockback = [r.hit.dir.x * HURL_KNOCK, 2, r.hit.dir.z * HURL_KNOCK];
-    }
-    if (r.done) {
-      flightRef.current = null;
-      setInFlight(false); // membership transition only
+    for (let i = 0; i < slots.length; i++) {
+      const f = slots[i];
+      if (!f) continue;
+      const r = stepHurlChunked(f.h, delta, mobsQuery.entities); // substepped: frame spikes can't tunnel
+      const m = meshesRef.current[i];
+      if (m) {
+        m.position.set(f.h.position.x, f.h.position.y, f.h.position.z);
+        m.rotation.x += delta * 6;
+        m.rotation.y += delta * 9;
+      }
+      if (r.hit) {
+        const element = store.activeSpell; // read at impact
+        // M4 BASE-AS-ANVIL: a wall within ANVIL_RANGE along the hurl line past the impact -> 3x
+        // total ("building MATTERS in combat" — the design-closure loop, spec §3e). Walls stay
+        // PRISTINE (Decision #3 rec). The gold "WALL HIT!" label is M7-T3.
+        const anvil = GameMethods.castWorldRay ? resolveAnvil(GameMethods.castWorldRay, r.hit) : 1;
+        fireFlash(r.hit.pos, anvil > 1 ? 2.2 : 1.6); // M7: the impact core (anvil hits flash bigger)
+        if (anvil > 1 && GameMethods.spawnAnvilText) GameMethods.spawnAnvilText(r.hit.pos); // M7-T3: gold WALL HIT!
+        if (anvil > 1 && store.playSpatialSound) store.playSpatialSound('anvilHit', [r.hit.pos.x, r.hit.pos.y, r.hit.pos.z], 1, 35); // AUDIO: the gold ping
+        if (GameMethods.damageMob) GameMethods.damageMob(r.hit.id, HURL_DAMAGE * anvil, element);
+        const entity = mobsQuery.entities.find((e) => e.id === r.hit.id);
+        if (entity) entity.knockback = [r.hit.dir.x * HURL_KNOCK, 2, r.hit.dir.z * HURL_KNOCK];
+      }
+      if (r.done) {
+        slots[i] = null;
+        if (m) m.visible = false;
+      }
     }
   });
 
-  const color = (flightRef.current && flightRef.current.color) || '#A9966E';
   return (
     <group>
       {/* the M7 impact core — always mounted, visibility/scale/opacity driven transiently */}
@@ -125,13 +125,13 @@ export function HurlSystem() {
         <meshBasicMaterial color="#FFF6E8" toneMapped={false} transparent opacity={0}
           blending={THREE.AdditiveBlending} depthWrite={false} />
       </mesh>
-      {inFlight && (
-        <mesh ref={meshRef}>
+      {setMesh.map((ref, i) => (
+        <mesh key={i} ref={ref} visible={false}>
           <boxGeometry args={[0.85, 0.85, 0.85]} />
-          <meshStandardMaterial color={color} roughness={0.7} metalness={0.05}
-            emissive={color} emissiveIntensity={0.22} />
+          <meshStandardMaterial color={BLOCK_COLOR} roughness={0.7} metalness={0.05}
+            emissive={BLOCK_COLOR} emissiveIntensity={0.22} />
         </mesh>
-      )}
+      ))}
     </group>
   );
 }

@@ -86,3 +86,8 @@ export const SPELL_TYPES = {
       }
     }
   };
+
+/** The spell named `id`, or null: a saved spell name is untrusted, and `constructor` or `toString` is no spell. */
+export function spellTypeOf(id) {
+  return Object.prototype.hasOwnProperty.call(SPELL_TYPES, id) ? SPELL_TYPES[id] : null;
+}

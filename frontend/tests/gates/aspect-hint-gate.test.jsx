@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, act } from '@testing-library/react';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { aspectUnlockHint } from '../../src/game/aspectHints.js';
-import { TALENT_LIMITS } from '../../src/game/talentTree.js';
+import { TALENT_LIMITS, talentNode } from '../../src/game/talentTree.js';
 import AspectHintToast from '../../src/ui/AspectHintToast.jsx';
 
 // WAS A SOURCE-GREP (test-vacuity finding, queue line 372). It asserted three literal substrings in
@@ -17,13 +17,15 @@ import AspectHintToast from '../../src/ui/AspectHintToast.jsx';
 
 const ASPECT = 'wildheart_roar';
 
+// A non-unlock talent sits behind its tree's root (DECISIONS 2026-10-28 W1-H item 6), and the store enforces that, so a
+// case that takes one first seeds its prerequisite into the tree without spending (no hint).
+const seedPrereq = (id) => {
+  const pre = talentNode(id)?.prereq;
+  if (pre) useGameStore.setState({ unlockedTalents: { ...useGameStore.getState().unlockedTalents, [pre]: 1 } });
+};
+
 beforeEach(() => {
-  // C4/Q24: `wildheart_roar` declares `prereq: 'wildheart_vigor'`, and as of 2026-09-22 the store
-  // ENFORCES prereq — it never did before, so this fixture could start from an empty tree and rank a
-  // gated node. It passed because the bug existed. Seeding the prereq is what makes the cases below
-  // about the HINT rather than about a hole in the unlock path. (Third test in this repo found relying
-  // on that hole; the others are in progressionXp.test.js.)
-  useGameStore.setState({ talentPoints: 5, unlockedTalents: { wildheart_vigor: 1 }, aspectHint: null });
+  useGameStore.setState({ talentPoints: 5, unlockedTalents: {}, aspectHint: null });
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
@@ -55,6 +57,7 @@ describe('just-in-time Aspect-unlock hint — behaviour, not source text', () =>
     const multi = Object.entries(TALENT_LIMITS).find(([, v]) => v > 1);
     expect(multi).toBeTruthy();
     const [id] = multi;
+    seedPrereq(id);
     useGameStore.getState().spendTalentPoint(id);
     useGameStore.getState().spendTalentPoint(id);
     expect(useGameStore.getState().unlockedTalents[id]).toBe(2);
@@ -73,6 +76,7 @@ describe('just-in-time Aspect-unlock hint — behaviour, not source text', () =>
   it('a non-Aspect talent unlocks silently', () => {
     const plain = Object.keys(TALENT_LIMITS).find((t) => aspectUnlockHint(t) === null);
     expect(plain).toBeTruthy(); // denominator: there must BE a non-Aspect talent to test
+    seedPrereq(plain);
     useGameStore.getState().spendTalentPoint(plain);
     expect(useGameStore.getState().unlockedTalents[plain]).toBe(1);
     expect(useGameStore.getState().aspectHint).toBeNull();
@@ -81,7 +85,9 @@ describe('just-in-time Aspect-unlock hint — behaviour, not source text', () =>
   it('an existing hint is not clobbered by an unrelated unlock', () => {
     useGameStore.setState({ aspectHint: 'PRIOR' });
     const plain = Object.keys(TALENT_LIMITS).find((t) => aspectUnlockHint(t) === null);
+    seedPrereq(plain);
     useGameStore.getState().spendTalentPoint(plain);
+    expect(useGameStore.getState().unlockedTalents[plain], 'SETUP: the unrelated talent was not taken').toBe(1);
     expect(useGameStore.getState().aspectHint).toBe('PRIOR');
   });
 });

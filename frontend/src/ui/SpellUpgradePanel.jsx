@@ -1,21 +1,12 @@
-// Extracted from AdvancedGameFeatures S3-M4 (the AGF dissolve, part 1): verbatim, same behavior.
+// The Talents page (U): the four Aspect trees, the points to spend, and respec. Spells scale with level and have no
+// section here (DECISIONS 2026-10-28 W1-H item 6).
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
-import { Panel, Button, Icon, SpellRing } from './primitives/index.js';
+import { Panel, Button, Icon } from './primitives/index.js';
 import { ASPECT_TREES, canUnlockTalent, talentBlockedBy } from '../game/talentTree.js';
 import { ASPECT_GUIDE } from '../game/aspectGuide.js';
-import { SPELL_UPGRADES, requiredLevelForUpgrade } from '../world/spellUpgrades.js';
-
-// M6 #51: the 4 castable spells for the Spell Mastery section (key -> element color token + cast-key label).
-const SPELL_MASTERY = [
-    { key: 'fireball', elem: 'fire', label: '1' },
-    { key: 'iceball', elem: 'ice', label: '2' },
-    { key: 'lightning', elem: 'lightning', label: '3' },
-    { key: 'arcane', elem: 'arcane', label: '4' },
-];
-// The level-gate is the shared requiredLevelForUpgrade from spellUpgrades.js (same gate as upgradeSpell).
 
 /** How long a first respec press stays armed before it quietly disarms. */
 export const RESPEC_ARM_MS = 3000;
@@ -38,8 +29,6 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
     }, [respecArmed]);
     const getPlayerLevel = useGameStore(state => state.getPlayerLevel);
     const playerLevel = getPlayerLevel ? getPlayerLevel() : 1;
-    const spellLevels = useGameStore(state => state.spellLevels || {});
-    const upgradeSpell = useGameStore(state => state.upgradeSpell);
 
     return (
         <motion.div
@@ -68,7 +57,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                     <div data-testid="progression-header" className="flex items-center justify-between mb-6 pb-4 border-b-chrome border-ink">
                         <div>
                             <h2 className="flex items-center gap-2 font-display text-3xl uppercase tracking-wide text-accent">
-                                <Icon name="sparkles" size={28} className="flex-none" /> Progression — Aspects & Spells
+                                <Icon name="sparkles" size={28} className="flex-none" /> Talents
                             </h2>
                             <p className="text-text-muted text-xs mt-1">{t('talent.intro')}</p>
                         </div>
@@ -206,9 +195,10 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                                                             size={null}
                                                             disabled={!canUpgrade}
                                                             onClick={() => spendTalentPoint(node.id)}
+                                                            data-testid={`talent-take-${node.id}`}
                                                             className="gap-2 px-3 py-1 text-[10px] tracking-widest"
                                                         >
-                                                            Upgrade
+                                                            {t('ui.upgrade')}
                                                         </Button>
                                                     ) : (
                                                         <span className="text-[10px] text-danger font-bold">{t('talent.requiresParent')}</span>
@@ -222,56 +212,6 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                         ))}
                     </div>
 
-                    {/* M6 #51: Spell Mastery -- the revived spell-upgrade pillar. Level-gated free unlocks raise
-                        cast damage (+mana); mirrors the talent-node row above. null-guarded (store defaults). */}
-                    <div className="mt-6 pt-4 border-t-chrome border-ink">
-                        <h3 className="flex items-center gap-2 font-display text-xl uppercase tracking-wide text-accent mb-3">
-                            <Icon name="magic" size={22} className="flex-none" /> Spell Mastery
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {SPELL_MASTERY.map(({ key, elem, label }) => {
-                                const lvl = Math.max(1, Math.min(SPELL_UPGRADES[key].levels.length, spellLevels[key] || 1)); // clamp: a corrupt save must not index out of bounds
-                                const cur = SPELL_UPGRADES[key].levels[lvl - 1];
-                                const next = SPELL_UPGRADES[key].levels[lvl];
-                                const isMaxed = lvl >= 3;
-                                const requiredLevel = requiredLevelForUpgrade(next);
-                                const gated = !isMaxed && playerLevel < requiredLevel;
-                                const canUpgrade = !isMaxed && !gated;
-                                return (
-                                    <Panel key={key} variant="inset" bg={gated ? 'bg-panel-inset' : 'bg-slot'} className={gated ? 'p-3 flex items-center gap-3 opacity-60' : 'p-3 flex items-center gap-3'}>
-                                        <SpellRing spell={elem} keyLabel={label} size={44} className="flex-none">
-                                            <Icon name={SPELL_UPGRADES[key].icon} size={22} className={`text-spell-${elem}`} />
-                                        </SpellRing>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`font-display text-sm text-spell-${elem}`}>{SPELL_UPGRADES[key].name}</span>
-                                                <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider tabular-nums">Level {lvl}/3</span>
-                                            </div>
-                                            <div className="flex items-center gap-3 mt-0.5 text-xs tabular-nums">
-                                                <span className="flex items-center gap-1 text-stat-atk"><Icon name="sword" size={12} className="flex-none" />{cur.damage}</span>
-                                                <span className="flex items-center gap-1 text-spell-ice"><Icon name="mana" size={12} className="flex-none" />{cur.manaCost}</span>
-                                            </div>
-                                            {next && <div className="text-[10px] text-text-muted mt-0.5">Next: {next.name} <span className="text-success">{next.damage} DMG</span></div>}
-                                        </div>
-                                        <div className="flex flex-col items-end gap-1.5 flex-none">
-                                            <div className="flex gap-0.5">
-                                                {Array.from({ length: 3 }).map((_, l) => (
-                                                    <div key={l} className={`w-2.5 h-2.5 rounded-sm border-chrome border-ink ${l < lvl ? `bg-spell-${elem}` : 'bg-track'}`} />
-                                                ))}
-                                            </div>
-                                            {isMaxed ? (
-                                                <span className="inline-flex items-center gap-1 text-[10px] text-accent font-display uppercase tracking-wider">{t('talent.maxRank')} <Icon name="star" size={12} className="flex-none" /></span>
-                                            ) : gated ? (
-                                                <span className="text-[10px] text-danger font-bold flex items-center gap-1"><Icon name="lock" size={12} className="flex-none" /> Requires Lv {requiredLevel}</span>
-                                            ) : (
-                                                <Button variant="primary" size={null} disabled={!canUpgrade} onClick={() => upgradeSpell?.(key)} className="gap-2 px-3 py-1 text-[10px] tracking-widest">{t('ui.upgrade')}</Button>
-                                            )}
-                                        </div>
-                                    </Panel>
-                                );
-                            })}
-                        </div>
-                    </div>
                 </Panel>
             </motion.div>
             </div>

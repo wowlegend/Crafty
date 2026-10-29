@@ -73,6 +73,100 @@ card at 256 colours, 220,729 bytes; `docs/media` is 1,919,244 bytes of its 3,000
 **Door:** two-way; the deleted files are in git history, and a re-shoot is one command
 (`node frontend/scripts/visual/media.mjs --only <names>`) on a clean tree and a fresh build.
 
+## 2026-10-29 — [LOOP] W2-F step 4: talents that change verbs, loot relics, and damage from level
+
+**Decided by the W2-F talents lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H item 6 by
+the task script `docs/superpowers/plans/2026-10-29-crafty-w2f-talents.md`. Numbered on from W2-E's entry (the hands,
+PR #43, which landed first; its last is 40). Each stands while it earns its place.
+
+41. **Damage, health and mana scale with level alone.** The player's own strength, agility and intellect are 10 each at
+   level 1 and gain +2, +1 and +2 a level (`frontend/src/game/progression.js` `levelAttributes`): the five points a level
+   paid, placed by rule. Gear folds on top; no talent adds a stat; the solvers and `deriveMaxStats` are unchanged. **The
+   band, stated before the change** (`frontend/tests/game/levelDamage.test.js`): at level 1 every attack deals what it
+   dealt; at 5, 10 and 20 each attack's expected damage sits between today's unspent and focused builds and within 10%
+   of the even build (five points a level shared three ways). Measured: +1% to +8% over even (spells +1% to +4%, melee
+   +3% to +8%), every hostile's hits to kill between the two bounds; the level's own stats are pinned as literals beside
+   the band, which is wide enough to hold a split with no agility growth. **Why:** with allocation gone, a level must
+   still be worth its old five points, and the even build is the one a player who spread points had. **What the band
+   leaves out:** its builds hold no talent ranks, and before the Cut 20 of the 26 talent nodes added a stat. A level-10
+   player with the even build and nine points in intellect nodes (Elemental Focus 3, Cataclysm 2, Conflux, Soul Bond 3:
+   +35) cast a non-crit Fireball III for 264; that level casts 187 now (-29%). The four armour nodes (up to 59 armour,
+   which takes armor / (armor + 100) off a hit) have no successor, and armour is outside the band. Whether a stat build
+   is owed anything is registry `REVIEW:w2f:talents-stat-build-loss`.
+42. **Spells scale with level:** a spell casts at the tier its caster's level reached (`frontend/src/game/spellTiers.js`:
+   II at level 2 for fireball and iceball, 3 for lightning and arcane, III at 5), the levels the free mastery click
+   allowed, with the same damage and mana table. No player loses a tier the click would have bought.
+43. **The refund rule for a save from before the Cut**, recorded once as `talents.cut` (`frontend/src/game/saveSchema.js`):
+   a save whose progression holds `attributes` gets floor(P / 5) talent points, P being its unspent attribute points
+   plus every point it allocated, and every talent rank back as a point, since every node's meaning changed. The pre-cut
+   fixture loads at level 5 with 8 points (20 / 5 = 4, plus 3 unspent and 1 rank) and no ranks; a post-Cut save is never
+   respecced. **Why five to one:** a level paid five attribute points beside its talent point, so a normal save converts
+   to one point per level gained; the stats those points bought now come from the level, so the player gets both back.
+   **Doors:** `attributes` and `spellLevels` ride the progression tombstone, and `crystals` and `wand` a new `blocks`
+   bag written back under the live inventory, each for one SAVE_VERSION.
+44. **The trees** (`frontend/src/game/talentTree.js`): each root unlocks its verb and needs no prerequisite (a level-2
+   player can take one); every other node is one modifier in `frontend/src/game/verbMods.js`'s vocabulary. Wildheart:
+   Primal Endurance (+3 s roar, 3 ranks), then Apex Predator (the form's swing +25%) or Untamed (+8 s). Voidhand: Twin
+   Grasp (a grab holds two blocks), Long Hold (+4 s, 2 ranks), then Singularity (slam +1.5 m) or Event Horizon (+8 s
+   hold). Soulbind: Wide Snare (the aim cone doubles), Pack Warden (+1 slot), then Communion (binds at half health) or
+   Warden Bulwark (+1 slot). Elemancer: Chain Imbue (the zone leaps to one more hostile within 8 m, 2 ranks), then
+   Conflux (zones 50% wider) or Wildfire (+2 leaps). Exclusivity and respec keep their code; a loaded rank whose node is
+   gone, over its limit, behind a missing prerequisite, or beside its rival comes back as a point. Ember's prices do not
+   move. A kept grab's next block goes on the next click, hurl or slam, beside the first in the air (item 48).
+45. **Relics:** one slot (`equipment.relic`, through the existing equip actions), four relics in the same vocabulary
+   (`frontend/src/game/relics.js`): Ember Fang (+4 s roar) from emberhusks and duskhounds, Lodestone (+1 grab throw) from
+   moss brutes, Snare Knot (the snare cone doubles) from spiders and skitterlings, Prism Shard (+1 leap) from skeletons,
+   each at 4-6%, `epic`, so the zone tier raises them far from spawn. A relic and a talent on one key add up.
+46. **Crystals and the wand go whole,** with the wand's mana discount, the four ore-to-crystal trades, the wand trade, the
+   starting 8 crystals and wand, and the Magic Crystal recipe row (so a level-1 Fireball costs 15 mana, which was 14
+   with the starting wand's 6%). The merchant sells potions for coins; mined blocks wait for the Forge (W1-H item 7).
+   `affixes.js` went with them (no importer).
+47. **Not proven, and owed.** The feel of the trees and the relic drop rates (no playtest); the Talents page fitting one
+   screen; the grab's second throw, the wider snare, the chained imbue, Apex Predator, the slam radius and the relics in
+   the running game (proven at their reducers and pure helpers, not by a browser); the e2e's browser mutants; WebKit and
+   touch for the Talents page. Each has a registry row.
+48. **Review round 1 changed four rules** (each fix commit carries its mutation receipt):
+   - **The hurl system flies up to six blocks at once** (`frontend/src/game/hurl.js` `MAX_FLIGHTS`, `flightSlot`;
+     `frontend/src/world/HurlSystem.jsx`). This replaces item 44's first version, in which a kept block waited out the
+     first throw's 1.5 s flight: that wait also blocked a slam, which never flies, ate the click with no cue, and ran on
+     R3F's clock while the flight runs on `worldDelta`, so a pause or a hitstop let the second throw replace the first
+     anyway. Six holds two grabs of three blocks inside one flight (`frontend/src/game/hurl.test.js` derives it from the
+     trees and relics); a full pool gives up the block flying longest. **Why:** the wait was a workaround for a single
+     flight, and the single flight was the cause.
+   - **A verb reads its numbers every tick.** The roar's length and the grab's throws and hold are compared against
+     `getVerbMods()` as it stands on each frame (`beastTransform.js` `activeSince`, `voidhand.js` `heldSince` and
+     `thrown`), as the imbue's chain, the snare and the squad cap already were. **Why:** latched at a verb's start, a
+     number outlived its relic: roar with Ember Fang, swap to Lodestone mid-form, grab, and one slot gave both.
+   - **The retired crystals and wand leave every bag and every chest** on load, held per bag and per chest
+     (`frontend/src/game/saveSchema.js` `liveInventory`, `liveChests`), so no chest can hand one back to the bag.
+   - **A saved talent map and a saved spell name are untrusted keys:** the node table has no prototype and
+     `spellStatsAt` answers only its own keys, so `constructor` refunds as an unknown id and casts nothing.
+49. **Review round 2 changed five rules** (each fix commit carries its mutation receipt):
+   - **A block kept after a throw lasts only while the build gives it** (`frontend/src/game/voidhand.js`): when the
+     relic or rank that gave a grab its extra throw leaves, the kept block drops on the next tick, before any click can
+     launch it. This finishes item 48's second rule, which held for the roar and for a swap before the first throw.
+   - **A chain's leap lands only on a hostile no zone of its element covers** (`frontend/src/game/elementZones.js`
+     `spawnChain`, which replaces `chainTargets` and its fixed 2 m floor): outside the impact's width as painted and
+     outside every zone of the element, the chain's own leaps included. **And one element ticks a body once:**
+     `applyZoneEffects` acts on membership for every kind, as it already did for frozen, so overlapping zones of one
+     element no longer stack their damage. **Why:** the 2 m floor sat inside every zone's 2.5-3 m radius, so a hostile
+     beside the impact got a second zone and twice the ticks; a leap is there to spread the element, not to multiply it
+     on one body, which is what "same kind nearby refreshes" already says for a re-imbue. A widened zone also meets its
+     neighbours (steam, a rune) at the size it is drawn, and a wider re-imbue widens the zone it refreshes.
+   - **Every save this build loads or makes records the Cut's refund as run** (`talents.cut`, `saveSchema.js`
+     `TALENT_CUT`): a post-Cut save is recorded too, and a store that has loaded nothing starts with the record. A
+     pre-Cut build writes `attributes` into every save it touches, so without this a rollback and a roll forward
+     respecced a post-Cut build and paid the refund on top; item 43's "a post-Cut save is never respecced" now holds
+     through a rollback. The refund's notice counts the points after the load's other grants, and is not raised with
+     nothing to spend.
+   - **Every load ends a held grab** (`useGameStore.jsx` `loadWorldData`), as a respec and a death do: the grab's held
+     branch reads no talent, so a block carried into a build without the grab was thrown by a verb the player lacked.
+   - **The load refund is the unlock rule replayed** (`talentTree.js` `refundUnknownTalents` through `canUnlockTalent`),
+     so a rule added to the unlock path reaches loaded saves. One outcome moves: a capstone whose own prerequisite is
+     missing no longer takes its rival with it. A saved spell name is looked up by the roster's own keys
+     (`frontend/src/game/spells.js` `spellTypeOf`), so item 48's `constructor` casts nothing and raises no false "no mana"
+     notice.
+
 ## 2026-10-29 — [LOOP] W2-J phase 2: one browser library (Playwright), and `import.meta.main` in place of cli-guard
 
 **Decided by the command session** (SOTA reset rows 39 and 37; plan
@@ -380,11 +474,11 @@ that entry's items. Each stands while it earns its place; reversing one takes a 
    blocks (item 4); the cap stops a build-and-break loop. Bank by day, spend by night, stays.
 6. **Progression becomes talents that change verbs, plus loot relics** (plan row 22, lane W2-F). Supersedes hand
    attribute allocation (`frontend/src/store/useGameStore.jsx:326-333`, five points a level at `:450-456`), the free
-   spell-mastery click (`upgradeSpell`, `frontend/src/world/spellUpgrades.js:90`) and the crystal wallet with its wand
-   discount (`frontend/src/game/crystalWallet.js`, the 2026-07-14 B3b fix). A level grants one talent point; a talent
-   changes how a verb plays; relics come from loot; spells scale with level. Why: seven axes that each add a number give
-   a player nothing to choose. It needs a damage rebalance first, because `solveSpellDamage` reads attributes.
-   `frontend/src/game/affixes.js` (no importer) goes with it.
+   spell-mastery click (`upgradeSpell`, `frontend/src/world/spellUpgrades.js:90`, REMOVED by W2-F step 4) and the crystal
+   wallet with its wand discount (`frontend/src/game/crystalWallet.js`, the 2026-07-14 B3b fix, REMOVED by W2-F step 4). A
+   level grants one talent point; a talent changes how a verb plays; relics come from loot; spells scale with level. Why:
+   seven axes that each add a number give a player nothing to choose. It needs a damage rebalance first, because
+   `solveSpellDamage` reads attributes. `frontend/src/game/affixes.js` (no importer, REMOVED by W2-F step 4) goes with it.
 7. **The Forge replaces the crafting grid** (plan row 23, lane W2-F). Supersedes the 3x3 grid
    (`frontend/src/ui/panels/CraftingTable.jsx`, `frontend/src/data/recipes.js`, the C key, the touch-tray Craft slot,
    the pickaxe item) and with it the 2026-07-14 grid fixes (B3a sword patterns, B3d escrow). A Forge card on Mara (G)

@@ -5,12 +5,12 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { renderHook, act, cleanup } from '@testing-library/react';
-import { SAVE_VERSION, RETIRED_QUEST_IDS, buildSaveData, splitTombstone, migrateRetired } from '../../src/game/saveSchema.js';
+import { SAVE_VERSION, RETIRED_QUEST_IDS, buildSaveData, splitTombstone, migrateRetired, attributePointsHeld } from '../../src/game/saveSchema.js';
 import { useQuestSystem, QUEST_LIST } from '../../src/QuestSystem.jsx';
 import { MAX_ACTIVE_QUESTS } from '../../src/game/questClaim.js';
 import { solveMeleeDamage, solveSpellDamage, mitigateDamage } from '../../src/utils/combat.js';
+import { xpForLevel } from '../../src/game/progression.js';
 import { getWeaponBaseDamage } from '../../src/game/equipment.js';
-import { SPELL_UPGRADES } from '../../src/world/spellUpgrades.js';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';
 
 // THE PRE-CUT SAVE (W2-F brief, Task 0 and Task 1; DECISIONS 2026-10-28 W1-H items 4-7 and 10).
@@ -54,8 +54,7 @@ describe('the pre-cut save loads and fights', () => {
 
     const zombie = MOB_TYPES.zombie;
     const eff = s.getEffectiveAttributes();
-    const spellLevel = s.spellLevels?.fireball || 1;
-    const spellBase = SPELL_UPGRADES.fireball.levels[spellLevel - 1].damage;
+    const spellBase = s.getSpellStats('fireball').damage;
     for (const roll of [0, 0.999]) { // a crit and a plain hit: both branches of each solver
       Math.random = () => roll;
       const melee = mitigateDamage({ armor: zombie.armor || 0 }, solveMeleeDamage(eff, getWeaponBaseDamage(s.equipment?.weapon)).damage);
@@ -82,9 +81,11 @@ describe('the tombstone pass-through', () => {
     const saved = onDisk();
     expect(saved.progression.futureField, 'an unknown progression key was dropped on save').toEqual({ nested: [1, 2], word: 'kept' });
     expect(saved.game_state.futureFlag, 'an unknown game_state key was dropped on save').toBe('kept');
-    // The whole slice, not the planted keys alone: a field this build stops writing (gameMode, the four Aspect banks)
-    // must come back exactly as the pre-cut save had it. The one key added is the ember the banks were summed into.
-    expect(saved.progression, 'the pre-cut progression slice did not round-trip unchanged').toEqual({ ...f.progression, ember: 75, emberBuildDay: { night: 0, built: 0 } });
+    // The whole slice, not the planted keys alone: a field this build stops writing (gameMode, the four Aspect banks,
+    // attributes, spellLevels) must come back exactly as the pre-cut save had it. The keys added are the ember the banks
+    // were summed into; the keys changed are the talents the refund paid (the describe at the end of this file).
+    expect(saved.progression, 'the pre-cut progression slice did not round-trip unchanged')
+      .toEqual({ ...f.progression, ember: 75, emberBuildDay: { night: 0, built: 0 }, talentPoints: 8, unlockedTalents: {} });
     expect(saved.game_state, 'the pre-cut game_state slice did not round-trip unchanged').toEqual(f.game_state);
   });
 
@@ -115,8 +116,9 @@ describe('the tombstone pass-through', () => {
 
   it('never holds a key this build writes, and a held value never shadows a live one', () => {
     const bag = splitTombstone(planted());
-    // The four Aspect banks are keys this build stopped writing at Ember (W1-H item 5), so they are held like the planted one.
-    expect(Object.keys(bag.progression), 'the bag took keys this build writes').toEqual(['ferocityBanked', 'kineticBanked', 'soulBanked', 'resonanceBanked', 'futureField']);
+    // attributes and spellLevels (W1-H item 6) and the four Aspect banks (item 5) are keys this build stopped writing, so
+    // they are held like the planted one.
+    expect(Object.keys(bag.progression), 'the bag took keys this build writes').toEqual(['attributes', 'spellLevels', 'ferocityBanked', 'kineticBanked', 'soulBanked', 'resonanceBanked', 'futureField']);
     // gameMode is a key this build stopped writing at the Cut (W1-H item 4), so it is held like the planted one.
     expect(Object.keys(bag.game_state), 'the bag took keys this build writes').toEqual(['gameMode', 'futureFlag']);
     const built = buildSaveData({ level: 7, isDay: false, _tombstone: { progression: { level: 99 }, game_state: { isDay: true } } }, POS);
@@ -236,6 +238,7 @@ describe('a completed, unclaimed retired quest', () => {
     return { totalXP: s.totalXP, level: s.level, coins: s.coins, wood: s.inventory.blocks.wood, quests: ids(s.questState.quests), claimed: s.questState.completedQuestIds };
   };
   let notes;
+  const questNotes = () => notes.filter((n) => n.startsWith('Quest reward'));
   beforeEach(() => {
     notes = [];
     useGameStore.setState({ addNotification: (text) => notes.push(text) });
@@ -250,11 +253,12 @@ describe('a completed, unclaimed retired quest', () => {
     expect(s.wood - before.wood, 'the Builder wood was not paid, or paid twice').toBe(24);
     expect(s.quests, 'the paid quest reached the live feed').toEqual(['first_blood', 'hunter']);
     expect(s.claimed, 'the paid quest is not recorded as claimed').toEqual(['builder']);
-    expect(notes, 'the player was not told what the load paid').toEqual(['Quest reward (Builder): +50 XP, +20 coins, +24 wood!']);
+    expect(questNotes(), 'the player was not told what the load paid').toEqual(['Quest reward (Builder): +50 XP, +20 coins, +24 wood!']);
     const saved = onDisk();
     expect(ids(saved.questState.quests), 'the paid quest is still held for a rollback to claim again').toEqual(['first_blood', 'hunter']);
     expect(saved.questState.completedQuestIds, 'the save lost the claim').toEqual(['builder']);
-    expect(saved.migrated, 'the save does not record the migration').toEqual(['quests.builder']);
+    // talents.cut is the talent refund every pre-cut save is owed (the describe at the end of this file).
+    expect(saved.migrated, 'the save does not record the migration').toEqual(['quests.builder', 'talents.cut']);
   });
 
   it('a second load of the save it wrote changes nothing', () => {
@@ -263,9 +267,10 @@ describe('a completed, unclaimed retired quest', () => {
     const once = onDisk();
     useGameStore.setState(useGameStore.getInitialState(), true);
     useGameStore.setState({ addNotification: (text) => notes.push(text) });
+    const announced = notes.length;
     useGameStore.getState().loadWorldData(structuredClone(once));
     expect(read(), 'the second load paid, or lost, something').toEqual(first);
-    expect(notes, 'the second load announced a payment').toHaveLength(1);
+    expect(notes, 'the second load announced a payment').toHaveLength(announced);
     const twice = onDisk();
     expect({ ...twice, save_name: null }, 'the second save differs from the first').toEqual({ ...once, save_name: null });
   });
@@ -277,7 +282,7 @@ describe('a completed, unclaimed retired quest', () => {
     useGameStore.getState().loadWorldData(f);
     expect(useGameStore.getState().totalXP - xp0, 'the three retired rewards were not paid in full').toBe(50 + 150 + 400);
     expect(useGameStore.getState().coins - coins0).toBe(20 + 60 + 160);
-    expect(onDisk().migrated).toEqual(['quests.builder', 'quests.architect', 'quests.world_builder']);
+    expect(onDisk().migrated).toEqual(['quests.builder', 'quests.architect', 'quests.world_builder', 'talents.cut']);
   });
 
   it('pays nothing for one in progress or already claimed, and records nothing for it', () => {
@@ -286,8 +291,8 @@ describe('a completed, unclaimed retired quest', () => {
     useGameStore.getState().loadWorldData(f);
     expect(useGameStore.getState().totalXP, 'an incomplete or claimed retired quest was paid').toBe(FIXTURE.progression.totalXP);
     expect(useGameStore.getState().coins).toBe(FIXTURE.progression.coins);
-    expect(notes, 'a load that paid nothing announced a payment').toEqual([]);
-    expect(onDisk().migrated, 'a migration that ran nothing was recorded').toEqual([]);
+    expect(questNotes(), 'a load that paid nothing announced a payment').toEqual([]);
+    expect(onDisk().migrated, 'a migration that ran nothing was recorded').toEqual(['talents.cut']);
   });
 
   it('a save older than SAVE_VERSION is still paid, and its record is still read', () => {
@@ -319,8 +324,196 @@ describe('the migration record', () => {
 
   it('a load keeps the names it does not run, and a new world starts with none', () => {
     useGameStore.getState().loadWorldData({ ...fixture(), migrated: ['progression.oldBank', 7, 'progression.oldBank'] });
-    expect(onDisk().migrated, 'a load dropped a recorded name, or kept a junk one').toEqual(['progression.oldBank']);
+    expect(onDisk().migrated, 'a load dropped a recorded name, or kept a junk one').toEqual(['progression.oldBank', 'talents.cut']);
     useGameStore.getState().startNewWorld('local_fresh');
-    expect(onDisk().migrated, 'a new world inherited the last world\'s record').toEqual([]);
+    expect(onDisk().migrated, 'a new world inherited the last world\'s record').toEqual(['talents.cut']);
+  });
+});
+
+// TALENTS AND RELICS (DECISIONS 2026-10-28 W1-H item 6; saveSchema talents.cut). The pre-cut save holds attributes
+// { strength 13, agility 11, intellect 12, armor 0, attributePoints 14 }: 6 points allocated and 14 unspent. THE RULE:
+// every 5 attribute points, spent or unspent, come back as 1 talent point (floor), and every held talent rank comes back
+// as a point. So 20 / 5 = 4, plus its 3 unspent talent points and 1 rank (voidhand_force): 8 at level 5, no ranks.
+describe('the pre-cut save after talents and relics', () => {
+  it('keeps its level, drops its attribute points into 8 talent points by the rule, and deals finite damage', () => {
+    expect(attributePointsHeld(FIXTURE.progression.attributes), 'SETUP: the fixture no longer holds 20 attribute points').toBe(20);
+    useGameStore.getState().loadWorldData(fixture());
+    const s = useGameStore.getState();
+    expect(s.level, 'the pre-cut save lost its level').toBe(5);
+    expect(s.talentPoints, 'the refund rule paid other than 20 / 5 + 3 unspent + 1 rank').toBe(8);
+    expect(s.unlockedTalents, 'a pre-cut rank survived the respec').toEqual({});
+    expect('attributes' in s, 'the store took the attributes back').toBe(false);
+    expect(s.getEffectiveAttributes(), 'level 5 with the Stone Sword is not the level\'s own stats plus the sword\'s')
+      .toEqual({ strength: 10 + 8 + 4, agility: 10 + 4 + 2, intellect: 10 + 8, armor: 0 });
+    for (const roll of [0, 0.999]) {
+      Math.random = () => roll;
+      const melee = solveMeleeDamage(s.getEffectiveAttributes(), getWeaponBaseDamage(s.equipment?.weapon)).damage;
+      const spell = solveSpellDamage(s.getEffectiveAttributes(), s.getSpellStats('fireball').damage, 'fireball').damage;
+      expect(Number.isFinite(melee) && melee >= 1, `melee ${melee}`).toBe(true);
+      expect(Number.isFinite(spell) && spell >= 1, `spell ${spell}`).toBe(true);
+    }
+  });
+
+  it('writes attributes and spellLevels back unchanged, records talents.cut, and a second load pays nothing', () => {
+    const f = fixture();
+    useGameStore.getState().loadWorldData(f);
+    const once = onDisk();
+    expect(once.progression.attributes, 'the held attributes changed on the way through').toEqual(f.progression.attributes);
+    expect(once.progression.spellLevels, 'the held spellLevels changed on the way through').toEqual(f.progression.spellLevels);
+    expect(once.migrated, 'the save did not record the refund').toContain('talents.cut');
+    expect(once.progression.talentPoints).toBe(8);
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    useGameStore.getState().loadWorldData(once);
+    expect(useGameStore.getState().talentPoints, 'the refund was paid a second time').toBe(8);
+  });
+
+  it('gives back a rank the new trees still allow, because the node changed meaning', () => {
+    // The fixture's own rank (voidhand_force) is no node any more, so the unknown-id refund pays it whatever the rule
+    // says; these two are live nodes, and only the respec half of the rule brings them back.
+    const f = fixture();
+    f.progression.unlockedTalents = { wildheart_roar: 1, wildheart_endurance: 2 };
+    useGameStore.getState().loadWorldData(f);
+    const s = useGameStore.getState();
+    expect(s.unlockedTalents, 'a pre-cut rank on a live node survived the respec').toEqual({});
+    expect(s.talentPoints, 'the refund paid other than 20 / 5 + 3 unspent + 3 ranks').toBe(4 + 3 + 3);
+  });
+
+  it('never respecs a save written after the Cut, whose ranks are the player\'s choices in the new trees', () => {
+    useGameStore.setState({ level: 3, talentPoints: 0, unlockedTalents: { wildheart_roar: 1, wildheart_endurance: 1 } });
+    const post = onDisk();
+    expect('attributes' in post.progression, 'SETUP: a post-Cut save wrote attributes').toBe(false);
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    useGameStore.getState().loadWorldData(post);
+    const s = useGameStore.getState();
+    expect(s.unlockedTalents, 'a post-Cut save was respecced').toEqual({ wildheart_roar: 1, wildheart_endurance: 1 });
+    expect(s.talentPoints).toBe(0);
+  });
+
+  it('takes the crystals and the wand out of the live bag and writes them back into the save', () => {
+    useGameStore.getState().loadWorldData(fixture());
+    const bag = useGameStore.getState().inventory.blocks;
+    expect(bag.stone, 'SETUP: the fixture\'s blocks did not load').toBe(16);
+    expect('crystals' in bag || 'wand' in bag, 'a retired currency is in the live bag').toBe(false);
+    const saved = onDisk().player_data.inventory.blocks;
+    expect(saved.crystals, 'the held crystals did not reach the save').toBe(12);
+    expect(saved.wand, 'the held wand did not reach the save').toBe(1);
+    expect(saved.stone).toBe(16);
+  });
+
+  it('takes the retired keys out of every bag and every chest, so no chest hands one back, and the save keeps them all', () => {
+    const f = fixture();
+    f.chests = [['4_17_2', { inventory: { crystals: 5, stone: 3 } }], ['9_17_9', { inventory: { dirt: 2 } }]];
+    f.player_data.inventory.magic = { crystals: 2 };
+    useGameStore.getState().loadWorldData(f);
+    const st = useGameStore.getState();
+    expect(st.chests.get('4_17_2')?.inventory, 'a retired key stayed in a live chest').toEqual({ stone: 3 });
+    expect(st.inventory.magic, 'a retired key stayed in the live magic bag').toEqual({});
+    st.transferItem('4_17_2', 'crystals', 1, 'from_chest');
+    st.transferItem('4_17_2', 'stone', 1, 'from_chest');
+    const bag = useGameStore.getState().inventory.blocks;
+    expect('crystals' in bag, 'a chest handed a retired crystal back to the bag').toBe(false);
+    expect(bag.stone, 'SETUP: a live item no longer moves from the chest').toBe(17);
+    const saved = onDisk();
+    expect(saved.player_data.inventory.blocks.crystals, 'the held bag crystals did not reach the save').toBe(12);
+    expect(saved.player_data.inventory.magic, 'the held magic-bag crystals did not reach the save').toEqual({ crystals: 2 });
+    expect(Object.fromEntries(saved.chests), 'a chest\'s held crystals did not reach the save, or a live item was lost')
+      .toEqual({ '4_17_2': { inventory: { crystals: 5, stone: 2 } }, '9_17_9': { inventory: { dirt: 2 } } });
+  });
+
+  it('counts allocated and unspent points alike, and a broken field adds nothing', () => {
+    expect(attributePointsHeld({ strength: 10, agility: 10, intellect: 10, armor: 0, attributePoints: 0 })).toBe(0);
+    expect(attributePointsHeld({ strength: 15, agility: 10, intellect: 10, armor: 0, attributePoints: 0 })).toBe(5);
+    expect(attributePointsHeld({ strength: 10, agility: 10, intellect: 10, armor: 3, attributePoints: 2 })).toBe(5);
+    expect(attributePointsHeld({ strength: NaN, agility: -4, intellect: '12', armor: null, attributePoints: Infinity })).toBe(0);
+    expect(attributePointsHeld(null)).toBe(0);
+  });
+});
+
+// THE CUT'S RECORD, THE HELD GRAB AND THE NOTICE. A pre-Cut build writes `attributes` into every save it touches, so a
+// rollback makes a post-Cut save look pre-Cut to the next load here; only the record (talents.cut, written on every save
+// this build makes or loads) tells the two apart.
+describe('the Cut is recorded on every save, a load ends a held grab, and the notice counts what is spendable', () => {
+  const PRE_CUT_DEFAULTS = { strength: 10, agility: 10, intellect: 10, armor: 0 };
+  const postCut = () => {
+    useGameStore.setState({ level: 6, talentPoints: 1, unlockedTalents: { wildheart_roar: 1, wildheart_endurance: 2 } });
+    const blob = onDisk();
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    return blob;
+  };
+  // What a pre-Cut build writes back when it loads and saves a world: its own attributes record, the rest as it was.
+  const rolledBack = (blob, attributePoints) => {
+    const back = structuredClone(blob);
+    back.progression.attributes = { ...PRE_CUT_DEFAULTS, attributePoints };
+    return back;
+  };
+  let notes;
+  const cutNotes = () => notes.filter((n) => n.startsWith('Talents now change'));
+  beforeEach(() => {
+    notes = [];
+    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+  });
+
+  it('a session that has loaded nothing writes the record, and so does a new world', () => {
+    expect(onDisk().migrated, 'a save from a session that loaded nothing lacks the record').toEqual(['talents.cut']);
+    useGameStore.getState().startNewWorld('local_fresh');
+    expect(onDisk().migrated).toEqual(['talents.cut']);
+  });
+
+  it('a post-Cut save loaded here is recorded, so a rollback writing attributes into it cannot respec it', () => {
+    const unrecorded = { ...postCut(), migrated: [] }; // a post-Cut save written before the record was kept on every save
+    expect(migrateRetired(unrecorded).migrated, 'a post-Cut save loaded here was not recorded').toEqual(['talents.cut']);
+    useGameStore.getState().loadWorldData(unrecorded);
+    const reloaded = onDisk();
+    expect(reloaded.migrated).toEqual(['talents.cut']);
+    for (const blob of [postCut(), reloaded]) {
+      useGameStore.setState(useGameStore.getInitialState(), true);
+      useGameStore.setState({ addNotification: (text) => notes.push(text) });
+      useGameStore.getState().loadWorldData(rolledBack(blob, 10));
+      const s = useGameStore.getState();
+      expect(s.unlockedTalents, 'a post-Cut build was respecced after a rollback wrote attributes').toEqual({ wildheart_roar: 1, wildheart_endurance: 2 });
+      expect(s.talentPoints, 'a post-Cut save was paid the refund after a rollback').toBe(1);
+    }
+    expect(cutNotes()).toEqual([]);
+    // The control: the same rolled-back blob with no record is taken for a pre-Cut save and refunded.
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    useGameStore.getState().loadWorldData({ ...rolledBack(postCut(), 10), migrated: [] });
+    expect(useGameStore.getState().talentPoints, 'SETUP: an unrecorded save with attributes was not refunded').toBe(1 + 3 + 2);
+  });
+
+  it('every load ends a held grab: the refund\'s respec, and any other world', () => {
+    for (const blob of [fixture(), postCut()]) {
+      useGameStore.setState({ voidhandHeld: true, heldPhantom: { color: '#8A8E94' } });
+      useGameStore.getState().loadWorldData(blob);
+      const s = useGameStore.getState();
+      expect(s.voidhandHeld, 'a grabbed block was carried through a load').toBe(false);
+      expect(s.heldPhantom).toBe(null);
+    }
+  });
+
+  it('the refund notice counts the points after the load paid a retired quest\'s XP', () => {
+    const f = fixture();
+    const q = f.questState.quests.find((e) => e.id === 'builder');
+    Object.assign(q, { progress: q.target, completed: true, claimed: false });
+    f.progression.currentXP = xpForLevel(f.progression.level) - 10; // the Builder's 50 XP crosses a level
+    useGameStore.getState().loadWorldData(f);
+    const s = useGameStore.getState();
+    expect(s.level, 'SETUP: the Builder XP did not level the player').toBe(6);
+    expect(s.talentPoints).toBe(8 + 1);
+    expect(cutNotes()).toEqual(['Talents now change your Aspects: 9 talent points to spend (U)']);
+  });
+
+  it('one point reads singular, and a refund with nothing to spend raises no notice', () => {
+    const one = fixture();
+    Object.assign(one.progression, { talentPoints: 0, unlockedTalents: {}, attributes: { ...PRE_CUT_DEFAULTS, attributePoints: 5 } });
+    useGameStore.getState().loadWorldData(one);
+    expect(cutNotes()).toEqual(['Talents now change your Aspects: 1 talent point to spend (U)']);
+    notes.length = 0;
+    const none = fixture();
+    Object.assign(none.progression, { talentPoints: 0, unlockedTalents: {}, attributes: { ...PRE_CUT_DEFAULTS, attributePoints: 4 } });
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+    useGameStore.getState().loadWorldData(none);
+    expect(useGameStore.getState().talentPoints, 'SETUP: a save holding 4 attribute points was paid a talent point').toBe(0);
+    expect(cutNotes(), 'a refund with nothing to spend told the player to spend points').toEqual([]);
   });
 });

@@ -61,7 +61,7 @@ const MobModel = React.memo(({ entity }) => {
 
     const greetings = [
       "Greetings traveler! Left-Click attacks, Right-Click casts active magic!",
-      "A storm is brewing. Press U to upgrade spells with attribute points!",
+      "A storm is brewing. Every level earns a talent point: press U to spend it!",
       "Unopened chests hold rich loot. Stand close and press G to unlock!",
       "The deep ocean hides many secrets... Sand beaches are safe!",
       "I heard rumors of a Shadow Dragon... Train and prepare!",

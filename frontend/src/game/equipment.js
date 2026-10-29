@@ -2,12 +2,15 @@
  * equipment.js — pure, single source of truth for item->slot + weapon->base-damage
  * metadata (consumed by the combat loop AND the build UI). React/store-free.
  */
+import { RELICS } from './relics.js';
+
 const SLOT_ITEMS = {
   weapon: ['sword', 'pickaxe', 'Stone Sword', 'Iron Sword', 'Diamond Sword'],
   offhand: ['Wooden Shield', 'Iron Shield', 'Diamond Shield'],
   head: ['Golden Crown', 'Leather Helmet', 'Iron Helmet', 'Diamond Helmet'],
   chest: ['Leather Chestplate', 'Iron Chestplate', 'Diamond Chestplate'],
   boots: ['Leather Boots', 'Iron Boots', 'Diamond Boots'],
+  relic: Object.keys(RELICS), // the one relic slot: each relic changes a verb (game/relics.js), no stat
 };
 
 /** itemName -> equip slot ('weapon'|'offhand'|'head'|'chest'|'boots') or null. */

@@ -1,7 +1,8 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { HEAVY_HOLD_MS, HEAVY_CHARGE_MS, HEAVY_MULT } from '../../src/game/heavyAttack.js';
-import { formDurationFor, COOLDOWN_SEC } from '../../src/game/beastTransform.js';
+import { COOLDOWN_SEC } from '../../src/game/beastTransform.js';
+import { foldVerbMods } from '../../src/game/verbMods.js';
 import { TALENT_LIMITS } from '../../src/game/talentTree.js';
 import { TRANSFORM_CAM_SEC } from '../../src/game/transformCam.js';
 import { EYE_HEIGHT_M } from '../../src/combat/swingOrigin.js';
@@ -190,8 +191,8 @@ test.describe('heavy melee', () => {
     // R9.2 (review #8): a hold in a BEAST form. The heavy is the human sword's; a form's hold used to slow the walk,
     // tick "ready", and throw a free extra light swing on release. Now the release adds nothing.
     // The form is entered through the REAL roar (R held past the anticipation, a full ember bar, the talent): a
-    // store-called enterBeastForm lasts ONE frame — the transform state machine never started its timer, so its next
-    // tick exits the form. The first version of this case did that, held a HUMAN sword, and survived its own mutant.
+    // store-called enterBeastForm starts no transform timer, so the form ends on the first tick at which the canvas
+    // clock reads past the form's length (at once, in a page that has run that long) and the hold tests the human sword.
     // A FRESH brute, frozen where the first stood: the first one is nearly spent, and the roar's burst lands on it.
     r.beastId = await page.evaluate(({ mid, endurance }) => {
       const s = window.useGameStore.getState();
@@ -307,7 +308,7 @@ test.describe('heavy melee', () => {
       window.__heavyLog.splice(0);
       return { press: h0 - h1, release: h1 - h2, form: [f0, f1], heldMs: Math.round(tr - tp), roars, pressAt: since(tp), head: h };
     }, { holdMs: HEAVY_HOLD_MS + HEAVY_CHARGE_MS + 200, camMs: TRANSFORM_CAM_SEC * 1000, roarMs: 20000,
-      lastsMs: formDurationFor(TALENT_LIMITS.wildheart_endurance) * 1000, cooldownMs: COOLDOWN_SEC * 1000 + 200, eyeM: EYE_HEIGHT_M });
+      lastsMs: foldVerbMods({ wildheart_roar: 1, wildheart_endurance: TALENT_LIMITS.wildheart_endurance }, null).roarSec * 1000, cooldownMs: COOLDOWN_SEC * 1000 + 200, eyeM: EYE_HEIGHT_M });
     await page.keyboard.up('r'); // Playwright's own key state; the roar intent is already down (inert either way)
     await page.waitForTimeout(120);
     r.beast.after = await read();

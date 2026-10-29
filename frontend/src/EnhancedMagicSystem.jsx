@@ -9,11 +9,9 @@ import { useGameSounds } from './SoundManager';
 import { SPELL_MANA_COSTS } from './GameSystems';
 import { solveSpellDamage } from './utils/combat';
 import { resolveCastBaseDamage, resolveCastManaCost } from './utils/spellCast';
-import { applyWandFocus } from './game/wandFocus';
-import { getWands } from './game/crystalWallet';
 import { projectileGravity, projectileGrounded, advanceProjectile } from './game/projectilePhysics';
 import { freezeSlowMult } from './game/freeze';
-import { SPELL_TYPES } from './game/spells';
+import { SPELL_TYPES, spellTypeOf } from './game/spells';
 import { solveChainTargets } from './game/chainLightning';
 import { SPARK_PROFILE } from './game/spellVisualProfiles';
 import { isCaptureMode } from './devtest/captureMode';
@@ -33,6 +31,13 @@ import { isHostile } from './combat/targeting';
 // Per-frame scratch for the boss proximity test below. See its call site: it held three numbers for
 // one comparison and was allocated once per projectile per frame.
 const _bossVec = new THREE.Vector3();
+
+// An imbued impact asks for its zone with the imbue's verb numbers (game/verbMods.js): how many hostiles it leaps to
+// (imbueChain) and how wide it paints (zoneRadiusMult).
+function requestImbuedZone(projectile) {
+  const mods = useGameStore.getState().getVerbMods();
+  requestZone({ kind: projectile.imbueKind, pos: projectile.position, chain: mods.imbueChain, radiusMult: mods.zoneRadiusMult });
+}
 
 // The spell quests count spells, not hits: a bolt that pierces three enemies, or arcs through them, is one spell landed.
 const countLanding = (projectile) => {
@@ -198,19 +203,15 @@ export const EnhancedMagicSystem = React.memo(() => {
 
   useEffect(() => {
     useGameStore.setState({ castSpell: (spellType = 'fireball') => {
-      const spell = SPELL_TYPES[spellType];
+      const spell = spellTypeOf(spellType);
       const camera = useGameStore.getState().gameCamera;
 
       if (!camera || !spell) return;
       if (!useGameStore.getState().isAlive) return; // KEVIN-FIX C2: defense in depth
 
-      // W1 #9: charge the LEVELED mana cost via the pure resolveCastManaCost seam (mirrors the #51 damage
-      // wire). getSpellStats mirrors the upgrade hook so L2/L3 upgrades aren't free; null-safe fallback to
-      // the static SPELL_MANA_COSTS base for unmapped/pre-mount (byte-identical at L1).
-      // B7: each owned wand is a SPELL FOCUS — shaves a capped % off the resolved cost (closes the
-      // ore->crystals->wand economy; pure applyWandFocus, floored at 1). 0 wands == byte-identical.
-      const baseManaCost = resolveCastManaCost(useGameStore.getState().getSpellStats, spellType, SPELL_MANA_COSTS[spellType]);
-      const manaCost = applyWandFocus(baseManaCost, getWands(useGameStore.getState().inventory)); // B3b: wands live in blocks
+      // The mana cost of the tier the caster's level reached (the store's getSpellStats, game/spellTiers.js), through
+      // the pure resolveCastManaCost seam; a spell with no tiers falls back to the static SPELL_MANA_COSTS.
+      const manaCost = resolveCastManaCost(useGameStore.getState().getSpellStats, spellType, SPELL_MANA_COSTS[spellType]);
       if (useGameStore.getState().useMana && !useGameStore.getState().useMana(manaCost)) {
         notifyDenied('no-mana'); // UX-legibility: the no-mana cast used to fail silently
         return;
@@ -234,8 +235,8 @@ export const EnhancedMagicSystem = React.memo(() => {
 
       // Apply pure RPG spell damage solving scaling with intellect & agility
       const effectiveStats = useGameStore.getState().getEffectiveAttributes();
-      // #51: read the LEVELED base damage from the spell-upgrade hook (store-mirrored getSpellStats);
-      // null-safe -> static base when pre-mount/unmapped. Byte-identical at L1 (L1 dmg == SPELL_TYPES base).
+      // The base damage of the tier the caster's level reached (getSpellStats); a spell with no tiers casts its static
+      // base. Tier I equals SPELL_TYPES' base, so a level-1 cast is unchanged.
       const baseDamage = resolveCastBaseDamage(useGameStore.getState().getSpellStats, spell, spellType);
       const { damage: finalDamage } = solveSpellDamage(effectiveStats, baseDamage, spellType);
 
@@ -356,7 +357,7 @@ export const EnhancedMagicSystem = React.memo(() => {
           // S2-B4-M5: the imbued impact paints the element zone (the age-out above is a
           // FIZZLE by design — no zone, no refund; recorded in the M5 plan).
           if (projectile.imbueKind) {
-            requestZone({ kind: projectile.imbueKind, pos: projectile.position });
+            requestImbuedZone(projectile);
             projectile.imbueKind = null;
           }
           keep = false;
@@ -386,7 +387,7 @@ export const EnhancedMagicSystem = React.memo(() => {
             // S2-B4-M5: a mob hit grounds the zone at the impact point (zone effects are
             // 2D x/z); null-out so a piercing projectile spawns at most ONE zone.
             if (projectile.imbueKind) {
-              requestZone({ kind: projectile.imbueKind, pos: projectile.position });
+              requestImbuedZone(projectile);
               projectile.imbueKind = null;
             }
 

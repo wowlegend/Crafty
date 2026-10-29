@@ -127,9 +127,9 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
     // schedules nothing -- so writing flashTime in an effect meant the hit's own render had already read
     // the pre-effect 0, and useFrame decayed the timer back to zero within 180ms with no render in
     // between. The flash reached the screen only when some unrelated setEffects call happened to
-    // re-render inside that window: coincidence-driven, never hit-driven. This is the same pattern
-    // HurlSystem uses for inFlight -- setState on the rare membership transition, never per frame -- so
-    // Game-Loop-Isolation holds: a boss hit is a rare event, not a per-frame one.
+    // re-render inside that window: coincidence-driven, never hit-driven. setState here runs on the rare
+    // membership transition, never per frame, so Game-Loop-Isolation holds: a boss hit is a rare event, not a
+    // per-frame one.
     const [isFlashing, setIsFlashing] = useState(false);
 
     useEffect(() => {

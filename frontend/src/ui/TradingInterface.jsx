@@ -1,63 +1,23 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
-import { getCrystals, getWands } from '../game/crystalWallet';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameSounds } from '../SoundManager';
 import { Panel, Button, Icon, Toast, Modal } from './primitives/index.js';
-import { wandManaMultiplier } from '../game/wandFocus';
-import { applyBlockTrade, applyCrystalTrade } from '../game/tradeUpdaters.js';
 import { useT } from '../i18n/i18n.js';
 
+// The villager merchant sells consumables for coins; mined blocks buy nothing here.
 export const TradingInterface = React.memo(({ villager, onClose }) => {
   const t = useT();
   const gameState = useGameStore(useShallow(state => ({
-    inventory: state.inventory,
     coins: state.coins,
-    setInventory: state.setInventory,
     spendCoins: state.spendCoins,
     addToInventory: state.addToInventory,
   })));
-  const { playPickup, playLevelUpSound } = useGameSounds();
+  const { playPickup } = useGameSounds();
   const [tradeMessage, setTradeMessage] = useState('');
 
-  const blocks = gameState.inventory?.blocks || {};
   const coins = gameState.coins || 0;
-
-  const executeBlockTrade = (blockType, required, resultItem, resultCount = 1) => {
-    const currentCount = blocks[blockType] || 0;
-    if (currentCount < required) {
-      setTradeMessage(`Not enough ${blockType}! Need ${required}.`);
-      return;
-    }
-
-    // The arithmetic lives in game/tradeUpdaters.js, as a pure function of `prev`. Both rules it encodes
-    // — route the bought item into `blocks` (M5 #15), and subtract from the FRESH prev rather than the
-    // render-snapshot `currentCount` (2026-06-28) — are about a relationship between two states, which a
-    // closure inside a component can only be gated by grepping for. See that file for both regressions.
-    gameState.setInventory(prev => applyBlockTrade(prev, blockType, required, resultItem, resultCount));
-    playPickup();
-    setTradeMessage(`Traded ${required} ${blockType} for ${resultCount} ${resultItem}!`);
-  };
-
-  const executeCrystalTrade = (magicItem, requiredCrystals, resultCount = 1) => {
-    const currentCrystals = getCrystals(gameState.inventory);
-    if (currentCrystals < requiredCrystals) {
-      setTradeMessage(`Not enough Crystals! Need ${requiredCrystals}.`);
-      return;
-    }
-
-    // B3b: crystals are SPENT from `blocks` (the canonical bucket ore->crystal + craft bank into) — not
-    // from `magic`, where nothing accumulates, which made the wand trade unreachable. Same fresh-prev
-    // rule as the block trade; both live in game/tradeUpdaters.js.
-    gameState.setInventory(prev => applyCrystalTrade(prev, magicItem, requiredCrystals, resultCount));
-    if (magicItem === 'wand') {
-      playLevelUpSound();
-    } else {
-      playPickup();
-    }
-    setTradeMessage(`Traded ${requiredCrystals} Crystals for ${resultCount} ${magicItem}!`);
-  };
 
   // Coin sink: coins (earned from surviving nights) buy genuinely-usable consumables. addToInventory routes
   // to inventory.blocks[name], the flat bucket GamePanels consumes potions from -> the bought item is usable.
@@ -75,11 +35,6 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
   const trades = [
     { type: 'coin', name: 'Coins to Health Potion', cost: 12, costItem: 'coins', get: 1, getItem: 'Health Potion' },
     { type: 'coin', name: 'Coins to Mana Potion', cost: 10, costItem: 'coins', get: 1, getItem: 'Mana Potion' },
-    { type: 'block', name: 'Stone to Crystal', cost: 16, costItem: 'stone', get: 1, getItem: 'crystals' },
-    { type: 'block', name: 'Coal to Crystal', cost: 8, costItem: 'coal', get: 1, getItem: 'crystals' },
-    { type: 'block', name: 'Iron to Crystal', cost: 4, costItem: 'iron', get: 1, getItem: 'crystals' },
-    { type: 'block', name: 'Gold to Crystal', cost: 2, costItem: 'gold', get: 1, getItem: 'crystals' },
-    { type: 'crystal', name: 'Crystals to Wand', cost: 15, costItem: 'crystals', get: 1, getItem: 'wand' },
   ];
 
   return (
@@ -107,40 +62,10 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
 
           <div className="p-5">
             {/* Resources Panel */}
-            <Panel variant="inset" className="p-3 mb-4 grid grid-cols-4 gap-2 text-xs text-center">
-              <div>
-                <span className="text-text-muted block uppercase tracking-wider">Stone</span>
-                <span className="font-display text-text">{blocks.stone || 0}</span>
-              </div>
-              <div>
-                <span className="text-text-muted block uppercase tracking-wider">Coal</span>
-                <span className="font-display text-text">{blocks.coal || 0}</span>
-              </div>
-              <div>
-                <span className="text-text-muted block uppercase tracking-wider">Iron</span>
-                <span className="font-display text-text">{blocks.iron || 0}</span>
-              </div>
-              <div>
-                <span className="text-text-muted block uppercase tracking-wider">Gold</span>
-                <span className="font-display text-text">{blocks.gold || 0}</span>
-              </div>
-              <div className="col-span-2 border-t-chrome border-ink pt-2 mt-2">
-                <span className="text-accent block font-bold uppercase tracking-wider">{t('ui.crystals')}</span>
-                <span className="font-display text-text text-sm">{getCrystals(gameState.inventory)}</span>
-              </div>
-              <div className="col-span-1 border-t-chrome border-ink pt-2 mt-2">
-                <span className="text-accent block font-bold uppercase tracking-wider">Wands</span>
-                <span className="font-display text-text text-sm">{getWands(gameState.inventory)}</span>
-                {/* B7: a wand is a spell focus — surface the live mana-cost reduction so the trade has a payoff. */}
-                <span className="block text-spell-arcane text-[10px] font-bold tabular-nums">
-                  {`-${Math.round((1 - wandManaMultiplier(getWands(gameState.inventory))) * 100)}% spell mana`}
-                </span>
-              </div>
-              <div className="col-span-4 border-t-chrome border-ink pt-2 mt-2 flex items-center justify-center gap-1.5">
-                <Icon name="coins" size={14} className="text-accent" />
-                <span className="text-accent font-bold uppercase tracking-wider">Coins</span>
-                <span className="font-display text-text text-sm tabular-nums">{coins}</span>
-              </div>
+            <Panel variant="inset" className="p-3 mb-4 flex items-center justify-center gap-1.5 text-xs">
+              <Icon name="coins" size={14} className="text-accent" />
+              <span className="text-accent font-bold uppercase tracking-wider">Coins</span>
+              <span className="font-display text-text text-sm tabular-nums">{coins}</span>
             </Panel>
 
             {/* Trade Message Feedback */}
@@ -162,9 +87,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
             {/* Trades Scroll Area */}
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
               {trades.map((trade, idx) => {
-                const currentStock = trade.type === 'block' ? (blocks[trade.costItem] || 0)
-                  : trade.type === 'coin' ? coins
-                  : (blocks[trade.costItem] || 0); // B3b: crystal-cost trades spend from the canonical `blocks` bucket
+                const currentStock = coins;
                 const canTrade = currentStock >= trade.cost;
 
                 return (
@@ -189,15 +112,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
                         variant="primary"
                         size="sm"
                         disabled={!canTrade}
-                        onClick={() => {
-                          if (trade.type === 'block') {
-                            executeBlockTrade(trade.costItem, trade.cost, trade.getItem, trade.get);
-                          } else if (trade.type === 'coin') {
-                            executeCoinTrade(trade.getItem, trade.cost, trade.get);
-                          } else {
-                            executeCrystalTrade(trade.getItem, trade.cost, trade.get);
-                          }
-                        }}
+                        onClick={() => executeCoinTrade(trade.getItem, trade.cost, trade.get)}
                       >
                         Trade
                       </Button>

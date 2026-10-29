@@ -1,67 +1,55 @@
 /**
- * talentTree.js — the 4 Aspect talent trees (data) + a pure effect-fold + limits + a
- * stale-id refund migration. Pure (no React/store/THREE). Each node's effect adds
- * `perRank` to one of the 4 effective attributes (strength/agility/intellect/armor),
- * so effects fold through getEffectiveAttributes (derive, never bake) and every solver
- * + deriveMaxStats picks them up free. Per-Aspect SIGNATURE abilities are S2-B; these
- * foundational stat nodes are the S2-A scaffold. Taxonomy numbers are Kevin-tunable.
+ * talentTree.js — the four Aspect talent trees (data), their limits, exclusivity, respec, and the load-time refund of
+ * ranks the trees no longer allow. Pure (no React/store/THREE).
+ *
+ * Every node changes how its Aspect's verb plays (DECISIONS 2026-10-28 W1-H item 6). A root node unlocks the verb and
+ * carries no `mod`; every other node carries one `mod` in the vocabulary game/verbMods.js folds (`{ key, add }` per
+ * rank), the same one relics use. No node adds a stat: damage, health and mana come from the level.
+ *
+ * Shape per tree: a root with no prerequisite (a level-2 player can take one), modifier nodes behind it, and two
+ * capstones behind one of those that exclude each other.
  */
 import { GRAB_COST } from './ember.js';
+import { ENDURANCE_SEC_PER_RANK } from './beastTransform.js';
+import { SNARE_ARC } from './soulbind.js';
 
 export const ASPECT_TREES = [
   {
     aspect: 'voidhand', title: 'Voidhand', icon: 'force', accent: 'text-stat-atk', dot: 'bg-stat-atk',
     nodes: [
-      { id: 'voidhand_force', name: 'Kinetic Force', desc: '+3 Strength per rank — kinetic strikes and hurled mass hit harder.', limit: 3, prereq: null, effect: { stat: 'strength', perRank: 3 } },
-      { id: 'voidhand_ward', name: 'Gravity Ward', desc: '+6 Armor per rank — orbiting mass shields you (base-as-anvil).', limit: 3, prereq: null, effect: { stat: 'armor', perRank: 6 } },
-      { id: 'voidhand_crush', name: 'Crushing Pull', desc: '+2 Strength per rank — heavier gravitic slams.', limit: 2, prereq: 'voidhand_force', effect: { stat: 'strength', perRank: 2 } },
-      // C4/Q24 CAPSTONES — the first EITHER/OR in the tree. Both are stat nodes, deliberately: an
-      // effect-less capstone needs a call site, and a table entry nothing reads is dead config that
-      // looks like a feature (the boss `eye` emissive band, same day). These fold through
-      // getEffectiveAttributes like every other stat node, so they work the moment they are taken.
-      { id: 'voidhand_singularity', name: 'Singularity', desc: '+8 Strength — everything you hurl lands like a collapsing star. Excludes Event Horizon.', limit: 1, prereq: 'voidhand_crush', excludes: 'voidhand_horizon', effect: { stat: 'strength', perRank: 8 } },
-      { id: 'voidhand_horizon', name: 'Event Horizon', desc: '+14 Armor — nothing reaches you through the orbit. Excludes Singularity.', limit: 1, prereq: 'voidhand_crush', excludes: 'voidhand_singularity', effect: { stat: 'armor', perRank: 14 } },
-      // S2-B2-M4: the grab UNLOCK — effect-LESS like wildheart_roar (the stat-fold skips it;
-      // rank is read at the SM entry gate in Components). Gates the whole VOIDHAND verb kit.
-      { id: 'voidhand_grasp', name: 'Kinetic Grasp', desc: `Unlocks the VOIDHAND grab — press V in combat to seize a phantom block (costs ${GRAB_COST} ember); hurl it (attack) or slam it down (cast).`, limit: 1, prereq: 'voidhand_force' },
+      { id: 'voidhand_grasp', name: 'Kinetic Grasp', desc: `Unlocks the VOIDHAND grab: press V in combat to seize a phantom block (costs ${GRAB_COST} ember); hurl it (attack) or slam it down (cast).`, limit: 1, prereq: null },
+      { id: 'voidhand_twin', name: 'Twin Grasp', desc: 'A grab holds two blocks: the first hurl or slam leaves the second in hand.', limit: 1, prereq: 'voidhand_grasp', mod: { key: 'grabThrows', add: 1 } },
+      { id: 'voidhand_reach', name: 'Long Hold', desc: 'A grabbed block stays in hand 4 s longer per rank.', limit: 2, prereq: 'voidhand_grasp', mod: { key: 'holdSec', add: 4 } },
+      { id: 'voidhand_singularity', name: 'Singularity', desc: 'A slam lands 1.5 m wider. Excludes Event Horizon.', limit: 1, prereq: 'voidhand_twin', excludes: 'voidhand_horizon', mod: { key: 'slamRadius', add: 1.5 } },
+      { id: 'voidhand_horizon', name: 'Event Horizon', desc: 'A grabbed block stays in hand 8 s longer. Excludes Singularity.', limit: 1, prereq: 'voidhand_twin', excludes: 'voidhand_singularity', mod: { key: 'holdSec', add: 8 } },
     ],
   },
   {
     aspect: 'wildheart', title: 'Wildheart', icon: 'run', accent: 'text-stat-spd', dot: 'bg-stat-spd',
     nodes: [
-      { id: 'wildheart_vigor', name: 'Beast Vigor', desc: '+3 Strength per rank — primal might and a bigger health pool.', limit: 3, prereq: null, effect: { stat: 'strength', perRank: 3 } },
-      { id: 'wildheart_swift', name: 'Feral Swiftness', desc: '+4 Agility per rank — faster, deadlier strikes (more crit).', limit: 3, prereq: null, effect: { stat: 'agility', perRank: 4 } },
-      { id: 'wildheart_frenzy', name: 'Blood Frenzy', desc: '+3 Agility per rank — the kill-rush sharpens your edge.', limit: 2, prereq: 'wildheart_swift', effect: { stat: 'agility', perRank: 3 } },
-      // S2-B1-M6 SIGNATURE nodes (effect-less — skipped by the stat-fold; rank read at THEIR OWN site):
-      { id: 'wildheart_roar', name: 'Primal Roar', desc: 'Unlocks the WILDHEART transformation — hold R with a full ember bar in the night siege to become an element-beast (your loaded spell picks the form).', limit: 1, prereq: 'wildheart_vigor' },
-      { id: 'wildheart_endurance', name: 'Primal Endurance', desc: '+3s beast-form duration per rank — stay feral longer (read at the duration timer, not the stat-fold).', limit: 3, prereq: 'wildheart_roar' },
-      { id: 'wildheart_apex', name: 'Apex Predator', desc: '+8 Strength — the beast hits like the thing other beasts run from. Excludes Untamed.', limit: 1, prereq: 'wildheart_frenzy', excludes: 'wildheart_untamed', effect: { stat: 'strength', perRank: 8 } },
-      { id: 'wildheart_untamed', name: 'Untamed', desc: '+10 Agility — too fast to corner. Excludes Apex Predator.', limit: 1, prereq: 'wildheart_frenzy', excludes: 'wildheart_apex', effect: { stat: 'agility', perRank: 10 } },
+      { id: 'wildheart_roar', name: 'Primal Roar', desc: 'Unlocks the WILDHEART transformation: hold R with a full ember bar to become an element-beast (your loaded spell picks the form).', limit: 1, prereq: null },
+      { id: 'wildheart_endurance', name: 'Primal Endurance', desc: `The roar's beast form lasts ${ENDURANCE_SEC_PER_RANK} s longer per rank.`, limit: 3, prereq: 'wildheart_roar', mod: { key: 'roarSec', add: ENDURANCE_SEC_PER_RANK } },
+      { id: 'wildheart_apex', name: 'Apex Predator', desc: 'The beast\'s strikes hit 25% harder. Excludes Untamed.', limit: 1, prereq: 'wildheart_endurance', excludes: 'wildheart_untamed', mod: { key: 'beastMeleeMult', add: 0.25 } },
+      { id: 'wildheart_untamed', name: 'Untamed', desc: 'The beast form lasts 8 s longer. Excludes Apex Predator.', limit: 1, prereq: 'wildheart_endurance', excludes: 'wildheart_apex', mod: { key: 'roarSec', add: 8 } },
     ],
   },
   {
     aspect: 'soulbind', title: 'Soulbind', icon: 'shield', accent: 'text-stat-def', dot: 'bg-stat-def',
     nodes: [
-      { id: 'soulbind_bond', name: 'Soul Bond', desc: '+3 Intellect per rank — deepen the bond that binds living creatures.', limit: 3, prereq: null, effect: { stat: 'intellect', perRank: 3 } },
-      { id: 'soulbind_aegis', name: "Warden's Aegis", desc: '+5 Armor per rank — the warden shields the bound squad and self.', limit: 3, prereq: null, effect: { stat: 'armor', perRank: 5 } },
-      { id: 'soulbind_link', name: 'Spirit Link', desc: '+2 Intellect per rank — stronger spirit channels.', limit: 2, prereq: 'soulbind_bond', effect: { stat: 'intellect', perRank: 2 } },
-      // S2-B3-M2: effect-less unlocks (the voidhand_grasp pattern) — the kit gates on talents, not stats.
-      { id: 'soulbind_snare', name: 'Soul Snare', desc: 'Unlock the SNARE verb — bind a weakened creature to your squad (X).', limit: 1, prereq: 'soulbind_bond' },
-      { id: 'soulbind_pack', name: 'Pack Warden', desc: '+1 squad slot — a third creature may walk beside you.', limit: 1, prereq: 'soulbind_snare' },
-      { id: 'soulbind_communion', name: 'Communion', desc: '+8 Intellect — the bond carries more than one mind. Excludes Bulwark.', limit: 1, prereq: 'soulbind_link', excludes: 'soulbind_bulwark', effect: { stat: 'intellect', perRank: 8 } },
-      { id: 'soulbind_bulwark', name: 'Warden Bulwark', desc: '+12 Armor — you are the wall your squad stands behind. Excludes Communion.', limit: 1, prereq: 'soulbind_link', excludes: 'soulbind_communion', effect: { stat: 'armor', perRank: 12 } },
+      { id: 'soulbind_snare', name: 'Soul Snare', desc: 'Unlocks the SNARE verb: bind a weakened creature to your squad (X).', limit: 1, prereq: null },
+      { id: 'soulbind_wide', name: 'Wide Snare', desc: 'The snare\'s aim is twice as wide.', limit: 1, prereq: 'soulbind_snare', mod: { key: 'snareArc', add: SNARE_ARC } },
+      { id: 'soulbind_pack', name: 'Pack Warden', desc: '+1 squad slot: a third creature may walk beside you.', limit: 1, prereq: 'soulbind_snare', mod: { key: 'squadCap', add: 1 } },
+      { id: 'soulbind_communion', name: 'Communion', desc: 'The snare binds a creature at half health, not a third. Excludes Warden Bulwark.', limit: 1, prereq: 'soulbind_wide', excludes: 'soulbind_bulwark', mod: { key: 'snareHpFrac', add: 0.2 } },
+      { id: 'soulbind_bulwark', name: 'Warden Bulwark', desc: '+1 more squad slot. Excludes Communion.', limit: 1, prereq: 'soulbind_wide', excludes: 'soulbind_communion', mod: { key: 'squadCap', add: 1 } },
     ],
   },
   {
     aspect: 'elemancer', title: 'Elemancer', icon: 'magic', accent: 'text-spell-arcane', dot: 'bg-spell-arcane',
     nodes: [
-      { id: 'elemancer_focus', name: 'Elemental Focus', desc: '+4 Intellect per rank — greater spell power and a deeper mana pool.', limit: 3, prereq: null, effect: { stat: 'intellect', perRank: 4 } },
-      { id: 'elemancer_volatile', name: 'Volatile Edge', desc: '+3 Agility per rank — volatile elements crit more often.', limit: 3, prereq: null, effect: { stat: 'agility', perRank: 3 } },
-      { id: 'elemancer_cataclysm', name: 'Cataclysm', desc: '+3 Intellect per rank — channel cataclysmic elemental force.', limit: 2, prereq: 'elemancer_focus', effect: { stat: 'intellect', perRank: 3 } },
-      { id: 'elemancer_conflux', name: 'Conflux', desc: '+8 Intellect — every element answers at once. Excludes Wildfire.', limit: 1, prereq: 'elemancer_cataclysm', excludes: 'elemancer_wildfire', effect: { stat: 'intellect', perRank: 8 } },
-      { id: 'elemancer_wildfire', name: 'Wildfire', desc: '+10 Agility — it spreads faster than it burns. Excludes Conflux.', limit: 1, prereq: 'elemancer_cataclysm', excludes: 'elemancer_conflux', effect: { stat: 'agility', perRank: 10 } },
-      // S2-B4-M2: the effect-less unlock (the 4x pattern) — the kit gates on talents, not stats.
-      { id: 'elemancer_imbue', name: 'Elemental Imbue', desc: 'Unlock IMBUE — charge your next cast to paint an element zone into the world (Z).', limit: 1, prereq: 'elemancer_focus' },
+      { id: 'elemancer_imbue', name: 'Elemental Imbue', desc: 'Unlocks IMBUE: charge your next cast to paint an element zone into the world (Z).', limit: 1, prereq: null },
+      { id: 'elemancer_chain', name: 'Chain Imbue', desc: 'An imbued zone leaps to one more hostile within 8 m per rank.', limit: 2, prereq: 'elemancer_imbue', mod: { key: 'imbueChain', add: 1 } },
+      { id: 'elemancer_conflux', name: 'Conflux', desc: 'Imbued zones are 50% wider. Excludes Wildfire.', limit: 1, prereq: 'elemancer_chain', excludes: 'elemancer_wildfire', mod: { key: 'zoneRadiusMult', add: 0.5 } },
+      { id: 'elemancer_wildfire', name: 'Wildfire', desc: 'An imbued zone leaps to two more hostiles. Excludes Conflux.', limit: 1, prereq: 'elemancer_chain', excludes: 'elemancer_conflux', mod: { key: 'imbueChain', add: 2 } },
     ],
   },
 ];
@@ -71,52 +59,51 @@ export const TALENT_LIMITS = Object.fromEntries(
   ASPECT_TREES.flatMap((t) => t.nodes).map((n) => [n.id, n.limit])
 );
 
-const NODE_BY_ID = Object.fromEntries(ASPECT_TREES.flatMap((t) => t.nodes).map((n) => [n.id, n]));
+// No prototype: a saved talent map is untrusted input, and an id such as `constructor` or `toString` would otherwise
+// find a function here and fold its undefined limit into NaN talent points.
+const NODE_BY_ID = Object.freeze(Object.assign(Object.create(null),
+  Object.fromEntries(ASPECT_TREES.flatMap((t) => t.nodes).map((n) => [n.id, n]))));
 
-/** Derive talent stat bonuses onto an effective-attrs object. Returns a NEW object; never mutates base. */
-export function foldTalentEffects(eff, unlockedTalents) {
-  const out = { ...eff };
-  for (const id in (unlockedTalents || {})) {
-    const node = NODE_BY_ID[id];
-    const rank = unlockedTalents[id] || 0;
-    // Effect-less nodes (signature UNLOCKS + ability-tuning LEVERS, e.g. wildheart_roar/wildheart_
-    // endurance) carry no `.effect` — they are SKIPPED by the stat-fold (which would otherwise throw
-    // on the unconditional destructure) and read their rank at THEIR OWN math site (the roar gate / the
-    // duration timer), never here. (S2-B1-M6 node-shape contract.)
-    if (!node || rank <= 0 || !node.effect) continue;
-    const { stat, perRank } = node.effect;
-    out[stat] = (out[stat] || 0) + perRank * rank;
-  }
-  return out;
+/** The node with this id, or null. */
+export function talentNode(id) {
+  return NODE_BY_ID[id] || null;
 }
-
-/** Migration: refund ranks of ids not in the current trees back into points; drop the stale ids. */
-export function refundUnknownTalents(unlockedTalents, talentPoints) {
-  const kept = {};
-  let refunded = 0;
-  for (const id in (unlockedTalents || {})) {
-    if (NODE_BY_ID[id]) kept[id] = unlockedTalents[id];
-    else refunded += unlockedTalents[id] || 0;
-  }
-  return { unlockedTalents: kept, talentPoints: (talentPoints || 0) + refunded };
-}
-
 
 /**
- * C4/Q24 — EXCLUSIVITY. The tree's first real choice.
- *
- * Before this, all 18 nodes added a number and every one of them was takeable, so "which build" had no
- * answer: you took everything in some order and the tree drained by L18. The stated problem in one
- * sentence was *with 18 nodes that all add a number, there is no build to choose, so there is no build
- * to come back and try differently.*
- *
- * `excludes` is ONE FIELD, consumed here and at the unlock site. It does not touch the stat fold — an
- * excluded node simply cannot be ranked, so `foldTalentEffects` never sees it and every solver and
- * `deriveMaxStats` keep deriving rather than baking.
- *
- * DELIBERATELY ADDITIVE. The capstones are NEW nodes behind existing prereqs; no node that was takeable
- * before this became un-takeable. Making two existing nodes exclusive would have silently removed power
- * from every saved character, which is a balance change wearing a mechanism's clothes.
+ * Load-time refund: every rank the trees no longer allow comes back as a point. The kept build is rebuilt rank by rank
+ * through canUnlockTalent, the predicate the store spends through, so a loaded save keeps exactly what a player could
+ * take now and a rule added there reaches loads too. Ids go in sorted order, and the passes repeat until nothing is
+ * added: a branch waits for its root, a branch whose root is gone comes back with it, and of two rival capstones exactly
+ * one keeps its rank: the first the replay reaches with its prerequisite in place, which is not always the first by id
+ * (Wildheart keeps Untamed over Apex). The same save always keeps the same capstone.
+ */
+export function refundUnknownTalents(unlockedTalents, talentPoints) {
+  const held = {};
+  let heldRanks = 0;
+  for (const id in (unlockedTalents || {})) {
+    const rank = Math.max(0, Math.floor(Number(unlockedTalents[id]) || 0));
+    heldRanks += rank;
+    if (NODE_BY_ID[id] && rank > 0) held[id] = rank;
+  }
+  const ids = Object.keys(held).sort();
+  const kept = {};
+  let keptRanks = 0;
+  for (let added = true; added;) {
+    added = false;
+    for (const id of ids) {
+      while ((kept[id] || 0) < held[id] && canUnlockTalent(id, kept, Infinity)) {
+        kept[id] = (kept[id] || 0) + 1;
+        keptRanks++;
+        added = true;
+      }
+    }
+  }
+  return { unlockedTalents: kept, talentPoints: (Number(talentPoints) || 0) + heldRanks - keptRanks };
+}
+
+/**
+ * EXCLUSIVITY: a capstone names its rival in `excludes`, and holding a rank of the rival closes it. One field, read here
+ * and at the unlock site, so the panel and the store cannot disagree.
  */
 export function talentBlockedBy(nodeId, unlockedTalents) {
   const node = NODE_BY_ID[nodeId];
@@ -136,14 +123,7 @@ export function canUnlockTalent(nodeId, unlockedTalents, talentPoints) {
   return true;
 }
 
-/**
- * RESPEC — refund every spent rank. The other half of making the tree a choice: a choice you cannot
- * revisit is a one-way door, and the whole second-run problem is that there is no build to come back
- * and try differently.
- *
- * It reuses the shape `refundUnknownTalents` already established (return a new pair, never mutate), so
- * the store's existing migration call site needs no new concept.
- */
+/** RESPEC: every spent rank back as a point, so a build can be tried again. Returns a new pair, never mutates. */
 export function respecTalents(unlockedTalents, talentPoints) {
   let refunded = 0;
   for (const id in (unlockedTalents || {})) refunded += unlockedTalents[id] || 0;

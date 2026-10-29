@@ -13,25 +13,23 @@
 export const ANTICIPATION_SEC = 0.45; // hold-roar charge window before the transform commits
 export const FORM_DURATION_SEC = 14;  // how long a beast form lasts before auto-exit
 export const COOLDOWN_SEC = 1.5;      // after exit, before roar can charge again
-export const ENDURANCE_SEC_PER_RANK = 3; // S2-B1-M6: each Primal Endurance rank extends the form (Kevin-tunable, Decision #4)
-
-/**
- * formDurationFor(enduranceRank) -> the effective beast-form duration in seconds. The Primal Endurance
- * talent is an ability-LEVER: its rank is read HERE (the duration site), NOT the stat-fold (the node is
- * effect-less). rank<=0 (no talent) -> the base FORM_DURATION_SEC. Pure + unit-tested.
- */
-export function formDurationFor(enduranceRank) {
-  return FORM_DURATION_SEC + Math.max(0, enduranceRank || 0) * ENDURANCE_SEC_PER_RANK;
-}
+// Each Primal Endurance rank lengthens the form by this much (its `mod` in game/talentTree.js); the form's length for
+// a build is game/verbMods.js roarSec, passed in as ctx.formDurationSec.
+export const ENDURANCE_SEC_PER_RANK = 3;
 
 /** The SM's own state (charge + timers). The active/human truth lives in the store, not here. */
 export function makeTransformState() {
-  return { charging: false, chargeStart: 0, activeUntil: 0, cooldownUntil: 0 };
+  return { charging: false, chargeStart: 0, activeSince: 0, cooldownUntil: 0 };
 }
+
+const formLength = (ctx) => (Number.isFinite(ctx.formDurationSec) ? ctx.formDurationSec : FORM_DURATION_SEC);
 
 /**
  * decideTransform(sm, ctx) -> { sm, action }.
- * ctx: { isBeast, roar(held), roarEdge(pressed this frame), active(input live), alive, now, canEnter, canPay }
+ * ctx: { isBeast, roar(held), roarEdge(pressed this frame), active(input live), alive, now, canEnter, canPay,
+ *        formDurationSec } — formDurationSec (default FORM_DURATION_SEC) is the form's length as the build stands this
+ *        tick, read every tick, so a relic taken off mid-form takes its seconds with it and one slot never lends one
+ *        relic's roar to the next relic's verb.
  * action: 'none' | 'startCharge' | 'short' | 'cancel' | 'unpaid' | 'enter' | 'exitTimer' | 'exitManual'
  *   - 'enter'  -> Components reads activeSpell -> enterBeastForm(element), and spends ROAR_COST
  *   - 'exit*'  -> Components calls exitBeastForm()
@@ -46,7 +44,7 @@ export function decideTransform(sm, ctx) {
   // ACTIVE (the store says we're a beast): handle the duration timer + a manual roar-tap exit.
   if (ctx.isBeast) {
     out.charging = false;
-    if (ctx.now >= sm.activeUntil) { out.cooldownUntil = ctx.now + COOLDOWN_SEC; return { sm: out, action: 'exitTimer' }; }
+    if (ctx.now - sm.activeSince >= formLength(ctx)) { out.cooldownUntil = ctx.now + COOLDOWN_SEC; return { sm: out, action: 'exitTimer' }; }
     if (ctx.roarEdge) { out.cooldownUntil = ctx.now + COOLDOWN_SEC; return { sm: out, action: 'exitManual' }; }
     return { sm: out, action: 'none' };
   }
@@ -56,11 +54,9 @@ export function decideTransform(sm, ctx) {
     if (!ctx.alive || !ctx.active || !ctx.roar) { out.charging = false; return { sm: out, action: 'cancel' }; }
     if (ctx.now - sm.chargeStart >= ANTICIPATION_SEC) {
       out.charging = false;
-      // M6: the effective duration is passed in (Primal Endurance rank, computed at the Components site);
-      // absent (existing callers / tests) -> the base FORM_DURATION_SEC, so this is backward-compatible.
       if (!ctx.canEnter) return { sm: out, action: 'cancel' };
       if (!ctx.canPay) return { sm: out, action: 'unpaid' };
-      out.activeUntil = ctx.now + (ctx.formDurationSec ?? FORM_DURATION_SEC);
+      out.activeSince = ctx.now;
       return { sm: out, action: 'enter' };
     }
     return { sm: out, action: 'none' };

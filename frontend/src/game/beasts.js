@@ -111,11 +111,13 @@ export function spellForElement(element) {
  * edit can't silently un-wire it (the M4 silently-dead-param lesson, one layer up). The spark derives
  * from the LOCKED form element, NOT the live activeSpell: spell-switching mid-form (Digit1-4 is not
  * gated in-form) must not desync the spark from the body. Human (null element) -> the identity:
- * dealt = rawDamage (already an int from solveMeleeDamage), sparkType 'physical'.
+ * dealt = rawDamage (already an int from solveMeleeDamage), sparkType 'physical'. `beastMult` (game/verbMods.js
+ * beastMeleeMult, Apex Predator) scales a form's swing on top of its element's multiplier and never a human swing.
  */
-export function resolveFormMelee(rawDamage, element) {
+export function resolveFormMelee(rawDamage, element, beastMult = 1) {
+  const extra = getBeastForm(element) && Number.isFinite(beastMult) && beastMult > 0 ? beastMult : 1;
   return {
-    dealt: Math.round(rawDamage * formDamageMult(element)),
+    dealt: Math.round(rawDamage * formDamageMult(element) * extra),
     sparkType: spellForElement(element) || 'physical',
   };
 }

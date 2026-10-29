@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore, EQUIPMENT_STATS } from '../../src/store/useGameStore.jsx';
 import { normalizeItemName } from '../../src/data/items.js';
 import { buildSaveData } from '../../src/game/saveSchema.js';
-import { deriveMaxStats, computeEffective } from '../../src/game/progression.js';
-import { foldTalentEffects } from '../../src/game/talentTree.js';
+import { deriveMaxStats, computeEffective, levelAttributes } from '../../src/game/progression.js';
 
 // M3-T3 save-normalizer guard: loadWorldData must strip the legacy leading emoji
 // from every inventory key so old saves don't carry emoji-prefixed identities into
@@ -25,7 +24,7 @@ describe('M3-T3 save normalizer (loadWorldData)', () => {
         inventory: {
           blocks: { [`${MEAT} Raw Porkchop`]: 3, 'Iron Sword': 1, grass: 64 },
           tools: { pickaxe: 1 },
-          magic: { wand: 1 },
+          magic: { 'Mana Potion': 1 },
         },
       },
     });
@@ -36,7 +35,7 @@ describe('M3-T3 save normalizer (loadWorldData)', () => {
     expect(inv.blocks['Iron Sword']).toBe(1);
     expect(inv.blocks.grass).toBe(64);
     expect(inv.tools.pickaxe).toBe(1);
-    expect(inv.magic.wand).toBe(1);
+    expect(inv.magic['Mana Potion']).toBe(1);
   });
 
   it('MERGES quantities when two legacy keys normalize to the same clean name', () => {
@@ -73,15 +72,14 @@ describe('M3-T3 save normalizer (loadWorldData)', () => {
 describe('A3 full progression round-trip (buildSaveData -> loadWorldData)', () => {
   beforeEach(() => useGameStore.setState({ terrainWorker: null, playerRigidBodyRef: null }));
 
-  it('restores level/XP/attributes/equipment/talents/spellLevels/chests/position', () => {
+  it('restores level/XP/equipment/talents/chests/position', () => {
     const snapshot = {
       worldBlocks: new Map([['0_10_0', 'dirt']]),
       chests: new Map([['5_0_5', { inventory: { 'Gold Coin': 9 } }]]),
       inventory: { blocks: { grass: 1 }, tools: {}, magic: {} },
       playerStats: { blocksPlaced: 0, blocksDestroyed: 0, distanceTraveled: 0, timeplayed: 0 },
-      attributes: { strength: 14, agility: 11, intellect: 13, armor: 0, attributePoints: 3 },
-      equipment: { head: null, chest: null, boots: null, weapon: 'Iron Sword', offhand: null },
-      talentPoints: 2, unlockedTalents: { voidhand_force: 1 }, spellLevels: { fireball: 2 },
+      equipment: { head: null, chest: null, boots: null, weapon: 'Iron Sword', offhand: null, relic: null },
+      talentPoints: 2, unlockedTalents: { wildheart_roar: 1 },
       level: 6, currentXP: 40, totalXP: 900,
       gameMode: 'survival', selectedBlock: 'stone', activeSpell: 'iceball', isDay: false, gameTime: 4, achievements: [],
     };
@@ -93,20 +91,15 @@ describe('A3 full progression round-trip (buildSaveData -> loadWorldData)', () =
     expect(s.level).toBe(6);
     expect(s.currentXP).toBe(40);
     expect(s.totalXP).toBe(900);
-    expect(s.attributes).toEqual(snapshot.attributes);
     expect(s.equipment.weapon).toBe('Iron Sword');
     expect(s.talentPoints).toBe(2);
-    expect(s.unlockedTalents).toEqual({ voidhand_force: 1 });
-    expect(s.spellLevels).toEqual({ fireball: 2 });
+    expect(s.unlockedTalents).toEqual({ wildheart_roar: 1 });
     expect(s.chests instanceof Map).toBe(true);
     expect(s.chests.get('5_0_5')).toEqual({ inventory: { 'Gold Coin': 9 } });
     expect(s.playerPosition).toEqual({ x: 7, y: 20, z: 8 });
 
-    // maxHealth must reflect the FULL effective attrs incl. the kept talent (voidhand_force +3 STR)
-    const eff = foldTalentEffects(
-      computeEffective(snapshot.attributes, snapshot.equipment, EQUIPMENT_STATS),
-      snapshot.unlockedTalents
-    );
+    // maxHealth reflects the level's own stats plus the gear's (no talent adds a stat).
+    const eff = computeEffective(levelAttributes(6), snapshot.equipment, EQUIPMENT_STATS);
     expect(s.maxHealth).toBe(deriveMaxStats(6, eff).maxHealth);
   });
 

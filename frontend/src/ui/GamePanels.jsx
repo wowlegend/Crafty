@@ -8,6 +8,7 @@ import { Panel, Button, Slot, Icon, SpellRing, Slider, Modal } from './primitive
 import { Grid, Square, Layers, Grid3x3, Box, Trash2, Map as MapIcon } from 'lucide-react';
 import { getItemRarity } from '../data/items.js';
 import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
+import { relicByName } from '../game/relics.js';
 import { gearStatRows } from '../game/gearCompare.js';
 import { isConsumable, consumeEffect } from '../game/consumables.js';
 import { replayOnboardingTips } from '../game/onboardingTips.js';
@@ -91,6 +92,19 @@ const GearInspector = ({ itemName, equippedGear }) => {
     const rarity = getItemRarity(itemName);
     const rarityText = RARITY_TEXT[rarity];
 
+    const relic = relicByName(itemName);
+    if (relic) {
+        // A relic changes a verb rather than adding a stat, so it reads its change in words.
+        return (
+            <Panel variant="inset" className="p-3 text-center select-none" data-testid="relic-inspect">
+                <div className="grid place-items-center mb-1"><ItemIcon itemName={itemName} size={36} /></div>
+                <div className="font-bold text-sm text-text truncate">{itemName}</div>
+                <div className={`text-[10px] font-bold capitalize mt-0.5 ${rarityText}`}>{rarity} {slot}</div>
+                <div className="text-[10px] text-text mt-2 border-t-chrome border-ink pt-2">{relic.desc}</div>
+            </Panel>
+        );
+    }
+
     if (!stats) {
         // Fallback for blocks/consumables. Drive the consumable label off the shared registry so raw meats,
         // rotten flesh, and XP gems (Diamond / Golden Crown / Star Fragment) aren't mislabelled as building
@@ -163,13 +177,13 @@ export const Inventory = ({ onClose }) => {
         removeFromInventory: state.removeFromInventory,
         setSelectedBlock: state.setSelectedBlock,
         selectedBlock: state.selectedBlock,
-        equipment: state.equipment || { head: null, chest: null, boots: null, weapon: null, offhand: null },
+        equipment: state.equipment || { head: null, chest: null, boots: null, weapon: null, offhand: null, relic: null },
         equipItem: state.equipItem,
         unequipItem: state.unequipItem,
-        attributes: state.attributes,
-        allocateAttribute: state.allocateAttribute,
         getEffectiveAttributes: state.getEffectiveAttributes,
-        getPlayerLevel: state.getPlayerLevel
+        getPlayerLevel: state.getPlayerLevel,
+        // A subscription so the combat readout re-derives when the level, and with it the stats, changes.
+        level: state.level
     })));
 
     const [hoveredItem, setHoveredItem] = React.useState(null);
@@ -205,7 +219,6 @@ export const Inventory = ({ onClose }) => {
 
     // Calculate dynamic stats sheets
     const effective = gameState.getEffectiveAttributes ? gameState.getEffectiveAttributes() : { strength: 10, agility: 10, intellect: 10, armor: 0 };
-    const attributePoints = gameState.attributes?.attributePoints || 0;
     const playerLevel = gameState.getPlayerLevel ? gameState.getPlayerLevel() : 1;
     
     // Weapon base damage
@@ -298,30 +311,29 @@ export const Inventory = ({ onClose }) => {
                                         onHover={setHoveredItem}
                                     />
                                 </div>
-                                {/* Boots Slot */}
-                                <PaperDollSlot
-                                    label="Boots"
-                                    placeholderIcon="boots"
-                                    equippedItem={gameState.equipment?.boots}
-                                    onUnequip={() => handleUnequip('boots')}
-                                    onHover={setHoveredItem}
-                                />
+                                <div className="flex gap-2 w-full justify-center">
+                                    {/* Boots Slot */}
+                                    <PaperDollSlot
+                                        label="Boots"
+                                        placeholderIcon="boots"
+                                        equippedItem={gameState.equipment?.boots}
+                                        onUnequip={() => handleUnequip('boots')}
+                                        onHover={setHoveredItem}
+                                    />
+                                    {/* Relic Slot: one relic, which changes an Aspect verb (game/relics.js) */}
+                                    <div data-testid="relic-slot">
+                                        <PaperDollSlot
+                                            label="Relic"
+                                            placeholderIcon="pendant"
+                                            equippedItem={gameState.equipment?.relic}
+                                            onUnequip={() => handleUnequip('relic')}
+                                            onHover={setHoveredItem}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Core attributes */}
-                        <Panel variant="base" bg="bg-slot" className="px-3 py-2 mt-auto">
-                            <h4 className="font-display text-[10px] font-bold text-accent uppercase tracking-[2px] mb-1.5">{t('panel.coreAttributes')}</h4>
-                            {attributePoints > 0 && (
-                                <div className="text-[10px] font-bold text-accent mb-1.5 flex items-center gap-1"><Icon name="upgrade" size={12} className="flex-none" />{attributePoints} point{attributePoints !== 1 ? 's' : ''} to spend</div>
-                            )}
-                            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                                <div className="flex items-center gap-1.5"><Icon name="sword" size={14} className="text-stat-atk flex-none" /><span className="flex-1 text-text-muted">Str</span><span className="font-bold tabular-nums">{effective.strength}</span>{attributePoints > 0 && (<button type="button" aria-label={t('a11y.allocStrength')} data-testid="alloc-strength" onClick={() => gameState.allocateAttribute('strength')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
-                                <div className="flex items-center gap-1.5"><Icon name="run" size={14} className="text-stat-spd flex-none" /><span className="flex-1 text-text-muted">Agi</span><span className="font-bold tabular-nums">{effective.agility}</span>{attributePoints > 0 && (<button type="button" aria-label={t('a11y.allocAgility')} data-testid="alloc-agility" onClick={() => gameState.allocateAttribute('agility')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
-                                <div className="flex items-center gap-1.5"><Icon name="magic" size={14} className="text-spell-arcane flex-none" /><span className="flex-1 text-text-muted">Int</span><span className="font-bold tabular-nums">{effective.intellect}</span>{attributePoints > 0 && (<button type="button" aria-label={t('a11y.allocIntellect')} data-testid="alloc-intellect" onClick={() => gameState.allocateAttribute('intellect')} className="w-4 h-4 grid place-items-center rounded-sm border-chrome border-ink bg-accent text-text-inverse font-bold leading-none text-[10px]">+</button>)}</div>
-                                <div className="flex items-center gap-1.5"><Icon name="shield" size={14} className="text-stat-def flex-none" /><span className="flex-1 text-text-muted">Def</span><span className="font-bold tabular-nums">{effective.armor}</span></div>
-                            </div>
-                        </Panel>
                     </div>
 
                     {/* ── Column 2: live inspect card + combat stats ── */}

@@ -4,9 +4,13 @@ import { useGameStore } from '../store/useGameStore';
 import { GameMethods } from '../GameMethods';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
-import { makeZoneRegistry, spawnZone, stepZones, clearZones, applyZoneEffects } from '../game/elementZones';
+import { makeZoneRegistry, spawnZone, spawnChain, stepZones, clearZones, applyZoneEffects } from '../game/elementZones';
 import { consumeZoneRequest } from '../game/elemancerChannel';
 import { worldDelta, worldNow } from '../game/worldClock.js';
+import { isHostile } from '../combat/targeting';
+
+// A chain leaps only to a live hostile, never to a bound ally.
+const isChainTarget = (e) => isHostile(e) && !e.isAlly;
 
 const AI_TICK_SEC = 1 / 15; // the bridge cadence (the SquadAISystem stencil)
 const SFX_BY_KIND = { burning: 'ignite', frozen: 'freeze', conductive: 'zap', resonant: 'rune' };
@@ -49,6 +53,8 @@ export function ElementZoneSystem() {
     const req = consumeZoneRequest();
     if (req) {
       const z = spawnZone(liveZones, req, now);
+      // An imbue that chains (Chain Imbue, Wildfire, Prism Shard) paints the same kind under the nearest hostiles too.
+      spawnChain(liveZones, req, mobsQuery.entities, isChainTarget, now);
       // M6: the element speaks at its spawn moment (a dedupe-refresh replays — the player
       // DID cast; an annihilation stays silent steam in v1). Guarded: the sound registry
       // arrives late via a GameScene effect.

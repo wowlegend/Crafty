@@ -6,8 +6,7 @@ import { BLOCK_TYPES } from '../../src/world/Blocks.js';
 // A RECIPE THAT PROMISES ONE THING AND DELIVERS ANOTHER.
 //
 // A recipe's `name` is its TITLE; its `output` key is what the inventory actually receives, and the two
-// diverge: 'Stone Pickaxe' grants 'pickaxe', 'Iron Sword (Nuggets)' grants 'Iron Sword', 'Magic Crystal'
-// grants 'crystals'. Every identity the crafting slot drew -- icon, rarity, toast -- came from the TITLE,
+// diverge: 'Stone Pickaxe' grants 'pickaxe', 'Iron Sword (Nuggets)' grants 'Iron Sword'. Every identity the crafting slot drew -- icon, rarity, toast -- came from the TITLE,
 // so it looked the item up by a string the registry has never heard of: the substring ladder answered
 // 'Stone' -> rare for an item the registry calls common, and getItemIcon returned null and drew a blank
 // swatch for an item with a perfectly good icon.
@@ -18,7 +17,7 @@ import { BLOCK_TYPES } from '../../src/world/Blocks.js';
 // is a DENOMINATOR gate: it enumerates every recipe and states the count, because a loop that silently
 // enumerated nothing would report a clean pass.
 // Three categories, because the inventory holds three kinds of thing: registered items, placeable
-// blocks, and a short justified list of CURRENCIES (crystals/wand/coins) that are neither. The currency
+// blocks, and a short justified list of CURRENCIES (coins) that are neither. The currency
 // list lives in source with its consumers named -- an unjustified entry would turn this gate into an
 // allowlist that hides the very class it catches.
 const asItem = (k) => !!(ITEMS[k] || NAME_TO_ID[k]);
@@ -78,7 +77,7 @@ describe('recipes — every output is an item the game can actually deliver', ()
     // actually separates the cases.
     //
     // Legitimate divergence is a TITLE DESCRIBING ITS OWN OUTPUT: 'Stone Pickaxe' -> 'pickaxe',
-    // 'Iron Sword (Nuggets)' -> 'Iron Sword', 'Magic Crystal' -> 'crystals'. In every one the title and
+    // 'Iron Sword (Nuggets)' -> 'Iron Sword'. In every one the title and
     // the granted key share a stem. 'Bow' -> 'Arrow' shares nothing, and that is the whole difference.
     const stem = (x) => String(x).toLowerCase().replace(/\s*\(.*?\)\s*/g, ' ').replace(/s\b/g, '').replace(/[^a-z ]/g, '').trim();
     const unrelated = [];
@@ -111,10 +110,11 @@ describe('the currency escape hatch is narrow and justified', () => {
 
   it('isDeliverableKey rejects the shapes that shipped as orphans', () => {
     // The three that were removed on 2026-08-09, plus the nonsense a bare string map happily accepts.
-    for (const bad of ['Bow', 'torch', 'planks', '', null, undefined, 42, {}]) {
+    // crystals and the wand are no currency and no recipe makes them (DECISIONS 2026-10-28 W1-H item 6).
+    for (const bad of ['Bow', 'torch', 'planks', 'crystals', 'wand', '', null, undefined, 42, {}]) {
       expect(isDeliverableKey(bad), `${String(bad)} was accepted as deliverable`).toBe(false);
     }
     expect(isDeliverableKey('pickaxe')).toBe(true);
-    expect(isDeliverableKey('crystals')).toBe(true);
+    expect(isDeliverableKey('coins')).toBe(true);
   });
 });
