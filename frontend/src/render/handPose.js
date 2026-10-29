@@ -5,7 +5,7 @@
 // FOV and the window's aspect. That alone still carries the fist out of frame where the anchor leaves little room (step
 // 2 sweeps right from an anchor already right of centre; the charge pulls the fist toward the camera, where the frame
 // is narrower), so each gesture is then shrunk, as a whole, until the fist stays inside the frame at every step of it.
-// No JSX: tests/gates/hand-pose-gates.test.js projects the fist at every step of each sweep and at full charge.
+// No JSX: tests/gates/hand-pose-gates.test.jsx projects the fist at every step of each sweep and at full charge.
 import * as THREE from 'three';
 import { VIEWMODEL, GAUNTLET_PARTS } from './viewmodel.js';
 

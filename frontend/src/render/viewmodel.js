@@ -78,8 +78,8 @@ export class ViewmodelPass extends RenderPass {
 
 /**
  * One depth copy a frame. The composer copies the depth buffer after every pass that sets needsDepthBlit, and the
- * world's RenderPass sets it as ViewmodelPass does, so with GodRays mounted the world's copy was always overwritten by
- * the one after the hands. While `pass` is enabled and follows a RenderPass directly, that RenderPass does not copy; in
+ * world's RenderPass sets it as ViewmodelPass does, so with GodRays mounted the world's copy is overwritten by the one
+ * after the hands. While `pass` is enabled and follows a RenderPass directly, that RenderPass does not copy; in
  * any other arrangement it copies again. Returns whether it changed anything. Called each frame by render/postFx.jsx.
  */
 export function oneDepthCopy(composer, pass) {

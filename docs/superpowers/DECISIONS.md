@@ -135,7 +135,7 @@ continue the numbering after W2-I's (its last is 32). Readings and frames:
    roof or a tree the gauntlets no longer take the full sun. The flash rides the hands' sky light as it rides the
    world's. The world's fill and its pooled point lights (the hearth, spell lights) are not mirrored
    (`REVIEW:w2e:hand-light-fill-and-point-lights`). It stands while it earns its place.
-39. **The player's own beast draws no part within 0.25 m of the first-person eye** (`frontend/src/render/BeastAvatar.jsx`,
+39. **The player's own beast draws none of its boxes within 0.25 m of the first-person eye** (the halo and core spheres are not yet covered: registry `REVIEW:w2e:beast-form-eye-in-head`) (`frontend/src/render/BeastAvatar.jsx`,
    `beastAvatarParts.js` `SELF_CLEARANCE_M`). Item 34's eye sits inside the hawk's and the golem's heads and a hand's
    width from the golem's torso and the dragon's neck; such a part writes neither colour nor depth and still casts its
    shadow, and in the transform-cam's reveal every part draws. The other choice was a beast eye at the old 1.2 m. It was
