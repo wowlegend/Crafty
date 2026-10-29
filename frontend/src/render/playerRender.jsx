@@ -16,6 +16,7 @@ import { MagicWand } from './spellVfx';
 import { heavyChargeLevel } from '../game/heavyAttack.js';
 import { handSwing } from '../game/meleeString.js';
 import { GAUNTLET, GAUNTLET_PARTS, HAND_REST_ROT, VIEWMODEL, handAnchors, makeGauntletMaterials, makeHeldMaterial } from './viewmodel.js';
+import { frameScale, swingPose, swingFit, chargePose, chargeFit } from './handPose.js';
 
 // Swing-ribbon scratch, allocated once at the ring's capacity: re-filled in place with needsUpdate, because swapping a
 // BufferAttribute re-uploads the whole buffer anyway. The anchors are the blade's base and tip in the hand's frame.
@@ -31,8 +32,9 @@ const _ribbonIndices = new Uint16Array(Math.max(0, TRAIL_CAPACITY - 1) * 6);
 const GLOVE_OUTLINE_T = OUTLINE.prop.thickness;
 
 /**
- * The AUTHORED rest pose of the held item, by which group is mounted, in the fist's frame. ONE table, read by the JSX
- * and by the idle reset in useFrame, so the two cannot disagree. Frozen so a caller cannot mutate what it resets to.
+ * The AUTHORED rest pose of the held item, by which group is mounted, in the fist's frame. The mounted group carries its
+ * own entry in userData.rest, so the frame loop resets to the pose of what is actually in the fist. Frozen so a caller
+ * cannot mutate what it resets to.
  */
 export const HELD_REST = Object.freeze({
   weapon: Object.freeze({ position: Object.freeze([0, 0.02, -0.04]), rotation: Object.freeze([0, 0, 0]) }),
@@ -342,8 +344,12 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
   useEffect(() => () => { for (const m of Object.values(mats)) m.dispose(); }, [mats]);
 
   // The fists' rest positions follow the window's aspect (render/viewmodel.js handAnchors), so both stay in frame on a
-  // portrait iPad. Recomputed only when the aspect changes.
-  const anchors = useMemo(() => ({ right: new THREE.Vector3(), left: new THREE.Vector3(), aspect: 0 }), []);
+  // portrait iPad, and so do the swing and the charge (render/handPose.js): their frame scale and their fits are
+  // recomputed only when the aspect changes, each sweep's fit the first time it plays at that aspect.
+  const anchors = useMemo(() => ({
+    right: new THREE.Vector3(), left: new THREE.Vector3(), aspect: 0, k: { x: 1, y: 1 }, swingFit: new Map(), chargeFit: 1,
+    pose: { position: new THREE.Vector3(), rotation: [0, 0, 0] },
+  }), []);
   const baseRightPos = anchors.right;
   const baseLeftPos = anchors.left;
   const restR = HAND_REST_ROT.right;
@@ -355,7 +361,12 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
       if (aspect !== anchors.aspect) {
         handAnchors(aspect, VIEWMODEL.fov, anchors);
         anchors.aspect = aspect;
+        anchors.k = frameScale(aspect);
+        anchors.swingFit.clear();
+        anchors.chargeFit = chargeFit(anchors.right, aspect, restR);
       }
+      const pose = anchors.pose;
+      const held = wandRef.current?.userData.rest;
       const time = state.clock.elapsedTime;
       const swingElapsed = attackStartTime.current > 0 ? (state.clock.getElapsedTime() - attackStartTime.current) : 0;
 
@@ -374,33 +385,30 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
 
       if (isSwingingMelee) {
         const t = Math.min(1.0, swingElapsed / sw.durationS);
-        const ease = Math.sin(t * Math.PI * 0.5);
 
-        // Diagonal slash sweep across the frame: right to left for dir +1, back for -1, wider for the finisher
-        const x = baseRightPos.x + Math.sin(t * Math.PI) * 0.16 - ease * 0.72 * sw.dir * sw.widthMult;
-        const y = baseRightPos.y + Math.sin(t * Math.PI) * 0.42;
-        const z = baseRightPos.z - Math.sin(t * Math.PI) * 0.42;
-
-        rightHandRef.current.position.set(x + noiseX, y + noiseY, z + noiseZ);
-
-        // Slash angular sweep (roll and yaw) on top of the rest pose; the roll mirrors with the sweep
-        rightHandRef.current.rotation.set(
-          restR[0] - 0.45 + Math.sin(t * Math.PI) * 1.45,
-          restR[1] - Math.sin(t * Math.PI) * 0.9 * sw.dir,
-          restR[2] + (Math.sin(t * Math.PI) * 1.15 - t * 2.15) * sw.dir
-        );
+        // Diagonal slash sweep across the frame: right to left for dir +1, back for -1, wider for the finisher, with
+        // the roll mirrored, fitted so the fist stays in frame at this aspect.
+        let fit = anchors.swingFit.get(sw);
+        if (fit === undefined) {
+          fit = swingFit(sw, baseRightPos, aspect, restR);
+          anchors.swingFit.set(sw, fit);
+        }
+        swingPose(t, sw, baseRightPos, aspect, fit, pose, restR);
+        rightHandRef.current.position.set(pose.position.x + noiseX, pose.position.y + noiseY, pose.position.z + noiseZ);
+        rightHandRef.current.rotation.set(pose.rotation[0], pose.rotation[1], pose.rotation[2]);
 
         // Left hand raises slightly to balance
         leftHandRef.current.position.set(
           baseLeftPos.x + noiseX,
-          baseLeftPos.y + 0.12 * Math.sin(t * Math.PI) + noiseY,
+          baseLeftPos.y + 0.12 * anchors.k.y * Math.sin(t * Math.PI) + noiseY,
           baseLeftPos.z + noiseZ
         );
         leftHandRef.current.rotation.set(restL[0] + 0.12 * Math.sin(t * Math.PI), restL[1], restL[2]);
 
-        if (wandRef.current) {
-          // The swing pose overrides rotation only; the idle reset restores the authored position.
-          wandRef.current.rotation.set(0, 0, 0);
+        if (held) {
+          // The held item keeps its rest pose in the fist; the swing is the hand's.
+          wandRef.current.rotation.set(held.rotation[0], held.rotation[1], held.rotation[2]);
+          wandRef.current.position.y = held.position[1];
         }
       } else if (isCastingSpell) {
         const attackTime = time * 6;
@@ -418,32 +426,31 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
         );
         leftHandRef.current.rotation.set(restL[0] + Math.sin(attackTime + 1) * 0.1, restL[1], restL[2]);
 
-        if (wandRef.current) {
-          const rest = isWeaponEquipped ? HELD_REST.weapon : HELD_REST.wand;
-          wandRef.current.rotation.x = rest.rotation[0] + Math.sin(attackTime) * 0.06;
-          wandRef.current.position.y = rest.position[1] + Math.sin(attackTime) * 0.02;
+        if (held) {
+          wandRef.current.rotation.set(held.rotation[0] + Math.sin(attackTime) * 0.06, held.rotation[1], held.rotation[2]);
+          wandRef.current.position.y = held.position[1] + Math.sin(attackTime) * 0.02;
         }
       } else {
         // Stable Idle
         rightHandRef.current.position.copy(baseRightPos);
         rightHandRef.current.rotation.set(restR[0], restR[1], restR[2]);
         // HEAVY MELEE charge (game/heavyAttack.js): the sword hand draws back and up as the charge builds, and trembles
-        // once it is ready — the tell that the release will land heavy. Level 0 (no hold, and always under capture).
+        // once it is ready — the tell that the release will land heavy. Fitted so the fist stays in frame at this
+        // aspect. Level 0 (no hold, and always under capture).
         const charge = heavyChargeLevel(performance.now());
         if (charge > 0) {
           const shake = charge >= 1 ? Math.sin(time * 90) * 0.006 : 0;
-          rightHandRef.current.position.set(baseRightPos.x + 0.1 * charge, baseRightPos.y + 0.12 * charge + shake, baseRightPos.z + 0.3 * charge);
-          rightHandRef.current.rotation.set(restR[0] - 0.8 * charge, restR[1] + 0.25 * charge, restR[2] + 0.35 * charge);
+          chargePose(charge, baseRightPos, aspect, anchors.chargeFit, pose, restR);
+          rightHandRef.current.position.set(pose.position.x, pose.position.y + shake, pose.position.z);
+          rightHandRef.current.rotation.set(pose.rotation[0], pose.rotation[1], pose.rotation[2]);
         }
 
         leftHandRef.current.position.copy(baseLeftPos);
         leftHandRef.current.rotation.set(restL[0], restL[1], restL[2]);
 
-        if (wandRef.current) {
-          // Reset to the authored pose of the group that is actually mounted.
-          const rest = isWeaponEquipped ? HELD_REST.weapon : HELD_REST.wand;
-          wandRef.current.rotation.set(rest.rotation[0], rest.rotation[1], rest.rotation[2]);
-          wandRef.current.position.y = rest.position[1];
+        if (held) {
+          wandRef.current.rotation.set(held.rotation[0], held.rotation[1], held.rotation[2]);
+          wandRef.current.position.y = held.position[1];
         }
       }
 
@@ -453,7 +460,7 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
           const t = Math.min(1, swingElapsed / sw.durationS);
           slashRef.current.visible = true;
           slashRef.current.rotation.z = (-1.15 + t * 2.3) * sw.dir;      // diagonal sweep, mirrored with the hand
-          const s = 0.85 + t * 0.5; slashRef.current.scale.set(s, s, s); // grow through the arc
+          const s = (0.85 + t * 0.5) * anchors.k.y; slashRef.current.scale.set(s, s, s); // grow through the arc
           slashRef.current.material.opacity = Math.sin(t * Math.PI) * 0.85; // bloom in -> fade out
         } else if (slashRef.current.visible) {
           slashRef.current.visible = false;
@@ -482,15 +489,15 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
 
       <group ref={rightHandRef} rotation={restR}>
         <Gauntlet mats={mats}>
-          {/* The transforms come from HELD_REST so the authored pose and the idle reset in useFrame cannot disagree. */}
+          {/* The transforms and userData.rest come from HELD_REST, so the authored pose and the frame loop's resets agree. */}
           {isWeaponEquipped ? (
-            <group ref={wandRef} position={HELD_REST.weapon.position} rotation={HELD_REST.weapon.rotation}>
+            <group ref={wandRef} position={HELD_REST.weapon.position} rotation={HELD_REST.weapon.rotation} userData={{ rest: HELD_REST.weapon }}>
               <group scale={HELD_SCALE.weapon}>
                 <ProceduralWeapon type={equippedWeapon} />
               </group>
             </group>
           ) : (
-            <group ref={wandRef} position={HELD_REST.wand.position} rotation={HELD_REST.wand.rotation}>
+            <group ref={wandRef} position={HELD_REST.wand.position} rotation={HELD_REST.wand.rotation} userData={{ rest: HELD_REST.wand }}>
               <group scale={HELD_SCALE.wand}>
                 <MagicWand wandType={activeSpell} />
               </group>
