@@ -11,26 +11,37 @@ import { TALENT_LIMITS } from '../../src/game/talentTree.js';
 // TALENTS THAT CHANGE VERBS, IN THE BOOTED GAME (W2-F step 4; DECISIONS 2026-10-28 W1-H item 6; plan
 // docs/superpowers/plans/2026-10-29-crafty-w2f-talents.md, S8). A level-1 player one Husk short of level 2, with the roar
 // unlocked: (1) the Inventory (E) has no allocate button and no Core Attributes block, and has the Relic slot; the
-// Talents page (U) has no Spell Mastery; (2) the roar's beast form, entered on the real R key, ends at FORM_DURATION_SEC;
+// Talents page (U) has no Spell Mastery; (2) the roar's beast form, entered on R, ends at FORM_DURATION_SEC;
 // (3) a real left click kills a staged 1-HP zombie, its XP orbs reach the player, and the player is level 2 with exactly
 // one talent point and no attribute points; (4) on the Talents page real clicks on Primal Endurance spend that point and
 // two seeded beside it, up to the rank's limit, and the store's verb numbers say the roar now lasts
 // ENDURANCE_SEC_PER_RANK x the limit longer; (5) the form entered the same way is still on past FORM_DURATION_SEC and
 // ends by the longer length; (6) the save the store writes holds the talents and no attributes or spellLevels.
 //
-// Each form is timed in the page, frame by frame, on the GAME's clock: R3F's, the clock the transform's timer compares
-// (Components.jsx decideTransform, `now: state.clock.getElapsedTime()`), read with the count of frames drawn
-// (readFrameloop). What readFrameloop returns is R3F's `clock.elapsedTime`, which @react-three/fiber 9.5 sets at each
-// frame's start (getDelta) and every getElapsedTime() call in the frame moves on, so a reading taken between frames is
-// the time of the last such call in the last frame drawn, by whichever subscriber made it: ahead of that frame's
-// transform `now` by the work done after it in the frame. The form's start is read that way, so a seen length can be
-// short of the game's by that much: of 28 forms recorded on CI, two were seen off before their length, a 14 s form at
-// 13.78 s and a 23 s one at 22.75 s. A wall clock started when the page first saw the form on starts after that frame's
-// render, which a software renderer can stretch by seconds, and every length it reads is short by that much.
+// R IS PRESSED IN THE PAGE, by the task that then watches for the form (timeForm): a keydown with code KeyR dispatched
+// at window, and its keyup once the form is timed. Pressed through Playwright, the key goes down a round trip before
+// that task starts, and the frames drawn in between can carry the roar's charge to its commit, so the clock would start
+// on a later frame and a correct form would read short. What the dispatch changes from the real key: the event is
+// untrusted and its target is window, not the focused element, so a listener on document or on an element would not
+// see it. The roar's listener is on window (Components.jsx handleKeyDown, whose R branch reads only the event's code and
+// repeat), InputManager's capture listener on window sees it as it sees the real key, and nothing in src reads
+// isTrusted. A press that does not reach the game cannot pass: timeForm returns SETUP when the form never comes on.
+//
+// Each form is timed in the page on the GAME's clock: R3F's, the clock the transform's timer compares (Components.jsx
+// decideTransform, `now: state.clock.getElapsedTime()`), through readFrameloop, which returns R3F's `clock.elapsedTime`:
+// @react-three/fiber 9.5 sets it at each frame's start (getDelta) and every getElapsedTime() call in the frame moves it
+// on. THE START is read in a store subscription, as beastFormActive turns on: inside the commit frame, after the
+// transform took its `now` as the form's start, so the reading is at or after that start, by any clock call between the
+// two. A start read between frames instead is the last call in the commit frame, ahead of its `now` by the work after
+// it: of 28 forms timed that way on CI, with R pressed through Playwright, two were seen off before their length (a 14 s
+// form at 13.78 s, a 23 s one at 22.75 s). Every later reading is taken between frames, one per frame drawn, so the
+// first frame off reads at or after the `now` that ended the form. A wall clock started when the page first saw the form
+// on starts after that frame's render, which a software renderer can stretch by seconds, and every length it reads is
+// short by that much.
 //
 // So each form is bounded on both sides: its last frame on must read under its length + 1 s, and its first frame off at
-// least its length - SEEN_END_MARGIN_S (1 s, four times the largest reading error above), since a form cannot be seen
-// off before it ends. The talented form must also have a frame on at FORM_DURATION_SEC + 1 s or later. A frame drawn
+// least its length - SEEN_END_MARGIN_S (1 s), since a form cannot be seen off before it ends. The talented form must
+// also have a frame on at FORM_DURATION_SEC + 1 s or later. A frame drawn
 // between there and its end is needed to see it, and a beast form on CI's software renderer draws its frames up to 10 s
 // apart, so the rank is taken to its limit: the window is then ENDURANCE_SEC_PER_RANK x the limit - 1 s wide (8 s), not
 // 2 s. A run that draws no frame in it is SETUP, not a verdict. A form ends only on a frame drawn, so a game that applies
@@ -41,8 +52,9 @@ import { TALENT_LIMITS } from '../../src/game/talentTree.js';
 // Under pointer lock a mouse move IS a look (src/input/pointerLook.js), the lock can be held here, and between an aim and
 // the next mousedown the camera turns with no move this spec makes. Measured on CI at 0.002 rad/px: with nothing turning
 // the view between the aim and the click, it turned by exactly 640 px of yaw and 400 px of pitch in 6 attempts of 6, in
-// two runs; a mutant that turned it 640 x 400 px itself after the aim read, at the mousedown, a further 640 x 400 in 1
-// attempt of 3 and in 2 no further yaw and about 105 px of pitch the other way, so the turn is not always that size.
+// two runs; a mutant that turned it 640 x 400 px itself after the aim read, at the mousedown, a further 640 px of yaw and
+// 295 px of pitch, where the pitch clamp (touchMath.js MAX_PITCH) stopped it, in 1 attempt of 3, and in 2 no further yaw
+// and about 105 px of pitch the other way, so the turn is not always that size.
 // 640 x 400 is the point the click lands on, which points at Playwright's synthetic mouse (a move to that point read as
 // a look delta), but the turn also comes with the cursor moved to that point before play: the source is inferred, not
 // traced. So an aim set before the click does not survive to it; the listener records the facing it found, turns the
@@ -63,8 +75,10 @@ import { TALENT_LIMITS } from '../../src/game/talentTree.js';
 const ZOMBIE_XP = killXP('zombie');
 const ENDURANCE_RANKS = TALENT_LIMITS.wildheart_endurance;
 const LONGER_SEC = FORM_DURATION_SEC + ENDURANCE_SEC_PER_RANK * ENDURANCE_RANKS;
-// How far before its length a form may be seen off: the start's reading error (the header), 0.25 s at most on CI, with
-// room. Under ENDURANCE_SEC_PER_RANK, so one rank short is outside it.
+// How far before its length a form may be seen off: room for a clock call between the transform's `now` and the store's
+// flip, which would put the start reading after the form's own start. What CI measured, with the start read between
+// frames, is a form's length less the time it was first seen off: 0.25 s at most over 28 forms (the header). Under
+// ENDURANCE_SEC_PER_RANK, so one rank short is outside it.
 const SEEN_END_MARGIN_S = 1;
 
 /** In the page: a zombie 2.5 m ahead at 1 HP, the camera turned to it. */
@@ -151,38 +165,52 @@ async function frames(n) {
   for (let i = 0; i < n; i++) await frame();
 }
 
-/** In the page: the beast form timed on the game's clock, one reading per frame drawn, from the first frame it is on to
- *  the first frame it is off, or until `limitMs` of wall time after it came on. Returns, in game seconds since the first
- *  frame on: the last frame on, the first frame off, whether a frame at or past `probeS` was on, and every gap between
- *  drawn frames over a second as [start, length]. */
+/** In the page: R pressed (the header says why here and what the dispatch changes) and its beast form timed on the
+ *  game's clock from its start, read by a store subscription as the form turns on (the header says why), then one
+ *  reading per frame drawn to the first frame it is off, or until `limitMs` of wall time after it came on; then R let
+ *  go. R stays down through the form: a held key makes no new edge, and only an edge ends a form by hand.
+ *  Returns, in game seconds since the start: the last frame on, the first frame off, whether a frame at or past `probeS`
+ *  was on, and every gap between drawn frames over a second as [start, length]. */
 async function timeForm({ limitMs, probeS }) {
   const frame = () => new Promise((r) => requestAnimationFrame(r));
-  const on = () => window.useGameStore.getState().beastFormActive;
+  const store = window.useGameStore;
+  const on = () => store.getState().beastFormActive;
   const loop = () => window.__craftyTest.call('readFrameloop');
+  const key = (type) => window.dispatchEvent(new KeyboardEvent(type, { code: 'KeyR', key: 'r', bubbles: true }));
   if (!loop()) return { why: 'SETUP: readFrameloop is not registered, so there is no game clock to time the form on' };
-  const t0w = performance.now();
-  while (!on()) {
-    if (performance.now() - t0w > 30000) return { why: 'SETUP: the form never came on' };
-    await frame();
+  if (on()) return { why: 'SETUP: a beast form was already on before R went down, so its start is unseen' };
+  let first = null;
+  const unsubscribe = store.subscribe((s, prev) => {
+    if (!first && s.beastFormActive && !prev.beastFormActive) first = loop();
+  });
+  key('keydown');
+  try {
+    const t0w = performance.now();
+    while (!first) {
+      if (performance.now() - t0w > 30000) return { why: 'SETUP: the form never came on' };
+      await frame();
+    }
+    const r2 = (v) => Math.round(v * 100) / 100;
+    let seen = first.frames, prev = first.clock, lastOnS = 0, endedS = null, onAtProbe = false;
+    const gaps = [];
+    const tw = performance.now();
+    while (performance.now() - tw < limitMs) {
+      await frame();
+      const f = loop();
+      if (f.frames === seen) continue; // no frame drawn since the last reading: the same clock and the same state
+      seen = f.frames;
+      if (f.clock - prev > 1) gaps.push([r2(prev - first.clock), r2(f.clock - prev)]);
+      prev = f.clock;
+      const s = f.clock - first.clock;
+      if (!on()) { endedS = s; break; }
+      lastOnS = s;
+      if (s >= probeS) onAtProbe = true;
+    }
+    return { lastOnS: r2(lastOnS), endedS: endedS === null ? null : r2(endedS), onAtProbe, gaps };
+  } finally {
+    unsubscribe();
+    key('keyup');
   }
-  const first = loop();
-  const r2 = (v) => Math.round(v * 100) / 100;
-  let seen = first.frames, prev = first.clock, lastOnS = 0, endedS = null, onAtProbe = false;
-  const gaps = [];
-  const tw = performance.now();
-  while (performance.now() - tw < limitMs) {
-    await frame();
-    const f = loop();
-    if (f.frames === seen) continue; // no frame drawn since the last reading: the same clock and the same state
-    seen = f.frames;
-    if (f.clock - prev > 1) gaps.push([r2(prev - first.clock), r2(f.clock - prev)]);
-    prev = f.clock;
-    const s = f.clock - first.clock;
-    if (!on()) { endedS = s; break; }
-    lastOnS = s;
-    if (s >= probeS) onAtProbe = true;
-  }
-  return { lastOnS: r2(lastOnS), endedS: endedS === null ? null : r2(endedS), onAtProbe, gaps };
 }
 
 /** In the page: { ok: true } once the camera has sat at the player's head on two R3F frames in a row (the roar's reveal
@@ -209,20 +237,12 @@ async function backAtHead({ eyeM, bobM }) {
   return { ok: true };
 }
 
-/** A key released, then frames drawn, so the frame loop sees the release before the next press. */
-async function release(page, key) {
-  await page.keyboard.up(key);
-  await page.evaluate(frames, 3);
-}
-
-/** The roar on the real R key, timed in the page from the first frame its form is on (timeForm), so no round trip sits
- *  between the commit and the start of the clock. R stays down through the form: a held key makes no new edge, and only
- *  an edge ends a form by hand. The bar is refilled first, since the roar takes it all. */
+/** The roar pressed and timed in one page task (timeForm), then frames drawn, so the frame loop sees R's release before
+ *  the next press. The bar is refilled first, since the roar takes it all. */
 async function roarAndTime(page, probeS) {
   await page.evaluate((v) => window.useGameStore.setState({ ember: v }), ROAR_COST);
-  await page.keyboard.down('r');
   const timed = await page.evaluate(timeForm, { limitMs: (LONGER_SEC + 10) * 1000, probeS });
-  await release(page, 'r');
+  await page.evaluate(frames, 3);
   return timed;
 }
 
