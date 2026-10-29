@@ -78,7 +78,7 @@ describe('B4 — the night is still dangerous (the counter-case)', () => {
     expect(r.attacks[0].type).toBe('melee');
   });
 
-  it('a zombie still reaches a player standing on a 2-block step', () => {
+  it('a zombie still reaches a sense point 2 m above its centre (where a step puts the eye: the next block)', () => {
     expect(tick([1, 2, 0]).attacks.length).toBeGreaterThan(0);
   });
 
@@ -91,5 +91,36 @@ describe('B4 — the night is still dangerous (the counter-case)', () => {
 
   it('a zombie out of horizontal range lands nothing, height notwithstanding', () => {
     expect(tick([12, 0, 0]).attacks).toEqual([]);
+  });
+});
+
+// THE LEDGES, MEASURED FROM WHERE THE GAME MEASURES (DECISIONS 2026-10-28 item 36). The tests above hand the worker
+// synthetic points, so they cannot see where the sense point actually sits. In the game it is the camera
+// (game/mobSenses.js mobSensePoint), which the follow puts at the body's centre + EYE_HEIGHT_M; the body's centre rests
+// 0.95 m over the floor it stands on (Components.jsx: CapsuleCollider half-height 0.5 + radius 0.4, the controller's
+// 0.05 m offset), and a mob's position is its feet + 0.5 (AIWorkerSystem.jsx reads its feet at position.y - 0.5). So a
+// change to the eye height, to a mob's vertical reach or to the sense point moves which ledges are refuge, and lands
+// here. The steady eye (combat/swingOrigin.js steadyEye) stands in for the camera: bob, shake and kick are presentation.
+describe('B4 — which ledges are refuge, from the eye the game measures', () => {
+  const BODY_OVER_FLOOR_M = 0.95;
+  const MOB_OVER_FLOOR_M = 0.5;
+  let steadyEye;
+  beforeAll(async () => { ({ steadyEye } = await import('../../src/combat/swingOrigin.js')); });
+  /** Does a `type` mob standing on floor 0 land a blow on a player standing on floor `floor`, 1.5 m across? */
+  const lands = (floor, type) => {
+    const eye = steadyEye({ x: 1.5, y: floor + BODY_OVER_FLOOR_M, z: 0 }, {});
+    return tick([eye.x, eye.y, eye.z], { type, y: MOB_OVER_FLOOR_M }).attacks.length > 0;
+  };
+  // [type, the player's floor relative to the mob's, does the blow land]
+  const TABLE = [
+    ['zombie', 0, true], ['zombie', 1, true], ['zombie', 2, false],
+    ['zombie', -3, true], ['zombie', -4, false],
+    ['moss_brute', 2, true], ['moss_brute', 3, false],
+  ];
+
+  it('a default mob reaches one step up and not two; the moss brute reaches two and not three; down, three and not four', () => {
+    const got = TABLE.map(([type, floor]) => [type, floor, lands(floor, type)]);
+    expect(got, 'the refuge table moved: record the new one in DECISIONS (item 36) or restore the eye').toEqual(TABLE);
+    expect(got.length).toBe(7);
   });
 });

@@ -19,10 +19,12 @@
  *   - MOVEMENT stays 2D. Mobs walk the ground toward your XZ and the A* height-grid steering already
  *     handles terrain. Making pathing 3D is a different, much larger change and is NOT attempted here.
  *
- * VERTICAL_REACH = 2.5 is a TASTE CALL, noted veto-ably. It means a player standing on a 2-block ledge can
- * still be hit, and a 3-block wall keeps melee out. That is the number that makes the simplest defensive
- * structure a voxel player actually builds — a wall taller than they are — do something, without making a
- * single step onto a rock into invulnerability. Kevin may want it tighter or looser once the siege is felt.
+ * VERTICAL_REACH = 2.5 is a TASTE CALL, noted veto-ably. Measured from the eye (mobSensePoint, 1.62 m over the
+ * player's floor) to a mob's centre (0.5 m over its own), it means a default mob reaches a player one block above
+ * its floor and not two, and a player up to three blocks below it and not four; the moss brute's 3.2 reaches two
+ * blocks up (DECISIONS 2026-10-28 item 36; tests/gates/mob-senses-gates.test.js holds the table). So a pillar taller
+ * than the player keeps ordinary melee out, and a single step onto a rock does not. Kevin may want it tighter or
+ * looser once the siege is felt.
  *
  * Pure: no worker globals, no store, no Three. Every function takes deltas and returns a number or a bool.
  */
@@ -64,11 +66,13 @@ export function canReach(dx, dy, dz, range, verticalReach = VERTICAL_REACH) {
 
 /**
  * THE POINT MOBS MEASURE THE PLAYER FROM: the camera's position, the player's eye. The camera rides the body's centre
- * + 1.2 m plus bob, shake and kick (Components.jsx, the camera follow), so on one floor a mob reads dy 1.6 from here
- * and 0.4 from the body. AIWorkerSystem posts this point as the worker's playerPos, so every sense and reach test
- * above runs against it; the combat stance (game/combatStance.js stanceStep) reads the SAME point for its own reach
- * test, so a mob the stance counts as able to reach you is one the worker would let swing. One function for both
- * readers: move the origin here and both move together. tests/e2e/combat-stance.spec.js case 0 gates the agreement.
+ * + EYE_HEIGHT_M (combat/swingOrigin.js) plus bob, shake and kick (Components.jsx, the camera follow), so on one floor
+ * a mob reads dy about 1.1 from here and 0.45 from the body. AIWorkerSystem posts this point as the worker's
+ * playerPos, so every sense and reach test above runs against it; the combat stance (game/combatStance.js stanceStep)
+ * reads the SAME point for its own reach test, so a mob the stance counts as able to reach you is one the worker would
+ * let swing. One function for both readers: move the origin here and both move together.
+ * tests/e2e/combat-stance.spec.js case 0 gates the agreement; moving the eye moves which ledges are refuge
+ * (tests/gates/mob-senses-gates.test.js, the ledge table).
  *
  * Returns the camera's own position object, not a copy (it runs every frame): read it, never write it.
  */

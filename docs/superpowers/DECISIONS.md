@@ -60,6 +60,17 @@ continue the numbering after W2-I's (its last is 32). Readings and frames:
    stood in front of them; the viewmodel hands are in a scene with no shadow-casting light, and the after build's
    turf-wall frame shows no polygon. A moved camera also stops counting as a shadow caster (`render/Atmosphere.jsx`),
    since the hands were the reason it did (e9d49bdf): turning the view no longer re-renders the sun's shadow map.
+36. **Mobs keep measuring the player from the eye, so item 34 moves which ledges are refuge, and the new table is
+   kept.** The AI worker's reach test compares the camera (`game/mobSenses.js` `mobSensePoint`) with the mob's centre,
+   0.5 m over its floor. With the eye at 2.15 m a single step onto a block put a player out of an ordinary mob's 2.5
+   m vertical reach, which `mobSenses.js` names as what the reach must not do; at 1.62 m an ordinary mob reaches a
+   player one block above its floor and not two, the moss brute (3.2) two and not three, and a mob on a ledge reaches
+   a player up to three blocks below it and not four (it was four and not five). So a pillar taller than the player
+   still keeps ordinary melee out, a step no longer does, and the brute keeps its longer reach. The other choice was
+   to measure from the body plus a fixed 1.2 m and keep the old table, which would have kept the one-step refuge and
+   tied the AI to a height the camera no longer has. `tests/gates/mob-senses-gates.test.js` holds the table, driven
+   through the real worker from `steadyEye`, so a later change to the eye, a reach or the sense point lands there. It
+   stands while it earns its place.
 
 ## 2026-10-28 — [LOOP] W2-J phase 1: a short CLAUDE.md, `npm run orient`, a cursor, and the loop docs retired
 
