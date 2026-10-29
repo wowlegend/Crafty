@@ -194,7 +194,7 @@ describe('buy', () => {
 });
 
 describe('goods', () => {
-  it('sells the three blocks the world never makes, at the grid\'s rates, for no coins', () => {
+  it('sells the three blocks the world never makes, never giving more blocks than it spends, for no coins', () => {
     const offers = line(state(), 'goods');
     expect(offers.map((o) => [o.give, o.count, o.price.blocks, o.price.coins])).toEqual([
       ['chest', 1, { wood: 8 }, 0],

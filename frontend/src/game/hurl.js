@@ -114,7 +114,7 @@ export function adoptHurlRequest(req) {
  * and Lodestone one a tier, three at the Forge's top tier; game/verbMods.js grabThrows) and throws them as fast as the
  * player clicks, and the next grab commits GRAB_COOLDOWN_SEC + GRAB_CHARGE_SEC after the last throw, inside one
  * HURL_TTL_SEC flight, so two grabs' blocks can be up together. hurl.test.js derives that bound from the trees and the
- * relics. The pool's meshes are hidden while idle, so the four a top-tier Lodestone needs cost no draw until they fly.
+ * relics. A mesh is hidden while its slot is idle, so a slot costs no draw until its block flies.
  */
 export const MAX_FLIGHTS = 10;
 

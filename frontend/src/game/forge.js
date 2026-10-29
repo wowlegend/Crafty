@@ -4,7 +4,8 @@
  *
  * State: `{ inventory: { blocks, tools, magic }, coins, equipment, relicTiers }`, the store's own fields.
  * Offer: `{ id, line: 'weapon'|'relic'|'goods', give, count, tier?, price: { blocks: { key: n }, coins, blade? } }`.
- * The id names the tier it sells, so an offer bought or outgrown is no longer listed and cannot be bought again.
+ * The id names the tier it sells, so a blade or relic tier bought or outgrown is no longer listed and cannot be bought
+ * again; the goods stay listed, to be bought as often as the player pays.
  */
 import { RELIC_MAX_TIER, relicByName, relicTier } from './relics.js';
 
@@ -25,8 +26,8 @@ const WEAPON_PRICE = Object.freeze({
 const RELIC_PRICE = Object.freeze({ 2: price({ gold: 3 }, 40), 3: price({ diamond: 3 }, 100) });
 
 /**
- * The blocks no voxel generates or mines to, at the rates the crafting grid made them (one stone, one sand, eight wood
- * for a chest): the Forge is their only source.
+ * The blocks no voxel generates or mines to, so the Forge is their only source: cobblestone and glass at one stone or
+ * sand a block, the chest at eight wood, so no purchase gives more blocks than it spends.
  */
 export const GOODS = Object.freeze([
   Object.freeze({ id: 'goods:chest', line: 'goods', give: 'chest', count: 1, price: price({ wood: 8 }, 0) }),

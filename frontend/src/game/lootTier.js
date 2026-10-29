@@ -1,7 +1,7 @@
 // S7 Slice 3 (REWARD side of the Ember Frontier loop): far from spawn = rarer drops, so braving the
 // higher-tier zones pays off. Boosts the drop CHANCE of NON-common loot rows by the kill-position zone
-// tier; common staples are left unchanged so crafting still feeds. Pure (no state, no item-registry
-// import -- the caller passes the row's rarity) -> unit-testable + capture-safe (loot is runtime, never
+// tier; common staples keep their rates, so far zones shift the mix toward rarer rows. Pure (no state, no
+// item-registry import -- the caller passes the row's rarity) -> unit-testable + capture-safe (loot is runtime, never
 // in the visual baselines). zoneTier 0 (near spawn) is identical to the legacy behaviour (no regression).
 // Numbers are a Kevin-tunable feel/balance knob (KEVIN-REVIEW-BATCH).
 const RARITY_BONUS_PER_TIER = 0.25; // each zone tier adds +25% RELATIVE chance to a non-common row (module-internal)

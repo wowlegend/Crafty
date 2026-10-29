@@ -128,7 +128,8 @@ export const STRINGS = {
     'inspect.potion': 'Consumable: restores health or mana.',
     'inspect.noUse': 'Nothing in the game uses it yet.',
     'ui.receive': 'Receive',
-    // Title-screen control hints (MenuSystem). Key names stay Latin; only the verb translates.
+    // The title screen's tagline and control hints (MenuSystem). Key names stay Latin; only the verb translates.
+    'menu.tagline': 'Build • Forge • Cast Spells • Explore',
     'hint.wasdMove': 'WASD Move',
     'hint.spaceJump': 'Space Jump',
     'hint.fCast': 'F Cast',
@@ -317,6 +318,7 @@ export const STRINGS = {
     'inspect.potion': '消耗品：恢复生命或法力。',
     'inspect.noUse': '游戏里暂时没有用到它。',
     'ui.receive': '获得',
+    'menu.tagline': '建造 • 锻造 • 施法 • 探索',
     'hint.wasdMove': 'WASD 移动',
     'hint.spaceJump': '空格 跳跃',
     'hint.fCast': 'F 施法',

@@ -83,3 +83,19 @@ describe('the title hint strip shows on desktop and not on touch', () => {
     expect(leaked, `keyboard hints on the touch title: ${leaked.join(', ')}`).toEqual([]);
   });
 });
+
+describe('the title tagline names what the game has', () => {
+  // Mara's Forge is where things are made (DECISIONS 2026-10-29 item 60), so the tagline says Forge, in the player's
+  // locale.
+  afterEach(() => { useGameStore.setState({ locale: 'en' }); });
+
+  it('reads Forge, not Craft, in en and zh-CN', () => {
+    deviceWithTouchPoints(0);
+    renderTitle();
+    expect(screen.getByTestId('title-tagline').textContent).toBe('Build • Forge • Cast Spells • Explore');
+    cleanup();
+    useGameStore.setState({ locale: 'zh-CN' });
+    render(createElement(MenuSystem, titleProps()));
+    expect(screen.getByTestId('title-tagline').textContent).toBe('建造 • 锻造 • 施法 • 探索');
+  });
+});

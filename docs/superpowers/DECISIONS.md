@@ -29,7 +29,8 @@ lane's, 50-59 the media lane's). Item 64 amends W1-H item 7's list of three offe
    lists what she can make for the player now: the weapon line's next blade, the worn relic's next tier, and three
    goods, each price in mined blocks and coins beside what the player holds, a short part marked. `buy` charges the
    price listed under the offer's id (never one carried on the object passed in) or refuses and returns the same
-   state; an offer bought or outgrown is no longer listed, so it cannot be bought twice. A press the player cannot pay
+   state; a blade or relic tier bought or outgrown is no longer listed, so it cannot be bought twice (the goods stay
+   listed, to be bought as often as the player pays). A press the player cannot pay
    for stays pressable and says what is short ("Not enough: 80 coins (have 0)"), so the button is never dead. **Why:**
    one place that shows every price, in place of recipe shapes nobody can see (W1-H item 7).
 61. **Starting prices** (`forge.js`): Stone Sword 4 stone and 10 coins, Iron Sword 4 iron and 30, Diamond Sword 4
@@ -54,7 +55,9 @@ lane's, 50-59 the media lane's). Item 64 amends W1-H item 7's list of three offe
    cobblestone and the renewable one of glass, and the hotbar gate (every hotbar block obtainable) went red without
    them, so the card sells them at the grid's rates and no coins: a Wooden Chest for 8 wood, 4 cobblestone for 4 stone,
    4 glass for 4 sand. This adds a third line to W1-H item 7's list and leaves its lantern for item 67. Cut with no
-   successor: armour and shields (crafted only; registry `REVIEW:w2f:forge-armour-no-source`), the Health Potion recipe
+   successor: every shield and most armour (the grid made them; two quests still give an Iron Helmet, Miner, and an
+   Iron Chestplate, Pilgrimage, `frontend/src/QuestSystem.jsx`; the Golden Crown stays chest loot; registry
+   `REVIEW:w2f:forge-armour-no-source`), the Health Potion recipe
    (the merchant and chest loot still give potions), cooked meat (step 6 deletes meat), and the ingredient uses of
    Leather, Iron Nugget, Spider Eye and Emerald (registry `REVIEW:w2f:forge-orphan-loot`). **The proof nothing still
    promised depends on the grid:** the hotbar gate now walks each good's price down to the starting loadout or an ore
