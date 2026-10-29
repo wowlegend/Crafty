@@ -37,13 +37,14 @@ colour; A changes no save field and no key.
 
 ## Decisions (routine calls, stated; DECISIONS items 90 on record the non-routine ones)
 
-1. **The chrome count reads the build under test.** `chromeShare` (pure, `scripts/visual/_lookbook.mjs`) counts a pixel
-   as chrome when every channel is within 3 of one chrome surface colour AND the same pixel of the HUD-hidden twin frame
-   is not within 3 of that colour (the twin removes a dusk sky or a night that happens to be navy). The colours are the
-   page's own `--ui-ink, panel, panel-raise, panel-frame, panel-inset, well, slot, control, track` read at shot time, so
-   the warm re-key cannot pass by moving its colours out of a list the instrument holds. The twin is the same frame with
-   `body * {visibility:hidden} canvas {visibility:visible}` injected. **Blind spot, stated:** a translucent surface is
-   counted only where its blend lands within 3 of a token; no panel here is made translucent by this lane.
+1. **The chrome count is the chrome's footprint, read on a held page.** `chromeFootprint` (pure,
+   `scripts/visual/_lookbook.mjs`) counts the pixels where the frame and a twin with the HUD's own elements hidden (the
+   canvas and the touch layer shown) differ by more than 2 in any channel; the page's animation frames are held across
+   the shots (`holdFrames`), and the reading stands only if the first and last shot of the held page agree. The touch
+   layer is its own class (twin against a canvas-only twin), and the colour count (pixels within 3 of the page's own
+   `--ui-*` surface colours) is a second column, because it reads the palette in both directions. A frame with a toast
+   in the stack is not at rest (`atRest`). **Blind spot, stated:** an opaque surface over a world pixel of its own
+   colour, within 2, reads as unchanged.
 2. **The mirror goes; one store scalar stays.** `MinimapSyncSystem` and the store's `mobEntities`, `setMobEntities`,
    `npcEntities`, `setNpcEntities` and `_lastMinimapUpdate` are deleted. The minimap's 250 ms redraw and the compass's
    HUD tick read `mobsQuery` and `alliesQuery`; DebugOverlay counts the query. `activeHostilesCount` (the music
@@ -52,8 +53,12 @@ colour; A changes no save field and no key.
 3. **At rest.** The desktop rail goes (its panels keep their keys; touch keeps its tray). The level card and the touch
    level readout become one 4 px XP edge on the hotbar's top edge with the level number at its left
    (`data-testid` `hotbar-xp`, `hotbar-level`). The quest tracker rests as one line on every device: the first unclaimed
-   quest's title, its objective and progress; its chevron (click, tap or hover) expands the list. A completed quest's
-   claim button stays in the line until PR B makes claims automatic.
+   quest's title, its objective and progress. On touch a tap on the line expands the list (the tracker is
+   `data-hud-interactive`, so the touch layer leaves it its taps); on desktop the HUD shows only under pointer lock, where
+   no click or hover reaches it, so the list is the quest log's (L; the Journal on J after PR B). A completed quest's
+   claim button stays in the line until PR B makes claims automatic. On touch the vitals sit at the top left (the
+   joystick and the action buttons hold both bottom corners) and the coin count under the minimap (Pause holds its
+   desktop place).
 4. **The compass is a component.** `ui/compassLayout.js` (pure) takes markers by bearing, the heading, the field of view
    and the strip width, maps each to x, clamps a label inside the strip and places labels in priority order (boss, home,
    shrine, Blight Heart, NPC, chest, then the eight cardinals); a later label whose box would overlap a placed one within
@@ -63,9 +68,10 @@ colour; A changes no save field and no key.
 5. **One notification channel.** `addNotification(message, type, { key, vars })`: a message that is a string key renders
    through `t()` at render time, so a toast reads in the current locale; a second notification with the same key (or the
    same text) inside 4 s, one toast's life, is dropped (`ui/notifications.js`, pure). The dusk warning becomes
-   `notice.dusk`, once per dusk. The toast stack moves below the day-phase dial it covered (G-ledger 38/a). The i18n
-   ratchet reports 0 hardcoded strings (it reads JSX, not call arguments); the remaining English notification literals
-   (weather, boss, loot, talk, quest, store) move to keys in PR A if they fit, else a registry row.
+   `notice.dusk`, once per dusk. The toast stack moves below the day-phase dial it covered (G-ledger 38/a). The siege
+   and dawn notices, the dragon's calls and the Aspect hint go through it too (their own banners are deleted), with
+   names inside a notice as keys. The i18n ratchet reports 0 hardcoded strings (it reads JSX, not call arguments); the
+   remaining English notification literals (weather, loot, talk, quest, store) stay a registry row.
 6. **Warm charcoal (PR B)** re-keys the whole navy ladder (the four surfaces the brief names, and well, slot, control,
    track, which carry the same navy) and `RARITY_FILL.common`; text tokens move only where the contrast gate says.
 7. **Three panels (PR B).** Character (Tab): the Inventory (gear and equipment), Spells and Talents as tabs. Journal (J):

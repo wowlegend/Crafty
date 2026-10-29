@@ -30,13 +30,20 @@ items. Each stands while it earns its place.
    buttons (Inventory, Magic, Building) opened panels that keep their keys (E, M, B; `keyMap.test.js` holds each key to a
    live handler) and their touch-tray buttons (`tests/gates/hud-at-rest-gates.test.jsx` holds the tray rows); the level
    card at `bottom-32` and the touch level readout become one 4 px XP edge above the hotbar with the level beside it;
-   the quest tracker rests as the lead quest's line and opens to the list on a click, tap or hover. The coin readout,
-   the dial, the toast stack, the touch minimap, the Aspect bar and, where the hotbar would reach them, the vitals move
-   so nothing at rest overlaps. **Why:** about a fifth of a 1280x800 frame was interface (survey-2026-10-27 finding 11);
-   the acceptance is the chrome share on lookbook frames (item 94). **Proof that nothing promised depends on the rail:**
-   `tests/e2e/hud-at-rest.spec.js` (no rail button on screen in a browser; a real grant moves the XP edge; at 1280x800,
-   1180x820 and 820x1180 no two of eleven HUD rects intersect; at 390x844 no two visible touch targets overlap or leave
-   the viewport), run by CI on the PR's head.
+   the quest tracker rests as the lead quest's line. **Where its list opens:** on touch, a tap on the line (the tracker
+   is `data-hud-interactive`, so the touch layer leaves it its taps); on desktop the HUD shows only under pointer lock,
+   where no click or hover reaches it, so the full list is the quest log's (L; the Journal on J once item 96 lands).
+   **Where things sit at rest:** on desktop the vitals keep the bottom-left corner, lifted above the hotbar's XP edge
+   under 900 px wide (the hotbar's 500 px plus the stack, its margin and a gap on each side); on touch the joystick and
+   the action buttons hold both bottom corners and the tray opens down the left edge, so the vitals sit at the top left
+   under the quest line and the objective line, and the coin count sits under the minimap, clear of Pause; the dial, the
+   toast stack, the touch minimap and the Aspect bar move so nothing at rest overlaps. **Why:** about a fifth of a
+   1280x800 frame was interface (survey-2026-10-27 finding 11); the acceptance is the chrome footprint on lookbook frames
+   (item 94). **Proof that nothing promised depends on the rail, and that nothing at rest collides:**
+   `tests/e2e/hud-at-rest.spec.js` (no rail button on screen in a browser; a real grant moves the XP edge; with coins
+   granted, at 1280x800, 1180x820, 820x1180 and 390x844 no two of the twelve HUD rects and, on touch, the joystick's ring
+   and the nine touch buttons a player sees at rest intersect; at 820x1180 a finger's tap opens the quest list), run by
+   CI on the PR's head. A phone in landscape is not measured (registry `REVIEW:w2d:landscape-phone-layout`).
 91. **The compass is a component, and its capture guards are not carried over.** `ui/Compass.jsx` renders a fixed pool
    of marker slots once; the HUD ticker writes each slot's transform and text only on change; `ui/compassLayout.js`
    places labels in priority order (boss, HOME, shrine, Blight Heart, NPC, chest, cardinal) and a later label that
@@ -49,23 +56,35 @@ items. Each stands while it earns its place.
    to 98.
 92. **One notification channel: a key renders through t() when shown, and the same key inside 4 s shows once.**
    `addNotification(message, type, { key, vars })` takes a dictionary key or a plain string; `ui/notifications.js`
-   decides what it says and whether it shows. **Plain text is not deduped:** the denial notices (`ui/denyToast.js`) are
-   plain strings that answer each press, and a first build that dropped a repeated one inside 4 s made
-   `tests/e2e/ember.spec.js` read a refused roar as "refused in silence" (CI run 40940672590, first attempt). The dusk
-   warning is `notice.dusk`, once per dusk, below the dial it covered. The other English notification
-   literals (weather, boss, loot, talk, quest, store) still pass plain strings (registry
+   decides what it says and whether it shows; a name inside a notice (a dawn's loot, the dragon) is itself a key in
+   `vars`, translated when shown. **Every toast the game raises goes through it:** the dusk warning (`notice.dusk`, once
+   per dusk, below the dial it covered), the numbered siege notice at nightfall and the dawn notice
+   (`world/survivalSystem.js`; the `SurvivalWarning` banner is deleted), the dragon's five calls
+   (`world/bossSystem.js`; its own banner, its state and `bossNotifTimers.js` are deleted, since a toast clears itself)
+   and an Aspect's first unlock (`ui/AspectHintToast.jsx` hands the hint to the channel once play is live again, so it
+   is not lost behind the Talents panel where it was earned). **Plain text is not deduped:** the denial notices
+   (`ui/denyToast.js`) are plain strings that answer each press, and a first build that dropped a repeated one inside
+   4 s made `tests/e2e/ember.spec.js` read a refused roar as "refused in silence". The other English notification
+   literals (weather, loot, talk, quest, store) still pass plain strings (registry
    `REVIEW:w2d:notifications-english-literals`).
 93. **The 250 ms mob mirror is deleted** (reset plan row 9; arch A17). The minimap and the compass read `mobsQuery` and
    `alliesQuery` on their own clocks; the lookbook hold reads the seam's `mobs()` (with ids) and falls back to the mirror
    only for an older build. `activeHostilesCount` stays, because the music subscribes to it, and is now written on
    change by SpawnerSystem's 1 s pass (it was 4 Hz): the soundtrack can start up to a second after the first hostile
    instead of a quarter second.
-94. **The chrome share is measured in the build's own surface colours, against a world-only twin.** The acceptance
-   number (8% or less of an eye-level frame) counts pixels within 3 per channel of `--ui-ink, panel, panel-raise,
-   panel-frame, panel-inset, well, slot, control, track` as the page defines them at shot time, less the pixels that
-   match the same colour in a twin shot with the DOM hidden but the game canvas. **Why:** the warm re-key (PR B) must not
-   pass by moving its colours out of a list the instrument holds, and a dusk sky or a night on the navy is the world,
-   not interface. **Blind spot:** a translucent surface counts only where its blend lands within 3 of a token.
+94. **The chrome share is the chrome's footprint, read on a held page.** The acceptance number (8% or less of an
+   eye-level frame at rest) counts the pixels the HUD's own elements change: the lookbook holds the page's animation
+   frames (the canvas keeps one rendered frame), shoots the frame, a twin with the HUD's elements hidden and the canvas
+   and touch layer shown, a twin with the canvas alone and the frame again, and counts the pixels where the first two
+   differ by more than 2 in any channel, if the first and last agree. The touch layer (its scrim, ring and buttons) is
+   reported apart, as the pixels where the two twins differ; the colour count (pixels within 3 of the page's own
+   `--ui-*` surface colours) stays as a second column. A frame with a toast in the stack is not at rest and is set aside
+   by rule (`scripts/visual/_lookbook.mjs` `atRest`), the siege notice included. **Why:** a count of surface colours
+   reads the palette in both directions: a warm stone texture within 3 of the warm ladder counted as chrome (7.46% on a
+   world with none) and a translucent panel whose blend misses every token did not count at all. The footprint reads no
+   colour (`tests/gates/lookbook-chrome-gates.test.js`: a warm stone world with no chrome reads 0, a 10% panel reads 10%
+   on either ladder, a panel at alpha 0.6 still counts, the scrim is its own class). **Blind spot:** an opaque surface
+   over a world pixel of its own colour, within 2, reads as unchanged.
 
 ## 2026-10-29 — [LOOP] W2-F step 7: quests name the creatures on screen
 
