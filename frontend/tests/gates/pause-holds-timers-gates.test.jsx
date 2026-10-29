@@ -13,8 +13,8 @@
 // Each case first shows the timer working while play runs, so "nothing happened while held" cannot be a timer that
 // never armed, and then shows it working again on release, so the hold cannot be a timer the hold tore down.
 //
-// It also holds the hunger interval's deletion: nothing drains hunger over a session long enough to have starved the
-// player before (100 hunger at 0.1 per 5 s ran out after 83.3 minutes).
+// It also holds hunger's deletion: nothing costs health over a session long enough to have starved the player before
+// (100 hunger at 0.1 per 5 s ran out after 83.3 minutes).
 //
 // Mutation-Proof: in commit trailers, not here (DECISIONS 2026-10-28 15c).
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -225,11 +225,15 @@ describe.each(HOLDS)('the player stats provider, held by $name', ({ hold, releas
 });
 
 describe('the player stats provider', () => {
-  it('84 minutes of play drain no hunger and cost no health', async () => {
-    useGameStore.setState({ hunger: 100, playerHealth: 100, maxHealth: 100, mana: 100, maxMana: 100, lastDamageTime: 0, damageLockouts: {} });
+  // The store holds no hunger (tests/store/hungerCut.test.js), so this reads what a starvation timer would spend:
+  // health. Mana starts empty, so the provider's own regen interval, which sat beside the hunger one, shows the
+  // provider's timers ran for the whole span.
+  it('84 minutes of play cost no health', async () => {
+    useGameStore.setState({ playerHealth: 100, maxHealth: 100, mana: 0, maxMana: 100, lastDamageTime: 0, damageLockouts: {} });
     await mountStatsProvider();
     advance(84 * 60 * 1000);
     const s = useGameStore.getState();
-    expect({ hunger: s.hunger, health: s.playerHealth }, 'a timer drained hunger and starved the player').toEqual({ hunger: 100, health: 100 });
+    expect(s.mana, 'SETUP: the provider\'s timers never ran, so the health below is no reading').toBe(100);
+    expect(s.playerHealth, 'a timer cost health over a long session with nothing attacking').toBe(100);
   });
 });

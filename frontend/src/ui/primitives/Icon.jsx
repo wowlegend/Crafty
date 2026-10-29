@@ -91,8 +91,6 @@ const GAME_NAMES = {
   gem: 'gem-pendant',
   potion: 'round-potion',
   apple: 'apple',
-  meat: 'meat',
-  food: 'meat',
   scroll: 'scroll-unfurled',
   rune: 'rune-stone',
   magic: 'magic-swirl',

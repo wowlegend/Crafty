@@ -12,16 +12,13 @@
 // and duskhounds, Lodestone from moss brutes, Snare Knot from spiders and skitterlings, Prism Shard from skeletons.
 export const LOOT_TABLES = {
     pig: [
-        { item: 'Raw Porkchop', chance: 0.8, xp: 5 },
         { item: 'Bone', chance: 0.3, xp: 2 },
     ],
     cow: [
-        { item: 'Raw Beef', chance: 0.8, xp: 5 },
         { item: 'Leather', chance: 0.5, xp: 3 },
         { item: 'Bone', chance: 0.2, xp: 2 },
     ],
     zombie: [
-        { item: 'Rotten Flesh', chance: 0.7, xp: 3 },
         { item: 'Iron Nugget', chance: 0.3, xp: 8 },
         { item: 'Emerald', chance: 0.05, xp: 25 },
     ],
@@ -45,11 +42,10 @@ export const LOOT_TABLES = {
         { item: 'Ender Pearl', chance: 0.02, xp: 30 },
         { item: 'Snare Knot', chance: 0.04, xp: 20 },
     ],
-    // duskhound: fast quadruped predator -> a beast's meat + hide + bone.
+    // duskhound: fast quadruped predator -> a beast's hide + bone.
     duskhound: [
         { item: 'Bone', chance: 0.8, xp: 3 },
         { item: 'Leather', chance: 0.5, xp: 4 },
-        { item: 'Raw Beef', chance: 0.3, xp: 5 },
         { item: 'Ember Fang', chance: 0.04, xp: 20 },
     ],
     // moss_brute: rare 220-HP heavy tank -> the high-value kill (iron + emerald + a rare diamond payoff).

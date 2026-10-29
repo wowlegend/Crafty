@@ -100,9 +100,9 @@ describe('C1 pack damage — the lockout is PER-ATTACKER', () => {
     // `sourceKey || source`. A pre-existing call site that passes no key must keep SOME rate limit;
     // losing it silently would be worse than the global lockout it replaced.
     const dp = useGameStore.getState().damagePlayer;
-    dp(10, 'starvation');
+    dp(10, 'projectile');
     const afterFirst = useGameStore.getState().playerHealth;
-    dp(10, 'starvation');
+    dp(10, 'projectile');
     expect(useGameStore.getState().playerHealth, 'a keyless caller lost its rate limit entirely').toBe(afterFirst);
   });
 

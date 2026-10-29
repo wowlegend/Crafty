@@ -139,11 +139,15 @@ const withHeldQuests = (questState, held) => {
 };
 
 // Inventory keys no build spends any more: the crystal currency and the wand it bought (DECISIONS 2026-10-28 W1-H item
-// 6), and the pickaxe, a weapon below the sword every profile holds, whose line the Forge's blades replace (2026-10-29
-// item 66). They leave every live container on load, each bag of the inventory and each chest, so nothing shows a dead
-// item and no chest can hand one back to the bag, and ride the tombstone back into the same container in the save, for
-// one SAVE_VERSION like the progression keys.
-export const RETIRED_INVENTORY_KEYS = Object.freeze(['crystals', 'wand', 'pickaxe']);
+// 6), the pickaxe, a weapon below the sword every profile holds, whose line the Forge's blades replace (2026-10-29
+// item 66), and the five foods, whose use was to fill the hunger meter that left the game (2026-10-29 item 72). They
+// leave every live container on load, each bag of the inventory and each chest, so nothing shows a dead item and no
+// chest can hand one back to the bag, and ride the tombstone back into the same container in the save, for one
+// SAVE_VERSION like the progression keys.
+export const RETIRED_INVENTORY_KEYS = Object.freeze([
+  'crystals', 'wand', 'pickaxe',
+  'Raw Porkchop', 'Raw Beef', 'Cooked Porkchop', 'Cooked Beef', 'Rotten Flesh',
+]);
 
 /**
  * `equipment` with a retired pickaxe in hand replaced by the sword, the first blade of the Forge's line (damage 8 to 10,

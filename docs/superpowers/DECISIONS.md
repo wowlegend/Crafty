@@ -88,6 +88,48 @@ Frames: `docs/superpowers/masterpiece-2026-10/evidence/w2e-follow/` (`index.md` 
    so in a form the world sits up to 0.3 m off where that form's capsule would put it (the beast against the eye is
    exact). It stands while it earns its place.
 
+## 2026-10-29 — [LOOP] W2-F step 6: hunger and the food leave the game
+
+**Decided by the W2-F hunger lane under the standing grant** (DECISIONS 2026-10-28 item 14), finishing reset-plan row
+8 by the task script `docs/superpowers/plans/2026-10-29-crafty-w2f-hunger-quests.md`. Numbered from 70 (41-69 are
+taken). Each stands while it earns its place.
+
+70. **Hunger is deleted, not hidden.** W1-B deleted the drain and step 2 (`00c0a8d4`) the HUD bar; what was left goes:
+   the store's `hunger`, `setHunger`, `consumeHunger` (the game's only `'starvation'` damage) and `feedPlayer`, the
+   respawn's refill, the `GameSystems.jsx` context's copies, the inventory's `feed` effect, the StatBar's `hunger`
+   kind, and the showcase's hunger bar (it shows the ember bar, as the HUD does). **Why:** a meter nothing drains and
+   no bar shows is a field every reader must still reason about, and its one damage path was one interval away from
+   killing players unseen again.
+71. **The five foods go with it:** Raw Porkchop, Raw Beef, Cooked Porkchop, Cooked Beef and Rotten Flesh, from the item
+   registry, the consumable registry, the loot tables (pig, cow, zombie, duskhound) and the icon set (`meat`, `food`
+   and the baked glyph). Their one effect was `feed` (the cooked two also healed 10), so each would have been a Use
+   button that spends the item for nothing. No quest, recipe, tutorial, help line or i18n key named one. **The loot
+   tables gain nothing in their place:** another drop with no use is the class `REVIEW:w2f:forge-orphan-loot` already
+   tracks. The XP a pickup paid moves with them; the expected XP of a kill near spawn (mob XP plus each row's chance
+   times its XP) falls for the pig 14.6 to 10.6, the cow 20.9 to 16.9, the zombie 30.75 to 28.65 and the duskhound
+   34.7 to 33.2. `tests/gates/retired-items-no-source-gates.test.js` holds that no loot row, reward, starting bag,
+   Forge offer or registry hands the player a retired key, and that no consumable feeds.
+72. **Old saves.** No build ever wrote hunger into a save (`buildSaveData` never held the key), so a save holding
+   `hunger` under `progression` or `game_state` holds an unknown key: the store never reads it and the tombstone writes
+   it back for one SAVE_VERSION. The five foods join `RETIRED_INVENTORY_KEYS`: they leave every bag and every chest on
+   load and ride the tombstone back into the same container. **Dropped, not credited:** raw meat and rotten flesh only
+   fed a meter that drained nothing since W1-B; cooked meat also healed 10, and its one source, the grid, left in step
+   5, while the merchant and chests still sell and drop Health Potions (30); and a credit would come back doubled on a
+   rollback, which finds the meat as well. The crystals, the wand and the pickaxe set the precedent (items 46, 66). The
+   rule is stated and run in `tests/store/hungerCut.test.js`; the pre-cut fixture with food planted keeps level 5 and
+   deals finite damage.
+73. **The proof nothing still promised depends on what was cut.** `tests/e2e/the-cut.spec.js` boots a fresh profile
+   under Playwright's page clock (installed before boot, so every game timer is the fake clock's), reads the HUD's stat
+   stack (health, mana, ember, nothing else), then pauses the clock and moves it ten minutes in 120 jumps of 5 s, the
+   deleted interval's period, sweeping hostiles after each: health must not fall, while the provider's mana regen
+   refills an emptied bar, the day clock advances and frames are drawn; a staged hit after the window shows the reading
+   is live; a real left click hurts a staged zombie; the autosave's blob holds no hunger and no food. Its fixture case
+   loads a save holding hunger and Raw Beef through the browser. The unit suite was green with the cut (562 files,
+   4881 tests). `tests/e2e/hunger-starvation.spec.js` is REMOVED with its subject (last on main at `ddd4fe78`).
+74. **Not proven, and owed:** the e2e's browser mutants (CI runs the spec; no local browser run was allowed), and a
+   timer faster than 5 s at its real rate across ten minutes (the jumps fire it once each; the unit gate
+   `pause-holds-timers-gates` runs the provider's timers at their real rate for 84 minutes in jsdom).
+
 ## 2026-10-29 — [LOOP] Vercel deploys main only
 
 **Decided by the command session under the standing grant** (DECISIONS 2026-10-28 item 14). Item 58; the W2-H media

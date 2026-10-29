@@ -49,7 +49,7 @@ async function pinSuiteTier(page) {
  *
  *  DELIBERATELY LENIENT, and NOT sufficient if your spec drives real input — use `startPlayActive`
  *  for that. The world wait is best-effort because most callers here are store-driven: they call
- *  store actions directly and read `isAlive` / `mana` / `hunger` back, so a slow spawn chunk is not
+ *  store actions directly and read `isAlive` / `mana` back, so a slow spawn chunk is not
  *  their precondition and failing them on it would be a foreign gate, not a caught defect.
  *
  *  The docblock here used to promise something this function cannot deliver — "nothing fires a later

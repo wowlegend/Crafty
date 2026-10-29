@@ -6,7 +6,7 @@ import { foldVerbMods } from '../../src/game/verbMods.js';
 // M3b-T4: LOCK soft death (Kevin's decision = the EXISTING behavior, no penalty).
 // This is a CHARACTERIZATION test: damage the player to death via damagePlayer, then
 // respawn(), and assert that level / currentXP / totalXP / talents / equipment (the relic too) /
-// inventory / coins are UNCHANGED -- only playerHealth / mana / hunger are restored and
+// inventory / coins are UNCHANGED -- only playerHealth / mana are restored and
 // isAlive flips back true. It locks the soft-death CONTRACT so a future change can't
 // silently add a death penalty (the test would go red). No production change expected.
 
@@ -28,7 +28,6 @@ describe('soft death: respawn keeps ALL progression + inventory + coins (LOCKED)
       // Vitals BEFORE death: depleted, so respawn restoring them is observable.
       maxHealth: 200, playerHealth: 30,
       maxMana: 150, mana: 12,
-      hunger: 40,
       isAlive: true,
       // Defeat the damagePlayer guards so the death path is reached deterministically:
       // no spawn-immunity window, no recent-hit cooldown.
@@ -64,7 +63,6 @@ describe('soft death: respawn keeps ALL progression + inventory + coins (LOCKED)
     expect(s.isAlive).toBe(true);
     expect(s.playerHealth).toBe(s.maxHealth); // full health
     expect(s.mana).toBe(s.maxMana);           // full mana
-    expect(s.hunger).toBe(100);               // hunger restored
 
     // --- PROGRESSION unchanged (no penalty) ---
     expect(s.level).toBe(KNOWN.level);

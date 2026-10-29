@@ -20,12 +20,10 @@ export const useGameSystems = () => {
             maxHealth: 100,
             mana: 100,
             maxMana: 100,
-            hunger: 100,
             isAlive: true,
             damagePlayer: () => { },
             healPlayer: () => { },
             useMana: () => true,
-            feedPlayer: () => { },
             respawn: () => { },
         };
     }
@@ -41,7 +39,6 @@ export const GameSystemsProvider = ({ children }) => {
         screenShake: state.screenShake,
         mana: state.mana,
         maxMana: state.maxMana,
-        hunger: state.hunger,
         setPlayerHealth: state.setPlayerHealth,
         setMaxHealth: state.setMaxHealth,
         setIsAlive: state.setIsAlive,
@@ -49,14 +46,12 @@ export const GameSystemsProvider = ({ children }) => {
         setScreenShake: state.setScreenShake,
         setMana: state.setMana,
         setMaxMana: state.setMaxMana,
-        setHunger: state.setHunger,
         damagePlayer: state.damagePlayer,
         healPlayer: state.healPlayer,
         useMana: state.useMana,
-        feedPlayer: state.feedPlayer,
         respawn: state.respawn
     })));
-    const { playerHealth, maxHealth, isAlive, damageFlash, screenShake, mana, maxMana, hunger } = gameState;
+    const { playerHealth, maxHealth, isAlive, damageFlash, screenShake, mana, maxMana } = gameState;
 
     const manaRegenTimer = useRef(null);
 
@@ -103,14 +98,12 @@ export const GameSystemsProvider = ({ children }) => {
         maxHealth,
         mana,
         maxMana,
-        hunger,
         isAlive,
         damageFlash,
         screenShake,
         damagePlayer: gameState.damagePlayer,
         healPlayer: gameState.healPlayer,
         useMana: gameState.useMana,
-        feedPlayer: gameState.feedPlayer,
         respawn: gameState.respawn,
     };
 

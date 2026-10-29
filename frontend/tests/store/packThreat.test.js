@@ -76,8 +76,8 @@ describe('a pack is a pack — the damage lockout is per attacker, not global', 
   // Callers that pass no key must still be rate-limited — they fall back to the display source, which is
   // what every pre-existing call site relies on. This is the row that keeps the change backward-safe.
   it('a caller with no sourceKey falls back to its source string and is still limited', () => {
-    useGameStore.getState().damagePlayer(HIT, 'starvation');
-    useGameStore.getState().damagePlayer(HIT, 'starvation');
+    useGameStore.getState().damagePlayer(HIT, 'projectile');
+    useGameStore.getState().damagePlayer(HIT, 'projectile');
     expect(health(), 'an unkeyed caller lost its rate limit').toBe(90);
   });
 });

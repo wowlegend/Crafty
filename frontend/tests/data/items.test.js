@@ -65,9 +65,10 @@ const LOOT_SET = [
 // 1. ITEMS table integrity
 // ─────────────────────────────────────────────────────────────────────────────
 describe('ITEMS registry', () => {
-  it('has 42 entries, each with name/icon/rarity', () => {
+  // 37: the five foods left with the hunger meter (DECISIONS 2026-10-29 item 71).
+  it('has 37 entries, each with name/icon/rarity', () => {
     const ids = Object.keys(ITEMS);
-    expect(ids).toHaveLength(42);
+    expect(ids).toHaveLength(37);
     for (const id of ids) {
       const def = ITEMS[id];
       expect(def).toMatchObject({
@@ -100,8 +101,6 @@ const RARITY_BY_ID = [
   ['shield_scroll', 'rare'],
   ['wooden_shield', 'common'],
   // representative non-fix rows.
-  ['raw_porkchop', 'common'],
-  ['cooked_porkchop', 'rare'],
   ['bone', 'common'],
   ['leather', 'rare'],
   ['iron_nugget', 'epic'],
@@ -137,8 +136,6 @@ const ICON_BY_ID = [
   ['bone', 'bone'],
   ['arrow', 'arrow'],
   ['diamond_gem', 'diamond'],
-  ['raw_beef', 'meat'],
-  ['rotten_flesh', 'meat'],
 ];
 
 describe('getItemIcon by id', () => {
@@ -205,7 +202,6 @@ describe('getItemRarity by name (emoji-prefixed -> registry tier)', () => {
     [`${E.sword} Iron Nugget`, 'epic'],
     [`${E.wool} Leather`, 'rare'],
     [`${E.redHeart} Health Potion`, 'rare'],
-    [`${E.meat} Raw Porkchop`, 'common'],
     [`${E.bone} Bone`, 'common'],
     [`${E.bow} Arrow`, 'common'],
   ];
