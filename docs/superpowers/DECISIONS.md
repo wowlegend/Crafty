@@ -76,6 +76,14 @@ lane's, 50-59 the media lane's). Item 64 amends W1-H item 7's list of three offe
 68. **Not proven, and owed:** the prices' feel (no playtest); the card on touch outside jsdom and on an iPad
    (`REVIEW:w2f:forge-touch-unproven`); the e2e's browser mutants (`REVIEW:w2f:forge-e2e-mutants-unrun`); the relic line
    and the goods in a browser (proven at the store and the card in jsdom); whether a five-throw grab is too strong.
+69. **A double press buys one thing** (`ForgePanel.jsx` `BUY_REPEAT_MS`; review of PR #47). A bought blade or relic
+   tier is replaced in place by the line's next offer, so the second click of a double press bought that too. After a
+   purchase the row's Buy rests for 500 ms, disabled where the player sees it: the two clicks of a double press fall
+   inside the system's double-click time, 500 ms by default on Windows (`SetDoubleClickTime`, learn.microsoft.com),
+   and no longer a rest leaves repeat purchases of goods unhurried. Each row is keyed by its offer, so a bought tier's
+   button leaves the card and a button keyboard focus still holds cannot buy what replaced it; a pointer press does not
+   focus Buy, so Space or Enter pressed for the game cannot fire the last Buy clicked (a Buy reached by Tab keeps its
+   keys). Proven in jsdom (`tests/gates/forge-panel-gates.test.jsx`); a real browser's double click is not.
 
 ## 2026-10-29 — [LOOP] W2-F step 4: talents that change verbs, loot relics, and damage from level
 

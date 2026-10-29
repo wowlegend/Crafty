@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, fireEvent, cleanup, screen } from '@testing-library/react';
+import { render, fireEvent, cleanup, screen, act } from '@testing-library/react';
 import * as THREE from 'three';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { ecs } from '../../src/ecs/world.js';
@@ -12,7 +12,8 @@ import { getWeaponBaseDamage } from '../../src/game/equipment.js';
 // MARA'S FORGE, THROUGH THE CARD AND THE TALK VERB (DECISIONS 2026-10-29 items 60-65). The real ForgePanel against the
 // real store: each line shows its price beside what the player holds, a press on Buy spends exactly that and puts the
 // new blade in hand with the craft sound, and a press the player cannot pay for says what is short and changes nothing.
-// The talk verb (input/talk.js, which G and the touch tray's Talk button both call) is driven against real NPC entities
+// A double press on a line buys one thing: the line's Buy rests, disabled, for the double-click time after a purchase,
+// and a bought tier's button leaves the card with its offer. The talk verb (input/talk.js, which G and the touch tray's Talk button both call) is driven against real NPC entities
 // in the ECS, as the G handler reads them.
 //
 // WHAT THIS DOES NOT CHECK: the G keydown or a tap in the running game, the lazy panel chunk, or MenuSystem mounting the
@@ -91,6 +92,72 @@ describe('the Forge card', () => {
     fireEvent.click(tid('forge-buy-relic:Prism Shard:2'));
     expect(S().relicTiers).toEqual({ 'Prism Shard': 2 });
     expect(tid('forge-offer-relic:Prism Shard:3')).toBeTruthy();
+  });
+});
+
+describe('a double press buys one thing', () => {
+  // The browser hit-tests each click where the pointer is, so the second click of a double press lands on whatever Buy
+  // now stands in the line's place. lineBuy reads that Buy afresh for every click, as the pointer would.
+  const lineBuy = (line) => document.querySelector(`[data-testid^="forge-buy-${line}:"]`);
+  const wait = (ms) => act(() => { vi.advanceTimersByTime(ms); });
+  // The two clicks of a double press fall within the system's double-click time: 500 ms by default on Windows
+  // (SetDoubleClickTime, learn.microsoft.com). The card must swallow a second click up to that, and no longer.
+  const DOUBLE_CLICK_MS = 500;
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('the weapon line: two clicks with the Diamond Sword affordable buy only the Iron Sword; a click after the window buys it', () => {
+    useGameStore.setState({ coins: 110, inventory: { ...S().inventory, blocks: { ...S().inventory.blocks, diamond: 4 } } });
+    render(<ForgePanel onClose={() => {}} />);
+    const ironBuy = tid('forge-buy-weapon:Iron Sword');
+    fireEvent.click(lineBuy('weapon'));
+    fireEvent.click(lineBuy('weapon'));
+    expect(S().equipment.weapon, 'the second click of a double press bought the next blade').toBe('Iron Sword');
+    expect([S().coins, S().inventory.blocks.diamond], 'a double press spent more than the Iron Sword').toEqual([80, 4]);
+    expect(lineBuy('weapon').dataset.testid, 'SETUP: the line did not move on to the Diamond Sword').toBe('forge-buy-weapon:Diamond Sword');
+    expect(lineBuy('weapon').disabled, 'the line\'s Buy does not show the player it is resting').toBe(true);
+    wait(DOUBLE_CLICK_MS - 1);
+    fireEvent.click(lineBuy('weapon'));
+    expect(S().equipment.weapon, `a click ${DOUBLE_CLICK_MS - 1} ms after a purchase bought again`).toBe('Iron Sword');
+    wait(1);
+    expect(lineBuy('weapon').disabled, `the line's Buy still rests ${DOUBLE_CLICK_MS} ms after the purchase`).toBe(false);
+    // The Iron Sword's own button, as keyboard focus would hold it: it left the card with its offer, so a press on it
+    // cannot buy the offer that took its place.
+    fireEvent.click(ironBuy);
+    expect(S().equipment.weapon, 'the Iron Sword\'s button stayed in the card and bought the Diamond Sword').toBe('Iron Sword');
+    fireEvent.click(lineBuy('weapon'));
+    expect(S().equipment.weapon, 'a click after the window did not buy the next blade').toBe('Diamond Sword');
+    expect([S().coins, S().inventory.blocks.diamond]).toEqual([0, 0]);
+  });
+
+  it('the relic line: two clicks with tier III affordable temper to tier II only; a click after the window tempers to III', () => {
+    useGameStore.setState({ coins: 140, equipment: { ...S().equipment, relic: 'Prism Shard' },
+      inventory: { ...S().inventory, blocks: { ...S().inventory.blocks, gold: 3, diamond: 3 } } });
+    render(<ForgePanel onClose={() => {}} />);
+    const tierTwo = tid('forge-buy-relic:Prism Shard:2');
+    fireEvent.click(lineBuy('relic'));
+    fireEvent.click(lineBuy('relic'));
+    expect(S().relicTiers, 'the second click of a double press tempered twice').toEqual({ 'Prism Shard': 2 });
+    expect([S().coins, S().inventory.blocks.diamond]).toEqual([100, 3]);
+    expect(lineBuy('relic').disabled, 'the relic line\'s Buy does not show it is resting').toBe(true);
+    wait(DOUBLE_CLICK_MS - 1);
+    fireEvent.click(lineBuy('relic'));
+    expect(S().relicTiers, `a click ${DOUBLE_CLICK_MS - 1} ms after a temper tempered again`).toEqual({ 'Prism Shard': 2 });
+    wait(1);
+    fireEvent.click(tierTwo);
+    expect(S().relicTiers, 'the tier II button stayed in the card and bought tier III').toEqual({ 'Prism Shard': 2 });
+    fireEvent.click(lineBuy('relic'));
+    expect(S().relicTiers, 'a click after the window did not temper to tier III').toEqual({ 'Prism Shard': 3 });
+  });
+
+  it('a pointer press on Buy does not take focus, so a key meant for the game cannot press it; Tab still reaches it', () => {
+    render(<ForgePanel onClose={() => {}} />);
+    const chest = tid('forge-buy-goods:chest');
+    chest.focus();
+    expect(document.activeElement, 'SETUP: a Buy cannot hold focus at all, so the check below would mean nothing').toBe(chest);
+    chest.blur();
+    // fireEvent returns false when a handler cancelled the event's default action, which for mousedown is the focus.
+    expect(fireEvent.mouseDown(chest), 'a pointer press on Buy left the browser free to focus it').toBe(false);
   });
 });
 

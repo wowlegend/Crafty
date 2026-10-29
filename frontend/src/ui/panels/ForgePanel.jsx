@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/useGameStore';
@@ -16,6 +16,17 @@ import { ItemIcon } from './itemUi';
 
 const TIER_NUMERAL = ['', 'I', 'II', 'III'];
 const nameOf = (key) => BLOCK_TYPES[key]?.name || key;
+
+/**
+ * How long a row's Buy rests, disabled where the player sees it, after a purchase on that row. A bought blade or
+ * relic tier is replaced on the spot by the line's next offer, so the second click of a double press would buy that
+ * too; the two clicks of a double press fall inside the system's double-click time, which defaults to 500 ms on
+ * Windows (SetDoubleClickTime), and a rest no longer than that leaves deliberate repeat purchases of goods unhurried.
+ */
+const BUY_REPEAT_MS = 500;
+
+// A row as the rest counts it: the weapon and relic lines are one row each whatever they offer, each good its own.
+const rowOf = (offer) => (offer.line === 'goods' ? offer.id : offer.line);
 
 function offerTitle(t, offer) {
   if (offer.line === 'weapon') {
@@ -35,7 +46,11 @@ function priceParts(t, state, offer) {
   return parts;
 }
 
-const OfferRow = ({ offer, state, onBuy }) => {
+// A pointer press does not focus Buy, so Space or Enter pressed for the game cannot fire the last Buy clicked; a Buy
+// reached by Tab keeps its keys.
+const keepFocus = (e) => e.preventDefault();
+
+const OfferRow = ({ offer, state, onBuy, resting }) => {
   const t = useT();
   const parts = priceParts(t, state, offer);
   const title = offerTitle(t, offer);
@@ -56,7 +71,8 @@ const OfferRow = ({ offer, state, onBuy }) => {
         </div>
       </div>
       <Button variant={parts.every((p) => p.have >= p.need) ? 'primary' : 'secondary'} size="sm"
-        aria-label={`${t('forge.buy')}: ${title}`} data-testid={`forge-buy-${offer.id}`} onClick={() => onBuy(offer)}>
+        aria-label={`${t('forge.buy')}: ${title}`} data-testid={`forge-buy-${offer.id}`} disabled={resting}
+        onMouseDown={keepFocus} onClick={() => onBuy(offer)}>
         {t('forge.buy')}
       </Button>
     </Panel>
@@ -81,6 +97,19 @@ export const ForgePanel = React.memo(({ villager, onClose }) => {
   })));
   const { playCraft } = useGameSounds();
   const [message, setMessage] = useState(null);
+  const [resting, setResting] = useState(() => new Set());
+  const restTimers = useRef(new Map());
+  useEffect(() => {
+    const timers = restTimers.current;
+    return () => { for (const id of timers.values()) clearTimeout(id); };
+  }, []);
+  const rest = (row) => {
+    setResting((s) => new Set(s).add(row));
+    restTimers.current.set(row, setTimeout(() => {
+      restTimers.current.delete(row);
+      setResting((s) => { const next = new Set(s); next.delete(row); return next; });
+    }, BUY_REPEAT_MS));
+  };
 
   const offers = forgeOffers(state);
   const weapon = offers.find((o) => o.line === 'weapon');
@@ -91,6 +120,7 @@ export const ForgePanel = React.memo(({ villager, onClose }) => {
   const onBuy = (offer) => {
     const r = state.buyForgeOffer(offer);
     if (r.ok) {
+      rest(rowOf(offer));
       playCraft?.();
       setMessage({ ok: true, text: t('forge.bought', { give: offer.line === 'goods' ? nameOf(offer.give) : offer.give }) });
     } else if (r.reason === 'short') {
@@ -132,20 +162,22 @@ export const ForgePanel = React.memo(({ villager, onClose }) => {
                 {message.text}
               </Toast>
             )}
+            {/* Each row is keyed by its offer, so a bought tier's button leaves with it: a button keyboard focus still
+                holds cannot buy the offer that replaced it. */}
             <Section label={t('forge.weapon')}>
               {weapon
-                ? <OfferRow offer={weapon} state={state} onBuy={onBuy} />
+                ? <OfferRow key={weapon.id} offer={weapon} state={state} onBuy={onBuy} resting={resting.has(rowOf(weapon))} />
                 : <Note testId="forge-weapon-max">{t('forge.weaponMax', { blade: bestBlade(state) || WEAPON_LINE[WEAPON_LINE.length - 1] })}</Note>}
             </Section>
             <Section label={t('forge.relic')}>
               {relic
-                ? <OfferRow offer={relic} state={state} onBuy={onBuy} />
+                ? <OfferRow key={relic.id} offer={relic} state={state} onBuy={onBuy} resting={resting.has(rowOf(relic))} />
                 : relicName && relicTier(state.relicTiers, relicName) >= RELIC_MAX_TIER
                   ? <Note testId="forge-relic-max">{t('forge.relicMax', { relic: relicName })}</Note>
                   : <Note testId="forge-relic-none">{t('forge.noRelic')}</Note>}
             </Section>
             <Section label={t('forge.goods')}>
-              {goods.map((o) => <OfferRow key={o.id} offer={o} state={state} onBuy={onBuy} />)}
+              {goods.map((o) => <OfferRow key={o.id} offer={o} state={state} onBuy={onBuy} resting={resting.has(rowOf(o))} />)}
             </Section>
           </div>
         </Panel>
