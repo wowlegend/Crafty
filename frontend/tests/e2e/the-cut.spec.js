@@ -6,6 +6,7 @@ import { bootDev, startPlay, startPlayActive } from './_boot.js';
 import { installWorldHold } from './_worldHold.js';
 
 // THE CUT, IN THE BOOTED GAME (W2-F brief; DECISIONS 2026-10-28 W1-H items 4-7 and 10). One case per landed step.
+// Ember (step 3) has its own spec, tests/e2e/ember.spec.js; the fixture case here checks its migration through the browser.
 //
 // tests/store/preCutSave.test.js proves the pass-through against the store in jsdom. This proves it through the real
 // browser's localStorage and the real save path: the frozen pre-cut world blob (tests/fixtures/pre-cut-save.json, see
@@ -84,7 +85,7 @@ test.describe('the Cut', () => {
       save.progression.futureField = { nested: [1, 2], word: 'kept' };
       save.game_state.futureFlag = 'kept';
       g().loadWorldData(save);
-      const loaded = { level: g().level, maxHealth: g().maxHealth };
+      const loaded = { level: g().level, maxHealth: g().maxHealth, ember: g().ember };
       const storeHasMode = 'gameMode' in g();
       const liveQuestIds = (g().questState?.quests || []).map((q) => q && q.id);
       g().saveActiveWorld({ x: 3, y: 21, z: 6 });
@@ -106,6 +107,12 @@ test.describe('the Cut', () => {
     expect(r.blob.game_state.gameMode, 'the pre-cut gameMode was not written back').toBe('survival');
     expect(r.liveQuestIds, 'a retired quest reached the live quest feed').not.toContain('builder');
     expect(r.blob.questState.quests.find((q) => q.id === 'builder')?.progress, 'the held Builder quest lost its progress').toBe(4);
+    // Step 3 (Ember, W1-H item 5): the four banks (30 + 20 + 15 + 10) load as one bar of 75, which the save writes, and
+    // the banks themselves ride the tombstone back unchanged.
+    expect(r.loaded.ember, 'the pre-cut banks were not summed into the ember bar on load').toBe(75);
+    expect(r.blob.progression.ember, 'the save did not write the migrated ember').toBe(75);
+    expect([r.blob.progression.ferocityBanked, r.blob.progression.kineticBanked, r.blob.progression.soulBanked, r.blob.progression.resonanceBanked],
+      'a retired bank was not written back as the pre-cut save had it').toEqual([30, 20, 15, 10]);
   });
 
   test('one costed mode: no Mode chip or toggle; a right-click spends one block, an empty stack refuses; it fights and saves', async ({ page }) => {

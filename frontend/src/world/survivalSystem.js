@@ -1,5 +1,5 @@
 // survivalSystem.js — the day/night survival hook (extracted from AdvancedGameFeatures S3-M4 p2:
-// same nightCount-single-SoT + dawn-bleed + dawn-reward behavior; mounted once in App). It deliberately
+// same nightCount-single-SoT + dawn-reward behavior; mounted once in App). It deliberately
 // does NOT write dangerLevel (the boss bridge is the sole dangerLevel writer — siege-gates locks this).
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
@@ -29,15 +29,8 @@ export const useSurvivalMode = (isDay) => {
         }
 
         if (!prevIsDay.current && isDay) {
-            // S2-B1-M4: Ferocity bleeds to zero at dawn — banked combat-fury doesn't carry across
-            // nights (prevents a second-night power spike + a stale bank auto-arming the next roar).
-            useGameStore.getState().setFerocityBanked(0);
-            // S2-B2-M4: Kinetic mirrors Ferocity at dawn (Kevin Decision #2) — no carry across nights.
-            useGameStore.getState().setKineticBanked(0);
-            // S2-B3-M2: Soul joins the dawn bleed (the same no-carry contract).
-            useGameStore.getState().setSoulBanked(0);
-            // S2-B4-M2: Resonance joins too — yesterday's building charge doesn't carry.
-            useGameStore.getState().setResonanceBanked(0);
+            // This edge fires on a load as well as a dawn, so nothing that must happen only at a real dawn belongs here
+            // (the ember bar empties in setGameTime, on the clock's crossing).
             // Dawn: reward surviving the night just passed. nightCount was bumped at
             // nightfall, so it equals the night survived. grantDawnReward guards
             // once-per-night INTERNALLY (via the persisted lastRewardedNight), so a

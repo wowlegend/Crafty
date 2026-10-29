@@ -26,7 +26,7 @@ import { seamBearers, assertDetectorLive, SEAM_OWNER } from './_seamClosure.js';
 describe('elemancer no-re-mesh gate', () => {
   const GATED = [
     'game/elemancer.js',                 // the imbue latch
-    'game/resonance.js',                 // the build-verb economy
+    'game/ember.js',                     // the meter an imbue spends
     'game/elementZones.js',              // the chemistry core
     'game/elemancerChannel.js',          // the zone request transient
     'world/ElementZoneSystem.jsx',       // the M4 bridge (chemistry -> combat)

@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { MINE_GAIN } from '../game/resonance.js';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
@@ -762,8 +761,6 @@ export const MinecraftWorld = React.memo(() => {
 
             worker.postMessage({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: 0 } });
             playBlockBreak(h.hitPoint);
-            // S2-B4-M2: building charges the chemistry (day-only; capture never runs executors)
-            if (store.isDay) store.accrueResonance(MINE_GAIN);
 
             // Update worldBlocks in Zustand Map
             const newBlocks = new Map(store.worldBlocks);

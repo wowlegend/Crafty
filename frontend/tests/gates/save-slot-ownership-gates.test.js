@@ -136,7 +136,7 @@ describe('B2a save-slot ownership — an autosave may not overwrite a world it n
 
     useGameStore.setState({
       level: 12, coins: 4321, totalXP: 5000, gameWon: true, nightCount: 7, lastRewardedNight: 6,
-      ferocityBanked: 50, kineticBanked: 40, soulBanked: 30, resonanceBanked: 20,
+      ember: 50, emberBuildDay: { night: 7, built: 30 },
       gameTime: 900, achievements: ['first_kill'], selectedBlock: 'diamond',
       worldBlocks: new Map([['1_2_3', 5]]), chests: new Map([['9_9_9', []]]),
     });
@@ -164,7 +164,7 @@ describe('B2a save-slot ownership — an autosave may not overwrite a world it n
 // ALREADY pending: `flush() { if (timer !== null) { clear(); save(); } }`. That is correct on its own —
 // nothing pending means nothing to save. The bug is the TRIGGER LIST: App.jsx only schedules an autosave
 // when level / equipment / chests / talentPoints / worldBlocks / inventory / questState / the
-// four banked meters change. So `coins`, `currentXP` (without a level-up), `gameWon`, `nightCount` and
+// banked meter changes. So `coins`, `currentXP` (without a level-up), `gameWon`, `nightCount` and
 // `gameTime` NEVER schedule one. Kill mobs for an hour, earn 3000 coins, beat the boss, close the tab —
 // nothing was ever pending, flush() no-ops, and the entire session is gone.
 //

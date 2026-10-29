@@ -82,9 +82,9 @@ describe('the tombstone pass-through', () => {
     const saved = onDisk();
     expect(saved.progression.futureField, 'an unknown progression key was dropped on save').toEqual({ nested: [1, 2], word: 'kept' });
     expect(saved.game_state.futureFlag, 'an unknown game_state key was dropped on save').toBe('kept');
-    // The whole slice, not the planted keys alone: a field this build stops writing (gameMode, from the next step on)
-    // must come back exactly as the pre-cut save had it.
-    expect(saved.progression, 'the pre-cut progression slice did not round-trip unchanged').toEqual(f.progression);
+    // The whole slice, not the planted keys alone: a field this build stops writing (gameMode, the four Aspect banks)
+    // must come back exactly as the pre-cut save had it. The one key added is the ember the banks were summed into.
+    expect(saved.progression, 'the pre-cut progression slice did not round-trip unchanged').toEqual({ ...f.progression, ember: 75, emberBuildDay: { night: 0, built: 0 } });
     expect(saved.game_state, 'the pre-cut game_state slice did not round-trip unchanged').toEqual(f.game_state);
   });
 
@@ -115,7 +115,8 @@ describe('the tombstone pass-through', () => {
 
   it('never holds a key this build writes, and a held value never shadows a live one', () => {
     const bag = splitTombstone(planted());
-    expect(Object.keys(bag.progression), 'the bag took keys this build writes').toEqual(['futureField']);
+    // The four Aspect banks are keys this build stopped writing at Ember (W1-H item 5), so they are held like the planted one.
+    expect(Object.keys(bag.progression), 'the bag took keys this build writes').toEqual(['ferocityBanked', 'kineticBanked', 'soulBanked', 'resonanceBanked', 'futureField']);
     // gameMode is a key this build stopped writing at the Cut (W1-H item 4), so it is held like the planted one.
     expect(Object.keys(bag.game_state), 'the bag took keys this build writes').toEqual(['gameMode', 'futureFlag']);
     const built = buildSaveData({ level: 7, isDay: false, _tombstone: { progression: { level: 99 }, game_state: { isDay: true } } }, POS);
@@ -184,6 +185,39 @@ describe('the pre-cut save after one costed mode', () => {
     expect(result.current.stats.blocks_placed, 'SETUP: the placements never reached the quest hook').toBe(29);
     const saved = onDisk();
     expect(ids(saved.questState.quests), 'the save lost the live feed or the held Builder quest').toEqual([...ids(result.current.quests), 'builder']);
+  });
+});
+
+// EMBER (DECISIONS 2026-10-28 W1-H item 5). The pre-cut save banked 30 Ferocity, 20 Kinetic, 15 Soul and 10 Resonance;
+// this build has one bar, and the save's banks are added into it once.
+describe('the pre-cut save after Ember', () => {
+  it('loads with its four banks summed into one bar, its level kept, and damage finite', () => {
+    const f = fixture();
+    expect([f.progression.ferocityBanked, f.progression.kineticBanked, f.progression.soulBanked, f.progression.resonanceBanked],
+      'SETUP: the fixture changed').toEqual([30, 20, 15, 10]);
+    useGameStore.getState().loadWorldData(f);
+    const s = useGameStore.getState();
+    expect(s.ember, 'the four banks were not summed into the bar').toBe(75);
+    expect(Number.isFinite(s.ember)).toBe(true);
+    expect(s.level, 'the pre-cut save lost its level').toBe(5);
+    for (const gone of ['ferocityBanked', 'kineticBanked', 'soulBanked', 'resonanceBanked']) {
+      expect(gone in s, `loading a pre-cut save put ${gone} back into the store`).toBe(false);
+    }
+    const dmg = solveMeleeDamage(s.getEffectiveAttributes(), getWeaponBaseDamage(s.equipment?.weapon)).damage;
+    expect(Number.isFinite(dmg) && dmg >= 1, `melee damage ${dmg}`).toBe(true);
+  });
+
+  it('writes the four banks back unchanged beside the bar, and a reload does not refill a spent bar from them', () => {
+    useGameStore.getState().loadWorldData(fixture());
+    const first = onDisk();
+    expect(first.progression.ember).toBe(75);
+    expect([first.progression.ferocityBanked, first.progression.kineticBanked, first.progression.soulBanked, first.progression.resonanceBanked],
+      'a retired bank was not written back as it was').toEqual([30, 20, 15, 10]);
+    expect(useGameStore.getState().spendEmber(50), 'SETUP: a spend of 50 from 75 was refused').toBe(true);
+    const spent = onDisk();
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    useGameStore.getState().loadWorldData(spent);
+    expect(useGameStore.getState().ember, 'the reload summed the held banks again').toBe(25);
   });
 });
 

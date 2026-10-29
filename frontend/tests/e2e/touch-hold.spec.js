@@ -207,7 +207,7 @@ test.describe('touch plays the signature (iPad Pro 11 landscape, real touch)', (
     await page.evaluate(() => {
       const s = window.useGameStore.getState();
       s.setTimeOfDay?.(0.5);
-      window.useGameStore.setState({ isAlive: true, playerHealth: s.maxHealth, ferocityBanked: 100,
+      window.useGameStore.setState({ isAlive: true, playerHealth: s.maxHealth, ember: 100,
         unlockedTalents: { ...s.unlockedTalents, wildheart_roar: 1 } });
       const cam = window.__threeCamera;
       for (const m of window.__craftyTest.call('readMobs') || []) {

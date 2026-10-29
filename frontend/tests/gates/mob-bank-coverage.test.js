@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { MOB_TYPES } from '../../src/game/mobTypes.js';
 import { bankForKill, PER_KILL_DEFAULT } from '../../src/game/mobBank.js';
-import { ferocityForKill } from '../../src/game/ferocity.js';
-import { kineticForKill } from '../../src/game/kinetic.js';
-import { soulForKill } from '../../src/game/soul.js';
+import { emberForKill } from '../../src/game/ember.js';
 
 // THREE COPIES OF ONE TABLE, ALL MISSING THE SAME FOUR MOBS.
 //
@@ -65,14 +63,11 @@ describe('every mob type banks a declared amount — no silent fallback', () => 
     }
   });
 
-  it('all three aspects read the SAME derivation — no copy can drift again', () => {
-    // The duplication was the root cause, so the gate has to prove the copies are gone rather than that
-    // they currently agree. Three call sites, one source.
+  it('the ember bar reads the SAME derivation by day — no copy can drift again', () => {
+    // The duplication was the root cause; the three meters it fed are now one (game/ember.js), which must still read
+    // the mob's own bank rather than a table of its own.
     for (const t of types) {
-      const b = bankForKill(t);
-      expect(ferocityForKill(t), `ferocity disagrees for ${t}`).toBe(b);
-      expect(kineticForKill(t), `kinetic disagrees for ${t}`).toBe(b);
-      expect(soulForKill(t), `soul disagrees for ${t}`).toBe(b);
+      expect(emberForKill(t, true), `ember disagrees for ${t}`).toBe(bankForKill(t));
     }
   });
 

@@ -19,7 +19,8 @@ const mapEntries = (m) => (m instanceof Map ? Array.from(m.entries()) : Array.is
 // the act that closes these doors. Live keys are spread after the bag, so a tombstoned value never shadows one.
 const TOMBSTONE_SLICES = ['progression', 'game_state'];
 
-const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+/** An object that is not an array or null: the shape of every save slice and record read here and in game/ember.js. */
+export const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
 // The placement-count quests no longer offered (DECISIONS 2026-10-28 W1-H item 10), with the rewards their QUEST_LIST
 // rows paid on a claim. A save's active entry for one is held in the tombstone like an unknown key, so a rollback finds
@@ -154,10 +155,10 @@ export function buildSaveData(state, { position } = {}) {
       // grants already persist above — these keep the producer durable too).
       nightCount: state.nightCount,
       lastRewardedNight: state.lastRewardedNight,
-      ferocityBanked: state.ferocityBanked, // S2-B1-M4 (clamped+rounded on load)
-      kineticBanked: state.kineticBanked, // S2-B2-M4 (twin; clamped+rounded on load)
-      soulBanked: state.soulBanked, // S2-B3-M2 (twin)
-      resonanceBanked: state.resonanceBanked, // S2-B4-M2 (twin)
+      // The one Aspect meter and the day's building allowance it has used (game/ember.js). The four banks it replaced
+      // are not written: a save that holds them keeps them in the tombstone, and loading it sums them into `ember`.
+      ember: state.ember,
+      emberBuildDay: state.emberBuildDay,
     },
     game_state: {
       ...tomb.game_state,

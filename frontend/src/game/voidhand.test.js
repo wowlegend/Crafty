@@ -4,7 +4,7 @@ import { makeVoidhandState, decideVoidhand, GRAB_CHARGE_SEC, MAX_HOLD_SEC, GRAB_
 // S2-B2-M1: the VOIDHAND grab SM (pure reducer). Twin of beastTransform.js. The store owns `held`
 // (ctx.held); this SM owns charge + hold/cooldown timers. IDLE -> CHARGING -> HELD -> hurl/slam/drop.
 
-const base = { held: false, grabEdge: false, attack: false, cast: false, active: true, alive: true, now: 0, canGrab: true };
+const base = { held: false, grabEdge: false, attack: false, cast: false, active: true, alive: true, now: 0, canGrab: true, canPay: true };
 
 describe('IDLE -> startGrab gate', () => {
   it('a fresh grab press (off cooldown, alive, active, bank ok) starts the charge', () => {
@@ -71,5 +71,36 @@ describe('S2-B2-M8: phantom tint content enumeration', () => {
     const values = Object.values(PHANTOM_BLOCK_COLORS);
     expect(new Set(values).size).toBe(values.length); // every tint distinct
     for (const v of values) expect(v).toMatch(/^#[0-9A-Fa-f]{6}$/);
+  });
+});
+
+// The grab's price, decided where the press is: 'short' for a press only the price refuses, 'unpaid' for a charge whose
+// price another verb spent before it committed. Neither starts anything or arms a cooldown.
+describe('the price', () => {
+  it('a press that would start the charge but for the price -> short: nothing starts', () => {
+    const { sm, action } = decideVoidhand(makeVoidhandState(), { ...base, grabEdge: true, canPay: false });
+    expect(action, 'a grab the bar cannot pay for was refused in silence, or started').toBe('short');
+    expect(sm.charging).toBe(false);
+    expect(sm.cooldownUntil).toBe(0);
+  });
+  it('a press that would not start the charge at any price is not short', () => {
+    for (const [why, over, sm] of [
+      ['no edge', { grabEdge: false }],
+      ['dead', { grabEdge: true, alive: false }],
+      ['input released', { grabEdge: true, active: false }],
+      ['no talent', { grabEdge: true, canGrab: false }],
+      ['in the cooldown', { grabEdge: true, now: 4 }, { ...makeVoidhandState(), cooldownUntil: 5 }],
+      ['holding a block (a release)', { grabEdge: true, held: true, now: 5 }, { ...makeVoidhandState(), heldUntil: 100 }],
+    ]) {
+      const { action } = decideVoidhand(sm || makeVoidhandState(), { ...base, canPay: false, ...over });
+      expect(action, `${why} blamed the bar`).not.toBe('short');
+    }
+  });
+  it('a charge whose price another verb spent before it committed -> unpaid, not grab, and no cooldown', () => {
+    const charging = { ...makeVoidhandState(), charging: true, chargeStart: 0 };
+    const { sm, action } = decideVoidhand(charging, { ...base, now: GRAB_CHARGE_SEC, canPay: false });
+    expect(action, 'an unpaid grab committed, or ended silently').toBe('unpaid');
+    expect(sm.charging).toBe(false);
+    expect(sm.cooldownUntil).toBe(0);
   });
 });

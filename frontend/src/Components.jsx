@@ -8,7 +8,7 @@ import { worldTimeScale, hitstopForHit } from './game/hitstop.js';
 import { realDelta, worldNow } from './game/worldClock.js';
 import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
 import { makeTransformState, decideTransform, formDurationFor } from './game/beastTransform.js';
-import { canTransform, FEROCITY_THRESHOLD } from './game/ferocity.js';
+import { canAfford, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST } from './game/ember.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
 import { StableMagicHands } from './render/playerRender';
@@ -30,18 +30,19 @@ import { shakeOffset, SHAKE_WEIGHT_MAX, HITSTOP } from './game/trauma.js';
 import { shakeTrauma, shakeDir, decayShake } from './game/cameraShakeChannel.js';
 import { makeSoulbindState, decideSoulbind, SNARE_CHANNEL_SEC, makeFuseState, decideFuse, FUSE_CHANNEL_SEC, squadCapFor } from './game/soulbind.js';
 import { makeImbueState, decideImbue, KIND_BY_SPELL } from './game/elemancer.js';
-import { canIgnite as rCanIgnite, ZONE_COST } from './game/resonance.js';
-import { armImbueCast } from './game/elemancerChannel.js';
+import { armImbueCast, consumeImbueCast } from './game/elemancerChannel.js';
+
+// Whether the ember bar holds `cost` now. Each Aspect verb reads the bar live, never from a store snapshot taken earlier
+// in the frame: the verbs ticked before it on this frame may already have spent from the one bar.
+const barPays = (cost) => canAfford(useGameStore.getState().ember, cost);
 
 // music-motif v2: the stinger rarity guards (a stinger repeats no sooner than this)
 const MOTIF_COOLDOWN_SEC = 10;
 let _lastWildheartMotif = -Infinity;
 let _lastVoidhandMotif = -Infinity;
-import { canSnare as sCanSnare, SNARE_COST, canFuse as sCanFuse, FUSE_COST } from './game/soul.js';
 import { ecs, alliesQuery, mobsQuery } from './ecs/world';
 import { writeSnareState, clearSnareState, fireBindCeremony } from './game/snareChannel.js';
-import { lookupHybrid, applyFusion, FUSE_RADIUS } from './game/hybrids.js';
-import { canGrab as kCanGrab, GRAB_COST } from './game/kinetic.js';
+import { lookupHybrid, applyFusion, fuseKey, FUSE_RADIUS } from './game/hybrids.js';
 import { requestHurl, requestSlam } from './game/hurlChannel';
 import { phantomWorldPos } from './world/PhantomBlockSystem';
 import { PhantomBlockSystem } from './world/PhantomBlockSystem';
@@ -65,6 +66,7 @@ import { installPrimaryMouse } from './input/compatMouse.js';
 import { installPrimaryInput } from './input/primaryInput.js';
 import { registerTestHook } from './devtest/testBridge.js';
 import { notifyDenied } from './ui/denyToast';
+import { denyAspectPress } from './input/aspectDeny.js';
 import { PLAYER_SPAWN } from './game/playerSpawn.js';
 
 // PositionTracker extracted -> src/systems/PositionTracker.jsx (v6 de-monolith A3).
@@ -360,37 +362,39 @@ export const Player = ({ isWorldBuilt }) => {
 
     const store = useGameStore.getState();
 
-    // ELEMANCER (S2-B4-M5): the imbue latch resolves HERE, before the spawn below, because the thing it
-    // decides -- which element this projectile carries -- is read AT spawn. It used to resolve in useFrame
-    // one frame later, so the cast that PAID got imbueKind:null and the kind sat parked for the next cast
-    // to take for free (an off-by-one, not a missing feature). The consume also used to depend on the
-    // mouse branch stamping a ref, which the F key -- the advertised prime cast key -- never did, so on
-    // that path the stance idled armed forever. Both routes call this function, so owning the consume
-    // here closes both. The reducer stays the single decision authority; only the timing of its
-    // `castFired` input moved from "next frame" to "this instant".
-    {
-      const { sm, action } = decideImbue(imbueSMRef.current, {
-        imbueEdge: false,          // arming is the frame loop's job; this call is only ever a cast
-        castFired: true,
-        active: getInput().active,
-        alive: store.isAlive,
-        canIgnite: rCanIgnite(store.resonanceBanked) && (store.unlockedTalents?.['elemancer_imbue'] > 0),
-        owned: (store.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0,
-      });
-      imbueSMRef.current = sm;
-      if (action === 'consume') {
-        store.setImbueArmed(false);
-        store.accrueResonance(-ZONE_COST); // canIgnite vetted the bank at arm-time; spend at cast
-        armImbueCast(KIND_BY_SPELL[store.activeSpell] || 'burning');
-      } else if (action === 'disarm') {
-        store.setImbueArmed(false); // cast while dead or with input released -- drop the stance, charge nothing
-      }
-    }
+    // ELEMANCER: the imbue latch resolves here, before the spawn, because the element a projectile carries is read at
+    // its spawn; a latch resolved in the frame loop would tag the next cast instead of this one. The mouse and the F key
+    // both cast through this function, so neither can leave the stance armed. The reducer decides; this call is its
+    // `castFired` input.
+    const imbue = decideImbue(imbueSMRef.current, {
+      imbueEdge: false,          // arming is the frame loop's job; this call is only ever a cast
+      castFired: true,
+      active: getInput().active,
+      alive: store.isAlive,
+      canIgnite: store.unlockedTalents?.['elemancer_imbue'] > 0,
+      owned: (store.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0,
+      canPay: canAfford(store.ember, IMBUE_COST),
+    });
+    if (imbue.action === 'consume') armImbueCast(KIND_BY_SPELL[store.activeSpell] || 'burning');
 
+    let cast = false;
     if (store.castSpell) {
       const currentSpell = store.activeSpell || 'fireball';
-      store.castSpell(currentSpell);
+      cast = store.castSpell(currentSpell) === true;
       if (store.onSpellCast) store.onSpellCast();
+    }
+
+    // The latch's decision is applied only to a cast that went out. castSpell refuses one it has no mana for, and says
+    // so: that press takes no ember, the stance stays armed, and the kind parked for it is withdrawn so no later cast
+    // carries it.
+    if ((imbue.action === 'consume' || imbue.action === 'unpaid') && !cast) {
+      consumeImbueCast();
+    } else {
+      imbueSMRef.current = imbue.sm;
+      // consume, unpaid and disarm all end the stance; disarm is a cast while dead or with input released, and charges nothing
+      if (imbue.action !== 'none') store.setImbueArmed(false);
+      if (imbue.action === 'consume') store.spendEmber(IMBUE_COST); // canPay above read the bar with nothing spent since
+      else if (imbue.action === 'unpaid') notifyDenied('no-ember'); // spent by another verb since the arm: the cast went out plain
     }
 
     setAttackType('spell');
@@ -421,30 +425,31 @@ export const Player = ({ isWorldBuilt }) => {
       }
 
       // S2-B1-M3: roar -> the abstract 'roar' intent (consumed by the transform SM in useFrame).
-      // UX-legibility: a not-yet-unlocked Aspect verb used to fail SILENTLY — teach the unlock path.
+      // A locked Aspect verb teaches the unlock path at the press, once: a held key's auto-repeat says nothing more. An
+      // unlocked verb the bar cannot pay for is told by the frame loop, where its reducer sees every other gate.
       if (e.code === 'KeyR') {
         setIntent('roar', true);
-        if (!(useGameStore.getState().unlockedTalents?.['wildheart_roar'] > 0)) notifyDenied('aspect-locked', 'WILDHEART');
+        if (!e.repeat) denyAspectPress('roar', useGameStore.getState());
       }
 
       // S2-B2-M1: grab -> the abstract 'grab' intent (VOIDHAND SM in useFrame). KeyV (KeyG = chest/trade).
       if (e.code === 'KeyV') {
         setIntent('grab', true);
-        if (!(useGameStore.getState().unlockedTalents?.['voidhand_grasp'] > 0)) notifyDenied('aspect-locked', 'VOIDHAND');
+        if (!e.repeat) denyAspectPress('grab', useGameStore.getState());
       }
 
       // S2-B3-M4: snare -> the abstract 'snare' intent (SOULBIND SM in useFrame).
       // The Aspect-verb row: R=roar, V=grab, X=snare. (KeyT is the melee-attack key below — not an Aspect verb.)
       if (e.code === 'KeyX') {
         setIntent('snare', true);
-        if (!(useGameStore.getState().unlockedTalents?.['soulbind_snare'] > 0)) notifyDenied('aspect-locked', 'SOULBIND');
+        if (!e.repeat) denyAspectPress('snare', useGameStore.getState());
       }
 
       // S2-B4-M5: imbue -> the abstract 'imbue' intent (the ELEMANCER latch in useFrame).
       // The Aspect-verb row completes: R=roar, V=grab, X=snare, Z=imbue.
       if (e.code === 'KeyZ') {
         setIntent('imbue', true);
-        if (!(useGameStore.getState().unlockedTalents?.['elemancer_imbue'] > 0)) notifyDenied('aspect-locked', 'ELEMANCER');
+        if (!e.repeat) denyAspectPress('imbue', useGameStore.getState());
       }
 
       // 2026-06-28 (Kevin): magic spells are the marquee feature -> the prime F key CASTS the
@@ -675,8 +680,15 @@ export const Player = ({ isWorldBuilt }) => {
     // authority; the store's beastFormActive is the single active-truth, the SM owns only the charge +
     // duration/cooldown timers. `active` (input-live) is the deliberate modal proxy — every modal-open
     // path exits pointer-lock -> active=false -> no transform mid-menu. (No setIntent('roar',false) on
-    // exit: the roarEdge + cooldown already block instant re-trigger.) `canEnter` is true now; M4 adds
-    // the ferocity threshold, M6 the wildheart_roar talent-unlock. set() fires only on transitions.
+    // exit: the roarEdge + cooldown already block instant re-trigger.) `canEnter` is the wildheart_roar talent and
+    // `canPay` a full ember bar. set() fires only on transitions.
+    //
+    // NOT ENOUGH EMBER is said here, once a frame at most, from the Aspect reducers below: each returns 'short' for a
+    // press only the price refused and 'unpaid' for a started verb whose price another verb spent before it landed (the
+    // imbue's 'unpaid', which needs the cast's outcome, is said in triggerSpellCast instead). The
+    // reducers hold every other gate, so a press that would do nothing at any bar says nothing, and the keyboard and the
+    // touch ring, which write the same intents, are told alike.
+    let emberShort = false;
     {
       const rin = getInput();
       const roar = rin.roar;
@@ -690,9 +702,10 @@ export const Player = ({ isWorldBuilt }) => {
         active: rin.active,
         alive: st.isAlive,
         now: state.clock.getElapsedTime(),
-        // M4: a full Ferocity bank AND M6: the Primal Roar talent must be unlocked (the roar is a
-        // signature ability, not free). canEnter gates BOTH startCharge and commit.
-        canEnter: canTransform(st.ferocityBanked) && (st.unlockedTalents?.['wildheart_roar'] > 0),
+        // The Primal Roar talent and a full ember bar (the roar is a signature ability, not free); both gate the charge's
+        // start and its commit, and canPay is read this frame, so the spend below is covered.
+        canEnter: st.unlockedTalents?.['wildheart_roar'] > 0,
+        canPay: barPays(ROAR_COST),
         // M6: Primal Endurance extends the form duration — read the rank at THIS site (not the fold).
         formDurationSec: formDurationFor(st.unlockedTalents?.['wildheart_endurance'] || 0),
       });
@@ -707,10 +720,10 @@ export const Player = ({ isWorldBuilt }) => {
         transformCamRef.current = { active: true, t: 0, fwd: [d.x, 0, d.z] };
         st.setBeastCharging(true); // M7c: beat-1 anticipation begins
       } else if (action === 'enter') {
-        // M4: UNLEASH — spend the banked Ferocity ONLY on a real transform (enterBeastForm returns
-        // false if it rejects: already-in-form / dead). Avoids draining the bank on a no-op enter.
+        // UNLEASH: the bar is spent only on a real transform (enterBeastForm returns false when it rejects: already in a
+        // form, or dead), so a no-op enter drains nothing.
         if (st.enterBeastForm(elementForSpell(st.activeSpell))) {
-          st.accrueFerocity(-FEROCITY_THRESHOLD);
+          st.spendEmber(ROAR_COST);
           // AUDIO (the owed B1 backfill): the ROAR finally SOUNDS — spatial at the player.
           const rp = st.playerPosition;
           if (st.playSpatialSound && rp) st.playSpatialSound('roar', [rp.x, rp.y, rp.z], 1, 30);
@@ -724,11 +737,15 @@ export const Player = ({ isWorldBuilt }) => {
           }
         }
         st.setBeastCharging(false); // M7c: anticipation -> BURST + the avatar entrance take over
-      } else if (action === 'cancel') {
-        // M7a: roar released early -> ease the transform-cam back to FPV (jump it to the return phase).
+      } else if (action === 'cancel' || action === 'unpaid') {
+        // M7a: roar released early, or its price spent by another verb -> ease the transform-cam back to FPV (jump it
+        // to the return phase).
         const tc = transformCamRef.current;
         if (tc.active) tc.t = Math.max(tc.t, 0.78 * TRANSFORM_CAM_SEC);
         st.setBeastCharging(false); // M7c: charge cancelled
+        if (action === 'unpaid') emberShort = true;
+      } else if (action === 'short') {
+        emberShort = true;
       } else if (action === 'exitTimer' || action === 'exitManual') {
         st.exitBeastForm();
       }
@@ -736,9 +753,9 @@ export const Player = ({ isWorldBuilt }) => {
 
     // S2-B2-M1: the VOIDHAND grab SM — tap V to grab a phantom block (orbits as a shield), re-press V to
     // release. Transient intent reads; the store holds the single held-truth; set() only on transitions
-    // (Game-Loop-Isolation). M1 grab is ALWAYS a phantom (never a voxel edit -> no re-mesh). canGrab is OPEN
-    // in M1; M4 ANDs the kinetic bank + the voidhand_grasp talent. HURL/SLAM (attack/cast re-skin) + impact
-    // are M3, so attack/cast are not fed here yet -> release is via re-press or the max-hold timer.
+    // (Game-Loop-Isolation). A grab is ALWAYS a phantom (never a voxel edit -> no re-mesh). canGrab is the
+    // voidhand_grasp talent and canPay the ember bar; release is a hurl or slam (the attack/cast edges), a re-press, or
+    // the max-hold timer.
     // S2-B2-M2: under perf-probe mode the runner writes `voidhandHeld` directly (no real grab happened,
     // so the SM's heldUntil=0 would max-hold-auto-drop it on the first frame) — the probe's store-driven
     // held state is authoritative, so the SM tick is skipped. isPerfProbe() is constant-false in prod.
@@ -759,12 +776,13 @@ export const Player = ({ isWorldBuilt }) => {
         active: vin.active,
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
-        // M4: the gate M1 left OPEN — bank + talent compose here (the roar-gate pattern below)
-        canGrab: kCanGrab(stv.kineticBanked) && (stv.unlockedTalents?.['voidhand_grasp'] > 0),
+        canGrab: stv.unlockedTalents?.['voidhand_grasp'] > 0,
+        // Read this frame, which is the frame a 'grab' commits, so the spend below is covered.
+        canPay: barPays(GRAB_COST),
       });
       voidhandSMRef.current = vsm;
       if (vaction === 'grab') {
-        stv.accrueKinetic(-GRAB_COST); // M4: a combat grab SPENDS banked Kinetic (canGrab vetted it)
+        stv.spendEmber(GRAB_COST); // canPay vetted it this frame
         // M3: tint from the looked-at block when it's a KNOWN voxel (worldBlocks); else placeholder.
         const gHit = GameMethods.castBuildRay ? GameMethods.castBuildRay() : null;
         const known = gHit ? stv.worldBlocks?.get(gHit.targetCoords) : undefined;
@@ -795,10 +813,11 @@ export const Player = ({ isWorldBuilt }) => {
         }
         stv.setVoidhandHeld(false);
         stv.setHeldPhantom(null);
-      } else if (vaction === 'drop' || vaction === 'cancel') {
+      } else if (vaction === 'drop' || vaction === 'cancel' || vaction === 'unpaid') {
         stv.setVoidhandHeld(false);
         stv.setHeldPhantom(null);
       }
+      if (vaction === 'short' || vaction === 'unpaid') emberShort = true;
 
       // S2-B3-M4: the SOULBIND snare SM — the voidhand block's sibling. Target validity is computed
       // PER FRAME (the mob keeps moving; holding aim IS the skill — design §2).
@@ -830,12 +849,17 @@ export const Player = ({ isWorldBuilt }) => {
         active: vin.active,
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
-        canSnare: sCanSnare(stv.soulBanked) && (stv.unlockedTalents?.['soulbind_snare'] > 0) && alliesQuery.entities.length < squadCap,
+        canSnare: (stv.unlockedTalents?.['soulbind_snare'] > 0) && alliesQuery.entities.length < squadCap,
+        // Read at the start and again at the bind: another verb may spend from the bar while the channel runs.
+        canPay: barPays(SNARE_COST),
         targetId: snareTargetId,
       });
       soulbindSMRef.current = ssm;
-      if (saction === 'bind') {
-        stv.accrueSoul(-SNARE_COST); // canSnare vetted the bank
+      if (saction === 'short' || saction === 'unpaid') emberShort = true;
+      if (saction === 'unpaid') {
+        clearSnareState();
+      } else if (saction === 'bind') {
+        stv.spendEmber(SNARE_COST); // canPay above read the bar with nothing spent since
         const ally = GameMethods.captureMob ? GameMethods.captureMob(ssm.targetId ?? snareTargetId) : null;
         if (ally) {
           // the jade re-tint: lerp the body color 45% toward the SOULBIND identity (design §2)
@@ -857,7 +881,7 @@ export const Player = ({ isWorldBuilt }) => {
 
       // S2-B3-M6: FUSE — the X key's second life via a deterministic arbiter: a valid SNARE
       // target WINS; with none, holding X by two bound creatures braids them into a hybrid.
-      // The channel only STARTS when fusion CAN complete (bank + roster entry + proximity).
+      // The channel only STARTS when fusion CAN complete (a recipe for the pair near the player) and the bar pays.
       let fusePair = null;
       if (!snareTargetId && alliesQuery.entities.length >= 2) {
         const pp = stv.playerPosition;
@@ -869,27 +893,30 @@ export const Player = ({ isWorldBuilt }) => {
           if (near.length >= 2) fusePair = [near[0].e, near[1].e];
         }
       }
-      const canStartFuse = !!fusePair && sCanFuse(stv.soulBanked)
-        && !!lookupHybrid(fusePair[0].baseType || fusePair[0].type, fusePair[1].baseType || fusePair[1].type);
       const { sm: fsm, action: faction } = decideFuse(fuseSMRef.current, {
         fuseEdge: snareEdge, // the same key edge; the arbiter above kept it exclusive
         active: vin.active,
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
-        canStart: canStartFuse,
-        pairNear: !!fusePair,
+        canStart: !!fusePair && !!lookupHybrid(fusePair[0].baseType || fusePair[0].type, fusePair[1].baseType || fusePair[1].type),
+        canPay: barPays(FUSE_COST),
+        pairKey: fusePair ? fuseKey(fusePair[0].id, fusePair[1].id) : null,
       });
       fuseSMRef.current = fsm;
-      if (faction === 'fuse' && fusePair) {
-        stv.accrueSoul(-FUSE_COST); // canStart vetted the bank
+      if (faction === 'short' || faction === 'unpaid') {
+        emberShort = true;
+      } else if (faction === 'fuse' && fusePair) {
         const hy = applyFusion(ecs, fusePair[0], fusePair[1]);
-        if (hy && stv.playSpatialSound) {
-          // the bind chime down-pitched = the v1 fuse swell (deliberate reuse; M7 may upgrade)
-          stv.playSpatialSound('bind', [hy.position.x, hy.position.y, hy.position.z], 0.7, 25);
-          // music-motif v2: a soul JOINS — the fuse is SOULBIND's signature (rare by its 50-Soul price)
-          stv.playSpatialSound('motifSoulbind', [hy.position.x, hy.position.y, hy.position.z], 1, 40);
+        if (hy) {
+          stv.spendEmber(FUSE_COST); // only for a hybrid made; canPay above read the bar with nothing spent since
+          if (stv.playSpatialSound) {
+            // the bind chime down-pitched = the v1 fuse swell (deliberate reuse; M7 may upgrade)
+            stv.playSpatialSound('bind', [hy.position.x, hy.position.y, hy.position.z], 0.7, 25);
+            // music-motif v2: a soul JOINS — the fuse is SOULBIND's signature (rare by its 50-ember price)
+            stv.playSpatialSound('motifSoulbind', [hy.position.x, hy.position.y, hy.position.z], 1, 40);
+          }
+          fireBindCeremony(hy.position); // the halo marks the hybrid's birth too
         }
-        if (hy) fireBindCeremony(hy.position); // the halo marks the hybrid's birth too
       } else if (fsm.channeling && fusePair) {
         // the tether doubles as the fusion thread — drawn BETWEEN the two creatures
         writeSnareState({
@@ -900,7 +927,7 @@ export const Player = ({ isWorldBuilt }) => {
         });
       }
 
-      // ELEMANCER (S2-B4-M5): the imbue LATCH — Z arms the next cast (bank- and talent-gated), and
+      // ELEMANCER (S2-B4-M5): the imbue LATCH — Z arms the next cast (talent- and ember-gated), and
       // death or released input drops the stance. The CONSUME is not decided here: it belongs to
       // triggerSpellCast, which is the call that spawns the projectile that reads the element. Deciding
       // it here meant deciding it one frame after the projectile had already been built. `castFired` is
@@ -914,13 +941,16 @@ export const Player = ({ isWorldBuilt }) => {
         castFired: false,
         active: vin.active,
         alive: stv.isAlive,
-        canIgnite: rCanIgnite(stv.resonanceBanked) && (stv.unlockedTalents?.['elemancer_imbue'] > 0),
+        canIgnite: stv.unlockedTalents?.['elemancer_imbue'] > 0,
         owned: (stv.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0,
+        canPay: barPays(IMBUE_COST),
       });
       imbueSMRef.current = ism;
       if (iaction === 'arm') stv.setImbueArmed(true);
       else if (iaction === 'disarm') stv.setImbueArmed(false);
+      else if (iaction === 'short') emberShort = true;
     }
+    if (emberShort) notifyDenied('no-ember');
 
     // Phase 29: Freeze physics body on death to prevent void-falling loops and camera jitter
     const isPlayerAlive = useGameStore.getState().isAlive;

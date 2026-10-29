@@ -48,7 +48,7 @@ describe('kill-attribution gates (S2-B3-M1)', () => {
   });
 
   it('the death emit threads source, normalised to the bus vocabulary', () => {
-    // The bus publishes 'player' | 'ally' | 'hazard'; subscribers count quest kills and bank Resonance
+    // The bus publishes 'player' | 'ally' | 'hazard'; subscribers count quest kills and bank ember
     // off that string, so a burn kill has to arrive as a player kill rather than as a new fourth value.
     expect(npc).toMatch(/emitMobKill\(entity\.type, \[entity\.position\.x, entity\.position\.y, entity\.position\.z\], attributionSource\(source\)\)/);
   });
@@ -57,10 +57,10 @@ describe('kill-attribution gates (S2-B3-M1)', () => {
     // S3-M4 (trap 1): the accrual hooks moved to world/accrualHooks.js — the per-subscriber invariant follows them.
     const hooks = read('world/accrualHooks.js');
     // The invariant is per-subscriber, not a fixed meter count: each kill-bus accrual hook
-    // must carry the attribution filter (ferocity + kinetic + soul today; future meters auto-gated).
+    // must carry the attribution filter (the one ember hook today; a future meter is gated the same way).
     const subscribers = (hooks.match(/subscribeMobKill\(/g) || []).length;
-    const filtered = (hooks.match(/source === 'player' && s\.isDay && !isCaptureMode\(\)/g) || []).length;
-    expect(subscribers).toBeGreaterThanOrEqual(3);
+    const filtered = (hooks.match(/source === 'player' && !isCaptureMode\(\)/g) || []).length;
+    expect(subscribers, 'the ember kill hook is gone, so nothing below is checked').toBeGreaterThanOrEqual(1);
     expect(filtered).toBe(subscribers);
     expect(read('QuestSystem.jsx')).toMatch(/if \(source !== 'player'\) return;/);
   });

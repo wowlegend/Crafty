@@ -146,7 +146,10 @@ export const STRINGS = {
     'chest.toBackpack': 'Click on items to retrieve them to your backpack.',
     // Talent / progression panel.
     'a11y.progression': 'Progression',
-    'talent.intro': 'Four powers, four keys. Each Aspect banks its own meter and spends it on a signature verb — the HOW IT PLAYS card in each column shows the loop.',
+    'talent.intro': 'Four powers, four keys, one ember bar. Day kills and building fill it, and each Aspect spends it on a signature verb — the HOW IT PLAYS card in each column shows the loop.',
+    // The one Aspect meter (game/ember.js): its HUD bar, and the notice for a verb it cannot pay for.
+    'hud.ember': 'Ember',
+    'deny.noEmber': 'Not enough ember',
     'talent.points': 'Talent Points',
     'talent.respec': 'Respec',
     'talent.respecHint': 'Refund every talent point you have spent and start the build again.',
@@ -304,7 +307,9 @@ export const STRINGS = {
     'chest.vaultEmpty': '这个箱子目前是空的。',
     'chest.toBackpack': '点击物品可取回背包。',
     'a11y.progression': '进度',
-    'talent.intro': '四种力量，四个按键。每种能力各自积攒自己的能量槽，并消耗它释放专属招式——每一列的「玩法说明」卡片会讲清这个循环。',
+    'talent.intro': '四种力量，四个按键，共用一条余烬槽。白天击杀怪物和建造方块都会为它充能，每种能力消耗它释放专属招式——每一列的「玩法说明」卡片会讲清这个循环。',
+    'hud.ember': '余烬',
+    'deny.noEmber': '余烬不足',
     'talent.points': '天赋点',
     'talent.respec': '重置天赋',
     'talent.respecHint': '退还已投入的全部天赋点，重新加点。',
