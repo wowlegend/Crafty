@@ -19,7 +19,7 @@ import { lookbookHandPose, lookbookHandPoseKind, subscribeLookbook } from './loo
 import {
   GAUNTLET, GAUNTLET_PARTS, HAND_REST_ROT, VIEWMODEL, handAnchors, installValueFloor, makeGauntletMaterials, makeHeldMaterial,
 } from './viewmodel.js';
-import { frameScale, swingPose, swingFit, chargePose, chargeFit } from './handPose.js';
+import { frameScale, swingPose, swingFit, chargePose, chargeFit, castPose } from './handPose.js';
 
 // Swing-ribbon scratch, allocated once at the ring's capacity: re-filled in place with needsUpdate, because swapping a
 // BufferAttribute re-uploads the whole buffer anyway. The anchors are the blade's base and tip in the hand's frame.
@@ -362,24 +362,24 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
           wandRef.current.position.y = held.position[1];
         }
       } else if (isCastingSpell) {
-        const attackTime = still ? still.t * Math.PI : time * 6;
-        rightHandRef.current.position.set(
-          baseRightPos.x + noiseX,
-          baseRightPos.y + noiseY,
-          baseRightPos.z + Math.sin(attackTime) * 0.04 + noiseZ
-        );
-        rightHandRef.current.rotation.set(restR[0] + Math.sin(attackTime) * 0.15, restR[1], restR[2]);
+        // On the cast's own clock (render/handPose.js castPose): the wand hand pushes toward the target and tips the
+        // wand forward, the off hand lifts its orb, peaking halfway through the cast.
+        const t = Math.min(1, swingElapsed / CAST_S);
+        castPose(t, baseRightPos, aspect, pose, restR);
+        rightHandRef.current.position.set(pose.position.x + noiseX, pose.position.y + noiseY, pose.position.z + noiseZ);
+        rightHandRef.current.rotation.set(pose.rotation[0], pose.rotation[1], pose.rotation[2]);
 
+        const lift = Math.sin(Math.PI * t);
         leftHandRef.current.position.set(
           baseLeftPos.x + noiseX,
-          baseLeftPos.y + noiseY,
+          baseLeftPos.y + 0.04 * anchors.k.y * lift + noiseY,
           baseLeftPos.z + noiseZ
         );
-        leftHandRef.current.rotation.set(restL[0] + Math.sin(attackTime + 1) * 0.1, restL[1], restL[2]);
+        leftHandRef.current.rotation.set(restL[0] - 0.1 * lift, restL[1], restL[2]);
 
         if (held) {
-          wandRef.current.rotation.set(held.rotation[0] + Math.sin(attackTime) * 0.06, held.rotation[1], held.rotation[2]);
-          wandRef.current.position.y = held.position[1] + Math.sin(attackTime) * 0.02;
+          wandRef.current.rotation.set(held.rotation[0], held.rotation[1], held.rotation[2]);
+          wandRef.current.position.y = held.position[1];
         }
       } else {
         // Stable Idle
@@ -454,7 +454,6 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
               </group>
             </group>
           )}
-          {shownAttack === 'spell' && <SpellHandEffects spellType={activeSpell} />}
         </Gauntlet>
       </group>
       <group ref={leftHandRef} rotation={restL}>
@@ -472,17 +471,3 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
   );
 };
 
-const SpellHandEffects = ({ spellType }) => {
-  const effectRef = useRef();
-  useFrame((state) => {
-    if (effectRef.current) {
-      const time = state.clock.elapsedTime;
-      if (spellType === 'fireball') {
-        effectRef.current.rotation.y += 0.04;
-        effectRef.current.scale.setScalar(1 + Math.sin(time * 3) * 0.08);
-      }
-    }
-  });
-  if (spellType === 'fireball') return <mesh ref={effectRef} position={[0.1, 0.2, 0]}><coneGeometry args={[0.07, 0.22, 6]} /><meshBasicMaterial color="#FF4500" transparent opacity={0.55} /></mesh>;
-  return null;
-};
