@@ -11,12 +11,15 @@
  * All numbers are Kevin-tunable (the in-world dial is M7d). FPV combat aim/hit-reg is untouched — this
  * is a transient camera OVERRIDE during the roar window only.
  */
+import { EYE_HEIGHT_M } from '../combat/swingOrigin.js';
+
 export const TRANSFORM_CAM_SEC = 1.2;  // total window: anticipation pull-back -> reveal hold -> return
 
-const HEAD_Y = 1.2;     // FPV eye height above the rigidbody translation (matches Components' head-lerp)
+// The f=0 pose is the first-person follow's own eye (Components.jsx: body + EYE_HEIGHT_M), so the window opens and
+// closes where the view already is.
+const REVEAL_Y = 2.2;   // third-person camera height over the rigidbody translation at the reveal hold
 const BODY_Y = 0.6;     // third-person look-at height (mid-body)
 const MAX_DIST = 4.5;   // how far behind the player the third-person camera sits
-const RISE_Y = 1.0;     // how much the camera rises as it pulls back
 
 const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 const smooth = (t) => { const x = clamp01(t); return x * x * (3 - 2 * x); }; // smoothstep
@@ -44,11 +47,11 @@ export function transformCamPose(playerPos, forward, progress) {
   const f = transformCamEnvelope(progress);
   const [px, py, pz] = playerPos;
   const fx = forward[0], fz = forward[2];
-  // FPV pose (f=0): at the head, looking forward.
-  const fpvPos = [px, py + HEAD_Y, pz];
-  const fpvLook = [px + fx, py + HEAD_Y, pz + fz];
-  // Third-person pose (f=1): behind (-forward * MAX_DIST) + above (RISE_Y), looking at mid-body.
-  const tpvPos = [px - fx * MAX_DIST, py + HEAD_Y + RISE_Y, pz - fz * MAX_DIST];
+  // FPV pose (f=0): at the eye, looking forward.
+  const fpvPos = [px, py + EYE_HEIGHT_M, pz];
+  const fpvLook = [px + fx, py + EYE_HEIGHT_M, pz + fz];
+  // Third-person pose (f=1): behind (-forward * MAX_DIST) and above, looking at mid-body.
+  const tpvPos = [px - fx * MAX_DIST, py + REVEAL_Y, pz - fz * MAX_DIST];
   const tpvLook = [px, py + BODY_Y, pz];
   return {
     position: [lerp(fpvPos[0], tpvPos[0], f), lerp(fpvPos[1], tpvPos[1], f), lerp(fpvPos[2], tpvPos[2], f)],

@@ -11,6 +11,7 @@ import {
   noteMoveTarget, readMoveTarget, stanceFrame, stanceWalk, teleportPlayer, dodgeBurst,
 } from './combatStance.js';
 import { mobSensePoint } from './mobSenses.js';
+import { EYE_HEIGHT_M } from '../combat/swingOrigin.js';
 import { moveVector } from './locomotion.js';
 import { rampVelocity, ACCEL_RATE, DECEL_RATE } from './gameFeel.js';
 import { MOB_TYPES } from './mobTypes.js';
@@ -417,7 +418,7 @@ describe('stanceFrame / stanceWalk — the controller\'s seam', () => {
 // the body by about 1.2 frames, so strafe leaked into retreat at about 1.7 t² dt / g. The F1 bound is that the player's
 // OWN step never takes the body further from the threat than retreat x dt. This drives the controller's frame as
 // Components.jsx runs it: stanceFrame with this frame's body and the camera as the follow leaves it (lerped 0.85 toward
-// the PRE-move body, + 1.2), moveVector in a view kept on (or turned from) the husk, stanceWalk, then the body steps by
+// the PRE-move body, + EYE_HEIGHT_M), moveVector in a view kept on (or turned from) the husk, stanceWalk, then the body steps by
 // the applied velocity. The husk chases at its pursuit speed straight at the body AFTER the player's step, so it keeps
 // qualifying; the bound is read across the player's step alone.
 // WHAT THIS PROVES IS THE PLAYER'S HALF OF F1 ONLY, AT FULL STANCE WEIGHT: the player's own step never leaves the husk
@@ -448,7 +449,7 @@ describe('the F1 bound on the player\'s own step, at every frame interval', () =
     resetStance();
     const mob = { id: 'f1', isMob: true, type: 'zombie', passive: false, isAggro: true, health: 50, position: { x: 0, y: 50.5, z: -3 } };
     const body = { x: 0, y: 50.5, z: 0 };
-    const camera = { position: { x: 0, y: 51.7, z: 0 } };
+    const camera = { position: { x: 0, y: 50.5 + EYE_HEIGHT_M, z: 0 } };
     const chase = pursuitSpeed('zombie');
     let vel = { x: 0, z: 0 }, now = 10000, worst = -Infinity, worstV = -Infinity, judged = 0, gapMax = 0;
     // non-vacuity, read on the judged frames: how often the keys changed, how often the applied strafe changed side,
