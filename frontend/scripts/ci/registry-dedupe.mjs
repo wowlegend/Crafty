@@ -7,9 +7,8 @@
 //
 //   node scripts/ci/registry-dedupe.mjs          rewrite the registry in place, printing what it collapsed
 //   node scripts/ci/registry-dedupe.mjs --check  exit 1 if anything would collapse; write nothing
-import { readFileSync, writeFileSync, realpathSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { ROOT, REGISTRY } from './registry-harvest.mjs';
 
 const RANK = Object.freeze({ open: 0, 'in-flight': 1, closed: 2 });
@@ -80,13 +79,4 @@ function main() {
   console.log(`✓ registry-dedupe: ${r.collapsed.length} repeated id(s) collapsed`);
 }
 
-function invokedDirectly() {
-  if (!process.argv[1]) return false;
-  try {
-    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return false;
-  }
-}
-
-if (invokedDirectly()) main();
+if (import.meta.main) main();

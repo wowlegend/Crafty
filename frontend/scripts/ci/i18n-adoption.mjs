@@ -130,10 +130,7 @@ const counts = (hits) => Object.fromEntries(Object.entries(hits).map(([f, v]) =>
 // tests is the worst kind, because it looks like the tests caught something and they never ran at all.
 // Found while mutation-proving the detector: the mutation went red, but at import, not at an assertion —
 // so it proved nothing about the test it was meant to prove.
-const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (!isCli) {
-  // Imported as a module: export the seams, run nothing.
-} else runCli();
+if (import.meta.main) runCli();
 
 function runCli() {
 const hits = scan();

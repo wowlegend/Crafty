@@ -34,8 +34,8 @@
 
 set -e
 
-PATTERN="${KTP_PATTERN:-Crafty/frontend/node_modules/.bin/vite|npm exec vite --port|ms-playwright/(chromium|webkit|firefox)|cache/puppeteer/chrome}"
-BROWSER="${KTP_BROWSER:-cache/puppeteer/chrome|ms-playwright/}"
+PATTERN="${KTP_PATTERN:-Crafty/frontend/node_modules/.bin/vite|npm exec vite --port|ms-playwright/(chromium|webkit|firefox)}"
+BROWSER="${KTP_BROWSER:-ms-playwright/}"
 CRASHPAD="${KTP_CRASHPAD:-chrome_crashpad_handler}"
 # LAUNCHER WRAPPERS are transparent to the walk (review 2026-09-22). `npm run dev` runs vite under npm and a
 # `sh -c vite ...`, neither of which matches PATTERN. When the shell that started them exits, both are

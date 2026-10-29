@@ -445,7 +445,7 @@ describe('doc-currency run() — the seam every check is wired into', () => {
 
 describe('doc-currency CLI — the call site the pipeline runs', () => {
   it('importing the module runs no CLI: the importer\'s output is its own, and it exits 0', () => {
-    // cli-guard reads the guard off the AST; this watches the behaviour. Importing in this worker would hide a CLI
+    // cli-entry.test.js imports every exporting script; this pins doc-currency's own output. Importing in this worker would hide a CLI
     // that ran (on a clean tree it only prints), so a fresh process imports it and owns its stdout and stderr.
     const url = pathToFileURL(join(APP, 'scripts/ci/doc-currency.mjs')).href;
     const p = spawnSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(url)}); console.log('imported');`], {

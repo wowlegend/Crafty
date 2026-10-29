@@ -121,6 +121,12 @@ jobs:
       - name: Install
         run: npm install --no-audit --no-fund
 
+      # prod-smoke drives Playwright's Chromium. Installed only when the pipeline below will run it: the same two
+      # conditions that make it skip prod-smoke (only the exact `false` / `true`, as pipeline.sh reads them).
+      - name: Install Playwright Chromium (prod-smoke)
+        if: needs.changes.outputs.code != 'false' && needs.changes.outputs.certified != 'true'
+        run: npx playwright install --with-deps chromium
+
       # THE PIPELINE, not a copy of it. These steps used to be listed here AND, differently, in
       # .githooks/pre-push -- two independently-maintained descriptions of "the build". They disagreed,
       # and the drift surfaced on 2026-09-22 as CI mailing about a commit that passed every local gate:

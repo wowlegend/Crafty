@@ -420,7 +420,7 @@ Unit order is strict: each unit is shippable alone and leaves the game sounding 
     - `resumeAudio` (`:523-527`) calls `primeSampleBank(audioContext.current)` after its resume;
     - the init effect (`:443-459`) adds `window.addEventListener(type, prime, { capture: true, once: true, passive: true })` for `pointerdown`, `keydown` and `touchstart`, where `prime = () => primeSampleBank(audioContext.current)`, and removes them in the effect's cleanup.
   - In `App.jsx`, register the hooks `readSampleBank` and `sfxNameOf`.
-- [ ] **Step 7: Run and expect PASS,** then `npm run test:unit && npm run lint && npm run build && node scripts/ci/bundle-budget.mjs && node scripts/ci/cli-guard.mjs`.
+- [ ] **Step 7: Run and expect PASS,** then `npm run test:unit && npm run lint && npm run build && node scripts/ci/bundle-budget.mjs && npx vitest run tests/scripts/cli-entry.test.js`.
 - [ ] **Step 8: Add the bank-split check** to `bundle-budget.mjs`, after `:130`, following the lazy-panel pattern.
   - `const BANK_MARKER = 'impactPunch_heavy_000.mp3'` (a string only the manifest holds) must be ABSENT from the `index` chunk and present in exactly one other chunk.
   - Print `✓ sample bank: lazy in <file>, not in the boot chunk`.

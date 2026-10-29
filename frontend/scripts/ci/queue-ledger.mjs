@@ -82,8 +82,7 @@ export function tally(findings) {
   };
 }
 
-const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isCli) {
+if (import.meta.main) {
   const errors = [];
   const now = {};
   for (const rel of QUEUES) {

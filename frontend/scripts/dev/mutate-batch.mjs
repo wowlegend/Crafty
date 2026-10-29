@@ -205,5 +205,4 @@ function main() {
   process.exit(s.code);
 }
 
-const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isCli) main();
+if (import.meta.main) main();

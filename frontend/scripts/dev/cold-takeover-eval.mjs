@@ -610,13 +610,4 @@ async function main() {
   process.exit(pass ? 0 : 1);
 }
 
-function invokedDirectly() {
-  if (!process.argv[1]) return false;
-  try {
-    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return false;
-  }
-}
-
-if (invokedDirectly()) main();
+if (import.meta.main) main();

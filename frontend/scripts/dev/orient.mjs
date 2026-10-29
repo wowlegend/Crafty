@@ -17,7 +17,7 @@
  *   node scripts/dev/orient.mjs --root=<dir>   the same for another tree (a copy with no .git reports that)
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -232,16 +232,7 @@ export async function report(root = ROOT) {
   return lines.join('\n');
 }
 
-function invokedDirectly() {
-  if (!process.argv[1]) return false;
-  try {
-    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return false;
-  }
-}
-
-if (invokedDirectly()) {
+if (import.meta.main) {
   const arg = process.argv.slice(2).find((a) => a.startsWith('--root='));
   report(arg ? resolve(arg.slice(7)) : ROOT).then(
     (text) => console.log(text),

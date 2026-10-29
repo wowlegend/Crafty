@@ -39,7 +39,7 @@
  *   node scripts/ci/registry-harvest.mjs          check; prints each source's denominator and floor
  *   node scripts/ci/registry-harvest.mjs --list   print every extracted item (key, line, title) as TSV
  */
-import { readFileSync, existsSync, realpathSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -385,15 +385,6 @@ export function harvest(root = ROOT, floorsText = readFileSync(FLOORS_FILE, 'utf
   return { extracted, rows, errors, ...result };
 }
 
-function invokedDirectly() {
-  if (!process.argv[1]) return false;
-  try {
-    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return false;
-  }
-}
-
 function main() {
   const r = harvest();
   if (process.argv.includes('--list')) {
@@ -416,4 +407,4 @@ function main() {
   console.log(`✓ registry-harvest: all ${total} extracted items from ${r.perSource.length} sources have a registry row, and no source is below its floor`);
 }
 
-if (invokedDirectly()) main();
+if (import.meta.main) main();

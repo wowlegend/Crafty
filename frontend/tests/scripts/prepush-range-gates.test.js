@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, chmodSync, realpathSync, readdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, chmodSync, realpathSync, readdirSync, copyFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
@@ -44,6 +44,9 @@ function fixtureRepo() {
   const repo = join(dir, 'repo');
   mkdirSync(join(repo, 'ci'), { recursive: true });
   mkdirSync(join(repo, 'frontend/node_modules'), { recursive: true });
+  mkdirSync(join(repo, 'frontend/scripts/ci'), { recursive: true });
+  // The hook runs the real Node floor before any gate.
+  copyFileSync(resolve(__dirname, '../../scripts/ci/node-floor.mjs'), join(repo, 'frontend/scripts/ci/node-floor.mjs'));
   writeFileSync(join(repo, 'ci/pipeline.sh'), stub(1));
   writeFileSync(join(repo, 'frontend/package-lock.json'), '{"lock":1}\n');
   writeFileSync(join(repo, '.gitignore'), 'node_modules/\n');
@@ -175,12 +178,13 @@ describe('ci/pipeline.sh --tier=push — opsec-scan and the commit-range gates, 
     const r = runPipeline(['--tier=push']);
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.cmds).toEqual([
+      'node scripts/ci/node-floor.mjs',
       'node scripts/ci/opsec-scan.mjs --all',
       'node scripts/ci/queue-ledger.mjs',
       'node scripts/ci/artifact-currency.mjs',
       'node scripts/ci/registry-append-only.mjs',
     ]);
-    expect(r.stdout).toMatch(/skipped \(push tier\): doc-currency, eslint, gate-shape, cli-guard, registry-dedupe, the unit suite, build, bundle byte budget/);
+    expect(r.stdout).toMatch(/skipped \(push tier\): doc-currency, eslint, gate-shape, registry-dedupe, the unit suite, build, bundle byte budget/);
   });
 
   it('control: the certify tier, under the same stubs, runs the offline core and no range gate', () => {

@@ -210,7 +210,7 @@ export function verdict(rows) {
   return { code: 0, lines };
 }
 
-if (process.argv[1] && resolve(process.argv[1]).endsWith('gate-census.mjs')) {
+if (import.meta.main) {
   const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
   let rows = census();
   const g = arg('--group');

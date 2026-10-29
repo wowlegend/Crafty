@@ -68,8 +68,8 @@ export function buildCard(src, targetW = OG_WIDTH, targetH = OG_HEIGHT) {
   return out;
 }
 
-// CLI at the bottom and guarded, so importing the seams above does not run the tool (cli-guard).
-if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+// CLI at the bottom and guarded, so importing the seams above does not run the tool.
+if (import.meta.main) {
   if (process.argv.includes('--check')) {
     if (!existsSync(TARGET)) {
       console.error(`make-og-image: ${TARGET} is missing — run this script without --check`);

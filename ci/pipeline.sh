@@ -101,6 +101,9 @@ step() { # step <name> <cmd...>
 
 cd "$APP"
 
+# Node 24.2+ before any step: below it every gate's import.meta.main guard is undefined and each gate passes unrun.
+node scripts/ci/node-floor.mjs || exit 1
+
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 # TIER: PUBLISH GUARD — runs FIRST in every tier. This repo is PUBLIC and Vercel auto-deploys every
 # push, so a leak is unrecoverable: force-push does not erase history on GitHub.
@@ -113,13 +116,12 @@ step "opsec-scan (a PUBLIC repo must not publish the operator machine)" node scr
 # The push runs none of it.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" = "push" ]; then
-  printf '\n\033[2m── skipped (push tier): doc-currency, eslint, gate-shape, cli-guard, registry-dedupe, the unit suite, build, bundle byte budget — CI runs them on this sha; `--tier=certify` runs them here\033[0m\n'
+  printf '\n\033[2m── skipped (push tier): doc-currency, eslint, gate-shape, registry-dedupe, the unit suite, build, bundle byte budget — CI runs them on this sha; `--tier=certify` runs them here\033[0m\n'
 fi
 if [ "$TIER" != "push" ]; then
   step "doc-currency (a canonical doc citing a path that no longer exists)" node scripts/ci/doc-currency.mjs
   step "eslint (crash-class bugs; no-unused-vars is an error)" npm run --silent lint
   step "gate-shape (no assertion satisfiable by a COMMENT)" node scripts/ci/gate-shape.mjs
-  step "cli-guard (an exporting script must not run its CLI on import)" node scripts/ci/cli-guard.mjs
   step "registry-dedupe (a registry id a merge left twice)" node scripts/ci/registry-dedupe.mjs --check
 fi
 if [ "$TIER" = "commit" ]; then

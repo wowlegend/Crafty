@@ -68,8 +68,6 @@
  */
 import { appendFileSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 /** The one required status check on main. ci-ok.mjs's job carries exactly this name. */
 export const REQUIRED_CHECK = 'ci ok';
@@ -180,7 +178,7 @@ export function scope({ event, payload, git, checkRuns, ref = '', runId = '' }) 
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (import.meta.main) {
   const event = process.env.GITHUB_EVENT_NAME || '';
   let payload = {};
   try {

@@ -316,10 +316,17 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
           for (const m of s.source.matchAll(/^\s*uniform\s+(float|vec3)\s+(\w+)\s*;/gm)) program.declared.set(m[2], m[1]);
         }
       }
-      getProgramParameter(program, pname) { return program.deleted ? null : pname === this.LINK_STATUS ? program.linked : null; }
-      getProgramInfoLog(program) { return program.deleted ? null : program.log; }
+      getProgramParameter(program, pname) { return this.lost || program.deleted ? null : pname === this.LINK_STATUS ? program.linked : null; }
+      getProgramInfoLog(program) { return this.lost || program.deleted ? null : program.log; }
       useProgram(program) { this.current = program; }
-      getUniformLocation(program, name) { return program.linked && program.declared.has(name) ? { program, name } : null; }
+      getUniformLocation(program, name) { return !this.lost && program.linked && program.declared.has(name) ? { program, name } : null; }
+      isContextLost() { return !!this.lost; }
+      // One extension object per context, as a browser returns; loseContext is what three's forceContextLoss calls.
+      getExtension(name) {
+        if (name !== 'WEBGL_lose_context') return null;
+        if (!this.loseExt) this.loseExt = { loseContext: () => { this.lost = true; } };
+        return this.loseExt;
+      }
       uniform(at, value) { at.program.values.set(at.name, value); }
       getUniform(program, at) {
         const v = program.values.get(at.name);
@@ -403,6 +410,55 @@ describe('prod-smoke: every shader program links, and the patched ones are drawn
     const gone = scene(only('title-gone', (p) => ({ ...p, fragment: broken(p.fragment) })));
     expect(gone.verdict.ok).toBe(false);
     expect(gone.verdict.line).toMatch(/^shader programs: 1 of 6 FAILED to link \(unwatched\): ERROR: 0:\d+: '#error a broken shader'/);
+  });
+
+  /**
+   * The title diorama on its own canvas, then the way R3F 9.5 unmounts it: forceContextLoss() (three asks
+   * WEBGL_lose_context for it), then the scene's disposal deletes each program on the lost context. `lose` picks how
+   * the context goes: 'page' through the extension, 'gpu' with no call from the page (a reset the browser did).
+   */
+  function titleThenScene({ lose = 'page', title = [basic, basic, basic], drawTitle = true } = {}) {
+    const Gl = fakeProgramGL();
+    const sink = {};
+    installProgramRecorder(WATCHED_PROGRAMS, Gl.prototype, sink);
+    const titleGl = new Gl();
+    const titlePrograms = title.map((p) => drawLikeThreeR172(titleGl, { ...p, draw: drawTitle }));
+    if (lose === 'page') titleGl.getExtension('WEBGL_lose_context').loseContext();
+    else titleGl.lost = true;
+    for (const program of titlePrograms) titleGl.deleteProgram(program);
+    const gl = new Gl();
+    drawLikeThreeR172(gl, { ...ocean, uniforms: oceanUniforms });
+    drawLikeThreeR172(gl, { ...terrain, uniforms: terrainUniforms });
+    drawLikeThreeR172(gl, { ...farRing, uniforms: { metalness: TERRAIN_SURFACE.metalness, roughness: 1 } });
+    const reading = readProgramLinks(WATCHED_PROGRAMS, sink);
+    return { reading, verdict: programVerdict(reading, WATCHED_PROGRAMS) };
+  }
+
+  it('a canvas the page discarded keeps the status its programs had at first use (the "5 of 89" flake)', () => {
+    const { reading, verdict } = titleThenScene();
+    expect(reading.filter((r) => r.retired).map((r) => r.linked)).toEqual([true, true, true]);
+    expect(verdict.ok, verdict.line).toBe(true);
+    expect(verdict.line).toBe('shader programs: all 6 linked (3 deleted before the read; 3 read at first use on a canvas the page discarded); drawn with their uniforms: ocean x1, terrain x1, far ring x1');
+  });
+
+  it('a broken shader on the discarded canvas still fails: its first-use status was false', () => {
+    const { verdict } = titleThenScene({ title: [basic, { ...basic, fragment: broken(basic.fragment) }] });
+    expect(verdict.ok).toBe(false);
+    expect(verdict.control).toBe(false);
+    expect(verdict.line).toMatch(/^shader programs: 1 of 5 FAILED to link \(unwatched\)/);
+  });
+
+  it('a context lost without the page asking is still COULD NOT CHECK', () => {
+    const { verdict } = titleThenScene({ lose: 'gpu' });
+    expect(verdict.ok).toBe(false);
+    expect(verdict.control).toBe(true);
+    expect(verdict.line).toBe('shader programs: COULD NOT CHECK — 3 of 6 gave no LINK_STATUS (a context lost without the page asking reads this way)');
+  });
+
+  it('a program the discarded canvas never drew is counted apart, never as linked', () => {
+    const { verdict } = titleThenScene({ drawTitle: false });
+    expect(verdict.ok, verdict.line).toBe(true);
+    expect(verdict.line).toBe('shader programs: 3 of 6 linked, 3 never drawn before the page discarded its canvas (3 deleted before the read); drawn with their uniforms: ocean x1, terrain x1, far ring x1');
   });
 
   it('an ocean never linked, or linked and never drawn, is COULD NOT CHECK, never a pass', () => {

@@ -27,8 +27,8 @@
 # growing a Crafty limb.
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 #
-# WHAT RUNS: `ci/pipeline.sh --tier=commit` — the static gates (opsec, doc-currency, eslint, gate-shape,
-# cli-guard) and the unit tests that statically import a staged file (`vitest related`). The full suite,
+# WHAT RUNS: `ci/pipeline.sh --tier=commit` — the static gates (opsec, doc-currency, eslint, gate-shape)
+# and the unit tests that statically import a staged file (`vitest related`). The full suite,
 # build and bundle budget run in CI on every sha (and by hand in `--tier=certify`), never in a hook
 # (DECISIONS 2026-10-28 item 24).
 # Deliberately NOT the network or browser gates: a registry outage reddening a commit teaches people to

@@ -16,8 +16,8 @@ import { sourceTexts } from './_srcWalk.js';
 // store flag the studio-card hooks SET, gating <LightMotes> off — NOT inferring from camera
 // position, and NOT piggybacking on `hudHidden` (which is about the HUD, not the scene).
 //
-// These gates are STATIC (source text) so they run GPU-free in CI; the puppeteer visual
-// gate covers the pixels (explore frames unchanged; the 3 studio frames lose the motes).
+// These gates are STATIC (source text) so they run GPU-free in CI; pixels are read on eye-level
+// lookbook frames.
 
 const SRC = resolve(process.cwd(), 'src');
 const store = () => readFileSync(resolve(SRC, 'store', 'useGameStore.jsx'), 'utf8');
