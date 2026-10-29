@@ -56,8 +56,9 @@ test('HOME and Mara a few degrees apart: both pips shown, no two labels overlap'
     const pp = window.useGameStore.getState().playerPosition;
     return { labels, pips, player: pp ? [pp.x, pp.z] : null };
   });
+  // The four hub NPCs stand around the Hearth, so several NPC pips can be on the strip; the posed one is the nearest to HOME.
   const home = strip.pips.find((p) => p.kind === 'home');
-  const npc = strip.pips.find((p) => p.kind === 'npc');
+  const npc = home && strip.pips.filter((p) => p.kind === 'npc').sort((a, b) => Math.abs(a.x - home.x) - Math.abs(b.x - home.x))[0];
   console.log(`compass-labels: ${strip.labels.length} labels shown ${JSON.stringify(strip.labels.map((l) => [l.text, Math.round(l.x), Math.round(l.right)]))}; pips ${JSON.stringify(strip.pips.map((p) => [p.kind, Math.round(p.x)]))}; player ${JSON.stringify(strip.player)}`);
   expect(home && npc, `SETUP: HOME and the NPC are not both on the strip: ${JSON.stringify(strip)}`).toBeTruthy();
   expect(Math.abs(home.x - npc.x), `SETUP: HOME and the NPC are not close on the strip: ${JSON.stringify({ home, npc })}`).toBeLessThan(12);
