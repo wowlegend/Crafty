@@ -12,8 +12,7 @@
 > | `memory/ACTIVE_PLAN.md` | The LIVE cursor — the one unit in flight right now | the registry (points here) |
 > | `memory/CHANGELOG.md` | History (reverse-chron). Append-only | current status |
 > | `memory/ARCHITECTURE.md` | The current code blueprint | status, plans |
-> | `SOTA-INITIATIVE.md` | DIRECTION / vision / the S-ladder | status (its §3 is FROZEN — see below) |
-> | `docs/superpowers/LOOP-CHARTER.md` | The loop's constitution (how it works) | what's next |
+> | `docs/superpowers/SOTA-INITIATIVE.md` | DIRECTION / vision / the S-ladder | status (its §3 is FROZEN — see below) |
 > | `docs/superpowers/KEVIN-REVIEW-BATCH.md` | Kevin's decision/eyeball queue | anything the loop can decide |
 > | `docs/superpowers/INDEX.md` | The MAP of every doc + its status tag | content |
 > | `docs/superpowers/{specs,plans}/` | Per-milestone design + build contracts | global status |
@@ -206,7 +205,7 @@ threw out 22 LOW / 15 MEDIUM / 6 HIGH as no-impact-or-wrong, and caught one agen
 Severity of survivors: **17 CRITICAL · 29 HIGH · 32 MEDIUM · 13 LOW.**
 
 **The 91 are not 91 pieces of work — they collapse into 8 root seams.** Fix the seam, not the symptom. Ordered
-by player impact. Each slice is RED-first and MUTATION-PROVEN (charter §3) — no exceptions.
+by player impact. Each slice is RED-first and MUTATION-PROVEN (CLAUDE.md, Invariants) — no exceptions.
 
 - ▣✓ **B1 — FIXED + SHIPPED `86c76d1` (2026-07-14).** Seam-extracted to `src/combat/targeting.js` (three tiers:
   PROTECTED `isNPC` = the questgivers, undamageable by anything, ever · NEUTRAL `passive` = livestock, killable
@@ -1119,7 +1118,7 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
 - ▢ **D3 [LOOP]** **Player/character** reads *monstrous* — `character-closeup.png` is a green box-man with **red
   eyes** (this game's own *hostile* marker) and **no arms**.
 - ▢ **D4 [LOOP]** **FPV viewmodel** — W2 specced *gloved hands*; verify against the live view, not the code.
-- Bounds: reference-lock first (charter §4), stay inside the S1-C bold-flat lock + coherence pillars P0–P5
+- Bounds: reference-lock first (`.claude/rules/game-code.md`), stay inside the S1-C bold-flat lock + coherence pillars P0–P5
   (below), judge IN-WORLD on the real grade, capture-verify, batch before/after to KEVIN-REVIEW.
 
 ### E. Gameplay depth (the 4 milestone levers — loop authority per the 2026-06-20 mandate)

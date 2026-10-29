@@ -1,4 +1,4 @@
-// _serve.mjs — shared vite + browser lifecycle for the visual probe scripts (charter §6.4 hygiene).
+// _serve.mjs — shared vite + browser lifecycle for the visual probe scripts (the hygiene rule in .claude/rules/gates-and-probes.md).
 //
 // Fixes the repo-wide probe-hygiene bug class (holistic review): probes spawned `npx vite` NON-detached and
 // killed it with `server.kill()`, which only reaps the npx WRAPPER and ORPHANS the forked vite child holding

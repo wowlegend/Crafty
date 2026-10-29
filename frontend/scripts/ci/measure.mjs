@@ -82,13 +82,9 @@ export function renderBlock(m) {
   const large = m.largeFiles.map((f) => `\`${f.file}\` ${f.loc}`).join(' · ');
   return [
     BEGIN,
-    `- **Size (measured):** **${m.srcFiles} source files / ${m.srcLoc.toLocaleString('en-US')} LOC** in`,
-    `  \`frontend/src\`, plus ${m.colocatedTestFiles} colocated \`*.test.js(x)\` files (counted separately —`,
-    `  tests are not the architecture).`,
-    `- **Files ≥ ${LARGE_FILE_LOC} LOC (${m.largeFiles.length}):** ${large || '_none_'}.`,
-    `  Its MEMBERSHIP is checked exactly by \`doc-currency\`; the LOC beside each name, and the counts above,`,
-    `  sit under a ±${Math.round(TOLERANCE * 100)}% band so ordinary churn does not redden the push — so a specific number here`,
-    `  can be mildly stale and still green. Regenerate before trusting one: \`node frontend/scripts/ci/measure.mjs --write\`.`,
+    `- **Size (measured):** **${m.srcFiles} source files / ${m.srcLoc.toLocaleString('en-US')} LOC** in \`frontend/src\`, plus ${m.colocatedTestFiles} colocated tests.`,
+    `- **Files ≥ ${LARGE_FILE_LOC} LOC (${m.largeFiles.length}):** ${large || '_none_'}. \`doc-currency\` checks the list exactly and the`,
+    `  numbers within ±${Math.round(TOLERANCE * 100)}%; regenerate before trusting one: \`node frontend/scripts/ci/measure.mjs --write\`.`,
     END,
   ].join('\n');
 }

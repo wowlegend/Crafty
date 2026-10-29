@@ -10,7 +10,7 @@ const PORT = probePort(import.meta.url);
 const URL = `http://localhost:${PORT}`;
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 // detached: vite runs in its OWN process group so the finally can SIGKILL the whole group; a plain
-// server.kill() only reaps the npx wrapper and ORPHANS the vite child still holding PORT (charter §6.4).
+// server.kill() only reaps the npx wrapper and ORPHANS the vite child still holding PORT (.claude/rules/gates-and-probes.md).
 const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', detached: true });
 let browser = null, code = 0;
 

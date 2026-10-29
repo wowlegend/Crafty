@@ -19,7 +19,7 @@
 # into a detached worktree first, and removed after.
 #
 # Escape hatch: `git push --no-verify`.
-# ⚠️ Using --no-verify to dodge a red gate is a reward-hack (LOOP-CHARTER §3). If a gate is genuinely
+# ⚠️ Using --no-verify to dodge a red gate is a reward-hack (CLAUDE.md, Invariants: never weaken to pass). If a gate is genuinely
 # wrong, FIX THE GATE in its own commit with a written justification. Do not route around it.
 
 set -e
@@ -56,7 +56,7 @@ export PUSH_RANGES="$RANGES"
 
 # ── mutation-proof trailer ──────────────────────────────────────────────────────
 # Cheap, and it runs FIRST: a commit that adds a gate without saying how it was proven to fail is rejected in
-# milliseconds. LOOP-CHARTER §3's rule has an enforcer.
+# milliseconds. The mutation-proof rule in CLAUDE.md has an enforcer.
 for RANGE in $RANGES; do
   node "$REPO_ROOT/frontend/scripts/ci/mutation-proof-trailer.mjs" "$RANGE" || exit 1
 done

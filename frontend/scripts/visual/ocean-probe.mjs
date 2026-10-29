@@ -17,7 +17,7 @@ mkdirSync(OUT, { recursive: true });
 // Same defect the capture harness had this morning: a fixed number standing in for a condition, and
 // failing quietly enough to misattribute the cause.
 const { waitReady, shutdown } = serveVite(PORT);
-// Hygiene (charter §6.4): the browser closes in a `finally` so a throw AFTER launch can't leak it, and the
+// Hygiene (.claude/rules/gates-and-probes.md): the browser closes in a `finally` so a throw AFTER launch can't leak it, and the
 // server group is SIGKILLed there too. process.exit() skips pending finally blocks, so we exit AFTER it.
 let browser = null, code = 0;
 try {

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sectionIds, itemIds, citations, unresolved, DOC_ALIASES } from '../../scripts/ci/doc-anchors.mjs';
+import { CANONICAL } from '../../scripts/ci/doc-currency.mjs';
 
 // Cross-doc `§` citations rot exactly like file paths, and doc-currency only ever checked paths. STATUS §G1
 // records that ONE stale line in the charter "regenerated a week-sized proposal"; a dangling § pointer is
@@ -93,14 +94,15 @@ describe('against the REAL canonical docs', () => {
     }
   });
 
-  it('the charter really defines the sections the kernel cites most', () => {
-    const ids = sectionIds(read(DOC_ALIASES.charter));
-    for (const s of ['3', '6.4', '6.5', '8']) expect(ids, `charter §${s}`).toContain(s);
+  it('STATUS really defines the sections the docs cite most', () => {
+    const ids = sectionIds(read(DOC_ALIASES.status));
+    for (const s of ['2', '3', 'g-ledger']) expect(ids, `STATUS §${s}`).toContain(s);
     expect(ids.has('crafty'), 'the document TITLE must not read as a section').toBe(false);
   });
 
   it('finds a non-trivial number of citations across the canonical set', () => {
-    const all = Object.values(DOC_ALIASES).map(read).join('\n');
+    // The set doc-currency's section check reads, not only the aliased docs.
+    const all = CANONICAL.map(read).join('\n');
     expect(citations(all).length).toBeGreaterThan(5);
   });
 });

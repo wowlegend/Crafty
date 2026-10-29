@@ -14,7 +14,7 @@
  *   1. Each known chunk stays within its byte budget (catches a dependency blowing up the bundle).
  *   2. three / rapier / r3f stay in SEPARATE chunks (the cache-stability property manualChunks exists for).
  *
- * MUTATION-PROOF (per LOOP-CHARTER §3 — a gate you have not seen fail is not a gate):
+ * MUTATION-PROOF (a gate you have not seen fail is not a gate):
  *   Add `import * as THREE from 'three'` to an entry module, rebuild → manualChunks buckets the pulled
  *   three modules into the `three` chunk, which blows its budget → RED.
  *   Remove `manualChunks` from vite.config.js, rebuild → the split assertion → RED.
@@ -28,7 +28,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(HERE, '../../build/assets'); // vite.config.js -> build.outDir = 'build'
 
 // Budgets are the measured 2026-07-13 sizes + ~8% headroom. Tightening them is a deliberate act;
-// RAISING one to make a red build go green is a reward-hack and is forbidden (LOOP-CHARTER §3).
+// RAISING one to make a red build go green is a reward-hack and is forbidden (CLAUDE.md, Invariants).
 const BUDGETS = [
   { name: 'rapier', max: 2_420_000, actualAtWrite: 2_236_813 }, // WASM physics — the giant, and it is inert
   // The ceiling keeps about 72 KB of headroom over the chunk without N8AO (DECISIONS 2026-10-28 item 29).
@@ -201,7 +201,7 @@ if (mergeHolders.length) {
 if (failed) {
   console.error(
     `\n✘ bundle-budget FAILED.` +
-      `\n  Do NOT raise a budget to make this green — that is a reward-hack (LOOP-CHARTER §3).` +
+      `\n  Do NOT raise a budget to make this green — that is a reward-hack (CLAUDE.md, Invariants).` +
       `\n  Find what grew. If the growth is genuinely intended, raise the budget in a SEPARATE commit` +
       `\n  whose body says what grew and why.`,
   );
