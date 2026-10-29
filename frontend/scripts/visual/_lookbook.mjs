@@ -114,6 +114,143 @@ export function eyeShotPlan(headings = EYE_HEADINGS, cycles = LOOKBOOK_CYCLES) {
 }
 
 /**
+ * THE MATERIAL SET (opt-in, `--sets material`): the block surfaces the material grammar changes, seen at the player's
+ * eye with the hands and the HUD on. Two sights, each found in the live world's own mesh near the Hearth:
+ *   turf-wall  the side of a grass hill (a grass block over exposed dirt, else a one-block grass step), where the
+ *              tiles' top / side roles show as a turf lip over a dirt wall;
+ *   trunk      the side of a tree trunk (wood, at least three blocks tall), where bark replaces end-grain rings.
+ * The player is stood MATERIAL_STAND_M in front of the face on the ground it rises from, with a clear line to it, and
+ * turned to look at it.
+ */
+export const MATERIAL_SIGHT_KINDS = Object.freeze(['turf-wall', 'trunk']);
+export const MATERIAL_STAND_M = 3.5;
+/** The outpost's buildings ring the Hearth out to about 15 m (world/hubLayout.js) and are not in the terrain mesh, so
+ *  the finder cannot see them in a sight line: sights are taken from at least this far out. */
+export const MATERIAL_MIN_M = 20;
+
+/** Every material shot, sight-major (one stand per sight): [{ kind, cycle, file }]. */
+export function materialShotPlan(kinds = MATERIAL_SIGHT_KINDS, cycles = LOOKBOOK_CYCLES) {
+  const out = [];
+  for (const kind of kinds) for (const c of cycles) out.push({ kind, cycle: c, file: `${kind}-${c.toFixed(2)}.png` });
+  return out;
+}
+
+/**
+ * The compass bearing (HUD convention: 0 north = -Z, 90 east = +X) and pitch (degrees, up positive) that point an
+ * eye at `eye` toward `target`.
+ */
+export function aimAt(eye, target) {
+  const dx = target[0] - eye[0], dz = target[2] - eye[2];
+  const heading = ((Math.atan2(dx, -dz) * 180) / Math.PI + 360) % 360;
+  const pitch = (Math.atan2(target[1] - eye[1], Math.hypot(dx, dz)) * 180) / Math.PI;
+  return { heading, pitch };
+}
+
+/**
+ * The nearest turf-wall and trunk sights to `from` (the Hearth stand, [x, y, z]) in a set of chunk meshes, or null
+ * for a kind with none between `minM` and `maxM` of it. `chunks`: [{ cx, cz, meshData: { positions, normals, colors } }] (the shape of
+ * the store's debugChunks); omitted, it reads them from the page (`window.useGameStore`), so this runs unchanged
+ * through Playwright's page.evaluate. It therefore reads nothing from module scope: every input arrives in `arg`.
+ *
+ * Read from the mesh: a side quad is a wall face (its block in colour.r); a +Y quad marks a column's ground at its
+ * height. A sight's stand column must have ground exactly at the wall's base, and every column from the face to the
+ * stand must be clear of blocks over the 2 m above that base.
+ */
+export function findMaterialSights(arg) {
+  const { from, ids = { grass: 1, dirt: 2, wood: 6 }, standM = 3.5, minM = 0, maxM = 40, chunkSize = 16 } = arg;
+  const list = arg.chunks || Object.values(window.useGameStore.getState().debugChunks || {});
+  const sides = [];
+  const tops = new Map();
+  const key = (x, z) => `${x},${z}`;
+  for (const c of list) {
+    const m = c.meshData || c;
+    const P = m.positions, N = m.normals, C = m.colors;
+    if (!P || !N || !C) continue;
+    const ox = c.cx * chunkSize, oz = c.cz * chunkSize;
+    for (let v = 0; v + 4 <= P.length / 3; v += 4) {
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (let k = 0; k < 4; k++) {
+        const i = (v + k) * 3;
+        x0 = Math.min(x0, P[i] + ox); x1 = Math.max(x1, P[i] + ox);
+        y0 = Math.min(y0, P[i + 1]); y1 = Math.max(y1, P[i + 1]);
+        z0 = Math.min(z0, P[i + 2] + oz); z1 = Math.max(z1, P[i + 2] + oz);
+      }
+      const nx = N[v * 3], ny = N[v * 3 + 1], nz = N[v * 3 + 2];
+      if (ny > 0.5) {
+        for (let x = Math.round(x0); x < Math.round(x1); x++) {
+          for (let z = Math.round(z0); z < Math.round(z1); z++) {
+            const k = key(x, z);
+            if (!tops.has(k)) tops.set(k, []);
+            tops.get(k).push(Math.round(y1));
+          }
+        }
+      } else if (ny >= -0.5) {
+        sides.push({ block: Math.round(C[v * 3]), nx: Math.round(nx), nz: Math.round(nz),
+          x0: Math.round(x0), x1: Math.round(x1), y0: Math.round(y0), y1: Math.round(y1), z0: Math.round(z0), z1: Math.round(z1) });
+      }
+    }
+  }
+  const groundAt = (x, z) => tops.get(key(Math.floor(x), Math.floor(z))) || [];
+  const clearAbove = (x, z, base) => !groundAt(x, z).some((t) => t > base && t <= base + 2);
+  // Vertical vertex AO splits one wall face into several quads, so the face is read per column of its plane: every
+  // side quad's [y0, y1] is filed under (direction, plane, column along the face).
+  const planeOf = (q) => (q.nx !== 0 ? q.x0 : q.z0);
+  const spanOf = (q) => (q.nx !== 0 ? [q.z0, q.z1] : [q.x0, q.x1]);
+  const columns = new Map();
+  for (const q of sides) {
+    const [a0, a1] = spanOf(q);
+    for (let a = a0; a < a1; a++) {
+      const k = `${q.nx},${q.nz},${planeOf(q)},${a}`;
+      if (!columns.has(k)) columns.set(k, []);
+      columns.get(k).push(q);
+    }
+  }
+  const below = (q, a, y) => (columns.get(`${q.nx},${q.nz},${planeOf(q)},${a}`) || []).find((d) => d.y1 === y);
+  const above = (q, a, y, block) => (columns.get(`${q.nx},${q.nz},${planeOf(q)},${a}`) || []).find((d) => d.y0 === y && d.block === block);
+  // The point on the face at its centre column, and the stand point in front of it on the wall's base.
+  const frame = (q, a, targetY, base) => {
+    const target = q.nx !== 0 ? [q.x0, targetY, a + 0.5] : [a + 0.5, targetY, q.z0];
+    const stand = [target[0] + q.nx * standM, base, target[2] + q.nz * standM];
+    if (!groundAt(stand[0], stand[2]).includes(base)) return null;
+    for (let s = 0.5; s <= standM; s += 0.25) {
+      if (!clearAbove(target[0] + q.nx * s, target[2] + q.nz * s, base)) return null;
+    }
+    const rangeM = Math.hypot(stand[0] - from[0], stand[2] - from[2]);
+    if (!(rangeM >= minM && rangeM <= maxM)) return null;
+    const span = spanOf(q);
+    return { target, stand, ground: base, normal: [q.nx, 0, q.nz], span: span[1] - span[0], rangeM };
+  };
+  const candidates = { 'turf-wall': [], trunk: [] };
+  for (const q of sides) {
+    const [a0, a1] = spanOf(q);
+    const a = Math.floor((a0 + a1) / 2);
+    if (q.block === ids.grass) {
+      const under = below(q, a, q.y0);
+      let base = q.y0;
+      for (let d = under; d; d = below(q, a, d.y0)) base = d.y0;
+      const hill = !!under && under.block === ids.dirt;
+      const f = frame(q, a, q.y0 + 0.5, base);
+      if (f) candidates['turf-wall'].push({ kind: 'turf-wall', form: hill ? 'hill' : 'step', ...f, rank: [hill ? 0 : 1, f.span >= 2 ? 0 : 1] });
+    } else if (q.block === ids.wood && !(below(q, a, q.y0)?.block === ids.wood)) {
+      let top = q.y1;
+      for (let u = above(q, a, top, ids.wood); u; u = above(q, a, top, ids.wood)) top = u.y1;
+      if (top - q.y0 < 3) continue;
+      const f = frame(q, a, q.y0 + 1.5, q.y0);
+      if (f) candidates.trunk.push({ kind: 'trunk', form: 'trunk', ...f, height: top - q.y0, rank: [0, 0] });
+    }
+  }
+  const order = (a, b) => a.rank[0] - b.rank[0] || a.rank[1] - b.rank[1] || a.rangeM - b.rangeM
+    || a.stand[0] - b.stand[0] || a.stand[2] - b.stand[2];
+  const pick = (list) => {
+    const best = [...list].sort(order)[0];
+    if (!best) return null;
+    const { rank, ...sight } = best;
+    return sight;
+  };
+  return { 'turf-wall': pick(candidates['turf-wall']), trunk: pick(candidates.trunk) };
+}
+
+/**
  * THE WALKING CLIPS: W held for 4 s from the Hearth along one bearing, a real key through the browser's input
  * pipeline, once per programme time. Bearing 180 crosses open plains for at least 48 m, while forest starts 12 to 20 m
  * out on bearings 150 to 165, to the left of the view (world/climate.js surfaceBlockAt, seed 12345): an open path with
@@ -477,6 +614,7 @@ export function contactSheetHtml(report) {
     };
     const figs = (t.shots || []).map((s) => figure(s, s.place, `${s.place} at ${s.cycle}`)).join('\n');
     const eye = (t.eye || []).map((s) => figure(s, `eye, facing ${s.heading}`, `eye level facing ${s.heading} at ${s.cycle}`)).join('\n');
+    const material = (t.material || []).map((s) => figure(s, `${s.kind}, eye level`, `${s.kind} at eye level at ${s.cycle}`)).join('\n');
     const clips = (t.clips || []).map((c) => {
       const src = `${esc(t.id)}/${esc(c.file)}`;
       const facts = [`cycle ${esc(c.cycle)}`, `facing ${esc(c.heading)}`, `walked ${esc(Number(c.movedM).toFixed(1))} m`, `${esc(c.frames)} frames`].join(' · ');
@@ -487,7 +625,7 @@ export function contactSheetHtml(report) {
     const sub = (title, body) => (body ? `<h3>${title}</h3><div class="grid">${body}</div>` : '');
     return `<section><h2>${esc(t.id)}</h2><p class="gl">${esc(t.engine)} · GL renderer: <code>${esc(t.renderer)}</code> (${esc(t.gpu)})` +
       `${t.launch ? ` · launch ${esc(t.launch)}` : ''}${t.entry ? ` · entered play by ${esc(t.entry)}` : ''}</p>${gpuNote}${notes}` +
-      `${sub('Hero shots', figs)}${sub('Eye level, hands and HUD on', eye)}${sub('Walking, real input', clips)}</section>`;
+      `${sub('Hero shots', figs)}${sub('Eye level, hands and HUD on', eye)}${sub('Material sights, eye level', material)}${sub('Walking, real input', clips)}</section>`;
   }).join('\n');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

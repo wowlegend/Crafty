@@ -2,7 +2,7 @@
 // goes near-monochrome at obsidian (the boss sky). LUMINANCE-PRESERVING — no darkening — so dusk stays
 // readable; the per-mood LIGHTING sets brightness. Gentle at dusk (mood <= 1), strong only at obsidian (1 -> 2).
 //
-// ONE definition, spliced by the terrain (world/Terrain.jsx) and the far field beyond it (world/FarField.jsx).
+// ONE definition, spliced by the terrain (world/terrainMaterial.js) and the far field beyond it (world/FarField.jsx).
 // Moved out of Terrain.jsx for QUEUE R3.7: the far horizon kept its full daytime colour in the boss fight while
 // the land in front of it went grey — a seam exactly where the two meet, in the one scene that matters most.
 //

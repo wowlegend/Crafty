@@ -238,9 +238,11 @@ describe('cloud shadows on the terrain — the sun\'s light only', () => {
 
   it('the terrain AND the far field splice it after lights_fragment_end and feed the shared clock and the resolved sun (weak, structural)', () => {
     // Two materials since QUEUE R3.7: a far horizon without the shadows the land in front of it wears is a seam.
+    // The near terrain's splice is in its material module; its per-frame writes are in Terrain.jsx.
+    const splicedBy = ['world/FarField.jsx', 'world/terrainMaterial.js'];
     const both = ['world/FarField.jsx', 'world/Terrain.jsx'];
-    expect(carriersOf(/CLOUD_SHADOW_GLSL\.decl\b/).sort()).toEqual(both);
-    expect(carriersOf(/'#include <lights_fragment_end>',\s*`\s*#include <lights_fragment_end>\s*\$\{CLOUD_SHADOW_GLSL\.apply\}/).sort()).toEqual(both);
+    expect(carriersOf(/CLOUD_SHADOW_GLSL\.decl\b/).sort()).toEqual(splicedBy);
+    expect(carriersOf(/'#include <lights_fragment_end>',\s*`\s*#include <lights_fragment_end>\s*\$\{CLOUD_SHADOW_GLSL\.apply\}/).sort()).toEqual(splicedBy);
     expect(carriersOf(/uniforms\.uTime\.value = frameElapsed\(state\.clock\.elapsedTime\)/).sort()).toEqual(both);
     // The sun direction is RESOLVED once, in Atmosphere (mood, arc, the capture pin); both materials read it.
     expect(carriersOf(/uniforms\.uSunDir\.value\.copy\(sunDirRef\.current\)/).sort()).toEqual(both);

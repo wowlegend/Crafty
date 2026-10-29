@@ -375,6 +375,8 @@ it('the soft disc mirror is 1 at the centre, 0 at the rim, and monotone', () => 
 
 Ships last among the title units, and is independently droppable. If the material-grammar lane (roadmap 9) has already extracted a terrain material factory, Steps 1-4 become "consume theirs".
 
+**Amended 2026-10-28 (W2-K):** the material-grammar lane moved the material to `src/world/terrainMaterial.js` as an exported SINGLETON (`terrainMaterial`), not the per-call factory below, and `tests/gates/terrain-shader-patch-gates.test.js` imports that singleton. Do not create the file: turn the singleton into the factory this unit needs (per-instance uniforms and `userData.shader`), keep `terrainMaterial` exported as the world's instance, and re-point that gate in the same commit.
+
 **Files:**
 - Create: `src/world/terrainMaterial.js` (`createTerrainMaterial()`, MOVED from `src/world/Terrain.jsx:47-251`: the material, the injected uniforms at `:56-67`, `compileShader`, and the GLSL constants and tint uniforms at `:236-245` together with `opaqueMaterial.onBeforeCompile` at `:246-251`, whose `userData.shader` write becomes per-instance)
 - Modify: `src/world/Terrain.jsx` (consumes the factory; `.claude/rules/voxel-mesher.md` applies, so read it first)

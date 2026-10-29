@@ -13,8 +13,8 @@
 // the palette IS the product.)
 //
 // The engine's id space is defined by the worker: `terrain.worker.js` BLOCK_COLORS keys, and
-// `proceduralTextures.js` builds an array texture where **layer index == block code** (numLayers = 16).
-// So ids 0..15 are the ENTIRE supported space. Anything outside it cannot be rendered, and must not be
+// `proceduralTextures.js` builds an array texture where **layer index == block code**, with the face variants
+// above the ids (`materialGrammar.js`). So ids 0..15 are the ENTIRE supported space. Anything outside it cannot be rendered, and must not be
 // silently substituted — it must be refused.
 //
 // Rule from here on: there is ONE table. Both directions are derived from it. They cannot drift.

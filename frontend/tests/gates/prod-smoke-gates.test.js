@@ -176,6 +176,12 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
   const source = createProceduralVoxelTextures();
   const dims = { size: source.image.width, layers: source.image.depth };
   const expected = { ...dims, chain: source.mipmaps };
+  // The verdict's counts, read off the texture the source builds, so a layer added to the array moves them with it.
+  const DIMS = `${dims.size}x${dims.size}x${dims.layers}`;
+  const layerBytes = dims.size * dims.size * 4;
+  const DRAWN = Array.from({ length: dims.layers }, (_, l) => source.image.data.subarray(l * layerBytes, (l + 1) * layerBytes))
+    .filter((slice) => slice.some((b) => b !== 0)).length;
+  const CHAIN_BYTES = source.mipmaps.reduce((sum, m) => sum + m.data.length, 0).toLocaleString('en-US');
 
   /** Upload each texture into one fake context through the recorder, then read the block array back. */
   function gpu(textures, opts) {
@@ -197,7 +203,8 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
     const { reading, restored } = gpu([source]);
     const v = mipVerdict(reading, expected);
     expect(v.ok, v.line).toBe(true);
-    expect(v.line).toBe('block texture mips: 6 levels on the GPU (NEAREST_MIPMAP_LINEAR), every level filled in all 15 drawn layers, all 87,360 bytes equal the chain the source builds');
+    expect(DRAWN, 'SETUP: every layer but air is drawn').toBe(dims.layers - 1);
+    expect(v.line).toBe(`block texture mips: 6 levels on the GPU (NEAREST_MIPMAP_LINEAR), every level filled in all ${DRAWN} drawn layers, all ${CHAIN_BYTES} bytes equal the chain the source builds`);
     expect(restored).toBe(true);
   });
 
@@ -211,7 +218,7 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
     const v = mipVerdict({ ...readBlockTextureArray(dims, sink.__craftySmokeArrays || []), worldBuilt: true }, expected);
     expect(v.ok).toBe(false);
     expect(v.control).toBe(true);
-    expect(v.line).toMatch(/COULD NOT CHECK — no 32x32x16 TEXTURE_2D_ARRAY was allocated by texStorage3D \(arrays seen: none; spawn chunk loaded: true\)/);
+    expect(v.line).toContain(`COULD NOT CHECK — no ${DIMS} TEXTURE_2D_ARRAY was allocated by texStorage3D (arrays seen: none; spawn chunk loaded: true)`);
   });
 
   it('the chain cut to level 0, in the source as well, fails on the level count', () => {
@@ -224,7 +231,7 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
   it('levels allocated and never filled fail as EMPTY, at level 1', () => {
     const v = mipVerdict(gpu([source], { fillLevels: 1 }).reading, expected);
     expect(v.ok).toBe(false);
-    expect(v.line).toMatch(/^block texture mips: level 1 is EMPTY on the GPU in 15 of the 15 drawn layers/);
+    expect(v.line.startsWith(`block texture mips: level 1 is EMPTY on the GPU in ${DRAWN} of the ${DRAWN} drawn layers`), v.line).toBe(true);
   });
 
   it('one empty layer at one level fails and names it', () => {
@@ -233,7 +240,7 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
     holed[3].data.fill(0, 5 * n * n * 4, 6 * n * n * 4);
     const v = mipVerdict(gpu([withMips(holed)]).reading, expected);
     expect(v.ok).toBe(false);
-    expect(v.line).toBe('block texture mips: level 3 is EMPTY on the GPU in 1 of the 15 drawn layers (5)');
+    expect(v.line).toBe(`block texture mips: level 3 is EMPTY on the GPU in 1 of the ${DRAWN} drawn layers (5)`);
   });
 
   it("a byte-space chain (what the GPU's generateMipmap computes) fails on the bytes", () => {
@@ -256,7 +263,7 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
     });
     const v = mipVerdict(gpu([withMips(byteSpace)]).reading, expected);
     expect(v.ok).toBe(false);
-    expect(v.line).toMatch(/^block texture mips: level 1: \d+ of 16384 bytes on the GPU differ from the chain the source builds/);
+    expect(v.line).toMatch(new RegExp(`^block texture mips: level 1: \\d+ of ${source.mipmaps[1].data.length} bytes on the GPU differ from the chain the source builds`));
   });
 
   it('a minify filter that reads level 0 alone fails, whatever the levels hold', () => {
@@ -268,7 +275,7 @@ describe('prod-smoke: the block texture mip chain reaches the GPU', () => {
   it('two block-sized arrays, or a reader that saw nothing at level 0, are COULD NOT CHECK', () => {
     const twice = mipVerdict(gpu([source, source]).reading, expected);
     expect(twice.ok).toBe(false);
-    expect(twice.line).toMatch(/2 32x32x16 arrays were allocated; cannot tell which is the block texture/);
+    expect(twice.line).toContain(`2 ${DIMS} arrays were allocated; cannot tell which is the block texture`);
     const { reading } = gpu([source]);
     const blind = mipVerdict({ ...reading, levels: reading.levels.map((l) => l.map(() => 0)) }, expected);
     expect(blind.ok).toBe(false);

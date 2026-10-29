@@ -833,9 +833,10 @@ material is patched in place), no new light, no new pass; `gpu-cost-probe` must 
   (flame and emitter cases), `frontend/tests/e2e/block-light.spec.js` (test 3), `frontend/tests/e2e/touch-controls.spec.js:117,133`
   (amendment 4: the literal 9 becomes the rendered `HOTBAR_BLOCKS.length`)
 - **Preconditions (amendments 13 and 14):** move 4 has landed (`render/bloomGrammar.js` exports `BLOOM_THRESHOLD`,
-  and `GameScene.jsx` reads it), and move 9 has landed (`world/materialGrammar.js` exports `BLOCK_LAYER_COUNT`,
-  `TEXTURE_LAYER_COUNT` and the tone table). If either is missing, stop and re-plan this unit. Do not build the
-  flame against the 0.65 threshold or the tile outside the grammar.
+  and `GameScene.jsx` reads it), and move 9 has landed (`world/materialGrammar.js` exports `BLOCK_LAYER_COUNT` and
+  `TEXTURE_LAYER_COUNT`, both derived from `BLOCK_ID`, and `world/proceduralTextures.js` exports the tone table,
+  `MATERIAL_TONES`). If either is missing, stop and re-plan this unit. Do not build the flame against the 0.65
+  threshold or the tile outside the grammar.
 
 **Interfaces:**
 - Produces: `BLOCK_ID.lantern = 16`; `EMITTER_LEVEL = { [BLOCK_ID.lantern]: 15 }`;
@@ -888,7 +889,9 @@ material is patched in place), no new light, no new pass; `gpu-cost-probe` must 
 
 - [ ] **Step 5: Kill the mutants:**
   - K1 `EMITTER_LEVEL` lantern -> 0 -> emitter case RED (and the e2e ring)
-  - K2 `numLayers` left at 16 -> "the layer count covers the ENTIRE block-id space" RED
+  - K2 (void after move 9: `numLayers` is `TEXTURE_LAYER_COUNT`, `proceduralTextures.js:253`, so there is no literal
+    to leave) `BLOCK_LAYER_COUNT` written as the literal 16 in `materialGrammar.js` -> `proceduralTextures.test.js`'s
+    depth case (block ids plus variants) and `material-grammar-gates`' derivation case RED
   - K3 the flame mask inverted -> flame-mask case RED
   - K4 the zh-CN entry dropped -> `tests/i18n/i18n.test.js` coverage RED
   - K5 plausible-wrong: flame on layer 15 (glass) -> generated-constants case RED

@@ -2,16 +2,18 @@ import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
 import { BLOCK_ID } from '../../src/world/blockIds.js';
+import { TEXTURE_LAYER_COUNT, FACE_VARIANTS } from '../../src/world/materialGrammar.js';
 
 // The invariants the terrain relies on: layer index == block code, square REPEAT tiles, and the filtering that keeps
 // texels crisp up close and stops them sparkling at distance.
 describe('procedural voxel textures — the invariants the terrain relies on', () => {
   const tex = createProceduralVoxelTextures();
 
-  // Layer index == block code, so the array grows with the id space (asserted against blockIds.js below).
-  it('is a 16-layer array texture (blockType 0..9 + ore tiles 10..13 + cobblestone 14 + glass 15)', () => {
+  // Layer index == block code, then the face variants (materialGrammar.js), so the array grows with the id space.
+  it('is an array texture of the block id space plus the face variants (16 + 3 today)', () => {
     expect(tex.isCompressedArrayTexture).toBe(true);
-    expect(tex.image.depth).toBe(16);
+    expect(tex.image.depth).toBe(TEXTURE_LAYER_COUNT);
+    expect(tex.image.depth).toBe(Math.max(...Object.values(BLOCK_ID)) + 1 + FACE_VARIANTS.length);
   });
 
   it('the layer count covers the ENTIRE block-id space (layer index == block code)', () => {

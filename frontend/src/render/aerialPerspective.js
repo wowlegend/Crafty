@@ -1,7 +1,7 @@
 // aerialPerspective.js — the distance haze the land takes on (S2 aerial perspective): distant land desaturates
 // and hazes toward the sky's horizon colour, so far hills read as atmospheric DEPTH rather than a dark wall.
 //
-// ONE definition, read by the terrain (world/Terrain.jsx) and the far field beyond it (world/FarField.jsx).
+// ONE definition, read by the terrain (world/terrainMaterial.js) and the far field beyond it (world/FarField.jsx).
 // Moved out of Terrain.jsx when the far field arrived: two materials hazing the same hills by two copies of
 // the arithmetic is a seam waiting to happen where the loaded terrain meets the far field.
 //

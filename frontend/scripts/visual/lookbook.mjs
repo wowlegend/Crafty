@@ -26,7 +26,9 @@
  *          `cleared`): left alone, they hold melee range at the Hearth and the frame is a mob at arm's length;
  *   clips  Chromium only: holds W for 4 s from the Hearth at each time, a real key through the browser's input
  *          pipeline, recorded with Playwright's screencast and encoded to mp4 with ffmpeg;
- *   hero   for each of four places, pins the camera above it and shoots the programme's four times of day.
+ *   hero   for each of four places, pins the camera above it and shoots the programme's four times of day;
+ *   material  (opt-in, not in the default) stands the player in front of a grass hill's side and a tree trunk found
+ *          in the live mesh near the Hearth (_lookbook.mjs findMaterialSights) and looks at each, at each time.
  * The clock keeps running, so before each shot it sets the time, lets the sky settle, sets it again and shoots, and
  * records where the clock actually was. Every shot and clip also records timer-query ms per pass over its window
  * (src/render/passTimer.js, EXT_disjoint_timer_query_webgl2: Chromium only; WebKit says it cannot time). Those are not
@@ -88,6 +90,7 @@ import {
   servedBuildProblem, CYCLE_TOLERANCE, PASS_ARMS, PASS_TIMES, PASS_REPS, PASS_TARGET, PASS_LOOK_PAIRS, PASS_MAX_LOAD,
   passWindowPlan, windowMedian, passDifferential, passVerdict, admittedInstruments, PASS_CONTROL, parseGpuUtil, gpuMsPerFrame,
   altDifferential,
+  MATERIAL_SIGHT_KINDS, MATERIAL_STAND_M, MATERIAL_MIN_M, materialShotPlan, findMaterialSights, aimAt,
 } from './_lookbook.mjs';
 
 const PORT = probePort(import.meta.url);
@@ -115,8 +118,8 @@ const PASS_TIMES_RUN = (() => {
 const HEADED = flag('--headed');
 const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
-const SETS_KNOWN = ['hero', 'eye', 'clips'];
-const SETS = arg('--sets', SETS_KNOWN.join(',')).split(',');
+const SETS_KNOWN = ['hero', 'eye', 'clips', 'material'];
+const SETS = arg('--sets', 'hero,eye,clips').split(',');
 // --cycles: the times to shoot (dawn-origin fractions), for a before/after at hours the programme's four do not cover.
 let CYCLES;
 try {
@@ -345,7 +348,8 @@ async function holdActive(page) {
 
 async function shootTarget(target, launchOpts, launchId) {
   const report = { id: target.id, engine: target.engine, launch: launchId, renderer: null, gpu: 'unknown', entry: null,
-    shots: [], eye: [], clips: [], stand: null, hands: null, notes: [], respawns: 0, console: {}, pageErrors: [] };
+    shots: [], eye: [], clips: [], material: [], sights: null, stand: null, hands: null, notes: [], respawns: 0, console: {},
+    pageErrors: [] };
   const dir = join(OUT, target.id);
   mkdirSync(dir, { recursive: true });
   const b = await launch(target.engine, launchOpts);
@@ -413,7 +417,7 @@ async function shootTarget(target, launchOpts, launchId) {
 
     // The eye set and the clips go first: after the hero set's night shots, the night's mobs crowd the player at the
     // Hearth and the eye frames show a mob at arm's length instead of the world.
-    if (SETS.includes('eye') || (SETS.includes('clips') && target.engine === 'chromium')) {
+    if (SETS.includes('eye') || SETS.includes('material') || (SETS.includes('clips') && target.engine === 'chromium')) {
       report.hands = await handsBaseline(page);
       await respawnIfDead(page, report);
       report.stand = await restingBody(page);
@@ -482,6 +486,45 @@ async function shootTarget(target, launchOpts, launchId) {
         start: { body: start.body, cycle: start.cycle, heading: start.heading, hostiles: start.hostiles },
         end: { body: end.body, cycle: end.cycle, heading: end.heading, isAlive: end.isAlive, hostiles: end.hostiles },
         passMs });
+    }
+
+    if (SETS.includes('material') && report.stand) {
+      report.sights = await page.evaluate(findMaterialSights, { from: report.stand, standM: MATERIAL_STAND_M, minM: MATERIAL_MIN_M });
+      for (const kind of MATERIAL_SIGHT_KINDS) {
+        if (!report.sights[kind]) report.notes.push(`COULD NOT MEASURE the ${kind} sight: none in the loaded mesh near the Hearth`);
+      }
+    }
+    let lastMaterialCycle = null;
+    for (const shot of report.sights ? materialShotPlan(MATERIAL_SIGHT_KINDS.filter((k) => report.sights[k]), CYCLES) : []) {
+      const t0 = Date.now();
+      const sight = report.sights[shot.kind];
+      await respawnIfDead(page, report);
+      // Dropped a little above its ground, the body settles onto it; the verdict compares where it came to rest.
+      await page.evaluate((p) => window.__craftyLookbook.stand(p), { position: [sight.stand[0], sight.ground + 1.5, sight.stand[2]] });
+      const rest = await restingBody(page);
+      const aim = aimAt((await info(page)).eye, sight.target);
+      await page.evaluate((a) => window.__craftyLookbook.look(a), { heading: aim.heading, pitch: aim.pitch });
+      if (shot.cycle !== lastMaterialCycle) {
+        await setCycle(page, shot.cycle);
+        await delay(SETTLE_MS);
+        lastMaterialCycle = shot.cycle;
+      }
+      const cleared = await clearHostiles(page);
+      await play(page);
+      await setCycle(page, shot.cycle);
+      await passTimes(page, { reset: true });
+      await delay(EYE_FRAME_MS);
+      const before = await info(page);
+      const hud = await hudOn(page);
+      await page.screenshot({ path: join(dir, shot.file) });
+      const after = await info(page);
+      const pt = await passTimes(page);
+      const v = eyeShotVerdict({ cycle: shot.cycle, heading: aim.heading, stand: [sight.stand[0], sight.ground, sight.stand[2]], before, after,
+        handsBaseline: report.hands?.hidden, hud });
+      if (!rest) v.why.push('the body never came to rest at the sight');
+      report.material.push({ ...shot, valid: v.valid && !!rest, why: v.why, ...facts(after, t0, pt), hud, sight, aim, rest,
+        headingAtShot: after.heading, pitch: after.pitch, eye: after.eye, body: after.body, cameraNodes: after.cameraNodes,
+        hostiles: after.hostiles, cleared });
     }
 
     for (const place of SETS.includes('hero') ? LOOKBOOK_PLACES : []) {

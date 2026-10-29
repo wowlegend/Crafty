@@ -12,7 +12,7 @@ const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
 // dead and was removed. This gate guards against its REINTRODUCTION (a stale water path would be
 // unreachable dead code at best, and a double-rendered surface at worst).
 describe('Ocean voxel-water render path is retired (W2-T2)', () => {
-  const t = read('world/Terrain.jsx');
+  const t = read('world/Terrain.jsx') + read('world/terrainMaterial.js'); // the terrain and its land material
   it('the per-vertex foam/depth varyings are gone (the mesher no longer bakes them)', () => {
     expect(t).not.toMatch(/varying float vFoam;/);
     expect(t).not.toMatch(/varying float vDepthB;/);
