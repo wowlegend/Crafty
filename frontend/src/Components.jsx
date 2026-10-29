@@ -52,7 +52,7 @@ import { SnareTetherSystem } from './world/SnareTetherSystem.jsx';
 import { SquadAISystem } from './world/SquadAISystem.jsx';
 import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
-import { swingOrigin, steadyEye, EYE_HEIGHT_M } from './combat/swingOrigin.js';
+import { swingOrigin, steadyEye, EYE_HEIGHT_M, EYE_BOB_M } from './combat/swingOrigin.js';
 import { moveKinematic } from './game/kinematicMove.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { routeExpressVerb } from './input/expressVerbs.js';
@@ -621,8 +621,9 @@ export const Player = ({ isWorldBuilt }) => {
     // and a tap on any other touch control swung, mined or placed. An echo is not input: installPrimaryMouse is the
     // echo-filtered mousedown / mouseup pair, and a mouseup takes its mousedown's verdict.
     const primaryMouse = installPrimaryMouse({ pressPrimary, releaseHeavySwing, now: () => performance.now() });
-    // dev bridge: the e2e F2 case reads what was dropped per event type, and the presses per source
-    registerTestHook('readCompatMouse', () => ({ dropped: primaryMouse.dropped(), presses: primary.presses() }));
+    // dev bridge: the e2e F2 case reads what was dropped per event type, and the presses per source; talents.spec reads
+    // the verb its click's press was routed to
+    registerTestHook('readCompatMouse', () => ({ dropped: primaryMouse.dropped(), presses: primary.presses(), verbs: primary.verbs() }));
     document.addEventListener('pointerlockchange', handlePointerLockChange);
     document.addEventListener('pointerlockerror', handlePointerLockError);
     // B8: clear held movement intents on focus loss (alt-tab drops the keyup -> keys stuck ON).
@@ -1415,7 +1416,7 @@ export const Player = ({ isWorldBuilt }) => {
     const time = state.clock.elapsedTime;
     let bobOffset = 0;
     if (isGrounded && horizontalSpeed > 1) {
-      bobOffset = Math.sin(time * 15) * 0.06;
+      bobOffset = Math.sin(time * 15) * EYE_BOB_M;
     }
 
     // Locomotion audio (interleave): surface-keyed footsteps in stride + a landing thud. Game-Loop

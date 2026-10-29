@@ -177,6 +177,21 @@ describe('the PUBLISHED seams read the hold on the event\'s own time', () => {
     r.store.pressPrimary(0, 'touch');
     expect(r.primary.presses()).toEqual({ mouse: 1, touch: 2 });
   });
+
+  it('each source keeps the verb its last press was routed to, and null for a press the router refused', () => {
+    const routed = ['mine', 'attack', undefined];
+    const store = {};
+    const primary = installPrimaryInput({
+      performVerb: () => routed.shift(), setState: (patch) => Object.assign(store, patch), getState: () => ({}),
+      isInputLive: () => true, throwHeavy: () => {}, now: () => T0,
+    });
+    expect(primary.verbs(), 'PRESENCE: before any press no source has a verb').toEqual({ mouse: null, touch: null });
+    store.pressPrimary(0, 'mouse');
+    store.pressPrimary(2, 'touch');
+    expect(primary.verbs()).toEqual({ mouse: 'mine', touch: 'attack' });
+    store.pressPrimary(0, 'mouse');
+    expect(primary.verbs(), 'a refused press left the last verb standing').toEqual({ mouse: null, touch: 'attack' });
+  });
 });
 
 // T, the melee key: Components swings at the keydown and calls pressKey; the keyup is releasePrimary('key', at).

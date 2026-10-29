@@ -17,6 +17,10 @@
  */
 export const EYE_HEIGHT_M = 0.67;
 
+/** The walk bob's amplitude: the camera follow adds up to this over or under the eye while the body walks on the
+ *  ground (Components.jsx). A test that asks whether the view is back at the head allows this much, and no more. */
+export const EYE_BOB_M = 0.06;
+
 /** The cone apex over the body's centre: chest height, so a swing reaches a mob's body rather than over it. Set from the
  *  body, not the eye, so a change of eye height leaves melee reach where it is. */
 export const SWING_APEX_OVER_BODY_M = 0.4;
