@@ -106,8 +106,7 @@ export function parseBlock(md) {
   };
 }
 
-const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isCli) {
+if (import.meta.main) {
   const m = measure();
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(m, null, 2));

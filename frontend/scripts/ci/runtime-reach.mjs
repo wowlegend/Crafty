@@ -160,8 +160,7 @@ function knownSrcModules() {
     .sort();
 }
 
-const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isCli) {
+if (import.meta.main) {
   const dir = resolve(ROOT, process.argv[2] || 'test-results/coverage');
   if (!existsSync(dir)) {
     console.log(`runtime-reach: no coverage at ${dir} — the e2e fixture wrote nothing (not a failure here)`);

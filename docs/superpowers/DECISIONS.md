@@ -19,10 +19,11 @@
 
 ---
 
-## 2026-10-29 — [LOOP] W2-J phase 2: one browser library (Playwright)
+## 2026-10-29 — [LOOP] W2-J phase 2: one browser library (Playwright), and `import.meta.main` in place of cli-guard
 
-**Decided by the command session** (SOTA reset row 39; plan `docs/superpowers/plans/2026-10-29-crafty-w2j-phase2.md`,
-which holds the per-probe table). Each stands while it earns its place.
+**Decided by the command session** (SOTA reset rows 39 and 37; plan
+`docs/superpowers/plans/2026-10-29-crafty-w2j-phase2.md`, which holds the per-probe table). Each stands while it earns
+its place.
 
 1. **`puppeteer` is removed as a dependency.** `@playwright/test` is the repo's one browser library: e2e, the lookbook,
    prod-smoke, the perf runner and the probes. The lockfile is the committed one less puppeteer's own 24-package subtree;
@@ -38,6 +39,14 @@ which holds the per-probe table). Each stands while it earns its place.
    (`npm run test:look`, named by `.claude/rules/physics.md`) and `scripts/perf/run-scenarios.mjs` (`npm run perf:m2`,
    now given a port from the allocator instead of e2e's 4179). Every deleted probe is at `1691217b`
    (`git show 1691217b:frontend/scripts/visual/<name>`).
+4. **cli-guard is deleted; every script guards its CLI with `if (import.meta.main)`**, and `engines.node` is
+   `>=24.2.0 <25` (Node added the flag in 24.2.0; before it the flag is undefined and every guarded CLI would exit 0
+   having done nothing). The protection is now `frontend/tests/scripts/cli-entry.test.js`, which imports every
+   exporting script in a child process with output, exit, spawn, file writes and fetch trapped, runs a fixture and a
+   real gate by path (also through a symlinked directory), and checks the engines floor. It executes the imports, so
+   the guards cli-guard accepted while they gated nothing (an always-true guard, a bare `process.argv[1]` test:
+   registry STATUS:G-ledger:22) now fail. The pipeline step and the gate-table row go with it; the generated tables
+   say 15 gates. cli-guard.mjs is at `1691217b`.
 
 **Door:** two-way; the files and the dependency are in git history.
 

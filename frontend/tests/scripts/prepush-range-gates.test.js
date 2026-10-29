@@ -180,7 +180,7 @@ describe('ci/pipeline.sh --tier=push — opsec-scan and the commit-range gates, 
       'node scripts/ci/artifact-currency.mjs',
       'node scripts/ci/registry-append-only.mjs',
     ]);
-    expect(r.stdout).toMatch(/skipped \(push tier\): doc-currency, eslint, gate-shape, cli-guard, the unit suite, build, bundle byte budget/);
+    expect(r.stdout).toMatch(/skipped \(push tier\): doc-currency, eslint, gate-shape, the unit suite, build, bundle byte budget/);
   });
 
   it('control: the certify tier, under the same stubs, runs the offline core and no range gate', () => {

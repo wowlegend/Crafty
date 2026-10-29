@@ -35,7 +35,7 @@
  *   node scripts/ci/doc-currency.mjs               check this checkout; exit 1 on any error
  *   node scripts/ci/doc-currency.mjs --root=<dir>  check the docs under <dir> (a test seam)
  */
-import { readFileSync, existsSync, realpathSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -570,19 +570,10 @@ function checkSize(root, out) {
 // --- report -----------------------------------------------------------------
 // The CLI is a printer around run(): what it prints and its exit code come from run()'s result and nothing else.
 //
-// Invoked directly, however the path was spelled. Node loads the main module by its REAL path, so a plain
-// `resolve(process.argv[1]) === fileURLToPath(import.meta.url)` is false when the script is reached through a
-// symlinked directory, and the lint then exited 0 having checked nothing (tranche A review, 2026-10-27; before
-// the seam it ran on import, so no spelling could skip it). Both sides are compared as real paths.
-function invokedDirectly() {
-  if (!process.argv[1]) return false;
-  try {
-    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return false;
-  }
-}
-if (invokedDirectly()) {
+// import.meta.main, not a comparison of process.argv[1] with this file's path: through a symlinked directory that
+// comparison is false, and the lint would exit 0 having checked nothing. Node sets import.meta.main from the main
+// module's real path (Node 24.2.0 and later; engines.node says so).
+if (import.meta.main) {
   const rootArg = process.argv.slice(2).find((a) => a.startsWith('--root='));
   const { errors, warnings, checked, danglingSections, claudeBytes } = run(rootArg ? { root: resolve(rootArg.slice('--root='.length)) } : {});
 

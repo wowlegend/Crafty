@@ -52,8 +52,7 @@ export function partitionCoverage(cov) {
   return { zero: zero.sort(), executed, total: files.length };
 }
 
-const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isCli) {
+if (import.meta.main) {
   const p = resolve(ROOT, 'coverage/coverage-final.json');
   if (!existsSync(p)) {
     console.log('coverage-zero: no coverage/coverage-final.json — run `npm run coverage` first');

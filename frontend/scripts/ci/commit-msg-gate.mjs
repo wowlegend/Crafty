@@ -88,4 +88,4 @@ function main() {
   process.exit(1);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+if (import.meta.main) main();

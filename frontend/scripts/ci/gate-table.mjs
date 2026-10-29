@@ -64,7 +64,6 @@ export const DESCRIPTIONS = {
   'artifact-currency': 'an unusable operator-page source, a falsified Queued pill, a wrong as-of stamp',
   eslint: 'crash-class bugs and dead code (`no-unused-vars` and `no-undef` are errors)',
   'gate-shape': 'an assertion a comment could satisfy; the source-grep gate count may only fall',
-  'cli-guard': 'a script that runs its CLI when imported',
   'unit + static gates': 'the whole vitest suite: `tests/**` and colocated `src/**/*.test.js`',
   'vitest related': 'a staged change that breaks a unit test statically importing it',
   build: 'broken JSX or imports',
@@ -234,4 +233,4 @@ function main() {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+if (import.meta.main) main();

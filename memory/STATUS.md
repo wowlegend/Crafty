@@ -1357,7 +1357,8 @@ the boss.** This is the founding sin again: *code-presence ≠ lived result.* Al
   (`measure`, `queue-ledger`, `i18n-adoption`, `mutation-proof-trailer`, `capture`). The sixth,
   `scripts/visual/_serve.mjs`, has **no guard and needs none** — it is a pure helper with zero top-level
   executable statements, so importing it does nothing. Do not add a guard there; it would be cargo-cult.
-- ▣✓ `6817df3` **The enforcer now exists: `scripts/ci/cli-guard.mjs`, ninth pre-push gate.** Flags a file
+- ▣✓ `6817df3` **The enforcer now exists: cli-guard, ninth pre-push gate** (deleted 2026-10-29: `import.meta.main` and
+  `frontend/tests/scripts/cli-entry.test.js` replace it, DECISIONS 2026-10-29). Flags a file
   under `scripts/` only when all three hold — it has an `export`, it has top-level EXECUTABLE statements (a
   bare expression, a branch, a loop, or a `const` initialised by a call; declarations are inert), and it has
   no guard. Deliberately narrow: anything looser flags harmless module setup, and noise is how a check gets

@@ -450,8 +450,7 @@ export function isFatalMessage(text) {
   return true;
 }
 
-const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isCli) {
+if (import.meta.main) {
   const dist = resolve(ROOT, 'build');
   if (!existsSync(dist)) {
     console.error('✖ prod-smoke: build/ does not exist — run `npm run build` first');

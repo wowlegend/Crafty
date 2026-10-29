@@ -2,7 +2,7 @@
 //
 // FRAMEWORK SCOPE: universal. No fs, no argv, no gate-shape specifics — two lists of path strings in,
 // two lists out. Extracted because `gate-shape.mjs` runs its whole body at module scope (correctly: it
-// is a CLI, and `cli-guard.mjs` forbids a script that both exports a seam and self-executes on import),
+// is a CLI, and a script that both exports a seam and runs at module scope executes on import),
 // so nothing inside it could be reached by a unit test.
 //
 // WHY IT EXISTS AT ALL. The ratchet computed additions only — `live.filter(g => !frozen.includes(g))`.
