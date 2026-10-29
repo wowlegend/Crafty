@@ -58,7 +58,8 @@ colour; A changes no save field and no key.
    no click or hover reaches it, so the list is the quest log's (L; the Journal on J after PR B). A completed quest's
    claim button stays in the line until PR B makes claims automatic. On touch the vitals sit at the top left (the
    joystick and the action buttons hold both bottom corners) and the coin count under the minimap (Pause holds its
-   desktop place).
+   desktop place). The HUD at rest is flat (no offset shadow) and the hotbar is slots alone, sized from the footprint's
+   breakdown (DECISIONS item 99).
 4. **The compass is a component.** `ui/compassLayout.js` (pure) takes markers by bearing, the heading, the field of view
    and the strip width, maps each to x, clamps a label inside the strip and places labels in priority order (boss, home,
    shrine, Blight Heart, NPC, chest, then the eight cardinals); a later label whose box would overlap a placed one within
