@@ -23,21 +23,7 @@
 // after the store change — not measured); how long CI's frames are during THIS walk (the CI-shaped page is a stand-in from tier-governor's phase A in
 // run 40652010997, 68 frames in 122.9 s at med, and the 3 s added to a tier step's first frame is unmeasured); E2 in a
 // browser (the spec's own header lists it as not yet run).
-//
-// Mutation-Proof: (2026-10-28) through scripts/dev/mutate.sh against tests/e2e/_postFxWalk.js, 8 tests collected each
-//   run, every RED confirmed against a green baseline, the subject byte-identical afterwards. Identity (a comment edit)
-//   SURVIVED four times: first and last in the batch, and either side of W18's re-run. All 20 of these went RED:
-//   THE OLD DEFECT — W1 the wait wall-clock only, the old waitForTimeout's shape -> RED (CI-slow page, E2 on it, the
-//   frame-less page); W13 TEST_TIMEOUT_MS 300000, the old value -> RED ("the walk cap overruns").
-//   THE FRAMES — W2 counted from the page's epoch; W3 STEP_FRAMES 1; W4 one frame short in the loop -> RED (E2 on the
-//   CI-slow page: its rise coalesces away or its targets are read before they are drawn).
-//   THE FLOORS AND THE CAP — W5 the time floor dropped; W6 the wait loop's cap removed; W7 a capped step counted done;
-//   W8 the SETUP refusal removed; W9 the cap measured per step -> RED; W10 WALK_CAP_MS 600000, W11 300000, W12
-//   TEST_TIMEOUT_MS 600000 -> RED (the budget).
-//   THE PLAN — W14 a flip every fourth step; W15 midnight and noon swapped; W16 the final at med; W17 the warm-up's last
-//   high dropped; W19 19 measured steps; W20 the step floor halved; W18 a read labelled with the plan index -> RED.
-//   W18's first run returned COULD NOT CHECK (its baseline went red once, cause not captured: mutate.sh deletes its
-//   output, at load ~200-300); the clean gate then passed 6 of 6, and W18's re-run went RED on a green baseline.
+
 import { describe, it, expect } from 'vitest';
 import {
   STEP_FRAMES, WALK_CAP_MS, WAKE_MS, TEST_TIMEOUT_MS, MEASURED_STEPS, NOON, MIDNIGHT, TIER_CYCLE,
