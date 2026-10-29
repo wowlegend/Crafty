@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { toNotification, admits, notificationText, DEDUPE_MS } from './notifications.js';
+import { toNotification, admits, notificationText, TOAST_MS } from './notifications.js';
 import { useGameStore } from '../store/useGameStore.jsx';
 
 afterEach(() => useGameStore.setState({ locale: 'en' }));
@@ -10,8 +10,8 @@ describe('one notification channel', () => {
     const a = toNotification('notice.dusk', 'warn');
     expect(admits(recent, a.dedupe, 1000)).toBe(true);
     recent.set(a.dedupe, 1000);
-    expect(admits(recent, toNotification('notice.dusk', 'warn').dedupe, 1000 + DEDUPE_MS - 1), 'a repeat inside the window showed').toBe(false);
-    expect(admits(recent, a.dedupe, 1000 + DEDUPE_MS)).toBe(true);
+    expect(admits(recent, toNotification('notice.dusk', 'warn').dedupe, 1000 + TOAST_MS - 1), 'a repeat inside the window showed').toBe(false);
+    expect(admits(recent, a.dedupe, 1000 + TOAST_MS)).toBe(true);
   });
 
   it('plain text dedupes by its words, and an explicit key overrides both', () => {

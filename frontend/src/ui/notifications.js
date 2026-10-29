@@ -6,9 +6,8 @@
 import { STRINGS } from '../i18n/strings.js';
 import { t as translate } from '../i18n/i18n.js';
 
-/** How long a toast is on screen, and the window inside which a repeat is dropped, ms. */
+/** How long a toast is on screen, ms; a repeat inside it is dropped (the dedupe window is one toast's life). */
 export const TOAST_MS = 4000;
-export const DEDUPE_MS = TOAST_MS;
 
 /** PURE. A notification from what a caller hands addNotification: a dictionary key (with `vars`) or a plain string. Its
  *  `dedupe` is `opts.key`, else the key or the text itself. */
@@ -19,7 +18,7 @@ export function toNotification(message, type = 'info', opts = {}) {
 }
 
 /** PURE. Whether a notification with `dedupe` may show at `now`, given `recent` (dedupe -> when one last showed). */
-export const admits = (recent, dedupe, now, windowMs = DEDUPE_MS) => {
+export const admits = (recent, dedupe, now, windowMs = TOAST_MS) => {
   const at = recent.get(dedupe);
   return at === undefined || now - at >= windowMs;
 };

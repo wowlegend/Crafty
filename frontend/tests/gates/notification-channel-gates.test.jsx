@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, render, screen, cleanup } from '@testing-library/react';
 import { useQuestSystem, NotificationStack } from '../../src/QuestSystem.jsx';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
-import { DEDUPE_MS } from '../../src/ui/notifications.js';
+import { TOAST_MS } from '../../src/ui/notifications.js';
 import DuskWarning from '../../src/ui/DuskWarning.jsx';
 import { HALF_CYCLE_UNITS } from '../../src/game/dayNight.js';
 
@@ -26,7 +26,7 @@ describe('the notification channel', () => {
     const dusk = () => result.current.notifications.filter((n) => n.key === 'notice.dusk');
     expect(dusk(), 'a repeat inside the window made a second toast').toHaveLength(1);
     const first = dusk()[0].id;
-    act(() => { vi.advanceTimersByTime(DEDUPE_MS); });
+    act(() => { vi.advanceTimersByTime(TOAST_MS); });
     expect(dusk(), 'the first toast did not expire with its life').toHaveLength(0);
     add();
     expect(dusk().map((n) => n.id), 'the same news after the window was dropped').toEqual([first + 1]);
