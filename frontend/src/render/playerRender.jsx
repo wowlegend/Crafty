@@ -51,7 +51,7 @@ const HELD_SCALE = Object.freeze({ weapon: 0.6, wand: 0.55 });
 /** The held weapon's materials by type: standard materials with the hands' value floor, since the viewmodel has no
  *  environment map and a 0.95-metal blade lit by the moon alone reads near black. */
 function makeWeaponMaterials(type) {
-  const bladeColor = { 'Stone Sword': '#555555', 'Iron Sword': '#dcdcdc', 'Diamond Sword': '#00ffff', pickaxe: '#b0c4de' }[type] || '#cccccc';
+  const bladeColor = { 'Stone Sword': '#555555', 'Iron Sword': '#dcdcdc', 'Diamond Sword': '#00ffff' }[type] || '#cccccc';
   const bladeEmissive = { 'Diamond Sword': '#00faff', 'Iron Sword': '#204060' }[type] || '#000000';
   const hiltColor = { 'Diamond Sword': '#3c1053', 'Iron Sword': '#4e2f1d', 'Stone Sword': '#7c4d28' }[type] || '#7c3f00';
   const guardColor = { 'Diamond Sword': '#ffca00', 'Iron Sword': '#697a8a', 'Stone Sword': '#3a3a3a' }[type] || '#b0b0b0';
@@ -64,36 +64,12 @@ function makeWeaponMaterials(type) {
     tip: floored({ color: bladeColor, metalness, roughness, emissive: bladeEmissive, emissiveIntensity: type === 'Diamond Sword' ? 0.38 : 0 }),
     guard: floored({ color: guardColor, roughness: 0.35, metalness: 0.8 }),
     hilt: floored({ color: hiltColor, roughness: 0.88, metalness: 0.1 }),
-    handle: floored({ color: hiltColor, roughness: 0.8, metalness: 0.1 }),
-    head: floored({ color: bladeColor, roughness: 0.2, metalness: 0.9 }),
   };
 }
 
 const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0, 0, 0], rotation = [0, 0, 0] }) => {
   const m = useMemo(() => makeWeaponMaterials(type), [type]);
   useEffect(() => () => { for (const mat of Object.values(m)) mat.dispose(); }, [m]);
-
-  if (type === 'pickaxe') {
-    return (
-      <group position={position} rotation={rotation}>
-        {/* Handle */}
-        <mesh position={[0, 0, 0]} material={m.handle}>
-          <cylinderGeometry args={[0.024, 0.028, 1.05, 8]} />
-        </mesh>
-        {/* Pickaxe Curved Cross Head */}
-        <mesh position={[0, 0.44, 0]} rotation={[0, 0, Math.PI / 2]} material={m.head}>
-          <cylinderGeometry args={[0.038, 0.038, 0.76, 4, 1, true, 0, Math.PI]} />
-        </mesh>
-        {/* Tips */}
-        <mesh position={[0.36, 0.41, 0]} rotation={[0, 0, -Math.PI / 6]} material={m.head}>
-          <boxGeometry args={[0.046, 0.11, 0.046]} />
-        </mesh>
-        <mesh position={[-0.36, 0.41, 0]} rotation={[0, 0, Math.PI / 6]} material={m.head}>
-          <boxGeometry args={[0.046, 0.11, 0.046]} />
-        </mesh>
-      </group>
-    );
-  }
 
   return (
     <group position={position} rotation={rotation}>
@@ -433,7 +409,7 @@ export const StableMagicHands = ({ selectedBlock, attackType, attackStartTime })
     }
   });
 
-  const isWeaponEquipped = ['Stone Sword', 'Iron Sword', 'Diamond Sword', 'sword', 'pickaxe'].includes(equippedWeapon);
+  const isWeaponEquipped = ['Stone Sword', 'Iron Sword', 'Diamond Sword', 'sword'].includes(equippedWeapon);
 
   return (
     <group>

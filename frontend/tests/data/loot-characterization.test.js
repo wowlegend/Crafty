@@ -474,7 +474,6 @@ describe('characterization: EQUIPMENT_STATS item keys', () => {
         "Leather Helmet",
         "Stone Sword",
         "Wooden Shield",
-        "pickaxe",
         "sword",
       ]
     `);
@@ -487,7 +486,6 @@ describe('characterization: EQUIPMENT_STATS item keys', () => {
     // Leather substring) — a non-obvious quirk worth pinning.
     const EXPECTED_EQUIPMENT_RARITY = {
       'sword': 'common',
-      'pickaxe': 'common',
       'Wooden Shield': 'common',
       'Stone Sword': 'rare',
       'Leather Helmet': 'rare',

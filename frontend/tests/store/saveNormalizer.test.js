@@ -23,7 +23,7 @@ describe('M3-T3 save normalizer (loadWorldData)', () => {
       player_data: {
         inventory: {
           blocks: { [`${MEAT} Raw Porkchop`]: 3, 'Iron Sword': 1, grass: 64 },
-          tools: { pickaxe: 1 },
+          tools: { sword: 1 },
           magic: { 'Mana Potion': 1 },
         },
       },
@@ -34,7 +34,7 @@ describe('M3-T3 save normalizer (loadWorldData)', () => {
     // Already-clean keys pass through untouched.
     expect(inv.blocks['Iron Sword']).toBe(1);
     expect(inv.blocks.grass).toBe(64);
-    expect(inv.tools.pickaxe).toBe(1);
+    expect(inv.tools.sword).toBe(1);
     expect(inv.magic['Mana Potion']).toBe(1);
   });
 

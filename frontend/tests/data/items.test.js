@@ -65,9 +65,9 @@ const LOOT_SET = [
 // 1. ITEMS table integrity
 // ─────────────────────────────────────────────────────────────────────────────
 describe('ITEMS registry', () => {
-  it('has 43 entries, each with name/icon/rarity', () => {
+  it('has 42 entries, each with name/icon/rarity', () => {
     const ids = Object.keys(ITEMS);
-    expect(ids).toHaveLength(43);
+    expect(ids).toHaveLength(42);
     for (const id of ids) {
       const def = ITEMS[id];
       expect(def).toMatchObject({
@@ -108,7 +108,6 @@ const RARITY_BY_ID = [
   ['health_potion', 'rare'],
   ['diamond_gem', 'legendary'],
   ['sword', 'common'],
-  ['pickaxe', 'common'],
   ['stone_sword', 'rare'],
   ['leather_helmet', 'rare'],
   ['iron_sword', 'epic'],

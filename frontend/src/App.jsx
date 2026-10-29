@@ -246,6 +246,7 @@ function GameApp({ experienceSystem }) {
         s.totalXP !== prevS.totalXP ||
         s.coins !== prevS.coins ||
         s.equipment !== prevS.equipment ||
+        s.relicTiers !== prevS.relicTiers ||
         s.chests !== prevS.chests ||
         s.talentPoints !== prevS.talentPoints ||
         s.unlockedTalents !== prevS.unlockedTalents ||

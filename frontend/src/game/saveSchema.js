@@ -139,10 +139,19 @@ const withHeldQuests = (questState, held) => {
 };
 
 // Inventory keys no build spends any more: the crystal currency and the wand it bought (DECISIONS 2026-10-28 W1-H item
-// 6). They leave every live container on load, each bag of the inventory and each chest, so nothing shows a dead item
-// and no chest can hand one back to the bag, and ride the tombstone back into the same container in the save, for one
-// SAVE_VERSION like the progression keys.
-export const RETIRED_INVENTORY_KEYS = Object.freeze(['crystals', 'wand']);
+// 6), and the pickaxe, a weapon below the sword every profile holds, whose line the Forge's blades replace (2026-10-29
+// item 66). They leave every live container on load, each bag of the inventory and each chest, so nothing shows a dead
+// item and no chest can hand one back to the bag, and ride the tombstone back into the same container in the save, for
+// one SAVE_VERSION like the progression keys.
+export const RETIRED_INVENTORY_KEYS = Object.freeze(['crystals', 'wand', 'pickaxe']);
+
+/**
+ * `equipment` with a retired pickaxe in hand replaced by the sword, the first blade of the Forge's line (damage 8 to 10,
+ * so no hand gets weaker); the same object when the hand holds anything else. Pure.
+ */
+export function liveEquipment(equipment) {
+  return isPlainObject(equipment) && equipment.weapon === 'pickaxe' ? { ...equipment, weapon: 'sword' } : equipment;
+}
 
 const holdsRetired = (items) => isPlainObject(items) && RETIRED_INVENTORY_KEYS.some((k) => Object.prototype.hasOwnProperty.call(items, k));
 const withoutRetired = (items) => Object.fromEntries(Object.entries(items).filter(([k]) => !RETIRED_INVENTORY_KEYS.includes(k)));
@@ -231,6 +240,8 @@ export function buildSaveData(state, { position } = {}) {
       // `attributes` and `spellLevels` are not written: stats and spell tiers derive from the level (DECISIONS
       // 2026-10-28 W1-H item 6). A save that holds them keeps them in the tombstone for one SAVE_VERSION.
       equipment: state.equipment,
+      // The tier Mara's Forge tempered each relic to (game/relics.js).
+      relicTiers: state.relicTiers,
       talentPoints: state.talentPoints,
       unlockedTalents: state.unlockedTalents,
       coins: state.coins,

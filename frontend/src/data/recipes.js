@@ -96,11 +96,6 @@ export const RECIPES = [
         output: { 'Diamond Boots': 1 }
     },
     // Tools & Materials
-    {
-        name: 'Stone Pickaxe',
-        pattern: [['cobblestone', 'cobblestone', 'cobblestone'], [null, 'wood', null], [null, 'wood', null]],
-        output: { pickaxe: 1 }
-    },
     // REMOVED 2026-08-09 — Bow -> Arrow x5, Torch -> torch x4, Planks -> planks x4. All three output keys
     // resolved on NO path in the whole frontend: no BLOCK_ID, no alias, no icon, no consumable effect, no
     // equipment stat, not an ingredient, not a currency. addToInventory writes any key blindly, so the item

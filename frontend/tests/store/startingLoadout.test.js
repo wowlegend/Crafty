@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
+import { forgeOffers, shortfall } from '../../src/game/forge.js';
 
 // Phase B / B6 — starting-loadout rebalance (Kevin 2026-06-22 "build all").
 // The old starter shipped a Diamond Sword (the BEST weapon, 35 base dmg) + a near-full armor set
@@ -35,10 +36,12 @@ describe('B6 starting loadout — humble frontier start (the loot/craft loop mat
     expect(blocks['Mana Potion'] || 0).toBeLessThanOrEqual(1);
   });
 
-  it('the craft loop is REACHABLE — basic tools + a little bootstrap ore so the first craft is in range', () => {
-    const tools = useGameStore.getState().inventory.tools;
-    expect(tools.pickaxe).toBeGreaterThanOrEqual(1); // you can mine
-    expect((blocks.coal || 0) + (blocks.iron || 0)).toBeGreaterThan(0); // first smelt/craft is within reach
+  it('the Forge loop is REACHABLE: the starting blade and ore pay the first reforge\'s blocks, so only coins stand between', () => {
+    const s = useGameStore.getState();
+    const first = forgeOffers({ inventory: s.inventory, coins: s.coins, equipment: s.equipment, relicTiers: s.relicTiers }).find((o) => o.line === 'weapon');
+    expect(first?.price.blade, 'the starting loadout holds no blade for the Forge to reforge').toBe('Stone Sword');
+    expect(shortfall({ ...s, coins: first.price.coins }, first), 'the first reforge needs blocks a fresh profile lacks').toEqual([]);
+    expect(s.inventory.tools.pickaxe, 'the retired pickaxe is back in the loadout').toBeUndefined();
   });
 
   it('building basics are still present so you can build immediately', () => {

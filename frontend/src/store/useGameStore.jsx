@@ -4,8 +4,10 @@ import { computeEffective, deriveMaxStats, xpForLevel, levelAttributes } from '.
 import { refundUnknownTalents, canUnlockTalent, respecTalents } from '../game/talentTree.js';
 import { spellStatsAt } from '../game/spellTiers.js';
 import { foldVerbMods } from '../game/verbMods.js';
+import { relicTier, normalizeRelicTiers } from '../game/relics.js';
+import { buy as forgeBuy } from '../game/forge.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, TALENT_CUT } from '../game/saveSchema.js';
+import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveEquipment, TALENT_CUT } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -30,7 +32,6 @@ const DAMAGE_LOCKOUT_MS = 500;
 export const EQUIPMENT_STATS = {
     // Weapons
     'sword': { strength: 2, agility: 1 },
-    'pickaxe': { strength: 1 },
     'Stone Sword': { strength: 4, agility: 2 },
     'Iron Sword': { strength: 8, agility: 4 },
     'Diamond Sword': { strength: 15, agility: 8 },
@@ -58,13 +59,15 @@ export const EQUIPMENT_STATS = {
 // takes explicit pending args for the in-reducer recomputes where state is not committed yet.
 const effectiveWith = (level, equipment) => computeEffective(levelAttributes(level), equipment, EQUIPMENT_STATS);
 
-// getVerbMods is read every frame by the verb sites; the fold is redone only when the talent map (replaced on every
-// change, never mutated) or the relic changes, so a frame allocates nothing. Frozen, since every caller shares it.
-let _verbModsKey = { talents: undefined, relic: undefined, mods: null };
-function verbModsFor(unlockedTalents, relic) {
+// getVerbMods is read every frame by the verb sites; the fold is redone only when the talent map or the relic tiers (each
+// replaced on every change, never mutated) or the relic changes, so a frame allocates nothing. Frozen, since every
+// caller shares it.
+let _verbModsKey = { talents: undefined, relic: undefined, tiers: undefined, mods: null };
+function verbModsFor(unlockedTalents, relic, relicTiers) {
   const k = _verbModsKey;
-  if (!k.mods || k.talents !== unlockedTalents || k.relic !== relic) {
-    _verbModsKey = { talents: unlockedTalents, relic, mods: Object.freeze(foldVerbMods(unlockedTalents, relic)) };
+  if (!k.mods || k.talents !== unlockedTalents || k.relic !== relic || k.tiers !== relicTiers) {
+    const mods = Object.freeze(foldVerbMods(unlockedTalents, relic, relicTier(relicTiers, relic)));
+    _verbModsKey = { talents: unlockedTalents, relic, tiers: relicTiers, mods };
   }
   return _verbModsKey.mods;
 }
@@ -233,6 +236,23 @@ export const useGameStore = create((set, get) => ({
         weapon: null,
         offhand: null,
         relic: null
+    },
+    // The tier Mara's Forge tempered each relic to (relic name -> 2 or 3; game/relics.js relicTier reads a missing one as I).
+    relicTiers: {},
+    // Buy a Forge offer (game/forge.js): the price listed for the offer's id is spent, or nothing changes and the
+    // refusal says what is short. A new blade in hand moves the derived caps as equipItem does. Returns buy's result.
+    buyForgeOffer: (offer) => {
+        const state = get();
+        const r = forgeBuy({ inventory: state.inventory, coins: state.coins, equipment: state.equipment, relicTiers: state.relicTiers }, offer);
+        if (!r.ok) return r;
+        const { inventory, coins, equipment, relicTiers } = r.state;
+        const patch = { inventory, coins, equipment, relicTiers };
+        if (equipment !== state.equipment) {
+            const { maxHealth, maxMana } = deriveMaxStats(state.level, effectiveWith(state.level, equipment));
+            Object.assign(patch, { maxHealth, maxMana, playerHealth: Math.min(state.playerHealth, maxHealth), mana: Math.min(state.mana, maxMana) });
+        }
+        set(patch);
+        return r;
     },
     isPlayerInvincible: () => false,
 
@@ -550,7 +570,7 @@ export const useGameStore = create((set, get) => ({
     unlockedTalents: {},
     // The Aspect verbs' numbers for the player's talents and equipped relic (game/verbMods.js). Every verb site reads it
     // through getState(), so a talent or a relic changes a verb with no subscription in the frame loop.
-    getVerbMods: () => verbModsFor(get().unlockedTalents, get().equipment?.relic),
+    getVerbMods: () => verbModsFor(get().unlockedTalents, get().equipment?.relic, get().relicTiers),
     aspectHint: null, // just-in-time teaching toast on a fresh Aspect-verb unlock (auto-cleared by AspectHintToast)
     setAspectHint: (v) => set({ aspectHint: v }),
     // S2a: serializable mirror of useQuestSystem's persistable state (quest
@@ -680,12 +700,10 @@ export const useGameStore = create((set, get) => ({
     targetEntity: null,
     setTargetEntity: (t) => set({ targetEntity: t }),
 
-    // B6 (Phase B, Kevin 2026-06-22): a HUMBLE frontier start so the loot/craft loop matters.
-    // The old loadout handed out a Diamond Sword + a near-full armor set + a diamond/gold hoard +
-    // a 5+5 potion stack — trivialising the whole earn/craft ladder turn 1. Now: building basics +
-    // basic tools + ONE humble Stone Sword + a little bootstrap ore (so the FIRST craft is reachable,
-    // not gifted) + a modest 2+1 potion safety net. Iron/Diamond gear is crafted (data/recipes.js) or
-    // looted; diamond/gold ore is mined. Locked by tests/store/startingLoadout.test.js.
+    // B6 (Phase B, Kevin 2026-06-22): a HUMBLE frontier start so the loot and Forge loop matters: building basics,
+    // basic tools, ONE humble Stone Sword, a little bootstrap ore (the iron for the Forge's first reforge, so it is
+    // reachable, not gifted) and a modest 2+1 potion safety net. Better blades are reforged at Mara's Forge
+    // (game/forge.js); diamond and gold ore are mined. Locked by tests/store/startingLoadout.test.js.
     inventory: {
         blocks: {
             grass: 32, dirt: 32, stone: 16, wood: 16, glass: 8, sand: 16,
@@ -693,7 +711,7 @@ export const useGameStore = create((set, get) => ({
             'Stone Sword': 1,
             'Health Potion': 2, 'Mana Potion': 1,
         },
-        tools: { pickaxe: 1, shovel: 1, axe: 1, sword: 1 },
+        tools: { shovel: 1, axe: 1, sword: 1 },
         magic: {}
     },
     setInventory: (inventoryArg) => set((state) => ({
@@ -1074,7 +1092,11 @@ export const useGameStore = create((set, get) => ({
             const level = prog?.level ?? state.level;
             const currentXP = prog?.currentXP ?? state.currentXP;
             const totalXP = prog?.totalXP ?? state.totalXP;
-            const equipment = prog?.equipment ?? state.equipment;
+            // A pickaxe in hand becomes the sword (saveSchema.js liveEquipment).
+            const equipment = liveEquipment(prog?.equipment ?? state.equipment);
+            // A save from before the Forge has tempered nothing; one with no progression slice keeps the session's, as the
+            // equipment above does.
+            const relicTiers = normalizeRelicTiers(prog ? prog.relicTiers : state.relicTiers);
             const talentPoints = prog?.talentPoints ?? state.talentPoints;
             const unlockedTalents = prog?.unlockedTalents ?? state.unlockedTalents;
             // Migrate pre-A4 saves: drop talent ids no longer in the trees + refund their ranks into points.
@@ -1130,6 +1152,7 @@ export const useGameStore = create((set, get) => ({
                 currentXP,
                 totalXP,
                 equipment,
+                relicTiers,
                 talentPoints: _talentRefund.talentPoints,
                 unlockedTalents: _talentRefund.unlockedTalents,
                 coins,

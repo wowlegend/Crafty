@@ -83,9 +83,10 @@ describe('the tombstone pass-through', () => {
     expect(saved.game_state.futureFlag, 'an unknown game_state key was dropped on save').toBe('kept');
     // The whole slice, not the planted keys alone: a field this build stops writing (gameMode, the four Aspect banks,
     // attributes, spellLevels) must come back exactly as the pre-cut save had it. The keys added are the ember the banks
-    // were summed into; the keys changed are the talents the refund paid (the describe at the end of this file).
+    // were summed into and the Forge's relic tiers (none tempered); the keys changed are the talents the refund paid (the
+    // describe at the end of this file).
     expect(saved.progression, 'the pre-cut progression slice did not round-trip unchanged')
-      .toEqual({ ...f.progression, ember: 75, emberBuildDay: { night: 0, built: 0 }, talentPoints: 8, unlockedTalents: {} });
+      .toEqual({ ...f.progression, ember: 75, emberBuildDay: { night: 0, built: 0 }, relicTiers: {}, talentPoints: 8, unlockedTalents: {} });
     expect(saved.game_state, 'the pre-cut game_state slice did not round-trip unchanged').toEqual(f.game_state);
   });
 

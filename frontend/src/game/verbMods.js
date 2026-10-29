@@ -8,7 +8,7 @@ import { MAX_HOLD_SEC } from './voidhand.js';
 import { SLAM_RADIUS } from './hurl.js';
 import { BASE_SQUAD_CAP, SNARE_ARC, SNARE_HP_FRAC } from './soulbind.js';
 import { talentNode } from './talentTree.js';
-import { relicByName } from './relics.js';
+import { relicByName, RELIC_MAX_TIER } from './relics.js';
 
 /** Each verb's numbers with no talent and no relic: the values the verbs played with before talents changed them. */
 export const VERB_BASE = Object.freeze({
@@ -30,16 +30,17 @@ const apply = (out, mod, times) => {
 };
 
 /**
- * The verb numbers for a talent map (id -> rank) and an equipped relic (its display name, or null). A rank above its
- * node's limit counts as the limit; an unknown id or relic adds nothing.
+ * The verb numbers for a talent map (id -> rank), an equipped relic (its display name, or null) and the tier the Forge
+ * tempered it to (game/relics.js relicTier). A rank above its node's limit counts as the limit, a tier outside 1 to
+ * RELIC_MAX_TIER as the nearest end; an unknown id or relic adds nothing.
  */
-export function foldVerbMods(unlockedTalents, relicName) {
+export function foldVerbMods(unlockedTalents, relicName, relicTier = 1) {
   const out = { ...VERB_BASE };
   for (const id in (unlockedTalents || {})) {
     const node = talentNode(id);
     if (node) apply(out, node.mod, Math.min(Math.floor(Number(unlockedTalents[id]) || 0), node.limit));
   }
   const relic = relicByName(relicName);
-  if (relic) apply(out, relic.mod, 1);
+  if (relic) apply(out, relic.mod, Math.min(RELIC_MAX_TIER, Math.max(1, Math.floor(Number(relicTier)) || 1)));
   return out;
 }
