@@ -92,4 +92,14 @@ that fires at the moment of use, or stays in the script header it explains; the 
 
 ## Results
 
-(filled in by steps 3 and 9)
+**Order changed:** `npm run orient` was built before the eval (step 4 before step 2), because the eval scores question 6
+with orient's own registry count. The before-run copy is `git archive 2fef2f32`, so nothing this lane added is in it.
+
+| Run | Tree | CLAUDE.md | Served | Tool calls | Score | Verdict |
+|---|---|---:|---|---:|---:|---|
+| before | main `2fef2f32` (`--rev`) | 37,820 B | claude-sonnet-5-5 | 6 | 9/10 | **FAIL** |
+
+- **Before.** Wrong: q2 (how a change reaches main). The answer had CI on the exact sha and `ci ok`, but no pull request,
+  no branch protection and no merge-then-fast-forward: main's `CLAUDE.md` states the gates but not the landing route,
+  which lived only in the ACTIVE_PLAN cursor. 0 reads outside the copy (one denied `cd` was flagged by the audit).
+  Transcript: the session scratchpad, `w2j/eval/before/stream.jsonl` (not committed).
