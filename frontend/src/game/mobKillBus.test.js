@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { subscribeMobKill, emitMobKill, mobKillSubscriberCount, _resetMobKillBus } from './mobKillBus.js';
 
-// S2-B1-M3.5: the kill-event fan-out bus replaces the single-slot store.onMobKill (which only ONE
-// consumer could own — a last-writer-wins trap the M1 review flagged). Quests + ember (+ future
-// Aspects, e.g. SOULBIND capture-on-kill) all subscribe; the kill-path emits once.
+// The kill-event fan-out bus: every kill consumer subscribes and the kill path emits once. A single store slot could
+// hold one consumer, and the last to register silently replaced the others. Quests and the ember accrual subscribe.
 
 beforeEach(() => _resetMobKillBus());
 

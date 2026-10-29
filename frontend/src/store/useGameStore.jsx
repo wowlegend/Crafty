@@ -807,7 +807,6 @@ export const useGameStore = create((set, get) => ({
     // to the day's allowance (accrueBuildEmber, world/placeAtHit.js), the four verbs spend it, dawn empties it
     // (setGameTime, on the clock's crossing into day). Both fields are persisted.
     ember: 0,
-    setEmber: (v) => set({ ember: clampEmber(v) }),
     // A gain or a placement that changes nothing returns the same state, so zustand notifies no subscriber and App's
     // autosave trigger sees no change.
     gainEmber: (n) => set((s) => {

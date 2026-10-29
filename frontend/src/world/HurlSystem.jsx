@@ -76,7 +76,7 @@ export function HurlSystem() {
     // LAST-THROW-WINS, the family convention already stated on the sibling channel: a second request
     // arriving mid-flight REPLACES the phantom rather than being dropped. The consume is unconditional
     // (the slot nulls on read), so the old `&& !flightRef.current` destroyed the request whether or not
-    // it was used -- and by then the producer had already spent 25 ember and cleared the held phantom.
+    // it was used -- and by then the producer had already spent the grab's ember and cleared the held phantom.
     // The window is real: the SM allows a throw every 0.95s, stepHurl has no terrain collision at all, so
     // a miss stays airborne the full 1.5s TTL. Nothing reported the loss. Still exactly one phantom.
     const adopted = adoptHurlRequest(consumeHurlRequest());

@@ -6,6 +6,8 @@
  * + deriveMaxStats picks them up free. Per-Aspect SIGNATURE abilities are S2-B; these
  * foundational stat nodes are the S2-A scaffold. Taxonomy numbers are Kevin-tunable.
  */
+import { GRAB_COST } from './ember.js';
+
 export const ASPECT_TREES = [
   {
     aspect: 'voidhand', title: 'Voidhand', icon: 'force', accent: 'text-stat-atk', dot: 'bg-stat-atk',
@@ -21,7 +23,7 @@ export const ASPECT_TREES = [
       { id: 'voidhand_horizon', name: 'Event Horizon', desc: '+14 Armor — nothing reaches you through the orbit. Excludes Singularity.', limit: 1, prereq: 'voidhand_crush', excludes: 'voidhand_singularity', effect: { stat: 'armor', perRank: 14 } },
       // S2-B2-M4: the grab UNLOCK — effect-LESS like wildheart_roar (the stat-fold skips it;
       // rank is read at the SM entry gate in Components). Gates the whole VOIDHAND verb kit.
-      { id: 'voidhand_grasp', name: 'Kinetic Grasp', desc: 'Unlocks the VOIDHAND grab — press V in combat to seize a phantom block (costs 25 ember); hurl it (attack) or slam it down (cast).', limit: 1, prereq: 'voidhand_force' },
+      { id: 'voidhand_grasp', name: 'Kinetic Grasp', desc: `Unlocks the VOIDHAND grab — press V in combat to seize a phantom block (costs ${GRAB_COST} ember); hurl it (attack) or slam it down (cast).`, limit: 1, prereq: 'voidhand_force' },
     ],
   },
   {

@@ -37,15 +37,19 @@ describe('the one bank replaces the four', () => {
     }
   });
 
-  it('gainEmber and setEmber clamp to whole numbers in [0, EMBER_MAX]', () => {
+  it('gainEmber clamps to whole numbers in [0, EMBER_MAX]', () => {
     S().gainEmber(12.4);
     expect(S().ember).toBe(12);
     S().gainEmber(1000);
     expect(S().ember).toBe(EMBER_MAX);
-    S().setEmber(-5);
+    S().gainEmber(-500);
     expect(S().ember).toBe(0);
-    S().setEmber(NaN);
+    S().gainEmber(NaN);
     expect(S().ember).toBe(0);
+  });
+
+  it('the store has no setter for the bar: it moves only by a gain, a spend, a placement, dawn or a load', () => {
+    expect('setEmber' in S(), 'a bare setter for the bar is back on the store').toBe(false);
   });
 });
 
@@ -53,11 +57,11 @@ describe('the one bank replaces the four', () => {
 describe('each spend reads and spends ember at its old price', () => {
   for (const [verb, cost] of [['roar', ROAR_COST], ['grab', GRAB_COST], ['snare', SNARE_COST], ['fuse', FUSE_COST], ['imbue', IMBUE_COST]]) {
     it(`the ${verb} (${cost})`, () => {
-      S().setEmber(cost - 1);
+      useGameStore.setState({ ember: cost - 1 });
       expect(S().spendEmber(cost), `a ${verb} was paid for one short`).toBe(false);
       expect(S().ember, `a refused ${verb} took ember`).toBe(cost - 1);
       const start = Math.min(EMBER_MAX, cost + 7);
-      S().setEmber(start);
+      useGameStore.setState({ ember: start });
       expect(S().spendEmber(cost), `a ${verb} was refused with ${start} in the bar`).toBe(true);
       expect(S().ember, `a ${verb} took the wrong amount`).toBe(start - cost);
     });
@@ -218,8 +222,8 @@ describe('dawn empties the bar', () => {
   });
 
   // A load sets isDay from the save's clock, so a day save loaded at night flips the hook's isDay exactly as a dawn does.
-  // The case the review found: the four banks of a pre-cut save, just migrated into 75, emptied by the load, then written
-  // as ember 0 by the next save, after which the migration never runs again.
+  // A pre-cut save is the costly case: its four banks, just migrated into 75, would be emptied by the load and written as
+  // ember 0 by the next save, and a save with an ember key is never migrated again.
   it('loading a day save at night is not a dawn: a pre-cut save keeps its 75, and the next save writes it', () => {
     useGameStore.setState({ gameTime: 700, isDay: false, nightCount: 0, ember: 10 });
     const { rerender } = renderHook(({ d }) => useSurvivalMode(d), { initialProps: { d: false } });

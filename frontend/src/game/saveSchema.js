@@ -19,7 +19,8 @@ const mapEntries = (m) => (m instanceof Map ? Array.from(m.entries()) : Array.is
 // the act that closes these doors. Live keys are spread after the bag, so a tombstoned value never shadows one.
 const TOMBSTONE_SLICES = ['progression', 'game_state'];
 
-const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+/** An object that is not an array or null: the shape of every save slice and record read here and in game/ember.js. */
+export const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
 // The placement-count quests no longer offered (DECISIONS 2026-10-28 W1-H item 10), with the rewards their QUEST_LIST
 // rows paid on a claim. A save's active entry for one is held in the tombstone like an unknown key, so a rollback finds

@@ -1,11 +1,12 @@
 /**
  * ember.js — the one Aspect meter (DECISIONS 2026-10-28 W1-H item 5). Pure: no store, no React.
  *
- * Day kills by the player's own hand and building by day fill it; the four Aspect verbs spend it at the prices their
- * own meters charged; dawn empties it (the store's setGameTime). Building is capped per day because, with placement
+ * Day kills by the player's own hand and building by day fill it; the four Aspect verbs spend it at the prices below;
+ * dawn empties it (the store's setGameTime). Building is capped per day because, with placement
  * costed, a place-and-break loop costs nothing but clicks. Kills are not capped: each one is a fight with a live mob.
  */
 import { bankForKill } from './mobBank.js';
+import { isPlainObject } from './saveSchema.js';
 
 export const EMBER_MAX = 100;
 
@@ -39,8 +40,6 @@ export function emberForKill(mobType, isDay) {
 export function emberForPlace(isDay) {
   return isDay ? PLACE_GAIN : 0;
 }
-
-const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
 /**
  * A saved build-day record, sanitized. `night` is the night count of the day it belongs to (during day k the store's

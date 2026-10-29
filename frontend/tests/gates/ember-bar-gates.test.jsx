@@ -31,7 +31,7 @@ describe('the ember bar', () => {
     expect(fill.style.width).toBe('40%');
     act(() => useGameStore.getState().gainEmber(16));
     expect(screen.getByTestId('ember-bar').textContent, 'the bar did not follow a kill').toContain(`56/${EMBER_MAX}`);
-    act(() => useGameStore.getState().setEmber(0));
+    act(() => useGameStore.setState({ ember: 0 }));
     expect(screen.queryByTestId('ember-bar'), 'an empty bar is still drawn').toBeNull();
   });
 
@@ -40,7 +40,7 @@ describe('the ember bar', () => {
     render(<EmberBar />);
     expect(screen.queryByTestId('ember-bar'), 'a bar holding 1 ember is hidden').not.toBeNull();
     expect(screen.getByTestId('ember-bar').textContent).toContain(`1/${EMBER_MAX}`);
-    act(() => useGameStore.getState().setEmber(0));
+    act(() => useGameStore.setState({ ember: 0 }));
     expect(screen.queryByTestId('ember-bar'), 'an empty bar is still drawn').toBeNull();
   });
 
