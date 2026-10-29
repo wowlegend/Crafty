@@ -47,7 +47,8 @@ export const KEY_S = Object.freeze({ night: -0.45, twilight: -0.12, golden: 0.10
 /**
  * The four times of day the script is judged at, as dawn-origin cycle fractions, in the order the programme lists them
  * (roadmap move 4): the lookbook shoots each place at these and the media name their shots by them. Golden hour sits
- * just after the sunset key and blue hour between dusk and night (tests/gates/colour-script-gates.test.js).
+ * just before the sunset key in time, the sun a little above it, and blue hour between dusk and night
+ * (tests/gates/colour-script-gates.test.js).
  */
 export const LOOK_TIMES = Object.freeze({ afternoon: 0.30, 'golden hour': 0.48, 'blue hour': 0.55, midnight: 0.75 });
 

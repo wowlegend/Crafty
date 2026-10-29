@@ -14,7 +14,7 @@ that actually ship.
 **Metric (written before any frame is shot):**
 1. `docs/media/media.json` lists exactly the files under `docs/media/` plus `frontend/public/og-image.png`: every file
    listed, every listed file present, each entry's bytes, width and height equal to the file's own, each within its
-   budget, its commit a full sha from a clean tree, its renderer a hardware one (`_lookbook.mjs classifyRenderer`).
+   budget, its commit a full sha from a tree clean outside the media outputs, its renderer a hardware one (`_lookbook.mjs classifyRenderer`).
 2. Every declared shot that is not optional has its file; the GitHub social preview is 1280x640; the og card is
    1200x630 and the og tags state its true size.
 3. A person opened every frame before it was committed, and none is dark, blank, all sky or mid-load.
