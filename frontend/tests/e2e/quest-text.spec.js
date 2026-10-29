@@ -47,7 +47,8 @@ function readHunt() {
 }
 
 test('a hunt names the creature on screen: a saved Zombie Slayer reads "Defeat 10 Husks", a real kill finishes it, zh-CN reads Chinese, the save keeps the count', async ({ page }) => {
-  test.setTimeout(240000);
+  // A boot, then a load whose world re-streams two chunks a tick (minutes on CI's software renderer), then the kill.
+  test.setTimeout(360000);
   await page.addInitScript(installWorldHold);
   await bootDev(page);
   await startPlayActive(page);
@@ -64,6 +65,23 @@ test('a hunt names the creature on screen: a saved Zombie Slayer reads "Defeat 1
   await expect(tracker, 'the tracker does not name the hunt by the Husk').toContainText('Husk Slayer');
   await expect(tracker, 'the tracker\'s objective does not read "Defeat 10 Husks"').toContainText('Defeat 10 Husks');
   expect(await tracker.textContent(), 'the saved words reached the tracker').not.toMatch(/Zombie Slayer|zombies/);
+  // A load wipes the live chunks and re-streams them with the save's edits (tests/e2e/world-rebuild-after-load.spec.js),
+  // so until the chunks around the player and their colliders are back the player can fall into the void and there is
+  // no floor to stand a zombie on. Wait for one, as a precondition, sweeping hostiles meanwhile so none ends the run.
+  await page.waitForFunction(() => {
+    const s = window.useGameStore.getState();
+    const cam = window.__threeCamera;
+    if (!s.getMobFloor || !cam) return false;
+    for (const m of window.__craftyTest.call('readMobs')) {
+      if (!m.passive && m.health > 0 && Math.hypot(m.x - cam.position.x, m.z - cam.position.z) < 40) window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
+    }
+    for (let k = 0; k < 12; k += 1) {
+      const yaw = (k * Math.PI) / 6;
+      if (Number.isFinite(s.getMobFloor(cam.position.x - Math.sin(yaw) * 2.5, cam.position.z - Math.cos(yaw) * 2.5, cam.position.y - 1.6))) return true;
+    }
+    return false;
+  }, null, { timeout: 150000, polling: 500 })
+    .catch((e) => { throw new Error(`SETUP: no ground came back within 2.5 m of the player after the load — ${e.message}`); });
 
   // 2. A REAL KILL FINISHES IT. The world is held (no mob moves or strikes) until the last read; a zombie 2.5 m ahead
   // is brought to 1 HP by an ally's hit, and the aim is set on the click's own mousedown.
@@ -77,14 +95,31 @@ test('a hunt names the creature on screen: a saved Zombie Slayer reads "Defeat 1
       if (!m.passive && m.health > 0 && Math.hypot(m.x - cam.position.x, m.z - cam.position.z) < 40) window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
     }
     window.__e2eHoldWorld({ capMs });
-    cam.rotation.x = 0; cam.updateMatrixWorld();
-    const d = new cam.position.constructor();
-    cam.getWorldDirection(d); d.y = 0; d.normalize();
-    const gx = cam.position.x + d.x * 2.5, gz = cam.position.z + d.z * 2.5;
-    const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
-    s.spawnMob(gx, gz, 'zombie', s.getMobFloor(gx, gz, cam.position.y - 1.6));
-    const m = window.__craftyTest.call('readMobs').find((e) => !before.has(e.id));
-    if (!m) return { why: 'SETUP: spawnMob added no zombie' };
+    // The ground 2.5 m ahead can be a wall, a roof or a chunk still re-streaming after the load, and the floor probe is a
+    // Rapier cast that sees a rebuilt collider only after a physics step. So the zombie stands on the first heading, 30
+    // degrees apart, with a floor at that range (getMobFloor), else where the spawner's own rule allows (spawnMob with no
+    // height), and each sweep of headings waits for drawn frames before the next.
+    const drawn = () => window.__craftyTest.call('readFrameloop')?.frames ?? 0;
+    const tried = [];
+    let m = null;
+    for (let round = 0; round < 6 && !m; round += 1) {
+      for (let k = 0; k < 12 && !m; k += 1) {
+        const yaw = (k * Math.PI) / 6;
+        const gx = cam.position.x - Math.sin(yaw) * 2.5, gz = cam.position.z - Math.cos(yaw) * 2.5;
+        const floor = s.getMobFloor(gx, gz, cam.position.y - 1.6);
+        if (round === 0) tried.push(floor === Infinity ? 'wall' : floor);
+        const before = new Set(window.__craftyTest.call('readMobs').map((e) => e.id));
+        if (Number.isFinite(floor)) s.spawnMob(gx, gz, 'zombie', floor);
+        else s.spawnMob(gx, gz, 'zombie');
+        m = window.__craftyTest.call('readMobs').find((e) => !before.has(e.id)) || null;
+      }
+      const from = drawn();
+      for (let polls = 0; !m && drawn() < from + 10 && polls < 600; polls += 1) await frame();
+    }
+    if (!m) {
+      return { why: `SETUP: no heading had ground 2.5 m out for a zombie after 6 sweeps 10 drawn frames apart (first sweep's floors ${JSON.stringify(tried)}; `
+        + `camera ${[cam.position.x, cam.position.y, cam.position.z].map((v) => v.toFixed(1))}; frames drawn ${drawn()})` };
+    }
     if (m.health > 1) window.GameMethods.damageMob(m.id, m.health - 1, 'physical', 'ally');
     const hp = window.__craftyTest.call('readMobs').find((e) => e.id === m.id)?.health ?? null;
     if (hp !== 1) return { why: `SETUP: the staged zombie stands at ${hp} HP, not 1` };
@@ -96,7 +131,7 @@ test('a hunt names the creature on screen: a saved Zombie Slayer reads "Defeat 1
       window.__clickAim.atDown = { hp: live ? live.health : null, active: window.__craftyTest.call('readIntents').active, alive: st.isAlive };
     }, { capture: true, once: true });
     return { id: m.id };
-  }, test.info().timeout || 240000);
+  }, test.info().timeout || 360000);
   expect(z.why, z.why).toBeUndefined();
   expect(await page.evaluate(readHunt), 'SETUP: the kill counter did not hold the save\'s nine zombies before the kill')
     .toEqual({ progress: 9, completed: false, title: 'Husk Slayer', zombies: 9 });
