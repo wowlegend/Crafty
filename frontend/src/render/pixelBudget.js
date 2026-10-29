@@ -2,7 +2,7 @@
 // docs/superpowers/plans/2026-10-27-crafty-steady-cool.md, item a; masterpiece Phase 0g).
 //
 // The canvas used to be `dpr={[1, q.dprCap]}` with dprCap 2 at high: a 1728x1117 CSS window on an M3 Max drew 7.72 Mpx
-// through every full-resolution pass (the scene, the composer's buffers, N8AO, SMAA, bloom, tone mapping), every frame,
+// through every full-resolution pass (the scene, the composer's buffers, SMAA, bloom, tone mapping), every frame,
 // and Kevin heard it as fans at full speed. A ratio says nothing about cost — the same 2 is 0.6 Mpx on a phone and
 // 14.7 Mpx on a 5K display — so each tier names the pixels it can afford (TIERS[tier].budgetPx) and the dpr is
 // whatever spends that budget on this window, never above the tier cap or the screen's own ratio, never below 1.

@@ -104,8 +104,9 @@ import { onContextLost, onContextRestored } from './game/contextRecovery.js';
 // step). GodRays mounts the first time a tier needs it (`withGodRays` is sticky) and then stays;
 // <PostTierDriver> applies the tier and the horizon to the live instances. So the props here no longer include the tier
 // or the horizon flag, and a tier step or a horizon flip re-renders no composer child.
-// No screen-space ambient occlusion: N8AO cost about a quarter of the GPU's frame for contact shading the mesher's
-// vertex AO already gives every block corner (DECISIONS 2026-10-28 item 26).
+// No screen-space ambient occlusion: on an M3 Max, N8AO cost about 15% of the GPU's frame at its low busy level and
+// about 31% at its high one, for contact shading the mesher's vertex AO already gives every block corner (DECISIONS
+// 2026-10-28 item 29).
 const PostFX = React.memo(function PostFX({ sunMesh, withGodRays }) {
   return (
     <EffectComposer multisampling={0}>

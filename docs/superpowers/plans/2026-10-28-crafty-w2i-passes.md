@@ -147,7 +147,7 @@ managed port, headless Chromium on ANGLE-Metal (Apple M3 Max), 1728x1117 CSS at 
 time (dpr 1.475, canvas 2549x1647), 60 frames a second free-running. Windowed: noon 15:14-15:21, golden hour
 15:23-15:31, midnight 15:33-15:40 (local), each block started at a 1-minute load of 10.3, 9.7 and 11.0, which other
 sessions then pushed to 50, 28 and 26 during the windows (recorded per window). Alternation: noon 15:49-15:56, golden
-16:00-16:03, midnight 16:04-16:06. Raw readings: `docs/superpowers/masterpiece-2026-10/evidence/w2i/`.
+16:00-16:03, midnight 16:04-16:06. Readings (a digest per window, not the raw samples): `docs/superpowers/masterpiece-2026-10/evidence/w2i/`.
 
 **The instruments.** The segments summed to 55-63 ms per frame at 60 frames a second: not GPU time, as W1-D found. The
 whole-frame query read more than the synced wall clock that brackets it in 214 of 240 windows: not GPU time either,

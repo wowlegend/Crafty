@@ -123,7 +123,7 @@ describe('the script: six keys, continuous, keyed on the sun', () => {
 // L 0.30 is about 46/255.
 describe('the look, as DISPLAYED', () => {
   it('B1 flat ambient: a shadowed and a fully occluded stone up face are near-neutral at every hour', () => {
-    // On the low tier (no N8AO, no god rays) these two terms are the whole shade of every face the key does not reach.
+    // On the low tier (no god rays) these two terms are the whole shade of every face the key does not reach.
     let n = 0;
     for (let i = 0; i < 360; i++) {
       const fr = sampleScript(i / 360), cap = fr.s >= KEY_S.day ? 0.05 : 0.07;

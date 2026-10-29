@@ -367,7 +367,7 @@ export function programVerdict(readings, watched = WATCHED_PROGRAMS) {
 }
 
 /**
- * THE POST CHAIN THE SHIPPED BUNDLE RENDERS (DECISIONS 2026-10-28 item 26). The pass timer lists the chain each
+ * THE POST CHAIN THE SHIPPED BUNDLE RENDERS (DECISIONS 2026-10-28 item 29). The pass timer lists the chain each
  * composer.render runs, with or without a timer extension (src/render/passTimer.js `chain`), so this reads the
  * composer the production build actually built, on the game canvas, after play began: postprocessing's own effect
  * names, which survive the minifier. `present` is the presence half: a chain the reader cannot see (no composer, a

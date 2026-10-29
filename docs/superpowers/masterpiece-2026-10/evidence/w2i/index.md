@@ -3,7 +3,7 @@
 What each post pass costs the GPU per frame on the production build, and what it adds to the frame, for lane W2-I of
 `docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`. The task script, its decision rule (written before the
 measurement, amended twice before the runs whose results it uses) and the results table are in
-`docs/superpowers/plans/2026-10-28-crafty-w2i-passes.md`; the decisions are DECISIONS 2026-10-28 items 25 to 29.
+`docs/superpowers/plans/2026-10-28-crafty-w2i-passes.md`; the decisions are DECISIONS 2026-10-28 items 28 to 32.
 
 **How it was made.** `npm run build` at `651b589c` (index chunk `index-DDg_cF3-.js`), then
 `node scripts/visual/lookbook.mjs --passes --times <t>` (and `--alt --alt-reps 2 --arms n8ao,godrays+sun,bloom,smaa`
@@ -15,7 +15,7 @@ Headless Chromium, ANGLE Metal on an Apple M3 Max, 1728x1117 CSS at device scale
 
 | File | What it holds |
 |---|---|
-| `windowed-noon.json`, `windowed-golden.json`, `windowed-midnight.json` | Every window of the windowed run: arm, repetition, on or off, U (GPU busy ms per frame) with its raw device-utilization readings, the synced wall clock W, the whole-frame query Q, frames, tier, dpr, the clock, the load, and validity. The noon file's validity is re-derived: the run's clock check was 4.8 s wide against a 5.1 s window, so every noon window read "clock at 0.2604"; it accepts a clock up to 0.015 past the asked time and keeps the original reasons as `whyOriginal`, and its block's `admitted` is re-derived from those windows (the run's own, all false, is `admittedOriginal`). The probe now re-sets the clock between its two sub-windows. |
+| `windowed-noon.json`, `windowed-golden.json`, `windowed-midnight.json` | Every window of the windowed run: arm, repetition, on or off, U (GPU busy ms per frame) with a digest of its device-utilization readings (the per-sample timestamps, verdicts and per-window chain are not kept), the synced wall clock W, the whole-frame query Q, frames, tier, dpr, the clock, the load, and validity. The noon file's validity is re-derived: the run's clock check was 4.8 s wide against a 5.1 s window, so every noon window read "clock at 0.2604"; it accepts a clock up to 0.015 past the asked time and keeps the original reasons as `whyOriginal`, and its block's `admitted` is re-derived from those windows (the run's own, all false, is `admittedOriginal`). The probe now re-sets the clock between its two sub-windows. |
 | `alternation-noon.json`, `alternation-golden.json`, `alternation-midnight.json` | Each alternation window: the 10 halves' device-utilization readings, each half's GPU ms, and the 9 adjacent on/off differentials. |
 | `frames/*.jpg` | Ten frames at CSS size, JPEG quality 82: each named pass on and off, same stand, bearing and time. `<time>-<bearing>-<arm>-<on|off>.jpg`. |
 

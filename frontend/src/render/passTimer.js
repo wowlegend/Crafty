@@ -21,7 +21,8 @@
 // GPU work read about the same few ms whatever it drew, so a segment cannot rank a pass. In `frame` mode the whole
 // composer.render is ONE query (`frame`), opened right after a sync so the GPU is idle when it opens, and the wall
 // clock from that sync to a second one after the render is recorded too (`frame:wall`): an instrument that needs no
-// timer extension. A pass is then judged by the whole frame with it on minus off (plan 2026-10-28-crafty-w2i-passes).
+// timer extension. On ANGLE-Metal the frame query too read longer than the synced wall clock, so a pass's cost is
+// decided on the GPU driver's own busy time instead (DECISIONS 2026-10-28 item 28); this query stays as a record.
 //
 // Loaded only when the lookbook seam is asked for timings (render/lookbookSeam.js passTimes), never for a player and
 // never for the power A/B hold, which must not pay the queries' cost in one arm only.
@@ -156,7 +157,7 @@ function passLabel(pass, index) {
 const timedPasses = new WeakSet();
 // wrapper -> the function it wraps. The library rebuilds an EffectPass over the SAME effect instances whenever its
 // pass-building effect re-runs (@react-three/postprocessing 3.0.4 dist/index.js: deps composer, children, camera and
-// its two internal passes). In GameScene that is a tier first mounting N8AO or GodRays, the sun mesh arriving
+// its two internal passes). In GameScene that is a tier first mounting GodRays, the sun mesh arriving
 // and a camera change (a new composer). So an effect's update() may
 // already be a wrapper from its previous pass; it is wrapped from its original, so there is only ever one layer.
 const unwrapped = new WeakMap();

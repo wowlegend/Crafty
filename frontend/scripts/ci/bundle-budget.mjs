@@ -31,7 +31,7 @@ const OUT_DIR = resolve(HERE, '../../build/assets'); // vite.config.js -> build.
 // RAISING one to make a red build go green is a reward-hack and is forbidden (LOOP-CHARTER §3).
 const BUDGETS = [
   { name: 'rapier', max: 2_420_000, actualAtWrite: 2_236_813 }, // WASM physics — the giant, and it is inert
-  // Lowered by the 141,581 B the n8ao deletion freed (W2-I: 829,540 -> 687,959 B), the same headroom kept.
+  // The ceiling keeps about 72 KB of headroom over the chunk without N8AO (DECISIONS 2026-10-28 item 29).
   { name: 'r3f', max: 760_000, actualAtWrite: 687_959 },
   // the app itself — the one that creeps. Ceiling = measured + the programme byte ledger's 67,600 B of lane
   // allowances + ~13 KB, so the in-flight lanes still fit and nothing else gets the freed bytes.
@@ -174,7 +174,7 @@ if (iconChunks.size === 1) {
   }
 }
 
-// NO N8AO (DECISIONS 2026-10-28 item 26): the ambient-occlusion pass was deleted on its measured GPU cost. Two
+// NO N8AO (DECISIONS 2026-10-28 item 29): the ambient-occlusion pass was deleted on its measured GPU cost. Two
 // strings only n8ao's own code carries, an internal transparency mode and a line of its shader, so any chunk that has
 // either ships the pass again, whoever imports it (our code, or a vendor's wrapper pulled into the r3f chunk).
 const N8AO_MARKERS = ['transparencyDWTrueDepth', 'uniform sampler2D bluenoise'];
