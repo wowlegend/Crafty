@@ -15,6 +15,7 @@
     "pkill",
     "ffmpeg",
     "ffprobe",
-    "ioreg"
+    "ioreg",
+    "magick"
   ]
 }

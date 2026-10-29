@@ -19,6 +19,60 @@
 
 ---
 
+## 2026-10-29 — [LOOP] W2-H: one media pipeline; the README hero and the og card are frames of the production build
+
+**Decided by the W2-H lane under the standing grant** (item 14), by its task script
+`docs/superpowers/plans/2026-10-29-crafty-w2h-media.md`, whose metric was written before any frame was shot. Items 50-59
+are this lane's (W2-F talents 41-49, the Forge from 60). The shot table, its budgets and its checks are in
+`frontend/scripts/visual/_media.mjs`; the record of what was shot is `docs/media/media.json`.
+
+50. **No shot shows the HUD.** W2-D will re-key the HUD soon, and a frame shown to people who have not played sells the
+   world, not the readout; a HUD-free frame outlives the re-key, so no shot is owed a re-shoot when W2-D lands. The HUD
+   is hidden with the store's own switch (`setHudHidden(true)`, the one `App.jsx` reads), not by editing the page. The
+   first-person hands stay: they are part of the world, and W2-E made them the warmest thing in frame. Each shot's
+   verdict refuses a frame whose vitals stack is on screen. It stands while it earns its place.
+51. **ImageMagick encodes, at shoot time only.** The browser shoots each frame as a lossless PNG master at device scale
+   2; `magick` downsamples it (Lanczos) and encodes each JPEG to its byte target with `jpeg:extent`, and the og card to
+   an 8-bit palette PNG (a photograph as a truecolour PNG is about 1 MB against the card's 400 KB ceiling). No npm
+   dependency: `magick` is already on the shooting Mac, as `ffmpeg` is for the lookbook clips, and the gates read the
+   committed files, so CI installs nothing. Budgets, 1 KB = 1000 bytes: each JPEG 350 KB, the og card 400 KB, all of
+   `docs/media` 3 MB, and the table's own byte targets must fit them (`shotTableProblems`). It stands while it earns its
+   place.
+52. **The og card is composed, not cropped:** the og frame under an ink scrim from the left, the wordmark in the game's
+   own Lilita One in the brand gold, and the brand title's subtitle, drawn in the same browser from `ogCardHtml` with the
+   font files the game ships. No buttons and no controls text (reset plan section 6). `BRAND.ogImageAlt` describes the
+   new card, so the head's og and twitter alt text follow it (`public-face.mjs --write`). It stands while it earns its
+   place.
+53. **`make-og-image.mjs` and the capture baseline `menu.png` are deleted** (REMOVED 2026-10-29), the last
+   file of the retired capture oracle with them. Nothing reads either now: the generator's centre-crop tests go with
+   it, and `frontend/tests/scripts/social-preview.test.js` checks that the shipped card has the bytes and size
+   media.json recorded for the `og` shot. Both files are kept in history at `3e138271`; the baseline, REMOVED from the
+   tree, is `git show 3e138271:frontend/tests/visual/baseline/menu.png` (REMOVED 2026-10-29).
+54. **The night fight is optional, and the first night staged one.** The seam cannot spawn a mob, so `night-fight` waits
+   up to 60 s at blue hour for the night's own hostiles, turns to the nearest one 4 to 14 m out and casts with the real
+   F key; when none comes it is left out and named. In this shoot a skitterling came 11.2 m out after 7 s, and the frame
+   holds the fireball in flight toward it. It stands while it earns its place.
+55. **The lookbook's page helpers are shared** (`frontend/scripts/visual/_lookbookPage.mjs`): launching a Chromium that
+   gives the game a hardware renderer, entering play and reading the seam, moved out of `lookbook.mjs` unchanged in body.
+   The media are shot through the lookbook's own path, not a second one. It stands while it earns its place.
+56. **Any mob within 3 m of the eye refuses a frame, a passive animal too.** The first shoot passed all nine shots, and
+   an ox stood at arm's length in the blue-hour still: the seam counts hostiles only. The verdict now reads the nearest
+   mob of any kind from the store's minimap mirror. The same shoot showed the framing problem the checks cannot see:
+   from the spawn the outpost's large north-western building spans bearings 279 to 357, and it filled a third of the
+   hero and og frames (bearing 240) and half of the social preview (bearing 0). Those four shots now face 205, 200, 100
+   and 50 and were shot again; the other five are the first shoot's. It stands while it earns its place.
+57. **The GitHub social preview is Kevin's one upload.** GitHub has no API for it; `docs/media/social-preview.jpg`
+   (1280x640) waits in the repo, and its registry row closes when `usesCustomOpenGraphImage` reads true.
+
+**What was shot:** local production builds of `1cf94186` (five stills) and `3bcc63d3` (the hero, the og card, the social
+preview and the blue-hour still; the game source is the same, index chunk `index-BqaKcxrk.js`), Chromium in its new
+headless mode on ANGLE-Metal (Apple M3 Max), tier high, dpr 1.62 to 1.75, each under the lane's GPU lock with the
+1-minute load under 28. Nine files, each opened before it was committed: JPEG quality 85 to 97 under the targets, the og
+card at 256 colours, 220,729 bytes; `docs/media` is 1,919,244 bytes of its 3,000,000.
+
+**Door:** two-way; the deleted files are in git history, and a re-shoot is one command
+(`node frontend/scripts/visual/media.mjs --only <names>`) on a clean tree and a fresh build.
+
 ## 2026-10-29 — [LOOP] W2-J phase 2: one browser library (Playwright), and `import.meta.main` in place of cli-guard
 
 **Decided by the command session** (SOTA reset rows 39 and 37; plan
@@ -296,7 +350,8 @@ that entry's items. Each stands while it earns its place; reversing one takes a 
    particles, spawning and the hands, so its frames show a build nobody plays, and shipped source carries 131
    `isCaptureMode()` calls (`rg -c` over `frontend/src`, 2026-10-28) that no player needs. Looks are accepted on the eye-level lookbook (W1-D); DOM-only
    checks use Playwright's `toHaveScreenshot`. No re-baseline is owed meanwhile, so ACTIVE_PLAN task T10 and masterpiece
-   Phase 0e are cancelled. `tests/visual/baseline/menu.png` stays until the media pipeline (W2-H) replaces the og-image source.
+   Phase 0e are cancelled. `tests/visual/baseline/menu.png` (REMOVED 2026-10-29, W2-H item 53) stays until the media
+   pipeline (W2-H) replaces the og-image source.
 2. **The umbrella is amended** (plan rows 12, 45-49; section 10). Supersedes the Phase 0-3 structure of the masterpiece plan
    above. (a) A Cut wave (W2-F) removes the sandbox layer before Wave 3 builds, so no lane ports a dead system. (b) The
    platform work (W2-G, W3-D) runs beside the game lanes, not in front of them: the refuter showed the dragon and
