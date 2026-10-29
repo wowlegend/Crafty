@@ -250,7 +250,7 @@ footer p { max-width: 75ch; }
   <h1>Crafty Command Record</h1>
   <p class="sub">What the Crafty command session achieved and decided from the takeover on 2026-10-27 to 2026-10-29, 03:20 UTC.</p>
   <p class="moved">This page moved to a new link on 2026-10-29: the old one (claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f) belongs to another claude.ai account and stopped taking updates; it last showed 2026-10-28 17:19Z.</p>
-  <p class="meta">State read at about 2026-10-29 03:10 to 03:20Z against <code>origin/main 16bf581c</code> and the land batch <code>04e4b18a</code> that this page lands with. Version 5 of this text, read at 22:15Z against <code>6a01d1dc</code>, reached main but was never published, so the last published page was read at 17:45Z: everything after that is new to you, and “new” marks what changed since 22:15Z. Times are UTC unless marked PDT. In what is new since 22:15Z, times from 00:00Z are on 10-29; elsewhere they are on 10-28 unless dated.</p>
+  <p class="meta">State read at about 2026-10-29 03:10 to 03:20Z against <code>origin/main 16bf581c</code> and the land batch <code>04e4b18a</code> that this page lands with, then brought up to <code>1691217b</code> (W2-J) at 03:45Z. Version 5 of this text, read at 22:15Z against <code>6a01d1dc</code>, reached main but was never published, so the last published page was read at 17:45Z: everything after that is new to you, and “new” marks what changed since 22:15Z. Times are UTC unless marked PDT. In what is new since 22:15Z, times from 00:00Z are on 10-29; elsewhere they are on 10-28 unless dated.</p>
 
   <div class="state" aria-label="Current state">
     <div>
@@ -265,13 +265,13 @@ footer p { max-width: 75ch; }
     </div>
     <div>
       <p class="label">Landed since 22:15Z</p>
-      <p class="pills"><span class="pill ok">6 main pushes</span></p>
-      <p>The land batch carrying this page’s previous text, W2-K’s material grammar (#37), W2-I’s measured post passes (#39), a React and zustand patch (#40), Ember (#38) and the follow-ups from the W2-I and W2-K reviews (#41). 74 commits since <code>6a01d1dc</code>, 63 of them not merges.</p>
+      <p class="pills"><span class="pill ok">7 main pushes</span></p>
+      <p>The land batch carrying this page’s previous text, W2-K’s material grammar (#37), W2-I’s measured post passes (#39), a React and zustand patch (#40), Ember (#38), the follow-ups from the W2-I and W2-K reviews (#41) and W2-J’s 11 KB instruction file (#42). 74 commits since <code>6a01d1dc</code>, 63 of them not merges.</p>
     </div>
     <div>
       <p class="label">In flight</p>
-      <p class="pills"><span class="pill run">3 lanes</span></p>
-      <p>W2-J (#42), a 12 KB instruction file and a cold-takeover eval, is in its fix round with its PR run green. The Cut’s step 4, talents and relics, and W2-E, the hands, are building from <code>c3a0a7cb</code>, with no PR yet.</p>
+      <p class="pills"><span class="pill run">2 lanes</span></p>
+      <p>The Cut’s step 4, talents and relics (#44), and W2-E, the hands (#43), have PRs open and are on their way to review.</p>
     </div>
     <div>
       <p class="label">Waiting on you</p>
@@ -294,7 +294,7 @@ footer p { max-width: 75ch; }
 <section id="outcome">
   <h2>Outcome</h2>
   <div class="prose">
-    <p class="lede">Main is green, protected and deployed at <code>16bf581c</code>. Since 22:15Z five PRs landed, each on its own PR run on the exact commit: W2-K, W2-I, a dependency patch, Ember, and the follow-ups from two reviews. Three lanes are in flight, and nothing waits on you.</p>
+    <p class="lede">Main is green, protected and deployed at <code>16bf581c</code>. Since 22:15Z six PRs landed, each on its own PR run on the exact commit: W2-K, W2-I, a dependency patch, Ember, the follow-ups from two reviews, and W2-J’s instruction file. Two lanes are in flight, and nothing waits on you.</p>
     <p><strong>New since 22:15Z.</strong> Grass hills show soil under a turf lip, snow sides show stone under snow, and tree trunks show bark instead of end-grain rings; every block texture is a few clustered tones instead of per-texel noise (W2-K, #37). On an M3 Max at tier high the GPU does about 15 to 31% less work per frame: the driver’s own busy time measured N8AO, the ambient-occlusion pass, at that share, and it was deleted, while every other pass stayed on its numbers (W2-I, #39). One ember bar replaces the four Aspect meters: your kills by day and building fill it, the four Aspect verbs spend it, and a press it cannot pay for says “Not enough ember” (#38). Behind the scenes, a registry row that a merge leaves twice is collapsed by a tool and refused at the commit (#41, this land batch).</p>
     <p><strong>Between 17:45Z and 22:15Z.</strong> Wave 1 finished with the combat stance: a player can no longer out-walk a fight, sees a chevron when an enemy winds up off screen, and has a three-step light string (#31). Building spends the blocks you mine, in every world (the Cut’s steps 1 and 2, #33). W2-A removed the touch title’s keyboard hints, the ground’s slight metalness, the night glow of sea foam and the distant ore-glow shift (#35); W2-B retired the capture oracle (#32); and #36 made the floating damage numbers draw. A lane with a PR now lands on its own PR run, and a push runs only the gates that read its range, which cuts the Mac’s SSD writes.</p>
     <p><strong>Between 06:30Z and 17:45Z.</strong> Your standing principle (DECISIONS 2026-10-28 item 14) put nothing off limits and made this page your one review surface, and the session wrote the SOTA reset plan, “The First Night” (<code>ee26549c</code>), which ranks what to cut, rewrite and keep in three waves. A player got a pixel budget per quality tier, a way back from a lost graphics context, a pause that holds the world, XP only from fighting, a moonlit night, a 480 s day, mipmapped block textures and a boot chunk 104 kB smaller. W1-H wrote ten standing decisions and moved all open work into one registry, <code>memory/registry.jsonl</code>.</p>
@@ -304,7 +304,7 @@ footer p { max-width: 75ch; }
   <div class="qa">
     <div>
       <p class="q">Is Wave 2 done?</p>
-      <p><span class="pill run">in progress</span> Not yet. Wave 1 finished at 18:25Z on 10-28. Wave 2 has landed W2-C, W2-A, W2-B, W2-K (00:01Z) and W2-I (00:21Z), and the Cut’s first three steps, Ember the third (02:32Z). W2-J, the Cut’s step 4 and W2-E are in flight; W2-D, W2-G, W2-H, W2-L, W2-M and the rest of the Cut are next (<a href="#lanes">programme map</a>).</p>
+      <p><span class="pill run">in progress</span> Not yet. Wave 1 finished at 18:25Z on 10-28. Wave 2 has landed W2-C, W2-A, W2-B, W2-K (00:01Z) and W2-I (00:21Z), and the Cut’s first three steps, Ember the third (02:32Z). W2-J’s phase 1 landed at 03:42Z; the Cut’s step 4 and W2-E are in flight; W2-D, W2-G, W2-H, W2-L, W2-M and the rest of the Cut are next (<a href="#lanes">programme map</a>).</p>
     </div>
     <div>
       <p class="q">Can a red commit reach the live site now?</p>
@@ -316,7 +316,7 @@ footer p { max-width: 75ch; }
     </div>
     <div>
       <p class="q">Is there one instruction file, and is it small yet?</p>
-      <p><span class="pill run">in flight</span> One, since <code>d700e531</code> (11:29Z on 10-28, your call): <code>CLAUDE.md</code> at the repo root, 38,198 bytes at <code>04e4b18a</code>. W2-J (#42) cuts it to 11,146 bytes on its PR head, moves the generated gate table into the rule file that loads when a test or script is edited, adds <code>npm run orient</code> for a cold agent, and makes doc-currency fail a <code>CLAUDE.md</code> over 12,000 bytes. Its review caught the rewrite dropping your record-every-decision rule, now restored on the branch (<a href="#mistakes">Mistakes</a>).</p>
+      <p><span class="pill ok">done</span> One, since <code>d700e531</code> (11:29Z on 10-28, your call): <code>CLAUDE.md</code> at the repo root, 11,323 bytes since W2-J (#42) landed at 03:42Z (it was 37,820). The generated gate table moved into the rule file that loads when a test or script is edited, <code>npm run orient</code> prints the state a cold agent needs, a cold-takeover eval checks the file after a rewrite, and doc-currency fails a <code>CLAUDE.md</code> over 12,000 bytes. Its review caught the rewrite dropping your record-every-decision rule, restored before it landed (<a href="#mistakes">Mistakes</a>).</p>
     </div>
     <div>
       <p class="q">Did the harness enhancements land?</p>
@@ -476,23 +476,18 @@ footer p { max-width: 75ch; }
       </thead>
       <tbody>
         <tr class="divider"><td colspan="4">In flight at 03:15Z</td></tr>
-        <tr>
-          <td class="lane">#42 W2-J</td>
-          <td>Phase 1: the instruction file, <code>npm run orient</code>, the cold-takeover eval (<code>docs/w2j-instructions</code>)</td>
-          <td class="st"><span class="pill run">fix round</span></td>
-          <td><code>CLAUDE.md</code> from 37,820 to 11,146 bytes on the PR head, <code>ACTIVE_PLAN.md</code> a 34-line cursor, the loop charter and kernel prompt retired, and <code>npm run orient</code> printing the state a cold agent needs. Both reviews said FIX; the fix round restored the dropped rules and made the eval score each answer’s polarity on 14 questions: the branch scores 14 of 14 twice, in 5 and 7 tool calls, and a control with four planted stale lines fails exactly those four (<code>d8d487ce</code>). PR run <code>40808554285</code> on <code>78b05844</code> passed at 03:05Z.</td>
-        </tr>
+        
         <tr>
           <td class="lane">W2-F step 4</td>
           <td>Talents and relics (<code>feat/w2f-talents</code>)</td>
           <td class="st"><span class="pill run">building</span></td>
-          <td>From <code>c3a0a7cb</code> at about 02:40Z. On the branch so far: damage, health and mana scale with level, and a level pays one talent point (<code>e2fc90ad</code>); crystals, the wand and affixes go, and a save from before the Cut gets its points back as talents (<code>e9f21830</code>). No PR yet.</td>
+          <td>From <code>c3a0a7cb</code> at about 02:40Z. On the branch so far: damage, health and mana scale with level, and a level pays one talent point (<code>e2fc90ad</code>); crystals, the wand and affixes go, and a save from before the Cut gets its points back as talents (<code>e9f21830</code>). PR #44.</td>
         </tr>
         <tr>
           <td class="lane">W2-E</td>
           <td>Hands (<code>feat/w2e-hands</code>)</td>
           <td class="st"><span class="pill run">building</span></td>
-          <td>From <code>c3a0a7cb</code>. On the branch so far: the first-person hands become a viewmodel, ember gauntlets with their own field of view, a depth range, a brightness floor and an ember core (<code>8eca5ff2</code>); the eye at 1.62 m (<code>8a7c748a</code>); a moved camera no longer re-renders the sun’s shadow map (<code>81ff88ac</code>). No PR yet.</td>
+          <td>From <code>c3a0a7cb</code>. On the branch so far: the first-person hands become a viewmodel, ember gauntlets with their own field of view, a depth range, a brightness floor and an ember core (<code>8eca5ff2</code>); the eye at 1.62 m (<code>8a7c748a</code>); a moved camera no longer re-renders the sun’s shadow map (<code>81ff88ac</code>). PR #43.</td>
         </tr>
         <tr>
           <td class="lane">Land batch 3</td>
@@ -536,6 +531,12 @@ footer p { max-width: 75ch; }
           <td>Lookbook and material follow-ups from both reviews (<code>fix/lookbook-followups</code>)</td>
           <td class="st"><span class="pill ok">on main</span></td>
           <td><code>16bf581c</code> at 03:07Z, on PR run <code>40808944245</code>. From the <code>/code-review xhigh</code> passes on W2-I (15 findings, none in shipped game code) and W2-K (11), it fixes the measuring tool’s holes (<code>8993ebea</code>, <code>cfb6c2d6</code>) and the snow underside’s tint and the bake order (<code>eb53af81</code>); the findings it leaves are registry rows (<code>af2f735f</code>). Both reviews said LAND. Run <code>40807058013</code> failed on duplicated registry rows (<a href="#mistakes">Mistakes</a>).</td>
+        </tr>
+        <tr>
+          <td class="lane">#42</td>
+          <td>W2-J phase 1: the instruction file, <code>npm run orient</code>, the cold-takeover eval (<code>docs/w2j-instructions</code>)</td>
+          <td class="st"><span class="pill ok">on main</span></td>
+          <td><code>1691217b</code> at 03:42Z, on PR run <code>40811723741</code>. <code>CLAUDE.md</code> 37,820 to 11,323 bytes, <code>ACTIVE_PLAN.md</code> a 34-line cursor, the loop charter and kernel prompt retired. Both first reviews said FIX (the dropped decision rule, an eval that passed inverted answers); after the fix round a last static pass narrowed the eval’s claim to the phrasings it checks (<code>d04e0f59</code>). The eval scores 14 of 14 on the branch, and a control with four planted stale lines fails exactly those four.</td>
         </tr>
         <tr class="divider"><td colspan="4">Landed between 17:45Z and 22:15Z, oldest first</td></tr>
         <tr>
@@ -633,7 +634,7 @@ footer p { max-width: 75ch; }
           <tr><td>2</td><td>W2-K material grammar</td><td><span class="pill ok">done</span> on main 00:01Z · new; follow-ups 03:07Z</td></tr>
           <tr><td>2</td><td>W2-I passes measured, then decided</td><td><span class="pill ok">done</span> on main 00:21Z · new; N8AO deleted, the rest kept</td></tr>
           <tr><td>2</td><td>W2-F the Cut</td><td><span class="pill ok">steps 1–3 done</span> Ember on main 02:32Z · new; step 4, talents and relics, <span class="pill run">building</span> new; the Forge, hunger and quest text next</td></tr>
-          <tr><td>2</td><td>W2-J docs and harness</td><td><span class="pill run">in flight</span> phase 1, PR #42 · new</td></tr>
+          <tr><td>2</td><td>W2-J docs and harness</td><td><span class="pill ok">phase 1 done</span> on main 03:42Z · new; the generated Command Record, the records tag, the gate roster, Stryker and Playwright next</td></tr>
           <tr><td>2</td><td>W2-E hands</td><td><span class="pill run">building</span> new</td></tr>
           <tr><td>2</td><td>W2-D the HUD, W2-G platform, W2-H media, W2-L LazyMotion, W2-M sound with body</td><td><span class="pill idle">next</span></td></tr>
           <tr><td>3</td><td>W3-A to W3-G: the First Night, the road of light and the dragon, the first minute, platform, polish</td><td><span class="pill idle">planned</span></td></tr>
@@ -917,7 +918,7 @@ footer p { max-width: 75ch; }
       <h3>The instruction rewrite dropped your record-every-decision rule <span class="pill run">new</span></h3>
       <div class="body">
         <p><b>What happened.</b> W2-J’s first cut of <code>CLAUDE.md</code> (#42) kept no line of your 2026-10-27 instruction to record every non-routine decision in DECISIONS with its reason, nor the charter rules that went with it, and dropped ten more rules with no row in its directive table. The static review caught it as HIGH.</p>
-        <p><b>Done.</b> Restored on the PR branch (<code>ad8c848a</code>): the decision mandate and every dropped rule, each directive either in <code>CLAUDE.md</code> or in a named rule file. On the branch, doc-currency also reads the rule files for dangling paths and fails a <code>CLAUDE.md</code> over 12,000 bytes. It reaches main when #42 lands.</p>
+        <p><b>Done.</b> Restored on the PR branch (<code>ad8c848a</code>): the decision mandate and every dropped rule, each directive either in <code>CLAUDE.md</code> or in a named rule file. On the branch, doc-currency also reads the rule files for dangling paths and fails a <code>CLAUDE.md</code> over 12,000 bytes. It reached main with #42 (<code>1691217b</code>).</p>
       </div>
     </article>
     <article>
@@ -978,7 +979,7 @@ footer p { max-width: 75ch; }
     <article>
       <h3>Records that lag the state</h3>
       <div class="body">
-        <p><b>Corrected since 22:15Z.</b> The two combat rows and the cursor’s landing paragraph reached main with the land batch at 22:29Z (<code>87428e2d</code>). ACTIVE_PLAN’s 743 lines, whose For-Kevin block still describes option (a) as pending and #22 to #25 as open, become a 34-line cursor when W2-J (#42) lands.</p>
+        <p><b>Corrected since 22:15Z.</b> The two combat rows and the cursor’s landing paragraph reached main with the land batch at 22:29Z (<code>87428e2d</code>). ACTIVE_PLAN’s 743 lines, whose For-Kevin block still describes option (a) as pending and #22 to #25 as open, became a 34-line cursor when W2-J (#42) landed.</p>
         <p><b>Still lagging.</b> DECISIONS 2026-10-28’s landing-lifecycle heading still says six e2e shards; CI runs 8. GitHub still flags merged #23 and #25 as drafts. era-review and sota-audit have not moved to <code>docs/archive/</code>. All are the session’s to correct.</p>
       </div>
     </article>
@@ -1000,7 +1001,7 @@ footer p { max-width: 75ch; }
     <div>
       <h3>Open for the session</h3>
       <ul class="list">
-        <li>Land W2-J (#42) after its fix round; build and review the Cut’s step 4 and W2-E’s hands; then W2-D, W2-G, W2-H, W2-L and W2-M.</li>
+        <li>Review and land the Cut’s step 4 (#44) and W2-E’s hands (#43); then W2-D, W2-G, W2-H, W2-L and W2-M.</li>
         <li>Spend W2-I’s freed GPU time: steady cool’s budgets toward a pixel ratio of 2 (MED).</li>
         <li>Owed looks: the floating damage numbers in the game, and whether combat text takes fog (#36); live frames for W2-A’s ocean and the distant ore glow, a snow side, and the near and far seam on grass hills (MED); the acceptance frames on the deployed build for W1-E and the light lane; W1-D’s run against the production URL; the face grammar on WebKit (MED).</li>
         <li>Review residue: W2-A’s grazing sheen (MED), the Cut’s cobblestone XP loop, the stance’s long-frame clocks, Ember’s unrun call-site mutants and its Spells count, and the reworked lookbook’s first run on a real GPU.</li>
