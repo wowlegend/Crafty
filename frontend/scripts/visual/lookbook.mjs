@@ -308,11 +308,20 @@ async function shootSelf(page, report, dir, target) {
       const eye = [at.body[0], at.body[1] + EYE_OVER_BODY_M, at.body[2]];
       const f = facing(at.heading, 0);
       await lb('pose', { position: eye, lookAt: [eye[0] + f[0] * 10, eye[1], eye[2] + f[2] * 10], hands: true });
+      // The roar's reveal at its hold (game/transformCam.js: 4.5 m behind the body, 2.2 m over its centre, looking at
+      // 0.6 m over it): what the first person hides must still draw from there.
+      const reveal = { position: [at.body[0] - f[0] * 4.5, at.body[1] + 2.2, at.body[2] - f[2] * 4.5], lookAt: [at.body[0], at.body[1] + 0.6, at.body[2]] };
       for (const el of SELF_FORMS) {
         await lb('form', el);
         await setCycle(page, c);
         await delay(EYE_FRAME_MS + 600); // past the entrance pop and the burst (game/beastMorph.js MORPH_SEC, BURST_SEC)
         await shoot(`self-form-${el}-${c.toFixed(2)}.png`, { kind: 'form' });
+        if (c === SELF_FORM_CYCLES[0]) {
+          await lb('pose', reveal);
+          await delay(EYE_FRAME_MS);
+          await shoot(`self-reveal-${el}-${c.toFixed(2)}.png`, { kind: 'reveal' });
+          await lb('pose', { position: eye, lookAt: [eye[0] + f[0] * 10, eye[1], eye[2] + f[2] * 10], hands: true });
+        }
         await lb('form', null);
       }
       await lb('clear');

@@ -47,12 +47,13 @@ export function worldPointLights() {
 }
 
 /** A <pointLight> that is always mounted (the Hearth's brazier, the danger fill, the phantom block's), registered so the
- *  hands take it. Props and `ref` as the light's. */
-export const WorldPointLight = forwardRef(function WorldPointLight(props, ref) {
+ *  hands take it. Its props are named, not spread, so no caller can switch on a point light's six-pass shadow
+ *  (tests/gates/dynamic-light-gates.test.js); `ref` is the light. */
+export const WorldPointLight = forwardRef(function WorldPointLight({ position, color = '#ffffff', intensity = 1, distance = 0, decay = 2 }, ref) {
   const light = useRef(null);
   useImperativeHandle(ref, () => light.current, []);
   useLayoutEffect(() => registerWorldLight(light.current), []);
-  return <pointLight ref={light} {...props} />;
+  return <pointLight ref={light} position={position} color={color} intensity={intensity} distance={distance} decay={decay} />;
 });
 
 /** A request: where (anchor), what colour, how bright, how far it reaches (0 = unbounded), its decay. */
