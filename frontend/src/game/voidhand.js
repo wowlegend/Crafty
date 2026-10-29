@@ -37,14 +37,18 @@ export const PHANTOM_BLOCK_COLORS = {
 
 /** The SM's own state (charge + timers). The held/active truth lives in the store, not here. */
 export function makeVoidhandState() {
-  return { charging: false, chargeStart: 0, heldUntil: 0, cooldownUntil: 0, throwsLeft: 0 };
+  return { charging: false, chargeStart: 0, heldSince: 0, cooldownUntil: 0, thrown: 0 };
 }
+
+const throwsOf = (ctx) => (Number.isFinite(ctx.throws) && ctx.throws >= 1 ? Math.floor(ctx.throws) : 1);
+const holdOf = (ctx) => (Number.isFinite(ctx.holdSec) ? ctx.holdSec : MAX_HOLD_SEC);
 
 /**
  * decideVoidhand(sm, ctx) -> { sm, action, keep }.
  * ctx: { held, grabEdge(pressed this frame), attack(edge), cast(edge), active(input live), alive, now, canGrab, canPay,
  *        throws, holdSec } — `throws` (default 1) and `holdSec` (default MAX_HOLD_SEC) are the grab's verb numbers
- *        (game/verbMods.js grabThrows, holdSec), read when a grab commits.
+ *        (game/verbMods.js grabThrows, holdSec) as the build stands this tick, read every tick, so a relic taken off
+ *        mid-hold takes its block with it and one slot never lends one relic's throw to the next relic's verb.
  * action: 'none' | 'startGrab' | 'short' | 'cancel' | 'unpaid' | 'grab' | 'hurl' | 'slam' | 'drop'
  *   - 'grab'  -> Components spawns the phantom + setVoidhandHeld(true) + spends GRAB_COST from the ember bar
  *   - 'hurl'/'slam' -> launch the phantom (the 2 attack intents re-skinned); with `keep` the grab held another block,
@@ -63,17 +67,18 @@ export function decideVoidhand(sm, ctx) {
     if (!ctx.alive) { out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC; return { sm: out, action: 'drop' }; }
     if (ctx.attack || ctx.cast) {
       const action = ctx.attack ? 'hurl' : 'slam';
-      // A grab that held more than one block keeps the next in hand: no cooldown, the same hold timer.
-      if ((sm.throwsLeft || 1) > 1) {
-        out.throwsLeft = sm.throwsLeft - 1;
+      // A grab that holds more than one block keeps the next in hand: no cooldown, the same hold timer.
+      const thrown = (sm.thrown || 0) + 1;
+      if (thrown < throwsOf(ctx)) {
+        out.thrown = thrown;
         return { sm: out, action, keep: true };
       }
-      out.throwsLeft = 0;
+      out.thrown = 0;
       out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC;
       return { sm: out, action };
     }
     if (ctx.grabEdge) { out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC; return { sm: out, action: 'drop' }; } // re-press grab = release the held block
-    if (ctx.now >= sm.heldUntil) { out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC; return { sm: out, action: 'drop' }; }
+    if (ctx.now - sm.heldSince >= holdOf(ctx)) { out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC; return { sm: out, action: 'drop' }; }
     return { sm: out, action: 'none' };
   }
 
@@ -84,8 +89,8 @@ export function decideVoidhand(sm, ctx) {
       out.charging = false;
       if (!ctx.canGrab) return { sm: out, action: 'cancel' };
       if (!ctx.canPay) return { sm: out, action: 'unpaid' };
-      out.heldUntil = ctx.now + (Number.isFinite(ctx.holdSec) ? ctx.holdSec : MAX_HOLD_SEC);
-      out.throwsLeft = Number.isFinite(ctx.throws) && ctx.throws >= 1 ? Math.floor(ctx.throws) : 1;
+      out.heldSince = ctx.now;
+      out.thrown = 0;
       return { sm: out, action: 'grab' };
     }
     return { sm: out, action: 'none' };

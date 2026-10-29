@@ -42,12 +42,12 @@ describe('decideTransform — the charge window (anticipation)', () => {
     expect(action).toBe('none');
     expect(sm.charging).toBe(true);
   });
-  it('held THROUGH the window + canEnter -> enter (sets activeUntil)', () => {
+  it('held THROUGH the window + canEnter -> enter (starts the form\'s clock)', () => {
     const now = 100 + ANTICIPATION_SEC;
     const { sm, action } = decideTransform(charging(), base({ roar: true, now }));
     expect(action).toBe('enter');
     expect(sm.charging).toBe(false);
-    expect(sm.activeUntil).toBe(now + FORM_DURATION_SEC);
+    expect(sm.activeSince).toBe(now);
   });
   it('released early -> cancel (no spend)', () => {
     const { sm, action } = decideTransform(charging(), base({ roar: false, now: 100 + ANTICIPATION_SEC + 1 }));
@@ -65,7 +65,7 @@ describe('decideTransform — the charge window (anticipation)', () => {
 });
 
 describe('decideTransform — active (beast) -> exit', () => {
-  const active = (over = {}) => ({ ...makeTransformState(), activeUntil: 200, ...over });
+  const active = (over = {}) => ({ ...makeTransformState(), activeSince: 200 - FORM_DURATION_SEC, ...over });
   it('before the duration ends, no roar -> none', () => {
     expect(decideTransform(active(), base({ isBeast: true, now: 150 })).action).toBe('none');
   });
@@ -109,22 +109,32 @@ describe('constants are sane', () => {
   });
 });
 
-describe('a longer roar: the form lasts ctx.formDurationSec (game/verbMods.js roarSec)', () => {
-  it('decideTransform enter honors ctx.formDurationSec (longer activeUntil)', () => {
-    const charging = { charging: true, chargeStart: 100, activeUntil: 0, cooldownUntil: 0 };
-    const longer = FORM_DURATION_SEC + 2 * ENDURANCE_SEC_PER_RANK;
-    const ctx = base({ roar: true, now: 100 + ANTICIPATION_SEC, formDurationSec: longer });
-    const { sm, action } = decideTransform(charging, ctx);
-    expect(action).toBe('enter');
-    expect(sm.activeUntil).toBe(ctx.now + longer);
+describe('a longer roar: the form lasts ctx.formDurationSec (game/verbMods.js roarSec), read every tick', () => {
+  const since = 100;
+  const inForm = { ...makeTransformState(), activeSince: since };
+  const longer = FORM_DURATION_SEC + 2 * ENDURANCE_SEC_PER_RANK;
+
+  it('a longer form is still on past the base length and ends at its own', () => {
+    expect(decideTransform(inForm, base({ isBeast: true, now: since + FORM_DURATION_SEC, formDurationSec: longer })).action,
+      'the longer form ended at the base length').toBe('none');
+    expect(decideTransform(inForm, base({ isBeast: true, now: since + longer, formDurationSec: longer })).action).toBe('exitTimer');
   });
 
-  it('decideTransform enter WITHOUT ctx.formDurationSec falls back to the base duration (backward-compatible)', () => {
-    const charging = { charging: true, chargeStart: 100, activeUntil: 0, cooldownUntil: 0 };
-    const ctx = base({ roar: true, now: 100 + ANTICIPATION_SEC });
-    const { sm, action } = decideTransform(charging, ctx);
-    expect(action).toBe('enter');
-    expect(sm.activeUntil).toBe(ctx.now + FORM_DURATION_SEC);
+  it('without ctx.formDurationSec the form ends at the base length', () => {
+    expect(decideTransform(inForm, base({ isBeast: true, now: since + FORM_DURATION_SEC - 0.01 })).action).toBe('none');
+    expect(decideTransform(inForm, base({ isBeast: true, now: since + FORM_DURATION_SEC })).action).toBe('exitTimer');
+  });
+
+  it('a relic taken off mid-form takes its seconds with it: the same tick under the shorter length ends the form', () => {
+    // Entered with Ember Fang (+4 s), then the slot changed: the length is the one the build has now.
+    const withFang = FORM_DURATION_SEC + 4;
+    const charging = { ...makeTransformState(), charging: true, chargeStart: since - ANTICIPATION_SEC };
+    const entered = decideTransform(charging, base({ roar: true, now: since, formDurationSec: withFang }));
+    expect(entered.action, 'SETUP: the roar did not enter').toBe('enter');
+    const t = since + FORM_DURATION_SEC + 1;
+    expect(decideTransform(entered.sm, base({ isBeast: true, now: t, formDurationSec: withFang })).action).toBe('none');
+    expect(decideTransform(entered.sm, base({ isBeast: true, now: t, formDurationSec: FORM_DURATION_SEC })).action,
+      'the form kept a relic\'s seconds after the relic left the slot').toBe('exitTimer');
   });
 });
 
@@ -144,7 +154,7 @@ describe('decideTransform — the price', () => {
       ['input released', { roarEdge: true, active: false }],
       ['no talent', { roarEdge: true, canEnter: false }],
       ['in the cooldown', { roarEdge: true, now: 104 }, { ...makeTransformState(), cooldownUntil: 105 }],
-      ['in a form (a release)', { roarEdge: true, isBeast: true }, { ...makeTransformState(), activeUntil: 200 }],
+      ['in a form (a release)', { roarEdge: true, isBeast: true }, { ...makeTransformState(), activeSince: 99 }],
     ]) {
       const { action } = decideTransform(sm || makeTransformState(), base({ roar: true, canPay: false, ...over }));
       expect(action, `${why} blamed the bar`).not.toBe('short');

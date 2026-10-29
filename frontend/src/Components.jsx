@@ -758,7 +758,7 @@ export const Player = ({ isWorldBuilt }) => {
     // voidhand_grasp talent and canPay the ember bar; release is a hurl or slam (the attack/cast edges), a re-press, or
     // the max-hold timer.
     // S2-B2-M2: under perf-probe mode the runner writes `voidhandHeld` directly (no real grab happened,
-    // so the SM's heldUntil=0 would max-hold-auto-drop it on the first frame) — the probe's store-driven
+    // so the SM's hold timer never started and would auto-drop it) — the probe's store-driven
     // held state is authoritative, so the SM tick is skipped. isPerfProbe() is constant-false in prod.
     if (!isPerfProbe()) {
       const vin = getInput();
