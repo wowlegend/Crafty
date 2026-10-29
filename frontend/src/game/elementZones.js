@@ -23,50 +23,53 @@ export const ZONE_DEFS = {
 const OPPOSED = { burning: 'frozen', frozen: 'burning' };
 
 const d2 = (a, b) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
+const radiusMultOf = (spec) => (Number.isFinite(spec.radiusMult) && spec.radiusMult > 0 ? spec.radiusMult : 1);
 
 export function makeZoneRegistry() {
   return { zones: [], nextId: 1 };
 }
 
-/** spawnZone(reg, {kind, pos}, now) -> the live zone (new or refreshed) | null (annihilated). */
+/** spawnZone(reg, {kind, pos, radiusMult?}, now) -> the live zone (new or refreshed) | null (annihilated). */
 export function spawnZone(reg, spec, now) {
   const def = ZONE_DEFS[spec.kind];
   if (!def) return null;
+  // Conflux (game/verbMods.js zoneRadiusMult) widens a zone the player painted; a missing or junk value is 1. The zone
+  // touches its neighbours at the size it is drawn at.
+  const radius = def.radius * radiusMultOf(spec);
 
   // ANNIHILATION: the new spawn touching an opposed zone consumes BOTH (steam, not stacking).
   const enemyKind = OPPOSED[spec.kind];
   if (enemyKind) {
-    const enemy = reg.zones.find((z) => z.kind === enemyKind && d2(z.pos, spec.pos) <= (z.radius + def.radius) ** 2);
+    const enemy = reg.zones.find((z) => z.kind === enemyKind && d2(z.pos, spec.pos) <= (z.radius + radius) ** 2);
     if (enemy) {
       reg.zones = reg.zones.filter((z) => z !== enemy);
       return null;
     }
   }
 
-  // DEDUPE: a same-kind neighbor refreshes instead of stamping a twin.
+  // DEDUPE: a same-kind neighbor refreshes instead of stamping a twin, and grows to a wider spawn's size (never shrinks).
   const near = reg.zones.find((z) => z.kind === spec.kind && d2(z.pos, spec.pos) <= DEDUPE_DIST ** 2);
   if (near) {
     near.expiresAt = now + (near.amplified ? def.ttl * AMP_TTL_MULT : def.ttl);
+    near.radius = Math.max(near.radius, radius * (near.amplified ? AMP_RADIUS_MULT : 1));
     return near;
   }
 
   // AMPLIFICATION: a non-resonant spawn touching a rune consumes it and grows.
   let amplified = false;
   if (spec.kind !== 'resonant') {
-    const rune = reg.zones.find((z) => z.kind === 'resonant' && d2(z.pos, spec.pos) <= (z.radius + def.radius) ** 2);
+    const rune = reg.zones.find((z) => z.kind === 'resonant' && d2(z.pos, spec.pos) <= (z.radius + radius) ** 2);
     if (rune) {
       reg.zones = reg.zones.filter((z) => z !== rune);
       amplified = true;
     }
   }
 
-  // Conflux (game/verbMods.js zoneRadiusMult) widens a zone the player painted; a missing or junk value is 1.
-  const radiusMult = Number.isFinite(spec.radiusMult) && spec.radiusMult > 0 ? spec.radiusMult : 1;
   const zone = {
     id: reg.nextId++,
     kind: spec.kind,
     pos: { x: spec.pos.x, y: spec.pos.y, z: spec.pos.z },
-    radius: def.radius * (amplified ? AMP_RADIUS_MULT : 1) * radiusMult,
+    radius: radius * (amplified ? AMP_RADIUS_MULT : 1),
     expiresAt: now + def.ttl * (amplified ? AMP_TTL_MULT : 1),
     amplified,
   };
@@ -77,24 +80,35 @@ export function spawnZone(reg, spec, now) {
 
 /** How far an imbued zone leaps to the next hostile (Chain Imbue, Wildfire, Prism Shard). */
 export const CHAIN_RANGE = 8;
-/** A leap lands outside the zone it leapt from: a hostile nearer than this to the impact is already in it. */
-export const CHAIN_MIN_DIST = 2;
 
 /**
- * The positions an imbued zone leaps to: the `n` nearest mobs that `isTarget` accepts, between CHAIN_MIN_DIST and
- * `range` of `origin` on the ground plane, nearest first. Pure; the caller says what a target is.
+ * spawnChain(reg, {kind, pos, chain, radiusMult?}, mobs, isTarget, now) -> the leaps taken, as spawnZone's results.
+ * An imbue that chains paints up to `chain` more zones of its kind, each under the nearest hostile `isTarget` accepts
+ * within CHAIN_RANGE of the impact that stands outside the impact's own zone and outside every zone of that kind, the
+ * ones this chain paints included. A hostile already in a zone of the element takes its ticks there, so a leap onto it
+ * would only stack a second zone's ticks on the same body; the leap goes on to the next hostile instead. Call it after
+ * spawning the impact's own zone.
  */
-export function chainTargets(origin, mobs, n, range, isTarget) {
-  const count = Number.isFinite(n) ? Math.floor(n) : 0;
-  if (count <= 0 || !origin) return [];
-  const near = [];
+export function spawnChain(reg, req, mobs, isTarget, now) {
+  const def = ZONE_DEFS[req?.kind];
+  const count = Number.isFinite(req?.chain) ? Math.floor(req.chain) : 0;
+  if (!def || count <= 0 || !req.pos) return [];
+  const radius = def.radius * radiusMultOf(req);
+  const candidates = [];
   for (const e of mobs || []) {
     if (!e || !e.position || !isTarget(e)) continue;
-    const d2 = (e.position.x - origin.x) ** 2 + (e.position.z - origin.z) ** 2;
-    if (d2 <= range * range && d2 >= CHAIN_MIN_DIST * CHAIN_MIN_DIST) near.push({ d2, pos: e.position });
+    const d = d2(e.position, req.pos);
+    if (d <= CHAIN_RANGE ** 2 && d > radius ** 2) candidates.push({ d, pos: e.position });
   }
-  near.sort((a, b) => a.d2 - b.d2);
-  return near.slice(0, count).map((o) => ({ x: o.pos.x, y: o.pos.y, z: o.pos.z }));
+  candidates.sort((a, b) => a.d - b.d);
+  const covered = (pos) => reg.zones.some((z) => z.kind === req.kind && d2(z.pos, pos) <= z.radius ** 2);
+  const leaps = [];
+  for (const c of candidates) {
+    if (leaps.length >= count) break;
+    if (covered(c.pos)) continue;
+    leaps.push(spawnZone(reg, { kind: req.kind, pos: { x: c.pos.x, y: c.pos.y, z: c.pos.z }, radiusMult: req.radiusMult }, now));
+  }
+  return leaps;
 }
 
 /** stepZones(reg, now) -> { expired } — the bridge ticks this at 15Hz (M4). */
@@ -118,6 +132,8 @@ export const SLOW_MULT = 0.4; // frozen: mobs crawl at 40% (the mobsData speed l
  * applyZoneEffects(zones, mobs, damageFn) — one FX tick of chemistry-on-combat.
  * TWO-PASS frozen semantics: membership first (a Set), then mults — so a mob inside
  * zone B but outside zone A is NOT reset by A's pass (the multi-zone trap, plan M4).
+ * Every kind acts on membership, as frozen does: a mob takes each element's tick once per FX tick however many zones of
+ * it overlap there, so a re-imbue beside an old zone or a chain's leap never multiplies the damage on one body.
  * damageFn(id, dmg, type, source) is always called with source 'hazard' (banks nothing).
  * The resonant lure sets isAggro (persists through the AI worker — the squad precedent).
  */
@@ -137,16 +153,19 @@ export function applyZoneEffects(zones, mobs, damageFn) {
     if (frozenIds.has(e.id)) e.zoneSlowMult = SLOW_MULT;
     else if (e.zoneSlowMult !== undefined && e.zoneSlowMult !== 1) e.zoneSlowMult = 1;
   }
-  for (const z of zones) {
-    if (z.kind === 'frozen') continue;
-    const r2 = z.radius * z.radius;
-    for (const e of mobs) {
-      if (!e || e.health <= 0) continue;
+  for (const e of mobs) {
+    if (!e || e.health <= 0) continue;
+    let burning = false, conductive = false, resonant = false;
+    for (const z of zones) {
+      if (z.kind === 'frozen') continue;
       const dx = e.position.x - z.pos.x, dz = e.position.z - z.pos.z;
-      if (dx * dx + dz * dz > r2) continue;
-      if (z.kind === 'burning') damageFn(e.id, BURN_TICK, 'fireball', 'hazard');
-      else if (z.kind === 'conductive') damageFn(e.id, SHOCK_TICK, 'lightning', 'hazard');
-      else if (z.kind === 'resonant') e.isAggro = true;
+      if (dx * dx + dz * dz > z.radius * z.radius) continue;
+      if (z.kind === 'burning') burning = true;
+      else if (z.kind === 'conductive') conductive = true;
+      else if (z.kind === 'resonant') resonant = true;
     }
+    if (burning) damageFn(e.id, BURN_TICK, 'fireball', 'hazard');
+    if (conductive && e.health > 0) damageFn(e.id, SHOCK_TICK, 'lightning', 'hazard');
+    if (resonant) e.isAggro = true;
   }
 }

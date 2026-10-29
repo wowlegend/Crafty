@@ -4,7 +4,7 @@ import { useGameStore } from '../store/useGameStore';
 import { GameMethods } from '../GameMethods';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
-import { makeZoneRegistry, spawnZone, stepZones, clearZones, applyZoneEffects, chainTargets, CHAIN_RANGE } from '../game/elementZones';
+import { makeZoneRegistry, spawnZone, spawnChain, stepZones, clearZones, applyZoneEffects } from '../game/elementZones';
 import { consumeZoneRequest } from '../game/elemancerChannel';
 import { worldDelta, worldNow } from '../game/worldClock.js';
 import { isHostile } from '../combat/targeting';
@@ -54,9 +54,7 @@ export function ElementZoneSystem() {
     if (req) {
       const z = spawnZone(liveZones, req, now);
       // An imbue that chains (Chain Imbue, Wildfire, Prism Shard) paints the same kind under the nearest hostiles too.
-      for (const pos of chainTargets(req.pos, mobsQuery.entities, req.chain, CHAIN_RANGE, isChainTarget)) {
-        spawnZone(liveZones, { kind: req.kind, pos, radiusMult: req.radiusMult }, now);
-      }
+      spawnChain(liveZones, req, mobsQuery.entities, isChainTarget, now);
       // M6: the element speaks at its spawn moment (a dedupe-refresh replays — the player
       // DID cast; an annihilation stays silent steam in v1). Guarded: the sound registry
       // arrives late via a GameScene effect.
