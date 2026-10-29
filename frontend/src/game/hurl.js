@@ -110,12 +110,13 @@ export function adoptHurlRequest(req) {
 }
 
 /**
- * The most blocks in the air at once: the HurlSystem's mesh pool. A grab holds at most three blocks (Twin Grasp and
- * Lodestone each add one, game/verbMods.js grabThrows) and throws them as fast as the player clicks, and the next grab
- * commits GRAB_COOLDOWN_SEC + GRAB_CHARGE_SEC after the last throw, inside one HURL_TTL_SEC flight, so two grabs' blocks
- * can be up together. hurl.test.js derives that bound from the trees and the relics.
+ * The most blocks in the air at once: the HurlSystem's mesh pool. A grab holds at most five blocks (Twin Grasp adds one,
+ * and Lodestone one a tier, three at the Forge's top tier; game/verbMods.js grabThrows) and throws them as fast as the
+ * player clicks, and the next grab commits GRAB_COOLDOWN_SEC + GRAB_CHARGE_SEC after the last throw, inside one
+ * HURL_TTL_SEC flight, so two grabs' blocks can be up together. hurl.test.js derives that bound from the trees and the
+ * relics. A mesh is hidden while its slot is idle, so a slot costs no draw until its block flies.
  */
-export const MAX_FLIGHTS = 6;
+export const MAX_FLIGHTS = 10;
 
 /**
  * The pool slot a new flight takes: a free one, else the one flying longest. A flight ages on the world clock and the

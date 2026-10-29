@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { tierRarityBonus, tierLootChance, RARITY_BONUS_CAP } from '../../src/game/lootTier.js';
 
 // S7 Slice 3 (REWARD side): far from spawn = rarer drops. The zone-tier boosts the drop CHANCE of
-// NON-common loot rows (common staples unchanged so crafting still feeds). Pure -> testable +
+// NON-common loot rows (common staples keep their rates). Pure -> testable +
 // capture-safe (loot is runtime). tier 0 (near spawn) MUST be identical to the legacy behaviour.
 describe('tierRarityBonus(zoneTier) — relative drop-chance boost for rare loot', () => {
   it('is 0 at tier 0 (near spawn = no change)', () => {
@@ -21,7 +21,7 @@ describe('tierRarityBonus(zoneTier) — relative drop-chance boost for rare loot
 });
 
 describe('tierLootChance(baseChance, rarity, zoneTier) — effective drop chance', () => {
-  it('common rows are UNCHANGED at any tier (staples still feed crafting)', () => {
+  it('common rows are UNCHANGED at any tier (staples keep their rates)', () => {
     expect(tierLootChance(0.8, 'common', 0)).toBe(0.8);
     expect(tierLootChance(0.8, 'common', 4)).toBe(0.8);
   });

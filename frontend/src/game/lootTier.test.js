@@ -31,7 +31,7 @@ describe('tierRarityBonus', () => {
 });
 
 describe('tierLootChance', () => {
-  it('leaves common (or nullish) rarity unchanged at any tier — staples still feed crafting', () => {
+  it('leaves common (or nullish) rarity unchanged at any tier — staples keep their rates', () => {
     expect(tierLootChance(0.4, 'common', 4)).toBe(0.4);
     expect(tierLootChance(0.4, null, 4)).toBe(0.4);
     expect(tierLootChance(0.4, undefined, 4)).toBe(0.4);

@@ -32,7 +32,6 @@ export const ITEMS = {
   golden_crown:       { name: 'Golden Crown',        icon: 'crown',      rarity: 'legendary' },
   star_fragment:      { name: 'Star Fragment',       icon: 'star',       rarity: 'legendary' },
   sword:              { name: 'sword',               icon: 'sword',      rarity: 'common' },
-  pickaxe:            { name: 'pickaxe',             icon: 'pickaxe',    rarity: 'common' },
   wooden_shield:      { name: 'Wooden Shield',       icon: 'shield',     rarity: 'common' },
   stone_sword:        { name: 'Stone Sword',         icon: 'sword',      rarity: 'rare' },
   leather_helmet:     { name: 'Leather Helmet',      icon: 'helmet',     rarity: 'rare' },

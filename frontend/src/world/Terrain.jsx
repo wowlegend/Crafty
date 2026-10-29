@@ -509,8 +509,8 @@ export const MinecraftWorld = React.memo(() => {
             } else if (type === 'block_broken') {
                 // Phase 12: Collect block logic
                 const store = useGameStore.getState();
-                // S6: ore codes 10-13 drop their LOWERCASE block keys (matches recipes.js patterns +
-                // BLOCK_TYPES render path; NOT display names which wouldn't match the primary recipes).
+                // S6: ore codes 10-13 drop their LOWERCASE block keys (the keys the Forge prices in, game/forge.js,
+                // and the BLOCK_TYPES render path; NOT display names, which no price names).
                 // R4a: this used to be a SECOND hand-written literal, independent of the place-map above.
                 // They drifted (that is the whole bug). Both now derive from src/world/blockIds.js.
                 const blockName = blockForId(payload.blockType);

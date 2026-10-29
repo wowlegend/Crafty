@@ -2,8 +2,8 @@ import { BLOCK_TYPES } from '../../world/Blocks';
 import { Icon } from '../primitives/index.js';
 import { getItemIcon } from '../../data/items.js';
 
-// ItemIcon (S3 de-monolith from GamePanels): the shared item/block glyph used by Inventory AND
-// CraftingTable -> a leaf module both import (avoids a GamePanels<->CraftingTable circular import).
+// ItemIcon (S3 de-monolith from GamePanels): the shared item/block glyph used by Inventory AND the Forge card -> a leaf
+// module both import, so neither panel imports the other.
 export const ItemIcon = ({ itemName, size = 42 }) => {
     const icon = getItemIcon(itemName);
     if (icon) return <Icon name={icon} size={size} />;

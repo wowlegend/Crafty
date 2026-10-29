@@ -694,7 +694,7 @@ describe('openTalents — the touch form of the KeyU open branch', () => {
   it('closes every other panel, then opens Talents', () => {
     const calls = [];
     const store = Object.fromEntries(
-      ['setShowInventory', 'setShowCrafting', 'setShowMagic', 'setShowBuildingTools', 'setShowSettings']
+      ['setShowInventory', 'setShowForge', 'setShowMagic', 'setShowBuildingTools', 'setShowSettings']
         .map((k) => [k, (v) => calls.push([k, v])]),
     );
     openTalents(store, {

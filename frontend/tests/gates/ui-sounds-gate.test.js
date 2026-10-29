@@ -20,7 +20,7 @@ describe('UI panel-open/close foley is wired', () => {
     expect(sm).toMatch(/playUIClose:/);
   });
   it('UISounds watches the panel layer + plays on the open/close edge', () => {
-    expect(ui).toMatch(/showInventory\s*\|\|\s*s\.showCrafting/);
+    expect(ui).toMatch(/showInventory\s*\|\|\s*s\.showForge/);
     expect(ui).toMatch(/playUIOpen\?\.\(\)/);
     expect(ui).toMatch(/playUIClose\?\.\(\)/);
   });

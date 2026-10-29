@@ -241,10 +241,10 @@ describe('StableMagicHands plays the fitted poses (mounted through R3F at an iPa
     }
   });
 
-  it('an equipped sword or pickaxe is drawn with the hands\' value floor on every part', async () => {
+  it('an equipped blade is drawn with the hands\' value floor on every part', async () => {
     const saved = useGameStore.getState().equipment;
     try {
-      for (const [weapon, parts] of [['Iron Sword', 9], ['Diamond Sword', 9], ['pickaxe', 4]]) {
+      for (const [weapon, parts] of [['Iron Sword', 9], ['Diamond Sword', 9], ['sword', 9]]) {
         useGameStore.setState({ equipment: { ...saved, weapon } });
         r = await mountR3F(<StableMagicHands selectedBlock={null} attackType={null} attackStartTime={{ current: 0 }} />);
         const meshes = [];

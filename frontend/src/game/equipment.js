@@ -5,7 +5,7 @@
 import { RELICS } from './relics.js';
 
 const SLOT_ITEMS = {
-  weapon: ['sword', 'pickaxe', 'Stone Sword', 'Iron Sword', 'Diamond Sword'],
+  weapon: ['sword', 'Stone Sword', 'Iron Sword', 'Diamond Sword'],
   offhand: ['Wooden Shield', 'Iron Shield', 'Diamond Shield'],
   head: ['Golden Crown', 'Leather Helmet', 'Iron Helmet', 'Diamond Helmet'],
   chest: ['Leather Chestplate', 'Iron Chestplate', 'Diamond Chestplate'],
@@ -20,7 +20,7 @@ export function getItemSlot(itemName) {
   return null;
 }
 
-const WEAPON_BASE_DAMAGE = { 'Stone Sword': 12, 'Iron Sword': 20, 'Diamond Sword': 35, pickaxe: 8, sword: 10 };
+const WEAPON_BASE_DAMAGE = { 'Stone Sword': 12, 'Iron Sword': 20, 'Diamond Sword': 35, sword: 10 };
 
 /** Flat base melee damage for the equipped weapon name (default 5 = unarmed/unknown). */
 export function getWeaponBaseDamage(weaponName) {

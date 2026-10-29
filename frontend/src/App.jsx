@@ -90,7 +90,7 @@ function GameApp({ experienceSystem }) {
   const hudHidden = useGameStore(s => s.hudHidden);
   const showcaseView = useGameStore(s => s.showcaseView);
   const { musicEnabled, playBackgroundMusic, resumeAudio } = useSounds();
-  const { playAttack, playSwing, playHit, playDefeat, playLevelUpSound, playFanfare, playVictory, playCraft } = useGameSounds();
+  const { playAttack, playSwing, playHit, playDefeat, playLevelUpSound, playFanfare, playVictory } = useGameSounds();
 
   // Reward-beat sound bridge: the codebase triggers reward sounds via window.* globals
   // (SimpleExperienceSystem's window.playLevelUpSound, QuestSystem's window.playFanfare), but nothing
@@ -100,8 +100,7 @@ function GameApp({ experienceSystem }) {
     window.playLevelUpSound = playLevelUpSound;
     window.playFanfare = playFanfare;
     window.playVictory = playVictory; // the climax sting, fired on VictoryOverlay mount
-    window.playCraft = playCraft;     // crafting was silent (dead voice, zero callers) -> wire it to doCraft
-  }, [playLevelUpSound, playFanfare, playVictory, playCraft]);
+  }, [playLevelUpSound, playFanfare, playVictory]);
 
   const [isWorldBuilt, setIsWorldBuilt] = useState(false);
 
@@ -246,6 +245,7 @@ function GameApp({ experienceSystem }) {
         s.totalXP !== prevS.totalXP ||
         s.coins !== prevS.coins ||
         s.equipment !== prevS.equipment ||
+        s.relicTiers !== prevS.relicTiers ||
         s.chests !== prevS.chests ||
         s.talentPoints !== prevS.talentPoints ||
         s.unlockedTalents !== prevS.unlockedTalents ||
@@ -322,7 +322,7 @@ function GameApp({ experienceSystem }) {
     // `y` for the mob-floor E2E (R7.1): a mob under a roof must stay on the ground, which only its y can show.
     // windupUntil / staggerUntil for the perfect-dodge E2E: the press is timed against the first, judged by the second.
     registerTestHook('readMobs', () => mobsQuery.entities.map((e) => ({
-      id: e.id, type: e.type, health: e.health, passive: !!e.passive, x: e.position.x, y: e.position.y, z: e.position.z,
+      id: e.id, type: e.type, role: e.role ?? null, health: e.health, passive: !!e.passive, x: e.position.x, y: e.position.y, z: e.position.z,
       knockback: !!e.knockback, windupUntil: e.windupUntil || 0, staggerUntil: e.staggerUntil || 0,
     })));
     // The squad, for the ember E2E: a bind is seen as a mob joining it, a fuse as a pair leaving it for one hybrid.
@@ -891,14 +891,14 @@ function GameApp({ experienceSystem }) {
       useGameStore.getState().setHudHidden(false);
       useGameStore.getState().setCaptureStudio(false); // leaving capture -> motes return
     });
-    // Open a modal (inventory/crafting) for the visual gate. DEV-only. The panels are a lazy chunk now, so this
+    // Open a modal (inventory/the Forge) for the visual gate. DEV-only. The panels are a lazy chunk now, so this
     // WAITS for it first (page.evaluate awaits the promise): a capture must never shoot the empty Suspense frame.
     registerTestHook('openModal', async (which = 'inventory') => {
       await loadPanels();
       const store = useGameStore.getState();
       store.setCaptureStudio(false); // modal OVER the explore world is an in-world frame -> motes on
       if (which === 'inventory') store.setShowInventory(true);
-      else if (which === 'crafting') store.setShowCrafting(true);
+      else if (which === 'forge') store.setShowForge(true);
       else if (which === 'settings') store.setShowSettings(true);
       else if (which === 'credits') store.setShowCredits(true);
       // #51 S2: the progression panel (the Talents page). showSpellUpgrades is a useState setter

@@ -32,10 +32,9 @@ export const KEY_MAP = [
   // --- Panels ---
   { key: 'E',   code: 'KeyE',   label: 'Inventory',              group: 'Panels' },
   { key: 'M',   code: 'KeyM',   label: 'Magic',                  group: 'Panels' },
-  { key: 'C',   code: 'KeyC',   label: 'Crafting',               group: 'Panels' },
   { key: 'B',   code: 'KeyB',   label: 'Building',               group: 'Panels' },
   { key: 'U',   code: 'KeyU',   label: 'Talents & Aspect guide', group: 'Panels' },
-  { key: 'G',   code: 'KeyG',   label: 'Open chest / trade',     group: 'Panels', panelHide: true },
+  { key: 'G',   code: 'KeyG',   label: 'Talk (Mara: the Forge) / open chest', group: 'Panels' },
   { key: 'L',   code: 'KeyL',   label: 'Quest log',              group: 'Panels' },
   { key: 'Q',   code: 'KeyQ',   label: 'Claim completed quests', group: 'Panels' },
   { key: 'H',   code: 'KeyH',   label: 'Toggle controls',        group: 'Panels' },

@@ -1,12 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, fireEvent, cleanup } from '@testing-library/react';
+import { cleanup } from '@testing-library/react';
 import * as THREE from 'three';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { placeAtHit } from '../../src/world/placeAtHit.js';
-import { CraftingTable } from '../../src/ui/panels/CraftingTable.jsx';
 import { HOTBAR_BLOCKS } from '../../src/world/Blocks.js';
-import { RECIPES } from '../../src/data/recipes.js';
+import { GOODS, forgeOffers } from '../../src/game/forge.js';
 import { blockForId } from '../../src/world/blockIds.js';
 import { CHUNK_SIZE } from '../../src/world/loadedChunks.js';
 import { PLACE_GAIN } from '../../src/game/ember.js';
@@ -69,11 +68,11 @@ describe('placeAtHit spends the block it places', () => {
     expect(notes, 'the refusal was silent').toEqual([{ text: 'No Dirt left', type: 'warn' }]);
   });
 
-  it('a block made by crafting says where more comes from', () => {
+  it('a block only the Forge makes says where more comes from', () => {
     useGameStore.setState({ selectedBlock: 'chest' });
     withBlocks({ chest: 0 });
     expect(placeAtHit(hitAt(), { post })).toBe(0);
-    expect(notes.map((n) => n.text), 'the refusal of a crafted block does not point at crafting').toEqual(['No Wooden Chest left — craft more in Crafting']);
+    expect(notes.map((n) => n.text), 'the refusal of a forged block does not point at the Forge').toEqual(['No Wooden Chest left — Mara\'s Forge makes more']);
   });
 
   it('a footprint the stack cannot cover places what it affords and debits exactly that', () => {
@@ -114,46 +113,43 @@ describe('placeAtHit spends the block it places', () => {
 
 describe('every hotbar block can be had, so no slot only ever refuses', () => {
   const START = useGameStore.getInitialState().inventory.blocks;
-  const CRAFTED = new Set(RECIPES.flatMap((r) => Object.keys(r.output)));
+  // The blocks only Mara's Forge makes, each with the blocks its price takes.
+  const FORGED = new Map(GOODS.map((g) => [g.give, Object.keys(g.price.blocks)]));
   // The ores are the generated blocks that start at 0; each drops itself when mined (ore-drop-gates).
   const ORE_DROPS = new Set([10, 11, 12, 13].map(blockForId));
+  // A source that needs no Forge: the starting loadout or an ore drop.
+  const rawSource = (block) => (START[block] || 0) > 0 || ORE_DROPS.has(block);
 
-  it.each(HOTBAR_BLOCKS)('%s: in the starting loadout, a recipe output, or an ore drop', (block) => {
-    const sources = { start: (START[block] || 0) > 0, crafted: CRAFTED.has(block), mined: ORE_DROPS.has(block) };
-    expect(Object.values(sources).some(Boolean), `${block} has no source a player can reach: ${JSON.stringify(sources)}`).toBe(true);
+  it.each(HOTBAR_BLOCKS)('%s: in the starting loadout, an ore drop, or a Forge good whose price is itself had', (block) => {
+    const price = FORGED.get(block);
+    const sources = { start: (START[block] || 0) > 0, mined: ORE_DROPS.has(block), forged: !!price && price.every(rawSource) };
+    expect(Object.values(sources).some(Boolean), `${block} has no source a player can reach: ${JSON.stringify({ ...sources, price })}`).toBe(true);
   });
 
   it('checks the whole hotbar', () => {
     expect(HOTBAR_BLOCKS.length, 'the hotbar shrank; this gate checks fewer slots').toBeGreaterThanOrEqual(9);
     expect(ORE_DROPS, 'SETUP: the ore ids no longer resolve to ore blocks').toEqual(new Set(['coal', 'iron', 'gold', 'diamond']));
+    expect(HOTBAR_BLOCKS.filter((b) => !rawSource(b)), 'SETUP: the Forge is the only source of no hotbar block, so its branch is unexamined').not.toEqual([]);
   });
 
-  it('a fresh profile crafts a Wooden Chest from its starting wood, and placing it makes a storage chest', () => {
-    useGameStore.setState({ selectedBlock: 'wood' });
+  it('a fresh profile buys a Wooden Chest at the Forge with its starting wood, and placing it makes a storage chest', () => {
     const wood = S().inventory.blocks.wood;
-    expect(wood, 'SETUP: the starting loadout cannot pay for a chest').toBeGreaterThanOrEqual(8);
-    const { container } = render(<CraftingTable onClose={() => {}} />);
-    const cells = container.querySelector('.bg-well').children;
-    expect(cells.length, 'SETUP: the crafting grid did not render').toBe(9);
-    [0, 1, 2, 3, 5, 6, 7, 8].forEach((i) => fireEvent.click(cells[i]));
-    fireEvent.click(container.querySelector('.h-24').parentElement);
-    expect(S().inventory.blocks.chest, 'eight wood in a ring crafted no chest').toBe(1);
+    const offer = forgeOffers(S()).find((o) => o.id === 'goods:chest');
+    expect(offer, 'the Forge lists no chest').toBeTruthy();
+    expect(S().buyForgeOffer(offer).ok, 'the starting loadout could not pay for a chest').toBe(true);
+    expect(S().inventory.blocks.chest, 'the purchase gave no chest').toBe(1);
     expect(S().inventory.blocks.wood, 'the chest did not cost eight wood').toBe(wood - 8);
-    cleanup();
 
     useGameStore.setState({ selectedBlock: 'chest' });
-    expect(placeAtHit(hitAt(), { post }), 'the crafted chest could not be placed').toBe(1);
+    expect(placeAtHit(hitAt(), { post }), 'the forged chest could not be placed').toBe(1);
     expect(S().inventory.blocks.chest, 'placing the chest did not spend it').toBe(0);
     expect(S().chests.get('10_20_10'), 'placing a chest made no storage chest').toEqual({ inventory: {}, name: 'Wooden Chest' });
   });
 
-  it('a fresh profile crafts Cobblestone from its starting stone', () => {
-    useGameStore.setState({ selectedBlock: 'stone' });
+  it('a fresh profile buys four Cobblestone with four of its starting stone', () => {
     const stone = S().inventory.blocks.stone;
-    const { container } = render(<CraftingTable onClose={() => {}} />);
-    fireEvent.click(container.querySelector('.bg-well').children[4]);
-    fireEvent.click(container.querySelector('.h-24').parentElement);
-    expect(S().inventory.blocks.cobblestone, 'one stone crafted no cobblestone').toBe(1);
-    expect(S().inventory.blocks.stone, 'the cobblestone did not cost one stone').toBe(stone - 1);
+    expect(S().buyForgeOffer(forgeOffers(S()).find((o) => o.id === 'goods:cobblestone')).ok).toBe(true);
+    expect(S().inventory.blocks.cobblestone, 'four stone bought no cobblestone').toBe(4);
+    expect(S().inventory.blocks.stone, 'the cobblestone did not cost four stone').toBe(stone - 4);
   });
 });

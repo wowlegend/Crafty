@@ -1,6 +1,6 @@
 // lazyPanels.js — the panels, loaded on demand from ONE chunk (plan 2026-09-23-crafty-lazy-panels).
 //
-// Every on-demand panel (inventory, crafting, magic, building, settings, spell upgrades, chest, trading, quest log,
+// Every on-demand panel (inventory, the Forge, magic, building, settings, spell upgrades, chest, trading, quest log,
 // credits, world manager) was in the boot bundle, parsed before the first frame and paid for by every player who
 // never opens half of them — and the byte budget for that chunk had 0.7 KB left. They now share one import():
 // one request, one chunk. prefetchPanels() starts it once the game is idle, so the first panel a player opens is
@@ -94,7 +94,7 @@ export function prefetchPanels() {
 
 const lazyPanel = panels.lazyPanel;
 export const Inventory = lazyPanel('Inventory');
-export const CraftingTable = lazyPanel('CraftingTable');
+export const ForgePanel = lazyPanel('ForgePanel');
 export const BuildingTools = lazyPanel('BuildingTools');
 export const SettingsPanel = lazyPanel('SettingsPanel');
 export const MagicSystem = lazyPanel('MagicSystem');

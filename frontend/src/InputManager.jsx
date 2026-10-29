@@ -7,6 +7,7 @@ import { HOTBAR_BLOCKS } from './world/Blocks';
 // eslint-disable-next-line no-unused-vars
 import { getInput, setActive } from './input/inputState';
 import { isAnyPanelOpen } from './ui/panelState.js';
+import { talk, talkOpenedPanel } from './input/talk.js';
 
 const requestPointerLockSafely = (state) => {
   if (state.requestPointerLock) {
@@ -74,7 +75,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
 
         if (anyPanelOpen) {
           state.setShowInventory(false);
-          state.setShowCrafting(false);
+          state.setShowForge(false);
           state.setShowMagic(false);
           state.setShowBuildingTools(false);
           state.setShowSettings(false);
@@ -104,7 +105,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
           event.stopImmediatePropagation();
 
           state.setShowInventory(false);
-          state.setShowCrafting(false);
+          state.setShowForge(false);
           state.setShowMagic(false);
           state.setShowBuildingTools(false);
           state.setShowSettings(false);
@@ -123,7 +124,6 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         };
 
         if (event.code === 'KeyE') toggleUI(state.setShowInventory, state.showInventory);
-        if (event.code === 'KeyC') toggleUI(state.setShowCrafting, state.showCrafting);
         if (event.code === 'KeyB') toggleUI(state.setShowBuildingTools, state.showBuildingTools);
         if (event.code === 'KeyM') toggleUI(state.setShowMagic, state.showMagic); // UX-legibility: the advertised M key now opens Magic (was an unhandled HUD lie)
         if (event.code === 'KeyL') toggleUI(state.setShowQuestLog, state.showQuestLog); // M-NARRATIVE.3: the quest LOG (lore/giver/objective)
@@ -158,7 +158,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         event.preventDefault();
         event.stopImmediatePropagation();
         state.setShowInventory(false);
-        state.setShowCrafting(false);
+        state.setShowForge(false);
         state.setShowMagic(false);
         state.setShowBuildingTools(false);
         state.setShowSettings(false);
@@ -173,48 +173,9 @@ export function useInputManager(gameState, gameSystems, questSystem) {
 
       if (event.code === 'KeyG' && active && !anyPanelOpen) {
         event.preventDefault();
-        let nearestVillager = null;
-        if (state.mobEntities && state.gameCamera) {
-          const camera = state.gameCamera;
-          const px = camera.position.x, pz = camera.position.z;
-          let nearestDist = 4;
-          state.mobEntities.forEach(mob => {
-            if (mob.type === 'villager') {
-              const dx = mob.position[0] - px;
-              const dz = mob.position[2] - pz;
-              const d = Math.sqrt(dx * dx + dz * dz);
-              if (d < nearestDist) {
-                nearestVillager = mob;
-                nearestDist = d;
-              }
-            }
-          });
-        }
-
-        if (nearestVillager) {
-          // M-NPCS.3: route the G-interact by the NPC's role. Merchant + legacy role-less quest
-          // villagers -> the trade panel; the smith -> crafting; the healer heals on the spot; the
-          // warden (guide) gives a directional hint via the notification feed (his quest-log comes in
-          // M-NARRATIVE). Only panel-opening roles exit pointer lock.
-          state.setSelectedVillager(nearestVillager);
-          const role = nearestVillager.role;
-          const who = nearestVillager.npcName || 'The villager';
-          if (role === 'smith') {
-            state.setShowCrafting(true);
-            if (document.exitPointerLock) document.exitPointerLock();
-          } else if (role === 'healer') {
-            state.healPlayer?.(state.maxHealth || 100);
-            state.restoreMana?.(state.maxMana || 100);
-            state.addNotification?.(`${who} mends your wounds — health and mana restored.`, 'reward');
-          } else if (role === 'guide') {
-            state.addNotification?.(`${who}: the frontier shrine lies ahead — follow the light on the horizon.`, 'quest');
-          } else {
-            state.setShowTradingInterface(true);
-            if (document.exitPointerLock) document.exitPointerLock();
-          }
-        } else if (state.openNearbyChest) {
-          state.openNearbyChest();
-        }
+        // The talk verb (input/talk.js): the smith opens Mara's Forge, the merchant trades, the healer heals, the warden
+        // hints, and with no villager near a chest beside the player opens. Only a panel exits pointer lock.
+        if (talkOpenedPanel(talk(state)) && document.exitPointerLock) document.exitPointerLock();
         return;
       }
 
@@ -230,7 +191,7 @@ export function useInputManager(gameState, gameSystems, questSystem) {
         event.preventDefault();
         event.stopImmediatePropagation();
         state.setShowInventory(false);
-        state.setShowCrafting(false);
+        state.setShowForge(false);
         state.setShowMagic(false);
         state.setShowBuildingTools(false);
         state.setShowSettings(false);

@@ -12,8 +12,8 @@ const C = UI.color;
 // dark-brown-on-black" — and the IDENTICAL mistake sat 35 lines away on the title screen's controls
 // strip and survived, because the fix was applied to the instance rather than to the class.
 //
-// MEASURED on the committed menu.png baseline before the fix: glyph rgb(29,19,8) on ground rgb(16,12,8),
-// a ratio of 1.07:1 against a WCAG AA floor of 4.5:1. The first thing a new player reads.
+// MEASURED on a frame of the title screen: glyph rgb(29,19,8) on ground rgb(16,12,8), a ratio of 1.07:1
+// against a WCAG AA floor of 4.5:1. The first thing a new player reads.
 //
 // NO INSTRUMENT IN THIS REPO COULD SEE IT. Verified by grep: zero occurrences of wcag / contrastRatio /
 // relativeLuminance anywhere in src, tests or scripts before this file. A jsdom test asserts the text

@@ -14,11 +14,14 @@ export function deniedReason(kind, ctx = '') {
       return t('deny.noEmber');
     case 'aspect-locked':
       return `${ctx ? ctx + ' ' : ''}not yet unlocked — open Talents (U)`;
-    // ctx = the block's display name. No key is named: the Crafting panel opens from a desktop key and a touch button.
+    // ctx = the block's display name. No key is named: Mara's Forge opens from G on a keyboard and Talk on touch.
     case 'no-block':
       return `No ${ctx || 'block'} left`;
-    case 'no-block-craftable':
-      return `No ${ctx || 'block'} left — craft more in Crafting`;
+    case 'no-block-forge':
+      return `No ${ctx || 'block'} left — Mara's Forge makes more`;
+    // The talk verb (input/talk.js) with no villager and no chest in reach.
+    case 'no-talk':
+      return 'Nobody near enough to talk to';
     default:
       return "You can't do that yet";
   }

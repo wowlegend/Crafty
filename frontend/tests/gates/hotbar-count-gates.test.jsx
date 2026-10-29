@@ -15,7 +15,7 @@ afterEach(cleanup);
 
 const hud = (blocks) => ({
   selectedBlock: 'grass', inventory: { blocks },
-  setSelectedBlock: () => {}, setShowSettings: () => {}, setShowInventory: () => {}, setShowCrafting: () => {},
+  setSelectedBlock: () => {}, setShowSettings: () => {}, setShowInventory: () => {}, setShowForge: () => {},
   setShowMagic: () => {}, setShowBuildingTools: () => {},
 });
 const slot = (block) => document.querySelector(`[data-hotbar-block="${block}"]`);

@@ -26,7 +26,7 @@ beforeEach(() => {
   document.body.requestPointerLock = vi.fn();
   setActive(true); // input live / pointer-locked, i.e. actively playing
   useGameStore.setState({
-    showInventory: false, showCrafting: false, showMagic: false, showBuildingTools: false,
+    showInventory: false, showForge: false, showMagic: false, showBuildingTools: false,
     showSettings: false, showChestInterface: false, showTradingInterface: false,
     showWorldManager: false, showCredits: false, selectedBlock: undefined,
   });

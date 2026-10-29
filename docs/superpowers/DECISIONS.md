@@ -19,6 +19,215 @@
 
 ---
 
+## 2026-10-29 — [LOOP] Vercel deploys main only
+
+**Decided by the command session under the standing grant** (DECISIONS 2026-10-28 item 14). Item 58; the W2-H media
+lane holds 50-57 and the Forge lane 60 on.
+
+58. **Only main deploys; previews are off** (`frontend/vercel.json` `git.deploymentEnabled`: `"**": false`,
+   `"main": true`). Supersedes the dependabot-only `ignoreCommand` of 2026-07. Why: the Hobby plan allows 100
+   deployments per rolling 24 h, and the 24 h to 10:10Z held 136 (105 Preview, 31 Production, read from the GitHub
+   deployments API), so PR #46's preview was refused at 09:30Z ("Deployment rate limited — retry in 24 hours") and the
+   next production deploy of main would be refused the same way. No check reads a preview: CI runs the suites and
+   prod-smoke on the exact sha, and `ci ok` is the only required check. An `ignoreCommand` cannot fix it, because a
+   build it cancels still counts toward the quota (Vercel's Ignored Build Step docs); `git.deploymentEnabled` creates
+   no deployment, and a branch that matches several keys deploys when any of them is true (Vercel's git-configuration
+   docs), so main deploys and every other branch does not. `tests/scripts/supply-chain.test.js` evaluates that rule
+   over main, lane, land and dependabot branches. Not proven until observed: a lane push creating no Vercel deployment,
+   and the first main push after the quota window drains deploying (registry `DECISIONS:2026-10-29:58`).
+
+## 2026-10-29 — [LOOP] W2-H: one media pipeline; the README hero and the og card are frames of the production build
+
+**Decided by the W2-H lane under the standing grant** (item 14), by its task script
+`docs/superpowers/plans/2026-10-29-crafty-w2h-media.md`, whose metric was written before any frame was shot. Items 50-57
+and 59 are this lane's (W2-F talents 41-49, 58 another change's, the Forge from 60). The shot table, its budgets and its checks are in
+`frontend/scripts/visual/_media.mjs`; the record of what was shot is `docs/media/media.json`.
+
+50. **No shot shows the HUD, and a frame is judged as a stranger sees it.** W2-D will re-key the HUD soon, and a frame
+   shown to people who have not played sells the world, not the readout; a HUD-free frame outlives the re-key, so no
+   shot is owed a re-shoot when W2-D lands. The HUD is hidden with the store's own switch (`setHudHidden(true)`, the one
+   `App.jsx` reads), not by editing the page, and only after the run has seen its vitals stack on screen: a renamed
+   test id fails the run instead of passing every frame (`mediaShotVerdict` `hudSeenOn`). Eye shots keep the
+   first-person hands, which are the player's own view. **What makes a frame acceptable**, declared before the second
+   shoot and judged by opening every frame at full size: (a) it sells the game to someone who has never played: the
+   light of the day script (a low golden sun, blue hour, a fire), the Hearth and its people, or the world beyond, with
+   one clear subject; (b) the hero and the og card carry no first-person hands, which fill a third of an eye frame;
+   (c) nothing reads as a mistake: the subject, every nameplate and every mob whole inside the frame, no edge of the
+   world, no flat band of sky or haze over a third of the frame. Tolerated, since the committed frames carry them and
+   none of them hides the subject: a secondary building cut at a side edge (the healer's cabin at the hero's right
+   edge), a roof tip of a few pixels at the bottom edge (the watchtower's, in the hero, the og card and the social
+   preview), trees cut by any edge, the og card's subtitle crossing Bram's stall, and small fixed objects on the pad.
+   The two small green tiles on the Hearth's pad in the three poses are its two leaf planters: 0.6 m cubes in leaf
+   green (`#3E7D32`) that `HomeAnchorRender` in `frontend/src/world/Terrain.jsx` sets either side of the lodge, at
+   (-2.5, 1.4) and (2.7, -1.4); projected through the hero's pose (fov 75) each lands within about 12 px of a tile, and
+   from above a cube that small reads as a flat tile (registry `REVIEW:w2h:pad-slabs`). (d) the og card's left third,
+   under the wordmark, carries no subject. A frame that fails one is re-shot once with a new recipe or dropped from
+   the table. It stands while it earns its place.
+51. **ImageMagick encodes, at shoot time only.** The browser shoots each frame as a lossless PNG master at device scale
+   2; `magick` downsamples it (Lanczos) and encodes each JPEG to its byte target with `jpeg:extent`, and the og card to
+   an 8-bit palette PNG (a photograph as a truecolour PNG is about 1 MB against the card's 400 KB ceiling). No npm
+   dependency: `magick` is already on the shooting Mac, as `ffmpeg` is for the lookbook clips, and the gates read the
+   committed files, so CI installs nothing. Budgets, 1 KB = 1000 bytes: each JPEG 350 KB, the og card 400 KB, all of
+   `docs/media` 3 MB, and the table's own byte targets must fit them (`shotTableProblems`); each committed file is held
+   to its shot's target as its ceiling (`mediaProblems`). It stands while it earns its place.
+52. **The og card is composed, not cropped:** the og frame under an ink scrim from the left, dark only behind the words
+   and clear from the middle on so the frame's own colour carries the rest, the wordmark in the game's own Lilita One in
+   the brand gold, and the brand title's subtitle, drawn in the same browser from `ogCardHtml` with the font files the
+   game ships; the run checks that the frame loaded as its master before it takes the card. No buttons and no controls
+   text (reset plan section 6). `BRAND.ogImageAlt` describes the
+   new card, so the head's og and twitter alt text follow it (`public-face.mjs --write`). It stands while it earns its
+   place.
+53. **`make-og-image.mjs` and the capture baseline `menu.png` are deleted** (REMOVED 2026-10-29), the last
+   file of the retired capture oracle with them. Nothing reads either now: the generator's centre-crop tests go with
+   it, and `frontend/tests/scripts/social-preview.test.js` checks that the shipped card has the bytes and size
+   media.json recorded for the `og` shot. Both files are kept in history at `3e138271`; the baseline, REMOVED from the
+   tree, is `git show 3e138271:frontend/tests/visual/baseline/menu.png` (REMOVED 2026-10-29).
+54. **The night fight is optional, and this shoot has none.** The seam cannot spawn a mob, so `night-fight` waits up to
+   90 s at blue hour for the night's own hostiles, turns to the nearest one 4 to 14 m out and casts with the real F key;
+   when none comes it is left out and named. The first shoot of the first table staged one (a skitterling 11.2 m out
+   after 7 s). Both shoots of the second table found none within 14 m (the nearest 32 to 63 m). The fight is the first
+   of the night shots, so their own clears come after it, but the golden-hour poses before it had already cleared the
+   hostiles within 60 m of their cameras, a radius that takes in the Hearth; that this is why none came is the likely
+   reading, not a measurement (no run has shot the fight before the poses). The old frame, from another build, is
+   deleted rather than kept beside this run's. It stands while it earns its place.
+55. **The lookbook's page helpers are shared** (`frontend/scripts/visual/_lookbookPage.mjs`): launching a Chromium that
+   gives the game a hardware renderer, entering play and reading the seam, moved out of `lookbook.mjs` unchanged in body.
+   The media are shot through the lookbook's own path, not a second one, at the same four times, which the light script
+   names (`frontend/src/render/colourScript.js` `LOOK_TIMES`) and both read. A golden hour outside the window the gate
+   pins fails (`media-plan-gates`): the setting branch between the sunset key and the day key, nearer the sunset key,
+   which is cycle fractions from about 0.4557 (halfway to the day key, s = 0.275) to 0.4841 (the sunset key at
+   s = 0.10 is f = 0.5 - asin(0.10)/2pi = 0.4841), both ends excluded; 0.48 sits inside it. The afternoon (0.30) sits
+   between the same two keys at the day key, so the bracket alone does not tell the two names apart. It stands while it
+   earns its place.
+56. **Any mob within 3 m of the camera refuses a frame, a passive animal and a named NPC too, and a mob feed that
+   cannot be the world's refuses it as COULD NOT CHECK.** The first shoot passed all nine shots with an ox at arm's
+   length in the blue-hour still, because the seam counted hostiles only. The verdict reads every live mob from the ECS
+   through the seam's read-only `mobs()` (`frontend/src/render/lookbookSeam.js` `mobList`), not the store's minimap
+   mirror, which the HUD lane removes, and it holds every kind of shot to the rule, the poses included. The Hearth's
+   four named NPCs cannot be hurt and are always in the world, so a list missing any of them is a dead feed
+   (`mobFeed`): the frame fails as COULD NOT CHECK and the run exits 3, never "no mob near". The night fight's target
+   search reads the same feed (`fightTarget`), and a search that could not read it leaves the fight COULD NOT CHECK in
+   the verdict itself (`mediaShotVerdict` `search`). A pose clears the hostiles within 60 m of its camera
+   (`POSE_CLEAR_M`), since from above they show as specks. The clear runs once, before the seam's `play()` and the
+   frame's 1.2 s settle, so a hostile that spawns or walks in after it can be in the frame: forest-edge's entry records
+   a skeleton 45.2 m from the camera. It stands while it earns its place.
+57. **The GitHub social preview is Kevin's one upload.** GitHub has no API for it; `docs/media/social-preview.jpg`
+   (1280x640) waits in the repo, and its registry row closes when `usesCustomOpenGraphImage` reads true.
+59. **`media.mjs` builds the bundle it shoots, and stamps a commit only on that bundle.** The first version stamped HEAD
+   with `dirty: false` on whatever `build/` held, so a stale build was recorded as HEAD. Now the run refuses a tree
+   dirty outside its own outputs, builds the production bundle itself into a scratch folder, serves that folder, and
+   records per file the commit, the index chunk, the bundle's content identity and the file's own sha256. The identity
+   (`buildIdentity`) is a sha256 over every file the bundle serves but the run's own outputs (`BUNDLE_OUTPUTS`): the og
+   card, which vite copies from `frontend/public` into the bundle, is written by the run, exempt from the tree check and
+   drawn in no frame, so a bundle built from the stamped commit names the same identity whichever card the tree held.
+   The tree check reads both sides of a rename (`R  old -> new`), so a file renamed out of the source counts even when
+   its new path is an output. `runProvenance` decides the stamp: HEAD only when the tree was clean and
+   HEAD held still through the build; a bundle handed in with `--build-dir` (for trying a recipe) is stamped with no
+   sha and an unknown tree. `mediaProblems` refuses any file without that provenance, and holds each file to the table
+   as well as to media.json: its format, byte target, purpose and time, and its sha256, with every file under
+   `docs/media` counted, dotfiles too. It stands while it earns its place.
+
+**What was shot:** every committed frame comes from one run of `media.mjs`, 2026-10-29 10:55-11:00Z, on the bundle it
+built from `073a8f0d` (index chunk `index-C8iDePj3.js`, build identity `b63642a016b0d648...`), Chromium in its new
+headless mode on ANGLE-Metal (Apple M3 Max), tier high, dpr 1.62 to 1.75, under the lane's GPU lock with the 1-minute
+load at 4.6 at the start and 5.9 at the end. The run before it, on `0f0ce44b`, was rejected by item 50's rules: the
+watchtower's roof cut by the bottom edge of the hero and the social preview, the forge cut under the og card's
+subtitle, a slab at the foot of golden-forest, and no fight. Item 50, judged on the six frames of the second run: the
+hero, the og card and the social preview look across the Hearth from above, into the low sun or under blue hour;
+golden-forest and blue-hour keep the hands, the sun or the brazier at their centre; forest-edge is the lookbook's place
+in a clear afternoon. Accepted with these residuals named: the healer's cabin is cut at the hero's right edge, the
+watchtower's roof tip shows at the bottom centre of the hero, the og card and the social preview (a few pixels), the og
+card's subtitle crosses Bram's stall, and the Hearth's two leaf planters read as small flat green tiles on the pad in
+the three poses (item 50). Six files: JPEG quality 88 to 96 under the targets, the og card at 256 colours, 282,950
+bytes; `docs/media` is 1,204,138 bytes of its 3,000,000. The coast and snow-terrace stills are dropped: both read as a
+flat band of haze over the top third in either light.
+
+**The build identity was recomputed after the run, not written by it.** The run recorded `0ca68d7c...`, a hash over
+every file it served, the og card included; the card in `frontend/public` then was the rejected run's, left there
+because the tree check exempts the run's outputs, so that identity named no bundle a build of `073a8f0d` gives. With
+the run's outputs left out (item 59), the bundle the run served, kept in the session scratch folder, hashes to
+`b63642a016b0d6480438247b3e27ffaecf63ca7ca5754d4f4be12c869d97029e`, and so does a fresh `vite build` of
+`git archive 073a8f0d`: 28 files each, identical but for `og-image.png`. media.json's six `buildId` fields carry that
+value; no frame was re-shot.
+
+**Door:** two-way; the deleted files are in git history, and a re-shoot is one command
+(`node frontend/scripts/visual/media.mjs --only <names>`) on a clean tree and a fresh build.
+
+## 2026-10-29 — [LOOP] W2-F step 5: Mara's Forge replaces the crafting grid
+
+**Decided by the W2-F Forge lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H items 7 and 8
+by the task script `docs/superpowers/plans/2026-10-29-crafty-w2f-forge.md`. Numbered from 60 (41-49 are the talents
+lane's, 50-59 the media lane's). Item 64 amends W1-H item 7's list of three offers. Each stands while it earns its place.
+
+60. **The Forge is one card on Mara, on G** (`frontend/src/game/forge.js`, `frontend/src/ui/panels/ForgePanel.jsx`). It
+   lists what she can make for the player now: the weapon line's next blade, the worn relic's next tier, and three
+   goods, each price in mined blocks and coins beside what the player holds, a short part marked. `buy` charges the
+   price listed under the offer's id (never one carried on the object passed in) or refuses and returns the same
+   state; a relic tier bought or outgrown, and a blade held in hand or in a bag, is no longer listed, so it cannot be
+   bought twice (a blade stored in a chest is not read: registry `REVIEW:w2f:forge-chest-blade-resold`; the goods stay
+   listed, to be bought as often as the player pays). A press the player cannot pay for stays pressable and says what
+   is short ("Not enough: 80 coins (have 0)"), so the button is never dead. **Why:** one place that shows every price,
+   in place of recipe shapes nobody can see (W1-H item 7).
+61. **Starting prices** (`forge.js`): Stone Sword 4 stone and 10 coins, Iron Sword 4 iron and 30, Diamond Sword 4
+   diamond and 80; a relic's tier II 3 gold and 40, tier III 3 diamond and 100. A fresh profile's 4 iron pays the Iron
+   Sword's blocks, so its first reforge waits only on coins (a night survived pays 10 a night number, a quest 0.4 a
+   point of XP). Untested by play: registry `REVIEW:w2f:forge-prices-unplaytested`.
+62. **The weapon line reforges the best blade held** (`WEAPON_LINE`: sword 10, Stone Sword 12, Iron Sword 20, Diamond
+   Sword 35, damage unchanged in `frontend/src/game/equipment.js`), in hand or in any bag, into the next one: the price
+   names that blade and the purchase takes it, adds the next and puts it in hand (what the hand held before goes back
+   to the bag). A player with no blade is sold the sword for 4 wood. **Why:** an upgrade, not a second sword in the bag,
+   and the hand always ends above every blade held in hand or in a bag (one stored in a chest is not counted: registry
+   `REVIEW:w2f:forge-chest-blade-resold`), so the purchase is never a sidegrade. The pickaxe (damage 8, below the
+   sword every profile holds) leaves the game: the registry, the weapon slot, the loadout, the held model.
+63. **The relic line tempers the worn relic** to tier II and III (`RELIC_MAX_TIER` 3, `frontend/src/game/relics.js`):
+   its modifier counts once per tier in `foldVerbMods`, so a tier-III Ember Fang adds 12 s to the roar. The tier
+   belongs to the relic, not the slot (`relicTiers`, a persisted progression field and an autosave trigger), so a
+   relic swapped out keeps it. A top-tier Lodestone gives a grab five throws, so the hurl pool's bound, derived in
+   `hurl.test.js` from the trees and the relics at their top tier, rises and `MAX_FLIGHTS` goes from 6 to 10 (idle
+   meshes are hidden). Ember's prices and the talents' numbers do not move. The inventory's inspector reads a relic's
+   change at its own tier, and the temper offer says what the next tier does (`frontend/src/ui/relicText.js`, from
+   `foldVerbMods`, through the locale), so a tempered relic never reads as tier I.
+64. **Goods, and what the grid made that nothing replaces.** The grid was the only source of the storage chest and of
+   cobblestone and the renewable one of glass, and the hotbar gate (every hotbar block obtainable) went red without
+   them, so the card sells them at the grid's rates and no coins: a Wooden Chest for 8 wood, 4 cobblestone for 4 stone,
+   4 glass for 4 sand. This adds a third line to W1-H item 7's list and leaves its lantern for item 67. Cut with no
+   successor: every shield and most armour (the grid made them; two quests still give an Iron Helmet, Miner, and an
+   Iron Chestplate, Pilgrimage, `frontend/src/QuestSystem.jsx`; the Golden Crown stays chest loot; registry
+   `REVIEW:w2f:forge-armour-no-source`), the Health Potion recipe
+   (the merchant and chest loot still give potions), cooked meat (step 6 deletes meat), and the ingredient uses of
+   Leather, Iron Nugget, Spider Eye and Emerald (registry `REVIEW:w2f:forge-orphan-loot`). **The proof nothing still
+   promised depends on the grid:** the hotbar gate now walks each good's price down to the starting loadout or an ore
+   drop (`tests/gates/place-executor-gates.test.jsx`), `tests/gates/forge-output-gates.test.js` buys every offer the
+   Forge can list and checks it gives a thing the game uses, the full unit suite was green with the grid deleted (557
+   files, 4825 tests), and `tests/e2e/forge.spec.js` walks to Mara and buys on CI.
+65. **Talking is one verb** (`frontend/src/input/talk.js`): G and the touch tray's Talk button (in the Craft button's
+   place) find the nearest living villager within 4 m in the ECS (`mobsQuery`), not the store's 250 ms mirror, and
+   route by role as before, the smith now to the Forge; with no villager and no chest in reach a notice says so. The
+   tray yields control only when talking opened a panel. Touch had no way to talk to a villager before. The C key and
+   the HUD rail's hammer go, the controls panel and the README teach G, and `showCrafting` becomes `showForge`.
+66. **Old saves:** a pickaxe in any bag or chest is dropped (`pickaxe` joins `RETIRED_INVENTORY_KEYS`, so it rides the
+   tombstone back for one SAVE_VERSION), and one in hand becomes the sword (`saveSchema.js` `liveEquipment`), so no
+   hand gets weaker (8 to 10). **Dropped, not credited:** every profile holds one beside a better sword, so a credit
+   would be a free tier for everyone. The grid kept no saved state (its escrow lived in React state and went back to the
+   bag on close and on pagehide), so nothing else needs a rule. The pre-cut fixture loads at level 5 with its Stone
+   Sword in hand and no pickaxe (`tests/store/forge.test.js`).
+67. **No lantern offer yet.** Block id 16 does not exist (`frontend/src/world/blockIds.js` ends at 15), and the Forge
+   sells nothing that does nothing; W3-A adds the offer with the block, at the lantern brief's price, in the same
+   release (registry `MASTERPIECE:the-lantern-and-a-baked/a`).
+68. **Not proven, and owed:** the prices' feel (no playtest); the card on touch outside jsdom and on an iPad
+   (`REVIEW:w2f:forge-touch-unproven`); the e2e's browser mutants (`REVIEW:w2f:forge-e2e-mutants-unrun`); the relic line
+   and the goods in a browser (proven at the store and the card in jsdom); whether a five-throw grab is too strong.
+69. **A double press buys one thing** (`ForgePanel.jsx` `BUY_REPEAT_MS`; review of PR #47). A bought blade or relic
+   tier is replaced in place by the line's next offer, so the second click of a double press bought that too. After a
+   purchase the row's Buy rests for 500 ms, disabled where the player sees it: the two clicks of a double press fall
+   inside the system's double-click time, 500 ms by default on Windows (`SetDoubleClickTime`, learn.microsoft.com),
+   and no longer a rest leaves repeat purchases of goods unhurried. Each row is keyed by its offer, so a bought tier's
+   button leaves the card and a button that held focus cannot buy what replaced it; a pointer press does not focus Buy,
+   so Space or Enter pressed for the game cannot fire the last Buy clicked. Keyboard focus does not reach a Buy in the
+   game: `InputManager.jsx` catches Tab on the window while a panel is open and closes the Forge. The gate shows a
+   focused Buy keeps its keys if a later build lets focus reach it. Proven in jsdom
+   (`tests/gates/forge-panel-gates.test.jsx`); a real browser's double click is not.
+
 ## 2026-10-29 — [LOOP] W2-F step 4: talents that change verbs, loot relics, and damage from level
 
 **Decided by the W2-F talents lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H item 6 by
@@ -390,7 +599,8 @@ that entry's items. Each stands while it earns its place; reversing one takes a 
    particles, spawning and the hands, so its frames show a build nobody plays, and shipped source carries 131
    `isCaptureMode()` calls (`rg -c` over `frontend/src`, 2026-10-28) that no player needs. Looks are accepted on the eye-level lookbook (W1-D); DOM-only
    checks use Playwright's `toHaveScreenshot`. No re-baseline is owed meanwhile, so ACTIVE_PLAN task T10 and masterpiece
-   Phase 0e are cancelled. `tests/visual/baseline/menu.png` stays until the media pipeline (W2-H) replaces the og-image source.
+   Phase 0e are cancelled. `tests/visual/baseline/menu.png` (REMOVED 2026-10-29, W2-H item 53) stays until the media
+   pipeline (W2-H) replaces the og-image source.
 2. **The umbrella is amended** (plan rows 12, 45-49; section 10). Supersedes the Phase 0-3 structure of the masterpiece plan
    above. (a) A Cut wave (W2-F) removes the sandbox layer before Wave 3 builds, so no lane ports a dead system. (b) The
    platform work (W2-G, W3-D) runs beside the game lanes, not in front of them: the refuter showed the dragon and
@@ -425,8 +635,8 @@ that entry's items. Each stands while it earns its place; reversing one takes a 
    seven axes that each add a number give a player nothing to choose. It needs a damage rebalance first, because
    `solveSpellDamage` reads attributes. `frontend/src/game/affixes.js` (no importer, REMOVED by W2-F step 4) goes with it.
 7. **The Forge replaces the crafting grid** (plan row 23, lane W2-F). Supersedes the 3x3 grid
-   (`frontend/src/ui/panels/CraftingTable.jsx`, `frontend/src/data/recipes.js`, the C key, the touch-tray Craft slot,
-   the pickaxe item) and with it the 2026-07-14 grid fixes (B3a sword patterns, B3d escrow). A Forge card on Mara (G)
+   (`frontend/src/ui/panels/CraftingTable.jsx`, `frontend/src/data/recipes.js`, both REMOVED by W2-F step 5, the C
+   key, the touch-tray Craft slot, the pickaxe item) and with it the 2026-07-14 grid fixes (B3a sword patterns, B3d escrow). A Forge card on Mara (G)
    offers three things, each with its cost shown: a weapon upgrade, a relic upgrade and a lantern. Why: hidden recipe
    shapes are guesswork, and a drag grid does not work on iPad. The pickaxe is a weapon stat stick (damage 8), so it
    folds into the weapon line.

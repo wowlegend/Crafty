@@ -8,7 +8,7 @@
  * happily targeted the merchant, the smith, the healer and the guide:
  *
  *   - melee cone      -> 2.7s of holding LMB permanently killed all four. No respawn path exists:
- *                        trading, crafting, healing and the quest chain are gone for the rest of the run.
+ *                        trading, the Forge, healing and the quest chain are gone for the rest of the run.
  *   - chain lightning -> auto-hopped onto passive villagers and livestock you never aimed at.
  *   - element zones   -> applied to `mobsQuery.entities` wholesale, so a fire zone burned questgivers.
  *   - ally squad AI   -> could be ordered onto one.

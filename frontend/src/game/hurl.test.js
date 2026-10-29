@@ -4,7 +4,7 @@ import { requestHurl, consumeHurlRequest } from './hurlChannel.js';
 import { GRAB_COOLDOWN_SEC, GRAB_CHARGE_SEC } from './voidhand.js';
 import { VERB_BASE } from './verbMods.js';
 import { ASPECT_TREES } from './talentTree.js';
-import { RELICS } from './relics.js';
+import { RELICS, RELIC_MAX_TIER } from './relics.js';
 
 const mob = (id, x, y, z) => ({ id, position: { x, y, z } });
 
@@ -165,7 +165,7 @@ describe('adoptHurlRequest and flightSlot — a paid throw always throws', () =>
     // bound (flightSlot then gives up the oldest block).
     const throwsPerGrab = VERB_BASE.grabThrows
       + ASPECT_TREES.flatMap((t) => t.nodes).filter((n) => n.mod?.key === 'grabThrows').reduce((s, n) => s + n.mod.add * n.limit, 0)
-      + Math.max(0, ...Object.values(RELICS).filter((r) => r.mod.key === 'grabThrows').map((r) => r.mod.add));
+      + Math.max(0, ...Object.values(RELICS).filter((r) => r.mod.key === 'grabThrows').map((r) => r.mod.add * RELIC_MAX_TIER));
     const grabsPerFlight = Math.ceil(HURL_TTL_SEC / (GRAB_COOLDOWN_SEC + GRAB_CHARGE_SEC));
     expect(throwsPerGrab, 'SETUP: the trees and relics no longer add a throw').toBeGreaterThan(1);
     expect(MAX_FLIGHTS, `${grabsPerFlight} grabs of ${throwsPerGrab} blocks`).toBeGreaterThanOrEqual(throwsPerGrab * grabsPerFlight);

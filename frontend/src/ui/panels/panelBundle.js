@@ -3,7 +3,8 @@
 // Only ui/panels/lazyPanels.js imports this file, and only through import(): that is what keeps every panel below
 // — and whatever only they use — out of the boot bundle. A second static importer of any of these modules would
 // pull it back in (tests/gates/lazy-panels-gates.test.js checks the built bundle for exactly that).
-export { Inventory, CraftingTable, BuildingTools, SettingsPanel, MagicSystem } from '../GamePanels';
+export { Inventory, BuildingTools, SettingsPanel, MagicSystem } from '../GamePanels';
+export { ForgePanel } from './ForgePanel';
 export { SpellUpgradePanel } from '../SpellUpgradePanel';
 export { CreditsScreen } from '../CreditsScreen';
 export { WorldManager } from '../../WorldManager';

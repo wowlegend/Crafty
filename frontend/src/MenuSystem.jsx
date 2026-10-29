@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 // moment instead of unmounting its siblings, and AnimatePresence still sees one keyed child per panel.
 import {
   Inventory,
-  CraftingTable,
+  ForgePanel,
   BuildingTools,
   SettingsPanel,
   MagicSystem,
@@ -151,12 +151,13 @@ export function MenuSystem({
             />
           </Suspense>
         )}
-        {gameState.showCrafting && (
-          <Suspense key="CraftingTable" fallback={null}>
-            <CraftingTable
-              gameState={gameState}
+        {gameState.showForge && (
+          <Suspense key="ForgePanel" fallback={null}>
+            <ForgePanel
+              villager={gameState.selectedVillager}
               onClose={() => {
-                gameState.setShowCrafting(false);
+                gameState.setShowForge(false);
+                gameState.setSelectedVillager(null);
                 enterPlay();
               }}
             />
@@ -295,6 +296,7 @@ export function MenuSystem({
                     so the near-white text stays fully legible against the robe (and against the
                     drifting hero in non-capture mode), mirroring the page's bottom-scrim pattern. */}
                 <motion.p
+                  data-testid="title-tagline"
                   className="text-xl mb-8 tracking-wider whitespace-nowrap text-text rounded-full px-6 py-1.5"
                   style={{
                     textShadow: '0 2px 12px rgba(0,0,0,0.95)',
@@ -304,7 +306,7 @@ export function MenuSystem({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6, duration: 0.8 }}
                 >
-                  Build • Craft • Cast Spells • Explore
+                  {t('menu.tagline')}
                 </motion.p>
 
                 <motion.div

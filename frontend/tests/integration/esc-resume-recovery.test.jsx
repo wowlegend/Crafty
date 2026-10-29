@@ -42,7 +42,7 @@ function pressKey(code) {
 /** The store slice MenuSystem reads, plus the panel flags. */
 function menuProps(overrides = {}) {
   const gameState = {
-    showInventory: false, showCrafting: false, showMagic: false, showBuildingTools: false,
+    showInventory: false, showForge: false, showMagic: false, showBuildingTools: false,
     showSettings: false, showChestInterface: false, showTradingInterface: false,
     showWorldManager: false, showCredits: false, showQuestLog: false,
     gameStarted: true, isAlive: true,
@@ -69,7 +69,7 @@ beforeEach(() => {
   document.exitPointerLock = vi.fn();
   document.body.requestPointerLock = vi.fn();
   useGameStore.setState({
-    showInventory: false, showCrafting: false, showMagic: false, showBuildingTools: false,
+    showInventory: false, showForge: false, showMagic: false, showBuildingTools: false,
     showSettings: false, showChestInterface: false, showTradingInterface: false,
     showWorldManager: false, showCredits: false, showQuestLog: false,
     gameStarted: true, isAlive: true,

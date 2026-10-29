@@ -15,7 +15,7 @@ import { useQuestSystem } from '../../src/QuestSystem';
 
 // B1 — FRIEND/FOE. The 18-domain review's #1 CRITICAL: the player could permanently kill all four hub
 // questgivers (merchant / smith / healer / guide) with 2.7 seconds of holding left-click, deleting
-// trading, crafting, healing and the entire quest chain for the rest of the run. There is no respawn.
+// trading, the Forge, healing and the entire quest chain for the rest of the run. There is no respawn.
 //
 // Root cause: hub NPCs carry `isMob: true` (to reuse the MobModel renderer + the minimap mirror) so they
 // sit in `mobsQuery`. The AI tick gates them out with `!isStatic`. COMBAT NEVER DID.

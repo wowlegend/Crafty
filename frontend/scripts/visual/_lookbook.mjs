@@ -3,10 +3,12 @@
 // server here, so a gate drives every decision (tests/gates/lookbook-plan-gates.test.js). Leading underscore: a helper,
 // not a probe — it binds no port (tests/scripts/probe-ports.test.js classifies by what a file does).
 
+import { LOOK_TIMES } from '../../src/render/colourScript.js';
+
 /** The programme's four times of day, as DAWN-origin cycle fractions (game/dayPhase.cycleFraction: 0 dawn, 0.25 noon,
- *  0.5 dusk, 0.75 midnight) — roadmap move 4's "cycle 0.30, 0.48, 0.55, 0.75": afternoon, golden hour, blue hour,
- *  midnight. */
-export const LOOKBOOK_CYCLES = Object.freeze([0.30, 0.48, 0.55, 0.75]);
+ *  0.5 dusk, 0.75 midnight) — roadmap move 4's afternoon, golden hour, blue hour and midnight, read from the light
+ *  script that is judged at them (render/colourScript.js LOOK_TIMES). */
+export const LOOKBOOK_CYCLES = Object.freeze(Object.values(LOOK_TIMES));
 
 /** The index chunk an index.html loads (`index-<hash>.js`), or null. Its content hash is the build's identity. */
 export function indexChunkOf(html) {

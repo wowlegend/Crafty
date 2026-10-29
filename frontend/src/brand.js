@@ -15,7 +15,7 @@ export const BRAND = Object.freeze({
   ink: UI.color.text,
   inkMuted: UI.color.textMuted,
   // Describes public/og-image.png; it changes whenever that card is re-shot.
-  ogImageAlt: 'The Crafty title screen: a voxel wizard with a staff under a starry night sky, behind the Crafty wordmark.',
+  ogImageAlt: 'The Crafty wordmark over a golden-hour view of the Hearth from above: Bram the Trader\'s market stall and the brazier on the stone pad, snow-dusted forested hills, and a low sun over the trees.',
 });
 
 // `glyphRadius` is the radius, as a share of the icon size, of the circle that holds the corners of the

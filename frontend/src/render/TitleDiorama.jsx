@@ -145,24 +145,18 @@ export function TitleDiorama() {
     <div data-testid="title-diorama" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <Canvas
         shadows={false}
-        // PIN THE DEVICE PIXEL RATIO IN CAPTURE. `[1, 2]` is an adaptive RANGE, so the canvas can
-        // rasterise at a different ratio between runs and every edge in the frame re-antialiases --
-        // which is precisely what menu.png's 0.984% run-to-run diff looked like: outlines tracing
-        // every edge of the geometry plus the borders of motes that never moved. The main canvas
-        // already does this (GameScene.jsx disables AdaptiveDpr under isCaptureMode and pins
-        // PROBE_DPR for the perf probe); this canvas never got the same treatment.
+        // CAPTURE PINS THE DEVICE PIXEL RATIO. `[1, 2]` is an adaptive RANGE, so the canvas can rasterise at a
+        // different ratio between runs and every edge in the frame re-antialiases: outlines trace every edge of the
+        // geometry, and the borders of motes that never moved.
         //
-        // Note what this is NOT a fix for: a frame that has stopped changing can settle at a
-        // DIFFERENT state each run. Stable is not deterministic.
+        // A pinned ratio does not make a settled frame deterministic: a frame that has stopped changing can settle
+        // at a DIFFERENT state each run. Stable is not deterministic.
         // e2eDpr (devtest/e2eDpr.js): the e2e suite's pixel-ratio cap — this canvas is up for the whole world build.
         dpr={e2eDpr(isCaptureMode() ? 1 : [1, 2])}
-        // `demand` in capture, and NOT for the reason you might assume. Switching this to `always` was
-        // tried on 2026-08-08 as a determinism fix -- the theory being that a timing-dependent
-        // invalidation count left the frame on an arbitrary pose -- and it did NOT work: menu.png's
-        // run-to-run self-diff went 0.359% -> 0.557%. Reverted. Note the honest limit: menu has measured
-        // 0.984 / 0.359 / 0.557 across three rounds, so the metric is itself noisy and one A/B cannot
-        // rank the two modes. What IS established is that `always` does not fix it, so the residual is
-        // not the render-scheduling mode. Do not retry this without a new reason.
+        // `demand` in capture. The render-scheduling mode is not what makes the title frame differ between
+        // runs: under `always` its run-to-run self-diff is 0.557% against 0.359% under `demand`, so a
+        // timing-dependent invalidation count is not the cause. That metric is too noisy for one A/B to rank the
+        // two modes; change the mode only for a new reason.
         frameloop={capture || capped ? 'demand' : 'always'}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         camera={{ fov: 34, near: 0.1, far: 100, position: CAPTURE_CAM }}
