@@ -67,6 +67,13 @@ describe('the Forge card', () => {
     expect(tid('forge-coins').textContent).toBe('12');
   });
 
+  it('the weapon line reads as the reforge it sells in Chinese too', () => {
+    useGameStore.setState({ coins: 12, locale: 'zh-CN' });
+    render(<ForgePanel onClose={() => {}} />);
+    expect(tid('forge-offer-weapon:Iron Sword').textContent, 'the Chinese weapon line does not read as the reforge it sells')
+      .toContain('把Stone Sword重铸成Iron Sword');
+  });
+
   it('a press on Buy with enough spends the shown price, puts the new blade in hand and sounds', () => {
     useGameStore.setState({ coins: 30 });
     render(<ForgePanel onClose={() => {}} />);
