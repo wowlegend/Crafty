@@ -24,7 +24,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import puppeteer from 'puppeteer';
+import { chromium } from '@playwright/test';
 import { serveVite } from '../visual/_serve.mjs';
 import { LOOKBOOK_PLACES } from '../visual/_lookbook.mjs';
 import { createProceduralVoxelTextures } from '../../src/world/proceduralTextures.js';
@@ -142,8 +142,8 @@ export function seamVerdict({ plain, opened }) {
  * installArrayTextureRecorder runs before the page's own scripts and remembers each TEXTURE_2D_ARRAY that
  * texStorage3D allocates, with the texture bound at that moment; readBlockTextureArray finds the one with the block
  * stack's dimensions and reads back every layer of every level through a framebuffer, restoring the bindings it
- * touched, because three caches them. Both are serialized into the page by puppeteer, so neither may reference
- * anything outside its own body.
+ * touched, because three caches them. Both are serialized into the page (Playwright's addInitScript and evaluate), so
+ * neither may reference anything outside its own body.
  */
 export function installArrayTextureRecorder(proto = globalThis.WebGL2RenderingContext?.prototype, sink = globalThis) {
   if (!proto || typeof proto.texStorage3D !== 'function') return;
@@ -248,6 +248,14 @@ export function mipVerdict(reading, { size, layers, chain }) {
  * because a deleted program has no status. Both are serialized into the page, so neither may reference anything
  * outside its own body.
  *
+ * A CANVAS THE PAGE DISCARDS. R3F unmounts a Canvas by calling forceContextLoss() 500 ms after the commit and only then
+ * disposing the scene (@react-three/fiber 9.5 unmountComponentAtNode), so every status read on the title diorama's
+ * programs after the title leaves returns null, and three's deleteProgram runs on the lost context. Whether the title
+ * has gone by the read depends on how fast SwiftShader draws, which made "5 of 89 gave no LINK_STATUS" a flake. So the
+ * recorder reads each program's status at its first useProgram (three has read it by then, so nothing new stalls) and
+ * remembers each context the page loses through WEBGL_lose_context. A program on such a context keeps its first-use
+ * status; one on a context lost any other way still reads as unread, and the verdict says so.
+ *
  * The programs this repo patches are named by a line its patch adds (`mark`) and must be linked AND drawn, with the
  * uniforms their materials upload. The ocean draws only where water is within reach of the camera (render/Ocean.jsx,
  * world/oceanVisibility.js), and the spawn is inland, so the camera is posed at the lookbook's coast before the read.
@@ -266,10 +274,26 @@ export function installProgramRecorder(watched = [], proto = globalThis.WebGL2Re
   if (!proto || typeof proto.linkProgram !== 'function') return;
   const programs = (sink.__craftySmokePrograms = sink.__craftySmokePrograms || []);
   const shaderLogs = (sink.__craftySmokeShaderLogs = sink.__craftySmokeShaderLogs || new WeakMap());
+  const discarded = (sink.__craftySmokeDiscarded = sink.__craftySmokeDiscarded || []);
   const sourceOf = new WeakMap();
   const shadersOf = new WeakMap();
   const entryOf = new WeakMap();
-  const { shaderSource, attachShader, linkProgram, useProgram, deleteShader, deleteProgram } = proto;
+  const { shaderSource, attachShader, linkProgram, useProgram, deleteShader, deleteProgram, getExtension } = proto;
+  if (typeof getExtension === 'function') {
+    proto.getExtension = function recordGetExtension(name) {
+      const ext = getExtension.call(this, name);
+      if (ext && String(name).toLowerCase() === 'webgl_lose_context' && !ext.__craftySmokeWrapped) {
+        const gl = this;
+        const loseContext = ext.loseContext;
+        ext.loseContext = function recordLoseContext() {
+          if (!discarded.includes(gl)) discarded.push(gl);
+          return loseContext.call(this);
+        };
+        ext.__craftySmokeWrapped = true;
+      }
+      return ext;
+    };
+  }
   proto.shaderSource = function recordShaderSource(shader, source) {
     sourceOf.set(shader, String(source));
     return shaderSource.call(this, shader, source);
@@ -289,7 +313,10 @@ export function installProgramRecorder(watched = [], proto = globalThis.WebGL2Re
   };
   proto.useProgram = function recordUseProgram(program) {
     const entry = program && entryOf.get(program);
-    if (entry) entry.used = true;
+    if (entry && !entry.used) {
+      entry.used = true;
+      entry.atUse = this.getProgramParameter(program, this.LINK_STATUS);
+    }
     return useProgram.call(this, program);
   };
   // three deletes both shaders on a program's first use (WebGLProgram.js onFirstUse), and a deleted shader has no log.
@@ -308,10 +335,14 @@ export function installProgramRecorder(watched = [], proto = globalThis.WebGL2Re
 
 export function readProgramLinks(watched = [], sink = globalThis) {
   const logs = sink.__craftySmokeShaderLogs;
+  const discarded = sink.__craftySmokeDiscarded || [];
+  const known = (s) => s === true || s === false;
   return (sink.__craftySmokePrograms || []).map((e) => {
     const { gl } = e;
-    const status = e.deleted ? e.deleted.linked : gl.getProgramParameter(e.program, gl.LINK_STATUS);
-    const out = { hits: e.hits, used: e.used, deleted: !!e.deleted, linked: status === true || status === false ? status : null };
+    const live = e.deleted ? e.deleted.linked : gl.getProgramParameter(e.program, gl.LINK_STATUS);
+    const retired = !known(live) && discarded.includes(gl);
+    const status = known(live) ? live : retired && known(e.atUse) ? e.atUse : null;
+    const out = { hits: e.hits, used: e.used, deleted: !!e.deleted, retired, linked: status };
     if (out.linked === false) {
       const shaderLog = e.shaders.map((s) => (logs && logs.has(s) ? logs.get(s) : gl.isShader(s) ? String(gl.getShaderInfoLog(s) || '') : ''));
       const programLog = e.deleted ? e.deleted.log : String(gl.getProgramInfoLog(e.program) || '');
@@ -344,8 +375,8 @@ export function programVerdict(readings, watched = WATCHED_PROGRAMS) {
     const names = failed.map((r) => (r.hits.length ? r.hits.join('+') : 'unwatched')).join(', ');
     return fail(`${failed.length} of ${n} FAILED to link (${names}): ${failed[0].log || 'no info log'}`);
   }
-  const unread = readings.filter((r) => r.linked !== true).length;
-  if (unread) return fail(`COULD NOT CHECK — ${unread} of ${n} gave no LINK_STATUS (a lost context reads this way)`, true);
+  const unread = readings.filter((r) => r.linked !== true && !r.retired).length;
+  if (unread) return fail(`COULD NOT CHECK — ${unread} of ${n} gave no LINK_STATUS (a context lost without the page asking reads this way)`, true);
   const drawnCounts = [];
   for (const w of watched) {
     const mine = readings.filter((r) => r.hits.includes(w.name));
@@ -363,7 +394,11 @@ export function programVerdict(readings, watched = WATCHED_PROGRAMS) {
     drawnCounts.push(`${w.name} x${drawn.length}`);
   }
   const deleted = readings.filter((r) => r.deleted).length;
-  return { ok: true, line: `shader programs: all ${n} linked (${deleted} deleted before the read); drawn with their uniforms: ${drawnCounts.join(', ')}` };
+  const retiredLinked = readings.filter((r) => r.retired && r.linked === true).length;
+  const retiredUnread = readings.filter((r) => r.retired && r.linked !== true).length;
+  const linked = retiredUnread ? `${n - retiredUnread} of ${n} linked, ${retiredUnread} never drawn before the page discarded its canvas` : `all ${n} linked`;
+  const notes = [`${deleted} deleted before the read`, ...(retiredLinked ? [`${retiredLinked} read at first use on a canvas the page discarded`] : [])];
+  return { ok: true, line: `shader programs: ${linked} (${notes.join('; ')}); drawn with their uniforms: ${drawnCounts.join(', ')}` };
 }
 
 /**
@@ -430,24 +465,25 @@ if (isCli) {
 
   try {
     await waitReady();
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--use-angle=swiftshader'],
-    });
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 800 });
+    // `channel: 'chromium'` is Chromium's new headless mode, the full browser; plain `headless: true` would run the
+    // separate chromium-headless-shell build (playwright-core 1.64.1 getExecutableName). Playwright adds --no-sandbox
+    // and --enable-unsafe-swiftshader itself; SwiftShader is asked for so the reading is the same CPU rasteriser on a
+    // laptop and on a runner with no GPU.
+    browser = await chromium.launch({ channel: 'chromium', headless: true, args: ['--use-angle=swiftshader'] });
+    const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
     page.on('pageerror', (e) => errors.push(`pageerror: ${e && e.message ? e.message : e}`));
     page.on('console', (m) => {
       if (m.type() === 'error' && isFatalMessage(m.text())) errors.push(`console.error: ${m.text()}`);
     });
-    await page.evaluateOnNewDocument(installArrayTextureRecorder);
-    await page.evaluateOnNewDocument(installProgramRecorder, WATCHED_PROGRAMS);
+    await page.addInitScript(installArrayTextureRecorder);
+    await page.addInitScript(installProgramRecorder, WATCHED_PROGRAMS);
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
     // 1. DID IT BOOT? The dev test-bridge is stripped in production, so this deliberately asks for a
-    //    user-visible surface instead — exactly what a real visitor gets.
-    await page.waitForSelector('canvas, [data-testid="title-diorama"]', { timeout: 45000 });
+    //    user-visible surface instead — exactly what a real visitor gets. `attached`: mounted in the DOM is the boot
+    //    question; Playwright's default state would add a visibility test the render check below already answers.
+    await page.waitForSelector('canvas, [data-testid="title-diorama"]', { state: 'attached', timeout: 45000 });
 
     // 2. DOES IT RENDER? A mounted canvas that never presents is the blank-frame failure the capture
     //    preflight exists for; a production bundle that boots and draws nothing looks identical to
@@ -520,8 +556,8 @@ if (isCli) {
     const dims = { size: expectedMips.size, layers: expectedMips.layers };
     await page.waitForFunction(
       ({ size, layers }) => (globalThis.__craftySmokeArrays || []).some((r) => r.width === size && r.height === size && r.depth === layers),
-      { polling: 500, timeout: 90000 },
       dims,
+      { polling: 500, timeout: 90000 },
     ).catch(() => {});
     const mipReading = await page.evaluate(readBlockTextureArray, dims);
     mipReading.worldBuilt = await page.evaluate(() => window.useGameStore?.getState?.().isSpawnChunkLoaded === true);
@@ -566,7 +602,7 @@ if (isCli) {
     // load with it.
     const plain = await page.evaluate(() => ({ entryRan: typeof window.useGameStore === 'function', seam: typeof window.__craftyLookbook }));
     await page.goto(`${url}/?lookbook=1`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForFunction(() => typeof window.useGameStore === 'function', { timeout: 45000 }).catch(() => {});
+    await page.waitForFunction(() => typeof window.useGameStore === 'function', null, { timeout: 45000 }).catch(() => {});
     const opened = await page.evaluate(async () => {
       const s = window.__craftyLookbook;
       let timer = null;
@@ -589,7 +625,7 @@ if (isCli) {
     if (!sv.ok) errors.push(sv.line);
 
     // EVERY SHADER PROGRAM LINKS — see programVerdict. Noon, so the key light the ocean's glint reads is the sun.
-    const worldBuilt = await page.waitForFunction(() => window.__craftyLookbook?.info?.().worldBuilt === true, { polling: 1000, timeout: 90000 })
+    const worldBuilt = await page.waitForFunction(() => window.__craftyLookbook?.info?.().worldBuilt === true, null, { polling: 1000, timeout: 90000 })
       .then(() => true, () => false);
     const staged = await page.evaluate((at) => {
       const s = window.__craftyLookbook;
@@ -598,8 +634,8 @@ if (isCli) {
     }, { position: OCEAN_STAGE.position, lookAt: OCEAN_STAGE.lookAt });
     await page.waitForFunction(
       (name) => (globalThis.__craftySmokePrograms || []).some((r) => r.used && r.hits.includes(name)),
-      { polling: 500, timeout: 60000 },
       WATCHED_PROGRAMS[0].name,
+      { polling: 500, timeout: 60000 },
     ).catch(() => {});
     await new Promise((r) => setTimeout(r, 3000)); // a few SwiftShader frames at ~1 fps, so the uniforms are this hour's
     const links = await page.evaluate(readProgramLinks, WATCHED_PROGRAMS);
