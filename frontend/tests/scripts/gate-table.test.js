@@ -9,7 +9,7 @@ import { parseHook, callersFor, CALLERS, checkBlock, renderBlock, derive, BEGIN,
  * by me, in the instrument built to find such things. The structural version found two real gaps on its
  * first run and correctly excluded three pure CLIs.
  *
- * WHY THIS ONE MATTERS. It generates the gate table in `CLAUDE.md` FROM THE HOOK ITSELF, and it
+ * WHY THIS ONE MATTERS. It generates the gate table (in `.claude/rules/gates-and-probes.md`) FROM THE HOOK ITSELF, and it
  * exists because the hand-kept version undercounted its own gates three times in a row — "three" ->
  * "Six" -> "NINE" against a live ten — each rewrite written to fix the last. The "Six" version stated
  * the wrong number directly above a table already showing eight, and a six-agent review read that
@@ -25,7 +25,7 @@ import { parseHook, callersFor, CALLERS, checkBlock, renderBlock, derive, BEGIN,
  * construction. Fixtures, not the real file: a test that reads the real hook cannot distinguish "the
  * parser works" from "the hook happens to be shaped the way the parser expects today".
  *
- * BLIND SPOT, stated (R7): nothing here asserts the table in CLAUDE.md is CURRENT — that is
+ * BLIND SPOT, stated (R7): nothing here asserts the committed table is CURRENT — that is
  * `doc-currency`'s job via `checkBlock`, and it is asserted here only that `checkBlock` can tell a
  * drifted block from a current one. Nor does anything check that a parsed gate actually RUNS.
  *

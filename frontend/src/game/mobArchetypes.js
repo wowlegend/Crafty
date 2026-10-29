@@ -20,8 +20,7 @@
  * `mobArchetypes.test.js` asserts each default against the literal the worker used, so a future edit cannot
  * quietly re-tune every mob in the game by touching one line here.
  *
- * BALANCE IS A TASTE CALL and these are defaults with a dial, surfaced to Kevin as FYI rather than a block
- * (charter §E). The three below are argued from each mob's OWN stats, not invented:
+ * BALANCE IS A TASTE CALL and these are defaults with a dial. The three below are argued from each mob's OWN stats, not invented:
  *   - moss_brute  (220hp, speed 1.2, dmg 25) — the slowest, toughest, hardest-hitting mob in the game. It
  *     should read as a siege engine you cannot shake: a much longer leash so it keeps coming, longer reach
  *     for the size, and a slower swing so the damage is dodgeable rather than a DPS race.

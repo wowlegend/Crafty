@@ -61,7 +61,7 @@ test('the world REBUILDS after Load — chunks come back and the ground is solid
   // GitHub-Actions runner under software WebGL the same spec recovered 30 of 50 chunks and was STILL
   // CLIMBING when the window expired — a false negative, and it failed on every CI run. The temptation
   // is to lower the 80% bar; that would be weakening the assertion to make a gate green, which is
-  // exactly what the charter forbids and exactly what this test's own header warns about.
+  // exactly what CLAUDE.md forbids (never weaken to pass) and exactly what this test's own header warns about.
   //
   // Instead, measure how long THIS machine took to stream the world the first time and give the
   // recovery a multiple of that. The 80% assertion is untouched and stays strict everywhere; a fast box

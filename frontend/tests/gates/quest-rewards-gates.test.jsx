@@ -15,7 +15,7 @@
 //   * It went RED the moment the bug was FIXED, because the fix renamed a variable.
 //
 // A gate that is green on broken code and red on fixed code is ANTI-CORRELATED WITH CORRECTNESS. It is not
-// a weak gate; it is a harmful one. (LOOP-CHARTER §3: a gate that greps source text is not a gate.)
+// a weak gate; it is a harmful one. (CLAUDE.md, Invariants: a gate that greps source text is not a gate.)
 //
 // This version asserts the BEHAVIOR: claim a quest, and check that the xp, the coins and the item actually
 // arrive. It is mutation-proven — delete the addCoins call in claimQuest and this goes red.

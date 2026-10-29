@@ -13,11 +13,11 @@
 > **v2 rewrite 2026-06-10** (authority: Kevin's 2026-06-10 grant — the loop/agent may enhance/delete/fix this
 > plan as judged best). v1 (the 2026-05-30 brainstorm-kickoff brief) is HISTORICAL — in git history at tag-time
 > `ddfdf96` and superseded in full; its S0 audit / S1 brainstorm process sections completed weeks ago.
-> **This is a LIVING document:** the autonomous build loop refreshes the §3 status line at every milestone
-> (doc-currency is a persist-step obligation — see `docs/superpowers/LOOP-CHARTER.md` §1.6).
+> Moved from the repo root to `docs/superpowers/` on 2026-10-28 (SOTA reset, lane W2-J). The programme now is
+> `docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`; §3 below is a frozen snapshot.
 > **Ground-truth precedence:** git `main` → `memory/ACTIVE_PLAN.md` (resume pointer) → specs/plans in
 > `docs/superpowers/` → `memory/STATE-REVIEW-2026-06-10.md` (risk map) →
-> `docs/superpowers/LOOP-CHARTER.md` (operating constitution — outranks this plan on process conflicts) →
+> `CLAUDE.md` (operating rules — outrank this plan on process conflicts) →
 > this plan (direction-canonical).
 
 ## 0. TL;DR
@@ -72,7 +72,7 @@ layered on a day-build / night-siege survival loop. All four Aspects SHIPPED (20
 8. **No AI footers in commits; no `git add -A`; absolute paths (TWO-LEVEL repo).** Own repo + own
    initiative — **self-contained**: no other project's rules, ledgers or acceptable-use frame apply here.
 
-## 3. Status (LIVING — refresh at every milestone; last: 2026-06-18)
+## 3. Status (FROZEN 2026-06-18: a snapshot; live state is `npm run orient` and `memory/STATUS.md`)
 
 **🟢 2026-06-18 REBUILD COMPLETE — W1-W4 ALL DONE (the whole Comprehensive SOTA Rebuild is complete, pending Kevin's playtest).** The 2026-06-17 trust-first rebuild (W1 purge/fix → W2 look → W3 living-frontier → W4 polish; 503 TDD steps) is landing on `main` + auto-deploying: **W1 (Purge & Fix) ✅** (`8b6e3a4` — dead auth + pet/tame deleted, ESC/pause resurrected, M-panel, SFX limiter routing) · **W2 (The Look) ✅** (warm magic-hour grade [the restrained-NEUTRAL lock REVERSED, glowier], gloved FPV hands, 4 distinct spell silhouettes, continuous toon-Caribbean ocean plane, cinematic 3D title vista, de-islanded continent, 9-biome data-model) · **W3 (Living-Frontier) ✅ COMPLETE 2026-06-18** (`ca26383` — M-HUD full classic-RPG HUD [cooldown ability bar · combat-log · nametags · target-frame · radial minimap · decluttered chrome] · M-HUB Hearth frontier outpost [forge/stall/watchtower/cabin on flush terraces] · M-NPCS 4 named role NPCs [Bram/Mara/Old Pike/Sister Wren] with G-interactions · M-AMBIENT ambient NPC day-patrol/night-retreat life · M-NARRATIVE giver+lore quest chain + themed objectives + the **L** quest-log panel; **1615 unit / 21 visual / build + eslint green**) · plus Kevin's 4 live-feedback bugs fixed (green-confetti kill-FX → warm-gold, F slash-arc, ESC single-pause, blight travel speed). **W4 (Polish) ✅ COMPLETE 2026-06-18** (`8e5497e`): movement game-feel (T1-T3: accel/decel velocity ramp + coyote-time + jump-buffer in the Player loop), weather (T5-T8: storm sky-darken via a mood-boost MAXed into moodTarget + the mount-density bug fix + biome-gated precip), storm audio (T9a pure synth + T9b WeatherSystem wire through the masterBus, capture-gated — audio *quality* is Kevin's ear), item-affix model (T10, pure foundation), touch joystick nub-follow (T11, imperative GLI-safe knob), boot chrome (T12: favicon/PWA/OG + de-Minecraft copy). **1656 unit / 21 visual / build + eslint green; every visible slice LIVE-LOOK-verified.** (T4 movement-probe skipped — optional/low-value, headless can't drive WASD.) **PENDING KEVIN: a holistic PLAYTEST** of the whole rebuild — movement feel, storm look + AUDIO (his ear), touch, the living frontier + quest log (KEVIN-REVIEW). The next frontier S4 (multiplayer + monetization) is Kevin's call to start. Live cursor: `memory/ACTIVE_PLAN.md`. The 2026-06-17 kickoff context follows.
 
@@ -114,10 +114,10 @@ truth, not this line.** Known managed item: the dependabot build-toolchain vuln 
 
 | Stream | Scope | Status / entry criteria |
 |---|---|---|
-| **S2-B Aspect spine** | The signature: 4 Aspects, sequential, deep-before-next — **B1 Wildheart ✅ → B2 Voidhand (M2→M8) → B3 Soulbind (capture-creatures; mobKillBus seam pre-built) → B4 Elemancer (reactive terrain — the ONLY re-mesh-risk Aspect, perf-gated, deliberately last)** | ✅ COMPLETE (all 4 Aspects shipped 2026-06-10/11). Method per Aspect: grounded design workflow → committed spec (self-gate per charter §5) → per-milestone plan docs → build → adversarial review. |
-| **§5 SOTA-experience axes** | Audio · game-feel · visual polish · content variety · UX legibility · i18n | LIVE — interleaved (≥1 unit every 2–3 milestones, charter §2.5). |
+| **S2-B Aspect spine** | The signature: 4 Aspects, sequential, deep-before-next — **B1 Wildheart ✅ → B2 Voidhand (M2→M8) → B3 Soulbind (capture-creatures; mobKillBus seam pre-built) → B4 Elemancer (reactive terrain — the ONLY re-mesh-risk Aspect, perf-gated, deliberately last)** | ✅ COMPLETE (all 4 Aspects shipped 2026-06-10/11). Method per Aspect: grounded design workflow → committed spec (self-gated) → per-milestone plan docs → build → adversarial review. |
+| **§5 SOTA-experience axes** | Audio · game-feel · visual polish · content variety · UX legibility · i18n | LIVE — interleaved (≥1 unit every 2–3 milestones). |
 | **S3 engine + platform** | De-monolith god-files (characterization-first) · partial-ECS resolution · **touch/mobile input + UI** (the third-person control pivot likely fuses here — Kevin 2026-06-07) · real perf numbers + adaptive-quality hardening · gen-system perf | **LIVE — the entry gate is MET (all 4 Aspects ✅, 2026-06-11), so the recorded "AFTER S2-B complete" condition is satisfied (the ≥3-Aspect relaxation was never needed).** De-monolith M1-M4 + M5 parts 1-2 shipped; **touch/mobile input DESIGN-GATED + M0+M1+M2a+M3a ✅ shipped (iters 128-147) — the game is now core-playable + VISIBLE on touch AND panels are reachable (the panel-access tray); touch is now COMPLETE/probe-exhausted (2026-06-14: iOS cold-start bridged via `enterPlay()` + phone-HUD declutter + deterministic `touch-probe.mjs`; only real-device finger-feel = Kevin); M2b/M3b/M3c are optional polish**; perf-number hardening + partial-ECS resolution still queued. Backlog in ROADMAP §S3-deferred. |
-| **S4 multiplayer + business** | Netcode, accounts, persistence-at-scale, payments, monetization model (Kevin decision), distribution (web-first → app stores later, Kevin 2026-06-04) | LAST. Entry: single-player core SOTA + S3 platform base. The dead client auth/cloud stubs are **deletable any time as dead code** (charter §4 — they fire a failing XHR every load today); whatever S4 needs gets rebuilt properly here. |
+| **S4 multiplayer + business** | Netcode, accounts, persistence-at-scale, payments, monetization model (Kevin decision), distribution (web-first → app stores later, Kevin 2026-06-04) | LAST. Entry: single-player core SOTA + S3 platform base. The dead client auth/cloud stubs are **deletable any time as dead code** (they fire a failing XHR every load today); whatever S4 needs gets rebuilt properly here. |
 
 **Named content passes (re-anchored from v1):** per-Aspect **music motif** → owned by §5 AUDIO (backfill
 WILDHEART, fold into every Aspect's LOOK milestone) · **bestiary design+behavior pass** → after B3 Soulbind
@@ -147,9 +147,8 @@ gen-perf hardening in S3.
 
 ## 6. Process (how this plan executes)
 
-- **Autonomous build loop:** `docs/superpowers/LOOP-CHARTER.md` is the operating constitution (orientation,
-  one-verified-unit-per-iteration, priority order, self-gated taste discipline, doc-currency, parking rules).
-  Kevin reviews ASYNC via `docs/superpowers/KEVIN-REVIEW-BATCH.md` + CHANGELOG; only his two bright lines (spend
+- **Operating rules:** `CLAUDE.md` (the loop charter and kernel prompt it replaced retired 2026-10-28). Kevin
+  reviews one page, the Command Record; only his two bright lines (spend
   no money; never force-push or rewrite pushed history) and what only he can do (real-device runs, account sign-ins)
   stay his. Publishing the repo's public face is the session's (DECISIONS 2026-10-28 item 15). Reversing one of his
   recorded directional decisions became the command session's call by Kevin's 2026-10-27 mandate, restated as the
@@ -166,7 +165,7 @@ gen-perf hardening in S3.
 - `memory/ACTIVE_PLAN.md` (resume) · `memory/CHANGELOG.md` / `ARCHITECTURE.md` / `ROADMAP.md` (4-piece)
 - `memory/STATE-REVIEW-2026-06-10.md` (latest full reconciliation + risk map) · `memory/REALITY-AUDIT-2026-05-30.md` (S0) · `memory/PRE-S2B-CONTENT-AUDIT-2026-06-03.md`
 - `docs/superpowers/specs/2026-06-02-crafty-s2-game-design-design.md` (the S2 design of record) ·
-  `crafty-coherence-pillars.md` (P0–P5) · per-Aspect specs · `docs/superpowers/LOOP-CHARTER.md`
+  `crafty-coherence-pillars.md` (P0–P5) · per-Aspect specs · `CLAUDE.md`
 - `docs/superpowers/KEVIN-REVIEW-BATCH.md` (Kevin's async review surface)
 - **2026-06-15 mega-directive docs:** `docs/superpowers/plans/2026-06-15-crafty-world-purpose-sota.md`
   (world+purpose milestone — the Ember Frontier build contract) · `docs/superpowers/research/2026-06-15-crafty-codebase-reality-audit.md`

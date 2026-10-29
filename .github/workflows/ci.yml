@@ -4,7 +4,7 @@ name: CI
 # Until today this repo had NO CI and NO git hooks, while Vercel auto-deploys EVERY push to `main`.
 # That means a red push shipped straight to the live demo, and nothing mechanically stopped it.
 # This workflow is the backstop. It must stay FAST and DETERMINISTIC — a flaky gate that people learn to
-# ignore is worse than no gate (see LOOP-CHARTER §3: never weaken a gate to make it pass).
+# ignore is worse than no gate (CLAUDE.md, Invariants: never weaken a gate to make it pass).
 
 # THE REQUIRED CHECK (2026-10-28, DECISIONS 2026-10-28 item 13(b)). main's branch protection requires ONE context:
 # the `ci ok` job at the foot of this file, which needs every other job and fails unless each passed (or was skipped

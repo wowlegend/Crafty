@@ -9,4 +9,7 @@ differently.
 
 ## Checks
 
-The commit tier (lint, unit, build, bundle budget) runs on every commit. e2e runs in CI on this exact sha.
+A commit runs the static gates and the unit tests that import a staged file; a push runs opsec-scan and the gates that
+read the pushed range. CI runs every gate, the unit suite, the build, the bundle budget and the e2e shards on this
+exact sha, and its `ci ok` is the verdict (`CLAUDE.md`, Gates). Name here anything this change could break that no gate
+runs, and how you checked it.

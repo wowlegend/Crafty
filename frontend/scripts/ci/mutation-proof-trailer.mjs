@@ -2,8 +2,7 @@
 /**
  * MUTATION-PROOF TRAILER — the enforcer for the rule this repo states three times and never checked.
  *
- * LOOP-CHARTER §3 opens with "⛔ MUTATION-PROOF EVERY NEW GATE", and says it again in §0-B and in
- * `CLAUDE.md`. The 2026-07-27 doc audit found the pattern behind every rule this project fails to
+ * "Mutation-prove every new gate" was stated in three documents with no checker. The 2026-07-27 doc audit found the pattern behind every rule this project fails to
  * follow: rules checkable from an artifact the loop already produces (the diff, the commit message) were
  * obeyed ~100%, and rules whose only consumer was the docs' own prose were obeyed erratically or not at all.
  * "Mutation-prove every gate" had ZERO checkers, and most gate files still read source text without importing
@@ -22,8 +21,8 @@
  *
  * Editing a gate is still routine, so this does NOT fire on every touch: only when the diff adds or removes an
  * assertion-bearing line (see ASSERTION_RE). A rename sweep, an import reorder or a comment fix stays silent —
- * charter §3 is right that a trailer demanded for every tweak is noise, and noise is how a gate gets disabled.
- * A new gate or a changed assertion is exactly when the rule matters: the charter's own words are that a gate
+ * a trailer demanded for every tweak is noise, and noise is how a gate gets disabled.
+ * A new gate or a changed assertion is exactly when the rule matters: a gate
  * "green on day one against unfixed code is a rubber stamp, and the slice that shipped it is VOID".
  *
  * The trailer is not verified to be TRUE — nothing can do that mechanically. It forces the author to state
@@ -64,7 +63,7 @@ export function touchesAssertions(diff) {
  *                exactly where the rule has failed in practice: `91530be` ("my first replacement was vacuous
  *                too") and `03c4297` ("the 'proof' for it was vacuous") are both EDITS, not additions.
  *
- * Scoped to assertion-bearing hunks on purpose. Charter §3 is right that demanding a trailer for EVERY edit to
+ * Scoped to assertion-bearing hunks on purpose. Demanding a trailer for EVERY edit to
  * a gate file is noise, and noise is how a check gets switched off — a rename sweep, an import reorder or a
  * comment fix changes nothing about what the gate catches and stays silent here. Changing what it ASSERTS
  * does not.
@@ -125,7 +124,7 @@ if (isCli) {
       for (const g of c.gates) console.error(`      ${added.has(g) ? '+ (new)      ' : '~ (assertions)'} ${g}`);
     }
     console.error(
-      `\n  LOOP-CHARTER §3: a gate that is green on day one against unfixed code is a RUBBER STAMP,\n` +
+      `\n  CLAUDE.md, Invariants: a gate that is green on day one against unfixed code is a RUBBER STAMP,\n` +
         `  and the slice that shipped it is VOID. Break what it guards, watch it go RED, restore, then say so:\n\n` +
         `      Mutation-Proof: <what you broke> -> <the gate> went RED (<the message it printed>)\n\n` +
         `  Amend the commit to add that trailer. Do not weaken this check to get past it.\n`,
