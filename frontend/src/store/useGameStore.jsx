@@ -13,15 +13,12 @@ import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward, gameTimeFo
 import { getBeastForm } from '../game/beasts.js';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { hydrateBossState } from '../game/bossPersistence.js';
-import { clampFerocity } from '../game/ferocity.js';
-import { clampKinetic } from '../game/kinetic.js';
+import { clampEmber, canAfford, accrueBuild, readBuildDay, emberFromSave } from '../game/ember.js';
 import { hitDirection } from '../game/damageDirection.js';
 import { hurtStopMs } from '../game/hurtFeel.js';
 import { stackHitstop } from '../game/hitstop.js';
 import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
 import { voxelIndex } from '../world/chunkLayout.js';
-import { clampSoul } from '../game/soul.js';
-import { clampResonance } from '../game/resonance.js';
 
 // How long ONE attacker must wait before it can damage the player again. This was an inline 500 applied
 // to a single global timestamp, which made it a world-wide budget rather than a per-attacker cooldown —
@@ -471,7 +468,7 @@ export const useGameStore = create((set, get) => ({
         };
     }),
 
-    // (onMobKill moved to the src/game/mobKillBus.js fan-out in M3.5 — quests + ferocity both subscribe.)
+    // (onMobKill moved to the src/game/mobKillBus.js fan-out in M3.5 — quests + ember both subscribe.)
     onSpellCast: null,
     setOnSpellCast: (fn) => set({ onSpellCast: fn }),
     onSpellHit: null, // QuestSystem publishes it; the magic system calls it when a spell lands on an enemy
@@ -548,26 +545,13 @@ export const useGameStore = create((set, get) => ({
     setVoidhandHeld: (v) => set({ voidhandHeld: !!v }),
     heldPhantom: null,
     setHeldPhantom: (p) => set({ heldPhantom: p || null }),
-    // M4: the KINETIC bank (twin of ferocityBanked) — day-kill accrual, spent per combat grab,
-    // dawn-bled, PERSISTED in the progression slice (unlike the transient held flags above).
-    kineticBanked: 0,
-    setKineticBanked: (v) => set({ kineticBanked: clampKinetic(v) }),
-    accrueKinetic: (delta) => set((s) => ({ kineticBanked: clampKinetic(s.kineticBanked + delta) })),
-    // S2-B3-M2: the Soul bank (SOULBIND) — the kinetic triplet's twin.
-    soulBanked: 0,
-    setSoulBanked: (v) => set({ soulBanked: clampSoul(v) }),
-    accrueSoul: (delta) => set((s) => ({ soulBanked: clampSoul(s.soulBanked + delta) })),
     // S2-B4-M5: the armed-reticle tell (edge-written only — arm/disarm events, GLI-clean).
     imbueArmed: false,
     setImbueArmed: (v) => set({ imbueArmed: v }),
-    // S2-B4-M2: the Resonance bank (ELEMANCER) — the build-verb meter's triplet.
-    resonanceBanked: 0,
-    setResonanceBanked: (v) => set({ resonanceBanked: clampResonance(v) }),
-    accrueResonance: (delta) => set((s) => ({ resonanceBanked: clampResonance(s.resonanceBanked + delta) })),
     enterBeastForm: (element) => {
         if (!getBeastForm(element) || !get().isAlive || get().beastFormActive) return false;
         get().setBeastFormActive(true, element);
-        return true; // M4: the caller spends Ferocity ONLY on a real transform (not a rejected enter)
+        return true; // the caller spends the roar's ember only on a real transform, never on a rejected enter
     },
     exitBeastForm: () => {
         if (!get().beastFormActive && get().activeBeastForm == null) return;
@@ -819,13 +803,28 @@ export const useGameStore = create((set, get) => ({
     // the save slice so a reload mid-run cannot re-grant a night's reward).
     lastRewardedNight: 0,
 
-    // S2-B1-M4: Ferocity — banked by DAY kills (via the mobKill bus), SPENT by transforming in the
-    // siege, bled to zero at dawn (no carry across nights). A full bank gates + powers one roar.
-    // Persisted (clamped+rounded on load). Day-gated accrual lives in useFerocityAccrual (App); the
-    // dawn bleed in useSurvivalMode. accrueFerocity takes signed delta (negative = spend on enter).
-    ferocityBanked: 0,
-    setFerocityBanked: (v) => set({ ferocityBanked: clampFerocity(v) }),
-    accrueFerocity: (delta) => set((s) => ({ ferocityBanked: clampFerocity(s.ferocityBanked + delta) })),
+    // EMBER (game/ember.js): the one Aspect meter. Day kills fill it (useEmberAccrual, App), day placements fill it up
+    // to the day's allowance (accrueBuildEmber, world/placeAtHit.js), the four verbs spend it, dawn empties it
+    // (setGameTime, on the clock's crossing into day). Both fields are persisted.
+    ember: 0,
+    // A gain or a placement that changes nothing returns the same state, so zustand notifies no subscriber and App's
+    // autosave trigger sees no change.
+    gainEmber: (n) => set((s) => {
+        const ember = clampEmber(s.ember + n);
+        return ember === s.ember ? s : { ember };
+    }),
+    // One bank pays four verbs, so a price vetted when a verb started (a bind's channel, an armed imbue) may no longer
+    // be covered when it lands: the spend checks again and refuses, taking nothing, rather than selling it for less.
+    spendEmber: (cost) => {
+        if (!canAfford(get().ember, cost)) return false;
+        set((s) => ({ ember: clampEmber(s.ember - cost) }));
+        return true;
+    },
+    emberBuildDay: { night: 0, built: 0 },
+    accrueBuildEmber: () => set((s) => {
+        const r = accrueBuild(s.ember, s.emberBuildDay, s.nightCount, s.isDay);
+        return r.ember === s.ember && r.record === s.emberBuildDay ? s : { ember: r.ember, emberBuildDay: r.record };
+    }),
 
     // M3b survive-to-dawn reward: grant ALL THREE (Kevin's decision) -- scaled bonus
     // XP + currency + one guaranteed scaling-rarity loot drop -- via the existing
@@ -860,11 +859,13 @@ export const useGameStore = create((set, get) => ({
             // isDayAtUnit, with no crossing) — so resuming a night save silently added a phantom siege
             // night, and it ratcheted +1 on every reload. setGameTime is the single clock-ADVANCE writer,
             // so gating the bump here makes a load / dev time-jump unable to advance the siege.
+            // Dawn empties the ember bar on this same crossing, for the same reason: the hook's isDay edge also fires on a
+            // load, and a day save loaded at night would lose its bar (a pre-cut save its just-migrated banks for good).
             const enteringNight = crossedIntoNight(state.gameTime, newTime);
             return {
                 gameTime: newTime,
                 isDay: !state.isDay,
-                ...(enteringNight ? { nightCount: state.nightCount + 1 } : {}),
+                ...(enteringNight ? { nightCount: state.nightCount + 1 } : { ember: 0 }),
             };
         }
         return { gameTime: newTime };
@@ -1121,10 +1122,13 @@ export const useGameStore = create((set, get) => ({
             // Siege progression (durable across reload): siege intensity + reward scaling.
             const nightCount = prog?.nightCount ?? state.nightCount;
             const lastRewardedNight = prog?.lastRewardedNight ?? state.lastRewardedNight;
-            const ferocityBanked = clampFerocity(prog?.ferocityBanked ?? state.ferocityBanked); // M4: clamp+round on load
-            const kineticBanked = clampKinetic(prog?.kineticBanked ?? state.kineticBanked); // S2-B2-M4: twin
-            const soulBanked = clampSoul(prog?.soulBanked ?? state.soulBanked); // S2-B3-M2: twin
-            const resonanceBanked = clampResonance(prog?.resonanceBanked ?? state.resonanceBanked); // S2-B4-M2: twin
+            // A save written before the one meter carries four banks and no `ember`: they are summed into it. Unlike the
+            // fields above, a save with no slice does not keep the session's: ember is spendable, and another world's
+            // bar would be spent in this one.
+            const ember = emberFromSave(prog);
+            // The save's own record, absent or not: a save older than the record has spent none of its day, and the
+            // session's record belongs to whichever world was loaded before it.
+            const emberBuildDay = readBuildDay(prog ? prog.emberBuildDay : state.emberBuildDay);
 
             const chests = saveData.chests ? new Map(saveData.chests) : state.chests;
 
@@ -1170,10 +1174,8 @@ export const useGameStore = create((set, get) => ({
                 coins,
                 nightCount,
                 lastRewardedNight,
-                ferocityBanked,
-                kineticBanked,
-                soulBanked,
-                resonanceBanked,
+                ember,
+                emberBuildDay,
                 chests,
                 maxHealth,
                 maxMana,

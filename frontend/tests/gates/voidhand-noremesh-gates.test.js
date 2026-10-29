@@ -26,7 +26,7 @@ import { seamBearers, assertDetectorLive, SEAM_OWNER } from './_seamClosure.js';
 describe('voidhand no-re-mesh gate', () => {
   const GATED = [
     'game/voidhand.js',            // the pure grab state machine
-    'game/kinetic.js',             // the kinetic economy
+    'game/ember.js',               // the meter a grab spends
     'world/PhantomBlockSystem.jsx',// the held-phantom render proxy
     'Components.jsx',              // the SM wiring surface — where M3 HURL/SLAM lands
     'devtest/perfProbe.js',        // M2 probe mode/channel

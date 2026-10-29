@@ -59,7 +59,7 @@ describe('beast-form authority (single writer)', () => {
   });
 });
 
-describe('enterBeastForm return contract (M4: spend Ferocity only on a real transform)', () => {
+describe('enterBeastForm return contract (the roar spends its ember only on a real transform)', () => {
   it('returns true on a real transform, false on a rejected one (already-in-form / dead)', () => {
     expect(useGameStore.getState().enterBeastForm('fire')).toBe(true);
     expect(useGameStore.getState().enterBeastForm('ice')).toBe(false); // already a beast

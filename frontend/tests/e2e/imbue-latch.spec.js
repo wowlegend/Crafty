@@ -32,7 +32,7 @@ test.describe('elemancer imbue latch', () => {
       const S = window.useGameStore;
       S.setState({
         unlockedTalents: { ...(S.getState().unlockedTalents || {}), elemancer_imbue: 1 },
-        resonanceBanked: 100,
+        ember: 100,
       });
       window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyZ', bubbles: true }));
     });
@@ -40,11 +40,11 @@ test.describe('elemancer imbue latch', () => {
 
     const cast = await page.evaluate(() => {
       const S = () => window.useGameStore.getState();
-      const bankBefore = S().resonanceBanked;
+      const bankBefore = S().ember;
       // Synchronous: the listener, triggerSpellCast, the latch and the projectile spawn all run inside
       // this dispatch. Nothing can schedule a frame in between.
       window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyF', bubbles: true }));
-      return { armed: S().imbueArmed, spent: bankBefore - S().resonanceBanked };
+      return { armed: S().imbueArmed, spent: bankBefore - S().ember };
     });
 
     expect(
@@ -53,7 +53,7 @@ test.describe('elemancer imbue latch', () => {
     ).toBe(false);
     expect(
       cast.spent,
-      'the imbued cast did not spend its Resonance in the same call that spawned it'
+      'the imbued cast did not spend its ember in the same call that spawned it'
     ).toBe(30);
 
     // The other half of the off-by-one: an UNARMED cast must be an ordinary cast. It must not pick up a
@@ -61,9 +61,9 @@ test.describe('elemancer imbue latch', () => {
     await page.waitForTimeout(400); // CAST_COOLDOWN is 333ms; a swallowed cast would fake this pass
     const second = await page.evaluate(() => {
       const S = () => window.useGameStore.getState();
-      const bankBefore = S().resonanceBanked;
+      const bankBefore = S().ember;
       window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyF', bubbles: true }));
-      return { armed: S().imbueArmed, spent: bankBefore - S().resonanceBanked, bank: S().resonanceBanked };
+      return { armed: S().imbueArmed, spent: bankBefore - S().ember, bank: S().ember };
     });
 
     expect(second.armed, 'an unarmed cast armed the latch').toBe(false);

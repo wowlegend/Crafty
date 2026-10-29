@@ -3,7 +3,6 @@
 // the same function the verb router calls (tests/gates/place-executor-gates.test.jsx).
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
-import { PLACE_GAIN } from '../game/resonance.js';
 import { BLOCK_TYPES } from './Blocks';
 import { idForBlock } from './blockIds';
 import { buildFootprint } from '../game/buildFootprint.js';
@@ -55,8 +54,9 @@ export function placeAtHit(h, { post, playPlace }) {
         return 0;
     }
 
-    // Once per action, not per cell: a 64-cell footprint must not bank 64 resonance ticks or stack 64 place sounds.
-    if (store.isDay) store.accrueResonance(PLACE_GAIN);
+    // Once per action, not per cell: a 64-cell footprint must not bank 64 ember ticks or stack 64 place sounds. The store
+    // pays it only by day and only up to the day's building allowance (game/ember.js).
+    store.accrueBuildEmber();
     playPlace?.(placePos, useGameStore.getState().selectedBlock);
     // A low spark count keeps the iPad fill-rate envelope.
     const puffColor = (BLOCK_TYPES[type] && BLOCK_TYPES[type].color) || '#cccccc';

@@ -114,7 +114,7 @@ describe('base-as-anvil (M4)', () => {
 //
 // The consumer wrote `const req = consumeHurlRequest(); if (req && !flightRef.current)`, and the consume
 // is DESTRUCTIVE -- the channel nulls its slot on read. So a request arriving while a phantom was still
-// airborne was destroyed whether or not it was used, after the producer had already spent 25 Kinetic and
+// airborne was destroyed whether or not it was used, after the producer had already spent the grab's ember and
 // cleared the held phantom. Nothing reported the loss. The window is real: the SM allows a throw every
 // 0.95s, and stepHurl has NO terrain collision at all, so a miss stays airborne the full 1.5s TTL.
 describe('adoptHurlRequest — a paid throw always throws', () => {
@@ -139,7 +139,7 @@ describe('adoptHurlRequest — a paid throw always throws', () => {
     // ...mid-flight, the player throws again. Under the old guard this request was silently destroyed.
     requestHurl(REQ('#bbb').origin, REQ('#bbb').dir, '#bbb');
     frame();
-    expect(flight.color, 'the second throw was swallowed — the player paid 25 Kinetic for nothing').toBe('#bbb');
+    expect(flight.color, 'the second throw was swallowed — the player paid for a grab and lost it').toBe('#bbb');
   });
 
   it('leaves exactly ONE phantom — replacing, not accumulating', () => {

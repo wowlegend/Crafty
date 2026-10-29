@@ -69,10 +69,8 @@ export const UI = {
     success: '#7FE0A0',
     warn:    '#F2B33D',
     info:    '#5AA9FF',
-    ferocity:'#FF3B1F',   // S2-B1-M4 WILDHEART Ferocity bar — feral vermilion (Kevin-tunable taste, §8 #7; distinct from danger/warn/accent/fire)
-    kinetic:'#B36BFF',    // S2-B2-M4 VOIDHAND Kinetic bar — the shipped phantom-rim violet (one identity color per Aspect)
-    soul:'#3DFFB0',       // S2-B3-M6 SOULBIND Soul bar — spectral jade (the tether/tint/bar family)
-    resonance:'#F5D76E',  // S2-B4-M5 ELEMANCER — white-gold catalyst (the armed reticle + the M6 bar)
+    ember:'#FF9A2E',      // the one Aspect meter's bar (game/ember.js): ember-gold, between spell.fire and warn
+    resonance:'#F5D76E',  // ELEMANCER — white-gold catalyst (the armed imbue reticle)
     // rarity (border / inner-ring / text color)
     rarity: {
       common:    '#8A93A6',

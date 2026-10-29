@@ -3,7 +3,7 @@ import { bootDev, startPlay, store } from './_boot.js';
 
 // The WILDHEART beast-form transform — a signature Aspect feature — driven end-to-end through the REAL
 // booted game store. enterBeastForm gates on (valid element) AND (alive) AND (not already transformed),
-// returns true ONLY on a real transform (the caller spends Ferocity on that), and exitBeastForm clears
+// returns true ONLY on a real transform (the caller spends the roar's ember on that), and exitBeastForm clears
 // it (the no-permanent-beast invariant). The audit had the transform state-machine proven only by an
 // isolated store unit; this exercises it in the running game. Each flow runs in one page.evaluate (atomic
 // — nothing auto-drives beast-form, and Playwright gives each test a fresh page so no cross-test leak).
@@ -22,7 +22,7 @@ test('beast-form: a valid element transforms, and exit clears it (no-permanent-b
     g().exitBeastForm();
     return { entered, active, form, afterExitActive: g().beastFormActive, afterExitForm: g().activeBeastForm };
   });
-  expect(res.entered).toBe(true); // real transform -> caller may spend Ferocity
+  expect(res.entered).toBe(true); // real transform -> caller may spend the ember
   expect(res.active).toBe(true);
   expect(res.form).toBe('fire');
   expect(res.afterExitActive).toBe(false); // exit clears
@@ -50,7 +50,7 @@ test('beast-form: rejects a double-transform, an unknown element, and transformi
 
     return { whileActive, formUnchanged, unknown, afterUnknown, whileDead, afterDead };
   });
-  expect(res.whileActive).toBe(false); // no double-transform (the rejected enter spends no Ferocity)
+  expect(res.whileActive).toBe(false); // no double-transform (the rejected enter spends no ember)
   expect(res.formUnchanged).toBe('ice'); // existing form preserved
   expect(res.unknown).toBe(false); // unknown element rejected
   expect(res.afterUnknown).toBe(false);

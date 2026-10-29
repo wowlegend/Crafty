@@ -113,7 +113,7 @@ export default function TouchControlsSurface({ trayOpen = false, wheelOpen = fal
       if (toggleRef.current) toggleRef.current.style.opacity = anyOnCooldown(cds, aspects) ? '1' : '0';
       // Phase 0c — THE CHARGE RINGS. Each reads the TRUE charge, never the touch. The roar's comes from the transform
       // state machine's own transition flag, beastCharging (Components sets it on startCharge and clears it on enter
-      // and cancel), so a roar the machine refused — no full Ferocity bank, on cooldown, dead — draws nothing however
+      // and cancel), so a roar the machine refused — no full ember bar, on cooldown, dead — draws nothing however
       // long the sector is held. The heavy's comes from heavyAttack's module state, which stays 0 through the tap
       // window, so a tap never flashes a ring.
       const now = performance.now();

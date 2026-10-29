@@ -33,11 +33,8 @@ import { SurvivalWarning } from './ui/SurvivalWarning';
 import { AbilityBar } from './ui/AbilityBar';
 import { TargetFrame } from './ui/TargetFrame';
 import { RadialMinimap } from './ui/RadialMinimap';
-import { Panel, Toast, Icon, StatBar } from './ui/primitives/index.js';
-import { FEROCITY_MAX, FEROCITY_THRESHOLD } from './game/ferocity.js';
-import { KINETIC_MAX, GRAB_COST } from './game/kinetic.js';
-import { SNARE_COST, SOUL_MAX } from './game/soul.js';
-import { RESONANCE_MAX, ZONE_COST } from './game/resonance';
+import { Panel, Toast, Icon } from './ui/primitives/index.js';
+import { EmberBar } from './ui/EmberBar.jsx';
 import { subscribeHudTick } from './ui/hudTicker.js';
 import { PanelBoundary, onceRetrying } from './ui/panels/lazyPanels.js';
 
@@ -149,62 +146,6 @@ const DayPhaseDial = React.memo(() => {
         </span>
       </Panel>
     </div>
-  );
-});
-
-// S2-B1-M4 Ferocity bar: bank-in-day / spend-in-siege fury. Gated on ferocityBanked > 0 (like
-// CoinReadout) so the default-zero capture states stay byte-identical (no baseline drift). When the
-// bank is full (>= threshold) it reads "ROAR!" -- the player can transform into an element-beast.
-const FerocityBar = React.memo(() => {
-  const ferocity = useGameStore((s) => s.ferocityBanked);
-  if (!ferocity || ferocity <= 0) return null;
-  const ready = ferocity >= FEROCITY_THRESHOLD;
-  return (
-    <StatBar kind="ferocity" value={ferocity} max={FEROCITY_MAX} icon="run"
-      label={ready ? 'ROAR!' : null} showValue className="w-44" />
-  );
-});
-
-// S2-B2-M4: the Kinetic bank (VOIDHAND grab charge). Same self-null-at-zero capture-safety as
-// FerocityBar, PLUS the unlock gate — no meter is shown for a locked ability (and capture saves
-// lack the talent, so the baselines hold without a re-baseline). "GRAB!" reads when one
-// grab is affordable. Violet = the shipped phantom-rim identity (one color per Aspect).
-// S2-B3-M6: the Soul bank (SOULBIND) — the KineticBar twin: self-null at zero + the unlock
-// gate keep all capture baselines untouched. "SNARE!" reads when one bind is affordable.
-// Jade = the tether/tint identity (one color per Aspect).
-// S2-B4-M6: the Resonance bank (ELEMANCER) — the SoulBar twin: self-null at zero + the
-// unlock gate keep all capture baselines untouched. "IMBUE!" reads when a zone is
-// affordable. White-gold = the player-side catalyst identity (one color per Aspect).
-const ResonanceBar = React.memo(() => {
-  const resonance = useGameStore((s) => s.resonanceBanked);
-  const hasImbue = useGameStore((s) => (s.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0);
-  if (!hasImbue || !resonance || resonance <= 0) return null;
-  const ready = resonance >= ZONE_COST;
-  return (
-    <StatBar kind="resonance" value={resonance} max={RESONANCE_MAX} icon="magic"
-      label={ready ? 'IMBUE!' : null} showValue className="w-44" />
-  );
-});
-
-const SoulBar = React.memo(() => {
-  const soul = useGameStore((s) => s.soulBanked);
-  const hasSnare = useGameStore((s) => (s.unlockedTalents?.['soulbind_snare'] ?? 0) > 0);
-  if (!hasSnare || !soul || soul <= 0) return null;
-  const ready = soul >= SNARE_COST;
-  return (
-    <StatBar kind="soul" value={soul} max={SOUL_MAX} icon="magic"
-      label={ready ? 'SNARE!' : null} showValue className="w-44" />
-  );
-});
-
-const KineticBar = React.memo(() => {
-  const kinetic = useGameStore((s) => s.kineticBanked);
-  const hasGrasp = useGameStore((s) => (s.unlockedTalents?.['voidhand_grasp'] ?? 0) > 0);
-  if (!hasGrasp || !kinetic || kinetic <= 0) return null;
-  const ready = kinetic >= GRAB_COST;
-  return (
-    <StatBar kind="kinetic" value={kinetic} max={KINETIC_MAX} icon="force"
-      label={ready ? 'GRAB!' : null} showValue className="w-44" />
   );
 });
 
@@ -599,15 +540,12 @@ export function HUD({
             {/* B5 (18-domain review, "HUD lies"): moved from `top-16 left-4` (buried under the QuestTracker
                 panel — the health bar was 100% invisible) to the free bottom-left corner (conventional RPG
                 placement). And the container is now a real `flex flex-col` column: StatBar's root is
-                `inline-flex`, so the old `space-y-2` (margin-top on inline-level boxes) laid the 7 bars out
+                `inline-flex`, so the old `space-y-2` (margin-top on inline-level boxes) laid the bars out
                 as a horizontal RIBBON — flex-col stacks them vertically. `w-44` gives all bars one width. */}
             <div data-testid="stat-stack" className="absolute bottom-4 left-4 pointer-events-none z-20 flex flex-col gap-2 w-44">
               <PlayerHealthBar health={gameSystems.playerHealth} maxHealth={gameSystems.maxHealth} />
               <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
-              <FerocityBar />
-              <KineticBar />
-              <SoulBar />
-          <ResonanceBar />
+              <EmberBar />
             </div>
 
             {/* W3 M-HUD.9: the standalone top-center "Spell: FIREBALL (15 MP)" band is REMOVED — it
