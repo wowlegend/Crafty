@@ -65,7 +65,8 @@ const LOOT_SET = [
 // 1. ITEMS table integrity
 // ─────────────────────────────────────────────────────────────────────────────
 describe('ITEMS registry', () => {
-  // 37: the five foods left with the hunger meter (DECISIONS 2026-10-29 item 71).
+  // 37: the registry holds no food, because nothing feeds (DECISIONS 2026-10-29 item 71). A count that moves is a
+  // deliberate edit here.
   it('has 37 entries, each with name/icon/rarity', () => {
     const ids = Object.keys(ITEMS);
     expect(ids).toHaveLength(37);

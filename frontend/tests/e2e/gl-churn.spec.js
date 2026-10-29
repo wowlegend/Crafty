@@ -5,8 +5,8 @@ import { bootDev, startPlayActive } from './_boot.js';
 //
 // Kevin, on the live site: an M3 Max "heating up the laptop and turning the fans up into overdrive"; an iPad's visuals
 // "very buggy / broken". Read in source first (the plan's "Verified so far"): @react-three/postprocessing rebuilds
-// every EffectPass whenever its <EffectComposer>'s children re-render, and the composer sat inline in GameScene, which
-// re-rendered on every hunger tick (5 s) and every mana tick (1 s while regenerating) — each rebuild deleting and
+// every EffectPass whenever its <EffectComposer>'s children re-render, so a composer inline in GameScene rebuilds on
+// every store change that re-renders it, the mana tick (1 s while regenerating) among them — each rebuild deleting and
 // re-creating the composer's depth textures and depth render target, and constructing new passes.
 //
 // The instrument reads what the GPU is actually asked to do: the WebGL2 calls that ALLOCATE (createTexture,

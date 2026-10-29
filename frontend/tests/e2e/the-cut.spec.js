@@ -24,7 +24,10 @@ import { installWorldHold } from './_worldHold.js';
 // read, touch placement (the overlay's cast button reaches the same performVerb), or the Building Tools' multi-block
 // footprint (tests/e2e/build-placement.spec.js). In the hunger window: a timer faster than JUMP_MS at its real rate
 // (it fires once a jump), the world's motion over ten minutes (about one capped frame step a jump), and the AI worker's
-// own timers, which run in a worker thread the page clock does not reach.
+// own timers, which run in a worker thread the page clock does not reach. A starvation interval at the old rate (0.1
+// hunger per 5 s) starves at 83.3 minutes, past the ten-minute window, so only the 84-minute case in
+// tests/gates/pause-holds-timers-gates.test.jsx can see it; this window is built to see one fast enough to starve
+// inside ten, and no browser mutant has shown that (registry REVIEW:w2f:hunger-e2e-mutants-unrun).
 //
 // Mutation-Proof: see the commit trailers (the unit mutants, run against tests/store/preCutSave.test.js and
 // tests/gates/free-placement-gates.test.js). These cases need a browser, so CI runs them; no local mutation run.
@@ -66,9 +69,9 @@ function stageBuild({ want, capMs }) {
   return { aims };
 }
 
-// A placement rebuilds its chunk's trimesh collider, and the build ray is a Rapier scene query, which sees a collider
-// only once a physics step has put it in the broad phase (rapier.rs, "Simulation structures": queries use the state at
-// the end of the last step). So the aim right after a press can miss terrain for a frame; it is cast again after each
+// A placement rebuilds its chunk's trimesh collider, and the build ray is a Rapier scene query (@dimforge/rapier3d-compat
+// 0.19.2), which sees a collider only once a physics step has put it in the broad phase (rapier.rs, "Simulation
+// structures": queries use the state at the end of the last step). So the aim right after a press can miss terrain for a frame; it is cast again after each
 // frame the game draws (FrameCap's counter: the R3F frames, whose useFrame steps the physics), up to AIM_FRAMES, before
 // the aim is called lost.
 const AIM_FRAMES = 30;
@@ -184,6 +187,9 @@ test.describe('the Cut', () => {
     // Step 6 (hunger, DECISIONS 2026-10-29 item 72): the store reads no hunger and the meat leaves the live bag; both
     // ride the save back unchanged.
     expect(r.loaded.hasHunger, 'the store took the save\'s hunger').toBe(false);
+    // loadWorldData sets playerHealth to maxHealth on every load (store/useGameStore.jsx), so this holds whatever a save
+    // holds, a starvation cost on load included: it reads the load path, not hunger's absence. The hasHunger check above
+    // is what fails when the store takes the save's hunger.
     expect(r.loaded.health, 'loading an empty stomach cost health').toBe(r.loaded.maxHealth);
     expect('Raw Beef' in r.loaded.liveBag, 'a retired food is in the live bag').toBe(false);
     expect(r.blob.progression.hunger, 'the held hunger key was not written back').toBe(0);

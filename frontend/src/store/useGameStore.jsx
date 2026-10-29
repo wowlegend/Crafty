@@ -1043,8 +1043,8 @@ export const useGameStore = create((set, get) => ({
         const owed = migrateRetired(saveData);
         set((state) => {
             const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
-            // migrateSaveData already normalized inventory keys. The retired currency keys leave the live bag (the
-            // tombstone below holds them for the save).
+            // migrateSaveData already normalized inventory keys. The retired items (RETIRED_INVENTORY_KEYS: the
+            // currency, the pickaxe, the foods) leave the live bag (the tombstone below holds them for the save).
             const inventory = liveInventory(saveData.player_data?.inventory || state.inventory);
             const selectedBlock = saveData.game_state?.selectedBlock || state.selectedBlock;
             const activeSpell = saveData.game_state?.activeSpell || state.activeSpell;
@@ -1099,7 +1099,7 @@ export const useGameStore = create((set, get) => ({
             // session's record belongs to whichever world was loaded before it.
             const emberBuildDay = readBuildDay(prog ? prog.emberBuildDay : state.emberBuildDay);
 
-            // The retired currency keys leave every chest too (the tombstone holds them for the save).
+            // The retired items leave every chest too (the tombstone holds them for the save).
             const chests = saveData.chests ? new Map(liveChests(saveData.chests)) : state.chests;
 
             // Derived caps from the level and the gear (never baked); a loaded character arrives at full HP and mana, as a

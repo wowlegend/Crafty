@@ -76,6 +76,9 @@ describe('an old save holding hunger or food', () => {
     expect(S().level, 'SETUP: the fixture did not load').toBe(5);
     expect(S().inventory.blocks.stone, 'SETUP: the fixture\'s blocks did not load').toBe(16);
     expect('hunger' in S(), 'the store adopted the save\'s hunger').toBe(false);
+    // loadWorldData sets playerHealth to maxHealth on every load (store/useGameStore.jsx), so this holds whatever a save
+    // holds, a starvation cost on load included: it reads the load path, not hunger's absence. The store check above
+    // and the 84-minute case in tests/gates/pause-holds-timers-gates.test.jsx are what fail when hunger comes back.
     expect(S().playerHealth, 'loading an empty stomach cost health').toBe(S().maxHealth);
     expect(liveMeat(), 'meat stayed in a live bag or chest').toEqual([]);
     expect(S().chests.get('4_17_2')?.inventory, 'a live item left the chest with the meat').toEqual({ stone: 3 });
