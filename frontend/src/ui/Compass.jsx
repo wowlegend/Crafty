@@ -29,6 +29,25 @@ const SLOTS = [
   ...Array.from({ length: CHEST_SLOTS }, (_, i) => ({ id: `chest:${i}`, kind: 'chest' })),
 ];
 
+/** The pool, rendered once: every slot's label (icon and text) and pip, hidden until the ticker places it. */
+const CompassSlots = React.memo(({ setRef }) => SLOTS.map((slot) => {
+  const look = KIND_LOOK[slot.kind];
+  const cardinal = slot.kind === 'cardinal';
+  return (
+    <React.Fragment key={slot.id}>
+      <div ref={(n) => setRef(slot.id, 'label', n)} data-compass-label={slot.kind} data-compass-id={slot.id}
+        className={`absolute left-0 ${cardinal ? 'top-0.5' : 'top-0'} flex items-center gap-0.5 whitespace-nowrap leading-none`}
+        style={{ visibility: 'hidden', color: look.color, textShadow: '0 1px 2px rgb(var(--ui-ink))' }}>
+        {look.icon && <Icon name={look.icon} size={10} className="flex-none" />}
+        <span ref={(n) => setRef(slot.id, 'text', n)} className={`${cardinal ? 'text-[10px] tracking-wider' : 'text-[9px]'} font-bold tabular-nums`} />
+      </div>
+      <div ref={(n) => setRef(slot.id, 'pip', n)} data-compass-pip={slot.kind}
+        className={`absolute left-0 bottom-1 -ml-[3px] w-1.5 h-1.5 ${cardinal ? 'opacity-50' : ''} ${slot.kind === 'home' || slot.kind === 'blight' ? 'rotate-45' : 'rounded-full'}`}
+        style={{ visibility: 'hidden', background: look.color }} />
+    </React.Fragment>
+  );
+}));
+
 export const Compass = React.memo(({ treasureChests, bossSystem }) => {
   const trackRef = useRef(null);
   const slotRefs = useRef({}); // id -> { pip, label, text }
@@ -88,10 +107,13 @@ export const Compass = React.memo(({ treasureChests, bossSystem }) => {
     return () => { unsubscribe(); window.removeEventListener('resize', onResize); };
   }, []);
 
-  const ref = (id, part) => (node) => {
+  // One ref setter for the life of the component, handed to the memoized slots, so a re-render of the compass (its props
+  // change identity with every App render) never re-renders them: React 19 re-applies an icon's innerHTML on every
+  // render, and hud-churn counted those 15 rewrites (one per game-icon slot) as writes of what was already there.
+  const setRef = useRef((id, part, node) => {
     const s = slotRefs.current[id] || (slotRefs.current[id] = {});
     s[part] = node;
-  };
+  }).current;
 
   return (
     // Below the top band wherever the centred strip would reach the quest line (left, up to 252 px) or the gear: under
@@ -101,23 +123,7 @@ export const Compass = React.memo(({ treasureChests, bossSystem }) => {
         {/* Alignment reticle line */}
         <div className="absolute top-0 bottom-0 w-[1.5px] bg-info z-20"></div>
         <div ref={trackRef} data-testid="compass-track" className="w-[280px] max-[640px]:w-[160px] h-full relative overflow-hidden">
-          {SLOTS.map((slot) => {
-            const look = KIND_LOOK[slot.kind];
-            const cardinal = slot.kind === 'cardinal';
-            return (
-              <React.Fragment key={slot.id}>
-                <div ref={ref(slot.id, 'label')} data-compass-label={slot.kind} data-compass-id={slot.id}
-                  className={`absolute left-0 ${cardinal ? 'top-0.5' : 'top-0'} flex items-center gap-0.5 whitespace-nowrap leading-none`}
-                  style={{ visibility: 'hidden', color: look.color, textShadow: '0 1px 2px rgb(var(--ui-ink))' }}>
-                  {look.icon && <Icon name={look.icon} size={10} className="flex-none" />}
-                  <span ref={ref(slot.id, 'text')} className={`${cardinal ? 'text-[10px] tracking-wider' : 'text-[9px]'} font-bold tabular-nums`} />
-                </div>
-                <div ref={ref(slot.id, 'pip')} data-compass-pip={slot.kind}
-                  className={`absolute left-0 bottom-1 -ml-[3px] w-1.5 h-1.5 ${cardinal ? 'opacity-50' : ''} ${slot.kind === 'home' || slot.kind === 'blight' ? 'rotate-45' : 'rounded-full'}`}
-                  style={{ visibility: 'hidden', background: look.color }} />
-              </React.Fragment>
-            );
-          })}
+          <CompassSlots setRef={setRef} />
         </div>
       </div>
     </div>
