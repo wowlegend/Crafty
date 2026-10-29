@@ -27,9 +27,37 @@ export const POOL_SIZE = { low: 2, med: 4, high: 6 };
 
 const requests = new Set();
 
+// Every point light the world draws with: the pool's and the always-mounted ones (WorldPointLight). The first-person
+// hands take the strongest of them at the eye (render/viewmodel.js mirrorPointLights). An array, so a frame's walk
+// over it allocates no iterator.
+const worldLights = [];
+
+/** Register a world point light for the hands to take; returns the unregister. */
+export function registerWorldLight(light) {
+  worldLights.push(light);
+  return () => {
+    const i = worldLights.indexOf(light);
+    if (i >= 0) worldLights.splice(i, 1);
+  };
+}
+
+/** The world's point lights, live. Read-only. */
+export function worldPointLights() {
+  return worldLights;
+}
+
+/** A <pointLight> that is always mounted (the Hearth's brazier, the danger fill, the phantom block's), registered so the
+ *  hands take it. Props and `ref` as the light's. */
+export const WorldPointLight = forwardRef(function WorldPointLight(props, ref) {
+  const light = useRef(null);
+  useImperativeHandle(ref, () => light.current, []);
+  useLayoutEffect(() => registerWorldLight(light.current), []);
+  return <pointLight ref={light} {...props} />;
+});
+
 /** A request: where (anchor), what colour, how bright, how far it reaches (0 = unbounded), its decay. */
 export function makeLightRequest() {
-  return { anchor: null, world: new THREE.Vector3(), color: new THREE.Color(), intensity: 0, distance: 0, decay: 2, score: 0 };
+  return { anchor: null, world: new THREE.Vector3(), color: new THREE.Color(), intensity: 0, distance: 0, decay: 2, score: 0, lightsHands: true };
 }
 
 /** @returns {() => void} unregister */
@@ -75,6 +103,7 @@ export function poolFrame(reqs, camera, lights) {
       L.intensity = r.intensity;
       L.distance = r.distance;
       L.decay = r.decay;
+      L.userData.lightsHands = r.lightsHands;
     } else if (L.intensity !== 0) {
       L.intensity = 0;
     }
@@ -91,6 +120,10 @@ export function PointLightPool() {
     lights.current.length = n;
     poolFrame(requests, camera, lights.current);
   });
+  useLayoutEffect(() => {
+    const offs = lights.current.slice(0, n).filter(Boolean).map(registerWorldLight);
+    return () => { for (const off of offs) off(); };
+  }, [n]);
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     // DEV-only: the light-pool e2e reads the registry and the pool.
@@ -108,15 +141,18 @@ export function PointLightPool() {
 /**
  * Drop-in for a <pointLight> that mounts and unmounts with gameplay. Props as the light's; `ref` exposes the request,
  * so an imperative `ref.current.intensity = x` (a fading impact) keeps working. Props apply on CHANGE only, as R3F's do,
- * so a re-render does not overwrite an intensity a frame loop is driving.
+ * so a re-render does not overwrite an intensity a frame loop is driving. `lightsHands={false}` keeps the light off the
+ * first-person hands (render/viewmodel.js mirrorPointLights): a light inside the player's own body, which in the world
+ * would stand between it and the hands.
  */
-export const PooledLight = forwardRef(function PooledLight({ position, color = '#ffffff', intensity = 1, distance = 0, decay = 2 }, ref) {
+export const PooledLight = forwardRef(function PooledLight({ position, color = '#ffffff', intensity = 1, distance = 0, decay = 2, lightsHands = true }, ref) {
   const anchor = useRef(null);
   const req = useMemo(makeLightRequest, []);
   useLayoutEffect(() => { req.color.set(color); }, [req, color]);
   useLayoutEffect(() => { req.intensity = intensity; }, [req, intensity]);
   useLayoutEffect(() => { req.distance = distance; }, [req, distance]);
   useLayoutEffect(() => { req.decay = decay; }, [req, decay]);
+  useLayoutEffect(() => { req.lightsHands = lightsHands; }, [req, lightsHands]);
   useLayoutEffect(() => {
     req.anchor = anchor.current;
     const off = registerPooledLight(req);

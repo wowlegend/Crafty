@@ -1,9 +1,12 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { MobToonMaterial } from './MobToonMaterial';
-import { beastAvatarParts, boxDistance, SELF_CLEARANCE_M } from './beastAvatarParts.js';
+import {
+  beastAvatarParts, beastAvatarSpheres, boxDistance, sphereDistance, isFirstPerson, haloRadius,
+  SELF_CLEARANCE_M, FEET_OFFSET, BEAST_GLOW,
+} from './beastAvatarParts.js';
 import { elementForSpell } from '../game/beasts.js';
 // The beast core's light mounts with the form: from the fixed light pool (render/lightPool.jsx).
 import { PooledLight } from './lightPool.jsx';
@@ -30,12 +33,13 @@ const CHARGE_BASE_OPACITY = 0.85;
  * states unaffected). Mounted as a RigidBody child (at the player). Capture FREEZES to the SETTLED beast
  * (no entrance, no burst, no charge) -> byte-stable frame. Transient clock refs (Game-Loop-Isolation).
  */
-export const FEET_OFFSET = -0.9; // the RigidBody origin is the capsule CENTER; drop the feet to the base
+export { FEET_OFFSET };
 const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 // S2-B1-M7d: Kevin's "punchy" glow pick, BAKED (the dev dial is gone). Scales the element glow
 // (rim/core/halo/point-light) ONLY — never the dark-ink body, so the silhouette stays crisp.
-const GLOW = 1.7;
+const GLOW = BEAST_GLOW;
 const _eye = new THREE.Vector3();
+const BURST_RADIUS = 0.5;
 
 export function BeastAvatar() {
   const active = useGameStore((s) => s.beastFormActive);
@@ -45,6 +49,7 @@ export function BeastAvatar() {
   const groupRef = useRef();
   const boxRefs = useRef([]);
   const coreRef = useRef();
+  const haloRef = useRef();
   const burstRef = useRef();
   const chargeRef = useRef();
   const entryRef = useRef(-1);       // clock time the beast became active (-1 = not yet)
@@ -52,6 +57,7 @@ export function BeastAvatar() {
   const { camera } = useThree();
 
   const parts = active ? beastAvatarParts(element) : null;
+  const spheres = useMemo(() => (active ? beastAvatarSpheres(beastAvatarParts(element)) : null), [active, element]);
 
   // Publish the avatar's own group so a capture fixture can frame from WHERE IT RENDERS.
   // Same idiom as `playerRigidBodyRef` (transient ref in the store, read via getState — never a reactive
@@ -98,24 +104,32 @@ export function BeastAvatar() {
     const ent = morphEntrance(elapsed);
     groupRef.current.scale.setScalar(ent.scale);
 
-    // The player's own beast, seen from its eye (beastAvatarParts.js SELF_CLEARANCE_M): a part nearer the eye than the
-    // clearance writes neither colour nor depth, and still casts its shadow.
+    // The player's own beast, seen from the camera (beastAvatarParts.js SELF_CLEARANCE_M): in first person nothing of it
+    // draws but its shadow (and its light, which stays), and away from the eye a part nearer the camera than the
+    // clearance is not drawn. A hidden box writes neither colour nor depth and still casts its shadow; a hidden glow
+    // sphere is not drawn.
     groupRef.current.updateWorldMatrix(true, false);
     groupRef.current.worldToLocal(camera.getWorldPosition(_eye));
+    const away = !isFirstPerson(_eye.x, _eye.y, _eye.z);
     for (let i = 0; i < parts.boxes.length; i++) {
       const mesh = boxRefs.current[i];
       if (!mesh) continue;
-      const seen = boxDistance(parts.boxes[i], _eye.x, _eye.y, _eye.z) >= SELF_CLEARANCE_M;
+      const seen = away && boxDistance(parts.boxes[i], _eye.x, _eye.y, _eye.z) >= SELF_CLEARANCE_M;
       mesh.material.colorWrite = seen;
       mesh.material.depthWrite = seen;
     }
     if (coreRef.current) {
       const pulse = capture ? 1.08 : 1 + Math.sin(now * 3) * 0.08;
       coreRef.current.scale.setScalar(pulse + ent.flash * 0.9); // entry flash boosts the core
+      coreRef.current.visible = away && sphereDistance(spheres.core, _eye.x, _eye.y, _eye.z) >= SELF_CLEARANCE_M;
+    }
+    if (haloRef.current) {
+      haloRef.current.visible = away && sphereDistance(spheres.halo, _eye.x, _eye.y, _eye.z) >= SELF_CLEARANCE_M;
     }
     if (burstRef.current) {
       const bf = burstFlash(capture ? BURST_SEC + 1 : elapsed);
-      burstRef.current.visible = bf.active;
+      const d = Math.hypot(_eye.x - parts.core.pos[0], _eye.y - parts.core.pos[1], _eye.z - parts.core.pos[2]);
+      burstRef.current.visible = bf.active && away && d - BURST_RADIUS * bf.scale >= SELF_CLEARANCE_M;
       if (bf.active) {
         burstRef.current.scale.setScalar(bf.scale);
         if (burstRef.current.material) burstRef.current.material.opacity = bf.opacity;
@@ -164,8 +178,8 @@ export function BeastAvatar() {
           </mesh>
 
           {/* (3) a single faint back-halo (BackSide) — a touch of aura behind the silhouette */}
-          <mesh position={parts.core.pos} renderOrder={1}>
-            <sphereGeometry args={[parts.core.radius * 1.7 * parts.aura * (0.9 + 0.1 * GLOW), 16, 16]} />
+          <mesh ref={haloRef} position={parts.core.pos} renderOrder={1}>
+            <sphereGeometry args={[haloRadius(parts), 16, 16]} />
             <meshBasicMaterial color={parts.glowColor} toneMapped={false} transparent opacity={Math.min(0.55, 0.3 * GLOW)}
               blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.BackSide} />
           </mesh>
@@ -177,7 +191,7 @@ export function BeastAvatar() {
               blending={THREE.AdditiveBlending} depthWrite={false} depthTest={false} />
           </mesh>
 
-          <PooledLight color={parts.glowColor} intensity={3 * GLOW} distance={6} decay={2} position={parts.core.pos} />
+          <PooledLight color={parts.glowColor} intensity={3 * GLOW} distance={6} decay={2} position={parts.core.pos} lightsHands={false} />
         </group>
       )}
     </group>

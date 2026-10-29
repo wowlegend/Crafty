@@ -37,6 +37,7 @@ const { skyFrameRef, lightningFlashRef } = await import('../../src/render/mood.j
 const { TIERS } = await import('../../src/render/quality.js');
 const { CHUNK_SIZE } = await import('../../src/world/chunkLayout.js');
 const { MagicWand } = await import('../../src/render/spellVfx.jsx');
+const { WorldPointLight, worldPointLights } = await import('../../src/render/lightPool.jsx');
 const { WAND_CONFIGS } = await import('../../src/game/spellVisualProfiles.js');
 
 let r = null;
@@ -151,6 +152,32 @@ describe('ViewmodelLayer, stepped through R3F', () => {
     } finally {
       lightningFlashRef.current = 0;
     }
+  });
+
+  it('takes a world point light mounted beside it (a brazier) onto the hands, at its place in the view, and lets it go', async () => {
+    const vm = getViewmodel();
+    const Scene = ({ lit }) => (
+      <>
+        {lit && <WorldPointLight position={[1.2, -0.5, -0.8]} color="#FF8A2A" intensity={1.6} distance={9} />}
+        <ViewmodelLayer />
+      </>
+    );
+    r = await mountR3F(<Scene lit />);
+    const cam = r.three().camera;
+    cam.position.set(0, 0, 0);
+    cam.rotation.set(0, 0.6, 0, 'YXZ');
+    cam.updateMatrixWorld(true);
+    await r.step(1);
+    expect(worldPointLights().length, 'SETUP: the brazier did not register').toBe(1);
+    const want = cam.worldToLocal(new THREE.Vector3(1.2, -0.5, -0.8));
+    expect(vm.rig.points[0].intensity, 'the brazier did not reach the hands').toBe(1.6);
+    expect(vm.rig.points[0].color.getHexString()).toBe('ff8a2a');
+    expect(vm.rig.points[0].position.distanceTo(want), 'the brazier is not where it stands relative to the view').toBeLessThan(1e-6);
+    await r.unmount();
+    r = await mountR3F(<Scene lit={false} />);
+    await r.step(1);
+    expect(worldPointLights().length, 'an unmounted light stayed registered').toBe(0);
+    expect(vm.rig.points.every((p) => p.intensity === 0), 'the hands kept the light of a brazier that is gone').toBe(true);
   });
 });
 
