@@ -98,7 +98,11 @@ function faceMara() {
   return Math.hypot(dx, dz);
 }
 
-/** In the page, with W held: steer at Mara where she stands every drawn frame until the camera is within `stopAt`. */
+/** In the page, with W held: steer at Mara where she stands every drawn frame until the camera is within `stopAt`, then
+ *  let W go in that same frame. The press is the real key; its release is dispatched here because a round trip back
+ *  to Playwright spans several CI frames of a 14 m/s walk, and run 40857037845 measured the player carried 4.5-5.4 m
+ *  past her that way. The game's own keyup handler takes it (Components.jsx), as tests/e2e/heavy-melee.spec.js's
+ *  in-page T and R are taken. */
 async function walkTo({ stopAt, maxFrames }) {
   const frame = () => new Promise((r) => requestAnimationFrame(r));
   const cam = window.__threeCamera;
@@ -112,7 +116,9 @@ async function walkTo({ stopAt, maxFrames }) {
   const from = face();
   let d = from, n = 0;
   while (d > stopAt && n < maxFrames) { await frame(); d = face(); n++; }
-  return { from, to: d, frames: n, active: window.__craftyTest.call('readIntents').active, alive: window.useGameStore.getState().isAlive };
+  window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW', key: 'w', bubbles: true }));
+  for (let i = 0; i < 3; i++) await frame();
+  return { from, to: d, settled: face(), frames: n, active: window.__craftyTest.call('readIntents').active, alive: window.useGameStore.getState().isAlive };
 }
 
 const read = (page) => page.evaluate(() => {
@@ -153,6 +159,7 @@ test.describe('the Forge', () => {
     await release(page, 'w');
     expect(walk.to, `W held did not walk the player to Mara: ${JSON.stringify(walk)}`).toBeLessThanOrEqual(TALK_RANGE - 1.5);
     expect(walk.from - walk.to, `the player did not move: ${JSON.stringify(walk)}`).toBeGreaterThan(3);
+    expect(walk.settled, `SETUP: the player did not stop in reach when W was let go: ${JSON.stringify(walk)}`).toBeLessThan(TALK_RANGE);
 
     // 3. G OPENS THE FORGE CARD.
     await page.evaluate(clearHostiles, 80);
