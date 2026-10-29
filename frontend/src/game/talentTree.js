@@ -73,8 +73,9 @@ export function talentNode(id) {
  * Load-time refund: every rank the trees no longer allow comes back as a point. The kept build is rebuilt rank by rank
  * through canUnlockTalent, the predicate the store spends through, so a loaded save keeps exactly what a player could
  * take now and a rule added there reaches loads too. Ids go in sorted order, and the passes repeat until nothing is
- * added: a branch waits for its root, a branch whose root is gone comes back with it, and of two rival capstones the one
- * that sorts first keeps its rank, so the same save always keeps the same capstone.
+ * added: a branch waits for its root, a branch whose root is gone comes back with it, and of two rival capstones exactly
+ * one keeps its rank: the first the replay reaches with its prerequisite in place, which is not always the first by id
+ * (Wildheart keeps Untamed over Apex). The same save always keeps the same capstone.
  */
 export function refundUnknownTalents(unlockedTalents, talentPoints) {
   const held = {};

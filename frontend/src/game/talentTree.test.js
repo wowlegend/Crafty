@@ -78,7 +78,7 @@ describe('canUnlockTalent, exclusivity and respec', () => {
 });
 
 describe('refundUnknownTalents (load)', () => {
-  it('refunds retired ids, ranks over a limit, orphans of a missing prerequisite, and the later of two rival capstones', () => {
+  it('refunds retired ids, ranks over a limit, orphans of a missing prerequisite, and one of two rival capstones (the Soulbind pair)', () => {
     const r = refundUnknownTalents({
       voidhand_force: 2, // retired
       wildheart_roar: 1, wildheart_endurance: 5, // 2 over the limit of 3
