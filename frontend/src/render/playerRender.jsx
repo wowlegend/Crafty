@@ -15,7 +15,7 @@ import { OUTLINE } from './characterStyle';
 import { MagicWand } from './spellVfx';
 import { heavyChargeLevel } from '../game/heavyAttack.js';
 import { handSwing } from '../game/meleeString.js';
-import { GAUNTLET, VIEWMODEL, handAnchors, makeGauntletMaterials, makeHeldMaterial } from './viewmodel.js';
+import { GAUNTLET, GAUNTLET_PARTS, HAND_REST_ROT, VIEWMODEL, handAnchors, makeGauntletMaterials, makeHeldMaterial } from './viewmodel.js';
 
 // Swing-ribbon scratch, allocated once at the ring's capacity: re-filled in place with needsUpdate, because swapping a
 // BufferAttribute re-uploads the whole buffer anyway. The anchors are the blade's base and tip in the hand's frame.
@@ -43,9 +43,6 @@ export const HELD_REST = Object.freeze({
 // the eye, that size fills half the frame, so they are drawn smaller in the hand. The swing trail's anchors above sit
 // on the scaled blade.
 const HELD_SCALE = Object.freeze({ weapon: 0.6, wand: 0.55 });
-
-/** Each hand's rest rotation: the forearm runs back and down toward the camera, the fist turned a little inward. */
-const HAND_REST_ROT = Object.freeze({ right: Object.freeze([0.35, 0.12, 0]), left: Object.freeze([0.35, -0.12, 0]) });
 
 const ProceduralWeapon = React.memo(({ type = 'Iron Sword', position = [0, 0, 0], rotation = [0, 0, 0] }) => {
   const bladeColor = useMemo(() => {
@@ -296,33 +293,16 @@ const ProceduralRibbonTrail = ({ rightHandRef, isSwinging, weaponType }) => {
   );
 };
 
-/** One ember gauntlet, in the fist's frame: the leather forearm runs back toward the camera (+z), an ember-gold plate
- *  on top carries the glowing core, a white-gold cuff at the wrist, the fist with a knuckle plate. */
+/** One ember gauntlet, in the fist's frame: the boxes of render/viewmodel.js GAUNTLET_PARTS, which the anchor gate
+ *  projects to keep each fist in frame. */
 const Gauntlet = ({ mats, children }) => (
   <>
-    <mesh position={[0, -0.02, 0.3]} material={mats.leather}>
-      <boxGeometry args={[0.15, 0.15, 0.5]} />
-      <Outlines thickness={GLOVE_OUTLINE_T} color={GAUNTLET.ink} toneMapped={false} />
-    </mesh>
-    <mesh position={[0, 0.065, 0.32]} material={mats.plate}>
-      <boxGeometry args={[0.165, 0.05, 0.36]} />
-      <Outlines thickness={GLOVE_OUTLINE_T} color={GAUNTLET.ink} toneMapped={false} />
-    </mesh>
-    <mesh position={[0, 0.093, 0.3]} material={mats.core}>
-      <boxGeometry args={[0.06, 0.012, 0.13]} />
-    </mesh>
-    <mesh position={[0, 0, 0.07]} material={mats.trim}>
-      <boxGeometry args={[0.19, 0.19, 0.05]} />
-      <Outlines thickness={GLOVE_OUTLINE_T} color={GAUNTLET.ink} toneMapped={false} />
-    </mesh>
-    <mesh position={[0, 0, -0.04]} material={mats.leather}>
-      <boxGeometry args={[0.17, 0.15, 0.15]} />
-      <Outlines thickness={GLOVE_OUTLINE_T} color={GAUNTLET.ink} toneMapped={false} />
-    </mesh>
-    <mesh position={[0, 0.085, -0.05]} material={mats.plate}>
-      <boxGeometry args={[0.175, 0.035, 0.11]} />
-      <Outlines thickness={GLOVE_OUTLINE_T} color={GAUNTLET.ink} toneMapped={false} />
-    </mesh>
+    {GAUNTLET_PARTS.map((p) => (
+      <mesh key={p.name} position={p.pos} material={mats[p.mat]}>
+        <boxGeometry args={p.size} />
+        {p.outline && <Outlines thickness={GLOVE_OUTLINE_T} color={GAUNTLET.ink} toneMapped={false} />}
+      </mesh>
+    ))}
     {children}
   </>
 );

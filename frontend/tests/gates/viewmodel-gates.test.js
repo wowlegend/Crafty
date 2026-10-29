@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import {
-  VIEWMODEL, squashDepth, ViewmodelCamera, ViewmodelPass, getViewmodel, HAND_ANCHORS, handAnchors,
-  HAND_VALUE_FLOOR, VALUE_FLOOR_GLSL, installValueFloor, GAUNTLET, makeGauntletMaterials, mirrorSkyLight, makeHandLightRig,
+  VIEWMODEL, squashDepth, ViewmodelCamera, ViewmodelPass, getViewmodel, HAND_ANCHORS, handAnchors, HAND_REST_ROT,
+  GAUNTLET_PARTS, HAND_VALUE_FLOOR, installValueFloor, GAUNTLET, makeGauntletMaterials, makeHeldMaterial, mirrorSkyLight,
+  makeHandLightRig,
 } from '../../src/render/viewmodel.js';
 import { getToonGradient } from '../../src/render/characterStyle.js';
 import { UI } from '../../src/theme/tokens.js';
@@ -14,7 +15,9 @@ import { UI } from '../../src/theme/tokens.js';
  * floor run through three's own toon fragment shader, the gauntlet materials, the hand anchors across aspects, and the
  * light rig mirrored from a sky frame.
  * BLIND SPOT: whether the gauntlets read at midnight on a GPU is the lookbook's `hands` set (mean and median luma of the
- * hand pixels against a floor declared in the plan), and whether the pass is in the live composer is the build's.
+ * hand pixels against a floor declared in the plan). The layer's per-frame wiring and the wand are
+ * viewmodel-layer-gates; the pass's place in GameScene's composer is viewmodel-composer-gates, and that the live
+ * composer draws it every frame is tests/e2e/viewmodel.spec.js.
  */
 
 const DEPTH = (cam, z) => {
@@ -112,6 +115,7 @@ describe('the viewmodel pass draws over the scene without clearing it', () => {
     expect(r.shadowMap.autoUpdate).toBe(true);
     expect(pass.needsSwap).toBe(false);
     expect(pass.name).toBe('ViewmodelPass');
+    expect(pass.needsDepthBlit, 'the hands must reach the depth GodRays tests the sun against, or it shines through them').toBe(true);
   });
 
   it('restores autoClear even when the draw throws', () => {
@@ -133,6 +137,10 @@ describe('the viewmodel pass draws over the scene without clearing it', () => {
   });
 });
 
+// The floor as the plan declares it, max(lit, albedo x floor), written out here rather than imported from the module
+// under test: an imported line would pass whatever it said.
+const FLOOR_LINE = 'outgoingLight = max( outgoingLight, diffuseColor.rgb * uValueFloor );';
+
 describe('the value floor, run through three\'s own toon shader', () => {
   const compile = (material) => {
     const shader = {
@@ -148,9 +156,9 @@ describe('the value floor, run through three\'s own toon shader', () => {
     const m = installValueFloor(new THREE.MeshToonMaterial(), 0.4);
     const s = compile(m);
     const f = s.fragmentShader;
-    expect(f.split(VALUE_FLOOR_GLSL).length - 1, 'the floor line must land exactly once').toBe(1);
+    expect(f.split(FLOOR_LINE).length - 1, 'the floor line, max(lit, albedo x floor), must land exactly once').toBe(1);
     const decl = f.indexOf('vec3 outgoingLight =');
-    const floorAt = f.indexOf(VALUE_FLOOR_GLSL);
+    const floorAt = f.indexOf(FLOOR_LINE);
     const out = f.indexOf('#include <opaque_fragment>');
     expect(decl).toBeGreaterThan(-1);
     expect(floorAt).toBeGreaterThan(decl);
@@ -169,6 +177,15 @@ describe('the value floor, run through three\'s own toon shader', () => {
     compile(m);
     expect(ran).toBe(1);
     expect(m.customProgramCacheKey()).not.toBe(new THREE.MeshToonMaterial().customProgramCacheKey());
+  });
+
+  it('the held block\'s material is a floored toon on the shared gradient, in the block\'s own colour', () => {
+    const m = makeHeldMaterial('#567C35');
+    expect(m).toBeInstanceOf(THREE.MeshToonMaterial);
+    expect(m.gradientMap).toBe(getToonGradient());
+    expect(m.color.equals(new THREE.Color('#567C35'))).toBe(true);
+    expect(m.userData.valueFloor?.value).toBe(HAND_VALUE_FLOOR);
+    expect(compile(m).fragmentShader).toContain(FLOOR_LINE);
   });
 });
 
@@ -205,7 +222,7 @@ describe('the gauntlet materials: toon, floored, ember, and a core bright enough
     expect(HAND_VALUE_FLOOR).toBeLessThan(1);
   });
 
-  it('the core is unlit and above Bloom\'s 0.65 luminance threshold; the plate under the same light is not', () => {
+  it('the core is unlit and above Bloom\'s 0.65 luminance threshold; the plate\'s colour is under it', () => {
     expect(mats.core).toBeInstanceOf(THREE.MeshBasicMaterial);
     expect(linY(mats.core.color)).toBeGreaterThan(0.65 * 1.5);
     expect(linY(mats.plate.color)).toBeLessThan(0.65);
@@ -242,6 +259,48 @@ describe('the hand anchors keep both gauntlets in frame at every aspect a player
     expect(right.toArray()).toEqual([...HAND_ANCHORS.right]);
     expect(left.toArray()).toEqual([...HAND_ANCHORS.left]);
   });
+
+  // The centre test above lets a fist's centre sit at 0.9 of the half-width, where a third of the fist is off screen. This
+  // projects the fist's own boxes (GAUNTLET_PARTS, the geometry Gauntlet draws) at the rest pose (HAND_REST_ROT) from
+  // the anchors, and measures how much of each box's projected extent is inside the frame, phone portrait (0.46) to
+  // 32:9. The swing, cast and charge poses move the fists further and are not covered here.
+  it('each fist and its knuckle plate stay at least 90% inside the frame at the rest pose, at every aspect', () => {
+    const parts = GAUNTLET_PARTS.filter((p) => p.name === 'fist' || p.name === 'knuckles');
+    expect(parts.length).toBe(2);
+    const corners = ({ pos, size }) => {
+      const out = [];
+      for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+        out.push(new THREE.Vector3(pos[0] + sx * size[0] / 2, pos[1] + sy * size[1] / 2, pos[2] + sz * size[2] / 2));
+      }
+      return out;
+    };
+    const inFrame = (pts, cam) => {
+      const n = pts.map((v) => v.clone().applyMatrix4(cam.projectionMatrix));
+      const x0 = Math.min(...n.map((v) => v.x)), x1 = Math.max(...n.map((v) => v.x));
+      const y0 = Math.min(...n.map((v) => v.y)), y1 = Math.max(...n.map((v) => v.y));
+      const inX = Math.max(0, Math.min(x1, 1) - Math.max(x0, -1)), inY = Math.max(0, Math.min(y1, 1) - Math.max(y0, -1));
+      return (inX * inY) / ((x1 - x0) * (y1 - y0));
+    };
+    const shares = [];
+    for (const a of [0.46, 0.5, 0.69, 1.0, 1.6, 2.4, 3.56]) {
+      const cam = new ViewmodelCamera();
+      cam.aspect = a;
+      cam.updateProjectionMatrix();
+      const anchors = handAnchors(a);
+      for (const side of ['right', 'left']) {
+        const hand = new THREE.Object3D();
+        hand.position.copy(anchors[side]);
+        hand.rotation.set(...HAND_REST_ROT[side]);
+        hand.updateMatrixWorld(true);
+        for (const p of parts) {
+          const share = inFrame(corners(p).map((c) => c.applyMatrix4(hand.matrixWorld)), cam);
+          shares.push(share);
+          expect(share, `aspect ${a}, ${side} ${p.name}: ${(share * 100).toFixed(0)}% inside the frame`).toBeGreaterThanOrEqual(0.9);
+        }
+      }
+    }
+    expect(shares.length).toBe(28);
+  });
 });
 
 describe('the light on the hands is the world\'s, turned into the camera\'s view', () => {
@@ -268,6 +327,18 @@ describe('the light on the hands is the world\'s, turned into the camera\'s view
     mirrorSkyLight(frame, facingSouth, rig);
     const dirS = rig.key.position.clone().sub(rig.key.target.position).normalize();
     expect(dirS.z, 'turned around, the key must come from behind the view').toBeCloseTo(1, 6);
+  });
+
+  it('turns the sky\'s up into the view: looking straight down, the sky lies behind the view', () => {
+    const rig = makeHandLightRig();
+    mirrorSkyLight(frame, new THREE.Quaternion(), rig);
+    expect(rig.hemi.position.toArray().map((v) => +v.toFixed(6))).toEqual([0, 1, 0]); // level: the sky is up
+    const lookingDown = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+    mirrorSkyLight(frame, lookingDown, rig);
+    const up = rig.hemi.position.clone().normalize();
+    expect(up.x).toBeCloseTo(0, 6);
+    expect(up.y, 'looking down, the sky must no longer be above the view').toBeCloseTo(0, 6);
+    expect(up.z).toBeCloseTo(1, 6);
   });
 
   it('the rig casts no shadow', () => {

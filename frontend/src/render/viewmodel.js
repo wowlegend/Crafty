@@ -8,9 +8,10 @@ import { getToonGradient } from './characterStyle.js';
 
 /**
  * fov: vertical degrees, fixed, so the main camera's speed FOV (75 to 85) does not stretch the hands.
- * depthSlice: the share of the depth buffer the hands occupy, at its near end. Not a depth clear: GodRays reads the
- * composer's depth texture to occlude the sun (postprocessing 6.39.5 GodRaysEffect, EffectAttribute.DEPTH), and a clear
- * would empty it where the world is. In the slice the hands are nearer than any world surface beyond
+ * depthSlice: the share of the depth buffer the hands occupy, at its near end. Not a depth clear: the composer copies
+ * the depth buffer into the texture GodRays tests the sun against after ViewmodelPass as well (see needsDepthBlit
+ * below), so the world's depth and the hands' must both be in the buffer then; a clear would leave the hands' alone and
+ * the sun would shine through every wall. In the slice the hands are nearer than any world surface beyond
  * near / (1 - depthSlice) of the main camera (0.102 m against its 0.1 m near plane), and still test against each other.
  */
 export const VIEWMODEL = Object.freeze({ fov: 60, near: 0.05, far: 6, depthSlice: 0.02 });
@@ -50,6 +51,11 @@ export class ViewmodelPass extends RenderPass {
     this.clearPass.enabled = false;
     this.ignoreBackground = true;
     this.skipShadowMapUpdate = true;
+    // After this pass the composer copies the depth buffer into the stable depth texture (postprocessing 6.39.5
+    // EffectComposer.render, blitDepthBuffer), which GodRays copies under its light pass so the sun is drawn only where
+    // nothing nearer stands (GodRaysEffect.update). With the hands in that copy, a gauntlet in front of the sun hides it.
+    // The world's RenderPass copies too, just before; that copy is overwritten (REVIEW:w2e:viewmodel-pass-gpu-cost).
+    this.needsDepthBlit = true;
   }
 
   render(renderer, inputBuffer, outputBuffer, deltaTime, stencilTest) {
@@ -148,7 +154,7 @@ export function handAnchors(aspect, fov = VIEWMODEL.fov, out = { right: new THRE
  * light above the floor is untouched, so the day's shading is the world's.
  */
 export const HAND_VALUE_FLOOR = 0.45;
-export const VALUE_FLOOR_GLSL = 'outgoingLight = max( outgoingLight, diffuseColor.rgb * uValueFloor );';
+const VALUE_FLOOR_GLSL ='outgoingLight = max( outgoingLight, diffuseColor.rgb * uValueFloor );';
 
 /** Patch `material` (a three lit material whose fragment declares `outgoingLight` before `opaque_fragment`, as toon,
  *  lambert, phong and standard do) with the floor. Keeps any earlier onBeforeCompile and keys its program apart. */
@@ -180,6 +186,25 @@ export const GAUNTLET = Object.freeze({
   core: '#FF9A2E',
   coreGain: 3,
 });
+
+/**
+ * One gauntlet's boxes in the fist's frame, which the hand group places at its anchor: the leather forearm runs back
+ * toward the camera (+z), an ember-gold plate on top carries the glowing core, a white-gold cuff at the wrist, the fist
+ * with a knuckle plate. `mat` names a makeGauntletMaterials key; `outline` takes the ink outline.
+ */
+const part = (name, mat, pos, size, outline = true) => Object.freeze({ name, mat, pos: Object.freeze(pos), size: Object.freeze(size), outline });
+export const GAUNTLET_PARTS = Object.freeze([
+  part('forearm', 'leather', [0, -0.02, 0.3], [0.15, 0.15, 0.5]),
+  part('plate', 'plate', [0, 0.065, 0.32], [0.165, 0.05, 0.36]),
+  part('core', 'core', [0, 0.093, 0.3], [0.06, 0.012, 0.13], false),
+  part('cuff', 'trim', [0, 0, 0.07], [0.19, 0.19, 0.05]),
+  part('fist', 'leather', [0, 0, -0.04], [0.17, 0.15, 0.15]),
+  part('knuckles', 'plate', [0, 0.085, -0.05], [0.175, 0.035, 0.11]),
+]);
+
+/** Each hand's rest rotation (Euler XYZ): the forearm runs back and down toward the camera, the fist turned a little
+ *  inward. */
+export const HAND_REST_ROT = Object.freeze({ right: Object.freeze([0.35, 0.12, 0]), left: Object.freeze([0.35, -0.12, 0]) });
 
 /** Fresh materials for one pair of gauntlets; the caller disposes them (the toon gradient is shared and stays). */
 export function makeGauntletMaterials() {

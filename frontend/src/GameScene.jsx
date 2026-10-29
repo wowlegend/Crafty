@@ -108,7 +108,7 @@ import { onContextLost, onContextRestored } from './game/contextRecovery.js';
 // No screen-space ambient occlusion: on an M3 Max, N8AO cost about 15% of the GPU's frame at its low busy level and
 // about 31% at its high one, for contact shading the mesher's vertex AO already gives every block corner (DECISIONS
 // 2026-10-28 item 29).
-const PostFX = React.memo(function PostFX({ sunMesh, withGodRays }) {
+export const PostFX = React.memo(function PostFX({ sunMesh, withGodRays }) {
   return (
     <EffectComposer multisampling={0}>
       {/* The first-person hands, drawn over the world before any effect, so they take the grade, SMAA, tone mapping
