@@ -322,7 +322,7 @@ function GameApp({ experienceSystem }) {
     // `y` for the mob-floor E2E (R7.1): a mob under a roof must stay on the ground, which only its y can show.
     // windupUntil / staggerUntil for the perfect-dodge E2E: the press is timed against the first, judged by the second.
     registerTestHook('readMobs', () => mobsQuery.entities.map((e) => ({
-      id: e.id, type: e.type, health: e.health, passive: !!e.passive, x: e.position.x, y: e.position.y, z: e.position.z,
+      id: e.id, type: e.type, role: e.role ?? null, health: e.health, passive: !!e.passive, x: e.position.x, y: e.position.y, z: e.position.z,
       knockback: !!e.knockback, windupUntil: e.windupUntil || 0, staggerUntil: e.staggerUntil || 0,
     })));
     // The squad, for the ember E2E: a bind is seen as a mob joining it, a fuse as a pair leaving it for one hybrid.
