@@ -1,6 +1,6 @@
 # Crafty
 
-[![Crafty at golden hour, from the player's eye at the Hearth: gauntleted hands holding a grass block and a wand, the outpost's watchtower and Old Pike the Warden ahead, forest on the left and sunlit hills under a warm sky.](docs/media/hero.jpg)](https://crafty-game.vercel.app/)
+[![Crafty at golden hour, looking down on the Hearth: Bram the Trader at his market stall, a house and the brazier's fire on the stone pad, snow-dusted forested hills beyond and a low sun setting over the trees.](docs/media/hero.jpg)](https://crafty-game.vercel.app/)
 
 <!-- BEGIN PITCH (generated from frontend/src/brand.js: node frontend/scripts/ci/public-face.mjs --write) -->
 A voxel action-RPG that runs in the browser, on desktop and iPad. Four Aspects, one frontier, and a dragon waiting at its far edge.

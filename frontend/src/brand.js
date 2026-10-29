@@ -15,7 +15,7 @@ export const BRAND = Object.freeze({
   ink: UI.color.text,
   inkMuted: UI.color.textMuted,
   // Describes public/og-image.png; it changes whenever that card is re-shot.
-  ogImageAlt: 'The Crafty wordmark over a golden-hour view from the player\'s eye at the Hearth: gauntleted hands, the outpost\'s watchtower and a warm sky over the forest and hills.',
+  ogImageAlt: 'The Crafty wordmark over a golden-hour view of the Hearth from above: Bram the Trader\'s market stall and the brazier on the stone pad, snow-dusted forested hills, and a low sun over the trees.',
 });
 
 // `glyphRadius` is the radius, as a share of the icon size, of the circle that holds the corners of the

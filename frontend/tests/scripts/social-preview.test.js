@@ -3,7 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
-import { OG_CARD, MEDIA_MANIFEST, MEDIA_SHOTS } from '../../scripts/visual/_media.mjs';
+import { OG_CARD, MEDIA_MANIFEST, MEDIA_SHOTS, sha256Hex } from '../../scripts/visual/_media.mjs';
 
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const ROOT = resolve(APP, '..');
@@ -126,7 +126,9 @@ describe('the card\'s source is the media pipeline', () => {
 
   it('the shipped card has the bytes and the size the shoot recorded, and the tags state that size', () => {
     const bytes = readFileSync(CARD);
-    expect(bytes.length, 'og-image.png differs from the file the shoot wrote').toBe(entry.bytes);
+    expect(entry.sha256, `${MEDIA_MANIFEST} records no sha256 for the card`).toMatch(/^[0-9a-f]{64}$/);
+    expect(sha256Hex(bytes), 'og-image.png differs from the file the shoot wrote').toBe(entry.sha256);
+    expect(bytes.length).toBe(entry.bytes);
     const png = PNG.sync.read(bytes);
     expect([png.width, png.height]).toEqual([entry.width, entry.height]);
     expect(metaContent('property', 'og:image:width')).toBe(String(entry.width));

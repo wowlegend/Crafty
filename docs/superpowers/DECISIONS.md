@@ -22,25 +22,35 @@
 ## 2026-10-29 — [LOOP] W2-H: one media pipeline; the README hero and the og card are frames of the production build
 
 **Decided by the W2-H lane under the standing grant** (item 14), by its task script
-`docs/superpowers/plans/2026-10-29-crafty-w2h-media.md`, whose metric was written before any frame was shot. Items 50-59
-are this lane's (W2-F talents 41-49, the Forge from 60). The shot table, its budgets and its checks are in
+`docs/superpowers/plans/2026-10-29-crafty-w2h-media.md`, whose metric was written before any frame was shot. Items 50-57
+and 59 are this lane's (W2-F talents 41-49, 58 another change's, the Forge from 60). The shot table, its budgets and its checks are in
 `frontend/scripts/visual/_media.mjs`; the record of what was shot is `docs/media/media.json`.
 
-50. **No shot shows the HUD.** W2-D will re-key the HUD soon, and a frame shown to people who have not played sells the
-   world, not the readout; a HUD-free frame outlives the re-key, so no shot is owed a re-shoot when W2-D lands. The HUD
-   is hidden with the store's own switch (`setHudHidden(true)`, the one `App.jsx` reads), not by editing the page. The
-   first-person hands stay: they are part of the world, and W2-E made them the warmest thing in frame. Each shot's
-   verdict refuses a frame whose vitals stack is on screen. It stands while it earns its place.
+50. **No shot shows the HUD, and a frame is judged as a stranger sees it.** W2-D will re-key the HUD soon, and a frame
+   shown to people who have not played sells the world, not the readout; a HUD-free frame outlives the re-key, so no
+   shot is owed a re-shoot when W2-D lands. The HUD is hidden with the store's own switch (`setHudHidden(true)`, the one
+   `App.jsx` reads), not by editing the page, and only after the run has seen its vitals stack on screen: a renamed
+   test id fails the run instead of passing every frame (`mediaShotVerdict` `hudSeenOn`). Eye shots keep the
+   first-person hands, which are the player's own view. **What makes a frame acceptable**, declared before the second
+   shoot and judged by opening every frame at full size: (a) it sells the game to someone who has never played: the
+   light of the day script (a low golden sun, blue hour, a fire), the Hearth and its people, or the world beyond, with
+   one clear subject; (b) the hero and the og card carry no first-person hands, which fill a third of an eye frame;
+   (c) nothing reads as a mistake: no nameplate, mob or roof cut by the frame's edge, no unexplained object in the
+   foreground, no edge of the world, no flat band of sky or haze over a third of the frame; (d) the og card's left
+   third, under the wordmark, carries no subject. A frame that fails one is re-shot once with a new recipe or dropped
+   from the table. It stands while it earns its place.
 51. **ImageMagick encodes, at shoot time only.** The browser shoots each frame as a lossless PNG master at device scale
    2; `magick` downsamples it (Lanczos) and encodes each JPEG to its byte target with `jpeg:extent`, and the og card to
    an 8-bit palette PNG (a photograph as a truecolour PNG is about 1 MB against the card's 400 KB ceiling). No npm
    dependency: `magick` is already on the shooting Mac, as `ffmpeg` is for the lookbook clips, and the gates read the
    committed files, so CI installs nothing. Budgets, 1 KB = 1000 bytes: each JPEG 350 KB, the og card 400 KB, all of
-   `docs/media` 3 MB, and the table's own byte targets must fit them (`shotTableProblems`). It stands while it earns its
-   place.
-52. **The og card is composed, not cropped:** the og frame under an ink scrim from the left, the wordmark in the game's
-   own Lilita One in the brand gold, and the brand title's subtitle, drawn in the same browser from `ogCardHtml` with the
-   font files the game ships. No buttons and no controls text (reset plan section 6). `BRAND.ogImageAlt` describes the
+   `docs/media` 3 MB, and the table's own byte targets must fit them (`shotTableProblems`); each committed file is held
+   to its shot's target as its ceiling (`mediaProblems`). It stands while it earns its place.
+52. **The og card is composed, not cropped:** the og frame under an ink scrim from the left, dark only behind the words
+   and clear from the middle on so the frame's own colour carries the rest, the wordmark in the game's own Lilita One in
+   the brand gold, and the brand title's subtitle, drawn in the same browser from `ogCardHtml` with the font files the
+   game ships; the run checks that the frame loaded as its master before it takes the card. No buttons and no controls
+   text (reset plan section 6). `BRAND.ogImageAlt` describes the
    new card, so the head's og and twitter alt text follow it (`public-face.mjs --write`). It stands while it earns its
    place.
 53. **`make-og-image.mjs` and the capture baseline `menu.png` are deleted** (REMOVED 2026-10-29), the last
@@ -48,27 +58,52 @@ are this lane's (W2-F talents 41-49, the Forge from 60). The shot table, its bud
    it, and `frontend/tests/scripts/social-preview.test.js` checks that the shipped card has the bytes and size
    media.json recorded for the `og` shot. Both files are kept in history at `3e138271`; the baseline, REMOVED from the
    tree, is `git show 3e138271:frontend/tests/visual/baseline/menu.png` (REMOVED 2026-10-29).
-54. **The night fight is optional, and the first night staged one.** The seam cannot spawn a mob, so `night-fight` waits
-   up to 60 s at blue hour for the night's own hostiles, turns to the nearest one 4 to 14 m out and casts with the real
-   F key; when none comes it is left out and named. In this shoot a skitterling came 11.2 m out after 7 s, and the frame
-   holds the fireball in flight toward it. It stands while it earns its place.
+54. **The night fight is optional, and this shoot has none.** The seam cannot spawn a mob, so `night-fight` waits up to
+   90 s at blue hour for the night's own hostiles, turns to the nearest one 4 to 14 m out and casts with the real F key;
+   when none comes it is left out and named. The first shoot of the first table staged one (a skitterling 11.2 m out
+   after 7 s). Both shoots of the second table found none within 14 m (the nearest 32 to 63 m), because the golden-hour
+   poses had already cleared the hostiles within 60 m of the Hearth, so the old frame, from another build, is deleted
+   rather than kept beside this run's. It stands while it earns its place.
 55. **The lookbook's page helpers are shared** (`frontend/scripts/visual/_lookbookPage.mjs`): launching a Chromium that
    gives the game a hardware renderer, entering play and reading the seam, moved out of `lookbook.mjs` unchanged in body.
-   The media are shot through the lookbook's own path, not a second one. It stands while it earns its place.
-56. **Any mob within 3 m of the eye refuses a frame, a passive animal too.** The first shoot passed all nine shots, and
-   an ox stood at arm's length in the blue-hour still: the seam counts hostiles only. The verdict now reads the nearest
-   mob of any kind from the store's minimap mirror. The same shoot showed the framing problem the checks cannot see:
-   from the spawn the outpost's large north-western building spans bearings 279 to 357, and it filled a third of the
-   hero and og frames (bearing 240) and half of the social preview (bearing 0). Those four shots now face 205, 200, 100
-   and 50 and were shot again; the other five are the first shoot's. It stands while it earns its place.
+   The media are shot through the lookbook's own path, not a second one, at the same four times, which the light script
+   names (`frontend/src/render/colourScript.js` `LOOK_TIMES`) and both read: a golden hour moved off the sunset key fails
+   a gate. It stands while it earns its place.
+56. **Any mob within 3 m of the camera refuses a frame, a passive animal and a named NPC too, and a mob feed that
+   cannot be the world's refuses it as COULD NOT CHECK.** The first shoot passed all nine shots with an ox at arm's
+   length in the blue-hour still, because the seam counted hostiles only. The verdict reads every live mob from the ECS
+   through the seam's read-only `mobs()` (`frontend/src/render/lookbookSeam.js` `mobList`), not the store's minimap
+   mirror, which the HUD lane removes, and it holds every kind of shot to the rule, the poses included. The Hearth's
+   four named NPCs cannot be hurt and are always in the world, so a list missing any of them is a dead feed
+   (`mobFeed`): the frame fails as COULD NOT CHECK and the run exits 3, never "no mob near". The night fight's target
+   search reads the same feed (`fightTarget`). A pose clears the hostiles within 60 m of its camera first
+   (`POSE_CLEAR_M`), since from above they show as specks. It stands while it earns its place.
 57. **The GitHub social preview is Kevin's one upload.** GitHub has no API for it; `docs/media/social-preview.jpg`
    (1280x640) waits in the repo, and its registry row closes when `usesCustomOpenGraphImage` reads true.
+59. **`media.mjs` builds the bundle it shoots, and stamps a commit only on that bundle.** The first version stamped HEAD
+   with `dirty: false` on whatever `build/` held, so a stale build was recorded as HEAD. Now the run refuses a tree
+   dirty outside its own outputs, builds the production bundle itself into a scratch folder, serves that folder, and
+   records per file the commit, the index chunk, the bundle's content identity (`buildIdentity`, a sha256 over every
+   file it serves) and the file's own sha256. `runProvenance` decides the stamp: HEAD only when the tree was clean and
+   HEAD held still through the build; a bundle handed in with `--build-dir` (for trying a recipe) is stamped with no
+   sha and an unknown tree. `mediaProblems` refuses any file without that provenance, and holds each file to the table
+   as well as to media.json: its format, byte target, purpose and time, and its sha256, with every file under
+   `docs/media` counted, dotfiles too. It stands while it earns its place.
 
-**What was shot:** local production builds of `1cf94186` (five stills) and `3bcc63d3` (the hero, the og card, the social
-preview and the blue-hour still; the game source is the same, index chunk `index-BqaKcxrk.js`), Chromium in its new
-headless mode on ANGLE-Metal (Apple M3 Max), tier high, dpr 1.62 to 1.75, each under the lane's GPU lock with the
-1-minute load under 28. Nine files, each opened before it was committed: JPEG quality 85 to 97 under the targets, the og
-card at 256 colours, 220,729 bytes; `docs/media` is 1,919,244 bytes of its 3,000,000.
+**What was shot:** every committed frame comes from one run of `media.mjs`, 2026-10-29 10:55-11:00Z, on the bundle it
+built from `073a8f0d` (index chunk `index-C8iDePj3.js`, build identity `0ca68d7c3ac7d147...`), Chromium in its new
+headless mode on ANGLE-Metal (Apple M3 Max), tier high, dpr 1.62 to 1.75, under the lane's GPU lock with the 1-minute
+load at 4.6 at the start and 5.9 at the end. The run before it, on `0f0ce44b`, was rejected by item 50's rules: the
+watchtower's roof cut by the bottom edge of the hero and the social preview, the forge cut under the og card's
+subtitle, a slab at the foot of golden-forest, and no fight. Item 50, judged on the six frames of the second run: the
+hero, the og card and the social preview look across the Hearth from above, into the low sun or under blue hour;
+golden-forest and blue-hour keep the hands, the sun or the brazier at their centre; forest-edge is the lookbook's place
+in a clear afternoon. Accepted with these residuals named: the healer's cabin is cut at the hero's right edge, the
+watchtower's roof tip shows at the bottom centre of the hero, the og card and the social preview (a few pixels), the og
+card's subtitle crosses Bram's stall, and two small flat green slabs lie on the Hearth's pad in the three poses (an
+object the lane could not identify: not a live mob in the seam's list; registry row). Six files: JPEG quality 88 to 96
+under the targets, the og card at 256 colours, 282,950 bytes; `docs/media` is 1,204,138 bytes of its 3,000,000. The
+coast and snow-terrace stills are dropped: both read as a flat band of haze over the top third in either light.
 
 **Door:** two-way; the deleted files are in git history, and a re-shoot is one command
 (`node frontend/scripts/visual/media.mjs --only <names>`) on a clean tree and a fresh build.

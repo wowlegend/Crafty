@@ -7,22 +7,37 @@
       "purpose": "hero",
       "time": "golden hour",
       "cycle": 0.48,
-      "cycleAtShot": 0.4821,
-      "sha": "3bcc63d3791ee21511451308725192c1cef3b7ad",
+      "cycleAtShot": 0.4842,
+      "sha": "073a8f0dfa7041b38bad762c041e24ab0d339283",
       "dirty": false,
-      "build": "index-BqaKcxrk.js",
+      "provenance": "built by media.mjs from a clean tree",
+      "build": "index-C8iDePj3.js",
+      "buildId": "0ca68d7c3ac7d147c0bc31575cc9896049ac4584b33994e626d82cded845f3ea",
       "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
       "tier": "high",
       "dpr": 1.707825127659933,
       "width": 1600,
       "height": 900,
-      "bytes": 289820,
+      "bytes": 289246,
+      "sha256": "ee1aefb9ccd76cf3b77bd6c8888dcd37a5a3f2a806036b0b0d6470c2b68ae21a",
       "format": "jpg",
-      "quality": 96,
+      "quality": 93,
+      "nearestMob": {
+        "kind": "Old Pike the Warden",
+        "m": 13.2
+      },
       "recipe": {
-        "kind": "eye",
-        "heading": 205,
-        "pitch": 6
+        "kind": "pose",
+        "position": [
+          -13,
+          62,
+          5
+        ],
+        "lookAt": [
+          3,
+          56,
+          -14
+        ]
       }
     },
     {
@@ -31,22 +46,37 @@
       "purpose": "og",
       "time": "golden hour",
       "cycle": 0.48,
-      "cycleAtShot": 0.4821,
-      "sha": "3bcc63d3791ee21511451308725192c1cef3b7ad",
+      "cycleAtShot": 0.4842,
+      "sha": "073a8f0dfa7041b38bad762c041e24ab0d339283",
       "dirty": false,
-      "build": "index-BqaKcxrk.js",
+      "provenance": "built by media.mjs from a clean tree",
+      "build": "index-C8iDePj3.js",
+      "buildId": "0ca68d7c3ac7d147c0bc31575cc9896049ac4584b33994e626d82cded845f3ea",
       "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
       "tier": "high",
       "dpr": 1.75,
       "width": 1200,
       "height": 630,
-      "bytes": 220729,
+      "bytes": 282950,
+      "sha256": "f7db983707299ab602ab537597d7e93600f415f996c4cad24aca80459ba3c50c",
       "format": "png",
       "colors": 256,
+      "nearestMob": {
+        "kind": "Old Pike the Warden",
+        "m": 16.6
+      },
       "recipe": {
-        "kind": "eye",
-        "heading": 200,
-        "pitch": 6
+        "kind": "pose",
+        "position": [
+          -14,
+          66,
+          6
+        ],
+        "lookAt": [
+          -2,
+          56,
+          -18
+        ]
       }
     },
     {
@@ -55,22 +85,29 @@
       "purpose": "still",
       "time": "golden hour",
       "cycle": 0.48,
-      "cycleAtShot": 0.4821,
-      "sha": "1cf94186c102eb94a167ac11f3cd992a985cb042",
+      "cycleAtShot": 0.4842,
+      "sha": "073a8f0dfa7041b38bad762c041e24ab0d339283",
       "dirty": false,
-      "build": "index-BqaKcxrk.js",
+      "provenance": "built by media.mjs from a clean tree",
+      "build": "index-C8iDePj3.js",
+      "buildId": "0ca68d7c3ac7d147c0bc31575cc9896049ac4584b33994e626d82cded845f3ea",
       "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
       "tier": "high",
       "dpr": 1.620185174601965,
       "width": 1600,
       "height": 1000,
-      "bytes": 235972,
+      "bytes": 217134,
+      "sha256": "df88a311bce9fa2729d337226d44e0d40f3946e2ab2634f51e390ba914487424",
       "format": "jpg",
-      "quality": 90,
+      "quality": 93,
+      "nearestMob": {
+        "kind": "Bram the Trader",
+        "m": 8.6
+      },
       "recipe": {
         "kind": "eye",
-        "heading": 120,
-        "pitch": 0
+        "heading": 60,
+        "pitch": 15
       }
     },
     {
@@ -80,17 +117,24 @@
       "time": "afternoon",
       "cycle": 0.3,
       "cycleAtShot": 0.3042,
-      "sha": "1cf94186c102eb94a167ac11f3cd992a985cb042",
+      "sha": "073a8f0dfa7041b38bad762c041e24ab0d339283",
       "dirty": false,
-      "build": "index-BqaKcxrk.js",
+      "provenance": "built by media.mjs from a clean tree",
+      "build": "index-C8iDePj3.js",
+      "buildId": "0ca68d7c3ac7d147c0bc31575cc9896049ac4584b33994e626d82cded845f3ea",
       "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
       "tier": "high",
       "dpr": 1.620185174601965,
       "width": 1600,
       "height": 1000,
-      "bytes": 238047,
+      "bytes": 238472,
+      "sha256": "fe16dc0eccf799a25077fc6d040302bff6fa4622dbc4c58eb44e8a81c4712971",
       "format": "jpg",
       "quality": 88,
+      "nearestMob": {
+        "kind": "skeleton",
+        "m": 45.2
+      },
       "recipe": {
         "kind": "pose",
         "place": "forest-edge"
@@ -103,21 +147,36 @@
       "time": "blue hour",
       "cycle": 0.55,
       "cycleAtShot": 0.5521,
-      "sha": "3bcc63d3791ee21511451308725192c1cef3b7ad",
+      "sha": "073a8f0dfa7041b38bad762c041e24ab0d339283",
       "dirty": false,
-      "build": "index-BqaKcxrk.js",
+      "provenance": "built by media.mjs from a clean tree",
+      "build": "index-C8iDePj3.js",
+      "buildId": "0ca68d7c3ac7d147c0bc31575cc9896049ac4584b33994e626d82cded845f3ea",
       "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
       "tier": "high",
       "dpr": 1.75,
       "width": 1280,
       "height": 640,
-      "bytes": 237846,
+      "bytes": 240087,
+      "sha256": "af56cc08fd648aebd32551edf84b034729c098306928b6621a7f68420ccde781",
       "format": "jpg",
-      "quality": 97,
+      "quality": 96,
+      "nearestMob": {
+        "kind": "Old Pike the Warden",
+        "m": 12.3
+      },
       "recipe": {
-        "kind": "eye",
-        "heading": 100,
-        "pitch": 4
+        "kind": "pose",
+        "position": [
+          -13,
+          62,
+          5
+        ],
+        "lookAt": [
+          3,
+          56,
+          -14
+        ]
       }
     },
     {
@@ -127,49 +186,28 @@
       "time": "blue hour",
       "cycle": 0.55,
       "cycleAtShot": 0.5521,
-      "sha": "3bcc63d3791ee21511451308725192c1cef3b7ad",
+      "sha": "073a8f0dfa7041b38bad762c041e24ab0d339283",
       "dirty": false,
-      "build": "index-BqaKcxrk.js",
+      "provenance": "built by media.mjs from a clean tree",
+      "build": "index-C8iDePj3.js",
+      "buildId": "0ca68d7c3ac7d147c0bc31575cc9896049ac4584b33994e626d82cded845f3ea",
       "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
       "tier": "high",
       "dpr": 1.620185174601965,
       "width": 1600,
       "height": 1000,
-      "bytes": 224972,
+      "bytes": 213055,
+      "sha256": "f36e127fd83731c48518d576216625ca1e2c6d2a21b9d046133523ecd827ebf6",
       "format": "jpg",
       "quality": 92,
+      "nearestMob": {
+        "kind": "Bram the Trader",
+        "m": 10.4
+      },
       "recipe": {
         "kind": "eye",
-        "heading": 50,
-        "pitch": 2
-      }
-    },
-    {
-      "file": "docs/media/stills/night-fight.jpg",
-      "shot": "night-fight",
-      "purpose": "still",
-      "time": "blue hour",
-      "cycle": 0.55,
-      "cycleAtShot": 0.5521,
-      "sha": "1cf94186c102eb94a167ac11f3cd992a985cb042",
-      "dirty": false,
-      "build": "index-BqaKcxrk.js",
-      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)",
-      "tier": "high",
-      "dpr": 1.620185174601965,
-      "width": 1600,
-      "height": 1000,
-      "bytes": 221210,
-      "format": "jpg",
-      "quality": 91,
-      "recipe": {
-        "kind": "fight",
-        "minM": 4,
-        "maxM": 14,
-        "waitS": 60,
-        "target": "skitterling",
-        "targetM": 11.2,
-        "heading": 161.6
+        "heading": 135,
+        "pitch": 8
       }
     }
   ]

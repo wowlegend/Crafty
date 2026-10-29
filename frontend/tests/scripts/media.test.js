@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { readFileSync, statSync, existsSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MEDIA_SHOTS, MEDIA_DIR, MEDIA_MANIFEST, OG_CARD, imageSize, mediaProblems } from '../../scripts/visual/_media.mjs';
+import { MEDIA_SHOTS, MEDIA_DIR, MEDIA_MANIFEST, OG_CARD, imageSize, mediaProblems, filesUnder, sha256Hex } from '../../scripts/visual/_media.mjs';
 import { BRAND } from '../../src/brand.js';
 
 // THE COMMITTED MEDIA AGAINST THEIR MANIFEST (scripts/visual/media.mjs writes both).
@@ -15,34 +15,24 @@ import { BRAND } from '../../src/brand.js';
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const ROOT = resolve(APP, '..');
 
-/** Every file under `dir` as a repo-relative path, dotfiles (an OS's folder metadata) aside. */
-function walk(dir) {
-  const out = [];
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    if (e.name.startsWith('.')) continue;
-    const p = join(dir, e.name);
-    if (e.isDirectory()) out.push(...walk(p));
-    else out.push(p.slice(ROOT.length + 1).split('\\').join('/'));
-  }
-  return out;
-}
-
 /** What a file is, measured from its own bytes. */
 function facts(rel) {
   const bytes = readFileSync(join(ROOT, rel));
   const size = imageSize(bytes);
-  return { path: rel, bytes: bytes.length, width: size?.width ?? null, height: size?.height ?? null, format: size?.format ?? null };
+  return { path: rel, bytes: bytes.length, width: size?.width ?? null, height: size?.height ?? null, format: size?.format ?? null,
+    sha256: sha256Hex(bytes) };
 }
 
 const manifestPath = join(ROOT, MEDIA_MANIFEST);
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const onDisk = [
-  ...walk(join(ROOT, MEDIA_DIR)).filter((p) => p !== MEDIA_MANIFEST),
+  // Every file under docs/media, dotfiles too (filesUnder skips only .DS_Store), so a stray one is listed and refused.
+  ...filesUnder(join(ROOT, MEDIA_DIR), ROOT).filter((p) => p !== MEDIA_MANIFEST),
   ...(existsSync(join(ROOT, OG_CARD.file)) ? [OG_CARD.file] : []),
 ].map(facts);
 
 describe('docs/media and the og card agree with media.json', () => {
-  it('lists every file, has every listed file, and each keeps its size, budget, clean commit and hardware renderer', () => {
+  it('lists every file, has every listed file, and each keeps its bytes, size, format, budget, built commit and hardware renderer', () => {
     const { problems, checked } = mediaProblems({ manifest, files: onDisk, manifestBytes: statSync(manifestPath).size });
     expect(problems).toEqual([]);
     // The denominator: every file on disk was compared, and that covers at least every shot that is not optional.

@@ -27,33 +27,34 @@ manifest and the disk.
 
 ## What a visitor sees when this lands
 
-The README opens on a golden-hour frame at the Hearth, at the player's own eye with the warm hands, no HUD, linked to
-the live game. A shared link to the site shows a golden-hour frame with the Crafty wordmark instead of the old title
-screen. `docs/media/social-preview.jpg` waits for Kevin's one upload in the repository settings (no API exists).
+The README opens on a golden-hour frame looking down on the Hearth into the low sun, no HUD and no hands, linked to the
+live game. A shared link to the site shows a golden-hour view over the outpost with the Crafty wordmark instead of the
+old title screen. (Review round 1 moved the hero and the og card from the player's eye to a pose: the eye frame read as
+sunny midday with the hands filling 40% of it; DECISIONS item 50.) `docs/media/social-preview.jpg` waits for Kevin's one upload in the repository settings (no API exists).
 
 ## The shot table (declared in `frontend/scripts/visual/_media.mjs`, shot in this order)
 
 | name | purpose | time (cycle) | recipe | size | format, target bytes |
 |---|---|---|---|---|---|
-| hero | hero | golden hour 0.48 | eye at the Hearth, bearing 240 (Old Pike's tower over the meadow, into the low sun), pitch +3 | 1600x900 | jpg 330 KB |
-| og | og | golden hour 0.48 | the hero recipe, composed into the og card (wordmark in Lilita One, gold on ink) | 1200x630 | png 390 KB |
-| golden-forest | still | golden hour 0.48 | eye at the Hearth, bearing 120 (the forest and the shrine beam) | 1600x1000 | jpg 250 KB |
-| coast | still | golden hour 0.48 | pose: the lookbook's coast place | 1600x1000 | jpg 250 KB |
+| hero | hero | golden hour 0.48 | pose from (-13, 62, 5) at (3, 56, -14): over the Hearth north-east into the low sun | 1600x900 | jpg 330 KB |
+| og | og | golden hour 0.48 | pose from (-14, 66, 6) at (-2, 56, -18), composed into the og card (wordmark in Lilita One, gold on ink) | 1200x630 | png 390 KB |
+| golden-forest | still | golden hour 0.48 | eye at the Hearth, bearing 60, pitch +15 (Mara's forge against the sun, the shrine beam) | 1600x1000 | jpg 250 KB |
 | forest-edge | still | afternoon 0.30 | pose: the lookbook's forest-edge place (turf, trunks, leaves: the material grammar) | 1600x1000 | jpg 250 KB |
-| snow-terrace | still | golden hour 0.48 | pose: the lookbook's snow-terrace place | 1600x1000 | jpg 250 KB |
-| social-preview | social | blue hour 0.55 | eye at the Hearth, bearing 0, pitch +2 (the outpost against the dusk sky) | 1280x640 | jpg 300 KB |
-| blue-hour | still | blue hour 0.55 | eye at the Hearth, bearing 120 | 1600x1000 | jpg 250 KB |
-| night-fight | still, optional | blue hour 0.55 | eye at the Hearth facing the nearest hostile 4-14 m out, a fireball cast with the real F key | 1600x1000 | jpg 250 KB |
+| night-fight | still, optional | blue hour 0.55 | eye at the Hearth facing the nearest hostile 4-14 m out within 90 s, a fireball cast with the real F key | 1600x1000 | jpg 250 KB |
+| social-preview | social | blue hour 0.55 | the hero's pose at blue hour | 1280x640 | jpg 300 KB |
+| blue-hour | still | blue hour 0.55 | eye at the Hearth, bearing 135, pitch +8 (the brazier, Sister Wren, the shrine beam) | 1600x1000 | jpg 250 KB |
 
-Places reuse `LOOKBOOK_PLACES` (same ground on every build, seed 12345). Day shots go before the fight, because after
-dusk the night's mobs crowd the Hearth (lookbook.mjs); the fight goes last for the same reason.
+The times are the light script's (`frontend/src/render/colourScript.js` `LOOK_TIMES`). Day shots go before the night
+ones, because after dusk the night's mobs crowd the Hearth (lookbook.mjs); the fight goes first of those, since a pose
+clears the hostiles within 60 m of its camera. The coast and snow-terrace stills of the first table are dropped (item
+50: a flat band of haze over the top third in either light).
 
 ## Decisions this lane makes (each a DECISIONS item)
 
 - **No HUD in any shot** (item 50). W2-D will re-key the HUD; a HUD-free frame outlives it, and a frame for people who
   have not played sells the world, not the readout. Hidden through the store's own `setHudHidden(true)`, the game's
-  HUD switch, not by editing the DOM. The hands stay: they are the world, and W2-E made them the warmest thing in frame.
-  So no re-shoot row for W2-D.
+  HUD switch, not by editing the DOM, after the run has seen it on. The eye shots keep the hands; the hero, og card and
+  social preview are poses. So no re-shoot row for W2-D.
 - **The encoder is ImageMagick, at shoot time only** (item 51): the browser shoots a lossless PNG master at device scale
   2, `magick` downsamples it (Lanczos) and encodes the JPEG to a byte target (`jpeg:extent`) and the og card to an
   8-bit palette PNG. No npm dependency; the gates read the committed files and need nothing installed.
@@ -90,7 +91,7 @@ dusk the night's mobs crowd the Hearth (lookbook.mjs); the fight goes last for t
 
 ### 3. The driver
 
-- [ ] `frontend/scripts/visual/media.mjs`: serve `build/` with `vite preview` (`_serve.mjs`, port registered as
+- [ ] `frontend/scripts/visual/media.mjs`: build the bundle itself from the clean tree and serve it with `vite preview` (`_serve.mjs`, port registered as
   `media.mjs` in `PROBE_PORTS`), refuse a port serving another build (`servedBuildProblem`), refuse when `magick` is
   missing or no Chromium candidate gives a hardware renderer (exit 3, COULD NOT MEASURE), enter play through the seam,
   hide the HUD, shoot each shot in table order with its verdict, retry an invalid shot once, encode, write only valid
@@ -100,7 +101,7 @@ dusk the night's mobs crowd the Hearth (lookbook.mjs); the fight goes last for t
 
 ### 4. Shoot once
 
-- [ ] `npm run build` from the committed tree. Then, under the GPU lock (`mkdir` the lane's `w2i/gpu.lock`, wait while
+- [ ] From the committed tree (media.mjs builds it; review round 1, item 59), under the GPU lock (`mkdir` the lane's `w2i/gpu.lock`, wait while
   it exists, `rmdir` in a finally), with the 1-minute load under 28 and outside 18:00-21:00Z:
   `node scripts/visual/media.mjs`. Kill the preview group and sweep `scripts/dev/kill-test-procs.sh` after.
 - [ ] Open every frame. Re-shoot (`--only`) or drop any frame that is dark, blank, all sky or mid-load.

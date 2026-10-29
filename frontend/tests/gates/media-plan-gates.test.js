@@ -194,7 +194,7 @@ describe('the manifest check', () => {
 
   it('refuses a frame over its budget, a software renderer, an empty renderer, a short sha and a dirty tree', () => {
     const cases = [
-      [(e, f) => { e.bytes = f.bytes = MEDIA_BUDGETS.jpgBytes + 1; }, /over its .*budget/],
+      [(e, f) => { e.bytes = f.bytes = MEDIA_BUDGETS.jpgBytes + 1; }, /over its .*ceiling/],
       [(e) => { e.renderer = 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)))'; }, /software/],
       [(e) => { e.renderer = ''; }, /renderer/],
       [(e) => { e.sha = 'abc1234'; }, /sha/],
@@ -204,6 +204,57 @@ describe('the manifest check', () => {
       const set = goodSet();
       const i = set.manifest.files.findIndex((e) => e.format === 'jpg');
       mutate(set.manifest.files[i], set.files.find((f) => f.path === set.manifest.files[i].file));
+      expect(mediaProblems(set).problems.join('\n')).toMatch(re);
+    }
+  });
+
+  it('holds each file to the table, not only to media.json: its format, its byte target, its purpose and its cycle', () => {
+    const hero = MEDIA_SHOTS.find((s) => s.purpose === 'hero');
+    const pick = (set) => [set.manifest.files.find((e) => e.shot === hero.name), set.files.find((f) => f.path === hero.out)];
+    // A PNG named hero.jpg, with media.json rewritten to agree with it: only the table can refuse it.
+    const png = goodSet();
+    { const [e, f] = pick(png); e.format = f.format = 'png'; }
+    expect(mediaProblems(png).problems.join('\n')).toMatch(/hero\.jpg: the file is a png, the table declares a jpg/);
+    // Over the table's target and still under the JPEG budget: the table's number is the ceiling.
+    expect(hero.targetBytes).toBeLessThan(MEDIA_BUDGETS.jpgBytes);
+    const fat = goodSet();
+    { const [e, f] = pick(fat); e.bytes = f.bytes = hero.targetBytes + 1; }
+    expect(mediaProblems(fat).problems.join('\n')).toMatch(new RegExp(`hero\\.jpg: ${hero.targetBytes + 1} bytes, over its ${hero.targetBytes}-byte ceiling`));
+    const purpose = goodSet();
+    pick(purpose)[0].purpose = 'still';
+    expect(mediaProblems(purpose).problems.join('\n')).toMatch(/hero\.jpg: purpose still, the table says hero/);
+    const cycle = goodSet();
+    pick(cycle)[0].cycle = MEDIA_TIMES['blue hour'];
+    expect(mediaProblems(cycle).problems.join('\n')).toMatch(/hero\.jpg: media\.json says cycle 0\.55/);
+    const drift = goodSet();
+    pick(drift)[0].cycleAtShot = MEDIA_TIMES[hero.time] + 0.03;
+    expect(mediaProblems(drift).problems.join('\n')).toMatch(/hero\.jpg: the clock read/);
+  });
+
+  it('compares every file by its sha256, so a re-encode of the same size and length fails', () => {
+    const set = goodSet();
+    set.files[0].sha256 = sha256Hex('a re-encoded frame');
+    expect(mediaProblems(set).problems.join('\n')).toMatch(new RegExp(`${set.files[0].path.replace(/\./g, '\\.')}: media\.json says sha256`));
+  });
+
+  it('refuses a stray dotfile among the media, even one media.json lists', () => {
+    const set = goodSet();
+    set.files.push({ path: 'docs/media/stills/.draft.jpg', bytes: 10, width: 1600, height: 1000, format: 'jpg', sha256: sha256Hex('x') });
+    expect(mediaProblems(set).problems.join('\n')).toMatch(/\.draft\.jpg: a dotfile among the media/);
+    set.manifest.files.push({ ...set.manifest.files.find((e) => e.purpose === 'still'), file: 'docs/media/stills/.draft.jpg' });
+    expect(mediaProblems(set).problems.join('\n')).toMatch(/\.draft\.jpg: a dotfile among the media/);
+  });
+
+  it('refuses a file whose provenance is not a bundle the run built: a handed build, no build chunk, no build identity', () => {
+    const cases = [
+      [(e) => { Object.assign(e, runProvenance({ ownBuild: false, headBefore: SHA, headAfter: SHA, porcelainBefore: '', porcelainAfter: '' })); }, /sha "null"|dirty|provenance/],
+      [(e) => { e.provenance = undefined; }, /provenance ""/],
+      [(e) => { e.build = null; }, /build "null" is not an index chunk/],
+      [(e) => { e.buildId = 'abc'; }, /buildId "abc"/],
+    ];
+    for (const [mutate, re] of cases) {
+      const set = goodSet();
+      mutate(set.manifest.files[0]);
       expect(mediaProblems(set).problems.join('\n')).toMatch(re);
     }
   });

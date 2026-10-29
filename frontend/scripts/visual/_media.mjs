@@ -6,8 +6,8 @@
 
 import { createHash } from 'node:crypto';
 import { readdirSync } from 'node:fs';
-import { join } from 'node:path';
-import { LOOKBOOK_PLACES, OBSTRUCTION_M, classifyRenderer, shotVerdict, handCount } from './_lookbook.mjs';
+import { join, posix } from 'node:path';
+import { LOOKBOOK_PLACES, OBSTRUCTION_M, CYCLE_TOLERANCE, classifyRenderer, shotVerdict, handCount } from './_lookbook.mjs';
 import { LOOK_TIMES } from '../../src/render/colourScript.js';
 import { HUB_NPCS } from '../../src/world/npcSpawn.js';
 import { BRAND } from '../../src/brand.js';
@@ -29,6 +29,7 @@ export const OG_CARD = Object.freeze({ file: 'frontend/public/og-image.png', wid
 export const SOCIAL_PREVIEW = Object.freeze({ width: 1280, height: 640 });
 
 const FULL_SHA = /^[0-9a-f]{40}$/;
+const SHA256_HEX = /^[0-9a-f]{64}$/;
 /** What a file's media.json entry says when the run built the bundle it shot, from a clean tree at one commit. */
 export const BUILT_CLEAN = 'built by media.mjs from a clean tree';
 
@@ -72,20 +73,20 @@ const still = (name, time, recipe, alt, extra = {}) => ({
 export const MEDIA_SHOTS = deepFreeze([
   { name: 'hero', purpose: 'hero', time: 'golden hour', recipe: { kind: 'pose', position: [-13, 62, 5], lookAt: [3, 56, -14] }, size: [1600, 900],
     format: 'jpg', out: `${MEDIA_DIR}/hero.jpg`, targetBytes: 330_000,
-    alt: 'Crafty at golden hour, from the player\'s eye at the Hearth: gauntleted hands holding a grass block and a wand, the outpost\'s watchtower and Old Pike the Warden ahead, forest on the left and sunlit hills under a warm sky.' },
+    alt: 'Crafty at golden hour, looking down on the Hearth: Bram the Trader at his market stall, a house and the brazier\'s fire on the stone pad, snow-dusted forested hills beyond and a low sun setting over the trees.' },
   { name: 'og', purpose: 'og', time: 'golden hour', recipe: { kind: 'pose', position: [-14, 66, 6], lookAt: [-2, 56, -18] },
     size: [OG_CARD.width, OG_CARD.height], format: 'png', out: OG_CARD.file, targetBytes: 390_000, alt: BRAND.ogImageAlt },
   still('golden-forest', 'golden hour', { kind: 'eye', heading: 60, pitch: 15 },
-    'The forest beside the Hearth at golden hour, from the player\'s eye: gauntleted hands, the Hearth\'s glowing brazier and Sister Wren, a shrine\'s beam above the trees.'),
+    'The forest beside the Hearth at golden hour, from the player\'s eye: gauntleted hands with a grass block and a wand, Mara the Smith at her forge against the low sun, a shrine\'s beam rising over the trees.'),
   still('forest-edge', 'afternoon', { kind: 'pose', place: 'forest-edge' },
     'The edge of a voxel forest in the afternoon, seen from above the plains: turf, trunks and leaf canopies under a blue sky.'),
   still('night-fight', 'blue hour', { kind: 'fight', minM: 4, maxM: 14, waitS: 90 },
     'A fight at the Hearth after dusk, from the player\'s eye: a fireball flying toward a hostile mob beside the Hearth\'s glowing brazier.', { optional: true }),
   { name: 'social-preview', purpose: 'social', time: 'blue hour', recipe: { kind: 'pose', position: [-13, 62, 5], lookAt: [3, 56, -14] },
     size: [SOCIAL_PREVIEW.width, SOCIAL_PREVIEW.height], format: 'jpg', out: `${MEDIA_DIR}/social-preview.jpg`, targetBytes: 300_000,
-    alt: 'The Hearth at blue hour from the player\'s eye: gauntleted hands, Mara the Smith and Sister Wren among the trees, a shrine\'s beam rising into the dusk sky.' },
+    alt: 'The Hearth at blue hour from above: fireflies over the outpost, Bram the Trader\'s stall, the brazier\'s fire on the stone pad, Sister Wren by her cabin and snow-dusted forest under a violet sky.' },
   still('blue-hour', 'blue hour', { kind: 'eye', heading: 135, pitch: 8 },
-    'The forest beside the Hearth at blue hour, from the player\'s eye: a shrine\'s beam over the trees, Mara the Smith by a fire, fireflies in the dusk.'),
+    'The Hearth at blue hour, from the player\'s eye: gauntleted hands either side of the glowing brazier, Sister Wren and an ox by her cabin, a shrine\'s beam rising into the starry sky, fireflies in the dusk.'),
 ]);
 
 function recipeProblems(label, r) {
@@ -248,10 +249,17 @@ export function runProvenance({ ownBuild, headBefore, headAfter, porcelainBefore
   return { sha: headBefore, dirty: false, provenance: BUILT_CLEAN };
 }
 
+const circularCycle = (a, b) => {
+  const d = Math.abs(a - b) % 1;
+  return Math.min(d, 1 - d);
+};
+
 /**
- * Whether media.json and the files agree. `manifest`: the parsed media.json. `files`: what is on disk, every image
- * under docs/media and the og card, as [{ path (repo-relative), bytes, width, height, format }], measured from the
- * files themselves (imageSize). `manifestBytes`: media.json's own size, which counts toward the folder budget.
+ * Whether media.json and the files agree. `manifest`: the parsed media.json. `files`: what is on disk, every file under
+ * docs/media (filesUnder: dotfiles too) and the og card, as [{ path (repo-relative), bytes, width, height, format,
+ * sha256 }], measured from the files themselves (imageSize, sha256Hex). `manifestBytes`: media.json's own size, which
+ * counts toward the folder budget. Each file is held to the shot table as well as to media.json: its format, size and
+ * byte target are the table's, so a manifest rewritten to match a wrong file still fails.
  * Returns { problems, checked }: `checked` is how many listed files were found and compared, the denominator.
  */
 export function mediaProblems({ manifest, files, manifestBytes = 0, shots = MEDIA_SHOTS, budgets = MEDIA_BUDGETS }) {
@@ -265,7 +273,10 @@ export function mediaProblems({ manifest, files, manifestBytes = 0, shots = MEDI
     if (listed.has(e.file)) problems.push(`${e.file}: listed twice in media.json`);
     listed.add(e.file);
   }
-  for (const f of files || []) if (!listed.has(f.path)) problems.push(`${f.path}: on disk but not listed in media.json`);
+  for (const f of files || []) {
+    if (!listed.has(f.path)) problems.push(`${f.path}: on disk but not listed in media.json`);
+    if (posix.basename(f.path).startsWith('.')) problems.push(`${f.path}: a dotfile among the media`);
+  }
   let checked = 0;
   for (const e of entries) {
     const f = disk.get(e.file);
@@ -276,16 +287,25 @@ export function mediaProblems({ manifest, files, manifestBytes = 0, shots = MEDI
     if (e.file !== s.out) problems.push(`${e.file}: shot ${s.name} writes ${s.out}`);
     if (e.purpose !== s.purpose) problems.push(`${e.file}: purpose ${e.purpose}, the table says ${s.purpose}`);
     if (e.time !== s.time) problems.push(`${e.file}: shot at ${e.time}, the table says ${s.time}`);
-    for (const k of ['bytes', 'width', 'height', 'format']) {
+    const cycle = MEDIA_TIMES[s.time];
+    if (e.cycle !== cycle) problems.push(`${e.file}: media.json says cycle ${e.cycle}, the table's ${s.time} is ${cycle}`);
+    if (!(Number.isFinite(e.cycleAtShot) && circularCycle(e.cycleAtShot, cycle) <= CYCLE_TOLERANCE)) {
+      problems.push(`${e.file}: the clock read ${e.cycleAtShot} at the shot, more than ${CYCLE_TOLERANCE} from ${s.time} (${cycle})`);
+    }
+    for (const k of ['bytes', 'width', 'height', 'format', 'sha256']) {
       if (e[k] !== f[k]) problems.push(`${e.file}: media.json says ${k} ${e[k]}, the file has ${f[k]}`);
     }
+    if (f.format !== s.format) problems.push(`${e.file}: the file is a ${f.format ?? 'neither PNG nor JPEG'}, the table declares a ${s.format}`);
     const [w, h] = s.size;
     if (f.width !== w || f.height !== h) problems.push(`${e.file}: the file is ${f.width}x${f.height}, the table declares ${w}x${h}`);
     if (e.width !== w || e.height !== h) problems.push(`${e.file}: media.json says ${e.width}x${e.height}, the table declares ${w}x${h}`);
-    const ceiling = f.format === 'png' ? budgets.ogPngBytes : budgets.jpgBytes;
-    if (!(f.bytes <= ceiling)) problems.push(`${e.file}: ${f.bytes} bytes, over its ${ceiling}-byte budget`);
-    if (!/^[0-9a-f]{40}$/.test(String(e.sha))) problems.push(`${e.file}: sha "${e.sha}" is not a full commit sha`);
+    const ceiling = Math.min(s.targetBytes, s.format === 'png' ? budgets.ogPngBytes : budgets.jpgBytes);
+    if (!(f.bytes <= ceiling)) problems.push(`${e.file}: ${f.bytes} bytes, over its ${ceiling}-byte ceiling (the table's target)`);
+    if (!FULL_SHA.test(String(e.sha))) problems.push(`${e.file}: sha "${e.sha}" is not a full commit sha`);
     if (e.dirty !== false) problems.push(`${e.file}: shot from a dirty tree (dirty: ${e.dirty})`);
+    if (e.provenance !== BUILT_CLEAN) problems.push(`${e.file}: provenance "${e.provenance ?? ''}", not "${BUILT_CLEAN}"`);
+    if (!/^index-[\w-]+\.js$/.test(String(e.build))) problems.push(`${e.file}: build "${e.build}" is not an index chunk`);
+    if (!SHA256_HEX.test(String(e.buildId))) problems.push(`${e.file}: buildId "${e.buildId}" is not a sha256 of the build`);
     const gpu = classifyRenderer(e.renderer);
     if (gpu !== 'hardware') problems.push(`${e.file}: renderer "${e.renderer ?? ''}" is ${gpu}, not a hardware GPU`);
   }
