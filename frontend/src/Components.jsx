@@ -12,6 +12,7 @@ import { canAfford, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST } fr
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
 import { BeastAvatar } from './render/BeastAvatar';
 import { StableMagicHands } from './render/playerRender';
+import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
@@ -1524,9 +1525,7 @@ export const Player = ({ isWorldBuilt }) => {
     }
   });
 
-  // Hide the camera-attached first-person hands + held FX during capture so the
-  // visual-regression fixture is a clean world vista (the render recipe operates on
-  // terrain/sky/AO; the character render language is validated separately in S1-B M2).
+  // Hide the first-person hands and held FX during capture, so the capture frame is the world alone.
   const inCapture = useGameStore((s) => s.isCaptureMode);
   // The same for a lookbook pose (render/lookbookSeam.js): an elevated hero shot with the hands in the corner would
   // misrepresent the frame. Changes only when the probe poses or clears, never per frame.
@@ -1568,11 +1567,14 @@ export const Player = ({ isWorldBuilt }) => {
           of them back under a moving node says so out loud instead of silently offsetting the render. */}
       <HurlSystem />
       <SnareTetherSystem />
-      <primitive object={camera}>
+      <primitive object={camera} />
+      {/* The hands live in the viewmodel scene, not on the camera: the composer draws them after the world with their
+          own FOV and depth range, so they never sink into a wall and cast no shadow (render/viewmodel.js). */}
+      <ViewmodelLayer>
         {!inCapture && !lookbookOn && (
           <StableMagicHands selectedBlock={selectedBlock} attackType={attackType} attackStartTime={attackStartTime} />
         )}
-      </primitive>
+      </ViewmodelLayer>
     </group>
   );
 };

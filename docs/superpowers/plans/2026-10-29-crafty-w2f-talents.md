@@ -23,7 +23,7 @@ the Cut keeps its level, gets every talent rank back as a point, and gets its at
    today; at levels 5, 10 and 20 each attack's expected damage is no lower than today's unspent build (no point ever
    allocated), no higher than today's focused build (every point in the attack's stat) and within 10% of today's even
    build (five points a level shared equally among strength, agility and intellect). Measured: +1% to +8% over even
-   (review round 1 corrected the first figure; DECISIONS 2026-10-29 item 37 states what the band leaves out).
+   (review round 1 corrected the first figure; DECISIONS 2026-10-29 item 41 states what the band leaves out).
 3. **Spells scale with level:** a spell casts at the tier the player's level unlocked through the free click
    (`requiredLevelForUpgrade`: II at level 2 or 3, III at 5), with the same damage and mana table. `spellLevels` stops
    being written; the store's `getSpellStats` derives from `level`; `useSpellUpgrades`, `upgradeSpell` and the Spell

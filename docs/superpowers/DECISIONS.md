@@ -23,9 +23,9 @@
 
 **Decided by the W2-F talents lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H item 6 by
 the task script `docs/superpowers/plans/2026-10-29-crafty-w2f-talents.md`. Numbered on from W2-E's entry (the hands,
-PR #43, which lands first; its last is 36). Each stands while it earns its place.
+PR #43, which landed first; its last is 40). Each stands while it earns its place.
 
-37. **Damage, health and mana scale with level alone.** The player's own strength, agility and intellect are 10 each at
+41. **Damage, health and mana scale with level alone.** The player's own strength, agility and intellect are 10 each at
    level 1 and gain +2, +1 and +2 a level (`frontend/src/game/progression.js` `levelAttributes`): the five points a level
    paid, placed by rule. Gear folds on top; no talent adds a stat; the solvers and `deriveMaxStats` are unchanged. **The
    band, stated before the change** (`frontend/tests/game/levelDamage.test.js`): at level 1 every attack deals what it
@@ -39,10 +39,10 @@ PR #43, which lands first; its last is 36). Each stands while it earns its place
    +35) cast a non-crit Fireball III for 264; that level casts 187 now (-29%). The four armour nodes (up to 59 armour,
    which takes armor / (armor + 100) off a hit) have no successor, and armour is outside the band. Whether a stat build
    is owed anything is registry `REVIEW:w2f:talents-stat-build-loss`.
-38. **Spells scale with level:** a spell casts at the tier its caster's level reached (`frontend/src/game/spellTiers.js`:
+42. **Spells scale with level:** a spell casts at the tier its caster's level reached (`frontend/src/game/spellTiers.js`:
    II at level 2 for fireball and iceball, 3 for lightning and arcane, III at 5), the levels the free mastery click
    allowed, with the same damage and mana table. No player loses a tier the click would have bought.
-39. **The refund rule for a save from before the Cut**, recorded once as `talents.cut` (`frontend/src/game/saveSchema.js`):
+43. **The refund rule for a save from before the Cut**, recorded once as `talents.cut` (`frontend/src/game/saveSchema.js`):
    a save whose progression holds `attributes` gets floor(P / 5) talent points, P being its unspent attribute points
    plus every point it allocated, and every talent rank back as a point, since every node's meaning changed. The pre-cut
    fixture loads at level 5 with 8 points (20 / 5 = 4, plus 3 unspent and 1 rank) and no ranks; a post-Cut save is never
@@ -50,7 +50,7 @@ PR #43, which lands first; its last is 36). Each stands while it earns its place
    to one point per level gained; the stats those points bought now come from the level, so the player gets both back.
    **Doors:** `attributes` and `spellLevels` ride the progression tombstone, and `crystals` and `wand` a new `blocks`
    bag written back under the live inventory, each for one SAVE_VERSION.
-40. **The trees** (`frontend/src/game/talentTree.js`): each root unlocks its verb and needs no prerequisite (a level-2
+44. **The trees** (`frontend/src/game/talentTree.js`): each root unlocks its verb and needs no prerequisite (a level-2
    player can take one); every other node is one modifier in `frontend/src/game/verbMods.js`'s vocabulary. Wildheart:
    Primal Endurance (+3 s roar, 3 ranks), then Apex Predator (the form's swing +25%) or Untamed (+8 s). Voidhand: Twin
    Grasp (a grab holds two blocks), Long Hold (+4 s, 2 ranks), then Singularity (slam +1.5 m) or Event Horizon (+8 s
@@ -58,22 +58,22 @@ PR #43, which lands first; its last is 36). Each stands while it earns its place
    Warden Bulwark (+1 slot). Elemancer: Chain Imbue (the zone leaps to one more hostile within 8 m, 2 ranks), then
    Conflux (zones 50% wider) or Wildfire (+2 leaps). Exclusivity and respec keep their code; a loaded rank whose node is
    gone, over its limit, behind a missing prerequisite, or beside its rival comes back as a point. Ember's prices do not
-   move. A kept grab's next block goes on the next click, hurl or slam, beside the first in the air (item 44).
-41. **Relics:** one slot (`equipment.relic`, through the existing equip actions), four relics in the same vocabulary
+   move. A kept grab's next block goes on the next click, hurl or slam, beside the first in the air (item 48).
+45. **Relics:** one slot (`equipment.relic`, through the existing equip actions), four relics in the same vocabulary
    (`frontend/src/game/relics.js`): Ember Fang (+4 s roar) from emberhusks and duskhounds, Lodestone (+1 grab throw) from
    moss brutes, Snare Knot (the snare cone doubles) from spiders and skitterlings, Prism Shard (+1 leap) from skeletons,
    each at 4-6%, `epic`, so the zone tier raises them far from spawn. A relic and a talent on one key add up.
-42. **Crystals and the wand go whole,** with the wand's mana discount, the four ore-to-crystal trades, the wand trade, the
+46. **Crystals and the wand go whole,** with the wand's mana discount, the four ore-to-crystal trades, the wand trade, the
    starting 8 crystals and wand, and the Magic Crystal recipe row (so a level-1 Fireball costs 15 mana, which was 14
    with the starting wand's 6%). The merchant sells potions for coins; mined blocks wait for the Forge (W1-H item 7).
    `affixes.js` went with them (no importer).
-43. **Not proven, and owed.** The feel of the trees and the relic drop rates (no playtest); the Talents page fitting one
+47. **Not proven, and owed.** The feel of the trees and the relic drop rates (no playtest); the Talents page fitting one
    screen; the grab's second throw, the wider snare, the chained imbue, Apex Predator, the slam radius and the relics in
    the running game (proven at their reducers and pure helpers, not by a browser); the e2e's browser mutants; WebKit and
    touch for the Talents page. Each has a registry row.
-44. **Review round 1 changed four rules** (each fix commit carries its mutation receipt):
+48. **Review round 1 changed four rules** (each fix commit carries its mutation receipt):
    - **The hurl system flies up to six blocks at once** (`frontend/src/game/hurl.js` `MAX_FLIGHTS`, `flightSlot`;
-     `frontend/src/world/HurlSystem.jsx`). This replaces item 40's first version, in which a kept block waited out the
+     `frontend/src/world/HurlSystem.jsx`). This replaces item 44's first version, in which a kept block waited out the
      first throw's 1.5 s flight: that wait also blocked a slam, which never flies, ate the click with no cue, and ran on
      R3F's clock while the flight runs on `worldDelta`, so a pause or a hitstop let the second throw replace the first
      anyway. Six holds two grabs of three blocks inside one flight (`frontend/src/game/hurl.test.js` derives it from the
@@ -87,10 +87,10 @@ PR #43, which lands first; its last is 36). Each stands while it earns its place
      (`frontend/src/game/saveSchema.js` `liveInventory`, `liveChests`), so no chest can hand one back to the bag.
    - **A saved talent map and a saved spell name are untrusted keys:** the node table has no prototype and
      `spellStatsAt` answers only its own keys, so `constructor` refunds as an unknown id and casts nothing.
-45. **Review round 2 changed five rules** (each fix commit carries its mutation receipt):
+49. **Review round 2 changed five rules** (each fix commit carries its mutation receipt):
    - **A block kept after a throw lasts only while the build gives it** (`frontend/src/game/voidhand.js`): when the
      relic or rank that gave a grab its extra throw leaves, the kept block drops on the next tick, before any click can
-     launch it. This finishes item 44's second rule, which held for the roar and for a swap before the first throw.
+     launch it. This finishes item 48's second rule, which held for the roar and for a swap before the first throw.
    - **A chain's leap lands only on a hostile no zone of its element covers** (`frontend/src/game/elementZones.js`
      `spawnChain`, which replaces `chainTargets` and its fixed 2 m floor): outside the impact's width as painted and
      outside every zone of the element, the chain's own leaps included. **And one element ticks a body once:**
@@ -102,7 +102,7 @@ PR #43, which lands first; its last is 36). Each stands while it earns its place
    - **Every save this build loads or makes records the Cut's refund as run** (`talents.cut`, `saveSchema.js`
      `TALENT_CUT`): a post-Cut save is recorded too, and a store that has loaded nothing starts with the record. A
      pre-Cut build writes `attributes` into every save it touches, so without this a rollback and a roll forward
-     respecced a post-Cut build and paid the refund on top; item 39's "a post-Cut save is never respecced" now holds
+     respecced a post-Cut build and paid the refund on top; item 43's "a post-Cut save is never respecced" now holds
      through a rollback. The refund's notice counts the points after the load's other grants, and is not raised with
      nothing to spend.
    - **Every load ends a held grab** (`useGameStore.jsx` `loadWorldData`), as a respec and a death do: the grab's held
@@ -110,7 +110,7 @@ PR #43, which lands first; its last is 36). Each stands while it earns its place
    - **The load refund is the unlock rule replayed** (`talentTree.js` `refundUnknownTalents` through `canUnlockTalent`),
      so a rule added to the unlock path reaches loaded saves. One outcome moves: a capstone whose own prerequisite is
      missing no longer takes its rival with it. A saved spell name is looked up by the roster's own keys
-     (`frontend/src/game/spells.js` `spellTypeOf`), so item 44's `constructor` casts nothing and raises no false "no mana"
+     (`frontend/src/game/spells.js` `spellTypeOf`), so item 48's `constructor` casts nothing and raises no false "no mana"
      notice.
 
 ## 2026-10-29 — [LOOP] W2-J phase 2: one browser library (Playwright), and `import.meta.main` in place of cli-guard
@@ -143,6 +143,105 @@ its place.
    are regenerated without it. cli-guard.mjs is at `1691217b`.
 
 **Door:** two-way; the files and the dependency are in git history.
+
+## 2026-10-28 — [LOOP] W2-E: the hands become a viewmodel, and the eye drops to 1.62 m
+
+**Decided by the W2-E lane under the standing grant** (item 14), by the task script
+`docs/superpowers/plans/2026-10-29-crafty-w2e-hands.md`, whose metric was written before any frame was shot. The items
+continue the numbering after W2-I's (its last is 32). Readings and frames:
+`docs/superpowers/masterpiece-2026-10/evidence/w2e/`.
+
+33. **The hands render inside the composer, as a second render pass with its own camera.** `ViewmodelPass`
+   (`frontend/src/render/viewmodel.js`) draws the viewmodel scene right after the world's `RenderPass`, before every
+   effect (`GameScene.jsx` PostFX). Why inside: the canvas has no MSAA (`antialias: false`, `multisampling={0}`), so
+   only SMAA can smooth the gauntlets' edges; the grade and the Neutral tone mapping keep them in the world's colour;
+   and bloom carries the ember core, which is what replaces the hand's point light. Drawn after the composer they
+   would be aliased, ungraded and untone-mapped (R3F's composer sets `gl.toneMapping = NoToneMapping`). Why a depth
+   range and not the depth clear the plan row named: after each pass that sets `needsDepthBlit` the composer copies the
+   depth buffer into the texture GodRays tests the sun against (postprocessing 6.39.5 `EffectComposer.render`,
+   `GodRaysEffect.update`), and `ViewmodelPass` sets it so that a gauntlet in front of the sun hides it. After a clear
+   that copy would hold the hands alone and the sun would shine through every wall; with the hands left out of the
+   copy a clear would work, and the sun would show through the hands. The world's `RenderPass` would copy just before
+   it, a second full-resolution copy every frame with GodRays mounted; item 40 keeps it to one.
+   The viewmodel camera maps its depth into the front 2% of the buffer instead, so the hands are nearer than any world
+   surface beyond 0.102 m (the main near plane is 0.1 m) and still test against each other. It has its own fixed 60
+   degree FOV (the main camera's moves 75 to 85 with speed), anchors that follow the aspect so both fists stay in
+   frame on a portrait iPad, the world's ambient, hemisphere and key light mirrored into view space, a value floor
+   (`max(lit, albedo x 0.45)` in the toon shader), and an HDR ember core above Bloom's threshold. The aura sphere, the
+   hand's pooled point light and every shadow flag on the hands are gone; the wand the right hand holds by default
+   draws its wood and tip with the same floor, and its translucent aura sphere, the orange sphere the task script's
+   goal named, is gone too (the gem stays). It stands while it earns its place.
+   **Measured** (local production build, Chromium on ANGLE-Metal, M3 Max, 1280x800 at dpr 2, the eye at bearing 240;
+   hand pixels are what the hands change against a pose twin at the same eye, by more than 24 in some channel, so a
+   hand pixel about as dark as the ground behind it, an ink outline on dark turf, is not counted and the readings lean
+   high; the margin over the declared floor is twice the floor): at midnight (0.75) the mean luma of the
+   hand pixels went from 28.7 to 100.2 and the median from 7 to 106, against the floor declared before shooting (mean
+   48, median 40). Warm at every time (red over blue: 2.9 at midnight). At point blank, against a tree trunk with the
+   body 0.45 m from it, the hand pixels near/far went from 0.02 (the old hands sank into the trunk) to 1.14, and on the
+   build after review to 0.97 (declared at least 0.9; `evidence/w2e/index.md`).
+34. **The eye sits 1.62 m over the ground: `EYE_HEIGHT_M` 0.67 over the body's centre, not 1.2** (the question W1-D
+   left this lane). The capsule is 1.8 m and its centre rests 0.95 m up, so the old eye stood 2.15 m up, 0.30 m above
+   the top of the head: blocks read small, the player looked down on every mob, and in any two-block passage the
+   body fits through (1.9 m with the controller's gaps) the eye sat 0.15 m inside the ceiling block. 1.62 m is the
+   eye of a 1.8 m figure. The swing's cone apex keeps its height (`SWING_DROP_M` 0.8 to 0.27, so it stays 0.4 m over
+   the body's centre) and melee reach is unchanged; the snare's aim and the hurl's launch start at the new eye, which
+   is where the player now sees from. `playerPosition` (the camera, rounded) reads the same integer at rest. It
+   stands while it earns its place.
+35. **REVIEW:w2k:dark-polygon-between-hands was a mesh of the old hands, and it went with them.** Corrected after
+   review: the first reading, the old hands' shadow, rested on a frame that was not W2-K's framing, and the textured
+   darkening its pose twin removes is not W2-K's polygon. W2-K's polygon, cropped from its own frames
+   (`docs/superpowers/masterpiece-2026-10/evidence/w2k/after-turf-wall-*.png`), is flat and untextured, carries an ink
+   outline along its top edge, and is the colour of the old slab beside it at each time (dark brown at 0.30, navy at
+   0.75): the old hands' toon material and outline, so one of their meshes, not their shadow. Every one of those
+   meshes is deleted, and none of the after frames looked at shows a flat dark shape between the gauntlets (the list
+   is in `evidence/w2e/index.md`). Not done: a frame at W2-K's exact sight, which today's sight finder no longer picks.
+   A moved camera also stops counting as a shadow caster (`render/Atmosphere.jsx`), since the hands were the reason it
+   did (e9d49bdf): turning the view no longer re-renders the sun's shadow map.
+36. **Mobs keep measuring the player from the eye, so item 34 moves which ledges are refuge, and the new table is
+   kept.** The AI worker's reach test compares the camera (`game/mobSenses.js` `mobSensePoint`) with the mob's centre,
+   0.5 m over its floor. With the eye at 2.15 m a single step onto a block put a player out of an ordinary mob's 2.5
+   m vertical reach, which `mobSenses.js` names as what the reach must not do; at 1.62 m an ordinary mob reaches a
+   player one block above its floor and not two, the moss brute (3.2) two and not three, and a mob on a ledge reaches
+   a player up to three blocks below it and not four (it was four and not five). So a pillar taller than the player
+   still keeps ordinary melee out, a step no longer does, and the brute keeps its longer reach. The other choice was
+   to measure from the body plus a fixed 1.2 m and keep the old table, which would have kept the one-step refuge and
+   tied the AI to a height the camera no longer has. `tests/gates/mob-senses-gates.test.js` holds the table, driven
+   through the real worker from `steadyEye`, so a later change to the eye height or a reach lands there. The point the
+   game posts, `mobSensePoint`, is the camera's position, which the gate does not read (`mobSenses.test.js` pins it);
+   that it carries the camera's shake, kick and the roar's reveal pose is `REVIEW:w2e:mob-sense-from-camera`. It
+   stands while it earns its place.
+37. **The swing and the heavy charge keep the fist in frame** (`frontend/src/render/handPose.js`). Their offsets were
+   authored in metres for the world camera at 75 degrees on a 16:10 window and played unchanged at the viewmodel's 60,
+   so the charged fist left a 16:10 frame by half and an iPad's portrait frame whole, and step 2 and the portrait
+   finisher swept it off the edge. Each offset is now the same share of the frame at the viewmodel's FOV and the
+   window's aspect, and each gesture is then shrunk as a whole, once per aspect, until the fist's projected box stays 95%
+   inside at every step (or as inside as at its rest, on a phone in portrait). The cost is travel where the anchor
+   leaves no room: step 2 sweeps right from a fist already right of centre, so it crosses a third of the half-width on
+   16:10 and 8% on an iPad in portrait, and the charge keeps 78% of its draw on 16:10 and 22% in portrait; the turns are
+   whole everywhere. The other choice, starting step 2 at the left so it can sweep right, would pop the fist at the
+   swing's start, since every swing begins at the rest anchor. The held item now carries its own rest pose, so the
+   swing no longer zeroes the wand's tilt, and an equipped sword or pickaxe takes the hands' value floor. Gated by
+   `tests/gates/hand-pose-gates.test.jsx`. It stands while it earns its place.
+38. **The key light on the hands follows the world's shadow, and the storm's flash reaches them.** The hands receive no
+   shadow, so `frontend/src/render/ViewmodelLayer.jsx` casts one ray from the eye toward the key light every 0.1 s
+   against the world's fixed colliders, out to the loaded square's far corner at the largest render distance (102 m),
+   and eases the key on the hands to 0 where it is blocked and back where it is open over 0.12 s: in a cave, under a
+   roof or a tree the gauntlets no longer take the full sun. The flash rides the hands' sky light as it rides the
+   world's. The world's fill and its pooled point lights (the hearth, spell lights) are not mirrored
+   (`REVIEW:w2e:hand-light-fill-and-point-lights`). It stands while it earns its place.
+39. **The player's own beast draws none of its boxes within 0.25 m of the first-person eye** (the halo and core spheres are not yet covered: registry `REVIEW:w2e:beast-form-eye-in-head`) (`frontend/src/render/BeastAvatar.jsx`,
+   `beastAvatarParts.js` `SELF_CLEARANCE_M`). Item 34's eye sits inside the hawk's and the golem's heads and a hand's
+   width from the golem's torso and the dragon's neck; such a part writes neither colour nor depth and still casts its
+   shadow, and in the transform-cam's reveal every part draws. The other choice was a beast eye at the old 1.2 m. It was
+   not taken: the camera is the AI's sense point, so mobs would read the old refuge table in beast form, and the roar's
+   reveal hands back to the human eye, so the camera would pop 0.53 m as it settled. It stands while it earns its place.
+40. **One depth copy a frame, no draw of an empty viewmodel scene, and the cone apex set from the body.** With GodRays
+   mounted, `oneDepthCopy` (`frontend/src/render/viewmodel.js`, applied each frame by `PostTierDriver`) keeps the
+   world's `RenderPass` from copying while the viewmodel pass is enabled and follows it, and lets it copy in any other
+   arrangement. `ViewmodelPass` draws nothing while the hands group is empty. `SWING_APEX_OVER_BODY_M` (0.4) replaces
+   the drop from the eye that item 34 retuned, so an eye change leaves melee reach alone. And a treasure chest that comes
+   or goes marks the sun's shadow due, as nothing did once item 35 stopped the camera counting as a caster. It stands
+   while it earns its place.
 
 ## 2026-10-28 — [LOOP] W2-J phase 1: a short CLAUDE.md, `npm run orient`, a cursor, and the loop docs retired
 

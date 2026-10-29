@@ -173,6 +173,19 @@ describe('the drivers follow the LIVE effects in the composer', () => {
     expect(fresh.bloom.mipmapBlurPass.enabled).toBe(true);
   });
 
+  it('PostTierDriver keeps the composer to one depth copy a frame: the world\'s pass leaves it to the hands\' pass', async () => {
+    const { RenderPass } = await import('postprocessing');
+    const { getViewmodel } = await import('../../src/render/viewmodel.js');
+    const world = new RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
+    const composer = { passes: [world, getViewmodel().pass, ...composerOf(built()).passes] };
+    render(<EffectComposerContext.Provider value={{ composer }}><PostTierDriver /></EffectComposerContext.Provider>);
+    expect(frameCallbacks.length, 'SETUP: the driver registered no frame callback').toBe(1);
+    expect(world.needsDepthBlit, 'SETUP: a RenderPass copies depth by default').toBe(true);
+    frameCallbacks[0]();
+    expect(world.needsDepthBlit, 'the world copied its depth and the hands\' pass copied over it').toBe(false);
+    expect(getViewmodel().pass.needsDepthBlit).toBe(true);
+  });
+
   it('a spike after the chain is rebuilt drives the NEW Bloom — the old driver latched the first one it found', () => {
     const a = new BloomEffect({ intensity: 0.95 });
     const composer = { passes: [{ effects: [a] }] };

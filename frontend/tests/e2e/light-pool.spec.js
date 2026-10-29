@@ -5,10 +5,12 @@ import { bootDev, startPlayActive } from './_boot.js';
 // item i; refute F3).
 //
 // tests/gates/light-pool-gates drives the pool's per-frame assignment over real three objects. What it cannot see: that
-// every site in the running game (the cast hand, each projectile and impact, each chest beacon) now borrows from the
+// every site in the running game (each projectile and impact, each chest beacon) now borrows from the
 // pool and none mounts a raw pointLight — which is exactly what keeps three's NUM_POINT_LIGHTS, and so the linked
 // program set, constant. The instrument: renderer.info.programs (DEV readPostFx) and the scene's point-light count,
 // across 20 real casts (the F key) and chests added and removed through the store list TreasureChestsRender draws.
+// The cast hand carries no light: the first-person hands draw in the viewmodel scene, which this does not
+// count, and their ember is an HDR colour the bloom carries (render/viewmodel.js).
 //
 // THE TIER IS HELD: the pool size is per tier, and on CI's software renderer the governor would decline mid-run, which
 // changes the light count for a reason this spec is not about. So the governor is settled first (two declines through
@@ -16,7 +18,7 @@ import { bootDev, startPlayActive } from './_boot.js';
 //
 // Mutation-Proof: NOT YET RUN — this lane does not run e2e (port 4179 and the browser belong to the command session).
 // Intended batch, via scripts/dev/mutate-e2e.sh:
-//   E1 the cast hand back on a raw <pointLight> (playerRender.jsx)          -> RED expected: "the point-light count changed"
+//   E1 a projectile's light back on a raw <pointLight> (spellVfx.jsx)       -> RED expected: "the point-light count changed"
 //   E2 the chest beacon back on a raw <pointLight> (Terrain.jsx)            -> RED expected: "the point-light count changed"
 //   E3 the impact light back on a raw <pointLight ref={lightRef}> (spellVfx) -> RED expected: "programs changed"
 //   E0 identity (a comment edit in lightPool.jsx)                           -> must SURVIVE

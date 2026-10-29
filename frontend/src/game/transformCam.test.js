@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { TRANSFORM_CAM_SEC, transformCamEnvelope, transformCamPose } from './transformCam.js';
+import { EYE_HEIGHT_M } from '../combat/swingOrigin.js';
 
 // S2-B1-M7a: the third-person transform-cam is PURE geometry+timing -> the pull-back/return envelope
 // and the FPV<->TPV blended pose are unit-testable. Components owns the ref-timer + applies the pose.
@@ -26,10 +27,13 @@ describe('transformCamPose (FPV f=0 identity -> third-person f=1)', () => {
   const playerPos = [10, 50, -20];
   const forward = [0, 0, 1]; // facing +Z
 
-  it('at progress 0 = EXACT FPV head pose (byte-identical to first-person — no camera move)', () => {
-    const { position, lookAt } = transformCamPose(playerPos, forward, 0);
-    expect(position).toEqual([10, 51.2, -20]);     // head = py + 1.2
-    expect(lookAt).toEqual([10, 51.2, -19]);       // head + forward
+  it('opens and closes at the first-person eye (body + EYE_HEIGHT_M, the follow camera\'s), so a roar does not pop the view', () => {
+    const eye = 50 + EYE_HEIGHT_M;
+    for (const p of [0, 1]) {
+      const { position, lookAt } = transformCamPose(playerPos, forward, p);
+      expect(position, `progress ${p}: the reveal camera is not at the eye`).toEqual([10, eye, -20]);
+      expect(lookAt, `progress ${p}`).toEqual([10, eye, -19]); // eye + forward
+    }
   });
 
   it('at the reveal hold (progress 0.5) the camera is BEHIND (-forward) + ABOVE, looking at mid-body', () => {
@@ -37,7 +41,7 @@ describe('transformCamPose (FPV f=0 identity -> third-person f=1)', () => {
     // behind: forward is +Z, so the camera sits at -Z (z decreases by MAX_DIST 4.5)
     expect(position[2]).toBeLessThan(playerPos[2]);
     expect(position[0]).toBe(10);                  // no x offset (forward has no x)
-    expect(position[1]).toBeGreaterThan(50 + 1.2); // risen above the head
+    expect(position[1]).toBeGreaterThan(50 + 0.9); // risen above the top of the 1.8 m capsule (centre + 0.9)
     // looks at the player's mid-body
     expect(lookAt).toEqual([10, 50.6, -20]);
   });

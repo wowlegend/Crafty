@@ -112,3 +112,28 @@ export function beastAvatarParts(element) {
 }
 
 export const BEAST_AVATAR_ELEMENTS = Object.keys(FORM_PARTS);
+
+/**
+ * In first person the eye rides the body's centre + EYE_HEIGHT_M (combat/swingOrigin.js), which is inside the hawk's
+ * and the golem's heads and a hand's width above the golem's torso and the dragon's neck. A part of the player's own
+ * beast nearer the eye than this fills the view or is cut by the camera's 0.1 m near plane, so BeastAvatar draws it
+ * into the shadow map only; in the transform-cam's reveal the camera stands metres off and every part draws.
+ */
+export const SELF_CLEARANCE_M = 0.25;
+
+/** The distance from point (x, y, z) to a box { pos, size, rot (Euler XYZ) }, 0 inside it. Same local space. */
+export function boxDistance(box, x, y, z) {
+  const [a, b, c] = box.rot || [0, 0, 0];
+  let px = x - box.pos[0], py = y - box.pos[1], pz = z - box.pos[2];
+  // Into the box's frame: the inverse of Rx(a) Ry(b) Rz(c), applied as Rx(-a), then Ry(-b), then Rz(-c).
+  let t = py * Math.cos(a) + pz * Math.sin(a);
+  pz = -py * Math.sin(a) + pz * Math.cos(a); py = t;
+  t = px * Math.cos(b) - pz * Math.sin(b);
+  pz = px * Math.sin(b) + pz * Math.cos(b); px = t;
+  t = px * Math.cos(c) + py * Math.sin(c);
+  py = -px * Math.sin(c) + py * Math.cos(c); px = t;
+  const dx = Math.max(Math.abs(px) - box.size[0] / 2, 0);
+  const dy = Math.max(Math.abs(py) - box.size[1] / 2, 0);
+  const dz = Math.max(Math.abs(pz) - box.size[2] / 2, 0);
+  return Math.hypot(dx, dy, dz);
+}

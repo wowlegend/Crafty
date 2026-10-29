@@ -284,8 +284,8 @@ describe('the eye level: stand() and look() frame what a player sees', () => {
     const rb = fakeBody();
     const cam = new PerspectiveCamera(75, 1.6, 0.1, 500);
     cam.position.set(3, 54.6, -4);
-    const hands = new Object3D();
-    cam.add(hands);
+    const child = new Object3D(); // the audio listener, in the game
+    cam.add(child);
     useGameStore.setState({ gameCamera: cam, playerRigidBodyRef: { current: rb } });
     const w = fakeWin('?lookbook=1');
     installLookbookSeam(w, deps());
@@ -297,12 +297,25 @@ describe('the eye level: stand() and look() frame what a player sees', () => {
     const info = w.__craftyLookbook.info();
     expect(info.body).toEqual([3, 52.5, -4]);
     expect(info.eye).toEqual([3, 54.6, -4]);
-    expect(info.cameraNodes, 'the camera and the hands on it').toBe(2);
-    cam.remove(hands);
-    expect(w.__craftyLookbook.info().cameraNodes, 'the count must fall when the hands leave the camera').toBe(1);
+    expect(info.cameraNodes, 'the camera and the one child on it').toBe(2);
+    cam.remove(child);
+    expect(w.__craftyLookbook.info().cameraNodes, 'the count must fall when the child leaves the camera').toBe(1);
     useGameStore.setState({ playerRigidBodyRef: null });
     expect(() => w.__craftyLookbook.stand({ position: [0, 60, 0] })).toThrow(/body/);
     expect(w.__craftyLookbook.info().body).toBeNull();
+  });
+
+  it('info().handNodes reads the viewmodel\'s hands, live, and is null when the build hands the seam no reader', () => {
+    const w = fakeWin('?lookbook=1');
+    let mounted = 14;
+    installLookbookSeam(w, { ...deps(), handNodes: () => mounted });
+    expect(w.__craftyLookbook.info().handNodes).toBe(14);
+    mounted = 0;
+    expect(w.__craftyLookbook.info().handNodes, 'the count must fall when the hands are hidden').toBe(0);
+    _resetLookbookForTest();
+    const bare = fakeWin('?lookbook=1');
+    installLookbookSeam(bare, deps());
+    expect(bare.__craftyLookbook.info().handNodes).toBeNull();
   });
 
   it('hostileReach: the nearest live hostile in 3D and the count within 8 m, ignoring the passive, NPCs and the dead', () => {

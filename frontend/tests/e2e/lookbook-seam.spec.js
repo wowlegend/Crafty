@@ -8,7 +8,8 @@ import { bootDev } from './_boot.js';
 //
 //   1. the seam is ABSENT without ?lookbook=1 and PRESENT with it — index.jsx really installs it, and only then;
 //   2. pose() moves the LIVE R3F camera and keeps it there across frames — the Player useFrame applies it and returns
-//      before the follow-cam can pull it back — and the first-person hands leave the camera while posed;
+//      before the follow-cam can pull it back — and the first-person hands unmount while posed (counted in the
+//      viewmodel scene, info().handNodes);
 //      clear() hands the camera back to the player rig;
 //   2b. the eye level the probe shoots from: stand() moves the LIVE body, look() turns the LIVE camera and the Player rig
 //      leaves it facing that way frame after frame, and clearHostiles() removes a hostile spawned beside the player
@@ -29,7 +30,7 @@ import { bootDev } from './_boot.js';
 //   E3 the index.jsx install deleted -> "the seam is missing with ?lookbook=1"
 //   E4 GameScene's watchContextLoss call deleted -> "the seam did not count a real context loss"
 //   E5 plausible-wrong: FrameStats not handed capActive -> "the readout's frame cap disagrees with the store"
-//   E6 the hands not hidden while posed -> "the hands stayed on the camera while posed"
+//   E6 the hands not hidden while posed -> "the hands stayed mounted while posed"
 //   plus an identity mutant (a comment edit in render/lookbookSeam.js) that must SURVIVE.
 //
 // BLIND SPOT: this is Chromium on the DEV server with the CI software renderer. Whether the probe gets a REAL GPU, and
@@ -73,14 +74,14 @@ test('lookbook seam: absent without the parameter; pose pins the live camera, se
   }
   expect(held, 'SETUP: the seam\'s play() never held the input gate live').toBeGreaterThanOrEqual(2);
 
-  // 2. The pose pins the live camera and holds; the hands leave it; clear() hands it back.
+  // 2. The pose pins the live camera and holds; the hands unmount; clear() hands it back. The hands live in the
+  // viewmodel scene (render/viewmodel.js), so they are counted there through the seam, not on the camera.
   const cam = () => page.evaluate(() => {
     const c = window.__threeCamera;
-    let n = 0;
-    c.traverse(() => { n += 1; });
-    return { p: c.position.toArray(), nodes: n };
+    return { p: c.position.toArray(), nodes: window.__craftyLookbook.info().handNodes };
   });
   const free = await cam();
+  expect(free.nodes, `SETUP: no hands mounted before the pose, so their leaving cannot be seen: ${JSON.stringify(free)}`).toBeGreaterThan(0);
   await page.evaluate((p) => window.__craftyLookbook.pose(p), HEARTH);
   await page.waitForTimeout(800);
   const posed = await cam();
@@ -88,7 +89,7 @@ test('lookbook seam: absent without the parameter; pose pins the live camera, se
   await page.waitForTimeout(1200);
   const later = await cam();
   expect(dist(later.p, HEARTH.position), `the pose did not HOLD — the follow-cam pulled it back: ${JSON.stringify({ posed, later })}`).toBeLessThan(0.01);
-  expect(later.nodes, `the hands stayed on the camera while posed (${free.nodes} nodes free, ${later.nodes} posed)`).toBeLessThan(free.nodes);
+  expect(later.nodes, `the hands stayed mounted while posed (${free.nodes} nodes free, ${later.nodes} posed)`).toBe(0);
 
   await page.evaluate(() => window.__craftyLookbook.clear());
   await page.waitForTimeout(1200);

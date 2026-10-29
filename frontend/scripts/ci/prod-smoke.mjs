@@ -254,7 +254,9 @@ export function mipVerdict(reading, { size, layers, chain }) {
  * has gone by the read depends on how fast SwiftShader draws, which made "5 of 89 gave no LINK_STATUS" a flake. So the
  * recorder reads each program's status at its first useProgram (three has read it by then, so nothing new stalls) and
  * remembers each context the page loses through WEBGL_lose_context. A program on such a context keeps its first-use
- * status; one on a context lost any other way still reads as unread, and the verdict says so.
+ * status; one on a context lost any other way still reads as unread, and the verdict says so. A program that kept its
+ * first-use status is never counted as drawn and its uniforms are not read: its context is gone, or was restored with
+ * new programs (game/contextRecovery.js), and either way the old program answers nothing.
  *
  * The programs this repo patches are named by a line its patch adds (`mark`) and must be linked AND drawn, with the
  * uniforms their materials upload. The ocean draws only where water is within reach of the camera (render/Ocean.jsx,
@@ -348,7 +350,7 @@ export function readProgramLinks(watched = [], sink = globalThis) {
       const programLog = e.deleted ? e.deleted.log : String(gl.getProgramInfoLog(e.program) || '');
       out.log = [...shaderLog, programLog].filter(Boolean).join(' | ').replace(/\s+/g, ' ').trim().slice(0, 400);
     }
-    if (out.linked === true && out.used && !out.deleted) {
+    if (out.linked === true && out.used && !out.deleted && !retired) {
       out.uniforms = {};
       for (const w of watched) {
         if (!e.hits.includes(w.name)) continue;
@@ -381,8 +383,8 @@ export function programVerdict(readings, watched = WATCHED_PROGRAMS) {
   for (const w of watched) {
     const mine = readings.filter((r) => r.hits.includes(w.name));
     if (!mine.length) return fail(`COULD NOT CHECK the ${w.name} — no program carrying \`${w.mark}\` was linked`, true);
-    const drawn = mine.filter((r) => r.used && !r.deleted);
-    if (!drawn.length) return fail(`COULD NOT CHECK the ${w.name} — ${mine.length} program(s) linked, none drawn`, true);
+    const drawn = mine.filter((r) => r.used && !r.deleted && !r.retired);
+    if (!drawn.length) return fail(`COULD NOT CHECK the ${w.name} — ${mine.length} program(s) linked, none drawn in a live context`, true);
     for (const r of drawn) {
       for (const [name, want] of Object.entries(w.uniforms || {})) {
         const got = r.uniforms?.[name];

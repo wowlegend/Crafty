@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from '../game/spellVisualProfiles';
@@ -8,6 +8,7 @@ import { isCaptureMode } from '../devtest/captureMode';
 // Every projectile and every impact mounted its own pointLight: from the fixed light pool now (render/lightPool.jsx),
 // so a cast changes no light count and re-links no shader. The impact's fade still drives its light through the ref.
 import { PooledLight } from './lightPool.jsx';
+import { makeHeldMaterial } from './viewmodel.js';
 
 // v7-S3.4/S3.5: per-element silhouette geometries, built ONCE at module load (deterministic, capture-safe).
 const FIRE_TEARDROP = buildFireTeardrop();
@@ -749,8 +750,14 @@ export const MagicWand = React.memo(({ wandType = 'fireball', position = [0, 0, 
   const wandRef = useRef();
   const gemRef = useRef();
 
-
   const config = WAND_CONFIGS[wandType] || WAND_CONFIGS.fireball;
+  // The wand is held in the viewmodel (render/playerRender.jsx), so its wood and tip take the hands' value floor and
+  // read at midnight like the gauntlets (render/viewmodel.js makeHeldMaterial).
+  const mats = useMemo(
+    () => ({ handle: makeHeldMaterial(config.handleColor), tip: makeHeldMaterial(config.tipColor) }),
+    [config],
+  );
+  useEffect(() => () => { mats.handle.dispose(); mats.tip.dispose(); }, [mats]);
 
   useFrame((state) => {
     if (wandRef.current) {
@@ -766,14 +773,12 @@ export const MagicWand = React.memo(({ wandType = 'fireball', position = [0, 0, 
 
   return (
     <group ref={wandRef} position={position} rotation={rotation}>
-      <mesh position={[0, -0.4, 0]}>
+      <mesh position={[0, -0.4, 0]} material={mats.handle}>
         <cylinderGeometry args={[0.03, 0.05, 0.8, 8]} />
-        <meshStandardMaterial roughness={0.8} metalness={0.1} color={config.handleColor} />
       </mesh>
 
-      <mesh position={[0, 0.1, 0]}>
+      <mesh position={[0, 0.1, 0]} material={mats.tip}>
         <cylinderGeometry args={[0.02, 0.04, 0.3, 8]} />
-        <meshStandardMaterial roughness={0.8} metalness={0.1} color={config.tipColor} />
       </mesh>
 
       <mesh ref={gemRef} position={[0, 0.3, 0]}>
@@ -782,15 +787,6 @@ export const MagicWand = React.memo(({ wandType = 'fireball', position = [0, 0, 
           color={config.gemColor}
           transparent
           opacity={0.9}
-        />
-      </mesh>
-
-      <mesh position={[0, 0.3, 0]}>
-        <sphereGeometry args={[0.15, 8, 8]} />
-        <meshBasicMaterial
-          color={config.auraColor}
-          transparent
-          opacity={0.3}
         />
       </mesh>
     </group>

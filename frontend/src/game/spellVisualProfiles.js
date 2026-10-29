@@ -99,31 +99,27 @@ export const _defaultEnergy = {
   capturePhase: 0.5, shape: 'sphere', trail: 'embers', impact: 'burst', motion: 'pulse', glowShape: 'sphere',
 };
 
-// Wand mesh: the handle stays a neutral material; the tip/gem/aura carry the element IDENTITY
+// Wand mesh: the handle stays a neutral material; the tip and gem carry the element IDENTITY
 // from MAGIC (B2 unify — was legacy-drifted per wand).
 export const WAND_CONFIGS = {
   fireball: {
     handleColor: '#8B4513',
     tipColor: MAGIC.fire,
-    gemColor: MAGIC.fire,
-    auraColor: MAGIC.fire
+    gemColor: MAGIC.fire
   },
   iceball: {
     handleColor: '#4169E1',
     tipColor: MAGIC.ice,
-    gemColor: MAGIC.ice,
-    auraColor: MAGIC.ice
+    gemColor: MAGIC.ice
   },
   lightning: {
     handleColor: '#B8923A',
     tipColor: MAGIC.lightning,
-    gemColor: MAGIC.lightning,
-    auraColor: MAGIC.lightning
+    gemColor: MAGIC.lightning
   },
   arcane: {
     handleColor: '#5B2E86',
     tipColor: MAGIC.arcane,
-    gemColor: MAGIC.arcane,
-    auraColor: MAGIC.arcane
+    gemColor: MAGIC.arcane
   }
 };
