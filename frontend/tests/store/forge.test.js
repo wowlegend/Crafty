@@ -23,7 +23,12 @@ const FIXTURE = JSON.parse(readFileSync(resolve(HERE, '../fixtures/pre-cut-save.
 const S = () => useGameStore.getState();
 const onDisk = () => JSON.parse(JSON.stringify(buildSaveData(S(), { position: { x: 0, y: 18, z: 0 } })));
 const offer = (line) => forgeOffers({ inventory: S().inventory, coins: S().coins, equipment: S().equipment, relicTiers: S().relicTiers }).find((o) => o.line === line);
-const meleeBase = () => solveMeleeDamage({ ...S().getEffectiveAttributes(), agility: 0 }, getWeaponBaseDamage(S().equipment.weapon)).damage;
+// A swing's damage with the crit roll pinned to a miss, so a crit cannot decide a comparison of two blades.
+const meleeBase = () => {
+  const random = Math.random;
+  Math.random = () => 0.999;
+  try { return solveMeleeDamage(S().getEffectiveAttributes(), getWeaponBaseDamage(S().equipment.weapon)).damage; } finally { Math.random = random; }
+};
 
 beforeEach(() => {
   useGameStore.setState(useGameStore.getInitialState(), true);
