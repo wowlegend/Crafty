@@ -92,7 +92,7 @@ describe('hub NPC spawn + AI-skip', () => {
     }
     // Presence before absence: the same walker finds the live query readers it is meant to see.
     expect(carriersOf(/\bmobsQuery\.entities\b/), 'SETUP: the walker sees no reader of the live mob query')
-      .toEqual(expect.arrayContaining(['HUD.jsx', 'ui/RadialMinimap.jsx', 'input/talk.js']));
+      .toEqual(expect.arrayContaining(['ui/compassMarkers.js', 'ui/RadialMinimap.jsx', 'input/talk.js']));
     expect(carriersOf(/\b(mobEntities|npcEntities|setMobEntities|setNpcEntities)\b/),
       'a module reads or writes a store copy of the mobs again').toEqual([]);
   });

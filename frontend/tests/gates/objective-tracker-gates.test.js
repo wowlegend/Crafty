@@ -18,7 +18,7 @@ describe('spawn-direction ObjectiveTracker', () => {
   // when the tracker's write-on-change lines (plan 2026-10-27-crafty-steady-cool item f) pushed its own capture guard
   // past char 2200 — the gate was measuring the component's LENGTH, not its content (gates-and-probes 4b: a slice
   // bounded by unique landmarks).
-  const end = i > -1 ? hud.indexOf('const Compass = React.memo', i) : -1;
+  const end = i > -1 ? hud.indexOf('const ImbueTell = React.memo', i) : -1;
   const block = i > -1 && end > i ? hud.slice(i, end) : '';
 
   it('the ObjectiveTracker component exists', () => {

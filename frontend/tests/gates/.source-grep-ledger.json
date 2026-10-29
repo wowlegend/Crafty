@@ -1,5 +1,5 @@
 {
-  "_count": 101,
+  "_count": 98,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -15,7 +15,6 @@
     "tests/gates/biome-flora-gates.test.js",
     "tests/gates/biome-foliage-gates.test.js",
     "tests/gates/biome-table-gates.test.js",
-    "tests/gates/blight-marker-gates.test.js",
     "tests/gates/blight-monolith-gates.test.js",
     "tests/gates/block-debris-gates.test.js",
     "tests/gates/boot-chrome-gate.test.js",
@@ -28,7 +27,6 @@
     "tests/gates/chrome-brand-conformance-gates.test.js",
     "tests/gates/combat-keybind-gates.test.js",
     "tests/gates/combat-log-gates.test.js",
-    "tests/gates/compass-hearth-gates.test.js",
     "tests/gates/danger-bridge-gates.test.js",
     "tests/gates/daynight-audio-gates.test.js",
     "tests/gates/death-beats-gates.test.js",
@@ -79,7 +77,6 @@
     "tests/gates/save-slot-ownership-gates.test.js",
     "tests/gates/settings-a11y-gates.test.js",
     "tests/gates/shrine-chest-gates.test.js",
-    "tests/gates/shrine-marker-gates.test.js",
     "tests/gates/siege-gates.test.js",
     "tests/gates/siege-warning-gates.test.js",
     "tests/gates/spatial-sfx-bus-gates.test.js",

@@ -1,5 +1,4 @@
 import { useGameStore } from './store/useGameStore';
-import { mobsQuery } from './ecs/world';
 import { isCaptureMode } from './devtest/captureMode';
 import { bearingToMarker, bearingDeg } from './game/compass';
 import { nearestLandmark } from './world/shrines.js';
@@ -34,6 +33,7 @@ import { SurvivalWarning } from './ui/SurvivalWarning';
 import { AbilityBar } from './ui/AbilityBar';
 import { TargetFrame } from './ui/TargetFrame';
 import { RadialMinimap } from './ui/RadialMinimap';
+import { Compass } from './ui/Compass.jsx';
 import { Panel, Toast, Icon } from './ui/primitives/index.js';
 import { EmberBar } from './ui/EmberBar.jsx';
 import { subscribeHudTick } from './ui/hudTicker.js';
@@ -75,9 +75,6 @@ export function WindupChevronsSlot() {
 // store subscription here is fine + Game-Loop-Isolation-safe). Gated on coins > 0
 // so the default-zero wallet renders NOTHING -- the capture harness never grants
 // coins, so the explore-day/night baselines stay byte-identical (no drift).
-// shared empty-Set fallback so the per-frame compass loop doesn't allocate a new Set() each frame
-const EMPTY_SET = new Set();
-
 const CoinReadout = React.memo(() => {
   const coins = useGameStore((s) => s.coins);
   if (!coins || coins <= 0) return null;
@@ -252,258 +249,16 @@ export const ObjectiveTracker = React.memo(() => {
   );
 });
 
-const Compass = React.memo(({ treasureChests, bossSystem }) => {
-  const containerRef = useRef(null);
-  // S8b: throttle the nearest-shrine scan (nearestLandmark scans a chunk grid). The compass rAF runs
-  // every frame; the player can't outrun a shrine in <1s, so recompute at most ~once a second.
-  const shrineCache = useRef({ t: 0, shrine: null });
-  // The markup last written, kept ACROSS effect runs. The effect re-runs whenever treasureChests or bossSystem change
-  // identity, and a per-run `lastHtml = null` made every re-run rewrite markup identical to what was on screen: the
-  // hud-churn e2e's identity run counted 2 such rewrites in 3 s standing still, and with the writer cut to "only the
-  // first write of a run" it still counted 2 writes — one per re-run (2026-10-27).
-  const lastHtml = useRef(null);
-
-  useEffect(() => {
-    let unsubscribe = null;
-
-    const updateCompass = () => {
-      // Dev capture-determinism: in capture mode the follow-cam is pinned, so the
-      // compass markers are fully determined by the frozen camera + marker positions.
-      // Render ONCE and then stop ticking — a continuously running loop
-      // re-derives the float `left: %` each frame and rounds to sub-pixel-different
-      // marker x-positions between runs (a ~500px top-of-frame flicker). Inert in
-      // normal gameplay: the compass ticks on every HUD frame (ui/hudTicker.js — the capped
-      // canvas's rendered frames, or rAF under Unlimited; plan 2026-10-27-crafty-steady-cool item f).
-      if (isCaptureMode() && unsubscribe) { unsubscribe(); unsubscribe = null; }
-
-      const container = containerRef.current;
-      if (!container) return;
-
-      const state = useGameStore.getState();
-      const camera = state.gameCamera;
-      const playerPos = state.playerPosition;
-      if (!camera || !camera.matrixWorld || !playerPos) return;
-
-      // Extract horizontal heading from the camera's matrixWorld
-      const el = camera.matrixWorld.elements;
-      const fx = -el[8];
-      const fz = -el[10];
-      const heading = Math.atan2(fx, -fz);
-
-      // 180 degrees field of view (visible markers)
-      const fov = Math.PI; 
-      
-      // Cardinal points definitions
-      const cardinals = [
-        { label: 'N', angle: 0 },
-        { label: 'NE', angle: Math.PI / 4 },
-        { label: 'E', angle: Math.PI / 2 },
-        { label: 'SE', angle: 3 * Math.PI / 4 },
-        { label: 'S', angle: Math.PI },
-        { label: 'SW', angle: -3 * Math.PI / 4 },
-        { label: 'W', angle: -Math.PI / 2 },
-        { label: 'NW', angle: -Math.PI / 4 },
-      ];
-
-      const markersHtml = [];
-
-      // 1. Render Cardinal Ticks
-      cardinals.forEach(c => {
-        let diff = c.angle - heading;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-
-        if (Math.abs(diff) < fov / 2) {
-          const pct = ((diff / (fov / 2)) * 50) + 50; // Map [-fov/2, fov/2] to [0, 100]
-          markersHtml.push(`
-            <div class="absolute top-0 transform -translate-x-1/2 flex flex-col items-center" style="left: ${pct}%">
-              <span class="text-[10px] font-bold text-slate-200 tracking-wider">${c.label}</span>
-              <div class="w-[1px] h-1.5 bg-slate-400/50 mt-0.5"></div>
-            </div>
-          `);
-        }
-      });
-
-      // 2. Render Boss Marker
-      const bossActive = bossSystem?.bossActive;
-      const getBossPosition = state.getBossPosition;
-      const bossPos = (bossActive && getBossPosition) ? getBossPosition() : null;
-      if (bossPos) {
-        const dx = bossPos[0] - playerPos.x;
-        const dz = bossPos[2] - playerPos.z;
-        const dist = Math.round(Math.sqrt(dx * dx + dz * dz));
-        const targetAngle = Math.atan2(dx, -dz);
-        
-        let diff = targetAngle - heading;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-
-        if (Math.abs(diff) < fov / 2) {
-          const pct = ((diff / (fov / 2)) * 50) + 50;
-          markersHtml.push(`
-            <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center z-10" style="left: ${pct}%">
-              <span class="text-[9px] font-bold text-rose-500 animate-pulse drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]">BOSS (${dist}m)</span>
-              <div class="w-1.5 h-1.5 bg-rose-500 rounded-full mt-0.5 animate-ping"></div>
-            </div>
-          `);
-        }
-      }
-
-      // 2b. Render HOME (Hearth) marker — always point back to the home anchor at world origin
-      // (world/homeAnchor.js stamps the plinth at 0,0) so a built base is findable: get home before night.
-      // Capture-suppressed (like the boss/chest markers) -> the explore frames stay byte-identical.
-      if (!isCaptureMode()) {
-        const home = bearingToMarker(0, 0, playerPos.x, playerPos.z, heading, fov);
-        const homeDist = Math.round(home.dist);
-        if (home.inView && homeDist > 6) { // hide while standing on the Hearth
-          const pct = home.pct;
-          markersHtml.push(`
-            <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center z-10" style="left: ${pct}%">
-              <span class="text-[9px] font-bold text-amber-400 drop-shadow-[0_0_4px_rgba(251,191,36,0.5)]">HOME (${homeDist}m)</span>
-              <div class="w-1.5 h-1.5 bg-amber-400 rotate-45 mt-0.5"></div>
-            </div>
-          `);
-        }
-      }
-
-      // 2c. Render nearest-SHRINE marker — the Ember-Frontier "go there" destination (the deterministic
-      // landmarks are now navigable shrines). Cyan to match the in-world beacon (#46E0FF). Capture-
-      // suppressed like HOME/boss/chest so explore frames stay byte-identical. The chunk-grid scan is
-      // throttled to ~1s (shrineCache) so the every-frame compass stays cheap. Inline color avoids a
-      // Tailwind JIT purge of a dynamic class.
-      if (!isCaptureMode()) {
-        const now = performance.now();
-        if (now - shrineCache.current.t > 750) {
-          shrineCache.current = { t: now, shrine: nearestLandmark(playerPos.x, playerPos.z) };
-        }
-        const s = shrineCache.current.shrine;
-        if (s) {
-          const sb = bearingToMarker(s.worldX, s.worldZ, playerPos.x, playerPos.z, heading, fov);
-          const sDist = Math.round(sb.dist);
-          if (sb.inView && sDist > 8) { // hide while standing at the shrine
-            markersHtml.push(`
-              <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center z-10" style="left: ${sb.pct}%">
-                <span class="text-[9px] font-bold" style="color:#46E0FF;text-shadow:0 0 4px rgba(70,224,255,0.6)">SHRINE (${sDist}m)</span>
-                <div class="w-1.5 h-1.5 mt-0.5" style="background:#46E0FF;clip-path:polygon(50% 0,100% 100%,0 100%)"></div>
-              </div>
-            `);
-          }
-        }
-      }
-
-      // 2d. Render the BLIGHT HEART marker (S9) — the FIXED far-frontier climax lair, the campaign's
-      // north star you see from early on (foreshadow). Obsidian-violet (#A24BFF) to read as ominous +
-      // distinct from HOME(amber)/BOSS(rose)/SHRINE(cyan). Capture-suppressed like the others. Fixed
-      // coord -> no throttle needed (one bearingToMarker call). Inline color avoids a Tailwind JIT purge.
-      if (!isCaptureMode()) {
-        const bh = blightHeartSite();
-        const bm = bearingToMarker(bh.x, bh.z, playerPos.x, playerPos.z, heading, fov);
-        const bDist = Math.round(bm.dist);
-        if (bm.inView && bDist > 12) {
-          markersHtml.push(`
-            <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center z-10" style="left: ${bm.pct}%">
-              <span class="text-[9px] font-bold" style="color:#A24BFF;text-shadow:0 0 5px rgba(162,75,255,0.7)">BLIGHT HEART (${bDist}m)</span>
-              <div class="w-1.5 h-1.5 mt-0.5 rotate-45" style="background:#A24BFF"></div>
-            </div>
-          `);
-        }
-      }
-
-      // 3. Render Chest Markers.
-      // Dev capture mode: skip chest markers entirely. Chests spawn at a RANDOM
-      // angle/distance and the spawn effect can fire on mount BEFORE the capture flag
-      // flips, so a stray chest leaks a run-varying "Chest (Nm)" label + marker x-pos
-      // into the compass. No chest markers in capture = deterministic frame. The
-      // character-closeup/boss-closeup fixtures hide the whole HUD, so this is purely
-      // the explore-* compass. No-op in normal gameplay.
-      const chests = isCaptureMode() ? [] : (treasureChests?.chests || []);
-      const openedChestIds = treasureChests?.openedChestIds || EMPTY_SET;
-      chests.forEach(chest => {
-        const isOpened = openedChestIds instanceof Set ? openedChestIds.has(chest.id) : openedChestIds.includes(chest.id);
-        if (isOpened) return;
-        
-        const dx = chest.position[0] - playerPos.x;
-        const dz = chest.position[2] - playerPos.z;
-        const dist = Math.round(Math.sqrt(dx * dx + dz * dz));
-        if (dist > 80) return; // Hide distant chests
-
-        const targetAngle = Math.atan2(dx, -dz);
-        let diff = targetAngle - heading;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-
-        if (Math.abs(diff) < fov / 2) {
-          const pct = ((diff / (fov / 2)) * 50) + 50;
-          markersHtml.push(`
-            <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center" style="left: ${pct}%">
-              <span class="text-[8px] font-semibold text-amber-400 drop-shadow-[0_0_2px_rgba(251,191,36,0.3)]">Chest (${dist}m)</span>
-              <div class="w-1 h-1 bg-amber-400 rounded-full mt-1"></div>
-            </div>
-          `);
-        }
-      });
-
-      // 4. Render Villager NPC Markers
-      mobsQuery.entities.forEach(mob => {
-        if (mob.type !== 'villager' || !(mob.health > 0)) return;
-        const dx = mob.position.x - playerPos.x;
-        const dz = mob.position.z - playerPos.z;
-        const dist = Math.round(Math.sqrt(dx * dx + dz * dz));
-        if (dist > 60) return; // Hide distant NPCs
-
-        const targetAngle = Math.atan2(dx, -dz);
-        let diff = targetAngle - heading;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-
-        if (Math.abs(diff) < fov / 2) {
-          const pct = ((diff / (fov / 2)) * 50) + 50;
-          markersHtml.push(`
-            <div class="absolute top-0.5 transform -translate-x-1/2 flex flex-col items-center" style="left: ${pct}%">
-              <span class="text-[8px] font-semibold text-emerald-400 drop-shadow-[0_0_2px_rgba(52,211,153,0.3)]">NPC (${dist}m)</span>
-              <div class="w-1 h-1 bg-emerald-400 rounded-full mt-1"></div>
-            </div>
-          `);
-        }
-      });
-
-      // Written only when it changed: standing still, the markers are identical frame after frame, and rebuilding
-      // them re-parsed ~20 elements and re-ran style and layout on every display frame (120 a second on a ProMotion
-      // panel) for nothing (plan 2026-09-23-crafty-perf-heat-ipad, Task 6).
-      const html = markersHtml.join('');
-      if (html !== lastHtml.current) {
-        lastHtml.current = html;
-        container.innerHTML = html;
-      }
-    };
-
-    updateCompass();
-    if (!isCaptureMode()) unsubscribe = subscribeHudTick(updateCompass);
-    return () => { if (unsubscribe) unsubscribe(); };
-  }, [treasureChests, bossSystem]);
-
-  const imbueArmed = useGameStore((s) => s.imbueArmed); // S2-B4-M5: the armed-reticle tell (edge-written)
-
+// S2-B4-M5: the IMBUE tell, a white-gold ring at screen centre while the latch is armed (it haloes the crosshair).
+// imbueArmed is edge-written, so this re-renders only on the edge.
+const ImbueTell = React.memo(() => {
+  const imbueArmed = useGameStore((s) => s.imbueArmed);
+  if (!imbueArmed) return null;
   return (
-    <>
-    {/* S2-B4-M5: the IMBUE tell — a white-gold ring at screen center while the latch is armed
-        (it haloes the pointer-locked plus crosshair below). imbueArmed is edge-written only and
-        never set in capture, so the baselines are untouched. */}
-    {imbueArmed && (
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center">
-        <div className="w-5 h-5 rounded-full border-2 border-resonance shadow-elev-sm"></div>
-        <span className="mt-1 text-[10px] font-bold tracking-widest text-resonance">IMBUE</span>
-      </div>
-    )}
-    <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
-      <div data-testid="hud-compass" className="w-[320px] h-[34px] bg-panel-frame border-chrome border-ink rounded-md shadow-elev-md relative flex items-center justify-center overflow-hidden">
-        {/* Alignment reticle line */}
-        <div className="absolute top-0 bottom-0 w-[1.5px] bg-info z-20"></div>
-        {/* Scrolling Marker track */}
-        <div ref={containerRef} data-testid="compass-track" className="w-[280px] h-full relative overflow-hidden font-mono"></div>
-      </div>
+    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center">
+      <div className="w-5 h-5 rounded-full border-2 border-resonance shadow-elev-sm"></div>
+      <span className="mt-1 text-[10px] font-bold tracking-widest text-resonance">IMBUE</span>
     </div>
-    </>
   );
 });
 
@@ -529,6 +284,7 @@ export function HUD({
             {!isTouchUIMode() && <ControlsSheet />}{/* W3 M-HUD.9: keyboard cheatsheet demoted to auto-fade + H-toggle (desktop-only; touch has on-screen controls) */}
 
             <Compass treasureChests={treasureChests} bossSystem={bossSystem} />
+            <ImbueTell />
 
             <ObjectiveTracker />
 

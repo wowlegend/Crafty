@@ -51,8 +51,9 @@ describe('the inverse token is not applied outside a gold fill', () => {
       }
     }
     // The denominator. A scan that matched nothing would report zero offenders and look identical to a
-    // clean codebase — which is this project's signature defect.
-    expect(scanned, 'no text-text-inverse usage found at all — the scan or the files moved').toBeGreaterThan(3);
+    // clean codebase — which is this project's signature defect. Three usages are left since the level card's gold
+    // LV badge went with the card into the hotbar's XP edge (the HUD lane, 2026-10-29).
+    expect(scanned, 'no text-text-inverse usage found at all — the scan or the files moved').toBeGreaterThan(2);
     expect(
       offenders,
       'text-text-inverse (#231708) applied without a gold background. On a dark surface it renders at ' +

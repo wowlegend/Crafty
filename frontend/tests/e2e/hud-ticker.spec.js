@@ -14,7 +14,7 @@ import { bootDev, startPlayActive } from './_boot.js';
 // Intended batch, via scripts/dev/mutate-e2e.sh:
 //   E1 FrameCap never claims the ticker (`const release = null;`, FrameCap.jsx)        -> RED expected: "HUD rAF callbacks under the cap"
 //   E2 the ticker's release does not restart its rAF (hudTicker.js) — the F10 freeze     -> RED expected: "did not follow the camera under Unlimited"
-//   E3 the Compass never subscribes to the ticker (HUD.jsx)                              -> RED expected: "did not follow the camera under the cap"
+//   E3 the Compass never subscribes to the ticker (ui/Compass.jsx)                       -> RED expected: "did not follow the camera under the cap"
 //   E0 identity (a comment edit in hudTicker.js)                                         -> must SURVIVE
 test('the compass follows the camera under the cap and under Unlimited, and the HUD runs no rAF loop of its own under the cap', async ({ page }) => {
   test.setTimeout(300000);
@@ -36,7 +36,12 @@ test('the compass follows the camera under the cap and under Unlimited, and the 
     const el = document.querySelector('[data-testid="compass-track"]');
     window.__compassWrites = 0;
     window.__compassFound = !!el;
-    if (el) new MutationObserver(() => { window.__compassWrites += 1; }).observe(el, { childList: true });
+    // The compass is a pool of marker slots moved by style writes and relabelled by text writes (ui/Compass.jsx), so
+    // every kind of write under the strip counts.
+    if (el) {
+      new MutationObserver((records) => { window.__compassWrites += records.length; })
+        .observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+    }
   });
   expect(await page.evaluate(() => window.__compassFound), 'SETUP: no compass strip on screen — the HUD is not mounted').toBe(true);
 
@@ -55,7 +60,7 @@ test('the compass follows the camera under the cap and under Unlimited, and the 
     const a = await page.evaluate(() => ({ ...window.__rafBySource }));
     await page.waitForTimeout(ms);
     const b = await page.evaluate(() => ({ ...window.__rafBySource }));
-    const hud = ['HUD.jsx', 'ui/AbilityBar.jsx', 'ui/hudTicker.js'].reduce((n, k) => n + ((b[k] || 0) - (a[k] || 0)), 0);
+    const hud = ['HUD.jsx', 'ui/Compass.jsx', 'ui/AbilityBar.jsx', 'ui/hudTicker.js'].reduce((n, k) => n + ((b[k] || 0) - (a[k] || 0)), 0);
     return { hud, all: b };
   };
 
