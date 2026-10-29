@@ -3,7 +3,8 @@
 The cursor only: the command session's live task table and the next step. Open work lives in `memory/registry.jsonl`;
 live state (CI on main and HEAD, open PRs, unmerged worktrees, the deployed sha) is `cd frontend && npm run orient`.
 This file's history is in git: `git log -p -- memory/ACTIVE_PLAN.md`; the last full version before the cut to a
-cursor is `git show 2fef2f32:memory/ACTIVE_PLAN.md`. Every open item it held has a registry row.
+cursor is `git show 2fef2f32:memory/ACTIVE_PLAN.md`. Every open item the harvest rules extract from it has a registry
+row; a keyword read of the older cursors found two more, now rows too. A full read of that history was not done.
 
 **Governing:** Kevin's standing principle (DECISIONS 2026-10-28 item 14; `CLAUDE.md`): nothing is locked, full
 autonomy, Kevin reviews one page, the Command Record (`docs/superpowers/command-record.html`, published at
