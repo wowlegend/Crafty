@@ -1,12 +1,11 @@
-// The HUD chrome: MinecraftHotbar (the bottom block hotbar) and GameUI (the HUD overlay: settings, the side action
-// rail and the hotbar). Both take `gameState` as a prop, with no store coupling.
+// The HUD chrome: MinecraftHotbar (the bottom block hotbar, with the level and a 4 px XP edge along its top) and GameUI
+// (the HUD overlay: settings and the hotbar). Both take their values as props, with no store coupling. The desktop side
+// rail is gone (the HUD lane's task script, decision 3): its panels keep their keys, and touch keeps its tray.
 import React from 'react';
 import { useT } from '../i18n/i18n.js';
 import { motion } from 'framer-motion';
 import { Panel, Slot, Button, Icon } from './primitives/index.js';
-import { Package, Wand2, Grid } from 'lucide-react';
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from '../world/Blocks';
-import { isTouchUIMode } from '../input/touchDevice';
 
 // X3 — FIXED 2026-08-05, and CONFIRMED by a lived browser run before the fix was written.
 //
@@ -26,13 +25,33 @@ import { isTouchUIMode } from '../input/touchDevice';
 // on 2026-08-05 and reported: tapped "dirt" (was "grass") -> selected "grass" — swallowed. The fix followed
 // the evidence rather than the argument. That probe, which reads `selectedBlock` from the store after a real
 // touch, is the check that keeps this honest; the unit tests cover the predicate, not the wiring.
-const MinecraftHotbar = React.memo(({ gameState }) => {
+/** The share of a level's XP earned, as a CSS width: 0 to 100%, whatever the caller hands in. */
+export const xpWidth = (xpProgress) => `${Math.max(0, Math.min(100, Number(xpProgress) || 0))}%`;
+
+/** The level and the 4 px XP edge along the hotbar's top (the level card and the touch readout, folded in). It sits
+ *  above the hotbar's box rather than in it, so the hotbar's slots stay where the touch action buttons were laid out
+ *  around them, and it takes no taps. */
+const XpEdge = ({ level, xpProgress }) => {
+  const t = useT();
+  return (
+    <div data-testid="hotbar-xp-row" className="absolute left-0 right-0 bottom-full mb-1 flex items-center gap-2 px-1 pointer-events-none">
+      <span data-testid="hotbar-level" className="font-display text-sm leading-none tabular-nums text-accent-raise"
+        style={{ textShadow: '0 1px 2px rgb(var(--ui-ink))' }}>{t('hud.level', { level })}</span>
+      <div className="relative flex-1 h-1 rounded-sm bg-track overflow-hidden">
+        <div data-testid="hotbar-xp" className="absolute inset-y-0 left-0 bg-accent" style={{ width: xpWidth(xpProgress) }} />
+      </div>
+    </div>
+  );
+};
+
+const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
   if (!gameState) return null;
   // B7 (18-domain review): the 9-slot hotbar (9 × w-[62px] + gaps + padding ≈ 622px) overflowed a phone
   // viewport — ~2 slots ran off each edge, unreachable in a voxel BUILDING game. Scale it down to fit on
   // narrow screens (≤640px) while tablets/desktop keep full size; origin-bottom keeps it anchored + centered.
   return (
-    <div data-hud-interactive className="absolute bottom-4 left-1/2 transform -translate-x-1/2 origin-bottom max-[640px]:scale-[0.56] pointer-events-auto">
+    <div data-hud-interactive data-testid="hotbar" className="absolute bottom-4 left-1/2 transform -translate-x-1/2 origin-bottom max-[640px]:scale-[0.56] pointer-events-auto">
+      {level != null && <XpEdge level={level} xpProgress={xpProgress} />}
       <Panel variant="base" className="flex gap-2 p-2.5">
         {HOTBAR_BLOCKS.map((blockType, index) => {
           const blockConfig = BLOCK_TYPES[blockType];
@@ -72,7 +91,7 @@ const MinecraftHotbar = React.memo(({ gameState }) => {
   );
 });
 
-export const GameUI = ({ gameState }) => {
+export const GameUI = ({ gameState, level, xpProgress }) => {
   const t = useT();
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 pointer-events-none z-20">
@@ -83,18 +102,7 @@ export const GameUI = ({ gameState }) => {
           </Button>
         </div>
       </div>
-      <MinecraftHotbar gameState={gameState} />
-      {/* left action rail — desktop only; on touch these panel-openers move to the M2b/M3 tray
-          (kept off the thumb/look zone so the touch baseline stays clean). */}
-      {!isTouchUIMode() && (
-      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-auto">
-        <Panel variant="base" className="flex flex-col gap-2 p-2">
-          <Button variant="ghost" size="icon" aria-label={t('ui.inventory')} className="w-[42px] h-[42px]" onClick={() => gameState.setShowInventory(true)}><Package size={20} /></Button>
-          <Button variant="ghost" size="icon" aria-label={t('ui.magic')} className="w-[42px] h-[42px]" onClick={() => gameState.setShowMagic(true)}><Wand2 size={20} /></Button>
-          <Button variant="ghost" size="icon" aria-label={t('a11y.buildingTools')} className="w-[42px] h-[42px]" onClick={() => gameState.setShowBuildingTools(true)}><Grid size={20} /></Button>
-        </Panel>
-      </div>
-      )}
+      <MinecraftHotbar gameState={gameState} level={level} xpProgress={xpProgress} />
     </motion.div>
   );
 };

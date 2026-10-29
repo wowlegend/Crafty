@@ -18,7 +18,7 @@ import {
   DeathScreen,
   VictoryOverlay
 } from './GameSystems';
-import { SimpleExperienceBar, SimpleExperienceBarTouch, SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
+import { SimpleXPGainVisual, SimpleLevelUpEffect } from './SimpleExperienceSystem';
 import { QuestTracker, NotificationStack, ChestIndicator } from './QuestSystem';
 import { CombatLog } from './ui/CombatLog';
 import { BossHealthBar } from './ui/BossHealthBar';
@@ -82,7 +82,7 @@ const CoinReadout = React.memo(() => {
   const coins = useGameStore((s) => s.coins);
   if (!coins || coins <= 0) return null;
   return (
-    <div className="absolute top-3 right-4 z-20 pointer-events-none">
+    <div className="absolute top-4 right-[68px] z-20 pointer-events-none">
       <Panel variant="base" className="px-3 py-1.5 flex items-center gap-1.5">
         <Icon name="coins" size={18} className="flex-none text-warn" />
         <span className="font-bold tabular-nums text-text">{coins}</span>
@@ -125,7 +125,7 @@ const DayPhaseDial = React.memo(() => {
   // Initial values from the live clock so an isDay re-render never resets to a stale frame.
   const init = dayPhase(useGameStore.getState().gameTime, isDay);
   return (
-    <div className="absolute top-14 right-4 z-20 pointer-events-none">
+    <div data-testid="day-phase-dial" className="absolute top-[68px] right-4 z-20 pointer-events-none">
       <Panel variant="base" className="px-2 py-2 flex flex-col items-center gap-1">
         <div className="relative w-11 h-11 rounded-full border-chrome border-ink bg-slot overflow-hidden">
           {/* horizon line: above = sky (sun/moon high), below = night/ground -> the orbit reads as a sky arc */}
@@ -242,7 +242,7 @@ export const ObjectiveTracker = React.memo(() => {
   if (isCaptureMode()) return null;
 
   return (
-    <div ref={rootRef} data-testid="objective-tracker" className="absolute top-12 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+    <div ref={rootRef} data-testid="objective-tracker" className="absolute top-12 max-[640px]:top-[104px] left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
       <div className="flex items-center gap-2 px-2.5 py-1 bg-panel-raise border-chrome border-ink rounded-sm whitespace-nowrap">
         <span ref={arrowRef} className="inline-block w-2.5 h-2.5 flex-none" style={{ background: '#46E0FF', clipPath: 'polygon(50% 0,100% 100%,0 100%)' }}></span>
         <span ref={textRef} className="text-[11px] font-bold text-text">{t('hud.objectiveShrine')}</span>
@@ -525,7 +525,7 @@ export function HUD({
       <AnimatePresence>
         {isPointerLocked && gameSystems.isAlive && isWorldBuilt && (
           <>
-            <GameUI gameState={gameState} />
+            <GameUI gameState={gameState} level={experienceSystem.playerLevel} xpProgress={experienceSystem.xpProgress} />
             {!isTouchUIMode() && <ControlsSheet />}{/* W3 M-HUD.9: keyboard cheatsheet demoted to auto-fade + H-toggle (desktop-only; touch has on-screen controls) */}
 
             <Compass treasureChests={treasureChests} bossSystem={bossSystem} />
@@ -541,7 +541,9 @@ export function HUD({
                 placement). And the container is now a real `flex flex-col` column: StatBar's root is
                 `inline-flex`, so the old `space-y-2` (margin-top on inline-level boxes) laid the bars out
                 as a horizontal RIBBON — flex-col stacks them vertically. `w-44` gives all bars one width. */}
-            <div data-testid="stat-stack" className="absolute bottom-4 left-4 pointer-events-none z-20 flex flex-col gap-2 w-44">
+            {/* Where the centred hotbar would reach it (a tablet in portrait, a phone), the stack sits above the hotbar's
+                XP edge: 1040 px is the hotbar's 622 px plus this stack and its margins on both sides. */}
+            <div data-testid="stat-stack" className="absolute bottom-4 min-[641px]:max-[1040px]:bottom-[136px] max-[640px]:bottom-[96px] left-4 pointer-events-none z-20 flex flex-col gap-2 w-44">
               <PlayerHealthBar health={gameSystems.playerHealth} maxHealth={gameSystems.maxHealth} />
               <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
               <EmberBar />
@@ -550,19 +552,6 @@ export function HUD({
             {/* W3 M-HUD.9: the standalone top-center "Spell: FIREBALL (15 MP)" band is REMOVED — it
                 triple-stacked the top-center lane with the ObjectiveTracker + Compass. The active spell +
                 MP cost read off the action bar / hotbar; removing the redundant band reclaims the lane. */}
-
-            {/* the bottom-center XP bar (bottom-32, min-w-80) overlaps the touch joystick zone
-                (left-7%/bottom-13%) -> desktop-only; touch gets the compact top-right readout below (M2b) */}
-            {!isTouchUIMode() && <SimpleExperienceBar
-              level={experienceSystem.playerLevel}
-              currentXP={experienceSystem.currentXP}
-              xpRequired={experienceSystem.xpRequired}
-              xpProgress={experienceSystem.xpProgress}
-            />}
-            {isTouchUIMode() && <SimpleExperienceBarTouch
-              level={experienceSystem.playerLevel}
-              xpProgress={experienceSystem.xpProgress}
-            />}
 
             <SimpleXPGainVisual xpGains={experienceSystem.xpGains} />
 
@@ -576,7 +565,7 @@ export function HUD({
             />
 
             {!isTouchUIMode() && <RadialMinimap />}{/* W3 M-HUD.8: circular radial minimap with HOME/SHRINE/BLIGHT/NPC destination blips clamped to the rim; desktop default position (bottom-right). */}
-            {isTouchUIMode() && <RadialMinimap position="top-40 right-2" />}{/* touch placement: top-right BELOW the XP readout (top-28) — clear of the bottom joystick/action cluster + the top-left quest tracker. The map is the only wayfinding surface, so touch players need it (was desktop-only). Capture-suppressed (RadialMinimap returns null in capture), so no fixture drift. */}
+            {isTouchUIMode() && <RadialMinimap position="top-[164px] right-2" />}{/* touch placement: top-right below the day-phase dial, clear of the bottom joystick/action cluster and the top-left quest line; the map is the touch player's wayfinding surface */}
 
             {!isTouchUIMode() && <AbilityBar />}{/* W3 M-HUD.3: bottom-center cooldown-sweep action bar; bottom-4 sits in the touch joystick/action-cluster band -> desktop-only for now (M-AMBIENT cleanup gives touch its own placement) */}
 

@@ -77,7 +77,7 @@ export const AbilityBar = React.memo(() => {
   if (owned.length <= 1) return null; // only dodge -> no Aspect unlocked yet; keep HUD clean
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex gap-2">
+    <div className="absolute bottom-[132px] left-1/2 -translate-x-1/2 z-20 pointer-events-none flex gap-2">
       {owned.map((s) => (
         <div key={s.key} className="relative">
           <Slot display="flex" className="w-12 h-12 flex-col items-center justify-center">

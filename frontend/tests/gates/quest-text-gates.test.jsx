@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup, renderHook, act } from '@testing-library/react';
+import { render, screen, cleanup, renderHook, act, fireEvent } from '@testing-library/react';
 vi.mock('../../src/input/touchDevice', () => ({ isTouchUIMode: vi.fn(() => false), isTouchDevice: vi.fn(() => false) }));
 import { QuestTracker, useQuestSystem } from '../../src/QuestSystem.jsx';
 import { QuestLog } from '../../src/ui/QuestLog.jsx';
@@ -25,7 +25,12 @@ beforeEach(() => useGameStore.setState({ locale: 'en' }));
 afterEach(() => { cleanup(); useGameStore.setState({ locale: 'en' }); });
 
 describe.each([
-  ['the HUD tracker', (quests) => render(<QuestTracker quests={quests} onClaim={() => {}} />)],
+  // The tracker rests as one line (the HUD lane); opened, it lists every quest the way the log does.
+  ['the HUD tracker, opened', (quests) => {
+    const r = render(<QuestTracker quests={quests} onClaim={() => {}} />);
+    fireEvent.click(screen.getByTestId('quest-tracker-line'));
+    return r;
+  }],
   ['the quest log', (quests) => render(<QuestLog quests={quests} onClose={() => {}} />)],
 ])('%s', (_name, mount) => {
   it('shows a saved hunt under the creature\'s name, and a plain quest as authored', () => {

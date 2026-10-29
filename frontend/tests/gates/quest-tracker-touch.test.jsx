@@ -2,44 +2,65 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-// Touch HUD declutter (2026-06-14): on a phone the QuestTracker (top-left, maxWidth 280) ate ~60% of the
-// screen width AND its pointer-events-auto body covered the top-left of the move-joystick zone, and the
-// claim button said "Press Q" (no keyboard on touch). Fix: collapse-by-default + narrower + a keyboard-free
-// claim label, all gated on isTouchUIMode(). Desktop is unchanged. Behavioral test (real render, mocked
-// touch mode) — the touch-probe is the live proof; this locks the regression cheaply on every commit.
+// THE QUEST TRACKER RESTS AS ONE LINE (the HUD lane's task script, decision 3). It was a 280 px panel of every active
+// quest, open by default on desktop (collapsed on touch since 2026-06-14, when on a phone it ate ~60% of the width and
+// covered the top-left of the move-joystick zone). Now every device rests on one line, the lead quest (the first not
+// yet claimed) with its objective and count, and opens to the full list on a click, a tap or a hover. The claim stays
+// one press away: "Press Q" on desktop, a keyboard-free "Claim" on touch.
 vi.mock('../../src/input/touchDevice', () => ({ isTouchUIMode: vi.fn(() => false), isTouchDevice: vi.fn(() => false) }));
 import { isTouchUIMode } from '../../src/input/touchDevice';
-import { QuestTracker } from '../../src/QuestSystem.jsx';
+import { QuestTracker, leadQuest } from '../../src/QuestSystem.jsx';
 
-const OPEN = [{ id: 'q1', title: 'First Blood', description: 'Defeat your first mob', icon: 'sword', progress: 0, target: 1, completed: false, claimed: false }];
-const DONE = [{ id: 'q2', title: 'Hunter', description: 'Defeat 5 mobs', icon: 'sword', progress: 5, target: 5, completed: true, claimed: false }];
+const q = (id, title, more = {}) => ({ id, title, description: `Do ${title}`, icon: 'sword', progress: 0, target: 3, completed: false, claimed: false, ...more });
+const THREE = [q('q1', 'First Blood'), q('q2', 'Hunter'), q('q3', 'Gatherer')];
+const DONE = [q('q2', 'Hunter', { progress: 5, target: 5, completed: true })];
 
 afterEach(cleanup);
 
-describe('QuestTracker — touch HUD declutter', () => {
-  it('on DESKTOP the quest log is expanded by default (body visible)', () => {
-    isTouchUIMode.mockReturnValue(false);
-    render(<QuestTracker quests={OPEN} onClaim={() => {}} />);
-    expect(screen.getByText('First Blood')).toBeTruthy();
+describe.each([['desktop', false], ['touch', true]])('the quest tracker on %s', (_name, touch) => {
+  it('rests as ONE objective line, the lead quest with its count; the other two only after it opens', () => {
+    isTouchUIMode.mockReturnValue(touch);
+    render(<QuestTracker quests={THREE} onClaim={() => {}} />);
+    const line = screen.getByTestId('quest-tracker-line');
+    expect(line.textContent, 'the line names the lead quest').toContain('First Blood');
+    expect(line.textContent).toContain('0/3');
+    expect(line.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('Hunter'), 'a second quest shows at rest').toBeNull();
+    expect(screen.queryByText('Gatherer'), 'a third quest shows at rest').toBeNull();
+    fireEvent.click(line);
+    expect(screen.getByTestId('quest-tracker-list')).toBeTruthy();
+    expect(screen.getByText('Hunter')).toBeTruthy();
+    expect(screen.getByText('Gatherer')).toBeTruthy();
   });
 
-  it('on TOUCH the quest log is COLLAPSED by default (header only — it no longer eats the phone HUD)', () => {
-    isTouchUIMode.mockReturnValue(true);
-    render(<QuestTracker quests={OPEN} onClaim={() => {}} />);
-    expect(screen.getByText('Quests')).toBeTruthy();        // the tap-to-expand header chip stays
-    expect(screen.queryByText('First Blood')).toBeNull();    // the body is hidden by default
+  it('opens while the pointer rests over it, and closes when it leaves', () => {
+    isTouchUIMode.mockReturnValue(touch);
+    render(<QuestTracker quests={THREE} onClaim={() => {}} />);
+    fireEvent.mouseEnter(screen.getByTestId('quest-tracker'));
+    expect(screen.getByText('Gatherer')).toBeTruthy();
+    fireEvent.mouseLeave(screen.getByTestId('quest-tracker'));
+    expect(screen.getByTestId('quest-tracker-line').getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+describe('the claim, one press from the line', () => {
+  it('the lead is the first quest not yet claimed', () => {
+    expect(leadQuest([q('a', 'A', { claimed: true }), q('b', 'B')]).id).toBe('b');
+    expect(leadQuest([q('a', 'A', { claimed: true })])).toBeNull();
+    expect(leadQuest(undefined)).toBeNull();
   });
 
-  it('the claim affordance is "Press Q" on desktop', () => {
+  it('the claim affordance is "Press Q" on desktop, beside the line', () => {
     isTouchUIMode.mockReturnValue(false);
-    render(<QuestTracker quests={DONE} onClaim={() => {}} />);
-    expect(screen.getByText('Press Q')).toBeTruthy();
+    const onClaim = vi.fn();
+    render(<QuestTracker quests={DONE} onClaim={onClaim} />);
+    fireEvent.click(screen.getByText('Press Q'));
+    expect(onClaim).toHaveBeenCalledWith('q2');
   });
 
   it('the claim affordance is keyboard-free ("Claim") on touch', () => {
     isTouchUIMode.mockReturnValue(true);
     render(<QuestTracker quests={DONE} onClaim={() => {}} />);
-    fireEvent.click(screen.getByText('Quests')); // expand the collapsed-on-touch panel
     expect(screen.getByText('Claim')).toBeTruthy();
     expect(screen.queryByText('Press Q')).toBeNull();
   });

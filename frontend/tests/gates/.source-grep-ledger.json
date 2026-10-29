@@ -1,5 +1,5 @@
 {
-  "_count": 102,
+  "_count": 101,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -96,7 +96,6 @@
     "tests/gates/touch-dodge-gates.test.js",
     "tests/gates/touch-purity-gates.test.js",
     "tests/gates/touch-wiring-gates.test.js",
-    "tests/gates/touch-xp-readout.test.jsx",
     "tests/gates/trauma-wired-gates.test.js",
     "tests/gates/ui-sounds-gate.test.js",
     "tests/gates/verb-router-gates.test.js",

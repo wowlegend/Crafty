@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameMethods } from './GameMethods';
 import { xpForLevel } from './game/progression.js';
-import { Panel } from './ui/primitives/index.js';
 
 // Simple Experience System - No Runtime Errors
 export const useSimpleExperience = () => {
@@ -153,59 +152,6 @@ export const SimpleLevelUpEffect = ({ levelUpEffects, onEffectComplete }) => {
           </motion.div>
         ))}
       </AnimatePresence>
-    </div>
-  );
-};
-
-// Experience Bar UI Component — bold-flat: a gold LV badge (level in font-display) +
-// a thin gold XP track (4px ink frame, flat accent fill at xpProgress%), mirroring the
-// showcase's top-left level+XP treatment. Props + values + clamp logic unchanged.
-export const SimpleExperienceBar = ({ level, currentXP, xpRequired, xpProgress }) => {
-  return (
-    <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 pointer-events-auto">
-      <Panel variant="base" className="flex items-center gap-3 p-3 min-w-80">
-        {/* LV badge — gold sticker, ink frame, level number in display face */}
-        <div
-          className="flex-none w-[44px] h-[44px] grid place-items-center rounded-md border-chrome border-ink shadow-elev-md text-text-inverse leading-none"
-          style={{ background: 'linear-gradient(180deg, rgb(var(--ui-accent-raise)), rgb(var(--ui-accent-deep)))' }}
-        >
-          <span className="font-display text-lg tabular-nums">{level}</span>
-          <span className="text-[8px] font-bold tracking-widest opacity-85 mt-0.5">LV</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="text-text font-bold text-sm">Level {level}</div>
-            <div className="text-accent-raise font-bold text-sm tabular-nums">{currentXP} / {xpRequired} XP</div>
-          </div>
-          {/* Thin gold XP track — inset groove + 4px ink frame; flat accent fill */}
-          <div className="w-full h-3 rounded-md bg-track border-chrome border-ink overflow-hidden relative">
-            <motion.div
-              className="absolute inset-y-0 left-0 bg-accent"
-              initial={{ width: 0 }}
-              animate={{ width: `${xpProgress}%` }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            />
-          </div>
-        </div>
-      </Panel>
-    </div>
-  );
-};
-
-// Compact TOUCH-only level/XP readout. The full SimpleExperienceBar lives bottom-center (over the thumb /
-// joystick zone), so it's desktop-only; touch players had no level visibility. This sits top-right (mirrors
-// the top-left player-stat column) and is kept small for a phone. Static fill width (no framer animation) so
-// the touch capture frame (mobile.png) stays byte-deterministic.
-export const SimpleExperienceBarTouch = ({ level, xpProgress }) => {
-  return (
-    // top-28 (below the centered spell-label band) so it never crowds "Spell: ... (MP)" on a narrow phone.
-    <div className="absolute top-28 right-4 z-20 pointer-events-none">
-      <Panel variant="base" className="flex items-center gap-2 px-2 py-1">
-        <span className="font-display text-sm tabular-nums text-accent-raise leading-none">LV{level}</span>
-        <div className="w-20 h-2 rounded-sm bg-track border-chrome border-ink overflow-hidden relative">
-          <div className="absolute inset-y-0 left-0 bg-accent" style={{ width: `${xpProgress}%` }} />
-        </div>
-      </Panel>
     </div>
   );
 };

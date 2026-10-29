@@ -501,82 +501,104 @@ export const useQuestSystem = () => {
     };
 };
 
+/** The quest the one-line tracker shows: the first not yet claimed (a completed one waits there for its claim). */
+export const leadQuest = (quests) => (quests || []).find((q) => !q.claimed) || null;
+
+const QuestRow = ({ quest, t, locale, touch, onClaim }) => (
+    <div className="relative">
+        <div className="flex items-start justify-between">
+            <div className="flex-1 mr-2">
+                <div className="flex items-center gap-1.5 text-text text-xs font-bold">
+                    {quest.icon && <Icon name={quest.icon} size={14} className="flex-none text-accent" />}
+                    <span>{questTitle(t, locale, quest)}</span>
+                </div>
+                <div className="text-text-muted text-xs">{questDescription(t, locale, quest)}</div>
+            </div>
+            {quest.completed && !quest.claimed && (
+                <Button variant="primary" size={null} onClick={() => onClaim(quest.id)} className="gap-2 px-2 py-0.5 text-xs">
+                    {touch ? 'Claim' : 'Press Q'}
+                </Button>
+            )}
+        </div>
+        {/* Progress bar — bold-flat inset track + flat fill */}
+        <div className="mt-1 h-2 bg-track rounded-sm border-chrome border-ink overflow-hidden">
+            <motion.div
+                className={`h-full ${quest.completed ? 'bg-success' : 'bg-accent'}`}
+                animate={{ width: `${(quest.progress / quest.target) * 100}%` }}
+                transition={{ duration: 0.3 }}
+            />
+        </div>
+        <div className="text-text-muted text-xs mt-0.5 text-right tabular-nums">
+            <span className="inline-flex items-center gap-1 justify-end">
+                {quest.progress}/{quest.target}
+                {quest.completed && <Icon name="check" size={12} className="text-success" />}
+            </span>
+        </div>
+    </div>
+);
+
+// ONE OBJECTIVE LINE AT REST (the HUD lane's task script, decision 3). The tracker was a 280 px panel of three quests
+// with progress bars, always open on desktop: about a tenth of a 1280x800 frame. It now rests as one line on every device
+// (the lead quest's title, its objective and its count) and opens to the full list on its chevron, a tap, or the
+// pointer resting over it. A completed quest's claim button stays beside the line.
 export const QuestTracker = React.memo(({ quests, onClaim }) => {
-    // Collapse-by-default on touch: on a phone the expanded log ate ~60% of the width and its
-    // pointer-events body covered the top-left of the move-joystick zone. Desktop stays expanded.
-    // Evaluate the default at RENDER time (not just at mount) so it's correct even when the capture
-    // harness flips showTouch after mount; a user tap then overrides it. null = use the per-mode default.
     const touch = isTouchUIMode();
-    const [userToggled, setUserToggled] = useState(null);
-    const expanded = userToggled === null ? !touch : userToggled;
+    const [pinned, setPinned] = useState(false);
+    const [hovered, setHovered] = useState(false);
+    const expanded = pinned || hovered;
     const t = useT();
     const locale = useGameStore((s) => s.locale) || 'en';
+    const lead = leadQuest(quests);
 
     return (
-        <div data-testid="quest-tracker" className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: touch ? 220 : 280 }}>
+        <div data-testid="quest-tracker" className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: touch ? 236 : 320 }}
+            onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
             <Panel variant="raise" className="overflow-hidden p-0">
-                <button
-                    type="button"
-                    className="w-full flex items-center justify-between px-3 py-2 bg-panel-raise"
-                    onClick={() => setUserToggled(!expanded)}
-                >
-                    <span className="flex items-center gap-1.5 font-display uppercase tracking-wide text-accent text-sm">
-                        <Icon name="scroll" size={16} className="text-accent" /> Quests
-                    </span>
-                    <Icon name="chevron" size={14} className={`text-text-muted transition-transform ${expanded ? 'rotate-90' : ''}`} />
-                </button>
+                <div className="flex items-center bg-panel-raise">
+                    <button
+                        type="button"
+                        data-testid="quest-tracker-line"
+                        aria-expanded={expanded}
+                        className="flex-1 min-w-0 flex items-center gap-1.5 px-2.5 py-1.5 text-left"
+                        onClick={() => setPinned(!pinned)}
+                    >
+                        <Icon name="scroll" size={14} className="flex-none text-accent" />
+                        {expanded ? (
+                            <span className="flex-1 font-display uppercase tracking-wide text-accent text-xs">{t('hud.quests')}</span>
+                        ) : lead ? (
+                            <span className="min-w-0 truncate text-xs">
+                                <span className="font-bold text-text">{questTitle(t, locale, lead)}</span>
+                                <span className="text-text-muted">{' · '}{questDescription(t, locale, lead)}</span>
+                            </span>
+                        ) : (
+                            <span className="text-xs text-text-muted">{t('hud.questsDone')}</span>
+                        )}
+                        {lead && !expanded && <span className="flex-none text-xs tabular-nums text-text-muted">{lead.progress}/{lead.target}</span>}
+                        <Icon name="chevron" size={12} className={`flex-none text-text-muted transition-transform ${expanded ? 'rotate-90' : ''}`} />
+                    </button>
+                    {lead && lead.completed && !lead.claimed && !expanded && (
+                        <Button variant="primary" size={null} onClick={() => onClaim(lead.id)} className="flex-none mr-1.5 px-2 py-0.5 text-xs">
+                            {touch ? 'Claim' : 'Press Q'}
+                        </Button>
+                    )}
+                </div>
 
                 <AnimatePresence>
                     {expanded && (
                         <motion.div
+                            data-testid="quest-tracker-list"
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.2 }}
                             className="px-3 py-2 space-y-2 border-t-chrome border-ink overflow-hidden"
                         >
-                            {quests.map(quest => (
-                                <div key={quest.id} className="relative">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1 mr-2">
-                                            <div className="flex items-center gap-1.5 text-text text-xs font-bold">
-                                                {quest.icon && <Icon name={quest.icon} size={14} className="flex-none text-accent" />}
-                                                <span>{questTitle(t, locale, quest)}</span>
-                                            </div>
-                                            <div className="text-text-muted text-xs">{questDescription(t, locale, quest)}</div>
-                                        </div>
-                                        {quest.completed && !quest.claimed && (
-                                            <Button
-                                                variant="primary"
-                                                size={null}
-                                                onClick={() => onClaim(quest.id)}
-                                                className="gap-2 px-2 py-0.5 text-xs"
-                                            >
-                                                {touch ? 'Claim' : 'Press Q'}
-                                            </Button>
-                                        )}
-                                    </div>
-
-                                    {/* Progress bar — bold-flat inset track + flat fill */}
-                                    <div className="mt-1 h-2 bg-track rounded-sm border-chrome border-ink overflow-hidden">
-                                        <motion.div
-                                            className={`h-full ${quest.completed ? 'bg-success' : 'bg-accent'}`}
-                                            animate={{ width: `${(quest.progress / quest.target) * 100}%` }}
-                                            transition={{ duration: 0.3 }}
-                                        />
-                                    </div>
-                                    <div className="text-text-muted text-xs mt-0.5 text-right tabular-nums">
-                                        <span className="inline-flex items-center gap-1 justify-end">
-                                            {quest.progress}/{quest.target}
-                                            {quest.completed && <Icon name="check" size={12} className="text-success" />}
-                                        </span>
-                                    </div>
-                                </div>
+                            {quests.map((quest) => (
+                                <QuestRow key={quest.id} quest={quest} t={t} locale={locale} touch={touch} onClaim={onClaim} />
                             ))}
-
                             {quests.length === 0 && (
                                 <div className="flex items-center justify-center gap-1.5 text-text-muted text-xs text-center py-2">
-                                    All quests completed! <Icon name="party" size={14} className="text-accent" />
+                                    {t('hud.questsDone')} <Icon name="party" size={14} className="text-accent" />
                                 </div>
                             )}
                         </motion.div>
@@ -614,8 +636,10 @@ const NOTIF_ICON = {
 };
 
 export const NotificationStack = React.memo(({ notifications }) => {
+    // Below the day-phase dial (top 68 px, 84 px tall) it used to cover (STATUS G-ledger 38/a); on touch, below the
+    // minimap that sits under the dial there.
     return (
-        <div className="absolute top-20 right-4 z-30 pointer-events-none space-y-2" style={{ maxWidth: 320 }}>
+        <div data-testid="notification-stack" className={`absolute ${isTouchUIMode() ? 'top-[324px]' : 'top-[164px]'} right-4 z-30 pointer-events-none space-y-2`} style={{ maxWidth: 320 }}>
             <AnimatePresence>
                 {notifications.map(notif => {
                     const status = NOTIF_STATUS[notif.type] || 'info';

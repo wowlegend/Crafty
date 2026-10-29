@@ -68,7 +68,7 @@ export const RadialMinimap = React.memo(({ position = 'bottom-20 right-4' }) => 
   // This is the repo's own rule -- a capture guard RESETS to a declared value, it does not early-return --
   // applied to a component that had been opting out of the oracle entirely.
   return (
-    <div className={`absolute ${position} z-20 pointer-events-none`}>
+    <div data-testid="radial-minimap" className={`absolute ${position} z-20 pointer-events-none`}>
       <Panel variant="base" radius="rounded-full" className="overflow-hidden p-0 leading-none" style={{ borderRadius: '50%' }}>
         <canvas ref={canvasRef} width={SIZE} height={SIZE} className="block" style={{ borderRadius: '50%' }} />
       </Panel>
