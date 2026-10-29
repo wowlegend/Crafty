@@ -65,6 +65,13 @@ const SETTLE_MS = 120;
 // On a frame where the target turned faster than the ramp's 60 u/s² x the frame interval, the applied velocity lags it
 // by that much. 0.1 m/s is under a hundredth of the 14 m/s a bypassed stance reads.
 const APPLIED_TOL = 0.1;
+// THE FED FLOOR, m/s of game time. Each case holds a key whose away part, at 14 m/s, is over the retreat cap or whose
+// tangential part is over it, so at full weight the stance feeds at least the cap: the away part is clamped to 2.0, a
+// tangential part only adds, and the step bound pulls a step's end in onto the circle 2.0 m/s x the step further from
+// the threat than the step's start, which is no nearer the start than that. The ramp reaches 2.0 m/s within 33 ms. So a
+// hold fed at under half the cap was held back below the cap by the stance itself. The body's travel against what it
+// was fed (`travel`) cannot see that: a stance that feeds next to nothing leaves a free body going all of it.
+const FED_FLOOR = RETREAT / 2;
 const CAUGHT_GAP_M = 2.6;
 // A STRAFE CHASE IS STILL JUDGED ONLY AT A FAST FRAME, now for the MOB's reason, not the player's. Within one frame the
 // player moves in a straight line, so a tangential step L at gap g grew the gap by about L²/2g: a leak of STRAFE² · Δ /
@@ -284,19 +291,21 @@ function judgeTarget(samples) {
  * the applied planar velocity times the frame's step, `went` the body's move from where that frame's step started to
  * where the next one's did. A body that terrain stops goes a fraction of what it was fed, at any hold length. A fixed
  * camera displacement cannot say that: a hold the husk ends at its second sample covers one capped 0.25 s step, 0.5 m at
- * the 2 m/s retreat cap, of which the camera, following the body, shows about 0.42 m.
+ * the 2 m/s retreat cap, of which the camera, following the body, shows about 0.42 m. `fedS` is the game time of those
+ * frames and `speed` what the stance fed per second of it, for FED_FLOOR.
  */
 function travel(samples) {
-  let fed = 0, went = 0, frames = 0;
+  let fed = 0, went = 0, frames = 0, fedS = 0;
   for (let i = 1; i < samples.length; i++) {
     const p = samples[i - 1], s = samples[i];
     if (!p.st || !p.mt || !s.st || p.mt.frame !== p.st.frame) continue;
     if (!(p.st.stepS > 0) || Math.abs(s.st.atS - (p.st.atS + p.st.stepS)) > 1e-9) continue;
     fed += Math.hypot(p.mt.appliedX, p.mt.appliedZ) * p.st.stepS;
     went += Math.hypot(s.st.playerX - p.st.playerX, s.st.playerZ - p.st.playerZ);
+    fedS += p.st.stepS;
     frames++;
   }
-  return { fed: +fed.toFixed(3), went: +went.toFixed(3), frames };
+  return { fed: +fed.toFixed(3), went: +went.toFixed(3), frames, fedS: +fedS.toFixed(3), speed: fedS > 0 ? +(fed / fedS).toFixed(3) : 0 };
 }
 
 /** The samples up to and including the first one at which the husk had caught up (all of them if it never did). */
@@ -391,6 +400,7 @@ test.describe('combat stance', () => {
       const tr = travel(r.samples);
       expect(tr.frames > 0 && tr.fed > 0, `SETUP: ${label}: no frame of the hold fed the body a velocity (${JSON.stringify(tr)}, ${r.samples.length} sampled)`).toBe(true);
       expect(tr.went, `SETUP: ${label}: the body went ${tr.went} m of the ${tr.fed} m the stance fed it over ${tr.frames} frames (blocked by terrain?)`).toBeGreaterThanOrEqual(0.5 * tr.fed);
+      expect(tr.speed, `${label}: the stance fed the held key ${tr.speed} m/s over ${tr.frames} frames (${tr.fed} m in ${tr.fedS} s of game time), under the ${FED_FLOOR} m/s floor: at full weight it feeds at least the ${RETREAT} m/s retreat cap, so it held the body back below its own cap`).toBeGreaterThanOrEqual(FED_FLOOR);
       const j = judgeTarget(r.samples);
       expect(j.judged, `SETUP: ${label}: no frame at w === 1 with that frame's move target and the key seen (${r.samples.length} sampled)`).toBeGreaterThan(0);
       expect(j.worstAway, `${label}: the target left the husk at ${j.worstAway} m/s (cap ${RETREAT}; ${j.judged} frames judged)`).toBeLessThanOrEqual(RETREAT + EPS);
