@@ -13,8 +13,6 @@
  * THE element + the phantom spawn + the impact all live at the Components apply-site / render layer; a
  * COMBAT grab there spawns a pooled PHANTOM (never a voxel edit) — this pure SM cannot touch terrain.
  */
-import { HURL_TTL_SEC } from './hurl.js';
-
 export const GRAB_CHARGE_SEC = 0.35; // anticipation before the grab commits (Kevin-tunable)
 export const MAX_HOLD_SEC = 8;       // auto-drop the held block after this (no infinite carry)
 export const GRAB_COOLDOWN_SEC = 0.6; // after a release, before grab can charge again
@@ -39,7 +37,7 @@ export const PHANTOM_BLOCK_COLORS = {
 
 /** The SM's own state (charge + timers). The held/active truth lives in the store, not here. */
 export function makeVoidhandState() {
-  return { charging: false, chargeStart: 0, heldUntil: 0, cooldownUntil: 0, throwsLeft: 0, throwReadyAt: 0 };
+  return { charging: false, chargeStart: 0, heldUntil: 0, cooldownUntil: 0, throwsLeft: 0 };
 }
 
 /**
@@ -64,14 +62,10 @@ export function decideVoidhand(sm, ctx) {
     out.charging = false;
     if (!ctx.alive) { out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC; return { sm: out, action: 'drop' }; }
     if (ctx.attack || ctx.cast) {
-      // The hurl system flies one block at a time and a new throw replaces one in flight, so a kept block waits out
-      // the last throw's flight.
-      if (ctx.now < (sm.throwReadyAt || 0)) return { sm: out, action: 'none' };
       const action = ctx.attack ? 'hurl' : 'slam';
       // A grab that held more than one block keeps the next in hand: no cooldown, the same hold timer.
       if ((sm.throwsLeft || 1) > 1) {
         out.throwsLeft = sm.throwsLeft - 1;
-        out.throwReadyAt = ctx.now + HURL_TTL_SEC;
         return { sm: out, action, keep: true };
       }
       out.throwsLeft = 0;

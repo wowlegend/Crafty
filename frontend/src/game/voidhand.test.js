@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { makeVoidhandState, decideVoidhand, GRAB_CHARGE_SEC, MAX_HOLD_SEC, GRAB_COOLDOWN_SEC, PHANTOM_BLOCK_COLORS } from './voidhand.js';
-import { HURL_TTL_SEC } from './hurl.js';
 
 // S2-B2-M1: the VOIDHAND grab SM (pure reducer). Twin of beastTransform.js. The store owns `held`
 // (ctx.held); this SM owns charge + hold/cooldown timers. IDLE -> CHARGING -> HELD -> hurl/slam/drop.
@@ -125,13 +124,21 @@ describe('a grab that holds more than one block', () => {
     expect(first.keep, 'the second block left the hand with the first').toBe(true);
     expect(first.sm.cooldownUntil, 'a kept block armed the release cooldown').toBe(held.cooldownUntil);
     expect(first.sm.heldUntil).toBe(held.heldUntil);
-    // The hurl system flies one block at a time: the kept block waits out the first one's flight.
-    expect(decideVoidhand(first.sm, { ...base, held: true, cast: true, now: 1 + HURL_TTL_SEC - 0.01 }).action, 'a throw inside the first one\'s flight went out').toBe('none');
-    const t2 = 1 + HURL_TTL_SEC;
+    // The kept block goes on the next click, while the first is still in the air (world/HurlSystem.jsx flies both).
+    const t2 = 1 + 1 / 60;
     const second = decideVoidhand(first.sm, { ...base, held: true, cast: true, now: t2 });
-    expect(second.action).toBe('slam');
+    expect(second.action, 'the kept block waited for the first one to land').toBe('slam');
     expect(second.keep).toBeUndefined();
     expect(second.sm.cooldownUntil).toBe(t2 + GRAB_COOLDOWN_SEC);
+  });
+
+  it('a kept block can be hurled straight after a hurl, and a slam straight after a slam', () => {
+    for (const verb of ['attack', 'cast']) {
+      const held = commit({ throws: 2 }).sm;
+      const first = decideVoidhand(held, { ...base, held: true, [verb]: true, now: 1 });
+      const second = decideVoidhand(first.sm, { ...base, held: true, [verb]: true, now: 1 + 1 / 60 });
+      expect(second.action, `a second ${verb} a frame later did nothing`).toBe(verb === 'attack' ? 'hurl' : 'slam');
+    }
   });
 
   it('a one-throw grab releases on its first throw, as before', () => {

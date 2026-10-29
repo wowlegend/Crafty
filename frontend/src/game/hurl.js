@@ -100,19 +100,32 @@ export function resolveSlam(center, mobs, radius = SLAM_RADIUS) {
 }
 
 /**
- * LAST-THROW-WINS. Turn a hurl request into the live flight, unconditionally.
- *
- * The consumer used to write `if (req && !flightRef.current)`, and the consume is destructive -- the
- * channel nulls its slot on read -- so a request arriving mid-flight was DESTROYED whether or not it was
- * used, after the producer had already spent the grab's ember and cleared the held phantom. Nothing reported
- * the loss. The window is real: the SM allows a throw every 0.95s, stepHurl has no terrain collision at
- * all, so a miss stays airborne the full 1.5s TTL.
- *
- * This function CANNOT refuse -- it takes no current-flight argument, which is the point: the drop is not
- * a decision the consumer gets to make. Exactly one phantom is still in the air, it is just the newest
- * one, which is the convention the sibling elemancer channel already states for its own single slot.
+ * Turn a hurl request into a live flight, unconditionally. The channel nulls its slot on read and the producer has
+ * already spent the grab's ember and let go of the block, so a request the consumer declined would be a paid throw
+ * that never flew. It takes no current-flight argument, so declining is not a decision the consumer can make.
  */
 export function adoptHurlRequest(req) {
   if (!req || !req.origin || !req.dir) return null;
   return { h: makeHurl(req.origin, req.dir), color: req.color || '#A9966E' };
+}
+
+/**
+ * The most blocks in the air at once: the HurlSystem's mesh pool. A grab holds at most three blocks (Twin Grasp and
+ * Lodestone each add one, game/verbMods.js grabThrows) and throws them as fast as the player clicks, and the next grab
+ * commits GRAB_COOLDOWN_SEC + GRAB_CHARGE_SEC after the last throw, inside one HURL_TTL_SEC flight, so two grabs' blocks
+ * can be up together. hurl.test.js derives that bound from the trees and the relics.
+ */
+export const MAX_FLIGHTS = 6;
+
+/**
+ * The pool slot a new flight takes: a free one, else the one flying longest. A hitstop holds a flight's age while the
+ * grab's clock runs on, so the pool can fill; then the oldest block leaves and the paid throw still flies.
+ */
+export function flightSlot(slots) {
+  let oldest = 0;
+  for (let i = 0; i < slots.length; i++) {
+    if (!slots[i]) return i;
+    if (slots[i].h.age > slots[oldest].h.age) oldest = i;
+  }
+  return oldest;
 }

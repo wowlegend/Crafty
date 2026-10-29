@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { makeHurl, stepHurl, stepHurlChunked, resolveSlam, resolveAnvil, ANVIL_RANGE, ANVIL_MULT, HURL_SPEED, HURL_TTL_SEC, HURL_HIT_RADIUS, HURL_KNOCK, SLAM_RADIUS, SLAM_DAMAGE_MULT, HURL_DAMAGE, adoptHurlRequest } from './hurl';
+import { makeHurl, stepHurl, stepHurlChunked, resolveSlam, resolveAnvil, ANVIL_RANGE, ANVIL_MULT, HURL_SPEED, HURL_TTL_SEC, HURL_HIT_RADIUS, HURL_KNOCK, SLAM_RADIUS, SLAM_DAMAGE_MULT, HURL_DAMAGE, adoptHurlRequest, flightSlot, MAX_FLIGHTS } from './hurl';
 import { requestHurl, consumeHurlRequest } from './hurlChannel.js';
+import { GRAB_COOLDOWN_SEC, GRAB_CHARGE_SEC } from './voidhand.js';
+import { VERB_BASE } from './verbMods.js';
+import { ASPECT_TREES } from './talentTree.js';
+import { RELICS } from './relics.js';
 
 const mob = (id, x, y, z) => ({ id, position: { x, y, z } });
 
@@ -110,47 +114,59 @@ describe('base-as-anvil (M4)', () => {
   });
 });
 
-// A THROW YOU PAID FOR THAT NEVER HAPPENED.
+// A THROW YOU PAID FOR ALWAYS FLIES, AND NEVER CUTS ANOTHER SHORT.
 //
-// The consumer wrote `const req = consumeHurlRequest(); if (req && !flightRef.current)`, and the consume
-// is DESTRUCTIVE -- the channel nulls its slot on read. So a request arriving while a phantom was still
-// airborne was destroyed whether or not it was used, after the producer had already spent the grab's ember and
-// cleared the held phantom. Nothing reported the loss. The window is real: the SM allows a throw every
-// 0.95s, and stepHurl has NO terrain collision at all, so a miss stays airborne the full 1.5s TTL.
-describe('adoptHurlRequest — a paid throw always throws', () => {
+// The channel's consume is destructive (it nulls its slot on read) and the producer has already spent the grab's ember
+// and let go of the block, so a request the consumer declines is a paid throw that never happened. stepHurl has no
+// terrain collision, so a miss stays airborne the full HURL_TTL_SEC, and a grab that keeps a second block (Twin Grasp,
+// Lodestone) throws it inside the first one's flight: the HurlSystem flies a pool of MAX_FLIGHTS blocks side by side.
+describe('adoptHurlRequest and flightSlot — a paid throw always throws', () => {
   const REQ = (color) => ({ origin: { x: 0, y: 2, z: 0 }, dir: { x: 0, y: 0, z: -1 }, color });
+  const emptyPool = () => Array.from({ length: MAX_FLIGHTS }, () => null);
+  // The consumer's lines against the real channel: consume, adopt, place in the slot flightSlot names.
+  const frame = (slots) => { const a = adoptHurlRequest(consumeHurlRequest()); if (a) slots[flightSlot(slots)] = a; };
+  const flying = (slots) => slots.filter(Boolean).map((f) => f.color);
 
   it('cannot refuse: it takes no current-flight argument', () => {
-    // The structural half. The drop was a decision the consumer got to make; now there is nothing to
-    // decide with. A future guard would have to reintroduce the parameter to reintroduce the bug.
     expect(adoptHurlRequest.length).toBe(1);
   });
 
-  it('a second request REPLACES the phantom instead of vanishing', () => {
-    // Mirrors the consumer's three lines against the real channel: consume, adopt, assign.
-    let flight = null;
-    const frame = () => { const a = adoptHurlRequest(consumeHurlRequest()); if (a) flight = a; };
-
+  it('a second throw flies beside the first instead of replacing it', () => {
+    const slots = emptyPool();
     requestHurl(REQ('#aaa').origin, REQ('#aaa').dir, '#aaa');
-    frame();
-    expect(flight, 'the first throw never flew').not.toBe(null);
-    expect(flight.color).toBe('#aaa');
-
-    // ...mid-flight, the player throws again. Under the old guard this request was silently destroyed.
+    frame(slots);
+    expect(flying(slots), 'the first throw never flew').toEqual(['#aaa']);
+    stepHurl(slots.find(Boolean).h, 0.1, []); // the first is mid-flight when the kept block goes
     requestHurl(REQ('#bbb').origin, REQ('#bbb').dir, '#bbb');
-    frame();
-    expect(flight.color, 'the second throw was swallowed — the player paid for a grab and lost it').toBe('#bbb');
+    frame(slots);
+    expect(flying(slots), 'the second throw cut the first short, or was swallowed').toEqual(['#aaa', '#bbb']);
   });
 
-  it('leaves exactly ONE phantom — replacing, not accumulating', () => {
-    let flight = null;
-    for (const c of ['#1', '#2', '#3']) {
-      requestHurl(REQ(c).origin, REQ(c).dir, c);
-      const a = adoptHurlRequest(consumeHurlRequest());
-      if (a) flight = a;
+  it('only a full pool gives up a block, and then the one flying longest', () => {
+    const slots = emptyPool();
+    for (let i = 0; i < MAX_FLIGHTS; i++) {
+      requestHurl(REQ(`#${i}`).origin, REQ(`#${i}`).dir, `#${i}`);
+      frame(slots);
     }
-    expect(flight.color).toBe('#3');
-    expect(flight.h, 'the adopted flight has no live hurl state').toBeTruthy();
+    expect(flying(slots), 'a throw below the cap replaced one in flight').toHaveLength(MAX_FLIGHTS);
+    // The oldest sits in the middle slot, so "the first slot", "the last slot" and "the oldest" are different answers.
+    const oldest = Math.floor(MAX_FLIGHTS / 2);
+    slots.forEach((f, i) => { f.h.age = i === oldest ? HURL_TTL_SEC - 0.01 : 0.01 * (i + 1); });
+    requestHurl(REQ('#new').origin, REQ('#new').dir, '#new');
+    frame(slots);
+    expect(slots[oldest].color, 'the full pool did not give up the block flying longest').toBe('#new');
+    expect(flying(slots)).toHaveLength(MAX_FLIGHTS);
+  });
+
+  it('holds every block two grabs in a row can have in the air at once', () => {
+    // A grab throws as fast as the clicks come; the next grab commits GRAB_COOLDOWN_SEC + GRAB_CHARGE_SEC after the
+    // last throw, so every grab whose commit falls inside one flight's HURL_TTL_SEC can have its blocks up together.
+    const throwsPerGrab = VERB_BASE.grabThrows
+      + ASPECT_TREES.flatMap((t) => t.nodes).filter((n) => n.mod?.key === 'grabThrows').reduce((s, n) => s + n.mod.add * n.limit, 0)
+      + Math.max(0, ...Object.values(RELICS).filter((r) => r.mod.key === 'grabThrows').map((r) => r.mod.add));
+    const grabsPerFlight = Math.ceil(HURL_TTL_SEC / (GRAB_COOLDOWN_SEC + GRAB_CHARGE_SEC));
+    expect(throwsPerGrab, 'SETUP: the trees and relics no longer add a throw').toBeGreaterThan(1);
+    expect(MAX_FLIGHTS, `${grabsPerFlight} grabs of ${throwsPerGrab} blocks`).toBeGreaterThanOrEqual(throwsPerGrab * grabsPerFlight);
   });
 
   it('an empty channel adopts nothing, so a quiet frame does not respawn the last throw', () => {
