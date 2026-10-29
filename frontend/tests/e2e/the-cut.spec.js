@@ -85,7 +85,8 @@ test.describe('the Cut', () => {
       save.progression.futureField = { nested: [1, 2], word: 'kept' };
       save.game_state.futureFlag = 'kept';
       g().loadWorldData(save);
-      const loaded = { level: g().level, maxHealth: g().maxHealth, ember: g().ember };
+      const loaded = { level: g().level, maxHealth: g().maxHealth, ember: g().ember, talentPoints: g().talentPoints,
+        talents: g().unlockedTalents, hasAttributes: 'attributes' in g(), liveBag: g().inventory.blocks };
       const storeHasMode = 'gameMode' in g();
       const liveQuestIds = (g().questState?.quests || []).map((q) => q && q.id);
       g().saveActiveWorld({ x: 3, y: 21, z: 6 });
@@ -113,6 +114,18 @@ test.describe('the Cut', () => {
     expect(r.blob.progression.ember, 'the save did not write the migrated ember').toBe(75);
     expect([r.blob.progression.ferocityBanked, r.blob.progression.kineticBanked, r.blob.progression.soulBanked, r.blob.progression.resonanceBanked],
       'a retired bank was not written back as the pre-cut save had it').toEqual([30, 20, 15, 10]);
+    // Step 4 (talents and relics, W1-H item 6; the rule is tests/store/preCutSave.test.js's): 20 attribute points / 5 = 4
+    // talent points, plus the 3 unspent and the 1 rank refunded, is 8 and no ranks. attributes, spellLevels, the crystals
+    // and the wand leave the live game and ride the save back unchanged.
+    expect(r.loaded.talentPoints, 'the pre-cut attribute points were not refunded as talent points by the rule').toBe(8);
+    expect(r.loaded.talents, 'a pre-cut talent rank survived the refund').toEqual({});
+    expect(r.loaded.hasAttributes, 'the store took the attributes back').toBe(false);
+    expect('crystals' in r.loaded.liveBag || 'wand' in r.loaded.liveBag, 'a retired currency is in the live bag').toBe(false);
+    expect(r.blob.progression.attributes, 'the pre-cut attributes were not written back').toEqual(PRE_CUT.progression.attributes);
+    expect(r.blob.progression.spellLevels, 'the pre-cut spell levels were not written back').toEqual(PRE_CUT.progression.spellLevels);
+    expect([r.blob.player_data.inventory.blocks.crystals, r.blob.player_data.inventory.blocks.wand], 'the crystals and wand were not written back')
+      .toEqual([PRE_CUT.player_data.inventory.blocks.crystals, PRE_CUT.player_data.inventory.blocks.wand]);
+    expect(r.blob.migrated, 'the refund was not recorded').toContain('talents.cut');
   });
 
   test('one costed mode: no Mode chip or toggle; a right-click spends one block, an empty stack refuses; it fights and saves', async ({ page }) => {
