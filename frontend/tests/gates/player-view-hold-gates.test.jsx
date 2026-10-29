@@ -19,6 +19,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
  *   - through the roar's reveal (the real input intents, the talent and a full ember bar) the mark is clear while the
  *     reveal places the camera, and set again on the frame the follow takes it back;
  *   - dead, where the loop's death branch places the camera, the mark is clear;
+ *   - in capture mode (devtest/captureMode.js, the e2e fixtures' frozen camera), the mark is clear;
  *   - under a lookbook hero pose (the lookbook's reveal shots, render/lookbookSeam.js), the mark is clear.
  * BLIND SPOT: R3F's loop and the render are stubs, so that the mark is read as the frame DRAWS (after every frame
  * callback) is BeastAvatar's onBeforeRender and its gate; the reveal's frames are counted, not timed against a clock.
@@ -59,6 +60,7 @@ const { setIntent, setActive, resetInput } = await import('../../src/input/input
 const { _resetShake } = await import('../../src/game/cameraShakeChannel.js');
 const { ROAR_COST } = await import('../../src/game/ember.js');
 const seamMod = await import('../../src/render/lookbookSeam.js');
+const { enterCaptureMode, exitCaptureMode } = await import('../../src/devtest/captureMode.js');
 
 beforeAll(async () => {
   await RAPIER.init();
@@ -154,6 +156,19 @@ describe('the Player\'s loop marks the frames its follow places the camera', () 
     frame();
     expect(offEye(), 'SETUP: the death branch keeps the camera at the eye').toBeLessThan(0.1);
     expect(followHoldsView(), 'the death branch\'s frame is marked as the follow').toBe(false);
+  });
+
+  it('in capture mode, which pins the camera before the controller runs, the mark is clear', () => {
+    standPlayer();
+    // App.jsx's beast fixtures capture the roar's reveal camera, so a mark left set would hide the beast they frame.
+    enterCaptureMode({ camera: { position: [-4.5, 53.2, 0], lookAt: [0, 51.6, 0] } });
+    try {
+      frame();
+      expect(h.camera.position.toArray(), 'SETUP: capture did not pin the camera').toEqual([-4.5, 53.2, 0]);
+      expect(followHoldsView(), 'a captured frame is marked as the follow, so a capture fixture would hide the beast').toBe(false);
+    } finally {
+      exitCaptureMode();
+    }
   });
 
   it('under a lookbook hero pose, which pins the camera before the controller runs, the mark is clear', () => {
