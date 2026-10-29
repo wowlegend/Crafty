@@ -23,11 +23,11 @@ carry `closedBy`.
 
 | # | Task | State |
 |---|---|---|
-| T6 | CI-gates handoff §3 (Crafty's share), then rm the handoff file + MEMORY line if last owner | PARTIAL `5177c203` (pin + v7 actions); Vercel Deployment Checks need Kevin's dashboard; pre-commit speed and onFailure open |
+| T6 | CI-gates handoff §3 (Crafty's share), then rm the handoff file + MEMORY line if last owner | PARTIAL: pin and v7 actions `5177c203`; Vercel Deployment Checks overtaken by the required `ci ok` check (W1-A); pre-commit speed done by B7 `a56f6d50`; onFailure open (registry `ACTIVE_PLAN:T6`) |
 | T7 | iPad: WebKit probe of the PROD build, frames opened | lookbook iPad frames DONE (`docs/superpowers/masterpiece-2026-10/evidence`); `ipad-probe.mjs` itself still unrun |
-| T11 | dprCap and the FPV glove value (now mine to decide) | open |
+| T11 | The FPV glove value (the command session's call) | open; the dprCap half is overtaken by the per-tier pixel budget `309dad4f` (registry `ACTIVE_PLAN:T11`) |
 | T14 | Per change range: fresh headless `/code-review xhigh` + one adversarial-reviewer-kz xhigh on runtime seams | open: every game-code PR range gets `/code-review xhigh` as its second look |
-| T15 | OVERNIGHT.md, STATUS, CHANGELOG, DECISIONS current | PARTIAL: the generated CHANGELOG is SOTA-reset item #57 (W2-J, a later phase); OVERNIGHT.md is a record that leaves HEAD with the records tag (#32) |
+| T15 | OVERNIGHT.md, STATUS, CHANGELOG, DECISIONS current | PARTIAL: the generated CHANGELOG is reset-plan row 57 (W2-J, a later phase); `docs/superpowers/sota-2026-09/OVERNIGHT.md` is a closed record that leaves HEAD with the records tag, row 32 (registry `ACTIVE_PLAN:T15`) |
 
 **Next:** land the open Wave 2 PRs in readiness order (`npm run orient` lists them with their `ci ok`), then the
 remaining Wave 2 lanes of the reset plan. W2-J phase 1 (this cut, the CLAUDE.md rewrite, `npm run orient`, the
