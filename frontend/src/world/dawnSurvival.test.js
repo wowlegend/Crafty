@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { resolveDawn } from './dawnSurvival.js';
+import { tIn } from '../i18n/i18n.js';
+import { notificationText } from '../ui/notifications.js';
+
+// What a dawn notice says in a locale, the way the toast stack shows it (names inside it translated too).
+const say = (notice, locale = 'en') => notificationText(notice, (k, v) => tIn(locale, k, v));
 
 // V1 gate-triage: this REPLACES the one vacuous sub-test of `tests/gates/survival-quests-gates.test.js` --
 // its "the dawn->survive_nights wiring is in place" case was a pure source-grep (readFileSync + regex of
@@ -21,17 +26,18 @@ describe('resolveDawn — survive_nights credit is gated on the dawn grant (beha
     expect(grant).not.toHaveBeenCalled(); // the survived>0 gate
     expect(out.reward).toBeNull();
     expect(out.creditSurvivedNight).toBe(false);
-    expect(out.message).toBe('Dawn breaks! You survived the night!');
+    expect(say(out.notice)).toBe('Dawn breaks! You survived the night!');
   });
 
   it('a genuinely-survived night (grant returns a descriptor): credits the quest once + builds the reward message', () => {
-    const grant = vi.fn(() => ({ xp: 120, coins: 20, lootItem: 'Iron Ingot' }));
+    const grant = vi.fn(() => ({ xp: 120, coins: 20, lootItem: 'Emerald', lootRarity: 'epic' }));
     const out = resolveDawn(3, grant);
     expect(grant).toHaveBeenCalledTimes(1);
     expect(grant).toHaveBeenCalledWith(3); // grants for the night actually survived (== nightCount)
-    expect(out.reward).toEqual({ xp: 120, coins: 20, lootItem: 'Iron Ingot' });
+    expect(out.reward).toEqual({ xp: 120, coins: 20, lootItem: 'Emerald', lootRarity: 'epic' });
     expect(out.creditSurvivedNight).toBe(true); // fire onNightSurvived
-    expect(out.message).toBe('Dawn! +120 XP, +20 coins, Iron Ingot!');
+    expect(say(out.notice)).toBe('Dawn! +120 XP, +20 coins, Emerald!');
+    expect(say(out.notice, 'zh-CN')).toBe('黎明！+120 经验，+20 金币，绿宝石！');
   });
 
   it('a duplicate / re-fired dawn (grant returns null though nightCount>0): does NOT credit — the once-per-night guard', () => {
@@ -40,6 +46,6 @@ describe('resolveDawn — survive_nights credit is gated on the dawn grant (beha
     expect(grant).toHaveBeenCalledTimes(1);
     expect(out.reward).toBeNull();
     expect(out.creditSurvivedNight).toBe(false); // RED if credit keys on nightCount instead of the grant result
-    expect(out.message).toBe('Dawn breaks! You survived the night!'); // the fallback message, no double-count
+    expect(say(out.notice)).toBe('Dawn breaks! You survived the night!'); // the fallback notice, no double-count
   });
 });

@@ -19,7 +19,7 @@ const DAMAGE_PER_TIER = 0.2;
 const SPEED_PER_TIER = 0.06;
 export const SPEED_CAP = 1.3;
 
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
 const tierOf = (t) => (Number.isFinite(t) && t > 0 ? Math.floor(t) : 0);
 

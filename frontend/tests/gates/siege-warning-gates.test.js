@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
-import { siegeWarning } from '../../src/game/dayNight.js';
+import { siegeWarning as siegeNotice } from '../../src/game/dayNight.js';
+import { tIn } from '../../src/i18n/i18n.js';
+
+// siegeWarning hands the notification channel a dictionary key and its vars; these read what it says in each locale.
+const siegeWarning = (n, locale = 'en') => { const w = siegeNotice(n); return tIn(locale, w.key, w.vars); };
 
 // Night-count + siege escalation in the nightfall warning (2026-06-14, next-levers #8). The nightfall
 // banner was a fixed "Night has fallen... Hostile mobs are stronger!" with NO night number — the player
@@ -23,6 +27,11 @@ describe('siegeWarning (pure)', () => {
     expect(early).not.toBe(mid);
     expect(mid).not.toBe(late);
     expect(early).not.toBe(late);
+  });
+  it('reads in Chinese under zh-CN, with the same number and a phrase per tier', () => {
+    expect(siegeWarning(3, 'zh-CN')).toMatch(/^第 3 夜/);
+    expect(siegeWarning(1, 'zh-CN')).not.toBe(siegeWarning(9, 'zh-CN').replace('9', '1'));
+    expect(siegeWarning(3, 'zh-CN'), 'an English siege notice under zh-CN').not.toMatch(/[A-Za-z]{2,}/);
   });
   it('clamps a nullish / <=0 / NaN night to night 1 (never "Night 0")', () => {
     expect(siegeWarning(0)).toMatch(/Night 1/);

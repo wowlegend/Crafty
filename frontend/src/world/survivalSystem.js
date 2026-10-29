@@ -1,18 +1,17 @@
 // survivalSystem.js — the day/night survival hook (extracted from AdvancedGameFeatures S3-M4 p2:
 // same nightCount-single-SoT + dawn-reward behavior; mounted once in App). It deliberately
 // does NOT write dangerLevel (the boss bridge is the sole dangerLevel writer — siege-gates locks this).
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { siegeWarning } from '../game/dayNight.js';
 import { resolveDawn } from './dawnSurvival.js';
 
+// The nightfall and dawn notices go to the one notification channel (ui/notifications.js) as dictionary keys.
+const notify = (notice, type) => useGameStore.getState().addNotification?.(notice.key, type, { vars: notice.vars });
+
 export const useSurvivalMode = (isDay) => {
-    // nightCount is the STORE's single source of truth (lifted out of local useState
-    // in M3b) so the spawn system (SimplifiedNPCSystem -> siegeParams) reads the same
-    // value. Subscribe here for the warning/reward HUD; the spawn loop reads it
-    // transiently via getState (Game-Loop-Isolation).
-    const nightCount = useGameStore((s) => s.nightCount);
-    const [survivalWarning, setSurvivalWarning] = useState(null);
+    // nightCount is the STORE's single source of truth (lifted out of local useState in M3b) so the spawn system
+    // (SimplifiedNPCSystem -> siegeParams) reads the same value; this hook reads it at the edge only (getState).
     const prevIsDay = useRef(true);
 
     useEffect(() => {
@@ -23,9 +22,7 @@ export const useSurvivalMode = (isDay) => {
             // this reactive isDay-edge, which fired on a LOAD too (loadWorldData flips isDay), silently
             // adding a phantom siege night per reload. nightCount is already correct here (setGameTime
             // bumped it in the same tick that flipped isDay).
-            const night = useGameStore.getState().nightCount;
-            setSurvivalWarning(siegeWarning(night));
-            setTimeout(() => setSurvivalWarning(null), 4000);
+            notify(siegeWarning(useGameStore.getState().nightCount), 'danger');
         }
 
         if (!prevIsDay.current && isDay) {
@@ -37,15 +34,14 @@ export const useSurvivalMode = (isDay) => {
             // re-fired transition, a hook remount, or a reload mid-run cannot double-grant.
             // resolveDawn owns the DECISION (credit the survive_nights quest once per genuinely-survived
             // night, gated on the grant descriptor so a re-fired/duplicate dawn cannot double-count) + the
-            // HUD message. grantDawnReward is injected — it carries the grant side effect AND the persisted
+            // notice. grantDawnReward is injected — it carries the grant side effect AND the persisted
             // once-per-night guard (null on remount/reload). Behavioral seam: world/dawnSurvival.test.js.
-            const { creditSurvivedNight, message } = resolveDawn(
+            const { creditSurvivedNight, notice } = resolveDawn(
                 useGameStore.getState().nightCount,
                 useGameStore.getState().grantDawnReward,
             );
             if (creditSurvivedNight) useGameStore.getState().onNightSurvived?.();
-            setSurvivalWarning(message);
-            setTimeout(() => setSurvivalWarning(null), 3000);
+            notify(notice, 'warn');
         }
 
         prevIsDay.current = isDay;
@@ -59,5 +55,4 @@ export const useSurvivalMode = (isDay) => {
     // (siegeParams); a siege-night overlay needs a siege signal the mood does not have yet
     // (roadmap move 10). The obsidian mood (level 2) stays the BOSS signature.
 
-    return { nightCount, survivalWarning };
 };

@@ -53,7 +53,8 @@ describe('night siege state (single dangerLevel authority)', () => {
 
   it('nightCount comes from the store, and the survival hook does NOT bump it', () => {
     const src = read('world/survivalSystem.js');
-    expect(src, 'nightCount is no longer read from the store').toMatch(/useGameStore\(\(s\)\s*=>\s*s\.nightCount\)/);
+    // Read at the nightfall edge (getState), so the notice numbers the night the clock counted.
+    expect(src, 'nightCount is no longer read from the store').toMatch(/siegeWarning\(\s*useGameStore\.getState\(\)\.nightCount\s*\)/);
     // B2f: the hook used to advance the ratchet from a reactive isDay edge, which cannot tell a real
     // nightfall from a LOAD — so resuming a night save added a phantom siege night on every reload. The
     // assertion is that it stays out of the ratchet. Repo-wide, because the bump coming back anywhere

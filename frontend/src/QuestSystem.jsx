@@ -523,7 +523,7 @@ const QuestRow = ({ quest, t, locale, touch, onClaim }) => (
             </div>
             {quest.completed && !quest.claimed && (
                 <Button variant="primary" size={null} onClick={() => onClaim(quest.id)} className="gap-2 px-2 py-0.5 text-xs">
-                    {touch ? 'Claim' : 'Press Q'}
+                    {touch ? t('hud.claim') : t('hud.claimKey')}
                 </Button>
             )}
         </div>
@@ -544,22 +544,20 @@ const QuestRow = ({ quest, t, locale, touch, onClaim }) => (
     </div>
 );
 
-// ONE OBJECTIVE LINE AT REST (the HUD lane's task script, decision 3). The tracker was a 280 px panel of three quests
-// with progress bars, always open on desktop: about a tenth of a 1280x800 frame. It now rests as one line on every device
-// (the lead quest's title, its objective and its count) and opens to the full list on its chevron, a tap, or the
-// pointer resting over it. A completed quest's claim button stays beside the line.
+// ONE OBJECTIVE LINE AT REST (the HUD lane's task script, decision 3): the lead quest's title, its objective and its
+// count, so the quests hold one line of the screen rather than a panel. On touch a tap opens the full list (the tracker
+// is `data-hud-interactive`, so the touch layer leaves its taps to it: input/touchOwnership.js). On desktop the HUD shows
+// only under pointer lock, where no click or hover reaches it: the full list is the quest log's (L). A completed quest's
+// claim button stays beside the line.
 export const QuestTracker = React.memo(({ quests, onClaim }) => {
     const touch = isTouchUIMode();
-    const [pinned, setPinned] = useState(false);
-    const [hovered, setHovered] = useState(false);
-    const expanded = pinned || hovered;
+    const [expanded, setExpanded] = useState(false);
     const t = useT();
     const locale = useGameStore((s) => s.locale) || 'en';
     const lead = leadQuest(quests);
 
     return (
-        <div data-testid="quest-tracker" className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: touch ? 236 : 320 }}
-            onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+        <div data-testid="quest-tracker" data-hud-interactive className="absolute top-4 left-4 z-20 pointer-events-auto" style={{ maxWidth: touch ? 236 : 320 }}>
             <Panel variant="raise" className="overflow-hidden p-0">
                 <div className="flex items-center bg-panel-raise">
                     <button
@@ -567,7 +565,7 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
                         data-testid="quest-tracker-line"
                         aria-expanded={expanded}
                         className="flex-1 min-w-0 flex items-center gap-1.5 px-2.5 py-1.5 text-left"
-                        onClick={() => setPinned(!pinned)}
+                        onClick={() => setExpanded(!expanded)}
                     >
                         <Icon name="scroll" size={14} className="flex-none text-accent" />
                         {expanded ? (
@@ -585,7 +583,7 @@ export const QuestTracker = React.memo(({ quests, onClaim }) => {
                     </button>
                     {lead && lead.completed && !lead.claimed && !expanded && (
                         <Button variant="primary" size={null} onClick={() => onClaim(lead.id)} className="flex-none mr-1.5 px-2 py-0.5 text-xs">
-                            {touch ? 'Claim' : 'Press Q'}
+                            {touch ? t('hud.claim') : t('hud.claimKey')}
                         </Button>
                     )}
                 </div>
@@ -644,10 +642,10 @@ const NOTIF_ICON = {
 
 export const NotificationStack = React.memo(({ notifications }) => {
     const t = useT();
-    // Below the day-phase dial (top 68 px, 84 px tall) it used to cover (STATUS G-ledger 38/a); on touch, below the
-    // minimap that sits under the dial there.
+    // Below the day-phase dial (top 68 px, 84 px tall), which a toast must not cover (STATUS G-ledger 38/a); on touch,
+    // below the minimap that sits under the dial there and the coin count under it (HUD.jsx CoinReadout).
     return (
-        <div data-testid="notification-stack" className={`absolute ${isTouchUIMode() ? 'top-[324px]' : 'top-[164px]'} right-4 z-30 pointer-events-none space-y-2`} style={{ maxWidth: 320 }}>
+        <div data-testid="notification-stack" className={`absolute ${isTouchUIMode() ? 'top-[372px]' : 'top-[164px]'} right-4 z-30 pointer-events-none space-y-2`} style={{ maxWidth: 320 }}>
             <AnimatePresence>
                 {notifications.map(notif => {
                     const status = NOTIF_STATUS[notif.type] || 'info';

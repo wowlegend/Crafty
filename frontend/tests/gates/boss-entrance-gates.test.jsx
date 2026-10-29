@@ -5,6 +5,12 @@ import { useBossSystem } from '../../src/world/bossSystem';
 import { useGameStore } from '../../src/store/useGameStore';
 import { blightHeartSite } from '../../src/world/blightHeart';
 import { ENTRANCE } from '../../src/game/bossEntrance';
+import { tIn } from '../../src/i18n/i18n.js';
+import { notificationText } from '../../src/ui/notifications.js';
+
+// The dragon's calls go to the notification channel: what the hook sent, as the toast stack shows it in English.
+const notices = () => (useGameStore.getState().addNotification?.mock?.calls ?? [])
+  .map(([key, , o]) => notificationText({ key, vars: o?.vars }, (k, v) => tIn('en', k, v)));
 import { shakeTrauma, _resetShake } from '../../src/game/cameraShakeChannel.js';
 
 // E-ter/E4 — the dragon's ARRIVAL is the climax of the run and fired a text notification and nothing else,
@@ -21,7 +27,7 @@ const arm = (over = {}) => {
     playerPosition: atLair, gameWon: false, isCaptureMode: false,
     hitstopUntil: 0, screenShake: 0, bloomSpikeUntil: 0,
     bossHealth: 700, bossActive: false, bossDefeated: false,
-    unlockedTalents: {}, getMobGroundLevel: null,
+    unlockedTalents: {}, getMobGroundLevel: null, addNotification: vi.fn(),
     ...over,
   });
 };
@@ -38,8 +44,8 @@ describe('E4 — arriving at the lair lands a beat, not just a toast', () => {
   afterEach(() => { cleanup(); vi.useRealTimers(); });
 
   it('still announces the dragon — the message is the load-bearing effect', () => {
-    const { result } = spawn();
-    expect(result.current.bossNotification).toMatch(/Shadow Dragon awakens/);
+    spawn();
+    expect(notices()).toEqual([expect.stringMatching(/Shadow Dragon awakens/)]);
   });
 
   it('FREEZES on arrival — the entrance had no hitstop at all', () => {
@@ -100,18 +106,18 @@ describe('E4 — the beat is suppressed where it would do harm', () => {
     // A bloom spike or shake at spawn would make those frames non-deterministic. Same guard the A5
     // dangerLevel bridge already uses.
     arm({ isCaptureMode: true });
-    const { result } = spawn();
+    spawn();
     expect(useGameStore.getState().hitstopUntil).toBe(0);
     expect(useGameStore.getState().screenShake).toBe(0);
     expect(useGameStore.getState().bloomSpikeUntil).toBe(0);
     // ...but the player is still told what happened.
-    expect(result.current.bossNotification).toMatch(/Shadow Dragon awakens/);
+    expect(notices()).toEqual([expect.stringMatching(/Shadow Dragon awakens/)]);
   });
 
   it('does not fire at all while the player is far from the lair', () => {
     arm({ playerPosition: { x: lair.x + 500, y: 40, z: lair.z + 500 } });
-    const { result } = spawn();
-    expect(result.current.bossNotification).toBeNull();
+    spawn();
+    expect(notices()).toEqual([]);
     expect(useGameStore.getState().hitstopUntil).toBe(0);
   });
 

@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, act } from '@testing-library/react';
+import { render, cleanup } from '@testing-library/react';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { aspectUnlockHint } from '../../src/game/aspectHints.js';
 import { TALENT_LIMITS, talentNode } from '../../src/game/talentTree.js';
 import AspectHintToast from '../../src/ui/AspectHintToast.jsx';
+import { tIn } from '../../src/i18n/i18n.js';
 
 // WAS A SOURCE-GREP (test-vacuity finding, queue line 372). It asserted three literal substrings in
 // useGameStore.jsx — `currentVal === 0 ? aspectUnlockHint(talentId)`, `aspectHint: hint || ...` — plus
@@ -35,8 +36,9 @@ describe('just-in-time Aspect-unlock hint — behaviour, not source text', () =>
     const s = useGameStore.getState();
     expect(s.unlockedTalents[ASPECT]).toBe(1);
     // derived from KEY_MAP, not hardcoded — so rebinding the key updates the expectation with the code
-    expect(s.aspectHint).toBe(aspectUnlockHint(ASPECT));
-    expect(s.aspectHint).toMatch(/WILDHEART/);
+    expect(s.aspectHint).toEqual(aspectUnlockHint(ASPECT));
+    expect(tIn('en', s.aspectHint.key, s.aspectHint.vars)).toBe('WILDHEART unlocked — press R to roar');
+    expect(tIn('zh-CN', s.aspectHint.key, s.aspectHint.vars)).toBe('WILDHEART 已解锁：按 R 咆哮');
   });
 
   // My first version of this test guarded the key assertion behind `if (limit > 1)`. Every
@@ -92,24 +94,32 @@ describe('just-in-time Aspect-unlock hint — behaviour, not source text', () =>
   });
 });
 
-describe('AspectHintToast — renders the hint and auto-clears it', () => {
-  it('renders the store hint', () => {
-    useGameStore.setState({ aspectHint: 'WILDHEART unlocked — press R to roar' });
-    render(<AspectHintToast />);
-    expect(screen.getByText(/WILDHEART unlocked/)).toBeTruthy();
-  });
+describe('AspectHintToast — hands the hint to the notification channel once play is live, then clears it', () => {
+  const HINT = { key: 'notice.aspect.roar', vars: { key: 'R' } };
+  beforeEach(() => { useGameStore.setState({ addNotification: vi.fn() }); });
 
-  it('renders NOTHING when there is no hint', () => {
-    const { container } = render(<AspectHintToast />);
-    expect(container.textContent).toBe('');
-  });
-
-  it('auto-clears the hint after its timeout — the store flag does not stick', () => {
-    vi.useFakeTimers();
-    useGameStore.setState({ aspectHint: 'WILDHEART unlocked — press R to roar' });
-    render(<AspectHintToast />);
-    expect(useGameStore.getState().aspectHint).not.toBeNull();
-    act(() => { vi.advanceTimersByTime(6000); });
+  it('in play, the hint becomes one toast in the channel and the store flag clears', () => {
+    useGameStore.setState({ aspectHint: HINT });
+    const { container } = render(<AspectHintToast live />);
+    const add = useGameStore.getState().addNotification;
+    expect(add).toHaveBeenCalledTimes(1);
+    expect(add).toHaveBeenCalledWith('notice.aspect.roar', 'success', { vars: { key: 'R' } });
     expect(useGameStore.getState().aspectHint).toBeNull();
+    expect(container.textContent, 'it draws nothing of its own').toBe('');
+  });
+
+  it('in the Talents panel (play not live), the hint waits; it is sent when play returns', () => {
+    useGameStore.setState({ aspectHint: HINT });
+    const { rerender } = render(<AspectHintToast live={false} />);
+    const add = useGameStore.getState().addNotification;
+    expect(add).not.toHaveBeenCalled();
+    expect(useGameStore.getState().aspectHint).toEqual(HINT);
+    rerender(<AspectHintToast live />);
+    expect(add).toHaveBeenCalledTimes(1);
+  });
+
+  it('with no hint, nothing is sent', () => {
+    render(<AspectHintToast live />);
+    expect(useGameStore.getState().addNotification).not.toHaveBeenCalled();
   });
 });

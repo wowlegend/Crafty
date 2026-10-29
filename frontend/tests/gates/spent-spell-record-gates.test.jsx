@@ -457,12 +457,6 @@ describe('chain lightning hops onto the live mobs', () => {
     const D = mob({ id: 9103, position: new THREE.Vector3(-1, 29, -5), dyingUntil: 1 }); // a corpse, dissolving
     const ox = mob({ id: 9104, type: 'cow', passive: true, position: new THREE.Vector3(0, 29.5, -4) }); // never auto-picked
     const B = mob({ id: 9105, position: new THREE.Vector3(3, 29, -8) });   // stands here now
-    // What a 250 ms mirror can still hold at this instant: B where it stood earlier, C and D alive.
-    const snap = (e, p) => ({ id: e.id, type: e.type, passive: e.passive, position: p });
-    useGameStore.setState({ mobEntities: [
-      snap(A, [0, 29, -6]), snap(C, [1, 29, -5]), snap(D, [-1, 29, -5]), snap(ox, [0, 29.5, -4]), snap(B, [5, 29, -9]),
-    ] });
-
     let directHits = 0;
     GameMethods.checkMobCollision = (_pos, _r, exclude) => (exclude && exclude.has(A.id) ? null : (directHits++, A));
     const hops = [];
