@@ -130,11 +130,6 @@ export const RECIPES = [
         pattern: [['wood', 'wood', 'wood'], ['wood', null, 'wood'], ['wood', 'wood', 'wood']],
         output: { chest: 1 }
     },
-    {
-        name: 'Magic Crystal',
-        pattern: [['diamond', 'gold']],
-        output: { crystals: 4 }
-    },
     // Cooking — turn raw meat (mob loot) into cooked food (better sustain) over coal. Completes the
     // food loop: kill -> raw drop -> cook -> eat. Outputs are the consumable Cooked cuts GamePanels eats.
     {

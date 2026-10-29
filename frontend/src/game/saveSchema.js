@@ -64,7 +64,36 @@ const questMigration = (def) => ({
     return { reward: questRewards(def), claimQuestId: def.id, title: def.title };
   },
 });
-export const RETIRED_MIGRATIONS = Object.freeze(Object.values(RETIRED_QUESTS).map(questMigration));
+// THE CUT'S TALENT REFUND (DECISIONS 2026-10-28 W1-H item 6). A level paid five attribute points and one talent point;
+// now it pays the talent point alone and the level supplies the stats. A save whose progression holds `attributes` was
+// written before the Cut (no later build writes the key; the tombstone only carries it back), so it is owed:
+//   - floor(P / ATTRIBUTE_POINTS_PER_TALENT) talent points, P being its unspent attribute points plus every point it
+//     allocated (strength, agility and intellect above their base, armour above 0), and
+//   - every talent rank it holds back as a point, because each tree's nodes changed meaning (a free respec).
+export const ATTRIBUTE_POINTS_PER_TALENT = 5;
+const PRE_CUT_ATTRIBUTE_BASE = Object.freeze({ strength: 10, agility: 10, intellect: 10, armor: 0 });
+
+/** The attribute points a pre-Cut `attributes` record holds, spent and unspent; a non-finite or negative field adds 0. */
+export function attributePointsHeld(attributes) {
+  if (!isPlainObject(attributes)) return 0;
+  const pos = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
+  let points = pos(attributes.attributePoints);
+  for (const [stat, base] of Object.entries(PRE_CUT_ATTRIBUTE_BASE)) {
+    if (typeof attributes[stat] === 'number') points += pos(attributes[stat] - base);
+  }
+  return Math.floor(points);
+}
+
+const talentCutMigration = Object.freeze({
+  name: 'talents.cut',
+  run(saveData) {
+    const prog = saveData?.progression;
+    if (!isPlainObject(prog) || !isPlainObject(prog.attributes)) return null;
+    return { talentPoints: Math.floor(attributePointsHeld(prog.attributes) / ATTRIBUTE_POINTS_PER_TALENT), respec: true };
+  },
+});
+
+export const RETIRED_MIGRATIONS = Object.freeze([...Object.values(RETIRED_QUESTS).map(questMigration), talentCutMigration]);
 
 const readMigrated = (saveData) => (isPlainObject(saveData) && Array.isArray(saveData.migrated)
   ? saveData.migrated.filter((name) => typeof name === 'string')
@@ -72,12 +101,13 @@ const readMigrated = (saveData) => (isPlainObject(saveData) && Array.isArray(sav
 
 /**
  * What loading `saveData` owes for retired keys whose migration it has not run, and the record once paid. Pure.
+ * `talentPoints` and `respec` are the Cut's talent refund (above): points to add, and whether every held rank comes back.
  * @returns {{xp: number, coins: number, items: Array<{item: string, count: number}>, claimedQuestIds: string[],
- *   paidTitles: string[], migrated: string[]}}
+ *   paidTitles: string[], talentPoints: number, respec: boolean, migrated: string[]}}
  */
 export function migrateRetired(saveData, migrations = RETIRED_MIGRATIONS) {
   const migrated = [...new Set(readMigrated(saveData))];
-  const owed = { xp: 0, coins: 0, items: [], claimedQuestIds: [], paidTitles: [], migrated };
+  const owed = { xp: 0, coins: 0, items: [], claimedQuestIds: [], paidTitles: [], talentPoints: 0, respec: false, migrated };
   for (const m of migrations) {
     if (migrated.includes(m.name)) continue;
     const r = m.run(saveData);
@@ -87,6 +117,8 @@ export function migrateRetired(saveData, migrations = RETIRED_MIGRATIONS) {
       owed.coins += r.reward.coins;
       if (r.reward.item) owed.items.push(r.reward.item);
     }
+    if (r.talentPoints) owed.talentPoints += r.talentPoints;
+    if (r.respec) owed.respec = true;
     if (r.claimQuestId) owed.claimedQuestIds.push(r.claimQuestId);
     if (r.title) owed.paidTitles.push(r.title);
     migrated.push(m.name);
@@ -100,13 +132,34 @@ const withHeldQuests = (questState, held) => {
   return { ...base, quests: [...(Array.isArray(base.quests) ? base.quests : []), ...held] };
 };
 
+// Inventory keys no build spends any more: the crystal currency and the wand it bought (DECISIONS 2026-10-28 W1-H item
+// 6). They leave the live inventory on load, so the bag never shows a dead item, and ride the tombstone back into the
+// save for one SAVE_VERSION like the progression keys.
+export const RETIRED_INVENTORY_KEYS = Object.freeze(['crystals', 'wand']);
+
+const blocksOf = (saveData) => {
+  const blocks = saveData?.player_data?.inventory?.blocks;
+  return isPlainObject(blocks) ? blocks : null;
+};
+
+/** `inventory` with the retired keys taken out of its `blocks` (the same object when it holds none). Pure. */
+export function liveInventory(inventory) {
+  const blocks = isPlainObject(inventory) && isPlainObject(inventory.blocks) ? inventory.blocks : null;
+  if (!blocks || !RETIRED_INVENTORY_KEYS.some((k) => k in blocks)) return inventory;
+  const kept = Object.fromEntries(Object.entries(blocks).filter(([k]) => !RETIRED_INVENTORY_KEYS.includes(k)));
+  return { ...inventory, blocks: kept };
+}
+
 /**
- * What `saveData` holds that this build does not write, as `{ progression?, game_state?, quests? }`; a retired quest
- * in `paidQuestIds` is not held, since this load has claimed it. Pure.
+ * What `saveData` holds that this build does not write, as `{ progression?, game_state?, quests?, blocks? }`; a retired
+ * quest in `paidQuestIds` is not held, since this load has claimed it. Pure.
  */
 export function splitTombstone(saveData, paidQuestIds = []) {
   const bag = {};
   if (!isPlainObject(saveData) || !(Number(saveData.version) >= SAVE_VERSION)) return bag;
+  const blocks = blocksOf(saveData);
+  const retired = blocks ? Object.entries(blocks).filter(([k]) => RETIRED_INVENTORY_KEYS.includes(k)) : [];
+  if (retired.length) bag.blocks = Object.fromEntries(retired);
   const written = buildSaveData({});
   for (const slice of TOMBSTONE_SLICES) {
     if (!isPlainObject(saveData[slice])) continue;
@@ -130,7 +183,10 @@ export function buildSaveData(state, { position } = {}) {
     chests: mapEntries(state.chests),
     player_data: {
       position: position || { x: 0, y: 18, z: 0 },
-      inventory: state.inventory,
+      // Held retired keys go under the live blocks, so a live key of the same name always wins.
+      inventory: isPlainObject(tomb.blocks) && isPlainObject(state.inventory)
+        ? { ...state.inventory, blocks: { ...tomb.blocks, ...(state.inventory.blocks || {}) } }
+        : state.inventory,
       // `stats` DELETED 2026-08-11: setPlayerStats had zero callers, so this wrote four zeros into every
       // save. The real counters ride in questState. Old saves keep the key; nothing reads it, and
       // migrateSaveData does not need to strip it -- an ignored extra key costs nothing.

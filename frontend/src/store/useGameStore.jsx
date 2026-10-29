@@ -4,7 +4,7 @@ import { computeEffective, deriveMaxStats, xpForLevel, levelAttributes } from '.
 import { refundUnknownTalents, canUnlockTalent, respecTalents } from '../game/talentTree.js';
 import { spellStatsAt } from '../game/spellTiers.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired } from '../game/saveSchema.js';
+import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -676,11 +676,6 @@ export const useGameStore = create((set, get) => ({
             coal: 8, iron: 4,
             'Stone Sword': 1,
             'Health Potion': 2, 'Mana Potion': 1,
-            // B3b: crystals + the starter wand live in the CANONICAL `blocks` bucket (the one the Inventory
-            // panel renders and every writer targets). They used to seed into `magic`, which no panel
-            // renders and which the wand trade + mana-discount consumer read — so the starting 8 crystals
-            // were unspendable and the starter wand gave 0% discount. crystalWallet.js is the one accessor.
-            crystals: 8, wand: 1
         },
         tools: { pickaxe: 1, shovel: 1, axe: 1, sword: 1 },
         magic: {}
@@ -1031,8 +1026,9 @@ export const useGameStore = create((set, get) => ({
         const owed = migrateRetired(saveData);
         set((state) => {
             const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
-            // migrateSaveData already normalized inventory keys — use directly.
-            const inventory = saveData.player_data?.inventory || state.inventory;
+            // migrateSaveData already normalized inventory keys. The retired currency keys leave the live bag (the
+            // tombstone below holds them for the save).
+            const inventory = liveInventory(saveData.player_data?.inventory || state.inventory);
             const selectedBlock = saveData.game_state?.selectedBlock || state.selectedBlock;
             const activeSpell = saveData.game_state?.activeSpell || state.activeSpell;
             // `??`, not `||`: gameTime 0 is DAWN — a real, common, perfectly valid clock value, and it is
@@ -1066,7 +1062,10 @@ export const useGameStore = create((set, get) => ({
             const talentPoints = prog?.talentPoints ?? state.talentPoints;
             const unlockedTalents = prog?.unlockedTalents ?? state.unlockedTalents;
             // Migrate pre-A4 saves: drop talent ids no longer in the trees + refund their ranks into points.
-            const _talentRefund = refundUnknownTalents(unlockedTalents, talentPoints);
+            const _known = refundUnknownTalents(unlockedTalents, talentPoints);
+            // A pre-Cut save gets every rank back and its attribute points as talent points (saveSchema talents.cut).
+            const _cut = owed.respec ? respecTalents(_known.unlockedTalents, _known.talentPoints) : _known;
+            const _talentRefund = { unlockedTalents: _cut.unlockedTalents, talentPoints: _cut.talentPoints + owed.talentPoints };
             const coins = prog?.coins ?? state.coins;
             // Siege progression (durable across reload): siege intensity + reward scaling.
             const nightCount = prog?.nightCount ?? state.nightCount;
@@ -1152,6 +1151,9 @@ export const useGameStore = create((set, get) => ({
         if (owed.paidTitles.length) {
             const parts = [owed.xp > 0 && `+${owed.xp} XP`, owed.coins > 0 && `+${owed.coins} coins`, ...owed.items.map((it) => `+${it.count} ${it.item}`)].filter(Boolean);
             s.addNotification?.(`Quest reward (${owed.paidTitles.join(', ')}): ${parts.join(', ')}!`, 'reward');
+        }
+        if (owed.respec) {
+            s.addNotification?.(`Talents now change your Aspects: ${s.talentPoints} talent points to spend (U)`, 'reward');
         }
 
         // Teleport the live Rapier body (imperative; outside the reactive set) if present, leaving any fight behind

@@ -150,11 +150,11 @@ that entry's items. Each stands while it earns its place; reversing one takes a 
    blocks (item 4); the cap stops a build-and-break loop. Bank by day, spend by night, stays.
 6. **Progression becomes talents that change verbs, plus loot relics** (plan row 22, lane W2-F). Supersedes hand
    attribute allocation (`frontend/src/store/useGameStore.jsx:326-333`, five points a level at `:450-456`), the free
-   spell-mastery click (`upgradeSpell`, `frontend/src/world/spellUpgrades.js:90`) and the crystal wallet with its wand
-   discount (`frontend/src/game/crystalWallet.js`, the 2026-07-14 B3b fix). A level grants one talent point; a talent
-   changes how a verb plays; relics come from loot; spells scale with level. Why: seven axes that each add a number give
-   a player nothing to choose. It needs a damage rebalance first, because `solveSpellDamage` reads attributes.
-   `frontend/src/game/affixes.js` (no importer) goes with it.
+   spell-mastery click (`upgradeSpell`, `frontend/src/world/spellUpgrades.js:90`, REMOVED by W2-F step 4) and the crystal
+   wallet with its wand discount (`frontend/src/game/crystalWallet.js`, the 2026-07-14 B3b fix, REMOVED by W2-F step 4). A
+   level grants one talent point; a talent changes how a verb plays; relics come from loot; spells scale with level. Why:
+   seven axes that each add a number give a player nothing to choose. It needs a damage rebalance first, because
+   `solveSpellDamage` reads attributes. `frontend/src/game/affixes.js` (no importer, REMOVED by W2-F step 4) goes with it.
 7. **The Forge replaces the crafting grid** (plan row 23, lane W2-F). Supersedes the 3x3 grid
    (`frontend/src/ui/panels/CraftingTable.jsx`, `frontend/src/data/recipes.js`, the C key, the touch-tray Craft slot,
    the pickaxe item) and with it the 2026-07-14 grid fixes (B3a sword patterns, B3d escrow). A Forge card on Mara (G)

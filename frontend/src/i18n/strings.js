@@ -98,7 +98,6 @@ export const STRINGS = {
     'panel.selectItemToCraft': 'Select Item to Craft With',
     'panel.inventoryTip': 'Inventory Tip',
     'panel.craftPlaceHint': 'Select an item in your hotbar, then click a slot to place it. Click placed items to remove them.',
-    'ui.crystals': 'Crystals',
     'ui.receive': 'Receive',
     // Title-screen control hints (MenuSystem). Key names stay Latin; only the verb translates.
     'hint.wasdMove': 'WASD Move',
@@ -262,7 +261,6 @@ export const STRINGS = {
     'panel.selectItemToCraft': '选择要用于合成的物品',
     'panel.inventoryTip': '背包提示',
     'panel.craftPlaceHint': '先在快捷栏中选择物品，然后点击格子放入。点击已放入的物品可取出。',
-    'ui.crystals': '水晶',
     'ui.receive': '获得',
     'hint.wasdMove': 'WASD 移动',
     'hint.spaceJump': '空格 跳跃',

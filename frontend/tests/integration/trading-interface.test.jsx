@@ -5,13 +5,9 @@ import { TradingInterface } from '../../src/ui/TradingInterface.jsx';
 import { SoundProvider } from '../../src/SoundManager.jsx';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 
-// The audit flagged "villager trade -> inventory mutation never E2E'd", and the M5 #15 stale-closure
-// fix (subtract from the FRESH `prev`, not the render-snapshot) had only static-gate coverage. This
-// renders the REAL TradingInterface, clicks the REAL "Trade" button for a specific trade, and asserts
-// the store mutated correctly across all three trade code-paths:
-//   block   -> executeBlockTrade   (functional setInventory(prev=>...) — the fresh-prev fix)
-//   crystal -> executeCrystalTrade (functional setInventory(prev=>...) — the fresh-prev fix)
-//   coin    -> executeCoinTrade    (spendCoins + addToInventory store actions)
+// The villager merchant sells consumables for coins, and only that: the ore-to-crystal and crystal-to-wand trades went
+// with the crystal wallet (DECISIONS 2026-10-28 W1-H item 6). This renders the REAL TradingInterface, clicks the REAL
+// "Trade" button for a row, and asserts the store mutated (spendCoins + addToInventory).
 // jsdom has no AudioContext, so useGameSounds' playSound early-returns (guarded) — render-safe.
 const ORIGINAL_INV = useGameStore.getState().inventory;
 const ORIGINAL_COINS = useGameStore.getState().coins;
@@ -43,29 +39,6 @@ function clickTradeFor(name) {
 }
 
 describe('TradingInterface (jsdom) — real trade buttons mutate the store', () => {
-  it('block trade: Stone -> Crystal deducts 16 stone (from fresh prev) and grants 1 crystal', () => {
-    useGameStore.setState({ inventory: { blocks: { stone: 20 }, tools: {}, magic: {} } });
-    renderTrade();
-
-    clickTradeFor('Stone to Crystal');
-
-    const inv = useGameStore.getState().inventory;
-    expect(inv.blocks.stone).toBe(4); // 20 - 16
-    expect(inv.blocks.crystals).toBe(1); // routed into the rendered `blocks` bucket (M5 #15)
-  });
-
-  it('crystal trade: Crystals -> Wand spends 15 crystals (from fresh prev) and grants 1 wand', () => {
-    // B3b: crystals are earned into + spent from the canonical `blocks` bucket (was split with `magic`).
-    useGameStore.setState({ inventory: { blocks: { crystals: 20 }, tools: {}, magic: {} } });
-    renderTrade();
-
-    clickTradeFor('Crystals to Wand');
-
-    const inv = useGameStore.getState().inventory;
-    expect(inv.blocks.crystals).toBe(5); // 20 - 15, spent from the canonical blocks bucket
-    expect(inv.blocks.wand).toBe(1); // bought item lands in the rendered blocks bucket
-  });
-
   it('coin trade: Coins -> Health Potion spends 12 coins and grants 1 potion', () => {
     useGameStore.setState({ coins: 20, inventory: { blocks: {}, tools: {}, magic: {} } });
     renderTrade();
@@ -77,29 +50,22 @@ describe('TradingInterface (jsdom) — real trade buttons mutate the store', () 
     expect(s.inventory.blocks['Health Potion']).toBe(1);
   });
 
-  it('disabled trade does not mutate the store (insufficient stock)', () => {
-    // only 5 stone — Stone->Crystal needs 16, so the button is disabled and the click is a no-op
-    useGameStore.setState({ inventory: { blocks: { stone: 5 }, tools: {}, magic: {} } });
+  it('a disabled trade does not mutate the store (too few coins)', () => {
+    useGameStore.setState({ coins: 5, inventory: { blocks: {}, tools: {}, magic: {} } });
     renderTrade();
 
-    clickTradeFor('Stone to Crystal');
+    clickTradeFor('Coins to Health Potion');
 
-    const inv = useGameStore.getState().inventory;
-    expect(inv.blocks.stone).toBe(5); // unchanged
-    expect(inv.blocks.crystals).toBeUndefined(); // no phantom grant
+    const s = useGameStore.getState();
+    expect(s.coins).toBe(5); // unchanged
+    expect(s.inventory.blocks['Health Potion']).toBeUndefined(); // no phantom grant
   });
 
-  it('Resources panel reads crystals/wands from the canonical `blocks` bucket (B3b residual)', () => {
-    // Regression: the Resources header + wand-payoff badge read the DEAD `magic` bucket, so earned
-    // crystals/wands always displayed 0 and the mana reduction always showed -0% — even though
-    // crystalWallet.js's B3b fix migrated every writer/spender/seed to the canonical `blocks` bucket.
-    // wandManaMultiplier(2) = 1 - 2*0.06 = 0.88 -> the badge must read "-12% spell mana".
-    useGameStore.setState({ inventory: { blocks: { crystals: 7, wand: 2 }, tools: {}, magic: {} } });
+  it('offers no crystal or wand trade and shows no crystal or wand count', () => {
     renderTrade();
-    const crystalsCell = screen.getByText('Crystals').parentElement;
-    expect(within(crystalsCell).getByText('7')).toBeTruthy(); // was 0 (read the empty magic.crystals)
-    const wandsCell = screen.getByText('Wands').parentElement;
-    expect(within(wandsCell).getByText('2')).toBeTruthy(); // was 0 (read the empty magic.wand)
-    expect(screen.getByText('-12% spell mana')).toBeTruthy(); // was "-0% spell mana" (read magic.wand)
+    expect(screen.getByText('Coins to Health Potion'), 'SETUP: the merchant rendered no rows').toBeTruthy();
+    expect(screen.getAllByRole('button', { name: /^trade$/i }).length, 'the merchant offers other than its two coin trades').toBe(2);
+    expect(screen.queryByText(/crystal/i)).toBeNull();
+    expect(screen.queryByText(/wand/i)).toBeNull();
   });
 });

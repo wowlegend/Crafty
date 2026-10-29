@@ -3,7 +3,7 @@ import { RECIPES } from '../../src/data/recipes.js';
 import { BLOCK_ID, BLOCK_ALIAS } from '../../src/world/blockIds.js';
 import { CONSUMABLE_EFFECTS } from '../../src/game/consumables.js';
 import { EQUIPMENT_STATS } from '../../src/store/useGameStore.jsx';
-import { CRYSTAL_KEY, WAND_KEY } from '../../src/game/crystalWallet.js';
+import { CURRENCY_KEYS } from '../../src/data/items.js';
 
 // A CRAFT THAT DESTROYS MATERIALS FOR AN INERT ITEM (2026-08-09 audit, two HIGH findings).
 //
@@ -24,11 +24,9 @@ describe('every recipe output resolves to something the game can actually use', 
   const isPlaceable = (k) => (BLOCK_ALIAS[k] || k) in BLOCK_ID;
   const isConsumable = (k) => k in CONSUMABLE_EFFECTS;
   const isEquipment = (k) => k in EQUIPMENT_STATS;
-  // CURRENCY — the fifth path, and this gate FALSE-POSITIVED on it before the path was modelled.
-  // `crystals` looked dead on the four checks above, but crystalWallet.js is the canonical accessor for
-  // a real spendable currency (TradingInterface buys wands with it). Imported from the module rather than
-  // retyped as a literal, so the gate cannot drift from the wallet it is checking.
-  const isCurrency = (k) => k === CRYSTAL_KEY || k === WAND_KEY;
+  // CURRENCY — the fifth path: a key with a real spender that is neither an item nor a block. Read from
+  // data/items.js CURRENCY_KEYS, which names each one's consumer, so the gate cannot drift from that list.
+  const isCurrency = (k) => CURRENCY_KEYS.includes(k);
   const isIngredient = (k) =>
     RECIPES.some((r) => r.pattern.some((row) => row.some((c) => c && String(c).toLowerCase() === k.toLowerCase())));
 
@@ -61,7 +59,10 @@ describe('every recipe output resolves to something the game can actually use', 
     // fail loudly, whereas one that says EVERYTHING is usable passes silently. Prove the negative case.
     expect(isPlaceable('stone') || isConsumable('stone') || isIngredient('stone')).toBe(true);
     const fabricated = 'definitely_not_a_real_item_key_9f3a';
-    expect(isCurrency(CRYSTAL_KEY)).toBe(true);
+    expect(isCurrency('coins')).toBe(true);
+    // crystals and the wand left with the crystal wallet (DECISIONS 2026-10-28 W1-H item 6): no recipe may mint them.
+    expect(isCurrency('crystals')).toBe(false);
+    expect(isCurrency('wand')).toBe(false);
     expect(isPlaceable(fabricated)).toBe(false);
     expect(isCurrency(fabricated)).toBe(false);
     expect(isConsumable(fabricated)).toBe(false);
