@@ -65,6 +65,13 @@ export function decideVoidhand(sm, ctx) {
   if (ctx.held) {
     out.charging = false;
     if (!ctx.alive) { out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC; return { sm: out, action: 'drop' }; }
+    // A block kept after a throw lasts only while the build still gives that many throws: once the relic or rank that
+    // gave it leaves, it drops before any verb can launch it.
+    if ((sm.thrown || 0) >= throwsOf(ctx)) {
+      out.thrown = 0;
+      out.cooldownUntil = ctx.now + GRAB_COOLDOWN_SEC;
+      return { sm: out, action: 'drop' };
+    }
     if (ctx.attack || ctx.cast) {
       const action = ctx.attack ? 'hurl' : 'slam';
       // A grab that holds more than one block keeps the next in hand: no cooldown, the same hold timer.

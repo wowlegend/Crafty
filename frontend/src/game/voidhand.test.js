@@ -162,6 +162,18 @@ describe('a grab that holds more than one block', () => {
     const r = decideVoidhand(held, { ...base, held: true, attack: true, now: 1, throws: 1 });
     expect(r.keep, 'the grab kept a block a relic no longer in the slot had given').toBeUndefined();
     expect(r.sm.cooldownUntil).toBe(1 + GRAB_COOLDOWN_SEC);
+    // Grabbed with Lodestone and thrown once, so the second block is in hand; the slot changes to a one-throw build. The
+    // kept block drops on the next tick, a click on that tick launches nothing, and the drop arms the release cooldown.
+    const kept = decideVoidhand(held, { ...base, held: true, attack: true, now: 1, throws: 2 });
+    expect(kept.keep).toBe(true);
+    const idle = decideVoidhand(kept.sm, { ...base, held: true, now: 1.1, throws: 2 });
+    expect(idle.action, 'the kept block dropped while its relic was still in the slot').toBe('none');
+    for (const verb of [{}, { attack: true }, { cast: true }]) {
+      const swapped = decideVoidhand(kept.sm, { ...base, held: true, now: 1.2, throws: 1, ...verb });
+      expect(swapped.action, `the block a relic no longer in the slot had given outlived it (${JSON.stringify(verb)})`).toBe('drop');
+      expect(swapped.sm.thrown).toBe(0);
+      expect(swapped.sm.cooldownUntil).toBe(1.2 + GRAB_COOLDOWN_SEC);
+    }
     // Long Hold's seconds count while held: past the base hold the block stays with holdSec 12, and drops without it.
     const t = GRAB_CHARGE_SEC + MAX_HOLD_SEC + 1;
     expect(decideVoidhand(held, { ...base, held: true, now: t, holdSec: 12 }).action).toBe('none');
