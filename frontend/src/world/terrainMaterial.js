@@ -45,9 +45,8 @@ const compileShader = (shader) => {
     shader.uniforms.mood = { value: 0.0 }; // 0 explore, 1 dusk, 2 obsidian (spec §4)
     shader.uniforms.voxelTextures = { value: voxelTextures };
     shader.uniforms.skyHorizon = { value: new THREE.Color(0.6, 0.75, 0.9) }; // S2 aerial-perspective haze target (set per-frame from the sky frame, skyFrameRef)
-    // S11 sky-coloured AO. Initialised to the exact grey the AO term used before this existed, so a
-    // frame rendered before the first useFrame tick is byte-identical to the old behaviour rather than
-    // flashing a wrong colour for one frame.
+    // S11 sky-coloured AO. Initialised to a neutral grey at the floor's luminance, so a frame drawn before the first
+    // useFrame tick writes the sky colour shows no wrong colour.
     shader.uniforms.uAoFloor = { value: new THREE.Color(AO_FLOOR, AO_FLOOR, AO_FLOOR) };
     // EXTERNAL-BASELINE #5: cloud shadows. The clock and the sun are written per frame (Terrain.jsx's useFrame).
     shader.uniforms.uTime = { value: 0 };
@@ -157,7 +156,7 @@ const compileShader = (shader) => {
         // -> capture-deterministic.
         // The floor is a COLOUR, not a grey scalar: a contact shadow is lit by the sky, so a
         // crevice at noon is blue and at dusk is warm — the single cheapest thing that stops voxel AO
-        // reading as dirt. Its LUMINANCE is pinned to the old 0.55 in every mood (see aoFloorColor):
+        // reading as dirt. Its LUMINANCE is held at 0.55 in every mood (see aoFloorColor):
         // multiplying by the sky colour directly would crush crevices toward black at dusk and at night,
         // which is the opposite of the intent. Static vAO attribute + a mood-driven uniform that snaps
         // with mood -> capture-deterministic, same contract as skyHorizon two terms below.

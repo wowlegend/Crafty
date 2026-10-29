@@ -590,7 +590,7 @@ export function passWindowWhy({ cycle, pose, at, chain, expectEffects }) {
 export function passRendererProblem(renderer, { allowSoftware = false } = {}) {
   const gpu = classifyRenderer(renderer);
   if (gpu === 'hardware' || (gpu === 'software' && allowSoftware)) return null;
-  return `the GAME's renderer is ${gpu} (${renderer ?? 'none read'}) although the about:blank probe said hardware: the GPU utilization would read an idle device`;
+  return `the GAME's renderer is ${gpu} (${renderer ?? 'none read'}): the GPU utilization would read an idle device`;
 }
 
 /**

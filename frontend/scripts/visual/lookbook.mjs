@@ -70,7 +70,7 @@
  * facing its heading (a respawn or a drift is stood back before the next window) and the chain showing exactly the
  * arm's effects off (_lookbook.mjs passWindowWhy); an instrument short of samples is dropped from its window, not the
  * window. A game renderer that is not hardware stops the run (COULD NOT MEASURE), since the GPU utilization would read
- * an idle device. Then before/after frames (PASS_LOOK_PAIRS). No block starts while the 1-minute load is over
+ * an idle device; --allow-software lets a SwiftShader run through, and its U then admits no instrument. Then before/after frames (PASS_LOOK_PAIRS). No block starts while the 1-minute load is over
  * PASS_MAX_LOAD. It writes passes.json (every window, raw) and the frames, and prints each arm's differential and
  * verdict (passVerdict).
  *
