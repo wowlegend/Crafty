@@ -101,7 +101,7 @@ if (splitMissing.length) {
 // other chunk, the same one for every marker — the presence half proves the split happened rather than the panel
 // having been deleted, and one chunk means one request. A second STATIC importer of any panel module would pull it
 // back into the boot chunk; this is what sees that.
-const LAZY_PANEL_MARKERS = ['alloc-strength', 'progression-panel']; // GamePanels, SpellUpgradePanel
+const LAZY_PANEL_MARKERS = ['relic-slot', 'progression-panel']; // GamePanels, SpellUpgradePanel
 const bootChunk = findChunk('index');
 // Each chunk is read ONCE, lazily, and kept: the per-marker scan re-read every chunk (the 2.2 MB rapier one too) once
 // per marker (review #8, R9.9).
