@@ -160,7 +160,9 @@ describe('adoptHurlRequest and flightSlot — a paid throw always throws', () =>
 
   it('holds every block two grabs in a row can have in the air at once', () => {
     // A grab throws as fast as the clicks come; the next grab commits GRAB_COOLDOWN_SEC + GRAB_CHARGE_SEC after the
-    // last throw, so every grab whose commit falls inside one flight's HURL_TTL_SEC can have its blocks up together.
+    // last throw, so every grab whose commit falls inside one flight's HURL_TTL_SEC can have its blocks up together. The
+    // gap is measured on the grab's clock, which a pause does not stop, so a player pausing between grabs can exceed this
+    // bound (flightSlot then gives up the oldest block).
     const throwsPerGrab = VERB_BASE.grabThrows
       + ASPECT_TREES.flatMap((t) => t.nodes).filter((n) => n.mod?.key === 'grabThrows').reduce((s, n) => s + n.mod.add * n.limit, 0)
       + Math.max(0, ...Object.values(RELICS).filter((r) => r.mod.key === 'grabThrows').map((r) => r.mod.add));

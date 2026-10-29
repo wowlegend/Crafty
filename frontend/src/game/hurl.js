@@ -118,8 +118,9 @@ export function adoptHurlRequest(req) {
 export const MAX_FLIGHTS = 6;
 
 /**
- * The pool slot a new flight takes: a free one, else the one flying longest. A hitstop holds a flight's age while the
- * grab's clock runs on, so the pool can fill; then the oldest block leaves and the paid throw still flies.
+ * The pool slot a new flight takes: a free one, else the one flying longest. A flight ages on the world clock and the
+ * grab's cooldown and charge on R3F's, which runs through a hitstop and a pause, so pausing between grabs can fill the
+ * pool; then the oldest block leaves and the paid throw still flies.
  */
 export function flightSlot(slots) {
   let oldest = 0;

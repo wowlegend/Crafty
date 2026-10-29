@@ -91,10 +91,6 @@ export function HurlSystem() {
       const f = slots[i];
       if (!f) continue;
       const r = stepHurlChunked(f.h, delta, mobsQuery.entities); // substepped: frame spikes can't tunnel
-      if (import.meta.env.DEV) {
-        // observability transient (the __threeScene precedent): exact flight truth for smokes/devtools
-        window.__hurlDebug = { slot: i, age: f.h.age, x: f.h.position.x, y: f.h.position.y, z: f.h.position.z, done: r.done, hit: r.hit ? r.hit.id : null, delta };
-      }
       const m = meshesRef.current[i];
       if (m) {
         m.position.set(f.h.position.x, f.h.position.y, f.h.position.z);
