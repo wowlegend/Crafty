@@ -27,8 +27,8 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 //
 // WHAT THIS DOES NOT CHECK: touch placement (the same place verb), the Building Tools' multi-block footprints
 // (tests/integration/place-clear-of-player-rapier.test.jsx drives them against real Rapier), a placement whose collider
-// lands after a moving player has walked into its cell (registry row PLACE:collider-lands-late), or the look of the
-// refusal notice.
+// lands after a moving player has walked into its cell (registry REVIEW:fix-invisible-box:collider-lands-late), or the
+// look of the refusal notice.
 //
 // Mutation-Proof: see the commit trailers (red-first: the burst on the unfixed placement; the node gate's mutants).
 

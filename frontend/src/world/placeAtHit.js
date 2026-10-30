@@ -13,6 +13,35 @@ import { notifyDenied } from '../ui/denyToast.js';
 // The blocks only Mara's Forge makes: their refusal says where more come from.
 const FORGED = new Set(GOODS.map((g) => g.give));
 
+// A block written into a cell the player's body fills holds them for good: the chunk's trimesh collider stops the
+// capsule from inside, the build ray from inside hits the block's inner face (so mining takes the cell beyond it), and
+// with the camera in the cell every face points away from the eye and the FrontSide terrain material culls it, so the
+// block cannot be seen (Kevin, 2026-10-30; tests/integration/place-clear-of-player-rapier.test.jsx). So no cell the body
+// fills is placed. The test is the capsule itself, not the KCC's 0.05 m offset around it: a cell inside that offset
+// band but clear of the capsule does not hold the player (measured at gaps 0 to 0.1 m against real Rapier), and
+// refusing it would refuse a block laid against the player's side.
+function bodyCapsules(store) {
+    const body = store.playerRigidBodyRef?.current;
+    if (!body) return [];
+    const out = [];
+    // The live colliders, not BASE_CAPSULE: a beast form swaps the shape in place (game/beasts.js setColliderToForm).
+    for (let i = 0; i < body.numColliders(); i++) {
+        const c = body.collider(i);
+        const at = c.translation();
+        out.push({ x: at.x, y: at.y, z: at.z, halfHeight: c.halfHeight(), radius: c.radius() });
+    }
+    return out;
+}
+
+// The body's rotations are locked, so each capsule's core is a vertical segment; the distance from it to the unit cell
+// is the box distance on each axis, and the cell overlaps the capsule when that is under the radius.
+function cellInCapsule(cell, cap) {
+    const dx = Math.max(cell.x - cap.x, 0, cap.x - (cell.x + 1));
+    const dz = Math.max(cell.z - cap.z, 0, cap.z - (cell.z + 1));
+    const dy = Math.max(cell.y - (cap.y + cap.halfHeight), 0, (cap.y - cap.halfHeight) - (cell.y + 1));
+    return Math.hypot(dx, dy, dz) < cap.radius;
+}
+
 /**
  * @param {{hitPoint: THREE.Vector3, normal: ({x:number,y:number,z:number}|null), direction: THREE.Vector3}|null} h the build-ray hit
  * @param {{post: (msg: object) => void, playPlace?: (pos: THREE.Vector3, block: string) => void}} io
@@ -35,7 +64,11 @@ export function placeAtHit(h, { post, playPlace }) {
     // its header says why the cap is an economy decision, given the per-cell debit below. A chest is one storage
     // container keyed by its own cell, so it always places as a single cell at the aimed one, whatever the build mode.
     const mode = type === 'chest' ? 'single' : store.buildingMode || 'single';
-    const cells = buildFootprint(mode, store.buildSize || 1, { x: tx, y: ty, z: tz }, h.normal);
+    const footprint = buildFootprint(mode, store.buildSize || 1, { x: tx, y: ty, z: tz }, h.normal);
+    const body = bodyCapsules(store);
+    const cells = footprint.filter((c) => !body.some((cap) => cellInCapsule(c, cap)));
+    // Said whenever a cell is held back, a footprint's included: a gap the player did not see coming reads as a bug.
+    if (cells.length < footprint.length) notifyDenied('in-the-way');
 
     const newBlocks = new Map(store.worldBlocks);
     let placed = 0;
@@ -51,7 +84,7 @@ export function placeAtHit(h, { post, playPlace }) {
     }
     if (placed === 0) {
         // Not one cell affordable: say so, or an empty stack reads as a dead button.
-        notifyDenied(FORGED.has(type) ? 'no-block-forge' : 'no-block', BLOCK_TYPES[type]?.name || type);
+        if (cells.length > 0) notifyDenied(FORGED.has(type) ? 'no-block-forge' : 'no-block', BLOCK_TYPES[type]?.name || type);
         return 0;
     }
 
