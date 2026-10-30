@@ -19,6 +19,21 @@
 
 ---
 
+## 2026-10-30 — commit `faa65ee1` carries the WRONG message. Read this instead.
+
+`faa65ee1` on `feat/w2d-hud` is titled "fix(render): Show Stats no longer paces the game it measures", another lane's
+message. Its author wrote the message to a fixed file name in a scratchpad that sibling agents of the same session
+share; the shell refused to overwrite the sibling's file of that name, the next command was not chained on the write,
+and `git commit -F` committed the staged work under the sibling's text. The rule kept: a commit is never amended, so
+this entry and the next commit's body carry the real message. **What `faa65ee1` contains:** the dragon's attack calls
+rank below every other notice in the phone's one line, and its one-off calls still take it at once (item 92, as amended
+that day): `world/bossSystem.js` `bossAttackCall` (marked `attack`), `ui/notifications.js` `lineNotification` (one-off
+call, then plain notice, then attack call), `render/BossEntity.jsx` raising its four attack calls through it, the gate
+`tests/gates/boss-attack-line-gates.test.js` (a plain notice held 0-800 ms of 4 s at the fireball's 2.4 s before, its
+whole 4 s after, over 11,520 simulated fights), the e2e attack-call states, and registry
+`REVIEW:w2d:boss-attack-calls-unread`. Its mutation proof is in the next commit's body. The Show Stats change the title
+names is not in it.
+
 ## 2026-10-29 — [LOOP] W2-D PR A: the HUD at rest, the compass, one notification channel, and no mob mirror
 
 **Decided by the W2-D HUD lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H item 2(c) and
