@@ -31,6 +31,7 @@ import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ContextLossPanel } from './ui/ContextLossPanel.jsx';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { installAutosave } from './game/autosave';
+import { savePosition } from './game/saveSchema.js';
 import { useDayNightClock } from './game/useDayNightClock';
 import { shouldOpenPauseOnUnlock } from './ui/panelState.js';
 
@@ -194,9 +195,7 @@ function GameApp({ experienceSystem }) {
     save: () => {
       const st = useGameStore.getState();
       if (st.isCaptureMode) return;
-      const rb = st.playerRigidBodyRef && st.playerRigidBodyRef.current;
-      const t = rb && rb.translation ? rb.translation() : null;
-      st.saveActiveWorld(t ? { x: t.x, y: t.y, z: t.z } : st.playerPosition);
+      st.saveActiveWorld(savePosition(st));
     },
     delayMs: 5000,
   }), []);

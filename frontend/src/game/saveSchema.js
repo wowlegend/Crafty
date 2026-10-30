@@ -232,6 +232,19 @@ export const PERSISTED_KEYS = Object.freeze([
   'bossActive', 'bossHealth', 'bossDefeated', 'bossTier', 'bossKillNight',
 ]);
 
+/**
+ * Where a save stands the player when it is loaded: the body's centre, as the controller left it. Never the store's
+ * playerPosition, which is the camera (0.67 m up at the eye) rounded to whole metres (systems/PositionTracker.jsx): loaded
+ * as the body's centre, it stood the player up to half a metre into a wall they had stood beside, or with the head in the
+ * ceiling of a two-high tunnel (tests/integration/chaos-play-rapier.test.jsx). That is the fallback only with no body.
+ * @param {{playerRigidBodyRef?: {current: ?{translation: () => {x: number, y: number, z: number}}}, playerPosition?: object}} state
+ */
+export function savePosition(state) {
+  const rb = state.playerRigidBodyRef && state.playerRigidBodyRef.current;
+  const t = rb && rb.translation ? rb.translation() : null;
+  return t ? { x: t.x, y: t.y, z: t.z } : state.playerPosition;
+}
+
 export function buildSaveData(state, { position } = {}) {
   const tomb = isPlainObject(state._tombstone) ? state._tombstone : {};
   return {
