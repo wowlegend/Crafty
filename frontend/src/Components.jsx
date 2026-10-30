@@ -8,6 +8,7 @@ import { worldTimeScale, hitstopForHit } from './game/hitstop.js';
 import { realDelta, worldNow } from './game/worldClock.js';
 import { BEAST_FORMS, BASE_CAPSULE, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
 import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from './game/formFit.js';
+import { refuseFormSwap, cutTransformCam } from './game/formRefusal.js';
 import { makeTransformState, decideTransform } from './game/beastTransform.js';
 import { canAfford, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST } from './game/ember.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
@@ -108,6 +109,7 @@ export const Player = ({ isWorldBuilt }) => {
   // on activeBeastForm transitions, consumed inside useFrame (atomic with the Rapier sweep), where game/formFit.js
   // places the new capsule where it fits. A ref -> zero re-renders (Game-Loop Isolation).
   const pendingFormSwapRef = useRef(null);
+  const roarPaidRef = useRef(0); // the ember the roar spent on the queued form, given back if its swap is refused
   // S2-B1-M3: the transform state machine (charge + duration + cooldown) + roar edge-detection.
   const beastSMRef = useRef(makeTransformState());
   const prevRoarRef = useRef(false);
@@ -202,6 +204,7 @@ export const Player = ({ isWorldBuilt }) => {
       // no-permanent-beast restore AT the death/load edge. Not always a shrink (the comet and the hawk
       // are narrower than the base), so the base capsule is placed where it fits (game/formFit.js).
       pendingFormSwapRef.current = null;
+      roarPaidRef.current = 0; // a form that ended before its swap ran: its price stays spent, as any ended form's does
       if (rigidBodyRef.current) restoreBaseFitted(world, rapier, rigidBodyRef.current, controllerRef.current, { unindexed: GameMethods.placedCells?.unindexed() });
     }
   }, [activeBeastForm]);
@@ -746,8 +749,10 @@ export const Player = ({ isWorldBuilt }) => {
         const element = elementForSpell(st.activeSpell);
         if (!formHasRoom(world, rapier, rigidBodyRef.current, BEAST_FORMS[element], { unindexed: GameMethods.placedCells?.unindexed() })) {
           notifyDenied('no-room');
+          cutTransformCam(transformCamRef.current);
         } else if (st.enterBeastForm(element)) {
-          st.spendEmber(ROAR_COST);
+          // Kept until the frame's swap places the form: a refusal there gives it back (game/formRefusal.js).
+          roarPaidRef.current = st.spendEmber(ROAR_COST) ? ROAR_COST : 0;
           // AUDIO (the owed B1 backfill): the ROAR finally SOUNDS — spatial at the player.
           const rp = st.playerPosition;
           if (st.playSpatialSound && rp) st.playSpatialSound('roar', [rp.x, rp.y, rp.z], 1, 30);
@@ -764,8 +769,7 @@ export const Player = ({ isWorldBuilt }) => {
       } else if (action === 'cancel' || action === 'unpaid') {
         // M7a: roar released early, or its price spent by another verb -> ease the transform-cam back to FPV (jump it
         // to the return phase).
-        const tc = transformCamRef.current;
-        if (tc.active) tc.t = Math.max(tc.t, 0.78 * TRANSFORM_CAM_SEC);
+        cutTransformCam(transformCamRef.current);
         st.setBeastCharging(false); // M7c: charge cancelled
         if (action === 'unpaid') emberShort = true;
       } else if (action === 'short') {
@@ -1406,14 +1410,15 @@ export const Player = ({ isWorldBuilt }) => {
     if (pendingFormSwapRef.current && rapier && controllerRef.current) {
       const target = pendingFormSwapRef.current;
       pendingFormSwapRef.current = null;
+      const paid = roarPaidRef.current;
+      roarPaidRef.current = 0;
       if (enterFormFitted(world, rapier, rigidBodyRef.current, target, { unindexed: GameMethods.placedCells?.unindexed() })) {
         // defensive base reset (M1 forms never shove dynamics; the bull enables this in M5).
         if (controllerRef.current.setApplyImpulsesToDynamicBodies) {
           controllerRef.current.setApplyImpulsesToDynamicBodies(false);
         }
       } else {
-        useGameStore.getState().exitBeastForm();
-        notifyDenied('no-room');
+        refuseFormSwap(useGameStore.getState(), { paid, transformCam: transformCamRef.current, notify: notifyDenied });
       }
     }
 
