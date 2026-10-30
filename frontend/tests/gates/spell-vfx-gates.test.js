@@ -27,7 +27,7 @@ const profiles = () => readFileSync(resolve(SRC, 'game', 'spellVisualProfiles.js
 const npc = () => readFileSync(resolve(SRC, 'SimplifiedNPCSystem.jsx'), 'utf8') + readFileSync(resolve(SRC, 'systems/CombatSystem.jsx'), 'utf8'); // A1.8: damage/hitstop path moved to CombatSystem
 const gameScene = () => readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8') + readFileSync(resolve(SRC, 'render/BloomSpikeDriver.jsx'), 'utf8'); // A2.3: bloom-spike driver moved -> src/render/
 const sparks = () => readFileSync(resolve(SRC, 'world', 'GPUSparkSystem.jsx'), 'utf8');
-const app = () => readFileSync(resolve(SRC, 'App.jsx'), 'utf8');
+const app = () => readFileSync(resolve(SRC, 'devtest', 'devBridge.js'), 'utf8'); // the test hooks live in the DEV bridge
 const capture = () => readFileSync(resolve(SRC, 'devtest', 'captureMode.js'), 'utf8');
 
 describe('S1-D-M1 spell-VFX spine', () => {
@@ -143,7 +143,7 @@ describe('S1-D-M2 cast-arc + deterministic spell-cast capture state', () => {
 
   // (A2) The deterministic cast driver is a test hook, so a probe or spec can stage a cast.
   it('spawnSpellCast test hook is registered (deterministic cast driver)', () => {
-    expect(app(), 'App must register a spawnSpellCast test hook').toMatch(/registerTestHook\(\s*['"`]spawnSpellCast['"`]/);
+    expect(app(), 'the DEV bridge must register a spawnSpellCast test hook').toMatch(/registerTestHook\(\s*['"`]spawnSpellCast['"`]/);
   });
 
   // (B) The TELEGRAPH rune-circle (the spec's shared shape vocabulary) exists, is

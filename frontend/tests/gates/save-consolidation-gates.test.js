@@ -21,15 +21,12 @@ const read = (rel) => readFileSync(resolve(SRC, rel), 'utf8');
  * no coverage. (Same disposition the quest-persistence gate reached for the same case, for the same
  * reason.)
  *
- * What remains are cross-file WIRING invariants that live inside subscribe callbacks and React effects
- * and cannot be reached without booting the app. Those stay as source assertions, but anchored to the
- * comparison FORM and asserted UNIQUE, so a second copy of a trigger cannot mask a deleted one and a
- * comment mentioning the field cannot satisfy them.
+ * What remains are cross-file WIRING invariants that cannot be reached without booting the app. Those stay as
+ * source assertions, anchored to the call FORM on comment-stripped source and asserted UNIQUE.
  *
- * BLIND SPOT, stated (R7): nothing here proves an autosave ever RUNS. It proves the subscription names
- * the fields whose change must trigger it. A save that fires and writes a corrupt payload, or a
- * subscription registered on a store nobody mutates, both pass. The payload's correctness is
- * `saveSchema.test.js`'s job; whether the write reaches disk is nobody's, and that is a real gap.
+ * What triggers the autosave and its flush on tab-hide and unload are driven through the real store in
+ * `autosave-trigger-gates.test.js`; the payload's correctness is `saveSchema.test.js`'s. Not checked anywhere: that
+ * the write reaches disk.
  *
  * Mutation-Proof: 3 mutations, recorded on the commit. Denominator asserted on the src walk.
  */
@@ -59,23 +56,12 @@ describe('save consolidation gates', () => {
   });
 });
 
-describe('autosave robustness gates', () => {
+describe('autosave wiring', () => {
   const app = strip(readFileSync(resolve(SRC, 'App.jsx'), 'utf8'));
 
-  it('the autosave is wired with a flush on tab-hide and unload', () => {
-    expect(/createAutosave/.test(app)).toBe(true);
-    expect(/beforeunload/.test(app)).toBe(true);
-  });
-
-  it('every field whose loss costs a session triggers the autosave, each exactly once', () => {
-    // Uniqueness matters here for the reason the quest-persistence gate already found: a duplicated
-    // trigger line would let a deleted one go unnoticed. Counted, not merely matched.
-    const TRIGGERS = ['worldBlocks', 'inventory', 'questState'];
-    const counts = TRIGGERS.map((f) => ({
-      field: f,
-      n: (app.match(new RegExp(`s\\.${f}\\s*!==\\s*prevS\\.${f}`, 'g')) || []).length,
-    }));
-    expect(counts, 'an autosave trigger is missing or duplicated — a session dies on tab-close')
-      .toEqual(TRIGGERS.map((f) => ({ field: f, n: 1 })));
+  it('App installs the autosave on the game store, once', () => {
+    // The one seam autosave-trigger-gates cannot reach: that the app installs it. What it triggers on, and the flush
+    // on tab-hide and unload, are driven there through the real store.
+    expect((app.match(/\binstallAutosave\(useGameStore,/g) || []).length, 'App does not install the autosave, or installs it twice').toBe(1);
   });
 });

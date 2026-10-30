@@ -4,6 +4,7 @@
 // internally. Building the debris hex straight from the linear floats double-darkened the particles.
 // So: debrisHex = linearRgbToHex(linearColor). srgbToLinear mirrors the worker's inline `linear()`.
 
+/** @internal The inverse of the transfer the worker applies, for its round-trip test. */
 export function srgbToLinear(c) {
   c = Math.max(0, Math.min(1, c));
   return c < 0.04045 ? c * 0.0773993808 : Math.pow(c * 0.9478672986 + 0.0521327014, 2.4);

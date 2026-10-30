@@ -12,6 +12,7 @@
  */
 
 /** Beast overall heights (from `beastAvatarParts` FORM_PARTS), used to bound how far the shot may sit. */
+/** @internal Exported for the tests that enumerate it. */
 export const BEAST_HEIGHT = Object.freeze({ fire: 2.45, ice: 1.9, lightning: 2.2, arcane: 2.3 });
 
 /**

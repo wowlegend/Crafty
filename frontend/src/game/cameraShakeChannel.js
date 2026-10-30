@@ -50,6 +50,7 @@ export function shakeDir() {
 }
 
 /** Test/teardown only — a module singleton would otherwise leak trauma between cases. */
+/** @internal Test seam: resets module state between cases. */
 export function _resetShake() {
   _trauma = 0;
   _dirX = 0;

@@ -5,6 +5,7 @@
 // harness never reads/writes localStorage (deterministic baselines).
 export const SETTINGS_KEY = 'crafty_settings';
 
+/** @internal Exported for the tests that enumerate it. */
 export const SETTINGS_DEFAULTS = {
   juiceIntensity: 1,
   sfxVolume: 1,

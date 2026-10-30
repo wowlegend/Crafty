@@ -41,6 +41,10 @@ describe('ci/pipeline.sh tiers, as the gate table parses them', () => {
   it('vitest related runs on the commit only', () => {
     expect(callers('vitest related')).toEqual({ commit: true, push: false, ci: false });
   });
+  it('knip and production knip run in CI only, side by side', () => {
+    expect(callers('knip')).toEqual({ commit: false, push: false, ci: true });
+    expect(callers('knip production')).toEqual({ commit: false, push: false, ci: true });
+  });
   it('the changelog freshness check is a step of no tier: it is a manual command (DECISIONS 2026-10-29 item 101)', () => {
     expect(gates.map((g) => g.name), 'presence: the parse found the static gates').toContain('doc-currency');
     expect(gates.filter((g) => /changelog/i.test(`${g.name} ${g.cmd}`)).map((g) => g.name)).toEqual([]);
@@ -89,6 +93,20 @@ describe('ci/pipeline.sh, run with recording stubs', () => {
       expect(r.cmds, c).toContain(c);
     }
     expect(r.cmds.some((c) => c.includes('related-tests.mjs'))).toBe(false);
+  });
+  it('the fast tier runs knip in both modes; a certified sha and every other tier run neither', () => {
+    const KNIP = ['npm run --silent knip', 'npm run --silent knip:production'];
+    const fast = run('--tier=fast');
+    expect(fast.status, fast.stdout + fast.stderr).toBe(0);
+    for (const c of KNIP) expect(fast.cmds, c).toContain(c);
+    const certified = run('--tier=fast', '--sha-certified=true');
+    expect(certified.status, certified.stdout + certified.stderr).toBe(0);
+    expect(certified.cmds, 'presence: the certified run ran its range gate').toContain('node scripts/ci/registry-append-only.mjs');
+    for (const tier of ['commit', 'push', 'certify']) {
+      const r = run(`--tier=${tier}`);
+      for (const c of KNIP) expect(r.cmds, `${tier}: ${c}`).not.toContain(c);
+    }
+    for (const c of KNIP) expect(certified.cmds, `certified: ${c}`).not.toContain(c);
   });
   it('no tier runs the changelog check: each tier runs its own steps and none of them names changelog', () => {
     for (const tier of ['commit', 'push', 'fast', 'certify']) {

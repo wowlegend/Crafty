@@ -1,5 +1,6 @@
 import { useGameStore } from './store/useGameStore';
 import { subscribeMobKill } from './game/mobKillBus.js';
+import { EVENTS, emit } from './game/eventBus.js';
 import { questMatches } from './game/questMatch.js';
 import { killXP } from './game/killReward.js';
 import { GameMethods } from './GameMethods';
@@ -283,7 +284,7 @@ export const useQuestSystem = () => {
                 unlockedRef.current = new Set([...unlockedRef.current, ach.id]); // claim it BEFORE the side effects
                 setUnlockedAchievements(prev => new Set([...prev, ach.id]));
                 addNotification(`Achievement Unlocked: ${ach.title}!`, 'achievement');
-                if (window.playFanfare) window.playFanfare(); // reward beat: the unlock is now HEARD, not just seen
+                emit(EVENTS.reward);
             }
         });
     }, [addNotification]); // no unlockedAchievements dep: the ref is the live read, and depending on
@@ -305,7 +306,7 @@ export const useQuestSystem = () => {
 
             if (nowComplete && !quest.completed) {
                 addNotification(`Quest Complete: ${quest.title}!`, 'quest');
-                if (window.playFanfare) window.playFanfare(); // reward beat: the completion is now HEARD, not just seen
+                emit(EVENTS.reward);
             }
 
             return { ...quest, progress: newProgress, completed: nowComplete };

@@ -143,11 +143,13 @@ export function captureFrameIndex() {
  * that still looks like a plausible number, which is why they are named differently rather than
  * overloaded on an argument.
  */
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function captureNow() {
   return isCaptureMode() ? _frame * CAPTURE_DT * 1000 : performance.now();
 }
 
 /** SECONDS, as a drop-in for R3F's `state.clock.elapsedTime`. */
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function captureElapsed() {
   return isCaptureMode() ? _frame * CAPTURE_DT : performance.now() / 1000;
 }

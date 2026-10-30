@@ -24,6 +24,7 @@ export function motePresence(frame) {
 }
 
 /** The fade for a mote `distance` metres from the camera: smoothstep over MOTE_NEAR. */
+/** @internal The JS twin of a shader formula, for its parity test. */
 export function moteNearFade(distance) {
   const d = Number(distance);
   if (!Number.isFinite(d)) return 0;

@@ -103,6 +103,7 @@ export function getItemIcon(idOrName) {
 }
 
 // Display name by stable id (falls back to the id itself).
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function getItemName(id) {
   return ITEMS[id]?.name ?? id;
 }
@@ -127,6 +128,7 @@ export const CURRENCY_KEYS = Object.freeze(['coins']);
  * Can the game actually DELIVER this inventory key -- is there any path on which it means something?
  * A key that answers false here is one the player receives and can never use.
  */
+/** @internal The oracle the Forge output gate checks every deliverable against. */
 export function isDeliverableKey(key) {
   if (!key || typeof key !== 'string') return false;
   return !!(ITEMS[key] || NAME_TO_ID[key] || CURRENCY_KEYS.includes(key));

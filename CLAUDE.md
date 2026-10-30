@@ -37,8 +37,8 @@ tests from `frontend/`.** The cwd drifts and resets after a compaction: never ca
 Stack (versions in `frontend/package.json`): React 19, R3F, Vite, Rapier, zustand, miniplex; JavaScript, npm.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **370 source files / 43,209 LOC** in `frontend/src`, plus 141 colocated tests.
-- **Files ≥ 900 LOC (4):** `src/Components.jsx` 1570 · `src/store/useGameStore.jsx` 1275 · `src/App.jsx` 1060 · `src/QuestSystem.jsx` 1002. `doc-currency` checks the list exactly and the
+- **Size (measured):** **387 source files / 44,814 LOC** in `frontend/src`, plus 146 colocated tests.
+- **Files ≥ 900 LOC (3):** `src/Components.jsx` 1587 · `src/store/useGameStore.jsx` 1267 · `src/QuestSystem.jsx` 1053. `doc-currency` checks the list exactly and the
   numbers within ±10%; regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
 <!-- END MEASURED -->
 

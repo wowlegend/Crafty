@@ -73,8 +73,9 @@ for a in "$@"; do case "$a" in --tier=*) TIER="${a#--tier=}" ;; --code-changed=*
 # test. The reset above is what keeps a docs-only run from changing what that suite tests: the flag decides, an
 # inherited CODE_CHANGED never does.
 # --sha-certified=true: change-scope found this run is a push to main of a sha whose `ci ok` already passed in another
-# run, so the fast tier skips its six slow steps (the unit suite, build, bundle budget, knip, npm audit, prod-smoke) and
-# keeps the quick gates and registry-append-only, whose base here is main's previous tip, which that run never read.
+# run, so the fast tier skips its seven slow steps (the unit suite, build, bundle budget, knip in both modes, npm audit,
+# prod-smoke) and keeps the quick gates and registry-append-only, whose base here is main's previous tip, which that run
+# never read.
 # ONLY the exact word `true` skips; reset above like CODE_CHANGED, so an inherited SHA_CERTIFIED decides nothing.
 if [ -n "$SHA_CERTIFIED" ] && [ "$TIER" != "fast" ]; then
   printf '\033[31m✖ pipeline: --sha-certified is only meaningful with --tier=fast\033[0m\n' >&2; exit 2
@@ -178,9 +179,12 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" = "fast" ]; then
   if [ "$SHA_CERTIFIED" = "true" ]; then
-    printf '\n\033[2m── skipped (--sha-certified=true): knip, npm audit, prod-smoke — this sha passed them in the run that certified it\033[0m\n'
+    printf '\n\033[2m── skipped (--sha-certified=true): knip, knip production, npm audit, prod-smoke — this sha passed them in the run that certified it\033[0m\n'
   else
     step "knip (unused files / exports / deps)" npm run --silent knip
+    # Production mode reads only the shipped entries, so a file or export that only tests or tooling reach is unused
+    # here: code the game never runs, kept alive by its own tests. A deliberate test seam or oracle carries @internal.
+    step "knip production (code only tests or tooling reach)" npm run --silent knip:production
     step "npm audit (high + critical)" npm audit --audit-level=high
     if [ "$CODE_CHANGED" = "false" ]; then
       printf '\n\033[2m── skipped (fast tier, --code-changed=false): prod-smoke — only docs changed since a commit CI passed, so the bundle is that commit'"'"'s\033[0m\n'

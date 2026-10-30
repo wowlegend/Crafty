@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { subscribeMobKill, emitMobKill, mobKillSubscriberCount, _resetMobKillBus } from './mobKillBus.js';
+import { subscribeMobKill, emitMobKill } from './mobKillBus.js';
+import { EVENTS, subscriberCount, _resetBus } from './eventBus.js';
 
 // The kill-event fan-out bus: every kill consumer subscribes and the kill path emits once. A single store slot could
 // hold one consumer, and the last to register silently replaced the others. Quests and the ember accrual subscribe.
 
-beforeEach(() => _resetMobKillBus());
+beforeEach(() => _resetBus());
 
 describe('mobKillBus', () => {
   it('delivers (mobType, position) to a subscriber', () => {
@@ -26,9 +27,9 @@ describe('mobKillBus', () => {
   it('unsubscribe stops delivery + decrements the count', () => {
     let n = 0;
     const unsub = subscribeMobKill(() => n++);
-    expect(mobKillSubscriberCount()).toBe(1);
+    expect(subscriberCount(EVENTS.mobKill)).toBe(1);
     unsub();
-    expect(mobKillSubscriberCount()).toBe(0);
+    expect(subscriberCount(EVENTS.mobKill)).toBe(0);
     emitMobKill('skeleton', [0, 0, 0]);
     expect(n).toBe(0);
   });

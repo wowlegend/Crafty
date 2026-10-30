@@ -20,6 +20,7 @@
  * @param {number} N  number of captured point-pairs (N >= 1; N < 2 -> empty)
  * @returns {Uint16Array} index buffer for the ribbon triangle list
  */
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function buildRibbonIndices(N) {
   const quads = Math.max(0, N - 1);
   const indices = new Uint16Array(quads * 6);

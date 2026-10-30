@@ -54,6 +54,7 @@ export const END = '<!-- END GATES -->';
  */
 export const DESCRIPTIONS = {
   'knip': 'an unused file, export or dependency',
+  'knip production': 'a file or export only tests or tooling reach: code the shipped game never runs (`@internal` marks a deliberate test seam)',
   'npm audit': 'a HIGH or CRITICAL advisory (CI only: it needs the registry)',
   'prod-smoke': 'the production build failing to boot, render or keep a GL context',
   'opsec-scan': 'a home path, credential shape or agent attribution reaching this public repo',

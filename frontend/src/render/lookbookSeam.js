@@ -71,6 +71,7 @@ export function lookbookPose() {
 }
 
 /** For useSyncExternalStore: whether a pose is set. */
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function lookbookPinned() {
   return _pose !== null;
 }
@@ -395,6 +396,7 @@ export function installLookbookSeam(win, {
 }
 
 /** Test-only. */
+/** @internal Test seam: resets module state between cases. */
 export function _resetLookbookForTest() {
   _pose = null;
   _handPose = null;

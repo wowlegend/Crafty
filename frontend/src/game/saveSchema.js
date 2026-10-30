@@ -7,6 +7,7 @@
 import { normalizeInventoryKeys } from './invNormalize.js';
 import { serializeBossState } from './bossPersistence.js';
 import { questRewards } from './questRewards.js';
+import { resolveWorldSeed } from '../world/worldSeed.js';
 
 export const SAVE_VERSION = 2; // 1 = pre-A3 (no progression); 2 = A3 progression slice
 
@@ -218,6 +219,19 @@ export function splitTombstone(saveData, paidQuestIds = []) {
   return bag;
 }
 
+/**
+ * The store keys a save records: exactly the keys buildSaveData reads (tests/gates/autosave-trigger-gates traces them),
+ * the boss fight's through serializeBossState and the loaded save's own carry, `_tombstone`, among them. A change to
+ * any of them schedules an autosave (game/autosave.js).
+ */
+export const PERSISTED_KEYS = Object.freeze([
+  '_tombstone', 'worldBlocks', 'chests', 'inventory', 'questState',
+  'level', 'currentXP', 'totalXP', 'equipment', 'relicTiers', 'talentPoints', 'unlockedTalents', 'coins',
+  'nightCount', 'lastRewardedNight', 'ember', 'emberBuildDay',
+  'worldSeed', 'selectedBlock', 'activeSpell', 'isDay', 'gameTime', 'gameWon',
+  'bossActive', 'bossHealth', 'bossDefeated', 'bossTier', 'bossKillNight',
+]);
+
 export function buildSaveData(state, { position } = {}) {
   const tomb = isPlainObject(state._tombstone) ? state._tombstone : {};
   return {
@@ -262,6 +276,8 @@ export function buildSaveData(state, { position } = {}) {
     },
     game_state: {
       ...tomb.game_state,
+      // The world's terrain seed. In game_state so a build that does not know the field carries it back (the tombstone).
+      worldSeed: resolveWorldSeed(state.worldSeed),
       selectedBlock: state.selectedBlock,
       activeSpell: state.activeSpell,
       isDay: state.isDay,

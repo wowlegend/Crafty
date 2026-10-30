@@ -2,8 +2,8 @@
 import { describe, it, expect, vi, afterAll } from 'vitest';
 
 // A roster tuning mistake must never blank the app. The stance derives its caps from the roster when its module
-// loads (game/combatStance.js deriveStanceCaps), and that module is on App's import chain (App.jsx imports it directly
-// and through GameScene -> Components), so a throw there boots the game to a blank page. A husk-shaped pursuer at speed 1.0
+// loads (game/combatStance.js deriveStanceCaps), and that module is on App's import chain (through GameScene ->
+// Components), so a throw there boots the game to a blank page. A husk-shaped pursuer at speed 1.0
 // pursues at 1.5 m/s, a retreat cap of 0.5, under RETREAT_FLOOR: the stance must load, hold the retreat at the floor
 // and name the mob. tests/gates/stance-roster-gates.test.js is what refuses such a roster before it ships.
 //
