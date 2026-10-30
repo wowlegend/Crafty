@@ -77,8 +77,8 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
   registerTestHook('readString', () => ({ ...readString() }));
   // PLANT a windup on a live mob, due `dueMs` from now on the WORLD clock — for the perfect-dodge E2E, which must
   // press INTO a windup's last 220 ms. A natural windup is 380 ms; a loaded CI runner draws a frame every few
-  // hundred, so a windup there is visible for one frame or none and a press cannot be timed into it (CI run
-  // 35830093253: "no windup ... fell in the phase in 4 tries"). The spec freezes the world and plants the state the
+  // hundred, so a windup there is visible for one frame or none and a press cannot be timed into it. The spec
+  // freezes the world and plants the state the
   // worker itself would hold mid-windup — aggro, off cooldown, winding up — every field of which rides the payload
   // back to the worker (game/mobStateSync.js), so the worker strikes when it expires unless something stops it.
   // Returns the due read back, not the one asked for. DEV-only like the whole bridge.
@@ -162,17 +162,10 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
     if (typeof opts.timeOfDay === 'number') {
       useGameStore.getState().setTimeOfDay(opts.timeOfDay);
     }
-    // RETURN THE RESULTING STATE, so the ack is worth something.
-    //
-    // This hook used to return undefined, and the harness called it FOURTEEN times without any way to
-    // check it took. Capture mode's whole job is SUPPRESSION -- 127 isCaptureMode() guards turning
-    // weather, mob AI, NPC routines, particles and spawning OFF -- so a silent failure produces frames
-    // that render perfectly, look entirely plausible, and are simply not deterministic. That reads as
-    // gate flakiness, which is the most expensive possible symptom.
-    //
-    // The repo already learned this one level down: `captureFrameIndex` exists because "a phase you
-    // cannot read is a phase you cannot assert, and a claim nothing can falsify is how this repo has
-    // shipped green gates over frozen worlds". The same reasoning was never applied to capture MODE.
+    // RETURN THE RESULTING STATE, so the caller can check the mode took. Capture mode's whole job is SUPPRESSION
+    // (isCaptureMode() guards turn weather, mob AI, NPC routines, particles and spawning OFF), so a call that failed
+    // in silence would produce frames that render perfectly, look plausible and are not deterministic, which reads
+    // as gate flakiness. `captureFrameIndex` returns its phase for the same reason.
     return isCaptureMode();
   });
   registerTestHook('setQualityTier', (tier) => useGameStore.getState().setQualityTier(tier));
@@ -215,12 +208,10 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
     store.setDangerLevel(0);
     store.setTimeOfDay(0.0);                // night (cool/dark) — contrasts the glow; the beast's true ctx
     store.setBeastFormActive(true, element || 'fire'); // the roster element (default fire = the LEAD)
-    // Frame from where the avatar RENDERS (PLAYER_SPAWN), NOT from rb.translation().
-    // This used to read `rb.translation()`, which is a different point under capture: physics is paused,
-    // so rapier never syncs the RigidBody's visual transform from the body. Measured 2026-08-08 — beast
-    // meshes at worldY 100.0-101.6 (ndc.y ~= -3, i.e. off the bottom of the screen) while the body
-    // reported y=120 and the camera sat at 121.45. All four beast-* baselines were a distant mountain
-    // with no beast in them, and the visual gate compared one empty mountain to another and passed.
+    // Frame from where the avatar RENDERS (PLAYER_SPAWN), NOT from rb.translation(), which is a different point
+    // under capture: physics is paused, so rapier never syncs the RigidBody's visual transform from the body. Framed
+    // from the body (y=120, camera at 121.45), the beast meshes at worldY 100.0-101.6 sit off the bottom of the
+    // screen (ndc.y ~= -3) and a beast frame shows only the distant mountain.
     // PROVISIONAL framing off the declared spawn. It is only a first guess: the avatar has not mounted
     // yet (setBeastFormActive above triggers the mount, React has not run it), so its group does not
     // exist to measure. `frameBeastReveal` below re-derives the shot once it does.
@@ -233,7 +224,7 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
   // WHY. `enterCapture` runs BEFORE the world builds, and the Player's spawn-settle lives BELOW the
   // capture early-return in its useFrame — so once capture mode is on, the settle can never finish. The
   // body freezes at whichever stage it had reached, and which stage that is depends on how many frames
-  // slipped through before `enterCapture` landed. Measured 2026-08-08, all three observed:
+  // slipped through before `enterCapture` landed. All three are observed:
   //     100 = the declared RigidBody position (settle never ran)
   //     120 = SPAWN_FREEZE_Y  ("hold in the sky until the world builds")
   //    ~53 = spawnTargetY(groundY) (settled — the INTENDED in-world state)
@@ -260,12 +251,9 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
     // available, needs zero physics steps, and cannot vary with machine load. The probe stays the right
     // answer for real gameplay; it is simply the wrong tool for a fixture.
     const probeAvailable = !!store.getMobGroundLevel;
-    // NO physicsY. There used to be a `const physicsY = null; // deliberately unused` here, and the
-    // diagnostic below then branched on it -- so `physicsY == null` was a tautology, two of its four
-    // reason strings were unreachable, and the one it always returned blamed a probe that was never
-    // run. A diagnostic naming a cause that cannot have occurred is worse than a silent failure: it
-    // sends the next reader to the wrong subsystem, and the caller prints this string as its warning.
-    // Passing the literal at the one call site keeps resolveSpawnGround's signature honest about what
+    // NO physicsY: this hook never reads physics, so the diagnostic below names only causes that can occur (the
+    // caller prints it as its warning, and a cause that cannot have occurred sends the reader to the wrong
+    // subsystem). Passing the literal at the one call site keeps resolveSpawnGround's signature honest about what
     // this hook deliberately does NOT consult.
     // `force` passes the EXHAUSTED fail count so resolveSpawnGround takes its documented
     // SPAWN_FALLBACK_Y branch instead of asking to retry — the same landing the Player reaches after
@@ -279,9 +267,9 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
     // hits nothing and returns null forever. That is also why the settle DID resolve before
     // `enterCapture` landed (physics was still live) and never after.
     //
-    // So under capture, ask the TERRAIN FORMULA instead of the physics engine: `surfaceBlockAt` uses the
-    // same seeded noise (lcg 12345) and the same shared `computeHeight` as terrain.worker.js, so it is
-    // the generator's own answer — pure, deterministic, and available with zero physics steps. Far
+    // So under capture, ask the TERRAIN FORMULA instead of the physics engine: `surfaceBlockAt` uses the same
+    // seeded noise as terrain.worker.js (the world's seed, through worldNoise.js) and the same `computeHeight`, so
+    // it is the generator's own answer — pure, deterministic, and available with zero physics steps. Far
     // better than SPAWN_FALLBACK_Y=60, which left the beast hovering ~8 units above real ground (~52).
     if (blockGroundY === null) {
       // The settle always places at the ORIGIN, and the origin is the Hearth. `surfaceBlockAt` is the
@@ -324,9 +312,8 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
     rb.setTranslation({ x: 0, y, z: 0 }, true);
     rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
     // ...and the VISUAL side, which does NOT follow. Physics is paused during capture, so rapier never
-    // syncs the RigidBody's Object3D from the body: moving only the physics side left the avatar (and
-    // therefore the whole backdrop) at its declared transform. Two runs after a "successful" settle
-    // still framed the beast at y=120 and y=100, never the settled value — measured 2026-08-08.
+    // syncs the RigidBody's Object3D from the body: moving only the physics side leaves the avatar (and
+    // therefore the whole backdrop) at its declared transform, framed at y=120 or y=100, never the settled value.
     // A fix that moves one representation and leaves its twin behind is not a fix.
     const visual = useGameStore.getState().playerVisualAnchorRef?.current?.parent;
     if (visual) {
@@ -503,7 +490,7 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
       }
     }
   });
-  // MOB-VARIETY showcase (2026-06-11): the three new types judged in a row at lane x=240.
+  // MOB-VARIETY showcase: three mob types judged in a row at lane x=240.
   // Raw hostile spawns via store.spawnMob with explicitY (faces +Z toward the camera —
   // the proven creature-card path); no capture/ally conversion needed. DEV-only.
   registerTestHook('mobShowcase', () => {

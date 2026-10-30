@@ -22,11 +22,14 @@ seed; the shipped bundle carries no test bridge; dead code that only tests keep 
    an achievement, a completed quest (`fanfare`) and the win screen (`victory`).
 3. Height, continent, moisture, temperature and `n` at seven fixed columns, the cave noise at three points and the
    vegetation hash at three, for seed 12345, equal the values today's worker computes (captured at `80238889` before
-   the change); a save with no seed loads at 12345; the terrain worker, driven in node, builds the same chunk with no
-   seed as with 12345 and a different one with another; New World writes `worldSeed: 12345`.
+   the change); a save with no seed loads at 12345; the terrain worker, driven in node through its message handler,
+   holds main's block ids at 30 fixed voxels in four chunks unseeded, at init 12345 and on a world load at 12345, and
+   builds a different world at another seed; New World writes `worldSeed: 12345`.
 4. Every key `buildSaveData` reads (traced, not listed) is in `PERSISTED_KEYS`, and a change to each one, through the
    real store, makes the installed autosave save; RED with one key dropped from the derivation.
-5. The production build holds no test hook name; `App.jsx` registers no test hook.
+5. No name `src` registers as a test hook is a registration in the production build (the quoted first argument of a
+   call), and no chunk sets `window.__craftyTest` (`bundle-budget.mjs`, every CI build); `App.jsx` registers no test
+   hook.
 6. `knip --production` runs in CI's fast tier beside `knip`, green; the tier test sees it.
 
 **Anti-attack (GF-L2).**

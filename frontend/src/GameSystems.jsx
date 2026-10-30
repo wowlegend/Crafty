@@ -203,7 +203,8 @@ export const DeathScreen = ({ onRespawn }) => {
 export const VictoryOverlay = ({ onDismiss }) => {
     const t = useT();
     // The climax payoff: the victory sting, once, when the win screen appears. The sound layer plays it from the bus;
-    // with no audio context (capture, a headless run) nothing is subscribed to sound it.
+    // with no audio context (capture, a headless run) the provider is still subscribed, and its playSound returns
+    // before playing.
     useEffect(() => {
         emit(EVENTS.victory);
     }, []);

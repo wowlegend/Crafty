@@ -39,8 +39,9 @@ export async function bootDev(page, { withErrors = false, path = '/' } = {}) {
  *  world-rebuild "@low"). It now starts in play (render/canvasPace.js `governor`), which would move that step-down —
  *  recompiles, shadow-map and chunk reallocation — INTO each spec's measurement. So both play helpers set `low`
  *  just before they force play, the state the suite was built on; at `low` the governor has nothing to decline and,
- *  on a software renderer, never climbs. Here and not in bootDev: App registers its hooks in a mount effect, and on
- *  a loaded machine that mount outlasted bootDev's 30 s wait. A spec that needs another tier sets it afterwards. */
+ *  on a software renderer, never climbs. Here and not in bootDev: App's mount effect imports the DEV bridge, which
+ *  registers the hooks, and on a loaded machine that outlasted bootDev's 30 s wait. A spec that needs another tier
+ *  sets it afterwards. */
 async function pinSuiteTier(page) {
   await page.evaluate(() => window.__craftyTest.call('setQualityTier', 'low'));
 }

@@ -22,7 +22,7 @@
 > render systems) + 15Hz ACCUMULATOR BRIDGES (`world/SquadAISystem|ElementZoneSystem.jsx`) + always-
 > mounted transient renderers (`world/SnareTetherSystem|ElementZoneRenderSystem.jsx`, instanced pools,
 > capture-frozen via now=0) + literal-token STATIC GATES (`tests/gates/*-noremesh-gates` ×3 — voidhand/elemancer/beast; there is no soulbind one + wiring
-> locks) + the sky-studio judge-fixture family (App.jsx test hooks, lanes x=0..240). Other load-bearing
+> locks) + the sky-studio judge-fixture family (the DEV bridge's hooks in `devtest/devBridge.js`, lanes x=0..240). Other load-bearing
 > systems added post-blueprint: the kill bus w/ source attribution (`game/mobKillBus.js` — player/ally/
 > hazard), the allegiance seam (`game/allegiance.js` — the ONLY isMob→isAlly door), curated fusion
 > (`game/hybrids.js`), weighted spawning (`game/spawnWeights.js`), the element-zone chemistry registry

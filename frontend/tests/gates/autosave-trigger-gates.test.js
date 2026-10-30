@@ -9,8 +9,9 @@ import { useGameStore } from '../../src/store/useGameStore';
 // than once: coins, XP, the night count and the win were each persisted and could never schedule a save, so a session
 // that changed only them died with the tab. Now the save declares its keys (PERSISTED_KEYS, beside buildSaveData) and
 // the autosave triggers on exactly those. Two questions, asked separately:
-//   1. does PERSISTED_KEYS name every store key buildSaveData reads? Traced through a recording Proxy, so neither a new
-//      persisted field nor a stale entry can hide.
+//   1. does PERSISTED_KEYS name every store key buildSaveData reads? Traced through a recording Proxy over the initial
+//      state, so a new persisted field and a stale entry both show; a field read only on a branch the initial state
+//      does not take (say, only once the game is won) is not traced.
 //   2. does a change to each one, written through the real store, make the installed autosave save?
 // Not checked here: that App.jsx installs it (save-consolidation-gates reads that call), or what the save writes
 // (saveSchema.test.js).

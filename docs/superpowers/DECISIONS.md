@@ -27,8 +27,10 @@ lane's. Each stands while it earns its place.
 
 110. **One typed event bus, `game/eventBus.js`.** A closed set of names (mobKill, levelUp, reward, victory); a name
    outside it throws at subscribe and at emit, so a typo fails where it is written. Positional payloads and
-   copy-on-write subscriber arrays, so an emit allocates nothing. `game/mobKillBus.js` keeps the kill event's two
-   helpers on it because `systems/CombatSystem.jsx`, which the dragon lane holds, imports them (registry
+   copy-on-write subscriber arrays, so an emit allocates nothing. An array, where the kill bus had a Set: a callback
+   subscribed twice is called twice per emit, and one unsubscribe removes both. Nothing subscribes one callback twice
+   (each kill consumer mounts once, with its own). `game/mobKillBus.js` keeps the kill event's two helpers on it
+   because `systems/CombatSystem.jsx`, which the dragon lane holds, imports them (registry
    `REVIEW:w2g:mobkillbus-fold`).
 111. **The sound layer subscribes; the `window.play*` globals are gone.** The level-up, reward and victory emitters
    emit; `SoundProvider` subscribes through `audio/soundEvents.js`, the one event-to-voice table. `useGameSounds` loses
@@ -46,10 +48,18 @@ lane's. Each stands while it earns its place.
    save records (traced against `buildSaveData` by `autosave-trigger-gates`); `game/autosave.js` `installAutosave`
    triggers on them, so `worldSeed` and `_tombstone`, which App's hand list lacked, now save. The clock writes `gameTime`
    every second, so the old restart-on-change debounce never fired during play; now a save lands 5 s after the first
-   unsaved change. Cost, measured in node on the M3 Max: serializing a save takes 0.06, 0.28 and 1.17 ms at 500, 5,000
-   and 20,000 block edits; the localStorage write and an iPad are not measured (registry `REVIEW:w2g:autosave-cost`).
-114. **The DEV bridge is `devtest/devBridge.js`, imported inside `if (import.meta.env.DEV)`.** The built bundle holds no
-   hook name and no bridge chunk (read once; registry `REVIEW:w2g:prod-hooks-ungated`). The message of `a1b7fabe` miscounts:
+   unsaved change, mid-combat included. Measured in node on the M3 Max: building and serializing a save takes 0.06,
+   0.28 and 1.17 ms at 500, 5,000 and 20,000 block edits. That is not the write a player waits on: in the page,
+   `writeWorld` also parses the world list and calls `localStorage.setItem`, synchronously on the main thread, and
+   neither is measured, on this machine or an iPad. So the figure does not say whether the autosave can stall a frame
+   (registry `REVIEW:w2g:autosave-cost`).
+114. **The DEV bridge is `devtest/devBridge.js`, imported inside `if (import.meta.env.DEV)`.** `bundle-budget.mjs`
+   checks every CI build: no name `src` registers through `registerTestHook` (59) is the quoted first argument of a
+   call in any chunk, and no chunk sets `window.__craftyTest`. It matches the call, not the word, because some hook
+   names are ordinary words in the bundle ("start" in react-dom, "viewmodel" a scene name, and store actions such as
+   `setTimeOfDay`). One registration, `readCompatMouse` in `Components.jsx`, has no DEV guard; the build drops it only
+   because no shipped code reads the registry, and removing one other hook's guard ships it with four more (mutant H3
+   of the check's proof). The message of `a1b7fabe` miscounts:
    36 hooks moved (it says 39), and App lost 30 imported names on 18 lines (it says 27 imports).
 115. **Production knip runs in CI beside knip.** `.knip.json` marks the shipped entries with `!` and leaves four src
    modules the game never imports out of the production project (`brand.js`, `i18n/keyReachability.js`,
