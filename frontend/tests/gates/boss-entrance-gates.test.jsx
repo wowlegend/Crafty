@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, cleanup, act } from '@testing-library/react';
-import { useBossSystem, bossCall } from '../../src/world/bossSystem';
+import { useBossSystem, bossCall, bossAttackCall } from '../../src/world/bossSystem';
 import { useGameStore } from '../../src/store/useGameStore';
 import { blightHeartSite } from '../../src/world/blightHeart';
 import { ENTRANCE } from '../../src/game/bossEntrance';
@@ -55,15 +55,20 @@ describe('E4 — arriving at the lair lands a beat, not just a toast', () => {
     expect(calls).toEqual([['notice.bossAwakens', 'danger', true]]);
   });
 
-  it('every call through bossCall is marked `boss`; the attack calls render.BossEntity raises are dictionary keys', () => {
-    // render/BossEntity.jsx raises these four only while the world runs; this proves the helper it calls marks them and
-    // that each renders through t() rather than showing its key.
-    for (const [key, type] of [['notice.bossFireball', 'warning'], ['notice.bossRoar', 'danger'], ['notice.bossLava', 'danger'], ['notice.bossSummon', 'warning']]) {
+  it('a call through bossCall is a one-off call, marked `boss`; the attack calls render.BossEntity raises are marked `attack` and are dictionary keys', () => {
+    // render/BossEntity.jsx raises these four through bossAttackCall only while the world runs; this proves the helper
+    // marks them as the lower class (ui/notifications.js lineNotification) and that each renders through t() rather than
+    // showing its key. The same key through bossCall is the one-off class, so the reading below tells the two helpers apart.
+    const marks = (raise, key, type) => {
       useGameStore.getState().addNotification.mockClear();
-      bossCall(key, type);
+      raise(key, type);
       const [[k, ty, o]] = useGameStore.getState().addNotification.mock.calls;
       const n = toNotification(k, ty, o);
-      expect([n.key, n.type, n.boss], key).toEqual([key, type, true]);
+      return [n.key, n.type, !!n.boss, !!n.attack];
+    };
+    for (const [key, type] of [['notice.bossFireball', 'warning'], ['notice.bossRoar', 'danger'], ['notice.bossLava', 'danger'], ['notice.bossSummon', 'warning']]) {
+      expect(marks(bossCall, key, type), `${key} through bossCall`).toEqual([key, type, true, false]);
+      expect(marks(bossAttackCall, key, type), `${key} through bossAttackCall`).toEqual([key, type, false, true]);
       expect(STRINGS.en[key], `${key} is not in the dictionary, so its toast would show the key`).toEqual(expect.any(String));
     }
   });

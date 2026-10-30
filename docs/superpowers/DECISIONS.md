@@ -19,6 +19,21 @@
 
 ---
 
+## 2026-10-30 — commit `faa65ee1` carries the WRONG message. Read this instead.
+
+`faa65ee1` on `feat/w2d-hud` is titled "fix(render): Show Stats no longer paces the game it measures", another lane's
+message. Its author wrote the message to a fixed file name in a scratchpad that sibling agents of the same session
+share; the shell refused to overwrite the sibling's file of that name, the next command was not chained on the write,
+and `git commit -F` committed the staged work under the sibling's text. The rule kept: a commit is never amended, so
+this entry and the next commit's body carry the real message. **What `faa65ee1` contains:** the dragon's attack calls
+rank below every other notice in the phone's one line, and its one-off calls still take it at once (item 92, as amended
+that day): `world/bossSystem.js` `bossAttackCall` (marked `attack`), `ui/notifications.js` `lineNotification` (one-off
+call, then plain notice, then attack call), `render/BossEntity.jsx` raising its four attack calls through it, the gate
+`tests/gates/boss-attack-line-gates.test.js` (a plain notice held 0-800 ms of 4 s at the fireball's 2.4 s before, its
+whole 4 s after, over 11,520 simulated fights), the e2e attack-call states, and registry
+`REVIEW:w2d:boss-attack-calls-unread`. Its mutation proof is in the next commit's body. The Show Stats change the title
+names is not in it.
+
 ## 2026-10-29 — [LOOP] W2-D PR B: warm charcoal, three panels, the controls panel, automatic claims
 
 **Decided by the W2-D HUD lane under the standing grant** (DECISIONS 2026-10-28 item 14), building W1-H item 2(c) and
@@ -45,8 +60,9 @@ Each stands while it earns its place.
    the footprint; it then folds to the one-line "H Controls" hint, which stays, on a keyboard only, until H opens the
    panel once. **Measured at rest on this branch's committed head** (lookbook eye set, footprint, real GPU, 2026-10-30
    04:19-04:28Z, at `1791b3d5`, clean tree, after PR A's round 4; the commits after it on this branch changed the e2e spec
-   and these records only (`git diff --stat` to `688d3f03`), and then, with PR A's round 5, where a notice shows (item 92),
-   which no frame at rest draws, so these numbers stand for the build; the player has ember and coins, a frame with a nameplate up counts, and each frame
+   and these records only (`git diff --stat` to `688d3f03`), and then, with PR A's rounds 5 and 6, where a notice shows
+   and how wide a keyboard's stack stands beside the boss bar (item 92), which no frame at rest draws (no lookbook frame
+   raises the dragon), so these numbers stand for the build; the player has ember and coins, a frame with a nameplate up counts, and each frame
    is shot again with one raised, item 94): a returning player at most 6.58% on Chromium 1280x800 (6.79% with a nameplate), 7.55% on WebKit
    1180x820 (7.76%) and 7.56% on WebKit 820x1180 (7.77%); a first session, with ember and coins as well (an upper bound
    for a new player), at most 7.30% with the card up (7.51% with the card and a nameplate) and 6.70% once it folds (the
@@ -147,27 +163,39 @@ items. Each stands while it earns its place.
    and an Aspect's first unlock (`ui/AspectHintToast.jsx` hands the hint to the channel once play is live again, so it
    is not lost behind the Talents panel where it was earned), and the dragon's four attack calls (`render/BossEntity.jsx`:
    the fireball, the roar, the lava and the summons, which were English sentences). **Where the stack stands:** at the
-   right edge on its own on a keyboard (under the dial, every notice up) and on a tall touch screen (under the coin count,
+   right edge on its own on a keyboard (under the dial, every notice up; while the boss bar is up, only as wide as the
+   room the bar leaves on its right: `ui/hudLayout.js` `toastMaxWidth`, 263 px at 1024 px wide and 192 px from 640 to
+   882 px, because at its full 320 px the stack met the 450 px bar in any window under 1,138 px, at 1024x768 the bar at
+   x 287-737 and the stack at x 688-1008 from y 164; `tests/gates/hud-layout-gates.test.js` sweeps every keyboard width
+   from 640 to 1,920 px and the e2e reads 1024x768; a window under 640 px leaves 58 px and keeps the full stack, registry
+   `REVIEW:w2d:toast-narrow-keyboard`) and on a tall touch screen (under the coin count,
    the newest toasts that fit above the touch controls under it, each clamped to three lines: `ui/hudLayout.js`
    `tallToastPlace`). On its side the stack stands left of the right fans' column and stops above the jump, two toasts on
    a 1180x820 iPad, where at the edge two toasts or a three-line call reached the spell opener; upright it keeps the edge
    and stops above the spell opener, four on an 820x1180 iPad. On a phone and a phone on its side the notices join the
    encounter column (item 90), the one band those screens leave clear across the middle (at 844x390 the stack stood 372
-   px down, off the screen), and **the column holds one notice at a time** (`ui/notifications.js` `lineNotification`):
-   the newest of the dragon's calls (every notice `world/bossSystem.js` and `render/BossEntity.jsx` raise goes through
-   `bossCall`, marked `boss`), else the newest notice. While the boss bar is up it shows inside the bar's own line, in
+   px down, off the screen), and **the column holds one notice at a time** (`ui/notifications.js` `lineNotification`),
+   in this order: the newest of the dragon's one-off calls (its arrival, return, phase changes and defeat:
+   `world/bossSystem.js` `bossCall`, marked `boss`), else the newest plain notice, else the newest of its attack calls
+   (`render/BossEntity.jsx` through `bossAttackCall`, marked `attack`). **Why the attack calls come last:** they repeat
+   all fight (the fireball every 2.4 s, the roar every 4.2 s, the lava every 5.2 s, the summons every 8.5 s) and each
+   lives 4 s, so one is up almost the whole time; ranked with the one-off calls they left a notice raised in the fight (a
+   drop, a quest, a denial a repeated press must answer) at most 0.8 s of its 4 s in the first phase and 0.2 s in the
+   second. So an attack call never displaces a live plain notice and yields to one raised while it shows, and a plain
+   notice holds the line for its whole life unless a one-off call arrives, which takes the line at once
+   (`tests/gates/boss-attack-line-gates.test.js`: a plain notice at every 10 ms offset over two periods of each cadence,
+   11,520 simulated fights, each held 4,000 ms). While the boss bar is up the line shows inside the bar's own line, in
    the name's place beside the dragon's icon, clamped to three lines on a phone and one on a phone on its side, where 14
    px separate the bar from the hotbar's XP edge (`bossCallLines`); with the bar down it is the one toast, four lines at
    most. **Why one at a time in the bar's line, and not held until the bar is down:** a fight lasts minutes, and a notice
    held until the dragon falls arrives after the moment it describes (a denial says why the press just made was refused;
    a drop or a quest belongs to the kill that raised it), and every held notice would arrive at once on top of the
-   dragon's defeat. In the line each keeps its own 4 s: a notice behind the dragon's call shows if it outlives the call
-   and is lost if it does not, the cost of a band sized for one line. The stack under the boss bar had no room there: when
+   dragon's defeat. In the line each keeps its own 4 s: a notice behind a one-off call, or an attack call behind a notice,
+   shows if it outlives what stands in front of it and is lost if it does not, the cost of a band sized for one line. The stack under the boss bar had no room there: when
    the dragon raised its arrival with the bar up it covered the crosshair's box and the vitals for 4 s at 390x664 and
    375x667 and the hotbar at 844x390, and two toasts reached the vitals with no boss at all. Proof:
    `tests/e2e/hud-at-rest.spec.js` (at every viewport: two notices at once, the arrival with the bar up, the real phase
-   call, an attack call with a notice staged on it, and on the phones that notice taking the bar's line when the call
-   leaves),
+   call, an attack call alone, a notice raised while it shows, and an attack call raised while a notice shows),
    `tests/gates/hud-notices-gates.test.jsx`, and `tests/gates/hud-layout-gates.test.js` (a full tall stack against
    every touch control at 4,604 tall touch viewports). The boss bar's name, phase line and numbers read through t() in
    both dictionaries. **On touch the stack is the only view of the list:** the

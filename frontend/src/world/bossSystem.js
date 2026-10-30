@@ -12,10 +12,13 @@ import { bossEntranceBeat, ENTRANCE } from '../game/bossEntrance.js';
 import { phaseForHealth } from '../game/bossPersistence.js';
 import { isWorldFrozenNow } from '../game/worldClock.js';
 
-/** One of the dragon's calls (this hook's, and the attack calls in render/BossEntity.jsx) to the one notification channel
- *  (ui/notifications.js) as a dictionary key, marked `boss`, so the encounter column shows it in the boss bar's own line
- *  before any other notice. A toast there clears itself, so nothing here is left to set state after an unmount. */
+/** One of the dragon's one-off calls (this hook's: the arrival, the return, the phase changes, the defeat) to the one
+ *  notification channel (ui/notifications.js) as a dictionary key, marked `boss`, so where one line holds the notices it
+ *  takes that line from any other. A toast there clears itself, so nothing here is left to set state after an unmount. */
 export const bossCall = (key, type, vars) => useGameStore.getState().addNotification?.(key, type, { vars, boss: true });
+/** One of the dragon's repeating attack calls (render/BossEntity.jsx: the fireball, the roar, the lava, the summons) to the
+ *  same channel, marked `attack`: one line shows it only while no other notice is up (ui/notifications.js lineNotification). */
+export const bossAttackCall = (key, type) => useGameStore.getState().addNotification?.(key, type, { attack: true });
 const bossNotice = (key, vars) => bossCall(key, 'danger', vars);
 
 export const useBossSystem = (playerLevel) => {

@@ -30,20 +30,30 @@ describe('one notification channel', () => {
     expect(notificationText(toNotification('Looted: Bone'))).toBe('Looted: Bone');
   });
 
-  it('a notice raised with `boss` is one of the dragon\'s calls, and carries the mark; any other does not', () => {
+  it('a notice raised with `boss` is one of the dragon\'s one-off calls and with `attack` one of its attack calls; any other carries neither mark', () => {
     expect(toNotification('notice.bossAwakens', 'danger', { boss: true }).boss).toBe(true);
+    expect(toNotification('notice.bossFireball', 'warning', { attack: true })).toMatchObject({ attack: true });
+    expect(toNotification('notice.bossFireball', 'warning', { attack: true })).not.toHaveProperty('boss');
     expect(toNotification('notice.dusk', 'warn')).not.toHaveProperty('boss');
-    expect(toNotification('Looted: Bone', 'loot', { boss: false })).not.toHaveProperty('boss');
+    expect(toNotification('notice.dusk', 'warn')).not.toHaveProperty('attack');
+    expect(toNotification('Looted: Bone', 'loot', { boss: false, attack: false })).toEqual({ text: 'Looted: Bone', type: 'loot', dedupe: null });
   });
 });
 
 describe('one line, one notice at a time (the encounter column: ui/hudLayout.js toastsInEncounter)', () => {
   const plain = (id, key) => ({ id, ...toNotification(key, 'warn') });
   const call = (id, key) => ({ id, ...toNotification(key, 'danger', { boss: true }) });
+  const attack = (id, key) => ({ id, ...toNotification(key, 'warning', { attack: true }) });
 
-  it('the newest of the dragon\'s calls, before any newer notice', () => {
-    const live = [plain(1, 'notice.dusk'), call(2, 'notice.bossPhase2'), call(3, 'notice.bossPhase3'), plain(4, 'notice.dawn')];
+  it('the newest of the dragon\'s one-off calls, before any newer notice', () => {
+    const live = [plain(1, 'notice.dusk'), call(2, 'notice.bossPhase2'), call(3, 'notice.bossPhase3'), plain(4, 'notice.dawn'), attack(5, 'notice.bossLava')];
     expect(lineNotification(live).id).toBe(3);
+  });
+
+  it('a plain notice before any attack call, older or newer; with only attack calls up, the newest of them', () => {
+    expect(lineNotification([attack(1, 'notice.bossFireball'), plain(2, 'notice.dusk')]).id).toBe(2);
+    expect(lineNotification([plain(1, 'notice.dusk'), attack(2, 'notice.bossFireball'), attack(3, 'notice.bossRoar')]).id).toBe(1);
+    expect(lineNotification([attack(1, 'notice.bossLava'), attack(2, 'notice.bossSummon')]).id).toBe(2);
   });
 
   it('with no call up, the newest notice; with none up, nothing', () => {
