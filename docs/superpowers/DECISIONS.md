@@ -19,6 +19,63 @@
 
 ---
 
+## 2026-10-30 (later) — [LOOP] fix/invisible-box round 2: a placed cell is solid from the click
+
+**Decided by the command session** on round 1's two reviews of PR #59. The dynamic review ran a seeded chaotic clicker
+against real Rapier and the real mesher with the placed cell's trimesh landing late: 3 of 10 runs ended held at 2 frames
+late, 7 of 10 at 4 (one with the eye inside the block, Kevin's invisible shape), 8 of 10 at 8. The live delay was
+unmeasured and is longer on iPad-class devices. So the timing path is closed in code in this PR, not left as a MED row.
+These items supersede item 131's "Left open" note.
+
+132. **A placed cell is solid to the player from the click.** `world/placeAtHit.js` asks
+   `world/placedCellColliders.js` for a fixed 1 m cuboid at each cell it places. The cuboid stays until the chunk's
+   trimesh holding that edit is in Rapier's broad phase, retired by sequence:
+   - `update_block` carries `seq`, and `terrain.worker.js` stamps every `chunk_mesh` with the last seq it has applied;
+   - ChunkMesh's effect, which runs after its TrimeshCollider's own, marks its chunk's cuboids up to that seq;
+   - they go after the next world step, so a mesh made for an earlier message still in flight never retires a later cell.
+   They go after the step, not at once, because rapier3d-compat 0.19.2 adds a collider to the broad phase only on a
+   step. Measured in node: a cuboid made between steps was missed by `computeColliderMovement` and `castRay` until the
+   next step, and the API has no call that refreshes the broad phase. A cuboid also goes when its chunk unmounts and when
+   a world load wipes the terrain. Cost: at most `MAX_CELLS` (64) cuboids a click, each alive from the click until one
+   step past its chunk's re-mesh, with nothing allocated per frame.
+133. **The controller's sweep is cut at colliders made since the last step.** That covers a fresh cuboid and a chunk
+   trimesh just mounted or rebuilt. `game/kinematicMove.js` casts the capsule against each one pairwise and stops the
+   move the KCC's 0.05 m offset short. @react-three/rapier's stepper subscribes before the Player loop and steps first,
+   so in the game only the sweep of a frame that takes no step (above 60 Hz) runs blind.
+   - **Why the trimesh too.** Rapier gives a collider made between steps the slot, and the broad-phase leaf, of the
+     collider freed last. A lone chunk rebuilt in place gets its own leaf back. Two chunks rebuilt in one React commit
+     (every passive cleanup runs before any setup) swap leaves, and a sweep before the step finds neither. In the node
+     gate, a player holding W against a two-high step walked through it (x 3.45 to 1.56 at 60 Hz, to -1.57 at 30 Hz).
+   - **Cost and limit.** One pairwise cast per such collider, on one frame. The cut is a straight line, so on that frame
+     an autostep onto that chunk can be cut short; the next frame climbs.
+134. **The placement guard also tests where the body is going.** It tests the capsule at the collider's position and
+   offset by `nextTranslation() - translation()`. A move given on a frame that took no step is where the next step
+   puts the body (`kinematicMove.js`).
+135. **The from-inside left click asks the body's eye, not the camera.** This supersedes item 131's "the camera's own
+   cell". `mineTarget` now reads the body from the store and takes its steady eye (`combat/swingOrigin.js`). The camera
+   carries the walk bob, the screen shake (2.43 m off the body in a dodge's first frame) and, for the 1.2 s roar, a pose
+   4.5 m behind and 2.2 m above the body. Asked of the camera, a roar inside the player's own walls took the wall block
+   the camera sat in. The node gate's roar case is red when `mineTarget` takes the ray's origin as the eye, which was `e177b5b8`'s semantics.
+
+**Gates.** All are in `tests/integration/place-clear-of-player-rapier.test.jsx`:
+- the static review's late wall at trimesh lags of 2, 4 and 8 frames, with frames of 1/60 and 1/30 s, each swept before
+  its step (the worst order);
+- an earlier mesh still in flight;
+- a ray at the cell between the landing and the step;
+- the stand-ins' lifetimes, and two chunks rebuilt in one commit;
+- a seeded chaotic clicker at lags of 2, 4 and 8, which counts every frame the capsule reaches into any solid cell.
+
+On `e177b5b8`'s `placeAtHit.js`, `kinematicMove.js` and `buildTarget.js`, all 16 new stand-in and cut cases are red: at 4 and
+8 frames late the wall held the player with the eye inside the cell. Mutants (`scripts/dev/mutate.sh`):
+- 22 of 22 real mutants red, across the guard, the stand-in module, the cut and `mineTarget`. The cut's offset and
+  nearest-hit mutants each survived the first run and got a case.
+- Five identity mutants stayed green.
+
+The e2e logs, and does not assert, the live frames from a click to a solid cell, to the chunk's new mesh and to the
+stand-in's retirement. The worker's seq echo and Terrain.jsx's wiring are proven by the build and that log, not by a
+unit gate. Landed in `9353690a` (items 132-134), `112b8b3e` (item 135, and the gate's bull swapped as the game swaps
+it) and `111ca09c` (the e2e log).
+
 ## 2026-10-30 — [LOOP] fix/invisible-box: a placement never fills the player's own body
 
 **Decided by the fix lane under the standing grant** (DECISIONS 2026-10-28 item 14), from Kevin's live report of
