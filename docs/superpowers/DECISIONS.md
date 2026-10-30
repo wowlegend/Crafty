@@ -19,6 +19,44 @@
 
 ---
 
+## 2026-10-30 — [LOOP] W3-B PR B: every dragon attack has a tell, the skill answers reach it, and so do the Aspect kits
+
+**Decided by the W3-B dragon lane under the standing grant** (DECISIONS 2026-10-28 item 14), building Units 2, 3 and 4 of
+`docs/superpowers/plans/2026-10-27-crafty-shadow-dragon.md` and reset-plan row 25 by the task script
+`docs/superpowers/plans/2026-10-30-crafty-w3b-dragon.md`. Each stands while it earns its place.
+
+123. **The dragon's rules are a pure move machine over one shared record.** `game/dragonMoves.js` (in the dragon's lazy
+   chunk) mutates `game/bossCombat.js`'s record (in the boot chunk, so the dodge start, the cone, `damageBoss` and the
+   systems that hit mobs read it before the dragon has loaded) and returns events `render/BossEntity.jsx` applies. One
+   move at a time, each with a windup on the world clock: bite 520 ms and dive-bite 520 ms (parryable), fireball 600 ms,
+   roar 900 ms with a 9 m radius and a falloff from 1 to 0.4 (its range defined only through `roarFalloff`), the lava
+   placed when its move starts (its zone's 750 ms ring is the one warning), the summons 700 ms. Cooldowns are charged when
+   a windup starts. A roll's i-frames make the roar a whiff, impulse included. Every tier carries `tricks` (fireball,
+   lava, summon), the one list the machine reads for its non-core moves. **Why:** the fight bit with no warning and roared
+   the player across the map from anywhere; a tell for every attack is what makes it a fight (the contract's goal).
+124. **The attacks are read from the ground, and their toasts go (amends item 92).** Each windup shows one decal from a
+   fixed pool of three meshes in the dragon's own frame loop: the bite an arc of its reach in its heading, the roar a ring
+   of 9 m, the fireball a disc where it aims, the summons a ring of 7 m; the lava keeps its own ring. The head's glow
+   climbs to the danger red through the windup (the interim tell on today's model). `bossAttackCall`, the `attack` class
+   in `ui/notifications.js` and the four attack keys are deleted, with the gate that simulated the line through a fight
+   (its subject is gone) and the e2e's attack-call states. The phase calls now say what to read. **Why:** an attack
+   announced by a toast after it has landed teaches nothing; the ground is where the player looks. One decal costs one
+   transparent draw during a windup and none at rest.
+125. **The perfect dodge, the heavy and the riposte reach the dragon.** The dodge start appends the record to its targets
+   while the dragon fights and is not immune (`withBossTarget`); its bite and dive-bite are parryable, its casts are not.
+   A heavy on a staggered dragon refreshes the 1400 ms stagger, the third knocks it down for 3000 ms, then 4000 ms of
+   immunity (`registerBossHeavy`): three heavies cannot fit one 1400 ms stagger, since a heavy is ready 700 ms after its
+   press, so the chain keeps every roadmap number and makes the knockdown reachable at about one heavy a second.
+   `damageBoss(amount, source)` applies the 1.5x riposte to the player's damage only. The melee cone tests the head, chest
+   and hips. In phase 0 the dragon dives to the player's feet + 1.2 m when its dive-bite is ready, and a staggered dragon
+   lands. **Why:** the game's two newest skills did nothing to its last enemy.
+126. **One damage path for the dragon (reset-plan row 25).** `bossTargets(mobs)` hands hurl and its slam, the element
+   zones and the squad the mobs with the dragon appended while it fights (zones and allies only while it is not
+   airborne: they paint and fight on the ground); `CombatSystem.damageMob` routes the dragon's id to `damageBoss` with the
+   source; a burning spell starts its burn on the dragon's id; the pure hit tests add an entity's `bodyRadius` (0 for a
+   mob). **Why:** three Aspect kits did nothing in the climax fight. The full move of the boss into the ECS stays a later
+   step, on its own merits (the reset plan's row 25 wording).
+
 ## 2026-10-30 — [LOOP] W3-B PR A: the dragon is a lazy chunk, and the lookbook can hold it
 
 **Decided by the W3-B dragon lane under the standing grant** (DECISIONS 2026-10-28 item 14), building Units 1 and 10 of
