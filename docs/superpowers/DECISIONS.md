@@ -37,6 +37,11 @@ commit's `Mutation-Proof:` trailer).
    its message handler (an `update_block` to air answers `block_broken` with the id it replaced), once per column since the
    read replaces the block. On 1a3910e7, 8 of 24 columns disagreed at each of seeds 12345 and 777, every one surfaceY 28.
    The verifier's 18.2% residue on those columns is SoundManager sampling a float position, which this does not touch.
+   One more reader of the strip's old meaning was found by CI, not by search (run 41132117834, shard 6/8 red on all three
+   attempts): `tests/e2e/place-clear-of-player.spec.js` picked its shore columns by `isWater` on a neighbour, so the dry
+   strip counted as the sea and, with the strict predicate, no column qualified ("no beach column one block over the sea
+   within 80 m"). It now names the sea line itself (a neighbour at or below SEA_LEVEL) and picks the same columns: the same
+   4 candidates, and the same 16 within 80 m of Kevin's spot, checked offline against the old rule.
 
 181. **A landmark exists in one place: `shrines.landmarkAt(cx, cz)`.** (AUDIT:ultra:ultra-player-world-6) A hashed chunk
    holds a landmark only on land (not a water column, surface at least 32). Terrain.jsx drew by that rule; `nearestLandmark`

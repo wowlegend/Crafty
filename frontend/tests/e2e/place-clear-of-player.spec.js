@@ -53,7 +53,10 @@ const WALK_MIN_M = 1;
 const KEYS = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
 
 /** In node: beach columns near Kevin's spot, nearest first and 8 m apart. Land one block above the sea with water on one
- *  side, and the beach flat for two blocks either way along the other axis (the pillar is built along it). */
+ *  side, and the beach flat for two blocks either way along the other axis (the pillar is built along it). "Water on one
+ *  side" is a neighbour AT OR BELOW the sea line: the dry shore strip (surfaceY 28) or the sea. It read `isWater` while
+ *  that was true on the strip too; the strip is dry (AUDIT:ultra:ultra-player-world-9), and the columns this picks, Kevin's
+ *  spot among them, are the same ones. */
 function shoreColumns(want) {
   const out = [];
   const at = (x, z) => surfaceBlockAt(x, z);
@@ -63,8 +66,9 @@ function shoreColumns(want) {
       const x = KEVIN.x + dx, z = KEVIN.z + dz;
       const c = at(x, z);
       if (c.isWater || c.surfaceY !== SEA_LEVEL + 1 || out.some((o) => Math.hypot(o.x - x, o.z - z) < 8)) continue;
-      const waterX = at(x - 1, z).isWater || at(x + 1, z).isWater;
-      const waterZ = at(x, z - 1).isWater || at(x, z + 1).isWater;
+      const seaward = (nx, nz) => at(nx, nz).surfaceY <= SEA_LEVEL;
+      const waterX = seaward(x - 1, z) || seaward(x + 1, z);
+      const waterZ = seaward(x, z - 1) || seaward(x, z + 1);
       const flatAlong = (ax, az) => [-2, -1, 1, 2].every((k) => { const n = at(x + ax * k, z + az * k); return !n.isWater && n.surfaceY === c.surfaceY; });
       if (waterX && flatAlong(0, 1)) out.push({ x, z, top: c.surfaceY + 1, along: 'z' });
       else if (waterZ && flatAlong(1, 0)) out.push({ x, z, top: c.surfaceY + 1, along: 'x' });
