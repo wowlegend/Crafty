@@ -774,9 +774,12 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
  * `on`, the frame as a player sees it; `hudOff`, the same with the HUD's own elements hidden and the canvas and the touch
  * layer shown; `world`, the canvas alone. A pixel is the HUD's when `on` and `hudOff` differ there by more than
  * `tolerance` in any channel, and the touch layer's (its scrim, ring and buttons, reported apart) when `hudOff` and
- * `world` do. The rule reads no colour, so no palette can hide a surface from it or lend the world to it: a translucent
- * panel counts wherever it changes what is under it. Its blind spot: a pixel where an opaque surface lands on a world
- * pixel of its own colour, within `tolerance`, reads as unchanged.
+ * `world` do. The rule reads no palette, so a world texture near a surface colour is never lent to the HUD, and a
+ * translucent panel counts wherever it changes what is under it by more than `tolerance`. Its blind spot is the same
+ * rule seen from the other side: a surface that changes the world under it by `tolerance` or less in every channel is
+ * not counted. An opaque surface over world pixels of its own colour reads short of its area, and a faint translucent
+ * one over a world near its colour reads nothing (lookbook-chrome-gates' warm-on-warm fixture: a 10% warm panel over
+ * warm stone reads 8.28%, the same panel at alpha 0.15 reads 0%), so warm chrome over a warm world is under-read.
  * Returns the HUD's share and pixels, the touch layer's (null without a `world` shot) and the denominator.
  */
 export const FOOTPRINT_TOLERANCE = 2;
@@ -890,13 +893,16 @@ export const CHROME_BUDGET = 0.08;
 
 /** PURE. Whether an eye shot's chrome reading is the HUD at rest: a valid frame whose footprint was read on a held page
  *  and with no toast in the notification stack (every toast the game raises goes there: ui/notifications.js), so a
- *  dusk warning, a night's siege notice or a boss's call is never counted as the screen at rest. */
+ *  dusk warning, a night's siege notice or a boss's call is never counted as the screen at rest. A target's nameplate
+ *  is the HUD while the player looks at a mob, so a frame with one up counts. */
 export function atRest(s) {
   return !!s?.valid && Number.isFinite(s.chrome?.share) && !(s.chrome.toasts > 0);
 }
 
 /** PURE. The run's chrome lines for a target's eye shots: the footprint over the frames at rest (the acceptance
- *  number), then the colour count and the touch layer over the same frames, and what was set aside and why. */
+ *  number), with how many of them had a nameplate up and how many drew the returning player's ember bar and coin count;
+ *  then the colour count and the touch layer over the same frames; the nameplate twin (`chromeTarget`, each frame again
+ *  with a target's nameplate raised); and what was set aside and why. */
 export function chromeSummaryLines(eye) {
   const pct = (x) => `${(x * 100).toFixed(2)}%`;
   const rest = eye.filter(atRest);
@@ -906,8 +912,17 @@ export function chromeSummaryLines(eye) {
     return [`  chrome        NOT MEASURED on any valid eye frame at rest (${toasted.length} with a toast up, ${unread.length} unread: ${[...new Set(unread.map((s) => s.chrome?.why))].join('; ')})`];
   }
   const share = rest.map((s) => s.chrome.share);
-  const lines = [`  chrome        ${rest.length} valid eye frame(s) at rest: footprint max ${pct(Math.max(...share))}, median ${pct(medianOf(share))}; `
+  const plated = rest.filter((s) => s.chrome.target).length;
+  const purse = rest.filter((s) => s.chrome.purse?.ember && s.chrome.purse?.coins).length;
+  const lines = [`  chrome        ${rest.length} valid eye frame(s) at rest (${plated} with a nameplate up, counted; ${purse} with the ember bar and the coin count drawn): `
+    + `footprint max ${pct(Math.max(...share))}, median ${pct(medianOf(share))}; `
     + `${share.filter((x) => x > CHROME_BUDGET).length} over the ${CHROME_BUDGET * 100}% budget; ${toasted.length} with a toast up and ${unread.length} unread set aside`];
+  const plate = eye.filter((s) => atRest(s) && s.chromeTarget && atRest({ valid: true, chrome: s.chromeTarget })).map((s) => s.chromeTarget.share);
+  if (eye.some((s) => s.chromeTarget)) {
+    lines.push(plate.length
+      ? `  nameplate     ${plate.length} frame(s) with a target's nameplate raised: footprint max ${pct(Math.max(...plate))}, median ${pct(medianOf(plate))}; ${plate.filter((x) => x > CHROME_BUDGET).length} over the budget`
+      : '  nameplate     NOT MEASURED on any frame at rest');
+  }
   const colour = rest.map((s) => s.chrome.colourShare).filter(Number.isFinite);
   if (colour.length) lines.push(`  chrome colour ${colour.length} frame(s): max ${pct(Math.max(...colour))}, median ${pct(medianOf(colour))} (second column; it reads the palette)`);
   const touch = rest.map((s) => s.chrome.touchShare).filter(Number.isFinite);

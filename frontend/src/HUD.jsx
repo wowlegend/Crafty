@@ -36,6 +36,8 @@ import { Compass } from './ui/Compass.jsx';
 import { Panel, Icon } from './ui/primitives/index.js';
 import { EmberBar } from './ui/EmberBar.jsx';
 import { subscribeHudTick } from './ui/hudTicker.js';
+import { useHudMode, encounterTop, bossWidth, SHORT_VITALS_TOP, TOUCH_VITALS_TOP, TOUCH_COINS_TOP } from './ui/hudLayout.js';
+import { ON_WORLD_TEXT } from './ui/onWorldText.js';
 import { PanelBoundary, onceRetrying } from './ui/panels/lazyPanels.js';
 
 // The windup chevrons (combat-stance Task 7) load behind a lazy boundary: the combat-stance lane's share of the index
@@ -69,21 +71,20 @@ export function WindupChevronsSlot() {
   );
 }
 
-// M3b coin readout: a small bold-flat currency token. Reads `coins` reactively
-// (HUD is a plain declarative component, not a per-frame useFrame system, so a
-// store subscription here is fine + Game-Loop-Isolation-safe). Gated on coins > 0
-// so the default-zero wallet renders NOTHING. On desktop it sits left of the Settings gear; on touch the Pause button
-// takes that place (ui/TouchControls.jsx, right 64 px, 46 px wide), so it sits under the minimap, which ends at about
-// 164 + 159 px there.
+// The coin count: the coin and the number on the world, no panel (DECISIONS 2026-10-29 item 99). A store subscription
+// is Game-Loop-Isolation-safe here (HUD is declarative, not a useFrame system). Gated on coins > 0 so the default-zero
+// wallet renders NOTHING. On desktop it sits left of the Settings gear; on a tall touch screen the Pause button takes
+// that place (ui/TouchControls.jsx, right 64 px, 46 px wide), so it sits under the minimap; on a short one, in the top
+// band between the compass and the minimap (ui/hudLayout.js).
 const CoinReadout = React.memo(() => {
   const coins = useGameStore((s) => s.coins);
+  const mode = useHudMode();
   if (!coins || coins <= 0) return null;
+  const place = !mode.touch ? { top: 16, right: 68 } : mode.short ? { top: 12, right: 222 } : { top: TOUCH_COINS_TOP, right: 8 };
   return (
-    <div data-testid="coin-readout" className={`absolute ${isTouchUIMode() ? 'top-[332px] right-2' : 'top-4 right-[68px]'} z-20 pointer-events-none`}>
-      <Panel variant="base" shadow="shadow-none" className="px-3 py-1.5 flex items-center gap-1.5">
-        <Icon name="coins" size={18} className="flex-none text-warn" />
-        <span className="font-bold tabular-nums text-text">{coins}</span>
-      </Panel>
+    <div data-testid="coin-readout" className="absolute z-20 pointer-events-none h-5 flex items-center gap-1" style={place}>
+      <Icon name="coins" size={18} className="flex-none text-warn" />
+      <span className="text-sm leading-none font-bold tabular-nums text-text" style={ON_WORLD_TEXT}>{coins}</span>
     </div>
   );
 });
@@ -99,6 +100,9 @@ const CoinReadout = React.memo(() => {
 export const DayPhaseDial = React.memo(() => {
   const t = useT();
   const isDay = useGameStore((s) => s.isDay);
+  // A short touch screen gives the right edge to the thumb cluster's fans: the dial goes under the minimap, in the top
+  // band beside the Pause (ui/hudLayout.js).
+  const short = useHudMode().short;
   const orbitRef = useRef(null);
   const labelRef = useRef(null);
 
@@ -123,7 +127,7 @@ export const DayPhaseDial = React.memo(() => {
   // Initial values from the live clock so an isDay re-render never resets to a stale frame.
   const init = dayPhase(useGameStore.getState().gameTime, isDay);
   return (
-    <div data-testid="day-phase-dial" className="absolute top-[68px] right-4 z-20 pointer-events-none">
+    <div data-testid="day-phase-dial" className="absolute z-20 pointer-events-none" style={short ? { top: 106, right: 118 } : { top: 68, right: 16 }}>
       <Panel variant="base" shadow="shadow-none" className="px-1.5 py-1.5 flex flex-col items-center gap-1">
         <div className="relative w-9 h-9 rounded-full border-chrome border-ink bg-slot overflow-hidden">
           {/* horizon line: above = sky (sun/moon high), below = night/ground -> the orbit reads as a sky arc */}
@@ -177,6 +181,9 @@ const ControlsSheet = React.memo(() => {
 // (rAF never starts + returns null in capture) so the deterministic visual baselines stay byte-identical.
 export const ObjectiveTracker = React.memo(() => {
   const t = useT();
+  // Under the compass: in the top band's second row where the compass is in the top band (a wide screen, a short touch
+  // one), else under the compass at top 64 px (ui/Compass.jsx).
+  const short = useHudMode().short;
   const rootRef = useRef(null);
   const arrowRef = useRef(null);
   const textRef = useRef(null);
@@ -240,7 +247,7 @@ export const ObjectiveTracker = React.memo(() => {
   if (isCaptureMode()) return null;
 
   return (
-    <div ref={rootRef} data-testid="objective-tracker" className="absolute top-12 max-[900px]:top-[104px] left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+    <div ref={rootRef} data-testid="objective-tracker" className={`absolute ${short ? 'top-12' : 'top-12 max-[900px]:top-[104px]'} left-1/2 transform -translate-x-1/2 z-20 pointer-events-none`}>
       <div className="flex items-center gap-2 px-2.5 py-1 bg-panel-raise border-chrome border-ink rounded-sm whitespace-nowrap">
         <span ref={arrowRef} className="inline-block w-2.5 h-2.5 flex-none" style={{ background: '#46E0FF', clipPath: 'polygon(50% 0,100% 100%,0 100%)' }}></span>
         <span ref={textRef} className="text-[11px] font-bold text-text">{t('hud.objectiveShrine')}</span>
@@ -263,6 +270,55 @@ export const ImbueTell = React.memo(() => {
     </div>
   );
 });
+
+// The vitals: a `flex flex-col` column (StatBar's root is `inline-flex`), `w-44` giving every bar one width. Desktop: the
+// bottom-left corner, lifted above the hotbar's XP edge where the centred hotbar would reach it: under 808 px wide, the
+// hotbar's 408 px plus, on each side, this stack's 176 px, its 16 px margin and HUD_GAP (tests/gates/hud-at-rest-gates
+// recomputes it from the rendered classes). Touch: the joystick and the action buttons hold both bottom corners
+// (ui/TouchControls.jsx), so the stack sits at the top left under the quest line and the objective line on a tall screen,
+// and on a short one between the tray's opener and the joystick (ui/hudLayout.js).
+export const Vitals = ({ gameSystems }) => {
+  const mode = useHudMode();
+  const place = mode.touch ? { top: mode.short ? SHORT_VITALS_TOP : TOUCH_VITALS_TOP } : undefined;
+  return (
+    <div data-testid="stat-stack" className={`absolute left-4 pointer-events-none z-20 flex flex-col gap-2 w-44 ${mode.touch ? '' : 'bottom-4 max-[808px]:bottom-[88px]'}`} style={place}>
+      <PlayerHealthBar health={gameSystems.playerHealth} maxHealth={gameSystems.maxHealth} />
+      <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
+      <EmberBar />
+    </div>
+  );
+};
+
+// The encounter: the aimed target's nameplate over the boss bar, one centred column, so the two never meet; where it
+// sits and how wide the boss bar is follow the viewport (ui/hudLayout.js encounterTop, bossWidth).
+const Encounter = ({ bossSystem }) => {
+  const mode = useHudMode();
+  return (
+    <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center gap-1.5" style={{ top: encounterTop(mode) }}>
+      <TargetFrame />
+      <BossHealthBar
+        bossActive={bossSystem.bossActive}
+        bossHealth={bossSystem.bossHealth}
+        bossMaxHealth={bossSystem.bossMaxHealth}
+        bossPhase={bossSystem.bossPhase}
+        bossName={bossSystem.bossName}
+        width={bossWidth(mode)}
+        compact={mode.band === 'narrow' && !mode.short}
+      />
+    </div>
+  );
+};
+
+// The minimap: bottom right on a keyboard; on a tall touch screen top right under the dial, clear of the thumb cluster
+// and the quest line; on a short one in the top band beside the Pause at three quarters, without its coordinates line,
+// since the fans hold the right edge below it (ui/hudLayout.js).
+const PlacedMinimap = () => {
+  const mode = useHudMode();
+  if (!mode.touch) return <RadialMinimap />;
+  return mode.short
+    ? <RadialMinimap position="top-2 right-[118px] scale-75 origin-top-right" coords={false} />
+    : <RadialMinimap position="top-[164px] right-2" />;
+};
 
 export function HUD({
   isPointerLocked,
@@ -293,18 +349,7 @@ export function HUD({
 
             <DayPhaseDial />
 
-            {/* The vitals: a `flex flex-col` column (StatBar's root is `inline-flex`), `w-44` giving every bar one width.
-                Desktop: the bottom-left corner, lifted above the hotbar's XP edge where the centred hotbar would reach
-                it: under 808 px wide, the hotbar's 408 px plus, on each side, this stack's 176 px, its 16 px margin and
-                an 8 px gap. Touch: the joystick and the action buttons hold both bottom corners (ui/TouchControls.jsx)
-                and the tray opens down the left edge from its middle, so the stack sits at the top left, below the
-                quest line and, where the compass drops below the top band (under 900 px), below the objective line,
-                which ends at 137 px (top 104 px, 33 px tall). */}
-            <div data-testid="stat-stack" className={`absolute left-4 pointer-events-none z-20 flex flex-col gap-2 w-44 ${isTouchUIMode() ? 'top-[148px]' : 'bottom-4 max-[808px]:bottom-[88px]'}`}>
-              <PlayerHealthBar health={gameSystems.playerHealth} maxHealth={gameSystems.maxHealth} />
-              <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
-              <EmberBar />
-            </div>
+            <Vitals gameSystems={gameSystems} />
 
             {/* W3 M-HUD.9: the standalone top-center "Spell: FIREBALL (15 MP)" band is REMOVED — it
                 triple-stacked the top-center lane with the ObjectiveTracker + Compass. The active spell +
@@ -321,12 +366,11 @@ export function HUD({
               }}
             />
 
-            {!isTouchUIMode() && <RadialMinimap />}{/* W3 M-HUD.8: circular radial minimap with HOME/SHRINE/BLIGHT/NPC destination blips clamped to the rim; desktop default position (bottom-right). */}
-            {isTouchUIMode() && <RadialMinimap position="top-[164px] right-2" />}{/* touch placement: top-right below the day-phase dial, clear of the bottom joystick/action cluster and the top-left quest line; the map is the touch player's wayfinding surface */}
+            <PlacedMinimap />
 
             {!isTouchUIMode() && <AbilityBar />}{/* W3 M-HUD.3: bottom-center cooldown-sweep action bar; bottom-4 sits in the touch joystick/action-cluster band -> desktop-only for now (M-AMBIENT cleanup gives touch its own placement) */}
 
-            <TargetFrame />{/* W3 M-HUD.7: top-center unit nameplate off the aim-cone seam; self-gates on store.targetEntity + isCaptureMode (touch-safe, top-center clear of the action cluster) */}
+            <Encounter bossSystem={bossSystem} />
 
             <QuestTracker quests={questSystem.quests} onClaim={questSystem.claimQuest} />
 
@@ -339,14 +383,6 @@ export function HUD({
             <ChestIndicator
               chests={treasureChests.chests}
               openedChestIds={treasureChests.openedChestIds}
-            />
-
-            <BossHealthBar
-              bossActive={bossSystem.bossActive}
-              bossHealth={bossSystem.bossHealth}
-              bossMaxHealth={bossSystem.bossMaxHealth}
-              bossPhase={bossSystem.bossPhase}
-              bossName={bossSystem.bossName}
             />
           </>
         )}

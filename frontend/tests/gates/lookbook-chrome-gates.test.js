@@ -113,7 +113,7 @@ function over(world, rgb, y0, y1, alpha = 1) {
   return buf;
 }
 
-describe('the chrome footprint: the pixels the HUD changes, whatever its colours', () => {
+describe('the chrome footprint: the pixels the HUD changes, read without a palette', () => {
   it('a warm stone world with no chrome reads 0, where the colour count reads the stone as chrome', () => {
     const world = stone();
     const f = chromeFootprint(world, world, world, { width: W, height: H });
@@ -132,7 +132,7 @@ describe('the chrome footprint: the pixels the HUD changes, whatever its colours
     expect(f.touchShare, 'no touch shot, no touch reading').toBeNull();
   });
 
-  it('a 10% panel reads 10% on either ladder, over the same stone', () => {
+  it('a 10% panel reads 10% over a world unlike it, and a little under over warm stone, on either ladder', () => {
     for (const rgb of [PANEL.rgb, WARM[0].rgb, WARM[1].rgb]) {
       const f = chromeFootprint(over(stone(), rgb, 0, 10), stone(), null, { width: W, height: H });
       // Each stone pixel the opaque panel lands on within the tolerance of its own colour reads unchanged: the footprint's
@@ -183,6 +183,41 @@ describe('the chrome footprint: the pixels the HUD changes, whatever its colours
   });
 });
 
+// THE BLIND SPOT, pinned: the footprint reads change, so a surface that changes the world under it by FOOTPRINT_TOLERANCE
+// or less in every channel is not counted. Warm chrome over a warm world is where that happens: an opaque panel reads
+// short of its area by every pixel it lands on within the tolerance of its own colour, and a faint translucent one reads
+// nothing. The numbers are the fixture's, not the game's; what they pin is that the count is exactly the changed pixels.
+describe('the footprint\'s blind spot: warm chrome over a world near its colour', () => {
+  /** A world drawn from the warm panel's neighbourhood: each channel within 4 of --ui-panel's warm value. */
+  function nearWarm() {
+    const buf = new Uint8Array(W * H * 4);
+    for (let p = 0; p < W * H; p++) {
+      const k = (p * 2654435761) >>> 0;
+      buf.set([WARM[0].rgb[0] - 4 + (k % 9), WARM[0].rgb[1] - 4 + ((k >>> 7) % 9), WARM[0].rgb[2] - 4 + ((k >>> 13) % 9), 255], p * 4);
+    }
+    return buf;
+  }
+
+  it('an opaque warm panel reads short of its 10% by exactly the pixels within the tolerance of its colour', () => {
+    const world = nearWarm();
+    let hidden = 0;
+    for (let p = 0; p < W * 10; p++) {
+      if ([0, 1, 2].every((c) => Math.abs(world[p * 4 + c] - WARM[0].rgb[c]) <= FOOTPRINT_TOLERANCE)) hidden++;
+    }
+    const f = chromeFootprint(over(world, WARM[0].rgb, 0, 10), world, null, { width: W, height: H });
+    console.log(`blind spot: a 10% warm panel over warm stone reads ${(f.share * 100).toFixed(2)}% (${hidden} of 1000 pixels hidden)`);
+    expect(hidden, 'SETUP: the fixture hides nothing, so it no longer pins the blind spot').toBeGreaterThan(100);
+    expect(f.pixels).toBe(1000 - hidden);
+    expect(f.share).toBeLessThan(0.09);
+  });
+
+  it('a translucent warm panel at alpha 0.15 reads nothing over warm stone, and its full area over a world unlike it', () => {
+    const world = nearWarm();
+    expect(chromeFootprint(over(world, WARM[0].rgb, 0, 10, 0.15), world, null, { width: W, height: H }).share).toBe(0);
+    expect(chromeFootprint(over(frame(SKY), WARM[0].rgb, 0, 10, 0.15), frame(SKY), null, { width: W, height: H }).share).toBeCloseTo(0.10, 6);
+  });
+});
+
 describe('where the footprint lies', () => {
   it('each counted pixel goes to the first surface whose padded box holds it, at the device scale; the rest is other', () => {
     // A 100x100 device frame at 2 device px per CSS px: a 10x10 CSS panel at (5, 5) is 20x20 device px at (10, 10).
@@ -213,10 +248,31 @@ describe('which eye frames are the HUD at rest, and what the run prints', () => 
     expect(atRest({ ...shot(0.05), valid: false })).toBe(false);
     expect(atRest(shot(null, { why: 'moved' }))).toBe(false);
     const lines = chromeSummaryLines([shot(0.05), shot(0.09), shot(0.2, { toasts: 2 }), shot(null, { why: 'the page did not hold still' })]);
-    expect(lines[0]).toMatch(/2 valid eye frame\(s\) at rest: footprint max 9\.00%, median 7\.00%; 1 over the 8% budget; 1 with a toast up and 1 unread set aside/);
+    expect(lines[0]).toMatch(/2 valid eye frame\(s\) at rest .*: footprint max 9\.00%, median 7\.00%; 1 over the 8% budget; 1 with a toast up and 1 unread set aside/);
     expect(lines[1]).toMatch(/chrome colour 2 frame\(s\): max 4\.50%/);
     expect(lines[2]).toMatch(/touch layer {3}2 frame\(s\): max 3\.00%/);
     expect(CHROME_BUDGET).toBe(0.08);
+  });
+
+  it('a frame with a target\'s nameplate up is the HUD at rest, counted in the footprint and named in the summary', () => {
+    expect(atRest(shot(0.085, { target: true })), 'a nameplate up is set aside: the at-rest rule was widened').toBe(true);
+    const lines = chromeSummaryLines([shot(0.05), shot(0.085, { target: true })]);
+    expect(lines[0]).toMatch(/2 valid eye frame\(s\) at rest \(1 with a nameplate up, counted;/);
+    expect(lines[0]).toMatch(/footprint max 8\.50%.*; 1 over the 8% budget/);
+  });
+
+  it('says how many frames drew the returning player\'s ember bar and coin count', () => {
+    const purse = { ember: true, coins: true };
+    const lines = chromeSummaryLines([shot(0.05, { purse }), shot(0.06, { purse: { ember: true, coins: false } }), shot(0.07)]);
+    expect(lines[0]).toMatch(/3 valid eye frame\(s\) at rest \(0 with a nameplate up, counted; 1 with the ember bar and the coin count drawn\)/);
+  });
+
+  it('the nameplate twin has its own line, over the frames at rest, and a twin over the budget is counted there', () => {
+    const lines = chromeSummaryLines([
+      { ...shot(0.05), chromeTarget: { share: 0.081, toasts: 0 } }, { ...shot(0.06), chromeTarget: { share: 0.07, toasts: 0 } },
+      { ...shot(0.07, { toasts: 1 }), chromeTarget: { share: 0.2, toasts: 1 } }]);
+    expect(lines[1]).toMatch(/nameplate {5}2 frame\(s\) with a target's nameplate raised: footprint max 8\.10%, median 7\.55%; 1 over the budget/);
+    expect(chromeSummaryLines([{ ...shot(0.05), chromeTarget: { share: null, why: 'moved', toasts: 0 } }])[1]).toMatch(/nameplate {5}NOT MEASURED/);
   });
 
   it('no frame at rest is NOT MEASURED, never a pass', () => {

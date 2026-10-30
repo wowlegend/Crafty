@@ -8,6 +8,7 @@ import { subscribeHudTick } from './hudTicker.js';
 import { layoutCompass } from './compassLayout.js';
 import { markersNow, CARDINALS, NPC_SLOTS, CHEST_SLOTS } from './compassMarkers.js';
 import { Icon } from './primitives/index.js';
+import { useHudMode } from './hudLayout.js';
 
 const FOV = Math.PI; // the half of the horizon ahead
 
@@ -48,6 +49,7 @@ const CompassSlots = React.memo(({ setRef }) => SLOTS.map((slot) => {
 }));
 
 export const Compass = React.memo(({ treasureChests, bossSystem }) => {
+  const short = useHudMode().short;
   const trackRef = useRef(null);
   const slotRefs = useRef({}); // id -> { pip, label, text }
   // The ticker reads the props through a ref, so a new chests array does not re-run the effect and rewrite the strip.
@@ -60,7 +62,13 @@ export const Compass = React.memo(({ treasureChests, bossSystem }) => {
     const shrineCache = {};
     const written = {}; // id -> { pip, label, text, width, shown } as last written
     let stripPx = trackRef.current?.clientWidth || 0;
-    const onResize = () => { stripPx = trackRef.current?.clientWidth || stripPx; };
+    // Read on the next frame: a resize can also change the strip's class (a short touch screen, ui/hudLayout.js), which
+    // React applies after this listener runs.
+    let measure = 0;
+    const onResize = () => {
+      cancelAnimationFrame(measure);
+      measure = requestAnimationFrame(() => { stripPx = trackRef.current?.clientWidth || stripPx; });
+    };
     window.addEventListener('resize', onResize);
 
     const tick = () => {
@@ -103,7 +111,7 @@ export const Compass = React.memo(({ treasureChests, bossSystem }) => {
     };
     tick();
     const unsubscribe = subscribeHudTick(tick);
-    return () => { unsubscribe(); window.removeEventListener('resize', onResize); };
+    return () => { unsubscribe(); cancelAnimationFrame(measure); window.removeEventListener('resize', onResize); };
   }, []);
 
   // One ref setter for the life of the component, handed to the memoized slots, so a re-render of the compass (its props
@@ -116,12 +124,14 @@ export const Compass = React.memo(({ treasureChests, bossSystem }) => {
 
   return (
     // Below the top band wherever the centred strip would reach the quest line (left, up to 296 px) or the gear: under
-    // 900 px wide (a tablet in portrait, a phone). Flat at rest, as the HUD's surfaces are (DECISIONS 2026-10-29 item 99).
-    <div className="absolute top-3 max-[900px]:top-16 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
-      <div data-testid="hud-compass" className="w-[288px] max-[640px]:w-[200px] h-[34px] bg-panel-frame border-chrome border-ink rounded-md relative flex items-center justify-center overflow-hidden">
+    // 900 px wide (a tablet in portrait, a phone). On a short touch screen (a phone on its side) it stays in the top band
+    // at its narrow width, between the touch quest line (up to 252 px) and the coin count (ui/hudLayout.js). Flat at
+    // rest, as the HUD's surfaces are (DECISIONS 2026-10-29 item 99).
+    <div className={`absolute ${short ? 'top-3' : 'top-3 max-[900px]:top-16'} left-1/2 transform -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center`}>
+      <div data-testid="hud-compass" className={`${short ? 'w-[200px]' : 'w-[288px] max-[640px]:w-[200px]'} h-[34px] bg-panel-frame border-chrome border-ink rounded-md relative flex items-center justify-center overflow-hidden`}>
         {/* Alignment reticle line */}
         <div className="absolute top-0 bottom-0 w-[1.5px] bg-info z-20"></div>
-        <div ref={trackRef} data-testid="compass-track" className="w-[248px] max-[640px]:w-[160px] h-full relative overflow-hidden">
+        <div ref={trackRef} data-testid="compass-track" className={`${short ? 'w-[160px]' : 'w-[248px] max-[640px]:w-[160px]'} h-full relative overflow-hidden`}>
           <CompassSlots setRef={setRef} />
         </div>
       </div>

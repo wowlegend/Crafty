@@ -9,8 +9,8 @@ import * as THREE from 'three';
  * through refs, and its whole text is scanned:
  *   the day-phase dial at dusk and at night; the objective line (its name and its distance); the IMBUE tell; the quest
  *   line with a finished hunt (its claim on desktop and on touch) and the opened list; the hotbar's level; the compass
- *   strip (the eight points, HOME, the shrine, the Blight Heart); and the toast stack carrying the dusk warning, a siege,
- *   a dawn with its loot, the dragon's defeat and an Aspect's unlock.
+ *   strip (the eight points, HOME, the shrine, the Blight Heart); the toast stack carrying the dusk warning, a siege,
+ *   a dawn with its loot, the dragon's defeat and an Aspect's unlock; and the level-up banner at the screen's centre.
  * A word is two or more Latin letters in a row, or a letter written onto a number (a unit: "69m"). Allowed, and named
  * here: a single letter standing alone, which is what a key prints (Q, R), digits, and the four Aspect names (WILDHEART, VOIDHAND, SOULBIND, ELEMANCER), which keep their English in every
  * locale as the controls do.
@@ -25,6 +25,7 @@ import { DayPhaseDial, ObjectiveTracker, ImbueTell } from '../../src/HUD.jsx';
 import { QuestTracker, NotificationStack } from '../../src/QuestSystem.jsx';
 import { GameUI } from '../../src/ui/GameHud.jsx';
 import { Compass } from '../../src/ui/Compass.jsx';
+import { SimpleLevelUpEffect } from '../../src/SimpleExperienceSystem.jsx';
 import { HALF_CYCLE_UNITS } from '../../src/game/dayNight.js';
 import { claimHudTick, emitHudTick } from '../../src/ui/hudTicker.js';
 import { exitCaptureMode } from '../../src/devtest/captureMode.js';
@@ -93,13 +94,14 @@ function renderAll() {
   tick();
   take('compass', compass.getByTestId('compass-track'));
   take('toasts', render(<NotificationStack notifications={TOASTS} />).getByTestId('notification-stack'));
+  take('level-up banner', render(<SimpleLevelUpEffect levelUpEffects={[{ id: 1, level: 5 }]} />).container);
   return out;
 }
 
 describe('the play screen at rest under zh-CN', () => {
   it('every piece rendered, each with Chinese in it (the instrument sees text before it judges it)', () => {
     const pieces = renderAll();
-    expect(pieces.map(([n]) => n), 'a piece went unrendered').toHaveLength(11);
+    expect(pieces.map(([n]) => n), 'a piece went unrendered').toHaveLength(12);
     for (const [name, text] of pieces) expect(text, `${name} rendered no Chinese: "${text}"`).toMatch(HAN);
   });
 
@@ -114,6 +116,7 @@ describe('the play screen at rest under zh-CN', () => {
     expect(found.get('dial at dusk')).toContain('DUSK');
     expect(found.get('objective line').join(' ')).toMatch(/\d*m\b|Shatter/);
     expect(found.get('hotbar level')).toContain('Lv');
+    expect(found.get('level-up banner')).toContain('LEVEL');
     expect(found.get('quest line (desktop)')).toEqual(expect.arrayContaining(['Press']));
     expect(found.get('quest line (touch)')).toEqual(expect.arrayContaining(['Claim']));
   });
