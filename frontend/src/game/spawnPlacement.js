@@ -30,7 +30,7 @@ export function spawnTargetY(groundY) { return groundY + SPAWN_EYE_OFFSET; }
 // The spawn stands at x 0 z 0, the corner where four block columns meet, so the base capsule (radius 0.4 m) stands across
 // all four: its ground is the highest of them. One probe at (0.1, 0.1) read only the column x 0 z 0, and a player who had
 // dug that column, or the three around it standing higher, was stood with the capsule inside the other three (registry
-// REVIEW:fix-invisible-box:respawn-counts-mined; tests/integration/chaos-play-rapier.test.jsx).
+// REVIEW:fix-invisible-box:respawn-counts-mined; tests/integration/chaos-play-field-origin.test.jsx).
 const SPAWN_COLUMNS = [[-1, -1], [0, -1], [-1, 0], [0, 0]];
 
 /** The ground under the spawn corner from `probe(x, z)` (Terrain.jsx getMobGroundLevel, which casts at x + 0.1, z + 0.1):

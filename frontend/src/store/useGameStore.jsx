@@ -1217,7 +1217,7 @@ export const useGameStore = create((set, get) => ({
         }
         // The worker re-streams every chunk with the save's edits, and the old chunks are wiped first (Terrain.jsx
         // load_modifications_done): with no ground in between, the player fell through the gap and the new chunk
-        // landed around them (tests/integration/chaos-play-rapier.test.jsx). So the Player holds the body at the save's
+        // landed around them (tests/integration/chaos-play-loads.test.jsx). So the Player holds the body at the save's
         // position until that column has colliders again (Components.jsx, game/spawnPlacement.js resolveResumeSpawn).
         set({ worldReloading: true, resumeSpawn: pos ? { x: pos.x, y: pos.y, z: pos.z } : null });
         // No-permanent-beast: a same-session load while transformed returns to human (the beast-form

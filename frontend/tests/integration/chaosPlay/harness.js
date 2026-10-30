@@ -1,6 +1,7 @@
 // The chaos-play harness: a seeded player who uses every verb that edits the world or moves the body, in the game's own
 // frame order, against the real Rapier build, the real greedy mesher and the real verb executors. The gate
-// (tests/integration/chaos-play-rapier.test.jsx) reads four invariants from the voxel grid after every frame.
+// (tests/integration/chaos-play-*.test.jsx) reads five invariants as the session plays; what each reads is in
+// chaos-play-instruments.test.jsx's header.
 //
 // Wired as the game wires it:
 //  - terrain: one fixed body and one trimesh collider per chunk over the drawn positions and indices (Terrain.jsx

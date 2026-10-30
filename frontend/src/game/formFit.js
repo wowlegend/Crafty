@@ -5,7 +5,8 @@
 // capsule that comes out of the swap overlapping a block stays in it. Lifting the body by the half-height's growth alone
 // left the bull's lower end 0.17 m into the ground on open land (its half-height is shorter, its radius 0.22 m longer), a
 // wider form 0.18 m into a wall it was pressed against, the golem's head in a two-high tunnel's ceiling, and ending the
-// comet form 0.18 m of the base capsule in the floor (tests/integration/chaos-play-rapier.test.jsx). So the new shape is
+// comet form 0.18 m of the base capsule in the floor (tests/integration/chaos-play-cave-overhang.test.jsx and its two
+// sibling files). So the new shape is
 // placed where it fits: its lower end where the old one's is, then the nearest spot within a few centimetres that clears
 // every collider. Where none does, a form is refused; the base shape is restored regardless (no form outlives its end).
 
