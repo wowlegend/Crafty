@@ -1,5 +1,6 @@
 // Locomotion math (S3-M5 part 2) — extracted PURE from the Player loop (Components.jsx:799/1005-1022).
 // The velocityY.current assignments stay in Player; these are the numbers. Pinned to the old literals.
+import { planarBasis } from './dodge.js';
 export const BASE_MOVE_SPEED = 14;     // horizontal speed before the form move-mult (10 -> 14 2026-06-18: travel felt slow, esp. to the far Blight-Heart — Kevin)
 export const JUMP_VELOCITY = 12.0;     // grounded jump impulse before the form jump-mult
 export const VAULT_VELOCITY = 8.5;     // the ledge-vault hop (form-INVARIANT)
@@ -8,20 +9,15 @@ export const GRAVITY = -32.0;          // per-second gravity accel before the fo
 export const TERMINAL_VELOCITY = -50.0; // fall-speed clamp
 
 // Camera-relative WASD move velocity {x, z, moving} — extracted byte-equivalent from the Player loop.
-// Planar forward + perpendicular-side basis from the camera's world XZ (the (0,0,-1) degenerate
-// fallback at 0.001, same as dodge.planarBasis — unify later), combined by the move intents
-// (forward = moveF-moveB, side = moveR-moveL), then normalized * speed. No input -> not moving
-// (caller leaves desiredVel untouched). Pure: no THREE / store / refs.
+// The planar forward + perpendicular-side basis is dodge.planarBasis (the dodge's too: a walk and a dodge read one
+// basis), combined by the move intents (forward = moveF-moveB, side = moveR-moveL), then normalized * speed.
+// No input -> not moving (caller leaves desiredVel untouched). Pure: no THREE / store / refs.
 export function moveVector(camDirX, camDirZ, { moveF = false, moveB = false, moveL = false, moveR = false } = {}, speed = BASE_MOVE_SPEED) {
-  let fx = camDirX, fz = camDirZ;
-  const l2 = fx * fx + fz * fz;
-  if (l2 < 0.001) { fx = 0; fz = -1; }
-  else { const inv = 1 / Math.sqrt(l2); fx *= inv; fz *= inv; }
-  const sx = -fz, sz = fx; // perpendicular side (unit, since forward is unit)
+  const { fwdX, fwdZ, sideX, sideZ } = planarBasis(camDirX, camDirZ);
   const f = (moveF ? 1 : 0) - (moveB ? 1 : 0);
   const s = (moveR ? 1 : 0) - (moveL ? 1 : 0);
-  const x = fx * f + sx * s;
-  const z = fz * f + sz * s;
+  const x = fwdX * f + sideX * s;
+  const z = fwdZ * f + sideZ * s;
   const d2 = x * x + z * z;
   if (d2 <= 0) return { x: 0, z: 0, moving: false };
   const k = speed / Math.sqrt(d2);
