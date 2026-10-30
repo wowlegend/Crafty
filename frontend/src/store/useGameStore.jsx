@@ -496,6 +496,8 @@ export const useGameStore = create((set, get) => ({
     
     damageBoss: null,
     setDamageBoss: (fn) => set({ damageBoss: fn }),
+    // The boss system's give-up path for a dragon chunk that never loaded (render/dragonLoader.js LazyDragon).
+    suspendBossEncounter: null,
     getBossPosition: null,
     setGetBossPosition: (fn) => set({ getBossPosition: fn }),
     // Single source of truth for boss-active state. The VALUE `bossActive` is what

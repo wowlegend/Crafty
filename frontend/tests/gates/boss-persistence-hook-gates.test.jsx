@@ -5,6 +5,7 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { useBossSystem } from '../../src/world/bossSystem.js';
 import { BOSS_CONFIG } from '../../src/game/bossConfig.js';
 import { tIn } from '../../src/i18n/i18n.js';
+import { blightHeartSite } from '../../src/world/blightHeart.js';
 import { notificationText } from '../../src/ui/notifications.js';
 
 // The dragon's calls go to the notification channel: what the hook sent, as the toast stack shows it in English.
@@ -83,5 +84,48 @@ describe('B2g — the hook is seeded from the RESTORED store, not from the confi
     act(() => result.current.damageBoss(200));
     rerender();
     expect(useGameStore.getState().bossHealth).toBe(MAX - 200);
+  });
+});
+
+// DECISIONS 2026-10-30 item 121: a dragon chunk that never loads SUSPENDS the fight (render/dragonLoader.js gives up and
+// calls the store's suspendBossEncounter). The bar, music and mood end with bossActive; the HP stays, the save mirror
+// keeps it, and the lair re-arms: walking back in resumes the same fight at the same HP. The fight here is woken by an
+// arrival and the player levels up during it, so the arrival poll's effect has re-run while the dragon was up and
+// returned before arming an interval: only a re-arm can wake the fight again.
+describe('a suspended encounter keeps its HP and re-arms the lair', () => {
+  const lair = blightHeartSite();
+  const away = { x: lair.x + 400, y: 40, z: lair.z };
+  const atLair = { x: lair.x, y: 40, z: lair.z };
+  beforeEach(() => {
+    vi.useFakeTimers();
+    useGameStore.setState({ bossHealth: MAX, bossActive: false, bossDefeated: false, bossTier: 0, gameWon: false,
+      isCaptureMode: false, hitstopUntil: 0, hitstopStart: 0, getMobGroundLevel: null, addNotification: vi.fn(),
+      playerPosition: atLair });
+  });
+  afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  it('suspend: inactive, the same HP in the hook and the store; the next arrival resumes it at that HP', () => {
+    const hook = renderHook(({ l }) => useBossSystem(l), { initialProps: { l: 9 } });
+    act(() => { vi.advanceTimersByTime(1600); });
+    expect(hook.result.current.bossActive, 'SETUP: the arrival did not wake the dragon').toBe(true);
+    act(() => hook.result.current.damageBoss(MAX - 300));
+    hook.rerender({ l: 10 });
+    expect(hook.result.current.bossHealth).toBe(300);
+    expect(typeof useGameStore.getState().suspendBossEncounter, 'the give-up path is not published on the store').toBe('function');
+    act(() => useGameStore.setState({ playerPosition: away }));
+    act(() => useGameStore.getState().suspendBossEncounter());
+    hook.rerender({ l: 10 });
+    expect(hook.result.current.bossActive).toBe(false);
+    expect(hook.result.current.bossHealth).toBe(300);
+    expect(useGameStore.getState().bossActive).toBe(false);
+    expect(useGameStore.getState().bossHealth).toBe(300);
+    // Away from the lair the poll waits; at the lair it wakes the SAME fight.
+    act(() => { vi.advanceTimersByTime(3200); });
+    expect(hook.result.current.bossActive, 'woke away from the lair').toBe(false);
+    act(() => useGameStore.setState({ playerPosition: atLair }));
+    act(() => { vi.advanceTimersByTime(1600); });
+    hook.rerender({ l: 10 });
+    expect(hook.result.current.bossActive, 'the lair did not re-arm after the suspend').toBe(true);
+    expect(hook.result.current.bossHealth).toBe(300);
   });
 });

@@ -496,7 +496,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
     const eyeColor = isFlashing ? "#ffffff" : (bossPhase === 2 ? "#f43f5e" : (bossPhase === 1 ? "#fbbf24" : "#c084fc"));
 
     return (
-        <group>
+        <group name="crafty:dragon-chunk">
             {/* --- Dragon Core 3D Mesh Representation --- */}
             <group ref={meshRef} position={bossPositionRef.current} rotation={BOSS_REST.rotation}>
                 {/* Torso */}

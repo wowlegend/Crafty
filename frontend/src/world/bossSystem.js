@@ -11,6 +11,7 @@ import { runIsolatedEffects } from '../game/isolatedEffects.js';
 import { bossEntranceBeat, ENTRANCE } from '../game/bossEntrance.js';
 import { phaseForHealth } from '../game/bossPersistence.js';
 import { isWorldFrozenNow } from '../game/worldClock.js';
+import { preloadDragon, shouldPreloadAtMount } from '../render/dragonLoader.js';
 
 /** One of the dragon's one-off calls (this hook's: the arrival, the return, the phase changes, the defeat) to the one
  *  notification channel (ui/notifications.js) as a dictionary key, marked `boss`, so where one line holds the notices it
@@ -40,6 +41,9 @@ export const useBossSystem = (playerLevel) => {
     const [bossPhase, setBossPhase] = useState(() =>
         phaseForHealth(useGameStore.getState().bossHealth, bossTierStats(useGameStore.getState().bossTier || 0).health));
     const bossSpawned = useRef(false);
+    // Bumped by suspendEncounter: the arrival poll below is an effect that returned before arming its interval while a
+    // fight was on, and resetting bossSpawned alone would not run it again.
+    const [rearm, setRearm] = useState(0);
     const bossKilledRef = useRef(false); // idempotency latch: kill side-effects fire EXACTLY once even if damageBoss is called twice in a frame (melee + spell) or the updater double-invokes under StrictMode
 
 
@@ -56,6 +60,9 @@ export const useBossSystem = (playerLevel) => {
     useEffect(() => {
         if (bossSpawned.current) return;
         if (bossTier === 0 && (playerLevel < BOSS_BASE_LEVEL || bossDefeated || useGameStore.getState().gameWon)) return;
+        // The player qualifies for a fight, so its code downloads now, usually minutes before the arrival. A slain
+        // tier waits for its return to be due, below.
+        if (!(bossTier > 0 && bossDefeated)) preloadDragon();
         const lair = blightHeartSite();
         const interval = setInterval(() => {
             if (bossSpawned.current || isWorldFrozenNow()) return;
@@ -64,6 +71,7 @@ export const useBossSystem = (playerLevel) => {
                 if (!bossCanReturn({ tier: bossTier, killNight: s.bossKillNight, nightCount: s.nightCount, level: playerLevel })) return;
                 if (!returnAnnounced.current) {
                     returnAnnounced.current = true;
+                    preloadDragon();
                     bossNotice('notice.bossReturns', { boss: bossNameKey(bossTier) });
                 }
             }
@@ -107,7 +115,21 @@ export const useBossSystem = (playerLevel) => {
             setBossActive(true);
         }, 1500);
         return () => clearInterval(interval);
-    }, [playerLevel, bossDefeated, bossTier, stats]);
+    }, [playerLevel, bossDefeated, bossTier, stats, rearm]);
+
+    // A fight restored by a reload is on from the first frame: its chunk is wanted now, not at an arrival.
+    useEffect(() => {
+        if (shouldPreloadAtMount(useGameStore.getState())) preloadDragon();
+    }, []);
+
+    // The dragon's chunk could not be loaded after every retry (render/dragonLoader.js): the fight is SUSPENDED, not
+    // lost. The bar, the music and the mood end through bossActive's own effects, the HP and the tier stay (the mirror
+    // below saves them), and the lair re-arms, so the next arrival tries the chunk again and resumes at the saved HP.
+    const suspendEncounter = useCallback(() => {
+        bossSpawned.current = false;
+        setBossActive(false);
+        setRearm((n) => n + 1);
+    }, []);
 
     useEffect(() => {
         // The threshold walk moved to game/bossPersistence.phaseForHealth so the rehydrate seeds the phase
@@ -164,7 +186,7 @@ export const useBossSystem = (playerLevel) => {
     }, [bossActive, bossHealth, stats, bossTier]);
 
     useEffect(() => {
-        useGameStore.setState({ damageBoss: damageBoss });
+        useGameStore.setState({ damageBoss: damageBoss, suspendBossEncounter: suspendEncounter });
         useGameStore.setState({ getBossPosition: () => bossPositionRef.current });
         // Publish boss-active lifecycle to the STORE value (single source of truth).
         // This is the key SoundManager reads (`state.bossActive`) to start/stop the
@@ -177,6 +199,7 @@ export const useBossSystem = (playerLevel) => {
         // fixed sky-studio position with no level/HP gate. Tree-shaken from prod builds.
         if (import.meta.env.DEV) {
             useGameStore.setState({ forceBossSpawn: (pos) => {
+                preloadDragon();
                 bossSpawned.current = true;
                 bossKilledRef.current = false; // a dev re-spawn can be killed again
                 bossPositionRef.current = pos;
@@ -184,11 +207,11 @@ export const useBossSystem = (playerLevel) => {
                 setBossPhase(0);
             } });
         }
-    }, [damageBoss, bossPositionRef, bossActive]);
+    }, [damageBoss, suspendEncounter, bossPositionRef, bossActive]);
 
     // A-bis B2g: mirror the ENCOUNTER to the store, which is what saveSchema serializes. Its own effect,
     // keyed on all three values, deliberately NOT folded into the callback-registration effect above:
-    // that one is keyed on [damageBoss, bossPositionRef, bossActive], so health mirrored there would only
+    // that one is keyed on [damageBoss, suspendEncounter, bossPositionRef, bossActive], so health mirrored there would only
     // reach the store when active FLIPPED — stale through the entire fight, which is the bug this fixes.
     // Adding health to those deps instead would re-register damageBoss/getBossPosition on every damage
     // tick. This effect runs on state transitions, not per frame, so Game-Loop-Isolation holds.
