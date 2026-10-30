@@ -36,6 +36,7 @@ import { mineTarget } from './buildTarget.js';
 import { createPlacedCellColliders, createEditSeq } from './placedCellColliders.js';
 import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE } from './loadedChunks.js';
 import { makeMobFloorProbe } from './mobFloorProbe.js';
+import { releasePointerLock } from '../input/pointerLock.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: useGameStore.getState().worldSeed } });
@@ -817,9 +818,7 @@ export const MinecraftWorld = React.memo(() => {
             const store = useGameStore.getState();
             store.setActiveChestCoords(h.targetCoords);
             store.setShowChestInterface(true);
-            if (document.exitPointerLock) {
-                document.exitPointerLock();
-            }
+            releasePointerLock();
         };
 
         // M4: parametrized world ray (the anvil wall check) — same player-filtered cast, any origin/dir.

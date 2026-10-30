@@ -9,19 +9,7 @@ import { getInput, setActive } from './input/inputState';
 import { isAnyPanelOpen } from './ui/panelState.js';
 import { talk, talkOpenedPanel } from './input/talk.js';
 import { toggleGroupTarget, panelWrites, applyPanelWrites } from './ui/panelGroups.js';
-
-const requestPointerLockSafely = (state) => {
-  if (state.requestPointerLock) {
-    state.requestPointerLock();
-  } else {
-    const canvas = document.querySelector('canvas');
-    if (canvas && canvas.requestPointerLock) {
-      canvas.requestPointerLock();
-    } else if (document.body.requestPointerLock) {
-      document.body.requestPointerLock();
-    }
-  }
-};
+import { releasePointerLock, requestGameLock } from './input/pointerLock.js';
 
 export function useInputManager(gameState, gameSystems) {
   const [showStats, setShowStats] = useState(false);
@@ -88,7 +76,7 @@ export function useInputManager(gameState, gameSystems) {
           state.setActiveChestCoords(null);
           setShowAchievements(false);
           setShowSpellUpgrades(false);
-          requestPointerLockSafely(state);
+          requestGameLock(state);
         } else {
           // KEVIN-FIX C5: the old `else if (active) -> settings` branch was UNREACHABLE —
           // while locked the browser consumes the Escape keydown entirely; the pause menu
@@ -96,7 +84,7 @@ export function useInputManager(gameState, gameSystems) {
           // context, re-enter the game.
           // KEVIN-FIX C3: request only — the lock-change listener (Components, the one
           // authority) sets active when the browser GRANTS the lock.
-          requestPointerLockSafely(state);
+          requestGameLock(state);
         }
         return;
       }
@@ -120,11 +108,11 @@ export function useInputManager(gameState, gameSystems) {
           setter(newValue);
 
           if (newValue) {
-            document.exitPointerLock();
+            releasePointerLock();
           }
 
           if (!newValue) {
-            requestPointerLockSafely(state);
+            requestGameLock(state);
           }
         };
 
@@ -139,8 +127,8 @@ export function useInputManager(gameState, gameSystems) {
           const target = group ? toggleGroupTarget(group, flags) : (state.showControls ? null : 'showControls');
           applyPanelWrites(panelWrites(target), state, { setShowSpellUpgrades, setShowAchievements });
           if (target === 'showControls') state.markControlsSeen?.();
-          if (target) document.exitPointerLock();
-          else requestPointerLockSafely(state);
+          if (target) releasePointerLock();
+          else requestGameLock(state);
           return;
         }
       }
@@ -162,7 +150,7 @@ export function useInputManager(gameState, gameSystems) {
         event.preventDefault();
         // The talk verb (input/talk.js): the smith opens Mara's Forge, the merchant trades, the healer heals, the warden
         // hints, and with no villager near a chest beside the player opens. Only a panel exits pointer lock.
-        if (talkOpenedPanel(talk(state)) && document.exitPointerLock) document.exitPointerLock();
+        if (talkOpenedPanel(talk(state))) releasePointerLock();
         return;
       }
 
@@ -173,7 +161,7 @@ export function useInputManager(gameState, gameSystems) {
   }, []);
 
   useEffect(() => {
-    if (gameSystems && !gameSystems.isAlive) document.exitPointerLock();
+    if (gameSystems && !gameSystems.isAlive) releasePointerLock();
   }, [gameSystems?.isAlive]);
 
   return {

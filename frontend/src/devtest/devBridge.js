@@ -22,6 +22,7 @@ import { applyFusion } from '../game/hybrids';
 import { getLiveZones } from '../world/ElementZoneSystem';
 import { spawnZone, clearZones } from '../game/elementZones';
 import { loadPanels } from '../ui/panels/lazyPanels.js';
+import { requestGameLock } from '../input/pointerLock.js';
 
 /** Register every hook and expose window.__craftyTest. The two setters are App's panel flags, held in React state. */
 export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) {
@@ -30,12 +31,7 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
   // pointer lock (Components.jsx's listener is the authoritative active writer).
   registerTestHook('start', () => {
     setActive(true);
-    const state = useGameStore.getState();
-    if (state.requestPointerLock) {
-      state.requestPointerLock();
-    } else if (document.body.requestPointerLock) {
-      document.body.requestPointerLock().catch(() => {});
-    }
+    requestGameLock(useGameStore.getState());
   });
   // `forcePlay` is the deterministic, headless-safe play-entry for E2E: it flips ONLY the
   // active gate (the menu hides on active; the in-game HUD mounts on active+alive+worldBuilt)

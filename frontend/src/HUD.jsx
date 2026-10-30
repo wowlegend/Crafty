@@ -44,6 +44,7 @@ import {
 import { lineNotification } from './ui/notifications.js';
 import { ON_WORLD_TEXT } from './ui/onWorldText.js';
 import { PanelBoundary, onceRetrying } from './ui/panels/lazyPanels.js';
+import { requestGameLock } from './input/pointerLock.js';
 
 // The windup chevrons (combat-stance Task 7) load behind a lazy boundary: the combat-stance lane's share of the index
 // chunk is +9,000 B (plan Global Constraints and Task 12 Step 3), and the build with it in the boot chunk measured
@@ -434,17 +435,7 @@ export function HUD({
           if (useGameStore.getState().onPlayerDeath) useGameStore.getState().onPlayerDeath();
           
           // Re-acquire pointer lock upon respawning
-          const state = useGameStore.getState();
-          if (state.requestPointerLock) {
-            state.requestPointerLock();
-          } else {
-            const canvas = document.querySelector('canvas');
-            if (canvas && canvas.requestPointerLock) {
-              canvas.requestPointerLock();
-            } else if (document.body.requestPointerLock) {
-              document.body.requestPointerLock();
-            }
-          }
+          requestGameLock(useGameStore.getState());
           // KEVIN-FIX C3: no optimistic setIsPointerLocked(true) — pointerlockchange is
           // the one authoritative writer; a failed lock falls back to click-to-play.
         }} />
