@@ -13,9 +13,10 @@ import RAPIER from '@dimforge/rapier3d-compat';
  * the controller from the collider (game/kinematicMove.js), so a placement that left the collider behind had that frame
  * sweep from the old spot and write the movement onto the new one. This mounts the real Player with the real Rapier,
  * terrain trimeshes made by the real mesher from the chaos harness's world (tests/integration/chaosPlay/harness.js
- * genCell), and the game's ground probe (Terrain.jsx getMobGroundLevel), drives the Player's frame callback after the
- * stepper's steps as @react-three/rapier orders them, and reads the capsule against the voxel grid (the harness's
- * deepestSolid and eyeCell), never the colliders:
+ * genCell), and a copy of the game's ground probe (Terrain.jsx getMobGroundLevel); it steps the world on that 1/60 s
+ * accumulator before each call of the Player's frame callback (the chaos harness's order; the defect needs only a frame
+ * with no step between a placement and the next sweep, which either order has at 120 Hz), and reads the capsule against
+ * the voxel grid (the harness's deepestSolid and eyeCell), never the colliders:
  *   - a save from the old Save button at the tunnel's mouth (-4, 32, -8), in the wall and the ceiling, is fitted clear
  *     and stays clear on both frame phases at 120 Hz (the load's release, game/formFit.js fitLoadedSpot);
  *   - a fall through the world at terminal speed respawns on the origin's ground, not 0.12 m into it, on both phases;
