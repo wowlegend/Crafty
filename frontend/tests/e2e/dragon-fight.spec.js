@@ -137,7 +137,10 @@ test.describe('the dragon fight', () => {
     expect(p.consumed, `the controller never consumed the Shift press — ${JSON.stringify(p)}`).toBe(true);
     expect(p.staggered, `the perfect press staggered nothing (${due} ms of windup left) — ${JSON.stringify(p)}`).toBe(true);
     expect(p.windupUntil, 'the parried bite is still winding up').toBe(0);
-    expect(p.staggerUntil - p.now).toBeLessThanOrEqual(STAGGER_MS);
+    // Staggered for exactly STAGGER_MS of world time from the press (the world is frozen, so the press and the read share
+    // one world instant). Its end is read here, not sampled after the thaw: a loaded runner's first frame after a freeze
+    // can come a second or more later, past the whole stagger (tests/e2e/perfect-dodge.spec.js measures it).
+    expect(p.staggerUntil - p.now, `the stagger is not ${STAGGER_MS} ms long — ${JSON.stringify(p)}`).toBeCloseTo(STAGGER_MS, 3);
 
     // Thawed, the parried bite never lands, and the move machine has cancelled it.
     const after = await page.evaluate(async () => {
@@ -152,11 +155,11 @@ test.describe('the dragon fight', () => {
       while (call('worldNow') - w0 < 600) await frame();
       store.setState({ damagePlayer: real });
       const r = call('readDragon');
-      return { bites, move: r.move, staggered: r.staggerUntil > r.now };
+      return { bites, move: r.move, waited: call('worldNow') - w0 };
     });
+    expect(after.waited, 'SETUP: the world never ran past the parried bite\'s due time').toBeGreaterThanOrEqual(150);
     expect(after.bites, 'the parried bite landed').toEqual([]);
     expect(after.move, 'the move machine did not cancel the parried bite').toBeNull();
-    expect(after.staggered, 'the stagger ended inside 600 ms of world time').toBe(true);
   });
 
   test('the roar: its ring shows through the windup, one shove of 24 at 5 m, and nothing at 11 m', async ({ page }) => {
