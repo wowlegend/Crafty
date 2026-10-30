@@ -1419,10 +1419,11 @@ export const Player = ({ isWorldBuilt }) => {
     // The Rapier KCC sweep and the frame's one kinematic write (game/kinematicMove.js: it also sweeps a move given on a
     // frame that took no world step, which a plain write would lose). growDeltaY (from a just-applied enlarging
     // form-swap) is folded into THIS write -- never a competing setNextKinematic from a subscribe callback -- so a
-    // larger capsule never spawns intersecting the ground.
+    // larger capsule never spawns intersecting the ground. The colliders made since the last world step (a placed cell's
+    // stand-in, a rebuilt chunk) are ones the KCC's sweep cannot see yet, so the move is cut at them (world/placedCellColliders.js).
     const collider = rigidBodyRef.current.collider(0);
     if (collider && controllerRef.current) {
-      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, growDeltaY, filterPredicate);
+      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, growDeltaY, filterPredicate, GameMethods.placedCells?.unindexed());
     }
 
     // Phase 9: Dynamic FOV Momentum & Camera Bobbing

@@ -19,6 +19,9 @@ export function deniedReason(kind, ctx = '') {
       return `No ${ctx || 'block'} left`;
     case 'no-block-forge':
       return `No ${ctx || 'block'} left — Mara's Forge makes more`;
+    // A placement into a cell the player's own body fills (world/placeAtHit.js).
+    case 'in-the-way':
+      return t('deny.inTheWay');
     // The talk verb (input/talk.js) with no villager and no chest in reach.
     case 'no-talk':
       return 'Nobody near enough to talk to';

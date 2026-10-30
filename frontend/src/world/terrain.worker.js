@@ -30,6 +30,10 @@ const chunks = new Map();
 // second array would have broken every one of them — a parallel map is the smaller blast radius.
 const biomeChunks = new Map();
 const chunkModifications = new Map();
+// The `seq` of the last placement edit applied (world/placeAtHit.js numbers each through world/placedCellColliders.js).
+// Every mesh posted after it holds that edit and every earlier one, since messages are handled in order; the main thread
+// retires a placed cell's stand-in collider only on a mesh of its chunk stamped at or past the cell's seq.
+let lastEditSeq = 0;
 
 // The world's seed: the noise and the vegetation hash both derive from it. Vegetation hashes the world column rather
 // than drawing Math.random(), so the same seed regenerates the same world in any chunk order.
@@ -86,7 +90,8 @@ self.onmessage = function(e) {
         uvs: meshData.uvs,
         indices: meshData.indices,
         ao: meshData.ao,
-        grassTops: gTops
+        grassTops: gTops,
+        editSeq: lastEditSeq
       }
     }, [
       meshData.positions.buffer,
@@ -98,7 +103,8 @@ self.onmessage = function(e) {
     ]);
   }
   else if (type === 'update_block') {
-    const { cx, cz, x, y, z, blockType } = payload;
+    const { cx, cz, x, y, z, blockType, seq } = payload;
+    if (typeof seq === 'number') lastEditSeq = seq;
     const key = `${cx}_${cz}`;
     let blocks = chunks.get(key);
     if (!blocks) {
@@ -150,7 +156,8 @@ self.onmessage = function(e) {
           uvs: meshData.uvs,
           indices: meshData.indices,
           ao: meshData.ao,
-          grassTops: gTops
+          grassTops: gTops,
+          editSeq: lastEditSeq
         }
       }, [
         meshData.positions.buffer,
