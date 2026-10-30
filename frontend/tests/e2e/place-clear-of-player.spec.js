@@ -36,7 +36,11 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 
 const KEVIN = { x: -78, z: -4 };
 const REFUSAL = /standing there/;
+// A walk ends at WALK_STOP_M or after WALK_FRAMES drawn frames. Bounded by distance because CI's software renderer draws
+// frames up to MAX_FRAME_STEP_SEC (0.25 s) apart: thirty of them at 14 m/s walked 103 m out to sea on the red run,
+// where the seabed is under the void-fall line, and the reset to the origin spoiled every walk after it.
 const WALK_FRAMES = 30;
+const WALK_STOP_M = 1.5;
 const WALK_MIN_M = 1;
 const KEYS = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
 
@@ -193,7 +197,8 @@ function armClick({ yaw, pitch }) {
   }, { once: true });
 }
 
-/** Real W, A, S or D held for `WALK_FRAMES` drawn frames from `from`, the camera level and facing -z; metres covered. */
+/** Real W, A, S or D held from `from` until the body is WALK_STOP_M away or WALK_FRAMES frames are drawn, the camera
+ *  level and facing -z; metres covered. */
 async function walk(page, code, from) {
   await page.evaluate(({ x, y, z }) => {
     const rb = window.useGameStore.getState().playerRigidBodyRef.current;
@@ -205,11 +210,24 @@ async function walk(page, code, from) {
   }, from);
   await page.evaluate(frames, 3);
   await page.keyboard.down(KEYS[code]);
-  await page.evaluate(frames, WALK_FRAMES);
+  await page.evaluate(({ x, z, stopM, maxFrames }) => new Promise((resolve) => {
+    const rb = window.useGameStore.getState().playerRigidBodyRef.current;
+    let drawn = 0;
+    const tick = () => {
+      const t = rb.translation();
+      drawn += 1;
+      if (Math.hypot(t.x - x, t.z - z) >= stopM || drawn >= maxFrames) resolve();
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }), { x: from.x, z: from.z, stopM: WALK_STOP_M, maxFrames: WALK_FRAMES });
   await page.keyboard.up(KEYS[code]);
   await page.evaluate(frames, 3);
   const t = await page.evaluate(() => window.useGameStore.getState().playerRigidBodyRef.current.translation());
-  return Math.round(Math.hypot(t.x - from.x, t.z - from.z) * 100) / 100;
+  const m = Math.round(Math.hypot(t.x - from.x, t.z - from.z) * 100) / 100;
+  // A walk this long is the void-fall reset to the origin, not a step: read as a pass it would hide a trap.
+  if (m > 20) throw new Error(`SETUP: ${code} ended ${m} m from the spot at ${JSON.stringify([t.x, t.y, t.z])}: the player was reset, not walked`);
+  return m;
 }
 
 test.describe('placing beside the player at the shore', () => {
