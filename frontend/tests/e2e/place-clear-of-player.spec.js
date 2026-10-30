@@ -1,0 +1,303 @@
+import { test, expect } from './_fixtures.js';
+import { bootDev, startPlayActive } from './_boot.js';
+import { installWorldHold } from './_worldHold.js';
+import { surfaceBlockAt } from '../../src/world/climate.js';
+import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
+
+// A BURST OF CLICKS AT THE SHORE NEVER SHUTS THE PLAYER IN A BLOCK (Kevin, 2026-10-30: "seems to get stuck in an invisible
+// box when travelling near the oceans, or caused by digging some blocks or something, i was left click / right clicking
+// chaotically"). In the booted game, on a beach column near where he stood (his screenshot's -78, -4), real left and right
+// clicks build a two-high pillar in front of the player, then aim a right-click at the pillar's face at eye level (the
+// cell it fills is the one the camera is in) and one straight down (the feet's cell), then mine the pillar away and
+// place and mine one more block behind. Before the fix the eye-level click wrote a block around the camera: the player
+// could not move, and could not see the block (every face of it points away from an eye inside it). Then the player
+// walks out on real W, A, S and D.
+//
+// THE PRESENCE BEFORE THE ABSENCE. The same four walks run on the same spot before the burst, and each must cover a metre
+// there, or the spot cannot show a trap (SETUP). The burst must aim at least one right-click whose cell lies inside the
+// body at its own mousedown, or it never tested the defect (SETUP). On a failure the spec prints what holds the player:
+// every placed block within 3 m with whether it lies inside the capsule, the build ray's distance to a collider from the
+// eye in six directions, and the input gates (rule 4e).
+//
+// THE CLICK'S AIM IS SET ON ITS OWN MOUSEDOWN (tests/e2e/talents.spec.js armClickAim says why): a capture listener on
+// window turns the camera to the click's yaw and pitch before the game's handler casts the build ray, and records the cell
+// that ray will fill; a bubble listener added after the game's own reads the verb the press was routed to and the cell
+// after it. The world is held still across the burst (_worldHold.js), so the body, mobs and day stand still between
+// aims, and released for the walks.
+//
+// WHAT THIS DOES NOT CHECK: touch placement (the same place verb), the Building Tools' multi-block footprints
+// (tests/integration/place-clear-of-player-rapier.test.jsx drives them against real Rapier), a placement whose collider
+// lands after a moving player has walked into its cell (registry row PLACE:collider-lands-late), or the look of the
+// refusal notice.
+//
+// Mutation-Proof: see the commit trailers (red-first: the burst on the unfixed placement; the node gate's mutants).
+
+const KEVIN = { x: -78, z: -4 };
+const REFUSAL = /standing there/;
+const WALK_FRAMES = 30;
+const WALK_MIN_M = 1;
+const KEYS = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
+
+/** In node: beach columns near Kevin's spot, nearest first and 8 m apart. Land one block above the sea with water on one
+ *  side, and the beach flat for two blocks either way along the other axis (the pillar is built along it). */
+function shoreColumns(want) {
+  const out = [];
+  const at = (x, z) => surfaceBlockAt(x, z);
+  for (let r = 0; r <= 80 && out.length < want; r++) {
+    for (let dx = -r; dx <= r && out.length < want; dx++) for (let dz = -r; dz <= r && out.length < want; dz++) {
+      if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+      const x = KEVIN.x + dx, z = KEVIN.z + dz;
+      const c = at(x, z);
+      if (c.isWater || c.surfaceY !== SEA_LEVEL + 1 || out.some((o) => Math.hypot(o.x - x, o.z - z) < 8)) continue;
+      const waterX = at(x - 1, z).isWater || at(x + 1, z).isWater;
+      const waterZ = at(x, z - 1).isWater || at(x, z + 1).isWater;
+      const flatAlong = (ax, az) => [-2, -1, 1, 2].every((k) => { const n = at(x + ax * k, z + az * k); return !n.isWater && n.surfaceY === c.surfaceY; });
+      if (waterX && flatAlong(0, 1)) out.push({ x, z, top: c.surfaceY + 1, along: 'z' });
+      else if (waterZ && flatAlong(1, 0)) out.push({ x, z, top: c.surfaceY + 1, along: 'x' });
+    }
+  }
+  return out;
+}
+
+/** Installed before boot: every refusal notice the page adds to its DOM, in order (a toast gone before a poll still counts). */
+const installNoticeLog = () => {
+  window.__e2eRefusals = [];
+  new MutationObserver((records) => {
+    for (const r of records) for (const n of r.addedNodes) {
+      if (/standing there/.test(n.textContent || '')) window.__e2eRefusals.push(n.textContent);
+    }
+  }).observe(document, { childList: true, subtree: true });
+};
+
+/** In the page: `n` drawn frames. */
+async function frames(n) {
+  const frame = () => new Promise((r) => requestAnimationFrame(r));
+  for (let i = 0; i < n; i++) await frame();
+}
+
+/** In the page: the world held, noon, the body and camera put over the column (x, z) at `y` and kept still. */
+function standAt({ x, z, y, capMs }) {
+  const s = window.useGameStore.getState();
+  s.setTimeOfDay?.(0.5);
+  if (!window.__e2eHoldWorld) return { why: 'SETUP: the world hold was never installed (page.addInitScript(installWorldHold))' };
+  if (!window.__e2eWorldHold || window.__e2eWorldHold.done || performance.now() >= s.hitstopUntil) window.__e2eHoldWorld({ capMs });
+  const rb = s.playerRigidBodyRef?.current;
+  if (!rb) return { why: 'SETUP: no player body' };
+  rb.setTranslation({ x, y, z }, true);
+  rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  window.__threeCamera.position.set(x, y + 0.67, z);
+  return {};
+}
+
+/** In the page: the ground the physics probe finds at the column and two blocks either way along `along` (null where no
+ *  collider has streamed in yet). */
+function probeGround({ x, z, along }) {
+  const g = window.useGameStore.getState().getMobGroundLevel;
+  if (!g) return null;
+  const ax = along === 'x' ? 1 : 0, az = along === 'z' ? 1 : 0;
+  return [-2, -1, 0, 1, 2].map((k) => {
+    const y = g(x + ax * k, z + az * k);
+    return Number.isFinite(y) ? Math.round(y * 100) / 100 : null;
+  });
+}
+
+/** In the page: every hostile within 80 m killed (the walks measure the player, not a mob in the way). */
+function sweepHostiles() {
+  const cam = window.__threeCamera.position;
+  let swept = 0;
+  for (const m of window.__craftyTest.call('readMobs')) {
+    if (!m.passive && m.health > 0 && Math.hypot(m.x - cam.x, m.z - cam.z) < 80) {
+      window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
+      swept += 1;
+    }
+  }
+  return swept;
+}
+
+/** In the page: what holds the player. Placed blocks within 3 m (and whether each lies inside the capsule), the build
+ *  ray's distance to a collider from the eye in six directions, and the gates every verb and step reads. */
+function readHold() {
+  const s = window.useGameStore.getState();
+  const rb = s.playerRigidBodyRef?.current;
+  if (!rb) return { why: 'no player body' };
+  const t = rb.translation();
+  const col = rb.collider(0);
+  const hh = col.halfHeight(), r = col.radius();
+  const inBody = (x, y, z) => {
+    const dx = Math.max(x - t.x, 0, t.x - (x + 1));
+    const dz = Math.max(z - t.z, 0, t.z - (z + 1));
+    const dy = Math.max(y - (t.y + hh), 0, (t.y - hh) - (y + 1));
+    return Math.hypot(dx, dy, dz) < r;
+  };
+  const placed = [];
+  for (const [k, id] of s.worldBlocks) {
+    if (!id) continue;
+    const [x, y, z] = k.split('_').map(Number);
+    if (Math.abs(x + 0.5 - t.x) > 3 || Math.abs(y + 0.5 - t.y) > 3 || Math.abs(z + 0.5 - t.z) > 3) continue;
+    placed.push({ cell: k, id, inBody: inBody(x, y, z) });
+  }
+  const eye = window.__threeCamera.position;
+  const rays = {};
+  for (const [name, d] of Object.entries({ up: [0, 1, 0], down: [0, -1, 0], n: [0, 0, -1], s: [0, 0, 1], w: [-1, 0, 0], e: [1, 0, 0] })) {
+    const h = window.GameMethods.castWorldRay({ x: eye.x, y: eye.y, z: eye.z }, { x: d[0], y: d[1], z: d[2] }, 4);
+    rays[name] = h ? Math.round(h.toi * 100) / 100 : null;
+  }
+  const round = (v) => Math.round(v * 100) / 100;
+  return {
+    body: [round(t.x), round(t.y), round(t.z)], capsule: [round(hh), round(r)], eye: [round(eye.x), round(eye.y), round(eye.z)],
+    placed, inBody: placed.filter((p) => p.inBody).map((p) => p.cell), eyeRays: rays,
+    gates: { active: window.__craftyTest.call('readIntents').active, alive: s.isAlive, frozen: performance.now() < s.hitstopUntil },
+  };
+}
+
+/** In the page: arm the next mousedown. A capture listener (it runs before the game's handler) turns the camera to the
+ *  aim and records the cell the place verb would fill from that ray and whether it lies inside the capsule; a bubble
+ *  listener, added after the game's own, records the verb the press was routed to, the cell after, and the stack. */
+function armClick({ yaw, pitch }) {
+  const call = (n) => window.__craftyTest.call(n);
+  const cam = window.__threeCamera;
+  const rec = { yaw, pitch };
+  window.__e2eClick = rec;
+  let before = null;
+  window.addEventListener('mousedown', () => {
+    before = call('readCompatMouse') ?? null;
+    cam.rotation.order = 'YXZ'; cam.rotation.y = yaw; cam.rotation.x = pitch; cam.updateMatrixWorld();
+    const s = window.useGameStore.getState();
+    const rb = s.playerRigidBodyRef.current;
+    const t = rb.translation();
+    const col = rb.collider(0);
+    const hh = col.halfHeight(), r = col.radius();
+    const hit = window.GameMethods.castBuildRay();
+    rec.stackBefore = s.inventory.blocks.grass ?? 0;
+    if (hit && hit.normal) {
+      const p = hit.hitPoint.clone().add(new cam.position.constructor(hit.normal.x, hit.normal.y, hit.normal.z).multiplyScalar(0.01));
+      const [x, y, z] = [Math.floor(p.x), Math.floor(p.y), Math.floor(p.z)];
+      const dx = Math.max(x - t.x, 0, t.x - (x + 1));
+      const dz = Math.max(z - t.z, 0, t.z - (z + 1));
+      const dy = Math.max(y - (t.y + hh), 0, (t.y - hh) - (y + 1));
+      rec.placeCell = `${x}_${y}_${z}`;
+      rec.placeInBody = Math.hypot(dx, dy, dz) < r;
+      rec.mineCell = `${hit.targetedX}_${hit.targetedY}_${hit.targetedZ}`;
+      rec.toi = Math.round(hit.toi * 100) / 100;
+    } else rec.placeCell = null;
+  }, { capture: true, once: true });
+  window.addEventListener('mousedown', () => {
+    const after = call('readCompatMouse');
+    const s = window.useGameStore.getState();
+    rec.verb = before && after && after.presses.mouse > before.presses.mouse ? (after.verbs?.mouse ?? null) : 'none: not pressed';
+    rec.placedNow = rec.placeCell ? (s.worldBlocks.get(rec.placeCell) ?? null) : null;
+    rec.minedNow = rec.mineCell ? (s.worldBlocks.get(rec.mineCell) ?? null) : null;
+    rec.stackAfter = s.inventory.blocks.grass ?? 0;
+  }, { once: true });
+}
+
+/** Real W, A, S or D held for `WALK_FRAMES` drawn frames from `from`, the camera level and facing -z; metres covered. */
+async function walk(page, code, from) {
+  await page.evaluate(({ x, y, z }) => {
+    const rb = window.useGameStore.getState().playerRigidBodyRef.current;
+    rb.setTranslation({ x, y, z }, true);
+    rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    const cam = window.__threeCamera;
+    cam.position.set(x, y + 0.67, z);
+    cam.rotation.order = 'YXZ'; cam.rotation.y = 0; cam.rotation.x = 0; cam.updateMatrixWorld();
+  }, from);
+  await page.evaluate(frames, 3);
+  await page.keyboard.down(KEYS[code]);
+  await page.evaluate(frames, WALK_FRAMES);
+  await page.keyboard.up(KEYS[code]);
+  await page.evaluate(frames, 3);
+  const t = await page.evaluate(() => window.useGameStore.getState().playerRigidBodyRef.current.translation());
+  return Math.round(Math.hypot(t.x - from.x, t.z - from.z) * 100) / 100;
+}
+
+test.describe('placing beside the player at the shore', () => {
+  test.setTimeout(300000);
+
+  test('a burst of real clicks around the player never shuts them in a block, and they walk out every way', async ({ page }) => {
+    await page.addInitScript(installWorldHold);
+    await page.addInitScript(installNoticeLog);
+    await bootDev(page);
+    await startPlayActive(page);
+    await page.waitForFunction(() => window.__craftyTest?.call('readMobs') && window.__threeCamera && window.GameMethods?.castBuildRay
+      && window.GameMethods?.castWorldRay && window.GameMethods?.damageMob && window.useGameStore.getState().getMobGroundLevel, null, { timeout: 60000 })
+      .catch((e) => { throw new Error(`SETUP: the build ray, ground probe and camera never came up — ${e.message}`); });
+    const capMs = test.info().timeout || 300000;
+
+    // 1. A BEACH COLUMN, AND THE PRESENCE. Stood over it under the held world until its colliders stream in, then put on
+    // the ground the probe finds there (the capsule's centre 0.96 m over the top, as it rests); from there the player must
+    // walk a metre each way before any click, or the next column is tried (a cactus or a tree can stand in the way).
+    const candidates = shoreColumns(4);
+    expect(candidates.length, `SETUP: no beach column one block over the sea within 80 m of ${JSON.stringify(KEVIN)}`).toBeGreaterThan(0);
+    await page.evaluate(() => window.useGameStore.setState((st) => ({ selectedBlock: 'grass', buildingMode: 'single', buildSize: 1,
+      inventory: { ...st.inventory, blocks: { ...st.inventory.blocks, grass: 64 } } })));
+    let spot = null;
+    let baseline = null;
+    const tried = [];
+    for (const c of candidates) {
+      const from = { x: c.x + 0.5, y: c.top + 0.96, z: c.z + 0.5 };
+      const staged = await page.evaluate(standAt, { ...from, y: c.top + 1.2, capMs });
+      expect(staged.why, staged.why).toBeUndefined();
+      let ground = null;
+      await expect.poll(async () => {
+        ground = await page.evaluate(probeGround, { x: from.x, z: from.z, along: c.along });
+        return !!ground && ground.every((g) => g !== null);
+      }, { message: `SETUP: the colliders around the beach column ${c.x}, ${c.z} never streamed in (probe ${JSON.stringify(ground)})`, timeout: 60000 }).toBe(true);
+      if (!ground.every((g) => Math.abs(g - c.top) < 0.01)) { tried.push({ ...c, ground }); continue; }
+      await page.evaluate(standAt, { ...from, capMs });
+      await page.evaluate(() => window.__e2eWorldHold.release());
+      await page.evaluate(sweepHostiles);
+      const walks = {};
+      for (const code of Object.keys(KEYS)) walks[code] = await walk(page, code, from);
+      tried.push({ ...c, ground, walks });
+      if (Object.values(walks).every((m) => m >= WALK_MIN_M)) { spot = { ...c, from }; baseline = walks; break; }
+    }
+    expect(spot, `SETUP: no beach column had the generated ground and a metre's walk each way before any click (tried ${JSON.stringify(tried)})`).not.toBeNull();
+    console.log(`[place-clear] beach column ${spot.x}, ${spot.z} (top ${spot.top}, pillar along ${spot.along}); baseline walks ${JSON.stringify(baseline)}`);
+
+    // 2. THE BURST. Forward is +along: a block on the ground ahead, one on top of it, a level right-click at the pillar's
+    // face (the eye's cell), one straight down (the feet's cell), the pillar mined away, a block placed behind and mined.
+    await page.evaluate(standAt, { ...spot.from, capMs });
+    await page.evaluate(sweepHostiles);
+    const ahead = spot.along === 'z' ? Math.PI : -Math.PI / 2; // three.js: yaw 0 faces -z, PI faces +z, -PI/2 faces +x
+    const behind = ahead + Math.PI;
+    const down = -Math.PI / 2 + 0.02;
+    const burst = [
+      ['right', ahead, -1.0], ['right', ahead, -0.6], ['right', ahead, 0], ['right', ahead, down],
+      ['left', ahead, 0], ['left', ahead, -0.6], ['right', behind, -1.0], ['left', behind, -1.0], ['right', behind, down],
+    ];
+    await page.mouse.move(640, 400);
+    const clicks = [];
+    for (const [button, yaw, pitch] of burst) {
+      await page.evaluate(armClick, { yaw, pitch });
+      await page.mouse.click(640, 400, { button });
+      await page.evaluate(frames, 4); // the edit's re-mesh lands and a step puts its collider in the scene
+      clicks.push({ button, ...(await page.evaluate(() => window.__e2eClick)) });
+    }
+    const held = await page.evaluate(readHold);
+    console.log(`[place-clear] clicks ${JSON.stringify(clicks)}`);
+    console.log(`[place-clear] after the burst ${JSON.stringify(held)}`);
+    const pressed = clicks.filter((c) => c.verb === 'place' || c.verb === 'mine');
+    expect(pressed.length, `SETUP: of ${clicks.length} clicks, only ${pressed.length} reached the place or mine verb (gates ${JSON.stringify(held.gates)}; clicks ${JSON.stringify(clicks)})`).toBe(clicks.length);
+    const intoBody = clicks.filter((c) => c.button === 'right' && c.placeInBody);
+    expect(intoBody.length, `SETUP: no right-click aimed at a cell inside the body, so the burst never tested the defect (clicks ${JSON.stringify(clicks)})`).toBeGreaterThan(0);
+
+    // 3. THE SUBJECT: no block inside the body, every right-click into it refused and spent nothing, and the player told.
+    expect(held.inBody, `a block was left inside the player: ${JSON.stringify(held)}`).toEqual([]);
+    for (const c of intoBody) {
+      expect({ placed: c.placedNow, spent: c.stackBefore - c.stackAfter }, `a right-click into the body's cell ${c.placeCell} placed or spent (click ${JSON.stringify(c)})`).toEqual({ placed: null, spent: 0 });
+    }
+    const outside = clicks.filter((c) => c.button === 'right' && c.verb === 'place' && !c.placeInBody);
+    expect(outside.length, 'SETUP: no right-click placed clear of the body').toBeGreaterThan(0);
+    for (const c of outside) expect(c.placedNow, `a right-click clear of the body was refused (click ${JSON.stringify(c)})`).not.toBeNull();
+    expect(await page.evaluate(() => window.__e2eRefusals.length), 'the refused right-click told the player nothing').toBeGreaterThan(0);
+
+    // 4. AND THEY WALK OUT, each way, from where the burst left them.
+    const after = { x: held.body[0], y: held.body[1], z: held.body[2] };
+    await page.evaluate(() => window.__e2eWorldHold.release());
+    await page.evaluate(sweepHostiles);
+    for (const code of Object.keys(KEYS)) {
+      const m = await walk(page, code, after);
+      expect(m, `after the burst, ${code} walked ${m} m (baseline ${baseline[code]} m): the player is held (${JSON.stringify(await page.evaluate(readHold))})`).toBeGreaterThanOrEqual(WALK_MIN_M);
+    }
+  });
+});
