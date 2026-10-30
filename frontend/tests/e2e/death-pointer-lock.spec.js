@@ -56,7 +56,8 @@ test.describe('a death on desktop', () => {
     await die(page);
     let last = null;
     await expect.poll(async () => { last = await screenState(page); return last.deathScreen; },
-      { timeout: 15000, message: () => `the death screen never showed: ${JSON.stringify(last)}` }).toBe(true);
+      { timeout: 15000 }).toBe(true)
+      .catch(() => { throw new Error(`the death screen never showed: ${JSON.stringify(last)}`); });
     const after = await page.evaluate(() => ({ exits: window.__lockStandIn.exits, locked: !!document.pointerLockElement }));
     console.log(`death-pointer-lock desktop: ${JSON.stringify({ ...last, ...after })}`);
     expect(last.crashPage, 'the crash page showed').toBe(false);
@@ -85,7 +86,8 @@ test.describe('a death on an iPad, where there is no Pointer Lock API', () => {
     await die(page);
     let last = null;
     await expect.poll(async () => { last = await screenState(page); return last.deathScreen || last.crashPage; },
-      { timeout: 15000, message: () => `neither the death screen nor the crash page showed: ${JSON.stringify(last)}` }).toBe(true);
+      { timeout: 15000 }).toBe(true)
+      .catch(() => { throw new Error(`neither the death screen nor the crash page showed: ${JSON.stringify(last)}`); });
     const lockErrors = errors.filter((e) => /pointer ?lock/i.test(e));
     console.log(`death-pointer-lock iPad: ${JSON.stringify(last)} errors ${JSON.stringify(lockErrors)}`);
     expect(last.crashPage, `a death on a browser with no Pointer Lock API showed the crash page: ${JSON.stringify(lockErrors)}`).toBe(false);
@@ -94,6 +96,7 @@ test.describe('a death on an iPad, where there is no Pointer Lock API', () => {
 
     await page.getByTestId('death-respawn').tap({ timeout: 30000 });
     await expect.poll(async () => { last = await screenState(page); return last.alive; },
-      { timeout: 10000, message: () => `the Respawn tap did not bring the player back: ${JSON.stringify(last)}` }).toBe(true);
+      { timeout: 10000 }).toBe(true)
+      .catch(() => { throw new Error(`the Respawn tap did not bring the player back: ${JSON.stringify(last)}`); });
   });
 });

@@ -159,7 +159,8 @@ test.describe('B7 — the touch joystick knob renders a visible fill + border', 
     });
     let last = null;
     await expect.poll(async () => { last = await state(); return last.open; },
-      { timeout: 5000, message: () => `the gear tap did not open Settings: ${JSON.stringify(last)}` }).toBe(true);
+      { timeout: 5000 }).toBe(true)
+      .catch(() => { throw new Error(`the gear tap did not open Settings: ${JSON.stringify(last)}`); });
     console.log(`touch gear tap: ${JSON.stringify(last)}`);
     await expect(page.getByText('Show Stats (F3)'), 'Settings opened in the store but its panel did not draw').toBeVisible({ timeout: 15000 });
   });
