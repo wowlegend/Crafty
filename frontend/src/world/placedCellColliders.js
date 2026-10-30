@@ -58,7 +58,15 @@ export function createPlacedCellColliders(world, rapier) {
      */
     landed(cx, cz, editSeq, trimesh) {
       for (const c of cells) if (c.cx === cx && c.cz === cz && c.seq <= editSeq) c.landed = true;
-      if (trimesh) unindexed.push(trimesh);
+      if (!trimesh) return;
+      // A chunk's first trimesh is made on a body @react-three/rapier 2.2 creates at the origin and only then moves to
+      // the chunk's place, and Rapier carries a body's move to its colliders at a step: until then the trimesh lies over
+      // chunk 0_0, where the player spawns, and the cut would sweep against it there. The RigidBody's effect has moved
+      // the body by now (it runs before this, its parent's), so this puts the trimesh where its body is. It moves no
+      // collider whose body has not been set since the last step: not the player's, which a pending kinematic move
+      // leaves at the stepped position.
+      world.propagateModifiedBodyPositionsToColliders();
+      unindexed.push(trimesh);
     },
     /** A world step ran: every collider made before it is indexed now, and a landed cell's trimesh with it. */
     afterStep() {

@@ -91,21 +91,29 @@ function makeChunks() {
   return chunks;
 }
 
-/** One React commit of chunk meshes: every old trimesh removed, then every new one created (passive cleanups run before
- *  passive setups), then each chunk's `landed` (ChunkMesh's effect runs after its TrimeshCollider's). */
+/** One React commit of chunk meshes, in React's order: every old trimesh removed (passive cleanups run before passive
+ *  setups), then each chunk's subtree in turn, children first. A chunk mounted the first time is mounted as
+ *  @react-three/rapier 2.2 mounts it: the TrimeshCollider's effect makes the body (a RigidBodyDesc with no translation,
+ *  so at the origin) and the trimesh on it, then the RigidBody's own effect moves the body to the chunk's place with
+ *  setTranslation(position, false), which Rapier carries to the body's colliders only at a step or a propagation. Last,
+ *  ChunkMesh's effect calls `landed`. */
 function mountChunks(S, landing) {
   const built = landing.map(({ key }) => {
     const [cx, cz] = key.split('_').map(Number);
-    let rec = S.recs.get(key);
-    if (!rec) {
-      rec = { body: S.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE)), collider: null };
-      S.recs.set(key, rec);
-    }
-    return { cx, cz, rec, mesh: generateMesh(cx, cz, S.chunks.get(key), undefined) };
+    return { key, cx, cz, mesh: generateMesh(cx, cz, S.chunks.get(key), undefined) };
   });
-  for (const { rec } of built) if (rec.collider) { S.world.removeCollider(rec.collider, true); rec.collider = null; }
-  for (const b of built) b.rec.collider = b.mesh.indices.length ? S.world.createCollider(RAPIER.ColliderDesc.trimesh(b.mesh.positions, b.mesh.indices), b.rec.body) : null;
-  for (const [i, b] of built.entries()) S.cells?.landed(b.cx, b.cz, landing[i].editSeq, b.rec.collider);
+  for (const { key } of built) {
+    const rec = S.recs.get(key);
+    if (rec?.collider) { S.world.removeCollider(rec.collider, true); rec.collider = null; }
+  }
+  for (const [i, b] of built.entries()) {
+    let rec = S.recs.get(b.key);
+    const first = !rec;
+    if (first) S.recs.set(b.key, (rec = { body: S.world.createRigidBody(RAPIER.RigidBodyDesc.fixed()), collider: null }));
+    rec.collider = b.mesh.indices.length ? S.world.createCollider(RAPIER.ColliderDesc.trimesh(b.mesh.positions, b.mesh.indices), rec.body) : null;
+    if (first) rec.body.setTranslation({ x: b.cx * CHUNK_SIZE, y: 0, z: b.cz * CHUNK_SIZE }, false);
+    S.cells?.landed(b.cx, b.cz, landing[i].editSeq, rec.collider);
+  }
 }
 
 function mountChunk(S, key) {
@@ -556,6 +564,50 @@ describe('a placed cell is solid to the player from the click, however late its 
       expect(deepest, `the player ran ${deepest.toFixed(2)} m into the step while its chunk rebuilt (x ${pressed.toFixed(2)} -> ${S.p.body.translation().x.toFixed(2)})`).toBe(0);
     });
   }
+
+  it('a far chunk streaming in, its first mount between a step and the sweep, does not cut the walk of a player over the world origin', () => {
+    // Mounted the first time (mountChunks), the far chunk's trimesh lies in chunk-local coordinates over chunk 0_0, where
+    // the player stands, until its body's move reaches it. Its land is a block higher than here, so laid over the origin
+    // its top face crosses the capsule.
+    const FAR = [4, 0];
+    const highLand = () => {
+      const b = new Uint8Array(CHUNK_VOLUME);
+      for (let lx = 0; lx < CHUNK_SIZE; lx++) for (let lz = 0; lz < CHUNK_SIZE; lz++)
+        for (let y = 0; y <= LAND_TOP; y++) b[voxelIndex(lx, y, lz)] = y >= LAND_TOP - 2 ? SAND : STONE;
+      return b;
+    };
+    // Three runs of one scene, holding W: two frames, then the chunk event (none, the trimesh laid over the origin, the
+    // real first mount), then the frame it lands on. Each run's third frame against the run with no event.
+    const thirdWalk = (event) => {
+      const S = makeScene();
+      for (let i = 0; i < 2; i++) frame(S.p, { mz: 1 });
+      const seen = event(S);
+      const a = S.p.body.translation();
+      frame(S.p, { mz: 1 });
+      const b = S.p.body.translation();
+      return { S, seen, walk: Math.hypot(b.x - a.x, b.z - a.z) };
+    };
+    const open = thirdWalk(() => null).walk;
+    expect(open, 'SETUP: the player does not walk most of a frame\'s run on open land').toBeGreaterThan(0.9 * BASE_MOVE_SPEED / 60);
+
+    // The instrument sees a cut: the same mesh laid over the origin and handed to the cut as a new trimesh is.
+    const phantom = thirdWalk((S) => {
+      const mesh = generateMesh(FAR[0], FAR[1], highLand(), undefined);
+      S.cells.landed(FAR[0], FAR[1], 0, S.world.createCollider(RAPIER.ColliderDesc.trimesh(mesh.positions, mesh.indices)));
+    });
+    expect(phantom.walk, `SETUP: the far chunk's land laid over the origin did not cut the walk (${phantom.walk.toFixed(3)} of ${open.toFixed(3)} m), so this cannot see a cut`).toBeLessThan(open / 2);
+
+    const key = FAR.join('_');
+    const real = thirdWalk((S) => {
+      S.chunks.set(key, highLand());
+      mountChunk(S, key);
+      const far = S.recs.get(key).collider;
+      return { listed: S.cells.unindexed().map((c) => c.handle), far: far.handle, xAtSweep: far.translation().x };
+    });
+    expect(real.seen.listed, 'SETUP: the far chunk\'s new trimesh is not handed to the cut').toEqual([real.seen.far]);
+    expect(real.walk, `the far chunk's first trimesh, at x ${real.seen.xAtSweep} when the sweep ran, cut the walk over the origin to ${real.walk.toFixed(3)} of ${open.toFixed(3)} m`).toBeCloseTo(open, 4);
+    expect(real.S.recs.get(key).collider.translation().x, 'SETUP: the far chunk\'s trimesh is not at its place after the step').toBe(FAR[0] * CHUNK_SIZE);
+  });
 
   it('between its trimesh landing and the next step, a ray at the placed cell still meets it', () => {
     // The rebuilt trimesh is not in the broad phase until a step, and inherits a leaf that may not reach the new block; a
