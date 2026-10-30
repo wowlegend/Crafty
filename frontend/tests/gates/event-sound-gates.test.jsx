@@ -18,6 +18,7 @@ import { EVENT_VOICES } from '../../src/audio/soundEvents.js';
 // AudioContext is the one fake: jsdom has none, so it records each started buffer source.
 
 let started;
+let gains;
 const audioParam = { value: 0, setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {}, setTargetAtTime() {}, cancelScheduledValues() {} };
 const PARAMS = new Set(['gain', 'threshold', 'knee', 'ratio', 'attack', 'release', 'frequency', 'Q', 'detune', 'pan', 'delayTime', 'playbackRate']);
 const makeNode = () => new Proxy(function noop() {}, {
@@ -29,7 +30,9 @@ const makeNode = () => new Proxy(function noop() {}, {
   set() { return true; },
 });
 const makeSource = () => {
-  const base = { buffer: null, playbackRate: audioParam, start() { started.push(base.buffer); } };
+  // playSound writes its gain node's value just before start(), and every param here is the one audioParam, so the
+  // value read at start() is the volume that play used.
+  const base = { buffer: null, playbackRate: audioParam, start() { started.push(base.buffer); gains.push(audioParam.value); } };
   return new Proxy(base, {
     get(t, p) { return p in t ? t[p] : () => makeNode(); },
     set(t, p, v) { t[p] = v; return true; },
@@ -50,8 +53,10 @@ function makeCtx() {
 }
 
 let sounds;
-function SoundsProbe() { sounds = useSounds().sounds; return null; }
+let settings;
+function SoundsProbe() { settings = useSounds(); sounds = settings.sounds; return null; }
 const starts = (voice) => started.filter((b) => b && b === sounds[voice]).length;
+const gainsOf = (voice) => gains.filter((_, i) => started[i] && started[i] === sounds[voice]);
 const withSound = ({ children }) => createElement(SoundProvider, null, createElement(SoundsProbe), children);
 
 function LevelProbe() { useSimpleExperience(); return null; }
@@ -60,7 +65,9 @@ const STATS = { kills: 0, kills_by_type: {}, spells: 0, blocks_placed: 0, blocks
 
 beforeEach(() => {
   started = [];
+  gains = [];
   sounds = undefined;
+  settings = undefined;
   globalThis.AudioContext = function AudioContext() { return makeCtx(); };
   globalThis.webkitAudioContext = globalThis.AudioContext;
   GameMethods.grantXP = vi.fn();
@@ -79,7 +86,7 @@ describe('the voices the bus plays are real', () => {
 });
 
 describe('a level-up plays the levelUp voice', () => {
-  it('the level rising under the real hook starts the levelUp buffer once per level gained', () => {
+  it('the level rising under the real hook starts the levelUp buffer once per rise', () => {
     render(createElement(withSound, null, createElement(LevelProbe)));
     expect(sounds.levelUp, 'presence: the levelUp voice was not synthesised').toBeTruthy();
     expect(starts('levelUp'), 'SETUP: a levelUp played before any level was gained').toBe(0);
@@ -95,6 +102,18 @@ describe('a level-up plays the levelUp voice', () => {
     act(() => useGameStore.setState({ level: 3 }));
     act(() => useGameStore.setState({ level: 1 })); // a lower save loaded: no fanfare for losing levels
     expect(starts('levelUp'), 'the level-up voice played for something other than a level gained').toBe(1);
+  });
+
+  it('mute and volume set after the subscription govern the next level-up', () => {
+    render(createElement(withSound, null, createElement(LevelProbe)));
+    act(() => settings.setSoundEnabled(false));
+    act(() => useGameStore.setState({ level: 2 }));
+    act(() => settings.setSoundEnabled(true));
+    act(() => settings.setVolume(0.2));
+    act(() => useGameStore.setState({ level: 3 }));
+    expect(starts('levelUp'), 'presence: unmuted, the level-up did not play').toBeGreaterThanOrEqual(1);
+    expect(starts('levelUp'), 'the level-up played while sound was off').toBe(1);
+    expect(gainsOf('levelUp'), 'the level-up played at the volume it was subscribed with, not the one set since').toEqual([0.2]);
   });
 });
 
