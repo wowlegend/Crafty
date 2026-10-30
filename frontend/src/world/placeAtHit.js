@@ -24,11 +24,17 @@ function bodyCapsules(store) {
     const body = store.playerRigidBodyRef?.current;
     if (!body) return [];
     const out = [];
+    // Where the body is and where it is going: a move given on a frame that took no world step is in nextTranslation()
+    // and not yet in translation() (game/kinematicMove.js), and the next step puts the body there.
+    const at = body.translation();
+    const next = body.nextTranslation();
     // The live colliders, not BASE_CAPSULE: a beast form swaps the shape in place (game/beasts.js setColliderToForm).
     for (let i = 0; i < body.numColliders(); i++) {
         const c = body.collider(i);
-        const at = c.translation();
-        out.push({ x: at.x, y: at.y, z: at.z, halfHeight: c.halfHeight(), radius: c.radius() });
+        const p = c.translation();
+        const halfHeight = c.halfHeight(), radius = c.radius();
+        out.push({ x: p.x, y: p.y, z: p.z, halfHeight, radius });
+        out.push({ x: p.x + next.x - at.x, y: p.y + next.y - at.y, z: p.z + next.z - at.z, halfHeight, radius });
     }
     return out;
 }
@@ -44,10 +50,12 @@ function cellInCapsule(cell, cap) {
 
 /**
  * @param {{hitPoint: THREE.Vector3, normal: ({x:number,y:number,z:number}|null), direction: THREE.Vector3}|null} h the build-ray hit
- * @param {{post: (msg: object) => void, playPlace?: (pos: THREE.Vector3, block: string) => void}} io
+ * @param {{post: (msg: object) => void, playPlace?: (pos: THREE.Vector3, block: string) => void,
+ *   cells?: {add: (x: number, y: number, z: number) => number}}} io `cells` holds each placed cell solid from the click
+ *   (world/placedCellColliders.js) and numbers its edit
  * @returns {number} the cells placed (0 = refused)
  */
-export function placeAtHit(h, { post, playPlace }) {
+export function placeAtHit(h, { post, playPlace, cells: solidCells }) {
     if (!h) return 0;
     const store = useGameStore.getState();
     const type = store.selectedBlock || 'grass';
@@ -78,7 +86,10 @@ export function placeAtHit(h, { post, playPlace }) {
         if (!store.consumeForPlacement(type)) break;
         const cx = chunkOf(c.x);
         const cz = chunkOf(c.z);
-        post({ type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: numericType } });
+        // Solid now, not when the chunk's trimesh lands some frames later; the worker echoes `seq` on the meshes it makes
+        // after this edit, which is how the cuboid knows when the trimesh holding this cell exists.
+        const seq = solidCells?.add(c.x, c.y, c.z);
+        post({ type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: numericType, seq } });
         newBlocks.set(`${c.x}_${c.y}_${c.z}`, numericType);
         placed++;
     }

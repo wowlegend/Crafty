@@ -17,21 +17,28 @@
 // the capsule in the floor, at 120 Hz and not at 60. So the lift a pending target carries is kept per body and taken
 // out of the pending move before the sweep. A step or a teleport makes nextTranslation equal translation exactly
 // (measured against real Rapier), and then nothing is pending.
+//
+// THE SWEEP CANNOT SEE A COLLIDER MADE SINCE THE LAST STEP. The KCC queries Rapier's broad-phase BVH, which only a world
+// step updates (rapier3d-compat 0.19.2 has no call that refreshes it), so a placed cell's cuboid or a chunk's rebuilt
+// trimesh is passed through by the sweep until the next step (world/placedCellColliders.js). Those colliders come in as
+// `unindexed`, and the swept movement is cut where the capsule would meet one, short of it by the controller's offset.
 
 const _d = { x: 0, y: 0, z: 0 };
+const _still = { x: 0, y: 0, z: 0 };
 const _unswept = new WeakMap(); // body -> metres of lift in its pending target
 
 /**
  * Sweep this frame's displacement `d` (plus any move not yet stepped) and set the body's next kinematic translation.
- *   body      the raw Rapier kinematic-position rigid body
- *   kcc       the KinematicCharacterController
- *   collider  the body's collider the KCC sweeps
- *   d         this frame's displacement {x, y, z}, metres
- *   lift      metres added to the target's y without a sweep (a form swap's grow depenetration)
- *   filter    the KCC's filterPredicate
- * Returns the KCC's computed movement (the swept path from the body's current position).
+ *   body       the raw Rapier kinematic-position rigid body
+ *   kcc        the KinematicCharacterController
+ *   collider   the body's collider the KCC sweeps
+ *   d          this frame's displacement {x, y, z}, metres
+ *   lift       metres added to the target's y without a sweep (a form swap's grow depenetration)
+ *   filter     the KCC's filterPredicate
+ *   unindexed  colliders created since the last world step, which the KCC's sweep does not see
+ * Returns the movement taken (the KCC's swept path from the body's current position, cut short at an unindexed collider).
  */
-export function moveKinematic(body, kcc, collider, d, lift = 0, filter = undefined) {
+export function moveKinematic(body, kcc, collider, d, lift = 0, filter = undefined, unindexed = undefined) {
   const at = body.translation();
   const next = body.nextTranslation();
   const px = next.x - at.x, py = next.y - at.y, pz = next.z - at.z;
@@ -41,8 +48,26 @@ export function moveKinematic(body, kcc, collider, d, lift = 0, filter = undefin
   _d.z = d.z + pz;
   kcc.computeColliderMovement(collider, _d, undefined, undefined, filter);
   const m = kcc.computedMovement();
+  if (unindexed && unindexed.length > 0) cutAtUnindexed(kcc, collider, m, unindexed);
   const up = held + lift;
   body.setNextKinematicTranslation({ x: at.x + m.x, y: at.y + m.y + up, z: at.z + m.z });
   _unswept.set(body, up);
   return m;
+}
+
+/** Shorten the movement `m` (in place) to stop the controller's offset short of the first unindexed collider it meets. */
+function cutAtUnindexed(kcc, collider, m, unindexed) {
+  let toi = 1;
+  for (const other of unindexed) {
+    // A collider removed since it was listed (a chunk re-meshed twice between steps) has no shape left to cast against.
+    if (!other.isValid()) continue;
+    const hit = collider.castCollider(m, other, _still, 0, 1, false);
+    if (hit && hit.time_of_impact < toi) toi = hit.time_of_impact;
+  }
+  if (toi >= 1) return;
+  const len = Math.hypot(m.x, m.y, m.z);
+  const keep = len > 0 ? Math.max(0, toi - kcc.offset() / len) : 0;
+  m.x *= keep;
+  m.y *= keep;
+  m.z *= keep;
 }

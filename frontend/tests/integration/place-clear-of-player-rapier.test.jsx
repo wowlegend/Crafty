@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { placeAtHit } from '../../src/world/placeAtHit.js';
 import { mineTarget } from '../../src/world/buildTarget.js';
+import { createPlacedCellColliders } from '../../src/world/placedCellColliders.js';
 import { generateMesh } from '../../src/world/mesher.js';
 import { voxelIndex, CHUNK_SIZE, CHUNK_VOLUME, chunkOf } from '../../src/world/chunkLayout.js';
 import { moveKinematic } from '../../src/game/kinematicMove.js';
@@ -28,10 +29,17 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // the real placeAtHit against the real store, its worker post applied to the voxels here. @dimforge/rapier3d-compat is
 // the build the app ships.
 //
-// WHAT THIS DOES NOT CHECK: the build ray inside Terrain.jsx itself, the verb router and React's collider rebuild (the
-// e2e tests/e2e/place-clear-of-player.spec.js drives real clicks in the booted game), or a player who walks into a cell
-// before its collider lands: here every edit's collider lands at once (registry
-// REVIEW:fix-invisible-box:collider-lands-late).
+// A LATE TRIMESH. In the game a placed cell's trimesh lands some frames after the click (the worker re-meshes, the main
+// thread sets the chunk, @react-three/rapier rebuilds the collider in a passive effect), and a player running at 14 m/s
+// covers a cell's width in four frames. So the worker here can land each edit `lag` frames late, between two frames as the
+// passive effect does, with the edit's seq echoed as terrain.worker.js echoes it, and several meshes due together land as
+// one React commit does: every old trimesh removed, then every new one created. The real world/placedCellColliders.js
+// stands in for each placed cell from the click, wired as Terrain.jsx and the Player loop wire it (placeAtHit's `cells`,
+// moveKinematic's `unindexed`, `landed` after the trimesh is built, `afterStep` after each world step).
+//
+// WHAT THIS DOES NOT CHECK: the build ray inside Terrain.jsx itself, the verb router, or React's own effect order and
+// Terrain.jsx's wiring of the colliders (the e2e tests/e2e/place-clear-of-player.spec.js drives real clicks in the booted
+// game and logs the live delay from a click to a solid cell).
 //
 // Mutation-Proof: see the commit trailer.
 
@@ -83,22 +91,63 @@ function makeChunks() {
   return chunks;
 }
 
+/** One React commit of chunk meshes: every old trimesh removed, then every new one created (passive cleanups run before
+ *  passive setups), then each chunk's `landed` (ChunkMesh's effect runs after its TrimeshCollider's). */
+function mountChunks(S, landing) {
+  const built = landing.map(({ key }) => {
+    const [cx, cz] = key.split('_').map(Number);
+    let rec = S.recs.get(key);
+    if (!rec) {
+      rec = { body: S.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE)), collider: null };
+      S.recs.set(key, rec);
+    }
+    return { cx, cz, rec, mesh: generateMesh(cx, cz, S.chunks.get(key), undefined) };
+  });
+  for (const { rec } of built) if (rec.collider) { S.world.removeCollider(rec.collider, true); rec.collider = null; }
+  for (const b of built) b.rec.collider = b.mesh.indices.length ? S.world.createCollider(RAPIER.ColliderDesc.trimesh(b.mesh.positions, b.mesh.indices), b.rec.body) : null;
+  for (const [i, b] of built.entries()) S.cells?.landed(b.cx, b.cz, landing[i].editSeq, b.rec.collider);
+}
+
 function mountChunk(S, key) {
-  const [cx, cz] = key.split('_').map(Number);
-  const mesh = generateMesh(cx, cz, S.chunks.get(key), undefined);
-  let rec = S.recs.get(key);
-  if (!rec) {
-    rec = { body: S.world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE)), collider: null };
-    S.recs.set(key, rec);
-  }
-  if (rec.collider) S.world.removeCollider(rec.collider, true);
-  rec.collider = mesh.indices.length ? S.world.createCollider(RAPIER.ColliderDesc.trimesh(mesh.positions, mesh.indices), rec.body) : null;
+  mountChunks(S, [{ key, editSeq: S.worker?.seq ?? 0 }]);
 }
 
 function setVoxel(S, x, y, z, t) {
   const cx = chunkOf(x), cz = chunkOf(z);
   S.chunks.get(`${cx}_${cz}`)[voxelIndex(x - cx * CHUNK_SIZE, y, z - cz * CHUNK_SIZE)] = t;
   mountChunk(S, `${cx}_${cz}`);
+}
+
+/** terrain.worker.js handles messages in order: each edit is applied and its chunk re-meshed with the last placement seq
+ *  it has seen; the mesh reaches the main thread `lag` frames later (never before an earlier one). Lag 0 lands at once. */
+function post(S, msg, lag) {
+  const { cx, cz, x, y, z, blockType, seq } = msg.payload;
+  if (typeof seq === 'number') S.worker.seq = seq;
+  const item = { due: Math.max(S.f + lag, S.worker.lastDue), wx: cx * CHUNK_SIZE + x, y, wz: cz * CHUNK_SIZE + z, t: blockType, editSeq: S.worker.seq };
+  S.worker.lastDue = item.due;
+  S.worker.queue.push(item);
+  if (lag === 0) landDue(S);
+}
+
+/** The meshes due by now, landed as one commit (the voxels of every due edit first, then the chunks they touch). */
+function landDue(S) {
+  const due = S.worker.queue.filter((q) => q.due <= S.f);
+  if (!due.length) return;
+  S.worker.queue = S.worker.queue.filter((q) => q.due > S.f);
+  const byChunk = new Map();
+  for (const q of due) {
+    const cx = chunkOf(q.wx), cz = chunkOf(q.wz);
+    S.chunks.get(`${cx}_${cz}`)[voxelIndex(q.wx - cx * CHUNK_SIZE, q.y, q.wz - cz * CHUNK_SIZE)] = q.t;
+    byChunk.set(`${cx}_${cz}`, q.editSeq);
+  }
+  mountChunks(S, [...byChunk].map(([key, editSeq]) => ({ key, editSeq })));
+}
+
+/** A frame of the game: the meshes due land between frames, then the Player frame and its world steps. */
+function tick(S, opts) {
+  landDue(S);
+  frame(S.p, opts);
+  S.f++;
 }
 
 function voxel(S, x, y, z) {
@@ -114,37 +163,46 @@ function makeKcc(world) {
   return kcc;
 }
 
-function playerParts(world, body, collider) {
+function playerParts(world, body, collider, cells) {
   const handle = body.handle;
-  return { world, body, collider, kcc: makeKcc(world), vy: 0, filter: (c) => { const p = c.parent(); return !p || p.handle !== handle; } };
+  return { world, body, collider, cells, kcc: makeKcc(world), vy: 0, filter: (c) => { const p = c.parent(); return !p || p.handle !== handle; } };
 }
 
 /** A world with the player standing at (x, z) on the land, its body published where placeAtHit reads it. */
 function makeScene({ x = 4.5, z = 8.5, edits = [] } = {}) {
   const world = new RAPIER.World({ x: 0, y: -30, z: 0 });
-  const S = { world, chunks: makeChunks(), recs: new Map() };
+  const S = { world, chunks: makeChunks(), recs: new Map(), worker: { seq: 0, lastDue: 0, queue: [] }, f: 0 };
   for (const [ex, ey, ez, t] of edits) {
     const cx = chunkOf(ex), cz = chunkOf(ez);
     S.chunks.get(`${cx}_${cz}`)[voxelIndex(ex - cx * CHUNK_SIZE, ey, ez - cz * CHUNK_SIZE)] = t;
   }
   for (const key of S.chunks.keys()) mountChunk(S, key);
+  S.cells = createPlacedCellColliders(world, RAPIER);
   const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x, LAND_TOP + 1.2, z));
   const collider = world.createCollider(RAPIER.ColliderDesc.capsule(BASE_CAPSULE.halfHeight, BASE_CAPSULE.radius), body);
-  S.p = playerParts(world, body, collider);
+  S.p = playerParts(world, body, collider, S.cells);
   world.step();
   for (let i = 0; i < 60; i++) frame(S.p); // settle onto the land
   useGameStore.setState({ playerRigidBodyRef: { current: body } });
   return S;
 }
 
-/** One Player frame: grounded from the last sweep, jump / glue / gravity, one moveKinematic write, one world step. */
-function frame(P, { mx = 0, mz = 0, jump = false } = {}) {
+/** One Player frame at `hz`: grounded from the last sweep, jump / glue / gravity, one moveKinematic write (the colliders
+ *  made since the last step handed in, as Components.jsx hands them), then the world steps @react-three/rapier's fixed
+ *  1/60 s accumulator takes in that time (two at 30 Hz), each followed by the after-step callback. The sweep comes BEFORE
+ *  the steps here, the worst order: in the game the stepper subscribed first and steps first, so a collider made between
+ *  frames is unseen only by the sweep of a frame that takes no step (above 60 Hz, at most 1/60 s of travel). */
+function frame(P, { mx = 0, mz = 0, jump = false, hz = 60 } = {}) {
+  const dt = 1 / hz;
   const grounded = P.kcc.computedGrounded();
   if (jump && grounded) P.vy = JUMP_VELOCITY;
   else if (grounded) P.vy = GLUE_VELOCITY;
-  else P.vy = applyGravity(P.vy, 1, DT);
-  moveKinematic(P.body, P.kcc, P.collider, { x: mx * BASE_MOVE_SPEED * DT, y: P.vy * DT, z: mz * BASE_MOVE_SPEED * DT }, 0, P.filter);
-  P.world.step();
+  else P.vy = applyGravity(P.vy, 1, dt);
+  moveKinematic(P.body, P.kcc, P.collider, { x: mx * BASE_MOVE_SPEED * dt, y: P.vy * dt, z: mz * BASE_MOVE_SPEED * dt }, 0, P.filter, P.cells?.unindexed());
+  for (let s = 0; s < Math.round(dt / DT); s++) {
+    P.world.step();
+    P.cells?.afterStep();
+  }
 }
 
 const eye = (S) => { const t = S.p.body.translation(); return new THREE.Vector3(t.x, t.y + EYE_HEIGHT_M, t.z); };
@@ -161,17 +219,20 @@ function buildRay(S, dir) {
   return { toi, normal: { x: hit.normal.x, y: hit.normal.y, z: hit.normal.z }, direction: d, hitPoint };
 }
 
-/** The right-click: the real placeAtHit, its worker edits applied to the voxels and the chunk re-meshed. */
-function rightClick(S, h) {
+/** The right-click: the real placeAtHit with the cells held solid from the click, its worker edits landing `lag` frames on. */
+function rightClick(S, h, lag = 0) {
   const posted = [];
-  const placed = placeAtHit(h, {
-    post: (msg) => {
-      posted.push(msg);
-      const { cx, cz, x, y, z, blockType } = msg.payload;
-      setVoxel(S, cx * CHUNK_SIZE + x, y, cz * CHUNK_SIZE + z, blockType);
-    },
-  });
+  const placed = placeAtHit(h, { cells: S.cells, post: (msg) => { posted.push(msg); post(S, msg, lag); } });
   return { placed, cells: posted.map((m) => [m.payload.cx * CHUNK_SIZE + m.payload.x, m.payload.y, m.payload.cz * CHUNK_SIZE + m.payload.z]) };
+}
+
+/** The left click as Terrain.jsx's mine verb makes it: the cell the build ray targets, mined in the store and the worker. */
+function leftClick(S, h, lag = 0) {
+  const c = mineTarget(h.hitPoint, h.direction, eye(S), useGameStore.getState().worldBlocks);
+  const cx = chunkOf(c.x), cz = chunkOf(c.z);
+  post(S, { type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: AIR } }, lag);
+  useGameStore.setState({ worldBlocks: new Map(useGameStore.getState().worldBlocks).set(`${c.x}_${c.y}_${c.z}`, 0) });
+  return [c.x, c.y, c.z];
 }
 
 /** Exact capsule-vs-cell overlap: the capsule's vertical segment against the unit box, closer than the radius. */
@@ -354,4 +415,259 @@ describe('a right-click never puts a block inside the player (real Rapier, real 
     expect(before - grass(), 'the footprint spent a block for a cell it did not place').toBe(r.cells.length);
     expect(solidInBody(S), 'a block is inside the player after the footprint').toEqual([]);
   });
+});
+
+// ---- a late trimesh ----------------------------------------------------------------------------------------------------
+const STEP = [[2, LAND_TOP, 8, SAND], [2, LAND_TOP + 1, 8, SAND]]; // a two-high step, its face at x = 3
+const CELL = [3, LAND_TOP + 1, 8]; // the cell in front of the step at eye height
+
+/** How far the capsule reaches into the unit cell: its radius less the core segment's distance to the box (0 when clear). */
+function depth(S, [x, y, z]) {
+  const t = S.p.body.translation();
+  const hh = S.p.collider.halfHeight(), r = S.p.collider.radius();
+  const dx = Math.max(x - t.x, 0, t.x - (x + 1));
+  const dz = Math.max(z - t.z, 0, t.z - (z + 1));
+  const dy = Math.max(y - (t.y + hh), 0, (t.y - hh) - (y + 1));
+  return Math.max(0, r - Math.hypot(dx, dy, dz));
+}
+
+const solidAt = (S, [x, y, z]) => { const v = voxel(S, x, y, z); return v !== AIR && v !== WATER; };
+const eyeCell = (S) => { const e = eye(S); return [Math.floor(e.x), Math.floor(e.y), Math.floor(e.z)]; };
+
+/** Running at the step from `x` (1.5 m off its face at 4.5), a right-click at its face at eye level, W held while the
+ *  trimesh is `lag` frames late and ten frames after; the deepest the capsule reached into the placed cell. */
+function lateWall({ lag, hz = 60, x = 4.5, first = () => {} }) {
+  const S = makeScene({ x, z: 8.5, edits: STEP });
+  first(S);
+  const r = rightClick(S, buildRay(S, { x: -1, y: 0, z: 0 }), lag);
+  let deepest = 0;
+  for (let i = 0; i < lag + 10; i++) {
+    tick(S, { mx: -1, hz });
+    deepest = Math.max(deepest, depth(S, CELL));
+  }
+  return { S, r, deepest };
+}
+
+function expectNeverEntered({ S, r, deepest }, what) {
+  expect(r.cells, `SETUP: the right-click did not place the cell in front of the step at eye level (notes ${JSON.stringify(notes)})`).toEqual([CELL]);
+  expect(S.worker.queue.length, 'SETUP: an edit never landed').toBe(0);
+  expect(solidAt(S, CELL), 'SETUP: the landed trimesh does not fill the cell').toBe(true);
+  const gap = S.p.body.translation().x - (CELL[0] + 1) - BASE_CAPSULE.radius;
+  expect(gap, `SETUP: the player did not run up to the cell (${gap.toFixed(2)} m short of it)`).toBeLessThan(0.1);
+  const out = escape(S);
+  expect(deepest, `${what}: the player ran ${deepest.toFixed(2)} m into the placed cell before it was solid (now at x ${S.p.body.translation().x.toFixed(2)}; eye cell ${eyeCell(S)}; best walk ${out.best} m)`).toBe(0);
+  expect(solidAt(S, eyeCell(S)), `${what}: the eye is inside a solid cell ${eyeCell(S)}, which draws no face toward it`).toBe(false);
+  expect(out.free, `${what}: the player is held (best walk ${out.best} m, best rise ${out.rise} m)`).toBe(true);
+  expect(S.cells.size(), `${what}: a stand-in collider outlived the trimesh that holds its cell`).toBe(0);
+}
+
+describe('a placed cell is solid to the player from the click, however late its chunk\'s trimesh lands (real Rapier, real mesher)', () => {
+  for (const [hz, x] of [[60, 4.5], [30, 4.42]]) {
+    for (const lag of [2, 4, 8]) {
+      it(`running at a step, ${hz} Hz frames swept before their step, a right-click at its face at eye level whose trimesh lands ${lag} frames late: the player never enters the cell`, () => {
+        expectNeverEntered(lateWall({ lag, hz, x }), `${hz} Hz, ${lag} frames late`);
+      });
+    }
+  }
+
+  it('the first sweep after the click stops short of the new cell by the controller\'s offset, the gap the KCC keeps', () => {
+    const S = makeScene({ x: 4.5, z: 8.5, edits: STEP });
+    const r = rightClick(S, buildRay(S, { x: -1, y: 0, z: 0 }), 8);
+    expect(r.cells, 'SETUP: the right-click did not place the cell in front of the step').toEqual([CELL]);
+    tick(S, { mx: -1 });
+    const gap = S.p.body.translation().x - (CELL[0] + 1) - BASE_CAPSULE.radius;
+    expect(gap, `SETUP: the frame's walk (${(BASE_MOVE_SPEED / 60).toFixed(2)} m) did not reach the cell`).toBeLessThan(0.1);
+    expect(gap, `the sweep stopped ${gap.toFixed(3)} m from the cell, inside the KCC's ${S.p.kcc.offset()} m offset`).toBeGreaterThan(0.045);
+  });
+
+  it('a long sweep past two new cells stops at the nearer one, whichever was listed first', () => {
+    // A frame as long as MAX_FRAME_STEP_SEC (0.25 s) walks 3.5 m: the cut must take the nearest collider the sweep meets.
+    for (const order of [[[3, LAND_TOP + 1, 8], [1, LAND_TOP + 1, 8]], [[1, LAND_TOP + 1, 8], [3, LAND_TOP + 1, 8]]]) {
+      const S = makeScene({ x: 4.5, z: 8.5 });
+      for (const [x, y, z] of order) S.cells.add(x, y, z);
+      expect(S.cells.unindexed().length, 'SETUP: the two new cells are not both unindexed').toBe(2);
+      frame(S.p, { mx: -1, hz: 4 });
+      const x = S.p.body.translation().x;
+      expect(x, `listed ${JSON.stringify(order)}: the 3.5 m sweep went into the nearer new cell (stopped at x ${x.toFixed(2)})`).toBeGreaterThan(4 + BASE_CAPSULE.radius);
+    }
+  });
+
+  it('a mesh made for an earlier edit still in flight does not retire a later cell\'s stand-in', () => {
+    // A left click on the ground ahead, in the same chunk, goes first: its mesh lands 3 frames on and was made before the
+    // right-click's edit, so it lacks the placed cell. The placed cell's own mesh lands 8 frames on.
+    let mined = null;
+    const run = lateWall({ lag: 8, first: (S) => { mined = leftClick(S, buildRay(S, { x: 1, y: -0.4, z: 0 }), 3); } });
+    expect([chunkOf(mined[0]), chunkOf(mined[2])], `SETUP: the earlier edit (${mined}) is not in the placed cell's chunk`).toEqual([chunkOf(CELL[0]), chunkOf(CELL[2])]);
+    expectNeverEntered(run, 'an earlier mesh landed first');
+  });
+
+  it('on a frame that took no world step (120 Hz), the guard tests where the body is going as well as where it was stepped', () => {
+    const S = makeScene({ x: 4.5, z: 8.5, edits: STEP });
+    // One 120 Hz frame's walk at the step, given to the body and not yet stepped.
+    moveKinematic(S.p.body, S.p.kcc, S.p.collider, { x: -BASE_MOVE_SPEED / 120, y: 0, z: 0 }, 0, S.p.filter);
+    const pending = S.p.body.translation().x - S.p.body.nextTranslation().x;
+    expect(pending, 'SETUP: no move is pending').toBeGreaterThan(0.1);
+    expect(depth(S, CELL), 'SETUP: the stepped capsule already reaches the cell').toBe(0);
+    expect(S.p.body.nextTranslation().x - (CELL[0] + 1), 'SETUP: the pending move does not carry the capsule into the cell').toBeLessThan(BASE_CAPSULE.radius);
+    const r = rightClick(S, buildRay(S, { x: -1, y: 0, z: 0 }));
+    expect(r.placed, `a cell the next step moves the body into was placed (${JSON.stringify(r.cells)})`).toBe(0);
+  });
+
+  for (const hz of [60, 30]) {
+    it(`pressed against a step, ${hz} Hz frames swept before their step, while two chunks rebuild in one commit every frame: the player stays out of it`, () => {
+      // Rapier reuses a removed collider's slot and its broad-phase leaf until the next step: a lone chunk rebuilt in place
+      // gets its own leaf back, but two rebuilt in one commit swap leaves, and the sweep found neither trimesh.
+      const S = makeScene({ x: 4.5, z: 8.5, edits: STEP });
+      for (let i = 0; i < 20; i++) tick(S, { mx: -1, hz });
+      const pressed = S.p.body.translation().x;
+      expect(pressed - 3 - BASE_CAPSULE.radius, 'SETUP: the player is not pressed against the step').toBeLessThan(0.1);
+      let deepest = 0;
+      for (let i = 0; i < 12; i++) {
+        mountChunks(S, [{ key: '0_0', editSeq: 0 }, { key: '1_0', editSeq: 0 }]);
+        // Every other frame they rebuild twice before a step, so a trimesh listed as unindexed is gone by the sweep.
+        if (i % 2) mountChunks(S, [{ key: '1_0', editSeq: 0 }, { key: '0_0', editSeq: 0 }]);
+        frame(S.p, { mx: -1, hz });
+        deepest = Math.max(deepest, depth(S, [2, LAND_TOP, 8]), depth(S, [2, LAND_TOP + 1, 8]));
+      }
+      expect(deepest, `the player ran ${deepest.toFixed(2)} m into the step while its chunk rebuilt (x ${pressed.toFixed(2)} -> ${S.p.body.translation().x.toFixed(2)})`).toBe(0);
+    });
+  }
+
+  it('between its trimesh landing and the next step, a ray at the placed cell still meets it', () => {
+    // The rebuilt trimesh is not in the broad phase until a step, and inherits a leaf that may not reach the new block; a
+    // build ray cast in that window must still meet the cell, so its stand-in stays until the step.
+    const S = makeScene({ x: 6.5, z: 8.5 });
+    const r = rightClick(S, { hitPoint: new THREE.Vector3(3.5, LAND_TOP, 8.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0) }, 2);
+    expect(r.cells, 'SETUP: the block did not go on the ground at x 3').toEqual([[3, LAND_TOP, 8]]);
+    tick(S);
+    tick(S);
+    landDue(S);
+    expect(S.worker.queue.length, 'SETUP: the edit did not land').toBe(0);
+    const ray = new RAPIER.Ray({ x: 6.5, y: LAND_TOP + 0.5, z: 8.5 }, { x: -1, y: 0, z: 0 });
+    const hit = S.world.castRay(ray, 8, true, undefined, undefined, undefined, S.p.body, S.p.filter);
+    expect(hit && +hit.timeOfImpact.toFixed(3), 'a ray at the placed cell passed through it before the step that indexes its trimesh').toBe(2.5);
+    tick(S);
+    expect(S.cells.size(), 'the stand-in outlived the step after its trimesh landed').toBe(0);
+  });
+
+  it('no stand-in outlives its chunk, the terrain, or one step past the mesh that holds its cell, and none is made where the worker drops the edit', () => {
+    const world = new RAPIER.World({ x: 0, y: -30, z: 0 });
+    const cells = createPlacedCellColliders(world, RAPIER);
+    const n0 = world.colliders.len();
+    cells.add(3, 31, 8);
+    const b = cells.add(20, 31, 8);
+    cells.add(21, 31, 8);
+    cells.add(3, 256, 8); // above the chunk: terrain.worker.js drops it, so no mesh would ever retire a cuboid there
+    cells.add(3, -1, 8);
+    expect([cells.size(), world.colliders.len() - n0], 'three in-range cells, three cuboids').toEqual([3, 3]);
+    expect(cells.unindexed().length, 'a cuboid made since the last step is not listed as unindexed').toBe(3);
+    world.step();
+    cells.afterStep();
+    expect(cells.unindexed().length, 'a cuboid is still listed as unindexed after a step').toBe(0);
+    cells.landed(1, 0, b, null); // chunk 1_0's mesh holds the edit b, not the later one
+    expect(cells.size(), 'a cuboid went before the step that indexes its trimesh').toBe(3);
+    world.step();
+    cells.afterStep();
+    expect(cells.size(), 'the mesh holding b retired the wrong cuboids').toBe(2);
+    cells.dropChunk(0, 0);
+    expect(cells.size(), 'an unloaded chunk kept its cuboid').toBe(1);
+    cells.clear();
+    expect([cells.size(), world.colliders.len() - n0], 'a cleared terrain kept a cuboid').toEqual([0, 0]);
+  });
+});
+
+// ---- a chaotic clicker -------------------------------------------------------------------------------------------------
+function mulberry32(a) {
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** At the shore: a random walk at full speed with jumps, and between frames random left and right clicks (two between one
+ *  pair of frames a fifth of the time, cube footprints a seventh), every edit landing `lag` frames late. Every frame, how
+ *  far the capsule reaches into any block a right-click placed and no click has mined since. */
+function chaoticClicker(seed, lag, frames = 240) {
+  const rnd = mulberry32(seed * 7919 + lag);
+  const start = { x: 9.5 + rnd() * 2, z: 4.5 + rnd() * 8 };
+  useGameStore.setState({ worldBlocks: new Map() }); // a run's world starts with no placed blocks
+  const S = makeScene(start);
+  let dir = rnd() * 2 * Math.PI;
+  const st = { rights: 0, placed: 0, near: 0, lefts: 0, intrusions: [], anySolid: [] };
+  for (let f = 0; f < frames; f++) {
+    if (f % 30 === 0) dir = rnd() * 2 * Math.PI;
+    const t = S.p.body.translation();
+    if (Math.hypot(t.x - start.x, t.z - start.z) > 5) dir = Math.atan2(start.z - t.z, start.x - t.x);
+    if (rnd() < 0.35) {
+      for (let k = rnd() < 0.2 ? 2 : 1; k > 0; k--) {
+        const yaw = rnd() * 2 * Math.PI, pitch = -1.55 + rnd() * 2.0;
+        const h = buildRay(S, { x: Math.cos(pitch) * Math.cos(yaw), y: Math.sin(pitch), z: Math.cos(pitch) * Math.sin(yaw) });
+        if (!h) continue;
+        if (rnd() < 0.55) {
+          st.rights++;
+          const mode = rnd() < 0.15 ? 'cube' : 'single';
+          useGameStore.setState((s) => ({ buildingMode: mode, buildSize: 3, inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, grass: 64 } } }));
+          const r = rightClick(S, h, lag);
+          st.placed += r.placed;
+          // A cell placed within one frame's run (0.25 m) of the capsule is the hazard: the body can be in it next frame.
+          st.near += r.cells.filter((c) => nearBody(S, c, 0.25)).length;
+        } else {
+          st.lefts++;
+          leftClick(S, h, lag);
+        }
+      }
+    }
+    const moving = rnd() < 0.8;
+    tick(S, { mx: moving ? Math.cos(dir) : 0, mz: moving ? Math.sin(dir) : 0, jump: rnd() < 0.04 });
+    for (const [k, id] of useGameStore.getState().worldBlocks) {
+      if (!id) continue;
+      const d = depth(S, k.split('_').map(Number));
+      if (d > 0.001) st.intrusions.push({ f, cell: k, depth: +d.toFixed(3) });
+    }
+    const t1 = S.p.body.translation();
+    for (let x = Math.floor(t1.x) - 1; x <= Math.floor(t1.x) + 1; x++) for (let y = Math.floor(t1.y) - 2; y <= Math.floor(t1.y) + 2; y++) for (let z = Math.floor(t1.z) - 1; z <= Math.floor(t1.z) + 1; z++) {
+      const d = solidAt(S, [x, y, z]) ? depth(S, [x, y, z]) : 0;
+      if (d > 0.001) st.anySolid.push({ f, cell: `${x}_${y}_${z}`, depth: +d.toFixed(3) });
+    }
+  }
+  for (let i = 0; i < 20 && S.worker.queue.length; i++) tick(S);
+  for (let i = 0; i < 5; i++) tick(S);
+  st.landed = S.worker.queue.length === 0;
+  st.eyeInSolid = solidAt(S, eyeCell(S));
+  st.inBody = solidInBody(S);
+  // Held is allowed: a cube footprint around the body builds a shell the player stands inside, every face of it drawn
+  // toward the eye and each block mineable. Held by a block inside the body, or with the eye in one, is the defect.
+  st.free = escape(S).free;
+  st.standIns = S.cells.size();
+  return st;
+}
+
+/** Whether the capsule, grown by `margin`, reaches the unit cell. */
+function nearBody(S, [x, y, z], margin) {
+  const t = S.p.body.translation();
+  const hh = S.p.collider.halfHeight(), r = S.p.collider.radius() + margin;
+  const dx = Math.max(x - t.x, 0, t.x - (x + 1));
+  const dz = Math.max(z - t.z, 0, t.z - (z + 1));
+  const dy = Math.max(y - (t.y + hh), 0, (t.y - hh) - (y + 1));
+  return Math.hypot(dx, dy, dz) < r;
+}
+
+describe('a chaotic clicker at the shore never ends up inside a block it placed, however late the trimesh lands', () => {
+  for (const lag of [2, 4, 8]) {
+    it(`edits landing ${lag} frames late`, () => {
+      const runs = [1, 2].map((seed) => ({ seed, ...chaoticClicker(seed, lag) }));
+      const sum = (k) => runs.reduce((a, r) => a + (Array.isArray(r[k]) ? r[k].length : r[k]), 0);
+      const brief = JSON.stringify(runs.map(({ intrusions, anySolid, ...r }) => ({ ...r, intrusions: intrusions.length, anySolid: anySolid.length, first: [...intrusions, ...anySolid].slice(0, 3) })));
+      expect(sum('placed'), `SETUP: the clicker placed nothing (${brief})`).toBeGreaterThan(20);
+      expect(sum('near'), `SETUP: no block was placed within a frame's run of the body, so the clicker never tested the hazard (${brief})`).toBeGreaterThan(0);
+      expect(runs.every((r) => r.landed), `SETUP: an edit never landed (${brief})`).toBe(true);
+      expect(sum('intrusions'), `the player was inside a block a right-click placed (${brief})`).toBe(0);
+      expect(runs.filter((r) => r.eyeInSolid).length, `a run ended with the eye inside a solid cell (${brief})`).toBe(0);
+      expect(sum('anySolid'), `the player was inside a solid cell (${brief})`).toBe(0);
+      expect(sum('inBody'), `a run ended with a solid cell inside the player (${brief})`).toBe(0);
+      expect(sum('standIns'), `a stand-in collider outlived its trimesh (${brief})`).toBe(0);
+    });
+  }
 });

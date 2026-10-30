@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { useGameSounds } from '../SoundManager';
-import { RigidBody, TrimeshCollider, useRapier } from '@react-three/rapier';
+import { RigidBody, TrimeshCollider, useRapier, useAfterPhysicsStep } from '@react-three/rapier';
 import TerrainWorker from './terrain.worker.js?worker';
 import { BlockParticleSystem } from './BlockParticleSystem';
 import { OptimizedGrassSystem, GrassWindDriver } from '../OptimizedGrassSystem';
@@ -33,13 +33,14 @@ import { chestHasItems } from '../game/chestState.js';
 import { blockForId } from './blockIds';
 import { placeAtHit } from './placeAtHit.js';
 import { mineTarget } from './buildTarget.js';
+import { createPlacedCellColliders } from './placedCellColliders.js';
 import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE } from './loadedChunks.js';
 import { makeMobFloorProbe } from './mobFloorProbe.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: 12345 } });
 
-const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
+const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount, placedCells }) => {
     // Rules-of-Hooks: do NOT early-return before the hooks below. An empty<->non-empty meshData
     // change (now reachable by mining ocean/water-adjacent columns, since Ocean owns the water
     // surface) would change the hook count and HARD-CRASH the render tree. Compute the flag, keep
@@ -87,6 +88,15 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
         markShadowWorldChanged();
         return () => markShadowWorldChanged();
     }, [opaqueGeometry]);
+    // The trimesh built from this mesh exists here: a child's passive effects run before its parent's, and
+    // @react-three/rapier creates the TrimeshCollider in one. So the placed cells this mesh holds (its editSeq, from the
+    // worker) can give their stand-in colliders up after the next step, and until that step the new trimesh is one the
+    // controller's sweep cannot see (world/placedCellColliders.js).
+    const trimeshRef = useRef(null);
+    React.useEffect(() => {
+        placedCells?.landed(cx, cz, meshData?.editSeq ?? 0, empty ? null : trimeshRef.current);
+    }, [placedCells, cx, cz, meshData, empty]);
+    React.useEffect(() => () => placedCells?.dropChunk(cx, cz), [placedCells, cx, cz]);
 
     if (empty) return null;
 
@@ -96,7 +106,7 @@ const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
                 <mesh geometry={opaqueGeometry} material={terrainMaterial} castShadow receiveShadow />
             )}
             <RigidBody type="fixed" colliders={false}>
-                <TrimeshCollider args={[meshData.positions, meshData.indices]} />
+                <TrimeshCollider ref={trimeshRef} args={[meshData.positions, meshData.indices]} />
             </RigidBody>
         </group>
     );
@@ -412,6 +422,18 @@ export const MinecraftWorld = React.memo(() => {
     const { rapier, world } = useRapier();
     const { playBlockPlace, playBlockBreak } = useGameSounds();
 
+    // Each placed cell is solid from the click: a stand-in collider until its chunk's trimesh is indexed
+    // (world/placedCellColliders.js). The Player loop reads the colliders its sweep cannot see yet through GameMethods.
+    const placedCells = React.useMemo(() => createPlacedCellColliders(world, rapier), [world, rapier]);
+    useEffect(() => {
+        GameMethods.placedCells = placedCells;
+        return () => {
+            delete GameMethods.placedCells;
+            placedCells.clear();
+        };
+    }, [placedCells]);
+    useAfterPhysicsStep(() => placedCells.afterStep());
+
     // Update shared terrain shader uniforms (the surviving LAND grade: danger-mood + aerial haze).
     // W2: the water clock (time/timeOfDay) is gone — Ocean.jsx owns the animated surface + its own
     // capture-frozen wave time now, so the land material has no time-varying term.
@@ -518,6 +540,7 @@ export const MinecraftWorld = React.memo(() => {
                 // at the commit that removes it — clearing it here, BEFORE that commit, left the old chunks drawn
                 // with the far field no longer punched out beneath them (review #3, R4.3).
                 setChunks({});
+                placedCells.clear();
                 // B2d: ...and wipe the record of having REQUESTED those chunks. Without this the
                 // streamer's guard (`!requestedChunks.has(key)`) still considers every chunk
                 // "already requested", so it never asks again — and the cull path that would have
@@ -529,7 +552,7 @@ export const MinecraftWorld = React.memo(() => {
         };
         worker.addEventListener('message', handleMessage);
         return () => worker.removeEventListener('message', handleMessage);
-    }, []);
+    }, [placedCells]);
 
     // Provide ground level approximation for NPCs via top-down physics raycast
     useEffect(() => {
@@ -779,7 +802,7 @@ export const MinecraftWorld = React.memo(() => {
         };
 
         // The executor lives in placeAtHit.js so the unit suite drives the real placement path; the worker stays here.
-        const place = (h) => placeAtHit(h, { post: (msg) => worker.postMessage(msg), playPlace: playBlockPlace });
+        const place = (h) => placeAtHit(h, { post: (msg) => worker.postMessage(msg), playPlace: playBlockPlace, cells: placedCells });
 
         const open = (h) => {
             if (!h || !h.chestTargeted) return;
@@ -813,7 +836,7 @@ export const MinecraftWorld = React.memo(() => {
             delete GameMethods.castWorldRay;
             delete GameMethods.terrainVerbs;
         };
-    }, [camera, rapier, world]);
+    }, [camera, rapier, world, placedCells]);
 
     // Worker `chunk_mesh` messages arrive in non-deterministic order, so the chunk
     // insertion order (and thus three.js transparent-mesh sort order for water) varies
@@ -836,6 +859,7 @@ export const MinecraftWorld = React.memo(() => {
                         meshData={chunk.meshData}
                         onMount={handleMount}
                         onUnmount={handleUnmount}
+                        placedCells={placedCells}
                     />
                     {/* M4 #5: revive the wind-grass -- mount the (previously dead) per-chunk instanced grass
                         renderer from the worker's sparse grass-top positions. Only for chunks with grass tops. */}
