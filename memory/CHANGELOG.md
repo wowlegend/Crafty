@@ -9,6 +9,11 @@ Before 2026-10-28 lanes did not land through pull requests: the merges into main
 commits of July to October are in `git log`, and the hand-written history to 2026-10-29 is
 `git show records/2026-10-29:memory/CHANGELOG.md`.
 
+## 2026-10-30
+
+- W2-D PR A: the HUD at rest, the compass, one notification channel, no mob mirror (#53, 80238889)
+- W2-J phase 3: closed records behind a records tag, a generated CHANGELOG, a decluttered root (#55, 5d301533)
+
 ## 2026-10-29
 
 - W2-E follow: the beast in first person, the cast, mobs that sense the body, the hands by the fire (#52, e900de6b)
