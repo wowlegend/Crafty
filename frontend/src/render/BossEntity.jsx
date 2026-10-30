@@ -194,11 +194,12 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
     const decalRingRef = useRef();
     const decalDiscRef = useRef();
     const decalArcRef = useRef();
-    const decalRef = useRef({ mesh: null, until: 0, windupMs: 0 });
+    const decalRef = useRef({ mesh: null, until: 0, windupMs: 0, pose: null });
     const decalMesh = (shape) => (shape === 'ring' ? decalRingRef.current : shape === 'disc' ? decalDiscRef.current : decalArcRef.current);
     const showDecal = (d, until, windupMs) => {
         const cur = decalRef.current;
         if (cur.mesh) cur.mesh.visible = false;
+        cur.pose = null;
         const mesh = d ? decalMesh(d.shape) : null;
         cur.mesh = mesh; cur.until = until; cur.windupMs = windupMs;
         if (!mesh) return;
@@ -335,10 +336,10 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             const held = hold === 'lava' ? { shape: 'ring', x: toward.x, z: toward.z, radius: LAVA_RADIUS_M }
                 : HELD_TELLS.includes(hold) ? decalFor({ move: hold, radius: DRAGON_MOVES[hold].reach ?? DRAGON_MOVES[hold].radius,
                     heading: yaw, at: toward }, rec.position) : null;
+            // Placed (with its ground read) when the held pose changes; turned toward the camera every frame.
             if (held) {
-                if (decalRef.current.mesh !== decalMesh(held.shape)) showDecal(held, Infinity, 1);
+                if (decalRef.current.pose !== hold) { showDecal(held, Infinity, 1); decalRef.current.pose = hold; }
                 const m = decalRef.current.mesh;
-                m.position.x = held.x; m.position.z = held.z;
                 m.rotation.z = held.shape === 'arc' ? decalSpin(held.heading) : 0;
                 m.material.opacity = 0.25 + 0.5 * HOLD_RAMP;
             } else if (decalRef.current.mesh) {

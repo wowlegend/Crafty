@@ -118,9 +118,19 @@ test.describe('the dragon fight', () => {
     expect(e.consumed, `the controller never consumed the Shift press — ${JSON.stringify(e)}`).toBe(true);
     expect(e.staggered, `an EARLY press staggered the dragon — ${JSON.stringify(e)}`).toBe(false);
 
-    // The dodge's cooldown runs on real time; the world stays frozen.
+    // The dodge's cooldown runs on real time; the world stays frozen. The roll moved the player, so the dragon is woken
+    // 3 m off again (it is pinned: only the hook moves it).
     await page.waitForTimeout(1500);
-    const due = await page.evaluate(() => window.__craftyTest.call('plantDragonMove', 'bite', 150));
+    const due = await page.evaluate(async () => {
+      const call = (n, ...a) => window.__craftyTest.call(n, ...a);
+      const frame = () => new Promise((r) => requestAnimationFrame(r));
+      const s = window.useGameStore.getState();
+      const cam = window.__threeCamera.position;
+      const g = s.getMobGroundLevel?.(cam.x + 3, cam.z);
+      call('spawnDragonAt', [cam.x + 3, (Number.isFinite(g) ? g : cam.y - 1.62) + 0.8, cam.z], { phase: 1 });
+      for (let i = 0; i < 3; i++) await frame();
+      return call('plantDragonMove', 'bite', 150);
+    });
     expect(due).toBeLessThanOrEqual(PERFECT_WINDOW_MS);
     const p = await pressShift(page);
     expect(p.armed, `Shift did not arm the dodge — ${JSON.stringify(p)}`).toBe(true);
@@ -169,6 +179,8 @@ test.describe('the dragon fight', () => {
       const due = call('plantDragonMove', 'roar', 150);
       await frame();
       const during = call('readDragon');
+      // Where the player stands from the dragon when the roar is due: the shove itself moves them afterwards.
+      const distance = Math.hypot(during.position.x - cam.x, during.position.z - cam.z);
       const hits = [];
       const real = store.getState().damagePlayer;
       store.setState({ damagePlayer: (amount, source, ...rest) => { hits.push({ amount, source: String(source) }); return real?.(amount, source, ...rest); } });
@@ -178,8 +190,8 @@ test.describe('the dragon fight', () => {
       while (call('worldNow') - w0 < due + 400 && performance.now() - t0 < 20000) await frame();
       store.setState({ damagePlayer: real });
       const r = call('readDragon');
-      return { due, decal: during.decal, distance: Math.hypot(r.position.x - cam.x, r.position.z - cam.z),
-        impulses: call('readImpulses'), hits, hpLost: hp0 - store.getState().playerHealth, decalAfter: r.decal, waited: call('worldNow') - w0 };
+      return { due, decal: during.decal, distance, impulses: call('readImpulses'), hits, hpLost: hp0 - store.getState().playerHealth,
+        decalAfter: r.decal, waited: call('worldNow') - w0 };
     }, { dist });
 
     const near = await roarAt(5);
