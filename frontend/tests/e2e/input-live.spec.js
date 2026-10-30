@@ -178,6 +178,12 @@ test.describe('a chest opened from the world on touch', () => {
     await startPlayActive(page);
     await page.waitForFunction(() => window.useGameStore.getState().playerRigidBodyRef?.current, null, { timeout: 60000 })
       .catch((e) => { throw new Error(`SETUP: the player body never came up — ${e.message}`); });
+    // startPlayActive's forcePlay opens the gate without starting the game, and the world behind the title runs by design
+    // (game/worldClock.js isPlayPaused), so the clock below could not hold there whatever covered it. Start the game, as
+    // the touch entry does (MenuSystem enterPlay), and read it back.
+    await page.evaluate(() => window.useGameStore.getState().markGameStarted());
+    const started = await page.evaluate(() => window.useGameStore.getState().gameStarted);
+    if (!started) throw new Error('SETUP: the game did not start, so the world clock runs behind the title by design');
 
     // PRESENCE: in play the clock runs and a held W walks.
     const liveClock = await worldClockOver(page, 600);
