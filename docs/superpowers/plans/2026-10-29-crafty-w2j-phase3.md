@@ -55,3 +55,16 @@ records, and every retired record stays one command away.
 
 - That a PR line's number and title match GitHub: `--check` is offline.
 - That a landing no later lane merged in is listed: git does not record where main pointed.
+
+## Outcome (2026-10-29)
+
+| # | Task | State | Evidence |
+|---|---|---|---|
+| 1 | Task script | done | 0448c1fa |
+| 2 | Tag `records/2026-10-29` | done | tag object d5231d4a on e900de6b, on GitHub |
+| 3 | 142 closed records out; INDEX; opsec ledger; T15 | done | c3be0234; doc-currency, opsec-scan (403 lines in 39 files to 36 in 7), gate-shape green |
+| 4 | Hook to `.claude/hooks/` | done | 30f8d44f; session-start-compact 12/12 |
+| 5 | `changelog.mjs`, test red first, wired, tables regenerated | done | c534413f; CL1-CL8 and PT1-PT2 RED, CL0 and PT0 identity GREEN |
+| 6 | CHANGELOG generated; `CLAUDE.md` | done | c534413f; real tree: hand-written exit 1, stale copy exit 1, generated exit 0 |
+| 7 | DECISIONS items 100-102; registry | done | 9d37d49d |
+| 8 | VERIFY, push, PR, CI on the head | see the PR | lint, unit (570 files, 4957 tests), doc-currency, gate-shape, opsec-scan, build, knip green locally |
