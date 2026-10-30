@@ -55,6 +55,19 @@ export function moveKinematic(body, kcc, collider, d, lift = 0, filter = undefin
   return m;
 }
 
+/**
+ * A teleport the controller's next sweep starts from: the body put at `p` and its collider with it. Rapier moves a body's
+ * colliders only at a world step (rapier3d-compat 0.19.2; @react-three/rapier 2.2.0 never propagates), so after a bare
+ * setTranslation a frame that took no step swept from the collider's old spot and wrote that movement onto the new one: a
+ * load fitted clear of a tunnel's wall went back 0.4 m into its ceiling, and a respawn after a fall at 50 m/s went 0.12 m
+ * into the ground (tests/gates/player-placement-gates.test.jsx). A move given on a frame that took no step is dropped
+ * with it (at most one 120 Hz frame of walking).
+ */
+export function placeBody(world, body, p) {
+  body.setTranslation(p, true);
+  world.propagateModifiedBodyPositionsToColliders();
+}
+
 /** Shorten the movement `m` (in place) to stop the controller's offset short of the first unindexed collider it meets. */
 function cutAtUnindexed(kcc, collider, m, unindexed) {
   let toi = 1;

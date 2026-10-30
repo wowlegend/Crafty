@@ -11,6 +11,7 @@
 // every collider. Where none does, a form is refused; the base shape is restored regardless (no form outlives its end).
 
 import { BASE_CAPSULE, setColliderToForm, restoreBaseCollider } from './beasts.js';
+import { placeBody } from './kinematicMove.js';
 
 const STEP = 0.05; // the search grid (m): the base capsule has 0.1 m of play in a one-block gap, so a 0.05 grid finds it
 // The furthest sideways shift. Kept under the narrowest capsule's width (the comet's 0.6 m): a trimesh is hollow, so a
@@ -164,13 +165,6 @@ export function fitLoadedSpot(world, rapier, body, saved, probe, opts = {}) {
 /** Whether a form's capsule fits where the body stands (the roar's commit asks before the bar is spent). */
 export function formHasRoom(world, rapier, body, form, opts) {
   return !!form && !!body && fitCapsule(world, rapier, body, form, opts) !== null;
-}
-
-/** Put the body (and its collider, at once) at `p`: the controller's next sweep starts from there. A move given on a
- *  frame that took no world step is dropped with it (at most one 120 Hz frame of walking). */
-function placeBody(world, body, p) {
-  body.setTranslation(p, true);
-  world.propagateModifiedBodyPositionsToColliders();
 }
 
 /** The swap to a form, where it fits. Returns false (nothing changed) when no spot near the body takes the form's capsule. */

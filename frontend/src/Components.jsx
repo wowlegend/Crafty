@@ -58,7 +58,7 @@ import { SquadAISystem } from './world/SquadAISystem.jsx';
 import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
 import { swingOrigin, steadyEye, EYE_HEIGHT_M, EYE_BOB_M } from './combat/swingOrigin.js';
-import { moveKinematic } from './game/kinematicMove.js';
+import { moveKinematic, placeBody } from './game/kinematicMove.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { routeExpressVerb } from './input/expressVerbs.js';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
@@ -1054,9 +1054,11 @@ export const Player = ({ isWorldBuilt }) => {
         if (resume.place) {
           // Where the base capsule stands clear nearest the saved centre (game/formFit.js fitLoadedSpot): a save on disk
           // can hold a spot in a wall or under the ground (the old Save button's rounded camera).
+          // The collider goes with it (game/kinematicMove.js placeBody): the next frame sweeps from the fitted spot, not
+          // from the held one in the wall.
           const spot = fitLoadedSpot(world, rapier, rigidBodyRef.current, resume.place, store.getMobGroundLevel, { unindexed: GameMethods.placedCells?.unindexed() });
           const at = { x: spot.x, y: spot.y, z: spot.z };
-          rigidBodyRef.current.setTranslation(at, true);
+          placeBody(world, rigidBodyRef.current, at);
           rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
           camera.position.set(at.x, at.y + EYE_HEIGHT_M, at.z);
           spawnPosSet.current = true;
@@ -1078,8 +1080,10 @@ export const Player = ({ isWorldBuilt }) => {
         return; // Wait for next frame (the streamer is loading origin chunks)
       }
 
-      const safeY = spawnTargetY(spawn.groundY); // player center 1.2 above ground (instant land)
-      rigidBodyRef.current.setTranslation({ x: 0, y: safeY, z: 0 }, true);
+      // Player center 1.2 above ground (instant land), the collider with it: the next frame sweeps from here, not from
+      // the sky the body waited in (game/kinematicMove.js placeBody).
+      const safeY = spawnTargetY(spawn.groundY);
+      placeBody(world, rigidBodyRef.current, { x: 0, y: safeY, z: 0 });
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
 
       // Cancel skyfall lerp transition: set camera position instantly

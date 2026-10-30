@@ -32,7 +32,7 @@ import { buildFootprint } from '../../../src/game/buildFootprint.js';
 import { createPlacedCellColliders, createEditSeq } from '../../../src/world/placedCellColliders.js';
 import { generateMesh } from '../../../src/world/mesher.js';
 import { voxelIndex, CHUNK_SIZE, CHUNK_VOLUME, CHUNK_HEIGHT, chunkOf } from '../../../src/world/chunkLayout.js';
-import { moveKinematic } from '../../../src/game/kinematicMove.js';
+import { moveKinematic, placeBody } from '../../../src/game/kinematicMove.js';
 import { BASE_CAPSULE, BEAST_FORMS, formLocomotion } from '../../../src/game/beasts.js';
 import { moveSpeed, jumpVelocity, GLUE_VELOCITY, VAULT_VELOCITY, applyGravity } from '../../../src/game/locomotion.js';
 import { steadyEye } from '../../../src/combat/swingOrigin.js';
@@ -241,7 +241,7 @@ function spawnBranch(S) {
     if (resume.place) {
       const spot = fitLoadedSpot(S.world, RAPIER, S.p.body, resume.place, (x, z) => groundProbe(S, x, z), { unindexed: S.cells.unindexed() });
       const at = { x: spot.x, y: spot.y, z: spot.z };
-      S.p.body.setTranslation(at, true);
+      placeBody(S.world, S.p.body, at);
       S.spawnSet = true;
       S.stats[`loadsPlaced_${spot.by}`] = (S.stats[`loadsPlaced_${spot.by}`] || 0) + 1;
       released(S, at);
@@ -256,7 +256,7 @@ function spawnBranch(S) {
     S.p.body.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
     return;
   }
-  S.p.body.setTranslation({ x: 0, y: spawnTargetY(spawn.groundY), z: 0 }, true);
+  placeBody(S.world, S.p.body, { x: 0, y: spawnTargetY(spawn.groundY), z: 0 });
   S.spawnSet = true;
   S.stats.respawns++;
 }
