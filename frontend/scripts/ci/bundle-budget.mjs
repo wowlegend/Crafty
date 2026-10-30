@@ -36,8 +36,10 @@ const BUDGETS = [
   // the app itself — the one that creeps. The ceiling is the measured size plus the 18,368 B the old ceiling still left
   // over the old measured size (the programme byte ledger's unspent lane allowances and slack), so the in-flight lanes
   // still fit and nothing else gets the freed bytes. LazyMotion (DECISIONS 2026-10-30 item 140) took 47,557 B off the
-  // chunk and the ceiling came down with it: a module that renders the full `motion` component puts the framer-motion
-  // features back, about 47.6 KB, which is past the ceiling by itself.
+  // chunk and the ceiling came down with it: a module this chunk carries that renders the full `motion` component puts
+  // the framer-motion features back, about 47.6 KB, which is past the ceiling by itself. A module the lazy panel chunk
+  // carries moves that chunk, which has no ceiling (ForgePanel with `motion` read 636,434 B here, under it): the
+  // full-motion markers further down hold every chunk.
   { name: 'index', max: 652_500, actualAtWrite: 634_075 },
   { name: 'three', max: 740_000, actualAtWrite: 680_700 },
 ];
@@ -210,6 +212,34 @@ if (n8aoHolders.length) {
   failed = true;
 } else {
   console.log(`✓ n8ao: ${N8AO_MARKERS.length} markers absent from all ${chunks.length} chunks`);
+}
+
+// NO FULL MOTION (DECISIONS 2026-10-30 items 140 and 144). Every animated element renders `m` under one LazyMotion
+// provider that loads `domAnimation`; `motion`, or `domMax`, ships framer-motion's drag, layout and projection code too
+// (47,557 B in the boot chunk, the rest of the library's 137,650 B share staying either way). The index ceiling above sees
+// only a module the boot chunk carries, so this reads every chunk for two strings that occur only in that code (checked
+// against framer-motion 12.43 and motion-dom 12.43): `isProjectionDirty`, a field of motion-dom's projection node
+// (projection/node/create-projection-node.mjs, nowhere else), and `dragElastic`, a drag prop read by framer-motion's
+// gestures/drag (VisualElementDragControls.mjs and utils/constraints.mjs, nowhere else). Neither is in `domAnimation`'s
+// code, in this game's source or in any chunk of the lazy build; each came back in the chunk that held the mutant
+// (index for `motion` in ui/GameHud.jsx, the lazy panel chunk for `motion` in ui/panels/ForgePanel.jsx).
+// The controls make the absence mean something: `animationState` (motion-dom's animation state, a field the animation
+// feature reads) and `whileHover` (the hover gesture's prop) are in `domAnimation`'s own code, so both must be found in
+// some chunk; a minifier that renames properties or changes how it quotes finds them nowhere, and fails here instead of
+// passing every chunk. Not checked: full-motion code reached some other way than these two strings (a `motion` import that
+// tree-shakes down to neither), which the strict unit gate and the index ceiling still see for the modules they cover.
+const FULL_MOTION_MARKERS = ['isProjectionDirty', 'dragElastic'];
+const FULL_MOTION_CONTROLS = ['animationState', 'whileHover'];
+const motionControlsMissing = FULL_MOTION_CONTROLS.filter((m) => !chunks.some((c) => textOf(c).includes(m)));
+const fullMotionHolders = chunks.flatMap((c) => FULL_MOTION_MARKERS.filter((m) => textOf(c).includes(m)).map((m) => `${m} (${c.file})`));
+if (motionControlsMissing.length) {
+  console.error(`✘ full motion: the control${motionControlsMissing.length > 1 ? 's' : ''} ${motionControlsMissing.join(', ')} that \`domAnimation\`'s own code carries ${motionControlsMissing.length > 1 ? 'are' : 'is'} in no chunk, so the matcher cannot see framer-motion code`);
+  failed = true;
+} else if (fullMotionHolders.length) {
+  console.error(`✘ full motion: ${fullMotionHolders.join(', ')}; the drag, layout or projection code ships again (a \`motion.*\` component or \`domMax\` instead of \`m\` under MotionProvider)`);
+  failed = true;
+} else {
+  console.log(`✓ full motion: ${FULL_MOTION_MARKERS.length} drag/projection markers absent from all ${chunks.length} chunks (controls ${FULL_MOTION_CONTROLS.join(', ')} matched)`);
 }
 
 // NO TAILWIND-MERGE: cn.js is a plain joiner and the primitives name each default a caller may replace, so the
