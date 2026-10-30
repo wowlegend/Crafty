@@ -75,6 +75,17 @@ export function installMotionSampler({ testid, endScale = 1, endY = 0, endOpacit
   return true;
 }
 
+/** For a unit gate (Node side, never serialised): slows performance.now to `factor` of real time from this moment,
+ *  continuous at the switch, the same clock installMotionSampler installs in the page. The sampler keeps its own copy
+ *  inline because Playwright serialises it and a closure over this function would not survive. framer-motion reads
+ *  performance.now() on every frame and its springs and tweens run against that clock, so at a tenth a 350 ms spring
+ *  lasts 3.5 s and a frame that stalls for a second still lands inside it. Undo with restorePageClock. */
+export function slowPageClock(factor) {
+  const real = performance.now.bind(performance);
+  const base = real();
+  performance.now = () => base + (real() - base) * factor;
+}
+
 /** In the page: puts performance.now back, whatever state the sampler was left in. Returns whether an override remains. */
 export function restorePageClock() {
   if (Object.prototype.hasOwnProperty.call(performance, 'now')) delete performance.now;
