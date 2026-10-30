@@ -23,3 +23,6 @@ export function isolatedGitEnv(extra = {}) {
 
 /** git, run in `cwd` against the repository found THERE, never the caller's. */
 export const fixtureGit = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', env: isolatedGitEnv() }).trim();
+
+/** fixtureGit with `extra` added to the environment (a fixed GIT_COMMITTER_DATE, say); the caller's GIT_* still never reach it. */
+export const fixtureGitWith = (cwd, extra, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', env: isolatedGitEnv(extra) }).trim();

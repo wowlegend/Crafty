@@ -59,6 +59,7 @@ export const DESCRIPTIONS = {
   'opsec-scan': 'a home path, credential shape or agent attribution reaching this public repo',
   'mutation-proof-trailer': 'a commit that adds a gate or changes its assertions with no `Mutation-Proof:` trailer',
   'doc-currency': 'a dangling path, § or `CLAUDE.md` heading citation in a canonical doc or rule file, a stale generated block, a lock label, `CLAUDE.md` over 12,000 bytes',
+  changelog: 'a `memory/CHANGELOG.md` missing a landing git can prove, hand-edited, or naming a commit outside the history',
   'queue-ledger': 'a queue finding with no `▣✓/▢/⊘` marker, or a dismissal with no proof command',
   'registry-append-only': 'a `memory/registry.jsonl` row deleted instead of closed',
   'artifact-currency': 'an unusable operator-page source, a falsified Queued pill, a wrong as-of stamp',

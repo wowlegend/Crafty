@@ -13,7 +13,7 @@ import { parseHook, callersFor } from '../../scripts/ci/gate-table.mjs';
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const ROOT = resolve(APP, '..');
 const PIPELINE = join(ROOT, 'ci/pipeline.sh');
-const STATIC = ['doc-currency', 'eslint', 'gate-shape'];
+const STATIC = ['doc-currency', 'changelog', 'eslint', 'gate-shape'];
 const HEAVY = ['unit + static gates', 'build', 'bundle byte budget'];
 const RANGE = ['queue-ledger', 'artifact-currency'];
 
