@@ -27,12 +27,18 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // after it. The world is held still across the burst (_worldHold.js), so the body, mobs and day stand still between
 // aims, and released for the walks.
 //
+// THE STAND-INS' WIRING IS LIVE. Each placing click must hold a stand-in collider (world/placedCellColliders.js) right
+// after the game handled it, and the count must be back to 0 within the watch's frame bound: the worker echoed the
+// click's seq on its chunk's mesh, ChunkMesh's effect marked the cell, and the after-step callback retired it. The node
+// gate drives the registry itself, so this is the only check that the game wires it. A stand-in that never retires keeps
+// a mined cell solid and unseen. It is a liveness check, not a timing one.
+//
 // WHAT THIS DOES NOT CHECK: touch placement (the same place verb), the Building Tools' multi-block footprints, a player
 // running into a cell whose trimesh lands late (tests/integration/place-clear-of-player-rapier.test.jsx drives both against
-// real Rapier), or the look of the refusal notice. It LOGS, and does not assert, the live delay that node gate stands in
-// for: for each placing click, the stand-in colliders held (world/placedCellColliders.js) right after the game handled
-// it, then the drawn frames until a world ray meets the new cell and until the chunk's new mesh is set, and the
-// stand-ins still held on each of those frames.
+// real Rapier), the cut of the player's sweep at the new colliders (the Player loop's argument to moveKinematic), or the
+// look of the refusal notice. It LOGS, and does not assert, the live delay that node gate stands in for: for each placing
+// click, the drawn frames until a world ray meets the new cell and until the chunk's new mesh is set, and the stand-ins
+// still held on each of those frames.
 //
 // Mutation-Proof: see the commit trailers (red-first: the burst on the unfixed placement; the node gate's mutants).
 
@@ -160,7 +166,8 @@ function readHold() {
 
 /** In the page: frames after a click until it settles (at least `minFrames`, at most `maxFrames`). For a click that placed
  *  a cell: the frame a world ray from the eye first meets that cell, the frame its chunk's mesh in the store changed, and
- *  the stand-ins held each frame. A log, not an assertion: CI's frame times are not a player's. */
+ *  the stand-ins held each frame. The frame counts are a log (CI's frame times are not a player's); the caller asserts
+ *  only that the last count is 0. */
 function watchClick({ minFrames, maxFrames }) {
   const rec = window.__e2eClick;
   const placed = rec && rec.verb === 'place' && rec.placedNow ? rec.placeCell.split('_').map(Number) : null;
@@ -334,6 +341,14 @@ test.describe('placing beside the player at the shore', () => {
     expect(pressed.length, `SETUP: of ${clicks.length} clicks, only ${pressed.length} reached the place or mine verb (gates ${JSON.stringify(held.gates)}; clicks ${JSON.stringify(clicks)})`).toBe(clicks.length);
     const intoBody = clicks.filter((c) => c.button === 'right' && c.placeInBody);
     expect(intoBody.length, `SETUP: no right-click aimed at a cell inside the body, so the burst never tested the defect (clicks ${JSON.stringify(clicks)})`).toBeGreaterThan(0);
+
+    // THE STAND-INS ARE LIVE: one held from each placing click, and every one retired within the watch's frame bound.
+    const placing = clicks.filter((c) => c.latency.placed);
+    expect(placing.length, `SETUP: no click placed a cell, so the stand-ins were never made (clicks ${JSON.stringify(clicks)})`).toBeGreaterThan(0);
+    for (const c of placing) {
+      expect(c.standInsAtClick, `the placing click at ${c.placeCell} held no stand-in collider at the click (${JSON.stringify(c)})`).toBeGreaterThanOrEqual(1);
+      expect(c.latency.standIns.at(-1), `the stand-ins after the placing click at ${c.placeCell} were not back to 0 within ${c.latency.frames} drawn frames (held ${JSON.stringify(c.latency.standIns)}; ray solid at ${c.latency.solidAt}, mesh set at ${c.latency.meshAt})`).toBe(0);
+    }
 
     // 3. THE SUBJECT: no block inside the body, every right-click into it refused and spent nothing, and the player told.
     expect(held.inBody, `a block was left inside the player: ${JSON.stringify(held)}`).toEqual([]);
