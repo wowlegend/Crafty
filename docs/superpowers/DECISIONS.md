@@ -56,6 +56,13 @@ finding 1 is the same mechanism and its finding 2 a missing test). Items 168-170
    not back, is held 20 frames and let go once it is, onto the column's top. Reverted to `store.getMobGroundLevel(r.x,
    r.z)` it lets go on the first frame. No e2e was needed. Commit `03f54364`.
 
+The gate on seeds 1 to 8 after the fix (at `7065b64a`, local, the three session files): 56 sessions a seed, none red,
+the deepest into solid 0.000 m on every seed; walk-held readings 33, 21, 25, 28, 21, 33, 27 and 30, every one an own
+shell, none held. Seed 2 misses the same SETUP floor as in item 165 (field-origin swapsRefused 1, floor 2). The loads
+file, the instruments and the new gate: 70 of 70. The walk-held counts differ from item 165's: the harness's placements
+now move the collider at once, so the frames after each load and respawn in a session, and the session from there on,
+are not the ones round 2 played.
+
 Mutation proofs (`scripts/dev/mutate.sh` in a throwaway copy; an identity mutant first and last, both survived): on the
 gate, the resume branch's bare `setTranslation`, the spawn's bare `setTranslation`, the corner probe reverted, `placeBody`
 without its propagate and `placeBody` propagating before the move each RED; on the loads file, `placeBody` without its
