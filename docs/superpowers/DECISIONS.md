@@ -43,10 +43,13 @@ Each stands while it earns its place.
    in a panel does not count); the card is one bare line above the hotbar, six essential keys drawn as the hint is (WASD,
    LMB, RMB, Tab, J, H, each a KEY_MAP key), because the whole list in a panel read 8.47% of a 1280x800 frame at rest by
    the footprint; it then folds to the one-line "H Controls" hint, which stays, on a keyboard only, until H opens the
-   panel once. **Measured at rest on this branch** (lookbook eye set, footprint, 2026-10-29 23:47-23:54Z): a returning
-   player at most 6.68% on Chromium 1280x800 and 7.69% on WebKit 1180x820 and 820x1180; a first session at most 7.40%
-   with the card up and 6.79% once it folds (the card shows on a keyboard only, so the iPads read as for a returning
-   player) (`tests/gates/controls-panel-gates.test.jsx`: the fold at 30 s, the clock
+   panel once. **Measured at rest on this branch** (lookbook eye set, footprint, real GPU, 2026-10-30 01:48-01:57Z, at
+   78772eeb; the player has ember and coins, a frame with a nameplate up counts, and each frame is shot again with one
+   raised, item 94): a returning player at most 6.58% on Chromium 1280x800 (6.79% with a nameplate), 7.55% on WebKit
+   1180x820 (7.76%) and 7.56% on WebKit 820x1180 (7.77%); a first session, with ember and coins as well (an upper bound
+   for a new player), at most 7.30% with the card up (7.51% with the card and a nameplate) and 6.70% once it folds (the
+   card shows on a keyboard only, so the iPads read as for a returning player); frames `evidence/w2d/b-r3-*`
+   (`tests/gates/controls-panel-gates.test.jsx`: the fold at 30 s, the clock
    paused off screen, the fold remembered, the hint never on touch). **Seen per browser profile, not per save:**
    `crafty_controls_seen` and `crafty_controls_card_done` sit beside `crafty_onboarded` in localStorage because they
    belong to the person at the browser, so no save field is added and
@@ -63,9 +66,13 @@ Each stands while it earns its place.
    the Journal's quests), the locked-Aspect denial, the respec notice and the villagers' lines named E, M, L, Q and U
    after item 96 removed them; they now name Tab, J, B and Esc, through t() in both locales. The Build panel's "Press 1"
    to "Press 5" under its five tools are deleted: no handler ever bound them (the digits pick a spell, and only with no
-   panel open). `tests/gates/taught-keys-gates.test.jsx` reads every dictionary string, the rendered panels and card,
-   every denial, the villagers' lines, the Aspect guide and the talent trees in en and zh-CN, and fails on a key named
-   after "press", in parentheses or after 按 that KEY_MAP does not bind.
+   panel open), and so is the title strip's "Q Claim Quest" ("Q 领取任务"), the last place Q was taught.
+   `tests/gates/taught-keys-gates.test.jsx` reads every dictionary string, the rendered panels and card, every denial,
+   the villagers' lines, the Aspect guide and the talent trees in en and zh-CN, and fails on a key that KEY_MAP does not
+   bind when it is named after "press", in parentheses, after 按 or 按住, after "hold", in brackets, or as a keycap
+   before its verb (a key before a capitalised word, a key no English word shares before any word, a key before Han);
+   an article, a pronoun, a count or a version is not read as a key. Before the strip's hint was deleted that scan read
+   red on it, and on nothing else, in both locales.
 
 ## 2026-10-29 — [LOOP] W2-D PR A: the HUD at rest, the compass, one notification channel, and no mob mirror
 
