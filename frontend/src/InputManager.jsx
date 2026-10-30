@@ -11,6 +11,7 @@ import { isInputLive } from './input/inputLive.js';
 import { talk } from './input/talk.js';
 import { toggleGroupTarget, openTab, panelWrites, applyPanelWrites, closeAllPanels } from './ui/panelGroups.js';
 import { releasePointerLock, requestGameLock } from './input/pointerLock.js';
+import { makeWheelStepper, nextHotbarSlot } from './input/wheelStep.js';
 
 // The input types a key types into. A checkbox, a button or a slider takes no text, so the game's keys stay live on them.
 const NON_TEXT_INPUTS = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file', 'image']);
@@ -33,20 +34,14 @@ export function useInputManager(gameState, gameSystems) {
   const setShowSpellUpgrades = useGameStore((s) => s.setShowSpellUpgrades);
 
   useEffect(() => {
+    // One slot per notch, not per event (input/wheelStep.js): a trackpad swipe used to spin the bar through 30 slots.
+    const step = makeWheelStepper();
     const handleWheel = (event) => {
       const state = useGameStore.getState();
-      if (isInputLive(state, getInput().active)) {
-        const currentIndex = HOTBAR_BLOCKS.indexOf(state.selectedBlock);
-        if (currentIndex === -1) return;
-
-        let nextIndex;
-        if (event.deltaY > 0) {
-          nextIndex = (currentIndex + 1) % HOTBAR_BLOCKS.length;
-        } else {
-          nextIndex = (currentIndex - 1 + HOTBAR_BLOCKS.length) % HOTBAR_BLOCKS.length;
-        }
-        state.setSelectedBlock(HOTBAR_BLOCKS[nextIndex]);
-      }
+      if (!isInputLive(state, getInput().active)) return;
+      const dir = step(event);
+      if (!dir) return;
+      state.setSelectedBlock(HOTBAR_BLOCKS[nextHotbarSlot(HOTBAR_BLOCKS.indexOf(state.selectedBlock), dir, HOTBAR_BLOCKS.length)]);
     };
     window.addEventListener('wheel', handleWheel, { passive: true });
     return () => window.removeEventListener('wheel', handleWheel);
