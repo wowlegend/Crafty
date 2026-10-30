@@ -252,7 +252,8 @@ describe('block edits loaded before the world mounted reach the terrain worker w
     useGameStore.getState().setTerrainWorker(worker);
     expect(useGameStore.getState().terrainWorker).toBe(worker);
     expect(worker.postMessage, 'the published worker was never sent the edits loaded before it existed').toHaveBeenCalledTimes(1);
-    expect(worker.postMessage.mock.calls[0][0]).toEqual({ type: 'load_modifications', payload: { modifications: [EDIT] } });
+    // The save holds no seed, so the world it loads is seed 12345 (world/worldSeed.js).
+    expect(worker.postMessage.mock.calls[0][0]).toEqual({ type: 'load_modifications', payload: { modifications: [EDIT], seed: 12345 } });
     // A remount publishes again: the worker already holds these edits, so nothing is resent.
     const again = { postMessage: vi.fn() };
     useGameStore.getState().setTerrainWorker(null);
@@ -265,7 +266,7 @@ describe('block edits loaded before the world mounted reach the terrain worker w
     useGameStore.getState().setTerrainWorker(worker);
     expect(worker.postMessage, 'a publish with nothing pending sent something').not.toHaveBeenCalled();
     useGameStore.getState().loadWorldData(editedSave());
-    expect(worker.postMessage.mock.calls.map((c) => c[0])).toEqual([{ type: 'load_modifications', payload: { modifications: [EDIT] } }]);
+    expect(worker.postMessage.mock.calls.map((c) => c[0])).toEqual([{ type: 'load_modifications', payload: { modifications: [EDIT], seed: 12345 } }]);
     const next = { postMessage: vi.fn() };
     useGameStore.getState().setTerrainWorker(next);
     expect(next.postMessage).not.toHaveBeenCalled();

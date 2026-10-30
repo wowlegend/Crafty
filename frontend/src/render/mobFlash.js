@@ -39,6 +39,7 @@ export function restoreAuthoredColor(material) {
  * built material would also have, so "the colour is right" cannot distinguish a working flash from one
  * that examined nothing.
  */
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function applyHitFlash(materials, hitColor, isHit) {
   let touched = 0;
   for (const m of materials || []) {

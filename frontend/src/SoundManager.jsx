@@ -7,6 +7,7 @@ import { DAY_CHORDS, NIGHT_CHORDS, BOSS_CHORDS, arpeggiatorBpm } from './audio/m
 import { useGameStore } from './store/useGameStore';
 import { surfaceBlockAt } from './world/climate.js';
 import { biomeAmbience } from './audio/biomeAmbience.js';
+import { subscribeEventSounds } from './audio/soundEvents.js';
 
 // Procedural music gain. 0 = the synthPad chords + arpeggiator are MUTED (Kevin disliked the procedural
 // music) in favour of the ElevenLabs tracks played by ui/MusicPlayer.jsx. The biome-ambience wind bed is a
@@ -515,6 +516,10 @@ export const SoundProvider = ({ children }) => {
     }
   };
 
+  // The bus events that have a sound (audio/soundEvents.js): the level-up, the reward and the victory stings. Keyed on
+  // the two states playSound reads, so the subscribed function always plays at the current setting.
+  useEffect(() => subscribeEventSounds(playSound), [soundEnabled, volume]);
+
   // SFX overhaul Slice 3: resume the AudioContext on the entry gesture, INDEPENDENT of music. Browsers
   // suspend a fresh ctx until a user gesture; the music-start paths resume it but early-return when music
   // is off -- so without this a music-off player kept a suspended ctx and ALL SFX were silently dropped.
@@ -595,9 +600,6 @@ export const useGameSounds = () => {
     playAnvilHit: (pos) => { if (spatialTrigger && pos) spatialTrigger('anvilHit', pos, 1, 35); else playSound('anvilHit'); },
     playBind: (pos) => { if (spatialTrigger && pos) spatialTrigger('bind', pos, 1, 25); else playSound('bind'); },
     playMagicExplosion: () => playSound('magicExplosion', 0.9 + Math.random() * 0.2),
-    playLevelUpSound: () => playSound('levelUp'),
-    playFanfare: () => playSound('fanfare'), // reward beat — achievement / quest complete (DayNight/reward audio)
-    playVictory: () => playSound('victory'), // the climax payoff sting (Blight Heart shattered -> VictoryOverlay)
     // UI foley (panel open/close) — subtle menu chrome responsiveness
     playUIOpen: () => playSound('uiOpen'),
     playUIClose: () => playSound('uiClose')

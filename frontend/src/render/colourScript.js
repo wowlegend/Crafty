@@ -50,6 +50,7 @@ export const KEY_S = Object.freeze({ night: -0.45, twilight: -0.12, golden: 0.10
  * just before the sunset key in time, the sun a little above it, and blue hour between dusk and night
  * (tests/gates/colour-script-gates.test.js).
  */
+/** @internal Read by tooling and its tests, not by the game. */
 export const LOOK_TIMES = Object.freeze({ afternoon: 0.30, 'golden hour': 0.48, 'blue hour': 0.55, midnight: 0.75 });
 
 const AUTHORED = {

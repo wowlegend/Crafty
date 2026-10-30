@@ -8,6 +8,7 @@ export function registerTestHook(name, fn) { registry[name] = fn; }
 export function callTestHook(name, ...args) {
   return Object.prototype.hasOwnProperty.call(registry, name) ? registry[name](...args) : undefined;
 }
+/** @internal Test seam: resets module state between cases. */
 export function _resetBridge() { registry = {}; } // test-only
 
 /** Expose window.__craftyTest in dev so a Playwright spec or probe can call registered hooks. */

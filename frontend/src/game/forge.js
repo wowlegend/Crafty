@@ -98,6 +98,7 @@ export function shortfall(state, offer) {
 }
 
 /** Can the player pay for `offer` as it is listed? */
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function canAfford(state, offer) {
   return !!offer && shortfall(state, offer).length === 0;
 }

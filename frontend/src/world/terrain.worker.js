@@ -1,4 +1,5 @@
-import { createNoise3D, createNoise2D } from 'simplex-noise';
+import { makeWorldNoise, vegRandom as vegRandomFor } from './worldNoise.js';
+import { DEFAULT_WORLD_SEED, resolveWorldSeed } from './worldSeed.js';
 import { stampHomeAnchor, stampHub } from './homeAnchor.js';
 import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
 import { pickBiome, BIOME_ID } from './biomeTable.js';
@@ -30,30 +31,29 @@ const chunks = new Map();
 const biomeChunks = new Map();
 const chunkModifications = new Map();
 
-// Deterministic per-coordinate PRNG for vegetation placement. Trees/cacti previously used
-// raw Math.random(), which made the world layout DIFFERENT on every load (non-deterministic
-// silhouette) — that broke visual-regression baselines and meant a given seed never produced
-// the same world twice. Hashing the world coordinates yields a stable [0,1) value per column,
-// independent of chunk-generation order, so the same seed regenerates the identical world.
-const WORLD_SEED = 12345;
+// The world's seed: the noise and the vegetation hash both derive from it. Vegetation hashes the world column rather
+// than drawing Math.random(), so the same seed regenerates the same world in any chunk order.
+let worldSeed = DEFAULT_WORLD_SEED;
 function vegRandom(worldX, worldZ, salt) {
-  let h = (WORLD_SEED ^ Math.imul(worldX | 0, 0x27d4eb2d) ^ Math.imul(worldZ | 0, 0x165667b1) ^ Math.imul(salt | 0, 0x9e3779b9)) >>> 0;
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
-  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  return vegRandomFor(worldSeed, worldX, worldZ, salt);
+}
+
+// Chunks generated from another seed are another world's, so a re-seed drops them; the block edits are the loaded
+// world's and stay.
+function seedWorld(seed) {
+  worldSeed = resolveWorldSeed(seed);
+  ({ noise2D, noise3D } = makeWorldNoise(worldSeed));
+  chunks.clear();
+  biomeChunks.clear();
 }
 
 self.onmessage = function(e) {
   const { type, payload } = e.data;
 
   if (type === 'init') {
-    // Simple PRNG for seeding
-    const lcg = (seed) => () => (seed = Math.imul(1664525, seed) + 1013904223 | 0) / 4294967296 + 0.5;
-    const rng = lcg(payload.seed || 12345);
-    noise2D = createNoise2D(rng);
-    noise3D = createNoise3D(rng);
+    seedWorld(payload && payload.seed);
     self.postMessage({ type: 'init_done' });
-  } 
+  }
   else if (type === 'generate') {
     const { cx, cz } = payload;
     const key = `${cx}_${cz}`;
@@ -169,10 +169,12 @@ self.onmessage = function(e) {
   }
   else if (type === 'load_modifications') {
     const { modifications } = payload;
+    // A world load carries that world's seed (the store's loadModificationsMessage).
+    if ('seed' in payload) seedWorld(payload.seed);
     chunkModifications.clear();
     chunks.clear();
     biomeChunks.clear(); // same lockstep as the delete above
-    
+
     if (Array.isArray(modifications)) {
       for (const [cx, cz, index, blockType] of modifications) {
         const modKey = `${cx}_${cz}`;

@@ -2,12 +2,14 @@
 // Three palette STATES share identical keys so the day/night + danger
 // system can lerp between them without ever hitting `undefined`.
 
+/** @internal Exported for the tests that enumerate it. */
 export const PALETTE_KEYS = [
   'skyTop', 'skyMid', 'skyHorizon', 'sun', 'fog',
   'grass', 'rock', 'rockShadow', 'waterShallow', 'waterDeep',
   'leaf', 'leafHi', 'trunk', 'heroCloth', 'heroAccent', 'mobBody', 'mobShadow',
 ];
 
+/** @internal Exported for the tests that enumerate it. */
 export const DANGER_STATES = ['dusk', 'obsidian'];
 
 export const PALETTE = {

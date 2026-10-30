@@ -8,7 +8,7 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 // persisted, but nothing consumed them (no spendCoins; TradingInterface bartered items, never coins). This
 // adds a spendCoins action + coins->consumable trades in the merchant so the dawn-reward loop pays off.
 vi.mock('../../src/SoundManager', () => ({
-  useGameSounds: () => ({ playPickup: () => {}, playLevelUpSound: () => {} }),
+  useGameSounds: () => ({ playPickup: () => {} }),
 }));
 const { TradingInterface } = await import('../../src/ui/TradingInterface.jsx');
 

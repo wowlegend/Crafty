@@ -31,6 +31,7 @@ export function frameStats(deltasMs) {
 }
 
 /** Probe-vs-baseline comparison: positive deltas = the probe scenario is more expensive. */
+/** @internal Read by tooling and its tests, not by the game. */
 export function compareScenarios(baseline, probe) {
   return {
     medianDeltaMs: probe.medianMs - baseline.medianMs,
@@ -43,6 +44,7 @@ export function compareScenarios(baseline, probe) {
 /** The pinned M2 budget for the C−B delta (STATE-REVIEW-2026-06-10 §4 rec, adopted 2026-06-10). */
 export const M2_BUDGET = { medianDeltaMs: 1.5, p95DeltaMs: 3.0 };
 
+/** @internal Read by tooling and its tests, not by the game. */
 export function withinBudget(cmp, budget = M2_BUDGET) {
   return cmp.medianDeltaMs <= budget.medianDeltaMs && cmp.p95DeltaMs <= budget.p95DeltaMs;
 }

@@ -12,6 +12,7 @@ import { BLOCK_ID } from './blockIds.js';
 export const FACE_ROLE = Object.freeze({ top: 0, side: 1, bottom: 2 });
 
 /** The role of a face from its axis normal's y component: the JS twin of the GLSL expression in faceLayerGlsl. */
+/** @internal The JS twin of a shader formula, for its parity test. */
 export function faceRoleOfNormal(ny) {
   if (ny > 0.5) return FACE_ROLE.top;
   if (ny < -0.5) return FACE_ROLE.bottom;

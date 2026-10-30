@@ -3,6 +3,7 @@
 // so landmarks read as occasional wayfinding silhouettes, not clutter. The RENDER (Terrain.jsx
 // <LandmarksRender/>) only instantiates landmark chunks that are CURRENTLY LOADED (in-range-culled +
 // tier-capped by the chunk streamer) and on LAND.
+/** @internal Exported for the tests that enumerate it. */
 export const LANDMARK_TYPES = 2; // 0 = Spire (glowing tower), 1 = Sky-arch (monument gateway)
 
 // imul hash (order-independent, well-distributed) -> [0,1). Distinct salt from vegRandom's.

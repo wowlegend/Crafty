@@ -9,6 +9,7 @@ const EMOTES = ['…', '*hums*', '*sweeps*', '*nods*', '*stretches*'];
 // `shouldRetreatAtNight(isDay) => !isDay` used to live here. Deleted 2026-08-11: it restated the branch
 // the line below already owns, and nothing outside its own test ever called it. Two expressions of one
 // rule is one that can drift.
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function routinePosition(home, t, isDay) {
   if (!isDay) return { x: home.x, z: home.z }; // retreat home at night
   const a = (t * 0.25) % (Math.PI * 2);        // slow loop
@@ -32,6 +33,7 @@ export function routinePositionInto(out, homeX, homeZ, t, isDay) {
   return out;
 }
 
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function nextEmote(seq) { return EMOTES[Math.floor(Math.abs(seq)) % EMOTES.length]; }
 
 /**

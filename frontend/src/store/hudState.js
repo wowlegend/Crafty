@@ -92,6 +92,7 @@ export const selectHudState = (state) => ({
  * store, which is the check that would have caught `setSelectedBlock` the day it went missing — a value
  * silently reads `undefined`, but a missing handler only explodes when a player touches it.
  */
+/** @internal Exported for the tests that enumerate it. */
 export const HUD_CALLABLE_KEYS = [
   'addToInventory',
   'removeFromInventory',

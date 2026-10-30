@@ -103,6 +103,7 @@ const _WAVES_D = WAVES.map(([dx, dz, wl, amp, spd]) => {
  * Full Gerstner vertex: where this parcel of water actually sits, horizontal displacement included.
  * Returns world (x, y, z). The x/z shift is what sharpens the crests -- see note (1) above.
  */
+/** @internal The JS twin of a shader formula, for its parity test. */
 export function gerstnerDisplace(x, z, time) {
   let dx = 0;
   let dz = 0;
@@ -128,6 +129,7 @@ export function gerstnerDisplace(x, z, time) {
  * reading a rounder surface than the one on screen -- subtly wrong everywhere and hardest to spot
  * exactly where the new crests are sharpest.
  */
+/** @internal The JS twin of a shader formula, for its parity test. */
 export function gerstnerNormal(x, z, time) {
   let nx = 0;
   let nz = 0;

@@ -87,7 +87,9 @@ export function moodTarget({ dangerLevel = 0, weatherBoost = 0 } = {}) {
 
 // The sun's arc lives in render/sunArc.js (it moved there so keyLight.js need not import this module); re-exported so
 // every existing importer of mood.js is unchanged.
-export { SUN_ARC_SWING, sunArcDirection };
+export { sunArcDirection };
+/** @internal Exported for the tests that enumerate it. */
+export { SUN_ARC_SWING };
 
 /** The fractions capture renders at, DECLARED: noon for a day state, midnight for a night state. */
 export const CAPTURE_SOLAR = Object.freeze({ day: 0.25, night: 0.75 });

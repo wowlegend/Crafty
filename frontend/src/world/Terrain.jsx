@@ -36,7 +36,7 @@ import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE
 import { makeMobFloorProbe } from './mobFloorProbe.js';
 
 const worker = new TerrainWorker();
-worker.postMessage({ type: 'init', payload: { seed: 12345 } });
+worker.postMessage({ type: 'init', payload: { seed: useGameStore.getState().worldSeed } });
 
 const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount }) => {
     // Rules-of-Hooks: do NOT early-return before the hooks below. An empty<->non-empty meshData

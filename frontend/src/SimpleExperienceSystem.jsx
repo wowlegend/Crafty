@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GameMethods } from './GameMethods';
 import { xpForLevel } from './game/progression.js';
 import { useT } from './i18n/i18n.js';
+import { EVENTS, emit } from './game/eventBus.js';
 
 // Simple Experience System - No Runtime Errors
 export const useSimpleExperience = () => {
@@ -34,7 +35,7 @@ export const useSimpleExperience = () => {
     if (level > prevLevel.current) {
       prevLevel.current = level;
       setLevelUpEffects((prev) => [...prev, { id: levelUpId.current++, level, timestamp: Date.now() }]);
-      if (window.playLevelUpSound) window.playLevelUpSound();
+      emit(EVENTS.levelUp, level);
     } else {
       prevLevel.current = level;
     }

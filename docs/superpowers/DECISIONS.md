@@ -52,6 +52,59 @@
    bundle (W1-H item 1), and the only spawn was DEV-only. A player who types the parameter gets the seam and nothing else
    until a script calls it.
 
+## 2026-10-30 — [LOOP] W2-G: one event bus, a world seed, the DEV bridge out of App, autosave from PERSISTED_KEYS, production knip
+
+**Decided by the W2-G platform lane under the standing grant** (DECISIONS 2026-10-28 item 14), building reset-plan rows
+26, 27 and 41 by the task script `docs/superpowers/plans/2026-10-30-crafty-w2g-platform.md`. Row 25 is the dragon
+lane's. Each stands while it earns its place.
+
+110. **One typed event bus, `game/eventBus.js`.** A closed set of names (mobKill, levelUp, reward, victory); a name
+   outside it throws at subscribe and at emit, so a typo fails where it is written. Positional payloads and
+   copy-on-write subscriber arrays, so an emit allocates nothing. An array, where the kill bus had a Set: a callback
+   subscribed twice is called twice per emit, and one unsubscribe removes both. Nothing subscribes one callback twice
+   (each kill consumer mounts once, with its own). `game/mobKillBus.js` keeps the kill event's two helpers on it
+   because `systems/CombatSystem.jsx`, which the dragon lane holds, imports them (registry
+   `REVIEW:w2g:mobkillbus-fold`).
+111. **The sound layer subscribes; the `window.play*` globals are gone.** The level-up, reward and victory emitters
+   emit; `SoundProvider` subscribes through `audio/soundEvents.js`, the one event-to-voice table. `useGameSounds` loses
+   its three reward verbs. `window.playSpellCastSound` was never assigned, so it never sounded, and the cast already
+   plays `magicCast` at the muzzle: its call is deleted and no cast event replaces it (it would play twice).
+   `reward-audio-gates` and `victory-audio-gate`, which read window globals and source text, are deleted;
+   `event-sound-gates` drives the real emitters, bus and provider instead.
+112. **A world records its seed in `game_state.worldSeed`; New World writes 12345.** In `game_state` so the tombstone
+   carries it through a build that does not know it. An absent or unusable seed is 12345, the seed every earlier save
+   was played on. `world/worldNoise.js` builds the noise for the terrain worker and the climate sampler alike; a load
+   sends the seed on `load_modifications` and re-seeds the sampler. New World keeps 12345 because no new seed is shown to
+   give a valid spawn: the Hearth, the shrines, the Blight Heart and the landmarks are placed for 12345's terrain
+   (registry `REVIEW:w2g:real-world-seeds`).
+113. **The autosave triggers on `PERSISTED_KEYS`, and a change joins a pending save.** `saveSchema.js` declares the keys a
+   save records (traced against `buildSaveData` by `autosave-trigger-gates`); `game/autosave.js` `installAutosave`
+   triggers on them, so `worldSeed` and `_tombstone`, which App's hand list lacked, now save. The clock writes `gameTime`
+   every second, so the old restart-on-change debounce never fired during play; now a save lands 5 s after the first
+   unsaved change, mid-combat included. Measured in node on the M3 Max: building and serializing a save takes 0.06,
+   0.28 and 1.17 ms at 500, 5,000 and 20,000 block edits. That is not the write a player waits on: in the page,
+   `writeWorld` also parses the world list and calls `localStorage.setItem`, synchronously on the main thread, and
+   neither is measured, on this machine or an iPad. So the figure does not say whether the autosave can stall a frame
+   (registry `REVIEW:w2g:autosave-cost`).
+114. **The DEV bridge is `devtest/devBridge.js`, imported inside `if (import.meta.env.DEV)`.** `bundle-budget.mjs`
+   checks every CI build: no name `src` registers through `registerTestHook` (59) is the quoted first argument of a
+   call in any chunk, and no chunk sets `window.__craftyTest`. It matches the call, not the word, because some hook
+   names are ordinary words in the bundle ("start" in react-dom, "viewmodel" a scene name, and store actions such as
+   `setTimeOfDay`). One registration, `readCompatMouse` in `Components.jsx`, has no DEV guard; the build drops it only
+   because no shipped code reads the registry, and removing one other hook's guard ships it with four more (mutant H3
+   of the check's proof). The message of `a1b7fabe` miscounts:
+   36 hooks moved (it says 39), and App lost 30 imported names on 18 lines (it says 27 imports).
+115. **Production knip runs in CI beside knip.** `.knip.json` marks the shipped entries with `!` and leaves four src
+   modules the game never imports out of the production project (`brand.js`, `i18n/keyReachability.js`,
+   `theme/contrast.js`, `world/detile.js`). The 51 exports only tests or tooling reach carry `@internal` with the reason
+   in the tag: 5 test seams, 12 shader twins or gate oracles, 16 constants and lists their tests enumerate, 5 inputs of a
+   script or the tailwind parity test, and 13 no game code calls (registry `REVIEW:w2g:test-only-exports`). The message
+   of `377dcec6` says 15 and 15 for the second and third; the counts are 12 and 16. The `start` script duplicated `dev`
+   and nothing ran it, so it is deleted.
+116. **`atmosphere-isolation-gates` reads one hook's own body.** Its fixed 700-character window after `exitCapture`
+   reached `openModal`'s reset, so deleting `exitCapture`'s stayed green; the slice now runs from a hook's registration
+   to the next, comments stripped.
+
 ## 2026-10-30 — commit `faa65ee1` carries the WRONG message. Read this instead.
 
 `faa65ee1` on `feat/w2d-hud` is titled "fix(render): Show Stats no longer paces the game it measures", another lane's

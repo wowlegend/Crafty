@@ -34,6 +34,7 @@ const DAY_LO = -0.05;
 const DAY_HI = 0.15;
 
 /** JS twin of the vertex sway: the [dx, dz] a leaf vertex at world (x, y, z) moves at time t (seconds). */
+/** @internal The JS twin of a shader formula, for its parity test. */
 export function leafSway(x, y, z, t) {
   const p = (x + y) * SWAY_K;
   const q = (z - y) * SWAY_K;
@@ -41,6 +42,7 @@ export function leafSway(x, y, z, t) {
 }
 
 /** JS twin of the back-light lobe over d = dot(view direction, sun direction): 0 facing away, 1 looking into the sun. */
+/** @internal The JS twin of a shader formula, for its parity test. */
 export function backLight(d) {
   return Math.pow(Math.max(d, 0), BACK_POWER);
 }
@@ -51,6 +53,7 @@ const smoothstep = (a, b, x) => {
 };
 
 /** JS twin of the day factor over the sun's height. */
+/** @internal The JS twin of a shader formula, for its parity test. */
 export function leafDay(sunY) {
   return smoothstep(DAY_LO, DAY_HI, sunY);
 }

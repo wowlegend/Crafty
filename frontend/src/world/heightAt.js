@@ -8,7 +8,8 @@
 // footstep/ambience read the wrong surface. The mirror+test approach failed; this shared module +
 // the heightat-single-source gate make a re-copy structurally impossible.
 //
-// Pure: callers pass their own seeded `noise2D` (both seed identically via lcg(12345)).
+// Pure: callers pass their own seeded `noise2D`; the terrain worker and the climate sampler both build it from the
+// world's seed through worldNoise.js.
 
 // Highland swell tunables (Kevin's "world reads very mountainous" -> RARE horizon peaks over gentle
 // traversable plains): the swell only fires where the low-freq highland noise exceeds THRESHOLD,

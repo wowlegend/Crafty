@@ -1,5 +1,5 @@
 {
-  "_count": 98,
+  "_count": 95,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -72,9 +72,7 @@
     "tests/gates/quest-persistence-gates.test.js",
     "tests/gates/radial-minimap-gates.test.js",
     "tests/gates/repeatable-quest-gates.test.js",
-    "tests/gates/reward-audio-gates.test.js",
     "tests/gates/save-consolidation-gates.test.js",
-    "tests/gates/save-slot-ownership-gates.test.js",
     "tests/gates/settings-a11y-gates.test.js",
     "tests/gates/shrine-chest-gates.test.js",
     "tests/gates/siege-gates.test.js",
@@ -97,7 +95,6 @@
     "tests/gates/ui-sounds-gate.test.js",
     "tests/gates/verb-router-gates.test.js",
     "tests/gates/vfx-extraction-gates.test.js",
-    "tests/gates/victory-audio-gate.test.js",
     "tests/gates/weather-density-gate.test.js"
   ]
 }
