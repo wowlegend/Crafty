@@ -10,7 +10,8 @@ import { applyBossDamage, runBossKillEffects } from '../game/bossKill.js';
 import { runIsolatedEffects } from '../game/isolatedEffects.js';
 import { bossEntranceBeat, ENTRANCE } from '../game/bossEntrance.js';
 import { phaseForHealth } from '../game/bossPersistence.js';
-import { isWorldFrozenNow } from '../game/worldClock.js';
+import { isWorldFrozenNow, worldNow } from '../game/worldClock.js';
+import { bossCombat, bossDamage } from '../game/bossCombat.js';
 import { preloadDragon, shouldPreloadAtMount } from '../render/dragonLoader.js';
 import { parseLookbookParam } from '../render/lookbookSeam.js';
 
@@ -154,9 +155,12 @@ export const useBossSystem = (playerLevel) => {
     // B2h: the updater is now PURE — it only computes the new health. The kill's ~8 side effects moved to
     // the post-commit effect below, so a throwing reward can no longer void the win (they used to run inside
     // this updater, with the idempotency latch set first and markGameWon last — one throw stranded the win).
-    const damageBoss = useCallback((amount) => {
+    // `source` is the damage source CombatSystem uses (combat/damageSource.js): the player's hits take the riposte while
+    // the dragon is staggered (game/bossCombat.js bossDamage), an ally's or a hazard's never do.
+    const damageBoss = useCallback((amount, source = 'player') => {
         if (!bossActive || bossHealth <= 0) return;
-        setBossHealth(prev => applyBossDamage(prev, amount).newHealth);
+        const dealt = bossDamage(amount, source, bossCombat, worldNow());
+        setBossHealth(prev => applyBossDamage(prev, dealt).newHealth);
     }, [bossActive, bossHealth]);
 
     // B2h: the boss-kill beat. Fires ONCE (bossKilledRef latch) when health reaches 0, AFTER the health
