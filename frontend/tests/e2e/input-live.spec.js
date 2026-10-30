@@ -115,7 +115,9 @@ test.describe('the victory screen on desktop', () => {
     expect(last.exits - exitsBefore, 'victory did not release the pointer').toBeGreaterThanOrEqual(1);
     expect(last.showSettings, 'the release under victory opened the pause panel under it').toBe(false);
 
-    // The world holds behind the scrim.
+    // The world holds behind the scrim. A hold begins at the world clock's next tick (game/worldClock.js), and a frame on
+    // CI can last hundreds of ms, so the window opens two frames after the raise.
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const t0 = (await readState(page)).worldNow;
     await page.waitForTimeout(600);
     const t1 = (await readState(page)).worldNow;
