@@ -17,21 +17,29 @@
 //    the cell would be open to the controller for the frame before the step.
 // Retirement goes by sequence: the click's update_block carries `seq`, the worker stamps every chunk_mesh with the last seq
 // it has applied (`editSeq`), and a mesh retires only its own chunk's cuboids with seq <= editSeq, so a mesh made for an
-// earlier message still in flight never retires a later cell.
+// earlier message still in flight never retires a later cell. The worker keeps its last seq for as long as it lives, so
+// the numbering must too: Terrain.jsx makes it with the worker, at module scope, and hands it to each registry a world
+// mount makes. Numbered from 1 again by a remount, a new cell would go on the stamp of a mesh made before it.
 //
 // Cost: at most buildFootprint's MAX_CELLS cuboids a click, each alive from the click until one step after its chunk
 // re-meshes; nothing is allocated per frame, and the cut costs one pairwise cast per unindexed collider, on one frame.
 import { CHUNK_HEIGHT, chunkOf } from './chunkLayout.js';
 
+/** A placement numbering: each call returns the next seq, from 1. */
+export function createEditSeq() {
+  let last = 0;
+  return () => (last += 1);
+}
+
 /**
  * @param {import('@dimforge/rapier3d-compat').World} world the physics world the player's controller sweeps
  * @param {typeof import('@dimforge/rapier3d-compat')} rapier the Rapier module (ColliderDesc)
+ * @param {() => number} nextSeq the placement numbering (createEditSeq), as long-lived as the worker that echoes it
  */
-export function createPlacedCellColliders(world, rapier) {
+export function createPlacedCellColliders(world, rapier, nextSeq) {
   /** @type {{collider: object, cx: number, cz: number, seq: number, landed: boolean}[]} */
   const cells = [];
   const unindexed = [];
-  let lastSeq = 0;
 
   const drop = (i) => {
     const { collider } = cells[i];
@@ -44,13 +52,13 @@ export function createPlacedCellColliders(world, rapier) {
   return {
     /** Make the cell at world (x, y, z) solid now. Returns the sequence number its update_block carries. */
     add(x, y, z) {
-      lastSeq += 1;
+      const seq = nextSeq();
       // The worker drops an edit outside the chunk's height, so no mesh would ever retire a cuboid there.
-      if (y < 0 || y >= CHUNK_HEIGHT) return lastSeq;
+      if (y < 0 || y >= CHUNK_HEIGHT) return seq;
       const collider = world.createCollider(rapier.ColliderDesc.cuboid(0.5, 0.5, 0.5).setTranslation(x + 0.5, y + 0.5, z + 0.5));
-      cells.push({ collider, cx: chunkOf(x), cz: chunkOf(z), seq: lastSeq, landed: false });
+      cells.push({ collider, cx: chunkOf(x), cz: chunkOf(z), seq, landed: false });
       unindexed.push(collider);
-      return lastSeq;
+      return seq;
     },
     /**
      * The chunk's trimesh holding every edit up to `editSeq` has been created (null when the mesh is empty); the chunk's

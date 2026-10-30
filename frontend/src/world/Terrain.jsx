@@ -33,12 +33,14 @@ import { chestHasItems } from '../game/chestState.js';
 import { blockForId } from './blockIds';
 import { placeAtHit } from './placeAtHit.js';
 import { mineTarget } from './buildTarget.js';
-import { createPlacedCellColliders } from './placedCellColliders.js';
+import { createPlacedCellColliders, createEditSeq } from './placedCellColliders.js';
 import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE } from './loadedChunks.js';
 import { makeMobFloorProbe } from './mobFloorProbe.js';
 
 const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: useGameStore.getState().worldSeed } });
+// The placement numbering the worker echoes on its meshes lives exactly as long as the worker (world/placedCellColliders.js).
+const nextEditSeq = createEditSeq();
 
 const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount, placedCells }) => {
     // Rules-of-Hooks: do NOT early-return before the hooks below. An empty<->non-empty meshData
@@ -424,7 +426,7 @@ export const MinecraftWorld = React.memo(() => {
 
     // Each placed cell is solid from the click: a stand-in collider until its chunk's trimesh is indexed
     // (world/placedCellColliders.js). The Player loop reads the colliders its sweep cannot see yet through GameMethods.
-    const placedCells = React.useMemo(() => createPlacedCellColliders(world, rapier), [world, rapier]);
+    const placedCells = React.useMemo(() => createPlacedCellColliders(world, rapier, nextEditSeq), [world, rapier]);
     useEffect(() => {
         GameMethods.placedCells = placedCells;
         return () => {

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { placeAtHit } from '../../src/world/placeAtHit.js';
 import { mineTarget } from '../../src/world/buildTarget.js';
-import { createPlacedCellColliders } from '../../src/world/placedCellColliders.js';
+import { createPlacedCellColliders, createEditSeq } from '../../src/world/placedCellColliders.js';
 import { generateMesh } from '../../src/world/mesher.js';
 import { voxelIndex, CHUNK_SIZE, CHUNK_VOLUME, chunkOf } from '../../src/world/chunkLayout.js';
 import { moveKinematic } from '../../src/game/kinematicMove.js';
@@ -185,7 +185,7 @@ function makeScene({ x = 4.5, z = 8.5, edits = [] } = {}) {
     S.chunks.get(`${cx}_${cz}`)[voxelIndex(ex - cx * CHUNK_SIZE, ey, ez - cz * CHUNK_SIZE)] = t;
   }
   for (const key of S.chunks.keys()) mountChunk(S, key);
-  S.cells = createPlacedCellColliders(world, RAPIER);
+  S.cells = createPlacedCellColliders(world, RAPIER, createEditSeq());
   const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x, LAND_TOP + 1.2, z));
   const collider = world.createCollider(RAPIER.ColliderDesc.capsule(BASE_CAPSULE.halfHeight, BASE_CAPSULE.radius), body);
   S.p = playerParts(world, body, collider, S.cells);
@@ -628,7 +628,7 @@ describe('a placed cell is solid to the player from the click, however late its 
 
   it('no stand-in outlives its chunk, the terrain, or one step past the mesh that holds its cell, and none is made where the worker drops the edit', () => {
     const world = new RAPIER.World({ x: 0, y: -30, z: 0 });
-    const cells = createPlacedCellColliders(world, RAPIER);
+    const cells = createPlacedCellColliders(world, RAPIER, createEditSeq());
     const n0 = world.colliders.len();
     cells.add(3, 31, 8);
     const b = cells.add(20, 31, 8);
@@ -649,6 +649,31 @@ describe('a placed cell is solid to the player from the click, however late its 
     expect(cells.size(), 'an unloaded chunk kept its cuboid').toBe(1);
     cells.clear();
     expect([cells.size(), world.colliders.len() - n0], 'a cleared terrain kept a cuboid').toEqual([0, 0]);
+  });
+
+  it('a world mounted again over the same worker numbers its placements on, so a mesh stamped before them never retires their stand-ins', () => {
+    // terrain.worker.js keeps the last placement seq it applied for as long as it lives; Terrain.jsx makes the numbering
+    // beside it, at module scope, and hands it to the registry each mount of the world makes. Handed that way, a second
+    // mount's first placement must number past the first mount's last.
+    const world = new RAPIER.World({ x: 0, y: -30, z: 0 });
+    const nextSeq = createEditSeq();
+    const first = createPlacedCellColliders(world, RAPIER, nextSeq);
+    first.add(3, 31, 8);
+    first.add(4, 31, 8);
+    const stamped = first.add(5, 31, 8); // the worker's last seq once these reach it: every mesh it posts carries it
+    first.clear(); // the world unmounts
+    const again = createPlacedCellColliders(world, RAPIER, nextSeq);
+    const seq = again.add(3, 31, 8);
+    expect(seq, `the remounted world numbered its first placement ${seq}, at or below the worker's last seq ${stamped}`).toBeGreaterThan(stamped);
+    // A mesh of that chunk the worker made before the new placement reached it (a mine just before) carries `stamped`.
+    again.landed(0, 0, stamped, null);
+    world.step();
+    again.afterStep();
+    expect(again.size(), 'a mesh stamped before the placement reached the worker retired its stand-in').toBe(1);
+    again.landed(0, 0, seq, null);
+    world.step();
+    again.afterStep();
+    expect(again.size(), 'SETUP: the mesh holding the placement did not retire its stand-in, so the hold above shows nothing').toBe(0);
   });
 });
 
