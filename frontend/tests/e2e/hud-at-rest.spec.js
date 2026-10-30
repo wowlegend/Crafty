@@ -16,8 +16,9 @@ import { bootDev, startPlayActive } from './_boot.js';
 //     as it spawns, named by the real aim cone); the nameplate with a notice; the nameplate, the boss bar and the
 //     dragon's arrival as bossSystem raises it (forceBossSpawn and its notice.bossAwakens in one task, the earlier notice
 //     possibly still up); the boss bar alone (the brute killed, every notice gone); the boss bar with the dragon's phase
-//     call, raised by the real phase change (the dragon damaged to a quarter); a plain notice staged on that call; and,
-//     where the stack shares the encounter column, the plain notice taking the boss bar's line when the call leaves.
+//     call, raised by the real phase change (the dragon damaged to a quarter); one of its attack calls as BossEntity
+//     raises it with a plain notice staged on it; and, where the stack shares the encounter column, the plain notice
+//     taking the boss bar's line when the call leaves.
 //     Where the stack stands on its own (a keyboard, an iPad) it holds every notice up; in the encounter column (a phone,
 //     a phone on its side) the column holds one notice at a time, in the boss bar's own line while the bar is up, the
 //     dragon's call before any other (DECISIONS 2026-10-29 item 92). Notices are staged in a held world, so no kill, claim
@@ -25,8 +26,8 @@ import { bootDev, startPlayActive } from './_boot.js';
 //     clears it while the read waits, and the log says so. Each state's rects are read in one page task. The notice
 //     surfaces lie inside every viewport; on the phones every touch target does.
 //   iPad 820x1180: a finger's tap on the quest line opens the list (the touch layer leaves the tracker its taps).
-// NOT CHECKED: three or more notices at once, the dragon's attack calls (render/BossEntity.jsx raises them only while the
-// world runs), the level-up banner, the touch tray, a fan or the quest list opened, the panels, a phone shorter than 390
+// NOT CHECKED: three or more notices at once, the dragon's attack calls raised by render/BossEntity.jsx itself (it raises
+// them only while the world runs; the spec raises one as it does), the level-up banner, the touch tray, a fan or the quest list opened, the panels, a phone shorter than 390
 // px on its side (Safari's toolbars), an upright phone under 617 px tall, and anything after the first minute of play.
 
 const RECT_IDS = ['stat-health', 'stat-mana', 'ember-bar', 'hotbar', 'hotbar-xp-row', 'quest-tracker', 'hud-compass',
@@ -313,23 +314,40 @@ for (const vp of [
       await noNotices(page, 'with the boss bar up');
       await check('with the boss bar alone', ['boss-health-bar'], { want: [[]] });
 
-      // The dragon's phase call through the real phase change: the dragon damaged to a quarter (phase 3).
-      const hp = await page.evaluate(() => {
+      // The dragon's phase call through the real phase change: the dragon damaged to a quarter (phase 3). Read as soon as
+      // it shows: its 4 s run from the change, and the page can stall after it (the log says how long, and the longest
+      // task in that window).
+      const phase = await page.evaluate(() => {
         const s = window.useGameStore.getState();
         if (typeof s.damageBoss !== 'function') return null;
+        window.__phaseTasks = [];
+        try {
+          window.__phaseObs = new PerformanceObserver((list) => { for (const e of list.getEntries()) window.__phaseTasks.push(e.duration); });
+          window.__phaseObs.observe({ type: 'longtask' });
+        } catch { /* no long-task timing in this browser: the log says null */ }
+        window.__phaseAt = performance.now();
         const before = s.bossHealth;
         s.damageBoss(Math.ceil(before * 0.75));
         return before;
       });
-      expect(hp, 'SETUP: no damageBoss on the store, or the dragon has no health').toBeGreaterThan(0);
-      await expect(page.locator('[data-notification-key="notice.bossPhase3"]'), `SETUP: the phase 3 call never showed (the dragon at ${hp})`).toHaveCount(1, { timeout: 5000 });
-      await page.waitForTimeout(800);
+      expect(phase, 'SETUP: no damageBoss on the store, or the dragon has no health').toBeGreaterThan(0);
+      await expect(page.locator('[data-notification-key="notice.bossPhase3"]'), `SETUP: the phase 3 call never showed (the dragon at ${phase})`).toHaveCount(1, { timeout: 8000 });
+      const stall = await page.evaluate(() => {
+        window.__phaseObs?.disconnect();
+        return { shownAfterMs: Math.round(performance.now() - window.__phaseAt), longestTaskMs: window.__phaseTasks.length ? Math.round(Math.max(...window.__phaseTasks)) : null };
+      });
+      console.log(`hud-at-rest ${vp.name}: the phase call showed ${JSON.stringify(stall)}`);
       await check('with the boss bar and the dragon\'s phase call', ['boss-health-bar'],
         { want: [vp.column ? ['bar:notice.bossPhase3'] : stack('notice.bossPhase3')] });
 
+      // One of the dragon's attack calls as render/BossEntity.jsx raises it (bossCall: a key marked `boss`), then a plain
+      // notice staged on it: the encounter column keeps the call and holds the notice back; a stack holds both.
+      await noNotices(page, 'after the phase call');
+      await stageNotice(page, 'notice.bossFireball', { type: 'warning', opts: { boss: true } });
+      await page.waitForTimeout(400);
       await stageNotice(page, 'notice.dusk', { onTop: true, held: !!vp.column });
-      await check('with the boss bar, the phase call and a notice', ['boss-health-bar'],
-        { want: [vp.column ? ['bar:notice.bossPhase3'] : stack('notice.bossPhase3', 'notice.dusk')] });
+      await check('with the boss bar, the dragon\'s attack call and a notice', ['boss-health-bar'],
+        { want: [vp.column ? ['bar:notice.bossFireball'] : stack('notice.bossFireball', 'notice.dusk')] });
       if (vp.column) {
         // The notice held back is live: it takes the boss bar's line when the call leaves, inside its own 4 s.
         await page.waitForFunction(() => {
