@@ -12,6 +12,10 @@
  * the minimap at 60% and the coin count down the right edge beside that column; the vitals on the left edge beside
  * the crosshair, narrow enough to clear it; the hotbar nearer the bottom, so its XP edge clears the cast button,
  * whose 9% anchor reaches it under 711 px tall.
+ * Where the toast stack shares the encounter column (a phone, a short screen) the column holds one notice at a time, in the
+ * boss bar's own line while the bar is up (ui/notifications.js lineNotification), so the column's height is bounded
+ * however many notices are live. On a tall touch screen wider than tall the stack stands left of the right fans'
+ * column and holds the newest toasts that fit above the thumb cluster (tallToastPlace).
  * SHORT (a touch screen wider than tall and too short for the tall layout: a phone on its side): the thumb cluster's
  * fans climb to within 73 px of the top at 390 px (input/aspectWheel.js stacks the spell row above the Aspect row on
  * the joystick's 13% anchor), so the right edge is the fans', and the dial, the minimap and the coin count go to the top
@@ -24,7 +28,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { isTouchUIMode } from '../input/touchDevice';
-import { FAN_ROW_ANCHOR_PCT, SPELL_ROW_BOTTOM, TOUCH_BTN } from '../input/aspectWheel';
+import { FAN_ROW_ANCHOR_PCT, FAN_ANCHOR_RIGHT, SPELL_ROW_BOTTOM, TOUCH_BTN } from '../input/aspectWheel';
 
 /** The gap, px, the HUD leaves between two of its pieces, and between a piece and a touch control. */
 export const HUD_GAP = 8;
@@ -143,6 +147,45 @@ export function bossWidth(mode) {
 const TOAST_MAX_W = 320;
 export const toastMaxWidth = (mode) => (mode.phone ? `min(${TOAST_MAX_W}px, calc(100vw - ${2 * PHONE_COLUMN_INSET}px))` : TOAST_MAX_W);
 
+/** PURE. How many lines the boss bar's line holds where the encounter column shows its notice there (toastsInEncounter):
+ *  one on a short screen, where 14 px separate the compact bar from the hotbar's XP edge, so the line keeps the name's
+ *  height (the bar is 412 px wide there); three on a phone, whose column has 46 px clear under the bar and is about 200
+ *  px wide. */
+export const bossCallLines = (mode) => (mode.short ? 1 : 3);
+/** The lines the encounter column's one toast holds: four at 188 to 320 px wide reach 91 px, inside the room a phone's
+ *  column leaves under the nameplate and a short screen's under the crosshair. */
+export const COLUMN_TOAST_LINES = 4;
+
+// The tall touch layout's stack under the coin count (its bottom 352 px), and what stands under it in ui/TouchControls.jsx:
+// the right fans' column (input/aspectWheel.js: FAN_ANCHOR_RIGHT, TOUCH_BTN wide), whose spell opener is its highest
+// point, and the jump (40 px from the right edge, 60 px square, its bottom 11% of the height plus 96 px up), the highest
+// of the thumb cluster's buttons left of that column.
+/** The tall touch layout's toast stack top, px. */
+export const TOUCH_TOAST_TOP = 372;
+/** The lines a toast holds where the stack is counted (the tall touch layout). */
+export const TOAST_LINES = 3;
+/** A toast's height, px, at `lines` lines of its 14 px type (line height 1.2) inside 8 px of padding and a 4 px border
+ *  (ui/primitives/Toast.jsx), and the space between two toasts (QuestSystem.jsx NotificationStack: space-y-2). */
+const toastHeight = (lines) => 2 * 8 + 2 * 4 + lines * 14 * 1.2;
+const TOAST_SPACE = 8;
+const FANS_INSET = FAN_ANCHOR_RIGHT + TOUCH_BTN;
+const jumpTop = (h) => h * (1 - 11 / 100) - 96 - 60;
+const spellOpenerTop = (h) => h * (1 - FAN_ROW_ANCHOR_PCT / 100) - (SPELL_ROW_BOTTOM + TOUCH_BTN);
+
+/**
+ * PURE. The tall touch layout's toast stack in a viewport `w` x `h`: { right, px from the right edge; slots, how many
+ * toasts of TOAST_LINES lines it holds, newest kept }. Wider than tall, the fans' column holds the right edge from the
+ * spell opener down, which is about 75 px under the stack's top on an 820 px iPad, so the stack stands left of the column
+ * and stops above the jump. Upright it keeps the edge (the screen's centre is in the column beside it on narrower
+ * screens) and stops above the spell opener. Never fewer than one, so a notice always shows.
+ */
+export function tallToastPlace(w, h) {
+  const landscape = w > h;
+  const right = landscape ? FANS_INSET + HUD_GAP : 16;
+  const room = (landscape ? jumpTop(h) : spellOpenerTop(h)) - HUD_GAP - TOUCH_TOAST_TOP;
+  return { right, slots: Math.max(1, Math.floor((room + TOAST_SPACE) / (toastHeight(TOAST_LINES) + TOAST_SPACE))) };
+}
+
 const subscribe = (onChange) => {
   window.addEventListener('resize', onChange);
   return () => window.removeEventListener('resize', onChange);
@@ -158,4 +201,17 @@ const snapshot = () => {
 /** The layout for this window, re-rendering only when it changes (a resize or a rotation: a rare event, never a frame). */
 export function useHudMode() {
   return useSyncExternalStore(subscribe, snapshot, snapshot);
+}
+
+const places = new Map();
+const placeSnapshot = () => {
+  const p = tallToastPlace(window.innerWidth, window.innerHeight);
+  const key = `${p.right}|${p.slots}`;
+  if (!places.has(key)) places.set(key, p);
+  return places.get(key);
+};
+
+/** The tall touch layout's toast stack for this window (tallToastPlace), re-rendering only when it changes. */
+export function useTallToastPlace() {
+  return useSyncExternalStore(subscribe, placeSnapshot, placeSnapshot);
 }

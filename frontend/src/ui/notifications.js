@@ -1,10 +1,11 @@
 // notifications.js — the one notification channel's rules (the HUD lane's task script, decision 5). Every toast the
 // game raises goes through the store's addNotification (QuestSystem's useQuestSystem publishes it): the quest and loot
-// news, the dusk warning, the siege and dawn notices, the dragon's calls and an Aspect's first unlock. Two things are
+// news, the dusk warning, the siege and dawn notices, the dragon's calls and an Aspect's first unlock. Three things are
 // decided here, purely: what a notification says (a dictionary key renders through t() when it is SHOWN, so a toast reads
 // in the language the player has now; a plain string shows as written), and whether it is shown at all (the same key
-// inside one toast's life is the same news, and is dropped). A plain string is never dropped: the denial notices say why
-// each press was refused, and a press the player repeats must answer each time.
+// inside one toast's life is the same news, and is dropped), and which one a single line shows where only one fits. A
+// plain string is never dropped: the denial notices say why each press was refused, and a press the player repeats must
+// answer each time.
 import { STRINGS } from '../i18n/strings.js';
 import { t as translate } from '../i18n/i18n.js';
 
@@ -12,11 +13,24 @@ import { t as translate } from '../i18n/i18n.js';
 export const TOAST_MS = 4000;
 
 /** PURE. A notification from what a caller hands addNotification: a dictionary key (with `vars`) or a plain string. Its
- *  `dedupe` is `opts.key`, else the key; a plain string without `opts.key` has none. */
+ *  `dedupe` is `opts.key`, else the key; a plain string without `opts.key` has none. `opts.boss` marks one of the
+ *  dragon's calls (world/bossSystem.js, render/BossEntity.jsx), which the encounter column shows before any other. */
 export function toNotification(message, type = 'info', opts = {}) {
   const isKey = typeof message === 'string' && Object.prototype.hasOwnProperty.call(STRINGS.en, message);
   const base = isKey ? { key: message, vars: opts.vars } : { text: String(message ?? '') };
-  return { ...base, type, dedupe: opts.key ?? (isKey ? message : null) };
+  return { ...base, type, dedupe: opts.key ?? (isKey ? message : null), ...(opts.boss ? { boss: true } : {}) };
+}
+
+/** PURE. The one notification a single line shows from the live list (oldest first): the newest of the dragon's calls,
+ *  else the newest of the rest; null when none is up. Each still leaves at the end of its own life, so a notice the line
+ *  holds back is shown only if it outlives what stood in front of it, and none is shown after the moment it describes. */
+export function lineNotification(live) {
+  let newest = null;
+  for (let i = (live?.length ?? 0) - 1; i >= 0; i--) {
+    if (live[i].boss) return live[i];
+    newest ??= live[i];
+  }
+  return newest;
 }
 
 /** PURE. Whether a notification with `dedupe` may show at `now`, given `recent` (dedupe -> when one last showed). One

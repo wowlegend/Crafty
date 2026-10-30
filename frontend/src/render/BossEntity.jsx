@@ -13,6 +13,7 @@ import { bossEmissiveIntensity, OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { bossTierStats } from '../game/bossTier.js';
+import { bossCall } from '../world/bossSystem.js';
 import { worldDelta, isWorldFrozen, worldNow } from '../game/worldClock.js';
 import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
 import { windupRamp } from '../game/attackTelegraph.js';
@@ -306,9 +307,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 
                 spawnFireball(headPos, fireballDir);
                 
-                if (useGameStore.getState().addNotification) {
-                    useGameStore.getState().addNotification('The Shadow Dragon drops a FIREBALL from above!', 'warning');
-                }
+                bossCall('notice.bossFireball', 'warning');
             }
         }
 
@@ -335,9 +334,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                     useGameStore.getState().damagePlayer(phase.damage * 1.3, 'Shadow Dragon Shockwave');
                 }
 
-                if (useGameStore.getState().addNotification) {
-                    useGameStore.getState().addNotification('Pushed back! Shadow Dragon unleashed a KNOCKBACK ROAR!', 'danger');
-                }
+                bossCall('notice.bossRoar', 'danger');
 
                 // Trigger dynamic boss voxel destruction in Phase 2
                 destroyVoxelsInRadius(new THREE.Vector3(bx, by, bz), 5.0, Math.floor(Math.random() * 5) + 4);
@@ -358,9 +355,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 
                 spawnLavaZone(new THREE.Vector3(playerX, playerGroundY + 0.05, playerZ));
                 
-                if (useGameStore.getState().addNotification) {
-                    useGameStore.getState().addNotification('The ground is melting! Step out of the LAVA ZONES!', 'danger');
-                }
+                bossCall('notice.bossLava', 'danger');
 
                 // Trigger dynamic boss voxel destruction in Phase 3
                 destroyVoxelsInRadius(new THREE.Vector3(playerX, playerGroundY, playerZ), 5.0, Math.floor(Math.random() * 5) + 4);
@@ -377,9 +372,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                     spawnMob(bx + Math.cos(angle1) * 7, bz + Math.sin(angle1) * 7, 'skeleton');
                     spawnMob(bx + Math.cos(angle2) * 7, bz + Math.sin(angle2) * 7, 'skeleton');
                     
-                    if (useGameStore.getState().addNotification) {
-                        useGameStore.getState().addNotification('The Shadow Dragon calls upon Skeleton Cohorts!', 'warning');
-                    }
+                    bossCall('notice.bossSummon', 'warning');
                 }
             }
         }

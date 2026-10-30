@@ -21,6 +21,7 @@ import { questRewards } from './game/questRewards.js';
 import { reduceClaim, MAX_ACTIVE_QUESTS } from './game/questClaim.js';
 import { resolveChestHeights } from './game/captureRest.js';
 import { toNotification, admits, notificationText, TOAST_MS } from './ui/notifications.js';
+import { TOUCH_TOAST_TOP } from './ui/hudLayout.js';
 
 // Quest & Progression System: Quests, Loot Drops, Treasure Chests, Achievements
 // Loot DATA (LOOT_TABLES + CHEST_LOOT) lives in src/data/lootTables.js (pure module).
@@ -640,16 +641,21 @@ const NOTIF_ICON = {
     info: 'sparkles',
 };
 
-export const NotificationStack = React.memo(({ notifications, inline = false, maxWidth = 320 }) => {
+/** Clamp a toast's words to `lines` lines, an ellipsis ending the last. */
+const clampLines = (lines) => ({ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: lines, overflow: 'hidden' });
+
+export const NotificationStack = React.memo(({ notifications, inline = false, single = false, maxWidth = 320, right = 16, lines = null }) => {
     const t = useT();
     // Standing on its own at the right edge (a keyboard, a tall touch screen): below the day-phase dial (top 68 px, 72 px
     // tall), which a toast must not cover (STATUS G-ledger 38/a), and on touch below the minimap under the dial and the
-    // coin count under it (HUD.jsx CoinReadout). `inline`: in the encounter column under the boss bar (a phone, a phone
-    // on its side: HUD.jsx Encounter), where those screens leave a band clear across the middle.
-    const place = inline ? '' : `absolute ${isTouchUIMode() ? 'top-[372px]' : 'top-[164px]'} right-4 z-30 `;
+    // coin count under it (HUD.jsx CoinReadout), `right` px from the edge (ui/hudLayout.js tallToastPlace). `inline`: in
+    // the encounter column (a phone, a phone on its side: HUD.jsx Encounter), where those screens leave a band clear
+    // across the middle. `single`: one toast at a time, the leaving one gone before the next arrives, so two never stand
+    // in a column sized for one. `lines`: each toast's words clamped, so a counted stack keeps its height.
+    const place = inline ? { maxWidth } : { maxWidth, right, top: isTouchUIMode() ? TOUCH_TOAST_TOP : 164 };
     return (
-        <div data-testid="notification-stack" className={`${place}pointer-events-none space-y-2`} style={{ maxWidth }}>
-            <AnimatePresence>
+        <div data-testid="notification-stack" className={`${inline ? '' : 'absolute z-30 '}pointer-events-none space-y-2`} style={place}>
+            <AnimatePresence mode={single ? 'wait' : 'sync'}>
                 {notifications.map(notif => {
                     const status = NOTIF_STATUS[notif.type] || 'info';
                     const iconName = NOTIF_ICON[notif.type] || 'sparkles';
@@ -665,7 +671,7 @@ export const NotificationStack = React.memo(({ notifications, inline = false, ma
                         >
                             <Toast status={status} className="w-full text-sm font-bold">
                                 <Icon name={iconName} size={16} className="flex-none" />
-                                <span>{notificationText(notif, t)}</span>
+                                <span style={lines ? clampLines(lines) : undefined}>{notificationText(notif, t)}</span>
                             </Toast>
                         </motion.div>
                     );

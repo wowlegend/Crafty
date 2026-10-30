@@ -57,6 +57,8 @@ describe('B2g — the hook is seeded from the RESTORED store, not from the confi
     rerender();
     expect(result.current.bossPhase).toBe(1);
     expect(notices()).toEqual([expect.stringMatching(/PHASE 2/)]);
+    // One of the dragon's calls: the encounter column shows it in the boss bar's line before any other notice.
+    expect(useGameStore.getState().addNotification.mock.calls.map(([, type, o]) => [type, o?.boss])).toEqual([['danger', true]]);
   });
 
   it('mounts a fresh encounter at full health when nothing was restored', () => {

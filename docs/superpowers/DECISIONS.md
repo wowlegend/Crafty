@@ -87,10 +87,31 @@ items. Each stands while it earns its place.
    (`world/survivalSystem.js`; the `SurvivalWarning` banner is deleted), the dragon's five calls
    (`world/bossSystem.js`; its own banner, its state and `bossNotifTimers.js` are deleted, since a toast clears itself)
    and an Aspect's first unlock (`ui/AspectHintToast.jsx` hands the hint to the channel once play is live again, so it
-   is not lost behind the Talents panel where it was earned). **Where the stack stands:** at the right edge on its own on
-   a keyboard (under the dial) and on a tall touch screen (under the coin count); on a phone and a phone on its side it
-   joins the encounter column under the boss bar (item 90), the one band those screens leave clear across the middle
-   (at 844x390 the stack stood 372 px down, off the screen). **On touch the stack is the only view of the list:** the
+   is not lost behind the Talents panel where it was earned), and the dragon's four attack calls (`render/BossEntity.jsx`:
+   the fireball, the roar, the lava and the summons, which were English sentences). **Where the stack stands:** at the
+   right edge on its own on a keyboard (under the dial, every notice up) and on a tall touch screen (under the coin count,
+   the newest toasts that fit above the touch controls under it, each clamped to three lines: `ui/hudLayout.js`
+   `tallToastPlace`). On its side the stack stands left of the right fans' column and stops above the jump, two toasts on
+   a 1180x820 iPad, where at the edge two toasts or a three-line call reached the spell opener; upright it keeps the edge
+   and stops above the spell opener, four on an 820x1180 iPad. On a phone and a phone on its side the notices join the
+   encounter column (item 90), the one band those screens leave clear across the middle (at 844x390 the stack stood 372
+   px down, off the screen), and **the column holds one notice at a time** (`ui/notifications.js` `lineNotification`):
+   the newest of the dragon's calls (every notice `world/bossSystem.js` and `render/BossEntity.jsx` raise goes through
+   `bossCall`, marked `boss`), else the newest notice. While the boss bar is up it shows inside the bar's own line, in
+   the name's place beside the dragon's icon, clamped to three lines on a phone and one on a phone on its side, where 14
+   px separate the bar from the hotbar's XP edge (`bossCallLines`); with the bar down it is the one toast, four lines at
+   most. **Why one at a time in the bar's line, and not held until the bar is down:** a fight lasts minutes, and a notice
+   held until the dragon falls arrives after the moment it describes (a denial says why the press just made was refused;
+   a drop or a quest belongs to the kill that raised it), and every held notice would arrive at once on top of the
+   dragon's defeat. In the line each keeps its own 4 s: a notice behind the dragon's call shows if it outlives the call
+   and is lost if it does not, the cost of a band sized for one line. The stack under the boss bar had no room there: when
+   the dragon raised its arrival with the bar up it covered the crosshair's box and the vitals for 4 s at 390x664 and
+   375x667 and the hotbar at 844x390, and two toasts reached the vitals with no boss at all. Proof:
+   `tests/e2e/hud-at-rest.spec.js` (at every viewport: two notices at once, the arrival with the bar up, the real phase
+   call, a notice staged on it, and on the phones that notice taking the bar's line when the call leaves),
+   `tests/gates/hud-notices-gates.test.jsx`, and `tests/gates/hud-layout-gates.test.js` (a full tall stack against
+   every touch control at 4,604 tall touch viewports). The boss bar's name, phase line and numbers read through t() in
+   both dictionaries. **On touch the stack is the only view of the list:** the
    combat log drew the same live list (each line leaves with its toast), and on touch it sat on the joystick on both
    iPads and on the vitals and the tray's opener on a phone on its side, so it is drawn on a keyboard only
    (`ui/CombatLog.jsx`). Proof nothing is lost: `tests/gates/combat-log-gates.test.js` (the feed that draws 8 lines on a
@@ -100,8 +121,9 @@ items. Each stands while it earns its place.
    its two lines are dictionary keys (`hud.levelUp`, `hud.levelReached`), read in zh-CN by
    `tests/gates/hud-zh-gates.test.jsx`. **Plain text is not deduped:** the denial notices
    (`ui/denyToast.js`) are plain strings that answer each press, and a first build that dropped a repeated one inside
-   4 s made `tests/e2e/ember.spec.js` read a refused roar as "refused in silence". The other English notification
-   literals (weather, loot, talk, quest, store) still pass plain strings (registry
+   4 s made `tests/e2e/ember.spec.js` read a refused roar as "refused in silence". Keyed, the dragon's attack calls are
+   deduped like every key: the fireball, raised every 2.4 s in the first phase, shows once in each 4 s. The other English
+   notification literals (weather, loot, talk, quest, store) still pass plain strings (registry
    `REVIEW:w2d:notifications-english-literals`).
 93. **The 250 ms mob mirror is deleted** (reset plan row 9; arch A17). The minimap and the compass read `mobsQuery` and
    `alliesQuery` on their own clocks; the lookbook hold reads the seam's `mobs()` (with ids) and falls back to the mirror
@@ -144,10 +166,14 @@ items. Each stands while it earns its place.
    count 0.38% to 0.05%, the nameplate 1.00% to 0.19%), and type on the world carries a one-pixel ink outline
    (`ui/onWorldText.js`), because over a white sky the shadow alone washed the numbers out. **Measured after, on a
    committed head** (lookbook eye set, a returning player with ember and coins, ten valid frames at rest per target and
-   each shot again with a nameplate raised, real GPU, 2026-10-30 04:11-04:15Z, at `391bc20b`, clean tree; the commits
-   after it on PR A's branch change this record and the e2e spec, not the build): Chromium 1280x800 at most 6.58% (6.79% with a nameplate), WebKit
+   each shot again with a nameplate raised, real GPU, 2026-10-30 04:11-04:15Z, at `391bc20b`, clean tree): Chromium
+   1280x800 at most 6.58% (6.79% with a nameplate), WebKit
    1180x820 7.55% (7.76%), WebKit 820x1180 7.56% (7.77%). Round 3 read the same numbers on an uncommitted tree; these
-   replace them. The frames `evidence/w2d/a-r3-*` show the same HUD on these three targets, which round 4's phone and
+   replace them. After `391bc20b` PR A's branch changed this record and the e2e spec only (`git diff --stat` to
+   `8cca4468`), and then where a notice shows (item 92: the tall touch stack's place and count, the encounter column's
+   one notice, the boss bar's line and its keyed words), which no frame at rest draws (a frame with a toast is set aside
+   by item 94's rule, the boss bar shows only in a fight, and an empty stack is 0 px tall), so the numbers stand for the
+   build; they were not shot again. The frames `evidence/w2d/a-r3-*` show the same HUD on these three targets, which round 4's phone and
    short layouts do not move. **Why:** the brief's acceptance is the
    share of the screen at rest; the hard shadow is the
    panels' elevation, and a HUD that sits on the world reads as one plane without it.
