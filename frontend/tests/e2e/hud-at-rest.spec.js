@@ -5,33 +5,39 @@ import { bootDev, startPlayActive } from './_boot.js';
 // tests/gates/hud-at-rest-gates.test.jsx can say what renders and never where; this reads the rects.
 //   desktop 1280x800: no side rail; a real grantXP widens the hotbar's XP edge to the share the store holds; the music's
 //     hostile count (written by SpawnerSystem from the live mob query, the mirror being gone) matches the ECS.
-//   1280x800, both iPad sizes, a phone upright (390x844) and on its side (844x390), with ember and coins banked: the
-//     vitals, the hotbar and its XP edge, the quest line, the compass, the objective line, the minimap, the dial, the gear
-//     and the coin count, and on touch the joystick's ring and each of the eight buttons the touch layer draws at rest
-//     (Pause, the action, cast, dodge and jump, the tray, the Aspect and spell openers). Four states, every pair read in
-//     each: at rest; a target nameplate up (a brute along the camera's facing, frozen by a hitstop as it spawns, named
-//     by the real aim cone); the nameplate and the boss bar together (the dragon woken far off); the boss bar alone (the
-//     brute killed). With the nameplate up, the one the cone named is raised again if something clears it while the read
-//     waits, and the log says so. Each state's rects are read in one page task. On the phones every touch target lies
-//     inside the viewport.
+//   1280x800, both iPad sizes, three phones upright (390x844; 390x664, Playwright's iPhone 14 with Safari's toolbars;
+//     375x667, an iPhone SE) and one on its side (844x390), with ember and coins banked: the vitals, the hotbar and its XP
+//     edge, the quest line, the compass, the objective line, the minimap, the dial, the gear and the coin count, a 48 px
+//     box at the screen's centre where the crosshair is (screen-centre: nothing may cover it), and on touch the
+//     joystick's ring and each of the eight buttons the touch layer draws at rest (Pause, the action, cast, dodge and
+//     jump, the tray, the Aspect and spell openers). Six states, every pair read in each: at rest; at rest with a notice
+//     staged (the toast stack, and on a keyboard the combat log, which touch does not draw); a target nameplate up (a
+//     brute along the camera's facing, frozen by a hitstop as it spawns, named by the real aim cone); the nameplate with
+//     a second notice staged; the nameplate and the boss bar together (the dragon woken far off); the boss bar alone (the
+//     brute killed). A notice is staged on an empty stack, so the stack read is the one toast. With the nameplate up, the
+//     one the cone named is raised again if something clears it while the read waits, and the log says so. Each state's
+//     rects are read in one page task. The toast stack lies inside every viewport; on the phones every touch target does.
 //   iPad 820x1180: a finger's tap on the quest line opens the list (the touch layer leaves the tracker its taps).
-// NOT CHECKED: a toast's place (tests/e2e/dusk-warning.spec.js), the level-up banner, the touch tray or a fan opened,
-// the panels, a phone shorter than 390 px on its side (Safari's toolbars), and anything after the first minute of play.
+// NOT CHECKED: two or more toasts at once, a toast with the boss bar up (the dragon's calls), the level-up banner, the
+// touch tray, a fan or the quest list opened, the panels, a phone shorter than 390 px on its side (Safari's toolbars),
+// an upright phone under 617 px tall, and anything after the first minute of play.
 
 const RECT_IDS = ['stat-health', 'stat-mana', 'ember-bar', 'hotbar', 'hotbar-xp-row', 'quest-tracker', 'hud-compass',
   'objective-tracker', 'radial-minimap', 'day-phase-dial', 'hud-settings', 'coin-readout'];
 
+/** The crosshair's keep-out: a square this many px on a side at the screen's centre. */
+const CENTRE_BOX = 48;
+
 const TOUCH_AT_REST = ['touch-joystick', 'touch-pause', 'touch-action', 'touch-cast', 'touch-dodge', 'touch-jump', 'touch-panels',
   'touch-aspects', 'touch-spells'];
 
-/** In the page, in ONE task once every `extra` element is on screen: the HUD rects for `ids` and, on touch, the touch
- *  controls a player sees at rest (the joystick's ring and every hit target the touch layer draws; the full-screen
- *  tap-to-play is not one: it shows only before play). One task, so nothing comes or goes between one rect and the
- *  next. `plate`: the nameplate the real aim cone raised (window.__hudPlate) is raised again whenever something has
- *  cleared it while the reader waits, and the reader says how often (the first draft read the nameplate and the boss
- *  bar in separate calls, and on 1180x820 and 1280x800 the nameplate was gone by the time the dragon's bar was up: CI
- *  runs 40982943803 and 40986921601, shard 4). */
-async function readPage({ ids, extra, touch, plate }) {
+/** In the page, in ONE task once every `extra` element is on screen: the HUD rects for `ids`, the box at the screen's
+ *  centre, and on touch the touch controls a player sees at rest (the joystick's ring and every hit target the touch
+ *  layer draws; the full-screen tap-to-play is not one: it shows only before play). One task, so nothing comes or goes
+ *  between one rect and the next. `plate`: the nameplate the real aim cone raised (window.__hudPlate) is raised again
+ *  whenever something has cleared it while the reader waits, and the reader says how often, because the nameplate can
+ *  clear while the world is held (a read taken in separate calls lost it before the dragon's bar was up). */
+async function readPage({ ids, extra, touch, plate, centre }) {
   const t0 = performance.now();
   let reraised = 0;
   const present = () => extra.every((id) => document.querySelector(`[data-testid="${id}"]`));
@@ -47,6 +53,8 @@ async function readPage({ ids, extra, touch, plate }) {
     const el = document.querySelector(`[data-testid="${id}"]`);
     return el ? { id, ...box(el) } : { id, missing: true };
   });
+  const cx = window.innerWidth / 2, cy = window.innerHeight / 2, half = centre / 2;
+  hud.push({ id: 'screen-centre', x: cx - half, y: cy - half, right: cx + half, bottom: cy + half, w: centre, h: centre });
   const controls = touch ? [...document.querySelectorAll('[data-touch-zone="joystick"], [data-touch-btn]')].map((el) => {
     const cs = getComputedStyle(el);
     const b = box(el);
@@ -129,10 +137,10 @@ test.describe('desktop 1280x800', () => {
   });
 });
 
-/** The HUD rects (with `extra`: the nameplate, the boss bar) and, on touch, the touch controls, read together
- *  (readPage): [seen, missing, reraised]. */
+/** The HUD rects (with `extra`: the nameplate, the boss bar, the toast stack, the combat log), the box at the centre
+ *  and, on touch, the touch controls, read together (readPage): [seen, missing, reraised]. */
 async function layout(page, touch, extra = [], { plate = false } = {}) {
-  const { hud, controls, reraised } = await page.evaluate(readPage, { ids: [...RECT_IDS, ...extra], extra, touch, plate });
+  const { hud, controls, reraised } = await page.evaluate(readPage, { ids: [...RECT_IDS, ...extra], extra, touch, plate, centre: CENTRE_BOX });
   const missing = hud.filter((r) => r.missing || !(r.w > 0 && r.h > 0)).map((r) => r.id);
   const seen = hud.filter((r) => !r.missing && r.w > 0 && r.h > 0);
   if (touch) missing.push(...TOUCH_AT_REST.filter((id) => !controls.some((c) => c.id === id)));
@@ -141,9 +149,9 @@ async function layout(page, touch, extra = [], { plate = false } = {}) {
 const fmt = (list) => JSON.stringify(list.map((r) => [r.id, Math.round(r.x), Math.round(r.y), Math.round(r.w), Math.round(r.h)]));
 
 /** Put a living brute 2.5 m along the camera's facing (every other hostile within 24 m killed first) and hold the
- *  world with a hitstop in the same call, so it cannot walk out of the aim cone first (on 390x844 it did: CI run
- *  40986921601); then wait for the real aim cone to name it, and keep what it named (window.__hudPlate). Three
- *  spawns at most, for a spawn the floor refuses. */
+ *  world with a hitstop in the same call, so it cannot walk out of the aim cone before the cone names it; then wait for
+ *  the real aim cone to name it, and keep what it named (window.__hudPlate). Three spawns at most, for a spawn the
+ *  floor refuses. */
 async function raiseTarget(page) {
   let last = null;
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -173,29 +181,58 @@ async function raiseTarget(page) {
   throw new Error(`SETUP: no nameplate rose for a brute in three spawns: ${JSON.stringify(last)}`);
 }
 
+/** Stage one notice on an empty stack (the toasts the game raised before it have left: each lives 4 s), and wait until
+ *  its toast is on screen and its slide-in has settled. */
+async function stageNotice(page, key, vars) {
+  await page.waitForFunction(() => !document.querySelector('[data-testid="notification"]'), null, { timeout: 15000, polling: 100 })
+    .catch(async () => {
+      const up = await page.evaluate(() => [...document.querySelectorAll('[data-testid="notification"]')].map((el) => el.textContent));
+      throw new Error(`SETUP: the toast stack never emptied before the staged notice: ${JSON.stringify(up)}`);
+    });
+  const staged = await page.evaluate(({ k, v }) => {
+    const add = window.useGameStore.getState().addNotification;
+    if (typeof add !== 'function') return false;
+    add(k, 'warn', { vars: v });
+    return true;
+  }, { k: key, v: vars });
+  expect(staged, 'SETUP: no addNotification on the store').toBe(true);
+  await expect(page.locator(`[data-notification-key="${key}"]`), `SETUP: the staged ${key} toast never showed`).toHaveCount(1, { timeout: 5000 });
+  await page.waitForTimeout(800); // the toast's spring slide-in settles well inside this
+}
+
 for (const vp of [
   { name: 'desktop 1280x800', viewport: { width: 1280, height: 800 }, touch: false },
   { name: 'iPad 1180x820', viewport: { width: 1180, height: 820 }, touch: true },
   { name: 'iPad 820x1180', viewport: { width: 820, height: 1180 }, touch: true },
   { name: 'phone 390x844', viewport: { width: 390, height: 844 }, touch: true, mobile: true },
+  { name: 'phone 390x664', viewport: { width: 390, height: 664 }, touch: true, mobile: true },
+  { name: 'phone 375x667', viewport: { width: 375, height: 667 }, touch: true, mobile: true },
   { name: 'phone on its side 844x390', viewport: { width: 844, height: 390 }, touch: true, mobile: true },
 ]) {
   test.describe(vp.name, () => {
     test.use({ viewport: vp.viewport, hasTouch: vp.touch, isMobile: !!vp.mobile });
-    test('the HUD and the touch controls at rest, with a nameplate, with the boss bar, and both: no two intersect', async ({ page }) => {
+    test('the HUD and the touch controls at rest, with a notice, a nameplate and the boss bar: no two intersect, nothing on the centre', async ({ page }) => {
       test.setTimeout(240000);
       await enterPlayWithHud(page, vp.touch);
-      const check = async (state, extra, opts) => {
+      const { width: vw, height: vh } = vp.viewport;
+      const check = async (state, extra, opts = {}) => {
         const { seen, missing, reraised } = await layout(page, vp.touch, extra, opts);
         console.log(`hud-at-rest ${vp.name} ${state}: ${seen.length} rects ${fmt(seen)}${reraised ? `; the nameplate raised again ${reraised}x` : ''}`);
         expect(missing, `SETUP: HUD elements or touch controls not on screen at ${vp.name}, ${state}`).toEqual([]);
-        expect(pairs(seen), `HUD elements or touch controls overlap at ${vp.name}, ${state}`).toEqual([]);
+        expect(pairs(seen), `HUD elements or touch controls overlap, or cover the screen's centre, at ${vp.name}, ${state}`).toEqual([]);
+        if (opts.notice) {
+          const stack = seen.find((r) => r.id === 'notification-stack');
+          expect(stack.x >= -0.5 && stack.y >= -0.5 && stack.right <= vw + 0.5 && stack.bottom <= vh + 0.5,
+            `the toast stack lies outside the viewport at ${vp.name}, ${state}: ${fmt([stack])}`).toBe(true);
+          // The combat log draws the same live list as the stack; touch does not draw it (a keyboard's read of the same
+          // staged notice above shows the instrument finds it when it is there).
+          if (vp.touch) expect(await page.locator('[data-testid="combat-log"]').count(), `a combat log is drawn on touch at ${vp.name}`).toBe(0);
+        }
         if (vp.mobile) {
           const slots = await page.evaluate(() => [...document.querySelectorAll('[data-hotbar-block]')].map((el) => {
             const r = el.getBoundingClientRect();
             return { id: el.getAttribute('data-hotbar-block'), x: r.x, y: r.y, right: r.right, bottom: r.bottom, w: r.width, h: r.height };
           }).filter((t) => t.w > 0 && t.h > 0));
-          const { width: vw, height: vh } = vp.viewport;
           expect(slots.length, 'SETUP: the hotbar slots are not on screen').toBeGreaterThanOrEqual(9);
           const targets = [...seen.filter((r) => r.id.startsWith('touch-') || r.id === 'hud-settings' || r.id === 'quest-tracker'), ...slots];
           expect(targets.filter((t) => t.x < -0.5 || t.y < -0.5 || t.right > vw + 0.5 || t.bottom > vh + 0.5).map((t) => t.id),
@@ -205,9 +242,16 @@ for (const vp of [
       };
       await check('at rest', []);
 
+      const noticeIds = ['notification-stack', ...(vp.touch ? [] : ['combat-log'])];
+      await stageNotice(page, 'notice.dusk');
+      await check('at rest with a notice', noticeIds, { notice: true });
+
       const named = await raiseTarget(page);
       console.log(`hud-at-rest ${vp.name}: the aim cone named ${JSON.stringify(named)}`);
       await check('with a nameplate', ['target-frame'], { plate: true });
+
+      await stageNotice(page, 'notice.siege.first', { n: 1 });
+      await check('with a nameplate and a notice', ['target-frame', ...noticeIds], { plate: true, notice: true });
 
       const woke = await page.evaluate(() => {
         const s = window.useGameStore.getState();
