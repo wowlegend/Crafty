@@ -196,6 +196,10 @@ test.describe('a chest opened from the world on touch', () => {
     await page.evaluate(() => { const s = window.useGameStore.getState(); s.setActiveChestCoords('0_0_0'); s.setShowChestInterface(true); });
     const active = await page.evaluate(() => window.__craftyTest.call('readIntents').active);
     console.log(`[input-live] touch, chest open: the input gate is ${active ? 'still up' : 'down'}`);
+    // A hold begins at the world clock's next tick, as a hitstop does (game/worldClock.js), and a frame here can last
+    // hundreds of ms under CI's software renderer: the window is read from two frames after the open, or it would count
+    // the frame the open landed in.
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 
     const heldClock = await worldClockOver(page, 600);
     const heldWalk = await walkFrames(page, 10, 's');
