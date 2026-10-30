@@ -13,6 +13,6 @@ export const EmberBar = React.memo(function EmberBar() {
   if (!(ember > 0)) return null;
   return (
     <StatBar kind="ember" data-testid="ember-bar" value={ember} max={EMBER_MAX} icon="fire"
-      label={t('hud.ember')} showValue slim className="w-44" />
+      label={t('hud.ember')} showValue slim className="w-full" />
   );
 });
