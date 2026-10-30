@@ -92,7 +92,7 @@ export function HurlSystem() {
     for (let i = 0; i < slots.length; i++) {
       const f = slots[i];
       if (!f) continue;
-      const r = stepHurlChunked(f.h, delta, bossTargets(mobsQuery.entities)); // substepped: frame spikes can't tunnel
+      const r = stepHurlChunked(f.h, delta, mobsQuery.entities); // substepped: frame spikes can't tunnel
       const m = meshesRef.current[i];
       if (m) {
         m.position.set(f.h.position.x, f.h.position.y, f.h.position.z);
