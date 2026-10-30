@@ -41,12 +41,12 @@ audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4). PR #62. E
      call stays the one it was. The mutant that adds the check survives the gates (they hold no pending request); that
      is the gates' stated limit, not a claim.
    - **The static half.** ESLint (`src`, not tests) errors on any `document.exitPointerLock` member and on
-     `document.body.requestPointerLock`: 17 sites at b48ec9f1, none now. A source rule is not a gate on its own
+     `document.body.requestPointerLock`: 17 matches in 10 call sites at b48ec9f1, none now. A source rule is not a gate on its own
      (gate-shape); it stops a new bare call before the behavioural gates below would have to.
 161. **Owed, and Kevin's: the lived proof on an iPhone and an iPad.** In Safari on each: die once (a mob, or a fall),
    see YOU DIED and not "Something went wrong", tap Respawn and play on; then tap the HUD Settings gear and see Settings
    open. CI shows what Chromium can: `tests/e2e/death-pointer-lock.spec.js` deletes the three API members before the app
-   loads and dies on an emulated iPad (red on b48ec9f1 in run 41117858710, all three attempts:
+   loads and dies on an emulated iPad (red on b48ec9f1's game code, c132513b in run 41117858710, all three attempts:
    `TypeError: document.exitPointerLock is not a function` at InputManager.jsx:138), and its desktop case dies holding a
    stand-in lock and must release it once. Chromium is not WebKit, and the touch emulation is not a finger.
 162. **Show Stats is not a panel on touch either.** App passed `otherPanelOpen={showAchievements || showStats}` to
@@ -59,12 +59,13 @@ audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4). PR #62. E
 164. **Every button and modal surface over the live game owns its touch.** Lead AUDIT:input:touch-settings-gear-unreachable
    was decided on CI before any fix: run 41117858710 tapped the HUD Settings gear on an emulated phone (Playwright's
    touchscreen tap after its hit-target check, input live) and Settings never opened, on all three attempts. TouchControls
-   cancels the touchstart and touchend of any touch that does not land on a surface it counts as a control, and a
-   cancelled touch fires no click (Chromium here; Safari on an iPad in the X3 hotbar record). The same held for every plain
-   button over the live game: the gear (touch's only way to Settings, How to Play, Manage Worlds and Load), Respawn (play
-   stays live on touch at a death, so a touch player was held on the death screen, which no iOS player reached before
-   item 160), Keep exploring at the first dragon kill, and the context-loss panel, the way back when iOS drops the WebGL
-   context. The brief proposed marking the gear `data-hud-interactive`; marking surfaces one by one is the hand-kept list
+   cancels the touchstart and touchend of any touch that does not land on a surface it counts as a control, and in
+   Chromium a cancelled touch fires no click (this run, and touch-probe's X3 hotbar record, also Chromium). WebKit is
+   untested here and is part of item 161; commit 9b89e569's message says the X3 record was Safari on an iPad, which is
+   wrong. The same cancel held for every plain button over the live game (read in jsdom; the browser half is the gear's):
+   the gear (touch's only way to Settings, How to Play, Manage Worlds and Load), Respawn (play stays live on touch at a
+   death, so a touch player was held on the death screen, which no iOS player reached before item 160), Keep exploring
+   at the first dragon kill, and the context-loss panel, the way back when iOS drops the WebGL context. The brief proposed marking the gear `data-hud-interactive`; marking surfaces one by one is the hand-kept list
    that missed the other three, so `input/touchOwnership.js` now names ownership by kind: `button, [role="button"],
    [aria-modal="true"], [data-hud-interactive]`. A touch on the world (the canvas, a scrim) is still the router's.
    Registry: REVIEW:l1:touch-overlay-buttons-cancelled records the three beyond the lead, closed.

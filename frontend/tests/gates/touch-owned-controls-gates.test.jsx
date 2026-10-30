@@ -7,9 +7,9 @@ import { getInput } from '../../src/input/inputState.js';
 // ON TOUCH, A TAP ON A CONTROL REACHES THE CONTROL, WHILE THE WORLD STILL TAKES A TAP ON THE WORLD.
 //
 // TouchControls listens for every touch on the window while play is live, and cancels the touchstart and touchend of any
-// touch that does not land on a surface that owns its own touches (input/touchOwnership.js). A cancelled touch fires no
-// click, in Safari on iOS (the hotbar was dead on an iPad this way) and in Chromium (CI's touch e2e). So every plain button
-// over the live game was dead to a finger: the HUD's Settings gear (touch's only way to Settings and Manage Worlds),
+// touch that does not land on a surface that owns its own touches (input/touchOwnership.js). In Chromium a cancelled touch
+// fires no click (CI's touch e2e on the gear; touch-probe's hotbar record); WebKit is untested. So every plain button over
+// the live game was dead to a finger: the HUD's Settings gear (touch's only way to Settings and Manage Worlds),
 // Respawn on the death screen (play stays live on touch at a death, so the player is held there), Keep exploring on the
 // victory screen, and the context-loss panel, which is the way back when iOS drops the WebGL context.
 //
