@@ -13,6 +13,11 @@ import { DEFAULT_WORLD_SEED, resolveWorldSeed } from './worldSeed.js';
 let climateSeed = DEFAULT_WORLD_SEED;
 let noise2D = makeWorldNoise(climateSeed).noise2D;
 
+/** The seed the sampler is on: a cache of anything it computed (shrines.js) is valid for this seed only. */
+export function getClimateSeed() {
+  return climateSeed;
+}
+
 /** Sample the world seeded `seed` from now on (the store calls this when a world loads). */
 export function seedClimate(seed) {
   const s = resolveWorldSeed(seed);

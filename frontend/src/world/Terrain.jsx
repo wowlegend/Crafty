@@ -22,11 +22,10 @@ import { markShadowWorldChanged } from '../render/shadowSchedule.js';
 // A chest beacon mounts and unmounts with its chest: from the fixed light pool, so the light count never changes.
 import { PooledLight, WorldPointLight } from '../render/lightPool.jsx';
 import { Cube, Emissive } from '../render/mascots/voxelKit';
-import { isLandmarkChunk, landmarkTypeAt } from './landmarks.js';
 import { shrineParts } from './shrineShape.js';
 import { surfaceBlockAt } from './climate.js';
 import { blightHeartSite, blightHeartChunk } from './blightHeart.js';
-import { nearestLandmark } from './shrines.js';
+import { nearestLandmark, landmarkAt } from './shrines.js';
 import { HubRender } from '../render/HubRender';
 import { HEARTH_Y, HEARTH_FIRE } from './homeAnchor.js';
 import { chestHasItems } from '../game/chestState.js';
@@ -321,11 +320,9 @@ const LandmarksRender = ({ chunks }) => {
     const marks = [];
     for (const key in chunks) {
         const { cx, cz } = chunks[key];
-        if (!isLandmarkChunk(cx, cz)) continue;
-        const wx = cx * CHUNK_SIZE + CHUNK_SIZE / 2, wz = cz * CHUNK_SIZE + CHUNK_SIZE / 2;
-        const { surfaceY, isWater } = surfaceBlockAt(wx, wz);
-        if (isWater || surfaceY < 32) continue; // land only (no rising-from-the-seabed)
-        marks.push(<group key={key} position={[wx, 0, wz]}><Landmark type={landmarkTypeAt(cx, cz)} baseY={surfaceY} /></group>);
+        const site = landmarkAt(cx, cz); // null off the hash and off land: the finder leads to exactly these (shrines.js)
+        if (!site) continue;
+        marks.push(<group key={key} position={[site.worldX, 0, site.worldZ]}><Landmark type={site.type} baseY={site.surfaceY} /></group>);
     }
     return <group>{marks}</group>;
 };
