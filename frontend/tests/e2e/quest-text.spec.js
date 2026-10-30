@@ -27,10 +27,9 @@ const PRE_CUT = JSON.parse(readFileSync(resolve(HERE, '../fixtures/pre-cut-save.
 /** The fixture with a hunt nine kills in, as a build before this change wrote it. */
 function preChangeSave() {
   const save = structuredClone(PRE_CUT);
-  // The fixture's position (3, 21, 6) lies inside the generated ground. A load now holds the player at a save's position
-  // until that column's colliders are back (DECISIONS 2026-10-30 item 154), so it would stand them inside it; this test
-  // reads quest text and a kill, so its load leaves the player where they stand.
-  delete save.player_data.position;
+  // The fixture's position (3, 21, 6) lies inside the generated ground, and a load holds the player at a save's position
+  // until that column's colliders are back (DECISIONS 2026-10-30 item 154): it would stand them inside it. This test reads
+  // quest text and a kill, so the page writes the position where the player stands, as a save made there holds it.
   save.questState = {
     quests: [
       { id: 'first_blood', title: 'First Blood', description: 'Cut down the first horror at the gate', icon: 'sword', type: 'kill', target: 1, xpReward: 30, tier: 1, progress: 1, completed: true, claimed: true },
@@ -66,7 +65,12 @@ test('a hunt names the creature on screen: a saved Zombie Slayer reads "Defeat 1
     .catch((e) => { throw new Error(`SETUP: the mob hooks and camera never came up — ${e.message}`); });
 
   // 1. THE SAVE FROM BEFORE THE CHANGE LOADS, AND THE TRACKER NAMES THE HUSK.
-  const level = await page.evaluate((save) => { window.useGameStore.getState().loadWorldData(save); return window.useGameStore.getState().level; }, preChangeSave());
+  const level = await page.evaluate((save) => {
+    const t = window.useGameStore.getState().playerRigidBodyRef.current.translation();
+    save.player_data.position = { x: t.x, y: t.y, z: t.z };
+    window.useGameStore.getState().loadWorldData(save);
+    return window.useGameStore.getState().level;
+  }, preChangeSave());
   expect(level, 'SETUP: the save did not load').toBe(5);
   const tracker = page.getByTestId('quest-tracker');
   await expect(tracker, 'SETUP: the HUD quest tracker never rendered').toBeVisible();
