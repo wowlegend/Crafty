@@ -166,7 +166,7 @@ const TargetOutline = () => {
             // #72 sweep fix: `timeOfImpact`, not the legacy `toi` (undefined -> NaN target ->
             // the block-target outline never resolved a real voxel).
             const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.timeOfImpact));
-            const cell = mineTarget(hitPoint, direction, rayStart, useGameStore.getState().worldBlocks);
+            const cell = mineTarget(hitPoint, direction, useGameStore.getState());
             meshRef.current.position.set(cell.x + 0.5, cell.y + 0.5, cell.z + 0.5);
             meshRef.current.visible = true;
         } else {
@@ -748,7 +748,7 @@ export const MinecraftWorld = React.memo(() => {
             const hitPoint = rayStart.clone().add(direction.multiplyScalar(toi));
 
             const store = useGameStore.getState();
-            const { x: targetedX, y: targetedY, z: targetedZ } = mineTarget(hitPoint, direction, rayStart, store.worldBlocks);
+            const { x: targetedX, y: targetedY, z: targetedZ } = mineTarget(hitPoint, direction, store);
             const targetCoords = `${targetedX}_${targetedY}_${targetedZ}`;
 
             return {

@@ -207,9 +207,9 @@ function frame(P, { mx = 0, mz = 0, jump = false, hz = 60 } = {}) {
 
 const eye = (S) => { const t = S.p.body.translation(); return new THREE.Vector3(t.x, t.y + EYE_HEIGHT_M, t.z); };
 
-/** Terrain.jsx castBuildRay: the hit the place verb is handed (the direction scaled by toi, as there). */
-function buildRay(S, dir) {
-  const from = eye(S);
+/** Terrain.jsx castBuildRay: the hit the place verb is handed (the direction scaled by toi, as there), from the camera,
+ *  which is the eye unless a test moves it. */
+function buildRay(S, dir, from = eye(S)) {
   const d = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
   const ray = new RAPIER.Ray({ x: from.x, y: from.y, z: from.z }, { x: d.x, y: d.y, z: d.z });
   const hit = S.world.castRayAndGetNormal(ray, 8.0, true, undefined, undefined, undefined, S.p.body, S.p.filter);
@@ -228,7 +228,7 @@ function rightClick(S, h, lag = 0) {
 
 /** The left click as Terrain.jsx's mine verb makes it: the cell the build ray targets, mined in the store and the worker. */
 function leftClick(S, h, lag = 0) {
-  const c = mineTarget(h.hitPoint, h.direction, eye(S), useGameStore.getState().worldBlocks);
+  const c = mineTarget(h.hitPoint, h.direction, useGameStore.getState());
   const cx = chunkOf(c.x), cz = chunkOf(c.z);
   post(S, { type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: AIR } }, lag);
   useGameStore.setState({ worldBlocks: new Map(useGameStore.getState().worldBlocks).set(`${c.x}_${c.y}_${c.z}`, 0) });
@@ -363,28 +363,33 @@ describe('a right-click never puts a block inside the player (real Rapier, real 
     const S = makeScene();
     const bull = BEAST_FORMS.ice;
     expect(bull.radius, 'SETUP: the bull is no wider than the base capsule').toBeGreaterThan(BASE_CAPSULE.radius + 0.1);
-    // The form swap lifts the body by the growth (Components.jsx, kinematicMove's `lift`), so the wider capsule starts clear.
-    const t = S.p.body.translation();
-    const grow = bull.halfHeight + bull.radius - (BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius);
+    // Swapped as Components.jsx swaps it: the shape set in place, and the body lifted by the half-height's growth only
+    // (Math.max(0, target.halfHeight - current halfHeight), folded into that frame's moveKinematic), which is 0 for the
+    // bull: its half-height is shorter, so its lower end sits in the ground cell (registry
+    // REVIEW:fix-invisible-box:beast-swap-in-ground). The guard must read that shape where it is.
+    const lift = Math.max(0, bull.halfHeight - BASE_CAPSULE.halfHeight);
+    expect(lift, 'SETUP: the game lifts the bull, unlike the swap this test was written against').toBe(0);
     S.p.collider.setShape(new RAPIER.Capsule(bull.halfHeight, bull.radius));
-    S.p.body.setTranslation({ x: t.x, y: t.y + grow, z: t.z }, true);
+    moveKinematic(S.p.body, S.p.kcc, S.p.collider, { x: 0, y: GLUE_VELOCITY * DT, z: 0 }, lift, S.p.filter);
+    S.p.world.step();
     for (let i = 0; i < 30; i++) frame(S.p);
     const beside = { hitPoint: new THREE.Vector3(5.5, LAND_TOP, 8.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0) };
     expect(overlaps(S, [5, LAND_TOP, 8]), 'SETUP: the bull does not reach into the cell beside it').toBe(true);
+    expect(overlaps(S, [5, LAND_TOP, 8]) && !overlaps({ p: { body: S.p.body, collider: { halfHeight: () => BASE_CAPSULE.halfHeight, radius: () => BASE_CAPSULE.radius } } }, [5, LAND_TOP, 8]),
+      'SETUP: the base capsule would also reach the cell, so this does not show the guard reads the live shape').toBe(true);
     const r = rightClick(S, beside);
     expect(r.placed, 'a cell inside the bull\'s body was placed').toBe(0);
-    expect(solidInBody(S), 'a block was placed inside the bull').toEqual([]);
+    expect(voxel(S, 5, LAND_TOP, 8), 'a block was placed inside the bull').toBe(AIR);
   });
 
   it('a block an earlier click left around the camera (a save from before the fix): a left click mines it, and the player walks out', () => {
     const S = makeScene({ x: 4.5, z: 8.5, edits: [[2, LAND_TOP, 8, SAND], [2, LAND_TOP + 1, 8, SAND]] });
     // The control first: with the eye's cell clear, a left click takes the block the ray hits (the step's upper cell).
-    const leftClick = (h) => {
-      const e = eye(S);
-      const c = mineTarget(h.hitPoint, h.direction, e, useGameStore.getState().worldBlocks);
+    const target = (h) => {
+      const c = mineTarget(h.hitPoint, h.direction, useGameStore.getState());
       return [c.x, c.y, c.z];
     };
-    expect(leftClick(buildRay(S, { x: -1, y: 0, z: 0 })), 'with the eye clear, the left click does not take the block the ray hits').toEqual([2, LAND_TOP + 1, 8]);
+    expect(target(buildRay(S, { x: -1, y: 0, z: 0 })), 'with the eye clear, the left click does not take the block the ray hits').toEqual([2, LAND_TOP + 1, 8]);
 
     const e = eye(S);
     const cell = [Math.floor(e.x), Math.floor(e.y), Math.floor(e.z)];
@@ -395,12 +400,31 @@ describe('a right-click never puts a block inside the player (real Rapier, real 
     for (const dir of [{ x: -1, y: 0, z: 0 }, { x: 0.4, y: -0.3, z: 1 }, { x: 0, y: -1, z: 0 }]) {
       const h = buildRay(S, dir);
       expect(h && h.toi, `SETUP: from inside the block the ray ${JSON.stringify(dir)} hits nothing within its face`).toBeLessThan(0.7);
-      taken.push(leftClick(h));
+      taken.push(target(h));
     }
     expect(taken, 'from inside a placed block, the left click takes a cell other than the one around the camera').toEqual([cell, cell, cell]);
+    // Mined as the mine verb mines it: the voxel cleared and the store's record set to 0 (mined), not deleted.
     setVoxel(S, cell[0], cell[1], cell[2], AIR);
+    useGameStore.setState({ worldBlocks: new Map([[cell.join('_'), 0]]) });
     const out = escape(S);
     expect(out.free, `mining the block around the camera did not free the player (best walk ${out.best} m, rise ${out.rise} m)`).toBe(true);
+    // With the eye still in the mined cell, the next left click takes what it aims at, not the empty cell around the eye.
+    expect(target(buildRay(S, { x: -1, y: 0, z: 0 })), 'with the eye in a mined cell, the left click took that empty cell instead of the block it aims at').toEqual([2, LAND_TOP + 1, 8]);
+  });
+
+  it('the roar camera sitting in a wall block 4.5 m behind and 2.2 m above the body: a left click from it does not take that wall block', () => {
+    const S = makeScene({ x: 4.3, z: 8.5 });
+    const t = S.p.body.translation();
+    // game/transformCam.js: the reveal pose sits 4.5 m behind the facing (here -x) and 2.2 m over the body, looking at mid-body.
+    const cam = new THREE.Vector3(t.x + 4.5, t.y + 2.2, t.z);
+    const wall = [Math.floor(cam.x), Math.floor(cam.y), Math.floor(cam.z)];
+    setVoxel(S, wall[0], wall[1], wall[2], SAND);
+    useGameStore.setState({ worldBlocks: new Map([[wall.join('_'), SAND]]) });
+    frame(S.p); // a block placed before the roar: its trimesh indexed by a step since
+    const h = buildRay(S, { x: t.x - cam.x, y: t.y + 0.6 - cam.y, z: 0 }, cam);
+    expect(h && h.toi, 'SETUP: the ray from the roar camera does not meet its own block\'s inner face first').toBeLessThan(1);
+    const c = mineTarget(h.hitPoint, h.direction, useGameStore.getState());
+    expect([c.x, c.y, c.z], 'the left click took the wall block the roar camera sits in, behind the player').not.toEqual(wall);
   });
 
   it('a footprint around the player places every cell but the ones the body fills, and spends exactly those', () => {
