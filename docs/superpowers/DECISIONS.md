@@ -19,6 +19,50 @@
 
 ---
 
+## 2026-10-30 (chaos play, round 3) — [LOOP] a placement moves the collider with the body, so the next frame sweeps from where the player stands
+
+**Decided by the chaos-play lane's round-3 fixer** (the round-2 dynamic review said FIX on one defect; the static review's
+finding 1 is the same mechanism and its finding 2 a missing test). Items 168-170.
+
+168. **The load's release and the origin spawn move the collider with the body** (round-2 dynamic blocker; static finding
+   1). Rapier moves a body's colliders only at a world step (rapier3d-compat 0.19.2,
+   `World.propagateModifiedBodyPositionsToColliders`; @react-three/rapier 2.2.0 never calls it), and at 120 Hz every
+   other frame takes no step. Components.jsx's resume branch put the fitted spot with a bare `setTranslation`, so on a
+   frame with no step `moveKinematic` swept from the collider still at the held spot, in the wall and the ceiling, and
+   wrote that movement onto the fitted spot: a save from the old Save button at the tunnel's mouth, (-4, 32, -8), was
+   fitted to (-4.45, 31.05, -8) and went back to y 31.92, 0.4 m into the ceiling cell with the eye in it and no way out.
+   The origin spawn had the same shape: after a fall through the world at terminal speed (50 m/s) the frame after the
+   spawn swept 0.42 m down from the sky the void guard had held the body in, and stood the capsule 0.117 m into the
+   origin's ground for good. `game/kinematicMove.js placeBody` (moved there from `formFit.js`, whose form swaps already
+   used it) sets the translation and propagates; the resume branch and the spawn placement call it, in Components.jsx and
+   in the chaos harness's copy. Red first on `54e5bd51`: `chaos-play-loads.test.jsx` gains the tunnel case against its
+   east wall (x -4.45; red at 120 Hz lag 4 and lag 0, I1 and I2 39 frames each), the tunnel's mouth on both frame phases
+   (red at both 120 Hz runs, depth 0.4) and a respawn after a fall at terminal speed on both phases (red at 120 Hz, depth
+   0.117); the new `tests/gates/player-placement-gates.test.jsx` mounts the real Player against real Rapier and the
+   harness's world and reads the same two cases off Components.jsx's own frame (red: depth 0.4 with the eye in solid;
+   depth 0.117). Each 120 Hz case asserts that one of its two phases placed the body on a frame followed by one with no
+   world step, so a change of phase cannot pass it over nothing. Every 60 Hz row was green before the fix: at 60 Hz every
+   frame steps. Commit `03f54364`.
+169. **Every other teleport of the player body was checked against that sweep, and none reaches it.** The respawn effect
+   (`isAlive` false to true), the void guard (`teleportPlayer`), the sky freeze before the world is built (`isWorldBuilt`
+   is only ever set true, App.jsx), the load's hold, the spawn probe's retry and `loadWorldData`'s teleport each leave the
+   next frame in the spawn branch, which returns before the sweep and ends in one of item 168's two placements. The form
+   swaps (`enterFormFitted`, `restoreBaseFitted`) already propagated. The DEV and test tools that move the body
+   (`devtest/devBridge.js`, `render/lookbookSeam.js` stand, the debug overlay's teleport to (0, 80, 0)) are outside the
+   Player loop; the debug teleport lands in open sky.
+170. **The hold's corner probe has a test that fails when it is reverted** (static finding 2: the harness asks
+   `resumeColumnProbe` itself, so reverting Components.jsx's call left every test green). The cheapest place that runs
+   Components.jsx's own branch is the jsdom mount of item 168: a save 0.05 m from a chunk border, with the chunk across it
+   not back, is held 20 frames and let go once it is, onto the column's top. Reverted to `store.getMobGroundLevel(r.x,
+   r.z)` it lets go on the first frame. No e2e was needed. Commit `03f54364`.
+
+Mutation proofs (`scripts/dev/mutate.sh` in a throwaway copy; an identity mutant first and last, both survived): on the
+gate, the resume branch's bare `setTranslation`, the spawn's bare `setTranslation`, the corner probe reverted, `placeBody`
+without its propagate and `placeBody` propagating before the move each RED; on the loads file, `placeBody` without its
+propagate, the harness's release and the harness's spawn each RED.
+
+---
+
 ## 2026-10-30 (chaos play, round 2) — [LOOP] every save loads clear, the gate cannot pass by accident, and the loop's wiring is driven
 
 **Decided by the chaos-play lane's round-2 fixer** (Workflow wf_66ad2ad9-e69; the static and dynamic reviews of round 1
