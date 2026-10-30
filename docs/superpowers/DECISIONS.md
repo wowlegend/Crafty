@@ -145,7 +145,7 @@ items. Each stands while it earns its place.
    (`ui/onWorldText.js`), because over a white sky the shadow alone washed the numbers out. **Measured after, on a
    committed head** (lookbook eye set, a returning player with ember and coins, ten valid frames at rest per target and
    each shot again with a nameplate raised, real GPU, 2026-10-30 04:11-04:15Z, at `391bc20b`, clean tree; the commits
-   after it on PR A's branch change this record only): Chromium 1280x800 at most 6.58% (6.79% with a nameplate), WebKit
+   after it on PR A's branch change this record and the e2e spec, not the build): Chromium 1280x800 at most 6.58% (6.79% with a nameplate), WebKit
    1180x820 7.55% (7.76%), WebKit 820x1180 7.56% (7.77%). Round 3 read the same numbers on an uncommitted tree; these
    replace them. The frames `evidence/w2d/a-r3-*` show the same HUD on these three targets, which round 4's phone and
    short layouts do not move. **Why:** the brief's acceptance is the
