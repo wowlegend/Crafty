@@ -217,6 +217,9 @@ export const STRINGS = {
     // The one Aspect meter (game/ember.js): its HUD bar, and the notice for a verb it cannot pay for.
     'hud.ember': 'Ember',
     'hud.level': 'Lv {level}',
+    // The level-up banner at the screen's centre (SimpleExperienceSystem.jsx): a celebration, not a notice in the stack.
+    'hud.levelUp': 'LEVEL UP',
+    'hud.levelReached': 'Level {level}',
     'hud.questsDone': 'All quests completed!',
     'hud.quests': 'Quests',
     'controls.move': 'Move', 'controls.jump': 'Jump', 'controls.dodge': 'Dodge-roll (at a lunge: perfect)',
@@ -483,6 +486,8 @@ export const STRINGS = {
     'talent.intro': '四种力量，四个按键，共用一条余烬槽。白天击杀怪物和建造方块都会为它充能，每种能力消耗它释放专属招式——每一列的「玩法说明」卡片会讲清这个循环。每升一级得到一个天赋点，每个天赋都会改变一个招式的玩法。',
     'hud.ember': '余烬',
     'hud.level': '{level} 级',
+    'hud.levelUp': '升级！',
+    'hud.levelReached': '{level} 级',
     'hud.questsDone': '任务全部完成！',
     'hud.quests': '任务',
     'controls.move': '移动', 'controls.jump': '跳跃', 'controls.dodge': '翻滚闪避（在敌人扑来时：完美闪避）',

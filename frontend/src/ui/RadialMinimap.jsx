@@ -13,7 +13,8 @@ import { mobsQuery, alliesQuery } from '../ecs/world';
 // Capture-SUPPRESSED (the canvas redraw never starts) so the 20 visual baselines stay byte-identical.
 const SIZE = 112, RANGE = 64;
 
-export const RadialMinimap = React.memo(({ position = 'bottom-20 right-4' }) => {
+// `coords={false}` leaves the coordinates line out where the map has no room below it (a short touch screen: HUD.jsx).
+export const RadialMinimap = React.memo(({ position = 'bottom-20 right-4', coords: showCoords = true }) => {
   const canvasRef = useRef(null);
   const [coords, setCoords] = useState({ x: 0, z: 0 });
   useEffect(() => {
@@ -72,7 +73,7 @@ export const RadialMinimap = React.memo(({ position = 'bottom-20 right-4' }) => 
       <Panel variant="base" radius="rounded-full" shadow="shadow-none" className="overflow-hidden p-0 leading-none" style={{ borderRadius: '50%' }}>
         <canvas ref={canvasRef} width={SIZE} height={SIZE} className="block" style={{ borderRadius: '50%' }} />
       </Panel>
-      <div className="text-center text-xs mt-1 tabular-nums text-text-muted">{coords.x}, {coords.z}</div>
+      {showCoords && <div className="text-center text-xs mt-1 tabular-nums text-text-muted">{coords.x}, {coords.z}</div>}
     </div>
   );
 });

@@ -81,17 +81,29 @@ items. Each stands while it earns its place.
    the quest tracker rests as the lead quest's line. **Where its list opens:** on touch, a tap on the line (the tracker
    is `data-hud-interactive`, so the touch layer leaves it its taps); on desktop the HUD shows only under pointer lock,
    where no click or hover reaches it, so the full list is the quest log's (L; the Journal on J once item 96 lands).
-   **Where things sit at rest:** on desktop the vitals keep the bottom-left corner, lifted above the hotbar's XP edge
-   under 900 px wide (the hotbar's 500 px plus the stack, its margin and a gap on each side); on touch the joystick and
-   the action buttons hold both bottom corners and the tray opens down the left edge, so the vitals sit at the top left
-   under the quest line and the objective line, and the coin count sits under the minimap, clear of Pause; the dial, the
-   toast stack, the touch minimap and the Aspect bar move so nothing at rest overlaps. **Why:** about a fifth of a
-   1280x800 frame was interface (survey-2026-10-27 finding 11); the acceptance is the chrome footprint on lookbook frames
-   (item 94). **Proof that nothing promised depends on the rail, and that nothing at rest collides:**
-   `tests/e2e/hud-at-rest.spec.js` (no rail button on screen in a browser; a real grant moves the XP edge; with coins
-   granted, at 1280x800, 1180x820, 820x1180 and 390x844 no two of the twelve HUD rects and, on touch, the joystick's ring
-   and the nine touch buttons a player sees at rest intersect; at 820x1180 a finger's tap opens the quest list), run by
-   CI on the PR's head. A phone in landscape is not measured (registry `REVIEW:w2d:landscape-phone-layout`).
+   **Where things sit at rest** (`ui/hudLayout.js`): on desktop the vitals keep the bottom-left corner, lifted above the
+   hotbar's XP edge under 808 px wide (the hotbar's 408 px plus, on each side, the stack's 176 px, its 16 px margin and
+   an 8 px gap; `tests/gates/hud-at-rest-gates.test.jsx` recomputes it from the classes the two render). On a touch
+   screen 720 px tall or more (an iPad either way up, a phone upright) the joystick and the action buttons hold both
+   bottom corners and the tray opens down the left edge, so the vitals sit at the top left under the quest line and the
+   objective line, and the coin count under the minimap, clear of Pause. A shorter touch screen (a phone on its side)
+   gives the right edge to the thumb cluster's fans, which reach within 73 px of the top at 390 px: the compass stays in
+   the top band at 200 px, the coin count, the minimap (at three quarters, without its coordinates) and the dial sit in
+   the top band beside the Pause, the vitals sit on the left edge between the tray's opener and the joystick, and the
+   hotbar scales as a phone's. A target's nameplate and the boss bar are one centred column under the top centre's
+   lines (96 px down on a wide or short screen, 144 px under 900 px wide, 384 px on a phone upright, under its right
+   column), so they meet neither each other nor the objective line; the boss bar is 450 px where there is room, else
+   it leaves a 216 px column clear on each side (82 px on a phone upright, where it drops its phase line and numbers).
+   **Why:** about a fifth of a 1280x800 frame was interface (survey-2026-10-27 finding 11); the acceptance is the chrome
+   footprint on lookbook frames (item 94). **Proof that nothing promised depends on the rail, and that nothing
+   collides:** `tests/e2e/hud-at-rest.spec.js` (no rail button on screen in a browser; a real grant moves the XP edge;
+   with ember and coins banked, at 1280x800, 1180x820, 820x1180, 390x844 and 844x390, at rest, with a target's nameplate
+   up, with the nameplate and the boss bar, and with the boss bar alone, no two of the HUD's rects and, on touch, the
+   joystick's ring and the eight touch buttons a player sees at rest intersect, and on both phones every touch target
+   lies inside the viewport; at 820x1180 a finger's tap opens the quest list), run by CI on the PR's head;
+   `tests/gates/hud-layout-gates.test.js` pins which layout each of the five gets. Not measured: other viewports, and a
+   touch screen under 338 px tall, where the short layout's vitals reach the joystick (registry
+   `REVIEW:w2d:hud-unmeasured-viewports`).
 91. **The compass is a component, and its capture guards are not carried over.** `ui/Compass.jsx` renders a fixed pool
    of marker slots once; the HUD ticker writes each slot's transform and text only on change; `ui/compassLayout.js`
    places labels in priority order (boss, HOME, shrine, Blight Heart, NPC, chest, cardinal) and a later label that
@@ -105,12 +117,15 @@ items. Each stands while it earns its place.
 92. **One notification channel: a key renders through t() when shown, and the same key inside 4 s shows once.**
    `addNotification(message, type, { key, vars })` takes a dictionary key or a plain string; `ui/notifications.js`
    decides what it says and whether it shows; a name inside a notice (a dawn's loot, the dragon) is itself a key in
-   `vars`, translated when shown. **Every toast the game raises goes through it:** the dusk warning (`notice.dusk`, once
+   `vars`, translated when shown. **Every notice the game raises in the stack goes through it:** the dusk warning (`notice.dusk`, once
    per dusk, below the dial it covered), the numbered siege notice at nightfall and the dawn notice
    (`world/survivalSystem.js`; the `SurvivalWarning` banner is deleted), the dragon's five calls
    (`world/bossSystem.js`; its own banner, its state and `bossNotifTimers.js` are deleted, since a toast clears itself)
    and an Aspect's first unlock (`ui/AspectHintToast.jsx` hands the hint to the channel once play is live again, so it
-   is not lost behind the Talents panel where it was earned). **Plain text is not deduped:** the denial notices
+   is not lost behind the Talents panel where it was earned). The level-up banner is the one transient drawn apart: a
+   celebration at the screen's centre (`SimpleExperienceSystem.jsx`), not a notice, so it stays out of the stack, and
+   its two lines are dictionary keys (`hud.levelUp`, `hud.levelReached`), read in zh-CN by
+   `tests/gates/hud-zh-gates.test.jsx`. **Plain text is not deduped:** the denial notices
    (`ui/denyToast.js`) are plain strings that answer each press, and a first build that dropped a repeated one inside
    4 s made `tests/e2e/ember.spec.js` read a refused roar as "refused in silence". The other English notification
    literals (weather, loot, talk, quest, store) still pass plain strings (registry
@@ -126,14 +141,19 @@ items. Each stands while it earns its place.
    and touch layer shown, a twin with the canvas alone and the frame again, and counts the pixels where the first two
    differ by more than 2 in any channel, if the first and last agree. The touch layer (its scrim, ring and buttons) is
    reported apart, as the pixels where the two twins differ; the colour count (pixels within 3 of the page's own
-   `--ui-*` surface colours) stays as a second column. A frame with a toast in the stack or a target frame up (a mob in
-   the aim cone) is not at rest and is set aside by rule (`scripts/visual/_lookbook.mjs` `atRest`), the siege notice
-   included. **Why:** a count of surface colours
+   `--ui-*` surface colours) stays as a second column. A frame with a toast in the stack is not at rest and is set aside
+   by rule (`scripts/visual/_lookbook.mjs` `atRest`), the siege notice included; a frame with a target's nameplate up
+   counts, since that is the HUD while the player looks at a mob, and each frame is shot once more with a nameplate
+   raised on the held page (the nameplate twin), whose footprint the run reports beside the frame's. The eye set's
+   player has ember banked and coins, so the ember bar and the coin count are drawn. **Why:** a count of surface colours
    reads the palette in both directions: a warm stone texture within 3 of the warm ladder counted as chrome (7.46% on a
    world with none) and a translucent panel whose blend misses every token did not count at all. The footprint reads no
-   colour (`tests/gates/lookbook-chrome-gates.test.js`: a warm stone world with no chrome reads 0, a 10% panel reads 10%
-   on either ladder, a panel at alpha 0.6 still counts, the scrim is its own class). **Blind spot:** an opaque surface
-   over a world pixel of its own colour, within 2, reads as unchanged.
+   palette (`tests/gates/lookbook-chrome-gates.test.js`: a warm stone world with no chrome reads 0, a 10% panel over a
+   world unlike it reads 10% on either ladder, a panel at alpha 0.6 still counts, the scrim is its own class).
+   **Blind spot:** it reads change, so a surface that changes the world under it by 2 or less in every channel is not
+   counted: an opaque surface over world pixels of its own colour reads short of its area, and a faint translucent one
+   over a world near its colour reads nothing. Warm chrome over a warm world is where that happens: the gate's
+   warm-on-warm fixture reads a 10% warm panel over warm stone at 8.28%, and the same panel at alpha 0.15 at 0%.
 99. **The HUD at rest is flat and smaller, because the footprint said where the screen went.** With the slim hotbar
    the footprint read 9.91% of a Chromium 1280x800 frame at rest and 10.21% of WebKit 820x1180, over the budget, and
    gave each surface its share: the hotbar 3.4%, the minimap 1.6%, the compass 1.3%, the quest line 1.3%, the vitals
@@ -143,8 +163,54 @@ items. Each stands while it earns its place.
    (was 132), the compass 288 px (was 320), the dial's ring 36 px (was 44), the quest line at most 280 px on a keyboard
    (was 320). **Measured after** (lookbook eye set, every valid frame at rest, real GPU, 2026-10-29 23:22Z): Chromium
    1280x800 at most 6.69%, WebKit 1180x820 7.69%, WebKit 820x1180 7.69%; main before this lane read 22.14% and 11.87%
-   at 1280x800 and 820x1180. **Why:** the brief's acceptance is the share of the screen at rest; the hard shadow is the
+   at 1280x800 and 820x1180. **A returning player** (round 3): that player had no ember and no coins, so the ember bar and
+   the coin count were never drawn. With both banked and each frame shot again with a target's nameplate raised (item
+   94), the same HUD read 7.39% on Chromium, 8.44% on both iPads, and 8.34% and 9.44% with the nameplate: over the
+   budget. So the vitals are slim 14 px rows (a 10 px track with no offset shadow, the label and value beside it), the
+   coin count and the nameplate sit on the world with no panel (WebKit 1180x820: the vitals 1.10% to 0.50%, the coin
+   count 0.38% to 0.05%, the nameplate 1.00% to 0.19%), and type on the world carries a one-pixel ink outline
+   (`ui/onWorldText.js`), because over a white sky the shadow alone washed the numbers out. **Measured after**
+   (lookbook eye set, ten valid frames at rest per target, real GPU, 2026-10-30 01:27-01:31Z): Chromium 1280x800 at most
+   6.58% (6.79% with a nameplate), WebKit 1180x820 7.55% (7.76%), WebKit 820x1180 7.56% (7.77%); frames
+   `evidence/w2d/a-r3-*`. **Why:** the brief's acceptance is the share of the screen at rest; the hard shadow is the
    panels' elevation, and a HUD that sits on the world reads as one plane without it.
+
+## 2026-10-29 — [LOOP] W2-J phase 3: closed records behind the tag `records/2026-10-29`, and a generated CHANGELOG
+
+**Decided by the command session** (SOTA reset rows 32 and 57; task script
+`docs/superpowers/plans/2026-10-29-crafty-w2j-phase3.md`). Each stands while it earns its place.
+
+100. **Closed records leave HEAD; the annotated tag `records/2026-10-29` keeps them.** It points at main `e900de6b`,
+   the tree before the removal. Read one: `git show records/2026-10-29:<path>`; list them:
+   `git ls-tree -r --name-only records/2026-10-29 -- docs memory`. 143 files (10.98 MB) went: the 2026-Q2 plan archive
+   but two, LOOP-PROGRESS, the inbox's old page KEVIN-REVIEW.html, six of seven dated audits, four dated reviews
+   (AUDIT-2026-08-09, CODE-REVIEW-2026-06-20, GOVERNANCE-REVIEW-2026-08-07, LOOP-DOC-SOTA-PLAN-2026-07-27), 38 shipped
+   plans, 12 shipped specs with their two reference comps, one research note, the 2026-09 overnight brief and plan with ten of sixteen frames, the
+   superseded cursor archive and one perf report. A record stays while a doc-currency canonical doc, a rule file,
+   `CLAUDE.md`, a gate, script, test, CI step, a plan dated 2026-10-27 or later, a published page or the inbox names it
+   (`docs/superpowers/INDEX.md` lists what stays and why). Four records left although something named them, each only
+   as history, and all four are at the tag: `sota-2026-09/OVERNIGHT.md` (the published pages `sota-audit.html` and
+   `era-review.html` quote it as the source of dated claims), and `KEVIN-REVIEW.html`,
+   `LOOP-PROGRESS-2026-10-28.html` (from `docs/archive/`) and `sota-2026-09/PLAN.md` (the 2026-10-27 harness-sota plan names them as
+   units that moved or bannered them). None is a link or a path anyone follows. This supersedes item 13(a)'s in-tree
+   `docs/archive/` (2026-10-28): a retired record goes to a dated tag, not a directory. Proof nothing live depended on
+   them: each of the 143 file names was grepped over every tracked file. No source file, test, script, gate, rule file,
+   `CLAUDE.md` or canonical doc names one as a file to open (`cameraKick.js` names its plan as
+   `git show records/2026-10-29:<path>`; ACTIVE_PLAN T15 names OVERNIGHT.md to say it left); what remains are history
+   citations in kept records, listed in the registry row `W2J:kept-records-point-at-removed`. The unit suite and the
+   build do not prove it: they read no record.
+101. **`memory/CHANGELOG.md` is generated** by `frontend/scripts/ci/changelog.mjs --write` (one line per landing:
+   a merged PR's title and number, or a landing git proves), at session close. `--check` stays as a manual command and
+   no commit hook or CI step runs it. Why: a lane that regenerates in its merge commit writes a stale file, because
+   `--write` reads HEAD before that commit exists (it now refuses while a merge is in progress); and a PR's CI checks
+   GitHub's synthetic merge (main's first parents) while main's push run checks the lane tip (the lane's first parents),
+   which are different landings, so a green PR can turn main red. A freshness check on a changelog is not worth landing
+   friction and a red main. Not checked: PR titles against GitHub, and a landing no later commit took in. The
+   hand-written history: `git show records/2026-10-29:memory/CHANGELOG.md`.
+102. **The root loses its one-file `scripts/`:** the compaction hook is `.claude/hooks/session-start-compact.sh`.
+
+**Door:** two-way. Every removed file is in the tag and in history; the generator and the hook move are reverts, and
+the freshness check returns by adding its step to `ci/pipeline.sh`.
 
 ## 2026-10-29 — [LOOP] W2-E follow: the beast in first person, the cast, mobs that sense the body, the hands by the fire
 

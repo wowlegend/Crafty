@@ -177,11 +177,23 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 // The HUD's surfaces the footprint is attributed to, in this order (a pixel goes to the first whose box holds it).
 const HUD_RECT_IDS = ['controls-card', 'controls-hint', 'notification-stack', 'target-frame', 'hotbar-xp-row', 'hotbar', 'quest-tracker',
   'hud-compass', 'objective-tracker', 'stat-stack', 'radial-minimap', 'day-phase-dial', 'hud-settings', 'coin-readout'];
+// The eye set's player: ember banked and coins in the purse, as any player past the first day has.
+const RETURNING_PURSE = { ember: 40, coins: 120 };
+// The nameplate twin's target: a hostile at two thirds of its health (ui/TargetFrame.jsx draws its name, its numbers and
+// its health line).
+const NAMEPLATE = { id: -1, type: 'duskhound', name: 'duskhound', health: 40, maxHealth: 60, isAlly: false };
 
-async function shootWithChrome(page, path) {
+// `plate`: raise that target's nameplate on the held page before the shots. The aim cone's mirror (Components.jsx, every
+// 150 ms of the Player loop) cannot clear it there, since the page's animation frames are held; it clears it once they
+// are handed back.
+async function shootWithChrome(page, path, { plate = null } = {}) {
   await holdFrames(page);
-  let pngs, touch, toasts, target, vars, rects;
+  let pngs, touch, toasts, target, drawn, vars, rects;
   try {
+    if (plate) {
+      await page.evaluate((t) => window.useGameStore.setState({ targetEntity: t }), plate);
+      await page.waitForFunction(() => !!document.querySelector('[data-testid="target-frame"]'), null, { timeout: 3000, polling: 50 });
+    }
     const on = await page.screenshot({ path });
     const hudOff = await twinShot(page, 'touch');
     const world = await twinShot(page, 'world');
@@ -195,15 +207,18 @@ async function shootWithChrome(page, path) {
     toasts = await page.evaluate(() => (document.querySelector('[data-testid="notification-stack"]')
       || document.querySelector('.absolute.top-20.right-4.space-y-2'))?.children.length ?? 0);
     target = await page.evaluate(() => !!document.querySelector('[data-testid="target-frame"]'));
+    drawn = await page.evaluate(() => ({ ember: !!document.querySelector('[data-testid="ember-bar"]'),
+      coins: !!document.querySelector('[data-testid="coin-readout"]') }));
     vars = await chromeVars(page);
     pngs = [on, hudOff.png, world.png, again].map((x) => PNG.sync.read(x));
   } finally {
+    if (plate) await page.evaluate(() => window.useGameStore.setState({ targetEntity: null }));
     await releaseFrames(page);
   }
   const [on, hudOff, world, again] = pngs;
   const size = { width: on.width, height: on.height };
   const moved = framesMoved(on.data, again.data, size);
-  const chrome = { toasts, target, moved, touchLayer: touch };
+  const chrome = { toasts, target, moved, touchLayer: touch, purse: drawn };
   if (moved > HELD_MOVED_MAX * on.width * on.height) {
     Object.assign(chrome, { share: null, why: `the page did not hold still: ${moved} px changed between the first and last shot` });
   } else {
@@ -522,6 +537,10 @@ async function shootTarget(target, launchOpts, launchId) {
         window.useGameStore.setState({ playerHealth: st.maxHealth });
         return true;
       });
+      // A returning player carries ember and coins, so the ember bar and the coin count are drawn (each hides at zero:
+      // ui/EmberBar.jsx, HUD.jsx CoinReadout). Set to the same values for every frame, after clearHostiles, whose kills
+      // bank ember. A first session (--first-session) gets them too, so its numbers bound a new player's from above.
+      await page.evaluate((purse) => window.useGameStore.setState(purse), RETURNING_PURSE);
       await play(page);
       await setCycle(page, shot.cycle);
       await passTimes(page, { reset: true });
@@ -531,7 +550,9 @@ async function shootTarget(target, launchOpts, launchId) {
       const chrome = await shootWithChrome(page, join(dir, shot.file));
       const after = await info(page);
       const pt = await passTimes(page);
-      // The card-up twin is shot after the frame's own readings, so its extra second does not move the frame's clock.
+      // The twins are shot after the frame's own readings, so their extra seconds do not move the frame's clock: the
+      // nameplate twin, then on a first session the card-up twin.
+      const chromeTarget = await shootWithChrome(page, join(dir, shot.file.replace(/\.png$/, '-target.png')), { plate: NAMEPLATE });
       let chromeCard;
       if (FIRST_SESSION) {
         await page.evaluate(() => window.useGameStore.setState({ controlsCardDone: false, controlsCardMs: 0 }));
@@ -541,7 +562,7 @@ async function shootTarget(target, launchOpts, launchId) {
         await page.evaluate(() => window.useGameStore.setState({ controlsCardDone: true }));
       }
       const v = eyeShotVerdict({ cycle: shot.cycle, heading: shot.heading, stand: report.stand, before, after, handsBaseline: report.hands?.hidden, hud });
-      report.eye.push({ ...shot, valid: v.valid, why: v.why, ...facts(after, t0, pt), hud, chrome, chromeCard, healed, heading: shot.heading,
+      report.eye.push({ ...shot, valid: v.valid, why: v.why, ...facts(after, t0, pt), hud, chrome, chromeTarget, chromeCard, healed, heading: shot.heading,
         headingAtShot: after.heading, pitch: after.pitch, eye: after.eye, body: after.body, cameraNodes: after.cameraNodes,
         hostiles: after.hostiles, cleared,
         eyeAboveBody: after.eye && after.body ? Math.round((after.eye[1] - after.body[1]) * 1000) / 1000 : null });

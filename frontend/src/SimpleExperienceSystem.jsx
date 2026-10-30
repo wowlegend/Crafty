@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameMethods } from './GameMethods';
 import { xpForLevel } from './game/progression.js';
+import { useT } from './i18n/i18n.js';
 
 // Simple Experience System - No Runtime Errors
 export const useSimpleExperience = () => {
@@ -105,8 +106,11 @@ export const SimpleXPGainVisual = ({ xpGains }) => {
   );
 };
 
-// Level Up Effect Component
+// The level-up banner: a celebration at the screen's centre, drawn apart from the notification stack (a toast would
+// put it in the corner); its two lines are dictionary keys, so it reads in the player's language (DECISIONS 2026-10-29
+// item 92).
 export const SimpleLevelUpEffect = ({ levelUpEffects, onEffectComplete }) => {
+  const t = useT();
   return (
     <div className="absolute inset-0 pointer-events-none z-50">
       <AnimatePresence>
@@ -137,7 +141,7 @@ export const SimpleLevelUpEffect = ({ levelUpEffects, onEffectComplete }) => {
                 className="inline-block font-display text-text-inverse leading-none px-6 py-2 rounded-lg border-chrome border-ink shadow-elev-md tracking-wide"
                 style={{ fontSize: '3.25rem', background: 'linear-gradient(180deg, rgb(var(--ui-accent-raise)), rgb(var(--ui-accent-deep)))' }}
               >
-                LEVEL UP
+                {t('hud.levelUp')}
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
@@ -146,7 +150,7 @@ export const SimpleLevelUpEffect = ({ levelUpEffects, onEffectComplete }) => {
                 className="font-display text-accent-raise mt-3 tabular-nums"
                 style={{ fontSize: '1.9rem', textShadow: '2px 2px 0 rgb(var(--ui-ink))' }}
               >
-                Level {effect.level}
+                {t('hud.levelReached', { level: effect.level })}
               </motion.div>
             </div>
           </motion.div>
