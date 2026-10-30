@@ -30,8 +30,9 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // WHAT THIS DOES NOT CHECK: touch placement (the same place verb), the Building Tools' multi-block footprints, a player
 // running into a cell whose trimesh lands late (tests/integration/place-clear-of-player-rapier.test.jsx drives both against
 // real Rapier), or the look of the refusal notice. It LOGS, and does not assert, the live delay that node gate stands in
-// for: for each placing click, the drawn frames until a world ray meets the new cell, until the chunk's new mesh is set,
-// and the stand-in colliders still held (world/placedCellColliders.js) on each of those frames.
+// for: for each placing click, the stand-in colliders held (world/placedCellColliders.js) right after the game handled
+// it, then the drawn frames until a world ray meets the new cell and until the chunk's new mesh is set, and the
+// stand-ins still held on each of those frames.
 //
 // Mutation-Proof: see the commit trailers (red-first: the burst on the unfixed placement; the node gate's mutants).
 
@@ -224,6 +225,7 @@ function armClick({ yaw, pitch }) {
     rec.placedNow = rec.placeCell ? (s.worldBlocks.get(rec.placeCell) ?? null) : null;
     rec.minedNow = rec.mineCell ? (s.worldBlocks.get(rec.mineCell) ?? null) : null;
     rec.stackAfter = s.inventory.blocks.grass ?? 0;
+    rec.standInsAtClick = call('readPlacedCells') ?? null; // the game's handler has run: a placed cell's stand-in exists now
   }, { once: true });
 }
 
@@ -326,7 +328,7 @@ test.describe('placing beside the player at the shore', () => {
     }
     const held = await page.evaluate(readHold);
     console.log(`[place-clear] clicks ${JSON.stringify(clicks)}`);
-    console.log(`[place-clear] click to solid, in drawn frames: ${JSON.stringify(clicks.filter((c) => c.latency.placed).map((c) => ({ cell: c.placeCell, ...c.latency })))}`);
+    console.log(`[place-clear] click to solid, in drawn frames: ${JSON.stringify(clicks.filter((c) => c.latency.placed).map((c) => ({ cell: c.placeCell, standInsAtClick: c.standInsAtClick, ...c.latency })))}`);
     console.log(`[place-clear] after the burst ${JSON.stringify(held)}`);
     const pressed = clicks.filter((c) => c.verb === 'place' || c.verb === 'mine');
     expect(pressed.length, `SETUP: of ${clicks.length} clicks, only ${pressed.length} reached the place or mine verb (gates ${JSON.stringify(held.gates)}; clicks ${JSON.stringify(clicks)})`).toBe(clicks.length);
