@@ -114,7 +114,7 @@ import {
   MATERIAL_SIGHT_KINDS, MATERIAL_STAND_M, MATERIAL_MIN_M, materialShotPlan, findMaterialSights, aimAt,
   HAND_MASK, HANDS_HEADING, handPixelStats, facing, handCount, CYCLE_TOLERANCE, chromeShare, chromeColoursFrom,
   chromeFootprint, framesMoved, HELD_MOVED_MAX, footprintByRect,
-  DRAGON_ARENA, dragonStreamPose, dragonSightPoints, pickDragonView, dragonShotPlan, dragonShotVerdict,
+  DRAGON_ARENA, dragonStreamPose, dragonSightPoints, pickDragonView, dragonShotPlan, dragonShotVerdict, dragonPoseShot,
 } from './_lookbook.mjs';
 import { PNG } from 'pngjs';
 import { shootHudSet } from './_lookbookHud.mjs';
@@ -462,17 +462,22 @@ async function shootDragon(page, report, dir, facts) {
     return;
   }
   report.dragonAt = woke.position;
+  report.dragonViews = {};
+  const wokeGround = await page.evaluate(([x, z]) => window.__craftyLookbook.groundAt({ x, z }), [woke.position[0], woke.position[2]]);
   for (const shot of dragonShotPlan(undefined, CYCLES)) {
     const t0 = Date.now();
     await respawnIfDead(page, report);
-    await page.evaluate((p) => window.__craftyLookbook.dragon(p), { pose: shot.pose, position: woke.position });
+    // The ground tells with the dragon down on its ground, shot from above; the rest in the air (dragonPoseShot).
+    const { at, view: lens } = dragonPoseShot(shot.pose, woke.position, wokeGround);
+    await page.evaluate((p) => window.__craftyLookbook.dragon(p), { pose: shot.pose, position: at });
     // A camera whose sight line to the dragon clears the ground (_lookbook.mjs pickDragonView): the lair's ground is
     // hilly, and a column between the two filled a whole frame with one black block.
-    const points = dragonSightPoints(woke.position);
+    const points = dragonSightPoints(at, lens);
     const heights = await page.evaluate((pts) => pts.map(([x, z]) => window.__craftyLookbook.groundAt({ x, z })), points);
     const ground = new Map(points.map(([x, z], i) => [`${x},${z}`, heights[i]]));
-    const view = pickDragonView(woke.position, (x, z) => ground.get(`${x},${z}`) ?? null);
+    const view = pickDragonView(at, (x, z) => ground.get(`${x},${z}`) ?? null, lens);
     report.dragonView = { turnDeg: Math.round((view.turn * 180) / Math.PI), clear: view.clear, camera: view.pose.position };
+    report.dragonViews[shot.pose] = report.dragonView;
     await page.evaluate((p) => window.__craftyLookbook.pose(p), view.pose);
     await page.evaluate((radius) => window.__craftyLookbook.clearHostiles({ radius }), DRAGON_CLEAR_M);
     await setCycle(page, shot.cycle);

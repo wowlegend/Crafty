@@ -129,7 +129,9 @@ const STRIKE_SOURCE = { bite: 'Shadow Dragon Bite', diveBite: 'Shadow Dragon Div
 const HOLD_RAMP = 0.7;
 const HOLD_TARGET_M = 4;
 const LAVA_RADIUS_M = 2.75;
-const DANGER = new THREE.Color(UI.danger);
+// The tells' red: the HUD's danger token, so a ground decal and the boss bar speak one colour.
+const DECAL_COLOR = UI.color.danger;
+const DANGER = new THREE.Color(DECAL_COLOR);
 const HEAD_GLOW = new THREE.Color(BOSS_CONFIG.secondaryColor);
 const HIT_RED = new THREE.Color('#ef4444');
 
@@ -219,10 +221,32 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 staggerUntil: r.staggerUntil, knockdownUntil: r.knockdownUntil, immuneUntil: r.immuneUntil, heavyChain: r.heavyChain,
                 airborne: r.airborne, pinned: r.pinned, position: { ...r.position }, now: worldNow(),
                 decal: m && m.visible ? { shape: m === decalRingRef.current ? 'ring' : m === decalDiscRef.current ? 'disc' : 'arc',
-                    radius: m.scale.x, opacity: m.material.opacity, at: m.position.toArray() } : null,
+                    radius: m.scale.x, opacity: m.material.opacity, colour: `#${m.material.color.getHexString()}`, at: m.position.toArray() } : null,
             };
         });
-        return () => registerTestHook('readDragon', () => null);
+        // Pin it (no flight step) and, `calm`, put every move on an endless cooldown, so only a planted move runs.
+        registerTestHook('pinDragon', ({ pinned = true, calm = false } = {}) => {
+            bossCombat.pinned = pinned;
+            if (calm) for (const k of Object.keys(DRAGON_MOVES)) bossCombat.cooldowns[k] = Infinity;
+        });
+        // Wind up `move` due `dueMs` world ms from now, as the machine starts one: its until, and its decal.
+        registerTestHook('plantDragonMove', (move, dueMs) => {
+            const m = DRAGON_MOVES[move];
+            if (!m) throw new TypeError(`plantDragonMove: no move ${JSON.stringify(move)}`);
+            const r = bossCombat;
+            const until = worldNow() + dueMs;
+            r.move = move;
+            if (m.parryable) { r.windupUntil = until; r.castUntil = 0; } else { r.castUntil = until; r.windupUntil = 0; }
+            const p = r.position, c = camera.position;
+            showDecal(decalFor({ type: 'windup', move, until, at: { x: c.x, z: c.z }, radius: m.reach ?? m.radius,
+                heading: Math.atan2(c.x - p.x, c.z - p.z) }, p), until, m.windupMs);
+            return until - worldNow();
+        });
+        return () => {
+            registerTestHook('readDragon', () => null);
+            registerTestHook('pinDragon', () => null);
+            registerTestHook('plantDragonMove', () => null);
+        };
     }, []);
 
     // High-performance bullet references to bypass React overhead
@@ -664,15 +688,15 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 world space, outside the dragon's group, so they lie where the move lands, not where the dragon turns. --- */}
             <mesh ref={decalRingRef} visible={false} renderOrder={2}>
                 <ringGeometry args={[0.9, 1, 64]} />
-                <meshBasicMaterial color={UI.danger} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+                <meshBasicMaterial color={DECAL_COLOR} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
             </mesh>
             <mesh ref={decalDiscRef} visible={false} renderOrder={2}>
                 <circleGeometry args={[1, 40]} />
-                <meshBasicMaterial color={UI.danger} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+                <meshBasicMaterial color={DECAL_COLOR} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
             </mesh>
             <mesh ref={decalArcRef} visible={false} renderOrder={2}>
                 <ringGeometry args={[0.2, 1, 32, 1, -BITE_DECAL_ARC / 2, BITE_DECAL_ARC]} />
-                <meshBasicMaterial color={UI.danger} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+                <meshBasicMaterial color={DECAL_COLOR} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
             </mesh>
 
             {/* --- High Performance Instanced/Mesh Effects Rendering Sheets --- */}

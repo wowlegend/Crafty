@@ -56,6 +56,9 @@ import {
   pickDragonView,
   dragonShotPlan,
   dragonShotVerdict,
+  dragonPoseShot,
+  DRAGON_GROUND_POSES,
+  DRAGON_VIEW_GROUND,
 } from '../../scripts/visual/_lookbook.mjs';
 import { DRAGON_POSES } from '../../src/render/lookbookSeam.js';
 import { blightHeartSite } from '../../src/world/blightHeart.js';
@@ -203,6 +206,7 @@ describe('a shot is valid only if it shows the game it claims to show', () => {
 //   D7 the sight check ignores the ground -> "picks a camera whose sight line clears the ground"
 //   D8 only the side-on bearing tried -> the same test
 //   D9 the verdict ignores a blocked sight -> "a dragon frame is valid only ..."
+//   D10 a ground tell shot in the air (the grounded list ignored) -> "the ground tells are shot with the dragon down"
 //   D4 the stream pose looks straight down its up vector -> "hangs over the lair"
 describe('the dragon arena: the dragon held in each pose at each time, framed side-on', () => {
   it('every pose the seam knows at every time, each named by pose and time', () => {
@@ -264,6 +268,22 @@ describe('the dragon arena: the dragon held in each pose at each time, framed si
     expect(walled.pose.position[1]).toBeGreaterThanOrEqual(70 + DRAGON_VIEW.eye);
     // Unloaded ground is not an obstacle.
     expect(pickDragonView(at, reader(() => null)).clear).toBe(true);
+  });
+  it('the ground tells are shot with the dragon down on its ground, from above; the rest and the fireball in the air', () => {
+    const woke = [700, 64, 700];
+    for (const pose of DRAGON_POSES) {
+      const shot = dragonPoseShot(pose, woke, 52);
+      if (DRAGON_GROUND_POSES.includes(pose)) {
+        expect(shot.at, pose).toEqual([700, 52.8, 700]);
+        expect(shot.view, pose).toBe(DRAGON_VIEW_GROUND);
+      } else {
+        expect(shot.at, pose).toEqual(woke);
+        expect(shot.view, pose).toBe(DRAGON_VIEW);
+      }
+    }
+    expect(DRAGON_VIEW_GROUND.up, 'a ground tell shot from below reads no decal').toBeGreaterThan(0);
+    for (const pose of ['bite', 'roar', 'lava', 'summon']) expect(DRAGON_GROUND_POSES, pose).toContain(pose);
+    expect(dragonPoseShot('roar', woke, null).at, 'no ground read: it stays where it was woken').toEqual(woke);
   });
   it('hangs over the lair while its chunks stream, looking down but not along its up vector', () => {
     const { position, lookAt } = dragonStreamPose();

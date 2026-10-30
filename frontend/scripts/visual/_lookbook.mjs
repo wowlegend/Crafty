@@ -73,6 +73,21 @@ export const LOOKBOOK_PLACES = Object.freeze([
  */
 export const DRAGON_ARENA = Object.freeze({ id: 'dragon-arena', lair: Object.freeze(blightHeartSite()), streamY: 110 });
 export const DRAGON_VIEW = Object.freeze({ back: 16, up: -3, eye: 2.5, bearings: 12, samples: 16 });
+/** The tells read on the ground (the bite's arc, the roar's and the summons' rings, the lava's ring) and the stagger are
+ *  shot with the dragon down on its ground, where it fights them, from a camera above it so the decal reads; the rest
+ *  and the fireball with it in the air, from below against the sky. */
+export const DRAGON_GROUND_POSES = Object.freeze(['bite', 'roar', 'lava', 'summon', 'staggered']);
+export const DRAGON_VIEW_GROUND = Object.freeze({ ...DRAGON_VIEW, back: 16, up: 7 });
+const LANDED_Y = 0.8; // render/BossEntity.jsx: a grounded dragon's centre over its ground
+
+/** Where the dragon stands for `pose`, given where the seam woke it (`woke`, in the air) and the `ground` under it, and
+ *  the view to shoot it from. */
+export function dragonPoseShot(pose, woke, ground) {
+  if (DRAGON_GROUND_POSES.includes(pose) && Number.isFinite(ground)) {
+    return { at: [woke[0], ground + LANDED_Y, woke[2]], view: DRAGON_VIEW_GROUND };
+  }
+  return { at: [woke[0], woke[1], woke[2]], view: DRAGON_VIEW };
+}
 
 /** The camera over the lair while its chunks stream: high, looking down and a little north so the view is not straight
  *  down its up vector. */

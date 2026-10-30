@@ -14,6 +14,10 @@ import { isWorldFrozenNow, worldNow } from '../game/worldClock.js';
 import { bossCombat, bossDamage } from '../game/bossCombat.js';
 import { preloadDragon, shouldPreloadAtMount } from '../render/dragonLoader.js';
 import { parseLookbookParam } from '../render/lookbookSeam.js';
+import { registerTestHook } from '../devtest/testBridge.js';
+import { readImpulses, clearImpulses } from '../devtest/impulseLog.js';
+import { requestZone } from '../game/elemancerChannel.js';
+import { requestHurl } from '../game/hurlChannel.js';
 
 /** One of the dragon's one-off calls (this hook's: the arrival, the return, the phase changes, the defeat) to the one
  *  notification channel (ui/notifications.js) as a dictionary key, marked `boss`, so where one line holds the notices it
@@ -218,8 +222,22 @@ export const useBossSystem = (playerLevel) => {
                 setBossActive(true);
                 setBossPhase(0);
             } });
+            // The dragon fight's e2e (tests/e2e/dragon-fight.spec.js): wake it at a place, at a phase's health; read the
+            // shoves the player was given; and hand the zone and hurl channels a request the way a cast or a throw does.
+            registerTestHook('spawnDragonAt', (pos, { phase = 0 } = {}) => {
+                preloadDragon();
+                bossSpawned.current = true;
+                bossKilledRef.current = false;
+                bossPositionRef.current = [pos[0], pos[1], pos[2]];
+                setBossHealth(phase > 0 ? Math.floor(stats.health * stats.phases[phase].hpPercent) : stats.health);
+                setBossActive(true);
+            });
+            registerTestHook('readImpulses', () => readImpulses());
+            registerTestHook('clearImpulses', () => clearImpulses());
+            registerTestHook('requestZoneAt', (pos, kind = 'burning') => requestZone({ kind, pos: { x: pos[0], y: pos[1], z: pos[2] } }));
+            registerTestHook('requestHurlAt', (origin, dir) => requestHurl({ x: origin[0], y: origin[1], z: origin[2] }, { x: dir[0], y: dir[1], z: dir[2] }, '#A9966E'));
         }
-    }, [damageBoss, suspendEncounter, bossPositionRef, bossActive]);
+    }, [damageBoss, suspendEncounter, bossPositionRef, bossActive, stats]);
 
     // THE LOOKBOOK'S DRAGON (DECISIONS 2026-10-30 item 122): the production build's one way to wake the dragon without
     // the fight's level and lair gates, installed only when the page URL carries ?lookbook=1 (render/lookbookSeam.js

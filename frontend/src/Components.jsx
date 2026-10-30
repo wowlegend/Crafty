@@ -23,6 +23,7 @@ import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
 import { bossCombat, withBossTarget, bossHitByCone, registerBossHeavy } from './game/bossCombat.js';
+import { logImpulse } from './devtest/impulseLog.js';
 import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { gateSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
 import { stanceFrame, stanceWalk, dodgeBurst, resetStance, teleportPlayer } from './game/combatStance.js';
@@ -172,6 +173,7 @@ export const Player = ({ isWorldBuilt }) => {
   useEffect(() => {
     if (rigidBodyRef.current) {
       rigidBodyRef.current.applyImpulse = (impulse) => {
+        if (import.meta.env.DEV) logImpulse(impulse);
         knockbackVelocity.current.x += impulse.x;
         velocityY.current += impulse.y;
         knockbackVelocity.current.z += impulse.z;
