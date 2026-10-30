@@ -35,9 +35,14 @@
    lava, summon), the one list the machine reads for its non-core moves. **Why:** the fight bit with no warning and roared
    the player across the map from anywhere; a tell for every attack is what makes it a fight (the contract's goal).
 124. **The attacks are read from the ground, and their toasts go (amends item 92).** Each windup shows one decal from a
-   fixed pool of three meshes in the dragon's own frame loop: the bite an arc of its reach in its heading, the roar a ring
-   of 9 m, the fireball a disc where it aims, the summons a ring of 7 m; the lava keeps its own ring. The head's glow
-   climbs to the danger red through the windup (the interim tell on today's model). `bossAttackCall`, the `attack` class
+   fixed pool of three meshes in the dragon's own frame loop: the bite a sector of its reach about its heading, the roar
+   a ring of 9 m, the fireball a disc of 1.6 m on its mark, the summons a ring of 7 m; the lava keeps its own ring. The
+   head's glow climbs to the danger red through the windup (the interim tell on today's model). **Each decal covers
+   exactly the ground its move lands on:** a windup commits its aim (the player's feet when it starts, and the heading
+   to them); the dragon faces that heading through the windup; the bite lands only inside its quarter-turn sector, and
+   the fireball flies to its mark and bursts there, hitting only a player on the disc, which stays on the ground (one
+   disc per fireball in flight, capped by its cooldown) until the burst. Why the sector and not a full disc: a bite with
+   a front is dodged by stepping aside or behind, which is the read the arc was drawn to teach. `bossAttackCall`, the `attack` class
    in `ui/notifications.js` and the four attack keys are deleted, with the gate that simulated the line through a fight
    (its subject is gone) and the e2e's attack-call states. The phase calls now say what to read. **Why:** an attack
    announced by a toast after it has landed teaches nothing; the ground is where the player looks. One decal costs one

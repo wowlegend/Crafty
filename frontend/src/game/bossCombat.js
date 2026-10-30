@@ -40,6 +40,11 @@ export function createBossCombat() {
     // Parryable windups only (the perfect dodge reads it); every other windup is castUntil.
     windupUntil: 0,
     castUntil: 0,
+    // What the current windup committed to (game/dragonMoves.js windUp): the feet it aims at and the heading to them.
+    aimX: 0,
+    aimY: 0,
+    aimZ: 0,
+    aimHeading: 0,
     staggerUntil: 0,
     knockdownUntil: 0,
     immuneUntil: 0,

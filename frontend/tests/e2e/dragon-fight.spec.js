@@ -8,8 +8,9 @@ import { UI } from '../../src/theme/tokens.js';
 // docs/superpowers/plans/2026-10-30-crafty-w3b-dragon.md, B6). The unit tests prove the move machine, the record and the
 // decals as pure parts; this drives them through the lazy dragon on the DEV server: the real move machine starts a
 // bite and its decal shows; a real Shift press through the real listener parries it; a planted roar shoves the player
-// once at 5 m and not at all at 11 m; and hurl, a squad ally, an element zone and a fire spell's burn each hand the
-// dragon's id to damageMob through their own systems.
+// once at 5 m, not at all at 11 m, and not at all under i-frames; a planted fireball bursts on the disc its windup
+// showed, missing a player 4 m off it and hitting one on it; and hurl, a squad ally, an element zone and a fire spell's
+// burn each hand the dragon's id to damageMob through their own systems, each window's HP change its source's alone.
 //
 // TIMING: THE WORLD IS FROZEN WHERE A WINDOW IS NARROW (the perfect-dodge spec's method, tests/e2e/perfect-dodge.spec.js).
 // A loaded CI runner draws a frame every few hundred ms, so the last 220 ms of a 520 ms windup can pass between two
@@ -20,14 +21,19 @@ import { UI } from '../../src/theme/tokens.js';
 // dragon. DEV hooks: world/bossSystem.js (spawnDragonAt, readImpulses, requestZoneAt, requestHurlAt) and
 // render/BossEntity.jsx (readDragon, pinDragon, plantDragonMove).
 //
-// Mutation-Proof: NOT RUN in a browser (no local e2e; CI runs this spec unmutated). The mutants it is written to kill:
-//   K1 withBossTarget left out of the dodge start (Components.jsx) -> "the perfect press staggered nothing"
+// Mutation-Proof: no local e2e (SSD-light); browser mutants run as mutant branches through CI. RUN and killed on all
+// three attempts: K1 withBossTarget left out of the dodge start (Components.jsx) -> "the perfect press staggered
+// nothing" (CI run 41033053640); R25-hurl HurlSystem back on the bare mob list -> "the hurled block never reached the
+// dragon" (CI run 41033057486). Written to kill, NOT RUN (registry W3B:dragon-e2e-mutants-unrun):
 //   M1 roarFalloff 1 past 9 m (game/dragonMoves.js) -> "a roar at 11 m shoved the player"
+//   M2 BossEntity's ctx ignores isPlayerInvincible -> "a roar under i-frames shoved the player"
 //   M3 a windup of 0 -> "the bite started with no windup" (it strikes on the frame it starts, so no windup is caught)
 //   D1 the decal pool never shown (render/BossEntity.jsx showDecal a no-op) -> "no decal during the bite's windup"
-//   R25 HurlSystem / SquadAISystem / ElementZoneSystem / the spell's burn back on the bare mob list -> that path's case
+//   F1 the launch aimed at the player rather than its mark (render/BossEntity.jsx) -> "a fireball damaged the player 4 m
+//      off its disc"
+//   R25 SquadAISystem / ElementZoneSystem / the spell's burn back on the bare mob list -> that path's case
 // BLIND SPOT: the dragon's own flight into reach (pinned here), the phase-0 dive, the heavy chain through real mouse
-// holds, the touch dodge, and the lookbook's held tells (frames, not a gate).
+// holds, the touch dodge, the slam (no case reaches it), and the lookbook's held tells (frames, not a gate).
 
 test.describe('the dragon fight', () => {
   test.setTimeout(300000);
@@ -162,14 +168,17 @@ test.describe('the dragon fight', () => {
     expect(after.move, 'the move machine did not cancel the parried bite').toBeNull();
   });
 
-  test('the roar: its ring shows through the windup, one shove of 24 at 5 m, and nothing at 11 m', async ({ page }) => {
+  test('the roar: its ring shows through the windup, one shove of 24 at 5 m, and nothing at 11 m or under i-frames', async ({ page }) => {
     await bootDev(page);
     await startPlayActive(page);
     await page.waitForFunction(() => window.__craftyTest?.call('readMobs') && window.__threeCamera && window.GameMethods?.damageMob, null, { timeout: 60000 });
     const st = await stage(page, 5, 1, { calm: true });
     expect(st.why, st.why).toBeUndefined();
 
-    const roarAt = (dist) => page.evaluate(async ({ dist }) => {
+    // `iframes`: the store's isPlayerInvincible answers true through the roar, as a roll's does through its window. A
+    // stand-in for a real Shift, whose i-frames run on real time and cannot be lined up with a roar due on the frozen
+    // world clock; what it still proves is that the dragon's frame loop reads the player's i-frames into the machine.
+    const roarAt = (dist, { iframes = false } = {}) => page.evaluate(async ({ dist, iframes }) => {
       const call = (n, ...a) => window.__craftyTest.call(n, ...a);
       const frame = () => new Promise((r) => requestAnimationFrame(r));
       const store = window.useGameStore;
@@ -193,16 +202,20 @@ test.describe('the dragon fight', () => {
       const distance = Math.hypot(during.position.x - cam.x, during.position.z - cam.z);
       const hits = [];
       const real = store.getState().damagePlayer;
+      const realInvincible = store.getState().isPlayerInvincible;
       store.setState({ damagePlayer: (amount, source, ...rest) => { hits.push({ amount, source: String(source) }); return real?.(amount, source, ...rest); } });
+      if (iframes) store.setState({ isPlayerInvincible: () => true });
       const hp0 = store.getState().playerHealth;
       store.setState({ hitstopUntil: performance.now() });
       const w0 = call('worldNow'), t0 = performance.now();
       while (call('worldNow') - w0 < due + 400 && performance.now() - t0 < 20000) await frame();
+      const invincibleHeld = store.getState().isPlayerInvincible?.() === true;
       store.setState({ damagePlayer: real });
+      if (iframes) store.setState({ isPlayerInvincible: realInvincible });
       const r = call('readDragon');
       return { due, decal: during.decal, distance, impulses: call('readImpulses'), hits, hpLost: hp0 - store.getState().playerHealth,
-        decalAfter: r.decal, waited: call('worldNow') - w0 };
-    }, { dist });
+        decalAfter: r.decal, waited: call('worldNow') - w0, invincibleHeld };
+    }, { dist, iframes });
 
     const near = await roarAt(5);
     expect(near.decal, `no ring during the roar's windup: ${JSON.stringify(near)}`).not.toBeNull();
@@ -223,6 +236,74 @@ test.describe('the dragon fight', () => {
       .toBeGreaterThan(DRAGON_MOVES.roar.radius + 1);
     expect(far.impulses, `a roar at 11 m shoved the player: ${JSON.stringify(far)}`).toEqual([]);
     expect(far.hits.filter((h) => /Shockwave/.test(h.source)), 'a roar at 11 m struck').toEqual([]);
+
+    // The same roar at 5 m under i-frames: a whiff, with no shove and no strike (the 5 m case above is the presence).
+    const rolled = await roarAt(5, { iframes: true });
+    expect(rolled.waited, `SETUP: the world never ran past the roar's due time: ${JSON.stringify(rolled)}`).toBeGreaterThanOrEqual(rolled.due);
+    expect(rolled.distance, 'SETUP: the pinned dragon moved').toBeCloseTo(5, 0);
+    expect(rolled.invincibleHeld, 'SETUP: something replaced the stand-in i-frames before the roar was due').toBe(true);
+    expect(rolled.impulses, `a roar under i-frames shoved the player: ${JSON.stringify(rolled)}`).toEqual([]);
+    expect(rolled.hits.filter((h) => /Shockwave/.test(h.source)), `a roar under i-frames struck: ${JSON.stringify(rolled.hits)}`).toEqual([]);
+  });
+
+  test('the fireball bursts on the disc its windup showed: a player 4 m off it is untouched, a player on it is hit', async ({ page }) => {
+    await bootDev(page);
+    await startPlayActive(page);
+    await page.waitForFunction(() => window.__craftyTest?.call('readMobs') && window.__threeCamera && window.GameMethods?.damageMob, null, { timeout: 60000 });
+    const st = await stage(page, 8, 0, { calm: true });
+    expect(st.why, st.why).toBeUndefined();
+
+    // A fireball planted with its mark `off` metres north of where the player stands, then flown: where it burst, whether
+    // it hit, and every fireball hit the player took meanwhile.
+    const shot = (off) => page.evaluate(async ({ off }) => {
+      const call = (n, ...a) => window.__craftyTest.call(n, ...a);
+      const frame = () => new Promise((r) => requestAnimationFrame(r));
+      const store = window.useGameStore;
+      const cam = window.__threeCamera.position;
+      if (!(store.getState().hitstopUntil > performance.now())) store.getState().triggerHitstop(60000);
+      for (let still = 0, last = cam.clone(), t0 = performance.now(); still < 5 && performance.now() - t0 < 5000;) {
+        await frame();
+        still = cam.distanceTo(last) < 0.005 ? still + 1 : 0;
+        last.copy(cam);
+      }
+      const n0 = call('readDragon').bursts.count;
+      const aim = [cam.x, cam.z - off];
+      const due = call('plantDragonMove', 'fireball', 150, { at: aim });
+      await frame();
+      const during = call('readDragon');
+      const feet = [cam.x, cam.z];
+      const hits = [];
+      const real = store.getState().damagePlayer;
+      store.setState({ damagePlayer: (amount, source, ...rest) => { hits.push({ amount, source: String(source) }); return real?.(amount, source, ...rest); } });
+      store.setState({ hitstopUntil: performance.now() });
+      const w0 = call('worldNow'), t0 = performance.now();
+      let r = during;
+      while (call('worldNow') - w0 < 8000 && performance.now() - t0 < 20000) {
+        await frame();
+        r = call('readDragon');
+        if (r.bursts.count > n0) break;
+      }
+      store.setState({ damagePlayer: real });
+      store.getState().triggerHitstop(60000);
+      return { due, aim, feet, decal: during.decal, burst: r.bursts.count > n0 ? r.bursts.log[r.bursts.log.length - 1] : null,
+        fireballHits: hits.filter((h) => /Fireball/.test(h.source)), waited: call('worldNow') - w0 };
+    }, { off });
+
+    const miss = await shot(4);
+    expect(miss.decal, `no disc during the fireball's windup: ${JSON.stringify(miss)}`).not.toBeNull();
+    expect(miss.decal.shape).toBe('disc');
+    expect(miss.decal.radius).toBeCloseTo(DRAGON_MOVES.fireball.radius, 3);
+    expect(Math.hypot(miss.decal.at[0] - miss.aim[0], miss.decal.at[2] - miss.aim[1]), `the disc is not on the mark: ${JSON.stringify(miss)}`).toBeLessThan(0.05);
+    expect(miss.burst, `SETUP: the fireball never burst in 8 s of world time: ${JSON.stringify(miss)}`).not.toBeNull();
+    expect(Math.hypot(miss.burst.x - miss.aim[0], miss.burst.z - miss.aim[1]), `the fireball burst off its mark: ${JSON.stringify(miss)}`).toBeLessThan(0.05);
+    expect(Math.hypot(miss.feet[0] - miss.aim[0], miss.feet[1] - miss.aim[1]), 'SETUP: the player was not 4 m off the mark').toBeCloseTo(4, 1);
+    expect(miss.burst.hit, `the fireball hit a player 4 m off its disc: ${JSON.stringify(miss)}`).toBe(false);
+    expect(miss.fireballHits, `a fireball damaged the player 4 m off its disc: ${JSON.stringify(miss)}`).toEqual([]);
+
+    const hit = await shot(0);
+    expect(hit.burst, `SETUP: the fireball never burst in 8 s of world time: ${JSON.stringify(hit)}`).not.toBeNull();
+    expect(hit.burst.hit, `the fireball missed a player standing on its disc: ${JSON.stringify(hit)}`).toBe(true);
+    expect(hit.fireballHits, `the fireball on its disc did not damage the player once: ${JSON.stringify(hit)}`).toHaveLength(1);
   });
 
   test('hurl, a squad ally, an element zone and a fire spell\'s burn each reach the dragon through damageMob and lower its HP', async ({ page }) => {
@@ -253,26 +334,42 @@ test.describe('the dragon fight', () => {
       await waitWorld(1000);
       const steady = hp();
       const out = { hp0, steady, phases: {} };
-      const mark = async (name, act, ms) => {
+      // Each window keeps the calls made in it, and the live ones from any other source: an HP change is a source's only
+      // when no other source hit the dragon in its window.
+      const mark = async (name, sources, act, ms) => {
         const before = hp(), n0 = calls.length;
         await act();
         await waitWorld(ms);
-        out.phases[name] = { before, after: hp(), calls: calls.slice(n0) };
+        const own = calls.slice(n0);
+        out.phases[name] = { before, after: hp(), calls: own, others: own.filter((c) => c.live && !sources.includes(c.source)) };
+      };
+      // Wait until `source` has not hit the dragon for `quietMs` of world time (at most `maxMs`): a burn ticks for its
+      // duration and a zone for its ttl, past the window that started them.
+      const settle = async (source, quietMs, maxMs) => {
+        const w0 = call('worldNow'), t0 = performance.now();
+        while (call('worldNow') - w0 < maxMs && performance.now() - t0 < 30000) {
+          const last = calls.filter((c) => c.source === source).at(-1);
+          if (!last || call('worldNow') - last.t >= quietMs) return true;
+          await frame();
+        }
+        return false;
       };
       const cam = window.__threeCamera;
       // HURL: a block thrown from the eye at the dragon, the way the voidhand throws it.
-      await mark('hurl', () => call('requestHurlAt', [cam.position.x, at[1] + 0.4, cam.position.z], [1, 0, 0]), 1500);
+      await mark('hurl', ['player'], () => call('requestHurlAt', [cam.position.x, at[1] + 0.4, cam.position.z], [1, 0, 0]), 1500);
       // BURN: a fireball cast at the dragon through the store's castSpell (what the F key and the mouse call), the camera
       // turned to face it; its direct hit, then its burn's ticks through damageMob.
       cam.rotation.order = 'YXZ';
       cam.rotation.set(0, -Math.PI / 2, 0);
       cam.updateMatrixWorld();
       store.getState().setMana?.(store.getState().maxMana);
-      await mark('burn', () => { out.cast = store.getState().castSpell?.('fireball') === true; }, 5500);
+      await mark('burn', ['player', 'player-dot'], () => { out.cast = store.getState().castSpell?.('fireball') === true; }, 5500);
+      out.burnSettled = await settle('player-dot', 2500, 15000);
       // ZONE: a burning zone painted under the dragon, as an imbued cast's impact paints one.
-      await mark('zone', () => call('requestZoneAt', [at[0], at[1] - 0.8, at[2]], 'burning'), 3000);
+      await mark('zone', ['hazard'], () => call('requestZoneAt', [at[0], at[1] - 0.8, at[2]], 'burning'), 3000);
+      out.zoneSettled = await settle('hazard', 2500, 15000);
       // ALLY: a zombie bound into the squad beside the dragon.
-      await mark('ally', async () => {
+      await mark('ally', ['ally'], async () => {
         const s = store.getState();
         const before = new Set(call('readMobs').map((m) => m.id));
         s.spawnMob(at[0], at[2] + 3, 'zombie', s.getMobFloor ? s.getMobFloor(at[0], at[2] + 3, at[1]) : null);
@@ -291,10 +388,14 @@ test.describe('the dragon fight', () => {
     expect(run.cast, 'SETUP: castSpell refused the fireball').toBe(true);
     expect(of('burn', 'player-dot').length, `the fireball's burn never ticked on the dragon: ${JSON.stringify(run.phases.burn)}`).toBeGreaterThanOrEqual(2);
     expect(run.phases.burn.after, 'the cast and its burn did not lower its HP').toBeLessThan(run.phases.burn.before);
+    expect(run.burnSettled, `SETUP: the burn still ticked 15 s on: ${JSON.stringify(run.phases.burn)}`).toBe(true);
     expect(of('zone', 'hazard').length, `the burning zone never reached the dragon: ${JSON.stringify(run.phases.zone)}`).toBeGreaterThanOrEqual(1);
+    expect(run.phases.zone.others, `another source hit the dragon in the zone's window: ${JSON.stringify(run.phases.zone.others)}`).toEqual([]);
     expect(run.phases.zone.after, 'the zone did not lower its HP').toBeLessThan(run.phases.zone.before);
+    expect(run.zoneSettled, `SETUP: the zone still ticked 15 s on: ${JSON.stringify(run.phases.zone)}`).toBe(true);
     expect(run.allyBound, 'SETUP: the zombie could not be bound into the squad').toBe(true);
     expect(of('ally', 'ally').length, `the ally never struck the dragon: ${JSON.stringify(run.phases.ally)}`).toBeGreaterThanOrEqual(1);
-    expect(run.phases.ally.after, 'the ally window did not lower its HP').toBeLessThan(run.phases.ally.before);
+    expect(run.phases.ally.others, `another source hit the dragon in the ally's window: ${JSON.stringify(run.phases.ally.others)}`).toEqual([]);
+    expect(run.phases.ally.after, 'the ally did not lower its HP').toBeLessThan(run.phases.ally.before);
   });
 });

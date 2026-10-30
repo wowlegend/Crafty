@@ -14,13 +14,13 @@ import { TIERS } from './quality';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { bossTierStats } from '../game/bossTier.js';
 import { bossCombat, resetBossCombat } from '../game/bossCombat.js';
-import { stepDragon, dragonCtx, DRAGON_MOVES } from '../game/dragonMoves.js';
+import { stepDragon, dragonCtx, DRAGON_MOVES, windUp, dragonYaw, launchFireball, stepFireball } from '../game/dragonMoves.js';
 import { worldDelta, isWorldFrozen, worldNow } from '../game/worldClock.js';
 import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
 import { windupRamp } from '../game/attackTelegraph.js';
 import { bossCaptureReset, BOSS_REST } from '../game/captureRest.js';
 import { lookbookDragonHold } from './lookbookSeam.js';
-import { decalFor, decalOpacity, decalSpin, BITE_DECAL_ARC } from './dragonTelegraphs.js';
+import { decalFor, decalOpacity, decalSpin, placeDecal, DECAL_GEOMETRY } from './dragonTelegraphs.js';
 import { UI } from '../theme/tokens.js';
 import { registerTestHook } from '../devtest/testBridge.js';
 
@@ -145,6 +145,10 @@ const HEAD_TELL_GLOW = 3.0;
 const PLAYER_EYE_M = 1.62;
 // The tells the lookbook can hold that mark the ground with a decal from the pool (the lava has its own ring).
 const HELD_TELLS = ['bite', 'roar', 'summon', 'fireball'];
+// A fireball in flight keeps its mark on the ground at the opacity a windup's decal reaches at its strike, until it bursts.
+const FIREBALL_MARK_OPACITY = 0.75;
+// The DEV log of fireball bursts the e2e reads keeps this many.
+const BURST_LOG = 8;
 
 
 export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, bossHealth, bossTier = 0 }) => {
@@ -208,14 +212,13 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
         cur.mesh = mesh; cur.until = until; cur.windupMs = windupMs;
         if (!mesh) return;
         const gy = useGameStore.getState().getMobGroundLevel?.(d.x, d.z);
-        mesh.position.set(d.x, (Number.isFinite(gy) ? gy : bossPositionRef.current[1] - LANDED_Y) + 0.06, d.z);
-        mesh.scale.setScalar(d.radius);
-        mesh.rotation.set(-Math.PI / 2, 0, d.shape === 'arc' ? decalSpin(d.heading) : 0);
+        placeDecal(mesh, d, (Number.isFinite(gy) ? gy : bossPositionRef.current[1] - LANDED_Y) + 0.06);
         mesh.visible = true;
     };
 
-    // DEV: what the e2e reads of the fight (tests/e2e/dragon-fight.spec.js): the record, where the dragon is, and the
-    // decal a windup shows. Registered while the dragon is mounted.
+    // DEV: what the e2e reads of the fight (tests/e2e/dragon-fight.spec.js): the record, where the dragon is, the decal a
+    // windup shows, the fireballs in flight and where the last ones burst. Registered while the dragon is mounted.
+    const burstsRef = useRef({ count: 0, log: [] });
     useEffect(() => {
         if (!import.meta.env.DEV) return undefined;
         registerTestHook('readDragon', () => {
@@ -225,8 +228,12 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 active: r.active, health: r.health, move: r.move, windupUntil: r.windupUntil, castUntil: r.castUntil,
                 staggerUntil: r.staggerUntil, knockdownUntil: r.knockdownUntil, immuneUntil: r.immuneUntil, heavyChain: r.heavyChain,
                 airborne: r.airborne, pinned: r.pinned, position: { ...r.position }, now: worldNow(),
+                aim: { x: r.aimX, y: r.aimY, z: r.aimZ, heading: r.aimHeading },
+                facing: meshRef.current ? meshRef.current.rotation.y : null,
                 decal: m && m.visible ? { shape: m === decalRingRef.current ? 'ring' : m === decalDiscRef.current ? 'disc' : 'arc',
                     radius: m.scale.x, opacity: m.material.opacity, colour: `#${m.material.color.getHexString()}`, at: m.position.toArray() } : null,
+                fireballs: fireballsRef.current.map((f) => ({ at: { ...f.flight.at }, left: f.flight.left })),
+                bursts: { count: burstsRef.current.count, log: burstsRef.current.log.slice() },
             };
         });
         // Pin it (no flight step) and, `calm`, put every move on an endless cooldown, so only a planted move runs.
@@ -234,17 +241,16 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             bossCombat.pinned = pinned;
             if (calm) for (const k of Object.keys(DRAGON_MOVES)) bossCombat.cooldowns[k] = Infinity;
         });
-        // Wind up `move` due `dueMs` world ms from now, as the machine starts one: its until, and its decal.
-        registerTestHook('plantDragonMove', (move, dueMs) => {
+        // Wind up `move` due `dueMs` world ms from now through the machine's own windUp (no cooldown charged), aimed at
+        // the player's feet or at `at` ([x, z] on the player's level): its until, its aim and its decal.
+        registerTestHook('plantDragonMove', (move, dueMs, { at } = {}) => {
             const m = DRAGON_MOVES[move];
             if (!m) throw new TypeError(`plantDragonMove: no move ${JSON.stringify(move)}`);
-            const r = bossCombat;
+            const c = camera.position;
+            const aim = { x: at ? at[0] : c.x, y: c.y - PLAYER_EYE_M, z: at ? at[1] : c.z };
             const until = worldNow() + dueMs;
-            r.move = move;
-            if (m.parryable) { r.windupUntil = until; r.castUntil = 0; } else { r.castUntil = until; r.windupUntil = 0; }
-            const p = r.position, c = camera.position;
-            showDecal(decalFor({ type: 'windup', move, until, at: { x: c.x, z: c.z }, radius: m.reach ?? m.radius,
-                heading: Math.atan2(c.x - p.x, c.z - p.z) }, p), until, m.windupMs);
+            const ev = windUp(move, bossCombat, aim, until);
+            showDecal(decalFor(ev, bossCombat.position), until, m.windupMs);
             return until - worldNow();
         });
         return () => {
@@ -264,13 +270,18 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
     const [effects, setEffects] = useState({ fireballs: [], lavaZones: [] });
     const effectId = useRef(0); // monotonic effect ids — Math.random() collided React keys + the ref-map keys
 
-    // Instanced Spawner callbacks
-    const spawnFireball = useCallback((startPos, dir) => {
+    // Instanced Spawner callbacks. A fireball flies from the mouth to its mark (game/dragonMoves.js launchFireball) and
+    // keeps that mark on the ground until it bursts there; `life` caps a flight that somehow never arrives.
+    const spawnFireball = useCallback((mouth, at) => {
         const id = effectId.current++;
+        const flight = launchFireball(mouth, at);
+        const gy = useGameStore.getState().getMobGroundLevel?.(at.x, at.z);
         const fireball = {
             id,
-            position: startPos.clone(),
-            velocity: dir.clone().multiplyScalar(16.0), // Fast flight
+            flight,
+            position: new THREE.Vector3(flight.x, flight.y, flight.z),
+            mark: decalFor({ move: 'fireball', at, radius: DRAGON_MOVES.fireball.radius }, null),
+            markY: (Number.isFinite(gy) ? gy : at.y) + 0.06,
             life: 3.5
         };
         fireballsRef.current.push(fireball);
@@ -423,12 +434,9 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
         bossPositionRef.current = [nextX, nextY, nextZ];
         meshRef.current.position.set(nextX, nextY, nextZ);
 
-        // Rotate facing direction towards target path; a winding-up or pinned dragon faces the player it is aiming at.
-        const fx = rec.move || rec.pinned ? playerX - nextX : tdx;
-        const fz = rec.move || rec.pinned ? playerZ - nextZ : tdz;
-        if (!downed && Math.hypot(fx, fz) > 0.1) {
-            meshRef.current.rotation.y = Math.atan2(fx, fz);
-        }
+        // Facing (game/dragonMoves.js dragonYaw): through a windup, the heading it committed; pinned, the player; else its path.
+        const facing = dragonYaw(rec, playerX - nextX, playerZ - nextZ, tdx, tdz);
+        if (!downed && facing !== null) meshRef.current.rotation.y = facing;
 
         // The record, at the dragon's new place: its centre, whether it is out of a ground fighter's reach, and the three
         // points the melee cone looks for.
@@ -460,11 +468,10 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 s.damagePlayer?.(ev.damage, STRIKE_SOURCE[ev.move], [nextX, nextY, nextZ]);
                 if (ev.knockback) s.playerRigidBodyRef?.current?.applyImpulse(ev.knockback, true);
             } else if (ev.type === 'launch') {
-                // Spawn fireball starting at mouth and aiming directly at player capsule core
-                // rotate the LOCAL mouth offset by the boss rotation, THEN add the boss world pos.
-                const headPos = new THREE.Vector3(0, 1.2, 1.5).applyEuler(meshRef.current.rotation).add(new THREE.Vector3(nextX, nextY, nextZ));
-                const targetPos = new THREE.Vector3(playerX, camera.position.y - 0.5, playerZ);
-                spawnFireball(headPos, targetPos.sub(headPos).normalize());
+                // From the mouth (the LOCAL offset turned by the dragon's rotation, then at its world position) to the
+                // mark its windup showed, not to wherever the player has moved since.
+                const mouth = new THREE.Vector3(0, 1.2, 1.5).applyEuler(meshRef.current.rotation).add(new THREE.Vector3(nextX, nextY, nextZ));
+                spawnFireball(mouth, ev.at);
             } else if (ev.type === 'lava') {
                 let playerGroundY = camera.position.y - 1.5;
                 const pgy = s.getMobGroundLevel?.(ev.at.x, ev.at.z);
@@ -493,10 +500,11 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
 
         // --- Step 3: High-Performance Visual Bullets Solver Loops ---
 
-        // 1. Move active fireballs in 3D WebGL Canvas
+        // 1. Fly the fireballs to their marks; each bursts on its mark, hitting the player only if they stand on it.
         let hasDeadFireball = false;
         fireballsRef.current.forEach(f => {
-            f.position.addScaledVector(f.velocity, delta);
+            const outcome = stepFireball(f.flight, delta, cin.player);
+            f.position.set(f.flight.x, f.flight.y, f.flight.z);
             f.life -= delta;
 
             // Direct mesh property manipulation to bypass React DOM updates
@@ -507,16 +515,19 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 mesh.rotation.y += delta * 10;
             }
 
-            // Target collision detector
-            const distToPlayer = f.position.distanceTo(camera.position);
-            if (distToPlayer < 1.6) {
-                f.life = -1; // Flag as dead to explode
-                if (useGameStore.getState().damagePlayer) {
-                    useGameStore.getState().damagePlayer(18, 'Dragon Fireball impact');
+            if (outcome !== 'flying') {
+                f.life = -1;
+                if (outcome === 'hit') {
+                    s.damagePlayer?.(18, 'Dragon Fireball impact');
+                    // Camera shake via the trauma model; damagePlayer already owns the red damage vignette.
+                    s.triggerCameraShake?.(1.4);
                 }
-                // Camera shake via the trauma model; damagePlayer already owns the red damage vignette
-                // (the old setScreenShake here stomped that vignette's intensity + zeroed it early).
-                useGameStore.getState().triggerCameraShake?.(1.4);
+                if (import.meta.env.DEV) {
+                    const b = burstsRef.current;
+                    b.count += 1;
+                    b.log.push({ x: f.flight.x, z: f.flight.z, hit: outcome === 'hit', at: { x: f.flight.at.x, z: f.flight.at.z } });
+                    if (b.log.length > BURST_LOG) b.log.shift();
+                }
             }
 
             if (f.life <= 0) hasDeadFireball = true;
@@ -693,27 +704,33 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             {/* --- The ground decals: one per shape, hidden until a windup shows one (render/dragonTelegraphs.js). In
                 world space, outside the dragon's group, so they lie where the move lands, not where the dragon turns. --- */}
             <mesh ref={decalRingRef} visible={false} renderOrder={2}>
-                <ringGeometry args={[0.9, 1, 64]} />
+                <ringGeometry args={DECAL_GEOMETRY.ring} />
                 <meshBasicMaterial color={DECAL_COLOR} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
             </mesh>
             <mesh ref={decalDiscRef} visible={false} renderOrder={2}>
-                <circleGeometry args={[1, 40]} />
+                <circleGeometry args={DECAL_GEOMETRY.disc} />
                 <meshBasicMaterial color={DECAL_COLOR} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
             </mesh>
             <mesh ref={decalArcRef} visible={false} renderOrder={2}>
-                <ringGeometry args={[0.2, 1, 32, 1, -BITE_DECAL_ARC / 2, BITE_DECAL_ARC]} />
+                <circleGeometry args={DECAL_GEOMETRY.arc} />
                 <meshBasicMaterial color={DECAL_COLOR} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
             </mesh>
 
             {/* --- High Performance Instanced/Mesh Effects Rendering Sheets --- */}
 
-            {/* 1. Aerial Fireballs */}
+            {/* 1. Aerial Fireballs, each with its mark on the ground until it bursts there */}
             {effects.fireballs.map(f => (
-                <mesh key={f.id} ref={el => { if (el) fireballMeshes.current[f.id] = el; else delete fireballMeshes.current[f.id]; }} position={f.position}>
-                    <sphereGeometry args={[0.45, 12, 12]} />
-                    <meshBasicMaterial color="#f97316" toneMapped={false} />
-                    <PooledLight color="#f97316" intensity={2.0} distance={6} />
-                </mesh>
+                <React.Fragment key={f.id}>
+                    <mesh ref={el => { if (el) fireballMeshes.current[f.id] = el; else delete fireballMeshes.current[f.id]; }} position={f.position}>
+                        <sphereGeometry args={[0.45, 12, 12]} />
+                        <meshBasicMaterial color="#f97316" toneMapped={false} />
+                        <PooledLight color="#f97316" intensity={2.0} distance={6} />
+                    </mesh>
+                    <mesh ref={el => { if (el) placeDecal(el, f.mark, f.markY); }} renderOrder={2}>
+                        <circleGeometry args={DECAL_GEOMETRY.disc} />
+                        <meshBasicMaterial color={DECAL_COLOR} transparent opacity={FIREBALL_MARK_OPACITY} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+                    </mesh>
+                </React.Fragment>
             ))}
 
             {/* 2. Dynamic Burn Lava Zones */}
