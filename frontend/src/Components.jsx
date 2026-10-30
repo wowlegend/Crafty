@@ -6,7 +6,8 @@ import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
 import { worldTimeScale, hitstopForHit } from './game/hitstop.js';
 import { realDelta, worldNow } from './game/worldClock.js';
-import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
+import { BEAST_FORMS, BASE_CAPSULE, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
+import { formHasRoom, enterFormFitted, restoreBaseFitted } from './game/formFit.js';
 import { makeTransformState, decideTransform } from './game/beastTransform.js';
 import { canAfford, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST } from './game/ember.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
@@ -104,11 +105,9 @@ export const Player = ({ isWorldBuilt }) => {
   const controllerRef = useRef(null);
   const knockbackVelocity = useRef(new THREE.Vector3(0, 0, 0));
   // S2-B1-M1: beast-form collider hot-swap. pendingFormSwapRef = a one-shot target capsule enqueued
-  // on activeBeastForm transitions, consumed inside useFrame (atomic with the Rapier sweep).
-  // currentFormHHRef tracks the live half-height so we can nudge up by the grow-delta (depenetration)
-  // when a larger form spawns near ground. Both are refs -> zero re-renders (Game-Loop Isolation).
+  // on activeBeastForm transitions, consumed inside useFrame (atomic with the Rapier sweep), where game/formFit.js
+  // places the new capsule where it fits. A ref -> zero re-renders (Game-Loop Isolation).
   const pendingFormSwapRef = useRef(null);
-  const currentFormHHRef = useRef(BASE_CAPSULE.halfHeight);
   // S2-B1-M3: the transform state machine (charge + duration + cooldown) + roar edge-detection.
   const beastSMRef = useRef(makeTransformState());
   const prevRoarRef = useRef(false);
@@ -194,18 +193,16 @@ export const Player = ({ isWorldBuilt }) => {
   useEffect(() => {
     if (!didFormMount.current) { didFormMount.current = true; return; }
     if (activeBeastForm) {
-      // ENTER: queue the (possibly enlarging) swap -> consumed in useFrame so it is ATOMIC with the
-      // Rapier sweep and the grow-depenetration folds into the same setNextKinematicTranslation.
+      // ENTER: queue the swap -> consumed in useFrame so it is ATOMIC with the Rapier sweep.
       pendingFormSwapRef.current = BEAST_FORMS[activeBeastForm] || BASE_CAPSULE;
     } else {
-      // EXIT/restore: shrink back to base IMPERATIVELY here -- NOT via the useFrame queue, which sits
+      // EXIT/restore: back to base IMPERATIVELY here -- NOT via the useFrame queue, which sits
       // behind the dead-window early-return (a queued restore would not drain until manual respawn,
       // leaving the live collider a beast shape for the whole death screen). This is the
-      // no-permanent-beast restore AT the death/load edge. Always a shrink -> no depenetration ->
-      // safe off-frame. Cancels any not-yet-consumed enter-swap + resyncs the half-height tracker.
+      // no-permanent-beast restore AT the death/load edge. Not always a shrink (the comet and the hawk
+      // are narrower than the base), so the base capsule is placed where it fits (game/formFit.js).
       pendingFormSwapRef.current = null;
-      restoreBaseCollider(rigidBodyRef.current?.collider(0), rapier, controllerRef.current);
-      currentFormHHRef.current = BASE_CAPSULE.halfHeight;
+      if (rigidBodyRef.current) restoreBaseFitted(world, rapier, rigidBodyRef.current, controllerRef.current, { unindexed: GameMethods.placedCells?.unindexed() });
     }
   }, [activeBeastForm]);
 
@@ -744,8 +741,12 @@ export const Player = ({ isWorldBuilt }) => {
         st.setBeastCharging(true); // M7c: beat-1 anticipation begins
       } else if (action === 'enter') {
         // UNLEASH: the bar is spent only on a real transform (enterBeastForm returns false when it rejects: already in a
-        // form, or dead), so a no-op enter drains nothing.
-        if (st.enterBeastForm(elementForSpell(st.activeSpell))) {
+        // form, or dead), so a no-op enter drains nothing. A form with no room where the player stands (the golem in a
+        // two-high tunnel) is refused before that, and said (game/formFit.js).
+        const element = elementForSpell(st.activeSpell);
+        if (!formHasRoom(world, rapier, rigidBodyRef.current, BEAST_FORMS[element], { unindexed: GameMethods.placedCells?.unindexed() })) {
+          notifyDenied('no-room');
+        } else if (st.enterBeastForm(element)) {
           st.spendEmber(ROAR_COST);
           // AUDIO (the owed B1 backfill): the ROAR finally SOUNDS — spatial at the player.
           const rp = st.playerPosition;
@@ -1397,33 +1398,31 @@ export const Player = ({ isWorldBuilt }) => {
     // (capture/respawn/void-guard above), immediately before the collider(0) read -- so the in-place
     // setShape is ATOMIC with this frame's sweep (a frame that skips the sweep also skips the swap)
     // and NEVER runs under the visual-capture harness (capture early-returns at the top of useFrame).
-    // setShape preserves the collider handle/index/groups -> no re-bind, ZERO voxel edits. The grow-
-    // depenetration delta folds into the single setNextKinematicTranslation below. (EXIT/restore is
-    // done imperatively in the activeBeastForm effect -- it must drain even while the dead-window
-    // early-return is active.) Guarded on controllerRef so the swap + its depenetration stay paired.
-    let growDeltaY = 0;
+    // setShape preserves the collider handle/index/groups -> no re-bind, ZERO voxel edits. The new capsule is placed
+    // where it fits (game/formFit.js), so this frame's sweep starts clear; where nothing near fits any more (a block
+    // placed since the roar's commit checked), the form is refused. (EXIT/restore is done imperatively in the
+    // activeBeastForm effect -- it must drain even while the dead-window early-return is active.)
     if (pendingFormSwapRef.current && rapier && controllerRef.current) {
       const target = pendingFormSwapRef.current;
       pendingFormSwapRef.current = null;
-      const c0 = rigidBodyRef.current.collider(0);
-      if (c0 && setColliderToForm(c0, rapier, target)) {
-        growDeltaY = Math.max(0, target.halfHeight - currentFormHHRef.current);
-        currentFormHHRef.current = target.halfHeight;
+      if (enterFormFitted(world, rapier, rigidBodyRef.current, target, { unindexed: GameMethods.placedCells?.unindexed() })) {
         // defensive base reset (M1 forms never shove dynamics; the bull enables this in M5).
         if (controllerRef.current.setApplyImpulsesToDynamicBodies) {
           controllerRef.current.setApplyImpulsesToDynamicBodies(false);
         }
+      } else {
+        useGameStore.getState().exitBeastForm();
+        notifyDenied('no-room');
       }
     }
 
     // The Rapier KCC sweep and the frame's one kinematic write (game/kinematicMove.js: it also sweeps a move given on a
-    // frame that took no world step, which a plain write would lose). growDeltaY (from a just-applied enlarging
-    // form-swap) is folded into THIS write -- never a competing setNextKinematic from a subscribe callback -- so a
-    // larger capsule never spawns intersecting the ground. The colliders made since the last world step (a placed cell's
-    // stand-in, a rebuilt chunk) are ones the KCC's sweep cannot see yet, so the move is cut at them (world/placedCellColliders.js).
+    // frame that took no world step, which a plain write would lose). The colliders made since the last world step (a
+    // placed cell's stand-in, a rebuilt chunk) are ones the KCC's sweep cannot see yet, so the move is cut at them
+    // (world/placedCellColliders.js).
     const collider = rigidBodyRef.current.collider(0);
     if (collider && controllerRef.current) {
-      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, growDeltaY, filterPredicate, GameMethods.placedCells?.unindexed());
+      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, 0, filterPredicate, GameMethods.placedCells?.unindexed());
     }
 
     // Phase 9: Dynamic FOV Momentum & Camera Bobbing
