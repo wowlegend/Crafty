@@ -35,8 +35,9 @@ when its code downloads.
 
 ## Decisions (routine calls, stated; DECISIONS items 120 on record the non-routine ones)
 
-1. **Units 1-4 go before move 11's surfaces** (DECISIONS 120). The decals are the dragon's own fixed pool of four
-   meshes inside `BossEntity`'s one frame loop (no second `useFrame`), so W3-A's edge telegraph can absorb them.
+1. **Units 1-4 go before move 11's surfaces** (DECISIONS 120). The decals are the dragon's own fixed pool of three
+   meshes (ring, disc, arc; the lava keeps its own ring) inside `BossEntity`'s one frame loop (no second `useFrame`),
+   so W3-A's edge telegraph can absorb them.
    Units 5 (rig), 6 (slow motion), 7 (roar voice), 8 (returns), 9 (arena), 10.2b (gpu-cost scene) are registry rows.
 2. **The failed chunk suspends the encounter** (DECISIONS 121). GameScene's props come from `App.jsx`, so the give-up
    path is published on the store as `suspendBossEncounter` (a declared slot), as `damageBoss` is.
@@ -49,10 +50,10 @@ when its code downloads.
 5. **The interim tell on today's model** (until Unit 5): the head's emissive ramps with the windup (`windupRamp`), and
    a ground decal: bite and dive-bite an arc of reach 5 in the heading, roar a ring of radius 9 on the dragon, fireball
    a disc of 1.6 m on the aim point, summon a ring of 7 m where the skeletons rise; the lava keeps its own ring.
-6. **The attack toasts and their class go** (DECISIONS 123, amending item 92): `bossAttackCall`, the `attack` mark in
+6. **The attack toasts and their class go** (DECISIONS 124, amending item 92): `bossAttackCall`, the `attack` mark in
    `ui/notifications.js`, the four `notice.boss*` attack keys, `tests/gates/boss-attack-line-gates.test.js` and the
    attack-call states of `tests/e2e/hud-at-rest.spec.js`. The phase lines describe the read (en and zh-CN).
-7. **One damage path** (DECISIONS 124, row 25). `BOSS_TARGET_ID` names the record; `bossTargets(mobs)` hands systems
+7. **One damage path** (DECISIONS 126, row 25). `BOSS_TARGET_ID` names the record; `bossTargets(mobs)` hands systems
    the mob list with the record appended while a fight is live (a module scratch array, no per-tick allocation);
    `CombatSystem.damageMob` routes that id to `damageBoss(amount, source)`, which applies the riposte to the player's
    sources only. Hurl, slam, zones and the squad read `bossTargets`; their pure hit tests add an entity's `bodyRadius`

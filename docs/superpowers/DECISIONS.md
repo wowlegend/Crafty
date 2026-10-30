@@ -29,7 +29,7 @@
    (`refute-2026-10-27.md:104`), and the dragon plan's review amendments made move 11's U1 a precondition for its Units 3
    and 5. Move 11's edge telegraph, HDR gain and decal pools are not on main and the reset plan moved them to W3-A
    (`sota-reset.md:539`), which runs beside this lane. **Why:** the tells are the fight's rules ("rules first",
-   `upside-2026-10-27.md:52`) and need no shared surface: the decals are the dragon's own fixed pool of four meshes driven
+   `upside-2026-10-27.md:52`) and need no shared surface: the decals are the dragon's own fixed pool of three meshes driven
    from `render/BossEntity.jsx`'s one frame loop, which W3-A's telegraph can absorb. Unit 5 (the rig) still waits for
    W3-A's edge telegraph and HDR gain; Units 6-9 are registry rows.
 121. **The dragon is its own chunk, and a chunk that never loads suspends the fight.** `render/dragonLoader.js`
