@@ -143,19 +143,21 @@ test.describe('the victory screen on desktop', () => {
 // Touch has no pointer lock, so the world opener (Terrain's open(), reached by the interact verb) drops no input gate:
 // the world ran on behind the chest's scrim, mobs kept hitting and the player could die inside the menu. The opener here
 // is the store write Terrain's open() makes (the chest's coordinates and its flag; its pointer release is a no-op on
-// touch). A held W stands in for an iPad's keyboard: it drives the Player loop's walk, which reads the same gate.
+// touch). A held key stands in for an iPad's keyboard: it drives the Player loop's walk, which reads the same gate. The
+// presence walk is W for a few frames and the held walk is S, back along the ground the presence walk just crossed, so an
+// obstacle ahead (where a long walk forward can end) cannot read as a held walk.
 const IPAD = devices['iPad Pro 11 landscape'];
 
 /** In the page: the body's ground-plane travel while W is held for `n` frames. */
-async function walkFrames(page, n) {
+async function walkFrames(page, n, key) {
   const from = await page.evaluate(() => { const t = window.useGameStore.getState().playerRigidBodyRef.current.translation(); return { x: t.x, z: t.z }; });
-  await page.keyboard.down('w');
+  await page.keyboard.down(key);
   await page.evaluate((count) => new Promise((resolve) => {
     let left = count;
     const tick = () => { left -= 1; if (left <= 0) resolve(); else requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   }), n);
-  await page.keyboard.up('w');
+  await page.keyboard.up(key);
   const to = await page.evaluate(() => { const t = window.useGameStore.getState().playerRigidBodyRef.current.translation(); return { x: t.x, z: t.z }; });
   return Math.round(Math.hypot(to.x - from.x, to.z - from.z) * 100) / 100;
 }
@@ -179,7 +181,7 @@ test.describe('a chest opened from the world on touch', () => {
 
     // PRESENCE: in play the clock runs and a held W walks.
     const liveClock = await worldClockOver(page, 600);
-    const liveWalk = await walkFrames(page, 40);
+    const liveWalk = await walkFrames(page, 10, 'w');
     console.log(`[input-live] touch, in play: world clock +${liveClock} ms, walk ${liveWalk} m`);
     expect(liveClock, 'SETUP: the world clock does not run in play, so a hold cannot be seen').toBeGreaterThan(200);
     expect(liveWalk, 'SETUP: a held W does not walk in play, so a held walk cannot be seen').toBeGreaterThan(0.3);
@@ -190,9 +192,9 @@ test.describe('a chest opened from the world on touch', () => {
     console.log(`[input-live] touch, chest open: the input gate is ${active ? 'still up' : 'down'}`);
 
     const heldClock = await worldClockOver(page, 600);
-    const heldWalk = await walkFrames(page, 40);
+    const heldWalk = await walkFrames(page, 10, 's');
     console.log(`[input-live] touch, chest open: world clock +${heldClock} ms, walk ${heldWalk} m`);
     expect(heldClock, 'the world ran on behind the chest opened from the world').toBe(0);
-    expect(heldWalk, 'a held W walked the player behind the chest').toBeLessThan(0.05);
+    expect(heldWalk, 'a held S walked the player behind the chest').toBeLessThan(0.05);
   });
 });
