@@ -7,6 +7,7 @@
 import { normalizeInventoryKeys } from './invNormalize.js';
 import { serializeBossState } from './bossPersistence.js';
 import { questRewards } from './questRewards.js';
+import { resolveWorldSeed } from '../world/worldSeed.js';
 
 export const SAVE_VERSION = 2; // 1 = pre-A3 (no progression); 2 = A3 progression slice
 
@@ -262,6 +263,8 @@ export function buildSaveData(state, { position } = {}) {
     },
     game_state: {
       ...tomb.game_state,
+      // The world's terrain seed. In game_state so a build that does not know the field carries it back (the tombstone).
+      worldSeed: resolveWorldSeed(state.worldSeed),
       selectedBlock: state.selectedBlock,
       activeSpell: state.activeSpell,
       isDay: state.isDay,
