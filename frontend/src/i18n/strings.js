@@ -32,7 +32,7 @@ export const STRINGS = {
     'notice.panelLoadFailed': 'That panel could not load. Check your connection, or reload if the game just updated.',
     // The dragon's own chunk (render/dragonLoader.js): retried, then the fight is suspended with its HP kept.
     'notice.dragonLoadFailed': 'The dragon could not be loaded. Trying again...',
-    'notice.dragonLoadGaveUp': 'The dragon could not be loaded. Reload the page, especially if Crafty was just updated. Its health is kept.',
+    'notice.dragonLoadGaveUp': 'The dragon could not be loaded. Reload the page, especially if Crafty was just updated, or leave the lair and come back to try again. Its health is kept.',
     'notice.dusk': 'Dusk approaches. Night falls soon: ready your defenses!',
     // The siege notice by night tier (game/dayNight.js siegeWarning), the dawn notice (world/dawnSurvival.js), the
     // dragon's calls (world/bossSystem.js) and an Aspect's first unlock (game/aspectHints.js): every one is a toast in the
@@ -324,7 +324,7 @@ export const STRINGS = {
     'ui.contextLost': '画面已被系统重置，点击继续游戏',
     'notice.panelLoadFailed': '面板加载失败。请检查网络；如果游戏刚刚更新，请刷新页面。',
     'notice.dragonLoadFailed': '巨龙加载失败，正在重试……',
-    'notice.dragonLoadGaveUp': '巨龙加载失败。请刷新页面，尤其是游戏刚刚更新的时候。它的生命值会保留。',
+    'notice.dragonLoadGaveUp': '巨龙加载失败。请刷新页面（尤其是游戏刚刚更新的时候），或者离开巢穴再回来重试。它的生命值会保留。',
     'notice.dusk': '黄昏将至，夜幕即将降临，快做好防御！',
     'notice.siege.first': '第 {n} 夜：第一次围攻开始了，坚守到黎明！',
     'notice.siege.harder': '第 {n} 夜：怪物攻势更猛了，坚守到黎明！',

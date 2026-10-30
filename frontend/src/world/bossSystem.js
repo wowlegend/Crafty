@@ -57,6 +57,12 @@ export const useBossSystem = (playerLevel) => {
     // Bumped by suspendEncounter: the arrival poll below is an effect that returned before arming its interval while a
     // fight was on, and resetting bossSpawned alone would not run it again.
     const [rearm, setRearm] = useState(0);
+    // After a give-up the lair stays disarmed until the player has walked out of it: a player still standing there
+    // would wake the fight on the next poll, and every wake retries a chunk that may never load (a tab left open
+    // across a deploy), so the retries are bounded by arrivals, not by a timer.
+    const lairDisarmed = useRef(false);
+    // A suspended fight was already entered: its next wake resumes it without the entrance beat.
+    const resumeQuietly = useRef(false);
     const bossKilledRef = useRef(false); // idempotency latch: kill side-effects fire EXACTLY once even if damageBoss is called twice in a frame (melee + spell) or the updater double-invokes under StrictMode
 
 
@@ -74,8 +80,8 @@ export const useBossSystem = (playerLevel) => {
         if (bossSpawned.current) return;
         if (bossTier === 0 && (playerLevel < BOSS_BASE_LEVEL || bossDefeated || useGameStore.getState().gameWon)) return;
         // The player qualifies for a fight, so its code downloads now, usually minutes before the arrival. A slain
-        // tier waits for its return to be due, below.
-        if (!(bossTier > 0 && bossDefeated)) preloadDragon();
+        // tier waits for its return to be due, below; a disarmed lair waits for the player to walk out.
+        if (!(bossTier > 0 && bossDefeated) && !lairDisarmed.current) preloadDragon();
         const lair = blightHeartSite();
         const interval = setInterval(() => {
             if (bossSpawned.current || isWorldFrozenNow()) return;
@@ -90,14 +96,22 @@ export const useBossSystem = (playerLevel) => {
             }
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
-            if (Math.hypot(playerPos.x - lair.x, playerPos.z - lair.z) > 24) return; // not at the lair yet
+            const atLair = Math.hypot(playerPos.x - lair.x, playerPos.z - lair.z) <= 24;
+            if (lairDisarmed.current) {
+                // Walking out re-arms it, and the chunk is fetched again then, ahead of the return.
+                if (!atLair) { lairDisarmed.current = false; preloadDragon(); }
+                return;
+            }
+            if (!atLair) return;
             bossSpawned.current = true;
+            const quiet = resumeQuietly.current;
+            resumeQuietly.current = false;
             // E-ter/E4: the ARRIVAL is the climax of the run and used to be this notification and nothing
             // else, while the KILL fires eight isolated effects. Freeze + swell + shake now land with it.
             // Capture-SUPPRESSED: the visual gate has a boss state, and a bloom spike or shake at spawn
             // would make those frames non-deterministic (same guard the A5 dangerLevel bridge uses).
             const bStore = useGameStore.getState();
-            runIsolatedEffects(bossEntranceBeat({
+            if (!quiet) runIsolatedEffects(bossEntranceBeat({
                 notify: () => bossNotice('notice.bossAwakens', { boss: bossNameKey(bossTier) }),
                 // The REAL camera shake, not setScreenShake -- that one drives DamageOverlay's red vignette,
                 // so the arrival used to paint the take-damage cue over the climax. No clear timeout is
@@ -137,9 +151,12 @@ export const useBossSystem = (playerLevel) => {
 
     // The dragon's chunk could not be loaded after every retry (render/dragonLoader.js): the fight is SUSPENDED, not
     // lost. The bar, the music and the mood end through bossActive's own effects, the HP and the tier stay (the mirror
-    // below saves them), and the lair re-arms, so the next arrival tries the chunk again and resumes at the saved HP.
+    // below saves them), and the lair re-arms once the player has walked out of it, so the next arrival tries the
+    // chunk again and resumes the same fight at the saved HP, without a second entrance.
     const suspendEncounter = useCallback(() => {
         bossSpawned.current = false;
+        lairDisarmed.current = true;
+        resumeQuietly.current = true;
         setBossActive(false);
         setRearm((n) => n + 1);
     }, []);

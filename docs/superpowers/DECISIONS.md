@@ -76,8 +76,12 @@
    lazy dragon sits in its own `<Suspense>`, because React 19 hides every sibling of a lazy that suspends in a revealed
    boundary on a non-transition update and runs their layout-effect cleanups, where R3F's `useFrame` unsubscribes. A
    failed chunk is tried again three times, 5 s apart, then the encounter is SUSPENDED through the store's
-   `suspendBossEncounter`: the bar, music and mood end, the HP and tier stay in the save, and the lair re-arms. **Why the
-   store:** GameScene's props come from `App.jsx`, which the W2-G lane holds.
+   `suspendBossEncounter`: the bar, music and mood end, the HP and tier stay in the save, and the lair re-arms once the
+   player has walked out of it: a player still standing there is left in a quiet lair, the chunk is fetched again only
+   on a new arrival (three retries per arrival, never on a timer), and the resumed fight plays no second entrance.
+   **Why the store:** GameScene's props come from `App.jsx`, which the W2-G lane holds. **Why the walk-out:** re-armed
+   at once, a player at the lair woke the fight on the next poll and replayed the entrance and the failing retries
+   about every 17 s.
 122. **The production build can wake the dragon, only on a `?lookbook=1` page.** `world/bossSystem.js` installs
    `lookbookSpawnDragon` only when the URL carries the exact parameter; the seam's `dragon({ pose, position })`
    (`render/lookbookSeam.js`) reaches it and holds the dragon still (`lookbookDragonHold()`, read per frame by
