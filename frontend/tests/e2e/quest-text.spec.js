@@ -27,6 +27,10 @@ const PRE_CUT = JSON.parse(readFileSync(resolve(HERE, '../fixtures/pre-cut-save.
 /** The fixture with a hunt nine kills in, as a build before this change wrote it. */
 function preChangeSave() {
   const save = structuredClone(PRE_CUT);
+  // The fixture's position (3, 21, 6) lies inside the generated ground. A load now holds the player at a save's position
+  // until that column's colliders are back (DECISIONS 2026-10-30 item 154), so it would stand them inside it; this test
+  // reads quest text and a kill, so its load leaves the player where they stand.
+  delete save.player_data.position;
   save.questState = {
     quests: [
       { id: 'first_blood', title: 'First Blood', description: 'Cut down the first horror at the gate', icon: 'sword', type: 'kill', target: 1, xpReward: 30, tier: 1, progress: 1, completed: true, claimed: true },
