@@ -90,17 +90,7 @@ function GameApp({ experienceSystem }) {
   const hudHidden = useGameStore(s => s.hudHidden);
   const showcaseView = useGameStore(s => s.showcaseView);
   const { musicEnabled, playBackgroundMusic, resumeAudio } = useSounds();
-  const { playAttack, playSwing, playHit, playDefeat, playLevelUpSound, playFanfare, playVictory } = useGameSounds();
-
-  // Reward-beat sound bridge: the codebase triggers reward sounds via window.* globals
-  // (SimpleExperienceSystem's window.playLevelUpSound, QuestSystem's window.playFanfare), but nothing
-  // assigned them -> level-up was SILENT (dead reference). Set them here from the live sound API. Null in
-  // capture/headless (playSound no-ops without an AudioContext), so this is capture-safe.
-  useEffect(() => {
-    window.playLevelUpSound = playLevelUpSound;
-    window.playFanfare = playFanfare;
-    window.playVictory = playVictory; // the climax sting, fired on VictoryOverlay mount
-  }, [playLevelUpSound, playFanfare, playVictory]);
+  const { playAttack, playSwing, playHit, playDefeat } = useGameSounds();
 
   const [isWorldBuilt, setIsWorldBuilt] = useState(false);
 

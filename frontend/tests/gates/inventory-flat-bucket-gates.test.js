@@ -18,7 +18,7 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 // where characters sit, which is not the invariant.
 //
 // The invariant is "acquire something, and it shows up in the bucket the player can see". Run that.
-vi.mock('../../src/SoundManager', () => ({ useGameSounds: () => ({ playPickup: () => {}, playLevelUpSound: () => {} }) }));
+vi.mock('../../src/SoundManager', () => ({ useGameSounds: () => ({ playPickup: () => {} }) }));
 const { TradingInterface } = await import('../../src/ui/TradingInterface.jsx');
 const { Inventory } = await import('../../src/ui/GamePanels.jsx');
 

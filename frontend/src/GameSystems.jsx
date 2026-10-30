@@ -8,6 +8,7 @@ import { Button } from './ui/primitives/Button.jsx';
 import { MAGIC } from './theme/tokens.js';
 import { useT } from './i18n/i18n.js';
 import { isWorldFrozenNow } from './game/worldClock.js';
+import { EVENTS, emit } from './game/eventBus.js';
 
 
 const GameSystemsContext = createContext();
@@ -201,10 +202,10 @@ export const DeathScreen = ({ onRespawn }) => {
 // can never be true in capture (a fresh level-1 game), so it stays out of the visual baselines.
 export const VictoryOverlay = ({ onDismiss }) => {
     const t = useT();
-    // The climax payoff: fire the triumphant victory sting once when the win screen appears (the boss-defeat
-    // beat was silent). window.playVictory is bridged from App's useGameSounds; no-op in capture (no ctx).
+    // The climax payoff: the victory sting, once, when the win screen appears. The sound layer plays it from the bus;
+    // with no audio context (capture, a headless run) nothing is subscribed to sound it.
     useEffect(() => {
-        if (window.playVictory) window.playVictory();
+        emit(EVENTS.victory);
     }, []);
     const level = useGameStore.getState().level;
     const nights = useGameStore.getState().nightCount;

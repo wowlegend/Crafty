@@ -1,43 +1,17 @@
 /**
- * mobKillBus.js — S2-B1-M3.5: a multi-subscriber kill-event bus.
- *
- * Replaces the single-slot `store.onMobKill` (only ONE consumer could register it — a last-writer-wins
- * trap: a 2nd registrant silently clobbered the first, flagged by the M1 review). Now quests AND the
- * ember accrual — and future Aspects (SOULBIND captures a low-HP mob on its death) — all
- * SUBSCRIBE; the single mob-death code path EMITS once. The Aspect-meta kill-event scaffold.
- *
- * Singleton module (like inputState): the kill-path imports `emitMobKill`; consumers import
- * `subscribeMobKill` in a useEffect (unsub in cleanup). One throwing subscriber never blocks the rest.
+ * The kill event's two helpers on the event bus (game/eventBus.js): the one mob-death path emits, and every kill
+ * consumer (quests, the ember accrual) subscribes.
  */
-const subscribers = new Set();
+import { EVENTS, on, emit } from './eventBus.js';
 
-/** subscribeMobKill(cb) -> unsubscribe. cb receives (mobType, position[], source).
- *  source: 'player' | 'ally' (S2-B3-M1) | 'hazard' (S2-B4-M1 — element-zone kills; banks nothing
- *  downstream by the exact-match 'player' filters). */
+/** subscribeMobKill(cb) -> unsubscribe. cb receives (mobType, position[], source): 'player', 'ally' or 'hazard' (an
+ *  element-zone kill, which the 'player'-filtered consumers bank nothing from). */
 export function subscribeMobKill(cb) {
-  subscribers.add(cb);
-  return () => subscribers.delete(cb);
+  return on(EVENTS.mobKill, cb);
 }
 
-/** emitMobKill(mobType, position, source) — fan out a mob death (isolated per-cb). The source
- *  default keeps every pre-B3 caller green; ally deaths DO emit (so squad UI can react) but
- *  attribution-filtered subscribers bank nothing from them. */
+/** emitMobKill(mobType, position, source) — a mob died. An ally's death emits too, so squad UI can react; the
+ *  attribution-filtered consumers bank nothing from it. */
 export function emitMobKill(mobType, position, source = 'player') {
-  for (const cb of [...subscribers]) {
-    try {
-      cb(mobType, position, source);
-    } catch {
-      // one bad subscriber (e.g. a quest handler throwing) must not block the others.
-    }
-  }
-}
-
-/** subscriber count (test/debug). */
-export function mobKillSubscriberCount() {
-  return subscribers.size;
-}
-
-/** test helper — clear all subscribers. */
-export function _resetMobKillBus() {
-  subscribers.clear();
+  emit(EVENTS.mobKill, mobType, position, source);
 }
