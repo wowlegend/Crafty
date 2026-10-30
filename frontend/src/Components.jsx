@@ -1028,13 +1028,15 @@ export const Player = ({ isWorldBuilt }) => {
       rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       return;
-    } else if (!spawnPosSet.current) {
+    } else if (!spawnPosSet.current || useGameStore.getState().resumeSpawn) {
       const store = useGameStore.getState();
-      // 0. a RESUMED save (the context-loss reload) stands the player where they were saved, once that column's colliders
-      //    exist (game/spawnPlacement.js resolveResumeSpawn). The camera goes there while it waits: chunk streaming follows it.
+      // 0. a LOADED save (the World Manager's Load, or the context-loss reload) stands the player where they were saved,
+      //    once that column's colliders exist (game/spawnPlacement.js resolveResumeSpawn); a load in play enters here too,
+      //    and the body is held until the new world's column is in. The camera goes there while it waits: chunk streaming
+      //    follows it. Until the old world's wipe has committed the probe is not asked (store worldReloading).
       if (store.resumeSpawn) {
         const r = store.resumeSpawn;
-        const probeY = store.getMobGroundLevel ? store.getMobGroundLevel(r.x, r.z) : null;
+        const probeY = store.getMobGroundLevel && !store.worldReloading ? store.getMobGroundLevel(r.x, r.z) : null;
         const resume = resolveResumeSpawn(r, probeY, resumeProbeFailsRef.current);
         if (resume.hold) {
           resumeProbeFailsRef.current += 1;
