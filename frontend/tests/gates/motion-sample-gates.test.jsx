@@ -106,19 +106,22 @@ describe('judgeMotion: the verdict on a sampled transition', () => {
 
 describe('installMotionSampler: the real talents panel, mounted under the app provider', () => {
   it('finds the card and the dialog at insertion, reads their initial state, follows the transition and settles', async () => {
-    installMotionSampler({ testid: 'progression-panel', deadlineMs: 8000 });
+    // At a tenth of real time, as the e2e reads it at a fiftieth: at normal pace a frame that stalls for a few hundred
+    // milliseconds steps over the 350 ms spring and the verdict reads a jump (the case below reproduces that on purpose).
+    // The deadline and the poll run on Date.now(): performance.now is the slowed clock from the panel's insertion.
+    installMotionSampler({ testid: 'progression-panel', deadlineMs: 25000, clockFactor: 0.1 });
     const out = window.__motionSamples;
     expect(out.frames.length, 'SETUP: the sampler recorded before anything was mounted').toBe(0);
     render(<SpellUpgradePanel onClose={() => {}} />, { wrapper: MotionProvider });
-    const deadline = performance.now() + 8000;
-    while (!out.done && performance.now() < deadline) await new Promise((r) => setTimeout(r, 20));
+    const deadline = Date.now() + 25000;
+    while (!out.done && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
     expect(out.done, `the sampler never finished: ${out.frames.length} samples`).toBe(true);
     expect(out.target, 'the sampler did not say which elements it followed').toMatch(/^card div\..*, dialog div\./);
     expect(out.frames[0], 'the insertion sample is not the initial state').toMatchObject({ scale: 0.9, y: 30, opacity: 0 });
     const v = judgeMotion(out.frames);
     expect(v.kind, `${v.why} :: ${JSON.stringify(out.frames.slice(0, 8))}`).toBe('ok');
     expect(out.frames.some((f) => f.opacity > 0 && f.opacity < 1), 'the dialog\'s opacity was never read between its ends').toBe(true);
-  });
+  }, 40000);
 
   it('without the provider the same panel is frozen at its initial state, and the verdict says so', async () => {
     // The control that makes the case above mean something: the sampler reads a frozen panel as one, not as a pass.

@@ -17,6 +17,7 @@ import { ChestInventoryPanel } from '../../src/ui/ChestInventoryPanel.jsx';
 import { GameUI } from '../../src/ui/GameHud.jsx';
 import DamageDirection from '../../src/ui/DamageDirection.jsx';
 import LowHealthVignette from '../../src/ui/LowHealthVignette.jsx';
+import { slowPageClock, restorePageClock } from '../e2e/_motionSample.js';
 
 // EVERY ANIMATED PANEL RENDERS `m`, UNDER THE APP'S OWN STRICT LazyMotion PROVIDER (W2-L, DECISIONS 2026-10-30).
 //
@@ -32,13 +33,16 @@ import LowHealthVignette from '../../src/ui/LowHealthVignette.jsx';
 // under it animates to a value strictly between its start and its end (the provider's features are live: a provider
 // whose features never load renders every `m` frozen at its `initial`, which no throw would report).
 //
-// DENOMINATOR. ROWS is the list of mounted components; the last case reads it back: the twelve modules, every one
-// mounted, every marker found. A component dropped from the table is a fall in that count, not a silent pass.
+// DENOMINATOR. ROWS is the list of mounted components; the last case reads it back: the twelve modules this table names,
+// every one mounted, every marker found. A component dropped from the table is a fall in that count, not a silent pass.
+// It counts the table and nothing outside it: a module added to src is not seen here.
 //
 // WHAT THIS DOES NOT CHECK: a `motion.*` in a module this table lacks, or in a branch the mount does not reach (a
-// conditional element behind an unopened state); the bundle budget (scripts/ci/bundle-budget.mjs) holds the shipped
-// artifact to the lazy size and tests/e2e/lazy-motion.spec.js watches a real panel animate in the running game. A second
-// React root rendering `m` outside the provider is not seen either: today `src/index.jsx` has the only `createRoot`.
+// conditional element behind an unopened state). The shipped artifact is held by scripts/ci/bundle-budget.mjs, which
+// reads every built chunk for the drag and projection code only a full `motion` brings (the lazy panel chunk included,
+// where the index ceiling is blind), and tests/e2e/lazy-motion.spec.js watches a real panel animate in the running
+// game; tests/gates/lazy-motion-exit-gates.test.jsx closes a panel. A second React root rendering `m` outside the
+// provider is not seen either: today `src/index.jsx` has the only `createRoot`.
 //
 // Mutation-Proof: see the commit trailer.
 
@@ -105,7 +109,7 @@ const ROWS = [
 
 const INITIAL = useGameStore.getInitialState();
 beforeEach(() => { useGameStore.setState(INITIAL, true); });
-afterEach(() => { cleanup(); useGameStore.setState(INITIAL, true); });
+afterEach(() => { cleanup(); restorePageClock(); useGameStore.setState(INITIAL, true); });
 
 describe('the provider is strict and its features are live (the instrument sees both ways)', () => {
   it('a motion.div under the app provider throws, naming the rule', () => {
@@ -121,13 +125,17 @@ describe('the provider is strict and its features are live (the instrument sees 
   });
 
   it('an m.div under the app provider animates: a value strictly between its start and its end is drawn', async () => {
-    // Sampled on every animation frame the page gets. scale is JS-driven, so framer clamps its step per frame and a slow
-    // frame cannot skip the middle; a provider whose features never loaded leaves the element at its `initial` forever.
+    // Sampled on every animation frame the page gets. The tween runs against the clock framer-motion reads with
+    // performance.now(): its frame loop clamps only its own delta (motion-dom batcher, maxElapsed 40), never an
+    // animation's elapsed time, so a frame that stalls for longer than the tween steps over the whole of it and no middle
+    // is ever drawn. The clock is slowed to a tenth (the sampler's own device), so the 0.5 s tween lasts 5 s and a stall
+    // of a second still lands inside it. A provider whose features never loaded leaves the element at its `initial` forever.
+    slowPageClock(0.1);
     render(<m.div data-testid="probe" initial={{ scale: 0.5 }} animate={{ scale: 1 }} transition={{ duration: 0.5, ease: 'linear' }} />, { wrapper: MotionProvider });
     const scaleOf = () => Number(/scale\(([\d.]+)\)/.exec(screen.getByTestId('probe').style.transform)?.[1] ?? 1);
     const seen = [];
-    const deadline = performance.now() + 4000;
-    while (performance.now() < deadline) {
+    const deadline = Date.now() + 15000; // real time: performance.now is slowed
+    while (Date.now() < deadline) {
       seen.push(scaleOf());
       if (seen.length > 3 && seen[seen.length - 1] === 1) break;
       await new Promise((r) => requestAnimationFrame(r));
@@ -136,7 +144,7 @@ describe('the provider is strict and its features are live (the instrument sees 
     expect(seen[0], `the start was not the initial value: ${JSON.stringify(seen.slice(0, 5))}`).toBe(0.5);
     expect(seen[seen.length - 1], `it never reached its end in ${seen.length} samples`).toBe(1);
     expect(between.length, `it went from start to end with no value between them in ${seen.length} samples`).toBeGreaterThan(0);
-  });
+  }, 30000);
 });
 
 describe('every module that renders an animated element mounts under the strict provider', () => {
@@ -147,10 +155,10 @@ describe('every module that renders an animated element mounts under the strict 
     expect(row.marker(), `${row.file} ${row.name} mounted without its marker: SETUP, the mount proves nothing`).toBeTruthy();
   });
 
-  it('the table is the whole population: twelve modules, every one mounted', () => {
+  it('the table names twelve modules and eighteen components, each mounted above', () => {
     const files = new Set(ROWS.map((r) => r.file));
-    expect(ROWS.length, 'a mounted component fell out of the table').toBe(18);
-    expect([...files].sort(), 'a module fell out of the table, or one was added without being mounted').toEqual([
+    expect(ROWS.length, 'a row fell out of this table, or one was added here without this count').toBe(18);
+    expect([...files].sort(), 'this table\'s modules differ from the twelve listed here: a row was removed, or a module was added to the table without this list (a module that is in src and not in the table is not seen by this case)').toEqual([
       'GameSystems.jsx', 'MenuSystem.jsx', 'QuestSystem.jsx', 'SimpleExperienceSystem.jsx', 'WorldManager.jsx',
       'ui/ChestInventoryPanel.jsx', 'ui/DamageDirection.jsx', 'ui/GameHud.jsx', 'ui/LowHealthVignette.jsx',
       'ui/SpellUpgradePanel.jsx', 'ui/TradingInterface.jsx', 'ui/panels/ForgePanel.jsx',
