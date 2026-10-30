@@ -77,6 +77,7 @@ export function applyThemeVars(root = (typeof document !== 'undefined' ? documen
 }
 
 const tw = (name) => `rgb(var(${name}) / <alpha-value>)`;
+/** @internal The source tailwind.config.cjs mirrors; the parity tests read it. */
 export const TW_COLORS = {
   ink: tw('--ui-ink'),
   panel: tw('--ui-panel'),
@@ -120,6 +121,7 @@ export const TW_COLORS = {
   },
 };
 
+/** @internal The source tailwind.config.cjs mirrors; the parity tests read it. */
 export const TW_SCALES = {
   borderRadius: { sm: `${UI.radius.sm}px`, md: `${UI.radius.md}px`, lg: `${UI.radius.lg}px` },
   borderWidth: { chrome: `${UI.border.chrome}px` },

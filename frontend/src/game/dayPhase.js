@@ -36,6 +36,7 @@ export function cycleFraction(gameTime) {
 // the ring's TOP-CENTRE, so under CSS rotation (y-down => clockwise for +R) it maps to (sin R, -cos R).
 // Pure geometry (no DOM) so a node test can assert the LIVED marker position. |vertical| dominates -> the
 // sky/ground poles (top/bottom); otherwise the horizon sides (right/left) by the horizontal sign.
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function markerQuadrant(rotationDeg) {
   const r = ((Number(rotationDeg) || 0) * Math.PI) / 180;
   const x = Math.sin(r);

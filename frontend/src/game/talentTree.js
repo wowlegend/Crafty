@@ -55,6 +55,7 @@ export const ASPECT_TREES = [
 ];
 
 /** All node ids -> limit (single source; the store imports this, killing its inline map). */
+/** @internal Exported for the tests that enumerate it. */
 export const TALENT_LIMITS = Object.fromEntries(
   ASPECT_TREES.flatMap((t) => t.nodes).map((n) => [n.id, n.limit])
 );

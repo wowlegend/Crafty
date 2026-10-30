@@ -178,9 +178,12 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if [ "$TIER" = "fast" ]; then
   if [ "$SHA_CERTIFIED" = "true" ]; then
-    printf '\n\033[2m── skipped (--sha-certified=true): knip, npm audit, prod-smoke — this sha passed them in the run that certified it\033[0m\n'
+    printf '\n\033[2m── skipped (--sha-certified=true): knip, knip production, npm audit, prod-smoke — this sha passed them in the run that certified it\033[0m\n'
   else
     step "knip (unused files / exports / deps)" npm run --silent knip
+    # Production mode reads only the shipped entries, so a file or export that only tests or tooling reach is unused
+    # here: code the game never runs, kept alive by its own tests. A deliberate test seam or oracle carries @internal.
+    step "knip production (code only tests or tooling reach)" npm run --silent knip:production
     step "npm audit (high + critical)" npm audit --audit-level=high
     if [ "$CODE_CHANGED" = "false" ]; then
       printf '\n\033[2m── skipped (fast tier, --code-changed=false): prod-smoke — only docs changed since a commit CI passed, so the bundle is that commit'"'"'s\033[0m\n'

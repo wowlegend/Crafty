@@ -46,6 +46,7 @@ import { CombatSystem } from './systems/CombatSystem';
 // in src/data/items.js (removing the local duplicate with its emoji-fallback
 // branches), so this re-export now resolves to the registry — resolving the prior
 // cross-file divergence with GamePanels (both re-export the same registry function).
+/** @internal Exported for the tests that enumerate it. */
 export { getItemRarity };
 
 // LootSystem extracted -> src/systems/LootSystem.jsx (v6 de-monolith A1.7).

@@ -115,6 +115,7 @@ export function diagnosticsLines({ fps, ms, tier, dpr, renderer, losses, capActi
 }
 
 /** Test-only: forget the session's count and renderer. */
+/** @internal Test seam: resets module state between cases. */
 export function _resetGlDiagnosticsForTest() {
   _losses = 0;
   _gl = null;

@@ -112,6 +112,7 @@ export function beastAvatarParts(element) {
   return { bodyColor: col.body, glowColor: col.glow, coreColor: col.core, rimBoost: col.rim ?? 1, height: parts.height, boxes: parts.boxes, core: parts.core, aura: parts.aura };
 }
 
+/** @internal Exported for the tests that enumerate it. */
 export const BEAST_AVATAR_ELEMENTS = Object.keys(FORM_PARTS);
 
 /**

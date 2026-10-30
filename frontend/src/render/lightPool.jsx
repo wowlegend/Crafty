@@ -67,6 +67,7 @@ export function registerPooledLight(req) {
   return () => requests.delete(req);
 }
 
+/** @internal The light pool readout its gate reads. */
 export function pooledLightCount() {
   return requests.size;
 }

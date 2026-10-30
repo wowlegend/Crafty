@@ -9,6 +9,7 @@ import { RARITY_FILL } from '../theme/tokens.js';
 // Tier order low -> high. The per-tier BEAM_LOOK values below climb monotonically
 // (height + intensity); the ordering is LOCKED by lootJuice.test.js (not enforced
 // structurally, so keep the hand-tuned values monotonic if you re-tune them).
+/** @internal Exported for the tests that enumerate it. */
 export const RARITY_TIERS = ['common', 'rare', 'epic', 'legendary'];
 
 // RARITY_FILL rings were authored for CSS box-shadows, so some tiers (e.g. common)

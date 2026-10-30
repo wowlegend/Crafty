@@ -22,7 +22,6 @@
     "zustand": "^5.0.16"
   },
   "scripts": {
-    "start": "vite",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
@@ -32,6 +31,7 @@
     "test:unit:watch": "vitest",
     "lint": "eslint src scripts tests",
     "knip": "knip",
+    "knip:production": "knip --production",
     "orient": "node scripts/dev/orient.mjs",
     "perf:m2": "node scripts/perf/run-scenarios.mjs",
     "test:look": "node scripts/visual/look-e2e.mjs",

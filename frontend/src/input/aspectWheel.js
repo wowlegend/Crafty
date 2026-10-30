@@ -223,6 +223,7 @@ export function fanOpenerStyle(row, anchorRight = FAN_ANCHOR_RIGHT) {
  * The px offset of an item's OUTER (leftmost) edge from the right side of the viewport. The measurement
  * the whole finding is about: the old ring put this at 0 for item 1, i.e. entirely off-screen.
  */
+/** @internal The layout geometry the aspect-wheel tests assert on. */
 export function fanItemInnerEdge(q, anchorRight = FAN_ANCHOR_RIGHT) {
   return anchorRight - ((q && q.x) || 0) + TOUCH_BTN;
 }

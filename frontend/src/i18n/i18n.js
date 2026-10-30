@@ -1,6 +1,7 @@
 import { useGameStore } from '../store/useGameStore.jsx';
 import { STRINGS } from './strings.js';
 
+/** @internal Exported for the tests that enumerate it. */
 export const LOCALES = ['en', 'zh-CN'];
 
 function interpolate(str, vars) {

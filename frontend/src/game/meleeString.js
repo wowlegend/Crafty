@@ -205,6 +205,7 @@ export function readString() {
   return S;
 }
 
+/** @internal Test seam: resets module state between cases. */
 export function _resetStringForTest() {
   S.last = 0;
   S.readyAt = 0;
