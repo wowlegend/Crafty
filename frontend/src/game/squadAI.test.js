@@ -62,3 +62,17 @@ describe('S2-B3-M5: the squad brain (pure)', () => {
     expect(stepSquad([a], [dead], P, 10, true).attacks).toEqual([]);
   });
 });
+
+// THE DRAGON ON THE ONE DAMAGE PATH (reset plan row 25; DECISIONS 2026-10-30 item 126): an ally strikes a body with a
+// bodyRadius (the dragon's record, game/bossCombat.js) from its edge rather than walking into it; a mob as before.
+// Mutation-Proof: via scripts/dev/mutate.sh, observed RED, an identity mutant GREEN: Q1 the attack range ignores bodyRadius.
+describe('an ally strikes a big body from its edge (row 25)', () => {
+  it('3.5 m from the dragon\'s centre the ally attacks it; 3.5 m from a mob it closes in', () => {
+    const near = { position: { x: 0, y: 10, z: 3.5 } };
+    const dragon = hostile({ id: 'shadow-dragon', bodyRadius: 1.6, position: { x: 0, y: 10, z: 0 } });
+    expect(stepSquad([ally(near)], [dragon], P, 10, true).attacks).toEqual([{ id: 1, targetId: 'shadow-dragon' }]);
+    const r = stepSquad([ally(near)], [hostile({ position: { x: 0, y: 10, z: 0 } })], P, 10, true);
+    expect(r.attacks).toEqual([]);
+    expect(r.moves).toHaveLength(1);
+  });
+});

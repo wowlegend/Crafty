@@ -17,6 +17,7 @@ import { act } from 'react';
  *   X4 plausible-wrong: cycleOf hands back the raw gameTime -> "lands the REAL store on the asked cycle"
  *   X5 glInfo replaced by () => null -> "reports the diagnostics the readout reads"
  *   X6 plausible-wrong: contextLosses a constant 0 -> the same test
+ *   X8 the spawnDragon collaborator left out of the install -> "hands the seam the boss system's lookbook spawn"
  *   X7 the URL test dropped (src/render/lookbookSeam.js: `if (!win) return false;`, the seam on every page) ->
  *      "installs nothing without ?lookbook=1"
  *   I0 identity (a comment edit in index.jsx) SURVIVED.
@@ -62,7 +63,23 @@ describe('src/index.jsx installs the lookbook seam with the real collaborators',
     expect(plain.seam, 'a page without ?lookbook=1 got the seam — every player would carry it').toBeUndefined();
     const { seam } = await bootAt('?lookbook=1');
     expect(seam, 'the entry module did not install the seam on ?lookbook=1 — the probe has no door').toBeDefined();
-    expect(Object.keys(seam).sort()).toEqual(['clear', 'clearHostiles', 'form', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
+    expect(Object.keys(seam).sort()).toEqual(['clear', 'clearHostiles', 'dragon', 'form', 'groundAt', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
+  });
+
+  it('hands the seam the boss system\'s lookbook spawn, read from the store at the call', async () => {
+    const { seam, store } = await bootAt('?lookbook=1');
+    // App is a stub here, so no boss system installed its spawn: dragon() must say so rather than pretend.
+    expect(() => seam.dragon({ pose: 'rest', position: [1, 60, 2] }), 'presence: the stubbed App installed a spawn').toThrow(/not installed/);
+    const calls = [];
+    store.setState({ lookbookSpawnDragon: (o) => { calls.push(o); return { position: o.position }; } });
+    try {
+      expect(seam.dragon({ pose: 'rest', position: [1, 60, 2] })).toEqual({ position: [1, 60, 2] });
+      expect(calls, 'the entry module handed the seam some other spawn').toEqual([{ position: [1, 60, 2] }]);
+      expect(seam.info().dragon.hold).toBe('rest');
+    } finally {
+      seam.dragon({ pose: null });
+      store.setState({ lookbookSpawnDragon: null });
+    }
   });
 
   it('hands the seam the REAL mob query: a hostile added to the ECS world is measured from the eye', async () => {

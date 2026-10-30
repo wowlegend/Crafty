@@ -24,7 +24,8 @@ import { MinecraftWorld } from './world/Terrain';
 import { EnhancedMagicSystem } from './EnhancedMagicSystem';
 import { NPCSystem } from './SimplifiedNPCSystem';
 import { Nametags } from './render/Nametags';
-import { BossEntity } from './render/BossEntity';
+// The dragon is its own chunk, mounted only while a fight is on (render/dragonLoader.js).
+import { LazyDragon } from './render/dragonLoader.js';
 import { GPUSparkSystem } from './world/GPUSparkSystem';
 import { ElementZoneRenderSystem } from './world/ElementZoneRenderSystem';
 import { isPerfProbe } from './devtest/perfProbe';
@@ -462,13 +463,15 @@ export const GameScene = React.memo(function GameScene({
 
             <Nametags />
 
-            <BossEntity
-              bossActive={bossActive}
-              bossPositionRef={bossPositionRef}
-              bossPhase={bossPhase}
-              bossHealth={bossHealth}
-              bossTier={bossTier}
-            />
+            {bossActive && (
+              <LazyDragon
+                bossActive={bossActive}
+                bossPositionRef={bossPositionRef}
+                bossPhase={bossPhase}
+                bossHealth={bossHealth}
+                bossTier={bossTier}
+              />
+            )}
           </Physics>
 
           <Sun onReady={setSunMesh} />

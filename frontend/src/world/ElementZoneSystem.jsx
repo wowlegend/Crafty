@@ -8,6 +8,7 @@ import { makeZoneRegistry, spawnZone, spawnChain, stepZones, clearZones, applyZo
 import { consumeZoneRequest } from '../game/elemancerChannel';
 import { worldDelta, worldNow } from '../game/worldClock.js';
 import { isHostile } from '../combat/targeting';
+import { bossTargets } from '../game/bossCombat.js';
 
 // A chain leaps only to a live hostile, never to a bound ally.
 const isChainTarget = (e) => isHostile(e) && !e.isAlly;
@@ -15,6 +16,8 @@ const isChainTarget = (e) => isHostile(e) && !e.isAlly;
 const AI_TICK_SEC = 1 / 15; // the bridge cadence (the SquadAISystem stencil)
 const SFX_BY_KIND = { burning: 'ignite', frozen: 'freeze', conductive: 'zap', resonant: 'rune' };
 const FX_TICK_SEC = 0.3;    // zone effects at ~3.3Hz — the React-thrash damper (<=4Hz, load-bearing)
+// A zone paints the ground, so it reaches the dragon only when the dragon is down on it (game/bossCombat.js bossTargets).
+const ON_THE_GROUND = Object.freeze({ groundOnly: true });
 
 // the LIVE registry — owned here (M6's render reads it transiently; tests own their own instances)
 const liveZones = makeZoneRegistry();
@@ -89,7 +92,7 @@ export function ElementZoneSystem() {
     fxAccumRef.current = 0;
 
     if (GameMethods.damageMob) {
-      applyZoneEffects(liveZones.zones, mobsQuery.entities, GameMethods.damageMob);
+      applyZoneEffects(liveZones.zones, bossTargets(mobsQuery.entities, undefined, ON_THE_GROUND), GameMethods.damageMob);
     }
   });
   return null;

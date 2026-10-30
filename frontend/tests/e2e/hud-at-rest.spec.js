@@ -17,19 +17,16 @@ import { bootDev, startPlayActive } from './_boot.js';
 //     spawns, named by the real aim cone); the nameplate with a notice; the nameplate, the boss bar and the dragon's
 //     arrival as bossSystem raises it (forceBossSpawn and its notice.bossAwakens in one task, the earlier notice possibly
 //     still up); the boss bar alone (the brute killed, every notice gone); the boss bar with the dragon's phase call,
-//     raised by the real phase change (the dragon damaged to a quarter); one of its attack calls as BossEntity raises it
-//     (marked `attack`), alone and then with a plain notice raised while it shows; and a plain notice with an attack
-//     call raised after it. Where the stack stands on its own (a keyboard, an iPad) it holds every notice up; in the
-//     encounter column (a phone, a phone on its side) the column holds one notice at a time, in the boss bar's own line
-//     while the bar is up: the dragon's one-off call before any other, its attack calls after every other (DECISIONS
-//     2026-10-29 item 92). Notices are raised in a held world, so no kill, claim or achievement raises one beside them,
+//     raised by the real phase change (the dragon damaged to a quarter). Where the stack stands on its own (a keyboard,
+//     an iPad) it holds every notice up; in the encounter column (a phone, a phone on its side) the column holds one
+//     notice at a time, in the boss bar's own line while the bar is up: the dragon's one-off call before any other
+//     (DECISIONS 2026-10-29 item 92). Its attacks raise no notice (DECISIONS 2026-10-30 item 124). Notices are raised in a held world, so no kill, claim or achievement raises one beside them,
 //     and each state's read waits for the notices it needs and reads at once. With the nameplate up, the one the cone
 //     named is raised again if something clears it while the read waits, and the log says so. Each state's rects are
 //     read in one page task. The notice surfaces lie inside every viewport; on the phones every touch target does.
 //   desktop: a fresh profile's controls card (or the H hint it folds to) clears every rect above.
 //   iPad 820x1180: a finger's tap on the quest line opens the list (the touch layer leaves the tracker its taps).
-// NOT CHECKED: three or more notices at once, the dragon's attack calls raised by render/BossEntity.jsx itself (it
-// raises them only while the world runs; the spec raises one as bossAttackCall does), the level-up banner, the touch tray, a fan or
+// NOT CHECKED: three or more notices at once, the level-up banner, the touch tray, a fan or
 // the quest list opened, the panels, a phone shorter than 390 px on its side (Safari's toolbars), an upright phone under
 // 617 px tall, and anything after the first minute of play.
 
@@ -236,27 +233,6 @@ async function raise(page, list, { onTop = false } = {}) {
   expect(raised, 'SETUP: no addNotification on the store').toBe(true);
 }
 
-/** On an empty screen, raise `first` ([key, type, opts]) and, in the same page task once it shows (8 s at most), each of
- *  `then`, so they are raised while `first` is on screen: where `first` showed ('bar', 'stack', or null if it never did). */
-async function raiseWhileShowing(page, first, ...then) {
-  await noNotices(page, `before ${first[0]}`);
-  const where = await page.evaluate(async ([f, rest]) => {
-    const add = window.useGameStore.getState().addNotification;
-    if (typeof add !== 'function') return 'no addNotification';
-    add(...f);
-    const t0 = performance.now();
-    let el = null;
-    while (!(el = document.querySelector(`[data-notification-key="${f[0]}"]`)) && performance.now() - t0 < 8000) {
-      await new Promise((r) => setTimeout(r, 16));
-    }
-    const at = !el ? null : el.closest('[data-testid="boss-health-bar"]') ? 'bar' : el.closest('[data-testid="notification-stack"]') ? 'stack' : 'elsewhere';
-    for (const n of rest) add(...n);
-    return at;
-  }, [first, then]);
-  expect(where, 'SETUP: no addNotification on the store').not.toBe('no addNotification');
-  return where;
-}
-
 for (const vp of [
   { name: 'desktop 1280x800', viewport: { width: 1280, height: 800 }, touch: false },
   // Under 1,138 px wide a full-width stack would meet the 450 px boss bar (ui/hudLayout.js toastMaxWidth).
@@ -369,19 +345,6 @@ for (const vp of [
       }, readAt);
       console.log(`hud-at-rest ${vp.name}: the phase call read ${JSON.stringify(stall)}`);
 
-      // The dragon's attack calls as render/BossEntity.jsx raises them (bossAttackCall: a key marked `attack`). One alone
-      // takes the boss bar's line; a plain notice raised while it shows takes the line from it at once; one raised while a
-      // plain notice shows leaves the notice in the line. A stack holds both.
-      const fireballShown = await raiseWhileShowing(page, ['notice.bossFireball', 'warning', { attack: true }], ['notice.dusk', 'warn']);
-      expect.soft(fireballShown, `where the attack call alone showed at ${vp.name}`).toBe(vp.column ? 'bar' : 'stack');
-      await check('with the boss bar and a notice raised while the dragon\'s attack call shows', ['boss-health-bar'], vp.column
-        ? { keys: ['notice.dusk'], want: [['bar:notice.dusk']] }
-        // The read waits for the notice alone, and the call raised before it may have left by then on a stalled page.
-        : { keys: ['notice.dusk'], want: [stack('notice.bossFireball', 'notice.dusk'), stack('notice.dusk')] });
-      await raise(page, [['notice.dusk', 'warn'], ['notice.bossFireball', 'warning', { attack: true }]]);
-      await check('with the boss bar, a notice and the dragon\'s attack call after it', ['boss-health-bar'], vp.column
-        ? { keys: ['notice.dusk'], want: [['bar:notice.dusk']] }
-        : { keys: ['notice.dusk', 'notice.bossFireball'], want: [stack('notice.dusk', 'notice.bossFireball')] });
     });
   });
 }

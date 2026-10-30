@@ -111,6 +111,82 @@ left click, and the walk out. Its red half is the CI run on `14058415` (the burs
 at the feet can be mined by looking down, one at the eye only by item 131
 (registry `REVIEW:fix-invisible-box:collider-lands-late`).
 
+## 2026-10-30 — [LOOP] W3-B PR B: every dragon attack has a tell, the skill answers reach it, and so do the Aspect kits
+
+**Decided by the W3-B dragon lane under the standing grant** (DECISIONS 2026-10-28 item 14), building Units 2, 3 and 4 of
+`docs/superpowers/plans/2026-10-27-crafty-shadow-dragon.md` and reset-plan row 25 by the task script
+`docs/superpowers/plans/2026-10-30-crafty-w3b-dragon.md`. Each stands while it earns its place.
+
+123. **The dragon's rules are a pure move machine over one shared record.** `game/dragonMoves.js` (in the dragon's lazy
+   chunk) mutates `game/bossCombat.js`'s record (in the boot chunk, so the dodge start, the cone, `damageBoss` and the
+   systems that hit mobs read it before the dragon has loaded) and returns events `render/BossEntity.jsx` applies. One
+   move at a time, each with a windup on the world clock: bite 520 ms and dive-bite 520 ms (parryable), fireball 600 ms,
+   roar 900 ms with a 9 m radius and a falloff from 1 to 0.4 (its range defined only through `roarFalloff`), the lava
+   placed when its move starts (its zone's 750 ms ring is the one warning), the summons 700 ms. Cooldowns are charged when
+   a windup starts. A roll's i-frames make the roar a whiff, impulse included. Every tier carries `tricks` (fireball,
+   lava, summon), the one list the machine reads for its non-core moves. **Why:** the fight bit with no warning and roared
+   the player across the map from anywhere; a tell for every attack is what makes it a fight (the contract's goal).
+124. **The attacks are read from the ground, and their toasts go (amends item 92).** Each windup shows one decal from a
+   fixed pool of three meshes in the dragon's own frame loop: the bite a sector of its reach about its heading, the roar
+   a ring of 9 m, the fireball a disc of 1.6 m on its mark, the summons a ring of 7 m; the lava keeps its own ring. The
+   head's glow climbs to the danger red through the windup (the interim tell on today's model). **Each decal covers
+   exactly the ground its move lands on:** a windup commits its aim (the player's feet when it starts, and the heading
+   to them); the dragon faces that heading through the windup; the bite lands only inside its quarter-turn sector, and
+   the fireball flies to its mark and bursts there, hitting only a player on the disc, which stays on the ground (one
+   disc per fireball in flight, capped by its cooldown) until the burst. Why the sector and not a full disc: a bite with
+   a front is dodged by stepping aside or behind, which is the read the arc was drawn to teach. `bossAttackCall`, the `attack` class
+   in `ui/notifications.js` and the four attack keys are deleted, with the gate that simulated the line through a fight
+   (its subject is gone) and the e2e's attack-call states. The phase calls now say what to read. **Why:** an attack
+   announced by a toast after it has landed teaches nothing; the ground is where the player looks. One decal costs one
+   transparent draw during a windup and none at rest.
+125. **The perfect dodge, the heavy and the riposte reach the dragon.** The dodge start appends the record to its targets
+   while the dragon fights and is not immune (`withBossTarget`); its bite and dive-bite are parryable, its casts are not.
+   A heavy on a staggered dragon refreshes the 1400 ms stagger, the third knocks it down for 3000 ms, then 4000 ms of
+   immunity (`registerBossHeavy`): three heavies cannot fit one 1400 ms stagger, since a heavy is ready 700 ms after its
+   press, so the chain keeps every roadmap number and makes the knockdown reachable at about one heavy a second.
+   `damageBoss(amount, source)` applies the 1.5x riposte to the player's damage only. The melee cone tests the head, chest
+   and hips. In phase 0 the dragon dives to the player's feet + 1.2 m when its dive-bite is ready (the first dive one
+   6 s cooldown after it wakes, so a fight opens with it circling), and a staggered dragon lands. **Why:** the game's two newest skills did nothing to its last enemy.
+126. **One damage path for the dragon (reset-plan row 25).** `bossTargets(mobs)` hands hurl and its slam, the element
+   zones and the squad the mobs with the dragon appended while it fights (zones and allies only while it is not
+   airborne: they paint and fight on the ground); `CombatSystem.damageMob` routes the dragon's id to `damageBoss` with the
+   source; a burning spell starts its burn on the dragon's id; the pure hit tests add an entity's `bodyRadius` (0 for a
+   mob). **Why:** three Aspect kits did nothing in the climax fight. The full move of the boss into the ECS stays a later
+   step, on its own merits (the reset plan's row 25 wording).
+
+## 2026-10-30 — [LOOP] W3-B PR A: the dragon is a lazy chunk, and the lookbook can hold it
+
+**Decided by the W3-B dragon lane under the standing grant** (DECISIONS 2026-10-28 item 14), building Units 1 and 10 of
+`docs/superpowers/plans/2026-10-27-crafty-shadow-dragon.md` by the task script
+`docs/superpowers/plans/2026-10-30-crafty-w3b-dragon.md`. Each stands while it earns its place.
+
+120. **The dragon's Units 1-4 go before move 11's surfaces.** The refute ordered the dragon "after 11"
+   (`refute-2026-10-27.md:104`), and the dragon plan's review amendments made move 11's U1 a precondition for its Units 3
+   and 5. Move 11's edge telegraph, HDR gain and decal pools are not on main and the reset plan moved them to W3-A
+   (`sota-reset.md:539`), which runs beside this lane. **Why:** the tells are the fight's rules ("rules first",
+   `upside-2026-10-27.md:52`) and need no shared surface: the decals are the dragon's own fixed pool of three meshes driven
+   from `render/BossEntity.jsx`'s one frame loop, which W3-A's telegraph can absorb. Unit 5 (the rig) still waits for
+   W3-A's edge telegraph and HDR gain; Units 6-9 are registry rows.
+121. **The dragon is its own chunk, and a chunk that never loads suspends the fight.** `render/dragonLoader.js`
+   `LazyDragon` replaces GameScene's static mount (index 682,746 -> 676,277 B on the build of that commit; the dragon's
+   chunk 8,969 B); `world/bossSystem.js` preloads it when the player qualifies and at mount for a restored fight. The
+   lazy dragon sits in its own `<Suspense>`, because React 19 hides every sibling of a lazy that suspends in a revealed
+   boundary on a non-transition update and runs their layout-effect cleanups, where R3F's `useFrame` unsubscribes. A
+   failed chunk is tried again three times, 5 s apart, then the encounter is SUSPENDED through the store's
+   `suspendBossEncounter`: the bar, music and mood end, the HP and tier stay in the save, and the lair re-arms once the
+   player has walked out of it: a player still standing there is left in a quiet lair, the chunk is fetched again only
+   on a new arrival (three retries per arrival, never on a timer), and the resumed fight plays no second entrance.
+   **Why the store:** GameScene's props come from `App.jsx`, which the W2-G lane holds. **Why the walk-out:** re-armed
+   at once, a player at the lair woke the fight on the next poll and replayed the entrance and the failing retries
+   about every 17 s.
+122. **The production build can wake the dragon, only on a `?lookbook=1` page.** `world/bossSystem.js` installs
+   `lookbookSpawnDragon` only when the URL carries the exact parameter; the seam's `dragon({ pose, position })`
+   (`render/lookbookSeam.js`) reaches it and holds the dragon still (`lookbookDragonHold()`, read per frame by
+   `BossEntity`). `scripts/visual/lookbook.mjs --sets dragon` shoots the dragon arena: the dragon over the Blight Heart
+   lair, framed from the way a player walks in. **Why:** the fight's looks are judged on real-GPU frames of the shipped
+   bundle (W1-H item 1), and the only spawn was DEV-only. A player who types the parameter gets the seam and nothing else
+   until a script calls it.
+
 ## 2026-10-30 — [LOOP] W2-G: one event bus, a world seed, the DEV bridge out of App, autosave from PERSISTED_KEYS, production knip
 
 **Decided by the W2-G platform lane under the standing grant** (DECISIONS 2026-10-28 item 14), building reset-plan rows
@@ -174,7 +250,7 @@ this entry and the next commit's body carry the real message. **What `faa65ee1` 
 rank below every other notice in the phone's one line, and its one-off calls still take it at once (item 92, as amended
 that day): `world/bossSystem.js` `bossAttackCall` (marked `attack`), `ui/notifications.js` `lineNotification` (one-off
 call, then plain notice, then attack call), `render/BossEntity.jsx` raising its four attack calls through it, the gate
-`tests/gates/boss-attack-line-gates.test.js` (a plain notice held 0-800 ms of 4 s at the fireball's 2.4 s before, its
+`tests/gates/boss-attack-line-gates.test.js` (REMOVED with the attack calls, item 124; a plain notice held 0-800 ms of 4 s at the fireball's 2.4 s before, its
 whole 4 s after, over 11,520 simulated fights), the e2e attack-call states, and registry
 `REVIEW:w2d:boss-attack-calls-unread`. Its mutation proof is in the next commit's body. The Show Stats change the title
 names is not in it.
@@ -328,7 +404,7 @@ items. Each stands while it earns its place.
    drop, a quest, a denial a repeated press must answer) at most 0.8 s of its 4 s in the first phase and 0.2 s in the
    second. So an attack call never displaces a live plain notice and yields to one raised while it shows, and a plain
    notice holds the line for its whole life unless a one-off call arrives, which takes the line at once
-   (`tests/gates/boss-attack-line-gates.test.js`: a plain notice at every 10 ms offset over two periods of each cadence,
+   (`tests/gates/boss-attack-line-gates.test.js`, REMOVED with the attack calls by item 124: a plain notice at every 10 ms offset over two periods of each cadence,
    11,520 simulated fights, each held 4,000 ms). While the boss bar is up the line shows inside the bar's own line, in
    the name's place beside the dragon's icon, clamped to three lines on a phone and one on a phone on its side, where 14
    px separate the bar from the hotbar's XP edge (`bossCallLines`); with the bar down it is the one toast, four lines at

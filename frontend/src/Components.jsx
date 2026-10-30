@@ -22,6 +22,8 @@ import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE
 import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
 import { applyPerfectDodge, PERFECT_HITSTOP_MS } from './game/perfectDodge.js';
+import { bossCombat, withBossTarget, bossHitByCone, registerBossHeavy } from './game/bossCombat.js';
+import { logImpulse } from './devtest/impulseLog.js';
 import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { gateSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
 import { stanceFrame, stanceWalk, dodgeBurst, resetStance, teleportPlayer } from './game/combatStance.js';
@@ -171,6 +173,7 @@ export const Player = ({ isWorldBuilt }) => {
   useEffect(() => {
     if (rigidBodyRef.current) {
       rigidBodyRef.current.applyImpulse = (impulse) => {
+        if (import.meta.env.DEV) logImpulse(impulse);
         knockbackVelocity.current.x += impulse.x;
         velocityY.current += impulse.y;
         knockbackVelocity.current.z += impulse.z;
@@ -317,16 +320,25 @@ export const Player = ({ isWorldBuilt }) => {
       }
 
       // Boss-cone branch: the boss is a SEPARATE entity (not in the ECS), so the
-      // mob loop above can never hit it. Reuse the SAME pure cone test against the
-      // boss position (mirrors the spell boss path in EnhancedMagicSystem.jsx).
+      // mob loop above can never hit it. The SAME pure cone test, against the dragon's head, chest and hips
+      // (game/bossCombat.js bossHitByCone: its body is longer than the swing), or its centre before its record is up.
       // A single swing can hit BOTH mobs (above) AND the boss (here).
       if (store.isBossActive?.() && store.getBossPosition) {
         const bp = store.getBossPosition();
         if (bp) {
           const bossPoint = { x: bp[0], y: bp[1], z: bp[2] };
-          if (isPointInCone(playerPos, lookDir, bossPoint, range, angleRad) && store.damageBoss) {
+          const reached = bossCombat.active
+            ? bossHitByCone(bossCombat, playerPos, lookDir, range, angleRad)
+            : isPointInCone(playerPos, lookDir, bossPoint, range, angleRad);
+          if (reached && store.damageBoss) {
             store.damageBoss(swing);
             store.triggerHitstop?.(hitstopForHit(swing, store.juiceIntensity ?? 1)); // the boss's hits land too
+            // THE HEAVY CHAIN (game/bossCombat.js registerBossHeavy): a heavy on the staggered dragon refreshes the
+            // stagger, and the third knocks it down, landing with a crit's freeze and the slam's thump.
+            if (heavy && registerBossHeavy(bossCombat, worldNow()) === 'knockdown') {
+              store.triggerHitstop?.(HITSTOP.crit * (store.juiceIntensity ?? 1));
+              store.playSpatialSound?.('slam', bp, 0.8, 30);
+            }
             // Mirror the melee mob-hit feedback at the player layer: a spatial 'hit'
             // sound at the boss (damageBoss plays no SFX of its own, unlike the spell
             // path) plus the same visceral crit camera-shake the mob path triggers.
@@ -532,7 +544,11 @@ export const Player = ({ isWorldBuilt }) => {
       }
       if (!meleeHit && store.isBossActive?.() && store.getBossPosition) {
         const bp = store.getBossPosition();
-        if (bp) meleeHit = isPointInCone(playerPos, lookDir, { x: bp[0], y: bp[1], z: bp[2] }, 4.5, meleeArc);
+        if (bp) {
+          meleeHit = bossCombat.active
+            ? bossHitByCone(bossCombat, playerPos, lookDir, 4.5, meleeArc)
+            : isPointInCone(playerPos, lookDir, { x: bp[0], y: bp[1], z: bp[2] }, 4.5, meleeArc);
+        }
       }
 
       // aimedMobDist — nearest mob/boss in the narrow aim cone (pure math; mobs have no colliders)
@@ -1137,8 +1153,10 @@ export const Player = ({ isWorldBuilt }) => {
         }
 
         // PERFECT DODGE (game/perfectDodge.js): pressed in the last moments of a nearby mob's windup, its strike
-        // never lands and it staggers — open to a 1.5x riposte. The dodge is refunded, so perfect dodges chain.
-        const perfect = applyPerfectDodge(mobsQuery.entities, currentTrans, worldNow());
+        // never lands and it staggers — open to a 1.5x riposte. The dodge is refunded, so perfect dodges chain. The
+        // dragon is a target too while it fights (game/bossCombat.js withBossTarget: its bite and dive-bite are
+        // parryable; a new list only here, at a dodge's start).
+        const perfect = applyPerfectDodge(withBossTarget(mobsQuery.entities), currentTrans, worldNow());
         if (perfect.length > 0) {
           dodge.lastDodgeTime = nowTime - dodge.cooldown;
           const st = useGameStore.getState();

@@ -135,6 +135,26 @@ if (panelChunks.size > 1) {
   console.log(`✓ lazy panels: ${LAZY_PANEL_MARKERS.length} panel markers only in ${[...panelChunks][0]}, none in the boot chunk`);
 }
 
+// THE LAZY DRAGON (DECISIONS 2026-10-30 item 121): the Shadow Dragon's code is its own chunk, downloaded when a fight
+// is due. Its outer group's name is an inline, unexported literal in render/BossEntity.jsx: ABSENT from the boot chunk
+// proves no static import pulled the dragon back in; PRESENT in exactly one other chunk proves the split happened
+// rather than the dragon having been deleted. Unexported on purpose: render/dragonLoader.js hands the whole module
+// namespace on, so Rollup keeps every export of the lazy module, and an exported constant would keep the string in the
+// chunk after its one use was gone.
+const DRAGON_MARKERS = ['crafty:dragon-chunk'];
+for (const marker of DRAGON_MARKERS) {
+  const holders = holdersOf(`"${marker}"`);
+  if (bootChunk && holders.includes(bootChunk)) {
+    console.error(`✘ dragon: "${marker}" is in the BOOT chunk (${bootChunk.file}) — render/BossEntity.jsx is statically imported again`);
+    failed = true;
+  } else if (holders.length !== 1) {
+    console.error(`✘ dragon: "${marker}" found in ${holders.length} chunk(s) — expected exactly one lazy dragon chunk`);
+    failed = true;
+  } else {
+    console.log(`✓ dragon: ${DRAGON_MARKERS.length} marker only in ${holders[0].file}, none in the boot chunk`);
+  }
+}
+
 // LAZY GAME ICONS: the baked game-icons.net path data (~75 KB) is fetched
 // after boot by Icon.jsx. Path data from the first, a middle and the last baked icon must be ABSENT from the boot chunk
 // and PRESENT in exactly one other chunk, the same one for all three: presence proves the icons still ship, absence

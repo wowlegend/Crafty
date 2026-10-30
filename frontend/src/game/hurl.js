@@ -30,13 +30,14 @@ export function stepHurl(h, dt, mobs) {
   h.position.z += h.velocity.z * dt;
   h.age += dt;
 
+  // A mob is a point; a body with a bodyRadius (the dragon, game/bossCombat.js) is hit at its surface, not its centre.
   let nearest = null;
   let nearestD = HURL_HIT_RADIUS;
   for (const m of mobs) {
     const dx = m.position.x - h.position.x;
     const dy = m.position.y - h.position.y;
     const dz = m.position.z - h.position.z;
-    const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const d = Math.sqrt(dx * dx + dy * dy + dz * dz) - (m.bodyRadius || 0);
     if (d < nearestD) { nearestD = d; nearest = m; }
   }
   if (nearest) {
@@ -90,7 +91,7 @@ export function resolveSlam(center, mobs, radius = SLAM_RADIUS) {
     const dx = m.position.x - center.x;
     const dy = m.position.y - center.y;
     const dz = m.position.z - center.z;
-    if (Math.sqrt(dx * dx + dy * dy + dz * dz) > radius) continue;
+    if (Math.sqrt(dx * dx + dy * dy + dz * dz) > radius + (m.bodyRadius || 0)) continue;
     const hmag = Math.hypot(dx, dz);
     // directly-under fallback: push +x (deterministic, finite)
     const dir = hmag > 1e-6 ? { x: dx / hmag, y: 0, z: dz / hmag } : { x: 1, y: 0, z: 0 };

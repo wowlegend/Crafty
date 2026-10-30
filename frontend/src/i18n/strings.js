@@ -30,6 +30,9 @@ export const STRINGS = {
     // A lost WebGL context (ui/ContextLossPanel.jsx): one tap saves and reloads into the same world.
     'ui.contextLost': 'Graphics were reset by the system — tap to resume',
     'notice.panelLoadFailed': 'That panel could not load. Check your connection, or reload if the game just updated.',
+    // The dragon's own chunk (render/dragonLoader.js): retried, then the fight is suspended with its HP kept.
+    'notice.dragonLoadFailed': 'The dragon could not be loaded. Trying again...',
+    'notice.dragonLoadGaveUp': 'The dragon could not be loaded. Reload the page, especially if Crafty was just updated, or leave the lair and come back to try again. Its health is kept.',
     'notice.dusk': 'Dusk approaches. Night falls soon: ready your defenses!',
     // The siege notice by night tier (game/dayNight.js siegeWarning), the dawn notice (world/dawnSurvival.js), the
     // dragon's calls (world/bossSystem.js) and an Aspect's first unlock (game/aspectHints.js): every one is a toast in the
@@ -49,14 +52,11 @@ export const STRINGS = {
     'boss.dragonRisenN': 'Shadow Dragon Risen {roman}',
     'notice.bossReturns': 'The Blight Heart stirs again -- the {boss} waits at the lair.',
     'notice.bossAwakens': 'The Blight Heart stirs -- the {boss} awakens! [Climax]',
-    'notice.bossPhase2': 'PHASE 2: The Shadow Dragon lands! Pushing you back with ROARS!',
-    'notice.bossPhase3': 'PHASE 3: The Shadow Dragon is ENRAGED! Watch out for LAVA ZONES and Skeleton Summons!',
+    'notice.bossPhase2': 'PHASE 2: The Shadow Dragon lands. When it breathes in, leave the red ring before it roars!',
+    'notice.bossPhase3': 'PHASE 3: The Shadow Dragon is enraged. Step out of the lava rings and the red marks before they burn!',
     'notice.bossDefeated': 'BOSS DEFEATED! You have slain the {boss}! +{xp} XP!',
-    // The dragon's attack calls (render/BossEntity.jsx) and its bar's phase line and numbers (ui/BossHealthBar.jsx).
-    'notice.bossFireball': 'The Shadow Dragon drops a FIREBALL from above!',
-    'notice.bossRoar': 'Pushed back! Shadow Dragon unleashed a KNOCKBACK ROAR!',
-    'notice.bossLava': 'The ground is melting! Step out of the LAVA ZONES!',
-    'notice.bossSummon': 'The Shadow Dragon calls upon Skeleton Cohorts!',
+    // The dragon's bar: its phase line and numbers (ui/BossHealthBar.jsx). Its attacks are read from the ground
+    // (render/BossEntity.jsx decals), not from toasts.
     'boss.phase1': 'Phase 1: Aerial Barrage',
     'boss.phase2': 'Phase 2: Grounded Carnage [Knockback Roars]',
     'boss.phase3': 'Phase 3: Enraged Inferno [Lava Circles & Summons]',
@@ -324,6 +324,8 @@ export const STRINGS = {
     'ui.resume_hint': '浏览器已释放鼠标控制，点击画面重新接管角色。',
     'ui.contextLost': '画面已被系统重置，点击继续游戏',
     'notice.panelLoadFailed': '面板加载失败。请检查网络；如果游戏刚刚更新，请刷新页面。',
+    'notice.dragonLoadFailed': '巨龙加载失败，正在重试……',
+    'notice.dragonLoadGaveUp': '巨龙加载失败。请刷新页面（尤其是游戏刚刚更新的时候），或者离开巢穴再回来重试。它的生命值会保留。',
     'notice.dusk': '黄昏将至，夜幕即将降临，快做好防御！',
     'notice.siege.first': '第 {n} 夜：第一次围攻开始了，坚守到黎明！',
     'notice.siege.harder': '第 {n} 夜：怪物攻势更猛了，坚守到黎明！',
@@ -340,13 +342,9 @@ export const STRINGS = {
     'boss.dragonRisenN': '复苏的暗影巨龙（第 {n} 次）',
     'notice.bossReturns': '凋敝之心再次躁动，{boss}正在巢穴等你。',
     'notice.bossAwakens': '凋敝之心躁动，{boss}苏醒了！决战开始！',
-    'notice.bossPhase2': '第二阶段：暗影巨龙落地了！它的咆哮会把你击退！',
-    'notice.bossPhase3': '第三阶段：暗影巨龙狂暴了！小心熔岩区域和召唤出的骷髅！',
+    'notice.bossPhase2': '第二阶段：暗影巨龙落地了。它吸气时，赶在咆哮之前离开地上的红圈！',
+    'notice.bossPhase3': '第三阶段：暗影巨龙狂暴了。在灼烧之前，离开熔岩圈和地上的红色标记！',
     'notice.bossDefeated': '首领已被击败！你击杀了{boss}！+{xp} 经验！',
-    'notice.bossFireball': '暗影巨龙从空中投下火球！',
-    'notice.bossRoar': '被击退了！暗影巨龙发出了击退咆哮！',
-    'notice.bossLava': '地面在熔化！快离开熔岩区域！',
-    'notice.bossSummon': '暗影巨龙召唤了骷髅大军！',
     'boss.phase1': '第一阶段：空中轰炸',
     'boss.phase2': '第二阶段：落地肆虐（击退咆哮）',
     'boss.phase3': '第三阶段：狂暴炼狱（熔岩圈与召唤）',

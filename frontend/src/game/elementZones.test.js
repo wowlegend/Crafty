@@ -240,3 +240,23 @@ describe('spawnChain and a widened zone', () => {
     expect(z.radius, 'a plain re-imbue shrank a widened zone').toBeCloseTo(ZONE_DEFS.burning.radius * 1.5, 10);
   });
 });
+
+// THE DRAGON ON THE ONE DAMAGE PATH (reset plan row 25; DECISIONS 2026-10-30 item 126): a zone reaches a body with a
+// bodyRadius (the dragon's record, game/bossCombat.js) at its edge; a mob, with none, only at its centre as before.
+// Mutation-Proof: via scripts/dev/mutate.sh, each observed RED, an identity mutant GREEN: Z1 the burn ignores bodyRadius;
+// Z2 the frost ignores bodyRadius.
+describe('a zone reaches a big body at its edge (row 25)', () => {
+  it('a burning zone 3.5 m from the dragon\'s centre burns it; the same distance from a mob does not', () => {
+    const hits = [];
+    const dmg = (id, n) => hits.push([id, n]);
+    const zones = [{ kind: 'burning', pos: at(0, 0), radius: 2.5 }];
+    applyZoneEffects(zones, [{ id: 'shadow-dragon', health: 300, bodyRadius: 1.6, position: at(3.5, 0) }], dmg);
+    applyZoneEffects(zones, [{ id: 9, health: 30, position: at(3.5, 0) }], dmg);
+    expect(hits).toEqual([['shadow-dragon', BURN_TICK]]);
+  });
+  it('a frozen zone slows the dragon\'s edge too', () => {
+    const d = { id: 'shadow-dragon', health: 300, bodyRadius: 1.6, position: at(3.5, 0) };
+    applyZoneEffects([{ kind: 'frozen', pos: at(0, 0), radius: 2.5 }], [d], () => {});
+    expect(d.zoneSlowMult).toBeLessThan(1);
+  });
+});

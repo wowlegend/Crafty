@@ -8,13 +8,16 @@ import { stanceFrame } from '../../src/game/combatStance.js';
 import { stance } from '../../src/game/stanceState.js';
 import { useGameStore } from '../../src/store/useGameStore';
 import { EYE_HEIGHT_M } from '../../src/combat/swingOrigin.js';
+import { stepDragon, launchFireball, stepFireball } from '../../src/game/dragonMoves.js';
+import { createBossCombat } from '../../src/game/bossCombat.js';
 
 /**
  * PER-FRAME CALLS ALLOCATE NOTHING (CLAUDE.md game-code: no allocation in the hot path).
  *
  * Each subject runs every frame of something the player does: the hand poses every frame of a swing, a cast and a heavy
- * charge (render/handPose.js), and the point the mobs sense the player from every frame an arrow flies and at the AI's
- * 15 Hz (systems/playerSensePoint.js). Measured as young-generation growth over runs of 5000 calls no collection
+ * charge (render/handPose.js), the point the mobs sense the player from every frame an arrow flies and at the AI's
+ * 15 Hz (systems/playerSensePoint.js), and the dragon's move machine through a windup and its fireball's flight every
+ * frame of the fight (game/dragonMoves.js). Measured as young-generation growth over runs of 5000 calls no collection
  * interrupted, once the optimiser has compiled the call (tests/gates/_youngGrowth.js), against a control in the same run that shows the probe sees an allocation of the size
  * that matters: a Rapier body's translation(), which builds a wasm vector and an object per call (rapier3d-compat 0.19.2,
  * the build the game ships, run for real here).
@@ -85,5 +88,25 @@ describe('the point the mobs sense the player from', () => {
     const camera = new THREE.PerspectiveCamera();
     camera.position.set(1, 2, 3);
     expect(playerSensePoint(camera, { x: 0, y: 0, z: 0 })).toEqual({ x: 1, y: 2, z: 3 });
+  });
+});
+
+describe('the dragon, every frame of its fight', () => {
+  it('a step through a windup and a fireball\'s flight allocate nothing', () => {
+    const rec = createBossCombat();
+    rec.active = true; rec.health = 300;
+    const ctx = { phase: 1, tricks: ['fireball', 'lava', 'summon'], player: { x: 3, y: 0, z: 0 }, playerAlive: true,
+      invincible: false, groundY: 0, damage: 25 };
+    expect(stepDragon(rec, ctx, 0)[0], 'SETUP: no bite wound up').toMatchObject({ type: 'windup', move: 'bite', until: 520 });
+    const windup = youngBytesPerCall((i) => stepDragon(rec, ctx, i % 500));
+    expect(rec.move, 'SETUP: the windup resolved while it was measured').toBe('bite');
+    expect(windup, `a step through a windup allocates ${windup.toFixed(1)} bytes a call`).toBeLessThan(NO_ALLOCATION_BYTES);
+    // A mark far enough off that the flight never arrives inside the measurement.
+    const f = launchFireball({ x: 0, y: 14, z: 0 }, { x: 1e7, y: 0, z: 0 });
+    const player = { x: 5, y: 0, z: 5 };
+    expect(stepFireball(f, 1 / 60, player), 'SETUP: the fireball is not in flight').toBe('flying');
+    const flight = youngBytesPerCall(() => stepFireball(f, 1 / 60, player));
+    expect(f.left, 'SETUP: the fireball arrived while it was measured').toBeGreaterThan(0);
+    expect(flight, `a fireball's step allocates ${flight.toFixed(1)} bytes a call`).toBeLessThan(NO_ALLOCATION_BYTES);
   });
 });

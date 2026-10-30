@@ -15,7 +15,8 @@ export const HEAVY_HOLD_MS = 280;
 export const HEAVY_CHARGE_MS = 420;
 /** The heavy's damage, x the light swing's. */
 export const HEAVY_MULT = 2;
-/** How long a heavy staggers a (non-boss) mob, world ms — the perfect dodge's stagger, so the riposte follows. */
+/** How long a heavy staggers a mob, world ms — the perfect dodge's stagger, so the riposte follows. The dragon takes the
+ *  heavy through its chain instead (game/bossCombat.js registerBossHeavy): a heavy only refreshes a stagger it already has. */
 export const HEAVY_STAGGER_MS = 800;
 /** The heavy's shove, x the light swing's knockback. */
 export const HEAVY_SHOVE_MULT = 2.5;

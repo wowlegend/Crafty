@@ -16,6 +16,7 @@ import { riposteDamage } from '../game/perfectDodge.js';
 import { worldNow } from '../game/worldClock.js';
 import { nextSpawnId } from './_npcShared';
 import { playerSensePoint } from './playerSensePoint.js';
+import { bossCombat, BOSS_TARGET_ID } from '../game/bossCombat.js';
 
 const _from = { x: 0, y: 0, z: 0 };
 
@@ -27,6 +28,10 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
   const { playHit } = useGameSounds();
   useEffect(() => {
     const damageMob = (id, damage = 25, type = 'physical', source = 'player', spawnRing = true) => {
+      // THE DRAGON ON THE ONE DAMAGE PATH (reset plan row 25; DECISIONS 2026-10-30 item 126): hurl and its slam, the
+      // squad, the element zones and the burns find the dragon beside the mobs (game/bossCombat.js bossTargets) and
+      // hand its id here, as they hand a mob's.
+      if (id === BOSS_TARGET_ID) return hitDragon(damage, type, source);
       const entity = mobsQuery.entities.find(e => e.id === id);
       if (!entity) return null;
 
@@ -167,6 +172,23 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
         entity.dyingUntil = performance.now() + DEATH_DISSOLVE_MS;
       }
       return entity;
+    };
+
+    // A hit on the dragon: its damage through damageBoss (the riposte for the player's sources, world/bossSystem.js), and
+    // the player-feel effects a mob's hit gets: a direct hit's freeze, the hit sound and sparks at its body. Returns the
+    // record while the dragon fights, else null, so a burn on a dead dragon stops (game/burnManager.js).
+    const hitDragon = (damage, type, source) => {
+      const store = useGameStore.getState();
+      if (!bossCombat.active || !(bossCombat.health > 0) || typeof store.damageBoss !== 'function') return null;
+      store.damageBoss(damage, source);
+      if (isDirectPlayerHit(source)) store.triggerHitstop(hitstopForHit(damage, store.juiceIntensity ?? 1));
+      const p = bossCombat.position;
+      store.playSpatialSound?.('hit', [p.x, p.y, p.z]);
+      if (store.triggerGPUSparks) {
+        const { color, count } = sparkFor(type, damage >= 40);
+        store.triggerGPUSparks(new THREE.Vector3(p.x, p.y + 0.8, p.z), color, count, type);
+      }
+      return bossCombat;
     };
 
     // S2-B3-M3: capture a mob into the squad — the SNARE bind's apply-path (M4 calls this).

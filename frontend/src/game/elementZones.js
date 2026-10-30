@@ -141,11 +141,11 @@ export function applyZoneEffects(zones, mobs, damageFn) {
   const frozenIds = new Set();
   for (const z of zones) {
     if (z.kind !== 'frozen') continue;
-    const r2 = z.radius * z.radius;
     for (const e of mobs) {
       if (!e || e.health <= 0) continue;
       const dx = e.position.x - z.pos.x, dz = e.position.z - z.pos.z;
-      if (dx * dx + dz * dz <= r2) frozenIds.add(e.id);
+      const r = z.radius + (e.bodyRadius || 0);
+      if (dx * dx + dz * dz <= r * r) frozenIds.add(e.id);
     }
   }
   for (const e of mobs) {
@@ -158,8 +158,10 @@ export function applyZoneEffects(zones, mobs, damageFn) {
     let burning = false, conductive = false, resonant = false;
     for (const z of zones) {
       if (z.kind === 'frozen') continue;
+      // A body with a bodyRadius (the dragon) stands in a zone that reaches its edge, not only its centre.
       const dx = e.position.x - z.pos.x, dz = e.position.z - z.pos.z;
-      if (dx * dx + dz * dz > z.radius * z.radius) continue;
+      const r = z.radius + (e.bodyRadius || 0);
+      if (dx * dx + dz * dz > r * r) continue;
       if (z.kind === 'burning') burning = true;
       else if (z.kind === 'conductive') conductive = true;
       else if (z.kind === 'resonant') resonant = true;

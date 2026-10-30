@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../store/useGameStore';
 import { GameMethods } from '../GameMethods';
 import { mobsQuery } from '../ecs/world';
+import { bossTargets } from '../game/bossCombat.js';
 import { isCaptureMode } from '../devtest/captureMode';
 import { consumeHurlRequest, consumeSlamRequest } from '../game/hurlChannel';
 import { adoptHurlRequest, flightSlot, stepHurlChunked, resolveSlam, resolveAnvil, HURL_DAMAGE, HURL_KNOCK, SLAM_DAMAGE_MULT, MAX_FLIGHTS } from '../game/hurl';
@@ -67,7 +68,8 @@ export function HurlSystem() {
       // M8 feel-distinctness: SLAM is the HEAVY verb — a camera kick the ranged hurl doesn't get
       // (hurl impacts already carry hitstop via damageMob; this is the slam's own signature).
       if (store.triggerCameraShake) store.triggerCameraShake(1.4);
-      for (const ev of resolveSlam(slam.center, mobsQuery.entities, radius)) {
+      // The dragon beside the mobs (game/bossCombat.js bossTargets): a slam or a hurled block reaches it in the air too.
+      for (const ev of resolveSlam(slam.center, bossTargets(mobsQuery.entities), radius)) {
         if (GameMethods.damageMob) GameMethods.damageMob(ev.id, Math.round(HURL_DAMAGE * SLAM_DAMAGE_MULT), element);
         const entity = mobsQuery.entities.find((e) => e.id === ev.id);
         if (entity) entity.knockback = [ev.dir.x * HURL_KNOCK, 2, ev.dir.z * HURL_KNOCK];
@@ -90,7 +92,7 @@ export function HurlSystem() {
     for (let i = 0; i < slots.length; i++) {
       const f = slots[i];
       if (!f) continue;
-      const r = stepHurlChunked(f.h, delta, mobsQuery.entities); // substepped: frame spikes can't tunnel
+      const r = stepHurlChunked(f.h, delta, bossTargets(mobsQuery.entities)); // substepped: frame spikes can't tunnel
       const m = meshesRef.current[i];
       if (m) {
         m.position.set(f.h.position.x, f.h.position.y, f.h.position.z);

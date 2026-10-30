@@ -48,7 +48,20 @@ import {
   passRendererProblem,
   checkoutState,
   targetSummaryLines,
+  DRAGON_ARENA,
+  DRAGON_VIEW,
+  dragonStreamPose,
+  dragonCameraPose,
+  dragonSightPoints,
+  pickDragonView,
+  dragonShotPlan,
+  dragonShotVerdict,
+  dragonPoseShot,
+  DRAGON_GROUND_POSES,
+  DRAGON_VIEW_GROUND,
 } from '../../scripts/visual/_lookbook.mjs';
+import { DRAGON_POSES } from '../../src/render/lookbookSeam.js';
+import { blightHeartSite } from '../../src/world/blightHeart.js';
 import { LOOKBOOK_PASS_NAMES, lookbookEffectNames } from '../../src/render/passesOff.js';
 import { viteArgv } from '../../scripts/visual/_serve.mjs';
 
@@ -180,6 +193,120 @@ describe('a shot is valid only if it shows the game it claims to show', () => {
   it('the clock tolerance is circular: midnight-adjacent times either side of the wrap are close', () => {
     expect(shotVerdict({ cycle: 0.995, before: { ...ok, cycle: 0.995 }, after: { ...ok, cycle: 0.003 } }).valid).toBe(true);
     expect(shotVerdict({ cycle: 0.30, before: ok, after: { ...ok, cycle: 0.3101 } }).valid, 'a 0.0101 drift passed').toBe(false);
+  });
+});
+
+// THE DRAGON ARENA (--sets dragon; DECISIONS 2026-10-30 item 122). Added with it, each observed RED via
+// scripts/dev/mutate.sh on scripts/visual/_lookbook.mjs (an identity mutant, a comment edit, GREEN):
+//   D1 a pose dropped from the plan (the seam's first pose only) -> "every pose the seam knows at every time"
+//   D2 plausible-wrong: the camera on the spawn bearing (behind it, the monolith) -> "frames it side-on"
+//   D3 the verdict ignores the hold -> "a dragon frame is valid only with the dragon up, held in the pose it names"
+//   D5 the verdict ignores the scene read -> the same test ("not in the scene")
+//   D6 the camera's ground ignored -> "frames it side-on" (the camera at 70 m ground stays at the dragon's height)
+//   D7 the sight check ignores the ground -> "picks a camera whose sight line clears the ground"
+//   D8 only the side-on bearing tried -> the same test
+//   D9 the verdict ignores a blocked sight -> "a dragon frame is valid only ..."
+//   D10 a ground tell shot in the air (the grounded list ignored) -> "the ground tells are shot with the dragon down"
+//   D4 the stream pose looks straight down its up vector -> "hangs over the lair"
+describe('the dragon arena: the dragon held in each pose at each time, framed side-on', () => {
+  it('every pose the seam knows at every time, each named by pose and time', () => {
+    const plan = dragonShotPlan([...DRAGON_POSES, 'roar'], [0.48, 0.75]);
+    expect(plan.map((s) => s.file)).toEqual([...DRAGON_POSES.flatMap((p) => [`dragon-${p}-0.48.png`, `dragon-${p}-0.75.png`]),
+      'dragon-roar-0.48.png', 'dragon-roar-0.75.png']);
+    expect(dragonShotPlan()).toHaveLength(DRAGON_POSES.length * LOOKBOOK_CYCLES.length);
+    expect(new Set(dragonShotPlan().map((s) => s.pose))).toEqual(new Set(DRAGON_POSES));
+  });
+  it('frames it side-on: DRAGON_VIEW.back metres across its bearing from the spawn, looking at the dragon', () => {
+    expect(DRAGON_ARENA.lair).toEqual(blightHeartSite());
+    const at = [DRAGON_ARENA.lair.x - 10, 63, DRAGON_ARENA.lair.z - 10];
+    const { position, lookAt } = dragonCameraPose(at);
+    expect(lookAt).toEqual(at);
+    expect(Math.hypot(position[0] - at[0], position[2] - at[2])).toBeCloseTo(DRAGON_VIEW.back, 6);
+    expect(position[1]).toBeCloseTo(at[1] + DRAGON_VIEW.up, 6);
+    // At a right angle to the spawn -> dragon bearing, so the lair's monolith behind the dragon is out of the frame.
+    const view = [position[0] - at[0], position[2] - at[2]];
+    expect((view[0] * at[0] + view[1] * at[2]) / Math.hypot(at[0], at[2]), 'the camera is not side-on').toBeCloseTo(0, 6);
+    // A dragon off the diagonal is still framed across its own bearing.
+    const off = dragonCameraPose([300, 50, -400]).position;
+    expect((off[0] - 300) * 300 + (off[2] + 400) * -400).toBeCloseTo(0, 6);
+    // ...and from the same side for both, so a set of frames reads left to right alike.
+    expect(Math.sign(view[0] * at[2] - view[1] * at[0])).toBe(Math.sign((off[0] - 300) * -400 - (off[2] + 400) * 300));
+    // Never inside a hill: DRAGON_VIEW.eye over the ground under the camera when that is known; unchanged where it is low.
+    expect(dragonCameraPose(at, 70).position[1]).toBeCloseTo(70 + DRAGON_VIEW.eye, 6);
+    expect(dragonCameraPose(at, 40).position[1]).toBeCloseTo(at[1] + DRAGON_VIEW.up, 6);
+    expect(dragonCameraPose(at, null).position[1]).toBeCloseTo(at[1] + DRAGON_VIEW.up, 6);
+  });
+  it('picks a camera whose sight line clears the ground, reading only the points it asked the seam for', () => {
+    const at = [715, 64, 715];
+    const points = dragonSightPoints(at);
+    expect(points).toHaveLength(DRAGON_VIEW.bearings * DRAGON_VIEW.samples);
+    const reader = (ground) => {
+      const known = new Map(points.map(([x, z]) => [`${x},${z}`, ground(x, z)]));
+      return (x, z) => {
+        const k = `${x},${z}`;
+        if (!known.has(k)) throw new Error(`read a point the probe never fetched: ${k}`);
+        return known.get(k);
+      };
+    };
+    // Flat, low ground: the side-on camera, clear.
+    const flat = pickDragonView(at, reader(() => 50));
+    expect([flat.turn, flat.clear]).toEqual([0, true]);
+    // A ridge across the side-on sight line (every point on the dragon's spawn side of the side-on bearing's half-plane
+    // within 8 m of the line): that bearing is refused and a later one, clear of it, is taken.
+    const side = dragonCameraPose(at, null, DRAGON_VIEW, 0).position;
+    const onSideLine = (x, z) => {
+      const dx = at[0] - side[0], dz = at[2] - side[2];
+      const t = ((x - side[0]) * dx + (z - side[2]) * dz) / (dx * dx + dz * dz);
+      return t > 0.05 && t < 0.95 && Math.hypot(side[0] + dx * t - x, side[2] + dz * t - z) < 1;
+    };
+    const ridge = pickDragonView(at, reader((x, z) => (onSideLine(x, z) ? 90 : 50)));
+    expect(ridge.clear).toBe(true);
+    expect(ridge.turn, 'the blocked side-on bearing was taken').toBeGreaterThan(0);
+    // Hills everywhere: no clear bearing, flagged, and the camera still never inside the ground under it.
+    const walled = pickDragonView(at, reader(() => 70));
+    expect(walled.clear).toBe(false);
+    expect(walled.pose.position[1]).toBeGreaterThanOrEqual(70 + DRAGON_VIEW.eye);
+    // Unloaded ground is not an obstacle.
+    expect(pickDragonView(at, reader(() => null)).clear).toBe(true);
+  });
+  it('the ground tells are shot with the dragon down on its ground, from above; the rest and the fireball in the air', () => {
+    const woke = [700, 64, 700];
+    for (const pose of DRAGON_POSES) {
+      const shot = dragonPoseShot(pose, woke, 52);
+      if (DRAGON_GROUND_POSES.includes(pose)) {
+        expect(shot.at, pose).toEqual([700, 52.8, 700]);
+        expect(shot.view, pose).toBe(DRAGON_VIEW_GROUND);
+      } else {
+        expect(shot.at, pose).toEqual(woke);
+        expect(shot.view, pose).toBe(DRAGON_VIEW);
+      }
+    }
+    expect(DRAGON_VIEW_GROUND.up, 'a ground tell shot from below reads no decal').toBeGreaterThan(0);
+    for (const pose of ['bite', 'roar', 'lava', 'summon']) expect(DRAGON_GROUND_POSES, pose).toContain(pose);
+    expect(dragonPoseShot('roar', woke, null).at, 'no ground read: it stays where it was woken').toEqual(woke);
+  });
+  it('hangs over the lair while its chunks stream, looking down but not along its up vector', () => {
+    const { position, lookAt } = dragonStreamPose();
+    expect(Math.hypot(position[0] - DRAGON_ARENA.lair.x, position[2] - DRAGON_ARENA.lair.z)).toBeLessThan(16);
+    expect(position[1]).toBeGreaterThan(lookAt[1]);
+    expect(Math.hypot(position[0] - lookAt[0], position[2] - lookAt[2]), 'straight down: the camera\'s lookAt degenerates').toBeGreaterThan(1);
+  });
+  it('a dragon frame is valid only with the dragon up, held in the pose it names, and drawn in the scene', () => {
+    const ok = { active: true, isAlive: true, cycle: 0.48, worldBuilt: true, contextLosses: 0, dragon: { active: true, hold: 'rest', position: [1, 2, 3] } };
+    const scene = { inScene: true, meshes: 14 };
+    expect(dragonShotVerdict({ pose: 'rest', cycle: 0.48, before: ok, after: ok, scene })).toEqual({ valid: true, why: [] });
+    const down = dragonShotVerdict({ pose: 'rest', cycle: 0.48, before: ok, after: { ...ok, dragon: { active: false, hold: 'rest' } }, scene });
+    expect([down.valid, down.why.join('; ')]).toEqual([false, 'the dragon is not up']);
+    const loose = dragonShotVerdict({ pose: 'rest', cycle: 0.48, before: ok, after: { ...ok, dragon: { active: true, hold: null } }, scene });
+    expect(loose.valid).toBe(false);
+    expect(loose.why.join('; ')).toMatch(/held in null, not "rest"/);
+    const dead = dragonShotVerdict({ pose: 'rest', cycle: 0.48, before: ok, after: { ...ok, isAlive: false }, scene });
+    expect(dead.why.join('; ')).toMatch(/player dead/);
+    expect(dragonShotVerdict({ pose: 'rest', cycle: 0.48, before: ok, after: ok, scene, sightClear: false }).why.join('; ')).toMatch(/over the ground/);
+    // The fight on in the store is not the dragon on the screen: the scene graph must hold its group, drawing something.
+    expect(dragonShotVerdict({ pose: 'rest', cycle: 0.48, before: ok, after: ok, scene: { inScene: false } }).why.join('; ')).toMatch(/not in the scene/);
+    expect(dragonShotVerdict({ pose: 'rest', cycle: 0.48, before: ok, after: ok, scene: { inScene: true, meshes: 0 } }).why.join('; ')).toMatch(/draws nothing/);
+    expect(dragonShotVerdict({ pose: 'rest', cycle: 0.48, before: ok, after: ok }).valid, 'no scene read is not a valid frame').toBe(false);
   });
 });
 
