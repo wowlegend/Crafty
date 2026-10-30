@@ -19,6 +19,84 @@
 
 ---
 
+## 2026-10-30 (chaos play, round 2) — [LOOP] every save loads clear, the gate cannot pass by accident, and the loop's wiring is driven
+
+**Decided by the chaos-play lane's round-2 fixer** (Workflow wf_66ad2ad9-e69; the static and dynamic reviews of round 1
+both said FIX). Round 1's gate (items 150-154) only ever loaded saves it had just written, at a seabed of 22 or higher, in
+the base shape, on one seed, and the harness models the Player loop rather than importing it. Items 155-159 and 165-167
+(160-164 are lane L1's).
+
+155. **A load stands the base capsule where it fits nearest the saved spot** (static F1, a blocker). Item 154 placed the
+   body exactly at the saved position, and saves on disk hold positions no capsule fits at: the old Save button's camera
+   rounded to whole metres (0.5 m into a wall, the head up to 1.17 m into a ceiling), the pre-cut fixture's (3, 21, 6) in
+   the ground. `game/formFit.js fitLoadedSpot`: the saved centre where the capsule is clear and its centre's cell is not
+   solid ground, else the nearest such spot within 0.6 m sideways, 1.2 m down, 0.6 m up, else on the highest column the
+   capsule stands across. A trimesh is hollow, so solid ground is read by parity (`cellSolid`: a ray up the cell's column
+   crosses each chunk's closed mesh an odd number of times from inside). The gate: a third of the driver's saves are
+   old-button saves, I1 and I2 do not read the hold's frames, and I5 bounds them (released within 2 x lag + 12 frames,
+   never to the origin); `chaos-play-loads.test.jsx` pins the pre-cut fixture and three old-button saves.
+   `quest-text.spec.js`'s fixture position is restored (the load now stands that player on the column's top). Commit
+   `4a76f1bb`. **Item 154's hold stands; its placement is superseded by this item.**
+   - The fit's corners (found by item 165's seed run): the hold now waits until the four corner columns of the square the
+     fit reads answer the probe (`game/spawnPlacement.js resumeColumnProbe`), not only the saved column; a fit run while
+     the chunk across a border had not streamed back stood the capsule 0.4 m into it. Commit `f693ab63`.
+156. **A save made over the deep ocean resumes there** (static F2, a blocker). The hold took a probe answer as proof the
+   column was in only above 15, and the full-ocean seabed lies at 6 to 10: held 600 frames, then reset to the origin. Any
+   finite answer is now proof (the height is never used). The harness has a deep-ocean place (seabed 10). Commit
+   `5f840cd0`.
+157. **A save in a form writes the base capsule's centre over the form's feet** (dynamic finding A, a blocker; the comet's
+   centre stood the base capsule 0.13 m into the floor). Each session's save is tried in a form rotated over its place's
+   eight sessions; the loads file pins every form, pressed into the cliff and on open ground. Commit `6faa9522`.
+158. **The placement guard reads the body, not its collider, after a teleport.** Found by the deep place: a click on the
+   frame of a respawn read the capsule where its collider had been before the teleport and put a block 0.4 m into the
+   player. Commit `8f2d227c`.
+159. **I3: a way out by mining only the player's own blocks, with no click limit; a wedge reads held** (static F3, dynamic
+   B). Supersedes item 150's "after at most three left clicks along one heading". A state only mining generated ground
+   would leave is a defect; each walk-held reading is printed with its class. The instruments pin I1's tolerance (0.1 m
+   into a wall), I3's record and both of I5's readings (round-1 survivors: TOL widened to 0.3, I3 never recorded). Commits
+   `cba50fc7`, `f9d7280a`.
+165. **The gate on seeds 1 to 8, run locally after the fixes** (CI plays seed 1; `CHAOS_SEED=<n>` plays another):
+
+   | Seed | Sessions (56) red | Walk-held readings | Of them held | Deepest in solid | Denominator floors |
+   |---|---|---|---|---|---|
+   | 1 | 0 | 31 | 0 | 0.000 m | all met |
+   | 2 | 0 | 24 | 0 | 0.000 m | field-origin swapsRefused 1, floor 2 (SETUP) |
+   | 3 | 0 | 24 | 0 | 0.000 m | all met |
+   | 4 | 0 | 30 | 0 | 0.000 m | all met |
+   | 5 | 0 | 21 | 0 | 0.000 m | all met |
+   | 6 | 0 | 33 | 0 | 0.000 m | all met |
+   | 7 | 0 | 27 | 0 | 0.000 m | all met |
+   | 8 | 0 | 30 | 0 | 0.000 m | all met |
+
+   The first run, before item 155's corners, had seed 5 red (origin, 120 Hz, lag 0: 0.4 m into the chunk across a
+   border, fixed by `f693ab63`) and seed 2's same floor miss. Seed 2's miss is the driver reaching one refused swap where
+   seed 1 reaches three, not a game defect; the floors stay set from seed 1, the seed CI plays.
+166. **The Player loop's load and form wiring is driven in the game** (dynamic finding C: reverting it left every unit
+   test green). `tests/e2e/load-hold.spec.js`: a load holds the body at the saved height every drawn frame until it lets
+   go there; a save 1.5 m in the ground stands the player on the column's top; the golem under a two-high ceiling is
+   refused and said, and swaps in on open ground. Proven on dispatched branches carrying this spec's final text, the e2e
+   job narrowed to it (the branches stop at `c80c6ae5`, before `f693ab63`; the PR's own CI runs the spec on the lane's
+   head): control `mut/chaos-wiring-ctl` run 41128290264, 3 passed on first attempts; the hold condition reverted to
+   `!spawnPosSet.current` (`mut/chaos-wiring-hold`, run 41128295530) red on both load cases, 3 of 3 attempts each ("the
+   body dropped under the saved height while the world re-streamed", "the load never let the player go"); the load fit's
+   line bypassed (`mut/chaos-wiring-fit`, run 41128301592) red on the buried save, 3 of 3 ("the player was left in the
+   ground under the column's top"); the frame swap falling back to the unfitted swap (`mut/chaos-wiring-form`, run
+   41128307279) red on the golem, 3 of 3 ("the golem was swapped in under the ceiling"). Each branch's unit job failed only
+   on `ci-required-check.test.js`, which the narrowed matrix breaks; the other 603 unit files passed. The branches stay on
+   origin for the command session to delete. Closes REVIEW:chaos-play:load-hold-e2e.
+167. **Small fixes.** F4: a form refused on the frame after the roar gives the roar's price back and cuts the reveal
+   (`game/formRefusal.js`, `c80c6ae5`; red first was the absent module, the paid-path wiring is unit-tested only). F5:
+   block debris is not an obstacle to the form fit (`89c2aa8f`). F7: item 150 and the instruments' header said all four
+   invariants read the voxel grid; I3 reads a sandbox of the landed meshes and live stand-ins, I4 the world's colliders
+   (corrected in `cba50fc7` and in item 150 here). F8: five comments cited a test file that never existed (`38892f07`).
+
+**Also found, not fixed here (registry rows, owner the command session):** the deep seabed (6 to 10) lies under the
+void line (a body centre under 10), so a player who sinks to it in the deep ocean is reset to the origin
+(REVIEW:chaos-play:deep-seabed-under-void-line); a form entered from the store rather than the roar is ended by the
+transform timer on the next frame (REVIEW:chaos-play:store-form-ends-next-frame).
+
+---
+
 ## 2026-10-30 (chaos play) — [LOOP] a standing gate that plays the game adversarially: the player can always leave
 
 **Decided by the chaos-play lane** (branch `feat/chaos-play-gate`, registry REVIEW:chaos-play:player-can-leave). Kevin
@@ -29,8 +107,9 @@ console line, only in "can the player still move" (AB episode 1230). Items 150-1
 150. **The chaos-play gate.** `tests/integration/chaos-play-{shore-cliff,cave-overhang,field-origin}.test.jsx` play 48
    seeded sessions (six places: the shore, a cliff face, a two-high tunnel, an overhang, open field, the origin column;
    60 and 120 Hz; trimesh 0, 2, 4 or 8 frames late) against the real Rapier build, the real mesher and the real verb
-   executors in the game's frame order, and read four invariants from the voxel grid after every frame: the capsule in
-   no solid cell deeper than 5 mm (a tenth of the controller's 0.05 m offset), the eye in no solid cell, a way out every
+   executors in the game's frame order, and read four invariants after every frame (I1 and I2 from the voxel grid, I3
+   from a sandbox of the landed meshes and live stand-ins, I4 from the world's colliders; corrected by item 167): the
+   capsule in no solid cell deeper than 5 mm (a tenth of the controller's 0.05 m offset), the eye in no solid cell, a way out every
    90 frames and at the end (a metre's move within a second walking or jump-walking, or after at most three left clicks
    along one heading: a shell the player built is not a trap), and no stand-in outliving its mesh by a step.
    `chaos-play-instruments.test.jsx` shows each instrument seeing its positive case first. Each file asserts floors on

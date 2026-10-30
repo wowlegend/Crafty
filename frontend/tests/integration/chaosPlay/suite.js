@@ -12,7 +12,7 @@ export const LAGS = [0, 2, 4, 8];
 // noise only: every session on the fixed code reads 0.000 (the deepest over a file's sessions is printed with its
 // denominators), and the traps it exists for read 0.05 to 0.62 m.
 export const TOL = 0.05 / 10;
-// The seed CI plays is 1. CHAOS_SEED plays another, locally (DECISIONS 2026-10-30 item 160 has the table for 1 to 8).
+// The seed CI plays is 1. CHAOS_SEED plays another, locally (DECISIONS 2026-10-30 item 165 has the table for 1 to 8).
 export const SEED = Number(process.env.CHAOS_SEED) || 1;
 
 /** A fresh store for a session: the denial toast's 1 s throttle reads performance.now, 5 s on per read so none is lost. */
