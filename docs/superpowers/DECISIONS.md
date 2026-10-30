@@ -19,6 +19,77 @@
 
 ---
 
+## 2026-10-30 — [LOOP] L1: a death on iOS shows YOU DIED, the lock goes on the canvas only, Show Stats and the juice dial, and every button over the game answers a finger
+
+**Decided by the L1 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L1 of the 2026-10-30 deep
+audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4). PR #62. Each stands while it earns its place.
+
+160. **One way to the Pointer Lock API: `src/input/pointerLock.js`.** iOS and iPadOS WebKit define none of it (MDN
+   browser-compat-data: `Document.exitPointerLock`, `Document.pointerLockElement` and `Element.requestPointerLock` are
+   `safari_ios` `version_added: false`; `chrome_android` from 144). InputManager's death effect called
+   `document.exitPointerLock()` bare, and React sent the TypeError from that passive effect to the root error boundary: on
+   every iOS browser every death showed the crash page instead of YOU DIED, and the autosave pending then never fired
+   (AUDIT:input:ios-death-crash). `releasePointerLock()` calls the API only where the browser has it; `requestGameLock()`
+   asks GameScene's requester, which locks the canvas, and locks nothing when there is none. Every call site goes through
+   them (InputManager, MenuSystem, App's world-ready lock, HUD's Respawn, the DEV start hook, Terrain's chest open); the
+   five `document.body` fallbacks are gone, and with them a `.catch` on a value older engines return as undefined, which
+   threw before the touch bridge (AUDIT:ultra:ultra-state-saves-input-10). `contextRecovery.js` keeps its own check,
+   which was already guarded.
+   - **Departure from the brief.** The audit asked for a release "only when locked and the API exists". The release does
+     not ask whether the pointer is locked: `pointerLockElement` is null while a lock request is still pending (MDN), so
+     that check skips the release in exactly the window a request is in flight, and on every engine with the API the
+     call stays the one it was. The mutant that adds the check survives the gates (they hold no pending request); that
+     is the gates' stated limit, not a claim.
+   - **The static half.** ESLint (`src`, not tests) errors on any `document.exitPointerLock` member and on
+     `document.body.requestPointerLock`: 17 sites at b48ec9f1, none now. A source rule is not a gate on its own
+     (gate-shape); it stops a new bare call before the behavioural gates below would have to.
+161. **Owed, and Kevin's: the lived proof on an iPhone and an iPad.** In Safari on each: die once (a mob, or a fall),
+   see YOU DIED and not "Something went wrong", tap Respawn and play on; then tap the HUD Settings gear and see Settings
+   open. CI shows what Chromium can: `tests/e2e/death-pointer-lock.spec.js` deletes the three API members before the app
+   loads and dies on an emulated iPad (red on b48ec9f1 in run 41117858710, all three attempts:
+   `TypeError: document.exitPointerLock is not a function` at InputManager.jsx:138), and its desktop case dies holding a
+   stand-in lock and must release it once. Chromium is not WebKit, and the touch emulation is not a finger.
+162. **Show Stats is not a panel on touch either.** App passed `otherPanelOpen={showAchievements || showStats}` to
+   TouchControls, which refuses action and roar presses while a panel is open, so on touch Show Stats silently disabled
+   attack, mining, the heavy and the roar until it was toggled off (AUDIT:softlocks:touch-show-stats-kills-action). It
+   passes `showAchievements` only, as `ui/panelState.js` already says of Show Stats.
+163. **The hydrate restores the juice choice.** `settingsPersist.js` persists `juiceIntensityChoice` but hydrated only
+   `juiceIntensity`, so the first save of any other dial in a later session wrote the default 1 over a saved 40% or over
+   the in-game Reduced Motion's 0 (AUDIT:ultra:ultra-game-logic-1, since c832ca56). It restores both.
+164. **Every button and modal surface over the live game owns its touch.** Lead AUDIT:input:touch-settings-gear-unreachable
+   was decided on CI before any fix: run 41117858710 tapped the HUD Settings gear on an emulated phone (Playwright's
+   touchscreen tap after its hit-target check, input live) and Settings never opened, on all three attempts. TouchControls
+   cancels the touchstart and touchend of any touch that does not land on a surface it counts as a control, and a
+   cancelled touch fires no click (Chromium here; Safari on an iPad in the X3 hotbar record). The same held for every plain
+   button over the live game: the gear (touch's only way to Settings, How to Play, Manage Worlds and Load), Respawn (play
+   stays live on touch at a death, so a touch player was held on the death screen, which no iOS player reached before
+   item 160), Keep exploring at the first dragon kill, and the context-loss panel, the way back when iOS drops the WebGL
+   context. The brief proposed marking the gear `data-hud-interactive`; marking surfaces one by one is the hand-kept list
+   that missed the other three, so `input/touchOwnership.js` now names ownership by kind: `button, [role="button"],
+   [aria-modal="true"], [data-hud-interactive]`. A touch on the world (the canvas, a scrim) is still the router's.
+   Registry: REVIEW:l1:touch-overlay-buttons-cancelled records the three beyond the lead, closed.
+
+**Gates**, each red first on b48ec9f1's code (a scratch copy with the gate dropped in) and mutation-proven with
+`scripts/dev/mutate.sh` (the numbers are in each commit's `Mutation-Proof:` trailer):
+- `tests/gates/pointer-lock-guard-gates.test.jsx`: a death with no Pointer Lock API keeps the game and fires the
+  autosave; a death holding a lock releases it once; Tab, J, H and B open their panels and throw nothing with no API and
+  release a held lock with one; the real App on touch shows the death screen at a death. 3 of 5 red at b48ec9f1 (the two
+  held-lock cases are the controls); 7 real mutants red, 2 identities green, the locked-check mutant surviving (item 160).
+- `tests/gates/touch-entry-gate.test.js`: the two cases that pinned the body fallback now assert that Start with no lock
+  method locks nothing, and on touch still fires the touch bridge and starts the run when the engine's lock returns
+  undefined. Both red at b48ec9f1.
+- `tests/gates/touch-show-stats-gates.test.jsx`: the audit verifier's full-App probe: with the readout on, three presses
+  and a roar reach the game. Red at b48ec9f1 ([0, 0, 0]).
+- `tests/gates/settings-juice-persist-gates.test.js`: three sessions through the real store. 4 of 5 red at b48ec9f1.
+- `tests/gates/touch-owned-controls-gates.test.jsx`: the real App on touch; the gear, Keep exploring, the context-loss
+  panel and Respawn (after a real death, play still live) keep their touches, while a touch on a canvas is cancelled before
+  and after. All four cancelled on the lane's tree before item 164; 4 real mutants red, the identity green. jsdom
+  synthesizes no click; the e2e taps (the gear in `touch-controls.spec.js`, Respawn in `death-pointer-lock.spec.js`) are the
+  click on CI.
+
+**Not covered:** a real iPhone or iPad (item 161); a tap on Keep exploring or the context-loss panel in a browser (jsdom
+only); the release while a lock request is pending (item 160).
+
 ## 2026-10-30 — [LOOP] W2-L: every animated element renders `m`, under one strict LazyMotion provider
 
 **Decided by the W2-L builder under the standing grant** (DECISIONS 2026-10-28 item 14), as the rest of reset item 14: the
