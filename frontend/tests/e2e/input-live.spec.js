@@ -1,6 +1,12 @@
 import { test, expect } from './_fixtures.js';
+import { devices } from '@playwright/test';
 import { bootDev, startPlayActive } from './_boot.js';
 
+// A SURFACE OVER THE GAME TAKES THE INPUT, WHICHEVER WAY IT OPENED (lane L5 of the 2026-10-30 deep audit). Two surfaces
+// that dropped no input gate, in the running game: VICTORY on desktop, and a chest opened from the world on touch.
+// The jsdom gate tests/gates/input-live-gates.test.jsx holds every surface and opener; this is the click, the walk and
+// the clock in a browser.
+//
 // THE VICTORY SCREEN TAKES THE INPUT: the pointer comes back, the world holds, and a click is not a verb.
 //
 // At the first dragon kill (world/bossSystem.js 'victory'), VICTORY went up under a held pointer lock. Its only control,
@@ -129,5 +135,64 @@ test.describe('the victory screen on desktop', () => {
     await page.getByTestId('victory-keep-exploring').click({ timeout: 15000 });
     await expect.poll(async () => { last = await readState(page); return last.victoryPending; }, { timeout: 10000 }).toBe(false)
       .catch(() => { throw new Error(`Keep exploring did not dismiss the victory screen: ${JSON.stringify(last)}`); });
+  });
+});
+
+// A CHEST OPENED FROM THE WORLD ON TOUCH HOLDS THE WORLD AND THE PLAYER (AUDIT:input:touch-panel-world-runs).
+//
+// Touch has no pointer lock, so the world opener (Terrain's open(), reached by the interact verb) drops no input gate:
+// the world ran on behind the chest's scrim, mobs kept hitting and the player could die inside the menu. The opener here
+// is the store write Terrain's open() makes (the chest's coordinates and its flag; its pointer release is a no-op on
+// touch). A held W stands in for an iPad's keyboard: it drives the Player loop's walk, which reads the same gate.
+const IPAD = devices['iPad Pro 11 landscape'];
+
+/** In the page: the body's ground-plane travel while W is held for `n` frames. */
+async function walkFrames(page, n) {
+  const from = await page.evaluate(() => { const t = window.useGameStore.getState().playerRigidBodyRef.current.translation(); return { x: t.x, z: t.z }; });
+  await page.keyboard.down('w');
+  await page.evaluate((count) => new Promise((resolve) => {
+    let left = count;
+    const tick = () => { left -= 1; if (left <= 0) resolve(); else requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }), n);
+  await page.keyboard.up('w');
+  const to = await page.evaluate(() => { const t = window.useGameStore.getState().playerRigidBodyRef.current.translation(); return { x: t.x, z: t.z }; });
+  return Math.round(Math.hypot(to.x - from.x, to.z - from.z) * 100) / 100;
+}
+
+const worldClockOver = async (page, ms) => {
+  const t0 = await page.evaluate(() => window.__craftyTest.call('worldNow'));
+  await page.waitForTimeout(ms);
+  const t1 = await page.evaluate(() => window.__craftyTest.call('worldNow'));
+  return t1 - t0;
+};
+
+test.describe('a chest opened from the world on touch', () => {
+  test.use({ viewport: IPAD.viewport, userAgent: IPAD.userAgent, isMobile: IPAD.isMobile, hasTouch: IPAD.hasTouch, deviceScaleFactor: 1 });
+
+  test('holds the world clock and the walk while it is up', async ({ page }) => {
+    test.setTimeout(240000);
+    await bootDev(page);
+    await startPlayActive(page);
+    await page.waitForFunction(() => window.useGameStore.getState().playerRigidBodyRef?.current, null, { timeout: 60000 })
+      .catch((e) => { throw new Error(`SETUP: the player body never came up — ${e.message}`); });
+
+    // PRESENCE: in play the clock runs and a held W walks.
+    const liveClock = await worldClockOver(page, 600);
+    const liveWalk = await walkFrames(page, 40);
+    console.log(`[input-live] touch, in play: world clock +${liveClock} ms, walk ${liveWalk} m`);
+    expect(liveClock, 'SETUP: the world clock does not run in play, so a hold cannot be seen').toBeGreaterThan(200);
+    expect(liveWalk, 'SETUP: a held W does not walk in play, so a held walk cannot be seen').toBeGreaterThan(0.3);
+
+    // Terrain's open(): the chest's coordinates and its flag.
+    await page.evaluate(() => { const s = window.useGameStore.getState(); s.setActiveChestCoords('0_0_0'); s.setShowChestInterface(true); });
+    const active = await page.evaluate(() => window.__craftyTest.call('readIntents').active);
+    console.log(`[input-live] touch, chest open: the input gate is ${active ? 'still up' : 'down'}`);
+
+    const heldClock = await worldClockOver(page, 600);
+    const heldWalk = await walkFrames(page, 40);
+    console.log(`[input-live] touch, chest open: world clock +${heldClock} ms, walk ${heldWalk} m`);
+    expect(heldClock, 'the world ran on behind the chest opened from the world').toBe(0);
+    expect(heldWalk, 'a held W walked the player behind the chest').toBeLessThan(0.05);
   });
 });
