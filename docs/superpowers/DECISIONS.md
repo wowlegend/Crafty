@@ -67,6 +67,13 @@ Also in this round:
   - two identity mutants: GREEN.
 - **The shore e2e** now asserts that each placing click held a stand-in at the click, and that the count was back to 0
   within the watch's 30 frames.
+  - **Red on CI.** The branch `mut/invisible-box-echo-ec42c85e` is `ec42c85e` plus one change: the worker drops the
+    click's seq, so every mesh echoes 0. Its dispatched run 41070477369 failed on that spec alone (shard 6: 1 failed,
+    11 passed). The first attempt and both retries failed at the new assertion: "the stand-ins after the placing click
+    at -100_30_-25 were not back to 0 within 30 drawn frames (held [1, ... 30 times]; ray solid at 1, mesh set at 1)".
+    The unit, lint, knip and build job passed on the mutant, because no unit test can see the echo.
+  - **Green on the head.** `ec42c85e`, run 41070432988, passed on its first attempt with no retries. Each of the three
+    placing clicks held 1 stand-in at the click, and the counts after it read [0,0,0,0].
 - **Not gated:**
   - that `Terrain.jsx` hands the module-scope numbering;
   - the Player loop's argument to `moveKinematic`, which carries the cut;
