@@ -33,9 +33,12 @@ const BUDGETS = [
   { name: 'rapier', max: 2_420_000, actualAtWrite: 2_236_813 }, // WASM physics — the giant, and it is inert
   // The ceiling keeps about 72 KB of headroom over the chunk without N8AO (DECISIONS 2026-10-28 item 29).
   { name: 'r3f', max: 760_000, actualAtWrite: 687_959 },
-  // the app itself — the one that creeps. Ceiling = measured + the programme byte ledger's 67,600 B of lane
-  // allowances + ~13 KB, so the in-flight lanes still fit and nothing else gets the freed bytes.
-  { name: 'index', max: 700_000, actualAtWrite: 618_708 },
+  // the app itself — the one that creeps. The ceiling is the measured size plus the 18,368 B the old ceiling still left
+  // over the old measured size (the programme byte ledger's unspent lane allowances and slack), so the in-flight lanes
+  // still fit and nothing else gets the freed bytes. LazyMotion (DECISIONS 2026-10-30 item 140) took 47,557 B off the
+  // chunk and the ceiling came down with it: a module that renders the full `motion` component puts the framer-motion
+  // features back, about 47.6 KB, which is past the ceiling by itself.
+  { name: 'index', max: 652_500, actualAtWrite: 634_075 },
   { name: 'three', max: 740_000, actualAtWrite: 680_700 },
 ];
 
