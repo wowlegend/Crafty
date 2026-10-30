@@ -35,7 +35,7 @@ import { moveKinematic } from '../../../src/game/kinematicMove.js';
 import { BASE_CAPSULE, BEAST_FORMS, formLocomotion } from '../../../src/game/beasts.js';
 import { moveSpeed, jumpVelocity, GLUE_VELOCITY, VAULT_VELOCITY, applyGravity } from '../../../src/game/locomotion.js';
 import { steadyEye } from '../../../src/combat/swingOrigin.js';
-import { SEA_LEVEL } from '../../../src/world/oceanProfile.js';
+import { SEA_LEVEL, DEEP_FLOOR } from '../../../src/world/oceanProfile.js';
 import { resolveSpawnGround, resolveResumeSpawn, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from '../../../src/game/spawnPlacement.js';
 import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from '../../../src/game/formFit.js';
 import { teleportPlayer } from '../../../src/game/stanceState.js';
@@ -52,10 +52,14 @@ const KEYS = CHUNKS.flatMap((cx) => CHUNKS.map((cz) => `${cx}_${cz}`));
 
 // ---- the world: one map with the places a player gets stuck -------------------------------------------------------
 // The shore (Kevin's): from x = 6 the land steps down a block every two columns to a seabed at 22, under water to
-// SEA_LEVEL. The cliff: south of z = -6 the land stands six blocks higher, a sheer face at z = -5. The cave: a tunnel two
-// wide and two high (ceiling at 32) runs into the cliff at x = -6..-5. The overhang: a stone slab at y = 32 over open
-// land, two metres of headroom. The field: open flat land. The origin column, where every respawn lands.
+// SEA_LEVEL. The deep ocean: from x = 24 the seabed drops to 10 (DEEP_FLOOR + 4, the shallowest of oceanProfile.js's
+// full-ocean seabed, 6 to 10), under the ground probe's floor of 15 and above the void line (game/spawnPlacement.js).
+// The cliff: south of z = -6 the land stands six blocks higher, a sheer face at z = -5. The cave: a tunnel two wide and
+// two high (ceiling at 32) runs into the cliff at x = -6..-5. The overhang: a stone slab at y = 32 over open land, two
+// metres of headroom. The field: open flat land. The origin column, where every respawn lands.
+export const DEEP_SEABED = DEEP_FLOOR + 4;
 function columnTop(x, z) {
+  if (x >= 24) return DEEP_SEABED;
   if (x >= 6) return Math.max(22, LAND_TOP - Math.ceil((x - 5) / 2));
   if (z <= -6 && x >= -14 && x <= 2) return 36;
   return LAND_TOP;
@@ -72,6 +76,7 @@ export function genCell(x, y, z) {
 /** Where a session starts: a box of body x / z, and the wander radius around its start. */
 export const SPOTS = {
   shore: { x: [6.3, 10.7], z: [2.5, 13.5], roam: 4 },
+  deep: { x: [26.3, 29.7], z: [2.5, 13.5], roam: 3 },
   cliff: { x: [-11, -2], z: [-4.6, -4.4], roam: 4 },
   cave: { x: [-5.6, -5.4], z: [-12.5, -7.5], roam: 3 },
   overhang: { x: [-11.5, -8.5], z: [7.5, 10.5], roam: 3 },
@@ -734,8 +739,17 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
   mountChunks(S, KEYS.map((key) => ({ key, editSeq: 0 })));
   const box = SPOTS[spot];
   const x = box.x[0] + rnd() * (box.x[1] - box.x[0]), z = box.z[0] + rnd() * (box.z[1] - box.z[0]);
-  let top = LAND_TOP;
-  while (solidAt(S, Math.floor(x), top, Math.floor(z))) top++;
+  // The ground under the start: the highest of the columns the capsule stands across, each found up through solid from
+  // the land's top, or down through air and water (the shore's steps, the deep ocean).
+  let top = -Infinity;
+  for (let cx = Math.floor(x - BASE_CAPSULE.radius); cx <= Math.floor(x + BASE_CAPSULE.radius); cx++) {
+    for (let cz = Math.floor(z - BASE_CAPSULE.radius); cz <= Math.floor(z + BASE_CAPSULE.radius); cz++) {
+      let y = LAND_TOP;
+      while (solidAt(S, cx, y, cz)) y++;
+      while (y > 0 && !solidAt(S, cx, y - 1, cz)) y--;
+      top = Math.max(top, y);
+    }
+  }
   const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x, top + 0.95, z));
   world.createCollider(RAPIER.ColliderDesc.capsule(BASE_CAPSULE.halfHeight, BASE_CAPSULE.radius), body);
   S.p = playerParts(world, body, body.collider(0));

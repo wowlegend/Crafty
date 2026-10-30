@@ -51,13 +51,16 @@ export function spawnCornerGround(probe) {
 export const RESUME_PROBE_MAX_FAILS = 600;
 
 // resume: the saved {x,y,z} (the body's centre when it was saved). physicsY: the ground probe AT THAT COLUMN — used only
-// as proof the column's colliders exist, never as the height (the player may have stood under a roof). probeFails: the
-// CURRENT fail count. Returns { place, hold }: hold = keep the body there and wait (the caller counts the frame); place =
-// put it exactly there; neither = give up and use the origin spawn.
+// as proof the column's colliders exist, never as the height (the player may have stood under a roof). Any answer is that
+// proof: the probe hits only a collider, and over the deep ocean the seabed lies at 6 to 10 (world/oceanProfile.js),
+// under the origin spawn's PROBE_MIN_Y, where a save made swimming was held 600 frames and then reset to the origin.
+// probeFails: the CURRENT fail count. Returns { place, hold }: hold = keep the body there and wait (the caller counts the
+// frame); place = the saved centre, which the caller fits the base capsule near (game/formFit.js fitLoadedSpot);
+// neither = give up and use the origin spawn.
 export function resolveResumeSpawn(resume, physicsY, probeFails) {
   const usable = !!resume && [resume.x, resume.y, resume.z].every(Number.isFinite) && !isVoidFall(resume.y);
   if (!usable) return { place: null, hold: false };
-  const loaded = physicsY != null && !Number.isNaN(physicsY) && physicsY > PROBE_MIN_Y;
+  const loaded = Number.isFinite(physicsY);
   if (loaded) return { place: { x: resume.x, y: resume.y, z: resume.z }, hold: false };
   if (probeFails + 1 < RESUME_PROBE_MAX_FAILS) return { place: null, hold: true };
   return { place: null, hold: false };

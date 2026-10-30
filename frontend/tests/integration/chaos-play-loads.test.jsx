@@ -4,7 +4,9 @@
 // capsule fits at: the Save button before item 153 wrote the camera rounded to whole metres (into a wall the player stood
 // beside, or the head into a two-high ceiling), the frozen pre-cut fixture holds (3, 21, 6), nine metres into the ground
 // here, and a save made in a narrower or shorter form held a centre the base capsule does not fit at (the comet's stood
-// it 0.13 m into the floor). Each case loads one through the store's loadWorldData into the chaos harness (chaosPlay/harness.js: real Rapier,
+// it 0.13 m into the floor). And a save made over the deep ocean, whose seabed lies under the ground probe's floor of 15,
+// was held 600 frames and then reset to the origin. Each case loads one through the store's loadWorldData into the chaos
+// harness (chaosPlay/harness.js: real Rapier,
 // the real mesher, the game's frame order) and reads I1 (the capsule in no solid cell deeper than TOL), I2 (the eye in no
 // solid cell) and I5 (released within its frame bound, sideways near the saved spot, never to the origin) from the
 // release on, then that the player can walk away. The random sessions (chaos-play-*.test.jsx) load such saves too; these
@@ -17,7 +19,7 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { freshStorePerTest, TOL } from './chaosPlay/suite.js';
 import {
   makeSession, tick, writeSave, loadSave, deepestSolid, escape, enterForm, finishSession, mulberry32, LOAD_RELEASE_FRAMES,
-  LAND_TOP,
+  DEEP_SEABED, LAND_TOP,
 } from './chaosPlay/harness.js';
 
 const RUNS = [{ hz: 60, lag: 2 }, { hz: 120, lag: 4 }];
@@ -102,5 +104,21 @@ describe('chaos play, loads: a save stands the player near where it was made, in
         });
       }
     }
+
+    it(`a save over the deep ocean, on the seabed and sinking through the water, resumes there (${hz} Hz, lag ${lag})`, () => {
+      const S = makeSession({ spot: 'deep', rnd: mulberry32(11), hz, lag, tol: TOL });
+      const t = S.p.body.translation();
+      // On the seabed's top face, the controller's 0.05 m offset under the capsule.
+      expect(t.y, 'SETUP: the session did not start on the deep seabed').toBeCloseTo(DEEP_SEABED + 0.95, 1);
+      const onSeabed = writeSave(S, 'manual');
+      const r1 = loadAndPlay(S, onSeabed);
+      expect(r1.counts, `a save on the deep seabed was not resumed there ${JSON.stringify(r1)}`).toEqual(clean);
+      expect(r1.at.y, `the player was not stood back on the seabed ${JSON.stringify(r1)}`).toBeCloseTo(DEEP_SEABED + 0.95, 1);
+      S.p.body.setTranslation({ x: t.x, y: 20, z: t.z }, true);
+      const sinking = writeSave(S, 'manual');
+      const r2 = loadAndPlay(S, sinking);
+      expect(r2.counts, `a save sinking through deep water was not resumed there ${JSON.stringify(r2)}`).toEqual(clean);
+      expect(Math.hypot(r2.at.x - t.x, r2.at.z - t.z), `the player was moved off the saved column ${JSON.stringify(r2)}`).toBeLessThan(0.75);
+    });
   }
 });

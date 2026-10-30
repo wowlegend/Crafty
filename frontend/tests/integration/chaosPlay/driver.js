@@ -10,7 +10,7 @@ import {
 } from './harness.js';
 
 const ELEMENTS = Object.keys(BEAST_FORMS);
-const SPOT_SALT = { shore: 11, cliff: 23, cave: 37, overhang: 41, field: 53, origin: 67 };
+const SPOT_SALT = { shore: 11, cliff: 23, cave: 37, overhang: 41, field: 53, origin: 67, deep: 79 };
 /** The shape a session saves in: the base, or one of the four forms, rotated over a place's eight sessions. */
 const SAVE_FORMS = [null, ...ELEMENTS];
 const pick = (rnd, list) => list[Math.floor(rnd() * list.length)];
