@@ -11,7 +11,7 @@ export const TargetFrame = React.memo(() => {
   if (isCaptureMode() || !target) return null;
   const frac = Math.max(0, Math.min(1, (target.health || 0) / (target.maxHealth || 1)));
   return (
-    <div className="absolute top-24 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+    <div data-testid="target-frame" className="absolute top-24 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
       <Panel variant="raise" className="px-3 py-1.5 min-w-[180px]">
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-bold text-text capitalize">{target.name}</span>

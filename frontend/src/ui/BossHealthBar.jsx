@@ -13,7 +13,7 @@ export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth
     if (bossPhase === 2) subText = 'Phase 3: Enraged Inferno [Lava Circles & Summons]';
 
     return (
-        <div className="absolute top-36 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none" style={{ width: 450 }}>
+        <div data-testid="boss-health-bar" className="absolute top-36 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none" style={{ width: 450 }}>
             <Panel variant="raise" className="px-4 py-3">
                 <div className="mb-2 flex items-center justify-between gap-3">
                     <span className="flex items-center gap-1.5 font-display uppercase tracking-wide text-danger text-base leading-none">
