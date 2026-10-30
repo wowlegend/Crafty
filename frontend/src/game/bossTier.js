@@ -31,6 +31,14 @@ export function tierLabel(tier) {
   return `Risen ${ROMAN[n] || n}`;
 }
 
+/** The dragon's name at `tier` as a dictionary key with its vars (i18n/strings.js boss.*), translated where it shows:
+ *  its notices and its bar. */
+export function bossNameKey(tier) {
+  const n = tierOf(tier);
+  if (n >= 2) return { key: 'boss.dragonRisenN', vars: { roman: ROMAN[n] || n, n } };
+  return { key: n === 1 ? 'boss.dragonRisen' : 'boss.dragon' };
+}
+
 /** Everything that differs between tiers, derived from BOSS_CONFIG. Tier 0 is the config itself. */
 export function bossTierStats(tier) {
   const n = tierOf(tier);

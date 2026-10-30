@@ -37,9 +37,11 @@ import { Panel, Icon } from './ui/primitives/index.js';
 import { EmberBar } from './ui/EmberBar.jsx';
 import { subscribeHudTick } from './ui/hudTicker.js';
 import {
-  useHudMode, encounterTop, bossWidth, bossBelowCentre, toastsInEncounter, compactBoss, toastMaxWidth, BELOW_CENTRE_TOP,
+  useHudMode, useTallToastPlace, encounterTop, bossWidth, bossBelowCentre, toastsInEncounter, compactBoss, toastMaxWidth,
+  bossCallLines, BELOW_CENTRE_TOP, COLUMN_TOAST_LINES, TOAST_LINES,
   SHORT_VITALS_TOP, TOUCH_VITALS_TOP, TOUCH_COINS_TOP, PHONE_VITALS_TOP, PHONE_COINS_TOP,
 } from './ui/hudLayout.js';
+import { lineNotification } from './ui/notifications.js';
 import { ON_WORLD_TEXT } from './ui/onWorldText.js';
 import { PanelBoundary, onceRetrying } from './ui/panels/lazyPanels.js';
 
@@ -277,24 +279,32 @@ export const Vitals = ({ gameSystems }) => {
 };
 
 // The encounter: the aimed target's nameplate over the boss bar, one centred column, so the two never meet; on a phone
-// and a short screen the toast stack joins it under the boss bar, and on a short one the boss bar and the stack take a
-// column of their own under the crosshair. Where each sits and how wide the boss bar is follow the viewport
-// (ui/hudLayout.js).
+// and a short screen it holds the notices too, one at a time (ui/notifications.js lineNotification): in the boss bar's
+// own line while the bar is up, else as the one toast in the bar's place, and on a short screen the boss bar and the
+// toast take a column of their own under the crosshair. Where each sits and how wide the boss bar is follow the
+// viewport (ui/hudLayout.js).
 const ENCOUNTER_COLUMN = 'absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center gap-1.5';
-const Encounter = ({ bossSystem, notifications }) => {
+export const Encounter = ({ bossSystem, notifications }) => {
   const mode = useHudMode();
+  const column = toastsInEncounter(mode);
+  const line = column ? lineNotification(notifications) : null;
+  const inBar = column && bossSystem.bossActive;
   const boss = (
     <BossHealthBar
       bossActive={bossSystem.bossActive}
       bossHealth={bossSystem.bossHealth}
       bossMaxHealth={bossSystem.bossMaxHealth}
       bossPhase={bossSystem.bossPhase}
-      bossName={bossSystem.bossName}
+      bossTier={bossSystem.bossTier}
       width={bossWidth(mode)}
       compact={compactBoss(mode)}
+      call={inBar ? line : null}
+      callLines={bossCallLines(mode)}
     />
   );
-  const toasts = toastsInEncounter(mode) ? <NotificationStack notifications={notifications} inline maxWidth={toastMaxWidth(mode)} /> : null;
+  const toasts = column && !inBar
+    ? <NotificationStack notifications={line ? [line] : NO_NOTICES} inline single maxWidth={toastMaxWidth(mode)} lines={COLUMN_TOAST_LINES} />
+    : null;
   if (bossBelowCentre(mode)) {
     return (
       <>
@@ -311,10 +321,18 @@ const Encounter = ({ bossSystem, notifications }) => {
     </div>
   );
 };
+const NO_NOTICES = [];
 
-// The toast stack at the right edge, where it stands on its own (a keyboard, a tall touch screen); elsewhere it is in
-// the encounter column.
-const PlacedToasts = ({ notifications }) => (toastsInEncounter(useHudMode()) ? null : <NotificationStack notifications={notifications} />);
+// The toast stack where it stands on its own: on a keyboard at the right edge holding every notice up; on a tall touch
+// screen the newest it has room for, beside or left of the right fans' column (ui/hudLayout.js tallToastPlace).
+// Elsewhere the encounter column holds the notices.
+export const PlacedToasts = ({ notifications }) => {
+  const mode = useHudMode();
+  const place = useTallToastPlace();
+  if (toastsInEncounter(mode)) return null;
+  if (!mode.touch) return <NotificationStack notifications={notifications} />;
+  return <NotificationStack notifications={notifications.slice(-place.slots)} right={place.right} lines={TOAST_LINES} />;
+};
 
 // The minimap: bottom right on a keyboard; on a tall touch screen top right under the dial, clear of the thumb cluster
 // and the quest line; on a phone under the dial at 60%, without its coordinates line, beside the encounter column

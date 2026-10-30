@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { GameMethods } from '../GameMethods';
-import { bossTierStats, bossCanReturn, BOSS_BASE_LEVEL, ROMAN } from '../game/bossTier.js';
+import { bossTierStats, bossCanReturn, bossNameKey, BOSS_BASE_LEVEL } from '../game/bossTier.js';
 import { blightHeartSite } from './blightHeart.js';
 import { HITSTOP } from '../game/trauma.js';
 import { applyBossDamage, runBossKillEffects } from '../game/bossKill.js';
@@ -12,13 +12,11 @@ import { bossEntranceBeat, ENTRANCE } from '../game/bossEntrance.js';
 import { phaseForHealth } from '../game/bossPersistence.js';
 import { isWorldFrozenNow } from '../game/worldClock.js';
 
-/** The dragon's name at `tier` as a dictionary key (with its numeral), translated when its notice shows. */
-const bossNameKey = (tier) => (tier >= 2 ? { key: 'boss.dragonRisenN', vars: { roman: ROMAN[tier] || tier, n: tier } }
-  : { key: tier === 1 ? 'boss.dragonRisen' : 'boss.dragon' });
-
-// The dragon's calls go to the one notification channel (ui/notifications.js) as dictionary keys; a toast there clears
-// itself, so nothing here is left to set state after an unmount.
-const bossNotice = (key, vars) => useGameStore.getState().addNotification?.(key, 'danger', { vars });
+/** One of the dragon's calls (this hook's, and the attack calls in render/BossEntity.jsx) to the one notification channel
+ *  (ui/notifications.js) as a dictionary key, marked `boss`, so the encounter column shows it in the boss bar's own line
+ *  before any other notice. A toast there clears itself, so nothing here is left to set state after an unmount. */
+export const bossCall = (key, type, vars) => useGameStore.getState().addNotification?.(key, type, { vars, boss: true });
+const bossNotice = (key, vars) => bossCall(key, 'danger', vars);
 
 export const useBossSystem = (playerLevel) => {
     // A-bis B2g: seed from the STORE, which is what the save restores into, instead of from BOSS_CONFIG.

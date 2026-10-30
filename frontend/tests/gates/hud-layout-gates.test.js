@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   hudMode, tallTouchFits, encounterTop, bossWidth, bossWidthPx, bossBelowCentre, toastsInEncounter, compactBoss,
+  bossCallLines, tallToastPlace, TOUCH_TOAST_TOP, TOAST_LINES,
   FULL_HOTBAR_MIN_W, VITALS_MAX_H, TOUCH_VITALS_TOP, TOUCH_COINS_TOP, COINS_H, HUD_GAP, BOSS_MIN_W,
 } from '../../src/ui/hudLayout.js';
-import { FAN_ROW_ANCHOR_PCT, SPELL_ROW_BOTTOM, TOUCH_BTN } from '../../src/input/aspectWheel.js';
+import { FAN_ROW_ANCHOR_PCT, FAN_ANCHOR_RIGHT, SPELL_ROW_BOTTOM, ASPECT_ROW_BOTTOM, TOUCH_BTN } from '../../src/input/aspectWheel.js';
 
 /**
  * WHICH LAYOUT EACH SCREEN GETS (src/ui/hudLayout.js). tests/e2e/hud-at-rest.spec.js reads every rect pair, and the box
@@ -36,6 +37,7 @@ describe('the HUD layout for each measured viewport', () => {
     expect(bossBelowCentre(m), 'the boss bar under the crosshair').toBe(v.layout === 'short');
     expect(toastsInEncounter(m), 'the toast stack in the encounter column').toBe(v.layout !== 'tall');
     expect(compactBoss(m), 'the compact boss bar').toBe(v.layout !== 'tall');
+    if (v.layout !== 'tall') expect(bossCallLines(m), 'the lines the boss bar\'s line holds').toBe(v.layout === 'short' ? 1 : 3);
   });
 
   it('a keyboard is never short or a phone, however small the window', () => {
@@ -107,3 +109,49 @@ describe('the touch hotbar\'s full width', () => {
     expect(clears(844), 'a phone on its side has no room for the full bar, which is why it takes the compact one').toBe(false);
   });
 });
+
+describe('the tall touch layout\'s toast stack stops above the touch controls under it', () => {
+  // Independently of hudLayout: the hit targets in ui/TouchControls.jsx (right offset and width, bottom as a share of the
+  // height plus px, height) and the right fans' openers (input/aspectWheel.js), as boxes in a w x h viewport; a toast at
+  // `lines` lines of its 14 px type (line height 1.2, tailwind.config.cjs) inside 8 px of padding and a 4 px border
+  // (ui/primitives/Toast.jsx), the stack 320 px wide with 8 px between toasts (QuestSystem.jsx NotificationStack).
+  const box = (w, h, right, width, bottomPct, bottomPx, height) => {
+    const bottom = h - (bottomPct / 100) * h - bottomPx;
+    return { x: w - right - width, right: w - right, y: bottom - height, bottom };
+  };
+  const controls = (w, h) => ({
+    jump: box(w, h, 40, 60, 11, 96, 60),
+    dodge: box(w, h, 124, 60, 9, 86, 60),
+    action: box(w, h, 26, 84, 11, 0, 84),
+    cast: box(w, h, 124, 64, 9, 0, 64),
+    spells: box(w, h, FAN_ANCHOR_RIGHT, TOUCH_BTN, FAN_ROW_ANCHOR_PCT, SPELL_ROW_BOTTOM, TOUCH_BTN),
+    aspects: box(w, h, FAN_ANCHOR_RIGHT, TOUCH_BTN, FAN_ROW_ANCHOR_PCT, ASPECT_ROW_BOTTOM, TOUCH_BTN),
+  });
+  const toastH = (lines) => 2 * 8 + 2 * 4 + lines * 14 * 1.2;
+  const meets = (a, b) => !(a.right <= b.x || b.right <= a.x || a.bottom <= b.y || b.bottom <= a.y);
+
+  it('a full stack meets no touch control at any tall touch viewport it is placed for, and each iPad holds two toasts', () => {
+    let checked = 0;
+    for (let w = 640; w <= 1400; w += 10) {
+      for (let h = 600; h <= 1400; h += 10) {
+        const m = hudMode(w, h, true);
+        if (m.phone || m.short) continue;
+        // On its side from 860 px wide, upright from 720 px wide and 830 px tall; nearer square the screen's centre enters
+        // the stack's column, or the spell opener its first toast (NOT CHECKED here: registry REVIEW:w2d:toast-square-tall).
+        if (w > h ? w < 860 : (w < 720 || h < 830)) continue;
+        const { right, slots } = tallToastPlace(w, h);
+        expect(slots, `${w}x${h}: no toast at all`).toBeGreaterThanOrEqual(1);
+        const stack = { x: w - right - 320, right: w - right, y: TOUCH_TOAST_TOP, bottom: TOUCH_TOAST_TOP + slots * toastH(TOAST_LINES) + (slots - 1) * 8 };
+        expect(stack.x, `${w}x${h}: the stack leaves the screen`).toBeGreaterThanOrEqual(0);
+        const hit = Object.entries(controls(w, h)).filter(([, c]) => meets(stack, c)).map(([id]) => id);
+        expect(hit, `${w}x${h}: ${slots} toasts at ${right} px from the right meet`).toEqual([]);
+        checked++;
+      }
+    }
+    console.log(`tall toast stack: ${checked} tall touch viewports checked; 1180x820 ${JSON.stringify(tallToastPlace(1180, 820))}, 820x1180 ${JSON.stringify(tallToastPlace(820, 1180))}`);
+    expect(checked).toBe(4604);
+    expect(tallToastPlace(1180, 820).slots, 'the landscape iPad holds two toasts').toBeGreaterThanOrEqual(2);
+    expect(tallToastPlace(820, 1180).slots, 'the upright iPad holds two toasts').toBeGreaterThanOrEqual(2);
+  });
+});
+

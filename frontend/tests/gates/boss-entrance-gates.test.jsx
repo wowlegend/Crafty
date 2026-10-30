@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, cleanup, act } from '@testing-library/react';
-import { useBossSystem } from '../../src/world/bossSystem';
+import { useBossSystem, bossCall } from '../../src/world/bossSystem';
 import { useGameStore } from '../../src/store/useGameStore';
 import { blightHeartSite } from '../../src/world/blightHeart';
 import { ENTRANCE } from '../../src/game/bossEntrance';
 import { tIn } from '../../src/i18n/i18n.js';
-import { notificationText } from '../../src/ui/notifications.js';
+import { notificationText, toNotification } from '../../src/ui/notifications.js';
+import { STRINGS } from '../../src/i18n/strings.js';
 
 // The dragon's calls go to the notification channel: what the hook sent, as the toast stack shows it in English.
 const notices = () => (useGameStore.getState().addNotification?.mock?.calls ?? [])
@@ -46,6 +47,25 @@ describe('E4 — arriving at the lair lands a beat, not just a toast', () => {
   it('still announces the dragon — the message is the load-bearing effect', () => {
     spawn();
     expect(notices()).toEqual([expect.stringMatching(/Shadow Dragon awakens/)]);
+  });
+
+  it('the arrival is one of the dragon\'s calls, marked `boss`, so the encounter column shows it in the boss bar\'s line', () => {
+    spawn();
+    const calls = useGameStore.getState().addNotification.mock.calls.map(([key, type, o]) => [key, type, o?.boss]);
+    expect(calls).toEqual([['notice.bossAwakens', 'danger', true]]);
+  });
+
+  it('every call through bossCall is marked `boss`; the attack calls render.BossEntity raises are dictionary keys', () => {
+    // render/BossEntity.jsx raises these four only while the world runs; this proves the helper it calls marks them and
+    // that each renders through t() rather than showing its key.
+    for (const [key, type] of [['notice.bossFireball', 'warning'], ['notice.bossRoar', 'danger'], ['notice.bossLava', 'danger'], ['notice.bossSummon', 'warning']]) {
+      useGameStore.getState().addNotification.mockClear();
+      bossCall(key, type);
+      const [[k, ty, o]] = useGameStore.getState().addNotification.mock.calls;
+      const n = toNotification(k, ty, o);
+      expect([n.key, n.type, n.boss], key).toEqual([key, type, true]);
+      expect(STRINGS.en[key], `${key} is not in the dictionary, so its toast would show the key`).toEqual(expect.any(String));
+    }
   });
 
   it('FREEZES on arrival — the entrance had no hitstop at all', () => {
