@@ -361,8 +361,6 @@ export function MenuSystem({
                     <span>{t('hint.spells14')}</span>
                     <span>•</span>
                     <span>{t('hint.tMelee')}</span>
-                    <span>•</span>
-                    <span>{t('hint.qClaimQuest')}</span>
                   </motion.div>
                 )}
               </div>

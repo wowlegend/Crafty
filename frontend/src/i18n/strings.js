@@ -179,7 +179,6 @@ export const STRINGS = {
     'hint.fCast': 'F Cast',
     'hint.spells14': '1-4 Spells',
     'hint.tMelee': 'T Melee',
-    'hint.qClaimQuest': 'Q Claim Quest',
     // Chest prompt (QuestSystem), world-gen splash (App), objective banner (HUD).
     'chest.treasure': 'Treasure Chest!',
     'chest.pressG': 'Press G to open',
@@ -455,7 +454,6 @@ export const STRINGS = {
     'hint.fCast': 'F 施法',
     'hint.spells14': '1-4 法术',
     'hint.tMelee': 'T 近战',
-    'hint.qClaimQuest': 'Q 领取任务',
     'chest.treasure': '宝箱！',
     'chest.pressG': '按 G 打开',
     'world.generating': '正在生成世界',

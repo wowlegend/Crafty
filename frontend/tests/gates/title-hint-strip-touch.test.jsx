@@ -8,7 +8,7 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { STRINGS } from '../../src/i18n/strings.js';
 
 /**
- * The title's keyboard hint strip is for keyboards: a touch device has no WASD, Space or Q. The title renders on
+ * The title's keyboard hint strip is for keyboards: a touch device has no WASD, Space or T. The title renders on
  * desktop with the strip and on touch without it.
  *
  * The device is set the way a browser reports it (navigator.maxTouchPoints with PointerEvent present), and the real
@@ -25,7 +25,7 @@ const PANELS_CLOSED = {
   showSettings: false, showChestInterface: false, showTradingInterface: false,
   showWorldManager: false, showCredits: false, showQuestLog: false,
 };
-const HINT_KEYS = ['hint.wasdMove', 'hint.spaceJump', 'hint.fCast', 'hint.spells14', 'hint.tMelee', 'hint.qClaimQuest'];
+const HINT_KEYS = ['hint.wasdMove', 'hint.spaceJump', 'hint.fCast', 'hint.spells14', 'hint.tMelee'];
 const HINTS = HINT_KEYS.map((k) => STRINGS.en[k]);
 
 function titleProps() {
@@ -57,14 +57,14 @@ beforeEach(() => {
 afterEach(() => { cleanup(); });
 
 describe('the title hint strip shows on desktop and not on touch', () => {
-  it('the six hints are the strings the strip prints', () => {
-    expect(HINTS.filter(Boolean)).toHaveLength(6);
+  it('the five hints are the strings the strip prints', () => {
+    expect(HINTS.filter(Boolean)).toHaveLength(5);
     expect(HINTS.join(' ')).toMatch(/WASD/);
     expect(HINTS.join(' ')).toMatch(/Space/);
-    expect(HINTS.join(' ')).toMatch(/Q Claim/);
+    expect(HINTS.join(' ')).toMatch(/T Melee/);
   });
 
-  it('desktop first: the strip is up, with WASD, Space and Q Claim', () => {
+  it('desktop first: the strip is up, with WASD, Space and T Melee', () => {
     deviceWithTouchPoints(0);
     expect(isTouchDevice(), 'SETUP: a 0-touch-point device reads as touch').toBe(false);
     renderTitle();
@@ -73,7 +73,7 @@ describe('the title hint strip shows on desktop and not on touch', () => {
     expect(shown, `hints on the desktop strip: ${shown.join(', ')}`).toEqual(HINTS);
   });
 
-  it('then touch: no strip, and no WASD, Space or Q Claim anywhere on the title', () => {
+  it('then touch: no strip, and no WASD, Space or T Melee anywhere on the title', () => {
     deviceWithTouchPoints(5);
     expect(isTouchDevice(), 'SETUP: a 5-touch-point device does not read as touch').toBe(true);
     renderTitle();
