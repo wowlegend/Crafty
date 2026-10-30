@@ -1,174 +1,67 @@
-# docs/superpowers — THE MAP
+# docs/superpowers: the map
 
-> **Purpose:** this repo carries more docs than any one context can hold (count them: `git ls-files '*.md' | wc -l`
-> — hand-typed here as "142" until 2026-08-09, when the real number was 172). An agent that tries to read them all burns its context
-> and still gets a stale picture. This is the map. **Read the CANONICAL set. Consult the rest on demand.
-> Never treat a HISTORICAL doc as current — several are live traps** (a stale line in the since-retired loop charter regenerated a
-> week-sized dead proposal on 2026-07-13).
+> **Where state lives.** Live state (HEAD, CI, the deployed sha, open PRs, the cursor, registry counts) comes from
+> `cd frontend && npm run orient`; open work is `memory/registry.jsonl`; decisions are `docs/superpowers/DECISIONS.md`.
+> Nothing here is status. A lock, approval or of-record label in a dated spec or plan records the decision as it stood
+> then and binds nothing (DECISIONS 2026-10-28 items 14 and 16).
 >
-> Status for the whole project lives in **`memory/STATUS.md`**, and every open item lives in **`memory/registry.jsonl`**
-> (one JSON row per item, DECISIONS 2026-10-28 (W1-H) item 9) — not here, and not in any doc below.
->
-> **A lock, approval or of-record label in a dated spec or plan records the decision as it stood then and binds
-> nothing.** Every decision stands only while it still earns its place; the command session may enhance, replace or
-> delete it, recording the call in `DECISIONS.md` (DECISIONS 2026-10-28 items 14 and 16).
+> **Closed records are not in the tree.** They left HEAD on 2026-10-29 and are kept by the annotated tag
+> `records/2026-10-29` (main at `e900de6b`). Read one with `git show records/2026-10-29:<path>`; list them with
+> `git ls-tree -r --name-only records/2026-10-29 -- docs memory`; see what left with
+> `git diff --name-only --diff-filter=D records/2026-10-29 HEAD -- docs memory`. The hand-written CHANGELOG up to that
+> day is `git show records/2026-10-29:memory/CHANGELOG.md`.
 
----
-
-## ✅ CANONICAL — the docs CLAUDE.md's read order names (its "Where state lives" holds the order; `npm run orient` comes first)
+## The read order (`CLAUDE.md` "Where state lives" holds it)
 
 | Doc | Role |
 |---|---|
-| **`memory/STATUS.md`** | Where we are, in prose. Its §2 and G-ledger are the record the registry was harvested from; current state comes from `npm run orient` and open work from the registry. |
-| **`memory/ACTIVE_PLAN.md`** | The live cursor: the ONE unit in flight right now. |
-| **`memory/registry.jsonl`** | **The one home for open work**: one row per closable item, with id, title, playerVisible, severity, owner, state, evidence, opened, closedBy and plan unit. A row is closed, never deleted. `node frontend/scripts/ci/registry-harvest.mjs` proves every open item in the old sources has a row; `registry-append-only.mjs` refuses a push that deletes one. |
-| **`plans/2026-10-28-crafty-sota-reset.md`** | The programme: what to build, in which wave and lane. |
-| **`KEVIN-REVIEW-BATCH.md`** | Kevin's decision/eyeball queue. Append; never block on it. |
+| `npm run orient` | HEAD, CI on main and on HEAD, the live Production sha, open PRs, unmerged worktrees, the cursor, registry counts |
+| `memory/ACTIVE_PLAN.md` | The cursor: the command session's live task table and the next step |
+| `memory/registry.jsonl` | The one home for open work; a row is closed with `closedBy`, never deleted |
+| `docs/superpowers/DECISIONS.md` | The decision record; a reversal is a new dated entry naming the one it supersedes |
+| `memory/STATUS.md` | Where the project stands; its section 2 and G-ledger are the record the registry was harvested from |
+| `docs/superpowers/INDEX.md` | This map |
 
-Plus **`SOTA-INITIATIVE.md`** (here, moved from the repo root 2026-10-28) = DIRECTION/vision only (**its §3 status block is FROZEN —
-superseded by STATUS.md**), and **`CLAUDE.md`** = the project's agent constitution (one real file, no copy or link).
+Beside them: `CLAUDE.md` (the one instruction file), `memory/ARCHITECTURE.md` (the module map and its invariants),
+`memory/CHANGELOG.md` (the change history), `docs/superpowers/SOTA-INITIATIVE.md` (direction only; its status block is a frozen 2026-06-18
+snapshot) and `memory/ROADMAP.md` (the pre-reset roadmap, history).
 
----
+## Plans
 
-## 📟 OPERATOR PAGES — published to claude.ai, tracked in `docs/superpowers/.artifact-sync.json`
-
-| Page | Role |
-|---|---|
-| **`docs/superpowers/command-record.html`** | **The current status page** — what the command session has done and what waits on Kevin, as a page he reads (https://claude.ai/artifact/AdWhiwq9utxaUdUQBEcfCA). Open work lives in `memory/registry.jsonl`. |
-| `docs/superpowers/era-review.html` | The loop era's review. Mostly history; its stamp points to the Command Record. |
-| `docs/superpowers/sota-audit.html` | The visual-test harness SOTA audit. History: the capture oracle it audits retired 2026-10-28 (DECISIONS W1-H item 1), and looks are now judged on the eye-level lookbook (`frontend/scripts/visual/lookbook.mjs`). Its stamp points to the Command Record. |
-
-Each page's first line is generated by `node frontend/scripts/ci/artifact-currency.mjs --stamp <id> [--as-of <sha>]`
-and names the commit the page was written against, with that commit's UTC time (DECISIONS 2026-10-28 item 12).
-After the stamped page is published, `--sync <id>` records the publish, and refuses unless the stamp names the same
-commit. A page's drift is printed on every push and refuses nothing; a stamp that is missing, or names a different
-commit from the recorded publish, refuses every push.
-
----
-
-## 📐 SPECS — current designs (consult when building the thing it describes; each is revisable)
-
-**Current (each stands while it earns its place, revisable by a DECISIONS entry):**
-- `crafty-coherence-pillars.md` — **P0–P5, the taste bounds on every addition.** Read before any look-bearing work.
-- `2026-06-28-crafty-control-scheme-design.md` — **Option A picked by Kevin**; the 4 A-enhancements are
-  AUTHORIZED loop work and **still unbuilt** (STATUS §C1).
-- `2026-06-29-crafty-spell-vfx-sota-redesign.md` — the v7 spell language (shipped).
-- `2026-06-17-crafty-sota-rebuild-design.md` — the W1–W4 rebuild design (shipped).
-- `2026-06-14-crafty-next-levers-backlog.md` — ⚠️ its quick-wins are HARVESTED, but its **4 MILESTONE levers**
-  are still the best statement of the remaining depth gap (STATUS §E). Its own premises were systematically
-  over-optimistic — verify every claim against code.
-- `2026-06-13-crafty-world-design-hybrid.md` · `2026-06-02-crafty-s2-game-design-design.md` — the current world + game design.
-- `2026-06-01-crafty-s1c-ui-system-brief.md` + `-m3-icon-registry-contract.md` — **the current bold-flat UI system** (S1-C; revisable like any decision).
-- `2026-05-30-crafty-visual-direction-design.md` — the visual direction (note: the restrained-grade lock was
-  REVERSED 2026-06-17; glowier is authorized).
-
-**Shipped, historical reference:** the four Aspect designs (`s2b1-wildheart`, `s2b2-voidhand`, `s2b3-soulbind`,
-`s2b4-elemancer`), `72-verb-router-design`, `touch-input-design`, `ux-legibility-design`,
-`mob-distinctness-design`, `mob-variety-pass`, `music-motifs-v2`, `audio-aspect-sfx-design`,
-`aspect-ux-clarity`, `soulbind-feel-pass`, `s3-demonolith-design`, `s2b2-m7-look-design`,
-`shadow-enable-meshes-design`.
-
----
-
-## 🔨 PLANS — build contracts (`ls docs/superpowers/plans/*.md | wc -l`)
-
-Plans are **per-milestone build contracts**. Once a milestone ships, its plan is **history**. Do not mine an old
-plan for "what to do next" — that is what `memory/registry.jsonl` and the SOTA reset plan are for.
-
-- **The programme:** `2026-10-28-crafty-sota-reset.md`. Unstarted lanes carry a brief of one page or less and write a
-  task script of 300 lines or less at lane start (DECISIONS 2026-10-28 (W1-H) item 3). Briefs so far:
-  `2026-10-28-crafty-brief-w2b-retire-capture-oracle.md`, `2026-10-28-crafty-brief-w2d-hud.md`,
-  `2026-10-28-crafty-brief-w2f-the-cut.md`, `2026-10-28-crafty-brief-lantern-costed.md`,
-  `2026-10-28-crafty-brief-quest-spine.md`.
+- **The programme:** `docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`. A lane starts from a brief of one page
+  or less and writes a task script of 300 lines or less (DECISIONS 2026-10-28, W1-H item 3); each lane's task script
+  is a `2026-10-28-*` or `2026-10-29-*` file here.
 - **The 2026-10-27 lane plans** (`2026-10-27-crafty-*`) are design reference under the amended umbrella
-  (`2026-10-27-crafty-masterpiece.md`, amended 2026-10-28); their step scripts are re-cut at lane start. Every
-  capture, re-baseline or `Baseline-Review:` step in them is void: the capture oracle and that trailer retired
-  2026-10-28 (DECISIONS W1-H item 1), and a look change attaches before and after lookbook frames instead.
+  `docs/superpowers/plans/2026-10-27-crafty-masterpiece.md`; their step scripts are re-cut at lane start, and every
+  capture or `Baseline-Review:` step in them is void (DECISIONS 2026-10-28, W1-H item 1).
+- **Older plans still here** (2026-06 to 2026-09) are shipped and kept only because source, a test or a canonical doc
+  cites them. `2026-06-15-crafty-world-purpose-sota.md` is the design source the SOTA initiative registers.
 
-- **Most recent / most relevant:** `2026-06-29-crafty-{de-monolith,spell-vfx-redesign}`,
-  `2026-06-17-crafty-W{1,2,3,4}-*` (the big rebuild, 503 steps).
-- **`2026-06-15-crafty-world-purpose-sota` is NOT archivable and is not really a plan any more.**
-  The retired loop charter cited it twice as the live **Source** for current design (tier-by-distance, shrines,
-  the climax; vertex AO / aerial perspective / landmark emissive crowns) and `docs/superpowers/SOTA-INITIATIVE.md` §3 is its
-  master-plan registration. It functions as a DESIGN OF RECORD — treat it like the specs above, not like a
-  finished build contract.
-- **Everything dated ≤ 2026-06-16** is shipped-and-historical (S1/S2/S2-B/S3/world/touch/interleaves).
+## Specs
 
----
+- `docs/superpowers/specs/crafty-coherence-pillars.md`: P0 to P5, the taste bounds on every addition. Read it before
+  any look-bearing work.
+- The rest are shipped designs kept because source, a test or a canonical doc cites them; each is revisable by a
+  DECISIONS entry, and none is status.
 
-## 🔬 RESEARCH — still-actionable findings
+## Records still in the tree, and what keeps each
 
-- `2026-06-15-crafty-agentic-e2e-testing.md` — ⚠️ **still load-bearing.** Its rec #1 (drive **input** → step →
-  assert) is only *half* done: the e2e specs assert store transitions, not real input. Its rec #2 (seeded sim +
-  state-hash replay gate) is **not built at all**. See STATUS §V2/§V5.
-- `2026-06-15-crafty-codebase-reality-audit.md` — the ranked file:line P0 debt chain (mostly harvested).
-- `2026-06-15-crafty-loop-machinery-review.md` — its 12 charter edits were APPLIED. Historical.
-- `../PERF-PROTOCOL.md` (note the path — it sits in `docs/`, NOT in `docs/superpowers/`) — the real-device
-  frame-rate acceptance protocol. **LIVE and unexecuted:** its "Runs" section is still an empty comment, so
-  no device measurement has ever been recorded. That is the point of it — the headless/SwiftShader FPS
-  number is meaningless, so frame-rate is Kevin-gated on real hardware only. It was missing from this map
-  entirely until 2026-08-09 while being cited from `CHANGELOG.md` and the S1-A plan: cited but unmapped is
-  the state in which a doc quietly stops being read.
-
----
-
-## 🧾 AUDITS — snapshots (all are PAST-TENSE by construction)
-
-- `AUDIT-2026-06-28-full-status.md` — **the most honest scorecard ever taken of this project**
-  (~70% done; and the 0.5%-of-185-features-fully-validated finding). **Its gap list is now folded into
-  `memory/STATUS.md`; read `memory/registry.jsonl`, not this, for what's open.** Much of its list was closed by v6/v7.
-- `CODE-REVIEW-2026-06-20.md` (2614 L) — the 39-agent all-file review. Its backlog was driven to zero.
-- `2026-06-16-SOTA-TOTAL-AUDIT.md` — **explicitly SUPERSEDED** by the 06-17 rebuild. Historical only.
-- `audits/2026-06-17-*` — the 11-agent pre-rebuild element audit (fed W1–W4). Historical.
-
----
-
-## 🗄️ HISTORICAL — in `memory/`, cited by other docs (do NOT delete; do NOT treat as current)
-
-`IN_DEPTH_AUDIT.md` · `REALITY-AUDIT-2026-05-30.md` · `REALITY-AUDIT-S1-2026-06-02.md` ·
-`PRE-S2B-CONTENT-AUDIT-2026-06-03.md` · `STATE-REVIEW-2026-06-10.md` ·
-`MONETIZATION-VIRALITY-SCAN-2026-05-30.md` · `S2B1-M2-PERF.md` · `S2B1-M5-MOTION.md` · `S2B2-M2-PERF.md`
-
-*(Each is cited by 1–7 other docs, so they stay in place. They are snapshots, not status.)*
-
----
-
-## `docs/archive/2026-Q2/plans/` — archived plan docs (`find docs -path '*archive*' -name '*.md' | wc -l`)
-
-Wave-1 of the docs reorg. `docs/superpowers/plans/` had grown to **100** files, which made the live plans
-hard to find among finished ones. The 62 moved here were selected mechanically, not by judgement: a
-reverse-dependency scan over every tracked `.md` outside the plans directory found **zero inbound
-references** to them — nothing live, nothing historical, nothing in the map.
-
-**ARCHIVED, NOT DELETED**, and moved with `git mv`, so history follows the file and any of them can be
-restored with a one-line move. They are still the record of how their milestone was built.
-
-## Wave-2 (2026-08-02) — 3 of the 4 canonical-cited docs archived; 1 is staying
-
-`ocean-coast` (ARCHITECTURE calls the milestone COMPLETE), `loot-glow-PARKED` (CHANGELOG records it
-SUPERSEDED by the redesign that shipped) and `biome-flora` (shipped 2026-06-20) moved to
-`docs/archive/2026-Q2/plans/`. **`world-purpose-sota` STAYS** — it is a live design source, not history.
-
-**Wave-1's stated reason for deferring these was wrong, and checking it found a real hole.** The claim was
-that moving one "breaks a live backtick path and trips `doc-currency`". Two of the four were cited only by
-BARE FILENAME (no path), and ocean-coast's citation in ARCHITECTURE.md was a BARE PATH — not backticked.
-`doc-currency` only matched markdown links and backticked paths, so moving the file left ARCHITECTURE
-pointing at nothing and the lint still printed "✓ PASSED (9 canonical docs checked)". It now also matches
-bare paths, and is mutation-proven against exactly that case.
-
-**Deliberately left in place:**
-- **34 cited only by `memory/CHANGELOG.md`** (and one spec). CHANGELOG is append-only history: moving the
-  file it cites would leave a historical entry pointing at a path that never existed at the time it was
-  written. Not worth the churn for a directory listing.
-
-## `docs/archive/` — retired single files
-
-- `docs/archive/LOOP-PROGRESS-2026-10-28.html` — the autonomous loop's progress page, RETIRED 2026-10-28: it was
-  never published to a URL and nobody read it, while keeping it current was a session-close duty
-  (DECISIONS 2026-10-28 item 12). Restore with `git mv`; do not read it as current.
+| Record | Kept because |
+|---|---|
+| `docs/superpowers/command-record.html` | Kevin's one review page (https://claude.ai/artifact/AdWhiwq9utxaUdUQBEcfCA), refreshed at each landing; `.artifact-sync.json` records its publish |
+| `docs/superpowers/era-review.html`, `docs/superpowers/sota-audit.html` | Pages published from these sources, frozen as dated history (DECISIONS 2026-10-28 item 13); DECISIONS and STATUS cite them |
+| `docs/superpowers/KEVIN-REVIEW-BATCH.md`, `docs/superpowers/KEVIN-REVIEW.html` | Kevin's inbox (`CLAUDE.md`); DECISIONS settles |
+| `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` | The queue-ledger gate reads it |
+| `docs/superpowers/sota-2026-09/` | `QUEUE.md` and `OPEN-ITEMS.md` feed `registry-harvest.mjs`, `GATES.md` feeds `gate-census.mjs`, the two `EXTERNAL-BASELINE` files are cited from source, `FUTUREPROOF.md` from the published pages |
+| `docs/superpowers/upstream-750-reply-draft.md` | The text of an open item, Kevin's to send (registry `QUEUE:Q08`) |
+| `docs/superpowers/masterpiece-2026-10/` | The reset plan's survey, refutes and upside, and the evidence frames DECISIONS and the registry cite |
+| The other dated audits and research, `memory/*AUDIT*`, `memory/S2B*`, `memory/STATE-REVIEW-2026-06-10.md` | STATUS, SOTA-INITIATIVE, ARCHITECTURE, ROADMAP, the inbox or source cites each; history, not status |
+| `docs/archive/2026-Q2/plans/` | Two archived plans that ARCHITECTURE and the inbox still cite |
+| `docs/PERF-PROTOCOL.md` | The real-device frame-rate protocol; no run is recorded yet |
+| `docs/media/` | The README hero, the social card and the stills `frontend/scripts/visual/media.mjs` writes |
 
 ## The rule that keeps this map honest
 
-A milestone completing updates **`memory/STATUS.md` + `memory/CHANGELOG.md` + its own plan-doc banner**, closes its
-rows in **`memory/registry.jsonl`** with the merging commit — and adds a line here **only if a new doc was created**. Status never gets written into a spec, a plan, an audit, or
-the master plan again. That scatter is what this map exists to end.
+Closed means removed from HEAD at the next landing, behind a dated `records/<date>` tag that DECISIONS names (reset
+plan section 5, rule 5). A record stays only while a canonical doc, a rule file, `CLAUDE.md`, a gate, script, test,
+CI step, live plan, published page or the inbox names it. A new doc gets a line here only if it is meant to be read.
