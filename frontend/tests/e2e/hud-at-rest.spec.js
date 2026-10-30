@@ -9,10 +9,11 @@ import { bootDev, startPlayActive } from './_boot.js';
 //     vitals, the hotbar and its XP edge, the quest line, the compass, the objective line, the minimap, the dial, the gear
 //     and the coin count, and on touch the joystick's ring and each of the eight buttons the touch layer draws at rest
 //     (Pause, the action, cast, dodge and jump, the tray, the Aspect and spell openers). Four states, every pair read in
-//     each: at rest; a target nameplate up (a brute along the camera's facing, named by the real aim cone, then the world
-//     held by a hitstop and the page's frames held so the cone's mirror cannot clear it); the nameplate and the boss bar
-//     together (the dragon woken far off under the same hold); the boss bar alone (the frames handed back, the brute
-//     killed). On the phones every touch target lies inside the viewport.
+//     each: at rest; a target nameplate up (a brute along the camera's facing, frozen by a hitstop as it spawns, named
+//     by the real aim cone); the nameplate and the boss bar together (the dragon woken far off); the boss bar alone (the
+//     brute killed). With the nameplate up, the one the cone named is raised again if something clears it while the read
+//     waits, and the log says so. Each state's rects are read in one page task. On the phones every touch target lies
+//     inside the viewport.
 //   iPad 820x1180: a finger's tap on the quest line opens the list (the touch layer leaves the tracker its taps).
 // NOT CHECKED: a toast's place (tests/e2e/dusk-warning.spec.js), the level-up banner, the touch tray or a fan opened,
 // the panels, a phone shorter than 390 px on its side (Safari's toolbars), and anything after the first minute of play.
@@ -20,26 +21,41 @@ import { bootDev, startPlayActive } from './_boot.js';
 const RECT_IDS = ['stat-health', 'stat-mana', 'ember-bar', 'hotbar', 'hotbar-xp-row', 'quest-tracker', 'hud-compass',
   'objective-tracker', 'radial-minimap', 'day-phase-dial', 'hud-settings', 'coin-readout'];
 
-/** The touch controls a player sees at rest: the joystick's ring and every hit target the touch layer draws (the
- *  full-screen tap-to-play is not one: it shows only before play). */
-const touchControls = (page) => page.evaluate(() => [...document.querySelectorAll('[data-touch-zone="joystick"], [data-touch-btn]')]
-  .map((el) => {
-    const r = el.getBoundingClientRect();
-    const cs = getComputedStyle(el);
-    return { id: el.getAttribute('data-testid') || (el.hasAttribute('data-touch-zone') ? 'touch-joystick' : el.getAttribute('aria-label')),
-      x: r.x, y: r.y, right: r.right, bottom: r.bottom, w: r.width, h: r.height,
-      shown: r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' };
-  })
-  .filter((t) => t.shown && t.id !== 'touch-tap-to-play'));
 const TOUCH_AT_REST = ['touch-joystick', 'touch-pause', 'touch-action', 'touch-cast', 'touch-dodge', 'touch-jump', 'touch-panels',
   'touch-aspects', 'touch-spells'];
 
-const rects = (page, ids) => page.evaluate((list) => list.map((id) => {
-  const el = document.querySelector(`[data-testid="${id}"]`);
-  if (!el) return { id, missing: true };
-  const r = el.getBoundingClientRect();
-  return { id, x: r.x, y: r.y, right: r.right, bottom: r.bottom, w: r.width, h: r.height };
-}), ids);
+/** In the page, in ONE task once every `extra` element is on screen: the HUD rects for `ids` and, on touch, the touch
+ *  controls a player sees at rest (the joystick's ring and every hit target the touch layer draws; the full-screen
+ *  tap-to-play is not one: it shows only before play). One task, so nothing comes or goes between one rect and the
+ *  next. `plate`: the nameplate the real aim cone raised (window.__hudPlate) is raised again whenever something has
+ *  cleared it while the reader waits, and the reader says how often (the first draft read the nameplate and the boss
+ *  bar in separate calls, and on 1180x820 and 1280x800 the nameplate was gone by the time the dragon's bar was up: CI
+ *  runs 40982943803 and 40986921601, shard 4). */
+async function readPage({ ids, extra, touch, plate }) {
+  const t0 = performance.now();
+  let reraised = 0;
+  const present = () => extra.every((id) => document.querySelector(`[data-testid="${id}"]`));
+  while (!present() && performance.now() - t0 < 5000) {
+    if (plate && !window.useGameStore.getState().targetEntity && window.__hudPlate) {
+      window.useGameStore.setState({ targetEntity: window.__hudPlate });
+      reraised += 1;
+    }
+    await new Promise((r) => setTimeout(r, 16));
+  }
+  const box = (el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, right: r.right, bottom: r.bottom, w: r.width, h: r.height }; };
+  const hud = ids.map((id) => {
+    const el = document.querySelector(`[data-testid="${id}"]`);
+    return el ? { id, ...box(el) } : { id, missing: true };
+  });
+  const controls = touch ? [...document.querySelectorAll('[data-touch-zone="joystick"], [data-touch-btn]')].map((el) => {
+    const cs = getComputedStyle(el);
+    const b = box(el);
+    return { id: el.getAttribute('data-testid') || (el.hasAttribute('data-touch-zone') ? 'touch-joystick' : el.getAttribute('aria-label')),
+      ...b, shown: b.w > 0 && b.h > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' };
+  }).filter((t) => t.shown && t.id !== 'touch-tap-to-play') : [];
+  return { hud, controls, reraised };
+}
+
 const intersects = (a, b) => !(a.right <= b.x || b.right <= a.x || a.bottom <= b.y || b.bottom <= a.y);
 const pairs = (list) => {
   const out = [];
@@ -113,70 +129,48 @@ test.describe('desktop 1280x800', () => {
   });
 });
 
-/** The HUD rects (with `extra`: the nameplate, the boss bar) and, on touch, the touch controls, read together:
- *  [seen, missing]. */
-async function layout(page, touch, extra = []) {
-  const all = await rects(page, [...RECT_IDS, ...extra]);
-  const missing = all.filter((r) => r.missing || !(r.w > 0 && r.h > 0)).map((r) => r.id);
-  const seen = all.filter((r) => !r.missing && r.w > 0 && r.h > 0);
-  const controls = touch ? await touchControls(page) : [];
+/** The HUD rects (with `extra`: the nameplate, the boss bar) and, on touch, the touch controls, read together
+ *  (readPage): [seen, missing, reraised]. */
+async function layout(page, touch, extra = [], { plate = false } = {}) {
+  const { hud, controls, reraised } = await page.evaluate(readPage, { ids: [...RECT_IDS, ...extra], extra, touch, plate });
+  const missing = hud.filter((r) => r.missing || !(r.w > 0 && r.h > 0)).map((r) => r.id);
+  const seen = hud.filter((r) => !r.missing && r.w > 0 && r.h > 0);
   if (touch) missing.push(...TOUCH_AT_REST.filter((id) => !controls.some((c) => c.id === id)));
-  return { seen: [...seen, ...controls], missing };
+  return { seen: [...seen, ...controls], missing, reraised };
 }
 const fmt = (list) => JSON.stringify(list.map((r) => [r.id, Math.round(r.x), Math.round(r.y), Math.round(r.w), Math.round(r.h)]));
 
-/** Hold the page's animation frames (the render loop and the Player loop stop; React still renders) and hand them back.
- *  While held, the aim cone's mirror (Components.jsx, every 150 ms of the Player loop) cannot clear a nameplate: the
- *  first draft read the nameplate and the boss bar together without it, and on 1180x820 the nameplate was gone by the
- *  time the dragon's bar was up (CI run 40982943803, shard 4, first attempt). */
-const holdFrames = (page) => page.evaluate(() => {
-  if (window.__hudHeld) return;
-  const native = window.requestAnimationFrame.bind(window);
-  const queue = [];
-  window.__hudHeld = { native, queue };
-  window.requestAnimationFrame = (cb) => { queue.push(cb); return -queue.length; };
-});
-const releaseFrames = (page) => page.evaluate(() => {
-  const held = window.__hudHeld;
-  if (!held) return;
-  window.requestAnimationFrame = held.native;
-  delete window.__hudHeld;
-  for (const cb of held.queue) held.native(cb);
-});
-
-/** Put a living brute 2.5 m along the camera's facing (every other hostile within 24 m killed first), wait for the
- *  aim cone to name it, then hold the world with a hitstop and the page's frames, with the nameplate up.
- *  The nameplate's own gates are read with it: whether the brute is alive and how far it stands. */
+/** Put a living brute 2.5 m along the camera's facing (every other hostile within 24 m killed first) and hold the
+ *  world with a hitstop in the same call, so it cannot walk out of the aim cone first (on 390x844 it did: CI run
+ *  40986921601); then wait for the real aim cone to name it, and keep what it named (window.__hudPlate). Three
+ *  spawns at most, for a spawn the floor refuses. */
 async function raiseTarget(page) {
-  await page.evaluate(() => {
-    const s = window.useGameStore.getState();
-    const cam = window.__threeCamera;
-    for (const m of window.__craftyTest.call('readMobs')) {
-      if (!m.passive && Math.hypot(m.x - cam.position.x, m.z - cam.position.z) < 24) window.GameMethods.damageMob(m.id, 99999, 'physical', 'ally');
-    }
-    const d = new cam.position.constructor();
-    cam.getWorldDirection(d); d.y = 0; d.normalize();
-    const gx = cam.position.x + d.x * 2.5, gz = cam.position.z + d.z * 2.5;
-    const before = new Set(window.__craftyTest.call('readMobs').map((m) => m.id));
-    s.spawnMob(gx, gz, 'moss_brute', s.getMobFloor ? s.getMobFloor(gx, gz, cam.position.y - 1.6) : null);
-    window.__hudBrute = window.__craftyTest.call('readMobs').find((m) => !before.has(m.id))?.id ?? null;
-  });
   let last = null;
-  const plate = () => page.evaluate(() => ({ plate: !!document.querySelector('[data-testid="target-frame"]'), brute: window.__hudBrute,
-    target: window.useGameStore.getState().targetEntity?.id ?? null }));
-  await expect.poll(async () => { last = await plate(); return last.plate; },
-    { timeout: 15000, message: `SETUP: no nameplate rose for the brute: ${JSON.stringify(last)}` }).toBe(true);
-  await page.evaluate(() => window.useGameStore.getState().triggerHitstop(120000));
-  // Held with the nameplate up: if a frame cleared it between the poll and the hold, hand the frames back and wait again.
-  for (let i = 0; i < 5; i++) {
-    await holdFrames(page);
-    last = await plate();
-    if (last.plate) return;
-    await releaseFrames(page);
-    await expect.poll(async () => { last = await plate(); return last.plate; },
-      { timeout: 5000, message: `SETUP: the nameplate did not come back: ${JSON.stringify(last)}` }).toBe(true);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.evaluate((m) => {
+      const s = window.useGameStore.getState();
+      const cam = window.__threeCamera;
+      for (const mob of window.__craftyTest.call('readMobs')) {
+        if (!mob.passive && Math.hypot(mob.x - cam.position.x, mob.z - cam.position.z) < 24) window.GameMethods.damageMob(mob.id, 99999, 'physical', 'ally');
+      }
+      const d = new cam.position.constructor();
+      cam.getWorldDirection(d); d.y = 0; d.normalize();
+      const gx = cam.position.x + d.x * m, gz = cam.position.z + d.z * m;
+      const before = new Set(window.__craftyTest.call('readMobs').map((mob) => mob.id));
+      s.spawnMob(gx, gz, 'moss_brute', s.getMobFloor ? s.getMobFloor(gx, gz, cam.position.y - 1.6) : null);
+      s.triggerHitstop(120000);
+      window.__hudBrute = window.__craftyTest.call('readMobs').find((mob) => !before.has(mob.id))?.id ?? null;
+    }, 2.5 + attempt * 0.5);
+    const up = await page.waitForFunction(() => {
+      const t = window.useGameStore.getState().targetEntity;
+      if (!t || !document.querySelector('[data-testid="target-frame"]')) return null;
+      window.__hudPlate = t;
+      return { brute: window.__hudBrute, target: t.id, name: t.name };
+    }, null, { timeout: 8000, polling: 50 }).then((h) => h.jsonValue(), () => null);
+    if (up) return up;
+    last = await page.evaluate(() => ({ brute: window.__hudBrute, target: window.useGameStore.getState().targetEntity?.id ?? null }));
   }
-  throw new Error(`SETUP: the nameplate was never up when the frames were held: ${JSON.stringify(last)}`);
+  throw new Error(`SETUP: no nameplate rose for a brute in three spawns: ${JSON.stringify(last)}`);
 }
 
 for (const vp of [
@@ -191,9 +185,9 @@ for (const vp of [
     test('the HUD and the touch controls at rest, with a nameplate, with the boss bar, and both: no two intersect', async ({ page }) => {
       test.setTimeout(240000);
       await enterPlayWithHud(page, vp.touch);
-      const check = async (state, extra) => {
-        const { seen, missing } = await layout(page, vp.touch, extra);
-        console.log(`hud-at-rest ${vp.name} ${state}: ${seen.length} rects ${fmt(seen)}`);
+      const check = async (state, extra, opts) => {
+        const { seen, missing, reraised } = await layout(page, vp.touch, extra, opts);
+        console.log(`hud-at-rest ${vp.name} ${state}: ${seen.length} rects ${fmt(seen)}${reraised ? `; the nameplate raised again ${reraised}x` : ''}`);
         expect(missing, `SETUP: HUD elements or touch controls not on screen at ${vp.name}, ${state}`).toEqual([]);
         expect(pairs(seen), `HUD elements or touch controls overlap at ${vp.name}, ${state}`).toEqual([]);
         if (vp.mobile) {
@@ -211,8 +205,9 @@ for (const vp of [
       };
       await check('at rest', []);
 
-      await raiseTarget(page);
-      await check('with a nameplate', ['target-frame']);
+      const named = await raiseTarget(page);
+      console.log(`hud-at-rest ${vp.name}: the aim cone named ${JSON.stringify(named)}`);
+      await check('with a nameplate', ['target-frame'], { plate: true });
 
       const woke = await page.evaluate(() => {
         const s = window.useGameStore.getState();
@@ -223,10 +218,9 @@ for (const vp of [
       });
       expect(woke, 'SETUP: no forceBossSpawn on the dev store').toBe(true);
       await expect(page.locator('[data-testid="boss-health-bar"]'), 'SETUP: the boss bar never showed').toHaveCount(1, { timeout: 10000 });
-      await check('with the nameplate and the boss bar', ['target-frame', 'boss-health-bar']);
+      await check('with the nameplate and the boss bar', ['target-frame', 'boss-health-bar'], { plate: true });
 
-      await releaseFrames(page);
-      await page.evaluate(() => window.GameMethods.damageMob(window.__hudBrute, 99999, 'physical', 'ally'));
+      await page.evaluate(() => { window.__hudPlate = null; window.GameMethods.damageMob(window.__hudBrute, 99999, 'physical', 'ally'); });
       await expect(page.locator('[data-testid="target-frame"]'), 'SETUP: the nameplate stayed up after the brute died').toHaveCount(0, { timeout: 10000 });
       await check('with the boss bar alone', ['boss-health-bar']);
     });
