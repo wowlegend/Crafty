@@ -100,6 +100,11 @@ sight grid's frame cost on an iPad-class device (item 182, by reading only); the
 `landmarkAt`'s chunks (structural, item 181); the dodge and imbue slots of the mirror (item 184); and the enemy-arrow terrain
 test (its own row).
 
+**CI on the lane's head 973bce38** (run 41134824441): `ci ok`, with two first-attempt retries that are not this lane's:
+mob-floor.spec.js:227 fails its first attempt in all four recent runs on three branches, two of which touch no mob or
+terrain code (`REVIEW:e2e-flakes:mob-floor-roof-floor-infinity`), and hud-at-rest.spec.js:354 failed once, where the run
+before it, on identical `src/`, passed it first time (`REVIEW:e2e-flakes:hud-at-rest-tracker-tap-canvas`).
+
 ## 2026-10-30 — [LOOP] L1: a death on iOS shows YOU DIED, the lock goes on the canvas only, Show Stats and the juice dial, and every button over the game answers a finger
 
 **Decided by the L1 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L1 of the 2026-10-30 deep
