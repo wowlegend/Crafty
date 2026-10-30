@@ -482,46 +482,57 @@ function walkOut(sb, k, jump, t0) {
   sb.w.removeCharacterController(kcc);
   return out;
 }
-/** The player's own way out of a shell they built: on heading k, three left clicks (level, then lower, then at the feet
- *  ahead), each mining the cell mineTarget takes and re-meshing its chunk, then the walk. Three, because a capsule sunk
- *  into the rim of a hole it dug under a two-high ceiling neither walks nor jumps out, and two clicks did not always open
- *  a way (registry REVIEW:chaos-play:rim-wedge). */
-const DIG_PITCHES = [0, -0.45, -0.9];
-function digOut(S, k, t0) {
-  const a = (k * Math.PI) / 4;
-  const chunks = new Map(), meshes = new Map(), mined = [];
-  const blocks = new Map(useGameStore.getState().worldBlocks);
-  let sb = sandbox(S);
-  for (const pitch of DIG_PITCHES) {
-    const from = steadyEye(t0, {});
-    const dir = new THREE.Vector3(Math.cos(a) * Math.cos(pitch), Math.sin(pitch), Math.sin(a) * Math.cos(pitch));
-    const hit = sb.w.castRay(new RAPIER.Ray(from, dir), 8, true, undefined, undefined, undefined, sb.body, sb.filter);
-    if (!hit) continue;
-    const scaled = dir.clone().multiplyScalar(hit.timeOfImpact);
-    const c = mineTarget(new THREE.Vector3(from.x, from.y, from.z).add(scaled), scaled, { playerRigidBodyRef: { current: sb.body }, worldBlocks: blocks });
+/** The player's own blocks near the body: cells the store's worldBlocks holds as placed (a nonzero block) and the world
+ *  still holds solid, within OWN_REACH on each axis. */
+const OWN_REACH = 4;
+function ownCells(S, t0) {
+  const out = [];
+  for (const [k, v] of useGameStore.getState().worldBlocks) {
+    if (!v) continue;
+    const [x, y, z] = k.split('_').map(Number);
+    if (Math.abs(x + 0.5 - t0.x) > OWN_REACH || Math.abs(y + 0.5 - t0.y) > OWN_REACH || Math.abs(z + 0.5 - t0.z) > OWN_REACH) continue;
+    if (solidAt(S, x, y, z)) out.push({ x, y, z });
+  }
+  return out;
+}
+/** The world with the player's own blocks near them mined, as many clicks as that takes (each one's chunk re-meshed from
+ *  the world as the verbs have made it, and their stand-ins gone): a shell the player built is drawn, and its blocks can be
+ *  mined from inside. Generated ground is never mined here: a state only mining it would leave is held. */
+function sandboxWithoutOwn(S, own) {
+  const chunks = new Map(), meshes = new Map();
+  for (const c of own) {
     const key = `${chunkOf(c.x)}_${chunkOf(c.z)}`;
     if (!S.logical.has(key)) continue;
     if (!chunks.has(key)) chunks.set(key, S.logical.get(key).slice());
     writeCell(chunks, c.x, c.y, c.z, AIR);
-    blocks.set(`${c.x}_${c.y}_${c.z}`, 0);
-    mined.push(c);
-    meshes.set(key, generateMesh(chunkOf(c.x), chunkOf(c.z), chunks.get(key), undefined));
-    sb.w.free();
-    sb = sandbox(S, meshes, mined);
   }
-  const out = walkOut(sb, k, false, t0) || walkOut(sb, k, true, t0);
-  sb.w.free();
-  return out;
+  for (const [key, b] of chunks) {
+    const [cx, cz] = key.split('_').map(Number);
+    meshes.set(key, generateMesh(cx, cz, b, undefined));
+  }
+  return sandbox(S, meshes, own);
 }
-/** Can the player leave from this exact state? Walk, then jump-walk, each of 8 headings; failing that, dig out. */
+/** Can the player leave from this exact state? Walk, then jump-walk, each of 8 headings ('walk'); failing that, the same
+ *  with every block of their own near them mined ('own': walk-held by a shell they built). Held otherwise, `own` the
+ *  count of their blocks that were tried. */
 export function escape(S) {
   const t = S.p.body.translation();
   const t0 = { x: t.x, y: t.y, z: t.z };
+  const leaves = (sb) => {
+    for (let k = 0; k < 8; k++) if (walkOut(sb, k, false, t0) || walkOut(sb, k, true, t0)) return true;
+    return false;
+  };
   const sb = sandbox(S);
-  let by = null;
-  for (let k = 0; k < 8 && !by; k++) if (walkOut(sb, k, false, t0) || walkOut(sb, k, true, t0)) by = 'walk';
+  let by = leaves(sb) ? 'walk' : null;
   sb.w.free();
-  for (let k = 0; k < 8 && !by; k++) if (digOut(S, k, t0)) by = 'dig';
+  if (!by) {
+    const own = ownCells(S, t0);
+    if (own.length) {
+      const dug = sandboxWithoutOwn(S, own);
+      if (leaves(dug)) by = 'own';
+      dug.w.free();
+    }
+  }
   return { free: !!by, by };
 }
 
@@ -727,7 +738,7 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
     held: false, loadPending: null,
     stats: { frames: 0, rightClicks: 0, rightClicksIntoBody: 0, cellsPlaced: 0, leftClicks: 0, minesUnderFeet: 0,
       originColumnEdits: 0, wallContactFrames: 0, swaps: 0, swapsUnderCeiling: 0, swapsAgainstWall: 0, swapsRefused: 0, formExits: 0,
-      clickPairs: 0, respawns: 0, loadHoldFrames: 0, respawnsAfterOriginMine: 0, respawnsAfterOriginPlace: 0, loads: 0, vaults: 0, escapes: 0, dugOut: 0,
+      clickPairs: 0, respawns: 0, loadHoldFrames: 0, respawnsAfterOriginMine: 0, respawnsAfterOriginPlace: 0, loads: 0, vaults: 0, escapes: 0, ownShellOut: 0,
       saves: 0, savesLegacy: 0, savesInForm: 0, loadsReleased: 0, heldFrames: 0, heldInSolidFrames: 0 },
   };
   S.cells = createPlacedCellColliders(world, RAPIER, createEditSeq());
@@ -755,6 +766,7 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
   S.p = playerParts(world, body, body.collider(0));
   S.home = { x, z, roam: box.roam };
   S.savedForms = new Set();
+  S.walkHeld = [];
   useGameStore.setState({ playerRigidBodyRef: { current: body } });
   world.step();
   for (let i = 0; i < 30; i++) tick(S, {});
@@ -772,7 +784,9 @@ export function checkEscape(S) {
   if (S.counts.I3 > 0 || S.held) return { free: false, by: null };
   const e = escape(S);
   S.stats.escapes++;
-  if (e.by === 'dig') S.stats.dugOut++;
+  if (e.by === 'own') S.stats.ownShellOut++;
+  // Every reading walking and jumping could not leave, with its class: a shell the player built, or held.
+  if (e.by !== 'walk') S.walkHeld.push({ f: S.f, at: vec(S.p.body.translation()), class: e.by === 'own' ? 'own shell' : 'held' });
   if (!e.free) note(S, 'I3', { at: vec(S.p.body.translation()), deepest: deepestSolid(S), eyeCell: eyeCell(S.p.body) });
   return e;
 }

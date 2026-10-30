@@ -50,6 +50,7 @@ export function chaosSuite(spots, floors) {
   const total = {};
   const deepest = { depth: 0, session: null };
   const savedForms = new Set(), triedForms = new Set();
+  const walkHeld = [];
   let sessions = 0;
   describe(`chaos play at ${spots.join(' and ')} (seed ${SEED}): the player is never in solid, never has the eye in solid, can always leave, no stand-in outlives its mesh, and a load stands them where they saved`, () => {
     freshStorePerTest();
@@ -60,6 +61,7 @@ export function chaosSuite(spots, floors) {
         for (const [k, n] of Object.entries(S.stats)) total[k] = (total[k] || 0) + n;
         if (S.maxDepth.value >= deepest.depth) Object.assign(deepest, { depth: S.maxDepth.value, session: `${spot} ${hz} ${lag}` });
         for (const f of S.savedForms) savedForms.add(f);
+        for (const h of S.walkHeld) walkHeld.push(`${spot} ${hz} ${lag} f${h.f} (${h.at.x}, ${h.at.y}, ${h.at.z}) ${h.class}`);
         triedForms.add(S.saveForm || 'base');
         const why = report(S);
         expect(S.counts.I1, `I1: the capsule reached into a solid cell deeper than ${TOL} m ${why}`).toBe(0);
@@ -75,7 +77,8 @@ export function chaosSuite(spots, floors) {
       // Written past vitest's console capture, which shows a passing test's console output nowhere: the denominator is read
       // on every run, green or red.
       process.stdout.write(`\nchaos play at ${spots.join(', ')} (seed ${SEED}): ${sessions} sessions, ${total.frames} frames; deepest in solid `
-        + `${deepest.depth.toFixed(3)} m (${deepest.session}); saved in ${[...savedForms].sort().join(', ')}; ${JSON.stringify(total)}\n`);
+        + `${deepest.depth.toFixed(3)} m (${deepest.session}); saved in ${[...savedForms].sort().join(', ')}; ${JSON.stringify(total)}\n`
+        + `walk-held (${walkHeld.length}): ${walkHeld.join('; ') || 'none'}\n`);
       expect(sessions, 'SETUP: a session did not finish').toBe(spots.length * RATES.length * LAGS.length);
       // Every session tries its save in its form; a form with no room where the session stands (the bull or the golem in
       // the tunnel) is refused and saved in the base shape, so the forms actually saved in are printed, and floored as
@@ -92,5 +95,5 @@ export function chaosSuite(spots, floors) {
  *  and falls through the void). */
 export const COMMON_FLOORS = {
   rightClicksIntoBody: 100, wallContactFrames: 500, clickPairs: 40, swaps: 12, swapsAgainstWall: 3, swapsRefused: 2, loads: 16,
-  loadHoldFrames: 12, loadsReleased: 16, savesLegacy: 2, savesInForm: 6, respawns: 16, escapes: 32, dugOut: 1,
+  loadHoldFrames: 12, loadsReleased: 16, savesLegacy: 2, savesInForm: 6, respawns: 16, escapes: 32, ownShellOut: 1,
 };

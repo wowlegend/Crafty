@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
+import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { freshStorePerTest, TOL } from './chaosPlay/suite.js';
 import {
   makeSession, tick, setCell, deepestSolid, eyeCell, solidAt, escape, rightClick, buildRay, lookDir, mulberry32, STONE,
+  LAND_TOP,
 } from './chaosPlay/harness.js';
 
 // THE CHAOS-PLAY GATE: CAN THE PLAYER STILL LEAVE? Kevin, five minutes of left and right clicking near the ocean
@@ -19,16 +21,23 @@ import {
 // real executors (placeAtHit, mineTarget, moveKinematic, placedCellColliders, formFit, the spawn and resume decisions,
 // buildSaveData and loadWorldData), wired as the game wires them (chaosPlay/harness.js says how, and what it leaves out).
 //
-// FOUR INVARIANTS, read from the voxel grid as the verbs have made it, never from the colliders:
-//  I1 at the end of every frame the live capsule reaches into no solid cell deeper than TOL (suite.js says why 5 mm);
-//  I2 the eye is never inside a solid cell (inside one, every face points away and the block cannot be seen);
+// FIVE INVARIANTS. I1 and I2 read the voxel grid as the verbs have made it, never the colliders; I3 reads a sandbox built
+// from the landed chunk meshes and the live stand-ins; I4 reads the world's colliders; I5 reads the load's hold.
+//  I1 at the end of every frame the player is in play (not held by a load) the live capsule reaches into no solid cell
+//     deeper than TOL (suite.js says why 5 mm);
+//  I2 the eye is never inside a solid cell then (inside one, every face points away and the block cannot be seen);
 //  I3 every 90 frames and at the session's end the player can leave: a metre's move within a second on one of 8
-//     headings, walking or jump-walking, or after at most three left clicks along one (a shell the player built is not a
-//     trap: its faces are drawn and its blocks can be mined);
-//  I4 no stand-in collider outlives its chunk's mesh by more than one world step, and none is left at the end.
+//     headings, walking or jump-walking, or doing so once every block of their own within 4 m is mined, as many clicks
+//     as that takes (a shell the player built is not a trap: its faces are drawn and its blocks can be mined). A state
+//     only mining generated ground would leave is held: a wedge the controller cannot walk or jump out of is the defect,
+//     whatever a pickaxe could do about it. Each walk-held reading is printed with its class;
+//  I4 no stand-in collider outlives its chunk's mesh by more than one world step, and none is left at the end;
+//  I5 a load lets the player go within 2 x lag + 12 frames, never to the origin spawn (the frames between are its hold,
+//     which I1 and I2 do not read: the body is held at the saved spot until the new world's column is in).
 // DENOMINATORS: each file asserts floors on the risky events its sessions reached (clicks aimed into the body, wall
-// contact frames, swaps under a ceiling and against a wall, refused swaps, loads and the frames a load held the body,
-// respawns, respawns after an origin-column dig and build, escape tests, dig-outs), and prints them with the frames.
+// contact frames, swaps under a ceiling and against a wall, refused swaps, loads, saves in a form and from the old Save
+// button, the frames a load held the body, respawns, respawns after an origin-column dig and build, escape tests, own
+// shells left), and prints them with the frames, the deepest any session reached into solid and the walk-held readings.
 //
 // WHAT IT DOES NOT CHECK: the game's React effect order and Terrain.jsx's own wiring (the e2e suite drives those), mobs,
 // knockback, dodge, the accel ramp, the camera's bob and shake, chunk streaming by distance, the rendering of anything.
@@ -72,7 +81,29 @@ describe('the chaos-play instruments see what they report on', () => {
     const placed = rightClick(S, h, 'cube', 3);
     expect(placed, 'SETUP: the 3 x 3 x 3 footprint at the feet did not place 25 cells around the body').toBe(25);
     for (let i = 0; i < 10; i++) tick(S, {});
-    expect(escape(S), 'a shell of the player\'s own blocks reads as a trap, or as no shell at all').toEqual({ free: true, by: 'dig' });
+    expect(escape(S), 'a shell of the player\'s own blocks reads as a trap, or as no shell at all').toEqual({ free: true, by: 'own' });
+  });
+
+  it('a pocket of generated ground the player is shut in is held, though mining that ground would open it (no click limit hides a wedge)', () => {
+    const S = session();
+    const t = S.p.body.translation();
+    S.p.body.setTranslation({ x: Math.floor(t.x) + 0.5, y: t.y, z: Math.floor(t.z) + 0.5 }, true);
+    for (let i = 0; i < 10; i++) tick(S, {});
+    const at = S.p.body.translation();
+    const [x, z] = [Math.floor(at.x), Math.floor(at.z)];
+    // Written as generated stone (setCell, not a verb), so no cell of it is the player's: the eight columns around the
+    // body's, two high, and the cell over the head.
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      if (dx || dz) for (const y of [LAND_TOP, LAND_TOP + 1]) setCell(S, x + dx, y, z + dz, STONE);
+    }
+    setCell(S, x, LAND_TOP + 2, z, STONE);
+    for (let i = 0; i < 10; i++) tick(S, {});
+    expect(deepestSolid(S).depth, 'SETUP: the pocket was built into the capsule').toBe(0);
+    expect(escape(S), 'a pocket only mining generated ground opens reads as a way out').toEqual({ free: false, by: null });
+    // A block of the player's own 3 m off, outside the pocket: mining it opens nothing, so the pocket still holds.
+    setCell(S, x + 3, LAND_TOP, z, STONE);
+    useGameStore.setState({ worldBlocks: new Map([[`${x + 3}_${LAND_TOP}_${z}`, STONE]]) });
+    expect(escape(S), 'a block of the player\'s own that opens nothing read as their way out').toEqual({ free: false, by: null });
   });
 
   it('I4 reads a stand-in kept past its chunk\'s mesh, and none kept on the real registry', () => {
