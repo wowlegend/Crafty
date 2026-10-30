@@ -11,24 +11,25 @@ import { bootDev, startPlayActive } from './_boot.js';
 //     box at the screen's centre where the crosshair is (screen-centre: nothing may cover it), and on touch the
 //     joystick's ring and each of the eight buttons the touch layer draws at rest (Pause, the action, cast, dodge and
 //     jump, the tray, the Aspect and spell openers). Every pair is read in each state, with the notice surfaces (the
-//     toast stack, and on a keyboard the combat log, which touch does not draw) whenever one is up: at rest; a notice
-//     staged; a second notice staged on it; a target nameplate up (a brute along the camera's facing, frozen by a hitstop
-//     as it spawns, named by the real aim cone); the nameplate with a notice; the nameplate, the boss bar and the
-//     dragon's arrival as bossSystem raises it (forceBossSpawn and its notice.bossAwakens in one task, the earlier notice
-//     possibly still up); the boss bar alone (the brute killed, every notice gone); the boss bar with the dragon's phase
-//     call, raised by the real phase change (the dragon damaged to a quarter); one of its attack calls as BossEntity
-//     raises it with a plain notice staged on it; and, where the stack shares the encounter column, the plain notice
-//     taking the boss bar's line when the call leaves.
-//     Where the stack stands on its own (a keyboard, an iPad) it holds every notice up; in the encounter column (a phone,
-//     a phone on its side) the column holds one notice at a time, in the boss bar's own line while the bar is up, the
-//     dragon's call before any other (DECISIONS 2026-10-29 item 92). Notices are staged in a held world, so no kill, claim
-//     or achievement raises one beside them. With the nameplate up, the one the cone named is raised again if something
-//     clears it while the read waits, and the log says so. Each state's rects are read in one page task. The notice
-//     surfaces lie inside every viewport; on the phones every touch target does.
+//     toast stack, and on a keyboard the combat log, which touch does not draw) whenever one is up: at rest; a notice;
+//     two notices raised together; a target nameplate up (a brute along the camera's facing, frozen by a hitstop as it
+//     spawns, named by the real aim cone); the nameplate with a notice; the nameplate, the boss bar and the dragon's
+//     arrival as bossSystem raises it (forceBossSpawn and its notice.bossAwakens in one task, the earlier notice possibly
+//     still up); the boss bar alone (the brute killed, every notice gone); the boss bar with the dragon's phase call,
+//     raised by the real phase change (the dragon damaged to a quarter); one of its attack calls as BossEntity raises it
+//     with a newer plain notice; and, where the stack shares the encounter column, a plain notice raised 3 s into an
+//     attack call's life taking the boss bar's line when the call leaves. Where the stack stands on its own (a keyboard,
+//     an iPad) it holds every notice up; in the encounter column (a phone, a phone on its side) the column holds one
+//     notice at a time, in the boss bar's own line while the bar is up, the dragon's call before any other (DECISIONS
+//     2026-10-29 item 92). Notices are raised in a held world, so no kill, claim or achievement raises one beside them,
+//     and each state's read waits for the notices it needs and reads at once. With the nameplate up, the one the cone
+//     named is raised again if something clears it while the read waits, and the log says so. Each state's rects are
+//     read in one page task. The notice surfaces lie inside every viewport; on the phones every touch target does.
 //   iPad 820x1180: a finger's tap on the quest line opens the list (the touch layer leaves the tracker its taps).
-// NOT CHECKED: three or more notices at once, the dragon's attack calls raised by render/BossEntity.jsx itself (it raises
-// them only while the world runs; the spec raises one as it does), the level-up banner, the touch tray, a fan or the quest list opened, the panels, a phone shorter than 390
-// px on its side (Safari's toolbars), an upright phone under 617 px tall, and anything after the first minute of play.
+// NOT CHECKED: three or more notices at once, the dragon's attack calls raised by render/BossEntity.jsx itself (it
+// raises them only while the world runs; the spec raises one as it does), the level-up banner, the touch tray, a fan or
+// the quest list opened, the panels, a phone shorter than 390 px on its side (Safari's toolbars), an upright phone under
+// 617 px tall, and anything after the first minute of play.
 
 const RECT_IDS = ['stat-health', 'stat-mana', 'ember-bar', 'hotbar', 'hotbar-xp-row', 'quest-tracker', 'hud-compass',
   'objective-tracker', 'radial-minimap', 'day-phase-dial', 'hud-settings', 'coin-readout'];
@@ -39,18 +40,20 @@ const CENTRE_BOX = 48;
 const TOUCH_AT_REST = ['touch-joystick', 'touch-pause', 'touch-action', 'touch-cast', 'touch-dodge', 'touch-jump', 'touch-panels',
   'touch-aspects', 'touch-spells'];
 
-/** In the page, in ONE task once every `extra` element is on screen: the HUD rects for `ids`, each `optional` element
- *  that is on screen (the notice surfaces), the box at the screen's centre, on touch the touch controls a player sees at
- *  rest (the joystick's ring and every hit target the touch layer draws; the full-screen tap-to-play is not one: it
- *  shows only before play), and every notice shown (where: the stack or the boss bar's line). One task, so nothing comes
- *  or goes between one rect and the next. `plate`: the nameplate the real aim cone raised (window.__hudPlate) is raised
- *  again whenever something has cleared it while the reader waits, and the reader says how often, because the
- *  nameplate can clear while the world is held. */
-async function readPage({ ids, optional, extra, touch, plate, centre }) {
+/** In the page, in ONE task once every `extra` element and every notice in `keys` is on screen (8 s at most): the HUD
+ *  rects for `ids`, each `optional` element that is on screen (the notice surfaces), the box at the screen's centre, on
+ *  touch the touch controls a player sees at rest (the joystick's ring and every hit target the touch layer draws; the
+ *  full-screen tap-to-play is not one: it shows only before play), and every notice shown (where: the stack or the boss
+ *  bar's line), with the keys that never showed. One task, so nothing comes or goes between one rect and the next, and
+ *  a notice is read the moment it shows: its 4 s run from when it was raised, and the page can stall for seconds in CI.
+ *  `plate`: the nameplate the real aim cone raised (window.__hudPlate) is raised again whenever something has cleared it
+ *  while the reader waits, and the reader says how often, because the nameplate can clear while the world is held. */
+async function readPage({ ids, optional, extra, keys, touch, plate, centre }) {
   const t0 = performance.now();
   let reraised = 0;
-  const present = () => extra.every((id) => document.querySelector(`[data-testid="${id}"]`));
-  while (!present() && performance.now() - t0 < 5000) {
+  const shown = (k) => document.querySelector(`[data-notification-key="${k}"]`);
+  const present = () => extra.every((id) => document.querySelector(`[data-testid="${id}"]`)) && keys.every(shown);
+  while (!present() && performance.now() - t0 < 8000) {
     if (plate && !window.useGameStore.getState().targetEntity && window.__hudPlate) {
       window.useGameStore.setState({ targetEntity: window.__hudPlate });
       reraised += 1;
@@ -78,7 +81,7 @@ async function readPage({ ids, optional, extra, touch, plate, centre }) {
   const notices = [...document.querySelectorAll('[data-notification-key]')].map((el) => ({
     where: el.closest('[data-testid="boss-health-bar"]') ? 'bar' : el.closest('[data-testid="notification-stack"]') ? 'stack' : 'elsewhere',
     key: el.getAttribute('data-notification-key') || el.textContent }));
-  return { hud, controls, reraised, notices };
+  return { hud, controls, reraised, notices, late: keys.filter((k) => !shown(k)), at: performance.now() };
 }
 
 const intersects = (a, b) => !(a.right <= b.x || b.right <= a.x || a.bottom <= b.y || b.bottom <= a.y);
@@ -161,14 +164,15 @@ test.describe('desktop 1280x800', () => {
 const NOTICE_IDS = ['notification-stack', 'combat-log'];
 
 /** The HUD rects (with `extra`: the nameplate, the boss bar), the notice surfaces on screen, the box at the centre and,
- *  on touch, the touch controls, read together (readPage): [seen, missing, reraised, the notices shown]. */
-async function layout(page, touch, extra = [], { plate = false } = {}) {
-  const { hud, controls, reraised, notices } = await page.evaluate(readPage,
-    { ids: [...RECT_IDS, ...extra], optional: NOTICE_IDS, extra, touch, plate, centre: CENTRE_BOX });
+ *  on touch, the touch controls, read together once the notices in `keys` show (readPage): [seen, missing, reraised, the
+ *  notices shown, the keys that never showed, when it read]. */
+async function layout(page, touch, extra = [], { plate = false, keys = [] } = {}) {
+  const { hud, controls, reraised, notices, late, at } = await page.evaluate(readPage,
+    { ids: [...RECT_IDS, ...extra], optional: NOTICE_IDS, extra, keys, touch, plate, centre: CENTRE_BOX });
   const missing = hud.filter((r) => r.missing || !(r.w > 0 && r.h > 0)).map((r) => r.id);
   const seen = hud.filter((r) => !r.missing && r.w > 0 && r.h > 0);
   if (touch) missing.push(...TOUCH_AT_REST.filter((id) => !controls.some((c) => c.id === id)));
-  return { seen: [...seen, ...controls], missing, reraised, notices };
+  return { seen: [...seen, ...controls], missing, reraised, notices, late, at };
 }
 const fmt = (list) => JSON.stringify(list.map((r) => [r.id, Math.round(r.x), Math.round(r.y), Math.round(r.w), Math.round(r.h)]));
 
@@ -214,20 +218,17 @@ async function noNotices(page, why) {
     });
 }
 
-/** Stage a notice through the store's addNotification (with `opts` beside its vars), on an empty screen unless `onTop`;
- *  then wait until it shows, unless `held` (the encounter column holds it back while the dragon's call is up), and let
- *  its slide-in settle. */
-async function stageNotice(page, key, { vars, type = 'warn', opts = {}, onTop = false, held = false } = {}) {
-  if (!onTop) await noNotices(page, `before the staged ${key}`);
-  const staged = await page.evaluate(({ k, v, ty, o }) => {
+/** Raise `list` ([key, type, opts]) through the store's addNotification in one task, in that order, on an empty screen
+ *  unless `onTop`. The read that follows waits for what must show (readPage `keys`). */
+async function raise(page, list, { onTop = false } = {}) {
+  if (!onTop) await noNotices(page, `before ${list.map(([k]) => k).join(', ')}`);
+  const raised = await page.evaluate((l) => {
     const add = window.useGameStore.getState().addNotification;
     if (typeof add !== 'function') return false;
-    add(k, ty, { vars: v, ...o });
+    for (const [k, ty, o] of l) add(k, ty, o);
     return true;
-  }, { k: key, v: vars, ty: type, o: opts });
-  expect(staged, 'SETUP: no addNotification on the store').toBe(true);
-  if (!held) await expect(page.locator(`[data-notification-key="${key}"]`), `SETUP: the staged ${key} never showed`).toHaveCount(1, { timeout: 5000 });
-  await page.waitForTimeout(800); // the toast's spring slide-in settles well inside this
+  }, list);
+  expect(raised, 'SETUP: no addNotification on the store').toBe(true);
 }
 
 for (const vp of [
@@ -247,11 +248,13 @@ for (const vp of [
       const { width: vw, height: vh } = vp.viewport;
       // What each state must show, as `where:key` in page order: a list per acceptable reading.
       const stack = (...keys) => keys.map((k) => `stack:${k}`);
-      const check = async (state, extra, { plate = false, want = null } = {}) => {
-        const { seen, missing, reraised, notices } = await layout(page, vp.touch, extra, { plate });
+      // `keys`: the notices the read waits for, wherever they show (the placement is `want`'s to judge).
+      const check = async (state, extra, { plate = false, want = null, keys = [] } = {}) => {
+        const { seen, missing, reraised, notices, late, at } = await layout(page, vp.touch, extra, { plate, keys });
         const shown = notices.map((n) => `${n.where}:${n.key}`);
         console.log(`hud-at-rest ${vp.name} ${state}: ${seen.length} rects ${fmt(seen)}${reraised ? `; the nameplate raised again ${reraised}x` : ''}; notices ${JSON.stringify(shown)}`);
         expect(missing, `SETUP: HUD elements or touch controls not on screen at ${vp.name}, ${state}`).toEqual([]);
+        expect.soft(late, `notices raised for ${state} at ${vp.name} never showed within 8 s`).toEqual([]);
         if (want) {
           expect.soft(want.some((w) => JSON.stringify(w) === JSON.stringify(shown)),
             `the notices shown at ${vp.name}, ${state}: ${JSON.stringify(shown)}, wanted one of ${JSON.stringify(want)}`).toBe(true);
@@ -275,24 +278,26 @@ for (const vp of [
             `a touch target lies outside the viewport at ${vp.name}`).toEqual([]);
           expect.soft(pairs([...seen.filter((r) => r.id.startsWith('touch-')), ...slots]), `a touch control overlaps a hotbar slot at ${vp.name}`).toEqual([]);
         }
+        return at;
       };
       await check('at rest', []);
 
       // Hold the world (as raiseTarget does) so no kill, claim or achievement raises a notice of its own beside the staged ones.
       await page.evaluate(() => window.useGameStore.getState().triggerHitstop(60000));
-      await stageNotice(page, 'notice.dusk');
-      await check('at rest with a notice', [], { want: [stack('notice.dusk')] });
-      await stageNotice(page, 'notice.dawn', { onTop: true });
-      await check('at rest with two notices', [], { want: [vp.column ? stack('notice.dawn') : stack('notice.dusk', 'notice.dawn')] });
+      await raise(page, [['notice.dusk', 'warn']]);
+      await check('at rest with a notice', [], { keys: ['notice.dusk'], want: [stack('notice.dusk')] });
+      await raise(page, [['notice.dusk', 'warn'], ['notice.dawn', 'success']]);
+      await check('at rest with two notices', [], vp.column ? { keys: ['notice.dawn'], want: [stack('notice.dawn')] }
+        : { keys: ['notice.dusk', 'notice.dawn'], want: [stack('notice.dusk', 'notice.dawn')] });
 
       const named = await raiseTarget(page);
       console.log(`hud-at-rest ${vp.name}: the aim cone named ${JSON.stringify(named)}`);
       await check('with a nameplate', ['target-frame'], { plate: true });
 
-      await stageNotice(page, 'notice.siege.first', { vars: { n: 1 } });
-      await check('with a nameplate and a notice', ['target-frame'], { plate: true, want: [stack('notice.siege.first')] });
+      await raise(page, [['notice.siege.first', 'warn', { vars: { n: 1 } }]]);
+      await check('with a nameplate and a notice', ['target-frame'], { plate: true, keys: ['notice.siege.first'], want: [stack('notice.siege.first')] });
 
-      // The dragon's arrival as bossSystem raises it: the boss bar and its call in one task, as world/bossSystem.js's
+      // The dragon's arrival as bossSystem raises it: its call and the boss bar in one task, as world/bossSystem.js's
       // arrival does (the call, then setBossActive), while the siege notice may still be up.
       const woke = await page.evaluate(() => {
         const s = window.useGameStore.getState();
@@ -303,10 +308,8 @@ for (const vp of [
         return true;
       });
       expect(woke, 'SETUP: no forceBossSpawn or addNotification on the dev store').toBe(true);
-      await expect(page.locator('[data-testid="boss-health-bar"]'), 'SETUP: the boss bar never showed').toHaveCount(1, { timeout: 10000 });
-      await expect(page.locator('[data-notification-key="notice.bossAwakens"]'), 'SETUP: the dragon\'s arrival call never showed').toHaveCount(1, { timeout: 5000 });
-      await page.waitForTimeout(800);
       await check('with the nameplate, the boss bar and the dragon\'s arrival', ['target-frame', 'boss-health-bar'], { plate: true,
+        keys: ['notice.bossAwakens'],
         want: vp.column ? [['bar:notice.bossAwakens']] : [stack('notice.bossAwakens'), stack('notice.siege.first', 'notice.bossAwakens')] });
 
       await page.evaluate(() => { window.__hudPlate = null; window.GameMethods.damageMob(window.__hudBrute, 99999, 'physical', 'ally'); });
@@ -314,9 +317,8 @@ for (const vp of [
       await noNotices(page, 'with the boss bar up');
       await check('with the boss bar alone', ['boss-health-bar'], { want: [[]] });
 
-      // The dragon's phase call through the real phase change: the dragon damaged to a quarter (phase 3). Read as soon as
-      // it shows: its 4 s run from the change, and the page can stall after it (the log says how long, and the longest
-      // task in that window).
+      // The dragon's phase call through the real phase change: the dragon damaged to a quarter (phase 3). The log says how
+      // long it took to show and the longest task in that window.
       const phase = await page.evaluate(() => {
         const s = window.useGameStore.getState();
         if (typeof s.damageBoss !== 'function') return null;
@@ -331,33 +333,27 @@ for (const vp of [
         return before;
       });
       expect(phase, 'SETUP: no damageBoss on the store, or the dragon has no health').toBeGreaterThan(0);
-      await expect(page.locator('[data-notification-key="notice.bossPhase3"]'), `SETUP: the phase 3 call never showed (the dragon at ${phase})`).toHaveCount(1, { timeout: 8000 });
-      const stall = await page.evaluate(() => {
+      const readAt = await check('with the boss bar and the dragon\'s phase call', ['boss-health-bar'],
+        { keys: ['notice.bossPhase3'], want: [vp.column ? ['bar:notice.bossPhase3'] : stack('notice.bossPhase3')] });
+      const stall = await page.evaluate((t) => {
         window.__phaseObs?.disconnect();
-        return { shownAfterMs: Math.round(performance.now() - window.__phaseAt), longestTaskMs: window.__phaseTasks.length ? Math.round(Math.max(...window.__phaseTasks)) : null };
-      });
-      console.log(`hud-at-rest ${vp.name}: the phase call showed ${JSON.stringify(stall)}`);
-      await check('with the boss bar and the dragon\'s phase call', ['boss-health-bar'],
-        { want: [vp.column ? ['bar:notice.bossPhase3'] : stack('notice.bossPhase3')] });
+        return { readAfterMs: Math.round(t - window.__phaseAt), longestTaskMs: window.__phaseTasks.length ? Math.round(Math.max(...window.__phaseTasks)) : null };
+      }, readAt);
+      console.log(`hud-at-rest ${vp.name}: the phase call read ${JSON.stringify(stall)}`);
 
-      // One of the dragon's attack calls as render/BossEntity.jsx raises it (bossCall: a key marked `boss`), then a plain
-      // notice staged on it: the encounter column keeps the call and holds the notice back; a stack holds both.
-      await noNotices(page, 'after the phase call');
-      await stageNotice(page, 'notice.bossFireball', { type: 'warning', opts: { boss: true } });
-      await page.waitForTimeout(400);
-      await stageNotice(page, 'notice.dusk', { onTop: true, held: !!vp.column });
-      await check('with the boss bar, the dragon\'s attack call and a notice', ['boss-health-bar'],
-        { want: [vp.column ? ['bar:notice.bossFireball'] : stack('notice.bossFireball', 'notice.dusk')] });
+      // One of the dragon's attack calls as render/BossEntity.jsx raises it (bossCall: a key marked `boss`) and a plain
+      // notice after it, in one task: the encounter column keeps the call and holds the newer notice back; a stack holds both.
+      await raise(page, [['notice.bossFireball', 'warning', { boss: true }], ['notice.dusk', 'warn']]);
+      await check('with the boss bar, the dragon\'s attack call and a notice', ['boss-health-bar'], vp.column
+        ? { keys: ['notice.bossFireball'], want: [['bar:notice.bossFireball']] }
+        : { keys: ['notice.bossFireball', 'notice.dusk'], want: [stack('notice.bossFireball', 'notice.dusk')] });
       if (vp.column) {
-        // The notice held back is live: it takes the boss bar's line when the call leaves, inside its own 4 s.
-        await page.waitForFunction(() => {
-          const line = document.querySelector('[data-testid="boss-health-bar"] [data-notification-key]');
-          return line && line.getAttribute('data-notification-key') === 'notice.dusk';
-        }, null, { timeout: 5000, polling: 50 }).catch(async () => {
-          const up = await page.evaluate(() => [...document.querySelectorAll('[data-notification-key]')].map((el) => el.getAttribute('data-notification-key')));
-          expect.soft(up, `the notice held behind the dragon's call never took the boss bar's line at ${vp.name}`).toEqual(['notice.dusk']);
-        });
-        await check('with the boss bar and the notice it held', ['boss-health-bar'], { want: [['bar:notice.dusk']] });
+        // A notice held behind the call is live: raised 3 s into the call's life, it takes the boss bar's line when the
+        // call leaves, and the read waits for that.
+        await raise(page, [['notice.bossFireball', 'warning', { boss: true }]]);
+        await page.waitForTimeout(3000);
+        await raise(page, [['notice.dawn', 'success']], { onTop: true });
+        await check('with the boss bar and the notice it held', ['boss-health-bar'], { keys: ['notice.dawn'], want: [['bar:notice.dawn']] });
       }
     });
   });
