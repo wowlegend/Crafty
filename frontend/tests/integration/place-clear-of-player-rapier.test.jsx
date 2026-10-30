@@ -4,6 +4,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { placeAtHit } from '../../src/world/placeAtHit.js';
+import { mineTarget } from '../../src/world/buildTarget.js';
 import { generateMesh } from '../../src/world/mesher.js';
 import { voxelIndex, CHUNK_SIZE, CHUNK_VOLUME, chunkOf } from '../../src/world/chunkLayout.js';
 import { moveKinematic } from '../../src/game/kinematicMove.js';
@@ -312,6 +313,33 @@ describe('a right-click never puts a block inside the player (real Rapier, real 
     const r = rightClick(S, beside);
     expect(r.placed, 'a cell inside the bull\'s body was placed').toBe(0);
     expect(solidInBody(S), 'a block was placed inside the bull').toEqual([]);
+  });
+
+  it('a block an earlier click left around the camera (a save from before the fix): a left click mines it, and the player walks out', () => {
+    const S = makeScene({ x: 4.5, z: 8.5, edits: [[2, LAND_TOP, 8, SAND], [2, LAND_TOP + 1, 8, SAND]] });
+    // The control first: with the eye's cell clear, a left click takes the block the ray hits (the step's upper cell).
+    const leftClick = (h) => {
+      const e = eye(S);
+      const c = mineTarget(h.hitPoint, h.direction, e, useGameStore.getState().worldBlocks);
+      return [c.x, c.y, c.z];
+    };
+    expect(leftClick(buildRay(S, { x: -1, y: 0, z: 0 })), 'with the eye clear, the left click does not take the block the ray hits').toEqual([2, LAND_TOP + 1, 8]);
+
+    const e = eye(S);
+    const cell = [Math.floor(e.x), Math.floor(e.y), Math.floor(e.z)];
+    setVoxel(S, cell[0], cell[1], cell[2], 1);
+    useGameStore.setState({ worldBlocks: new Map([[cell.join('_'), 1]]) });
+    expect(escape(S).free, 'SETUP: the block around the camera does not hold the player').toBe(false);
+    const taken = [];
+    for (const dir of [{ x: -1, y: 0, z: 0 }, { x: 0.4, y: -0.3, z: 1 }, { x: 0, y: -1, z: 0 }]) {
+      const h = buildRay(S, dir);
+      expect(h && h.toi, `SETUP: from inside the block the ray ${JSON.stringify(dir)} hits nothing within its face`).toBeLessThan(0.7);
+      taken.push(leftClick(h));
+    }
+    expect(taken, 'from inside a placed block, the left click takes a cell other than the one around the camera').toEqual([cell, cell, cell]);
+    setVoxel(S, cell[0], cell[1], cell[2], AIR);
+    const out = escape(S);
+    expect(out.free, `mining the block around the camera did not free the player (best walk ${out.best} m, rise ${out.rise} m)`).toBe(true);
   });
 
   it('a footprint around the player places every cell but the ones the body fills, and spends exactly those', () => {

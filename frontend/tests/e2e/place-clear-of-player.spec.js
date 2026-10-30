@@ -11,7 +11,9 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // cell it fills is the one the camera is in) and one straight down (the feet's cell), then mine the pillar away and
 // place and mine one more block behind. Before the fix the eye-level click wrote a block around the camera: the player
 // could not move, and could not see the block (every face of it points away from an eye inside it). Then the player
-// walks out on real W, A, S and D.
+// walks out on real W, A, S and D. Last, a block is written around the camera the way a save from before the fix brings
+// one back (the worker's edit and the store's record, as a load delivers them): it holds the player, a real left click
+// takes it (before the fix the click took the cell beyond the block's inner face), and the player walks out.
 //
 // THE PRESENCE BEFORE THE ABSENCE. The same four walks run on the same spot before the burst, and each must cover a metre
 // there, or the spot cannot show a trap (SETUP). The burst must aim at least one right-click whose cell lies inside the
@@ -213,7 +215,7 @@ async function walk(page, code, from) {
 test.describe('placing beside the player at the shore', () => {
   test.setTimeout(300000);
 
-  test('a burst of real clicks around the player never shuts them in a block, and they walk out every way', async ({ page }) => {
+  test('a burst of real clicks around the player never shuts them in a block, and a left click frees one an old save holds', async ({ page }) => {
     await page.addInitScript(installWorldHold);
     await page.addInitScript(installNoticeLog);
     await bootDev(page);
@@ -298,6 +300,41 @@ test.describe('placing beside the player at the shore', () => {
     for (const code of Object.keys(KEYS)) {
       const m = await walk(page, code, after);
       expect(m, `after the burst, ${code} walked ${m} m (baseline ${baseline[code]} m): the player is held (${JSON.stringify(await page.evaluate(readHold))})`).toBeGreaterThanOrEqual(WALK_MIN_M);
+    }
+
+    // 5. A SAVE FROM BEFORE THE FIX: a block around the camera, written as a load writes a save's placed blocks.
+    await page.evaluate(standAt, { ...spot.from, capMs });
+    const boxed = await page.evaluate(({ x, y, z }) => {
+      const s = window.useGameStore.getState();
+      if (!s.terrainWorker) return { why: 'SETUP: no terrain worker in the store' };
+      const cell = [Math.floor(x), Math.floor(y + 0.67), Math.floor(z)];
+      const cx = Math.floor(cell[0] / 16), cz = Math.floor(cell[2] / 16);
+      s.terrainWorker.postMessage({ type: 'update_block', payload: { cx, cz, x: cell[0] - cx * 16, y: cell[1], z: cell[2] - cz * 16, blockType: 1 } });
+      s.setWorldBlocks(new Map(s.worldBlocks).set(cell.join('_'), 1));
+      return { cell: cell.join('_') };
+    }, spot.from);
+    expect(boxed.why, boxed.why).toBeUndefined();
+    let box = null;
+    await expect.poll(async () => {
+      box = await page.evaluate(readHold);
+      return Object.values(box.eyeRays).every((d) => d !== null && d < 0.7);
+    }, { message: `SETUP: the block written around the camera never closed in its collider (${JSON.stringify(box)})`, timeout: 30000 }).toBe(true);
+    await page.evaluate(() => window.__e2eWorldHold.release());
+    const stuck = await walk(page, 'KeyW', spot.from);
+    expect(stuck, `SETUP: the block around the camera does not hold the player (W walked ${stuck} m), so freeing them shows nothing (${JSON.stringify(box)})`).toBeLessThan(0.3);
+    await page.evaluate(standAt, { ...spot.from, capMs });
+    await page.evaluate(armClick, { yaw: 0, pitch: 0 });
+    await page.mouse.click(640, 400, { button: 'left' });
+    await page.evaluate(frames, 4);
+    const freeing = await page.evaluate(() => window.__e2eClick);
+    console.log(`[place-clear] the left click inside the block ${boxed.cell}: ${JSON.stringify(freeing)}`);
+    expect({ verb: freeing.verb, cell: freeing.mineCell, after: freeing.minedNow },
+      `from inside the block, the left click did not take it (click ${JSON.stringify(freeing)}; ${JSON.stringify(await page.evaluate(readHold))})`)
+      .toEqual({ verb: 'mine', cell: boxed.cell, after: 0 });
+    await page.evaluate(() => window.__e2eWorldHold.release());
+    for (const code of Object.keys(KEYS)) {
+      const m = await walk(page, code, spot.from);
+      expect(m, `after the left click took the block, ${code} walked ${m} m: the player is held (${JSON.stringify(await page.evaluate(readHold))})`).toBeGreaterThanOrEqual(WALK_MIN_M);
     }
   });
 });

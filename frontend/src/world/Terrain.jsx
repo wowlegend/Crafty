@@ -32,6 +32,7 @@ import { HEARTH_Y, HEARTH_FIRE } from './homeAnchor.js';
 import { chestHasItems } from '../game/chestState.js';
 import { blockForId } from './blockIds';
 import { placeAtHit } from './placeAtHit.js';
+import { mineTarget } from './buildTarget.js';
 import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE } from './loadedChunks.js';
 import { makeMobFloorProbe } from './mobFloorProbe.js';
 
@@ -155,14 +156,8 @@ const TargetOutline = () => {
             // #72 sweep fix: `timeOfImpact`, not the legacy `toi` (undefined -> NaN target ->
             // the block-target outline never resolved a real voxel).
             const hitPoint = rayStart.clone().add(direction.multiplyScalar(hit.timeOfImpact));
-            // Step slightly IN to the block to ensure we target the hit block's voxel grid
-            const targetPos = hitPoint.clone().add(direction.clone().multiplyScalar(0.01));
-            
-            const tx = Math.floor(targetPos.x) + 0.5;
-            const ty = Math.floor(targetPos.y) + 0.5;
-            const tz = Math.floor(targetPos.z) + 0.5;
-            
-            meshRef.current.position.set(tx, ty, tz);
+            const cell = mineTarget(hitPoint, direction, rayStart, useGameStore.getState().worldBlocks);
+            meshRef.current.position.set(cell.x + 0.5, cell.y + 0.5, cell.z + 0.5);
             meshRef.current.visible = true;
         } else {
             meshRef.current.visible = false;
@@ -729,12 +724,9 @@ export const MinecraftWorld = React.memo(() => {
             const toi = hit.timeOfImpact;
             const hitPoint = rayStart.clone().add(direction.multiplyScalar(toi));
 
-            const deletePos = hitPoint.clone().add(direction.clone().multiplyScalar(0.01));
-            const targetedX = Math.floor(deletePos.x);
-            const targetedY = Math.floor(deletePos.y);
-            const targetedZ = Math.floor(deletePos.z);
-            const targetCoords = `${targetedX}_${targetedY}_${targetedZ}`;
             const store = useGameStore.getState();
+            const { x: targetedX, y: targetedY, z: targetedZ } = mineTarget(hitPoint, direction, rayStart, store.worldBlocks);
+            const targetCoords = `${targetedX}_${targetedY}_${targetedZ}`;
 
             return {
                 toi,
