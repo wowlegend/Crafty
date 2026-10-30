@@ -6,6 +6,13 @@
 // inside one toast's life is the same news, and is dropped), and which one a single line shows where only one fits. A
 // plain string is never dropped: the denial notices say why each press was refused, and a press the player repeats must
 // answer each time.
+//
+// The dragon's calls come in two classes. Its one-off calls (the arrival, the return, the phase changes, the defeat:
+// world/bossSystem.js bossCall, `opts.boss`) mark a turn in the fight and take a single line from any other notice. Its
+// attack calls (the fireball, the roar, the lava, the summons: render/BossEntity.jsx through bossAttackCall,
+// `opts.attack`) repeat every 2.4 to 8.5 s for the whole fight and each lives 4 s, so one is up almost all the time; in a
+// single line they rank below every other notice, or a drop, a quest or a denial raised in the fight would show for
+// under a second.
 import { STRINGS } from '../i18n/strings.js';
 import { t as translate } from '../i18n/i18n.js';
 
@@ -14,23 +21,27 @@ export const TOAST_MS = 4000;
 
 /** PURE. A notification from what a caller hands addNotification: a dictionary key (with `vars`) or a plain string. Its
  *  `dedupe` is `opts.key`, else the key; a plain string without `opts.key` has none. `opts.boss` marks one of the
- *  dragon's calls (world/bossSystem.js, render/BossEntity.jsx), which the encounter column shows before any other. */
+ *  dragon's one-off calls and `opts.attack` one of its attack calls (`boss` wins if both are set). */
 export function toNotification(message, type = 'info', opts = {}) {
   const isKey = typeof message === 'string' && Object.prototype.hasOwnProperty.call(STRINGS.en, message);
   const base = isKey ? { key: message, vars: opts.vars } : { text: String(message ?? '') };
-  return { ...base, type, dedupe: opts.key ?? (isKey ? message : null), ...(opts.boss ? { boss: true } : {}) };
+  const mark = opts.boss ? { boss: true } : opts.attack ? { attack: true } : {};
+  return { ...base, type, dedupe: opts.key ?? (isKey ? message : null), ...mark };
 }
 
-/** PURE. The one notification a single line shows from the live list (oldest first): the newest of the dragon's calls,
- *  else the newest of the rest; null when none is up. Each still leaves at the end of its own life, so a notice the line
- *  holds back is shown only if it outlives what stood in front of it, and none is shown after the moment it describes. */
+/** A notice's place in a single line: the dragon's one-off calls first, then every plain notice, then its attack calls. */
+const lineRank = (n) => (n.boss ? 2 : n.attack ? 0 : 1);
+
+/** PURE. The one notification a single line shows from the live list (oldest first): the newest of the dragon's one-off
+ *  calls, else the newest plain notice, else the newest of its attack calls; null when none is up. Each still leaves at
+ *  the end of its own life, so a notice the line holds back is shown only if it outlives what stood in front of it, and
+ *  none is shown after the moment it describes. */
 export function lineNotification(live) {
-  let newest = null;
+  let shown = null;
   for (let i = (live?.length ?? 0) - 1; i >= 0; i--) {
-    if (live[i].boss) return live[i];
-    newest ??= live[i];
+    if (!shown || lineRank(live[i]) > lineRank(shown)) shown = live[i];
   }
-  return newest;
+  return shown;
 }
 
 /** PURE. Whether a notification with `dedupe` may show at `now`, given `recent` (dedupe -> when one last showed). One

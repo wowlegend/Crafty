@@ -4,12 +4,14 @@ import { render, screen, cleanup, waitFor } from '@testing-library/react';
 
 // WHERE THE NOTICES SHOW (DECISIONS 2026-10-29 item 92), rendered through the HUD's own components at each layout. In the
 // encounter column (a phone, a phone on its side: ui/hudLayout.js toastsInEncounter) one notice shows at a time, the
-// dragon's call before any other: inside the boss bar's own line while the bar is up, else as the one toast. Where the
-// stack stands on its own, a keyboard holds every notice and a tall touch screen the newest it has room for
-// (ui/hudLayout.js tallToastPlace), standing left of the right fans' column on its side.
+// dragon's one-off call before any other and its attack calls after every other: inside the boss bar's own line while
+// the bar is up, else as the one toast. Where the stack stands on its own, a keyboard holds every notice and a tall
+// touch screen the newest it has room for (ui/hudLayout.js tallToastPlace), standing left of the right fans' column on
+// its side.
 //
-// NOT CHECKED HERE: where anything lands (jsdom has no layout; tests/e2e/hud-at-rest.spec.js reads the rects at the seven
-// viewports), and the dragon's attack calls from render/BossEntity.jsx, which raise only while the world runs.
+// NOT CHECKED HERE: where anything lands (jsdom has no layout; tests/e2e/hud-at-rest.spec.js reads the rects at the eight
+// viewports), and the dragon's attack calls from render/BossEntity.jsx, which raise only while the world runs (the line
+// through a whole fight: tests/gates/boss-attack-line-gates.test.js).
 vi.mock('../../src/input/touchDevice', () => ({ isTouchUIMode: vi.fn(() => false), isTouchDevice: vi.fn(() => false) }));
 import { isTouchUIMode } from '../../src/input/touchDevice';
 import { Encounter, PlacedToasts } from '../../src/HUD.jsx';
@@ -66,6 +68,18 @@ describe('the encounter column holds one notice at a time', () => {
       expect(keys).toEqual(['notice.dawn']);
     }, { timeout: 3000 });
     expect(most, 'two toasts at once in a column sized for one').toBe(1);
+  });
+
+  it('an attack call yields the bar\'s line to a plain notice, older or newer, and takes it when no other is up', () => {
+    at(390, 664, true);
+    const fire = { id: 4, ...toNotification('notice.bossFireball', 'warning', { attack: true }) };
+    const lineKey = () => screen.getByTestId('boss-call').getAttribute('data-notification-key');
+    const { rerender } = render(<Encounter bossSystem={boss(true)} notifications={[fire, LIVE[2]]} />);
+    expect(lineKey(), 'a newer notice raised while the attack call shows').toBe('notice.dawn');
+    rerender(<Encounter bossSystem={boss(true)} notifications={[LIVE[2], fire]} />);
+    expect(lineKey(), 'an attack call raised while a notice shows').toBe('notice.dawn');
+    rerender(<Encounter bossSystem={boss(true)} notifications={[fire]} />);
+    expect(lineKey(), 'the attack call alone').toBe('notice.bossFireball');
   });
 
   it('the bar\'s name stands in its line when no notice is up: the tier\'s name, in the player\'s language', () => {

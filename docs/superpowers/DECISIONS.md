@@ -95,21 +95,28 @@ items. Each stands while it earns its place.
    a 1180x820 iPad, where at the edge two toasts or a three-line call reached the spell opener; upright it keeps the edge
    and stops above the spell opener, four on an 820x1180 iPad. On a phone and a phone on its side the notices join the
    encounter column (item 90), the one band those screens leave clear across the middle (at 844x390 the stack stood 372
-   px down, off the screen), and **the column holds one notice at a time** (`ui/notifications.js` `lineNotification`):
-   the newest of the dragon's calls (every notice `world/bossSystem.js` and `render/BossEntity.jsx` raise goes through
-   `bossCall`, marked `boss`), else the newest notice. While the boss bar is up it shows inside the bar's own line, in
+   px down, off the screen), and **the column holds one notice at a time** (`ui/notifications.js` `lineNotification`),
+   in this order: the newest of the dragon's one-off calls (its arrival, return, phase changes and defeat:
+   `world/bossSystem.js` `bossCall`, marked `boss`), else the newest plain notice, else the newest of its attack calls
+   (`render/BossEntity.jsx` through `bossAttackCall`, marked `attack`). **Why the attack calls come last:** they repeat
+   all fight (the fireball every 2.4 s, the roar every 4.2 s, the lava every 5.2 s, the summons every 8.5 s) and each
+   lives 4 s, so one is up almost the whole time; ranked with the one-off calls they left a notice raised in the fight (a
+   drop, a quest, a denial a repeated press must answer) at most 0.8 s of its 4 s in the first phase and 0.2 s in the
+   second. So an attack call never displaces a live plain notice and yields to one raised while it shows, and a plain
+   notice holds the line for its whole life unless a one-off call arrives, which takes the line at once
+   (`tests/gates/boss-attack-line-gates.test.js`: a plain notice at every 10 ms offset over two periods of each cadence,
+   11,520 simulated fights, each held 4,000 ms). While the boss bar is up the line shows inside the bar's own line, in
    the name's place beside the dragon's icon, clamped to three lines on a phone and one on a phone on its side, where 14
    px separate the bar from the hotbar's XP edge (`bossCallLines`); with the bar down it is the one toast, four lines at
    most. **Why one at a time in the bar's line, and not held until the bar is down:** a fight lasts minutes, and a notice
    held until the dragon falls arrives after the moment it describes (a denial says why the press just made was refused;
    a drop or a quest belongs to the kill that raised it), and every held notice would arrive at once on top of the
-   dragon's defeat. In the line each keeps its own 4 s: a notice behind the dragon's call shows if it outlives the call
-   and is lost if it does not, the cost of a band sized for one line. The stack under the boss bar had no room there: when
+   dragon's defeat. In the line each keeps its own 4 s: a notice behind a one-off call, or an attack call behind a notice,
+   shows if it outlives what stands in front of it and is lost if it does not, the cost of a band sized for one line. The stack under the boss bar had no room there: when
    the dragon raised its arrival with the bar up it covered the crosshair's box and the vitals for 4 s at 390x664 and
    375x667 and the hotbar at 844x390, and two toasts reached the vitals with no boss at all. Proof:
    `tests/e2e/hud-at-rest.spec.js` (at every viewport: two notices at once, the arrival with the bar up, the real phase
-   call, an attack call with a notice staged on it, and on the phones that notice taking the bar's line when the call
-   leaves),
+   call, an attack call alone, a notice raised while it shows, and an attack call raised while a notice shows),
    `tests/gates/hud-notices-gates.test.jsx`, and `tests/gates/hud-layout-gates.test.js` (a full tall stack against
    every touch control at 4,604 tall touch viewports). The boss bar's name, phase line and numbers read through t() in
    both dictionaries. **On touch the stack is the only view of the list:** the
