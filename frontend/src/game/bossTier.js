@@ -39,6 +39,10 @@ export function bossNameKey(tier) {
   return { key: n === 1 ? 'boss.dragonRisen' : 'boss.dragon' };
 }
 
+/** The moves beyond the core three (game/dragonMoves.js CORE_MOVES) a tier knows: the one list the move machine reads
+ *  for them, so a return can learn a move and a lit shrine can take one away (tricks.filter). */
+const BASE_TRICKS = Object.freeze(['fireball', 'lava', 'summon']);
+
 /** Everything that differs between tiers, derived from BOSS_CONFIG. Tier 0 is the config itself. */
 export function bossTierStats(tier) {
   const n = tierOf(tier);
@@ -46,6 +50,7 @@ export function bossTierStats(tier) {
     return {
       tier: 0, name: BOSS_CONFIG.name, health: BOSS_CONFIG.health, xpReward: BOSS_CONFIG.xpReward,
       phases: BOSS_CONFIG.phases.map((p) => ({ ...p })), loot: BOSS_LOOT.map(([i, q]) => [i, q]),
+      tricks: [...BASE_TRICKS],
     };
   }
   const speedMult = Math.min(SPEED_CAP, 1 + SPEED_PER_TIER * n);
@@ -59,6 +64,7 @@ export function bossTierStats(tier) {
     })),
     // The crown is the first kill's trophy; a returning dragon pays in scales, more each time.
     loot: [['Dragon Scale', 2 + n]],
+    tricks: [...BASE_TRICKS],
   };
 }
 
