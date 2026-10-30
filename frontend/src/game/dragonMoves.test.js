@@ -44,6 +44,17 @@ describe('the bite', () => {
     expect(strikes(evs)).toEqual([]);
     expect(evs).toContainEqual(expect.objectContaining({ type: 'whiff', move: 'bite' }));
   });
+  it('a bite does not reach a player more than 3.5 m above or below the dragon', () => {
+    const level = recAt();
+    stepDragon(level, at(3), 0);
+    expect(strikes(stepDragon(level, at(3, { player: { x: 3, y: 3.4, z: 0 } }), 520)), 'the bite missed a player 3.4 m up').toHaveLength(1);
+    const high = recAt();
+    stepDragon(high, at(3), 0);
+    expect(strikes(stepDragon(high, at(3, { player: { x: 3, y: 3.6, z: 0 } }), 520)), 'the bite reached a player 3.6 m up').toEqual([]);
+    const low = recAt();
+    stepDragon(low, at(3), 0);
+    expect(strikes(stepDragon(low, at(3, { player: { x: 3, y: -3.6, z: 0 } }), 520)), 'the bite reached a player 3.6 m down').toEqual([]);
+  });
   it('the bite\'s windup event carries its arc: reach 5, a quarter turn, aimed at the player', () => {
     const rec = recAt();
     const [w] = stepDragon(rec, at(3), 0);

@@ -175,8 +175,8 @@ describe('staggerPose — reeling, on the world clock', () => {
 
 describe('the wiring (weak, structural — the e2e drives these through a real Shift press)', () => {
   it('the dodge start calls applyPerfectDodge on the live mobs at world time, and refunds the cooldown', () => {
-    // RE-POINTED 2026-10-30 (DECISIONS item 125): the live mobs with the dragon appended while it fights
-    // (game/bossCombat.js withBossTarget, proven in its colocated test); tests/e2e/dragon-fight.spec.js parries it.
+    // The live mobs with the dragon appended while it fights (DECISIONS 2026-10-30 item 125; game/bossCombat.js
+    // withBossTarget, proven in its colocated test); tests/e2e/dragon-fight.spec.js parries it.
     expect(carriersOf(/applyPerfectDodge\(withBossTarget\(mobsQuery\.entities\), currentTrans, worldNow\(\)\)/)).toEqual(['Components.jsx']);
     expect(carriersOf(/dodge\.lastDodgeTime = nowTime - dodge\.cooldown;/)).toEqual(['Components.jsx']);
     expect(carriersOf(/GameMethods\.spawnPerfectText = /)).toEqual(['SimplifiedNPCSystem.jsx']);

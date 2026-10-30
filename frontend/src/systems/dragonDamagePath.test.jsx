@@ -26,6 +26,9 @@ import { worldNow } from '../game/worldClock.js';
 //   P1 damageMob does not route the dragon's id (CombatSystem.jsx) -> every case
 //   P2 the route ignores the source (damageBoss(damage)) -> "an ally's hit is never a riposte"
 //   P3 hitDragon returns the record after the fight is over -> "a burn stops when the fight is over"
+//   P4 damageBoss skips the riposte (world/bossSystem.js) -> "a burn ticks on it, the player's damage: the riposte ..."
+//   HS hitDragon freezes the world for any of the player's sources, a burn tick included (isPlayerSource for
+//      isDirectPlayerHit) -> "only the player's direct hit freezes the world"
 const GROUND_ONLY = { groundOnly: true };
 const AT = { x: 40, y: 20, z: 40 };
 
@@ -108,6 +111,19 @@ describe('each Aspect kit lowers the dragon\'s HP through damageMob', () => {
     expect(stepSquad([ally], bossTargets([], bossCombat, GROUND_ONLY), { x: AT.x, y: AT.y, z: AT.z }, 10, true).attacks).toEqual([]);
     settle();
     expect(hp()).toBe(300);
+  });
+
+  it('only the player\'s direct hit freezes the world; a burn tick, an ally\'s hit and a hazard\'s do not', () => {
+    const frozen = () => useGameStore.getState().hitstopUntil > performance.now();
+    act(() => { GameMethods.damageMob(BOSS_TARGET_ID, 10, 'physical', 'player'); });
+    expect(frozen(), 'PRESENCE: the player\'s direct hit did not freeze the world').toBe(true);
+    for (const source of ['player-dot', 'ally', 'hazard']) {
+      useGameStore.setState({ hitstopUntil: 0, hitstopStart: 0 });
+      act(() => { GameMethods.damageMob(BOSS_TARGET_ID, 10, 'fireball', source); });
+      expect(frozen(), `a hit from ${source} froze the world`).toBe(false);
+    }
+    settle();
+    expect(hp(), 'SETUP: the four hits did not all land').toBe(260);
   });
 
   it('a burn stops when the fight is over: damageMob hands back nothing for a dragon that is not fighting', () => {
