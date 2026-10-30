@@ -7,7 +7,7 @@ import { getWeaponBaseDamage } from './game/equipment.js';
 import { worldTimeScale, hitstopForHit } from './game/hitstop.js';
 import { realDelta, worldNow } from './game/worldClock.js';
 import { BEAST_FORMS, BASE_CAPSULE, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
-import { formHasRoom, enterFormFitted, restoreBaseFitted } from './game/formFit.js';
+import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from './game/formFit.js';
 import { makeTransformState, decideTransform } from './game/beastTransform.js';
 import { canAfford, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST } from './game/ember.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
@@ -1048,9 +1048,13 @@ export const Player = ({ isWorldBuilt }) => {
         useGameStore.setState({ resumeSpawn: null }); // one-shot: placed, or given up for the origin spawn below
         resumeProbeFailsRef.current = 0;
         if (resume.place) {
-          rigidBodyRef.current.setTranslation(resume.place, true);
+          // Where the base capsule stands clear nearest the saved centre (game/formFit.js fitLoadedSpot): a save on disk
+          // can hold a spot in a wall or under the ground (the old Save button's rounded camera).
+          const spot = fitLoadedSpot(world, rapier, rigidBodyRef.current, resume.place, store.getMobGroundLevel, { unindexed: GameMethods.placedCells?.unindexed() });
+          const at = { x: spot.x, y: spot.y, z: spot.z };
+          rigidBodyRef.current.setTranslation(at, true);
           rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          camera.position.set(resume.place.x, resume.place.y + EYE_HEIGHT_M, resume.place.z);
+          camera.position.set(at.x, at.y + EYE_HEIGHT_M, at.z);
           spawnPosSet.current = true;
           return;
         }

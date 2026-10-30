@@ -23,21 +23,74 @@ const RISE = 0.15; // the furthest lift above the kept lower end
 const DROP = 0.4;
 const MARGIN = 0.01; // the clearance the placed capsule keeps from every collider
 
-const IDENTITY = { w: 1, x: 0, y: 0, z: 0 };
-let _offsets = null;
+// A loaded save's spot (fitLoadedSpot) is searched wider: the Save button before DECISIONS 2026-10-30 item 153 wrote the
+// camera rounded to whole metres, so a save on disk can stand the centre up to 0.5 m sideways into a wall and up to 1.17 m
+// above the body (the eye is 0.67 m over the centre). Wider than REACH is safe there only because each spot's own cell
+// is asked whether it is solid ground (cellSolid), which the form swap's short reach stands in for.
+const LOAD_REACH = 0.6;
+const LOAD_RISE = 0.6;
+const LOAD_DROP = 1.2;
+const LOAD_FALLBACK_GAP = 0.05; // the drop onto the column's top when nothing near the saved spot is clear
 
-/** Every shift on the grid within REACH sideways, DROP down and RISE up, nearest first (made once). */
-function offsets() {
-  if (_offsets) return _offsets;
+const IDENTITY = { w: 1, x: 0, y: 0, z: 0 };
+const _offsets = new Map();
+
+/** Every shift on the grid within `reach` sideways, `drop` down and `rise` up, nearest first (made once per range). */
+function offsets(reach = REACH, drop = DROP, rise = RISE) {
+  const key = `${reach}_${drop}_${rise}`;
+  if (_offsets.has(key)) return _offsets.get(key);
   const out = [];
-  const n = Math.round(REACH / STEP), up = Math.round(RISE / STEP), down = Math.round(DROP / STEP);
+  const n = Math.round(reach / STEP), up = Math.round(rise / STEP), down = Math.round(drop / STEP);
   for (let i = -n; i <= n; i++) for (let k = -n; k <= n; k++) {
-    if (Math.hypot(i, k) * STEP > REACH + 1e-9) continue;
+    if (Math.hypot(i, k) * STEP > reach + 1e-9) continue;
     for (let j = -down; j <= up; j++) out.push([i * STEP, j * STEP, k * STEP]);
   }
   out.sort((a, b) => Math.hypot(...a) - Math.hypot(...b));
-  _offsets = out;
+  _offsets.set(key, out);
   return out;
+}
+
+/** Whether a capsule of `shape` centred at a point would touch any collider but the body's own (and no dynamic body). */
+function clearTest(world, rapier, body, shape, { filter, unindexed } = {}) {
+  const capsule = new rapier.Capsule(shape.halfHeight, shape.radius + MARGIN);
+  // Dynamic bodies are not obstacles: block debris (world/BlockParticleSystem.jsx, 0.25 m cubes thrown for 2 s by every
+  // mined block) is shoved aside by the controller, and counted here it refused a form or lifted it off the floor.
+  const blocked = (s, p) => !!world.intersectionWithShape(p, IDENTITY, s, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC, undefined, undefined, body, filter)
+    || !!(unindexed && unindexed.some((o) => o.isValid() && o.intersectsShape(s, p, IDENTITY)));
+  // The capsule query, then balls along the capsule's axis: rapier3d-compat 0.19.2's capsule query read a golem's capsule
+  // clear with its top half a radius into a roof, when the core segment's end lay just short of the roof's face
+  // (tests/integration/form-fit-rapier.test.js). Balls half a radius apart, each grown by the sliver left between
+  // neighbours (3.2 % of the radius), cover the capsule; they are asked only of a spot the capsule query passed.
+  const gap = shape.radius / 2;
+  const n = Math.max(1, Math.ceil((2 * shape.halfHeight) / gap));
+  const ball = new rapier.Ball(shape.radius * 1.033 + MARGIN);
+  return (p) => {
+    if (blocked(capsule, p)) return false;
+    for (let i = 0; i <= n; i++) {
+      if (blocked(ball, { x: p.x, y: p.y - shape.halfHeight + (2 * shape.halfHeight * i) / n, z: p.z })) return false;
+    }
+    return true;
+  };
+}
+
+/**
+ * Whether the voxel cell (x, y, z) is solid terrain, from the chunk trimeshes alone. The mesher draws a face wherever a
+ * solid cell meets air or water, a chunk's own edges included (world/mesher.js), so each chunk's trimesh is closed, and a
+ * ray up the middle of a cell's column crosses an odd number of its faces from inside solid ground and an even number
+ * from air or water. Only trimeshes are counted: a placed cell's stand-in cuboid, debris and the player are not terrain.
+ * (A shape query cannot tell: a trimesh is hollow, so a capsule wholly inside the ground touches no face.)
+ */
+export function cellSolid(world, rapier, x, y, z) {
+  const ray = new rapier.Ray({ x: x + 0.5, y: y + 0.5, z: z + 0.5 }, { x: 0, y: 1, z: 0 });
+  const terrain = (c) => c.shapeType() === rapier.ShapeType.TriMesh;
+  let crossings = 0;
+  for (let i = 0; i < 256; i++) {
+    const hit = world.castRay(ray, 512, false, undefined, undefined, undefined, undefined, terrain);
+    if (!hit) break;
+    crossings++;
+    ray.origin = { x: ray.origin.x, y: ray.origin.y + hit.timeOfImpact + 1e-3, z: ray.origin.z };
+  }
+  return crossings % 2 === 1;
 }
 
 /**
@@ -51,33 +104,57 @@ function offsets() {
  *   since the last world step (world/placedCellColliders.js), which the world's queries cannot see yet
  * @returns {{x: number, y: number, z: number}|null} the capsule's centre, or null when nothing near clears
  */
-export function fitCapsule(world, rapier, body, shape, { filter, unindexed } = {}) {
+export function fitCapsule(world, rapier, body, shape, opts = {}) {
   const c = body.collider(0);
   const at = c.translation();
   const y0 = at.y - c.halfHeight() - c.radius() + shape.halfHeight + shape.radius;
-  const capsule = new rapier.Capsule(shape.halfHeight, shape.radius + MARGIN);
-  // Dynamic bodies are not obstacles: block debris (world/BlockParticleSystem.jsx, 0.25 m cubes thrown for 2 s by every
-  // mined block) is shoved aside by the controller, and counted here it refused a form or lifted it off the floor.
-  const blocked = (s, p) => !!world.intersectionWithShape(p, IDENTITY, s, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC, undefined, undefined, body, filter)
-    || !!(unindexed && unindexed.some((o) => o.isValid() && o.intersectsShape(s, p, IDENTITY)));
-  // The capsule query, then balls along the capsule's axis: rapier3d-compat 0.19.2's capsule query read a golem's capsule
-  // clear with its top half a radius into a roof, when the core segment's end lay just short of the roof's face
-  // (tests/integration/form-fit-rapier.test.js). Balls half a radius apart, each grown by the sliver left between
-  // neighbours (3.2 % of the radius), cover the capsule; they are asked only of a spot the capsule query passed.
-  const gap = shape.radius / 2;
-  const n = Math.max(1, Math.ceil((2 * shape.halfHeight) / gap));
-  const ball = new rapier.Ball(shape.radius * 1.033 + MARGIN);
-  const ballsClear = (p) => {
-    for (let i = 0; i <= n; i++) {
-      if (blocked(ball, { x: p.x, y: p.y - shape.halfHeight + (2 * shape.halfHeight * i) / n, z: p.z })) return false;
-    }
-    return true;
-  };
+  const clear = clearTest(world, rapier, body, shape, opts);
   for (const [dx, dy, dz] of offsets()) {
     const p = { x: at.x + dx, y: y0 + dy, z: at.z + dz };
-    if (!blocked(capsule, p) && ballsClear(p)) return p;
+    if (clear(p)) return p;
   }
   return null;
+}
+
+/**
+ * Where a loaded save stands the base capsule (Components.jsx's resume branch, once the saved column's colliders are
+ * in): the saved centre where the capsule is clear of every collider and its centre's cell is not solid ground, else the
+ * nearest such spot within LOAD_REACH sideways, LOAD_DROP down and LOAD_RISE up, else on the highest of the columns the
+ * capsule stands across (`probe`, Terrain.jsx getMobGroundLevel: the topmost face under y 255). A save on disk can hold a
+ * position no capsule fits at: the Save button before DECISIONS 2026-10-30 item 153 wrote the camera rounded to whole
+ * metres, and the frozen pre-cut fixture (tests/fixtures/pre-cut-save.json) stands nine metres under the ground in the
+ * chaos harness's world.
+ * @param {object} world the Rapier world
+ * @param {object} rapier the Rapier module
+ * @param {object} body the player's kinematic body (excluded from every query)
+ * @param {{x: number, y: number, z: number}} saved the saved centre
+ * @param {(x: number, z: number) => ?number} probe the ground probe, which casts at (x + 0.1, z + 0.1)
+ * @param {{filter?: (c: object) => boolean, unindexed?: object[]}} [opts] as fitCapsule's
+ * @returns {{x: number, y: number, z: number, by: 'saved'|'near'|'column'}} the centre, and how it was found
+ */
+export function fitLoadedSpot(world, rapier, body, saved, probe, opts = {}) {
+  const shape = BASE_CAPSULE;
+  const clear = clearTest(world, rapier, body, shape, opts);
+  const solid = new Map();
+  const inGround = (p) => {
+    const x = Math.floor(p.x), y = Math.floor(p.y), z = Math.floor(p.z);
+    const key = `${x}_${y}_${z}`;
+    if (!solid.has(key)) solid.set(key, cellSolid(world, rapier, x, y, z));
+    return solid.get(key);
+  };
+  for (const [dx, dy, dz] of offsets(LOAD_REACH, LOAD_DROP, LOAD_RISE)) {
+    const p = { x: saved.x + dx, y: saved.y + dy, z: saved.z + dz };
+    if (!inGround(p) && clear(p)) return { ...p, by: dx || dy || dz ? 'near' : 'saved' };
+  }
+  let top = -Infinity;
+  for (let x = Math.floor(saved.x - shape.radius); x <= Math.floor(saved.x + shape.radius); x++) {
+    for (let z = Math.floor(saved.z - shape.radius); z <= Math.floor(saved.z + shape.radius); z++) {
+      const y = probe ? probe(x + 0.4, z + 0.4) : null;
+      if (Number.isFinite(y)) top = Math.max(top, y);
+    }
+  }
+  const y = Number.isFinite(top) ? top + shape.halfHeight + shape.radius + LOAD_FALLBACK_GAP : saved.y;
+  return { x: saved.x, y, z: saved.z, by: 'column' };
 }
 
 /** Whether a form's capsule fits where the body stands (the roar's commit asks before the bar is spent). */

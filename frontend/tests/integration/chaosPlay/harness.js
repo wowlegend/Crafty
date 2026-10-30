@@ -37,7 +37,7 @@ import { moveSpeed, jumpVelocity, GLUE_VELOCITY, VAULT_VELOCITY, applyGravity } 
 import { steadyEye } from '../../../src/combat/swingOrigin.js';
 import { SEA_LEVEL } from '../../../src/world/oceanProfile.js';
 import { resolveSpawnGround, resolveResumeSpawn, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from '../../../src/game/spawnPlacement.js';
-import { formHasRoom, enterFormFitted, restoreBaseFitted } from '../../../src/game/formFit.js';
+import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from '../../../src/game/formFit.js';
 import { teleportPlayer } from '../../../src/game/stanceState.js';
 import { buildSaveData, savePosition } from '../../../src/game/saveSchema.js';
 
@@ -50,7 +50,7 @@ export const LAND_TOP = 30; // the land's top face: solid cells y < 30
 const CHUNKS = [-2, -1, 0, 1, 2];
 const KEYS = CHUNKS.flatMap((cx) => CHUNKS.map((cz) => `${cx}_${cz}`));
 
-// ---- the world: one map with the five places a player gets stuck --------------------------------------------------
+// ---- the world: one map with the places a player gets stuck -------------------------------------------------------
 // The shore (Kevin's): from x = 6 the land steps down a block every two columns to a seabed at 22, under water to
 // SEA_LEVEL. The cliff: south of z = -6 the land stands six blocks higher, a sheer face at z = -5. The cave: a tunnel two
 // wide and two high (ceiling at 32) runs into the cliff at x = -6..-5. The overhang: a stone slab at y = 32 over open
@@ -222,15 +222,21 @@ function spawnBranch(S) {
       S.resumeFails += 1;
       S.p.body.setTranslation({ x: r.x, y: r.y, z: r.z }, true);
       S.stats.loadHoldFrames++;
+      S.held = true;
       return;
     }
     useGameStore.setState({ resumeSpawn: null });
     S.resumeFails = 0;
     if (resume.place) {
-      S.p.body.setTranslation(resume.place, true);
+      const spot = fitLoadedSpot(S.world, RAPIER, S.p.body, resume.place, (x, z) => groundProbe(S, x, z), { unindexed: S.cells.unindexed() });
+      const at = { x: spot.x, y: spot.y, z: spot.z };
+      S.p.body.setTranslation(at, true);
       S.spawnSet = true;
+      S.stats[`loadsPlaced_${spot.by}`] = (S.stats[`loadsPlaced_${spot.by}`] || 0) + 1;
+      released(S, at);
       return;
     }
+    released(S, null);
   }
   const physicsY = spawnCornerGround((x, z) => groundProbe(S, x, z));
   const spawn = resolveSpawnGround(null, physicsY, S.spawnFails, true);
@@ -242,6 +248,22 @@ function spawnBranch(S) {
   S.p.body.setTranslation({ x: 0, y: spawnTargetY(spawn.groundY), z: 0 }, true);
   S.spawnSet = true;
   S.stats.respawns++;
+}
+
+/** A load's hold ends: I5 reads whether it stood the player near the saved spot (sideways within the load fit's reach),
+ *  within its frame bound, or gave up for the origin spawn. */
+export const LOAD_RELEASE_FRAMES = (lag) => 2 * lag + 12;
+const LOAD_RELEASE_REACH = 0.75;
+function released(S, spot) {
+  const L = S.loadPending;
+  if (!L) return;
+  S.loadPending = null;
+  const frames = S.f - L.f;
+  const off = spot ? Math.hypot(spot.x - L.saved.x, spot.z - L.saved.z) : null;
+  S.stats.loadsReleased++;
+  if (!spot) note(S, 'I5', { why: 'the hold gave up: the origin spawn', saved: L.saved, frames });
+  else if (frames > LOAD_RELEASE_FRAMES(S.lag) && !L.late) note(S, 'I5', { why: `held ${frames} frames`, saved: L.saved, spot: vec(spot) });
+  else if (off > LOAD_RELEASE_REACH) note(S, 'I5', { why: `stood ${off.toFixed(2)} m from the saved spot`, saved: L.saved, spot: vec(spot) });
 }
 
 /** One Player frame (Components.jsx useFrame, after the stepper), in its order. */
@@ -328,6 +350,7 @@ function tick(S, input) {
     S.acc -= DT;
     afterStepChecks(S);
   }
+  S.held = false;
   playerFrame(S, input);
   S.f++;
   S.stats.frames++;
@@ -375,6 +398,19 @@ function note(S, kind, detail) {
 
 function frameChecks(S) {
   const w = deepestSolid(S);
+  if (S.held) {
+    // A load's hold keeps the body at the saved spot, input ignored, until the new world's column is in; only then can
+    // the load fit (game/formFit.js fitLoadedSpot) read where the base capsule stands clear. A save from before item 153
+    // puts that spot in the ground by construction, so I1 and I2 read the player from the release on, and these frames
+    // are counted (and the bound on them is I5).
+    S.stats.heldFrames++;
+    if (w.depth > S.tol) S.stats.heldInSolidFrames++;
+    if (S.loadPending && S.f - S.loadPending.f > LOAD_RELEASE_FRAMES(S.lag) && !S.loadPending.late) {
+      S.loadPending.late = true;
+      note(S, 'I5', { why: `still held after ${LOAD_RELEASE_FRAMES(S.lag)} frames`, saved: S.loadPending.saved });
+    }
+    return;
+  }
   if (w.depth > S.maxDepth.value) S.maxDepth = { value: w.depth, f: S.f, cell: w.cell };
   if (w.depth > S.tol) note(S, 'I1', { depth: +w.depth.toFixed(3), cell: w.cell, at: vec(S.p.body.translation()) });
   const ec = eyeCell(S.p.body);
@@ -621,11 +657,18 @@ export function voidFall(S) {
   S.recent.push(`f${S.f} void fall (origin column ${JSON.stringify(column)})`);
 }
 
-/** A save, as the autosave (App.jsx) and the World Manager's Save button (WorldManager.jsx) write it. */
+/** A save, as the autosave (App.jsx) and the World Manager's Save button (WorldManager.jsx) write it; `legacy` as the
+ *  Save button wrote it before DECISIONS 2026-10-30 item 153 (the store's playerPosition: the camera, rounded), which
+ *  saves on disk still hold. */
 export function writeSave(S, kind) {
   const store = useGameStore.getState();
-  const position = savePosition(store);
-  S.recent.push(`f${S.f} save (${kind}) at ${JSON.stringify(position)}`);
+  const position = kind === 'legacy' ? { ...store.playerPosition } : savePosition(store);
+  const form = store.beastFormActive ? store.activeBeastForm : null;
+  S.stats.saves++;
+  if (kind === 'legacy') S.stats.savesLegacy++;
+  if (form) S.stats.savesInForm++;
+  S.savedForms.add(form || 'base');
+  S.recent.push(`f${S.f} save (${kind}) at ${JSON.stringify(position)}${form ? ` form=${form}` : ''}`);
   return buildSaveData(store, { position });
 }
 /** The generated world with a save's edits applied (terrain.worker.js applies its edit table as it generates). */
@@ -649,6 +692,8 @@ export function loadSave(S, data) {
   // until the wipe.
   S.logical = withMods(mods);
   S.reload = { doneAt: S.f + S.lag, mods, wiped: false, remountAt: null };
+  const pos = data.player_data && data.player_data.position;
+  if (pos) S.loadPending = { f: S.f, saved: { x: pos.x, y: pos.y, z: pos.z } };
   S.stats.loads++;
   S.recent.push(`f${S.f} load`);
   if (S.lag === 0) landDue(S);
@@ -673,10 +718,12 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
     gen: new Map(base().chunks), logical: copyChunks(base().chunks), recs: new Map(), reload: null,
     worker: { seq: 0, lastDue: 0, queue: [] }, standIns: [], recent: [], form: { pending: null, last: null },
     maxDepth: { value: 0, f: null, cell: null },
-    violations: { I1: [], I2: [], I3: [], I4: [] }, counts: { I1: 0, I2: 0, I3: 0, I4: 0 }, lastNoted: {},
+    violations: { I1: [], I2: [], I3: [], I4: [], I5: [] }, counts: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0 }, lastNoted: {},
+    held: false, loadPending: null,
     stats: { frames: 0, rightClicks: 0, rightClicksIntoBody: 0, cellsPlaced: 0, leftClicks: 0, minesUnderFeet: 0,
       originColumnEdits: 0, wallContactFrames: 0, swaps: 0, swapsUnderCeiling: 0, swapsAgainstWall: 0, swapsRefused: 0, formExits: 0,
-      clickPairs: 0, respawns: 0, loadHoldFrames: 0, respawnsAfterOriginMine: 0, respawnsAfterOriginPlace: 0, loads: 0, vaults: 0, escapes: 0, dugOut: 0 },
+      clickPairs: 0, respawns: 0, loadHoldFrames: 0, respawnsAfterOriginMine: 0, respawnsAfterOriginPlace: 0, loads: 0, vaults: 0, escapes: 0, dugOut: 0,
+      saves: 0, savesLegacy: 0, savesInForm: 0, loadsReleased: 0, heldFrames: 0, heldInSolidFrames: 0 },
   };
   S.cells = createPlacedCellColliders(world, RAPIER, createEditSeq());
   // A collider far below the world, always present. Without it a load's wipe leaves the player's capsule alone in the
@@ -693,15 +740,22 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
   world.createCollider(RAPIER.ColliderDesc.capsule(BASE_CAPSULE.halfHeight, BASE_CAPSULE.radius), body);
   S.p = playerParts(world, body, body.collider(0));
   S.home = { x, z, roam: box.roam };
+  S.savedForms = new Set();
   useGameStore.setState({ playerRigidBodyRef: { current: body } });
   world.step();
   for (let i = 0; i < 30; i++) tick(S, {});
   return S;
 }
 
+/** The end-of-session reads that are not per frame: a load the session ended still holding is I5. */
+export function finishSession(S) {
+  if (S.loadPending) note(S, 'I5', { why: 'the session ended with the load still holding', saved: S.loadPending.saved, frames: S.f - S.loadPending.f });
+}
+
 export function checkEscape(S) {
-  // One held reading is the finding; another escape test in the same session adds seconds and no information.
-  if (S.counts.I3 > 0) return { free: false, by: null };
+  // One held reading is the finding; another escape test in the same session adds seconds and no information. A body a
+  // load's hold keeps still is not the player's to move (I5 bounds that).
+  if (S.counts.I3 > 0 || S.held) return { free: false, by: null };
   const e = escape(S);
   S.stats.escapes++;
   if (e.by === 'dig') S.stats.dugOut++;

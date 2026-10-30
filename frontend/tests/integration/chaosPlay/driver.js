@@ -6,7 +6,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { BEAST_FORMS } from '../../../src/game/beasts.js';
 import {
   makeSession, tick, lookDir, buildRay, rightClick, leftClick, enterForm, exitForm, voidFall, writeSave, loadSave,
-  checkEscape, mulberry32,
+  checkEscape, finishSession, mulberry32,
 } from './harness.js';
 
 const ELEMENTS = Object.keys(BEAST_FORMS);
@@ -161,9 +161,13 @@ const EPISODES = {
     S.home = { x: 0.5, z: 0.5, roam: 3 };
   },
   saveLoad(S, rnd) {
-    // Saved and loaded from the World Manager's panel, which takes the input: the player stands still for both.
+    // Saved and loaded from the World Manager's panel, which takes the input: the player stands still for both. The save
+    // is made pressed against the nearest wall where there is one, and a third of the saves are written as the Save
+    // button wrote them before DECISIONS 2026-10-30 item 153 (the camera, rounded), as saves on disk still hold.
+    const w = nearestWall(S);
+    if (w) frames(S, 20, { yaw: w.yaw, forward: true, jump: false });
     frames(S, 15, { yaw: 0, forward: false });
-    const data = writeSave(S, rnd() < 0.5 ? 'manual' : 'auto');
+    const data = writeSave(S, pick(rnd, ['manual', 'auto', 'legacy']));
     EPISODES.wander(S, rnd);
     frames(S, 15, { yaw: 0, forward: false });
     loadSave(S, data);
@@ -192,6 +196,7 @@ export function playSession({ spot, seed, hz, lag, budget = 420, K = 90, tol }) 
   // let every edit land, then the end-of-session checks
   for (let i = 0; i < 40 && (S.worker.queue.length || S.reload); i++) tick(S, { yaw: 0, forward: false });
   for (let i = 0; i < 4; i++) tick(S, { yaw: 0, forward: false });
+  finishSession(S);
   checkEscape(S);
   S.end = { standIns: S.cells.size(), queued: S.worker.queue.length };
   return S;
