@@ -50,8 +50,7 @@ surface) · `bash ../ci/pipeline.sh --tier=certify` (CI's offline steps).
 
 Main deploys to the live site (Vercel) on every push and is branch-protected: required check `ci ok` (strict, admins
 included), no force push or deletion. Every lane is a branch and a PR. Merge main into the branch (a merge commit,
-never a squash; in it, `node frontend/scripts/ci/changelog.mjs --write` regenerates `memory/CHANGELOG.md`) and push:
-the PR's CI runs once, on that exact sha. When `ci ok` is green there and main has not moved,
+never a squash) and push: the PR's CI runs once, on that exact sha. When `ci ok` is green there and main has not moved,
 fast-forward main to it (`git merge --ff-only`) and push; GitHub marks the PR merged. If main moved, merge it in again
 and re-run. A change with no PR uses a `land/<date>` branch the same way. Green means a completed run concluded
 `success`; `cancelled` and `timed_out` are not green.
@@ -142,7 +141,8 @@ below these files.
 At the watermark, unprompted: kill leaked test processes and list orphan preview tabs
 (`sh frontend/scripts/dev/close-preview-tabs.sh`, list only); green the tree or revert the unfinished unit; update the
 cursor, the registry, STATUS and the Command Record (stamp, republish in place, sync:
-`frontend/scripts/ci/artifact-currency.mjs`);
+`frontend/scripts/ci/artifact-currency.mjs`); regenerate `memory/CHANGELOG.md`
+(`node frontend/scripts/ci/changelog.mjs --write`, in a committed tree with no merge in progress);
 check the README prose is still true; refresh the About line, topics and labels with
 `node frontend/scripts/ci/public-face.mjs --live`, then `--apply`; land through a PR.
 

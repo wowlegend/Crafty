@@ -32,18 +32,29 @@
    plans, 12 shipped specs with their two reference comps, one research note, the 2026-09 overnight brief and plan with ten of sixteen frames, the
    superseded cursor archive and one perf report. A record stays while a doc-currency canonical doc, a rule file,
    `CLAUDE.md`, a gate, script, test, CI step, a plan dated 2026-10-27 or later, a published page or the inbox names it
-   (each file name was grepped over every tracked file; `docs/superpowers/INDEX.md` lists what stays and why). This
-   supersedes item 13(a)'s in-tree `docs/archive/` (2026-10-28): a retired record goes to a dated tag, not a
-   directory. Proof nothing live depended on them: doc-currency, the unit suite and the build on the PR's head.
+   (`docs/superpowers/INDEX.md` lists what stays and why). Four records left although something named them, each only
+   as history, and all four are at the tag: `sota-2026-09/OVERNIGHT.md` (the published pages `sota-audit.html` and
+   `era-review.html` quote it as the source of dated claims), and `KEVIN-REVIEW.html`,
+   `LOOP-PROGRESS-2026-10-28.html` (from `docs/archive/`) and `sota-2026-09/PLAN.md` (the 2026-10-27 harness-sota plan names them as
+   units that moved or bannered them). None is a link or a path anyone follows. This supersedes item 13(a)'s in-tree
+   `docs/archive/` (2026-10-28): a retired record goes to a dated tag, not a directory. Proof nothing live depended on
+   them: each of the 143 file names was grepped over every tracked file. No source file, test, script, gate, rule file,
+   `CLAUDE.md` or canonical doc names one as a file to open (`cameraKick.js` names its plan as
+   `git show records/2026-10-29:<path>`; ACTIVE_PLAN T15 names OVERNIGHT.md to say it left); what remains are history
+   citations in kept records, listed in the registry row `W2J:kept-records-point-at-removed`. The unit suite and the
+   build do not prove it: they read no record.
 101. **`memory/CHANGELOG.md` is generated** by `frontend/scripts/ci/changelog.mjs --write` (one line per landing:
-   a merged PR's title and number, or a landing git proves), and `--check` runs in the commit tier and CI. A lane
-   regenerates it in the commit that takes main in; a conflict in the file is resolved by `--write`. Not checked: PR
-   titles against GitHub, and a landing no later commit took in. The hand-written history:
-   `git show records/2026-10-29:memory/CHANGELOG.md`.
+   a merged PR's title and number, or a landing git proves), at session close. `--check` stays as a manual command and
+   no commit hook or CI step runs it. Why: a lane that regenerates in its merge commit writes a stale file, because
+   `--write` reads HEAD before that commit exists (it now refuses while a merge is in progress); and a PR's CI checks
+   GitHub's synthetic merge (main's first parents) while main's push run checks the lane tip (the lane's first parents),
+   which are different landings, so a green PR can turn main red. A freshness check on a changelog is not worth landing
+   friction and a red main. Not checked: PR titles against GitHub, and a landing no later commit took in. The
+   hand-written history: `git show records/2026-10-29:memory/CHANGELOG.md`.
 102. **The root loses its one-file `scripts/`:** the compaction hook is `.claude/hooks/session-start-compact.sh`.
 
-**Door:** two-way. Every removed file is in the tag and in history; the generator, its step and the hook move are
-reverts.
+**Door:** two-way. Every removed file is in the tag and in history; the generator and the hook move are reverts, and
+the freshness check returns by adding its step to `ci/pipeline.sh`.
 
 ## 2026-10-29 — [LOOP] W2-E follow: the beast in first person, the cast, mobs that sense the body, the hands by the fire
 

@@ -27,6 +27,26 @@ Beside them: `CLAUDE.md` (the one instruction file), `memory/ARCHITECTURE.md` (t
 `docs/superpowers/SOTA-INITIATIVE.md` (direction only; its status block is a frozen 2026-06-18 snapshot) and
 `memory/ROADMAP.md` (the pre-reset roadmap, history).
 
+## The repository root
+
+| Path | What it is |
+|---|---|
+| `README.md` | The public face: the pitch, the controls and the play link; its generated blocks come from `frontend/src/brand.js` and `frontend/src/game/keyMap.js` |
+| `CLAUDE.md` | The one instruction file for agents, loaded every session |
+| `NOTICE` | The copyright notice and the third-party licences that apply (the bundled fonts) |
+| `LICENSES/` | The SIL Open Font License texts for the three bundled fonts |
+| `ci/` | `pipeline.sh`, the gate tiers every hook and CI run, and `git-env.sh`, which scrubs `GIT_*` for them |
+| `frontend/` | The app: `src/`, its tests, `scripts/` and `package.json` |
+| `docs/` | `superpowers/` (plans, specs, DECISIONS, this map), `media/` (the README and social images), `archive/` (two kept plans) and `PERF-PROTOCOL.md` |
+| `docs/superpowers/assets/` | `grass-colour-ladder-2026-08-08.png`, the grass colour ladder that `KEVIN-REVIEW-BATCH.md` points at |
+| `memory/` | The cursor and the project records: ACTIVE_PLAN, STATUS, the registry, CHANGELOG, ARCHITECTURE, ROADMAP and the dated audits |
+| `.github/` | `workflows/ci.yml` (CI; its `ci ok` job is the required check), `dependabot.yml`, the pull request template and the bug issue form |
+| `.githooks/` | `pre-commit`, `commit-msg` and `pre-push`, the local gates, reached through `core.hooksPath` |
+| `.claude/` | Agent config for this repo: `rules/` (loaded when a path they name is touched), `hooks/` (the post-compaction orientation hook) and `settings.json` |
+| `.gitignore`, `.gitattributes` | What git skips, and the one merge driver (`memory/registry.jsonl` merges as a union) |
+| `.worktreeinclude` | The gitignored local files (`.mcp.json`, local Claude settings) a new lane worktree takes with it |
+| `.antigravityignore` | The directories the Antigravity indexer skips (`node_modules/`, build output) |
+
 ## Plans
 
 - **The programme:** `docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`. A lane starts from a brief of one page
