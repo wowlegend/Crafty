@@ -1,6 +1,6 @@
 // Extracted from AdvancedGameFeatures S3-M4 (the AGF dissolve, part 1): verbatim, same behavior.
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 import { Panel, Button, Icon, Slot } from './primitives/index.js';
@@ -27,7 +27,7 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
     const chestItems = Object.entries(chestInventory).filter(([_, qty]) => qty > 0);
 
     return (
-        <motion.div
+        <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -37,7 +37,7 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
             tabIndex={-1}
             className="absolute inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-ink/75"
         >
-            <motion.div
+            <m.div
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
@@ -114,7 +114,7 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
                         </Panel>
                     </div>
                 </Panel>
-            </motion.div>
-        </motion.div>
+            </m.div>
+        </m.div>
     );
 });

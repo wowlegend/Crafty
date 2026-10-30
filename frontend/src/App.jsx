@@ -23,6 +23,7 @@ import { openTalents } from './ui/touchTray';
 import { isTouchDevice } from './input/touchDevice';
 import { GameScene } from './GameScene';
 import { MenuSystem } from './MenuSystem';
+import { MotionProvider } from './ui/MotionProvider.jsx';
 import { DebugOverlay } from './ui/DebugOverlay';
 import { prefetchPanels } from './ui/panels/lazyPanels.js';
 import { initSettingsPersistence } from './game/settingsPersist.js';
@@ -51,9 +52,11 @@ function App() {
     return () => (ric ? window.cancelIdleCallback(id) : clearTimeout(id));
   }, []);
   return (
-    <SoundProvider>
-      <GameAppWrapper />
-    </SoundProvider>
+    <MotionProvider>
+      <SoundProvider>
+        <GameAppWrapper />
+      </SoundProvider>
+    </MotionProvider>
   );
 }
 

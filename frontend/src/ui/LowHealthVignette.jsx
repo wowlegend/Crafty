@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode } from '../devtest/captureMode';
 import { lowHealthIntensity } from '../game/lowHealth';
@@ -27,7 +27,7 @@ export default function LowHealthVignette() {
   // In play: pulse the opacity; faster + deeper toward 0 HP (a quickening heartbeat).
   const period = 1.4 - 0.7 * intensity;
   return (
-    <motion.div
+    <m.div
       style={base}
       animate={{ opacity: [peak * 0.5, peak, peak * 0.5] }}
       transition={{ duration: period, repeat: Infinity, ease: 'easeInOut' }}

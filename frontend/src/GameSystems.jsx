@@ -1,6 +1,6 @@
 import { useShallow } from 'zustand/react/shallow';
 import React, { createContext, useContext, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useGameStore } from './store/useGameStore';
 import { StatBar } from './ui/primitives/StatBar.jsx';
 import { Panel } from './ui/primitives/Panel.jsx';
@@ -146,7 +146,7 @@ export const DamageOverlay = () => {
     if (!active) return null;
 
     return (
-        <motion.div
+        <m.div
             initial={{ opacity: 0.6 }}
             animate={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
@@ -174,12 +174,12 @@ export const DeathScreen = ({ onRespawn }) => {
     const level = useGameStore.getState().level;
     const nights = useGameStore.getState().nightCount;
     return (
-        <motion.div
+        <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="fixed inset-0 bg-black/80 flex items-center justify-center z-modal"
         >
-            <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+            <m.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                 <Panel variant="raise" className="text-center px-10 py-8 max-w-sm">
                     <h1 className="font-display text-5xl font-bold text-danger mb-2" style={{ textShadow: '3px 3px 0 var(--ui-ink)' }}>
                         YOU DIED
@@ -191,8 +191,8 @@ export const DeathScreen = ({ onRespawn }) => {
                     </div>
                     <Button variant="primary" size="lg" onClick={onRespawn}>{t('ui.respawn')}</Button>
                 </Panel>
-            </motion.div>
-        </motion.div>
+            </m.div>
+        </m.div>
     );
 };
 
@@ -211,12 +211,12 @@ export const VictoryOverlay = ({ onDismiss }) => {
     const level = useGameStore.getState().level;
     const nights = useGameStore.getState().nightCount;
     return (
-        <motion.div
+        <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="fixed inset-0 bg-black/80 flex items-center justify-center z-modal"
         >
-            <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+            <m.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                 <Panel variant="raise" className="text-center px-10 py-8 max-w-md">
                     <h1 className="font-display text-5xl font-bold text-warn mb-2" style={{ textShadow: '3px 3px 0 var(--ui-ink)' }}>
                         VICTORY
@@ -228,8 +228,8 @@ export const VictoryOverlay = ({ onDismiss }) => {
                     </div>
                     <Button variant="primary" size="lg" onClick={onDismiss}>{t('ui.keepExploring')}</Button>
                 </Panel>
-            </motion.div>
-        </motion.div>
+            </m.div>
+        </m.div>
     );
 };
 

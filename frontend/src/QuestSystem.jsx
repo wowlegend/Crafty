@@ -5,7 +5,7 @@ import { questMatches } from './game/questMatch.js';
 import { killXP } from './game/killReward.js';
 import { GameMethods } from './GameMethods';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { isCaptureMode } from './devtest/captureMode';
 import { isWorldFrozenNow } from './game/worldClock.js';
 import { isTouchUIMode } from './input/touchDevice';
@@ -533,7 +533,7 @@ const QuestRow = ({ quest, t, locale }) => (
         </div>
         {/* Progress bar — bold-flat inset track + flat fill */}
         <div className="mt-1 h-2 bg-track rounded-sm border-chrome border-ink overflow-hidden">
-            <motion.div
+            <m.div
                 className={`h-full ${quest.completed ? 'bg-success' : 'bg-accent'}`}
                 animate={{ width: `${(quest.progress / quest.target) * 100}%` }}
                 transition={{ duration: 0.3 }}
@@ -589,7 +589,7 @@ export const QuestTracker = React.memo(({ quests }) => {
 
                 <AnimatePresence>
                     {expanded && (
-                        <motion.div
+                        <m.div
                             data-testid="quest-tracker-list"
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
@@ -605,7 +605,7 @@ export const QuestTracker = React.memo(({ quests }) => {
                                     {t('hud.questsDone')} <Icon name="party" size={14} className="text-accent" />
                                 </div>
                             )}
-                        </motion.div>
+                        </m.div>
                     )}
                 </AnimatePresence>
             </Panel>
@@ -658,7 +658,7 @@ export const NotificationStack = React.memo(({ notifications, inline = false, si
                     const status = NOTIF_STATUS[notif.type] || 'info';
                     const iconName = NOTIF_ICON[notif.type] || 'sparkles';
                     return (
-                        <motion.div
+                        <m.div
                             key={notif.id}
                             data-testid="notification"
                             data-notification-key={notif.key || ''}
@@ -671,7 +671,7 @@ export const NotificationStack = React.memo(({ notifications, inline = false, si
                                 <Icon name={iconName} size={16} className="flex-none" />
                                 <span style={lines ? clampLines(lines) : undefined}>{notificationText(notif, t)}</span>
                             </Toast>
-                        </motion.div>
+                        </m.div>
                     );
                 })}
             </AnimatePresence>
@@ -697,7 +697,7 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
             className="absolute inset-0 z-50 grid place-items-center bg-ink/75 animate-fade-in"
             onClose={onClose}
         >
-            <motion.div
+            <m.div
                 initial={{ scale: 0.8, y: 30 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.8, y: 30 }}
@@ -760,7 +760,7 @@ export const AchievementsPanel = React.memo(({ achievements, unlockedAchievement
                         </div>
                     </div>
                 </Panel>
-            </motion.div>
+            </m.div>
         </Modal>
     );
 });
@@ -1032,7 +1032,7 @@ export const ChestIndicator = React.memo(({ chests, openedChestIds }) => {
     if (!nearbyChest) return null;
 
     return (
-        <motion.div
+        <m.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
@@ -1046,7 +1046,7 @@ export const ChestIndicator = React.memo(({ chests, openedChestIds }) => {
                     <div className="text-xs font-bold opacity-80">{t('chest.pressG')}</div>
                 </div>
             </Panel>
-        </motion.div>
+        </m.div>
     );
 });
 

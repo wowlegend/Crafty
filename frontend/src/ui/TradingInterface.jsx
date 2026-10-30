@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameSounds } from '../SoundManager';
@@ -39,7 +39,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
 
   return (
     <Modal className="fixed inset-0 z-modal flex items-center justify-center bg-ink/75" label={villager?.npcName || "Villager Merchant"} onClose={onClose}>
-      <motion.div
+      <m.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -70,7 +70,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
 
             {/* Trade Message Feedback */}
             {tradeMessage && (
-              <motion.div
+              <m.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="mb-4"
@@ -81,7 +81,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
                 >
                   {tradeMessage}
                 </Toast>
-              </motion.div>
+              </m.div>
             )}
 
             {/* Trades Scroll Area */}
@@ -123,7 +123,7 @@ export const TradingInterface = React.memo(({ villager, onClose }) => {
             </div>
           </div>
         </Panel>
-      </motion.div>
+      </m.div>
     </Modal>
   );
 });

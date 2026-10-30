@@ -88,6 +88,107 @@ player was held (REVIEW:chaos-play:load-hold-e2e).
 
 ---
 
+## 2026-10-30 — [LOOP] W2-L: every animated element renders `m`, under one strict LazyMotion provider
+
+**Decided by the W2-L builder under the standing grant** (DECISIONS 2026-10-28 item 14), as the rest of reset item 14: the
+index chunk stops carrying framer-motion features the game never uses. Each stands while it earns its place.
+
+140. **`motion.X` is `m.X` in the 12 modules that animate; `src/ui/MotionProvider.jsx` is the one provider, App's outermost
+   element, with `features={domAnimation}` and `strict`.** The inventory (33 elements, 13 `AnimatePresence` blocks) uses
+   only `initial`, `animate`, `exit`, `transition`, `style`, `onClick` and `onAnimationComplete`: no `layout`, `layoutId`,
+   `drag`, `Reorder`, hover/tap props or motion hooks anywhere, so `domMax` is not needed and `domAnimation` is all that
+   is loaded. `src/index.jsx` has the only `createRoot`; the R3F canvases and drei's `<Html>` bubble render no `m`, so one
+   provider covers it, and the lazy panel chunk renders inside the same root and context. The features are passed as a
+   bundle, not a loader: a loader (`features={() => import(...)}`) was built and measured as an option and not shipped.
+   **Measured on the same tree** (`npm run build`, minified bytes): index chunk **681,632 B to 634,075 B, -47,557 B
+   (-7.0%)**; gzip 229,012 B to 215,162 B, -13,850 B. The loader variant reads index 597,267 B (-84,365 B, gzip 202,566 B)
+   plus a 38,030 B features chunk. The plan's "about 124 KB" was a lens-reported figure for the whole framer-motion share.
+   The round-1 dynamic review measured that share by splitting framer-motion into its own chunk (`manualChunks`) on both
+   trees: **137,650 B at base and 90,050 B left at head**. What leaves with a synchronous `domAnimation` is drag, layout
+   and projection, which nothing here used: 47,557 B. Of the 90,050 B that stays, the loader variant defers about 37 KB
+   (its features chunk is 38,030 B), and `domMin`, which drops the gesture features, would take 5,631 B. **Why not the loader's extra
+   36.8 KB:** the title overlay is the first thing a player sees and fades in from
+   `initial` (opacity 0), so a loader shows an empty title until a second request resolves, and a request that fails leaves
+   every panel at opacity 0 for good with nothing thrown; `render/dragonLoader.js` needed a retry and a give-up path for
+   exactly this. **Door:** swapping to the loader is one line in `MotionProvider.jsx` plus a `modulepreload` in
+   `vite.config.js` (as `preloadGameIcons` does) and a retry, recorded as a new dated entry that names this one; nothing
+   else in the 12 modules changes. It is an open registry row (`REVIEW:w2l:loader-door`), as is the smaller `domMin` door
+   (`REVIEW:w2l:domin-door`, 5,631 B, which would turn a future gesture prop into a silent no-op).
+141. **The index ceiling falls with the chunk: 700,000 B to 652,500 B** (`scripts/ci/bundle-budget.mjs`, `actualAtWrite`
+   634,075 B). The headroom kept over the measured size is the 18,368 B the old ceiling left over the old measured size, so
+   the lanes still in flight keep exactly the room they had and nothing else gets the 47,557 B freed. Mutants run through
+   `npm run build` and the gate: the full `motion` component put back in an index-carried module (`ui/GameHud.jsx`) reads
+   682,123 B, RED; `domMax` in the provider reads 682,104 B, RED; the identity edit (a comment) reads 634,075 B, green; the
+   full `motion` in a module only the lazy panel chunk carries (`ui/panels/ForgePanel.jsx`) reads 636,434 B, GREEN, so the
+   ceiling does not see that case; the strict unit gate does (item 142), and so do the full-motion markers (item 145),
+   which read every chunk of the build and name `panelBundle`. The ceiling holds the modules the index chunk carries.
+142. **Three gates and an e2e hold it.** `tests/gates/lazy-motion-strict-gates.test.jsx` mounts one real component from each
+   of the 12 modules (18 components) under `MotionProvider` and nothing else: a `motion.*` left in any of them throws, and
+   two controls show the instrument sees both ways (a `motion.div` under the provider throws; an `m.div` under it draws a
+   value strictly between its start and end). `tests/gates/app-motion-provider-gates.test.jsx` renders the real App (the
+   two 3D scenes stubbed) and watches the title overlay fade from opacity 0 to 1, which fails when App renders no
+   provider; the strict gate cannot see that, because it imports the provider itself.
+   `tests/e2e/lazy-motion.spec.js` opens the Talents page by Tab and a real click and samples the card's scale and y and
+   the dialog's opacity on the frames the page draws (`tests/e2e/_motionSample.js`), with the page's clock (`performance.now`,
+   which framer-motion's frame loop reads) slowed to a fiftieth from the panel's insertion until the sampler is done. Two CI
+   runs, each at the spec's first attempt, are why. At normal pace the world drew a frame every 130 to 620 ms and a 350 ms
+   spring fit between two of them (scale 0.9 at 921 ms, 1 at 1539 ms): the spring runs against the clock, and the clamp on the
+   frame loop's step does not apply to an animation's own clock. Slowing the document timeline through CDP
+   `Animation.setPlaybackRate` instead, to stretch the fade, left the fade at opacity 0.012 after 6765 frames. Slowing the
+   clock stretches the springs' crossing of their ends to 6 s, ten frames at the slowest cadence seen. Each of the first two heads
+   passed on its retry. The third passed at its FIRST attempt (CI run 41072281889, shard 5: 30 samples, strictly between
+   the ends on scale 8, y 8, opacity 1): one run that did not flake, with the mechanism above as the reason it should not.
+   No flake rate was measured, before or after.
+   `tests/gates/motion-sample-gates.test.jsx` runs the sampler on the real panel in jsdom with the thread blocked so that
+   frames land 600 ms apart (a jump at normal pace, the first CI failure reproduced; an animation at the slowed clock) and
+   the verdict on series known by construction. Mutants, each RED on the test named and each run
+   against a green baseline by `scripts/dev/mutate.sh`: `motion` back in each of the 12 modules (12 of 12), the provider
+   without `strict`, the provider whose features never load (strict gate and App gate), App with a pass-through provider,
+   and twenty-five verdict, sampler and clock mutants; the identity edits stayed green. The e2e itself was not run locally: CI is
+   its arbiter, and its mutants are argued in the spec.
+143. **What is not proven.** `strict` is dev and test only (framer-motion 12.43 skips the check in a production build), so
+   the shipped artifact is held by the bundle budget: the index ceiling for modules the boot chunk carries, and the two
+   full-motion markers (item 145) for every chunk. A second React root that
+   renders `m` outside the provider would render it frozen and nothing would report it; today there is one `createRoot`.
+   The component tests elsewhere (HUD, MenuSystem, QuestSystem and the rest) render `m` without a provider and so without
+   animations: they pass, and they never exercised the animation. The Chromium e2e reads the transition at a fiftieth of its
+   speed (the page's clock is slowed from the panel's insertion), so it says the transition is there and ends, not how fast it
+   plays. No frame of it was looked at on a screen; the feel is Kevin's.
+144. **The CI e2e's numeric sample stands in for the plan's "one clip".** The plan row for W2-L
+   (`docs/superpowers/plans/2026-10-28-crafty-sota-reset.md`, "Acceptance on the live game") asks for "Live: panel
+   transitions still animate (one clip)". What exists is `tests/e2e/lazy-motion.spec.js`: the real Talents panel in
+   Chromium, sampled on the frames the page draws (CI run 41072281889, shard 5, first attempt: **30 drawn-frame samples,
+   values strictly between the ends on scale 8, y 8 and opacity 1, the end reached**). The reasons it stands in: the
+   question the clip answers for this change is whether a transition still moves, or sits frozen at `initial`, and the
+   sample reads exactly that, with a denominator and a verdict, where a clip is a person's look; a clip of the world at
+   the normal clock on the CI runner (frames 130 to 620 ms apart) shows the 350 ms spring as a jump, the artifact that
+   failed the first two heads; and the lane ran no local browser (`CLAUDE.md`, SSD-light lanes: no local e2e unless a look
+   question needs a real GPU, and whether a transition exists is not one), so the CI run is the live game here. What a clip would add and the sample cannot is how the transition looks and how fast it
+   plays, and that stays Kevin's (item 143). The plan's text is unchanged; registry row `ACTIVE_PLAN:T21` stays closed
+   on this reading.
+145. **Two more gates, and the two unit cases that read a tween run on a slowed clock** (round-1 reviews). (a)
+   `scripts/ci/bundle-budget.mjs` reads every built chunk for `isProjectionDirty` and `dragElastic`, strings that occur
+   only in motion-dom's projection node and framer-motion's drag in 12.43 and that no chunk of the lazy build carries; the
+   full `motion` component put back in `ui/panels/ForgePanel.jsx` (index 636,434 B, under the ceiling) puts both in
+   `panelBundle` and reds the gate, and in `ui/GameHud.jsx` puts both in the index chunk. Controls: `animationState` and
+   `whileHover`, which `domAnimation`'s own code carries, must be found in some chunk, so a minifier change fails the
+   gate instead of passing it. (b) `tests/gates/lazy-motion-exit-gates.test.jsx` closes the real Talents panel inside
+   `AnimatePresence` under `MotionProvider`: the node must still be in the DOM on the first read, the dialog's opacity
+   strictly between 1 and 0 on some read, and the node gone at the end; features without `exit`, without `animation`, or
+   with the renderer alone each red it, and the same panel with no provider is the control. (c) The `m.div` control in the
+   strict gate and the sampler case that finds the card and the dialog now run at a tenth of real time (`slowPageClock`,
+   `clockFactor`), because framer-motion clamps only the frame loop's delta (motion-dom `batcher.mjs`, `maxElapsed` 40) and
+   reads every animation's own elapsed time from `performance.now()`, so one stalled frame can step over a whole tween;
+   the comment that said otherwise is corrected. (d) The strict gate's population case now says it counts its own table.
+   Not done: an ESLint `no-restricted-imports` rule on `motion`, the static review's suggestion; the markers read the
+   shipped artifact, which a lint rule does not. One dragon-fight e2e case failed its first attempt on all three CI runs of
+   this branch since 30cde21c (41072281889, 41082219534, 41085691344), each time with `calls: []` on the zone or the
+   burn, and passed on a retry (the lane touches no dragon, zone or damage code, and its base rate on main is unknown):
+   registry row `REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached`. A mob-floor SETUP failure on run
+   41082219534's first attempt is `REVIEW:e2e-flakes:mob-floor-roof-no-heading`.
+
+---
+
 ## 2026-10-30 (round 3) — [LOOP] fix/invisible-box round 3: a chunk's first trimesh is cut where its body is
 
 **Decided by the command session** on round 2's reviews of PR #59. The dynamic review said land. The static review's

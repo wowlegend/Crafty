@@ -1,7 +1,7 @@
 import { useGameStore } from './store/useGameStore';
 import { useShallow } from 'zustand/react/shallow';
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { GameMethods } from './GameMethods';
 import { xpForLevel } from './game/progression.js';
 import { useT } from './i18n/i18n.js';
@@ -73,7 +73,7 @@ export const SimpleXPGainVisual = ({ xpGains }) => {
     <div className="absolute inset-0 pointer-events-none z-40">
       <AnimatePresence>
         {xpGains.map(gain => (
-          <motion.div
+          <m.div
             key={gain.id}
             initial={{
               opacity: 0,
@@ -100,7 +100,7 @@ export const SimpleXPGainVisual = ({ xpGains }) => {
               <span className="font-display text-base tabular-nums">+{gain.amount}</span>
               <span className="text-[10px] font-bold tracking-widest opacity-85 ml-1">XP</span>
             </div>
-          </motion.div>
+          </m.div>
         ))}
       </AnimatePresence>
     </div>
@@ -116,7 +116,7 @@ export const SimpleLevelUpEffect = ({ levelUpEffects, onEffectComplete }) => {
     <div className="absolute inset-0 pointer-events-none z-50">
       <AnimatePresence>
         {levelUpEffects.map(effect => (
-          <motion.div
+          <m.div
             key={effect.id}
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -126,7 +126,7 @@ export const SimpleLevelUpEffect = ({ levelUpEffects, onEffectComplete }) => {
             className="absolute inset-0 flex items-center justify-center"
           >
             {/* gold radial burst behind the banner (bold-flat accent; bloom-free CSS) */}
-            <motion.div
+            <m.div
               initial={{ scale: 0, opacity: 0.55 }}
               animate={{ scale: [0, 1.6, 2.2], opacity: [0.55, 0.22, 0] }}
               transition={{ duration: 1.4, ease: 'easeOut' }}
@@ -135,7 +135,7 @@ export const SimpleLevelUpEffect = ({ levelUpEffects, onEffectComplete }) => {
             />
             <div className="text-center relative">
               {/* LEVEL UP — gold sticker banner in the display face + ink frame (S1-C bold-flat) */}
-              <motion.div
+              <m.div
                 initial={{ scale: 0 }}
                 animate={{ scale: [0, 1.22, 1] }}
                 transition={{ duration: 0.9, times: [0, 0.6, 1], ease: 'easeOut' }}
@@ -143,8 +143,8 @@ export const SimpleLevelUpEffect = ({ levelUpEffects, onEffectComplete }) => {
                 style={{ fontSize: '3.25rem', background: 'linear-gradient(180deg, rgb(var(--ui-accent-raise)), rgb(var(--ui-accent-deep)))' }}
               >
                 {t('hud.levelUp')}
-              </motion.div>
-              <motion.div
+              </m.div>
+              <m.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.45, duration: 0.7 }}
@@ -152,9 +152,9 @@ export const SimpleLevelUpEffect = ({ levelUpEffects, onEffectComplete }) => {
                 style={{ fontSize: '1.9rem', textShadow: '2px 2px 0 rgb(var(--ui-ink))' }}
               >
                 {t('hud.levelReached', { level: effect.level })}
-              </motion.div>
+              </m.div>
             </div>
-          </motion.div>
+          </m.div>
         ))}
       </AnimatePresence>
     </div>
