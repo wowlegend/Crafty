@@ -166,7 +166,8 @@ items. Each stands while it earns its place.
    the dragon raised its arrival with the bar up it covered the crosshair's box and the vitals for 4 s at 390x664 and
    375x667 and the hotbar at 844x390, and two toasts reached the vitals with no boss at all. Proof:
    `tests/e2e/hud-at-rest.spec.js` (at every viewport: two notices at once, the arrival with the bar up, the real phase
-   call, a notice staged on it, and on the phones that notice taking the bar's line when the call leaves),
+   call, an attack call with a notice staged on it, and on the phones that notice taking the bar's line when the call
+   leaves),
    `tests/gates/hud-notices-gates.test.jsx`, and `tests/gates/hud-layout-gates.test.js` (a full tall stack against
    every touch control at 4,604 tall touch viewports). The boss bar's name, phase line and numbers read through t() in
    both dictionaries. **On touch the stack is the only view of the list:** the
