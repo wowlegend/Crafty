@@ -19,6 +19,31 @@
 
 ---
 
+## 2026-10-29 — [LOOP] W2-J phase 3: closed records behind the tag `records/2026-10-29`, and a generated CHANGELOG
+
+**Decided by the command session** (SOTA reset rows 32 and 57; task script
+`docs/superpowers/plans/2026-10-29-crafty-w2j-phase3.md`). Each stands while it earns its place.
+
+100. **Closed records leave HEAD; the annotated tag `records/2026-10-29` keeps them.** It points at main `e900de6b`,
+   the tree before the removal. Read one: `git show records/2026-10-29:<path>`; list them:
+   `git ls-tree -r --name-only records/2026-10-29 -- docs memory`. 142 files (10.96 MB) went: the 2026-Q2 plan archive
+   but two, LOOP-PROGRESS, six of seven dated audits, four dated reviews, 38 shipped plans, 12 shipped specs with their
+   two reference comps, one research note, the 2026-09 overnight brief and plan with ten of sixteen frames, the
+   superseded cursor archive and one perf report. A record stays while a doc-currency canonical doc, a rule file,
+   `CLAUDE.md`, a gate, script, test, CI step, a plan dated 2026-10-27 or later, a published page or the inbox names it
+   (each file name was grepped over every tracked file; `docs/superpowers/INDEX.md` lists what stays and why). This
+   supersedes item 13(a)'s in-tree `docs/archive/` (2026-10-28): a retired record goes to a dated tag, not a
+   directory. Proof nothing live depended on them: doc-currency, the unit suite and the build on the PR's head.
+101. **`memory/CHANGELOG.md` is generated** by `frontend/scripts/ci/changelog.mjs --write` (one line per landing:
+   a merged PR's title and number, or a landing git proves), and `--check` runs in the commit tier and CI. A lane
+   regenerates it in the commit that takes main in; a conflict in the file is resolved by `--write`. Not checked: PR
+   titles against GitHub, and a landing no later commit took in. The hand-written history:
+   `git show records/2026-10-29:memory/CHANGELOG.md`.
+102. **The root loses its one-file `scripts/`:** the compaction hook is `.claude/hooks/session-start-compact.sh`.
+
+**Door:** two-way. Every removed file is in the tag and in history; the generator, its step and the hook move are
+reverts.
+
 ## 2026-10-29 — [LOOP] W2-E follow: the beast in first person, the cast, mobs that sense the body, the hands by the fire
 
 **Decided by the W2-E follow lane under the standing grant** (item 14), by its task script
