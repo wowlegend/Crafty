@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { sourceTexts } from './_srcWalk.js';
+import { sourceTexts, strip } from './_srcWalk.js';
 
 // S1-D-M3 follow-up: STUDIO-FIXTURE MOTE ISOLATION.
 //
@@ -22,7 +22,7 @@ import { sourceTexts } from './_srcWalk.js';
 const SRC = resolve(process.cwd(), 'src');
 const store = () => readFileSync(resolve(SRC, 'store', 'useGameStore.jsx'), 'utf8');
 const gameScene = () => readFileSync(resolve(SRC, 'GameScene.jsx'), 'utf8');
-const app = () => readFileSync(resolve(SRC, 'App.jsx'), 'utf8');
+const app = () => readFileSync(resolve(SRC, 'devtest', 'devBridge.js'), 'utf8'); // the test hooks live in the DEV bridge
 
 describe('S1-D-M3 studio-fixture mote isolation', () => {
   it('store defines a captureStudio flag (default false) + its setter', () => {
@@ -42,26 +42,32 @@ describe('S1-D-M3 studio-fixture mote isolation', () => {
       .toMatch(/!captureStudio\s*&&\s*<LightMotes/);
   });
 
+  // One hook's own body, comments stripped: from its registration to the next registration, so neither a comment nor
+  // the hook registered after it can satisfy an assertion about it.
+  const hookBody = (name) => {
+    const src = strip(app());
+    const start = src.indexOf(`registerTestHook('${name}'`);
+    if (start < 0) return null;
+    const next = src.indexOf('registerTestHook(', start + 1);
+    return src.slice(start, next < 0 ? src.length : next);
+  };
+
   it('the three sky-studio closeup hooks declare captureStudio=true', () => {
-    const src = app();
     // Each studio-card hook must mark itself a studio shot (not infer it downstream).
     for (const hook of ['spawnCharacterCloseup', 'spawnBossCloseup', 'spawnSpellCast']) {
-      const start = src.indexOf(hook);
-      expect(start, `${hook} hook must exist`).toBeGreaterThan(-1);
-      const block = src.slice(start, start + 1400);
+      const block = hookBody(hook);
+      expect(block, `${hook} hook must exist`).toBeTruthy();
       expect(block, `${hook} must call setCaptureStudio(true)`)
         .toMatch(/setCaptureStudio\(true\)/);
     }
   });
 
   it('in-world modal captures + exitCapture reset captureStudio=false (motes return)', () => {
-    const src = app();
     // openModal (inventory) + openAchievements stage a modal OVER the explore world ->
     // motes belong there, so the studio flag must be cleared; exitCapture restores gameplay.
     for (const hook of ['openModal', 'openAchievements', 'exitCapture']) {
-      const start = src.indexOf(`registerTestHook('${hook}'`);
-      expect(start, `${hook} hook must exist`).toBeGreaterThan(-1);
-      const block = src.slice(start, start + 700);
+      const block = hookBody(hook);
+      expect(block, `${hook} hook must exist`).toBeTruthy();
       expect(block, `${hook} must call setCaptureStudio(false)`)
         .toMatch(/setCaptureStudio\(false\)/);
     }
