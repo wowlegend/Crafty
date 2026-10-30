@@ -201,6 +201,46 @@ if (mergeHolders.length) {
   console.log(`✓ tailwind-merge: ${TAILWIND_MERGE_MARKERS.length} markers absent from all ${chunks.length} chunks`);
 }
 
+// NO TEST HOOK SHIPS (DECISIONS 2026-10-30 item 114). The census is every name src registers through
+// registerTestHook; a name computed at the call is refused, so none can leave the census. A registration that survives
+// minification is a call whose first argument is the quoted name, `f("readMobs",`; that shape, not the bare word, is
+// matched, because two names are also ordinary strings in shipping code ("start" in react-dom, "viewmodel" as a scene
+// name). The control finds `addEventListener("keydown",` in the boot chunk by the same matcher, so a minifier that
+// quotes or calls differently fails here instead of passing every name. The bridge's window global is matched bare.
+// Not checked: a test seam exposed some other way than registerTestHook or window.__craftyTest.
+const SRC_DIR = resolve(HERE, '../../src');
+const MIN_HOOK_NAMES = 30; // the DEV bridge alone registers 36; fewer means the census lost its source
+const hookNames = new Set();
+const computedHooks = [];
+for (const rel of readdirSync(SRC_DIR, { recursive: true })) {
+  if (!/\.jsx?$/.test(rel) || /\.test\.jsx?$/.test(rel)) continue;
+  const text = readFileSync(join(SRC_DIR, rel), 'utf8');
+  for (const m of text.matchAll(/(?<!function )\bregisterTestHook\(\s*([^,)]*)/g)) {
+    const literal = /^(['"`])([\w$]+)\1$/.exec(m[1].trim());
+    if (literal) hookNames.add(literal[2]); else computedHooks.push(`${rel}: registerTestHook(${m[1].trim()}`);
+  }
+}
+const quotedFirstArg = (name) => new RegExp(`\\(\\s*(["'\`])${name.replace(/\$/g, '\\$')}\\1\\s*,`);
+const hookControl = bootChunk && quotedFirstArg('keydown').test(textOf(bootChunk));
+const shippedHooks = chunks.flatMap((c) => [...hookNames].filter((n) => quotedFirstArg(n).test(textOf(c))).map((n) => `${n} (${c.file})`));
+const bridgeHolders = chunks.filter((c) => textOf(c).includes('__craftyTest'));
+if (computedHooks.length) {
+  console.error(`✘ test hooks: ${computedHooks.length} registered under a computed name the census cannot read: ${computedHooks.join('; ')}`);
+  failed = true;
+} else if (hookNames.size < MIN_HOOK_NAMES) {
+  console.error(`✘ test hooks: the census found ${hookNames.size} hook names in src (expected at least ${MIN_HOOK_NAMES})`);
+  failed = true;
+} else if (!hookControl) {
+  console.error(`✘ test hooks: the control \`addEventListener("keydown",\` is not in the boot chunk, so the matcher cannot see a registration`);
+  failed = true;
+} else if (shippedHooks.length || bridgeHolders.length) {
+  console.error(`✘ test hooks: the production build registers ${shippedHooks.join(', ') || 'no hook name'}` +
+    `${bridgeHolders.length ? ` and sets window.__craftyTest in ${bridgeHolders.map((c) => c.file).join(', ')}` : ''}`);
+  failed = true;
+} else {
+  console.log(`✓ test hooks: none of ${hookNames.size} registered names, nor window.__craftyTest, in ${chunks.length} chunks (control matched)`);
+}
+
 if (failed) {
   console.error(
     `\n✘ bundle-budget FAILED.` +
