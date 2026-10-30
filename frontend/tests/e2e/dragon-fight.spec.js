@@ -172,6 +172,13 @@ test.describe('the dragon fight', () => {
       const store = window.useGameStore;
       const cam = window.__threeCamera.position;
       if (!(store.getState().hitstopUntil > performance.now())) store.getState().triggerHitstop(60000);
+      // The player moves on real time through the freeze: a shove from an earlier roar is still carrying them. Wait
+      // until they stand still (5 s at most), so the dragon is woken `dist` from where they will be when it roars.
+      for (let still = 0, last = cam.clone(), t0 = performance.now(); still < 5 && performance.now() - t0 < 5000;) {
+        await frame();
+        still = cam.distanceTo(last) < 0.005 ? still + 1 : 0;
+        last.copy(cam);
+      }
       const g = store.getState().getMobGroundLevel?.(cam.x + dist, cam.z);
       call('spawnDragonAt', [cam.x + dist, (Number.isFinite(g) ? g : cam.y - 1.62) + 0.8, cam.z], { phase: 1 });
       for (let i = 0; i < 3; i++) await frame();
@@ -209,7 +216,8 @@ test.describe('the dragon fight', () => {
 
     const far = await roarAt(11);
     expect(far.waited, `SETUP: the world never ran past the roar's due time: ${JSON.stringify(far)}`).toBeGreaterThanOrEqual(far.due);
-    expect(far.distance, 'SETUP: the pinned dragon moved').toBeCloseTo(11, 0);
+    expect(far.distance, `SETUP: the player was not out of the roar's ${DRAGON_MOVES.roar.radius} m when it was due: ${JSON.stringify(far)}`)
+      .toBeGreaterThan(DRAGON_MOVES.roar.radius + 1);
     expect(far.impulses, `a roar at 11 m shoved the player: ${JSON.stringify(far)}`).toEqual([]);
     expect(far.hits.filter((h) => /Shockwave/.test(h.source)), 'a roar at 11 m struck').toEqual([]);
   });
