@@ -104,7 +104,12 @@ items. Each stands while it earns its place.
    and an Aspect's first unlock (`ui/AspectHintToast.jsx` hands the hint to the channel once play is live again, so it
    is not lost behind the Talents panel where it was earned), and the dragon's four attack calls (`render/BossEntity.jsx`:
    the fireball, the roar, the lava and the summons, which were English sentences). **Where the stack stands:** at the
-   right edge on its own on a keyboard (under the dial, every notice up) and on a tall touch screen (under the coin count,
+   right edge on its own on a keyboard (under the dial, every notice up; while the boss bar is up, only as wide as the
+   room the bar leaves on its right: `ui/hudLayout.js` `toastMaxWidth`, 263 px at 1024 px wide and 192 px from 640 to
+   882 px, because at its full 320 px the stack met the 450 px bar in any window under 1,138 px, at 1024x768 the bar at
+   x 287-737 and the stack at x 688-1008 from y 164; `tests/gates/hud-layout-gates.test.js` sweeps every keyboard width
+   from 640 to 1,920 px and the e2e reads 1024x768; a window under 640 px leaves 58 px and keeps the full stack, registry
+   `REVIEW:w2d:toast-narrow-keyboard`) and on a tall touch screen (under the coin count,
    the newest toasts that fit above the touch controls under it, each clamped to three lines: `ui/hudLayout.js`
    `tallToastPlace`). On its side the stack stands left of the right fans' column and stops above the jump, two toasts on
    a 1180x820 iPad, where at the edge two toasts or a three-line call reached the spell opener; upright it keeps the edge

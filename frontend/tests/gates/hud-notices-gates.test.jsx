@@ -122,6 +122,16 @@ describe('where the stack stands on its own', () => {
     expect(screen.getByTestId('notification-stack').style.right).toBe('16px');
   });
 
+  it('a keyboard\'s stack narrows to the room the boss bar leaves on its right while the bar is up, and keeps 320 px with it down', () => {
+    at(1024, 768, false);
+    const stack = () => screen.getByTestId('notification-stack').style;
+    const { rerender } = render(<PlacedToasts notifications={LIVE} bossUp />);
+    expect([stack().maxWidth, stack().right], 'the bar up at 1024 px: 450 px wide, its right edge at 737 px').toEqual(['263px', '16px']);
+    expect(toastKeys(), 'the narrowed stack dropped a notice').toEqual(['notice.dusk', 'notice.bossAwakens', 'notice.dawn']);
+    rerender(<PlacedToasts notifications={LIVE} bossUp={false} />);
+    expect(stack().maxWidth).toBe('320px');
+  });
+
   it('a phone draws no stack of its own: the encounter column holds its notices', () => {
     at(390, 664, true);
     render(<PlacedToasts notifications={LIVE} />);

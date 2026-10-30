@@ -5,8 +5,9 @@ import { bootDev, startPlayActive } from './_boot.js';
 // tests/gates/hud-at-rest-gates.test.jsx can say what renders and never where; this reads the rects.
 //   desktop 1280x800: no side rail; a real grantXP widens the hotbar's XP edge to the share the store holds; the music's
 //     hostile count (written by SpawnerSystem from the live mob query, the mirror being gone) matches the ECS.
-//   1280x800, both iPad sizes, three phones upright (390x844; 390x664, Playwright's iPhone 14 with Safari's toolbars;
-//     375x667, an iPhone SE) and one on its side (844x390), with ember and coins banked: the vitals, the hotbar and its XP
+//   1280x800, 1024x768 (a keyboard window where the stack narrows beside the boss bar), both iPad sizes, three phones
+//     upright (390x844; 390x664, Playwright's iPhone 14 with Safari's toolbars; 375x667, an iPhone SE) and one on its
+//     side (844x390), with ember and coins banked: the vitals, the hotbar and its XP
 //     edge, the quest line, the compass, the objective line, the minimap, the dial, the gear and the coin count, a 48 px
 //     box at the screen's centre where the crosshair is (screen-centre: nothing may cover it), and on touch the
 //     joystick's ring and each of the eight buttons the touch layer draws at rest (Pause, the action, cast, dodge and
@@ -254,6 +255,8 @@ async function raiseWhileShowing(page, first, ...then) {
 
 for (const vp of [
   { name: 'desktop 1280x800', viewport: { width: 1280, height: 800 }, touch: false },
+  // Under 1,138 px wide a full-width stack would meet the 450 px boss bar (ui/hudLayout.js toastMaxWidth).
+  { name: 'desktop 1024x768', viewport: { width: 1024, height: 768 }, touch: false },
   { name: 'iPad 1180x820', viewport: { width: 1180, height: 820 }, touch: true },
   { name: 'iPad 820x1180', viewport: { width: 820, height: 1180 }, touch: true },
   { name: 'phone 390x844', viewport: { width: 390, height: 844 }, touch: true, mobile: true, column: true },

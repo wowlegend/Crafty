@@ -37,8 +37,8 @@ import { Panel, Icon } from './ui/primitives/index.js';
 import { EmberBar } from './ui/EmberBar.jsx';
 import { subscribeHudTick } from './ui/hudTicker.js';
 import {
-  useHudMode, useTallToastPlace, encounterTop, bossWidth, bossBelowCentre, toastsInEncounter, compactBoss, toastMaxWidth,
-  bossCallLines, BELOW_CENTRE_TOP, COLUMN_TOAST_LINES, TOAST_LINES,
+  useHudMode, useTallToastPlace, useWindowWidth, encounterTop, bossWidth, bossBelowCentre, toastsInEncounter, compactBoss,
+  toastMaxWidth, bossCallLines, BELOW_CENTRE_TOP, COLUMN_TOAST_LINES, TOAST_LINES, KEYBOARD_TOAST_RIGHT,
   SHORT_VITALS_TOP, TOUCH_VITALS_TOP, TOUCH_COINS_TOP, PHONE_VITALS_TOP, PHONE_COINS_TOP,
 } from './ui/hudLayout.js';
 import { lineNotification } from './ui/notifications.js';
@@ -343,14 +343,18 @@ export const Encounter = ({ bossSystem, notifications }) => {
 };
 const NO_NOTICES = [];
 
-// The toast stack where it stands on its own: on a keyboard at the right edge holding every notice up; on a tall touch
-// screen the newest it has room for, beside or left of the right fans' column (ui/hudLayout.js tallToastPlace).
+// The toast stack where it stands on its own: on a keyboard at the right edge holding every notice up, and while the boss
+// bar is up (`bossUp`) only as wide as the room the bar leaves on its right (ui/hudLayout.js toastMaxWidth); on a tall
+// touch screen the newest it has room for, beside or left of the right fans' column (ui/hudLayout.js tallToastPlace).
 // Elsewhere the encounter column holds the notices.
-export const PlacedToasts = ({ notifications }) => {
+export const PlacedToasts = ({ notifications, bossUp = false }) => {
   const mode = useHudMode();
   const place = useTallToastPlace();
+  const width = useWindowWidth();
   if (toastsInEncounter(mode)) return null;
-  if (!mode.touch) return <NotificationStack notifications={notifications} />;
+  if (!mode.touch) {
+    return <NotificationStack notifications={notifications} maxWidth={toastMaxWidth(mode, width, bossUp)} right={KEYBOARD_TOAST_RIGHT} />;
+  }
   return <NotificationStack notifications={notifications.slice(-place.slots)} right={place.right} lines={TOAST_LINES} />;
 };
 
@@ -420,7 +424,7 @@ export function HUD({
 
             <QuestTracker quests={questSystem.quests} onClaim={questSystem.claimQuest} />
 
-            <PlacedToasts notifications={questSystem.notifications} />
+            <PlacedToasts notifications={questSystem.notifications} bossUp={bossSystem.bossActive} />
 
             {/* The quiet bottom-left ticker over the SAME live list as the toast stack; a keyboard's only (ui/CombatLog.jsx). */}
             <CombatLog notifications={questSystem.notifications} />

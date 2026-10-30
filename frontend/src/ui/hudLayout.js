@@ -23,8 +23,8 @@
  * into the top band, as on a wide screen. The middle has 57 px above the crosshair and 91 below, so the nameplate sits
  * under the top band and the boss bar under the crosshair, the toast stack under the boss bar.
  *
- * tests/e2e/hud-at-rest.spec.js reads every pair, and the centre, at 1280x800, 1180x820, 820x1180, 390x844, 390x664,
- * 375x667 and 844x390.
+ * tests/e2e/hud-at-rest.spec.js reads every pair, and the centre, at 1280x800, 1024x768, 1180x820, 820x1180, 390x844,
+ * 390x664, 375x667 and 844x390.
  */
 import { useSyncExternalStore } from 'react';
 import { isTouchUIMode } from '../input/touchDevice';
@@ -142,10 +142,24 @@ export function bossWidth(mode) {
   return `clamp(${BOSS_MIN_W}px, calc(100vw - ${2 * bossInset(mode)}px), ${BOSS_MAX_W}px)`;
 }
 
-/** The toast stack's widest, px, and its width cap as CSS for where it stands (in the phone's column it keeps the
- *  column's insets). */
+/** The toast stack's widest and narrowest, px, and on a keyboard its distance from the window's right edge. */
 const TOAST_MAX_W = 320;
-export const toastMaxWidth = (mode) => (mode.phone ? `min(${TOAST_MAX_W}px, calc(100vw - ${2 * PHONE_COLUMN_INSET}px))` : TOAST_MAX_W);
+const TOAST_MIN_W = BOSS_MIN_W;
+export const KEYBOARD_TOAST_RIGHT = 16;
+
+/**
+ * PURE. The toast stack's width cap where it stands: in the phone's column, CSS keeping the column's insets; on a keyboard
+ * in a window `w` px wide, px, and while the boss bar is up (`bossUp`) only what the bar leaves on its right, so the two
+ * stand side by side. The stack's top (164 px) lies in the bar's band at every keyboard width, and at full width the stack
+ * meets a 450 px bar in any window under 1,138 px (at 1024 px it is 263 px wide). Where that room is under TOAST_MIN_W (a
+ * keyboard window under 640 px, 58 px) the stack keeps its width.
+ */
+export function toastMaxWidth(mode, w, bossUp) {
+  if (mode.phone) return `min(${TOAST_MAX_W}px, calc(100vw - ${2 * PHONE_COLUMN_INSET}px))`;
+  if (!bossUp || mode.touch) return TOAST_MAX_W;
+  const room = Math.floor((w - bossWidthPx(mode, w)) / 2) - KEYBOARD_TOAST_RIGHT - HUD_GAP;
+  return room >= TOAST_MIN_W ? Math.min(TOAST_MAX_W, room) : TOAST_MAX_W;
+}
 
 /** PURE. How many lines the boss bar's line holds where the encounter column shows its notice there (toastsInEncounter):
  *  one on a short screen, where 14 px separate the compact bar from the hotbar's XP edge, so the line keeps the name's
@@ -201,6 +215,12 @@ const snapshot = () => {
 /** The layout for this window, re-rendering only when it changes (a resize or a rotation: a rare event, never a frame). */
 export function useHudMode() {
   return useSyncExternalStore(subscribe, snapshot, snapshot);
+}
+
+const windowWidth = () => window.innerWidth;
+/** This window's width, px, re-rendering on a resize: what the keyboard's toast stack beside the boss bar measures from. */
+export function useWindowWidth() {
+  return useSyncExternalStore(subscribe, windowWidth, windowWidth);
 }
 
 const places = new Map();

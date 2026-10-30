@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   hudMode, tallTouchFits, encounterTop, bossWidth, bossWidthPx, bossBelowCentre, toastsInEncounter, compactBoss,
-  bossCallLines, tallToastPlace, TOUCH_TOAST_TOP, TOAST_LINES,
+  bossCallLines, tallToastPlace, toastMaxWidth, TOUCH_TOAST_TOP, TOAST_LINES,
   FULL_HOTBAR_MIN_W, VITALS_MAX_H, TOUCH_VITALS_TOP, TOUCH_COINS_TOP, COINS_H, HUD_GAP, BOSS_MIN_W,
 } from '../../src/ui/hudLayout.js';
 import { FAN_ROW_ANCHOR_PCT, FAN_ANCHOR_RIGHT, SPELL_ROW_BOTTOM, ASPECT_ROW_BOTTOM, TOUCH_BTN } from '../../src/input/aspectWheel.js';
 
 /**
  * WHICH LAYOUT EACH SCREEN GETS (src/ui/hudLayout.js). tests/e2e/hud-at-rest.spec.js reads every rect pair, and the box
- * at the screen's centre, in a browser at the seven viewports below, on CI; this pins the decisions those reads depend
+ * at the screen's centre, in a browser at the eight viewports below, on CI; this pins the decisions those reads depend
  * on, so a rule moved here (a phone on its side put back in the tall layout, an upright phone sent to the short one, an
  * iPad sent to either) goes red at commit time, before CI.
  *
@@ -20,6 +20,7 @@ import { FAN_ROW_ANCHOR_PCT, FAN_ANCHOR_RIGHT, SPELL_ROW_BOTTOM, ASPECT_ROW_BOTT
  */
 const VIEWPORTS = [
   { name: 'desktop 1280x800', w: 1280, h: 800, touch: false, layout: 'tall', band: 'wide', top: 96, compact: false, boss: 450 },
+  { name: 'desktop 1024x768', w: 1024, h: 768, touch: false, layout: 'tall', band: 'wide', top: 96, compact: false, boss: 450 },
   { name: 'iPad 1180x820', w: 1180, h: 820, touch: true, layout: 'tall', band: 'wide', top: 96, compact: false, boss: 450 },
   { name: 'iPad 820x1180', w: 820, h: 1180, touch: true, layout: 'tall', band: 'mid', top: 144, compact: false, boss: 388 },
   { name: 'phone 390x844', w: 390, h: 844, touch: true, layout: 'phone', band: 'narrow', top: 144, compact: true, boss: 214 },
@@ -155,3 +156,32 @@ describe('the tall touch layout\'s toast stack stops above the touch controls un
   });
 });
 
+describe('the keyboard\'s toast stack beside the boss bar', () => {
+  // Independently of hudLayout's arithmetic for the stack: the boss bar centred at the width bossWidthPx gives (the width
+  // the e2e reads), its top 96 px (144 under 900 px wide) and every reading of it taller than 20 px; the stack's right
+  // edge 16 px from the window's and its top 164 px (QuestSystem.jsx NotificationStack). The stack's top lies in the
+  // bar's band at every keyboard width, whatever the nameplate above the bar adds, so the two clear only side by side.
+  // NOT CHECKED HERE: a keyboard window under 640 px wide, where the bar leaves 58 px beside it (registry
+  // REVIEW:w2d:toast-narrow-keyboard); the stack's height (registry REVIEW:w2d:toast-desktop-count).
+  it('with the bar up the stack stands clear of it at every keyboard width from 640 to 1920 px; with the bar down it keeps 320 px', () => {
+    let checked = 0, narrowest = Infinity;
+    const met = [];
+    for (let w = 640; w <= 1920; w++) {
+      const m = hudMode(w, 768, false);
+      expect(encounterTop(m), `SETUP: ${w} px, the bar's top`).toBeLessThan(164);
+      const barRight = (w + bossWidthPx(m, w)) / 2;
+      const up = toastMaxWidth(m, w, true);
+      const gap = (w - 16 - up) - barRight;
+      if (gap < HUD_GAP) met.push(`${w} px: ${up} px wide, ${Math.round(HUD_GAP - gap)} px into the bar's gap`);
+      // The narrowest the HUD draws a panel of words: the boss bar's own floor.
+      expect(up, `${w} px: the stack narrowed past reading`).toBeGreaterThanOrEqual(160);
+      expect(toastMaxWidth(m, w, false), `${w} px with the bar down`).toBe(320);
+      narrowest = Math.min(narrowest, up);
+      checked++;
+    }
+    const at1024 = toastMaxWidth(hudMode(1024, 768, false), 1024, true);
+    console.log(`keyboard toast stack: ${checked} widths with the bar up; meets the bar at ${met.length}; narrowest ${narrowest} px; 1024 px: ${at1024} px wide`);
+    expect(checked).toBe(1281);
+    expect(met.length, `the stack meets the boss bar at ${met.length} of ${checked} widths: ${met.slice(0, 2).join('; ')} ... ${met.slice(-1)}`).toBe(0);
+  });
+});
