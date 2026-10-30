@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, cleanup, act } from '@testing-library/react';
+import React from 'react';
+import { renderHook, render, cleanup, act } from '@testing-library/react';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { useBossSystem } from '../../src/world/bossSystem.js';
 import { BOSS_CONFIG } from '../../src/game/bossConfig.js';
 import { tIn } from '../../src/i18n/i18n.js';
 import { blightHeartSite } from '../../src/world/blightHeart.js';
 import { notificationText } from '../../src/ui/notifications.js';
+import { makeDragonLoader, makeLazyDragon, DRAGON_RETRIES, DRAGON_RETRY_MS } from '../../src/render/dragonLoader.js';
 
 // The dragon's calls go to the notification channel: what the hook sent, as the toast stack shows it in English.
 const notices = () => (useGameStore.getState().addNotification?.mock?.calls ?? [])
@@ -127,5 +129,77 @@ describe('a suspended encounter keeps its HP and re-arms the lair', () => {
     hook.rerender({ l: 10 });
     expect(hook.result.current.bossActive, 'the lair did not re-arm after the suspend').toBe(true);
     expect(hook.result.current.bossHealth).toBe(300);
+  });
+});
+
+// A GIVE-UP WITH THE PLAYER STILL AT THE LAIR. A tab left open across a deploy 404s the dragon's old chunk on every try,
+// and the player is standing where the fight woke. The lair stays disarmed until they walk out of it, so the chunk is
+// fetched again only on a new arrival (its retries bounded per arrival, never on a timer), and a resumed fight skips
+// the entrance it already played. Mounted through the real LazyDragon over a loader that always fails, with the give-up
+// wired to the store as the game wires it.
+describe('a give-up at the lair leaves the player standing in a quiet lair', () => {
+  const lair = blightHeartSite();
+  const away = { x: lair.x + 400, y: 40, z: lair.z };
+  const atLair = { x: lair.x, y: 40, z: lair.z };
+  const real = {};
+  let importer;
+  const count = (key) => useGameStore.getState().addNotification.mock.calls.filter(([k]) => k === key).length;
+  const tick = (ms) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+  const mountFight = () => {
+    importer = vi.fn(() => Promise.reject(new Error('404')));
+    const Dragon = makeLazyDragon(makeDragonLoader(importer), {
+      notify: (key) => useGameStore.getState().addNotification(key, 'warning'),
+      onGiveUp: () => useGameStore.getState().suspendBossEncounter?.(),
+    });
+    const Fight = () => (useBossSystem(9).bossActive ? <Dragon /> : null);
+    return render(<Fight />);
+  };
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const s = useGameStore.getState();
+    for (const k of ['triggerHitstop', 'triggerCameraShake', 'triggerBloomSpike']) real[k] = s[k];
+    useGameStore.setState({ bossHealth: MAX, bossActive: false, bossDefeated: false, bossTier: 0, gameWon: false,
+      isCaptureMode: false, hitstopUntil: 0, hitstopStart: 0, getMobGroundLevel: null, addNotification: vi.fn(),
+      triggerHitstop: vi.fn(), triggerCameraShake: vi.fn(), triggerBloomSpike: vi.fn(), playerPosition: atLair });
+  });
+  afterEach(() => { cleanup(); useGameStore.setState(real); vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  /** Wake the fight at the lair, wound it to 300 HP, and run its chunk to the give-up. */
+  const toGiveUp = async () => {
+    mountFight();
+    await tick(1600);
+    expect(useGameStore.getState().bossActive, 'SETUP: the arrival did not wake the dragon').toBe(true);
+    expect(count('notice.bossAwakens'), 'SETUP: the instrument does not see the entrance').toBe(1);
+    await act(async () => { useGameStore.getState().damageBoss(MAX - 300); });
+    for (let i = 0; i <= DRAGON_RETRIES && count('notice.dragonLoadGaveUp') === 0; i++) await tick(DRAGON_RETRY_MS + 100);
+    expect(count('notice.dragonLoadGaveUp'), 'SETUP: the failing chunk never gave up').toBe(1);
+    expect(importer, 'SETUP: the first load and its retries').toHaveBeenCalledTimes(1 + DRAGON_RETRIES);
+  };
+
+  it('standing still for a minute after the give-up: no second wake, no further fetch, one entrance, one give-up', async () => {
+    await toGiveUp();
+    const woke = [];
+    for (let s = 0; s < 60; s++) { await tick(1000); if (useGameStore.getState().bossActive) woke.push(s); }
+    expect(woke, 'the fight woke again with the player still standing at the lair').toEqual([]);
+    expect(importer, 'the chunk was fetched again with no new arrival').toHaveBeenCalledTimes(1 + DRAGON_RETRIES);
+    expect(count('notice.bossAwakens'), 'the entrance played again').toBe(1);
+    expect(useGameStore.getState().triggerHitstop, 'the entrance froze the world again').toHaveBeenCalledTimes(1);
+    expect(count('notice.dragonLoadGaveUp')).toBe(1);
+    expect(useGameStore.getState().bossHealth).toBe(300);
+  });
+
+  it('walking out and back in resumes the same fight at the same HP, fetches the chunk again, and plays no entrance', async () => {
+    await toGiveUp();
+    await act(async () => { useGameStore.setState({ playerPosition: away }); });
+    await tick(1600);
+    expect(useGameStore.getState().bossActive, 'woke away from the lair').toBe(false);
+    await act(async () => { useGameStore.setState({ playerPosition: atLair }); });
+    await tick(1600);
+    expect(useGameStore.getState().bossActive, 'the lair did not re-arm after the player walked out and back').toBe(true);
+    expect(useGameStore.getState().bossHealth).toBe(300);
+    expect(importer.mock.calls.length, 'the return did not try the chunk again').toBeGreaterThan(1 + DRAGON_RETRIES);
+    expect(count('notice.bossAwakens'), 'the resumed fight played its entrance again').toBe(1);
+    expect(useGameStore.getState().triggerHitstop, 'the resumed fight froze the world again').toHaveBeenCalledTimes(1);
   });
 });
