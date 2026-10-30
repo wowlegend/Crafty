@@ -19,6 +19,57 @@
 
 ---
 
+## 2026-10-30 — [LOOP] W2-L: every animated element renders `m`, under one strict LazyMotion provider
+
+**Decided by the W2-L builder under the standing grant** (DECISIONS 2026-10-28 item 14), as the rest of reset item 14: the
+index chunk stops carrying framer-motion features the game never uses. Each stands while it earns its place.
+
+140. **`motion.X` is `m.X` in the 12 modules that animate; `src/ui/MotionProvider.jsx` is the one provider, App's outermost
+   element, with `features={domAnimation}` and `strict`.** The inventory (33 elements, 13 `AnimatePresence` blocks) uses
+   only `initial`, `animate`, `exit`, `transition`, `style`, `onClick` and `onAnimationComplete`: no `layout`, `layoutId`,
+   `drag`, `Reorder`, hover/tap props or motion hooks anywhere, so `domMax` is not needed and `domAnimation` is all that
+   is loaded. `src/index.jsx` has the only `createRoot`; the R3F canvases and drei's `<Html>` bubble render no `m`, so one
+   provider covers it, and the lazy panel chunk renders inside the same root and context. The features are passed as a
+   bundle, not a loader: a loader (`features={() => import(...)}`) was built and measured as an option and not shipped.
+   **Measured on the same tree** (`npm run build`, minified bytes): index chunk **681,632 B to 634,075 B, -47,557 B
+   (-7.0%)**; gzip 229,012 B to 215,162 B, -13,850 B. The loader variant reads index 597,267 B (-84,365 B, gzip 202,566 B)
+   plus a 38,030 B features chunk. The plan's "about 124 KB" was a lens-reported figure for the whole framer-motion share and
+   was not re-derived: what leaves with a synchronous `domAnimation` is drag, layout and projection, which nothing here
+   used. **Why not the loader's extra 36.8 KB:** the title overlay is the first thing a player sees and fades in from
+   `initial` (opacity 0), so a loader shows an empty title until a second request resolves, and a request that fails leaves
+   every panel at opacity 0 for good with nothing thrown; `render/dragonLoader.js` needed a retry and a give-up path for
+   exactly this. **Door:** swapping to the loader is one line in `MotionProvider.jsx` plus a `modulepreload` in
+   `vite.config.js` (as `preloadGameIcons` does) and a retry, recorded as a new dated entry that names this one; nothing
+   else in the 12 modules changes.
+141. **The index ceiling falls with the chunk: 700,000 B to 652,500 B** (`scripts/ci/bundle-budget.mjs`, `actualAtWrite`
+   634,075 B). The headroom kept over the measured size is the 18,368 B the old ceiling left over the old measured size, so
+   the lanes still in flight keep exactly the room they had and nothing else gets the 47,557 B freed. Mutants run through
+   `npm run build` and the gate: the full `motion` component put back in an index-carried module (`ui/GameHud.jsx`) reads
+   682,123 B, RED; `domMax` in the provider reads 682,104 B, RED; the identity edit (a comment) reads 634,075 B, green; the
+   full `motion` in a module only the lazy panel chunk carries (`ui/panels/ForgePanel.jsx`) reads 636,434 B, GREEN, so the
+   budget does not see that case and the strict unit gate does (item 142).
+142. **Three gates and an e2e hold it.** `tests/gates/lazy-motion-strict-gates.test.jsx` mounts one real component from each
+   of the 12 modules (18 components) under `MotionProvider` and nothing else: a `motion.*` left in any of them throws, and
+   two controls show the instrument sees both ways (a `motion.div` under the provider throws; an `m.div` under it draws a
+   value strictly between its start and end). `tests/gates/app-motion-provider-gates.test.jsx` renders the real App (the
+   two 3D scenes stubbed) and watches the title overlay fade from opacity 0 to 1, which fails when App renders no
+   provider; the strict gate cannot see that, because it imports the provider itself.
+   `tests/e2e/lazy-motion.spec.js` opens the Talents page by Tab and a real click and samples its card's scale on the
+   frames the page draws (`tests/e2e/_motionSample.js`); `tests/gates/motion-sample-gates.test.jsx` runs the sampler on the
+   real panel in jsdom and the verdict on series known by construction. Mutants, each RED on the test named and each run
+   against a green baseline by `scripts/dev/mutate.sh`: `motion` back in each of the 12 modules (12 of 12), the provider
+   without `strict`, the provider whose features never load (strict gate and App gate), App with a pass-through provider,
+   and nine verdict and sampler mutants; the three identity edits stayed green. The e2e itself was not run locally: CI is
+   its arbiter, and its mutants are argued in the spec.
+143. **What is not proven.** `strict` is dev and test only (framer-motion 12.43 skips the check in a production build), so
+   the shipped artifact is held by the budget alone, and only for modules the index chunk carries. A second React root that
+   renders `m` outside the provider would render it frozen and nothing would report it; today there is one `createRoot`.
+   The component tests elsewhere (HUD, MenuSystem, QuestSystem and the rest) render `m` without a provider and so without
+   animations: they pass, and they never exercised the animation. No frame of the transition was looked at on a screen;
+   the feel is Kevin's.
+
+---
+
 ## 2026-10-30 — [LOOP] W3-B PR B: every dragon attack has a tell, the skill answers reach it, and so do the Aspect kits
 
 **Decided by the W3-B dragon lane under the standing grant** (DECISIONS 2026-10-28 item 14), building Units 2, 3 and 4 of
