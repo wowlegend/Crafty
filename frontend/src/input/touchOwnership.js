@@ -26,14 +26,19 @@
 /**
  * Surfaces that own their own touches.
  *
- * - `button[data-touch-btn]` — the transparent hit-areas the touch layer itself renders (pause, action,
- *   cast, jump, dodge, the Aspect ring and the spell picker). They handle `onPointerUp` themselves.
- * - `[data-hud-interactive]` — real HUD control surfaces underneath the layer: the hotbar, and anything
- *   else that marks itself as a control rather than as scenery.
+ * - `button`, `[role="button"]` — every control a finger presses: the transparent hit-areas the touch layer
+ *   itself renders (`button[data-touch-btn]`: pause, action, cast, jump, dodge, the Aspect ring and the spell
+ *   picker, which handle `onPointerUp` themselves) and every plain button drawn over the live game (the HUD's
+ *   Settings gear, Respawn, Keep exploring), which fires on its click. Named by kind rather than marked one by
+ *   one, so a button added over the game owns its touch without anyone remembering to mark it.
+ * - `[aria-modal="true"]` — a modal surface over the world, such as the context-loss panel, whose whole face
+ *   is its way back.
+ * - `[data-hud-interactive]` — HUD control surfaces that are not buttons themselves: the hotbar container
+ *   and the quest tracker.
  *
  * Anything else is scenery, and a touch on scenery is a move or a look.
  */
-export const UI_OWNED_SELECTOR = 'button[data-touch-btn], [data-hud-interactive]';
+export const UI_OWNED_SELECTOR = 'button, [role="button"], [aria-modal="true"], [data-hud-interactive]';
 
 /**
  * True when `node` is, or sits inside, a surface that owns its own touches.
