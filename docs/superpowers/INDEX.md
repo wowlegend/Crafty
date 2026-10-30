@@ -76,6 +76,7 @@ Beside them: `CLAUDE.md` (the one instruction file), `memory/ARCHITECTURE.md` (t
 | `docs/superpowers/sota-2026-09/` | `QUEUE.md` and `OPEN-ITEMS.md` feed `registry-harvest.mjs`, `GATES.md` feeds `gate-census.mjs`, the two `EXTERNAL-BASELINE` files are cited from source, `FUTUREPROOF.md` from the published pages |
 | `docs/superpowers/upstream-750-reply-draft.md` | The text of an open item, Kevin's to send (registry `QUEUE:Q08`) |
 | `docs/superpowers/masterpiece-2026-10/` | The reset plan's survey, refutes and upside, and the evidence frames DECISIONS and the registry cite |
+| `docs/superpowers/audits/` | The dated whole-game audits: the 18-domain review (2026-07-13) and the deep audit of the invisible-box class (2026-10-30), whose `AUDIT:*` registry rows and lanes cite it |
 | The other dated audits and research, `memory/*AUDIT*`, `memory/S2B*`, `memory/STATE-REVIEW-2026-06-10.md` | STATUS, SOTA-INITIATIVE, ARCHITECTURE, ROADMAP, the inbox, a live plan or source cites each; history, not status |
 | `docs/archive/2026-Q2/plans/` | Two archived plans that ARCHITECTURE and the inbox still cite |
 | `docs/PERF-PROTOCOL.md` | The real-device frame-rate protocol; no run is recorded yet |
