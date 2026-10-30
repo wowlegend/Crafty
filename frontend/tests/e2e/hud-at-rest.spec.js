@@ -74,8 +74,11 @@ const pairs = (list) => {
   return out;
 };
 
-/** Enter play and wait until the HUD's vitals are on screen (forcePlay re-asserted, as hud-layout.spec.js does). */
+/** Enter play and wait until the HUD's vitals are on screen (forcePlay re-asserted, as hud-layout.spec.js does). The
+ *  first-session onboarding toasts (App.jsx, 1.6 s and 8.6 s after the world builds, on real timers a held world does not
+ *  stop) are marked seen, so the only toast in a notice state is the staged one. */
 async function enterPlayWithHud(page, touch) {
+  await page.addInitScript(() => { try { localStorage.setItem('crafty_onboarded', '1'); } catch { /* the stack guard names any toast that shows */ } });
   await bootDev(page);
   await page.waitForFunction(() => window.useGameStore.getState().isSpawnChunkLoaded === true, null, { timeout: 90000 })
     .catch((e) => { throw new Error(`SETUP: the world never built — ${e.message}`); });
