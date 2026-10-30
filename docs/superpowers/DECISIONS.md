@@ -19,6 +19,35 @@
 
 ---
 
+## 2026-10-30 — [LOOP] W3-B PR A: the dragon is a lazy chunk, and the lookbook can hold it
+
+**Decided by the W3-B dragon lane under the standing grant** (DECISIONS 2026-10-28 item 14), building Units 1 and 10 of
+`docs/superpowers/plans/2026-10-27-crafty-shadow-dragon.md` by the task script
+`docs/superpowers/plans/2026-10-30-crafty-w3b-dragon.md`. Each stands while it earns its place.
+
+120. **The dragon's Units 1-4 go before move 11's surfaces.** The refute ordered the dragon "after 11"
+   (`refute-2026-10-27.md:104`), and the dragon plan's review amendments made move 11's U1 a precondition for its Units 3
+   and 5. Move 11's edge telegraph, HDR gain and decal pools are not on main and the reset plan moved them to W3-A
+   (`sota-reset.md:539`), which runs beside this lane. **Why:** the tells are the fight's rules ("rules first",
+   `upside-2026-10-27.md:52`) and need no shared surface: the decals are the dragon's own fixed pool of four meshes driven
+   from `render/BossEntity.jsx`'s one frame loop, which W3-A's telegraph can absorb. Unit 5 (the rig) still waits for
+   W3-A's edge telegraph and HDR gain; Units 6-9 are registry rows.
+121. **The dragon is its own chunk, and a chunk that never loads suspends the fight.** `render/dragonLoader.js`
+   `LazyDragon` replaces GameScene's static mount (index 682,746 -> 676,277 B on the build of that commit; the dragon's
+   chunk 8,969 B); `world/bossSystem.js` preloads it when the player qualifies and at mount for a restored fight. The
+   lazy dragon sits in its own `<Suspense>`, because React 19 hides every sibling of a lazy that suspends in a revealed
+   boundary on a non-transition update and runs their layout-effect cleanups, where R3F's `useFrame` unsubscribes. A
+   failed chunk is tried again three times, 5 s apart, then the encounter is SUSPENDED through the store's
+   `suspendBossEncounter`: the bar, music and mood end, the HP and tier stay in the save, and the lair re-arms. **Why the
+   store:** GameScene's props come from `App.jsx`, which the W2-G lane holds.
+122. **The production build can wake the dragon, only on a `?lookbook=1` page.** `world/bossSystem.js` installs
+   `lookbookSpawnDragon` only when the URL carries the exact parameter; the seam's `dragon({ pose, position })`
+   (`render/lookbookSeam.js`) reaches it and holds the dragon still (`lookbookDragonHold()`, read per frame by
+   `BossEntity`). `scripts/visual/lookbook.mjs --sets dragon` shoots the dragon arena: the dragon over the Blight Heart
+   lair, framed from the way a player walks in. **Why:** the fight's looks are judged on real-GPU frames of the shipped
+   bundle (W1-H item 1), and the only spawn was DEV-only. A player who types the parameter gets the seam and nothing else
+   until a script calls it.
+
 ## 2026-10-30 — commit `faa65ee1` carries the WRONG message. Read this instead.
 
 `faa65ee1` on `feat/w2d-hud` is titled "fix(render): Show Stats no longer paces the game it measures", another lane's
