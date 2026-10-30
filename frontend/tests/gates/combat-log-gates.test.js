@@ -14,8 +14,8 @@ import { fileURLToPath } from 'node:url';
 // a legitimate rewrite, which is the worst of both. The cap is the whole point of a log ticker: without
 // it, a long fight walks the feed up the screen. That is renderable, so render it and COUNT THE LINES.
 //
-// The desktop/touch split matters here too — the component picks 8 or 4 from `isTouchUIMode()`, and the
-// old suite asserted neither number. A regression to a single hardcoded cap would have passed it.
+// The desktop/touch split matters here too: the log is a keyboard's (8 lines), and touch draws none, since the toast
+// stack shows the same live list there and the joystick and the tray hold the left edge (DECISIONS 2026-10-29 item 92).
 vi.mock('../../src/input/touchDevice', () => ({ isTouchUIMode: vi.fn(() => false), isTouchDevice: vi.fn(() => false) }));
 vi.mock('../../src/devtest/captureMode', () => ({ isCaptureMode: vi.fn(() => false) }));
 import { isTouchUIMode } from '../../src/input/touchDevice';
@@ -48,12 +48,12 @@ describe('combat log — the ring buffer, driven rather than grepped', () => {
     ]);
   });
 
-  it('caps at 4 on touch, where the screen is smaller', () => {
+  it('draws nothing on touch, where the toast stack shows the same live list', () => {
+    // The same feed drew 8 lines on a keyboard above, so an empty render here is the touch gate, not a dead component.
     isTouchUIMode.mockReturnValue(true);
     const { container } = render(createElement(CombatLog, { notifications: feed(50) }));
-    const lines = renderedLines(container);
-    expect(lines.length, 'touch uses the desktop cap — it eats a phone HUD').toBe(4);
-    expect(lines[3]).toBe('event-49');
+    expect(renderedLines(container), 'a combat log is drawn on touch, over the joystick or the vitals').toEqual([]);
+    expect(container.textContent, 'the touch render paints something').toBe('');
   });
 
   it('shows every line when there are fewer than the cap, and nothing at all when there are none', () => {

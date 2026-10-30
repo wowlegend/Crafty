@@ -36,7 +36,10 @@ import { Compass } from './ui/Compass.jsx';
 import { Panel, Icon } from './ui/primitives/index.js';
 import { EmberBar } from './ui/EmberBar.jsx';
 import { subscribeHudTick } from './ui/hudTicker.js';
-import { useHudMode, encounterTop, bossWidth, SHORT_VITALS_TOP, TOUCH_VITALS_TOP, TOUCH_COINS_TOP } from './ui/hudLayout.js';
+import {
+  useHudMode, encounterTop, bossWidth, bossBelowCentre, toastsInEncounter, compactBoss, toastMaxWidth, BELOW_CENTRE_TOP,
+  SHORT_VITALS_TOP, TOUCH_VITALS_TOP, TOUCH_COINS_TOP, PHONE_VITALS_TOP, PHONE_COINS_TOP,
+} from './ui/hudLayout.js';
 import { ON_WORLD_TEXT } from './ui/onWorldText.js';
 import { PanelBoundary, onceRetrying } from './ui/panels/lazyPanels.js';
 
@@ -73,14 +76,16 @@ export function WindupChevronsSlot() {
 
 // The coin count: the coin and the number on the world, no panel (DECISIONS 2026-10-29 item 99). A store subscription
 // is Game-Loop-Isolation-safe here (HUD is declarative, not a useFrame system). Gated on coins > 0 so the default-zero
-// wallet renders NOTHING. On desktop it sits left of the Settings gear; on a tall touch screen the Pause button takes
-// that place (ui/TouchControls.jsx, right 64 px, 46 px wide), so it sits under the minimap; on a short one, in the top
-// band between the compass and the minimap (ui/hudLayout.js).
+// wallet renders NOTHING. On desktop it sits left of the Settings gear; on touch the Pause button takes that place
+// (ui/TouchControls.jsx, right 64 px, 46 px wide), so it sits under the minimap (on a tall screen and on a phone), and
+// on a short one in the top band between the compass and the minimap (ui/hudLayout.js).
 const CoinReadout = React.memo(() => {
   const coins = useGameStore((s) => s.coins);
   const mode = useHudMode();
   if (!coins || coins <= 0) return null;
-  const place = !mode.touch ? { top: 16, right: 68 } : mode.short ? { top: 12, right: 222 } : { top: TOUCH_COINS_TOP, right: 8 };
+  const place = !mode.touch ? { top: 16, right: 68 }
+    : mode.short ? { top: 12, right: 222 }
+    : { top: mode.phone ? PHONE_COINS_TOP : TOUCH_COINS_TOP, right: 8 };
   return (
     <div data-testid="coin-readout" className="absolute z-20 pointer-events-none h-5 flex items-center gap-1" style={place}>
       <Icon name="coins" size={18} className="flex-none text-warn" />
@@ -276,12 +281,13 @@ export const ImbueTell = React.memo(() => {
 // hotbar's 408 px plus, on each side, this stack's 176 px, its 16 px margin and HUD_GAP (tests/gates/hud-at-rest-gates
 // recomputes it from the rendered classes). Touch: the joystick and the action buttons hold both bottom corners
 // (ui/TouchControls.jsx), so the stack sits at the top left under the quest line and the objective line on a tall screen,
-// and on a short one between the tray's opener and the joystick (ui/hudLayout.js).
+// on a short one between the tray's opener and the joystick, and on a phone beside the crosshair at 128 px, which
+// clears it (ui/hudLayout.js PHONE_VITALS_TOP), since the encounter column holds the band under the objective line.
 export const Vitals = ({ gameSystems }) => {
   const mode = useHudMode();
-  const place = mode.touch ? { top: mode.short ? SHORT_VITALS_TOP : TOUCH_VITALS_TOP } : undefined;
+  const place = mode.touch ? { top: mode.short ? SHORT_VITALS_TOP : mode.phone ? PHONE_VITALS_TOP : TOUCH_VITALS_TOP } : undefined;
   return (
-    <div data-testid="stat-stack" className={`absolute left-4 pointer-events-none z-20 flex flex-col gap-2 w-44 ${mode.touch ? '' : 'bottom-4 max-[808px]:bottom-[88px]'}`} style={place}>
+    <div data-testid="stat-stack" className={`absolute left-4 pointer-events-none z-20 flex flex-col gap-2 ${mode.phone ? 'w-32' : 'w-44'} ${mode.touch ? '' : 'bottom-4 max-[808px]:bottom-[88px]'}`} style={place}>
       <PlayerHealthBar health={gameSystems.playerHealth} maxHealth={gameSystems.maxHealth} />
       <PlayerManaBar mana={gameSystems.mana} maxMana={gameSystems.maxMana} />
       <EmberBar />
@@ -289,35 +295,56 @@ export const Vitals = ({ gameSystems }) => {
   );
 };
 
-// The encounter: the aimed target's nameplate over the boss bar, one centred column, so the two never meet; where it
-// sits and how wide the boss bar is follow the viewport (ui/hudLayout.js encounterTop, bossWidth).
-const Encounter = ({ bossSystem }) => {
+// The encounter: the aimed target's nameplate over the boss bar, one centred column, so the two never meet; on a phone
+// and a short screen the toast stack joins it under the boss bar, and on a short one the boss bar and the stack take a
+// column of their own under the crosshair. Where each sits and how wide the boss bar is follow the viewport
+// (ui/hudLayout.js).
+const ENCOUNTER_COLUMN = 'absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center gap-1.5';
+const Encounter = ({ bossSystem, notifications }) => {
   const mode = useHudMode();
+  const boss = (
+    <BossHealthBar
+      bossActive={bossSystem.bossActive}
+      bossHealth={bossSystem.bossHealth}
+      bossMaxHealth={bossSystem.bossMaxHealth}
+      bossPhase={bossSystem.bossPhase}
+      bossName={bossSystem.bossName}
+      width={bossWidth(mode)}
+      compact={compactBoss(mode)}
+    />
+  );
+  const toasts = toastsInEncounter(mode) ? <NotificationStack notifications={notifications} inline maxWidth={toastMaxWidth(mode)} /> : null;
+  if (bossBelowCentre(mode)) {
+    return (
+      <>
+        <div className={ENCOUNTER_COLUMN} style={{ top: encounterTop(mode) }}><TargetFrame /></div>
+        <div className={ENCOUNTER_COLUMN} style={{ top: BELOW_CENTRE_TOP }}>{boss}{toasts}</div>
+      </>
+    );
+  }
   return (
-    <div className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center gap-1.5" style={{ top: encounterTop(mode) }}>
+    <div className={ENCOUNTER_COLUMN} style={{ top: encounterTop(mode) }}>
       <TargetFrame />
-      <BossHealthBar
-        bossActive={bossSystem.bossActive}
-        bossHealth={bossSystem.bossHealth}
-        bossMaxHealth={bossSystem.bossMaxHealth}
-        bossPhase={bossSystem.bossPhase}
-        bossName={bossSystem.bossName}
-        width={bossWidth(mode)}
-        compact={mode.band === 'narrow' && !mode.short}
-      />
+      {boss}
+      {toasts}
     </div>
   );
 };
 
+// The toast stack at the right edge, where it stands on its own (a keyboard, a tall touch screen); elsewhere it is in
+// the encounter column.
+const PlacedToasts = ({ notifications }) => (toastsInEncounter(useHudMode()) ? null : <NotificationStack notifications={notifications} />);
+
 // The minimap: bottom right on a keyboard; on a tall touch screen top right under the dial, clear of the thumb cluster
-// and the quest line; on a short one in the top band beside the Pause at three quarters, without its coordinates line,
-// since the fans hold the right edge below it (ui/hudLayout.js).
+// and the quest line; on a phone under the dial at 60%, without its coordinates line, beside the encounter column
+// (ui/hudLayout.js PHONE_MINIMAP_TOP); on a short one in the top band beside the Pause at three quarters, without its
+// coordinates line, since the fans hold the right edge below it.
 const PlacedMinimap = () => {
   const mode = useHudMode();
   if (!mode.touch) return <RadialMinimap />;
-  return mode.short
-    ? <RadialMinimap position="top-2 right-[118px] scale-75 origin-top-right" coords={false} />
-    : <RadialMinimap position="top-[164px] right-2" />;
+  if (mode.short) return <RadialMinimap position="top-2 right-[118px] scale-75 origin-top-right" coords={false} />;
+  if (mode.phone) return <RadialMinimap position="top-[148px] right-2 scale-[0.6] origin-top-right" coords={false} />;
+  return <RadialMinimap position="top-[164px] right-2" />;
 };
 
 export function HUD({
@@ -370,14 +397,13 @@ export function HUD({
 
             {!isTouchUIMode() && <AbilityBar />}{/* W3 M-HUD.3: bottom-center cooldown-sweep action bar; bottom-4 sits in the touch joystick/action-cluster band -> desktop-only for now (M-AMBIENT cleanup gives touch its own placement) */}
 
-            <Encounter bossSystem={bossSystem} />
+            <Encounter bossSystem={bossSystem} notifications={questSystem.notifications} />
 
             <QuestTracker quests={questSystem.quests} onClaim={questSystem.claimQuest} />
 
-            <NotificationStack notifications={questSystem.notifications} />
+            <PlacedToasts notifications={questSystem.notifications} />
 
-            {/* W3 M-HUD.4: quiet bottom-left combat-log ticker over the SAME addNotification stream as the
-                corner toasts (classic-RPG "what just happened" read). Capture-suppressed; collapses on touch. */}
+            {/* The quiet bottom-left ticker over the SAME live list as the toast stack; a keyboard's only (ui/CombatLog.jsx). */}
             <CombatLog notifications={questSystem.notifications} />
 
             <ChestIndicator

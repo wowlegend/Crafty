@@ -640,12 +640,15 @@ const NOTIF_ICON = {
     info: 'sparkles',
 };
 
-export const NotificationStack = React.memo(({ notifications }) => {
+export const NotificationStack = React.memo(({ notifications, inline = false, maxWidth = 320 }) => {
     const t = useT();
-    // Below the day-phase dial (top 68 px, 84 px tall), which a toast must not cover (STATUS G-ledger 38/a); on touch,
-    // below the minimap that sits under the dial there and the coin count under it (HUD.jsx CoinReadout).
+    // Standing on its own at the right edge (a keyboard, a tall touch screen): below the day-phase dial (top 68 px, 72 px
+    // tall), which a toast must not cover (STATUS G-ledger 38/a), and on touch below the minimap under the dial and the
+    // coin count under it (HUD.jsx CoinReadout). `inline`: in the encounter column under the boss bar (a phone, a phone
+    // on its side: HUD.jsx Encounter), where those screens leave a band clear across the middle.
+    const place = inline ? '' : `absolute ${isTouchUIMode() ? 'top-[372px]' : 'top-[164px]'} right-4 z-30 `;
     return (
-        <div data-testid="notification-stack" className={`absolute ${isTouchUIMode() ? 'top-[372px]' : 'top-[164px]'} right-4 z-30 pointer-events-none space-y-2`} style={{ maxWidth: 320 }}>
+        <div data-testid="notification-stack" className={`${place}pointer-events-none space-y-2`} style={{ maxWidth }}>
             <AnimatePresence>
                 {notifications.map(notif => {
                     const status = NOTIF_STATUS[notif.type] || 'info';
