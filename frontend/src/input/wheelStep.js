@@ -6,9 +6,10 @@
 // (AUDIT:input:wheel-hotbar-per-event).
 //
 // What a notch reports differs by browser and platform (deltaY per notch, measured and published by others, collected in
-// the lane's DECISIONS entry): Chrome on Windows 100 px, on Linux 120 px; Firefox 3 lines (deltaMode 1) on Windows and
-// Linux, 16 px on macOS; Chrome and Safari on macOS 4 px for a slow notch and up to 400 px for a fast spin. A trackpad
-// starts near 1 px. So no single pixel threshold can be one notch: 100 px would make a macOS mouse need 25 notches a slot.
+// the lane's DECISIONS entry): Chrome on Windows 100 px, on Linux 120 px; Firefox 3 lines (deltaMode 1) on Windows, 108
+// to 138 px where it reports pixels, 16 px on macOS; Chrome and Safari on macOS 4 px for a slow notch and up to 400 px for
+// a fast spin. A trackpad starts near 1 px. So no single pixel threshold can be one notch: 100 px would make a macOS mouse
+// need 25 notches a slot.
 // The rule here: a GESTURE is a run of events in one direction with no gap over GESTURE_GAP_MS. Its first slot comes once
 // it has moved START_PX (the smallest notch any of those reports), and each further slot every STEP_PX more. A slow notch
 // on any wheel is its own gesture and moves one slot; a fast spin on Windows or Linux moves one per notch; a trackpad swipe
