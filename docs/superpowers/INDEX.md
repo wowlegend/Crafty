@@ -51,12 +51,12 @@ Beside them: `CLAUDE.md` (the one instruction file), `memory/ARCHITECTURE.md` (t
 |---|---|
 | `docs/superpowers/command-record.html` | Kevin's one review page (https://claude.ai/artifact/AdWhiwq9utxaUdUQBEcfCA), refreshed at each landing; `.artifact-sync.json` records its publish |
 | `docs/superpowers/era-review.html`, `docs/superpowers/sota-audit.html` | Pages published from these sources, frozen as dated history (DECISIONS 2026-10-28 item 13); DECISIONS and STATUS cite them |
-| `docs/superpowers/KEVIN-REVIEW-BATCH.md`, `docs/superpowers/KEVIN-REVIEW.html` | Kevin's inbox (`CLAUDE.md`); DECISIONS settles |
+| `docs/superpowers/KEVIN-REVIEW-BATCH.md` | Kevin's inbox (`CLAUDE.md`); DECISIONS settles |
 | `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` | The queue-ledger gate reads it |
 | `docs/superpowers/sota-2026-09/` | `QUEUE.md` and `OPEN-ITEMS.md` feed `registry-harvest.mjs`, `GATES.md` feeds `gate-census.mjs`, the two `EXTERNAL-BASELINE` files are cited from source, `FUTUREPROOF.md` from the published pages |
 | `docs/superpowers/upstream-750-reply-draft.md` | The text of an open item, Kevin's to send (registry `QUEUE:Q08`) |
 | `docs/superpowers/masterpiece-2026-10/` | The reset plan's survey, refutes and upside, and the evidence frames DECISIONS and the registry cite |
-| The other dated audits and research, `memory/*AUDIT*`, `memory/S2B*`, `memory/STATE-REVIEW-2026-06-10.md` | STATUS, SOTA-INITIATIVE, ARCHITECTURE, ROADMAP, the inbox or source cites each; history, not status |
+| The other dated audits and research, `memory/*AUDIT*`, `memory/S2B*`, `memory/STATE-REVIEW-2026-06-10.md` | STATUS, SOTA-INITIATIVE, ARCHITECTURE, ROADMAP, the inbox, a live plan or source cites each; history, not status |
 | `docs/archive/2026-Q2/plans/` | Two archived plans that ARCHITECTURE and the inbox still cite |
 | `docs/PERF-PROTOCOL.md` | The real-device frame-rate protocol; no run is recorded yet |
 | `docs/media/` | The README hero, the social card and the stills `frontend/scripts/visual/media.mjs` writes |

@@ -26,9 +26,10 @@
 
 100. **Closed records leave HEAD; the annotated tag `records/2026-10-29` keeps them.** It points at main `e900de6b`,
    the tree before the removal. Read one: `git show records/2026-10-29:<path>`; list them:
-   `git ls-tree -r --name-only records/2026-10-29 -- docs memory`. 142 files (10.96 MB) went: the 2026-Q2 plan archive
-   but two, LOOP-PROGRESS, six of seven dated audits, four dated reviews, 38 shipped plans, 12 shipped specs with their
-   two reference comps, one research note, the 2026-09 overnight brief and plan with ten of sixteen frames, the
+   `git ls-tree -r --name-only records/2026-10-29 -- docs memory`. 143 files (10.98 MB) went: the 2026-Q2 plan archive
+   but two, LOOP-PROGRESS, the inbox's old page KEVIN-REVIEW.html, six of seven dated audits, four dated reviews
+   (AUDIT-2026-08-09, CODE-REVIEW-2026-06-20, GOVERNANCE-REVIEW-2026-08-07, LOOP-DOC-SOTA-PLAN-2026-07-27), 38 shipped
+   plans, 12 shipped specs with their two reference comps, one research note, the 2026-09 overnight brief and plan with ten of sixteen frames, the
    superseded cursor archive and one perf report. A record stays while a doc-currency canonical doc, a rule file,
    `CLAUDE.md`, a gate, script, test, CI step, a plan dated 2026-10-27 or later, a published page or the inbox names it
    (each file name was grepped over every tracked file; `docs/superpowers/INDEX.md` lists what stays and why). This
