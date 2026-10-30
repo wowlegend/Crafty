@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, realpathSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, realpathSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +18,9 @@ import { collect, write, check, render, TARGET } from '../../scripts/ci/changelo
  * BLIND SPOT, by design: a pull request's number and title are GitHub's, and `--check` runs offline, so a wrong title
  * on a PR line passes (the case "a PR line's title is not checked" pins that). So does a landing no later commit
  * merged in: git keeps no record of where main pointed.
+ *
+ * `--write` refuses while a merge is unfinished (DECISIONS 2026-10-29 item 101): it reads HEAD, which is the commit
+ * before the merge commit, so a file written then is already stale when the merge commits.
  */
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -185,6 +188,45 @@ describe('changelog --check goes red on each way the file goes wrong', () => {
   });
 });
 
+describe('changelog --write refuses while a merge is in progress', () => {
+  /** A lane that has taken main in with `git merge --no-commit`: MERGE_HEAD exists, the merge commit does not. */
+  function midMerge(r) {
+    r.g('checkout', '-q', '-b', 'feat/m', r.base);
+    r.commit('feat(m): the m lane', '2026-10-22T08:00:00Z');
+    r.g('merge', '-q', '--no-commit', '--no-ff', '-X', 'theirs', 'main');
+    expect(() => r.g('rev-parse', '-q', '--verify', 'MERGE_HEAD'), 'presence: the fixture is mid-merge').not.toThrow();
+    return r;
+  }
+
+  it('throws and writes nothing mid-merge; once the merge commits, --write goes through', () => {
+    const h = midMerge(history());
+    expect(() => write({ root: h.root, prs: [] })).toThrow(/a merge is in progress/);
+    expect(existsSync(join(h.root, TARGET)), 'nothing was written').toBe(false);
+    h.g('commit', '-q', '-m', 'merge main (lane a) into feat/m');
+    expect(write({ root: h.root, prs: [] }).required, 'control: the same call after the merge commit').toBeGreaterThan(0);
+    expect(existsSync(join(h.root, TARGET))).toBe(true);
+  });
+
+  it('holds in a linked worktree, where .git is a file and MERGE_HEAD lives in the worktree\'s own git dir', () => {
+    const h = history();
+    const wt = join(h.root, '..', `${h.root.split('/').pop()}-wt`);
+    roots.push(wt);
+    // The override is for a machine whose git shim refuses a worktree under the temp dir; the fixture is deleted below.
+    fixtureGitWith(h.root, { AB_ALLOW_EPHEMERAL_WORKTREE: '1' }, 'worktree', 'add', '-q', '-b', 'feat/w', wt, h.base);
+    const w = { root: wt, g: (...a) => fixtureGit(wt, ...a) };
+    writeFileSync(join(wt, 'w.txt'), 'w\n');
+    w.g('config', 'user.email', 'fixture@example.invalid');
+    w.g('config', 'user.name', 'fixture');
+    w.g('add', '-A');
+    w.g('commit', '-q', '-m', 'feat(w): the w lane');
+    w.g('merge', '-q', '--no-commit', '--no-ff', '-X', 'theirs', 'main');
+    expect(() => w.g('rev-parse', '-q', '--verify', 'MERGE_HEAD'), 'presence: the worktree is mid-merge').not.toThrow();
+    expect(existsSync(join(wt, '.git', 'MERGE_HEAD')), 'the literal .git/MERGE_HEAD does not exist here').toBe(false);
+    expect(() => write({ root: wt, prs: [] })).toThrow(/a merge is in progress/);
+    expect(existsSync(join(wt, TARGET))).toBe(false);
+  });
+});
+
 describe('changelog CLI', () => {
   const cli = (...args) => spawnSync(process.execPath, ['scripts/ci/changelog.mjs', ...args], { cwd: APP, encoding: 'utf8', env: isolatedGitEnv() });
 
@@ -198,5 +240,17 @@ describe('changelog CLI', () => {
     const red = cli('--check', `--root=${h.root}`);
     expect(red.status).toBe(1);
     expect(red.stderr).toMatch(/changelog\.mjs --write/);
+  });
+
+  it('--write mid-merge exits 2 naming the merge, before it asks GitHub for anything, and writes nothing', () => {
+    const h = history();
+    h.g('checkout', '-q', '-b', 'feat/m', h.base);
+    h.commit('feat(m): the m lane', '2026-10-22T08:00:00Z');
+    h.g('merge', '-q', '--no-commit', '--no-ff', '-X', 'theirs', 'main');
+    const r = cli('--write', `--root=${h.root}`);
+    expect(r.status, r.stdout + r.stderr).toBe(2);
+    expect(r.stderr).toMatch(/a merge is in progress/);
+    expect(r.stderr).not.toMatch(/gh pr list/);
+    expect(existsSync(join(h.root, TARGET))).toBe(false);
   });
 });

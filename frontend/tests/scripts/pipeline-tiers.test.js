@@ -13,7 +13,7 @@ import { parseHook, callersFor } from '../../scripts/ci/gate-table.mjs';
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const ROOT = resolve(APP, '..');
 const PIPELINE = join(ROOT, 'ci/pipeline.sh');
-const STATIC = ['doc-currency', 'changelog', 'eslint', 'gate-shape'];
+const STATIC = ['doc-currency', 'eslint', 'gate-shape'];
 const HEAVY = ['unit + static gates', 'build', 'bundle byte budget'];
 const RANGE = ['queue-ledger', 'artifact-currency'];
 
@@ -40,6 +40,10 @@ describe('ci/pipeline.sh tiers, as the gate table parses them', () => {
   });
   it('vitest related runs on the commit only', () => {
     expect(callers('vitest related')).toEqual({ commit: true, push: false, ci: false });
+  });
+  it('the changelog freshness check is a step of no tier: it is a manual command (DECISIONS 2026-10-29 item 101)', () => {
+    expect(gates.map((g) => g.name), 'presence: the parse found the static gates').toContain('doc-currency');
+    expect(gates.filter((g) => /changelog/i.test(`${g.name} ${g.cmd}`)).map((g) => g.name)).toEqual([]);
   });
 });
 
@@ -85,6 +89,15 @@ describe('ci/pipeline.sh, run with recording stubs', () => {
       expect(r.cmds, c).toContain(c);
     }
     expect(r.cmds.some((c) => c.includes('related-tests.mjs'))).toBe(false);
+  });
+  it('no tier runs the changelog check: each tier runs its own steps and none of them names changelog', () => {
+    for (const tier of ['commit', 'push', 'fast', 'certify']) {
+      const r = run(`--tier=${tier}`);
+      expect(r.status, r.stdout + r.stderr).toBe(0);
+      expect(r.cmds.length, `presence: the ${tier} tier ran its steps`).toBeGreaterThan(0);
+      expect(r.cmds.filter((c) => /changelog/i.test(c)), tier).toEqual([]);
+      expect(r.stdout, `${tier}: the tier's own printout`).not.toMatch(/changelog/i);
+    }
   });
   it('an unknown tier exits 2 and names every tier, certify among them', () => {
     const r = run('--tier=bogus');
