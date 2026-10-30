@@ -240,7 +240,7 @@ describe('the roar sector is press-and-hold', () => {
     const openers = [
       ['the chest (a store flag)', () => act(() => useGameStore.setState({ showChestInterface: true }))],
       ['Talents (App-local)', (rerender) => rerender(<TouchControls isWorldBuilt talentsOpen />)],
-      ['Achievements / Stats (App-local)', (rerender) => rerender(<TouchControls isWorldBuilt otherPanelOpen />)],
+      ['Achievements (App-local)', (rerender) => rerender(<TouchControls isWorldBuilt otherPanelOpen />)],
     ];
     let dropped = 0;
     for (const [name, open] of openers) {
@@ -440,7 +440,7 @@ describe('the action button is press-and-hold: the light swing at the press, the
         () => act(() => useGameStore.setState({ showChestInterface: false }))],
       ['Talents (App-local)', (rerender) => rerender(<TouchControls isWorldBuilt talentsOpen />),
         (rerender) => rerender(<TouchControls isWorldBuilt />)],
-      ['Achievements / Stats (App-local)', (rerender) => rerender(<TouchControls isWorldBuilt otherPanelOpen />),
+      ['Achievements (App-local)', (rerender) => rerender(<TouchControls isWorldBuilt otherPanelOpen />),
         (rerender) => rerender(<TouchControls isWorldBuilt />)],
     ];
     let cancelled = 0;
