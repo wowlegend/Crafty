@@ -24,8 +24,9 @@ function bodyCapsules(store) {
     const body = store.playerRigidBodyRef?.current;
     if (!body) return [];
     const out = [];
-    // Where the body is and where it is going: a move given on a frame that took no world step is in nextTranslation()
-    // and not yet in translation() (game/kinematicMove.js), and the next step puts the body there.
+    // Where the body is and where it is going: the world steps before the Player loop moves the body, so between frames,
+    // where a click is handled, the frame's move is in nextTranslation() and not yet in translation(), at any frame rate
+    // (game/kinematicMove.js), and the next step puts the body there.
     const at = body.translation();
     const next = body.nextTranslation();
     // The live colliders, not BASE_CAPSULE: a beast form swaps the shape in place (game/beasts.js setColliderToForm).

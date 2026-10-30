@@ -12,7 +12,8 @@
 //  - a cuboid made since the last step, and a chunk trimesh created since then, are listed by `unindexed()`, and
 //    game/kinematicMove.js cuts the controller's swept movement at each one. @react-three/rapier's stepper runs before
 //    the Player loop, so on a frame that steps the new collider is indexed before the sweep; the cut is for the sweep of
-//    a frame that takes no step (above 60 Hz), which no click or rebuild can then slip past;
+//    a frame that takes no step, which no click or rebuild can then slip past. That is every other frame at 120 Hz, and
+//    at any rate a frame whose accumulator is still under 1/60 s, which frame jitter makes at 60 Hz too;
 //  - a cuboid whose chunk trimesh has landed is removed after the next step, when that trimesh is indexed; removed at once,
 //    the cell would be open to the controller for the frame before the step.
 // Retirement goes by sequence: the click's update_block carries `seq`, the worker stamps every chunk_mesh with the last seq
@@ -22,7 +23,9 @@
 // mount makes. Numbered from 1 again by a remount, a new cell would go on the stamp of a mesh made before it.
 //
 // Cost: at most buildFootprint's MAX_CELLS cuboids a click, each alive from the click until one step after its chunk
-// re-meshes; nothing is allocated per frame, and the cut costs one pairwise cast per unindexed collider, on one frame.
+// re-meshes. The cut costs one pairwise cast per unindexed collider, on a frame that has any: every placement and every
+// chunk mount or rebuild makes one. Each cast allocates in Rapier's JS binding (two velocity vectors it frees, and a hit
+// object when it hits); a frame with no unindexed collider allocates nothing here.
 import { CHUNK_HEIGHT, chunkOf } from './chunkLayout.js';
 
 /** A placement numbering: each call returns the next seq, from 1. */

@@ -199,7 +199,8 @@ function makeScene({ x = 4.5, z = 8.5, edits = [] } = {}) {
  *  made since the last step handed in, as Components.jsx hands them), then the world steps @react-three/rapier's fixed
  *  1/60 s accumulator takes in that time (two at 30 Hz), each followed by the after-step callback. The sweep comes BEFORE
  *  the steps here, the worst order: in the game the stepper subscribed first and steps first, so a collider made between
- *  frames is unseen only by the sweep of a frame that takes no step (above 60 Hz, at most 1/60 s of travel). */
+ *  frames is unseen only by the sweep of a frame that takes no step (every other frame at 120 Hz, and at any rate a frame
+ *  whose accumulator is under 1/60 s; at most 1/60 s of travel). */
 function frame(P, { mx = 0, mz = 0, jump = false, hz = 60 } = {}) {
   const dt = 1 / hz;
   const grounded = P.kcc.computedGrounded();
