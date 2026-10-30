@@ -32,6 +32,9 @@
  *   hud    (opt-in) the HUD lane's poses (_lookbookHud.mjs): HOME and Mara a few degrees apart on the compass, label
  *          boxes read for overlap; the dusk warning in English, then after a night in zh-CN, each frame shot with the
  *          toast up and its box read against the day-phase dial's.
+ *   dragon (opt-in) the dragon arena (_lookbook.mjs DRAGON_ARENA): the Shadow Dragon woken over the Blight Heart lair
+ *          by the seam's dragon(), held in each pose it knows, framed from the lair's bearing toward the spawn, at each
+ *          time; it waits for the lair's chunks to stream in under a camera hung over it (STREAM_DRAGON_MS at most).
  *   self   (opt-in) what the player sees of their own body: each beast form at the steady eye, the light string, the
  *          cast and the heavy charge held at their apex by the seam, and the hands beside the Hearth's brazier at
  *          midnight (shootSelf).
@@ -111,6 +114,7 @@ import {
   MATERIAL_SIGHT_KINDS, MATERIAL_STAND_M, MATERIAL_MIN_M, materialShotPlan, findMaterialSights, aimAt,
   HAND_MASK, HANDS_HEADING, handPixelStats, facing, handCount, CYCLE_TOLERANCE, chromeShare, chromeColoursFrom,
   chromeFootprint, framesMoved, HELD_MOVED_MAX, footprintByRect,
+  DRAGON_ARENA, dragonStreamPose, dragonSightPoints, pickDragonView, dragonShotPlan, dragonShotVerdict,
 } from './_lookbook.mjs';
 import { PNG } from 'pngjs';
 import { shootHudSet } from './_lookbookHud.mjs';
@@ -145,7 +149,7 @@ const HEADED = flag('--headed');
 const FIRST_SESSION = flag('--first-session');
 const ALLOW_SOFTWARE = flag('--allow-software');
 const WANT = arg('--targets', TARGETS.map((t) => t.id).join(',')).split(',');
-const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands', 'hud', 'self'];
+const SETS_KNOWN = ['hero', 'eye', 'clips', 'material', 'hands', 'hud', 'self', 'dragon'];
 const SETS = arg('--sets', 'hero,eye,clips').split(',');
 // --cycles: the times to shoot (dawn-origin fractions), for a before/after at hours the programme's four do not cover.
 let CYCLES;
@@ -165,6 +169,8 @@ const WARMUP_MS = 5000; // shaders compile and the tier governor takes its first
 const STREAM_MS = 6000; // chunks stream in around a newly posed camera (PositionTracker mirrors the camera)
 const SETTLE_MS = 3000; // sky, fog and grade settle at a new time of day
 const EYE_FRAME_MS = 1000; // a new bearing: the HUD compass redraws, and the pass timer gathers about a second of frames
+const STREAM_DRAGON_MS = 90000; // the lair is 1 km from the spawn: its chunks stream in under the posed camera
+const DRAGON_CLEAR_M = 40; // hostiles cleared around the arena camera, so the frame is the dragon and not the lair's mobs
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -435,9 +441,71 @@ async function shootSelf(page, report, dir, target) {
   }
 }
 
+/** The dragon arena (--sets dragon): wake the dragon over the lair once its ground is loaded, then each pose at each
+ *  time, the camera framed on it (_lookbook.mjs dragonCameraPose). Each frame's verdict also requires the dragon up and
+ *  held in the pose it names (dragonShotVerdict). */
+async function shootDragon(page, report, dir, facts) {
+  await page.evaluate((p) => window.__craftyLookbook.pose(p), dragonStreamPose());
+  const until = Date.now() + STREAM_DRAGON_MS;
+  let woke = null;
+  let refusal = null;
+  while (!woke && Date.now() < until) {
+    const r = await page.evaluate(() => {
+      try { return { woke: window.__craftyLookbook.dragon({ pose: 'rest' }) }; } catch (e) { return { why: String(e.message) }; }
+    });
+    woke = r.woke ?? null;
+    refusal = r.why ?? null;
+    if (!woke) await delay(1000);
+  }
+  if (!woke) {
+    report.notes.push(`COULD NOT MEASURE the dragon arena: dragon() refused for ${STREAM_DRAGON_MS / 1000} s (${refusal})`);
+    return;
+  }
+  report.dragonAt = woke.position;
+  for (const shot of dragonShotPlan(undefined, CYCLES)) {
+    const t0 = Date.now();
+    await respawnIfDead(page, report);
+    await page.evaluate((p) => window.__craftyLookbook.dragon(p), { pose: shot.pose, position: woke.position });
+    // A camera whose sight line to the dragon clears the ground (_lookbook.mjs pickDragonView): the lair's ground is
+    // hilly, and a column between the two filled a whole frame with one black block.
+    const points = dragonSightPoints(woke.position);
+    const heights = await page.evaluate((pts) => pts.map(([x, z]) => window.__craftyLookbook.groundAt({ x, z })), points);
+    const ground = new Map(points.map(([x, z], i) => [`${x},${z}`, heights[i]]));
+    const view = pickDragonView(woke.position, (x, z) => ground.get(`${x},${z}`) ?? null);
+    report.dragonView = { turnDeg: Math.round((view.turn * 180) / Math.PI), clear: view.clear, camera: view.pose.position };
+    await page.evaluate((p) => window.__craftyLookbook.pose(p), view.pose);
+    await page.evaluate((radius) => window.__craftyLookbook.clearHostiles({ radius }), DRAGON_CLEAR_M);
+    await setCycle(page, shot.cycle);
+    await delay(SETTLE_MS);
+    await play(page);
+    await setCycle(page, shot.cycle);
+    await passTimes(page, { reset: true });
+    await delay(400);
+    const before = await info(page);
+    await page.screenshot({ path: join(dir, shot.file) });
+    const after = await info(page);
+    const pt = await passTimes(page);
+    // What the scene holds under the dragon's group, read from the live scene graph (GameScene publishes the scene):
+    // the seam's info() says the fight is on, not that its chunk mounted anything.
+    const scene = await page.evaluate(() => {
+      const g = window.__threeScene?.getObjectByName('crafty:dragon-chunk');
+      if (!g) return { inScene: false };
+      let meshes = 0;
+      g.traverseVisible((o) => { if (o.isMesh) meshes += 1; });
+      const body = g.children[0];
+      return { inScene: true, meshes, at: body ? body.getWorldPosition(body.position.clone()).toArray() : null,
+        camera: window.__threeCamera?.position.toArray() ?? null };
+    });
+    const v = dragonShotVerdict({ pose: shot.pose, cycle: shot.cycle, before, after, scene, sightClear: report.dragonView.clear });
+    report.dragon.push({ ...shot, place: DRAGON_ARENA.id, valid: v.valid, why: v.why, dragonState: after.dragon, scene, ...facts(after, t0, pt) });
+    console.log(`lookbook dragon ${report.id} ${shot.file}: ${v.valid ? 'valid' : `INVALID ${v.why.join('; ')}`}`);
+  }
+  await page.evaluate(() => window.__craftyLookbook.dragon({ pose: null }));
+}
+
 async function shootTarget(target, launchOpts, launchId) {
   const report = { id: target.id, engine: target.engine, launch: launchId, renderer: null, gpu: 'unknown', entry: null,
-    shots: [], eye: [], clips: [], material: [], handShots: [], self: [], pointBlank: null, sights: null, stand: null, hands: null, notes: [],
+    shots: [], eye: [], clips: [], material: [], handShots: [], self: [], dragon: [], pointBlank: null, sights: null, stand: null, hands: null, notes: [],
     respawns: 0, console: {},
     pageErrors: [] };
   const dir = join(OUT, target.id);
@@ -778,6 +846,7 @@ async function shootTarget(target, launchOpts, launchId) {
         report.shots.push({ ...shot, valid: v.valid, why: v.why, ...facts(after, t0, pt) });
       }
     }
+    if (SETS.includes('dragon')) await shootDragon(page, report, dir, facts);
     await page.evaluate(() => window.__craftyLookbook.clear());
     report.gpu = classifyRenderer(report.renderer);
     if (/^apple gpu$/i.test(String(report.renderer).trim())) {
@@ -1239,6 +1308,7 @@ try {
         hero: SETS.includes('hero') ? shotPlan(LOOKBOOK_PLACES, CYCLES).length : 0,
         eye: SETS.includes('eye') ? eyeShotPlan(EYE_HEADINGS, CYCLES).length : 0,
         material: SETS.includes('material') ? materialShotPlan(MATERIAL_SIGHT_KINDS, CYCLES).length : 0,
+        dragon: SETS.includes('dragon') ? dragonShotPlan(undefined, CYCLES).length : 0,
       })) console.log(line);
       const tiers = [...new Set(r.shots.map((s) => `${s.tier}@${s.dpr}`))];
       console.log(`  tier@dpr      ${tiers.join(', ') || '-'}`);

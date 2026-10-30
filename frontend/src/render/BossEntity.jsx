@@ -18,6 +18,7 @@ import { worldDelta, isWorldFrozen, worldNow } from '../game/worldClock.js';
 import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
 import { windupRamp } from '../game/attackTelegraph.js';
 import { bossCaptureReset, BOSS_REST } from '../game/captureRest.js';
+import { lookbookDragonHold } from './lookbookSeam.js';
 
 // M2 #4 Slice 3: boss lava-AoE telegraph. The lava ring (already a ground decal) now appears + grows as
 // a HARMLESS warning for this window before it arms (starts dealing damage), so the player can read it
@@ -209,6 +210,19 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 { mesh: meshRef.current, leftWing: leftWingRef.current, rightWing: rightWingRef.current },
                 bossPositionRef.current
             );
+            return;
+        }
+
+        // A dragon the lookbook holds (render/lookbookSeam.js dragon()) stays where it was woken, wings at rest, facing
+        // the camera, and starts no attack: a frame of the fight is the same frame on every run.
+        if (lookbookDragonHold() !== null) {
+            const [hx, hy, hz] = bossPositionRef.current;
+            meshRef.current.position.set(hx, hy, hz);
+            meshRef.current.rotation.set(0, Math.atan2(camera.position.x - hx, camera.position.z - hz), 0);
+            if (leftWingRef.current && rightWingRef.current) {
+                leftWingRef.current.rotation.z = BOSS_REST.leftWingZ;
+                rightWingRef.current.rotation.z = BOSS_REST.rightWingZ;
+            }
             return;
         }
 

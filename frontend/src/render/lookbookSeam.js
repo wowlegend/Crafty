@@ -42,6 +42,17 @@ let _passTimer = null; // the page-wide handle from render/passTimer.js, once th
 // The post passes a script switched off (render/passesOff.js applies them in the composer; render/Sun.jsx reads 'sun').
 // Replaced, never mutated, so a reader that kept the previous set keeps a consistent one.
 let _passesOff = new Set();
+// The pose a dragon woken by the seam holds (DRAGON_POSES), or null: a held dragon takes no flight step and starts no
+// attack, so a frame of the fight is the same frame on every run. Read per frame by render/BossEntity.jsx.
+let _dragonHold = null;
+
+/** The poses dragon() can hold the dragon in. */
+export const DRAGON_POSES = Object.freeze(['rest']);
+
+/** The pose the seam holds the dragon in, or null (the ordinary fight). Read per frame — keep it a plain read. */
+export function lookbookDragonHold() {
+  return _dragonHold;
+}
 
 /** The named passes switched off, for the per-frame readers. Empty unless a lookbook script asked. */
 export function lookbookPassesOff() {
@@ -103,6 +114,8 @@ function finite3(v, name) {
   }
   return [v[0], v[1], v[2]];
 }
+
+const copy3 = (v) => (Array.isArray(v) && v.length === 3 ? [v[0], v[1], v[2]] : null);
 
 function setPose(p) {
   if (p === null) {
@@ -243,12 +256,15 @@ function finite(v, name) {
  * @param {{store: any, setActive: (v: boolean) => void, getActive: () => boolean, cycleOf: (gameTime: number) => number,
  *          glInfo: () => object|null, contextLosses: () => number, hostiles?: () => Iterable<object>,
  *          removeEntity?: (e: object) => void, loadPassTimer?: () => Promise<{installPassTimer: () => object}>,
- *          sunDir?: () => number[], handNodes?: () => number}} deps  `hostiles`: the ECS mob query, every mob (the
- *          seam picks the hostiles out). `sunDir`: the sun's direction this frame (render/mood.js skyFrameRef).
- *          `handNodes`: the objects mounted in the viewmodel's hands group (render/viewmodel.js handNodeCount).
+ *          sunDir?: () => number[], handNodes?: () => number,
+ *          spawnDragon?: (o: {position?: number[]}) => {position: number[], ground: number|null}}} deps  `hostiles`: the
+ *          ECS mob query, every mob (the seam picks the hostiles out). `sunDir`: the sun's direction this frame
+ *          (render/mood.js skyFrameRef). `handNodes`: the objects mounted in the viewmodel's hands group
+ *          (render/viewmodel.js handNodeCount). `spawnDragon`: the boss system's lookbook spawn (world/bossSystem.js).
  */
 export function installLookbookSeam(win, {
   store, setActive, getActive, cycleOf, glInfo, contextLosses, hostiles, removeEntity, loadPassTimer, sunDir, handNodes,
+  spawnDragon,
 }) {
   if (!win || !parseLookbookParam(win.location && win.location.search)) return false;
   const unposed = (verb) => {
@@ -328,6 +344,29 @@ export function installLookbookSeam(win, {
       for (const e of doomed) removeEntity(e);
       return doomed.length;
     },
+    /** Wake the Shadow Dragon and hold it in `pose` (DRAGON_POSES) at `position` ([x, y, z]; default: over the
+     *  Blight Heart lair, which throws until that ground is loaded), or `{ pose: null }` to let a held dragon fight.
+     *  An unknown pose throws a TypeError naming it, leaving the hold as it was. Returns where the dragon is. */
+    dragon: ({ pose, position } = {}) => {
+      if (pose !== null && !DRAGON_POSES.includes(pose)) {
+        throw new TypeError(`lookbook: dragon pose must be one of ${DRAGON_POSES.join(', ')} or null, got ${JSON.stringify(pose)}`);
+      }
+      if (pose === null) { _dragonHold = null; return null; }
+      if (!spawnDragon) throw new Error('lookbook: dragon() needs the boss system\'s spawn');
+      const at = position === undefined ? undefined : finite3(position, 'position');
+      const woke = spawnDragon({ position: at });
+      if (!woke) throw new Error('lookbook: the boss system has not installed its lookbook spawn yet');
+      _dragonHold = pose;
+      return woke;
+    },
+    /** The ground's height at { x, z } (the mobs' ground probe: the top of the column), or null where it is not loaded. A
+     *  shot reads it to keep a camera out of a hill. Read-only. */
+    groundAt: (p) => {
+      const x = finite(p && p.x, 'x');
+      const z = finite(p.z, 'z');
+      const gy = store.getState().getMobGroundLevel?.(x, z);
+      return Number.isFinite(gy) ? gy : null;
+    },
     /** Every live mob, read from the ECS (mobList), or null when the build hands the seam no mob query. Read-only. */
     mobs: () => (hostiles ? mobList(hostiles()) : null),
     /** Timer-query ms per pass since the last reset, per WebGL context (render/passTimer.js); not established as GPU
@@ -388,6 +427,8 @@ export function installLookbookSeam(win, {
         sun: sunDir ? sunBearing(sunDir()) : null,
         // The passes switched off, and the postprocessing effects that must show skipped in the chain while they are.
         passesOff: { names: [..._passesOff].sort(), effects: lookbookEffectNames(_passesOff) },
+        // The fight a frame shows: whether the dragon is up, the pose the seam holds it in, and where it is.
+        dragon: { active: s.bossActive === true, hold: _dragonHold, position: copy3(s.getBossPosition?.()) },
       };
     },
   });
@@ -401,4 +442,5 @@ export function _resetLookbookForTest() {
   _subs.clear();
   _passTimer = null;
   _passesOff = new Set();
+  _dragonHold = null;
 }

@@ -12,6 +12,7 @@ import { bossEntranceBeat, ENTRANCE } from '../game/bossEntrance.js';
 import { phaseForHealth } from '../game/bossPersistence.js';
 import { isWorldFrozenNow } from '../game/worldClock.js';
 import { preloadDragon, shouldPreloadAtMount } from '../render/dragonLoader.js';
+import { parseLookbookParam } from '../render/lookbookSeam.js';
 
 /** One of the dragon's one-off calls (this hook's: the arrival, the return, the phase changes, the defeat) to the one
  *  notification channel (ui/notifications.js) as a dictionary key, marked `boss`, so where one line holds the notices it
@@ -21,6 +22,16 @@ export const bossCall = (key, type, vars) => useGameStore.getState().addNotifica
  *  same channel, marked `attack`: one line shows it only while no other notice is up (ui/notifications.js lineNotification). */
 export const bossAttackCall = (key, type) => useGameStore.getState().addNotification?.(key, type, { attack: true });
 const bossNotice = (key, vars) => bossCall(key, 'danger', vars);
+/** Where the lookbook wakes the dragon: LOOKBOOK_DRAGON_CLEAR_M from the lair toward the spawn, clear of the lair's
+ *  9 m monolith (world/Terrain.jsx BlightMonolith), and in the air over that ground, where its first phase flies (13 m
+ *  up, render/BossEntity.jsx) and a camera below it sees it against the sky rather than the lair's black ground. */
+const LOOKBOOK_DRAGON_HOVER_M = 12;
+const LOOKBOOK_DRAGON_CLEAR_M = 14;
+export function lookbookDragonSpot() {
+    const lair = blightHeartSite();
+    const len = Math.hypot(lair.x, lair.z) || 1;
+    return [Math.round(lair.x - (lair.x / len) * LOOKBOOK_DRAGON_CLEAR_M), Math.round(lair.z - (lair.z / len) * LOOKBOOK_DRAGON_CLEAR_M)];
+}
 
 export const useBossSystem = (playerLevel) => {
     // A-bis B2g: seed from the STORE, which is what the save restores into, instead of from BOSS_CONFIG.
@@ -208,6 +219,32 @@ export const useBossSystem = (playerLevel) => {
             } });
         }
     }, [damageBoss, suspendEncounter, bossPositionRef, bossActive]);
+
+    // THE LOOKBOOK'S DRAGON (DECISIONS 2026-10-30 item 122): the production build's one way to wake the dragon without
+    // the fight's level and lair gates, installed only when the page URL carries ?lookbook=1 (render/lookbookSeam.js
+    // parseLookbookParam), so the game a player loads has no spawn seam. The lookbook probe shoots the fight on a real
+    // GPU through it; its `dragon()` holds the pose.
+    useEffect(() => {
+        if (typeof window === 'undefined' || !parseLookbookParam(window.location?.search)) return undefined;
+        useGameStore.setState({ lookbookSpawnDragon: ({ position } = {}) => {
+            let at = position;
+            if (!at) {
+                const [x, z] = lookbookDragonSpot();
+                const gy = useGameStore.getState().getMobGroundLevel?.(x, z);
+                if (gy === null || gy === undefined || !Number.isFinite(gy)) {
+                    throw new Error('lookbook: the lair\'s ground is not loaded yet; pose the camera there and wait');
+                }
+                at = [x, gy + LOOKBOOK_DRAGON_HOVER_M, z];
+            }
+            preloadDragon();
+            bossSpawned.current = true;
+            bossKilledRef.current = false;
+            bossPositionRef.current = [at[0], at[1], at[2]];
+            setBossActive(true);
+            return { position: [at[0], at[1], at[2]] };
+        } });
+        return () => useGameStore.setState({ lookbookSpawnDragon: null });
+    }, []);
 
     // A-bis B2g: mirror the ENCOUNTER to the store, which is what saveSchema serializes. Its own effect,
     // keyed on all three values, deliberately NOT folded into the callback-registration effect above:

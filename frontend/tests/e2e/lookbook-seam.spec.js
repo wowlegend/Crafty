@@ -31,6 +31,8 @@ import { bootDev } from './_boot.js';
 //   E4 GameScene's watchContextLoss call deleted -> "the seam did not count a real context loss"
 //   E5 plausible-wrong: FrameStats not handed capActive -> "the readout's frame cap disagrees with the store"
 //   E6 the hands not hidden while posed -> "the hands stayed mounted while posed"
+//   E7 BossEntity ignores the lookbook hold -> "the held dragon moved"
+//   E8 GameScene mounts no dragon (the LazyDragon line deleted) -> "never mounted its group in the live scene"
 //   plus an identity mutant (a comment edit in render/lookbookSeam.js) that must SURVIVE.
 //
 // BLIND SPOT: this is Chromium on the DEV server with the CI software renderer. Whether the probe gets a REAL GPU, and
@@ -133,6 +135,33 @@ test('lookbook seam: absent without the parameter; pose pins the live camera, se
   expect(left, 'clearHostiles() reported a removal but the zombie is still in the ECS').toBe(false);
   expect(await page.evaluate(() => window.useGameStore.getState().totalXP), 'clearing granted XP, as a kill does').toBe(xp);
   await lb('stand', { position: home });
+
+  // 2c. The dragon (DECISIONS 2026-10-30 item 122): dragon() wakes it through the boss system's lookbook spawn (only on a
+  // ?lookbook=1 page), its lazy chunk mounts the 'crafty:dragon-chunk' group in the live scene, and the hold keeps it
+  // where it was woken. Released, it flies, so the hold is what kept it still. An unknown pose is refused by name.
+  const dragonAt = [home[0] + 14, home[1] + 4, home[2]];
+  const refused = await page.evaluate(() => {
+    try { window.__craftyLookbook.dragon({ pose: 'cartwheel' }); return null; } catch (e) { return `${e.name}: ${e.message}`; }
+  });
+  expect(refused, 'an unknown dragon pose was not refused by name').toMatch(/TypeError: .*cartwheel/);
+  expect(await page.evaluate(() => window.useGameStore.getState().bossActive), 'SETUP: a fight was already on').toBe(false);
+  await lb('dragon', { pose: 'rest', position: dragonAt });
+  const dragonGroup = () => page.evaluate(() => {
+    const g = window.__threeScene?.getObjectByName('crafty:dragon-chunk');
+    return g ? { at: g.children[0]?.position.toArray() ?? null } : null;
+  });
+  await page.waitForFunction(() => !!window.__threeScene?.getObjectByName('crafty:dragon-chunk'), null, { timeout: 30000 }).catch(() => {});
+  const woke = await dragonGroup();
+  expect(woke, `the dragon's chunk never mounted its group in the live scene: ${JSON.stringify((await lb('info')).dragon)}`).not.toBeNull();
+  await page.waitForTimeout(1500);
+  const heldDragon = await dragonGroup();
+  expect(dist(heldDragon.at, dragonAt), `the held dragon moved: ${JSON.stringify({ dragonAt, heldDragon })}`).toBeLessThan(0.01);
+  expect((await lb('info')).dragon).toMatchObject({ active: true, hold: 'rest' });
+  await lb('dragon', { pose: null });
+  await page.waitForTimeout(2000);
+  const flying = await dragonGroup();
+  expect(dist(flying.at, dragonAt), `released, the dragon did not move, so the hold read nothing: ${JSON.stringify(flying)}`).toBeGreaterThan(0.5);
+  await page.evaluate(() => window.useGameStore.getState().suspendBossEncounter());
 
   // 3. The time of day, read back from the running sky.
   await page.evaluate(() => window.__craftyLookbook.setCycle(0.75));

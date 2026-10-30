@@ -19,6 +19,8 @@ import {
   mobList,
   lookbookPassesOff,
   sunBearing,
+  lookbookDragonHold,
+  DRAGON_POSES,
   _resetLookbookForTest,
 } from '../../src/render/lookbookSeam.js';
 import { applyPassesOff, LOOKBOOK_PASS_NAMES } from '../../src/render/passesOff.js';
@@ -65,6 +67,10 @@ import { contextLossCount, glInfo, _resetGlDiagnosticsForTest } from '../../src/
  *   F3d plausible-wrong: an unposed copy is an empty shell, not null -> the same test
  *   F3e plausible-wrong: the copy rebuilds the fov from the default (75) -> the same test, posed at fov 50 (at 75 it would survive)
  *   I0 identity (a comment edit in lookbookSeam.js) SURVIVED, twice.
+ * Added with the dragon (DECISIONS 2026-10-30 item 122), each observed RED, an identity mutant SURVIVED:
+ *   B5 an unknown dragon pose accepted -> "refuses an unknown pose (naming it)"
+ *   B6 the hold never set -> both dragon tests;  B7 the hold set before the spawn answered -> "refuses ..."
+ *   G1 groundAt reads the probe with its axes swapped -> "reads the mobs' ground probe at the point asked"
  *
  * BLIND SPOT: that Components.jsx's Player useFrame applies the pose to the LIVE camera (and stops applying it on
  * clear), that the hands really hide, and that index.jsx installs the seam, are the e2e's
@@ -104,10 +110,70 @@ describe('the gate: ?lookbook=1 exactly, and nothing installed without it', () =
     expect(closed.__craftyLookbook).toBeUndefined();
     const open = fakeWin('?lookbook=1');
     expect(installLookbookSeam(open, deps())).toBe(true);
-    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'form', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
+    expect(Object.keys(open.__craftyLookbook).sort()).toEqual(['clear', 'clearHostiles', 'dragon', 'form', 'groundAt', 'handPose', 'info', 'look', 'mobs', 'passTimes', 'passesOff', 'play', 'pose', 'setCycle', 'stand']);
     // Installing changes nothing by itself: no pose is set until a script asks.
     expect(lookbookPose()).toBeNull();
     expect(lookbookPinned()).toBe(false);
+  });
+});
+
+describe('the dragon: dragon() wakes it through the boss system and holds it in a pose', () => {
+  // The spawn is the boss system's (world/bossSystem.js, installed only on a ?lookbook=1 page:
+  // src/world/lookbookDragon.test.jsx drives that half against the real hook); here, what the seam does with it.
+  const spawnAt = () => {
+    const calls = [];
+    return { calls, spawnDragon: (o) => { calls.push(o); return { position: o.position ?? [725, 60, 725] }; } };
+  };
+
+  it('wakes the dragon where asked, holds the pose, reports both in info(), and null lets it fight', () => {
+    const { calls, spawnDragon } = spawnAt();
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, { ...deps(), spawnDragon });
+    expect(DRAGON_POSES).toContain('rest');
+    expect(lookbookDragonHold()).toBeNull();
+    expect(w.__craftyLookbook.dragon({ pose: 'rest', position: [10, 70, -4] })).toEqual({ position: [10, 70, -4] });
+    expect(calls).toEqual([{ position: [10, 70, -4] }]);
+    expect(lookbookDragonHold()).toBe('rest');
+    expect(w.__craftyLookbook.info().dragon.hold).toBe('rest');
+    // No position: the spawn chooses (the lair); the seam hands it nothing to override that.
+    w.__craftyLookbook.dragon({ pose: 'rest' });
+    expect(calls[1]).toEqual({ position: undefined });
+    expect(w.__craftyLookbook.dragon({ pose: null })).toBeNull();
+    expect(lookbookDragonHold()).toBeNull();
+    expect(calls).toHaveLength(2);
+  });
+
+  it('refuses an unknown pose (naming it), a malformed position, and a page whose boss system installed no spawn', () => {
+    const { calls, spawnDragon } = spawnAt();
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, { ...deps(), spawnDragon });
+    w.__craftyLookbook.dragon({ pose: 'rest', position: [0, 60, 0] });
+    expect(() => w.__craftyLookbook.dragon({ pose: 'cartwheel' })).toThrow(TypeError);
+    expect(() => w.__craftyLookbook.dragon({ pose: 'cartwheel' })).toThrow(/cartwheel/);
+    expect(() => w.__craftyLookbook.dragon({ pose: 'rest', position: [0, Number.NaN, 0] })).toThrow(TypeError);
+    expect(calls, 'a refused call still woke the dragon').toHaveLength(1);
+    expect(lookbookDragonHold(), 'a refused call changed the hold').toBe('rest');
+    _resetLookbookForTest();
+    const bare = fakeWin('?lookbook=1');
+    installLookbookSeam(bare, deps());
+    expect(() => bare.__craftyLookbook.dragon({ pose: 'rest' })).toThrow(/spawn/);
+    const notYet = fakeWin('?lookbook=1');
+    installLookbookSeam(notYet, { ...deps(), spawnDragon: () => undefined });
+    expect(() => notYet.__craftyLookbook.dragon({ pose: 'rest' })).toThrow(/not installed/);
+    expect(lookbookDragonHold(), 'a spawn that did not happen set a hold').toBeNull();
+  });
+});
+
+describe('groundAt(): the ground under a point, so a shot keeps its camera out of a hill', () => {
+  afterEach(() => useGameStore.setState({ getMobGroundLevel: null }));
+  it('reads the mobs\' ground probe at the point asked, null where it is not loaded, and validates', () => {
+    const w = fakeWin('?lookbook=1');
+    installLookbookSeam(w, deps());
+    expect(w.__craftyLookbook.groundAt({ x: 3, z: 4 }), 'no ground probe yet').toBeNull();
+    useGameStore.setState({ getMobGroundLevel: (x, z) => (x === 3 && z === -4 ? 61.5 : null) });
+    expect(w.__craftyLookbook.groundAt({ x: 3, z: -4 })).toBe(61.5);
+    expect(w.__craftyLookbook.groundAt({ x: -4, z: 3 }), 'the axes swapped').toBeNull();
+    expect(() => w.__craftyLookbook.groundAt({ x: Number.NaN, z: 0 })).toThrow(TypeError);
   });
 });
 

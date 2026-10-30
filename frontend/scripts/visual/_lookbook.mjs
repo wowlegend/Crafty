@@ -4,6 +4,8 @@
 // not a probe — it binds no port (tests/scripts/probe-ports.test.js classifies by what a file does).
 
 import { LOOK_TIMES } from '../../src/render/colourScript.js';
+import { blightHeartSite } from '../../src/world/blightHeart.js';
+import { DRAGON_POSES } from '../../src/render/lookbookSeam.js';
 
 /** The programme's four times of day, as DAWN-origin cycle fractions (game/dayPhase.cycleFraction: 0 dawn, 0.25 noon,
  *  0.5 dusk, 0.75 midnight) — roadmap move 4's afternoon, golden hour, blue hour and midnight, read from the light
@@ -59,6 +61,98 @@ export const LOOKBOOK_PLACES = Object.freeze([
   { id: 'coast', position: [-60, 78, 40], lookAt: [-110, 22, -6] },
   { id: 'snow-terrace', position: [20, 82, -20], lookAt: [0, 54, -40] },
 ]);
+
+/**
+ * THE DRAGON ARENA (--sets dragon; DECISIONS 2026-10-30 item 122): the Shadow Dragon woken over the Blight Heart lair
+ * through the seam's dragon() and held in each pose it knows (src/render/lookbookSeam.js DRAGON_POSES), at each time.
+ * The camera first hangs over the lair so its chunks stream in (PositionTracker publishes the posed camera as the
+ * player), since dragon() refuses until the lair's ground is loaded; the seam wakes the dragon beside the lair, on the
+ * side a player walks in from (world/bossSystem.js lookbookDragonSpot). Then the camera stands DRAGON_VIEW.back metres
+ * from the dragon ACROSS that bearing (side-on, so the sky and not the lair's black monolith stands behind it),
+ * DRAGON_VIEW.up metres off its centre, looking at it.
+ */
+export const DRAGON_ARENA = Object.freeze({ id: 'dragon-arena', lair: Object.freeze(blightHeartSite()), streamY: 110 });
+export const DRAGON_VIEW = Object.freeze({ back: 16, up: -3, eye: 2.5, bearings: 12, samples: 16 });
+
+/** The camera over the lair while its chunks stream: high, looking down and a little north so the view is not straight
+ *  down its up vector. */
+export function dragonStreamPose(arena = DRAGON_ARENA) {
+  const { x, z } = arena.lair;
+  return { position: [x, arena.streamY, z + 12], lookAt: [x, arena.streamY - 60, z] };
+}
+
+/** The camera for a frame of the dragon at `at` ([x, y, z]) from bearing `turn` (radians, clockwise from side-on):
+ *  DRAGON_VIEW.back metres from it, side-on to its bearing from the spawn (the world origin) at turn 0, DRAGON_VIEW.up
+ *  off its centre, looking at its centre, and never less than DRAGON_VIEW.eye over `ground`, the ground under the camera
+ *  when known (a camera inside a hill sees black). */
+export function dragonCameraPose(at, ground = null, view = DRAGON_VIEW, turn = 0) {
+  const len = Math.hypot(at[0], at[2]) || 1;
+  const sx0 = at[2] / len, sz0 = -at[0] / len;
+  const c = Math.cos(turn), s = Math.sin(turn);
+  const sx = sx0 * c - sz0 * s, sz = sx0 * s + sz0 * c;
+  const y = Number.isFinite(ground) ? Math.max(at[1] + view.up, ground + view.eye) : at[1] + view.up;
+  return { position: [at[0] + sx * view.back, y, at[2] + sz * view.back], lookAt: [at[0], at[1], at[2]] };
+}
+
+/** The ground points a sight check of every candidate bearing reads: each camera's foot and DRAGON_VIEW.samples points
+ *  along the line from it to the dragon, as [x, z] pairs (the probe reads them all through the seam's groundAt). */
+export function dragonSightPoints(at, view = DRAGON_VIEW) {
+  const out = [];
+  for (let b = 0; b < view.bearings; b++) {
+    const p = dragonCameraPose(at, null, view, (b * 2 * Math.PI) / view.bearings).position;
+    out.push([p[0], p[2]]);
+    for (let i = 1; i < view.samples; i++) {
+      const f = i / view.samples;
+      out.push([p[0] + (at[0] - p[0]) * f, p[2] + (at[2] - p[2]) * f]);
+    }
+  }
+  return out;
+}
+
+/**
+ * The first bearing (side-on first, then clockwise in DRAGON_VIEW.bearings steps) whose camera sees the dragon over the
+ * ground: at every sampled point of the sight line the line runs above the column top there (the mobs' ground probe:
+ * trees and roofs count). `groundAt(x, z)` answers from the probe's read of dragonSightPoints; null (not loaded) is not
+ * an obstacle. Returns the pose, its turn, and whether any bearing was clear (if none is, the side-on pose, flagged).
+ */
+export function pickDragonView(at, groundAt, view = DRAGON_VIEW) {
+  for (let b = 0; b < view.bearings; b++) {
+    const turn = (b * 2 * Math.PI) / view.bearings;
+    const foot = dragonCameraPose(at, null, view, turn).position;
+    const pose = dragonCameraPose(at, groundAt(foot[0], foot[2]), view, turn);
+    const p = pose.position;
+    let clear = true;
+    for (let i = 1; i < view.samples && clear; i++) {
+      const f = i / view.samples;
+      const g = groundAt(p[0] + (at[0] - p[0]) * f, p[2] + (at[2] - p[2]) * f);
+      if (Number.isFinite(g) && g >= p[1] + (at[1] - p[1]) * f) clear = false;
+    }
+    if (clear) return { pose, turn, clear: true };
+  }
+  const foot = dragonCameraPose(at, null, view, 0).position;
+  return { pose: dragonCameraPose(at, groundAt(foot[0], foot[2]), view, 0), turn: 0, clear: false };
+}
+
+/** Every dragon frame, pose-major: [{ pose, cycle, file }]. */
+export function dragonShotPlan(poses = DRAGON_POSES, cycles = LOOKBOOK_CYCLES) {
+  const out = [];
+  for (const pose of poses) for (const c of cycles) out.push({ pose, cycle: c, file: `dragon-${pose}-${c.toFixed(2)}.png` });
+  return out;
+}
+
+/** A dragon frame is valid when the shot is (shotVerdict), the dragon is up, held in the pose the frame names, its group
+ *  is in the live scene with something visible to draw (`scene`, read by the probe from the scene graph), and the camera
+ *  picked sees it over the ground (`sightClear`, pickDragonView). */
+export function dragonShotVerdict({ pose, cycle, before, after, scene, sightClear = true }) {
+  const v = shotVerdict({ cycle, before, after });
+  if (sightClear === false) v.why.push('no camera bearing sees the dragon over the ground');
+  const d = after?.dragon;
+  if (!d?.active) v.why.push('the dragon is not up');
+  else if (d.hold !== pose) v.why.push(`the dragon is held in ${JSON.stringify(d.hold)}, not ${JSON.stringify(pose)}`);
+  if (!scene?.inScene) v.why.push('the dragon\'s group is not in the scene (its chunk mounted nothing)');
+  else if (!(scene.meshes > 0)) v.why.push('the dragon\'s group draws nothing');
+  return { valid: v.why.length === 0, why: v.why };
+}
 
 /** Chromium desktop at Kevin's laptop's shape, and WebKit (the engine iOS Safari runs) at both iPad Air viewports. */
 export const TARGETS = Object.freeze([
@@ -736,6 +830,7 @@ export function targetSummaryLines(r, planned = {}) {
   };
   set('shots', r.shots || [], planned.hero ?? 0, r.respawns ? `, ${r.respawns} respawn(s)` : '');
   if (r.eye) set('eye level', r.eye, planned.eye ?? 0, `; stand ${JSON.stringify(r.stand)}; hands ${JSON.stringify(r.hands)}`);
+  if (r.dragon?.length || planned.dragon) set('dragon', r.dragon || [], planned.dragon ?? 0);
   if (r.eye?.length) lines.push(...chromeSummaryLines(r.eye));
   if (r.material?.length || planned.material) {
     const sights = MATERIAL_SIGHT_KINDS.map((k) => {
@@ -756,7 +851,7 @@ export function targetSummaryLines(r, planned = {}) {
       lines.push(`    ${c.file}: walked ${Number(c.movedM).toFixed(2)} m, ${c.frames} video / ${c.gameFrames} game frames${c.valid ? '' : `, INVALID: ${(c.why || []).join('; ')}`}`);
     }
   }
-  const all = [...(r.shots || []), ...(r.eye || []), ...(r.material || []), ...(r.clips || [])].map((s) => s.passMs);
+  const all = [...(r.shots || []), ...(r.eye || []), ...(r.material || []), ...(r.dragon || []), ...(r.clips || [])].map((s) => s.passMs);
   const timed = all.filter((p) => p?.postMs != null);
   const implausible = timed.filter((p) => !p.plausible).length;
   const why = [...new Set(all.filter((p) => p?.postMs == null).map((p) => p?.reason).filter(Boolean))];
@@ -1025,6 +1120,7 @@ export function contactSheetHtml(report) {
     const figs = (t.shots || []).map((s) => figure(s, s.place, `${s.place} at ${s.cycle}`)).join('\n');
     const eye = (t.eye || []).map((s) => figure(s, `eye, facing ${s.heading}`, `eye level facing ${s.heading} at ${s.cycle}`)).join('\n');
     const material = (t.material || []).map((s) => figure(s, `${s.kind}, eye level`, `${s.kind} at eye level at ${s.cycle}`)).join('\n');
+    const dragon = (t.dragon || []).map((s) => figure(s, `dragon, ${s.pose}`, `the dragon held ${s.pose} at ${s.cycle}`)).join('\n');
     const clips = (t.clips || []).map((c) => {
       const src = `${esc(t.id)}/${esc(c.file)}`;
       const facts = [`cycle ${esc(c.cycle)}`, `facing ${esc(c.heading)}`, `walked ${esc(Number(c.movedM).toFixed(1))} m`, `${esc(c.frames)} frames`].join(' · ');
@@ -1035,7 +1131,7 @@ export function contactSheetHtml(report) {
     const sub = (title, body) => (body ? `<h3>${title}</h3><div class="grid">${body}</div>` : '');
     return `<section><h2>${esc(t.id)}</h2><p class="gl">${esc(t.engine)} · GL renderer: <code>${esc(t.renderer)}</code> (${esc(t.gpu)})` +
       `${t.launch ? ` · launch ${esc(t.launch)}` : ''}${t.entry ? ` · entered play by ${esc(t.entry)}` : ''}</p>${gpuNote}${notes}` +
-      `${sub('Hero shots', figs)}${sub('Eye level, hands and HUD on', eye)}${sub('Material sights, eye level', material)}${sub('Walking, real input', clips)}</section>`;
+      `${sub('Hero shots', figs)}${sub('Eye level, hands and HUD on', eye)}${sub('Material sights, eye level', material)}${sub('The dragon arena', dragon)}${sub('Walking, real input', clips)}</section>`;
   }).join('\n');
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

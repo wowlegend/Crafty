@@ -85,6 +85,8 @@ if (typeof window !== 'undefined') {
     loadPassTimer: () => import('./render/passTimer.js'),
     sunDir: () => skyFrameRef.current.sunDir,
     handNodes: handNodeCount,
+    // The boss system installs this only on a ?lookbook=1 page; read at the call, after App has mounted it.
+    spawnDragon: (o) => useGameStore.getState().lookbookSpawnDragon?.(o),
   });
 }
 
