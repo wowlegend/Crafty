@@ -19,6 +19,82 @@
 
 ---
 
+## 2026-10-30 — [LOOP] L11: one fact, one predicate: the sea line, the landmark, the sight line, the kill's tier, the cooldown and the move basis
+
+**Decided by the L11 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L11 of the 2026-10-30 deep
+audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4). Each stands while it earns its place. Six facts had
+two producers that could disagree; each now has one predicate or constant, and a consistency gate that drives both
+producers and reds when either moves alone. Every gate was run red against 1a3910e7's code before its fix (a scratch copy;
+the pre-commit hook refuses a red commit), and mutation-proven with `scripts/dev/mutate.sh` (the numbers are in each
+commit's `Mutation-Proof:` trailer).
+
+180. **The sea has one predicate: `oceanProfile.seaFillsCell(y, surfaceY)`.** (AUDIT:ultra:ultra-player-world-9) The terrain
+   worker fills water into the cells above a column's surface up to SEA_LEVEL; `climate.surfaceBlockAt` said `isWater` for
+   `surfaceY <= SEA_LEVEL`. A surfaceY 28 column is dry sand with nothing above it, so the two disagreed on exactly the
+   last dry shoreline column: the wind bed turned to the muffled underwater sound there, and the far-field ring drew the
+   strip as sea one column inland. The worker now fills with `seaFillsCell`; `isSeaColumn` is derived from it and is what
+   `isWater` returns. The worker has no exports and cannot be imported under vitest, so the gate reads its voxels through
+   its message handler (an `update_block` to air answers `block_broken` with the id it replaced), once per column since the
+   read replaces the block. On 1a3910e7, 8 of 24 columns disagreed at each of seeds 12345 and 777, every one surfaceY 28.
+   The verifier's 18.2% residue on those columns is SoundManager sampling a float position, which this does not touch.
+
+181. **A landmark exists in one place: `shrines.landmarkAt(cx, cz)`.** (AUDIT:ultra:ultra-player-world-6) A hashed chunk
+   holds a landmark only on land (not a water column, surface at least 32). Terrain.jsx drew by that rule; `nearestLandmark`
+   used the bare hash, so the cyan beam, the compass, the minimap dot, the HUD objective and the Pilgrimage reach test led
+   to a shrine nobody could see. In a 501 x 501 chunk window 824 of 3,508 hashed chunks at seed 12345 (744 at seed 777)
+   were not drawn, and 21 and 24 of 121 probe players had one as their nearest. The finder now scans `landmarkAt`, and
+   LandmarksRender takes each loaded chunk's landmark from it with no filter of its own. When no drawn landmark lies within
+   the radius the finder returns null, as it always could, and the HUD falls back to the Blight Heart. The answer is
+   memoised per chunk and cleared when the climate sampler changes seed (`climate.getClimateSeed`), because FarBeacon asks
+   for a 33 x 33 chunk window every frame and a climate sample allocates. The gate restates the renderer's rule from the
+   sampler alone (so retuning the rule in one place reds it), covers chunks on surface 31 and 32, the line, and a re-seed
+   round trip. The renderer's use of `landmarkAt` is pinned by `landmarks-gates`, sliced to the component body; Terrain.jsx
+   builds a worker at module top and cannot be rendered under vitest, so that half is structural.
+
+182. **Line of sight reads the true column tops, as a second grid.** (AUDIT:ultra:ultra-game-logic-3) `heightGridAt` writes
+   Infinity for a column a mob cannot stand in, and `hasLineOfSight` compares a column with the higher of its two ends plus
+   1.2, so a player on a pillar 5 or more blocks above the mob's feet made an Infinity end and nothing blocked. The hunter's
+   finite stand-in gives the same sight and loosens `clampMove` (it reads the floor grid); the lane brief said the same.
+   `localPath.sightGridAt` replaces each Infinity cell with the column's top (the store's `getMobGroundLevel`), and
+   `mobGridsAt` returns both grids, which AIWorkerSystem sends; the worker's cover search reads `sightGrid || heightGrid`
+   for line of sight and nothing else changes. A finite floor stays the floor (a roof over open room is not a wall to
+   sight). Cost, by reading and not measured on a device: at most one extra top cast per wall cell, 81 at the very most
+   per aggro mob per 15 Hz tick, beside the floor probe's multi-cast walk that already runs for all 81; none when no cell
+   is a wall. The gate is the verifier's scene on the real parts (real mesher, real Rapier world, real probes, the real
+   `ai.worker.js` tick): pillars of 5, 6 and 8 blocks fail on 1a3910e7, 1, 3 and 4 pass, and with no wall there is no cover
+   to take. `AUDIT:combat:skeleton-arrows-ignore-terrain` can read the same grid for an archer's sight; this lane does not.
+
+183. **A kill's position is the bus's array.** (AUDIT:numeric:kill-loot-tier-always-zero) `mobKillBus` documents and
+   CombatSystem emits `[x, y, z]`; the loot roll read `.x` and `.z`, so every kill rolled at tier 0 and S7's "farther is
+   rarer" never applied to a mob kill. It reads `position[0]` and `position[2]`. The gate emits real kills on the real bus
+   into the real `useQuestSystem` and reads a zombie's epic Iron Nugget (0.3 x (1 + 0.25 x tier)) with the roll just under
+   and just over the chance of the kill's own tier, at five positions that put a large or small y beside x and z. Tiers 1
+   to 4 fail on 1a3910e7. The nuggets have no use today (`REVIEW:w2f:forge-orphan-loot`); the row serves only as the
+   probe. The emitter's array shape stays pinned by `kill-attribution-gates` (CombatSystem's death path is closure-scoped).
+
+184. **The ability bar's cooldown durations are the machines' constants.** (AUDIT:ultra:ultra-game-logic-6)
+   `cooldownMirror.js` imports `GRAB_COOLDOWN_SEC`, `SNARE_COOLDOWN_SEC` and beastTransform's `COOLDOWN_SEC` in place of
+   0.6, 1.5 and 1.5. The gate names no number: it drives each real machine through the transition that arms its cooldown
+   and holds that, on that frame, the mirror's remaining time is the whole of its duration. On the old mirror, retuning
+   each constant (0.9, 2.0, 2.0) reds the matching slot; on the new one the same retunes leave it green, which is the
+   point. It also asks that every machine-backed slot the mirror carries be driven, so a fourth cannot ship undriven. Not
+   mirrored, and said in the gate: the dodge (its duration is the Player loop's own `cooldown`, handed in) and the imbue
+   (no cooldown).
+
+185. **A walk and a dodge read one planar basis, and an in-code deferral is a gate.** (AUDIT:ultra:ultra-game-logic-7)
+   `locomotion.moveVector` calls `dodge.planarBasis`; the inline copy and its "unify later" comment are gone. The gate
+   drives `moveVector` and `dodgeDirection` over 9 camera lengths (either side of the 0.001 line and the camera looking
+   straight up) x 16 angles x 8 key directions and holds that they go the same way; it names no threshold, so moving the
+   shared line moves both and stays green, while moving either old copy alone reds it. The row's note also asked for a
+   sweep against deferral comments: `tests/scripts/no-deferral-comments.test.js` is a property check over every non-test
+   file of `src/` (TODO, FIXME, "unify later" inside a comment), the detector shown first to see each form, sited in
+   `tests/scripts/` because its subject is source content. It was red on exactly the one comment this lane removed.
+
+**Not covered:** a lived run (there is no local browser in this lane; CI is the arbiter, `ci ok` on the exact head); the
+sight grid's frame cost on an iPad-class device (item 182, by reading only); the Terrain.jsx renderer drawing
+`landmarkAt`'s chunks (structural, item 181); the dodge and imbue slots of the mirror (item 184); and the enemy-arrow terrain
+test (its own row).
+
 ## 2026-10-30 — [LOOP] L1: a death on iOS shows YOU DIED, the lock goes on the canvas only, Show Stats and the juice dial, and every button over the game answers a finger
 
 **Decided by the L1 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L1 of the 2026-10-30 deep
