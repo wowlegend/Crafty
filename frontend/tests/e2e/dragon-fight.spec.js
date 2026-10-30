@@ -2,6 +2,8 @@ import { test, expect } from './_fixtures.js';
 import { bootDev, startPlayActive } from './_boot.js';
 import { STAGGER_MS, PERFECT_WINDOW_MS } from '../../src/game/perfectDodge.js';
 import { roarFalloff, DRAGON_MOVES } from '../../src/game/dragonMoves.js';
+import { SPELL_TYPES } from '../../src/game/spells.js';
+import { ZONE_DEFS } from '../../src/game/elementZones.js';
 import { UI } from '../../src/theme/tokens.js';
 
 // THE DRAGON'S FIRST HALF, IN THE RUNNING GAME (DECISIONS 2026-10-30 items 123-126; task script
@@ -315,7 +317,7 @@ test.describe('the dragon fight', () => {
 
     // Every call damageMob takes for the dragon, with its source, from here on: each system reads GameMethods.damageMob
     // at the call, so a wrapper sees them all. The HP is read from the store's mirror of the boss hook.
-    const run = await page.evaluate(async ({ at }) => {
+    const run = await page.evaluate(async ({ at, burnTicks, zoneTtlMs }) => {
       const call = (n, ...a) => window.__craftyTest.call(n, ...a);
       const frame = () => new Promise((r) => requestAnimationFrame(r));
       const store = window.useGameStore;
@@ -343,17 +345,19 @@ test.describe('the dragon fight', () => {
         const own = calls.slice(n0);
         out.phases[name] = { before, after: hp(), calls: own, others: own.filter((c) => c.live && !sources.includes(c.source)) };
       };
-      // Wait until `source` has not hit the dragon for `quietMs` of world time (at most `maxMs`): a burn ticks for its
-      // duration and a zone for its ttl, past the window that started them.
-      const settle = async (source, quietMs, maxMs) => {
-        const w0 = call('worldNow'), t0 = performance.now();
-        while (call('worldNow') - w0 < maxMs && performance.now() - t0 < 30000) {
-          const last = calls.filter((c) => c.source === source).at(-1);
-          if (!last || call('worldNow') - last.t >= quietMs) return true;
+      // Wait until `done()` holds, at most `maxMs` of real time. A burn and a zone outlive the window that started them,
+      // so the next window waits for each to end by its own measure: the burn once it has dealt its ticks (they run on
+      // a real-time interval a loaded runner can starve, so a quiet spell is no sign it has ended), the zone once its
+      // ttl of world time has passed.
+      const until = async (done, maxMs) => {
+        const t0 = performance.now();
+        while (!done()) {
+          if (performance.now() - t0 > maxMs) return false;
           await frame();
         }
-        return false;
+        return true;
       };
+      const dots = () => calls.filter((c) => c.source === 'player-dot');
       const cam = window.__threeCamera;
       // HURL: a block thrown from the eye at the dragon, the way the voidhand throws it.
       await mark('hurl', ['player'], () => call('requestHurlAt', [cam.position.x, at[1] + 0.4, cam.position.z], [1, 0, 0]), 1500);
@@ -364,10 +368,12 @@ test.describe('the dragon fight', () => {
       cam.updateMatrixWorld();
       store.getState().setMana?.(store.getState().maxMana);
       await mark('burn', ['player', 'player-dot'], () => { out.cast = store.getState().castSpell?.('fireball') === true; }, 5500);
-      out.burnSettled = await settle('player-dot', 2500, 15000);
+      out.burnDone = await until(() => dots().length >= burnTicks, 30000);
+      out.burnTicks = dots();
       // ZONE: a burning zone painted under the dragon, as an imbued cast's impact paints one.
+      const zoneAt = call('worldNow');
       await mark('zone', ['hazard'], () => call('requestZoneAt', [at[0], at[1] - 0.8, at[2]], 'burning'), 3000);
-      out.zoneSettled = await settle('hazard', 2500, 15000);
+      out.zoneDone = await until(() => call('worldNow') - zoneAt >= zoneTtlMs + 1500, 30000);
       // ALLY: a zombie bound into the squad beside the dragon.
       await mark('ally', ['ally'], async () => {
         const s = store.getState();
@@ -379,20 +385,22 @@ test.describe('the dragon fight', () => {
       GM.damageMob = real;
       out.end = hp();
       return out;
-    }, { at: st.at });
+    }, { at: st.at, burnTicks: Math.floor(SPELL_TYPES.fireball.secondary.duration), zoneTtlMs: ZONE_DEFS.burning.ttl * 1000 });
 
     expect(run.steady, `SETUP: the calm, pinned dragon lost health with nothing hitting it: ${JSON.stringify(run)}`).toBe(run.hp0);
     const of = (name, source) => run.phases[name].calls.filter((c) => c.source === source && c.live);
     expect(of('hurl', 'player').length, `the hurled block never reached the dragon: ${JSON.stringify(run.phases.hurl)}`).toBeGreaterThanOrEqual(1);
     expect(run.phases.hurl.after, 'the hurl did not lower its HP').toBeLessThan(run.phases.hurl.before);
     expect(run.cast, 'SETUP: castSpell refused the fireball').toBe(true);
-    expect(of('burn', 'player-dot').length, `the fireball's burn never ticked on the dragon: ${JSON.stringify(run.phases.burn)}`).toBeGreaterThanOrEqual(2);
+    expect(of('burn', 'player-dot').length, `the fireball's burn never ticked on the dragon in its window: ${JSON.stringify(run.phases.burn)}`).toBeGreaterThanOrEqual(1);
     expect(run.phases.burn.after, 'the cast and its burn did not lower its HP').toBeLessThan(run.phases.burn.before);
-    expect(run.burnSettled, `SETUP: the burn still ticked 15 s on: ${JSON.stringify(run.phases.burn)}`).toBe(true);
+    expect(run.burnDone, `the burn did not deal its ${Math.floor(SPELL_TYPES.fireball.secondary.duration)} ticks on the dragon in 30 s: ${JSON.stringify(run.burnTicks)}`).toBe(true);
+    expect(run.burnTicks.map((c) => c.live), `a burn tick missed the dragon, or a second burn ticked: ${JSON.stringify(run.burnTicks)}`)
+      .toEqual(Array(Math.floor(SPELL_TYPES.fireball.secondary.duration)).fill(true));
     expect(of('zone', 'hazard').length, `the burning zone never reached the dragon: ${JSON.stringify(run.phases.zone)}`).toBeGreaterThanOrEqual(1);
     expect(run.phases.zone.others, `another source hit the dragon in the zone's window: ${JSON.stringify(run.phases.zone.others)}`).toEqual([]);
     expect(run.phases.zone.after, 'the zone did not lower its HP').toBeLessThan(run.phases.zone.before);
-    expect(run.zoneSettled, `SETUP: the zone still ticked 15 s on: ${JSON.stringify(run.phases.zone)}`).toBe(true);
+    expect(run.zoneDone, 'SETUP: the world never ran past the zone\'s ttl in 30 s').toBe(true);
     expect(run.allyBound, 'SETUP: the zombie could not be bound into the squad').toBe(true);
     expect(of('ally', 'ally').length, `the ally never struck the dragon: ${JSON.stringify(run.phases.ally)}`).toBeGreaterThanOrEqual(1);
     expect(run.phases.ally.others, `another source hit the dragon in the ally's window: ${JSON.stringify(run.phases.ally.others)}`).toEqual([]);
