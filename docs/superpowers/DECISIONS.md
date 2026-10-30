@@ -19,6 +19,41 @@
 
 ---
 
+## 2026-10-30 — [LOOP] fix/invisible-box: a placement never fills the player's own body
+
+**Decided by the fix lane under the standing grant** (DECISIONS 2026-10-28 item 14), from Kevin's live report of
+2026-10-30 against `4a01607b`: "seems to get stuck in an invisible box when travelling near the oceans, or caused by
+digging some blocks or something, i was left click / right clicking chaotically." Two independent diagnoses reproduced
+the cause in node against real Rapier (one on Kevin's own column, -78, -4) and refuted the others: the collider is built
+from the drawn arrays and rebuilt on every edit, so the two never disagree in geometry; a chunk seam cannot open a hole;
+water has no faces and no collider, and the ocean was where he stood, not the mechanism.
+
+130. **A right-click never fills a cell the player's body fills.** `world/placeAtHit.js` wrote whatever cell the build
+   ray named. Pressed against a step, a level right-click at its face names the cell the camera is in; looking down, the
+   feet's cell. The chunk's trimesh collider then held the capsule from inside (0 m walked and 0 m risen over 16 tries),
+   and with the eye in the cell every face of the block points away from it, so the FrontSide material drew nothing.
+   Now every footprint cell that overlaps a live collider of the player's body is dropped, the rest place and are paid
+   for, and the player is told "No room: you're standing there". **The live collider**, so a beast form's wider capsule
+   counts. **The capsule itself, not the KCC's 0.05 m offset around it:** a cell inside that band but clear of the
+   capsule did not hold the player at gaps of 0 to 0.1 m, and refusing it would refuse a block laid against the
+   player's side. Landed in `2fb8c72c`. Gate: `tests/integration/place-clear-of-player-rapier.test.jsx` (5 of 7 red on
+   `4a01607b`'s placeAtHit; seven mutants red, an identity mutant green).
+131. **From inside a placed block, a left click takes that block.** The build ray from inside meets the block's own
+   inner face, so the step past the hit landed in the cell beyond, and the left click mined a neighbour while the box
+   stayed: a save written before item 130 can still hold the player that way. `world/buildTarget.js` `mineTarget` now
+   returns the camera's own cell when a placed block (`store.worldBlocks`) fills it; the click and the white outline
+   share it, so the outline frames the cell the click takes. Generated terrain is the worker's and is not consulted.
+   Landed in `c3af8e82`. Gate: the same file's old-save case (red on the extracted old targeting: the three clicks took
+   3,31,8, 4,31,9 and 4,30,8 beside the box at 4,31,8; three mutants red, an identity green).
+
+**Lived proof:** `tests/e2e/place-clear-of-player.spec.js`, on a beach column near Kevin's spot: nine real clicks aimed
+on their own mousedowns (a pillar ahead, a level right-click at its face, one straight down, the pillar mined, a block
+placed and mined behind), then real W, A, S and D; then a block written around the camera as a load writes one, a real
+left click, and the walk out. Its red half is the CI run on `14058415` (the burst on the unfixed placement).
+**Left open:** a block whose collider lands after a moving player has walked into its cell still holds them; a block
+at the feet can be mined by looking down, one at the eye only by item 131
+(registry `REVIEW:fix-invisible-box:collider-lands-late`).
+
 ## 2026-10-30 — commit `faa65ee1` carries the WRONG message. Read this instead.
 
 `faa65ee1` on `feat/w2d-hud` is titled "fix(render): Show Stats no longer paces the game it measures", another lane's
