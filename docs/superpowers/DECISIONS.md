@@ -19,6 +19,75 @@
 
 ---
 
+## 2026-10-30 (chaos play) — [LOOP] a standing gate that plays the game adversarially: the player can always leave
+
+**Decided by the chaos-play lane** (branch `feat/chaos-play-gate`, registry REVIEW:chaos-play:player-can-leave). Kevin
+found the invisible box in five minutes of chaotic clicking near the ocean, after a week of reviews that never caught it:
+every review and gate was scoped to a diff, nothing played the game adversarially, and the trap shows in no frame and no
+console line, only in "can the player still move" (AB episode 1230). Items 150-154.
+
+150. **The chaos-play gate.** `tests/integration/chaos-play-{shore-cliff,cave-overhang,field-origin}.test.jsx` play 48
+   seeded sessions (six places: the shore, a cliff face, a two-high tunnel, an overhang, open field, the origin column;
+   60 and 120 Hz; trimesh 0, 2, 4 or 8 frames late) against the real Rapier build, the real mesher and the real verb
+   executors in the game's frame order, and read four invariants from the voxel grid after every frame: the capsule in
+   no solid cell deeper than 5 mm (a tenth of the controller's 0.05 m offset), the eye in no solid cell, a way out every
+   90 frames and at the end (a metre's move within a second walking or jump-walking, or after at most three left clicks
+   along one heading: a shell the player built is not a trap), and no stand-in outliving its mesh by a step.
+   `chaos-play-instruments.test.jsx` shows each instrument seeing its positive case first. Each file asserts floors on
+   the risky events it reached (clicks aimed into the body, wall contacts, two clicks between one pair of frames, swaps
+   under a ceiling and against a wall, refused swaps, loads and the frames a load held the body, respawns, respawns
+   after an origin-column dig and build) and prints them, so a seed set that stops reaching the dangerous geometry
+   fails as SETUP. About 25 s on four workers locally. **Controls:** with e177b5b8's placeAtHit.js (the guard, no
+   stand-ins) 41 of 48 sessions go red on I1 (12 also on I2, 1 on I3); with 4a01607b's (no guard) all 48 on I1 and I2,
+   5 on I3. I3 reads most of e177b5b8's late-trimesh traps as free because item 131's left click takes a placed block
+   around the eye.
+   - **The harness keeps a collider far below the world.** Without it, one history made rapier3d-compat 0.19.2 panic
+     ("unreachable") in `world.step` at the first collider created after a load's wipe had left only the player's
+     capsule in the broad phase. Replaying the recorded world ops on a fresh world did not panic, and the game's own load
+     e2e passes on CI; it is a lead, not a finding (registry REVIEW:chaos-play:rapier-panic-after-wipe).
+   - **What it does not check:** React's effect order and Terrain.jsx's own wiring (the harness models the wipe, the
+     resume branch and the form effect from the code; the e2e suite drives the real ones), mobs, dodge, the accel ramp,
+     the camera's bob, chunk streaming by distance, anything rendered.
+
+151. **A form swap places the new capsule where it fits; a form with no room is refused.** Supersedes S2-B1-M1's
+   grow-depenetration (the body lifted by the half-height's growth, unswept). The gate found the bull 0.12-0.21 m into
+   the ground on open land, the golem 0.25 m into a tunnel's ceiling and held, and ending the comet form left the base
+   capsule in the floor or a wall (the restore was called "always a shrink"; the comet and the hawk are narrower than
+   the base). `game/formFit.js` keeps the lower end, then takes the nearest spot on a 0.05 m grid (0.35 m sideways,
+   0.4 m down, 0.15 m up) clear of every collider, the unindexed ones included; the roar's commit refuses a form with no
+   room before the bar is spent ("No room to change shape here"), and the base shape comes back regardless. Rapier
+   0.19.2's capsule query missed a capsule half a radius into a roof when the core segment's end lay just short of the
+   face, so a passing spot is confirmed by balls along the axis. A refusal costs about 4 ms in node. Commit `d6579509`.
+
+152. **The respawn stands the player on the highest of the four columns its corner stands across.** The spawn is at
+   x 0 z 0, where four columns meet; the Player loop read the store's worldBlocks at column 0_y_0 by has() (a mined
+   cell counted as ground, and a cell's index taken for its top face) and otherwise probed one column. 6 of 8 origin
+   sessions ended held with the capsule 0.4 m into a neighbouring column. `game/spawnPlacement.js spawnCornerGround`
+   probes all four and takes the highest; the worldBlocks read is gone from the loop. Commit `3fd4b468`.
+
+153. **A save stands a loaded player at the body's centre.** The World Manager's Save wrote the camera's position
+   rounded to whole metres, loaded as the body's centre: up to half a metre into a wall, or the head in a two-high
+   ceiling (14 of 48 sessions red on I1 after such a load). `game/saveSchema.js savePosition` is the one reader for the
+   Save button, the autosave and the context-loss save. Old saves keep their rounded position (registry
+   REVIEW:chaos-play:old-manual-saves-rounded). Commit `bfb61857`.
+
+154. **A load holds the player at the saved position until the new world's column is in.** Between Terrain.jsx's wipe of
+   the old chunks and the new chunk's arrival there was no ground: the player fell, and the new trimesh landed around a
+   capsule sunk 0.04 m (4 frames) to 0.27 m (8 frames) into the ground, which the controller then read as grounded. The
+   store's loadWorldData sets resumeSpawn and worldReloading; the Player's resume hold, until now only for the
+   context-loss resume, also runs in play, and does not ask the ground probe until Terrain.jsx has committed the wipe. Commit
+   `a3f4a351`; the gate itself is `b25feb0c`.
+
+**Also found, not fixed here (registry rows, owner the command session):** holding jump into any sheer face climbs it,
+not only in a one-block shaft: the controller reads ground against the wall on some frames and each re-arms the jump
+(a six-high cliff climbed at 60 and 120 Hz; REVIEW:fix-invisible-box:shaft-wall-climb, widened); a capsule sunk into the
+rim of a hole it dug under a two-high ceiling neither walks nor jumps out, and three left clicks free it
+(REVIEW:chaos-play:rim-wedge); `moveKinematic`'s unswept lift is no longer used by the game
+(REVIEW:chaos-play:movekinematic-lift-unused); the load hold's real wiring is not driven by any e2e that asserts the
+player was held (REVIEW:chaos-play:load-hold-e2e).
+
+---
+
 ## 2026-10-30 (round 3) — [LOOP] fix/invisible-box round 3: a chunk's first trimesh is cut where its body is
 
 **Decided by the command session** on round 2's reviews of PR #59. The dynamic review said land. The static review's
