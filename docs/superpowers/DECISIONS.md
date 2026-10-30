@@ -43,12 +43,14 @@ Each stands while it earns its place.
    in a panel does not count); the card is one bare line above the hotbar, six essential keys drawn as the hint is (WASD,
    LMB, RMB, Tab, J, H, each a KEY_MAP key), because the whole list in a panel read 8.47% of a 1280x800 frame at rest by
    the footprint; it then folds to the one-line "H Controls" hint, which stays, on a keyboard only, until H opens the
-   panel once. **Measured at rest on this branch** (lookbook eye set, footprint, real GPU, 2026-10-30 01:48-01:57Z, at
-   78772eeb; the player has ember and coins, a frame with a nameplate up counts, and each frame is shot again with one
-   raised, item 94): a returning player at most 6.58% on Chromium 1280x800 (6.79% with a nameplate), 7.55% on WebKit
+   panel once. **Measured at rest on this branch's committed head** (lookbook eye set, footprint, real GPU, 2026-10-30
+   03:51-04:00Z, at `37c53357`, clean tree, after PR A's round 4; the commits after it on this branch change the registry
+   and this record only; the player has ember and coins, a frame with a nameplate up counts, and each frame is shot again
+   with one raised, item 94): a returning player at most 6.58% on Chromium 1280x800 (6.79% with a nameplate), 7.55% on WebKit
    1180x820 (7.76%) and 7.56% on WebKit 820x1180 (7.77%); a first session, with ember and coins as well (an upper bound
    for a new player), at most 7.30% with the card up (7.51% with the card and a nameplate) and 6.70% once it folds (the
-   card shows on a keyboard only, so the iPads read as for a returning player); frames `evidence/w2d/b-r3-*`
+   card shows on a keyboard only, so the iPads read as for a returning player: 7.55% and 7.57%); frames
+   `evidence/w2d/b-r3-*` (round 3's, of the same HUD on these three targets)
    (`tests/gates/controls-panel-gates.test.jsx`: the fold at 30 s, the clock
    paused off screen, the fold remembered, the hint never on touch). **Seen per browser profile, not per save:**
    `crafty_controls_seen` and `crafty_controls_card_done` sit beside `crafty_onboarded` in localStorage because they
@@ -197,10 +199,14 @@ items. Each stands while it earns its place.
    budget. So the vitals are slim 14 px rows (a 10 px track with no offset shadow, the label and value beside it), the
    coin count and the nameplate sit on the world with no panel (WebKit 1180x820: the vitals 1.10% to 0.50%, the coin
    count 0.38% to 0.05%, the nameplate 1.00% to 0.19%), and type on the world carries a one-pixel ink outline
-   (`ui/onWorldText.js`), because over a white sky the shadow alone washed the numbers out. **Measured after**
-   (lookbook eye set, ten valid frames at rest per target, real GPU, 2026-10-30 01:27-01:31Z): Chromium 1280x800 at most
-   6.58% (6.79% with a nameplate), WebKit 1180x820 7.55% (7.76%), WebKit 820x1180 7.56% (7.77%); frames
-   `evidence/w2d/a-r3-*`. **Why:** the brief's acceptance is the share of the screen at rest; the hard shadow is the
+   (`ui/onWorldText.js`), because over a white sky the shadow alone washed the numbers out. **Measured after, on a
+   committed head** (lookbook eye set, a returning player with ember and coins, ten valid frames at rest per target and
+   each shot again with a nameplate raised, real GPU, 2026-10-30 03:47-03:51Z, at `74b0adde`, clean tree; the commits
+   after it on this branch change the registry and this record only): Chromium 1280x800 at most 6.71% (6.79% with a
+   nameplate), WebKit 1180x820 7.63% (7.75%), WebKit 820x1180 7.70% (7.77%). Round 3's numbers (6.58%, 7.55%, 7.56%)
+   were read on an uncommitted tree and are superseded by these; the frames `evidence/w2d/a-r3-*` show the same HUD on
+   these three targets, which round 4's phone and short layouts do not move. **Why:** the brief's acceptance is the
+   share of the screen at rest; the hard shadow is the
    panels' elevation, and a HUD that sits on the world reads as one plane without it.
 
 ## 2026-10-29 — [LOOP] W2-J phase 3: closed records behind the tag `records/2026-10-29`, and a generated CHANGELOG
