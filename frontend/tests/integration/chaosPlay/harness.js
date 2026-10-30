@@ -255,20 +255,18 @@ function spawnBranch(S) {
   S.stats.respawns++;
 }
 
-/** A load's hold ends: I5 reads whether it stood the player near the saved spot (sideways within the load fit's reach),
- *  within its frame bound, or gave up for the origin spawn. */
+/** A load's hold ends: I5 reads whether it let the player go within its frame bound, or gave up for the origin spawn.
+ *  (How near the saved spot the player stands is chaos-play-loads.test.jsx's, case by case: the load fit moves the body
+ *  at most 0.6 m sideways, and the column it falls back to is the saved one.) */
 export const LOAD_RELEASE_FRAMES = (lag) => 2 * lag + 12;
-const LOAD_RELEASE_REACH = 0.75;
 function released(S, spot) {
   const L = S.loadPending;
   if (!L) return;
   S.loadPending = null;
   const frames = S.f - L.f;
-  const off = spot ? Math.hypot(spot.x - L.saved.x, spot.z - L.saved.z) : null;
   S.stats.loadsReleased++;
   if (!spot) note(S, 'I5', { why: 'the hold gave up: the origin spawn', saved: L.saved, frames });
   else if (frames > LOAD_RELEASE_FRAMES(S.lag) && !L.late) note(S, 'I5', { why: `held ${frames} frames`, saved: L.saved, spot: vec(spot) });
-  else if (off > LOAD_RELEASE_REACH) note(S, 'I5', { why: `stood ${off.toFixed(2)} m from the saved spot`, saved: L.saved, spot: vec(spot) });
 }
 
 /** One Player frame (Components.jsx useFrame, after the stepper), in its order. */

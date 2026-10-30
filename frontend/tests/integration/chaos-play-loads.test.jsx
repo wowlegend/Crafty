@@ -6,11 +6,10 @@
 // here, and a save made in a narrower or shorter form held a centre the base capsule does not fit at (the comet's stood
 // it 0.13 m into the floor). And a save made over the deep ocean, whose seabed lies under the ground probe's floor of 15,
 // was held 600 frames and then reset to the origin. Each case loads one through the store's loadWorldData into the chaos
-// harness (chaosPlay/harness.js: real Rapier,
-// the real mesher, the game's frame order) and reads I1 (the capsule in no solid cell deeper than TOL), I2 (the eye in no
-// solid cell) and I5 (released within its frame bound, sideways near the saved spot, never to the origin) from the
-// release on, then that the player can walk away. The random sessions (chaos-play-*.test.jsx) load such saves too; these
-// cases pin one of each where it is known to be bad.
+// harness (chaosPlay/harness.js: real Rapier, the real mesher, the game's frame order) and reads I1 (the capsule in no
+// solid cell deeper than TOL), I2 (the eye in no solid cell) and I5 (released within its frame bound, never to the
+// origin) from the release on, that the player stands sideways near the saved spot, and that they can walk away. The
+// random sessions (chaos-play-*.test.jsx) load such saves too; these cases pin one of each where it is known to be bad.
 //
 // WHAT THIS DOES NOT CHECK: Components.jsx's own wiring of the load (tests/e2e/load-hold.spec.js drives it in the game).
 import { describe, it, expect } from 'vitest';
@@ -34,19 +33,22 @@ function depthAt(S, p) {
   return d;
 }
 
-/** Load `data`, play the hold out and 30 frames on, and read what the release left. */
+/** Load `data`, play the hold out and 30 frames on, and read what the release left: the invariants, and whether the player
+ *  stands sideways within 0.75 m of the saved spot (the load fit moves the body at most 0.6 m sideways). */
 function loadAndPlay(S, data) {
+  const saved = data.player_data.position;
   loadSave(S, data);
   for (let i = 0; i < LOAD_RELEASE_FRAMES(S.lag) + 30; i++) tick(S, { yaw: 0, forward: false });
   finishSession(S);
   const t = S.p.body.translation();
   return {
-    counts: { I1: S.counts.I1, I2: S.counts.I2, I5: S.counts.I5 }, at: { x: +t.x.toFixed(2), y: +t.y.toFixed(2), z: +t.z.toFixed(2) },
+    counts: { I1: S.counts.I1, I2: S.counts.I2, I5: S.counts.I5, near: Math.hypot(t.x - saved.x, t.z - saved.z) < 0.75 },
+    at: { x: +t.x.toFixed(2), y: +t.y.toFixed(2), z: +t.z.toFixed(2) },
     violations: Object.fromEntries(Object.entries(S.violations).filter(([, l]) => l.length)), recent: S.recent.slice(-4),
   };
 }
 
-const clean = { I1: 0, I2: 0, I5: 0 };
+const clean = { I1: 0, I2: 0, I5: 0, near: true };
 
 describe('chaos play, loads: a save stands the player near where it was made, in no solid cell, whatever wrote it', () => {
   freshStorePerTest();

@@ -4,7 +4,7 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { freshStorePerTest, TOL } from './chaosPlay/suite.js';
 import {
   makeSession, tick, setCell, deepestSolid, eyeCell, solidAt, escape, rightClick, buildRay, lookDir, mulberry32, STONE,
-  LAND_TOP,
+  LAND_TOP, checkEscape, writeSave, loadSave, LOAD_RELEASE_FRAMES,
 } from './chaosPlay/harness.js';
 
 // THE CHAOS-PLAY GATE: CAN THE PLAYER STILL LEAVE? Kevin, five minutes of left and right clicking near the ocean
@@ -104,6 +104,45 @@ describe('the chaos-play instruments see what they report on', () => {
     setCell(S, x + 3, LAND_TOP, z, STONE);
     useGameStore.setState({ worldBlocks: new Map([[`${x + 3}_${LAND_TOP}_${z}`, STONE]]) });
     expect(escape(S), 'a block of the player\'s own that opens nothing read as their way out').toEqual({ free: false, by: null });
+  });
+
+  it('I1 counts a capsule a tenth of a metre into a wall (between TOL and the shallowest trap the gate exists for)', () => {
+    const S = session();
+    const t = S.p.body.translation();
+    const [x, z] = [Math.floor(t.x), Math.floor(t.z)];
+    S.p.body.setTranslation({ x: x + 0.5, y: t.y, z: z + 0.5 }, true);
+    for (let i = 0; i < 5; i++) tick(S, {});
+    // A wall face 0.1 m from the capsule's side, then the body 0.2 m into it: 0.1 m deep.
+    for (const y of [LAND_TOP, LAND_TOP + 1]) setCell(S, x + 1, y, z, STONE);
+    const at = S.p.body.translation();
+    S.p.body.setTranslation({ x: at.x + 0.2, y: at.y, z: at.z }, true);
+    const d = deepestSolid(S).depth;
+    expect(d, 'SETUP: the capsule is not between 6 mm and 0.3 m into the wall').toBeGreaterThan(0.006);
+    expect(d, 'SETUP: the capsule is not between 6 mm and 0.3 m into the wall').toBeLessThan(0.3);
+    tick(S, {});
+    expect(S.counts.I1, `I1 did not count a capsule ${d.toFixed(3)} m into a wall`).toBeGreaterThan(0);
+  });
+
+  it('I3 is recorded: a held escape test counts, and its walk-held reading is classed as held', () => {
+    const S = session();
+    setCell(S, ...eyeCell(S.p.body), STONE);
+    tick(S, {});
+    const e = checkEscape(S);
+    expect(e.free, 'SETUP: the player walked out of a block at the eye').toBe(false);
+    expect(S.counts.I3, 'a held escape test was not counted').toBeGreaterThan(0);
+    expect(S.walkHeld.map((h) => h.class), 'the walk-held reading was not printed as held').toEqual(['held']);
+  });
+
+  it('I5 reads a load whose column never comes in: held past its bound, then given up for the origin spawn', () => {
+    const S = session();
+    const save = writeSave(S, 'manual');
+    save.player_data.position = { x: 500.5, y: 40, z: 0.5 }; // beyond the world: no chunk will ever answer the probe
+    loadSave(S, save);
+    for (let i = 0; i < 2 * LOAD_RELEASE_FRAMES(S.lag); i++) tick(S, {});
+    expect(S.violations.I5.map((v) => v.why), 'I5 did not read a hold past its bound').toContainEqual(expect.stringMatching(/still held/));
+    for (let i = 0; i < 620 && S.loadPending; i++) tick(S, {});
+    expect(S.loadPending, 'SETUP: the hold never gave up').toBeNull();
+    expect(S.violations.I5.map((v) => v.why), 'I5 did not read a hold that gave up for the origin').toContainEqual(expect.stringMatching(/gave up/));
   });
 
   it('I4 reads a stand-in kept past its chunk\'s mesh, and none kept on the real registry', () => {
