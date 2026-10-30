@@ -26,4 +26,5 @@
 export const PLAYER_SPAWN = Object.freeze([0, 100, 0]);
 
 /** Same value as `{x, y, z}`, for call sites that read a translation-shaped object. */
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export const playerSpawnVec = () => ({ x: PLAYER_SPAWN[0], y: PLAYER_SPAWN[1], z: PLAYER_SPAWN[2] });

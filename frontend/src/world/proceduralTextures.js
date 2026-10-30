@@ -48,6 +48,7 @@ const VARIANT_PARTS = Object.freeze({
  * 'lip' wraps along u only, since every block of a stacked wall shows its own lip; 'framed' has a one-tone border
  * (glass, the wood end grain); 'unused' is never sampled (air; water, whose surface the ocean owns).
  */
+/** @internal Exported for the tests that enumerate it. */
 export const LAYER_TILING = Object.freeze([
   'unused', 'periodic', 'periodic', 'periodic', 'periodic', 'periodic', 'framed', 'periodic', 'periodic', 'unused',
   'periodic', 'periodic', 'periodic', 'periodic', 'periodic', 'framed',
@@ -58,6 +59,7 @@ export const LAYER_TILING = Object.freeze([
  * Every tone a layer may contain: its material's; for an ore the stone tones plus its nugget colour and rim; for a
  * face variant its parents' tones.
  */
+/** @internal Exported for the tests that enumerate it. */
 export function declaredTones(layer) {
   const ore = ORE_TILES.find((o) => o.layer === layer);
   if (ore) return [...MATERIAL_TONES.stone, oreColour(ore), oreShade(ore)];

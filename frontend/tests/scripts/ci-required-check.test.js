@@ -622,7 +622,7 @@ describe('pipeline.sh --sha-certified — only the exact word `true` skips the s
   beforeAll(() => { dir = mkdtempSync(join(tmpdir(), 'ci-certified-')); });
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
   let n = 0;
-  const SLOW = ['npm run --silent test:unit', 'npm run --silent build', 'node scripts/ci/bundle-budget.mjs', 'npm run --silent knip', 'npm audit --audit-level=high', 'node scripts/ci/prod-smoke.mjs'];
+  const SLOW = ['npm run --silent test:unit', 'npm run --silent build', 'node scripts/ci/bundle-budget.mjs', 'npm run --silent knip', 'npm run --silent knip:production', 'npm audit --audit-level=high', 'node scripts/ci/prod-smoke.mjs'];
   const QUICK = ['node scripts/ci/opsec-scan.mjs --all', 'node scripts/ci/doc-currency.mjs', 'npm run --silent lint', 'node scripts/ci/gate-shape.mjs', 'node scripts/ci/registry-append-only.mjs'];
   const runWith = (extraEnv, ...args) => {
     const bin = join(dir, `bin-${++n}`);
@@ -640,16 +640,16 @@ describe('pipeline.sh --sha-certified — only the exact word `true` skips the s
     return { ...r, cmds, slow: SLOW.filter((c) => cmds.includes(c)) };
   };
 
-  it('--sha-certified=true: the six slow steps are skipped and printed; the quick gates and registry-append-only run', () => {
+  it('--sha-certified=true: the seven slow steps are skipped and printed; the quick gates and registry-append-only run', () => {
     const r = runWith({}, '--tier=fast', '--code-changed=true', '--sha-certified=true');
     expect(r.status, r.stdout + r.stderr).toBe(0);
     for (const c of QUICK) expect(r.cmds, r.cmds.join('\n')).toContain(c);
     expect(r.slow).toEqual([]);
     expect(r.stdout).toMatch(/skipped \(--sha-certified=true\): unit \+ static gates, build, bundle byte budget/);
-    expect(r.stdout).toMatch(/skipped \(--sha-certified=true\): knip, npm audit, prod-smoke/);
+    expect(r.stdout).toMatch(/skipped \(--sha-certified=true\): knip, knip production, npm audit, prod-smoke/);
   });
 
-  it('true is the only word: false, empty, absent, TRUE and yes all run the six slow steps (fail SAFE)', () => {
+  it('true is the only word: false, empty, absent, TRUE and yes all run the seven slow steps (fail SAFE)', () => {
     let ran = 0;
     for (const flags of [['--sha-certified=false'], ['--sha-certified='], [], ['--sha-certified=TRUE'], ['--sha-certified=yes']]) {
       const r = runWith({}, '--tier=fast', '--code-changed=true', ...flags);

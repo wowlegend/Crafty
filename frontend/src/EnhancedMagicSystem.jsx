@@ -257,9 +257,6 @@ export const EnhancedMagicSystem = React.memo(() => {
       projectilesRef.current.push(newProjectile);
       projectilesDirty.current = true;
 
-      if (window.playSpellCastSound) {
-        window.playSpellCastSound(spellType);
-      }
       // True only here, with the projectile out: Components applies an armed imbue's spend to a cast that went out.
       return true;
     }});

@@ -14,6 +14,7 @@
  * of that gate iterated a hardcoded list instead, so renaming a key here just made loreFor return null and
  * the check passed. A denominator that does not come from the thing under test is not a denominator.
  */
+/** @internal Exported for the tests that enumerate it. */
 export function loreQuestIds() {
   return Object.keys(LORE);
 }

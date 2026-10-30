@@ -192,6 +192,7 @@ function reachOf(type) {
 }
 
 /** How far above or below the player a mob of `type` may stand and still engage (m): the reach it strikes with. */
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function engageDyM(type) {
   return reachOf(type).dy;
 }

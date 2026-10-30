@@ -50,6 +50,7 @@ export function nuggetMask(r, g, b) {
 
 /** JS twin of the GLSL night curve. Written 1 - smoothstep(DOWN, UP, y), not smoothstep(UP, DOWN, y): GLSL leaves
  *  smoothstep undefined for edge0 >= edge1, and the two are equal by the curve's symmetry. */
+/** @internal The JS twin of a shader formula, for its parity test. */
 export function nightFactor(sunY) {
   return 1 - smoothstep(SUN_DOWN, SUN_UP, sunY);
 }

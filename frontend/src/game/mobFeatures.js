@@ -64,6 +64,7 @@ const FEATURES = {
 
 // The types that carry silhouette features. pig (a stout quadruped) + spider (its 8-leg sprawl carries it)
 // stay plain; the upright humanoids (zombie/skeleton/villager) now carry ARMS (B5) so they read as creatures.
+/** @internal Exported for the tests that enumerate it. */
 export const FEATURED_TYPES = Object.keys(FEATURES);
 
 // mobFeatures(type, dims) -> array of accessory box specs (empty for unfeatured types / missing dims).

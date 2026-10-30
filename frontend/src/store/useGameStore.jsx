@@ -24,6 +24,8 @@ import { hurtStopMs } from '../game/hurtFeel.js';
 import { stackHitstop } from '../game/hitstop.js';
 import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
 import { voxelIndex } from '../world/chunkLayout.js';
+import { DEFAULT_WORLD_SEED, resolveWorldSeed } from '../world/worldSeed.js';
+import { seedClimate } from '../world/climate.js';
 
 // How long ONE attacker must wait before it can damage the player again. This was an inline 500 applied
 // to a single global timestamp, which made it a world-wide budget rather than a per-attacker cooldown —
@@ -74,8 +76,9 @@ function verbModsFor(unlockedTalents, relic, relicTiers) {
 }
 
 // The terrain worker's `load_modifications` message for the store's block edits (`x_y_z` -> block id): one
-// [cx, cz, voxelIndex, blockType] per edit. The worker REPLACES its edit table with this, so an empty map clears it.
-function loadModificationsMessage(worldBlocks) {
+// [cx, cz, voxelIndex, blockType] per edit, and the world's seed. The worker REPLACES its edit table with this, so an
+// empty map clears it, and re-seeds its noise.
+function loadModificationsMessage(worldBlocks, seed) {
   const modifications = [];
   for (const [key, blockType] of worldBlocks.entries()) {
     const [wxStr, wyStr, wzStr] = key.split('_');
@@ -91,7 +94,7 @@ function loadModificationsMessage(worldBlocks) {
 
     modifications.push([cx, cz, index, blockType]);
   }
-  return { type: 'load_modifications', payload: { modifications } };
+  return { type: 'load_modifications', payload: { modifications, seed } };
 }
 
 // The notice a load's talent refund raises, by the plural form of the points it leaves to spend.
@@ -183,7 +186,7 @@ export const useGameStore = create((set, get) => ({
     setTerrainWorker: (worker) => {
         set({ terrainWorker: worker });
         if (worker && get()._worldEditsPending) {
-            worker.postMessage(loadModificationsMessage(get().worldBlocks));
+            worker.postMessage(loadModificationsMessage(get().worldBlocks, get().worldSeed));
             set({ _worldEditsPending: false });
         }
     },
@@ -687,6 +690,9 @@ export const useGameStore = create((set, get) => ({
 
     worldBlocks: new Map(),
     setWorldBlocks: (blocks) => set({ worldBlocks: blocks }),
+    // The open world's terrain seed (world/worldSeed.js). Set only by a load; New World loads the initial state, so it
+    // writes 12345.
+    worldSeed: DEFAULT_WORLD_SEED,
 
     activeSpell: 'fireball',
     setActiveSpell: (spell) => set({ activeSpell: spell }),
@@ -1050,6 +1056,9 @@ export const useGameStore = create((set, get) => ({
             setActiveWorldId(loadedId);
         }
         const owed = migrateRetired(saveData);
+        // The save's own seed; one written before the field was played on 12345, whatever world is open now.
+        const worldSeed = resolveWorldSeed(saveData.game_state?.worldSeed);
+        seedClimate(worldSeed);
         set((state) => {
             const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
             // migrateSaveData already normalized inventory keys. The retired items (RETIRED_INVENTORY_KEYS: the
@@ -1121,12 +1130,13 @@ export const useGameStore = create((set, get) => ({
             // No worker yet (a load at boot, before the world mounted): the edits wait for setTerrainWorker to deliver
             // them. Sending only when a worker existed is how a resumed save came back with its coins and without the
             // blocks its player placed (review 2026-10-27, steady-cool HIGH 2).
-            if (state.terrainWorker) state.terrainWorker.postMessage(loadModificationsMessage(worldBlocks));
+            if (state.terrainWorker) state.terrainWorker.postMessage(loadModificationsMessage(worldBlocks, worldSeed));
 
             return {
                 _worldEditsPending: !state.terrainWorker,
                 _tombstone: { ...splitTombstone(saveData, owed.claimedQuestIds), migrated: owed.migrated },
                 worldBlocks,
+                worldSeed,
                 inventory,
                 selectedBlock,
                 activeSpell,

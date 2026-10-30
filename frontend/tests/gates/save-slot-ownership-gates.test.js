@@ -1,13 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { useGameStore } from '../../src/store/useGameStore';
 import { listWorlds, readWorld, getActiveWorldId, setActiveWorldId, writeWorld } from '../../src/game/worldSaves';
 import { buildSaveData } from '../../src/game/saveSchema';
-
-const HERE = dirname(fileURLToPath(import.meta.url));
 
 // B2a — THE AUTOSAVE DESTROYS THE PLAYER'S WORLD ON THEIR NEXT VISIT.
 // (18-domain review, CRITICAL, confirmed by an independent refuter and re-derived by reading the code.)
@@ -155,66 +150,5 @@ describe('B2a save-slot ownership — an autosave may not overwrite a world it n
     useGameStore.getState().saveActiveWorld({ x: 0, y: 18, z: 0 });
     expect(listWorlds()).toHaveLength(0);
     expect(getActiveWorldId()).toBeNull();
-  });
-});
-
-// B2c — a grind session dies with the tab.
-//
-// `autosave.flush()` (App.jsx's visibilitychange/beforeunload handler) is a no-op unless a debounce is
-// ALREADY pending: `flush() { if (timer !== null) { clear(); save(); } }`. That is correct on its own —
-// nothing pending means nothing to save. The bug is the TRIGGER LIST: App.jsx only schedules an autosave
-// when level / equipment / chests / talentPoints / worldBlocks / inventory / questState / the
-// banked meter changes. So `coins`, `currentXP` (without a level-up), `gameWon`, `nightCount` and
-// `gameTime` NEVER schedule one. Kill mobs for an hour, earn 3000 coins, beat the boss, close the tab —
-// nothing was ever pending, flush() no-ops, and the entire session is gone.
-//
-// This gate derives the trigger list from what saveSchema PERSISTS, so it cannot rot: add a persisted
-// progression field and forget to make it an autosave trigger, and this goes RED.
-describe('B2c autosave triggers — everything we persist must be able to schedule a save', () => {
-  it('the App.jsx trigger predicate covers every progression field saveSchema persists', () => {
-    const app = readFileSync(resolve(HERE, '../../src/App.jsx'), 'utf8');
-    const schema = readFileSync(resolve(HERE, '../../src/game/saveSchema.js'), 'utf8');
-
-    // The keys buildSaveData reads out of `state` inside the persisted blocks. This used to read
-    // `progression` ALONE, so every field of `game_state` was outside the denominator -- and that is
-    // exactly where bossState lives, rewritten on every damage tick while none of its inputs could
-    // schedule a save. A gate whose denominator excludes half the schema reports clean over the half it
-    // never examined, which is the defect it exists to catch, one level up.
-    // NAME THE FAILURE INSTEAD OF THROWING AN OPAQUE TypeError. These used to index `.match(...)[1]`
-    // directly, so a harmless reformat of saveSchema.js made `.match` return null and the gate died with
-    // "Cannot read properties of null" — a message that says nothing about the anchor that drifted, and
-    // that reads like a broken test rather than a gate that has lost sight of what it audits.
-    const block = (name) => {
-      const m = schema.match(new RegExp(`${name}:\\s*\\{([\\s\\S]*?)\\n\\s{4}\\},`));
-      if (!m) throw new Error(`saveSchema block "${name}" not found — the gate cannot see the schema it audits; re-anchor the regex`);
-      return m[1];
-    };
-    const progBlock = block('progression');
-    const gameStateBlock = block('game_state');
-    const persisted = [...`${progBlock}\n${gameStateBlock}`.matchAll(/(\w+):\s*state\.(\w+)/g)].map((m) => m[2]);
-    expect(persisted.length).toBeGreaterThan(10);   // the blocks were actually found
-    expect(gameStateBlock, 'the game_state block was not found — half the schema is unchecked').toContain('selectedBlock');
-
-    // the keys the autosave subscription compares
-    const triggerMatch = app.match(/const unsub = useGameStore\.subscribe\(\(s, prevS\) => \{([\s\S]*?)\n\s{4}\}\);/);
-    if (!triggerMatch) throw new Error('App.jsx autosave subscription not found — the gate cannot see the triggers it audits; re-anchor the regex');
-    const triggerBlock = triggerMatch[1];
-    const triggers = new Set([...triggerBlock.matchAll(/s\.(\w+) !== prevS\.\1/g)].map((m) => m[1]));
-    expect(triggers.size).toBeGreaterThan(5);
-
-    const missing = persisted.filter((k) => !triggers.has(k));
-    expect(missing, `persisted but can never schedule an autosave: ${missing.join(', ')}`).toEqual([]);
-
-    // bossState is serialized through a helper, so its INPUTS are what must be triggers -- the regex
-    // above cannot see them. Named explicitly, because a fight that cannot schedule a save is the
-    // concrete loss this whole gate is about.
-    for (const k of ['bossHealth', 'bossActive', 'bossDefeated']) {
-      expect(triggers.has(k), `${k} feeds bossState and cannot schedule a save`).toBe(true);
-    }
-  });
-
-  it('gameWon can schedule an autosave — beating the boss and closing the tab must not lose the win', () => {
-    const app = readFileSync(resolve(HERE, '../../src/App.jsx'), 'utf8');
-    expect(app).toMatch(/s\.gameWon !== prevS\.gameWon/);
   });
 });

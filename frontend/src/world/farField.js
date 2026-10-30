@@ -115,6 +115,7 @@ export function farColumn(s, means) {
  * The ring's geometry around (cx, cz): `rings` radii from r0 to r1 (geometric spacing) x `sectors` angles,
  * stitched into one indexed triangle list.
  */
+/** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function farFieldGeometry({ cx, cz, r0, r1, rings = FAR_RINGS, sectors = FAR_SECTORS, sample, means }) {
   const { positions, colors } = farFieldVertices({ cx, cz, r0, r1, rings, sectors, sample, means });
   return { positions, colors, index: farFieldIndex(rings, sectors) };
