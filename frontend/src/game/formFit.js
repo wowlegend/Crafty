@@ -56,7 +56,9 @@ export function fitCapsule(world, rapier, body, shape, { filter, unindexed } = {
   const at = c.translation();
   const y0 = at.y - c.halfHeight() - c.radius() + shape.halfHeight + shape.radius;
   const capsule = new rapier.Capsule(shape.halfHeight, shape.radius + MARGIN);
-  const blocked = (s, p) => !!world.intersectionWithShape(p, IDENTITY, s, undefined, undefined, undefined, body, filter)
+  // Dynamic bodies are not obstacles: block debris (world/BlockParticleSystem.jsx, 0.25 m cubes thrown for 2 s by every
+  // mined block) is shoved aside by the controller, and counted here it refused a form or lifted it off the floor.
+  const blocked = (s, p) => !!world.intersectionWithShape(p, IDENTITY, s, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC, undefined, undefined, body, filter)
     || !!(unindexed && unindexed.some((o) => o.isValid() && o.intersectsShape(s, p, IDENTITY)));
   // The capsule query, then balls along the capsule's axis: rapier3d-compat 0.19.2's capsule query read a golem's capsule
   // clear with its top half a radius into a roof, when the core segment's end lay just short of the roof's face

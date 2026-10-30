@@ -90,6 +90,26 @@ describe('a beast-form swap places the new capsule where it fits (real Rapier)',
     expect([p.body.collider(0).radius(), p.body.translation()], 'the unfitted restore moved the body or kept the form').toEqual([Math.fround(BASE_CAPSULE.radius), at]);
   });
 
+  it('block debris (dynamic 0.25 m cubes) neither refuses a form nor moves it: the bull fits where the base stood', () => {
+    // A mined block throws 8 debris cubes for 2 s (world/BlockParticleSystem.jsx, dynamic bodies the swap would shove
+    // aside): a ring of them on the floor around the player, inside the bull's 0.62 m radius and the fit's reach.
+    const world = scene();
+    const { body } = player(world);
+    for (let k = 0; k < 12; k++) {
+      const a = (k * Math.PI) / 6;
+      const cube = world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(Math.cos(a) * 0.55, 0.13, Math.sin(a) * 0.55));
+      world.createCollider(RAPIER.ColliderDesc.cuboid(0.125, 0.125, 0.125), cube);
+    }
+    world.step();
+    const bull = BEAST_FORMS.ice;
+    const bare = scene();
+    expect(overlaps(bare, player(bare, { shape: bull }).body), 'SETUP: the bull overlaps a bare floor').toBe(false);
+    const spot = fitCapsule(world, RAPIER, body, bull, {});
+    expect(spot, 'the debris refused the bull').not.toBeNull();
+    const kept = 0.05 + bull.halfHeight + bull.radius; // the lower end where the base capsule's is
+    expect([spot.x, spot.y, spot.z].map((v) => +v.toFixed(4)), 'the debris moved the bull off where the base stood').toEqual([0, +kept.toFixed(4), 0]);
+  });
+
   it('a collider made since the last step (a placed cell\'s stand-in) counts, though the world\'s query cannot see it yet', () => {
     const world = scene();
     const { body } = player(world);
