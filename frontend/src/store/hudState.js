@@ -85,6 +85,10 @@ export const selectHudState = (state) => ({
   setSelectedBlock: state.setSelectedBlock, // X3: absent until 2026-08-05 — the hotbar click threw
   activeSpell: state.activeSpell,
   setActiveSpell: state.setActiveSpell,
+  // The two covering surfaces that are not panels (ui/panelState.js coveringSurfaceUp): MenuSystem's resume overlay reads
+  // them through this slice; without them it would draw PAUSED over VICTORY, on top of Keep exploring.
+  victoryPending: state.victoryPending,
+  isWebGLContextLost: state.isWebGLContextLost,
 });
 
 /**

@@ -42,7 +42,8 @@ audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4). PR #63. E
    the lock (L1's `releasePointerLock`) when any covering surface goes up. It is the one release for every opener: the
    panel keys, G and Terrain's chest open no longer release on their own, so item 160's list of release sites loses
    Terrain's chest open. The release opens no pause panel (`shouldOpenPauseOnUnlock`) and no resume overlay
-   (`shouldShowResumeOverlay`) over the surface; Keep exploring asks for the lock again. Before, Esc was the only way out
+   (`shouldShowResumeOverlay`, fed through App's slice, `store/hudState.js`, which now carries `victoryPending` and
+   `isWebGLContextLost`) over the surface; Keep exploring asks for the lock again. Before, Esc was the only way out
    of VICTORY and left Settings open under it. On touch play is never dropped: the predicate holds the world and the
    verbs, and Respawn, Keep exploring and the context-loss panel own their touches by kind (item 164).
 172. **The pointer is taken again only when no surface remains, and every close sweep is PANEL_FLAGS.**
@@ -90,7 +91,9 @@ trailer):
   rows and a locked Aspect sector): no wheel step, spell key or F verb, the world held (death excepted), the lock released
   and no pause owed on desktop, the touch router yielding; a panel key twice over trade or a chest never locks with a
   panel drawn; requestGameLock asks for nothing under any of 16 surfaces; Esc closes all 13 PANEL_FLAGS. All 4 red (110
-  violations across the 49 cases); 16 real mutants red, the identity green.
+  violations across the 49 cases); 16 real mutants red, the identity green. A fifth case, added when CI's victory e2e
+  failed on the fix: the resume overlay, fed by App's real slice, stands aside for VICTORY and the lost-context panel
+  (red on the fix's first form, the slice without the two flags).
 - `tests/gates/key-focus-gates.test.jsx`: 38 keys into World Manager's name field, none taken, and Esc from it closes
   World Manager; both composition signals open nothing; Tab in Settings wraps inside it, and still closes Character; B,
   H, J and Tab toggle once across one and three auto-repeats. All 4 red; 9 real mutants red, the identity green.
@@ -104,10 +107,15 @@ trailer):
 - `src/ui/panelState.test.js`: the way-back invariant enumerates VICTORY and the lost-context panel and measures that each
   renders its way back; the resume overlay is suppressed by both.
 - `tests/e2e/input-live.spec.js` (CI): VICTORY under a stand-in lock, then an aimed click on the scrim (presence: the
-  same click mines first), and a touch chest holding the world clock and the walk. Red on main's game code in CI runs
-  41131019672 and 41133453153, all three attempts each: the release (`exits 0`) and the clock (+501 to +968 ms behind the
-  chest). The walk half was not red-first: on main the walk behind the chest read 0, 4.46 and 0 m after a 40-frame
-  presence walk that probably ended against something; it now walks back over the ground the presence walk crossed.
+  same click mines first), then Keep exploring; and a touch chest holding the world clock and the walk. The victory case
+  was red on main's game code in CI runs 41131019672 and 41133453153, all three attempts each, at the release
+  (`exits 0`). On the fix (run 41137409781) it went red again at Keep exploring: PAUSED was drawn over it, because the
+  slice App hands MenuSystem (`store/hudState.js`) did not carry `victoryPending`, so the resume overlay could not see the
+  surface; the slice carries both covering flags now, and `input-live-gates` holds it through the real slice. The touch
+  case is not red-first evidence: its first two forms entered play by `forcePlay`, which does not start the game, and the
+  world behind the title runs by design, so its clock ran on main's code and on the fix alike. It now starts the game and
+  walks back over the ground its presence walk crossed (the first form's walk read 0 m on main after a 40-frame walk that
+  probably ended against something). The jsdom gate is the red-first for the touch chest (REVIEW:l5:touch-chest-e2e-not-red-first).
 
 **Not covered:** a real iPad or iPhone (a hardware keyboard typing into World Manager, a world chest holding the world, a
 tray tap not closing its panel in WebKit), which is REVIEW:l5:device-run, Kevin's; a click in a browser on the context-loss

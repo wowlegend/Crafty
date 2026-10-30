@@ -17,6 +17,10 @@ import { routeExpressVerb } from '../../src/input/expressVerbs.js';
 import { requestGameLock } from '../../src/input/pointerLock.js';
 import { HOTBAR_BLOCKS } from '../../src/world/Blocks';
 import { ecs } from '../../src/ecs/world.js';
+import { useShallow } from 'zustand/react/shallow';
+import { MenuSystem } from '../../src/MenuSystem.jsx';
+import { SoundProvider } from '../../src/SoundManager.jsx';
+import { selectHudState } from '../../src/store/hudState.js';
 
 // A SURFACE OVER THE GAME TAKES THE INPUT, WHICHEVER WAY IT OPENED (lane L5 of the 2026-10-30 deep audit).
 //
@@ -319,5 +323,33 @@ describe('Esc closes every panel (AUDIT:input:panel-stack-relock-still-live, AUD
     }
     expect(PANEL_FLAGS.length, 'the denominator').toBe(13);
     expect(stayed, 'panels Esc left open').toEqual([]);
+  });
+});
+
+describe('the resume overlay, fed as App feeds MenuSystem, stands aside for VICTORY and the lost-context panel', () => {
+  // App hands MenuSystem the store slice selectHudState picks (store/hudState.js), and the overlay's predicate reads the
+  // covering surfaces from it: a surface the slice does not carry is invisible to the overlay, which then draws PAUSED
+  // over the surface's own control (Keep exploring, in CI's victory e2e). The real slice, the real MenuSystem.
+  function Menu() {
+    const gameState = useGameStore(useShallow(selectHudState));
+    return (
+      <SoundProvider>
+        <MenuSystem gameState={gameState} showAchievements={false} setShowAchievements={() => {}} showSpellUpgrades={false}
+          setShowSpellUpgrades={() => {}} isPointerLocked={false} setIsPointerLocked={setActive} showStats={false}
+          setShowStats={() => {}} questSystem={{ achievements: [], unlockedAchievements: [], stats: {}, quests: [] }} />
+      </SoundProvider>
+    );
+  }
+  it('PAUSED shows with the pointer free in play, and not over VICTORY or the lost-context panel', () => {
+    resetWorld();
+    render(<Menu />);
+    const overlay = () => !!screen.queryByTestId('resume-overlay');
+    const rows = { play: overlay() };
+    act(() => { useGameStore.setState({ victoryPending: true }); });
+    rows.victory = overlay();
+    act(() => { useGameStore.setState({ victoryPending: false, isWebGLContextLost: true }); });
+    rows.contextLoss = overlay();
+    act(() => { useGameStore.setState({ isWebGLContextLost: false }); });
+    expect(rows, 'PAUSED over a surface with its own way back (play is the presence)').toEqual({ play: true, victory: false, contextLoss: false });
   });
 });
