@@ -86,7 +86,7 @@ self.onmessage = function(e) {
       const entity = mobs[i];
       let {
         id, passive, x, y, z, targetX, targetZ, isMoving, isAggro,
-        lastAttackTime, windupUntil, damage, type, moveTimer, speed, rotation, health, maxHealth, heightGrid,
+        lastAttackTime, windupUntil, damage, type, moveTimer, speed, rotation, health, maxHealth, heightGrid, sightGrid,
         wanderRoll,
         chargeX = 0, chargeZ = 0, chargeAt = 0, chargeReadyAt = 0,
       } = entity;
@@ -158,7 +158,7 @@ self.onmessage = function(e) {
               const hDiffFromMob = Math.abs(ch - y);
               if (hDiffFromMob > 2.0) continue;
               
-              const inLOS = hasLineOfSight(heightGrid, cx, cz, relPlayerX, relPlayerZ);
+              const inLOS = hasLineOfSight(sightGrid || heightGrid, cx, cz, relPlayerX, relPlayerZ); // true column tops where the floor is Infinity (localPath.js sightGridAt)
               if (!inLOS) {
                 const dxCenter = cx - 4;
                 const dzCenter = cz - 4;

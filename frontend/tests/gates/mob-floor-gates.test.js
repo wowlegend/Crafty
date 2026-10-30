@@ -378,7 +378,7 @@ describe('an XP orb dropped under the canopy lands on the ground, not on the lea
 describe('AIWorkerSystem wiring (weak, structural — the chase above drives the same calls)', () => {
   it('snaps, builds grids and drains knockback on the floor probe; Terrain registers it', () => {
     expect(carriersOf(/snapMob\(entity, store\.getMobFloor, store\.getMobGroundLevel, worldNow\(\)\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
-    expect(carriersOf(/heightGridAt\(e\.position\.x, e\.position\.z, e\.position\.y - 0\.5, getMobFloor\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/mobGridsAt\(e\.position\.x, e\.position\.z, e\.position\.y - 0\.5, getMobFloor, store\.getMobGroundLevel\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
     expect(carriersOf(/drainKnockback\(mobsQuery\.entities, false, useGameStore\.getState\(\)\.getMobFloor\)/)).toEqual(['systems/AIWorkerSystem.jsx']);
     expect(carriersOf(/setGetMobFloor\(makeMobFloorProbe\(rapier, world\)\)/)).toEqual(['world/Terrain.jsx']);
     expect(carriersOf(/groundForMover\(store\.getMobFloor, store\.getMobGroundLevel, m\.x, m\.z, feet, true\)/)).toEqual(['world/SquadAISystem.jsx']);
