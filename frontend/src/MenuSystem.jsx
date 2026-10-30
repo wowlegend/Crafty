@@ -79,8 +79,10 @@ export function MenuSystem({
   // menu hides ONLY when active -- so without a direct bridge, tapping "Start Adventure" did nothing and
   // touch was stuck on the title screen (confirmed by scripts/visual/touch-probe.mjs). On touch we set the
   // active gate ourselves (single-active-authority still holds -- touch owns setActive on this path).
+  // A close control calls this after its own flag write, so the lock request reads the store, not the render's gameState:
+  // it is refused while any surface remains (input/pointerLock.js), and the render's copy still shows the panel closing.
   const enterPlay = () => {
-    requestGameLock(gameState);
+    requestGameLock(useGameStore.getState());
     if (isTouchDevice()) setIsPointerLocked(true);
     // W1: touch has no pointerlockchange event, so latch gameStarted here too (one-way; desktop also
     // re-latches via Components' pointer-lock writer -- idempotent).
@@ -233,7 +235,7 @@ export function MenuSystem({
               onClose={() => {
                 gameState.setShowWorldManager(false);
                 // KEVIN-FIX C4: the relock-on-close the other panels already do (in-game only)
-                if (gameState.gameStarted) requestGameLock(gameState);
+                if (gameState.gameStarted) requestGameLock(useGameStore.getState());
               }}
             />
           </Suspense>
@@ -265,7 +267,7 @@ export function MenuSystem({
                 gameState.setShowTradingInterface(false);
                 gameState.setSelectedVillager(null);
                 // KEVIN-FIX C4: trading never relocked — the player landed unlocked needing a click
-                if (gameState.gameStarted) requestGameLock(gameState);
+                if (gameState.gameStarted) requestGameLock(useGameStore.getState());
               }}
             />
           </Suspense>

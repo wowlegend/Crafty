@@ -39,6 +39,14 @@ re-trap the cursor. **Only a clickable surface recovers.**
 - App opens the pause panel in a **`useLayoutEffect`** — between the unlock and the panel there is one
   committed render matching the overlay's own predicate, so a post-paint effect flashes the overlay for a
   frame.
+- **Input is live only while nothing covers the game, whatever opened the surface.** `isInputLive(state, active)` in
+  `src/input/inputLive.js` is the one answer: the gate is open, the player is alive, and no surface is up (every
+  PANEL_FLAG, VICTORY, the lost-context panel: `coveringSurfaceUp` in `src/ui/panelState.js`; and the death screen).
+  The world clock's pause, every verb seam and the Player loop read it. Openers used to be trusted to drop `active`,
+  and two did not: a chest opened from the world on touch (no lock to lose; the world ran on behind it) and VICTORY
+  under a held lock. A covering surface takes the pointer back itself (InputManager), and `requestGameLock` refuses
+  while any surface is up, so it must be handed `useGameStore.getState()` read after the caller's own writes.
+  Gated over device x surface x opener in `frontend/tests/gates/input-live-gates.test.jsx`.
 
 ## Two routers, two different questions — do not merge them
 
@@ -48,8 +56,8 @@ verb does this KEY fire"** — a fixed table (F = cast, T = melee, Kevin 2026-06
 precondition. Same shape, unrelated inputs; keeping them separate is deliberate.
 
 **The liveness gate lives INSIDE the router, not at the call site.** `routeExpressVerb` returns `null`
-when input is inactive or the player is dead, rather than returning the verb and trusting the caller to
-check. A second call site is how a liveness gate gets forgotten, and being input-dead while mobs keep
+when input is not live (`isInputLive`: inactive, dead, or a surface up), rather than returning the verb and
+trusting the caller to check. A second call site is how a liveness gate gets forgotten, and being input-dead while mobs keep
 swinging is the failure this whole file exists for.
 
 **verbRouter's two final returns look dead and are not.** `return 'attack'` / `return 'cast'` at the
@@ -70,6 +78,6 @@ it in — teach that gate about a new dispatch mechanism rather than loosening i
   `requestPointerLock`), not `document.body` — a body-lock leaves the look controller ignoring mouse
   movement.
 - **`document.pointerLockElement` reads are centralized.** `Components.jsx`'s `pointerlockchange` handler
-  is the one authority; it writes `setActive()`, and consumers read `getInput().active`. Do not scatter
-  raw lock reads back in — a future touch layer sets `active` from its own focus model.
+  is the one authority; it writes `setActive()`, and consumers read `isInputLive(state, getInput().active)`.
+  Do not scatter raw lock reads back in — the touch layer sets `active` from its own focus model.
 - **Copy is not a selector.** Use `data-testid`.

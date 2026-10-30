@@ -5,9 +5,8 @@
 // InputManager's key gate — and they DRIFTED: the menu guard listed only 5 of the 13 panels, so opening
 // the Aspect tree (or achievements / chest / world-manager / credits / trading / auth / stats) popped the
 // main menu OVER the panel (2026-06-07, caught in playtest). Both call-sites now read THIS list, so a new
-// panel can't be half-wired. (Most flags live in the zustand store; the 2 React-local ones —
-// showSpellUpgrades / showAchievements — are merged in by each caller. The durable follow-up is to
-// move those into the store so a single store selector suffices.)
+// panel can't be half-wired. Every flag is a store flag (showSpellUpgrades and showAchievements were React state in
+// useInputManager until 2026-10-30), so one read of the store answers for the world clock and the verb gate.
 //
 // WHAT A PANEL IS, and why Show Stats is not one (2026-10-27). Every flag here mounts a full-screen surface with a scrim
 // over the canvas and a control that closes it — which is exactly what each reader assumes: the key gate (gameplay keys
@@ -21,10 +20,8 @@
 // flag like this one goes red there instead of in a playtest.
 
 export const PANEL_FLAGS = [
-  // store-backed
   'showInventory', 'showForge', 'showMagic', 'showBuildingTools', 'showSettings',
   'showChestInterface', 'showTradingInterface', 'showWorldManager', 'showCredits', 'showQuestLog', 'showControls',
-  // React-local (passed in by the caller)
   'showSpellUpgrades', 'showAchievements',
 ];
 
@@ -39,6 +36,16 @@ export function isAnyPanelOpen(flags) {
     if (flags[key]) return true;
   }
   return false;
+}
+
+/**
+ * coveringSurfaceUp(state) -> whether a surface covers the live game, each with its own way back: a panel (each renders a
+ * control that closes it), VICTORY (Keep exploring), or the lost-WebGL-context panel (a tap reloads into the same
+ * world). The death screen is the fourth surface over the game; it is `isAlive === false`, which every reader here
+ * already asks first (input/inputLive.js blockingSurfaceUp counts it in).
+ */
+export function coveringSurfaceUp(state) {
+  return !!state && (isAnyPanelOpen(state) || !!state.victoryPending || !!state.isWebGLContextLost);
 }
 
 /**
@@ -72,18 +79,21 @@ export function shouldShowResumeOverlay(state) {
   if (!state) return false;
   if (state.isAlive === false) return false; // the DeathScreen owns that moment (as with the title menu)
   if (!state.gameStarted) return false; // pre-game unlock is the title/click-to-play screen's job
-  return !state.isPointerLocked && !isAnyPanelOpen(state);
+  // A covering surface is already a way back; the overlay over VICTORY would hide Keep exploring under a second scrim.
+  return !state.isPointerLocked && !coveringSurfaceUp(state);
 }
 
 /**
  * shouldOpenPauseOnUnlock(state) -> whether an in-game unlock (the player's ESC) opens the pause panel. App calls it on the
- * active true->false TRANSITION. A panel already open keeps the screen (its scrim and its own close control are the way
- * back); touch has no lock to lose; the DeathScreen owns death; before Start an unlock is the title's.
- * @param {object} state { isTouch, isAlive, gameStarted, ...panelFlags }
+ * active true->false TRANSITION. A covering surface already up keeps the screen (a panel's scrim and close control,
+ * VICTORY's Keep exploring, the context-loss tap are the way back; VICTORY releases the lock itself, and that unlock
+ * must not open Settings under it); touch has no lock to lose; the DeathScreen owns death; before Start an unlock is
+ * the title's.
+ * @param {object} state { isTouch, isAlive, gameStarted, victoryPending, isWebGLContextLost, ...panelFlags }
  */
 export function shouldOpenPauseOnUnlock(state) {
   if (!state || state.isTouch) return false;
-  return !!state.isAlive && !!state.gameStarted && !isAnyPanelOpen(state);
+  return !!state.isAlive && !!state.gameStarted && !coveringSurfaceUp(state);
 }
 
 export function shouldShowTitleMenu(state) {

@@ -3,6 +3,7 @@
 // the panel that was there before, opened through its own flag, so every reader of those flags (the key gate, the
 // pause-on-unlock, the resume overlay, the canvas pace: ui/panelState.js) keeps working; a group is open when any of its
 // tabs is, and a strip of tabs above it switches between them.
+import { PANEL_FLAGS } from './panelState.js';
 
 /** Each group's tabs, in strip order. `flag` is the panel flag the tab opens (two are React-local in App). */
 export const PANEL_GROUPS = Object.freeze({
@@ -17,11 +18,12 @@ export const PANEL_GROUPS = Object.freeze({
   ]),
 });
 
-/** The panels a key or a tab closes before it opens its own: every grouped tab and the other key-opened panels. */
-export const CLOSED_ON_SWITCH = Object.freeze([
-  ...Object.values(PANEL_GROUPS).flat().map((t) => t.flag),
-  'showBuildingTools', 'showForge', 'showSettings', 'showControls',
-]);
+/**
+ * The panels a key, a tab or Esc closes before it opens its own: every panel (ui/panelState.js PANEL_FLAGS). This was a
+ * hand list of the key-opened ones, which left the trade panel, a chest, World Manager and Credits open under the next
+ * panel; closing that one then relocked the pointer with the first still drawn, and its clicks edited the world.
+ */
+export const CLOSED_ON_SWITCH = PANEL_FLAGS;
 
 /** PURE. The tab of `group` open in `flags` (the store's flags merged with the two React-local ones), else null. */
 export function openTab(group, flags) {
@@ -30,8 +32,8 @@ export function openTab(group, flags) {
 }
 
 /**
- * PURE. The flag writes that leave exactly `openFlag` open among the key-opened panels ({ flag: boolean }, every flag
- * in CLOSED_ON_SWITCH). `openFlag` null closes them all.
+ * PURE. The flag writes that leave exactly `openFlag` open ({ flag: boolean }, every flag in CLOSED_ON_SWITCH).
+ * `openFlag` null closes them all.
  */
 export function panelWrites(openFlag) {
   const out = {};
@@ -47,11 +49,22 @@ export function toggleGroupTarget(group, flags) {
   return openTab(group, flags) ? null : PANEL_GROUPS[group][0].flag;
 }
 
-/** Apply `writes` through each flag's setter: `local` holds App's two React-local setters, `store` the rest. */
+/**
+ * Apply `writes` through each flag's setter, `local`'s first (a caller's own seam), else the store's. A villager's panels
+ * (trade, the forge) and the chest panel, once written closed, let go of the villager or the chest they were opened on,
+ * as their own close controls do (MenuSystem).
+ */
 export function applyPanelWrites(writes, store, local = {}) {
   for (const [flag, value] of Object.entries(writes)) {
     const setter = `set${flag[0].toUpperCase()}${flag.slice(1)}`;
     const fn = local[setter] || store?.[setter];
     if (typeof fn === 'function') fn(value);
   }
+  if (writes.showTradingInterface === false && writes.showForge === false) store?.setSelectedVillager?.(null);
+  if (writes.showChestInterface === false) store?.setActiveChestCoords?.(null);
+}
+
+/** Close every panel (Esc, and the way out of a group): the writes and their companions above. */
+export function closeAllPanels(store, local) {
+  applyPanelWrites(panelWrites(null), store, local);
 }
