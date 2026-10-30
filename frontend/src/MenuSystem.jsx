@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, m } from 'framer-motion';
 // The on-demand panels come from ONE lazy chunk (ui/panels/lazyPanels.js, plan 2026-09-23-crafty-lazy-panels): each
 // renders inside its own keyed <Suspense> below, so a panel opened before the chunk arrives shows nothing for that
 // moment instead of unmounting its siblings, and AnimatePresence still sees one keyed child per panel.
@@ -274,7 +274,7 @@ export function MenuSystem({
 
       <AnimatePresence>
         {titleMenuVisible && (
-            <motion.div
+            <m.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -298,7 +298,7 @@ export function MenuSystem({
               />
 
               <div className="text-center max-w-xl mx-4 relative z-10 flex flex-col items-center">
-                <motion.h1
+                <m.h1
                   className="text-8xl mb-1 font-display text-accent"
                   style={{ textShadow: '0 4px 20px rgba(0,0,0,0.7)' }}
                   initial={{ scale: 0.6, opacity: 0 }}
@@ -306,7 +306,7 @@ export function MenuSystem({
                   transition={{ type: "spring", duration: 0.8, delay: 0.2 }}
                 >
                   Crafty
-                </motion.h1>
+                </m.h1>
 
                 {/* The tagline sits over the hero's blue robe, where the middle words were
                     near-invisible (low contrast). Two fixes: (1) it now uses the LIGHT `text` token
@@ -315,7 +315,7 @@ export function MenuSystem({
                     is given its OWN focused legibility scrim — a soft dark pill behind the text only —
                     so the near-white text stays fully legible against the robe (and against the
                     drifting hero in non-capture mode), mirroring the page's bottom-scrim pattern. */}
-                <motion.p
+                <m.p
                   data-testid="title-tagline"
                   className="text-xl mb-8 tracking-wider whitespace-nowrap text-text rounded-full px-6 py-1.5"
                   style={{
@@ -327,9 +327,9 @@ export function MenuSystem({
                   transition={{ delay: 0.6, duration: 0.8 }}
                 >
                   {t('menu.tagline')}
-                </motion.p>
+                </m.p>
 
-                <motion.div
+                <m.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9, duration: 0.5 }}
@@ -337,12 +337,12 @@ export function MenuSystem({
                   <Button variant="primary" size="lg" onClick={enterPlay}>
                     <Icon name="sword" size={22} className="flex-none" /> Start Adventure
                   </Button>
-                </motion.div>
+                </m.div>
 
                 {/* Keyboard keys mean nothing on a touchscreen, where the on-screen controls carry the verbs. The
                     same predicate hides the HUD's keyboard sheet, so the title and the HUD agree on one device. */}
                 {!isTouchUIMode() && (
-                  <motion.div
+                  <m.div
                     data-testid="title-hint-strip"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -361,10 +361,10 @@ export function MenuSystem({
                     <span>{t('hint.spells14')}</span>
                     <span>•</span>
                     <span>{t('hint.tMelee')}</span>
-                  </motion.div>
+                  </m.div>
                 )}
               </div>
-            </motion.div>
+            </m.div>
           )}
       </AnimatePresence>
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../../store/useGameStore';
 import { useGameSounds } from '../../SoundManager';
@@ -137,7 +137,7 @@ export const ForgePanel = React.memo(({ villager, onClose }) => {
 
   return (
     <Modal className="fixed inset-0 z-modal flex items-center justify-center bg-ink/75" label={villager?.npcName || t('forge.title')} onClose={onClose}>
-      <motion.div
+      <m.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -188,7 +188,7 @@ export const ForgePanel = React.memo(({ villager, onClose }) => {
             </Section>
           </div>
         </Panel>
-      </motion.div>
+      </m.div>
     </Modal>
   );
 });

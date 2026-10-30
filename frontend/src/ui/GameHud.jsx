@@ -3,7 +3,7 @@
 // sit at rest: on desktop the panels open by their keys (game/keyMap.js), on touch from the tray (ui/touchTray.js).
 import React from 'react';
 import { useT } from '../i18n/i18n.js';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { Slot, Button, Icon } from './primitives/index.js';
 import { isTouchUIMode } from '../input/touchDevice';
 import { BLOCK_TYPES, HOTBAR_BLOCKS } from '../world/Blocks';
@@ -105,7 +105,7 @@ const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
 export const GameUI = ({ gameState, level, xpProgress }) => {
   const t = useT();
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 pointer-events-none z-20">
+    <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 pointer-events-none z-20">
       <div className="absolute top-4 left-4 right-4 flex justify-end items-start pointer-events-auto">
         <div className="flex gap-2">
           <Button variant="ghost" size="icon" text="text-text-muted" aria-label={t('ui.settings')} data-testid="hud-settings" className="w-[42px] h-[42px]" onClick={() => gameState.setShowSettings(true)}>
@@ -114,6 +114,6 @@ export const GameUI = ({ gameState, level, xpProgress }) => {
         </div>
       </div>
       <MinecraftHotbar gameState={gameState} level={level} xpProgress={xpProgress} />
-    </motion.div>
+    </m.div>
   );
 };

@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from '../devtest/captureMode';
 
@@ -24,7 +24,7 @@ export default function DamageDirection() {
 
   if (capture) return <div style={{ ...base, opacity: 0.9 }} />;
   return (
-    <motion.div
+    <m.div
       key={hit.t}
       initial={{ opacity: 0.85 }}
       animate={{ opacity: 0 }}

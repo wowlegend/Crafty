@@ -1,7 +1,7 @@
 // The Talents page (Character's third tab, on Tab): the four Aspect trees, the points to spend, and respec. Spells scale with level and have no
 // section here (DECISIONS 2026-10-28 W1-H item 6).
 import React from 'react';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 import { Panel, Button, Icon } from './primitives/index.js';
@@ -31,7 +31,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
     const playerLevel = getPlayerLevel ? getPlayerLevel() : 1;
 
     return (
-        <motion.div
+        <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -46,7 +46,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                 4-column panel is ~1962px tall at 1280x800, and items-center on the scroll element itself
                 clipped the header 556px above the viewport (the close X was unreachable). */}
             <div className="flex min-h-full items-center justify-center p-4">
-            <motion.div
+            <m.div
                 initial={{ scale: 0.9, y: 30 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 30 }}
@@ -213,8 +213,8 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
                     </div>
 
                 </Panel>
-            </motion.div>
+            </m.div>
             </div>
-        </motion.div>
+        </m.div>
     );
 });

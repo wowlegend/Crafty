@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   Globe,
@@ -137,7 +137,7 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
   const publicWorlds = worlds.filter(world => world.is_public && !world.is_owner && !(typeof world.id === 'string' && world.id.startsWith('local_')));
 
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
@@ -256,13 +256,13 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
         {/* Create World Modal */}
         <AnimatePresence>
           {showCreateModal && (
-            <motion.div
+            <m.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-black/50 flex items-center justify-center"
             >
-              <motion.div
+              <m.div
                 initial={{ scale: 0.9 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0.9 }}
@@ -309,12 +309,12 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
                     Cancel
                   </button>
                 </div>
-              </motion.div>
-            </motion.div>
+              </m.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>
-    </motion.div>
+    </m.div>
   );
 };
 
