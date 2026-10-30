@@ -22,7 +22,7 @@ function isTextEntry(target) {
   if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
   return tag === 'INPUT' && !NON_TEXT_INPUTS.has(String(target.type || 'text').toLowerCase());
 }
-// The keys that toggle something: a held one's auto-repeat strobed its panel open and shut.
+// The keys that toggle something: a held one's auto-repeat must not toggle it again at the repeat rate.
 const TOGGLE_KEYS = new Set(['KeyB', 'KeyH', 'KeyJ', 'Tab', 'KeyG', 'F3']);
 
 export function useInputManager(gameState, gameSystems) {
@@ -41,7 +41,8 @@ export function useInputManager(gameState, gameSystems) {
       if (!isInputLive(state, getInput().active)) return;
       const dir = step(event);
       if (!dir) return;
-      state.setSelectedBlock(HOTBAR_BLOCKS[nextHotbarSlot(HOTBAR_BLOCKS.indexOf(state.selectedBlock), dir, HOTBAR_BLOCKS.length)]);
+      const next = nextHotbarSlot(HOTBAR_BLOCKS.indexOf(state.selectedBlock), dir, HOTBAR_BLOCKS.length);
+      state.setSelectedBlock(HOTBAR_BLOCKS[next]);
     };
     window.addEventListener('wheel', handleWheel, { passive: true });
     return () => window.removeEventListener('wheel', handleWheel);
@@ -57,8 +58,7 @@ export function useInputManager(gameState, gameSystems) {
     const handleKeyDown = (event) => {
       // This listener runs on the window in the capture phase, ahead of every field. A key mid-composition is the IME's
       // (keyCode 229 is the signal some engines send for the key that ends one), and a key aimed at a text field is text:
-      // World Manager's name field lost b, h and j to Build, Controls and the Journal ("Hobbit Hole" became "it ").
-      // Esc still closes the panel the field is on.
+      // b, h and j are panel keys, and World Manager's name field must take them. Esc still closes the field's panel.
       if (event.isComposing || event.keyCode === 229) return;
       if (event.code !== 'Escape' && isTextEntry(event.target)) return;
       if (event.repeat && TOGGLE_KEYS.has(event.code)) return;
@@ -73,8 +73,7 @@ export function useInputManager(gameState, gameSystems) {
         event.stopImmediatePropagation();
 
         if (anyPanelOpen) {
-          // Every panel, from the one list (ui/panelGroups.js closeAllPanels over PANEL_FLAGS): this hand list missed
-          // World Manager and Credits, so Esc never closed them.
+          // Every panel, from the one list (ui/panelGroups.js closeAllPanels over PANEL_FLAGS): a panel added later closes.
           closeAllPanels(state);
           requestGameLock(useGameStore.getState());
         } else {
@@ -143,8 +142,7 @@ export function useInputManager(gameState, gameSystems) {
 
   // A surface that covers the game takes the pointer back, whatever opened it: the one release for every opener (the
   // panel keys, G, a chest from the world, VICTORY, a lost WebGL context). Under a lock every click goes to the canvas,
-  // so a surface raised with the lock held left its control unclickable while the clicks mined and placed behind it;
-  // each opener used to be trusted to release the lock itself, and VICTORY and the context loss did not. App's
+  // so a surface raised with the lock held leaves its control unclickable while the clicks act behind it. App's
   // pause-on-unlock is suppressed for the release (ui/panelState.js).
   const covered = useGameStore((s) => coveringSurfaceUp(s));
   useEffect(() => {

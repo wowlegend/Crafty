@@ -29,11 +29,11 @@ let pausedTotal = 0; // that clock's ms spent in every finished pause
 /**
  * The player has stopped the game: play has begun, they are alive, and their input is not live (input/inputLive.js):
  * the input gate is down (ESC, a key-opened panel, the touch Pause), or a surface covers the game whatever opened it (a
- * panel, VICTORY, the lost-context panel). A chest opened from the world on touch drops no gate, so before the surfaces
- * were read here the world ran on behind it and a mob could kill the player inside the menu. A desktop window losing
- * focus pauses too, because the browser must exit pointer lock then (Pointer Lock 2.0, "Pointer lock must be exited
- * if ... the user agent, window, or tab loses focus"). On touch nothing clears the gate when the page is hidden
- * (input/blurReset.js clears only held intents), so switching apps does not pause.
+ * panel, VICTORY, the lost-context panel). A chest opened from the world on touch drops no gate, which is why the
+ * surfaces are read: with the gate alone the world runs on behind the chest and a mob can kill the player inside the
+ * menu. A desktop window losing focus pauses too, because the browser must exit pointer lock then (Pointer Lock 2.0,
+ * "Pointer lock must be exited if ... the user agent, window, or tab loses focus"). On touch nothing clears the gate
+ * when the page is hidden (input/blurReset.js clears only held intents), so switching apps does not pause.
  * The world behind the title keeps running, the death screen is not a pause, and under capture the visual harness
  * holds the world its own way.
  * @param {object} s the store's state, or any object carrying its flags; `active` and `captureMode` default to its own

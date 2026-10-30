@@ -12,9 +12,9 @@ const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:n
 
 /**
  * The props that make a modal surface a surface while it is up, and nothing once it is leaving. A panel inside
- * AnimatePresence stays in the DOM through its exit animation; while it faded it still declared aria-modal, which the
- * touch layer reads as a control that owns its touches (input/touchOwnership.js), and it still took clicks, so the first
- * touch on the world after a close neither looked nor moved. Leaving, it takes no pointer and claims nothing.
+ * AnimatePresence stays in the DOM through its exit animation. Leaving, it must not declare aria-modal, which the touch
+ * layer reads as a control that owns its touches (input/touchOwnership.js), nor take the pointer, or the first touch on
+ * the world after a close goes to the fading panel. Leaving, it takes no pointer and claims nothing.
  */
 export function useSurfaceProps(style) {
   const present = useIsPresent();

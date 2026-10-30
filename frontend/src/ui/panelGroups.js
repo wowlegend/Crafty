@@ -19,9 +19,9 @@ export const PANEL_GROUPS = Object.freeze({
 });
 
 /**
- * The panels a key, a tab or Esc closes before it opens its own: every panel (ui/panelState.js PANEL_FLAGS). This was a
- * hand list of the key-opened ones, which left the trade panel, a chest, World Manager and Credits open under the next
- * panel; closing that one then relocked the pointer with the first still drawn, and its clicks edited the world.
+ * The panels a key, a tab or Esc closes before it opens its own: every panel (ui/panelState.js PANEL_FLAGS). A narrower
+ * list leaves a panel (the trade panel, a chest) open under the next one, and closing that one then has a panel still
+ * drawn behind it.
  */
 export const CLOSED_ON_SWITCH = PANEL_FLAGS;
 

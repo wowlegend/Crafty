@@ -23,8 +23,8 @@ export function releasePointerLock(doc = document) {
  *
  * Never while a surface is up (input/inputLive.js): under a lock every click goes to the canvas, so a lock taken with a
  * panel, VICTORY or the death screen still drawn leaves its control unclickable and the clicks editing the world behind
- * it. A panel key pressed over the trade panel or a chest did exactly that. So `state` must be the store's state read
- * after the caller's own writes (useGameStore.getState() at the call), not a snapshot from before them.
+ * it. So `state` must be the store's state read after the caller's own writes (useGameStore.getState() at the call), not
+ * a snapshot from before them.
  * @param {object} state the store's state, read at the call
  */
 export function requestGameLock(state) {

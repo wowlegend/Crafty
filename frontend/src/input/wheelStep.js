@@ -1,9 +1,8 @@
 // wheelStep.js — the scroll wheel walks the hotbar one slot per notch, not one per event.
 //
-// The hotbar moved a slot on every wheel event, whatever its size or direction: a trackpad swipe (dozens of small events
-// and a momentum tail after the fingers lift) spun it through 30 slots, a 0.01 px nudge moved it, a sideways swipe walked
-// it backwards, and with a coal, iron or potion tile selected (not a hotbar block) the wheel did nothing at all
-// (AUDIT:input:wheel-hotbar-per-event).
+// One slot per wheel event would spin the bar through dozens of slots on a trackpad swipe (many small events and a
+// momentum tail after the fingers lift), move it on a 0.01 px nudge and walk it backwards on a sideways swipe; and a coal,
+// iron or potion tile selected from the inventory (not a hotbar block) must not leave the wheel dead.
 //
 // What a notch reports differs by browser and platform (deltaY per notch, measured and published by others, collected in
 // the lane's DECISIONS entry): Chrome on Windows 100 px, on Linux 120 px; Firefox 3 lines (deltaMode 1) on Windows, 108
