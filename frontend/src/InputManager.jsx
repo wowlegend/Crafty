@@ -9,8 +9,20 @@ import { getInput, setActive } from './input/inputState';
 import { isAnyPanelOpen, coveringSurfaceUp } from './ui/panelState.js';
 import { isInputLive } from './input/inputLive.js';
 import { talk } from './input/talk.js';
-import { toggleGroupTarget, panelWrites, applyPanelWrites, closeAllPanels } from './ui/panelGroups.js';
+import { toggleGroupTarget, openTab, panelWrites, applyPanelWrites, closeAllPanels } from './ui/panelGroups.js';
 import { releasePointerLock, requestGameLock } from './input/pointerLock.js';
+
+// The input types a key types into. A checkbox, a button or a slider takes no text, so the game's keys stay live on them.
+const NON_TEXT_INPUTS = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file', 'image']);
+function isTextEntry(target) {
+  if (!target || typeof target !== 'object') return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  return tag === 'INPUT' && !NON_TEXT_INPUTS.has(String(target.type || 'text').toLowerCase());
+}
+// The keys that toggle something: a held one's auto-repeat strobed its panel open and shut.
+const TOGGLE_KEYS = new Set(['KeyB', 'KeyH', 'KeyJ', 'Tab', 'KeyG', 'F3']);
 
 export function useInputManager(gameState, gameSystems) {
   const [showStats, setShowStats] = useState(false);
@@ -48,6 +60,13 @@ export function useInputManager(gameState, gameSystems) {
 
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // This listener runs on the window in the capture phase, ahead of every field. A key mid-composition is the IME's
+      // (keyCode 229 is the signal some engines send for the key that ends one), and a key aimed at a text field is text:
+      // World Manager's name field lost b, h and j to Build, Controls and the Journal ("Hobbit Hole" became "it ").
+      // Esc still closes the panel the field is on.
+      if (event.isComposing || event.keyCode === 229) return;
+      if (event.code !== 'Escape' && isTextEntry(event.target)) return;
+      if (event.repeat && TOGGLE_KEYS.has(event.code)) return;
       const state = useGameStore.getState();
       // Show Stats is not a panel (ui/panelState.js): spells, claims and every other key act with the readout up.
       const anyPanelOpen = isAnyPanelOpen(state);
@@ -74,6 +93,10 @@ export function useInputManager(gameState, gameSystems) {
         }
         return;
       }
+
+      // Tab in any other dialog is that dialog's: it reaches the focus trap (ui/primitives/Modal.jsx). It only closes
+      // Character, whose key it is.
+      if (event.code === 'Tab' && anyPanelOpen && !openTab('character', state)) return;
 
       if (live || anyPanelOpen) {
         // B opens Build and H the controls panel, or closes it when it is up. Tab opens Character (gear, spells, talents)

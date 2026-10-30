@@ -271,8 +271,10 @@ describe('the pointer is taken again only when no surface remains (AUDIT:input:p
     expect(rows.length).toBe(UNDER.length * PANEL_KEYS.length);
     const lockedOverPanel = rows.filter((r) => r.steps.some((s) => s.locked && s.panel) || r.requestsUnderSurface > 0);
     expect(lockedOverPanel, 'the pointer was locked (or asked for) with a panel still drawn').toEqual([]);
-    const notBack = rows.filter((r) => !(r.end.locked && !r.end.panel));
-    expect(notBack, 'after the key closed its panel the player was not back in play').toEqual([]);
+    // B, J and H switch to their panel and close it again, so the player is back in play. Tab in a dialog other than
+    // Character is that dialog's focus key (key-focus-gates.test.jsx): it leaves the trade panel or the chest up, unlocked.
+    const notBack = rows.filter((r) => (r.code === 'Tab' ? !(r.end.panel && !r.end.locked) : !(r.end.locked && !r.end.panel)));
+    expect(notBack, 'after the key closed its panel the player was not back in play (or Tab took a dialog\'s focus key)').toEqual([]);
   });
 
   it('requestGameLock asks for nothing while any surface is up, and asks once when none is (the presence)', () => {

@@ -176,6 +176,7 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
+            data-testid="world-create-new"
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded"
           >
             <Plus size={16} />
@@ -275,6 +276,7 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
                     <label className="block text-white font-medium mb-2">{t('world.name')}</label>
                     <input
                       type="text"
+                      data-testid="world-name-field"
                       value={newWorldName}
                       onChange={(e) => setNewWorldName(e.target.value)}
                       className="w-full bg-gray-600 text-white p-2 rounded"
