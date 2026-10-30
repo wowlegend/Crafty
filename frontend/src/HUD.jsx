@@ -276,7 +276,8 @@ export const ImbueTell = React.memo(() => {
   );
 });
 
-// The vitals: a `flex flex-col` column (StatBar's root is `inline-flex`), `w-44` giving every bar one width. Desktop: the
+// The vitals: a `flex flex-col` column (StatBar's root is `inline-flex`, each bar `w-full`), whose `w-44` (`w-32` on a
+// phone) gives every bar one width. Desktop: the
 // bottom-left corner, lifted above the hotbar's XP edge where the centred hotbar would reach it: under 808 px wide, the
 // hotbar's 408 px plus, on each side, this stack's 176 px, its 16 px margin and HUD_GAP (tests/gates/hud-at-rest-gates
 // recomputes it from the rendered classes). Touch: the joystick and the action buttons hold both bottom corners
