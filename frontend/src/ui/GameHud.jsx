@@ -48,17 +48,19 @@ const XpEdge = ({ level, xpProgress }) => {
 };
 
 const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
-  const compact = useHudMode().compactHotbar;
+  const mode = useHudMode();
+  const compact = mode.compactHotbar;
   if (!gameState) return null;
   // The hotbar is the largest piece of chrome at rest, so it is nine slots and nothing behind them: no panel, 40 px
   // slots on a keyboard (9 x 40 + 8 gaps of 6 = 408 px), 48 px on touch, where each slot is a tap target. The lookbook's
   // footprint holds the eye-level frames at rest under 8% with it (DECISIONS 2026-10-29 item 99). B7 (18-domain
   // review): a full hotbar overflowed a phone; on narrow screens (≤640px) it scales to fit, keeping a phone's slot about
   // 35 px; origin-bottom keeps it anchored and centred. A short touch screen narrower than the full bar's room between the
-  // joystick and the cast button (a phone on its side) scales it the same way (ui/hudLayout.js compactHotbar).
+  // joystick and the cast button (a phone on its side) scales it the same way (ui/hudLayout.js compactHotbar). On a phone
+  // it sits 8 px from the bottom, where its XP edge clears the cast button (9% up, so 60 px on a 664 px screen).
   const touch = isTouchUIMode();
   return (
-    <div data-hud-interactive data-testid="hotbar" className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 origin-bottom ${compact ? 'scale-[0.72]' : 'max-[640px]:scale-[0.72]'} pointer-events-auto`}>
+    <div data-hud-interactive data-testid="hotbar" className={`absolute ${mode.phone ? 'bottom-2' : 'bottom-4'} left-1/2 transform -translate-x-1/2 origin-bottom ${compact ? 'scale-[0.72]' : 'max-[640px]:scale-[0.72]'} pointer-events-auto`}>
       {level != null && <XpEdge level={level} xpProgress={xpProgress} />}
       <ControlsHint />
       <div className="flex gap-1.5">

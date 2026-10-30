@@ -3,8 +3,9 @@ import React from 'react';
 import { Panel, StatBar, Icon } from './primitives/index.js';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 
-// It sits in the HUD's encounter column (HUD.jsx), which gives it `width` (ui/hudLayout.js bossWidth); `compact` (a phone
-// upright, where the bar is about 226 px wide) keeps the name and the bar and drops the phase line and the numbers.
+// It sits in the HUD's encounter column (HUD.jsx), which gives it `width` (ui/hudLayout.js bossWidth); `compact` (a phone,
+// where the bar is about 200 px wide, and a phone on its side, whose 91 px under the crosshair hold 85 and not 106:
+// ui/hudLayout.js compactBoss) keeps the name and the bar and drops the phase line and the numbers.
 export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth, bossPhase, bossName, width = 450, compact = false }) => {
     if (!bossActive) return null;
 

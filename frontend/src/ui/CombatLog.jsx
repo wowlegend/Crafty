@@ -5,10 +5,11 @@ import { Icon } from './primitives/index.js';
 import { useT } from '../i18n/i18n.js';
 import { notificationText } from './notifications.js';
 
-// A compact bottom-left scrolling combat-log ticker. Renders the LAST N entries of the existing
-// addNotification stream (QuestSystem.jsx) — the same data the corner toasts use — as a quiet,
-// chat-style feed for the classic-RPG "what just happened" read. Capture-SUPPRESSED (returns null)
-// so the 20 deterministic visual baselines stay byte-identical. Collapses to fewer lines on touch.
+// A compact bottom-left scrolling combat-log ticker. Renders the LAST 8 entries of the addNotification list
+// (QuestSystem.jsx), the same live list the toast stack draws, each entry leaving with its toast, as a quiet chat-style
+// feed for the classic-RPG "what just happened" read. Capture-SUPPRESSED (returns null) so the deterministic visual
+// baselines stay byte-identical. A keyboard's only: on touch the joystick and the tray hold the left edge it would sit
+// on, and the toast stack already shows every line it would (DECISIONS 2026-10-29 item 92).
 // The type->icon/colour maps mirror QuestSystem's NOTIF_ICON/NOTIF_STATUS so the log reads
 // consistently with the corner toasts (same glyph per event type; lucide names verified in use there).
 const TYPE_COLOR = {
@@ -23,12 +24,12 @@ const TYPE_ICON = {
 
 export const CombatLog = React.memo(({ notifications = [] }) => {
   const t = useT();
-  if (isCaptureMode()) return null;
-  const lines = notifications.slice(-(isTouchUIMode() ? 4 : 8));
+  if (isCaptureMode() || isTouchUIMode()) return null;
+  const lines = notifications.slice(-8);
   if (lines.length === 0) return null;
   return (
-    // Above the vitals stack wherever it sits (HUD.jsx stat-stack: lifted over the hotbar on a tablet in portrait and on
-    // a phone).
+    // Above the vitals in the bottom-left corner (HUD.jsx Vitals: 16 px up and 58 px tall, lifted to 88 px up under
+    // 808 px wide, where the hotbar would meet them).
     <div data-testid="combat-log" className="absolute bottom-[136px] min-[641px]:max-[1040px]:bottom-[256px] max-[640px]:bottom-[216px] left-4 z-10 pointer-events-none space-y-0.5 max-w-[320px]">
       {lines.map((n) => (
         // text-shadow + icon drop-shadow keep the quiet (no-panel) feed legible over ANY world backdrop

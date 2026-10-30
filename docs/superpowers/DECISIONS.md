@@ -88,29 +88,42 @@ items. Each stands while it earns its place.
    the quest tracker rests as the lead quest's line. **Where its list opens:** on touch, a tap on the line (the tracker
    is `data-hud-interactive`, so the touch layer leaves it its taps); on desktop the HUD shows only under pointer lock,
    where no click or hover reaches it, so the full list is the quest log's (L; the Journal on J once item 96 lands).
-   **Where things sit at rest** (`ui/hudLayout.js`): on desktop the vitals keep the bottom-left corner, lifted above the
-   hotbar's XP edge under 808 px wide (the hotbar's 408 px plus, on each side, the stack's 176 px, its 16 px margin and
-   an 8 px gap; `tests/gates/hud-at-rest-gates.test.jsx` recomputes it from the classes the two render). On a touch
-   screen 720 px tall or more (an iPad either way up, a phone upright) the joystick and the action buttons hold both
-   bottom corners and the tray opens down the left edge, so the vitals sit at the top left under the quest line and the
-   objective line, and the coin count under the minimap, clear of Pause. A shorter touch screen (a phone on its side)
-   gives the right edge to the thumb cluster's fans, which reach within 73 px of the top at 390 px: the compass stays in
-   the top band at 200 px, the coin count, the minimap (at three quarters, without its coordinates) and the dial sit in
-   the top band beside the Pause, the vitals sit on the left edge between the tray's opener and the joystick, and the
-   hotbar scales as a phone's. A target's nameplate and the boss bar are one centred column under the top centre's
-   lines (96 px down on a wide or short screen, 144 px under 900 px wide, 384 px on a phone upright, under its right
-   column), so they meet neither each other nor the objective line; the boss bar is 450 px where there is room, else
-   it leaves a 216 px column clear on each side (82 px on a phone upright, where it drops its phase line and numbers).
+   **Where things sit at rest** (`ui/hudLayout.js`): nothing covers a 48 px box at the screen's centre, where the
+   crosshair is. On desktop the vitals keep the bottom-left corner, lifted above the hotbar's XP edge under 808 px wide
+   (the hotbar's 408 px plus, on each side, the stack's 176 px, its 16 px margin and an 8 px gap;
+   `tests/gates/hud-at-rest-gates.test.jsx` recomputes it from the classes the two render). Touch has three layouts,
+   one per screen shape. **Tall** (640 px wide or more and 720 px tall or more: an iPad either way up): the joystick and
+   the action buttons hold both bottom corners and the tray opens down the left edge, so the vitals sit at the top left
+   under the quest line and the objective line, and the coin count under the minimap, clear of Pause. **Phone** (upright
+   and narrower than 640 px, or upright and under 720 px tall): the nameplate, the boss bar and the toast stack are one
+   column under the objective line (144 px down), so none meets another; the dial, the minimap at 60% (without its
+   coordinates) and the coin count run down the right edge beside it; the vitals sit on the left edge beside the
+   crosshair, 128 px wide so they clear it; and the hotbar sits 8 px from the bottom, where its XP edge clears the cast
+   button (9% up, which reaches it under 711 px tall). The tall layout's encounter under the right column put the boss
+   bar on the crosshair at 390x844, and under 720 px tall (390x664, Playwright's iPhone 14 with Safari's toolbars) the
+   tall layout's tray opener meets the vitals, its coin count the spell row and its XP edge the cast button.
+   **Short** (wider than tall and under 720 px: a phone on its side) gives the right edge to the thumb cluster's fans,
+   which reach within 73 px of the top at 390 px: the compass stays in the top band at 200 px, the coin count, the
+   minimap (at three quarters, without its coordinates) and the dial sit in the top band beside the Pause, the vitals
+   sit on the left edge between the tray's opener and the joystick, and the hotbar scales as a phone's. Its middle has
+   57 px above the crosshair and 91 under it, so the nameplate sits under the top band (96 px down) and the boss bar
+   (compact) and the toast stack in a column under the crosshair. Elsewhere the nameplate and the boss bar are one
+   centred column under the top centre's lines (96 px down on a wide screen, 144 px under 900 px wide). The boss bar is
+   450 px where there is room, else it leaves a 216 px column clear on each side (88 px on a phone, 82 px in a narrow
+   keyboard window), and never under 160 px; on a phone and a short screen it drops its phase line and numbers.
    **Why:** about a fifth of a 1280x800 frame was interface (survey-2026-10-27 finding 11); the acceptance is the chrome
    footprint on lookbook frames (item 94). **Proof that nothing promised depends on the rail, and that nothing
    collides:** `tests/e2e/hud-at-rest.spec.js` (no rail button on screen in a browser; a real grant moves the XP edge;
-   with ember and coins banked, at 1280x800, 1180x820, 820x1180, 390x844 and 844x390, at rest, with a target's nameplate
-   up, with the nameplate and the boss bar, and with the boss bar alone, no two of the HUD's rects and, on touch, the
-   joystick's ring and the eight touch buttons a player sees at rest intersect, and on both phones every touch target
-   lies inside the viewport; at 820x1180 a finger's tap opens the quest list), run by CI on the PR's head;
-   `tests/gates/hud-layout-gates.test.js` pins which layout each of the five gets. Not measured: other viewports, and a
-   touch screen under 338 px tall, where the short layout's vitals reach the joystick (registry
-   `REVIEW:w2d:hud-unmeasured-viewports`).
+   with ember and coins banked, at 1280x800, 1180x820, 820x1180, 390x844, 390x664, 375x667 and 844x390, at rest, at rest
+   with a notice, with a target's nameplate up, with the nameplate and a notice, with the nameplate and the boss bar,
+   and with the boss bar alone, no two of the HUD's rects, the box at the centre and, on touch, the joystick's ring and
+   the eight touch buttons a player sees at rest intersect; the toast stack lies inside every viewport and on the
+   phones every touch target does; at 820x1180 a finger's tap opens the quest list), run by CI on the PR's head;
+   `tests/gates/hud-layout-gates.test.js` pins which layout each of the seven gets and that every touch screen gets
+   exactly one. Not measured: other viewports, two toasts at once or a toast with the boss bar up, an upright phone
+   under 617 px tall (where the XP edge reaches the cast button again), and a touch screen under 338 px tall, where the
+   short layout's vitals reach the joystick (registry `REVIEW:w2d:hud-unmeasured-viewports`,
+   `REVIEW:w2d:toast-with-encounter`).
 91. **The compass is a component, and its capture guards are not carried over.** `ui/Compass.jsx` renders a fixed pool
    of marker slots once; the HUD ticker writes each slot's transform and text only on change; `ui/compassLayout.js`
    places labels in priority order (boss, HOME, shrine, Blight Heart, NPC, chest, cardinal) and a later label that
@@ -129,7 +142,15 @@ items. Each stands while it earns its place.
    (`world/survivalSystem.js`; the `SurvivalWarning` banner is deleted), the dragon's five calls
    (`world/bossSystem.js`; its own banner, its state and `bossNotifTimers.js` are deleted, since a toast clears itself)
    and an Aspect's first unlock (`ui/AspectHintToast.jsx` hands the hint to the channel once play is live again, so it
-   is not lost behind the Talents panel where it was earned). The level-up banner is the one transient drawn apart: a
+   is not lost behind the Talents panel where it was earned). **Where the stack stands:** at the right edge on its own on
+   a keyboard (under the dial) and on a tall touch screen (under the coin count); on a phone and a phone on its side it
+   joins the encounter column under the boss bar (item 90), the one band those screens leave clear across the middle
+   (at 844x390 the stack stood 372 px down, off the screen). **On touch the stack is the only view of the list:** the
+   combat log drew the same live list (each line leaves with its toast), and on touch it sat on the joystick on both
+   iPads and on the vitals and the tray's opener on a phone on its side, so it is drawn on a keyboard only
+   (`ui/CombatLog.jsx`). Proof nothing is lost: `tests/gates/combat-log-gates.test.js` (the feed that draws 8 lines on a
+   keyboard draws none on touch) and `tests/e2e/hud-at-rest.spec.js` (each staged notice's toast on screen at every touch
+   viewport with no log, and the log beside it on desktop). The level-up banner is the one transient drawn apart: a
    celebration at the screen's centre (`SimpleExperienceSystem.jsx`), not a notice, so it stays out of the stack, and
    its two lines are dictionary keys (`hud.levelUp`, `hud.levelReached`), read in zh-CN by
    `tests/gates/hud-zh-gates.test.jsx`. **Plain text is not deduped:** the denial notices
