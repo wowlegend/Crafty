@@ -219,6 +219,19 @@ export function splitTombstone(saveData, paidQuestIds = []) {
   return bag;
 }
 
+/**
+ * The store keys a save records: exactly the keys buildSaveData reads (tests/gates/autosave-trigger-gates traces them),
+ * the boss fight's through serializeBossState and the loaded save's own carry, `_tombstone`, among them. A change to
+ * any of them schedules an autosave (game/autosave.js).
+ */
+export const PERSISTED_KEYS = Object.freeze([
+  '_tombstone', 'worldBlocks', 'chests', 'inventory', 'questState',
+  'level', 'currentXP', 'totalXP', 'equipment', 'relicTiers', 'talentPoints', 'unlockedTalents', 'coins',
+  'nightCount', 'lastRewardedNight', 'ember', 'emberBuildDay',
+  'worldSeed', 'selectedBlock', 'activeSpell', 'isDay', 'gameTime', 'gameWon',
+  'bossActive', 'bossHealth', 'bossDefeated', 'bossTier', 'bossKillNight',
+]);
+
 export function buildSaveData(state, { position } = {}) {
   const tomb = isPlainObject(state._tombstone) ? state._tombstone : {};
   return {

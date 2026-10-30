@@ -1,5 +1,5 @@
 {
-  "_count": 96,
+  "_count": 95,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -73,7 +73,6 @@
     "tests/gates/radial-minimap-gates.test.js",
     "tests/gates/repeatable-quest-gates.test.js",
     "tests/gates/save-consolidation-gates.test.js",
-    "tests/gates/save-slot-ownership-gates.test.js",
     "tests/gates/settings-a11y-gates.test.js",
     "tests/gates/shrine-chest-gates.test.js",
     "tests/gates/siege-gates.test.js",

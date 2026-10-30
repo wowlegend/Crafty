@@ -40,7 +40,7 @@ import { getLiveZones } from './world/ElementZoneSystem';
 import { spawnZone, clearZones } from './game/elementZones';
 import { GameMethods } from './GameMethods';
 import { selectTier, readDeviceSignals } from './render/quality';
-import { createAutosave } from './game/autosave';
+import { installAutosave } from './game/autosave';
 import { useDayNightClock } from './game/useDayNightClock';
 import { shouldOpenPauseOnUnlock } from './ui/panelState.js';
 import { PLAYER_SPAWN } from './game/playerSpawn.js';
@@ -206,78 +206,18 @@ function GameApp({ experienceSystem }) {
   // never touches localStorage.
   useEffect(() => initSettingsPersistence(useGameStore, isCaptureMode), []);
 
-  // Local-first autosave: debounce on progression/world TRANSITIONS, flush on tab-hide/close.
-  useEffect(() => {
-    const autosave = createAutosave({
-      save: () => {
-        const st = useGameStore.getState();
-        if (st.isCaptureMode) return;
-        const rb = st.playerRigidBodyRef && st.playerRigidBodyRef.current;
-        const t = rb && rb.translation ? rb.translation() : null;
-        st.saveActiveWorld(t ? { x: t.x, y: t.y, z: t.z } : st.playerPosition);
-      },
-      delayMs: 5000,
-    });
-    // zustand v5 vanilla subscribe gives (state, prevState). Schedule only when a TRANSITION
-    // key changes — NOT on the per-frame playerPosition writes (which also pass through here).
-    // B2c: EVERY field saveSchema persists must be able to schedule a save. `autosave.flush()` (below,
-    // on tab-hide/close) only saves if a debounce is already PENDING — which is right in itself, but it
-    // means a field that never schedules is a field that never persists. coins / currentXP / totalXP /
-    // attributes / spellLevels / unlockedTalents / nightCount / gameWon were all missing here, so an hour
-    // of grinding — 3000 coins, a full XP bar, the boss dead — scheduled nothing, flushed nothing, and
-    // died with the tab. (`level` was a trigger, so it only persisted if you happened to level up.)
-    // Pinned by a gate that derives this list FROM saveSchema, so adding a persisted field and forgetting
-    // to trigger on it goes RED.
-    const unsub = useGameStore.subscribe((s, prevS) => {
-      if (
-        s.level !== prevS.level ||
-        s.currentXP !== prevS.currentXP ||
-        s.totalXP !== prevS.totalXP ||
-        s.coins !== prevS.coins ||
-        s.equipment !== prevS.equipment ||
-        s.relicTiers !== prevS.relicTiers ||
-        s.chests !== prevS.chests ||
-        s.talentPoints !== prevS.talentPoints ||
-        s.unlockedTalents !== prevS.unlockedTalents ||
-        s.worldBlocks !== prevS.worldBlocks ||
-        s.inventory !== prevS.inventory ||
-        s.questState !== prevS.questState ||
-        s.gameWon !== prevS.gameWon || // beating the boss and closing the tab must not lose the win
-        s.nightCount !== prevS.nightCount || // the siege ratchet + its dawn-reward guard
-        s.lastRewardedNight !== prevS.lastRewardedNight ||
-        s.ember !== prevS.ember || // a day's banked ember survives a tab-close
-        s.emberBuildDay !== prevS.emberBuildDay || // and so does the building allowance it has used
-        // GAME_STATE, not just progression. The gate below derived its expectation from saveSchema's
-        // `progression` block ONLY, so every field of `game_state` sat outside its denominator -- and
-        // bossState is rewritten on every damage tick by bossSystem's mirror effect while none of
-        // bossHealth / bossActive / bossDefeated could schedule a save. A melee-only fight with a few
-        // quiet seconds before the tab closed lost the whole encounter; a spell-using one persisted only
-        // because onSpellCast happens to touch questState. Durability was parasitic on an unrelated
-        // field changing.
-        s.selectedBlock !== prevS.selectedBlock ||
-        s.activeSpell !== prevS.activeSpell ||
-        s.isDay !== prevS.isDay ||
-        s.gameTime !== prevS.gameTime ||
-        s.bossHealth !== prevS.bossHealth ||
-        s.bossActive !== prevS.bossActive ||
-        s.bossDefeated !== prevS.bossDefeated ||
-        s.bossTier !== prevS.bossTier || // C3: the tier and the kill night are persisted too, so either alone schedules a save
-        s.bossKillNight !== prevS.bossKillNight
-      ) {
-        autosave.schedule();
-      }
-    });
-    const onVisibility = () => { if (document.visibilityState === 'hidden') autosave.flush(); };
-    const onUnload = () => autosave.flush();
-    document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('beforeunload', onUnload);
-    return () => {
-      unsub();
-      document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('beforeunload', onUnload);
-      autosave.cancel();
-    };
-  }, []);
+  // Local-first autosave (game/autosave.js): a change to any field the save records schedules one, and hiding the tab or
+  // closing it saves a pending one at once.
+  useEffect(() => installAutosave(useGameStore, {
+    save: () => {
+      const st = useGameStore.getState();
+      if (st.isCaptureMode) return;
+      const rb = st.playerRigidBodyRef && st.playerRigidBodyRef.current;
+      const t = rb && rb.translation ? rb.translation() : null;
+      st.saveActiveWorld(t ? { x: t.x, y: t.y, z: t.z } : st.playerPosition);
+    },
+    delayMs: 5000,
+  }), []);
 
   // Dev-only test bridge: lets the visual-regression harness drive the running
   // game into known states (leave the menu, force day/night). No-op in prod.

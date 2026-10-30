@@ -1,11 +1,44 @@
-/** Debounced autosave scheduler (pure; injectable save fn). schedule() debounces;
- * flush() saves immediately if pending; cancel() drops a pending save. */
+import { PERSISTED_KEYS } from './saveSchema.js';
+
+/**
+ * The autosave scheduler (pure; the save is injected). schedule() arms one save `delayMs` after the first change since
+ * the last save, and further changes join it rather than push it back: the clock advances gameTime every second, so a
+ * timer restarted on each change would never fire while a game is being played. flush() saves at once if a save is
+ * pending; cancel() drops it.
+ */
 export function createAutosave({ save, delayMs = 5000 }) {
   let timer = null;
   const clear = () => { if (timer !== null) { clearTimeout(timer); timer = null; } };
   return {
-    schedule() { clear(); timer = setTimeout(() => { timer = null; save(); }, delayMs); },
+    schedule() { if (timer === null) timer = setTimeout(() => { timer = null; save(); }, delayMs); },
     flush() { if (timer !== null) { clear(); save(); } },
     cancel() { clear(); },
+  };
+}
+
+// The keys whose change schedules a save: every key a save records, so a field cannot be persisted and never saved.
+const TRIGGER_KEYS = PERSISTED_KEYS;
+
+/**
+ * Autosave `store`: a change to any persisted key schedules `save`, and hiding the tab or unloading saves a pending one
+ * at once. Returns the uninstall. The store subscription runs on every write, the per-frame position writes included,
+ * so the comparison is a plain loop over a frozen array.
+ */
+export function installAutosave(store, { save, delayMs = 5000, doc = document, win = window }) {
+  const autosave = createAutosave({ save, delayMs });
+  const unsub = store.subscribe((s, prev) => {
+    for (let i = 0; i < TRIGGER_KEYS.length; i++) {
+      if (s[TRIGGER_KEYS[i]] !== prev[TRIGGER_KEYS[i]]) { autosave.schedule(); return; }
+    }
+  });
+  const onVisibility = () => { if (doc.visibilityState === 'hidden') autosave.flush(); };
+  const onUnload = () => autosave.flush();
+  doc.addEventListener('visibilitychange', onVisibility);
+  win.addEventListener('beforeunload', onUnload);
+  return () => {
+    unsub();
+    doc.removeEventListener('visibilitychange', onVisibility);
+    win.removeEventListener('beforeunload', onUnload);
+    autosave.cancel();
   };
 }
