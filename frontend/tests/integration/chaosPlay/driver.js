@@ -11,6 +11,8 @@ import {
 
 const ELEMENTS = Object.keys(BEAST_FORMS);
 const SPOT_SALT = { shore: 11, cliff: 23, cave: 37, overhang: 41, field: 53, origin: 67 };
+/** The shape a session saves in: the base, or one of the four forms, rotated over a place's eight sessions. */
+const SAVE_FORMS = [null, ...ELEMENTS];
 const pick = (rnd, list) => list[Math.floor(rnd() * list.length)];
 
 /** The heading of the nearest wall within 3 m at the body's height, or null. */
@@ -162,8 +164,11 @@ const EPISODES = {
   },
   saveLoad(S, rnd) {
     // Saved and loaded from the World Manager's panel, which takes the input: the player stands still for both. The save
-    // is made pressed against the nearest wall where there is one, and a third of the saves are written as the Save
-    // button wrote them before DECISIONS 2026-10-30 item 153 (the camera, rounded), as saves on disk still hold.
+    // is made in the session's form (a file's sessions try every form and the base shape), pressed against the nearest
+    // wall where there is one (a narrow form stands closer to it than the base capsule can), and a third of the saves are
+    // written as the Save button wrote them before DECISIONS 2026-10-30 item 153 (the camera, rounded), as saves on disk
+    // still hold.
+    if (S.saveForm) enterForm(S, S.saveForm);
     const w = nearestWall(S);
     if (w) frames(S, 20, { yaw: w.yaw, forward: true, jump: false });
     frames(S, 15, { yaw: 0, forward: false });
@@ -180,6 +185,7 @@ export function playSession({ spot, seed, hz, lag, budget = 420, K = 90, tol }) 
   const rnd = mulberry32(seed * 7919 + lag * 131 + hz * 7 + SPOT_SALT[spot]);
   const S = makeSession({ spot, rnd, hz, lag, tol });
   S.K = K;
+  S.saveForm = SAVE_FORMS[([0, 2, 4, 8].indexOf(lag) + (hz === 120 ? 4 : 0) + seed + SPOT_SALT[spot]) % SAVE_FORMS.length];
   // Every session presses into a wall, swaps form, builds at its feet and its eye, and saves then loads, in a seeded
   // order at its own spot; the fall through the void comes last, since every respawn lands on the origin column. A
   // session at the origin digs and builds on that column first, so its respawn reads an edited column.

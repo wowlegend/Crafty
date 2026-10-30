@@ -2,8 +2,9 @@
 // THE CHAOS-PLAY GATE'S LOADS: WHATEVER WROTE A SAVE, ITS LOAD STANDS THE PLAYER NEAR WHERE THEY SAVED, IN NO SOLID CELL.
 // A load stands the body at the saved position (DECISIONS 2026-10-30 item 154), and a save on disk can hold a position no
 // capsule fits at: the Save button before item 153 wrote the camera rounded to whole metres (into a wall the player stood
-// beside, or the head into a two-high ceiling), and the frozen pre-cut fixture holds (3, 21, 6), nine metres into the
-// ground here. Each case loads one through the store's loadWorldData into the chaos harness (chaosPlay/harness.js: real Rapier,
+// beside, or the head into a two-high ceiling), the frozen pre-cut fixture holds (3, 21, 6), nine metres into the ground
+// here, and a save made in a narrower or shorter form held a centre the base capsule does not fit at (the comet's stood
+// it 0.13 m into the floor). Each case loads one through the store's loadWorldData into the chaos harness (chaosPlay/harness.js: real Rapier,
 // the real mesher, the game's frame order) and reads I1 (the capsule in no solid cell deeper than TOL), I2 (the eye in no
 // solid cell) and I5 (released within its frame bound, sideways near the saved spot, never to the origin) from the
 // release on, then that the player can walk away. The random sessions (chaos-play-*.test.jsx) load such saves too; these
@@ -12,9 +13,11 @@
 // WHAT THIS DOES NOT CHECK: Components.jsx's own wiring of the load (tests/e2e/load-hold.spec.js drives it in the game).
 import { describe, it, expect } from 'vitest';
 import PRE_CUT from '../fixtures/pre-cut-save.json';
+import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { freshStorePerTest, TOL } from './chaosPlay/suite.js';
 import {
-  makeSession, tick, writeSave, loadSave, deepestSolid, escape, finishSession, mulberry32, LOAD_RELEASE_FRAMES, LAND_TOP,
+  makeSession, tick, writeSave, loadSave, deepestSolid, escape, enterForm, finishSession, mulberry32, LOAD_RELEASE_FRAMES,
+  LAND_TOP,
 } from './chaosPlay/harness.js';
 
 const RUNS = [{ hz: 60, lag: 2 }, { hz: 120, lag: 4 }];
@@ -82,5 +85,22 @@ describe('chaos play, loads: a save stands the player near where it was made, in
       });
     }
 
+    // A save made in a form: the comet and the hawk are narrower than the base and stand closer to a wall, the comet and
+    // the bull are shorter and centred lower. Pressed into the cliff face, and on open ground.
+    for (const form of ['fire', 'ice', 'lightning', 'arcane']) {
+      for (const place of [{ spot: 'cliff', yaw: -Math.PI / 2 }, { spot: 'field', yaw: null }]) {
+        it(`a save in the ${form} form ${place.yaw === null ? 'on open ground' : 'pressed into the cliff face'} loads clear (${hz} Hz, lag ${lag})`, () => {
+          const S = makeSession({ spot: place.spot, rnd: mulberry32(9), hz, lag, tol: TOL });
+          expect(enterForm(S, form), `SETUP: the ${form} form was refused where the session starts`).toBe(true);
+          for (let i = 0; i < 40; i++) tick(S, place.yaw === null ? { yaw: 0, forward: false } : { yaw: place.yaw, forward: true });
+          expect(useGameStore.getState().activeBeastForm, 'SETUP: the form did not hold to the save').toBe(form);
+          const r = loadAndPlay(S, writeSave(S, 'manual'));
+          expect(r.counts, `the load left the base capsule in solid or far from the save ${JSON.stringify(r)}`).toEqual(clean);
+          // On open ground a save written today needs no correction: it holds the base capsule's centre over the feet.
+          if (place.yaw === null) expect(S.stats.loadsPlaced_saved, `the saved centre was not where the base capsule fits ${JSON.stringify(r)}`).toBe(1);
+          expect(escape(S).free, 'the player cannot walk away from the load').toBe(true);
+        });
+      }
+    }
   }
 });

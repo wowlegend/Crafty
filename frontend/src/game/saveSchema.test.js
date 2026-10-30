@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { SAVE_VERSION, buildSaveData, migrateSaveData } from './saveSchema.js';
+import { SAVE_VERSION, buildSaveData, migrateSaveData, savePosition } from './saveSchema.js';
+import { BASE_CAPSULE, BEAST_FORMS } from './beasts.js';
 
 const stateLike = {
   worldBlocks: new Map([['1_2_3', 'stone']]),
@@ -92,5 +93,28 @@ describe('buildSaveData — no fiction fields', () => {
     const s = buildSaveData({ ...stateLike, questState: { stats: { blocks_placed: 12, blocks_broken: 4 } } }, { position: { x: 0, y: 0, z: 0 } });
     expect(s.questState.stats.blocks_placed).toBe(12);
     expect(s.questState.stats.blocks_broken).toBe(4);
+  });
+});
+
+// A save stands a loaded player at the base capsule's centre (the load restores the base shape), so a save made in a form
+// writes the centre the base capsule would have with its lower end where the form's is. The comet's centre is 0.18 m
+// under the base's: loaded as the base's, it stood the capsule 0.13 m into the floor (round-2 dynamic review, finding A).
+describe('savePosition', () => {
+  const bodyIn = (shape, centre) => ({
+    translation: () => ({ ...centre }),
+    collider: () => ({ halfHeight: () => shape.halfHeight, radius: () => shape.radius }),
+  });
+  it('is the base capsule\'s centre with the lower end kept, in every form and in the base shape', () => {
+    const feet = 30.05;
+    for (const shape of [BASE_CAPSULE, ...Object.values(BEAST_FORMS)]) {
+      const centre = { x: 4.25, y: feet + shape.halfHeight + shape.radius, z: -7.5 };
+      const p = savePosition({ playerRigidBodyRef: { current: bodyIn(shape, centre) }, playerPosition: { x: 4, y: 32, z: -8 } });
+      expect(p.x, `${shape.id || 'base'}: x moved`).toBe(4.25);
+      expect(p.z, `${shape.id || 'base'}: z moved`).toBe(-7.5);
+      expect(p.y, `${shape.id || 'base'}: the saved centre is not the base capsule's over the same feet`).toBeCloseTo(feet + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius, 6);
+    }
+  });
+  it('is the store\'s playerPosition only with no body', () => {
+    expect(savePosition({ playerRigidBodyRef: { current: null }, playerPosition: { x: 1, y: 2, z: 3 } })).toEqual({ x: 1, y: 2, z: 3 });
   });
 });

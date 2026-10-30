@@ -8,6 +8,7 @@ import { normalizeInventoryKeys } from './invNormalize.js';
 import { serializeBossState } from './bossPersistence.js';
 import { questRewards } from './questRewards.js';
 import { resolveWorldSeed } from '../world/worldSeed.js';
+import { BASE_CAPSULE } from './beasts.js';
 
 export const SAVE_VERSION = 2; // 1 = pre-A3 (no progression); 2 = A3 progression slice
 
@@ -233,16 +234,21 @@ export const PERSISTED_KEYS = Object.freeze([
 ]);
 
 /**
- * Where a save stands the player when it is loaded: the body's centre, as the controller left it. Never the store's
- * playerPosition, which is the camera (0.67 m up at the eye) rounded to whole metres (systems/PositionTracker.jsx): loaded
- * as the body's centre, it stood the player up to half a metre into a wall they had stood beside, or with the head in the
- * ceiling of a two-high tunnel (tests/integration/chaos-play-rapier.test.jsx). That is the fallback only with no body.
- * @param {{playerRigidBodyRef?: {current: ?{translation: () => {x: number, y: number, z: number}}}, playerPosition?: object}} state
+ * Where a save stands the player when it is loaded: the centre of the BASE capsule over the body's lower end (a load
+ * restores the base shape, and a form's capsule is centred lower or higher: the comet's 0.18 m under the base's stood the
+ * loaded capsule 0.13 m into the floor). Never the store's playerPosition, which is the camera (0.67 m up at the eye)
+ * rounded to whole metres (systems/PositionTracker.jsx): loaded as the body's centre, it stood the player up to half a
+ * metre into a wall they had stood beside, or with the head in the ceiling of a two-high tunnel
+ * (tests/integration/chaos-play-loads.test.jsx). That is the fallback only with no body.
+ * @param {{playerRigidBodyRef?: {current: ?{translation: () => {x: number, y: number, z: number}, collider?: (i: number) => ?{halfHeight: () => number, radius: () => number}}}, playerPosition?: object}} state
  */
 export function savePosition(state) {
   const rb = state.playerRigidBodyRef && state.playerRigidBodyRef.current;
   const t = rb && rb.translation ? rb.translation() : null;
-  return t ? { x: t.x, y: t.y, z: t.z } : state.playerPosition;
+  if (!t) return state.playerPosition;
+  const c = typeof rb.collider === 'function' ? rb.collider(0) : null;
+  const lift = c ? BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius - c.halfHeight() - c.radius() : 0;
+  return { x: t.x, y: t.y + lift, z: t.z };
 }
 
 export function buildSaveData(state, { position } = {}) {
