@@ -1156,7 +1156,7 @@ export const Player = ({ isWorldBuilt }) => {
         // never lands and it staggers — open to a 1.5x riposte. The dodge is refunded, so perfect dodges chain. The
         // dragon is a target too while it fights (game/bossCombat.js withBossTarget: its bite and dive-bite are
         // parryable; a new list only here, at a dodge's start).
-        const perfect = applyPerfectDodge(withBossTarget(mobsQuery.entities), currentTrans, worldNow());
+        const perfect = applyPerfectDodge(withBossTarget(mobsQuery.entities).slice(0, mobsQuery.entities.length), currentTrans, worldNow());
         if (perfect.length > 0) {
           dodge.lastDodgeTime = nowTime - dodge.cooldown;
           const st = useGameStore.getState();
