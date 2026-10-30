@@ -12,6 +12,7 @@ import { resolveCastBaseDamage, resolveCastManaCost } from './utils/spellCast';
 import { projectileGravity, projectileGrounded, advanceProjectile } from './game/projectilePhysics';
 import { freezeSlowMult } from './game/freeze';
 import { SPELL_TYPES, spellTypeOf } from './game/spells';
+import { BOSS_TARGET_ID } from './game/bossCombat.js';
 import { solveChainTargets } from './game/chainLightning';
 import { SPARK_PROFILE } from './game/spellVisualProfiles';
 import { isCaptureMode } from './devtest/captureMode';
@@ -457,6 +458,10 @@ export const EnhancedMagicSystem = React.memo(() => {
                 if (store.damageBoss) {
                   store.damageBoss(projectile.damage);
                   store.triggerHitstop?.(hitstopForHit(projectile.damage, store.juiceIntensity ?? 1));
+                  // A spell that burns sets the dragon burning too: its ticks reach it through damageMob, as a mob's do
+                  // (game/bossCombat.js BOSS_TARGET_ID; reset plan row 25).
+                  const sec = SPELL_TYPES[projectile.type]?.secondary;
+                  if (sec?.type === 'burn') applyBurnEffect(BOSS_TARGET_ID, sec.duration, sec.damagePerSecond);
                 }
                 countLanding(projectile);
                 createSpellImpact(projectile.position, projectile.type);

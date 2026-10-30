@@ -40,7 +40,8 @@ export function stepSquad(allies, hostiles, playerPos, now, playerAlive) {
     }
     if (target) {
       const dist = Math.sqrt(tD2);
-      if (dist <= ATTACK_RANGE) {
+      // A body with a bodyRadius (the dragon, game/bossCombat.js) is struck from its edge, not walked into.
+      if (dist <= ATTACK_RANGE + (target.bodyRadius || 0)) {
         if (now - (a.lastAllyAttack || 0) >= ATTACK_COOLDOWN_SEC) attacks.push({ id: a.id, targetId: target.id });
       } else {
         const k = STEP / dist;

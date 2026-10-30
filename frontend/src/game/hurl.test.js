@@ -185,3 +185,29 @@ describe('adoptHurlRequest and flightSlot — a paid throw always throws', () =>
     expect(a.color.startsWith('#')).toBe(true);
   });
 });
+
+// THE DRAGON ON THE ONE DAMAGE PATH (reset plan row 25; DECISIONS 2026-10-30 item 126): a body with a bodyRadius (the
+// dragon's record, game/bossCombat.js) is hit at its surface; a mob, with none, at its centre as before.
+// Mutation-Proof: via scripts/dev/mutate.sh, each observed RED, an identity mutant GREEN: H1 stepHurl ignores bodyRadius;
+// H2 resolveSlam ignores bodyRadius.
+describe('a big body is hit at its surface (row 25)', () => {
+  it('a block passing 2.5 m from the dragon\'s centre hits it; the same pass by a mob misses', () => {
+    const h = makeHurl({ x: 0, y: 0, z: 2.5 }, { x: 1, y: 0, z: 0 });
+    h.velocity.y = 0;
+    const dragon = { id: 'shadow-dragon', bodyRadius: 1.6, position: { x: 6, y: 0, z: 0 } };
+    let r = { done: false, hit: null };
+    for (let i = 0; i < 60 && !r.done; i++) r = stepHurl(h, 1 / 60, [dragon]);
+    expect(r.hit?.id).toBe('shadow-dragon');
+    const g = makeHurl({ x: 0, y: 0, z: 2.5 }, { x: 1, y: 0, z: 0 });
+    g.velocity.y = 0;
+    let s = { done: false, hit: null };
+    for (let i = 0; i < 60 && !s.done; i++) s = stepHurl(g, 1 / 60, [mob(7, 6, 0, 0)]);
+    expect(s.hit, 'a mob 2.5 m off the line was hit: its reach changed').toBeNull();
+  });
+  it('a slam reaches the dragon\'s body, and a mob only inside the radius', () => {
+    const c = { x: 0, y: 0, z: 0 };
+    const out = SLAM_RADIUS + 1;
+    expect(resolveSlam(c, [{ id: 'shadow-dragon', bodyRadius: 1.6, position: { x: out, y: 0, z: 0 } }]).map((e) => e.id)).toEqual(['shadow-dragon']);
+    expect(resolveSlam(c, [mob(8, out, 0, 0)])).toEqual([]);
+  });
+});
