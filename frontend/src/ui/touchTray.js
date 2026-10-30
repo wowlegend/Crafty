@@ -21,9 +21,9 @@ export const TRAY_PANELS = [
 
 /**
  * Open the Talents panel from touch — the KeyU open branch (InputManager.jsx), which a tablet has no key for. Until
- * Phase 0c NOTHING on touch opened this panel, so no Aspect could ever be unlocked on an iPad (refute F9). The panel's
- * open flag is App-local state (useInputManager), not a store key, which is why it is not a TRAY_PANELS row: App
- * passes its setters in. Closes the other panels first, exactly as the key does.
+ * Phase 0c NOTHING on touch opened this panel, so no Aspect could ever be unlocked on an iPad (refute F9). It is not a
+ * TRAY_PANELS row: the locked Aspect sector opens it, and App passes the two setters in. Closes the other panels first,
+ * exactly as the key does.
  */
 export const openTalents = (store, { setShowSpellUpgrades, setShowAchievements }) => {
   for (const k of ['setShowInventory', 'setShowForge', 'setShowMagic', 'setShowBuildingTools', 'setShowSettings']) {

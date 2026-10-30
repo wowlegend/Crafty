@@ -5,7 +5,7 @@
 // tabs is, and a strip of tabs above it switches between them.
 import { PANEL_FLAGS } from './panelState.js';
 
-/** Each group's tabs, in strip order. `flag` is the panel flag the tab opens (two are React-local in App). */
+/** Each group's tabs, in strip order. `flag` is the panel flag the tab opens. */
 export const PANEL_GROUPS = Object.freeze({
   character: Object.freeze([
     { id: 'gear', flag: 'showInventory', labelKey: 'panel.tab.gear' },
@@ -25,7 +25,7 @@ export const PANEL_GROUPS = Object.freeze({
  */
 export const CLOSED_ON_SWITCH = PANEL_FLAGS;
 
-/** PURE. The tab of `group` open in `flags` (the store's flags merged with the two React-local ones), else null. */
+/** PURE. The tab of `group` open in `flags` (the store's state, or any object with its panel flags), else null. */
 export function openTab(group, flags) {
   const tab = (PANEL_GROUPS[group] || []).find((t) => flags && flags[t.flag]);
   return tab ? tab.id : null;

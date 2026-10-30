@@ -65,8 +65,8 @@ function dropHolds(roarHold, actionClaim) {
 }
 
 // isWorldBuilt is App-LOCAL useState (App.jsx:105 -- verified NOT a store key) -> passed as a prop.
-// talentsOpen / onOpenTalents are App-LOCAL too (the Talents panel's flag lives in useInputManager): Phase 0c, F9.
-// otherPanelOpen: the other App-local panel flag (Achievements), for the hold cancel below (review F3). Show Stats is not a
+// talentsOpen / onOpenTalents: the Talents panel's flag and its opener, from App (Phase 0c, F9).
+// otherPanelOpen: the Feats (Achievements) flag, from App, for the hold cancel below (review F3). Show Stats is not a
 // panel (ui/panelState.js): it draws a readout in the canvas, and the action button and the roar stay live under it.
 function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTalents }) {
   const t = useT();
@@ -217,7 +217,7 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
 
   const dispatch = (b) => useGameStore.getState().performVerb?.(b);
   // Focus model (spec section 3 trap-3): touch owns setActive. Tap-to-Play when world is up + alive + not live.
-  // !talentsOpen: the Talents panel's flag is App-local, so `anyPanel` cannot see it, and without this a locked-sector
+  // !talentsOpen: `anyPanel` reads four flags and not the Talents one, and without this a locked-sector
   // tap (which opens Talents and lowers `active`) would put a full-screen tap-to-play over the panel it just opened.
   const showTapToPlay = isWorldBuilt && isAlive && !active && !anyPanel && !talentsOpen;
   // transparent hit-target geometry mirrors the visible glyphs in TouchControlsSurface.

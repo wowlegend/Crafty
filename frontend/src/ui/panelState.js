@@ -27,7 +27,7 @@ export const PANEL_FLAGS = [
 
 /**
  * isAnyPanelOpen(flags) -> true if ANY known panel flag in `flags` is truthy.
- * `flags` = a merged object of the store panel flags + the React-local ones. Missing keys read falsy
+ * `flags` = the store's state, or any object carrying its panel flags. Missing keys read falsy
  * (treated as closed). Pure + unit-tested so the canonical list can't silently lose an entry.
  */
 export function isAnyPanelOpen(flags) {

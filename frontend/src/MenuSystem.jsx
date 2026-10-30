@@ -64,7 +64,7 @@ export function MenuSystem({
     useGameStore.setState({ titleCovering: titleMenuVisible });
   }, [titleMenuVisible]);
   // And whether a panel's full-screen scrim covers it (the same canvas pacing, plan 2026-10-27-crafty-steady-cool item g).
-  // Published here because two of the panel flags are React-local and this is where all of them meet. Every panel draws
+  // Published here, where every panel flag arrives (two of them as props from App). Every panel draws
   // a full-screen scrim (panelState.js says what a panel is); Show Stats is not one, so F3 does not pace the game it is
   // measuring.
   const panelCovering = isAnyPanelOpen({ ...gameState, showSpellUpgrades, showAchievements });
