@@ -112,11 +112,11 @@ index chunk stops carrying framer-motion features the game never uses. Each stan
    reads every animation's own elapsed time from `performance.now()`, so one stalled frame can step over a whole tween;
    the comment that said otherwise is corrected. (d) The strict gate's population case now says it counts its own table.
    Not done: an ESLint `no-restricted-imports` rule on `motion`, the static review's suggestion; the markers read the
-   shipped artifact, which a lint rule does not. One dragon-fight e2e flake, seen on runs 41072281889 (attempt 1 and
-   retry #1 failed) and 41082219534 (attempt 1 failed), each time with "the burning zone never reached the dragon" and
-   calls `[]`, passing on a later retry (the lane touches no dragon, zone or damage code, and its base rate on main is
-   unknown), is registry row `REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached`; a mob-floor SETUP failure on
-   run 41082219534's first attempt is `REVIEW:e2e-flakes:mob-floor-roof-no-heading`.
+   shipped artifact, which a lint rule does not. One dragon-fight e2e case failed its first attempt on all three CI runs of
+   this branch since 30cde21c (41072281889, 41082219534, 41085691344), each time with `calls: []` on the zone or the
+   burn, and passed on a retry (the lane touches no dragon, zone or damage code, and its base rate on main is unknown):
+   registry row `REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached`. A mob-floor SETUP failure on run
+   41082219534's first attempt is `REVIEW:e2e-flakes:mob-floor-roof-no-heading`.
 
 ---
 
