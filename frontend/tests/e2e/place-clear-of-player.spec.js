@@ -27,10 +27,11 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // after it. The world is held still across the burst (_worldHold.js), so the body, mobs and day stand still between
 // aims, and released for the walks.
 //
-// WHAT THIS DOES NOT CHECK: touch placement (the same place verb), the Building Tools' multi-block footprints
-// (tests/integration/place-clear-of-player-rapier.test.jsx drives them against real Rapier), a placement whose collider
-// lands after a moving player has walked into its cell (registry REVIEW:fix-invisible-box:collider-lands-late), or the
-// look of the refusal notice.
+// WHAT THIS DOES NOT CHECK: touch placement (the same place verb), the Building Tools' multi-block footprints, a player
+// running into a cell whose trimesh lands late (tests/integration/place-clear-of-player-rapier.test.jsx drives both against
+// real Rapier), or the look of the refusal notice. It LOGS, and does not assert, the live delay that node gate stands in
+// for: for each placing click, the drawn frames until a world ray meets the new cell, until the chunk's new mesh is set,
+// and the stand-in colliders still held (world/placedCellColliders.js) on each of those frames.
 //
 // Mutation-Proof: see the commit trailers (red-first: the burst on the unfixed placement; the node gate's mutants).
 
@@ -156,6 +157,34 @@ function readHold() {
   };
 }
 
+/** In the page: frames after a click until it settles (at least `minFrames`, at most `maxFrames`). For a click that placed
+ *  a cell: the frame a world ray from the eye first meets that cell, the frame its chunk's mesh in the store changed, and
+ *  the stand-ins held each frame. A log, not an assertion: CI's frame times are not a player's. */
+function watchClick({ minFrames, maxFrames }) {
+  const rec = window.__e2eClick;
+  const placed = rec && rec.verb === 'place' && rec.placedNow ? rec.placeCell.split('_').map(Number) : null;
+  const key = placed ? `${Math.floor(placed[0] / 16)}_${Math.floor(placed[2] / 16)}` : null;
+  const out = { placed: !!placed, frames: 0, solidAt: null, meshAt: null, standIns: [] };
+  return new Promise((resolve) => {
+    const tick = () => {
+      out.frames += 1;
+      if (placed) {
+        const eye = window.__threeCamera.position;
+        const d = { x: placed[0] + 0.5 - eye.x, y: placed[1] + 0.5 - eye.y, z: placed[2] + 0.5 - eye.z };
+        const len = Math.hypot(d.x, d.y, d.z);
+        const hit = window.GameMethods.castWorldRay({ x: eye.x, y: eye.y, z: eye.z }, { x: d.x / len, y: d.y / len, z: d.z / len }, len);
+        if (out.solidAt === null && hit) out.solidAt = out.frames;
+        if (out.meshAt === null && window.useGameStore.getState().debugChunks?.[key]?.meshData !== window.__e2eMeshAtClick) out.meshAt = out.frames;
+        out.standIns.push(window.__craftyTest.call('readPlacedCells') ?? null);
+      }
+      const settled = !placed || (out.solidAt !== null && out.meshAt !== null && out.standIns[out.standIns.length - 1] === 0);
+      if ((out.frames >= minFrames && settled) || out.frames >= maxFrames) resolve(out);
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
 /** In the page: arm the next mousedown. A capture listener (it runs before the game's handler) turns the camera to the
  *  aim and records the cell the place verb would fill from that ray and whether it lies inside the capsule; a bubble
  *  listener, added after the game's own, records the verb the press was routed to, the cell after, and the stack. */
@@ -185,6 +214,7 @@ function armClick({ yaw, pitch }) {
       rec.placeInBody = Math.hypot(dx, dy, dz) < r;
       rec.mineCell = `${hit.targetedX}_${hit.targetedY}_${hit.targetedZ}`;
       rec.toi = Math.round(hit.toi * 100) / 100;
+      window.__e2eMeshAtClick = s.debugChunks?.[`${Math.floor(x / 16)}_${Math.floor(z / 16)}`]?.meshData ?? null;
     } else rec.placeCell = null;
   }, { capture: true, once: true });
   window.addEventListener('mousedown', () => {
@@ -290,11 +320,13 @@ test.describe('placing beside the player at the shore', () => {
     for (const [button, yaw, pitch] of burst) {
       await page.evaluate(armClick, { yaw, pitch });
       await page.mouse.click(640, 400, { button });
-      await page.evaluate(frames, 4); // the edit's re-mesh lands and a step puts its collider in the scene
-      clicks.push({ button, ...(await page.evaluate(() => window.__e2eClick)) });
+      // At least 4 frames: the edit's re-mesh lands and a step puts its collider in the scene.
+      const latency = await page.evaluate(watchClick, { minFrames: 4, maxFrames: 30 });
+      clicks.push({ button, ...(await page.evaluate(() => window.__e2eClick)), latency });
     }
     const held = await page.evaluate(readHold);
     console.log(`[place-clear] clicks ${JSON.stringify(clicks)}`);
+    console.log(`[place-clear] click to solid, in drawn frames: ${JSON.stringify(clicks.filter((c) => c.latency.placed).map((c) => ({ cell: c.placeCell, ...c.latency })))}`);
     console.log(`[place-clear] after the burst ${JSON.stringify(held)}`);
     const pressed = clicks.filter((c) => c.verb === 'place' || c.verb === 'mine');
     expect(pressed.length, `SETUP: of ${clicks.length} clicks, only ${pressed.length} reached the place or mine verb (gates ${JSON.stringify(held.gates)}; clicks ${JSON.stringify(clicks)})`).toBe(clicks.length);

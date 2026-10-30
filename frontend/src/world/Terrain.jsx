@@ -433,6 +433,12 @@ export const MinecraftWorld = React.memo(() => {
         };
     }, [placedCells]);
     useAfterPhysicsStep(() => placedCells.afterStep());
+    // DEV-only: how many placed cells a stand-in still holds, for tests/e2e/place-clear-of-player.spec.js to log the live
+    // delay from a click to the trimesh. Tree-shaken in production with the bridge.
+    useEffect(() => {
+        if (!import.meta.env.DEV) return;
+        registerTestHook('readPlacedCells', () => placedCells.size());
+    }, [placedCells]);
 
     // Update shared terrain shader uniforms (the surviving LAND grade: danger-mood + aerial haze).
     // W2: the water clock (time/timeOfDay) is gone — Ocean.jsx owns the animated surface + its own
