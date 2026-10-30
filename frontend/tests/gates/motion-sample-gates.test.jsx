@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
-import { installMotionSampler, judgeMotion } from '../e2e/_motionSample.js';
+import { installMotionSampler, restorePageClock, judgeMotion } from '../e2e/_motionSample.js';
 import { MotionProvider } from '../../src/ui/MotionProvider.jsx';
 import { SpellUpgradePanel } from '../../src/ui/SpellUpgradePanel.jsx';
 
@@ -13,6 +13,8 @@ import { SpellUpgradePanel } from '../../src/ui/SpellUpgradePanel.jsx';
 // and stop once settled. The VERDICT is run on series whose answer is known by construction: a spring-shaped one, the
 // series CI drew on its first attempt (the spring over between two frames, the slowed fade caught mid-way), a jump from
 // start to end, one frozen at its start, one too short to judge, ones whose first sample is not the initial state.
+// The CI FAILURE is reproduced: the thread is blocked between frames so that they land 600 ms apart, as they did on the
+// runner, and the same panel reads as a jump at normal pace and as an animation at the sampler's slowed clock.
 //
 // WHAT THIS DOES NOT CHECK: Chromium. The sampler reads the inline `transform` framer-motion writes and the dialog's
 // computed opacity, the same in jsdom and in a browser, but jsdom has no Web Animations API (framer-motion fades opacity
@@ -22,7 +24,7 @@ import { SpellUpgradePanel } from '../../src/ui/SpellUpgradePanel.jsx';
 //
 // Mutation-Proof: see the commit trailer.
 
-afterEach(() => { cleanup(); delete window.__motionSamples; });
+afterEach(() => { cleanup(); restorePageClock(); delete window.__motionSamples; });
 
 const SCALE = [0.9, 0.9, 0.93, 0.97, 1.01, 1.0, 1.0, 1.0];
 const OPACITY = [0, 0, 0.3, 0.7, 1, 1, 1, 1];
@@ -35,7 +37,7 @@ describe('judgeMotion: the verdict on a sampled transition', () => {
   it('a transition whose scale and opacity both move passes, counting each in-between sample', () => {
     const v = judgeMotion(series(SCALE, OPACITY));
     expect(v.kind, v.why).toBe('ok');
-    expect(v.why, 'the denominator is not printed').toMatch(/8 samples; strictly between the ends: scale on 2, opacity on 2/);
+    expect(v.why, 'the denominator is not printed').toMatch(/8 samples; strictly between the ends: scale on 2, y on 2, opacity on 2/);
   });
 
   it('the series CI drew first: the spring over between two frames, the slowed fade caught mid-way, passes on the fade', () => {
@@ -43,13 +45,20 @@ describe('judgeMotion: the verdict on a sampled transition', () => {
     // the fade, slowed to a twentieth, is caught at 0.18 and 0.55 on the way.
     const v = judgeMotion(series([0.9, 0.9, 1, 1, 1, 1], [0, 0, 0.18, 0.55, 1, 1]));
     expect(v.kind, v.why).toBe('ok');
-    expect(v.why).toMatch(/scale on 0, opacity on 2/);
+    expect(v.why).toMatch(/scale on 0, y on 0, opacity on 2/);
   });
 
   it('a jump from start to end with nothing between on either fails: the panel does not animate', () => {
     const v = judgeMotion(series([0.9, 1, 1, 1, 1], [0, 1, 1, 1, 1]));
     expect(v.kind).toBe('fail');
-    expect(v.why).toMatch(/neither scale .* nor opacity .* took a value between/);
+    expect(v.why).toMatch(/none of scale .*, y .* and opacity .* took a value between/);
+  });
+
+  it('a y that is caught on the way passes, though the scale and opacity jumped: it is the longest-lived value', () => {
+    const frames = series([0.9, 1, 1, 1, 1], [0, 1, 1, 1, 1]).map((f, i) => (i === 1 ? { ...f, y: 11 } : f));
+    const v = judgeMotion(frames);
+    expect(v.kind, v.why).toBe('ok');
+    expect(v.why).toMatch(/scale on 0, y on 1, opacity on 0/);
   });
 
   it('a panel frozen at its initial state fails: the features never loaded', () => {
@@ -78,6 +87,13 @@ describe('judgeMotion: the verdict on a sampled transition', () => {
     const v = judgeMotion(series([1, 1, 1, 1, 1], [0, 1, 1, 1, 1]));
     expect(v.kind).toBe('setup');
     expect(v.why).toMatch(/first sample.*scale/);
+  });
+
+  it('a first sample whose y is not the initial y is a setup problem', () => {
+    const frames = series(SCALE, OPACITY).map((f, i) => (i === 0 ? { ...f, y: 0 } : f));
+    const v = judgeMotion(frames);
+    expect(v.kind).toBe('setup');
+    expect(v.why).toMatch(/first sample.*y 0/);
   });
 
   it('a first sample that is not the initial opacity, or that has none, is a setup problem: no dialog was found', () => {
@@ -161,5 +177,78 @@ describe('installMotionSampler: the real talents panel, mounted under the app pr
     while (!out.done && performance.now() < deadline) await new Promise((r) => setTimeout(r, 20));
     expect(out.done, 'the sampler did not give up at its deadline').toBe(true);
     expect(judgeMotion(out.frames).kind).toBe('setup');
+  });
+});
+
+describe('the slowed clock: frames 600 ms apart, as on the CI runner', () => {
+  // Blocks the thread 600 ms in every frame, ahead of the other frame callbacks (it registers first), so the sampler's
+  // frames and framer-motion's land 600 ms apart. Atomics.wait sleeps without burning a core.
+  const stretchFrames = (ms) => {
+    let on = true;
+    const block = () => {
+      if (!on) return;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+      requestAnimationFrame(block);
+    };
+    requestAnimationFrame(block);
+    return () => { on = false; };
+  };
+  const hasClockOverride = () => Object.prototype.hasOwnProperty.call(performance, 'now');
+  const untilDone = async (out, ms) => {
+    const deadline = Date.now() + ms;
+    while (!out.done && Date.now() < deadline) await new Promise((r) => setTimeout(r, 25));
+  };
+
+  it('at normal pace the spring is over between two frames and the verdict calls it a jump: the first CI failure, reproduced', async () => {
+    installMotionSampler({ testid: 'progression-panel', deadlineMs: 20000 });
+    const out = window.__motionSamples;
+    const stop = stretchFrames(600);
+    try {
+      render(<SpellUpgradePanel onClose={() => {}} />, { wrapper: MotionProvider });
+      await untilDone(out, 15000);
+    } finally { stop(); }
+    expect(out.done, `SETUP: the sampler never finished (${out.frames.length} samples)`).toBe(true);
+    expect(out.frames.length, 'SETUP: too few frames to be the CI series').toBeGreaterThan(3);
+    const gaps = out.frames.slice(1).map((f, i) => f.t - out.frames[i].t).filter((g) => g > 100);
+    expect(gaps.length, `SETUP: the frames were not stretched (t ${JSON.stringify(out.frames.map((f) => f.t))})`).toBeGreaterThan(1);
+    const v = judgeMotion(out.frames);
+    expect(v.kind, v.why).toBe('fail');
+    expect(v.why).toMatch(/none of scale .*, y .* and opacity .* took a value between/);
+  });
+
+  it('with the clock slowed the same frames show the spring on the way, and the clock is slow while it is sampled and whole after', async () => {
+    installMotionSampler({ testid: 'progression-panel', deadlineMs: 60000, clockFactor: 0.05 });
+    const out = window.__motionSamples;
+    expect(hasClockOverride(), 'SETUP: the clock was slowed before the panel appeared').toBe(false);
+    const stop = stretchFrames(600);
+    let slowDuring = false;
+    let atSwitch = null;
+    const before = performance.now();
+    try {
+      render(<SpellUpgradePanel onClose={() => {}} />, { wrapper: MotionProvider });
+      const deadline = Date.now() + 50000;
+      while (!out.done && Date.now() < deadline) {
+        if (out.frames.length >= 2 && !out.done) slowDuring = slowDuring || hasClockOverride();
+        if (atSwitch === null && hasClockOverride()) atSwitch = performance.now();
+        await new Promise((r) => setTimeout(r, 25));
+      }
+    } finally { stop(); }
+    expect(out.done, `SETUP: the sampler never finished (${out.frames.length} samples)`).toBe(true);
+    expect(slowDuring, 'the clock was not slowed while the panel was being sampled').toBe(true);
+    expect(atSwitch, `the slowed clock started behind the real one (${atSwitch} after ${before}): every timer the page reads would run backwards at the switch`).toBeGreaterThanOrEqual(before);
+    expect(hasClockOverride(), 'the sampler left the clock slowed after it finished').toBe(false);
+    const v = judgeMotion(out.frames);
+    expect(v.kind, `${v.why} :: t ${JSON.stringify(out.frames.map((f) => f.t))}`).toBe('ok');
+    const yMid = out.frames.filter((f) => f.y > 0.05 && f.y < 29.95).length;
+    expect(yMid, `no frame showed the y spring between its ends`).toBeGreaterThan(0);
+  }, 80000);
+
+  it('restorePageClock puts the clock back and says nothing is left over', () => {
+    const real = performance.now.bind(performance);
+    performance.now = () => real() / 2;
+    expect(hasClockOverride(), 'SETUP: the override did not take').toBe(true);
+    expect(restorePageClock(), 'an override remains after restorePageClock').toBe(false);
+    expect(hasClockOverride()).toBe(false);
+    expect(Math.abs(performance.now() - real())).toBeLessThan(50);
   });
 });

@@ -54,25 +54,29 @@ index chunk stops carrying framer-motion features the game never uses. Each stan
    value strictly between its start and end). `tests/gates/app-motion-provider-gates.test.jsx` renders the real App (the
    two 3D scenes stubbed) and watches the title overlay fade from opacity 0 to 1, which fails when App renders no
    provider; the strict gate cannot see that, because it imports the provider itself.
-   `tests/e2e/lazy-motion.spec.js` opens the Talents page by Tab and a real click and samples the dialog's opacity and the
-   card's scale and y on the frames the page draws (`tests/e2e/_motionSample.js`), with the document timeline slowed to a
-   twentieth through CDP `Animation.setPlaybackRate`. Its first CI attempt, which sampled the card's scale alone at normal
-   pace, failed and passed on retry: the world draws a frame every 130 to 620 ms there, framer-motion's spring runs against
-   the wall clock (the clamp on its per-frame step does not apply to an animation's own clock), and a 350 ms spring fit
-   between two frames (0.9 at 921 ms, 1 at 1539 ms). The fade is the Web Animations API's, so the slowed timeline stretches
-   it to seconds and every frame drawn in that time shows a value between its ends.
-   `tests/gates/motion-sample-gates.test.jsx` runs the sampler on the real panel in jsdom and the verdict on series known
-   by construction, including that first CI series. Mutants, each RED on the test named and each run
+   `tests/e2e/lazy-motion.spec.js` opens the Talents page by Tab and a real click and samples the card's scale and y and
+   the dialog's opacity on the frames the page draws (`tests/e2e/_motionSample.js`), with the page's clock (`performance.now`,
+   which framer-motion's frame loop reads) slowed to a fiftieth from the panel's insertion until the sampler is done. Two CI
+   runs, each at the spec's first attempt, are why. At normal pace the world drew a frame every 130 to 620 ms and a 350 ms
+   spring fit between two of them (scale 0.9 at 921 ms, 1 at 1539 ms): the spring runs against the clock, and the clamp on the
+   frame loop's step does not apply to an animation's own clock. Slowing the document timeline through CDP
+   `Animation.setPlaybackRate` instead, to stretch the fade, left the fade at opacity 0.012 after 6765 frames. Slowing the
+   clock stretches the springs' crossing of their ends to 6 s, ten frames at the slowest cadence seen. Each attempt passed on
+   its retry, which is the flake the slowed clock removes.
+   `tests/gates/motion-sample-gates.test.jsx` runs the sampler on the real panel in jsdom with the thread blocked so that
+   frames land 600 ms apart (a jump at normal pace, the first CI failure reproduced; an animation at the slowed clock) and
+   the verdict on series known by construction. Mutants, each RED on the test named and each run
    against a green baseline by `scripts/dev/mutate.sh`: `motion` back in each of the 12 modules (12 of 12), the provider
    without `strict`, the provider whose features never load (strict gate and App gate), App with a pass-through provider,
-   and seventeen verdict and sampler mutants; the identity edits stayed green. The e2e itself was not run locally: CI is
+   and twenty-five verdict, sampler and clock mutants; the identity edits stayed green. The e2e itself was not run locally: CI is
    its arbiter, and its mutants are argued in the spec.
 143. **What is not proven.** `strict` is dev and test only (framer-motion 12.43 skips the check in a production build), so
    the shipped artifact is held by the budget alone, and only for modules the index chunk carries. A second React root that
    renders `m` outside the provider would render it frozen and nothing would report it; today there is one `createRoot`.
    The component tests elsewhere (HUD, MenuSystem, QuestSystem and the rest) render `m` without a provider and so without
-   animations: they pass, and they never exercised the animation. No frame of the transition was looked at on a screen;
-   the feel is Kevin's.
+   animations: they pass, and they never exercised the animation. The Chromium e2e reads the transition at a fiftieth of its
+   speed (the page's clock is slowed from the panel's insertion), so it says the transition is there and ends, not how fast it
+   plays. No frame of it was looked at on a screen; the feel is Kevin's.
 
 ---
 
