@@ -18,9 +18,6 @@ import { parseLookbookParam } from '../render/lookbookSeam.js';
  *  notification channel (ui/notifications.js) as a dictionary key, marked `boss`, so where one line holds the notices it
  *  takes that line from any other. A toast there clears itself, so nothing here is left to set state after an unmount. */
 export const bossCall = (key, type, vars) => useGameStore.getState().addNotification?.(key, type, { vars, boss: true });
-/** One of the dragon's repeating attack calls (render/BossEntity.jsx: the fireball, the roar, the lava, the summons) to the
- *  same channel, marked `attack`: one line shows it only while no other notice is up (ui/notifications.js lineNotification). */
-export const bossAttackCall = (key, type) => useGameStore.getState().addNotification?.(key, type, { attack: true });
 const bossNotice = (key, vars) => bossCall(key, 'danger', vars);
 /** Where the lookbook wakes the dragon: LOOKBOOK_DRAGON_CLEAR_M from the lair toward the spawn, clear of the lair's
  *  9 m monolith (world/Terrain.jsx BlightMonolith), and in the air over that ground, where its first phase flies (13 m

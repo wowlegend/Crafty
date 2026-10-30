@@ -58,7 +58,7 @@ this entry and the next commit's body carry the real message. **What `faa65ee1` 
 rank below every other notice in the phone's one line, and its one-off calls still take it at once (item 92, as amended
 that day): `world/bossSystem.js` `bossAttackCall` (marked `attack`), `ui/notifications.js` `lineNotification` (one-off
 call, then plain notice, then attack call), `render/BossEntity.jsx` raising its four attack calls through it, the gate
-`tests/gates/boss-attack-line-gates.test.js` (a plain notice held 0-800 ms of 4 s at the fireball's 2.4 s before, its
+`tests/gates/boss-attack-line-gates.test.js` (REMOVED with the attack calls, item 124; a plain notice held 0-800 ms of 4 s at the fireball's 2.4 s before, its
 whole 4 s after, over 11,520 simulated fights), the e2e attack-call states, and registry
 `REVIEW:w2d:boss-attack-calls-unread`. Its mutation proof is in the next commit's body. The Show Stats change the title
 names is not in it.
@@ -212,7 +212,7 @@ items. Each stands while it earns its place.
    drop, a quest, a denial a repeated press must answer) at most 0.8 s of its 4 s in the first phase and 0.2 s in the
    second. So an attack call never displaces a live plain notice and yields to one raised while it shows, and a plain
    notice holds the line for its whole life unless a one-off call arrives, which takes the line at once
-   (`tests/gates/boss-attack-line-gates.test.js`: a plain notice at every 10 ms offset over two periods of each cadence,
+   (`tests/gates/boss-attack-line-gates.test.js`, REMOVED with the attack calls by item 124: a plain notice at every 10 ms offset over two periods of each cadence,
    11,520 simulated fights, each held 4,000 ms). While the boss bar is up the line shows inside the bar's own line, in
    the name's place beside the dragon's icon, clamped to three lines on a phone and one on a phone on its side, where 14
    px separate the bar from the hotbar's XP edge (`bossCallLines`); with the bar down it is the one toast, four lines at

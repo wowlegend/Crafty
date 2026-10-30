@@ -13,12 +13,16 @@ import { bossEmissiveIntensity, OUTLINE } from './characterStyle';
 import { TIERS } from './quality';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { bossTierStats } from '../game/bossTier.js';
-import { bossAttackCall } from '../world/bossSystem.js';
+import { bossCombat, resetBossCombat } from '../game/bossCombat.js';
+import { stepDragon, dragonCtx, DRAGON_MOVES } from '../game/dragonMoves.js';
 import { worldDelta, isWorldFrozen, worldNow } from '../game/worldClock.js';
 import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
 import { windupRamp } from '../game/attackTelegraph.js';
 import { bossCaptureReset, BOSS_REST } from '../game/captureRest.js';
 import { lookbookDragonHold } from './lookbookSeam.js';
+import { decalFor, decalOpacity, decalSpin, BITE_DECAL_ARC } from './dragonTelegraphs.js';
+import { UI } from '../theme/tokens.js';
+import { registerTestHook } from '../devtest/testBridge.js';
 
 // M2 #4 Slice 3: boss lava-AoE telegraph. The lava ring (already a ground decal) now appears + grows as
 // a HARMLESS warning for this window before it arms (starts dealing damage), so the player can read it
@@ -109,10 +113,43 @@ const DRAGON_FEATURES = [
   { box: [0.16, 0.5, 0.34], pos: [0, 1.2, -1.2], rot: [-0.2, 0, 0] },
 ];
 
+// The dragon's flight around the move machine: how far above its ground it counts as airborne (zones and allies then
+// cannot reach it, game/bossCombat.js bossTargets), where it lands when staggered, where a dive-bite takes it.
+const AIRBORNE_GAP_M = 3;
+const LANDED_Y = 0.8;
+const DIVE_OVER_FEET_M = 1.2;
+// Where its three melee hit points sit on today's model: the head ahead of the chest, the hips behind.
+const HEAD_AHEAD_M = 2.6;
+const HEAD_UP_M = 1.4;
+const HIPS_BEHIND_M = 2;
+// The damage sources a hit reports (attribution in the DEV console; store/useGameStore.jsx damagePlayer).
+const STRIKE_SOURCE = { bite: 'Shadow Dragon Bite', diveBite: 'Shadow Dragon Dive', roar: 'Shadow Dragon Shockwave' };
+// The lookbook's tells (render/lookbookSeam.js DRAGON_POSES) are held this far through their windup, and drawn this far
+// from the dragon toward the camera when the tell marks the ground where the player stands.
+const HOLD_RAMP = 0.7;
+const HOLD_TARGET_M = 4;
+const LAVA_RADIUS_M = 2.75;
+const DANGER = new THREE.Color(UI.danger);
+const HEAD_GLOW = new THREE.Color(BOSS_CONFIG.secondaryColor);
+const HIT_RED = new THREE.Color('#ef4444');
+
+// The stagger on today's model: head down, wings folded down.
+const STAGGER_PITCH = 0.3;
+const STAGGER_WING_Z = 1.0;
+// The head's emissive at rest (the declarative value) and at the strike of a windup.
+const HEAD_REST_GLOW = 0.6;
+const HEAD_TELL_GLOW = 3.0;
+// The camera stands at the player's eye; their feet are this far below it (the Player rig's eye height).
+const PLAYER_EYE_M = 1.62;
+// The tells the lookbook can hold that mark the ground with a decal from the pool (the lava has its own ring).
+const HELD_TELLS = ['bite', 'roar', 'summon', 'fireball'];
+
+
 export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, bossHealth, bossTier = 0 }) => {
     // C3: a returning dragon's per-phase speed and damage are its TIER's (game/bossTier.js); tier 0 is BOSS_CONFIG.
     const tierPhases = useMemo(() => bossTierStats(bossTier).phases, [bossTier]);
     const meshRef = useRef();
+    const headMatRef = useRef();
     const { camera } = useThree();
 
     // Inverted-hull contour outline gate (matches mob/prop pattern). The boss keeps its
@@ -141,20 +178,59 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
         }
         prevHealth.current = bossHealth;
     }, [bossHealth]);
-    
-    // Advanced tactical action cooldown timers
-    const lastAttack = useRef(0);
-    const lastFireballTime = useRef(0);
-    const lastRoarTime = useRef(0);
-    const lastLavaTime = useRef(0);
-    const lastSummonTime = useRef(0);
-    
+
+    // The shared record (game/bossCombat.js) outlives this component; an unmount (the kill, a give-up) must not leave an
+    // active record with a pending windup for a perfect dodge to "parry".
+    useEffect(() => () => { resetBossCombat(bossCombat); }, []);
+
+    // The move machine's context, written in place each frame (game/dragonMoves.js dragonCtx).
+    const ctxInRef = useRef({ bossTier: 0, phase: 0, player: { x: 0, y: 0, z: 0 }, playerAlive: true, invincible: false, groundY: 0, damage: 0 });
+    const ctxRef = useRef({});
+
+    // THE GROUND DECALS (render/dragonTelegraphs.js): one mesh per shape, always mounted, one shown at a time while a
+    // windup runs (one move at a time), so an idle dragon draws none of them.
+    const decalRingRef = useRef();
+    const decalDiscRef = useRef();
+    const decalArcRef = useRef();
+    const decalRef = useRef({ mesh: null, until: 0, windupMs: 0 });
+    const decalMesh = (shape) => (shape === 'ring' ? decalRingRef.current : shape === 'disc' ? decalDiscRef.current : decalArcRef.current);
+    const showDecal = (d, until, windupMs) => {
+        const cur = decalRef.current;
+        if (cur.mesh) cur.mesh.visible = false;
+        const mesh = d ? decalMesh(d.shape) : null;
+        cur.mesh = mesh; cur.until = until; cur.windupMs = windupMs;
+        if (!mesh) return;
+        const gy = useGameStore.getState().getMobGroundLevel?.(d.x, d.z);
+        mesh.position.set(d.x, (Number.isFinite(gy) ? gy : bossPositionRef.current[1] - LANDED_Y) + 0.06, d.z);
+        mesh.scale.setScalar(d.radius);
+        mesh.rotation.set(-Math.PI / 2, 0, d.shape === 'arc' ? decalSpin(d.heading) : 0);
+        mesh.visible = true;
+    };
+
+    // DEV: what the e2e reads of the fight (tests/e2e/dragon-fight.spec.js): the record, where the dragon is, and the
+    // decal a windup shows. Registered while the dragon is mounted.
+    useEffect(() => {
+        if (!import.meta.env.DEV) return undefined;
+        registerTestHook('readDragon', () => {
+            const r = bossCombat;
+            const m = decalRef.current.mesh;
+            return {
+                active: r.active, health: r.health, move: r.move, windupUntil: r.windupUntil, castUntil: r.castUntil,
+                staggerUntil: r.staggerUntil, knockdownUntil: r.knockdownUntil, immuneUntil: r.immuneUntil, heavyChain: r.heavyChain,
+                airborne: r.airborne, pinned: r.pinned, position: { ...r.position }, now: worldNow(),
+                decal: m && m.visible ? { shape: m === decalRingRef.current ? 'ring' : m === decalDiscRef.current ? 'disc' : 'arc',
+                    radius: m.scale.x, opacity: m.material.opacity, at: m.position.toArray() } : null,
+            };
+        });
+        return () => registerTestHook('readDragon', () => null);
+    }, []);
+
     // High-performance bullet references to bypass React overhead
     const fireballsRef = useRef([]);
     const lavaZonesRef = useRef([]);
     const fireballMeshes = useRef({});
     const lavaZoneMeshes = useRef({});
-    
+
     // Low-frequency trigger state to spawn/de-spawn bullet groups in the React tree
     const [effects, setEffects] = useState({ fireballs: [], lavaZones: [] });
     const effectId = useRef(0); // monotonic effect ids — Math.random() collided React keys + the ref-map keys
@@ -197,6 +273,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             }
             return;
         }
+        const rec = bossCombat;
 
         // Capture-determinism freeze: pin the dragon to its forced spawn pose and skip
         // ALL movement / attacks / fireballs / wing-flap so the boss-closeup fixture is
@@ -213,16 +290,37 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             return;
         }
 
-        // A dragon the lookbook holds (render/lookbookSeam.js dragon()) stays where it was woken, wings at rest, facing
-        // the camera, and starts no attack: a frame of the fight is the same frame on every run.
-        if (lookbookDragonHold() !== null) {
-            const [hx, hy, hz] = bossPositionRef.current;
-            meshRef.current.position.set(hx, hy, hz);
-            meshRef.current.rotation.set(0, Math.atan2(camera.position.x - hx, camera.position.z - hz), 0);
-            if (leftWingRef.current && rightWingRef.current) {
-                leftWingRef.current.rotation.z = BOSS_REST.leftWingZ;
-                rightWingRef.current.rotation.z = BOSS_REST.rightWingZ;
+        // The record a perfect dodge, the heavy and the systems that hit mobs read: written before the freeze below, so
+        // a fight that begins inside a hitstop is already a target.
+        const [bx, by, bz] = bossPositionRef.current;
+        rec.active = true;
+        rec.health = bossHealth;
+        rec.position.x = bx; rec.position.y = by; rec.position.z = bz;
+
+        // A dragon the lookbook holds (render/lookbookSeam.js dragon()) stays where it was woken, facing the camera, and
+        // starts no attack: a frame of the fight is the same frame on every run. A held tell shows its decal and its glow
+        // HOLD_RAMP of the way through its windup; 'staggered' shows the stagger.
+        const hold = lookbookDragonHold();
+        if (hold !== null) {
+            meshRef.current.position.set(bx, by, bz);
+            const yaw = Math.atan2(camera.position.x - bx, camera.position.z - bz);
+            meshRef.current.rotation.set(hold === 'staggered' ? STAGGER_PITCH : 0, yaw, 0);
+            rec.move = null; rec.windupUntil = 0; rec.castUntil = 0;
+            poseWings(leftWingRef.current, rightWingRef.current, hold === 'staggered' ? STAGGER_WING_Z : BOSS_REST.leftWingZ);
+            const toward = { x: bx + Math.sin(yaw) * HOLD_TARGET_M, z: bz + Math.cos(yaw) * HOLD_TARGET_M };
+            const held = hold === 'lava' ? { shape: 'ring', x: toward.x, z: toward.z, radius: LAVA_RADIUS_M }
+                : HELD_TELLS.includes(hold) ? decalFor({ move: hold, radius: DRAGON_MOVES[hold].reach ?? DRAGON_MOVES[hold].radius,
+                    heading: yaw, at: toward }, rec.position) : null;
+            if (held) {
+                if (decalRef.current.mesh !== decalMesh(held.shape)) showDecal(held, Infinity, 1);
+                const m = decalRef.current.mesh;
+                m.position.x = held.x; m.position.z = held.z;
+                m.rotation.z = held.shape === 'arc' ? decalSpin(held.heading) : 0;
+                m.material.opacity = 0.25 + 0.5 * HOLD_RAMP;
+            } else if (decalRef.current.mesh) {
+                showDecal(null, 0, 0);
             }
+            glowHead(headMatRef.current, isFlashing, held || hold === 'fireball' ? HOLD_RAMP : 0);
             return;
         }
 
@@ -233,48 +331,55 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
         // burst of attacks on the first frame after it, and the lava's warning window was eaten).
         if (isWorldFrozen()) return;
 
+        const now = worldNow();
         const phase = tierPhases[bossPhase] || tierPhases[0];
         const playerX = camera.position.x;
         const playerZ = camera.position.z;
-        const bx = bossPositionRef.current[0];
-        const by = bossPositionRef.current[1];
-        const bz = bossPositionRef.current[2];
-
-        const dx = playerX - bx;
-        const dz = playerZ - bz;
-        const dist = Math.sqrt(dx * dx + dz * dz);
 
         // --- Step 1: Phase-Specific Tactical Flight & Movement Vector Solvers ---
         let targetX = playerX;
         let targetZ = playerZ;
         let targetY = by;
-        
+
         let currentGroundY = 16;
         if (useGameStore.getState().getMobGroundLevel) {
             const gy = useGameStore.getState().getMobGroundLevel(bx, bz);
             if (gy !== null && !isNaN(gy)) currentGroundY = gy;
         }
 
-        if (bossPhase === 0) {
-            // Phase 1 (Aerial Strike Mode): Dragon circles high in the sky and swoops
-            const time = state.clock.elapsedTime;
-            const orbitRadius = 14;
-            const orbitSpeed = 0.6;
-            targetX = playerX + Math.cos(time * orbitSpeed) * orbitRadius;
-            targetZ = playerZ + Math.sin(time * orbitSpeed) * orbitRadius;
-            targetY = currentGroundY + 13.0 + Math.sin(time * 1.5) * 2.0; // Graceful vertical bobbing
+        const downed = rec.staggerUntil > now || rec.knockdownUntil > now;
+        if (rec.pinned || rec.move) {
+            // Pinned by a test, or holding still through a windup, so the tell stays where it was read.
+            targetX = bx; targetZ = bz;
+        } else if (downed) {
+            // A perfect dodge or the heavy chain grounds it: wings fold, it lands where it is.
+            targetX = bx; targetZ = bz;
+            targetY = currentGroundY + LANDED_Y;
+        } else if (bossPhase === 0) {
+            if (now >= (rec.cooldowns.diveBite || 0)) {
+                // The dive: down to the player, low enough for its bite (and the player's sword) to reach.
+                targetY = camera.position.y - PLAYER_EYE_M + DIVE_OVER_FEET_M;
+            } else {
+                // Phase 1 (Aerial Strike Mode): Dragon circles high in the sky and swoops
+                const time = state.clock.elapsedTime;
+                const orbitRadius = 14;
+                const orbitSpeed = 0.6;
+                targetX = playerX + Math.cos(time * orbitSpeed) * orbitRadius;
+                targetZ = playerZ + Math.sin(time * orbitSpeed) * orbitRadius;
+                targetY = currentGroundY + 13.0 + Math.sin(time * 1.5) * 2.0; // Graceful vertical bobbing
+            }
         } else {
             // Phase 2 & 3 (Grounded Modes): Charge direct at player on the ground surface
             targetX = playerX;
             targetZ = playerZ;
-            targetY = currentGroundY + 0.8;
+            targetY = currentGroundY + LANDED_Y;
         }
 
         // Interpolate 3D position smoothly towards coordinates targets
         const moveSpeed = phase.speed * delta;
         const tdx = targetX - bx;
         const tdz = targetZ - bz;
-        const tdy = targetY - by;
+        const tdy = rec.pinned ? 0 : targetY - by;
         const tdist = Math.sqrt(tdx * tdx + tdz * tdz);
 
         let nextX = bx;
@@ -288,111 +393,76 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
         bossPositionRef.current = [nextX, nextY, nextZ];
         meshRef.current.position.set(nextX, nextY, nextZ);
 
-        // Rotate facing direction towards target path
-        if (tdist > 0.1) {
-            meshRef.current.rotation.y = Math.atan2(tdx, tdz);
+        // Rotate facing direction towards target path; a winding-up or pinned dragon faces the player it is aiming at.
+        const fx = rec.move || rec.pinned ? playerX - nextX : tdx;
+        const fz = rec.move || rec.pinned ? playerZ - nextZ : tdz;
+        if (!downed && Math.hypot(fx, fz) > 0.1) {
+            meshRef.current.rotation.y = Math.atan2(fx, fz);
         }
 
-        // --- Step 2: Phase-Specific Tactical Attack Routines ---
-        const now = worldNow();
+        // The record, at the dragon's new place: its centre, whether it is out of a ground fighter's reach, and the three
+        // points the melee cone looks for.
+        const yaw = meshRef.current.rotation.y;
+        const hx = Math.sin(yaw), hz = Math.cos(yaw);
+        rec.position.x = nextX; rec.position.y = nextY; rec.position.z = nextZ;
+        rec.airborne = nextY - currentGroundY > AIRBORNE_GAP_M;
+        const [head, chest, hips] = rec.hitPoints;
+        head.x = nextX + hx * HEAD_AHEAD_M; head.y = nextY + HEAD_UP_M; head.z = nextZ + hz * HEAD_AHEAD_M;
+        chest.x = nextX; chest.y = nextY; chest.z = nextZ;
+        hips.x = nextX - hx * HIPS_BEHIND_M; hips.y = nextY; hips.z = nextZ - hz * HIPS_BEHIND_M;
 
-        // 1. Common Melee Damage Routine
-        if (dist < BOSS_CONFIG.attackRange) {
-            if (now - lastAttack.current > BOSS_CONFIG.attackCooldown) {
-                lastAttack.current = now;
-                if (useGameStore.getState().damagePlayer) {
-                    useGameStore.getState().damagePlayer(phase.damage, 'Shadow Dragon Bite');
-                }
-            }
-        }
-
-        // 2. Phase 1 Aerial Fireball Rain
-        if (bossPhase === 0) {
-            if (now - lastFireballTime.current > 2400) {
-                lastFireballTime.current = now;
-                
+        // --- Step 2: The move machine (game/dragonMoves.js): one move at a time, each with its tell ---
+        const s = useGameStore.getState();
+        const cin = ctxInRef.current;
+        cin.bossTier = bossTier;
+        cin.phase = bossPhase;
+        cin.player.x = playerX; cin.player.y = camera.position.y - PLAYER_EYE_M; cin.player.z = playerZ;
+        cin.playerAlive = s.isAlive !== false;
+        cin.invincible = !!s.isPlayerInvincible?.();
+        cin.groundY = currentGroundY;
+        cin.damage = phase.damage;
+        const events = stepDragon(rec, dragonCtx(cin, ctxRef.current), now);
+        for (let i = 0; i < events.length; i++) {
+            const ev = events[i];
+            if (ev.type === 'windup') {
+                showDecal(decalFor(ev, rec.position), ev.until, DRAGON_MOVES[ev.move].windupMs);
+            } else if (ev.type === 'strike') {
+                s.damagePlayer?.(ev.damage, STRIKE_SOURCE[ev.move], [nextX, nextY, nextZ]);
+                if (ev.knockback) s.playerRigidBodyRef?.current?.applyImpulse(ev.knockback, true);
+            } else if (ev.type === 'launch') {
                 // Spawn fireball starting at mouth and aiming directly at player capsule core
                 // rotate the LOCAL mouth offset by the boss rotation, THEN add the boss world pos.
-                // (the old code applyEuler'd the already-world-space vector -> rotated about the origin,
-                //  so the fireball streaked from a far point and Phase-1 aim was skewed to frequent misses)
-                const headPos = new THREE.Vector3(0, 1.2, 1.5).applyEuler(meshRef.current.rotation).add(new THREE.Vector3(bx, by, bz));
+                const headPos = new THREE.Vector3(0, 1.2, 1.5).applyEuler(meshRef.current.rotation).add(new THREE.Vector3(nextX, nextY, nextZ));
                 const targetPos = new THREE.Vector3(playerX, camera.position.y - 0.5, playerZ);
-                const fireballDir = targetPos.clone().sub(headPos).normalize();
-                
-                spawnFireball(headPos, fireballDir);
-                
-                bossAttackCall('notice.bossFireball', 'warning');
-            }
-        }
-
-        // 3. Phase 2 Grounded Knockback Roars
-        if (bossPhase === 1) {
-            if (now - lastRoarTime.current > 4200) {
-                lastRoarTime.current = now;
-                
-                // Roar shakes the camera via the trauma model (self-decaying) — the same path player
-                // melee/spells/hurl use. (The old setScreenShake fed the DamageOverlay RED VIGNETTE, not
-                // the camera, so the roar wrongly flashed a damage tint and produced no real camera shake.)
-                useGameStore.getState().triggerCameraShake?.(1.8);
-
-                // Physical knockback vector computation
-                const playerRigidBody = useGameStore.getState().playerRigidBodyRef?.current;
-                if (playerRigidBody) {
-                    const pushX = dx / (dist || 1);
-                    const pushZ = dz / (dist || 1);
-                    // Heavy Rapier impulse: pushes player back and up
-                    playerRigidBody.applyImpulse({ x: pushX * 36.0, y: 14.0, z: pushZ * 36.0 }, true);
-                }
-
-                if (useGameStore.getState().damagePlayer) {
-                    useGameStore.getState().damagePlayer(phase.damage * 1.3, 'Shadow Dragon Shockwave');
-                }
-
-                bossAttackCall('notice.bossRoar', 'danger');
-
-                // Trigger dynamic boss voxel destruction in Phase 2
-                destroyVoxelsInRadius(new THREE.Vector3(bx, by, bz), 5.0, Math.floor(Math.random() * 5) + 4);
-            }
-        }
-
-        // 4. Phase 3 Enraged Inferno (Lava Circles & Minions)
-        if (bossPhase === 2) {
-            // A. Persistent Lava Zone breath
-            if (now - lastLavaTime.current > 5200) {
-                lastLavaTime.current = now;
-                
+                spawnFireball(headPos, targetPos.sub(headPos).normalize());
+            } else if (ev.type === 'lava') {
                 let playerGroundY = camera.position.y - 1.5;
-                if (useGameStore.getState().getMobGroundLevel) {
-                    const pgy = useGameStore.getState().getMobGroundLevel(playerX, playerZ);
-                    if (pgy !== null && !isNaN(pgy)) playerGroundY = pgy;
-                }
-                
-                spawnLavaZone(new THREE.Vector3(playerX, playerGroundY + 0.05, playerZ));
-                
-                bossAttackCall('notice.bossLava', 'danger');
-
-                // Trigger dynamic boss voxel destruction in Phase 3
-                destroyVoxelsInRadius(new THREE.Vector3(playerX, playerGroundY, playerZ), 5.0, Math.floor(Math.random() * 5) + 4);
+                const pgy = s.getMobGroundLevel?.(ev.at.x, ev.at.z);
+                if (pgy !== null && pgy !== undefined && !isNaN(pgy)) playerGroundY = pgy;
+                spawnLavaZone(new THREE.Vector3(ev.at.x, playerGroundY + 0.05, ev.at.z));
+                destroyVoxelsInRadius(new THREE.Vector3(ev.at.x, playerGroundY, ev.at.z), 5.0, Math.floor(Math.random() * 5) + 4);
+            } else if (ev.type === 'summon') {
+                for (const p of ev.at) s.spawnMob?.(p.x, p.z, 'skeleton');
             }
-
-            // B. Summon Skeleton Cohort Minions
-            if (now - lastSummonTime.current > 8500) {
-                lastSummonTime.current = now;
-                const spawnMob = useGameStore.getState().spawnMob;
-                
-                if (spawnMob) {
-                    const angle1 = Math.random() * Math.PI * 2;
-                    const angle2 = angle1 + Math.PI;
-                    spawnMob(bx + Math.cos(angle1) * 7, bz + Math.sin(angle1) * 7, 'skeleton');
-                    spawnMob(bx + Math.cos(angle2) * 7, bz + Math.sin(angle2) * 7, 'skeleton');
-                    
-                    bossAttackCall('notice.bossSummon', 'warning');
-                }
+            if ((ev.type === 'strike' || ev.type === 'whiff') && ev.move === 'roar') {
+                // The roar happened whether or not it reached the player: the camera shakes (the trauma model, which
+                // decays itself) and the blocks break around the dragon, where they are.
+                s.triggerCameraShake?.(1.8);
+                destroyVoxelsInRadius(new THREE.Vector3(nextX, nextY, nextZ), 5.0, Math.floor(Math.random() * 5) + 4);
             }
         }
+
+        // The decal brightens as its windup closes, and goes when the move resolves or a perfect dodge cancels it.
+        const decal = decalRef.current;
+        if (decal.mesh) {
+            if (!rec.move || now >= decal.until) showDecal(null, 0, 0);
+            else decal.mesh.material.opacity = decalOpacity(now, decal.until, decal.windupMs);
+        }
+        const moveDef = rec.move ? DRAGON_MOVES[rec.move] : null;
+        glowHead(headMatRef.current, isFlashing, moveDef ? windupRamp(now, rec.windupUntil || rec.castUntil, moveDef.windupMs) : 0);
 
         // --- Step 3: High-Performance Visual Bullets Solver Loops ---
-        
+
         // 1. Move active fireballs in 3D WebGL Canvas
         let hasDeadFireball = false;
         fireballsRef.current.forEach(f => {
@@ -472,12 +542,6 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             setEffects(prev => ({ ...prev, lavaZones: [...lavaZonesRef.current] }));
         }
 
-        // Animate Boss wings/tail mesh
-        meshRef.current.position.y += Math.sin(state.clock.elapsedTime * 2.5) * 0.015;
-        if (bossPhase > 0) {
-            meshRef.current.rotation.x = Math.sin(state.clock.elapsedTime * 4) * 0.08;
-        }
-
         // Damage hit visual flash timer decay. The transition OUT is a membership change too: without
         // it the flash would latch on until the next hit re-rendered it.
         if (flashTime.current > 0) {
@@ -485,19 +549,24 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
             if (flashTime.current <= 0) setIsFlashing(false);
         }
 
-        // Premium wing flapping motion
-        if (leftWingRef.current && rightWingRef.current) {
-            const flapSpeed = bossPhase === 0 ? 5.5 : 2.5;
-            const flapAngle = Math.sin(state.clock.elapsedTime * flapSpeed) * 0.4;
-            leftWingRef.current.rotation.z = 0.2 + flapAngle;
-            rightWingRef.current.rotation.z = -0.2 - flapAngle;
+        // Animate Boss wings/tail mesh. A staggered or knocked-down dragon droops its head and folds its wings.
+        if (downed) {
+            meshRef.current.rotation.x = STAGGER_PITCH;
+            poseWings(leftWingRef.current, rightWingRef.current, STAGGER_WING_Z);
+            return;
         }
+        meshRef.current.position.y += Math.sin(state.clock.elapsedTime * 2.5) * 0.015;
+        meshRef.current.rotation.x = bossPhase > 0 ? Math.sin(state.clock.elapsedTime * 4) * 0.08 : 0;
+
+        // Premium wing flapping motion
+        const flapSpeed = bossPhase === 0 ? 5.5 : 2.5;
+        poseWings(leftWingRef.current, rightWingRef.current, 0.2 + Math.sin(state.clock.elapsedTime * flapSpeed) * 0.4);
     });
 
     if (!bossActive || !bossPositionRef?.current) return null;
 
     const phase = tierPhases[bossPhase] || tierPhases[0];
-    
+
     // Satisfying damage indicator color values and majestic obsidian styling
     const bodyColor = isFlashing ? "#ef4444" : "#111029"; // Hyper-obsidian deep indigo black — UNCHANGED
     const bodyEmissive = isFlashing ? "#ef4444" : phase.color; // the phase colour; WHERE it lands is the fix
@@ -525,41 +594,43 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                     />
                     {charOutline && <Outlines thickness={OUTLINE.boss.thickness} color={OUTLINE.color} toneMapped={false} />}
                 </mesh>
-                {/* Neck & Head */}
+                {/* Neck & Head. Its glow is the interim tell (until the segmented dragon): it climbs toward the danger red
+                    as a windup closes (glowHead, written each frame), over the declarative rest value here. */}
                 <mesh castShadow receiveShadow position={[0, 1.4, 1.8]}>
                     <boxGeometry args={[1.4, 1.4, 2]} />
                     <meshStandardMaterial
+                        ref={headMatRef}
                         roughness={0.15}
                         metalness={0.9}
                         color={bodyColor}
                         emissive={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor}
-                        emissiveIntensity={isFlashing ? 3.0 : 0.6}
+                        emissiveIntensity={isFlashing ? 3.0 : HEAD_REST_GLOW}
                     />
                     {charOutline && <Outlines thickness={OUTLINE.boss.thickness} color={OUTLINE.color} toneMapped={false} />}
                 </mesh>
                 {/* Wings (Left / Right flapping) */}
                 <mesh ref={leftWingRef} castShadow receiveShadow position={[-2.6, 0.8, 0]} rotation={[0, 0, 0.2]}>
                     <boxGeometry args={[2.2, 0.15, 3]} />
-                    <meshStandardMaterial 
-                        roughness={0.1} 
-                        metalness={0.95} 
-                        color={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor} 
+                    <meshStandardMaterial
+                        roughness={0.1}
+                        metalness={0.95}
+                        color={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor}
                         emissive={isFlashing ? "#ef4444" : phase.color}
                         emissiveIntensity={membraneEmissive}
-                        transparent 
-                        opacity={0.85} 
+                        transparent
+                        opacity={0.85}
                     />
                 </mesh>
                 <mesh ref={rightWingRef} castShadow receiveShadow position={[2.6, 0.8, 0]} rotation={[0, 0, -0.2]}>
                     <boxGeometry args={[2.2, 0.15, 3]} />
-                    <meshStandardMaterial 
-                        roughness={0.1} 
-                        metalness={0.95} 
-                        color={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor} 
+                    <meshStandardMaterial
+                        roughness={0.1}
+                        metalness={0.95}
+                        color={isFlashing ? "#ef4444" : BOSS_CONFIG.secondaryColor}
                         emissive={isFlashing ? "#ef4444" : phase.color}
                         emissiveIntensity={membraneEmissive}
-                        transparent 
-                        opacity={0.85} 
+                        transparent
+                        opacity={0.85}
                     />
                 </mesh>
                 {/* Glowing Eyes */}
@@ -589,8 +660,23 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
                 ))}
             </group>
 
+            {/* --- The ground decals: one per shape, hidden until a windup shows one (render/dragonTelegraphs.js). In
+                world space, outside the dragon's group, so they lie where the move lands, not where the dragon turns. --- */}
+            <mesh ref={decalRingRef} visible={false} renderOrder={2}>
+                <ringGeometry args={[0.9, 1, 64]} />
+                <meshBasicMaterial color={UI.danger} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+            </mesh>
+            <mesh ref={decalDiscRef} visible={false} renderOrder={2}>
+                <circleGeometry args={[1, 40]} />
+                <meshBasicMaterial color={UI.danger} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+            </mesh>
+            <mesh ref={decalArcRef} visible={false} renderOrder={2}>
+                <ringGeometry args={[0.2, 1, 32, 1, -BITE_DECAL_ARC / 2, BITE_DECAL_ARC]} />
+                <meshBasicMaterial color={UI.danger} transparent opacity={0} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+            </mesh>
+
             {/* --- High Performance Instanced/Mesh Effects Rendering Sheets --- */}
-            
+
             {/* 1. Aerial Fireballs */}
             {effects.fireballs.map(f => (
                 <mesh key={f.id} ref={el => { if (el) fireballMeshes.current[f.id] = el; else delete fireballMeshes.current[f.id]; }} position={f.position}>
@@ -602,11 +688,11 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
 
             {/* 2. Dynamic Burn Lava Zones */}
             {effects.lavaZones.map(l => (
-                <mesh 
-                    key={l.id} 
+                <mesh
+                    key={l.id}
                     ref={el => { if (el) lavaZoneMeshes.current[l.id] = el; else delete lavaZoneMeshes.current[l.id]; }}
-                    position={l.position} 
-                    rotation={[-Math.PI / 2, 0, 0]} 
+                    position={l.position}
+                    rotation={[-Math.PI / 2, 0, 0]}
                     receiveShadow
                 >
                     <ringGeometry args={[0.1, 2.75, 32]} />
@@ -616,3 +702,19 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
         </group>
     );
 });
+
+/** Wings at `z` (left) and its mirror (right). */
+function poseWings(left, right, z) {
+    if (!left || !right) return;
+    left.rotation.z = z;
+    right.rotation.z = -z;
+}
+
+/** The head's glow `ramp` (0..1) of the way through a windup, toward the danger red; a hit's flash wins. An imperative
+ *  write each frame, over the declarative rest value the head renders with. */
+function glowHead(mat, flashing, ramp) {
+    if (!mat) return;
+    if (flashing) { mat.emissive.copy(HIT_RED); mat.emissiveIntensity = HEAD_TELL_GLOW; return; }
+    mat.emissive.copy(HEAD_GLOW).lerp(DANGER, ramp);
+    mat.emissiveIntensity = HEAD_REST_GLOW + (HEAD_TELL_GLOW - HEAD_REST_GLOW) * ramp;
+}

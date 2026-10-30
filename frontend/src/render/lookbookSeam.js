@@ -46,8 +46,9 @@ let _passesOff = new Set();
 // attack, so a frame of the fight is the same frame on every run. Read per frame by render/BossEntity.jsx.
 let _dragonHold = null;
 
-/** The poses dragon() can hold the dragon in. */
-export const DRAGON_POSES = Object.freeze(['rest']);
+/** The poses dragon() can hold the dragon in: at rest, each attack's tell partway through its windup (render/BossEntity.jsx
+ *  draws its ground decal and its glow), and staggered. */
+export const DRAGON_POSES = Object.freeze(['rest', 'bite', 'fireball', 'roar', 'lava', 'summon', 'staggered']);
 
 /** The pose the seam holds the dragon in, or null (the ordinary fight). Read per frame — keep it a plain read. */
 export function lookbookDragonHold() {
