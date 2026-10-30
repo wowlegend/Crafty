@@ -18,7 +18,7 @@ import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
-import { resolveSpawnGround, resolveResumeSpawn, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
@@ -1053,19 +1053,14 @@ export const Player = ({ isWorldBuilt }) => {
           return;
         }
       }
-      // 1. placed-block ground (save load): highest block at the origin column
-      let blockGroundY = null;
-      if (store.worldBlocks && store.worldBlocks.size > 0) {
-        for (let y = 150; y > 0; y--) {
-          // ELEMANCER-M1 fix: writers key worldBlocks with UNDERSCORES (`x_y_z`).
-          if (store.worldBlocks.has(`0_${y}_0`)) { blockGroundY = y; break; }
-        }
-      }
-      // 2. else the physics raycast — the spawn-ground DECISION (bounded probe wait + y=60 fallback +
-      //    the physicsY<=15 reject) lives in game/spawnPlacement.js (resolveSpawnGround). KEVIN-FIX C1.
+      // The physics raycast over the four columns the spawn stands across, placed blocks and terrain alike: the
+      // spawn-ground DECISION (bounded probe wait + y=60 fallback + the physicsY<=15 reject) lives in
+      // game/spawnPlacement.js (spawnCornerGround, resolveSpawnGround). KEVIN-FIX C1. The placed blocks of the
+      // column are not read on their own: that read counted a mined cell as ground and stood the player a block too
+      // low, inside it.
       const probeAvailable = !!store.getMobGroundLevel;
-      const physicsY = (blockGroundY === null && probeAvailable) ? store.getMobGroundLevel(0, 0) : null;
-      const spawn = resolveSpawnGround(blockGroundY, physicsY, spawnProbeFailsRef.current, probeAvailable);
+      const physicsY = probeAvailable ? spawnCornerGround(store.getMobGroundLevel) : null;
+      const spawn = resolveSpawnGround(null, physicsY, spawnProbeFailsRef.current, probeAvailable);
       if (spawn.incFails) spawnProbeFailsRef.current += 1;
       if (spawn.retry) {
         rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);

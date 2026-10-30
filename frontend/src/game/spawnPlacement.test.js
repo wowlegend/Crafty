@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  isVoidFall, resolveSpawnGround, spawnTargetY,
+  isVoidFall, resolveSpawnGround, spawnTargetY, spawnCornerGround,
   SPAWN_FALLBACK_Y, SPAWN_PROBE_MAX_FAILS, SPAWN_EYE_OFFSET,
 } from './spawnPlacement.js';
 
@@ -58,5 +58,34 @@ describe('resolveSpawnGround', () => {
 
   it('accepts a probe value just above the min', () => {
     expect(resolveSpawnGround(null, 16, 0, true)).toEqual({ groundY: 16, retry: false, incFails: false });
+  });
+});
+
+// The spawn stands at x 0 z 0, where four block columns meet, and its capsule stands across all four. The probe is
+// Terrain.jsx's getMobGroundLevel, which casts at x + 0.1, z + 0.1: called at (x, z) it reads column (x, z).
+describe('spawnCornerGround', () => {
+  const probeOf = (tops) => (x, z) => tops[`${x},${z}`];
+  it('is the highest of the four columns around the corner, whichever it is', () => {
+    const flat = { '-1,-1': 51, '0,-1': 51, '-1,0': 51, '0,0': 51 };
+    expect(spawnCornerGround(probeOf(flat))).toBe(51);
+    // A dug column (0, 0) is not the ground: the three around it still stand at 51.
+    expect(spawnCornerGround(probeOf({ ...flat, '0,0': 48 }))).toBe(51);
+    for (const k of Object.keys(flat)) {
+      expect(spawnCornerGround(probeOf({ ...flat, [k]: 54 })), `column ${k} standing higher was not the ground`).toBe(54);
+    }
+  });
+  it('asks the four columns the corner touches, and no other', () => {
+    const asked = [];
+    spawnCornerGround((x, z) => { asked.push(`${x},${z}`); return 51; });
+    expect(asked.sort()).toEqual(['-1,-1', '-1,0', '0,-1', '0,0']);
+  });
+  it('is null until every column answers above the probe floor', () => {
+    const flat = { '-1,-1': 51, '0,-1': 51, '-1,0': 51, '0,0': 51 };
+    for (const k of Object.keys(flat)) {
+      for (const bad of [null, undefined, NaN, 15, 3]) {
+        expect(spawnCornerGround(probeOf({ ...flat, [k]: bad })), `column ${k} reading ${bad} gave a ground`).toBeNull();
+      }
+    }
+    expect(spawnCornerGround(probeOf({ ...flat, '0,0': 16 })), 'a column just over the floor is an answer').toBe(51);
   });
 });

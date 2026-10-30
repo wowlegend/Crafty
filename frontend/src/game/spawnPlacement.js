@@ -27,6 +27,24 @@ export function resolveSpawnGround(blockGroundY, physicsY, probeFails, probeAvai
 
 export function spawnTargetY(groundY) { return groundY + SPAWN_EYE_OFFSET; }
 
+// The spawn stands at x 0 z 0, the corner where four block columns meet, so the base capsule (radius 0.4 m) stands across
+// all four: its ground is the highest of them. One probe at (0.1, 0.1) read only the column x 0 z 0, and a player who had
+// dug that column, or the three around it standing higher, was stood with the capsule inside the other three (registry
+// REVIEW:fix-invisible-box:respawn-counts-mined; tests/integration/chaos-play-rapier.test.jsx).
+const SPAWN_COLUMNS = [[-1, -1], [0, -1], [-1, 0], [0, 0]];
+
+/** The ground under the spawn corner from `probe(x, z)` (Terrain.jsx getMobGroundLevel, which casts at x + 0.1, z + 0.1):
+ *  the highest of the four columns, or null until every one answers above PROBE_MIN_Y (its chunk has streamed in). */
+export function spawnCornerGround(probe) {
+  let top = -Infinity;
+  for (const [x, z] of SPAWN_COLUMNS) {
+    const y = probe(x, z);
+    if (y == null || Number.isNaN(y) || y <= PROBE_MIN_Y) return null;
+    top = Math.max(top, y);
+  }
+  return top;
+}
+
 // A RESUMED save (the context-loss reload) spawns the player where they stood, not on the origin column (review
 // 2026-10-27, steady-cool HIGH 2). Its frames wait longer than the origin probe's: the column may be chunks away, and
 // streaming has to reach it after the camera moves there. A save that never loads falls back to the origin spawn.
