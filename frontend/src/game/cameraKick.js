@@ -4,7 +4,8 @@
  * instantly via addKick and exponentially decayed toward zero by stepKick -- giving actions a brief
  * tactile lurch + fast recovery. Distinct from the random damage-jitter (cameraShakeIntensity).
  * Consumed by the Player follow-cam (added to the shake offset, below the isCaptureMode early-return,
- * so it never touches the visual baselines). Spec: docs/superpowers/plans/2026-06-13-crafty-camera-kick-juice.md
+ * so it never touches the visual baselines). Spec, a closed record:
+ * git show records/2026-10-29:docs/archive/2026-Q2/plans/2026-06-13-crafty-camera-kick-juice.md
  */
 
 /** Per-second exponential decay rate -- ~0.2s recovery (snappy). SUBTLE by design, never nauseating. */

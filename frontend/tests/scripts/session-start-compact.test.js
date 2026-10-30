@@ -7,14 +7,14 @@ import { fileURLToPath } from 'node:url';
 import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
 
 /**
- * scripts/hooks/session-start-compact.sh — the post-compaction reminder, on the channel that delivers it.
+ * .claude/hooks/session-start-compact.sh — the post-compaction reminder, on the channel that delivers it.
  *
  * Sited in tests/scripts: the subject is a hook script and its fixtures are files. Each case RUNS a byte-identical
  * copy of the real script inside a throwaway repo, because the script finds its tree from its own location
  * (`git -C "$(dirname "$0")"`), so only a copy can be pointed at a fixture. The first case proves the copy is the
  * real thing; a mutation of the real script therefore reaches every case.
  *
- * Mutation-Proof: via scripts/dev/mutate-batch.mjs against scripts/hooks/session-start-compact.sh (10 tests),
+ * Mutation-Proof: via scripts/dev/mutate-batch.mjs against .claude/hooks/session-start-compact.sh (10 tests),
  * identity mutant (trailing `# identity mutant`) SURVIVED, then each observed RED:
  *   M-U6a hookEventName back to PostCompact          -> "emits SessionStart, never PostCompact"
  *   M-U6b JSON built by printf interpolation again    -> "survives quotes and backslashes" (and every parse)
@@ -29,7 +29,7 @@ import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
  * result.
  */
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const SCRIPT = join(ROOT, 'scripts/hooks/session-start-compact.sh');
+const SCRIPT = join(ROOT, '.claude/hooks/session-start-compact.sh');
 const HEADING = '## CURSOR "quoted" and back\\slash — U6';
 
 let repo;
@@ -58,10 +58,10 @@ const tmp = (tag) => {
 beforeEach(() => {
   repo = realpathSync(mkdtempSync(join(tmpdir(), 'crafty-compact-hook-')));
   fixtureGit(repo, 'init', '-q');
-  mkdirSync(join(repo, 'scripts/hooks'), { recursive: true });
+  mkdirSync(join(repo, '.claude/hooks'), { recursive: true });
   mkdirSync(join(repo, '.claude/rules'), { recursive: true });
   mkdirSync(join(repo, 'memory'), { recursive: true });
-  copy = join(repo, 'scripts/hooks/session-start-compact.sh');
+  copy = join(repo, '.claude/hooks/session-start-compact.sh');
   copyFileSync(SCRIPT, copy);
   writeFileSync(join(repo, '.claude/rules/a.md'), '---\npaths:\n  - "frontend/x/**"\n  - "frontend/y.js"\n---\n# a\n');
   writeFileSync(join(repo, '.claude/rules/b.md'), '# b, no frontmatter\n');
@@ -69,7 +69,7 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
-describe('scripts/hooks/session-start-compact.sh', () => {
+describe('.claude/hooks/session-start-compact.sh', () => {
   it('the copy is the real script', () => {
     expect(readFileSync(copy).equals(readFileSync(SCRIPT))).toBe(true);
   });
@@ -149,7 +149,7 @@ describe('scripts/hooks/session-start-compact.sh', () => {
     }
     const laneGitDir = fixtureGit(wt, 'rev-parse', '--path-format=absolute', '--git-dir');
     expect(laneGitDir, 'presence: the lane has its own git dir, apart from the common one').not.toBe(join(repo, '.git'));
-    const ctx = context({}, join(wt, 'scripts/hooks/session-start-compact.sh'));
+    const ctx = context({}, join(wt, '.claude/hooks/session-start-compact.sh'));
     expect(ctx).toContain(`tree: ${wt} (branch lane)`);
     const nonce = ctx.match(/^compact-context nonce ([0-9a-f]{16})\n/)[1];
     expect(readFileSync(join(repo, '.git/crafty-compact-nonce'), 'utf8').trim()).toBe(nonce);
@@ -157,7 +157,7 @@ describe('scripts/hooks/session-start-compact.sh', () => {
   });
 
   it('missing rules dir prints {} and exits 0', () => {
-    rmSync(join(repo, '.claude'), { recursive: true, force: true });
+    rmSync(join(repo, '.claude/rules'), { recursive: true, force: true });
     const r = run();
     expect(r.status).toBe(0);
     expect(r.stdout).toBe('{}');

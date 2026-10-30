@@ -140,8 +140,9 @@ below these files.
 "Get Crafty's remote github surfaces updated too near the end of every session when you hit the context-watermark."
 At the watermark, unprompted: kill leaked test processes and list orphan preview tabs
 (`sh frontend/scripts/dev/close-preview-tabs.sh`, list only); green the tree or revert the unfinished unit; update the
-cursor, the registry, STATUS, CHANGELOG and the Command Record (stamp, republish in place, sync:
-`frontend/scripts/ci/artifact-currency.mjs`);
+cursor, the registry, STATUS and the Command Record (stamp, republish in place, sync:
+`frontend/scripts/ci/artifact-currency.mjs`); regenerate `memory/CHANGELOG.md`
+(`node frontend/scripts/ci/changelog.mjs --write`, in a committed tree with no merge in progress);
 check the README prose is still true; refresh the About line, topics and labels with
 `node frontend/scripts/ci/public-face.mjs --live`, then `--apply`; land through a PR.
 
