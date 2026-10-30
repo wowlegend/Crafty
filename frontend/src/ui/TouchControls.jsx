@@ -66,7 +66,8 @@ function dropHolds(roarHold, actionClaim) {
 
 // isWorldBuilt is App-LOCAL useState (App.jsx:105 -- verified NOT a store key) -> passed as a prop.
 // talentsOpen / onOpenTalents are App-LOCAL too (the Talents panel's flag lives in useInputManager): Phase 0c, F9.
-// otherPanelOpen: the remaining App-local panel flags (Achievements, Stats), for the hold cancel below (review F3).
+// otherPanelOpen: the other App-local panel flag (Achievements), for the hold cancel below (review F3). Show Stats is not a
+// panel (ui/panelState.js): it draws a readout in the canvas, and the action button and the roar stay live under it.
 function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTalents }) {
   const t = useT();
   const rootRef = useRef(null);

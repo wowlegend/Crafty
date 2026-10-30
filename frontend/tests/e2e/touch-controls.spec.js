@@ -1,5 +1,5 @@
 import { test, expect } from './_fixtures.js';
-import { bootDev } from './_boot.js';
+import { bootDev, startPlayActive } from './_boot.js';
 
 // B7 (18-domain review, "touch is visually broken"): the on-screen touch controls used the theme color
 // TOKENS as bare CSS colors. `cssVars.js` emits every `--ui-*` color as SPACE-SEPARATED RGB CHANNELS
@@ -133,5 +133,35 @@ test.describe('B7 — the touch joystick knob renders a visible fill + border', 
     expect(slots.length, 'all 9 hotbar slots must render').toBe(9);
     const offscreen = slots.filter((s) => s.x < 0 || s.right > vw);
     expect(offscreen, `slots off the ${vw}px viewport: ${offscreen.map((s) => s.block).join(', ')}`).toEqual([]);
+  });
+
+  // THE SETTINGS GEAR ANSWERS A FINGER. On touch the gear is the only way to Settings, Manage Worlds and Load. The touch
+  // layer's window listeners cancel the touchstart and touchend of a touch that does not land on a control it counts as
+  // one (input/touchOwnership.js), and a cancelled touch fires no click. Tapped as a finger would (Playwright's
+  // touchscreen tap after its hit-target check), with the input gate live, which is when those listeners route.
+  test('a tap on the HUD Settings gear opens Settings', async ({ page }) => {
+    test.setTimeout(240000);
+    await bootDev(page);
+    await startPlayActive(page);
+    await page
+      .waitForFunction(() => !!document.querySelector('[data-testid="hud-settings"]'), null, { timeout: 20000 })
+      .catch(() => { throw new Error('SETUP: the Settings gear never attached'); });
+    const gate = await page.evaluate(() => window.__craftyTest.call('readIntents').active);
+    if (!gate) throw new Error('SETUP: the input gate was not live before the tap, so the touch layer would not route it');
+
+    await page.getByTestId('hud-settings').tap({ timeout: 30000 });
+    const state = () => page.evaluate(() => {
+      const el = document.querySelector('[data-testid="hud-settings"]');
+      const r = el ? el.getBoundingClientRect() : null;
+      const hit = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null;
+      return { open: window.useGameStore.getState().showSettings, hitIsGear: !!el && !!hit && el.contains(hit),
+        active: window.__craftyTest.call('readIntents').active };
+    });
+    let last = null;
+    await expect.poll(async () => { last = await state(); return last.open; },
+      { timeout: 5000 }).toBe(true)
+      .catch(() => { throw new Error(`the gear tap did not open Settings: ${JSON.stringify(last)}`); });
+    console.log(`touch gear tap: ${JSON.stringify(last)}`);
+    await expect(page.getByText('Show Stats (F3)'), 'Settings opened in the store but its panel did not draw').toBeVisible({ timeout: 15000 });
   });
 });

@@ -40,11 +40,15 @@ describe('ownsTouch — cannot throw inside a touchstart handler', () => {
   });
 });
 
-describe('the selector names BOTH ownership kinds', () => {
-  it('covers the touch-layer buttons and the HUD surfaces', () => {
-    // Asserted directly because dropping either half is a silent regression: losing data-touch-btn makes
-    // every action button also drag the camera; losing data-hud-interactive reinstates X3 exactly.
-    expect(UI_OWNED_SELECTOR).toContain('button[data-touch-btn]');
-    expect(UI_OWNED_SELECTOR).toContain('[data-hud-interactive]');
+describe('the selector names every ownership kind', () => {
+  it('covers every button, modal surfaces and the HUD surfaces', () => {
+    // Asserted directly because dropping any part is a silent regression: losing `button` makes every action
+    // button also drag the camera and kills every plain button over the game (the Settings gear, Respawn);
+    // losing data-hud-interactive reinstates X3 exactly; losing aria-modal kills the context-loss panel.
+    const parts = UI_OWNED_SELECTOR.split(',').map((p) => p.trim());
+    expect(parts).toContain('button');
+    expect(parts).toContain('[role="button"]');
+    expect(parts).toContain('[aria-modal="true"]');
+    expect(parts).toContain('[data-hud-interactive]');
   });
 });

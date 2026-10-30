@@ -178,6 +178,7 @@ export const DeathScreen = ({ onRespawn }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="fixed inset-0 bg-black/80 flex items-center justify-center z-modal"
+            data-testid="death-screen"
         >
             <m.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                 <Panel variant="raise" className="text-center px-10 py-8 max-w-sm">
@@ -189,7 +190,7 @@ export const DeathScreen = ({ onRespawn }) => {
                         <RunStat label="Level" value={level} />
                         <RunStat label="Nights survived" value={nights} />
                     </div>
-                    <Button variant="primary" size="lg" onClick={onRespawn}>{t('ui.respawn')}</Button>
+                    <Button variant="primary" size="lg" onClick={onRespawn} data-testid="death-respawn">{t('ui.respawn')}</Button>
                 </Panel>
             </m.div>
         </m.div>

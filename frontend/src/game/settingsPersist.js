@@ -92,6 +92,9 @@ export function initSettingsPersistence(store, isCapture, storage = (typeof loca
   if (typeof isCapture === 'function' && isCapture()) return () => {};
   if (!storage) return () => {};
   const loaded = loadSettings(storage);
+  // The saved juice is the player's CHOICE (pick, below, persists juiceIntensityChoice), so it restores the choice as well
+  // as the value in effect: the next save of any dial reads the choice.
+  if (Object.prototype.hasOwnProperty.call(loaded, 'juiceIntensity')) loaded.juiceIntensityChoice = loaded.juiceIntensity;
   if (Object.keys(loaded).length) store.setState(loaded);
   let prev = pick(store.getState());
   return store.subscribe((state) => {

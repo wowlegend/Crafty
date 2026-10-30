@@ -35,6 +35,7 @@ import { installAutosave } from './game/autosave';
 import { savePosition } from './game/saveSchema.js';
 import { useDayNightClock } from './game/useDayNightClock';
 import { shouldOpenPauseOnUnlock } from './ui/panelState.js';
+import { requestGameLock } from './input/pointerLock.js';
 
 // DEV-only lazy import: in prod `import.meta.env.DEV` is statically false, so the
 // whole PrimitivesShowcase subtree (incl. showcase-scene.png + baked game-icons)
@@ -110,16 +111,7 @@ function GameApp({ experienceSystem }) {
         // Dev capture mode: keep the menu overlay visible by NOT auto-locking the pointer;
         // the harness drives the menu->explore transition explicitly via the `start` hook.
         if (state.isCaptureMode) return;
-        if (state.requestPointerLock) {
-          state.requestPointerLock();
-        } else {
-          const canvas = document.querySelector('canvas');
-          if (canvas && canvas.requestPointerLock) {
-            canvas.requestPointerLock();
-          } else if (document.body.requestPointerLock) {
-            document.body.requestPointerLock().catch(e => console.warn('Auto-lock failed:', e));
-          }
-        }
+        requestGameLock(state);
       }, 100);
     }
   }, [gameState.isSpawnChunkLoaded, isWorldBuilt]);
@@ -321,7 +313,7 @@ function GameApp({ experienceSystem }) {
 
       {/* Phase 0c (F9): the Talents panel's flag is App-local (useInputManager), so touch gets it as props — the
           locked ring sector opens it (nothing else on touch can), and tap-to-play stays off it while it is open. */}
-      <TouchControls isWorldBuilt={isWorldBuilt} talentsOpen={showSpellUpgrades} otherPanelOpen={showAchievements || showStats}
+      <TouchControls isWorldBuilt={isWorldBuilt} talentsOpen={showSpellUpgrades} otherPanelOpen={showAchievements}
         onOpenTalents={() => openTalents(useGameStore.getState(), { setShowSpellUpgrades, setShowAchievements })} />
 
       {/* MenuSystem's setIsPointerLocked prop is wired to setActive — the OPTIMISTIC

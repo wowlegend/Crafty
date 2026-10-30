@@ -44,6 +44,29 @@ export default [
       'no-unused-vars': ['error', { varsIgnorePattern: '^_', argsIgnorePattern: '^_', ignoreRestSiblings: true }],
     },
   },
+  // THE POINTER LOCK API, ONLY THROUGH src/input/pointerLock.js. iOS and iPadOS WebKit define no Pointer Lock API (MDN
+  // browser-compat-data: safari_ios version_added false), so a bare `document.exitPointerLock()` throws there, and
+  // thrown from a React effect it takes the app to the crash page. A lock goes on the game canvas through GameScene's
+  // requester, never on document.body (.claude/rules/input-and-pointer-lock.md). Both are crash or stranding classes,
+  // so they are errors. The behaviour is gated by tests/gates/pointer-lock-guard-gates.test.jsx and
+  // tests/gates/touch-entry-gate.test.js; this rule stops a new bare call before it reaches them.
+  {
+    files: ['src/**/*.{js,jsx}'],
+    ignores: ['src/**/*.test.{js,jsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "MemberExpression[object.name='document'][property.name='exitPointerLock']",
+          message: 'release the pointer with releasePointerLock() from src/input/pointerLock.js: iOS has no exitPointerLock',
+        },
+        {
+          selector: "MemberExpression[property.name='requestPointerLock'][object.type='MemberExpression'][object.object.name='document'][object.property.name='body']",
+          message: 'lock the game canvas with requestGameLock() from src/input/pointerLock.js, never document.body',
+        },
+      ],
+    },
+  },
   // The HARNESS — scripts/ (visual probes, perf runner, CI scripts) and tests/. Added 2026-07-27.
   //
   // WHY: this gate exists because four ReferenceError crashes shipped to main from byte-exact god-file

@@ -24,6 +24,7 @@ import { panelWrites, applyPanelWrites } from './ui/panelGroups.js';
 import { shouldShowTitleMenu, shouldShowResumeOverlay, isAnyPanelOpen } from './ui/panelState.js';
 import { isCaptureMode } from './devtest/captureMode.js';
 import { isTouchDevice, isTouchUIMode } from './input/touchDevice';
+import { requestGameLock } from './input/pointerLock.js';
 import { useT } from './i18n/i18n.js';
 import { useGameStore } from './store/useGameStore';
 
@@ -79,8 +80,7 @@ export function MenuSystem({
   // touch was stuck on the title screen (confirmed by scripts/visual/touch-probe.mjs). On touch we set the
   // active gate ourselves (single-active-authority still holds -- touch owns setActive on this path).
   const enterPlay = () => {
-    if (gameState.requestPointerLock) gameState.requestPointerLock();
-    else if (document.body.requestPointerLock) document.body.requestPointerLock().catch(e => console.warn(e));
+    requestGameLock(gameState);
     if (isTouchDevice()) setIsPointerLocked(true);
     // W1: touch has no pointerlockchange event, so latch gameStarted here too (one-way; desktop also
     // re-latches via Components' pointer-lock writer -- idempotent).
@@ -233,7 +233,7 @@ export function MenuSystem({
               onClose={() => {
                 gameState.setShowWorldManager(false);
                 // KEVIN-FIX C4: the relock-on-close the other panels already do (in-game only)
-                if (gameState.gameStarted && gameState.requestPointerLock) gameState.requestPointerLock();
+                if (gameState.gameStarted) requestGameLock(gameState);
               }}
             />
           </Suspense>
@@ -265,7 +265,7 @@ export function MenuSystem({
                 gameState.setShowTradingInterface(false);
                 gameState.setSelectedVillager(null);
                 // KEVIN-FIX C4: trading never relocked — the player landed unlocked needing a click
-                if (gameState.gameStarted && gameState.requestPointerLock) gameState.requestPointerLock();
+                if (gameState.gameStarted) requestGameLock(gameState);
               }}
             />
           </Suspense>

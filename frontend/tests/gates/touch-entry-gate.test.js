@@ -104,22 +104,26 @@ describe('ON DESKTOP: the lock request is still what opens the gate', () => {
       'desktop set the active gate directly, bypassing pointerlockchange — two writers for one piece of state').not.toHaveBeenCalled();
   });
 
-  it('falls back to a body lock only when the store has no lock method yet', () => {
+  it('with no lock method yet, Start locks nothing: the lock goes on the game canvas or nowhere', () => {
+    // The canvas is the one lock target (input-and-pointer-lock.md). With no requester GameScene is not mounted, so there
+    // is no game canvas to lock, and document.body is not one.
     const props = titleProps({ gameState: { requestPointerLock: undefined } });
     render(createElement(MenuSystem, props));
     fireEvent.click(startButton());
-    expect(document.body.requestPointerLock, 'there is no fallback at all before the canvas mounts').toHaveBeenCalledTimes(1);
+    expect(document.body.requestPointerLock, 'Start locked document.body').not.toHaveBeenCalled();
+    expect(useGameStore.getState().gameStarted, 'Start did not start the run').toBe(true);
   });
 
-  it('a REFUSED fallback lock does not throw out of the click handler', () => {
-    // `.catch(...)` on the fallback, asserted by running it rather than by matching its 96 characters.
-    // An unhandled rejection here would take out the click that is the player's only way into the game.
-    document.body.requestPointerLock = vi.fn(() => Promise.reject(new Error('refused')));
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('on touch, with no lock method and an engine whose lock returns nothing, Start still opens the gate and starts', () => {
+    // An engine that returns undefined from requestPointerLock (no Promise to `.catch`) must not take the tap down with
+    // it: the touch bridge and the run's start come after the lock request in the same handler.
+    isTouchDevice.mockReturnValue(true);
+    document.body.requestPointerLock = vi.fn(() => undefined);
     const props = titleProps({ gameState: { requestPointerLock: undefined } });
     render(createElement(MenuSystem, props));
-    expect(() => fireEvent.click(startButton())).not.toThrow();
-    warn.mockRestore();
+    fireEvent.click(startButton());
+    expect(props.setIsPointerLocked, 'the touch bridge never fired: the player is stuck on the title').toHaveBeenCalledWith(true);
+    expect(useGameStore.getState().gameStarted, 'the run never started').toBe(true);
   });
 });
 
