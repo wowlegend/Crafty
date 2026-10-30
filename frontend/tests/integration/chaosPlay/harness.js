@@ -37,7 +37,7 @@ import { BASE_CAPSULE, BEAST_FORMS, formLocomotion } from '../../../src/game/bea
 import { moveSpeed, jumpVelocity, GLUE_VELOCITY, VAULT_VELOCITY, applyGravity } from '../../../src/game/locomotion.js';
 import { steadyEye } from '../../../src/combat/swingOrigin.js';
 import { SEA_LEVEL, DEEP_FLOOR } from '../../../src/world/oceanProfile.js';
-import { resolveSpawnGround, resolveResumeSpawn, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from '../../../src/game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from '../../../src/game/spawnPlacement.js';
 import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from '../../../src/game/formFit.js';
 import { teleportPlayer } from '../../../src/game/stanceState.js';
 import { buildSaveData, savePosition } from '../../../src/game/saveSchema.js';
@@ -166,8 +166,13 @@ function landDue(S) {
     useGameStore.setState({ worldReloading: false }); // Terrain.jsx's effect once the wipe has committed
     R.remountAt = S.f + S.lag;
   }
-  if (R && R.wiped && S.f >= R.remountAt) {
-    mountChunks(S, KEYS.map((key) => ({ key, editSeq: S.worker.seq })));
+  if (R && R.wiped && S.f >= R.remountAt && !R.mounted) {
+    // The streamer brings the chunks back nearest first: `late` ones (a load's option) come `lateBy` frames after the rest.
+    mountChunks(S, KEYS.filter((key) => !R.late.includes(key)).map((key) => ({ key, editSeq: S.worker.seq })));
+    R.mounted = true;
+  }
+  if (R && R.mounted && S.f >= R.remountAt + R.lateBy) {
+    if (R.late.length) mountChunks(S, R.late.map((key) => ({ key, editSeq: S.worker.seq })));
     S.reload = null;
   }
   const due = S.worker.queue.filter((q) => q.due <= S.f);
@@ -222,7 +227,7 @@ function spawnBranch(S) {
   const store = useGameStore.getState();
   if (store.resumeSpawn) {
     const r = store.resumeSpawn;
-    const probeY = store.worldReloading ? null : groundProbe(S, r.x, r.z);
+    const probeY = store.worldReloading ? null : resumeColumnProbe((x, z) => groundProbe(S, x, z), r);
     const resume = resolveResumeSpawn(r, probeY, S.resumeFails);
     if (resume.hold) {
       S.resumeFails += 1;
@@ -696,7 +701,7 @@ function withMods(mods) {
   return chunks;
 }
 /** The World Manager's Load: the store's loadWorldData, its worker message answered `lag` frames on. */
-export function loadSave(S, data) {
+export function loadSave(S, data, { late = [], lateBy = 0 } = {}) {
   const inbox = [];
   useGameStore.setState({ terrainWorker: { postMessage: (m) => inbox.push(m) } });
   useGameStore.getState().loadWorldData(data);
@@ -706,7 +711,7 @@ export function loadSave(S, data) {
   // From the Load on the player is in the saved world: the invariants read it, whatever the old colliders still hold
   // until the wipe.
   S.logical = withMods(mods);
-  S.reload = { doneAt: S.f + S.lag, mods, wiped: false, remountAt: null };
+  S.reload = { doneAt: S.f + S.lag, mods, wiped: false, remountAt: null, mounted: false, late, lateBy };
   const pos = data.player_data && data.player_data.position;
   if (pos) S.loadPending = { f: S.f, saved: { x: pos.x, y: pos.y, z: pos.z } };
   S.stats.loads++;

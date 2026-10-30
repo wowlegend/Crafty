@@ -29,6 +29,9 @@ const MARGIN = 0.01; // the clearance the placed capsule keeps from every collid
 // above the body (the eye is 0.67 m over the centre). Wider than REACH is safe there only because each spot's own cell
 // is asked whether it is solid ground (cellSolid), which the form swap's short reach stands in for.
 const LOAD_REACH = 0.6;
+/** How far sideways from a loaded save's centre the fit reads the colliders: the capsule's radius past its reach. The
+ *  resume hold waits until every chunk within it has answered (game/spawnPlacement.js resumeColumnProbe). */
+export const LOAD_FIT_SPAN = BASE_CAPSULE.radius + LOAD_REACH;
 const LOAD_RISE = 0.6;
 const LOAD_DROP = 1.2;
 const LOAD_FALLBACK_GAP = 0.05; // the drop onto the column's top when nothing near the saved spot is clear

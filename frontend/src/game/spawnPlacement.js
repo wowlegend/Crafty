@@ -1,7 +1,9 @@
 // Spawn-placement decision (S3-M5 part 2) — extracted PURE from the Player loop. The imperative
 // setTranslation/setLinvel stays in Player; this is the math + the branch logic, characterization-
 // pinned to the old inline behavior (Components.jsx:803-860). NO React/Rapier.
-export const SPAWN_FREEZE_Y = 120;       // hold in the sky until the world builds / on void-fall
+import { LOAD_FIT_SPAN } from './formFit.js';
+
+export const SPAWN_FREEZE_Y = 120;      // hold in the sky until the world builds / on void-fall
 const VOID_RESET_Y = 10;          // y below this = fell through the floor -> reset (module-internal)
 export const SPAWN_PROBE_MAX_FAILS = 120; // bounded probe wait (frames) before the fallback
 export const SPAWN_FALLBACK_Y = 60;      // if the probe never resolves
@@ -49,6 +51,21 @@ export function spawnCornerGround(probe) {
 // 2026-10-27, steady-cool HIGH 2). Its frames wait longer than the origin probe's: the column may be chunks away, and
 // streaming has to reach it after the camera moves there. A save that never loads falls back to the origin spawn.
 export const RESUME_PROBE_MAX_FAILS = 600;
+
+/** The ground probe at a loaded save's column (Terrain.jsx getMobGroundLevel, which casts at x + 0.1, z + 0.1), or null
+ *  until the columns at the four corners of the square the load fit reads (game/formFit.js LOAD_FIT_SPAN round the
+ *  saved centre) answer too. A chunk is 16 m wide, so those corners lie in every chunk the square touches: a fit run
+ *  while the chunk across a border had not streamed back yet read no ground there and stood the capsule 0.4 m into it
+ *  (tests/integration/chaos-play-loads.test.jsx; chaos session origin, 120 Hz, lag 0, seed 5). */
+export function resumeColumnProbe(probe, r) {
+  for (const dx of [-LOAD_FIT_SPAN, LOAD_FIT_SPAN]) {
+    for (const dz of [-LOAD_FIT_SPAN, LOAD_FIT_SPAN]) {
+      const y = probe(Math.floor(r.x + dx) + 0.4, Math.floor(r.z + dz) + 0.4);
+      if (!Number.isFinite(y)) return null;
+    }
+  }
+  return probe(r.x, r.z);
+}
 
 // resume: the saved {x,y,z} (the body's centre when it was saved). physicsY: the ground probe AT THAT COLUMN — used only
 // as proof the column's colliders exist, never as the height (the player may have stood under a roof). Any answer is that

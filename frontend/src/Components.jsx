@@ -19,7 +19,7 @@ import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
-import { resolveSpawnGround, resolveResumeSpawn, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
@@ -1040,7 +1040,7 @@ export const Player = ({ isWorldBuilt }) => {
       //    follows it. Until the old world's wipe has committed the probe is not asked (store worldReloading).
       if (store.resumeSpawn) {
         const r = store.resumeSpawn;
-        const probeY = store.getMobGroundLevel && !store.worldReloading ? store.getMobGroundLevel(r.x, r.z) : null;
+        const probeY = store.getMobGroundLevel && !store.worldReloading ? resumeColumnProbe(store.getMobGroundLevel, r) : null;
         const resume = resolveResumeSpawn(r, probeY, resumeProbeFailsRef.current);
         if (resume.hold) {
           resumeProbeFailsRef.current += 1;

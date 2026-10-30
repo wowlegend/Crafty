@@ -21,7 +21,7 @@ import {
   DEEP_SEABED, LAND_TOP,
 } from './chaosPlay/harness.js';
 
-const RUNS = [{ hz: 60, lag: 2 }, { hz: 120, lag: 4 }];
+const RUNS = [{ hz: 60, lag: 2 }, { hz: 120, lag: 4 }, { hz: 120, lag: 0 }];
 
 /** How deep the base capsule would stand in solid at `p` (the body put there and back). */
 function depthAt(S, p) {
@@ -35,9 +35,9 @@ function depthAt(S, p) {
 
 /** Load `data`, play the hold out and 30 frames on, and read what the release left: the invariants, and whether the player
  *  stands sideways within 0.75 m of the saved spot (the load fit moves the body at most 0.6 m sideways). */
-function loadAndPlay(S, data) {
+function loadAndPlay(S, data, streaming) {
   const saved = data.player_data.position;
-  loadSave(S, data);
+  loadSave(S, data, streaming);
   for (let i = 0; i < LOAD_RELEASE_FRAMES(S.lag) + 30; i++) tick(S, { yaw: 0, forward: false });
   finishSession(S);
   const t = S.p.body.translation();
@@ -66,6 +66,24 @@ describe('chaos play, loads: a save stands the player near where it was made, in
       expect(r.at.y, `the player does not stand on the column's top ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
       expect(escape(S).free, 'the player cannot walk away from the load').toBe(true);
     });
+
+    // A save in the ground on a chunk's edge, the chunk across it streamed back 8 frames after the saved column's: the load
+    // fit reads the colliders up to a metre round the saved centre, so the hold must wait until every chunk under that
+    // square answers, not only the saved column's (chaos session origin, 120 Hz, lag 0, seed 5: the neighbouring chunk's
+    // rebuilt trimesh was not yet queryable, and the fit stood the capsule 0.4 m into its ground).
+    for (const edge of [
+      { x: -8.5, z: 16.05, late: '-1_0' }, { x: -8.5, z: 15.95, late: '-1_1' },
+      { x: -15.95, z: 20.5, late: '-2_1' }, { x: -16.05, z: 20.5, late: '-1_1' },
+    ]) {
+      it(`a save in the ground on a chunk's edge at ${edge.x}, ${edge.z}, chunk ${edge.late} back late, stands the player on the column's top (${hz} Hz, lag ${lag})`, () => {
+        const S = makeSession({ spot: 'field', rnd: mulberry32(13), hz, lag, tol: TOL });
+        const save = writeSave(S, 'manual');
+        save.player_data.position = { x: edge.x, y: 21, z: edge.z };
+        const r = loadAndPlay(S, save, { late: [edge.late], lateBy: 8 });
+        expect(r.counts, `the load left the player in solid or far from the save ${JSON.stringify(r)}`).toEqual(clean);
+        expect(r.at.y, `the player does not stand on the column's top ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
+      });
+    }
 
     // The old Save button: the camera (the steady eye, 0.67 m over the body's centre) rounded to whole metres.
     for (const c of [
