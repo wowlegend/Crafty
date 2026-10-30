@@ -1,0 +1,83 @@
+// The chaos-play gate's body, shared by the three test files that split the six places across vitest's workers.
+// What it asserts, and why, is in tests/integration/chaos-play-instruments.test.jsx's header.
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import RAPIER from '@dimforge/rapier3d-compat';
+import { useGameStore } from '../../../src/store/useGameStore.jsx';
+import { playSession } from './driver.js';
+
+export const RATES = [60, 120];
+export const LAGS = [0, 2, 4, 8];
+// I1's tolerance, from the controller: the KCC holds the capsule its offset (0.05 m) clear of every collider it sees, so a
+// capsule reaching into a solid cell by a tenth of that has crossed the whole skin it is kept behind. It absorbs float
+// noise only: every session on the fixed code reads 0.000 (the deepest is printed), and the traps it exists for read
+// 0.05 to 0.62 m.
+export const TOL = 0.05 / 10;
+
+/** A fresh store for a session: the denial toast's 1 s throttle reads performance.now, 5 s on per read so none is lost. */
+export function freshStorePerTest() {
+  let clock = 1e7;
+  beforeAll(async () => {
+    await RAPIER.init();
+  });
+  beforeEach(() => {
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    vi.spyOn(performance, 'now').mockImplementation(() => (clock += 5000));
+    useGameStore.setState((s) => ({
+      addNotification: () => {}, worldBlocks: new Map(), chests: new Map(), selectedBlock: 'grass',
+      inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, grass: 64 } },
+    }));
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    useGameStore.setState(useGameStore.getInitialState(), true);
+  });
+}
+
+/** What a failed session says: each invariant's count and the first frame of each run of it, with the verbs before it. */
+function report(S) {
+  const v = Object.fromEntries(Object.entries(S.violations).filter(([, l]) => l.length));
+  return JSON.stringify({ counts: S.counts, deepest: S.maxDepth, end: S.end, violations: v });
+}
+
+/**
+ * One file's share: a session per (place, frame rate, trimesh lag), each asserted on its own, then the risky events the
+ * file's sessions reached, against floors set near a third of what they reach (2026-10-30), so a driver change that
+ * stops reaching the dangerous geometry fails as SETUP instead of passing over nothing.
+ */
+export function chaosSuite(spots, floors) {
+  const total = {};
+  let sessions = 0;
+  describe(`chaos play at ${spots.join(' and ')}: the player is never in solid, never has the eye in solid, can always leave, and no stand-in outlives its mesh`, () => {
+    freshStorePerTest();
+    for (const spot of spots) for (const hz of RATES) for (const lag of LAGS) {
+      it(`${spot}, ${hz} Hz, trimesh ${lag} frames late`, () => {
+        const S = playSession({ spot, seed: 1, hz, lag, tol: TOL });
+        sessions++;
+        for (const [k, n] of Object.entries(S.stats)) total[k] = (total[k] || 0) + n;
+        const why = report(S);
+        expect(S.counts.I1, `I1: the capsule reached into a solid cell deeper than ${TOL} m ${why}`).toBe(0);
+        expect(S.counts.I2, `I2: the eye was inside a solid cell ${why}`).toBe(0);
+        expect(S.counts.I3, `I3: the player could not leave ${why}`).toBe(0);
+        expect(S.counts.I4, `I4: a stand-in outlived its chunk's mesh by more than one step ${why}`).toBe(0);
+        expect(S.end, `I4: stand-ins or edits remain at the end of the session ${why}`).toEqual({ standIns: 0, queued: 0 });
+        expect(S.stats.escapes, `SETUP: the session ran no escape test ${why}`).toBeGreaterThan(0);
+      });
+    }
+    it('reached the risky events it exists for (denominators)', () => {
+      // Written past vitest's console capture, which shows a passing test's console output nowhere: the denominator is read
+      // on every run, green or red.
+      process.stdout.write(`\nchaos play at ${spots.join(', ')}: ${sessions} sessions, ${total.frames} frames; ${JSON.stringify(total)}\n`);
+      expect(sessions, 'SETUP: a session did not finish').toBe(spots.length * RATES.length * LAGS.length);
+      for (const [k, floor] of Object.entries(floors)) {
+        expect(total[k] ?? 0, `SETUP: ${k} reached ${total[k] ?? 0}, under its floor of ${floor}: the driver no longer reaches that geometry`).toBeGreaterThanOrEqual(floor);
+      }
+    });
+  });
+}
+
+/** The floors every file's sixteen sessions must reach (each session presses into a wall, swaps form, saves then loads,
+ *  and falls through the void). */
+export const COMMON_FLOORS = {
+  rightClicksIntoBody: 100, wallContactFrames: 500, clickPairs: 40, swaps: 12, swapsAgainstWall: 3, swapsRefused: 2, loads: 16,
+  loadHoldFrames: 12, respawns: 16, escapes: 32, dugOut: 1,
+};
