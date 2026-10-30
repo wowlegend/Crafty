@@ -182,8 +182,12 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
     }, [bossHealth]);
 
     // The shared record (game/bossCombat.js) outlives this component; an unmount (the kill, a give-up) must not leave an
-    // active record with a pending windup for a perfect dodge to "parry".
-    useEffect(() => () => { resetBossCombat(bossCombat); }, []);
+    // active record with a pending windup for a perfect dodge to "parry". A fight opens with the dragon circling: its
+    // first dive comes one dive-bite cooldown in, not on the frame it wakes.
+    useEffect(() => {
+        bossCombat.cooldowns.diveBite = worldNow() + DRAGON_MOVES.diveBite.cooldownMs;
+        return () => { resetBossCombat(bossCombat); };
+    }, []);
 
     // The move machine's context, written in place each frame (game/dragonMoves.js dragonCtx).
     const ctxInRef = useRef({ bossTier: 0, phase: 0, player: { x: 0, y: 0, z: 0 }, playerAlive: true, invincible: false, groundY: 0, damage: 0 });
@@ -317,7 +321,8 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
 
         // The record a perfect dodge, the heavy and the systems that hit mobs read: written before the freeze below, so
         // a fight that begins inside a hitstop is already a target.
-        const [bx, by, bz] = bossPositionRef.current;
+        const pos = bossPositionRef.current;
+        const bx = pos[0], by = pos[1], bz = pos[2];
         rec.active = true;
         rec.health = bossHealth;
         rec.position.x = bx; rec.position.y = by; rec.position.z = bz;
@@ -431,7 +436,7 @@ export const BossEntity = React.memo(({ bossActive, bossPositionRef, bossPhase, 
         const hx = Math.sin(yaw), hz = Math.cos(yaw);
         rec.position.x = nextX; rec.position.y = nextY; rec.position.z = nextZ;
         rec.airborne = nextY - currentGroundY > AIRBORNE_GAP_M;
-        const [head, chest, hips] = rec.hitPoints;
+        const head = rec.hitPoints[0], chest = rec.hitPoints[1], hips = rec.hitPoints[2];
         head.x = nextX + hx * HEAD_AHEAD_M; head.y = nextY + HEAD_UP_M; head.z = nextZ + hz * HEAD_AHEAD_M;
         chest.x = nextX; chest.y = nextY; chest.z = nextZ;
         hips.x = nextX - hx * HIPS_BEHIND_M; hips.y = nextY; hips.z = nextZ - hz * HIPS_BEHIND_M;

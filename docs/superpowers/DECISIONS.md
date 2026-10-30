@@ -48,8 +48,8 @@
    immunity (`registerBossHeavy`): three heavies cannot fit one 1400 ms stagger, since a heavy is ready 700 ms after its
    press, so the chain keeps every roadmap number and makes the knockdown reachable at about one heavy a second.
    `damageBoss(amount, source)` applies the 1.5x riposte to the player's damage only. The melee cone tests the head, chest
-   and hips. In phase 0 the dragon dives to the player's feet + 1.2 m when its dive-bite is ready, and a staggered dragon
-   lands. **Why:** the game's two newest skills did nothing to its last enemy.
+   and hips. In phase 0 the dragon dives to the player's feet + 1.2 m when its dive-bite is ready (the first dive one
+   6 s cooldown after it wakes, so a fight opens with it circling), and a staggered dragon lands. **Why:** the game's two newest skills did nothing to its last enemy.
 126. **One damage path for the dragon (reset-plan row 25).** `bossTargets(mobs)` hands hurl and its slam, the element
    zones and the squad the mobs with the dragon appended while it fights (zones and allies only while it is not
    airborne: they paint and fight on the ground); `CombatSystem.damageMob` routes the dragon's id to `damageBoss` with the
