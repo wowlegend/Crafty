@@ -44,12 +44,12 @@ Each stands while it earns its place.
    LMB, RMB, Tab, J, H, each a KEY_MAP key), because the whole list in a panel read 8.47% of a 1280x800 frame at rest by
    the footprint; it then folds to the one-line "H Controls" hint, which stays, on a keyboard only, until H opens the
    panel once. **Measured at rest on this branch's committed head** (lookbook eye set, footprint, real GPU, 2026-10-30
-   03:51-04:00Z, at `37c53357`, clean tree, after PR A's round 4; the commits after it on this branch change the registry
-   and this record only; the player has ember and coins, a frame with a nameplate up counts, and each frame is shot again
-   with one raised, item 94): a returning player at most 6.58% on Chromium 1280x800 (6.79% with a nameplate), 7.55% on WebKit
+   04:19-04:28Z, at `1791b3d5`, clean tree, after PR A's round 4; the commits after it on this branch change the e2e spec
+   and these records, not the build; the player has ember and coins, a frame with a nameplate up counts, and each frame
+   is shot again with one raised, item 94): a returning player at most 6.58% on Chromium 1280x800 (6.79% with a nameplate), 7.55% on WebKit
    1180x820 (7.76%) and 7.56% on WebKit 820x1180 (7.77%); a first session, with ember and coins as well (an upper bound
    for a new player), at most 7.30% with the card up (7.51% with the card and a nameplate) and 6.70% once it folds (the
-   card shows on a keyboard only, so the iPads read as for a returning player: 7.55% and 7.57%); frames
+   card shows on a keyboard only, so the iPads read as for a returning player: 7.55% and 7.56%); frames
    `evidence/w2d/b-r3-*` (round 3's, of the same HUD on these three targets)
    (`tests/gates/controls-panel-gates.test.jsx`: the fold at 30 s, the clock
    paused off screen, the fold remembered, the hint never on touch). **Seen per browser profile, not per save:**
@@ -202,7 +202,7 @@ items. Each stands while it earns its place.
    (`ui/onWorldText.js`), because over a white sky the shadow alone washed the numbers out. **Measured after, on a
    committed head** (lookbook eye set, a returning player with ember and coins, ten valid frames at rest per target and
    each shot again with a nameplate raised, real GPU, 2026-10-30 04:11-04:15Z, at `391bc20b`, clean tree; the commits
-   after it on PR A's branch change this record only): Chromium 1280x800 at most 6.58% (6.79% with a nameplate), WebKit
+   after it on PR A's branch change this record and the e2e spec, not the build): Chromium 1280x800 at most 6.58% (6.79% with a nameplate), WebKit
    1180x820 7.55% (7.76%), WebKit 820x1180 7.56% (7.77%). Round 3 read the same numbers on an uncommitted tree; these
    replace them. The frames `evidence/w2d/a-r3-*` show the same HUD on these three targets, which round 4's phone and
    short layouts do not move. **Why:** the brief's acceptance is the

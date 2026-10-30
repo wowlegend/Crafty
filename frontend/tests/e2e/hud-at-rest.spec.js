@@ -14,7 +14,8 @@ import { bootDev, startPlayActive } from './_boot.js';
 //     staged (the toast stack, and on a keyboard the combat log, which touch does not draw); a target nameplate up (a
 //     brute along the camera's facing, frozen by a hitstop as it spawns, named by the real aim cone); the nameplate with
 //     a second notice staged; the nameplate and the boss bar together (the dragon woken far off); the boss bar alone (the
-//     brute killed). A notice is staged on an empty stack, so the stack read is the one toast. With the nameplate up, the
+//     brute killed). A notice is staged on an empty stack in a held world, and the stack read must hold that toast
+//     alone (else SETUP, naming what else was up). With the nameplate up, the
 //     one the cone named is raised again if something clears it while the read waits, and the log says so. Each state's
 //     rects are read in one page task. The toast stack lies inside every viewport; on the phones every touch target does.
 //   desktop: a fresh profile's controls card (or the H hint it folds to) clears every rect above.
@@ -62,7 +63,8 @@ async function readPage({ ids, extra, touch, plate, centre }) {
     return { id: el.getAttribute('data-testid') || (el.hasAttribute('data-touch-zone') ? 'touch-joystick' : el.getAttribute('aria-label')),
       ...b, shown: b.w > 0 && b.h > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' };
   }).filter((t) => t.shown && t.id !== 'touch-tap-to-play') : [];
-  return { hud, controls, reraised };
+  const toasts = [...document.querySelectorAll('[data-testid="notification"]')].map((el) => el.textContent);
+  return { hud, controls, reraised, toasts };
 }
 
 const intersects = (a, b) => !(a.right <= b.x || b.right <= a.x || a.bottom <= b.y || b.bottom <= a.y);
@@ -144,14 +146,14 @@ const FIRST_SESSION_IDS = ['controls-card', 'controls-hint'];
 
 /** The HUD rects (with `extra`: the nameplate, the boss bar, the toast stack, the combat log; and a first session's card
  *  or hint when on screen), the box at the centre and, on touch, the touch controls, read together (readPage):
- *  [seen, missing, reraised]. */
+ *  [seen, missing, reraised, the toasts' texts]. */
 async function layout(page, touch, extra = [], { plate = false } = {}) {
   const ids = [...RECT_IDS, ...extra, ...FIRST_SESSION_IDS];
-  const { hud, controls, reraised } = await page.evaluate(readPage, { ids, extra, touch, plate, centre: CENTRE_BOX });
+  const { hud, controls, reraised, toasts } = await page.evaluate(readPage, { ids, extra, touch, plate, centre: CENTRE_BOX });
   const missing = hud.filter((r) => !FIRST_SESSION_IDS.includes(r.id) && (r.missing || !(r.w > 0 && r.h > 0))).map((r) => r.id);
   const seen = hud.filter((r) => !r.missing && r.w > 0 && r.h > 0);
   if (touch) missing.push(...TOUCH_AT_REST.filter((id) => !controls.some((c) => c.id === id)));
-  return { seen: [...seen, ...controls], missing, reraised };
+  return { seen: [...seen, ...controls], missing, reraised, toasts };
 }
 const fmt = (list) => JSON.stringify(list.map((r) => [r.id, Math.round(r.x), Math.round(r.y), Math.round(r.w), Math.round(r.h)]));
 
@@ -223,9 +225,12 @@ for (const vp of [
       await enterPlayWithHud(page, vp.touch);
       const { width: vw, height: vh } = vp.viewport;
       const check = async (state, extra, opts = {}) => {
-        const { seen, missing, reraised } = await layout(page, vp.touch, extra, opts);
-        console.log(`hud-at-rest ${vp.name} ${state}: ${seen.length} rects ${fmt(seen)}${reraised ? `; the nameplate raised again ${reraised}x` : ''}`);
+        const { seen, missing, reraised, toasts } = await layout(page, vp.touch, extra, opts);
+        console.log(`hud-at-rest ${vp.name} ${state}: ${seen.length} rects ${fmt(seen)}${reraised ? `; the nameplate raised again ${reraised}x` : ''}${opts.notice ? `; toasts ${JSON.stringify(toasts)}` : ''}`);
         expect(missing, `SETUP: HUD elements or touch controls not on screen at ${vp.name}, ${state}`).toEqual([]);
+        // The stack read is the staged toast alone (two at once are not this state), or the pairs would measure whatever
+        // else the game raised in the same seconds.
+        if (opts.notice) expect(toasts, `SETUP: the stack holds more than the staged toast at ${vp.name}, ${state}`).toHaveLength(1);
         expect(pairs(seen), `HUD elements or touch controls overlap, or cover the screen's centre, at ${vp.name}, ${state}`).toEqual([]);
         if (opts.notice) {
           const stack = seen.find((r) => r.id === 'notification-stack');
@@ -250,6 +255,8 @@ for (const vp of [
       await check('at rest', []);
 
       const noticeIds = ['notification-stack', ...(vp.touch ? [] : ['combat-log'])];
+      // Hold the world (as raiseTarget does) so no kill, claim or achievement raises a toast of its own beside the staged one.
+      await page.evaluate(() => window.useGameStore.getState().triggerHitstop(60000));
       await stageNotice(page, 'notice.dusk');
       await check('at rest with a notice', noticeIds, { notice: true });
 
