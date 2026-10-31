@@ -189,7 +189,8 @@ export const GameScene = React.memo(function GameSceneRender({
   const panelCovering = useGameStore((s) => s.panelCovering);
   const [finePointer] = useState(() => !readDeviceSignals().coarsePointer);
   const focused = useWindowFocused({ finePointer });
-  const pace = paceFor({ frameCap, titleCovering, panelCovering, unfocused: !focused, harness: isCaptureMode || isPerfProbe() });
+  // The world being built is covered by App's loading overlay, as the title covers it (render/canvasPace.js).
+  const pace = paceFor({ frameCap, titleCovering, worldBuilding: !isWorldBuilt, panelCovering, unfocused: !focused, harness: isCaptureMode || isPerfProbe() });
   // The PLAYER's frame cap in force, for the Show Stats readout (render/FrameStats.jsx): the setting, unless a harness
   // steps its own frames. Not `pace.loop`: behind the title, a panel or an unfocused window that is the reduced pace,
   // which the readout's own drawn-frame count already shows, and the cap line names the setting that play will run at.
