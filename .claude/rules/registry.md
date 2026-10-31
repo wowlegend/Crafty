@@ -100,7 +100,8 @@ registry read as on the history before the merge commit exists. The allowance is
 merge does not take in, or on no branch, still fails S6, and so does every sha once `git merge --abort` has run. A
 squash merge leaves no `MERGE_HEAD` and an octopus merge reads only its first merged commit, so neither gets the
 allowance. A red S6 during a merge therefore means a sha that no branch the merge brings in holds: fix the row, never
-`--no-verify`.
+`--no-verify`. A merge that brings in gate changes also meets the commit-msg hook, which wants a `Mutation-Proof:` line:
+write the one the earlier merges carry (`git log --merges`), that the gates are main's, proven where they landed.
 
 ## Landing beside the v2 migration
 
