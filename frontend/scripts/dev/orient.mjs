@@ -7,9 +7,10 @@
  * the live Production deployment serves, and whether it is main; open PRs with their `ci ok`; worktrees whose branch
  * holds commits main does not; the cursor's heading, task table and Next paragraph; and the registry's counts: by state
  * and owner, then the open work by kind and severity, what waits on Kevin, triage and its overdue rows, orphans, and the
- * backlog rows not updated in 60 days, which are listed for a re-read and never closed on age. Each
- * source that cannot be read (no git, no `gh`, no network, not authenticated) prints why on its own line; nothing here
- * exits non-zero, because orientation that crashes orients no one.
+ * count of backlog rows not updated in 60 days, which are re-read and never closed on age. Each source that cannot be
+ * read (no git, no `gh`, no network, not authenticated) prints why on its own line, and the report exits 0, because
+ * orientation that crashes orients no one. `--registry` is a lookup, not the report: an unreadable registry or a field
+ * it cannot group by exits 2.
  *
  * A CI verdict is green only when the newest completed `ci.yml` run on that sha concluded `success`. GitHub reports a
  * job that hit its own time limit as `cancelled`, the same word as a superseded run, so `cancelled`, `timed_out`,

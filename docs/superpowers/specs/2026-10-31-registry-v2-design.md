@@ -61,7 +61,7 @@ DECISIONS. The task text says 447 open and 316 closed. The file holds 767 rows: 
 | `closedBy` shas | 288 cited, 288 resolve and are ancestors of a150a93a | Clean today. Nothing checks it, so a made-up sha would pass. |
 | `closedBy` forms | 318 of 326 already fit the v2 grammar (section 4.5) | 8 need rewriting (free text after a date, `PR #N closed <date>`, a document path). |
 | DECISIONS item numbers | 1 to 10 repeat across the 2026-10-28 entries; 11 to 336 are unique | A reference needs its date, plus the entry tag for items 1 to 10 on 10-28. |
-| Title length | median about 146 characters, longest 603 | Titles carry history and detail that belongs in `note`. |
+| Title length | median about 146 characters, longest 843 (`QUEUE:Q33`) | Titles carry history and detail that belongs in `note`. |
 | Fields in use | 16. The 10 required ones, plus `closedBy`, `resolution`, `note`, `dupOf`, `blockedBy` (1 row), `closedNote` (2 rows) | No gate rejects an unknown field, so fields drift. |
 
 The gates today: `registry-harvest.mjs` checks the schema and that every old-source item has a row, in every unit

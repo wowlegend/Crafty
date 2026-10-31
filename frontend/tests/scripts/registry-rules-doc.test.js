@@ -31,6 +31,13 @@ describe('.claude/rules/registry.md says what the registry gate enforces', () =>
     expect([...fields].sort()).toEqual([...V2_FIELDS].sort());
   });
 
+  it('names each gate at the rule it checks: every one of S0-S11 and R1-R4 below the opening, and no other', () => {
+    const body = MD.slice(MD.indexOf('\n## '));
+    const gates = [...Array.from({ length: 12 }, (_, i) => `S${i}`), 'R1', 'R2', 'R3', 'R4'];
+    const named = new Set([...body.matchAll(/\b([SR]\d+)\b/g)].map((m) => m[1]));
+    expect([...named].sort()).toEqual([...gates].sort());
+  });
+
   it('the closing table has one row per resolution', () => {
     const lines = section('Closing a row').split('\n');
     const body = lines.slice(lines.findIndex((l) => /^\|-/.test(l)) + 1).filter((l) => l.startsWith('| '));

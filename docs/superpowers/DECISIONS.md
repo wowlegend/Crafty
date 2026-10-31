@@ -46,7 +46,8 @@ Every row's disposition, with the command that proved it and the verifier's verd
    open work has a row (`LANE:W2-M`, `LANE:W3-A` to `LANE:W3-E`, `LANE:W3-G`), and a new fix lane,
    `LANE:L13-stuck-in-solid-remainder`, takes the eight invisible-box bugs no lane owned and their eleven gate holes.
    Why: about 230 open rows named a lane that had already landed, and nothing noticed. A lane row now closes only when
-   no open row names it, so a lane that lands moves or closes its leftovers in the same change.
+   no open row names it (S4). Nothing ties a PR's landing to its lane row, so the landing change moves or closes the
+   lane's leftovers and closes the row; a lane row left open after its PR lands is not seen by any gate.
 
 363. **Closed is final.** A closed row is never reopened; a regression is a new row with `reopens: <id>`. Why: the
    registry merges by union and `registry-dedupe.mjs` keeps the copy furthest along, so a reopen that races an edit
@@ -59,14 +60,17 @@ Every row's disposition, with the command that proved it and the verifier's verd
    closed); S5 a `closedBy` that does not fit its resolution, or a missing reason sentence; S6 a sha that is not an
    ancestor of HEAD; S7 a DECISIONS reference that is not exactly one item; S8 a dangling pointer, a duplicate chain
    or a self-pointer; S9 a bug no player can see, a decision closed done without a DECISIONS item, or a Kevin row
-   closed outside his rules; S10 `unrated` outside triage, or a triage row older than 7 days by HEAD's committer date
-   (so a sha always gets the same verdict and main never turns red by itself); S11 a title or note over its cap.
-   `registry-append-only.mjs` checks the change, on push and in CI: R1 a row deleted; R2 a closed row reopened; R3 a
-   row whose text changed while its `updated` did not move; R4 a v2 row closed at the base changing anything but its
-   closure, note, kind, area, lane or acceptance. Advisory, and said so: whether an acceptance is really checkable,
-   whether a sha fixed what its row says (S6 proves ancestry, not relevance), whether an item says what the row
-   claims (S7 proves it exists), a wrong kind or area, and a backlog row not updated in 60 days, which orient lists
-   and nothing closes, since closing on age is closing on an assumption.
+   closed outside his rules (on an item, the item's text must name him); S10 `unrated` outside an open triage row, or
+   a triage row opened more than 7 days before HEAD's committer date (so a sha always gets the same verdict and main
+   never turns red by itself); S11 a title or note over its cap. `registry-append-only.mjs` checks the change, on push
+   and in CI: R1 a row deleted; R2 a closed row reopened; R3 a changed row whose `updated` is missing, moved
+   backwards, or stayed more than a day older than the head commit's date (item 365.6); R4 a v2 row closed at the
+   base changing anything but its closure, note, kind, area, lane or acceptance. Every clause of each rule has a case
+   of its own in `frontend/tests/scripts/registry-clauses.test.js` that goes red when that clause is broken. Advisory,
+   and said so: whether an acceptance is really checkable, whether a sha fixed what its row says (S6 proves ancestry,
+   not relevance), whether an item says what the row claims (S7 proves it exists, S9 only that it names Kevin), a
+   wrong kind or area, an open row's `planUnit` changing, a lane row left open after its PR lands, and a backlog row
+   not updated in 60 days, which orient counts and nothing closes, since closing on age is closing on an assumption.
 
 365. **The rubric's amendments**, found where its rules met real rows:
    1. **R4 binds only rows that were v2 at the base** (they carry `kind`). The rubric froze a closed row's title and
@@ -79,10 +83,11 @@ Every row's disposition, with the command that proved it and the verifier's verd
    4. **A lane row carries no `lane`,** and its severity is the highest of its open rows, set when it is written.
    5. **One placeholder for this entry's item:** the 57 closures that cite item 366 were written against a
       placeholder, and the migration refuses to run without the real reference.
-   6. **R3 allows a second edit on the same day.** `updated` is a date, so a row edited twice in a day keeps it. R3
-      fails when the text changed and `updated` moved backwards, or did not move while it is more than a day older
-      than the head commit's date. The literal rule ("the same `updated` at both ends") would fail every same-day
-      re-run of this migration.
+   6. **R3 allows an edit that keeps an `updated` at most a day older than the head commit's date:** a second edit on
+      the day the row was stamped, or one committed the next day. `updated` is a date, so a row edited twice in a day
+      keeps it. R3 fails when the text changed and `updated` is missing, moved backwards, or did not move while it is
+      more than a day older than the head commit's date. The literal rule ("the same `updated` at both ends") would
+      fail every same-day re-run of this migration.
    7. **A split part may be a slug** (`MASTERPIECE:ember-against-the-dark-the/sun-glow-fog`), not only letters and
       digits, since the triage names its parts in words.
    8. **Rows added after the snapshot get their v2 fields from a landing file**,
