@@ -18,7 +18,9 @@ import { ledgerDrift } from '../_support/ledgerDrift.js';
  * only fall.
  *
  * A history comment is one that matches a marker of narration, not of a reason:
- *   - "it / they / this / these / that / which / one / each used to ..." and "used to be ...";
+ *   - "<a word> used to ...": a noun, a name, a pronoun or a code span before it ("The sweep used to sit", "`_loaded`
+ *     used to run"), except after a form of be or get ("is used to carry") or a comma ("heights (...), used to bound"),
+ *     the two shapes of a purpose; and "used to be ...";
  *   - "what was there";
  *   - a mutation receipt: "deleted / removed / retired / fixed / reverted / replaced / added" followed by a date;
  *   - a value's past: "(was 5.5)", "(was #3)";
@@ -86,6 +88,11 @@ describe('no file gains a comment that narrates history', () => {
   it('the detector finds each marker, joins a phrase broken across line comments, and passes a comment that gives a reason', () => {
     const lines = (...ls) => ls.join('\n');
     const yes = [
+      '// The sweep used to sit INSIDE SpawnerSystem',
+      '// This comment used to claim the order',
+      '// a trackpad swipe used to spin the camera',
+      '// `_loaded = true` used to run before the fetch',
+      '// Touch used to call performVerb directly',
       '// It used to swing the sword here',
       '// This call used to be the last statement',
       '/** Those used to be one array. */',
@@ -101,8 +108,14 @@ describe('no file gains a comment that narrates history', () => {
       lines('// This is why it used', '// to swing before the fix'),
     ];
     for (const c of yes) expect(historyComments(`${c}\nconst a = 1;`).length, c).toBe(1);
+    // A purpose phrase reads as one only after a form of be or get, or set off by a comma; "a ref used to hold the handle"
+    // with neither reads as history here, so write "a ref that holds the handle" or "a ref is used to hold it".
     const no = [
-      '// A ref used to hold the handle for the next frame',
+      '// the ref is used to hold the handle for the next frame',
+      '// Beast heights (from the parts table), used to bound how far the shot may sit',
+      '// Used to hold the handle for the next frame',
+      '// the loop has been used to step the clock',
+      '// a player soon gets used to the cooldown',
       '// Bodies are used to carry the velocity',
       '// measured 2026-10-27 on an iPad: 14 ms',
       '// removed from the pool when it dies',

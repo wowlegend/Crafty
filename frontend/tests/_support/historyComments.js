@@ -7,7 +7,10 @@ import { parse } from '@babel/parser';
 const PARSE = { sourceType: 'module', plugins: ['jsx'] };
 
 const HISTORY = Object.freeze([
-  /\b(it|they|this|these|that|those|which|one|each)\s+used\s+to\b/i,
+  // "<anything> used to <verb>": any word, name, code span or closing bracket before it, unless that word is a form of be
+  // or get ("is used to carry", "gets used to") or the phrase is set off by a comma ("heights (...), used to bound"), the
+  // two shapes in which "used to" states a purpose. Every other "used to" in src read as history when this was written.
+  /(?<!\b(?:am|is|are|was|were|be|been|being|get|gets|got|gotten|getting|become|becomes|became)\s+)(?<=[\w`'")\]]\s+)used\s+to\b/i,
   /\bused\s+to\s+be\b/i,
   /\bwhat\s+was\s+there\b/i,
   /\b(deleted|removed|retired|fixed|reverted|replaced|added)\s+(on\s+)?20\d\d-\d\d-\d\d/i,
