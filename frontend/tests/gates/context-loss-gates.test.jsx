@@ -9,6 +9,7 @@ import { recoverFromContextLoss, consumeResumeWorld, whenDrawnAgain, onContextLo
 import { shadowWorldEpoch } from '../../src/render/shadowSchedule.js';
 import { resolveResumeSpawn, RESUME_PROBE_MAX_FAILS, SPAWN_PROBE_MAX_FAILS } from '../../src/game/spawnPlacement.js';
 import { voxelIndex } from '../../src/world/chunkLayout.js';
+import { DEEP_FLOOR } from '../../src/world/oceanProfile.js';
 
 /**
  * A LOST WEBGL CONTEXT HAS A WAY BACK (plan 2026-10-27-crafty-steady-cool, item e; masterpiece 0f).
@@ -276,7 +277,7 @@ describe('block edits loaded before the world mounted reach the terrain worker w
 describe('the resumed save spawns the player where they stood', () => {
   const saved = { x: 24.5, y: 61.2, z: -20.5 };
   it('holds there while the column has no collider, counting toward a bounded wait', () => {
-    for (const probe of [null, NaN, 15, 3]) {
+    for (const probe of [null, undefined, NaN]) {
       expect(resolveResumeSpawn(saved, probe, 0), `probe ${probe}`).toEqual({ place: null, hold: true });
     }
   });
@@ -284,6 +285,12 @@ describe('the resumed save spawns the player where they stood', () => {
     // 75: the probe hits a roof above where the player stood. The saved y is where they were.
     expect(resolveResumeSpawn(saved, 75, 12)).toEqual({ place: saved, hold: false });
     expect(resolveResumeSpawn(saved, 58.5, 0)).toEqual({ place: saved, hold: false });
+    // The deep ocean's seabed (world/oceanProfile.js, 6 to 10) lies under the origin spawn's probe floor of 15: a column
+    // answered there is loaded all the same (a save made swimming was held 600 frames, then reset to the origin).
+    const swimming = { x: 300.5, y: 20, z: 0.5 };
+    for (const seabed of [DEEP_FLOOR, DEEP_FLOOR + 4, 15]) {
+      expect(resolveResumeSpawn(swimming, seabed, 0), `seabed ${seabed}`).toEqual({ place: swimming, hold: false });
+    }
   });
   it('gives up for the origin spawn when the column never loads, or the save is unusable', () => {
     expect(resolveResumeSpawn(saved, null, RESUME_PROBE_MAX_FAILS - 1)).toEqual({ place: null, hold: false });

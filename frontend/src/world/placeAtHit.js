@@ -30,9 +30,13 @@ function bodyCapsules(store) {
     const at = body.translation();
     const next = body.nextTranslation();
     // The live colliders, not BASE_CAPSULE: a beast form swaps the shape in place (game/beasts.js setColliderToForm).
+    // Placed from the body, not read from the collider: a teleport (the Player loop's respawn and load placements,
+    // setTranslation) moves the body at once and its collider only at the next world step, and a click between the two
+    // read the capsule where it had been (chaos session deep, 120 Hz, lag 8, seed 1).
     for (let i = 0; i < body.numColliders(); i++) {
         const c = body.collider(i);
-        const p = c.translation();
+        const off = c.translationWrtParent() || { x: 0, y: 0, z: 0 };
+        const p = { x: at.x + off.x, y: at.y + off.y, z: at.z + off.z };
         const halfHeight = c.halfHeight(), radius = c.radius();
         out.push({ x: p.x, y: p.y, z: p.z, halfHeight, radius });
         out.push({ x: p.x + next.x - at.x, y: p.y + next.y - at.y, z: p.z + next.z - at.z, halfHeight, radius });

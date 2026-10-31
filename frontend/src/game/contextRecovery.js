@@ -11,6 +11,7 @@
 // id is deliberately in-memory only — useGameStore saveActiveWorld's B2a note). sessionStorage survives a reload of the
 // same tab and dies with it, which is exactly "resume what this tab was playing" and nothing more.
 import { markShadowWorldChanged } from '../render/shadowSchedule.js';
+import { savePosition } from './saveSchema.js';
 
 /** The sessionStorage key holding the world this tab was playing when its context was lost. */
 export const RESUME_WORLD_KEY = 'crafty.resumeWorldId';
@@ -53,9 +54,7 @@ export function recoverFromContextLoss({ getState, storage, reload }) {
     reload();
     return null;
   }
-  const rb = st.playerRigidBodyRef && st.playerRigidBodyRef.current;
-  const t = rb && rb.translation ? rb.translation() : null;
-  st.saveActiveWorld(t ? { x: t.x, y: t.y, z: t.z } : st.playerPosition);
+  st.saveActiveWorld(savePosition(st));
   const id = getState()._sessionWorldId || null; // saveActiveWorld mints one if the session owned none
   try {
     if (id) storage.setItem(RESUME_WORLD_KEY, id);

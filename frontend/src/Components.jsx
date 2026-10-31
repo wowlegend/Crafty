@@ -6,7 +6,9 @@ import { solveMeleeDamage } from './utils/combat';
 import { getWeaponBaseDamage } from './game/equipment.js';
 import { worldTimeScale, hitstopForHit } from './game/hitstop.js';
 import { realDelta, worldNow } from './game/worldClock.js';
-import { BEAST_FORMS, BASE_CAPSULE, setColliderToForm, restoreBaseCollider, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
+import { BEAST_FORMS, BASE_CAPSULE, elementForSpell, resolveFormMelee, formMeleeCooldownMult, formLocomotion } from './game/beasts.js';
+import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from './game/formFit.js';
+import { refuseFormSwap, cutTransformCam } from './game/formRefusal.js';
 import { makeTransformState, decideTransform } from './game/beastTransform.js';
 import { canAfford, ROAR_COST, GRAB_COST, SNARE_COST, FUSE_COST, IMBUE_COST } from './game/ember.js';
 import { TRANSFORM_CAM_SEC, transformCamPose } from './game/transformCam.js';
@@ -17,7 +19,7 @@ import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
-import { resolveSpawnGround, resolveResumeSpawn, spawnTargetY, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
@@ -56,7 +58,7 @@ import { SquadAISystem } from './world/SquadAISystem.jsx';
 import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
 import { swingOrigin, steadyEye, EYE_HEIGHT_M, EYE_BOB_M } from './combat/swingOrigin.js';
-import { moveKinematic } from './game/kinematicMove.js';
+import { moveKinematic, placeBody } from './game/kinematicMove.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { routeExpressVerb } from './input/expressVerbs.js';
 import { isInputLive } from './input/inputLive.js';
@@ -105,11 +107,10 @@ export const Player = ({ isWorldBuilt }) => {
   const controllerRef = useRef(null);
   const knockbackVelocity = useRef(new THREE.Vector3(0, 0, 0));
   // S2-B1-M1: beast-form collider hot-swap. pendingFormSwapRef = a one-shot target capsule enqueued
-  // on activeBeastForm transitions, consumed inside useFrame (atomic with the Rapier sweep).
-  // currentFormHHRef tracks the live half-height so we can nudge up by the grow-delta (depenetration)
-  // when a larger form spawns near ground. Both are refs -> zero re-renders (Game-Loop Isolation).
+  // on activeBeastForm transitions, consumed inside useFrame (atomic with the Rapier sweep), where game/formFit.js
+  // places the new capsule where it fits. A ref -> zero re-renders (Game-Loop Isolation).
   const pendingFormSwapRef = useRef(null);
-  const currentFormHHRef = useRef(BASE_CAPSULE.halfHeight);
+  const roarPaidRef = useRef(0); // the ember the roar spent on the queued form, given back if its swap is refused
   // S2-B1-M3: the transform state machine (charge + duration + cooldown) + roar edge-detection.
   const beastSMRef = useRef(makeTransformState());
   const prevRoarRef = useRef(false);
@@ -195,18 +196,17 @@ export const Player = ({ isWorldBuilt }) => {
   useEffect(() => {
     if (!didFormMount.current) { didFormMount.current = true; return; }
     if (activeBeastForm) {
-      // ENTER: queue the (possibly enlarging) swap -> consumed in useFrame so it is ATOMIC with the
-      // Rapier sweep and the grow-depenetration folds into the same setNextKinematicTranslation.
+      // ENTER: queue the swap -> consumed in useFrame so it is ATOMIC with the Rapier sweep.
       pendingFormSwapRef.current = BEAST_FORMS[activeBeastForm] || BASE_CAPSULE;
     } else {
-      // EXIT/restore: shrink back to base IMPERATIVELY here -- NOT via the useFrame queue, which sits
+      // EXIT/restore: back to base IMPERATIVELY here -- NOT via the useFrame queue, which sits
       // behind the dead-window early-return (a queued restore would not drain until manual respawn,
       // leaving the live collider a beast shape for the whole death screen). This is the
-      // no-permanent-beast restore AT the death/load edge. Always a shrink -> no depenetration ->
-      // safe off-frame. Cancels any not-yet-consumed enter-swap + resyncs the half-height tracker.
+      // no-permanent-beast restore AT the death/load edge. Not always a shrink (the comet and the hawk
+      // are narrower than the base), so the base capsule is placed where it fits (game/formFit.js).
       pendingFormSwapRef.current = null;
-      restoreBaseCollider(rigidBodyRef.current?.collider(0), rapier, controllerRef.current);
-      currentFormHHRef.current = BASE_CAPSULE.halfHeight;
+      roarPaidRef.current = 0; // a form that ended before its swap ran: its price stays spent, as any ended form's does
+      if (rigidBodyRef.current) restoreBaseFitted(world, rapier, rigidBodyRef.current, controllerRef.current, { unindexed: GameMethods.placedCells?.unindexed() });
     }
   }, [activeBeastForm]);
 
@@ -750,9 +750,15 @@ export const Player = ({ isWorldBuilt }) => {
         st.setBeastCharging(true); // M7c: beat-1 anticipation begins
       } else if (action === 'enter') {
         // UNLEASH: the bar is spent only on a real transform (enterBeastForm returns false when it rejects: already in a
-        // form, or dead), so a no-op enter drains nothing.
-        if (st.enterBeastForm(elementForSpell(st.activeSpell))) {
-          st.spendEmber(ROAR_COST);
+        // form, or dead), so a no-op enter drains nothing. A form with no room where the player stands (the golem in a
+        // two-high tunnel) is refused before that, and said (game/formFit.js).
+        const element = elementForSpell(st.activeSpell);
+        if (!formHasRoom(world, rapier, rigidBodyRef.current, BEAST_FORMS[element], { unindexed: GameMethods.placedCells?.unindexed() })) {
+          notifyDenied('no-room');
+          cutTransformCam(transformCamRef.current);
+        } else if (st.enterBeastForm(element)) {
+          // Kept until the frame's swap places the form: a refusal there gives it back (game/formRefusal.js).
+          roarPaidRef.current = st.spendEmber(ROAR_COST) ? ROAR_COST : 0;
           // AUDIO (the owed B1 backfill): the ROAR finally SOUNDS — spatial at the player.
           const rp = st.playerPosition;
           if (st.playSpatialSound && rp) st.playSpatialSound('roar', [rp.x, rp.y, rp.z], 1, 30);
@@ -769,8 +775,7 @@ export const Player = ({ isWorldBuilt }) => {
       } else if (action === 'cancel' || action === 'unpaid') {
         // M7a: roar released early, or its price spent by another verb -> ease the transform-cam back to FPV (jump it
         // to the return phase).
-        const tc = transformCamRef.current;
-        if (tc.active) tc.t = Math.max(tc.t, 0.78 * TRANSFORM_CAM_SEC);
+        cutTransformCam(transformCamRef.current);
         st.setBeastCharging(false); // M7c: charge cancelled
         if (action === 'unpaid') emberShort = true;
       } else if (action === 'short') {
@@ -1033,13 +1038,15 @@ export const Player = ({ isWorldBuilt }) => {
       rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       return;
-    } else if (!spawnPosSet.current) {
+    } else if (!spawnPosSet.current || useGameStore.getState().resumeSpawn) {
       const store = useGameStore.getState();
-      // 0. a RESUMED save (the context-loss reload) stands the player where they were saved, once that column's colliders
-      //    exist (game/spawnPlacement.js resolveResumeSpawn). The camera goes there while it waits: chunk streaming follows it.
+      // 0. a LOADED save (the World Manager's Load, or the context-loss reload) stands the player where they were saved,
+      //    once that column's colliders exist (game/spawnPlacement.js resolveResumeSpawn); a load in play enters here too,
+      //    and the body is held until the new world's column is in. The camera goes there while it waits: chunk streaming
+      //    follows it. Until the old world's wipe has committed the probe is not asked (store worldReloading).
       if (store.resumeSpawn) {
         const r = store.resumeSpawn;
-        const probeY = store.getMobGroundLevel ? store.getMobGroundLevel(r.x, r.z) : null;
+        const probeY = store.getMobGroundLevel && !store.worldReloading ? resumeColumnProbe(store.getMobGroundLevel, r) : null;
         const resume = resolveResumeSpawn(r, probeY, resumeProbeFailsRef.current);
         if (resume.hold) {
           resumeProbeFailsRef.current += 1;
@@ -1051,26 +1058,27 @@ export const Player = ({ isWorldBuilt }) => {
         useGameStore.setState({ resumeSpawn: null }); // one-shot: placed, or given up for the origin spawn below
         resumeProbeFailsRef.current = 0;
         if (resume.place) {
-          rigidBodyRef.current.setTranslation(resume.place, true);
+          // Where the base capsule stands clear nearest the saved centre (game/formFit.js fitLoadedSpot): a save on disk
+          // can hold a spot in a wall or under the ground (the old Save button's rounded camera).
+          // The collider goes with it (game/kinematicMove.js placeBody): the next frame sweeps from the fitted spot, not
+          // from the held one in the wall.
+          const spot = fitLoadedSpot(world, rapier, rigidBodyRef.current, resume.place, store.getMobGroundLevel, { unindexed: GameMethods.placedCells?.unindexed() });
+          const at = { x: spot.x, y: spot.y, z: spot.z };
+          placeBody(world, rigidBodyRef.current, at);
           rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          camera.position.set(resume.place.x, resume.place.y + EYE_HEIGHT_M, resume.place.z);
+          camera.position.set(at.x, at.y + EYE_HEIGHT_M, at.z);
           spawnPosSet.current = true;
           return;
         }
       }
-      // 1. placed-block ground (save load): highest block at the origin column
-      let blockGroundY = null;
-      if (store.worldBlocks && store.worldBlocks.size > 0) {
-        for (let y = 150; y > 0; y--) {
-          // ELEMANCER-M1 fix: writers key worldBlocks with UNDERSCORES (`x_y_z`).
-          if (store.worldBlocks.has(`0_${y}_0`)) { blockGroundY = y; break; }
-        }
-      }
-      // 2. else the physics raycast — the spawn-ground DECISION (bounded probe wait + y=60 fallback +
-      //    the physicsY<=15 reject) lives in game/spawnPlacement.js (resolveSpawnGround). KEVIN-FIX C1.
+      // The physics raycast over the four columns the spawn stands across, placed blocks and terrain alike: the
+      // spawn-ground DECISION (bounded probe wait + y=60 fallback + the physicsY<=15 reject) lives in
+      // game/spawnPlacement.js (spawnCornerGround, resolveSpawnGround). KEVIN-FIX C1. The placed blocks of the
+      // column are not read on their own: that read counted a mined cell as ground and stood the player a block too
+      // low, inside it.
       const probeAvailable = !!store.getMobGroundLevel;
-      const physicsY = (blockGroundY === null && probeAvailable) ? store.getMobGroundLevel(0, 0) : null;
-      const spawn = resolveSpawnGround(blockGroundY, physicsY, spawnProbeFailsRef.current, probeAvailable);
+      const physicsY = probeAvailable ? spawnCornerGround(store.getMobGroundLevel) : null;
+      const spawn = resolveSpawnGround(null, physicsY, spawnProbeFailsRef.current, probeAvailable);
       if (spawn.incFails) spawnProbeFailsRef.current += 1;
       if (spawn.retry) {
         rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
@@ -1078,8 +1086,10 @@ export const Player = ({ isWorldBuilt }) => {
         return; // Wait for next frame (the streamer is loading origin chunks)
       }
 
-      const safeY = spawnTargetY(spawn.groundY); // player center 1.2 above ground (instant land)
-      rigidBodyRef.current.setTranslation({ x: 0, y: safeY, z: 0 }, true);
+      // Player center 1.2 above ground (instant land), the collider with it: the next frame sweeps from here, not from
+      // the sky the body waited in (game/kinematicMove.js placeBody).
+      const safeY = spawnTargetY(spawn.groundY);
+      placeBody(world, rigidBodyRef.current, { x: 0, y: safeY, z: 0 });
       rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
 
       // Cancel skyfall lerp transition: set camera position instantly
@@ -1403,33 +1413,32 @@ export const Player = ({ isWorldBuilt }) => {
     // (capture/respawn/void-guard above), immediately before the collider(0) read -- so the in-place
     // setShape is ATOMIC with this frame's sweep (a frame that skips the sweep also skips the swap)
     // and NEVER runs under the visual-capture harness (capture early-returns at the top of useFrame).
-    // setShape preserves the collider handle/index/groups -> no re-bind, ZERO voxel edits. The grow-
-    // depenetration delta folds into the single setNextKinematicTranslation below. (EXIT/restore is
-    // done imperatively in the activeBeastForm effect -- it must drain even while the dead-window
-    // early-return is active.) Guarded on controllerRef so the swap + its depenetration stay paired.
-    let growDeltaY = 0;
+    // setShape preserves the collider handle/index/groups -> no re-bind, ZERO voxel edits. The new capsule is placed
+    // where it fits (game/formFit.js), so this frame's sweep starts clear; where nothing near fits any more (a block
+    // placed since the roar's commit checked), the form is refused. (EXIT/restore is done imperatively in the
+    // activeBeastForm effect -- it must drain even while the dead-window early-return is active.)
     if (pendingFormSwapRef.current && rapier && controllerRef.current) {
       const target = pendingFormSwapRef.current;
       pendingFormSwapRef.current = null;
-      const c0 = rigidBodyRef.current.collider(0);
-      if (c0 && setColliderToForm(c0, rapier, target)) {
-        growDeltaY = Math.max(0, target.halfHeight - currentFormHHRef.current);
-        currentFormHHRef.current = target.halfHeight;
+      const paid = roarPaidRef.current;
+      roarPaidRef.current = 0;
+      if (enterFormFitted(world, rapier, rigidBodyRef.current, target, { unindexed: GameMethods.placedCells?.unindexed() })) {
         // defensive base reset (M1 forms never shove dynamics; the bull enables this in M5).
         if (controllerRef.current.setApplyImpulsesToDynamicBodies) {
           controllerRef.current.setApplyImpulsesToDynamicBodies(false);
         }
+      } else {
+        refuseFormSwap(useGameStore.getState(), { paid, transformCam: transformCamRef.current, notify: notifyDenied });
       }
     }
 
     // The Rapier KCC sweep and the frame's one kinematic write (game/kinematicMove.js: it also sweeps a move given on a
-    // frame that took no world step, which a plain write would lose). growDeltaY (from a just-applied enlarging
-    // form-swap) is folded into THIS write -- never a competing setNextKinematic from a subscribe callback -- so a
-    // larger capsule never spawns intersecting the ground. The colliders made since the last world step (a placed cell's
-    // stand-in, a rebuilt chunk) are ones the KCC's sweep cannot see yet, so the move is cut at them (world/placedCellColliders.js).
+    // frame that took no world step, which a plain write would lose). The colliders made since the last world step (a
+    // placed cell's stand-in, a rebuilt chunk) are ones the KCC's sweep cannot see yet, so the move is cut at them
+    // (world/placedCellColliders.js).
     const collider = rigidBodyRef.current.collider(0);
     if (collider && controllerRef.current) {
-      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, growDeltaY, filterPredicate, GameMethods.placedCells?.unindexed());
+      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, 0, filterPredicate, GameMethods.placedCells?.unindexed());
     }
 
     // Phase 9: Dynamic FOV Momentum & Camera Bobbing
