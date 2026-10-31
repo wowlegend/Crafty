@@ -128,17 +128,19 @@ export function fitCapsule(world, rapier, body, shape, opts = {}) {
  * capsule stands across (`probe`, Terrain.jsx getMobGroundLevel: the topmost face under y 255). A save on disk can hold a
  * position no capsule fits at: the Save button before DECISIONS 2026-10-30 item 153 wrote the camera rounded to whole
  * metres, and the frozen pre-cut fixture (tests/fixtures/pre-cut-save.json) stands nine metres under the ground in the
- * chaos harness's world.
+ * chaos harness's world. The stuck-in-rock recovery (game/stuckInRock.js) stands a body found in the rock the same way,
+ * from where it is and in its own shape.
  * @param {object} world the Rapier world
  * @param {object} rapier the Rapier module
  * @param {object} body the player's kinematic body (excluded from every query)
  * @param {{x: number, y: number, z: number}} saved the saved centre
  * @param {(x: number, z: number) => ?number} probe the ground probe, which casts at (x + 0.1, z + 0.1)
- * @param {{filter?: (c: object) => boolean, unindexed?: object[]}} [opts] as fitCapsule's
+ * @param {{filter?: (c: object) => boolean, unindexed?: object[], shape?: {halfHeight: number, radius: number}}} [opts]
+ *   as fitCapsule's, and the capsule to stand (the base capsule unless given)
  * @returns {{x: number, y: number, z: number, by: 'saved'|'near'|'column'}} the centre, and how it was found
  */
 export function fitLoadedSpot(world, rapier, body, saved, probe, opts = {}) {
-  const shape = BASE_CAPSULE;
+  const shape = opts.shape || BASE_CAPSULE;
   const clear = clearTest(world, rapier, body, shape, opts);
   const solid = new Map();
   const inGround = (p) => {

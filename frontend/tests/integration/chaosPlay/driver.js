@@ -1,12 +1,13 @@
 // The chaos player: a seeded session of short episodes, each a thing a player does when they are clicking and walking
 // at random (Kevin, 2026-10-30: "left click / right clicking chaotically" near the ocean). Every session presses into a
-// wall, swaps form, falls through the void and saves then loads, in a seeded order; the rest is wandering with clicks.
+// wall, swaps form, falls through the void (at the deep seabed, down a shaft it digs) and saves then loads, in a seeded
+// order, and a session in the field clips into the rock over the cave under it; the rest is wandering with clicks.
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { BEAST_FORMS } from '../../../src/game/beasts.js';
 import {
   makeSession, tick, lookDir, buildRay, rightClick, leftClick, enterForm, exitForm, voidFall, writeSave, loadSave,
-  checkEscape, finishSession, mulberry32,
+  checkEscape, finishSession, mulberry32, clipInto, wholeInRock, CLIP_RECOVERY_FRAMES, FIELD_CAVE, LAND_TOP,
 } from './harness.js';
 
 const ELEMENTS = Object.keys(BEAST_FORMS);
@@ -162,6 +163,58 @@ const EPISODES = {
     frames(S, 30, { yaw: rnd() * 6.283, forward: false });
     S.home = { x: 0.5, z: 0.5, roam: 3 };
   },
+  shaft(S, rnd) {
+    // Dig, then the reset (registry AUDIT:desync:void-guard-fires-inside-the-playable-world): from the corner nearest the
+    // player, a shaft two columns wide straight down through the deep seabed's last cells and out of the bottom of the
+    // world. Every level dug stands the player lower in the world, which the void guard must leave alone; out of the bottom
+    // it resets them, and the respawn stands them on the origin column. Two columns wide, the shaft clears the capsule by
+    // a metre: a capsule within the controller's offset of a wall reads grounded on about half its frames and slides down
+    // it at the glue speed (scratch probe 2026-10-30, a one-column shaft), which no dig waits out. A shaft that never lets
+    // the player out ends in the fall through the world, so every session still respawns.
+    const t0 = S.p.body.translation();
+    const corner = { x: Math.round(t0.x), z: Math.round(t0.z) };
+    const toCorner = () => {
+      const t = S.p.body.translation();
+      const dx = corner.x - t.x, dz = corner.z - t.z;
+      return { yaw: Math.atan2(dz, dx), forward: Math.hypot(dx, dz) > 0.15 };
+    };
+    for (let i = 0; i < 90 && toCorner().forward; i++) frames(S, 1, toCorner());
+    const respawns = S.stats.respawns;
+    for (let level = 0; level < 10 && S.stats.respawns === respawns; level++) {
+      // The four cells the feet stand on, each aimed at from the eye through the middle of its top face.
+      const t = S.p.body.translation();
+      const shape = S.p.body.collider(0);
+      const floor = Math.floor(t.y - shape.halfHeight() - shape.radius() - 0.1);
+      const eyeY = t.y + 0.67;
+      for (const [dx, dz] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
+        const cx = corner.x + dx + 0.5, cz = corner.z + dz + 0.5;
+        const len = Math.hypot(cx - t.x, floor + 1 - eyeY, cz - t.z);
+        const h = buildRay(S, { x: (cx - t.x) / len, y: (floor + 1 - eyeY) / len, z: (cz - t.z) / len });
+        if (h) { leftClick(S, h); S.stats.shaftDigs++; }
+      }
+      frames(S, 25, { yaw: 0, forward: false });
+      const b = S.p.body.translation();
+      S.recent.push(`f${S.f} shaft: level ${floor} dug, body (${b.x.toFixed(2)}, ${b.y.toFixed(2)}, ${b.z.toFixed(2)})`);
+    }
+    if (S.stats.respawns > respawns) S.stats.shaftsThroughWorld++;
+    else EPISODES.void(S, rnd);
+    frames(S, 20, { yaw: rnd() * 6.283, forward: false });
+    S.home = { x: 0.5, z: 0.5, roam: 3 };
+  },
+  clip(S, rnd) {
+    // Into the rock over the cave under the field, as a chunk that lands round the player leaves them: where they stand,
+    // brought inside the cave's footprint, and at a seeded depth between a metre over its ceiling and two under the land's
+    // top. The body falls through the hollow rock onto the back of the ceiling (from low down) or is still falling when
+    // it is read (from high up); either way the Player has to stand it clear, near where it clipped. The whole capsule is
+    // put in unbroken rock: from the seeded depth down, the first centre whose capsule covers only solid cells, so a cell
+    // the player dug there is passed over (a centre left in a dug pocket is not in the rock: seed 2, 120 Hz, lag 2).
+    const t = S.p.body.translation();
+    const inside = (v, [lo, hi]) => Math.min(Math.max(v, lo + 1.5), hi - 0.5);
+    const p = { x: inside(t.x, FIELD_CAVE.x), y: FIELD_CAVE.ceiling + 1 + rnd() * (LAND_TOP - FIELD_CAVE.ceiling - 3), z: inside(t.z, FIELD_CAVE.z) };
+    while (p.y > FIELD_CAVE.ceiling + 1 && !wholeInRock(S, p)) p.y -= 0.5;
+    if (wholeInRock(S, p)) clipInto(S, p);
+    frames(S, CLIP_RECOVERY_FRAMES(S.hz) + 30, { yaw: rnd() * 6.283, forward: false });
+  },
   saveLoad(S, rnd) {
     // Saved and loaded from the World Manager's panel, which takes the input: the player stands still for both. The save
     // is made in the session's form (a file's sessions try every form and the base shape), pressed against the nearest
@@ -189,7 +242,7 @@ export function playSession({ spot, seed, hz, lag, budget = 420, K = 90, tol }) 
   // Every session presses into a wall, swaps form, builds at its feet and its eye, and saves then loads, in a seeded
   // order at its own spot; the fall through the void comes last, since every respawn lands on the origin column. A
   // session at the origin digs and builds on that column first, so its respawn reads an edited column.
-  const order = ['press', 'swap', 'saveLoad', 'feet', 'eye'].map((m) => [rnd(), m]).sort((a, b) => a[0] - b[0]).map(([, m]) => m);
+  const order = ['press', 'swap', 'saveLoad', 'feet', 'eye', ...(spot === 'field' ? ['clip'] : [])].map((m) => [rnd(), m]).sort((a, b) => a[0] - b[0]).map(([, m]) => m);
   if (spot === 'origin') order.unshift('origin');
   for (const ep of order) {
     EPISODES[ep](S, rnd);
@@ -197,7 +250,8 @@ export function playSession({ spot, seed, hz, lag, budget = 420, K = 90, tol }) 
   }
   while (S.f < budget) EPISODES[pick(rnd, ['wander', 'wander', 'press', 'feet', 'eye', 'swap'])](S, rnd);
   exitForm(S);
-  EPISODES.void(S, rnd);
+  // The deep seabed is six cells over the bottom of the world, so a session there leaves it down a shaft it digs.
+  EPISODES[spot === 'deep' ? 'shaft' : 'void'](S, rnd);
   EPISODES.wander(S, rnd);
   // let every edit land, then the end-of-session checks
   for (let i = 0; i < 40 && (S.worker.queue.length || S.reload); i++) tick(S, { yaw: 0, forward: false });

@@ -1,6 +1,6 @@
 // The chaos-play harness: a seeded player who uses every verb that edits the world or moves the body, in the game's own
 // frame order, against the real Rapier build, the real greedy mesher and the real verb executors. The gate
-// (tests/integration/chaos-play-*.test.jsx) reads five invariants as the session plays; what each reads is in
+// (tests/integration/chaos-play-*.test.jsx) reads six invariants as the session plays; what each reads is in
 // chaos-play-instruments.test.jsx's header.
 //
 // Wired as the game wires it:
@@ -13,8 +13,9 @@
 //  - each placed cell held solid from the click by world/placedCellColliders.js, retired one step after its trimesh;
 //  - a display frame: @react-three/rapier's stepper first (a fixed 1/60 s accumulator, so at 120 Hz every other frame
 //    takes no step, each step followed by placedCells.afterStep), then the Player frame (Components.jsx): the void guard,
-//    the spawn branch, grounded from the last sweep, the ledge vault, jump / glue / gravity with the form's multipliers,
-//    the queued form swap, and one moveKinematic write with the unindexed colliders;
+//    the spawn branch, the blind drop's follow and the stuck-in-rock recovery, grounded from the last sweep, the ledge
+//    vault, jump / glue / gravity with the form's multipliers, the queued form swap, and one moveKinematic write with the
+//    unindexed colliders;
 //  - clicks between frames: the build ray from the steady eye (Terrain.jsx castBuildRay, its direction scaled by the
 //    hit's toi), the real placeAtHit and the real mineTarget with the mine verb's worker post and store write;
 //  - a form swap through the store (enterBeastForm / exitBeastForm) and Components.jsx's activeBeastForm effect;
@@ -22,7 +23,8 @@
 //    answers it and its wipe done as Terrain.jsx does it.
 //
 // NOT MODELLED: the walk's accel ramp, coyote time and the jump buffer, dodge, knockback from mobs, the camera's bob and
-// shake (the build ray starts at the steady eye), chunk streaming by distance (the 25 chunks stay loaded).
+// shake (the build ray starts at the steady eye), chunk streaming by distance (the 25 chunks stay loaded, so the spawn's
+// probe always answers and its blind drop and the follow after it never run here: tests/gates/stuck-in-rock-gates.test.jsx).
 import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { useGameStore } from '../../../src/store/useGameStore.jsx';
@@ -35,17 +37,20 @@ import { voxelIndex, CHUNK_SIZE, CHUNK_VOLUME, CHUNK_HEIGHT, chunkOf } from '../
 import { moveKinematic, placeBody } from '../../../src/game/kinematicMove.js';
 import { BASE_CAPSULE, BEAST_FORMS, formLocomotion } from '../../../src/game/beasts.js';
 import { moveSpeed, jumpVelocity, GLUE_VELOCITY, VAULT_VELOCITY, applyGravity } from '../../../src/game/locomotion.js';
-import { steadyEye } from '../../../src/combat/swingOrigin.js';
+import { steadyEye, EYE_HEIGHT_M } from '../../../src/combat/swingOrigin.js';
 import { SEA_LEVEL, DEEP_FLOOR } from '../../../src/world/oceanProfile.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from '../../../src/game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from '../../../src/game/spawnPlacement.js';
+import { makeStuckWatch, stuckInRock } from '../../../src/game/stuckInRock.js';
 import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from '../../../src/game/formFit.js';
-import { teleportPlayer } from '../../../src/game/stanceState.js';
 import { buildSaveData, savePosition } from '../../../src/game/saveSchema.js';
 
 const DT = 1 / 60;
 export const AIR = 0, STONE = 3;
 const SAND = 4, WATER = 9;
 export const LAND_TOP = 30; // the land's top face: solid cells y < 30
+// The void guard reset a body whose centre was under y 10 until DECISIONS 2026-10-30 item 207: the frames a player stood
+// under it in the world are counted, so a driver that stops reaching the deep seabed fails as SETUP.
+const OLD_VOID_LINE = 10;
 // Five by five chunks (x and z -32 to 47): every place's roam, and the cells a click there reaches, stay a chunk inside the
 // edge, so no placement lands where no chunk will ever mesh it and retire its stand-in.
 const CHUNKS = [-2, -1, 0, 1, 2];
@@ -53,12 +58,21 @@ const KEYS = CHUNKS.flatMap((cx) => CHUNKS.map((cz) => `${cx}_${cz}`));
 
 // ---- the world: one map with the places a player gets stuck -------------------------------------------------------
 // The shore (Kevin's): from x = 6 the land steps down a block every two columns to a seabed at 22, under water to
-// SEA_LEVEL. The deep ocean: from x = 24 the seabed drops to 10 (DEEP_FLOOR + 4, the shallowest of oceanProfile.js's
-// full-ocean seabed, 6 to 10), under the ground probe's floor of 15 and above the void line (game/spawnPlacement.js).
+// SEA_LEVEL. The deep ocean: from x = 24 the seabed drops to DEEP_FLOOR, 6, the deepest of oceanProfile.js's full-ocean
+// seabed (6 to 10), under the ground probe's floor of 15 and under the y 10 the void guard reset at until DECISIONS
+// 2026-10-30 item 207 (game/spawnPlacement.js isVoidFall).
 // The cliff: south of z = -6 the land stands six blocks higher, a sheer face at z = -5. The cave: a tunnel two wide and
 // two high (ceiling at 32) runs into the cliff at x = -6..-5. The overhang: a stone slab at y = 32 over open land, two
 // metres of headroom. The field: open flat land. The origin column, where every respawn lands.
-export const DEEP_SEABED = DEEP_FLOOR + 4;
+export const DEEP_SEABED = DEEP_FLOOR;
+// The cave under the field: a chamber in the rock, its floor at y 2 and its ceiling at 5 (cells 2 to 4 are air), where the
+// real world has one under 23% of the columns round the spawn (DECISIONS 2026-10-30 item 213). A body that clips into the
+// ground over it falls through the hollow rock onto the back of its ceiling, above the void guard's line, and stays there
+// unless something stands it clear; the field's sessions clip once each. It lies inside chunk -1_1, the field's: a chunk's
+// trimesh decides where a body slides, so a cave in another place's chunk would move that place's sessions.
+export const FIELD_CAVE = { x: [-15, -2], z: [16, 29], floor: 2, ceiling: 5 };
+const inFieldCave = (x, y, z) => x >= FIELD_CAVE.x[0] && x <= FIELD_CAVE.x[1] && z >= FIELD_CAVE.z[0] && z <= FIELD_CAVE.z[1]
+  && y >= FIELD_CAVE.floor && y < FIELD_CAVE.ceiling;
 function columnTop(x, z) {
   if (x >= 24) return DEEP_SEABED;
   if (x >= 6) return Math.max(22, LAND_TOP - Math.ceil((x - 5) / 2));
@@ -68,6 +82,7 @@ function columnTop(x, z) {
 export function genCell(x, y, z) {
   if (y === 32 && x >= -14 && x <= -7 && z >= 6 && z <= 12) return STONE;
   if ((x === -6 || x === -5) && z >= -14 && z <= -6 && (y === 30 || y === 31)) return AIR;
+  if (inFieldCave(x, y, z)) return AIR;
   const top = columnTop(x, z);
   if (y < top) return y >= top - 3 ? SAND : STONE;
   if (y <= SEA_LEVEL) return WATER;
@@ -242,7 +257,7 @@ function spawnBranch(S) {
       const spot = fitLoadedSpot(S.world, RAPIER, S.p.body, resume.place, (x, z) => groundProbe(S, x, z), { unindexed: S.cells.unindexed() });
       const at = { x: spot.x, y: spot.y, z: spot.z };
       placeBody(S.world, S.p.body, at);
-      S.spawnSet = true;
+      S.spawn.placed.current = true;
       S.stats[`loadsPlaced_${spot.by}`] = (S.stats[`loadsPlaced_${spot.by}`] || 0) + 1;
       released(S, at);
       return;
@@ -250,15 +265,16 @@ function spawnBranch(S) {
     released(S, null);
   }
   const physicsY = spawnCornerGround((x, z) => groundProbe(S, x, z));
-  const spawn = resolveSpawnGround(null, physicsY, S.spawnFails, true);
-  if (spawn.incFails) S.spawnFails += 1;
+  const spawn = resolveSpawnGround(null, physicsY, S.spawn.probeWait.current, true, 1 / S.hz);
+  if (spawn.incFails) S.spawn.probeWait.current += 1 / S.hz;
   if (spawn.retry) {
     S.p.body.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
     return;
   }
   placeBody(S.world, S.p.body, { x: 0, y: spawnTargetY(spawn.groundY), z: 0 });
-  S.spawnSet = true;
+  S.spawn.placed.current = true;
   S.stats.respawns++;
+  if (spawn.blind) S.blind.left = SPAWN_PROBE_MAX_SEC;
 }
 
 /** A load's hold ends: I5 reads whether it let the player go within its frame bound, or gave up for the origin spawn.
@@ -281,13 +297,31 @@ function playerFrame(S, input) {
   const { body, kcc, filter } = S.p;
   body.wakeUp();
   const t = body.translation();
-  if (S.spawnSet && isVoidFall(t.y)) {
-    teleportPlayer(body, { x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
-    S.spawnSet = false;
+  if (S.spawn.placed.current && isVoidFall(t.y)) {
+    voidReset(S);
     return;
   }
-  if (!S.spawnSet || useGameStore.getState().resumeSpawn) {
+  if (!S.spawn.placed.current || useGameStore.getState().resumeSpawn) {
     spawnBranch(S);
+    return;
+  }
+  // A body left in the rock is stood clear where it is: after a blind drop on the corner's ground once it answers, else
+  // once its centre has read solid long enough (the stuck-in-rock recovery, which I7 reads).
+  const probe = (x, z) => groundProbe(S, x, z);
+  let standAt = null;
+  if (S.blind.left > 0) {
+    const c = body.collider(0);
+    const y = followBlindDrop(S.blind, spawnCornerGround(probe), t, c.halfHeight() + c.radius(), dt);
+    if (y !== null) { standAt = { x: 0, y, z: 0 }; S.stats.blindDropsFollowed++; }
+  }
+  if (!standAt) {
+    standAt = stuckInRock(S.stuck, S.world, RAPIER, body, dt, probe, S.cells.unindexed());
+    if (standAt) recovered(S, standAt);
+  }
+  if (standAt) {
+    placeBody(S.world, body, standAt);
+    S.vy = 0;
+    S.camera.position.set(standAt.x, standAt.y + EYE_HEIGHT_M, standAt.z);
     return;
   }
   const store = useGameStore.getState();
@@ -320,6 +354,72 @@ function playerFrame(S, input) {
     const c = kcc.computedCollision(i);
     if (c && Math.abs(c.normal1.y) < 0.3) { S.stats.wallContactFrames++; break; }
   }
+}
+
+/** The void guard's reset (Components.jsx): I6 reads whether the player had ground under their feet when it fired (the guard
+ *  took them out of a world they stood in, to the origin), then the body goes back to the origin spawn's wait the game's
+ *  way (game/spawnPlacement.js returnToSpawn; the harness's camera is a stand-in, since nothing here streams by it). */
+export function voidReset(S) {
+  const ground = groundUnder(S);
+  S.stats.voidResets++;
+  if (ground) note(S, 'I6', { at: vec(S.p.body.translation()), groundCell: ground });
+  if (S.clip) {
+    note(S, 'I7', { why: 'the clipped body fell out of the world before it was stood clear', clip: S.clip.at, at: vec(S.p.body.translation()) });
+    S.clip = null;
+  }
+  S.recent.push(`f${S.f} void reset${ground ? ` over ground at ${ground.join(',')}` : ''}`);
+  returnToSpawn(S.world, S.p.body, S.camera, EYE_HEIGHT_M, S.spawn);
+}
+/** The highest solid cell of the logical world under the capsule's feet, in the columns its footprint covers, or null: a
+ *  body under the world has none, and one inside the cells at y 0 (fallen through the hollow trimesh onto the world's
+ *  bottom face) has its feet in the last cell, not over it. */
+export function groundUnder(S) {
+  const t = S.p.body.translation(), c = S.p.body.collider(0);
+  const r = c.radius(), feet = t.y - c.halfHeight() - r;
+  let best = null;
+  for (let x = Math.floor(t.x - r); x <= Math.floor(t.x + r); x++)
+    for (let z = Math.floor(t.z - r); z <= Math.floor(t.z + r); z++)
+      for (let y = Math.min(Math.floor(feet) - 1, CHUNK_HEIGHT - 1); y >= 0; y--) {
+        if (!solidAt(S, x, y, z)) continue;
+        if (!best || y > best[1]) best = [x, y, z];
+        break;
+      }
+  return best;
+}
+
+/** Whether every cell the body's capsule would reach into, centred at `p`, is solid: wholly inside the rock. */
+export function wholeInRock(S, p) {
+  const c = S.p.body.collider(0);
+  const hh = c.halfHeight(), r = c.radius();
+  for (let x = Math.floor(p.x - r); x <= Math.floor(p.x + r); x++)
+    for (let y = Math.floor(p.y - hh - r); y <= Math.floor(p.y + hh + r); y++)
+      for (let z = Math.floor(p.z - r); z <= Math.floor(p.z + r); z++) if (!solidAt(S, x, y, z)) return false;
+  return true;
+}
+/** A clipped body is stood clear within this many frames of the clip (I7): half a second, at any frame rate. */
+export const CLIP_RECOVERY_FRAMES = (hz) => Math.ceil(0.5 * hz);
+/** A clip into the ground: the body and its collider put at `p` in the rock, as a chunk that lands round a player leaves
+ *  them. From here until the body is stood clear, I1 and I2 do not read it (it is in the rock by construction) and I7
+ *  bounds how long that lasts. */
+export function clipInto(S, p) {
+  placeBody(S.world, S.p.body, p);
+  S.vy = 0;
+  S.clip = { f: S.f, at: vec(p), late: false };
+  S.stats.clips++;
+  S.recent.push(`f${S.f} clip into the rock at ${JSON.stringify(vec(p))}`);
+}
+/** The Player stood a body it read in the rock at `spot` (Components.jsx's stuck-in-rock recovery): I7 reads whether the
+ *  body had clipped, and whether the spot is near where it clipped, not the origin. */
+export function recovered(S, spot) {
+  S.stats.stuckRecoveries++;
+  S.recent.push(`f${S.f} stood clear of the rock at ${JSON.stringify(vec(spot))}`);
+  if (!S.clip) {
+    note(S, 'I7', { why: 'a stuck-in-rock recovery fired on a player who had not clipped', spot: vec(spot) });
+    return;
+  }
+  const away = Math.hypot(spot.x - S.clip.at.x, spot.z - S.clip.at.z);
+  if (away > 1) note(S, 'I7', { why: `stood ${away.toFixed(2)} m from where the body clipped`, clip: S.clip.at, spot: vec(spot) });
+  S.clip = null;
 }
 
 // Components.jsx: the activeBeastForm effect queues an enter for the frame and restores the base shape at once on exit,
@@ -395,6 +495,7 @@ export function deepestSolid(S, body = S.p.body) {
   return worst;
 }
 export const eyeCell = (body) => { const e = steadyEye(body.translation(), {}); return [Math.floor(e.x), Math.floor(e.y), Math.floor(e.z)]; };
+const centreCell = (body) => { const t = body.translation(); return [Math.floor(t.x), Math.floor(t.y), Math.floor(t.z)]; };
 
 /** A violation: every frame is counted; the first frame of each run of them is kept (up to 8) with the verbs before it. */
 function note(S, kind, detail) {
@@ -420,7 +521,16 @@ function frameChecks(S) {
     }
     return;
   }
+  if (S.clip) {
+    S.stats.clippedFrames++;
+    if (!S.clip.late && S.f - S.clip.f > CLIP_RECOVERY_FRAMES(S.hz)) {
+      S.clip.late = true;
+      note(S, 'I7', { why: `still in the rock ${CLIP_RECOVERY_FRAMES(S.hz)} frames after the clip`, clip: S.clip.at, at: vec(S.p.body.translation()), centreSolid: solidAt(S, ...centreCell(S.p.body)) });
+    }
+    return;
+  }
   if (w.depth > S.maxDepth.value) S.maxDepth = { value: w.depth, f: S.f, cell: w.cell };
+  if (S.p.body.translation().y < OLD_VOID_LINE) S.stats.framesUnderOldVoidLine++;
   if (w.depth > S.tol) note(S, 'I1', { depth: +w.depth.toFixed(3), cell: w.cell, at: vec(S.p.body.translation()) });
   const ec = eyeCell(S.p.body);
   if (solidAt(S, ...ec)) note(S, 'I2', { eyeCell: ec, at: vec(S.p.body.translation()) });
@@ -666,14 +776,16 @@ export function exitForm(S) {
   FORM_SWAP.effect(S);
 }
 
-/** A fall through the world: the body below the void line, as a clip through the floor leaves it. */
+/** A fall through the world: the body under it, as a fall where no ground has streamed in leaves it. (A clip into the
+ *  ground leaves the body in the rock instead, where it falls through the hollow trimesh until a face stops it: clipInto,
+ *  and the field's sessions clip over the cave under the field.) */
 export function voidFall(S) {
   const store = useGameStore.getState();
   const column = [...store.worldBlocks].filter(([k]) => /^0_-?\d+_0$/.test(k));
   if (column.some(([, v]) => !v)) S.stats.respawnsAfterOriginMine++;
   if (column.some(([, v]) => v)) S.stats.respawnsAfterOriginPlace++;
   const t = S.p.body.translation();
-  S.p.body.setTranslation({ x: t.x, y: 5, z: t.z }, true);
+  S.p.body.setTranslation({ x: t.x, y: -2, z: t.z }, true);
   S.recent.push(`f${S.f} void fall (origin column ${JSON.stringify(column)})`);
 }
 
@@ -734,16 +846,18 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
   base();
   const world = new RAPIER.World({ x: 0, y: -30, z: 0 });
   const S = {
-    world, hz, lag, tol, f: 0, steps: 0, acc: 0, vy: 0, kb: { x: 0, z: 0 }, spawnSet: true, spawnFails: 0, resumeFails: 0,
+    world, hz, lag, tol, f: 0, steps: 0, acc: 0, vy: 0, kb: { x: 0, z: 0 }, resumeFails: 0,
+    spawn: { placed: { current: true }, probeWait: { current: 0 } }, camera: { position: new THREE.Vector3() },
     gen: new Map(base().chunks), logical: copyChunks(base().chunks), recs: new Map(), reload: null,
     worker: { seq: 0, lastDue: 0, queue: [] }, standIns: [], recent: [], form: { pending: null, last: null },
     maxDepth: { value: 0, f: null, cell: null },
-    violations: { I1: [], I2: [], I3: [], I4: [], I5: [] }, counts: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0 }, lastNoted: {},
-    held: false, loadPending: null,
+    violations: { I1: [], I2: [], I3: [], I4: [], I5: [], I6: [], I7: [] }, counts: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0 }, lastNoted: {},
+    held: false, loadPending: null, clip: null, stuck: makeStuckWatch(), blind: { left: 0 },
     stats: { frames: 0, rightClicks: 0, rightClicksIntoBody: 0, cellsPlaced: 0, leftClicks: 0, minesUnderFeet: 0,
       originColumnEdits: 0, wallContactFrames: 0, swaps: 0, swapsUnderCeiling: 0, swapsAgainstWall: 0, swapsRefused: 0, formExits: 0,
       clickPairs: 0, respawns: 0, loadHoldFrames: 0, respawnsAfterOriginMine: 0, respawnsAfterOriginPlace: 0, loads: 0, vaults: 0, escapes: 0, ownShellOut: 0,
-      saves: 0, savesLegacy: 0, savesInForm: 0, loadsReleased: 0, heldFrames: 0, heldInSolidFrames: 0 },
+      saves: 0, savesLegacy: 0, savesInForm: 0, loadsReleased: 0, heldFrames: 0, heldInSolidFrames: 0,
+      voidResets: 0, framesUnderOldVoidLine: 0, shaftDigs: 0, shaftsThroughWorld: 0, clips: 0, clippedFrames: 0, stuckRecoveries: 0, blindDropsFollowed: 0 },
   };
   S.cells = createPlacedCellColliders(world, RAPIER, createEditSeq());
   // A collider far below the world, always present. Without it a load's wipe leaves the player's capsule alone in the
@@ -780,12 +894,13 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
 /** The end-of-session reads that are not per frame: a load the session ended still holding is I5. */
 export function finishSession(S) {
   if (S.loadPending) note(S, 'I5', { why: 'the session ended with the load still holding', saved: S.loadPending.saved, frames: S.f - S.loadPending.f });
+  if (S.clip) note(S, 'I7', { why: 'the session ended with the clipped body still in the rock', clip: S.clip.at, at: vec(S.p.body.translation()) });
 }
 
 export function checkEscape(S) {
   // One held reading is the finding; another escape test in the same session adds seconds and no information. A body a
-  // load's hold keeps still is not the player's to move (I5 bounds that).
-  if (S.counts.I3 > 0 || S.held) return { free: false, by: null };
+  // load's hold keeps still is not the player's to move (I5 bounds that), nor is one clipped into the rock (I7 does).
+  if (S.counts.I3 > 0 || S.held || S.clip) return { free: false, by: null };
   const e = escape(S);
   S.stats.escapes++;
   if (e.by === 'own') S.stats.ownShellOut++;

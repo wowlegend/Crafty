@@ -25,9 +25,9 @@ export function resetStance() {
 }
 
 /**
- * A NON-DEATH TELEPORT: the void-fall guard (Components.jsx) and a save load (useGameStore loadWorldData). The body is
- * moved, stopped when `stop` (the void guard's falling body; a load's kinematic body carries none), and the stance is
- * reset: the fight it was in is somewhere else now.
+ * A save load's teleport (useGameStore loadWorldData): the body is moved, stopped when `stop`, and the stance is reset:
+ * the fight it was in is somewhere else now. The void guard and the respawn go back to the spawn through
+ * game/spawnPlacement.js returnToSpawn, which resets the stance too.
  */
 export function teleportPlayer(rb, pos, stop = false) {
   rb.setTranslation(pos, true);

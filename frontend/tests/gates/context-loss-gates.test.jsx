@@ -9,7 +9,7 @@ import { recoverFromContextLoss, whenDrawnAgain, onContextLost, onContextRestore
 import { bootWorld, takeBootNote, BOOT_NOTE_KEY } from '../../src/game/worldBoot.js';
 import { listWorlds, readWorld } from '../../src/game/worldSaves.js';
 import { shadowWorldEpoch } from '../../src/render/shadowSchedule.js';
-import { resolveResumeSpawn, RESUME_PROBE_MAX_FAILS, SPAWN_PROBE_MAX_FAILS } from '../../src/game/spawnPlacement.js';
+import { resolveResumeSpawn, RESUME_PROBE_MAX_FAILS, SPAWN_PROBE_MAX_SEC } from '../../src/game/spawnPlacement.js';
 import { voxelIndex } from '../../src/world/chunkLayout.js';
 import { DEEP_FLOOR } from '../../src/world/oceanProfile.js';
 
@@ -307,8 +307,9 @@ describe('the resumed save spawns the player where they stood', () => {
   });
   it('gives up for the origin spawn when the column never loads, or the save is unusable', () => {
     expect(resolveResumeSpawn(saved, null, RESUME_PROBE_MAX_FAILS - 1)).toEqual({ place: null, hold: false });
-    expect(RESUME_PROBE_MAX_FAILS).toBeGreaterThan(SPAWN_PROBE_MAX_FAILS);
-    for (const bad of [null, { x: NaN, y: 60, z: 1 }, { x: 1, y: 2, z: 3 } /* a void y */, { x: 1, y: 60 }]) {
+    // the resume's wait is counted in frames, the origin spawn's in seconds: at 60 Hz the resume waits the longer
+    expect(RESUME_PROBE_MAX_FAILS / 60).toBeGreaterThan(SPAWN_PROBE_MAX_SEC);
+    for (const bad of [null, { x: NaN, y: 60, z: 1 }, { x: 1, y: 0.5, z: 3 } /* under the world's floor (game/spawnPlacement.js isVoidFall) */, { x: 1, y: 60 }]) {
       expect(resolveResumeSpawn(bad, 70, 0), JSON.stringify(bad)).toEqual({ place: null, hold: false });
     }
   });

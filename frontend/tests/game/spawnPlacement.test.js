@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FALLBACK_Y, SPAWN_EYE_OFFSET, SPAWN_PROBE_MAX_FAILS } from '../../src/game/spawnPlacement.js';
+import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FALLBACK_Y, SPAWN_EYE_OFFSET, SPAWN_PROBE_MAX_SEC } from '../../src/game/spawnPlacement.js';
 
 describe('spawnPlacement (S3-M5 p2) — the spawn-ground decision (pinned to the old inline logic)', () => {
   it('placed-block ground wins immediately (no probe)', () => {
@@ -17,15 +17,17 @@ describe('spawnPlacement (S3-M5 p2) — the spawn-ground decision (pinned to the
   it('no probe available (getMobGroundLevel missing) -> immediate fallback, NO retry (old edge)', () => {
     expect(resolveSpawnGround(null, null, 3, false)).toEqual({ groundY: SPAWN_FALLBACK_Y, retry: false, incFails: false });
   });
-  it('at the fail cap, falls back to SPAWN_FALLBACK_Y (no infinite wait)', () => {
-    const r = resolveSpawnGround(null, null, SPAWN_PROBE_MAX_FAILS - 1); // +1 reaches the cap
-    expect(r).toEqual({ groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true });
+  it('at the end of the wait, falls back to SPAWN_FALLBACK_Y (no infinite wait)', () => {
+    const r = resolveSpawnGround(null, null, SPAWN_PROBE_MAX_SEC - 1 / 120, true, 1 / 120); // this frame's step reaches it
+    expect(r).toEqual({ groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true, blind: true });
   });
   it('spawnTargetY lands the player SPAWN_EYE_OFFSET above ground', () => {
     expect(spawnTargetY(56)).toBe(56 + SPAWN_EYE_OFFSET);
     expect(SPAWN_EYE_OFFSET).toBe(1.2);
   });
-  it('isVoidFall triggers below the void threshold (10)', () => {
-    expect(isVoidFall(9.9)).toBe(true); expect(isVoidFall(10)).toBe(false); expect(isVoidFall(120)).toBe(false);
+  it('isVoidFall is the world\'s floor, not y 10: a base body on the deepest seabed or the last cell stands, under the world it fell', () => {
+    // centre = floor + the controller's 0.05 m offset + the base capsule's reach (0.9); the seabed is 6 to 10, the last cell's top 1
+    expect(isVoidFall(6.95)).toBe(false); expect(isVoidFall(9.9)).toBe(false); expect(isVoidFall(1.95)).toBe(false);
+    expect(isVoidFall(0.95)).toBe(true); expect(isVoidFall(-3)).toBe(true); expect(isVoidFall(120)).toBe(false);
   });
 });

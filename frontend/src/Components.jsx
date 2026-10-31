@@ -19,7 +19,8 @@ import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from './game/spawnPlacement.js';
+import { makeStuckWatch, stuckInRock } from './game/stuckInRock.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
@@ -28,7 +29,7 @@ import { bossCombat, withBossTarget, bossHitByCone, registerBossHeavy } from './
 import { logImpulse } from './devtest/impulseLog.js';
 import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { gateSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
-import { stanceFrame, stanceWalk, dodgeBurst, resetStance, teleportPlayer } from './game/combatStance.js';
+import { stanceFrame, stanceWalk, dodgeBurst, resetStance } from './game/combatStance.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -119,8 +120,10 @@ export const Player = ({ isWorldBuilt }) => {
   const _lastCdMirror = useRef(0); // W3 M-HUD.2: throttle clock for the ability-bar cooldown mirror
   const imbueSMRef = useRef(makeImbueState()); // S2-B4-M5: the ELEMANCER imbue latch
   const prevImbueRef = useRef(false);
-  const spawnProbeFailsRef = useRef(0); // KEVIN-FIX C1: the bounded spawn-probe wait
+  const spawnProbeWaitRef = useRef(0); // KEVIN-FIX C1: the bounded spawn-probe wait, in seconds (game/spawnPlacement.js)
   const resumeProbeFailsRef = useRef(0); // the resumed save's own bounded wait (game/spawnPlacement.js resolveResumeSpawn)
+  const blindFollowRef = useRef({ left: 0 }); // the spawn's blind drop, followed (game/spawnPlacement.js followBlindDrop)
+  const stuckWatchRef = useRef(makeStuckWatch()); // the stuck-in-rock recovery's readings (game/stuckInRock.js)
   const fuseSMRef = useRef(makeFuseState()); // S2-B3-M6: the FUSE channel state
   const prevSnareRef = useRef(false);
   const voidhandVerbRef = useRef({ attack: false, cast: false }); // M3: held-click edges -> SM
@@ -146,6 +149,7 @@ export const Player = ({ isWorldBuilt }) => {
   }, [world]);
 
   const spawnPosSet = useRef(false);
+  const spawnRefs = { placed: spawnPosSet, probeWait: spawnProbeWaitRef }; // game/spawnPlacement.js returnToSpawn
 
   const lastCastTime = useRef(0);
   const CAST_COOLDOWN = 333;
@@ -218,16 +222,8 @@ export const Player = ({ isWorldBuilt }) => {
     // persist through the death screen into the respawned run.
     if (!isAlive && lastAliveRef.current) resetInput();
     if (isAlive && !lastAliveRef.current) {
-      spawnPosSet.current = false;
-      spawnProbeFailsRef.current = 0;
-      if (rigidBodyRef.current) {
-        rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
-        rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      }
-      // KEVIN-FIX C1 (the respawn deadlock): chunk streaming keys on the CAMERA — moving
-      // only the body left origin chunks unloaded after a far-from-spawn death, so the
-      // ground probe nulled forever and the frame loop starved before movement code.
-      camera.position.set(0, 120 + EYE_HEIGHT_M, 0);
+      // KEVIN-FIX C1 (the respawn deadlock): chunk streaming keys on the CAMERA, so it goes to the origin with the body.
+      returnToSpawn(world, rigidBodyRef.current, camera, EYE_HEIGHT_M, spawnRefs);
     }
     lastAliveRef.current = isAlive;
   }, [isAlive]);
@@ -1028,8 +1024,7 @@ export const Player = ({ isWorldBuilt }) => {
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
     if (spawnPosSet.current && isVoidFall(currentTrans.y)) {
       console.warn('Player fell into void; teleporting to safety.');
-      teleportPlayer(rigidBodyRef.current, { x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true); // and the fight is left behind (game/combatStance.js)
-      spawnPosSet.current = false;
+      returnToSpawn(world, rigidBodyRef.current, camera, EYE_HEIGHT_M, spawnRefs); // the respawn's way: the camera goes too
       return;
     }
 
@@ -1078,8 +1073,8 @@ export const Player = ({ isWorldBuilt }) => {
       // low, inside it.
       const probeAvailable = !!store.getMobGroundLevel;
       const physicsY = probeAvailable ? spawnCornerGround(store.getMobGroundLevel) : null;
-      const spawn = resolveSpawnGround(null, physicsY, spawnProbeFailsRef.current, probeAvailable);
-      if (spawn.incFails) spawnProbeFailsRef.current += 1;
+      const spawn = resolveSpawnGround(null, physicsY, spawnProbeWaitRef.current, probeAvailable, delta);
+      if (spawn.incFails) spawnProbeWaitRef.current += delta;
       if (spawn.retry) {
         rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
         rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
@@ -1096,7 +1091,32 @@ export const Player = ({ isWorldBuilt }) => {
       camera.position.set(0, safeY + EYE_HEIGHT_M, 0);
 
       spawnPosSet.current = true;
+      if (spawn.blind) blindFollowRef.current.left = SPAWN_PROBE_MAX_SEC; // dropped over a corner that never answered: followed as long again
       return;
+    }
+
+    // A BODY LEFT IN THE ROCK IS STOOD CLEAR WHERE IT IS, never sent to the origin: after the spawn's blind drop, on the
+    // corner's ground once it answers (game/spawnPlacement.js followBlindDrop); anywhere else, once its centre has read
+    // solid for a fifth of a second (game/stuckInRock.js). The collider goes with the body (game/kinematicMove.js
+    // placeBody) and the fall it carried is dropped.
+    {
+      const store = useGameStore.getState();
+      const body = rigidBodyRef.current;
+      let standAt = null;
+      if (blindFollowRef.current.left > 0) {
+        const c = body.collider(0);
+        const y = followBlindDrop(blindFollowRef.current, store.getMobGroundLevel ? spawnCornerGround(store.getMobGroundLevel) : null, currentTrans, c.halfHeight() + c.radius(), delta);
+        if (y !== null) standAt = { x: 0, y, z: 0 };
+      }
+      if (!standAt) standAt = stuckInRock(stuckWatchRef.current, world, rapier, body, delta, store.getMobGroundLevel, GameMethods.placedCells?.unindexed());
+      if (standAt) {
+        console.warn('Player was in the rock; stood clear where they were.');
+        placeBody(world, body, standAt);
+        body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        velocityY.current = 0;
+        camera.position.set(standAt.x, standAt.y + EYE_HEIGHT_M, standAt.z);
+        return;
+      }
     }
     if (isNaN(velocityY.current) || isNaN(currentTrans.y)) {
       console.error('Physics corrupted', velocityY.current, currentTrans);
