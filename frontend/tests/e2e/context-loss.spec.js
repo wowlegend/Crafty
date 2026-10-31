@@ -169,11 +169,13 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
   // reach, so the recovery came back with both reset, and this spec saw neither. A real kill through the bus (the quest
   // system subscribes to it) gives the log a count a re-seeded log would not have; a slain dragon at tier 1 is a fight a
   // fresh hook would not have. Both are read back once the reloaded game's hooks have mounted.
-  await page.evaluate(async () => {
-    const bus = await import('/src/game/eventBus.js');
+  await page.evaluate(async (busUrl) => {
+    // The dev server's own URL for the module the quest system subscribes through, held in a variable: it is a URL in the
+    // page, not a path knip can resolve in this file.
+    const bus = await import(busUrl);
     bus.emit(bus.EVENTS.mobKill, 'zombie', [0, 60, 0], 'player');
     window.useGameStore.getState().setBossEncounter({ health: 0, active: false, defeated: true, tier: 1, killNight: 2 });
-  });
+  }, '/src/game/eventBus.js');
   const killsBefore = await page.waitForFunction(() => {
     const q = window.useGameStore.getState().questState;
     return q?.stats?.kills >= 1 ? q.stats.kills : null;
