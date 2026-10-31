@@ -10,6 +10,7 @@
 // the one the worker stamps windupUntil in — so a hitstop holds the window and the stagger alike.
 import { LEAP_RANGE } from './mobSenses.js';
 import { HITSTOP } from './trauma.js';
+import { isDefeated } from '../combat/targeting.js';
 
 /** The late part of the windup a dodge must land in: generous, for web input latency. */
 export const PERFECT_WINDOW_MS = 220;
@@ -84,8 +85,13 @@ export function holdStagger(e, now) {
 
 /**
  * The strikes from a worker reply that may still land. The reply was computed from a payload sent BEFORE the
- * player's dodge, so a mob the dodge just staggered can arrive with a strike already in it — drop that one.
+ * player's dodge, so a mob the dodge just staggered can arrive with a strike already in it — drop that one. So can a
+ * mob killed or dissolving since (a lethal click or key handled between the tick's post and its reply), and one that is
+ * no mob any more (bound as an ally, or removed): `entityById` finds only mobs, and those strikes are dropped too.
  */
 export function strikesToApply(attacks, entityById, now) {
-  return (attacks || []).filter((a) => !isStaggered(entityById(a.id), now));
+  return (attacks || []).filter((a) => {
+    const e = entityById(a.id);
+    return !!e && !isDefeated(e) && !isStaggered(e, now);
+  });
 }

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vite
 import * as THREE from 'three';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { placeAtHit } from '../../src/world/placeAtHit.js';
-import { mineAtHit, payBrokenBlock } from '../../src/world/mineAtHit.js';
+import { mineAtHit, creditBrokenBlock } from '../../src/world/mineAtHit.js';
 import { buildFootprint } from '../../src/game/buildFootprint.js';
 import { idForBlock, blockForId } from '../../src/world/blockIds.js';
 import { CHUNK_SIZE, CHUNK_HEIGHT, voxelIndex } from '../../src/world/chunkLayout.js';
@@ -151,7 +151,7 @@ describe('a Delete Tool click is one batched edit, however many blocks it takes 
   const removeAt = async (size) => {
     sendToWorker('load_modifications', { modifications: own.map((c) => [21, 21, voxelIndex(c.x - 21 * CHUNK_SIZE, c.y, c.z - 21 * CHUNK_SIZE), c.id]) });
     useGameStore.setState({ worldBlocks: new Map(own.map((c) => [key(c), c.id])), chests: new Map(), buildingMode: 'delete', buildSize: size });
-    const io = workerVerbIo({ onBroken: payBrokenBlock });
+    const io = workerVerbIo({ onBroken: creditBrokenBlock });
     const at = { x: OX + 2, y: Y0 + 3, z: OZ + 2 };
     let writes = 0;
     const unsubscribe = useGameStore.subscribe(() => { writes++; });
@@ -192,7 +192,7 @@ describe('the build tools change only empty or solid cells as they say, and pay 
         const [nx, ny, nz] = pick(NORMALS);
         const normal = { x: nx, y: ny, z: nz };
         const roll = rnd();
-        const io = workerVerbIo({ onBroken: payBrokenBlock });
+        const io = workerVerbIo({ onBroken: creditBrokenBlock });
         const label = `site ${site.cx},${site.cz} action ${a}`;
         tally.actions++;
 
