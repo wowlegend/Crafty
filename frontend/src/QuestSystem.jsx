@@ -501,6 +501,12 @@ export const useQuestSystem = () => {
         useGameStore.setState({ onPlayerDeath: onDeath });
         useGameStore.setState({ onNightSurvived: onNightSurvived });
         useGameStore.setState({ addNotification: addNotification });
+        // The boot's load ran before this channel existed (game/worldBoot.js bootWorld holds its notices).
+        const held = useGameStore.getState()._bootNotices;
+        if (held && held.length) {
+            useGameStore.setState({ _bootNotices: [] });
+            for (const args of held) addNotification(...args);
+        }
         // B6c: `updateLevel` was returned from this hook and published NOWHERE, so nothing ever called it.
         // `stats.level` therefore never moved off 1, and the two level achievements ('Rising Star' at 5,
         // 'Shining Star' at 10) could never unlock — 2 of the 12 were dead on arrival. Every sibling event

@@ -40,12 +40,13 @@ export function isAnyPanelOpen(flags) {
 
 /**
  * coveringSurfaceUp(state) -> whether a surface covers the live game, each with its own way back: a panel (each renders a
- * control that closes it), VICTORY (Keep exploring), or the lost-WebGL-context panel (a tap reloads into the same
- * world). The death screen is the fourth surface over the game; it is `isAlive === false`, which every reader here
- * already asks first (input/inputLive.js blockingSurfaceUp counts it in).
+ * control that closes it), VICTORY (Keep exploring), the lost-WebGL-context panel (a tap reloads into the same world), or
+ * the two-tab conflict panel (Reload, into the other tab's newer save: ui/SlotConflictPanel.jsx). The death screen is the
+ * last surface over the game; it is `isAlive === false`, which every reader here already asks first
+ * (input/inputLive.js blockingSurfaceUp counts it in).
  */
 export function coveringSurfaceUp(state) {
-  return !!state && (isAnyPanelOpen(state) || !!state.victoryPending || !!state.isWebGLContextLost);
+  return !!state && (isAnyPanelOpen(state) || !!state.victoryPending || !!state.isWebGLContextLost || !!state.slotConflict);
 }
 
 /**

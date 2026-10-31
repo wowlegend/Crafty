@@ -16,8 +16,10 @@ export function createAutosave({ save, delayMs = 5000 }) {
   };
 }
 
-// The keys whose change schedules a save: every key a save records, so a field cannot be persisted and never saved.
-const TRIGGER_KEYS = PERSISTED_KEYS;
+// The keys whose change schedules a save: every key a save records, so a field cannot be persisted and never saved,
+// and isAlive: a death changes what the save writes (store saveActiveWorld, game/saveSchema.js asRespawned), and with
+// the clock held on the death screen nothing else would schedule one: a refresh there would load the save made alive.
+const TRIGGER_KEYS = Object.freeze([...PERSISTED_KEYS, 'isAlive']);
 
 /**
  * Autosave `store`: a change to any persisted key schedules `save`, and hiding the tab or unloading saves a pending one

@@ -28,7 +28,6 @@ describe('selectHudState — every key a mounted component gates on must be IN t
   const CONTRACTS = [
     { feature: 'ChestInventoryPanel (MenuSystem.jsx:100)', keys: ['showChestInterface', 'activeChestCoords', 'setShowChestInterface'] },
     { feature: 'CreditsScreen + the Settings button that opens it (MenuSystem.jsx:187)', keys: ['showCredits', 'setShowCredits'] },
-    { feature: "WorldManager 'Create World' (MenuSystem.jsx)", keys: ['startNewWorld'] },
     // LATE-INSTALLED, and the distinction is real rather than a convenience. `requestPointerLock` is not
     // in the store literal at all: GameScene.jsx:98 puts it there with useGameStore.setState() on mount,
     // and nulls it on unmount. So in a fresh store its value is legitimately `undefined` while the KEY

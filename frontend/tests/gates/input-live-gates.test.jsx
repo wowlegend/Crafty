@@ -30,9 +30,9 @@ import { selectHudState } from '../../src/store/hudState.js';
 // a held lock (Keep exploring could not be clicked, clicks mined behind it, the world ran on,
 // AUDIT:input:victory-under-pointer-lock). So this is exhaustive over device x surface x opener, against the real
 // useInputManager, the real TouchControls, the real world clock and the real express router: every surface (each
-// PANEL_FLAG, VICTORY, the lost-context panel and the death screen) by the worst opener, a bare store write that drops
-// no gate, and by each real opener this harness can drive (the panel keys, G to a villager, the touch tray rows, the
-// locked Aspect sector). With the surface up:
+// PANEL_FLAG, VICTORY, the lost-context panel, the two-tab conflict panel and the death screen) by the worst opener, a
+// bare store write that drops no gate, and by each real opener this harness can drive (the panel keys, G to a
+// villager, the touch tray rows, the locked Aspect sector). With the surface up:
 //   - no live verb: the wheel moves no hotbar slot, a spell key selects no spell, F routes to no verb;
 //   - the world holds (tickWorldClock, isWorldFrozen), except at a death, which is not a pause;
 //   - its control is reachable: on desktop the pointer is not locked (under a lock every click goes to the canvas); on
@@ -55,7 +55,7 @@ const onLockChange = () => {
 };
 const surfaceOnScreen = () => {
   const s = useGameStore.getState();
-  return isAnyPanelOpen(s) || !!s.victoryPending || !!s.isWebGLContextLost || s.isAlive === false;
+  return isAnyPanelOpen(s) || !!s.victoryPending || !!s.isWebGLContextLost || !!s.slotConflict || s.isAlive === false;
 };
 function requester() {
   lock.requests += 1;
@@ -102,7 +102,7 @@ let T = 7e9;
 function resetWorld() {
   const closed = Object.fromEntries(PANEL_FLAGS.map((f) => [f, false]));
   useGameStore.setState({
-    ...closed, victoryPending: false, isWebGLContextLost: false, isAlive: true, gameStarted: true,
+    ...closed, victoryPending: false, isWebGLContextLost: false, slotConflict: null, isAlive: true, gameStarted: true,
     selectedBlock: HOTBAR_BLOCKS[0], activeSpell: 'fireball', selectedVillager: null, activeChestCoords: null,
     unlockedTalents: {}, hitstopUntil: 0, hitstopStart: 0, hitstopFrozenTotal: 0,
     gameCamera: { position: { x: 0, y: 0, z: 0 } }, requestPointerLock: null,
@@ -161,6 +161,8 @@ const SURFACES = [
   ...PANEL_FLAGS.map((flag) => ({ surface: flag, opener: 'store write', open: openWithSetter(flag) })),
   { surface: 'victory', opener: 'store write', open: () => act(() => { useGameStore.setState({ victoryPending: true }); }) },
   { surface: 'contextLoss', opener: 'store write', open: () => act(() => { useGameStore.setState({ isWebGLContextLost: true }); }) },
+  // Another tab saved the world (store saveActiveWorld refused): the conflict panel's Reload must be clickable.
+  { surface: 'slotConflict', opener: 'store write', open: () => act(() => { useGameStore.setState({ slotConflict: { id: 'local_gate' } }); }) },
   { surface: 'death', opener: 'store write', open: () => act(() => { useGameStore.setState({ isAlive: false }); }) },
 ];
 const KEYS = [
@@ -236,7 +238,7 @@ describe('INVARIANT: a surface over the game takes the input (device x surface x
     for (const [device, c] of cases) violations.push(...runCase(device, c));
     console.log(`[input-live] ${cases.length} cases checked: ${SURFACES.length} surfaces by store write, ${KEYS.length} key and talk openers, ` +
       `${TOUCH_OPENERS.length} touch openers; ${violations.length} violations`);
-    expect(cases.length, 'the denominator: device x (surfaces + openers)').toBe(2 * (PANEL_FLAGS.length + 3 + KEYS.length) + TOUCH_OPENERS.length);
+    expect(cases.length, 'the denominator: device x (surfaces + openers)').toBe(2 * (PANEL_FLAGS.length + 4 + KEYS.length) + TOUCH_OPENERS.length);
     expect(violations).toEqual([]);
   });
 });
@@ -284,7 +286,7 @@ describe('the pointer is taken again only when no surface remains (AUDIT:input:p
 
   it('requestGameLock asks for nothing while any surface is up, and asks once when none is (the presence)', () => {
     const asked = [];
-    for (const s of [...PANEL_FLAGS, 'victoryPending', 'isWebGLContextLost']) {
+    for (const s of [...PANEL_FLAGS, 'victoryPending', 'isWebGLContextLost', 'slotConflict']) {
       const spy = vi.fn();
       requestGameLock({ [s]: true, isAlive: true, requestPointerLock: spy });
       if (spy.mock.calls.length) asked.push(s);

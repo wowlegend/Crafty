@@ -53,7 +53,8 @@ describe('the HUD slice exposes every handler the HUD calls', () => {
     // installed by GameScene on mount. What useShallow propagates is the KEY — an unselected key means
     // `if (gameState.requestPointerLock)` takes its false branch forever no matter what the store does.
     const { names, files } = calledOnHudSlice();
-    expect(files.length, 'no HUD-slice consumer files were found — the scan is broken, not the code').toBeGreaterThan(2);
+    // Two consumers: MenuSystem and GameHud (the World Manager switches worlds through game/worldSwitch.js, not the slice).
+    expect(files.length, 'no HUD-slice consumer files were found — the scan is broken, not the code').toBeGreaterThanOrEqual(2);
     expect(names.length, 'no call sites were found').toBeGreaterThan(10);
     const s = slice();
     const unselected = names.filter((k) => !(k in s));

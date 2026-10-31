@@ -9,7 +9,7 @@ import { HITSTOP } from '../game/trauma.js';
 import { applyBossDamage, runBossKillEffects } from '../game/bossKill.js';
 import { runIsolatedEffects } from '../game/isolatedEffects.js';
 import { bossEntranceBeat, ENTRANCE } from '../game/bossEntrance.js';
-import { phaseForHealth } from '../game/bossPersistence.js';
+import { phaseForHealth, enteredBefore } from '../game/bossPersistence.js';
 import { isWorldFrozenNow, worldNow } from '../game/worldClock.js';
 import { bossCombat, bossDamage } from '../game/bossCombat.js';
 import { preloadDragon, shouldPreloadAtMount } from '../render/dragonLoader.js';
@@ -38,7 +38,8 @@ export function lookbookDragonSpot() {
 export const useBossSystem = (playerLevel) => {
     // A-bis B2g: seed from the STORE, which is what the save restores into, instead of from BOSS_CONFIG.
     // These were plain `useState(BOSS_CONFIG.health)` / `useState(false)`, so a reload mid-fight handed the
-    // dragon back all 700 HP. Lazy initialisers: read once at mount, after loadGame has hydrated the store.
+    // dragon back all 700 HP. Lazy initialisers: read once at mount, after the boot has loaded the world into the store
+    // (startGame.jsx). Nothing re-reads them, so a load into a mounted game would not reach them (game/worldBoot.js).
     const [bossActive, setBossActive] = useState(() => useGameStore.getState().bossActive);
     const [bossHealth, setBossHealth] = useState(() => useGameStore.getState().bossHealth);
     // QUEUE C3: the dragon returns, a tier stronger per kill (game/bossTier.js). Tier 0 is the original fight.
@@ -61,8 +62,9 @@ export const useBossSystem = (playerLevel) => {
     // would wake the fight on the next poll, and every wake retries a chunk that may never load (a tab left open
     // across a deploy), so the retries are bounded by arrivals, not by a timer.
     const lairDisarmed = useRef(false);
-    // A suspended fight was already entered: its next wake resumes it without the entrance beat.
-    const resumeQuietly = useRef(false);
+    // A suspended fight was already entered: its next wake resumes it without the entrance beat. So was a fight the page
+    // loaded mid-way (game/bossPersistence.js enteredBefore).
+    const resumeQuietly = useRef(enteredBefore(useGameStore.getState()));
     const bossKilledRef = useRef(false); // idempotency latch: kill side-effects fire EXACTLY once even if damageBoss is called twice in a frame (melee + spell) or the updater double-invokes under StrictMode
 
 

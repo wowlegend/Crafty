@@ -5,7 +5,9 @@ import { useGameStore } from '../../src/store/useGameStore';
 import { STRINGS } from '../../src/i18n/strings.js';
 import { writeWorld } from '../../src/game/worldSaves.js';
 import { ContextLossPanel } from '../../src/ui/ContextLossPanel.jsx';
-import { recoverFromContextLoss, consumeResumeWorld, whenDrawnAgain, onContextLost, onContextRestored, RESUME_WORLD_KEY } from '../../src/game/contextRecovery.js';
+import { recoverFromContextLoss, whenDrawnAgain, onContextLost, onContextRestored } from '../../src/game/contextRecovery.js';
+import { bootWorld, takeBootNote, BOOT_NOTE_KEY } from '../../src/game/worldBoot.js';
+import { listWorlds, readWorld } from '../../src/game/worldSaves.js';
 import { shadowWorldEpoch } from '../../src/render/shadowSchedule.js';
 import { resolveResumeSpawn, RESUME_PROBE_MAX_FAILS, SPAWN_PROBE_MAX_SEC } from '../../src/game/spawnPlacement.js';
 import { voxelIndex } from '../../src/world/chunkLayout.js';
@@ -16,18 +18,19 @@ import { DEEP_FLOOR } from '../../src/world/oceanProfile.js';
  *
  * GameScene marked the store's isWebGLContextLost on `webglcontextlost`, and nothing read it (grep: one writer, zero
  * readers). On an iPad that drops the context under memory pressure, the player got a black canvas under a live HUD.
- * Now a panel derived from that flag offers one tap: save, leave a session breadcrumb, reload — and at boot the
- * breadcrumb loads the same world. This renders the real panel against the real store and drives the real recovery.
+ * Now a panel derived from that flag offers one tap: save, leave the tab's note, reload, and the boot (game/worldBoot.js,
+ * before the first render) loads the noted world. This renders the real panel against the real store and drives the
+ * real recovery and the real boot.
  * BLIND SPOT: that GameScene's listeners set the flag on a real context loss, and that the reload lands in the world,
  * are the e2e's (tests/e2e/context-loss.spec.js, WEBGL_lose_context).
  *
- * Mutation-Proof: via scripts/dev/mutate.sh on src/ui/ContextLossPanel.jsx and src/game/contextRecovery.js, receipts in
- * the commit:
+ * Mutation-Proof: via scripts/dev/mutate.sh on src/ui/ContextLossPanel.jsx, src/game/contextRecovery.js and
+ * src/game/worldBoot.js, receipts in the commit:
  *   L1 the panel ignores the flag (never shows)                     -> RED expected
  *   L2 plausible-wrong: reload BEFORE the save                      -> RED expected (save precedes reload)
- *   L3 the breadcrumb is not written                                -> RED expected
- *   L4 plausible-wrong: the breadcrumb is read but never removed     -> RED expected (a second boot loads again)
- *   L5 the boot resume effect removed                               -> RED expected
+ *   L3 the note is not written                                      -> RED expected
+ *   L4 plausible-wrong: the note is read but never removed          -> RED expected (a second boot loads it again)
+ *   L5 the boot ignores the note                                    -> RED expected
  *   L0 identity (a comment edit)                                    -> must SURVIVE
  */
 const memoryStorage = () => {
@@ -56,7 +59,7 @@ describe('the panel is derived from the store flag', () => {
     expect(STRINGS['zh-CN']['ui.contextLost']).not.toBe(STRINGS.en['ui.contextLost']);
   });
 
-  it('a tap saves the world where the player stands, leaves the breadcrumb, then reloads', () => {
+  it('a tap saves the world where the player stands, leaves the note naming it, then reloads', () => {
     const order = [];
     const save = vi.fn(() => { order.push('save'); useGameStore.setState({ _sessionWorldId: 'local_abc' }); });
     useGameStore.setState({
@@ -66,36 +69,42 @@ describe('the panel is derived from the store flag', () => {
       saveActiveWorld: save,
       playerRigidBodyRef: { current: { translation: () => ({ x: 4, y: 52, z: -7 }) } },
     });
-    const reload = vi.fn(() => order.push(`reload:${window.sessionStorage.getItem(RESUME_WORLD_KEY)}`));
+    const reload = vi.fn(() => order.push(`reload:${window.sessionStorage.getItem(BOOT_NOTE_KEY)}`));
     render(<ContextLossPanel reload={reload} />);
     fireEvent.click(screen.getByTestId('context-loss-resume'));
     expect(save).toHaveBeenCalledWith({ x: 4, y: 52, z: -7 });
-    expect(order, 'the reload must come after the save, with the breadcrumb already written').toEqual(['save', 'reload:local_abc']);
+    expect(order, 'the reload must come after the save, with the note already written').toEqual(['save', 'reload:{"world":"local_abc"}']);
     expect(reload).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('the breadcrumb resumes the world at boot, once', () => {
-  it('a reload after a recovery loads the world the tab was playing, and only once', () => {
-    const data = { id: 'local_resume', player_data: { level: 7 } };
-    writeWorld('local_resume', { name: 'Skyhold', created_at: 'x', is_owner: true }, data);
-    window.sessionStorage.setItem(RESUME_WORLD_KEY, 'local_resume');
+describe('the note resumes the world at boot, once', () => {
+  const saves = { listWorlds, readWorld };
+  it('a reload after a recovery loads the noted world, and only once: the next load of the tab is a plain visit', () => {
+    writeWorld('local_resume', { name: 'Skyhold', created_at: 'x', is_owner: true }, { id: 'local_resume', player_data: { level: 7 } });
+    writeWorld('local_newer', { name: 'Newer', created_at: 'x', is_owner: true }, { id: 'local_newer', player_data: { level: 2 } });
+    window.sessionStorage.setItem(BOOT_NOTE_KEY, JSON.stringify({ world: 'local_resume' }));
     const load = vi.fn();
     useGameStore.setState({ loadWorldData: load });
-    render(<ContextLossPanel reload={() => {}} />);
+    bootWorld({ store: useGameStore, session: window.sessionStorage, saves });
     expect(load, 'the boot did not resume the world').toHaveBeenCalledTimes(1);
-    expect(load.mock.calls[0][0].id).toBe('local_resume');
-    expect(window.sessionStorage.getItem(RESUME_WORLD_KEY), 'the breadcrumb survived its use').toBeNull();
-    cleanup();
-    render(<ContextLossPanel reload={() => {}} />);
-    expect(load, 'a second boot resumed again').toHaveBeenCalledTimes(1);
+    expect(load.mock.calls[0][0].id, 'the boot loaded another world than the note names').toBe('local_resume');
+    expect(window.sessionStorage.getItem(BOOT_NOTE_KEY), 'the note survived its use').toBeNull();
+    bootWorld({ store: useGameStore, session: window.sessionStorage, saves });
+    expect(load.mock.calls.map((c) => c[0].id), 'a second load of the tab followed the note again').toEqual(['local_resume', 'local_newer']);
+    useGameStore.setState({ loadWorldData: realLoadWorldData });
   });
 
-  it('a breadcrumb naming a world that no longer exists loads nothing and is still cleared', () => {
+  it('a note naming a world that no longer exists falls back to the plain visit, and is still cleared', () => {
     const s = memoryStorage();
-    s.setItem(RESUME_WORLD_KEY, 'gone');
-    expect(consumeResumeWorld({ storage: s, readWorld: () => null })).toBeNull();
-    expect(s.getItem(RESUME_WORLD_KEY)).toBeNull();
+    s.setItem(BOOT_NOTE_KEY, JSON.stringify({ world: 'gone' }));
+    writeWorld('local_kept', { name: 'Kept', created_at: 'x', is_owner: true }, { id: 'local_kept' });
+    const load = vi.fn();
+    useGameStore.setState({ loadWorldData: load });
+    expect(bootWorld({ store: useGameStore, session: s, saves })).toEqual({ kind: 'world', id: 'local_kept' });
+    expect(s.getItem(BOOT_NOTE_KEY)).toBeNull();
+    expect(takeBootNote(s), 'a cleared note read back').toBeNull();
+    useGameStore.setState({ loadWorldData: realLoadWorldData });
   });
 
   it('storage that throws (private mode) does not stop the recovery reload', () => {
@@ -130,14 +139,18 @@ describe('the loss releases the pointer; a loss before Start only reloads', () =
       expect(doc.exitPointerLock, `locked ${locked}`).toHaveBeenCalledTimes(locked ? 1 : 0);
     }
   });
-  it('before Start: the reload alone — no save, no breadcrumb', () => {
+  it('before Start: no save, and the note brings the tab back to what its title showed', () => {
     const s = memoryStorage();
     const st = { saveActiveWorld: vi.fn(), playerPosition: { x: 1, y: 2, z: 3 }, _sessionWorldId: null, gameStarted: false };
     const reload = vi.fn();
     expect(recoverFromContextLoss({ getState: () => st, storage: s, reload })).toBeNull();
     expect(st.saveActiveWorld, 'a loss on the title saved a world nobody played').not.toHaveBeenCalled();
-    expect(s.getItem(RESUME_WORLD_KEY), 'a loss on the title left a breadcrumb').toBeNull();
+    expect(JSON.parse(s.getItem(BOOT_NOTE_KEY)), 'a new world\'s title came back as another world').toEqual({ fresh: true });
     expect(reload, 'the graphics were never recovered').toHaveBeenCalledTimes(1);
+    const loaded = { ...st, _sessionWorldId: 'w_title' };
+    expect(recoverFromContextLoss({ getState: () => loaded, storage: s, reload })).toBe('w_title');
+    expect(loaded.saveActiveWorld, 'a loss on the title saved a world nobody played').not.toHaveBeenCalled();
+    expect(JSON.parse(s.getItem(BOOT_NOTE_KEY)), 'the title\'s loaded world was not noted').toEqual({ world: 'w_title' });
     // Presence: the same call in play does save (the instrument sees the save it is asserting absent above).
     const played = { ...st, gameStarted: true, _sessionWorldId: 'w' };
     recoverFromContextLoss({ getState: () => played, storage: s, reload });
@@ -300,16 +313,15 @@ describe('the resumed save spawns the player where they stood', () => {
       expect(resolveResumeSpawn(bad, 70, 0), JSON.stringify(bad)).toEqual({ place: null, hold: false });
     }
   });
-  it('the boot resume hands the save\'s position to the spawn; a boot with no breadcrumb leaves none', () => {
+  it('the boot\'s load hands the save\'s position to the spawn; a boot with nothing saved leaves none', () => {
+    const saves = { listWorlds, readWorld };
+    useGameStore.setState({ resumeSpawn: null, loadWorldData: realLoadWorldData, terrainWorker: null });
+    expect(bootWorld({ store: useGameStore, session: window.sessionStorage, saves }).kind, 'SETUP: an empty disk loaded something').toBe('none');
+    expect(useGameStore.getState().resumeSpawn, 'nothing saved, yet a resume position').toBeNull();
     writeWorld('local_edits', { name: 'Edits', created_at: 'x', is_owner: true }, editedSave());
-    useGameStore.setState({ resumeSpawn: null, loadWorldData: vi.fn() });
-    render(<ContextLossPanel reload={() => {}} />);
-    expect(useGameStore.getState().resumeSpawn, 'SETUP: no breadcrumb, yet a resume position').toBeNull();
-    cleanup();
-    window.sessionStorage.setItem(RESUME_WORLD_KEY, 'local_edits');
-    render(<ContextLossPanel reload={() => {}} />);
-    expect(useGameStore.getState().loadWorldData, 'SETUP: the boot did not resume the world').toHaveBeenCalledTimes(1);
+    window.sessionStorage.setItem(BOOT_NOTE_KEY, JSON.stringify({ world: 'local_edits' }));
+    expect(bootWorld({ store: useGameStore, session: window.sessionStorage, saves }).kind, 'SETUP: the boot did not resume the world').toBe('world');
     expect(useGameStore.getState().resumeSpawn, 'the resumed save will spawn on the origin column').toEqual(saved);
-    useGameStore.setState({ resumeSpawn: null, loadWorldData: realLoadWorldData });
+    useGameStore.setState({ resumeSpawn: null, worldReloading: false });
   });
 });

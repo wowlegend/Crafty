@@ -170,6 +170,21 @@ export function liveInventory(inventory) {
   return Object.fromEntries(Object.entries(inventory).map(([bag, items]) => [bag, holdsRetired(items) ? withoutRetired(items) : items]));
 }
 
+// A block edit's key: the cell's integer x_y_z (the store's worldBlocks).
+const CELL_KEY = /^-?\d+_-?\d+_-?\d+$/;
+
+/**
+ * The block edits of a save that name a cell: its [key, block] pairs whose key is `x_y_z`. A save comes from
+ * localStorage and may hold anything, and a key the terrain worker's message cannot split (store
+ * loadModificationsMessage) throws when Terrain mounts, outside the boot's guard, so every reload of the tab would boot
+ * into the same throw.
+ * @param {unknown} blocks a save's world_data.blocks
+ * @returns {Array<[string, unknown]>}
+ */
+export function liveBlocks(blocks) {
+  return Array.isArray(blocks) ? blocks.filter((e) => Array.isArray(e) && e.length === 2 && typeof e[0] === 'string' && CELL_KEY.test(e[0])) : [];
+}
+
 /** A save's chest entries ([coords, chest]) with the retired keys taken out of each chest's inventory. Pure. */
 export function liveChests(chests) {
   if (!Array.isArray(chests)) return chests;
@@ -240,9 +255,14 @@ export const PERSISTED_KEYS = Object.freeze([
  * rounded to whole metres (systems/PositionTracker.jsx): loaded as the body's centre, it stood the player up to half a
  * metre into a wall they had stood beside, or with the head in the ceiling of a two-high tunnel
  * (tests/integration/chaos-play-loads.test.jsx). That is the fallback only with no body.
- * @param {{playerRigidBodyRef?: {current: ?{translation: () => {x: number, y: number, z: number}, collider?: (i: number) => ?{halfHeight: () => number, radius: () => number}}}, playerPosition?: object}} state
+ * While a load's spot is pending (`resumeSpawn`, until the Player places the body there), the save keeps that spot: the
+ * body is in the sky freeze over the origin until the world is built, then held, and a save then wrote the freeze over
+ * the place the world was saved at.
+ * @param {{playerRigidBodyRef?: {current: ?{translation: () => {x: number, y: number, z: number}, collider?: (i: number) => ?{halfHeight: () => number, radius: () => number}}}, playerPosition?: object, resumeSpawn?: ?{x: number, y: number, z: number}}} state
  */
 export function savePosition(state) {
+  const r = state.resumeSpawn;
+  if (r && [r.x, r.y, r.z].every(Number.isFinite)) return { x: r.x, y: r.y, z: r.z };
   const rb = state.playerRigidBodyRef && state.playerRigidBodyRef.current;
   const t = rb && rb.translation ? rb.translation() : null;
   if (!t) return state.playerPosition;
@@ -309,6 +329,24 @@ export function buildSaveData(state, { position } = {}) {
       // restored the dragon to all 700. Phase is not stored — it re-derives from health on load.
       bossState: serializeBossState(state),
     },
+  };
+}
+
+/**
+ * The save of a player who is dead: the world as Respawn leaves it (HUD.jsx: respawn, then the quest system's
+ * onPlayerDeath). No position, so the load stands the player at the origin spawn, as Respawn does (store loadWorldData:
+ * a save with no position sets no resumeSpawn), and the death counted in the quest stats. Every load arrives at full
+ * health, as a respawn does. Without it a refresh on the death screen resumes the player alive where they fell.
+ * @param {object} saveData a buildSaveData result
+ */
+export function asRespawned(saveData) {
+  const { position: _fell, ...player } = saveData.player_data || {};
+  const qs = saveData.questState;
+  const stats = isPlainObject(qs) && isPlainObject(qs.stats) ? qs.stats : null;
+  return {
+    ...saveData,
+    player_data: player,
+    questState: stats ? { ...qs, stats: { ...stats, deaths: (Number(stats.deaths) || 0) + 1 } } : qs,
   };
 }
 
