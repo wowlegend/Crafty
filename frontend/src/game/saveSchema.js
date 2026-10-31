@@ -101,7 +101,29 @@ const talentCutMigration = Object.freeze({
   },
 });
 
-export const RETIRED_MIGRATIONS = Object.freeze([...Object.values(RETIRED_QUESTS).map(questMigration), talentCutMigration]);
+// THE RESUME WIPE'S DRAGON (DECISIONS 2026-10-31 item 250). In the builds deployed from 2026-10-28T10:41:29Z to
+// 2026-10-31T07:09:42Z the context-loss resume loaded its world after the dragon hook had mounted, and the hook wrote its
+// mount-time encounter over the loaded one: health 700 (those builds' initial bossHealth), inactive, not defeated, with
+// the tier and the kill night left as loaded. A tier of 1 or more is written only by a kill, and a return wakes at its
+// tier's maximum (1050 and up), so that shape on a tier of 1 or more is the wipe of a slain dragon (or of a return fight
+// it reset), and it loads slain, its return due as the kill set it. A slot created after the window cannot hold the wipe.
+// The literals are the window's facts, not the current tuning.
+export const BOSS_WIPE_REPAIR = 'boss.resumeWipe';
+const WIPE_HEALTH = 700;
+const WIPE_WINDOW_END = Date.parse('2026-10-31T07:09:42Z');
+const bossWipeRepair = Object.freeze({
+  name: BOSS_WIPE_REPAIR,
+  run(saveData) {
+    const created = Date.parse(saveData?.created_at);
+    if (Number.isFinite(created) && created >= WIPE_WINDOW_END) return {};
+    const b = saveData?.game_state?.bossState;
+    if (!isPlainObject(b) || !(Number.isFinite(b.tier) && b.tier >= 1)) return {};
+    if (b.health !== WIPE_HEALTH || b.active !== false || b.defeated !== false) return {};
+    return { bossState: { ...b, health: 0, active: false, defeated: true } };
+  },
+});
+
+export const RETIRED_MIGRATIONS = Object.freeze([...Object.values(RETIRED_QUESTS).map(questMigration), talentCutMigration, bossWipeRepair]);
 
 const readMigrated = (saveData) => (isPlainObject(saveData) && Array.isArray(saveData.migrated)
   ? saveData.migrated.filter((name) => typeof name === 'string')
@@ -110,12 +132,13 @@ const readMigrated = (saveData) => (isPlainObject(saveData) && Array.isArray(sav
 /**
  * What loading `saveData` owes for retired keys whose migration it has not run, and the record once paid. Pure.
  * `talentPoints` and `respec` are the Cut's talent refund (above): points to add, and whether every held rank comes back.
+ * `bossState` is the resume wipe's repair (above): the encounter to load in place of the save's, or null.
  * @returns {{xp: number, coins: number, items: Array<{item: string, count: number}>, claimedQuestIds: string[],
- *   paidTitles: string[], talentPoints: number, respec: boolean, migrated: string[]}}
+ *   paidTitles: string[], talentPoints: number, respec: boolean, bossState: ?object, migrated: string[]}}
  */
 export function migrateRetired(saveData, migrations = RETIRED_MIGRATIONS) {
   const migrated = [...new Set(readMigrated(saveData))];
-  const owed = { xp: 0, coins: 0, items: [], claimedQuestIds: [], paidTitles: [], talentPoints: 0, respec: false, migrated };
+  const owed = { xp: 0, coins: 0, items: [], claimedQuestIds: [], paidTitles: [], talentPoints: 0, respec: false, bossState: null, migrated };
   for (const m of migrations) {
     if (migrated.includes(m.name)) continue;
     const r = m.run(saveData);
@@ -127,6 +150,7 @@ export function migrateRetired(saveData, migrations = RETIRED_MIGRATIONS) {
     }
     if (r.talentPoints) owed.talentPoints += r.talentPoints;
     if (r.respec) owed.respec = true;
+    if (r.bossState) owed.bossState = r.bossState;
     if (r.claimQuestId) owed.claimedQuestIds.push(r.claimQuestId);
     if (r.title) owed.paidTitles.push(r.title);
     migrated.push(m.name);

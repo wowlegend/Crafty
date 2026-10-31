@@ -8,7 +8,7 @@ import { foldVerbMods } from '../game/verbMods.js';
 import { relicTier, normalizeRelicTiers } from '../game/relics.js';
 import { buy as forgeBuy } from '../game/forge.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, asRespawned, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, TALENT_CUT } from '../game/saveSchema.js';
+import { buildSaveData, asRespawned, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, TALENT_CUT, BOSS_WIPE_REPAIR } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -148,8 +148,9 @@ export const useGameStore = create((set, get) => ({
 
     // The save keys this build does not write, as loaded (game/saveSchema.js splitTombstone); buildSaveData writes them
     // back. Replaced wholesale by every load, so a new world never inherits the last one's. A session that has loaded
-    // nothing plays a post-Cut build, so its saves record the Cut's refund as run (saveSchema.js TALENT_CUT).
-    _tombstone: { migrated: [TALENT_CUT] },
+    // nothing plays a post-Cut build, so its saves record the Cut's refund as run (saveSchema.js TALENT_CUT), and it was
+    // never under the resume wipe, so they record its repair as run too (BOSS_WIPE_REPAIR).
+    _tombstone: { migrated: [TALENT_CUT, BOSS_WIPE_REPAIR] },
 
     // Capture-only: hide the gameplay HUD for clean character-studio shots
     // (e.g. the character-closeup visual fixture). Default false -> HUD always shows
@@ -1142,8 +1143,9 @@ export const useGameStore = create((set, get) => ({
             // clamped into [0, max], and a save with no boss block (written before this existed) reads as
             // "not started". Absent-block tolerance is the same forward-compat contract as `prog` below.
             // C3: the fight is sized from its TIER (no fixed max), and a won pre-tier save counts its first
-            // return from the night it was loaded on.
-            const boss = hydrateBossState(saveData.game_state?.bossState, {
+            // return from the night it was loaded on. A save the context-loss resume wiped loads its slain dragon
+            // (saveSchema.js BOSS_WIPE_REPAIR, DECISIONS 2026-10-31 item 250).
+            const boss = hydrateBossState(owed.bossState || saveData.game_state?.bossState, {
                 gameWon, nightCount: saveData.progression?.nightCount ?? state.nightCount,
             });
 
