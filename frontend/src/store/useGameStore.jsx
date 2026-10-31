@@ -134,6 +134,9 @@ export const useGameStore = create((set, get) => ({
     // Set when saveActiveWorld refused to write over a newer save of the slot from another tab: { id }, or null. Once set,
     // the tab saves nothing more and the conflict panel offers the reload (ui/SlotConflictPanel.jsx). Transient.
     slotConflict: null,
+    // Whether the tab's last save failed to write (a full or refused storage): the first failure of a run raises the
+    // save.failed notice, and a save that lands ends the run (saveActiveWorld). Transient.
+    _saveFailing: false,
     // The world the boot loaded, for the title's Continue: { id, name, level, savedAt } or null (game/worldBoot.js
     // bootWorld). Transient: the page that loaded it is the only one it describes.
     continueWorld: null,
@@ -1336,7 +1339,12 @@ export const useGameStore = create((set, get) => ({
         const meta = { name, created_at, is_owner: true, saved_at };
         if (existing && 'is_public' in existing) meta.is_public = existing.is_public;
         const ok = writeWorld(id, meta, data);
-        if (ok) set({ _slotSavedAt: saved_at });
+        if (ok) set({ _slotSavedAt: saved_at, _saveFailing: false });
+        else if (!get()._saveFailing) {
+            // worldSaves swallows the storage's throw; without this a full storage stopped every save with no word.
+            set({ _saveFailing: true });
+            get().addNotification?.('save.failed', 'warning');
+        }
         return ok;
     }
 }));
