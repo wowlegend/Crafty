@@ -14,8 +14,9 @@
  *
  * WHAT MAKES IT DIFFERENT: the coverage is collected from V8 inside the browser while PLAYWRIGHT drives a
  * real booted game — world built, HUD mounted, input dispatched. So "reached" means the game got there,
- * not that a test called it. A module can sit at 100% unit coverage and be unreachable in play; that is
- * the exact shape of all four defects above.
+ * not that a test called it, with one stated exception: a spec can call a function itself, and three save-path entries
+ * in MUST_REACH are called that way (the note above MUST_REACH). A module can sit at 100% unit coverage and be
+ * unreachable in play; that is the exact shape of all four defects above.
  *
  * TWO GRAINS, STATED. The REPORT is at module grain: a module the page EVALUATED, which V8 reports as its top-level
  * code with a count of 1 even when every function in it is uncalled (measured with node:inspector's
@@ -222,6 +223,18 @@ function knownSrcModules() {
  * recoverFromContextLoss, which runs at a tap that reloads the page: what a test runs before its page reloads is missing
  * from its coverage (context-loss.spec called it and onContextLost, and its shard recorded neither;
  * REVIEW:l12:coverage-before-a-navigation-unrecorded). So an entry must be one a spec runs in the document it ends on.
+ *
+ * WHAT A SAVE-PATH ENTRY PROVES IS NARROWER THAN THE REST. A count says the function ran, not who called it. Component
+ * and hook entries are called only by React (a spec cannot call a component, only mount it), so they show that the game
+ * mounted them. `src/store/useGameStore.jsx#saveActiveWorld` is also called by e2e specs in the page (save-load, forge,
+ * quest-text, talents, load-hold, continue, world-rebuild-after-load and the-cut, in the document each test ends on), and
+ * it calls `buildSaveData` and `writeWorld`, so those three entries show that a save ran, not that the game's own save
+ * path (autosave, then `worldBoot.js#saveWorldInPlay`) did. If the game stopped saving by itself, the three would still
+ * read as ran. The one other entry a spec calls is `src/game/eventBus.js#emit` (context-loss.spec emits a kill itself, in
+ * a document it then reloads; the game emits on every kill too). An entry only the game calls for that path would be
+ * `src/game/worldBoot.js#saveWorldInPlay`, if a spec runs it in its last document. `installAutosave` is called only by
+ * App, but it shows the trigger was installed, not that the trigger saves: a game whose autosave callback dropped its
+ * save call would still read every entry as ran (REVIEW:l12:save-path-reach-also-called-by-specs).
  *
  * To add one: it must be an entry point a spec runs today (the job says if not). To remove one: the commit says why the
  * game no longer needs it, because removing an entry is how a contract quietly shrinks.
