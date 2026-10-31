@@ -57,7 +57,7 @@ function evictSoonest(reg, cast, keep) {
 /**
  * spawnZone(reg, {kind, pos, radiusMult?}, now, cast?) -> the live zone (new or refreshed) | null (annihilated).
  * `cast` is the Set of zones this cast has painted or refreshed so far (castZone owns one); the zone returned joins it, and
- * the cap never evicts a member. Left out, the zone is a cast of its own.
+ * the cap gives up a member only when the cast owns the whole board (evictSoonest). Left out, the zone is a cast of its own.
  */
 export function spawnZone(reg, spec, now, cast = new Set()) {
   const def = ZONE_DEFS[spec.kind];
@@ -156,7 +156,6 @@ export function castZone(reg, req, mobs, isTarget, now) {
   const leaps = spawnChain(reg, req, mobs, isTarget, now, cast);
   return { zone, leaps };
 }
-
 
 /** stepZones(reg, now) -> { expired } — the bridge ticks this at 15Hz (M4). */
 export function stepZones(reg, now) {
