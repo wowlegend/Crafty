@@ -56,7 +56,6 @@ import { PhantomBlockSystem } from './world/PhantomBlockSystem';
 import { HurlSystem } from './world/HurlSystem';
 import { SnareTetherSystem } from './world/SnareTetherSystem.jsx';
 import { SquadAISystem } from './world/SquadAISystem.jsx';
-import { ElementZoneSystem } from './world/ElementZoneSystem.jsx';
 import { isPointInCone } from './combat/cone.js';
 import { swingOrigin, steadyEye, EYE_HEIGHT_M, EYE_BOB_M } from './combat/swingOrigin.js';
 import { moveKinematic, placeBody } from './game/kinematicMove.js';
@@ -1617,7 +1616,6 @@ export const Player = ({ isWorldBuilt }) => {
             and moving them would be churn. PhantomBlockSystem must STAY: it orbits the player's origin
             and reads its own getWorldPosition, so being a body child is the whole mechanism. */}
         <SquadAISystem />
-        <ElementZoneSystem />
       </RigidBody>
       {/* WORLD-SPACE effects, mounted at the scene root — NOT inside the RigidBody. 2026-08-09 audit:
           both were children of the body, which rapier drives to the player's world translation every

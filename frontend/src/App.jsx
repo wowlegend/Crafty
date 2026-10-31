@@ -13,6 +13,10 @@ import { useQuestSystem, useTreasureChests } from './QuestSystem';
 import { useBossSystem } from './world/bossSystem';
 import { useSurvivalMode } from './world/survivalSystem';
 import { useEmberAccrual } from './world/accrualHooks';
+import { initSettingsPersistence } from './game/settingsPersist.js';
+// SCRATCH (lane L12 round 2 mutants, not for merge): both modules stay imported and evaluated; neither function is called.
+void useEmberAccrual;
+void initSettingsPersistence;
 
 import { HUD } from './HUD';
 import { useInputManager } from './InputManager';
@@ -26,7 +30,6 @@ import { MenuSystem } from './MenuSystem';
 import { MotionProvider } from './ui/MotionProvider.jsx';
 import { DebugOverlay } from './ui/DebugOverlay';
 import { prefetchPanels } from './ui/panels/lazyPanels.js';
-import { initSettingsPersistence } from './game/settingsPersist.js';
 import { ONBOARDING_TIPS } from './game/onboardingTips.js';
 import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ContextLossPanel } from './ui/ContextLossPanel.jsx';
@@ -126,7 +129,7 @@ function GameApp({ experienceSystem }) {
   const questSystem = useQuestSystem();
   const treasureChests = useTreasureChests();
   useSurvivalMode(gameState.isDay);
-  useEmberAccrual(); // day kills by the player's own hand fill the ember bar
+  // SCRATCH (lane L12 round 2 mutant, not for merge): App no longer calls useEmberAccrual.
   const bossSystem = useBossSystem(experienceSystem.playerLevel);
 
   const {
@@ -184,7 +187,7 @@ function GameApp({ experienceSystem }) {
   // Returning the unsubscribe so React uses it as cleanup; it was previously discarded, leaking the
   // store subscription on unmount. Capture-guarded inside settingsPersist, so the visual harness still
   // never touches localStorage.
-  useEffect(() => initSettingsPersistence(useGameStore, isCaptureMode), []);
+  // SCRATCH (lane L12 round 2 mutant, not for merge): App no longer calls initSettingsPersistence.
 
   // Local-first autosave (game/autosave.js): a change to any field the save records schedules one, and hiding the tab or
   // closing it saves a pending one at once. It saves only a world in play (game/worldBoot.js saveWorldInPlay).

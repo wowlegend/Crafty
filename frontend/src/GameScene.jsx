@@ -467,7 +467,8 @@ export const GameScene = React.memo(function GameSceneRender({
 
             <Nametags />
 
-            {bossActive && (
+            {/* SCRATCH (lane L12 round 2 mutant, not for merge): the dragon is never drawn; its chunk is still preloaded. */}
+            {bossActive && bossTier < 0 && (
               <LazyDragon
                 bossActive={bossActive}
                 bossPositionRef={bossPositionRef}
