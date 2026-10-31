@@ -19,7 +19,48 @@
 
 ---
 
-## 2026-10-30 (lane L2) — [LOOP] every world switch is a boot, and the title continues the player's world
+## 2026-10-31 (lane L3) — [LOOP] the store owns per-world state, and a save the resume wiped gets its slain dragon back
+
+**Decided by the L3 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L3 of the 2026-10-30 deep
+audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, seam S1 and section 4; registry
+AUDIT:lane:L3-store-owns-world-state). Branch `fix/l3-store-owns-world`. Items from 250. Each stands while it earns its
+place.
+
+250. **A save the context-loss resume wiped is repaired at load to its slain dragon; decided before the boss fix, as
+   the audit's one-way door asks.** The wipe: until lane L2 the resume loaded its world in ContextLossPanel's effect,
+   after the dragon hook had mounted, and the hook's mirror then wrote its mount-time encounter (the store's initial
+   `bossHealth` 700, inactive, not defeated) over the loaded one. `setBossEncounter` writes the tier and the kill night
+   only when they are passed, and the mirror passed neither, so both survived: a slain dragon of tier 1 or more came back
+   as `{ health: 700, active: false, defeated: false, tier, killNight }`, and the autosave wrote that about 5 s later
+   (AUDIT:debt:resume-clobbers-quests-and-boss, verifier 1's disk reading `{health:700, active:false, defeated:false,
+   tier:1}`).
+   - **The window, from git and GitHub's deployments** (environment Production): the resume is d99a261a (2026-10-27),
+     first live in the deploy of da70413f at 2026-10-28T10:41:29Z; lane L2's boot (92120514) first went live in the
+     deploy of 8579918e at 2026-10-31T07:09:42Z. The command session's frame started the window at the dragon lane's
+     landing (b8d8fdcd, deployed 2026-10-30T12:33:23Z); git does not support that start: the fight and its save
+     (2de54dac, 2026-08-03), the tiers (6e7591cb, 2026-09-22) and the resume were all live before it, and the code at
+     da70413f has the same mount-time seeds and the same three-field mirror. So the window is about 68 hours, not 19.
+   - **The independent sign.** A tier of 1 or more is written only by a kill (the kill beat's tier step), and the wipe
+     left it. 700 is tier 0's maximum and below every later tier's (1050 for tier 1, `bossTierStats`), and a return
+     wakes at its tier's maximum. So a save holding a tier of 1 or more at exactly 700, inactive and not defeated, is
+     the wipe, or a return fight suspended (its chunk failed to load) at exactly 700 HP. A tier-0 save needs no repair:
+     no kill leaves tier 0 with the dragon slain except a failed tier step, and a won tier-0 save already loads slain
+     (`hydrateBossState`); a tier-0 fight the wipe reset to 700 is indistinguishable from one never begun, and it gets
+     the fresh encounter it already loads as.
+   - **The repair** (`game/saveSchema.js` `BOSS_WIPE_REPAIR`, run by `migrateRetired` with the save's other
+     migrations): a save of that shape whose slot was created before 2026-10-31T07:09:42Z (or has no `created_at`) loads
+     slain, `{ health: 0, active: false, defeated: true }` with its tier and kill night as the kill wrote them, so its
+     return is due as the slay rule set it (`bossCanReturn`: three nights and four levels). It runs before the first
+     autosave (the load) and once per save: the save records it in `migrated` whether or not it matched, as the Cut's
+     refund does, and a world that has loaded nothing starts with it recorded, so a later suspended fight at 700 is
+     never touched. A return fight the wipe hit mid-way (its HP lost too) comes back as a slain dragon whose return was
+     already due: it announces, wakes with its entrance and fights at its tier's full HP.
+   - **Not repaired:** the World Manager's in-place Load into a session whose hook had woken the dragon (the hook's
+     later writes carried its own HP, at most 700, and `active: true`, over the loaded tier): that is a live return
+     fight's shape, and no field tells the two apart. Gone since L2 too.
+   - Recorded before the boss fix, in its own commit; the repair and its gate land in the next one, before the hook
+     reads the store (item 251).
+
 
 **Decided by the L2 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L2 of the 2026-10-30 deep
 audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, seam S1 and section 4). Branch `feat/l2-boot-is-the-only-load`,
