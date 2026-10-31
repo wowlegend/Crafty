@@ -7,7 +7,7 @@ import { bootDev, startPlayActive } from './_boot.js';
 //
 // The real page in the real browser: play, stand on land more than three chunks from the origin, save, reload the tab (a
 // plain visit, no note), and the title offers Continue with the world's name and level; it is clicked while the world
-// builds, as a player would. From the reload until 10 s after the body stands at the save, it is sampled every drawn
+// builds, as a player would. From the reload until 30 drawn frames after the body stands at the save, it is sampled every drawn
 // frame. It must reach the save's column, never be more than 1 m under the saved height there, still stand there at the
 // end, and the autosave after Continue must write that spot. The
 // far column is the point: the page boots over the origin, so the save's chunks are not there when the world is first
@@ -21,29 +21,31 @@ import { bootDev, startPlayActive } from './_boot.js';
 // WHAT THIS DOES NOT CHECK: the World Manager's Load and Create, the context-loss resume and the dragon after a switch
 // (tests/gates/world-switch-boot-gates.test.jsx, the real App in jsdom; tests/e2e/context-loss.spec.js drives the real
 // context-loss reload); touch and WebKit (the title's buttons are the same elements there); the pointer lock itself,
-// which this page grants only to a gesture (grantLockOnGestureOnly); the input gate is also held as the other specs
-// hold it.
+// which this page grants only to its own Continue click (lockOnlyWhenArmed); the input gate is also held as the other
+// specs hold it.
 //
 // Mutation-Proof: red on dispatched CI runs, each with one line of the game reverted (the run ids are in DECISIONS
 // 2026-10-30 item 205); no local browser run.
 
 const SHOTS = 'test-results/title-shots';
 
-/** In the page, before any of its scripts: a pointer lock is granted as a player's browser grants one, for a request made
- *  with a user gesture or by the element that already holds the lock, and refused otherwise. Headless Chromium on CI
- *  granted App's world-ready request, made with no gesture: play started on its own and the title, with Continue, was
- *  gone before the spec could click it (dispatched run 41154002602). Refusing every request instead paused the world
- *  from the click until the spec held the input gate, and in that pause the save's ground streamed in under a hold
- *  that had let go too early, so the hold mutant passed (run 41157732564); a player's click locks the pointer and the
- *  world runs at once. A refusal is a rejected promise and a pointerlockerror, as the browser gives. */
-function grantLockOnGestureOnly() {
+/** In the page, before any of its scripts: a pointer lock is granted only once the spec arms it for its own Continue
+ *  click (window.__e2eLockArmed), or to the element already holding one; every other request is refused, as a player's
+ *  browser refuses one asked for with no gesture. Headless Chromium on CI granted App's world-ready request: play began
+ *  on its own and the title, with Continue, was gone before the spec could click it (dispatched runs 41154002602 and
+ *  41158525305; navigator.userActivation did not tell the click from that request). Refusing every request paused the
+ *  world from the click until the spec held the input gate, and in that pause the save's ground streamed in under a
+ *  hold that had let go too early, so the hold mutant passed (run 41157732564): a player's click locks the pointer and
+ *  the world runs at once. A refusal is a rejected promise and a pointerlockerror, as the browser gives. */
+function lockOnlyWhenArmed() {
   const real = HTMLCanvasElement.prototype.requestPointerLock;
   HTMLCanvasElement.prototype.requestPointerLock = function gated(...args) {
-    if (document.pointerLockElement === this || navigator.userActivation?.isActive) return real.apply(this, args);
+    if (document.pointerLockElement === this || window.__e2eLockArmed) return real.apply(this, args);
     setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 0);
     return Promise.reject(new DOMException('pointer lock refused (e2e: no lock without a gesture)', 'NotAllowedError'));
   };
 }
+const FRAMES_AFTER_ARRIVAL = 30; // drawn frames, each up to 0.25 s of world time (game/frameStep.js MAX_FRAME_STEP_SEC)
 const FAR = 48; // three chunks (CHUNK_SIZE 16): nothing at the origin's render distance reaches past this
 const CANDIDATES = [[60.5, -44.5], [-60.5, 52.5], [56.5, 60.5], [-52.5, -60.5], [72.5, 8.5], [8.5, 72.5]];
 const MARK = 4321;
@@ -121,7 +123,7 @@ test('a returning player continues from the title, and stands where they saved, 
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message));
   mkdirSync(SHOTS, { recursive: true });
-  await page.addInitScript(grantLockOnGestureOnly);
+  await page.addInitScript(lockOnlyWhenArmed);
 
   // 1. A first visit: the title starts a world.
   await bootDev(page);
@@ -177,14 +179,16 @@ test('a returning player continues from the title, and stands where they saved, 
   await cont.click({ trial: true }); // visible and stable: the title's entrance tweens have finished
   await page.screenshot({ path: `${SHOTS}/title-with-save.png` });
 
-  // 5. Continue, as a player does once it shows, whether or not the world behind the title has finished building.
+  // 5. Continue, as a player does once it shows, whether or not the world behind the title has finished building. The click
+  // locks the pointer, as a player's does.
+  await page.evaluate(() => { window.__e2eLockArmed = true; });
   await cont.click();
   expect(await page.evaluate(() => window.useGameStore.getState().gameStarted), 'Continue did not start play').toBe(true);
   console.log(`continue: after the click ${JSON.stringify(await page.evaluate(gates))}`);
   await startPlayActive(page); // a headless page may refuse the pointer: hold the input gate the way a lock would
 
-  // 6. The boot stands the body at the save once that column's ground is in (the subject, not a precondition), then 10 s of
-  // play.
+  // 6. The boot stands the body at the save once that column's ground is in (the subject, not a precondition), then
+  // FRAMES_AFTER_ARRIVAL drawn frames of play.
   const arrived = await page.waitForFunction((at) => {
     const s = window.useGameStore.getState();
     const t = s.playerRigidBodyRef?.current?.translation();
@@ -192,7 +196,8 @@ test('a returning player continues from the title, and stands where they saved, 
   }, saved.at, { timeout: 180000 }).then(() => true, () => false);
   expect(arrived, `the boot never stood the player at the save: ${JSON.stringify(await page.evaluate(gates))}`).toBe(true);
   const t0 = await page.evaluate(() => performance.now());
-  await page.waitForTimeout(10000);
+  await page.waitForFunction(({ t0, n }) => window.__bodySamples.filter((row) => row[0] >= t0).length >= n,
+    { t0, n: FRAMES_AFTER_ARRIVAL }, { timeout: 180000 }).catch(() => {}); // a short count fails below, as SETUP
 
   const r = await page.evaluate(({ at, t0, id }) => {
     const rows = window.__bodySamples;
@@ -204,19 +209,16 @@ test('a returning player continues from the title, and stands where they saved, 
     const blob = JSON.parse(localStorage.getItem(`crafty_world_save_${id}`) || 'null');
     return {
       samples: rows.length, atColumn: atCol.length, afterArrival: rows.filter((row) => row[0] >= t0).length,
-      spanAfterArrival: rows.length ? rows.at(-1)[0] - t0 : 0,
       minY: low[2], minAt: low[0], leftColumn: left.length, last: rows.at(-1), slot: blob?.player_data?.position ?? null, slotSavedAt: blob?.saved_at,
       worlds: JSON.parse(localStorage.getItem('crafty_world_saves') || '[]').length,
     };
   }, { at: saved.at, t0, id: saved.id });
   console.log(`continue: after the reload ${JSON.stringify({ ...r, saved: saved.at, pageErrors })}`);
   const why = JSON.stringify({ ...r, saved: saved.at, gates: await page.evaluate(gates) });
-  // CI's software renderer draws this page at about 1.3 frames a second (control run 41157054333: 74 frames in 55 s),
-  // and the body moves only on a drawn frame, so every frame is a reading. The floors say the sampler ran through the
-  // stay and the 10 s after it, not a frame rate.
-  expect(r.atColumn, `SETUP: too few frames sampled at the save's column to judge: ${why}`).toBeGreaterThanOrEqual(20);
-  expect(r.afterArrival, `SETUP: too few frames sampled after the arrival: ${why}`).toBeGreaterThanOrEqual(8);
-  expect(r.spanAfterArrival, `SETUP: the samples stop before the 10 s after the arrival: ${why}`).toBeGreaterThanOrEqual(9000);
+  // CI's software renderer draws this page at 0.4 to 1.3 frames a second (control runs 41157054333, 41158525305), and the
+  // body moves only on a drawn frame, so the window after the arrival is counted in frames, not seconds.
+  expect(r.afterArrival, `SETUP: fewer than ${FRAMES_AFTER_ARRIVAL} frames drawn after the arrival: ${why}`).toBeGreaterThanOrEqual(FRAMES_AFTER_ARRIVAL);
+  expect(r.atColumn, `the body was never sampled at the save's column: ${why}`).toBeGreaterThan(0);
   expect(r.minY, `the body dropped more than 1 m under the saved height at the save's column: ${why}`).toBeGreaterThanOrEqual(saved.at.y - 1);
   expect(Math.hypot(r.last[1] - saved.at.x, r.last[3] - saved.at.z), `the player did not stay at the save: ${why}`).toBeLessThan(1.5);
   expect(r.leftColumn, `the body left the save's column (a fall through the world comes back at the origin): ${why}`).toBe(0);
