@@ -45,7 +45,9 @@ reviews (static finding 1 and dynamic P8, required; static 2 to 5; dynamic's fou
    chest is never removed, empty or loaded (round-1 static finding 3: an empty chest cost 8 wood and paid back 1). The
    reason: a build tool takes back what was built, and a 64-block harvest a click, ore included, was an economy rate
    nobody had measured (registry REVIEW:l6:delete-tool-harvest-rate, closed by this). The pickaxe is the way to dig.
-   The tool's label now says so ("Remove the blocks you placed, 3x3x3").
+   The tool's label now says so ("Remove the blocks you placed, 3x3x3"), and a click whose footprint holds none of
+   them says why it took nothing ("The Delete Tool takes only blocks you placed"; zh 删除工具只拆你自己放的方块), so a
+   click on the ground does not read as a dead tool.
 272. **A batched removal is one message** (round-1 static finding 2). The worker's `cells_edited` now carries the
    blocks a removal took, in place of one `block_broken` for each, so a 64-block click is one message, one record write
    and one inventory write per kind of block, not 64 of each. Debris bursts for the first 4 blocks of an answer only

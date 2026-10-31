@@ -28,6 +28,9 @@ export function deniedReason(kind, ctx = '') {
     // A placement cell that already holds a block (world/placeAtHit.js, the worker's answer).
     case 'occupied':
       return t('deny.occupied');
+    // A Delete Tool click whose footprint holds no block the player placed (world/mineAtHit.js).
+    case 'not-yours':
+      return t('deny.notYours');
     // A beast form with no room where the player stands (game/formFit.js).
     case 'no-room':
       return t('deny.noRoom');

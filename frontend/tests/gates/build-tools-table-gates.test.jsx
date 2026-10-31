@@ -152,9 +152,11 @@ async function mine(aim = MINED, own = []) {
     targetedX: x, targetedY: y, targetedZ: z, targetCoords: `${x}_${y}_${z}`, chestTargeted: false, chestHasItems: false };
   const before = blocksOf();
   const recordedBefore = new Map(S().worldBlocks);
+  const notes = [];
+  useGameStore.setState({ addNotification: (text, type) => notes.push({ text, type }) });
   await mineAtHit(h, { post: io.post, editCells: io.editCells, playBreak: () => {} });
   const recorded = recordedSince(recordedBefore);
-  return { keys: recorded.map(([k]) => k).sort(), zero: recorded.every(([, v]) => v === 0), paid: delta(before, blocksOf()) };
+  return { keys: recorded.map(([k]) => k).sort(), zero: recorded.every(([, v]) => v === 0), paid: delta(before, blocksOf()), notes };
 }
 
 describe('every Building Tools tool does what its label says (real panel, real store, real worker)', () => {
@@ -206,11 +208,14 @@ describe('every Building Tools tool does what its label says (real panel, real s
       expect(taken.paid, `${id}: the blocks taken were not paid back as themselves`).toEqual(MINE_PAY[id] || { grass: 1 });
       for (const k of row.mine) expect(readVoxel(...k.split('_').map(Number)), `${id}: the worker still holds a block at ${k}`).toBe(0);
       if (!row.mine.length) expect(readVoxel(...MINED), `${id}: a left-click that took nothing took the ground`).toBe(GRASS);
+      expect(taken.notes, `${id}: a left-click that took nothing was silent, or one that took a block raised a notice`)
+        .toEqual(row.mine.length ? [] : [{ text: 'The Delete Tool takes only blocks you placed', type: 'warn' }]);
 
       const ownTaken = await mine(OWN_TOP, OWN);
       expect(ownTaken.keys, `${id}: a left-click on the player's own blocks took the wrong ones`).toEqual(row.own);
       expect(ownTaken.zero, `${id}: a taken block was not recorded as air`).toBe(true);
       expect(ownTaken.paid, `${id}: the player's blocks taken were not paid back as themselves`).toEqual(OWN_PAY[id] || { stone: 1 });
+      expect(ownTaken.notes, `${id}: taking the player's own blocks raised a notice`).toEqual([]);
       for (const k of row.own) expect(readVoxel(...k.split('_').map(Number)), `${id}: the worker still holds a block at ${k}`).toBe(0);
       expect(readVoxel(OWN_TOP[0], GROUND, OWN_TOP[2]), `${id}: the ground under the player's blocks was taken`).toBe(GRASS);
     }, 60000);

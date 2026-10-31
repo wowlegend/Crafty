@@ -6,6 +6,7 @@ import { blockForId } from './blockIds';
 import { buildFootprint } from '../game/buildFootprint.js';
 import { chunkOf, CHUNK_SIZE } from './chunkLayout.js';
 import { recordingAtClick } from './cellEdits.js';
+import { notifyDenied } from '../ui/denyToast.js';
 
 /** A block the worker removed (`block_broken`) goes into the inventory as itself: an ore drops its ore (world/blockIds.js). */
 export function payBrokenBlock(payload) {
@@ -84,7 +85,8 @@ function mineFootprint(h, store, editCells, playBreak) {
     const footprint = buildFootprint('delete', store.buildSize || 1, target, h.normal);
     const own = (k) => store.worldBlocks.get(k) > 0 && !(store.chests && store.chests.has(k));
     const cells = footprint.filter((c) => own(`${c.x}_${c.y}_${c.z}`));
-    if (cells.length === 0) return Promise.resolve(0);
+    // Said, or a click on the ground reads as a dead tool.
+    if (cells.length === 0) { notifyDenied('not-yours'); return Promise.resolve(0); }
     return new Promise((resolve) => {
         editCells({ blockType: 0, cells }, (applied, recordable = applied, broken = []) => {
             if (applied.length === 0) { resolve(0); return; }
