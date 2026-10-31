@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   isVoidFall, resolveSpawnGround, spawnTargetY, spawnCornerGround, resumeColumnProbe, returnToSpawn,
-  SPAWN_FALLBACK_Y, SPAWN_PROBE_MAX_FAILS, SPAWN_EYE_OFFSET, SPAWN_FREEZE_Y,
+  SPAWN_FALLBACK_Y, SPAWN_PROBE_MAX_SEC, SPAWN_EYE_OFFSET, SPAWN_FREEZE_Y,
 } from './spawnPlacement.js';
 import { stance } from './stanceState.js';
 import { BASE_CAPSULE, BEAST_FORMS } from './beasts.js';
@@ -50,7 +50,7 @@ describe('returnToSpawn: one way back to the origin spawn\'s wait', () => {
     const body = { setTranslation: (p, wake) => calls.push(['at', p, wake]), setLinvel: (v, wake) => calls.push(['vel', v, wake]) };
     const world = { propagateModifiedBodyPositionsToColliders: () => calls.push(['collider with it']) };
     const camera = { position: { at: [300, 41, -400], set(x, y, z) { this.at = [x, y, z]; } } };
-    const spawn = { placed: { current: true }, probeFails: { current: SPAWN_PROBE_MAX_FAILS - 2 } };
+    const spawn = { placed: { current: true }, probeWait: { current: SPAWN_PROBE_MAX_SEC - 0.03 } };
     stance.engaged = true;
     stance.w = 1;
     return { calls, body, world, camera, spawn };
@@ -60,7 +60,7 @@ describe('returnToSpawn: one way back to the origin spawn\'s wait', () => {
     returnToSpawn(world, body, camera, 0.67, spawn);
     expect(calls).toEqual([['at', { x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true], ['collider with it'], ['vel', { x: 0, y: 0, z: 0 }, true]]);
     expect(camera.position.at, 'the camera stayed where the player fell: chunk streaming follows it').toEqual([0, SPAWN_FREEZE_Y + 0.67, 0]);
-    expect([spawn.placed.current, spawn.probeFails.current], 'the spawn branch does not run afresh').toEqual([false, 0]);
+    expect([spawn.placed.current, spawn.probeWait.current], 'the spawn branch does not run afresh').toEqual([false, 0]);
     expect([stance.engaged, stance.w], 'the fight came along').toEqual([false, 0]);
   });
   it('with no body yet, still starts the spawn\'s wait and moves the camera', () => {
@@ -68,7 +68,7 @@ describe('returnToSpawn: one way back to the origin spawn\'s wait', () => {
     returnToSpawn(world, null, camera, 0.67, spawn);
     expect(calls).toEqual([]);
     expect(camera.position.at).toEqual([0, SPAWN_FREEZE_Y + 0.67, 0]);
-    expect([spawn.placed.current, spawn.probeFails.current]).toEqual([false, 0]);
+    expect([spawn.placed.current, spawn.probeWait.current]).toEqual([false, 0]);
   });
 });
 
@@ -96,19 +96,29 @@ describe('resolveSpawnGround', () => {
     expect(resolveSpawnGround(null, 30, 0, true)).toEqual({ groundY: 30, retry: false, incFails: false });
   });
 
-  it('retries (incrementing fails) on an invalid probe while under the fail cap', () => {
+  it('retries (counting the frame toward the wait) on an invalid probe while the wait is under its bound', () => {
     const retry = { groundY: null, retry: true, incFails: true };
     expect(resolveSpawnGround(null, null, 0, true)).toEqual(retry); // null probe
     expect(resolveSpawnGround(null, NaN, 0, true)).toEqual(retry); // NaN probe
     expect(resolveSpawnGround(null, 15, 0, true)).toEqual(retry); // == PROBE_MIN_Y -> rejected (<=)
-    expect(resolveSpawnGround(null, 10, SPAWN_PROBE_MAX_FAILS - 2, true)).toEqual(retry); // still under cap
+    expect(resolveSpawnGround(null, 10, SPAWN_PROBE_MAX_SEC - 1 / 30, true, 1 / 60)).toEqual(retry); // still under the bound
   });
 
   it('falls back (no more retry) once the bounded probe wait is exhausted', () => {
-    // probeFails + 1 == MAX -> stop retrying, fall back, but still mark the final fail
-    expect(resolveSpawnGround(null, null, SPAWN_PROBE_MAX_FAILS - 1, true)).toEqual({
+    // the frame whose step reaches the bound falls back, and still counts
+    expect(resolveSpawnGround(null, null, SPAWN_PROBE_MAX_SEC - 1 / 60, true, 1 / 60)).toEqual({
       groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true,
     });
+  });
+
+  it('waits the same time at any frame rate: the bound is seconds, not frames', () => {
+    // 120 frames was 2 s at 60 Hz and 1 s at 120 Hz; the spawn corner's last chunk is asked for 3.15 s on at the top tier
+    expect(SPAWN_PROBE_MAX_SEC, 'the wait ends before the top tier streams the spawn corner').toBeGreaterThan(3.15);
+    for (const hz of [60, 120, 144]) {
+      let waited = 0, frames = 0;
+      while (resolveSpawnGround(null, null, waited, true, 1 / hz).retry) { waited += 1 / hz; frames++; }
+      expect(Math.abs(frames / hz - SPAWN_PROBE_MAX_SEC), `at ${hz} Hz the wait was ${frames} frames, ${(frames / hz).toFixed(2)} s`).toBeLessThan(2 / hz);
+    }
   });
 
   it('accepts a probe value just above the min', () => {

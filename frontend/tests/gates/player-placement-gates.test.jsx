@@ -63,7 +63,7 @@ const { Player } = await import('../../src/Components.jsx');
 const { useGameStore } = await import('../../src/store/useGameStore.jsx');
 const { buildSaveData } = await import('../../src/game/saveSchema.js');
 const { BASE_CAPSULE } = await import('../../src/game/beasts.js');
-const { spawnTargetY, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_FAILS } = await import('../../src/game/spawnPlacement.js');
+const { spawnTargetY, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } = await import('../../src/game/spawnPlacement.js');
 const { EYE_HEIGHT_M } = await import('../../src/combat/swingOrigin.js');
 const { setIntent, setActive, resetInput } = await import('../../src/input/inputState.js');
 const { generateMesh } = await import('../../src/world/mesher.js');
@@ -339,7 +339,7 @@ describe('the void guard fires under the world, never in it, and it and the resp
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     render(<Player isWorldBuilt />);
     // The first spawn waits all but two frames of its bound for the origin's chunks (a slow stream at boot).
-    for (let i = 0; i < SPAWN_PROBE_MAX_FAILS - 2; i++) frame(hz);
+    for (let i = 0; i < Math.round(SPAWN_PROBE_MAX_SEC * hz) - 2; i++) frame(hz);
     expect(spot(h.body.translation()), 'SETUP: the first spawn did not wait at the origin\'s hold').toEqual(HOLD);
     streamed = true;
     for (let i = 0; i < 10; i++) frame(hz);
@@ -357,6 +357,32 @@ describe('the void guard fires under the world, never in it, and it and the resp
     for (let i = 0; i < 10; i++) frame(hz);
     expect(at().y, 'the player was not stood on the origin\'s ground once it streamed in').toBeCloseTo(LAND_TOP + 0.95, 1);
   });
+
+  // Chunk streaming asks for two chunks every 150 ms in rows across the box round the camera (world/Terrain.jsx), so after a
+  // respawn the last of the spawn corner's four chunks is asked for 3.15 s on at the top tier (render distance 4). Here the
+  // chunks are mounted and the ground probe answers nothing until then, as it answers while they stream.
+  for (const hz of [60, 120]) {
+    it(`the respawn waits at the origin's hold until the corner's ground answers, 3.2 s on, and is not dropped blind (${hz} Hz)`, () => {
+      let streamedAt = 0;
+      useGameStore.setState({ getMobGroundLevel: (x, z) => (t >= streamedAt ? groundProbe(x, z) : null) });
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      standPlayer(hz);
+      act(() => { useGameStore.setState({ isAlive: false }); });
+      for (let i = 0; i < 10; i++) frame(hz);
+      streamedAt = t + 3.2;
+      act(() => { useGameStore.setState({ isAlive: true }); });
+      let leftHoldAt = null;
+      // every frame on which the probe still answers nothing (the frame clock passes streamedAt on the next one)
+      while (t + 1 / hz < streamedAt - 1e-9) {
+        frame(hz);
+        if (leftHoldAt === null && Math.abs(h.body.translation().y - SPAWN_FREEZE_Y) > 1e-3) leftHoldAt = +(t - (streamedAt - 3.2)).toFixed(2);
+      }
+      expect(leftHoldAt, `the player left the origin's hold ${leftHoldAt} s after the respawn, before the corner's ground answered ${JSON.stringify(at())}`).toBeNull();
+      for (let i = 0; i < 0.5 * hz; i++) frame(hz);
+      expect(at().y, 'the player was not stood on the origin\'s ground once it answered').toBeCloseTo(LAND_TOP + 0.95, 1);
+      expect(deepestSolid(grid, h.body).depth, 'the respawn left the capsule in the origin\'s ground').toBeLessThanOrEqual(TOL);
+    });
+  }
 
   it('the respawn after a death leaves the body, its collider and the camera where the void guard\'s reset does', () => {
     const hz = 120;

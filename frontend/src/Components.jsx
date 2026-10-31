@@ -118,7 +118,7 @@ export const Player = ({ isWorldBuilt }) => {
   const _lastCdMirror = useRef(0); // W3 M-HUD.2: throttle clock for the ability-bar cooldown mirror
   const imbueSMRef = useRef(makeImbueState()); // S2-B4-M5: the ELEMANCER imbue latch
   const prevImbueRef = useRef(false);
-  const spawnProbeFailsRef = useRef(0); // KEVIN-FIX C1: the bounded spawn-probe wait
+  const spawnProbeWaitRef = useRef(0); // KEVIN-FIX C1: the bounded spawn-probe wait, in seconds (game/spawnPlacement.js)
   const resumeProbeFailsRef = useRef(0); // the resumed save's own bounded wait (game/spawnPlacement.js resolveResumeSpawn)
   const fuseSMRef = useRef(makeFuseState()); // S2-B3-M6: the FUSE channel state
   const prevSnareRef = useRef(false);
@@ -145,7 +145,7 @@ export const Player = ({ isWorldBuilt }) => {
   }, [world]);
 
   const spawnPosSet = useRef(false);
-  const spawnRefs = { placed: spawnPosSet, probeFails: spawnProbeFailsRef }; // game/spawnPlacement.js returnToSpawn
+  const spawnRefs = { placed: spawnPosSet, probeWait: spawnProbeWaitRef }; // game/spawnPlacement.js returnToSpawn
 
   const lastCastTime = useRef(0);
   const CAST_COOLDOWN = 333;
@@ -1064,8 +1064,8 @@ export const Player = ({ isWorldBuilt }) => {
       // low, inside it.
       const probeAvailable = !!store.getMobGroundLevel;
       const physicsY = probeAvailable ? spawnCornerGround(store.getMobGroundLevel) : null;
-      const spawn = resolveSpawnGround(null, physicsY, spawnProbeFailsRef.current, probeAvailable);
-      if (spawn.incFails) spawnProbeFailsRef.current += 1;
+      const spawn = resolveSpawnGround(null, physicsY, spawnProbeWaitRef.current, probeAvailable, delta);
+      if (spawn.incFails) spawnProbeWaitRef.current += delta;
       if (spawn.retry) {
         rigidBodyRef.current.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
         rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);

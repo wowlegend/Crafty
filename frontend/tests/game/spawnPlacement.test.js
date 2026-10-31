@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FALLBACK_Y, SPAWN_EYE_OFFSET, SPAWN_PROBE_MAX_FAILS } from '../../src/game/spawnPlacement.js';
+import { resolveSpawnGround, spawnTargetY, isVoidFall, SPAWN_FALLBACK_Y, SPAWN_EYE_OFFSET, SPAWN_PROBE_MAX_SEC } from '../../src/game/spawnPlacement.js';
 
 describe('spawnPlacement (S3-M5 p2) — the spawn-ground decision (pinned to the old inline logic)', () => {
   it('placed-block ground wins immediately (no probe)', () => {
@@ -17,8 +17,8 @@ describe('spawnPlacement (S3-M5 p2) — the spawn-ground decision (pinned to the
   it('no probe available (getMobGroundLevel missing) -> immediate fallback, NO retry (old edge)', () => {
     expect(resolveSpawnGround(null, null, 3, false)).toEqual({ groundY: SPAWN_FALLBACK_Y, retry: false, incFails: false });
   });
-  it('at the fail cap, falls back to SPAWN_FALLBACK_Y (no infinite wait)', () => {
-    const r = resolveSpawnGround(null, null, SPAWN_PROBE_MAX_FAILS - 1); // +1 reaches the cap
+  it('at the end of the wait, falls back to SPAWN_FALLBACK_Y (no infinite wait)', () => {
+    const r = resolveSpawnGround(null, null, SPAWN_PROBE_MAX_SEC - 1 / 120, true, 1 / 120); // this frame's step reaches it
     expect(r).toEqual({ groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true });
   });
   it('spawnTargetY lands the player SPAWN_EYE_OFFSET above ground', () => {

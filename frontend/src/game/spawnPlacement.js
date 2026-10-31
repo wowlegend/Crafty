@@ -7,7 +7,14 @@ import { placeBody } from './kinematicMove.js';
 import { resetStance } from './stanceState.js';
 
 export const SPAWN_FREEZE_Y = 120;      // hold in the sky until the world builds / on void-fall
-export const SPAWN_PROBE_MAX_FAILS = 120; // bounded probe wait (frames) before the fallback
+// THE SPAWN'S WAIT FOR ITS GROUND IS TIME, NOT FRAMES. Chunk streaming follows the camera (world/Terrain.jsx): two
+// requests every 150 ms, row by row across the box round the camera's chunk, so after a respawn the last of the spawn
+// corner's four chunks (0_0) is asked for on the 21st tick at the top tier (render distance 4: 3.15 s), the 13th at med
+// (1.95 s) and the 7th at low (1.05 s), and the worker builds it after that. Counted as 120 frames, the wait was 2 s at
+// 60 Hz and 1 s at 120 Hz: the player was dropped from SPAWN_FALLBACK_Y over ground still streaming in at med and high,
+// and at every tier on a 120 Hz display, and a chunk whose trimesh landed round the falling body left them inside the
+// rock (registry REVIEW:l4:spawn-wait-counted-in-frames). Six seconds covers the top tier's corner and the worker.
+export const SPAWN_PROBE_MAX_SEC = 6;
 export const SPAWN_FALLBACK_Y = 60;      // if the probe never resolves
 export const SPAWN_EYE_OFFSET = 1.2;     // player center this far above ground (instant land)
 const PROBE_MIN_Y = 15;                  // physicsY <= this is rejected (origin chunks still streaming)
@@ -37,11 +44,11 @@ const STILL = Object.freeze({ x: 0, y: 0, z: 0 });
  * probe's whole wait.
  *   body   the Player's kinematic body (none yet: only the spawn state and the camera move)
  *   eye    the camera's height over the body's centre (combat/swingOrigin.js EYE_HEIGHT_M)
- *   spawn  the Player's refs: { placed (spawnPosSet), probeFails (spawnProbeFailsRef) }
+ *   spawn  the Player's refs: { placed (spawnPosSet), probeWait (spawnProbeWaitRef, seconds) }
  */
 export function returnToSpawn(world, body, camera, eye, spawn) {
   spawn.placed.current = false;
-  spawn.probeFails.current = 0;
+  spawn.probeWait.current = 0;
   if (body) {
     placeBody(world, body, SPAWN_HOLD);
     body.setLinvel(STILL, true);
@@ -51,17 +58,17 @@ export function returnToSpawn(world, body, camera, eye, spawn) {
 }
 
 // blockGroundY: highest placed-block y at origin, or null. physicsY: raycast ground, or null.
-// probeFails: the CURRENT (pre-attempt) fail count. Returns { groundY, retry, incFails } — the
-// caller increments its fail ref when incFails, teleports-to-freeze + returns when retry, else
-// spawns at spawnTargetY(groundY). Mirrors the old: increment-then-`< MAX`-check semantics.
+// waitedSec: the seconds already waited (before this frame); stepSec: this frame's step. Returns { groundY, retry,
+// incFails }: the caller adds stepSec to its wait when incFails, teleports-to-freeze + returns when retry, else spawns at
+// spawnTargetY(groundY). The fallback comes on the frame whose step reaches SPAWN_PROBE_MAX_SEC.
 // probeAvailable: whether the physics raycast (getMobGroundLevel) exists this frame. If NOT, the
 // old code skipped the probe branch entirely -> immediate fallback (no retry, no fail-increment).
-export function resolveSpawnGround(blockGroundY, physicsY, probeFails, probeAvailable = true) {
+export function resolveSpawnGround(blockGroundY, physicsY, waitedSec, probeAvailable = true, stepSec = 0) {
   if (blockGroundY != null) return { groundY: blockGroundY, retry: false, incFails: false };
   if (!probeAvailable) return { groundY: SPAWN_FALLBACK_Y, retry: false, incFails: false };
   const invalid = physicsY == null || Number.isNaN(physicsY) || physicsY <= PROBE_MIN_Y;
   if (!invalid) return { groundY: physicsY, retry: false, incFails: false };
-  if (probeFails + 1 < SPAWN_PROBE_MAX_FAILS) return { groundY: null, retry: true, incFails: true };
+  if (waitedSec + stepSec < SPAWN_PROBE_MAX_SEC) return { groundY: null, retry: true, incFails: true };
   return { groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true };
 }
 

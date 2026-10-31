@@ -13,7 +13,7 @@ import { resetCaptureClock, stepCaptureFrames, captureFrameIndex, setCaptureFram
 import { registerTestHook, installTestBridge } from './testBridge.js';
 import { PLAYER_SPAWN } from '../game/playerSpawn.js';
 import { beastRevealCamera } from '../game/beastRevealCamera.js';
-import { resolveSpawnGround, spawnTargetY, SPAWN_PROBE_MAX_FAILS } from '../game/spawnPlacement.js';
+import { resolveSpawnGround, spawnTargetY, SPAWN_PROBE_MAX_SEC } from '../game/spawnPlacement.js';
 import { surfaceBlockAt } from '../world/climate.js';
 import { HEARTH_Y } from '../world/homeAnchor.js';
 import { FEET_OFFSET } from '../render/BeastAvatar.jsx';
@@ -251,9 +251,9 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
     // caller prints it as its warning, and a cause that cannot have occurred sends the reader to the wrong
     // subsystem). Passing the literal at the one call site keeps resolveSpawnGround's signature honest about what
     // this hook deliberately does NOT consult.
-    // `force` passes the EXHAUSTED fail count so resolveSpawnGround takes its documented
+    // `force` passes the EXHAUSTED wait so resolveSpawnGround takes its documented
     // SPAWN_FALLBACK_Y branch instead of asking to retry — the same landing the Player reaches after
-    // SPAWN_PROBE_MAX_FAILS frames. Without it this hook passed 0 every call, so the retry budget could
+    // SPAWN_PROBE_MAX_SEC seconds. Without it this hook passed 0 every call, so the retry budget could
     // never be exhausted and it returned false forever: THAT is why two runs logged "never resolved a
     // ground" and then silently agreed on the declared y=100. A retry counter that never counts is not
     // a retry counter.
@@ -287,7 +287,7 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
         return { y: +yT.toFixed(2), visual: !!vis0, source: 'terrain-formula+hearth', surfaceY: surf.surfaceY, hearthY: HEARTH_Y };
       }
     }
-    const spawn = resolveSpawnGround(blockGroundY, null, force ? SPAWN_PROBE_MAX_FAILS : 0, probeAvailable);
+    const spawn = resolveSpawnGround(blockGroundY, null, force ? SPAWN_PROBE_MAX_SEC : 0, probeAvailable);
     if (spawn.retry || spawn.groundY == null) {
       // Name the BRANCH, and name only branches that can happen. This hook never consults the physics
       // probe, so no reason here may blame it.

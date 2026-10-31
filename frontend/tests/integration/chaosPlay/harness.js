@@ -253,8 +253,8 @@ function spawnBranch(S) {
     released(S, null);
   }
   const physicsY = spawnCornerGround((x, z) => groundProbe(S, x, z));
-  const spawn = resolveSpawnGround(null, physicsY, S.spawn.probeFails.current, true);
-  if (spawn.incFails) S.spawn.probeFails.current += 1;
+  const spawn = resolveSpawnGround(null, physicsY, S.spawn.probeWait.current, true, 1 / S.hz);
+  if (spawn.incFails) S.spawn.probeWait.current += 1 / S.hz;
   if (spawn.retry) {
     S.p.body.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
     return;
@@ -767,7 +767,7 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
   const world = new RAPIER.World({ x: 0, y: -30, z: 0 });
   const S = {
     world, hz, lag, tol, f: 0, steps: 0, acc: 0, vy: 0, kb: { x: 0, z: 0 }, resumeFails: 0,
-    spawn: { placed: { current: true }, probeFails: { current: 0 } }, camera: { position: new THREE.Vector3() },
+    spawn: { placed: { current: true }, probeWait: { current: 0 } }, camera: { position: new THREE.Vector3() },
     gen: new Map(base().chunks), logical: copyChunks(base().chunks), recs: new Map(), reload: null,
     worker: { seq: 0, lastDue: 0, queue: [] }, standIns: [], recent: [], form: { pending: null, last: null },
     maxDepth: { value: 0, f: null, cell: null },
