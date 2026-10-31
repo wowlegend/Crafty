@@ -32,7 +32,7 @@ import { PerfProbeRunner } from './devtest/PerfProbeRunner';
 import { ContextLossPanel } from './ui/ContextLossPanel.jsx';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { installAutosave } from './game/autosave';
-import { savePosition } from './game/saveSchema.js';
+import { saveWorldInPlay } from './game/worldBoot.js';
 import { useDayNightClock } from './game/useDayNightClock';
 import { shouldOpenPauseOnUnlock } from './ui/panelState.js';
 import { requestGameLock } from './input/pointerLock.js';
@@ -185,13 +185,9 @@ function GameApp({ experienceSystem }) {
   useEffect(() => initSettingsPersistence(useGameStore, isCaptureMode), []);
 
   // Local-first autosave (game/autosave.js): a change to any field the save records schedules one, and hiding the tab or
-  // closing it saves a pending one at once.
+  // closing it saves a pending one at once. It saves only a world in play (game/worldBoot.js saveWorldInPlay).
   useEffect(() => installAutosave(useGameStore, {
-    save: () => {
-      const st = useGameStore.getState();
-      if (st.isCaptureMode) return;
-      st.saveActiveWorld(savePosition(st));
-    },
+    save: () => saveWorldInPlay(useGameStore.getState),
     delayMs: 5000,
   }), []);
 

@@ -12,8 +12,9 @@ import { useGameStore } from './store/useGameStore';
 import { useT } from './i18n/i18n.js';
 import { buildSaveData, savePosition } from './game/saveSchema.js';
 import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, mintWorldId, setActiveWorldId } from './game/worldSaves.js';
+import { goToWorld } from './game/worldSwitch.js';
 
-export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
+export const WorldManager = ({ onClose }) => {
   const t = useT();
   const [worlds, setWorlds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,7 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
     const name = `Guest's World - ${new Date().toLocaleDateString()}`;
     // ONE serializer (buildSaveData) for the local blob.
     const saveData = buildSaveData(useGameStore.getState(), { position: savePosition(useGameStore.getState()) });
-    const meta = { name, created_at: new Date().toISOString(), is_public: false, is_owner: true };
+    const meta = { name, created_at: new Date().toISOString(), is_public: false, is_owner: true, saved_at: new Date().toISOString() };
     const persistLocal = () => {
       // B2a: reuse the slot THIS SESSION owns, so a manual "Save" and the autosave converge on ONE
       // world — and so a manual save can no more overwrite a world this session never opened than an
@@ -74,17 +75,11 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
     const meta = { name: newWorldName, created_at: new Date().toISOString(), is_public: newWorldPublic, is_owner: true };
     const persistLocal = () => {
       const id = mintWorldId();
-      // B2b: RESET THE LIVE GAME FIRST, then persist it. This used to hand-roll a `freshBlob` and write
-      // it to disk without ever touching the store — so the live game kept its level, coins and blocks,
-      // and the next autosave wrote them into the "new" world. Creating a world CLONED the old one.
-      // `startNewWorld` resets by round-tripping the store's INITIAL state through the save schema, so
-      // it cannot drift out of sync with what we persist.
-      gameState.startNewWorld(id);
-      writeWorld(id, meta, buildSaveData(useGameStore.getState(), { position: { x: 0, y: 18, z: 0 } }));
-      setNewWorldName('');
-      setNewWorldPublic(false);
-      setShowCreateModal(false);
-      setWorlds(listWorlds());
+      // The new world's slot holds the store's INITIAL state, round-tripped through the save schema (B2b: a hand-rolled
+      // blob cloned the old world). The switch then saves the world in play and reloads into a new world in this slot
+      // (game/worldBoot.js): a new world made in place kept the old one's dragon, quests, chests and squad.
+      writeWorld(id, meta, buildSaveData(useGameStore.getInitialState(), { position: { x: 0, y: 18, z: 0 } }));
+      goToWorld({ fresh: true, world: id });
     };
     try {
       setError('');
@@ -100,16 +95,9 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
     try {
       setError('');
       // Local saves only (cloud worlds were removed with the auth subsystem).
-      const worldData = readWorld(worldId);
-      if (!worldData) throw new Error('Local save not found');
-      // Point subsequent autosaves at the slot we just loaded (else they orphan to a fresh slot).
-      setActiveWorldId(worldId);
-
-      if (onWorldLoad) {
-        onWorldLoad(worldData);
-      }
-
-      onClose();
+      if (!readWorld(worldId)) throw new Error('Local save not found');
+      // A world switch: save the world in play, then reload into this one (game/worldBoot.js).
+      goToWorld({ world: worldId });
     } catch (error) {
       setError('Failed to load world');
       console.error('Error loading world:', error);

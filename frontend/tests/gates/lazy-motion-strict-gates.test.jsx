@@ -90,7 +90,7 @@ const ROWS = [
     },
     settle: () => waitFor(() => screen.getByText('Treasure', { exact: false }), { timeout: 3000 }) },
   { file: 'WorldManager.jsx', name: 'WorldManager', marker: () => document.querySelector('.bg-gray-800'),
-    ui: () => <WorldManager gameState={{}} onWorldLoad={NOOP} onClose={NOOP} /> },
+    ui: () => <WorldManager onClose={NOOP} /> },
   { file: 'ui/TradingInterface.jsx', name: 'TradingInterface', marker: () => screen.getByText('Coins to Health Potion'),
     ui: () => <TradingInterface villager={{ npcName: 'Test Merchant' }} onClose={NOOP} /> },
   { file: 'ui/panels/ForgePanel.jsx', name: 'ForgePanel', marker: () => screen.getByTestId('forge-panel'),
