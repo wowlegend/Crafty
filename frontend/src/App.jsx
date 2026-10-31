@@ -296,13 +296,16 @@ function GameApp({ experienceSystem }) {
       {/* Another tab saved this world: this tab stops saving, and offers the reload (ui/SlotConflictPanel.jsx). */}
       <SlotConflictPanel />
 
+      {/* The loading screen while the spawn chunk is built; a Start clicked before then shows it in play, over the live
+          canvas and under the pointer lock. Opaque and still: under the lock the page must drain every pointer update it
+          is sent, and on a software compositor a translucent, blurred, animated layer over the canvas left it
+          unable to (DECISIONS 2026-10-31 item 370; tests/e2e/start-before-built.spec.js). */}
       {!isWorldBuilt && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-sm pointer-events-auto">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-500 mb-6 shadow-lg shadow-green-500/50"></div>
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black pointer-events-auto">
           <h2 className="text-3xl font-bold text-white mb-2 font-mono tracking-widest" style={{ textShadow: '0 0 10px rgba(74, 222, 128, 0.8)' }}>
             {t('world.generating')}
           </h2>
-          <p className="text-green-400 font-mono text-sm animate-pulse">{t('world.buildingTerrain')}</p>
+          <p className="text-green-400 font-mono text-sm">{t('world.buildingTerrain')}</p>
         </div>
       )}
 

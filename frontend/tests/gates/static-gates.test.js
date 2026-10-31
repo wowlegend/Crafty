@@ -83,21 +83,18 @@ describe('static gates', () => {
   // `backdrop-blur`/`backdrop-filter` chrome may coexist on the SHIPPED IN-GAME UI
   // surfaces that M2 migrated.
   //
-  // DOCUMENTED EXCLUSIONS from the backdrop-blur check (NOT from the class checks):
-  //   • App.jsx           — `backdrop-blur` lives only on the PRE-GAME loading splash
-  //                         (`!isWorldBuilt` "GENERATING WORLD") + the click-to-play
-  //                         pointer-lock entry overlay. Both are pre-game splash
-  //                         surfaces, OUTSIDE the in-game "single language" mandate
-  //                         (same rationale as the MenuSystem `.glow-button` splash).
+  // DOCUMENTED EXCLUSION from the backdrop-blur check (NOT from the class checks):
   //   • ui/DebugOverlay.jsx — DEV-only debug tool, never shipped game chrome.
-  // These exclusions apply ONLY to backdrop-blur; the class bans below cover them too.
+  // App.jsx is NOT excluded: its loading screen is shown in play over the live canvas when Start is clicked before the
+  // world is built, and it is opaque and still there (DECISIONS 2026-10-31 item 370), so a blur in App.jsx reds here.
+  // The exclusion applies ONLY to backdrop-blur; the class bans below cover DebugOverlay too.
   //
   // FOLDED IN (S1-C-M2d): SimplifiedNPCSystem.jsx — the NPC trading modal + dialogue
   //   bubble + controls panel were the LAST un-migrated in-game glass UI. M2d migrated
   //   them to the bold-flat <Panel>/<Button>/<Toast> language, so this file is no longer
   //   excluded from the backdrop-blur check — its glass is now banned here too (the
   //   residual reporter below must therefore report 0 for it).
-  const SPLASH_DEV_BACKDROP_EXCLUDE = ['App.jsx', join('ui', 'DebugOverlay.jsx')];
+  const SPLASH_DEV_BACKDROP_EXCLUDE = [join('ui', 'DebugOverlay.jsx')];
   it('S1-C: single UI design language — no minecraft-bevel + glass classes coexist', () => {
     const offenders = [];
     for (const f of FILES) {
@@ -106,8 +103,7 @@ describe('static gates', () => {
       // (a)+(b): class-based legacy languages — banned EVERYWHERE, no exclusions.
       if (/\bminecraft-[a-z]/.test(src)) offenders.push(`${rel}: minecraft-* class`);
       if (/\bgame-panel\b/.test(src)) offenders.push(`${rel}: game-panel glass class`);
-      // backdrop-blur — banned on shipped in-game UI; only the documented pre-game
-      // splash + dev-overlay surfaces are excluded. SimplifiedNPCSystem is now in scope
+      // backdrop-blur — banned on shipped in-game UI; only the dev overlay is excluded. SimplifiedNPCSystem is now in scope
       // (M2d migrated it) and is NO LONGER exempt.
       const backdropExempt =
         SPLASH_DEV_BACKDROP_EXCLUDE.some((x) => rel.endsWith(x));
