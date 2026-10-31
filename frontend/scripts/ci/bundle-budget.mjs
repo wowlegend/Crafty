@@ -40,8 +40,9 @@ const BUDGETS = [
   // the framer-motion features back, about 47.6 KB, which is past the ceiling by itself. A module the lazy panel chunk
   // carries moves that chunk, which has no ceiling (ForgePanel with `motion` read 636,434 B here, under it): the
   // full-motion markers further down hold every chunk. It holds the build tools' batched edits, their edit order and
-  // the Delete Tool beside the pools with lifetimes, with about 1 KB to spare (DECISIONS 2026-10-31 item 278).
-  { name: 'index', max: 655_000, actualAtWrite: 653_949 },
+  // the Delete Tool beside the pools with lifetimes: lane L6 met this ceiling, did not raise it, and cut dead code to
+  // fit (DECISIONS 2026-10-31 item 279, which supersedes item 278's raise).
+  { name: 'index', max: 652_500, actualAtWrite: 652_236 },
   { name: 'three', max: 740_000, actualAtWrite: 680_700 },
 ];
 
