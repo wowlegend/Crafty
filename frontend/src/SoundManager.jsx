@@ -68,7 +68,7 @@ export const SoundProvider = ({ children }) => {
   });
 
   // Biome-ambient wind bed: a looping noise voice whose filter/gain track the player's biome
-  // (ambienceAt(playerPosition): the column the player stands in -> biomeAmbience). Lives + dies with the synthPad.
+  // (ambienceAt at the camera: the column the player stands in -> biomeAmbience). Lives + dies with the synthPad.
   const windBedRef = useRef({ source: null, filter: null, gain: null, active: false });
 
   const stopSynthPad = () => {
@@ -228,7 +228,9 @@ export const SoundProvider = ({ children }) => {
         // Biome-ambient: ramp the wind bed toward the player's current-biome character.
         const wb2 = windBedRef.current;
         if (wb2.active && wb2.filter) {
-          const pp = freshState.playerPosition || { x: 0, z: 0 };
+          // The camera, as the footsteps read it: the store's playerPosition is rounded to whole metres
+          // (systems/PositionTracker.jsx), which is the next column over once the player is past a block's middle.
+          const pp = freshState.gameCamera?.position || freshState.playerPosition || { x: 0, z: 0 };
           const amb = ambienceAt(pp.x, pp.z);
           wb2.filter.frequency.linearRampToValueAtTime(amb.cutoff, changeTime + 2.0);
           wb2.gain.gain.linearRampToValueAtTime(amb.gain * volume, changeTime + 2.0);

@@ -38,9 +38,10 @@ export function surfaceBlockAt(worldX, worldZ) {
 
 /**
  * What a foot at a world POSITION stands on. The worker generates whole columns at integer coordinates (worldX = chunk * 16
- * + x), so a position's answer is its column's. `surfaceBlockAt` at the float itself reads a point no column has: a
- * quarter of the positions inside the shore's two sea-line columns land on the other side of the line, and the wind bed
- * sounded underwater on dry sand (or dry over the sea). Every reader that starts from a player's position asks here.
+ * + x), so a position's answer is its column's, the floor of each axis. `surfaceBlockAt` at the float itself reads a
+ * point no column has, and along the shore that point is on the other side of the sea line often enough to hear
+ * (water-one-predicate-gates). Pass an unrounded position, the camera's: the store's playerPosition is rounded to whole
+ * metres, and the rounded point is the next column over once the player is past a block's middle.
  */
 export function surfaceBlockUnderfoot(worldX, worldZ) {
   return surfaceBlockAt(Math.floor(worldX), Math.floor(worldZ));

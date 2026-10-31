@@ -9,13 +9,10 @@ const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm,
 
 describe('Biome-ambience gate (interleave)', () => {
   const sm = strip(read('SoundManager.jsx'));
-  it('a looping wind bed exists, biome-keyed via climate + biomeAmbience + playerPosition', () => {
+  it('a looping wind bed exists, biome-keyed via biomeAmbience', () => {
     expect(sm).toMatch(/from '\.\/audio\/biomeAmbience\.js'/);
-    // The sample is ambienceAt(playerPosition), which floors to the player's column (water-one-predicate-gates drives it
-    // against the worker); a bed that asks surfaceBlockAt at the float itself reads a point no column has.
-    expect(sm).toMatch(/ambienceAt\(pp\.x, pp\.z\)/);
-    expect(sm).not.toMatch(/surfaceBlockAt\(/);
-    expect(sm).toMatch(/playerPosition/);
+    // Which point the bed samples is behaviour, not text: wind-bed-live-chain-gates drives the real PositionTracker,
+    // store and SoundManager interval against the worker's water.
     expect(sm).toMatch(/windBedRef/);
     expect(sm).toMatch(/loop = true/);
   });
