@@ -5,7 +5,7 @@ import { useGameStore } from '../store/useGameStore';
 // PositionTracker -- throttled (200ms) camera->store playerPosition mirror (returns null, no render ->
 // pixel-irrelevant). Extracted VERBATIM from Components.jsx (v6 de-monolith A3, the first Components
 // slice); behavior unchanged. The giant Player useFrame loop stays in Components.jsx (GLI risk to split).
-export const PositionTracker = React.memo(() => {
+export const PositionTracker = React.memo(function PositionTrackerRender() {
   const { camera } = useThree();
   const lastUpdate = useRef(0);
   useFrame(() => {

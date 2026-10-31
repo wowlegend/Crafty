@@ -16,7 +16,7 @@ const clampLines = (lines) => ({ display: '-webkit-box', WebkitBoxOrient: 'verti
 // ui/hudLayout.js compactBoss) keeps the name and the bar and drops the phase line and the numbers. `call`: where the
 // encounter column holds the notices (ui/hudLayout.js toastsInEncounter), the one it shows takes the name's place in the
 // bar's own line beside the dragon's icon, clamped to `callLines` (ui/hudLayout.js bossCallLines), for its life.
-export const BossHealthBar = React.memo(({ bossActive, bossHealth, bossMaxHealth, bossPhase, bossTier = 0, width = 450, compact = false, call = null, callLines = 1 }) => {
+export const BossHealthBar = React.memo(function BossHealthBarRender({ bossActive, bossHealth, bossMaxHealth, bossPhase, bossTier = 0, width = 450, compact = false, call = null, callLines = 1 }) {
     const t = useT();
     if (!bossActive) return null;
 
