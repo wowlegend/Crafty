@@ -33,8 +33,13 @@ export function resolveImport(from, spec, fileSet) {
 }
 
 const isFn = (p) => p && (p.isFunctionDeclaration() || p.isFunctionExpression() || p.isArrowFunctionExpression());
+// The wrappers whose argument IS the component React calls with the props. Only these: `create(fn)` (the store) and any
+// other call's function argument is not called with the call's arguments.
+const COMPONENT_WRAPPERS = new Set(['memo', 'forwardRef']);
+const wrapperName = (callee) => (callee.isIdentifier() ? callee.node.name
+  : (callee.isMemberExpression() && !callee.node.computed ? callee.node.property.name : null));
 
-/** The function a binding names: a declaration, a const bound to one, or a const bound to `wrap(function ...)` (memo). */
+/** The function a binding names: a declaration, a const bound to one, or a const bound to `memo(function ...)`. */
 function functionOfBinding(binding) {
   if (!binding) return null;
   const p = binding.path;
@@ -42,7 +47,7 @@ function functionOfBinding(binding) {
   if (p.isVariableDeclarator()) {
     const init = p.get('init');
     if (isFn(init)) return init;
-    if (init.isCallExpression()) {
+    if (init.isCallExpression() && COMPONENT_WRAPPERS.has(wrapperName(init.get('callee')))) {
       const a0 = init.get('arguments')[0];
       if (isFn(a0)) return a0;
     }
@@ -165,6 +170,12 @@ export function propagate(ctx, classify, kinds, extra) {
     changed = false;
     rounds++;
     for (const mod of ctx.mods.values()) {
+      // An import takes the kind of the export it names (a getter exported from one file and called in another).
+      for (const b of Object.values(mod.program.scope.bindings)) {
+        const imp = importOf(mod, b, ctx.fileSet);
+        const target = imp && ctx.mods.get(imp.file)?.exports.get(imp.name);
+        if (target && !target.synthetic && kinds.has(target)) setKind(b, kinds.get(target));
+      }
       for (const d of mod.declarators) {
         if (d.node.id.type !== 'Identifier' || !d.node.init) continue;
         setKind(d.scope.getBinding(d.node.id.name), classify(ctx, mod, d.get('init')));
