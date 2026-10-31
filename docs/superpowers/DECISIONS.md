@@ -19,6 +19,48 @@
 
 ---
 
+## 2026-10-31 — [LOOP] a bundle ceiling never rises to make a build green; the lookbook seam leaves the boot chunk
+
+**The command session's ruling:** a bundle ceiling does not rise to make a red build green. The script says so at
+`frontend/scripts/ci/bundle-budget.mjs:30-31` and `CLAUDE.md` says "Never weaken to pass"; two lane items did it anyway.
+
+282. **Growth is offset by moving code players never run out of their download, as here.**
+   - **It supersedes** the builder-decided raises in lane L3's item 257 (PR #69, 652,500 B to 656,015 B) and lane L6's
+     item 278 (PR #68, 652,500 B to 655,000 B). Neither is on main. The ceiling stays 652,500 B, and each lane fits under
+     it or offsets what it adds, saying so in its own item.
+   - **What moved.** `render/lookbookSeam.js`, the lookbook probe's door into the production build, installs only for
+     `?lookbook=1`, yet every player downloaded it. It is now two modules. `render/lookbookState.js` holds what the game
+     reads (the pose, the hand pose, the passes switched off, the dragon's hold, `parseLookbookParam`,
+     `applyLookbookPose`, the subscription) and stays in the boot chunk, with every value null, false or empty until the
+     seam writes it. `render/lookbookSeam.js` keeps the installer, its validators and the probe's pure helpers, and is its
+     own chunk, which `index.jsx` fetches with a dynamic `import()` on a `?lookbook=1` page only. The six game readers
+     (`Components.jsx`, `Sun.jsx`, `postFx.jsx`, `playerRender.jsx`, `BossEntity.jsx`, `bossSystem.js`) import the state
+     module.
+   - **Measured** with `npm run build` on `86f6b5dc` and on this branch: the index chunk 651,328 B to 645,324 B (6,004 B
+     less), against the unchanged 652,500 B ceiling, so its headroom goes from 1,172 B to 7,176 B. The new chunk,
+     `lookbookSeam-<hash>.js`, is 6,849 B. By the two lanes' own figures, which this lane did not re-measure, L3 adds
+     3,515 B and L6 about 2,621 B (653,949 B on `feb456e3`'s 651,328 B), 6,136 B together, which fits.
+   - **The boot contract is kept.** A player's page runs `boot(null)` in the same run as the entry module, as before.
+     A `?lookbook=1` page awaits the chunk, then sets `window.useGameStore`, installs the seam and starts the game in one
+     run, so every observer that waits on the store (the e2e boot, the probes, `scripts/ci/prod-smoke.mjs`) finds the
+     seam installed the moment the store exists. Top-level `await` is not available (the build target is vite 6's default,
+     `chrome87`, `safari14` and the like, and raising it is a build-wide change this lane did not make), so the wait is
+     an `async` function.
+   - **The one cost.** If the seam's chunk fails to load, a `?lookbook=1` page stops with the error and does not start
+     the game. Only the probe opens that page. The other choice, starting the ordinary game and throwing the error
+     later, was left out because no gate would cover it.
+   - **The gates.** `scripts/ci/bundle-budget.mjs` gains a marker check, the same shape as the dragon's: an error
+     message only the installer carries must be absent from the boot chunk and present in exactly one other. Three
+     mutants, each rebuilt: a static import of the seam in `index.jsx` (the check goes red; the index chunk measured
+     651,930 B, inside the ceiling, so the ceiling alone would have let the seam back in), the seam never imported (found
+     in 0 chunks), and the marker misspelled (found in 0 chunks). `tests/gates/lookbook-install-gates.test.jsx` now
+     counts the loads of the seam's module (none on a plain page, one on `?lookbook=1`) and asserts that the store and the
+     seam appear in one run; ten mutants of `index.jsx` are red, and the seam's own URL test (its mutant survives
+     there by design) is `tests/gates/lookbook-seam-gates.test.js`'s, which gains eight mutants of the split, all red.
+   - **Not proven here.** No browser or e2e ran locally. CI runs `lookbook-seam.spec.js`, `ore-glow.spec.js`, every
+     other `?lookbook=1` spec and `prod-smoke` on the exact sha, and that is the lived proof that the probe still finds
+     the seam.
+
 ## 2026-10-31 — [LOOP] the Command Record keeps the glance and gains a terse record below it (amends item 280)
 
 **Kevin, 2026-10-31, after seeing the eli5 page, verbatim:** "the command record looks good as a one-glance summary to
