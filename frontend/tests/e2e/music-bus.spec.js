@@ -16,6 +16,21 @@ import { bootDev } from './_boot.js';
 // muted, so the level is read from the model in the jsdom gate); the 1 s bound on Mute All, which the jsdom gate holds
 // on a fake clock, where this allows 3 s for a loaded runner.
 
+/** In the page, before any of its scripts: a pointer lock only for a request made inside a trusted input event, as a
+ *  player's browser grants it (continue.spec.js's lockOnGestureOnly, which says why). Without it CI's headless Chromium
+ *  granted App's timer request once the world was built, play began on its own, and the title's Start was gone before
+ *  the spec could click it: this spec's first CI run (41203933423, shard 6) timed out waiting on that click. */
+function lockOnGestureOnly() {
+  const real = HTMLCanvasElement.prototype.requestPointerLock;
+  const GESTURES = new Set(['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'keydown', 'touchend']);
+  HTMLCanvasElement.prototype.requestPointerLock = function gated(...args) {
+    const ev = window.event;
+    if (document.pointerLockElement === this || (ev && ev.isTrusted && GESTURES.has(ev.type))) return real.apply(this, args);
+    setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 0);
+    return Promise.reject(new DOMException('pointer lock refused (e2e: no lock without a gesture)', 'NotAllowedError'));
+  };
+}
+
 function probeMusic() {
   const probe = { audios: [], routes: 0, routeCtx: null };
   window.__musicProbe = probe;
@@ -53,24 +68,27 @@ const dayPlaying = () => {
 
 test.describe('the soundtrack in Chromium', () => {
   test('plays through the Web Audio graph after Start, and Mute All pauses every track', async ({ page }) => {
-    test.setTimeout(180000);
+    test.setTimeout(240000);
+    await page.addInitScript(lockOnGestureOnly);
     await page.addInitScript(probeMusic);
     await bootDev(page);
-    await page.waitForFunction(() => window.__musicProbe.routes === 3, null, { timeout: 30000 })
+    await page.waitForFunction(() => window.__musicProbe.routes === 3, null, { timeout: 30000, polling: 250 })
       .catch(async (e) => { throw new Error(`the three tracks were never routed into the context: ${JSON.stringify(await page.evaluate(musicState))} — ${e.message}`); });
     expect((await page.evaluate(musicState)).tracks.map((t) => t.src).sort(), 'SETUP: the tracks the MusicPlayer made')
       .toEqual(['boss.mp3', 'day.mp3', 'night.mp3']);
 
-    await page.getByRole('button', { name: /start adventure/i }).click();
-    await page.waitForFunction(dayPlaying, null, { timeout: 30000 })
+    const start = page.getByTestId('title-start');
+    await expect(start, 'SETUP: the title shows no Start').toBeVisible({ timeout: 30000 });
+    await start.click({ timeout: 60000 });
+    await page.waitForFunction(dayPlaying, null, { timeout: 30000, polling: 250 })
       .catch(async (e) => { throw new Error(`the day track is not playing through a running context after Start: ${JSON.stringify(await page.evaluate(musicState))} — ${e.message}`); });
 
     await page.evaluate(() => window.useGameStore.getState().setMasterMuted(true));
-    await page.waitForFunction(() => window.__musicProbe.audios.every((a) => a.paused), null, { timeout: 3000 })
+    await page.waitForFunction(() => window.__musicProbe.audios.every((a) => a.paused), null, { timeout: 3000, polling: 100 })
       .catch(async (e) => { throw new Error(`a track is still playing 3 s after Mute All: ${JSON.stringify(await page.evaluate(musicState))} — ${e.message}`); });
 
     await page.evaluate(() => window.useGameStore.getState().setMasterMuted(false));
-    await page.waitForFunction(dayPlaying, null, { timeout: 10000 })
+    await page.waitForFunction(dayPlaying, null, { timeout: 10000, polling: 250 })
       .catch(async (e) => { throw new Error(`the day track did not come back after unmute: ${JSON.stringify(await page.evaluate(musicState))} — ${e.message}`); });
   });
 });
