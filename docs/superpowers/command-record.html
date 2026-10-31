@@ -1,64 +1,107 @@
 <title>Crafty Command Record</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&amp;family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Bungee&amp;family=JetBrains+Mono:wght@400&amp;display=swap">
 <style>
-/* Layout: one 64rem column of ruled sections under a state grid; prose held to 65ch; every table scrolls inside its own frame. */
+/* Layout: one 60rem column; each section is a heading, one big drawing on a panel, one line under it. Eli5 by Kevin's rule (DECISIONS 2026-10-31 item 280). */
 :root {
-  --bg: #eef1f5;
-  --surface: #f9fafc;
-  --panel: #e3e8ef;
-  --fg: #131b27;
-  --muted: #4f5d71;
-  --line: #ccd4df;
-  --accent: #b2460d;
-  --code-bg: #e2e7ee;
-  --ok: #17703f;   --ok-bg: #d8efe1;
-  --run: #23589c;  --run-bg: #dbe6f5;
-  --warn: #7f5d00; --warn-bg: #f3e8c6;
-  --bad: #a8231b;  --bad-bg: #f6dcd8;
-  --idle: #556174; --idle-bg: #dfe4eb;
-  --font-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
-  --font-body: "Source Sans 3", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --bg: #edf1f7;
+  --panel: #dfe6f0;
+  --fg: #14202f;
+  --muted: #4e5c70;
+  --line: #c4cedb;
+  --accent: #b8470f;
+  --ok: #1d7f48;
+  --on-ok: #ffffff;
+  --run: #2a5fa8;
+  --idle: #5d6a7d;
+  --on-tag: #ffffff;
+  --edge: rgba(16, 24, 38, 0.28);
+  --hole: #c1cad7;
+  --ghost: #56657b;
+  --night: #1b2440;
+  --star: #f3ead2;
+  --died: #ff6b5e;
+  --device: #2a313d;
+  --device-2: #3d4553;
+  --screen: #f6f8fb;
+  --gold-btn: #f2c14e;
+  --on-gold: #2b1c00;
+  --dragon: #3c2a5c;
+  --dragon-2: #2a1d43;
+  --tell: #e8590c;
+  --bug-s: #7d8899;
+  --bug-b: #b5372a;
+  --skin: #efbf88;
+  --hair: #5a3a1e;
+  --tunic: #e0662a;
+  --legs: #38404e;
+  --sky: #9fd0f5;
+  --live: #d9302c;
+  --grass-t: #6fbf4a; --grass-l: #86572c; --grass-r: #6a4421;
+  --dirt-t: #a2723f; --dirt-l: #86572c; --dirt-r: #6a4421;
+  --stone-t: #a9b2bd; --stone-l: #8a939f; --stone-r: #6d7581;
+  --bedrock-t: #4c5361; --bedrock-l: #3b414d; --bedrock-r: #2d323c;
+  --dark-t: #4c5361; --dark-l: #3b414d; --dark-r: #2d323c;
+  --wood-t: #cf9f60; --wood-l: #a9783f; --wood-r: #875c2d;
+  --leaf-t: #4f9e3a; --leaf-l: #3d822c; --leaf-r: #2f6822;
+  --ember-t: #ffbe55; --ember-l: #f2802a; --ember-r: #c9581a;
+  --gold-t: #ffd970; --gold-l: #e9b43a; --gold-r: #c18c1e;
+  --water-t: #5eaee8; --water-l: #3f8bc8; --water-r: #2e6ea4;
+  --grass-t2: #82cf5b; --grass-t3: #5aa83c;
+  --font-display: "Bungee", "Arial Black", Impact, system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --step-xs: 0.78rem;
-  --step-s: 0.875rem;
-  --step-0: 1rem;
-  --step-1: 1.2rem;
-  --step-2: 1.65rem;
-  --step-3: clamp(2rem, 1.6rem + 2vw, 2.6rem);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0c121a;
-    --surface: #111924;
-    --panel: #18212e;
-    --fg: #dbe3ed;
-    --muted: #94a2b6;
-    --line: #253041;
-    --accent: #ef8f48;
-    --code-bg: #1a2433;
-    --ok: #6dd197;   --ok-bg: #102b1c;
-    --run: #86b6f2;  --run-bg: #14243b;
-    --warn: #e5c565; --warn-bg: #2f260d;
-    --bad: #f2928a;  --bad-bg: #351513;
-    --idle: #a4b0c1; --idle-bg: #1d2633;
+    --bg: #0d131c;
+    --panel: #162030;
+    --fg: #e4eaf2;
+    --muted: #9ba9bc;
+    --line: #273347;
+    --accent: #f39051;
+    --ok: #3fbf75;
+    --on-ok: #062012;
+    --run: #6a9ee6;
+    --idle: #8592a6;
+    --on-tag: #0b1220;
+    --edge: rgba(0, 0, 0, 0.45);
+    --hole: #0a0f17;
+    --ghost: #a3b3ca;
+    --device: #3b4555;
+    --device-2: #4b5567;
+    --screen: #0f1724;
+    --dragon: #8463cc;
+    --dragon-2: #64489f;
+    --bug-s: #8794a8;
+    --bug-b: #ff7a63;
+    --live: #ff5a52;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0c121a;
-  --surface: #111924;
-  --panel: #18212e;
-  --fg: #dbe3ed;
-  --muted: #94a2b6;
-  --line: #253041;
-  --accent: #ef8f48;
-  --code-bg: #1a2433;
-  --ok: #6dd197;   --ok-bg: #102b1c;
-  --run: #86b6f2;  --run-bg: #14243b;
-  --warn: #e5c565; --warn-bg: #2f260d;
-  --bad: #f2928a;  --bad-bg: #351513;
-  --idle: #a4b0c1; --idle-bg: #1d2633;
+  --bg: #0d131c;
+  --panel: #162030;
+  --fg: #e4eaf2;
+  --muted: #9ba9bc;
+  --line: #273347;
+  --accent: #f39051;
+  --ok: #3fbf75;
+  --on-ok: #062012;
+  --run: #6a9ee6;
+  --idle: #8592a6;
+  --on-tag: #0b1220;
+  --edge: rgba(0, 0, 0, 0.45);
+  --hole: #0a0f17;
+  --ghost: #a3b3ca;
+  --device: #3b4555;
+  --device-2: #4b5567;
+  --screen: #0f1724;
+  --dragon: #8463cc;
+  --dragon-2: #64489f;
+  --bug-s: #8794a8;
+  --bug-b: #ff7a63;
+  --live: #ff5a52;
   color-scheme: dark;
 }
 
@@ -66,823 +109,137 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-body);
-  font-size: var(--step-0);
-  line-height: 1.55;
+  font-size: 1.0625rem;
+  line-height: 1.45;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 2rem 4rem;
+  padding-block: 1.75rem 3rem;
 }
-@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
-
-.wrap { max-width: 64rem; margin: 0 auto; display: grid; gap: 2.75rem; }
+.wrap { max-width: 60rem; margin: 0 auto; display: grid; gap: 3rem; }
 .wrap > * { min-width: 0; }
+h1, h2 { font-family: var(--font-display); font-weight: 400; margin: 0; line-height: 1.1; text-wrap: balance; }
+h1 { font-size: clamp(2rem, 1.4rem + 3vw, 3.1rem); letter-spacing: 0.01em; }
+h2 { font-size: clamp(1.55rem, 1.25rem + 1.4vw, 2.2rem); color: var(--fg); }
+h2::after { content: ""; display: block; width: 2.4rem; height: 0.32rem; margin-top: 0.5rem; background: var(--accent); }
+.sec { display: grid; gap: 1rem; }
+.sub { margin: -0.4rem 0 0; color: var(--muted); font-size: 1.05rem; }
+figure { margin: 0; }
+.pic { display: grid; gap: 0.85rem; }
+.pic > svg { background: var(--panel); border-radius: 18px; padding: clamp(0.5rem, 2vw, 1.25rem); }
+.pic figcaption { font-size: clamp(1.1rem, 1rem + 0.5vw, 1.35rem); font-weight: 700; max-width: 40ch; text-wrap: balance; }
+svg.art { display: block; width: 100%; max-width: 100%; height: auto; box-sizing: border-box; }
+svg.art-narrow { max-width: 38rem; justify-self: center; }
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 52rem) { .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } }
+.card { background: var(--panel); border-radius: 16px; padding: 10px 12px 14px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.card figcaption { font-size: 1rem; line-height: 1.35; }
+.foot { margin: 0; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.95rem; }
+.foot a { color: var(--accent); text-underline-offset: 3px; }
+.foot a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.15; margin: 0; }
-h1 { font-size: var(--step-3); font-weight: 700; letter-spacing: 0.005em; }
-h2 { font-size: var(--step-2); font-weight: 700; display: flex; align-items: center; gap: 0.55rem; }
-h2::before { content: ""; width: 0.55rem; height: 0.55rem; background: var(--accent); flex: none; }
-h3 { font-size: var(--step-1); font-weight: 600; }
-p { margin: 0; }
-a { color: var(--accent); text-underline-offset: 0.18em; }
-a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-strong { font-weight: 700; }
-
-code {
-  font-family: var(--font-mono);
-  font-size: 0.84em;
-  background: var(--code-bg);
-  padding: 0.05em 0.3em;
-  border-radius: 2px;
-  overflow-wrap: anywhere;
+/* the drawings */
+.e { stroke: var(--edge); stroke-width: 1; stroke-linejoin: round; }
+.grass-t { fill: var(--grass-t); } .grass-l { fill: var(--grass-l); } .grass-r { fill: var(--grass-r); }
+.dirt-t { fill: var(--dirt-t); } .dirt-l { fill: var(--dirt-l); } .dirt-r { fill: var(--dirt-r); }
+.stone-t { fill: var(--stone-t); } .stone-l { fill: var(--stone-l); } .stone-r { fill: var(--stone-r); }
+.bedrock-t { fill: var(--bedrock-t); } .bedrock-l { fill: var(--bedrock-l); } .bedrock-r { fill: var(--bedrock-r); }
+.dark-t { fill: var(--dark-t); } .dark-l { fill: var(--dark-l); } .dark-r { fill: var(--dark-r); }
+.wood-t { fill: var(--wood-t); } .wood-l { fill: var(--wood-l); } .wood-r { fill: var(--wood-r); }
+.leaf-t { fill: var(--leaf-t); } .leaf-l { fill: var(--leaf-l); } .leaf-r { fill: var(--leaf-r); }
+.ember-t { fill: var(--ember-t); } .ember-l { fill: var(--ember-l); } .ember-r { fill: var(--ember-r); }
+.gold-t { fill: var(--gold-t); } .gold-l { fill: var(--gold-l); } .gold-r { fill: var(--gold-r); }
+.water-t { fill: var(--water-t); } .water-l { fill: var(--water-l); } .water-r { fill: var(--water-r); }
+.grass-t2 { fill: var(--grass-t2); } .grass-t3 { fill: var(--grass-t3); }
+.under-l { fill: var(--stone-l); } .under-r { fill: var(--stone-r); }
+.hole { fill: var(--hole); }
+.ok { fill: var(--ok); } .run { fill: var(--run); } .on-run { fill: var(--on-ok); }
+.tick { fill: none; stroke: var(--on-ok); stroke-linecap: round; stroke-linejoin: round; }
+.go-line { stroke: var(--ok); stroke-linecap: round; } .go-head { fill: var(--ok); }
+.lbl { fill: var(--fg); font-family: var(--font-body); font-weight: 700; }
+.px { font-family: var(--font-display); font-weight: 400; }
+.on-gold { fill: var(--on-gold); } .on-night { fill: var(--star); } .on-tag { fill: var(--on-tag); }
+.on-live { fill: var(--fg); } .on-screen { fill: var(--fg); font-weight: 700; }
+.died { fill: var(--died); }
+.ghost { fill: none; stroke: var(--ghost); stroke-width: 1.6; stroke-dasharray: 4 3; }
+.ghost-gold { fill: none; stroke: var(--gold-l); stroke-width: 2; stroke-dasharray: 4 3; }
+.skin { fill: var(--skin); } .hair { fill: var(--hair); } .tunic { fill: var(--tunic); } .legs { fill: var(--legs); }
+.pole { stroke: var(--legs); stroke-width: 2.5; } .flag { fill: var(--tunic); }
+.glow { fill: var(--ember-t); opacity: 0.28; }
+.pill-live { fill: none; stroke: var(--live); stroke-width: 3; }
+.live-dot { fill: var(--live); }
+.wave { fill: none; stroke: var(--live); stroke-width: 3; stroke-linecap: round; opacity: 0.7; }
+.night { fill: var(--night); } .star { fill: var(--star); } .moon { fill: var(--star); opacity: 0.9; }
+.gold-btn { fill: var(--gold-btn); } .btn-2 { fill: none; stroke: var(--star); stroke-width: 1.4; }
+.tell { fill: var(--tell); fill-opacity: 0.3; stroke: var(--tell); stroke-width: 2.4; stroke-dasharray: 5 3; }
+.breath { stroke: var(--tell); stroke-width: 2; stroke-dasharray: 2 4; stroke-linecap: round; }
+.dragon { fill: var(--dragon); } .dragon-2 { fill: var(--dragon-2); } .eye { fill: var(--ember-t); }
+.motion { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
+.device { fill: var(--device); } .device-2 { fill: var(--device-2); } .screen { fill: var(--screen); }
+.heart { fill: var(--died); opacity: 0.85; }
+.respawn { fill: none; stroke: var(--star); stroke-width: 2.4; stroke-linecap: round; } .respawn-head { fill: var(--star); }
+.bar-before { fill: var(--tell); } .bar-now { fill: var(--ok); }
+.tickline { stroke: var(--muted); stroke-width: 1; }
+.sky { fill: var(--sky); } .hill { fill: var(--grass-t); } .sun { fill: var(--gold-t); }
+.hud-a { fill: var(--tell); } .hud-b { fill: var(--water-l); }
+.pick-handle { stroke: var(--wood-l); stroke-width: 5; stroke-linecap: round; } .pick-head { fill: var(--dark-t); }
+.bug-s { fill: var(--bug-s); } .bug-b { fill: var(--bug-b); }
+.bugleg-s { fill: none; stroke: var(--bug-s); stroke-linecap: round; } .bugleg-b { fill: none; stroke: var(--bug-b); stroke-linecap: round; }
+.bugsplit { stroke: var(--panel); }
+.divider { stroke: var(--line); stroke-width: 2; }
+.tag-ok { fill: var(--ok); } .tag-run { fill: var(--run); } .tag-idle { fill: var(--idle); }
+.slot { fill: var(--screen); stroke: var(--muted); stroke-width: 2; } .slot-2 { opacity: 0.8; } .slot-3 { opacity: 0.6; }
+.slot-line { fill: var(--line); }
+.tap { fill: none; stroke: var(--gold-btn); stroke-width: 2.5; } .tap-dot { fill: var(--gold-btn); }
+.band { fill: none; stroke: var(--device); stroke-width: 7; stroke-linecap: round; } .cup { fill: var(--device); }
+.wave-s { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+.slider { stroke: var(--muted); stroke-width: 2.5; stroke-linecap: round; } .knob { fill: var(--accent); }
+.paper { fill: var(--screen); stroke: var(--line); stroke-width: 2; } .codeline { fill: var(--line); }
+.lens { fill: var(--sky); fill-opacity: 0.35; stroke: var(--device); stroke-width: 7; }
+.lens-handle { stroke: var(--device); stroke-width: 10; stroke-linecap: round; }
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot { animation: live 2s ease-in-out infinite; }
+  @keyframes live { 50% { opacity: 0.35; } }
 }
-
-.label {
-  font-family: var(--font-display);
-  font-size: var(--step-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--muted);
-}
-.muted { color: var(--muted); }
-.gap { color: var(--muted); font-style: italic; }
-.num { font-variant-numeric: tabular-nums; }
-
-/* header */
-.top { display: grid; gap: 0.9rem; }
-.top .kicker { color: var(--accent); }
-.top .sub { font-size: var(--step-1); max-width: 60ch; }
-.top .meta { font-size: var(--step-s); color: var(--muted); max-width: 70ch; }
-.top .moved { font-size: var(--step-s); max-width: 70ch; border-left: 3px solid var(--accent); padding-left: 0.65rem; }
-
-.state {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
-  gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
-}
-.state > div { background: var(--surface); padding: 0.8rem 0.95rem; display: grid; gap: 0.4rem; align-content: start; min-width: 0; }
-.state p { font-size: var(--step-s); font-variant-numeric: tabular-nums; }
-.state .pills { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-
-nav.toc { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; font-size: var(--step-s); }
-nav.toc a { color: var(--fg); text-decoration-color: var(--accent); }
-
-/* sections */
-section { display: grid; gap: 1.1rem; border-top: 1px solid var(--line); padding-top: 1.6rem; scroll-margin-top: 1rem; }
-section > * { min-width: 0; }
-.prose { display: grid; gap: 0.85rem; }
-.prose p, .prose li, .lede { max-width: 65ch; }
-.lede { font-size: 1.06rem; }
-
-.group { display: grid; gap: 0.6rem; }
-.group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 0.7rem; }
-.group-head .when { font-size: var(--step-s); color: var(--muted); font-variant-numeric: tabular-nums; }
-
-ul.list { margin: 0; padding-left: 1.15rem; display: grid; gap: 0.5rem; }
-ul.list li { max-width: 65ch; }
-ul.list li::marker { color: var(--accent); }
-ol.dec { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.6rem; }
-ol.dec li { display: grid; grid-template-columns: 2.4rem 1fr; gap: 0.6rem; max-width: 72ch; }
-ol.dec li > * { min-width: 0; }
-ol.dec .n { font-family: var(--font-display); font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
-
-/* pills */
-.pill {
-  display: inline-block;
-  font-family: var(--font-display);
-  font-size: 0.74rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  line-height: 1;
-  padding: 0.3em 0.55em 0.28em;
-  border-radius: 3px;
-  white-space: nowrap;
-  border: 1px solid transparent;
-}
-.ok   { color: var(--ok);   background: var(--ok-bg); }
-.run  { color: var(--run);  background: var(--run-bg); }
-.warn { color: var(--warn); background: var(--warn-bg); }
-.bad  { color: var(--bad);  background: var(--bad-bg); }
-.idle { color: var(--idle); background: var(--idle-bg); }
-
-/* answer panel */
-.qa { border: 1px solid var(--line); background: var(--surface); display: grid; }
-.qa > div { padding: 0.85rem 1rem; display: grid; gap: 0.35rem; border-top: 1px solid var(--line); min-width: 0; }
-.qa > div:first-child { border-top: 0; }
-.qa .q { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; }
-.qa p { max-width: 70ch; }
-
-/* tables */
-.tbl { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
-table { border-collapse: collapse; width: 100%; min-width: 46rem; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
-th, td { text-align: left; vertical-align: top; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--line); }
-thead th {
-  font-family: var(--font-display);
-  font-size: var(--step-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  background: var(--panel);
-}
-tbody tr:last-child td { border-bottom: 0; }
-tr.divider td {
-  background: var(--panel);
-  font-family: var(--font-display);
-  font-size: var(--step-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  padding-block: 0.35rem;
-}
-td.lane { font-weight: 600; white-space: nowrap; }
-td.st { white-space: nowrap; }
-td.st .pill + .pill { margin-left: 0.25rem; }
-table.compact { min-width: 38rem; }
-
-/* built-not-landed blocks */
-.blocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1.4rem 2rem; }
-.blocks > div { display: grid; gap: 0.55rem; align-content: start; min-width: 0; }
-.blocks ul.list { font-size: 0.95rem; }
-
-/* mistakes */
-.mk { display: grid; gap: 0; border-top: 1px solid var(--line); }
-.mk article { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: 0.4rem 1.5rem; padding: 0.95rem 0; border-bottom: 1px solid var(--line); }
-.mk article h3 { font-size: 1.05rem; }
-.mk article .body { display: grid; gap: 0.45rem; }
-.mk article .body p { max-width: 65ch; }
-.mk b { font-weight: 700; }
-@media (max-width: 40rem) { .mk article { grid-template-columns: minmax(0, 1fr); } }
-
-/* ledger bar */
-.ledger { display: grid; gap: 0.6rem; max-width: 46rem; }
-.bar { display: flex; height: 0.85rem; gap: 2px; }
-.bar span { display: block; min-width: 3px; }
-.seg-high { background: var(--bad); }
-.seg-med { background: var(--warn); }
-.seg-low { background: var(--run); }
-.seg-debt { background: var(--idle); }
-.seg-none { background: var(--line); }
-.legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; font-size: var(--step-s); font-variant-numeric: tabular-nums; }
-.legend span::before { content: ""; display: inline-block; width: 0.65rem; height: 0.65rem; margin-right: 0.35rem; vertical-align: -0.05rem; }
-.legend .l-high::before { background: var(--bad); }
-.legend .l-med::before { background: var(--warn); }
-.legend .l-low::before { background: var(--run); }
-.legend .l-debt::before { background: var(--idle); }
-.legend .l-none::before { background: var(--line); }
-
-.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1.4rem 2rem; }
-.two > div { display: grid; gap: 0.6rem; align-content: start; min-width: 0; }
-
-footer { border-top: 1px solid var(--line); padding-top: 1.2rem; font-size: var(--step-s); color: var(--muted); display: grid; gap: 0.5rem; }
-footer p { max-width: 75ch; }
 </style>
 
 <div class="wrap">
-<!-- asof:begin --><p data-asof style="margin:0 0 14px;padding:6px 0;border-bottom:1px solid var(--line);color:var(--muted);font-family:var(--font-mono);font-size:12px;line-height:1.5">As of commit f87f2324, 2026-10-31 02:56 UTC.</p><!-- asof:end -->
+<!-- asof:begin --><p data-asof style="margin:0 0 14px;padding:6px 0;border-bottom:1px solid var(--line);color:var(--muted);font-family:var(--font-mono);font-size:12px;line-height:1.5">As of commit 971f0ef2, 2026-10-31 08:11 UTC.</p><!-- asof:end -->
+<header><h1>Crafty Command Record</h1></header>
 
-<header class="top">
-  <p class="label kicker">Crafty · Ember against the dark · command session</p>
-  <h1>Crafty Command Record</h1>
-  <p class="sub">What the Crafty command session achieved and decided from the takeover on 2026-10-27 to 2026-10-31, 03:53 UTC.</p>
-  <p class="moved">This page has lived at this link since version 6 (2026-10-29 03:44Z). The old link (claude.ai/artifact/BgjzwJJqjnPvaUfxkUtU7f) belongs to another claude.ai account and last showed 2026-10-28 17:19Z.</p>
-  <p class="meta">State read at about 02:45 to 03:16Z on 2026-10-31, and the live-site lines again at 03:38Z, against <code>origin/main 449ce3ea</code>; main, the deployments, both hosts, the registry and the in-flight lanes’ heads were read again at 03:47 to 03:53Z, against <code>origin/main f87f2324</code>. This is version 11; version 10 landed at 17:58Z on 10-30, written against <code>c6571e11</code>, and “new” marks what changed since then. Times are UTC unless marked PDT. Every time from 22:00Z on 10-29 on carries its date. In the older entries from 22:15Z on 10-28 on, an undated time before 22:00Z is on 10-29 and a later one on 10-28; in entries older still, times are on 10-28 unless dated. The lane entries come from each lane’s report and its static and dynamic reviews, and from the command session’s own records up to 02:36Z on 10-31 and its report of L11’s round-3 reviews and landing.</p>
-
-  <div class="state" aria-label="Current state">
-    <div>
-      <p class="label">Main CI</p>
-      <p class="pills"><span class="pill ok">head green</span></p>
-      <p>Head <code>f87f2324</code> passed PR run <code>41162361319</code> on that exact commit (02:59 to 03:21Z on 10-31), and main’s run on it, <code>41165264289</code>, passed at 03:39Z on 10-31 on that verdict (item 23). All 36 main runs from <code>3bd6fbde</code> on passed on the first attempt.</p>
-    </div>
-    <div>
-      <p class="label">Production</p>
-      <p class="pills"><span class="pill ok">current</span><span class="pill ok">protected</span></p>
-      <p>The last Production deployment is <code>f87f2324</code>, lane L11, at 03:39:10Z on 10-31, state success (its commit status read pending at 03:38:47Z). At 03:53Z both hosts served <code>index-Zp0FZSej.js</code> (641,390 B); at 03:38Z they still served <code>index-D4QiFJhj.js</code> (639,503 B), the chunk of <code>5f00f246</code>. Lane L5’s own push, <code>449ce3ea</code> at 02:34Z, never got a Vercel status or a deployment, so L5 was on main 65 minutes before it was live; it went out inside the deployment of <code>f87f2324</code>, with L11. Why Vercel skipped it is not known (<a href="#deploys">Deploys</a>).</p>
-    </div>
-    <div>
-      <p class="label">Landed since version 10</p>
-      <p class="pills"><span class="pill ok">6 main pushes</span></p>
-      <p>Version 10 itself, the deep audit’s record, lane L1 (#62), the chaos-play gate (#61), lane L5 (#63) and lane L11 (#64). 82 commits from <code>c6571e11</code> to <code>f87f2324</code>, 75 of them not merges.</p>
-    </div>
-    <div>
-      <p class="label">In flight</p>
-      <p class="pills"><span class="pill run">2 lanes</span></p>
-      <p>Two of the audit’s twelve lanes, read at 03:53Z on 10-31: L2 (#65, every world switch a boot and Continue on the title), whose head is <code>fa0be54c</code> with its PR run in progress, and L4 (#66, its second round), whose head <code>7fcee633</code> passed its run. And this page.</p>
-    </div>
-    <div>
-      <p class="label">Waiting on you</p>
-      <p class="pills"><span class="pill warn">2 device runs</span><span class="pill warn">2 feel checks</span><span class="pill warn">1 upload</span></p>
-      <p>Lanes L1 and L5 on a real iPhone and iPad; the box fix on your 120 Hz display and the HUD on a real iPad and phone; the social preview upload, still not done at 03:00Z on 10-31. If you want the whole game reviewed, chunks 4 to 6 of <code>/code-review ultra</code> on account 2’s free runs. Nothing waits on any of them. <a href="#open">Details</a>.</p>
-    </div>
-  </div>
-
-  <nav class="toc" aria-label="Sections">
-    <a href="#outcome">Outcome</a>
-    <a href="#live">Live for players</a>
-    <a href="#lanes">Landed and in flight</a>
-    <a href="#audit">The deep audit</a>
-    <a href="#decisions">Decisions taken</a>
-    <a href="#harness">Harness and gates</a>
-    <a href="#mistakes">Mistakes</a>
-    <a href="#open">Open, and waiting on you</a>
-  </nav>
-</header>
-
-<section id="outcome">
-  <h2>Outcome</h2>
-  <div class="prose">
-    <p class="lede">Main is green and protected at <code>f87f2324</code>, and the live site serves it: Vercel deployed it at 03:39:10Z on 10-31 and both hosts served its chunk at 03:53Z. Since version 10 six pushes reached main, each on a CI run on its exact commit. Your deep audit is done: 40 findings confirmed by an independent repro, 6 of them HIGH, traced to eight root seams and turned into twelve fix lanes. Three of those lanes, L1, L5 and L11, and the chaos-play gate are live. In CI’s emulated iPad and phone a death now shows YOU DIED instead of the crash page, and the touch buttons the game swallowed (the Settings gear, Respawn, Keep exploring, the lost-context panel) answer a touch; the device run is yours. The chaos-play gate plays the game to break it in CI on every change, and its seven fixes are live, each for a way to end up inside a solid block or held in place, one of them for a 120 Hz regression its own round 2 opened. Lane L5 made input follow one rule, so the victory screen, a chest opened on touch, the panels, a typed world name and the scroll wheel behave; it was on main 65 minutes before it was live, because Vercel gave its own push no deployment, and it went out with L11. Lane L11 gave six world facts one predicate each: the dry shore strip no longer sounds like the sea, the shrine finder leads only to a shrine you can see, a wounded mob takes cover from a player above it, a kill’s loot rolls at the tier where the mob died, the ability bar’s cooldown lengths come from the timers themselves and a walk and a dodge share one basis; it is proved by gates and CI, not played. L2 and L4 are in flight. What needs you: L1 and L5 on a real iPhone and iPad, the box fix at 120 Hz, the social preview and, if you want the rest of the game reviewed, ultrareview chunks 4 to 6.</p>
-    <p><strong>New since version 10.</strong> The deep audit’s record (<code>dd11f962</code>, 19:39Z on 10-30): nine class hunters and your three ultrareview runs, each serious finding sent to its own repro verifier, then a synthesis and a completeness critic (<a href="#audit">The deep audit</a>). Lane L1 (#62, 21:04Z on 10-30): the iOS death crash, Show Stats on touch, the juice dial and every button over the game on touch. The chaos-play gate (#61, 23:45Z on 10-30), in three rounds: the gate in CI and seven fixes. Lane L5 (#63, 02:34Z on 10-31), in two rounds: one predicate for whether input is live. Lane L11 (#64, 03:38Z on 10-31), in three rounds: one predicate for each of six world facts.</p>
-    <p><strong>Between 08:39Z and 17:13Z on 10-30 (version 10).</strong> W2-G (#57): the reward sounds from one typed event bus, the autosave firing during play, a world’s terrain seed, and the DEV bridge out of the production build. The dragon’s first half (#56, #58): every attack has a tell on the ground, and the dodge, the heavies and the Aspect kits reach it. The invisible box you hit at about 09:45Z (#59, 15:29Z), in three fix rounds. W2-L (#60): the first chunk 47,557 B smaller, panels still animating.</p>
-    <p><strong>Between 18:37Z on 10-29 and 08:39Z on 10-30 (version 9).</strong> W2-D rebuilt the HUD (#53, #54): the HUD at rest fell from 22.14% of a 1280x800 frame to 6.58%, three panels in place of seven, quests that claim themselves. W2-E’s follow-ups (#52) finished the first-person view, and 143 closed records left the tree behind the tag <code>records/2026-10-29</code> (#55).</p>
-    <p><strong>Between 22:15Z on 10-28 and 18:30Z on 10-29.</strong> The Cut finished: Mara’s Forge replaced the crafting grid (#47), hunger and the five foods were deleted (#50), the hunts name the creature (#51). You see the world from 1.62 m through two ember gauntlets (#43); each level pays a talent point that changes a verb (#44); grass shows soil and trunks bark (#37); N8AO is deleted (#39); one ember bar (#38); the README hero and the shared-link card are frames of the production build (#46).</p>
-    <p><strong>On 10-28 before 22:15Z.</strong> Your standing principle (item 14) put nothing off limits and made this page your one review surface; Wave 1 gave a pause that holds the world, XP only from fighting, a moonlit night, a 480 s day, mipmapped textures and a boot chunk 104 kB smaller; building spends what you mine (#33); one registry holds all open work. At the takeover on 10-27, main had not passed CI since 2026-09-23 (run <code>35820716087</code> on <code>a01b1982</code>); it went green at <code>230fd72f</code> (run <code>40518887229</code>, 14:33Z on 10-27), and was red once more until <code>2bb0857d</code> passed at 07:55Z on 10-28.</p>
-  </div>
-
-  <div class="qa">
-    <div>
-      <p class="q">What did the deep audit find? <span class="pill run">new</span></p>
-      <p><span class="pill ok">done</span> 47 findings went to a verifier: 40 CONFIRMED (6 HIGH, 22 MED, 12 LOW), 5 PLAUSIBLE, 2 REFUTED; 9 more LOW ones were not verified, 8 were already known, and the verifiers found 2 new leads. CONFIRMED is the synthesis’s label: an independent verifier reproduced each one at <code>62159bc1</code> with the real modules in jsdom or node; none was run in a browser or on a device. The completeness critic found the control wording is template text, and four rows (1, 3, 9 and 22: the iOS death crash and the Load drop, both HIGH, the victory screen under the pointer lock and the panel relock) rest on a step the verifier emulated: CONFIRMED for the code path, PLAUSIBLE for what the player meets. Of the six HIGH, the iOS death crash is fixed and live; the other five (your world never resumed, a Load that drops you out of the world, the context-loss resume wiping your quests and the dragon fight, the dragon ignoring every load, the squad never saved) are lane L2’s and L3’s. The lead that the touch Settings gear was dead proved true on CI and is fixed and live. <a href="#audit">The deep audit</a>.</p>
-    </div>
-    <div>
-      <p class="q">Do deaths on iPhone and iPad still crash? <span class="pill run">new</span></p>
-      <p><span class="pill ok">live</span> No, as far as CI can show: since the Production deployment of <code>1a3910e7</code> at 21:05:26Z on 10-30 the game asks for the Pointer Lock API only where the browser has it, and iOS WebKit has none (item 160). CI deletes the API on an emulated iPad and dies there: that e2e failed on all three attempts on the code before the fix (run <code>41117858710</code>, “document.exitPointerLock is not a function”) and passes now, and a tap on Respawn plays on. At 03:04Z on 10-31 the served chunk carries the guarded release. Chromium is not WebKit and an emulated touch is not a finger, so the lived proof is yours (item 161).</p>
-    </div>
-    <div>
-      <p class="q">Is the invisible box fixed?</p>
-      <p><span class="pill ok">live</span> Yes. The placement path and the late-collider paths have been live since 15:29Z on 10-30 (items 130 to 136). The chaos-play gate re-found the two other ways into a solid cell that the box’s reviews had registered and fixed five more, one a regression of its own round 2 (<a href="#mistakes">Mistakes</a>); all seven fixes have been live since the Production deployment of <code>5f00f246</code> at 23:45:41Z on 10-30. At 03:04Z on 10-31 the served chunk carries the form swap’s refusal, “No room to change shape here”. On seeds 1 to 8, run locally, none of the gate’s 56 sessions a seed reached into a solid cell (item 170); CI plays seed 1 on every change. How it feels on your 120 Hz display is yours to judge.</p>
-    </div>
-    <div>
-      <p class="q">Is the live site current?</p>
-      <p><span class="pill ok">current</span> Yes. Main’s head <code>f87f2324</code> (lane L11, pushed 03:38Z on 10-31) has been the Production deployment since 03:39:10Z, and at 03:53Z both hosts served <code>index-Zp0FZSej.js</code> (641,390 B). Until then, at 03:04Z and again at 03:38Z, they served <code>index-D4QiFJhj.js</code> (639,503 B), the chunk PR run <code>41141022094</code> built from <code>5f00f246</code>. Lane L5’s head <code>449ce3ea</code> (pushed 02:34Z; its PR run built <code>index-BiZoWQNZ.js</code>) never got a Vercel commit status or a deployment of its own, though every other main push since the one refusal at 14:04Z on 10-29 had deployed, the last five within a minute. Its code went live inside the deployment of <code>f87f2324</code>, 65 minutes after its push. Why Vercel skipped it is not known; it is on Vercel’s side.</p>
-    </div>
-    <div>
-      <p class="q">Can a red commit reach the live site now?</p>
-      <p><span class="pill ok">protected</span> No. Branch protection has been on since <code>1c4e3bc1</code> reached main at 11:11Z on 10-28: its one required check is <code>ci ok</code>, the branch must be up to date, admins are included, and force pushes and deletion are off; the GitHub API read those settings back at 03:00Z on 10-31. A lane merges main into its branch, its PR run tests that exact commit, and main fast-forwards to it once <code>ci ok</code> is green; a change with no PR, such as this page, uses a <code>land/&lt;date&gt;</code> branch the same way. Only main deploys.</p>
-    </div>
-    <div>
-      <p class="q">Is Wave 2 done?</p>
-      <p><span class="pill run">nearly</span> Unchanged since version 10: everything landed but W2-M (sound) and the feats W2-D did not build (a MED row). Wave 3 began with the dragon’s first half; the First Night (W3-A) and the dragon’s Units 5 to 9 wait for the audit’s fix lanes.</p>
-    </div>
-    <div>
-      <p class="q">What was done about the SSD wear?</p>
-      <p><span class="pill ok">done</span> Your request (about 19:16Z on 10-28: about 4.3 TB a day against a 1 TB budget) cut duplicate work, not checks: a commit runs only the static gates and the unit tests that import what it changed (item 22); a push runs no unit suite, build or bundle (item 24); a reviewer’s scratch copy is a clonefile copy; no e2e or lookbook runs locally unless a look question needs the real GPU; a full unit suite runs under one machine-wide lock with four workers. New since version 10: the 389 GB written between 16:35 and 17:35Z on 10-30 was AB Command’s lane, not this audit, and AB Command traced the bursts to Apple’s <code>xcrun</code> shim rewriting a 65.5 MB cache file each time <code>/usr/bin/git</code> or <code>/usr/bin/python3</code> starts under a home directory it has not seen (your <code>fs_usage</code> at 19:00Z); it cleared the cache at 19:01Z. <span class="gap">Not measured: Crafty’s own share, and whether this session’s review copies, which set their own HOME, fed that file.</span></p>
-    </div>
-    <div>
-      <p class="q">Is there one instruction file, and is it small yet?</p>
-      <p><span class="pill ok">done</span> One, <code>CLAUDE.md</code> at the repo root since <code>d700e531</code> (your call, 10-28), 11,453 bytes at <code>f87f2324</code>; doc-currency fails it over 12,000 bytes, and a cold-takeover eval checks it after a rewrite.</p>
-    </div>
-  </div>
+<section class="sec" aria-labelledby="s-stands">
+<h2 id="s-stands">Where it stands</h2>
+<figure class="pic"><svg class="art" viewBox="0 0 640 250" role="img" aria-label="The game's world is live for players, and every check is green."><circle class="glow" cx="200" cy="97" r="30"/><polygon class="under-l" points="109.9,162 200,214 155,203.6 206,250.4"/><polygon class="under-r" points="200,214 290.1,162 254,201 206,250.4"/><polygon class="grass-l e" points="177.5,97 200,110 200,136 177.5,123"/><polygon class="grass-r e" points="200,110 222.5,97 222.5,123 200,136"/><polygon class="grass-t e" points="200,84 222.5,97 200,110 177.5,97"/><polygon class="grass-t" points="177.5,97 200,110 200,115.7 177.5,102.7"/><polygon class="grass-t3" points="200,110 222.5,97 222.5,102.7 200,115.7"/><polygon class="stone-l e" points="177.5,71 200,84 200,110 177.5,97"/><polygon class="stone-r e" points="200,84 222.5,71 222.5,97 200,110"/><polygon class="stone-t e" points="200,58 222.5,71 200,84 177.5,71"/><polygon class="grass-l e" points="155,110 177.5,123 177.5,149 155,136"/><polygon class="grass-r e" points="177.5,123 200,110 200,136 177.5,149"/><polygon class="grass-t e" points="177.5,97 200,110 177.5,123 155,110"/><polygon class="grass-t" points="155,110 177.5,123 177.5,128.7 155,115.7"/><polygon class="grass-t3" points="177.5,123 200,110 200,115.7 177.5,128.7"/><polygon class="grass-l e" points="200,110 222.5,123 222.5,149 200,136"/><polygon class="grass-r e" points="222.5,123 245,110 245,136 222.5,149"/><polygon class="grass-t e" points="222.5,97 245,110 222.5,123 200,110"/><polygon class="grass-t" points="200,110 222.5,123 222.5,128.7 200,115.7"/><polygon class="grass-t3" points="222.5,123 245,110 245,115.7 222.5,128.7"/><polygon class="stone-l e" points="155,84 177.5,97 177.5,123 155,110"/><polygon class="stone-r e" points="177.5,97 200,84 200,110 177.5,123"/><polygon class="stone-t e" points="177.5,71 200,84 177.5,97 155,84"/><polygon class="stone-l e" points="200,84 222.5,97 222.5,123 200,110"/><polygon class="stone-r e" points="222.5,97 245,84 245,110 222.5,123"/><polygon class="stone-t e" points="222.5,71 245,84 222.5,97 200,84"/><polygon class="grass-l e" points="132.5,123 155,136 155,162 132.5,149"/><polygon class="grass-r e" points="155,136 177.5,123 177.5,149 155,162"/><polygon class="grass-t e" points="155,110 177.5,123 155,136 132.5,123"/><polygon class="grass-t" points="132.5,123 155,136 155,141.7 132.5,128.7"/><polygon class="grass-t3" points="155,136 177.5,123 177.5,128.7 155,141.7"/><polygon class="grass-l e" points="177.5,123 200,136 200,162 177.5,149"/><polygon class="grass-r e" points="200,136 222.5,123 222.5,149 200,162"/><polygon class="grass-t e" points="200,110 222.5,123 200,136 177.5,123"/><polygon class="grass-t" points="177.5,123 200,136 200,141.7 177.5,128.7"/><polygon class="grass-t3" points="200,136 222.5,123 222.5,128.7 200,141.7"/><polygon class="grass-l e" points="222.5,123 245,136 245,162 222.5,149"/><polygon class="grass-r e" points="245,136 267.5,123 267.5,149 245,162"/><polygon class="grass-t e" points="245,110 267.5,123 245,136 222.5,123"/><polygon class="grass-t" points="222.5,123 245,136 245,141.7 222.5,128.7"/><polygon class="grass-t3" points="245,136 267.5,123 267.5,128.7 245,141.7"/><polygon class="ember-l e" points="177.5,97 200,110 200,136 177.5,123"/><polygon class="ember-r e" points="200,110 222.5,97 222.5,123 200,136"/><polygon class="ember-t e" points="200,84 222.5,97 200,110 177.5,97"/><polygon class="grass-l e" points="109.9,136 132.5,149 132.5,175 109.9,162"/><polygon class="grass-r e" points="132.5,149 155,136 155,162 132.5,175"/><polygon class="grass-t e" points="132.5,123 155,136 132.5,149 109.9,136"/><polygon class="grass-t" points="109.9,136 132.5,149 132.5,154.7 109.9,141.7"/><polygon class="grass-t3" points="132.5,149 155,136 155,141.7 132.5,154.7"/><polygon class="grass-l e" points="155,136 177.5,149 177.5,175 155,162"/><polygon class="grass-r e" points="177.5,149 200,136 200,162 177.5,175"/><polygon class="grass-t e" points="177.5,123 200,136 177.5,149 155,136"/><polygon class="grass-t" points="155,136 177.5,149 177.5,154.7 155,141.7"/><polygon class="grass-t3" points="177.5,149 200,136 200,141.7 177.5,154.7"/><polygon class="grass-l e" points="200,136 222.5,149 222.5,175 200,162"/><polygon class="grass-r e" points="222.5,149 245,136 245,162 222.5,175"/><polygon class="grass-t e" points="222.5,123 245,136 222.5,149 200,136"/><polygon class="grass-t" points="200,136 222.5,149 222.5,154.7 200,141.7"/><polygon class="grass-t3" points="222.5,149 245,136 245,141.7 222.5,154.7"/><polygon class="grass-l e" points="245,136 267.5,149 267.5,175 245,162"/><polygon class="grass-r e" points="267.5,149 290.1,136 290.1,162 267.5,175"/><polygon class="grass-t e" points="267.5,123 290.1,136 267.5,149 245,136"/><polygon class="grass-t" points="245,136 267.5,149 267.5,154.7 245,141.7"/><polygon class="grass-t3" points="267.5,149 290.1,136 290.1,141.7 267.5,154.7"/><polygon class="wood-l e" points="109.9,110 132.5,123 132.5,149 109.9,136"/><polygon class="wood-r e" points="132.5,123 155,110 155,136 132.5,149"/><polygon class="wood-t e" points="132.5,97 155,110 132.5,123 109.9,110"/><polygon class="wood-l e" points="109.9,84 132.5,97 132.5,123 109.9,110"/><polygon class="wood-r e" points="132.5,97 155,84 155,110 132.5,123"/><polygon class="wood-t e" points="132.5,71 155,84 132.5,97 109.9,84"/><polygon class="leaf-l e" points="109.9,58 132.5,71 132.5,97 109.9,84"/><polygon class="leaf-r e" points="132.5,71 155,58 155,84 132.5,97"/><polygon class="leaf-t e" points="132.5,45 155,58 132.5,71 109.9,58"/><polygon class="grass-l e" points="132.5,149 155,162 155,188 132.5,175"/><polygon class="grass-r e" points="155,162 177.5,149 177.5,175 155,188"/><polygon class="grass-t e" points="155,136 177.5,149 155,162 132.5,149"/><polygon class="grass-t" points="132.5,149 155,162 155,167.7 132.5,154.7"/><polygon class="grass-t3" points="155,162 177.5,149 177.5,154.7 155,167.7"/><polygon class="grass-l e" points="177.5,149 200,162 200,188 177.5,175"/><polygon class="grass-r e" points="200,162 222.5,149 222.5,175 200,188"/><polygon class="grass-t e" points="200,136 222.5,149 200,162 177.5,149"/><polygon class="grass-t" points="177.5,149 200,162 200,167.7 177.5,154.7"/><polygon class="grass-t3" points="200,162 222.5,149 222.5,154.7 200,167.7"/><polygon class="grass-l e" points="222.5,149 245,162 245,188 222.5,175"/><polygon class="grass-r e" points="245,162 267.5,149 267.5,175 245,188"/><polygon class="grass-t e" points="245,136 267.5,149 245,162 222.5,149"/><polygon class="grass-t" points="222.5,149 245,162 245,167.7 222.5,154.7"/><polygon class="grass-t3" points="245,162 267.5,149 267.5,154.7 245,167.7"/><polygon class="grass-l e" points="155,162 177.5,175 177.5,201 155,188"/><polygon class="grass-r e" points="177.5,175 200,162 200,188 177.5,201"/><polygon class="grass-t e" points="177.5,149 200,162 177.5,175 155,162"/><polygon class="grass-t" points="155,162 177.5,175 177.5,180.7 155,167.7"/><polygon class="grass-t3" points="177.5,175 200,162 200,167.7 177.5,180.7"/><polygon class="grass-l e" points="200,162 222.5,175 222.5,201 200,188"/><polygon class="grass-r e" points="222.5,175 245,162 245,188 222.5,201"/><polygon class="grass-t e" points="222.5,149 245,162 222.5,175 200,162"/><polygon class="grass-t" points="200,162 222.5,175 222.5,180.7 200,167.7"/><polygon class="grass-t3" points="222.5,175 245,162 245,167.7 222.5,180.7"/><polygon class="water-l e" points="177.5,175 200,188 200,214 177.5,201"/><polygon class="water-r e" points="200,188 222.5,175 222.5,201 200,214"/><polygon class="water-t e" points="200,162 222.5,175 200,188 177.5,175"/><rect class="legs" x="195" y="137" width="4" height="12"/><rect class="legs" x="201" y="137" width="4" height="12"/><rect class="skin" x="191" y="124" width="3" height="11"/><rect class="skin" x="206" y="124" width="3" height="11"/><rect class="tunic" x="194" y="123" width="12" height="15"/><rect class="skin" x="195" y="112" width="10" height="10"/><rect class="hair" x="195" y="112" width="10" height="3"/><line class="pole" x1="200" y1="71" x2="200" y2="24"/><polygon class="flag" points="200,24 230,33 200,42"/><rect class="pill-live" x="318" y="34" width="118" height="46" rx="23"/><circle class="live-dot" cx="346" cy="57" r="9"/><text class="lbl on-live" x="396" y="67" font-size="28" text-anchor="middle">Live</text><path class="wave" d="M300,40 Q290,57 300,74 M290,32 Q276,57 290,82"/><circle class="ok" cx="516" cy="120" r="66"/><path class="tick" stroke-width="13.2" d="M486.3,121.3 L509.4,143.8 L547.7,98.9"/><text class="lbl" x="516" y="226" font-size="28" text-anchor="middle">All green</text></svg><figcaption>Live for everyone, and every check is green: 31 October 2026.</figcaption></figure>
 </section>
 
-<section id="live">
-  <h2>Live for players</h2>
-  <p class="lede">What is on <code>origin/main</code>, newest first. Everything below is in a Vercel Production deployment: the newest two lanes, L11 and L5, went out together at 03:39:10Z on 10-31.</p>
-
-  <div class="group">
-    <div class="group-head"><h3>L11: one fact, one predicate (PR #64)</h3><code>f87f2324</code><span class="when">on main 03:38Z on 10-31, live from 03:39Z · new</span></div>
-    <ul class="list">
-      <li><strong>The dry shore strip no longer sounds like the sea.</strong> The last dry column of a shoreline counted as water for the wind bed, which turned to the muffled underwater sound there, and for the far-field ring, which drew the strip as sea one column inland; the terrain worker and the climate sampler now share one sea predicate (item 180). The sound reads the column the camera stands in (items 186, 189). Round 2’s version of that read changed nothing, because the store’s position is already rounded; round 3 reads the camera, and the dynamic review measured the wind bed misfiring 0 times on the shore population on <code>f87f2324</code>, against 8,352 of 43,056 (19.4%) on round 2’s head (<a href="#mistakes">Mistakes</a>).</li>
-      <li><strong>The shrine finder leads only to a shrine you can see.</strong> The beam, the compass, the minimap dot, the HUD objective and the Pilgrimage test used a hashed landmark the renderer did not draw: 824 of 3,508 hashed chunks in a 501 by 501 chunk window at seed 12345 (item 181).</li>
-      <li><strong>A wounded mob takes cover from a player standing above it behind a wall,</strong> where a pillar 5 or more blocks above the mob’s feet had blinded the check (item 182). <strong>A mob’s kill rolls its loot at the zone tier where it died;</strong> every kill had rolled at tier 0 (item 183).</li>
-      <li><strong>The ability bar’s cooldown lengths are the state machines’ own constants, and a walk and a dodge read one planar basis</strong> (items 184, 185).</li>
-      <li><span class="gap">Not proven: a lived run (the lane had no local browser, and CI is its arbiter); the Player’s camera publication, which the sound gate models and does not drive; the sight grid’s frame cost on an iPad-class device. Not fixed, each a row: a roof over a raised player still defeats the cover check; the weather samples the rounded position in two places; the far-field coast moved on 0.1 to 0.6% of the ring’s vertices with no lookbook frame; the Iron Nugget that probes the loot tier has no use today.</span></li>
-    </ul>
-  </div>
-
-  <div class="group">
-    <div class="group-head"><h3>L5: input follows one rule (PR #63)</h3><code>449ce3ea</code><span class="when">on main 02:34Z on 10-31, live from 03:39Z with L11 · new</span></div>
-    <ul class="list">
-      <li><strong>Input is live only while nothing covers the game,</strong> whatever opened the surface: a panel, VICTORY, the lost-context panel or the death screen (item 171). Before, every opener was trusted to drop the input gate, and two did not.</li>
-      <li><strong>The victory screen lets go of your pointer.</strong> At your first dragon kill VICTORY used to rise under a held lock: Keep exploring could not be clicked, your clicks mined and placed behind it, and the world ran on. Now the lock is released when it rises, the world holds, and Keep exploring asks for the lock again (item 172).</li>
-      <li><strong>A chest opened on touch holds the world:</strong> mobs stop, and you cannot be killed inside the menu (item 171).</li>
-      <li><strong>Panels close cleanly.</strong> A panel key pressed twice over the trade panel or a chest no longer relocks the pointer with the panel still drawn; Esc closes all thirteen panels, World Manager and Credits included; the pointer is taken again only when no panel remains (item 173).</li>
-      <li><strong>A typed name is text.</strong> B, H, J and Tab typed into World Manager’s name field no longer open panels, so “Hobbit Hole” types; a key an input method is composing is left to it; Tab inside a dialog stays there; a held key toggles once (item 174). A locked Aspect key typed there, or pressed under VICTORY, says nothing (item 178).</li>
-      <li><strong>The scroll wheel steps the hotbar per gesture, not per event:</strong> a trackpad swipe that used to spin through 30 slots moves one or two, a sideways swipe moves none, and a tile off the bar comes back to the first slot (item 175).</li>
-      <li><strong>A tap that opens a panel no longer closes it,</strong> because a backdrop closes only for a press that began on it, and a panel fading out takes no touch (item 176). Touch keeps one Cast button; no touch force-cast was built (item 177).</li>
-      <li><span class="gap">Not proven: a real iPad or iPhone (a hardware keyboard typing a name, a world chest holding the world, a tray tap in WebKit), which is yours; whether a browser grants each lock the game asks for after a close (a row); a fast spin of a macOS mouse (a row, yours).</span></li>
-    </ul>
-  </div>
-
-  <div class="group">
-    <div class="group-head"><h3>The chaos-play gate and its seven fixes (PR #61)</h3><code>5f00f246</code><span class="when">on main 23:45Z on 10-30 · new</span></div>
-    <ul class="list">
-      <li><strong>A beast-form swap stands the new body where it fits.</strong> The bull sank 0.12 to 0.21 m into open ground and the golem 0.25 m into a tunnel’s ceiling; now a form with no room is refused before the ember is spent, “No room to change shape here”, and one refused on the frame after the roar gives the ember back (items 151, 167).</li>
-      <li><strong>The respawn stands you on the highest of the four columns</strong> where the spawn’s corner meets; 6 of 8 origin sessions had ended 0.4 m into a neighbour (item 152).</li>
-      <li><strong>A save records where your body stands,</strong> in any form. The Save button stored the camera rounded to whole metres, up to half a metre into a wall, and a save in the comet form stood you 0.13 m into the floor (items 153, 157).</li>
-      <li><strong>A load holds you at the saved spot until every chunk your landing reads has streamed back,</strong> where before you fell while the old world was wiped and the new ground landed around you (items 154, 155).</li>
-      <li><strong>A load stands you where you fit nearest the saved spot,</strong> so an older save that rounded you into a wall or the ground stands you clear (item 155).</li>
-      <li><strong>A save made over the deep ocean resumes there;</strong> before, a context-loss resume, and round 1’s own load hold, held you for 600 frames and dropped you at the spawn. The gate’s deep place has its seabed at 10 (item 156).</li>
-      <li><strong>At 120 Hz, the load’s landing stays where it put you.</strong> Round 2’s fit moved your body without its collider, the next frame took no physics step, and it swept you back from where the collider had been: 0.4 m into a tunnel’s ceiling with your eye in it. That was a regression of round 2’s own fit, caught by its reviews before it landed. The spawn after a fall at full speed got the same fix, for a 0.117 m sink into the ground seen on the branch; it has not been run against the code that was live before (item 168).</li>
-      <li>Also: a click on the frame of a respawn no longer puts a block into you (item 158), and block debris no longer blocks a form swap (item 167).</li>
-      <li><span class="gap">Not proven: your 120 Hz display; saves already on your disk beyond the kinds the gate loads (its own, the old Save button’s, the pre-Cut fixture’s, one in each form). Not fixed: holding jump into a sheer face climbs it, and a spawn corner dug through the world’s floor loops the respawn (rows).</span></li>
-    </ul>
-  </div>
-
-  <div class="group">
-    <div class="group-head"><h3>L1: deaths on iOS, and every button on touch (PR #62)</h3><code>1a3910e7</code><span class="when">on main 21:04Z on 10-30 · new</span></div>
-    <ul class="list">
-      <li><strong>On iPhone and iPad a death shows YOU DIED,</strong> not “Something went wrong … Reload”, and the save pending at that moment is kept. iOS WebKit has no Pointer Lock API, and the death effect called it bare; every call now goes through one guarded helper, and the lock goes on the game canvas only (item 160).</li>
-      <li><strong>On touch, the buttons the game swallowed answer a finger:</strong> the Settings gear (touch’s only way to Settings, How to Play, Manage Worlds and Load), Respawn, Keep exploring and the lost-context panel. The touch layer cancelled every touch that did not land on a control it knew; ownership is now decided by kind (item 164).</li>
-      <li><strong>On touch, Show Stats no longer turns off attack, mining, the heavy and the roar</strong> (item 162). <strong>A saved juice dial, or Reduced Motion’s 0, survives</strong> the next save of another setting (item 163).</li>
-      <li><span class="gap">Not proven: a real iPhone and iPad, which is yours (item 161); a tap on Keep exploring or the lost-context panel in a browser (jsdom only).</span></li>
-    </ul>
-  </div>
-
-  <p class="muted">Landed between 08:39Z and 17:13Z on 10-30 (version 10):</p>
-
-  <div class="group">
-    <div class="group-head"><h3>W2-L (#60); the invisible box (#59); the dragon’s first half (#56, #58); W2-G (#57)</h3><code>c6571e11</code> <code>62159bc1</code> <code>b8d8fdcd</code> <code>676ca366</code><span class="when">11:39Z to 16:53Z on 10-30</span></div>
-    <ul class="list">
-      <li><strong>A right-click never places a block inside you,</strong> a placed block is solid to you from the click, and from inside a placed block a left click takes it (items 130 to 136). <strong>The game’s first chunk is 47,557 B smaller</strong> and panels still animate (item 140).</li>
-      <li><strong>Every dragon attack is read from the ground before it lands,</strong> and the perfect dodge, the heavies, hurl, the squad, zones and burns reach it; its code loads only when a fight is due (items 120 to 126). <span class="gap">Not proven in a browser: its flight into reach, its dive and a staggered landing; nothing gates it holding still through a windup (a MED row).</span></li>
-      <li><strong>Your world saves while you play,</strong> 5 s after the first unsaved change, and the reward sounds play from one typed event bus (items 110 to 113).</li>
-    </ul>
-  </div>
-
-  <p class="muted">Landed before 08:39Z on 10-30:</p>
-
-  <div class="group">
-    <div class="group-head"><h3>The HUD (#53, #54); W2-E’s follow-ups (#52); the Cut (#47, #50, #51); W2-H (#46); talents and relics (#44); the hands (#43); Ember (#38); W2-I, W2-K; Wave 1; light and colour</h3><code>80238889</code> <code>e900de6b</code> <code>63fe4035</code> <code>dadbee65</code> <code>030ada1f</code><span class="when">10-27 to 07:42Z on 10-30</span></div>
-    <ul class="list">
-      <li><strong>Less chrome at rest:</strong> 6.58% of a 1280x800 frame against 22.14% before; Character on Tab, Journal on J, Build on B, the controls on H; one notification channel (items 90 to 99). <strong>Your beast stays out of your eyes in first person</strong> (items 80 to 88).</li>
-      <li><strong>Mara’s Forge on G or Talk;</strong> hunger deleted; hunts name the creature (items 60 to 78). <strong>A level pays for itself,</strong> every talent changes a verb, relics drop from hostiles (items 41 to 49); two ember gauntlets and the eye at 1.62 m (items 33 to 40); one ember bar; N8AO deleted.</li>
-      <li><strong>Building spends what you mine;</strong> night is moonlit, a day lasts 480 s, a pause holds the world, and XP comes from fighting. <span class="gap">Not measured: frame time and heat on real hardware, iOS Safari, watts. Waiting: the social preview upload is yours.</span></li>
-    </ul>
-  </div>
-
-  <p class="muted">Not game-visible. New since version 10: the chaos-play gate in CI’s unit job, the real-Player gates, the load-hold and input-live e2e, and the ESLint ban on bare pointer-lock calls (<a href="#harness">Harness and gates</a>). Before: the production test-hook census, the DEV bridge out of the build, W2-J’s records tag and generated CHANGELOG, one browser library, the registry and its gates, the commit and push tiers, the required check and harness Tranche A.</p>
-
-  <div class="group">
-    <h3>How it looks today</h3>
-    <div class="prose">
-      <p><strong>New since version 10:</strong> no frames. The chaos-play gate, L1, L5 and L11 change input, physics, saves, sound and rules, not looks, with one exception: L11 draws the dry strip at the shoreline as land in the far-field ring, on 0.1 to 0.6% of its vertices, and no frame was shot (a row). The lookbook reads looks; none of the four lanes shot one, and none ran a local browser.</p>
-      <p>Before: the dragon lane’s 18 frames and two contact sheets (<code>docs/superpowers/masterpiece-2026-10/evidence/w3b/</code>), shot before the bite’s decal and the fireball’s mark were reshaped; the fireball’s disc has never been seen on a screen (a row). W2-D’s 26 frames, W2-E follow’s 13, W2-H’s six in <code>docs/media/</code>. No eye-level set of main as a whole, and nothing on the live site, has been shot since the light lane.</p>
-    </div>
-  </div>
+<section class="sec" aria-labelledby="s-better">
+<h2 id="s-better">Better for players</h2>
+<p class="sub">Since you handed over on 27 October.</p>
+<div class="cards">
+<figure class="card"><svg class="art card-art" viewBox="0 0 200 140" role="img" aria-label="A player steps out of an invisible box, free."><polygon class="grass-t e" points="92,70 111.1,81 92,92 72.9,81"/><polygon class="grass-t e" points="72.9,81 92,92 72.9,103 53.9,92"/><polygon class="grass-t e" points="111.1,81 130.1,92 111.1,103 92,92"/><polygon class="grass-t e" points="92,92 111.1,103 92,114 72.9,103"/><polygon class="grass-t e" points="130.1,92 149.2,103 130.1,114 111.1,103"/><polygon class="grass-t e" points="111.1,103 130.1,114 111.1,125 92,114"/><polygon class="stone-l e" points="72.9,59 92,70 92,92 72.9,81"/><polygon class="stone-r e" points="92,70 111.1,59 111.1,81 92,92"/><polygon class="stone-t e" points="92,48 111.1,59 92,70 72.9,59"/><polygon class="ghost" points="72.9,59 92,70 72.9,81 53.9,70"/><polyline class="ghost" points="53.9,70 53.9,92 72.9,103 92,92 92,70"/><line class="ghost" x1="72.9" y1="81" x2="72.9" y2="103"/><line class="go-line" stroke-width="3.2" x1="76.9" y1="87.6" x2="129.8" y2="91.3"/><polygon class="go-head" points="140,92 130.2,85.2 129.4,97.4"/><rect class="legs" x="155" y="104" width="4" height="12"/><rect class="legs" x="161" y="104" width="4" height="12"/><rect class="skin" x="151" y="91" width="3" height="11"/><rect class="skin" x="166" y="91" width="3" height="11"/><rect class="tunic" x="154" y="90" width="12" height="15"/><rect class="skin" x="155" y="79" width="10" height="10"/><rect class="hair" x="155" y="79" width="10" height="3"/><circle class="ok" cx="176" cy="26" r="14"/><path class="tick" stroke-width="2.8" d="M169.7,26.3 L174.6,31 L182.7,21.5"/></svg><figcaption>Placing a block can no longer trap you in an invisible box.</figcaption></figure>
+<figure class="card"><svg class="art card-art" viewBox="0 0 200 140" role="img" aria-label="The title screen offers Continue, with New World below."><rect class="night" x="14" y="10" width="172" height="120" rx="10"/><circle class="star" cx="34" cy="26" r="1.6"/><circle class="star" cx="62" cy="18" r="1.2"/><circle class="star" cx="150" cy="22" r="1.8"/><circle class="star" cx="172" cy="40" r="1.2"/><circle class="star" cx="126" cy="32" r="1.1"/><circle class="star" cx="40" cy="48" r="1.1"/><circle class="moon" cx="100" cy="30" r="10"/><rect class="gold-btn" x="42" y="54" width="116" height="32" rx="8"/><text class="lbl on-gold" x="100" y="76" font-size="17" text-anchor="middle">Continue</text><rect class="btn-2" x="58" y="94" width="84" height="22" rx="6"/><text class="lbl on-night" x="100" y="109" font-size="11" text-anchor="middle">New World</text></svg><figcaption>Continue on the title takes you straight back to your world.</figcaption></figure>
+<figure class="card"><svg class="art card-art" viewBox="0 0 200 140" role="img" aria-label="The Shadow Dragon flies over a glowing ring on the ground where its attack will land; the player steps out of it."><polygon class="grass-t e" points="100,78 117.3,88 100,98 82.7,88"/><polygon class="grass-t e" points="82.7,88 100,98 82.7,108 65.4,98"/><polygon class="grass-t e" points="65.4,98 82.7,108 65.4,118 48,108"/><polygon class="grass-t e" points="117.3,88 134.6,98 117.3,108 100,98"/><polygon class="grass-t e" points="100,98 117.3,108 100,118 82.7,108"/><polygon class="grass-t e" points="82.7,108 100,118 82.7,128 65.4,118"/><polygon class="grass-t e" points="134.6,98 152,108 134.6,118 117.3,108"/><polygon class="grass-t e" points="117.3,108 134.6,118 117.3,128 100,118"/><polygon class="grass-t e" points="100,118 117.3,128 100,138 82.7,128"/><ellipse class="tell" cx="100" cy="108" rx="31" ry="15.5"/><line class="breath" x1="138" y1="34" x2="104" y2="104"/><polygon class="dragon-2" points="84,36 64,8 100,31"/><path class="dragon" d="M74,41 Q52,44 44,60 Q58,50 76,46 Z"/><ellipse class="dragon" cx="95" cy="41" rx="24" ry="8"/><polygon class="dragon" points="112,37 127,28 141,31 131,39 116,45"/><polygon class="dragon" points="90,37 110,4 124,15 106,39"/><circle class="eye" cx="132" cy="31" r="1.8"/><rect class="legs" x="155.8" y="117.8" width="3.4" height="10.2"/><rect class="legs" x="160.8" y="117.8" width="3.4" height="10.2"/><rect class="skin" x="152.3" y="106.8" width="2.5" height="9.3"/><rect class="skin" x="165.1" y="106.8" width="2.5" height="9.3"/><rect class="tunic" x="154.9" y="105.9" width="10.2" height="12.8"/><rect class="skin" x="155.8" y="96.5" width="8.5" height="8.5"/><rect class="hair" x="155.8" y="96.5" width="8.5" height="2.5"/><path class="motion" d="M140,104 h-10 M142,112 h-12 M140,120 h-9"/></svg><figcaption>The Shadow Dragon marks the ground before each attack lands.</figcaption></figure>
+<figure class="card"><svg class="art card-art" viewBox="0 0 200 140" role="img" aria-label="An iPhone and an iPad show the YOU DIED screen, not a crash."><rect class="device" x="20" y="24" width="98" height="106" rx="10"/><rect class="night" x="27" y="31" width="84" height="92" rx="4"/><path class="heart" d="M69,92 C52,80 52,66 62,64 C66,63 69,66 69,69 C69,66 72,63 76,64 C86,66 86,80 69,92 Z"/><rect class="device" x="96" y="12" width="60" height="120" rx="11"/><rect class="night" x="101" y="22" width="50" height="100" rx="5"/><text class="lbl px died" x="126" y="62" font-size="13" text-anchor="middle">YOU</text><text class="lbl px died" x="126" y="82" font-size="13" text-anchor="middle">DIED</text><path class="respawn" d="M118,100 A8,8 0 1 0 126,92"/><polygon class="respawn-head" points="124,87 131,92 124,97"/><circle class="ok" cx="168" cy="22" r="14"/><path class="tick" stroke-width="2.8" d="M161.7,22.3 L166.6,27 L174.7,17.5"/></svg><figcaption>Dying on iPhone or iPad should no longer crash. Check it on yours.</figcaption></figure>
+<figure class="card"><svg class="art card-art" viewBox="0 0 200 140" role="img" aria-label="A player stuck in rock is lifted to open ground, and a player at the bottom of a deep hole stays there."><rect class="grass-l e" x="10" y="30" width="18" height="18"/><rect class="grass-t" x="10" y="30" width="18" height="5"/><rect class="grass-l e" x="28" y="30" width="18" height="18"/><rect class="grass-t" x="28" y="30" width="18" height="5"/><rect class="grass-l e" x="46" y="30" width="18" height="18"/><rect class="grass-t" x="46" y="30" width="18" height="5"/><rect class="grass-l e" x="64" y="30" width="18" height="18"/><rect class="grass-t" x="64" y="30" width="18" height="5"/><rect class="grass-l e" x="82" y="30" width="18" height="18"/><rect class="grass-t" x="82" y="30" width="18" height="5"/><rect class="grass-l e" x="100" y="30" width="18" height="18"/><rect class="grass-t" x="100" y="30" width="18" height="5"/><rect class="grass-l e" x="118" y="30" width="18" height="18"/><rect class="grass-t" x="118" y="30" width="18" height="5"/><rect class="hole" x="136" y="30" width="18" height="18"/><rect class="grass-l e" x="154" y="30" width="18" height="18"/><rect class="grass-t" x="154" y="30" width="18" height="5"/><rect class="grass-l e" x="172" y="30" width="18" height="18"/><rect class="grass-t" x="172" y="30" width="18" height="5"/><rect class="dirt-l e" x="10" y="48" width="18" height="18"/><rect class="dirt-l e" x="28" y="48" width="18" height="18"/><rect class="dirt-l e" x="46" y="48" width="18" height="18"/><rect class="dirt-l e" x="64" y="48" width="18" height="18"/><rect class="dirt-l e" x="82" y="48" width="18" height="18"/><rect class="dirt-l e" x="100" y="48" width="18" height="18"/><rect class="dirt-l e" x="118" y="48" width="18" height="18"/><rect class="hole" x="136" y="48" width="18" height="18"/><rect class="dirt-l e" x="154" y="48" width="18" height="18"/><rect class="dirt-l e" x="172" y="48" width="18" height="18"/><rect class="stone-l e" x="10" y="66" width="18" height="18"/><rect class="stone-l e" x="28" y="66" width="18" height="18"/><rect class="stone-l e" x="46" y="66" width="18" height="18"/><rect class="stone-l e" x="64" y="66" width="18" height="18"/><rect class="stone-l e" x="82" y="66" width="18" height="18"/><rect class="stone-l e" x="100" y="66" width="18" height="18"/><rect class="stone-l e" x="118" y="66" width="18" height="18"/><rect class="hole" x="136" y="66" width="18" height="18"/><rect class="stone-l e" x="154" y="66" width="18" height="18"/><rect class="stone-l e" x="172" y="66" width="18" height="18"/><rect class="stone-l e" x="10" y="84" width="18" height="18"/><rect class="stone-l e" x="28" y="84" width="18" height="18"/><rect class="stone-l e" x="46" y="84" width="18" height="18"/><rect class="stone-l e" x="64" y="84" width="18" height="18"/><rect class="stone-l e" x="82" y="84" width="18" height="18"/><rect class="stone-l e" x="100" y="84" width="18" height="18"/><rect class="stone-l e" x="118" y="84" width="18" height="18"/><rect class="hole" x="136" y="84" width="18" height="18"/><rect class="stone-l e" x="154" y="84" width="18" height="18"/><rect class="stone-l e" x="172" y="84" width="18" height="18"/><rect class="stone-l e" x="10" y="102" width="18" height="18"/><rect class="stone-l e" x="28" y="102" width="18" height="18"/><rect class="stone-l e" x="46" y="102" width="18" height="18"/><rect class="stone-l e" x="64" y="102" width="18" height="18"/><rect class="stone-l e" x="82" y="102" width="18" height="18"/><rect class="stone-l e" x="100" y="102" width="18" height="18"/><rect class="stone-l e" x="118" y="102" width="18" height="18"/><rect class="hole" x="136" y="102" width="18" height="18"/><rect class="stone-l e" x="154" y="102" width="18" height="18"/><rect class="stone-l e" x="172" y="102" width="18" height="18"/><rect class="bedrock-l e" x="10" y="120" width="18" height="18"/><rect class="bedrock-l e" x="28" y="120" width="18" height="18"/><rect class="bedrock-l e" x="46" y="120" width="18" height="18"/><rect class="bedrock-l e" x="64" y="120" width="18" height="18"/><rect class="bedrock-l e" x="82" y="120" width="18" height="18"/><rect class="bedrock-l e" x="100" y="120" width="18" height="18"/><rect class="bedrock-l e" x="118" y="120" width="18" height="18"/><rect class="bedrock-l e" x="136" y="120" width="18" height="18"/><rect class="bedrock-l e" x="154" y="120" width="18" height="18"/><rect class="bedrock-l e" x="172" y="120" width="18" height="18"/><rect class="legs" x="142.5" y="114" width="2" height="6"/><rect class="legs" x="145.5" y="114" width="2" height="6"/><rect class="skin" x="140.5" y="107.5" width="1.5" height="5.5"/><rect class="skin" x="148" y="107.5" width="1.5" height="5.5"/><rect class="tunic" x="142" y="107" width="6" height="7.5"/><rect class="skin" x="142.5" y="101.5" width="5" height="5"/><rect class="hair" x="142.5" y="101.5" width="5" height="1.5"/><circle class="ok" cx="171" cy="104" r="11"/><path class="tick" stroke-width="2.2" d="M166.1,104.2 L169.9,108 L176.3,100.5"/><rect class="ghost" x="52.5" y="95" width="2" height="6"/><rect class="ghost" x="55.5" y="95" width="2" height="6"/><rect class="ghost" x="50.5" y="88.5" width="1.5" height="5.5"/><rect class="ghost" x="58" y="88.5" width="1.5" height="5.5"/><rect class="ghost" x="52" y="88" width="6" height="7.5"/><rect class="ghost" x="52.5" y="82.5" width="5" height="5"/><rect class="ghost" x="52.5" y="82.5" width="5" height="1.5"/><line class="go-line" stroke-width="2.6" x1="55" y1="78" x2="55" y2="42.3"/><polygon class="go-head" points="55,34 50,42.3 60,42.3"/><rect class="legs" x="52.5" y="24" width="2" height="6"/><rect class="legs" x="55.5" y="24" width="2" height="6"/><rect class="skin" x="50.5" y="17.5" width="1.5" height="5.5"/><rect class="skin" x="58" y="17.5" width="1.5" height="5.5"/><rect class="tunic" x="52" y="17" width="6" height="7.5"/><rect class="skin" x="52.5" y="11.5" width="5" height="5"/><rect class="hair" x="52.5" y="11.5" width="5" height="1.5"/></svg><figcaption>Stuck in rock? You are moved clear.</figcaption></figure>
+<figure class="card"><svg class="art card-art" viewBox="0 0 200 140" role="img" aria-label="On a big Mac screen the game draws about 4.2 million pixels where it drew 7.7 million: two bars to scale."><rect class="device" x="22" y="10" width="156" height="96" rx="8"/><rect class="screen" x="29" y="17" width="142" height="82" rx="3"/><polygon class="device-2" points="6,108 194,108 184,118 16,118"/><rect class="bar-before" x="44" y="34" width="112" height="18" rx="4"/><rect class="bar-now" x="44" y="66" width="61.1" height="18" rx="4"/><text class="lbl on-screen" x="44" y="30" font-size="12" text-anchor="start">before</text><text class="lbl on-screen" x="44" y="62" font-size="12" text-anchor="start">now</text><line class="tickline" x1="58.5" y1="54" x2="58.5" y2="57"/><line class="tickline" x1="73.1" y1="54" x2="73.1" y2="57"/><line class="tickline" x1="87.6" y1="54" x2="87.6" y2="57"/><line class="tickline" x1="102.2" y1="54" x2="102.2" y2="57"/><line class="tickline" x1="116.7" y1="54" x2="116.7" y2="57"/><line class="tickline" x1="131.3" y1="54" x2="131.3" y2="57"/><line class="tickline" x1="145.8" y1="54" x2="145.8" y2="57"/></svg><figcaption>Big Macs draw half the pixels, so they should run cooler.</figcaption></figure>
+<figure class="card"><svg class="art card-art" viewBox="0 0 200 140" role="img" aria-label="A grass block with clear top and side faces, and a game screen that is almost all world with small on-screen panels."><polygon class="grass-l e" points="23.1,37 56,56 56,94 23.1,75"/><polygon class="grass-r e" points="56,56 88.9,37 88.9,75 56,94"/><polygon class="grass-t e" points="56,18 88.9,37 56,56 23.1,37"/><polygon class="grass-t" points="23.1,37 56,56 56,64.4 23.1,45.4"/><polygon class="grass-t3" points="56,56 88.9,37 88.9,45.4 56,64.4"/><polygon class="grass-t2" points="44,29 49.2,32 44,35 38.8,32"/><polygon class="grass-t3" points="64,37 69.2,40 64,43 58.8,40"/><polygon class="grass-t3" points="54,23 59.2,26 54,29 48.8,26"/><polygon class="grass-t2" points="70,27 75.2,30 70,33 64.8,30"/><rect class="sky" x="112" y="34" width="80" height="58" rx="6"/><polygon class="hill" points="112,92 112,72 140,60 166,70 192,62 192,92"/><circle class="sun" cx="176" cy="46" r="6"/><rect class="hud-a" x="117" y="84" width="16" height="3" rx="1.5"/><rect class="hud-b" x="117" y="79" width="11" height="3" rx="1.5"/></svg><figcaption>Blocks have a new look, and the screen is far less cluttered.</figcaption></figure>
+<figure class="card"><svg class="art card-art" viewBox="0 0 200 140" role="img" aria-label="A block mined from stone travels to the wall you build."><polygon class="stone-l e" points="30.9,61 50,72 50,94 30.9,83"/><polygon class="stone-r e" points="50,72 69.1,61 69.1,83 50,94"/><polygon class="stone-t e" points="50,50 69.1,61 50,72 30.9,61"/><polygon class="stone-l e" points="30.9,39 50,50 50,72 30.9,61"/><polygon class="stone-r e" points="50,50 69.1,39 69.1,61 50,72"/><polygon class="stone-t e" points="50,28 69.1,39 50,50 30.9,39"/><polygon class="stone-l e" points="11.9,72 30.9,83 30.9,105 11.9,94"/><polygon class="stone-r e" points="30.9,83 50,72 50,94 30.9,105"/><polygon class="stone-t e" points="30.9,61 50,72 30.9,83 11.9,72"/><polygon class="stone-l e" points="50,72 69.1,83 69.1,105 50,94"/><polygon class="stone-r e" points="69.1,83 88.1,72 88.1,94 69.1,105"/><polygon class="stone-t e" points="69.1,61 88.1,72 69.1,83 50,72"/><line class="pick-handle" x1="20" y1="18" x2="52" y2="54"/><path class="pick-head" d="M12,30 Q22,10 42,8 Q30,16 26,30 Z"/><polygon class="gold-t" points="64,14 65.5,18.5 70,20 65.5,21.5 64,26 62.5,21.5 58,20 62.5,18.5"/><line class="go-line" stroke-width="3" x1="86" y1="70" x2="106.4" y2="70"/><polygon class="go-head" points="116,70 106.4,64.2 106.4,75.8"/><polygon class="stone-l e" points="142.7,56 160,66 160,86 142.7,76"/><polygon class="stone-r e" points="160,66 177.3,56 177.3,76 160,86"/><polygon class="stone-t e" points="160,46 177.3,56 160,66 142.7,56"/><polygon class="stone-l e" points="125.4,66 142.7,76 142.7,96 125.4,86"/><polygon class="stone-r e" points="142.7,76 160,66 160,86 142.7,96"/><polygon class="stone-t e" points="142.7,56 160,66 142.7,76 125.4,66"/><polygon class="stone-l e" points="160,66 177.3,76 177.3,96 160,86"/><polygon class="stone-r e" points="177.3,76 194.6,66 194.6,86 177.3,96"/><polygon class="stone-t e" points="177.3,56 194.6,66 177.3,76 160,66"/><polygon class="stone-l e" points="160,46 177.3,56 177.3,76 160,66"/><polygon class="stone-r e" points="177.3,56 194.6,46 194.6,66 177.3,76"/><polygon class="stone-t e" points="177.3,36 194.6,46 177.3,56 160,46"/><polygon class="ghost-gold" points="160,26 177.3,36 177.3,56 160,66 142.7,56 142.7,36"/><text class="lbl" x="44" y="132" font-size="13" text-anchor="middle">mine</text><text class="lbl" x="158" y="132" font-size="13" text-anchor="middle">build</text></svg><figcaption>Building uses the blocks you mine.</figcaption></figure>
+</div>
 </section>
 
-<section id="lanes">
-  <h2>Landed and in flight</h2>
-  <p class="lede">One row per PR or lane. A lane with a PR lands on its own PR run on the exact commit, then main fast-forwards to it; a change with no PR uses a land branch the same way.</p>
-
-  <div class="tbl">
-    <table>
-      <thead>
-        <tr><th scope="col">PR or lane</th><th scope="col">What it carries</th><th scope="col">State</th><th scope="col">Where it stands</th></tr>
-      </thead>
-      <tbody>
-        <tr class="divider"><td colspan="4">In flight at 03:53Z on 10-31 · new</td></tr>
-        <tr>
-          <td class="lane">#65, L2</td>
-          <td>Every world switch is a boot, and the title offers Continue (<code>feat/l2-boot-is-the-only-load</code>)</td>
-          <td class="st"><span class="pill run">building</span></td>
-          <td>From <code>5f00f246</code>; PR opened 00:42Z on 10-31; main <code>449ce3ea</code> merged in as <code>6477b756</code>; its head <code>f061422f</code> passed run <code>41162831435</code> (started 03:05Z), and the runs before it were replaced by newer pushes; at 03:53Z the head was <code>fa0be54c</code>, whose run <code>41165714994</code> (started 03:45Z) was in progress. Its brief closes four HIGH rows: your world never resumed, a Load that drops you out of it, the context-loss resume’s wipe and the dragon ignoring loads. Reviews follow. Items from 200.</td>
-        </tr>
-        <tr>
-          <td class="lane">#66, L4</td>
-          <td>The void line is the world’s floor, and one way back to the spawn (<code>fix/l4-void-line</code>)</td>
-          <td class="st"><span class="pill run">round 2</span></td>
-          <td>Round 1 (<code>9495a23f</code>, <code>ci ok</code> green on run <code>41153250480</code>’s second attempt): a player on the deep seabed or at the bottom of a dug shaft is no longer reset, and the spawn waits 6 s for its ground, not 120 frames. Static FIX and dynamic FIX on two halves of one regression: the dynamic review measured that a body clipped into rock over a cave ceiling between y 1.5 and 9 (1483 of 6400 columns within 40 m of spawn) is left there, where the old line reset it; the static review found the same for a body left in rock at the spawn corner after the fallback’s blind drop. Round 2 builds a stuck-in-rock recovery that does not depend on the line (the command session’s call); it pushed <code>7fcee633</code>, whose run <code>41163612143</code> (started 03:15Z) passed, and it was still the head at 03:53Z; its reviews follow. Items 190 to 199 on its branch at <code>7fcee633</code>.</td>
-        </tr>
-        <tr>
-          <td class="lane">Command Record</td>
-          <td>Version 11 of this page (<code>land/2026-10-31-cr11</code>)</td>
-          <td class="st"><span class="pill run">this publish</span></td>
-          <td>From <code>449ce3ea</code>, with the review leftovers (<code>31a42067</code>: 21 registry rows opened, 11 noted) and main <code>f87f2324</code> merged in as <code>a79f8f6a</code>, which hand-merged the three registry rows both sides had annotated (<code>panels-phone-tray-tap-timeout</code>, <code>quest-text-no-frame-while-held</code>, <code>l1:ios-device-run</code>); it lands through its own CI run, like any change with no PR.</td>
-        </tr>
-        <tr class="divider"><td colspan="4">Landed since version 10, oldest first · new</td></tr>
-        <tr><td class="lane">Command Record</td><td>Version 10 of this page, the cursor’s T22 and T23, the day’s review leftovers</td><td class="st"><span class="pill ok">on main</span></td><td><code>b48ec9f1</code> at 17:58Z on 10-30, after land run <code>41100874754</code>.</td></tr>
-        <tr><td class="lane">T23</td><td>The deep audit’s record: the report, its completeness critic, 66 AUDIT rows and twelve lanes</td><td class="st"><span class="pill ok">on main</span></td><td><code>dd11f962</code> at 19:39Z on 10-30, after land run <code>41116445583</code>. L1’s six rows came with its PR.</td></tr>
-        <tr><td class="lane">#62, L1</td><td>Quick wins: the iOS death crash, the canvas-only lock, Show Stats on touch, the juice dial, every button on touch (<code>fix/l1-quick-wins</code>)</td><td class="st"><span class="pill ok">on main</span></td><td><code>1a3910e7</code> at 21:04Z on 10-30, on PR run <code>41122240233</code>. One review round, static and dynamic LAND. Its red-first run <code>41117858710</code> failed by design and one run was replaced. Items 160 to 164.</td></tr>
-        <tr><td class="lane">#61, T22</td><td>The chaos-play gate and its seven fixes (<code>feat/chaos-play-gate</code>)</td><td class="st"><span class="pill ok">on main</span></td><td><code>5f00f246</code> at 23:45Z on 10-30, on PR run <code>41141022094</code>. Three rounds: round 1 static and dynamic FIX (three blockers); round 2 static LAND and dynamic FIX (the 120 Hz release); round 3 both LAND. Of its seven PR runs 4 passed, 2 failed on <code>quest-text.spec.js</code> before round 1’s fix, and 1 was replaced. Items 150 to 159 and 165 to 170.</td></tr>
-        <tr><td class="lane">#63, L5</td><td>One predicate for whether input is live (<code>fix/l5-input-live</code>)</td><td class="st"><span class="pill ok">on main</span></td><td><code>449ce3ea</code> at 02:34Z on 10-31, on PR run <code>41157558361</code>. Two rounds: round 1 static and dynamic FIX (an ungated Player loop, a stale key check, gate holes); round 2 both LAND. Of its nine PR runs 5 passed and 4 failed: two red-first on main’s game code by design, and two that caught real problems in the fix. Items 171 to 179. Live from 03:39Z, in the deployment of <code>f87f2324</code>; its own push got none. GitHub still marks it a draft.</td></tr>
-        <tr><td class="lane">#64, L11</td><td>One fact, one predicate: the sea line, the landmarks, the sight line, the kill-loot tier, the cooldown mirror and the move basis (<code>fix/l11-one-fact</code>)</td><td class="st"><span class="pill ok">on main</span></td><td><code>f87f2324</code> at 03:38Z on 10-31, on PR run <code>41162361319</code> (02:59 to 03:21Z); main’s run <code>41165264289</code> passed at 03:39Z. Three rounds: round 1 (<code>9cd548a6</code>, run <code>41137651081</code> green on its second attempt) static LAND, dynamic FIX, because the underwater sound still misfired on the dry shore strip; round 2 (<code>e3e4c21c</code>, run <code>41155027315</code> green) both FIX, because its fix changed nothing in the game (Mistakes); round 3 both LAND. Items 180 to 191.</td></tr>
-        <tr class="divider"><td colspan="4">Landed between 08:39Z and 17:13Z on 10-30, oldest first</td></tr>
-        <tr><td class="lane">Command Record; #57; #56, #58; #59; #60</td><td>Version 9; W2-G; the dragon’s first half; the invisible box; W2-L</td><td class="st"><span class="pill ok">on main</span></td><td><code>4a01607b</code> at 08:39Z (land run <code>41026182914</code>); <code>676ca366</code> at 11:39Z (<code>41045615991</code>); <code>b8d8fdcd</code> at 12:32Z (<code>41050528757</code>); <code>62159bc1</code> at 15:29Z (<code>41073440534</code>), about 5 h 45 min after your report; <code>c6571e11</code> at 16:53Z (<code>41089160904</code>). Items 110 to 145.</td></tr>
-        <tr class="divider"><td colspan="4">Landed between 18:30Z on 10-29 and 08:39Z on 10-30, oldest first</td></tr>
-        <tr><td class="lane">Command Record; #52; #55; #53, #54</td><td>Version 8; W2-E’s follow-ups; W2-J phase 3; W2-D, the HUD</td><td class="st"><span class="pill ok">on main</span></td><td><code>96d00fd6</code> at 18:37Z on 10-29 (land run <code>40931986246</code>); <code>e900de6b</code> at 22:57Z (<code>40967693989</code>); <code>5d301533</code> at 01:34Z on 10-30 (<code>40984215990</code>); <code>80238889</code> at 07:42Z on 10-30 (<code>41019374949</code>). Items 80 to 102.</td></tr>
-        <tr class="divider"><td colspan="4">Landed between 09:25Z and 18:30Z on 10-29, oldest first</td></tr>
-        <tr><td class="lane">Command Record; #48; batch 4; #47; #49, #50, #51</td><td>Version 7; the e2e flake fixes; W2-H media and the Vercel rule; the Forge; the e2e claims, hunger, quest text</td><td class="st"><span class="pill ok">on main</span></td><td><code>bcd7fbdc</code> at 09:28Z; <code>bf44ba21</code> at 13:45Z; <code>99a3edc9</code> at 14:04Z; <code>ddd4fe78</code> at 15:03Z, after four failed PR runs; <code>6999a7de</code>, <code>1882bd5b</code> and <code>63fe4035</code> from 16:34Z to 18:09Z. Items 50 to 78.</td></tr>
-        <tr class="divider"><td colspan="4">Landed between 22:15Z on 10-28 and 09:25Z on 10-29, oldest first</td></tr>
-        <tr><td class="lane">Land batches 2 and 3; #37 to #45</td><td>Registry union merge; W2-K; W2-I; Dependabot; Ember; <code>registry-dedupe</code>; W2-J phases 1 and 2; version 6; the hands; talents</td><td class="st"><span class="pill ok">on main</span></td><td><code>29199116</code> at 22:29Z to <code>dadbee65</code> at 09:04Z, each on its PR or land run; version 6’s land batch after two failed runs. Items 25 to 49.</td></tr>
-        <tr class="divider"><td colspan="4">Landed on 10-28 before 22:15Z, and before</td></tr>
-        <tr><td class="lane">Wave 1 and the reset; #24 to #36</td><td>Main green again; the page cap; the reset plan; steady cool; Tranche A; the required check; one CLAUDE.md; W1-B to W1-H; light and colour; combat stance; W2-C, W2-A, the Cut’s steps 1 and 2, W2-B</td><td class="st"><span class="pill ok">on main</span></td><td><code>2bb0857d</code> at 07:40Z to <code>6a01d1dc</code> by 22:08Z; <code>1c4e3bc1</code> at 11:11Z, with branch protection right after; <code>8bbd969e</code> at 20:28Z, the first landing on its own PR run.</td></tr>
-        <tr><td class="lane">#20, #22, #23, #25, #26, #28 to #30</td><td>Dependency groups; Phase 0b to 0d; CI tree equivalence; e2e hardening</td><td class="st"><span class="pill idle">merged or closed</span></td><td>#29, #22, #25 and #23 merged before 06:30Z on 10-28; #28 replaced by the required check; #20 applied on main; #26 replaced by #30, and #30 by #40.</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <p class="muted">ACTIVE_PLAN tasks as the registry holds them on this page’s branch. Closed: T9, T10, T13, T15, T16, T18 to T21. Open: T6, T7 (<code>ipad-probe.mjs</code> unrun), T11 (the glove value), T14, T22 (the chaos-play gate, open in the registry and “building” in the cursor though #61 landed at 23:45Z on 10-30) and T23 (the deep audit: done; its lanes go on).</p>
-
-  <div class="group">
-    <h3>Programme map, the SOTA reset</h3>
-    <div class="tbl">
-      <table class="compact">
-        <thead>
-          <tr><th scope="col">Wave</th><th scope="col">Unit</th><th scope="col">State</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>1</td><td>W1-A to W1-H; carried: light and colour, combat stance #31</td><td><span class="pill ok">done</span> W1-D’s run against the production URL and the light plan’s Tasks 5 and 6 are owed</td></tr>
-          <tr><td>2</td><td>W2-A to W2-L but W2-M</td><td><span class="pill ok">done</span> the last, W2-L, at 16:53Z on 10-30; the feats not built (a MED row)</td></tr>
-          <tr><td>2</td><td>W2-M sound with body</td><td><span class="pill idle">next</span></td></tr>
-          <tr><td>3</td><td>W3-B the road of light and the dragon</td><td><span class="pill run">half</span> the dragon’s Units 1 to 4, 10 and row 25 landed; Units 5 to 9 and the road of light after the audit’s lanes</td></tr>
-          <tr><td>3</td><td>W3-A, W3-C to W3-G: the First Night, the first minute, platform, polish</td><td><span class="pill idle">planned</span> after the audit’s lanes</td></tr>
-          <tr><td>off plan</td><td>The invisible box (#59); the chaos-play gate (T22, #61); the deep audit (T23)</td><td><span class="pill ok">landed</span> the box 15:29Z, the gate 23:45Z, the audit’s record 19:39Z, all on 10-30 · new</td></tr>
-          <tr><td>audit</td><td>Lanes L1 to L12</td><td><span class="pill ok">3 landed</span> L1, L5, L11 · <span class="pill run">2 in flight</span> L2, L4 · <span class="pill idle">7 not started</span> L3, L6 to L10, L12 · new</td></tr>
-          <tr><td>10-27</td><td>Phases 0a to 0g; coast</td><td><span class="pill ok">landed</span> 0e cancelled with the capture oracle; the coast’s seabed bake stays deferred</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="muted">Recorded decisions that bound the programme: soft death stays, and there is no WebGPU and no engine bump. Under items 14 and 16 they stand while they earn their place.</p>
-  </div>
-
-  <div class="group">
-    <h3>What comes next</h3>
-    <ul class="list">
-      <li><strong>The audit’s lanes, by how much they hurt a player</strong> (new): land L2 and L4 as their reviews pass; then L3 (the store owns each world’s state, which needs L2), L8 (the save slot’s lifecycle, after L2), L6 (build tools that do what they say), L7 (credit from the effect, not the click), L9 (pools with lifetimes), L10 (Apple audio, with your device run) and L12 (instruments that can see).</li>
-      <li><strong>The dragon’s second half</strong> (W3-B): the segmented voxel rig (a HIGH row), a slow-motion killing blow, returns that each learn a move, an arena lit like a stage.</li>
-      <li><strong>Sharper pixels for the freed GPU time</strong>: steady cool’s budgets toward a pixel ratio of 2 at the same watts.</li>
-      <li><strong>Sound with body</strong> (W2-M), then <strong>the First Night</strong> (W3-A): a siege marching on a Hearth you lit, held until a golden dawn.</li>
-    </ul>
-  </div>
+<section class="sec" aria-labelledby="s-bugs">
+<h2 id="s-bugs">The bug hunt</h2>
+<figure class="pic"><svg class="art" viewBox="0 0 640 284" role="img" aria-label="Over 40 real bugs found, 8 of them big. Seven big ones are fixed and one is being fixed."><text class="lbl" x="30" y="42" font-size="26" text-anchor="start">40+ real bugs</text><path class="bugleg-s" stroke-width="1.4" d="M40.5,84.5 L34.5,87 M51.5,84.5 L57.5,87 M40.5,89.5 L34.5,92 M51.5,89.5 L57.5,92 M40.5,94.5 L34.5,97 M51.5,94.5 L57.5,97 M44,75 L41,70.5 M48,75 L51,70.5"/><circle class="bug-s" cx="46" cy="77.5" r="4.5"/><ellipse class="bug-s" cx="46" cy="89" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="46" y1="81" x2="46" y2="98.5"/><path class="bugleg-s" stroke-width="1.4" d="M82.5,84.5 L76.5,87 M93.5,84.5 L99.5,87 M82.5,89.5 L76.5,92 M93.5,89.5 L99.5,92 M82.5,94.5 L76.5,97 M93.5,94.5 L99.5,97 M86,75 L83,70.5 M90,75 L93,70.5"/><circle class="bug-s" cx="88" cy="77.5" r="4.5"/><ellipse class="bug-s" cx="88" cy="89" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="88" y1="81" x2="88" y2="98.5"/><path class="bugleg-s" stroke-width="1.4" d="M124.5,84.5 L118.5,87 M135.5,84.5 L141.5,87 M124.5,89.5 L118.5,92 M135.5,89.5 L141.5,92 M124.5,94.5 L118.5,97 M135.5,94.5 L141.5,97 M128,75 L125,70.5 M132,75 L135,70.5"/><circle class="bug-s" cx="130" cy="77.5" r="4.5"/><ellipse class="bug-s" cx="130" cy="89" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="130" y1="81" x2="130" y2="98.5"/><path class="bugleg-s" stroke-width="1.4" d="M166.5,84.5 L160.5,87 M177.5,84.5 L183.5,87 M166.5,89.5 L160.5,92 M177.5,89.5 L183.5,92 M166.5,94.5 L160.5,97 M177.5,94.5 L183.5,97 M170,75 L167,70.5 M174,75 L177,70.5"/><circle class="bug-s" cx="172" cy="77.5" r="4.5"/><ellipse class="bug-s" cx="172" cy="89" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="172" y1="81" x2="172" y2="98.5"/><path class="bugleg-s" stroke-width="1.4" d="M208.5,84.5 L202.5,87 M219.5,84.5 L225.5,87 M208.5,89.5 L202.5,92 M219.5,89.5 L225.5,92 M208.5,94.5 L202.5,97 M219.5,94.5 L225.5,97 M212,75 L209,70.5 M216,75 L219,70.5"/><circle class="bug-s" cx="214" cy="77.5" r="4.5"/><ellipse class="bug-s" cx="214" cy="89" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="214" y1="81" x2="214" y2="98.5"/><path class="bugleg-s" stroke-width="1.4" d="M250.5,84.5 L244.5,87 M261.5,84.5 L267.5,87 M250.5,89.5 L244.5,92 M261.5,89.5 L267.5,92 M250.5,94.5 L244.5,97 M261.5,94.5 L267.5,97 M254,75 L251,70.5 M258,75 L261,70.5"/><circle class="bug-s" cx="256" cy="77.5" r="4.5"/><ellipse class="bug-s" cx="256" cy="89" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="256" y1="81" x2="256" y2="98.5"/><path class="bugleg-s" stroke-width="1.4" d="M292.5,84.5 L286.5,87 M303.5,84.5 L309.5,87 M292.5,89.5 L286.5,92 M303.5,89.5 L309.5,92 M292.5,94.5 L286.5,97 M303.5,94.5 L309.5,97 M296,75 L293,70.5 M300,75 L303,70.5"/><circle class="bug-s" cx="298" cy="77.5" r="4.5"/><ellipse class="bug-s" cx="298" cy="89" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="298" y1="81" x2="298" y2="98.5"/><path class="bugleg-s" stroke-width="1.4" d="M40.5,120.5 L34.5,123 M51.5,120.5 L57.5,123 M40.5,125.5 L34.5,128 M51.5,125.5 L57.5,128 M40.5,130.5 L34.5,133 M51.5,130.5 L57.5,133 M44,111 L41,106.5 M48,111 L51,106.5"/><circle class="bug-s" cx="46" cy="113.5" r="4.5"/><ellipse class="bug-s" cx="46" cy="125" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="46" y1="117" x2="46" y2="134.5"/><path class="bugleg-s" stroke-width="1.4" d="M82.5,120.5 L76.5,123 M93.5,120.5 L99.5,123 M82.5,125.5 L76.5,128 M93.5,125.5 L99.5,128 M82.5,130.5 L76.5,133 M93.5,130.5 L99.5,133 M86,111 L83,106.5 M90,111 L93,106.5"/><circle class="bug-s" cx="88" cy="113.5" r="4.5"/><ellipse class="bug-s" cx="88" cy="125" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="88" y1="117" x2="88" y2="134.5"/><path class="bugleg-s" stroke-width="1.4" d="M124.5,120.5 L118.5,123 M135.5,120.5 L141.5,123 M124.5,125.5 L118.5,128 M135.5,125.5 L141.5,128 M124.5,130.5 L118.5,133 M135.5,130.5 L141.5,133 M128,111 L125,106.5 M132,111 L135,106.5"/><circle class="bug-s" cx="130" cy="113.5" r="4.5"/><ellipse class="bug-s" cx="130" cy="125" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="130" y1="117" x2="130" y2="134.5"/><path class="bugleg-s" stroke-width="1.4" d="M166.5,120.5 L160.5,123 M177.5,120.5 L183.5,123 M166.5,125.5 L160.5,128 M177.5,125.5 L183.5,128 M166.5,130.5 L160.5,133 M177.5,130.5 L183.5,133 M170,111 L167,106.5 M174,111 L177,106.5"/><circle class="bug-s" cx="172" cy="113.5" r="4.5"/><ellipse class="bug-s" cx="172" cy="125" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="172" y1="117" x2="172" y2="134.5"/><path class="bugleg-s" stroke-width="1.4" d="M208.5,120.5 L202.5,123 M219.5,120.5 L225.5,123 M208.5,125.5 L202.5,128 M219.5,125.5 L225.5,128 M208.5,130.5 L202.5,133 M219.5,130.5 L225.5,133 M212,111 L209,106.5 M216,111 L219,106.5"/><circle class="bug-s" cx="214" cy="113.5" r="4.5"/><ellipse class="bug-s" cx="214" cy="125" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="214" y1="117" x2="214" y2="134.5"/><path class="bugleg-s" stroke-width="1.4" d="M250.5,120.5 L244.5,123 M261.5,120.5 L267.5,123 M250.5,125.5 L244.5,128 M261.5,125.5 L267.5,128 M250.5,130.5 L244.5,133 M261.5,130.5 L267.5,133 M254,111 L251,106.5 M258,111 L261,106.5"/><circle class="bug-s" cx="256" cy="113.5" r="4.5"/><ellipse class="bug-s" cx="256" cy="125" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="256" y1="117" x2="256" y2="134.5"/><path class="bugleg-s" stroke-width="1.4" d="M292.5,120.5 L286.5,123 M303.5,120.5 L309.5,123 M292.5,125.5 L286.5,128 M303.5,125.5 L309.5,128 M292.5,130.5 L286.5,133 M303.5,130.5 L309.5,133 M296,111 L293,106.5 M300,111 L303,106.5"/><circle class="bug-s" cx="298" cy="113.5" r="4.5"/><ellipse class="bug-s" cx="298" cy="125" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="298" y1="117" x2="298" y2="134.5"/><path class="bugleg-s" stroke-width="1.4" d="M40.5,156.5 L34.5,159 M51.5,156.5 L57.5,159 M40.5,161.5 L34.5,164 M51.5,161.5 L57.5,164 M40.5,166.5 L34.5,169 M51.5,166.5 L57.5,169 M44,147 L41,142.5 M48,147 L51,142.5"/><circle class="bug-s" cx="46" cy="149.5" r="4.5"/><ellipse class="bug-s" cx="46" cy="161" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="46" y1="153" x2="46" y2="170.5"/><path class="bugleg-s" stroke-width="1.4" d="M82.5,156.5 L76.5,159 M93.5,156.5 L99.5,159 M82.5,161.5 L76.5,164 M93.5,161.5 L99.5,164 M82.5,166.5 L76.5,169 M93.5,166.5 L99.5,169 M86,147 L83,142.5 M90,147 L93,142.5"/><circle class="bug-s" cx="88" cy="149.5" r="4.5"/><ellipse class="bug-s" cx="88" cy="161" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="88" y1="153" x2="88" y2="170.5"/><path class="bugleg-s" stroke-width="1.4" d="M124.5,156.5 L118.5,159 M135.5,156.5 L141.5,159 M124.5,161.5 L118.5,164 M135.5,161.5 L141.5,164 M124.5,166.5 L118.5,169 M135.5,166.5 L141.5,169 M128,147 L125,142.5 M132,147 L135,142.5"/><circle class="bug-s" cx="130" cy="149.5" r="4.5"/><ellipse class="bug-s" cx="130" cy="161" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="130" y1="153" x2="130" y2="170.5"/><path class="bugleg-s" stroke-width="1.4" d="M166.5,156.5 L160.5,159 M177.5,156.5 L183.5,159 M166.5,161.5 L160.5,164 M177.5,161.5 L183.5,164 M166.5,166.5 L160.5,169 M177.5,166.5 L183.5,169 M170,147 L167,142.5 M174,147 L177,142.5"/><circle class="bug-s" cx="172" cy="149.5" r="4.5"/><ellipse class="bug-s" cx="172" cy="161" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="172" y1="153" x2="172" y2="170.5"/><path class="bugleg-s" stroke-width="1.4" d="M208.5,156.5 L202.5,159 M219.5,156.5 L225.5,159 M208.5,161.5 L202.5,164 M219.5,161.5 L225.5,164 M208.5,166.5 L202.5,169 M219.5,166.5 L225.5,169 M212,147 L209,142.5 M216,147 L219,142.5"/><circle class="bug-s" cx="214" cy="149.5" r="4.5"/><ellipse class="bug-s" cx="214" cy="161" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="214" y1="153" x2="214" y2="170.5"/><path class="bugleg-s" stroke-width="1.4" d="M250.5,156.5 L244.5,159 M261.5,156.5 L267.5,159 M250.5,161.5 L244.5,164 M261.5,161.5 L267.5,164 M250.5,166.5 L244.5,169 M261.5,166.5 L267.5,169 M254,147 L251,142.5 M258,147 L261,142.5"/><circle class="bug-s" cx="256" cy="149.5" r="4.5"/><ellipse class="bug-s" cx="256" cy="161" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="256" y1="153" x2="256" y2="170.5"/><path class="bugleg-s" stroke-width="1.4" d="M292.5,156.5 L286.5,159 M303.5,156.5 L309.5,159 M292.5,161.5 L286.5,164 M303.5,161.5 L309.5,164 M292.5,166.5 L286.5,169 M303.5,166.5 L309.5,169 M296,147 L293,142.5 M300,147 L303,142.5"/><circle class="bug-s" cx="298" cy="149.5" r="4.5"/><ellipse class="bug-s" cx="298" cy="161" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="298" y1="153" x2="298" y2="170.5"/><path class="bugleg-s" stroke-width="1.4" d="M40.5,192.5 L34.5,195 M51.5,192.5 L57.5,195 M40.5,197.5 L34.5,200 M51.5,197.5 L57.5,200 M40.5,202.5 L34.5,205 M51.5,202.5 L57.5,205 M44,183 L41,178.5 M48,183 L51,178.5"/><circle class="bug-s" cx="46" cy="185.5" r="4.5"/><ellipse class="bug-s" cx="46" cy="197" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="46" y1="189" x2="46" y2="206.5"/><path class="bugleg-s" stroke-width="1.4" d="M82.5,192.5 L76.5,195 M93.5,192.5 L99.5,195 M82.5,197.5 L76.5,200 M93.5,197.5 L99.5,200 M82.5,202.5 L76.5,205 M93.5,202.5 L99.5,205 M86,183 L83,178.5 M90,183 L93,178.5"/><circle class="bug-s" cx="88" cy="185.5" r="4.5"/><ellipse class="bug-s" cx="88" cy="197" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="88" y1="189" x2="88" y2="206.5"/><path class="bugleg-s" stroke-width="1.4" d="M124.5,192.5 L118.5,195 M135.5,192.5 L141.5,195 M124.5,197.5 L118.5,200 M135.5,197.5 L141.5,200 M124.5,202.5 L118.5,205 M135.5,202.5 L141.5,205 M128,183 L125,178.5 M132,183 L135,178.5"/><circle class="bug-s" cx="130" cy="185.5" r="4.5"/><ellipse class="bug-s" cx="130" cy="197" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="130" y1="189" x2="130" y2="206.5"/><path class="bugleg-s" stroke-width="1.4" d="M166.5,192.5 L160.5,195 M177.5,192.5 L183.5,195 M166.5,197.5 L160.5,200 M177.5,197.5 L183.5,200 M166.5,202.5 L160.5,205 M177.5,202.5 L183.5,205 M170,183 L167,178.5 M174,183 L177,178.5"/><circle class="bug-s" cx="172" cy="185.5" r="4.5"/><ellipse class="bug-s" cx="172" cy="197" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="172" y1="189" x2="172" y2="206.5"/><path class="bugleg-s" stroke-width="1.4" d="M208.5,192.5 L202.5,195 M219.5,192.5 L225.5,195 M208.5,197.5 L202.5,200 M219.5,197.5 L225.5,200 M208.5,202.5 L202.5,205 M219.5,202.5 L225.5,205 M212,183 L209,178.5 M216,183 L219,178.5"/><circle class="bug-s" cx="214" cy="185.5" r="4.5"/><ellipse class="bug-s" cx="214" cy="197" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="214" y1="189" x2="214" y2="206.5"/><path class="bugleg-s" stroke-width="1.4" d="M250.5,192.5 L244.5,195 M261.5,192.5 L267.5,195 M250.5,197.5 L244.5,200 M261.5,197.5 L267.5,200 M250.5,202.5 L244.5,205 M261.5,202.5 L267.5,205 M254,183 L251,178.5 M258,183 L261,178.5"/><circle class="bug-s" cx="256" cy="185.5" r="4.5"/><ellipse class="bug-s" cx="256" cy="197" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="256" y1="189" x2="256" y2="206.5"/><path class="bugleg-s" stroke-width="1.4" d="M292.5,192.5 L286.5,195 M303.5,192.5 L309.5,195 M292.5,197.5 L286.5,200 M303.5,197.5 L309.5,200 M292.5,202.5 L286.5,205 M303.5,202.5 L309.5,205 M296,183 L293,178.5 M300,183 L303,178.5"/><circle class="bug-s" cx="298" cy="185.5" r="4.5"/><ellipse class="bug-s" cx="298" cy="197" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="298" y1="189" x2="298" y2="206.5"/><path class="bugleg-s" stroke-width="1.4" d="M40.5,228.5 L34.5,231 M51.5,228.5 L57.5,231 M40.5,233.5 L34.5,236 M51.5,233.5 L57.5,236 M40.5,238.5 L34.5,241 M51.5,238.5 L57.5,241 M44,219 L41,214.5 M48,219 L51,214.5"/><circle class="bug-s" cx="46" cy="221.5" r="4.5"/><ellipse class="bug-s" cx="46" cy="233" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="46" y1="225" x2="46" y2="242.5"/><path class="bugleg-s" stroke-width="1.4" d="M82.5,228.5 L76.5,231 M93.5,228.5 L99.5,231 M82.5,233.5 L76.5,236 M93.5,233.5 L99.5,236 M82.5,238.5 L76.5,241 M93.5,238.5 L99.5,241 M86,219 L83,214.5 M90,219 L93,214.5"/><circle class="bug-s" cx="88" cy="221.5" r="4.5"/><ellipse class="bug-s" cx="88" cy="233" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="88" y1="225" x2="88" y2="242.5"/><path class="bugleg-s" stroke-width="1.4" d="M124.5,228.5 L118.5,231 M135.5,228.5 L141.5,231 M124.5,233.5 L118.5,236 M135.5,233.5 L141.5,236 M124.5,238.5 L118.5,241 M135.5,238.5 L141.5,241 M128,219 L125,214.5 M132,219 L135,214.5"/><circle class="bug-s" cx="130" cy="221.5" r="4.5"/><ellipse class="bug-s" cx="130" cy="233" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="130" y1="225" x2="130" y2="242.5"/><path class="bugleg-s" stroke-width="1.4" d="M166.5,228.5 L160.5,231 M177.5,228.5 L183.5,231 M166.5,233.5 L160.5,236 M177.5,233.5 L183.5,236 M166.5,238.5 L160.5,241 M177.5,238.5 L183.5,241 M170,219 L167,214.5 M174,219 L177,214.5"/><circle class="bug-s" cx="172" cy="221.5" r="4.5"/><ellipse class="bug-s" cx="172" cy="233" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="172" y1="225" x2="172" y2="242.5"/><path class="bugleg-s" stroke-width="1.4" d="M208.5,228.5 L202.5,231 M219.5,228.5 L225.5,231 M208.5,233.5 L202.5,236 M219.5,233.5 L225.5,236 M208.5,238.5 L202.5,241 M219.5,238.5 L225.5,241 M212,219 L209,214.5 M216,219 L219,214.5"/><circle class="bug-s" cx="214" cy="221.5" r="4.5"/><ellipse class="bug-s" cx="214" cy="233" rx="7.2" ry="10"/><line class="bugsplit" stroke-width="1" x1="214" y1="225" x2="214" y2="242.5"/><line class="divider" x1="338" y1="30" x2="338" y2="240"/><text class="lbl" x="370" y="42" font-size="26" text-anchor="start">8 big ones</text><path class="bugleg-b" stroke-width="3.4" d="M378.8,101.6 L364.4,107.6 M405.2,101.6 L419.6,107.6 M378.8,113.6 L364.4,119.6 M405.2,113.6 L419.6,119.6 M378.8,125.6 L364.4,131.6 M405.2,125.6 L419.6,131.6 M387.2,78.8 L380,68 M396.8,78.8 L404,68"/><circle class="bug-b" cx="392" cy="84.8" r="10.8"/><ellipse class="bug-b" cx="392" cy="112.4" rx="17.3" ry="24"/><line class="bugsplit" stroke-width="2.4" x1="392" y1="93.2" x2="392" y2="135.2"/><circle class="ok" cx="418" cy="80" r="14"/><path class="tick" stroke-width="2.8" d="M411.7,80.3 L416.6,85 L424.7,75.5"/><path class="bugleg-b" stroke-width="3.4" d="M443.8,101.6 L429.4,107.6 M470.2,101.6 L484.6,107.6 M443.8,113.6 L429.4,119.6 M470.2,113.6 L484.6,119.6 M443.8,125.6 L429.4,131.6 M470.2,125.6 L484.6,131.6 M452.2,78.8 L445,68 M461.8,78.8 L469,68"/><circle class="bug-b" cx="457" cy="84.8" r="10.8"/><ellipse class="bug-b" cx="457" cy="112.4" rx="17.3" ry="24"/><line class="bugsplit" stroke-width="2.4" x1="457" y1="93.2" x2="457" y2="135.2"/><circle class="ok" cx="483" cy="80" r="14"/><path class="tick" stroke-width="2.8" d="M476.7,80.3 L481.6,85 L489.7,75.5"/><path class="bugleg-b" stroke-width="3.4" d="M508.8,101.6 L494.4,107.6 M535.2,101.6 L549.6,107.6 M508.8,113.6 L494.4,119.6 M535.2,113.6 L549.6,119.6 M508.8,125.6 L494.4,131.6 M535.2,125.6 L549.6,131.6 M517.2,78.8 L510,68 M526.8,78.8 L534,68"/><circle class="bug-b" cx="522" cy="84.8" r="10.8"/><ellipse class="bug-b" cx="522" cy="112.4" rx="17.3" ry="24"/><line class="bugsplit" stroke-width="2.4" x1="522" y1="93.2" x2="522" y2="135.2"/><circle class="ok" cx="548" cy="80" r="14"/><path class="tick" stroke-width="2.8" d="M541.7,80.3 L546.6,85 L554.7,75.5"/><path class="bugleg-b" stroke-width="3.4" d="M573.8,101.6 L559.4,107.6 M600.2,101.6 L614.6,107.6 M573.8,113.6 L559.4,119.6 M600.2,113.6 L614.6,119.6 M573.8,125.6 L559.4,131.6 M600.2,125.6 L614.6,131.6 M582.2,78.8 L575,68 M591.8,78.8 L599,68"/><circle class="bug-b" cx="587" cy="84.8" r="10.8"/><ellipse class="bug-b" cx="587" cy="112.4" rx="17.3" ry="24"/><line class="bugsplit" stroke-width="2.4" x1="587" y1="93.2" x2="587" y2="135.2"/><circle class="ok" cx="613" cy="80" r="14"/><path class="tick" stroke-width="2.8" d="M606.7,80.3 L611.6,85 L619.7,75.5"/><path class="bugleg-b" stroke-width="3.4" d="M378.8,187.6 L364.4,193.6 M405.2,187.6 L419.6,193.6 M378.8,199.6 L364.4,205.6 M405.2,199.6 L419.6,205.6 M378.8,211.6 L364.4,217.6 M405.2,211.6 L419.6,217.6 M387.2,164.8 L380,154 M396.8,164.8 L404,154"/><circle class="bug-b" cx="392" cy="170.8" r="10.8"/><ellipse class="bug-b" cx="392" cy="198.4" rx="17.3" ry="24"/><line class="bugsplit" stroke-width="2.4" x1="392" y1="179.2" x2="392" y2="221.2"/><circle class="ok" cx="418" cy="166" r="14"/><path class="tick" stroke-width="2.8" d="M411.7,166.3 L416.6,171 L424.7,161.5"/><path class="bugleg-b" stroke-width="3.4" d="M443.8,187.6 L429.4,193.6 M470.2,187.6 L484.6,193.6 M443.8,199.6 L429.4,205.6 M470.2,199.6 L484.6,205.6 M443.8,211.6 L429.4,217.6 M470.2,211.6 L484.6,217.6 M452.2,164.8 L445,154 M461.8,164.8 L469,154"/><circle class="bug-b" cx="457" cy="170.8" r="10.8"/><ellipse class="bug-b" cx="457" cy="198.4" rx="17.3" ry="24"/><line class="bugsplit" stroke-width="2.4" x1="457" y1="179.2" x2="457" y2="221.2"/><circle class="ok" cx="483" cy="166" r="14"/><path class="tick" stroke-width="2.8" d="M476.7,166.3 L481.6,171 L489.7,161.5"/><path class="bugleg-b" stroke-width="3.4" d="M508.8,187.6 L494.4,193.6 M535.2,187.6 L549.6,193.6 M508.8,199.6 L494.4,205.6 M535.2,199.6 L549.6,205.6 M508.8,211.6 L494.4,217.6 M535.2,211.6 L549.6,217.6 M517.2,164.8 L510,154 M526.8,164.8 L534,154"/><circle class="bug-b" cx="522" cy="170.8" r="10.8"/><ellipse class="bug-b" cx="522" cy="198.4" rx="17.3" ry="24"/><line class="bugsplit" stroke-width="2.4" x1="522" y1="179.2" x2="522" y2="221.2"/><circle class="ok" cx="548" cy="166" r="14"/><path class="tick" stroke-width="2.8" d="M541.7,166.3 L546.6,171 L554.7,161.5"/><path class="bugleg-b" stroke-width="3.4" d="M573.8,187.6 L559.4,193.6 M600.2,187.6 L614.6,193.6 M573.8,199.6 L559.4,205.6 M600.2,199.6 L614.6,205.6 M573.8,211.6 L559.4,217.6 M600.2,211.6 L614.6,217.6 M582.2,164.8 L575,154 M591.8,164.8 L599,154"/><circle class="bug-b" cx="587" cy="170.8" r="10.8"/><ellipse class="bug-b" cx="587" cy="198.4" rx="17.3" ry="24"/><line class="bugsplit" stroke-width="2.4" x1="587" y1="179.2" x2="587" y2="221.2"/><circle class="run" cx="613" cy="166" r="14"/><path class="tick" stroke-width="2.2" d="M620,166 A7,7 0 1 1 613,159"/><polygon class="on-run" points="612.7,156.2 616.6,159 612.7,161.8"/><circle class="ok" cx="376" cy="258" r="11"/><path class="tick" stroke-width="2.2" d="M371.1,258.2 L374.9,262 L381.3,254.5"/><text class="lbl" x="394" y="266" font-size="20" text-anchor="start">7 fixed</text><circle class="run" cx="500" cy="258" r="11"/><path class="tick" stroke-width="2" d="M505.5,258 A5.5,5.5 0 1 1 500,252.5"/><polygon class="on-run" points="499.8,250.3 502.9,252.5 499.8,254.7"/><text class="lbl" x="518" y="266" font-size="20" text-anchor="start">1 being fixed</text></svg><figcaption>The hunt you asked for. Last big one left: saving your squad.</figcaption></figure>
 </section>
 
-<section id="audit">
-  <h2>The deep audit</h2>
-  <p class="lede">Your request at about 16:40Z on 10-30, after the box: find the same class of defect, and any long-buried debt, across the whole game. Nine class hunters (player verbs, softlocks, desync, persistence, silent failures, numeric edges, leaks, input, buried debt) read a copy of <code>62159bc1</code>, with the 27 findings of your three ultrareview runs; each serious or player-visible finding went to its own repro verifier, then a synthesis wrote the seams and the lanes, and a completeness critic read it. The record is <code>docs/superpowers/audits/2026-10-30-deep-audit.md</code> (<code>dd11f962</code>); its rows are the registry’s <code>AUDIT:*</code> rows. New since version 10.</p>
-
-  <div class="group">
-    <h3>Counts</h3>
-    <ul class="list">
-      <li><strong>47 verified:</strong> 40 CONFIRMED (6 HIGH, 22 MED, 12 LOW), 5 PLAUSIBLE (3 MED, 2 LOW), 2 REFUTED. CONFIRMED is the synthesis’s label: an independent verifier reproduced each one at <code>62159bc1</code> with the real modules in jsdom or node; nothing was run in a browser or on a device. The critic found the control wording is template text, and rows 1, 3, 9 and 22 (the iOS death crash, the Load drop, the victory screen under the pointer lock, the panel relock) rest on an emulated step: CONFIRMED for the code path, PLAUSIBLE for what the player meets.</li>
-      <li><strong>9 not verified</strong> (all LOW), <strong>8 already known</strong> (6 of them without a row until then), and <strong>2 new leads</strong> from the verifiers: the touch Settings gear dead to a finger (HIGH if confirmed; CI confirmed it and L1 fixed it) and every kill’s loot rolled at zone tier 0 (MED; fixed by lane L11 and live).</li>
-      <li>On this page’s branch the registry holds 72 AUDIT rows, 20 of them closed by L1, L5 and L11.</li>
-    </ul>
-  </div>
-
-  <div class="group">
-    <h3>The six HIGH findings, as you would meet them</h3>
-    <div class="tbl">
-      <table>
-        <thead>
-          <tr><th scope="col">What happens to you</th><th scope="col">Row</th><th scope="col">State</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>On iPhone and iPad, every death shows the crash page instead of YOU DIED, and the save pending at that moment is lost.</td><td><code>input:ios-death-crash</code></td><td class="st"><span class="pill ok">fixed, live</span> L1, since 21:05Z on 10-30</td></tr>
-          <tr><td>On every return visit Start begins a fresh level-1 world. Your real world is reachable only through Esc, Settings, Manage Worlds, Load, among identical cards with no level shown, and each visit mints another slot until saves stop silently at the storage limit.</td><td><code>persistence:returning-player-never-resumed</code></td><td class="st"><span class="pill run">L2, in flight</span></td></tr>
-          <tr><td>World Manager’s Load drops you out of your world: 21 to 25 m into a cave at the low tier, into the void at the others, and the autosave then writes where you fell.</td><td><code>desync:load-drops-player-out-of-world</code></td><td class="st"><span class="pill run">L2, in flight</span> PR #61’s load hold (item 154) answers the same fall; whether it closes the row is L2’s to show on its CI e2e</td></tr>
-          <tr><td>When the game recovers from a lost WebGL context, it reloads the right world but wipes your quest log, counters and kill achievements and resets the dragon fight (a slain dragon is written back alive), then saves that.</td><td><code>debt:resume-clobbers-quests-and-boss</code></td><td class="st"><span class="pill run">L2, in flight</span></td></tr>
-          <tr><td>After the dragon wakes, New World or Load leaves a 600 to 700 HP dragon no hit can touch, chasing a level-1 character; a mid-fight save loads it at full HP.</td><td><code>softlocks:boss-hook-ignores-world-load</code></td><td class="st"><span class="pill run">L2, in flight</span></td></tr>
-          <tr><td>Your bound squad (35 ember a bind) is never saved, so a reload loses it, yet New World and Load carry it, and aggroed mobs, into the next world.</td><td><code>verbs:squad-not-saved-and-leaks-across-worlds</code></td><td class="st"><span class="pill run">L2, then L3</span> L2 stops the carry; L3 saves the roster</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="muted">They compound: on iOS every death crashed, and the reload landed on a fresh level-1 world.</p>
-  </div>
-
-  <div class="group">
-    <h3>The eight root seams</h3>
-    <ul class="list">
-      <li><strong>S1. Each world’s state has six owners and no world-load event</strong> (the store, hook state, hook refs, an undeclared store key, the ECS, the physics body); a load resets only the store. Ten findings, four HIGH. Lanes L2 and L3.</li>
-      <li><strong>S2. The save slot has no lifecycle:</strong> nothing resumes at boot, slots are never reused, write failures are ignored, two tabs overwrite each other. Lanes L2 and L8.</li>
-      <li><strong>S3. Whether input is live was inferred from the pointer lock</strong> instead of derived from what is on screen. Lanes L1 and L5, both landed.</li>
-      <li><strong>S4. Verbs act and pay without asking the owner of the truth:</strong> the worker owns the voxels, yet the main thread decides placement, debits, credits and the sound at the click. The invisible box was this seam. Lanes L6 and L7.</li>
-      <li><strong>S5. One world fact, two derivations that drift</strong> (the void line against the seabed, the sea line, landmarks, line of sight, the kill position, cooldowns). Lanes L11, landed and live, and L4, in flight.</li>
-      <li><strong>S6. Pools whose only exit is a player action</strong> (quest chests, pickups, element zones). Lane L9.</li>
-      <li><strong>S7. Apple treated as desktop Chromium:</strong> the visual probes stub missing APIs and Playwright runs Chromium only. Lanes L1 and L10.</li>
-      <li><strong>S8. Instruments that cannot see the failure:</strong> gates that load before mount while the game loads after, a bus that swallows errors, reach reported per shard. Lane L12.</li>
-    </ul>
-  </div>
-
-  <div class="group">
-    <h3>The twelve lanes</h3>
-    <div class="tbl">
-      <table class="compact">
-        <thead>
-          <tr><th scope="col">Lane</th><th scope="col">What it does</th><th scope="col">State</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>L1</td><td>Quick wins: the iOS crash, Show Stats on touch, the juice dial, the gear</td><td><span class="pill ok">landed</span> #62, live</td></tr>
-          <tr><td>L2</td><td>Every world switch is a boot; Continue on the title</td><td><span class="pill run">in flight</span> #65</td></tr>
-          <tr><td>L3</td><td>The store owns each world’s state; the squad and shrines are saved</td><td><span class="pill idle">after L2</span></td></tr>
-          <tr><td>L4</td><td>The void line from the world; one recovery for void and respawn</td><td><span class="pill run">round 2</span> #66</td></tr>
-          <tr><td>L5</td><td>One predicate for whether input is live</td><td><span class="pill ok">landed</span> #63, live</td></tr>
-          <tr><td>L6</td><td>Build tools that do what they say</td><td><span class="pill idle">not started</span></td></tr>
-          <tr><td>L7</td><td>Credit, sound and counters from the effect, not the click</td><td><span class="pill idle">not started</span></td></tr>
-          <tr><td>L8</td><td>The save slot’s lifecycle</td><td><span class="pill idle">after L2</span></td></tr>
-          <tr><td>L9</td><td>Every pool gets a lifetime</td><td><span class="pill idle">not started</span></td></tr>
-          <tr><td>L10</td><td>Apple audio recovery, music on the Web Audio bus, an iOS fixture, your device run</td><td><span class="pill idle">not started</span></td></tr>
-          <tr><td>L11</td><td>One exported predicate per world fact</td><td><span class="pill ok">landed</span> #64, live</td></tr>
-          <tr><td>L12</td><td>Instruments that can see the failure</td><td><span class="pill idle">not started</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="group">
-    <h3>What the completeness critic found missing</h3>
-    <ul class="list">
-      <li><strong>The synthesis report was never written to disk,</strong> because the harness refused the file, so five hunters’ coverage could not be checked; the record was assembled from the synthesis the workflow returned.</li>
-      <li><strong>One reproduced MED finding was dropped:</strong> pressing G at the healer heals you to full health and mana every press, with no cooldown. Now a row.</li>
-      <li><strong>A new defect of the box’s shape:</strong> skeleton arrows pass through terrain, and archers fire without line of sight (read in code, not played). Now a row (MED).</li>
-      <li><strong>A save-borne box:</strong> the manual save wrote the camera’s position. PR #61 has since fixed it (item 153).</li>
-      <li><strong>A class no brief named:</strong> the camera can be put inside rock (the roar’s and the beast reveal’s cameras test no terrain). A row.</li>
-      <li><strong>Not reached:</strong> ultrareview chunks 4 to 6; parts of the verbs, silent and desync areas (hurl, snare, the Forge, quest givers, workers with no error handler); the refresh rate as a cause; and several CONFIRMED labels that go further than their evidence. One row, <code>AUDIT:critic:coverage-gaps</code>.</li>
-    </ul>
-  </div>
-
-  <div class="group">
-    <h3>Your three ultrareview runs</h3>
-    <div class="prose">
-      <p>The session split the game’s 398 non-test source files into six review branches, each under the 8,000-line limit. You ran three on account 3’s one-time free allotment (three runs per account, never refreshed); a run past an account’s free ones is billed as usage credits, which the session may not spend.</p>
-    </div>
-    <div class="tbl">
-      <table class="compact">
-        <thead>
-          <tr><th scope="col">Chunk</th><th scope="col">Lines</th><th scope="col">On your screen</th><th scope="col">Saved</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>1, player and world</td><td>7,966</td><td>36 found, 33 verified</td><td>10 (6 normal, 4 nit)</td></tr>
-          <tr><td>2, game logic</td><td>7,829</td><td>27 found, 12 verified</td><td>7 (3 normal, 4 nit)</td></tr>
-          <tr><td>3, state, saves and input</td><td>7,765</td><td>44 found, 36 verified</td><td>10 (8 normal, 2 nit)</td></tr>
-          <tr><td>4, UI; 5, render; 6, audio, scene and the rest</td><td>7,389; 7,757; 7,070</td><td colspan="2">not run</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="prose">
-      <p><strong>Why your screen and the saved files differ.</strong> Your screen showed the fleet’s verified reports before its last step; a final synthesis then wrote the saved lists of 10, 7 and 10. Merging duplicate reports explains part of the drop, and two runs ending at exactly 10 suggests a cap of 10 per run, which the docs do not state. So the 27 are best read as each chunk’s top findings, not all of them.</p>
-      <p><strong>What became of the 27.</strong> 13 carry their own <code>AUDIT:ultra</code> rows, 7 of them among the 40 CONFIRMED; one was an existing row (<code>respawn-counts-mined</code>), and two were refuted as latent and kept as hardening for lane L8. The record does not name what became of the other 11, so how each was folded in is not shown here.</p>
-    </div>
-  </div>
+<section class="sec" aria-labelledby="s-now">
+<h2 id="s-now">Working on now</h2>
+<figure class="pic"><svg class="art art-narrow" viewBox="0 0 600 480" role="img" aria-label="Done: loot and chests tidy up. Now: the game remembers your squad and shrines; build tools do what they say. Next: better save slots."><g transform="translate(0,0)"><rect class="wood-l e" x="104" y="64" width="92" height="52" rx="4"/><rect class="wood-t e" x="100" y="40" width="100" height="28" rx="10"/><rect class="gold-l" x="144" y="40" width="12" height="76"/><rect class="gold-t e" x="141" y="62" width="18" height="16" rx="3"/><polygon class="gold-t" points="88,24 90.5,31.5 98,34 90.5,36.5 88,44 85.5,36.5 78,34 85.5,31.5"/><polygon class="gold-t" points="214,42 216,48 222,50 216,52 214,58 212,52 206,50 212,48"/><polygon class="gold-t" points="204,12 205.5,16.5 210,18 205.5,19.5 204,24 202.5,19.5 198,18 202.5,16.5"/><rect class="tag tag-ok" x="110" y="132" width="80" height="30" rx="15"/><text class="lbl on-tag" x="150" y="153" font-size="17" text-anchor="middle">Done</text><text class="lbl" x="150" y="196" font-size="23" text-anchor="middle">Loot and chests</text><text class="lbl" x="150" y="224" font-size="23" text-anchor="middle">tidy up</text></g><g transform="translate(300,0)"><rect class="stone-l e" x="186" y="38" width="26" height="78"/><rect class="stone-t e" x="180" y="30" width="38" height="12" rx="3"/><circle class="glow" cx="199" cy="22" r="14"/><circle class="ember-t" cx="199" cy="22" r="6"/><rect class="legs" x="97.8" y="101" width="5" height="15"/><rect class="legs" x="105.2" y="101" width="5" height="15"/><rect class="skin" x="92.8" y="84.8" width="3.8" height="13.8"/><rect class="skin" x="111.5" y="84.8" width="3.8" height="13.8"/><rect class="tunic" x="96.5" y="83.5" width="15" height="18.8"/><rect class="skin" x="97.8" y="69.8" width="12.5" height="12.5"/><rect class="hair" x="97.8" y="69.8" width="12.5" height="3.8"/><rect class="legs" x="139.8" y="101" width="5" height="15"/><rect class="legs" x="147.2" y="101" width="5" height="15"/><rect class="skin" x="134.8" y="84.8" width="3.8" height="13.8"/><rect class="skin" x="153.5" y="84.8" width="3.8" height="13.8"/><rect class="tunic" x="138.5" y="83.5" width="15" height="18.8"/><rect class="skin" x="139.8" y="69.8" width="12.5" height="12.5"/><rect class="hair" x="139.8" y="69.8" width="12.5" height="3.8"/><polygon class="dragon" points="60,52 84,40 98,46 86,56 72,60"/><polygon class="dragon-2" points="66,50 60,28 78,44"/><circle class="ok" cx="232" cy="30" r="13"/><path class="tick" stroke-width="2.6" d="M226.2,30.3 L230.7,34.7 L238.2,25.8"/><rect class="tag tag-run" x="110" y="132" width="80" height="30" rx="15"/><text class="lbl on-tag" x="150" y="153" font-size="17" text-anchor="middle">Now</text><text class="lbl" x="150" y="196" font-size="23" text-anchor="middle">Remembers your</text><text class="lbl" x="150" y="224" font-size="23" text-anchor="middle">squad and shrines</text></g><g transform="translate(0,240)"><polygon class="stone-l e" points="130.9,57 150,68 150,90 130.9,79"/><polygon class="stone-r e" points="150,68 169.1,57 169.1,79 150,90"/><polygon class="stone-t e" points="150,46 169.1,57 150,68 130.9,57"/><polygon class="stone-l e" points="130.9,35 150,46 150,68 130.9,57"/><polygon class="stone-r e" points="150,46 169.1,35 169.1,57 150,68"/><polygon class="stone-t e" points="150,24 169.1,35 150,46 130.9,35"/><polygon class="stone-l e" points="111.9,68 130.9,79 130.9,101 111.9,90"/><polygon class="stone-r e" points="130.9,79 150,68 150,90 130.9,101"/><polygon class="stone-t e" points="130.9,57 150,68 130.9,79 111.9,68"/><polygon class="stone-l e" points="150,68 169.1,79 169.1,101 150,90"/><polygon class="stone-r e" points="169.1,79 188.1,68 188.1,90 169.1,101"/><polygon class="stone-t e" points="169.1,57 188.1,68 169.1,79 150,68"/><polygon class="stone-l e" points="111.9,46 130.9,57 130.9,79 111.9,68"/><polygon class="stone-r e" points="130.9,57 150,46 150,68 130.9,79"/><polygon class="stone-t e" points="130.9,35 150,46 130.9,57 111.9,46"/><polygon class="stone-l e" points="150,46 169.1,57 169.1,79 150,68"/><polygon class="stone-r e" points="169.1,57 188.1,46 188.1,68 169.1,79"/><polygon class="stone-t e" points="169.1,35 188.1,46 169.1,57 150,46"/><polygon class="stone-l e" points="130.9,79 150,90 150,112 130.9,101"/><polygon class="stone-r e" points="150,90 169.1,79 169.1,101 150,112"/><polygon class="stone-t e" points="150,68 169.1,79 150,90 130.9,79"/><g transform="rotate(-35 214 52)"><rect class="wood-l e" x="209" y="40" width="9" height="70" rx="3"/><rect class="dark-l e" x="196" y="30" width="36" height="18" rx="3"/></g><rect class="tag tag-run" x="110" y="132" width="80" height="30" rx="15"/><text class="lbl on-tag" x="150" y="153" font-size="17" text-anchor="middle">Now</text><text class="lbl" x="150" y="196" font-size="23" text-anchor="middle">Build tools do</text><text class="lbl" x="150" y="224" font-size="23" text-anchor="middle">what they say</text></g><g transform="translate(300,240)"><rect class="slot slot-3" x="118" y="22" width="96" height="70" rx="8"/><rect class="slot slot-2" x="108" y="34" width="96" height="70" rx="8"/><rect class="slot" x="98" y="46" width="96" height="70" rx="8"/><rect class="sky" x="106" y="54" width="42" height="30" rx="4"/><polygon class="hill" points="106,84 106,72 122,64 148,72 148,84"/><rect class="slot-line" x="156" y="58" width="30" height="6" rx="3"/><rect class="slot-line" x="156" y="70" width="22" height="6" rx="3"/><rect class="slot-line" x="106" y="92" width="58" height="6" rx="3"/><rect class="tag tag-idle" x="110" y="132" width="80" height="30" rx="15"/><text class="lbl on-tag" x="150" y="153" font-size="17" text-anchor="middle">Next</text><text class="lbl" x="150" y="196" font-size="23" text-anchor="middle">Better save</text><text class="lbl" x="150" y="224" font-size="23" text-anchor="middle">slots</text></g></svg><figcaption>One just shipped, two are being built, and save slots come next.</figcaption></figure>
 </section>
 
-<section id="decisions">
-  <h2>Decisions taken</h2>
-  <p class="lede">From <code>docs/superpowers/DECISIONS.md</code>. Item numbers are the file’s own; since 10-29 each lane takes its own range. Items 146 to 149 are unused.</p>
-
-  <div class="group">
-    <h3>2026-10-30 and 31, new: lane L11, one fact, one predicate (180 to 191)</h3>
-    <ol class="dec">
-      <li><span class="n">180–181</span><p><strong>The sea has one predicate, and a landmark exists in one place.</strong> The terrain worker fills water by <code>seaFillsCell</code>, and the climate sampler’s <code>isWater</code> derives from it; the shrine finder and the renderer both read <code>landmarkAt</code>.</p></li>
-      <li><span class="n">182–185</span><p><strong>Line of sight reads the true column tops as a second grid; a kill’s position is the bus’s array; the cooldown mirror imports the machines’ constants; a walk and a dodge read one planar basis,</strong> and a property check over <code>src/</code> fails a TODO, FIXME or “unify later” comment. Each fix has a gate that drives both producers and goes red when either moves alone.</p></li>
-      <li><span class="n">186–188</span><p><strong>Round 2: a position is read at its column, and a reviewer’s verdict is a hypothesis until re-derived.</strong> Item 186’s premise was false (item 189), and the static review’s LOW on the roofed player became a row because its right fix changes what the worker is sent.</p></li>
-      <li><span class="n">189–191</span><p><strong>Round 3: the wind bed samples the camera, because the store’s position is rounded</strong> (supersedes item 186’s premise and the same premise in item 180); the water gate’s footstep reference is the worker’s block, not the sampler; the records that gave false reasons are corrected.</p></li>
-    </ol>
-  </div>
-
-  <div class="group">
-    <h3>2026-10-30 and 31, new: lane L5, whether input is live (171 to 179)</h3>
-    <ol class="dec">
-      <li><span class="n">171</span><p><strong>Input is live only while nothing covers the game, whatever opened the surface</strong> (<code>src/input/inputLive.js</code>): the gate open, the player alive and no panel, VICTORY, lost-context panel or death screen up. The world clock, every verb, the wheel, the touch router and the Player loop read it. Its verb half leaves out the audit’s “game started” term, which adds nothing in play and would stop every e2e; the world clock’s pause keeps it.</p></li>
-      <li><span class="n">172–173</span><p><strong>A covering surface takes the pointer back itself,</strong> one release for every opener, and VICTORY opens no pause panel. <strong>The pointer is taken again only when no surface remains, and every close sweep is the full panel list,</strong> so Esc closes all thirteen.</p></li>
-      <li><span class="n">174–175</span><p><strong>Keys respect focus</strong> (a text field, an input method composing, a dialog’s Tab, a held key). <strong>The wheel steps per gesture,</strong> 4 px for the first slot and 100 px for each further one, because what a notch reports runs from about 1 px on a trackpad to 400 px on a fast macOS spin.</p></li>
-      <li><span class="n">176–177</span><p><strong>A backdrop closes only for a press that began on it, and a panel on its way out claims nothing.</strong> <strong>Touch keeps one contextual Cast button;</strong> no touch force-cast, because Cast is touch’s only way to place a block and a second control is a look change judged on your device.</p></li>
-      <li><span class="n">178–179</span><p><strong>Round 2 corrected two of round 1’s reasons.</strong> Item 174 said the Player loop could not be gated in jsdom; it could, and now is, through 8 verbs under 15 surfaces. Item 172 said play is never dropped on touch; two touch openers drop it, and nothing rested on the claim.</p></li>
-    </ol>
-  </div>
-
-  <div class="group">
-    <h3>2026-10-30, new: the chaos-play gate (150 to 159, 165 to 170)</h3>
-    <ol class="dec">
-      <li><span class="n">150</span><p><strong>A standing gate that plays the game adversarially</strong> and asks whether you can still leave, read every frame (AB episode 1230: a diff-scoped review cannot find a missing check in code no diff changes).</p></li>
-      <li><span class="n">151–154</span><p><strong>A form swap fits or is refused; the respawn takes the highest of four columns; a save records the body; a load holds you until your column is in.</strong></p></li>
-      <li><span class="n">155–159</span><p><strong>Round 2: a load stands you where you fit nearest the save,</strong> and waits for every chunk the fit reads (supersedes item 154’s placement); <strong>a deep-ocean save resumes; a form’s save writes the base shape; the placement guard reads the body after a teleport; a way out counts only mining your own blocks</strong> (supersedes item 150’s three clicks).</p></li>
-      <li><span class="n">165–167</span><p><strong>Seeds 1 to 8 run after each round, not only CI’s seed 1;</strong> the load’s wiring is driven in the booted game and proven red on three dispatched mutant branches; a refused roar costs nothing.</p></li>
-      <li><span class="n">168–170</span><p><strong>Round 3: a placement moves the collider with the body,</strong> because Rapier moves a body’s colliders only at a world step and @react-three/rapier never asks it to; every other teleport was checked; the corner probe has a test that fails when reverted.</p></li>
-    </ol>
-  </div>
-
-  <div class="group">
-    <h3>2026-10-30, new: lane L1 (160 to 164)</h3>
-    <ol class="dec">
-      <li><span class="n">160</span><p><strong>One way to the Pointer Lock API</strong> (<code>src/input/pointerLock.js</code>), and ESLint bans the bare calls. The release does not first ask whether the pointer is locked, departing from the brief: a lock request in flight reads as unlocked, so that check would skip the release exactly then.</p></li>
-      <li><span class="n">161</span><p><strong>The lived proof on an iPhone and an iPad is yours.</strong> CI shows only what Chromium can.</p></li>
-      <li><span class="n">162–163</span><p><strong>Show Stats is not a panel on touch; the hydrate restores the juice choice.</strong></p></li>
-      <li><span class="n">164</span><p><strong>Every button and modal surface over the live game owns its touch, decided by kind,</strong> departing from the brief, which marked only the gear: marking surfaces one at a time is the hand-kept list that had missed Respawn, Keep exploring and the lost-context panel.</p></li>
-    </ol>
-  </div>
-
-  <div class="group">
-    <h3>The command session’s calls, new</h3>
-    <ol class="dec">
-      <li><span class="n">—</span><p><strong>The audit’s lanes run in its order, and those on the chaos gate’s load path wait for it:</strong> L1 first; L5 and L11 together from <code>1a3910e7</code>; L4 and L2 from <code>5f00f246</code>, once the chaos-play gate had landed, since they edit the same load path; L3 after L2.</p></li>
-      <li><span class="n">—</span><p><strong>L4’s regression is answered by separating the two jobs</strong> (after its round-1 reviews, 10-31): the void line handles a fall out of the world, and a separate, debounced stuck-in-rock recovery places a body found inside solid ground at the nearest clear spot, never at the origin; the spawn’s blind drop keeps reading the ground. Round 2 records it in DECISIONS.</p></li>
-      <li><span class="n">—</span><p><strong>A parallel fan-out with a failed call in its middle is relaunched with the finished results passed in by file,</strong> not resumed (AB episode 1232; Mistakes).</p></li>
-    </ol>
-  </div>
-
-  <div class="group">
-    <h3>2026-10-30, version 10: the box (130 to 136), W2-L (140 to 145), the dragon (120 to 126), W2-G (110 to 116)</h3>
-    <ol class="dec">
-      <li><span class="n">130–136</span><p><strong>A right-click never fills a cell your body fills; a placed cell is solid from the click; the sweep is cut at colliders made since the last step;</strong> round 3 opened for the blocker the command session confirmed by running the static review’s repro.</p></li>
-      <li><span class="n">140–145</span><p><strong><code>m</code> under one strict provider;</strong> the index ceiling to 652,500 B; a loader that would save 37 KB more was not shipped, for the blank-title risk.</p></li>
-      <li><span class="n">120–126</span><p><strong>The dragon is its own chunk and a pure move machine; its attacks are read from the ground and their toasts go; your skills and one damage path reach it.</strong></p></li>
-      <li><span class="n">110–116</span><p><strong>One typed event bus; a world records its seed (New World still writes 12345); the autosave triggers on the saved keys; the DEV bridge out of the build; production knip in CI.</strong></p></li>
-    </ol>
-  </div>
-
-  <div class="group">
-    <h3>2026-10-28 to 30, before version 10</h3>
-    <ol class="dec">
-      <li><span class="n">80–102</span><p><strong>The HUD at rest, three panels and H for the controls; the beast draws only its shadow in first person; closed records leave HEAD for a tag.</strong></p></li>
-      <li><span class="n">41–78</span><p><strong>Damage, health and mana scale with level; talents change verbs; one relic slot; the Forge is one card on Mara; hunger and the foods deleted; hunts named through <code>t()</code>.</strong> W2-H: a frame is judged as a stranger sees it, and only main deploys (item 58).</p></li>
-      <li><span class="n">20–40</span><p><strong>The hands in the composer, the eye at 1.62 m; a tone grammar for textures; N8AO deleted; a 480 s day; a commit runs a fast tier and a push passes on CI’s verdict for that commit.</strong> W1-H: the capture oracle retires; one registry.</p></li>
-      <li><span class="n">1–19</span><p>Every lane lands through a PR; merges are merge commits; the page cap reports only; your standing principle (14 to 16): nothing off limits, full autonomy, nothing locked; one CLAUDE.md. On 10-27 your mandate: each non-routine decision recorded, reviewers at xhigh, never max, two bright lines; soft death kept, no engine bump.</p></li>
-    </ol>
-  </div>
+<section class="sec" aria-labelledby="s-you">
+<h2 id="s-you">Your turn</h2>
+<figure class="pic"><svg class="art" viewBox="0 0 600 240" role="img" aria-label="Three things for you: play on iPhone and iPad, mix the sound by ear, and if you like, three deep reviews on account 2."><g transform="translate(0,0)"><rect class="device" x="40" y="40" width="86" height="112" rx="10"/><rect class="night" x="47" y="48" width="72" height="96" rx="4"/><rect class="device" x="112" y="30" width="52" height="108" rx="10"/><rect class="night" x="117" y="40" width="42" height="88" rx="4"/><circle class="tap" cx="138" cy="86" r="14"/><circle class="tap" cx="138" cy="86" r="24"/><circle class="tap-dot" cx="138" cy="86" r="6"/></g><text class="lbl" x="100" y="196" font-size="22" text-anchor="middle">Play on iPhone</text><text class="lbl" x="100" y="224" font-size="22" text-anchor="middle">and iPad</text><g transform="translate(200,0)"><path class="band" d="M52,104 V88 A48,48 0 0 1 148,88 V104"/><rect class="cup" x="38" y="96" width="26" height="50" rx="10"/><rect class="cup" x="136" y="96" width="26" height="50" rx="10"/><path class="wave-s" d="M74,112 Q82,121 74,130 M84,104 Q98,121 84,138"/><path class="wave-s" d="M126,112 Q118,121 126,130 M116,104 Q102,121 116,138"/><line class="slider" x1="86" y1="8" x2="86" y2="62"/><rect class="knob" x="80" y="40" width="12" height="8" rx="2"/><line class="slider" x1="100" y1="8" x2="100" y2="62"/><rect class="knob" x="94" y="22" width="12" height="8" rx="2"/><line class="slider" x1="114" y1="8" x2="114" y2="62"/><rect class="knob" x="108" y="46" width="12" height="8" rx="2"/></g><text class="lbl" x="300" y="196" font-size="22" text-anchor="middle">Mix the sound</text><text class="lbl" x="300" y="224" font-size="22" text-anchor="middle">by ear</text><g transform="translate(400,0)"><rect class="paper" x="30" y="34" width="110" height="120" rx="8"/><rect class="codeline" x="44" y="52" width="70" height="6" rx="3"/><rect class="codeline" x="44" y="70" width="52" height="6" rx="3"/><rect class="codeline" x="44" y="88" width="80" height="6" rx="3"/><rect class="codeline" x="44" y="106" width="44" height="6" rx="3"/><rect class="codeline" x="44" y="124" width="64" height="6" rx="3"/><circle class="lens" cx="124" cy="98" r="32"/><line class="lens-handle" x1="146" y1="122" x2="172" y2="150"/><rect class="tag tag-idle" x="96" y="8" width="98" height="26" rx="13"/><text class="lbl on-tag" x="145" y="27" font-size="15" text-anchor="middle">optional</text></g><text class="lbl" x="500" y="196" font-size="22" text-anchor="middle">3 deep reviews</text><text class="lbl" x="500" y="224" font-size="22" text-anchor="middle">on account 2</text></svg><figcaption>Only you can do these. Nothing is blocked on them.</figcaption></figure>
 </section>
 
-<section id="harness">
-  <h2>Harness and gates</h2>
-
-  <div class="group">
-    <h3>New on main since version 10</h3>
-    <ul class="list">
-      <li><strong>The chaos-play gate</strong> (#61; items 150, 159, 165, 170). Three session files play 56 seeded sessions at seven places (the shore, a cliff face, a two-high tunnel, an overhang, open field, the origin column, the deep ocean), at 60 and 120 Hz, with the chunk mesh 0 to 8 frames late, against the real Rapier build, the real mesher and the real verbs. After every frame they read five invariants: your capsule in no solid cell deeper than 5 mm (I1), your eye in no solid cell (I2), always a way out by walking, jump-walking or mining only your own blocks (I3), no stand-in collider outliving its mesh (I4), and every load letting go within 2 x lag + 12 frames, never to the origin (I5). Floors on the risky events each file reached fail a seed set that stops reaching the dangerous geometry. Controls: 41 of 48 sessions red on <code>e177b5b8</code>’s placement code, 48 of 48 on <code>4a01607b</code>’s. CI plays seed 1; seeds 1 to 8 ran locally after each round.</li>
-      <li><strong>The real Player under test.</strong> <code>player-placement-gates</code> mounts the real Player with real Rapier and runs Components.jsx’s own frame: red 2 of 3 on round 2’s head (0.4 m with the eye in solid; 0.117 m). <code>player-input-live-gates</code> drives 8 verbs under 15 covering surfaces; <code>close-relock-gates</code> checks that each of 13 panels’ close controls and Esc, Keep exploring and Respawn ask for the pointer once their surface is gone. Each was mutation-proven; the relock gates count requests, not whether the browser grants them (a row).</li>
-      <li><strong>The load-hold e2e</strong> (item 166) drives the load’s hold, its fit and the form refusal in the booted game. Proven on dispatched branches with the e2e job narrowed to it: control <code>41128290264</code> passed; the hold reverted (<code>41128295530</code>), the fit bypassed (<code>41128301592</code>) and the unfitted swap (<code>41128307279</code>) each red on 3 of 3 attempts. The four branches are deleted.</li>
-      <li><strong>The input-live gates</strong> (#63): <code>input-live-gates</code>, 49 device by surface by opener cases in 4 tests, all 4 red on main, 110 violations across the 49 cases; <code>key-focus-gates</code>, <code>wheel-hotbar-gates</code> (now counting the slots a swipe moves through, after round 1’s review showed it read only the last) and <code>modal-surface-gates</code>; the <code>input-live.spec.js</code> e2e, whose victory case was red on main’s game code on all three attempts of runs <code>41131019672</code> and <code>41133453153</code>.</li>
-      <li><strong>L1’s gates</strong> (#62): <code>pointer-lock-guard-gates</code> (3 of 5 red before the fix, naming the TypeError), <code>touch-show-stats-gates</code>, <code>settings-juice-persist-gates</code>, <code>touch-owned-controls-gates</code>; the <code>death-pointer-lock.spec.js</code> e2e, which deletes the API on an emulated iPad (red on all three attempts of <code>41117858710</code>), and a real tap on the gear in <code>touch-controls.spec.js</code>. The ESLint ban on bare pointer-lock calls is a source rule paired with these, and narrower than its comments say (a row).</li>
-      <li><strong>L11’s gates</strong> (#64): <code>water-one-predicate-gates</code> (the worker’s fill against the sampler’s sea line, and the footsteps), <code>wind-bed-live-chain-gates</code> (the real PositionTracker, store and SoundProvider interval, with the Player’s camera publication modelled), <code>landmark-one-predicate-gates</code>, <code>mob-cover-sight-gates</code>, <code>kill-loot-tier-gates</code>, <code>cooldown-mirror-gates</code>, <code>walk-dodge-basis-gates</code>, and <code>tests/scripts/no-deferral-comments.test.js</code>. Each was run red on the code before its fix: round 1’s on <code>1a3910e7</code>, the wind bed’s on round 2’s head, where it read the wrong state at 80 of 384 positions at seed 12345 and 76 at seed 777.</li>
-      <li><strong>Cost</strong> (measured on round 1): on CI the chaos files took 54 to 60 s each; the unit job went from 4 min 55 s to 6 min 26 s, under the e2e shards’ 19 min 39 s, so it is not the critical path. The unit suite on <code>449ce3ea</code>’s PR run: 615 files and 5,435 tests, against 597 and 5,246 at <code>c6571e11</code>.</li>
-      <li><strong>Practice:</strong> a parallel fan-out with a failed call is relaunched with the finished results in a file (episode 1232); a reviewer’s throwaway copy points vitest’s cache, HOME and TMPDIR into itself.</li>
-    </ul>
-  </div>
-
-  <div class="group">
-    <h3>Before version 10</h3>
-    <ul class="list">
-      <li><strong>Version 10’s:</strong> the production test-hook census in <code>bundle-budget.mjs</code>; the seed gate through the terrain worker; the dragon’s gates; the box’s <code>place-clear-of-player-rapier</code> and the stand-in liveness e2e; W2-L’s strict, provider, exit-animation and full-motion marker gates; one machine-wide lock for a full unit suite.</li>
-      <li><strong>Closed records out of HEAD</strong> (#55); <strong>the HUD’s gates</strong> (a layout sweep over every keyboard width and 4,604 touch viewports); <strong>three e2e flakes fixed at the cause</strong> (#48); <strong>Vercel deploys main only</strong>; <strong>one browser library</strong> with a Node 24.2 floor; <code>npm run orient</code>, doc-currency and the cold-takeover eval; <code>registry-dedupe</code>.</li>
-      <li><strong>CI decides, once</strong> (items 22 to 24); <strong>the capture oracle retired</strong>; <strong>prod-smoke</strong> checks every shader links and reads the mip chain back; <strong>one registry</strong> with <code>registry-harvest</code> and <code>registry-append-only</code>; <strong>one required check</strong>, <code>ci ok</code>; e2e at half pixel ratio on 8 shards on ubuntu-24.04; vitest 4 and npm audit 0.</li>
-    </ul>
-  </div>
-
-  <div class="group">
-    <h3>Main CI, run by run</h3>
-    <p class="muted">Cancelled means a newer push replaced the run, or the time limit stopped a shard; a cancelled run is not a pass. Since 11:11Z on 10-28 every commit passed a land-branch or PR run before main accepted it; since 20:28Z on 10-28 main’s own run reuses that verdict, in about a minute.</p>
-    <div class="tbl">
-      <table>
-        <thead>
-          <tr><th scope="col">Commit</th><th scope="col">Run</th><th scope="col">Result</th><th scope="col">Note</th></tr>
-        </thead>
-        <tbody>
-          <tr class="divider"><td colspan="4">New since version 10, newest first</td></tr>
-          <tr><td><code>f87f2324</code></td><td><code>41165264289</code></td><td class="st"><span class="pill ok">success</span></td><td>#64, L11, 03:38Z on 10-31. PR run <code>41162361319</code>.</td></tr>
-          <tr><td><code>449ce3ea</code></td><td><code>41160593344</code></td><td class="st"><span class="pill ok">success</span></td><td>#63, L5, 02:34Z on 10-31. PR run <code>41157558361</code>.</td></tr>
-          <tr><td><code>5f00f246</code></td><td><code>41146327205</code></td><td class="st"><span class="pill ok">success</span></td><td>#61, the chaos-play gate, 23:45Z on 10-30. PR run <code>41141022094</code>.</td></tr>
-          <tr><td><code>1a3910e7</code></td><td><code>41128265300</code></td><td class="st"><span class="pill ok">success</span></td><td>#62, L1, 21:04Z on 10-30. PR run <code>41122240233</code>.</td></tr>
-          <tr><td><code>dd11f962</code></td><td><code>41117088585</code></td><td class="st"><span class="pill ok">success</span></td><td>The deep audit’s record, 19:39Z on 10-30. Land run <code>41116445583</code>.</td></tr>
-          <tr><td><code>b48ec9f1</code></td><td><code>41102886964</code></td><td class="st"><span class="pill ok">success</span></td><td>Version 10 of this page, 17:58Z on 10-30. Land run <code>41100874754</code>.</td></tr>
-          <tr class="divider"><td colspan="4">Between 08:39Z and 17:13Z on 10-30, newest first</td></tr>
-          <tr><td><code>c6571e11</code>, <code>62159bc1</code>, <code>b8d8fdcd</code>, <code>676ca366</code>, <code>4a01607b</code></td><td><code>41093932930</code>, <code>41081154735</code>, <code>41056168877</code>, <code>41049591736</code>, <code>41027948444</code></td><td class="st"><span class="pill ok">success</span></td><td>#60, W2-L; #59, the box; #56 and #58, the dragon; #57, W2-G; version 9 of this page.</td></tr>
-          <tr class="divider"><td colspan="4">Between 18:30Z on 10-29 and 08:39Z on 10-30</td></tr>
-          <tr><td><code>80238889</code>, <code>5d301533</code>, <code>e900de6b</code>, <code>96d00fd6</code></td><td><code>41021703594</code>, <code>40986678963</code>, <code>40969733135</code>, <code>40932615310</code></td><td class="st"><span class="pill ok">success</span></td><td>#53 and #54, the HUD; #55; #52; version 8 of this page.</td></tr>
-          <tr class="divider"><td colspan="4">Between 22:15Z on 10-28 and 18:30Z on 10-29</td></tr>
-          <tr><td>19 commits, <code>6a01d1dc</code> to <code>63fe4035</code></td><td><code>40777580841</code> to <code>40928110211</code></td><td class="st"><span class="pill ok">success</span></td><td>Land batches 2 to 4 and #36 to #51, each on its PR or land run’s verdict; two main runs on <code>bf44ba21</code> started in the same second, and both passed.</td></tr>
-          <tr class="divider"><td colspan="4">From the takeover to 22:15Z on 10-28</td></tr>
-          <tr><td>Every other commit, <code>230fd72f</code> to <code>3bd6fbde</code></td><td><code>40518887229</code> to <code>40773279609</code></td><td class="st"><span class="pill ok">success</span></td><td>Main green from 14:33Z on 10-27; the first 6-shard run at <code>17e06ecd</code>, 8 shards from <code>d5375ac1</code>.</td></tr>
-          <tr><td><code>c03186fe</code>, <code>030ada1f</code></td><td><code>40745025015</code>, <code>40703024235</code></td><td class="st"><span class="pill warn">passed on re-run</span></td><td><code>ore-glow.spec.js</code> failed the first attempt; fixed at the cause in <code>68336efd</code> and <code>213eae36</code>.</td></tr>
-          <tr><td><code>43d766e6</code>; <code>0c5a4041</code></td><td><code>40642071917</code>; <code>40622556954</code></td><td class="st"><span class="pill bad">failed</span></td><td><code>touch-hold.spec.js:303</code>, a wall-clock freeze on a slow runner; shard 4/6 hit the 25-minute limit on <code>lightning.spec.js:59</code>.</td></tr>
-          <tr><td><code>c2bda904</code>, <code>a9a303e9</code>, <code>76262a08</code>, <code>c03e9f2f</code></td><td><code>40665999489</code>, <code>40636298093</code>, <code>40622346757</code>, <code>40518065873</code></td><td class="st"><span class="pill idle">cancelled</span></td><td>Superseded by newer pushes.</td></tr>
-          <tr class="divider"><td colspan="4">At and before the takeover</td></tr>
-          <tr><td><code>57c45ae4</code>, <code>37d030a8</code>, <code>9c6dc852</code></td><td><code>40499349776</code>, <code>35845534213</code>, <code>35830093253</code>, <code>35822535594</code></td><td class="st"><span class="pill bad">not green</span></td><td>The takeover’s dispatch (14 npm advisories, <code>mob-floor.spec.js:63</code>) and 2026-09-23’s three runs.</td></tr>
-          <tr><td><code>a01b1982</code></td><td><code>35820716087</code></td><td class="st"><span class="pill ok">success</span></td><td>Last green before the takeover.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="group" id="deploys">
-    <h3>Deploys</h3>
-    <div class="prose">
-      <p>The deployments API lists 64 Production deployments since 10-27. <strong>New since version 10:</strong> <code>b48ec9f1</code> (17:59Z), <code>dd11f962</code> (19:40Z), <code>1a3910e7</code> (21:05Z) and <code>5f00f246</code> (23:45Z), all on 10-30, and <code>f87f2324</code> (03:39Z on 10-31, lane L11), each reporting success within a minute of its main push; the commit status of <code>f87f2324</code> read pending at 03:38:47Z and success at 03:39:10Z. <strong><code>449ce3ea</code>, pushed at 02:34Z on 10-31, had no Vercel commit status and no deployment at 03:06Z, at 03:16Z, at 03:38Z or at 03:49Z, 75 minutes after its push, and the deployments API lists none for its commit.</strong> Its code went live inside the deployment of <code>f87f2324</code>, 65 minutes after its push. Why Vercel gave it none is not known; it is on Vercel’s side. At 03:04Z and again at 03:38Z on 10-31 both hosts served <code>index-D4QiFJhj.js</code> (639,503 B), the chunk PR run <code>41141022094</code> built from <code>5f00f246</code>; it carries L1’s guarded release, its touch-ownership selector and the form swap’s refusal. At 03:53Z both served <code>index-Zp0FZSej.js</code> (641,390 B). L5’s PR run built <code>index-BiZoWQNZ.js</code>, which no host served. The newest three Production deployments are <code>f87f2324</code>, <code>5f00f246</code> and <code>1a3910e7</code>.</p>
-      <p>Before version 10: five deploys on 10-30 from <code>4a01607b</code> at 08:40Z to <code>c6571e11</code> at 16:53Z; four from 18:38Z on 10-29 to 07:42Z on 10-30; six from 09:29Z to 18:09Z on 10-29. <code>99a3edc9</code> got none: its commit status reads “Deployment rate limited — retry in 24 hours.” (14:04Z on 10-29), and <code>ddd4fe78</code>, which contains it, deployed 59 minutes later. <code>c2bda904</code> deployed although its CI was cancelled, before protection went on; since then main accepts only a commit with a green <code>ci ok</code>.</p>
-    </div>
-  </div>
-</section>
-
-<section id="mistakes">
-  <h2>Mistakes, and what was done about them</h2>
-  <div class="mk">
-    <article>
-      <h3>Resuming the audit re-ran hunters that had finished <span class="pill run">new</span></h3>
-      <div class="body">
-        <p><b>What happened.</b> At 16:51Z on 10-30 account 1 reached its weekly limit, and five of the audit’s nine parallel hunters died at the switch. The session resumed the run. A workflow resume replays only the unbroken run of finished calls from the start of the call order, and the second hunter in that order (softlocks) had failed, so three hunters that had finished (desync, persistence, silent) started again from nothing.</p>
-        <p><b>Done.</b> The run was stopped; the four finished hunters’ 32 findings went into a file, and the audit was relaunched as <code>wf_f5258062-87b</code> with a list of classes to skip, so only the five that had died ran again. The rule is Agentic Brain episode 1232: before resuming a parallel fan-out, read its journal, and if a failed call comes before a finished one, relaunch with the finished results passed in by file.</p>
-      </div>
-    </article>
-    <article>
-      <h3>L11’s round-2 sound fix changed nothing in the game <span class="pill run">new</span></h3>
-      <div class="body">
-        <p><b>What happened.</b> On the dry shore strip the wind bed sounded underwater. Round 2 floored the position it sampled, to read the column you stand in. But the sound is fed the store’s <code>playerPosition</code>, which <code>PositionTracker</code> already rounds to whole metres, and the floor of a whole number is that number: the game sampled the same wrong column as before. Round 2’s gate fed the sampler unrounded positions, so it went red on the old code and green on the fix while the game stayed the same. The dynamic review’s live-chain probe read 80 of 384 shore positions wrong on round 2’s head and on the code before it alike, and 0 with the position unrounded. Round 1 had measured the right sampler with the wrong input, and round 2 fixed that model, not the game.</p>
-        <p><b>Done.</b> Both round-2 reviews caught it, and nothing landed. Round 3 (<code>f87f2324</code>) samples the camera, and its gate drives the real PositionTracker, store and SoundProvider interval, with the Player’s camera publication modelled, not driven (items 189 to 191). Its CI passed (run <code>41162361319</code>) and both its reviews said LAND; the dynamic one fed the store’s rounded position as the game sets it and measured the wind bed misfiring 0 times on the shore population on <code>f87f2324</code>, against 8,352 of 43,056 (19.4%) on round 2’s head <code>e3e4c21c</code>. The 18.2% in item 180 had measured the float position, not the live feed. It landed at 03:38Z on 10-31 and has been live since 03:39Z. The lesson: a gate must take its input from the producer the game uses, not from a value the test makes up.</p>
-      </div>
-    </article>
-    <article>
-      <h3>Lowering the void line removed a rescue nobody knew was one <span class="pill run">new</span></h3>
-      <div class="body">
-        <p><b>What happened.</b> L4 moved the void line from y 10 to the world’s floor, so a player on the deep seabed or at the bottom of a dug shaft is no longer reset. But the old line had also, by accident, rescued a body clipped into rock: over a cave ceiling between y 1.5 and 9, in 1483 of 6400 columns within 40 m of spawn, or after the spawn’s blind drop when the first chunk is late. With the new line such a body stays in the rock. L4’s comment, DECISIONS item 190 and a gate title said the opposite, because its control gate clipped a body in a column with no cave.</p>
-        <p><b>Done.</b> Caught before landing by both round-1 reviews, the dynamic one on meshes from the real generator. The command session separated the jobs: the void line handles a fall out of the world, and a stuck-in-rock recovery, which round 2 is building, handles a body inside solid ground anywhere.</p>
-      </div>
-    </article>
-    <article>
-      <h3>The chaos gate’s first fixes opened a 120 Hz trap of their own <span class="pill run">new</span></h3>
-      <div class="body">
-        <p><b>What happened.</b> Round 2’s load fit moved the body to its fitted spot with a bare move, which leaves the collider behind until the next physics step; at 120 Hz the next frame took none and swept you back from the old spot, into the ceiling (12 of 384 loads at 120 Hz in the dynamic review). It is the same no-step frame as the box’s own round-2 defect. Before that, round 1’s gate passed only on its one shipped seed (seeds 2, 3 and 5 found the comet-form save), and round 1 rewrote a test fixture to pass instead of fixing the code that put the player in the ground.</p>
-        <p><b>Done.</b> Each was caught before landing: round 3 moves the collider with the body at every placement the next frame sweeps from (item 168); every round now runs seeds 1 to 8; round 2 restored the fixture once the load fit handled it.</p>
-      </div>
-    </article>
-    <article>
-      <h3>Decision records that gave false reasons <span class="pill run">new</span></h3>
-      <div class="body">
-        <p><b>What happened.</b> Item 174 said the Player loop could not be gated in jsdom, though another gate already mounted it; item 172 said play is never dropped on touch, though two touch openers drop it; item 169 said every teleport’s next frame is a spawn frame, which is false for an in-play load whose resume gives up; commit <code>9b89e569</code> said a touch record was Safari on an iPad, when it was Chromium; item 178 said a revert left “every unit spec” green, when round 1 ran 15 and 16 specs.</p>
-        <p><b>Done.</b> Items 178 and 179 correct 174 and 172; item 164 and the gate’s header correct <code>9b89e569</code>, whose message cannot change; 169 and 178 are registry rows. The lanes’ own reviews found all but one; L1’s builder caught its own commit message.</p>
-      </div>
-    </article>
-    <article>
-      <h3>The audit’s synthesis report never reached the disk <span class="pill run">new</span></h3>
-      <div class="body">
-        <p><b>What happened.</b> The synthesizer was told to write <code>report.md</code>, and the harness refused the file (“Subagents should return findings as text”). The completeness critic found it missing, found five hunters’ coverage notes nowhere, and found one reproduced MED finding dropped: the healer heals you to full on every press of G.</p>
-        <p><b>Done.</b> The record (<code>dd11f962</code>) was assembled from the synthesis the workflow returned, with the critic’s report after it; the dropped finding, the critic’s new defect (arrows through terrain) and its coverage gaps are rows. Because the dedupe’s own output was never kept, other drops cannot be counted.</p>
-      </div>
-    </article>
-    <article>
-      <h3>Version 10’s, more briefly</h3>
-      <div class="body">
-        <p>No review caught the invisible box: every review was scoped to a diff, none played the game, and the session’s own refactor in PR #33 preserved the bug as it moved the code (AB episode 1230); the remedies, the chaos-play gate and the deep audit, are both done. Round 2 of the box fix put a new defect on the walk near the spawn, caught by the static review’s repro, which the command session ran itself. Parallel unit suites loaded the machine to 128 at 10:36Z on 10-30; a full suite now runs under one lock with four workers. Version 9’s first land run failed the registry harvest on reused task ids, renumbered T19 to T21.</p>
-      </div>
-    </article>
-    <article>
-      <h3>Earlier, more briefly</h3>
-      <div class="body">
-        <p>A HUD round chose the short layout by screen height alone; a widened at-rest rule passed an over-budget frame; <code>faa65ee1</code> went in under a sibling lane’s message; the session reported the live site stuck when every push had deployed, and now re-reads the deployments API and the served chunk in the turn it makes the claim (episode 1222). The talents spec flaked until #48 fixed it at the cause; previews spent Vercel’s 100 a day; the media lane’s first provenance named the wrong build; two lanes took the same decision numbers, so each lane takes its own range; a merge doubled five registry rows, now collapsed by <code>registry-dedupe</code>. Landings ran CI twice until item 23; PR #31’s first fix weakened a test; two lookbooks shared a port; a test run rewrote the repo as bare (<code>0c5b269c</code>); a lane was reported done while unpushed, and twice a cancelled run was reported as a pass.</p>
-      </div>
-    </article>
-    <article>
-      <h3>Records that lag the state</h3>
-      <div class="body">
-        <p><b>New.</b> The cursor still says T22 is building and L1 is building; both landed on 10-30. GitHub still marks the merged #63 a draft, because the permission check refused <code>gh pr ready</code>. PR #64 brought two flake rows that duplicate main’s (<code>dragon-fight-parried-bite</code> beside <code>dragon-fight-parried-bite-move</code>, and <code>mob-floor-roof-floor-infinity</code> beside the <code>:227</code> sightings in <code>rays-before-step</code>). L11’s items 189 to 191 are on main while L4’s branch holds 190 to 199 at <code>7fcee633</code>, so L4 renumbers when it lands. Round 3 of the chaos lane and round 2 of L5 left records that say more than was measured; they are rows.</p>
-        <p><b>Still lagging.</b> PR #44’s description cites items 33 to 39 (DECISIONS has 41 to 49), and PR #43’s cites 33 to 35 without 36 to 40. The registry keeps T11, the glove value, open. DECISIONS’ landing-lifecycle heading still says six e2e shards; CI runs 8. GitHub still flags merged #23 and #25 as drafts. <code>PLAN:w2h:live-og-card</code> is half observed. All are the session’s to correct.</p>
-      </div>
-    </article>
-  </div>
-</section>
-
-<section id="open">
-  <h2>Open, and what is waiting on you</h2>
-
-  <div class="two">
-    <div>
-      <h3>Waiting on you: two device runs, two feel checks, one upload, one optional keystroke</h3>
-      <ul class="list">
-        <li><span class="pill warn">asked</span> <strong>Lanes L1 and L5 on a real iPhone and iPad</strong> (new). CI runs Chromium only, with the API deleted and touch emulated, so this is the only WebKit and finger proof. L1 is live now: in Safari on each, die once (a mob or a fall) and see YOU DIED, not “Something went wrong”, tap Respawn and play on; tap the gear and see Settings open; on the iPad with a keyboard, Tab, J, H and B open their panels; and watch for a zoom on a quick double tap of a HUD button. L5 is live now too, since 03:39Z on 10-31: open a chest by tapping it in the world and watch a mob stop; with a keyboard, type “Hobbit Hole” into Manage Worlds &gt; Create New World; tap the tray’s Build and see it stay open; on a Mac, spin the mouse wheel fast and see how many slots it moves. Note the iPadOS and Safari versions. Nothing waits on it.</li>
-        <li><span class="pill warn">asked</span> <strong>The box fix in your hands, on your 120 Hz display.</strong> On the live site, near the ocean where it happened, place and mine chaotically against walls, on steps and while walking; save and load; swap into the bull and the golem in a tunnel. Does anything ever hold you? Both the box fix and the chaos gate’s seven fixes lean on frames that take no physics step, every other frame at 120 Hz: the node and CI runs model that case, but none plays it on your display. Nothing waits on it.</li>
-        <li><span class="pill idle">when ready</span> <strong>Chunks 4 to 6 of <code>/code-review ultra</code></strong> (UI, render, audio and the rest), if you want the whole game reviewed. They are already split under the 8,000-line limit in the local review repo. Account 3’s three free runs are spent; the registry’s next step for them names account 2’s free runs, and a run past an account’s free three is billed as usage credits, which the session may not spend. It is your keystroke, and nothing waits on it.</li>
-        <li><span class="pill warn">asked</span> <strong>The social preview.</strong> On GitHub, open the repository’s Settings &gt; General &gt; Social preview and upload <code>docs/media/social-preview.jpg</code> (1280x640, blue hour at the Hearth). GitHub has no API for it. At 03:00Z on 10-31 the GraphQL field <code>usesCustomOpenGraphImage</code> still read false; the session checks it reads true afterwards and closes the row. Nothing waits on it.</li>
-        <li><span class="pill warn">asked</span> <strong>The HUD on a real iPad and a phone</strong> (STATUS:#44, asked since version 9): does the screen read as world at rest, and do Tab, J, B and H (and the tray’s Character, Talk, Build and Journal) find what you want? While there, the dragon’s ground tells, the audio mix by ear, the Forge card, the gauntlets in each beast form, and Pause tapped while another finger holds the joystick. Nothing waits on it.</li>
-        <li><span class="pill idle">optional</span> <strong>The watts A/B.</strong> Run <code>frontend/scripts/dev/power-ab.sh</code> at your own terminal on the M3 Max; it asks for your sudo password once, because powermetrics needs root. It would show whether deleting N8AO cut watts, heat and fan noise.</li>
-      </ul>
-      <p class="muted">The registry names you on 15 open rows (3 HIGH): new since version 10, the two device runs and the fast macOS wheel spin; and, as before, the social preview upload, the real-device playtest and how a session feels (three rows), the touch-resume check, your iPad’s versions, the power A/B, the multiplayer and monetization scope (S4, two rows), the retention for backup and snapshot refs (K55(c), two rows), and the reply to pmndrs/postprocessing#750, an external send that needs your OK. The scope, retention and send rows are not asked of you now.</p>
-    </div>
-    <div>
-      <h3>Open for the session</h3>
-      <ul class="list">
-        <li><strong><code>449ce3ea</code> is deployed</strong> (done, new): it went out inside the deployment of <code>f87f2324</code> at 03:39:10Z on 10-31, and both hosts served the new chunk at 03:53Z, so L5 is live. <span class="gap">Still open: why Vercel gave <code>449ce3ea</code> no status and no deployment of its own; the cause is on Vercel’s side and unread.</span></li>
-        <li><strong>Land L2 and L4</strong> as their reviews pass, then the audit’s remaining lanes by harm (L3, L8, L6, L7, L9, L10, L12); then the First Night (W3-A), the dragon’s Units 5 to 9, W2-M (sound) and the feats (MED).</li>
-        <li><strong>Flakes at the retry limit.</strong> CI allows two retries, and two cases used all three tries on a run’s first attempt, so that attempt failed and only a rerun passed: <code>mob-floor.spec.js:227</code> on PR #66’s run <code>41153250480</code>, and the dragon fight’s parry case (<code>:88</code>) on PR #64’s run <code>41137651081</code>. The first also failed first tries on #61 and #62, the second on #61 and #63; the dragon’s damage-path case (<code>:311</code>) failed its first try on #63’s and #64’s runs too. <code>quest-text.spec.js:54</code>, <code>the-cut.spec.js:199</code>, <code>talents.spec.js:252</code> and <code>forge.spec.js:143</code> each failed a first attempt again. Two new ones on #66’s rerun: a left click into a frozen world in <code>place-clear-of-player.spec.js:275</code>, and the gear tap that a canvas intercepted. Each has a row; none is fixed.</li>
-        <li><strong>The review residue (new), each a registry row</strong> (<code>31a42067</code>, 21 rows): the chaos gate’s tolerance pin, its corner probes 2.3 cm short, its own-block rule, the unmeasured removed-mesh ray and a spawn retry that never retries; L1’s ESLint ban, its copy selectors and five unpinned seams; L5’s relock grants and records; L4’s blind spots, the spawn corner dug through the floor and the cave holes in the world’s floor; L11’s records and wiring pins.</li>
-        <li><strong>CodeQL:</strong> seven alerts open on main at 03:00Z on 10-31 (five high, two medium), unchanged since version 10. #12 at <code>bundle-budget.mjs:276</code> has a row (MED); the six older ones are in test and script files and have none.</li>
-        <li><strong>Before version 10:</strong> nothing gates the dragon holding still through a windup (MED); W2-D’s residue (notification literals outside the dictionary, MED); whether shields and armour return (MED); owed proofs of the Forge’s prices, the relic drop rates and the talents’ verbs; budgets toward a pixel ratio of 2 (MED); owed looks (live night frames, a snow side, the grass seam, WebKit for the face grammar).</li>
-        <li>The records under Mistakes.</li>
-      </ul>
-    </div>
-  </div>
-
-  <div class="group">
-    <h3>The registry</h3>
-    <div class="ledger">
-      <p><code>memory/registry.jsonl</code> on this page’s branch (<code>a79f8f6a</code>: <code>449ce3ea</code>, the leftovers commit <code>31a42067</code> and main <code>f87f2324</code> merged in) holds 734 rows: 449 open, none in flight and 285 closed, with no id repeated. <strong>Since version 10</strong> (<code>b48ec9f1</code>, 609 rows) 125 rows were added: 76 for the deep audit, 19 for the chaos-play gate, 14 for L5, 5 for L1, 3 for L4, 2 for L11 and 6 e2e flake rows. 32 of them are closed and 93 open (8 HIGH, 29 MED, 56 LOW). Three older rows closed, each by the chaos-play gate: the beast-form swap into the ground, the respawn reading a mined cell, and the gate’s own row. 214 of the open rows are visible to a player. The largest shares of open rows: not yet mapped to a lane 83, the deep audit 57, W2-J 44, W2-F 31, W2-D 25, W3-B 22, W3-D and W2-I 19 each, the chaos-play gate 16.</p>
-      <div class="bar" role="img" aria-label="Open registry rows by severity: 24 high, 103 medium, 304 low, 18 unrated, of 449 open rows">
-        <span class="seg-high" style="flex-grow: 24"></span>
-        <span class="seg-med" style="flex-grow: 103"></span>
-        <span class="seg-low" style="flex-grow: 304"></span>
-        <span class="seg-none" style="flex-grow: 18"></span>
-      </div>
-      <p class="legend"><span class="l-high">HIGH 24</span><span class="l-med">MED 103</span><span class="l-low">LOW 304</span><span class="l-none">unrated 18</span></p>
-      <p class="muted">Owners of the 449 open rows: the command session 431 (21 of them HIGH), you 15 (3 HIGH), AB Command 3.</p>
-    </div>
-  </div>
-</section>
-
-<footer>
-  <p>Sources: <code>origin/main</code>, the lane branches and <code>git log c6571e11..f87f2324</code> read with git; GitHub runs (main runs <code>41102886964</code> to <code>41165264289</code>; PR and land runs <code>41100874754</code>, <code>41116445583</code>, <code>41122240233</code>, <code>41141022094</code>, <code>41157558361</code>, <code>41153250480</code>, <code>41155027315</code>, <code>41162361319</code>, <code>41162831435</code> and <code>41163612143</code>, and the e2e logs of <code>41122240233</code>, <code>41141022094</code>, <code>41149001372</code>, <code>41155027315</code> and <code>41157558361</code> read for their retries and built chunks), PRs #59 to #66, deployments and their commit statuses, CodeQL alerts, branch protection and <code>usesCustomOpenGraphImage</code> read with <code>gh</code> at 02:45 to 03:53Z on 10-31 (the newest three deployments and the status of <code>449ce3ea</code> again at 03:38Z, and the deployments, the commit statuses of <code>449ce3ea</code> and <code>f87f2324</code>, main’s runs, and the heads and runs of #65 and #66 again at 03:47 to 03:53Z); both live hosts’ page and index chunk read with curl at 02:56 and 03:04Z on 10-31, crafty-sand’s page again at 03:16Z, both hosts’ page and the chunk’s size at 03:38Z, and both hosts’ page and the new chunk’s size at 03:53Z; the deep audit’s record; the ultrareview result files and <code>d3e25f84</code>’s count of your screenshots; the lanes’ reports and their static and dynamic reviews (chaos-play rounds 1 to 3, L1, L5, L11 rounds 1 and 2 and L4 round 1, with L11’s round-3 verdicts as the command session reported them); the command session’s session-truth rows from 17:00Z on 10-30 to 02:36Z on 10-31; Agentic Brain episodes 1230 and 1232; DECISIONS.md items 150 to 191 on main, and 190 to 199 on the L4 branch; and <code>memory/registry.jsonl</code> on this branch, compared with <code>b48ec9f1</code>.</p>
-  <p>Not checked: any play on the live site by this page’s writer, so none of the landed lanes in a browser; why Vercel gave <code>449ce3ea</code> no deployment of its own; that the served chunk carries L5’s and L11’s code (read from the deployment of <code>f87f2324</code>, not from the chunk); the in-flight lanes’ newest heads beyond their CI state; L2’s code; what became of 11 of the 27 ultrareview findings.</p>
-</footer>
-
+<p class="foot">Details live in DECISIONS, the registry and the git history on <a href="https://github.com/wowlegend/Crafty">GitHub</a>.</p>
 </div>

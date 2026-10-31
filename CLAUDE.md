@@ -12,7 +12,8 @@ Crafty was built by far weaker models. **Nothing is locked:** the game, architec
 changed or deleted as the command session judges best, with full autonomy. Ask Kevin nothing unless absolutely
 needed; install any tool that helps. A decision stands while it earns its place; reverse it with a new dated DECISIONS
 entry naming the one it supersedes. A lock label in a dated plan binds nothing. Kevin reviews one page, the Command
-Record (`docs/superpowers/command-record.html`), refreshed at every landing. Keep the public face and the docs SOTA.
+Record (`docs/superpowers/command-record.html`), an eli5 page (big pictures, few words; DECISIONS 2026-10-31 item
+280), refreshed at every landing. Keep the public face and the docs SOTA.
 
 **Record every non-routine decision in DECISIONS with its reason** (Kevin, 2026-10-27): a hard delete of a referenced
 file, a new dependency, an external send he approved, a reversal. A large player-facing deletion also records the lived
@@ -37,8 +38,8 @@ tests from `frontend/`.** The cwd drifts and resets after a compaction: never ca
 Stack (versions in `frontend/package.json`): React 19, R3F, Vite, Rapier, zustand, miniplex; JavaScript, npm.
 
 <!-- BEGIN MEASURED (regenerate: node frontend/scripts/ci/measure.mjs --write) -->
-- **Size (measured):** **412 source files / 47,473 LOC** in `frontend/src`, plus 155 colocated tests.
-- **Files ≥ 900 LOC (3):** `src/Components.jsx` 1641 · `src/store/useGameStore.jsx` 1332 · `src/QuestSystem.jsx` 1059. `doc-currency` checks the list exactly and the
+- **Size (measured):** **413 source files / 47,686 LOC** in `frontend/src`, plus 156 colocated tests.
+- **Files ≥ 900 LOC (3):** `src/Components.jsx` 1641 · `src/store/useGameStore.jsx` 1332 · `src/QuestSystem.jsx` 1071. `doc-currency` checks the list exactly and the
   numbers within ±10%; regenerate before trusting one: `node frontend/scripts/ci/measure.mjs --write`.
 <!-- END MEASURED -->
 
