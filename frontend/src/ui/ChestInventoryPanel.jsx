@@ -4,12 +4,15 @@ import { m } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 import { Panel, Button, Icon, Slot } from './primitives/index.js';
+import { useSurfaceProps } from './primitives/Modal.jsx';
 
 export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
     const t = useT();
     const playerInventory = useGameStore(state => state.inventory?.blocks || {});
     const chestsMap = useGameStore(state => state.chests || new Map());
     const transferItem = useGameStore(state => state.transferItem);
+    // While the panel fades out it claims no touch and takes no pointer (ui/primitives/Modal.jsx useSurfaceProps).
+    const surface = useSurfaceProps();
 
     // KEYBOARD OPERABILITY FOR THE TRANSFER TILES. Both grids drive their transfer from onClick on a
     // <Slot>, which renders a plain div — so the only way to move an item between backpack and chest was a
@@ -32,7 +35,7 @@ export const ChestInventoryPanel = React.memo(({ coords, onClose }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             role="dialog"
-            aria-modal="true"
+            {...surface}
             aria-label="Chest"
             tabIndex={-1}
             className="absolute inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-ink/75"

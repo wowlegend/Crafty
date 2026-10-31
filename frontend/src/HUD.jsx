@@ -444,7 +444,12 @@ export function HUD({
       {/* VICTORY is an EVENT of the first dragon's death (world/bossSystem.js 'victory'), never derived from saved
           state — so a reload cannot resurrect it and a return kill never raises it (review #4, R5.5). */}
       {victoryPending && (
-        <VictoryOverlay onDismiss={() => useGameStore.setState({ victoryPending: false })} />
+        <VictoryOverlay onDismiss={() => {
+          useGameStore.setState({ victoryPending: false });
+          // The screen took the pointer back when it went up (InputManager); the click on Keep exploring is the gesture
+          // that can take it again. On touch there is no lock, and play was never dropped.
+          requestGameLock(useGameStore.getState());
+        }} />
       )}
 
       {isPointerLocked && (

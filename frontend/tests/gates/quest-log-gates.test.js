@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
 import { createElement } from 'react';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, renderHook, act } from '@testing-library/react';
+import { useInputManager } from '../../src/InputManager.jsx';
+import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -105,11 +107,14 @@ describe('the quest log is a real modal, closable the ways a modal must be', () 
   });
 
   it('and the GLOBAL Escape path clears the flag that opens it', () => {
-    // The other half, at the layer that owns it: InputManager's Escape branch closes every panel, and
-    // the quest log has to be in that list or Escape leaves it stranded on screen. Structural because
-    // the handler needs the live store and a mounted InputManager; anchored to the setter call form.
-    expect(read('InputManager.jsx'), 'Escape does not close the quest log — it would stay open')
-      .toMatch(/state\.setShowQuestLog\(false\)/);
+    // The other half, at the layer that owns it: InputManager's Escape branch closes every panel. Driven, not grepped:
+    // the real hook mounted over the live store, the log open, one Escape keydown.
+    useGameStore.setState({ showQuestLog: true, requestPointerLock: null });
+    const hook = renderHook(() => useInputManager({}, { isAlive: true }));
+    expect(useGameStore.getState().showQuestLog, 'SETUP: the quest log did not open').toBe(true);
+    act(() => { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true, cancelable: true })); });
+    expect(useGameStore.getState().showQuestLog, 'Escape does not close the quest log — it would stay open').toBe(false);
+    hook.unmount();
   });
 
   it('the close button closes it too', () => {

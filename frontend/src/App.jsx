@@ -142,7 +142,7 @@ function GameApp({ experienceSystem }) {
   // the lock-change event arrives), so the old keydown-driven settings branch was
   // unreachable in the very state it targeted — ESC dumped players on the title menu
   // instead. The pause menu now opens on the active true->false TRANSITION, here in App
-  // where ALL panel flags (store + the 4 React-local) are visible: a panel-open unlock is
+  // where ALL panel flags are visible: a panel-open unlock is
   // suppressed (the flag is set before the lock exits), death is suppressed (the
   // DeathScreen owns it), pre-game is suppressed (gameStarted).
   // The decision is panelState.js shouldOpenPauseOnUnlock, over the SINGLE canonical panel set — it replaced a
@@ -311,8 +311,8 @@ function GameApp({ experienceSystem }) {
         />
       )}
 
-      {/* Phase 0c (F9): the Talents panel's flag is App-local (useInputManager), so touch gets it as props — the
-          locked ring sector opens it (nothing else on touch can), and tap-to-play stays off it while it is open. */}
+      {/* Phase 0c (F9): touch gets the Talents and Feats flags and the Talents opener as props — the locked ring sector
+          opens Talents (nothing else on touch can), and tap-to-play stays off it while it is open. */}
       <TouchControls isWorldBuilt={isWorldBuilt} talentsOpen={showSpellUpgrades} otherPanelOpen={showAchievements}
         onOpenTalents={() => openTalents(useGameStore.getState(), { setShowSpellUpgrades, setShowAchievements })} />
 

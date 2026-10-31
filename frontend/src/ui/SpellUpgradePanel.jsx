@@ -5,6 +5,7 @@ import { m } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore';
 import { useT } from '../i18n/i18n.js';
 import { Panel, Button, Icon } from './primitives/index.js';
+import { useSurfaceProps } from './primitives/Modal.jsx';
 import { ASPECT_TREES, canUnlockTalent, talentBlockedBy } from '../game/talentTree.js';
 import { ASPECT_GUIDE } from '../game/aspectGuide.js';
 
@@ -28,6 +29,8 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
         return () => clearTimeout(id);
     }, [respecArmed]);
     const getPlayerLevel = useGameStore(state => state.getPlayerLevel);
+    // While the panel fades out it claims no touch and takes no pointer (ui/primitives/Modal.jsx useSurfaceProps).
+    const surface = useSurfaceProps();
     const playerLevel = getPlayerLevel ? getPlayerLevel() : 1;
 
     return (
@@ -36,7 +39,7 @@ export const SpellUpgradePanel = React.memo(({ onClose }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             role="dialog"
-            aria-modal="true"
+            {...surface}
             aria-label={t('a11y.progression')}
             tabIndex={-1}
             className="absolute inset-0 z-50 overflow-y-auto bg-ink/75"

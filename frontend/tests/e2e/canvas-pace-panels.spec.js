@@ -75,8 +75,8 @@ test('30 fps behind a panel, 10 unfocused, 60 otherwise, and never paced under c
   await page.keyboard.press('F3');
   await settle();
 
-  // A React-LOCAL panel (InputManager's useState, not the store): the Journal's feats tab, opened by J and a click on the
-  // tab (the HUD lane folded the Tab achievements panel into the Journal). Last before capture, because closing it asks
+  // The Journal's feats tab, opened by J and a click on the tab (the HUD lane folded the Tab achievements panel into the
+  // Journal), a flag App hands MenuSystem as a prop. Last before capture, because closing it asks
   // for the pointer lock back, which a headless page refuses.
   await page.keyboard.press('KeyJ');
   await page.getByTestId('panel-tab-feats').click();

@@ -62,6 +62,7 @@ import { swingOrigin, steadyEye, EYE_HEIGHT_M, EYE_BOB_M } from './combat/swingO
 import { moveKinematic, placeBody } from './game/kinematicMove.js';
 import { routeMouseVerb, AIM_CONE_RANGE, AIM_CONE_ARC } from './input/verbRouter';
 import { routeExpressVerb } from './input/expressVerbs.js';
+import { isInputLive } from './input/inputLive.js';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
@@ -432,7 +433,7 @@ export const Player = ({ isWorldBuilt }) => {
       // unrequested 0.4s roll with i-frames the instant pointer lock came back. blurReset only fires on
       // window blur, and the window keeps focus while a panel is open.
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        if (getInput().active && useGameStore.getState().isAlive) setIntent('dodge', true);
+        if (isInputLive(useGameStore.getState(), getInput().active)) setIntent('dodge', true);
       }
 
       // S2-B1-M3: roar -> the abstract 'roar' intent (consumed by the transform SM in useFrame).
@@ -464,8 +465,8 @@ export const Player = ({ isWorldBuilt }) => {
       }
 
       // 2026-06-28 (Kevin): magic spells are the marquee feature -> the prime F key CASTS the
-      // selected spell; melee moves to T. Both gate on active+alive like every other live verb.
-      const express = routeExpressVerb(e.code, { active: getInput().active, isAlive: useGameStore.getState().isAlive });
+      // selected spell; melee moves to T. Both gate on input being live, inside the router, like every other live verb.
+      const express = routeExpressVerb(e.code, useGameStore.getState(), getInput().active);
       if (express === 'cast') triggerSpellCast();
       else if (express === 'melee' && !e.repeat) { // a held T CHARGES a heavy now; its key-repeat used to spam taps
         triggerMeleeAttack();
@@ -515,12 +516,12 @@ export const Player = ({ isWorldBuilt }) => {
     // #72 VERB ROUTER (unchanged logic): extracted to performVerb(button) so the touch overlay
     // (M1) reuses the identical ctx-build + routeMouseVerb dispatch (spec section 2 seam table).
     const performVerb = (button) => {
-      if (!getInput().active) return;
       if (button !== 0 && button !== 2) return;
       const store = useGameStore.getState();
       // KEVIN-FIX C2: fire shares movement's gates — dead players don't shoot (the old
-      // asymmetry presented as "can fire but cannot move" whenever the booleans disagreed).
-      if (!store.isAlive) return;
+      // asymmetry presented as "can fire but cannot move" whenever the booleans disagreed). The one predicate
+      // (input/inputLive.js) adds the surfaces: no click behind a panel, VICTORY or the context-loss panel is a verb.
+      if (!isInputLive(store, getInput().active)) return;
       if (!rigidBodyRef.current) return;
 
       const lookDir = new THREE.Vector3();
@@ -605,7 +606,7 @@ export const Player = ({ isWorldBuilt }) => {
       performVerb,
       setState: useGameStore.setState,
       getState: useGameStore.getState,
-      isInputLive: () => getInput().active && useGameStore.getState().isAlive,
+      isInputLive: () => isInputLive(useGameStore.getState(), getInput().active),
       throwHeavy: () => triggerMeleeAttack({ heavy: true }),
       now: () => performance.now(),
     });
@@ -691,14 +692,19 @@ export const Player = ({ isWorldBuilt }) => {
     // Wake up physics body
     rigidBodyRef.current.wakeUp();
 
+    // Input is live (input/inputLive.js): the gate is open, the player is alive and no surface covers the game. Read once
+    // for the frame; the Aspect machines and the walk below all take it, so a chest opened from the world on touch, which
+    // drops no gate, stops them too. Transient reads, no subscription (Game-Loop Isolation).
+    const inputLive = isInputLive(useGameStore.getState(), getInput().active);
+
     // S2-B1-M3: tick the beast-transform state machine (the ROAR verb) HERE — below the capture
     // early-return (so it NEVER ticks under the visual gate) but ABOVE the dead-window early-return
     // below, so an in-flight roar charge CANCELS at the death edge via the SM's own `!alive` guard
     // instead of tunnelling through the dead window and auto-firing on respawn (review B1). Reads the
     // abstract `roar` intent transiently (never a raw key) + drives the M1 enter/exitBeastForm store
     // authority; the store's beastFormActive is the single active-truth, the SM owns only the charge +
-    // duration/cooldown timers. `active` (input-live) is the deliberate modal proxy — every modal-open
-    // path exits pointer-lock -> active=false -> no transform mid-menu. (No setIntent('roar',false) on
+    // duration/cooldown timers. `active` is the frame's inputLive above, so no transform starts under a
+    // panel or any other surface, whichever way it opened. (No setIntent('roar',false) on
     // exit: the roarEdge + cooldown already block instant re-trigger.) `canEnter` is the wildheart_roar talent and
     // `canPay` a full ember bar. set() fires only on transitions.
     //
@@ -718,7 +724,7 @@ export const Player = ({ isWorldBuilt }) => {
         isBeast: st.beastFormActive,
         roar,
         roarEdge,
-        active: rin.active,
+        active: inputLive,
         alive: st.isAlive,
         now: state.clock.getElapsedTime(),
         // The Primal Roar talent and a full ember bar (the roar is a signature ability, not free); both gate the charge's
@@ -798,7 +804,7 @@ export const Player = ({ isWorldBuilt }) => {
         grabEdge,
         attack: vAtk,
         cast: vCast,
-        active: vin.active,
+        active: inputLive,
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
         canGrab: stv.unlockedTalents?.['voidhand_grasp'] > 0,
@@ -878,7 +884,7 @@ export const Player = ({ isWorldBuilt }) => {
       const squadCap = vmods.squadCap;
       const { sm: ssm, action: saction } = decideSoulbind(soulbindSMRef.current, {
         snareEdge,
-        active: vin.active,
+        active: inputLive,
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
         canSnare: (stv.unlockedTalents?.['soulbind_snare'] > 0) && alliesQuery.entities.length < squadCap,
@@ -927,7 +933,7 @@ export const Player = ({ isWorldBuilt }) => {
       }
       const { sm: fsm, action: faction } = decideFuse(fuseSMRef.current, {
         fuseEdge: snareEdge, // the same key edge; the arbiter above kept it exclusive
-        active: vin.active,
+        active: inputLive,
         alive: stv.isAlive,
         now: state.clock.getElapsedTime(),
         canStart: !!fusePair && !!lookupHybrid(fusePair[0].baseType || fusePair[0].type, fusePair[1].baseType || fusePair[1].type),
@@ -971,7 +977,7 @@ export const Player = ({ isWorldBuilt }) => {
       const { sm: ism, action: iaction } = decideImbue(imbueSMRef.current, {
         imbueEdge,
         castFired: false,
-        active: vin.active,
+        active: inputLive,
         alive: stv.isAlive,
         canIgnite: stv.unlockedTalents?.['elemancer_imbue'] > 0,
         owned: (stv.unlockedTalents?.['elemancer_imbue'] ?? 0) > 0,
@@ -1125,10 +1131,10 @@ export const Player = ({ isWorldBuilt }) => {
     // notice. A guard that cannot fire is not insurance; it is a claim that something is handled.
 
     // READER: read the live intent object ONCE per frame (transient, alloc-free — Game-Loop
-    // Isolation). `input.active` is the centralized gate that replaces the old scattered
-    // raw pointer-lock reads; movement/dodge read input.moveF/.moveB/.moveL/.moveR.
+    // Isolation). The frame's inputLive (above) is the gate, built on getInput().active, which replaced
+    // the old scattered raw pointer-lock reads; movement/dodge read input.moveF/.moveB/.moveL/.moveR.
     const input = getInput();
-    const isLocked = input.active;
+    const isLocked = inputLive;
 
     // Handle dodge roll state machine
     const dodge = dodgeStateRef.current;

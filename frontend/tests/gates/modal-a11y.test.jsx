@@ -18,9 +18,12 @@ describe('#52 Modal primitive (a11y + focus)', () => {
     expect(d).toHaveAttribute('tabindex', '-1');
   });
 
+  // A backdrop click is a press that began on the backdrop and the click it makes (lane L5: a click whose press began
+  // elsewhere, such as the tap that opened the panel, does not close it; tests/gates/modal-surface-gates.test.jsx).
   it('backdrop click calls onClose by default', () => {
     const onClose = vi.fn();
     render(<Modal label="T" onClose={onClose}><div>body</div></Modal>);
+    fireEvent.pointerDown(screen.getByRole('dialog'));
     fireEvent.click(screen.getByRole('dialog'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -28,6 +31,7 @@ describe('#52 Modal primitive (a11y + focus)', () => {
   it('dismissOnBackdrop=false does NOT close on backdrop click', () => {
     const onClose = vi.fn();
     render(<Modal label="T" onClose={onClose} dismissOnBackdrop={false}><div>body</div></Modal>);
+    fireEvent.pointerDown(screen.getByRole('dialog'));
     fireEvent.click(screen.getByRole('dialog'));
     expect(onClose).not.toHaveBeenCalled();
   });

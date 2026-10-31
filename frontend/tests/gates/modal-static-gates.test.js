@@ -33,7 +33,8 @@ describe('#52 S1 modals use the shared Modal primitive', () => {
   it('the Modal primitive renders a role=dialog with aria-modal + capture-gated focus', () => {
     const m = read('ui/primitives/Modal.jsx');
     expect(m).toMatch(/role="dialog"/);
-    expect(m).toMatch(/aria-modal="true"/);
+    // aria-modal is set per presence (useSurfaceProps: there while up, gone while the panel leaves). It is read off the
+    // rendered DOM, up and leaving, by tests/gates/modal-surface-gates.test.jsx, not grepped here.
     expect(m).toMatch(/aria-label=\{label\}/);
     expect(m).toMatch(/if \(!isCaptureMode\(\)\) dialogRef\.current\?\.focus\(\)/);
   });
@@ -64,15 +65,17 @@ describe('#52 S2 capture-state modals carry role=dialog (zero-pixel a11y)', () =
     // aria-label="Progression" with aria-label={t('a11y.progression')}, and this gate — which pins the
     // a11y contract, not the English — went red. Requiring an untranslatable literal would have forced a
     // choice between an accessible dialog and a localisable one; both forms satisfy the actual contract.
+    // aria-modal comes from useSurfaceProps (read off the rendered panel by tests/gates/modal-surface-gates.test.jsx).
     expect(src).toMatch(
-      /role="dialog"[\s\S]{0,120}aria-modal="true"[\s\S]{0,120}aria-label=(?:"Progression"|\{t\('a11y\.progression'\)\})[\s\S]{0,120}tabIndex=\{-1\}/
+      /role="dialog"[\s\S]{0,120}aria-label=(?:"Progression"|\{t\('a11y\.progression'\)\})[\s\S]{0,120}tabIndex=\{-1\}/
     );
     expect(src).toMatch(/role="dialog"[\s\S]{0,200}overflow-y-auto/);
   });
 
   it('ChestInventoryPanel motion.div backdrop gains role=dialog + keeps overflow-y-auto', () => {
     const src = read('ui/ChestInventoryPanel.jsx');
-    expect(src).toMatch(/role="dialog"[\s\S]{0,120}aria-modal="true"[\s\S]{0,120}aria-label="Chest"[\s\S]{0,120}tabIndex=\{-1\}/);
+    // aria-modal comes from useSurfaceProps (read off the rendered panel by tests/gates/modal-surface-gates.test.jsx).
+    expect(src).toMatch(/role="dialog"[\s\S]{0,120}aria-label="Chest"[\s\S]{0,120}tabIndex=\{-1\}/);
     expect(src).toMatch(/role="dialog"[\s\S]{0,200}overflow-y-auto/);
   });
 });

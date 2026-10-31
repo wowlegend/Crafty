@@ -210,7 +210,8 @@ describe('C3 — the renderer and the health bar read the tier (weak, structural
     // The VICTORY overlay is the first dragon's: gated on the tier that kill produces, so a return kill after
     // a reload does not announce the win again (review 2026-09-22).
     expect(carriersOf(/\{victoryPending && \(/)).toEqual(['HUD.jsx']);
-    expect(carriersOf(/onDismiss=\{\(\) => useGameStore\.setState\(\{ victoryPending: false \}\)\}/)).toEqual(['HUD.jsx']);
+    // The dismiss clears the event's flag first (it then asks for the pointer again: lane L5).
+    expect(carriersOf(/onDismiss=\{\(\) => \{\s*useGameStore\.setState\(\{ victoryPending: false \}\);/)).toEqual(['HUD.jsx']);
     expect(carriersOf(/showsVictory|victoryDismissed/), 'VICTORY is derived from state again').toEqual([]);
   });
 });

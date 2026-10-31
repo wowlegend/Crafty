@@ -15,7 +15,7 @@ import { ownsTouch } from '../input/touchOwnership';
 import { handleTouchMove, handleTouchEnd, MOVE_KEYS } from '../input/touchHandlers';
 import { TRAY_PANELS, activateTrayRow } from './touchTray';
 import TouchControlsSurface from './TouchControlsSurface';
-import { isAnyPanelOpen } from './panelState.js';
+import { coveringSurfaceUp } from './panelState.js';
 
 /**
  * TouchControls (M1 wiring + M2 visible surface) -- the touch overlay. Capture-safe + desktop-inert
@@ -65,8 +65,8 @@ function dropHolds(roarHold, actionClaim) {
 }
 
 // isWorldBuilt is App-LOCAL useState (App.jsx:105 -- verified NOT a store key) -> passed as a prop.
-// talentsOpen / onOpenTalents are App-LOCAL too (the Talents panel's flag lives in useInputManager): Phase 0c, F9.
-// otherPanelOpen: the other App-local panel flag (Achievements), for the hold cancel below (review F3). Show Stats is not a
+// talentsOpen / onOpenTalents: the Talents panel's flag and its opener, from App (Phase 0c, F9).
+// otherPanelOpen: the Feats (Achievements) flag, from App, for the hold cancel below (review F3). Show Stats is not a
 // panel (ui/panelState.js): it draws a readout in the canvas, and the action button and the roar stay live under it.
 function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTalents }) {
   const t = useT();
@@ -89,12 +89,12 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
   // interactive (no camera-drag fight, no preventDefault eating panel scroll). anyPanel also suppresses
   // tap-to-play so taps reach the panel; the panel's own close (X) returns to the tap-to-play state.
   const anyPanel = useGameStore((s) => s.showInventory || s.showForge || s.showBuildingTools || s.showMagic);
-  // EVERY panel, from the one canonical list (panelState.js), plus the App-local flags the store cannot see. A held
-  // control must not outlive a panel opening (review F3): the WORLD opener (a chest, through the interact verb) does not
-  // lower `active` on touch — there is no pointer lock to lose — so a roar held across it kept charging and committed
-  // the beast form behind the chest, and a held heavy kept slowing the walk and threw on the lift. A boolean selector:
-  // it re-renders only on the open/close transition, so Game-Loop Isolation holds.
-  const storePanelOpen = useGameStore((s) => isAnyPanelOpen(s));
+  // EVERY surface that covers the game (panelState.js coveringSurfaceUp: a panel, VICTORY, the lost-context panel). A
+  // held control must not outlive one going up (review F3): the WORLD opener (a chest, through the interact verb) does
+  // not lower `active` on touch — there is no pointer lock to lose — so a roar held across it kept charging and
+  // committed the beast form behind the chest, and a held heavy kept slowing the walk and threw on the lift. A boolean
+  // selector: it re-renders only on the open/close transition, so Game-Loop Isolation holds.
+  const storePanelOpen = useGameStore((s) => coveringSurfaceUp(s));
   const panelOpen = storePanelOpen || talentsOpen || otherPanelOpen;
   // A hold must end however its control goes away, or the next press has no rising edge and is eaten. Input going
   // dead (pause, death) or a panel opening drops both holds at once — the heavy is CANCELLED, never thrown; the ring
@@ -148,11 +148,12 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
     // open(h), via the interact verb) does not — it gets away with it on desktop only because exiting
     // pointer-lock lowers `active` as a side effect. On touch there is no pointer lock, so opening a chest
     // by walking up to it left `active` true and every tap inside that panel was swallowed by the
-    // look-drag router. Reading PANEL_FLAGS via isAnyPanelOpen instead of lowering `active` in a third
-    // place: two hand-maintained copies of this invariant already drifted once (2026-06-07), which is why
-    // panelState.js exists. Transient getState read at EVENT time — not a subscription, so
-    // Game-Loop-Isolation holds.
-    const touchFocusOpen = () => getInput().active && !isAnyPanelOpen(useGameStore.getState());
+    // look-drag router. Reading the covering surfaces (panelState.js coveringSurfaceUp: every panel, VICTORY,
+    // the lost-context panel) instead of lowering `active` in a third place: two hand-maintained copies of
+    // this invariant already drifted once (2026-06-07), which is why panelState.js exists. Not the death
+    // screen: play stays live on touch at a death (DECISIONS 2026-10-30 item 164). Transient getState read
+    // at EVENT time — not a subscription, so Game-Loop-Isolation holds.
+    const touchFocusOpen = () => getInput().active && !coveringSurfaceUp(useGameStore.getState());
 
     const onStart = (e) => {
       if (!touchFocusOpen()) return; // focus gate: paused, or ANY panel open (see touchFocusOpen)
@@ -216,7 +217,7 @@ function TouchControlsLive({ isWorldBuilt, talentsOpen, otherPanelOpen, onOpenTa
 
   const dispatch = (b) => useGameStore.getState().performVerb?.(b);
   // Focus model (spec section 3 trap-3): touch owns setActive. Tap-to-Play when world is up + alive + not live.
-  // !talentsOpen: the Talents panel's flag is App-local, so `anyPanel` cannot see it, and without this a locked-sector
+  // !talentsOpen: `anyPanel` reads four flags and not the Talents one, and without this a locked-sector
   // tap (which opens Talents and lowers `active`) would put a full-screen tap-to-play over the panel it just opened.
   const showTapToPlay = isWorldBuilt && isAlive && !active && !anyPanel && !talentsOpen;
   // transparent hit-target geometry mirrors the visible glyphs in TouchControlsSurface.

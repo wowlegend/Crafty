@@ -83,7 +83,7 @@ describe('the router is WIRED, and each verb reaches its own trigger', () => {
     // inline copy of the mapping. Anchored to the call form, not a proximity window.
     const comp = read('Components.jsx');
     expect(comp, 'Components no longer calls routeExpressVerb — it has its own copy of the binding')
-      .toMatch(/routeExpressVerb\(e\.code,\s*\{[^}]*active:[^}]*isAlive:[^}]*\}\)/);
+      .toMatch(/routeExpressVerb\(e\.code,\s*useGameStore\.getState\(\),\s*getInput\(\)\.active\)/);
   });
 
   it('cast dispatches the spell trigger and melee dispatches the melee trigger', () => {
