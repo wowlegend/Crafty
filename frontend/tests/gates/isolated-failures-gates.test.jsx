@@ -8,7 +8,7 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { GameMethods } from '../../src/GameMethods.js';
 import { blightHeartSite } from '../../src/world/blightHeart.js';
 import { bossTierStats } from '../../src/game/bossTier.js';
-import { ISOLATED_BINDING } from '../e2e/_isolatedFailures.js';
+import { ISOLATED_PREFIX } from '../e2e/_isolatedFailures.js';
 
 // A FAILURE THAT IS ISOLATED IS STILL A FAILURE, AND IT IS SEEN (deep audit 2026-10-30, lane L12;
 // AUDIT:debt:isolation-swallows-errors).
@@ -57,43 +57,17 @@ describe('the dev counter', () => {
   });
 });
 
-// The e2e side collects through the binding the fixture exposes (tests/e2e/_isolatedFailures.js), by the name it exports:
-// a binding survives a reload, so a failure before one is kept. These drive the producer half of that seam.
-describe('the e2e binding: the module arms it at load and reports each failure through it', () => {
-  afterEach(() => { delete window[ISOLATED_BINDING]; });
-
-  it('a fresh load of the module calls the binding once with { kind: "armed" }', async () => {
-    const sent = [];
-    window[ISOLATED_BINDING] = (event) => { sent.push(event); return Promise.resolve(); };
-    vi.resetModules();
-    await import('../../src/game/isolatedEffects.js');
-    expect(sent, 'the module loaded and did not arm the e2e binding').toEqual([{ kind: 'armed' }]);
-  });
-
-  it('a failed effect and a throwing bus subscriber are each sent with where and the message', () => {
-    const sent = [];
-    window[ISOLATED_BINDING] = (event) => { sent.push(event); return Promise.resolve(); };
+// The e2e side collects the console.error lines that start with the prefix it exports (tests/e2e/_isolatedFailures.js),
+// across every load of a test's page. This drives the producer half of that seam: each failure is one console.error
+// call whose first argument starts with that prefix and names where, through both paths that report.
+describe('the e2e side reads the console: each failure is one console.error line under its prefix', () => {
+  it('a failed effect and a throwing bus subscriber each print one error line that starts with the prefix and names where', () => {
     runIsolatedEffects([['the loot grant', () => { throw new Error('no chest'); }]]);
     on(EVENTS.reward, () => { throw new Error('quest reactor'); });
     emit(EVENTS.reward);
-    expect(sent).toEqual([
-      { kind: 'failure', where: 'the loot grant', message: 'no chest' },
-      { kind: 'failure', where: 'the reward event', message: 'quest reactor' },
-    ]);
-  });
-
-  it('a binding that rejects (a page torn down mid-call) does not throw into the game', async () => {
-    window[ISOLATED_BINDING] = () => Promise.reject(new Error('Target closed'));
-    const rejections = [];
-    const onRejection = (e) => rejections.push(e);
-    process.on('unhandledRejection', onRejection);
-    try {
-      expect(() => runIsolatedEffects([['x', () => { throw new Error('y'); }]])).not.toThrow();
-      await new Promise((r) => setTimeout(r, 10));
-      expect(rejections, 'the rejected binding call surfaced as an unhandled rejection').toEqual([]);
-    } finally {
-      process.off('unhandledRejection', onRejection);
-    }
+    const firsts = errorSpy.mock.calls.map((a) => a[0]);
+    expect(firsts).toEqual([`${ISOLATED_PREFIX}the loot grant:`, `${ISOLATED_PREFIX}the reward event:`]);
+    expect(errorSpy.mock.calls.map((a) => a[1]?.message)).toEqual(['no chest', 'quest reactor']);
   });
 });
 

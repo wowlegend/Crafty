@@ -12,7 +12,7 @@ import { test as base, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isolatedFailureTracker, gameEntryOf, ISOLATED_BINDING } from './_isolatedFailures.js';
+import { isolatedFailureTracker, gameEntryOf } from './_isolatedFailures.js';
 import { slimCoverage } from './_coverage.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -45,9 +45,11 @@ export const test = base.extend({
   page: async ({ page, e2eDprCap }, use, testInfo) => {
     if (e2eDprCap != null) await page.addInitScript((cap) => { window.__craftyE2eDprCap = cap; }, e2eDprCap);
     // What the game's isolated reactors and effects throw while this test runs (src/game/isolatedEffects.js), collected
-    // here in Node: the binding survives every reload of the page, and this tracker is this test's alone.
+    // here in Node by listening only: console events and requests keep coming across every reload of the page, and this
+    // tracker is this test's alone. Nothing here calls into the page, because a call is a user gesture there
+    // (tests/e2e/_isolatedFailures.js says how that was found).
     const isolated = isolatedFailureTracker(GAME_ENTRY);
-    await page.exposeBinding(ISOLATED_BINDING, (_source, event) => isolated.onEvent(event));
+    page.on('console', (message) => isolated.onConsole(message.type(), message.text()));
     page.on('request', (request) => isolated.onRequest(request.url()));
     let started = false;
     if (ENABLED) {
@@ -74,7 +76,7 @@ export const test = base.extend({
       // A closed or crashed page has nothing to read; the test's own verdict stands.
     }
 
-    // The verdict on what was collected, after the canvas read above (a round trip to the page, which the binding calls
+    // The verdict on what was collected, after the canvas read above (a round trip to the page, which the console events
     // it sent before are ahead of). Printed for every test, the denominator; raised after the coverage is written, so a
     // failing test still leaves its coverage file. An unread game page fails as well as a counted failure.
     const verdict = isolated.verdict(testInfo.title);
