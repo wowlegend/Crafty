@@ -44,8 +44,8 @@ import { selectHudState } from '../../src/store/hudState.js';
 // The lock is a stand-in: pointerLockElement reads the body while held, exitPointerLock releases it and fires
 // `pointerlockchange`, the store's requester takes it. Components' lock listener is mirrored in one line (onLockChange):
 // active follows the lock and the first lock starts the game. Not covered here: the click itself in a browser (the
-// victory e2e, tests/e2e/victory-input.spec.js), and performVerb, which lives in the R3F Player and reads the same
-// predicate (input/inputLive.js) as the express router does here.
+// victory e2e, tests/e2e/input-live.spec.js), and the R3F Player's half (performVerb, the walk and the Aspect machines),
+// which reads the same predicate (input/inputLive.js) and is gated in tests/gates/player-input-live-gates.test.jsx.
 
 const lock = { held: false, exits: 0, requests: 0, requestsUnderSurface: 0 };
 const onLockChange = () => {
@@ -245,8 +245,9 @@ describe('the pointer is taken again only when no surface remains (AUDIT:input:p
   const PANEL_KEYS = [['KeyB', 'b'], ['KeyJ', 'j'], ['KeyH', 'h'], ['Tab', 'Tab']];
   const UNDER = [
     { name: 'the trade panel (G to the merchant)', open: () => { addVillager('merchant'); key('KeyG', 'g'); }, flag: 'showTradingInterface' },
-    // Terrain's open(): the chest's coordinates, its flag, and the release.
-    { name: 'a chest (Terrain open)', open: () => act(() => { const s = useGameStore.getState(); s.setActiveChestCoords('3_4_5'); s.setShowChestInterface(true); document.exitPointerLock(); }), flag: 'showChestInterface' },
+    // Terrain's open(): the chest's coordinates and its flag. It releases nothing itself: the chest is a covering surface,
+    // and InputManager gives the pointer back for every one.
+    { name: 'a chest (Terrain open)', open: () => act(() => { const s = useGameStore.getState(); s.setActiveChestCoords('3_4_5'); s.setShowChestInterface(true); }), flag: 'showChestInterface' },
   ];
 
   it('a panel key pressed twice over the trade panel or a chest never locks the pointer with a panel drawn, and play resumes', () => {
