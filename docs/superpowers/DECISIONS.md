@@ -550,7 +550,11 @@ said more than was proven. Each stands while it earns its place.
    name has 0 word matches across `frontend/src`, the tests (e2e included), the scripts, `ci/` and `.githooks/` after
    the cut. `setBuildingMode` and `setSelectedBuildBlock` stay for lane L6 (PR #68), which is reworking the building
    tools that own them; the store hunks L6 also makes are written as L6 writes them, so the two merge cleanly. This is
-   code players never ran, out of their download (item 295).
+   code players never ran, out of their download (item 295). L6 then landed (main a05bf328, its item 279) with 13 of
+   these setters and `checkNearbyChest` deleted in the same hunks, `setSelectedBuildBlock` deleted and `setBuildingMode`
+   given its caller (the Building Tools panel); this lane's merge of it (3d92e494) adds to L6's cut only
+   `setDamageBoss`, `setGetBossPosition`, `setBossActive` and `isBossActive`, and the audit's store-key hunter lists no
+   `set*` member without a caller.
 292. **A save with no quest log loads a fresh log, its key null or absent** (round-1 static 2, dynamic F3; corrects item
    253). `loadWorldData` kept the session's log when a save had no `questState` key, so an in-place load of a save from
    before the log carried the world loaded before's quests, counters and achievements into it; item 253 and the comment
@@ -579,7 +583,9 @@ said more than was proven. Each stands while it earns its place.
 295. **The lane fits under the index ceiling, 652,500 B, with no raise** (item 282, the command session's ruling,
    supersedes item 257). Measured with `npm run build` on the merge of main 2ab00451 into the lane (94915136): the index
    chunk is 647,955 B, 4,545 B under the ceiling, against main's 645,324 B, so the lane adds 2,631 B net; the budget
-   script's own reading is 632.8 KB of 637.2 KB with every marker check passing. Round 1 measured its growth at 3,515 B
+   script's own reading is 632.8 KB of 637.2 KB with every marker check passing. With lane L6 merged in too (main
+   a05bf328, merged as 3d92e494) the index is 649,549 B, 2,951 B under the ceiling (634.3 KB of 637.2 KB). Round 1
+   measured its growth at 3,515 B
    on its own builds, so round 2's fixes and cuts net to about 884 B less (derived from the two measurements, not
    measured per commit). What offsets the growth is the code item 291 deleted, which players never ran. Tried and
    dropped: installing the squad's persistence from a lazy chunk. The squad gate went red on it ("the save holds no
