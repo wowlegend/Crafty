@@ -162,8 +162,17 @@ L7). Each item names what in items 310-317 it supersedes.
      `REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached`) and `light-pool.spec.js:25` (programs 108 to 109 on two
      attempts, `REVIEW:w2f:light-pool-first-attempt-programs`). The run before it, 41221423846 on `541a3b7d`, failed only
      where this round expected: knip on the new dependency (item 357) and the two entries (item 350); its one retry,
-     `quest-text.spec.js:54`, is `REVIEW:e2e-flakes:quest-text-no-frame-while-held`. Main then moved to `61696120` (lane
-     L10), so the lane head that carries this item is a merge of it, and that head's own CI run is the lane's verdict.
+     `quest-text.spec.js:54`, is `REVIEW:e2e-flakes:quest-text-no-frame-while-held`.
+   - **Main moved to `61696120` (lane L10) and was merged (`8966b318`); its run, 41226199357, failed** on L10's
+     `music-bus.spec.js`, three attempts, because the first isolated-failure fixture called into the page (item 352).
+   - **The listening fixture's head, `72c9fe6e`: run 41229273516, `ci ok` success**, every job green and no retry at all.
+     `music-bus.spec.js` passed on its first attempt; "MUST_REACH: 69 of 69 entry points ran (in 69 modules)", 400 of 418
+     modules evaluated; 112 `[isolated-failures]` lines (105 "0 over 1 page load(s)", 3 "0 over 2", 1 "0 over 3", 3 "not a
+     game page"), none unread, none failed. The throwaway ref `land/l12-fix2-mutants-2` (`27bd8de8`, that head plus only
+     the smoke.spec throw before a reload), run 41229307736, failed one job, the shard with smoke.spec, which failed all
+     three attempts with "1 isolated failure(s) while this test ran (over 2 page load(s)), the last: the reward event:
+     Error: L12 round 2 mutant reactor before a reload, listening"; its merged job read 69 of 69, and its one other retry
+     was `dragon-fight.spec.js:311` (`REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached`).
    - **What the merge of main `61696120` (lane L10) changed in the lane's ledgers.** L10 landed a new capture guard in
      `src/ui/MusicPlayer.jsx` (`if (isCaptureMode()) {` at a gesture, commit `3b8e5e77`) before this ratchet reached main,
      so the merged tree holds 3 there and the ledger takes 3, the one rise in this lane's ledgers that is not a wider
@@ -180,7 +189,7 @@ L7). Each item names what in items 310-317 it supersedes.
      a commit hook's related run (`REVIEW:test-flakes:quest-chest-timer-after-teardown`).
    - **Process:** one run of `tests/gates/` (330 files) went outside the suite lock at 2 workers when an empty variable
      widened a single-spec command; every full-suite run used the lock and 4 workers. The throwaway refs are the command
-     session's to delete (`REVIEW:l12:throwaway-mutant-refs`), and so is the local branch `scratch/l12-fix2-mutants`.
+     session's to delete (`REVIEW:l12:throwaway-mutant-refs`; `land/l12-fix2-mutants-2` too), and so are the local branches `scratch/l12-fix2-mutants` and `scratch/l12-fix2-mutants-2`.
    - **Open rows:** `REVIEW:l12:world-manager-unreached-by-e2e`, `REVIEW:l12:coverage-before-a-navigation-unrecorded`,
      `REVIEW:l12:source-flow-limits`, `REVIEW:l12:history-comments-ledger` (117 left), `REVIEW:l12:context-loss-mutants-unobserved`,
      `REVIEW:l12:isolated-failure-invisible-in-production`. Closed: `REVIEW:l12:reach-grain-is-the-module`.
