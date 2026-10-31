@@ -132,6 +132,8 @@ describe('the worker\'s strikes during the reveal', () => {
     // A spider 3 m across from the body: toward the body is straight along -x, toward the reveal camera mostly along -z.
     const spider = ecs.add({ isMob: true, id: 'leaper', type: 'spider', position: { x: BODY.x + 3, y: BODY.y - 0.45, z: BODY.z }, health: 50 });
     added.push(spider);
+    // The archer is a live mob too: a strike whose mob the reply outlived is dropped (game/perfectDodge.js strikesToApply).
+    added.push(ecs.add({ isMob: true, id: 'archer', type: 'skeleton', position: { x: BODY.x - 8, y: BODY.y, z: BODY.z + 3 }, health: 50 }));
     worker.live.onmessage({ data: { type: 'TICK_RESULT', updates: [], attacks: [
       { type: 'projectile', id: 'archer', position: [BODY.x - 8, BODY.y, BODY.z + 3] },
       { type: 'leap', id: 'leaper' },
