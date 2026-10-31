@@ -85,8 +85,8 @@ describe('static gates', () => {
   //
   // DOCUMENTED EXCLUSION from the backdrop-blur check (NOT from the class checks):
   //   • ui/DebugOverlay.jsx — DEV-only debug tool, never shipped game chrome.
-  // App.jsx is NOT excluded: its loading screen is shown in play over the live canvas when Start is clicked before the
-  // world is built, and it is opaque and still there (DECISIONS 2026-10-31 item 370), so a blur in App.jsx reds here.
+  // App.jsx is NOT excluded: its world-building caption is shown in play over the live canvas when Start is clicked
+  // before the world is built, and it is a still caption there (DECISIONS 2026-10-31 item 371), so a blur in App.jsx reds here.
   // The exclusion applies ONLY to backdrop-blur; the class bans below cover DebugOverlay too.
   //
   // FOLDED IN (S1-C-M2d): SimplifiedNPCSystem.jsx — the NPC trading modal + dialogue

@@ -296,16 +296,16 @@ function GameApp({ experienceSystem }) {
       {/* Another tab saved this world: this tab stops saving, and offers the reload (ui/SlotConflictPanel.jsx). */}
       <SlotConflictPanel />
 
-      {/* The loading screen while the spawn chunk is built; a Start clicked before then shows it in play, over the live
-          canvas and under the pointer lock. Opaque and still: under the lock the page must drain every pointer update it
-          is sent, and on a software compositor a translucent, blurred, animated layer over the canvas left it
-          unable to (DECISIONS 2026-10-31 item 370; tests/e2e/start-before-built.spec.js). */}
+      {/* The world is being built: shown under the title, and in play when Start is clicked before the spawn chunk is up.
+          A still caption at the foot of the screen, not a layer over the canvas: in play the page must drain every pointer
+          update the lock sends it, and on a software compositor a layer covering the live canvas left it unable to, most
+          of all a translucent, blurred, animated one (DECISIONS 2026-10-31 items 370-371; tests/e2e/start-before-built.spec.js). */}
       {!isWorldBuilt && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black pointer-events-auto">
-          <h2 className="text-3xl font-bold text-white mb-2 font-mono tracking-widest" style={{ textShadow: '0 0 10px rgba(74, 222, 128, 0.8)' }}>
+        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-50 flex flex-col items-center">
+          <h2 className="text-3xl font-bold text-white mb-2 font-mono tracking-widest" style={{ textShadow: '0 0 10px rgba(74, 222, 128, 0.8), 0 2px 8px rgba(0, 0, 0, 0.9)' }}>
             {t('world.generating')}
           </h2>
-          <p className="text-green-400 font-mono text-sm">{t('world.buildingTerrain')}</p>
+          <p className="text-green-400 font-mono text-sm" style={{ textShadow: '0 1px 8px rgba(0, 0, 0, 0.9)' }}>{t('world.buildingTerrain')}</p>
         </div>
       )}
 
