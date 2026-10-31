@@ -3,7 +3,9 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { registryCounts, cursorSummary, mainLine, productionNote, parseWorktrees, ciVerdict, prLine, liveProduction } from '../../scripts/dev/orient.mjs';
+import {
+  registryCounts, registryLines, registryView, cursorSummary, mainLine, productionNote, parseWorktrees, ciVerdict, prLine, liveProduction,
+} from '../../scripts/dev/orient.mjs';
 
 // Sited in tests/scripts/: the subject is a tooling script. The pure parts are driven with fixtures whose answers are
 // known by construction; the last case EXECUTES the CLI in a tree with no git and no `gh`, where it must still print.
@@ -15,7 +17,51 @@ describe('orient — registry counts', () => {
     const text = [row('open'), row('open', 'Kevin'), row('in-flight'), row('closed'), row('closed'), 'not json', ''].join('\n');
     expect(registryCounts(text)).toEqual({
       rows: 5, open: 2, inFlight: 1, closed: 2, other: 0, bad: 1, openByOwner: { 'command session': 1, Kevin: 1 },
+      lanes: 0, work: 3, workByKind: { '?': 3 }, workBySeverity: { '?': 3 }, waitingOnKevin: 1, triage: 0, triageOverdue: 0,
+      orphans: 3, staleBacklog: 0,
     });
+  });
+
+  // v2 rows: lanes are rows, so the open work, its orphans and the triage and backlog clocks come from the same file.
+  const v2 = [
+    { id: 'L', kind: 'lane', state: 'open', title: 'a lane', severity: 'HIGH' },
+    { id: 'C', kind: 'lane', state: 'closed', title: 'a landed lane' },
+    { id: 'LANE:triage', kind: 'lane', state: 'open', title: 'triage' },
+    { id: 'LANE:backlog', kind: 'lane', state: 'open', title: 'backlog' },
+    { id: 'a', kind: 'bug', severity: 'HIGH', state: 'open', lane: 'L', owner: 'Kevin', title: 'a bug' },
+    { id: 'b', kind: 'debt', severity: 'LOW', state: 'open', lane: 'C', title: 'an orphan' },
+    { id: 'c', kind: 'flake', severity: 'MED', state: 'in-flight', lane: 'LANE:triage', opened: '2026-10-20', title: 'in triage 11 days' },
+    { id: 'd', kind: 'instrument', severity: 'LOW', state: 'open', lane: 'LANE:backlog', updated: '2026-08-01', title: 'stale' },
+    { id: 'e', kind: 'feature', severity: 'HIGH', state: 'closed', lane: 'L', title: 'done' },
+    { id: 'f', kind: 'debt', severity: 'LOW', state: 'open', lane: 'a', title: 'names a row that is not a lane' },
+  ].map((r) => JSON.stringify(r)).join('\n');
+
+  it('v2: the open work by kind and severity, what waits on Kevin, triage overdue, orphans and stale backlog', () => {
+    const c = registryCounts(v2, { today: '2026-10-31' });
+    expect(c).toMatchObject({
+      lanes: 3, work: 5, workByKind: { bug: 1, debt: 2, flake: 1, instrument: 1 }, workBySeverity: { HIGH: 1, MED: 1, LOW: 3 },
+      waitingOnKevin: 1, triage: 1, triageOverdue: 1, orphans: 2, staleBacklog: 1,
+    });
+    expect(registryCounts(v2)).toMatchObject({ triageOverdue: 0, staleBacklog: 0 });
+    expect(registryLines(c)).toEqual([
+      'registry    memory/registry.jsonl: 10 rows: 7 open (? 6, Kevin 1), 1 in flight, 2 closed',
+      '            open work: 5 rows in 3 lanes; debt 2, bug 1, flake 1, instrument 1; HIGH 1, MED 1, LOW 3',
+      '            waiting on Kevin 1; triage 1 (1 overdue); orphans 2; backlog rows not updated in 60 days 1',
+    ]);
+  });
+
+  it('v2: --registry groups the open work, the most severe group first and HIGH first inside it, naming each lane', () => {
+    expect(registryView(v2, 'lane')).toEqual([
+      'registry by lane: 5 open work rows in 5 groups, the most severe first',
+      '', 'L (1): a lane [open]', '  HIGH    a  a bug',
+      '', 'LANE:triage (1): triage [open]', '  MED     c [in flight]  in triage 11 days',
+      '', 'C (1): a landed lane [closed]', '  LOW     b  an orphan',
+      '', 'LANE:backlog (1): backlog [open]', '  LOW     d  stale',
+      '', 'a (1): NOT A LANE ROW', '  LOW     f  names a row that is not a lane',
+    ]);
+    expect(registryView(v2, 'kind')[0]).toBe('registry by kind: 5 open work rows in 4 groups, the most severe first');
+    expect(registryView(v2, 'owner')).toContain('Kevin (1)');
+    expect(() => registryView(v2, 'severity')).toThrow(/one of lane, kind, area, owner/);
   });
 });
 
@@ -121,5 +167,8 @@ describe('orient — the CLI never crashes', () => {
     expect(out).toContain('production  unknown');
     expect(out).toContain('  ## CURSOR — fixture\n  | T1 | a task | open |\n  **Next:** the thing');
     expect(out).toContain('2 rows: 1 open (command session 1), 0 in flight, 1 closed');
+    expect(out).toContain('open work: 1 rows in 0 lanes');
+    const view = execFileSync(process.execPath, [resolve('scripts/dev/orient.mjs'), `--root=${root}`, '--registry', 'owner'], { encoding: 'utf8' });
+    expect(view).toContain('registry by owner: 1 open work rows in 1 groups');
   });
 });

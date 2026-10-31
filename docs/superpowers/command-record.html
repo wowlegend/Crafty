@@ -436,16 +436,28 @@ h4 { margin: 0.75rem 0 0; color: var(--muted); font-size: 0.8rem; letter-spacing
 <ul class="rows wide">
 <li><span class="lead">Checks</span><span>All checks passed on the newest change, as read at 13:29 UTC.</span></li>
 <li><span class="lead">Live site</span><span>The live game is that newest change, from 13:22 UTC, as read at 13:29.</span></li>
-<li><span class="lead">Open work</span><span>447 items open (16 high priority, 0 from the bug hunt), 316 closed.</span></li>
+<li><span class="lead">Open work</span><span>267 open: 6 high, 49 medium, 212 low; 62 bugs, 39 features, 166 upkeep; 15 wait on you; 520 closed.</span></li>
 </ul>
 </section>
 <section class="dsec" aria-labelledby="d-waiting">
 <h3 id="d-waiting">Waiting on you</h3>
-<p class="dsub">Nothing is blocked on these.</p>
+<p class="dsub">Every open row only you can close, highest first; the page reads them from the registry. Nothing is blocked on these.</p>
 <ul class="rows wide">
-<li><span class="lead">Play on iPhone and iPad</span><span>Tests fake touch in a desktop browser; only your devices prove real fingers on Safari.</span></li>
-<li><span class="lead">Mix the sound by ear</span><span>Only your ears can judge the mix.</span></li>
-<li><span class="lead">3 deep reviews (optional)</span><span>Only you can start deep reviews of screen, graphics and sound code, on account 2.</span></li>
+<li><span class="lead">Check</span><span>Kevin's real-device pass: judge the audio mix by ear and touch feel on a real iPad, and run the lane device checklists (L1, L5, L10)</span></li>
+<li><span class="lead">Check</span><span>On a touch browser that has Pointer Lock, a refused lock request may switch input off again right after a touch resume</span></li>
+<li><span class="lead">Check</span><span>Ultrareview chunks 4-6 (ui, render, audio and the rest of the scene) never ran, so about half of frontend/src has had no whole-game review</span></li>
+<li><span class="lead">Check</span><span>Nobody has looked at the three touch rings (Aspect ring, cooldown sweeps, spell row) on a real iPad; the probe passes 12 of 12 checks on emulated iPhone</span></li>
+<li><span class="lead">Check</span><span>Kevin's iPhone and iPad run of lanes L1 and L10: YOU DIED and Respawn by a tap, the Settings gear, sound after an app switch, and the music controls</span></li>
+<li><span class="lead">Check</span><span>Kevin's iPad and iPhone run of lane L5: a world-opened chest holds the world, a keyboard types in World Manager, a tray tap keeps its panel</span></li>
+<li><span class="lead">Check</span><span>When the pickup bound cuts tens of pickups at once they chime in one frame; whether that sounds like one loud chime or a burst has not been heard</span></li>
+<li><span class="lead">Check</span><span>Kevin's iPad: which iPadOS and Safari version it runs (decides whether the stacked-canvas WebGL fix applies to the title's two canvases)</span></li>
+<li><span class="lead">Check</span><span>One powermetrics A/B run on Kevin's M3 Max (scripts/dev/power-ab.sh, needs root) to measure the heat change in watts; optional</span></li>
+<li><span class="lead">Do</span><span>Upload docs/media/social-preview.jpg (1280x640) as the repo's social preview in GitHub Settings, General; GitHub has no API for it</span></li>
+<li><span class="lead">Decide</span><span>Kevin to confirm the 2026-09-22 reply to pmndrs/postprocessing#750, posted from the wowlegend account, is one he stands behind</span></li>
+<li><span class="lead">Check</span><span>A medium spin on a macOS mouse may move the hotbar too few slots: 4 px notches under 80 ms apart need 25 notches a slot</span></li>
+<li><span class="lead">Check</span><span>Talent numbers (roar length, beast swing, hold time, slam size, bind threshold) and relic drop rates are first guesses that nobody has playtested</span></li>
+<li><span class="lead">Decide</span><span>Decide how long refs/backup and refs/snapshots live before expiry (AB repo held 101 and 275 on 10-27; Crafty holds 1 and 0 now; recommended 60 days)</span></li>
+<li><span class="lead">Decide</span><span>Decide the scope of multiplayer and monetization (S4); money and account sign-ins stay Kevin's</span></li>
 </ul>
 </section>
 </section>

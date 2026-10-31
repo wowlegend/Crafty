@@ -5,7 +5,9 @@
  * Prints: HEAD; main as GitHub has it (`git ls-remote`, so a checkout that has not fetched is not mistaken for current),
  * with any drift of the local `origin/main` and `main` refs from it; the CI verdict for that main and for HEAD; the sha
  * the live Production deployment serves, and whether it is main; open PRs with their `ci ok`; worktrees whose branch
- * holds commits main does not; the cursor's heading, task table and Next paragraph; and the registry's counts. Each
+ * holds commits main does not; the cursor's heading, task table and Next paragraph; and the registry's counts: by state
+ * and owner, then the open work by kind and severity, what waits on Kevin, triage and its overdue rows, orphans, and the
+ * backlog rows not updated in 60 days, which are listed for a re-read and never closed on age. Each
  * source that cannot be read (no git, no `gh`, no network, not authenticated) prints why on its own line; nothing here
  * exits non-zero, because orientation that crashes orients no one.
  *
@@ -15,6 +17,9 @@
  *
  *   cd frontend && npm run orient          print the report for this checkout
  *   node scripts/dev/orient.mjs --root=<dir>   the same for another tree (a copy with no .git reports that)
+ *   npm run orient -- --registry <lane|kind|area|owner>
+ *                                          the open rows grouped by that field, HIGH first: the search to run before
+ *                                          writing a row (.claude/rules/registry.md); no network, no git
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -24,26 +29,105 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../../..');
 const TIMEOUT_MS = 20_000;
+const SEVERITY_ORDER = Object.freeze(['HIGH', 'MED', 'LOW', 'unrated']);
+const TRIAGE_DAYS = 7;
+const BACKLOG_STALE_DAYS = 60;
+export const VIEW_FIELDS = Object.freeze(['lane', 'kind', 'area', 'owner']);
+const days = (d) => Math.round(Date.parse(`${d}T00:00:00Z`) / 86_400_000);
+const bump = (o, k) => { o[k] = (o[k] || 0) + 1; };
+// Code-point order, so a view reads the same under every locale.
+const byText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
-/** PURE: counts by state, and open rows by owner, from `memory/registry.jsonl` text. A bad line is counted, not thrown. */
-export function registryCounts(text) {
-  const out = { rows: 0, open: 0, inFlight: 0, closed: 0, other: 0, bad: 0, openByOwner: {} };
+function parseRows(text) {
+  const rows = [];
+  let bad = 0;
   for (const line of String(text).split('\n')) {
     if (!line.trim()) continue;
-    let row;
     try {
-      row = JSON.parse(line);
+      rows.push(JSON.parse(line));
     } catch {
-      out.bad += 1;
-      continue;
+      bad += 1;
     }
-    out.rows += 1;
+  }
+  return { rows, bad };
+}
+
+/**
+ * PURE: counts from `memory/registry.jsonl` text. By state, and open rows by owner; then the open and in-flight WORK
+ * rows (every kind but lane) by kind and severity, those owned by Kevin, those in LANE:triage and how many are past its
+ * 7 days, the orphans (a work row whose lane is missing, not a lane, or closed) and the LANE:backlog rows not updated in
+ * 60 days. `today` (YYYY-MM-DD) dates the last two; without it they are 0. A bad line is counted, not thrown.
+ */
+export function registryCounts(text, { today } = {}) {
+  const { rows, bad } = parseRows(text);
+  const out = {
+    rows: rows.length, open: 0, inFlight: 0, closed: 0, other: 0, bad, openByOwner: {},
+    lanes: 0, work: 0, workByKind: {}, workBySeverity: {}, waitingOnKevin: 0, triage: 0, triageOverdue: 0, orphans: 0, staleBacklog: 0,
+  };
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  for (const row of rows) {
     if (row.state === 'open') {
       out.open += 1;
-      out.openByOwner[row.owner || '?'] = (out.openByOwner[row.owner || '?'] || 0) + 1;
+      bump(out.openByOwner, row.owner || '?');
     } else if (row.state === 'in-flight') out.inFlight += 1;
     else if (row.state === 'closed') out.closed += 1;
     else out.other += 1;
+    if (row.state !== 'open' && row.state !== 'in-flight') continue;
+    if (row.kind === 'lane') {
+      out.lanes += 1;
+      continue;
+    }
+    out.work += 1;
+    bump(out.workByKind, row.kind || '?');
+    bump(out.workBySeverity, row.severity || '?');
+    if (row.owner === 'Kevin') out.waitingOnKevin += 1;
+    const lane = byId.get(row.lane);
+    if (!lane || lane.kind !== 'lane' || lane.state === 'closed') out.orphans += 1;
+    if (row.lane === 'LANE:triage') {
+      out.triage += 1;
+      if (today && row.opened && days(today) - days(row.opened) > TRIAGE_DAYS) out.triageOverdue += 1;
+    }
+    if (today && row.lane === 'LANE:backlog' && row.updated && days(today) - days(row.updated) > BACKLOG_STALE_DAYS) out.staleBacklog += 1;
+  }
+  return out;
+}
+
+/** PURE: the registry lines of the report, from registryCounts. */
+export function registryLines(c) {
+  const owners = Object.entries(c.openByOwner).map(([o, n]) => `${o} ${n}`).join(', ');
+  const list = (o, order) => Object.entries(o).sort(([a, x], [b, y]) => (order ? order.indexOf(a) - order.indexOf(b) : y - x || byText(a, b))).map(([k, n]) => `${k} ${n}`).join(', ');
+  return [
+    `registry    memory/registry.jsonl: ${c.rows} rows: ${c.open} open (${owners}), ${c.inFlight} in flight, ${c.closed} closed${c.bad ? `, ${c.bad} unparseable` : ''}`,
+    `            open work: ${c.work} rows in ${c.lanes} lanes; ${list(c.workByKind) || 'none'}; ${list(c.workBySeverity, SEVERITY_ORDER) || 'none'}`,
+    `            waiting on Kevin ${c.waitingOnKevin}; triage ${c.triage} (${c.triageOverdue} overdue); orphans ${c.orphans}; backlog rows not updated in ${BACKLOG_STALE_DAYS} days ${c.staleBacklog}`,
+  ];
+}
+
+/**
+ * PURE: the open and in-flight work rows grouped by `field` (lane, kind, area or owner). Groups run from the one with
+ * the most severe row down, then by size; rows inside a group run HIGH first. Grouped by lane, a group's heading carries
+ * the lane row's own title and state.
+ */
+export function registryView(text, field) {
+  if (!VIEW_FIELDS.includes(field)) throw new Error(`--registry takes one of ${VIEW_FIELDS.join(', ')}, not "${field}"`);
+  const { rows } = parseRows(text);
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const rank = (r) => { const i = SEVERITY_ORDER.indexOf(r.severity); return i < 0 ? SEVERITY_ORDER.length : i; };
+  const groups = new Map();
+  for (const r of rows) {
+    if ((r.state !== 'open' && r.state !== 'in-flight') || r.kind === 'lane') continue;
+    const k = r[field] ?? '(none)';
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  }
+  const sorted = [...groups].map(([k, list]) => [k, list.sort((a, b) => rank(a) - rank(b) || byText(a.id, b.id))])
+    .sort(([a, x], [b, y]) => rank(x[0]) - rank(y[0]) || y.length - x.length || byText(a, b));
+  const total = sorted.reduce((n, [, list]) => n + list.length, 0);
+  const out = [`registry by ${field}: ${total} open work rows in ${sorted.length} groups, the most severe first`];
+  for (const [k, list] of sorted) {
+    const lane = field === 'lane' && byId.get(k)?.kind === 'lane' ? byId.get(k) : null;
+    out.push('', `${k} (${list.length})${lane ? `: ${lane.title} [${lane.state}]` : field === 'lane' ? ': NOT A LANE ROW' : ''}`);
+    for (const r of list) out.push(`  ${String(r.severity ?? '?').padEnd(7)} ${r.id}${r.state === 'in-flight' ? ' [in flight]' : ''}  ${r.title}`);
   }
   return out;
 }
@@ -225,16 +309,26 @@ export async function report(root = ROOT) {
 
   const reg = join(root, 'memory/registry.jsonl');
   if (existsSync(reg)) {
-    const c = registryCounts(readFileSync(reg, 'utf8'));
-    const owners = Object.entries(c.openByOwner).map(([o, n]) => `${o} ${n}`).join(', ');
-    lines.push(`registry    memory/registry.jsonl: ${c.rows} rows: ${c.open} open (${owners}), ${c.inFlight} in flight, ${c.closed} closed${c.bad ? `, ${c.bad} unparseable` : ''}`);
+    // The triage and backlog clocks read HEAD's committer date, as the registry gate does; without git, today's date.
+    const today = (inGit.ok && git(['show', '-s', '--format=%cs', 'HEAD']).out?.trim()) || new Date().toISOString().slice(0, 10);
+    lines.push(...registryLines(registryCounts(readFileSync(reg, 'utf8'), { today })));
   } else lines.push('registry    memory/registry.jsonl missing');
   return lines.join('\n');
 }
 
 if (import.meta.main) {
-  const arg = process.argv.slice(2).find((a) => a.startsWith('--root='));
-  report(arg ? resolve(arg.slice(7)) : ROOT).then(
+  const argv = process.argv.slice(2);
+  const arg = argv.find((a) => a.startsWith('--root='));
+  const root = arg ? resolve(arg.slice(7)) : ROOT;
+  const at = argv.indexOf('--registry');
+  if (at >= 0) {
+    try {
+      console.log(registryView(readFileSync(join(root, 'memory/registry.jsonl'), 'utf8'), argv[at + 1]).join('\n'));
+    } catch (e) {
+      console.error(`orient: ${e.message}`);
+      process.exit(2);
+    }
+  } else report(root).then(
     (text) => console.log(text),
     (e) => console.log(`orient: failed to build the report (${e.message})`),
   );

@@ -223,12 +223,7 @@
     },
     "waiting": {
       "title": "Waiting on you",
-      "sub": "Nothing is blocked on these.",
-      "rows": [
-        { "what": "Play on iPhone and iPad", "why": "Tests fake touch in a desktop browser; only your devices prove real fingers on Safari.", "src": "CLAUDE.md 'Only Kevin: real-device feel'; DECISIONS item 161; retired long form 002b0b9e (device runs for L1, L5, L2)" },
-        { "what": "Mix the sound by ear", "why": "Only your ears can judge the mix.", "src": "CLAUDE.md 'Only Kevin: ... the audio mix by ear'; registry STATUS:#44" },
-        { "what": "3 deep reviews (optional)", "why": "Only you can start deep reviews of screen, graphics and sound code, on account 2.", "src": "CLAUDE.md 'Only Kevin: /code-review ultra'; retired long form 002b0b9e (chunks 4 to 6, account 2's free runs)" }
-      ]
+      "sub": "Every open row only you can close, highest first; the page reads them from the registry. Nothing is blocked on these."
     }
   }
 }

@@ -10,8 +10,10 @@
  * WHAT IT KEEPS. The as-of stamp between `<!-- asof:begin -->` and `<!-- asof:end -->` is copied from the page byte for
  * byte, because `artifact-currency.mjs --stamp` owns it; a page without exactly one stamp is refused, not re-stamped.
  *
- * WHAT IT READS. The data file, and memory/registry.jsonl for the health section's open-work count, which is counted
- * when the page is written and ages like the rest of it. CI, the deploy and the PRs are read by whoever refreshes the
+ * WHAT IT READS. The data file, and memory/registry.jsonl for two sections, read from the rows' v2 fields when the page
+ * is written (DECISIONS 2026-10-31 (registry v2) item 361), so they age like the rest of it: the health section's open
+ * work (by severity, by kind, what waits on Kevin) and "Waiting on you", which lists every open row Kevin owns, highest
+ * first, grouped by lane when there is more than one. Neither is kept by hand in the data file. CI, the deploy and the PRs are read by whoever refreshes the
  * data (gh, curl) and written there with the time they were read: this script makes no network call.
  *
  * WHY `n()` IS NOT `toFixed(1)`. It rounds an exact half to even, as the coordinates on the published page were
@@ -404,18 +406,46 @@ function rows(items, cls = '') {
 const sec = (id, title, sub, body) => `<section class="dsec" aria-labelledby="${id}">\n<h3 id="${id}">${esc(title)}</h3>`
   + `${sub ? `\n<p class="dsub">${esc(sub)}</p>` : ''}\n${body}\n</section>`;
 
-function registryRow() {
+function registryRows() {
   const all = readFileSync(REGISTRY, 'utf8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
   if (all.length === 0) throw new Error(`${REGISTRY}: no rows, so there is nothing to count`);
-  const open = all.filter((r) => r.state === 'open');
-  const closed = all.filter((r) => r.state === 'closed').length;
-  const highRows = open.filter((r) => r.severity === 'HIGH');
-  const hunt = highRows.filter((r) => String(r.id).startsWith('AUDIT:')).length;
-  const other = all.length - open.length - closed;
+  return all;
+}
+
+const SEVERITY_RANK = Object.freeze({ HIGH: 0, MED: 1, LOW: 2 });
+const liveWork = (rows) => rows.filter((r) => (r.state === 'open' || r.state === 'in-flight') && r.kind !== 'lane');
+
+/** PURE. The health section's open-work row: the open work rows (lanes are not work) by severity and kind. */
+export function openWorkRow(rows) {
+  const work = liveWork(rows);
+  const n = (f) => work.filter(f).length;
+  const high = n((r) => r.severity === 'HIGH');
+  // The deep audit's rows carry its plan unit; an id prefix is provenance only.
+  const hunt = n((r) => r.severity === 'HIGH' && r.planUnit === 'deep-audit');
+  const bugs = n((r) => r.kind === 'bug');
+  const features = n((r) => r.kind === 'feature');
+  const closed = rows.filter((r) => r.state === 'closed').length;
   return {
     lead: 'Open work',
-    text: `${open.length} items open (${highRows.length} high priority, ${hunt} from the bug hunt), ${closed} closed${other ? `, ${other} other` : ''}.`,
+    text: `${work.length} open: ${high} high${hunt ? ` (${hunt} from the bug hunt)` : ''}, ${n((r) => r.severity === 'MED')} medium, `
+      + `${n((r) => r.severity === 'LOW')} low; ${bugs} bugs, ${features} features, ${work.length - bugs - features} upkeep; `
+      + `${n((r) => r.owner === 'Kevin')} wait on you; ${closed} closed.`,
   };
+}
+
+/** What a Kevin row asks of him, by its kind, in one word. */
+const ASK = Object.freeze({ decision: 'Decide', instrument: 'Check', process: 'Do' });
+
+/** PURE. "Waiting on you": every open row Kevin owns, highest first, as [{lane, rows: [{what, why}]}] by lane. */
+export function waitingRows(rows) {
+  const byLane = new Map();
+  const mine = liveWork(rows).filter((r) => r.owner === 'Kevin')
+    .sort((a, b) => (SEVERITY_RANK[a.severity] ?? 3) - (SEVERITY_RANK[b.severity] ?? 3) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (const r of mine) {
+    if (!byLane.has(r.lane)) byLane.set(r.lane, []);
+    byLane.get(r.lane).push({ what: ASK[r.kind] ?? 'Look', why: r.title });
+  }
+  return [...byLane].map(([lane, list]) => ({ lane, rows: list }));
 }
 
 function details(d) {
@@ -426,8 +456,12 @@ function details(d) {
   const hunt = d.hunt.groups.map((g) => `<h4>${esc(g.title)}</h4>\n${bugRows(g.rows)}`).join('\n')
     + `\n<h4>${esc(d.hunt.lanes.title)}</h4>\n${laneRows(d.hunt.lanes.rows)}`;
   const calls = rows(d.calls.rows.map((r) => ({ lead: esc(r.item), text: r.text })));
-  const health = rows([...d.health.rows.map((r) => ({ lead: esc(r.label), text: r.text })), registryRow()], 'wide');
-  const waiting = rows(d.waiting.rows.map((r) => ({ lead: esc(r.what), text: r.why })), 'wide');
+  const registry = registryRows();
+  const health = rows([...d.health.rows.map((r) => ({ lead: esc(r.label), text: r.text })), openWorkRow(registry)], 'wide');
+  const groups = waitingRows(registry);
+  const laneTitle = (id) => registry.find((r) => r.id === id)?.title ?? id;
+  const waiting = groups.map((g) => `${groups.length > 1 ? `<h4>${esc(laneTitle(g.lane))}</h4>\n` : ''}`
+    + rows(g.rows.map((r) => ({ lead: esc(r.what), text: r.why })), 'wide')).join('\n');
   return [
     '<section class="details" aria-labelledby="s-details">',
     '<div class="ground" aria-hidden="true"></div>',
