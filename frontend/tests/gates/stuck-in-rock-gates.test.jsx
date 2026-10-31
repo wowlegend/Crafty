@@ -131,17 +131,24 @@ beforeAll(async () => {
 
 // Every column at least two cells inside the chunks' edge with a run of rock over a cave: its bottom (the cave's ceiling)
 // between y 1.5 and 9, and at least 3.5 m of rock in it. Three of them, spread over the scan, are the cases.
-let CAVES = [], CORNER_TOP = null;
+// And every column there whose top is open sky and whose neighbour at x + 1 is rock from under that top to 3 m over it:
+// open ground beside a wall (a canopy or an overhang over the ground is not one).
+let CAVES = [], WALLS = [], CORNER_TOP = null;
 beforeAll(() => {
   makeWorld();
   h.world.step();
   for (let x = -14; x < 30; x++) for (let z = -14; z < 30; z++) {
-    const run = runsIn(h.world, x, z).find(([a, b]) => a >= 1.5 && a <= 9 && b - a >= 3.5);
+    const runs = runsIn(h.world, x, z);
+    const run = runs.find(([a, b]) => a >= 1.5 && a <= 9 && b - a >= 3.5);
     if (run) CAVES.push({ x, z, ceiling: run[0], top: run[1] });
+    const floor = runs.length ? runs[runs.length - 1][1] : null;
+    const wall = floor !== null && x < 29 ? runsIn(h.world, x + 1, z).find(([a, b]) => a < floor && b - floor >= 3) : null;
+    if (wall) WALLS.push({ x, z, floor, wallTop: wall[1] });
   }
   CORNER_TOP = Math.max(...[[-1, -1], [0, -1], [-1, 0], [0, 0]].map(([x, z]) => Math.max(...runsIn(h.world, x, z).map((r) => r[1]))));
 });
 const pickCases = () => [CAVES[0], CAVES[Math.floor(CAVES.length / 2)], CAVES[CAVES.length - 1]];
+const pickWalls = () => [WALLS[0], WALLS[Math.floor(WALLS.length / 2)], WALLS[WALLS.length - 1]];
 
 /** Terrain.jsx getMobGroundLevel: a ray straight down from y = 255 at (x + 0.1, z + 0.1), the player's body excluded. */
 function groundProbe(x, z) {
@@ -226,6 +233,35 @@ describe('a body left in the rock is stood clear where it is, in the real world 
         expect(centreInRock(end), `the player was left with their centre in the rock ${JSON.stringify(row)}`).toBe(false);
         expect(row.depth, `the capsule reaches into the rock ${JSON.stringify(row)}`).toBeLessThanOrEqual(TOL);
         expect(centreInRock({ x: end.x, y: end.y + EYE_HEIGHT_M, z: end.z }), `the eye is in the rock ${JSON.stringify(row)}`).toBe(false);
+        expect(Math.hypot(end.x - start.x, end.z - start.z), `the player was moved away from where they clipped ${JSON.stringify(row)}`).toBeLessThan(1);
+        expect(row.voids, `the void guard reset the player to the origin ${JSON.stringify(row)}`).toBe(0);
+        expect(row.drift, `the player is not standing (still moving over the last half second) ${JSON.stringify(row)}`).toBeLessThan(0.01);
+      });
+    }
+  }
+
+  // A slide that clipped sideways: the centre 0.1 m into the wall at standing height, so 0.5 m of the capsule's 0.8 m
+  // width is in the wall and 0.3 m over the open ground. The nearest clear spot is beside the wall, about half a metre
+  // back; the top of the columns the capsule stands across is the wall's, 3 m up or more.
+  for (const hz of [60, 120]) {
+    for (const which of [0, 1, 2]) {
+      it(`a player clipped 0.1 m into a wall 3 m high or more (case ${which + 1} of 3) is set down beside the wall, not lifted onto its top (${hz} Hz)`, () => {
+        expect(WALLS.length, 'SETUP: the real world round the spawn has no open ground beside a wall 3 m high').toBeGreaterThan(5);
+        const wl = pickWalls()[which];
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        standPlayer(hz);
+        const start = { x: wl.x + 1.1, y: wl.floor + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius + 0.05, z: wl.z + 0.5 };
+        putBody(start);
+        expect(centreInRock(start), `SETUP: the start is not in the wall's rock ${JSON.stringify({ wl, start })}`).toBe(true);
+        const ys = [];
+        for (let i = 0; i < 3 * hz; i++) { frame(hz); ys.push(h.body.translation().y); }
+        const end = at();
+        const row = { case: wl, start, end, depth: depthInRock(), voids: warned(warn, VOID), drift: +(Math.max(...ys.slice(-hz / 2)) - Math.min(...ys.slice(-hz / 2))).toFixed(3) };
+        process.stdout.write(`\nstuck in a wall, ${hz} Hz, case ${which + 1}: ${WALLS.length} columns beside a wall 3 m high in the scan; ${JSON.stringify(row)}\n`);
+        expect(centreInRock(end), `the player was left with their centre in the wall ${JSON.stringify(row)}`).toBe(false);
+        expect(row.depth, `the capsule reaches into the rock ${JSON.stringify(row)}`).toBeLessThanOrEqual(TOL);
+        expect(end.y - start.y, `the player was lifted onto the wall's top, not set down beside it ${JSON.stringify(row)}`).toBeLessThan(0.5);
+        expect(end.x, `the player is not on the open side of the wall ${JSON.stringify(row)}`).toBeLessThanOrEqual(wl.x + 1 - BASE_CAPSULE.radius);
         expect(Math.hypot(end.x - start.x, end.z - start.z), `the player was moved away from where they clipped ${JSON.stringify(row)}`).toBeLessThan(1);
         expect(row.voids, `the void guard reset the player to the origin ${JSON.stringify(row)}`).toBe(0);
         expect(row.drift, `the player is not standing (still moving over the last half second) ${JSON.stringify(row)}`).toBeLessThan(0.01);
