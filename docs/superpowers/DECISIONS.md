@@ -57,8 +57,8 @@ in code; whether a player on a real iPhone or iPad hears the difference is Kevin
      key instead. On iOS, Web Audio may follow the ring/silent switch where a media element did not; nothing here
      measured either.
    - **The bytes.** The index chunk measured 646,232 B on a05bf328 and 647,661 B here (+1,429 B), under the unchanged
-     652,500 B ceiling (item 282); nothing was moved out, as it fits. With lane L3's stated +3,515 B (item 282) the
-     chunk would be 651,176 B.
+     652,500 B ceiling (item 282); nothing was moved out, as it fits. Merged with main `7250aa22`, where lane L3 has
+     landed (649,549 B, item 295), the chunk measures 650,978 B, 1,522 B under the ceiling.
 
 302. **The route is run in Chromium on CI (`tests/e2e/music-bus.spec.js`); its mutation proof is owed.** The spec
    wraps the media element and `createMediaElementSource` (each wrapper calls the real one), makes a trusted click
@@ -67,7 +67,10 @@ in code; whether a player on a real iPhone or iPad hears the difference is Kevin
    brings it back. A dispatched CI run of a mutant was planned (commit `bf063ee4` points here) and not made: the
    commit hook runs the unit gates that import a staged file, the jsdom gate catches the same mutant, and a commit
    that skips the hook is a bright line. No local browser runs in this lane. So the proof is owed, as registry row
-   `REVIEW:l10:music-e2e-mutation-owed` (the mutant and the way to run it).
+   `REVIEW:l10:music-e2e-mutation-owed` (the mutant and the way to run it). Its first CI run (41203933423, shard 6)
+   timed out at its own click: App's timer took the title away (continue.spec.js's race) and, entered from the title
+   rather than `_boot.js`'s helpers, the world ran above the suite's `low` tier; `2b68fdad` and `1aabcb8a` keep the
+   title until the click and pin the tier, with no assertion changed.
 
 303. **A no-op stub is banned in the harnesses that drive a real browser** (gate G-ios, audit section S7).
    - **Why.** `touch-probe.mjs`, `ipad-probe.mjs` and `_lookbookPage.mjs` made Chromium look like iOS with
