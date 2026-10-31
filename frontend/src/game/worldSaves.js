@@ -70,6 +70,9 @@ function holdsNothing(data) {
     && !data.game_state?.gameWon && !count(data.questState?.completedQuestIds);
 }
 
+/** A world nobody named and nothing was earned in: one a plain visit passes over for an earned one (game/worldBoot.js). */
+export const emptyPlaceholder = (entry, data) => placeholderName(entry) && holdsNothing(data);
+
 /**
  * Delete the empty placeholder worlds beyond the `keep` newest (a placeholder name, nothing earned in it). `keepId`, the
  * world a page plays, is never deleted, and counts among those kept. Until lane L2 every visit minted one of these and

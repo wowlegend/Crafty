@@ -89,17 +89,24 @@ const ownedEntry = (w) => !!w && typeof w.id === 'string' && (w.is_owner || w.id
 
 /**
  * The world a plain visit continues: the first entry of the index whose save reads. writeWorld puts the world it wrote
- * first, so that is the most recently written world the player owns.
- * @param {{ listWorlds: () => object[], readWorld: (id: string) => object|null }} saves
+ * first, so that is the most recently written world the player owns. A world nobody named and nothing was earned in
+ * (saves.emptyPlaceholder) is passed over for an older one that holds something: until lane L2 every visit minted one,
+ * so a player's newest world can be a fresh Start they abandoned before finding their own. With none earned or named,
+ * the newest.
+ * @param {{ listWorlds: () => object[], readWorld: (id: string) => object|null,
+ *   emptyPlaceholder?: (entry: object, data: object) => boolean }} saves
  * @returns {{ entry: object, data: object }|null}
  */
 export function latestOwnedWorld(saves) {
+  let newest = null;
   for (const entry of saves.listWorlds()) {
     if (!ownedEntry(entry)) continue;
     const data = saves.readWorld(entry.id);
-    if (data) return { entry, data };
+    if (!data) continue;
+    if (!saves.emptyPlaceholder?.(entry, data)) return { entry, data };
+    newest = newest || { entry, data };
   }
-  return null;
+  return newest;
 }
 
 function notedWorld(saves, id) {

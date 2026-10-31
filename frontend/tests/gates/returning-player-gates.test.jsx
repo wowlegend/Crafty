@@ -28,6 +28,7 @@ import PRE_CUT from '../fixtures/pre-cut-save.json';
  *   R4 the title's Continue never shows                                          -> RED expected
  *   R5 the quest system does not replay the boot's notices                       -> RED expected
  *   R6 plausible-wrong: the New World note is not fresh (reloads the old world)  -> RED expected
+ *   R7 the entry hands the boot no empty-world test (lane L8: an orphan is continued) -> RED expected
  *   R0 identity (a comment edit)                                                 -> must SURVIVE
  */
 
@@ -171,6 +172,27 @@ describe('a returning player continues their world from the title', () => {
     expect(p.S().coins).toBe(7);
     p.unload();
   }, 60000);
+
+  it('a disk an earlier build left, the real world under newer empty orphans: Continue names the real world (lane L8)', async () => {
+    // Until lane L2 every visit's Start minted a Save_<time> slot for a fresh world, so a player who gave up looking for
+    // their world left empty slots newer than it. The plain visit passes over those for the newest world earned in.
+    const { writeWorld } = await import('../../src/game/worldSaves.js');
+    const { buildSaveData } = await import('../../src/game/saveSchema.js');
+    const { useGameStore } = await import('../../src/store/useGameStore');
+    const put = (id, state, at) => {
+      vi.setSystemTime(new Date(at));
+      writeWorld(id, { name: `Save_${new Date(at).toLocaleString()}`, created_at: at, is_owner: true },
+        buildSaveData({ ...useGameStore.getInitialState(), ...state }, { position: { x: 0.5, y: 40, z: 0.5 } }));
+    };
+    put('local_real', { level: 15, totalXP: 60000, coins: 3400 }, '2026-10-20T19:00:00Z');
+    put('local_orphan_a', {}, '2026-10-21T19:00:00Z');
+    put('local_orphan_b', {}, '2026-10-22T19:00:00Z');
+    const p = await pageLoad(23);
+    expect(p.S().continueWorld?.id, 'the title continues an empty orphan, not the world the player earned').toBe('local_real');
+    expect(screen.getByTestId('title-continue-meta').textContent, 'the caption does not say the real world\'s level')
+      .toContain(STRINGS.en['menu.level'].replace('{n}', '15'));
+    p.unload();
+  }, 30000);
 
   it('a load the boot runs still tells the player what it changed (the Cut\'s respec, once the quest system is up)', async () => {
     const { writeWorld } = await import('../../src/game/worldSaves.js');

@@ -91,7 +91,7 @@ describe('a browser keeps at most KEEP_EMPTY_SLOTS empty placeholder worlds', ()
     expect(worldSaves.KEEP_EMPTY_SLOTS, 'the bound this gate reads').toBe(3);
   });
 
-  it('the orphans an earlier build left: the next visit keeps the newest three and the real world, and continues the newest', async () => {
+  it('the orphans an earlier build left: the next visit keeps the newest three and the real world, and continues the real world', async () => {
     onDisk('local_real', { state: { level: 15, totalXP: 9000, coins: 3150 } });
     for (let i = 0; i < 40; i++) onDisk(`local_orphan_${i}`);
     expect(slots().length, 'SETUP: the disk does not hold the orphans').toBe(41);
@@ -99,7 +99,23 @@ describe('a browser keeps at most KEEP_EMPTY_SLOTS empty placeholder worlds', ()
     const ids = slots().map((w) => w.id);
     expect(ids.filter((id) => id.startsWith('local_orphan_')), 'the orphans kept').toEqual(['local_orphan_39', 'local_orphan_38', 'local_orphan_37']);
     expect(ids.includes('local_real'), 'the real world was deleted').toBe(true);
-    expect(S()._sessionWorldId, 'the visit did not continue the newest world').toBe('local_orphan_39');
+    // An empty placeholder world newer than the real one (a pre-L2 visit's fresh Start, abandoned) is not what a
+    // returning player came back to: Continue names the newest world with something earned in it.
+    expect(S()._sessionWorldId, 'the visit continued an empty orphan over the world the player earned').toBe('local_real');
+    expect(S().level, 'SETUP: the real world did not load').toBe(15);
+  });
+
+  it('the plain visit continues the newest world with something earned, a named world, or the newest empty one when every world is empty', async () => {
+    onDisk('local_old', { state: { coins: 5 } });
+    onDisk('local_named', { name: 'Skyhold Keep' }); // made in the World Manager, nothing played yet: still a choice
+    onDisk('local_empty');
+    session(null);
+    expect(S()._sessionWorldId, 'a named world newer than the earned one was passed over').toBe('local_named');
+    localStorage.clear();
+    onDisk('local_a');
+    onDisk('local_b');
+    session(null);
+    expect(S()._sessionWorldId, 'with every world empty, the visit did not continue the newest').toBe('local_b');
   });
 
   it('a save that fails for room deletes every other empty placeholder world and lands; nothing is said', async () => {
