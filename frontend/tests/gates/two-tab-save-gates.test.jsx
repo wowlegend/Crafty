@@ -15,6 +15,7 @@ import { STRINGS } from '../../src/i18n/strings.js';
  * Each "tab" is its own module graph (vi.resetModules(): a fresh store, a fresh _sessionWorldId) over jsdom's one
  * localStorage, booted as a plain visit through the real boot and saved through the real save (game/worldBoot.js
  * bootWorld, saveWorldInPlay). The clock is faked and moved between writes, so no two writes share a millisecond.
+ * The stale tab is also told the moment the other tab writes (a `storage` event), not only at its own next save.
  * BLIND SPOT: real browsers' tab discard and bfcache; a write from another tab landing between this tab's read of the
  * index and its write (the same task, a few microseconds).
  *
@@ -27,6 +28,8 @@ import { STRINGS } from '../../src/i18n/strings.js';
  *   C6 the panel's Reload leaves no note naming the world                       -> RED expected
  *   C7 the manual Save writes its own name and dates again                      -> RED expected
  *   C8 the conflict panel is not a covering surface (input stays live)          -> RED expected (input-live-gates)
+ *   C10 the autosave does not listen for another tab's write (lane L8)          -> RED expected
+ *   C11 plausible-wrong: any storage event raises the conflict                  -> RED expected
  *   C0 identity (a comment edit)                                                -> must SURVIVE
  */
 
@@ -126,6 +129,34 @@ describe('two tabs on one world: the tab that saved last keeps it', () => {
     tick(); act(() => { A.S().addCoins(5); });
     expect(A.save(), 'tab A, which read the world before any time was written, was not told').toEqual({ id: WORLD });
     expect(diskCoins(), 'tab A wrote over tab B\'s save').toBe(1100);
+  });
+});
+
+describe('the stale tab is told when the other tab writes, not at its own next save', () => {
+  // A browser delivers a `storage` event to every OTHER page of the origin when one writes localStorage (jsdom has one
+  // page, so the event is dispatched as the browser would deliver it to tab A). Each tab installs the real autosave.
+  it('B saves the world: A, which has not saved since, shows the conflict at once; a write that is not the slot\'s tells it nothing', async () => {
+    await seed();
+    const A = await openTab();
+    const { installAutosave } = await import('../../src/game/autosave.js');
+    const uninstallA = installAutosave(A.store, { save: () => {} });
+    const deliver = (key) => act(() => { window.dispatchEvent(new StorageEvent('storage', { key })); });
+    tick(); act(() => { A.S().addCoins(5); });
+    expect(A.save(), 'SETUP: tab A, alone on the world, was refused').toBeNull();
+    // PRESENCE of the listener's quiet case: an event while A is the last writer, and one for another key, raise nothing.
+    deliver('crafty_world_saves');
+    deliver('crafty_settings');
+    expect(A.S().slotConflict, 'a write that was A\'s own, or not the save\'s, raised the conflict').toBeNull();
+
+    tick(); const B = await openTab();
+    const uninstallB = installAutosave(B.store, { save: () => {} });
+    tick(30); act(() => { B.S().addCoins(1000); });
+    expect(B.save(), 'SETUP: tab B, which read the newest save, was refused').toBeNull();
+    deliver('crafty_world_saves');
+    expect(A.S().slotConflict, 'tab A was not told when tab B saved the world').toEqual({ id: WORLD });
+    expect(B.S().slotConflict, 'tab B, the newest writer, was told of a conflict').toBeNull();
+    expect(diskCoins(), 'SETUP: B\'s save is not on disk').toBe(1105);
+    uninstallA(); uninstallB();
   });
 });
 

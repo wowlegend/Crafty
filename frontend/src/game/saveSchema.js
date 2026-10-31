@@ -222,10 +222,13 @@ export function liveShrines(shrines) {
   return { reached: shrineKeys(shrines?.reached), rewarded: shrineKeys(shrines?.rewarded) };
 }
 
-/** A save's chest entries ([coords, chest]) with the retired keys taken out of each chest's inventory. Pure. */
+/**
+ * A save's chest entries ([coords, chest]) with the retired keys taken out of each chest's inventory. An entry that is
+ * no pair, or chests that are no list, are dropped, as liveBlocks drops its: a hand-edited blob threw in the load's
+ * reducer (the deep audit's ultra-state-saves-input-2). Pure.
+ */
 export function liveChests(chests) {
-  if (!Array.isArray(chests)) return chests;
-  return chests.map((e) => (Array.isArray(e) && isPlainObject(e[1]) && holdsRetired(e[1].inventory)
+  return chestEntries(chests).map((e) => (isPlainObject(e[1]) && holdsRetired(e[1].inventory)
     ? [e[0], { ...e[1], inventory: withoutRetired(e[1].inventory) }]
     : e));
 }
@@ -283,7 +286,19 @@ export const PERSISTED_KEYS = Object.freeze([
   'nightCount', 'lastRewardedNight', 'ember', 'emberBuildDay', 'squad',
   'worldSeed', 'selectedBlock', 'activeSpell', 'isDay', 'gameTime', 'gameWon', 'reachedShrines', 'rewardedShrines',
   'bossActive', 'bossHealth', 'bossDefeated', 'bossTier', 'bossKillNight',
+  'playerHealth', 'maxHealth', 'mana', 'maxMana',
 ]);
+
+// A vital as a save records it: the value when it is below the maximum, and nothing at full, so a load stands a player
+// saved at full at the maximum it derives (a new world's placeholder 100 is not a wound of a level-1 maximum of 150).
+const wound = (v, max) => (Number.isFinite(v) && v < max ? v : undefined);
+
+/**
+ * A vital as a load restores it: the save's, under the maximum the load derives, or that maximum when the save holds
+ * none, or nothing a living player can have (`min` is the least a living player holds: health above 0, mana from 0).
+ * A refresh is then no heal (DECISIONS 2026-10-31 item 330). Pure.
+ */
+export const loadedVital = (v, max, min) => (Number.isFinite(v) && v >= min ? Math.min(v, max) : max);
 
 /**
  * Where a save stands the player when it is loaded: the centre of the BASE capsule over the body's lower end (a load
@@ -319,6 +334,8 @@ export function buildSaveData(state, { position } = {}) {
     player_data: {
       position: position || { x: 0, y: 18, z: 0 },
       inventory: withHeldInventory(state.inventory, tomb.inventory),
+      health: wound(state.playerHealth, state.maxHealth),
+      mana: wound(state.mana, state.maxMana),
       // `stats` DELETED 2026-08-11: setPlayerStats had zero callers, so this wrote four zeros into every
       // save. The real counters ride in questState. Old saves keep the key; nothing reads it, and
       // migrateSaveData does not need to strip it -- an ignored extra key costs nothing.
@@ -376,12 +393,13 @@ export function buildSaveData(state, { position } = {}) {
 /**
  * The save of a player who is dead: the world as Respawn leaves it (HUD.jsx: respawn, then the quest system's
  * onPlayerDeath). No position, so the load stands the player at the origin spawn, as Respawn does (store loadWorldData:
- * a save with no position sets no resumeSpawn), and the death counted in the quest stats. Every load arrives at full
- * health, as a respawn does. Without it a refresh on the death screen resumes the player alive where they fell.
+ * a save with no position sets no resumeSpawn), no health or mana, so the load stands the player at full as Respawn
+ * does, and the death counted in the quest stats. Without it a refresh on the death screen resumes the player alive
+ * where they fell.
  * @param {object} saveData a buildSaveData result
  */
 export function asRespawned(saveData) {
-  const { position: _fell, ...player } = saveData.player_data || {};
+  const { position: _fell, health: _hp, mana: _mana, ...player } = saveData.player_data || {};
   const qs = saveData.questState;
   const stats = isPlainObject(qs) && isPlainObject(qs.stats) ? qs.stats : null;
   return {

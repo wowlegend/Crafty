@@ -203,9 +203,10 @@ export const ObjectiveTracker = React.memo(() => {
       const fz = -el[10];
       const heading = Math.atan2(fx, -fz);
 
-      // Objective: the nearest frontier shrine until one is reached, then the Blight Heart climax.
+      // Objective: the nearest frontier shrine until one is reached, then the Blight Heart climax. A completed Pilgrimage
+      // is a shrine reached too: a save from before the shrine record holds none (saveSchema.js liveShrines).
       let targetX, targetZ, label, color;
-      if (!state.reachedShrines.length) {
+      if (!state.reachedShrines.length && !state.questState?.completedQuestIds?.includes('pilgrim')) {
         const now = performance.now();
         if (now - shrineCache.current.t > 750) {
           shrineCache.current = { t: now, shrine: nearestLandmark(playerPos.x, playerPos.z) };

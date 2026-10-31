@@ -80,6 +80,14 @@ vi.mock('../../src/SoundManager', () => ({
   useGameSounds: () => ({ playAttack: () => {}, playSwing: () => {}, playHit: () => {}, playDefeat: () => {} }),
 }));
 vi.mock('../../src/game/pageReload.js', () => ({ reloadPage: () => { globalThis.__reloads.push(sessionStorage.getItem('crafty.boot')); } }));
+// No save this build reads throws as it loads any more (block edits and chests are read as pairs: saveSchema.js
+// liveBlocks, liveChests; lane L8 swept 147 corruptions of a save and none threw), so the throw is stood in at the worst
+// place left: after the load has applied the save and claimed its slot (store loadWorldData marks the slot active
+// just after its claim), where a throw from the grants, the teleport or the beast's exit would land. It throws for the broken slot only.
+vi.mock('../../src/game/worldSaves.js', async (importOriginal) => {
+  const real = await importOriginal();
+  return { ...real, setActiveWorldId: (id) => { if (id === 'local_bad') throw new TypeError('a save this build cannot read'); return real.setActiveWorldId(id); } };
+});
 
 const AUTOSAVE_MS = 5000; // App.jsx's delay
 const advance = (ms) => act(() => { vi.advanceTimersByTime(ms); });
@@ -156,7 +164,7 @@ describe('a save that throws while it loads leaves no part of itself in the page
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'] });
     vi.setSystemTime(new Date('2026-10-30T12:00:00Z'));
     const bad = buildSaveData({ ...useGameStore.getInitialState(), coins: 77, worldSeed: 777 }, { position: { x: 0, y: 40, z: 0 } });
-    bad.chests = 5; // the load's reducer builds a Map of the chests: it throws there, after the slot is claimed and the seed set
+    // The stood-in throw (above) lands after the load applied this save and claimed its slot, its seed already set.
     writeWorld('local_bad', { name: 'Broken Keep', created_at: '2026-10-02T00:00:00Z', is_owner: true }, bad);
     const badRaw = localStorage.getItem('crafty_world_save_local_bad');
     vi.spyOn(console, 'error').mockImplementation(() => {});

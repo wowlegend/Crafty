@@ -187,9 +187,9 @@ test.describe('the Cut', () => {
     // Step 6 (hunger, DECISIONS 2026-10-29 item 72): the store reads no hunger and the meat leaves the live bag; both
     // ride the save back unchanged.
     expect(r.loaded.hasHunger, 'the store took the save\'s hunger').toBe(false);
-    // loadWorldData sets playerHealth to maxHealth on every load (store/useGameStore.jsx), so this holds whatever a save
-    // holds, a starvation cost on load included: it reads the load path, not hunger's absence. The hasHunger check above
-    // is what fails when the store takes the save's hunger.
+    // The fixture holds no health, and a save holding none loads at the maximum (store loadWorldData, saveSchema.js
+    // loadedVital), so this reads the load path, not hunger's absence. The hasHunger check above is what fails when the
+    // store takes the save's hunger.
     expect(r.loaded.health, 'loading an empty stomach cost health').toBe(r.loaded.maxHealth);
     expect('Raw Beef' in r.loaded.liveBag, 'a retired food is in the live bag').toBe(false);
     expect(r.blob.progression.hunger, 'the held hunger key was not written back').toBe(0);

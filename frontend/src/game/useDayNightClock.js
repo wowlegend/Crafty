@@ -19,13 +19,15 @@ import { isWorldFrozenNow } from './worldClock.js';
 //   - isAlive !== false   -- not dead (treat undefined as alive)
 //   - !isCaptureMode()    -- the visual-regression bridge pins lighting via
 //                            setTimeOfDay; the ticker must NOT fight it (determinism)
+//   - the page is shown   -- a hidden page has no clock (dayNight.js shouldAdvanceClock says why)
 export function useDayNightClock({ isWorldBuilt, isAlive } = {}) {
   useEffect(() => {
     const id = setInterval(() => {
       // getInput().active + isCaptureMode() are read LIVE each tick; isWorldBuilt + isAlive
       // are captured per-effect and refresh via the dep array (both rare-change -> correct).
       // The pause-gate decision is the pure shouldAdvanceClock (exhaustively unit-tested).
-      if (!shouldAdvanceClock({ isWorldBuilt, active: getInput().active, isAlive, captureMode: isCaptureMode() })) return;
+      const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+      if (!shouldAdvanceClock({ isWorldBuilt, active: getInput().active, isAlive, captureMode: isCaptureMode(), hidden })) return;
       if (isWorldFrozenNow()) return; // a hitstop holds the sky with the rest of the world
       useGameStore.getState().setGameTime((t) => t + GAME_UNITS_PER_SECOND);
     }, 1000);
