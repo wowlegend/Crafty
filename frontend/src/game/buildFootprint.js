@@ -12,8 +12,9 @@
 // that spec is incoherent with the game's own survival debit.
 //
 // So the footprint is CELL-CAPPED, and each mode's usable size is derived from the cap rather than from
-// the slider. The slider's range stays 1-10 because clamping is friendlier than a range that changes
-// under you, but the cap is what actually governs.
+// the slider. The panel's slider ends at the picked mode's size and each label says the size its mode
+// builds at (ui/GamePanels.jsx BuildingTools; DECISIONS 2026-10-31 item 273), so no label promises more
+// than the cap builds.
 
 /**
  * Hard ceiling on cells per action. Chosen from the economy, not from taste: 64 stone is a plausible

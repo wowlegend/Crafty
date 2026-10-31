@@ -11,6 +11,7 @@ import { getItemSlot, getWeaponBaseDamage } from '../game/equipment.js';
 import { relicByName, relicTier } from '../game/relics.js';
 import { isForgeMaterial } from '../game/forge.js';
 import { idForBlock } from '../world/blockIds.js';
+import { MAX_SIZE } from '../game/buildFootprint.js';
 import { relicEffectText, TIER_NUMERAL } from './relicText.js';
 import { gearStatRows } from '../game/gearCompare.js';
 import { isConsumable, consumeEffect } from '../game/consumables.js';
@@ -519,6 +520,8 @@ export const MagicSystem = ({ onClose }) => {
     );
 };
 
+const SLIDER_MAX = 10;
+
 export const BuildingTools = React.memo(({ onClose }) => {
     const gameState = useGameStore(useShallow(state => ({ selectedBlock: state.selectedBlock })));
     // The store holds the mode and size, so the panel opens on what the player picked last.
@@ -527,13 +530,18 @@ export const BuildingTools = React.memo(({ onClose }) => {
     })));
 
     const t = useT();
+    // Each label says the size its tool builds at, and the slider ends at the picked tool's largest: a footprint is
+    // capped at MAX_CELLS (game/buildFootprint.js), so a label read off the slider alone promised a 10x10x10 cube that
+    // built 4x4x4. The store keeps the size the player slid to, for the tools that reach it.
+    const sizeOf = (id) => Math.max(1, Math.min(buildSize, MAX_SIZE[id] ?? 1, SLIDER_MAX));
+    const n = { wall: sizeOf('wall'), floor: sizeOf('floor'), cube: sizeOf('cube'), delete: sizeOf('delete') };
     // ToolIcon = lucide chrome glyph per build mode (app-chrome, not game-icon content).
     const tools = [
         { id: 'single', name: 'Single Block', ToolIcon: Square, description: 'Place one block at a time' },
-        { id: 'wall', name: 'Wall Builder', ToolIcon: Layers, description: `Build ${buildSize}-high walls` },
-        { id: 'floor', name: 'Floor Builder', ToolIcon: Grid3x3, description: `Create ${buildSize}x${buildSize} floors` },
-        { id: 'cube', name: 'Cube Builder', ToolIcon: Box, description: `Build ${buildSize}x${buildSize}x${buildSize} cubes` },
-        { id: 'delete', name: 'Delete Tool', ToolIcon: Trash2, description: 'Remove multiple blocks' },
+        { id: 'wall', name: 'Wall Builder', ToolIcon: Layers, description: `Build ${n.wall}-high walls` },
+        { id: 'floor', name: 'Floor Builder', ToolIcon: Grid3x3, description: `Create ${n.floor}x${n.floor} floors` },
+        { id: 'cube', name: 'Cube Builder', ToolIcon: Box, description: `Build ${n.cube}x${n.cube}x${n.cube} cubes` },
+        { id: 'delete', name: 'Delete Tool', ToolIcon: Trash2, description: `Remove the blocks you placed, ${n.delete}x${n.delete}x${n.delete}` },
     ];
 
     return (
@@ -561,12 +569,12 @@ export const BuildingTools = React.memo(({ onClose }) => {
                     <Panel variant="inset" bg="bg-slot" className="p-3">
                         <div className="flex justify-between items-center mb-2">
                             <span className="font-display text-xs font-bold tracking-[2px] uppercase text-text-muted">{t('panel.buildSize')}</span>
-                            <span className="font-display font-bold text-accent tabular-nums text-lg">{buildSize}</span>
+                            <span data-testid="build-size" className="font-display font-bold text-accent tabular-nums text-lg">{sizeOf(selectedTool)}</span>
                         </div>
                         <Slider
                             min="1"
-                            max="10"
-                            value={buildSize}
+                            max={String(Math.min(SLIDER_MAX, MAX_SIZE[selectedTool] ?? 1))}
+                            value={sizeOf(selectedTool)}
                             onChange={(e) => setBuildSize(parseInt(e.target.value))}
                             className="w-full"
                             aria-label={t('a11y.buildSize')}

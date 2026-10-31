@@ -10,17 +10,19 @@ import { CHUNK_SIZE, voxelIndex } from '../../src/world/chunkLayout.js';
 import { DEFAULT_WORLD_SEED } from '../../src/world/worldSeed.js';
 import { loadTerrainWorker, sendToWorker, readVoxel, workerVerbIo } from '../_support/terrainWorker.js';
 
-// EVERY BUILDING TOOL DOES WHAT ITS LABEL SAYS (DECISIONS 2026-10-31 items 231-233, 271). The "Delete Tool - Remove
+// EVERY BUILDING TOOL DOES WHAT ITS LABEL SAYS (DECISIONS 2026-10-31 items 231-233, 271, 273). The "Delete Tool - Remove
 // multiple blocks" made a right-click build a 3x3x3 cube and left a left-click mining one block; "Wall Builder - Build
 // 3-high walls" laid a 1-high strip along +x off the ground; a floor or a cube off a wall's side put a third of itself
-// inside the wall; and each opening of the panel set the mode back to Single and the size to 3 (registry
+// inside the wall; each opening of the panel set the mode back to Single and the size to 3; and at the slider's 10 the
+// labels promised a 10x10x10 cube and a 10x10 floor that the cell cap built 4x4x4 and 8x8 (registry
 // AUDIT:numeric:delete-tool-places-cube, AUDIT:ultra:ultra-game-logic-2, AUDIT:numeric:footprint-overwrites-solid-cells).
 //
 // One row per tool the real panel offers: the tool is picked by clicking its button, the panel is closed and opened
 // again, and the place and mine verbs (world/placeAtHit.js, world/mineAtHit.js) run against the real terrain worker on a
 // site whose every cell this file sets (flat grass on dirt on stone, a stone wall standing on it, and a 3x3x3 of stone
 // the player placed), so each tool's cells are written out here by hand, not derived from the code under test. A tool
-// the panel gains without a row fails.
+// the panel gains without a row fails. Then, per tool, every size the slider offers: the label's numbers are the
+// footprint the verb then fills or takes.
 //
 // WHAT THIS DOES NOT CHECK: the build ray (the hits are made here, as Terrain.jsx castBuildRay makes them), the verb
 // router (tests/gates/verb-router-gates.test.js), random footprints and the economy over them
@@ -211,6 +213,59 @@ describe('every Building Tools tool does what its label says (real panel, real s
       expect(ownTaken.paid, `${id}: the player's blocks taken were not paid back as themselves`).toEqual(OWN_PAY[id] || { stone: 1 });
       for (const k of row.own) expect(readVoxel(...k.split('_').map(Number)), `${id}: the worker still holds a block at ${k}`).toBe(0);
       expect(readVoxel(OWN_TOP[0], GROUND, OWN_TOP[2]), `${id}: the ground under the player's blocks was taken`).toBe(GRASS);
+    }, 60000);
+  }
+});
+
+// THE LABEL'S NUMBERS ARE THE FOOTPRINT, AT EVERY SIZE THE SLIDER OFFERS. The verbs run with the worker's answer given
+// here (every cell sent changes), so the footprint is what the verb sends; the site and the real worker are the table's.
+describe('every tool\'s label says the size it builds at, at every size the slider offers (real panel, real verbs)', () => {
+  /** Every sent cell changes, as the worker changes a cell of the other kind. */
+  const all = (edit, done) => done(edit.cells.map((_, i) => i));
+  const extent = (keys) => {
+    const xyz = keys.map((k) => k.split('_').map(Number));
+    return [0, 1, 2].map((a) => (xyz.length ? Math.max(...xyz.map((c) => c[a])) - Math.min(...xyz.map((c) => c[a])) + 1 : 0));
+  };
+  // The extent each label promises, from its numbers: a wall is a column, a floor one cell high.
+  const PROMISE = {
+    single: (n) => ({ numbers: [], extent: [1, 1, 1], size: n }),
+    wall: (n) => ({ numbers: [n], extent: [1, n, 1], size: n }),
+    floor: (n) => ({ numbers: [n, n], extent: [n, 1, n], size: n }),
+    cube: (n) => ({ numbers: [n, n, n], extent: [n, n, n], size: n }),
+    delete: (n) => ({ numbers: [n, n, n], extent: [n, n, n], size: n }),
+  };
+  // A 4x4x4 of the player's own stone for the Delete Tool, its top centre aimed at.
+  const OWN4 = box(range(0, 3), range(10, 13), range(0, 3));
+
+  for (const id of Object.keys(PROMISE)) {
+    it(`${id}: sizes 1 to 10 on the slider`, async () => {
+      render(<BuildingTools onClose={() => {}} />);
+      const button = () => toolButtons().find((b) => { fireEvent.click(b); return S().buildingMode === id; });
+      expect(button(), `SETUP: no button picks ${id}`).toBeTruthy();
+      const checked = [];
+      for (let v = 1; v <= 10; v++) {
+        fireEvent.change(screen.getByRole('slider'), { target: { value: String(v) } });
+        const label = button().textContent;
+        const numbers = (label.match(/\d+/g) || []).map(Number);
+        const shown = Number(screen.getByTestId('build-size').textContent);
+        let keys;
+        if (id === 'delete') {
+          useGameStore.setState({ worldBlocks: new Map(OWN4.map(([x, y, z]) => [`${x}_${y}_${z}`, STONE])), chests: new Map() });
+          await mineAtHit({ hitPoint: new THREE.Vector3(2.5, 14, 2.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0),
+            targetedX: 2, targetedY: 13, targetedZ: 2, targetCoords: '2_13_2' }, { post: () => {}, editCells: all, playBreak: () => {} });
+          keys = [...S().worldBlocks].filter(([, b]) => b === 0).map(([k]) => k);
+        } else {
+          useGameStore.setState((s) => ({ worldBlocks: new Map(), inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, stone: 64 } } }));
+          await placeAtHit({ hitPoint: new THREE.Vector3(2.5, 20, 2.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0) }, { editCells: all });
+          keys = [...S().worldBlocks.keys()];
+        }
+        const n = numbers.length ? numbers[0] : 1;
+        const want = PROMISE[id](n);
+        expect({ numbers, extent: extent(keys), size: shown }, `${id} at slider ${v}: "${label}" is not what it builds`).toEqual(want);
+        checked.push(n);
+      }
+      expect(checked.length, 'SETUP: a slider size was not checked').toBe(10);
+      expect(Math.max(...checked), `SETUP: the ${id} label never reached the tool's largest size`).toBe(Number(screen.getByRole('slider').max));
     }, 60000);
   }
 });

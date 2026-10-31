@@ -143,7 +143,7 @@ describe('placeAtHit pays and records only the cells the worker filled, and neve
     expect(sentCells(), 'a cell above the world reached the worker').toEqual([]);
     expect(S().worldBlocks.size, 'a cell above the world was recorded').toBe(0);
     expect({ ember: S().ember, credited: placed.n }, 'a placement above the world paid ember or a Master Builder count').toEqual({ ember: 0, credited: 0 });
-    expect(notes.map((n) => n.type), 'the refusal above the world was silent').toEqual(['warn']);
+    expect(notes, 'the refusal above the world was silent, or did not say why').toEqual([{ text: 'No room: the world ends there', type: 'warn' }]);
   });
 
   it('a wall run past the world\'s top places, pays and records only the cells inside it', async () => {
@@ -153,7 +153,7 @@ describe('placeAtHit pays and records only the cells the worker filled, and neve
     expect(S().inventory.blocks.stone, 'the cells above the world were paid for').toBe(7);
     expect(sentCells().map((c) => c.y), 'a cell above the world reached the worker').toEqual([253, 254, 255]);
     expect([...S().worldBlocks.keys()].sort(), 'a cell above the world was recorded').toEqual(['10_253_10', '10_254_10', '10_255_10']);
-    expect(notes.map((n) => n.type), 'the cells held back above the world were silent').toEqual(['warn']);
+    expect(notes, 'the cells held back above the world were silent, or not said why').toEqual([{ text: 'No room: the world ends there', type: 'warn' }]);
   });
 
   it('the cells the worker refused are paid back and not recorded, and the player is told', async () => {
@@ -165,7 +165,7 @@ describe('placeAtHit pays and records only the cells the worker filled, and neve
     expect(S().inventory.blocks.stone, 'the refused cells were not paid back').toBe(14);
     expect([...S().worldBlocks.keys()].filter((k) => refuse.includes(k)), 'a refused cell was recorded as placed').toEqual([]);
     expect(S().worldBlocks.size, 'the filled cells were not all recorded').toBe(6);
-    expect(notes.map((n) => n.type), 'the cells the worker refused were held back in silence').toEqual(['warn']);
+    expect(notes, 'the cells the worker refused were held back in silence, or not said why').toEqual([{ text: 'No room: a block is already there', type: 'warn' }]);
   });
 
   it('a chest the worker refuses is no storage chest and is paid back', async () => {
