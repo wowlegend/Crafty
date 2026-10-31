@@ -5,10 +5,18 @@ import { loadTree, functionNamed, plainParamBinding, destructuredParamBinding, p
  * the flag at module scope.
  *
  * The flag is followed by scope, not by name (tests/_support/sourceFlow.js): the function is `isCaptureMode` as declared in
- * devtest/captureMode.js or imported under any local name, a namespace's `x.isCaptureMode`, a getter that returns the flag,
- * and a parameter or prop it was passed into; the value is a call of the function, a read of a store's `isCaptureMode`
+ * devtest/captureMode.js or imported under any local name, a namespace's `x.isCaptureMode`, an arrow or function-expression
+ * getter that a `const` holds (`const frozen = () => isCaptureMode()`: its calls are the guards), and a parameter or prop
+ * it was passed into; the value is a call of the function, a read of a store's `isCaptureMode`
  * field (`state.isCaptureMode`, `{ isCaptureMode: c } = state`), a selector call that returns it
  * (`useGameStore((s) => s.isCaptureMode)`), and any name bound to one of those.
+ *
+ * NOT FOLLOWED, two shapes measured on this detector (REVIEW:l12:capture-guard-getter-and-reexport-shapes): a getter
+ * declared with `function` (`function frozen() { return isCaptureMode(); }` with two uses counts 1, where the arrow form
+ * counts 2: the read in its body is counted once, its calls are not), and a name that arrives through a re-export
+ * (`export { isCaptureMode as frozen } from './captureMode.js'`: its importers' reads count none, where an aliased import
+ * counts them). Neither shape is in src today, so the ledger is exact today; a file that gains a guard through either one
+ * would leave the ratchet green.
  *
  * A GUARD is one place the flag decides something: an expression that reads it, with the operators around it (`!`, `&&`,
  * `||`, `===`, `typeof`) taken as one, so `typeof isCapture === 'function' && isCapture()` is one guard and

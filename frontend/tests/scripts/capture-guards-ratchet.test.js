@@ -26,11 +26,15 @@ import { captureGuards } from '../_support/captureGuards.js';
  *
  * A guard is one place the flag decides something, and the flag is followed by scope, not by name: an aliased import
  * (`isCaptureMode as frozenForCapture`), a local that holds it (`const isCaptureMode = useGameStore((s) => s.isCaptureMode)`,
- * whose every use is a guard), a getter, and a parameter or prop it was passed into (`initSettingsPersistence(store,
- * isCaptureMode)` puts settingsPersist.js's two `isCapture()` guards in that file). tests/_support/captureGuards.js says
- * exactly what counts; it reads the syntax tree with scopes (@babel/parser, @babel/traverse), so a comment or a string
- * naming the function is not a guard. Not followed: the flag stored on an object and read back (`sel.capture` after a
- * selector returns `{ capture: s.isCaptureMode }`; the selector's read counts once).
+ * whose every use is a guard), an arrow getter a `const` holds, and a parameter or prop it was passed into
+ * (`initSettingsPersistence(store, isCaptureMode)` puts settingsPersist.js's two `isCapture()` guards in that file).
+ * tests/_support/captureGuards.js says exactly what counts; it reads the syntax tree with scopes (@babel/parser,
+ * @babel/traverse), so a comment or a string naming the function is not a guard. Not followed: the flag stored on an
+ * object and read back (`sel.capture` after a selector returns `{ capture: s.isCaptureMode }`; the selector's read counts
+ * once); a getter declared with `function` (counted once, where it reads the flag, not once per call); and a name that
+ * arrives through a re-export (`export { isCaptureMode as frozen } from ...`, whose importers' reads count none). The
+ * last two were measured by a reviewer's mutants, which stayed green (REVIEW:l12:capture-guard-getter-and-reexport-shapes);
+ * neither shape is in src today.
  * SITED IN tests/scripts/ (the subject is the source's shape), not tests/gates/.
  *
  * Mutation-Proof: scripts/dev/mutate.sh, receipts in the commit.
