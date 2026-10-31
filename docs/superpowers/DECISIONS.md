@@ -157,9 +157,9 @@ PR #65. Items 200-206, and round 2's 219-224. Each stands while it earns its pla
      failed only on `ci-required-check.test.js`, which the narrowed matrix breaks; both branches are deleted.
 221. **Two tabs on one world: the stale tab stops saving and says so** (static F2, dynamic F1;
    AUDIT:persistence:two-tabs-clobber-world). The store keeps the slot's `saved_at` as the tab last read it (the claim,
-   from the save index) or wrote it, in the transient `_slotSavedAt`. `saveActiveWorld`, which every writer now goes
-   through (the autosave, the flush on hide and unload, every switch, the World Manager's Save Current World), reads
-   the index entry first; when its `saved_at` is later than the one the tab knows, or the tab knows none and the index
+   from the save index) or wrote it, in the transient `_slotSavedAt`. `saveActiveWorld`, which every save of the tab's
+   own slot now goes through (the autosave, the flush on hide and unload, every switch, the World Manager's Save
+   Current World; Create writes a new slot of its own), reads the index entry first; when its `saved_at` is later than the one the tab knows, or the tab knows none and the index
    has one, it writes nothing and sets `slotConflict`. `ui/SlotConflictPanel.jsx` (App, beside the context-loss panel)
    says so in one line and offers Reload, a switch to the slot; it is a covering surface (`ui/panelState.js`), so input
    leaves the world and the pointer is given back. The manual Save no longer writes its own payload: it kept no name,
