@@ -19,6 +19,42 @@
 
 ---
 
+## 2026-10-31 (registry S6) — [LOOP] a lane takes main in the documented way and the commit goes through: S6 reads MERGE_HEAD while a merge is unfinished
+
+Found by the start-stall lane (`fix/start-before-built-stall`), which could not merge main without `--no-verify` and
+asked whether S6 should read MERGE_HEAD. This amends item 364 (registry v2), whose S6 read "a sha that is not an
+ancestor of HEAD".
+
+369. **S6 counts a sha main added while a merge of main is unfinished, and nothing wider.** The way `CLAUDE.md`
+   "Landing" takes main into a lane is a merge commit, and its pre-commit hook runs `registry-harvest.test.js` on the
+   staged registry while HEAD is still the lane's own tip. S6 read `git rev-list HEAD`, so every `closedBy` sha main had
+   added read "not an ancestor of HEAD" (18 of 37 tests red on that lane, `49f36423` among them) and the only way
+   through was `--no-verify`, a bright line: no lane could take main in. `liveReferences` now reads one `git rev-list
+   HEAD MERGE_HEAD` when `git rev-parse -q --verify MERGE_HEAD` resolves, so a sha counts when HEAD reaches it or the
+   commit being merged does. It is not "any sha that exists": a sha on a branch the merge does not take in, a sha on no
+   branch, and every sha after `git merge --abort` are still refused, and once the merge commits HEAD itself reaches the
+   main-only shas. Its message names MERGE_HEAD when one was looked at. A squash merge writes no MERGE_HEAD and an
+   octopus merge reads only its first merged commit (both checked in a scratch repo); neither is how this repo takes
+   main in. S6 still proves ancestry, not that a sha fixed its row.
+   *Proof.* `tests/scripts/registry-harvest.test.js` builds throwaway repositories where `mainOnly` (on main, not the
+   lane) and `stray` (on a third branch nothing merges) are known by construction: before a merge, mid-merge, after
+   `--abort`, after the merge commit, and in a linked worktree. Against 5510db64's rule 3 of the 5 cases are red (the
+   mid-merge, the abort control and the worktree) and the two strict ones green; with the arm all pass. Mutants, each
+   run through `scripts/dev/mutate.sh`: dropping the MERGE_HEAD root, `rev-list --all` (any branch), `--all` only while
+   merging, "the object exists" (`cat-file`), and reading `ORIG_HEAD` are each red; the S6 message without its
+   MERGE_HEAD wording is red in `registry-clauses.test.js`; a comment-only edit stays green. *Lived.* In a temp clone, a
+   lane cut from `bd06dacf` with one commit that touches no registry row took in 5510db64 with the hook active: the
+   commit was blocked, 18 of 320 related tests red, S6 naming `closedBy ea8612e7`. The same lane took in this fix's head
+   `eec9818b` and the commit went through (326 related tests passed, merge `3573d5e1`, `49f36423` an ancestor of HEAD
+   after and of the lane's tip before it no).
+   *What this does not do.* A lane takes in a main that HOLDS this fix: main at 5510db64 or earlier still fails the
+   hook for a lane cut before the registry v2 landing, because the merged tree carries main's old harvest. And the
+   merge meets a second hook: when it brings in gate changes, `commit-msg` wants a `Mutation-Proof:` line, which every
+   earlier merge carries ("the gates this merge brings in are main's, proven where they landed"); the demonstration
+   needed it and `.claude/rules/registry.md` ("Merging main into a lane") now says so. That hook is unchanged.
+
+---
+
 ## 2026-10-31 (registry v2) — [LOOP] one list of open work, cleaned and kept clean: schema v2, lanes as rows, closed is final, and the gates that hold it
 
 Kevin, 2026-10-31: "a total review / cleanup of that registry jsonl, remember lots of these were done by inferior
