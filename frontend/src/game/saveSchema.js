@@ -171,6 +171,21 @@ export function liveInventory(inventory) {
 }
 
 /** A save's chest entries ([coords, chest]) with the retired keys taken out of each chest's inventory. Pure. */
+// A block edit's key: the cell's integer x_y_z (the store's worldBlocks).
+const CELL_KEY = /^-?\d+_-?\d+_-?\d+$/;
+
+/**
+ * The block edits of a save that name a cell: its [key, block] pairs whose key is `x_y_z`. A save comes from
+ * localStorage and may hold anything, and a key the terrain worker's message cannot split (store
+ * loadModificationsMessage) throws when Terrain mounts, outside the boot's guard, so every reload of the tab would boot
+ * into the same throw.
+ * @param {unknown} blocks a save's world_data.blocks
+ * @returns {Array<[string, unknown]>}
+ */
+export function liveBlocks(blocks) {
+  return Array.isArray(blocks) ? blocks.filter((e) => Array.isArray(e) && e.length === 2 && typeof e[0] === 'string' && CELL_KEY.test(e[0])) : [];
+}
+
 export function liveChests(chests) {
   if (!Array.isArray(chests)) return chests;
   return chests.map((e) => (Array.isArray(e) && isPlainObject(e[1]) && holdsRetired(e[1].inventory)

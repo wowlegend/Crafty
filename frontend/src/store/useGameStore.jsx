@@ -8,7 +8,7 @@ import { foldVerbMods } from '../game/verbMods.js';
 import { relicTier, normalizeRelicTiers } from '../game/relics.js';
 import { buy as forgeBuy } from '../game/forge.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveEquipment, TALENT_CUT } from '../game/saveSchema.js';
+import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, TALENT_CUT } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -1076,7 +1076,7 @@ export const useGameStore = create((set, get) => ({
         const worldSeed = resolveWorldSeed(saveData.game_state?.worldSeed);
         seedClimate(worldSeed);
         set((state) => {
-            const worldBlocks = saveData.world_data?.blocks ? new Map(saveData.world_data.blocks) : state.worldBlocks;
+            const worldBlocks = saveData.world_data?.blocks ? new Map(liveBlocks(saveData.world_data.blocks)) : state.worldBlocks;
             // migrateSaveData already normalized inventory keys. The retired items (RETIRED_INVENTORY_KEYS: the
             // currency, the pickaxe, the foods) leave the live bag (the tombstone below holds them for the save).
             const inventory = liveInventory(saveData.player_data?.inventory || state.inventory);
