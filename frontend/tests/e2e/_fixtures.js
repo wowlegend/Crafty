@@ -13,6 +13,7 @@ import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isolatedFailureTracker, gameEntryOf, ISOLATED_BINDING } from './_isolatedFailures.js';
+import { slimCoverage } from './_coverage.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = resolve(ROOT, 'test-results/coverage');
@@ -88,13 +89,8 @@ export const test = base.extend({
 
 async function writeCoverage(page, testInfo) {
   try {
-    const entries = await page.coverage.stopJSCoverage();
-    // Keep url + ranges only. `source` is the FULL module text per entry, which turns a shard's
-    // artifact into tens of MB of the repo's own source for no analytical gain.
-    const slim = entries.map((e) => ({
-      url: e.url,
-      functions: (e.functions || []).map((f) => ({ ranges: (f.ranges || []).map((r) => ({ count: r.count })) })),
-    }));
+    // The url, and each function's name and counts (tests/e2e/_coverage.js says why each is kept or dropped).
+    const slim = slimCoverage(await page.coverage.stopJSCoverage());
     mkdirSync(OUT, { recursive: true }); // FIRST — writeFileSync into a missing dir throws
     const safe = `${testInfo.title}-${seq++}`.replace(/[^a-z0-9-]+/gi, '_').slice(0, 80);
     writeFileSync(resolve(OUT, `${safe}.json`), JSON.stringify(slim));

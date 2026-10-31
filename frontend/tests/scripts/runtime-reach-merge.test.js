@@ -8,26 +8,32 @@ import { parse as parseYaml } from 'yaml';
 import { mergeShards, shardRecord, MUST_REACH, SHARD_FORMAT } from '../../scripts/ci/runtime-reach.mjs';
 import { SKIPPABLE_ON_DOCS } from '../../scripts/ci/ci-ok.mjs';
 import { readSourceTree } from '../_support/primitiveCallSites.js';
+import { v8FunctionNames, declaredNames } from '../_support/v8FunctionNames.js';
+import { slimCoverage } from '../e2e/_coverage.js';
 
 /**
  * THE MERGED RUNTIME-REACH JOB (deep audit 2026-10-30, lane L12; AUDIT:debt:runtime-reach-per-shard).
  *
  * The e2e suite runs in 8 shards. Each used to print its own reach report and exit 0 whatever it read: half the shards
  * listed the dragon's modules as never reached, and a shard with no coverage printed "instrument failure" and passed.
- * Now each shard writes the modules it reached (`--emit`), and one job (`--merge`) unions the 8 and exits 1 when a
- * shard file is missing, duplicated or empty, or when a module in MUST_REACH was reached by none of them.
+ * Now each shard writes the modules it evaluated and the named functions that ran (`--emit`), and one job (`--merge`)
+ * unions the 8 and exits 1 when a shard file is missing, duplicated, empty or carries no function names, when the
+ * contract is empty, or when an entry point in MUST_REACH (`module#function`: a mounted component, a called hook or
+ * function) ran in none of them, whether or not its module was evaluated.
  *
  * What this drives: the pure merge (every way a shard set can be wrong, and the one way it can be right while no single
- * shard is), the real CLI on synthetic shard files (exit codes, the files it writes), MUST_REACH against the real tree
- * (a renamed module is a stale entry), and ci.yml as a YAML document (the emit step, the upload, the merge job, the
- * `--expect` that must equal the matrix). What would still pass if the job were deleted: nothing here.
+ * shard is), what a shard records and what each test keeps of V8's coverage, the real CLI on synthetic files (exit
+ * codes, the files it writes), MUST_REACH against the real tree (a renamed module is a stale entry, and each entry names
+ * one function by the name V8 reports, declared once in its file), and ci.yml as a YAML document (the emit step, the
+ * upload, the merge job, the `--expect` that must equal the matrix). What would still pass if the job were deleted:
+ * nothing here.
  *
  * SITED IN tests/scripts/: the subject is a CI script and a workflow file; half of it reads ci.yml, half executes the
  * script on fixtures, and nothing is a behavioural gate over the game.
  *
- * NOT PROVEN HERE: that the real shards' coverage maps to these module paths (CI run 41199587278's eight shard logs
- * reach 408 of 415 modules including all 70 of MUST_REACH, checked offline when the set was written), and that the
- * workflow runs (its own PR run is that proof).
+ * NOT PROVEN HERE: that the real shards' coverage names these functions as the source does. The dev server's transform
+ * was checked offline when the entries were written (vite 6.4.5's transformRequest with plugin-react's fast refresh on:
+ * 71 of 71 entries name one function), and each PR's CI run is the proof on the real coverage.
  *
  * Mutation-Proof: scripts/dev/mutate.sh, receipts in the commit.
  */
@@ -39,9 +45,12 @@ const CI_YML = join(ROOT, '.github/workflows/ci.yml');
 
 // The files under src, as the script's own `git ls-files src` filter reads them (a tracked file is a file on disk here).
 const known = readSourceTree().map((f) => f.file).sort();
-const mustAll = MUST_REACH.flatMap((g) => g.modules);
+const mustEntries = MUST_REACH.flatMap((g) => g.entries);
+const mustModules = [...new Set(mustEntries.map((e) => e.split('#')[0]))];
 
-const shard = (id, over = {}) => ({ format: SHARD_FORMAT, shard: String(id), files: 10, entries: 5000, known: known.length, reached: known, ...over });
+const shard = (id, over = {}) => ({
+  format: SHARD_FORMAT, shard: String(id), files: 10, entries: 5000, known: known.length, named: 4000, reached: known, functions: mustEntries, ...over,
+});
 const eight = (over = () => ({})) => Array.from({ length: 8 }, (_, i) => shard(i + 1, over(i + 1)));
 
 describe('mergeShards — the union of 8 shard files, and every way the set can be wrong', () => {
@@ -55,20 +64,41 @@ describe('mergeShards — the union of 8 shard files, and every way the set can 
     expect(r.mustReached).toBe(r.mustTotal);
   });
 
-  it('a module reached by ONE shard only is reached: the union is the point (the dragon runs in some shards, not all)', () => {
-    const boss = 'src/render/BossEntity.jsx';
-    const r = mergeShards(eight((i) => ({ reached: i === 3 ? known : known.filter((m) => m !== boss) })), { expect: 8, known });
+  it('an entry point that ran in ONE shard only ran: the union is the point (the dragon runs in some shards, not all)', () => {
+    const boss = 'src/render/BossEntity.jsx#glowHead';
+    const r = mergeShards(eight((i) => ({ functions: i === 3 ? mustEntries : mustEntries.filter((e) => e !== boss) })), { expect: 8, known });
     expect(r.ok, r.problems.join('; ')).toBe(true);
-    expect(r.reached).toContain(boss);
+    expect(r.functionsRan).toContain(boss);
   });
 
-  it('a MUST_REACH module that no shard reached is a problem that names it (the deleted-mount case)', () => {
-    const gone = 'src/systems/SpawnerSystem.jsx';
-    expect(mustAll).toContain(gone);
-    const r = mergeShards(eight(() => ({ reached: known.filter((m) => m !== gone) })), { expect: 8, known });
+  it('an entry point that never ran is a problem that names it, though its module was evaluated (the deleted mount: ElementZoneSystem.jsx keeps two other importers)', () => {
+    const gone = 'src/world/ElementZoneSystem.jsx#ElementZoneSystem';
+    expect(mustEntries).toContain(gone);
+    const r = mergeShards(eight(() => ({ functions: mustEntries.filter((e) => e !== gone) })), { expect: 8, known });
     expect(r.ok).toBe(false);
-    expect(r.problems.some((p) => p.includes(gone) && p.includes('none of the 8 shards'))).toBe(true);
+    expect(r.problems.filter((p) => p.includes(gone)), r.problems.join('; ')).toEqual([
+      `MUST_REACH ${gone} never ran in any of the 8 shards (the systems the scene mounts), though its module was evaluated`,
+    ]);
     expect(r.mustReached).toBe(r.mustTotal - 1);
+  });
+
+  it('an entry point whose module was never evaluated says so', () => {
+    const gone = 'src/systems/SpawnerSystem.jsx';
+    const r = mergeShards(eight(() => ({ reached: known.filter((m) => m !== gone), functions: mustEntries.filter((e) => !e.startsWith(`${gone}#`)) })), { expect: 8, known });
+    expect(r.ok).toBe(false);
+    expect(r.problems.join('\n')).toContain(`MUST_REACH ${gone}#SpawnerSystem never ran in any of the 8 shards (the systems the scene mounts), and its module was never evaluated`);
+  });
+
+  it('a shard whose coverage carries no function names is an instrument failure: no entry point can be seen in it', () => {
+    const r = mergeShards(eight((i) => (i === 6 ? { named: 0, functions: [] } : {})), { expect: 8, known });
+    expect(r.ok).toBe(false);
+    expect(r.problems.join('\n')).toMatch(/shard 6 reached \d+ modules and saw no named function/);
+  });
+
+  it('an empty contract, or an entry that names no function, is a problem', () => {
+    expect(mergeShards(eight(), { expect: 8, known, must: [] }).problems).toContain('MUST_REACH names no entry point: a contract of nothing passes over nothing');
+    const r = mergeShards(eight(), { expect: 8, known, must: [{ why: 'x: y', entries: ['src/App.jsx'] }] });
+    expect(r.problems.join('\n')).toMatch(/MUST_REACH entry src\/App\.jsx names no function/);
   });
 
   it('a module outside the contract that no shard reached is a report line, not a failure', () => {
@@ -120,19 +150,21 @@ describe('mergeShards — the union of 8 shard files, and every way the set can 
     const r = mergeShards([...eight().slice(0, 6), new Error('shard-7.json: Unexpected end of JSON input'), { format: 'other', shard: '8' }], { expect: 8, known });
     expect(r.ok).toBe(false);
     expect(r.problems.join('\n')).toMatch(/could not be read: shard-7\.json/);
-    expect(r.problems.join('\n')).toMatch(/is not runtime-reach-shard\/1/);
+    expect(r.problems.join('\n')).toMatch(/is not runtime-reach-shard\/2/);
   });
 
-  it('a file in another format version is rejected even when its fields look right', () => {
-    const r = mergeShards([...eight().slice(0, 7), shard(8, { format: 'runtime-reach-shard/2' })], { expect: 8, known });
+  it('a file in another format version is rejected even when its fields look right (a /1 file has no functions)', () => {
+    const r = mergeShards([...eight().slice(0, 7), shard(8, { format: 'runtime-reach-shard/1' })], { expect: 8, known });
     expect(r.ok).toBe(false);
-    expect(r.problems.join('\n')).toMatch(/is not runtime-reach-shard\/1/);
+    expect(r.problems.join('\n')).toMatch(/is not runtime-reach-shard\/2/);
+    const noFns = mergeShards([...eight().slice(0, 7), shard(8, { functions: undefined })], { expect: 8, known });
+    expect(noFns.problems.join('\n')).toMatch(/is not runtime-reach-shard\/2/);
   });
 
-  it('a MUST_REACH entry that is not a src module any more is a stale entry (a rename must update the contract)', () => {
+  it('a MUST_REACH entry whose module is not a src module any more is a stale entry (a rename must update the contract)', () => {
     const r = mergeShards(eight(), { expect: 8, known: known.filter((m) => m !== 'src/game/worldBoot.js') });
     expect(r.ok).toBe(false);
-    expect(r.problems.join('\n')).toMatch(/src\/game\/worldBoot\.js, which is not a src module any more/);
+    expect(r.problems.join('\n')).toMatch(/src\/game\/worldBoot\.js#bootWorld, whose module is not a src module any more/);
   });
 
   it('a reached path the tree does not list is dropped, not invented into the report', () => {
@@ -143,28 +175,76 @@ describe('mergeShards — the union of 8 shard files, and every way the set can 
 });
 
 describe('shardRecord — what one shard writes', () => {
-  const entry = (url, count) => ({ url, functions: [{ ranges: [{ count }] }] });
-  it('records the modules its entries reached, the entry count and the format', () => {
+  // V8's per-function record: the function's name and its ranges, the first being the whole function with its call count.
+  const fn = (functionName, count) => ({ functionName, ranges: [{ count }, { count: 0 }] });
+  const entry = (url, ...functions) => ({ url, functions });
+  it('records the modules its entries evaluated, the named functions that ran, how many named functions it saw, and the format', () => {
     const rec = shardRecord({
-      shard: 3, files: 2, entries: [entry('http://x/src/App.jsx', 4), entry('http://x/src/HUD.jsx', 0), entry('http://x/node_modules/a.js', 9)],
+      shard: 3, files: 2,
+      entries: [
+        entry('http://x/src/App.jsx?t=1', fn('', 1), fn('App', 4), fn('helper', 0)),
+        entry('http://x/src/HUD.jsx', fn('', 0), fn('HUD', 0)),
+        entry('http://x/src/App.jsx', fn('App', 1), fn('late', 2)),
+        entry('http://x/node_modules/a.js', fn('vendor', 9)),
+      ],
       known: ['src/App.jsx', 'src/HUD.jsx'], workerScoped: new Set(),
     });
-    expect(rec).toEqual({ format: SHARD_FORMAT, shard: '3', files: 2, entries: 3, known: 2, reached: ['src/App.jsx'] });
+    expect(rec).toEqual({
+      format: SHARD_FORMAT, shard: '3', files: 2, entries: 4, known: 2, reached: ['src/App.jsx'],
+      named: 5, functions: ['src/App.jsx#App', 'src/App.jsx#late'],
+    });
+  });
+
+  it('a function that only a nested block of counted is not taken as run: the first range is the call count', () => {
+    const rec = shardRecord({ shard: 1, files: 1, entries: [entry('http://x/src/App.jsx', { functionName: 'App', ranges: [{ count: 0 }, { count: 3 }] })], known: ['src/App.jsx'], workerScoped: new Set() });
+    expect(rec.functions).toEqual([]);
+  });
+});
+
+describe('slimCoverage — what each test keeps of V8\'s coverage (tests/e2e/_coverage.js)', () => {
+  it('keeps the url, each function\'s name and its range counts, and drops the source and the offsets', () => {
+    const v8 = [{ url: 'http://x/src/App.jsx', scriptId: '7', source: 'export function App() {}', functions: [
+      { functionName: 'App', isBlockCoverage: true, ranges: [{ startOffset: 0, endOffset: 24, count: 2 }] },
+      { isBlockCoverage: false, ranges: [{ startOffset: 0, endOffset: 1, count: 1 }] },
+    ] }];
+    expect(slimCoverage(v8)).toEqual([{ url: 'http://x/src/App.jsx', functions: [
+      { functionName: 'App', ranges: [{ count: 2 }] },
+      { functionName: '', ranges: [{ count: 1 }] },
+    ] }]);
   });
 });
 
 describe('MUST_REACH — the contract, against the real tree', () => {
-  it('is a list of distinct src modules that git lists, in groups that say why', () => {
-    expect(mustAll.length, 'the contract shrank').toBeGreaterThanOrEqual(70);
-    expect(new Set(mustAll).size, 'a module is named twice').toBe(mustAll.length);
+  const trees = Object.fromEntries(readSourceTree().map((f) => [f.file, f.text]));
+  it('is a list of distinct entry points in src modules that git lists, in groups that say why', () => {
+    expect(mustEntries.length, 'the contract shrank').toBeGreaterThanOrEqual(71);
+    expect(mustModules.length, 'a module left the contract').toBeGreaterThanOrEqual(70);
+    expect(new Set(mustEntries).size, 'an entry is named twice').toBe(mustEntries.length);
     for (const g of MUST_REACH) expect(g.why.length, 'a group with no reason').toBeGreaterThan(20);
-    const stale = mustAll.filter((m) => !known.includes(m));
-    expect(stale, 'MUST_REACH names modules the tree no longer has').toEqual([]);
+    expect(mustModules.filter((m) => !known.includes(m)), 'MUST_REACH names modules the tree no longer has').toEqual([]);
   });
 
-  it('names the boot, the save path, the dragon and the systems the scene mounts (one of each family)', () => {
-    for (const m of ['src/game/worldBoot.js', 'src/game/saveSchema.js', 'src/render/BossEntity.jsx', 'src/world/bossSystem.js', 'src/QuestSystem.jsx', 'src/world/SquadAISystem.jsx', 'src/world/Terrain.jsx']) {
-      expect(mustAll, m).toContain(m);
+  it('every entry names one function, by the name V8 reports for it, declared once in its file', () => {
+    // V8 names a function by its declaration, a named function expression, or the const or property it is the value of;
+    // `memo(() => ...)` is anonymous. And the dev server's esbuild renames a second declaration of a name in one file:
+    // `const X = memo(function X() {})` is served as `function X2()` (measured on vite 6.4.5 with plugin-react 4.7.0, fast
+    // refresh on, 2026-10-31), so a name declared twice would never match. Both are checked here, offline, so a refactor
+    // that breaks an entry's name fails before CI does.
+    const problems = [];
+    for (const e of mustEntries) {
+      const [mod, name] = e.split('#');
+      const fns = v8FunctionNames(trees[mod]).filter((f) => f.name === name);
+      const decls = declaredNames(trees[mod]).filter((n) => n === name).length;
+      if (fns.length !== 1) problems.push(`${e}: ${fns.length} functions V8 would name ${name}`);
+      else if (decls > 1) problems.push(`${e}: ${name} is declared ${decls} times in the file, and the dev server renames one`);
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it('names an entry of each kind: a mounted component, a hook App calls, a call on the save path, the dragon\'s chunk', () => {
+    for (const e of ['src/systems/SpawnerSystem.jsx#SpawnerSystem', 'src/world/ElementZoneSystem.jsx#ElementZoneSystem', 'src/QuestSystem.jsx#useQuestSystem',
+      'src/game/worldSaves.js#writeWorld', 'src/game/worldBoot.js#bootWorld', 'src/render/BossEntity.jsx#glowHead', 'src/render/dragonLoader.js#Dragon']) {
+      expect(mustEntries, e).toContain(e);
     }
   });
 });
@@ -190,13 +270,22 @@ describe('the CLI — --emit and --merge on files', () => {
   const allShards = (mut = () => ({})) => Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`shard-${i + 1}.json`, shard(i + 1, mut(i + 1))]));
 
   it('--emit writes the shard file for a directory of coverage and exits 0', () => {
-    const cov = coverageDir('cov-ok', [{ url: 'http://localhost:4179/src/App.jsx?t=1', functions: [{ ranges: [{ count: 2 }] }] }]);
+    const cov = coverageDir('cov-ok', [{ url: 'http://localhost:4179/src/App.jsx?t=1', functions: [{ functionName: '', ranges: [{ count: 1 }] }, { functionName: 'App', ranges: [{ count: 2 }] }] }]);
     const out = join(dir, 'out', 'shard-6.json');
     const r = run('--emit', out, '--shard', '6', cov);
     expect(r.status, r.stdout + r.stderr).toBe(0);
     const rec = JSON.parse(readFileSync(out, 'utf8'));
-    expect(rec).toMatchObject({ format: SHARD_FORMAT, shard: '6', files: 1, entries: 1, reached: ['src/App.jsx'] });
+    expect(rec).toMatchObject({ format: SHARD_FORMAT, shard: '6', files: 1, entries: 1, reached: ['src/App.jsx'], named: 1, functions: ['src/App.jsx#App'] });
     expect(rec.known).toBe(known.length);
+  });
+
+  it('--emit exits 1, and still writes the file, when the coverage carries no function names (the fixture dropped them)', () => {
+    const cov = coverageDir('cov-nonames', [{ url: 'http://localhost:4179/src/App.jsx', functions: [{ ranges: [{ count: 2 }] }] }]);
+    const out = join(dir, 'out', 'shard-7.json');
+    const r = run('--emit', out, '--shard', '7', cov);
+    expect(r.status, r.stdout).toBe(1);
+    expect(r.stdout).toMatch(/no named function/);
+    expect(JSON.parse(readFileSync(out, 'utf8')).named).toBe(0);
   });
 
   it('--emit exits 1 when the coverage directory does not exist (a shard that wrote nothing is not a clean shard)', () => {
@@ -224,14 +313,14 @@ describe('the CLI — --emit and --merge on files', () => {
     const r = run('--merge', d, '--expect', '8');
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.stdout).toMatch(/8 shard file\(s\) of 8/);
-    expect(r.stdout).toMatch(/MUST_REACH: \d+ of \d+ named modules reached/);
+    expect(r.stdout).toMatch(new RegExp(`MUST_REACH: ${mustEntries.length} of ${mustEntries.length} entry points ran \\(in ${mustModules.length} modules\\)`));
   });
 
-  it('--merge exits 1 when a MUST_REACH module is reached by no shard, and names it', () => {
-    const d = shardDir('merge-must', allShards(() => ({ reached: known.filter((m) => m !== 'src/world/HurlSystem.jsx') })));
+  it('--merge exits 1 when a MUST_REACH entry point ran in no shard, though its module was evaluated, and names it', () => {
+    const d = shardDir('merge-must', allShards(() => ({ functions: mustEntries.filter((e) => e !== 'src/world/HurlSystem.jsx#HurlSystem') })));
     const r = run('--merge', d, '--expect', '8');
     expect(r.status).toBe(1);
-    expect(r.stdout).toMatch(/MUST_REACH src\/world\/HurlSystem\.jsx was reached by none/);
+    expect(r.stdout).toMatch(/MUST_REACH src\/world\/HurlSystem\.jsx#HurlSystem never ran in any of the 8 shards .*though its module was evaluated/);
   });
 
   it('--merge exits 1 with seven files, with an empty directory and with no directory', () => {

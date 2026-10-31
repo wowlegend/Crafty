@@ -231,7 +231,8 @@ jobs:
       # EACH SHARD REPORTS ALONE TO ONE JOB, not to the log: 8 shards each reach 391-397 of the 415 modules, so a
       # per-shard report listed the dragon's modules as never reached in half of them and a shard with no coverage
       # printed "instrument failure" and exited 0 (deep audit 2026-10-30, AUDIT:debt:runtime-reach-per-shard). This step
-      # writes the modules this shard reached as a small file and exits 1 when it read no coverage; the upload below
+      # writes the modules this shard evaluated and the named functions that ran as a small file, and exits 1 when it read
+      # no coverage or the coverage carries no function names; the upload below
       # fails the shard if the file is missing; the `runtime-reach` job unions the 8 and judges them.
       - name: Runtime reach (this shard's modules)
         if: always()
@@ -281,8 +282,9 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # RUNTIME REACH, MERGED (2026-10-31, lane L12). One report over the 8 shards' files, and a contract: it exits 1 when a
-  # shard file is missing, duplicated or empty (an instrument failure is never a clean report) and when a module in
-  # MUST_REACH (scripts/ci/runtime-reach.mjs) was reached by none of the shards. The unreached list is still a report;
+  # shard file is missing, duplicated, empty or nameless (an instrument failure is never a clean report) and when an entry
+  # point in MUST_REACH (scripts/ci/runtime-reach.mjs: a mounted component or a called hook or function, by name) ran in
+  # none of the shards, whether or not its module was evaluated. The unreached list is still a report;
   # the named set is the gate. `--expect` is the matrix size above: tests/scripts/runtime-reach-merge.test.js fails when
   # the two differ. It runs after a RED e2e too (`always()`): a shard that failed or was cancelled uploaded what it had,
   # and the missing files are named, so a red e2e does not hide which shards the report lacks. Same skip as e2e, for the
