@@ -77,9 +77,15 @@ test.describe('the soundtrack in Chromium', () => {
     expect((await page.evaluate(musicState)).tracks.map((t) => t.src).sort(), 'SETUP: the tracks the MusicPlayer made')
       .toEqual(['boss.mp3', 'day.mp3', 'night.mp3']);
 
+    // The suite's tier, set as _boot.js's play helpers set it before play begins: at a higher tier CI's software
+    // renderer draws a frame in seconds, and the page stops answering (this spec's first CI run).
+    await page.waitForFunction(() => window.__craftyTest.list().includes('setQualityTier'), null, { timeout: 60000, polling: 250 })
+      .catch((e) => { throw new Error(`SETUP: the setQualityTier hook never registered — ${e.message}`); });
+    await page.evaluate(() => window.__craftyTest.call('setQualityTier', 'low'));
     const start = page.getByTestId('title-start');
     await expect(start, 'SETUP: the title shows no Start').toBeVisible({ timeout: 30000 });
     await start.click({ timeout: 60000 });
+    await page.evaluate(() => window.__craftyTest.call('setQualityTier', 'low'));
     await page.waitForFunction(dayPlaying, null, { timeout: 30000, polling: 250 })
       .catch(async (e) => { throw new Error(`the day track is not playing through a running context after Start: ${JSON.stringify(await page.evaluate(musicState))} — ${e.message}`); });
 
