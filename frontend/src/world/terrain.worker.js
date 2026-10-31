@@ -110,18 +110,21 @@ self.onmessage = function(e) {
     const index = getIndex(x, y, z);
     if (index >= 0 && index < VOLUME) {
       const prevBlock = blocks[index];
-      writeVoxel(cx, cz, x, y, z, blocks, index, blockType, prevBlock);
+      writeVoxel(cx, cz, x, y, z, blocks, index, blockType);
+      if (blockType === 0 && prevBlock !== 0) self.postMessage({ type: 'block_broken', payload: brokenBlock(cx, cz, x, y, z, prevBlock) });
       postChunkMesh(cx, cz, key, blocks);
     }
   }
   // A batch of cell edits (world/cellEdits.js): a cell changes only into the other kind, so a block fills only air or
   // water and a removal (blockType 0) takes only a solid block. A footprint therefore never replaces one block with
-  // another, never drains water, and never writes outside the world. The reply names the cells changed, before the meshes;
-  // then every chunk the batch names is re-meshed once, stamped with the batch's last seq, so the stand-in of a cell
-  // that was not changed retires on that mesh like the rest (world/placedCellColliders.js).
+  // another, never drains water, and never writes outside the world. The reply names the cells changed, and carries the
+  // blocks a removal took in place of a block_broken for each, before the meshes; then every chunk the batch names is
+  // re-meshed once, stamped with the batch's last seq, so the stand-in of a cell that was not changed retires on that
+  // mesh like the rest (world/placedCellColliders.js).
   else if (type === 'edit_cells') {
     const { id, blockType, cells } = payload;
     const applied = [];
+    const broken = [];
     const named = new Map();
     cells.forEach((c, i) => {
       if (typeof c.seq === 'number') lastEditSeq = c.seq;
@@ -135,10 +138,11 @@ self.onmessage = function(e) {
       const prevBlock = blocks[index];
       const empty = prevBlock === 0 || prevBlock === 9;
       if (blockType === 0 ? empty : !empty) return;
-      writeVoxel(cx, cz, x, c.y, z, blocks, index, blockType, prevBlock);
+      writeVoxel(cx, cz, x, c.y, z, blocks, index, blockType);
+      if (blockType === 0) broken.push(brokenBlock(cx, cz, x, c.y, z, prevBlock));
       applied.push(i);
     });
-    self.postMessage({ type: 'cells_edited', payload: { id, applied } });
+    self.postMessage({ type: 'cells_edited', payload: { id, applied, broken } });
     for (const [key, { cx, cz, blocks }] of named) postChunkMesh(cx, cz, key, blocks);
   }
   else if (type === 'unload') {
@@ -179,29 +183,26 @@ function chunkBlocks(cx, cz, key) {
   return blocks;
 }
 
-/** One voxel edit: written, kept in the chunk's edit table, and a removed block reported for its drop and its debris. */
-function writeVoxel(cx, cz, x, y, z, blocks, index, blockType, prevBlock) {
+/** One voxel edit: written, and kept in the chunk's edit table. */
+function writeVoxel(cx, cz, x, y, z, blocks, index, blockType) {
   blocks[index] = blockType;
   const modKey = `${cx}_${cz}`;
   if (!chunkModifications.has(modKey)) {
     chunkModifications.set(modKey, new Map());
   }
   chunkModifications.get(modKey).set(index, blockType);
+}
 
-  if (blockType === 0 && prevBlock !== 0) {
-    const colorArray = BLOCK_COLORS[prevBlock] || [1, 1, 1];
-    self.postMessage({
-      type: 'block_broken',
-      payload: {
-        x: cx * CHUNK_SIZE + x,
-        y,
-        z: cz * CHUNK_SIZE + z,
-        color: linearRgbToHex(colorArray), // BLOCK_COLORS are LINEAR; encode to sRGB so debris isn't double-darkened
-
-        blockType: prevBlock
-      }
-    });
-  }
+/** A removed block, for its drop and its debris: where it was, what it was, and its colour. */
+function brokenBlock(cx, cz, x, y, z, prevBlock) {
+  const colorArray = BLOCK_COLORS[prevBlock] || [1, 1, 1];
+  return {
+    x: cx * CHUNK_SIZE + x,
+    y,
+    z: cz * CHUNK_SIZE + z,
+    color: linearRgbToHex(colorArray), // BLOCK_COLORS are LINEAR; encode to sRGB so debris isn't double-darkened
+    blockType: prevBlock
+  };
 }
 
 /** An edited chunk's re-mesh, with its wind-grass tops (an edit refreshes them as generation makes them), stamped with

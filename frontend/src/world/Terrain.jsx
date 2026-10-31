@@ -41,12 +41,11 @@ const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: useGameStore.getState().worldSeed } });
 // The placement numbering the worker echoes on its meshes lives exactly as long as the worker (world/placedCellColliders.js).
 const nextEditSeq = createEditSeq();
-// The build tools' batched edits, answered by the worker; heard for as long as the worker lives, not while Terrain is
-// mounted, so a click's blocks are paid back or recorded whatever unmounts before the answer (world/cellEdits.js).
-const cellEdits = createCellEdits((msg) => worker.postMessage(msg));
-worker.addEventListener('message', (e) => {
-    if (e.data.type === 'cells_edited') cellEdits.settle(e.data.payload);
-});
+// The build verbs' answers from the worker (a batch's cells_edited, a lone removal's block_broken), heard for as long as
+// the worker lives, not while Terrain is mounted, so what a click spent or took is paid back and recorded whatever
+// unmounts before the answer (world/cellEdits.js).
+const cellEdits = createCellEdits((msg) => worker.postMessage(msg), { onBroken: payBrokenBlock });
+worker.addEventListener('message', (e) => cellEdits.heard(e.data));
 
 const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount, placedCells }) => {
     // Rules-of-Hooks: do NOT early-return before the hooks below. An empty<->non-empty meshData
@@ -545,9 +544,6 @@ export const MinecraftWorld = React.memo(() => {
                 if (payload.cx === 0 && payload.cz === 0) {
                     useGameStore.getState().setIsSpawnChunkLoaded(true);
                 }
-            } else if (type === 'block_broken') {
-                // Each removed block is paid back as itself (world/mineAtHit.js).
-                payBrokenBlock(payload);
             } else if (type === 'load_modifications_done') {
                 // Wipe the live world so the worker can re-stream it with the save's block edits applied.
                 // The loaded-chunk registry empties itself as each ChunkMesh unmounts (its layout-effect cleanup),

@@ -57,27 +57,31 @@ export function readVoxel(x, y, z) {
 }
 
 /**
- * The io a build verb is handed in Terrain.jsx, over the real worker: `editCells` through world/cellEdits.js, each
- * `cells_edited` reply settled as Terrain.jsx settles it, `post` for a lone update_block, and each `block_broken` either
- * posts handed to `onBroken` (Terrain.jsx pays the block back through it). Every post the verb makes is kept in `sent`,
- * and everything the worker posted back in `received`.
+ * The io a build verb is handed in Terrain.jsx, over the real worker: `editCells` through world/cellEdits.js, `post` for
+ * a lone update_block, and every reply heard as Terrain.jsx hears it (`cellEdits.heard`: a `cells_edited` settled, a
+ * `block_broken` handed to `onBroken`, which Terrain.jsx pays the block back through). Every post the verb makes is kept
+ * in `sent`, and everything the worker posted back in `received`.
+ *
+ * `deferred`: the worker still takes each message as it is posted, in order, as the real one does, but its replies wait
+ * until `answer()` hands them back, in order, as a busy worker's do: so a click can land between an edit and its answer.
  */
-export function workerVerbIo({ onBroken }) {
+export function workerVerbIo({ onBroken, deferred = false }) {
   const sent = [];
   const received = [];
+  const held = [];
   const deliver = (msg) => {
     sent.push(msg);
     const from = posted.length;
     sendToWorker(msg.type, msg.payload);
     const replies = posted.splice(from);
     received.push(...replies);
-    for (const r of replies) {
-      if (r.type === 'block_broken') onBroken(r.payload);
-      else if (r.type === 'cells_edited') edits.settle(r.payload);
-    }
+    if (deferred) held.push(...replies);
+    else for (const r of replies) edits.heard(r);
   };
-  const edits = createCellEdits(deliver);
-  return { sent, received, editCells: edits.request, post: deliver };
+  const edits = createCellEdits(deliver, { onBroken });
+  /** Hands back the replies held so far, oldest first: `n` of them, or all. */
+  const answer = (n = held.length) => { for (const r of held.splice(0, n)) edits.heard(r); };
+  return { sent, received, editCells: edits.request, post: deliver, answer, held };
 }
 
 /**

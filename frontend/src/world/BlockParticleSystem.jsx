@@ -4,8 +4,10 @@ import { InstancedRigidBodies } from '@react-three/rapier';
 import * as THREE from 'three';
 import { parkDeadDebris } from '../game/debrisPark.js';
 import { realDelta } from '../game/worldClock.js';
+import { debrisBursts } from './debrisBursts.js';
 
 const MAX_PARTICLES = 200;
+const PARTICLES_PER_BLOCK = 8;
 
 export const BlockParticleSystem = ({ worker }) => {
     const api = useRef(null);
@@ -37,41 +39,40 @@ export const BlockParticleSystem = ({ worker }) => {
         }
         meshRef.current.instanceColor.needsUpdate = true;
 
-        const handleMessage = (e) => {
-            const { type, payload } = e.data;
-            if (type === 'block_broken' && api.current) {
-                const count = 8;
-                tempColor.set(payload.color);
+        const burst = (payload) => {
+            tempColor.set(payload.color);
+            
+            for (let i = 0; i < PARTICLES_PER_BLOCK; i++) {
+                const idx = particleIndex.current;
+                particleIndex.current = (particleIndex.current + 1) % MAX_PARTICLES;
                 
-                for (let i = 0; i < count; i++) {
-                    const idx = particleIndex.current;
-                    particleIndex.current = (particleIndex.current + 1) % MAX_PARTICLES;
-                    
-                    const x = payload.x + 0.5 + (Math.random() - 0.5) * 0.5;
-                    const y = payload.y + 0.5 + (Math.random() - 0.5) * 0.5;
-                    const z = payload.z + 0.5 + (Math.random() - 0.5) * 0.5;
-                    
-                    const vx = (Math.random() - 0.5) * 4;
-                    const vy = Math.random() * 4 + 2;
-                    const vz = (Math.random() - 0.5) * 4;
-                    
-                    // Wake up particle
-                    ages.current[idx] = 0;
-                    
-                    // Reset physics state and teleport to visible location
-                    api.current.at(idx).setTranslation({ x, y, z }, true);
-                    api.current.at(idx).setLinvel({ x: vx, y: vy, z: vz }, true);
-                    api.current.at(idx).setAngvel({ 
-                        x: Math.random() * 10 - 5, 
-                        y: Math.random() * 10 - 5, 
-                        z: Math.random() * 10 - 5 
-                    }, true);
+                const x = payload.x + 0.5 + (Math.random() - 0.5) * 0.5;
+                const y = payload.y + 0.5 + (Math.random() - 0.5) * 0.5;
+                const z = payload.z + 0.5 + (Math.random() - 0.5) * 0.5;
+                
+                const vx = (Math.random() - 0.5) * 4;
+                const vy = Math.random() * 4 + 2;
+                const vz = (Math.random() - 0.5) * 4;
+                
+                // Wake up particle
+                ages.current[idx] = 0;
+                
+                // Reset physics state and teleport to visible location
+                api.current.at(idx).setTranslation({ x, y, z }, true);
+                api.current.at(idx).setLinvel({ x: vx, y: vy, z: vz }, true);
+                api.current.at(idx).setAngvel({ 
+                    x: Math.random() * 10 - 5, 
+                    y: Math.random() * 10 - 5, 
+                    z: Math.random() * 10 - 5 
+                }, true);
 
-                    // Apply the block's color to this specific instance
-                    meshRef.current.setColorAt(idx, tempColor);
-                }
-                meshRef.current.instanceColor.needsUpdate = true;
+                // Apply the block's color to this specific instance
+                meshRef.current.setColorAt(idx, tempColor);
             }
+            meshRef.current.instanceColor.needsUpdate = true;
+        };
+        const handleMessage = (e) => {
+            if (api.current) debrisBursts(e.data).forEach(burst);
         };
 
         worker.addEventListener('message', handleMessage);

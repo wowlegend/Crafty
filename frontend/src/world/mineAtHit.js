@@ -4,8 +4,8 @@
 import { useGameStore } from '../store/useGameStore';
 import { blockForId } from './blockIds';
 import { buildFootprint } from '../game/buildFootprint.js';
-import { chestHasItems } from '../game/chestState.js';
-import { chunkOf, CHUNK_SIZE, CHUNK_HEIGHT } from './chunkLayout.js';
+import { chunkOf, CHUNK_SIZE } from './chunkLayout.js';
+import { recordingAtClick } from './cellEdits.js';
 
 /** A block the worker removed (`block_broken`) goes into the inventory as itself: an ore drops its ore (world/blockIds.js). */
 export function payBrokenBlock(payload) {
@@ -16,10 +16,22 @@ export function payBrokenBlock(payload) {
     }
 }
 
+/** The blocks one batched removal took, paid as themselves with one inventory write per kind of block, not per block. */
+function payBrokenBlocks(broken) {
+    const counts = new Map();
+    for (const b of broken) {
+        const blockName = blockForId(b.blockType);
+        if (blockName) counts.set(blockName, (counts.get(blockName) || 0) + 1);
+    }
+    const store = useGameStore.getState();
+    for (const [blockName, n] of counts) store.addToInventory(blockName, n);
+}
+
 /**
  * @param {{hitPoint: object, normal: ({x:number,y:number,z:number}|null), targetedX: number, targetedY: number,
  *   targetedZ: number, targetCoords: string}|null} h the build-ray hit (Terrain.jsx castBuildRay)
- * @param {{post: (msg: object) => void, editCells: (edit: object, onApplied: (applied: number[]) => void) => void,
+ * @param {{post: (msg: object) => void, editCells: (edit: object,
+ *   onApplied: (applied: number[], recordable?: number[], broken?: object[]) => void) => void,
  *   playBreak?: (pos: object) => void}} io the worker's postMessage and its batched edit (world/cellEdits.js)
  * @returns {Promise<number>} the blocks the verb asked the worker to remove: the Delete Tool's, once the worker has said
  *   which it took; the single mine's at once, since its edit is not answered
@@ -41,7 +53,8 @@ export function mineAtHit(h, { post, editCells, playBreak }) {
     post({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: 0 } });
     playBreak?.(h.hitPoint);
 
-    // Update worldBlocks in Zustand Map
+    // Recorded at the click: a placement of this cell still waiting on the worker must not record its block over this.
+    recordingAtClick([`${tx}_${ty}_${tz}`]);
     const newBlocks = new Map(store.worldBlocks);
     newBlocks.set(`${tx}_${ty}_${tz}`, 0);
     store.setWorldBlocks(newBlocks);
@@ -60,30 +73,26 @@ export function mineAtHit(h, { post, editCells, playBreak }) {
 }
 
 /**
- * The Delete Tool's left-click (DECISIONS 2026-10-31 item 233): every solid block of its footprint, grown into the face
- * the ray hit, is removed in one batch, and each is paid back as itself by the worker's block_broken. Water and air are
- * left (the worker takes only a solid block); a chest with something in it is never sent, as the verb router never
- * mines one (input/verbRouter.js); an empty chest goes with its cell. One break sound and one Miner count per click.
+ * The Delete Tool's left-click (DECISIONS 2026-10-31 items 233 and 271): the blocks the player placed in its footprint,
+ * grown into the face the ray hit, removed in one batch and each paid back as itself from the worker's answer.
+ * Generated ground, ore and water are left: a build tool takes back what was built, and a 64-block harvest a click is
+ * the pickaxe's job done 64 times over. A chest is never sent, empty or not: it cost eight wood and pays back one. One
+ * break sound and one Miner count per click, none when nothing was taken.
  */
 function mineFootprint(h, store, editCells, playBreak) {
     const target = { x: h.targetedX, y: h.targetedY, z: h.targetedZ };
     const footprint = buildFootprint('delete', store.buildSize || 1, target, h.normal);
-    const cells = footprint.filter((c) => c.y >= 0 && c.y < CHUNK_HEIGHT
-        && !chestHasItems(store.chests && store.chests.get(`${c.x}_${c.y}_${c.z}`)));
+    const own = (k) => store.worldBlocks.get(k) > 0 && !(store.chests && store.chests.has(k));
+    const cells = footprint.filter((c) => own(`${c.x}_${c.y}_${c.z}`));
     if (cells.length === 0) return Promise.resolve(0);
     return new Promise((resolve) => {
-        editCells({ blockType: 0, cells }, (applied) => {
+        editCells({ blockType: 0, cells }, (applied, recordable = applied, broken = []) => {
             if (applied.length === 0) { resolve(0); return; }
             const s = useGameStore.getState();
-            const keys = applied.map((i) => `${cells[i].x}_${cells[i].y}_${cells[i].z}`);
+            payBrokenBlocks(broken);
             const newBlocks = new Map(s.worldBlocks);
-            for (const k of keys) newBlocks.set(k, 0);
+            for (const i of recordable) newBlocks.set(`${cells[i].x}_${cells[i].y}_${cells[i].z}`, 0);
             s.setWorldBlocks(newBlocks);
-            if (s.chests && keys.some((k) => s.chests.has(k))) {
-                const newChests = new Map(s.chests);
-                for (const k of keys) newChests.delete(k);
-                useGameStore.setState({ chests: newChests });
-            }
             playBreak?.(h.hitPoint);
             s.onBlockBreak?.();
             resolve(applied.length);

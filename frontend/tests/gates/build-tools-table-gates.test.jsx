@@ -10,16 +10,17 @@ import { CHUNK_SIZE, voxelIndex } from '../../src/world/chunkLayout.js';
 import { DEFAULT_WORLD_SEED } from '../../src/world/worldSeed.js';
 import { loadTerrainWorker, sendToWorker, readVoxel, workerVerbIo } from '../_support/terrainWorker.js';
 
-// EVERY BUILDING TOOL DOES WHAT ITS LABEL SAYS (DECISIONS 2026-10-31 items 231-233). The "Delete Tool - Remove multiple
-// blocks" made a right-click build a 3x3x3 cube and left a left-click mining one block; "Wall Builder - Build 3-high
-// walls" laid a 1-high strip along +x off the ground; a floor or a cube off a wall's side put a third of itself inside
-// the wall; and each opening of the panel set the mode back to Single and the size to 3 (registry
+// EVERY BUILDING TOOL DOES WHAT ITS LABEL SAYS (DECISIONS 2026-10-31 items 231-233, 271). The "Delete Tool - Remove
+// multiple blocks" made a right-click build a 3x3x3 cube and left a left-click mining one block; "Wall Builder - Build
+// 3-high walls" laid a 1-high strip along +x off the ground; a floor or a cube off a wall's side put a third of itself
+// inside the wall; and each opening of the panel set the mode back to Single and the size to 3 (registry
 // AUDIT:numeric:delete-tool-places-cube, AUDIT:ultra:ultra-game-logic-2, AUDIT:numeric:footprint-overwrites-solid-cells).
 //
 // One row per tool the real panel offers: the tool is picked by clicking its button, the panel is closed and opened
 // again, and the place and mine verbs (world/placeAtHit.js, world/mineAtHit.js) run against the real terrain worker on a
-// site whose every cell this file sets (flat grass on dirt on stone, and a stone wall standing on it), so each tool's
-// cells are written out here by hand, not derived from the code under test. A tool the panel gains without a row fails.
+// site whose every cell this file sets (flat grass on dirt on stone, a stone wall standing on it, and a 3x3x3 of stone
+// the player placed), so each tool's cells are written out here by hand, not derived from the code under test. A tool
+// the panel gains without a row fails.
 //
 // WHAT THIS DOES NOT CHECK: the build ray (the hits are made here, as Terrain.jsx castBuildRay makes them), the verb
 // router (tests/gates/verb-router-gates.test.js), random footprints and the economy over them
@@ -57,29 +58,36 @@ const TOP = [OX + 4, GROUND + 1, OZ + 8];
 const SIDE = [WALL_X - 1, GROUND + 2, OZ + 8];
 const MINED = [OX + 4, GROUND, OZ + 8];
 const one = (c) => cells([c]);
-// What each tool does, size 3: the cells a right-click fills off each face, and the blocks a left-click on the ground takes.
+// The player's own blocks: a 3x3x3 of stone they placed on the ground, and its top centre, where a left-click aims.
+const OWN = box(range(OX + 3, OX + 5), range(GROUND + 1, GROUND + 3), range(OZ + 7, OZ + 9));
+const OWN_TOP = [OX + 4, GROUND + 3, OZ + 8];
+// What each tool does, size 3: the cells a right-click fills off each face, the blocks a left-click on the ground takes,
+// and those a left-click on the player's own blocks takes.
 const TABLE = {
-  single: { top: one(TOP), side: one(SIDE), mine: one(MINED) },
+  single: { top: one(TOP), side: one(SIDE), mine: one(MINED), own: one(OWN_TOP) },
   wall: {
     top: cells(box([TOP[0]], range(TOP[1], TOP[1] + 2), [TOP[2]])), // a column rising off the ground
     side: cells(box([SIDE[0]], range(SIDE[1], SIDE[1] + 2), [SIDE[2]])),
-    mine: one(MINED),
+    mine: one(MINED), own: one(OWN_TOP),
   },
   floor: {
     top: cells(box(range(TOP[0] - 1, TOP[0] + 1), [TOP[1]], range(TOP[2] - 1, TOP[2] + 1))),
     side: cells(box(range(SIDE[0], SIDE[0] - 2), [SIDE[1]], range(SIDE[2] - 1, SIDE[2] + 1))), // out from the wall
-    mine: one(MINED),
+    mine: one(MINED), own: one(OWN_TOP),
   },
   cube: {
     top: cells(box(range(TOP[0] - 1, TOP[0] + 1), range(TOP[1], TOP[1] + 2), range(TOP[2] - 1, TOP[2] + 1))),
     side: cells(box(range(SIDE[0], SIDE[0] - 2), range(SIDE[1], SIDE[1] + 2), range(SIDE[2] - 1, SIDE[2] + 1))),
-    mine: one(MINED),
+    mine: one(MINED), own: one(OWN_TOP),
   },
-  // Remove multiple blocks: a left-click takes the 3x3x3 under the aimed face; a right-click places one block.
-  delete: { top: one(TOP), side: one(SIDE), mine: cells(box(range(MINED[0] - 1, MINED[0] + 1), range(MINED[1], MINED[1] - 2), range(MINED[2] - 1, MINED[2] + 1))) },
+  // Remove the blocks you placed: a left-click takes the 3x3x3 of them under the aimed face and leaves the generated
+  // ground; a right-click places one block.
+  delete: { top: one(TOP), side: one(SIDE), mine: [], own: cells(OWN) },
 };
-// The left-click's payback, as the blocks it took: a 3x3 of each layer for the Delete Tool, one grass block otherwise.
-const MINE_PAY = { delete: { grass: 9, dirt: 9, stone: 9 } };
+// The left-click's payback, as the blocks it took: one grass block off the ground, nothing for the Delete Tool; one stone
+// off the player's blocks, all 27 for the Delete Tool.
+const MINE_PAY = { delete: {} };
+const OWN_PAY = { delete: { stone: 27 } };
 
 const S = () => useGameStore.getState();
 let clock = 1e7;
@@ -132,23 +140,25 @@ async function place(aim, normal) {
   return { keys: recorded.map(([k]) => k).sort(), ids: [...new Set(recorded.map(([, v]) => v))], spent: delta(before, blocksOf()) };
 }
 
-async function mine() {
-  sendToWorker('load_modifications', { modifications: siteMods() });
-  useGameStore.setState({ worldBlocks: new Map() });
+/** A left-click on the top face of `aim`, on the site, with the player's own blocks `own` placed on it first. */
+async function mine(aim = MINED, own = []) {
+  sendToWorker('load_modifications', { modifications: siteMods().concat(own.map(([x, y, z]) => [CX, CZ, voxelIndex(x - OX, y, z - OZ), STONE])) });
+  useGameStore.setState({ worldBlocks: new Map(own.map(([x, y, z]) => [`${x}_${y}_${z}`, STONE])) });
   const io = workerVerbIo({ onBroken: payBrokenBlock });
-  const [x, y, z] = MINED;
+  const [x, y, z] = aim;
   const h = { hitPoint: new THREE.Vector3(x + 0.5, y + 1, z + 0.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0),
     targetedX: x, targetedY: y, targetedZ: z, targetCoords: `${x}_${y}_${z}`, chestTargeted: false, chestHasItems: false };
   const before = blocksOf();
+  const recordedBefore = new Map(S().worldBlocks);
   await mineAtHit(h, { post: io.post, editCells: io.editCells, playBreak: () => {} });
-  const recorded = recordedSince(new Map());
+  const recorded = recordedSince(recordedBefore);
   return { keys: recorded.map(([k]) => k).sort(), zero: recorded.every(([, v]) => v === 0), paid: delta(before, blocksOf()) };
 }
 
 describe('every Building Tools tool does what its label says (real panel, real store, real worker)', () => {
   it('the panel offers exactly the tools in this table, each picked by its button into the store', () => {
     render(<BuildingTools onClose={() => {}} />);
-    expect(screen.getByRole('slider').value, 'a fresh profile\'s panel does not open at the size its labels were written for').toBe('3');
+    expect(toolButtons().map((b) => b.textContent).find((t) => /Wall Builder/.test(t)), 'a fresh profile\'s panel does not open at size 3').toMatch(/Build 3-high walls/);
     const reached = [];
     for (const b of toolButtons()) {
       fireEvent.click(b);
@@ -162,15 +172,17 @@ describe('every Building Tools tool does what its label says (real panel, real s
     it(`${id}: picked, the panel reopened, then a right-click off the ground and off a wall and a left-click on the ground`, async () => {
       startAtSizeOne();
       render(<BuildingTools onClose={() => {}} />);
-      fireEvent.change(screen.getByRole('slider'), { target: { value: String(SIZE) } });
       const at = toolButtons().findIndex((b) => { fireEvent.click(b); return S().buildingMode === id; });
       expect(at, `SETUP: no button picks ${id}`).toBeGreaterThanOrEqual(0);
+      fireEvent.change(screen.getByRole('slider'), { target: { value: String(SIZE) } });
+      // The slider ends at the tool's largest size: Single's is 1.
+      const size = Math.min(SIZE, Number(screen.getByRole('slider').max));
       cleanup();
 
       // Reopened, the panel shows what the store holds and leaves it be.
       render(<BuildingTools onClose={() => {}} />);
-      expect({ mode: S().buildingMode, size: S().buildSize }, `reopening the panel changed the ${id} tool the player picked`).toEqual({ mode: id, size: SIZE });
-      expect(screen.getByRole('slider').value, 'the reopened panel\'s slider does not show the store\'s size').toBe(String(SIZE));
+      expect({ mode: S().buildingMode, size: S().buildSize }, `reopening the panel changed the ${id} tool the player picked`).toEqual({ mode: id, size });
+      expect(screen.getByRole('slider').value, 'the reopened panel\'s slider does not show the store\'s size').toBe(String(size));
       const pressed = toolButtons().flatMap((b, i) => (b.getAttribute('aria-pressed') === 'true' ? [i] : []));
       expect(pressed, `the reopened panel does not show the ${id} tool, and only it, as picked`).toEqual([at]);
       cleanup();
@@ -191,6 +203,14 @@ describe('every Building Tools tool does what its label says (real panel, real s
       expect(taken.zero, `${id}: a taken block was not recorded as air`).toBe(true);
       expect(taken.paid, `${id}: the blocks taken were not paid back as themselves`).toEqual(MINE_PAY[id] || { grass: 1 });
       for (const k of row.mine) expect(readVoxel(...k.split('_').map(Number)), `${id}: the worker still holds a block at ${k}`).toBe(0);
+      if (!row.mine.length) expect(readVoxel(...MINED), `${id}: a left-click that took nothing took the ground`).toBe(GRASS);
+
+      const ownTaken = await mine(OWN_TOP, OWN);
+      expect(ownTaken.keys, `${id}: a left-click on the player's own blocks took the wrong ones`).toEqual(row.own);
+      expect(ownTaken.zero, `${id}: a taken block was not recorded as air`).toBe(true);
+      expect(ownTaken.paid, `${id}: the player's blocks taken were not paid back as themselves`).toEqual(OWN_PAY[id] || { stone: 1 });
+      for (const k of row.own) expect(readVoxel(...k.split('_').map(Number)), `${id}: the worker still holds a block at ${k}`).toBe(0);
+      expect(readVoxel(OWN_TOP[0], GROUND, OWN_TOP[2]), `${id}: the ground under the player's blocks was taken`).toBe(GRASS);
     }, 60000);
   }
 });

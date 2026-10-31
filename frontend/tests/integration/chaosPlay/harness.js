@@ -1,6 +1,6 @@
 // The chaos-play harness: a seeded player who uses every verb that edits the world or moves the body, in the game's own
 // frame order, against the real Rapier build, the real greedy mesher and the real verb executors. The gate
-// (tests/integration/chaos-play-*.test.jsx) reads six invariants as the session plays; what each reads is in
+// (tests/integration/chaos-play-*.test.jsx) reads eight invariants as the session plays; what each reads is in
 // chaos-play-instruments.test.jsx's header.
 //
 // Wired as the game wires it:
@@ -17,9 +17,11 @@
 //    vault, jump / glue / gravity with the form's multipliers, the queued form swap, and one moveKinematic write with the
 //    unindexed colliders;
 //  - clicks between frames: the build ray from the steady eye (Terrain.jsx castBuildRay, its direction scaled by the
-//    hit's toi), the real placeAtHit and the real mineTarget with the mine verb's worker post and store write, and the
-//    Delete Tool's left click through the real mineAtHit; the worker's answer to a batched edit (world/cellEdits.js) is
-//    given at the click, from the logical world;
+//    hit's toi), the real placeAtHit, and the real mineTarget and mineAtHit (the single mine and the Delete Tool), over
+//    the real world/cellEdits.js; the worker applies each edit to the logical world at its click, in order, and its
+//    answer to a batched edit reaches the main thread half the trimesh lag later (rounded up: the reply is posted before
+//    the meshes), so a click can land between an edit and its answer; a load drops the answers still owed, as the
+//    page's reload does (registry REVIEW:l6:edit-answer-lost-at-reload);
 //  - a form swap through the store (enterBeastForm / exitBeastForm) and Components.jsx's activeBeastForm effect;
 //  - a save written by buildSaveData and loaded by the store's loadWorldData, its worker answered as terrain.worker.js
 //    answers it and its wipe done as Terrain.jsx does it.
@@ -32,6 +34,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../../../src/store/useGameStore.jsx';
 import { placeAtHit } from '../../../src/world/placeAtHit.js';
 import { mineAtHit } from '../../../src/world/mineAtHit.js';
+import { createCellEdits } from '../../../src/world/cellEdits.js';
 import { mineTarget } from '../../../src/world/buildTarget.js';
 import { buildFootprint } from '../../../src/game/buildFootprint.js';
 import { createPlacedCellColliders, createEditSeq } from '../../../src/world/placedCellColliders.js';
@@ -454,6 +457,7 @@ const FORM_SWAP = {
 /** The display frame: what lands between frames, the stepper's steps, then the Player frame. */
 function tick(S, input) {
   if (S.effectDue) { S.effectDue = false; FORM_SWAP.effect(S); }
+  hearAnswers(S);
   landDue(S);
   S.acc += 1 / S.hz;
   while (S.acc >= DT - 1e-9) {
@@ -605,12 +609,14 @@ function walkOut(sb, k, jump, t0) {
 const OWN_REACH = 4;
 function ownCells(S, t0) {
   const out = [];
+  const near = ({ x, y, z }) => Math.abs(x + 0.5 - t0.x) <= OWN_REACH && Math.abs(y + 0.5 - t0.y) <= OWN_REACH && Math.abs(z + 0.5 - t0.z) <= OWN_REACH;
   for (const [k, v] of useGameStore.getState().worldBlocks) {
     if (!v) continue;
     const [x, y, z] = k.split('_').map(Number);
-    if (Math.abs(x + 0.5 - t0.x) > OWN_REACH || Math.abs(y + 0.5 - t0.y) > OWN_REACH || Math.abs(z + 0.5 - t0.z) > OWN_REACH) continue;
-    if (solidAt(S, x, y, z)) out.push({ x, y, z });
+    if (near({ x, y, z }) && solidAt(S, x, y, z)) out.push({ x, y, z });
   }
+  // A placement whose answer is still owed is the player's block too: it can be mined, though it is not yet recorded.
+  for (const c of owedPlaced(S)) if (near(c) && solidAt(S, c.x, c.y, c.z) && !out.some((o) => o.x === c.x && o.y === c.y && o.z === c.z)) out.push(c);
   return out;
 }
 /** The world with the player's own blocks near them mined, as many clicks as that takes (each one's chunk re-meshed from
@@ -666,6 +672,19 @@ export function buildRay(S, dir) {
   return { toi, normal: { x: hit.normal.x, y: hit.normal.y, z: hit.normal.z }, direction: scaled, hitPoint: new THREE.Vector3(from.x, from.y, from.z).add(scaled) };
 }
 const lookDir = (yaw, pitch) => ({ x: Math.cos(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: Math.sin(yaw) * Math.cos(pitch) });
+/** The build ray at the nearest of the player's own recorded blocks within reach of the eye, as a player clearing what
+ *  they built aims; null when there is none. */
+export function ownBlockRay(S) {
+  const from = steadyEye(S.p.body.translation(), {});
+  let best = null;
+  for (const [k, v] of useGameStore.getState().worldBlocks) {
+    if (!v) continue;
+    const [x, y, z] = k.split('_').map(Number);
+    const d = Math.hypot(x + 0.5 - from.x, y + 0.5 - from.y, z + 0.5 - from.z);
+    if (d < 6 && (!best || d < best.d)) best = { x, y, z, d };
+  }
+  return best && buildRay(S, { x: best.x + 0.5 - from.x, y: best.y + 0.5 - from.y, z: best.z + 0.5 - from.z });
+}
 
 /** Whether the capsule, at its stepped place or its pending target, reaches the cell (the harness's own geometry). */
 function cellInBody(S, [x, y, z]) {
@@ -681,34 +700,61 @@ function cellInBody(S, [x, y, z]) {
   return false;
 }
 
-/** terrain.worker.js's edit_cells, answered at the click against the logical world (the worker's voxels: every edit
- *  is applied there at its click, as the worker applies messages in order): a cell changes only into the other kind, a
+/** terrain.worker.js's edit_cells, taken at the click against the logical world (the worker's voxels: every edit is
+ *  applied there at its click, as the worker applies messages in order): a cell changes only into the other kind, a
  *  block filling air or water and a removal taking a solid block, and every sent cell's chunk is re-meshed. Each sent
- *  cell's stand-in (the click's cuboids are the last ones unindexed, in the order sent) is tracked for I4. */
-function editCells(S, edit, done) {
+ *  cell's stand-in (the click's cuboids are the last ones unindexed, in the order sent) is tracked for I4. The reply,
+ *  cells_edited, is heard now with no lag, else queued for its frame. */
+function workerEdit(S, msg) {
+  const { id, blockType, cells } = msg.payload;
   const u = S.cells.unindexed();
-  const cuboids = u.slice(u.length - edit.cells.filter((c) => typeof c.seq === 'number').length);
+  const cuboids = u.slice(u.length - cells.filter((c) => typeof c.seq === 'number').length);
   const applied = [];
-  edit.cells.forEach((c, i) => {
+  const broken = [];
+  cells.forEach((c, i) => {
     const cx = chunkOf(c.x), cz = chunkOf(c.z);
     const was = cellOf(S.logical, c.x, c.y, c.z);
     const empty = was === AIR || was === WATER;
-    const changes = edit.blockType === AIR ? !empty : empty;
+    const changes = c.y >= 0 && c.y < CHUNK_HEIGHT && (blockType === AIR ? !empty : empty);
     if (changes) {
-      writeCell(S.logical, c.x, c.y, c.z, edit.blockType);
+      writeCell(S.logical, c.x, c.y, c.z, blockType);
       applied.push(i);
+      if (blockType === AIR) broken.push({ x: c.x, y: c.y, z: c.z, blockType: was });
     }
     if (typeof c.seq === 'number') {
       const cuboid = cuboids.shift();
       if (cuboid) S.standIns.push({ handle: cuboid.handle, cx, cz, seq: c.seq, due: null, cell: [c.x, c.y, c.z] });
     }
-    post(S, { type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: changes ? edit.blockType : null, seq: c.seq } });
+    post(S, { type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: changes ? blockType : null, seq: c.seq } });
   });
-  done(applied);
-  return applied.length;
+  S.lastApplied = applied.length;
+  const reply = { type: 'cells_edited', payload: { id, applied, broken } };
+  if (S.answerLag === 0) { S.edits.heard(reply); return; }
+  S.answers.push({ due: S.f + S.answerLag, reply, placed: blockType === AIR ? [] : applied.map((i) => cells[i]) });
+}
+/** The answers due by this frame, heard in the order the worker gave them; once none is owed, the record is read. */
+function hearAnswers(S) {
+  if (!S.answers.length || S.answers[0].due > S.f) return;
+  while (S.answers.length && S.answers[0].due <= S.f) S.edits.heard(S.answers.shift().reply);
+  S.stats.answersHeardLate++;
+  if (!S.answers.length) checkRecord(S);
+}
+/** I8: with no answer owed, the store's record of every cell it holds is what the worker holds there (a nonzero block
+ *  the block, 0 air), so a save written now brings back the world the player sees. */
+function checkRecord(S) {
+  S.stats.recordChecks++;
+  for (const [k, v] of useGameStore.getState().worldBlocks) {
+    const [x, y, z] = k.split('_').map(Number);
+    const held = cellOf(S.logical, x, y, z);
+    if (v > 0 ? held !== v : held !== AIR) note(S, 'I8', { cell: k, record: v, world: held });
+  }
+}
+/** The cells of a placement whose answer is still owed: the player's own blocks, though not yet in the record. */
+function owedPlaced(S) {
+  return S.answers.flatMap((a) => a.placed);
 }
 
-/** The right click: the real placeAtHit, its batched edit answered against the logical world at the click. */
+/** The right click: the real placeAtHit, its batched edit taken by the worker at the click. */
 export function rightClick(S, h, mode = 'single', size = 1) {
   useGameStore.setState((s) => ({ buildingMode: mode, buildSize: size, inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, grass: 64 } } }));
   const n = h.normal ? new THREE.Vector3(h.normal.x, h.normal.y, h.normal.z) : h.direction.clone().normalize().multiplyScalar(-1);
@@ -716,8 +762,9 @@ export function rightClick(S, h, mode = 'single', size = 1) {
   const aimed = buildFootprint(mode, size, { x: Math.floor(p.x), y: Math.floor(p.y), z: Math.floor(p.z) }, h.normal);
   const intoBody = aimed.filter((c) => cellInBody(S, [c.x, c.y, c.z])).length;
   if (intoBody) S.stats.rightClicksIntoBody++;
-  let placed = 0;
-  placeAtHit(h, { cells: S.cells, editCells: (edit, done) => { placed = editCells(S, edit, done); } });
+  S.lastApplied = 0;
+  placeAtHit(h, { cells: S.cells, editCells: S.edits.request });
+  const placed = S.lastApplied;
   if (S.lag === 0) landDue(S); // at once: the click's meshes land as one commit before the next frame
   S.stats.rightClicks++;
   S.stats.cellsPlaced += placed;
@@ -726,15 +773,16 @@ export function rightClick(S, h, mode = 'single', size = 1) {
   return placed;
 }
 
-/** The left click as Terrain.jsx's mine verb makes it: the cell mineTarget takes, mined in the store and the worker. */
+/** The left click as Terrain.jsx's mine verb makes it: the cell mineTarget takes, mined by the real mineAtHit. */
 export function leftClick(S, h) {
   const c = mineTarget(h.hitPoint, h.direction, useGameStore.getState());
   if (c.y < 0 || c.y >= CHUNK_HEIGHT) return null;
-  const cx = chunkOf(c.x), cz = chunkOf(c.z);
-  writeCell(S.logical, c.x, c.y, c.z, AIR);
-  post(S, { type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: AIR } });
-  const store = useGameStore.getState();
-  store.setWorldBlocks(new Map(store.worldBlocks).set(`${c.x}_${c.y}_${c.z}`, 0));
+  if (owedPlaced(S).some((o) => o.x === c.x && o.y === c.y && o.z === c.z)) S.stats.minesOverOwed++;
+  useGameStore.setState({ buildingMode: 'single', buildSize: 1 });
+  mineAtHit({ ...h, targetedX: c.x, targetedY: c.y, targetedZ: c.z, targetCoords: `${c.x}_${c.y}_${c.z}` }, {
+    post: (msg) => { writeCell(S.logical, c.x, c.y, c.z, AIR); post(S, msg); },
+    editCells: () => { throw new Error('the single mine sent a batched edit'); },
+  });
   if (S.lag === 0) landDue(S);
   S.stats.leftClicks++;
   const t = S.p.body.translation();
@@ -750,11 +798,12 @@ export function deleteClick(S, h, size) {
   const store = useGameStore.getState();
   const c = mineTarget(h.hitPoint, h.direction, store);
   useGameStore.setState({ buildingMode: 'delete', buildSize: size });
-  let removed = 0;
+  S.lastApplied = 0;
   mineAtHit({ ...h, targetedX: c.x, targetedY: c.y, targetedZ: c.z, targetCoords: `${c.x}_${c.y}_${c.z}` }, {
     post: () => { throw new Error('the Delete Tool sent a lone update_block'); },
-    editCells: (edit, done) => { removed = editCells(S, edit, done); },
+    editCells: S.edits.request,
   });
+  const removed = S.lastApplied;
   useGameStore.setState({ buildingMode: 'single', buildSize: 1 });
   if (S.lag === 0) landDue(S);
   S.stats.deleteClicks++;
@@ -860,6 +909,9 @@ export function loadSave(S, data, { late = [], lateBy = 0 } = {}) {
   FORM_SWAP.effect(S);
   const msg = inbox.find((m) => m.type === 'load_modifications');
   const mods = msg ? msg.payload.modifications : [];
+  // The page reloads for a load (DECISIONS 2026-10-30, lane L2), so an answer still owed is never heard.
+  S.stats.answersDropped += S.answers.length;
+  S.answers.length = 0;
   // From the Load on the player is in the saved world: the invariants read it, whatever the old colliders still hold
   // until the wipe.
   S.logical = withMods(mods);
@@ -894,16 +946,18 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
     gen: new Map(base().chunks), logical: copyChunks(base().chunks), recs: new Map(), reload: null,
     worker: { seq: 0, lastDue: 0, queue: [] }, standIns: [], recent: [], form: { pending: null, last: null },
     maxDepth: { value: 0, f: null, cell: null },
-    violations: { I1: [], I2: [], I3: [], I4: [], I5: [], I6: [], I7: [] }, counts: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0 }, lastNoted: {},
+    violations: { I1: [], I2: [], I3: [], I4: [], I5: [], I6: [], I7: [], I8: [] }, counts: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0, I8: 0 }, lastNoted: {},
+    answers: [], answerLag: Math.ceil(lag / 2), lastApplied: 0,
     held: false, loadPending: null, clip: null, stuck: makeStuckWatch(), blind: { left: 0 },
     stats: { frames: 0, rightClicks: 0, rightClicksIntoBody: 0, cellsPlaced: 0, leftClicks: 0, minesUnderFeet: 0,
-      deleteClicks: 0, cellsDeleted: 0, deletesUnderFeet: 0,
+      deleteClicks: 0, cellsDeleted: 0, deletesUnderFeet: 0, answersHeardLate: 0, answersDropped: 0, recordChecks: 0, minesOverOwed: 0,
       originColumnEdits: 0, wallContactFrames: 0, swaps: 0, swapsUnderCeiling: 0, swapsAgainstWall: 0, swapsRefused: 0, formExits: 0,
       clickPairs: 0, respawns: 0, loadHoldFrames: 0, respawnsAfterOriginMine: 0, respawnsAfterOriginPlace: 0, loads: 0, vaults: 0, escapes: 0, ownShellOut: 0,
       saves: 0, savesLegacy: 0, savesInForm: 0, loadsReleased: 0, heldFrames: 0, heldInSolidFrames: 0,
       voidResets: 0, framesUnderOldVoidLine: 0, shaftDigs: 0, shaftsThroughWorld: 0, clips: 0, clippedFrames: 0, stuckRecoveries: 0, blindDropsFollowed: 0 },
   };
   S.cells = createPlacedCellColliders(world, RAPIER, createEditSeq());
+  S.edits = createCellEdits((msg) => workerEdit(S, msg));
   // A collider far below the world, always present. Without it a load's wipe leaves the player's capsule alone in the
   // broad phase, and on some histories the next collider created made rapier3d-compat 0.19.2 panic in world.step
   // ("unreachable"); replaying the same world ops on a fresh world did not, and the game's own load e2e
@@ -937,6 +991,9 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
 
 /** The end-of-session reads that are not per frame: a load the session ended still holding is I5. */
 export function finishSession(S) {
+  // The answers still owed arrive after the last frame; then the record is read once more.
+  while (S.answers.length) S.edits.heard(S.answers.shift().reply);
+  checkRecord(S);
   if (S.loadPending) note(S, 'I5', { why: 'the session ended with the load still holding', saved: S.loadPending.saved, frames: S.f - S.loadPending.f });
   if (S.clip) note(S, 'I7', { why: 'the session ended with the clipped body still in the rock', clip: S.clip.at, at: vec(S.p.body.translation()) });
 }

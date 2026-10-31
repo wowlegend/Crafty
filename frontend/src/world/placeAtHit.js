@@ -57,10 +57,11 @@ function cellInCapsule(cell, cap) {
 /**
  * @param {{hitPoint: THREE.Vector3, normal: ({x:number,y:number,z:number}|null), direction: THREE.Vector3}|null} h the build-ray hit
  * @param {{editCells: (edit: {blockType: number, cells: {x: number, y: number, z: number, seq?: number}[]},
- *   onApplied: (applied: number[]) => void) => void, playPlace?: (pos: THREE.Vector3, block: string) => void,
+ *   onApplied: (applied: number[], recordable?: number[]) => void) => void, playPlace?: (pos: THREE.Vector3, block: string) => void,
  *   cells?: {add: (x: number, y: number, z: number) => number}}} io `editCells` sends the cells to the terrain worker as
- *   one batch and hands back the ones it filled (world/cellEdits.js); `cells` holds each sent cell solid from the click
- *   (world/placedCellColliders.js) and numbers its edit
+ *   one batch and hands back the ones it filled, and of those the ones no later edit has recorded since (world/cellEdits.js;
+ *   all of them when it does not say); `cells` holds each sent cell solid from the click (world/placedCellColliders.js)
+ *   and numbers its edit
  * @returns {Promise<number>} the cells placed, once the worker has said which it filled (0 = refused)
  */
 export function placeAtHit(h, { editCells, playPlace, cells: solidCells }) {
@@ -114,11 +115,12 @@ export function placeAtHit(h, { editCells, playPlace, cells: solidCells }) {
     const sent = paid.map((c) => ({ x: c.x, y: c.y, z: c.z, seq: solidCells?.add(c.x, c.y, c.z) }));
 
     return new Promise((resolve) => {
-        editCells({ blockType: numericType, cells: sent }, (applied) => resolve(settle(applied)));
+        editCells({ blockType: numericType, cells: sent }, (applied, recordable = applied) => resolve(settle(applied, recordable)));
     });
 
-    /** The worker's answer: pay back what it did not fill; record, credit and sound only what it did. */
-    function settle(applied) {
+    /** The worker's answer: pay back what it did not fill; credit and sound what it did, and record the cells it filled
+     *  that no edit since the click has recorded (a mine of the stand-in before the answer: the worker holds its air). */
+    function settle(applied, recordable) {
         const s = useGameStore.getState();
         const filled = applied.map((i) => paid[i]);
         if (filled.length < paid.length) {
@@ -135,12 +137,15 @@ export function placeAtHit(h, { editCells, playPlace, cells: solidCells }) {
         const puffColor = (BLOCK_TYPES[type] && BLOCK_TYPES[type].color) || '#cccccc';
         s.triggerGPUSparks?.(placePos, puffColor, 6, 'physical');
 
-        const newBlocks = new Map(s.worldBlocks);
-        for (const c of filled) newBlocks.set(`${c.x}_${c.y}_${c.z}`, numericType);
-        s.setWorldBlocks(newBlocks);
+        const kept = recordable.map((i) => paid[i]);
+        if (kept.length) {
+            const newBlocks = new Map(s.worldBlocks);
+            for (const c of kept) newBlocks.set(`${c.x}_${c.y}_${c.z}`, numericType);
+            s.setWorldBlocks(newBlocks);
+        }
 
         // The chest's identity lives in the `chests` Map; its voxel is wood (world/blockIds.js BLOCK_ALIAS).
-        if (type === 'chest') {
+        if (type === 'chest' && kept.length) {
             const newChests = new Map(s.chests);
             newChests.set(`${tx}_${ty}_${tz}`, { inventory: {}, name: 'Wooden Chest' });
             useGameStore.setState({ chests: newChests });

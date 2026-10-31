@@ -3,9 +3,9 @@ import { describe, it, expect } from 'vitest';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { freshStorePerTest, TOL } from './chaosPlay/suite.js';
 import {
-  makeSession, tick, setCell, deepestSolid, eyeCell, solidAt, escape, rightClick, buildRay, lookDir, mulberry32, STONE,
+  makeSession, tick, setCell, deepestSolid, eyeCell, solidAt, escape, rightClick, leftClick, buildRay, lookDir, mulberry32, STONE,
   LAND_TOP, checkEscape, writeSave, loadSave, LOAD_RELEASE_FRAMES, voidReset, groundUnder, DEEP_SEABED, clipInto, recovered,
-  CLIP_RECOVERY_FRAMES,
+  CLIP_RECOVERY_FRAMES, finishSession,
 } from './chaosPlay/harness.js';
 
 // THE CHAOS-PLAY GATE: CAN THE PLAYER STILL LEAVE? Kevin, five minutes of left and right clicking near the ocean
@@ -21,13 +21,14 @@ import {
 // beast-form swaps, under ceilings and against walls;
 // a save written and loaded; a fall through the void (at the deep seabed, down a shaft dug out of the bottom of the world)
 // and the respawn. The real Rapier build, the real greedy mesher, the
-// real executors (placeAtHit, mineAtHit's Delete Tool, mineTarget, moveKinematic, placedCellColliders, formFit, the
-// spawn and resume decisions,
-// buildSaveData and loadWorldData), wired as the game wires them (chaosPlay/harness.js says how, and what it leaves out).
+// real executors (placeAtHit, mineAtHit's single mine and Delete Tool, cellEdits, mineTarget, moveKinematic,
+// placedCellColliders, formFit, the spawn and resume decisions,
+// buildSaveData and loadWorldData), wired as the game wires them (chaosPlay/harness.js says how, and what it leaves out);
+// a batched edit's answer comes half the trimesh lag after the click, so clicks land between edits and their answers.
 //
-// SEVEN INVARIANTS. I1, I2, I6 and I7 read the voxel grid as the verbs have made it, never the colliders; I3 reads a
+// EIGHT INVARIANTS. I1, I2, I6 and I7 read the voxel grid as the verbs have made it, never the colliders; I3 reads a
 // sandbox built from the landed chunk meshes and the live stand-ins; I4 reads the world's colliders; I5 reads the load's
-// hold.
+// hold; I8 reads the store's record against the voxel grid.
 //  I1 at the end of every frame the player is in play (not held by a load, not clipped into the rock) the live capsule
 //     reaches into no solid cell deeper than TOL (suite.js says why 5 mm);
 //  I2 the eye is never inside a solid cell then (inside one, every face points away and the block cannot be seen);
@@ -47,11 +48,16 @@ import {
 //  I7 a body clipped into the rock (each field session clips once, over the cave under the field) is stood clear within
 //     half a second, within a metre of where it clipped, before any void reset; and no stuck-in-rock recovery moves a
 //     player who never clipped (DECISIONS 2026-10-30 item 213). The frames between the clip and the recovery are not
-//     read by I1 and I2 (the body is in the rock by construction).
+//     read by I1 and I2 (the body is in the rock by construction);
+//  I8 whenever no batched edit's answer is owed, and at the session's end, every cell the store records holds what the
+//     record says (a block, or air for 0), so a save brings back the world the player sees (DECISIONS 2026-10-31 item
+//     270).
 // DENOMINATORS: each file asserts floors on the risky events its sessions reached (clicks aimed into the body, wall
 // contact frames, swaps under a ceiling and against a wall, refused swaps, loads, saves in a form and from the old Save
 // button, the frames a load held the body, respawns, respawns after an origin-column dig and build, escape tests, own
-// shells left, Delete Tool clicks and the blocks they took, under the feet too), and prints them with the frames, the deepest any session reached into solid and the walk-held readings.
+// shells left, Delete Tool clicks and the blocks they took, under the feet too, answers heard late, record reads, mines
+// of a cell whose placement was still owed its answer), and prints them with the frames, the deepest any session reached
+// into solid and the walk-held readings.
 //
 // WHAT IT DOES NOT CHECK: the game's React effect order and Terrain.jsx's own wiring (the e2e suite drives those), mobs,
 // knockback, dodge, the accel ramp, the camera's bob and shake, chunk streaming by distance (every chunk stays loaded,
@@ -201,6 +207,27 @@ describe('the chaos-play instruments see what they report on', () => {
     clipInto(O, clipAt(O));
     recovered(O, { x: 0, y: LAND_TOP + 0.95, z: 0 });
     expect(O.violations.I7.map((v) => v.why), 'I7 did not read a body stood at the origin, away from its clip').toContainEqual(expect.stringMatching(/from where the body clipped/));
+  });
+
+  it('I8 reads a record that is not the world, and none after a mine lands before its placement\'s answer', () => {
+    const S = session();
+    expect(S.answerLag, 'SETUP: the session answers at the click').toBeGreaterThan(0);
+    const dir = lookDir(0.4, -0.6); // the ground about 2 m off, clear of the body
+    expect(rightClick(S, buildRay(S, dir), 'single', 1), 'SETUP: the right click placed nothing').toBe(1);
+    // One step puts the stand-in in the broad phase, so the next ray hits it; its answer is still owed.
+    tick(S, {});
+    expect(S.answers.length, 'SETUP: the placement was answered before the mine').toBe(1);
+    leftClick(S, buildRay(S, dir));
+    expect(S.stats.minesOverOwed, 'SETUP: the left click did not mine the cell still owed its answer').toBe(1);
+    for (let i = 0; i < 6; i++) tick(S, {});
+    expect([S.counts.I8, S.answers.length], 'the record and the world disagree after a mine before the answer').toEqual([0, 0]);
+    expect(S.stats.recordChecks, 'SETUP: the record was not read once the answer was heard').toBeGreaterThan(0);
+    // A record of a block over air.
+    const t = S.p.body.translation();
+    const k = `${Math.floor(t.x)}_${LAND_TOP + 6}_${Math.floor(t.z)}`;
+    useGameStore.setState((st) => ({ worldBlocks: new Map(st.worldBlocks).set(k, STONE) }));
+    finishSession(S);
+    expect(S.violations.I8.map((v) => [v.cell, v.record, v.world]), 'I8 did not read a record of a block over air').toContainEqual([k, STONE, 0]);
   });
 
   it('I4 reads a stand-in kept past its chunk\'s mesh, and none kept on the real registry', () => {

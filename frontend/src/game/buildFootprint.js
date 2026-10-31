@@ -39,8 +39,8 @@ export const MAX_SIZE = {
  * or a cube off a side face grows out along the normal, centred across it, so none of it lies inside the block it is
  * placed against; their height rises from the cell (falls under a ceiling). `delete` is the Delete Tool's removal
  * (world/mineAtHit.js): its cell is the block hit, so its cube grows INTO the face, down under a top face and up over a
- * ceiling, centred across a side face. Mining GRANTS blocks, so a multi-cell delete is economically symmetrical with a
- * multi-cell place and needs no separate cap. No normal reads as a top face.
+ * ceiling, centred across a side face. It takes back only the player's own blocks, each paid as itself, so a removal
+ * returns what placements spent and needs no separate cap (DECISIONS 2026-10-31 item 271). No normal reads as a top face.
  *
  * @param {string} mode  single | wall | floor | cube | delete
  * @param {number} size  the slider value, clamped per mode against MAX_SIZE

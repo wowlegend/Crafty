@@ -52,7 +52,7 @@ export function chaosSuite(spots, floors) {
   const savedForms = new Set(), triedForms = new Set();
   const walkHeld = [];
   let sessions = 0;
-  describe(`chaos play at ${spots.join(' and ')} (seed ${SEED}): the player is never in solid, never has the eye in solid, can always leave, no stand-in outlives its mesh, a load stands them where they saved, the void guard leaves them in a world they stand in, and a body in the rock is stood clear where it clipped`, () => {
+  describe(`chaos play at ${spots.join(' and ')} (seed ${SEED}): the player is never in solid, never has the eye in solid, can always leave, no stand-in outlives its mesh, a load stands them where they saved, the void guard leaves them in a world they stand in, a body in the rock is stood clear where it clipped, and the record is the world whenever no answer is owed`, () => {
     freshStorePerTest();
     for (const spot of spots) for (const hz of RATES) for (const lag of LAGS) {
       it(`${spot}, ${hz} Hz, trimesh ${lag} frames late`, () => {
@@ -71,6 +71,8 @@ export function chaosSuite(spots, floors) {
         expect(S.counts.I5, `I5: a load did not stand the player near the saved spot within its frame bound ${why}`).toBe(0);
         expect(S.counts.I6, `I6: the void guard reset a player who had ground under their feet ${why}`).toBe(0);
         expect(S.counts.I7, `I7: a body in the rock was not stood clear near where it clipped, or one that never clipped was moved ${why}`).toBe(0);
+        expect(S.counts.I8, `I8: with no answer owed, the store's record of a cell is not what the worker holds there ${why}`).toBe(0);
+        expect(S.stats.recordChecks, `SETUP: the record was never read against the world ${why}`).toBeGreaterThan(0);
         expect(S.end, `I4: stand-ins or edits remain at the end of the session ${why}`).toEqual({ standIns: 0, queued: 0 });
         expect(S.stats.escapes, `SETUP: the session ran no escape test ${why}`).toBeGreaterThan(0);
       });
@@ -98,5 +100,5 @@ export function chaosSuite(spots, floors) {
 export const COMMON_FLOORS = {
   rightClicksIntoBody: 100, wallContactFrames: 500, clickPairs: 40, swaps: 12, swapsAgainstWall: 3, swapsRefused: 2, loads: 16,
   loadHoldFrames: 12, loadsReleased: 16, savesLegacy: 2, savesInForm: 6, respawns: 16, escapes: 32, ownShellOut: 1,
-  voidResets: 16, deleteClicks: 20, cellsDeleted: 250, deletesUnderFeet: 12,
+  voidResets: 16, deleteClicks: 20, cellsDeleted: 250, deletesUnderFeet: 12, answersHeardLate: 110, recordChecks: 90, minesOverOwed: 3,
 };

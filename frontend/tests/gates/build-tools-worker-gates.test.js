@@ -8,6 +8,7 @@ import { idForBlock, blockForId } from '../../src/world/blockIds.js';
 import { CHUNK_SIZE, CHUNK_HEIGHT, voxelIndex } from '../../src/world/chunkLayout.js';
 import { DEFAULT_WORLD_SEED } from '../../src/world/worldSeed.js';
 import { loadTerrainWorker, sendToWorker, readVoxel, workerVerbIo } from '../_support/terrainWorker.js';
+import { debrisBursts, DEBRIS_BLOCKS_PER_EDIT } from '../../src/world/debrisBursts.js';
 
 // THE BUILD TOOLS CHANGE ONLY WHAT THEY SAY, AND PAY FOR EXACTLY WHAT THEY CHANGE (DECISIONS 2026-10-31 items 230-232).
 // A multi-cell placement wrote every cell of its footprint whatever the cell held: ore, built blocks and a chest's wood
@@ -18,8 +19,9 @@ import { loadTerrainWorker, sendToWorker, readVoxel, workerVerbIo } from '../_su
 // (`load_modifications`), so what each cell held is known here and not read from the code under test:
 //  - a placement changes only cells that held air or water, inside the world (y 0 to 255), off a chest's cell and off a
 //    block the player built; it pays one block for each cell it changed and records exactly those;
-//  - a Delete Tool removal takes only solid cells, never water or a chest with something in it, and each removed block
-//    is paid back as the block it was;
+//  - a Delete Tool removal takes only the blocks the player built (the store records them), never generated ground, ore
+//    or water and never a chest, empty or not; each removed block is paid back as the block it was, from the one answer
+//    the worker gives the batch (no block_broken message per block);
 //  - what the worker holds afterwards is read back cell by cell (update_block, which is not the path under test).
 //
 // WHAT THIS DOES NOT CHECK: the footprint's shape (tests/gates/build-footprint-gates.test.js), the build ray and the
@@ -121,9 +123,11 @@ describe('the worker\'s batched edit on its own', () => {
     let answered = null;
     io.editCells({ blockType: 3, cells: [{ x: 5, y: CHUNK_HEIGHT, z: 5 }, { x: 5, y: -1, z: 5 }] }, (applied) => { answered = applied; });
     expect(answered, 'a cell outside the world was filled, or the worker did not answer').toEqual([]);
-    io.editCells({ blockType: 0, cells: [{ x: 5, y: CHUNK_HEIGHT, z: 5 }, { x: 5, y: -1, z: 5 }, { x: 5, y: 0, z: 5 }] }, (applied) => { answered = applied; });
+    let broken = null;
+    io.editCells({ blockType: 0, cells: [{ x: 5, y: CHUNK_HEIGHT, z: 5 }, { x: 5, y: -1, z: 5 }, { x: 5, y: 0, z: 5 }] }, (applied, _recordable, took) => { answered = applied; broken = took; });
     // y 0 is in the world and solid under every column, so the instrument can see a removal in the same call.
-    expect({ answered, broken: replies.map((r) => r.y) }, 'a removal took a cell outside the world').toEqual({ answered: [2], broken: [0] });
+    expect({ answered, broken: broken.map((r) => r.y) }, 'a removal took a cell outside the world').toEqual({ answered: [2], broken: [0] });
+    expect(replies, 'a batched removal sent a block_broken of its own').toEqual([]);
   });
 
   it('re-meshes the chunk a batch names, stamped with its seq, even when it changed no cell there', () => {
@@ -139,13 +143,46 @@ describe('the worker\'s batched edit on its own', () => {
   });
 });
 
+describe('a Delete Tool click is one batched edit, however many blocks it takes (real worker)', () => {
+  // The player's own 4 x 4 x 4, stone and glass in layers, in chunk (21, 21), and a click on its top centre at size 4.
+  const OX = 21 * CHUNK_SIZE + 6, OZ = 21 * CHUNK_SIZE + 6, Y0 = 90;
+  const own = [];
+  for (let x = OX; x < OX + 4; x++) for (let y = Y0; y < Y0 + 4; y++) for (let z = OZ; z < OZ + 4; z++) own.push({ x, y, z, id: y % 2 ? 3 : 15 });
+  const removeAt = async (size) => {
+    sendToWorker('load_modifications', { modifications: own.map((c) => [21, 21, voxelIndex(c.x - 21 * CHUNK_SIZE, c.y, c.z - 21 * CHUNK_SIZE), c.id]) });
+    useGameStore.setState({ worldBlocks: new Map(own.map((c) => [key(c), c.id])), chests: new Map(), buildingMode: 'delete', buildSize: size });
+    const io = workerVerbIo({ onBroken: payBrokenBlock });
+    const at = { x: OX + 2, y: Y0 + 3, z: OZ + 2 };
+    let writes = 0;
+    const unsubscribe = useGameStore.subscribe(() => { writes++; });
+    const blocksBefore = blocksOf();
+    const taken = await mineAtHit({ hitPoint: new THREE.Vector3(at.x + 0.5, at.y + 1, at.z + 0.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0),
+      targetedX: at.x, targetedY: at.y, targetedZ: at.z, targetCoords: key(at) }, { post: io.post, editCells: io.editCells, playBreak: () => {} });
+    unsubscribe();
+    const answers = io.received.filter((m) => m.type === 'cells_edited' || m.type === 'block_broken');
+    return { taken, writes, paid: delta(blocksBefore, blocksOf()), answers: answers.map((m) => m.type), debris: answers.flatMap(debrisBursts).length };
+  };
+
+  it('64 blocks: one answer and no block_broken, one inventory write per kind of block, debris for the first few only', async () => {
+    const one = await removeAt(1);
+    expect({ taken: one.taken, answers: one.answers, debris: one.debris }, 'SETUP: a one-block removal was not one answer with its debris').toEqual({ taken: 1, answers: ['cells_edited'], debris: 1 });
+    const all = await removeAt(4);
+    expect(all.taken, 'SETUP: the size-4 removal did not take the 64').toBe(64);
+    expect(all.paid, 'the 64 blocks were not paid back as themselves').toEqual({ stone: 32, glass: 32 });
+    expect(all.answers, 'the removal was not answered in one message').toEqual(['cells_edited']);
+    // The record, and one write per kind paid: the same few writes as one block's, not one per block.
+    expect(all.writes, `a 64-block removal made ${all.writes} store writes where one block made ${one.writes}`).toBe(one.writes + 1);
+    expect(all.debris, 'a 64-block removal burst more blocks into debris than the cap').toBe(DEBRIS_BLOCKS_PER_EDIT);
+  });
+});
+
 describe('the build tools change only empty or solid cells as they say, and pay for exactly those (real worker)', () => {
   it(`${SITES.length * ACTIONS_PER_SITE} random placements and removals over boxes of known cells`, async () => {
     const rnd = mulberry32(230);
     const { truth, worldBlocks, chests } = makeWorld(rnd);
     useGameStore.setState({ worldBlocks: new Map(worldBlocks), chests: new Map(chests) });
     const tally = { actions: 0, places: 0, deletes: 0, applied: 0, refusedSolid: 0, waterFilled: 0, offWorld: 0,
-      heldBuilt: 0, shortStacks: 0, removed: 0, chestsKept: 0, emptyChestsTaken: 0, waterKept: 0, readBack: 0 };
+      heldBuilt: 0, shortStacks: 0, removed: 0, chestsKept: 0, emptyChestsKept: 0, generatedKept: 0, waterKept: 0, readBack: 0 };
     const pick = (list) => list[Math.floor(rnd() * list.length)];
 
     for (const site of SITES) {
@@ -210,12 +247,27 @@ describe('the build tools change only empty or solid cells as they say, and pay 
           // chest with something in it (input/verbRouter.js), so such a target is skipped.
           if (S().chests.has(key(at)) && Object.keys(S().chests.get(key(at)).inventory).length) continue;
           const size = 1 + Math.floor(rnd() * 4);
+          // Most clicks aim at one of the player's own blocks near the centre, when there is one, as a player clearing a
+          // build does; the rest land wherever `at` is, on ground the tool must leave.
+          const ownNear = [];
+          for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
+            const c = { x: at.x + dx, y: at.y + dy, z: at.z + dz };
+            if (S().worldBlocks.get(key(c)) > 0 && !S().chests.has(key(c))) ownNear.push(c);
+          }
+          if (ownNear.length && rnd() < 0.7) Object.assign(at, pick(ownNear));
           const footprint = buildFootprint('delete', size, at, normal);
           tally.offWorld += footprint.filter((c) => !inWorld(c)).length;
-          const kept = (c) => !inWorld(c) || Object.values(S().chests.get(key(c))?.inventory || {}).some((q) => q > 0);
+          // The player's own blocks: recorded as placed in the store, and no chest (empty or not).
+          const own = (c) => S().worldBlocks.get(key(c)) > 0 && !S().chests.has(key(c));
+          const kept = (c) => !inWorld(c) || !own(c);
           const want = footprint.filter((c) => !kept(c) && !isEmpty(truth.get(key(c))));
+          const left = footprint.filter((c) => inWorld(c) && kept(c));
+          const ownBefore = new Set(footprint.filter(own).map(key));
           tally.deletes++;
-          tally.chestsKept += footprint.filter((c) => inWorld(c) && kept(c)).length;
+          tally.chestsKept += footprint.filter((c) => inWorld(c) && S().chests.has(key(c))).length;
+          tally.emptyChestsKept += footprint.filter((c) => inWorld(c) && S().chests.has(key(c)) && !Object.values(S().chests.get(key(c)).inventory).some((q) => q > 0)).length;
+          const generated = footprint.filter((c) => inWorld(c) && !S().worldBlocks.has(key(c)) && !isEmpty(truth.get(key(c))));
+          tally.generatedKept += generated.length;
           useGameStore.setState({ buildingMode: 'delete', buildSize: size });
           const blocksBefore = blocksOf();
           const recordedBefore = new Map(S().worldBlocks);
@@ -227,13 +279,14 @@ describe('the build tools change only empty or solid cells as they say, and pay 
 
           expect(delta(blocksBefore, blocksOf()), `the removal did not pay back each block it took, as itself (${why})`).toEqual(countBy(want.map((c) => truth.get(key(c)))));
           const recorded = [...S().worldBlocks].filter(([k, v]) => recordedBefore.get(k) !== v).map(([k]) => k);
-          expect(recorded.sort(), `the store recorded other removals than the blocks taken (${why})`).toEqual(want.map(key).filter((k) => recordedBefore.get(k) !== 0).sort());
+          expect(recorded.sort(), `the store recorded other removals than the blocks taken (${why})`).toEqual(want.map(key).sort());
           const chestsGone = [...chestsBefore.keys()].filter((k) => !S().chests.has(k));
-          expect(chestsGone.sort(), `the chests removed are not the empty ones the footprint took (${why})`).toEqual(want.map(key).filter((k) => chestsBefore.has(k)).sort());
-          tally.emptyChestsTaken += chestsGone.length;
+          expect(chestsGone, `the Delete Tool removed a chest (${why})`).toEqual([]);
           const sent = io.sent.flatMap((m) => (m.type === 'edit_cells' ? m.payload.cells : []));
-          expect(sent.filter((c) => !inWorld(c)).map(key), `a removal sent a cell outside the world (${why})`).toEqual([]);
-          for (const c of footprint.filter((c) => inWorld(c) && kept(c))) expect(readVoxel(c.x, c.y, c.z), `a chest with things in it was removed at ${key(c)} (${why})`).toBe(truth.get(key(c)));
+          expect(sent.filter((c) => !ownBefore.has(key(c))).map(key), `a removal sent a cell that is not the player's own block (${why})`).toEqual([]);
+          const replies = io.received.filter((m) => m.type === 'block_broken' || m.type === 'cells_edited').map((m) => m.type);
+          expect(replies, `the removal was not answered in one message (${why})`).toEqual(sent.length ? ['cells_edited'] : []);
+          for (const c of left.slice(0, 6)) expect(readVoxel(c.x, c.y, c.z), `a block that is not the player's own was removed at ${key(c)} (${why})`).toBe(truth.get(key(c)));
           const water = footprint.filter((c) => inWorld(c) && truth.get(key(c)) === WATER).slice(0, 3);
           for (const c of water) expect(readVoxel(c.x, c.y, c.z), `a removal drained water at ${key(c)} (${why})`).toBe(WATER);
           for (const c of want.slice(0, 4)) expect(readVoxel(c.x, c.y, c.z), `a solid cell in the footprint was not removed at ${key(c)} (${why})`).toBe(AIR);
@@ -254,6 +307,7 @@ describe('the build tools change only empty or solid cells as they say, and pay 
     expect(tally.shortStacks, 'SETUP: no stack fell short of its footprint').toBeGreaterThanOrEqual(3);
     expect(tally.removed, 'SETUP: too few blocks were removed for the payback to mean anything').toBeGreaterThanOrEqual(20);
     expect(tally.waterKept, 'SETUP: no removal footprint held water').toBeGreaterThanOrEqual(3);
-    expect(Math.min(tally.chestsKept, tally.emptyChestsTaken), 'SETUP: no removal met a chest with things in it, or none took an empty one').toBeGreaterThanOrEqual(1);
+    expect(tally.generatedKept, 'SETUP: too few removal footprints met generated ground or ore').toBeGreaterThanOrEqual(20);
+    expect(Math.min(tally.chestsKept - tally.emptyChestsKept, tally.emptyChestsKept), 'SETUP: no removal met a chest with things in it, or none met an empty one').toBeGreaterThanOrEqual(1);
   }, 180000);
 });
