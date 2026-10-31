@@ -210,6 +210,170 @@ extends the epoch (item 336) and does not redo it.
 
 ---
 
+## 2026-10-31 (lane L7) — [LOOP] credit from the effect, not the click: a verb pays, counts and sounds what its owner says it did, a hazard pays nobody, and the world's queries see the terrain, not the debris
+
+**Decided by the lane's builder** under the command session's grant (deep audit lane L7, registry
+`AUDIT:lane:L7-credit-from-the-effect`; audit record `docs/superpowers/audits/2026-10-30-deep-audit.md` section 4).
+Branch `fix/l7-credit-from-effect` from `7250aa22`. Each fix's gate went red on `7250aa22`'s `frontend/src` in a scratch
+tree, then green; each commit's `Mutation-Proof:` trailer names its mutants, every one red, with an identity mutant green.
+
+320. **A single mine is paid, counted and heard when the worker says what it broke, never at the click.** The click
+   posts `update_block` tagged `source: 'player'`; `terrain.worker.js` echoes the post's `source` and `drop` on the
+   `block_broken` it sends for a cell it emptied, and `world/mineAtHit.js creditBrokenBlock` (it replaces
+   `payBrokenBlock`) pays the block, counts one break toward Miner and Deep Digger and plays the break sound at the
+   block. A second click before the rebuilt trimesh lands aims at the cell the first emptied, the worker sends nothing,
+   and nothing is paid, counted or heard (`AUDIT:numeric:mine-credit-paid-by-click-not-break`). The record at the click
+   (`recordingAtClick`, DECISIONS item 270) is unchanged, so the build ledger L6 made still holds. The Delete Tool was
+   already paid from its batch's answer. The break sound reaches the module-level answer handler through a sink
+   `MinecraftWorld` fills while mounted (its sound hook lives there); a break answered after it unmounts is paid and
+   counted, unheard.
+321. **A hazard pays nobody.** `creditBrokenBlock` pays, counts and sounds only `source: 'player'`; the dragon's smash
+   tags its posts `'dragon'`. Its debris still bursts. A block of the player's that the dragon breaks is lost, as a
+   hazard's damage is; the build gate's conservation check (`tests/gates/build-edit-order-gates.test.js`) now counts the
+   dragon's breaks as the third place a block can go.
+322. **The smash takes the block each column stands on, one a column, and never a chest.** The ground probe answers a
+   column's top face, and its floor is the air above the block: at `7250aa22` the gate's smash sent 38 cells and 19 held
+   a block, each the second pick, one lower, which was the top block. The pick is the face rounded,
+   less one: the audit wrote `ceil(g)-1`, equal on every column it measured (the face whole, or f32 noise just under);
+   rounding also holds for noise just over. The second, deeper pick is dropped: with real picks it would let a strike
+   that chose only the lower cell hollow the ground under an unbroken top, and in practice the craters were already one
+   deep (the floor pick was air). A cell holding a chest record is skipped, so no strike leaves an invisible chest
+   (`AUDIT:numeric:dragon-crater-pays-player-and-aims-at-air`).
+323. **An empty chest mined comes back as the chest.** The chest's voxel is wood and its record is deleted at the click,
+   before the worker answers, so the click tags its post `drop: 'chest'` and the answer pays one chest
+   (`AUDIT:numeric:empty-chest-pickup-returns-wood`). Every hotbar block and every Forge good now round-trips.
+324. **Every world query and the player's controller exclude dynamic bodies.** The block-break debris is the game's
+   only set of them, and for its 2 s the build ray and the outline aimed at the cell it tumbled through, the ground
+   probe and the anvil ray met it, the controller climbed it (its autostep includes dynamic bodies) and the ledge vault
+   took a cube in flight for a ledge (`AUDIT:verbs:debris-colliders-catch-mine-rays`). `QueryFilterFlags.EXCLUDE_DYNAMIC`
+   at the four `Terrain.jsx` rays (outline, ground probe, `castBuildRay`, `castWorldRay`), the ledge vault's two in
+   `Components.jsx`, and the controller's sweep (`game/kinematicMove.js moveKinematic` takes the flags as a trailing
+   argument). `render/SpatialAudioController.jsx` already counted static bodies only. The chaos harness's mirror of the
+   Player loop was not changed: its world has no dynamic bodies, so its queries answer the same either way.
+325. **The debris is drawn while it lives, gone when it dies, and asleep until a burst.** Its `instancedMesh` is not
+   frustum-culled (three bounds an InstancedMesh by a sphere computed once, from the parked instances, and culled the live
+   debris wherever a block was mined: `AUDIT:silent:block-debris-frustum-culled`); a dead cube is parked asleep at its own
+   spot (a 20 x 10 grid 0.5 m apart at y -1000, so no two parked cubes touch) and its instance written at zero scale,
+   since `@react-three/rapier` 2.2 writes no matrix for a sleeping body and the dead debris would otherwise stay drawn where
+   it came to rest; the whole pool is parked so at mount, where all 200 bodies had fallen awake and overlapping for the
+   whole session (`AUDIT:ultra:ultra-player-world-8`). Cost: 200 cubes of 12 triangles submitted each frame, against 200
+   bodies stepped awake each frame before.
+326. **A potion Used at the cap is kept and refused with a notice.** The Inventory's Use refuses a consumable whose every
+   effect the cap would clamp away (an XP token is never refused): `deny.alreadyFull`, "Already full: keep it for later",
+   zh 已经满了，留着以后用吧 (`AUDIT:numeric:potion-spent-at-full`). Just below the cap a potion is drunk as before.
+327. **The XP token rule: a chest's XP token pays its own XP once, when it is Used; picked up, it pays what every chest
+   item pays (10 XP).** The Diamond, Star Fragment and Golden Crown dropped carrying their own XP as the pickup's and paid it
+   again on Use: a Golden Crown was 400 XP, and the choice `game/consumables.js` names for it, wear it or cash it in, cost
+   nothing (`AUDIT:numeric:xp-token-pays-twice`). Use is the one payment because it is the choice; the pickup stays the
+   same for every chest item, so a token still reads as loot when it is collected. A shrine's banked loot pays the same
+   per item. A mob kill's drops keep their `LOOT_TABLES` XP, which is the kill's (a moss brute's Diamond pays 60 picked
+   up and 50 Used). `CHEST_LOOT`'s `effect` and `value` fields are now read by no game code (registry row below).
+328. **A strike the AI worker computed for a mob that has since died, begun dissolving, or stopped being a mob is
+   dropped.** `game/perfectDodge.js strikesToApply` drops a strike whose mob the lookup no longer finds (AIWorkerSystem
+   looks in `mobsQuery`, which a bound ally has left) or finds defeated (`combat/targeting.js isDefeated`, now exported)
+   (`AUDIT:desync:stale-ai-reply-strikes-after-death`).
+329. **The gates.** Red on `7250aa22`'s src (the log is `<session scratchpad>/l7/red-all-7250aa22.log`, not kept), green after:
+   - `tests/gates/verb-ledger-gates.test.jsx` mounts the real `MinecraftWorld` through R3F's reconciler under the real
+     `<Physics>` (`@react-three/rapier`'s ESM build, so the two share the reconciler), the real `BlockParticleSystem`, the
+     real terrain worker in process (its replies pumped, so a click can land before the answer), the real quest hook and
+     the real verb router, with `Math.random` seeded. Rows: two clicks before the answer are one break (at `7250aa22`
+     `{broken: 2, sounds: 2}` against one `block_broken`); every hotbar block and Forge good round-trips (the chest came back
+     as `{chest: -1, wood: 1}`); the smash breaks only blocks, never a chest, and pays nothing; and for 120 frames, aimed
+     through a live debris cube, `castBuildRay`, the outline, `castWorldRay` and the ground probe answer the terrain under it
+     while a ray with no exclusion meets the cube (0 of 120 at `7250aa22`).
+   - `tests/gates/player-debris-gates.test.jsx` mounts the real Player (the `player-placement-gates` harness): a walk across
+     a settled pile rises no more than on clear ground (0.511 m at `7250aa22`) and goes as far; a falling player's chest
+     ray meeting a cube in flight does not vault (+0.749 m at `7250aa22`), while a real ledge vaults, also under a cube at
+     head height.
+   - `tests/gates/debris-lifecycle-gates.test.jsx` mounts the real `BlockParticleSystem` under the real `<Physics>` with a
+     renderer that runs three r172's own cull: 0 awake, 0 falling and 0 overlapping parked bodies over 120 frames at mount
+     (200 awake and falling at `7250aa22`); live debris in view drawn 60 of 60 frames (0 at `7250aa22`); past 2 s no dead
+     instance shown and none awake (red under the half-fix, frustum culling off with no park matrix).
+   - `tests/integration/inventory-consume.test.jsx` gains the potion rows; `tests/gates/token-xp-ledger-gates.test.jsx`
+     follows every `CHEST_LOOT` row through the real chest and the real Use; `tests/gates/perfect-dodge-gates.test.js` gains
+     the stale-strike row.
+   - **Tests changed with a rule, the reason in each commit:** `terrain-quest-callback-gates` (a mine with a stub post
+     counts nothing until the worker's `block_broken`), `build-edit-order-gates` (the smash's stub answers the cell's top
+     face, as the real probe does; conservation counts the dragon's breaks), the L6 gates' import of `creditBrokenBlock`,
+     `perfect-dodge-gates` (a strike from a missing mob is dropped, where it was pinned as landing),
+     `mob-sense-body-gates` (its archer is a live mob in the ECS), `shrine-persistence-gates` (the shrine banks every
+     item's pickup, not the token's own XP).
+   - **Not checked here:** no local e2e or browser (CI runs them). The window two clicks need in a browser (within about
+     a frame) was made by the pump, not by real input; the AI reply's handler is unchanged and its lookup not driven here;
+     the Player-loop rows drive the real Player with Rapier, not the deployed frame loop.
+330. **Bytes.** The index chunk (`vite build`) is 649,549 B on `7250aa22` and 650,441 B on `aa5934d4`: 892 B more, under the
+   652,500 B ceiling (item 282) with 2,059 B to spare, so nothing was moved out to offset it. The lanes in flight beside
+   this one share that room; whichever lands past the ceiling offsets what it adds.
+331. **Found, not fixed** (registry): `REVIEW:l7:chest-loot-effect-fields-unread`;
+   `REVIEW:l7:orphan-chest-record-pays-a-chest` (a chest record a pre-L7 smash left over air pays a chest for a block
+   later mined in its cell); `REVIEW:l7:chest-mined-before-its-answer-pays-wood` (the click's drop tag cannot see a chest
+   placement still owed its answer). The last two were found by reading the code and were not run.
+332. **Round 2 (tests and records only) corrects item 327's reason: a Golden Crown's two uses are not exclusive.** Item 327
+   said the crown's choice, wear it or cash it in, "cost nothing" and that Use is the one payment "because it is the
+   choice". The store does not enforce a choice: `game/equipment.js` lets the crown be worn (head), `unequipItem` returns it
+   to the bag, and Use cashes it in for 200 XP (`game/consumables.js`), so a player can wear it, take it off and cash it
+   in. What holds is narrower, and it is the rule: the token's own XP is paid once, on Use, because Use uses the item up;
+   wearing pays no XP, so wearing first costs nothing and adds no XP. Making the two exclusive
+   would be a design change nobody has asked for, so none is made. The code comment in `QuestSystem.jsx` ("worn or cashed
+   in, not both") said more than the store does and is corrected, as is the stale comment in `BlockParticleSystem.jsx`
+   (it still said a dead cube keeps full scale and is teleported; it is parked asleep at zero scale). Round 1 static
+   review, findings 1 and 2.
+333. **The dragon's smash now breaks about twice as many real blocks per strike, and that is kept.** At `7250aa22` each
+   column pushed two picks, the air above its top block and the block, so half of every strike's picks broke nothing; now
+   every pick is a block (item 322 recorded the crater's depth, not this count). Measured on the two functions
+   (`7250aa22`'s `bossSmash.js` and this lane's), driven as `render/BossEntity.jsx` calls them: radius 5.0, a cap of
+   `floor(random * 5) + 4` blocks, centred on the ground under the strike, the ground answering the generator's top face;
+   2,213 strikes at random centres over an 800 x 800 area about the hub (787 draws on sea or hub columns skipped), each
+   strike drawn identically for both. Both pick 5.94 cells a strike (the cap's mean is 6.0 and nearly always binds: a
+   radius-5 disc holds about 78 columns); before, 2.99 of them held a block (49.6% air), after, 5.94 (ratio 1.99). A radius-5 strike is therefore twice
+   as hard on the player's placed blocks, which are lost and never paid back (item 321). Kept: the cap of 4 to 8 is the
+   number of blocks the author asked a strike to break, and the air picks silently halved it; a gentler hazard is a change
+   to that cap in `BossEntity.jsx` (two sites), not a reason to keep aiming at the air. "A block" here is a cell at or
+   below the generator's surface; trees, placed blocks and caves are not modelled, and the probe is not kept. Round 1
+   static review, finding 3.
+334. **The break sound's position is gated.** Item 320 said the sound plays at the block and no gate read where. Row 1 of
+   `tests/gates/verb-ledger-gates.test.jsx` now asserts, for the first break and for the control break, that the worker
+   emptied the cell the click aimed at and that the last sound is at that cell's centre. `scripts/dev/mutate.sh` on
+   `world/mineAtHit.js` (verb-ledger, 4 tests): the identity mutant (a comment) survived; RED: S1 the sound at the world
+   origin, S2 no position, S3 the block's corner, not its centre. Round 1 dynamic review, claim 6 and finding F1.
+   **Not measured:** how long after the click the sound arrives in a browser. The worker handles messages one at a time
+   and the streamer posts up to two `generate` messages every 150 ms, so while chunks stream the sound waits behind them;
+   the block's removal always waited for the same answer, so the sound, the debris and the removal now land together. That
+   is Kevin's real-device call.
+335. **Where each new sub-assertion was seen red.** Round 1's static review found that each red row stopped at its first
+   failing `expect`, so later ones were never seen red. Re-run this round on `7250aa22`'s `frontend/src` with every
+   `expect` after the first `describe` made soft (`expect.soft`, so a row runs past its first failure; scratch copy, not
+   kept), the gates as they stand at the head:
+   - **Red at `7250aa22`, each for its own reason:** verb ledger: two clicks `{broken: 2, sounds: 2}`; the chest round trip
+     `[chest, ...]`; the smash: 19 of 38 posts held a block, it took the chest's cell, the chest did not survive (the top
+     read 48, not 49), and it paid `{grass: 18, wood: 1}`; all four world queries 0 of 120. The commit body of `7ee97985`
+     says 36 sent and 14 broken for the smash, which differs: the gate as committed reads 38 and 19. Player debris:
+     `{rise: 0.511, walked: 11.89}` against `{0.054, 12.22}` clear (both clauses red); the vault +0.749 m off a cube in
+     flight; the head ray's cube took a real ledge's vault away (-0.57 m for more than 0.2). Debris lifecycle: 200 awake and
+     200 falling; drawn 0 of 60; past 2 s `{meshDrawn: false, shown: 8, awake: 192}`. Token ledger: Golden Crown 400, not
+     210. Potion at full `{count: 1, value: 100, notices: 0}` for `{2, 100, 1}`. Stale strikes `[live, dead, dying,
+     bound]` for `[live]`.
+   - **The overlap check could not see its own defect and is fixed.** It read 0 at `7250aa22` because it was taken after
+     120 frames, when a falling pool has scattered. It is now also read at mount, before the first step, and the larger is
+     asserted: 19,900 pairs (all 200 bodies at one point) at `7250aa22`, 0 at the head. Mutants on
+     `BlockParticleSystem.jsx` (debris-lifecycle, 2 tests): identity survived; RED: B3 the pool not parked at mount, B4 every
+     body parked at one spot (asleep, so only the overlap clause sees it in row 1).
+   - **The sound-position rows are red both ways.** At `7250aa22` the sound played twice, at the click's hit point on the
+     block's top face (y 49.0 where the block's centre is 48.5); on the head, S1 to S3 (item 334) are red.
+   - **Not red at `7250aa22`, proven by mutants.** The potion refusal's notice: its `warn` type was read but its text was
+     not (no gate read the kind of notice), so this round adds `'Already full: keep it for later'`; `denyToast.js` mutated
+     to `info` (N1) and `GamePanels.jsx` raising `delete-rule` instead (N2) are both RED against `inventory-consume` (5
+     tests), the identity mutant surviving. At `7250aa22` the refusal does not exist, so neither assertion can be reached
+     there.
+   - **Unproven, and said so.** Controls and setup, which are green on both sides by design and whose killability this
+     round did not show one by one: row 1's control click, the potion rows just below full (item 326's P4 in `f0b602a0`),
+     the changed first row of `perfect-dodge-gates`, and every `SETUP:` precondition.
+336. **Found, not fixed** (registry): `REVIEW:l7:break-sound-spatial-trigger-captured-once` (found by reading, not run; for
+   the audio lane); and the `mob-floor.spec.js:227` sighting of run 41212401755 (shard 6/8, retry #1 passed) is appended to
+   `REVIEW:e2e-flakes:mob-floor-roof-floor-infinity`.
+
+---
+
 ## 2026-10-31 — [LOOP] a bundle ceiling never rises to make a build green; the lookbook seam leaves the boot chunk
 
 **The command session's ruling:** a bundle ceiling does not rise to make a red build green. The script says so at

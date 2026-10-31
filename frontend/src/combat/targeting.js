@@ -47,7 +47,7 @@ export function isHostile(e) {
  * `ecs.with('isMob','position','type')`, which carries no health component, so corpses stay in the very
  * list every targeter walks. For most of that window the model is scaled to 0.001, i.e. INVISIBLE.
  */
-function isDefeated(e) {
+export function isDefeated(e) {
   return !!(e && ((typeof e.health === 'number' && e.health <= 0) || e.dyingUntil));
 }
 

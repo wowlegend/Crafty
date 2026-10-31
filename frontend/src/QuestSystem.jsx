@@ -959,7 +959,10 @@ export const useTreasureChests = () => {
             }
         }
 
-        const xpOf = (item) => (item.effect === 'xp' ? item.value : 10);
+        // Every chest item pays the same pickup XP. An XP token's own XP is paid once, when it is Used (ui/GamePanels.jsx).
+        // The store does not make a Golden Crown's two uses exclusive: it can be worn, and once it is off cashed in, which
+        // uses it up, so the cash-in is the one payment.
+        const PICKUP_XP = 10;
         const paid = chest && chest.shrineKey;
         if (paid) {
             // A shrine's loot is banked into the bag, as a drop the player is not there for is (systems/LootSystem.jsx),
@@ -967,10 +970,10 @@ export const useTreasureChests = () => {
             // holding the record would hold no chest to pay it again (DECISIONS 2026-10-31 item 293).
             const s = useGameStore.getState();
             for (const item of loot) s.addToInventory(item.item, 1);
-            s.grantXP(loot.reduce((n, item) => n + xpOf(item), 0), 'Looted');
+            s.grantXP(loot.length * PICKUP_XP, 'Looted');
             s.rewardShrine(chest.shrineKey);
         } else if (GameMethods.spawnLootDrop) {
-            for (const item of loot) GameMethods.spawnLootDrop(item.item, xpOf(item), position);
+            for (const item of loot) GameMethods.spawnLootDrop(item.item, PICKUP_XP, position);
         }
 
         const dropNames = loot.map(l => l.item).join(', ');

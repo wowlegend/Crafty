@@ -31,6 +31,9 @@ export function deniedReason(kind, ctx = '') {
     // A Delete Tool click that took nothing (world/mineAtHit.js): the tool's rule, true of whatever the footprint held.
     case 'delete-rule':
       return t('deny.deleteRule');
+    // A potion Used at full health or mana (ui/GamePanels.jsx): it is kept, not spent for nothing.
+    case 'already-full':
+      return t('deny.alreadyFull');
     // A beast form with no room where the player stands (game/formFit.js).
     case 'no-room':
       return t('deny.noRoom');

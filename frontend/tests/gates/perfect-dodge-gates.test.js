@@ -137,9 +137,17 @@ describe('a staggered mob neither strikes nor advances — through the real ai.w
 
   it('a strike computed before the dodge is dropped on arrival; everyone else\'s lands', () => {
     const now = 5000;
-    const ents = { a: { staggerUntil: now + 100 }, b: {}, c: { staggerUntil: now - 1 } };
-    const out = strikesToApply([{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'gone' }], (id) => ents[id], now);
-    expect(out.map((s) => s.id)).toEqual(['b', 'c', 'gone']);
+    const ents = { a: { staggerUntil: now + 100, health: 30 }, b: { health: 30 }, c: { staggerUntil: now - 1, health: 30 } };
+    const out = strikesToApply([{ id: 'a' }, { id: 'b' }, { id: 'c' }], (id) => ents[id], now);
+    expect(out.map((s) => s.id)).toEqual(['b', 'c']);
+  });
+  // A strike from a mob the reply outlived: killed, dissolving, or no longer a mob (bound as an ally, or removed) between
+  // the tick's post and its reply (registry AUDIT:desync:stale-ai-reply-strikes-after-death). Each is dropped.
+  it('a strike from a mob killed, dying, bound or removed since the tick was posted is dropped', () => {
+    const now = 5000;
+    const ents = { live: { health: 30 }, dead: { health: 0 }, dying: { health: 4, dyingUntil: now + 300 } };
+    const out = strikesToApply([{ id: 'live' }, { id: 'dead' }, { id: 'dying' }, { id: 'bound' }], (id) => ents[id], now);
+    expect(out.map((s) => s.id), 'a strike landed from a mob that is no longer a live mob').toEqual(['live']);
   });
 });
 

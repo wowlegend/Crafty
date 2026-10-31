@@ -133,7 +133,8 @@ describe('a reached shrine and an opened shrine chest survive a reload', () => {
     for (const [item, n] of Object.entries(owed)) {
       expect(s.inventory.blocks[item] ?? 0, `${item}: the save records the shrine paid and holds none of its loot`).toBe((bag0[item] ?? 0) + n);
     }
-    const xp = loot.reduce((a, l) => a + (l.effect === 'xp' ? l.value : 10), 0);
+    // Every chest item's pickup, a token's included: its own XP is paid when it is Used (tests/gates/token-xp-ledger-gates).
+    const xp = loot.length * 10;
     expect(s.totalXP, 'the loot\'s XP was lost with the drops').toBe(xp0 + xp);
     poll();
     poll();
