@@ -8,7 +8,7 @@ import { foldVerbMods } from '../game/verbMods.js';
 import { relicTier, normalizeRelicTiers } from '../game/relics.js';
 import { buy as forgeBuy } from '../game/forge.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, asRespawned, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, TALENT_CUT } from '../game/saveSchema.js';
+import { buildSaveData, asRespawned, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, liveShrines, TALENT_CUT, BOSS_WIPE_REPAIR } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -18,6 +18,7 @@ import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward, gameTimeFo
 import { getBeastForm } from '../game/beasts.js';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { hydrateBossState } from '../game/bossPersistence.js';
+import { liveSquad } from '../game/squadRoster.js';
 import { clampEmber, canAfford, accrueBuild, readBuildDay, emberFromSave } from '../game/ember.js';
 import { hitDirection } from '../game/damageDirection.js';
 import { hurtStopMs } from '../game/hurtFeel.js';
@@ -148,8 +149,9 @@ export const useGameStore = create((set, get) => ({
 
     // The save keys this build does not write, as loaded (game/saveSchema.js splitTombstone); buildSaveData writes them
     // back. Replaced wholesale by every load, so a new world never inherits the last one's. A session that has loaded
-    // nothing plays a post-Cut build, so its saves record the Cut's refund as run (saveSchema.js TALENT_CUT).
-    _tombstone: { migrated: [TALENT_CUT] },
+    // nothing plays a post-Cut build, so its saves record the Cut's refund as run (saveSchema.js TALENT_CUT), and it was
+    // never under the resume wipe, so they record its repair as run too (BOSS_WIPE_REPAIR).
+    _tombstone: { migrated: [TALENT_CUT, BOSS_WIPE_REPAIR] },
 
     // Capture-only: hide the gameplay HUD for clean character-studio shots
     // (e.g. the character-closeup visual fixture). Default false -> HUD always shows
@@ -511,6 +513,34 @@ export const useGameStore = create((set, get) => ({
 
     gameCamera: null,
 
+    // Published by the system that owns each, null until it mounts (tests/scripts/store-keys-declared.test.js: a key
+    // set with setState and absent here is invisible to getInitialState, so a new world and a failed boot kept it).
+    playAttackSounds: null, // App.jsx: the swing and the hit sound of a melee attack
+    playHitSound: null, // App.jsx
+    playDefeatSound: null, // App.jsx
+    playSpatialSound: null, // render/SpatialAudioController.jsx
+    requestPointerLock: null, // GameScene.jsx: the canvas's lock request
+    spawnMob: null, // systems/SpawnerSystem.jsx
+    spawnEnemyProjectile: null, // systems/EnemyProjectileSystem.jsx
+    triggerGPUSparks: null, // world/GPUSparkSystem.jsx
+    spawnDeterministicCast: null, // EnhancedMagicSystem.jsx, for the visual fixtures (devtest/devBridge.js)
+    onNightSurvived: null, // QuestSystem.jsx: the night quest's counter
+    onLevelChanged: null, // QuestSystem.jsx: the level quest's counter, called by SimpleExperienceSystem.jsx
+    // The primary action's seams (input/primaryInput.js): the touch overlay presses and releases through them.
+    performVerb: null,
+    pressPrimary: null,
+    releasePrimary: null,
+    debugChunks: null, // world/Terrain.jsx: the loaded chunks, for the debug overlay
+
+    // The frontier shrines this world has reached, and those whose reward chest has been opened: chunk keys
+    // (world/shrines.js), persisted in game_state.shrines. QuestSystem.jsx writes them; the HUD objective turns to the
+    // Blight Heart once one is reached, Pilgrimage is credited from the reached list, and a rewarded shrine spawns no
+    // second chest. Each write leaves the list as it was when the key is already in it.
+    reachedShrines: [],
+    rewardedShrines: [],
+    reachShrine: (key) => set((s) => (s.reachedShrines.includes(key) ? s : { reachedShrines: [...s.reachedShrines, key] })),
+    rewardShrine: (key) => set((s) => (s.rewardedShrines.includes(key) ? s : { rewardedShrines: [...s.rewardedShrines, key] })),
+
     // damageMob / checkMobCollision DELETED 2026-08-11 along with their setters: a write-only mirror of
     // the GameMethods singleton that all eleven live consumers actually read. Two publication mechanisms
     // where one is read is worse than one -- the next author has to work out which is authoritative.
@@ -518,30 +548,24 @@ export const useGameStore = create((set, get) => ({
     castSpell: null,
 
     damageBoss: null,
-    setDamageBoss: (fn) => set({ damageBoss: fn }),
     // The boss system's give-up path for a dragon chunk that never loaded (render/dragonLoader.js LazyDragon).
     suspendBossEncounter: null,
     // The lookbook's dragon spawn: set only on a ?lookbook=1 page (world/bossSystem.js), null in the game.
     lookbookSpawnDragon: null,
     getBossPosition: null,
-    setGetBossPosition: (fn) => set({ getBossPosition: fn }),
-    // Single source of truth for boss-active state. The VALUE `bossActive` is what
-    // SoundManager gates the boss battle music on (`state.bossActive`); the FUNCTION
-    // `isBossActive()` returns that SAME value, so callers reading either path can
-    // never diverge. `useBossSystem` drives both via `setBossActive`.
+    // Whether the dragon fight is on: SoundManager gates the boss battle music on it, and the melee and spell branches that
+    // can hit the dragon read it (Components.jsx, EnhancedMagicSystem.jsx). It is written with the rest of the encounter,
+    // by setBossEncounter and by loadWorldData, never alone.
     bossActive: false,
-    setBossActive: (v) => set({ bossActive: !!v }),
-    isBossActive: () => get().bossActive,
-    // A-bis B2g: health + defeated join bossActive as the PERSISTED mirror of the encounter. `useBossSystem`
-    // stays the live owner (its React state drives the fight and the HUD); these are what reaches the save,
-    // written through the one effect that already mirrors bossActive, so there is a single writer. Before
-    // this, the whole fight was hook-local — a reload mid-boss handed the dragon back every point of health
-    // the player had taken off it. Phase is deliberately absent: it is DERIVED from health
-    // (`game/bossPersistence.phaseForHealth`), and persisting a derived value invites it to drift.
+    // THE ENCOUNTER, persisted (A-bis B2g) and owned here (deep audit lane L3): `useBossSystem` selects these and writes
+    // them through setBossEncounter, keeping no copy, so a load is the fight the hook shows. Before B2g the whole fight
+    // was hook-local, and a reload mid-boss handed the dragon back every point of health the player had taken off it.
+    // Phase is deliberately absent: it is DERIVED from health (`game/bossPersistence.phaseForHealth`), and persisting a
+    // derived value invites it to drift.
     bossHealth: BOSS_CONFIG.health,
     bossDefeated: false,
     // QUEUE C3: dragons slain so far (the next fight's tier, game/bossTier.js) and the night of the last kill
-    // (the return cadence counts from it). Persisted with the encounter; written by the same single writer.
+    // (the return cadence counts from it). Persisted with the encounter; written only when passed.
     bossTier: 0,
     bossKillNight: 0,
     setBossEncounter: ({ health, active, defeated, tier, killNight }) =>
@@ -598,10 +622,12 @@ export const useGameStore = create((set, get) => ({
     setAspectHint: (v) => set({ aspectHint: v }),
     // S2a: serializable mirror of useQuestSystem's persistable state (quest
     // progress + achievement counters). The gameplay hook owns the working
-    // state; this is a JSON-safe snapshot for buildSaveData. `questLoadedAt`
-    // is a monotonic resync tick bumped on load so the hook re-seeds.
+    // state; this is a JSON-safe snapshot for buildSaveData.
     questState: null,
-    questLoadedAt: 0,
+    // The world-load event: a monotonic tick every loadWorldData bumps (startNewWorld too), so each owner of per-world
+    // state outside the store re-seeds from the loaded world: the quest log (QuestSystem.jsx), the dragon's arrival
+    // latches (world/bossSystem.js), the squad's bodies (world/squadPersistence.js).
+    worldLoadedAt: 0,
     setQuestState: (qs) => set({ questState: qs }),
     chests: new Map(),
     activeChestCoords: null,
@@ -614,7 +640,8 @@ export const useGameStore = create((set, get) => ({
     respecTalentPoints: () => set((state) => {
         const r = respecTalents(state.unlockedTalents, state.talentPoints);
         return {
-            ...r,
+            unlockedTalents: r.unlockedTalents,
+            talentPoints: r.talentPoints,
             // R1.4: refunding a verb must also END what the verb is doing, or respec is a free exploit —
             // hold a beast form or a grab through it and keep both. These are the same store flags each
             // Aspect SM reads as its ACTIVE state, so clearing them IS the SM's own exit path (the form's
@@ -836,6 +863,10 @@ export const useGameStore = create((set, get) => ({
         return true;
     },
     emberBuildDay: { night: 0, built: 0 },
+    // The bound squad as the save keeps it: one { type } per creature (game/squadRoster.js), persisted in the progression
+    // slice. The ECS holds the bodies; world/squadPersistence.js writes this on every bind, fusion and release, and
+    // rebuilds the bodies from it at the player when a world loads.
+    squad: [],
     accrueBuildEmber: () => set((s) => {
         const r = accrueBuild(s.ember, s.emberBuildDay, s.nightCount, s.isDay);
         return r.ember === s.ember && r.record === s.emberBuildDay ? s : { ember: r.ember, emberBuildDay: r.record };
@@ -1100,9 +1131,10 @@ export const useGameStore = create((set, get) => ({
             // clamped into [0, max], and a save with no boss block (written before this existed) reads as
             // "not started". Absent-block tolerance is the same forward-compat contract as `prog` below.
             // C3: the fight is sized from its TIER (no fixed max), and a won pre-tier save counts its first
-            // return from the night it was loaded on.
-            const boss = hydrateBossState(saveData.game_state?.bossState, {
-                gameWon, nightCount: saveData.progression?.nightCount ?? state.nightCount,
+            // return from the night it was loaded on. A save the context-loss resume wiped loads its slain dragon
+            // (saveSchema.js BOSS_WIPE_REPAIR, DECISIONS 2026-10-31 item 250).
+            const boss = hydrateBossState(owed.bossState || saveData.game_state?.bossState, {
+                gameWon, nightCount: saveData.progression?.nightCount ?? state.nightCount, level: saveData.progression?.level ?? state.level,
             });
 
             // Full progression slice — tolerate pre-A3 saves (no `progression`) by falling back to current state.
@@ -1133,6 +1165,11 @@ export const useGameStore = create((set, get) => ({
             // The save's own record, absent or not: a save older than the record has spent none of its day, and the
             // session's record belongs to whichever world was loaded before it.
             const emberBuildDay = readBuildDay(prog ? prog.emberBuildDay : state.emberBuildDay);
+            // The save's own squad, and none when it holds none: a squad belongs to its world, so the session's never
+            // crosses into another (a save from before the roster had its squad dropped by the load that wrote it).
+            const squad = liveSquad(prog?.squad);
+            // The save's own shrine record, and none when it holds none: the facts of another world never count here.
+            const shrines = liveShrines(saveData.game_state?.shrines);
 
             // The retired items leave every chest too (the tombstone holds them for the save).
             const chests = saveData.chests ? new Map(liveChests(saveData.chests)) : state.chests;
@@ -1179,6 +1216,9 @@ export const useGameStore = create((set, get) => ({
                 lastRewardedNight,
                 ember,
                 emberBuildDay,
+                squad,
+                reachedShrines: shrines.reached,
+                rewardedShrines: shrines.rewarded,
                 chests,
                 maxHealth,
                 maxMana,
@@ -1190,19 +1230,11 @@ export const useGameStore = create((set, get) => ({
                 // talent, so a block carried through the load would be thrown by a verb the player does not have.
                 voidhandHeld: false,
                 heldPhantom: null,
-                // S2a: restore the quest/achievement mirror (tolerate pre-questState
-                // saves by falling back) and bump the resync tick so useQuestSystem
-                // re-seeds its local working state from the loaded snapshot.
-                // PRESENCE test, not `??`. The two callers need opposite merge semantics through this
-                // one function: loading an older save must tolerate a MISSING key (forward compat), while
-                // startNewWorld — which is deliberately "load a save built from the INITIAL state" —
-                // must force the reset. buildSaveData writes `questState: state.questState || null`, so a
-                // fresh reset save carries the key PRESENT with value null, and `null ?? state.questState`
-                // kept the OLD world's completed quests and achievements in the new one.
-                questState: Object.prototype.hasOwnProperty.call(saveData, 'questState')
-                    ? liveQuestState(saveData.questState, owed.claimedQuestIds)
-                    : state.questState,
-                questLoadedAt: (state.questLoadedAt || 0) + 1,
+                // S2a: the quest/achievement mirror, which useQuestSystem re-seeds from on the tick below. A save with no
+                // log is a fresh log, its key null (a new world's: buildSaveData writes `state.questState || null`) or
+                // absent (a save from before the log): never the session's, which is the world loaded before.
+                questState: liveQuestState(saveData.questState ?? null, owed.claimedQuestIds),
+                worldLoadedAt: (state.worldLoadedAt || 0) + 1,
             };
         });
 

@@ -28,8 +28,8 @@ let release = null;
 beforeEach(() => {
   exitCaptureMode();
   release = claimHudTick();
-  // Identity camera: heading 0. shrineReached: the objective is the Blight Heart (no landmark scan needed).
-  useGameStore.setState({ gameCamera: { matrixWorld: new THREE.Matrix4() }, playerPosition: { x: 0, y: 60, z: 0 }, shrineReached: true });
+  // Identity camera: heading 0. A shrine reached: the objective is the Blight Heart (no landmark scan needed).
+  useGameStore.setState({ gameCamera: { matrixWorld: new THREE.Matrix4() }, playerPosition: { x: 0, y: 60, z: 0 }, reachedShrines: ['0_0'] });
 });
 afterEach(() => {
   cleanup();

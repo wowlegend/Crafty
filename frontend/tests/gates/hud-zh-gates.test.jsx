@@ -49,7 +49,7 @@ beforeEach(() => {
   release = claimHudTick();
   useGameStore.setState({
     locale: 'zh-CN', gameCamera: { matrixWorld: new THREE.Matrix4() }, playerPosition: { x: 40, y: 60, z: 40 },
-    shrineReached: true, imbueArmed: true, isDay: true, gameTime: HALF_CYCLE_UNITS * 0.95,
+    reachedShrines: ['0_0'], imbueArmed: true, isDay: true, gameTime: HALF_CYCLE_UNITS * 0.95,
   });
 });
 afterEach(() => {

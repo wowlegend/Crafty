@@ -113,7 +113,7 @@ describe('A3 full progression round-trip (buildSaveData -> loadWorldData)', () =
 });
 
 describe('questState persistence (quest progress + achievements)', () => {
-  beforeEach(() => useGameStore.setState({ terrainWorker: null, playerRigidBodyRef: null, questState: null, questLoadedAt: 0 }));
+  beforeEach(() => useGameStore.setState({ terrainWorker: null, playerRigidBodyRef: null, questState: null, worldLoadedAt: 0 }));
 
   it('buildSaveData includes the questState mirror', () => {
     useGameStore.setState({ questState: {
@@ -128,8 +128,8 @@ describe('questState persistence (quest progress + achievements)', () => {
     expect(save.questState.unlockedAchievements).toContain('first_blood');
   });
 
-  it('loadWorldData restores questState and bumps the questLoadedAt resync tick', () => {
-    const before = useGameStore.getState().questLoadedAt || 0;
+  it('loadWorldData restores questState and bumps the worldLoadedAt resync tick', () => {
+    const before = useGameStore.getState().worldLoadedAt || 0;
     const save = JSON.parse(JSON.stringify(buildSaveData({
       ...useGameStore.getState(),
       questState: { quests: [{ id: 'qx', progress: 4 }], completedQuestIds: ['qa', 'qb'], stats: { kills: 9 }, unlockedAchievements: ['first_step', 'slayer'] },
@@ -139,14 +139,14 @@ describe('questState persistence (quest progress + achievements)', () => {
     expect(s.questState.quests[0].progress).toBe(4);
     expect(s.questState.completedQuestIds).toEqual(['qa', 'qb']);
     expect(s.questState.unlockedAchievements).toContain('slayer');
-    expect(s.questLoadedAt).toBeGreaterThan(before); // tick bumped → hook re-seeds
+    expect(s.worldLoadedAt).toBeGreaterThan(before); // tick bumped → hook re-seeds
   });
 
-  it('a pre-questState save (no questState) loads without crashing, keeps current', () => {
+  it('a pre-questState save (no questState) loads without crashing, as a fresh log (DECISIONS 2026-10-31 item 292)', () => {
     useGameStore.setState({ questState: { stats: { kills: 1 } } });
     expect(() => useGameStore.getState().loadWorldData({
       world_data: { blocks: [] }, player_data: { inventory: { blocks: {} }, stats: {} }, game_state: {},
     })).not.toThrow();
-    expect(useGameStore.getState().questState.stats.kills).toBe(1); // fell back
+    expect(useGameStore.getState().questState, 'the session\'s log crossed into a save that holds none').toBeNull();
   });
 });

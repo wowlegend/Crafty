@@ -198,7 +198,6 @@ export const CombatSystem = ({ setDamageNumbers, setShockwaves, damageId }) => {
       return convertMobToAlly(ecs, entity);
     };
 
-    useGameStore.setState({ damageMob: damageMob });
     GameMethods.damageMob = damageMob;
     GameMethods.captureMob = captureMob;
 

@@ -20,3 +20,19 @@ export const MOB_TYPES = {
   // the generic hostile AI (data-driven spawn via MOB_TYPES + spawnWeights).
   emberhusk: { bank: 16, color: '#9A3B2A', health: 95, speed: 2.3, damage: 13, xp: 32, passive: false, bodySize: [0.85, 1.55, 0.55], headSize: [0.7, 0.65, 0.7], weight: 0.8, displayName: 'Ember Husk' },
 };
+
+/**
+ * The ECS entity of a mob of `type` at `position` (a THREE.Vector3, the spawn contract MobModel reads): the one the
+ * spawner makes (systems/SpawnerSystem.jsx), and the one a loaded squad's bound creature is made from (game/squadRoster.js).
+ */
+export function mobEntity(type, id, position, rotation = 0, moveTimer = 0) {
+  const m = MOB_TYPES[type];
+  return {
+    isMob: true, id, type, position, color: m.color, health: m.health, maxHealth: m.health, speed: m.speed,
+    passive: m.passive, damage: m.damage,
+    // the mob-variety pass: registry legMode reaches the renderer (only hybrids carried it before)
+    ...(m.legMode ? { legMode: m.legMode } : {}),
+    targetX: position.x, targetZ: position.z, rotation, moveTimer,
+    isMoving: false, isAggro: false, lastAttackTime: 0, knockback: null, lastHit: 0,
+  };
+}

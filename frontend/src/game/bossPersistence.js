@@ -20,7 +20,7 @@
  * Pure: no React, no store, no Three. Same contract as `saveSchema.js`, which consumes it.
  */
 import { BOSS_CONFIG } from './bossConfig.js';
-import { bossTierStats } from './bossTier.js';
+import { bossTierStats, bossCanReturn } from './bossTier.js';
 
 const MAX_PHASE = BOSS_CONFIG.phases.length - 1;
 
@@ -68,9 +68,10 @@ export function serializeBossState({ bossActive, bossHealth, bossDefeated, bossT
  *
  * TIERS (QUEUE C3). A save written before tiers existed carries no `tier`: it hydrates exactly as it always
  * did, and a won one reads as ONE kill with its return counted from tonight (`nightCount`). A tiered save is
- * trusted — a won game can hold a live RETURN fight — and every fight is sized from its tier's max health.
+ * trusted — a won game can hold a live RETURN fight, but only one its return was due for, at the save's own `nightCount`
+ * and `level` — and every fight is sized from its tier's max health.
  */
-export function hydrateBossState(saved, { maxHealth, gameWon = false, nightCount = 0 } = {}) {
+export function hydrateBossState(saved, { maxHealth, gameWon = false, nightCount = 0, level } = {}) {
   const tiered = !!saved && typeof saved === 'object' && typeof saved.tier === 'number' && Number.isFinite(saved.tier);
   let tier = tiered ? nat(saved.tier, 0) : (gameWon || saved?.defeated ? 1 : 0);
   if (gameWon && tier < 1) tier = 1; // a won game has slain at least one dragon
@@ -90,6 +91,12 @@ export function hydrateBossState(saved, { maxHealth, gameWon = false, nightCount
   if (!saved || typeof saved !== 'object') return untouched;
 
   if (saved.defeated) return slain;
+
+  // A tier of 1 or more not slain is a return fight, and the arrival poll wakes one only once it is due (bossCanReturn),
+  // whose nights and level never fall. So a save that does not hold its return due by its own progression holds no return
+  // fight: it holds the context-loss resume's wipe of a slain dragon, however it was written since (DECISIONS 2026-10-31
+  // items 250 and 290). It loads slain, its return due as the kill set it, on every load.
+  if (tier >= 1 && !bossCanReturn({ tier, killNight, nightCount, level })) return slain;
 
   const health = Math.min(Math.max(num(saved.health, max), 0), max);
 

@@ -166,31 +166,39 @@ const fillFeed = (quests, completedQuestIds) => {
     return feed;
 };
 
+// A fresh quest log, as a new world starts it: the first three tier-1 quests, no claims, zero counters and the
+// achievement every player starts with. New objects on every call, since the hook's state replaces them by reference.
+// M-NARRATIVE.2: each quest is enriched with the frontier lore/giver and a themed description (story flavor over the
+// generic chore). type/target/xpReward stay untouched (the {...q} spread), so every driver and the claim flow are
+// unchanged; loreFor returns {} for non-chain quests (spreads nothing).
+const freshQuestState = () => ({
+    quests: QUEST_LIST.filter(q => q.tier === 1).slice(0, 3).map(q => ({
+        ...q,
+        description: themedDescription(q),
+        ...(loreFor(q.id) || {}),
+        progress: 0,
+        completed: false,
+        claimed: false,
+    })),
+    completedQuestIds: [],
+    stats: {
+        kills: 0, kills_by_type: {}, spells: 0, blocks_placed: 0,
+        blocks_broken: 0, chests: 0, distance: 0, deaths: 0, level: 1,
+    },
+    unlockedAchievements: ['first_step'],
+});
+
 export const useQuestSystem = () => {
     // S2a: seed the persistable working state from the store's questState mirror
     // (set by loadWorldData) when present, else the fresh-game defaults.
     const [quests, setQuests] = useState(() => {
         const saved = useGameStore.getState().questState;
         if (saved && Array.isArray(saved.quests)) return fillFeed(saved.quests.map(withCurrentAsk), saved.completedQuestIds);
-        // Initialize active quests (first 3 from tier 1)
-        // M-NARRATIVE.2: enrich with the frontier lore/giver + a themed description (story flavor over the
-        // generic chore). type/target/xpReward stay untouched (the {...q} spread), so every driver + the
-        // claim flow are unchanged; loreFor returns {} for non-chain quests (spreads nothing).
-        return QUEST_LIST.filter(q => q.tier === 1).slice(0, 3).map(q => ({
-            ...q,
-            description: themedDescription(q),
-            ...(loreFor(q.id) || {}),
-            progress: 0,
-            completed: false,
-            claimed: false,
-        }));
+        return freshQuestState().quests;
     });
 
     const [completedQuestIds, setCompletedQuestIds] = useState(() => new Set(_arrOr(useGameStore.getState().questState?.completedQuestIds, [])));
-    const [stats, setStats] = useState(() => _objOr(useGameStore.getState().questState?.stats, {
-        kills: 0, kills_by_type: {}, spells: 0, blocks_placed: 0,
-        blocks_broken: 0, chests: 0, distance: 0, deaths: 0, level: 1,
-    }));
+    const [stats, setStats] = useState(() => _objOr(useGameStore.getState().questState?.stats, freshQuestState().stats));
     // The LIVE mirror of `stats`. applyStats reads and writes it, so a batch of kills accumulates
     // correctly without any state updater doing work a re-render would have to repeat.
     const statsRef = useRef(stats);
@@ -209,7 +217,7 @@ export const useQuestSystem = () => {
     // S2a — MIRROR (hook -> store, one-way): keep a JSON-safe snapshot of the
     // persistable state in the store so buildSaveData can serialize it. Sets are
     // flattened to arrays here. This effect ONLY writes questState; it does not
-    // read questLoadedAt, so it cannot fight the re-seed below (no feedback loop).
+    // read worldLoadedAt, so it cannot fight the re-seed below (no feedback loop).
     useEffect(() => {
         useGameStore.getState().setQuestState({
             quests,
@@ -219,17 +227,18 @@ export const useQuestSystem = () => {
         });
     }, [quests, completedQuestIds, stats, unlockedAchievements]);
 
-    // S2a — RE-SEED ON LOAD (store -> hook): when loadWorldData bumps the resync
+    // S2a — RE-SEED ON LOAD (store -> hook): when loadWorldData bumps the world-load
     // tick, re-seed the local working state from the loaded snapshot. Gated by a
     // mount guard so the initial render (already seeded via the useState initializers)
-    // doesn't clobber state. This effect watches ONLY questLoadedAt; the mirror
-    // watches the state values -> the two never feed each other.
-    const questLoadedAt = useGameStore((s) => s.questLoadedAt);
+    // doesn't clobber state. This effect watches ONLY worldLoadedAt; the mirror
+    // watches the state values -> the two never feed each other. A world whose save holds no log is a fresh log, the
+    // defaults as the initializers seed them: the load makes the store's log null for a new world's save (null) and for
+    // one from before the log (no key) alike.
+    const worldLoadedAt = useGameStore((s) => s.worldLoadedAt);
     const didMountQuest = useRef(false);
     useEffect(() => {
         if (!didMountQuest.current) { didMountQuest.current = true; return; }
-        const qs = useGameStore.getState().questState;
-        if (!qs) return;
+        const qs = useGameStore.getState().questState || freshQuestState();
         if (Array.isArray(qs.quests)) setQuests(fillFeed(qs.quests.map(withCurrentAsk), qs.completedQuestIds));
         setCompletedQuestIds(new Set(_arrOr(qs.completedQuestIds, [])));
         if (_objOr(qs.stats, null)) {
@@ -241,7 +250,7 @@ export const useQuestSystem = () => {
         unlockedRef.current = restored; // the ref is the live read — a restore that skipped it would
         // re-fire every already-earned achievement's toast on the first kill after loading a save.
         setUnlockedAchievements(restored);
-    }, [questLoadedAt]);
+    }, [worldLoadedAt]);
 
     // The one notification channel (ui/notifications.js): a dictionary key or a plain string; a key is dropped when the
     // same one showed inside one toast's life.
@@ -314,28 +323,26 @@ export const useQuestSystem = () => {
         }));
     }, [addNotification]);
 
-    // S8c: the Pilgrimage quest — fire reach_shrine progress when the player reaches a NEW shrine (within
-    // ~10 blocks of the nearest landmark). Claimed-once via reachedShrines (keyed by chunk) so re-visits
-    // don't re-fire. Capture-suppressed; ~3s poll with transient store reads -> Game-Loop-Isolation. Gives
-    // the outward journey a concrete GOAL (replaces the dead Travel-500 explorer quest, which had no driver).
-    const reachedShrines = useRef(new Set());
+    // S8c: the Pilgrimage quest. A shrine is reached within ~10 blocks of the nearest landmark, and the world records it
+    // (the store's reachedShrines, saved with the world, keyed by chunk); the HUD ObjectiveTracker turns from "reach the
+    // frontier shrine" to "shatter the Blight Heart" once one is. The quest is CREDITED FROM THAT RECORD, every poll,
+    // whenever it is in the feed: a shrine reached before Pilgrimage is offered counts when it is (deep audit lane L3; it
+    // used to count only a reach while the quest was active, and a saved record alone would have made that permanent).
+    // Capture-suppressed; ~3s poll with transient store reads -> Game-Loop-Isolation. Gives the outward journey a
+    // concrete GOAL (replaces the dead Travel-500 explorer quest, which had no driver).
     useEffect(() => {
         const interval = setInterval(() => {
             // INSIDE the callback: this effect's deps are [] and the harness flips the capture flag AFTER
             // mount, so a guard on the setup path is provably false every time and suppresses nothing.
             if (isCaptureMode() || isWorldFrozenNow()) return;
-            const playerPos = useGameStore.getState().playerPosition;
+            const store = useGameStore.getState();
+            const playerPos = store.playerPosition;
             if (!playerPos) return;
             const s = nearestLandmark(playerPos.x, playerPos.z);
-            if (!s) return;
-            const key = `${s.cx}_${s.cz}`;
-            if (reachedShrines.current.has(key)) return;
-            if (Math.hypot(playerPos.x - s.worldX, playerPos.z - s.worldZ) > 10) return;
-            reachedShrines.current.add(key);
-            // Mirror a transient flag so the HUD ObjectiveTracker can switch the spawn-direction cue from
-            // "reach the frontier shrine" to "shatter the Blight Heart" once any shrine is reached.
-            useGameStore.setState({ shrineReached: true });
-            updateQuestProgress('reach_shrine');
+            if (s && Math.hypot(playerPos.x - s.worldX, playerPos.z - s.worldZ) <= 10) store.reachShrine(`${s.cx}_${s.cz}`);
+            const reached = useGameStore.getState().reachedShrines.length;
+            const q = questsRef.current.find((x) => x.type === 'reach_shrine' && !x.completed && !x.claimed);
+            if (q && Math.min(reached, q.target) > q.progress) updateQuestProgress('reach_shrine', Math.min(reached, q.target) - q.progress);
         }, 3000);
         return () => clearInterval(interval);
     }, [updateQuestProgress]);
@@ -869,9 +876,11 @@ export const useTreasureChests = () => {
 
     // S8c-bis: a guaranteed reward chest at each frontier shrine -- the deferred S8 destination payoff.
     // Lives HERE (the hook that owns setChests) so no cross-hook bridge is needed. Deterministic +
-    // once-per-shrine (keyed by chunk in a ref Set) + capture-guarded (shrines can sit near origin, so the
-    // guard keeps chests out of the deterministic baselines). Mirrors the reach_shrine `reachedShrines`
-    // poll. Game-Loop-Isolation: setInterval + transient getState reads, not a useFrame subscription.
+    // once-per-shrine + capture-guarded (shrines can sit near origin, so the guard keeps chests out of the deterministic
+    // baselines). ONCE PER SHRINE, PER WORLD: opening its chest records the shrine as rewarded in the store (saved with the
+    // world), and a rewarded shrine spawns none again; the ref is the board's own record that a chest for the shrine is
+    // on it, which dies with the board. A chest left shut is owed after a reload, and comes back once.
+    // Game-Loop-Isolation: setInterval + transient getState reads, not a useFrame subscription.
     const shrineChestsSpawned = useRef(new Set());
     useEffect(() => {
         const interval = setInterval(() => {
@@ -883,7 +892,7 @@ export const useTreasureChests = () => {
             if (!s) return;
             if (Math.hypot(playerPos.x - s.worldX, playerPos.z - s.worldZ) > 12) return;
             const key = `${s.cx}_${s.cz}`;
-            if (shrineChestsSpawned.current.has(key)) return;
+            if (shrineChestsSpawned.current.has(key) || useGameStore.getState().rewardedShrines.includes(key)) return;
             shrineChestsSpawned.current.add(key);
 
             let y = 15;
@@ -894,7 +903,7 @@ export const useTreasureChests = () => {
                 if (typeof h === 'number' && !isNaN(h)) { y = h + 1; resolved = true; }
             }
             // EXEMPT from the periodic spawner's 5-cap: a guaranteed, once-per-shrine reward.
-            setChests(prev => [...prev, { id: chestId.current++, position: [s.worldX, y, s.worldZ], opened: false, resolved, shrine: true }]);
+            setChests(prev => [...prev, { id: chestId.current++, position: [s.worldX, y, s.worldZ], opened: false, resolved, shrine: true, shrineKey: key }]);
         }, 3000);
         return () => clearInterval(interval);
     }, []);
@@ -950,17 +959,23 @@ export const useTreasureChests = () => {
             }
         }
 
-        // Spawn physical loot items in the 3D scene
-        loot.forEach(item => {
-            const xpValue = item.effect === 'xp' ? item.value : 10;
-            if (GameMethods.spawnLootDrop) {
-                GameMethods.spawnLootDrop(item.item, xpValue, position);
-            }
-        });
+        const xpOf = (item) => (item.effect === 'xp' ? item.value : 10);
+        const paid = chest && chest.shrineKey;
+        if (paid) {
+            // A shrine's loot is banked into the bag, as a drop the player is not there for is (systems/LootSystem.jsx),
+            // before the record that the shrine has paid: a drop lives in the ECS alone until it is picked up, and a save
+            // holding the record would hold no chest to pay it again (DECISIONS 2026-10-31 item 293).
+            const s = useGameStore.getState();
+            for (const item of loot) s.addToInventory(item.item, 1);
+            s.grantXP(loot.reduce((n, item) => n + xpOf(item), 0), 'Looted');
+            s.rewardShrine(chest.shrineKey);
+        } else if (GameMethods.spawnLootDrop) {
+            for (const item of loot) GameMethods.spawnLootDrop(item.item, xpOf(item), position);
+        }
 
         const dropNames = loot.map(l => l.item).join(', ');
         if (addNotification) {
-            addNotification(`Chest dropped: ${dropNames}`, 'loot');
+            addNotification(`${paid ? 'Looted' : 'Chest dropped'}: ${dropNames}`, 'loot');
         }
 
         // Notify quest system

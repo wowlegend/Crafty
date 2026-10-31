@@ -1,0 +1,84 @@
+{
+  "id": "local_A",
+  "name": "local_A",
+  "created_at": "2026-10-29T12:00:00.000Z",
+  "is_owner": true,
+  "saved_at": "2026-10-31T10:12:24.337Z",
+  "version": 2,
+  "migrated": [
+    "talents.cut"
+  ],
+  "save_name": "Save_10/31/2026, 3:12:24 AM",
+  "world_data": {
+    "blocks": []
+  },
+  "chests": [],
+  "player_data": {
+    "position": {
+      "x": 725,
+      "y": 40,
+      "z": 725
+    },
+    "inventory": {
+      "blocks": {
+        "grass": 32,
+        "dirt": 32,
+        "stone": 16,
+        "wood": 16,
+        "glass": 8,
+        "sand": 16,
+        "coal": 8,
+        "iron": 4,
+        "Stone Sword": 1,
+        "Health Potion": 2,
+        "Mana Potion": 1
+      },
+      "tools": {
+        "shovel": 1,
+        "axe": 1,
+        "sword": 1
+      },
+      "magic": {}
+    }
+  },
+  "questState": null,
+  "progression": {
+    "level": 9,
+    "currentXP": 0,
+    "totalXP": 0,
+    "equipment": {
+      "head": null,
+      "chest": null,
+      "boots": null,
+      "weapon": null,
+      "offhand": null,
+      "relic": null
+    },
+    "relicTiers": {},
+    "talentPoints": 0,
+    "unlockedTalents": {},
+    "coins": 0,
+    "nightCount": 5,
+    "lastRewardedNight": 0,
+    "ember": 0,
+    "emberBuildDay": {
+      "night": 0,
+      "built": 0
+    }
+  },
+  "game_state": {
+    "worldSeed": 12345,
+    "selectedBlock": "grass",
+    "activeSpell": "fireball",
+    "isDay": true,
+    "gameTime": 0,
+    "gameWon": true,
+    "bossState": {
+      "health": 700,
+      "active": true,
+      "defeated": false,
+      "tier": 1,
+      "killNight": 4
+    }
+  }
+}
