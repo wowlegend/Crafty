@@ -61,7 +61,8 @@ in code; whether a player on a real iPhone or iPad hears the difference is Kevin
      measured either.
    - **The bytes.** The index chunk measured 646,232 B on a05bf328 and 647,661 B here (+1,429 B), under the unchanged
      652,500 B ceiling (item 282); nothing was moved out, as it fits. Merged with main `7250aa22`, where lane L3 has
-     landed (649,549 B, item 295), the chunk measures 650,978 B, 1,522 B under the ceiling.
+     landed (649,549 B, item 295), the chunk measures 650,978 B, and 651,001 B with item 300's suspend refinement
+     (`82149662`), 1,499 B under the ceiling.
 
 302. **The route is run in Chromium on CI (`tests/e2e/music-bus.spec.js`); its mutation proof is owed.** The spec
    wraps the media element and `createMediaElementSource` (each wrapper calls the real one), enters play as the suite
