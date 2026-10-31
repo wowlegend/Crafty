@@ -19,6 +19,91 @@
 
 ---
 
+## 2026-10-31 — [LOOP] lane L10: Apple audio comes back after iOS stops it, and the soundtrack goes through Web Audio
+
+Lane L10 of the 2026-10-30 deep audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4), PR #70. It
+closes `AUDIT:silent:ios-audiocontext-interrupted-never-resumed` and `AUDIT:silent:ios-music-refused-play-swallowed-and-unmutable`
+in code; whether a player on a real iPhone or iPad hears the difference is Kevin's device run (item 305).
+
+300. **Any context state other than running or closed is recovered, by suspend() then resume().**
+   - **Why.** All three resume sites compared with `'suspended'`, and iOS WebKit leaves a context `'interrupted'` after
+     an app switch, a call or Siri, where resume() alone can leave it (WebKit bugs 273511 and 276016), or `'running'`
+     with a clock that has stopped (bug 263627). suspend() then resume() recovers both (MDN BaseAudioContext.state,
+     "Resuming interrupted play states in iOS Safari"; the workaround in bug 276016). Both are asked for in the same
+     turn: WebKit chains them (`AudioContext.cpp`, `m_currentRenderingOperation`), so resume() is inside the gesture.
+   - **When.** On every user gesture, in the capture phase on `window`, so the first tap after a return is heard; on
+     `visibilitychange` to visible; on `pageshow`. On a return, a running context is restarted only when its clock has
+     not moved for 300 ms (`FROZEN_CLOCK_MS`), so a healthy desktop tab is not restarted, which could click. The
+     game's own sites (`resumeAudio`, the pad, the arpeggiator) take the same path (`wakeContext`).
+   - **Where.** `src/audio/audioRecovery.js`, installed by the SoundProvider's init effect. It changes no level.
+
+301. **The soundtrack goes through the Web Audio graph, and the mix is the one Kevin set.**
+   - **Why.** An iPhone locks a media element's volume and reads back 1 (WebKit `HTMLMediaElement::setVolume`), so a
+     fade written there played at full volume and Mute All could not silence it; the fade's pause waited for a volume
+     that never settled. Each track now runs through `createMediaElementSource` and its own GainNode, where the fade,
+     the music slider and Mute All act.
+   - **The mix.** Each GainNode feeds `ctx.destination` directly, beside the effects' master bus, as the media
+     elements' output did: not through the bus's SFX gain (the SFX slider would then scale the music) and not through
+     its limiter (loud effects would then duck the music). Levels, fade step and balance are unchanged: 0.4 x the
+     slider, 0.04 per 60 ms tick, 0 for the tracks not wanted. The element's own volume is never written (it stays 1).
+   - **Start and the gesture.** A play() the platform refused is asked for again inside the next gesture, the Start
+     tap included. That gesture also plays and pauses each other track once, since WebKit lifts an element's gesture
+     restriction when it is played inside one (`HTMLMediaElement::play`), so a dusk or boss crossfade can start its
+     track from a timer. A permitted play() clears `paused` before it returns (HTML, the play() method), so a finger's
+     pointerdown, which carries no activation, primes nothing.
+   - **Mute All** wants no track, so every track fades and is paused by the player's own state, within 660 ms.
+   - **What may sound different, for Kevin's ear (item 305).** The tracks need a running context now, so on a desktop
+     whose browser did let the boot play() through, title music that played at load may begin at the first click or
+     key instead. On iOS, Web Audio may follow the ring/silent switch where a media element did not; nothing here
+     measured either.
+   - **The bytes.** The index chunk measured 646,232 B on a05bf328 and 647,661 B here (+1,429 B), under the unchanged
+     652,500 B ceiling (item 282); nothing was moved out, as it fits. With lane L3's stated +3,515 B (item 282) the
+     chunk would be 651,176 B.
+
+302. **The route is run in Chromium on CI (`tests/e2e/music-bus.spec.js`); its mutation proof is owed.** The spec
+   wraps the media element and `createMediaElementSource` (each wrapper calls the real one), makes a trusted click
+   on Start Adventure, and reads that the day track plays through a running context with its clock advancing, that
+   Mute All pauses every track (within 3 s on a loaded runner; the 1 s bound is the jsdom gate's), and that unmute
+   brings it back. A dispatched CI run of a mutant was planned (commit `bf063ee4` points here) and not made: the
+   commit hook runs the unit gates that import a staged file, the jsdom gate catches the same mutant, and a commit
+   that skips the hook is a bright line. No local browser runs in this lane. So the proof is owed, as registry row
+   `REVIEW:l10:music-e2e-mutation-owed` (the mutant and the way to run it).
+
+303. **A no-op stub is banned in the harnesses that drive a real browser** (gate G-ios, audit section S7).
+   - **Why.** `touch-probe.mjs`, `ipad-probe.mjs` and `_lookbookPage.mjs` made Chromium look like iOS with
+     `document.exitPointerLock = () => {}` and a `pointerLockElement` getter returning null. iOS defines neither, so
+     the probes ran a path no iPhone runs and the death crash it hid shipped (`AUDIT:input:ios-death-crash`). They now
+     delete both, as they already deleted `requestPointerLock`.
+   - **The rule.** `eslint.config.js`, `scripts/visual` and `tests/e2e`: a function that does nothing (an empty body,
+     or one yielding only null, undefined, void or `Promise.resolve()`) put in place of a member by assignment or as a
+     descriptor's value or getter. A function returning a real value is a replacement and stays allowed: the first
+     draft also banned any literal and flagged the e2e specs' four `Math.random = () => 0.999` seeds, so the rule was
+     narrowed to the no-op shapes rather than given an exemption. jsdom gates are outside it (item 304). The raw-git
+     selectors became one `RAW_GIT` constant, because the e2e block's rule options replace the raw-git block's.
+   - **Proven by** `tests/scripts/no-op-stub-ban.test.js` (30 cases, real ESLint config): red 23/30 on a05bf328 (the
+     other 7 are the allow half), 12/12 mutants red, identity survived.
+
+304. **`tests/_support/iosDocument.js` is where a jsdom gate meets iOS.** No Pointer Lock (deleted, never stubbed),
+   touch signals, an AudioContext that starts suspended and resumes only in a gesture until it first runs, and can be
+   left `'interrupted'` (resume() alone keeps it) or frozen; media elements that refuse play() outside a gesture until
+   played inside one, an iPhone's locked volume and an iPad's pause on an audible volume write outside a gesture. A
+   gesture is the dispatch of an HTML activation-triggering event or a click, and work deferred past it (an effect, a
+   timer) is outside it, the strict side. Each rule cites the WebKit source or bug it models. It drives audio and
+   music here; the death and panel gates of lanes L1 and L5 still delete the APIs themselves (registry
+   `REVIEW:l10:ios-fixture-adoption`).
+   - **The gate** `tests/gates/apple-audio-gates.test.jsx`, the real SoundProvider, MusicPlayer and title menu on that
+     fixture (11 cases): red 11/11 against a05bf328's `SoundManager.jsx` and `MusicPlayer.jsx` in a scratch copy, green
+     on the fix, and 18/18 mutants red with `scripts/dev/mutate.sh` (the commit `de9794dc` lists them), identity survived.
+   - **Tests changed, with the reason.** `tests/gates/audio-resume-gates.test.js` (REMOVED here; at a05bf328) read
+     SoundManager's source for `state === 'suspended'`, the guard item 300 replaces; its properties are now driven, so
+     it is deleted and the source-grep ledger falls 94 to 93. `settings-a11y-gates`' MusicPlayer regex gives way to the driven slider and
+     Mute All cases.
+
+305. **The lived proof is Kevin's**, appended to registry row `REVIEW:l1:ios-device-run`: on an iPhone and an iPad
+   (record the iOS versions), sound effects come back after Home for 10 s and return, after a call and after Siri,
+   with no reload; the soundtrack plays within a few seconds of Start, the music slider moves it and Mute All
+   silences it within a second; past dusk the night track takes over with no tap. Plus the two differences item 301 names.
+
 ## 2026-10-31 — [LOOP] a bundle ceiling never rises to make a build green; the lookbook seam leaves the boot chunk
 
 **The command session's ruling:** a bundle ceiling does not rise to make a red build green. The script says so at
