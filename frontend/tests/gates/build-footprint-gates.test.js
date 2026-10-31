@@ -4,8 +4,7 @@ import { buildFootprint, MAX_CELLS, MAX_SIZE } from '../../src/game/buildFootpri
 // THE BUILDING TOOLS PANEL DID NOTHING.
 //
 // It shipped reachable four ways — KeyB, the HUD grid button, the touch tray, the panel registry — and
-// localized into two languages, writing `buildingMode` / `buildSize` / `selectedBuildBlock` into the
-// store. Nothing read them. Terrain's placement executor was never taught they existed, so every mode
+// localized into two languages, writing `buildingMode` / `buildSize` into the store. Nothing read them. Terrain's placement executor was never taught they existed, so every mode
 // placed exactly one block: an advertised pillar of a voxel game that was inert.
 //
 // Wired rather than deleted, but NOT as specced. `place` debits inventory per block, so the panel's
@@ -14,6 +13,9 @@ import { buildFootprint, MAX_CELLS, MAX_SIZE } from '../../src/game/buildFootpri
 // than picked for taste.
 const CELL = { x: 10, y: 64, z: -4 };
 const key = (c) => `${c.x},${c.y},${c.z}`;
+const UP = { x: 0, y: 1, z: 0 }, DOWN = { x: 0, y: -1, z: 0 }, EAST = { x: 1, y: 0, z: 0 }, NORTH = { x: 0, y: 0, z: -1 };
+const NORMALS = [EAST, { x: -1, y: 0, z: 0 }, UP, DOWN, { x: 0, y: 0, z: 1 }, NORTH];
+const span = (cells, axis) => [...new Set(cells.map((c) => c[axis]))].sort((a, b) => a - b);
 
 describe('buildFootprint — shape', () => {
   it('single is exactly the hit cell', () => {
@@ -27,11 +29,41 @@ describe('buildFootprint — shape', () => {
     expect(cells.map((c) => c.y).sort((a, b) => a - b)).toEqual([64, 65, 66, 67]);
   });
 
-  it('a wall on a FLOOR face grows sideways, not down into the ground', () => {
-    // Growing a wall along the normal of a horizontal face buries it. The mode has to notice.
-    const cells = buildFootprint('wall', 3, CELL, { x: 0, y: 1, z: 0 });
-    expect(new Set(cells.map((c) => c.y)).size, 'the wall grew vertically off a floor face').toBe(1);
-    expect(cells).toHaveLength(3);
+  // DECISIONS 2026-10-31 item 232, which reverses the wall that grew along +x off a floor face: the hit cell off a top face
+  // is the air cell above the ground (placeAtHit steps along the normal), so a column rising from it is buried nowhere,
+  // and the strip along +x ran east whichever way the player faced (registry AUDIT:ultra:ultra-game-logic-2).
+  it('a wall on the ground\'s top face rises from the hit cell', () => {
+    const cells = buildFootprint('wall', 3, CELL, UP);
+    expect(cells.map(key), 'the wall off a top face is not a column rising from the hit cell').toEqual(['10,64,-4', '10,65,-4', '10,66,-4']);
+  });
+
+  it('a wall under a ceiling hangs down from the hit cell', () => {
+    const cells = buildFootprint('wall', 3, CELL, DOWN);
+    expect(cells.map(key), 'the wall under a ceiling did not hang down').toEqual(['10,64,-4', '10,63,-4', '10,62,-4']);
+  });
+
+  it('a floor and a cube off a wall\'s side grow out from the wall, across it centred on the hit cell', () => {
+    // Centred on the hit cell along the normal, a third of each sat inside the block it was placed against.
+    const floor = buildFootprint('floor', 3, CELL, EAST);
+    expect({ x: span(floor, 'x'), y: span(floor, 'y'), z: span(floor, 'z') }, 'the floor off an east face does not grow east').toEqual({ x: [10, 11, 12], y: [64], z: [-5, -4, -3] });
+    const cube = buildFootprint('cube', 3, CELL, NORTH);
+    expect({ x: span(cube, 'x'), y: span(cube, 'y'), z: span(cube, 'z') }, 'the cube off a north face does not grow north and up').toEqual({ x: [9, 10, 11], y: [64, 65, 66], z: [-6, -5, -4] });
+    expect(cube).toHaveLength(27);
+  });
+
+  it('a cube under a ceiling grows down; a floor under one stays in the hit cell\'s layer', () => {
+    expect(span(buildFootprint('cube', 3, CELL, DOWN), 'y'), 'the cube under a ceiling grew up into it').toEqual([62, 63, 64]);
+    expect(span(buildFootprint('floor', 3, CELL, DOWN), 'y')).toEqual([64]);
+  });
+
+  it('a removal grows INTO the face it is aimed at, from the block hit, across it centred', () => {
+    // The Delete Tool's cell is the block the ray hit, so its 3x3x3 lies behind that face: under a top face, west of an
+    // east face, above a ceiling. Grown away from the face it took the air in front of it.
+    const down = buildFootprint('delete', 3, CELL, UP);
+    expect({ x: span(down, 'x'), y: span(down, 'y'), z: span(down, 'z') }, 'a removal on a top face does not dig down').toEqual({ x: [9, 10, 11], y: [62, 63, 64], z: [-5, -4, -3] });
+    const west = buildFootprint('delete', 3, CELL, EAST);
+    expect({ x: span(west, 'x'), y: span(west, 'y'), z: span(west, 'z') }, 'a removal on an east face does not dig west').toEqual({ x: [8, 9, 10], y: [63, 64, 65], z: [-5, -4, -3] });
+    expect(span(buildFootprint('delete', 3, CELL, DOWN), 'y'), 'a removal on a ceiling does not dig up').toEqual([64, 65, 66]);
   });
 
   it('floor is size x size in the hit plane', () => {
@@ -44,21 +76,21 @@ describe('buildFootprint — shape', () => {
     expect(buildFootprint('cube', 3, CELL)).toHaveLength(27);
   });
 
-  it('delete has the same footprint as cube — mining grants blocks, so it is symmetrical', () => {
-    expect(buildFootprint('delete', 3, CELL)).toHaveLength(buildFootprint('cube', 3, CELL).length);
+  it('delete has as many cells as cube — mining grants blocks, so it is symmetrical', () => {
+    expect(buildFootprint('delete', 3, CELL, UP)).toHaveLength(buildFootprint('cube', 3, CELL, UP).length);
   });
 
   it('never returns a duplicate cell — a duplicate is a double debit', () => {
-    for (const mode of Object.keys(MAX_SIZE)) {
-      const cells = buildFootprint(mode, 4, CELL, { x: 1, y: 0, z: 0 });
-      expect(new Set(cells.map(key)).size, `${mode} produced duplicate cells`).toBe(cells.length);
+    for (const mode of Object.keys(MAX_SIZE)) for (const normal of NORMALS) {
+      const cells = buildFootprint(mode, 4, CELL, normal);
+      expect(new Set(cells.map(key)).size, `${mode} off ${key(normal)} produced duplicate cells`).toBe(cells.length);
     }
   });
 
-  it('always includes the cell the player actually aimed at', () => {
-    for (const mode of Object.keys(MAX_SIZE)) {
-      const cells = buildFootprint(mode, 3, CELL, { x: 1, y: 0, z: 0 });
-      expect(cells.map(key), `${mode} dropped the aimed-at cell`).toContain(key(CELL));
+  it('always includes the cell the player actually aimed at, off every face', () => {
+    for (const mode of Object.keys(MAX_SIZE)) for (const normal of [...NORMALS, undefined]) {
+      const cells = buildFootprint(mode, 3, CELL, normal);
+      expect(cells.map(key), `${mode} off ${normal ? key(normal) : 'no normal'} dropped the aimed-at cell`).toContain(key(CELL));
     }
   });
 });
