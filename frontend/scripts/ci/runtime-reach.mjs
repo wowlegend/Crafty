@@ -215,7 +215,7 @@ export const MUST_REACH = Object.freeze([
     'src/render/dragonTelegraphs.js', 'src/game/dragonMoves.js', 'src/ui/BossHealthBar.jsx',
   ] },
   { why: 'the boot and the save path: a world that is not loaded, saved or recovered loses the player\'s progress silently', modules: [
-    'src/startGame.jsx', 'src/game/worldBoot.js', 'src/game/saveSchema.js', 'src/game/worldSaves.js', 'src/game/autosave.js',
+    'src/brand.js', 'src/startGame.jsx', 'src/game/worldBoot.js', 'src/game/saveSchema.js', 'src/game/worldSaves.js', 'src/game/autosave.js',
     'src/game/contextRecovery.js', 'src/game/settingsPersist.js', 'src/store/useGameStore.jsx', 'src/game/eventBus.js', 'src/ui/ContextLossPanel.jsx',
   ] },
 ]);
