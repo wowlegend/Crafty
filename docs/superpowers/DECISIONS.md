@@ -19,6 +19,114 @@
 
 ---
 
+## 2026-10-31 (lane L12, round 3) — [LOOP] claims narrowed to what is proven: the capture-guard ratchet's getters and re-exports, the save-path reach entries, and what round 2's CI retried
+
+Round 2's two reviews of lane L12 (static and dynamic) both said LAND and left no correctness defect in the integrated code.
+Two of its gates still had surviving mutants against claims round 2 wrote (the dynamic reviewer's N1 and N2), and its ruling,
+recorded in the lane's QUESTION.md, was to land and narrow: rule (5) sends what is left after two rounds to the ledger, and
+a gate with a surviving mutant ships only with its claim narrowed to what is proven. This round therefore changes claims,
+comments and records only, no behaviour and no gate assertion (the four code files it touches differ from the round 2 head
+only in comments, checked by comparing each file's syntax tree with comments removed). Branch `fix/l12-instruments`,
+PR #71, from `d7d7f235`; main merged at `341531d1` (lane L8). Items continue from round 2's.
+
+359. **The capture-guard ratchet follows an arrow getter, not a getter declared with `function`, and a re-exported alias
+   not at all.** (dynamic N1; it narrows item 351's "a getter (its calls are)" and the headers of `captureGuards.js` and
+   the ratchet test, which said "any local name" and "a getter")
+   - **Measured** on the detector at the merge head, two uses each: a getter held by a const (`const frozen = () =>
+     isCaptureMode()`) counts 2; `function frozen() { return isCaptureMode(); }` counts 1 (the read in its body once, its
+     calls none); an aliased import read twice counts 2; `export { isCaptureMode as frozen } from './devtest/captureMode.js'`
+     with an importer reading `frozen()` twice counts 0. The reviewer's mutants CG7 (the HurlSystem guard swapped for the
+     function-declaration getter) and CG8 (a re-export and a guard through it) stayed green on the real tree, and their
+     controls, the arrow getter and the aliased import, went red.
+   - **Today** neither shape is in src (the ledger is exact at 134 guards in 62 files), so no result is wrong now. Item 351
+     and the two headers now say what is followed and what is not. The fix is
+     `REVIEW:l12:capture-guard-getter-and-reexport-shapes` (LOW): bind a function declaration's returned read as a getter,
+     and follow `export { x as y } from` through its importers, red first on the two probes above.
+
+360. **The save-path reach entries show that a save ran, not that the game's own save path did.** (static F1, dynamic N2; it
+   narrows item 350's "the function the boot or save path calls" and `runtime-reach.mjs`'s "'reached' means the game got
+   there, not that a test called it")
+   - **Specs call it.** Eight spec files call `saveActiveWorld` in the page (ten calls: save-load, forge, quest-text,
+     talents, load-hold, continue, world-rebuild-after-load and the-cut three times); the dynamic review counted nine
+     calls in seven files with no navigation after them, so those sit in the document the test ends on, where the
+     coverage is recorded (item 350). `saveActiveWorld` calls `buildSaveData` and `writeWorld`, so all three entries read
+     as ran. The mutant that drops the game's own save call (`worldBoot.js`'s `saveWorldInPlay` calling
+     `saveActiveWorld`) is therefore not seen by them, and `installAutosave`, which only installs the trigger, still runs
+     from App. That mutant is derived, not run: this lane runs no e2e and pushed no ref. `eventBus.js#emit` is the one other
+     entry a spec calls (context-loss.spec, before its reload).
+   - **Now** the header says "reached" means the game got there with that exception, and the note above `MUST_REACH`
+     says what these entries do and do not show. The fix is `REVIEW:l12:save-path-reach-also-called-by-specs` (LOW):
+     `src/game/worldBoot.js#saveWorldInPlay` in the group if a spec's last document runs it, proven red on a throwaway
+     ref with the save call dropped (a ref the command session pushes and deletes).
+   - Other gates do see a save-path deletion: the dynamic review reads `dead-refresh-gates` and `returning-player-gates` red
+     in the fixer's log of the mutants the commit hook refused, so this is the reach contract's blind spot, not a hole in
+     what gates the game's saving.
+
+361. **Three more findings of round 2's reviews, as text or rows.**
+   - **Static F2, text.** `isolatedEffects.js`'s header had become a present-tense claim the code contradicts: it said
+     rewards "run in one block inside a setState updater", while `world/bossSystem.js` runs them after the health commit,
+     never inside an updater, each isolated. It is a conditional now ("rewards that ran in one block ... would let one
+     throwing reward strand the win") followed by the real arrangement. Comment only.
+   - **Static F3, row.** A ledger is checked against the count, not against the base branch's ledger, so a commit that adds
+     a guard or a history comment and raises the file's number in the same commit passes both ratchets; "never raise one" is
+     enforced by review (item 358's MusicPlayer rise from 2 to 3 passed this way). `REVIEW:l12:ratchet-ledger-raised-with-the-guard`
+     (LOW).
+   - **Dynamic N3, row.** Nothing in the unit suite gates the e2e fixture's wiring: deleting the console listener (EI5) or the
+     throw on a problem (EI6) stayed green, and CI run 41229307736 is the only observation that it works.
+     `REVIEW:l12:isolated-failure-fixture-wiring-ungated` (LOW).
+   - **Dynamic HS3, no change.** A sentence-initial "Moved here. Used to sit ..." passes the history detector; item 354 lets
+     a sentence-initial "Used to" pass on purpose.
+
+362. **A correction to item 352.** It said that nothing in the fixture calls into the page any more. The fixture's teardown
+   reads the canvases' drawing sizes with `page.evaluate` (`tests/e2e/_fixtures.js`, after `await use(page)`), which
+   Playwright also sends with a user gesture; after the test body it changes nothing a test reads (music-bus passed on its
+   first attempt on the listening head, with that read in place). Item 352 says so in place.
+
+363. **What round 2's CI runs retried, and where each is recorded.** Re-read from the six runs' logs (`gh run view <id>
+   --log | grep 'retry #'`); round 2's report left the final head's two retries off their rows, and item 358 leaves out two
+   from run 41226199357.
+   - 41221423846 (`541a3b7d`): `quest-text.spec.js:54` (`REVIEW:e2e-flakes:quest-text-no-frame-while-held`, already).
+   - 41223639371 (`8f2d61e3`): `dragon-fight.spec.js:88`, `dragon-fight.spec.js:311` and `light-pool.spec.js:25`, on their
+     rows already (item 358).
+   - 41226199357 (`8966b318`, the head whose first fixture failed L10's music-bus, item 352): `mob-floor.spec.js:227`
+     (attempt 1 `Infinity` at "under the roof, the floor is the ground", retry #1 passed; appended to
+     `REVIEW:e2e-flakes:mob-floor-roof-floor-infinity`) and `pause-freezes-world.spec.js:217`, the touch Pause tap, which the
+     canvas subtree intercepted for 30 s on attempt 1 (retry #1 passed; new row
+     `REVIEW:e2e-flakes:pause-freezes-touch-pause-tap-canvas`, LOW).
+   - 41229273516 (`72c9fe6e`): none.
+   - 41229307736 (`27bd8de8`, the throwaway ref): `smoke.spec.js:10`, the mutant itself, and `dragon-fight.spec.js:311`
+     (attempt 1 and retry #1 "the burning zone never reached the dragon", retry #2 passed; appended to
+     `REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached`).
+   - 41231544100 (`d7d7f235`, round 2's final head, `ci ok` success): `mob-floor.spec.js:227` (attempt 1 failed at the
+     control, `mob-floor.spec.js:298`, "the top probe reads the roof", `probe.top` null, the variant the row already names) and
+     `light-pool.spec.js:25` (programs 108 to 109), each passed on retry #1 and each appended to its row.
+   Lane L12 does change src (seven memo render functions renamed, comments, and the isolated-failure reporting in
+   `eventBus.js` and `isolatedEffects.js`), so it is not shown innocent of these; but mob-floor, light-pool and the burning
+   zone each have earlier sightings on branches that do not carry it (their rows), and the pause tap's retry appears only in
+   the run on the first-fixture head, a first sighting of a mechanism three other rows show on other branches.
+
+364. **Main `341531d1` (lane L8) merged, by a merge commit.**
+   - **DECISIONS** conflicted at the top (both sides added sections); both stay, lane L12's two above lane L8's two, with the
+     file's `---` between them, and no line of either side is lost (`git diff` against this branch's old head and against
+     origin/main lists no removed line). Item numbers repeat across sections (lane L8's item 350 is its build target); each
+     section names its lane.
+   - **Registry** merged by union, which left `REVIEW:e2e-flakes:dragon-fight-parried-bite-move` twice at the same state,
+     each side having appended its own sighting; hand-merged as one row with both after the shared text. `registry-dedupe
+     --check`, `registry-harvest --check` and `registry-append-only` pass.
+   - **Code and tests:** the merge changed exactly the 33 files of `src/` and `tests/` that main changed since `61696120`;
+     32 are byte-identical to main's and `src/store/useGameStore.jsx` is the auto-merge of both sides. Lane L8 added no
+     capture guard and no history comment, so both ledgers stand (134 guards in 62 files), and the lane's ratchet, setter,
+     reach and isolated-failure specs pass on the merged tree (92 tests in 7 files).
+   - **The index chunk:** main `341531d1` built from a `git archive` reads 647,752 B and this branch 647,757 B, +5 B, 4,743 B
+     under the 652,500 B ceiling (item 282), by `npm run build`; bundle-budget passes. Lint, doc-currency and gate-shape
+     pass on the merged head with this round's edits.
+   - **Open rows this round adds:** `REVIEW:l12:capture-guard-getter-and-reexport-shapes`,
+     `REVIEW:l12:save-path-reach-also-called-by-specs`, `REVIEW:l12:ratchet-ledger-raised-with-the-guard`,
+     `REVIEW:l12:isolated-failure-fixture-wiring-ungated` and `REVIEW:e2e-flakes:pause-freezes-touch-pause-tap-canvas`.
+     Item 358's open rows and the throwaway refs (`REVIEW:l12:throwaway-mutant-refs`) stand.
+
+---
+
 ## 2026-10-31 (lane L12, round 2) — [LOOP] each instrument goes red on the failure it names: entry points by name, guards by data flow, failures across reloads, and ledgers that fall
 
 Round 1's two reviews of lane L12 (static and dynamic, both FIX) found that the lane's instruments could not go red on
@@ -90,8 +198,9 @@ L7). Each item names what in items 310-317 it supersedes.
      module-scope read through the alias, a third guard through settingsPersist's parameter.
    - **Now.** `tests/_support/captureGuards.js` counts GUARDS (one place the flag decides something, the `!`, `&&`, `||`,
      `===` and `typeof` around a read taken as one), and follows the flag by scope through `tests/_support/sourceFlow.js`:
-     an aliased import, a local or destructured field that holds it (its uses are the guards), a getter (its calls are),
-     and a call argument, object-argument property or JSX prop it is handed into, within a file or across a relative
+     an aliased import, a local or destructured field that holds it (its uses are the guards), an arrow getter a `const`
+     holds (its calls are; a getter declared with `function` and a re-exported alias are not followed, item 359), and a
+     call argument, object-argument property or JSX prop it is handed into, within a file or across a relative
      import. **133 guards in 62 files**, every per-file change a rise the old counter could not see; no guard was added.
      What it does not follow is a value stored on an object and read back (`REVIEW:l12:source-flow-limits`).
    - **New dev dependency, `@babel/traverse` ^7.29.7**, for the language's own scope resolution. It was already in the
@@ -116,8 +225,9 @@ L7). Each item names what in items 310-317 it supersedes.
      binding's `deliverBindingResult`, and the Chromium context's `evaluateWithArguments`), so every game page was handed
      a user gesture at boot. L10's new `music-bus.spec.js` failed all three attempts with "SETUP: the day track plays
      before any gesture" (the day track 27 to 31 s in before the spec's key press); it passed on main. The binding is
-     removed and nothing in the fixture calls into the page any more; the on-CI receipts below for the listening version
-     are item 358's.
+     removed and nothing in the fixture calls into the page while the test runs (its teardown reads the canvases' sizes
+     once after the test body, which is also a call into the page and is harmless there, item 362); the on-CI receipts
+     below for the listening version are item 358's.
    - **On CI, first version.** Run 41221423846 printed 112 `[isolated-failures]` lines: 105 "0 over 1 page load(s)", 3 "0 over 2",
      1 "0 over 3" (the specs that reload), and 3 "not a game page (/src/index.jsx was never requested)", the fog specs;
      none unread, none failed, so the stricter verdict costs nothing today. On the mutant run (41222068391), smoke.spec
