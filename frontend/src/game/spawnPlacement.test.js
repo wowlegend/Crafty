@@ -3,17 +3,41 @@ import {
   isVoidFall, resolveSpawnGround, spawnTargetY, spawnCornerGround, resumeColumnProbe,
   SPAWN_FALLBACK_Y, SPAWN_PROBE_MAX_FAILS, SPAWN_EYE_OFFSET,
 } from './spawnPlacement.js';
+import { BASE_CAPSULE, BEAST_FORMS } from './beasts.js';
+import { DEEP_FLOOR } from '../world/oceanProfile.js';
 
 // Pure spawn-placement branch logic extracted from the Player loop (void-fall reset + ground probe with
 // bounded retry/fallback). Characterization-pinned to the old inline behavior; safety-critical (a wrong
 // branch = fall-through-floor or stuck-in-sky).
 
-describe('isVoidFall', () => {
-  it('is true below the void-reset floor, false at/above it', () => {
-    expect(isVoidFall(5)).toBe(true);
-    expect(isVoidFall(-100)).toBe(true);
-    expect(isVoidFall(10)).toBe(false); // == VOID_RESET_Y, not below
-    expect(isVoidFall(64)).toBe(false);
+// A body stands its controller's offset over a floor (Components.jsx createCharacterController(0.05)), its centre its
+// reach (half-height plus radius) above that. The world's cells run from y 0 up, so the lowest floor is the top of the
+// cells at y 0, at 1; under the world there is none, and a body that clipped into the ground falls through the hollow
+// trimesh onto the bottom face of those cells, at 0 (scratch probe, 2026-10-30: from y 4 inside the rock it stood at 0.95).
+// Every shape the player can have is read: the line is one height, and a form whose reach crossed it would fail here.
+describe('isVoidFall: the void line lies under every floor of the world, for every shape the player can have', () => {
+  const OFFSET = 0.05;
+  const shapes = [['base', BASE_CAPSULE], ...Object.values(BEAST_FORMS).map((f) => [f.id, f])];
+  const standing = (floor, s) => floor + OFFSET + s.halfHeight + s.radius;
+
+  it('reads every shape: the base capsule and the four forms', () => {
+    expect(shapes.map(([name]) => name).sort()).toEqual(['base', 'bull', 'comet', 'golem', 'hawk']);
+  });
+
+  it('is false for a body standing on the deep seabed, at its deepest and its shallowest, or on the last cell of a shaft', () => {
+    for (const [name, s] of shapes) {
+      // world/oceanProfile.js: the full-ocean seabed is DEEP_FLOOR + n * 4, n in [0, 1]
+      for (const floor of [DEEP_FLOOR, DEEP_FLOOR + 4, 1]) {
+        expect(isVoidFall(standing(floor, s)), `the ${name} standing on a floor at y ${floor} was called fallen`).toBe(false);
+      }
+    }
+  });
+
+  it('is true for a body under the world, or standing on its bottom face inside the rock, in every shape', () => {
+    for (const [name, s] of shapes) {
+      expect(isVoidFall(standing(0, s)), `the ${name} on the world's bottom face was not called fallen`).toBe(true);
+      expect(isVoidFall(-2), `the ${name} under the world was not called fallen`).toBe(true);
+    }
   });
 });
 

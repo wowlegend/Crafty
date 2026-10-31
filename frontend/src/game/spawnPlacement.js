@@ -2,15 +2,26 @@
 // setTranslation/setLinvel stays in Player; this is the math + the branch logic, characterization-
 // pinned to the old inline behavior (Components.jsx:803-860). NO React/Rapier.
 import { LOAD_FIT_SPAN } from './formFit.js';
+import { BASE_CAPSULE } from './beasts.js';
 
 export const SPAWN_FREEZE_Y = 120;      // hold in the sky until the world builds / on void-fall
-const VOID_RESET_Y = 10;          // y below this = fell through the floor -> reset (module-internal)
 export const SPAWN_PROBE_MAX_FAILS = 120; // bounded probe wait (frames) before the fallback
 export const SPAWN_FALLBACK_Y = 60;      // if the probe never resolves
 export const SPAWN_EYE_OFFSET = 1.2;     // player center this far above ground (instant land)
 const PROBE_MIN_Y = 15;                  // physicsY <= this is rejected (origin chunks still streaming)
 
-export function isVoidFall(y) { return y < VOID_RESET_Y; }
+// THE VOID LINE IS THE WORLD'S. Its cells run from y 0 up (world/chunkLayout.js), so no floor lies lower than the top of
+// the cells at y 0, at 1: a body standing anywhere in the world, on the deep seabed (world/oceanProfile.js DEEP_FLOOR, 6)
+// or at the foot of a shaft dug to the last cell, stands on 1 or above. A body under the world has nothing below it, and
+// one that clipped into the ground falls through the hollow trimesh onto the bottom face of those cells, at 0, and stands
+// there. The line is the base capsule's centre with its lowest point at the middle of that last cell, half a metre from
+// either floor; each beast form's centre, standing on either, falls on the same side of it (spawnPlacement.test.js stands
+// every shape on both). A centre under y 10 reset a player standing on the seabed (registry
+// AUDIT:desync:void-guard-fires-inside-the-playable-world).
+const VOID_LINE_Y = 0.5 + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius;
+
+/** Has the body, its centre at `y`, fallen out of the bottom of the world. */
+export function isVoidFall(y) { return y < VOID_LINE_Y; }
 
 // blockGroundY: highest placed-block y at origin, or null. physicsY: raycast ground, or null.
 // probeFails: the CURRENT (pre-attempt) fail count. Returns { groundY, retry, incFails } — the

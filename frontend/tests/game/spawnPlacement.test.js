@@ -25,7 +25,9 @@ describe('spawnPlacement (S3-M5 p2) — the spawn-ground decision (pinned to the
     expect(spawnTargetY(56)).toBe(56 + SPAWN_EYE_OFFSET);
     expect(SPAWN_EYE_OFFSET).toBe(1.2);
   });
-  it('isVoidFall triggers below the void threshold (10)', () => {
-    expect(isVoidFall(9.9)).toBe(true); expect(isVoidFall(10)).toBe(false); expect(isVoidFall(120)).toBe(false);
+  it('isVoidFall is the world\'s floor, not y 10: a base body on the deepest seabed or the last cell stands, under the world it fell', () => {
+    // centre = floor + the controller's 0.05 m offset + the base capsule's reach (0.9); the seabed is 6 to 10, the last cell's top 1
+    expect(isVoidFall(6.95)).toBe(false); expect(isVoidFall(9.9)).toBe(false); expect(isVoidFall(1.95)).toBe(false);
+    expect(isVoidFall(0.95)).toBe(true); expect(isVoidFall(-3)).toBe(true); expect(isVoidFall(120)).toBe(false);
   });
 });

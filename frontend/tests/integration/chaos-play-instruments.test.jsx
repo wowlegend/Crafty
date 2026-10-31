@@ -4,7 +4,7 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { freshStorePerTest, TOL } from './chaosPlay/suite.js';
 import {
   makeSession, tick, setCell, deepestSolid, eyeCell, solidAt, escape, rightClick, buildRay, lookDir, mulberry32, STONE,
-  LAND_TOP, checkEscape, writeSave, loadSave, LOAD_RELEASE_FRAMES,
+  LAND_TOP, checkEscape, writeSave, loadSave, LOAD_RELEASE_FRAMES, voidReset, groundUnder, DEEP_SEABED,
 } from './chaosPlay/harness.js';
 
 // THE CHAOS-PLAY GATE: CAN THE PLAYER STILL LEAVE? Kevin, five minutes of left and right clicking near the ocean
@@ -17,12 +17,13 @@ import {
 // origin column every respawn reads) at 60 and 120 Hz, with every edit's trimesh landing 0, 2, 4 or 8 frames late: walks
 // and jumps, into walls too; right-clicks at walls, at the feet, straight down, at the eye's own cell, single and
 // footprint; left-clicks, under the feet and down the origin column; beast-form swaps, under ceilings and against walls;
-// a save written and loaded; a fall through the void and the respawn. The real Rapier build, the real greedy mesher, the
+// a save written and loaded; a fall through the void (at the deep seabed, down a shaft dug out of the bottom of the world)
+// and the respawn. The real Rapier build, the real greedy mesher, the
 // real executors (placeAtHit, mineTarget, moveKinematic, placedCellColliders, formFit, the spawn and resume decisions,
 // buildSaveData and loadWorldData), wired as the game wires them (chaosPlay/harness.js says how, and what it leaves out).
 //
-// FIVE INVARIANTS. I1 and I2 read the voxel grid as the verbs have made it, never the colliders; I3 reads a sandbox built
-// from the landed chunk meshes and the live stand-ins; I4 reads the world's colliders; I5 reads the load's hold.
+// SIX INVARIANTS. I1, I2 and I6 read the voxel grid as the verbs have made it, never the colliders; I3 reads a sandbox
+// built from the landed chunk meshes and the live stand-ins; I4 reads the world's colliders; I5 reads the load's hold.
 //  I1 at the end of every frame the player is in play (not held by a load) the live capsule reaches into no solid cell
 //     deeper than TOL (suite.js says why 5 mm);
 //  I2 the eye is never inside a solid cell then (inside one, every face points away and the block cannot be seen);
@@ -33,7 +34,10 @@ import {
 //     whatever a pickaxe could do about it. Each walk-held reading is printed with its class;
 //  I4 no stand-in collider outlives its chunk's mesh by more than one world step, and none is left at the end;
 //  I5 a load lets the player go within 2 x lag + 12 frames, never to the origin spawn (the frames between are its hold,
-//     which I1 and I2 do not read: the body is held at the saved spot until the new world's column is in).
+//     which I1 and I2 do not read: the body is held at the saved spot until the new world's column is in);
+//  I6 the void guard resets no player who has ground under their feet: it fires on a body under the world, or one in
+//     the world's last cells (fallen through the hollow trimesh onto its bottom face), never on the deep seabed or at
+//     the bottom of a shaft the player dug (DECISIONS 2026-10-30 item 190).
 // DENOMINATORS: each file asserts floors on the risky events its sessions reached (clicks aimed into the body, wall
 // contact frames, swaps under a ceiling and against a wall, refused swaps, loads, saves in a form and from the old Save
 // button, the frames a load held the body, respawns, respawns after an origin-column dig and build, escape tests, own
@@ -143,6 +147,24 @@ describe('the chaos-play instruments see what they report on', () => {
     for (let i = 0; i < 620 && S.loadPending; i++) tick(S, {});
     expect(S.loadPending, 'SETUP: the hold never gave up').toBeNull();
     expect(S.violations.I5.map((v) => v.why), 'I5 did not read a hold that gave up for the origin').toContainEqual(expect.stringMatching(/gave up/));
+  });
+
+  it('I6 reads a void reset of a player standing on ground, and none of one under the world or in its last cells', () => {
+    const S = session();
+    expect(groundUnder(S), 'SETUP: the instrument sees no ground under a player on open land').not.toBeNull();
+    voidReset(S);
+    expect(S.counts.I6, 'I6 did not count a reset of a player standing on open land').toBe(1);
+    for (const y of [-2, 0.95]) { // under the world; on its bottom face, in the cells at y 0
+      const T = session();
+      const t = T.p.body.translation();
+      T.p.body.setTranslation({ x: t.x, y, z: t.z }, true);
+      expect(groundUnder(T), `ground read under a body at y ${y}`).toBeNull();
+      voidReset(T);
+      expect([T.counts.I6, T.stats.voidResets], `I6 counted a reset of a body at y ${y}`).toEqual([0, 1]);
+    }
+    const D = makeSession({ spot: 'deep', rnd: mulberry32(7), hz: 60, lag: 2, tol: TOL });
+    expect(D.p.body.translation().y, 'SETUP: the deep place\'s session does not stand on the deepest seabed').toBeCloseTo(DEEP_SEABED + 0.95, 1);
+    expect(groundUnder(D), 'the instrument sees no ground under a player on the deep seabed').not.toBeNull();
   });
 
   it('I4 reads a stand-in kept past its chunk\'s mesh, and none kept on the real registry', () => {

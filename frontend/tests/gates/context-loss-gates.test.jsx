@@ -295,7 +295,7 @@ describe('the resumed save spawns the player where they stood', () => {
   it('gives up for the origin spawn when the column never loads, or the save is unusable', () => {
     expect(resolveResumeSpawn(saved, null, RESUME_PROBE_MAX_FAILS - 1)).toEqual({ place: null, hold: false });
     expect(RESUME_PROBE_MAX_FAILS).toBeGreaterThan(SPAWN_PROBE_MAX_FAILS);
-    for (const bad of [null, { x: NaN, y: 60, z: 1 }, { x: 1, y: 2, z: 3 } /* a void y */, { x: 1, y: 60 }]) {
+    for (const bad of [null, { x: NaN, y: 60, z: 1 }, { x: 1, y: 0.5, z: 3 } /* under the world's floor (game/spawnPlacement.js isVoidFall) */, { x: 1, y: 60 }]) {
       expect(resolveResumeSpawn(bad, 70, 0), JSON.stringify(bad)).toEqual({ place: null, hold: false });
     }
   });

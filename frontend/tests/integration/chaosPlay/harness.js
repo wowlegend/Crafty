@@ -1,6 +1,6 @@
 // The chaos-play harness: a seeded player who uses every verb that edits the world or moves the body, in the game's own
 // frame order, against the real Rapier build, the real greedy mesher and the real verb executors. The gate
-// (tests/integration/chaos-play-*.test.jsx) reads five invariants as the session plays; what each reads is in
+// (tests/integration/chaos-play-*.test.jsx) reads six invariants as the session plays; what each reads is in
 // chaos-play-instruments.test.jsx's header.
 //
 // Wired as the game wires it:
@@ -46,6 +46,9 @@ const DT = 1 / 60;
 export const AIR = 0, STONE = 3;
 const SAND = 4, WATER = 9;
 export const LAND_TOP = 30; // the land's top face: solid cells y < 30
+// The void guard reset a body whose centre was under y 10 until DECISIONS 2026-10-30 item 190: the frames a player stood
+// under it in the world are counted, so a driver that stops reaching the deep seabed fails as SETUP.
+const OLD_VOID_LINE = 10;
 // Five by five chunks (x and z -32 to 47): every place's roam, and the cells a click there reaches, stay a chunk inside the
 // edge, so no placement lands where no chunk will ever mesh it and retire its stand-in.
 const CHUNKS = [-2, -1, 0, 1, 2];
@@ -53,12 +56,13 @@ const KEYS = CHUNKS.flatMap((cx) => CHUNKS.map((cz) => `${cx}_${cz}`));
 
 // ---- the world: one map with the places a player gets stuck -------------------------------------------------------
 // The shore (Kevin's): from x = 6 the land steps down a block every two columns to a seabed at 22, under water to
-// SEA_LEVEL. The deep ocean: from x = 24 the seabed drops to 10 (DEEP_FLOOR + 4, the shallowest of oceanProfile.js's
-// full-ocean seabed, 6 to 10), under the ground probe's floor of 15 and above the void line (game/spawnPlacement.js).
+// SEA_LEVEL. The deep ocean: from x = 24 the seabed drops to DEEP_FLOOR, 6, the deepest of oceanProfile.js's full-ocean
+// seabed (6 to 10), under the ground probe's floor of 15 and under the y 10 the void guard reset at until DECISIONS
+// 2026-10-30 item 190 (game/spawnPlacement.js isVoidFall).
 // The cliff: south of z = -6 the land stands six blocks higher, a sheer face at z = -5. The cave: a tunnel two wide and
 // two high (ceiling at 32) runs into the cliff at x = -6..-5. The overhang: a stone slab at y = 32 over open land, two
 // metres of headroom. The field: open flat land. The origin column, where every respawn lands.
-export const DEEP_SEABED = DEEP_FLOOR + 4;
+export const DEEP_SEABED = DEEP_FLOOR;
 function columnTop(x, z) {
   if (x >= 24) return DEEP_SEABED;
   if (x >= 6) return Math.max(22, LAND_TOP - Math.ceil((x - 5) / 2));
@@ -282,8 +286,7 @@ function playerFrame(S, input) {
   body.wakeUp();
   const t = body.translation();
   if (S.spawnSet && isVoidFall(t.y)) {
-    teleportPlayer(body, { x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
-    S.spawnSet = false;
+    voidReset(S);
     return;
   }
   if (!S.spawnSet || useGameStore.getState().resumeSpawn) {
@@ -320,6 +323,33 @@ function playerFrame(S, input) {
     const c = kcc.computedCollision(i);
     if (c && Math.abs(c.normal1.y) < 0.3) { S.stats.wallContactFrames++; break; }
   }
+}
+
+/** The void guard's reset (Components.jsx): I6 reads whether the player had ground under their feet when it fired (the guard
+ *  took them out of a world they stood in, to the origin), then the body goes back to the origin spawn's wait. */
+export function voidReset(S) {
+  const ground = groundUnder(S);
+  S.stats.voidResets++;
+  if (ground) note(S, 'I6', { at: vec(S.p.body.translation()), groundCell: ground });
+  S.recent.push(`f${S.f} void reset${ground ? ` over ground at ${ground.join(',')}` : ''}`);
+  teleportPlayer(S.p.body, { x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
+  S.spawnSet = false;
+}
+/** The highest solid cell of the logical world under the capsule's feet, in the columns its footprint covers, or null: a
+ *  body under the world has none, and one inside the cells at y 0 (fallen through the hollow trimesh onto the world's
+ *  bottom face) has its feet in the last cell, not over it. */
+export function groundUnder(S) {
+  const t = S.p.body.translation(), c = S.p.body.collider(0);
+  const r = c.radius(), feet = t.y - c.halfHeight() - r;
+  let best = null;
+  for (let x = Math.floor(t.x - r); x <= Math.floor(t.x + r); x++)
+    for (let z = Math.floor(t.z - r); z <= Math.floor(t.z + r); z++)
+      for (let y = Math.min(Math.floor(feet) - 1, CHUNK_HEIGHT - 1); y >= 0; y--) {
+        if (!solidAt(S, x, y, z)) continue;
+        if (!best || y > best[1]) best = [x, y, z];
+        break;
+      }
+  return best;
 }
 
 // Components.jsx: the activeBeastForm effect queues an enter for the frame and restores the base shape at once on exit,
@@ -421,6 +451,7 @@ function frameChecks(S) {
     return;
   }
   if (w.depth > S.maxDepth.value) S.maxDepth = { value: w.depth, f: S.f, cell: w.cell };
+  if (S.p.body.translation().y < OLD_VOID_LINE) S.stats.framesUnderOldVoidLine++;
   if (w.depth > S.tol) note(S, 'I1', { depth: +w.depth.toFixed(3), cell: w.cell, at: vec(S.p.body.translation()) });
   const ec = eyeCell(S.p.body);
   if (solidAt(S, ...ec)) note(S, 'I2', { eyeCell: ec, at: vec(S.p.body.translation()) });
@@ -666,14 +697,16 @@ export function exitForm(S) {
   FORM_SWAP.effect(S);
 }
 
-/** A fall through the world: the body below the void line, as a clip through the floor leaves it. */
+/** A fall through the world: the body under it, as a fall where no ground has streamed in leaves it. (A clip into the
+ *  ground leaves the body in the rock, to fall through the hollow trimesh onto the world's bottom face first:
+ *  tests/gates/player-placement-gates.test.jsx reads that one in the Player's own loop.) */
 export function voidFall(S) {
   const store = useGameStore.getState();
   const column = [...store.worldBlocks].filter(([k]) => /^0_-?\d+_0$/.test(k));
   if (column.some(([, v]) => !v)) S.stats.respawnsAfterOriginMine++;
   if (column.some(([, v]) => v)) S.stats.respawnsAfterOriginPlace++;
   const t = S.p.body.translation();
-  S.p.body.setTranslation({ x: t.x, y: 5, z: t.z }, true);
+  S.p.body.setTranslation({ x: t.x, y: -2, z: t.z }, true);
   S.recent.push(`f${S.f} void fall (origin column ${JSON.stringify(column)})`);
 }
 
@@ -738,12 +771,13 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
     gen: new Map(base().chunks), logical: copyChunks(base().chunks), recs: new Map(), reload: null,
     worker: { seq: 0, lastDue: 0, queue: [] }, standIns: [], recent: [], form: { pending: null, last: null },
     maxDepth: { value: 0, f: null, cell: null },
-    violations: { I1: [], I2: [], I3: [], I4: [], I5: [] }, counts: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0 }, lastNoted: {},
+    violations: { I1: [], I2: [], I3: [], I4: [], I5: [], I6: [] }, counts: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0 }, lastNoted: {},
     held: false, loadPending: null,
     stats: { frames: 0, rightClicks: 0, rightClicksIntoBody: 0, cellsPlaced: 0, leftClicks: 0, minesUnderFeet: 0,
       originColumnEdits: 0, wallContactFrames: 0, swaps: 0, swapsUnderCeiling: 0, swapsAgainstWall: 0, swapsRefused: 0, formExits: 0,
       clickPairs: 0, respawns: 0, loadHoldFrames: 0, respawnsAfterOriginMine: 0, respawnsAfterOriginPlace: 0, loads: 0, vaults: 0, escapes: 0, ownShellOut: 0,
-      saves: 0, savesLegacy: 0, savesInForm: 0, loadsReleased: 0, heldFrames: 0, heldInSolidFrames: 0 },
+      saves: 0, savesLegacy: 0, savesInForm: 0, loadsReleased: 0, heldFrames: 0, heldInSolidFrames: 0,
+      voidResets: 0, framesUnderOldVoidLine: 0, shaftDigs: 0, shaftsThroughWorld: 0 },
   };
   S.cells = createPlacedCellColliders(world, RAPIER, createEditSeq());
   // A collider far below the world, always present. Without it a load's wipe leaves the player's capsule alone in the
