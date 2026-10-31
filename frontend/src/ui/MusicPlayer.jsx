@@ -9,6 +9,8 @@ import { onUserGesture } from '../audio/audioRecovery.js';
 // SoundManager). Picks the track by context (boss > night/day) and SMOOTH-crossfades between them.
 // musicEnabled-gated; capture-safe (no playback under capture -> visual frames unaffected); renders nothing.
 const VOL = 0.4;
+// The crossfade's slope, in level per second: 0.04 every 60 ms, the step the fade has always taken.
+const FADE_PER_SEC = 0.04 / 0.06;
 const TRACKS = { day: '/music/day.mp3', night: '/music/night.mp3', boss: '/music/boss.mp3' };
 
 // A refusal is the autoplay policy, which the next gesture answers; anything else is a track that cannot play.
@@ -45,7 +47,7 @@ export default function MusicPlayer() {
       const gain = audioContext.createGain();
       gain.gain.value = 0;
       source.connect(gain); gain.connect(audioContext.destination);
-      tracks[key] = { el, source, gain, level: 0, primed: false };
+      tracks[key] = { el, source, gain, target: 0, primed: false };
     }
     tracksRef.current = tracks;
     // A play() refused outside a gesture (iOS, and a first visit in Chrome) is asked for again inside the next one, the
@@ -64,7 +66,7 @@ export default function MusicPlayer() {
     });
     return () => {
       offGesture();
-      if (fadeRef.current) clearInterval(fadeRef.current);
+      clearTimeout(fadeRef.current);
       fadeRef.current = null;
       for (const t of Object.values(tracks)) { t.el.pause(); t.source.disconnect(); t.gain.disconnect(); }
       tracksRef.current = null;
@@ -78,20 +80,25 @@ export default function MusicPlayer() {
     const key = !musicEnabled || masterMuted ? null : bossActive ? 'boss' : isDay ? 'day' : 'night';
     wantRef.current = key;
     if (key && tracks[key].el.paused) playTrack(tracks[key]);
-    // Smooth crossfade: each tick nudge every track's level toward its target (VOL * slider for the wanted track, 0 for
-    // the rest); a track whose level has reached 0 is paused; stop the timer when all have settled.
-    if (fadeRef.current) clearInterval(fadeRef.current);
-    fadeRef.current = setInterval(() => {
-      let settled = true;
-      for (const [k, t] of Object.entries(tracks)) {
-        const target = k === key ? VOL * musicVolume : 0;
-        const d = target - t.level;
-        if (Math.abs(d) < 0.02) { t.level = target; if (target === 0 && !t.el.paused) t.el.pause(); }
-        else { t.level = Math.max(0, Math.min(1, t.level + Math.sign(d) * 0.04)); settled = false; }
-        t.gain.gain.value = t.level;
-      }
-      if (settled) { clearInterval(fadeRef.current); fadeRef.current = null; }
-    }, 60);
+    // Smooth crossfade: every track's gain ramps from where it is toward its target (VOL * slider for the wanted track, 0
+    // for the rest) at FADE_PER_SEC, on the audio clock, so a busy main thread cannot stretch it; once the longest ramp
+    // has run, one timer pauses every track whose target is 0.
+    const now = audioContext.currentTime;
+    let longest = 0;
+    for (const [k, t] of Object.entries(tracks)) {
+      t.target = k === key ? VOL * musicVolume : 0;
+      const from = t.gain.gain.value;
+      const secs = Math.abs(t.target - from) / FADE_PER_SEC;
+      t.gain.gain.cancelScheduledValues(now);
+      t.gain.gain.setValueAtTime(from, now);
+      t.gain.gain.linearRampToValueAtTime(t.target, now + secs);
+      longest = Math.max(longest, secs);
+    }
+    clearTimeout(fadeRef.current);
+    fadeRef.current = setTimeout(() => {
+      fadeRef.current = null;
+      for (const t of Object.values(tracks)) if (t.target === 0 && !t.el.paused) t.el.pause();
+    }, longest * 1000);
   }, [isDay, bossActive, musicEnabled, musicVolume, masterMuted, audioContext]);
 
   return null;

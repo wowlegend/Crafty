@@ -8,7 +8,8 @@
  * - AudioContext: starts 'suspended', and resume() starts it only inside a gesture until it has run once (WebKit
  *   AudioContext::willBeginPlayback). interrupt() leaves it 'interrupted', where resume() alone keeps it (WebKit bugs
  *   273511 and 276016) and suspend() then resume() brings it back; freeze() keeps 'running' with a clock that has
- *   stopped (bug 263627). Its nodes record what they connect to and hold their gain values.
+ *   stopped (bug 263627). Its nodes record what they connect to and hold their gain values; a linear ramp lands at
+ *   once and is recorded with its end time.
  * - Audio: play() is refused outside a gesture until that element has been played inside one (MediaElementSession's
  *   RequireUserGestureForAudioRateChange, lifted by HTMLMediaElement::play in a gesture; an iPad also lets an element at
  *   volume 0 start, and pauses a playing one given an audible volume outside a gesture, HTMLMediaElement::setVolume).
@@ -32,9 +33,10 @@ function isActivation(event) {
 }
 
 class FakeParam {
-  constructor(value = 0) { this.value = value; }
+  constructor(value = 0) { this.value = value; this.ramps = []; }
   setValueAtTime(v) { this.value = v; return this; }
-  linearRampToValueAtTime(v) { this.value = v; return this; }
+  /** Jumps to the ramp's end value at once, and records the ramp ({ from, to, at }) so a gate can read its length. */
+  linearRampToValueAtTime(v, at) { this.ramps.push({ from: this.value, to: v, at }); this.value = v; return this; }
   exponentialRampToValueAtTime(v) { this.value = v; return this; }
   setTargetAtTime(v) { this.value = v; return this; }
   cancelScheduledValues() { return this; }

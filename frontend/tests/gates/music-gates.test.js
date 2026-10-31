@@ -17,13 +17,13 @@ describe('music overhaul', () => {
       expect(statSync(asset(f)).size).toBeGreaterThan(50000); // real audio, not an empty/error file
     }
   });
-  it('MusicPlayer loads the tracks, picks by context (boss>night/day), crossfades, capture/music-gated', () => {
+  // That the crossfade is a fade and not a cut is driven, not read: tests/gates/apple-audio-gates.test.jsx (Mute All).
+  it('MusicPlayer loads the tracks, picks by context (boss>night/day), capture/music-gated', () => {
     const mp = read('ui/MusicPlayer.jsx');
     expect(mp).toMatch(/\/music\/day\.mp3/);
     expect(mp).toMatch(/\/music\/night\.mp3/);
     expect(mp).toMatch(/\/music\/boss\.mp3/);
     expect(mp).toMatch(/bossActive/);          // boss takes priority
-    expect(mp).toMatch(/setInterval/);          // smooth crossfade (not an instant swap)
     expect(mp).toMatch(/isCaptureMode\(\)/);
     expect(mp).toMatch(/musicEnabled/);
     expect(mp).toMatch(/return null/);

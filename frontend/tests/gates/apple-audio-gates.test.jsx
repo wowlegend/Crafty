@@ -208,11 +208,19 @@ describe('the soundtrack obeys the music slider and Mute All on an iPhone, whose
       .toBeCloseTo(0.5 / slider, 2);
   });
 
-  it('every track is paused within 1 s of Mute All, and the track comes back on unmute', async () => {
+  it('every track is paused within 1 s of Mute All, after a fade, and the track comes back on unmute', async () => {
     const { tracks, day } = await startedAt(1);
     expect(ios.audible(day), `SETUP: ${state(tracks)}`).toBeGreaterThan(0);
+    const ctx = ios.ctx;
+    const mutedAt = ctx.currentTime;
     act(() => ios.gesture(() => useGameStore.getState().setMasterMuted(true)));
-    await advance(1000);
+    // A crossfade, not a cut: the day track's gain ramps to 0 over more than a quarter second of audio time.
+    const ramp = day.routedBy.outputs[0].gain.ramps.at(-1);
+    expect(ramp?.to, `the day track's gain was not ramped to 0 on Mute All: ${JSON.stringify(ramp)}`).toBe(0);
+    expect(ramp.at - mutedAt, `Mute All cut the track instead of fading it: ${JSON.stringify(ramp)}`).toBeGreaterThan(0.25);
+    await advance(100);
+    expect(day.paused, 'Mute All paused the day track before its fade had run').toBe(false);
+    await advance(900);
     expect(playing(tracks), `1 s after Mute All: ${state(tracks)}`).toEqual([]);
     expect(tracks.map((el) => ios.audible(el)), 'a muted track still reaches the speakers').toEqual([0, 0, 0]);
     act(() => ios.gesture(() => useGameStore.getState().setMasterMuted(false)));
