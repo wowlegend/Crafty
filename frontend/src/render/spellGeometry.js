@@ -4,8 +4,10 @@
 import * as THREE from 'three';
 import { ENERGY_PROFILE } from '../game/spellVisualProfiles';
 
-// Deterministic unit hash (same family as spellVfx BOLT_SEGMENTS / spellMotion strobe) -> [-1,1).
-const seededUnit = (seed) => {
+// Deterministic unit hash (sin-based, no Math.random) -> [-1,1): a given seed always yields the same value, so the
+// teardrop's wobble, the jagged forking bolt and the impact fork lines (render/spellVfx.jsx) hold a byte-identical pose
+// in capture mode and the frozen frame is reproducible.
+export const seededUnit = (seed) => {
   const v = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
   return (v - Math.floor(v)) * 2 - 1;
 };

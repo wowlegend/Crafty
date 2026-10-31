@@ -167,19 +167,30 @@ function readHold() {
   };
 }
 
-/** In the page: frames after a click until it settles (at least `minFrames`, at most `maxFrames`). For a click that placed
- *  a cell: the frame a world ray from the eye first meets that cell, the frame its chunk's mesh in the store changed, and
- *  the stand-ins held each frame. The frame counts are a log (CI's frame times are not a player's); the caller asserts
- *  only that the last count is 0. */
+/** In the page: frames after a click until it settles (at least `minFrames`, at most `maxFrames`). For a click that paid for
+ *  a cell (the stack fell at the click; the store records the cell once the worker answers that it filled it,
+ *  world/placeAtHit.js): the frame the store recorded it, the frame a world ray from the eye first meets that cell, the
+ *  frame its chunk's mesh in the store changed, and the stand-ins held each frame. The frame counts are a log (CI's frame
+ *  times are not a player's); the caller asserts only that the last count is 0. When it settles, the cell's record and the
+ *  stack are read again into the click's record (`placedNow`, `stackAfter`). */
 function watchClick({ minFrames, maxFrames }) {
   const rec = window.__e2eClick;
-  const placed = rec && rec.verb === 'place' && rec.placedNow ? rec.placeCell.split('_').map(Number) : null;
+  const paid = !!(rec && rec.verb === 'place' && rec.placeCell && rec.stackAfter < rec.stackBefore);
+  const placed = paid ? rec.placeCell.split('_').map(Number) : null;
   const key = placed ? `${Math.floor(placed[0] / 16)}_${Math.floor(placed[2] / 16)}` : null;
-  const out = { placed: !!placed, frames: 0, solidAt: null, meshAt: null, standIns: [] };
+  const out = { placed: false, frames: 0, recordedAt: null, solidAt: null, meshAt: null, standIns: [] };
+  const finish = () => {
+    const s = window.useGameStore.getState();
+    if (rec && rec.placeCell) rec.placedNow = s.worldBlocks.get(rec.placeCell) ?? null;
+    if (rec) rec.stackAfter = s.inventory.blocks.grass ?? 0;
+    out.placed = !!(placed && rec.placedNow);
+    return out;
+  };
   return new Promise((resolve) => {
     const tick = () => {
       out.frames += 1;
       if (placed) {
+        if (out.recordedAt === null && window.useGameStore.getState().worldBlocks.get(rec.placeCell)) out.recordedAt = out.frames;
         const eye = window.__threeCamera.position;
         const d = { x: placed[0] + 0.5 - eye.x, y: placed[1] + 0.5 - eye.y, z: placed[2] + 0.5 - eye.z };
         const len = Math.hypot(d.x, d.y, d.z);
@@ -188,8 +199,8 @@ function watchClick({ minFrames, maxFrames }) {
         if (out.meshAt === null && window.useGameStore.getState().debugChunks?.[key]?.meshData !== window.__e2eMeshAtClick) out.meshAt = out.frames;
         out.standIns.push(window.__craftyTest.call('readPlacedCells') ?? null);
       }
-      const settled = !placed || (out.solidAt !== null && out.meshAt !== null && out.standIns[out.standIns.length - 1] === 0);
-      if ((out.frames >= minFrames && settled) || out.frames >= maxFrames) resolve(out);
+      const settled = !placed || (out.recordedAt !== null && out.solidAt !== null && out.meshAt !== null && out.standIns[out.standIns.length - 1] === 0);
+      if ((out.frames >= minFrames && settled) || out.frames >= maxFrames) resolve(finish());
       else requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);

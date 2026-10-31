@@ -573,11 +573,6 @@ export const useGameSounds = () => {
       if (spatialTrigger && pos) spatialTrigger('blockBreak', pos, rate);
       else playSound('blockBreak', rate);
     },
-    playFootstep: (pos, type = 'grass') => {
-      const rate = type === 'stone' || type === 'cobblestone' ? 0.8 : 1.1;
-      if (spatialTrigger && pos) spatialTrigger('footstep', pos, rate, 5);
-      else playSound('footstep', rate);
-    },
     playPickup: () => playSound('pickup'),
     playCraft: () => playSound('craft'),
     playHeartbeat: () => playSound('heartbeat'), // low-health danger pulse (HeartbeatAudio)
@@ -591,14 +586,6 @@ export const useGameSounds = () => {
     // Enhanced magic sounds
     playMagicCast: () => playSound('magicCast', 0.9 + Math.random() * 0.2),
     playMagicHit: () => playSound('magicHit', 0.8 + Math.random() * 0.4),
-    // Aspect verb SFX (spatial when a position is known; frame-loop call sites use the
-    // store-registered playSpatialSound directly with these registry names)
-    playRoar: (pos) => { if (spatialTrigger && pos) spatialTrigger('roar', pos, 1, 30); else playSound('roar'); },
-    playGrab: (pos) => { if (spatialTrigger && pos) spatialTrigger('grab', pos, 1, 20); else playSound('grab'); },
-    playHurl: (pos) => { if (spatialTrigger && pos) spatialTrigger('hurl', pos, 1, 25); else playSound('hurl'); },
-    playSlam: (pos) => { if (spatialTrigger && pos) spatialTrigger('slam', pos, 1, 30); else playSound('slam'); },
-    playAnvilHit: (pos) => { if (spatialTrigger && pos) spatialTrigger('anvilHit', pos, 1, 35); else playSound('anvilHit'); },
-    playBind: (pos) => { if (spatialTrigger && pos) spatialTrigger('bind', pos, 1, 25); else playSound('bind'); },
     playMagicExplosion: () => playSound('magicExplosion', 0.9 + Math.random() * 0.2),
     // UI foley (panel open/close) — subtle menu chrome responsiveness
     playUIOpen: () => playSound('uiOpen'),

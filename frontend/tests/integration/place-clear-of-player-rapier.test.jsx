@@ -26,7 +26,7 @@ import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 // (terrain.worker.js update_block); the player as Components.jsx makes it (kinematic body, capsule BASE_CAPSULE, KCC
 // offset 0.05, autostep 1.05 / 0.2, snap 0.5, 45 degree slope), moved once a frame through moveKinematic; the eye
 // EYE_HEIGHT_M over the body; the build ray as Terrain.jsx castBuildRay casts it (8 m, the player's body excluded); and
-// the real placeAtHit against the real store, its worker post applied to the voxels here. @dimforge/rapier3d-compat is
+// the real placeAtHit against the real store, its batched edit answered as the worker answers it. @dimforge/rapier3d-compat is
 // the build the app ships.
 //
 // A LATE TRIMESH. In the game a placed cell's trimesh lands some frames after the click (the worker re-meshes, the main
@@ -145,7 +145,8 @@ function landDue(S) {
   const byChunk = new Map();
   for (const q of due) {
     const cx = chunkOf(q.wx), cz = chunkOf(q.wz);
-    S.chunks.get(`${cx}_${cz}`)[voxelIndex(q.wx - cx * CHUNK_SIZE, q.y, q.wz - cz * CHUNK_SIZE)] = q.t;
+    // A cell the worker refused changes no voxel; its chunk is re-meshed all the same.
+    if (q.t !== null) S.chunks.get(`${cx}_${cz}`)[voxelIndex(q.wx - cx * CHUNK_SIZE, q.y, q.wz - cz * CHUNK_SIZE)] = q.t;
     byChunk.set(`${cx}_${cz}`, q.editSeq);
   }
   mountChunks(S, [...byChunk].map(([key, editSeq]) => ({ key, editSeq })));
@@ -228,11 +229,37 @@ function buildRay(S, dir, from = eye(S)) {
   return { toi, normal: { x: hit.normal.x, y: hit.normal.y, z: hit.normal.z }, direction: d, hitPoint };
 }
 
-/** The right-click: the real placeAtHit with the cells held solid from the click, its worker edits landing `lag` frames on. */
+/** The voxel the worker holds at a cell: its latest edit still in flight, else the voxels here. */
+function workerVoxel(S, x, y, z) {
+  for (let i = S.worker.queue.length - 1; i >= 0; i--) {
+    const q = S.worker.queue[i];
+    if (q.t !== null && q.wx === x && q.y === y && q.wz === z) return q.t;
+  }
+  return voxel(S, x, y, z);
+}
+
+/** The right-click: the real placeAtHit with the cells held solid from the click, its batched edit answered as
+ *  terrain.worker.js answers it (a cell filled only where the worker holds air or water, every sent cell's chunk
+ *  re-meshed), the edits landing `lag` frames on. `placed` is the cells filled, `cells` the cells sent. */
 function rightClick(S, h, lag = 0) {
-  const posted = [];
-  const placed = placeAtHit(h, { cells: S.cells, post: (msg) => { posted.push(msg); post(S, msg, lag); } });
-  return { placed, cells: posted.map((m) => [m.payload.cx * CHUNK_SIZE + m.payload.x, m.payload.y, m.payload.cz * CHUNK_SIZE + m.payload.z]) };
+  const cells = [];
+  let placed = 0;
+  placeAtHit(h, {
+    cells: S.cells,
+    editCells: (edit, done) => {
+      const applied = [];
+      edit.cells.forEach((c, i) => {
+        cells.push([c.x, c.y, c.z]);
+        const empty = [AIR, WATER].includes(workerVoxel(S, c.x, c.y, c.z));
+        if (empty) applied.push(i);
+        const cx = chunkOf(c.x), cz = chunkOf(c.z);
+        post(S, { type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: empty ? edit.blockType : null, seq: c.seq } }, lag);
+      });
+      placed = applied.length;
+      done(applied);
+    },
+  });
+  return { placed, cells };
 }
 
 /** The left click as Terrain.jsx's mine verb makes it: the cell the build ray targets, mined in the store and the worker. */

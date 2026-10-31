@@ -1,63 +1,119 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as THREE from 'three';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { placeAtHit } from '../../src/world/placeAtHit.js';
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-const terrain = readFileSync(resolve(HERE, '../../src/world/Terrain.jsx'), 'utf8');
+import { mineAtHit, payBrokenBlock } from '../../src/world/mineAtHit.js';
+import { voxelIndex } from '../../src/world/chunkLayout.js';
+import { DEFAULT_WORLD_SEED } from '../../src/world/worldSeed.js';
+import { loadTerrainWorker, sendToWorker, workerVerbIo } from '../_support/terrainWorker.js';
 
 // M6 dead-wire fix: the onBlockPlace/onBlockBreak callbacks are registered by QuestSystem (and increment
-// blocks_placed/blocks_broken + updateQuestProgress) but the mine()/place() executors never invoked them,
+// blocks_placed/blocks_broken + updateQuestProgress) but the mine and place executors never invoked them,
 // so building/mining silently advanced NO quest (builder/architect/world_builder/miner) or achievement
-// (Master Builder / Deep Digger). This pins the wiring: break fires in mine(), place fires in the place executor
-// (world/placeAtHit.js, which Terrain's place() calls, driven here), each once per action (no cross-wire, no
-// double-count). The callback BODIES are covered by QuestSystem tests.
-const between = (src, start, end) => {
-  const i = src.indexOf(start);
-  const j = src.indexOf(end, i + 1);
-  return i >= 0 && j > i ? src.slice(i, j) : '';
-};
+// (Master Builder / Deep Digger). This pins the wiring by driving the executors Terrain.jsx's verbs call
+// (world/mineAtHit.js, world/placeAtHit.js): break fires from a mine, place from a placement, each once per
+// action (no cross-wire, no double-count), and neither for an action the worker did nothing for. Then the same
+// verbs over the real terrain worker, every reply heard as Terrain.jsx hears it (world/cellEdits.js `heard`, the
+// block_broken payment world/mineAtHit.js payBrokenBlock): the payment a worker message makes counts nothing, so a
+// mine is one break and not two. The callback BODIES are covered by QuestSystem tests.
+//
+// WHAT THIS DOES NOT CHECK: that Terrain.jsx's verbs call these executors (tests/e2e/the-cut.spec.js places and
+// tests/e2e/input-live.spec.js mines through real clicks).
+//
+// Mutation-Proof: see the commit trailer.
+
+const S = () => useGameStore.getState();
+/** The worker answering a batched edit: it changes every cell it is sent, or none. */
+const answering = (all = true) => (edit, done) => done(all ? edit.cells.map((_, i) => i) : []);
 
 describe('M6 block place/break advance quests + achievements (dead-wire fix)', () => {
-  it('mine() fires the registered onBlockBreak callback (not onBlockPlace)', () => {
-    const mineBody = between(terrain, 'const mine = (h) =>', 'const place = (h) =>');
-    expect(mineBody).toMatch(/store\.onBlockBreak\?\.\(\)/);
-    expect(mineBody).not.toMatch(/onBlockPlace/);
+  let calls;
+  beforeEach(() => {
+    calls = [];
+    useGameStore.setState(useGameStore.getInitialState(), true);
+    useGameStore.setState((s) => ({
+      selectedBlock: 'stone', inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, stone: 64 } },
+      worldBlocks: new Map(), chests: new Map(), addNotification: () => {},
+      onBlockPlace: () => calls.push('place'), onBlockBreak: () => calls.push('break'),
+    }));
+  });
+  afterEach(() => useGameStore.setState(useGameStore.getInitialState(), true));
+
+  describe('the mine executor', () => {
+    const hit = () => ({ hitPoint: new THREE.Vector3(2.5, 25, 2.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0),
+      targetedX: 2, targetedY: 24, targetedZ: 2, targetCoords: '2_24_2' });
+
+    it('a mine fires the registered onBlockBreak callback once (not onBlockPlace)', async () => {
+      const posted = [];
+      await mineAtHit(hit(), { post: (m) => posted.push(m), editCells: answering(), playBreak: () => {} });
+      expect(posted.length, 'SETUP: the mine sent the worker nothing').toBe(1);
+      expect(calls, 'a mine did not fire onBlockBreak alone').toEqual(['break']);
+    });
+
+    it('a Delete Tool removal fires it once however many blocks it took, and not when it took none', async () => {
+      // The player's own blocks: the 3x3x3 the removal takes under the aimed face.
+      const own = [];
+      for (let x = 1; x <= 3; x++) for (let y = 22; y <= 24; y++) for (let z = 1; z <= 3; z++) own.push([`${x}_${y}_${z}`, 3]);
+      useGameStore.setState({ buildingMode: 'delete', buildSize: 3, worldBlocks: new Map(own) });
+      expect(await mineAtHit(hit(), { post: () => {}, editCells: answering(), playBreak: () => {} }), 'SETUP: the removal did not take 27 blocks').toBe(27);
+      expect(calls, 'a 27-block removal counted more or less than one break').toEqual(['break']);
+      useGameStore.setState({ worldBlocks: new Map(own) });
+      expect(await mineAtHit(hit(), { post: () => {}, editCells: answering(false), playBreak: () => {} })).toBe(0);
+      expect(calls, 'a removal the worker did nothing for counted as a break').toEqual(['break']);
+    });
   });
 
   describe('the place executor', () => {
-    let calls;
     const hit = () => ({ hitPoint: new THREE.Vector3(2.5, 25, 2.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0) });
-    beforeEach(() => {
-      calls = [];
-      useGameStore.setState(useGameStore.getInitialState(), true);
-      useGameStore.setState((s) => ({
-        selectedBlock: 'stone', inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, stone: 64 } },
-        onBlockPlace: () => calls.push('place'), onBlockBreak: () => calls.push('break'),
-      }));
-    });
-    afterEach(() => useGameStore.setState(useGameStore.getInitialState(), true));
 
-    it('fires the registered onBlockPlace callback (not onBlockBreak)', () => {
-      expect(placeAtHit(hit(), { post: () => {} }), 'SETUP: nothing was placed').toBe(1);
+    it('fires the registered onBlockPlace callback (not onBlockBreak)', async () => {
+      expect(await placeAtHit(hit(), { editCells: answering() }), 'SETUP: nothing was placed').toBe(1);
       expect(calls, 'a placement did not fire onBlockPlace alone').toEqual(['place']);
     });
 
-    it('fires it once per action, however many cells the footprint placed, and not for a refusal', () => {
+    it('fires it once per action, however many cells the footprint placed, and not for a refusal', async () => {
       useGameStore.setState({ buildingMode: 'cube', buildSize: 3 });
-      expect(placeAtHit(hit(), { post: () => {} }), 'SETUP: the cube placed one cell').toBe(27);
+      expect(await placeAtHit(hit(), { editCells: answering() }), 'SETUP: the cube placed one cell').toBe(27);
       expect(calls, 'a 27-cell placement counted more or less than one place').toEqual(['place']);
+      useGameStore.setState({ worldBlocks: new Map() });
+      expect(await placeAtHit(hit(), { editCells: answering(false) })).toBe(0);
+      expect(calls, 'a placement the worker filled nothing for counted as a place').toEqual(['place']);
       useGameStore.setState((s) => ({ inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, stone: 0 } } }));
-      expect(placeAtHit(hit(), { post: () => {} })).toBe(0);
+      expect(await placeAtHit(hit(), { editCells: answering() })).toBe(0);
       expect(calls, 'a refused placement counted as a place').toEqual(['place']);
     });
   });
 
-  it('Terrain fires onBlockBreak exactly once and leaves onBlockPlace to the executor (no double-count)', () => {
-    expect((terrain.match(/onBlockBreak\?\.\(\)/g) || []).length).toBe(1);
-    expect((terrain.match(/onBlockPlace\?\.\(\)/g) || []).length).toBe(0);
+  describe('over the real worker, its replies heard as Terrain.jsx hears them', () => {
+    beforeAll(async () => {
+      await loadTerrainWorker();
+      sendToWorker('init', { seed: DEFAULT_WORLD_SEED });
+    });
+    const at = (x, y, z) => ({ hitPoint: new THREE.Vector3(x + 0.5, y + 1, z + 0.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0),
+      targetedX: x, targetedY: y, targetedZ: z, targetCoords: `${x}_${y}_${z}` });
+    // The player's own 3x3x3 of stone under a generated stone block at 2_24_2, and air above that.
+    const OWN = [];
+    for (let x = 1; x <= 3; x++) for (let y = 21; y <= 23; y++) for (let z = 1; z <= 3; z++) OWN.push([x, y, z]);
+
+    it('a mine, a Delete Tool removal and a placement each count once; the payments the worker\'s replies make count nothing', async () => {
+      sendToWorker('load_modifications', { modifications: [
+        ...OWN.map(([x, y, z]) => [0, 0, voxelIndex(x, y, z), 3]), [0, 0, voxelIndex(2, 24, 2), 3], [0, 0, voxelIndex(2, 25, 2), 0]] });
+      useGameStore.setState({ worldBlocks: new Map(OWN.map(([x, y, z]) => [`${x}_${y}_${z}`, 3])) });
+      const io = workerVerbIo({ onBroken: payBrokenBlock });
+      const stone = () => S().inventory.blocks.stone;
+      const start = stone();
+
+      await mineAtHit(at(2, 24, 2), { post: io.post, editCells: io.editCells, playBreak: () => {} });
+      expect(io.received.filter((m) => m.type === 'block_broken').length, 'SETUP: the mine\'s block_broken was not heard').toBe(1);
+      expect({ calls, paid: stone() - start }, 'a mine paid back through the worker did not count one break').toEqual({ calls: ['break'], paid: 1 });
+
+      useGameStore.setState({ buildingMode: 'delete', buildSize: 3 });
+      expect(await mineAtHit(at(2, 23, 2), { post: io.post, editCells: io.editCells, playBreak: () => {} }), 'SETUP: the removal did not take the 27').toBe(27);
+      expect({ calls, paid: stone() - start }, 'a 27-block removal paid through the worker\'s answer did not count one break').toEqual({ calls: ['break', 'break'], paid: 28 });
+
+      useGameStore.setState({ buildingMode: 'single', buildSize: 1 });
+      expect(await placeAtHit(at(2, 24, 2), { editCells: io.editCells }), 'SETUP: the placement placed nothing').toBe(1);
+      expect(calls, 'a placement through the worker did not count one place').toEqual(['break', 'break', 'place']);
+    });
   });
 });

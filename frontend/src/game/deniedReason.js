@@ -22,6 +22,15 @@ export function deniedReason(kind, ctx = '') {
     // A placement into a cell the player's own body fills (world/placeAtHit.js).
     case 'in-the-way':
       return t('deny.inTheWay');
+    // A placement cell above the world's top or under its floor (world/placeAtHit.js).
+    case 'off-world':
+      return t('deny.offWorld');
+    // A placement cell that already holds a block (world/placeAtHit.js, the worker's answer).
+    case 'occupied':
+      return t('deny.occupied');
+    // A Delete Tool click that took nothing (world/mineAtHit.js): the tool's rule, true of whatever the footprint held.
+    case 'delete-rule':
+      return t('deny.deleteRule');
     // A beast form with no room where the player stands (game/formFit.js).
     case 'no-room':
       return t('deny.noRoom');

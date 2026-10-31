@@ -14,7 +14,7 @@ import { oreCodeFor } from './oreGen.js';
 import { linearRgbToHex } from '../game/colorHex.js';
 import { grassTops, columnTops } from './grassField.js';
 import { generateMesh } from './mesher.js';
-import { CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_VOLUME, voxelIndex, columnIndex } from './chunkLayout.js';
+import { CHUNK_SIZE, CHUNK_HEIGHT, CHUNK_VOLUME, voxelIndex, columnIndex, chunkOf } from './chunkLayout.js';
 
 // Constants: the chunk geometry and the block layout are chunkLayout.js's (R7.2/R7.3).
 const VOLUME = CHUNK_VOLUME;
@@ -106,68 +106,44 @@ self.onmessage = function(e) {
     const { cx, cz, x, y, z, blockType, seq } = payload;
     if (typeof seq === 'number') lastEditSeq = seq;
     const key = `${cx}_${cz}`;
-    let blocks = chunks.get(key);
-    if (!blocks) {
-      blocks = generateChunkData(cx, cz);
-      chunks.set(key, blocks);
-    }
-    
+    const blocks = chunkBlocks(cx, cz, key);
     const index = getIndex(x, y, z);
     if (index >= 0 && index < VOLUME) {
       const prevBlock = blocks[index];
-      blocks[index] = blockType;
-      
-      const modKey = `${cx}_${cz}`;
-      if (!chunkModifications.has(modKey)) {
-        chunkModifications.set(modKey, new Map());
-      }
-      chunkModifications.get(modKey).set(index, blockType);
-
-      if (blockType === 0 && prevBlock !== 0) {
-        const colorArray = BLOCK_COLORS[prevBlock] || [1, 1, 1];
-        self.postMessage({
-          type: 'block_broken',
-          payload: {
-            x: cx * CHUNK_SIZE + x,
-            y,
-            z: cz * CHUNK_SIZE + z,
-            color: linearRgbToHex(colorArray), // BLOCK_COLORS are LINEAR; encode to sRGB so debris isn't double-darkened
-
-            blockType: prevBlock
-          }
-        });
-      }
-      
-      // Re-mesh
-      const meshData = generateMesh(cx, cz, blocks, biomeChunks.get(key));
-      // M4 #5 parity (review HIGH): refresh the wind-grass overlay on edit too — the generate path emits
-      // grassTops but update_block dropped it, so editing ANY block killed the chunk's wind-grass until
-      // reload. shortcut: inlined to mirror the generate-path scan (the grass-revival gate locks those
-      // literal tokens); a shared computeGrassTops helper is the upgrade path.
-      const { topCodes, topYs } = columnTops(blocks, getIndex, CHUNK_SIZE, CHUNK_HEIGHT);
-      const gTops = grassTops(topCodes, topYs, CHUNK_SIZE, cx * CHUNK_SIZE, cz * CHUNK_SIZE, { stride: 2, cap: 50 }, biomeChunks.get(key));
-      self.postMessage({
-        type: 'chunk_mesh',
-        payload: {
-          cx, cz,
-          positions: meshData.positions,
-          normals: meshData.normals,
-          colors: meshData.colors,
-          uvs: meshData.uvs,
-          indices: meshData.indices,
-          ao: meshData.ao,
-          grassTops: gTops,
-          editSeq: lastEditSeq
-        }
-      }, [
-        meshData.positions.buffer,
-        meshData.normals.buffer,
-        meshData.colors.buffer,
-        meshData.uvs.buffer,
-        meshData.indices.buffer,
-        meshData.ao.buffer
-      ]);
+      writeVoxel(cx, cz, x, y, z, blocks, index, blockType);
+      if (blockType === 0 && prevBlock !== 0) self.postMessage({ type: 'block_broken', payload: brokenBlock(cx, cz, x, y, z, prevBlock) });
+      postChunkMesh(cx, cz, key, blocks);
     }
+  }
+  // A batch of cell edits (world/cellEdits.js): a cell changes only into the other kind, so a block fills only air or
+  // water and a removal (blockType 0) takes only a solid block. A footprint therefore never replaces one block with
+  // another, never drains water, and never writes outside the world. The reply names the cells changed, and carries the
+  // blocks a removal took in place of a block_broken for each, before the meshes; then every chunk the batch names is
+  // re-meshed once, stamped with the batch's last seq, so the stand-in of a cell that was not changed retires on that
+  // mesh like the rest (world/placedCellColliders.js).
+  else if (type === 'edit_cells') {
+    const { id, blockType, cells } = payload;
+    const applied = [];
+    const broken = [];
+    const named = new Map();
+    cells.forEach((c, i) => {
+      if (typeof c.seq === 'number') lastEditSeq = c.seq;
+      if (c.y < 0 || c.y >= CHUNK_HEIGHT) return;
+      const cx = chunkOf(c.x), cz = chunkOf(c.z);
+      const key = `${cx}_${cz}`;
+      const blocks = chunkBlocks(cx, cz, key);
+      named.set(key, { cx, cz, blocks });
+      const x = c.x - cx * CHUNK_SIZE, z = c.z - cz * CHUNK_SIZE;
+      const index = getIndex(x, c.y, z);
+      const prevBlock = blocks[index];
+      const empty = prevBlock === 0 || prevBlock === 9;
+      if (blockType === 0 ? empty : !empty) return;
+      writeVoxel(cx, cz, x, c.y, z, blocks, index, blockType);
+      if (blockType === 0) broken.push(brokenBlock(cx, cz, x, c.y, z, prevBlock));
+      applied.push(i);
+    });
+    self.postMessage({ type: 'cells_edited', payload: { id, applied, broken } });
+    for (const [key, { cx, cz, blocks }] of named) postChunkMesh(cx, cz, key, blocks);
   }
   else if (type === 'unload') {
     const { cx, cz } = payload;
@@ -196,6 +172,67 @@ self.onmessage = function(e) {
 };
 
 const getIndex = voxelIndex;
+
+/** The chunk's voxels, generated (with the player's edits replayed) the first time an edit reaches it. */
+function chunkBlocks(cx, cz, key) {
+  let blocks = chunks.get(key);
+  if (!blocks) {
+    blocks = generateChunkData(cx, cz);
+    chunks.set(key, blocks);
+  }
+  return blocks;
+}
+
+/** One voxel edit: written, and kept in the chunk's edit table. */
+function writeVoxel(cx, cz, x, y, z, blocks, index, blockType) {
+  blocks[index] = blockType;
+  const modKey = `${cx}_${cz}`;
+  if (!chunkModifications.has(modKey)) {
+    chunkModifications.set(modKey, new Map());
+  }
+  chunkModifications.get(modKey).set(index, blockType);
+}
+
+/** A removed block, for its drop and its debris: where it was, what it was, and its colour. */
+function brokenBlock(cx, cz, x, y, z, prevBlock) {
+  const colorArray = BLOCK_COLORS[prevBlock] || [1, 1, 1];
+  return {
+    x: cx * CHUNK_SIZE + x,
+    y,
+    z: cz * CHUNK_SIZE + z,
+    color: linearRgbToHex(colorArray), // BLOCK_COLORS are LINEAR; encode to sRGB so debris isn't double-darkened
+    blockType: prevBlock
+  };
+}
+
+/** An edited chunk's re-mesh, with its wind-grass tops (an edit refreshes them as generation makes them), stamped with
+ *  the last placement seq applied. */
+function postChunkMesh(cx, cz, key, blocks) {
+  const meshData = generateMesh(cx, cz, blocks, biomeChunks.get(key));
+  const { topCodes, topYs } = columnTops(blocks, getIndex, CHUNK_SIZE, CHUNK_HEIGHT);
+  const gTops = grassTops(topCodes, topYs, CHUNK_SIZE, cx * CHUNK_SIZE, cz * CHUNK_SIZE, { stride: 2, cap: 50 }, biomeChunks.get(key));
+  self.postMessage({
+    type: 'chunk_mesh',
+    payload: {
+      cx, cz,
+      positions: meshData.positions,
+      normals: meshData.normals,
+      colors: meshData.colors,
+      uvs: meshData.uvs,
+      indices: meshData.indices,
+      ao: meshData.ao,
+      grassTops: gTops,
+      editSeq: lastEditSeq
+    }
+  }, [
+    meshData.positions.buffer,
+    meshData.normals.buffer,
+    meshData.colors.buffer,
+    meshData.uvs.buffer,
+    meshData.indices.buffer,
+    meshData.ao.buffer
+  ]);
+}
 
 /** Where inside its chunk a dungeon is centred. Shared with the radius derivation below. */
 const DUNGEON_CENTRE_OFFSET = 8;

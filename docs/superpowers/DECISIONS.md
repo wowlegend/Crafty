@@ -61,6 +61,279 @@
      other `?lookbook=1` spec and `prod-smoke` on the exact sha, and that is the lived proof that the probe still finds
      the seam.
 
+## 2026-10-31 (lane L6, round 3) — [LOOP] the index chunk's ceiling stays at 652,500 B: item 278's raise is withdrawn and the bytes are cut from code nothing reads; the Delete Tool's notice states its rule
+
+**Ruled by the command session** (consistent with lane L3's): `bundle-budget.mjs` ("RAISING one to make a red build go
+green is a reward-hack and is forbidden") and `CLAUDE.md`, "Never weaken to pass", forbid what item 278 did. Round 2's two
+reviews had landed (no correctness defect in scope); this round is the fixer's short pass on three points. Branch
+`fix/l6-build-tools`.
+
+279. **Item 278 is superseded: the ceiling is back at 652,500 B and the lane fits it.** The raise (`0bfbfc11`) is undone by
+   a new commit that sets `max` to 652,500 again, not by a reset. The index chunk, built with `vite build` on a clean
+   archive of each commit, went 654,131 B (the merge of main, `4be3e177`, whose changes touch no `frontend/src` file)
+   to 653,038 B (`983d5711`), 652,253 B (`1152d96c`) and 652,236 B at the head of the notice fix (`2865a75b`): 1,895 B
+   cut from the first figure, 264 B under the ceiling. `983d5711`'s message says 652,964 B; that figure is the tree with
+   `payBrokenBlock` folded as well, which is a later commit; the figures here are the measured ones.
+   - **What was cut, each name word-bounded across `frontend/src`, `frontend/tests` and `frontend/scripts` at `fdcd9f62`
+     with no use but its own definition (`git grep -nw <name> fdcd9f62 -- frontend/src frontend/tests frontend/scripts`
+     returns that line alone; at HEAD it returns nothing):**
+     - `useGameStore.jsx`, 13 setters: `setPlayerRigidBodyRef`, `setOnSpellCast`, `setOnBlockPlace`, `setOnBlockBreak`,
+       `setOnChestOpen`, `setOnPlayerDeath`, `setCheckNearbyChest`, `setOpenNearbyChest`, `setGameCamera`,
+       `setCastSpell`, `setChestInventory`, `setInventory`, `setLastDamageTime`. The state each wrote is still read and
+       still written with `setState`.
+     - `checkNearbyChest`, the store key and QuestSystem's one write of it: published, read by nothing anywhere
+       (`openNearbyChest`, which calls the same `checkChestProximity`, is read by `input/talk.js` and stays).
+     - `SoundManager.jsx` `useGameSounds`, 7 members: `playFootstep`, `playRoar`, `playGrab`, `playHurl`, `playSlam`,
+       `playAnvilHit`, `playBind`. The footsteps and the Aspect verbs play through the store's `playSpatialSound` with the
+       same registry names.
+     - One copy of each repeated helper: the headroom guard that seven voices spelled out (`audio/headroom.js limitPeak`,
+       with `src/audio/headroom.test.js`, which the guard never had: its function, that all ten voices call it with their
+       limit, and 300 seeded slams within 0.98), `seededUnit` (`spellVfx.jsx` kept `spellGeometry.js`'s), the resize
+       subscriber (`useSpellAnchor.js` kept `hudLayout.js`'s `subscribeResize`), and `payBrokenBlock` as a batch of one.
+     - Measured separately on the tree: the setters and the sound members 1,038 B, `checkNearbyChest` about 55 B, the
+       `payBrokenBlock` fold about 74 B, the limiter 619 B, `seededUnit` and the subscriber 166 B.
+   - **Looked for and not found:** knip and `knip --production` were clean before and after; no i18n key is dead
+     (`scripts/ci/i18n-dead-keys.mjs`: 322 keys, 0 dead); of the 103 keys the source publishes with `setState`, none but the one
+     above is read by nothing; every registry name in `VOICES` is still named at a trigger. Exact-clone and
+     object-member scans over the index chunk's sources found the duplicates above and no more that were safe to take.
+   - **Left alone.** Lane L3's boss and squad paths: `setDamageBoss`, `setGetBossPosition` and `setBossActive` are
+     unread setters too, and L3 is cutting there. Lane L12 owns the rest of the dead setters. Left in `useGameStore.jsx`
+     for whoever owns it next (about 350 B, a behaviour-preserving extraction, outside "unread setters"): `equipItem` and
+     `unequipItem` repeat a bag-return block and a stats block. `getPlayerXP` and `isBeastFormActive` are read only by tests.
+     The voice factories' shared buffer preamble (29 copies) is not folded: `src/audio/synthVoices.test.js` asserts the
+     floored frame count at 20 or more sites in the source, a gate that would need rewriting for a few hundred bytes.
+   - **The next lane that grows this chunk meets the ceiling at 264 B of room and says why**, as item 278 meant to.
+   - **The notice (round 2's static finding 3, confirmed).** A Delete Tool click that took nothing said "takes only blocks
+     you placed", which is untrue of a chest the player placed and of a block placed a moment ago whose record is written when
+     the worker answers. It now states the rule and the exception ("The Delete Tool takes back only blocks you placed, never a
+     chest"; zh 删除工具只拆你放的方块，不拆箱子), as `deny.deleteRule`, and a click made while an edit is owed its answer says
+     nothing (`cellEdits.editsOwed`); the next click takes the block. This amends item 271's wording only. Gated in
+     `tests/gates/build-edit-order-gates.test.js` (a placed chest stays and nothing reaches the worker; an owed placement is
+     silent and then taken; the ground still says it) and the table gate's text. Nine real mutants red, one identity mutant green.
+   - **Found, not fixed** (registry): REVIEW:l6:chest-indicator-interval-after-teardown (one unhandled `window is not defined`
+     from ChestIndicator's poll in a related-test run at commit time, 67 files green, gone on the next run).
+   - **Not checked:** no local e2e or browser; the silence while an answer is owed is a few frames on a busy worker, which the
+     unit gate drives with the worker's replies held back and the real device has not shown.
+
+---
+
+## 2026-10-31 (lane L6, round 2) — [LOOP] the record and the worker agree whatever lands before an answer, the Delete Tool takes back only the player's own blocks in one answer, and every label says the size it builds
+
+**Decided by the command session** under the standing grant (DECISIONS 2026-10-28 item 14), on lane L6's round-1
+reviews (static finding 1 and dynamic P8, required; static 2 to 5; dynamic's four cheap items). Branch
+`fix/l6-build-tools`, PR #68. Items 270-278.
+
+270. **A placement's late answer never writes over a later record.** Item 231 made a placement record its cells when
+   the worker answers, while the single mine and the dragon's smash record theirs at the click. So a right-click and
+   then a left-click on the same cell before the answer left the record holding the block and the worker holding air:
+   a reload brought the mined block back while the player kept its payment, an empty cell refused every placement
+   until then, and a chest became a storage chest over air (reproduced by the round-1 dynamic review: `record=3
+   voxelNow=0 voxelAfterReload=3`). Every edit that writes the record now takes a number as it is posted
+   (`frontend/src/world/cellEdits.js`); a writer at the click (`world/mineAtHit.js`'s single mine,
+   `world/bossSmash.js`) stamps its cells while any batch is owed, and a batch's answer records a cell only when no such
+   writer stamped it after the batch was posted. The worker applies messages in order and answers batches in order,
+   so only a writer at the click can be newer than an answer. **Not** "the newest edit wins": a second placement of a
+   cell before the first's answer is refused by the worker, so the first's block is the one there and must be
+   recorded; that rule left the cell unrecorded (mutant M2 below). The ledger lives as long as the page, as the worker
+   does, and is emptied whenever no batch is owed. The smash moved out of `render/BossEntity.jsx` unchanged so a gate
+   drives it.
+271. **The Delete Tool takes back only the blocks the player placed** (supersedes item 233's call to keep a footprint
+   harvest of any block). Its left click removes, within its footprint, only cells the store records as placed
+   (`worldBlocks` holds every placed cell), each paid back as itself; generated terrain, ore and water are left, and a
+   chest is never removed, empty or loaded (round-1 static finding 3: an empty chest cost 8 wood and paid back 1). The
+   reason: a build tool takes back what was built, and a 64-block harvest a click, ore included, was an economy rate
+   nobody had measured (registry REVIEW:l6:delete-tool-harvest-rate, closed by this). The pickaxe is the way to dig.
+   The tool's label now says so ("Remove the blocks you placed, 3x3x3"), and a click whose footprint holds none of
+   them says why it took nothing ("The Delete Tool takes only blocks you placed"; zh 删除工具只拆你自己放的方块), so a
+   click on the ground does not read as a dead tool.
+272. **A batched removal is one message** (round-1 static finding 2). The worker's `cells_edited` now carries the
+   blocks a removal took, in place of one `block_broken` for each, so a 64-block click is one message, one record write
+   and one inventory write per kind of block, not 64 of each. Debris bursts for the first 4 blocks of an answer only
+   (`frontend/src/world/debrisBursts.js`: 32 bodies of the 200-body pool, about the dragon's smash), where each of 64
+   messages had woken 8. A lone `block_broken` (the single mine, the smash) is unchanged.
+273. **Every label says the size its tool builds at, and the slider ends at the picked tool's largest size**
+   (`frontend/src/ui/GamePanels.jsx`; round-1 dynamic C5: at the slider's 10 the panel promised a 10x10x10 cube and a
+   10x10 floor, and the cell cap built 4x4x4 and 8x8). The slider runs to 10 for a wall, 8 for a floor, 4 for a cube or
+   the Delete Tool, and 1 for Single; the readout and the labels show the size each tool will build. The store keeps
+   the size the player slid to, so a wall's 8 comes back after a cube's 4. This reverses the 2026-08-11 note in
+   `game/buildFootprint.js` that the slider stays 1 to 10 whatever the mode.
+274. **The worker's answers to the build verbs are heard at module scope** (`Terrain.jsx`, `cellEdits.heard`): a
+   batch's `cells_edited` and a lone removal's `block_broken` both, so what a click spent or took is paid back and
+   recorded whatever unmounts first. Item 230 claimed that while the Delete Tool's payment still came through the
+   component's listener (round-1 static finding 4); item 230 is corrected in place. The double-count guard the lane
+   had deleted as a source grep (static finding 5) is back as behaviour: `terrain-quest-callback-gates` drives a mine,
+   a Delete Tool removal and a placement over the real worker, every reply heard as Terrain.jsx hears it, and a mine
+   counts one break, not two (the source-grep population stays at 94).
+275. **The gates, red first at round 1's code** (a scratch copy of this round's tree with `placeAtHit.js` from
+   `aa523a49`, the one file whose answer wrote over the record; the panel gate against the round-1 panel):
+   - `frontend/tests/gates/build-edit-order-gates.test.js` (new): the real worker takes each message as it is posted,
+     its replies held until the test hands them over (`tests/_support/terrainWorker.js` `deferred`). Five named
+     interleavings (place then mine then answer; a chest placed then mined; the smash over an owed placement; two placements of one
+     cell; place, mine, place) and a seeded run of 300 clicks and answers that reads record against worker at every
+     quiet point and conserves each block kind. At round 1's placeAtHit: 4 of 6 red, `record: 3, voxel: 0` and
+     `record: 6, chest: true`, exactly the review's prediction.
+   - `build-tools-worker-gates`: the Delete Tool's oracle is the player's own blocks, chests never taken, one answer
+     and no `block_broken`; a new case removes a 64-block own cube: one answer, store writes one more than a one-block
+     removal's, debris for 4. `build-tools-table-gates`: each tool's left click on generated ground and on a 3x3x3 of
+     the player's own blocks; a new case per tool reads the label at every slider size 1 to 10 against what the verb
+     builds (round 1's panel: floor at 9 built 8x8, cube at 5 built 4x4x4, Single read 2, the Delete Tool's label
+     named no size). `place-executor-gates` asserts each notice's text, not only that one was raised (dynamic R-N).
+   - The chaos harness runs the single mine through the real `mineAtHit` and every batch through the real
+     `cellEdits`; a batch's answer arrives half the trimesh lag after the click, so 3 of 4 lags answer late, and a new
+     invariant, I8, reads the record against the voxel grid whenever no answer is owed and at the session's end. A load
+     drops the answers still owed, as the page's reload does. At round 1's placeAtHit I8 went red in 5 of the 16
+     field and origin sessions at seed 1. The Delete Tool's chaos clicks aim at the player's nearest own block 7 times
+     in 10; seed 1 still takes 318 to 529 blocks a file (floor 250).
+   - e2e: `build-placement.spec.js` places a 3x3x3 in the sky, takes it back with the Delete Tool's left click through
+     `GameMethods.terrainVerbs.mine` (dynamic R-O: nothing had driven that closure), checks the payback and the
+     record, that generated ground under it is left, and that the cube places again where the worker holds air. CI is
+     the arbiter: it was not run here.
+   - Mutation runs (`frontend/scripts/dev/mutate.sh`, a throwaway copy of the round-2 tree): 25 real mutants, all 25
+     red, and 2 identity mutants (comments in `cellEdits.js` and `GamePanels.jsx`) survived. Each is named on the
+     `Mutation-Proof` trailer of `a71dc963` or `aa8f469b`; the e2e case (`70cad2bb`) has no red-first run.
+276. **What this round does not change.** The single mine still records at its click and pays from its `block_broken`;
+   the stand-in colliders, the body check and the footprints are item 130's and item 232's, untouched. A page reload
+   with an answer in flight still loses that click (registry REVIEW:l6:edit-answer-lost-at-reload, amended).
+277. **Found, not fixed** (registry): REVIEW:l6:load-hold-empty-column (round-1 dynamic C6b: a load whose saved column
+   was dug empty holds the player about 10 s, then sends them to the origin spawn; the load path's to fix, and with
+   item 271 the Delete Tool no longer empties a column cheaply); the mob-floor.spec.js:227 and ember.spec.js:202
+   sightings on PR #68's run, each on its row.
+278. **(Superseded by item 279: the raise is withdrawn and the ceiling is 652,500 B again.) The index chunk's ceiling goes from 652,500 B to 655,000 B** (`frontend/scripts/ci/bundle-budget.mjs`), in its
+   own commit. Measured with `vite build` on each tree: main at `8579918e` 649,342 B; lane L6's round 1 on it
+   (`aa523a49`) 651,326 B, +1,984 B; main at `feb456e3` (lane L9 landed) 651,328 B, +1,986 B; this lane's head on it
+   653,949 B, so round 2 adds about 637 B (the edit-order ledger, the batched removal's payment, the debris choice;
+   the smash stays in the dragon's lazy chunk). Each lane fit alone; the two together pass the old ceiling by 1,449 B.
+   The growth is the behaviour items 230-233 and 270-272 call for, none of it can load later than the first click,
+   and the new ceiling leaves 1,051 B over that head (869 B after item 271's notice, 654,131 B), so the next lane that
+   grows the boot chunk meets it and says why.
+
+---
+
+## 2026-10-31 (lane L6) — [LOOP] build tools that do what they say: the worker fills only empty cells and answers which, every footprint grows from the face it is aimed at, the Delete Tool removes its footprint, and the panel reads the store
+
+**Decided by the command session's lane L6 builder** under the standing grant (DECISIONS 2026-10-28 item 14), from
+the deep audit's lane L6 (`docs/superpowers/audits/2026-10-30-deep-audit.md` section 4; registry
+`AUDIT:lane:L6-build-tools`). Branch `fix/l6-build-tools`. Items 230-237.
+
+230. **The worker fills only an empty cell, and says which cells it changed.** Only `frontend/src/world/terrain.worker.js`
+   holds the voxels, so a multi-cell placement wrote every cell of its footprint whatever it held: ore, built stone and a
+   loaded chest's wood were replaced with no drop and one debit each, and a cell at y 256 was paid for, sounded and
+   dropped (registry AUDIT:numeric:footprint-overwrites-solid-cells, AUDIT:numeric:place-above-world-ceiling-swallows-block).
+   A footprint now goes to the worker as one `edit_cells` message (`frontend/src/world/cellEdits.js`, the audit's
+   `place_if_empty` widened to the Delete Tool's removal). A cell changes only into the other kind: a block fills only air
+   or water (water stays placeable), and a removal takes only a solid block, so it never drains water. No cell outside
+   y 0 to 255 is written. The reply `cells_edited` names the cells changed and is posted before the meshes; then each
+   chunk the batch names is re-meshed once, stamped with the batch's last seq, so the stand-in of a cell the worker
+   refused retires on that mesh like any other (item 132's registry, unchanged). The listener lives at module scope in
+   `Terrain.jsx`, as long as the worker, so a click's blocks are paid back or recorded whatever unmounts first.
+   Cost: one message and one re-mesh per chunk a click touches, where a 27-cell cube had been 27 messages and 27
+   re-meshes; `update_block` stays for the single mine. **Corrected in round 2:** until item 274 a Delete Tool
+   removal's payment came through the component's `block_broken` listener, so an unmount lost it, and until item 272
+   its removal still posted one `block_broken` per block, so its cost was one message per block taken.
+231. **A placement pays at the click and keeps only what the worker filled** (`frontend/src/world/placeAtHit.js`).
+   Held back before anything is spent: a cell outside the world (notice "No room: the world ends there"), a block the
+   player built, a chest's wood included, since `worldBlocks` records every placed cell ("No room: a block is already
+   there"), and a cell the body fills (item 130's guard and notice, unchanged and first). The rest is paid for at the
+   click, cell by cell up to the stack, so a second click before the answer cannot spend the same blocks; each paid
+   cell's stand-in is made at the click (item 132). On the answer the cells the worker refused are paid back with the
+   "already there" notice, and only the filled cells are recorded, sound, spark, earn the day's ember and count once for
+   Master Builder; a chest becomes a storage chest only if its cell was filled. `placeAtHit` now resolves to the cells
+   filled. **The trade-off:** a stack shorter than its footprint pays for the footprint's first cells, and a solid one
+   among them is paid back rather than moved on to a later empty cell. Sending every cell with a budget would fill more,
+   but each sent cell needs its stand-in at the click, and a stand-in over air the worker then leaves empty is an
+   invisible wall until the answer, the class item 130 closed. **Edge left:** a page reload or world load in the
+   milliseconds between a click and its answer loses that click's paid blocks (registry REVIEW:l6:edit-answer-lost-at-reload).
+232. **Every footprint grows from the face it is aimed at** (`frontend/src/game/buildFootprint.js`). This reverses the
+   2026-08-11 rule in that file, never a numbered item here, that a wall off a floor face grows along +x so as not to be
+   "buried": the cell off a top face is the air above the ground, so the strip ran east whichever way the player faced,
+   sometimes into their own cell (registry AUDIT:ultra:ultra-game-logic-2), and its gate pinned it. A wall is a column
+   rising from the aimed cell, hanging down from a ceiling. A floor or a cube off a side face grows out along the normal
+   and is centred across it, where it had been centred on the aimed cell along the normal too, so a third of it sat in
+   the block it was placed against; a cube's height rises from the cell and falls from a ceiling. The Delete Tool's
+   footprint (item 233) grows into the face. No normal reads as a top face.
+233. **The Delete Tool removes its footprint** (`frontend/src/world/mineAtHit.js`, new). "Delete Tool - Remove multiple
+   blocks" made a right-click build a 3x3x3 cube of the selected block (up to 64 cells) and left a left-click mining one
+   block (registry AUDIT:numeric:delete-tool-places-cube); `buildFootprint`'s comment named a caller that routes delete
+   to mine, and none did. Its left-click now sends every cell of its footprint (a cube into the face: down from a top
+   face, up from a ceiling, centred across a side face) as one removal; the worker takes each solid block and each is paid
+   back as itself by the existing `block_broken`. Water and air are left. A chest with something in it is never sent, as
+   the verb router never mines one (`frontend/src/input/verbRouter.js`); an empty chest goes with its cell, paid as its
+   wood, as a single mine pays it today. One break sound and one Miner count a click, and none when nothing was taken.
+   Its right-click places one block. The economy is the cap's (`MAX_CELLS`, 64 at size 4), the 2026-08-11 call that a
+   multi-cell removal is symmetric with a multi-cell placement because mining pays; it lets a player take up to 64 blocks,
+   ore included, a click, and is kept rather than cut (the panel's footer already said "Left-click to remove"). The single
+   mine moved here from `Terrain.jsx` unchanged, with the `block_broken` payment (`payBrokenBlock`), so the unit suite
+   drives the verbs the router calls; lane L7 (credit from the effect) edits them here. **Superseded by item 271:** the
+   Delete Tool takes back only the blocks the player placed.
+234. **The Building Tools panel reads and writes the store** (`frontend/src/ui/GamePanels.jsx`). It kept its own mode and
+   size and wrote them over the store's on every opening, so a chosen mode was lost each time the panel opened (Single,
+   size 3). It now shows `buildingMode` and `buildSize` and writes them through the store's setters; each tool button
+   carries `aria-pressed`. The store's opening size is 3, the panel's old default, so a fresh player's labels ("Build
+   3-high walls") still hold. The store's `selectedBuildBlock`, which only that effect wrote and nothing read, is removed:
+   half of the reset plan's architecture row A22 (`isWebGLContextLost` is not touched here).
+235. **The gates, red first at `0670a825`'s code** (a scratch copy with the new tests, the new transport module, which
+   nothing in that code calls, and the old mine verb extracted verbatim as `mineAtHit.js`):
+   - `frontend/tests/gates/build-tools-worker-gates.test.js` (new): the real terrain worker and the real `placeAtHit` and
+     `mineAtHit`, 48 seeded placements and removals of random mode, size, face and stack over six boxes whose every
+     cell is set through the worker's own edit table (air, water, natural and ore, built, chests with and without
+     things in them; two boxes against the world's top and bottom), so each cell's content is known here and not read
+     from the code under test. The oracle is exact: the cells filled are the paid cells that held air or water; the
+     debit, the record and the chests follow; what the worker holds afterwards is read back cell by cell through
+     `update_block`. Floors on what the run reached (cells filled, paid cells refused, water filled, cells off the world,
+     built cells met, short stacks, blocks removed, water left, a chest kept and an empty one taken). Two cases drive the
+     worker alone: no cell outside the world changes, and a fully refused batch still re-meshes its chunk with its seq.
+     At the old code, every check soft (scratch only): 28 solid cells overwritten, 23 of 37 placements debited and
+     recorded wrong, 3 cells off the world and 9 chest cells sent.
+   - `frontend/tests/gates/build-tools-table-gates.test.jsx` (new): one row per tool the real panel offers, read from
+     its buttons (a tool without a row fails): picked, the panel closed and reopened (the mode, the size and the picked
+     button kept), then a right-click off a flat ground's top face and off a wall's side and a left-click on the ground,
+     against the real worker on a site set cell by cell, each tool's cells written out by hand. At the old code all 5
+     rows red at the reopen; with that check removed and the mode restored (scratch only): the wall row along +x, the
+     floor and cube off the wall into the wall, the Delete Tool's right-click placing 27 and its left-click taking 1 of 27.
+   - `frontend/tests/gates/build-footprint-gates.test.js`: the pinned sideways wall replaced (5 new cases, red at the old
+     code); `frontend/tests/gates/place-executor-gates.test.jsx`: its cases written for both the old and the new worker
+     protocol, 5 new ones (y 256, a wall run past the top, refused cells paid back and said, a refused chest, a chest
+     and a built block held back) and the ember case extended to a refused cell, all 6 red at the old code.
+   - `frontend/tests/gates/terrain-quest-callback-gates.test.js` drives `mineAtHit` instead of reading `Terrain.jsx`
+     (the source-grep population falls 95 to 94); the puff gate, the invisible-box gate
+     (`frontend/tests/integration/place-clear-of-player-rapier.test.jsx`) and the chaos harness answer the batched edit
+     as the worker does. The chaos driver's left clicks are the Delete Tool's a fifth of the time, through the real
+     `mineAtHit` (floors: 20 clicks, 250 blocks, 12 under the feet, per file), and a session resets the store's world
+     record. Seeds 1 to 8 locally: every invariant green on every file, deepest 0.000 m (CI plays seed 1).
+   - The commit tier on the core commit's tree without the driver's Delete Tool clicks read I3 in one session (cave,
+     60 Hz, lag 2, seed 1, frame 360): a pit the player dug in the two-high tunnel's floor, the arcane form swapped in
+     under the ceiling, its walls generated rock. That is the open REVIEW:chaos-play:rim-wedge, which main's driver no
+     longer reached. The old placement recorded overwritten generated rock as the player's own blocks, and I3's escape
+     test may mine the player's own blocks (REVIEW:chaos-play:own-block-escape-hides-wedge), so with the record honest
+     such a wedge reads red where it read as an own shell. The driver change went into that commit (`b1c8c690`) so the
+     tier is green on it; seeds 1 to 8 at the lane head are green on every invariant of every file, deepest 0.000 m. Both rows carry the sighting; the wedge is not this lane's to fix.
+   - Mutation runs (`frontend/scripts/dev/mutate.sh`, throwaway copies of the lane head): 49 runs, 4 identity mutants
+     (comments in the worker, twice, `buildFootprint.js` and the panel) survived; 44 real mutants, 43 red. Red on the
+     worker gate: the occupancy check removed, water counted solid, the reply naming every cell, the worker's y guard
+     narrowed, a chunk re-meshed only where a cell changed, `placeAtHit`'s off-world and built-block filters, its
+     payback, recording every paid cell, the Delete Tool routed to the single mine, a loaded chest sent, an emptied
+     chest kept, a removal sending off-world cells, the transport answering with no cells. Red on the executor gate:
+     the same filters, payback and record, an unfilled placement crediting, both notices dropped, a refused chest still
+     made a storage chest; on the puff and quest gates, an unfilled placement crediting and an empty removal counting.
+     Red on the table gate: `aria-pressed` false, the panel showing Single whatever the store holds, the slider writing
+     nothing, the store opening at size 1, the Delete Tool's right-click building its cube, the single-mine routing, an
+     unrecorded removal, a removal paying two, the empty answer, and three footprint mutants; on the footprint gate,
+     six. The one real survivor is expected: the worker's occupancy check removed, against the table gate, whose site
+     holds no block in any footprint (the worker gate reds on it). The chaos floors red when the driver's Delete Tool
+     click is never taken.
+236. **e2e.** `build-placement.spec.js` aimed its synthetic hits 4 m under the camera, inside the ground, and passed only
+   because placement overwrote solid cells; it now builds in the sky (y 200) and awaits the place verb's answer.
+   `ore-glow.spec.js` awaits it; `the-cut.spec.js` polls the placed cell's record; `place-clear-of-player.spec.js` reads
+   the placed cell and the stack when its watch settles, not in the click's own handler. CI is the arbiter: none of
+   these ran locally.
+237. **Found, not fixed** (registry rows): REVIEW:chaos-play:rim-wedge and REVIEW:chaos-play:own-block-escape-hides-wedge
+   amended with item 235's sighting; REVIEW:l6:edit-answer-lost-at-reload (item 231's edge);
+   REVIEW:l6:hud-shows-no-build-mode (nothing on the HUD says a build mode is on, so a cube or a removal can surprise
+   a player who closed the panel); REVIEW:l6:delete-tool-harvest-rate (item 233's 64 blocks a click, ore included,
+   unmeasured against the economy).
+
+---
+
 ## 2026-10-31 — [LOOP] the Command Record keeps the glance and gains a terse record below it (amends item 280)
 
 **Kevin, 2026-10-31, after seeing the eli5 page, verbatim:** "the command record looks good as a one-glance summary to

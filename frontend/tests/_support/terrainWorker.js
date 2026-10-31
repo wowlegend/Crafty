@@ -1,6 +1,7 @@
 import { expect } from 'vitest';
 import { surfaceBlockAt } from '../../src/world/climate.js';
 import { CHUNK_SIZE, chunkOf } from '../../src/world/chunkLayout.js';
+import { createCellEdits } from '../../src/world/cellEdits.js';
 
 /**
  * The real terrain worker, driven on the main thread through its message handler, and the shore columns the
@@ -42,6 +43,45 @@ export function workerVoxel(x, y, z) {
   expect(posted.some((m) => m.type === 'chunk_mesh'), `SETUP: the worker never reached chunk (${cx}, ${cz})`).toBe(true);
   const broken = posted.find((m) => m.type === 'block_broken');
   return broken ? broken.payload.blockType : 0;
+}
+
+/** The id at world (x, y, z), asked as workerVoxel asks it and then written back, so the cell is as it was. */
+export function readVoxel(x, y, z) {
+  const id = workerVoxel(x, y, z);
+  if (id !== 0) {
+    const cx = chunkOf(x), cz = chunkOf(z);
+    sendToWorker('update_block', { cx, cz, x: x - cx * CHUNK_SIZE, y, z: z - cz * CHUNK_SIZE, blockType: id });
+  }
+  posted.length = 0;
+  return id;
+}
+
+/**
+ * The io a build verb is handed in Terrain.jsx, over the real worker: `editCells` through world/cellEdits.js, `post` for
+ * a lone update_block, and every reply heard as Terrain.jsx hears it (`cellEdits.heard`: a `cells_edited` settled, a
+ * `block_broken` handed to `onBroken`, which Terrain.jsx pays the block back through). Every post the verb makes is kept
+ * in `sent`, and everything the worker posted back in `received`.
+ *
+ * `deferred`: the worker still takes each message as it is posted, in order, as the real one does, but its replies wait
+ * until `answer()` hands them back, in order, as a busy worker's do: so a click can land between an edit and its answer.
+ */
+export function workerVerbIo({ onBroken, deferred = false }) {
+  const sent = [];
+  const received = [];
+  const held = [];
+  const deliver = (msg) => {
+    sent.push(msg);
+    const from = posted.length;
+    sendToWorker(msg.type, msg.payload);
+    const replies = posted.splice(from);
+    received.push(...replies);
+    if (deferred) held.push(...replies);
+    else for (const r of replies) edits.heard(r);
+  };
+  const edits = createCellEdits(deliver, { onBroken });
+  /** Hands back the replies held so far, oldest first: `n` of them, or all. */
+  const answer = (n = held.length) => { for (const r of held.splice(0, n)) edits.heard(r); };
+  return { sent, received, editCells: edits.request, post: deliver, answer, held };
 }
 
 /**

@@ -6,6 +6,8 @@
  * per-Aspect intervals + timbre; pure (ctx)=>AudioBuffer like every voice.
  */
 
+import { limitPeak } from './headroom.js';
+
 /** A tiny additive-synth arpeggio: notes (Hz) played sequentially with overlap + decay. */
 // MODULE SURFACE IS `MOTIFS` ALONE. The five factories below were each exported and none of them was
 // ever imported anywhere — synthVoices.js takes the MOTIFS table and nothing else. An export is a claim
@@ -36,9 +38,7 @@ const makeArp = (ctx, notes, noteDur, wave, { gain = 0.32, overlap = 0.5, shimme
     }
   });
   // safety headroom: normalize only if the overlap summed past 1
-  let peak = 0;
-  for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
-  if (peak > 0.95) for (let i = 0; i < d.length; i++) d[i] *= 0.95 / peak;
+  limitPeak(d, 0.95);
   return buffer;
 };
 

@@ -40,8 +40,10 @@ const BUDGETS = [
   // the framer-motion features back, about 47.6 KB, which is past the ceiling by itself. A module the lazy panel chunk
   // carries moves that chunk, which has no ceiling (ForgePanel with `motion` read 636,434 B here, under it): the
   // full-motion markers further down hold every chunk. The lookbook probe's installer is not in this chunk either: it is
-  // a lazy chunk fetched on `?lookbook=1` only (DECISIONS 2026-10-31 item 282), held by its marker check below.
-  { name: 'index', max: 652_500, actualAtWrite: 634_075 },
+  // a lazy chunk fetched on `?lookbook=1` only (DECISIONS 2026-10-31 item 282), held by its marker check below. It holds
+  // the build tools' batched edits, their edit order and the Delete Tool beside the pools with lifetimes: lane L6 met this
+  // ceiling, did not raise it, and cut dead code to fit (DECISIONS 2026-10-31 item 279, which supersedes item 278's raise).
+  { name: 'index', max: 652_500, actualAtWrite: 646_232 },
   { name: 'three', max: 740_000, actualAtWrite: 680_700 },
 ];
 

@@ -9,13 +9,10 @@
  */
 import { useSyncExternalStore } from 'react';
 import { spellAnchorRight } from './aspectWheel';
+import { subscribeResize } from '../ui/hudLayout.js';
 
-const subscribe = (onChange) => {
-  window.addEventListener('resize', onChange);
-  return () => window.removeEventListener('resize', onChange);
-};
 const snapshot = () => spellAnchorRight(window.innerHeight);
 
 export function useSpellAnchorRight() {
-  return useSyncExternalStore(subscribe, snapshot, snapshot);
+  return useSyncExternalStore(subscribeResize, snapshot, snapshot);
 }

@@ -1,5 +1,5 @@
 {
-  "_count": 95,
+  "_count": 94,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -86,7 +86,6 @@
     "tests/gates/static-gates.test.js",
     "tests/gates/survival-quests-gates.test.js",
     "tests/gates/talent-choice-gates.test.js",
-    "tests/gates/terrain-quest-callback-gates.test.js",
     "tests/gates/title-screen-brand-gates.test.js",
     "tests/gates/touch-dodge-gates.test.js",
     "tests/gates/touch-purity-gates.test.js",

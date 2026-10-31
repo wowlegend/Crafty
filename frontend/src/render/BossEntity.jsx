@@ -1,5 +1,5 @@
-// BossEntity.jsx — the Shadow Dragon R3F render + its destroyVoxelsInRadius terrain-destruction
-// helper (extracted from AdvancedGameFeatures S3-M4 p4 T4; byte-exact). The capture-determinism
+// BossEntity.jsx — the Shadow Dragon R3F render (extracted from AdvancedGameFeatures S3-M4 p4 T4; byte-exact); its
+// terrain smash is world/bossSmash.js. The capture-determinism
 // freeze (if (isCaptureMode()) { ... } before the bossPositionRef movement) is preserved verbatim.
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -16,7 +16,7 @@ import { bossTierStats } from '../game/bossTier.js';
 import { bossCombat, resetBossCombat } from '../game/bossCombat.js';
 import { stepDragon, dragonCtx, DRAGON_MOVES, windUp, dragonYaw, launchFireball, stepFireball } from '../game/dragonMoves.js';
 import { worldDelta, isWorldFrozen, worldNow } from '../game/worldClock.js';
-import { chunkOf, CHUNK_SIZE } from '../world/loadedChunks.js';
+import { destroyVoxelsInRadius } from '../world/bossSmash.js';
 import { windupRamp } from '../game/attackTelegraph.js';
 import { bossCaptureReset, BOSS_REST } from '../game/captureRest.js';
 import { lookbookDragonHold } from './lookbookState.js';
@@ -29,70 +29,6 @@ import { registerTestHook } from '../devtest/testBridge.js';
 // and step out -- it used to spawn instantly at the player's feet (undodgeable). Heavier than the mob
 // 380ms windup: it's a big AoE you must walk clear of. Tunable -> Kevin FEEL #50.
 const LAVA_WINDUP_MS = 750;
-
-const destroyVoxelsInRadius = (centerPos, radius, maxCount) => {
-    const store = useGameStore.getState();
-    const worker = store.terrainWorker;
-    const getGround = store.getMobGroundLevel;
-    if (!worker || !getGround) return;
-
-    const blocksToBreak = [];
-    const minX = Math.floor(centerPos.x - radius);
-    const maxX = Math.ceil(centerPos.x + radius);
-    const minZ = Math.floor(centerPos.z - radius);
-    const maxZ = Math.ceil(centerPos.z + radius);
-
-    for (let x = minX; x <= maxX; x++) {
-        for (let z = minZ; z <= maxZ; z++) {
-            const dx = x + 0.5 - centerPos.x;
-            const dz = z + 0.5 - centerPos.z;
-            if (dx * dx + dz * dz <= radius * radius) {
-                const groundY = getGround(x, z);
-                if (groundY !== null && !isNaN(groundY)) {
-                    const blockY = Math.floor(groundY);
-                    const dy = blockY + 0.5 - centerPos.y;
-                    if (dx * dx + dy * dy + dz * dz <= radius * radius) {
-                        if (blockY > 1) {
-                            blocksToBreak.push({ x, y: blockY, z });
-                            if (blockY - 1 > 1) {
-                                const dy2 = blockY - 0.5 - centerPos.y;
-                                if (dx * dx + dy2 * dy2 + dz * dz <= radius * radius) {
-                                    blocksToBreak.push({ x, y: blockY - 1, z });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if (blocksToBreak.length === 0) return;
-
-    const countToBreak = Math.min(blocksToBreak.length, maxCount);
-    const chosen = [];
-    for (let i = 0; i < countToBreak; i++) {
-        const randIdx = Math.floor(Math.random() * blocksToBreak.length);
-        chosen.push(blocksToBreak.splice(randIdx, 1)[0]);
-    }
-
-    const newBlocks = new Map(store.worldBlocks);
-    chosen.forEach(b => {
-        const cx = chunkOf(b.x); // the ONE chunk index (world/loadedChunks.js, review #5 R6.7)
-        const cz = chunkOf(b.z);
-        const lx = b.x - cx * CHUNK_SIZE;
-        const lz = b.z - cz * CHUNK_SIZE;
-
-        worker.postMessage({
-            type: 'update_block',
-            payload: { cx, cz, x: lx, y: b.y, z: lz, blockType: 0 }
-        });
-
-        newBlocks.set(`${b.x}_${b.y}_${b.z}`, 0);
-    });
-
-    store.setWorldBlocks(newBlocks);
-};
 
 // Dragon SILHOUETTE features (iter-172, the mob-distinctness treatment for the apex creature): static
 // bold-flat boxes in the dragon body-local frame (dragon faces +Z, head/eyes forward). Swept-back horns,

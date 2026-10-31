@@ -29,8 +29,9 @@ import { nearestLandmark, landmarkAt } from './shrines.js';
 import { HubRender } from '../render/HubRender';
 import { HEARTH_Y, HEARTH_FIRE } from './homeAnchor.js';
 import { chestHasItems } from '../game/chestState.js';
-import { blockForId } from './blockIds';
 import { placeAtHit } from './placeAtHit.js';
+import { mineAtHit, payBrokenBlock } from './mineAtHit.js';
+import { createCellEdits } from './cellEdits.js';
 import { mineTarget } from './buildTarget.js';
 import { createPlacedCellColliders, createEditSeq } from './placedCellColliders.js';
 import { markChunkLoaded, markChunkUnloaded, loadedChunkSet, chunkOf, CHUNK_SIZE } from './loadedChunks.js';
@@ -40,6 +41,11 @@ const worker = new TerrainWorker();
 worker.postMessage({ type: 'init', payload: { seed: useGameStore.getState().worldSeed } });
 // The placement numbering the worker echoes on its meshes lives exactly as long as the worker (world/placedCellColliders.js).
 const nextEditSeq = createEditSeq();
+// The build verbs' answers from the worker (a batch's cells_edited, a lone removal's block_broken), heard for as long as
+// the worker lives, not while Terrain is mounted, so what a click spent or took is paid back and recorded whatever
+// unmounts before the answer (world/cellEdits.js).
+const cellEdits = createCellEdits((msg) => worker.postMessage(msg), { onBroken: payBrokenBlock });
+worker.addEventListener('message', (e) => cellEdits.heard(e.data));
 
 const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount, placedCells }) => {
     // Rules-of-Hooks: do NOT early-return before the hooks below. An empty<->non-empty meshData
@@ -538,17 +544,6 @@ export const MinecraftWorld = React.memo(() => {
                 if (payload.cx === 0 && payload.cz === 0) {
                     useGameStore.getState().setIsSpawnChunkLoaded(true);
                 }
-            } else if (type === 'block_broken') {
-                // Phase 12: Collect block logic
-                const store = useGameStore.getState();
-                // S6: ore codes 10-13 drop their LOWERCASE block keys (the keys the Forge prices in, game/forge.js,
-                // and the BLOCK_TYPES render path; NOT display names, which no price names).
-                // R4a: this used to be a SECOND hand-written literal, independent of the place-map above.
-                // They drifted (that is the whole bug). Both now derive from src/world/blockIds.js.
-                const blockName = blockForId(payload.blockType);
-                if (blockName && store.addToInventory) {
-                    store.addToInventory(blockName, 1);
-                }
             } else if (type === 'load_modifications_done') {
                 // Wipe the live world so the worker can re-stream it with the save's block edits applied.
                 // The loaded-chunk registry empties itself as each ChunkMesh unmounts (its layout-effect cleanup),
@@ -784,41 +779,9 @@ export const MinecraftWorld = React.memo(() => {
             };
         };
 
-        const mine = (h) => {
-            if (!h) return;
-            const store = useGameStore.getState();
-            // DELETE
-            const tx = h.targetedX;
-            const ty = h.targetedY;
-            const tz = h.targetedZ;
-
-            const cx = chunkOf(tx);
-            const cz = chunkOf(tz);
-            const lx = tx - cx * CHUNK_SIZE;
-            const lz = tz - cz * CHUNK_SIZE;
-
-            worker.postMessage({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: 0 } });
-            playBlockBreak(h.hitPoint);
-
-            // Update worldBlocks in Zustand Map
-            const newBlocks = new Map(store.worldBlocks);
-            newBlocks.set(`${tx}_${ty}_${tz}`, 0);
-            store.setWorldBlocks(newBlocks);
-
-            // Clean up chest in Zustand Map
-            if (store.chests && store.chests.has(h.targetCoords)) {
-                const newChests = new Map(store.chests);
-                newChests.delete(h.targetCoords);
-                useGameStore.setState({ chests: newChests });
-            }
-
-            // M6: a mined block advances the Miner quest + Deep Digger achievement (the callback is
-            // registered by QuestSystem; mine() is the 1-action-1-count verb -- NOT the worker handler).
-            store.onBlockBreak?.();
-        };
-
-        // The executor lives in placeAtHit.js so the unit suite drives the real placement path; the worker stays here.
-        const place = (h) => placeAtHit(h, { post: (msg) => worker.postMessage(msg), playPlace: playBlockPlace, cells: placedCells });
+        // The executors live in mineAtHit.js and placeAtHit.js so the unit suite drives the real verbs; the worker stays here.
+        const mine = (h) => mineAtHit(h, { post: (msg) => worker.postMessage(msg), editCells: cellEdits.request, playBreak: playBlockBreak });
+        const place = (h) => placeAtHit(h, { editCells: cellEdits.request, playPlace: playBlockPlace, cells: placedCells });
 
         const open = (h) => {
             if (!h || !h.chestTargeted) return;

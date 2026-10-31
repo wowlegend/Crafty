@@ -243,7 +243,12 @@ test.describe('the Cut', () => {
       expect(before.at, `SETUP: aim ${i + 1} targets a cell that already holds a placed block`).toBeNull();
       await page.mouse.click(640, 400, { button: 'right' });
       const want = Math.max(0, 2 - i);
-      if (i < 3) await expect.poll(slotCount, { message: `right-click ${i + 1} did not lower the hotbar's dirt to ${want}` }).toBe(want);
+      if (i < 3) {
+        await expect.poll(slotCount, { message: `right-click ${i + 1} did not lower the hotbar's dirt to ${want}` }).toBe(want);
+        // The store records the cell once the worker has answered that it filled it (world/placeAtHit.js).
+        await expect.poll(() => page.evaluate((c) => window.useGameStore.getState().worldBlocks.get(c) ?? null, cell),
+          { message: `right-click ${i + 1}'s cell ${cell} was never recorded as placed` }).not.toBeNull();
+      }
       // The refusal and its notice come from the same place() call, so the notice showing means a wrong placement had
       // its chance to land.
       else await expect(page.getByText('No Dirt left').first(), 'the refused right-click told the player nothing').toBeVisible({ timeout: 15000 });
