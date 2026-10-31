@@ -8,19 +8,23 @@ import { bootDev, startPlayActive } from './_boot.js';
 // Audio, so tests/gates/apple-audio-gates.test.jsx runs that route on a model; this runs it in Chromium. Before any
 // script on the page, the media element, the context and createMediaElementSource are wrapped so the spec can see them,
 // and each wrapper calls the real one (eslint.config.js bans a stub here). The spec enters play the way the suite does
-// (_boot.js startPlayActive: the `low` tier, the input gate held), makes one trusted key press (F2, which the game binds
-// to nothing; a keydown carries user activation), and reads that the day track plays through a running context and its
-// clock advances, that Mute All pauses every track and that unmute brings the day track back. Every read of the page is
-// bounded, so a page that stops answering fails naming the step rather than at the test's budget.
+// (_boot.js startPlayActive: the `low` tier, the input gate held), reads that the day track is paused, makes one
+// trusted key press (F2, which the game binds to nothing; a keydown carries user activation), and reads that the day
+// track plays through a running context and its clock advances, that Mute All pauses every track and that unmute
+// brings the day track back. Every read of the page is bounded, so a page that stops answering fails naming the step
+// rather than at the test's budget.
 //
-// Entered from the title instead (a trusted click on Start Adventure), it timed out on two of its first three CI runs
-// (41203933423 and 41208277637, shard 6) with the page not answering, and passed in 53.8 s on the other (41206449396);
-// the Start tap is tests/gates/apple-audio-gates.test.jsx's, on the real title menu.
+// Entered from the title instead (a trusted click on Start Adventure), its page stopped answering on two of its first
+// three CI runs. Dispatched runs with the music route switched off stopped answering too, once before any click, with
+// the runner's memory climbing until it was shut down (DECISIONS 2026-10-31 items 302 and 306, registry
+// REVIEW:l10:music-e2e-title-hang), so the title entry stays out of this spec; the Start tap is
+// tests/gates/apple-audio-gates.test.jsx's, on the real title menu.
 //
 // WHAT THIS DOES NOT CHECK: WebKit or iOS (CI runs Chromium only; the device run is Kevin's, registry
-// AUDIT:lane:L10-apple-audio-and-device-run); what reaches the speakers (Playwright's Chromium runs with its audio
+// REVIEW:l1:ios-device-run); what reaches the speakers (Playwright's Chromium runs with its audio
 // muted, so the level is read from the model in the jsdom gate); the 1 s bound on Mute All, which the jsdom gate holds
-// on a fake clock, where this allows 3 s for a loaded runner; the title's Start, which the jsdom gate drives.
+// on a fake clock, where this allows 3 s for a loaded runner; the title's Start, which the jsdom gate drives; the
+// gesture's context recovery, since the context already runs before the key press here.
 
 /** A page read that fails naming its step when the page stops answering, instead of hanging to the test's budget. */
 async function read(page, step, fn, ms = 15000) {
@@ -78,6 +82,12 @@ test.describe('the soundtrack in Chromium', () => {
       .toEqual(['boss.mp3', 'day.mp3', 'night.mp3']);
 
     await startPlayActive(page);
+    // Before the key press the day track must be paused, or the reads below could not tell a track the gesture started
+    // from one the browser let play on its own. The context is already running here on CI (dispatched run 41218278485),
+    // so this spec does not see the gesture's context recovery; the jsdom gate holds that.
+    const before = await state('before the key press');
+    const dayBefore = before.tracks.find((t) => t.src === 'day.mp3');
+    expect(dayBefore?.paused, `SETUP: the day track plays before any gesture: ${JSON.stringify(before)}`).toBe(true);
     await page.keyboard.press('F2');
     await page.waitForFunction(dayPlaying, null, { timeout: 30000, polling: 250 })
       .catch(async (e) => { throw new Error(`the day track is not playing through a running context after a key press: ${JSON.stringify(await state('after the key press'))} — ${e.message}`); });
