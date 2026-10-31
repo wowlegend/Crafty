@@ -117,12 +117,16 @@ function notedWorld(saves, id) {
  * the initial state, and `bootHeld` tells the title which world could not be opened: a page that never renders is worse
  * than a world that starts over beside the broken slot. A plain visit does not load a world whose last load never ran
  * (BOOT_ATTEMPT_KEY): the title says so and offers to open it anyway, which is a note, and a note loads its world.
+ * The empty placeholder worlds past the few newest are deleted first (saves.pruneEmptySlots, when given).
  * @param {{ store: { getState: () => object, setState: (p: object, replace?: boolean) => void, getInitialState: () => object },
- *   session: Storage|null, saves: { listWorlds: () => object[], readWorld: (id: string) => object|null } }} deps
+ *   session: Storage|null, saves: { listWorlds: () => object[], readWorld: (id: string) => object|null,
+ *   pruneEmptySlots?: (keepId: string|null) => string[] } }} deps
  * @returns {{ kind: 'world'|'fresh'|'none'|'held', id?: string|null }}
  */
 export function bootWorld({ store, session, saves }) {
   const note = session ? takeBootNote(session) : null;
+  // Before the choice, so the world the page loads is never one it deletes (worldSaves.js pruneEmptySlots).
+  saves.pruneEmptySlots?.(note && note.world);
   if (note && note.fresh) {
     store.getState().startNewWorld(note.world);
     return { kind: 'fresh', id: note.world };

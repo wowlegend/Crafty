@@ -13,7 +13,7 @@ import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
 import { addShake, decayShake } from '../game/cameraShakeChannel.js';
-import { writeWorld, listWorlds, mintWorldId, setActiveWorldId } from '../game/worldSaves.js';
+import { writeWorld, listWorlds, mintWorldId, setActiveWorldId, pruneEmptySlots } from '../game/worldSaves.js';
 import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward, gameTimeForTimeOfDay } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
@@ -1320,7 +1320,8 @@ export const useGameStore = create((set, get) => ({
         const built = buildSaveData(get(), { position });
         const data = get().isAlive === false ? asRespawned(built) : built;
         let id = get()._sessionWorldId;
-        if (!id) {
+        const minted = !id;
+        if (minted) {
             id = mintWorldId();   // collision-proof: 'local_' + Date.now() alone can repeat within a ms
             set({ _sessionWorldId: id });
             setActiveWorldId(id);
@@ -1338,7 +1339,11 @@ export const useGameStore = create((set, get) => ({
         const saved_at = new Date().toISOString();
         const meta = { name, created_at, is_owner: true, saved_at };
         if (existing && 'is_public' in existing) meta.is_public = existing.is_public;
-        const ok = writeWorld(id, meta, data);
+        // A write that fails for room deletes every empty placeholder world but this one and tries once more; a new slot
+        // leaves the newest few (worldSaves.js pruneEmptySlots).
+        let ok = writeWorld(id, meta, data);
+        if (!ok && pruneEmptySlots(id, 0).length) ok = writeWorld(id, meta, data);
+        if (ok && minted) pruneEmptySlots(id);
         if (ok) set({ _slotSavedAt: saved_at, _saveFailing: false });
         else if (!get()._saveFailing) {
             // worldSaves swallows the storage's throw; without this a full storage stopped every save with no word.

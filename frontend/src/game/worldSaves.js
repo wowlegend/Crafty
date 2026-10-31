@@ -55,6 +55,43 @@ export function writeWorld(id, meta, saveData) {
   return saveIndex(list);
 }
 
+/** The most worlds nobody named and nothing was earned in that a browser keeps (pruneEmptySlots). */
+export const KEEP_EMPTY_SLOTS = 3;
+
+// A world an autosave minted and the player never named: the `Save_<time>` placeholder (saveSchema.js buildSaveData).
+const placeholderName = (w) => !!w && typeof w.name === 'string' && w.name.startsWith('Save_');
+const count = (v) => (Array.isArray(v) ? v.length : 0);
+// Nothing earned in it: level 1, no XP, no coins, no block edited, no chest, not won, no quest claimed. A save with no
+// progression slice is from before the slice, and what it holds cannot be read off it, so it is never empty.
+function holdsNothing(data) {
+  const p = data && data.progression;
+  if (!p || typeof p !== 'object') return false;
+  return !(p.level > 1) && !(p.totalXP > 0) && !(p.coins > 0) && !count(data.world_data?.blocks) && !count(data.chests)
+    && !data.game_state?.gameWon && !count(data.questState?.completedQuestIds);
+}
+
+/**
+ * Delete the empty placeholder worlds beyond the `keep` newest (a placeholder name, nothing earned in it). `keepId`, the
+ * world a page plays, is never deleted, and counts among those kept. Until lane L2 every visit minted one of these and
+ * nothing deleted one; each costs storage, and at the quota every save stops. Returns the ids deleted.
+ * @param {string|null} [keepId]
+ * @param {number} [keep]
+ */
+export function pruneEmptySlots(keepId = null, keep = KEEP_EMPTY_SLOTS) {
+  const gone = [];
+  let kept = 0;
+  for (const w of listWorlds()) {
+    if (!placeholderName(w) || !holdsNothing(readWorld(w.id))) continue;
+    if (w.id === keepId || kept < keep) kept++;
+    else gone.push(w.id);
+  }
+  if (gone.length) {
+    saveIndex(listWorlds().filter((w) => !gone.includes(w.id)));
+    for (const id of gone) safeRemove(BLOB_PREFIX + id);
+  }
+  return gone;
+}
+
 export function deleteWorld(id) {
   saveIndex(listWorlds().filter((w) => w.id !== id));
   safeRemove(BLOB_PREFIX + id);
