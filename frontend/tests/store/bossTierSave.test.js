@@ -33,7 +33,7 @@ describe('boss tier save round-trip (C3)', () => {
 
   it('a RETURN fight in progress comes back at its own HP, above the tier-0 max', () => {
     const hp = bossTierStats(1).health - 50; // > 700
-    const s = reload({ gameWon: true, bossTier: 1, bossKillNight: 4, bossActive: true, bossDefeated: false, bossHealth: hp, nightCount: 9 });
+    const s = reload({ gameWon: true, bossTier: 1, bossKillNight: 4, bossActive: true, bossDefeated: false, bossHealth: hp, nightCount: 9, level: 9 });
     expect(s.bossActive).toBe(true);
     expect(s.bossHealth).toBe(hp);
   });

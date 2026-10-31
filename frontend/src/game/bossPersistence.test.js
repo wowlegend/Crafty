@@ -145,15 +145,27 @@ describe('hydrateBossState — tiers', () => {
 
   it('round-trips a RETURN fight in a won game — a tiered save is trusted, not overruled by the win', () => {
     const live = { bossActive: true, bossHealth: 900, bossDefeated: false, bossTier: 1, bossKillNight: 20 };
-    const out = hydrateBossState(JSON.parse(JSON.stringify(serializeBossState(live))), { gameWon: true, nightCount: 25 });
+    const out = hydrateBossState(JSON.parse(JSON.stringify(serializeBossState(live))), { gameWon: true, nightCount: 25, level: 9 });
     expect(out).toMatchObject({ active: true, health: 900, defeated: false, tier: 1, killNight: 20 });
   });
 
   it('sizes the fight from the TIER: health clamps to that tier\'s max, and the phase reads against it', () => {
-    const out = hydrateBossState({ health: 99999, active: true, defeated: false, tier: 1, killNight: 3 }, { gameWon: true });
+    const due = { gameWon: true, nightCount: 6, level: 9 }; // a return fight is woken only once it is due
+    const out = hydrateBossState({ health: 99999, active: true, defeated: false, tier: 1, killNight: 3 }, due);
     expect(out.health).toBe(T1);
-    const mid = hydrateBossState({ health: T1 * 0.5, active: true, defeated: false, tier: 1, killNight: 3 }, { gameWon: true });
+    const mid = hydrateBossState({ health: T1 * 0.5, active: true, defeated: false, tier: 1, killNight: 3 }, due);
     expect(mid.phase).toBe(phaseForHealth(T1 * 0.5, T1));
+  });
+
+  it('a tier not slain whose return the save does not hold due, by its nights or by its level, loads slain (item 290)', () => {
+    const fight = { health: 700, active: true, defeated: false, tier: 1, killNight: 4 };
+    const slain = { active: false, health: 0, defeated: true, tier: 1, killNight: 4 };
+    expect(hydrateBossState(fight, { gameWon: true, nightCount: 7, level: 9 }), 'control: the due return').toMatchObject({ active: true, health: 700 });
+    expect(hydrateBossState(fight, { gameWon: true, nightCount: 6, level: 9 }), 'a night short').toMatchObject(slain);
+    expect(hydrateBossState(fight, { gameWon: true, nightCount: 7, level: 8 }), 'a level short').toMatchObject(slain);
+    expect(hydrateBossState({ ...fight, active: false }, { gameWon: true, nightCount: 7 }), 'no level to vouch for it').toMatchObject(slain);
+    expect(hydrateBossState({ ...fight, tier: 0, killNight: 0 }, { nightCount: 0, level: 5 }), 'tier 0 is the first fight, never a return')
+      .toMatchObject({ active: true, health: 700, defeated: false, tier: 0 });
   });
 
   it('a slain tier waits: defeated, inactive, its kill night kept', () => {

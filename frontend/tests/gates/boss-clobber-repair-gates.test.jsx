@@ -6,8 +6,12 @@ import { useGameStore } from '../../src/store/useGameStore';
 import { blightHeartSite } from '../../src/world/blightHeart';
 import { bossTierStats } from '../../src/game/bossTier.js';
 import { buildSaveData } from '../../src/game/saveSchema.js';
-import { bootWorld } from '../../src/game/worldBoot.js';
+import { bootWorld, settleBoot } from '../../src/game/worldBoot.js';
 import * as worldSaves from '../../src/game/worldSaves.js';
+// The slot a wiped save became on the live 8579918e build (lane L2's boot, before this repair): booted, the player walked
+// to the lair, the poll woke the 700 HP tier-1 dragon whose return was not due, and the autosave wrote it as a fight.
+// Made by the round-1 dynamic review's probe on that build's own code.
+import WOKEN_UNDER_8579918E from '../fixtures/boss-woken-wipe-8579918e.json';
 
 /**
  * A SAVE THE CONTEXT-LOSS RESUME WIPED GETS ITS SLAIN DRAGON BACK (DECISIONS 2026-10-31 item 250; deep audit lane L3's
@@ -54,6 +58,7 @@ function bootAndArrive() {
   expect(booted, 'SETUP: the boot did not load the slot').toEqual({ kind: 'world', id: ID });
   useGameStore.setState({ addNotification: vi.fn(), getMobGroundLevel: null, isCaptureMode: false, playerPosition: AT_LAIR });
   const hook = renderHook(() => useBossSystem(9));
+  settleBoot(sessionStorage, useGameStore.getState()._bootAttempt); // the world ran, so the next visit loads it again
   act(() => { vi.advanceTimersByTime(3200); }); // two of the arrival poll's 1500 ms ticks
   return hook;
 }
@@ -66,13 +71,64 @@ describe('a save the resume wiped loads its slain dragon (item 250)', () => {
   beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); sessionStorage.clear(); });
   afterEach(() => { cleanup(); vi.useRealTimers(); });
 
-  it('presence: the same shape in a slot created after the window is a fight, and it wakes at the lair at 700', () => {
-    writeSlot({ created_at: AFTER_WINDOW });
+  it('presence: a return fight that is due, suspended at 700 in a save that ran the repair, wakes at the lair at 700', () => {
+    writeSlot({ created_at: AFTER_WINDOW, migrated: ['talents.cut', REPAIR], nightCount: 7 });
     const hook = bootAndArrive();
     expect(hook.result.current.bossActive, 'the poll did not wake the fight: the instrument cannot see a wake').toBe(true);
-    expect(hook.result.current.bossHealth).toBe(700);
+    expect(hook.result.current.bossHealth, 'a due return fight lost the HP it was suspended at').toBe(700);
+    expect(useGameStore.getState().bossDefeated).toBe(false);
+  });
+
+  it('a slot created after the window, the wipe\'s shape with its return not due: slain on every load (a tab left on an old build)', () => {
+    writeSlot({ created_at: AFTER_WINDOW });
+    const hook = bootAndArrive();
+    expect(encounterIn(useGameStore.getState()), 'a tier-1 dragon not slain and not due loaded as a fight')
+      .toEqual({ health: 0, active: false, defeated: true, tier: 1, killNight: 4 });
+    expect(hook.result.current.bossActive, `a 700 HP tier-1 dragon woke with its return not due: ${JSON.stringify(notices())}`).toBe(false);
     saveNow();
     expect(disk().migrated, 'a slot the repair passed over is not recorded, so a later load would look again').toContain(REPAIR);
+  });
+
+  it('the save the live 8579918e build wrote after waking a wiped slot at the lair loads slain, and again on the next load', () => {
+    const { id: _id, name, created_at, is_owner, saved_at: _at, ...save } = WOKEN_UNDER_8579918E;
+    expect(save.game_state.bossState, 'SETUP: the fixture is not the woken wipe')
+      .toEqual({ health: 700, active: true, defeated: false, tier: 1, killNight: 4 });
+    expect(worldSaves.writeWorld(ID, { name, is_owner, created_at }, save), 'SETUP: the slot did not write').toBe(true);
+    for (const load of ['first', 'second']) {
+      const hook = bootAndArrive();
+      expect(encounterIn(useGameStore.getState()), `the ${load} load kept the woken wipe as a fight`)
+        .toEqual({ health: 0, active: false, defeated: true, tier: 1, killNight: 4 });
+      expect(hook.result.current.bossActive, `the ${load} load woke the dragon at 700: ${JSON.stringify(notices())}`).toBe(false);
+      saveNow();
+      expect(disk().game_state.bossState, `the save after the ${load} load wrote the fight back`)
+        .toEqual({ health: 0, active: false, defeated: true, tier: 1, killNight: 4 });
+      cleanup();
+    }
+  });
+
+  it('a stale tab writes the wipe after the repair is recorded: it loads slain all the same, and on the next load', () => {
+    for (const bossState of [WIPED, { ...WIPED, active: true }]) {
+      writeSlot({ bossState, migrated: ['talents.cut', REPAIR] });
+      for (const load of ['first', 'second']) {
+        const hook = bootAndArrive();
+        expect(encounterIn(useGameStore.getState()), `${JSON.stringify(bossState)}, ${load} load: not slain`)
+          .toEqual({ health: 0, active: false, defeated: true, tier: 1, killNight: 4 });
+        expect(hook.result.current.bossActive).toBe(false);
+        saveNow();
+        cleanup();
+      }
+    }
+  });
+
+  it('the repair of a save not yet recorded matches only the wipe: a due return active at 700 or suspended at 650 keeps its fight', () => {
+    for (const bossState of [{ ...WIPED, active: true }, { ...WIPED, health: 650 }]) {
+      writeSlot({ bossState, nightCount: 7 });
+      const hook = bootAndArrive();
+      expect(useGameStore.getState().bossDefeated, `${JSON.stringify(bossState)} was repaired as the wipe`).toBe(false);
+      expect(hook.result.current.bossActive, `${JSON.stringify(bossState)} did not wake`).toBe(true);
+      expect(hook.result.current.bossHealth, `${JSON.stringify(bossState)} lost its HP`).toBe(bossState.health);
+      cleanup();
+    }
   });
 
   it('a wiped slot from the window: slain, the lair quiet while the return is not due, and the save says so', () => {
@@ -103,14 +159,6 @@ describe('a save the resume wiped loads its slain dragon (item 250)', () => {
     expect(hook.result.current.bossActive, 'the due return did not wake at the lair').toBe(true);
     expect(hook.result.current.bossHealth, 'the return woke at the wipe\'s HP, not its tier\'s').toBe(bossTierStats(1).health);
     expect(notices(), 'the return woke without its entrance').toContain('notice.bossAwakens');
-  });
-
-  it('a save that already ran the repair is not repaired again: a later fight suspended at 700 keeps its HP', () => {
-    writeSlot({ migrated: ['talents.cut', REPAIR] });
-    const hook = bootAndArrive();
-    expect(useGameStore.getState().bossDefeated, 'the repair ran twice on one save').toBe(false);
-    expect(hook.result.current.bossActive).toBe(true);
-    expect(hook.result.current.bossHealth).toBe(700);
   });
 
   it('a tier-0 save of the wipe\'s shape is the fresh fight it already loads as, and the repair is recorded', () => {

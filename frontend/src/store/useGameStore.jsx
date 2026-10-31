@@ -1160,7 +1160,7 @@ export const useGameStore = create((set, get) => ({
             // return from the night it was loaded on. A save the context-loss resume wiped loads its slain dragon
             // (saveSchema.js BOSS_WIPE_REPAIR, DECISIONS 2026-10-31 item 250).
             const boss = hydrateBossState(owed.bossState || saveData.game_state?.bossState, {
-                gameWon, nightCount: saveData.progression?.nightCount ?? state.nightCount,
+                gameWon, nightCount: saveData.progression?.nightCount ?? state.nightCount, level: saveData.progression?.level ?? state.level,
             });
 
             // Full progression slice — tolerate pre-A3 saves (no `progression`) by falling back to current state.
