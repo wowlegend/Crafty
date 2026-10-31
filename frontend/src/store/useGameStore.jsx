@@ -521,6 +521,26 @@ export const useGameStore = create((set, get) => ({
     gameCamera: null,
     setGameCamera: (camera) => set({ gameCamera: camera }),
 
+    // Published by the system that owns each, null until it mounts (tests/scripts/store-keys-declared.test.js: a key
+    // set with setState and absent here is invisible to getInitialState, so a new world and a failed boot kept it).
+    playAttackSounds: null, // App.jsx: the swing and the hit sound of a melee attack
+    playHitSound: null, // App.jsx
+    playDefeatSound: null, // App.jsx
+    playSpatialSound: null, // render/SpatialAudioController.jsx
+    requestPointerLock: null, // GameScene.jsx: the canvas's lock request
+    spawnMob: null, // systems/SpawnerSystem.jsx
+    spawnEnemyProjectile: null, // systems/EnemyProjectileSystem.jsx
+    triggerGPUSparks: null, // world/GPUSparkSystem.jsx
+    spawnDeterministicCast: null, // EnhancedMagicSystem.jsx, for the visual fixtures (devtest/devBridge.js)
+    onNightSurvived: null, // QuestSystem.jsx: the night quest's counter
+    onLevelChanged: null, // QuestSystem.jsx: the level quest's counter, called by SimpleExperienceSystem.jsx
+    // The primary action's seams (input/primaryInput.js): the touch overlay presses and releases through them.
+    performVerb: null,
+    pressPrimary: null,
+    releasePrimary: null,
+    debugChunks: null, // world/Terrain.jsx: the loaded chunks, for the debug overlay
+    shrineReached: false, // QuestSystem.jsx: a frontier shrine reached this session, for the HUD objective
+
     // damageMob / checkMobCollision DELETED 2026-08-11 along with their setters: a write-only mirror of
     // the GameMethods singleton that all eleven live consumers actually read. Two publication mechanisms
     // where one is read is worse than one -- the next author has to work out which is authoritative.
@@ -625,7 +645,8 @@ export const useGameStore = create((set, get) => ({
     respecTalentPoints: () => set((state) => {
         const r = respecTalents(state.unlockedTalents, state.talentPoints);
         return {
-            ...r,
+            unlockedTalents: r.unlockedTalents,
+            talentPoints: r.talentPoints,
             // R1.4: refunding a verb must also END what the verb is doing, or respec is a free exploit —
             // hold a beast form or a grab through it and keep both. These are the same store flags each
             // Aspect SM reads as its ACTIVE state, so clearing them IS the SM's own exit path (the form's
