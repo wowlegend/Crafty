@@ -10,9 +10,9 @@
  * WHAT IT KEEPS. The as-of stamp between `<!-- asof:begin -->` and `<!-- asof:end -->` is copied from the page byte for
  * byte, because `artifact-currency.mjs --stamp` owns it; a page without exactly one stamp is refused, not re-stamped.
  *
- * WHAT IT READS. The data file, and memory/registry.jsonl for the health section's counts, so that row cannot go
- * stale. CI, the deploy and the PRs are read by whoever refreshes the data (gh, curl) and written there with the time
- * they were read: this script makes no network call.
+ * WHAT IT READS. The data file, and memory/registry.jsonl for the health section's open-work count, which is counted
+ * when the page is written and ages like the rest of it. CI, the deploy and the PRs are read by whoever refreshes the
+ * data (gh, curl) and written there with the time they were read: this script makes no network call.
  *
  * WHY `n()` IS NOT `toFixed(1)`. It rounds an exact half to even, as the coordinates on the published page were
  * written; toFixed rounds it up, which would move every x.25 by a tenth and change the drawings' bytes.
@@ -388,7 +388,7 @@ function dayLabel(iso) {
 
 function link(r) {
   if (r.pr) return `<a href="${REPO}/pull/${r.pr}">#${r.pr}</a>`;
-  if (r.commit) return `<a href="${REPO}/commit/${r.commit}">commit</a>`;
+  if (r.commit) return `<a href="${REPO}/commit/${r.commit}">change</a>`;
   if (r.href) return `<a href="${esc(r.href)}">${esc(r.label)}</a>`;
   return '';
 }
@@ -409,9 +409,13 @@ function registryRow() {
   if (all.length === 0) throw new Error(`${REGISTRY}: no rows, so there is nothing to count`);
   const open = all.filter((r) => r.state === 'open');
   const closed = all.filter((r) => r.state === 'closed').length;
-  const high = open.filter((r) => r.severity === 'HIGH').length;
+  const highRows = open.filter((r) => r.severity === 'HIGH');
+  const hunt = highRows.filter((r) => String(r.id).startsWith('AUDIT:')).length;
   const other = all.length - open.length - closed;
-  return { lead: 'Registry', text: `${all.length} rows: ${open.length} open (${high} HIGH), ${closed} closed${other ? `, ${other} other` : ''}.` };
+  return {
+    lead: 'Open work',
+    text: `${open.length} items open (${highRows.length} high priority, ${hunt} from the bug hunt), ${closed} closed${other ? `, ${other} other` : ''}.`,
+  };
 }
 
 function details(d) {

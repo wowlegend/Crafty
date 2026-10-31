@@ -31,16 +31,20 @@ verbose ... you decide the best shape for this command record html."
    each, 233 visible words. Below a ground-line divider, "The details": one fact a row, about 15 words at most, no
    paragraphs, every PR linked on GitHub, in six parts: what landed since the 2026-10-27 handover by UTC day (every
    merged PR from #22, and the direct landings that matter: Wave 1, branch protection, the deep audit's record, the
-   Command Record's versions); the bug hunt (the invisible box, the audit's 8 HIGH rows, the 3 HIGH rows the lanes'
-   reviews found, the twelve lanes and their state); the non-routine calls, each with its item; in flight and next;
-   health (CI on main, the live site, the registry's counts); and the three things waiting on Kevin, each with why.
-   Version 14, the first of this shape, carries 1,563 detail words (1,796 visible in all), counted over the rendered
-   text in headless Chromium at 1200 px and 390 px; at 390 px nothing scrolls sideways.
+   Command Record's versions); the bug hunt (the invisible box, the audit's 8 HIGH rows, the 3 HIGH rows the fix lanes
+   found, the twelve lanes and their state); a selection of the non-routine calls, each with its item; in flight and
+   queued, in no promised order; health (the checks, the live site, the open-work count); and the three things waiting
+   on Kevin, each with why. The rows use plain words a non-engineer reads (no seam, oracle, cursor, registry, bus or
+   the like), and no row claims more than its evidence: the iPhone and iPad crash fix is "should no longer crash" until
+   Kevin plays it, and a figure names its screen. Version 14, the first of this shape, carries 1,667 detail words
+   (1,900 visible in all), counted over the rendered text in headless Chromium at 1200 px and 390 px; at 390 px
+   nothing scrolls sideways, and no row's text is over 15 words.
    - **One data file and one script.** `docs/superpowers/command-record.json` holds every fact: the glance's captions
      and counts, and every detail row with a `src` naming where it was read (not shown on the page).
      `node frontend/scripts/ci/command-record.mjs` writes the page from it, copies the as-of stamp between its markers
-     byte for byte, and counts `memory/registry.jsonl` itself so that row cannot go stale; `--check` exits 1 when the
-     page is not what the data writes (a manual command; no tier runs it). The script is the eli5 build's Python
+     byte for byte, and counts `memory/registry.jsonl` itself, so the open-work row is counted when the page is
+     written and ages with it; the CI and live-site rows are dated by their read time, and the page's own as-of stamp
+     says its age. `--check` exits 1 when the page is not what the data writes (a manual command; no tier runs it). The script is the eli5 build's Python
      generator ported to Node with no new dependency; with the detail removed and the layout comment restored, its
      output is byte-identical to the page at `feb456e3`. A refresh is a data edit, that command, then the stamp,
      republish and sync of item 280.
