@@ -19,6 +19,80 @@
 
 ---
 
+## 2026-10-30 (lane L9) — [LOOP] pools with lifetimes: the chest board follows the player, a pickup has a lifetime and a bound and is banked when it ends, and the zone cap evicts the soonest expiry
+
+**Decided by the command session on lane L9 of the deep audit** (`AUDIT:lane:L9-pools-with-lifetimes`), built by the
+lane L9 builder; branch `fix/l9-pools`, from main `0670a825`. Items 240-246. The brief's own words: "every pool gets a
+lifetime, a distance bound and an expiry-ordered eviction"; three pools filled and nothing emptied them.
+
+240. **The quest-chest board is bound by where the player is** (`frontend/src/game/chestBoard.js`, new; the hook is
+   `useTreasureChests` in `frontend/src/QuestSystem.jsx`). The periodic spawner capped the board at five UNOPENED chests
+   wherever they stood, so five the player had walked away from held every slot for the session. Now the cap counts the
+   unopened chests within 120 m (CHEST_COUNT_RADIUS) and a 3 s sweep retires an unopened periodic chest past 240 m
+   (CHEST_RETIRE_RADIUS). Two radii, not one, so a chest the player sees at the edge does not vanish as they turn
+   back: between the two it holds no slot and can still be walked to. The compass shows chests to 80 m and the spawner
+   places a new one 20-60 m out, so a board of five in reach is a board the player can see. A SHRINE chest is never
+   retired (the once-per-shrine reward is keyed in `shrineChestsSpawned` and would not respawn); it still counts toward
+   the cap while in reach, as before. An opened chest is left to its own 5 s timer. Distances are along the ground.
+   Retiring is not losing: a chest holds nothing until it is opened, and the player left it behind.
+241. **A pickup has a lifetime, a cull range and a bound, and a pickup that ends is BANKED, not lost**
+   (`frontend/src/game/xpOrbStepper.js`, `frontend/src/systems/XPOrbSystem.jsx`, `frontend/src/systems/LootSystem.jsx`).
+   Past 90 world seconds (PICKUP_LIFETIME_S, the low end of the audit's 90-120: it ages on the world clock, so a pause or
+   a hitstop does not spend it) or 100 m from the player (PICKUP_CULL_RANGE, the mobs' own cull range), a pickup out of
+   reach reports `{ collected: true, expired: true }`; the systems grant its XP, put its item in the bag with the
+   "Looted: X" line, and remove it. What a fresh kill drops and the XP the player is owed are unchanged (CombatSystem and
+   `spawnLootDrop` are untouched, and the gate asserts the XP granted equals the XP the kills dropped, to the point, and
+   the items to the item). The banking is QUIET: no pop, no floating XP text and no chime, because those announce a
+   pickup in the player's hands at a spot they are looking at, and an expired one is by definition outside its magnet
+   (12 m for an orb, 7 m for a drop). A pickup in the hands at the instant its lifetime ends is an ordinary collect.
+   The audio axis: the XP bar and the "Looted" line are the report; a chime for a pickup that was not made would be
+   noise, and up to six orbs expire together.
+242. **A bound beside the lifetime: 64 orbs and 32 drops.** A lifetime bounds a pool only by rate times lifetime. Past
+   MAX_XP_ORBS (64, ten kills' worth: a kill drops at most 6 orbs) or MAX_LOOT_DROPS (32), `oldestOverBound` picks the
+   oldest by age and the system banks them the same way, so the frame-cost reading below is of a pool that cannot grow.
+   Each pickup is a shadow-casting mesh and a floor probe a frame; the iPad-class budget is what the bound protects.
+   The numbers are arbitrary in the way a cap is: ten kills stranded at once is a fight the player left, and the cost of
+   being wrong is that a far pickup is banked a little before its 90 s. Revisit with a measurement.
+243. **Frame cost at the bound, the reading the brief asked for.** The gate fills both pools to their bounds (64 orbs, 32
+   drops) and counts the floor probes of 600 frames: 96.00 a frame, one per pickup, and about 0.02 ms a frame for both
+   systems with a stub floor (one run on this machine; the gate asserts the probe count, never the time). Before: 801 probes a frame at 801 pickups, and 0.65 ms
+   a frame for all four systems over a real Rapier floor (the audit verifier's reading, ~0.8 microseconds a pickup), so
+   the bound is ~0.08 ms on that floor by extrapolation, not by measurement here. NOT measured: the iPad draw and shadow
+   cost of 96 pickups (registry `AUDIT:leaks:pickup-render-cost-at-bound-unmeasured`). Not built, on purpose: the audit's
+   "cached rest height" (the probe count is now bounded, and a cached height would leave a pickup hovering over a mined
+   block), and its fade (an expiring pickup is out of its magnet and mostly out of sight, the resting frame is
+   unchanged, and the repo has no render harness for the pickup meshes to judge a fade in; reversible by a new entry).
+244. **The world-switch carry stays lane L2's.** `AUDIT:leaks:stranded-pickups-never-despawn` has two halves: the pile-up
+   and its per-frame cost (this lane) and the carry into a new world (L2: every switch is a boot, so the ECS starts
+   empty; L2's row names it). Until L2 lands the carry exists as before; it differs in one respect, which is the cost of
+   the 100 m cull and is recorded here rather than discovered: an old world's pickups are now banked into the new
+   world on the first frame the player stands more than 100 m from them, where before they banked only on a walk back.
+   The same XP and items arrive, earlier. The registry row stays OPEN with its note saying which half is done.
+245. **Element zones evict the soonest expiry, never the zone just cast**
+   (`frontend/src/game/elementZones.js` `evictSoonest`). `reg.zones.shift()` evicted the first painted, and a refresh
+   renews a zone in place, so array order is paint order and a re-imbue that renewed a zone and then overflowed the cap
+   (`spawnZone` then `spawnChain`, one bridge tick) evicted the zone it had just renewed, ring and burn, while zones
+   seconds from expiry stayed. Two calls the audit's one-line fix did not make: the zone just cast is excluded from the
+   candidates (a conductive zone, 8 s, cast into a board of fresh 10 s burns is the soonest of all, and evicting it would
+   hand the caller a dead zone that still plays its sound), and a tie goes to the first painted, which is the old order,
+   so the old test stands.
+246. **The gate, what it reads, and what it does not** (`frontend/tests/gates/pools-with-lifetimes-gates.test.jsx`, 7
+   tests). The audit's own scenario: the pools filled where the player stands, the player 600 m away for ten simulated
+   minutes with kills and zone casts still landing, every pool within its bound at every one of 600 samples. Red at
+   `0670a825`: 6 of 7 (parked: orbs peaked at 282 of 64, drops 94 of 32, no chest within 60 m at 35 s or at the end, the
+   spawn's five still on the board, none of the 3290 XP owed granted, none of the 94 items; walk: a periodic chest on the
+   80 m compass in 2 of 20 minutes; a burst of 40 kills held 120 orbs). Green: peaks 36/64 orbs, 12/32 drops, 5/5 chests,
+   8/8 zones; a chest within 60 m at 35 s and five at the end; the walk (4200 m, 20 minutes) had a chest on the compass in
+   20 of 20 minutes with the board peaking at 3, and all 9 shrine chests it caused still on the board. The audit
+   verifier's 6 of 20 for the same walk counted shrine chests, which bypass the cap, and mine counts periodic chests only.
+   Mutation proof is in the commit trailers (every real mutant red; the two the gate alone passes, a bound that banks the
+   newest and a sweep that retires an opened chest, are red in `xpOrbStepper.test.js` and `chestBoard.test.js`; each run's
+   identity mutant stayed green). NOT covered: a lived browser run (CI's e2e is the arbiter), a real Rapier floor in the
+   cost reading, the zone bridge (`ElementZoneSystem` is not mounted; the registry is driven directly), the debris
+   bodies parked asleep from mount (the brief shares that with lane L7), and the audit's untested aggravator, a chest
+   placed on a canopy or under water that cannot be opened: it holds a slot while the player is within 120 m and is
+   retired beyond 240 m, and an unopened chest still has no lifetime (registry `AUDIT:leaks:chest-unopenable-holds-slot`).
+
 ## 2026-10-30 (lane L4, round 2) — [LOOP] two jobs: the void line takes a fall out of the world, a stuck-in-rock recovery takes a body in the rock, and the spawn's blind drop is followed
 
 **Decided by the command session on lane L4's round-1 reviews, built by the round-2 fixer** (static and dynamic FIX on
