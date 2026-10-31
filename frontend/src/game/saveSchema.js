@@ -332,6 +332,24 @@ export function buildSaveData(state, { position } = {}) {
   };
 }
 
+/**
+ * The save of a player who is dead: the world as Respawn leaves it (HUD.jsx: respawn, then the quest system's
+ * onPlayerDeath). No position, so the load stands the player at the origin spawn, as Respawn does (store loadWorldData:
+ * a save with no position sets no resumeSpawn), and the death counted in the quest stats. Every load arrives at full
+ * health, as a respawn does. Without it a refresh on the death screen resumes the player alive where they fell.
+ * @param {object} saveData a buildSaveData result
+ */
+export function asRespawned(saveData) {
+  const { position: _fell, ...player } = saveData.player_data || {};
+  const qs = saveData.questState;
+  const stats = isPlainObject(qs) && isPlainObject(qs.stats) ? qs.stats : null;
+  return {
+    ...saveData,
+    player_data: player,
+    questState: stats ? { ...qs, stats: { ...stats, deaths: (Number(stats.deaths) || 0) + 1 } } : qs,
+  };
+}
+
 /** Forward-compat: normalize legacy inventory keys; tolerate versionless/progression-less saves. */
 export function migrateSaveData(saveData) {
   if (!saveData || typeof saveData !== 'object') return saveData;

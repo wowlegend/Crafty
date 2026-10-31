@@ -8,7 +8,7 @@ import { foldVerbMods } from '../game/verbMods.js';
 import { relicTier, normalizeRelicTiers } from '../game/relics.js';
 import { buy as forgeBuy } from '../game/forge.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, TALENT_CUT } from '../game/saveSchema.js';
+import { buildSaveData, asRespawned, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, TALENT_CUT } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -1302,7 +1302,10 @@ export const useGameStore = create((set, get) => ({
     // (ui/SlotConflictPanel.jsx). Returns whether it wrote.
     saveActiveWorld: (position) => {
         if (get().isCaptureMode) return false;
-        const data = buildSaveData(get(), { position });
+        // A dead player is saved as Respawn would leave them (game/saveSchema.js asRespawned): a refresh on the death
+        // screen is not a way back to life where they fell.
+        const built = buildSaveData(get(), { position });
+        const data = get().isAlive === false ? asRespawned(built) : built;
         let id = get()._sessionWorldId;
         if (!id) {
             id = mintWorldId();   // collision-proof: 'local_' + Date.now() alone can repeat within a ms
