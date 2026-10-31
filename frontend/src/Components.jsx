@@ -320,7 +320,7 @@ export const Player = ({ isWorldBuilt }) => {
       // mob loop above can never hit it. The SAME pure cone test, against the dragon's head, chest and hips
       // (game/bossCombat.js bossHitByCone: its body is longer than the swing), or its centre before its record is up.
       // A single swing can hit BOTH mobs (above) AND the boss (here).
-      if (store.isBossActive?.() && store.getBossPosition) {
+      if (store.bossActive && store.getBossPosition) {
         const bp = store.getBossPosition();
         if (bp) {
           const bossPoint = { x: bp[0], y: bp[1], z: bp[2] };
@@ -539,7 +539,7 @@ export const Player = ({ isWorldBuilt }) => {
       if (GameMethods.checkMobsInMeleeCone) {
         meleeHit = GameMethods.checkMobsInMeleeCone(playerPos, lookDir, 4.5, meleeArc).length > 0;
       }
-      if (!meleeHit && store.isBossActive?.() && store.getBossPosition) {
+      if (!meleeHit && store.bossActive && store.getBossPosition) {
         const bp = store.getBossPosition();
         if (bp) {
           meleeHit = bossCombat.active
@@ -557,7 +557,7 @@ export const Player = ({ isWorldBuilt }) => {
           if (d < aimedMobDist) aimedMobDist = d;
         }
       }
-      if (store.isBossActive?.() && store.getBossPosition) {
+      if (store.bossActive && store.getBossPosition) {
         const bp = store.getBossPosition();
         if (bp && isPointInCone(playerPos, aimDir, { x: bp[0], y: bp[1], z: bp[2] }, AIM_CONE_RANGE, AIM_CONE_ARC)) {
           const dx = bp[0] - playerPos.x, dy = bp[1] - playerPos.y, dz = bp[2] - playerPos.z;

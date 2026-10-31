@@ -442,8 +442,7 @@ export const EnhancedMagicSystem = React.memo(() => {
 
         if (keep) {
           const store = useGameStore.getState();
-          const isBossActive = store.isBossActive && store.isBossActive();
-          if (isBossActive && store.getBossPosition) {
+          if (store.bossActive && store.getBossPosition) {
             const bossPos = store.getBossPosition();
             if (bossPos) {
               // MODULE SCRATCH, not a fresh Vector3. This ran once per in-flight projectile per FRAME

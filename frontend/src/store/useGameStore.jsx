@@ -243,7 +243,6 @@ export const useGameStore = create((set, get) => ({
     playerRigidBodyRef: null,
     beastGroupRef: null, // the RENDERED beast avatar group (transient ref; see BeastAvatar)
     playerVisualAnchorRef: null, // .parent === the player RigidBody's Object3D (the VISUAL side)
-    setPlayerRigidBodyRef: (ref) => set({ playerRigidBodyRef: ref }),
 
     // Declared so no reader needs an allocating fallback. Terrain read it as
     // `state => state.treasureChestsList || []`; undeclared, that selector returned a BRAND NEW array on
@@ -504,24 +503,15 @@ export const useGameStore = create((set, get) => ({
 
     // (onMobKill moved to the src/game/mobKillBus.js fan-out in M3.5 — quests + ember both subscribe.)
     onSpellCast: null,
-    setOnSpellCast: (fn) => set({ onSpellCast: fn }),
     onSpellHit: null, // QuestSystem publishes it; the magic system calls it when a spell lands on an enemy
     onBlockPlace: null,
-    setOnBlockPlace: (fn) => set({ onBlockPlace: fn }),
     onBlockBreak: null,
-    setOnBlockBreak: (fn) => set({ onBlockBreak: fn }),
     onChestOpen: null,
-    setOnChestOpen: (fn) => set({ onChestOpen: fn }),
     onPlayerDeath: null,
-    setOnPlayerDeath: (fn) => set({ onPlayerDeath: fn }),
     addNotification: null,
-    checkNearbyChest: null,
-    setCheckNearbyChest: (fn) => set({ checkNearbyChest: fn }),
     openNearbyChest: null,
-    setOpenNearbyChest: (fn) => set({ openNearbyChest: fn }),
 
     gameCamera: null,
-    setGameCamera: (camera) => set({ gameCamera: camera }),
 
     // Published by the system that owns each, null until it mounts (tests/scripts/store-keys-declared.test.js: a key
     // set with setState and absent here is invisible to getInitialState, so a new world and a failed boot kept it).
@@ -556,23 +546,17 @@ export const useGameStore = create((set, get) => ({
     // where one is read is worse than one -- the next author has to work out which is authoritative.
     
     castSpell: null,
-    setCastSpell: (fn) => set({ castSpell: fn }),
-    
+
     damageBoss: null,
-    setDamageBoss: (fn) => set({ damageBoss: fn }),
     // The boss system's give-up path for a dragon chunk that never loaded (render/dragonLoader.js LazyDragon).
     suspendBossEncounter: null,
     // The lookbook's dragon spawn: set only on a ?lookbook=1 page (world/bossSystem.js), null in the game.
     lookbookSpawnDragon: null,
     getBossPosition: null,
-    setGetBossPosition: (fn) => set({ getBossPosition: fn }),
-    // Single source of truth for boss-active state. The VALUE `bossActive` is what
-    // SoundManager gates the boss battle music on (`state.bossActive`); the FUNCTION
-    // `isBossActive()` returns that SAME value, so callers reading either path can
-    // never diverge.
+    // Whether the dragon fight is on: SoundManager gates the boss battle music on it, and the melee and spell branches that
+    // can hit the dragon read it (Components.jsx, EnhancedMagicSystem.jsx). It is written with the rest of the encounter,
+    // by setBossEncounter and by loadWorldData, never alone.
     bossActive: false,
-    setBossActive: (v) => set({ bossActive: !!v }),
-    isBossActive: () => get().bossActive,
     // THE ENCOUNTER, persisted (A-bis B2g) and owned here (deep audit lane L3): `useBossSystem` selects these and writes
     // them through setBossEncounter, keeping no copy, so a load is the fight the hook shows. Before B2g the whole fight
     // was hook-local, and a reload mid-boss handed the dragon back every point of health the player had taken off it.
@@ -687,11 +671,6 @@ export const useGameStore = create((set, get) => ({
             aspectHint: hint || state.aspectHint,
         };
     }),
-    setChestInventory: (coords, inventory) => set((state) => {
-        const newChests = new Map(state.chests);
-        newChests.set(coords, { ...newChests.get(coords), inventory });
-        return { chests: newChests };
-    }),
     transferItem: (coords, item, quantity = 1, direction) => set((state) => {
         const chest = state.chests.get(coords) || { inventory: {} };
         const chestInv = { ...chest.inventory };
@@ -792,10 +771,6 @@ export const useGameStore = create((set, get) => ({
         tools: { shovel: 1, axe: 1, sword: 1 },
         magic: {}
     },
-    setInventory: (inventoryArg) => set((state) => ({
-        inventory: typeof inventoryArg === 'function' ? inventoryArg(state.inventory) : inventoryArg
-    })),
-
     addToInventory: (item, quantity = 1) => set((state) => ({
         inventory: {
             ...state.inventory,
@@ -997,7 +972,6 @@ export const useGameStore = create((set, get) => ({
     setScreenShake: (shake) => set({ screenShake: shake }),
 
     lastDamageTime: 0,
-    setLastDamageTime: (time) => set({ lastDamageTime: time }),
 
     // Per-ATTACKER damage lockout stamps, keyed by sourceKey (see damagePlayer). `lastDamageTime` above
     // is kept because it is a different thing: the timestamp of the most recent accepted hit, which the

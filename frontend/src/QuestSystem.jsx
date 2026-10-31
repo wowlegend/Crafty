@@ -1018,9 +1018,8 @@ export const useTreasureChests = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // Expose check and open for the game, as well as the active treasure chests list
+    // Expose open for the game, as well as the active treasure chests list
     useEffect(() => {
-        useGameStore.setState({ checkNearbyChest: checkChestProximity });
         useGameStore.setState({ openNearbyChest: () => {
             const chest = checkChestProximity();
             if (chest) return openChest(chest.id);

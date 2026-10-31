@@ -302,7 +302,7 @@ for (const vp of [
       await check('with a nameplate and a notice', ['target-frame'], { plate: true, keys: ['notice.siege.first'], want: [stack('notice.siege.first')] });
 
       // The dragon's arrival as bossSystem raises it: its call and the boss bar in one task, as world/bossSystem.js's
-      // arrival does (the call, then setBossActive), while the siege notice may still be up.
+      // arrival does (the call, then the encounter's write), while the siege notice may still be up.
       const woke = await page.evaluate(() => {
         const s = window.useGameStore.getState();
         if (typeof s.forceBossSpawn !== 'function' || typeof s.addNotification !== 'function') return false;
