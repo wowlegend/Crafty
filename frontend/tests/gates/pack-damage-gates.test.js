@@ -45,7 +45,6 @@ describe('C1 pack damage — the lockout is PER-ATTACKER', () => {
       playerHealth: HP,
       maxHealth: HP,
       damageLockouts: {},
-      lastDamageTime: 0,
       _spawnTime: Date.now() - 60000,
       isPlayerInvincible: () => false,
       attributes: { strength: 0, agility: 0, intellect: 0, armor: 0, attributePoints: 0 },

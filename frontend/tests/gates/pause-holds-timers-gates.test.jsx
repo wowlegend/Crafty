@@ -229,7 +229,7 @@ describe('the player stats provider', () => {
   // health. Mana starts empty, so the provider's own regen interval, which sat beside the hunger one, shows the
   // provider's timers ran for the whole span.
   it('84 minutes of play cost no health', async () => {
-    useGameStore.setState({ playerHealth: 100, maxHealth: 100, mana: 0, maxMana: 100, lastDamageTime: 0, damageLockouts: {} });
+    useGameStore.setState({ playerHealth: 100, maxHealth: 100, mana: 0, maxMana: 100, damageLockouts: {} });
     await mountStatsProvider();
     advance(84 * 60 * 1000);
     const s = useGameStore.getState();

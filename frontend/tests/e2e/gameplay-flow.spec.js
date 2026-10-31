@@ -58,8 +58,8 @@ test('soft-death + respawn: a lethal hit kills, respawn revives and KEEPS progre
     g().addToInventory('Iron Sword', 1);
     g().addCoins(42);
     const pre = { level: g().level, sword: g().inventory.blocks['Iron Sword'] || 0, coins: g().coins };
-    // deterministically bypass the 5s spawn-protection + 500ms damage cooldown, then a lethal hit
-    window.useGameStore.setState({ _spawnTime: 0, lastDamageTime: 0 });
+    // deterministically bypass the 5s spawn protection, then a lethal hit (a fresh attacker key has no cooldown)
+    window.useGameStore.setState({ _spawnTime: 0 });
     g().damagePlayer(999999, 'test-lethal');
     const aliveAfterHit = g().isAlive;
     g().respawn();

@@ -14,7 +14,7 @@ import { KICK_PROFILES } from '../../src/game/cameraKick.js';
 const reset = (over = {}) => {
   useGameStore.setState({
     isAlive: true, playerHealth: 100, maxHealth: 100,
-    lastDamageTime: 0, damageLockouts: {}, hitstopUntil: 0, lastHitDir: null,
+    damageLockouts: {}, hitstopUntil: 0, lastHitDir: null,
     _spawnTime: 0, isPlayerInvincible: () => false,
     attributes: { strength: 1, agility: 1, intellect: 1, vitality: 1 }, equipment: {},
     ...over,
@@ -63,7 +63,6 @@ describe('E-ter — an incoming hit freezes, graded by what it cost', () => {
     useGameStore.getState().damagePlayer(10, 'first');
     const t1 = useGameStore.getState().lastHitDir.t;
     reset({ lastHitDir: { angle: null, t: t1 } });
-    useGameStore.setState({ lastDamageTime: 0 });
     useGameStore.getState().damagePlayer(10, 'second');
     expect(useGameStore.getState().lastHitDir.t).toBeGreaterThanOrEqual(t1);
   });
