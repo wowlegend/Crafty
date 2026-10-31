@@ -15,11 +15,13 @@ export function sessionStore() {
 
 /**
  * Save the world in play, leave `note` for the reload, and reload (game/worldBoot.js writeBootNote names the notes).
- * Where sessionStorage refuses the note, nothing reloads and the player is told (save.switchRefused). Returns whether
- * the switch was made.
+ * Where sessionStorage refuses the note, nothing reloads and the player is told (save.switchRefused), unless
+ * `orPlainVisit`: the reload goes ahead as a plain visit (worldBoot.js switchWorld). Returns whether the switch was made.
+ * @param {{ world?: string, fresh?: boolean }} note
+ * @param {{ orPlainVisit?: boolean }} [opts]
  */
-export function goToWorld(note) {
-  const made = !!switchWorld(note, { getState: useGameStore.getState, storage: sessionStore(), reload: reloadPage });
+export function goToWorld(note, { orPlainVisit = false } = {}) {
+  const made = !!switchWorld(note, { getState: useGameStore.getState, storage: sessionStore(), reload: reloadPage, orPlainVisit });
   if (!made) useGameStore.getState().addNotification?.('save.switchRefused', 'warning');
   return made;
 }

@@ -67,7 +67,11 @@ export const WorldManager = ({ onClose }) => {
       // blob cloned the old world). The switch then saves the world in play and reloads into a new world in this slot
       // (game/worldBoot.js): a new world made in place kept the old one's dragon, quests, chests and squad.
       writeWorld(id, meta, buildSaveData(useGameStore.getInitialState(), { position: { x: 0, y: 18, z: 0 } }));
-      return goToWorld({ fresh: true, world: id });
+      if (goToWorld({ fresh: true, world: id })) return true;
+      // The switch was refused (sessionStorage took no note): the new slot is taken back, so My Worlds keeps no world this
+      // tab cannot switch to, and the refusal's "nothing changed" is true.
+      deleteWorldSave(id);
+      return false;
     };
     try {
       setError('');

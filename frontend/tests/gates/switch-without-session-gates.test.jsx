@@ -9,10 +9,13 @@ import { STRINGS } from '../../src/i18n/strings.js';
  * lane L8). Every world switch saves, leaves a note in sessionStorage naming the world to boot, and reloads
  * (game/worldBoot.js switchWorld). Where sessionStorage refuses the write, the reload went ahead as a plain visit, which
  * continues the newest world, the one just saved: Load and Create landed back on the world the player was leaving, New
- * World did nothing, and nothing said why. Now a switch from the World Manager, the title or the conflict panel whose
- * note is refused does not reload: the world in play stays, still saving into its slot, the notice save.switchRefused
- * says so, and the World Manager shows it too. The context-loss recovery still reloads (its plain visit continues the
- * world it has just saved, and the lost context leaves nothing to stay in).
+ * World did nothing, and nothing said why. Now a switch from the World Manager or the title whose note is refused does
+ * not reload: the world in play stays, still saving into its slot, the notice save.switchRefused says so, and the World
+ * Manager shows it too; a refused Create takes back the slot it wrote, so that "nothing changed" is true. Two still
+ * reload, as a plain visit: the context-loss recovery (the lost context leaves nothing to stay in) and the conflict
+ * panel's Reload (a refused one is a dead button under an opaque panel). That plain visit continues the newest world
+ * earned in or named, which is the world just saved unless it is an empty placeholder (item 334: then an older world
+ * holding something).
  *
  * The page is the real entry (startGame.jsx) with the real autosave; the World Manager is the real one; sessionStorage
  * refuses writes at Storage.prototype.setItem, as a sandboxed frame or a locked-down browser does; the reload is
@@ -22,6 +25,8 @@ import { STRINGS } from '../../src/i18n/strings.js';
  *   S1 a refused note still reloads                                         -> RED expected
  *   S2 the refusal says nothing                                             -> RED expected
  *   S3 plausible-wrong: the context-loss recovery is refused too            -> RED expected
+ *   S4 the conflict panel's Reload is refused with its note (a dead button)  -> RED expected
+ *   S5 a refused Create leaves the world it wrote (so "nothing changed" is false) -> RED expected
  *   S0 identity (a comment edit)                                            -> must SURVIVE
  */
 
@@ -127,7 +132,55 @@ describe('a world switch whose note sessionStorage refuses', () => {
     expect(typeof STRINGS['zh-CN']['save.switchRefused'], 'no zh-CN copy').toBe('string');
   }, 30000);
 
-  it('the context-loss recovery still reloads: its plain visit continues the world it has just saved', async () => {
+  it('Create in the World Manager: no reload, the new world\'s slot is taken back, and the panel\'s "nothing changed" is true', async () => {
+    const { notices } = await page();
+    await openWorldManager();
+    const before = JSON.parse(localStorage.getItem('crafty_world_saves')).map((w) => w.id).sort();
+    refuse = true;
+    fireEvent.click(screen.getByTestId('world-create-new'));
+    await act(async () => { await Promise.resolve(); });
+    fireEvent.change(screen.getByTestId('world-name-field'), { target: { value: 'Probe Keep' } });
+    fireEvent.click(screen.getByText('Create'));
+    await act(async () => { await Promise.resolve(); });
+    const after = JSON.parse(localStorage.getItem('crafty_world_saves'));
+    expect({ reloads: globalThis.__reloads, told: notices.includes('save.switchRefused') }, 'SETUP: the refused Create switched, or said nothing')
+      .toEqual({ reloads: 0, told: true });
+    expect(screen.queryByText(STRINGS.en['save.switchRefused']), 'SETUP: the World Manager does not show the refusal').not.toBeNull();
+    expect({ worlds: after.map((w) => w.id).sort(), named: after.some((w) => w.name === 'Probe Keep') },
+      'the World Manager said nothing changed and left the new world written').toEqual({ worlds: before, named: false });
+    expect(Object.keys(localStorage).filter((k) => k.startsWith('crafty_world_save_')).length, 'the new world\'s save was left behind')
+      .toBe(before.length);
+  }, 30000);
+
+  it('control: Create with sessionStorage reloads into the new world, written under its name', async () => {
+    await page();
+    await openWorldManager();
+    fireEvent.click(screen.getByTestId('world-create-new'));
+    await act(async () => { await Promise.resolve(); });
+    fireEvent.change(screen.getByTestId('world-name-field'), { target: { value: 'Probe Keep' } });
+    fireEvent.click(screen.getByText('Create'));
+    await act(async () => { await Promise.resolve(); });
+    const made = JSON.parse(localStorage.getItem('crafty_world_saves')).find((w) => w.name === 'Probe Keep');
+    expect({ reloads: globalThis.__reloads, note: JSON.parse(sessionStorage.getItem('crafty.boot')) }, 'SETUP: Create did not switch')
+      .toEqual({ reloads: 1, note: { fresh: true, world: made?.id } });
+  }, 30000);
+
+  it('the conflict panel\'s Reload still reloads: the world it names is the newest save, which a plain visit continues', async () => {
+    const { S, notices } = await page();
+    fireEvent.click(screen.getByTestId('title-continue'));
+    // Another tab saves this world: its index entry is newer than the save this tab read, and the storage event says so.
+    const saves = await import('../../src/game/worldSaves.js');
+    const entry = saves.listWorlds().find((w) => w.id === PLAYED);
+    saves.writeWorld(PLAYED, { ...entry, saved_at: '2026-10-31T12:30:00Z' }, saves.readWorld(PLAYED));
+    act(() => { window.dispatchEvent(new Event('storage')); });
+    expect(S().slotConflict, 'SETUP: the other tab\'s save raised no conflict').toEqual({ id: PLAYED });
+    refuse = true;
+    fireEvent.click(screen.getByTestId('slot-conflict-reload'));
+    expect({ reloads: globalThis.__reloads, refused: notices.includes('save.switchRefused') },
+      'the conflict panel\'s Reload did nothing behind its opaque panel, where sessionStorage refuses the note').toEqual({ reloads: 1, refused: false });
+  }, 30000);
+
+  it('the context-loss recovery still reloads, as a plain visit: the lost context leaves nothing to stay in', async () => {
     const { S, recovery } = await page();
     fireEvent.click(screen.getByTestId('title-continue'));
     refuse = true;
