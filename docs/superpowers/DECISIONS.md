@@ -92,20 +92,23 @@ PR #65. Items 200-206. Each stands while it earns its place.
    trailers. The lived proof is `tests/e2e/continue.spec.js` on CI: stand on land more than three chunks out, save,
    reload, click Continue while the world builds; body y sampled every drawn frame from the reload to 30 frames after
    the body stands at the save, never more than 1 m under the save at its column, never off it, the autosave writes
-   that spot into the one slot, no pageerror. Green on the PR's run 41160914054 (head `6477b756`, first attempt; its
-   readings: minY equal to the save, the slot at the save). Its red half on branches carrying the spec's final text,
-   the e2e job narrowed to it: control `mut/l2-ctl` run 41160940418 green on the first attempt; `mut/l2-hold`
-   (resolveResumeSpawn places the save at once) run 41160942734 red, "the body dropped more than 1 m under the saved
-   height at the save's column" (minY 45.55 against 56.95, and the autosave wrote 45.55 into the slot), the later
-   attempts with the player killed by the fall before the click; `mut/l2-boot` (startGame renders without the boot's
-   load) run 41160944978 red on all three, "the title offers no Continue after the reload". Each branch's unit job
-   failed on `ci-required-check.test.js`, which the narrowed matrix breaks, and on the mutated subject's own gates.
-   - **The harness took four rounds, each read from its trace.** Waiting for the arrival before clicking lost the title
+   that spot into the one slot, no pageerror. Green on the PR's run 41165714994 (head `fa0be54c`, first attempt; its
+   readings: minY equal to the save, never off the column, the slot at the save). Its red half on branches carrying the
+   spec's final text, the e2e job narrowed to it: control `mut/l2-ctl` run 41165729043 green on the first attempt;
+   `mut/l2-hold` (resolveResumeSpawn places the save at once) run 41165731765 red on all three, "the body dropped more
+   than 1 m under the saved height at the save's column" (minY 20.12 against 56.95; the body fell through the world, came
+   back at the origin, and the autosave wrote the origin over the slot, the audit's finding) and twice "the boot never
+   stood the player at the save" (the fall killed the player); `mut/l2-boot` (startGame renders without the boot's load)
+   run 41165734679 red on all three, "the title offers no Continue after the reload". Each branch's unit job failed on
+   `ci-required-check.test.js`, which the narrowed matrix breaks, and on the mutated subject's own gates.
+   - **The harness took five rounds, each read from its trace.** Waiting for the arrival before clicking lost the title
      to App's world-ready lock, which CI's headless Chromium granted with no gesture (run 41154002602; registry
      REVIEW:l2:headless-grants-gestureless-lock); refusing every lock paused the world from the click, and in that pause
-     the save's ground streamed in under the hold mutant, which passed (run 41157732564); the page now grants a lock only
-     for the spec's own click. CI drew this page at 0.4 to 1.3 frames a second, so the window after the arrival is
-     counted in drawn frames, each up to 0.25 s of world time.
+     the save's ground streamed in under the hold mutant, which passed (run 41157732564); a flag armed just before the
+     click let the timer's request through while the click waited for the button to settle (run 41162831435, attempt 1).
+     The page now grants a lock only to a request made inside a trusted input event, as a browser does. CI drew this page
+     at 0.4 to 1.3 frames a second, so the window after the arrival is counted in drawn frames, each up to 0.25 s of world
+     time.
 206. **What stays open.** The persistence halves of AUDIT:verbs:squad-not-saved-and-leaks-across-worlds and
    AUDIT:debt:shrine-facts-session-scoped (L3), the lifetime half of AUDIT:leaks:stranded-pickups-never-despawn (L9) and
    the load heal of AUDIT:numeric:load-mid-fight-full-heal (L8): their carry, leak, world and wounded-dragon halves are
