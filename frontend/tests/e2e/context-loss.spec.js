@@ -20,6 +20,9 @@ import { bootDev, startPlayActive } from './_boot.js';
 //   E6 the DEV `restore` op dispatches a bare `webglcontextrestored` event instead of restoring the context (GameScene.jsx):
 //      the panel goes and the frame loop runs, but the GPU never came back — the case the old frame-count check passed
 //                                                                                               -> RED expected: "did not draw after the restore"
+//   E7 the boot loads the world after the quest system has mounted (startGame.jsx's order reversed)
+//                                                                                               -> RED expected: "the resume wiped the quest log"
+//   E8 the dragon hook seeded from BOSS_CONFIG again instead of the store (world/bossSystem.js)  -> RED expected: "the resume woke a slain dragon"
 //   E0 identity (a comment edit in contextRecovery.js)                                          -> must SURVIVE
 // E4/E5's unit halves are tests/gates/context-loss-gates R1-R6 (run, all RED; identity SURVIVED).
 test('a lost context shows the panel; a restore clears it and draws again; a tap reloads into the same world', async ({ page }) => {
@@ -161,6 +164,22 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
 
   const MARK = 4321;
   await page.evaluate((c) => window.useGameStore.setState({ coins: c }), MARK);
+  // THE STATE THE HOOKS OWN (deep audit 2026-10-30, lane L12; AUDIT:debt:resume-clobbers-quests-and-boss). Coins, a block and
+  // a position are the store's own. The quest log and the dragon fight lived in hook state that the resume's load did not
+  // reach, so the recovery came back with both reset, and this spec saw neither. A real kill through the bus (the quest
+  // system subscribes to it) gives the log a count a re-seeded log would not have; a slain dragon at tier 1 is a fight a
+  // fresh hook would not have. Both are read back once the reloaded game's hooks have mounted.
+  await page.evaluate(async () => {
+    const bus = await import('/src/game/eventBus.js');
+    bus.emit(bus.EVENTS.mobKill, 'zombie', [0, 60, 0], 'player');
+    window.useGameStore.getState().setBossEncounter({ health: 0, active: false, defeated: true, tier: 1, killNight: 2 });
+  });
+  const killsBefore = await page.waitForFunction(() => {
+    const q = window.useGameStore.getState().questState;
+    return q?.stats?.kills >= 1 ? q.stats.kills : null;
+  }, null, { timeout: 10000 }).then((h) => h.jsonValue(), () => {
+    throw new Error('SETUP: the quest system recorded no kill before the loss, so the resume has no log to keep');
+  });
   // A recovery before Start only reloads (review LOW 5): the save needs a STARTED game, and the harness's forcePlay
   // deliberately does not mark one (App.jsx). The player pressed Start in the case this resumes, so set it here.
   await page.evaluate(() => window.useGameStore.getState().markGameStarted());
@@ -215,4 +234,16 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
   expect(blockBack, `the reload did not resume the block the player placed (its collider is not there): ${resumed}`).toBe(true);
   expect(Math.hypot(placed.x - stood.x, placed.z - stood.z), `the reload did not put the player where they stood: ${resumed}`).toBeLessThan(1.5);
   expect(Math.abs(placed.y - stood.y), `the reload put the player at another height: ${resumed}`).toBeLessThan(3);
+
+  // The hooks' state, after the reloaded game's hooks have mounted and mirrored their seeds back to the store: the quest log
+  // is the one played, and the dragon is still slain at its tier.
+  const hooks = await page.evaluate(() => {
+    const s = window.useGameStore.getState();
+    return { kills: s.questState?.stats?.kills ?? null, bossDefeated: s.bossDefeated, bossTier: s.bossTier, bossHealth: s.bossHealth, bossActive: s.bossActive };
+  });
+  console.log(`context-loss: the hooks' state after the resume ${JSON.stringify(hooks)} (kills played ${killsBefore})`);
+  expect(hooks.kills, `the resume wiped the quest log (kills ${hooks.kills}, played ${killsBefore}): ${JSON.stringify(hooks)}`).toBe(killsBefore);
+  expect(hooks.bossDefeated, `the resume woke a slain dragon: ${JSON.stringify(hooks)}`).toBe(true);
+  expect(hooks.bossTier, `the resume reset the dragon's tier: ${JSON.stringify(hooks)}`).toBe(1);
+  expect(hooks.bossActive, `the resume left a slain dragon active: ${JSON.stringify(hooks)}`).toBe(false);
 });
