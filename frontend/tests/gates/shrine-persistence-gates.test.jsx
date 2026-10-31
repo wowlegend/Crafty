@@ -115,6 +115,31 @@ describe('a reached shrine and an opened shrine chest survive a reload', () => {
     expect(shrineChests(), 'the reload re-armed the shrine\'s chest the player had opened').toHaveLength(0);
   });
 
+  it('the shrine chest opened and the page closed before a drop is picked up: the reload holds its loot with the record', () => {
+    page(AT_SHRINE, { boot: false });
+    poll();
+    expect(shrineChests(), 'SETUP: the chest did not spawn').toHaveLength(1);
+    const bag0 = { ...useGameStore.getState().inventory.blocks };
+    const xp0 = useGameStore.getState().totalXP;
+    let loot = [];
+    act(() => { loot = globalThis.__c.openChest(shrineChests()[0].id); });
+    expect(loot.length, 'SETUP: the shrine chest paid less than its guaranteed rolls').toBeGreaterThan(1);
+    save(); // the close: the autosave flushes a pending save when the tab is hidden or closed, before any pickup
+    page(AT_SHRINE);
+    const s = useGameStore.getState();
+    expect(s.rewardedShrines, 'SETUP: the reload did not keep the record').toEqual([KEY]);
+    const owed = {};
+    for (const l of loot) owed[l.item] = (owed[l.item] || 0) + 1;
+    for (const [item, n] of Object.entries(owed)) {
+      expect(s.inventory.blocks[item] ?? 0, `${item}: the save records the shrine paid and holds none of its loot`).toBe((bag0[item] ?? 0) + n);
+    }
+    const xp = loot.reduce((a, l) => a + (l.effect === 'xp' ? l.value : 10), 0);
+    expect(s.totalXP, 'the loot\'s XP was lost with the drops').toBe(xp0 + xp);
+    poll();
+    poll();
+    expect(shrineChests(), 'the paid shrine gave a second chest').toHaveLength(0);
+  });
+
   it('a chest spawned and left shut is still owed after the reload: one chest, once', () => {
     page(AT_SHRINE, { boot: false });
     poll();

@@ -952,7 +952,6 @@ export const useTreasureChests = () => {
         // to the rarer half of CHEST_LOOT. zoneTier already caps at MAX_TIER, so far shrines reward more
         // (matching the S7 lootTier risk/reward philosophy). Non-shrine chests are unchanged.
         if (chest && chest.shrine) {
-            if (chest.shrineKey) useGameStore.getState().rewardShrine(chest.shrineKey);
             const tier = zoneTier(chest.position[0], chest.position[2]);
             const pool = CHEST_LOOT.slice(Math.floor(CHEST_LOOT.length / 2));
             for (let i = 0; i < 1 + tier; i++) {
@@ -960,17 +959,23 @@ export const useTreasureChests = () => {
             }
         }
 
-        // Spawn physical loot items in the 3D scene
-        loot.forEach(item => {
-            const xpValue = item.effect === 'xp' ? item.value : 10;
-            if (GameMethods.spawnLootDrop) {
-                GameMethods.spawnLootDrop(item.item, xpValue, position);
-            }
-        });
+        const xpOf = (item) => (item.effect === 'xp' ? item.value : 10);
+        const paid = chest && chest.shrineKey;
+        if (paid) {
+            // A shrine's loot is banked into the bag, as a drop the player is not there for is (systems/LootSystem.jsx),
+            // before the record that the shrine has paid: a drop lives in the ECS alone until it is picked up, and a save
+            // holding the record would hold no chest to pay it again (DECISIONS 2026-10-31 item 293).
+            const s = useGameStore.getState();
+            for (const item of loot) s.addToInventory(item.item, 1);
+            s.grantXP(loot.reduce((n, item) => n + xpOf(item), 0), 'Looted');
+            s.rewardShrine(chest.shrineKey);
+        } else if (GameMethods.spawnLootDrop) {
+            for (const item of loot) GameMethods.spawnLootDrop(item.item, xpOf(item), position);
+        }
 
         const dropNames = loot.map(l => l.item).join(', ');
         if (addNotification) {
-            addNotification(`Chest dropped: ${dropNames}`, 'loot');
+            addNotification(`${paid ? 'Looted' : 'Chest dropped'}: ${dropNames}`, 'loot');
         }
 
         // Notify quest system
