@@ -1,5 +1,5 @@
 {
-  "_": "The most comments each src file may hold that narrate history (tests/_support/historyComments.js has the markers). A count may only fall: a file past its number, or a file not listed, fails tests/scripts/history-comments-ratchet.test.js. Lower a number when you remove a comment; never raise one.",
+  "_": "The number of comments each src file holds that narrate history (tests/_support/historyComments.js has the markers). The ledger is the count exactly (tests/_support/ledgerDrift.js): a file past its number, a file not listed, or a file under its number fails tests/scripts/history-comments-ratchet.test.js. Lower a number in the commit that removes a comment; never raise one.",
   "files": {
     "src/App.jsx": 2,
     "src/Components.jsx": 2,
@@ -44,7 +44,7 @@
     "src/workers/ai.worker.js": 1,
     "src/world/Terrain.jsx": 5,
     "src/world/biomeTable.js": 1,
-    "src/world/bossSystem.js": 3,
+    "src/world/bossSystem.js": 2,
     "src/world/mesher.js": 2,
     "src/world/mobFloorProbe.js": 1,
     "src/world/survivalSystem.js": 1,

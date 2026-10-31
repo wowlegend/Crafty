@@ -4,6 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from '@babel/parser';
 import { readSourceTree } from '../_support/primitiveCallSites.js';
+import { ledgerDrift } from '../_support/ledgerDrift.js';
 
 /**
  * NO FILE GAINS A CAPTURE GUARD, AND NO GUARD READS THE FLAG AT MODULE SCOPE (deep audit 2026-10-30, lane L12;
@@ -17,8 +18,9 @@ import { readSourceTree } from '../_support/primitiveCallSites.js';
  * the Player loop). The ruling: the third is retired, because what it protected was a run-independent frame for the pixel
  * baselines, and that oracle retired (W1-H item 1, W2-B); the first two stand and are enforced here.
  *
- *  - The count of guard sites per file is in tests/scripts/capture-guards.ledger.json and may only fall: a file past its
- *    number, or a file the ledger does not list, fails. Lower a number when you remove a guard; each one goes when its
+ *  - The count of guard sites per file is in tests/scripts/capture-guards.ledger.json and may only fall, and the ledger
+ *    is the count exactly (tests/_support/ledgerDrift.js): a file past its number, a file the ledger does not list, and
+ *    a file under its number all fail. Lower the number in the commit that removes a guard; each one goes when its
  *    subject next moves (reset plan row 48).
  *  - A guard at module scope reads the flag at import, before anything has entered capture mode, and would never see it.
  *
@@ -55,11 +57,6 @@ export function guardSites(text) {
   return out;
 }
 
-/** The files whose guard count passes the ledger's number for them (an unlisted file's number is 0). */
-export function overLedger(perFile, ledger) {
-  return Object.entries(perFile).filter(([file, n]) => n > (ledger[file] ?? 0)).map(([file, n]) => `${file}: ${n} > ${ledger[file] ?? 0}`);
-}
-
 describe('capture guards: no file gains one, none reads the flag at module scope', () => {
   const ledger = JSON.parse(readFileSync(resolve(APP, 'tests/scripts/capture-guards.ledger.json'), 'utf8')).sites;
   const tree = readSourceTree();
@@ -84,17 +81,26 @@ describe('capture guards: no file gains one, none reads the flag at module scope
   });
 
   it('no file holds more guards than the ledger allows, and no unlisted file holds one', () => {
-    expect(overLedger(perFile, ledger), 'files that gained a capture guard (the rule is: add none; lower the ledger when you remove one)').toEqual([]);
+    expect(ledgerDrift(perFile, ledger).over, 'files that gained a capture guard (the rule is: add none; lower the ledger when you remove one)').toEqual([]);
+  });
+
+  it('no file holds fewer than its number: the ledger falls when the count does', () => {
+    const { slack, malformed } = ledgerDrift(perFile, ledger);
+    expect(slack, 'the count fell and the ledger did not: write the lower number into capture-guards.ledger.json (remove an entry at 0)').toEqual([]);
+    expect(malformed, 'ledger entries that are not a whole number of 1 or more').toEqual([]);
   });
 
   it('no guard reads the flag at module scope', () => {
     expect(moduleScope, 'isCaptureMode() evaluated at import: the flag is false then, whatever a spec does later').toEqual([]);
   });
 
-  it('the ledger comparison names a file past its number and a file the ledger does not list, and lets a lower count be', () => {
-    expect(overLedger({ 'src/a.js': 3, 'src/b.js': 1, 'src/c.js': 2 }, { 'src/a.js': 3, 'src/c.js': 4 })).toEqual(['src/b.js: 1 > 0']);
-    expect(overLedger({ 'src/a.js': 4 }, { 'src/a.js': 3 })).toEqual(['src/a.js: 4 > 3']);
-    expect(overLedger({}, { 'src/a.js': 3 })).toEqual([]);
+  it('the ledger comparison names a file past its number, a file the ledger does not list, and a file under its number', () => {
+    expect(ledgerDrift({ 'src/a.js': 3, 'src/b.js': 1, 'src/c.js': 2 }, { 'src/a.js': 3, 'src/c.js': 4 })).toEqual({
+      over: ['src/b.js: 1 > 0'], slack: ['src/c.js: 2 < 4'], malformed: [],
+    });
+    expect(ledgerDrift({ 'src/a.js': 4 }, { 'src/a.js': 3 }).over).toEqual(['src/a.js: 4 > 3']);
+    expect(ledgerDrift({}, { 'src/a.js': 3 }).slack, 'a listed file with none left').toEqual(['src/a.js: 0 < 3']);
+    expect(ledgerDrift({ 'src/a.js': 2 }, { 'src/a.js': 3 }).slack, 'one under is slack').toEqual(['src/a.js: 2 < 3']);
   });
 
   it('the detector, on text it is handed, finds a call, a member read and a nested guard, and ignores a comment and a string', () => {

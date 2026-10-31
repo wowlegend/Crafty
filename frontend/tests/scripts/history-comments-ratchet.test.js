@@ -4,6 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readSourceTree } from '../_support/primitiveCallSites.js';
 import { commentsOf, historyComments } from '../_support/historyComments.js';
+import { ledgerDrift } from '../_support/ledgerDrift.js';
 
 /**
  * A COMMENT SAYS WHY, NOT WHAT USED TO BE (CLAUDE.md "Invariants": "no history or mutation receipts in code"; deep audit
@@ -29,18 +30,15 @@ import { commentsOf, historyComments } from '../_support/historyComments.js';
  * review and a pattern cannot tell from a reason; the markers above are the ones this repo's reviews kept finding. A
  * date is not history on its own: "measured 2026-10-27" is an external fact with its date, and stays.
  *
- * The count per file is in tests/scripts/history-comments.ledger.json. A file past its number, or one the ledger does not
- * list, fails; the test does not tighten the ledger, so a lane removing comments in a file it is editing changes nothing.
- * Lower a number when you remove a comment; never raise one.
+ * The count per file is in tests/scripts/history-comments.ledger.json, and the ledger is the count exactly
+ * (tests/_support/ledgerDrift.js): a file past its number, or one the ledger does not list, fails, and so does a file
+ * under its number, because a ledger left above the count would let the next history comment in that file pass. Lower
+ * the number in the same commit that removes a comment; never raise one.
  *
  * SITED IN tests/scripts/ (the subject is the content of the source files), not tests/gates/.
  * Mutation-Proof: scripts/dev/mutate.sh, receipts in the commit.
  */
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-/** The files whose count passes the ledger's number for them (an unlisted file's number is 0). */
-function overLedger(perFile, ledger) {
-  return Object.entries(perFile).filter(([file, n]) => n > (ledger[file] ?? 0)).map(([file, n]) => `${file}: ${n} > ${ledger[file] ?? 0}`);
-}
 
 describe('no file gains a comment that narrates history', () => {
   const ledger = JSON.parse(readFileSync(resolve(APP, 'tests/scripts/history-comments.ledger.json'), 'utf8')).files;
@@ -64,14 +62,25 @@ describe('no file gains a comment that narrates history', () => {
   });
 
   it('no file holds more history comments than the ledger allows, and no unlisted file holds one', () => {
-    const over = overLedger(perFile, ledger);
+    const { over } = ledgerDrift(perFile, ledger);
     expect(over, `files that gained a history comment (say why, not what used to be; lines ${JSON.stringify(examples)})`).toEqual([]);
   });
 
-  it('the ledger comparison names a file past its number and a file the ledger does not list, and lets a lower count be', () => {
-    expect(overLedger({ 'src/a.js': 3, 'src/b.js': 1, 'src/c.js': 2 }, { 'src/a.js': 3, 'src/c.js': 4 })).toEqual(['src/b.js: 1 > 0']);
-    expect(overLedger({ 'src/a.js': 4 }, { 'src/a.js': 3 })).toEqual(['src/a.js: 4 > 3']);
-    expect(overLedger({}, { 'src/a.js': 3 })).toEqual([]);
+  it('no file holds fewer than its number: the ledger falls when the count does', () => {
+    const { slack, malformed } = ledgerDrift(perFile, ledger);
+    expect(slack, 'the count fell and the ledger did not: write the lower number into history-comments.ledger.json (remove an entry at 0)').toEqual([]);
+    expect(malformed, 'ledger entries that are not a whole number of 1 or more').toEqual([]);
+  });
+
+  it('the ledger comparison names a file past its number, a file the ledger does not list, and a file under its number', () => {
+    expect(ledgerDrift({ 'src/a.js': 3, 'src/b.js': 1, 'src/c.js': 2 }, { 'src/a.js': 3, 'src/c.js': 4 })).toEqual({
+      over: ['src/b.js: 1 > 0'], slack: ['src/c.js: 2 < 4'], malformed: [],
+    });
+    expect(ledgerDrift({ 'src/a.js': 4 }, { 'src/a.js': 3 }).over).toEqual(['src/a.js: 4 > 3']);
+    expect(ledgerDrift({}, { 'src/a.js': 3 }).slack, 'a listed file with none left').toEqual(['src/a.js: 0 < 3']);
+    expect(ledgerDrift({ 'src/a.js': 2 }, { 'src/a.js': 3 }).slack, 'one under is slack').toEqual(['src/a.js: 2 < 3']);
+    expect(ledgerDrift({ 'src/a.js': 2 }, { 'src/a.js': 2 })).toEqual({ over: [], slack: [], malformed: [] });
+    expect(ledgerDrift({}, { 'src/a.js': 0, 'src/b.js': 1.5 }).malformed).toEqual(['src/a.js: 0', 'src/b.js: 1.5']);
   });
 
   it('the detector finds each marker, joins a phrase broken across line comments, and passes a comment that gives a reason', () => {
