@@ -241,7 +241,6 @@ export const useGameStore = create((set, get) => ({
     playerRigidBodyRef: null,
     beastGroupRef: null, // the RENDERED beast avatar group (transient ref; see BeastAvatar)
     playerVisualAnchorRef: null, // .parent === the player RigidBody's Object3D (the VISUAL side)
-    setPlayerRigidBodyRef: (ref) => set({ playerRigidBodyRef: ref }),
 
     // Declared so no reader needs an allocating fallback. Terrain read it as
     // `state => state.treasureChestsList || []`; undeclared, that selector returned a BRAND NEW array on
@@ -502,32 +501,22 @@ export const useGameStore = create((set, get) => ({
 
     // (onMobKill moved to the src/game/mobKillBus.js fan-out in M3.5 — quests + ember both subscribe.)
     onSpellCast: null,
-    setOnSpellCast: (fn) => set({ onSpellCast: fn }),
     onSpellHit: null, // QuestSystem publishes it; the magic system calls it when a spell lands on an enemy
     onBlockPlace: null,
-    setOnBlockPlace: (fn) => set({ onBlockPlace: fn }),
     onBlockBreak: null,
-    setOnBlockBreak: (fn) => set({ onBlockBreak: fn }),
     onChestOpen: null,
-    setOnChestOpen: (fn) => set({ onChestOpen: fn }),
     onPlayerDeath: null,
-    setOnPlayerDeath: (fn) => set({ onPlayerDeath: fn }),
     addNotification: null,
-    checkNearbyChest: null,
-    setCheckNearbyChest: (fn) => set({ checkNearbyChest: fn }),
     openNearbyChest: null,
-    setOpenNearbyChest: (fn) => set({ openNearbyChest: fn }),
 
     gameCamera: null,
-    setGameCamera: (camera) => set({ gameCamera: camera }),
 
     // damageMob / checkMobCollision DELETED 2026-08-11 along with their setters: a write-only mirror of
     // the GameMethods singleton that all eleven live consumers actually read. Two publication mechanisms
     // where one is read is worse than one -- the next author has to work out which is authoritative.
     
     castSpell: null,
-    setCastSpell: (fn) => set({ castSpell: fn }),
-    
+
     damageBoss: null,
     setDamageBoss: (fn) => set({ damageBoss: fn }),
     // The boss system's give-up path for a dragon chunk that never loaded (render/dragonLoader.js LazyDragon).
@@ -655,11 +644,6 @@ export const useGameStore = create((set, get) => ({
             aspectHint: hint || state.aspectHint,
         };
     }),
-    setChestInventory: (coords, inventory) => set((state) => {
-        const newChests = new Map(state.chests);
-        newChests.set(coords, { ...newChests.get(coords), inventory });
-        return { chests: newChests };
-    }),
     transferItem: (coords, item, quantity = 1, direction) => set((state) => {
         const chest = state.chests.get(coords) || { inventory: {} };
         const chestInv = { ...chest.inventory };
@@ -760,10 +744,6 @@ export const useGameStore = create((set, get) => ({
         tools: { shovel: 1, axe: 1, sword: 1 },
         magic: {}
     },
-    setInventory: (inventoryArg) => set((state) => ({
-        inventory: typeof inventoryArg === 'function' ? inventoryArg(state.inventory) : inventoryArg
-    })),
-
     addToInventory: (item, quantity = 1) => set((state) => ({
         inventory: {
             ...state.inventory,
@@ -961,7 +941,6 @@ export const useGameStore = create((set, get) => ({
     setScreenShake: (shake) => set({ screenShake: shake }),
 
     lastDamageTime: 0,
-    setLastDamageTime: (time) => set({ lastDamageTime: time }),
 
     // Per-ATTACKER damage lockout stamps, keyed by sourceKey (see damagePlayer). `lastDamageTime` above
     // is kept because it is a different thing: the timestamp of the most recent accepted hit, which the
