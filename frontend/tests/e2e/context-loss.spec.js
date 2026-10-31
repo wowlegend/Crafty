@@ -162,8 +162,6 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
   });
   expect(Math.hypot(stood.x - STAND.x, stood.z - STAND.z), `SETUP: the player did not stay where it was put: ${JSON.stringify(stood)}`).toBeLessThan(1.5);
 
-  const MARK = 4321;
-  await page.evaluate((c) => window.useGameStore.setState({ coins: c }), MARK);
   // THE STATE THE HOOKS OWN (deep audit 2026-10-30, lane L12; AUDIT:debt:resume-clobbers-quests-and-boss). Coins, a block and
   // a position are the store's own. The quest log and the dragon fight lived in hook state that the resume's load did not
   // reach, so the recovery came back with both reset, and this spec saw neither. A real kill through the bus (the quest
@@ -182,6 +180,9 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
   }, null, { timeout: 10000 }).then((h) => h.jsonValue(), () => {
     throw new Error('SETUP: the quest system recorded no kill before the loss, so the resume has no log to keep');
   });
+  // After the kill, not before: a kill pays coins, and the coins are what the reload is compared against.
+  const MARK = 4321;
+  await page.evaluate((c) => window.useGameStore.setState({ coins: c }), MARK);
   // A recovery before Start only reloads (review LOW 5): the save needs a STARTED game, and the harness's forcePlay
   // deliberately does not mark one (App.jsx). The player pressed Start in the case this resumes, so set it here.
   await page.evaluate(() => window.useGameStore.getState().markGameStarted());
