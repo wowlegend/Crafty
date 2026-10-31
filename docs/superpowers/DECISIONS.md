@@ -106,22 +106,23 @@ Every row's disposition, with the command that proved it and the verifier's verd
    - the accretion ratchet of `docs/superpowers/specs/crafty-coherence-pillars.md` is not built (QUEUE:Q42): an
      advisory script for a harness the reset plan shrinks; knip in both modes already runs in CI.
 
-367. **The counts,** on main `61696120`. Before: 770 rows, 440 open (16 HIGH, 88 MED, 318 LOW, 18 unrated; 16
-   Kevin's), 330 closed, no row with a kind or a lane, 44 known duplicates still open, 44 closed rows with no
-   resolution, titles up to 843 characters. After: 802 rows (32 new, none deleted), 281 open, 266 of them work rows
-   (6 HIGH, 49 MED, 211 LOW; 62 bugs, 39 features, 85 instruments, 35 debt, 30 flakes, 8 decisions, 7 process; 15
-   Kevin's) in 15 lane rows; 521 closed (294 done, 89 superseded, 55 duplicate, 53 wont-fix, 26 obsolete, 4
-   false-positive), the last of them `REVIEW:w1h:f6`, which this landing fixes; no orphan, no unrated row, titles at
-   most 160 characters. Independent verifiers re-checked 496
-   rows of the triage: 393 upheld, 92 adjusted, 11 refuted, and every refuted closure is open again or closed the way
-   the verifier proposed and checked.
+367. **The counts,** on main `341531d1` (lane L8 landed), where the migration last ran. Before: 780 rows, 441 open (16
+   HIGH, 87 MED, 320 LOW, 18 unrated; 16 Kevin's), 339 closed, no row with a kind or a lane, 44 known duplicates still
+   open, 44 closed rows with no resolution, titles up to 843 characters. After: 812 rows (32 new, none deleted), 282
+   open, 268 of them work rows (6 HIGH, 49 MED, 213 LOW; 62 bugs, 39 features, 86 instruments, 35 debt, 31 flakes, 8
+   decisions, 7 process; 15 Kevin's) in 14 lane rows; 530 closed (303 done, 89 superseded, 55 duplicate, 53 wont-fix,
+   26 obsolete, 4 false-positive), among them `REVIEW:w1h:f6`, which this landing fixes; no orphan, no unrated row,
+   titles at most 160 characters. Independent verifiers re-checked 496 rows of the triage: 393 upheld, 92 adjusted, 11
+   refuted, and every refuted closure is open again or closed the way the verifier proposed and checked.
 
 368. **The migration is a script, reproducible from the repo.** `registry-migrate.mjs` reads the registry at the
    snapshot `a150a93a`, the triage's dispositions and the landing file, and merges three ways keyed by id: a field a
    lane changed since the snapshot keeps the lane's value, a row a lane closed keeps the lane's closure, and every
    other field takes the triage's. It never deletes a row, keeps file order, appends the new rows, and a second run
-   changes no byte; on the snapshot it writes exactly the triage's emulated registry. Lanes L8 (PR #73) and L12
-   (PR #71) edit rows and land first; the migration is re-run on main after each lands, in its own commit. The old
+   changes no byte; on the snapshot it writes exactly the triage's emulated registry. Lane L8 (PR #73) landed first:
+   main was merged in with main's registry as L8 left it, and the migration re-run on it in its own commit, the
+   landing file giving the 10 rows L8 added their v2 fields and shortening the 4 notes it took past the cap. Lane L12
+   (PR #71) is re-run the same way when it lands. The old
    sources (STATUS section 2, QUEUE, OPEN-ITEMS, the masterpiece tables) retire next, under reset-plan row 32, which
    deletes the harvest's extraction half and `registry-floors.json`.
 
