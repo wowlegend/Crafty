@@ -22,7 +22,7 @@ import * as THREE from 'three';
  * is a click inside the window between the click and the worker's answer. Clicks are routed by the real verb router as
  * Components.jsx performVerb routes them with no mob in reach. Each row compares what the player got against what the
  * worker reported in the same run:
- *  - a mine clicked twice before the worker answers is one break: one block, one count, one sound;
+ *  - a mine clicked twice before the worker answers is one break: one block, one count, one sound, heard at the block;
  *  - every block the hotbar holds and every good the Forge sells, placed and mined, comes back as itself;
  *  - the dragon's smash breaks only blocks (never the air above them, never a chest) and pays, counts and sounds nothing;
  *  - for 120 frames of debris over the aimed cell, the build ray, the outline, the anvil ray and the ground probe all see
@@ -178,6 +178,9 @@ const read = () => ({
 const bagDelta = (a, b) => Object.fromEntries([...new Set([...Object.keys(a), ...Object.keys(b)])]
   .map((k) => [k, (b[k] || 0) - (a[k] || 0)]).filter(([, d]) => d !== 0));
 const brokenIn = (rs) => rs.filter((m) => m.type === 'block_broken');
+/** The centre of the block a cell key "x_y_z" names: where that block's break is to be heard. */
+const centreOf = (cell) => { const [x, y, z] = cell.split('_').map(Number); return { x: x + 0.5, y: y + 0.5, z: z + 0.5 }; };
+const cellOf = (m) => `${m.payload.x}_${m.payload.y}_${m.payload.z}`;
 
 /** Columns in the chunk whose eight neighbours are no higher, at least four apart, so each row works on ground no other
  *  row has touched and a camera just above sees the top face. Chosen before any row edits the chunk. */
@@ -214,6 +217,9 @@ describe('a mine pays, counts and sounds the block the worker broke', () => {
     expect({ broken: b1.broken - b0.broken, sounds: b1.sounds - b0.sounds, bag: bagDelta(b0.bag, b1.bag) },
       `two clicks on one block counted or sounded more than the one block the worker broke (top ${top})`)
       .toEqual({ broken: 1, sounds: 1, bag: { [blockForId(block)]: 1 } });
+    // Heard where the block was: the cell the worker emptied is the one the click aimed at, and the one sound is at its centre.
+    expect(cellOf(brokenIn(rs)[0]), 'SETUP: the worker did not break the cell the click aimed at').toBe(first.cell);
+    expect(H.breaks.at(-1), 'the break sound did not play at the block the worker broke').toEqual(centreOf(first.cell));
 
     // The control: once the answer has landed and the debris has gone (2 s), a click takes the next block and is paid.
     await r.step(125);
@@ -224,6 +230,8 @@ describe('a mine pays, counts and sounds the block the worker broke', () => {
     expect(brokenIn(rs3).length, 'SETUP: the control click broke nothing').toBe(1);
     expect({ broken: b2.broken - b1.broken, sounds: b2.sounds - b1.sounds }, 'a real break was not counted and heard once')
       .toEqual({ broken: 1, sounds: 1 });
+    expect(cellOf(brokenIn(rs3)[0]), 'SETUP: the worker did not break the cell the control click aimed at').toBe(third.cell);
+    expect(H.breaks.at(-1), 'the control break sound did not play at the block the worker broke').toEqual(centreOf(third.cell));
   }, ROW_MS);
 
   it('every hotbar block and every Forge good, placed and mined, comes back as itself', async () => {

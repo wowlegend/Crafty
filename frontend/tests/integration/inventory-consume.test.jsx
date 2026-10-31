@@ -68,6 +68,7 @@ describe('inventory consumable Use at the cap (jsdom) — refused and said, neve
     expect({ count: s.inventory.blocks[potion], value: s[field], notices: notes.length },
       `a ${potion} at full was spent for nothing, or refused in silence`).toEqual({ count: 2, value: 100, notices: 1 });
     expect(notes[0].type, 'the refusal is not a denial notice').toBe('warn');
+    expect(notes[0].text, 'the refusal does not say the potion is kept because the player is already full').toBe('Already full: keep it for later');
   });
 
   it.each([

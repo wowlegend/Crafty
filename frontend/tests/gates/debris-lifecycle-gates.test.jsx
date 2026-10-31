@@ -135,15 +135,22 @@ describe('at mount, before any block breaks', () => {
     bodies[0].wakeUp();
     expect(awakeDynamic(), 'SETUP: the awake count does not see an awake body').toBeGreaterThanOrEqual(1);
     bodies[0].sleep();
+    // Pairs of bodies whose 0.25 m cubes touch. Read at mount, before the first step, as well as after the 120 frames: a
+    // pool made at one point scatters itself within a second, so only the first reading can see the stack.
+    const overlapping = () => {
+      const ps = bodies.map((b) => b.translation());
+      let n = 0;
+      for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
+        if (Math.abs(ps[i].x - ps[j].x) < 0.25 && Math.abs(ps[i].y - ps[j].y) < 0.25 && Math.abs(ps[i].z - ps[j].z) < 0.25) n++;
+      }
+      return n;
+    };
+    const stackedAtMount = overlapping();
     let mostAwake = 0;
     const y0 = bodies.map((b) => b.translation().y);
     for (let f = 0; f < 120; f++) { await step(1); mostAwake = Math.max(mostAwake, awakeDynamic()); }
     const fell = bodies.filter((b, i) => b.translation().y < y0[i] - 0.01).length;
-    const ps = bodies.map((b) => b.translation());
-    let overlaps = 0;
-    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
-      if (Math.abs(ps[i].x - ps[j].x) < 0.25 && Math.abs(ps[i].y - ps[j].y) < 0.25 && Math.abs(ps[i].z - ps[j].z) < 0.25) overlaps++;
-    }
+    const overlaps = Math.max(stackedAtMount, overlapping());
     expect({ mostAwake, fell, overlaps }, 'the pool is awake, falling or stacked inside itself at mount')
       .toEqual({ mostAwake: 0, fell: 0, overlaps: 0 });
   });
