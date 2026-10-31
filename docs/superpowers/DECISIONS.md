@@ -167,12 +167,13 @@ tree, then green; each commit's `Mutation-Proof:` trailer names its mutants, eve
      asserted: 19,900 pairs (all 200 bodies at one point) at `7250aa22`, 0 at the head. Mutants on
      `BlockParticleSystem.jsx` (debris-lifecycle, 2 tests): identity survived; RED: B3 the pool not parked at mount, B4 every
      body parked at one spot (asleep, so only the overlap clause sees it in row 1).
-   - **Not red at `7250aa22` by nature, proven by mutants.** The break sound's position and the potion refusal's notice (item
-     334; the refusal's `warn` type, and its text, which no gate read: this round adds `'Already full: keep it for later'`,
-     and `denyToast.js` mutated to `info` (N1) and `GamePanels.jsx` raising `delete-rule` instead (N2) are both RED against
-     `inventory-consume`, 5 tests, the identity mutant surviving). The two first-break sound rows do read red at
-     `7250aa22`, but only because the old sound carried a `THREE.Vector3` hit point; the position itself is proven by S1 to
-     S3, not by that.
+   - **The sound-position rows are red both ways.** At `7250aa22` the sound played twice, at the click's hit point on the
+     block's top face (y 49.0 where the block's centre is 48.5); on the head, S1 to S3 (item 334) are red.
+   - **Not red at `7250aa22`, proven by mutants.** The potion refusal's notice: its `warn` type was read but its text was
+     not (no gate read the kind of notice), so this round adds `'Already full: keep it for later'`; `denyToast.js` mutated
+     to `info` (N1) and `GamePanels.jsx` raising `delete-rule` instead (N2) are both RED against `inventory-consume` (5
+     tests), the identity mutant surviving. At `7250aa22` the refusal does not exist, so neither assertion can be reached
+     there.
    - **Unproven, and said so.** Controls and setup, which are green on both sides by design and whose killability this
      round did not show one by one: row 1's control click, the potion rows just below full (item 326's P4 in `f0b602a0`),
      the changed first row of `perfect-dodge-gates`, and every `SETUP:` precondition.
