@@ -63,8 +63,8 @@ const placeholderName = (w) => !!w && typeof w.name === 'string' && w.name.start
 const count = (v) => (Array.isArray(v) ? v.length : 0);
 // Nothing earned in it: level 1, no XP, no coins, no block edited, no chest, not won, no quest claimed, no shrine reached
 // (reaching one grants nothing, store reachShrine). A save with no progression slice is from before the slice, and what
-// it holds cannot be read off it, so it is never empty. (`|| {}` and not `?.`: this build lowers optional chaining, and
-// the index chunk is at its ceiling.)
+// it holds cannot be read off it, so it is never empty. (`|| {}` and not `?.`: this build lowers each `?.` to longer code,
+// and the index chunk has a byte ceiling, scripts/ci/bundle-budget.mjs.)
 function holdsNothing(data) {
   const p = data && data.progression;
   if (!p || typeof p !== 'object') return false;

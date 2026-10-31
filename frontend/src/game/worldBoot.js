@@ -229,8 +229,8 @@ export function leaveTabNote(state, session) {
  * localStorage write, so it has landed before the note; the reload ends the page. A refused note reloads only when
  * `orPlainVisit` (the context-loss recovery and the conflict panel, where staying is worse than the world a plain visit
  * continues, latestOwnedWorld): otherwise the plain visit would land back on the world being left, so the switch is
- * not made and null is returned. `note` may be a function of
- * the state after the save (tabNote: the save mints the slot of a world that owned none).
+ * not made and null is returned. `note` may be a function of the state after the save (tabNote: the save mints the slot
+ * of a world that owned none).
  * @param {{ world?: string, fresh?: boolean } | ((state: object) => { world?: string, fresh?: boolean })} note
  * @param {{ getState: () => object, storage: Storage|null, reload: () => void, orPlainVisit?: boolean }} deps
  * @returns {{ world?: string, fresh?: boolean }|null} the note left, or null when the switch was not made
