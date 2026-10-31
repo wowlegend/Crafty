@@ -63,14 +63,16 @@ extends the epoch (item 336) and does not redo it.
    edited, no chest, not won, no quest claimed; a save with no progression slice is never empty) beyond the
    `KEEP_EMPTY_SLOTS` (3) newest, the world a page plays among those kept and never deleted. It runs at the boot, before
    the world is chosen; after a new slot's first write; and, with none kept but the slot's own, when a write fails for
-   room, which then tries once more, so a real world's save lands where it stopped before.
+   room, which then tries once more, so a real world's save lands where it stopped before. It writes the shortened index
+   first and removes the saves only once that has landed, so a refused index write never leaves the index naming saves
+   that are gone (785e18d2).
    - **Why not a rolling slot:** one slot per browser for unnamed worlds would write each New World over the last one,
      progress and all. **Why not recency alone:** on a disk an earlier build left, the player's real world is often the
      OLDEST slot, under the orphans each later visit minted; a prune of all but the newest K would delete it.
    - **The one-way door.** Deletion is of a player's data, so the rule deletes only what holds nothing earned and was
      never named. Its blind spot: an item picked up with no XP, coin, block or chest (an empty world by this rule loses
      it). Gate: `tests/gates/slot-prune-gates.test.js` (50 New World sessions leave 3 empty slots, the newest; a world
-     with coins, a named one and the real one stay; 40 orphans on disk; the quota retry).
+     with coins, a named one and the real one stay; 40 orphans on disk; the quota retry; a refused index write).
 334. **A returning player continues the world they earned, not an empty orphan written after it** (amends item 200's
    plain visit, "the first index entry the player owns whose save reads"). `latestOwnedWorld` passes over a world that
    item 333 counts as empty for the newest world that holds something, and continues the newest when none does. A
@@ -122,11 +124,11 @@ extends the epoch (item 336) and does not redo it.
    the world has reached none and Pilgrimage is not among the claimed quests. The shrine record is unchanged: no key is
    invented for a shrine the save does not name, so a shrine's chest still spawns where its reward has not been taken.
    Gate: a case in `tests/gates/shrine-persistence-gates.test.jsx`.
-341. **The lane fits under the index ceiling, 652,500 B, with no raise** (item 282). Measured with `npm run build` on the lane's head `3d0b605a` (base 7250aa22,
-   where the index chunk is 649,549 B by item 295): the index chunk is 652,121 B, 379 B under the ceiling, so the lane adds
-   2,572 B; the budget script reads 636.8 KB of 637.2 KB with every marker check passing. The World Manager's changes are
-   in the lazy panel chunk and cost the download nothing. Nothing was moved out: the lane fits, and the next lane to land
-   offsets what it adds beyond the 379 B left.
+341. **The lane fits under the index ceiling, 652,500 B, with no raise** (item 282). Measured with `npm run build` on
+   the lane's code head `785e18d2` (base 7250aa22, where the index chunk is 649,549 B by item 295): the index chunk is
+   652,132 B, 368 B under the ceiling, so the lane adds 2,583 B; the budget script reads 636.8 KB of 637.2 KB with every
+   marker check passing. The World Manager's changes are in the lazy panel chunk and cost the download nothing. Nothing
+   was moved out: the lane fits, and the next lane to land offsets what it adds beyond the 368 B left.
 342. **Opened, each with an owner** (command session, all LOW): REVIEW:l8:hidden-touch-page-timers-run (item 331),
    REVIEW:l8:delete-in-another-tab-writes-back (item 335), REVIEW:l8:slot-write-race-in-one-task (item 336). Not seen in
    a browser or on a device: every gate here runs in jsdom; CI's e2e runs the save paths it already covers
