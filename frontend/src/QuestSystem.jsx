@@ -21,6 +21,7 @@ import { tierLootChance } from './game/lootTier.js';
 import { questRewards } from './game/questRewards.js';
 import { reduceClaim, MAX_ACTIVE_QUESTS } from './game/questClaim.js';
 import { resolveChestHeights } from './game/captureRest.js';
+import { CHEST_CAP, countNearChests, retireFarChests } from './game/chestBoard.js';
 import { toNotification, admits, notificationText, TOAST_MS } from './ui/notifications.js';
 import { TOUCH_TOAST_TOP } from './ui/hudLayout.js';
 
@@ -788,8 +789,8 @@ export const useTreasureChests = () => {
             const playerPos = useGameStore.getState().playerPosition;
             if (!playerPos) return;
 
-            // Max 5 chests at a time
-            if (chestsRef.current.length - openedRef.current.size >= 5) return;
+            // Max CHEST_CAP chests at a time IN REACH: one the player walked away from does not hold a slot (game/chestBoard.js)
+            if (countNearChests(chestsRef.current, openedRef.current, playerPos) >= CHEST_CAP) return;
 
             // Random position 20-60 blocks from player.
             const angle = Math.random() * Math.PI * 2;
@@ -981,6 +982,17 @@ export const useTreasureChests = () => {
             // Identity-preserving: returns the SAME array when nothing resolved, so a no-op tick does
             // not mint a new React state value and re-render every consumer once every 3 seconds forever.
             setChests(prev => resolveChestHeights(prev, getLevel).chests);
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Retire the unopened periodic chests the player has left far behind, so the board is a pool bound by where they are
+    // (game/chestBoard.js). Identity-preserving: a sweep that retires nothing re-renders nothing.
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const playerPos = useGameStore.getState().playerPosition;
+            if (!playerPos) return;
+            setChests(prev => retireFarChests(prev, openedRef.current, playerPos));
         }, 3000);
         return () => clearInterval(interval);
     }, []);
