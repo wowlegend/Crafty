@@ -18,6 +18,7 @@ import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward, gameTimeFo
 import { getBeastForm } from '../game/beasts.js';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
 import { hydrateBossState } from '../game/bossPersistence.js';
+import { liveSquad } from '../game/squadRoster.js';
 import { clampEmber, canAfford, accrueBuild, readBuildDay, emberFromSave } from '../game/ember.js';
 import { hitDirection } from '../game/damageDirection.js';
 import { hurtStopMs } from '../game/hurtFeel.js';
@@ -879,6 +880,10 @@ export const useGameStore = create((set, get) => ({
         return true;
     },
     emberBuildDay: { night: 0, built: 0 },
+    // The bound squad as the save keeps it: one { type } per creature (game/squadRoster.js), persisted in the progression
+    // slice. The ECS holds the bodies; world/squadPersistence.js writes this on every bind, fusion and release, and
+    // rebuilds the bodies from it at the player when a world loads.
+    squad: [],
     accrueBuildEmber: () => set((s) => {
         const r = accrueBuild(s.ember, s.emberBuildDay, s.nightCount, s.isDay);
         return r.ember === s.ember && r.record === s.emberBuildDay ? s : { ember: r.ember, emberBuildDay: r.record };
@@ -1178,6 +1183,9 @@ export const useGameStore = create((set, get) => ({
             // The save's own record, absent or not: a save older than the record has spent none of its day, and the
             // session's record belongs to whichever world was loaded before it.
             const emberBuildDay = readBuildDay(prog ? prog.emberBuildDay : state.emberBuildDay);
+            // The save's own squad, and none when it holds none: a squad belongs to its world, so the session's never
+            // crosses into another (a save from before the roster had its squad dropped by the load that wrote it).
+            const squad = liveSquad(prog?.squad);
 
             // The retired items leave every chest too (the tombstone holds them for the save).
             const chests = saveData.chests ? new Map(liveChests(saveData.chests)) : state.chests;
@@ -1224,6 +1232,7 @@ export const useGameStore = create((set, get) => ({
                 lastRewardedNight,
                 ember,
                 emberBuildDay,
+                squad,
                 chests,
                 maxHealth,
                 maxMana,

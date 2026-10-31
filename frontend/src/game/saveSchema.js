@@ -267,7 +267,7 @@ export function splitTombstone(saveData, paidQuestIds = []) {
 export const PERSISTED_KEYS = Object.freeze([
   '_tombstone', 'worldBlocks', 'chests', 'inventory', 'questState',
   'level', 'currentXP', 'totalXP', 'equipment', 'relicTiers', 'talentPoints', 'unlockedTalents', 'coins',
-  'nightCount', 'lastRewardedNight', 'ember', 'emberBuildDay',
+  'nightCount', 'lastRewardedNight', 'ember', 'emberBuildDay', 'squad',
   'worldSeed', 'selectedBlock', 'activeSpell', 'isDay', 'gameTime', 'gameWon',
   'bossActive', 'bossHealth', 'bossDefeated', 'bossTier', 'bossKillNight',
 ]);
@@ -336,6 +336,8 @@ export function buildSaveData(state, { position } = {}) {
       // are not written: a save that holds them keeps them in the tombstone, and loading it sums them into `ember`.
       ember: state.ember,
       emberBuildDay: state.emberBuildDay,
+      // The bound squad's roster (game/squadRoster.js): the types, never the positions; it comes back at the player.
+      squad: state.squad,
     },
     game_state: {
       ...tomb.game_state,

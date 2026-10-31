@@ -9,9 +9,12 @@
  */
 const UNBINDABLE = new Set(['villager']);
 
+/** Whether a creature of `type` may be bound: every mob but the blocklisted. */
+export const isBindable = (type) => !UNBINDABLE.has(type);
+
 /** convertMobToAlly(world, entity) -> the same entity (now an ally) or null (refused). */
 export function convertMobToAlly(world, entity) {
-  if (!entity || !entity.isMob || UNBINDABLE.has(entity.type)) return null;
+  if (!entity || !entity.isMob || !isBindable(entity.type)) return null;
   world.removeComponent(entity, 'isMob');
   world.addComponent(entity, 'isAlly', true);
   entity.baseType = entity.type;        // the fusion-lookup key (M6) survives re-tints
