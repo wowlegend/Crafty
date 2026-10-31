@@ -426,7 +426,7 @@ const FarBeacon = () => {
     );
 };
 
-export const MinecraftWorld = React.memo(() => {
+export const MinecraftWorld = React.memo(function MinecraftWorldRender() {
     const { camera } = useThree();
     const { rapier, world } = useRapier();
     const { playBlockPlace, playBlockBreak } = useGameSounds();

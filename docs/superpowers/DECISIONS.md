@@ -19,6 +19,338 @@
 
 ---
 
+## 2026-10-31 (lane L12, round 2) — [LOOP] each instrument goes red on the failure it names: entry points by name, guards by data flow, failures across reloads, and ledgers that fall
+
+Round 1's two reviews of lane L12 (static and dynamic, both FIX) found that the lane's instruments could not go red on
+failures they claimed to catch, the class this audit exists for. This round fixes each, red first and mutation-proven
+with `frontend/scripts/dev/mutate.sh` (each commit's `Mutation-Proof:` trailer lists its mutants, and every batch ran an
+identity mutant that survived; the first one for the runtime-reach script was put in a string the test asserts, went red
+as it should, and was rerun on two comments). Branch `fix/l12-instruments`, PR #71, from `6a7ee30d`; main merged at `a150a93a` (lane
+L7). Each item names what in items 310-317 it supersedes.
+
+350. **MUST_REACH holds entry points, observed by name in V8's per-function counts.** (static F1, dynamic F1; it
+   supersedes item 311's grain paragraph and its "one scratch run with a must-reach mount deleted shows the job red",
+   and item 317's "adding an unreached module to the set is the same observable to the job")
+   - **What was wrong.** "Reached" was a module the page evaluated, and every static import is evaluated at boot. The
+     audit's own mutant survived: with ElementZoneSystem's mount deleted, the merged job still read 70 of 70, because
+     `devBridge.js` and `ElementZoneRenderSystem.jsx` still import the module; so did a `useQuestSystem()` App stopped
+     calling. 14 of the 70 modules have more than one importer.
+   - **Now.** Each entry is `module#function`: the component the mounter renders, the hook App calls, the function the
+     boot or save path calls, and for the dragon's chunk `BossEntity.jsx#glowHead`, which its frame loop calls each frame
+     the dragon is drawn (the chunk is preloaded before a fight, so its module being evaluated says nothing).
+     `tests/e2e/_coverage.js` keeps V8's `functionName`; the shard file is format `/2` with the named functions whose first
+     range (the call count) counted, and how many named functions it saw. The merge fails on an entry that ran in no shard
+     ("though its module was evaluated" is the deleted mount), on a shard with no function names, on an empty contract and
+     on an entry with no function; `--emit` exits 1 on nameless coverage.
+   - **Names V8 reports.** `memo(() => ...)` is anonymous to V8, and the dev server's esbuild renames a name declared twice
+     in one file: `const GameScene = memo(function GameScene(...))` is served as `GameScene2` (measured with vite 6.4.5's
+     `transformRequest`, plugin-react 4.7.0 fast refresh on). So seven memo components' render functions are now
+     `function <Name>Render` (no behaviour change), and `runtime-reach-merge.test.js` checks every entry offline: one function
+     V8 would name so (`tests/_support/v8FunctionNames.js`), its name declared once in the file. Vite's own transform of
+     each entry module, checked once: 71 of 71 named one function.
+   - **Two entries left the contract on the first real run** (CI run 41221423846 on `541a3b7d`), each with a registry row:
+     `src/WorldManager.jsx#WorldManager`, because no spec renders the World Manager (the panels chunk's prefetch is all that
+     read as reached, and two spec headers say they do not check it: `REVIEW:l12:world-manager-unreached-by-e2e`); and
+     `src/game/contextRecovery.js#recoverFromContextLoss`, because what a test runs before its page reloads is missing from
+     its coverage: context-loss.spec passed in shard 1, so its lost context called `onContextLost` and its tap called the
+     recovery, which reloads the page, and shard 1 records no function of contextRecovery.js at all, while the module reads
+     as evaluated because the reloaded document evaluates it again (`REVIEW:l12:coverage-before-a-navigation-unrecorded`,
+     measured on one spec, not explained). contextRecovery.js keeps `onContextLost`, which a spec in shard 5 runs without a
+     reload, and the header now says an entry must be one a spec runs in the document it ends on. **69 entries in 69
+     modules** (`8f2d61e3`).
+   - **On real coverage.** Run 41221423846: 8 shard files of format `/2`, each carrying V8's names (906 to 1,225 named
+     functions ran per shard), 399 of 417 modules evaluated, and "MUST_REACH: 69 of 71 entry points ran (in 70 modules)",
+     the two above failing as "never ran in any of the 8 shards ..., though its module was evaluated". Of the 69 that
+     stay, 60 ran in all 8 shards; `bossSmash.js#destroyVoxelsInRadius` and `contextRecovery.js#onContextLost` ran in one,
+     and the dragon's `glowHead`, `decalFor` and `stepDragon` in two, so each of those five rests on one or two specs
+     reaching it, and a spec that fails before it turns the merge red too.
+   - **The game-side mutants, on CI** (throwaway ref `land/l12-fix2-mutants`, commit `adfdbbfa` on `541a3b7d`, run
+     41222068391). Its merged job failed with "MUST_REACH: 60 of 71 entry points ran", and the eight entries the mutants
+     target are among the 11, each "never ran in any of the 8 shards ..., though its module was evaluated", so round 1's
+     module grain would have stayed green on every one:
+     - a mounted component: the deleted `<ElementZoneSystem />` mount (the audit's literal mutant; the module keeps two
+       importers), as `ElementZoneSystem.jsx#ElementZoneSystem`;
+     - a hook App calls: `useEmberAccrual` left imported and uncalled, as `accrualHooks.js#useEmberAccrual`;
+     - a function the save path calls: `initSettingsPersistence` left imported and uncalled, as
+       `settingsPersist.js#initSettingsPersistence`;
+     - the dragon's chunk: the `<LazyDragon>` mount never rendered while the chunk is still preloaded, as
+       `dragonLoader.js#Dragon`, `BossEntity.jsx#glowHead`, `dragonTelegraphs.js#decalFor`, `dragonMoves.js#stepDragon` and
+       `bossSmash.js#destroyVoxelsInRadius`.
+     The other three are WorldManager and recoverFromContextLoss (above), and `contextRecovery.js#onContextLost`, which one
+     spec runs and which the mutant set broke too: the fragility named above, seen. The quest-hook and autosave mutants
+     were tried first and refused by the commit hook, because unit tests that render App see both.
+
+351. **The capture-guard ratchet counts guards, and follows the flag under any name.** (static F2, dynamic F4; it
+   supersedes item 312's count, "105 sites in 60 files", and its "The two clauses that stand are gated", which the
+   reviewers' mutants refuted)
+   - **What was wrong.** It counted a call of the bare name `isCaptureMode` or a member read of that name: GameScene's
+     local `const isCaptureMode = useGameStore(...)` counted once and its four uses nothing, an aliased import counted
+     nothing, and `settingsPersist.js`'s two guards, on the function App passes it, were not in the ledger. Four mutants
+     survived it, run first: a new `if (isCaptureMode) void 0;` in GameScene, a guard through an aliased import, a
+     module-scope read through the alias, a third guard through settingsPersist's parameter.
+   - **Now.** `tests/_support/captureGuards.js` counts GUARDS (one place the flag decides something, the `!`, `&&`, `||`,
+     `===` and `typeof` around a read taken as one), and follows the flag by scope through `tests/_support/sourceFlow.js`:
+     an aliased import, a local or destructured field that holds it (its uses are the guards), a getter (its calls are),
+     and a call argument, object-argument property or JSX prop it is handed into, within a file or across a relative
+     import. **133 guards in 62 files**, every per-file change a rise the old counter could not see; no guard was added.
+     What it does not follow is a value stored on an object and read back (`REVIEW:l12:source-flow-limits`).
+   - **New dev dependency, `@babel/traverse` ^7.29.7**, for the language's own scope resolution. It was already in the
+     lock as a dev dependency of `@vitejs/plugin-react` at 7.29.7; it is now listed in `package.json` and the lock's root,
+     and `npm ci --dry-run` on the two files accepts the lock.
+
+352. **The e2e isolated-failure check sees every load of the test's page, and an unread game page fails.** (static F3,
+   dynamic F2, F3; it supersedes item 310's e2e side, whose "never a pass" was false, and item 317's acceptance of the
+   unread lines)
+   - **What was wrong.** The fixture read `window.__isolatedFailures` once at the end, so a failure before a reload was
+     lost (the counter is module state; a reload publishes 0), and a page it could not read printed "unread" and passed.
+   - **Now, and it only listens.** A tracker made per test (`tests/e2e/_isolatedFailures.js`) is fed the page's console
+     events and its requests, both of which keep coming across every reload: each `console.error` line that starts with
+     `isolated failure in ` (what `src/game/isolatedEffects.js` prints, in a dev server) is a failure, and each fetch of
+     `src/game/isolatedEffects.js` is a load that carries the instrument. Any failure fails the test; a game page that
+     never fetched the module is unread and fails; a game page is one that requested the module script `index.html`
+     names, so the fog specs' probe page is printed as "not a game page", detected by what it loaded, not by name. The
+     window counter stays for probes.
+   - **The first version called into the page, and that changed the game** (CI run 41226199357, on `8966b318`, the head
+     with lane L10 merged). It armed through a Playwright binding at module load, and Playwright delivers a binding's
+     result with `Runtime.callFunctionOn` and `userGesture: true` (playwright-core 1.64.1, `lib/coreBundle.js`: the
+     binding's `deliverBindingResult`, and the Chromium context's `evaluateWithArguments`), so every game page was handed
+     a user gesture at boot. L10's new `music-bus.spec.js` failed all three attempts with "SETUP: the day track plays
+     before any gesture" (the day track 27 to 31 s in before the spec's key press); it passed on main. The binding is
+     removed and nothing in the fixture calls into the page any more; the on-CI receipts below for the listening version
+     are item 358's.
+   - **On CI, first version.** Run 41221423846 printed 112 `[isolated-failures]` lines: 105 "0 over 1 page load(s)", 3 "0 over 2",
+     1 "0 over 3" (the specs that reload), and 3 "not a game page (/src/index.jsx was never requested)", the fog specs;
+     none unread, none failed, so the stricter verdict costs nothing today. On the mutant run (41222068391), smoke.spec
+     registered a reactor that throws, emitted, reloaded and waited for the new page's counter to read 0; it failed all
+     three attempts with "1 isolated failure(s) while this test ran (over 2 page load(s)), the last: the reward event: L12
+     round 2 mutant reactor before a reload", where round 1's read of the last document would have passed it.
+
+353. **The ratchet ledgers are the count exactly.** (static F4, dynamic F6; it supersedes items 312 and 313's "the test
+   does not tighten the ledger") `tests/_support/ledgerDrift.js` names a file past its number or unlisted, a file under its
+   number or listed with none left, and a malformed entry; both ratchets fail on all three. Red first on the slack the
+   reviewer measured: `src/world/bossSystem.js: 2 < 3` (so item 313's "80 comments" was 79), now 2.
+
+354. **The history detector counts "<noun> used to".** (static F5, dynamic F7; it amends item 313) The marker needed a
+   pronoun before "used to", so "The sweep used to sit" and "This comment used to claim" passed. Every "used to" in src
+   comments was read by hand: 98 matches of the string, two of them inside "refused to", so 96 phrases, of which two are
+   purposes and pass: "heights (...), used to bound how far" (after a comma) and "Used to spray hit sparks" (sentence-initial,
+   no word before it). The marker is now any word, name or code span before "used to", except after a form of be or get or
+   a comma. **117 comments in 74 files**, from 79 in 48, with no comment added; `isolatedEffects.js`'s narration is
+   rewritten. **A correction:** commit `19f4402e`'s message says "78 phrases" and that one phrase is a purpose; it was 96
+   and two.
+
+355. **The setter gate credits a member of the STORE, not any member of that name.** (dynamic F5; it amends item 314) A dead
+   store `setTranslation` would have been kept alive by every Rapier body's `rb.setTranslation(...)` (the reviewer's SS2
+   survived). A use is now a read off something the store's value flows into, followed from its `create(...)` export by
+   scope (`tests/_support/storeSetters.js` lists the forms). On the real tree: 61 setters, 61 live, as before.
+
+356. **`lastDamageTime`'s leftovers are gone.** (static F6, dynamic F7; it amends item 315) The store comment that said it
+   "is one number for the whole game" now states the per-attacker rule, and the fourteen test writes of the deleted key, in
+   ten files, are removed (no behaviour change; commit `59fb059e`'s message says twelve).
+
+357. **knip reads `tests/_support`.** `@babel/traverse` read as unused because knip counts a dependency only in its entry and
+   project files and the helpers import it; `tests/_support/**/*.js` joins `project` (not `--production`), and the dead
+   export it then found, `hudCallSites.js` `everyGameStateUse`, is deleted. A detector that false-positives is widened.
+
+358. **What round 2's CI said, and what is open.**
+   - **The code head's run, 41223639371 on `8f2d61e3`: `ci ok` success**, every job green. The merged job read "8 shard
+     file(s) of 8", 399 of 417 modules evaluated, and "MUST_REACH: 69 of 69 entry points ran (in 69 modules)"; 115
+     `[isolated-failures]` lines (108 "0 over 1 page load(s)", 3 "0 over 2", 1 "0 over 3", 3 "not a game page"), none
+     unread, none failed. Three tests needed a retry, each a known flake row given this sighting:
+     `dragon-fight.spec.js:88` ("the move machine did not cancel the parried bite",
+     `REVIEW:e2e-flakes:dragon-fight-parried-bite-move`), `dragon-fight.spec.js:311` ("the fireball's burn never ticked",
+     `REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached`) and `light-pool.spec.js:25` (programs 108 to 109 on two
+     attempts, `REVIEW:w2f:light-pool-first-attempt-programs`). The run before it, 41221423846 on `541a3b7d`, failed only
+     where this round expected: knip on the new dependency (item 357) and the two entries (item 350); its one retry,
+     `quest-text.spec.js:54`, is `REVIEW:e2e-flakes:quest-text-no-frame-while-held`.
+   - **Main moved to `61696120` (lane L10) and was merged (`8966b318`); its run, 41226199357, failed** on L10's
+     `music-bus.spec.js`, three attempts, because the first isolated-failure fixture called into the page (item 352).
+   - **The listening fixture's head, `72c9fe6e`: run 41229273516, `ci ok` success**, every job green and no retry at all.
+     `music-bus.spec.js` passed on its first attempt; "MUST_REACH: 69 of 69 entry points ran (in 69 modules)", 400 of 418
+     modules evaluated; 112 `[isolated-failures]` lines (105 "0 over 1 page load(s)", 3 "0 over 2", 1 "0 over 3", 3 "not a
+     game page"), none unread, none failed. The throwaway ref `land/l12-fix2-mutants-2` (`27bd8de8`, that head plus only
+     the smoke.spec throw before a reload), run 41229307736, failed one job, the shard with smoke.spec, which failed all
+     three attempts with "1 isolated failure(s) while this test ran (over 2 page load(s)), the last: the reward event:
+     Error: L12 round 2 mutant reactor before a reload, listening"; its merged job read 69 of 69, and its one other retry
+     was `dragon-fight.spec.js:311` (`REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached`).
+   - **What the merge of main `61696120` (lane L10) changed in the lane's ledgers.** L10 landed a new capture guard in
+     `src/ui/MusicPlayer.jsx` (`if (isCaptureMode()) {` at a gesture, commit `3b8e5e77`) before this ratchet reached main,
+     so the merged tree holds 3 there and the ledger takes 3, the one rise in this lane's ledgers that is not a wider
+     detector; the rule "add no guard" binds from this landing on. L10's one new history comment ("the step the fade has
+     always taken") is reworded as the step it is, so MusicPlayer's history number stays 1.
+   - **The index chunk:** 650,441 B on main `a150a93a` and 650,457 B on the lane merged with it, +16 B; with main
+     `61696120` merged, 652,029 B against main's 652,017 B (its item 307), +12 B, 471 B under the 652,500 B ceiling (item
+     282), by `npm run build`; bundle-budget passes. Not attributed byte by byte: the render functions' names are not in
+     the build (the minifier drops them; grepped), so the likeliest source is the seven arrows that became function
+     expressions; the isolated-failure binding's name is in no built chunk.
+   - **Corrections to item 317** (dynamic F8): the run it calls the final head's, 41207666305, was on `bdfd5700`; the head
+     `6a7ee30d` ran as 41209760482 (111 `[isolated-failures]` lines, 108 at 0).
+   - **Seen once, not diagnosed:** QuestSystem.jsx's 250 ms chest timer firing after jsdom tore down, under load 10-14, in
+     a commit hook's related run (`REVIEW:test-flakes:quest-chest-timer-after-teardown`).
+   - **Process:** one run of `tests/gates/` (330 files) went outside the suite lock at 2 workers when an empty variable
+     widened a single-spec command; every full-suite run used the lock and 4 workers. The throwaway refs are the command
+     session's to delete (`REVIEW:l12:throwaway-mutant-refs`; `land/l12-fix2-mutants-2` too), and so are the local branches `scratch/l12-fix2-mutants` and `scratch/l12-fix2-mutants-2`.
+   - **Open rows:** `REVIEW:l12:world-manager-unreached-by-e2e`, `REVIEW:l12:coverage-before-a-navigation-unrecorded`,
+     `REVIEW:l12:source-flow-limits`, `REVIEW:l12:history-comments-ledger` (117 left), `REVIEW:l12:context-loss-mutants-unobserved`,
+     `REVIEW:l12:isolated-failure-invisible-in-production`. Closed: `REVIEW:l12:reach-grain-is-the-module`.
+
+---
+
+## 2026-10-31 (lane L12) — [LOOP] instruments that can see: an isolated failure is reported, the 8 shards' reach is merged and holds a named set, and the capture-guard rule keeps what is enforced
+
+Lane L12 of the deep audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4; seam S8), branch
+`fix/l12-instruments`, PR #71, from main `a05bf328`. The lane ran beside L3 (PR #69), whose files it left alone while L3 was in
+flight (the store's keys, `QuestSystem.jsx`, `bossSystem.js`, `saveSchema.js`, the squad files). L3 landed as `7250aa22` while
+this lane's first CI run was in flight; the lane merged it (`82f43c02`) and finished the two items that waited on it (314, 315).
+
+310. **An isolated failure is reported, and the e2e suite reads the count.** (AUDIT:debt:isolation-swallows-errors) The event bus
+   caught a throwing subscriber with an empty block, and the two boss callers of `runIsolatedEffects` discarded the failures
+   it returns. `game/isolatedEffects.js` gains `reportIsolatedFailure(where, error)`, a `console.error` naming where and, in a
+   dev server, `window.__isolatedFailures = { count, last }`, published at load with a count of 0. `runIsolatedEffects` calls
+   it per failed effect, which covers both boss callers without an edit to `bossSystem.js`; the bus calls it with the event's
+   name. The production build drops console calls (`vite.config.js` `esbuild.drop`, build only), so the function returns
+   first when `import.meta.env.DEV` is false and the counter is dev only. The production index chunk: 646,232 B on `a05bf328`
+   and on this lane before L3's merge; 649,549 B on main `7250aa22` and 649,515 B on the merged lane head (34 B less: the dead
+   `lastDamageTime` store field and its write are gone, item 315), against the 652,500 B ceiling (item 282), by `npm run build`.
+   - **The e2e side.** `tests/e2e/_fixtures.js` reads the counter at the end of every test (`tests/e2e/_isolatedFailures.js`),
+     prints `[isolated-failures] N`, writes its V8 coverage file first, and then fails the test on a nonzero count. A page
+     that cannot be read (crashed, closed, silent for 5 s, no counter) prints `unread` and is never a pass. No spec throws on
+     purpose in a reactor, so a nonzero count is a finding. **The baseline was unknown when this was written** (no e2e ran
+     locally); PR #71's first CI run prints the count for every test, and the result is recorded in item 317.
+   - **Gates.** `tests/gates/isolated-failures-gates.test.jsx` (9 cases: a subscriber that logs is seen through the real bus;
+     a throwing one is logged with the event name and its error while the next runs; a non-Error throw; every failure of one
+     emit; a failed effect under its own name; the real `useBossSystem` driven through its arrival poll and a store
+     `damageBoss` with a throwing notice and a throwing `grantXP`, three lines and three counts and the win still lands; the
+     counter exists at load), red first on `a05bf328` (4 of 7 red, the 3 presence cases green). `tests/scripts/e2e-isolated-failures.test.js`
+     (9 cases) drives the read, the printed line and the verdict with a fake page. Mutants: 8 and 6, all red, identity survived.
+   - **Not proven here:** that `_fixtures.js` calls the helper (a Playwright fixture cannot run in the unit suite). The CI log,
+     one `[isolated-failures]` line per test, is that proof.
+
+311. **The 8 shards' reach is merged, and a named set must be reached.** (AUDIT:debt:runtime-reach-per-shard) It supersedes the
+   "REPORT-ONLY, deliberately" header of `scripts/ci/runtime-reach.mjs`, which no DECISIONS item had recorded. Each shard
+   printed its own report: they reach 391-397 of 415 modules, so the dragon's modules read as never reached in shards 1, 7
+   and 8 of run 41199587278, and a shard that attached no coverage printed "instrument failure" and exited 0 (red first: the
+   old script on a coverage directory holding `[]` and on a missing directory, both `exit=0`).
+   - **Now.** `--emit <file> --shard <n>` writes the modules a shard reached and exits 1 when it read no coverage; the e2e job
+     uploads `reach-shard-<n>` and fails the shard when the file is missing; a new `runtime-reach` job (needs `changes` and
+     `e2e`, `always()`, the same docs-only and certified skip as e2e) downloads them, checks out `src` only, installs nothing
+     and runs `--merge --expect 8`. It exits 1 on a missing, duplicated, unreadable, foreign-format or empty shard file, a shard
+     number outside 1..8, a `MUST_REACH` module no shard reached, or a `MUST_REACH` entry the tree no longer has. `ci ok` needs
+     the job and `ci-ok.mjs` lists it among the jobs a docs-only or certified run may skip.
+   - **`MUST_REACH`: 70 modules in five groups with a reason each** (the systems and render drivers the scene mounts, the hooks
+     and roots App mounts, the dragon, the boot and the save path). Checked offline against the eight shard logs of run
+     41199587278: the union reaches 408 of 415 modules, the seven unreached being `brand.js`, `i18n/keyReachability.js`,
+     `render/passTimer.js`, `theme/contrast.js`, `ui/LocaleToggle.jsx`, `ui/PrimitivesShowcase.jsx` and `world/detile.js` (item
+     115 accounts for four of them), and all 70 are reached. Adding an entry requires a spec that reaches it today; removing one
+     is a commit that says why.
+   - **The grain, measured and stated in the script's header.** "Reached" is a module the page evaluated. `node:inspector`'s
+     `Profiler.takePreciseCoverage` reports an evaluated module's top-level entry as `["", 1]` even when every function in it is
+     uncalled, so a module that is imported and never mounted still reads as reached, and the dev server's React-refresh wrapper
+     adds an executed function to every `.jsx` module, so counting executed functions would mean nothing. The job sees a module
+     nothing imports any more, which is what deleting a mount leaves once eslint forces its import out. **A function never called
+     inside an imported module is not seen**: the fixture's per-test file keeps no function names. That is registry
+     `REVIEW:l12:reach-grain-is-the-module`.
+   - **Gate.** `tests/scripts/runtime-reach-merge.test.js` (31 cases: the union rule, every way a shard set is wrong, the CLI on
+     synthetic files, `MUST_REACH` against the tree, and `ci.yml` as YAML: the emit step, the upload, the merge job and the number
+     8 as the matrix, the `--shard=N/8` split and `--expect`). Mutants: 14 on the script, 8 on `ci.yml`, 1 on `ci-ok.mjs`, all red,
+     identity survived; the required-check spec's skip-condition case admits the merge job's `always() &&` form (3 more mutants red).
+   - **Not proven here:** that the workflow runs and that the real shards' paths map as the logs say. PR #71's own CI is that proof,
+     and one scratch run with a must-reach mount deleted shows the job red (item 317).
+
+312. **The capture-guard rule keeps its enforced clauses and drops the one that protected a retired oracle.**
+   (AUDIT:ultra:ultra-player-world-10) `.claude/rules/game-code.md` said: add no guard; read the flag inside the callback; reset
+   to a declared value rather than return early. Nothing enforced any of the three, and five useFrame guards (`HurlSystem`,
+   `SquadAISystem`, `ElementZoneSystem`, the far beacon, the Player loop) return early. **The third clause is retired.** What it
+   protected was a run-independent frame for the pixel baselines (`capture-phase-reset-gates` measured a 6.2x spread in the
+   frozen phase, Pearson r 0.842 against the menu residual), and that oracle retired in W1-H item 1 and W2-B. Capture mode now
+   freezes the world for the e2e specs and probes that call `enterCapture`, which read state, so a system frozen where it was
+   is the behaviour they ask for; rewriting five useFrame loops for a capture-only frame would cost risk in the Player loop,
+   the terrain and the squad (L3's) for no player value. The title screen's guards still reset (`capture-phase-reset-gates`).
+   - **The two clauses that stand are gated.** `tests/scripts/capture-guards-ratchet.test.js` (5 cases) counts guard sites with
+     `@babel/parser` (a call of `isCaptureMode()` or a read of a member called `isCaptureMode`): **105 sites in 60 files** (93
+     calls, 12 member reads) are held per file in `tests/scripts/capture-guards.ledger.json`, which may only fall; an unlisted
+     file holds none; a site at module scope fails (zero today). The test does not tighten the ledger, so lane L3 removing
+     a guard in a file it edits changes nothing. Mutants: 7, all red, identity survived.
+
+313. **One history-comment ratchet merges four rows.** (AUDIT:ultra:ultra-game-logic-5, REVIEW:w2d:gamehud-history-comments,
+   REVIEW:w2g:comments-say-history, REVIEW:w3b:comment-history-phrases) `tests/scripts/history-comments-ratchet.test.js` (4 cases)
+   reads every non-test `src` file's comments from the syntax tree (adjacent line comments joined) and counts those that
+   match a marker of narration: "it / they / this / these / that / those / which / one / each used to", "used to be", "what
+   was there", "deleted / removed / retired / fixed / reverted / replaced / added" followed by a date, "(was 5.5)", "has
+   always", "on today's model". **80 comments in 48 files after the sweep, from 92**, held per file in
+   `tests/scripts/history-comments.ledger.json`: a file past its number, or an unlisted one, fails. The markers live in
+   `tests/_support/historyComments.js`. **Not checked:** history worded another way ("the old X", "previously"); a date is
+   not history on its own ("measured 2026-10-27" stays). The sites the four rows named are rewritten as the constraint and its
+   reason (`GameHud.jsx`, `devBridge.js`, `GameSystems.jsx`, `dragonMoves.js`, `BossEntity.jsx`, `bossEntrance.js`,
+   `debrisPark.js`, `npcRoutine.js`, `questLore.js`, `spellVisualProfiles.js`, `world-seed-gates.test.js`), comments only. The
+   other 80 stay in the ledger as one open row, `REVIEW:l12:history-comments-ledger`. Files lane L3 edits are held, not
+   rewritten.
+
+314. **Every `set*` member the store declares has a caller.** (AUDIT:debt:three-call-channels-dead-wires, the AST half; L3 owns
+   the declared-keys half, `tests/scripts/store-keys-declared.test.js`.) Lane L6 removed 13 of the 17 setters by hand; lane L3
+   (item 291) removed `setDamageBoss`, `setGetBossPosition` and `setBossActive` with the boss mirror. The count of dead `set*`
+   members is 0 on the merged tree. `tests/scripts/store-setters-called.test.js` (4 cases) reads the store's `create()`
+   object and every source file with `@babel/parser` and credits a setter with a use as a member of something (`x.setX`,
+   `x?.setX`, `x['setX']`, `const { setX } = ...`), not a bare identifier (a component's own `const [v, setX] = useState()`
+   would credit a dead store setter of the same name, which the first draft did). Red first, the detector over the tree before
+   L6 (`983d5711^`): 15 dead, exactly L6's 13 plus the two L3 names. The gate had an exemption for those two while L3 was in
+   flight; it is gone now that they are. Mutants S1-S6: all red, identity survived. The channels themselves (the bus, `GameMethods`,
+   the store) are not consolidated: the audit sized that at L, and the registry row stays open for it.
+
+315. **The five comments that contradicted their code** (AUDIT:debt:comments-that-lie). Each, at the merged tree: `isolatedEffects.js`
+   (it said callers surface the returned list; two discarded it) is fixed by item 310; `runtime-reach.mjs` (it said the report was
+   a union across shards) by item 311; `bossSystem.js:41` was made true by L2 (the boot loads before the hook mounts) and L3 then
+   rewrote the hook's seed comments around the store as the owner; `CombatSystem.jsx:217-223` is true since L3 deleted the
+   `useGameStore.setState({ damageMob })` write beside it (nothing reads `store.damageMob`; grepped); and the store's
+   `lastDamageTime` comments, which said the HUD and the camera read it as the hit signal, are fixed here by deleting the field
+   and its one write (nothing in `src` reads it; the signal is `lastHitDir.t`, read by `Components.jsx` `isNewHit` and by
+   `ui/DamageDirection.jsx`). `pack-damage-gates` carried a case with the same false reason ("the hit direction indicator and
+   the camera shake lose their trigger"); it now asserts that `lastHitDir.t` is stamped on every accepted hit, red on a hit that
+   stamps nothing. The comment checks are by reading, not by a gate: the audit's own verdict was that comment truth is not
+   testable, and the two AST checks of items 313 and 314 are what make claims 3 and 4 checkable.
+
+316. **The gates that ran in an order the game never runs** (audit debt item 1). Status at `a05bf328`, from the files:
+   `boss-persistence-hook-gates` loads before mount, which since L2 is the order the game runs (the boot loads before the first
+   render), and L3's `store-owns-encounter-gates` is the mount-first case; `new-world-reset-gates` is a store-only unit, and the
+   hook half of a New World (the dragon woken, then Create New World: no dragon, hook equal to store) is L2's
+   `world-switch-boot-gates`, since a New World is now a boot; the touch Show
+   Stats wiring is gated through the real App by L1's `touch-show-stats-gates`; `build-footprint-gates` no longer pins the
+   inverted wall (L6, `52913d8e`); the iPad stubs in `touch-probe.mjs`, `ipad-probe.mjs` and `_lookbookPage.mjs` are L10's
+   ("ban no-op stubs"). **This lane's share is `context-loss.spec`**, which asserted coins, a block and a position, the store's
+   own, and not the quest log or the dragon fight that the resume once wiped: it now emits a player kill on the bus and writes
+   a slain dragon at tier 1 before the loss, and after the reload reads the kills, `bossDefeated`, `bossTier` and `bossActive`
+   back from the store once the hooks have mounted. **Not run** (no e2e locally); its mutants E7 and E8 are listed in the spec
+   and not yet observed red (registry `REVIEW:l12:context-loss-mutants-unobserved`).
+
+317. **What PR #71's first CI run said, and what is left open.** Run 41204965227 on `cd7682cf`, read from its logs.
+   - **The isolated-failure baseline is 0.** 120 `[isolated-failures]` lines (117 with a count of 0); on the final head's run
+     (41207666305) 112 lines, 109 of them 0. Three read `unread (no counter on the page)` in both: the fog specs, which draw on
+     a page that is not the game. No spec swallows a throw, so the fixture's failing a nonzero count costs nothing today.
+   - **The merged runtime-reach job read the real shard files and passed.** 8 shard files of 8; the union reaches 397 of 415
+     modules and 11 more run only in a worker; the 7 unreached are exactly the seven the offline check from run 41199587278
+     predicted; `MUST_REACH: 70 of 70`. The per-shard module counts (391-397) match the old per-shard reports.
+   - **Both new instruments were seen red on real CI, on two throwaway refs, `land/l12-mutant-reach` and
+     `land/l12-mutant-isolated`** (the command session deletes them; this lane's permission to delete a remote branch was
+     refused). Run 41205153138: `src/brand.js`, a module no shard reaches, added to `MUST_REACH`: the `runtime reach (merged)`
+     job failed with "MUST_REACH src/brand.js was reached by none of the 8 shards", `70 of 71`. Run 41205187537: `smoke.spec.js`
+     registered a reactor that throws and emitted its event: that test failed with "1 isolated failure(s) while this test ran,
+     the last: the reward event: L12 mutant reactor" on all three attempts, the other 14 tests of its shard passing. The mutant
+     the audit named, deleting a must-reach module's mount, was not run: the commit hook's related tests would refuse a mount
+     deleted from `Components.jsx`, and adding an unreached module to the set is the same observable to the job.
+   - **One red came from this lane's own probe, and was fixed.** `context-loss.spec` failed on shard 1 with "coins 4333, saved
+     4321": the new kill the spec emits pays coins after the spec had set its coins mark. The mark now follows the kill (`7a4467c2`).
+     The quest and dragon reads after the reload had not been reached on that run. On the final head (run 41207666305, `bdfd5700`,
+     `ci ok` green) they were: "the hooks' state after the resume {kills: 1, bossDefeated: true, bossTier: 1, bossHealth: 0,
+     bossActive: false} (kills played 1)". One first-attempt flake on that run, `continue.spec.js:128` ("no autosave ran after
+     Continue"), passed on retry #1: registry `REVIEW:e2e-flakes:continue-no-autosave-after-continue`.
+   - **Open, as registry rows:** `REVIEW:l12:reach-grain-is-the-module` (item 311), `REVIEW:l12:history-comments-ledger` (item 313),
+     `REVIEW:l12:context-loss-mutants-unobserved` (item 316), and `REVIEW:l12:isolated-failure-invisible-in-production` (the shipped
+     build drops console calls and keeps no counter, so a reactor that throws in a player's browser is still seen by nothing; a
+     production-safe sink that `prod-smoke` reads is the fix). Not this lane's: the audit's critic gaps (arrows through terrain,
+     the healer, the camera in solid, ultrareview chunks 4-6), the god-file splits, and the three-channel consolidation.
+
+---
+
 ## 2026-10-31 — [LOOP] lane L10: Apple audio comes back after iOS stops it, and the soundtrack goes through Web Audio
 
 Lane L10 of the 2026-10-30 deep audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4), PR #70. It

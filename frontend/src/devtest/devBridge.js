@@ -88,9 +88,9 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
     e.windupUntil = wnow + dueMs;
     return e.windupUntil - wnow;
   });
-  // The XP orbs a kill scatters (R2.6): the world-hitstop E2E needs a SECOND world consumer, one that was
-  // not already opted in, to see the freeze reach the systems the review found still moving. `age` is the
-  // orb's own clock — it advances only when XPOrbSystem steps it. Read-only copy.
+  // The XP orbs a kill scatters: the world-hitstop E2E needs a second world consumer, one not opted in to the freeze
+  // by name, to see it reach every system that steps on world time. `age` is the orb's own clock; it advances only when
+  // XPOrbSystem steps it. Read-only copy.
   registerTestHook('readOrbs', () => ecs.entities.filter((e) => e.isXPOrb).map((e) => ({ id: e.id, age: e.age })));
   // The WORLD clock (game/worldClock.js, R2.7): the world-hitstop E2E proves it holds through a freeze in the
   // running game — the ticker mounted and ordered — which no unit test can see. Read-only.
@@ -126,13 +126,10 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
   registerTestHook('setCaptureFrame', (n) => setCaptureFrame(n));
   registerTestHook('enterCapture', (opts = {}) => {
     enterCaptureMode(opts);
-    // CLEAR THE CHEST BOARD AT CAPTURE ENTRY. The initial-chest effect in useTreasureChests has `[]`
-    // deps, so it runs at MOUNT -- before this hook exists, let alone before it is called -- and its own
-    // isCaptureMode() guard is therefore provably false every time. A randomly-positioned chest was
-    // spawned on every capture run, at `Math.random() * 2PI` around the player, so the declared resting
-    // state of zero chests was never achieved and the position varied per run. Four fixtures already
-    // cleared this list by hand, one at a time; doing it here makes it true for all of them, at the one
-    // moment the flag actually flips. The publish effect refuses to write while capture is on, so the
+    // Clear the chest board at capture entry. The initial-chest effect in useTreasureChests has `[]` deps, so it runs at
+    // mount, before this hook exists, and its own isCaptureMode() guard is false then. A chest at a random angle around
+    // the player would break the declared resting state of zero chests and move per run, so the list is cleared at the
+    // moment the flag flips, for every fixture at once. The publish effect refuses to write while capture is on, so the
     // clear holds.
     useGameStore.setState({ treasureChestsList: [] });
     // Frame 0. The harness captures ~31 states in ONE browser session, so without this each state's
@@ -257,25 +254,19 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
     // never be exhausted and it returned false forever: THAT is why two runs logged "never resolved a
     // ground" and then silently agreed on the declared y=100. A retry counter that never counts is not
     // a retry counter.
-    // The physics probe CANNOT work under capture, and this is why the settle never resolved:
-    // `getMobGroundLevel` is a rapier `world.castRay` (Terrain.jsx), and physics is
-    // `paused={isCaptureMode}` — a world that never steps never updates its query pipeline, so the ray
-    // hits nothing and returns null forever. That is also why the settle DID resolve before
-    // `enterCapture` landed (physics was still live) and never after.
+    // The physics probe cannot work under capture: `getMobGroundLevel` is a rapier `world.castRay` (Terrain.jsx), and
+    // physics is `paused={isCaptureMode}`, so a world that never steps never updates its query pipeline and the ray
+    // hits nothing, returning null for ever.
     //
     // So under capture, ask the TERRAIN FORMULA instead of the physics engine: `surfaceBlockAt` uses the same
     // seeded noise as terrain.worker.js (the world's seed, through worldNoise.js) and the same `computeHeight`, so
     // it is the generator's own answer — pure, deterministic, and available with zero physics steps. Far
     // better than SPAWN_FALLBACK_Y=60, which left the beast hovering ~8 units above real ground (~52).
     if (blockGroundY === null) {
-      // The settle always places at the ORIGIN, and the origin is the Hearth. `surfaceBlockAt` is the
-      // generator's raw grade and its own comment says it IGNORES the Hearth stamp — using it put the
-      // player 2 blocks UNDER the stone cap and the capture came back with the dragon buried in terrain,
-      // walls either side, lodge roof overhead. (Predicted from the 49-vs-52 gap, then confirmed by
-      // opening the image — the formula was right and the ground was not where it said.)
-      // `stampHomeAnchor` caps the footprint at HEARTH_Y and clears everything above, so at (0,0) the
-      // real walkable surface IS HEARTH_Y. Take the higher of the two so this stays correct if the
-      // fixture ever moves off the pad.
+      // The settle always places at the ORIGIN, and the origin is the Hearth. `surfaceBlockAt` is the generator's raw
+      // grade and ignores the Hearth stamp, so using it alone would stand the player 2 blocks under the stone cap.
+      // `stampHomeAnchor` caps the footprint at HEARTH_Y and clears everything above, so at (0,0) the real walkable
+      // surface is HEARTH_Y. Take the higher of the two so this stays correct if the fixture moves off the pad.
       const surf = surfaceBlockAt(0, 0);
       if (surf && Number.isFinite(surf.surfaceY)) {
         const groundY = Math.max(surf.surfaceY, HEARTH_Y);
@@ -300,9 +291,8 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
         blocks: store.worldBlocks ? store.worldBlocks.size : 0,
       };
     }
-    // 'physics-probe' was a third label here that NO path could emit -- a leftover of the probe branch
-    // removed by design. A source that can never be reported is a broken instrument in a report whose
-    // whole job is to say which source answered.
+    // The report names only the two sources a path can emit. A label no path can emit would be a source the report
+    // claims and never saw, in a report whose whole job is to say which source answered.
     const source = blockGroundY != null ? 'placed-blocks' : 'fallback';
     const y = spawnTargetY(spawn.groundY);
     rb.setTranslation({ x: 0, y, z: 0 }, true);
@@ -322,16 +312,15 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
   // Re-frame the reveal from WHERE THE AVATAR ACTUALLY RENDERED. Must be called AFTER spawnBeastTransform
   // and after a frame flush, because that is the earliest the group exists.
   //
-  // Three framings were tried and two were wrong, so the ordering matters more than it looks:
+  // Three framings are possible, and only the last cannot disagree with the render, so the ordering matters:
   //   rb.translation() -> the PHYSICS body. Physics is paused in capture, so rapier never syncs it to the
-  //                       visual transform; they measured 120 vs ~100 and the beast sat below frame.
-  //   PLAYER_SPAWN     -> the DECLARED transform. Correct only when the group happens to land there; it
-  //                       did at load ~5 and did not at load ~17, so beast frames passed and failed with
-  //                       no source change at all.
+  //                       visual transform and the two disagree (120 against ~100): the beast sits below frame.
+  //   PLAYER_SPAWN     -> the DECLARED transform. Correct only when the group happens to land there, which
+  //                       varies with the load.
   //   getWorldPosition -> where it IS. The only one that cannot disagree with the render.
   registerTestHook('frameBeastReveal', (element) => {
     const g = useGameStore.getState().beastGroupRef?.current;
-    if (!g) return false; // caller decides — a silent fallback here is what hid this for weeks
+    if (!g) return false; // the caller decides: a silent fallback here would hide a missing group
     const w = g.getWorldPosition(new (Object.getPrototypeOf(g.position).constructor)());
     // The published group sits at FEET_OFFSET below the capsule CENTRE, and the reveal offsets were
     // authored against the CENTRE (ice looks at -0.15, i.e. BELOW its origin — only meaningful from a
@@ -353,9 +342,8 @@ export function installDevBridge({ setShowAchievements, setShowSpellUpgrades }) 
     store.setDangerLevel(0);
     store.setTimeOfDay(0.5);
     // Clear leaks: the chest + ALL mobs (the character-closeup zombie at x=0 would otherwise creep
-    // into the wider 3/4 frame). ecs.remove IS hook-clearable (the mobShowcase/mobBestiary pattern;
-    // the old "the zombie can't be cleared from a hook" note was stale). The boss is a bossSystem
-    // entity, not an ECS mob, so this clears the leak without touching the boss.
+    // into the wider 3/4 frame). ecs.remove is hook-clearable (the mobShowcase/mobBestiary pattern). The boss is a
+    // bossSystem entity, not an ECS mob, so this clears the leak without touching the boss.
     useGameStore.setState({ treasureChestsList: [] });
     for (const entity of [...mobsQuery.entities]) ecs.remove(entity);
     const BX = 40, BY = 140, BZ = -8; // sky-studio lane

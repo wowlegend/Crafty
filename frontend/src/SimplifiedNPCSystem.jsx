@@ -51,7 +51,7 @@ export { getItemRarity };
 
 // LootSystem extracted -> src/systems/LootSystem.jsx (v6 de-monolith A1.7).
 
-export const NPCSystem = React.memo(() => {
+export const NPCSystem = React.memo(function NPCSystemRender() {
   const [damageNumbers, setDamageNumbers] = useState([]);
   const [shockwaves, setShockwaves] = useState([]);
   const [lootPops, setLootPops] = useState([]);

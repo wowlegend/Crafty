@@ -10,7 +10,7 @@ import { onUserGesture } from '../audio/audioRecovery.js';
 // musicEnabled-gated; capture-safe (under capture no track starts, and a gesture pauses one already playing); renders
 // nothing.
 const VOL = 0.4;
-// The crossfade's slope, in level per second: 0.04 every 60 ms, the step the fade has always taken.
+// The crossfade's slope, in level per second: a step of 0.04 every 60 ms.
 const FADE_PER_SEC = 0.04 / 0.06;
 const TRACKS = { day: '/music/day.mp3', night: '/music/night.mp3', boss: '/music/boss.mp3' };
 

@@ -47,7 +47,7 @@ const countLanding = (projectile) => {
   useGameStore.getState().onSpellHit?.();
 };
 
-export const EnhancedMagicSystem = React.memo(() => {
+export const EnhancedMagicSystem = React.memo(function EnhancedMagicSystemRender() {
   const playSpatialSound = useGameStore(state => state.playSpatialSound);
   const { playMagicCast, playMagicHit, playMagicExplosion } = useGameSounds();
   const [projectiles, setProjectiles] = useState([]);

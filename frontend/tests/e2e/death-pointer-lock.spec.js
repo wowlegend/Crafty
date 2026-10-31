@@ -16,7 +16,7 @@ const IPAD = devices['iPad Pro 11 landscape'];
 
 /** A lethal hit through the store's own damage path, past the spawn grace. */
 const die = (page) => page.evaluate(() => {
-  window.useGameStore.setState({ _spawnTime: 0, lastDamageTime: 0 });
+  window.useGameStore.setState({ _spawnTime: 0 });
   window.useGameStore.getState().damagePlayer(999999, 'e2e-lethal');
 });
 

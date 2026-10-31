@@ -326,8 +326,8 @@ export const useQuestSystem = () => {
     // S8c: the Pilgrimage quest. A shrine is reached within ~10 blocks of the nearest landmark, and the world records it
     // (the store's reachedShrines, saved with the world, keyed by chunk); the HUD ObjectiveTracker turns from "reach the
     // frontier shrine" to "shatter the Blight Heart" once one is. The quest is CREDITED FROM THAT RECORD, every poll,
-    // whenever it is in the feed: a shrine reached before Pilgrimage is offered counts when it is (deep audit lane L3; it
-    // used to count only a reach while the quest was active, and a saved record alone would have made that permanent).
+    // whenever it is in the feed: a shrine reached before Pilgrimage is offered counts when it is, so a reach made while the
+    // quest was not active is never lost, and a saved record cannot make that loss permanent.
     // Capture-suppressed; ~3s poll with transient store reads -> Game-Loop-Isolation. Gives the outward journey a
     // concrete GOAL (replaces the dead Travel-500 explorer quest, which had no driver).
     useEffect(() => {

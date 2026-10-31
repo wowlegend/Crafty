@@ -6,9 +6,8 @@
 const PATROL_R = 2.0;
 const EMOTES = ['…', '*hums*', '*sweeps*', '*nods*', '*stretches*'];
 
-// `shouldRetreatAtNight(isDay) => !isDay` used to live here. Deleted 2026-08-11: it restated the branch
-// the line below already owns, and nothing outside its own test ever called it. Two expressions of one
-// rule is one that can drift.
+// The night retreat is the `!isDay` branch below and has no helper of its own: a second expression of the one rule
+// is one that can drift.
 /** @internal No game code calls it; only its tests do (registry REVIEW:w2g:test-only-exports). */
 export function routinePosition(home, t, isDay) {
   if (!isDay) return { x: home.x, z: home.z }; // retreat home at night

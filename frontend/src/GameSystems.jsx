@@ -56,26 +56,17 @@ export const GameSystemsProvider = ({ children }) => {
 
     const manaRegenTimer = useRef(null);
 
-    // getMaxHealthBonus / getSpellDamageMultiplier DELETED 2026-08-11. Both were computed, placed on the
-    // context, and read by NOBODY -- the context's only consumer forwards the whole object to
-    // useInputManager and to <HUD>, and neither names either key. They are residue of a documented
-    // replacement: EnhancedMagicSystem's old window.getSpellDamageMultiplier global gave way to
-    // intellect-based solveSpellDamage scaling, and progression.js already carries the (lv-1)*10 health
-    // term verbatim. Level still scales spell damage, through the intellect each level adds (game/progression.js
-    // levelAttributes). eslint and knip cannot see this class -- the values ARE "used", by being placed in an
-    // object literal -- which is why it took reading every line to find.
+    // getMaxHealthBonus, getSpellDamageMultiplier, attributes, equipment and getEffectiveAttributes are not on this
+    // context: nothing reads them (its only consumer forwards the whole object to useInputManager and to <HUD>, and
+    // neither names those keys). Level still scales spell damage through the intellect each level adds
+    // (game/progression.js levelAttributes), and progression.js carries the (lv-1)*10 health term. eslint and knip cannot
+    // see an unread value placed in an object literal, so a key added back needs a reader. Selecting `equipment` or
+    // `attributes` here would also re-render the provider on every equip, unequip, attribute spend and level-up (they are
+    // replaced immutably, so useShallow's reference compare fails), refresh `value` and re-render <HUD> and the input
+    // manager for a value none of them read.
     //
-    // attributes / equipment / getEffectiveAttributes DELETED 2026-08-12, same class and one layer worse.
-    // These three were SELECTED but never even reached the context: absent from the destructure below and
-    // absent from the `value` literal, so they were pure re-render fuel. `equipment` and `attributes` are
-    // replaced IMMUTABLY on every equip, unequip, attribute spend and level-up, so useShallow's reference
-    // compare failed each time, the provider re-rendered, `value` became a fresh object literal, and every
-    // context consumer -- <HUD> and the input manager, via App.jsx -- re-rendered for a value none of them
-    // read.
-    //
-    // The names DO appear in src/ui/GamePanels.jsx, which is why this looks live at a glance: that file
-    // builds its OWN useGameStore(useShallow(...)) at :167 carrying the same three keys, and references
-    // GameSystemsContext exactly zero times. Traced before deleting, not after.
+    // The names do appear in src/ui/GamePanels.jsx, which builds its own useGameStore(useShallow(...)) with the same keys
+    // and never references GameSystemsContext.
 
     // Initialize spawn time to prevent instant fall damage when chunks generate
     useEffect(() => {
@@ -203,9 +194,7 @@ export const DeathScreen = ({ onRespawn }) => {
 // can never be true in capture (a fresh level-1 game), so it stays out of the visual baselines.
 export const VictoryOverlay = ({ onDismiss }) => {
     const t = useT();
-    // The climax payoff: the victory sting, once, when the win screen appears. The sound layer plays it from the bus;
-    // with no audio context (capture, a headless run) the provider is still subscribed, and its playSound returns
-    // before playing.
+    // The climax payoff: the victory sting, once, when the win screen appears. The sound layer plays it from the bus.
     useEffect(() => {
         emit(EVENTS.victory);
     }, []);

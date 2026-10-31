@@ -1,9 +1,9 @@
 import { test, expect } from './_fixtures.js';
 import { bootDev, startPlay, store } from './_boot.js';
 
-// damagePlayer's anti-unfair-death guards, driven end-to-end through the REAL booted store. The existing
-// gameplay-flow death test deliberately BYPASSED these (it set _spawnTime:0 + lastDamageTime:0 to force a
-// lethal hit), so the guards themselves were never proven in the running game: (1) a 5s spawn-protection
+// damagePlayer's anti-unfair-death guards, driven end-to-end through the REAL booted store. The
+// gameplay-flow death test deliberately BYPASSES these (it sets _spawnTime:0 and hits with a fresh attacker
+// key to force a lethal hit), so it cannot prove the guards in the running game: (1) a 5s spawn-protection
 // window after (re)spawn makes the player invulnerable; (2) a 500ms damage cooldown drops a rapid second
 // hit. Each flow runs in one page.evaluate (atomic — Date.now() is ~constant and no mob-AI tick can
 // interleave synchronously, so the timing windows are deterministic).
@@ -17,11 +17,11 @@ test('spawn protection: damage is ignored within the 5s window, then lands after
     const g = () => window.useGameStore.getState();
     const now = Date.now();
     // fresh spawn -> inside the 5s invulnerability window
-    window.useGameStore.setState({ isAlive: true, playerHealth: 100, maxHealth: 100, _spawnTime: now, lastDamageTime: 0 });
+    window.useGameStore.setState({ isAlive: true, playerHealth: 100, maxHealth: 100, _spawnTime: now });
     g().damagePlayer(50, 'test');
     const duringProtection = g().playerHealth;
     // spawned >5s ago + no recent hit -> the same blow now lands
-    window.useGameStore.setState({ _spawnTime: now - 6000, lastDamageTime: 0 });
+    window.useGameStore.setState({ _spawnTime: now - 6000 });
     g().damagePlayer(50, 'test');
     const afterProtection = g().playerHealth;
     return { duringProtection, afterProtection };
@@ -31,15 +31,14 @@ test('spawn protection: damage is ignored within the 5s window, then lands after
 });
 
 test('damage cooldown: the SAME attacker hitting twice within 500ms is dropped', async ({ page }) => {
-  // This used two DIFFERENT source strings ('hit1', 'hit2') and relied on the cooldown being GLOBAL.
-  // It is now per-ATTACKER: `lastDamageTime` was one number for the whole game, so a pack of six mobs
-  // dealt the damage of one. Two different attackers inside one window both land — that is the fix, and
-  // the row below asserts it. The invariant here is unchanged: ONE attacker cannot machine-gun you.
+  // The cooldown is per ATTACKER (`damageLockouts`, keyed by the attacker): one stamp for the whole game would
+  // let a pack of six mobs deal the damage of one. Two different attackers inside one window both land, and
+  // the row below asserts it. The invariant here: ONE attacker cannot machine-gun you.
   const res = await store(page, () => {
     const g = () => window.useGameStore.getState();
     const now = Date.now();
     // past spawn protection, no recent damage from anyone
-    window.useGameStore.setState({ isAlive: true, playerHealth: 100, maxHealth: 100, _spawnTime: now - 6000, lastDamageTime: 0, damageLockouts: {} });
+    window.useGameStore.setState({ isAlive: true, playerHealth: 100, maxHealth: 100, _spawnTime: now - 6000, damageLockouts: {} });
     g().damagePlayer(20, 'melee', null, 'mob:1');
     const afterFirst = g().playerHealth;
     g().damagePlayer(20, 'melee', null, 'mob:1'); // SAME attacker, < 500ms -> its own cooldown drops it
@@ -56,7 +55,7 @@ test('damage cooldown: the SAME attacker hitting twice within 500ms is dropped',
 test('dead player takes no further damage (isAlive guard)', async ({ page }) => {
   const res = await store(page, () => {
     const g = () => window.useGameStore.getState();
-    window.useGameStore.setState({ isAlive: false, playerHealth: 0, maxHealth: 100, _spawnTime: 0, lastDamageTime: 0 });
+    window.useGameStore.setState({ isAlive: false, playerHealth: 0, maxHealth: 100, _spawnTime: 0 });
     g().damagePlayer(50, 'post-mortem');
     return { health: g().playerHealth, alive: g().isAlive };
   });

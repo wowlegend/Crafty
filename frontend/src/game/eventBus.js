@@ -7,8 +7,9 @@
  * it is written instead of becoming a moment nobody hears. Payloads are positional (up to three arguments, documented
  * per event below). Each name's subscribers live in an array replaced on every subscribe and unsubscribe, so an emit
  * walks a snapshot without copying it: a subscriber added or removed during a dispatch takes effect from the next one,
- * and an emit allocates nothing. One throwing subscriber never stops the rest.
+ * and an emit allocates nothing. One throwing subscriber never stops the rest, and is reported (isolatedEffects.js).
  */
+import { reportIsolatedFailure } from './isolatedEffects.js';
 
 export const EVENTS = Object.freeze({
   /** (mobType: string, position: [x, y, z], source: 'player' | 'ally' | 'hazard') — a mob died. */
@@ -45,8 +46,9 @@ export function emit(name, a, b, c) {
   for (let i = 0; i < list.length; i++) {
     try {
       list[i](a, b, c);
-    } catch {
-      // one reactor failing must not silence the others
+    } catch (error) {
+      // one reactor failing must not silence the others, and must not go unseen either
+      reportIsolatedFailure(`the ${name} event`, error);
     }
   }
 }

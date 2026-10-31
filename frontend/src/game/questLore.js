@@ -2,12 +2,10 @@
 // spine. Pure data + helpers (no new quest SYSTEM): lore/giver fields + a re-theming map that turns
 // generic chores ("Defeat 5 mobs") into frontier story beats, WITHOUT changing each quest's type/
 // target (so the existing drivers + claim flow are untouched). The hub NPCs are the givers.
-// CHAIN_ORDER DELETED 2026-08-11. It declared a five-quest narrative spine -- first_blood, hunter,
-// pilgrim, nightwatch, champion -- and nothing read it, while quest offering follows QUEST_LIST's own
-// authoring order, which interleaves builder / miner / spellcaster / zombie_slayer / spider_hunter
-// between those beats. So the file declared one story order and the game told another. The LORE map
-// below IS consumed (loreFor / themedDescription), so the narrative survives; what is gone is a second,
-// unread opinion about sequence that contradicted the real one.
+// This module declares no quest order: quest offering follows QUEST_LIST's own authoring order, which interleaves
+// builder / miner / spellcaster / zombie_slayer / spider_hunter between the story beats (first_blood, hunter, pilgrim,
+// nightwatch, champion), and a second order here would contradict the real one. The LORE map below is what the game
+// reads (loreFor / themedDescription).
 
 /**
  * Quest ids this module writes lore for. EXPORTED so a gate can walk the map's own keys: the first draft

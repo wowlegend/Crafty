@@ -8,7 +8,7 @@ import { buildSaveData } from '../../src/game/saveSchema.js';
 
 beforeEach(() => {
   useGameStore.setState({
-    isAlive: true, playerHealth: 50, maxHealth: 100, isPlayerInvincible: null, _spawnTime: 0, lastDamageTime: 0, damageLockouts: {},
+    isAlive: true, playerHealth: 50, maxHealth: 100, isPlayerInvincible: null, _spawnTime: 0, damageLockouts: {},
     voidhandHeld: false, heldPhantom: null,
   });
 });
