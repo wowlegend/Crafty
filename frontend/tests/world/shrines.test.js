@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nearestLandmark } from '../../src/world/shrines.js';
+import { nearestLandmark, landmarkAt } from '../../src/world/shrines.js';
 import { isLandmarkChunk } from '../../src/world/landmarks.js';
 
 // S8a: the pure deterministic nearest-landmark (shrine) finder. The HUD compass marker, the reward-chest
@@ -26,7 +26,7 @@ describe('nearestLandmark — deterministic nearest shrine to the player', () =>
     let min = Infinity;
     for (let dz = -12; dz <= 12; dz++) for (let dx = -12; dx <= 12; dx++) {
       const cx = dx, cz = dz;
-      if (!isLandmarkChunk(cx, cz)) continue;
+      if (!landmarkAt(cx, cz)) continue; // a landmark that stands on land (a hashed chunk in the sea holds none)
       const d = Math.hypot((cx * 16 + 8) - 0, (cz * 16 + 8) - 0);
       if (d < min) min = d;
     }

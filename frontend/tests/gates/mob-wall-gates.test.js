@@ -268,7 +268,7 @@ describe('ONE grid framing, everywhere that frames the grid (review #4, R5.1)', 
     }
   });
   it('AIWorkerSystem builds the grid through gridOrigin, and no round()-framed grid is left anywhere (weak, structural)', () => {
-    expect(carriersOf(/heightGridAt\(e\.position\.x, /)).toEqual(['systems/AIWorkerSystem.jsx']);
+    expect(carriersOf(/mobGridsAt\(e\.position\.x, /)).toEqual(['systems/AIWorkerSystem.jsx']); // mobGridsAt calls heightGridAt
     expect(carriersOf(/const ox = gridOrigin\(x\), oz = gridOrigin\(z\);/), 'heightGridAt frames by the mob\'s column').toEqual(['game/localPath.js']);
     expect(carriersOf(/Math\.round\([^)]*\)\s*-\s*4\b/), 'a round()-framed 9x9 grid is back').toEqual([]);
   });

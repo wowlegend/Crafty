@@ -5,8 +5,7 @@ import { setAudioBridge } from './audio/audioBridge';
 import { audioGain } from './game/audioSettings';
 import { DAY_CHORDS, NIGHT_CHORDS, BOSS_CHORDS, arpeggiatorBpm } from './audio/musicTheory';
 import { useGameStore } from './store/useGameStore';
-import { surfaceBlockAt } from './world/climate.js';
-import { biomeAmbience } from './audio/biomeAmbience.js';
+import { ambienceAt } from './audio/biomeAmbience.js';
 import { subscribeEventSounds } from './audio/soundEvents.js';
 
 // Procedural music gain. 0 = the synthPad chords + arpeggiator are MUTED (Kevin disliked the procedural
@@ -69,7 +68,7 @@ export const SoundProvider = ({ children }) => {
   });
 
   // Biome-ambient wind bed: a looping noise voice whose filter/gain track the player's biome
-  // (climate.surfaceBlockAt(playerPosition) -> biomeAmbience). Lives + dies with the synthPad.
+  // (ambienceAt at the camera: the column the player stands in -> biomeAmbience). Lives + dies with the synthPad.
   const windBedRef = useRef({ source: null, filter: null, gain: null, active: false });
 
   const stopSynthPad = () => {
@@ -229,9 +228,10 @@ export const SoundProvider = ({ children }) => {
         // Biome-ambient: ramp the wind bed toward the player's current-biome character.
         const wb2 = windBedRef.current;
         if (wb2.active && wb2.filter) {
-          const pp = freshState.playerPosition || { x: 0, z: 0 };
-          const { surfaceBlock, isWater } = surfaceBlockAt(pp.x, pp.z);
-          const amb = biomeAmbience(surfaceBlock, isWater);
+          // The camera, as the footsteps read it: the store's playerPosition is rounded to whole metres
+          // (systems/PositionTracker.jsx), which is the next column over once the player is past a block's middle.
+          const pp = freshState.gameCamera?.position || freshState.playerPosition || { x: 0, z: 0 };
+          const amb = ambienceAt(pp.x, pp.z);
           wb2.filter.frequency.linearRampToValueAtTime(amb.cutoff, changeTime + 2.0);
           wb2.gain.gain.linearRampToValueAtTime(amb.gain * volume, changeTime + 2.0);
         }

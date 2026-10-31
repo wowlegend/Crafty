@@ -19,6 +19,180 @@
 
 ---
 
+## 2026-10-30 — [LOOP] L11: one fact, one predicate: the sea line, the landmark, the sight line, the kill's tier, the cooldown and the move basis
+
+**Decided by the L11 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L11 of the 2026-10-30 deep
+audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4). Each stands while it earns its place. Six facts had
+two producers that could disagree; each now has one predicate or constant, and a consistency gate that drives both
+producers and reds when either moves alone. Every gate was run red against 1a3910e7's code before its fix (a scratch copy;
+the pre-commit hook refuses a red commit), and mutation-proven with `scripts/dev/mutate.sh` (the numbers are in each
+commit's `Mutation-Proof:` trailer).
+
+180. **The sea has one predicate: `oceanProfile.seaFillsCell(y, surfaceY)`.** (AUDIT:ultra:ultra-player-world-9) The terrain
+   worker fills water into the cells above a column's surface up to SEA_LEVEL; `climate.surfaceBlockAt` said `isWater` for
+   `surfaceY <= SEA_LEVEL`. A surfaceY 28 column is dry sand with nothing above it, so the two disagreed on exactly the
+   last dry shoreline column: the wind bed turned to the muffled underwater sound there, and the far-field ring drew the
+   strip as sea one column inland. The worker now fills with `seaFillsCell`; `isSeaColumn` is derived from it and is what
+   `isWater` returns. The worker has no exports and cannot be imported under vitest, so the gate reads its voxels through
+   its message handler (an `update_block` to air answers `block_broken` with the id it replaced), once per column since the
+   read replaces the block. On 1a3910e7, 8 of 24 columns disagreed at each of seeds 12345 and 777, every one surfaceY 28.
+   The verifier's 18.2% residue on those columns is SoundManager sampling a float position, which this does not touch.
+   One more reader of the strip's old meaning was found by CI, not by search (run 41132117834, shard 6/8 red on all three
+   attempts): `tests/e2e/place-clear-of-player.spec.js` picked its shore columns by `isWater` on a neighbour, so the dry
+   strip counted as the sea and, with the strict predicate, no column qualified ("no beach column one block over the sea
+   within 80 m"). It now names the sea line itself (a neighbour at or below SEA_LEVEL) and picks the same columns: the same
+   4 candidates, and the same 16 within 80 m of Kevin's spot, checked offline against the old rule.
+
+181. **A landmark exists in one place: `shrines.landmarkAt(cx, cz)`.** (AUDIT:ultra:ultra-player-world-6) A hashed chunk
+   holds a landmark only on land (not a water column, surface at least 32). Terrain.jsx drew by that rule; `nearestLandmark`
+   used the bare hash, so the cyan beam, the compass, the minimap dot, the HUD objective and the Pilgrimage reach test led
+   to a shrine nobody could see. In a 501 x 501 chunk window 824 of 3,508 hashed chunks at seed 12345 (744 at seed 777)
+   were not drawn, and 21 and 24 of 121 probe players had one as their nearest. The finder now scans `landmarkAt`, and
+   LandmarksRender takes each loaded chunk's landmark from it with no filter of its own. When no drawn landmark lies within
+   the radius the finder returns null, as it always could, and the HUD falls back to the Blight Heart. The answer is
+   memoised per chunk and cleared when the climate sampler changes seed (`climate.getClimateSeed`), because FarBeacon asks
+   for a 33 x 33 chunk window every frame and a climate sample allocates. The gate restates the renderer's rule from the
+   sampler alone (so retuning the rule in one place reds it), covers chunks on surface 31 and 32, the line, and a re-seed
+   round trip. The renderer's use of `landmarkAt` is pinned by `landmarks-gates`, sliced to the component body; Terrain.jsx
+   builds a worker at module top and cannot be rendered under vitest, so that half is structural.
+
+182. **Line of sight reads the true column tops, as a second grid.** (AUDIT:ultra:ultra-game-logic-3) `heightGridAt` writes
+   Infinity for a column a mob cannot stand in, and `hasLineOfSight` compares a column with the higher of its two ends plus
+   1.2, so a player on a pillar 5 or more blocks above the mob's feet made an Infinity end and nothing blocked. The hunter's
+   finite stand-in gives the same sight and loosens `clampMove` (it reads the floor grid); the lane brief said the same.
+   `localPath.sightGridAt` replaces each Infinity cell with the column's top (the store's `getMobGroundLevel`), and
+   `mobGridsAt` returns both grids, which AIWorkerSystem sends; the worker's cover search reads `sightGrid || heightGrid`
+   for line of sight and nothing else changes. A finite floor stays the floor (a roof over open room is not a wall to
+   sight). Cost, by reading and not measured on a device: at most one extra top cast per wall cell, 81 at the very most
+   per aggro mob per 15 Hz tick, beside the floor probe's multi-cast walk that already runs for all 81; none when no cell
+   is a wall. The gate is the verifier's scene on the real parts (real mesher, real Rapier world, real probes, the real
+   `ai.worker.js` tick): pillars of 5, 6 and 8 blocks fail on 1a3910e7, 1, 3 and 4 pass, and with no wall there is no cover
+   to take. `AUDIT:combat:skeleton-arrows-ignore-terrain` can read the same grid for an archer's sight; this lane does not.
+
+183. **A kill's position is the bus's array.** (AUDIT:numeric:kill-loot-tier-always-zero) `mobKillBus` documents and
+   CombatSystem emits `[x, y, z]`; the loot roll read `.x` and `.z`, so every kill rolled at tier 0 and S7's "farther is
+   rarer" never applied to a mob kill. It reads `position[0]` and `position[2]`. The gate emits real kills on the real bus
+   into the real `useQuestSystem` and reads a zombie's epic Iron Nugget (0.3 x (1 + 0.25 x tier)) with the roll just under
+   and just over the chance of the kill's own tier, at five positions that put a large or small y beside x and z. Tiers 1
+   to 4 fail on 1a3910e7. The nuggets have no use today (`REVIEW:w2f:forge-orphan-loot`); the row serves only as the
+   probe. The emitter's array shape stays pinned by `kill-attribution-gates` (CombatSystem's death path is closure-scoped).
+
+184. **The ability bar's cooldown durations are the machines' constants.** (AUDIT:ultra:ultra-game-logic-6)
+   `cooldownMirror.js` imports `GRAB_COOLDOWN_SEC`, `SNARE_COOLDOWN_SEC` and beastTransform's `COOLDOWN_SEC` in place of
+   0.6, 1.5 and 1.5. The gate names no number: it drives each real machine through the transition that arms its cooldown
+   and holds that, on that frame, the mirror's remaining time is the whole of its duration. On the old mirror, retuning
+   each constant (0.9, 2.0, 2.0) reds the matching slot; on the new one the same retunes leave it green, which is the
+   point. It also asks that every machine-backed slot the mirror carries be driven, so a fourth cannot ship undriven. Not
+   mirrored, and said in the gate: the dodge (its duration is the Player loop's own `cooldown`, handed in) and the imbue
+   (no cooldown).
+
+185. **A walk and a dodge read one planar basis, and an in-code deferral is a gate.** (AUDIT:ultra:ultra-game-logic-7)
+   `locomotion.moveVector` calls `dodge.planarBasis`; the inline copy and its "unify later" comment are gone. The gate
+   drives `moveVector` and `dodgeDirection` over 9 camera lengths (either side of the 0.001 line and the camera looking
+   straight up) x 16 angles x 8 key directions and holds that they go the same way; it names no threshold, so moving the
+   shared line moves both and stays green, while moving either old copy alone reds it. The row's note also asked for a
+   sweep against deferral comments: `tests/scripts/no-deferral-comments.test.js` is a property check over every non-test
+   file of `src/` (TODO, FIXME, "unify later" inside a comment), the detector shown first to see each form, sited in
+   `tests/scripts/` because its subject is source content. It was red on exactly the one comment this lane removed.
+
+**Not covered:** a lived run (there is no local browser in this lane; CI is the arbiter, `ci ok` on the exact head); the
+sight grid's frame cost on an iPad-class device (item 182, by reading only); the Terrain.jsx renderer drawing
+`landmarkAt`'s chunks (structural, item 181); the dodge and imbue slots of the mirror (item 184); and the enemy-arrow terrain
+test (its own row).
+
+**CI on the lane's head 973bce38** (run 41134824441): `ci ok`, with two first-attempt retries that are not this lane's:
+mob-floor.spec.js:227 fails its first attempt in all four recent runs on three branches, two of which touch no mob or
+terrain code (`REVIEW:e2e-flakes:mob-floor-roof-floor-infinity`), and hud-at-rest.spec.js:354 failed once, where the run
+before it, on identical `src/`, passed it first time (`REVIEW:e2e-flakes:hud-at-rest-tracker-tap-canvas`).
+
+**Round 2: the fixer after the round-1 reviews (static: LAND with six follow-ups; dynamic: FIX on one item).** Items 186-188
+continue this lane's range. Main (5f00f246, the chaos-play gate) was merged in first with a merge commit; DECISIONS, Terrain.jsx
+and the registry merged without a code conflict.
+
+186. **A position is read at its column: `climate.surfaceBlockUnderfoot(x, z)` floors both axes.** (Supersedes the last sentence
+   of item 180, "the verifier's 18.2% residue ... which this does not touch"; AUDIT:ultra:ultra-player-world-9.) The worker
+   builds whole columns at integer coordinates, and SoundManager asked `surfaceBlockAt` at `playerPosition`, a float inside a
+   column: a point no column has. The round-1 dynamic review measured it over a coastal band at seed 12345: the float sample
+   read the wrong state at 12.5% of positions on the dry strip (surfaceY 28) and at 22.9% on the first wet column (surfaceY
+   27, up from 0.7% once the predicate was strict, which item 180 had not recorded), while the column sample read 0.0% wrong
+   on all three. Item 180 closed the row with the symptom still present, and with part of it new. `ambienceAt(x, z)` is now the
+   one call SoundManager makes and goes through `surfaceBlockUnderfoot`; `footstepTypeAt` does too, because a footstep on the
+   beach edge had the same defect (grass or snow on a sand column; 28 of 384 positions at each seed). The gate
+   (`water-one-predicate-gates`, a second block) picks 8 shore columns per class (surfaceY 27, 28, 29, where a wet column and
+   a dry one touch, 150 blocks apart) and drives the real worker's fill and `ambienceAt` over the 4 x 4 positions inside each: 384
+   positions per seed. Red on the float sampler: the wind bed wrong at 64 of 384 positions at seed 12345 and 68 at seed 777, the
+   footstep at 28 and 28. Not covered: SoundManager's interval itself (a React effect with an audio context; its call is pinned by
+   `biome-ambience-gates`, a source check), and a lived run (no local browser). Not done on purpose: `surfaceBlockAt` itself
+   still takes a float, because FarField and Ocean sample on purpose at ring and camera points, and flooring there would move
+   the far-field silhouette (`REVIEW:l11:far-field-coast-no-frames` is the standing row for that look).
+
+187. **The round-1 follow-ups, each disposed of.** Rows (LOW, open): `REVIEW:l11:sight-roofed-player` (static 1: CONFIRMED by
+   a run in round 2, the review's own repro: with one block over the pillar the sight grid reads the roof, 61, the mob does
+   not seek cover; the no-roof control does), `REVIEW:l11:sight-grid-every-aggro-mob` (static 2), `REVIEW:e2e-flakes:dragon-fight-parried-bite`
+   (static 3 and dynamic: it predates the lane but the lane's effect on its rate is not shown), `REVIEW:l11:weather-samples-float-position`
+   (found in round 2: two more player-position samples, in a component no gate drives) and `REVIEW:l11:far-field-coast-no-frames`
+   (static: not reachable). Fixed here: static 6, CONFIRMED by a run (the landmark gate's SETUP counted surfaceY 31 and 32
+   chunks under the other block's seed, because every describe body runs at collection; it now re-seeds and holds that the
+   sampler counts the drawn chunks it counted at collection, red when the re-seed is removed); static 5 (`shrines.js` said both
+   that FarBeacon asks every frame and that callers never do) and static 7 (history and audit receipts in three comments,
+   against item 15); the `AUDIT` tag left the code comments.
+
+188. **Reviewer verdicts are hypotheses until re-derived.** The static review called finding 1 LOW on a reading; its repro,
+   run, shows the sight fix still fails for a roofed player, which is the lane's own headline fix. It stays a row because the
+   case needs a roof over a pillar 5 or more blocks high with a wall between and a mob under a quarter health, and the right
+   fix (the player's real y as the end height) changes what the worker is sent, which is not a one-line change in a review
+   round; the row carries the scene and the numbers so the gate can be written red first.
+
+**Round 3: the fixer after the round-2 reviews (static: FIX; dynamic: FIX, on the same item).** Items 189-191 continue this
+lane's range. Main (449ce3ea, lane L5) was merged in first with a merge commit: DECISIONS conflicted at its top and both
+sections were kept, and the registry merge left two chaos-play rows twice, identical, which `registry-dedupe` collapsed.
+
+189. **The wind bed samples the camera, because the store's position is rounded.** (Supersedes item 186's premise that
+   SoundManager asked about "`playerPosition`, a float inside a column", and the same premise in the sentence of item 180
+   that begins "The verifier's 18.2% residue"; AUDIT:ultra:ultra-player-world-9.) PositionTracker writes `playerPosition` as
+   `Math.round` of the camera's position, so round 2's floor did nothing in play: the floor of a whole number is that number,
+   and the bed read the next column over whenever the player stood at or past the middle of a block. Round 2's gate fed
+   `ambienceAt` unrounded positions, and so did the round-1 figures item 186 answered (12.5% and 22.9%), so neither could see
+   it. Fed the store's rounded position, the coastal band read the wrong state at 24.6% of the positions inside surfaceY 27
+   columns and 14.0% inside surfaceY 28 columns, identically before round 2 and after it (the round-2 dynamic review).
+   SoundManager now samples `store.gameCamera.position`, the R3F camera the Player publishes and PositionTracker reads, which
+   is what the footsteps already read (Components.jsx hands `footstepTypeAt` the camera's x and z); `playerPosition` is the
+   fallback before the Player mounts. PositionTracker is unchanged, so none of the 26 other sites in `src` that read
+   `playerPosition` gets a different value. The gate, `wind-bed-live-chain-gates`, drives the chain with one modelled link
+   (the Player publishing its camera as `gameCamera`): the camera at a float position, the real PositionTracker frame
+   callback, the real store, the real SoundProvider's 8 s interval and the cutoff it ramps the bed's filter to, against the
+   real worker's water above the column the camera stands in, over the same 384 shore positions per seed. Red on round 2's
+   code at 80 of 384 positions (seed 12345) and 76 (seed 777); the round-2 form, SoundManager on `playerPosition` alone, is
+   among its mutants and goes red. Its SETUP holds that a sound fed the store's point is wrong somewhere in the probe set, so
+   it goes red if PositionTracker stops rounding: that is a re-aim of the probe, not a defect in the game.
+
+190. **The water gate's footstep reference is the worker's block, not the sampler.** (Static finding 4.) The footstep check
+   compared `footstepTypeAt` at a position with `footstepTypeAt` at its column's corner, so a mistake inside it that depends
+   only on the floored coordinates (one column over, x and z swapped) gave the same answer on both sides. It now reads the
+   block the worker put on top of 8 columns per class where the beach meets the land (surfaceY 29, sand, and 30, the biome's
+   own block: sand, grass, snow and dirt at these seeds), 256 positions per seed, and its SETUP holds that the reference has
+   more than one footstep and that the float sample steps wrong on it. One column over in x, x and z swapped, every footstep
+   sand, and two wrong table entries each go red. The worker harness and the shore picker the two water gates share live in
+   `tests/_support/terrainWorker.js`. `biome-ambience-gates` loses its three pins on SoundManager's text
+   (`ambienceAt(pp.x, pp.z)`, no `surfaceBlockAt`, `playerPosition`): they required round 2's call exactly as it was, and the
+   live-chain gate drives which point the bed samples. The comments that carried round 2's premise, or said that every
+   reader of a player's position goes through `surfaceBlockUnderfoot` (WeatherSystem does not), are corrected (static 3).
+
+191. **The records are corrected where they were false.** `AUDIT:ultra:ultra-player-world-9`'s note said round 2 closed the
+   residue; it now says why it did not and names round 3 and its gate. `REVIEW:l11:weather-samples-float-position` named the
+   float as WeatherSystem's cause and `surfaceBlockUnderfoot` as its fix, which would change nothing, because both sites read
+   `playerPosition`; its fix is now the camera, as here (static 2). Item 186's pointer, "the last sentence of item 180", names
+   a sentence two more follow (static 5): it is the sentence that begins "The verifier's 18.2% residue". Two flake rows:
+   `REVIEW:e2e-flakes:quest-text-no-frame-while-held` gains PR #63's certifying run 41157558361 (quest-text.spec.js:54,
+   attempt 1 failed the hold's frame SETUP at frames 0, heldMs 380; retry #1 passed), and
+   `REVIEW:e2e-flakes:dragon-fight-parried-bite-move` said one more failed attempt turns `ci ok` red after a failed first
+   attempt, where it takes two (`frontend/playwright.config.js:31`, two retries on CI).
+
+**Not covered:** a lived run (no local browser in this lane; CI is the arbiter, `ci ok` on the exact head); the Player's
+publication of its camera is modelled in the gate, not driven; WeatherSystem's two samples stay a row.
+
+---
+
 ## 2026-10-30 (lane L5, round 2) — [LOOP] the Player loop's half of the predicate is gated, a locked Aspect key reads it, and every way back is gated to ask for the pointer
 
 **Decided by lane L5's round-2 fixer under the standing grant** (DECISIONS 2026-10-28 item 14). Round 1's static and

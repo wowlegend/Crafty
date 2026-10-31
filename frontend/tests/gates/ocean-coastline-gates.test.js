@@ -24,7 +24,7 @@ describe('Ocean + coastline gates (World-M2)', () => {
     expect(worker).toMatch(/oceanSurfaceY\(/);
   });
   it('the 4 worldgen sites use the named consts, not magic 28/30', () => {
-    expect(worker, 'water fill').toMatch(/y <= SEA_LEVEL/);
+    expect(worker, 'water fill').toMatch(/seaFillsCell\(y, surfaceY\)/); // the fill is oceanProfile.seaFillsCell, which climate.isWater shares (water-one-predicate-gates)
     expect(worker, 'foliage gate').toMatch(/surfaceY > SEA_LEVEL/);
     expect(worker, 'beach override').toMatch(/surfaceY < BEACH_BAND_TOP/);
     // the ocean branch routes through the module, not an inline 12 + n*12

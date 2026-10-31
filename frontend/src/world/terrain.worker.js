@@ -1,7 +1,7 @@
 import { makeWorldNoise, vegRandom as vegRandomFor } from './worldNoise.js';
 import { DEFAULT_WORLD_SEED, resolveWorldSeed } from './worldSeed.js';
 import { stampHomeAnchor, stampHub } from './homeAnchor.js';
-import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
+import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY, seaFillsCell } from './oceanProfile.js';
 import { pickBiome, BIOME_ID } from './biomeTable.js';
 import { stampChunkRadius, blueprintHalfExtent } from './dungeonStamp.js';
 import { applyCaveCA } from './caveCA.js';
@@ -415,11 +415,7 @@ function generateChunkData(cx, cz) {
         const index = getIndex(x, y, z);
         
         if (y > surfaceY) {
-          if (y <= SEA_LEVEL) {
-            blocks[index] = 9; // Water
-          } else {
-            blocks[index] = 0; // Air
-          }
+          blocks[index] = seaFillsCell(y, surfaceY) ? 9 : 0; // Water up to the sea level, air above (oceanProfile.js)
         } else {
           // Swiss Cheese 3D Caves Noise carving
           const caveNoise = noise3D(worldX * 0.04, y * 0.08, worldZ * 0.04);
