@@ -166,7 +166,8 @@ in code; whether a player on a real iPhone or iPad hears the difference is Kevin
    - **Proven by** three new cases in `tests/gates/apple-audio-gates.test.jsx` (now 15): red 3 of 3 on `a0adf428`'s
      MusicPlayer with the other 12 green, then 7 of 7 mutants red with identity surviving (commit `3b8e5e77`). Its
      trailer says music off asked play() "5 more times"; the red run counted 6, two per track.
-   - No level, voice or balance changed. The index chunk measures 651,121 B (+42 B), under the 652,500 B ceiling.
+   - No level, voice or balance changed. The index chunk measures 651,121 B (+42 B), under the 652,500 B ceiling;
+     merged with main `a150a93a`, where lane L7 has landed, it measures 652,017 B, 483 B under.
 
 308. **`music-bus.spec.js` reads the day track paused before its key press, and is mutation-proven in Chromium**
    (round 2; closes registry `REVIEW:l10:music-e2e-mutation-owed`).
