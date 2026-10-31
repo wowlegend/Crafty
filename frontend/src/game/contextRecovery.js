@@ -39,8 +39,10 @@ export function onContextRestored(gl, { setLost, raf }) {
  * Save the world in play, leave the note naming the world this tab holds, then reload (game/worldBoot.js switchWorld). The
  * world in play is saved first, so the reload resumes it where it stood. Before Start nothing is saved (a save there
  * minted a slot from the title's untouched state, review 2026-10-27, steady-cool LOW 5), and the note still brings the
- * tab back to what its title showed: its loaded world, or a fresh one. A refused note still reloads: the lost context
- * leaves nothing to stay in, and the plain visit continues the world just saved.
+ * tab back to what its title showed: its loaded world, or a fresh one. A refused note still reloads, since the lost
+ * context leaves nothing to stay in, as a plain visit: that continues the newest world earned in or named, which is the
+ * world just saved unless it is an empty placeholder, and then an older world that holds something (worldBoot.js
+ * latestOwnedWorld).
  * @param {{ getState: () => object, storage: Storage|null, reload: () => void }} deps
  * @returns {string|null} the world id the note names
  */
