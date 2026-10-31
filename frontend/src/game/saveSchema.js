@@ -222,10 +222,13 @@ export function liveShrines(shrines) {
   return { reached: shrineKeys(shrines?.reached), rewarded: shrineKeys(shrines?.rewarded) };
 }
 
-/** A save's chest entries ([coords, chest]) with the retired keys taken out of each chest's inventory. Pure. */
+/**
+ * A save's chest entries ([coords, chest]) with the retired keys taken out of each chest's inventory. An entry that is
+ * no pair, or chests that are no list, are dropped, as liveBlocks drops its: a hand-edited blob threw in the load's
+ * reducer (the deep audit's ultra-state-saves-input-2). Pure.
+ */
 export function liveChests(chests) {
-  if (!Array.isArray(chests)) return chests;
-  return chests.map((e) => (Array.isArray(e) && isPlainObject(e[1]) && holdsRetired(e[1].inventory)
+  return chestEntries(chests).map((e) => (isPlainObject(e[1]) && holdsRetired(e[1].inventory)
     ? [e[0], { ...e[1], inventory: withoutRetired(e[1].inventory) }]
     : e));
 }

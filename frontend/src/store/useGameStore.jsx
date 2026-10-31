@@ -1100,15 +1100,6 @@ export const useGameStore = create((set, get) => ({
 
     loadWorldData: (rawSaveData) => {
         const saveData = migrateSaveData(rawSaveData);
-        // B2a: opening a world CLAIMS its slot for this session — subsequent autosaves write back into
-        // it (rather than minting a new slot every save). The boot passes the slot's id (game/worldBoot.js). Without an id (a hand-fed payload, a test
-        // fixture), the session stays unowned and the next autosave mints a fresh slot — which is the
-        // safe direction: never overwrite a world you cannot identify.
-        const loadedId = rawSaveData && rawSaveData.id;
-        if (loadedId) {
-            set({ _sessionWorldId: loadedId, _slotSavedAt: slotSavedAt(loadedId) });
-            setActiveWorldId(loadedId);
-        }
         const owed = migrateRetired(saveData);
         // The save's own seed; one written before the field was played on 12345, whatever world is open now.
         const worldSeed = resolveWorldSeed(saveData.game_state?.worldSeed);
@@ -1243,6 +1234,15 @@ export const useGameStore = create((set, get) => ({
                 worldLoadedAt: (state.worldLoadedAt || 0) + 1,
             };
         });
+
+        // B2a: opening a world CLAIMS its slot for this session — subsequent autosaves write back into it (rather than
+        // minting a new slot every save). The boot passes the slot's id (game/worldBoot.js). Without an id (a hand-fed
+        // payload, a test fixture) the session owns no slot, not the one loaded before, and the next autosave mints a
+        // fresh slot: never overwrite a world you cannot identify. After the reducer, so a save that throws as it loads
+        // claims nothing (the deep audit's ultra-state-saves-input-1 and -2).
+        const loadedId = rawSaveData && rawSaveData.id;
+        set({ _sessionWorldId: loadedId || null, _slotSavedAt: loadedId ? slotSavedAt(loadedId) : null });
+        if (loadedId) setActiveWorldId(loadedId);
 
         // What the save was owed for retired quests, paid through the writers a claim uses, after the load so the XP
         // levels up from the saved level. The record above (`_tombstone.migrated`) keeps a later load from paying it again.
