@@ -165,3 +165,35 @@ describe('the quest hook re-seeds on every load, a null quest log to the new wor
     expect([...r.unlockedAchievements], 'old achievements survived').toEqual(['first_step']);
   });
 });
+
+// The squad's roster and the shrine record belong to their world too (items 254 and 255): a load in place takes the
+// save's, and a save that holds none (a new world's, or one from before the record, the key absent) holds none, never
+// the session's, which is the world loaded before.
+describe('a load in place takes the save\'s squad and shrines, and none when the save holds none', () => {
+  beforeEach(() => { arm(); });
+  const facts = () => {
+    const s = useGameStore.getState();
+    return { squad: s.squad, reached: s.reachedShrines, rewarded: s.rewardedShrines };
+  };
+  const quiet = { health: MAX0, active: false, defeated: false, tier: 0, killNight: 0 };
+
+  it('a world with a squad and two shrines, then a save from before the records (no keys) loads: none of them', () => {
+    const own = save(quiet, { progression: { squad: [{ type: 'skeleton' }, { type: 'zombie' }] }, game: { shrines: { reached: ['3_-4', '7_2'], rewarded: ['3_-4'] } } });
+    loadInPlace(own);
+    // PRESENCE: the load reads the save's own records.
+    expect(facts(), 'SETUP: the first load did not take the save\'s squad and shrines')
+      .toEqual({ squad: [{ type: 'skeleton' }, { type: 'zombie' }], reached: ['3_-4', '7_2'], rewarded: ['3_-4'] });
+    const old = save(quiet);
+    delete old.progression.squad;
+    delete old.game_state.shrines;
+    loadInPlace(old);
+    expect(facts(), 'the world loaded before kept its squad or its shrines in this one').toEqual({ squad: [], reached: [], rewarded: [] });
+  });
+
+  it('then a save with its own loads: its own, not the session\'s', () => {
+    loadInPlace(save(quiet, { progression: { squad: [{ type: 'skeleton' }] }, game: { shrines: { reached: ['1_1'], rewarded: [] } } }));
+    expect(facts(), 'SETUP: the first load did not take the save\'s records').toEqual({ squad: [{ type: 'skeleton' }], reached: ['1_1'], rewarded: [] });
+    loadInPlace(save(quiet, { progression: { squad: [{ type: 'zombie' }] }, game: { shrines: { reached: ['5_5'], rewarded: ['5_5'] } } }));
+    expect(facts(), 'the session\'s squad or shrines crossed into the loaded world').toEqual({ squad: [{ type: 'zombie' }], reached: ['5_5'], rewarded: ['5_5'] });
+  });
+});
