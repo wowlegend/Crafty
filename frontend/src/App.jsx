@@ -33,7 +33,8 @@ import { ContextLossPanel } from './ui/ContextLossPanel.jsx';
 import { SlotConflictPanel } from './ui/SlotConflictPanel.jsx';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { installAutosave } from './game/autosave';
-import { saveWorldInPlay } from './game/worldBoot.js';
+import { saveWorldInPlay, leaveTabNote } from './game/worldBoot.js';
+import { sessionStore } from './game/worldSwitch.js';
 import { installSquadPersistence } from './world/squadPersistence.js';
 import { useDayNightClock } from './game/useDayNightClock';
 import { shouldOpenPauseOnUnlock } from './ui/panelState.js';
@@ -187,13 +188,15 @@ function GameApp({ experienceSystem }) {
   useEffect(() => initSettingsPersistence(useGameStore, isCaptureMode), []);
 
   // Local-first autosave (game/autosave.js): a change to any field the save records schedules one, and hiding the tab or
-  // closing it saves a pending one at once. It saves only a world in play (game/worldBoot.js saveWorldInPlay).
+  // closing it saves a pending one at once. It saves only a world in play (game/worldBoot.js saveWorldInPlay). As the
+  // page goes it leaves the tab a note naming its world, so a refresh continues it (game/worldBoot.js leaveTabNote).
   // The bound squad's roster and its bodies kept as one, and the bodies rebuilt at the player from the loaded world's
   // roster (world/squadPersistence.js). Installed after the boot's load, so its first rebuild is the loaded squad.
   useEffect(() => installSquadPersistence(useGameStore), []);
 
   useEffect(() => installAutosave(useGameStore, {
     save: () => saveWorldInPlay(useGameStore.getState),
+    onLeave: () => leaveTabNote(useGameStore.getState(), sessionStore()),
     delayMs: 5000,
   }), []);
 

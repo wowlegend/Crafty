@@ -206,6 +206,29 @@ export function tabNote(state) {
 }
 
 /**
+ * The note a page leaves itself as it goes (App, at pagehide: a refresh, a close, a navigation away), so a refresh
+ * continues the world the tab was playing, even a new one nothing was earned in yet, which a plain visit would pass over
+ * (latestOwnedWorld; DECISIONS 2026-10-31 item 343). It is tabNote. None is left where the next load must be a plain
+ * visit or another's note: a switch's note is already there (the switch decides where the reload goes), the tab deleted
+ * its world (WorldManager.jsx), the tab has no world in play (it loaded none and was never started), or the world it
+ * loaded never ran a frame (its boot attempt is still there, BOOT_ATTEMPT_KEY: the plain visit holds that world on the
+ * title rather than load it into the same failure). Returns whether it left one.
+ * @param {object} state the store's state
+ * @param {Storage|null} session
+ */
+export function leaveTabNote(state, session) {
+  const id = state._sessionWorldId;
+  if (!session || state._slotDeleted || !(id || state.gameStarted)) return false;
+  try {
+    if (session.getItem(BOOT_NOTE_KEY) !== null) return false;
+  } catch {
+    return false;
+  }
+  if (id && attemptedWorld(session) === id) return false;
+  return writeBootNote(session, tabNote(state));
+}
+
+/**
  * Every world switch: save the world in play, leave the note, reload, in that order. The save is a synchronous
  * localStorage write, so it has landed before the note; the reload ends the page. A refused note reloads only when
  * `orPlainVisit` (the context-loss recovery: the plain visit continues the world just saved): otherwise the plain visit

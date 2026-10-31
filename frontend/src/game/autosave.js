@@ -26,11 +26,14 @@ const TRIGGER_KEYS = Object.freeze([...PERSISTED_KEYS, 'isAlive']);
  * at once. While the page is hidden a change schedules nothing; it is held, and scheduled when the page is shown again:
  * with two tabs on one world, a write from the hidden one is newer than the save the visible one read, which refuses the
  * visible tab's next save (store saveActiveWorld; DECISIONS 2026-10-31 item 331). Another page's write of the storage
- * is handed to the store at once (noteStorageWrite), so a stale tab is told when the other saves. Returns the
- * uninstall. The store subscription runs on every write, the per-frame position writes included, so the comparison is
- * a plain loop over a frozen array.
+ * is handed to the store at once (noteStorageWrite), so a stale tab is told when the other saves. At pagehide (a refresh,
+ * a close, a navigation away; HTML's unload steps fire it before the page is hidden, and a browser may fire it without
+ * beforeunload) a pending save is written, then `onLeave` runs, so it sees the slot that save made (game/worldBoot.js
+ * leaveTabNote). A page kept for the back-forward cache is not going: it may be shown again, alive, with no boot, so
+ * `onLeave` does not run for it. Returns the uninstall. The store subscription runs on every write, the per-frame
+ * position writes included, so the comparison is a plain loop over a frozen array.
  */
-export function installAutosave(store, { save, delayMs = 5000, doc = document, win = window }) {
+export function installAutosave(store, { save, onLeave, delayMs = 5000, doc = document, win = window }) {
   const autosave = createAutosave({ save, delayMs });
   let held = false;
   const unsub = store.subscribe((s, prev) => {
@@ -47,14 +50,20 @@ export function installAutosave(store, { save, delayMs = 5000, doc = document, w
     else if (held) { held = false; autosave.schedule(); }
   };
   const onUnload = () => autosave.flush();
+  const onPageHide = (e) => {
+    autosave.flush();
+    if (!e.persisted) onLeave?.();
+  };
   const onStorage = () => store.getState().noteStorageWrite?.();
   doc.addEventListener('visibilitychange', onVisibility);
   win.addEventListener('beforeunload', onUnload);
+  win.addEventListener('pagehide', onPageHide);
   win.addEventListener('storage', onStorage);
   return () => {
     unsub();
     doc.removeEventListener('visibilitychange', onVisibility);
     win.removeEventListener('beforeunload', onUnload);
+    win.removeEventListener('pagehide', onPageHide);
     win.removeEventListener('storage', onStorage);
     autosave.cancel();
   };
