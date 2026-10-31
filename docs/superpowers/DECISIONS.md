@@ -19,6 +19,30 @@
 
 ---
 
+## 2026-10-31 — [KEVIN] the Command Record is an eli5 page: big pictures, few words
+
+**Kevin's rule, 2026-10-31, verbatim:** "The command record is way too much text, make it always /eli5:eli5 looking."
+
+280. **The Command Record (`docs/superpowers/command-record.html`) is an eli5 page**, made for a reader who knows
+   nothing about the game's insides: each section is one big inline drawing with at most one short line under it,
+   about 250 visible words in all, in plain words, with no commit ids, run ids, file names or row ids in its body; one
+   line at the foot names where the detail lives. Five sections: where the game stands, what is better for players
+   since the 2026-10-27 handover, the deep audit's bug hunt, the lanes in flight said as what a player gets, and what
+   waits on Kevin. Version 13, the first of this form, carries 233 visible words, counted over the rendered text
+   (HTML and drawing labels, the as-of stamp included) in headless Chromium.
+   - **The long form is retired**, kept in history: version 12, its last, is commit `002b0b9e`, the parent of this
+     entry's commit, so it reaches main when this branch lands by fast-forward. Detail lives where it always did: this
+     file, `memory/registry.jsonl` and git history on GitHub.
+   - **What a refresh keeps** for `frontend/scripts/ci/artifact-currency.mjs`: one as-of stamp between its markers,
+     styled by the four tokens `docs/superpowers/.artifact-sync.json` names for this surface (`--muted`, `--line`,
+     `--accent`, `--font-mono`, all declared on `:root`), a `<title>` and no doctype. The stamp still names the
+     recorded publish, because this commit neither stamps nor publishes: the publisher runs `--stamp command-record`,
+     republishes to the same URL, then runs `--sync command-record`. No gate demanded the long form, so none changed.
+   - **What it changes**: the form of the page `CLAUDE.md`'s standing principle names ("Kevin reviews one page, the
+     Command Record"); that line now says it is an eli5 page and cites this item.
+
+---
+
 ## 2026-10-31 (lane L3) — [LOOP] the store owns per-world state, and a save the resume wiped gets its slain dragon back
 
 **Decided by the L3 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L3 of the 2026-10-30 deep

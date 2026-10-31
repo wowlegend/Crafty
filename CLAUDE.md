@@ -12,7 +12,8 @@ Crafty was built by far weaker models. **Nothing is locked:** the game, architec
 changed or deleted as the command session judges best, with full autonomy. Ask Kevin nothing unless absolutely
 needed; install any tool that helps. A decision stands while it earns its place; reverse it with a new dated DECISIONS
 entry naming the one it supersedes. A lock label in a dated plan binds nothing. Kevin reviews one page, the Command
-Record (`docs/superpowers/command-record.html`), refreshed at every landing. Keep the public face and the docs SOTA.
+Record (`docs/superpowers/command-record.html`), an eli5 page (big pictures, few words; DECISIONS 2026-10-31 item
+280), refreshed at every landing. Keep the public face and the docs SOTA.
 
 **Record every non-routine decision in DECISIONS with its reason** (Kevin, 2026-10-27): a hard delete of a referenced
 file, a new dependency, an external send he approved, a reversal. A large player-facing deletion also records the lived

@@ -54,7 +54,7 @@
         "font": "--font-mono"
       },
       "note": "The operator's CURRENT status page (the command session's record); era-review and sota-audit point here from their stamps. Tracked as a surface from 2026-10-28 (DECISIONS 2026-10-28 item 12). Refresh the source, run scripts/ci/artifact-currency.mjs --stamp command-record, republish the stamped source to the SAME url, run --sync command-record, then commit both.",
-      "syncedSha": "f87f2324",
+      "syncedSha": "971f0ef2",
       "syncedAt": "2026-10-31"
     }
   ]
