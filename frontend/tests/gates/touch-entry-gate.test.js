@@ -44,7 +44,7 @@ const PANELS_CLOSED = {
  * behaves like an override.
  */
 function titleProps(overrides = {}) {
-  return {
+  const props = {
     showAchievements: false, setShowAchievements: NOOP,
     showSpellUpgrades: false, setShowSpellUpgrades: NOOP,
     showStats: false, setShowStats: NOOP,
@@ -53,6 +53,10 @@ function titleProps(overrides = {}) {
     ...overrides,
     gameState: { ...PANELS_CLOSED, gameStarted: false, isAlive: true, requestPointerLock: vi.fn(), ...overrides.gameState },
   };
+  // The requester lives in the store, where GameScene installs it: enterPlay reads the store at the call, after a close
+  // control's own write, so the render's gameState cannot decide whether a surface is still up.
+  useGameStore.setState({ requestPointerLock: props.gameState.requestPointerLock ?? null });
+  return props;
 }
 
 beforeEach(() => {
