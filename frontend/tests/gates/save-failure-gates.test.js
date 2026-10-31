@@ -2,6 +2,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useGameStore } from '../../src/store/useGameStore';
 import { STRINGS } from '../../src/i18n/strings.js';
+import { writeWorld } from '../../src/game/worldSaves.js';
+import { buildSaveData } from '../../src/game/saveSchema.js';
 
 /**
  * A SAVE THAT DOES NOT LAND SAYS SO (the July review's save-write-failure-silent, :937; lane L8). worldSaves.js swallows
@@ -21,6 +23,8 @@ import { STRINGS } from '../../src/i18n/strings.js';
  *   F2 plausible-wrong: every failed save raises one (a toast every 5 s)     -> RED expected
  *   F3 plausible-wrong: a landed save does not end the run (a later failure is silent) -> RED expected
  *   F4 the index write's failure is not a failure                            -> RED expected
+ *   F5 every failed save of a run prunes again (reads every save, each time) -> RED expected
+ *   F6 plausible-wrong: a failed save prunes once per page, not once per run -> RED expected
  *   F0 identity (a comment edit)                                             -> must SURVIVE
  */
 
@@ -72,6 +76,32 @@ describe('a save whose write fails tells the player, once a run', () => {
     S().addCoins(5);
     expect(save(), 'a save whose index write failed reported success').toBe(false);
     expect(failed(), 'a save whose index write failed said nothing').toBe(1);
+  });
+
+  it('a full storage: the first failed save of a run reads the saves to make room, the ones after it read none', () => {
+    // The player's own worlds under the autosave's placeholder name (nothing renames a slot the autosave made), each
+    // holding something, so the prune must read every one of them to find that none is empty.
+    for (let i = 0; i < 5; i++) {
+      writeWorld(`local_real_${i}`, { name: `Save_${i}`, is_owner: true, created_at: '2026-10-01T00:00:00Z' },
+        buildSaveData({ ...useGameStore.getInitialState(), level: 9, coins: 5 }, { position: { x: 0, y: 40, z: 0 } }));
+    }
+    expect(save(), 'SETUP: a save into empty storage did not land').toBe(true);
+    let reads = 0; // reads of a world's save, counted at the storage
+    const realGet = Storage.prototype.getItem;
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (k) {
+      if (String(k).startsWith('crafty_world_save_')) reads++;
+      return realGet.call(this, k);
+    });
+    const readsOfOneSave = () => { reads = 0; save(); return reads; };
+    failKeys = (k) => k.startsWith('crafty_world_save_');
+    const run = [readsOfOneSave(), readsOfOneSave(), readsOfOneSave()];
+    failKeys = null;
+    expect(save(), 'SETUP: a save after the storage freed did not land').toBe(true);
+    failKeys = (k) => k.startsWith('crafty_world_save_');
+    const next = readsOfOneSave();
+    // PRESENCE: the first failure of each run reads every placeholder-named save (the five and the tab's own).
+    expect({ first: run[0], after: run.slice(1), nextRun: next }, 'a failed save re-read every save to make room, at every autosave')
+      .toEqual({ first: 6, after: [0, 0], nextRun: 6 });
   });
 
   it('the notice has words in both languages', () => {

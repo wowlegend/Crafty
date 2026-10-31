@@ -1351,9 +1351,11 @@ export const useGameStore = create((set, get) => ({
         const meta = { name, created_at, is_owner: true, saved_at };
         if (existing && 'is_public' in existing) meta.is_public = existing.is_public;
         // A write that fails for room deletes every empty placeholder world but this one and tries once more; a new slot
-        // leaves the newest few (worldSaves.js pruneEmptySlots).
+        // leaves the newest few (worldSaves.js pruneEmptySlots). Only the first failure of a run prunes: the prune reads
+        // and parses every placeholder-named save, the player's real worlds among them, and at a full storage a failure
+        // comes with every autosave.
         let ok = writeWorld(id, meta, data);
-        if (!ok && pruneEmptySlots(id, 0).length) ok = writeWorld(id, meta, data);
+        if (!ok && !get()._saveFailing && pruneEmptySlots(id, 0).length) ok = writeWorld(id, meta, data);
         if (ok && minted) pruneEmptySlots(id);
         if (ok) set({ _slotSavedAt: saved_at, _saveFailing: false });
         else if (!get()._saveFailing) {
