@@ -3,7 +3,7 @@ import { useGameSounds } from '../SoundManager';
 import { useGameStore } from '../store/useGameStore';
 import { ecs } from '../ecs/world';
 import { GameMethods } from '../GameMethods';
-import { stepXPOrb } from '../game/xpOrbStepper';
+import { stepXPOrb, oldestOverBound, BANKED, MAX_XP_ORBS } from '../game/xpOrbStepper';
 import { xpOrbsQuery } from './_npcShared';
 import { worldDelta } from '../game/worldClock.js';
 import { floorUnderPoint } from '../game/mobFloor.js';
@@ -22,17 +22,23 @@ export const XPOrbSystem = () => {
     const playerPos = camera.position;
     const groundYAt = (x, z, y) => floorUnderPoint(store.getMobFloor, store.getMobGroundLevel, x, z, y);
 
+    // The pool's bound: past MAX_XP_ORBS the oldest are banked at once (see the stepper's header).
+    const cut = oldestOverBound(xpOrbsQuery.entities, MAX_XP_ORBS);
     for (const entity of [...xpOrbsQuery.entities]) {
       // physics extracted to the pure game/xpOrbStepper.js (S3-M6 NPC de-monolith, byte-equivalent);
       // the component keeps the ECS iteration + the collect side-effects.
-      const collected = stepXPOrb(entity, delta, {
+      const step = cut && cut.has(entity) ? BANKED : stepXPOrb(entity, delta, {
         playerPos,
         groundYAt, // the floor of the air gap the drop is in, not the column top (R7.9)
-      }).collected;
-      if (collected) {
+      });
+      if (step.collected) {
         if (GameMethods.grantXP) GameMethods.grantXP(entity.amount);
-        if (GameMethods.spawnXPText) GameMethods.spawnXPText(entity.amount, entity.position);
-        playPickup();
+        // An expired orb is banked where the player is not: no text at its spot and no pickup chime for a pickup that
+        // was not made. The XP bar is the report.
+        if (!step.expired) {
+          if (GameMethods.spawnXPText) GameMethods.spawnXPText(entity.amount, entity.position);
+          playPickup();
+        }
         ecs.remove(entity);
       }
     }

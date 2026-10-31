@@ -4,7 +4,7 @@ import { useGameStore } from '../store/useGameStore';
 import { ecs } from '../ecs/world';
 import { GameMethods } from '../GameMethods';
 import { isCaptureMode } from '../devtest/captureMode';
-import { stepLootDrop } from '../game/xpOrbStepper';
+import { stepLootDrop, oldestOverBound, BANKED, MAX_LOOT_DROPS } from '../game/xpOrbStepper';
 import { getItemRarity } from '../data/items.js';
 import { rarityBeam } from '../game/lootJuice.js';
 import { lootDropsQuery } from './_npcShared';
@@ -41,21 +41,27 @@ export const LootSystem = () => {
     const playerPos = camera.position;
     const groundYAt = (x, z, y) => floorUnderPoint(store.getMobFloor, store.getMobGroundLevel, x, z, y);
 
+    // The pool's bound: past MAX_LOOT_DROPS the oldest are banked at once (see the stepper's header).
+    const cut = oldestOverBound(lootDropsQuery.entities, MAX_LOOT_DROPS);
     for (const entity of [...lootDropsQuery.entities]) {
       // physics extracted to the pure game/xpOrbStepper.js stepLootDrop (S3-M6, byte-equivalent;
       // magnet range 7 / base 40 / floor 3); the component keeps the loot collect side-effects.
-      const collected = stepLootDrop(entity, delta, {
+      const step = cut && cut.has(entity) ? BANKED : stepLootDrop(entity, delta, {
         playerPos,
         groundYAt, // the floor of the air gap the drop is in, not the column top (R7.9)
-      }).collected;
-      if (collected) {
+      });
+      if (step.collected) {
+        // An EXPIRED drop (its lifetime ran out, or it is far behind, or the bound cut it) is banked where the player is
+        // not: the item, the XP and the "Looted" line reach them, and the pop, the text and the chime, which belong to a
+        // pickup in their hands at a spot they are looking at, do not.
+        const inHand = !step.expired;
         if (store.addToInventory) store.addToInventory(entity.item, 1);
         if (entity.xp > 0 && GameMethods.grantXP) GameMethods.grantXP(entity.xp, entity.item);
-        if (entity.xp > 0 && GameMethods.spawnXPText) GameMethods.spawnXPText(entity.xp, entity.position);
+        if (inHand && entity.xp > 0 && GameMethods.spawnXPText) GameMethods.spawnXPText(entity.xp, entity.position);
         if (store.addNotification) store.addNotification(`Looted: ${entity.item}`, 'loot');
-        playPickup();
+        if (inHand) playPickup();
         // M3c-T2: rarity-tinted pickup pop at the collect point (same color as the drop's beam).
-        if (GameMethods.spawnLootPop) GameMethods.spawnLootPop(entity.position, rarityBeam(getItemRarity(entity.item)).color);
+        if (inHand && GameMethods.spawnLootPop) GameMethods.spawnLootPop(entity.position, rarityBeam(getItemRarity(entity.item)).color);
         ecs.remove(entity);
       }
     }
