@@ -196,14 +196,19 @@ test('a returning player continues from the title, and stands where they saved, 
     const blob = JSON.parse(localStorage.getItem(`crafty_world_save_${id}`) || 'null');
     return {
       samples: rows.length, atColumn: atCol.length, afterArrival: rows.filter((row) => row[0] >= t0).length,
+      spanAfterArrival: rows.length ? rows.at(-1)[0] - t0 : 0,
       minY: low[2], minAt: low[0], leftColumn: left.length, last: rows.at(-1), slot: blob?.player_data?.position ?? null, slotSavedAt: blob?.saved_at,
       worlds: JSON.parse(localStorage.getItem('crafty_world_saves') || '[]').length,
     };
   }, { at: saved.at, t0, id: saved.id });
   console.log(`continue: after the reload ${JSON.stringify({ ...r, saved: saved.at, pageErrors })}`);
   const why = JSON.stringify({ ...r, saved: saved.at, gates: await page.evaluate(gates) });
-  expect(r.atColumn, `SETUP: too few frames sampled at the save's column to judge: ${why}`).toBeGreaterThan(100);
-  expect(r.afterArrival, `SETUP: too few frames sampled after the arrival: ${why}`).toBeGreaterThan(60);
+  // CI's software renderer draws this page at about 1.3 frames a second (control run 41157054333: 74 frames in 55 s),
+  // and the body moves only on a drawn frame, so every frame is a reading. The floors say the sampler ran through the
+  // stay and the 10 s after it, not a frame rate.
+  expect(r.atColumn, `SETUP: too few frames sampled at the save's column to judge: ${why}`).toBeGreaterThanOrEqual(20);
+  expect(r.afterArrival, `SETUP: too few frames sampled after the arrival: ${why}`).toBeGreaterThanOrEqual(8);
+  expect(r.spanAfterArrival, `SETUP: the samples stop before the 10 s after the arrival: ${why}`).toBeGreaterThanOrEqual(9000);
   expect(r.minY, `the body dropped more than 1 m under the saved height at the save's column: ${why}`).toBeGreaterThanOrEqual(saved.at.y - 1);
   expect(Math.hypot(r.last[1] - saved.at.x, r.last[3] - saved.at.z), `the player did not stay at the save: ${why}`).toBeLessThan(1.5);
   expect(r.leftColumn, `the body left the save's column (a fall through the world comes back at the origin): ${why}`).toBe(0);
