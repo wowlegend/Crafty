@@ -8,36 +8,53 @@ import { debrisBursts } from './debrisBursts.js';
 
 const MAX_PARTICLES = 200;
 const PARTICLES_PER_BLOCK = 8;
+// Each body waits at its own spot under the world, a grid 0.5 m apart (the cubes are 0.25 m), so no two parked bodies
+// touch and none wakes another.
+const PARK_ROW = 20;
+const parkSpot = (i) => ({ x: (i % PARK_ROW) * 0.5, y: -1000, z: Math.floor(i / PARK_ROW) * 0.5 });
+const ZERO_SCALE = new THREE.Vector3(0, 0, 0);
+const NO_TURN = new THREE.Quaternion();
+const _park = new THREE.Matrix4();
+const _spot = new THREE.Vector3();
 
 export const BlockParticleSystem = ({ worker }) => {
     const api = useRef(null);
     const meshRef = useRef(null);
     const particleIndex = useRef(0);
     const ages = useRef(new Float32Array(MAX_PARTICLES).fill(999));
-    
+
     // rapier 2.2: InstancedRigidBodies takes a single `instances` prop (the legacy
     // positions/rotations/scales array props were removed -> passing them created ZERO bodies).
-    // Start each body parked far below the world at FULL scale (the old [0,0,0] scale meant debris
-    // was invisible even when bodies existed); spawning teleports it in, ageing teleports it back.
+    // At FULL scale, so a body's matrix is visible the moment a burst wakes it; spawning teleports it in, ageing parks it.
     const instances = useMemo(
-        () => Array.from({ length: MAX_PARTICLES }, (_, i) => ({
-            key: i,
-            position: [0, -1000, 0],
-            rotation: [0, 0, 0],
-            scale: [1, 1, 1],
-        })),
+        () => Array.from({ length: MAX_PARTICLES }, (_, i) => {
+            const p = parkSpot(i);
+            return { key: i, position: [p.x, p.y, p.z], rotation: [0, 0, 0], scale: [1, 1, 1] };
+        }),
         []
     );
+    const parks = useMemo(() => Array.from({ length: MAX_PARTICLES }, (_, i) => parkSpot(i)), []);
     const tempColor = useMemo(() => new THREE.Color(), []);
+
+    /** Body i parked asleep at its spot, and its instance drawn at zero scale: @react-three/rapier 2.2 writes no matrix for
+     *  a sleeping body, so without this the cube stays drawn where it came to rest. */
+    const park = (i) => {
+        parkDeadDebris(api.current.at(i), parks[i]);
+        const p = parks[i];
+        meshRef.current.setMatrixAt(i, _park.compose(_spot.set(p.x, p.y, p.z), NO_TURN, ZERO_SCALE));
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    };
 
     useEffect(() => {
         if (!meshRef.current) return;
-        
+
         // Initialize instance colors to prevent visual glitches on first spawn
         for (let i = 0; i < MAX_PARTICLES; i++) {
             meshRef.current.setColorAt(i, new THREE.Color(0x000000));
         }
         meshRef.current.instanceColor.needsUpdate = true;
+        // @react-three/rapier makes every body awake; parked asleep from mount, each costs the step nothing until a burst.
+        if (api.current) for (let i = 0; i < MAX_PARTICLES; i++) park(i);
 
         const burst = (payload) => {
             tempColor.set(payload.color);
@@ -79,8 +96,6 @@ export const BlockParticleSystem = ({ worker }) => {
         return () => worker.removeEventListener('message', handleMessage);
     }, [worker, tempColor]);
 
-    const hidePosition = useMemo(() => ({ x: 0, y: -1000, z: 0 }), []);
-
     useFrame((state, frameDelta) => {
         // REAL time on purpose (review #3, R4.2): debris are Rapier bodies and the physics step is not paused for a
         // hitstop, so they keep falling through it. Their lifetime runs on the same clock as their fall; freezing
@@ -104,7 +119,7 @@ export const BlockParticleSystem = ({ worker }) => {
                     // Zero the velocities first, then move it with wakeUp=FALSE so the solver is allowed
                     // to put it to sleep. The order matters: waking it to move it and then zeroing would
                     // leave it awake until the sleep threshold elapsed again.
-                    parkDeadDebris(api.current.at(i), hidePosition);
+                    park(i);
                 }
             }
         }
@@ -119,7 +134,9 @@ export const BlockParticleSystem = ({ worker }) => {
             friction={0.8}
             mass={0.1}
         >
-            <instancedMesh ref={meshRef} args={[null, null, MAX_PARTICLES]}>
+            {/* Not frustum-culled: three bounds an InstancedMesh by a sphere computed once, from the parked instances, and
+                culled the live debris wherever a block was mined. 200 cubes cost nothing to submit. */}
+            <instancedMesh ref={meshRef} args={[null, null, MAX_PARTICLES]} frustumCulled={false}>
                 <boxGeometry args={[0.25, 0.25, 0.25]} />
                 <meshStandardMaterial roughness={0.8} metalness={0.1} />
             </instancedMesh>
