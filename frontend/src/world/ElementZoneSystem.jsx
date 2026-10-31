@@ -4,7 +4,7 @@ import { useGameStore } from '../store/useGameStore';
 import { GameMethods } from '../GameMethods';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
-import { makeZoneRegistry, spawnZone, spawnChain, stepZones, clearZones, applyZoneEffects } from '../game/elementZones';
+import { makeZoneRegistry, castZone, stepZones, clearZones, applyZoneEffects } from '../game/elementZones';
 import { consumeZoneRequest } from '../game/elemancerChannel';
 import { worldDelta, worldNow } from '../game/worldClock.js';
 import { isHostile } from '../combat/targeting';
@@ -55,9 +55,9 @@ export function ElementZoneSystem() {
     const now = worldNow() / 1000;
     const req = consumeZoneRequest();
     if (req) {
-      const z = spawnZone(liveZones, req, now);
-      // An imbue that chains (Chain Imbue, Wildfire, Prism Shard) paints the same kind under the nearest hostiles too.
-      spawnChain(liveZones, req, mobsQuery.entities, isChainTarget, now);
+      // An imbue that chains (Chain Imbue, Wildfire, Prism Shard) paints the same kind under the nearest hostiles too. The
+      // impact and its leaps are one cast: the cap never evicts one for another, so the zone voiced below is on the board.
+      const { zone: z } = castZone(liveZones, req, mobsQuery.entities, isChainTarget, now);
       // M6: the element speaks at its spawn moment (a dedupe-refresh replays — the player
       // DID cast; an annihilation stays silent steam in v1). Guarded: the sound registry
       // arrives late via a GameScene effect.
