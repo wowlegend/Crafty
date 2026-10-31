@@ -23,7 +23,7 @@
 
 **Decided by the command session** under the standing grant (DECISIONS 2026-10-28 item 14), on lane L6's round-1
 reviews (static finding 1 and dynamic P8, required; static 2 to 5; dynamic's four cheap items). Branch
-`fix/l6-build-tools`, PR #68. Items 270-277.
+`fix/l6-build-tools`, PR #68. Items 270-278.
 
 270. **A placement's late answer never writes over a later record.** Item 231 made a placement record its cells when
    the worker answers, while the single mine and the dragon's smash record theirs at the click. So a right-click and
@@ -98,6 +98,13 @@ reviews (static finding 1 and dynamic P8, required; static 2 to 5; dynamic's fou
    was dug empty holds the player about 10 s, then sends them to the origin spawn; the load path's to fix, and with
    item 271 the Delete Tool no longer empties a column cheaply); the mob-floor.spec.js:227 and ember.spec.js:202
    sightings on PR #68's run, each on its row.
+278. **The index chunk's ceiling goes from 652,500 B to 655,000 B** (`frontend/scripts/ci/bundle-budget.mjs`), in its
+   own commit. Measured with `vite build` on each tree: main at `8579918e` 649,342 B; lane L6's round 1 on it
+   (`aa523a49`) 651,326 B, +1,984 B; main at `feb456e3` (lane L9 landed) 651,328 B, +1,986 B; this lane's head on it
+   653,949 B, so round 2 adds about 637 B (the edit-order ledger, the batched removal's payment, the debris choice;
+   the smash stays in the dragon's lazy chunk). Each lane fit alone; the two together pass the old ceiling by 1,449 B.
+   The growth is the behaviour items 230-233 and 270-272 call for, none of it can load later than the first click,
+   and the new ceiling leaves 1,051 B, so the next lane that grows the boot chunk meets it and says why.
 
 ---
 

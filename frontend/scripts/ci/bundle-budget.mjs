@@ -39,8 +39,9 @@ const BUDGETS = [
   // chunk and the ceiling came down with it: a module this chunk carries that renders the full `motion` component puts
   // the framer-motion features back, about 47.6 KB, which is past the ceiling by itself. A module the lazy panel chunk
   // carries moves that chunk, which has no ceiling (ForgePanel with `motion` read 636,434 B here, under it): the
-  // full-motion markers further down hold every chunk.
-  { name: 'index', max: 652_500, actualAtWrite: 634_075 },
+  // full-motion markers further down hold every chunk. It holds the build tools' batched edits, their edit order and
+  // the Delete Tool beside the pools with lifetimes, with about 1 KB to spare (DECISIONS 2026-10-31 item 278).
+  { name: 'index', max: 655_000, actualAtWrite: 653_949 },
   { name: 'three', max: 740_000, actualAtWrite: 680_700 },
 ];
 
