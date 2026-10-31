@@ -8,8 +8,9 @@ import { setActive } from '../input/inputState';
 import {
   STANCE_CAPS, MIN_CLOSING_RATE, RETREAT_FLOOR, NON_PURSUERS, pursuitSpeed, pursuers, deriveStanceCaps, BASE_MOVE_SPEED,
   stanceVelocity, stanceStep, getStance, resetStance, engageDyM, STALL_MS, CALM_MS, ENTER_S, EXIT_S,
-  noteMoveTarget, readMoveTarget, stanceFrame, stanceWalk, teleportPlayer, dodgeBurst,
+  noteMoveTarget, readMoveTarget, stanceFrame, stanceWalk, dodgeBurst,
 } from './combatStance.js';
+import { teleportPlayer } from './stanceState.js';
 import { mobSensePoint } from './mobSenses.js';
 import { EYE_HEIGHT_M } from '../combat/swingOrigin.js';
 import { moveVector } from './locomotion.js';
@@ -377,8 +378,8 @@ describe('stanceFrame / stanceWalk — the controller\'s seam', () => {
     expect(charging.x, 'the heavy\'s walk slow did not reach the retreat').toBeCloseTo(STANCE_CAPS.retreat * 0.55, 12);
   });
 
-  // The void-fall guard and a save load teleport through teleportPlayer: kept, the stance would clamp the walk at the
-  // new site against the old fight for up to 2.6 s.
+  // A save load teleports through teleportPlayer (the void guard and the respawn through spawnPlacement.js returnToSpawn,
+  // which resets the stance too): kept, the stance would clamp the walk at the new site against the old fight for up to 2.6 s.
   it('teleportPlayer moves the body, stops it when asked, and leaves the fight behind', () => {
     engaged();
     const calls = [];

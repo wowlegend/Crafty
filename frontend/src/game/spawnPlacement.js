@@ -1,8 +1,10 @@
-// Spawn-placement decision (S3-M5 part 2) — extracted PURE from the Player loop. The imperative
-// setTranslation/setLinvel stays in Player; this is the math + the branch logic, characterization-
-// pinned to the old inline behavior (Components.jsx:803-860). NO React/Rapier.
+// Spawn-placement decision (S3-M5 part 2) — extracted from the Player loop: the math and the branch logic,
+// characterization-pinned to the old inline behavior, and returnToSpawn, the one way back to the spawn's wait, which is
+// handed the Rapier world, the body and the camera. No React or Rapier import.
 import { LOAD_FIT_SPAN } from './formFit.js';
 import { BASE_CAPSULE } from './beasts.js';
+import { placeBody } from './kinematicMove.js';
+import { resetStance } from './stanceState.js';
 
 export const SPAWN_FREEZE_Y = 120;      // hold in the sky until the world builds / on void-fall
 export const SPAWN_PROBE_MAX_FAILS = 120; // bounded probe wait (frames) before the fallback
@@ -22,6 +24,31 @@ const VOID_LINE_Y = 0.5 + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius;
 
 /** Has the body, its centre at `y`, fallen out of the bottom of the world. */
 export function isVoidFall(y) { return y < VOID_LINE_Y; }
+
+const SPAWN_HOLD = Object.freeze({ x: 0, y: SPAWN_FREEZE_Y, z: 0 });
+const STILL = Object.freeze({ x: 0, y: 0, z: 0 });
+
+/**
+ * BACK TO THE ORIGIN SPAWN'S WAIT, ONE WAY: the void guard's reset and the respawn after a death (Components.jsx). The body
+ * is held over the origin and stopped, its collider with it (kinematicMove.js placeBody), and the fight is left behind
+ * (stanceState.js). The camera goes there too: chunk streaming follows the camera (world/Terrain.jsx), and the void
+ * guard's reset, which once left it where the player fell, held the body over an origin that never streamed in until the
+ * probe gave up and dropped it there (registry AUDIT:ultra:ultra-player-world-7). The spawn branch runs next, with the
+ * probe's whole wait.
+ *   body   the Player's kinematic body (none yet: only the spawn state and the camera move)
+ *   eye    the camera's height over the body's centre (combat/swingOrigin.js EYE_HEIGHT_M)
+ *   spawn  the Player's refs: { placed (spawnPosSet), probeFails (spawnProbeFailsRef) }
+ */
+export function returnToSpawn(world, body, camera, eye, spawn) {
+  spawn.placed.current = false;
+  spawn.probeFails.current = 0;
+  if (body) {
+    placeBody(world, body, SPAWN_HOLD);
+    body.setLinvel(STILL, true);
+  }
+  resetStance();
+  camera.position.set(SPAWN_HOLD.x, SPAWN_HOLD.y + eye, SPAWN_HOLD.z);
+}
 
 // blockGroundY: highest placed-block y at origin, or null. physicsY: raycast ground, or null.
 // probeFails: the CURRENT (pre-attempt) fail count. Returns { groundY, retry, incFails } — the

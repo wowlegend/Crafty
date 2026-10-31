@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  isVoidFall, resolveSpawnGround, spawnTargetY, spawnCornerGround, resumeColumnProbe,
-  SPAWN_FALLBACK_Y, SPAWN_PROBE_MAX_FAILS, SPAWN_EYE_OFFSET,
+  isVoidFall, resolveSpawnGround, spawnTargetY, spawnCornerGround, resumeColumnProbe, returnToSpawn,
+  SPAWN_FALLBACK_Y, SPAWN_PROBE_MAX_FAILS, SPAWN_EYE_OFFSET, SPAWN_FREEZE_Y,
 } from './spawnPlacement.js';
+import { stance } from './stanceState.js';
 import { BASE_CAPSULE, BEAST_FORMS } from './beasts.js';
 import { DEEP_FLOOR } from '../world/oceanProfile.js';
 
@@ -38,6 +39,36 @@ describe('isVoidFall: the void line lies under every floor of the world, for eve
       expect(isVoidFall(standing(0, s)), `the ${name} on the world's bottom face was not called fallen`).toBe(true);
       expect(isVoidFall(-2), `the ${name} under the world was not called fallen`).toBe(true);
     }
+  });
+});
+
+// The void guard's reset and the respawn after a death both call it (Components.jsx); the Player's own frame against real
+// Rapier is tests/gates/player-placement-gates.test.jsx.
+describe('returnToSpawn: one way back to the origin spawn\'s wait', () => {
+  const rig = () => {
+    const calls = [];
+    const body = { setTranslation: (p, wake) => calls.push(['at', p, wake]), setLinvel: (v, wake) => calls.push(['vel', v, wake]) };
+    const world = { propagateModifiedBodyPositionsToColliders: () => calls.push(['collider with it']) };
+    const camera = { position: { at: [300, 41, -400], set(x, y, z) { this.at = [x, y, z]; } } };
+    const spawn = { placed: { current: true }, probeFails: { current: SPAWN_PROBE_MAX_FAILS - 2 } };
+    stance.engaged = true;
+    stance.w = 1;
+    return { calls, body, world, camera, spawn };
+  };
+  it('holds the body over the origin with its collider, stops it, and starts the spawn\'s wait and the camera there', () => {
+    const { calls, body, world, camera, spawn } = rig();
+    returnToSpawn(world, body, camera, 0.67, spawn);
+    expect(calls).toEqual([['at', { x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true], ['collider with it'], ['vel', { x: 0, y: 0, z: 0 }, true]]);
+    expect(camera.position.at, 'the camera stayed where the player fell: chunk streaming follows it').toEqual([0, SPAWN_FREEZE_Y + 0.67, 0]);
+    expect([spawn.placed.current, spawn.probeFails.current], 'the spawn branch does not run afresh').toEqual([false, 0]);
+    expect([stance.engaged, stance.w], 'the fight came along').toEqual([false, 0]);
+  });
+  it('with no body yet, still starts the spawn\'s wait and moves the camera', () => {
+    const { calls, world, camera, spawn } = rig();
+    returnToSpawn(world, null, camera, 0.67, spawn);
+    expect(calls).toEqual([]);
+    expect(camera.position.at).toEqual([0, SPAWN_FREEZE_Y + 0.67, 0]);
+    expect([spawn.placed.current, spawn.probeFails.current]).toEqual([false, 0]);
   });
 });
 

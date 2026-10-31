@@ -22,7 +22,7 @@ import { CLIMBERS } from './localPath.js';
 import { LEAP_RANGE, mobSensePoint } from './mobSenses.js';
 import { rampVelocity, ACCEL_RATE, DECEL_RATE } from './gameFeel.js';
 import { isHostile } from '../combat/targeting.js';
-import { stance as _state, stallAnchors as _anchors, resetStance, teleportPlayer } from './stanceState.js';
+import { stance as _state, stallAnchors as _anchors, resetStance } from './stanceState.js';
 import { worldNow, isWorldFrozen } from './worldClock.js';
 
 export { BASE_MOVE_SPEED };
@@ -454,5 +454,5 @@ export function readMoveTarget() {
   return _moveTarget;
 }
 
-// The state, the reset and the teleport live in stanceState.js, which the store loads without the roster.
-export { resetStance, teleportPlayer };
+// The state and the reset live in stanceState.js, which the store loads without the roster (with the load's teleport).
+export { resetStance };

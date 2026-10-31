@@ -35,11 +35,10 @@ import { voxelIndex, CHUNK_SIZE, CHUNK_VOLUME, CHUNK_HEIGHT, chunkOf } from '../
 import { moveKinematic, placeBody } from '../../../src/game/kinematicMove.js';
 import { BASE_CAPSULE, BEAST_FORMS, formLocomotion } from '../../../src/game/beasts.js';
 import { moveSpeed, jumpVelocity, GLUE_VELOCITY, VAULT_VELOCITY, applyGravity } from '../../../src/game/locomotion.js';
-import { steadyEye } from '../../../src/combat/swingOrigin.js';
+import { steadyEye, EYE_HEIGHT_M } from '../../../src/combat/swingOrigin.js';
 import { SEA_LEVEL, DEEP_FLOOR } from '../../../src/world/oceanProfile.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from '../../../src/game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, returnToSpawn, SPAWN_FREEZE_Y } from '../../../src/game/spawnPlacement.js';
 import { formHasRoom, enterFormFitted, restoreBaseFitted, fitLoadedSpot } from '../../../src/game/formFit.js';
-import { teleportPlayer } from '../../../src/game/stanceState.js';
 import { buildSaveData, savePosition } from '../../../src/game/saveSchema.js';
 
 const DT = 1 / 60;
@@ -246,7 +245,7 @@ function spawnBranch(S) {
       const spot = fitLoadedSpot(S.world, RAPIER, S.p.body, resume.place, (x, z) => groundProbe(S, x, z), { unindexed: S.cells.unindexed() });
       const at = { x: spot.x, y: spot.y, z: spot.z };
       placeBody(S.world, S.p.body, at);
-      S.spawnSet = true;
+      S.spawn.placed.current = true;
       S.stats[`loadsPlaced_${spot.by}`] = (S.stats[`loadsPlaced_${spot.by}`] || 0) + 1;
       released(S, at);
       return;
@@ -254,14 +253,14 @@ function spawnBranch(S) {
     released(S, null);
   }
   const physicsY = spawnCornerGround((x, z) => groundProbe(S, x, z));
-  const spawn = resolveSpawnGround(null, physicsY, S.spawnFails, true);
-  if (spawn.incFails) S.spawnFails += 1;
+  const spawn = resolveSpawnGround(null, physicsY, S.spawn.probeFails.current, true);
+  if (spawn.incFails) S.spawn.probeFails.current += 1;
   if (spawn.retry) {
     S.p.body.setTranslation({ x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
     return;
   }
   placeBody(S.world, S.p.body, { x: 0, y: spawnTargetY(spawn.groundY), z: 0 });
-  S.spawnSet = true;
+  S.spawn.placed.current = true;
   S.stats.respawns++;
 }
 
@@ -285,11 +284,11 @@ function playerFrame(S, input) {
   const { body, kcc, filter } = S.p;
   body.wakeUp();
   const t = body.translation();
-  if (S.spawnSet && isVoidFall(t.y)) {
+  if (S.spawn.placed.current && isVoidFall(t.y)) {
     voidReset(S);
     return;
   }
-  if (!S.spawnSet || useGameStore.getState().resumeSpawn) {
+  if (!S.spawn.placed.current || useGameStore.getState().resumeSpawn) {
     spawnBranch(S);
     return;
   }
@@ -326,14 +325,14 @@ function playerFrame(S, input) {
 }
 
 /** The void guard's reset (Components.jsx): I6 reads whether the player had ground under their feet when it fired (the guard
- *  took them out of a world they stood in, to the origin), then the body goes back to the origin spawn's wait. */
+ *  took them out of a world they stood in, to the origin), then the body goes back to the origin spawn's wait the game's
+ *  way (game/spawnPlacement.js returnToSpawn; the harness's camera is a stand-in, since nothing here streams by it). */
 export function voidReset(S) {
   const ground = groundUnder(S);
   S.stats.voidResets++;
   if (ground) note(S, 'I6', { at: vec(S.p.body.translation()), groundCell: ground });
   S.recent.push(`f${S.f} void reset${ground ? ` over ground at ${ground.join(',')}` : ''}`);
-  teleportPlayer(S.p.body, { x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true);
-  S.spawnSet = false;
+  returnToSpawn(S.world, S.p.body, S.camera, EYE_HEIGHT_M, S.spawn);
 }
 /** The highest solid cell of the logical world under the capsule's feet, in the columns its footprint covers, or null: a
  *  body under the world has none, and one inside the cells at y 0 (fallen through the hollow trimesh onto the world's
@@ -767,7 +766,8 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
   base();
   const world = new RAPIER.World({ x: 0, y: -30, z: 0 });
   const S = {
-    world, hz, lag, tol, f: 0, steps: 0, acc: 0, vy: 0, kb: { x: 0, z: 0 }, spawnSet: true, spawnFails: 0, resumeFails: 0,
+    world, hz, lag, tol, f: 0, steps: 0, acc: 0, vy: 0, kb: { x: 0, z: 0 }, resumeFails: 0,
+    spawn: { placed: { current: true }, probeFails: { current: 0 } }, camera: { position: new THREE.Vector3() },
     gen: new Map(base().chunks), logical: copyChunks(base().chunks), recs: new Map(), reload: null,
     worker: { seq: 0, lastDue: 0, queue: [] }, standIns: [], recent: [], form: { pending: null, last: null },
     maxDepth: { value: 0, f: null, cell: null },

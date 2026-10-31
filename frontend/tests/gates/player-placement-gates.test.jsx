@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import React from 'react';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, act } from '@testing-library/react';
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 
@@ -24,7 +24,10 @@ import RAPIER from '@dimforge/rapier3d-compat';
  *     (game/spawnPlacement.js resumeColumnProbe), and once it is in, the player stands on the saved column's top;
  *   - the void guard leaves a player on the deepest seabed (world/oceanProfile.js DEEP_FLOOR) where they stand and walk,
  *     and resets one clipped into the ground once they have fallen through the rock onto the world's bottom face
- *     (game/spawnPlacement.js isVoidFall: the line is the world's, not y 10).
+ *     (game/spawnPlacement.js isVoidFall: the line is the world's, not y 10);
+ *   - the void guard's reset and the respawn after a death go back to the origin spawn's wait one way
+ *     (game/spawnPlacement.js returnToSpawn): on their own frame the camera is at the origin's hold, where chunk streaming
+ *     follows it (Terrain.jsx), and the collider with the body; the spawn's wait for the origin's ground starts again.
  * Each 120 Hz case asserts that one of its two phases placed the body on a frame followed by one with no world step.
  * BLIND SPOT: R3F's loop is a stub and the frame rate is fixed; loadWorldData's world wipe and the chunk streamer are
  * stood in for (worldReloading is cleared after a few held frames, and the late chunk's collider is made by the test);
@@ -60,7 +63,8 @@ const { Player } = await import('../../src/Components.jsx');
 const { useGameStore } = await import('../../src/store/useGameStore.jsx');
 const { buildSaveData } = await import('../../src/game/saveSchema.js');
 const { BASE_CAPSULE } = await import('../../src/game/beasts.js');
-const { spawnTargetY } = await import('../../src/game/spawnPlacement.js');
+const { spawnTargetY, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_FAILS } = await import('../../src/game/spawnPlacement.js');
+const { EYE_HEIGHT_M } = await import('../../src/combat/swingOrigin.js');
 const { setIntent, setActive, resetInput } = await import('../../src/input/inputState.js');
 const { generateMesh } = await import('../../src/world/mesher.js');
 const { CHUNK_SIZE, CHUNK_VOLUME, voxelIndex } = await import('../../src/world/chunkLayout.js');
@@ -261,11 +265,16 @@ describe('the Player\'s loop places the body where its next sweep starts from', 
 
 /** Whether the void guard said it fired (Components.jsx warns once a reset). */
 const voidWarnings = (warn) => warn.mock.calls.filter((c) => /fell into void/.test(String(c[0]))).length;
-/** Where the body is, to 4 places (+ 0: a -0 is not toEqual's 0). */
+const HOLD = { x: 0, y: SPAWN_FREEZE_Y, z: 0 };
+const HOLD_EYE = [0, SPAWN_FREEZE_Y + EYE_HEIGHT_M, 0];
+/** Where the body, its collider and the camera are, to 4 places (+ 0: a -0 is not toEqual's 0). */
 const r4 = (v) => +v.toFixed(4) + 0;
 const spot = (p) => ({ x: r4(p.x), y: r4(p.y), z: r4(p.z) });
+function placement() {
+  return { body: spot(h.body.translation()), collider: spot(h.body.collider(0).translation()), eye: h.camera.position.toArray().map(r4) };
+}
 
-describe('the void guard fires under the world, never in it', () => {
+describe('the void guard fires under the world, never in it, and it and the respawn go back to the spawn one way', () => {
   it('a player on the deepest seabed (world/oceanProfile.js DEEP_FLOOR) stands and walks there, and is not reset to the origin', () => {
     const hz = 60;
     standPlayer(hz);
@@ -307,5 +316,62 @@ describe('the void guard fires under the world, never in it', () => {
     const end = spot(h.body.translation());
     expect([end.x, end.z], `the reset did not stand the player at the origin ${JSON.stringify(end)}`).toEqual([0, 0]);
     expect(end.y, `the reset did not stand the player on the origin's ground ${JSON.stringify(end)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
+  });
+
+  it('the void guard\'s reset puts the camera at the origin\'s hold and the collider with the body, on its own frame', () => {
+    const hz = 120;
+    standPlayer(hz);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Under the world at the far side of the field, the camera with the body as the follow-cam leaves it.
+    h.body.setTranslation({ x: -8.5, y: -2, z: 20.5 }, true);
+    h.camera.position.set(-8.5, -2 + EYE_HEIGHT_M, 20.5);
+    frame(hz);
+    const p = placement();
+    expect(p.body, `SETUP: the void guard did not reset the body to the origin's hold ${JSON.stringify(p)}`).toEqual(HOLD);
+    expect(p.eye, `the camera stayed at the fall site, where chunk streaming follows it ${JSON.stringify(p)}`).toEqual(HOLD_EYE);
+    expect(p.collider, `the collider stayed at the fall site until the next world step ${JSON.stringify(p)}`).toEqual(HOLD);
+  });
+
+  it('after a void reset the spawn waits its whole bound for the origin\'s ground, however long the first spawn waited', () => {
+    const hz = 60;
+    let streamed = false;
+    useGameStore.setState({ getMobGroundLevel: (x, z) => (streamed ? groundProbe(x, z) : null) });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(<Player isWorldBuilt />);
+    // The first spawn waits all but two frames of its bound for the origin's chunks (a slow stream at boot).
+    for (let i = 0; i < SPAWN_PROBE_MAX_FAILS - 2; i++) frame(hz);
+    expect(spot(h.body.translation()), 'SETUP: the first spawn did not wait at the origin\'s hold').toEqual(HOLD);
+    streamed = true;
+    for (let i = 0; i < 10; i++) frame(hz);
+    expect(at().y, 'SETUP: the first spawn did not stand the player on the origin\'s ground').toBeCloseTo(LAND_TOP + 0.95, 1);
+    // A fall through the world far away: the origin's chunks gone, as the streamer culls them behind a far camera.
+    streamed = false;
+    h.body.setTranslation({ x: -8.5, y: -2, z: 20.5 }, true);
+    let held = 0;
+    for (let i = 0; i < 100; i++) {
+      frame(hz);
+      if (Math.abs(h.body.translation().y - SPAWN_FREEZE_Y) < 1e-3) held++;
+    }
+    expect(held, `the reset held the player ${held} of 100 frames, then dropped them over no ground`).toBe(100);
+    streamed = true;
+    for (let i = 0; i < 10; i++) frame(hz);
+    expect(at().y, 'the player was not stood on the origin\'s ground once it streamed in').toBeCloseTo(LAND_TOP + 0.95, 1);
+  });
+
+  it('the respawn after a death leaves the body, its collider and the camera where the void guard\'s reset does', () => {
+    const hz = 120;
+    standPlayer(hz);
+    // Across the field from the origin, so the respawn has somewhere to move the camera from.
+    h.body.setTranslation({ x: -8.5, y: LAND_TOP + 0.95, z: 20.5 }, true);
+    for (let i = 0; i < 10; i++) frame(hz);
+    act(() => { useGameStore.setState({ isAlive: false }); });
+    for (let i = 0; i < 10; i++) frame(hz);
+    act(() => { useGameStore.setState({ isAlive: true }); });
+    const p = placement();
+    expect(p.body, `SETUP: the respawn did not put the body at the origin's hold ${JSON.stringify(p)}`).toEqual(HOLD);
+    expect(p.eye, `the respawn left the camera off the origin's hold ${JSON.stringify(p)}`).toEqual(HOLD_EYE);
+    expect(p.collider, `the respawn left the collider where the player died ${JSON.stringify(p)}`).toEqual(HOLD);
+    for (let i = 0; i < 40; i++) frame(hz);
+    expect(at().y, 'the respawn did not stand the player on the origin\'s ground').toBeCloseTo(LAND_TOP + 0.95, 1);
   });
 });

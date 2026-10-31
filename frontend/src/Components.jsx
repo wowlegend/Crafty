@@ -19,7 +19,7 @@ import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, returnToSpawn, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
@@ -28,7 +28,7 @@ import { bossCombat, withBossTarget, bossHitByCone, registerBossHeavy } from './
 import { logImpulse } from './devtest/impulseLog.js';
 import { cancelHeavy, heavyWalkMult, isHeavyReady, isHeavyHeld, meleeRefusal, HEAVY_MULT, HEAVY_STAGGER_MS, HEAVY_SHOVE_MULT } from './game/heavyAttack.js';
 import { gateSwing, takeBufferedSwing, cancelIntoDodge, endString, peekStep, stringWalkMult, swingShape, slashSweep, SWING_COOLDOWN_MS, FINISHER_ARC_RAD } from './game/meleeString.js';
-import { stanceFrame, stanceWalk, dodgeBurst, resetStance, teleportPlayer } from './game/combatStance.js';
+import { stanceFrame, stanceWalk, dodgeBurst, resetStance } from './game/combatStance.js';
 import { makeKick, addKick, stepKick, KICK_PROFILES, localToWorldKick } from './game/cameraKick.js';
 import { isNewHit } from './game/hurtFeel.js';
 import { sparkFor } from './game/mobHitFx.js';
@@ -145,6 +145,7 @@ export const Player = ({ isWorldBuilt }) => {
   }, [world]);
 
   const spawnPosSet = useRef(false);
+  const spawnRefs = { placed: spawnPosSet, probeFails: spawnProbeFailsRef }; // game/spawnPlacement.js returnToSpawn
 
   const lastCastTime = useRef(0);
   const CAST_COOLDOWN = 333;
@@ -217,16 +218,8 @@ export const Player = ({ isWorldBuilt }) => {
     // persist through the death screen into the respawned run.
     if (!isAlive && lastAliveRef.current) resetInput();
     if (isAlive && !lastAliveRef.current) {
-      spawnPosSet.current = false;
-      spawnProbeFailsRef.current = 0;
-      if (rigidBodyRef.current) {
-        rigidBodyRef.current.setTranslation({ x: 0, y: 120, z: 0 }, true);
-        rigidBodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      }
-      // KEVIN-FIX C1 (the respawn deadlock): chunk streaming keys on the CAMERA — moving
-      // only the body left origin chunks unloaded after a far-from-spawn death, so the
-      // ground probe nulled forever and the frame loop starved before movement code.
-      camera.position.set(0, 120 + EYE_HEIGHT_M, 0);
+      // KEVIN-FIX C1 (the respawn deadlock): chunk streaming keys on the CAMERA, so it goes to the origin with the body.
+      returnToSpawn(world, rigidBodyRef.current, camera, EYE_HEIGHT_M, spawnRefs);
     }
     lastAliveRef.current = isAlive;
   }, [isAlive]);
@@ -1022,8 +1015,7 @@ export const Player = ({ isWorldBuilt }) => {
     // Void Skyfall Guard: if player clips/falls through floor into the void, reset (game/spawnPlacement.js)
     if (spawnPosSet.current && isVoidFall(currentTrans.y)) {
       console.warn('Player fell into void; teleporting to safety.');
-      teleportPlayer(rigidBodyRef.current, { x: 0, y: SPAWN_FREEZE_Y, z: 0 }, true); // and the fight is left behind (game/combatStance.js)
-      spawnPosSet.current = false;
+      returnToSpawn(world, rigidBodyRef.current, camera, EYE_HEIGHT_M, spawnRefs); // the respawn's way: the camera goes too
       return;
     }
 
