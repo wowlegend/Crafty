@@ -14,6 +14,11 @@
 // kill path and the real store, driven by hand: the useFrame callbacks at 60 Hz, the hook's timers by the fake clock.
 // The bounds are written here as literals: they are the contract, and raising one is a decision to make in this file.
 //
+// WHAT A PLAYER SEES AND HEARS (round 2): a pickup in their hands gives its chime, its floating number and its pop; one banked
+// out of reach gives none of them, and what a frame banks is told in ONE line, however many it banked. The sound, the number
+// and the pop are counted as the systems call them (the `feel` record below), so a mutant that flipped which pickups chime
+// is red here and not only in a source regex.
+//
 // WHAT THE READINGS HAVE TO SHOW BEFORE ANY "WITHIN THE BOUND" MEANS ANYTHING (the denominators below):
 //   - the pools were FULL before the move (the burst overflows the pickup bound, five chests stood, the zones filled);
 //   - the pickups the player is next to are still collected, with their XP (the control that flips);
@@ -42,7 +47,12 @@ vi.mock('@react-three/fiber', async (importOriginal) => {
     useThree: () => ({ camera }),
   };
 });
-vi.mock('../../src/SoundManager', () => ({ useGameSounds: () => new Proxy({}, { get: () => () => {} }), useSounds: () => ({}) }));
+// What the player would hear, see and be told, as the systems call it. The sound is a Proxy so any other sound is a no-op.
+const feel = vi.hoisted(() => ({ chimes: 0, texts: [], pops: [], notices: [] }));
+vi.mock('../../src/SoundManager', () => ({
+  useGameSounds: () => new Proxy({}, { get: (_t, name) => (name === 'playPickup' ? () => { feel.chimes += 1; } : () => {}) }),
+  useSounds: () => ({}),
+}));
 
 let clock = 1000;
 vi.spyOn(performance, 'now').mockImplementation(() => clock);
@@ -81,7 +91,7 @@ const LOOT_XP = LOOT_TABLES.zombie[0].xp;
 
 let xpGranted = 0;
 let probes = 0;
-let owed = { xp: 0, loot: 0 };
+let owed = { xp: 0, loot: 0, orbXP: 0 };
 let seenPickups = new Set();
 let unsubKill = null;
 let nextMobId = 9e6;
@@ -112,7 +122,7 @@ function runSecond() {
 
 // The XP and items a kill puts in the world, counted once each as they appear.
 function harvest() {
-  for (const e of xpOrbsQuery.entities) if (!seenPickups.has(e)) { seenPickups.add(e); owed.xp += e.amount; }
+  for (const e of xpOrbsQuery.entities) if (!seenPickups.has(e)) { seenPickups.add(e); owed.xp += e.amount; owed.orbXP += e.amount; }
   for (const e of lootDropsQuery.entities) if (!seenPickups.has(e)) { seenPickups.add(e); owed.xp += e.xp; owed.loot += 1; }
 }
 // A kill by the player's fireball, through the real damage path: the orbs from CombatSystem, the loot from the kill bus.
@@ -129,6 +139,10 @@ function ringOfKills(n, cx, cz, radius) {
 
 const hDist = (p, x, z) => Math.hypot(p.x - x, p.z - z);
 const pickupCounts = () => ({ orbs: xpOrbsQuery.entities.length, loot: lootDropsQuery.entities.length });
+// What the player has been given so far: chimes, floating numbers, pops, and the lines the notification channel carried.
+const feelNow = () => ({ chimes: feel.chimes, texts: feel.texts.length, pops: feel.pops.length, notices: feel.notices.length });
+const lootLines = () => feel.notices.filter((n) => /^Looted: /.test(n.text)).map((n) => n.text);
+const xpLines = () => feel.notices.filter((n) => /^\+\d+ XP$/.test(n.text)).map((n) => n.text);
 const strandedBeyond = (x, z, range) =>
   [...xpOrbsQuery.entities, ...lootDropsQuery.entities].filter((e) => hDist(e.position, x, z) > range).length;
 
@@ -137,12 +151,15 @@ beforeEach(() => {
   seed = 1;
   vi.spyOn(Math, 'random').mockImplementation(rnd);
   for (const e of [...ecs.entities]) ecs.remove(e);
-  xpGranted = 0; probes = 0; owed = { xp: 0, loot: 0 }; seenPickups = new Set(); nextMobId = 9e6;
+  xpGranted = 0; probes = 0; owed = { xp: 0, loot: 0, orbXP: 0 }; seenPickups = new Set(); nextMobId = 9e6;
+  feel.chimes = 0; feel.texts = []; feel.pops = []; feel.notices = [];
+  GameMethods.spawnXPText = (amount) => { feel.texts.push(amount); };
+  GameMethods.spawnLootPop = (_pos, color) => { feel.pops.push(color); };
   GameMethods.grantXP = (n) => { xpGranted += n; };
   useGameStore.setState({
     getMobGroundLevel: () => GROUND,
     getMobFloor: () => { probes += 1; return GROUND; },
-    addNotification: () => {},
+    addNotification: (text, type) => { feel.notices.push({ text, type }); },
     onChestOpen: null,
     treasureChestsList: [],
     isDay: true,
@@ -176,6 +193,11 @@ describe('pickups: the ones in reach are collected, and the ones out of it are b
     expect(pickupCounts(), 'pickups beside the player were not collected').toEqual({ orbs: 0, loot: 0 });
     expect(xpGranted, 'the magnet collects delivered a different XP than the kills dropped').toBe(owed.xp);
     expect(lootInBag() - lootAtStart, 'the items the kills dropped did not all reach the bag').toBe(5);
+    // Each pickup in hand gave its chime, its number, and (a drop) its pop and its line: the pickup feedback is live.
+    expect(feelNow(), 'a pickup in the player\'s hands did not give its chime, number and pop').toEqual({
+      chimes: spawned.orbs + spawned.loot, texts: spawned.orbs + spawned.loot, pops: spawned.loot, notices: spawned.loot,
+    });
+    expect(lootLines()).toHaveLength(5);
   });
 
   it('a stranded pickup waits its lifetime for the player, then is banked in full', () => {
@@ -239,6 +261,88 @@ describe('pickups: the ones in reach are collected, and the ones out of it are b
     console.log(`[L9] frame cost at the bound: ${at.orbs} orbs + ${at.loot} loot: ${perFrame.toFixed(2)} floor probes a frame, ${(ms / N).toFixed(4)} ms a frame (both pickup systems, a stub floor)`);
     expect(perFrame, 'the pickup systems probed for fewer pickups than the pool holds: the reading is not of a pool at its bound').toBe(ORB_BOUND + LOOT_BOUND);
     expect(perFrame, 'the floor probes a frame grew past the bound').toBeLessThanOrEqual(ORB_BOUND + LOOT_BOUND);
+  });
+});
+
+describe('what the player sees and hears: a pickup in their hands is felt, a pickup banked out of reach is told in one line', () => {
+  it('in hand gives the chime, the number and the pop; an expired pickup out of reach gives none, and one line says what banked', () => {
+    mountSystems();
+    // PRESENCE first, in the same run: three kills at the player's feet are collected in hand and the instrument sees it.
+    ringOfKills(3, 0, 0, 4);
+    const near = pickupCounts();
+    runFrames(300);
+    expect(LOOT_XP, 'the loot row carries no XP: the number below is not exercised').toBeGreaterThan(0);
+    expect(feelNow(), 'the instrument did not see a pickup in hand: nothing below is meaningful').toEqual({
+      chimes: near.orbs + near.loot, texts: near.orbs + near.loot, pops: near.loot, notices: near.loot,
+    });
+    const inHand = feelNow();
+    // ABSENCE: ten kills out of reach wait out their lifetime. They expire in one frame, and the player is told once.
+    const orbXPBefore = owed.orbXP;
+    ringOfKills(10, 0, 0, 20);
+    const orbXPFar = owed.orbXP - orbXPBefore;
+    expect(orbXPFar, 'the far kills dropped no orb XP: the XP line below is not exercised').toBeGreaterThan(0);
+    runFrames(60 * (LIFETIME_S + 10));
+    expect(pickupCounts(), 'the far pickups outlived their lifetime').toEqual({ orbs: 0, loot: 0 });
+    expect(xpGranted, 'an expired pickup lost the XP it carried').toBe(owed.xp);
+    const after = feelNow();
+    expect({ chimes: after.chimes, texts: after.texts, pops: after.pops }, 'a banked pickup chimed, showed a number or popped').toEqual({ chimes: inHand.chimes, texts: inHand.texts, pops: inHand.pops });
+    expect(lootLines().slice(near.loot), 'what ten drops banked in one frame is not told in one line').toEqual(['Looted: 10 items']);
+    expect(xpLines(), 'what the banked orbs carried is not told in one line').toEqual([`+${orbXPFar} XP`]);
+  });
+
+  it('a return trip: what a frame banks is told once, however many it banked', () => {
+    mountSystems();
+    ringOfKills(30, 0, 0, 20);
+    runFrames(60);                       // the burst is over; the bound has cut the orbs that overflowed it
+    expect(pickupCounts().loot, 'the drops did not wait for the player: nothing below is meaningful').toBe(30);
+    const orbXPLeft = [...xpOrbsQuery.entities].reduce((a, e) => a + e.amount, 0);
+    expect(orbXPLeft, 'no orbs left to bank on the trip: the XP line below is not exercised').toBeGreaterThan(0);
+    feel.notices.length = 0;             // only the move's own frame is read
+    placePlayer(CULL_RANGE + 60, 0);
+    runFrames(1);
+    expect(pickupCounts(), 'the pickups did not all bank in the frame the player left their range').toEqual({ orbs: 0, loot: 0 });
+    expect(lootLines(), 'thirty banked drops flooded the notification channel').toEqual(['Looted: 30 items']);
+    expect(xpLines()).toEqual([`+${orbXPLeft} XP`]);
+    expect(feel.notices, 'something other than the two banking lines was raised').toHaveLength(2);
+    expect(xpGranted).toBe(owed.xp);
+    expect(lootInBag() - lootAtStart).toBe(30);
+  });
+
+  it('a burst out of reach past the bound is cut back quietly: no chime, number or pop, and the cut is told in one line each', () => {
+    mountSystems();
+    ringOfKills(2, 0, 0, 4);             // presence: two in hand
+    runFrames(300);
+    const inHand = feelNow();
+    expect(inHand.chimes, 'the instrument did not see a pickup in hand: nothing below is meaningful').toBeGreaterThan(0);
+    feel.notices.length = 0;
+    ringOfKills(40, 0, 0, 20);
+    const burst = pickupCounts();
+    expect(burst.orbs, 'the burst did not overflow the orb bound: the cut is not exercised').toBeGreaterThan(ORB_BOUND);
+    expect(burst.loot, 'the burst did not overflow the loot bound: the cut is not exercised').toBeGreaterThan(LOOT_BOUND);
+    const orbsBefore = [...xpOrbsQuery.entities];
+    runFrames(2);
+    const cutOrbs = orbsBefore.filter((e) => !xpOrbsQuery.entities.includes(e));
+    expect(cutOrbs, 'the cut took more or fewer orbs than the overflow').toHaveLength(burst.orbs - ORB_BOUND);
+    const after = feelNow();
+    expect({ chimes: after.chimes, texts: after.texts, pops: after.pops }, 'a pickup the bound cut out of reach chimed, showed a number or popped').toEqual({ chimes: inHand.chimes, texts: inHand.texts, pops: inHand.pops });
+    expect(lootLines(), 'the cut drops are not told in one line').toEqual([`Looted: ${burst.loot - LOOT_BOUND} items`]);
+    expect(xpLines(), 'the cut orbs are not told in one line').toEqual([`+${cutOrbs.reduce((a, e) => a + e.amount, 0)} XP`]);
+  });
+
+  it('pickups the player is standing in are collected, not banked: the bound cuts the ones out of reach first, and the rest are felt', () => {
+    mountSystems();
+    ringOfKills(40, 0, 0, 3);            // loot 40 and orbs far past their bounds, all inside both magnets
+    const burst = pickupCounts();
+    expect(burst.orbs, 'the burst did not overflow the orb bound: the cut is not exercised').toBeGreaterThan(ORB_BOUND);
+    expect(burst.loot, 'the burst did not overflow the loot bound: the cut is not exercised').toBeGreaterThan(LOOT_BOUND);
+    runFrames(300);
+    expect(pickupCounts()).toEqual({ orbs: 0, loot: 0 });
+    expect(xpGranted).toBe(owed.xp);
+    expect(feelNow(), 'a pickup the player was standing in was banked in silence').toEqual({
+      chimes: burst.orbs + burst.loot, texts: burst.orbs + burst.loot, pops: burst.loot, notices: burst.loot,
+    });
+    expect(xpLines(), 'a pickup in reach was told as banked').toEqual([]);
+    expect(lootLines().filter((t) => / items$/.test(t)), 'a drop in reach was told as banked').toEqual([]);
   });
 });
 
