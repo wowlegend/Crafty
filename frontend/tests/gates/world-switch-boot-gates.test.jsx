@@ -33,8 +33,14 @@ import { bossTierStats } from '../../src/game/bossTier.js';
  *   W0 identity (a comment edit)                                               -> must SURVIVE
  */
 
+// The 3D world, stood in: it records the dragon props, and it runs, so its first frame takes back the boot's attempt
+// (systems/BootSettle.jsx).
 vi.mock('../../src/GameScene', () => ({
-  GameScene: (p) => { globalThis.__scene = { active: p.bossActive, health: p.bossHealth, tier: p.bossTier }; return null; },
+  GameScene: (p) => {
+    globalThis.__scene = { active: p.bossActive, health: p.bossHealth, tier: p.bossTier };
+    globalThis.__worldRan?.();
+    return null;
+  },
 }));
 vi.mock('../../src/HUD', () => ({ HUD: (p) => { globalThis.__hudQuest = p.questSystem; return null; } }));
 vi.mock('../../src/ui/TouchControls', () => ({ default: () => null }));
@@ -72,6 +78,8 @@ async function pageLoad() {
   const saves = await import('../../src/game/worldSaves.js');
   const bus = await import('../../src/game/mobKillBus.js');
   const input = await import('../../src/input/inputState.js');
+  const boot = await import('../../src/game/worldBoot.js');
+  globalThis.__worldRan = () => boot.settleBoot(sessionStorage, useGameStore.getState()._bootAttempt);
   await act(async () => { startGame({ render: (el) => render(el) }); });
   await act(async () => { await Promise.resolve(); });
   const S = () => useGameStore.getState();

@@ -54,6 +54,36 @@ export function takeBootNote(storage) {
   return world ? { world } : null;
 }
 
+/**
+ * The sessionStorage key of the boot's attempt at a world, `{ world: id }`: left when the boot loads a world, before the
+ * first render, and taken back once that world has run a frame (systems/BootSettle.jsx). A plain visit that finds it
+ * naming the world it would load knows the last page to load that world never ran it: a save that loads and then breaks
+ * the world as it mounts, which the crash screen's Reload (a plain visit) would load again, and again.
+ */
+export const BOOT_ATTEMPT_KEY = 'crafty.bootAttempt';
+
+function attemptedWorld(session) {
+  try {
+    const v = JSON.parse(session.getItem(BOOT_ATTEMPT_KEY) || 'null');
+    return v && typeof v.world === 'string' ? v.world : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The world this page loaded has run: take back the attempt its boot left (`id`, the store's `_bootAttempt`), and no
+ * other. A page that held a world left the attempt it found, so a refresh of its title holds that world again.
+ * @param {Storage|null} session
+ * @param {string|null} id
+ */
+export function settleBoot(session, id) {
+  if (!session || !id) return;
+  try {
+    if (attemptedWorld(session) === id) session.removeItem(BOOT_ATTEMPT_KEY);
+  } catch { /* storage refused: the attempt stays, and the next plain visit holds the world on the title */ }
+}
+
 /** An index entry of a world this player owns: the World Manager's own "My Worlds" rule. */
 const ownedEntry = (w) => !!w && typeof w.id === 'string' && (w.is_owner || w.id.startsWith('local_'));
 
@@ -85,10 +115,11 @@ function notedWorld(saves, id) {
  * minting another. Its notices (a retired quest's reward, the Cut's respec) are held in `_bootNotices` until the quest
  * system publishes the channel. `continueWorld` tells the title what it is continuing. A save that throws on load leaves
  * the initial state, and `bootHeld` tells the title which world could not be opened: a page that never renders is worse
- * than a world that starts over beside the broken slot.
+ * than a world that starts over beside the broken slot. A plain visit does not load a world whose last load never ran
+ * (BOOT_ATTEMPT_KEY): the title says so and offers to open it anyway, which is a note, and a note loads its world.
  * @param {{ store: { getState: () => object, setState: (p: object, replace?: boolean) => void, getInitialState: () => object },
  *   session: Storage|null, saves: { listWorlds: () => object[], readWorld: (id: string) => object|null } }} deps
- * @returns {{ kind: 'world'|'fresh'|'none', id?: string|null }}
+ * @returns {{ kind: 'world'|'fresh'|'none'|'held', id?: string|null }}
  */
 export function bootWorld({ store, session, saves }) {
   const note = session ? takeBootNote(session) : null;
@@ -96,10 +127,15 @@ export function bootWorld({ store, session, saves }) {
     store.getState().startNewWorld(note.world);
     return { kind: 'fresh', id: note.world };
   }
-  const found = (note && note.world && notedWorld(saves, note.world)) || latestOwnedWorld(saves);
+  const noted = note && note.world ? notedWorld(saves, note.world) : null;
+  const found = noted || latestOwnedWorld(saves);
   if (!found) return { kind: 'none' };
   const { entry, data } = found;
   const name = entry.name || data.name || data.save_name || null;
+  if (!noted && session && attemptedWorld(session) === entry.id) {
+    store.setState({ bootHeld: { id: entry.id, name, reason: 'stopped' } });
+    return { kind: 'held', id: entry.id };
+  }
   const notices = [];
   const channel = store.getState().addNotification;
   store.setState({ addNotification: (...args) => { notices.push(args); } });
@@ -120,7 +156,14 @@ export function bootWorld({ store, session, saves }) {
     store.setState({ bootHeld: { id: entry.id, name, reason: 'unreadable' } });
     return { kind: 'none' };
   }
-  store.setState({ _bootNotices: notices });
+  let attempt = null;
+  if (session) {
+    try {
+      session.setItem(BOOT_ATTEMPT_KEY, JSON.stringify({ world: entry.id }));
+      attempt = entry.id;
+    } catch { /* storage refused: no hold on the next visit */ }
+  }
+  store.setState({ _bootNotices: notices, _bootAttempt: attempt });
   store.setState({
     continueWorld: {
       id: entry.id,

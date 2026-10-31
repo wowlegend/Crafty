@@ -31,7 +31,9 @@ import PRE_CUT from '../fixtures/pre-cut-save.json';
  *   R0 identity (a comment edit)                                                 -> must SURVIVE
  */
 
-vi.mock('../../src/GameScene', () => ({ GameScene: () => null }));
+// The 3D world, stood in, runs: its first frame takes back the boot's attempt (systems/BootSettle.jsx), or the next
+// plain visit would hold the world on the title (tests/gates/boot-guard-gates.test.jsx).
+vi.mock('../../src/GameScene', () => ({ GameScene: () => { globalThis.__worldRan?.(); return null; } }));
 vi.mock('../../src/HUD', () => ({ HUD: (p) => { globalThis.__hudQuest = p.questSystem; return null; } }));
 vi.mock('../../src/ui/TouchControls', () => ({ default: () => null }));
 vi.mock('../../src/ui/DebugOverlay', () => ({ DebugOverlay: () => null }));
@@ -59,6 +61,8 @@ async function pageLoad(day) {
   const { useGameStore } = await import('../../src/store/useGameStore');
   const { startGame } = await import('../../src/startGame.jsx');
   const saves = await import('../../src/game/worldSaves.js');
+  const boot = await import('../../src/game/worldBoot.js');
+  globalThis.__worldRan = () => boot.settleBoot(sessionStorage, useGameStore.getState()._bootAttempt);
   await act(async () => { startGame({ render: (el) => render(el) }); });
   await act(async () => { await Promise.resolve(); });
   const S = () => useGameStore.getState();

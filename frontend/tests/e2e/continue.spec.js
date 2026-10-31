@@ -13,6 +13,9 @@ import { bootDev, startPlayActive } from './_boot.js';
 // far column is the point: the page boots over the origin, so the save's chunks are not there when the world is first
 // built, and a hold that lets go early drops the player through the gap (the verifier's sim: 0 of 52 runs within 1 m).
 // Every pageerror is recorded and must be none (the verifier's node-only Rapier crash after a wipe was a lead to settle).
+// The reload's boot must leave its attempt at the world before the first render, and the running world must take it
+// back (game/worldBoot.js BOOT_ATTEMPT_KEY, systems/BootSettle.jsx): an attempt left behind holds the world on the next
+// visit's title, the crash-loop breaker misfiring on a world that ran.
 //
 // THE TITLE'S LOOK. The title with no save (Start Adventure) and with one (Continue, its caption, New World) is shot to
 // frontend/test-results/title-shots/, which CI uploads from every shard as the artifact title-shots-shard-<n> (.github/
@@ -25,7 +28,7 @@ import { bootDev, startPlayActive } from './_boot.js';
 // also held as the other specs hold it.
 //
 // Mutation-Proof: red on dispatched CI runs, each with one line of the game reverted (the run ids are in DECISIONS
-// 2026-10-30 item 205); no local browser run.
+// 2026-10-30 items 205 and 220); no local browser run.
 
 const SHOTS = 'test-results/title-shots';
 
@@ -166,6 +169,23 @@ test('a returning player continues from the title, and stands where they saved, 
     };
     requestAnimationFrame(tick);
   });
+  // The boot's attempt at the world (game/worldBoot.js BOOT_ATTEMPT_KEY): the reload's boot leaves one before the first
+  // render, and the world's first frame takes it back (systems/BootSettle.jsx, mounted in GameScene). If it were never
+  // taken back, the next plain visit would hold this world on the title. Every write and removal of it is recorded.
+  await page.addInitScript(() => {
+    window.__attemptLog = [];
+    const proto = Storage.prototype;
+    const set = proto.setItem;
+    const remove = proto.removeItem;
+    proto.setItem = function setItem(k, v) {
+      if (k === 'crafty.bootAttempt' && this === window.sessionStorage) window.__attemptLog.push(['set', String(v)]);
+      return set.call(this, k, v);
+    };
+    proto.removeItem = function removeItem(k) {
+      if (k === 'crafty.bootAttempt' && this === window.sessionStorage) window.__attemptLog.push(['remove']);
+      return remove.call(this, k);
+    };
+  });
   await page.reload();
   await page.waitForFunction(
     () => typeof window.useGameStore === 'function' && !!window.__craftyTest && typeof window.__craftyTest.ready === 'function' && window.__craftyTest.ready(),
@@ -214,6 +234,7 @@ test('a returning player continues from the title, and stands where they saved, 
       samples: rows.length, atColumn: atCol.length, afterArrival: rows.filter((row) => row[0] >= t0).length,
       minY: low[2], minAt: low[0], leftColumn: left.length, last: rows.at(-1), slot: blob?.player_data?.position ?? null, slotSavedAt: blob?.saved_at,
       worlds: JSON.parse(localStorage.getItem('crafty_world_saves') || '[]').length,
+      attempt: { log: window.__attemptLog, left: sessionStorage.getItem('crafty.bootAttempt') },
     };
   }, { at: saved.at, t0, id: saved.id });
   console.log(`continue: after the reload ${JSON.stringify({ ...r, saved: saved.at, pageErrors })}`);
@@ -229,6 +250,9 @@ test('a returning player continues from the title, and stands where they saved, 
   expect(r.slot && Math.hypot(r.slot.x - saved.at.x, r.slot.z - saved.at.z), `the autosave after Continue wrote another place: ${why}`).toBeLessThan(1.5);
   expect(r.slot && Math.abs(r.slot.y - saved.at.y), `the autosave after Continue wrote another height: ${why}`).toBeLessThan(1);
   expect(r.worlds, `the visit minted another slot: ${why}`).toBe(saved.worlds);
+  expect(r.attempt.log[0], `the reload's boot left no attempt at the world before it mounted: ${why}`)
+    .toEqual(['set', JSON.stringify({ world: saved.id })]);
+  expect(r.attempt.left, `the world ran and its boot's attempt was not taken back, so the next visit would hold it: ${why}`).toBeNull();
   // A refused pointer lock is the headless browser's answer to the click, not the game's throw.
   expect(pageErrors.filter((e) => !/pointer ?lock/i.test(e)), 'the page threw').toEqual([]);
 });

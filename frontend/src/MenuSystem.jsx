@@ -377,8 +377,13 @@ export function MenuSystem({
                           className="max-w-md text-center text-sm text-text/85 rounded-2xl px-4 py-1"
                           style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}
                         >
-                          {t('menu.heldUnreadable', { name: bootHeld.name })}
+                          {t(bootHeld.reason === 'stopped' ? 'menu.heldStopped' : 'menu.heldUnreadable', { name: bootHeld.name })}
                         </p>
+                      )}
+                      {bootHeld && bootHeld.reason === 'stopped' && (
+                        <Button variant="secondary" size="md" onClick={() => goToWorld({ world: bootHeld.id })} data-testid="title-held-retry">
+                          {t('menu.openAnyway')}
+                        </Button>
                       )}
                     </>
                   )}
