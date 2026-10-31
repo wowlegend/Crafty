@@ -17,7 +17,8 @@ import { buildSaveData } from '../../src/game/saveSchema.js';
  * The real store, the real boot (game/worldBoot.js, its note in jsdom's sessionStorage as a switch leaves it) and the
  * real worldSaves over jsdom's localStorage. A "session" is a page load: the store back to its initial state, then
  * the boot. The quota case stands a byte budget in for the browser's quota, at Storage.prototype.setItem.
- * BLIND SPOT: what "earned" misses (an item picked up with no XP, no coin and no block mined), and a real quota.
+ * BLIND SPOT: what "earned" misses (an item picked up with no XP, no coin and no block mined), and a real quota. A
+ * reached shrine counts as earned (lane L8 round 2), though reaching one grants nothing.
  *
  * Mutation-Proof: via scripts/dev/mutate.sh, receipts in the commit:
  *   P1 a new slot prunes nothing                                         -> RED expected
@@ -29,6 +30,7 @@ import { buildSaveData } from '../../src/game/saveSchema.js';
  *   P8 the saves are deleted when the index write is refused              -> RED expected
  *   RV1-RV7 one read of what was earned dropped each (XP, a block, a chest, the win, a claimed quest, a level, a save
  *     with no progression slice counted empty)                           -> RED expected (the one-field case)
+ *   S1 a reached shrine not read; S2 plausible-wrong: the rewarded list read for it -> RED expected (the one-field case)
  *   P0 identity (a comment edit)                                         -> must SURVIVE
  */
 
@@ -145,6 +147,7 @@ describe('a browser keeps at most KEEP_EMPTY_SLOTS empty placeholder worlds', ()
       ['a chest', { chests: new Map([['3_40_0', { inventory: {} }]]) }, true],
       ['the win', { gameWon: true }, true],
       ['a claimed quest', { questState: { completedQuestIds: ['first_steps'] } }, true],
+      ['a reached shrine', { reachedShrines: ['4_-3'] }, true],
       ['no progression slice (a save from before it)', null, true],
     ];
     const seen = [];
