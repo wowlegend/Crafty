@@ -103,12 +103,22 @@ L7). Each item names what in items 310-317 it supersedes.
    unread lines)
    - **What was wrong.** The fixture read `window.__isolatedFailures` once at the end, so a failure before a reload was
      lost (the counter is module state; a reload publishes 0), and a page it could not read printed "unread" and passed.
-   - **Now.** `src/game/isolatedEffects.js`, in a dev server, calls the binding the fixture exposes on each test's page
-     (`__craftyIsolatedFailure`, which survives navigation) with `armed` at load and each failure; a tracker made per
-     test (`tests/e2e/_isolatedFailures.js`) fails the test on any failure, and fails a game page that never armed. A game
-     page is one that requested the module script `index.html` names, so the fog specs' probe page is printed as "not a
-     game page", detected by what it loaded, not by name. The window counter stays for probes.
-   - **On CI.** Run 41221423846 printed 112 `[isolated-failures]` lines: 105 "0 over 1 page load(s)", 3 "0 over 2",
+   - **Now, and it only listens.** A tracker made per test (`tests/e2e/_isolatedFailures.js`) is fed the page's console
+     events and its requests, both of which keep coming across every reload: each `console.error` line that starts with
+     `isolated failure in ` (what `src/game/isolatedEffects.js` prints, in a dev server) is a failure, and each fetch of
+     `src/game/isolatedEffects.js` is a load that carries the instrument. Any failure fails the test; a game page that
+     never fetched the module is unread and fails; a game page is one that requested the module script `index.html`
+     names, so the fog specs' probe page is printed as "not a game page", detected by what it loaded, not by name. The
+     window counter stays for probes.
+   - **The first version called into the page, and that changed the game** (CI run 41226199357, on `8966b318`, the head
+     with lane L10 merged). It armed through a Playwright binding at module load, and Playwright delivers a binding's
+     result with `Runtime.callFunctionOn` and `userGesture: true` (playwright-core 1.64.1, `lib/coreBundle.js`: the
+     binding's `deliverBindingResult`, and the Chromium context's `evaluateWithArguments`), so every game page was handed
+     a user gesture at boot. L10's new `music-bus.spec.js` failed all three attempts with "SETUP: the day track plays
+     before any gesture" (the day track 27 to 31 s in before the spec's key press); it passed on main. The binding is
+     removed and nothing in the fixture calls into the page any more; the on-CI receipts below for the listening version
+     are item 358's.
+   - **On CI, first version.** Run 41221423846 printed 112 `[isolated-failures]` lines: 105 "0 over 1 page load(s)", 3 "0 over 2",
      1 "0 over 3" (the specs that reload), and 3 "not a game page (/src/index.jsx was never requested)", the fog specs;
      none unread, none failed, so the stricter verdict costs nothing today. On the mutant run (41222068391), smoke.spec
      registered a reactor that throws, emitted, reloaded and waited for the new page's counter to read 0; it failed all
