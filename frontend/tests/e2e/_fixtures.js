@@ -12,6 +12,7 @@ import { test as base, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readIsolatedFailures, isolatedFailureLine, isolatedFailureProblem } from './_isolatedFailures.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = resolve(ROOT, 'test-results/coverage');
@@ -65,23 +66,35 @@ export const test = base.extend({
       // A closed or crashed page has nothing to read; the test's own verdict stands.
     }
 
-    if (!started) return;
-    try {
-      const entries = await page.coverage.stopJSCoverage();
-      // Keep url + ranges only. `source` is the FULL module text per entry, which turns a shard's
-      // artifact into tens of MB of the repo's own source for no analytical gain.
-      const slim = entries.map((e) => ({
-        url: e.url,
-        functions: (e.functions || []).map((f) => ({ ranges: (f.ranges || []).map((r) => ({ count: r.count })) })),
-      }));
-      mkdirSync(OUT, { recursive: true }); // FIRST — writeFileSync into a missing dir throws
-      const safe = `${testInfo.title}-${seq++}`.replace(/[^a-z0-9-]+/gi, '_').slice(0, 80);
-      writeFileSync(resolve(OUT, `${safe}.json`), JSON.stringify(slim));
-    } catch {
-      // A page that already crashed cannot report coverage. Never let the instrument fail the test it
-      // is only observing — the test's own verdict is the thing that matters.
+    // What the game's isolated reactors and effects threw while this test ran (src/game/isolatedEffects.js). Read before the
+    // coverage is written and raised after it, so a failing test still leaves its coverage file.
+    const isolated = await readIsolatedFailures(page);
+    console.log(isolatedFailureLine(isolated, testInfo.title));
+    const isolatedProblem = isolatedFailureProblem(isolated);
+
+    if (started) {
+      await writeCoverage(page, testInfo);
     }
+    if (isolatedProblem) throw new Error(isolatedProblem);
   },
 });
+
+async function writeCoverage(page, testInfo) {
+  try {
+    const entries = await page.coverage.stopJSCoverage();
+    // Keep url + ranges only. `source` is the FULL module text per entry, which turns a shard's
+    // artifact into tens of MB of the repo's own source for no analytical gain.
+    const slim = entries.map((e) => ({
+      url: e.url,
+      functions: (e.functions || []).map((f) => ({ ranges: (f.ranges || []).map((r) => ({ count: r.count })) })),
+    }));
+    mkdirSync(OUT, { recursive: true }); // FIRST — writeFileSync into a missing dir throws
+    const safe = `${testInfo.title}-${seq++}`.replace(/[^a-z0-9-]+/gi, '_').slice(0, 80);
+    writeFileSync(resolve(OUT, `${safe}.json`), JSON.stringify(slim));
+  } catch {
+    // A page that already crashed cannot report coverage. Never let the instrument fail the test it
+    // is only observing — the test's own verdict is the thing that matters.
+  }
+}
 
 export { expect };

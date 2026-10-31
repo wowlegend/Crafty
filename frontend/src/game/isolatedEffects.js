@@ -17,6 +17,9 @@
  */
 
 let failureCount = 0;
+// Published at load, not at the first failure: a counter that exists only after a failure cannot tell a page with none
+// from a page that never had the instrument (tests/e2e/_isolatedFailures.js reads it at every test's end).
+if (import.meta.env.DEV && typeof window !== 'undefined') window.__isolatedFailures = { count: 0, last: '' };
 
 /**
  * Say that an isolated reactor or effect threw: a console.error naming where, and in a dev server a counter an e2e or a

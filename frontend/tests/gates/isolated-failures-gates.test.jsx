@@ -48,6 +48,14 @@ afterEach(() => {
 /** The console.error lines as one string each, errors written as their message. */
 const lines = () => errorSpy.mock.calls.map((a) => a.map((x) => (x instanceof Error ? `Error(${x.message})` : String(x))).join(' '));
 
+describe('the dev counter', () => {
+  it('is published at load with a count of 0, so a page with no failure reads differently from a page without the instrument', () => {
+    // seen() reads 0 for both an absent counter and a zero one; this is the case that tells them apart.
+    expect(window.__isolatedFailures, 'the counter is not on window after the module loaded').toBeTypeOf('object');
+    expect(window.__isolatedFailures.count).toBeTypeOf('number');
+  });
+});
+
 describe('the event bus reports a subscriber that throws, and still runs the rest', () => {
   it('presence: a subscriber that logs on its own is seen by the spy through the real bus', () => {
     on(EVENTS.reward, () => console.error('instrument-check'));
