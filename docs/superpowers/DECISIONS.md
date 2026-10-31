@@ -134,7 +134,9 @@ this lane's first CI run was in flight; the lane merged it (`82f43c02`) and fini
 
 316. **The gates that ran in an order the game never runs** (audit debt item 1). Status at `a05bf328`, from the files:
    `boss-persistence-hook-gates` loads before mount, which since L2 is the order the game runs (the boot loads before the first
-   render), and L3's `store-owns-encounter-gates` is the mount-first case; `new-world-reset-gates` is L3's file; the touch Show
+   render), and L3's `store-owns-encounter-gates` is the mount-first case; `new-world-reset-gates` is a store-only unit, and the
+   hook half of a New World (the dragon woken, then Create New World: no dragon, hook equal to store) is L2's
+   `world-switch-boot-gates`, since a New World is now a boot; the touch Show
    Stats wiring is gated through the real App by L1's `touch-show-stats-gates`; `build-footprint-gates` no longer pins the
    inverted wall (L6, `52913d8e`); the iPad stubs in `touch-probe.mjs`, `ipad-probe.mjs` and `_lookbookPage.mjs` are L10's
    ("ban no-op stubs"). **This lane's share is `context-loss.spec`**, which asserted coins, a block and a position, the store's
@@ -144,9 +146,9 @@ this lane's first CI run was in flight; the lane merged it (`82f43c02`) and fini
    and not yet observed red (registry `REVIEW:l12:context-loss-mutants-unobserved`).
 
 317. **What PR #71's first CI run said, and what is left open.** Run 41204965227 on `cd7682cf`, read from its logs.
-   - **The isolated-failure baseline is 0.** 120 `[isolated-failures]` lines (117 with a count of 0). Three read `unread (no
-     counter on the page)`: the fog specs, which draw on a page that is not the game. No spec swallows a throw, so the fixture's
-     failing a nonzero count costs nothing today.
+   - **The isolated-failure baseline is 0.** 120 `[isolated-failures]` lines (117 with a count of 0); on the final head's run
+     (41207666305) 112 lines, 109 of them 0. Three read `unread (no counter on the page)` in both: the fog specs, which draw on
+     a page that is not the game. No spec swallows a throw, so the fixture's failing a nonzero count costs nothing today.
    - **The merged runtime-reach job read the real shard files and passed.** 8 shard files of 8; the union reaches 397 of 415
      modules and 11 more run only in a worker; the 7 unreached are exactly the seven the offline check from run 41199587278
      predicted; `MUST_REACH: 70 of 70`. The per-shard module counts (391-397) match the old per-shard reports.
@@ -160,7 +162,10 @@ this lane's first CI run was in flight; the lane merged it (`82f43c02`) and fini
      deleted from `Components.jsx`, and adding an unreached module to the set is the same observable to the job.
    - **One red came from this lane's own probe, and was fixed.** `context-loss.spec` failed on shard 1 with "coins 4333, saved
      4321": the new kill the spec emits pays coins after the spec had set its coins mark. The mark now follows the kill (`7a4467c2`).
-     The quest and dragon reads after the reload had not been reached on that run; the next run on this branch is their first.
+     The quest and dragon reads after the reload had not been reached on that run. On the final head (run 41207666305, `bdfd5700`,
+     `ci ok` green) they were: "the hooks' state after the resume {kills: 1, bossDefeated: true, bossTier: 1, bossHealth: 0,
+     bossActive: false} (kills played 1)". One first-attempt flake on that run, `continue.spec.js:128` ("no autosave ran after
+     Continue"), passed on retry #1: registry `REVIEW:e2e-flakes:continue-no-autosave-after-continue`.
    - **Open, as registry rows:** `REVIEW:l12:reach-grain-is-the-module` (item 311), `REVIEW:l12:history-comments-ledger` (item 313),
      `REVIEW:l12:context-loss-mutants-unobserved` (item 316), and `REVIEW:l12:isolated-failure-invisible-in-production` (the shipped
      build drops console calls and keeps no counter, so a reactor that throws in a player's browser is still seen by nothing; a
