@@ -1,4 +1,5 @@
 import { makePhaseAccumulator, triangleFromPhase } from './phase.js';
+import { limitPeak } from './headroom.js';
 /**
  * synthVoices.js — the all-synth voice bank (#74): EVERY game sound as a pure
  * (ctx) => AudioBuffer factory over a caller-supplied AudioContext. Extracted from
@@ -162,9 +163,7 @@ export const makeSlamSound = (ctx) => {
     // headroom guard: the random click + thump + sub can RARELY sum past 1.0 (~4% of seeds clipped at
     // ~1.0005); normalize the rare loud buffer down so it never clips (common case untouched). Same
     // pattern as aspectMotifs.makeArp. Keeps the voice-bank's "unclipped" contract deterministic.
-    let peak = 0;
-    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
-    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
+    limitPeak(d, 0.98);
     return buffer;
 };
 
@@ -589,9 +588,7 @@ export const makeSiegeHorn = (ctx) => {
       d[i] = (saw * 0.5 + twin + sub) * vib * env * 0.34;
     }
     // headroom guard (deterministic unclipped contract; same pattern as makeSlamSound)
-    let peak = 0;
-    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
-    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
+    limitPeak(d, 0.98);
     return buffer;
 };
 
@@ -620,9 +617,7 @@ export const makeDawnChime = (ctx) => {
       d[i] = s * 0.3;
     }
     // headroom guard (deterministic unclipped contract; the staggered bells can briefly sum loud)
-    let peak = 0;
-    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
-    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
+    limitPeak(d, 0.98);
     return buffer;
 };
 
@@ -655,9 +650,7 @@ export const makeFanfare = (ctx) => {
       }
       d[i] = s * 0.3;
     }
-    let peak = 0;
-    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
-    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
+    limitPeak(d, 0.98);
     return buffer;
 };
 
@@ -700,9 +693,7 @@ export const makeVictorySound = (ctx) => {
       }
       d[i] = s * 0.28;
     }
-    let peak = 0;
-    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
-    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
+    limitPeak(d, 0.98);
     return buffer;
 };
 
@@ -726,9 +717,7 @@ export const makeThunderSound = (ctx) => {
       const roll = lower * 9 * swell * (0.75 + 0.25 * Math.sin(2 * Math.PI * 3.3 * t));
       d[i] = (crack + roll) * 0.6;
     }
-    let peak = 0;
-    for (let i = 0; i < d.length; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; }
-    if (peak > 0.98) for (let i = 0; i < d.length; i++) d[i] *= 0.98 / peak;
+    limitPeak(d, 0.98);
     return buffer;
 };
 

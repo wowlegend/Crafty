@@ -200,7 +200,8 @@ export function tallToastPlace(w, h) {
   return { right, slots: Math.max(1, Math.floor((room + TOAST_SPACE) / (toastHeight(TOAST_LINES) + TOAST_SPACE))) };
 }
 
-const subscribe = (onChange) => {
+/** useSyncExternalStore's subscribe for anything that follows the window's size (also input/useSpellAnchor.js). */
+export const subscribeResize = (onChange) => {
   window.addEventListener('resize', onChange);
   return () => window.removeEventListener('resize', onChange);
 };
@@ -214,13 +215,13 @@ const snapshot = () => {
 
 /** The layout for this window, re-rendering only when it changes (a resize or a rotation: a rare event, never a frame). */
 export function useHudMode() {
-  return useSyncExternalStore(subscribe, snapshot, snapshot);
+  return useSyncExternalStore(subscribeResize, snapshot, snapshot);
 }
 
 const windowWidth = () => window.innerWidth;
 /** This window's width, px, re-rendering on a resize: what the keyboard's toast stack beside the boss bar measures from. */
 export function useWindowWidth() {
-  return useSyncExternalStore(subscribe, windowWidth, windowWidth);
+  return useSyncExternalStore(subscribeResize, windowWidth, windowWidth);
 }
 
 const places = new Map();
@@ -233,5 +234,5 @@ const placeSnapshot = () => {
 
 /** The tall touch layout's toast stack for this window (tallToastPlace), re-rendering only when it changes. */
 export function useTallToastPlace() {
-  return useSyncExternalStore(subscribe, placeSnapshot, placeSnapshot);
+  return useSyncExternalStore(subscribeResize, placeSnapshot, placeSnapshot);
 }

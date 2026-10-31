@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ENERGY_PROFILE, _defaultEnergy, WAND_CONFIGS } from '../game/spellVisualProfiles';
 import { computeSpellMotion } from '../game/spellMotion';
-import { buildFireTeardrop, buildIceShards } from './spellGeometry';
+import { buildFireTeardrop, buildIceShards, seededUnit } from './spellGeometry';
 import { isCaptureMode } from '../devtest/captureMode';
 // Every projectile and every impact mounted its own pointLight: from the fixed light pool now (render/lightPool.jsx),
 // so a cast changes no light count and re-links no shader. The impact's fade still drives its light through the ref.
@@ -24,13 +24,6 @@ const _trailMid = new THREE.Vector3();
 const _trailQuat = new THREE.Quaternion();
 const _trailUp = new THREE.Vector3(0, 1, 0);
 
-// W2-T4: a tiny DETERMINISTIC hash (sin-based, no Math.random) so the jagged forking
-// bolt + the impact fork lines hold a stable, byte-identical pose in capture mode. A
-// given (seed) always yields the same value -> the frozen capture frame is reproducible.
-const seededUnit = (seed) => {
-  const v = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
-  return (v - Math.floor(v)) * 2 - 1; // -> [-1, 1)
-};
 // W2-T4: precomputed jagged-bolt segment offsets (a deterministic zig-zag along +Y).
 // Each segment is a short cylinder rotated by a seeded jitter angle off the bolt axis so
 // the silhouette reads as a crackling forked bolt, not a smooth cylinder. Fixed at module
