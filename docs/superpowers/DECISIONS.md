@@ -26,7 +26,9 @@ models and may have become redundant or inferior thinking / tasks ... so that we
 list from now on, make it a masterpiece." The review's record, with every count and example, is
 `docs/superpowers/plans/2026-10-31-registry-v2.md`; its design is `docs/superpowers/specs/2026-10-31-registry-v2-design.md`.
 Every row's disposition, with the command that proved it and the verifier's verdict, is
-`docs/superpowers/registry-v2-dispositions.jsonl`; `frontend/scripts/ci/registry-migrate.mjs` applies it.
+`docs/superpowers/registry-v2-dispositions.jsonl`; `frontend/scripts/ci/registry-migrate.mjs` applies it. Lane L12's
+round 3 (the entry below, which landed first) also numbers items 361-364, so a reference to this entry names its tag,
+"(registry v2)", as S7 requires when two entries of a date share a number.
 
 361. **Schema v2.** A row has at most 20 fields, a closed set: `id`, `key`, `planUnit`, `title`, `kind`, `area`,
    `severity`, `playerVisible`, `owner`, `state`, `lane`, `acceptance`, `blockedBy`, `evidence`, `note`, `opened`,
@@ -91,8 +93,8 @@ Every row's disposition, with the command that proved it and the verifier's verd
    7. **A split part may be a slug** (`MASTERPIECE:ember-against-the-dark-the/sun-glow-fog`), not only letters and
       digits, since the triage names its parts in words.
    8. **Rows added after the snapshot get their v2 fields from a landing file**,
-      `docs/superpowers/registry-v2-landing.jsonl`, applied on top of the merge, which also shortens the notes and the
-      title that lane L10 lengthened past the caps after the snapshot.
+      `docs/superpowers/registry-v2-landing.jsonl`, applied on top of the merge, which also shortens the notes and
+      titles lanes L8, L10 and L12 took past the caps after the snapshot, each record read against its row (item 368).
 
 366. **What this triage decided, the item its own closures cite.** Kevin's rows were closed only as duplicates of his
    other rows; every other closure cites a commit, a row or an earlier item, except these 57, which cite this item,
@@ -111,25 +113,35 @@ Every row's disposition, with the command that proved it and the verifier's verd
    - the accretion ratchet of `docs/superpowers/specs/crafty-coherence-pillars.md` is not built (QUEUE:Q42): an
      advisory script for a harness the reset plan shrinks; knip in both modes already runs in CI.
 
-367. **The counts,** on main `341531d1` (lane L8 landed), where the migration last ran. Before: 780 rows, 441 open (16
-   HIGH, 87 MED, 320 LOW, 18 unrated; 16 Kevin's), 339 closed, no row with a kind or a lane, 44 known duplicates still
-   open, 44 closed rows with no resolution, titles up to 843 characters. After: 812 rows (32 new, none deleted), 282
-   open, 268 of them work rows (6 HIGH, 49 MED, 213 LOW; 62 bugs, 39 features, 86 instruments, 35 debt, 31 flakes, 8
-   decisions, 7 process; 15 Kevin's) in 14 lane rows; 530 closed (303 done, 89 superseded, 55 duplicate, 53 wont-fix,
-   26 obsolete, 4 false-positive), among them `REVIEW:w1h:f6`, which this landing fixes; no orphan, no unrated row,
-   titles at most 160 characters. Independent verifiers re-checked 496 rows of the triage: 393 upheld, 92 adjusted, 11
+367. **The counts,** on main `bd06dacf` (lanes L8 and L12 landed), where the migration last ran. Before: 795 rows, 446
+   open (16 HIGH, 87 MED, 325 LOW, 18 unrated; 16 Kevin's), 349 closed, no row with a kind or a lane, 44 closed rows
+   with no resolution, titles up to 843 characters (the snapshot also held 44 known duplicates still open). After: 827
+   rows (32 new, none deleted), 292 open, 279 of them work rows (6 HIGH, 50 MED, 223 LOW; 62 bugs, 39 features, 93
+   instruments, 35 debt, 34 flakes, 8 decisions, 8 process; 15 Kevin's) in 13 lane rows; 535 closed (313 done, 84
+   superseded, 55 duplicate, 53 wont-fix, 26 obsolete, 4 false-positive), among them `REVIEW:w1h:f6`, which this
+   landing fixes; no orphan, no unrated row, titles at most 160 characters. Independent verifiers re-checked 496 rows of the triage: 393 upheld, 92 adjusted, 11
    refuted, and every refuted closure is open again or closed the way the verifier proposed and checked.
 
 368. **The migration is a script, reproducible from the repo.** `registry-migrate.mjs` reads the registry at the
    snapshot `a150a93a`, the triage's dispositions and the landing file, and merges three ways keyed by id: a field a
    lane changed since the snapshot keeps the lane's value, a row a lane closed keeps the lane's closure, and every
    other field takes the triage's. It never deletes a row, keeps file order, appends the new rows, and a second run
-   changes no byte; on the snapshot it writes exactly the triage's emulated registry. Lane L8 (PR #73) landed first:
-   main was merged in with main's registry as L8 left it, and the migration re-run on it in its own commit, the
-   landing file giving the 10 rows L8 added their v2 fields and shortening the 4 notes it took past the cap. Lane L12
-   (PR #71) is re-run the same way when it lands. The old
-   sources (STATUS section 2, QUEUE, OPEN-ITEMS, the masterpiece tables) retire next, under reset-plan row 32, which
-   deletes the harvest's extraction half and `registry-floors.json`.
+   changes no byte; on the snapshot it writes exactly the triage's emulated registry. Lanes L8 (PR #73) and L12 (PR
+   #71) landed first: each time main was merged in with main's registry as the lane left it, and the migration re-run
+   on it in its own commit, the landing file giving the lane's added rows their v2 fields (10 for L8, 15 for L12) and
+   shortening what it took past the caps. The old sources (STATUS section 2, QUEUE, OPEN-ITEMS, the masterpiece
+   tables) retire next, under reset-plan row 32, which deletes the harvest's extraction half and `registry-floors.json`.
+   **Nothing a lane wrote is written over unread** (round 2 of review, after the static review found that the re-run
+   for L12 would have replaced L12's flake sightings on two rows with notes a landing record had shortened, and said
+   nothing). Every landing record carries `against`, the hash of the row as its author read it (the dispositions'
+   `baseHash` form). A row the run would rewrite that a lane changed since the snapshot, or added, needs a record, a
+   READ where the three-way merge may stand; a record whose row changed after it was written is not applied; and a
+   landing replace must keep every cross-reference (row id, sha, run id, PR, DECISIONS item) of the note it replaces.
+   Each is a conflict that stops `--write`. Two further merge rules: text a lane added to a row the triage closes as a
+   duplicate is also appended to the row it duplicates, as "From <id>: ...", and a row a lane set in flight stays in
+   flight where the triage would close it, since the triage never saw the lane's work. On main `bd06dacf` the landing
+   file holds 79 records: 19 READs, the rest with edits. A branch cut before this landing that lands after it writes
+   its row edits again on main's registry (`.claude/rules/registry.md`, "Landing beside the v2 migration").
 
 ---
 
