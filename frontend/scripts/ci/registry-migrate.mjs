@@ -263,7 +263,7 @@ export function migrate({ baseText, currentText, dispositions, landing = [], tri
     report.rows += 1;
     const recs = (byId.get(id) ?? []).filter((d) => d.action !== 'CREATE');
     const B = base.get(id);
-    const e = { id, T, line, B, recs, merged: T, laneChanged: [], laneClosureKept: [], forReading: [], asIs: false };
+    const e = { id, T, line, B, recs, merged: T, laneChanged: [], laneClosureKept: [], forReading: [], bothChanged: [], asIs: false };
     entries.push(e);
     if (!recs.length) {
       if (B) report.refused.push(`${id}: a row of the base with no disposition record (the dispositions are incomplete)`);
@@ -300,7 +300,7 @@ export function migrate({ baseText, currentText, dispositions, landing = [], tri
         if (T[k] === undefined) delete M[k];
         else M[k] = T[k];
         if (k === 'state' && triageCloses) continue;
-        if (!deepEqual(O[k], B[k]) && !deepEqual(O[k], T[k])) e.forReading.push(`${id}.${k}: both changed it; kept the lane's ${dumps(T[k] ?? null).slice(0, 120)}, the disposition said ${dumps(O[k] ?? null).slice(0, 120)}`);
+        if (!deepEqual(O[k], B[k]) && !deepEqual(O[k], T[k])) e.bothChanged.push({ k, theirs: T[k], ours: O[k] });
       }
       if (laneChanged.includes('note')) {
         M.note = composeNote(T.note, recs, id, { appendsOnly: true });
@@ -387,6 +387,12 @@ export function migrate({ baseText, currentText, dispositions, landing = [], tri
       const replaced = e.laneChanged.filter((k) => !kept.includes(k) && k !== 'updated');
       report.laneTouched.push(`${id}: the lane changed ${e.laneChanged.join(', ')}; ${kept.length ? `kept the lane's ${kept.join(', ')}` : 'kept none of them'}${replaced.length ? `; the triage or a landing record wrote ${replaced.join(', ')}` : ''}`);
       report.laneClosureKept.push(...e.laneClosureKept);
+      // A field both sides changed is said as written: the lane's value, or a landing record's over it.
+      const short = (v) => dumps(v ?? null).slice(0, 120);
+      for (const b of e.bothChanged) {
+        const wrote = deepEqual(row[b.k], b.theirs) ? `kept the lane's ${short(b.theirs)}` : `a landing record wrote ${short(row[b.k])} over the lane's ${short(b.theirs)}`;
+        report.forReading.push(`${id}.${b.k}: both changed it; ${wrote}, the disposition said ${short(b.ours)}`);
+      }
       report.forReading.push(...e.forReading);
     }
     report.migrated += 1;

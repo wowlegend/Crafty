@@ -163,6 +163,13 @@ describe('registry-migrate never writes over a lane edit it has not read', () =>
     expect(shortened.report.conflicts).toEqual([]);
     expect(rowOf(shortened.text, 'QUEUE:Q49').note).toBe(shorter);
     expect(shortened.report.laneTouched).toEqual(['QUEUE:Q49: the lane changed note; kept none of them; the triage or a landing record wrote note']);
+    // The triage retitled QUEUE:Q49; a lane retitled it too, and a landing record then sets a third title.
+    const retitled = laneEdit('QUEUE:Q49', (r) => ({ ...r, title: 'The lane\'s title' }));
+    const R = rowOf(retitled, 'QUEUE:Q49');
+    expect(run(retitled, { landing: [read(R)] }).report.forReading).toEqual([expect.stringMatching(/^QUEUE:Q49\.title: both changed it; kept the lane's "The lane's title", the disposition said/)]);
+    const set = run(retitled, { landing: [record(R, { set: { title: 'A landing title' } })] });
+    expect(rowOf(set.text, 'QUEUE:Q49').title).toBe('A landing title');
+    expect(set.report.forReading).toEqual([expect.stringMatching(/^QUEUE:Q49\.title: both changed it; a landing record wrote "A landing title" over the lane's "The lane's title", the disposition said/)]);
   });
 
   it('a landing record names what it read (against) and a READ record changes nothing', () => {
@@ -196,6 +203,17 @@ describe('registry-migrate never writes over a lane edit it has not read', () =>
     const second = run(first.text, { landing });
     expect(second.text).toBe(first.text);
     expect(second.report.conflicts).toEqual([]);
+    // A landing record that shortens the row it moved to: the move is reported where it changes a row, never on a re-run.
+    const y = rowOf(current, Y);
+    const shortened = `${rowOf(first.text, Y).note.replace(`From ${X}: Seen again in run 41000000004.`, '')} Run 41000000004 too.`;
+    const withY = [...landing, { id: Y, action: 'KEEP', why: 'r', against: rowHash(y), set: {}, unset: [], noteFrom: [], noteOps: [{ op: 'replace', text: shortened }] }];
+    const third = run(current, { landing: withY });
+    expect(third.report.conflicts).toEqual([]);
+    expect(rowOf(third.text, Y).note).toBe(shortened);
+    expect(third.report.moved).toHaveLength(1);
+    const fourth = run(third.text, { landing: withY });
+    expect(fourth.text).toBe(third.text);
+    expect(fourth.report.moved).toEqual([]);
   });
 
   it('a row a lane set in flight stays in flight when the triage closes it, and the report says why', () => {
