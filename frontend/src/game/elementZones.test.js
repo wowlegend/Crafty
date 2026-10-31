@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   makeZoneRegistry, spawnZone, stepZones, clearZones,
   MAX_ZONES, ZONE_DEFS, AMP_RADIUS_MULT, AMP_TTL_MULT,
-  spawnChain, CHAIN_RANGE, applyZoneEffects, BURN_TICK,
+  spawnChain, castZone, CHAIN_RANGE, applyZoneEffects, BURN_TICK,
 } from './elementZones';
 
 const at = (x, z) => ({ x, y: 50, z });
@@ -29,6 +29,144 @@ describe('S2-B4-M3: the zone registry (the chemistry core)', () => {
     for (let i = 0; i < 9; i++) spawnZone(r, { kind: 'burning', pos: at(i * 10, 0) }, 10 + i);
     expect(r.zones).toHaveLength(MAX_ZONES);
     expect(r.zones.find((z) => z.pos.x === 0)).toBeUndefined(); // the oldest gone
+  });
+  // AUDIT:ultra:ultra-game-logic-4. The cap evicted reg.zones.shift(), the FIRST PAINTED, and a refresh keeps its place
+  // in the array, so a re-imbue that renewed a zone and then overflowed the cap (spawnZone, then spawnChain, in one bridge
+  // tick) evicted the zone it had just renewed while zones with seconds left survived.
+  describe('the cap evicts the soonest expiry', () => {
+    const fill = (r, n, burnAt = (i) => i * 10) => {
+      for (let i = 0; i < n; i++) spawnZone(r, { kind: 'burning', pos: at(burnAt(i), 0) }, i); // zone i expires at i + 10
+    };
+    it('a refreshed zone survives the overflow and the soonest-expiring one goes', () => {
+      const r = makeZoneRegistry();
+      fill(r, MAX_ZONES);                                                  // x 0..70, expiring at 10..17
+      const first = r.zones[0];
+      const again = spawnZone(r, { kind: 'burning', pos: at(1, 0) }, 14);  // re-imbue beside the first: expires at 24
+      expect(again.id, 'the re-imbue did not refresh the first zone: the setup is not the scenario').toBe(first.id);
+      expect(r.zones).toHaveLength(MAX_ZONES);
+      spawnZone(r, { kind: 'burning', pos: at(80, 0) }, 14.5);             // the overflow
+      expect(r.zones).toHaveLength(MAX_ZONES);
+      expect(r.zones.some((z) => z.id === first.id), 'the zone just refreshed was evicted').toBe(true);
+      expect(r.zones.some((z) => z.pos.x === 10), 'the soonest-expiring zone (x 10, 10 s into its life) survived').toBe(false);
+      expect(Math.min(...r.zones.map((z) => z.expiresAt)), 'the zones left include one that expires before the one evicted').toBeGreaterThanOrEqual(12);
+    });
+    it('one cast (castZone: the impact, then its chain) keeps the zone it just refreshed', () => {
+      const r = makeZoneRegistry();
+      fill(r, MAX_ZONES, (i) => (i === 0 ? 0 : 100 + i * 10));            // the first painted sits at x 0; the rest are far off
+      const a = r.zones[0];
+      const mobs = [{ position: at(5, 0) }, { position: at(0, 6) }, { position: at(-5, 0) }];
+      const { zone, leaps } = castZone(r, { kind: 'burning', pos: at(0.5, 0), chain: 3 }, mobs, () => true, 14); // refreshes the first painted, to 24
+      expect(zone.id, 'the re-imbue did not refresh the first zone: the setup is not the scenario').toBe(a.id);
+      expect(leaps, 'the chain leapt nowhere: the setup is not the scenario').toHaveLength(3);
+      expect(r.zones).toHaveLength(MAX_ZONES);
+      expect(r.zones.some((z) => z.id === a.id), 'a chain leap evicted the zone the same imbue had just refreshed').toBe(true);
+    });
+    it('the newcomer is never the one evicted, even when it expires soonest', () => {
+      const r = makeZoneRegistry();
+      fill(r, MAX_ZONES);
+      for (const z of r.zones) z.expiresAt = 100;                          // every older zone has more life than a conductive one
+      const fresh = spawnZone(r, { kind: 'conductive', pos: at(200, 0) }, 90); // 8 s: expires at 98, the soonest of all
+      expect(fresh, 'the cast returned no zone').not.toBeNull();
+      expect(r.zones.some((z) => z.id === fresh.id), 'the zone just cast was evicted at birth').toBe(true);
+      expect(r.zones).toHaveLength(MAX_ZONES);
+    });
+    it('equal expiry falls back to the first painted (the old order is the tie-break)', () => {
+      const r = makeZoneRegistry();
+      for (let i = 0; i < MAX_ZONES; i++) spawnZone(r, { kind: 'burning', pos: at(i * 10, 0) }, 10); // all expire at 20
+      spawnZone(r, { kind: 'burning', pos: at(80, 0) }, 10);
+      expect(r.zones.some((z) => z.pos.x === 0), 'a tie evicted a later zone, not the first painted').toBe(false);
+      expect(r.zones.some((z) => z.pos.x === 10)).toBe(true);
+    });
+  });
+  // A cast is the unit the cap protects: the impact's zone, a zone the impact refreshed, and every chain leap. The first
+  // fix protected only the zone one spawnZone call had just painted, so the next leap of the same cast evicted it, and the
+  // bridge voiced a zone that was already gone (round 1's static finding 1 and dynamic F1; AUDIT:ultra:ultra-game-logic-4
+  // closes on the first block below). The layouts are the dynamic reviewer's: p-zones2 (the row's own case, four boards) and
+  // p-zones1 (a conductive chain into a board of frozen zones, a burning chain into a board of long burns).
+  describe('one cast never evicts a zone it painted or refreshed', () => {
+    const MOBS3 = [{ position: at(5, 0) }, { position: at(0, 6) }, { position: at(-5, 0) }];
+    const chain = (kind, x, n) => ({ kind, pos: at(x, 0), chain: n });
+    // The row's case: A is the first painted; seven others stand far off, painted at `otherAt`; at t=14 a re-imbue
+    // refreshes A (to 24) and its chain adds three leaps, which overflow the board by three.
+    const rowCase = (otherKind, otherAt) => {
+      const r = makeZoneRegistry();
+      const A = spawnZone(r, { kind: 'burning', pos: at(0, 0) }, 0);
+      for (let i = 1; i <= 7; i++) spawnZone(r, { kind: otherKind, pos: at(100 + i * 10, 0) }, otherAt);
+      const { zone, leaps } = castZone(r, chain('burning', 0.5, 3), MOBS3, () => true, 14);
+      return { r, A, zone, leaps, others: r.zones.filter((z) => z.pos.x >= 100) };
+    };
+    it.each([
+      ["the builder's board: seven burns painted at 7 (they expire at 17, before A's 24)", 'burning', 7],
+      ['seven burns painted at 13 (they expire at 23, before A)', 'burning', 13],
+      ['seven FROZEN zones painted at 13 (they expire at 25, after A: the board the first fix still evicted A on)', 'frozen', 13],
+      ['seven conductive zones painted at 13.9 (they expire at 21.9, before A: the control)', 'conductive', 13.9],
+    ])('the row\'s case, %s', (_name, kind, at_) => {
+      const { r, A, zone, leaps, others } = rowCase(kind, at_);
+      expect(zone.id, 'the re-imbue did not refresh A: the setup is not the scenario').toBe(A.id);
+      expect(A.expiresAt).toBeCloseTo(24);
+      expect(leaps, 'the chain did not take its three leaps: the setup is not the scenario').toHaveLength(3);
+      expect(r.zones, 'the board is not at its cap').toHaveLength(MAX_ZONES);
+      expect(r.zones.includes(A), 'a chain leap evicted the zone the same cast had just refreshed').toBe(true);
+      expect(leaps.every((l) => r.zones.includes(l)), 'a later leap evicted an earlier one').toBe(true);
+      // The three that went are the first painted of the seven (equal expiry): the rest of the board loses the soonest, not the cast.
+      expect(others.map((z) => z.pos.x).sort((a, b) => a - b)).toEqual([140, 150, 160, 170]);
+    });
+    it('a conductive chain into a board of fresh frozen zones keeps its impact zone and every leap (the bridge voices the impact)', () => {
+      const r = makeZoneRegistry();
+      for (let i = 0; i < MAX_ZONES; i++) spawnZone(r, { kind: 'frozen', pos: at(i * 20, 100) }, 0); // 12 s each: they expire at 12
+      const { zone, leaps } = castZone(r, chain('conductive', 500, 3), [{ position: at(505, 0) }, { position: at(500, 6) }, { position: at(495, 0) }], () => true, 2); // 8 s: expires at 10, sooner than any frozen
+      expect(leaps, 'the chain did not take its three leaps: the setup is not the scenario').toHaveLength(3);
+      expect(r.zones, 'the board is not at its cap').toHaveLength(MAX_ZONES);
+      expect(r.zones.includes(zone), 'the impact zone was evicted by its own chain in the same tick').toBe(true);
+      expect(leaps.every((l) => r.zones.includes(l)), 'a leap was evicted by a later leap').toBe(true);
+      expect(r.zones.filter((z) => z.kind === 'frozen'), 'the frozen zones that remain are not the four last painted').toHaveLength(4);
+      expect(r.zones.filter((z) => z.kind === 'frozen').map((z) => z.pos.x).sort((a, b) => a - b)).toEqual([80, 100, 120, 140]);
+    });
+    it('a burning chain of five into a board of burns that outlast it keeps the whole cast', () => {
+      const r = makeZoneRegistry();
+      for (let i = 0; i < MAX_ZONES; i++) { const z = spawnZone(r, { kind: 'burning', pos: at(i * 20, 100) }, 1); z.expiresAt = 16; }
+      const mobs = [5, 6, -5, -6].map((d, i) => ({ position: i % 2 ? at(500, d) : at(500 + d, 0) }));
+      const { zone, leaps } = castZone(r, chain('burning', 500, 5), mobs, () => true, 2); // expires at 12, before every burn on the board
+      expect(leaps.filter(Boolean), 'the chain did not take its four leaps: the setup is not the scenario').toHaveLength(4);
+      expect([zone, ...leaps].every((z) => r.zones.includes(z)), 'a zone of the cast was evicted by the cast').toBe(true);
+      expect(r.zones).toHaveLength(MAX_ZONES);
+    });
+    it('the eviction among the rest is still the soonest expiry', () => {
+      const r = makeZoneRegistry();
+      for (let i = 0; i < MAX_ZONES - 1; i++) spawnZone(r, { kind: 'burning', pos: at(100 + i * 10, 0) }, i); // seven burns expiring at 10..16
+      const late = spawnZone(r, { kind: 'frozen', pos: at(300, 0) }, 0);   // the eighth: 12 s, expires at 12
+      const { zone } = castZone(r, chain('conductive', 500, 0), [], () => true, 1);
+      expect(zone).not.toBeNull();
+      expect(r.zones, 'the cast did not overflow the board by one: the setup is not the scenario').toHaveLength(MAX_ZONES);
+      expect(r.zones.some((z) => z.pos.x === 100), 'the soonest to expire (x 100, at 10) survived').toBe(false);
+      expect(r.zones.includes(late)).toBe(true);
+    });
+    it('a chain longer than the board holds is cut short: the cast fills the board and never evicts itself', () => {
+      const r = makeZoneRegistry();
+      const ring = (n) => Array.from({ length: n }, (_, i) => ({ position: at(500 + 6 * Math.cos((i / n) * Math.PI * 2), 6 * Math.sin((i / n) * Math.PI * 2)) }));
+      const { zone, leaps } = castZone(r, chain('burning', 500, 20), ring(12), () => true, 0); // twelve hostiles in reach, a chain of twenty
+      expect(leaps.filter(Boolean), 'the chain should stop when every zone on the board is the cast\'s own').toHaveLength(MAX_ZONES - 1);
+      expect(r.zones, 'the cast should fill the board').toHaveLength(MAX_ZONES);
+      expect([zone, ...leaps].every((z) => r.zones.includes(z)), 'a zone of the cast was evicted by the cast').toBe(true);
+    });
+    it('a chain into a board of other zones takes the board over, a zone at a time, then stops at the cap', () => {
+      const r = makeZoneRegistry();
+      for (let i = 0; i < 4; i++) spawnZone(r, { kind: 'frozen', pos: at(i * 20, 100) }, 0); // four others
+      const ring = Array.from({ length: 12 }, (_, i) => ({ position: at(500 + 6 * Math.cos((i / 12) * Math.PI * 2), 6 * Math.sin((i / 12) * Math.PI * 2)) }));
+      const { zone, leaps } = castZone(r, chain('conductive', 500, 20), ring, () => true, 1);
+      expect(leaps.filter(Boolean)).toHaveLength(MAX_ZONES - 1);
+      expect(r.zones.every((z) => z === zone || leaps.includes(z)), 'a zone that is not the cast\'s is still on a board the cast filled').toBe(true);
+      expect(r.zones).toHaveLength(MAX_ZONES);
+    });
+    it('spawnZone alone, handed a cast that already owns the whole board, still holds the cap: the newcomer stays, the soonest of the rest goes', () => {
+      const r = makeZoneRegistry();
+      const cast = new Set();
+      for (let i = 0; i < MAX_ZONES; i++) cast.add(spawnZone(r, { kind: 'burning', pos: at(i * 10, 0) }, i, cast)); // expire at 10..17
+      const fresh = spawnZone(r, { kind: 'conductive', pos: at(200, 0) }, 0, cast);                                  // expires at 8: sooner than any
+      expect(r.zones, 'the cap broke').toHaveLength(MAX_ZONES);
+      expect(r.zones.includes(fresh), 'the newcomer was evicted at birth').toBe(true);
+      expect(r.zones.some((z) => z.pos.x === 0), 'the soonest of the others (x 0, at 10) survived').toBe(false);
+    });
   });
   it('dedupe-spacing: a same-kind spawn within DEDUPE_DIST REFRESHES the existing zone (no stack-stamping)', () => {
     const r = makeZoneRegistry();

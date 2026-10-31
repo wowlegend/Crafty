@@ -127,6 +127,172 @@ place.
    dead-setter half of AUDIT:debt:three-call-channels-dead-wires, lane L12's. The chest board itself still crosses an
    in-place load (closed for players by L2's reload; L3 made only the shrine facts per-world).
 
+---
+
+## 2026-10-30 (lane L9) — [LOOP] pools with lifetimes: the chest board follows the player, a pickup has a lifetime and a bound and is banked when it ends, and the zone cap evicts the soonest expiry
+
+**Decided by the command session on lane L9 of the deep audit** (`AUDIT:lane:L9-pools-with-lifetimes`), built by the
+lane L9 builder; branch `fix/l9-pools`, from main `0670a825`. Items 240-246; round 2, built by the fixer on the round-1
+static and dynamic reviews (both FIX), adds items 247-249 and corrects 240-246 where they said more than was proven. The
+brief's own words: "every pool gets a lifetime, a distance bound and an expiry-ordered eviction"; three pools filled and
+nothing emptied them.
+
+240. **The quest-chest board is bound by where the player is** (`frontend/src/game/chestBoard.js`, new; the hook is
+   `useTreasureChests` in `frontend/src/QuestSystem.jsx`). The periodic spawner capped the board at five UNOPENED chests
+   wherever they stood, so five the player had walked away from held every slot for the session. Now the cap counts the
+   unopened chests within 120 m (CHEST_COUNT_RADIUS) and a 3 s sweep retires an unopened periodic chest past 240 m
+   (CHEST_RETIRE_RADIUS). Two radii, not one, so a chest the player sees at the edge does not vanish as they turn
+   back: between the two it holds no slot and can still be walked to. The compass shows chests to 80 m and the spawner
+   places a new one 20-60 m out, so a board of five in reach is a board the player can see. A SHRINE chest is never
+   retired (the once-per-shrine reward is keyed in `shrineChestsSpawned` and would not respawn); it still counts toward
+   the cap while in reach, as before. An opened chest is left to its own 5 s timer. Distances are along the ground.
+   Retiring is not losing: a chest holds nothing until it is opened, and the player left it behind. The two radii alone
+   did not bound the board for a player who loops through the ring between them; item 249 adds the maximum and states what
+   was measured.
+241. **A pickup has a lifetime, a cull range and a bound, and a pickup that ends is BANKED, not lost**
+   (`frontend/src/game/xpOrbStepper.js`, `frontend/src/systems/XPOrbSystem.jsx`, `frontend/src/systems/LootSystem.jsx`).
+   Past 90 world seconds (PICKUP_LIFETIME_S, the low end of the audit's 90-120: it ages on the world clock, so a pause or
+   a hitstop does not spend it) or 100 m from the player (PICKUP_CULL_RANGE, the mobs' own cull range), a pickup out of
+   reach reports `{ collected: true, expired: true }`; the systems grant its XP, put its item in the bag, tell the player
+   in one line what a frame banked (item 248), and remove it. What a fresh kill drops and the XP the player is owed are unchanged (CombatSystem and
+   `spawnLootDrop` are untouched, and the gate asserts the XP granted equals the XP the kills dropped, to the point, and
+   the items to the item). The banking is QUIET: no pop, no floating XP text and no chime, because those announce a
+   pickup in the player's hands at a spot they are looking at. Round 1 wrote that an expired pickup "is by definition
+   outside its magnet" (12 m for an orb, 7 m for a drop); it was not (the test came before the magnet in the stepper, so
+   an 89.5 s orb 5 m away and flying in was banked mid-flight at 90 s, with no chime; static 3). Now it is true by
+   construction: the stepper expires a pickup only from OUTSIDE its own magnet, and one inside is pulled in and collected
+   in hand whatever its age (item 248). The audio axis: a chime for a pickup that was not made would be noise, and up to
+   six orbs expire together.
+242. **A bound beside the lifetime: 64 orbs and 32 drops.** A lifetime bounds a pool only by rate times lifetime. Past
+   MAX_XP_ORBS (64, ten kills' worth: a kill drops at most 6 orbs) or MAX_LOOT_DROPS (32), `cutXPOrbs` and `cutLootDrops`
+   pick what goes: the pickups out of reach first, oldest first (round 1 took the oldest by age alone, and banked pickups
+   the player was standing in; item 248), so the frame-cost reading below is of a pool that cannot grow.
+   Each pickup is a shadow-casting mesh and a floor probe a frame; the iPad-class budget is what the bound protects.
+   The numbers are arbitrary in the way a cap is: ten kills stranded at once is a fight the player left, and the cost of
+   being wrong is that a far pickup is banked a little before its 90 s. Revisit with a measurement.
+243. **Frame cost at the bound, the reading the brief asked for.** The gate fills both pools to their bounds (64 orbs, 32
+   drops) and counts the floor probes of 600 frames: 96.00 a frame, one per pickup, and about 0.02 ms a frame for both
+   systems with a stub floor (one run on this machine; the gate asserts the probe count, never the time). Before: 801 probes a frame at 801 pickups, and 0.65 ms
+   a frame for all four systems over a real Rapier floor (the audit verifier's reading, ~0.8 microseconds a pickup), so
+   the bound is ~0.08 ms on that floor by extrapolation, not by measurement here. NOT measured: the iPad draw and shadow
+   cost of 96 pickups (registry `AUDIT:leaks:pickup-render-cost-at-bound-unmeasured`). Not built, on purpose: the audit's
+   "cached rest height" (the probe count is now bounded, and a cached height would leave a pickup hovering over a mined
+   block), and its fade (an expiring pickup is out of its magnet and mostly out of sight, the resting frame is
+   unchanged, and the repo has no render harness for the pickup meshes to judge a fade in; reversible by a new entry).
+244. **The world-switch carry is lane L2's, and lane L2 closed it** (corrected in round 2; round 1 wrote it as open).
+   `AUDIT:leaks:stranded-pickups-never-despawn` has two halves: the pile-up and its per-frame cost (this lane) and the
+   carry into a new world (L2). Round 1 recorded a consequence of the 100 m cull and of the lifetime: until L2 landed, an
+   old world's stale pickups would be banked into the new world on the first frame the player stood more than 100 m from
+   them, or within 90 s, where before they banked only on a walk back to the same coordinates (static 4: the transfer
+   goes from occasional to guaranteed, and round 1's "the same XP and items arrive, earlier" understated it). That is
+   moot on the merged tree: every world switch now saves, leaves a note and reloads the page (`game/worldBoot.js`
+   `switchWorld`, `game/pageReload.js`; item 200), so the ECS starts empty and no pickup crosses a world. Read at
+   `8579918e`, not run here: the merge was green on the lane's gates and CI, and no gate of this lane drives a switch.
+   The registry row is closed with both halves cited.
+245. **Element zones evict the soonest expiry, never the zone just cast** (a call-level rule; round 2 widens it to the
+   whole cast, item 247) (`frontend/src/game/elementZones.js` `evictSoonest`). `reg.zones.shift()` evicted the first painted, and a refresh
+   renews a zone in place, so array order is paint order and a re-imbue that renewed a zone and then overflowed the cap
+   (`spawnZone` then `spawnChain`, one bridge tick) evicted the zone it had just renewed, ring and burn, while zones
+   seconds from expiry stayed. Two calls the audit's one-line fix did not make: the zone just cast is excluded from the
+   candidates (a conductive zone, 8 s, cast into a board of fresh 10 s burns is the soonest of all, and evicting it would
+   hand the caller a dead zone that still plays its sound), and a tie goes to the first painted, which is the old order,
+   so the old test stands. The first of those two held for one `spawnZone` call only: the next leap of the same cast
+   evicted the zone, in the same tick, which is the round-1 finding item 247 answers.
+246. **The gate, what it reads, and what it does not** (`frontend/tests/gates/pools-with-lifetimes-gates.test.jsx`, 7
+   tests in round 1, 13 after round 2). The audit's own scenario: the pools filled where the player stands, the player 600 m away for ten simulated
+   minutes with kills and zone casts still landing, every pool within its bound at every one of 600 samples. Red at
+   `0670a825`: 6 of 7 (parked: orbs peaked at 282 of 64, drops 94 of 32, no chest within 60 m at 35 s or at the end, the
+   spawn's five still on the board, none of the 3290 XP owed granted, none of the 94 items; walk: a periodic chest on the
+   80 m compass in 2 of 20 minutes; a burst of 40 kills held 120 orbs). Green: peaks 36/64 orbs, 12/32 drops, 5/5 chests,
+   8/8 zones; a chest within 60 m at 35 s and five at the end; the walk (4200 m, 20 minutes) had a chest on the compass in
+   20 of 20 minutes with the board peaking at 3, and all 9 shrine chests it caused still on the board. The audit
+   verifier's 6 of 20 for the same walk counted shrine chests, which bypass the cap, and mine counts periodic chests only.
+   Mutation proof is in the commit trailers (every real mutant red; the two the gate alone passes, a bound that banks the
+   newest and a sweep that retires an opened chest, are red in `xpOrbStepper.test.js` and `chestBoard.test.js`; each run's
+   identity mutant stayed green). Round 1's list of mutants was not the list that mattered: the quiet-bank split and the
+   120 m radius at the spawner's call site had no mutant, and six and two survived (items 248 and 249). NOT covered: a
+   lived browser run (CI's e2e is the arbiter), a real Rapier floor in the cost reading, the zone bridge in THIS gate
+   (it drives the registry directly; `ElementZoneSystem` is mounted in the game, `Components.jsx`, and has its own gate
+   from round 2, item 247), the debris
+   bodies parked asleep from mount (the brief shares that with lane L7), and the audit's untested aggravator, a chest
+   placed on a canopy or under water that cannot be opened: it holds a slot while the player is within 120 m and is
+   retired beyond 240 m, and an unopened chest still has no lifetime (registry `AUDIT:leaks:chest-unopenable-holds-slot`).
+247. **A cast, not a call, is what the zone cap protects; this widens item 245** (round 2; static 1, dynamic F1;
+   `frontend/src/game/elementZones.js` `castZone`, `frontend/src/world/ElementZoneSystem.jsx`). Item 245 kept the zone one
+   `spawnZone` call had just painted out of the eviction, and the bridge makes two calls a cast (`spawnZone` for the
+   impact, `spawnChain` for the leaps), so the next leap evicted the impact in the same tick, and each leap the one before
+   it. The dynamic review ran it on the real registry: a conductive imbue with chain 3, two seconds into a board of eight
+   fresh frozen zones, left one of its four zones alive at `5e733454` (four of four at `0670a825`), and the bridge played the
+   impact's sound for a zone that was already gone, which is the harm item 245 said it prevented. The audit row's OWN case,
+   a re-imbue that refreshes a zone and then chains, still lost the refreshed zone whenever the rest of the board outlived
+   it (seven frozen zones painted at t 13 against a refreshed zone expiring at 24: A gone at `5e733454`, as at
+   `0670a825`; the three boards whose zones expire earlier were already fine). Row `AUDIT:ultra:ultra-game-logic-4` was
+   closed on `12783a9a` and did not close; it closes on this case green. Now `castZone(reg, req, mobs, isTarget, now)` paints
+   the impact and its chain under one Set, `spawnZone` adds every zone it paints or refreshes to it, and the cap evicts the
+   soonest expiry among the zones OUTSIDE the cast (the first painted among equals, so the old test stands). A chain stops
+   when every zone on a full board is the cast's own (the impact and seven leaps fill the board; Chain Imbue x2, Wildfire
+   and Prism Shard together cap a chain at five, so play does not reach it), and `spawnZone` handed a cast that owns the
+   whole board still holds the cap, at the cost of the soonest of the cast's own, never the newcomer. The bridge casts
+   through `castZone` and voices only the zone it returns, which is on the board when the call returns. I did not add a
+   second "does it still exist" check beside that: it could not fail, and a check that cannot fail is the defect
+   `gates-and-probes.md` is about; the gate reads the sound against the board instead. Gates: `elementZones.test.js` (the
+   dynamic review's four boards, its frozen-board and burning-chain boards, the chain cap, the fallback) and
+   `tests/gates/element-zone-bridge-gates.test.jsx` (the real `ElementZoneSystem`, driven through `requestZone`, its sound
+   read against the board at the tick's end; nothing drove that seam before). Mutation proof is in the trailer of
+   `3daf1267`; its count ("thirteen mutants") is wrong: the battery is twelve distinct mutants in fourteen runs, plus
+   comment-only mutants that stayed green (`fix2/mut-zones.out` in the lane scratch). NOT covered: a lived cast in the
+   browser, and the render system's drawing of an evicted zone.
+248. **A pickup within reach is the player's, in hand; banking is for what is out of reach, and what a frame banks is told
+   once** (round 2; static 2 and 3, dynamic F2, F4, F6; amends 241 and 242; `frontend/src/game/xpOrbStepper.js`,
+   `frontend/src/systems/XPOrbSystem.jsx`, `frontend/src/systems/LootSystem.jsx`). Four things round 1 left wrong or
+   ungated. (a) An expiry banks only from outside the kind's own magnet; inside it, the magnet finishes the pickup with
+   its chime (item 241 says why). (b) The size bound's cut takes the pickups out of reach first, oldest first, and any it
+   must cut within the magnet is collected in hand, not banked in silence: 25 kills 3 m from the player gave 89 chimes and
+   numbers against 100 before the lane (dynamic F6), the 11 lost being orbs the player was standing in. The distance the
+   magnet, the collect and the cut read is one function, half a metre below the camera. (c) What one system banks in one
+   frame is one line, however many it banked: "Looted: N items" (the item's name for one) and "+N XP", and the banked XP is
+   granted in one call; 30 drops left behind and a step to 160 m raised 30 "Looted" toasts in one frame (dynamic F4), and
+   plain-string notices are never deduplicated (`ui/notifications.js`). A pickup in hand keeps its own line, chime, number
+   and pop. The "+N XP" line is new: round 1 banked orbs with no word, on the reasoning that the XP bar is the report; a
+   pile that pays out 90 s after a fight, or a return trip, deserves one line. (d) The pools gate now counts what the
+   systems call: the pickup chime, the floating number, the loot pop and the notification lines (the `feel` record). In
+   hand gives all of them; a pickup banked out of reach, by lifetime, cull range or the bound's cut, gives none and one
+   line. Red first: the six round-1 mutants (a banked pickup that chimes, pops or shows its number; an in-hand pickup made
+   silent) all survived the round-1 gate (`fix2/surv-feel.out`), and the new tests fail four ways on `5e733454`'s source
+   (30 lines for 30 banked drops; 96 chimes where 160 pickups were in reach). Mutation proof in the trailer of `eaeccc36`:
+   29 distinct mutants, all red, and the one that first survived (the reach point read at the eye, not half a metre below
+   it) got its own tests and then died. NOT measured: what the player hears. A cut that collects tens of pickups in hand
+   in one frame (a 40-kill burst at 3 m: about 56 orbs and 8 drops over the bound) starts that many pickup sounds in the
+   frame; the master bus carries a limiter (`audio/masterBus.js`, threshold -3 dB, ratio 20), so it cannot clip, and
+   whether it reads as one loud chime or a burst is Kevin's ear (registry `AUDIT:leaks:cut-chime-burst-unheard`).
+249. **The chest board has a maximum, and the 120 m radius is pinned at the spawner's call site** (round 2; static 5,
+   dynamic F3 and F5; amends 240; `frontend/src/game/chestBoard.js` `CHEST_BOARD_MAX`). Round 1 gated the board on a
+   straight walk (peak 3, bound 8) and the review looped it. Re-measured here with a throwaway probe, a circle walked at
+   3.5 m/s, periodic chests at peak (one seed for 60 and 80 m over 40 minutes; three seeds over two hours for 90 to 160 m;
+   two seeds over six hours for 125 to 145 m): 8 on a 60 m radius, 11 to 15 on 80 to 110 m, 15 to 16 on 120 m, 15 to 18 on
+   125 to 135 m, and on 140 m 11 to 12 in the first hour, 19 by the third and 20 to 21 by the sixth, still rising when the
+   run ended; 4 to 5 from 150 m up. Patrols of 150 to 500 m: 5 to 13. Chain length reaches at most five (Chain Imbue x2,
+   Wildfire and Prism Shard: `talentTree.js`, `relics.js`), which is why item 247's chain cap is not met in play.
+   The cap counts chests within 120 m and the sweep retires past 240 m, and a player who loops through the ring between
+   them keeps adding chests where neither applies; "levels off" is true of the paths the review tried (it called one flat
+   at 15 over two hours) and not of the rule, so that claim is withdrawn rather than gated. It is not a farm (a chest
+   comes at most every 30 s whatever the board holds), but it was a pool nothing bounded, on the lane whose subject is
+   pools. So it is bounded: past CHEST_BOARD_MAX (10: five in reach, five the player can still turn back to) the 3 s
+   sweep retires the farthest unopened periodic chests; shrine chests (never retired) and opened chests (their own timer)
+   neither count toward it nor go. The same circle for three hours now peaks at 10, with a chest within 120 m of the player
+   in 180 of 180 minutes (the gate prints both). The sweep runs every 3 s, so a chest spawned between sweeps can stand a
+   moment as the eleventh; the gate's 10800 one-second samples never saw it, and I did not prove it cannot happen. The
+   120 m radius is pinned where `QuestSystem` hands it to `countNearChests` (dynamic F3): every chest is placed 40 m due
+   west of the player (`Math.random` held at 0.5), so one 100 m away must hold its slot and one 145 m away must not; before
+   this a spawner counting to 240 m or 60 m passed every gate. Mutation proof in the trailer of `48a1a993`, whose "fifteen
+   mutants" is fifteen runs of twelve distinct mutants; one of them, the maximum retiring the NEAREST chests, survives the
+   pools gate and is killed by `chestBoard.test.js` alone, so the gate does not pin WHICH chests go. Claim narrowed to what
+   is proven: bounded at 10 by construction for the unopened periodic chests, measured on circles (60 to 200 m) and patrols
+   (150 to 500 m), not on every path.
+
+---
+
+## 2026-10-30 (lane L2) — [LOOP] every world switch is a boot, and the title continues the player's world
 
 **Decided by the L2 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L2 of the 2026-10-30 deep
 audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, seam S1 and section 4). Branch `feat/l2-boot-is-the-only-load`,
