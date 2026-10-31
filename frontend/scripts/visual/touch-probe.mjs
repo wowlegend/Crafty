@@ -30,18 +30,19 @@ try {
   // Playwright's touchscreen only taps; a held drag is CDP's touch stream, the same events a finger sends.
   const cdp = await context.newCDPSession(page);
   const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
-  // iOS Safari has NO Pointer Lock. Remove it so the probe can't accidentally pass via a desktop-only path.
+  // iOS Safari has NO Pointer Lock. Delete it, as iOS has none, so the probe cannot pass through a desktop-only path or
+  // a stub iOS does not have (eslint.config.js bans the stub).
   await page.addInitScript(() => {
     delete Element.prototype.requestPointerLock;
     delete HTMLElement.prototype.requestPointerLock;
-    try { Object.defineProperty(document, 'pointerLockElement', { get: () => null }); } catch {}
-    document.exitPointerLock = () => {};
+    delete Document.prototype.exitPointerLock;
+    delete Document.prototype.pointerLockElement;
   });
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction("typeof window.useGameStore === 'function' && window.__craftyTest?.ready?.()", null, { timeout: 25000 });
 
   // 0) precondition — touch emulated + NO pointer lock (faithful iOS)
-  const env = await page.evaluate(() => ({ mtp: navigator.maxTouchPoints, coarse: matchMedia('(any-pointer: coarse)').matches, noLock: !document.body.requestPointerLock, w: innerWidth, h: innerHeight }));
+  const env = await page.evaluate(() => ({ mtp: navigator.maxTouchPoints, coarse: matchMedia('(any-pointer: coarse)').matches, noLock: !document.body.requestPointerLock && !('exitPointerLock' in document) && !('pointerLockElement' in document), w: innerWidth, h: innerHeight }));
   check('touch emulated + pointer-lock removed (iOS-faithful)', (env.mtp > 0 || env.coarse) && env.noLock, JSON.stringify(env));
   await page.screenshot({ path: `${OUT}/touch-0-title.png` });
 

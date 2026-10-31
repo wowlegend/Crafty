@@ -24,6 +24,53 @@
 import globals from 'globals';
 import reactPlugin from 'eslint-plugin-react';
 
+// Raw git in a test (the block that uses it says why). Four call shapes: bare or member callee, string or
+// template-literal first argument.
+const RAW_GIT = (() => {
+  const exec = '/^(execFileSync|execSync|spawnSync|spawn|execFile|exec)$/';
+  const git = '/^git(\\s|$)/';
+  const message =
+    "raw git in a test runs against the CALLER's repo inside a hook — use fixtureGit / isolatedGitEnv (tests/scripts/_isolatedGit.js)";
+  const literal = `[arguments.0.type='Literal'][arguments.0.value=${git}]`;
+  const template = `[arguments.0.type='TemplateLiteral'][arguments.0.quasis.0.value.raw=${git}]`;
+  return [
+    { selector: `CallExpression[callee.name=${exec}]${literal}`, message },
+    { selector: `CallExpression[callee.property.name=${exec}]${literal}`, message },
+    { selector: `CallExpression[callee.name=${exec}]${template}`, message },
+    { selector: `CallExpression[callee.property.name=${exec}]${template}`, message },
+  ];
+})();
+
+// A function that does nothing put in place of a member, in a harness that drives a real browser (the block that uses
+// it says why): an empty body, or one that only yields null, undefined (`undefined`, `void`, a bare `return`) or
+// `Promise.resolve()`, given by assignment or as a property descriptor's value or getter. A function that returns a
+// real value is a replacement, not a no-op, and is left alone: `Math.random = () => 0.999` seeds a spec's rolls.
+const NO_OP_STUB = (() => {
+  const message =
+    'a no-op stub hides the path the platform takes: delete an API the target lacks (tests/_support/iosDocument.js ' +
+    'says how), keep a real one real, and wrap one you observe so it still calls through';
+  const fn = ':matches(ArrowFunctionExpression, FunctionExpression)';
+  const yieldsNothing = (at) => [
+    `[${at}.type='Literal'][${at}.raw='null']`,
+    `[${at}.type='Identifier'][${at}.name='undefined']`,
+    `[${at}.type='UnaryExpression'][${at}.operator='void']`,
+    `[${at}.type='CallExpression'][${at}.callee.object.name='Promise'][${at}.callee.property.name='resolve'][${at}.arguments.length=0]`,
+  ];
+  const onlyReturn = "[body.type='BlockStatement'][body.body.length=1][body.body.0.type='ReturnStatement']";
+  const nothing = [
+    "[body.type='BlockStatement'][body.body.length=0]",
+    `${onlyReturn}[body.body.0.argument=null]`,
+    ...yieldsNothing('body'),
+    ...yieldsNothing('body.body.0.argument').map((n) => `${onlyReturn}${n}`),
+  ];
+  const assigned = nothing.map((n) => ({ selector: `AssignmentExpression[left.type='MemberExpression'] > ${fn}.right${n}`, message }));
+  const described = nothing.map((n) => ({
+    selector: `CallExpression[callee.object.name='Object'][callee.property.name='defineProperty'] > ObjectExpression > Property[key.name=/^(value|get)$/] > ${fn}.value${n}`,
+    message,
+  }));
+  return [...assigned, ...described];
+})();
+
 export default [
   // The app source. Full crash-class + dead-code rules.
   {
@@ -109,23 +156,22 @@ export default [
     files: ['tests/**/*.{js,jsx,mjs}', 'src/**/*.test.{js,jsx}'],
     ignores: ['tests/scripts/_isolatedGit.js'],
     rules: {
-      'no-restricted-syntax': [
-        'error',
-        ...(() => {
-          const exec = '/^(execFileSync|execSync|spawnSync|spawn|execFile|exec)$/';
-          const git = '/^git(\\s|$)/';
-          const message =
-            "raw git in a test runs against the CALLER's repo inside a hook — use fixtureGit / isolatedGitEnv (tests/scripts/_isolatedGit.js)";
-          const literal = `[arguments.0.type='Literal'][arguments.0.value=${git}]`;
-          const template = `[arguments.0.type='TemplateLiteral'][arguments.0.quasis.0.value.raw=${git}]`;
-          return [
-            { selector: `CallExpression[callee.name=${exec}]${literal}`, message },
-            { selector: `CallExpression[callee.property.name=${exec}]${literal}`, message },
-            { selector: `CallExpression[callee.name=${exec}]${template}`, message },
-            { selector: `CallExpression[callee.property.name=${exec}]${template}`, message },
-          ];
-        })(),
-      ],
+      'no-restricted-syntax': ['error', ...RAW_GIT],
     },
+  },
+  // NO NO-OP STUBS IN A HARNESS THAT DRIVES A REAL BROWSER (deep audit 2026-10-30, lane L10). Three visual probes
+  // stubbed `document.exitPointerLock = () => {}` to make Chromium look like iOS; iOS defines no such function, so the
+  // probes ran a path no iPhone runs, and the death crash it hid (AUDIT:input:ios-death-crash) shipped. An API the
+  // target lacks is deleted, a real one stays real, and an observed one is wrapped so it calls through. jsdom gates are
+  // outside this block: jsdom lacks Web Audio and media playback altogether, and tests/_support/iosDocument.js models
+  // them there. A later block's rule options replace an earlier one's, so the e2e block carries RAW_GIT too.
+  // Proven by tests/scripts/no-op-stub-ban.test.js.
+  {
+    files: ['scripts/visual/**/*.{js,mjs}'],
+    rules: { 'no-restricted-syntax': ['error', ...NO_OP_STUB] },
+  },
+  {
+    files: ['tests/e2e/**/*.{js,mjs}'],
+    rules: { 'no-restricted-syntax': ['error', ...RAW_GIT, ...NO_OP_STUB] },
   },
 ];

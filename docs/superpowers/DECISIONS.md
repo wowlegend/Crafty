@@ -230,6 +230,178 @@ extends the epoch (item 336) and does not redo it.
 
 ---
 
+## 2026-10-31 — [LOOP] lane L10: Apple audio comes back after iOS stops it, and the soundtrack goes through Web Audio
+
+Lane L10 of the 2026-10-30 deep audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4), PR #70. It
+closes `AUDIT:silent:ios-audiocontext-interrupted-never-resumed` and `AUDIT:silent:ios-music-refused-play-swallowed-and-unmutable`
+in code; whether a player on a real iPhone or iPad hears the difference is Kevin's device run (item 305).
+
+300. **Any context state other than running or closed is recovered, by suspend() then resume().**
+   - **Why.** All three resume sites compared with `'suspended'`, and iOS WebKit leaves a context `'interrupted'` after
+     an app switch, a call or Siri, where resume() alone can leave it (WebKit bugs 273511 and 276016), or `'running'`
+     with a clock that has stopped (bug 263627). suspend() then resume() recovers both (MDN BaseAudioContext.state,
+     "Resuming interrupted play states in iOS Safari"; the workaround in bug 276016). Both are asked for in the same
+     turn: WebKit chains them (`AudioContext.cpp`, `m_currentRenderingOperation`), so resume() is inside the gesture.
+     A context that is only `'suspended'` gets the resume() alone, as before, so Chromium, which never interrupts one,
+     is never asked to suspend a context it is about to start (added after the e2e hangs of item 302, as a precaution:
+     nothing showed suspend() caused them).
+   - **When.** On every user gesture, in the capture phase on `window`, so the first tap after a return is heard; on
+     `visibilitychange` to visible; on `pageshow`. On a return, a running context is restarted only when its clock has
+     not moved for 300 ms (`FROZEN_CLOCK_MS`), so a healthy desktop tab is not restarted, which could click. The
+     game's own sites (`resumeAudio`, the pad, the arpeggiator) take the same path (`wakeContext`).
+   - **Where.** `src/audio/audioRecovery.js`, installed by the SoundProvider's init effect. It changes no level.
+
+301. **The soundtrack goes through the Web Audio graph, and the mix is the one Kevin set.**
+   - **Why.** An iPhone locks a media element's volume and reads back 1 (WebKit `HTMLMediaElement::setVolume`), so a
+     fade written there played at full volume and Mute All could not silence it; the fade's pause waited for a volume
+     that never settled. Each track now runs through `createMediaElementSource` and its own GainNode, where the fade,
+     the music slider and Mute All act.
+   - **The mix.** Each GainNode feeds `ctx.destination` directly, beside the effects' master bus, as the media
+     elements' output did: not through the bus's SFX gain (the SFX slider would then scale the music) and not through
+     its limiter (loud effects would then duck the music). Levels, fade slope and balance are unchanged: 0.4 x the
+     slider, 0 for the tracks not wanted, and the crossfade's slope of 0.04 per 60 ms (0.67 a second). The element's
+     own volume is never written (it stays 1).
+   - **The fade runs on the audio clock.** It was 60 ms timer ticks writing a volume; it is now one linear ramp per
+     track on its GainNode at that slope (`linearRampToValueAtTime`), and one timer pauses the tracks bound for 0 once
+     the longest ramp has run. Why: on the e2e's run 41209984080 a track was still playing 3 s after Mute All in
+     Chromium on CI (passed on the retry); a ramp is not slowed by a busy main thread, where eleven ticks in a row
+     are, and it moves the gain smoothly where the ticks moved it in steps.
+   - **Start and the gesture.** A play() the platform refused is asked for again inside the next gesture, the Start
+     tap included. That gesture also plays and pauses each other track once, since WebKit lifts an element's gesture
+     restriction when it is played inside one (`HTMLMediaElement::play`), so a dusk or boss crossfade can start its
+     track from a timer. A permitted play() clears `paused` before it returns (HTML, the play() method), so a finger's
+     pointerdown, which carries no activation, primes nothing.
+   - **Mute All** wants no track, so every track fades and is paused by the player's own state, 600 ms from full.
+   - **What may sound different, for Kevin's ear (item 305).** The tracks need a running context now, so on a desktop
+     whose browser did let the boot play() through, title music that played at load may begin at the first click or
+     key instead. On iOS, Web Audio may follow the ring/silent switch where a media element did not. A crossfade is
+     now a continuous ramp where it moved in 60 ms steps, at the same slope. On an iPhone the soundtrack is quieter
+     against the sound effects: WebKit locked the element's volume at 1 there, so the 0.4 never applied and the track
+     played at full volume; it now plays at 0.4 x the slider, about 8 dB lower, the level every other platform already
+     played (round 1's static review, finding 2). Nothing here measured any of the four.
+   - **The bytes.** The index chunk measured 646,232 B on a05bf328 and 647,661 B here (+1,429 B), under the unchanged
+     652,500 B ceiling (item 282); nothing was moved out, as it fits. Merged with main `7250aa22`, where lane L3 has
+     landed (649,549 B, item 295), the chunk measures 650,978 B; with item 300's suspend refinement and the fade on the
+     audio clock it is 651,079 B, 1,421 B under the ceiling.
+
+302. **The route is run in Chromium on CI (`tests/e2e/music-bus.spec.js`); its mutation proof is owed.** The spec
+   wraps the media element and `createMediaElementSource` (each wrapper calls the real one), enters play as the suite
+   does (`_boot.js` `startPlayActive`), makes one trusted key press (F2, bound to nothing), and reads that the day
+   track plays through a running context with its clock advancing, that Mute All pauses every track (within 3 s on a
+   loaded runner; the 1 s bound is the jsdom gate's), and that unmute brings it back. A dispatched CI run of a
+   mutant was planned (commit `bf063ee4` points here) and not made: the commit hook runs the unit gates that import
+   a staged file, the jsdom gate catches the same mutant, and a commit that skips the hook is a bright line. No local
+   browser runs in this lane. So the proof is owed, as registry row
+   `REVIEW:l10:music-e2e-mutation-owed` (the mutant and the way to run it). It first entered play by a trusted click
+   on the title's Start Adventure, and on two of its first three CI runs (41203933423 and 41208277637, shard 6) the
+   page stopped answering and the test ran out its budget; it passed in 53.8 s on the other (41206449396). Keeping the
+   title until the click (`2b68fdad`) and pinning the tier (`1aabcb8a`) did not stop it, and with the job killed no
+   failure message survived, so the cause is not known: the title path diverges from the suite's own entry, and the
+   music route is the other candidate. So the spec now enters play the suite's way and bounds every page read, so a
+   page that stops answering names its step; the Start tap stays the jsdom gate's, on the real title menu. The open
+   question is registry row `REVIEW:l10:music-e2e-title-hang`. Round 2 found that the music route is not the cause
+   (item 306) and ran the owed mutants (item 308).
+
+303. **A no-op stub is banned in the harnesses that drive a real browser** (gate G-ios, audit section S7).
+   - **Why.** `touch-probe.mjs`, `ipad-probe.mjs` and `_lookbookPage.mjs` made Chromium look like iOS with
+     `document.exitPointerLock = () => {}` and a `pointerLockElement` getter returning null. iOS defines neither, so
+     the probes ran a path no iPhone runs and the death crash it hid shipped (`AUDIT:input:ios-death-crash`). They now
+     delete both, as they already deleted `requestPointerLock`.
+   - **The rule.** `eslint.config.js`, `scripts/visual` and `tests/e2e`: a function that does nothing (an empty body,
+     or one yielding only null, undefined, void or `Promise.resolve()`) put in place of a member by assignment or as a
+     descriptor's value or getter. A function returning a real value is a replacement and stays allowed: the first
+     draft also banned any literal and flagged the e2e specs' four `Math.random = () => 0.999` seeds, so the rule was
+     narrowed to the no-op shapes rather than given an exemption. jsdom gates are outside it (item 304). The raw-git
+     selectors became one `RAW_GIT` constant, because the e2e block's rule options replace the raw-git block's.
+   - **Proven by** `tests/scripts/no-op-stub-ban.test.js` (30 cases, real ESLint config): red 23/30 on a05bf328 (the
+     other 7 are the allow half), 12/12 mutants red, identity survived.
+
+304. **`tests/_support/iosDocument.js` is where a jsdom gate meets iOS.** No Pointer Lock (deleted, never stubbed),
+   touch signals, an AudioContext that starts suspended and resumes only in a gesture until it first runs, and can be
+   left `'interrupted'` (resume() alone keeps it) or frozen; media elements that refuse play() outside a gesture until
+   played inside one, an iPhone's locked volume and an iPad's pause on an audible volume write outside a gesture. A
+   gesture is the dispatch of an HTML activation-triggering event or a click, and work deferred past it (an effect, a
+   timer) is outside it, the strict side. Each rule cites the WebKit source or bug it models. It drives audio and
+   music here; the death and panel gates of lanes L1 and L5 still delete the APIs themselves (registry
+   `REVIEW:l10:ios-fixture-adoption`).
+   - **The gate** `tests/gates/apple-audio-gates.test.jsx`, the real SoundProvider, MusicPlayer and title menu on that
+     fixture (12 cases at `a0adf428`: eleven tests, one run on an iPhone and an iPad): red 11 of the 12 against
+     a05bf328's `SoundManager.jsx` and `MusicPlayer.jsx` in a scratch copy (the twelfth, that a suspended context is
+     only resumed, guards item 300's later refinement), green on the fix, and with `scripts/dev/mutate.sh` 20 of 20
+     mutants red on the final code (`59438095`'s trailer lists them) and R1 to R3 for item 300's refinement
+     (`82149662`'s), identity surviving each batch. Round 2 adds three cases and seven mutants (item 307).
+   - **Tests changed, with the reason.** `tests/gates/audio-resume-gates.test.js` (REMOVED here; at a05bf328) read
+     SoundManager's source for `state === 'suspended'`, the guard item 300 replaces; its properties are now driven, so
+     it is deleted and the source-grep ledger falls 94 to 93. `settings-a11y-gates`' MusicPlayer regex gives way to the driven slider and
+     Mute All cases.
+
+305. **The lived proof is Kevin's**, appended to registry row `REVIEW:l1:ios-device-run`: on an iPhone and an iPad
+   (record the iOS versions), sound effects come back after Home for 10 s and return, after a call and after Siri,
+   with no reload; the soundtrack plays within a few seconds of Start, the music slider moves it and Mute All
+   silences it within a second; past dusk the night track takes over with no tap. Plus the four differences item 301 names.
+
+306. **The title-entry stall is not the music route, so the title entry stays out of `music-bus.spec.js`** (round 2;
+   it settles the music half of item 302).
+   - **How it was run.** Dispatched runs of a throwaway probe (branches `probe/l10-hang-head` and `probe/l10-hang-ctrl`,
+     deleted after): the spec's title form at `f0c027e6`, every page read bounded at 20 s, twenty reads 3 s apart
+     after the Start click, four attempts a job with no retries, and the runner's memory sampled every 10 s. Run
+     41217226945 ran the head's code with the music route on (four jobs) and off (four jobs: MusicPlayer made no track
+     and no gesture callback, read back as `routes 0`); run 41217229685 ran the code of the run that hung, `f0c027e6`.
+   - **What it showed.** The page stopped answering with the route off at least as often as with it on: off 10 of 15
+     attempts, on 5 of 16, the control 8 of 13. One stall, with the route off, came on the title before any click.
+     No attempt whose first read after the click found the spawn chunk built stalled (20 of 20 went on); 10 of the 11
+     that found it not yet built stalled, and the other 13 stalls never answered that read. While a page stalled, two
+     Chromium processes grew, together to 15.6 to 15.8 GB of the runner's 16 GB in six of the twelve jobs (4.7 to
+     12.7 GB in the other six), and five runners were shut down ("The runner has received a shutdown signal"), the
+     end runs 41203933423 and 41208277637 met. A page starved this way also missed the spec's 3 s Mute All bound in
+     five attempts (control 3, on 2): the pause timer runs on the main thread. On the suite's entry the bound held
+     (runs 41209984080, 41212363395).
+   - **So.** The music route does not hang a Start click. The stall belongs to the title path on CI's software
+     renderer, most often after a Start click that enters play before the spawn chunk is built; whether a player on
+     a real GPU can meet it is not measured. Registry `REVIEW:l10:music-e2e-title-hang` stays open with this evidence.
+     The title entry passed 9 of 16 attempts with the route on, so the spec keeps the suite's entry, as item 302 left it.
+
+307. **A gesture plays no track in capture mode or while none can be heard** (round 2, `src/ui/MusicPlayer.jsx`).
+   - **Capture.** Item 301's gesture callback never read capture mode, so a tap in an e2e or lookbook capture started
+     the day track (round 1's dynamic review, probe P3), and MusicPlayer's "capture-safe" comment was false. The
+     callback now reads `isCaptureMode()` inside it and resets to the soundtrack's capture value, every track paused,
+     rather than returning early (`.claude/rules/game-code.md`). It extends MusicPlayer's own capture guard to the
+     play path the lane added; no other subject gains a guard.
+   - **Nothing audible.** With the music slider at 0, every tap played the wanted track again at gain 0 and left it
+     running (static review finding 4, dynamic R2d2). With music off or Mute All on, the first gesture played and
+     paused all three tracks; the code before the lane never called play() with music off. While no track can be
+     heard the callback now plays no element. The cost: the other tracks are primed at the first gesture with a track
+     wanted, so on iOS a dusk or boss crossfade from a timer needs one gesture after the music comes back; turning it
+     back on is itself a tap, and a refused play() is asked for again at the next one. Whether a play() and pause()
+     in one gesture took the audio from another app on iOS was never measured; it no longer happens.
+   - **Proven by** three new cases in `tests/gates/apple-audio-gates.test.jsx` (now 15): red 3 of 3 on `a0adf428`'s
+     MusicPlayer with the other 12 green, then 7 of 7 mutants red with identity surviving (commit `3b8e5e77`). Its
+     trailer says music off asked play() "5 more times"; the red run counted 6, two per track.
+   - No level, voice or balance changed. The index chunk measures 651,121 B (+42 B), under the 652,500 B ceiling;
+     merged with main `a150a93a`, where lane L7 has landed, it measures 652,017 B, 483 B under.
+
+308. **`music-bus.spec.js` reads the day track paused before its key press, and is mutation-proven in Chromium**
+   (round 2; closes registry `REVIEW:l10:music-e2e-mutation-owed`).
+   - **Why.** Nothing before F2 said the day track was paused, so if CI's Chromium played it with no gesture the spec
+     would stay green with the gesture retry deleted (round 1's static review, finding 3). It now reads the day track
+     paused before the press, as a SETUP precondition. A first form also required the context not running there;
+     on CI the context already runs before the press (dispatched run 41218278485, both attempts), so that read was
+     dropped and the header says the spec does not see the gesture's context recovery, which the jsdom gate holds.
+   - **The mutants.** The commit hook runs the jsdom gate, which kills these mutants, so none could be committed. Run
+     41218631532 (throwaway branch `probe/l10-music-mutants`, deleted after) applied each to `src` on the CI runner
+     and ran the spec twice with no retries: identity (a comment edit) passed 2 of 2; Mute All keeping its track
+     (`const key = !musicEnabled ? null`) failed 2 of 2 at "a track is still playing 3 s after Mute All"; the gesture
+     retry deleted failed 2 of 2 at "the day track is not playing through a running context after a key press".
+   - **Retries recorded.** The three retries of run 41212363395 are sightings on their rows:
+     `REVIEW:e2e-flakes:touch-gear-tap-canvas-intercepts`, `REVIEW:w2d:forge-walk-settle` and
+     `REVIEW:e2e-flakes:mob-floor-roof-floor-infinity`. So are the four of round 2's run 41219390962 (head
+     `3c3ac42d`): the dragon fight's burn and zone case red on all three tries, which failed the run
+     (`REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached`), and one retry each for mob-floor's roof case, heavy
+     melee's charged release (`REVIEW:e2e-flakes:heavy-melee-release-nothing`) and the Cut's hunger case
+     (`REVIEW:e2e-flakes:the-cut-pauseat-past`). music-bus.spec.js passed its first attempt there.
+
+---
+
 ## 2026-10-31 (lane L7) — [LOOP] credit from the effect, not the click: a verb pays, counts and sounds what its owner says it did, a hazard pays nobody, and the world's queries see the terrain, not the debris
 
 **Decided by the lane's builder** under the command session's grant (deep audit lane L7, registry

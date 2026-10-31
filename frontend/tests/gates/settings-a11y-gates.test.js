@@ -99,7 +99,6 @@ describe('settings a11y gates (M3 #3 S3a -- SFX volume)', () => {
 describe('settings a11y gates (M3 #3 S3b -- music volume + master mute)', () => {
   const panels = read('ui/GamePanels.jsx');
   const store = read('store/useGameStore.jsx');
-  const music = read('ui/MusicPlayer.jsx');
 
   it('the store carries clamped musicVolume + a masterMuted flag', () => {
     expect(store).toMatch(/musicVolume:\s*1/);
@@ -107,10 +106,7 @@ describe('settings a11y gates (M3 #3 S3b -- music volume + master mute)', () => 
     expect(store).toMatch(/masterMuted:\s*false/);
     expect(store).toMatch(/setMasterMuted:/);
   });
-  it('MusicPlayer scales its crossfade target by musicVolume + zeroes on masterMuted', () => {
-    expect(music).toMatch(/masterMuted \? 0 : VOL \* musicVolume/);
-    expect(music).toMatch(/musicVolume, masterMuted\]/); // added to the effect deps
-  });
+  // What the music slider and Mute All do to the soundtrack is driven, not read: tests/gates/apple-audio-gates.test.jsx.
   it('SettingsPanel has a Music slider + a Mute All toggle', () => {
     expect(/\{t\('ui\.music'\)\}<\/span>[\s\S]{0,500}value=\{gameState\.musicVolume/.test(panels)).toBe(true);
     expect(panels).toMatch(/gameState\.setMusicVolume\(parseFloat/);

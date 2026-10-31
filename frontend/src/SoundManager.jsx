@@ -7,6 +7,7 @@ import { DAY_CHORDS, NIGHT_CHORDS, BOSS_CHORDS, arpeggiatorBpm } from './audio/m
 import { useGameStore } from './store/useGameStore';
 import { ambienceAt } from './audio/biomeAmbience.js';
 import { subscribeEventSounds } from './audio/soundEvents.js';
+import { installAudioRecovery, wakeContext } from './audio/audioRecovery.js';
 
 // Procedural music gain. 0 = the synthPad chords + arpeggiator are MUTED (Kevin disliked the procedural
 // music) in favour of the ElevenLabs tracks played by ui/MusicPlayer.jsx. The biome-ambience wind bed is a
@@ -133,9 +134,7 @@ export const SoundProvider = ({ children }) => {
   const startSynthPad = () => {
     if (!musicEnabled || !audioContext.current) return;
 
-    if (audioContext.current.state === 'suspended') {
-      audioContext.current.resume();
-    }
+    wakeContext(audioContext.current);
 
     const pad = synthPadRef.current;
     if (pad.active) return;
@@ -300,9 +299,7 @@ export const SoundProvider = ({ children }) => {
   const startArpeggiator = () => {
     if (!musicEnabled || !audioContext.current) return;
 
-    if (audioContext.current.state === 'suspended') {
-      audioContext.current.resume();
-    }
+    wakeContext(audioContext.current);
 
     const arp = arpeggiatorRef.current;
     if (arp.active) return;
@@ -457,6 +454,8 @@ export const SoundProvider = ({ children }) => {
     // B8: re-provide the context value now that audioContext.current + sounds.current are populated (refs
     // don't re-render) — so consumers get the real context immediately, not after the first hostile spawn.
     setAudioReady(true);
+    // A context the platform stopped (iOS: an app switch, a call, Siri) comes back on the next gesture or page return.
+    return installAudioRecovery(() => audioContext.current);
   }, []);
 
   // SFX overhaul Slice 2: lazily build ONE master bus + limiter on the shared ctx and route every voice
@@ -523,13 +522,9 @@ export const SoundProvider = ({ children }) => {
   // SFX overhaul Slice 3: resume the AudioContext on the entry gesture, INDEPENDENT of music. Browsers
   // suspend a fresh ctx until a user gesture; the music-start paths resume it but early-return when music
   // is off -- so without this a music-off player kept a suspended ctx and ALL SFX were silently dropped.
-  // Idempotent (only resumes if suspended) -> safe to call on every gesture; capture-safe (no ctx in
-  // capture -> no-op).
-  const resumeAudio = () => {
-    if (audioContext.current && audioContext.current.state === 'suspended') {
-      audioContext.current.resume();
-    }
-  };
+  // Idempotent (acts only on a context that is not running) -> safe to call on every gesture; capture-safe (no ctx
+  // in capture -> no-op).
+  const resumeAudio = () => wakeContext(audioContext.current);
 
   const playBackgroundMusic = () => {
     startSynthPad();

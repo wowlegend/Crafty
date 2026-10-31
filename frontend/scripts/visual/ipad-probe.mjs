@@ -57,12 +57,13 @@ async function probe(engine, url) {
       report.console[key] = (report.console[key] || 0) + 1;
     });
     page.on('pageerror', (e) => report.pageErrors.push(e.message.slice(0, 300)));
-    // iOS Safari has NO Pointer Lock. Remove it so nothing can pass through a desktop-only path (touch-probe.mjs).
+    // iOS Safari has NO Pointer Lock. Delete it, as iOS has none, so nothing can pass through a desktop-only path or a
+    // stub iOS does not have (touch-probe.mjs; eslint.config.js bans the stub).
     await page.addInitScript(() => {
       delete Element.prototype.requestPointerLock;
       delete HTMLElement.prototype.requestPointerLock;
-      try { Object.defineProperty(document, 'pointerLockElement', { get: () => null }); } catch { /* read-only */ }
-      document.exitPointerLock = () => {};
+      delete Document.prototype.exitPointerLock;
+      delete Document.prototype.pointerLockElement;
       window.__ipadProbe = { lost: 0 };
       document.addEventListener('webglcontextlost', () => { window.__ipadProbe.lost += 1; }, true);
     });
