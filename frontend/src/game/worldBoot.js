@@ -200,17 +200,18 @@ export function tabNote(state) {
 
 /**
  * Every world switch: save the world in play, leave the note, reload, in that order. The save is a synchronous
- * localStorage write, so it has landed before the note; the reload ends the page. A refused note still reloads (the page
- * boots a plain visit, which continues the world just saved). `note` may be a function of the state after the save
- * (tabNote: the save mints the slot of a world that owned none).
+ * localStorage write, so it has landed before the note; the reload ends the page. A refused note reloads only when
+ * `orPlainVisit` (the context-loss recovery: the plain visit continues the world just saved): otherwise the plain visit
+ * would land back on the world being left, so the switch is not made and null is returned. `note` may be a function of
+ * the state after the save (tabNote: the save mints the slot of a world that owned none).
  * @param {{ world?: string, fresh?: boolean } | ((state: object) => { world?: string, fresh?: boolean })} note
- * @param {{ getState: () => object, storage: Storage|null, reload: () => void }} deps
- * @returns {{ world?: string, fresh?: boolean }} the note left
+ * @param {{ getState: () => object, storage: Storage|null, reload: () => void, orPlainVisit?: boolean }} deps
+ * @returns {{ world?: string, fresh?: boolean }|null} the note left, or null when the switch was not made
  */
-export function switchWorld(note, { getState, storage, reload }) {
+export function switchWorld(note, { getState, storage, reload, orPlainVisit = false }) {
   saveWorldInPlay(getState);
   const left = typeof note === 'function' ? note(getState()) : note;
-  if (storage) writeBootNote(storage, left);
+  if (!(storage && writeBootNote(storage, left)) && !orPlainVisit) return null;
   reload();
   return left;
 }

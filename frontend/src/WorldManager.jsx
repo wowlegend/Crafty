@@ -67,12 +67,11 @@ export const WorldManager = ({ onClose }) => {
       // blob cloned the old world). The switch then saves the world in play and reloads into a new world in this slot
       // (game/worldBoot.js): a new world made in place kept the old one's dragon, quests, chests and squad.
       writeWorld(id, meta, buildSaveData(useGameStore.getInitialState(), { position: { x: 0, y: 18, z: 0 } }));
-      goToWorld({ fresh: true, world: id });
+      return goToWorld({ fresh: true, world: id });
     };
     try {
       setError('');
-      persistLocal();
-      setError('New world created successfully!');
+      setError(persistLocal() ? 'New world created successfully!' : t('save.switchRefused'));
     } catch (error) {
       console.warn('LocalStorage create failed:', error);
       setError('World creation failed.');
@@ -85,7 +84,7 @@ export const WorldManager = ({ onClose }) => {
       // Local saves only (cloud worlds were removed with the auth subsystem).
       if (!readWorld(worldId)) throw new Error('Local save not found');
       // A world switch: save the world in play, then reload into this one (game/worldBoot.js).
-      goToWorld({ world: worldId });
+      if (!goToWorld({ world: worldId })) setError(t('save.switchRefused'));
     } catch (error) {
       setError('Failed to load world');
       console.error('Error loading world:', error);

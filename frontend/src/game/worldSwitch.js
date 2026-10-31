@@ -13,7 +13,13 @@ export function sessionStore() {
   }
 }
 
-/** Save the world in play, leave `note` for the reload, and reload (game/worldBoot.js writeBootNote names the notes). */
+/**
+ * Save the world in play, leave `note` for the reload, and reload (game/worldBoot.js writeBootNote names the notes).
+ * Where sessionStorage refuses the note, nothing reloads and the player is told (save.switchRefused). Returns whether
+ * the switch was made.
+ */
 export function goToWorld(note) {
-  switchWorld(note, { getState: useGameStore.getState, storage: sessionStore(), reload: reloadPage });
+  const made = !!switchWorld(note, { getState: useGameStore.getState, storage: sessionStore(), reload: reloadPage });
+  if (!made) useGameStore.getState().addNotification?.('save.switchRefused', 'warning');
+  return made;
 }
