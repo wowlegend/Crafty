@@ -21,19 +21,25 @@ import { bootDev, startPlayActive } from './_boot.js';
 // WHAT THIS DOES NOT CHECK: the World Manager's Load and Create, the context-loss resume and the dragon after a switch
 // (tests/gates/world-switch-boot-gates.test.jsx, the real App in jsdom; tests/e2e/context-loss.spec.js drives the real
 // context-loss reload); touch and WebKit (the title's buttons are the same elements there); the pointer lock itself,
-// which this page refuses every time (refusePointerLock), so the input gate is held as the other specs hold it.
+// which this page grants only to a gesture (grantLockOnGestureOnly); the input gate is also held as the other specs
+// hold it.
 //
 // Mutation-Proof: red on dispatched CI runs, each with one line of the game reverted (the run ids are in DECISIONS
 // 2026-10-30 item 205); no local browser run.
 
 const SHOTS = 'test-results/title-shots';
 
-/** In the page, before any of its scripts: refuse a pointer lock as a player's browser refuses one asked for without a
- *  gesture (App asks once the world is built). Headless Chromium on CI granted that request: play started on its own
- *  and the title, with Continue, was gone before the spec could click it (dispatched run 41154002602). A refusal is a
- *  rejected promise and a pointerlockerror, as the browser gives; the input gate is then held by startPlayActive. */
-function refusePointerLock() {
-  HTMLCanvasElement.prototype.requestPointerLock = function refused() {
+/** In the page, before any of its scripts: a pointer lock is granted as a player's browser grants one, for a request made
+ *  with a user gesture or by the element that already holds the lock, and refused otherwise. Headless Chromium on CI
+ *  granted App's world-ready request, made with no gesture: play started on its own and the title, with Continue, was
+ *  gone before the spec could click it (dispatched run 41154002602). Refusing every request instead paused the world
+ *  from the click until the spec held the input gate, and in that pause the save's ground streamed in under a hold
+ *  that had let go too early, so the hold mutant passed (run 41157732564); a player's click locks the pointer and the
+ *  world runs at once. A refusal is a rejected promise and a pointerlockerror, as the browser gives. */
+function grantLockOnGestureOnly() {
+  const real = HTMLCanvasElement.prototype.requestPointerLock;
+  HTMLCanvasElement.prototype.requestPointerLock = function gated(...args) {
+    if (document.pointerLockElement === this || navigator.userActivation?.isActive) return real.apply(this, args);
     setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 0);
     return Promise.reject(new DOMException('pointer lock refused (e2e: no lock without a gesture)', 'NotAllowedError'));
   };
@@ -50,6 +56,7 @@ function gates() {
   return {
     body: t && [t.x, t.y, t.z].map((v) => Math.round(v * 100) / 100), resumeSpawn: s.resumeSpawn, worldReloading: s.worldReloading,
     built: s.isSpawnChunkLoaded, started: s.gameStarted, active: window.__craftyTest?.call('readIntents').active, alive: s.isAlive,
+    locked: !!document.pointerLockElement,
   };
 }
 
@@ -114,7 +121,7 @@ test('a returning player continues from the title, and stands where they saved, 
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message));
   mkdirSync(SHOTS, { recursive: true });
-  await page.addInitScript(refusePointerLock);
+  await page.addInitScript(grantLockOnGestureOnly);
 
   // 1. A first visit: the title starts a world.
   await bootDev(page);
@@ -173,6 +180,7 @@ test('a returning player continues from the title, and stands where they saved, 
   // 5. Continue, as a player does once it shows, whether or not the world behind the title has finished building.
   await cont.click();
   expect(await page.evaluate(() => window.useGameStore.getState().gameStarted), 'Continue did not start play').toBe(true);
+  console.log(`continue: after the click ${JSON.stringify(await page.evaluate(gates))}`);
   await startPlayActive(page); // a headless page may refuse the pointer: hold the input gate the way a lock would
 
   // 6. The boot stands the body at the save once that column's ground is in (the subject, not a precondition), then 10 s of
