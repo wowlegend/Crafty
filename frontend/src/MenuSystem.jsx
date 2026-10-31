@@ -61,6 +61,7 @@ export function MenuSystem({
 }) {
   const t = useT();
   const continueWorld = useGameStore((s) => s.continueWorld);
+  const bootHeld = useGameStore((s) => s.bootHeld);
   const locale = useGameStore((s) => s.locale);
   // The title/pause menu shows on pointer-unlock, but opening ANY panel exits pointer-lock, so it must be
   // suppressed whenever a panel is open. The whole gate lives in panelState.js (shouldShowTitleMenu) so the
@@ -365,9 +366,21 @@ export function MenuSystem({
                       </Button>
                     </>
                   ) : (
-                    <Button variant="primary" size="lg" onClick={enterPlay} data-testid="title-start">
-                      <Icon name="sword" size={22} className="flex-none" /> {t('menu.start')}
-                    </Button>
+                    <>
+                      <Button variant="primary" size="lg" onClick={enterPlay} data-testid="title-start">
+                        <Icon name="sword" size={22} className="flex-none" /> {t('menu.start')}
+                      </Button>
+                      {/* The boot did not open the newest world (game/worldBoot.js bootHeld): the title says why. */}
+                      {bootHeld && (
+                        <p
+                          data-testid="title-held"
+                          className="max-w-md text-center text-sm text-text/85 rounded-2xl px-4 py-1"
+                          style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}
+                        >
+                          {t('menu.heldUnreadable', { name: bootHeld.name })}
+                        </p>
+                      )}
+                    </>
                   )}
                 </m.div>
 

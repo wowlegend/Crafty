@@ -7,8 +7,10 @@
 // switch saves the world in play, leaves a note in the tab and reloads, and the page loads the noted world into the store
 // before React's first render (startGame.jsx): every owner then starts from that world.
 //
-// Pure: the store, the storage and the reload are handed in.
+// The store, the storage and the reload are handed in; the one module state it touches is the climate sampler's seed,
+// which a failed load leaves set (world/climate.js seedClimate).
 import { savePosition } from './saveSchema.js';
+import { seedClimate } from '../world/climate.js';
 
 /** The sessionStorage key of the note a world switch leaves for the reload. sessionStorage survives a reload of the tab
  *  and dies with it, which is exactly "the world this tab switches to" and nothing more. */
@@ -82,7 +84,8 @@ function notedWorld(saves, id) {
  * The load claims its slot (loadWorldData sets `_sessionWorldId`), so the autosave writes back into it rather than
  * minting another. Its notices (a retired quest's reward, the Cut's respec) are held in `_bootNotices` until the quest
  * system publishes the channel. `continueWorld` tells the title what it is continuing. A save that throws on load leaves
- * the initial state: a page that never renders is worse than a world that starts over beside the broken slot.
+ * the initial state, and `bootHeld` tells the title which world could not be opened: a page that never renders is worse
+ * than a world that starts over beside the broken slot.
  * @param {{ store: { getState: () => object, setState: (p: object, replace?: boolean) => void, getInitialState: () => object },
  *   session: Storage|null, saves: { listWorlds: () => object[], readWorld: (id: string) => object|null } }} deps
  * @returns {{ kind: 'world'|'fresh'|'none', id?: string|null }}
@@ -96,22 +99,32 @@ export function bootWorld({ store, session, saves }) {
   const found = (note && note.world && notedWorld(saves, note.world)) || latestOwnedWorld(saves);
   if (!found) return { kind: 'none' };
   const { entry, data } = found;
+  const name = entry.name || data.name || data.save_name || null;
   const notices = [];
   const channel = store.getState().addNotification;
   store.setState({ addNotification: (...args) => { notices.push(args); } });
+  let failed = null;
   try {
     store.getState().loadWorldData({ ...data, id: entry.id });
   } catch (err) {
-    console.error(`worldBoot: the save ${entry.id} did not load; this page starts a new world`, err);
-    store.setState(store.getInitialState(), true);
-    return { kind: 'none' };
+    failed = err;
   } finally {
-    store.setState({ addNotification: channel, _bootNotices: notices });
+    store.setState({ addNotification: channel });
   }
+  if (failed) {
+    // Nothing of the failed load stays: its slot claim (the autosave would write the new world over the broken slot),
+    // its notices and the climate's seed, which the load sets before its reducer runs.
+    console.error(`worldBoot: the save ${entry.id} did not load; this page starts a new world`, failed);
+    store.setState(store.getInitialState(), true);
+    seedClimate(store.getState().worldSeed);
+    store.setState({ bootHeld: { id: entry.id, name, reason: 'unreadable' } });
+    return { kind: 'none' };
+  }
+  store.setState({ _bootNotices: notices });
   store.setState({
     continueWorld: {
       id: entry.id,
-      name: entry.name || data.name || null,
+      name,
       level: store.getState().level,
       savedAt: entry.saved_at || data.saved_at || null,
     },

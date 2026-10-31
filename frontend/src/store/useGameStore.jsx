@@ -120,6 +120,9 @@ export const useGameStore = create((set, get) => ({
     // The world the boot loaded, for the title's Continue: { id, name, level, savedAt } or null (game/worldBoot.js
     // bootWorld). Transient: the page that loaded it is the only one it describes.
     continueWorld: null,
+    // A world the boot did not open, for the title to say why: { id, name, reason } or null (game/worldBoot.js bootWorld).
+    // Transient, as continueWorld is.
+    bootHeld: null,
     // The notices the boot's load raised before the quest system published the notification channel; it replays them
     // when it does (QuestSystem.jsx). Each entry is addNotification's arguments.
     _bootNotices: [],
