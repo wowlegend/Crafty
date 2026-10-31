@@ -264,7 +264,7 @@ A push runs no unit suite, build or bundle: CI runs them on the exact sha (DECIS
 | bundle byte budget: `node scripts/ci/bundle-budget.mjs` | — | — | ✅ | a chunk past its byte ceiling |
 | queue-ledger | — | ✅ | — | a queue finding with no `▣✓/▢/⊘` marker, or a dismissal with no proof command |
 | artifact-currency | — | ✅ | — | an unusable operator-page source, a falsified Queued pill, a wrong as-of stamp |
-| registry-append-only | — | ✅ | ✅ | a `memory/registry.jsonl` row deleted instead of closed |
+| registry-append-only | — | ✅ | ✅ | a `memory/registry.jsonl` row deleted or reopened, edited without moving its `updated`, or closed and then changed outside its closure |
 | knip: `npm run knip` | — | — | ✅ | an unused file, export or dependency |
 | knip production: `npm run knip:production` | — | — | ✅ | a file or export only tests or tooling reach: code the shipped game never runs (`@internal` marks a deliberate test seam) |
 | npm audit: `npm audit --audit-level=high` | — | — | ✅ | a HIGH or CRITICAL advisory (CI only: it needs the registry) |

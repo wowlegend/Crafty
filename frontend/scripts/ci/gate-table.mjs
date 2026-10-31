@@ -62,7 +62,7 @@ export const DESCRIPTIONS = {
   'doc-currency': 'a dangling path, § or `CLAUDE.md` heading citation in a canonical doc or rule file, a stale generated block, a lock label, `CLAUDE.md` over 12,000 bytes',
   changelog: 'a `memory/CHANGELOG.md` missing a landing git can prove, hand-edited, or naming a commit outside the history',
   'queue-ledger': 'a queue finding with no `▣✓/▢/⊘` marker, or a dismissal with no proof command',
-  'registry-append-only': 'a `memory/registry.jsonl` row deleted instead of closed',
+  'registry-append-only': 'a `memory/registry.jsonl` row deleted or reopened, edited without moving its `updated`, or closed and then changed outside its closure',
   'artifact-currency': 'an unusable operator-page source, a falsified Queued pill, a wrong as-of stamp',
   eslint: 'crash-class bugs and dead code (`no-unused-vars` and `no-undef` are errors)',
   'gate-shape': 'an assertion a comment could satisfy; the source-grep gate count may only fall',

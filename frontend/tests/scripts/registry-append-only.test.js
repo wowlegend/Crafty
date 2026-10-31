@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fixtureGit, isolatedGitEnv } from './_isolatedGit.js';
 import { ROOT, REGISTRY, harvest, compare, parseRegistry } from '../../scripts/ci/registry-harvest.mjs';
-import { missingIds, pickRange, rowIds } from '../../scripts/ci/registry-append-only.mjs';
+import { missingIds, pickRange, rowIds, changeFindings } from '../../scripts/ci/registry-append-only.mjs';
 
 // Sited in tests/scripts/: the subject is the registry file, and the script driven as a process in a throwaway repo.
 
@@ -36,13 +36,54 @@ describe('missingIds, on the real registry', () => {
     const victim = 'ACTIVE_PLAN:owed:w3-d-row/b';
     const closed = REAL.split('\n').map((l) => {
       if (!l.includes(`"id": "${victim}"`)) return l;
-      return JSON.stringify({ ...JSON.parse(l), state: 'closed', closedBy: 'abc1234' });
+      return JSON.stringify({ ...JSON.parse(l), state: 'closed', resolution: 'done', closedBy: 'abc1234', updated: '2026-11-02' });
     }).join('\n');
     expect(missingIds(REAL, closed).missing).toEqual([]);
+    expect(changeFindings(REAL, closed, { headDate: '2026-11-02' })).toEqual([]);
   });
 
   it('a registry gone at head loses every id', () => {
     expect(missingIds(REAL, null).missing).toHaveLength(total);
+  });
+});
+
+describe('the range rules R2-R4, on fixtures where the answer is known', () => {
+  const v2 = (o) => ({ id: 'K', key: 'K', title: 'a title', kind: 'debt', state: 'open', note: 'n', updated: '2026-10-20', ...o });
+  const text = (...rows) => rows.map((r) => JSON.stringify(r)).join('\n');
+  const rules = (base, head, headDate = '2026-10-31') => changeFindings(text(base), text(head), { headDate }).map((f) => f.rule);
+
+  it('the same rows at both ends, and a v1 row given its first updated, find nothing', () => {
+    expect(rules(v2(), v2())).toEqual([]);
+    const { updated: _u, kind: _k, ...v1 } = v2();
+    expect(rules(v1, v2({ updated: '2026-10-31' }))).toEqual([]);
+  });
+
+  it('R2: a row closed at the base and open at the head', () => {
+    expect(rules(v2({ state: 'closed' }), v2({ state: 'open', updated: '2026-10-31' }))).toEqual(['R2']);
+  });
+
+  it('R3: text changed while updated stayed at an older date, or moved backwards, or is gone', () => {
+    expect(rules(v2(), v2({ note: 'more' }))).toEqual(['R3']);
+    expect(rules(v2(), v2({ note: 'more', updated: '2026-10-01' }))).toEqual(['R3']);
+    expect(rules(v2(), v2({ note: 'more', updated: undefined }))).toEqual(['R3']);
+  });
+
+  it('R3: a second edit on the day the row was stamped keeps its date, and a moved date passes', () => {
+    expect(rules(v2({ updated: '2026-10-31' }), v2({ note: 'more', updated: '2026-10-31' }))).toEqual([]);
+    expect(rules(v2({ updated: '2026-10-30' }), v2({ note: 'more', updated: '2026-10-30' }))).toEqual([]);
+    expect(rules(v2(), v2({ note: 'more', updated: '2026-10-31' }))).toEqual([]);
+  });
+
+  it('R4: a v2 row closed at the base may change its closure and note, not its title, severity or owner', () => {
+    const closed = v2({ state: 'closed', resolution: 'done', closedBy: 'abc1234', severity: 'LOW', owner: 'command session' });
+    expect(rules(closed, { ...closed, note: 'more', resolution: 'superseded', closedBy: 'superseded:X', updated: '2026-10-31' })).toEqual([]);
+    expect(rules(closed, { ...closed, title: 'a new title', updated: '2026-10-31' })).toEqual(['R4']);
+    expect(rules(closed, { ...closed, severity: 'MED', owner: 'Kevin', updated: '2026-10-31' })).toEqual(['R4']);
+  });
+
+  it('R4 exempts a row that was closed and v1 at the base, so the migration could shorten its title once', () => {
+    const { kind: _k, updated: _u, ...v1closed } = v2({ state: 'closed', closedBy: 'abc1234', title: 'x'.repeat(200) });
+    expect(rules(v1closed, { ...v1closed, kind: 'debt', resolution: 'done', title: 'a short title', updated: '2026-10-31' })).toEqual([]);
   });
 });
 
@@ -87,7 +128,7 @@ describe('the CLI, in a throwaway repo', () => {
   beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'crafty-registry-append-')); });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-  const row = (id, extra = {}) => JSON.stringify({ id, title: `title of ${id}`, state: 'open', ...extra });
+  const row = (id, extra = {}) => JSON.stringify({ id, title: `title of ${id}`, state: 'open', updated: '2026-10-01', ...extra });
 
   function repoWith(name, versions) {
     const repo = join(dir, name);
@@ -118,11 +159,29 @@ describe('the CLI, in a throwaway repo', () => {
     expect(red.stderr).toMatch(/• S\/b {2}title of S\/b/);
     const { repo: repo2, shas: shas2 } = repoWith('closes', [
       [row('K'), row('S/a'), row('S/b')],
-      [row('K'), row('S/a'), row('S/b', { state: 'closed', closedBy: 'abc1234' }), row('T')],
+      [row('K'), row('S/a'), row('S/b', { state: 'closed', closedBy: 'abc1234', updated: '2026-10-02' }), row('T')],
     ]);
     const green = run(repo2, `${shas2[0]}..${shas2[1]}`);
     expect(green.status, green.stdout + green.stderr).toBe(0);
     expect(green.stdout).toMatch(/3 row ids at base, 4 at head/);
+  });
+
+  it('a range that reopens a closed row fails and names R2', () => {
+    const { repo, shas } = repoWith('reopens', [
+      [row('K', { kind: 'debt', state: 'closed', closedBy: 'abc1234' })],
+      [row('K', { kind: 'debt', state: 'open', updated: '2026-10-02' })],
+    ]);
+    const red = run(repo, `${shas[0]}..${shas[1]}`);
+    expect(red.status, red.stdout + red.stderr).toBe(1);
+    expect(red.stderr).toMatch(/• R2 K: closed at the base and open at the head/);
+  });
+
+  it('a range whose base is its head prints COULD NOT CHECK, never a pass over nothing', () => {
+    const { repo, shas } = repoWith('self', [[row('K')]]);
+    const r = run(repo, `${shas[0]}..${shas[0]}`);
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+    expect(r.stdout).toMatch(/COULD NOT CHECK, no range: the base \(the range given\) is the head/);
+    expect(r.stdout).not.toMatch(/✓/);
   });
 
   it('a base with no registry has 0 ids to carry and says so', () => {
