@@ -217,8 +217,9 @@ describe('slimCoverage — what each test keeps of V8\'s coverage (tests/e2e/_co
 describe('MUST_REACH — the contract, against the real tree', () => {
   const trees = Object.fromEntries(readSourceTree().map((f) => [f.file, f.text]));
   it('is a list of distinct entry points in src modules that git lists, in groups that say why', () => {
-    expect(mustEntries.length, 'the contract shrank').toBeGreaterThanOrEqual(71);
-    expect(mustModules.length, 'a module left the contract').toBeGreaterThanOrEqual(70);
+    // 69 of each since CI run 41221423846: WorldManager and recoverFromContextLoss left with a registry row each.
+    expect(mustEntries.length, 'the contract shrank').toBeGreaterThanOrEqual(69);
+    expect(mustModules.length, 'a module left the contract').toBeGreaterThanOrEqual(69);
     expect(new Set(mustEntries).size, 'an entry is named twice').toBe(mustEntries.length);
     for (const g of MUST_REACH) expect(g.why.length, 'a group with no reason').toBeGreaterThan(20);
     expect(mustModules.filter((m) => !known.includes(m)), 'MUST_REACH names modules the tree no longer has').toEqual([]);

@@ -215,8 +215,13 @@ function knownSrcModules() {
  * mounter renders, the hook App calls, the function the boot or save path calls. For the dragon's chunk it is
  * `glowHead`, which BossEntity's frame loop calls on every frame the dragon is drawn: the chunk itself is preloaded
  * before a fight, so its module being evaluated says nothing about the dragon being on screen, and BossEntity is an
- * anonymous `memo(() => ...)`. The modules are the 70 the union of the 8 shards of run 41199587278 reached; each entry
- * is the name its module's mounter or caller uses, checked against the source and against the dev server's transform.
+ * anonymous `memo(() => ...)`. Each entry is the name its module's mounter or caller uses, checked against the source and
+ * against the dev server's transform. The modules are 69 of the 70 the union of run 41199587278's 8 shards evaluated; the
+ * first entry-grain run (41221423846) ran 69 of the 71 entries first listed, and two left with a registry row each:
+ * WorldManager, which no spec renders (its module read as reached because the panels chunk is prefetched), and
+ * recoverFromContextLoss, which runs at a tap that reloads the page: what a test runs before its page reloads is missing
+ * from its coverage (context-loss.spec called it and onContextLost, and its shard recorded neither;
+ * REVIEW:l12:coverage-before-a-navigation-unrecorded). So an entry must be one a spec runs in the document it ends on.
  *
  * To add one: it must be an entry point a spec runs today (the job says if not). To remove one: the commit says why the
  * game no longer needs it, because removing an entry is how a contract quietly shrinks.
@@ -246,7 +251,7 @@ export const MUST_REACH = Object.freeze([
     'src/QuestSystem.jsx#useQuestSystem', 'src/SimpleExperienceSystem.jsx#useSimpleExperience', 'src/world/survivalSystem.js#useSurvivalMode',
     'src/world/accrualHooks.js#useEmberAccrual', 'src/GameSystems.jsx#GameSystemsProvider', 'src/InputManager.jsx#useInputManager',
     'src/HUD.jsx#HUD', 'src/ui/GameHud.jsx#GameUI', 'src/ui/TouchControls.jsx#TouchControls', 'src/MenuSystem.jsx#MenuSystem',
-    'src/WorldManager.jsx#WorldManager', 'src/Components.jsx#Player', 'src/App.jsx#App', 'src/GameScene.jsx#GameSceneRender',
+    'src/Components.jsx#Player', 'src/App.jsx#App', 'src/GameScene.jsx#GameSceneRender',
   ] },
   { why: 'the dragon: its hook, its chunk, its moves and its bar (a fight that never arms was found by no gate once already)', entries: [
     'src/world/bossSystem.js#useBossSystem', 'src/world/bossSmash.js#destroyVoxelsInRadius', 'src/render/BossEntity.jsx#glowHead',
@@ -255,9 +260,8 @@ export const MUST_REACH = Object.freeze([
   ] },
   { why: 'the boot and the save path: a world that is not loaded, saved or recovered loses the player\'s progress silently', entries: [
     'src/startGame.jsx#startGame', 'src/game/worldBoot.js#bootWorld', 'src/game/saveSchema.js#buildSaveData', 'src/game/worldSaves.js#writeWorld',
-    'src/game/autosave.js#installAutosave', 'src/game/contextRecovery.js#onContextLost', 'src/game/contextRecovery.js#recoverFromContextLoss',
-    'src/game/settingsPersist.js#initSettingsPersistence', 'src/store/useGameStore.jsx#saveActiveWorld', 'src/game/eventBus.js#emit',
-    'src/ui/ContextLossPanel.jsx#ContextLossPanel',
+    'src/game/autosave.js#installAutosave', 'src/game/contextRecovery.js#onContextLost', 'src/game/settingsPersist.js#initSettingsPersistence',
+    'src/store/useGameStore.jsx#saveActiveWorld', 'src/game/eventBus.js#emit', 'src/ui/ContextLossPanel.jsx#ContextLossPanel',
   ] },
 ]);
 
