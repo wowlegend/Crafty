@@ -248,6 +248,16 @@ jobs:
       # threw away every trace of the attempts that ate its time: run 40615649137 lost four shards' worth (composer-dpr's
       # two hung attempts, three attempts each of lightning, heavy-melee and tier-governor) with total_count 0
       # artefacts. The steps after a timeout do run (the flaky report above ran in all four).
+      # The title with no save and with one (tests/e2e/continue.spec.js shoots both), kept on every run because a look
+      # change is judged on frames, green or red. Only the shard that ran that spec has them.
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: title-shots-shard-${{ matrix.shard }}
+          path: frontend/test-results/title-shots/
+          retention-days: 14
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         with:
