@@ -240,9 +240,14 @@ export const PERSISTED_KEYS = Object.freeze([
  * rounded to whole metres (systems/PositionTracker.jsx): loaded as the body's centre, it stood the player up to half a
  * metre into a wall they had stood beside, or with the head in the ceiling of a two-high tunnel
  * (tests/integration/chaos-play-loads.test.jsx). That is the fallback only with no body.
- * @param {{playerRigidBodyRef?: {current: ?{translation: () => {x: number, y: number, z: number}, collider?: (i: number) => ?{halfHeight: () => number, radius: () => number}}}, playerPosition?: object}} state
+ * While a load's spot is pending (`resumeSpawn`, until the Player places the body there), the save keeps that spot: the
+ * body is in the sky freeze over the origin until the world is built, then held, and a save then wrote the freeze over
+ * the place the world was saved at.
+ * @param {{playerRigidBodyRef?: {current: ?{translation: () => {x: number, y: number, z: number}, collider?: (i: number) => ?{halfHeight: () => number, radius: () => number}}}, playerPosition?: object, resumeSpawn?: ?{x: number, y: number, z: number}}} state
  */
 export function savePosition(state) {
+  const r = state.resumeSpawn;
+  if (r && [r.x, r.y, r.z].every(Number.isFinite)) return { x: r.x, y: r.y, z: r.z };
   const rb = state.playerRigidBodyRef && state.playerRigidBodyRef.current;
   const t = rb && rb.translation ? rb.translation() : null;
   if (!t) return state.playerPosition;
