@@ -16,6 +16,9 @@ let owed = 0;
 const recordedAtClick = new Map();
 const keyOf = (c) => `${c.x}_${c.y}_${c.z}`;
 
+/** Whether a batch is still waiting on the worker: a block placed a moment ago is not in the record until its answer lands. */
+export const editsOwed = () => owed > 0;
+
 /** A writer that records its cells at the click (the single mine, the dragon's smash): they are recorded after every
  *  batch still owed, whose answers must not write over them. */
 export function recordingAtClick(keys) {

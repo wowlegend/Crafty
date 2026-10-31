@@ -5,19 +5,11 @@ import { useGameStore } from '../store/useGameStore';
 import { blockForId } from './blockIds';
 import { buildFootprint } from '../game/buildFootprint.js';
 import { chunkOf, CHUNK_SIZE } from './chunkLayout.js';
-import { recordingAtClick } from './cellEdits.js';
+import { recordingAtClick, editsOwed } from './cellEdits.js';
 import { notifyDenied } from '../ui/denyToast.js';
 
-/** A block the worker removed (`block_broken`) goes into the inventory as itself: an ore drops its ore (world/blockIds.js). */
-export function payBrokenBlock(payload) {
-    const store = useGameStore.getState();
-    const blockName = blockForId(payload.blockType);
-    if (blockName && store.addToInventory) {
-        store.addToInventory(blockName, 1);
-    }
-}
-
-/** The blocks one batched removal took, paid as themselves with one inventory write per kind of block, not per block. */
+/** The blocks a removal took go into the inventory as themselves (an ore drops its ore, world/blockIds.js), with one
+ *  inventory write per kind of block, not per block. */
 function payBrokenBlocks(broken) {
     const counts = new Map();
     for (const b of broken) {
@@ -26,6 +18,11 @@ function payBrokenBlocks(broken) {
     }
     const store = useGameStore.getState();
     for (const [blockName, n] of counts) store.addToInventory(blockName, n);
+}
+
+/** A lone removal's `block_broken` (the single mine's, the dragon's smash) is a batch of one. */
+export function payBrokenBlock(payload) {
+    payBrokenBlocks([payload]);
 }
 
 /**
@@ -85,8 +82,10 @@ function mineFootprint(h, store, editCells, playBreak) {
     const footprint = buildFootprint('delete', store.buildSize || 1, target, h.normal);
     const own = (k) => store.worldBlocks.get(k) > 0 && !(store.chests && store.chests.has(k));
     const cells = footprint.filter((c) => own(`${c.x}_${c.y}_${c.z}`));
-    // Said, or a click on the ground reads as a dead tool.
-    if (cells.length === 0) { notifyDenied('not-yours'); return Promise.resolve(0); }
+    // Said, or a click on the ground reads as a dead tool. The notice states the rule, not a verdict on the block: the
+    // footprint may hold a chest the player placed, which is never taken. Not while an answer is owed either: a block
+    // placed a moment ago is not in the record yet, so the click may be on one the player placed.
+    if (cells.length === 0) { if (!editsOwed()) notifyDenied('delete-rule'); return Promise.resolve(0); }
     return new Promise((resolve) => {
         editCells({ blockType: 0, cells }, (applied, recordable = applied, broken = []) => {
             if (applied.length === 0) { resolve(0); return; }

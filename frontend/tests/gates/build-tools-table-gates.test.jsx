@@ -209,7 +209,7 @@ describe('every Building Tools tool does what its label says (real panel, real s
       for (const k of row.mine) expect(readVoxel(...k.split('_').map(Number)), `${id}: the worker still holds a block at ${k}`).toBe(0);
       if (!row.mine.length) expect(readVoxel(...MINED), `${id}: a left-click that took nothing took the ground`).toBe(GRASS);
       expect(taken.notes, `${id}: a left-click that took nothing was silent, or one that took a block raised a notice`)
-        .toEqual(row.mine.length ? [] : [{ text: 'The Delete Tool takes only blocks you placed', type: 'warn' }]);
+        .toEqual(row.mine.length ? [] : [{ text: 'The Delete Tool takes back only blocks you placed, never a chest', type: 'warn' }]);
 
       const ownTaken = await mine(OWN_TOP, OWN);
       expect(ownTaken.keys, `${id}: a left-click on the player's own blocks took the wrong ones`).toEqual(row.own);

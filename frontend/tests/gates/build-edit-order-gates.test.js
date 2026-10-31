@@ -144,6 +144,53 @@ describe('a placement\'s late answer never writes over a later record (named int
   });
 });
 
+// THE DELETE TOOL'S NOTICE NEVER ACCUSES A BLOCK THE PLAYER PLACED (DECISIONS 2026-10-31 item 279; lane L6 round 2, static
+// finding 3). A click that takes nothing says why, and the first wording said the tool takes only blocks the player placed:
+// untrue of a chest the player placed (a chest is never taken) and of a block placed a moment ago (its record is written
+// when the worker answers). It now states the rule, chests included, and stays silent while an answer is owed.
+describe('a Delete Tool click that takes nothing says the rule, and says nothing about a block still being placed (real worker)', () => {
+  it('a chest the player placed stays, nothing reaches the worker, and the one notice names chests', async () => {
+    const notes = [];
+    useGameStore.setState({ addNotification: (text, type) => notes.push({ text, type }) });
+    const io = workerVerbIo({ onBroken: payBrokenBlock });
+    const v = verbs(io);
+    expect(await v.place(C, 'chest'), 'SETUP: the chest was not placed').toBe(1);
+    expect(S().chests.has(key(C)), 'SETUP: the placed chest is not in the store').toBe(true);
+    const sentBefore = io.sent.length;
+    expect(await v.mine(C, 'delete'), 'the Delete Tool took a chest').toBe(0);
+    expect({ chest: S().chests.has(key(C)), record: recorded(C) > 0, voxel: readVoxel(C.x, C.y, C.z) !== 0, sent: io.sent.length - sentBefore },
+      'the Delete Tool changed a chest, its record or its voxel, or sent it to the worker').toEqual({ chest: true, record: true, voxel: true, sent: 0 });
+    expect(notes, 'a click that took nothing raised no notice, or more than one').toHaveLength(1);
+    expect(notes[0].text, 'the notice does not say chests are not taken, so it reads as a verdict on a block the player placed').toMatch(/chest/i);
+  });
+
+  it('a block whose placement is still owed its answer: the click says nothing, then the next click takes it', async () => {
+    const notes = [];
+    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+    const io = workerVerbIo({ onBroken: payBrokenBlock, deferred: true });
+    const v = verbs(io);
+    const placed = v.place(C);
+    expect(recorded(C), 'SETUP: the placement is already recorded, so there is no owed answer to click over').toBe(0);
+    expect(await v.mine(C, 'delete'), 'the Delete Tool took a block the store does not yet record').toBe(0);
+    expect(notes, 'a click on a block placed a moment ago, its answer owed, raised a notice').toEqual([]);
+    io.answer();
+    expect(await placed, 'SETUP: the worker did not fill the placed cell').toBe(1);
+    const taken = v.mine(C, 'delete');
+    io.answer();
+    expect(await taken, 'the answered placement was not taken by the next Delete Tool click').toBe(1);
+    expect({ record: recorded(C), voxel: readVoxel(C.x, C.y, C.z), stone: S().inventory.blocks.stone }, 'the taken block was not recorded as air and paid back once').toEqual({ record: 0, voxel: 0, stone: 40 });
+    expect(notes, 'taking the block raised a notice').toEqual([]);
+  });
+
+  it('with nothing owed, a click on the ground still gets the notice (the silence is only for an owed answer)', async () => {
+    const notes = [];
+    useGameStore.setState({ addNotification: (text) => notes.push(text) });
+    const io = workerVerbIo({ onBroken: payBrokenBlock });
+    expect(await verbs(io).mine({ x: C.x, y: GROUND, z: C.z }, 'delete'), 'the Delete Tool took the ground').toBe(0);
+    expect(notes, 'a click on the ground raised no notice, or more than one').toHaveLength(1);
+  });
+});
+
 describe('a seeded run of edits and late answers keeps the record and the worker in step (real worker)', () => {
   function mulberry32(a) {
     return () => {
