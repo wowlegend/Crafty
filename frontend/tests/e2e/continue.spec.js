@@ -20,12 +20,24 @@ import { bootDev, startPlayActive } from './_boot.js';
 //
 // WHAT THIS DOES NOT CHECK: the World Manager's Load and Create, the context-loss resume and the dragon after a switch
 // (tests/gates/world-switch-boot-gates.test.jsx, the real App in jsdom; tests/e2e/context-loss.spec.js drives the real
-// context-loss reload); touch and WebKit (the title's buttons are the same elements there).
+// context-loss reload); touch and WebKit (the title's buttons are the same elements there); the pointer lock itself,
+// which this page refuses every time (refusePointerLock), so the input gate is held as the other specs hold it.
 //
-// Mutation-Proof: red on dispatched CI runs, each with one line of the game reverted (the run ids are in the commit
-// trailers); no local browser run.
+// Mutation-Proof: red on dispatched CI runs, each with one line of the game reverted (the run ids are in DECISIONS
+// 2026-10-30 item 205); no local browser run.
 
 const SHOTS = 'test-results/title-shots';
+
+/** In the page, before any of its scripts: refuse a pointer lock as a player's browser refuses one asked for without a
+ *  gesture (App asks once the world is built). Headless Chromium on CI granted that request: play started on its own
+ *  and the title, with Continue, was gone before the spec could click it (dispatched run 41154002602). A refusal is a
+ *  rejected promise and a pointerlockerror, as the browser gives; the input gate is then held by startPlayActive. */
+function refusePointerLock() {
+  HTMLCanvasElement.prototype.requestPointerLock = function refused() {
+    setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 0);
+    return Promise.reject(new DOMException('pointer lock refused (e2e: no lock without a gesture)', 'NotAllowedError'));
+  };
+}
 const FAR = 48; // three chunks (CHUNK_SIZE 16): nothing at the origin's render distance reaches past this
 const CANDIDATES = [[60.5, -44.5], [-60.5, 52.5], [56.5, 60.5], [-52.5, -60.5], [72.5, 8.5], [8.5, 72.5]];
 const MARK = 4321;
@@ -102,12 +114,13 @@ test('a returning player continues from the title, and stands where they saved, 
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message));
   mkdirSync(SHOTS, { recursive: true });
+  await page.addInitScript(refusePointerLock);
 
   // 1. A first visit: the title starts a world.
   await bootDev(page);
   await expect(page.getByTestId('title-start'), 'a first visit\'s title has no Start').toBeVisible({ timeout: 30000 });
   await expect(page.getByTestId('title-continue'), 'a first visit offers Continue with nothing saved').toHaveCount(0);
-  await page.waitForTimeout(1600); // the title's entrance tweens (MenuSystem: 0.9 s delay, 0.5 s)
+  await page.getByTestId('title-start').click({ trial: true }); // visible and stable: the entrance tweens have finished
   await page.screenshot({ path: `${SHOTS}/title-no-save.png` });
   await startPlayActive(page);
 
@@ -154,11 +167,10 @@ test('a returning player continues from the title, and stands where they saved, 
   expect(meta, 'the Continue caption does not say its level').toContain(`Level ${saved.level}`);
   await expect(page.getByTestId('title-new-world'), 'no New World beside Continue').toBeVisible();
   expect(await page.evaluate(() => window.useGameStore.getState().coins), 'the reload did not load the saved world').toBe(MARK);
-  await page.waitForTimeout(1600);
+  await cont.click({ trial: true }); // visible and stable: the title's entrance tweens have finished
   await page.screenshot({ path: `${SHOTS}/title-with-save.png` });
 
-  // 5. Continue, as a player does once it shows: while the world is still building. (Click it now: a headless page can be
-  // granted the world-ready pointer lock App asks for, and a lock starts play and takes the title away.)
+  // 5. Continue, as a player does once it shows, whether or not the world behind the title has finished building.
   await cont.click();
   expect(await page.evaluate(() => window.useGameStore.getState().gameStarted), 'Continue did not start play').toBe(true);
   await startPlayActive(page); // a headless page may refuse the pointer: hold the input gate the way a lock would
