@@ -106,7 +106,8 @@ reviews (static finding 1 and dynamic P8, required; static 2 to 5; dynamic's fou
    653,949 B, so round 2 adds about 637 B (the edit-order ledger, the batched removal's payment, the debris choice;
    the smash stays in the dragon's lazy chunk). Each lane fit alone; the two together pass the old ceiling by 1,449 B.
    The growth is the behaviour items 230-233 and 270-272 call for, none of it can load later than the first click,
-   and the new ceiling leaves 1,051 B, so the next lane that grows the boot chunk meets it and says why.
+   and the new ceiling leaves 1,051 B over that head (869 B after item 271's notice, 654,131 B), so the next lane that
+   grows the boot chunk meets it and says why.
 
 ---
 
