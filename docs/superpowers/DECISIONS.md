@@ -108,10 +108,11 @@ Every row's disposition, with the command that proved it and the verifier's verd
 
 367. **The counts,** on main `61696120`. Before: 770 rows, 440 open (16 HIGH, 88 MED, 318 LOW, 18 unrated; 16
    Kevin's), 330 closed, no row with a kind or a lane, 44 known duplicates still open, 44 closed rows with no
-   resolution, titles up to 843 characters. After: 802 rows (32 new, none deleted), 282 open, 267 of them work rows
-   (6 HIGH, 49 MED, 212 LOW; 62 bugs, 39 features, 86 instruments, 35 debt, 30 flakes, 8 decisions, 7 process; 15
-   Kevin's) in 15 lane rows; 520 closed (293 done, 89 superseded, 55 duplicate, 53 wont-fix, 26 obsolete, 4
-   false-positive); no orphan, no unrated row, titles at most 160 characters. Independent verifiers re-checked 496
+   resolution, titles up to 843 characters. After: 802 rows (32 new, none deleted), 281 open, 266 of them work rows
+   (6 HIGH, 49 MED, 211 LOW; 62 bugs, 39 features, 85 instruments, 35 debt, 30 flakes, 8 decisions, 7 process; 15
+   Kevin's) in 15 lane rows; 521 closed (294 done, 89 superseded, 55 duplicate, 53 wont-fix, 26 obsolete, 4
+   false-positive), the last of them `REVIEW:w1h:f6`, which this landing fixes; no orphan, no unrated row, titles at
+   most 160 characters. Independent verifiers re-checked 496
    rows of the triage: 393 upheld, 92 adjusted, 11 refuted, and every refuted closure is open again or closed the way
    the verifier proposed and checked.
 
