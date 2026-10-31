@@ -36,9 +36,10 @@ const _unswept = new WeakMap(); // body -> metres of lift in its pending target
  *   lift       metres added to the target's y without a sweep (a form swap's grow depenetration)
  *   filter     the KCC's filterPredicate
  *   unindexed  colliders created since the last world step, which the KCC's sweep does not see
+ *   flags      the KCC's filterFlags (Rapier QueryFilterFlags): the player's controller passes EXCLUDE_DYNAMIC
  * Returns the movement taken (the KCC's swept path from the body's current position, cut short at an unindexed collider).
  */
-export function moveKinematic(body, kcc, collider, d, lift = 0, filter = undefined, unindexed = undefined) {
+export function moveKinematic(body, kcc, collider, d, lift = 0, filter = undefined, unindexed = undefined, flags = undefined) {
   const at = body.translation();
   const next = body.nextTranslation();
   const px = next.x - at.x, py = next.y - at.y, pz = next.z - at.z;
@@ -46,7 +47,7 @@ export function moveKinematic(body, kcc, collider, d, lift = 0, filter = undefin
   _d.x = d.x + px;
   _d.y = d.y + py - held;
   _d.z = d.z + pz;
-  kcc.computeColliderMovement(collider, _d, undefined, undefined, filter);
+  kcc.computeColliderMovement(collider, _d, flags, undefined, filter);
   const m = kcc.computedMovement();
   if (unindexed && unindexed.length > 0) cutAtUnindexed(kcc, collider, m, unindexed);
   const up = held + lift;

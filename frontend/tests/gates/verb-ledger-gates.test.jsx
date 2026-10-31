@@ -72,7 +72,18 @@ function asWorker(fn) {
 const CX = 3, CZ = -2;
 let act, r, GameMethods, store, S, routeMouseVerb, HOTBAR_BLOCKS, GOODS, destroyVoxelsInRadius, setActive, blockForId, RAPIER;
 
+// The debris' bursts and the smash's order are drawn from Math.random: seeded, so every run plays the same session.
+function mulberry32(a) {
+  return () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 beforeAll(async () => {
+  vi.spyOn(Math, 'random').mockImplementation(mulberry32(31));
   const prev = Object.getOwnPropertyDescriptor(globalThis, 'self');
   Object.defineProperty(globalThis, 'self', { value: workerSelf, configurable: true, writable: true });
   try { await import('../../src/world/terrain.worker.js'); } finally { if (prev) Object.defineProperty(globalThis, 'self', prev); else delete globalThis.self; }
@@ -99,7 +110,7 @@ beforeAll(async () => {
       <QuestProbe />
     </Suspense>,
   );
-  for (let i = 0; i < 400 && !(typeof GameMethods.castBuildRay === 'function' && H.rapier); i++) {
+  for (let i = 0; i < 3000 && !(typeof GameMethods.castBuildRay === 'function' && H.rapier); i++) {
     await act(async () => { await new Promise((res) => setTimeout(res, 10)); });
   }
   expect(typeof GameMethods.castBuildRay, 'SETUP: MinecraftWorld did not register its build ray').toBe('function');
@@ -111,8 +122,8 @@ beforeAll(async () => {
   expect(topAt(CX * 16 + 8, CZ * 16 + 8), 'SETUP: the chunk\'s trimesh is not in the world').not.toBeNull();
   SITES = openColumns(4);
   expect(SITES.length, 'SETUP: the chunk has fewer than four open columns four apart').toBe(4);
-});
-afterAll(async () => { setActive(false); await r?.unmount(); });
+}, 60000);
+afterAll(async () => { setActive(false); await r?.unmount(); vi.restoreAllMocks(); });
 
 /** The worker's queued messages, delivered in order, each reply dispatched to every listener inside act. */
 async function pump() {
@@ -272,5 +283,64 @@ describe('the dragon\'s smash is a hazard: it breaks the ground under it and pay
       .toEqual({ chest: true, chestTop: chestTop + 1 });
     expect({ bag: bagDelta(b0.bag, b1.bag), broken: b1.broken - b0.broken, sounds: b1.sounds - b0.sounds },
       'the smash paid, counted or sounded a break').toEqual({ bag: {}, broken: 0, sounds: 0 });
+  });
+});
+
+describe('the debris a mine bursts is not the world: 120 frames of it under the aim', () => {
+  it('the build ray, the outline, the anvil ray and the ground probe see the terrain under a live cube', async () => {
+    const c = SITES[3];
+    const top = aimAtTop(c);
+    await click(0);
+    const rs = await pump();
+    expect(brokenIn(rs).length, 'SETUP: the mine broke nothing, so no debris burst').toBe(1);
+    expect(topAt(c.x, c.z), 'SETUP: the mined column did not drop a block').toBe(top - 1);
+    setActive(true);
+    const outline = [];
+    r.three().scene.traverse((o) => { if (o.isLineSegments) outline.push(o); });
+    expect(outline.length, 'SETUP: the target outline is not in the scene').toBe(1);
+    const every = { frames: 0, aimed: 0, debrisSeen: 0, build: 0, outline: 0, anvil: 0, ground: 0 };
+    const wrong = [];
+    for (let f = 0; f < 120; f++) {
+      await r.step(1);
+      every.frames++;
+      // Each frame, from just over a cube not parked (in flight or at rest, asleep or not) that lies over ground in reach,
+      // aimed through its centre at the ground under it: the lowest such cube.
+      let pick = null;
+      world().forEachRigidBody((b) => {
+        if (!b.isDynamic()) return;
+        const p = b.translation();
+        const fx = p.x - Math.floor(p.x), fz = p.z - Math.floor(p.z);
+        if (fx < 0.02 || fx > 0.98 || fz < 0.02 || fz > 0.98) return; // on a column's edge the cell under it is a toss-up
+        const ground = topAt(Math.floor(p.x), Math.floor(p.z));
+        if (ground == null || p.y < ground || p.y - ground > 5) return;
+        if (!pick || p.y < pick.p.y) pick = { p, ground };
+      });
+      if (!pick) continue;
+      const { p, ground } = pick;
+      const col = { x: Math.floor(p.x), z: Math.floor(p.z) };
+      every.aimed++;
+      aim([p.x, p.y + 1.5, p.z - 0.05], [p.x, ground, p.z]);
+      const dir = new THREE.Vector3();
+      camera().getWorldDirection(dir);
+      const seen = world().castRay(new RAPIER.Ray(camera().position, dir), 8, true);
+      if (seen && seen.collider.parent()?.isDynamic()) every.debrisSeen++;
+      const terrainCell = `${col.x}_${ground - 1}_${col.z}`;
+      const h = GameMethods.castBuildRay();
+      if (h?.targetCoords === terrainCell) every.build++; else wrong.push(`f${f} build ${h?.targetCoords} not ${terrainCell}`);
+      await r.step(1, 0); // a frame of no time: the outline casts again from the new pose, the world does not move
+      const o = outline[0].position;
+      if (`${o.x - 0.5}_${o.y - 0.5}_${o.z - 0.5}` === terrainCell) every.outline++; else wrong.push(`f${f} outline ${o.x},${o.y},${o.z}`);
+      const down = GameMethods.castWorldRay({ x: p.x, y: p.y + 1, z: p.z }, { x: 0, y: -1, z: 0 }, 8);
+      if (down && Math.abs(down.toi - (p.y + 1 - ground)) < 1e-3) every.anvil++; else wrong.push(`f${f} anvil ${down?.toi}`);
+      const g = S().getMobGroundLevel(p.x - 0.1, p.z - 0.1);
+      if (g != null && Math.abs(g - ground) < 1e-3) every.ground++; else wrong.push(`f${f} ground ${g}`);
+    }
+    setActive(false);
+    process.stdout.write(`\nverb ledger, debris under the aim: ${JSON.stringify(every)}\n`);
+    // The presence check: a ray that does not exclude dynamic bodies meets the cube in this pose, so it was there.
+    expect(every.aimed, 'SETUP: too few frames had a live cube to aim through').toBeGreaterThanOrEqual(90);
+    expect(every.debrisSeen, 'SETUP: the aim did not pass through the cube, so this measured nothing').toBe(every.aimed);
+    expect(every, `a world query saw the debris (${wrong.slice(0, 6).join('; ')})`)
+      .toEqual({ ...every, build: every.aimed, outline: every.aimed, anvil: every.aimed, ground: every.aimed });
   });
 });

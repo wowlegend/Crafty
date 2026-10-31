@@ -170,7 +170,9 @@ const TargetOutline = () => {
             const parent = collider.parent();
             return !parent || parent.handle !== playerHandle;
         };
-        const hit = world.castRay(ray, 8.0, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
+        // Every world query here passes EXCLUDE_DYNAMIC: the only dynamic bodies are the block-break debris
+        // (world/BlockParticleSystem.jsx), and a ray that met them for their 2 s aimed at the empty cell they tumble through.
+        const hit = world.castRay(ray, 8.0, true, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC, undefined, undefined, playerRigidBody, filterPredicate);
         if (hit) {
             // #72 sweep fix: `timeOfImpact`, not the legacy `toi` (undefined -> NaN target ->
             // the block-target outline never resolved a real voxel).
@@ -591,7 +593,7 @@ export const MinecraftWorld = React.memo(() => {
             probeRay.origin.x = x + 0.1;
             probeRay.origin.y = 255;
             probeRay.origin.z = z + 0.1;
-            const hit = world.castRay(probeRay, 300, true, undefined, undefined, undefined, playerRigidBody, probeFilter);
+            const hit = world.castRay(probeRay, 300, true, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC, undefined, undefined, playerRigidBody, probeFilter);
             if (hit) {
                 return 255 - hit.timeOfImpact; // #72: this rapier build exposes timeOfImpact; legacy hit.toi is always undefined
             }
@@ -750,7 +752,7 @@ export const MinecraftWorld = React.memo(() => {
                 return !parent || parent.handle !== playerHandle;
             };
 
-            const hit = world.castRayAndGetNormal(ray, 8.0, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
+            const hit = world.castRayAndGetNormal(ray, 8.0, true, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC, undefined, undefined, playerRigidBody, filterPredicate);
             if (!hit) return null;
 
             // #72 smoke-found fix: this rapier build exposes `timeOfImpact` — the legacy `hit.toi`
@@ -803,7 +805,7 @@ export const MinecraftWorld = React.memo(() => {
                 const parent = collider.parent();
                 return !parent || parent.handle !== playerHandle;
             };
-            const h = world.castRay(ray, maxToi, true, undefined, undefined, undefined, playerRigidBody, filterPredicate);
+            const h = world.castRay(ray, maxToi, true, rapier.QueryFilterFlags.EXCLUDE_DYNAMIC, undefined, undefined, playerRigidBody, filterPredicate);
             return h ? { toi: h.timeOfImpact } : null;
         };
 
