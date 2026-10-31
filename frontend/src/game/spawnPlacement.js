@@ -31,7 +31,7 @@ const PROBE_MIN_Y = 15;                  // physicsY <= this is rejected (origin
 // standing on either, falls on the same side of it (spawnPlacement.test.js stands every shape on both). A centre under
 // y 10 reset a player standing on the seabed (registry AUDIT:desync:void-guard-fires-inside-the-playable-world).
 // The line is not a rescue for a body clipped into the ground: inside the hollow rock it falls until the back of a face
-// stops it, and over a cave that is the cave's ceiling, above the line (DECISIONS 2026-10-30 item 196). game/stuckInRock.js
+// stops it, and over a cave that is the cave's ceiling, above the line (DECISIONS 2026-10-30 item 213). game/stuckInRock.js
 // stands that body clear.
 const VOID_LINE_Y = 0.5 + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius;
 

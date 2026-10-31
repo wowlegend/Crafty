@@ -15,7 +15,7 @@ import { DEEP_FLOOR } from '../world/oceanProfile.js';
 // reach (half-height plus radius) above that. The world's cells run from y 0 up, so the lowest floor is the top of the
 // cells at y 0, at 1; under the world there is none, and a body standing on the bottom face of those cells, at 0, is out
 // of it too (a body clipped into rock that runs down to y 0 falls through the hollow trimesh to there; over a cave its
-// ceiling stops it first, above the line, and stuckInRock.js stands it clear: DECISIONS 2026-10-30 item 196).
+// ceiling stops it first, above the line, and stuckInRock.js stands it clear: DECISIONS 2026-10-30 item 213).
 // Every shape the player can have is read: the line is one height, and a form whose reach crossed it would fail here.
 describe('isVoidFall: the void line lies under every floor of the world, for every shape the player can have', () => {
   const OFFSET = 0.05;

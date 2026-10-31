@@ -26,7 +26,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
  *     and resets one on the world's bottom face, inside its last cells (game/spawnPlacement.js isVoidFall: the line is the
  *     world's, not y 10); a player clipped into the ground over the cave under the field, whom the hollow rock lets fall
  *     onto the back of its ceiling above that line, is stood on their column's top where they clipped
- *     (game/stuckInRock.js), not left on the ceiling and not sent to the origin (DECISIONS 2026-10-30 item 196);
+ *     (game/stuckInRock.js), not left on the ceiling and not sent to the origin (DECISIONS 2026-10-30 item 213);
  *   - the void guard's reset and the respawn after a death go back to the origin spawn's wait one way
  *     (game/spawnPlacement.js returnToSpawn): on their own frame the camera is at the origin's hold, where chunk streaming
  *     follows it (Terrain.jsx), and the collider with the body; the spawn's wait for the origin's ground starts again.

@@ -48,7 +48,7 @@ const DT = 1 / 60;
 export const AIR = 0, STONE = 3;
 const SAND = 4, WATER = 9;
 export const LAND_TOP = 30; // the land's top face: solid cells y < 30
-// The void guard reset a body whose centre was under y 10 until DECISIONS 2026-10-30 item 190: the frames a player stood
+// The void guard reset a body whose centre was under y 10 until DECISIONS 2026-10-30 item 207: the frames a player stood
 // under it in the world are counted, so a driver that stops reaching the deep seabed fails as SETUP.
 const OLD_VOID_LINE = 10;
 // Five by five chunks (x and z -32 to 47): every place's roam, and the cells a click there reaches, stay a chunk inside the
@@ -60,13 +60,13 @@ const KEYS = CHUNKS.flatMap((cx) => CHUNKS.map((cz) => `${cx}_${cz}`));
 // The shore (Kevin's): from x = 6 the land steps down a block every two columns to a seabed at 22, under water to
 // SEA_LEVEL. The deep ocean: from x = 24 the seabed drops to DEEP_FLOOR, 6, the deepest of oceanProfile.js's full-ocean
 // seabed (6 to 10), under the ground probe's floor of 15 and under the y 10 the void guard reset at until DECISIONS
-// 2026-10-30 item 190 (game/spawnPlacement.js isVoidFall).
+// 2026-10-30 item 207 (game/spawnPlacement.js isVoidFall).
 // The cliff: south of z = -6 the land stands six blocks higher, a sheer face at z = -5. The cave: a tunnel two wide and
 // two high (ceiling at 32) runs into the cliff at x = -6..-5. The overhang: a stone slab at y = 32 over open land, two
 // metres of headroom. The field: open flat land. The origin column, where every respawn lands.
 export const DEEP_SEABED = DEEP_FLOOR;
 // The cave under the field: a chamber in the rock, its floor at y 2 and its ceiling at 5 (cells 2 to 4 are air), where the
-// real world has one under 23% of the columns round the spawn (DECISIONS 2026-10-30 item 196). A body that clips into the
+// real world has one under 23% of the columns round the spawn (DECISIONS 2026-10-30 item 213). A body that clips into the
 // ground over it falls through the hollow rock onto the back of its ceiling, above the void guard's line, and stays there
 // unless something stands it clear; the field's sessions clip once each. It lies inside chunk -1_1, the field's: a chunk's
 // trimesh decides where a body slides, so a cave in another place's chunk would move that place's sessions.

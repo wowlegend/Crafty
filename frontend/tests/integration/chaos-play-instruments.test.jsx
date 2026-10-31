@@ -39,12 +39,12 @@ import {
 //     which I1 and I2 do not read: the body is held at the saved spot until the new world's column is in);
 //  I6 the void guard resets no player who has ground under their feet: it fires on a body under the world, or one in
 //     the world's last cells (on its bottom face), never on the deep seabed or at the bottom of a shaft the player dug
-//     (DECISIONS 2026-10-30 item 190). It reads ground under the feet only, and at the line (a centre under 1.4, the
+//     (DECISIONS 2026-10-30 item 207). It reads ground under the feet only, and at the line (a centre under 1.4, the
 //     feet under 0.68) no cell lies under them, so it restates the line's height: it goes red when the line is raised
 //     (to 10, or to 2.4), not on a reset it could tell apart from the line;
 //  I7 a body clipped into the rock (each field session clips once, over the cave under the field) is stood clear within
 //     half a second, within a metre of where it clipped, before any void reset; and no stuck-in-rock recovery moves a
-//     player who never clipped (DECISIONS 2026-10-30 item 196). The frames between the clip and the recovery are not
+//     player who never clipped (DECISIONS 2026-10-30 item 213). The frames between the clip and the recovery are not
 //     read by I1 and I2 (the body is in the rock by construction).
 // DENOMINATORS: each file asserts floors on the risky events its sessions reached (clicks aimed into the body, wall
 // contact frames, swaps under a ceiling and against a wall, refused swaps, loads, saves in a form and from the old Save

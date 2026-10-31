@@ -22,9 +22,9 @@
 ## 2026-10-30 (lane L4, round 2) — [LOOP] two jobs: the void line takes a fall out of the world, a stuck-in-rock recovery takes a body in the rock, and the spawn's blind drop is followed
 
 **Decided by the command session on lane L4's round-1 reviews, built by the round-2 fixer** (static and dynamic FIX on
-one regression; branch `fix/l4-void-line`, PR #66). Items 196-201.
+one regression; branch `fix/l4-void-line`, PR #66). Items 213-218.
 
-196. **Two jobs, not one line.** Item 190 lowered the void line to the world's floor (a centre under y 1.4), and with
+213. **Two jobs, not one line.** Item 207 lowered the void line to the world's floor (a centre under y 1.4), and with
    it went the only thing that ever moved a body clipped into the rock: a chunk's trimesh is hollow (the mesher closes
    each chunk), so a clipped body falls through the rock until the back of a face stops it, and over a cave that face is
    the cave's ceiling, above the line. The round-1 dynamic review measured it on the real generator
@@ -37,7 +37,7 @@ one regression; branch `fix/l4-void-line`, PR #66). Items 196-201.
    when the 6 s wait runs out. The command session's call: the void line handles a fall out of the world, and a
    stuck-in-rock recovery handles a body whose centre is inside solid ground, wherever it is; and the blind drop is
    followed until the corner answers. Both are below.
-197. **The stuck-in-rock recovery** (`frontend/src/game/stuckInRock.js`, new). Every STUCK_CHECK_SEC (0.1 s) of the
+214. **The stuck-in-rock recovery** (`frontend/src/game/stuckInRock.js`, new). Every STUCK_CHECK_SEC (0.1 s) of the
    frame's real time the Player reads the cell holding the body's centre from the trimeshes, by the odd count of faces a
    ray up its middle crosses (`frontend/src/game/formFit.js` cellSolid, the load fit's reading from items 155-159), and
    moves the body only once its readings have been solid for STUCK_CONFIRM_SEC (0.2 s, three readings): a reading is of
@@ -53,26 +53,26 @@ one regression; branch `fix/l4-void-line`, PR #66). Items 196-201.
    survived all three files; it is killed only by a reading made to clear within 0.15 s
    (`frontend/tests/gates/stuck-in-rock-gates.test.jsx`) and by the unit test. It is kept: it costs at most 0.2 s on a
    body that is stuck, and it makes one wrong reading harmless. Commit `ab662a2f`.
-198. **Item 190's claim, corrected, with the comments and the title that repeated it.** Item 190 said a body clipped
+215. **Item 207's claim, corrected, with the comments and the title that repeated it.** Item 207 said a body clipped
    into the ground falls onto the bottom face of the cells at y 0; that holds only over rock that runs down to y 0. Over
    a cave the ceiling stops it (the gate's three real-world cases stopped at 2.95, 3.95 and 5.95 at `9495a23f`), and at
    the spawn corner, where the capsule straddles the closed edges of four chunks, the body stopped half a metre after the
-   chunks landed round it (43.3, in the rock). Item 190 is corrected in place, and so are
+   chunks landed round it (43.3, in the rock). Item 207 is corrected in place, and so are
    `frontend/src/game/spawnPlacement.js` (VOID_LINE_Y's comment), its unit test's comment, the chaos harness's voidFall
    comment, and the gate "a player clipped into the ground falls through the hollow rock onto the world's bottom face and
    is reset" (`frontend/tests/gates/player-placement-gates.test.jsx`), which now clips over the harness's new cave and
    asserts the player stands on their column's top where they clipped; the bottom face stays as the void line's own case
    ("a player on the world's bottom face, inside its last cells, is reset by the void guard"). SPAWN_PROBE_MAX_SEC's
    comment said "Six seconds covers the top tier's corner and the worker"; it now says the six seconds are past the
-   request and do not bound the build. The L4 entry's "Items 190-196" read 190-195 (static finding 4).
-199. **The spawn's blind drop is followed** (the static review's option 1). `resolveSpawnGround` marks the fallback after
+   request and do not bound the build. The L4 entry's "Items 207-213" read 207-212 (static finding 4).
+216. **The spawn's blind drop is followed** (the static review's option 1). `resolveSpawnGround` marks the fallback after
    the wait `blind: true`; for the wait's length again the Player reads the spawn corner each frame (the wait's own probe
    and cost), and once it answers stands a body whose lowest point is under that ground on it (`followBlindDrop`); a body
-   that has walked off the corner, or a corner that never answers, is left to item 197. It is not redundant with item
-   197: with the corner's top face across the capsule (the centre 0.4 m over it, the lowest point 0.5 m under), no reading
+   that has walked off the corner, or a corner that never answers, is left to item 214. It is not redundant with item
+   214: with the corner's top face across the capsule (the centre 0.4 m over it, the lowest point 0.5 m under), no reading
    of the centre sees the body, and at `9495a23f` it stayed 0.4 m in the ground; the follow stands it at 52.95. Commit
    `ab662a2f`.
-200. **The gates.** Red first at `9495a23f`, green at the fix:
+217. **The gates.** Red first at `9495a23f`, green at the fix:
    - `frontend/tests/gates/stuck-in-rock-gates.test.jsx` (new): the real Player on terrain.worker.js's nine chunks round
      the spawn. Three cave columns from a scan (216 of 1936 have a ceiling between 1.5 and 9), each at 60 and 120 Hz: red
      6 of 6 (on the ceiling, centre in rock, 0.4 m deep), now each stands on its column's top at the same x and z. The
@@ -98,16 +98,16 @@ one regression; branch `fix/l4-void-line`, PR #66). Items 196-201.
      it restates the line's height (red when the line is raised, not on a reset it could tell apart), and the chaos
      harness's probe always answers, so the blind drop and its follow run only in `stuck-in-rock-gates`. Commit
      `ab662a2f`, whose message carries the red runs and the mutation proofs.
-201. **Found, not fixed** (registry rows): REVIEW:l4:centre-clear-capsule-in-rock (a body whose capsule reaches into the
+218. **Found, not fixed** (registry rows): REVIEW:l4:centre-clear-capsule-in-rock (a body whose capsule reaches into the
    rock with its centre in air, anywhere but the spawn corner, is moved by nothing: at `9495a23f` the corner case stayed
-   0.4 m in the ground, and item 197 reads only the centre); REVIEW:l4:origin-corner-dug-through-respawn-loop (the spawn
+   0.4 m in the ground, and item 214 reads only the centre); REVIEW:l4:origin-corner-dug-through-respawn-loop (the spawn
    corner's four columns dug through y 0: every respawn drops, falls out and loops, as at `5f00f246`);
    REVIEW:l4:caves-open-the-world-floor (caves carve the cell at y 0 in 1355 of 6400 columns near the spawn, so a cave's
    floor can open onto the void); REVIEW:l4:round-1-surviving-mutants (SPAWN_PROBE_MAX_SEC at 3.3, the spawn call
    without the frame's step, and the line at 1.85 on the Player gate survived round 1's gates).
 
 The gate on seeds 1 to 8 at the fix (local, the three session files; the field file run again after the clip's driver
-fix of item 200): 56 sessions a seed and no invariant red on any seed; the deepest into solid 0.000 m on every seed; in
+fix of item 217): 56 sessions a seed and no invariant red on any seed; the deepest into solid 0.000 m on every seed; in
 the field file 8 clips and 8 recoveries a seed (176 to 189 frames in the rock, about 22 a clip), and no recovery in the 48
 sessions a seed that never clip; walk-held readings 28, 23, 22, 33, 19, 38, 29 and 29, every one an own shell, none held;
 the deep place's shafts out of the world and its frames under the old line as in the L4 entry's seed run. Seed 7 misses one
@@ -118,23 +118,23 @@ Mutation proofs (`frontend/scripts/dev/mutate.sh` in a throwaway copy, identity 
 all survived) are in the fix commit's trailer: the recovery off (the module, and the Player loop's call alone), to the
 origin, read once a second, without its debounce, and with a reading of air not restarting the window; the blind drop not
 followed, the follow reading the centre, the fallback not marked blind, the follow holding a body off the corner; the fit
-standing the base capsule for a beast form. Each RED; the debounce's removal survives the chaos files (item 197).
+standing the base capsule for a beast form. Each RED; the debounce's removal survives the chaos files (item 214).
 
 ---
 
 ## 2026-10-30 (lane L4) — [LOOP] the void line is the world's floor, the void reset and the respawn go back to the spawn one way, and the spawn waits for its ground in seconds
 
 **Decided by lane L4's builder** (registry AUDIT:lane:L4-void-line-and-spawn-recovery, from the deep audit's section 4,
-`docs/superpowers/audits/2026-10-30-deep-audit.md`; branch `fix/l4-void-line`). Items 190-195; item 196 on separates the
-void line's job from a stuck-in-rock recovery and corrects item 190.
+`docs/superpowers/audits/2026-10-30-deep-audit.md`; branch `fix/l4-void-line`). Items 207-212; item 213 on separates the
+void line's job from a stuck-in-rock recovery and corrects item 207.
 
-190. **The void line is the world's floor, not y 10.** The void guard reset any body whose centre was under y 10, and the
+207. **The void line is the world's floor, not y 10.** The void guard reset any body whose centre was under y 10, and the
    deep ocean's seabed is 6 to 10 (`frontend/src/world/oceanProfile.js` DEEP_FLOOR), and a player can dig to the last
    cell at y 0: standing there, they were taken to the origin with no message (registry
    AUDIT:desync:void-guard-fires-inside-the-playable-world, REVIEW:chaos-play:deep-seabed-under-void-line). The world's
    cells run from y 0 up, so no floor is lower than y 1; a body under the world has nothing below it, and one clipped
    into rock that runs down to y 0 falls through the hollow trimesh onto the bottom face of the cells there (a scratch
-   probe: from y 4 in the rock it stood at 0.95). [Corrected by item 198: this sentence said a clipped body always reaches
+   probe: from y 4 in the rock it stood at 0.95). [Corrected by item 215: this sentence said a clipped body always reaches
    the bottom face; over a cave the ceiling stops it above the line, and nothing then moved it.]
    `frontend/src/game/spawnPlacement.js` puts the line at the base capsule's centre with
    its lowest point half a metre from both floors (y 1.4); every beast form's centre, standing on either, falls on the
@@ -143,7 +143,7 @@ void line's job from a stuck-in-rock recovery and corrects item 190.
    place stands at DEEP_FLOOR (item 156 stood it at 10 to keep it over the old line; superseded). Commit `22955c99`; its
    message leaves out one changed test input, which `c5ea507c`'s message records: `context-loss-gates.test.jsx`'s
    unusable save "a void y" was y 2, where a base capsule stands on the last cell, and is now y 0.5.
-191. **The void reset and the respawn after a death go back to the spawn one way.** The respawn moved the body to the
+208. **The void reset and the respawn after a death go back to the spawn one way.** The respawn moved the body to the
    origin's hold, restarted the probe's wait and moved the camera there (chunk streaming follows the camera, KEVIN-FIX
    C1). The void reset moved only the body: the camera stayed at the fall site, the origin never streamed while the body
    waited, and the probe's count went on from the first spawn's (registry AUDIT:ultra:ultra-player-world-7).
@@ -152,7 +152,7 @@ void line's job from a stuck-in-rock recovery and corrects item 190.
    eye; `Components.jsx`'s void branch and respawn effect both call it, and the frame order is unchanged. The chaos
    harness calls it too. `teleportPlayer` keeps one caller, the store's load, so `combatStance.js` no longer re-exports it
    (knip --production). Commit `c5ea507c`.
-192. **The spawn waits for its ground in seconds: six.** The audit asked for the respawn's late drop at med and high tier
+209. **The spawn waits for its ground in seconds: six.** The audit asked for the respawn's late drop at med and high tier
    to be measured. The wait was 120 frames, 2 s at 60 Hz and 1 s at 120 Hz, and the spawn corner's last chunk (0_0) is
    asked for 1.05 s on at low, 1.95 s at med and 3.15 s at high (`frontend/src/world/Terrain.jsx`: two requests every
    150 ms, row by row across the box round the camera's chunk), so the player was dropped from y 60 over ground still
@@ -163,16 +163,16 @@ void line's job from a stuck-in-rock recovery and corrects item 190.
    | Code | 60 Hz: ended in the ground | 120 Hz: ended in the ground | Blind drops from y 60 |
    |---|---|---|---|
    | `5f00f246` | 4 of 18 (the void reset's 3 at 0.5 s, the respawn's at high) | 5 of 18 | 33 of 36 runs |
-   | `c5ea507c` (item 191, the old wait) | 2 of 18 (high, 0.5 s) | 6 of 18 (every high-tier run, at y 2 to 15.5) | 29 of 36 |
+   | `c5ea507c` (item 208, the old wait) | 2 of 18 (high, 0.5 s) | 6 of 18 (every high-tier run, at y 2 to 15.5) | 29 of 36 |
    | `1c58500c` (this item) | 0 | 0 | 0; every run stood 1.05 to 3.61 s on and walked away |
 
-   Item 190 made the second row worse than the first at high tier: y 10 had reset a body sinking through the rock, and in
+   Item 207 made the second row worse than the first at high tier: y 10 had reset a body sinking through the rock, and in
    those runs the body stopped above the world's bottom face (y 2 to 15.5) at the spawn corner, where the border faces of
    four chunks meet inside the rock (the mesher closes every chunk); why it stops there was not isolated.
    `SPAWN_PROBE_MAX_SEC` (6 s) replaces the frame count; `resolveSpawnGround` takes the seconds waited and the frame's
    step, the Player loop adds its frame's delta. The resume hold's wait is still 600 frames (registry
    REVIEW:l4:resume-wait-counted-in-frames). Commit `1c58500c`.
-193. **The chaos gate's sixth invariant, and the dig-then-reset seed.** I6: the void guard resets no player with ground
+210. **The chaos gate's sixth invariant, and the dig-then-reset seed.** I6: the void guard resets no player with ground
    under their feet (the logical world, the columns the capsule's footprint covers); the instruments show it seeing a
    reset on open land and none under the world or on its bottom face. Every deep-place session ends by digging a
    two-column shaft through the seabed's last cells and out of the bottom of the world, then respawns; the teleport the
@@ -181,15 +181,15 @@ void line's job from a stuck-in-rock recovery and corrects item 190.
    (7 of 8). A one-column shaft did not work as the seed: a capsule within the controller's 0.05 m offset of a wall reads
    grounded on about half its frames and slides down it at the glue speed (registry REVIEW:l4:kcc-grounded-on-wall).
    Commit `22955c99`.
-194. **Two items of the brief were already done.** Spawn ground by `worldBlocks.get(key) > 0`: the audit's verifier ran
+211. **Two items of the brief were already done.** Spawn ground by `worldBlocks.get(key) > 0`: the audit's verifier ran
    `62159bc1`, before item 152 (`3fd4b468`) took the worldBlocks read out of the Player loop; the spawn reads the four
    corner columns by the physics probe (`git merge-base --is-ancestor 3fd4b468 62159bc1` exits 1, and `grep -n
    worldBlocks frontend/src/Components.jsx` lists only the voidhand tint). Raising REVIEW:fix-invisible-box:respawn-counts-
    mined to HIGH: the row was closed by `3fd4b468`, and the verifier's trap (moved 0 m after digging at the origin and
    a void reset) was the read item 152 removed; at `5f00f246` the chaos origin sessions dig that column before their fall
    (floor respawnsAfterOriginMine 2) and none is held.
-195. **Found, not fixed.** REVIEW:l4:kcc-grounded-on-wall (item 193) and REVIEW:l4:resume-wait-counted-in-frames (item
-   192), each a registry row with its measurement.
+212. **Found, not fixed.** REVIEW:l4:kcc-grounded-on-wall (item 210) and REVIEW:l4:resume-wait-counted-in-frames (item
+   209), each a registry row with its measurement.
 
 The gate on seeds 1 to 8 after the fixes (at `1c58500c`, local, the three session files): 56 sessions a seed, none red,
 the deepest into solid 0.000 m on every seed; walk-held readings 32, 21, 26, 30, 22, 37, 28 and 28, every one an own

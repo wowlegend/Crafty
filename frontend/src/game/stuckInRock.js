@@ -5,7 +5,7 @@
 // landed round it, a drop onto ground still streaming in) touches no face from inside and falls through the rock until
 // the back of a face stops it. Under most of the world that is the bottom face of the cells at y 0, under the void guard's
 // line (spawnPlacement.js isVoidFall); over a cave it is the cave's ceiling, above the line, and the controller has no
-// depenetration, so the player stayed in the rock (DECISIONS 2026-10-30 item 196: a cave ceiling between y 1.5 and 9
+// depenetration, so the player stayed in the rock (DECISIONS 2026-10-30 item 213: a cave ceiling between y 1.5 and 9
 // under 1483 of 6400 columns within 40 m of the spawn). The void line handles a fall out of the world; this handles a
 // body in the rock.
 //
