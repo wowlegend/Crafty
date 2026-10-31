@@ -27,6 +27,8 @@ import { buildSaveData } from '../../src/game/saveSchema.js';
  *   P5 plausible-wrong: the oldest empties are kept, not the newest      -> RED expected
  *   P6 a failed write is not retried after the prune                      -> RED expected (the quota case)
  *   P8 the saves are deleted when the index write is refused              -> RED expected
+ *   RV1-RV7 one read of what was earned dropped each (XP, a block, a chest, the win, a claimed quest, a level, a save
+ *     with no progression slice counted empty)                           -> RED expected (the one-field case)
  *   P0 identity (a comment edit)                                         -> must SURVIVE
  */
 
@@ -130,6 +132,43 @@ describe('a browser keeps at most KEEP_EMPTY_SLOTS empty placeholder worlds', ()
     const listed = slots().map((w) => w.id);
     expect(listed.length, 'SETUP: the index lost its entries').toBe(5);
     expect(listed.filter((id) => !localStorage.getItem(`crafty_world_save_${id}`)), 'the index names worlds whose saves were deleted').toEqual([]);
+  });
+
+  it('one thing earned is enough: a world holding only it, under four newer empty worlds, is kept and continued', () => {
+    // Each case is one field a save records, the rest a new world's. The control is the new world itself.
+    const cases = [
+      ['nothing (the control)', {}, false],
+      ['coins', { coins: 7 }, true],
+      ['XP at level 1', { totalXP: 40, currentXP: 40 }, true],
+      ['a level and no XP', { level: 3 }, true],
+      ['a block edited', { worldBlocks: new Map([['3_40_0', 1]]) }, true],
+      ['a chest', { chests: new Map([['3_40_0', { inventory: {} }]]) }, true],
+      ['the win', { gameWon: true }, true],
+      ['a claimed quest', { questState: { completedQuestIds: ['first_steps'] } }, true],
+      ['no progression slice (a save from before it)', null, true],
+    ];
+    const seen = [];
+    for (const [what, state, earned] of cases) {
+      localStorage.clear();
+      sessionStorage.clear();
+      if (state) onDisk('local_one', { state });
+      else {
+        onDisk('local_one');
+        const blob = worldSaves.readWorld('local_one');
+        delete blob.progression;
+        localStorage.setItem('crafty_world_save_local_one', JSON.stringify(blob));
+      }
+      for (let i = 0; i < 4; i++) onDisk(`local_orphan_${i}`);
+      tick();
+      useGameStore.setState(useGameStore.getInitialState(), true);
+      bootWorld({ store: useGameStore, session: sessionStorage, saves: worldSaves });
+      const ids = slots().map((w) => w.id);
+      // PRESENCE: the boot's prune ran over this disk (the oldest of the four empty worlds is one past the three kept).
+      expect(ids.includes('local_orphan_0'), `SETUP (${what}): the boot pruned nothing`).toBe(false);
+      seen.push([what, ids.includes('local_one'), S()._sessionWorldId === 'local_one']);
+    }
+    expect(seen, 'a world with one thing earned was deleted or passed over, or the empty control was kept')
+      .toEqual(cases.map(([what, , earned]) => [what, earned, earned]));
   });
 
   it('a save that fails for room deletes every other empty placeholder world and lands; nothing is said', async () => {
