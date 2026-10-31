@@ -90,8 +90,9 @@ beforeEach(() => {
   t = 0;
   _resetShake();
   resetInput();
-  // A placed block at the origin column is where the loop stands the player (game/spawnPlacement.js).
-  useGameStore.setState({ isCaptureMode: false, isAlive: true, worldBlocks: new Map([['0_50_0', 1]]) });
+  // The ground probe (Terrain.jsx getMobGroundLevel) answers the floor's top at the spawn's columns, where the loop stands
+  // the player (game/spawnPlacement.js spawnCornerGround).
+  useGameStore.setState({ isCaptureMode: false, isAlive: true, getMobGroundLevel: () => 50 });
 });
 afterEach(() => {
   cleanup();
@@ -99,7 +100,7 @@ afterEach(() => {
   _resetShake();
   resetInput();
   useGameStore.setState({
-    isAlive: saved.isAlive, worldBlocks: saved.worldBlocks, ember: saved.ember, unlockedTalents: saved.unlockedTalents,
+    isAlive: saved.isAlive, getMobGroundLevel: saved.getMobGroundLevel, ember: saved.ember, unlockedTalents: saved.unlockedTalents,
     beastFormActive: false, activeBeastForm: null, beastCharging: false,
   });
 });

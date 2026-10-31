@@ -105,6 +105,207 @@ mob-floor.spec.js:227 fails its first attempt in all four recent runs on three b
 terrain code (`REVIEW:e2e-flakes:mob-floor-roof-floor-infinity`), and hud-at-rest.spec.js:354 failed once, where the run
 before it, on identical `src/`, passed it first time (`REVIEW:e2e-flakes:hud-at-rest-tracker-tap-canvas`).
 
+---
+
+## 2026-10-30 (chaos play, round 3) — [LOOP] a placement moves the collider with the body, so the next frame sweeps from where the player stands
+
+**Decided by the chaos-play lane's round-3 fixer** (the round-2 dynamic review said FIX on one defect; the static review's
+finding 1 is the same mechanism and its finding 2 a missing test). Items 168-170.
+
+168. **The load's release and the origin spawn move the collider with the body** (round-2 dynamic blocker; static finding
+   1). Rapier moves a body's colliders only at a world step (rapier3d-compat 0.19.2,
+   `World.propagateModifiedBodyPositionsToColliders`; @react-three/rapier 2.2.0 never calls it), and at 120 Hz every
+   other frame takes no step. Components.jsx's resume branch put the fitted spot with a bare `setTranslation`, so on a
+   frame with no step `moveKinematic` swept from the collider still at the held spot, in the wall and the ceiling, and
+   wrote that movement onto the fitted spot: a save from the old Save button at the tunnel's mouth, (-4, 32, -8), was
+   fitted to (-4.45, 31.05, -8) and went back to y 31.92, 0.4 m into the ceiling cell with the eye in it and no way out.
+   The origin spawn had the same shape: after a fall through the world at terminal speed (50 m/s) the frame after the
+   spawn swept 0.42 m down from the sky the void guard had held the body in, and stood the capsule 0.117 m into the
+   origin's ground for good. `game/kinematicMove.js placeBody` (moved there from `formFit.js`, whose form swaps already
+   used it) sets the translation and propagates; the resume branch and the spawn placement call it, in Components.jsx and
+   in the chaos harness's copy. Red first on `54e5bd51`: `chaos-play-loads.test.jsx` gains the tunnel case against its
+   east wall (x -4.45; red at 120 Hz lag 4 and lag 0, I1 and I2 39 frames each), the tunnel's mouth on both frame phases
+   (red at both 120 Hz runs, depth 0.4) and a respawn after a fall at terminal speed on both phases (red at 120 Hz, depth
+   0.117); the new `tests/gates/player-placement-gates.test.jsx` mounts the real Player against real Rapier and the
+   harness's world and reads the same two cases off Components.jsx's own frame (red: depth 0.4 with the eye in solid;
+   depth 0.117). Each 120 Hz case asserts that one of its two phases placed the body on a frame followed by one with no
+   world step, so a change of phase cannot pass it over nothing. Every 60 Hz row was green before the fix: at 60 Hz every
+   frame steps. Commit `03f54364`.
+169. **Every other teleport of the player body was checked against that sweep, and none reaches it.** The respawn effect
+   (`isAlive` false to true), the void guard (`teleportPlayer`), the sky freeze before the world is built (`isWorldBuilt`
+   is only ever set true, App.jsx), the load's hold, the spawn probe's retry and `loadWorldData`'s teleport each leave the
+   next frame in the spawn branch, which returns before the sweep and ends in one of item 168's two placements. The form
+   swaps (`enterFormFitted`, `restoreBaseFitted`) already propagated. The DEV and test tools that move the body
+   (`devtest/devBridge.js`, `render/lookbookSeam.js` stand, the debug overlay's teleport to (0, 80, 0)) are outside the
+   Player loop; the debug teleport lands in open sky.
+170. **The hold's corner probe has a test that fails when it is reverted** (static finding 2: the harness asks
+   `resumeColumnProbe` itself, so reverting Components.jsx's call left every test green). The cheapest place that runs
+   Components.jsx's own branch is the jsdom mount of item 168: a save 0.05 m from a chunk border, with the chunk across it
+   not back, is held 20 frames and let go once it is, onto the column's top. Reverted to `store.getMobGroundLevel(r.x,
+   r.z)` it lets go on the first frame. No e2e was needed. Commit `03f54364`.
+
+The gate on seeds 1 to 8 after the fix (at `7065b64a`, local, the three session files): 56 sessions a seed, none red,
+the deepest into solid 0.000 m on every seed; walk-held readings 33, 21, 25, 28, 21, 33, 27 and 30, every one an own
+shell, none held. Seed 2 misses the same SETUP floor as in item 165 (field-origin swapsRefused 1, floor 2). The loads
+file, the instruments and the new gate: 70 of 70. The walk-held counts differ from item 165's: the harness's placements
+now move the collider at once, so the frames after each load and respawn in a session, and the session from there on,
+are not the ones round 2 played.
+
+Mutation proofs (`scripts/dev/mutate.sh` in a throwaway copy; an identity mutant first and last, both survived): on the
+gate, the resume branch's bare `setTranslation`, the spawn's bare `setTranslation`, the corner probe reverted, `placeBody`
+without its propagate and `placeBody` propagating before the move each RED; on the loads file, `placeBody` without its
+propagate, the harness's release and the harness's spawn each RED.
+
+---
+
+## 2026-10-30 (chaos play, round 2) — [LOOP] every save loads clear, the gate cannot pass by accident, and the loop's wiring is driven
+
+**Decided by the chaos-play lane's round-2 fixer** (Workflow wf_66ad2ad9-e69; the static and dynamic reviews of round 1
+both said FIX). Round 1's gate (items 150-154) only ever loaded saves it had just written, at a seabed of 22 or higher, in
+the base shape, on one seed, and the harness models the Player loop rather than importing it. Items 155-159 and 165-167
+(160-164 are lane L1's).
+
+155. **A load stands the base capsule where it fits nearest the saved spot** (static F1, a blocker). Item 154 placed the
+   body exactly at the saved position, and saves on disk hold positions no capsule fits at: the old Save button's camera
+   rounded to whole metres (0.5 m into a wall, the head up to 1.17 m into a ceiling), the pre-cut fixture's (3, 21, 6) in
+   the ground. `game/formFit.js fitLoadedSpot`: the saved centre where the capsule is clear and its centre's cell is not
+   solid ground, else the nearest such spot within 0.6 m sideways, 1.2 m down, 0.6 m up, else on the highest column the
+   capsule stands across. A trimesh is hollow, so solid ground is read by parity (`cellSolid`: a ray up the cell's column
+   crosses each chunk's closed mesh an odd number of times from inside). The gate: a third of the driver's saves are
+   old-button saves, I1 and I2 do not read the hold's frames, and I5 bounds them (released within 2 x lag + 12 frames,
+   never to the origin); `chaos-play-loads.test.jsx` pins the pre-cut fixture and three old-button saves.
+   `quest-text.spec.js`'s fixture position is restored (the load now stands that player on the column's top). Commit
+   `4a76f1bb`. **Item 154's hold stands; its placement is superseded by this item.**
+   - The fit's corners (found by item 165's seed run): the hold now waits until the four corner columns of the square the
+     fit reads answer the probe (`game/spawnPlacement.js resumeColumnProbe`), not only the saved column; a fit run while
+     the chunk across a border had not streamed back stood the capsule 0.4 m into it. Commit `f693ab63`.
+156. **A save made over the deep ocean resumes there** (static F2, a blocker). The hold took a probe answer as proof the
+   column was in only above 15, and the full-ocean seabed lies at 6 to 10: held 600 frames, then reset to the origin. Any
+   finite answer is now proof (the height is never used). The harness has a deep-ocean place (seabed 10). Commit
+   `5f840cd0`.
+157. **A save in a form writes the base capsule's centre over the form's feet** (dynamic finding A, a blocker; the comet's
+   centre stood the base capsule 0.13 m into the floor). Each session's save is tried in a form rotated over its place's
+   eight sessions; the loads file pins every form, pressed into the cliff and on open ground. Commit `6faa9522`.
+158. **The placement guard reads the body, not its collider, after a teleport.** Found by the deep place: a click on the
+   frame of a respawn read the capsule where its collider had been before the teleport and put a block 0.4 m into the
+   player. Commit `8f2d227c`.
+159. **I3: a way out by mining only the player's own blocks, with no click limit; a wedge reads held** (static F3, dynamic
+   B). Supersedes item 150's "after at most three left clicks along one heading". A state only mining generated ground
+   would leave is a defect; each walk-held reading is printed with its class. The instruments pin I1's tolerance (0.1 m
+   into a wall), I3's record and both of I5's readings (round-1 survivors: TOL widened to 0.3, I3 never recorded). Commits
+   `cba50fc7`, `f9d7280a`.
+165. **The gate on seeds 1 to 8, run locally after the fixes** (CI plays seed 1; `CHAOS_SEED=<n>` plays another):
+
+   | Seed | Sessions (56) red | Walk-held readings | Of them held | Deepest in solid | Denominator floors |
+   |---|---|---|---|---|---|
+   | 1 | 0 | 31 | 0 | 0.000 m | all met |
+   | 2 | 0 | 24 | 0 | 0.000 m | field-origin swapsRefused 1, floor 2 (SETUP) |
+   | 3 | 0 | 24 | 0 | 0.000 m | all met |
+   | 4 | 0 | 30 | 0 | 0.000 m | all met |
+   | 5 | 0 | 21 | 0 | 0.000 m | all met |
+   | 6 | 0 | 33 | 0 | 0.000 m | all met |
+   | 7 | 0 | 27 | 0 | 0.000 m | all met |
+   | 8 | 0 | 30 | 0 | 0.000 m | all met |
+
+   The first run, before item 155's corners, had seed 5 red (origin, 120 Hz, lag 0: 0.4 m into the chunk across a
+   border, fixed by `f693ab63`) and seed 2's same floor miss. Seed 2's miss is the driver reaching one refused swap where
+   seed 1 reaches three, not a game defect; the floors stay set from seed 1, the seed CI plays.
+166. **The Player loop's load and form wiring is driven in the game** (dynamic finding C: reverting it left every unit
+   test green). `tests/e2e/load-hold.spec.js`: a load holds the body at the saved height every drawn frame until it lets
+   go there; a save 1.5 m in the ground stands the player on the column's top; the golem under a two-high ceiling is
+   refused and said, and swaps in on open ground. Proven on dispatched branches carrying this spec's final text, the e2e
+   job narrowed to it (the branches stop at `c80c6ae5`, before `f693ab63`; the PR's own CI runs the spec on the lane's
+   head): control `mut/chaos-wiring-ctl` run 41128290264, 3 passed on first attempts; the hold condition reverted to
+   `!spawnPosSet.current` (`mut/chaos-wiring-hold`, run 41128295530) red on both load cases, 3 of 3 attempts each ("the
+   body dropped under the saved height while the world re-streamed", "the load never let the player go"); the load fit's
+   line bypassed (`mut/chaos-wiring-fit`, run 41128301592) red on the buried save, 3 of 3 ("the player was left in the
+   ground under the column's top"); the frame swap falling back to the unfitted swap (`mut/chaos-wiring-form`, run
+   41128307279) red on the golem, 3 of 3 ("the golem was swapped in under the ceiling"). Each branch's unit job failed only
+   on `ci-required-check.test.js`, which the narrowed matrix breaks; the other 603 unit files passed. The branches stay on
+   origin for the command session to delete. Closes REVIEW:chaos-play:load-hold-e2e.
+167. **Small fixes.** F4: a form refused on the frame after the roar gives the roar's price back and cuts the reveal
+   (`game/formRefusal.js`, `c80c6ae5`; red first was the absent module, the paid-path wiring is unit-tested only). F5:
+   block debris is not an obstacle to the form fit (`89c2aa8f`). F7: item 150 and the instruments' header said all four
+   invariants read the voxel grid; I3 reads a sandbox of the landed meshes and live stand-ins, I4 the world's colliders
+   (corrected in `cba50fc7` and in item 150 here). F8: five comments cited a test file that never existed (`38892f07`).
+
+**Also found, not fixed here (registry rows, owner the command session):** the deep seabed (6 to 10) lies under the
+void line (a body centre under 10), so a player who sinks to it in the deep ocean is reset to the origin
+(REVIEW:chaos-play:deep-seabed-under-void-line); a form entered from the store rather than the roar is ended by the
+transform timer on the next frame (REVIEW:chaos-play:store-form-ends-next-frame).
+
+---
+
+## 2026-10-30 (chaos play) — [LOOP] a standing gate that plays the game adversarially: the player can always leave
+
+**Decided by the chaos-play lane** (branch `feat/chaos-play-gate`, registry REVIEW:chaos-play:player-can-leave). Kevin
+found the invisible box in five minutes of chaotic clicking near the ocean, after a week of reviews that never caught it:
+every review and gate was scoped to a diff, nothing played the game adversarially, and the trap shows in no frame and no
+console line, only in "can the player still move" (AB episode 1230). Items 150-154.
+
+150. **The chaos-play gate.** `tests/integration/chaos-play-{shore-cliff,cave-overhang,field-origin}.test.jsx` play 48
+   seeded sessions (six places: the shore, a cliff face, a two-high tunnel, an overhang, open field, the origin column;
+   60 and 120 Hz; trimesh 0, 2, 4 or 8 frames late) against the real Rapier build, the real mesher and the real verb
+   executors in the game's frame order, and read four invariants after every frame (I1 and I2 from the voxel grid, I3
+   from a sandbox of the landed meshes and live stand-ins, I4 from the world's colliders; corrected by item 167): the
+   capsule in no solid cell deeper than 5 mm (a tenth of the controller's 0.05 m offset), the eye in no solid cell, a way out every
+   90 frames and at the end (a metre's move within a second walking or jump-walking, or after at most three left clicks
+   along one heading: a shell the player built is not a trap), and no stand-in outliving its mesh by a step.
+   `chaos-play-instruments.test.jsx` shows each instrument seeing its positive case first. Each file asserts floors on
+   the risky events it reached (clicks aimed into the body, wall contacts, two clicks between one pair of frames, swaps
+   under a ceiling and against a wall, refused swaps, loads and the frames a load held the body, respawns, respawns
+   after an origin-column dig and build) and prints them, so a seed set that stops reaching the dangerous geometry
+   fails as SETUP. About 25 s on four workers locally. **Controls:** with e177b5b8's placeAtHit.js (the guard, no
+   stand-ins) 41 of 48 sessions go red on I1 (12 also on I2, 1 on I3); with 4a01607b's (no guard) all 48 on I1 and I2,
+   5 on I3. I3 reads most of e177b5b8's late-trimesh traps as free because item 131's left click takes a placed block
+   around the eye.
+   - **The harness keeps a collider far below the world.** Without it, one history made rapier3d-compat 0.19.2 panic
+     ("unreachable") in `world.step` at the first collider created after a load's wipe had left only the player's
+     capsule in the broad phase. Replaying the recorded world ops on a fresh world did not panic, and the game's own load
+     e2e passes on CI; it is a lead, not a finding (registry REVIEW:chaos-play:rapier-panic-after-wipe).
+   - **What it does not check:** React's effect order and Terrain.jsx's own wiring (the harness models the wipe, the
+     resume branch and the form effect from the code; the e2e suite drives the real ones), mobs, dodge, the accel ramp,
+     the camera's bob, chunk streaming by distance, anything rendered.
+
+151. **A form swap places the new capsule where it fits; a form with no room is refused.** Supersedes S2-B1-M1's
+   grow-depenetration (the body lifted by the half-height's growth, unswept). The gate found the bull 0.12-0.21 m into
+   the ground on open land, the golem 0.25 m into a tunnel's ceiling and held, and ending the comet form left the base
+   capsule in the floor or a wall (the restore was called "always a shrink"; the comet and the hawk are narrower than
+   the base). `game/formFit.js` keeps the lower end, then takes the nearest spot on a 0.05 m grid (0.35 m sideways,
+   0.4 m down, 0.15 m up) clear of every collider, the unindexed ones included; the roar's commit refuses a form with no
+   room before the bar is spent ("No room to change shape here"), and the base shape comes back regardless. Rapier
+   0.19.2's capsule query missed a capsule half a radius into a roof when the core segment's end lay just short of the
+   face, so a passing spot is confirmed by balls along the axis. A refusal costs about 4 ms in node. Commit `d6579509`.
+
+152. **The respawn stands the player on the highest of the four columns its corner stands across.** The spawn is at
+   x 0 z 0, where four columns meet; the Player loop read the store's worldBlocks at column 0_y_0 by has() (a mined
+   cell counted as ground, and a cell's index taken for its top face) and otherwise probed one column. 6 of 8 origin
+   sessions ended held with the capsule 0.4 m into a neighbouring column. `game/spawnPlacement.js spawnCornerGround`
+   probes all four and takes the highest; the worldBlocks read is gone from the loop. Commit `3fd4b468`.
+
+153. **A save stands a loaded player at the body's centre.** The World Manager's Save wrote the camera's position
+   rounded to whole metres, loaded as the body's centre: up to half a metre into a wall, or the head in a two-high
+   ceiling (14 of 48 sessions red on I1 after such a load). `game/saveSchema.js savePosition` is the one reader for the
+   Save button, the autosave and the context-loss save. Old saves keep their rounded position (registry
+   REVIEW:chaos-play:old-manual-saves-rounded). Commit `bfb61857`.
+
+154. **A load holds the player at the saved position until the new world's column is in.** Between Terrain.jsx's wipe of
+   the old chunks and the new chunk's arrival there was no ground: the player fell, and the new trimesh landed around a
+   capsule sunk 0.04 m (4 frames) to 0.27 m (8 frames) into the ground, which the controller then read as grounded. The
+   store's loadWorldData sets resumeSpawn and worldReloading; the Player's resume hold, until now only for the
+   context-loss resume, also runs in play, and does not ask the ground probe until Terrain.jsx has committed the wipe. Commit
+   `a3f4a351`; the gate itself is `b25feb0c`.
+
+**Also found, not fixed here (registry rows, owner the command session):** holding jump into any sheer face climbs it,
+not only in a one-block shaft: the controller reads ground against the wall on some frames and each re-arms the jump
+(a six-high cliff climbed at 60 and 120 Hz; REVIEW:fix-invisible-box:shaft-wall-climb, widened); a capsule sunk into the
+rim of a hole it dug under a two-high ceiling neither walks nor jumps out, and three left clicks free it
+(REVIEW:chaos-play:rim-wedge); `moveKinematic`'s unswept lift is no longer used by the game
+(REVIEW:chaos-play:movekinematic-lift-unused); the load hold's real wiring is not driven by any e2e that asserts the
+player was held (REVIEW:chaos-play:load-hold-e2e).
+
+---
+
 ## 2026-10-30 — [LOOP] L1: a death on iOS shows YOU DIED, the lock goes on the canvas only, Show Stats and the juice dial, and every button over the game answers a finger
 
 **Decided by the L1 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L1 of the 2026-10-30 deep
@@ -176,6 +377,8 @@ audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4). PR #62. E
 
 **Not covered:** a real iPhone or iPad (item 161); a tap on Keep exploring or the context-loss panel in a browser (jsdom
 only); the release while a lock request is pending (item 160).
+
+---
 
 ## 2026-10-30 — [LOOP] W2-L: every animated element renders `m`, under one strict LazyMotion provider
 

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useGameStore } from './store/useGameStore';
 import { useT } from './i18n/i18n.js';
-import { buildSaveData } from './game/saveSchema.js';
+import { buildSaveData, savePosition } from './game/saveSchema.js';
 import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, mintWorldId, setActiveWorldId } from './game/worldSaves.js';
 
 export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
@@ -43,7 +43,7 @@ export const WorldManager = ({ gameState, onWorldLoad, onClose }) => {
   const saveCurrentWorld = async () => {
     const name = `Guest's World - ${new Date().toLocaleDateString()}`;
     // ONE serializer (buildSaveData) for the local blob.
-    const saveData = buildSaveData(useGameStore.getState(), { position: useGameStore.getState().playerPosition });
+    const saveData = buildSaveData(useGameStore.getState(), { position: savePosition(useGameStore.getState()) });
     const meta = { name, created_at: new Date().toISOString(), is_public: false, is_owner: true };
     const persistLocal = () => {
       // B2a: reuse the slot THIS SESSION owns, so a manual "Save" and the autosave converge on ONE

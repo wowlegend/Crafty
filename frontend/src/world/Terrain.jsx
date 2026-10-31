@@ -492,6 +492,16 @@ export const MinecraftWorld = React.memo(() => {
         markChunkUnloaded(key);
     }, []);
 
+    // A load's wipe (load_modifications_done below) is committed once the chunk map has changed after it: by then every old
+    // chunk's trimesh is removed (their cleanups run before this effect), so the ground probe can answer only from the new
+    // world, and the Player's hold on the loaded position may ask it (store worldReloading).
+    const reloadWipeRef = useRef(false);
+    useEffect(() => {
+        if (!reloadWipeRef.current) return;
+        reloadWipeRef.current = false;
+        useGameStore.setState({ worldReloading: false });
+    }, [chunks]);
+
     // Expose chunks state for debugging
     useEffect(() => {
         useGameStore.setState({ debugChunks: chunks });
@@ -545,6 +555,7 @@ export const MinecraftWorld = React.memo(() => {
                 // The loaded-chunk registry empties itself as each ChunkMesh unmounts (its layout-effect cleanup),
                 // at the commit that removes it — clearing it here, BEFORE that commit, left the old chunks drawn
                 // with the far field no longer punched out beneath them (review #3, R4.3).
+                reloadWipeRef.current = true;
                 setChunks({});
                 placedCells.clear();
                 // B2d: ...and wipe the record of having REQUESTED those chunks. Without this the

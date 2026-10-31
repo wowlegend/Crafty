@@ -22,6 +22,9 @@ export function deniedReason(kind, ctx = '') {
     // A placement into a cell the player's own body fills (world/placeAtHit.js).
     case 'in-the-way':
       return t('deny.inTheWay');
+    // A beast form with no room where the player stands (game/formFit.js).
+    case 'no-room':
+      return t('deny.noRoom');
     // The talk verb (input/talk.js) with no villager and no chest in reach.
     case 'no-talk':
       return 'Nobody near enough to talk to';

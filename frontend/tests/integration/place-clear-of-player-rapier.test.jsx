@@ -331,6 +331,19 @@ describe('a right-click never puts a block inside the player (real Rapier, real 
     expect(r.placed, 'the refused placement reports a cell placed').toBe(0);
   });
 
+  it('right after a teleport (a respawn, a load), before any world step, a right-click at the new feet\'s cell is refused', () => {
+    // The Player loop's spawn and resume branches move the body with setTranslation; its collider follows only at the next
+    // world step, and a click can land in between (chaos session deep, 120 Hz, lag 8, seed 1: a click on the frame of the
+    // respawn put a block into the capsule at the origin). The guard reads where the body is, not where its collider was.
+    const S = makeScene({ x: 4.45, z: 8.3 });
+    S.p.body.setTranslation({ x: 9.45, y: LAND_TOP + 0.95, z: 8.3 }, true);
+    expect(S.p.collider.translation().x, 'SETUP: the collider already followed the teleport').toBeCloseTo(4.45, 3);
+    const h = buildRay(S, { x: 0, y: -1, z: 0 });
+    expect(h && h.toi, 'SETUP: the ray down from the new eye does not reach the ground').toBeLessThan(2);
+    const r = rightClick(S, h);
+    expect(r.placed, `a block was placed into the teleported body (cells ${JSON.stringify(r.cells)})`).toBe(0);
+  });
+
   it('the control: the same click at the step from a metre back places the block, and the player still walks', () => {
     const S = makeScene({ x: 4.5, z: 8.5, edits: [[2, LAND_TOP, 8, SAND], [2, LAND_TOP + 1, 8, SAND]] });
     const h = buildRay(S, { x: -1, y: 0, z: 0 });
