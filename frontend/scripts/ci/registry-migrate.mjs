@@ -169,23 +169,31 @@ export function migrate({ baseText, currentText, dispositions, landing = [], tri
   const byId = group(dispositions);
   const landById = group(landing);
   const report = {
-    rows: 0, unchanged: 0, migrated: 0, addedAfterBase: [], laneTouched: [], laneClosureKept: [], forReading: [],
+    rows: 0, unchanged: 0, migrated: 0, alreadyMigrated: 0, addedAfterBase: [], laneTouched: [], laneClosureKept: [], forReading: [],
     landed: [], conflicts: [], created: [], createExists: [], refused: [],
   };
   const out = [];
   const seen = new Set();
-  const finish = (id, merged, original, current) => {
+  /** The row this run writes from a merged one: its landing records applied, the placeholder replaced. */
+  const complete = (id, merged) => {
     const L = landById.get(id) ?? [];
-    const row = L.length ? landed(merged, L, id) : merged;
-    if (L.length) report.landed.push(id);
+    const row = L.length ? landed(merged, L, id) : { ...merged };
     if (substitute && row.closedBy === PLACEHOLDER) row.closedBy = triageRef;
-    if (row.note && row.note.length > NOTE_MAX) report.conflicts.push(`${id}: the composed note is ${row.note.length} characters, over ${NOTE_MAX}`);
-    if (substitute && row.closedBy === PLACEHOLDER) report.conflicts.push(`${id}: closedBy is still ${PLACEHOLDER}`);
-    // `updated` is derived: it moves when the row's content does, so it is left out of the comparison.
-    // ordered() drops a field set to undefined (a note composed to nothing), as the written line would.
+    return row;
+  };
+  // `updated` is derived: it moves when the row's content does, so it is left out of the comparison.
+  // ordered() drops a field set to undefined (a note composed to nothing), as the written line would.
+  const sameContent = (row, current) => {
     const { updated: _a, ...a } = ordered(row);
     const { updated: _b, ...b } = current;
-    if (deepEqual(a, b)) {
+    return deepEqual(a, b);
+  };
+  const finish = (id, merged, original, current) => {
+    const row = complete(id, merged);
+    if (landById.has(id)) report.landed.push(id);
+    if (row.note && row.note.length > NOTE_MAX) report.conflicts.push(`${id}: the composed note is ${row.note.length} characters, over ${NOTE_MAX}`);
+    if (substitute && row.closedBy === PLACEHOLDER) report.conflicts.push(`${id}: closedBy is still ${PLACEHOLDER}`);
+    if (sameContent(row, current)) {
       report.unchanged += 1;
       return original;
     }
@@ -214,6 +222,13 @@ export function migrate({ baseText, currentText, dispositions, landing = [], tri
       continue;
     }
     const O = ours(B, recs);
+    // Already migrated: the file holds what this run would write (a re-run), so nothing in it is a lane's change.
+    if (sameContent(complete(id, O), T)) {
+      report.alreadyMigrated += 1;
+      report.unchanged += 1;
+      out.push({ id, line });
+      continue;
+    }
     const laneChanged = fieldsOf(B, T).filter((k) => !deepEqual(B[k], T[k]));
     if (!laneChanged.length) {
       out.push({ id, line: finish(id, O, line, T) });
@@ -365,7 +380,7 @@ function main() {
     for (const i of items) console.log(`  ${i}`);
   };
   console.log(`registry-migrate: ${report.rows} rows read from ${REGISTRY}; base ${baseRef}; ${dispositions.length} triage records, ${landing.length} landing records`);
-  console.log(`  ${report.migrated} rows rewritten, ${report.unchanged} unchanged, ${report.created.length} new rows appended, ${report.createExists.length} new rows already present`);
+  console.log(`  ${report.migrated} rows rewritten, ${report.unchanged} unchanged (${report.alreadyMigrated} of them already migrated), ${report.created.length} new rows appended, ${report.createExists.length} new rows already present`);
   list('rows a lane changed since the base (the lane\'s fields kept)', report.laneTouched);
   list('rows a lane closed (its closure kept)', report.laneClosureKept);
   list('fields both sides changed, for reading', report.forReading);

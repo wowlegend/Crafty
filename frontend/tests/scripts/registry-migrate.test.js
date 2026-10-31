@@ -39,6 +39,9 @@ describe('registry-migrate on the snapshot', () => {
     const second = run(first.text, { substitute: false });
     expect(second.text).toBe(first.text);
     expect(second.report.migrated).toBe(0);
+    expect(second.report.alreadyMigrated).toBe(767);
+    expect(second.report.laneTouched).toEqual([]);
+    expect(second.report.laneClosureKept).toEqual([]);
     expect(second.report.created).toEqual([]);
     expect(second.report.createExists).toHaveLength(32);
   });
