@@ -29,7 +29,7 @@ export const SURFACES = [
 export const ORDER = [
   { path: '`cd frontend && npm run orient`', note: 'HEAD, CI on main and on HEAD, the live Production sha, open PRs, unmerged worktrees, the cursor, registry counts. A main that is not green outranks every queue item.' },
   { path: '`memory/ACTIVE_PLAN.md`', note: 'the cursor: the live task table and the next step.' },
-  { path: '`memory/registry.jsonl`', note: 'the one home for open work. Add a row for anything new; close a row with `closedBy`, never delete one.' },
+  { path: '`memory/registry.jsonl`', note: 'the one home for open work; how a row is written, laned and closed is `.claude/rules/registry.md`. Closed is final.' },
   { path: '`docs/superpowers/DECISIONS.md`', note: 'the decision record. A reversal is a new dated entry naming the one it supersedes.' },
   { path: '`memory/STATUS.md`', note: 'where the project stands; its §2 and G-ledger are the record the registry was harvested from.' },
   { path: '`docs/superpowers/INDEX.md`', note: 'the doc map: what to read, and which docs are history.' },

@@ -102,7 +102,7 @@ denied. Measure load (`uptime`) before blaming a gate. Detail: `.claude/rules/ga
   start: `.claude/rules/game-code.md` (`frontend/src/`: looks, capture guards, the Player loop, engine core, P4, design
   language), `.claude/rules/gates-and-probes.md` (tests and scripts: denominators, gate first, probe ports, the
   compositor, every gate and where it runs), `.claude/rules/input-and-pointer-lock.md`, `.claude/rules/physics.md`,
-  `.claude/rules/voxel-mesher.md`.
+  `.claude/rules/voxel-mesher.md`, `.claude/rules/registry.md` (a row's fields, lanes and how it closes).
 
 ## Building and judging
 
@@ -127,7 +127,7 @@ The lookbook is read by a person; no gate runs it.
 
 1. `cd frontend && npm run orient` — HEAD, CI on main and on HEAD, the live Production sha, open PRs, unmerged worktrees, the cursor, registry counts. A main that is not green outranks every queue item.
 2. `memory/ACTIVE_PLAN.md` — the cursor: the live task table and the next step.
-3. `memory/registry.jsonl` — the one home for open work. Add a row for anything new; close a row with `closedBy`, never delete one.
+3. `memory/registry.jsonl` — the one home for open work; how a row is written, laned and closed is `.claude/rules/registry.md`. Closed is final.
 4. `docs/superpowers/DECISIONS.md` — the decision record. A reversal is a new dated entry naming the one it supersedes.
 5. `memory/STATUS.md` — where the project stands; its §2 and G-ledger are the record the registry was harvested from.
 6. `docs/superpowers/INDEX.md` — the doc map: what to read, and which docs are history.

@@ -27,7 +27,7 @@ import { installWorldHold } from './_worldHold.js';
 // own timers, which run in a worker thread the page clock does not reach. A starvation interval at the old rate (0.1
 // hunger per 5 s) starves at 83.3 minutes, past the ten-minute window, so only the 84-minute case in
 // tests/gates/pause-holds-timers-gates.test.jsx can see it; this window is built to see one fast enough to starve
-// inside ten, and no browser mutant has shown that (registry REVIEW:w2f:hunger-e2e-mutants-unrun).
+// inside ten, and no browser mutant has shown that (registry TRIAGE:e2e-browser-mutants-unrun).
 //
 // Mutation-Proof: see the commit trailers (the unit mutants, run against tests/store/preCutSave.test.js and
 // tests/gates/free-placement-gates.test.js). These cases need a browser, so CI runs them; no local mutation run.

@@ -17,7 +17,7 @@
 |---|---|
 | `npm run orient` | HEAD, CI on main and on HEAD, the live Production sha, open PRs, unmerged worktrees, the cursor, registry counts |
 | `memory/ACTIVE_PLAN.md` | The cursor: the command session's live task table and the next step |
-| `memory/registry.jsonl` | The one home for open work; a row is closed with `closedBy`, never deleted |
+| `memory/registry.jsonl` | The one home for open work; its schema, lanes and close rules are `.claude/rules/registry.md`, and closed is final |
 | `docs/superpowers/DECISIONS.md` | The decision record; a reversal is a new dated entry naming the one it supersedes |
 | `memory/STATUS.md` | Where the project stands; its section 2 and G-ledger are the record the registry was harvested from |
 | `docs/superpowers/INDEX.md` | This map |
@@ -55,6 +55,8 @@ Beside them: `CLAUDE.md` (the one instruction file), `memory/ARCHITECTURE.md` (t
 - **The 2026-10-27 lane plans** (`2026-10-27-crafty-*`) are design reference under the amended umbrella
   `docs/superpowers/plans/2026-10-27-crafty-masterpiece.md`; their step scripts are re-cut at lane start, and every
   capture or `Baseline-Review:` step in them is void (DECISIONS 2026-10-28, W1-H item 1).
+- **Registry v2** (2026-10-31): `docs/superpowers/plans/2026-10-31-registry-v2.md` is the record of the registry's
+  review and cleanup, for Kevin; its design is `docs/superpowers/specs/2026-10-31-registry-v2-design.md`.
 - **Older plans still here** (2026-06 to 2026-09) are shipped and kept only because source, a test or a canonical doc
   cites them. `2026-06-15-crafty-world-purpose-sota.md` is the design source the SOTA initiative registers.
 
@@ -74,6 +76,7 @@ Beside them: `CLAUDE.md` (the one instruction file), `memory/ARCHITECTURE.md` (t
 | `docs/superpowers/KEVIN-REVIEW-BATCH.md` | Kevin's inbox (`CLAUDE.md`); DECISIONS settles |
 | `docs/superpowers/HOLISTIC-REVIEW-2026-07-21.md` | The queue-ledger gate reads it |
 | `docs/superpowers/sota-2026-09/` | `QUEUE.md` and `OPEN-ITEMS.md` feed `registry-harvest.mjs`, `GATES.md` feeds `gate-census.mjs`, the two `EXTERNAL-BASELINE` files are cited from source, `FUTUREPROOF.md` from the published pages |
+| `docs/superpowers/registry-v2-dispositions.jsonl`, `docs/superpowers/registry-v2-landing.jsonl` | Every registry row's v2 disposition with its proof and verdict, and the landing's fields for rows added after the snapshot: `frontend/scripts/ci/registry-migrate.mjs` reads them, so the migration is reproducible (DECISIONS 2026-10-31 (registry v2) item 368) |
 | `docs/superpowers/upstream-750-reply-draft.md` | The text of an open item, Kevin's to send (registry `QUEUE:Q08`) |
 | `docs/superpowers/masterpiece-2026-10/` | The reset plan's survey, refutes and upside, and the evidence frames DECISIONS and the registry cite |
 | `docs/superpowers/audits/` | The dated whole-game audits: the 18-domain review (2026-07-13) and the deep audit of the invisible-box class (2026-10-30), whose `AUDIT:*` registry rows and lanes cite it |
