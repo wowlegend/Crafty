@@ -8,12 +8,12 @@ import { foldVerbMods } from '../game/verbMods.js';
 import { relicTier, normalizeRelicTiers } from '../game/relics.js';
 import { buy as forgeBuy } from '../game/forge.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, asRespawned, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, liveShrines, TALENT_CUT, BOSS_WIPE_REPAIR } from '../game/saveSchema.js';
+import { buildSaveData, asRespawned, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, liveShrines, loadedVital, TALENT_CUT, BOSS_WIPE_REPAIR } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
 import { addShake, decayShake } from '../game/cameraShakeChannel.js';
-import { writeWorld, listWorlds, mintWorldId, setActiveWorldId } from '../game/worldSaves.js';
+import { writeWorld, listWorlds, mintWorldId, setActiveWorldId, pruneEmptySlots } from '../game/worldSaves.js';
 import { crossedHalfCycle, crossedIntoNight, isDayAtUnit, dawnReward, gameTimeForTimeOfDay } from '../game/dayNight.js';
 import { getBeastForm } from '../game/beasts.js';
 import { BOSS_CONFIG } from '../game/bossConfig.js';
@@ -134,6 +134,12 @@ export const useGameStore = create((set, get) => ({
     // Set when saveActiveWorld refused to write over a newer save of the slot from another tab: { id }, or null. Once set,
     // the tab saves nothing more and the conflict panel offers the reload (ui/SlotConflictPanel.jsx). Transient.
     slotConflict: null,
+    // Whether the tab's last save failed to write (a full or refused storage): the first failure of a run raises the
+    // save.failed notice, and a save that lands ends the run (saveActiveWorld). Transient.
+    _saveFailing: false,
+    // Set when the World Manager deleted the world this tab plays: the tab saves nothing more, and the page reloads
+    // (WorldManager.jsx). Transient.
+    _slotDeleted: false,
     // The world the boot loaded, for the title's Continue: { id, name, level, savedAt } or null (game/worldBoot.js
     // bootWorld). Transient: the page that loaded it is the only one it describes.
     continueWorld: null,
@@ -1089,15 +1095,6 @@ export const useGameStore = create((set, get) => ({
 
     loadWorldData: (rawSaveData) => {
         const saveData = migrateSaveData(rawSaveData);
-        // B2a: opening a world CLAIMS its slot for this session — subsequent autosaves write back into
-        // it (rather than minting a new slot every save). The boot passes the slot's id (game/worldBoot.js). Without an id (a hand-fed payload, a test
-        // fixture), the session stays unowned and the next autosave mints a fresh slot — which is the
-        // safe direction: never overwrite a world you cannot identify.
-        const loadedId = rawSaveData && rawSaveData.id;
-        if (loadedId) {
-            set({ _sessionWorldId: loadedId, _slotSavedAt: slotSavedAt(loadedId) });
-            setActiveWorldId(loadedId);
-        }
         const owed = migrateRetired(saveData);
         // The save's own seed; one written before the field was played on 12345, whatever world is open now.
         const worldSeed = resolveWorldSeed(saveData.game_state?.worldSeed);
@@ -1169,8 +1166,8 @@ export const useGameStore = create((set, get) => ({
             // The retired items leave every chest too (the tombstone holds them for the save).
             const chests = saveData.chests ? new Map(liveChests(saveData.chests)) : state.chests;
 
-            // Derived caps from the level and the gear (never baked); a loaded character arrives at full HP and mana, as a
-            // respawn does.
+            // Derived caps from the level and the gear (never baked). The player's health and mana are the save's, under
+            // those caps, and full where the save holds none (saveSchema.js loadedVital): a refresh is no heal.
             const eff = effectiveWith(level, equipment);
             const { maxHealth, maxMana } = deriveMaxStats(level, eff);
 
@@ -1217,8 +1214,8 @@ export const useGameStore = create((set, get) => ({
                 chests,
                 maxHealth,
                 maxMana,
-                playerHealth: maxHealth,
-                mana: maxMana,
+                playerHealth: loadedVital(saveData.player_data?.health, maxHealth, Number.MIN_VALUE),
+                mana: loadedVital(saveData.player_data?.mana, maxMana, 0),
                 playerPosition: position || state.playerPosition,
                 // A grabbed block belongs to the world it was grabbed in, and the loaded build may not hold the grab at
                 // all (the Cut's respec, a rank refunded as unknown): the held branch of game/voidhand.js reads no
@@ -1232,6 +1229,15 @@ export const useGameStore = create((set, get) => ({
                 worldLoadedAt: (state.worldLoadedAt || 0) + 1,
             };
         });
+
+        // B2a: opening a world CLAIMS its slot for this session — subsequent autosaves write back into it (rather than
+        // minting a new slot every save). The boot passes the slot's id (game/worldBoot.js). Without an id (a hand-fed
+        // payload, a test fixture) the session owns no slot, not the one loaded before, and the next autosave mints a
+        // fresh slot: never overwrite a world you cannot identify. After the reducer, so a save that throws as it loads
+        // claims nothing (the deep audit's ultra-state-saves-input-1 and -2).
+        const loadedId = rawSaveData && rawSaveData.id;
+        set({ _sessionWorldId: loadedId || null, _slotSavedAt: loadedId ? slotSavedAt(loadedId) : null });
+        if (loadedId) setActiveWorldId(loadedId);
 
         // What the save was owed for retired quests, paid through the writers a claim uses, after the load so the XP
         // levels up from the saved level. The record above (`_tombstone.migrated`) keeps a later load from paying it again.
@@ -1288,6 +1294,14 @@ export const useGameStore = create((set, get) => ({
         if (id) setActiveWorldId(id);
     },
 
+    // Another page of the origin wrote localStorage (a `storage` event, game/autosave.js): when it saved this tab's slot
+    // since the tab last read or wrote it, the conflict panel says so now, not at this tab's next save.
+    noteStorageWrite: () => {
+        const id = get()._sessionWorldId;
+        const entry = id && listWorlds().find((w) => w.id === id);
+        if (entry && writtenSince(entry.saved_at, get()._slotSavedAt) && !get().slotConflict) set({ slotConflict: { id } });
+    },
+
     // Local-first autosave: serialize the live state to the world slot THIS SESSION OWNS. No-op
     // under the visual-capture harness so capture frames never touch localStorage.
     //
@@ -1306,13 +1320,14 @@ export const useGameStore = create((set, get) => ({
     // other's. The tab knows the slot's saved_at as it last read or wrote it (`_slotSavedAt`); a save that finds the
     // index's newer refuses, and `slotConflict` tells the player (ui/SlotConflictPanel.jsx). Returns whether it wrote.
     saveActiveWorld: (position) => {
-        if (get().isCaptureMode) return false;
+        if (get().isCaptureMode || get()._slotDeleted) return false;
         // A dead player is saved as Respawn would leave them (game/saveSchema.js asRespawned): a refresh on the death
         // screen is not a way back to life where they fell.
         const built = buildSaveData(get(), { position });
         const data = get().isAlive === false ? asRespawned(built) : built;
         let id = get()._sessionWorldId;
-        if (!id) {
+        const minted = !id;
+        if (minted) {
             id = mintWorldId();   // collision-proof: 'local_' + Date.now() alone can repeat within a ms
             set({ _sessionWorldId: id });
             setActiveWorldId(id);
@@ -1330,8 +1345,19 @@ export const useGameStore = create((set, get) => ({
         const saved_at = new Date().toISOString();
         const meta = { name, created_at, is_owner: true, saved_at };
         if (existing && 'is_public' in existing) meta.is_public = existing.is_public;
-        const ok = writeWorld(id, meta, data);
-        if (ok) set({ _slotSavedAt: saved_at });
+        // A write that fails for room deletes every empty placeholder world but this one and tries once more; a new slot
+        // leaves the newest few (worldSaves.js pruneEmptySlots). Only the first failure of a run prunes: the prune reads
+        // and parses every placeholder-named save, the player's real worlds among them, and at a full storage a failure
+        // comes with every autosave.
+        let ok = writeWorld(id, meta, data);
+        if (!ok && !get()._saveFailing && pruneEmptySlots(id, 0).length) ok = writeWorld(id, meta, data);
+        if (ok && minted) pruneEmptySlots(id);
+        if (ok) set({ _slotSavedAt: saved_at, _saveFailing: false });
+        else if (!get()._saveFailing) {
+            // worldSaves swallows the storage's throw; without this a full storage stopped every save with no word.
+            set({ _saveFailing: true });
+            get().addNotification?.('save.failed', 'warning');
+        }
         return ok;
     }
 }));

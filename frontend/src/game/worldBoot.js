@@ -89,17 +89,24 @@ const ownedEntry = (w) => !!w && typeof w.id === 'string' && (w.is_owner || w.id
 
 /**
  * The world a plain visit continues: the first entry of the index whose save reads. writeWorld puts the world it wrote
- * first, so that is the most recently written world the player owns.
- * @param {{ listWorlds: () => object[], readWorld: (id: string) => object|null }} saves
+ * first, so that is the most recently written world the player owns. A world nobody named and nothing was earned in
+ * (saves.emptyPlaceholder) is passed over for an older one that holds something: until lane L2 every visit minted one,
+ * so a player's newest world can be a fresh Start they abandoned before finding their own. With none earned or named,
+ * the newest.
+ * @param {{ listWorlds: () => object[], readWorld: (id: string) => object|null,
+ *   emptyPlaceholder?: (entry: object, data: object) => boolean }} saves
  * @returns {{ entry: object, data: object }|null}
  */
 export function latestOwnedWorld(saves) {
+  let newest = null;
   for (const entry of saves.listWorlds()) {
     if (!ownedEntry(entry)) continue;
     const data = saves.readWorld(entry.id);
-    if (data) return { entry, data };
+    if (!data) continue;
+    if (!saves.emptyPlaceholder?.(entry, data)) return { entry, data };
+    newest = newest || { entry, data };
   }
-  return null;
+  return newest;
 }
 
 function notedWorld(saves, id) {
@@ -117,12 +124,16 @@ function notedWorld(saves, id) {
  * the initial state, and `bootHeld` tells the title which world could not be opened: a page that never renders is worse
  * than a world that starts over beside the broken slot. A plain visit does not load a world whose last load never ran
  * (BOOT_ATTEMPT_KEY): the title says so and offers to open it anyway, which is a note, and a note loads its world.
+ * The empty placeholder worlds past the few newest are deleted first (saves.pruneEmptySlots, when given).
  * @param {{ store: { getState: () => object, setState: (p: object, replace?: boolean) => void, getInitialState: () => object },
- *   session: Storage|null, saves: { listWorlds: () => object[], readWorld: (id: string) => object|null } }} deps
+ *   session: Storage|null, saves: { listWorlds: () => object[], readWorld: (id: string) => object|null,
+ *   pruneEmptySlots?: (keepId: string|null) => string[] } }} deps
  * @returns {{ kind: 'world'|'fresh'|'none'|'held', id?: string|null }}
  */
 export function bootWorld({ store, session, saves }) {
   const note = session ? takeBootNote(session) : null;
+  // Before the choice, so the world the page loads is never one it deletes (worldSaves.js pruneEmptySlots).
+  saves.pruneEmptySlots?.(note && note.world);
   if (note && note.fresh) {
     store.getState().startNewWorld(note.world);
     return { kind: 'fresh', id: note.world };
@@ -195,18 +206,39 @@ export function tabNote(state) {
 }
 
 /**
- * Every world switch: save the world in play, leave the note, reload, in that order. The save is a synchronous
- * localStorage write, so it has landed before the note; the reload ends the page. A refused note still reloads (the page
- * boots a plain visit, which continues the world just saved). `note` may be a function of the state after the save
- * (tabNote: the save mints the slot of a world that owned none).
- * @param {{ world?: string, fresh?: boolean } | ((state: object) => { world?: string, fresh?: boolean })} note
- * @param {{ getState: () => object, storage: Storage|null, reload: () => void }} deps
- * @returns {{ world?: string, fresh?: boolean }} the note left
+ * The note a page leaves itself as it goes (App, at pagehide: a refresh, a close, a navigation away), so a refresh
+ * continues the world the tab was playing, even a new one nothing was earned in yet, which a plain visit would pass over
+ * (latestOwnedWorld; DECISIONS 2026-10-31 item 343). It is tabNote. None is left where the next load must be a plain
+ * visit or another's note: a switch's note is already there (the switch decides where the reload goes), the tab deleted
+ * its world (WorldManager.jsx), the tab has no world in play (it loaded none and was never started), or the world it
+ * loaded never ran a frame (its boot attempt is still there, BOOT_ATTEMPT_KEY: the plain visit holds that world on the
+ * title rather than load it into the same failure).
+ * @param {object} state the store's state
+ * @param {Storage|null} session
  */
-export function switchWorld(note, { getState, storage, reload }) {
+export function leaveTabNote(state, session) {
+  const id = state._sessionWorldId;
+  try {
+    if (session && !state._slotDeleted && (id || state.gameStarted) && session.getItem(BOOT_NOTE_KEY) === null
+      && !(id && attemptedWorld(session) === id)) writeBootNote(session, tabNote(state));
+  } catch { /* storage refused: no note, and the next load is a plain visit */ }
+}
+
+/**
+ * Every world switch: save the world in play, leave the note, reload, in that order. The save is a synchronous
+ * localStorage write, so it has landed before the note; the reload ends the page. A refused note reloads only when
+ * `orPlainVisit` (the context-loss recovery and the conflict panel, where staying is worse than the world a plain visit
+ * continues, latestOwnedWorld): otherwise the plain visit would land back on the world being left, so the switch is
+ * not made and null is returned. `note` may be a function of the state after the save (tabNote: the save mints the slot
+ * of a world that owned none).
+ * @param {{ world?: string, fresh?: boolean } | ((state: object) => { world?: string, fresh?: boolean })} note
+ * @param {{ getState: () => object, storage: Storage|null, reload: () => void, orPlainVisit?: boolean }} deps
+ * @returns {{ world?: string, fresh?: boolean }|null} the note left, or null when the switch was not made
+ */
+export function switchWorld(note, { getState, storage, reload, orPlainVisit = false }) {
   saveWorldInPlay(getState);
   const left = typeof note === 'function' ? note(getState()) : note;
-  if (storage) writeBootNote(storage, left);
+  if (!(storage && writeBootNote(storage, left)) && !orPlainVisit) return null;
   reload();
   return left;
 }

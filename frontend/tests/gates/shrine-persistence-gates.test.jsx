@@ -167,6 +167,29 @@ describe('a reached shrine and an opened shrine chest survive a reload', () => {
   });
 });
 
+describe('a save from before the shrine record whose Pilgrimage is done (REVIEW:l3:pilgrimage-done-shows-shrine-objective)', () => {
+  // The record began with lane L3; a save from before it holds no game_state.shrines and reads as having reached none
+  // (saveSchema.js liveShrines). A completed Pilgrimage proves the world reached a shrine, though not which one.
+  const writeOldWorld = (completed) => {
+    const s = buildSaveData(useGameStore.getInitialState(), { position: AWAY });
+    s.questState = { quests: [], completedQuestIds: completed, stats: null, unlockedAchievements: ['first_step'] };
+    delete s.game_state.shrines;
+    expect(worldSaves.writeWorld(ID, { name: 'Old Pilgrim', is_owner: true, created_at: '2026-10-20T09:00:00.000Z' }, s), 'SETUP').toBe(true);
+  };
+
+  it('Pilgrimage done: the objective is the Blight Heart, away from every shrine; not done, it is the shrine', () => {
+    writeOldWorld(['first_blood']);
+    let view = page(AWAY);
+    // PRESENCE: the same old save without Pilgrimage done still names the shrine, so the tracker can show either.
+    expect(objective(view), 'SETUP: an old save with no shrine reached does not name the shrine').toMatch(/frontier shrine/i);
+    writeOldWorld(['first_blood', 'pilgrim']);
+    sessionStorage.removeItem('crafty.bootAttempt'); // the first page's world ran (systems/BootSettle.jsx)
+    view = page(AWAY);
+    expect(useGameStore.getState().reachedShrines, 'SETUP: the old save loaded a shrine record').toEqual([]);
+    expect(objective(view), 'a world whose Pilgrimage is done was sent to reach a shrine again').toMatch(/Blight Heart/);
+  });
+});
+
 describe('Pilgrimage is credited from the shrines this world has reached, whenever it is offered', () => {
   it('control: offered in a world that has reached none, away from every shrine, it stays at 0', () => {
     writePilgrimWorld([]);

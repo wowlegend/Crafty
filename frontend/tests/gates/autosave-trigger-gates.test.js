@@ -82,7 +82,8 @@ describe('the installed autosave', () => {
   });
 
   it('control: a change to a key no save records schedules nothing', () => {
-    useGameStore.setState({ playerPosition: [5, 60, 5], mana: 3, playerHealth: 7 });
+    // Health and mana are saved since lane L8 (DECISIONS 2026-10-31 item 330); the hit flash and the shake are not.
+    useGameStore.setState({ playerPosition: [5, 60, 5], damageFlash: true, screenShake: 3 });
     vi.advanceTimersByTime(DELAY * 2);
     expect(save, 'the autosave saved for a field the save does not hold').not.toHaveBeenCalled();
   });
@@ -100,9 +101,16 @@ describe('the installed autosave', () => {
     doc.dispatchEvent(new Event('visibilitychange'));
     win.dispatchEvent(new Event('beforeunload'));
     expect(save, 'a flush with nothing pending saved').not.toHaveBeenCalled();
+    // The change is made while the page is shown: one made while it is hidden is held until it is shown (item 331,
+    // tests/gates/hidden-tab-gates.test.jsx).
+    doc.visibilityState = 'visible';
+    doc.dispatchEvent(new Event('visibilitychange'));
     useGameStore.setState({ coins: 40 });
+    doc.visibilityState = 'hidden';
     doc.dispatchEvent(new Event('visibilitychange'));
     expect(save, 'hiding the tab did not save the pending change').toHaveBeenCalledTimes(1);
+    doc.visibilityState = 'visible';
+    doc.dispatchEvent(new Event('visibilitychange'));
     useGameStore.setState({ coins: 41 });
     win.dispatchEvent(new Event('beforeunload'));
     expect(save, 'unloading did not save the pending change').toHaveBeenCalledTimes(2);

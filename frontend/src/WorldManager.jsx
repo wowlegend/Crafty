@@ -13,6 +13,7 @@ import { useT } from './i18n/i18n.js';
 import { buildSaveData, savePosition } from './game/saveSchema.js';
 import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, mintWorldId } from './game/worldSaves.js';
 import { goToWorld } from './game/worldSwitch.js';
+import { reloadPage } from './game/pageReload.js';
 
 export const WorldManager = ({ onClose }) => {
   const t = useT();
@@ -66,12 +67,15 @@ export const WorldManager = ({ onClose }) => {
       // blob cloned the old world). The switch then saves the world in play and reloads into a new world in this slot
       // (game/worldBoot.js): a new world made in place kept the old one's dragon, quests, chests and squad.
       writeWorld(id, meta, buildSaveData(useGameStore.getInitialState(), { position: { x: 0, y: 18, z: 0 } }));
-      goToWorld({ fresh: true, world: id });
+      if (goToWorld({ fresh: true, world: id })) return true;
+      // The switch was refused (sessionStorage took no note): the new slot is taken back, so My Worlds keeps no world this
+      // tab cannot switch to, and the refusal's "nothing changed" is true.
+      deleteWorldSave(id);
+      return false;
     };
     try {
       setError('');
-      persistLocal();
-      setError('New world created successfully!');
+      setError(persistLocal() ? 'New world created successfully!' : t('save.switchRefused'));
     } catch (error) {
       console.warn('LocalStorage create failed:', error);
       setError('World creation failed.');
@@ -84,7 +88,7 @@ export const WorldManager = ({ onClose }) => {
       // Local saves only (cloud worlds were removed with the auth subsystem).
       if (!readWorld(worldId)) throw new Error('Local save not found');
       // A world switch: save the world in play, then reload into this one (game/worldBoot.js).
-      goToWorld({ world: worldId });
+      if (!goToWorld({ world: worldId })) setError(t('save.switchRefused'));
     } catch (error) {
       setError('Failed to load world');
       console.error('Error loading world:', error);
@@ -92,7 +96,8 @@ export const WorldManager = ({ onClose }) => {
   };
 
   const deleteWorld = async (worldId) => {
-    if (!window.confirm('Are you sure you want to delete this world?')) {
+    const name = worlds.find((w) => w.id === worldId)?.name;
+    if (!window.confirm(`Delete ${name || 'this world'}? It cannot be undone.`)) {
       return;
     }
 
@@ -100,6 +105,14 @@ export const WorldManager = ({ onClose }) => {
       setError('');
       // Local saves only (cloud worlds were removed with the auth subsystem).
       deleteWorldSave(worldId);
+      if (worldId === useGameStore.getState()._sessionWorldId) {
+        // The world this tab plays: its next save (the autosave, the flush as the tab hides or closes) wrote it all back
+        // under a new name. The tab stops saving it, and the page reloads as a plain visit: the newest world left, or
+        // Start Adventure.
+        useGameStore.setState({ _sessionWorldId: null, _slotDeleted: true });
+        reloadPage();
+        return;
+      }
       setWorlds(listWorlds());
       setError('World deleted successfully.');
     } catch (error) {
@@ -323,6 +336,8 @@ const WorldCard = ({ world, onLoad, onDelete, isOwner }) => {
           {isOwner && (
             <button
               onClick={() => onDelete(world.id)}
+              aria-label={`Delete ${world.name}`}
+              data-testid={`world-delete-${world.id}`}
               className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-sm"
             >
               <Trash2 size={14} />
