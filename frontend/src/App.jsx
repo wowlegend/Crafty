@@ -34,6 +34,7 @@ import { SlotConflictPanel } from './ui/SlotConflictPanel.jsx';
 import { selectTier, readDeviceSignals } from './render/quality';
 import { installAutosave } from './game/autosave';
 import { saveWorldInPlay } from './game/worldBoot.js';
+import { installSquadPersistence } from './world/squadPersistence.js';
 import { useDayNightClock } from './game/useDayNightClock';
 import { shouldOpenPauseOnUnlock } from './ui/panelState.js';
 import { requestGameLock } from './input/pointerLock.js';
@@ -187,6 +188,10 @@ function GameApp({ experienceSystem }) {
 
   // Local-first autosave (game/autosave.js): a change to any field the save records schedules one, and hiding the tab or
   // closing it saves a pending one at once. It saves only a world in play (game/worldBoot.js saveWorldInPlay).
+  // The bound squad's roster and its bodies kept as one, and the bodies rebuilt at the player from the loaded world's
+  // roster (world/squadPersistence.js). Installed after the boot's load, so its first rebuild is the loaded squad.
+  useEffect(() => installSquadPersistence(useGameStore), []);
+
   useEffect(() => installAutosave(useGameStore, {
     save: () => saveWorldInPlay(useGameStore.getState),
     delayMs: 5000,

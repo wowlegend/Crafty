@@ -88,11 +88,12 @@ describe('the tombstone pass-through', () => {
     expect(saved.game_state.futureFlag, 'an unknown game_state key was dropped on save').toBe('kept');
     // The whole slice, not the planted keys alone: a field this build stops writing (gameMode, the four Aspect banks,
     // attributes, spellLevels) must come back exactly as the pre-cut save had it. The keys added are the ember the banks
-    // were summed into, the Forge's relic tiers (none tempered) and the world's seed (12345, the seed every save before
-    // the field was played on); the keys changed are the talents the refund paid (the describe at the end of this file).
+    // were summed into, the Forge's relic tiers (none tempered), the squad's roster (none bound), the shrine record (none
+    // reached) and the world's seed (12345, the seed every save before the field was played on); the keys changed are the
+    // talents the refund paid (the describe at the end of this file).
     expect(saved.progression, 'the pre-cut progression slice did not round-trip unchanged')
-      .toEqual({ ...f.progression, ember: 75, emberBuildDay: { night: 0, built: 0 }, relicTiers: {}, talentPoints: 8, unlockedTalents: {} });
-    expect(saved.game_state, 'the pre-cut game_state slice did not round-trip unchanged').toEqual({ ...f.game_state, worldSeed: 12345 });
+      .toEqual({ ...f.progression, ember: 75, emberBuildDay: { night: 0, built: 0 }, relicTiers: {}, squad: [], talentPoints: 8, unlockedTalents: {} });
+    expect(saved.game_state, 'the pre-cut game_state slice did not round-trip unchanged').toEqual({ ...f.game_state, worldSeed: 12345, shrines: { reached: [], rewarded: [] } });
   });
 
   it('keeps carrying the keys across a second load and save (the bag is re-read, not spent)', () => {
@@ -264,7 +265,7 @@ describe('a completed, unclaimed retired quest', () => {
     expect(ids(saved.questState.quests), 'the paid quest is still held for a rollback to claim again').toEqual(['first_blood', 'hunter']);
     expect(saved.questState.completedQuestIds, 'the save lost the claim').toEqual(['builder']);
     // talents.cut is the talent refund every pre-cut save is owed (the describe at the end of this file).
-    expect(saved.migrated, 'the save does not record the migration').toEqual(['quests.builder', 'talents.cut']);
+    expect(saved.migrated, 'the save does not record the migration').toEqual(['quests.builder', 'talents.cut', 'boss.resumeWipe']);
   });
 
   it('a second load of the save it wrote changes nothing', () => {
@@ -288,7 +289,7 @@ describe('a completed, unclaimed retired quest', () => {
     useGameStore.getState().loadWorldData(f);
     expect(useGameStore.getState().totalXP - xp0, 'the three retired rewards were not paid in full').toBe(50 + 150 + 400);
     expect(useGameStore.getState().coins - coins0).toBe(20 + 60 + 160);
-    expect(onDisk().migrated).toEqual(['quests.builder', 'quests.architect', 'quests.world_builder', 'talents.cut']);
+    expect(onDisk().migrated).toEqual(['quests.builder', 'quests.architect', 'quests.world_builder', 'talents.cut', 'boss.resumeWipe']);
   });
 
   it('pays nothing for one in progress or already claimed, and records nothing for it', () => {
@@ -298,7 +299,7 @@ describe('a completed, unclaimed retired quest', () => {
     expect(useGameStore.getState().totalXP, 'an incomplete or claimed retired quest was paid').toBe(FIXTURE.progression.totalXP);
     expect(useGameStore.getState().coins).toBe(FIXTURE.progression.coins);
     expect(questNotes(), 'a load that paid nothing announced a payment').toEqual([]);
-    expect(onDisk().migrated, 'a migration that ran nothing was recorded').toEqual(['talents.cut']);
+    expect(onDisk().migrated, 'a migration that ran nothing was recorded').toEqual(['talents.cut', 'boss.resumeWipe']);
   });
 
   it('a save older than SAVE_VERSION is still paid, and its record is still read', () => {
@@ -330,9 +331,9 @@ describe('the migration record', () => {
 
   it('a load keeps the names it does not run, and a new world starts with none', () => {
     useGameStore.getState().loadWorldData({ ...fixture(), migrated: ['progression.oldBank', 7, 'progression.oldBank'] });
-    expect(onDisk().migrated, 'a load dropped a recorded name, or kept a junk one').toEqual(['progression.oldBank', 'talents.cut']);
+    expect(onDisk().migrated, 'a load dropped a recorded name, or kept a junk one').toEqual(['progression.oldBank', 'talents.cut', 'boss.resumeWipe']);
     useGameStore.getState().startNewWorld('local_fresh');
-    expect(onDisk().migrated, 'a new world inherited the last world\'s record').toEqual(['talents.cut']);
+    expect(onDisk().migrated, 'a new world inherited the last world\'s record').toEqual(['talents.cut', 'boss.resumeWipe']);
   });
 });
 
@@ -460,17 +461,17 @@ describe('the Cut is recorded on every save, a load ends a held grab, and the no
   });
 
   it('a session that has loaded nothing writes the record, and so does a new world', () => {
-    expect(onDisk().migrated, 'a save from a session that loaded nothing lacks the record').toEqual(['talents.cut']);
+    expect(onDisk().migrated, 'a save from a session that loaded nothing lacks the record').toEqual(['talents.cut', 'boss.resumeWipe']);
     useGameStore.getState().startNewWorld('local_fresh');
-    expect(onDisk().migrated).toEqual(['talents.cut']);
+    expect(onDisk().migrated).toEqual(['talents.cut', 'boss.resumeWipe']);
   });
 
   it('a post-Cut save loaded here is recorded, so a rollback writing attributes into it cannot respec it', () => {
     const unrecorded = { ...postCut(), migrated: [] }; // a post-Cut save written before the record was kept on every save
-    expect(migrateRetired(unrecorded).migrated, 'a post-Cut save loaded here was not recorded').toEqual(['talents.cut']);
+    expect(migrateRetired(unrecorded).migrated, 'a post-Cut save loaded here was not recorded').toEqual(['talents.cut', 'boss.resumeWipe']);
     useGameStore.getState().loadWorldData(unrecorded);
     const reloaded = onDisk();
-    expect(reloaded.migrated).toEqual(['talents.cut']);
+    expect(reloaded.migrated).toEqual(['talents.cut', 'boss.resumeWipe']);
     for (const blob of [postCut(), reloaded]) {
       useGameStore.setState(useGameStore.getInitialState(), true);
       useGameStore.setState({ addNotification: (msg, _type, o) => notes.push(noteText(msg, o)) });

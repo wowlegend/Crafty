@@ -6,7 +6,7 @@ import { makeDragonLoader, makeLazyDragon, DRAGON_RETRIES, DRAGON_RETRY_MS } fro
 
 // THE LAZY DRAGON INSIDE THE WORLD'S BOUNDARY (DECISIONS 2026-10-30 item 121). GameScene mounts it inside the one
 // <Suspense> that also wraps <Physics>, the world, the Player and the post passes. A lazy child that suspends in an
-// already-revealed boundary on a non-transition update (the arrival poll's setBossActive runs in a setInterval) hides
+// already-revealed boundary on a non-transition update (the arrival poll's encounter write runs in a setInterval) hides
 // its siblings (display: none) and runs their layout-effect cleanups, and R3F's useFrame subscribes in a layout effect:
 // the whole world would vanish and stop while the chunk loads. Each case renders a sibling that logs its layout effect
 // beside the dragon, and turns the dragon on from a setTimeout, as the poll does.

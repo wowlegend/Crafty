@@ -12,49 +12,40 @@ import { deadSetters, STORE_FILE } from '../_support/storeSetters.js';
  * was built and left behind when the channel moved (the bus, then GameMethods). knip cannot see them: they are members of
  * an object literal, not exports. A dead setter is more than clutter. Its key is a slot a reader may trust to be
  * published, so a missing publisher reads as a silent no-op (callers guard with `?.()`), and it hides which of the
- * three channels is the live one. Lane L6 removed 13 by hand; this is the check that keeps the count at its floor.
+ * three channels is the live one. Lane L6 removed 13 by hand and lane L3 the last two with the boss mirror; this is the check that keeps the count at its floor, zero.
  *
  * A setter has a caller when its name is used as a member of something, anywhere in the non-test source (the store's own file
  * included): `get().setX(...)`, `state.setX`, `store['setX']`, `const { setX } = ...`. It reads the syntax tree
  * (@babel/parser), so a comment or a template text naming a setter cannot satisfy it, and a bare identifier does not count
  * either: a component's own `const [v, setX] = useState()` would credit a dead store setter of the same name. It does not
- * prove the caller RUNS (that is runtime-reach's question, and a different grain); it proves the name is used. Members that are not `set*` functions are out of scope (getPlayerXP and isBeastFormActive are read by
- * tests and e2e only).
+ * prove the caller RUNS (that is runtime-reach's question, and a different grain); it proves the name is used.
+ * Members that are not `set*` functions are out of scope (getPlayerXP and isBeastFormActive are read by tests and e2e only).
  *
  * SITED IN tests/scripts/, not tests/gates/: the subject is the shape of the source (which members it declares and which
  * names it uses), so the check must read source by its nature, and gate-shape freezes the source-reading population in
  * tests/gates/.
  *
- * EXEMPT: setDamageBoss and setGetBossPosition. They are dead today and belong to lane L3, which deletes them with the
- * boss mirror (AUDIT:lane:L3-store-owns-world-state). The list may only shrink: a name here that has gained a caller fails
- * (delete the exemption), and a name the store no longer declares is ignored, so L3 landing first or second changes nothing.
- *
  * Mutation-Proof: scripts/dev/mutate.sh, receipts in the commit.
  */
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const EXEMPT = Object.freeze(['setDamageBoss', 'setGetBossPosition']);
+
 describe('every set* member of the store has a caller', () => {
   const storeText = readFileSync(resolve(APP, STORE_FILE), 'utf8');
   const tree = readSourceTree();
   const r = deadSetters(tree, storeText);
 
   it('the instrument sees: the store, its setters and the source tree it searches', () => {
-    // Floors under the counts when the check was written (64 setters, 410 source files).
+    // Floors under the counts when the check was written (about 60 setters, 410 source files).
     expect(r.setters.length, 'the store declares almost no setters: the create() object was not read whole').toBeGreaterThan(55);
     expect(r.files, 'the source tree came back short').toBeGreaterThan(350);
     expect(r.live.length, 'almost every setter reads as dead: the search is blind').toBeGreaterThan(r.setters.length - 8);
     // One setter used from another file and one used only inside the store, each seen as live.
     expect(r.live, 'a setter called from a system was not seen as live').toContain('setPlayerHealth');
-    expect(r.live, 'a setter used from a hook was not seen as live').toContain('setBossActive');
+    expect(r.live, 'a setter used from a hook was not seen as live').toContain('setQuestState');
   });
 
   it('no setter is declared that nothing uses', () => {
-    expect(r.dead.filter((n) => !EXEMPT.includes(n)), 'set* members of useGameStore.jsx with no use anywhere in src: delete them').toEqual([]);
-  });
-
-  it('an exempt setter that has gained a use is no longer exempt', () => {
-    const stale = EXEMPT.filter((n) => r.setters.includes(n) && !r.dead.includes(n));
-    expect(stale, 'delete these from EXEMPT: they have callers now').toEqual([]);
+    expect(r.dead, 'set* members of useGameStore.jsx with no use anywhere in src: delete them').toEqual([]);
   });
 
   it('the detector, on a store and a tree it is handed, names the dead setter, credits every form of use and not a namesake', () => {

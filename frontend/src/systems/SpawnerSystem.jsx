@@ -11,7 +11,7 @@ import { isCaptureMode } from '../devtest/captureMode';
 import { siegeParams } from '../game/dayNight.js';
 import { zoneTier } from '../world/zoneTier.js';
 import { weightedPick } from '../game/spawnWeights';
-import { MOB_TYPES } from '../game/mobTypes';
+import { MOB_TYPES, mobEntity } from '../game/mobTypes';
 import { runSpawnPlacement } from './spawnPlacement.js';
 import { spawnGroundAt } from '../game/mobFloor.js';
 import { CHUNK_SIZE } from '../world/chunkLayout.js';
@@ -57,31 +57,10 @@ export const SpawnerSystem = () => {
     const mobConfig = MOB_TYPES[type];
     if (!mobConfig) return false; // weightedPick returned an unknown key -> don't spawn an undefined mob (NaN cascade)
 
-    ecs.add({
-      isMob: true,
-      id: nextId.current++,
-      type,
-      position: new THREE.Vector3(x, y + 0.5, z),
-      color: mobConfig.color,
-      health: mobConfig.health,
-      maxHealth: mobConfig.health,
-      speed: mobConfig.speed,
-      passive: mobConfig.passive,
-      damage: mobConfig.damage,
-      // the mob-variety pass: registry legMode reaches the renderer (only hybrids carried it before)
-      ...(mobConfig.legMode ? { legMode: mobConfig.legMode } : {}),
-      targetX: x,
-      targetZ: z,
-      // Explicit-Y placement (visual-capture fixtures) faces the mob toward +Z so the
-      // camera, posed on the +Z side, sees the front (eyes). Gameplay spawns stay random.
-      rotation: explicitY !== null ? 0 : Math.random() * Math.PI * 2,
-      moveTimer: Math.random() * 3,
-      isMoving: false,
-      isAggro: false,
-      lastAttackTime: 0,
-      knockback: null,
-      lastHit: 0
-    });
+    // Explicit-Y placement (visual-capture fixtures) faces the mob toward +Z so the
+    // camera, posed on the +Z side, sees the front (eyes). Gameplay spawns stay random.
+    ecs.add(mobEntity(type, nextId.current++, new THREE.Vector3(x, y + 0.5, z),
+      explicitY !== null ? 0 : Math.random() * Math.PI * 2, Math.random() * 3));
     return true;
   };
 

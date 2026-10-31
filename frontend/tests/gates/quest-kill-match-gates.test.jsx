@@ -130,7 +130,7 @@ describe('spell quests count spells that land on an enemy', () => {
     act(() => {
       useGameStore.setState({
         questState: { quests: [{ ...oldSpellcaster, id: 'archmage', title: 'Archmage', description: 'Cast 100 spells', target: 100, progress: 40 }], completedQuestIds: [] },
-        questLoadedAt: (useGameStore.getState().questLoadedAt || 0) + 1,
+        worldLoadedAt: (useGameStore.getState().worldLoadedAt || 0) + 1,
       });
     });
     expect(quest(result, 'archmage'), 'the loaded Archmage kept the old ask').toMatchObject({ type: 'spell_hit', progress: 40 });

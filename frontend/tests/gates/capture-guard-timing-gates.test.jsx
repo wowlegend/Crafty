@@ -116,7 +116,7 @@ describe('the shrine quest poll — same setup-time guard, same failure', () => 
     exitCaptureMode();
     const { nearestLandmark } = await import('../../src/world/shrines.js');
     const shrine = nearestLandmark(0, 0); // the live landmark hash, not a retyped position
-    useGameStore.setState({ playerPosition: { x: shrine.worldX, y: 60, z: shrine.worldZ }, shrineReached: false, addNotification: () => {} });
+    useGameStore.setState({ playerPosition: { x: shrine.worldX, y: 60, z: shrine.worldZ }, reachedShrines: [], addNotification: () => {} });
   });
   afterEach(() => {
     cleanup();
@@ -128,7 +128,7 @@ describe('the shrine quest poll — same setup-time guard, same failure', () => 
     const { useQuestSystem } = await import('../../src/QuestSystem.jsx');
     renderHook(() => useQuestSystem());
     act(() => { vi.advanceTimersByTime(3100); });
-    expect(useGameStore.getState().shrineReached, 'the poll never counted the shrine — the control is dead').toBe(true);
+    expect(useGameStore.getState().reachedShrines, 'the poll never counted the shrine — the control is dead').toHaveLength(1);
   });
 
   it('counts no shrine once capture is entered after mount', async () => {
@@ -137,9 +137,9 @@ describe('the shrine quest poll — same setup-time guard, same failure', () => 
     act(() => { enterCaptureMode(); });
     act(() => { vi.advanceTimersByTime(9100); }); // three full poll periods
     expect(
-      useGameStore.getState().shrineReached,
+      useGameStore.getState().reachedShrines,
       'the shrine counted during capture — the guard ran at setup and the poll ran unguarded'
-    ).toBe(false);
+    ).toEqual([]);
   });
 });
 

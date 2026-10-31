@@ -98,7 +98,7 @@ beforeEach(() => {
   useGameStore.setState({
     isAlive: true, mana: 1e6, maxMana: 1e6,
     playSpatialSound: noop, triggerGPUSparks: noop, triggerBloomSpike: noop, triggerCameraShake: noop,
-    triggerHitstop: noop, damageBoss: noop, isBossActive: () => false, getBossPosition: null,
+    triggerHitstop: noop, damageBoss: noop, bossActive: false, getBossPosition: null,
     // A flat floor at FLOOR under every column, through the same two probes the game registers.
     getMobGroundLevel: () => FLOOR,
     getMobFloor: (x, z, y) => { probed.push({ x, z, y }); return FLOOR; },
@@ -201,7 +201,7 @@ describe('the end record stores where a spell ENDED, what ended it, and its age'
     mount();
     const boss = { x: -4, y: 31, z: 21 };
     useGameStore.setState({
-      isBossActive: () => true, getBossPosition: () => [boss.x, boss.y, boss.z],
+      bossActive: true, getBossPosition: () => [boss.x, boss.y, boss.z],
       gameCamera: camera([-4, 30, 0], [0, 0, 1]),
     });
     const muzzle = cast('fireball');
@@ -398,7 +398,7 @@ describe('a spell counts once toward the spell quests, whatever it lands on', ()
   it('a spell that lands on the Shadow Dragon counts', () => {
     mount();
     useGameStore.setState({
-      isBossActive: () => true, getBossPosition: () => [-4, 31, 21], gameCamera: camera([-4, 30, 0], [0, 0, 1]),
+      bossActive: true, getBossPosition: () => [-4, 31, 21], gameCamera: camera([-4, 30, 0], [0, 0, 1]),
     });
     expect(flyOut(cast('fireball')), 'the fireball did not end on the boss').toBe('boss');
     expect(quest, 'a spell on the Shadow Dragon did not count').toBe(1);

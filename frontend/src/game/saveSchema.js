@@ -101,7 +101,29 @@ const talentCutMigration = Object.freeze({
   },
 });
 
-export const RETIRED_MIGRATIONS = Object.freeze([...Object.values(RETIRED_QUESTS).map(questMigration), talentCutMigration]);
+// THE RESUME WIPE'S DRAGON (DECISIONS 2026-10-31 item 250). In the builds deployed from 2026-10-28T10:41:29Z to
+// 2026-10-31T07:09:42Z the context-loss resume loaded its world after the dragon hook had mounted, and the hook wrote its
+// mount-time encounter over the loaded one: health 700 (those builds' initial bossHealth), inactive, not defeated, with
+// the tier and the kill night left as loaded. A tier of 1 or more is written only by a kill, and a return wakes at its
+// tier's maximum (1050 and up), so that shape on a tier of 1 or more is the wipe of a slain dragon (or of a return fight
+// it reset), and it loads slain, its return due as the kill set it. A slot created after the window cannot hold the wipe.
+// The literals are the window's facts, not the current tuning.
+export const BOSS_WIPE_REPAIR = 'boss.resumeWipe';
+const WIPE_HEALTH = 700;
+const WIPE_WINDOW_END = Date.parse('2026-10-31T07:09:42Z');
+const bossWipeRepair = Object.freeze({
+  name: BOSS_WIPE_REPAIR,
+  run(saveData) {
+    const created = Date.parse(saveData?.created_at);
+    if (Number.isFinite(created) && created >= WIPE_WINDOW_END) return {};
+    const b = saveData?.game_state?.bossState;
+    if (!isPlainObject(b) || !(Number.isFinite(b.tier) && b.tier >= 1)) return {};
+    if (b.health !== WIPE_HEALTH || b.active !== false || b.defeated !== false) return {};
+    return { bossState: { ...b, health: 0, active: false, defeated: true } };
+  },
+});
+
+export const RETIRED_MIGRATIONS = Object.freeze([...Object.values(RETIRED_QUESTS).map(questMigration), talentCutMigration, bossWipeRepair]);
 
 const readMigrated = (saveData) => (isPlainObject(saveData) && Array.isArray(saveData.migrated)
   ? saveData.migrated.filter((name) => typeof name === 'string')
@@ -110,12 +132,13 @@ const readMigrated = (saveData) => (isPlainObject(saveData) && Array.isArray(sav
 /**
  * What loading `saveData` owes for retired keys whose migration it has not run, and the record once paid. Pure.
  * `talentPoints` and `respec` are the Cut's talent refund (above): points to add, and whether every held rank comes back.
+ * `bossState` is the resume wipe's repair (above): the encounter to load in place of the save's, or null.
  * @returns {{xp: number, coins: number, items: Array<{item: string, count: number}>, claimedQuestIds: string[],
- *   paidTitles: string[], talentPoints: number, respec: boolean, migrated: string[]}}
+ *   paidTitles: string[], talentPoints: number, respec: boolean, bossState: ?object, migrated: string[]}}
  */
 export function migrateRetired(saveData, migrations = RETIRED_MIGRATIONS) {
   const migrated = [...new Set(readMigrated(saveData))];
-  const owed = { xp: 0, coins: 0, items: [], claimedQuestIds: [], paidTitles: [], talentPoints: 0, respec: false, migrated };
+  const owed = { xp: 0, coins: 0, items: [], claimedQuestIds: [], paidTitles: [], talentPoints: 0, respec: false, bossState: null, migrated };
   for (const m of migrations) {
     if (migrated.includes(m.name)) continue;
     const r = m.run(saveData);
@@ -127,6 +150,7 @@ export function migrateRetired(saveData, migrations = RETIRED_MIGRATIONS) {
     }
     if (r.talentPoints) owed.talentPoints += r.talentPoints;
     if (r.respec) owed.respec = true;
+    if (r.bossState) owed.bossState = r.bossState;
     if (r.claimQuestId) owed.claimedQuestIds.push(r.claimQuestId);
     if (r.title) owed.paidTitles.push(r.title);
     migrated.push(m.name);
@@ -183,6 +207,19 @@ const CELL_KEY = /^-?\d+_-?\d+_-?\d+$/;
  */
 export function liveBlocks(blocks) {
   return Array.isArray(blocks) ? blocks.filter((e) => Array.isArray(e) && e.length === 2 && typeof e[0] === 'string' && CELL_KEY.test(e[0])) : [];
+}
+
+// A shrine's key: its chunk's integer cx_cz (world/shrines.js landmarkAt, the same place in every world).
+const SHRINE_KEY = /^-?\d+_-?\d+$/;
+const shrineKeys = (v) => (Array.isArray(v) ? [...new Set(v.filter((k) => typeof k === 'string' && SHRINE_KEY.test(k)))] : []);
+
+/**
+ * A save's shrine record: the shrines its world has reached and the shrines whose reward chest has been opened, each a
+ * list of chunk keys. A save from before the record, or one holding anything else, has reached none. Pure.
+ * @returns {{ reached: string[], rewarded: string[] }}
+ */
+export function liveShrines(shrines) {
+  return { reached: shrineKeys(shrines?.reached), rewarded: shrineKeys(shrines?.rewarded) };
 }
 
 /** A save's chest entries ([coords, chest]) with the retired keys taken out of each chest's inventory. Pure. */
@@ -243,8 +280,8 @@ export function splitTombstone(saveData, paidQuestIds = []) {
 export const PERSISTED_KEYS = Object.freeze([
   '_tombstone', 'worldBlocks', 'chests', 'inventory', 'questState',
   'level', 'currentXP', 'totalXP', 'equipment', 'relicTiers', 'talentPoints', 'unlockedTalents', 'coins',
-  'nightCount', 'lastRewardedNight', 'ember', 'emberBuildDay',
-  'worldSeed', 'selectedBlock', 'activeSpell', 'isDay', 'gameTime', 'gameWon',
+  'nightCount', 'lastRewardedNight', 'ember', 'emberBuildDay', 'squad',
+  'worldSeed', 'selectedBlock', 'activeSpell', 'isDay', 'gameTime', 'gameWon', 'reachedShrines', 'rewardedShrines',
   'bossActive', 'bossHealth', 'bossDefeated', 'bossTier', 'bossKillNight',
 ]);
 
@@ -312,6 +349,8 @@ export function buildSaveData(state, { position } = {}) {
       // are not written: a save that holds them keeps them in the tombstone, and loading it sums them into `ember`.
       ember: state.ember,
       emberBuildDay: state.emberBuildDay,
+      // The bound squad's roster (game/squadRoster.js): the types, never the positions; it comes back at the player.
+      squad: state.squad,
     },
     game_state: {
       ...tomb.game_state,
@@ -324,6 +363,8 @@ export function buildSaveData(state, { position } = {}) {
       // `achievements` DELETED 2026-08-11: setAchievements had zero callers and the array zero readers,
       // so this wrote an empty list into every save. QuestSystem's achievements ride in questState.
       gameWon: state.gameWon, // S9c: the win-state survives a reload
+      // The frontier shrines this world has reached, and those whose reward chest has been opened (QuestSystem.jsx).
+      shrines: { reached: state.reachedShrines, rewarded: state.rewardedShrines },
       // A-bis B2g: the boss FIGHT survives a reload too, not just the win. gameWon alone only stopped a
       // slain dragon respawning; a fight in progress was hook-local React state, so a refresh at 5% HP
       // restored the dragon to all 700. Phase is not stored — it re-derives from health on load.
