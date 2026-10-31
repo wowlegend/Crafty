@@ -46,7 +46,11 @@ re-trap the cursor. **Only a clickable surface recovers.**
   and two did not: a chest opened from the world on touch (no lock to lose; the world ran on behind it) and VICTORY
   under a held lock. A covering surface takes the pointer back itself (InputManager), and `requestGameLock` refuses
   while any surface is up, so it must be handed `useGameStore.getState()` read after the caller's own writes.
-  Gated over device x surface x opener in `frontend/tests/gates/input-live-gates.test.jsx`.
+  Gated over device x surface x opener in `frontend/tests/gates/input-live-gates.test.jsx`; the Player loop's half (the
+  walk, jump, dodge and the five Aspect machines, on the real Player and Rapier) in
+  `frontend/tests/gates/player-input-live-gates.test.jsx`; and every way back the player clicks or presses (close
+  controls, Esc, Keep exploring, Respawn) asking for the pointer once its surface is gone in
+  `frontend/tests/gates/close-relock-gates.test.jsx`.
 
 ## Two routers, two different questions — do not merge them
 

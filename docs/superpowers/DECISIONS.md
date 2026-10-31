@@ -19,6 +19,53 @@
 
 ---
 
+## 2026-10-30 (lane L5, round 2) — [LOOP] the Player loop's half of the predicate is gated, a locked Aspect key reads it, and every way back is gated to ask for the pointer
+
+**Decided by lane L5's round-2 fixer under the standing grant** (DECISIONS 2026-10-28 item 14). Round 1's static and
+dynamic reviews of PR #63 both said FIX; this entry answers every finding they said must be fixed before landing, and
+corrects two claims of the L5 entry below. Each stands while it earns its place.
+
+178. **The Player loop's half of item 171's predicate is gated in jsdom, and a locked Aspect key reads the predicate.
+   This corrects item 174's departure, whose reason was false twice.** Item 174 said a guard in Components' keydown
+   "could not be gated in jsdom (the Player is R3F)" and that a key typed into a field "acts on nothing there".
+   `tests/gates/player-view-hold-gates.test.jsx` already mounted the real Player with the real Rapier; and
+   `denyAspectPress` (`src/input/aspectDeny.js`) read the input gate and `isAlive`, not `isInputLive`, so on touch, where
+   the gate stays up under World Manager and under VICTORY, a locked R, V, X or Z typed into World Manager's name field
+   or pressed under VICTORY raised a "locked Aspect" toast (REVIEW:l5:aspect-deny-reads-gate). It now reads
+   `isInputLive(state, getInput().active)`. The departure itself stands on the true reason: Components' keydown gets no
+   text-field guard, because the one text field is on World Manager, a covering surface, and the walk, the five Aspect
+   machines and the refusal all read the predicate there.
+   - `tests/gates/player-input-live-gates.test.jsx` mounts the real Player, raises the gate, and drives walk, jump,
+     dodge, roar, grab, snare, fuse and imbue through their real intents (talents and a full ember bar) under each of 15
+     covering surfaces put up by a store write that drops no gate: in play (the presence) walk 3.15 m, jump 1.81 m,
+     dodge 4.62 m and every Aspect verb starts; under each surface, 0 m and none starts. Its keydown case types into the
+     real World Manager's name field on touch and presses under VICTORY: on the old `denyAspectPress`, 6 and 4 locked
+     toasts; on the fix, 0 and 0. Red under the frame reading the gate alone (the code before the lane), under each
+     Aspect machine's and the walk's, jump's and dodge's own revert, and under the old refusal (`84dd95b8`;
+     REVIEW:l5:player-loop-ungated).
+   - **Every way back the player clicks or presses is gated to ask for the pointer once its surface is gone**
+     (`tests/gates/close-relock-gates.test.jsx`, `3b9cd2c4`; REVIEW:l5:relock-ungated): each PANEL_FLAG's own close
+     control and Esc over each (13 and 13), Keep exploring and Respawn, under the real MenuSystem, useInputManager and
+     HUD. Because item 173 made `requestGameLock` refuse under any surface, a caller handing it state read before its
+     own close write fails silently, and before this gate reverting MenuSystem's `enterPlay` to the render's gameState,
+     or deleting Keep exploring's request, left every unit spec green.
+   - **The wheel gate counts the slots a trackpad swipe moves through** (`08fc7e6c`; REVIEW:l5:wheel-gate-final-slot):
+     it read the final slot of a 9-slot bar, which a stepper spinning the swipe through 19 slots also reaches. Its first
+     case's title no longer claims a fast case on every browser; a fast macOS spin is REVIEW:l5:wheel-mac-medium-spin.
+   - `input-live-gates`' chest case opens the chest as Terrain does now, with no release of its own, and its header names
+     files that exist (`c1d88395`; REVIEW:l5:chest-case-old-opener).
+179. **Item 172's "on touch play is never dropped" is corrected: two touch openers drop it.** The tray rows
+   (`src/ui/TouchControls.jsx:324`, `if (yielded) setActive(false)`) and the locked Aspect sector (`:352`) drop `active`
+   when they open a panel. Nothing item 172 decided rests on the claim: the predicate holds the world and the verbs
+   whether or not an opener drops the gate, which `input-live-gates` checks for both openers. Round 1's other findings,
+   each LOW and left for later by its review, are registry rows: REVIEW:l5:wheel-mac-medium-spin (a device question),
+   REVIEW:l5:lock-granted-after-surface and REVIEW:l5:open-talents-hand-list; and the first-attempt flake both reviews'
+   CI runs showed, which had no row, is REVIEW:e2e-flakes:dragon-fight-parried-bite-move.
+
+**Not covered:** a real device (REVIEW:l5:device-run, Kevin's); whether the browser grants a lock the gates see asked for.
+
+---
+
 ## 2026-10-30 — [LOOP] L5: one predicate for "input is live", close lists from PANEL_FLAGS, keys that respect focus, the wheel per notch, and the backdrop per press
 
 **Decided by the L5 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L5 of the 2026-10-30 deep
