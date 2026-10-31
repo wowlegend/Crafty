@@ -27,9 +27,9 @@
       "total": "40+ real bugs",
       "big": "8 big ones",
       "fixed": "8 fixed",
-      "busy": "0 left",
-      "alt": "Over 40 real bugs found, 8 of them big. All 8 big ones are fixed; none is being fixed now.",
-      "caption": "The hunt you asked for. The last big one, saving your squad, is fixed."
+      "busy": "2 on device",
+      "alt": "Over 40 real bugs found, 8 of them big. All 8 are fixed in code; two wait on your iPhone and iPad.",
+      "caption": "All 8 big ones are fixed in code. Two need your iPhone and iPad."
     },
     "now": {
       "cells": [
@@ -182,8 +182,8 @@
       "title": "Calls made",
       "sub": "A selection of the calls made, each with its number in the decision record.",
       "rows": [
-        { "item": "290", "text": "A dragon save damaged by the old crash recovery loads slain, on every load.", "src": "DECISIONS item 290 (main, PR #69); replaces item 250's once-only repair, which item 290 says it passes over for some saves" },
-        { "item": "282", "text": "The size limit on the first download never rises; code players never run moves out.", "src": "DECISIONS item 282 (main, 2ab00451): supersedes items 257 and 278, which raised the limit; item 279 puts it back" },
+        { "item": "290", "text": "A wiped dragon whose return is not due now loads slain, on every load.", "src": "DECISIONS item 290 (main, PR #69): adds an every-load repair beside item 250's once-only arm, which stays; item 290 lists the wiped shapes no field can tell apart" },
+        { "item": "282", "text": "The download size limit is never raised just to let a change pass.", "src": "DECISIONS item 282 (main, 2ab00451): supersedes items 257 and 278, which raised the limit; item 279 puts it back" },
         { "item": "281", "text": "This page: pictures on top, short details below, built from one data file.", "src": "DECISIONS item 281 (main, 608c7612, 86f6b5dc); Kevin 2026-10-31 (session-truth 09:31Z)" },
         { "item": "271", "text": "The Delete Tool removes only blocks you placed, refunded as themselves.", "src": "DECISIONS item 271 (main, PR #68 merged 12:26:53Z); session-truth 2026-10-31T08:49Z" },
         { "item": "213-214", "text": "A body stuck in rock gets its own recovery, never a trip to spawn.", "src": "DECISIONS items 213-214 (main)" },
@@ -217,8 +217,8 @@
       "title": "Health",
       "sub": "Read 31 October, 13:29 UTC; the count is made when the page is written.",
       "rows": [
-        { "label": "Checks", "text": "All checks passed on 7250aa22, the newest change when read, at 13:22 UTC.", "src": "gh run list --branch main --workflow ci.yml: 41205232641 success on 7250aa22 (created 13:21:53Z, updated 13:22:44Z), read 13:29Z; git ls-remote origin main is 7250aa22" },
-        { "label": "Live site", "text": "Served 7250aa22 from 13:22 UTC on both web addresses, as read at 13:29.", "src": "gh api deployments (Production 7459159038, success 13:22:12Z); curl crafty-sand and crafty-game: both index-DVI5kV9R.js at 13:29Z; that chunk (649,549 B) equals a local vite build of 7250aa22 once chunk-name hashes are masked" }
+        { "label": "Checks", "text": "All checks passed on the newest change, as read at 13:29 UTC.", "src": "full suite: PR #69 run 41201866979 success on 7250aa22; main push run 41205232641 success on 7250aa22 (created 13:21:53Z, updated 13:22:44Z), read 13:29Z; git ls-remote origin main is 7250aa22" },
+        { "label": "Live site", "text": "The live game is that newest change, from 13:22 UTC, as read at 13:29.", "src": "gh api deployments (Production 7459159038, success 13:22:12Z); curl crafty-sand and crafty-game: both index-DVI5kV9R.js at 13:29Z; that chunk (649,549 B) equals a local vite build of 7250aa22 once chunk-name hashes are masked" }
       ]
     },
     "waiting": {
