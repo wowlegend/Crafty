@@ -137,6 +137,9 @@ export const useGameStore = create((set, get) => ({
     // Whether the tab's last save failed to write (a full or refused storage): the first failure of a run raises the
     // save.failed notice, and a save that lands ends the run (saveActiveWorld). Transient.
     _saveFailing: false,
+    // Set when the World Manager deleted the world this tab plays: the tab saves nothing more, and the page reloads
+    // (WorldManager.jsx). Transient.
+    _slotDeleted: false,
     // The world the boot loaded, for the title's Continue: { id, name, level, savedAt } or null (game/worldBoot.js
     // bootWorld). Transient: the page that loaded it is the only one it describes.
     continueWorld: null,
@@ -1314,7 +1317,7 @@ export const useGameStore = create((set, get) => ({
     // other's. The tab knows the slot's saved_at as it last read or wrote it (`_slotSavedAt`); a save that finds the
     // index's newer refuses, and `slotConflict` tells the player (ui/SlotConflictPanel.jsx). Returns whether it wrote.
     saveActiveWorld: (position) => {
-        if (get().isCaptureMode) return false;
+        if (get().isCaptureMode || get()._slotDeleted) return false;
         // A dead player is saved as Respawn would leave them (game/saveSchema.js asRespawned): a refresh on the death
         // screen is not a way back to life where they fell.
         const built = buildSaveData(get(), { position });

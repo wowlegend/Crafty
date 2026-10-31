@@ -13,6 +13,7 @@ import { useT } from './i18n/i18n.js';
 import { buildSaveData, savePosition } from './game/saveSchema.js';
 import { listWorlds, readWorld, writeWorld, deleteWorld as deleteWorldSave, mintWorldId } from './game/worldSaves.js';
 import { goToWorld } from './game/worldSwitch.js';
+import { reloadPage } from './game/pageReload.js';
 
 export const WorldManager = ({ onClose }) => {
   const t = useT();
@@ -92,7 +93,8 @@ export const WorldManager = ({ onClose }) => {
   };
 
   const deleteWorld = async (worldId) => {
-    if (!window.confirm('Are you sure you want to delete this world?')) {
+    const name = worlds.find((w) => w.id === worldId)?.name;
+    if (!window.confirm(`Delete ${name || 'this world'}? It cannot be undone.`)) {
       return;
     }
 
@@ -100,6 +102,14 @@ export const WorldManager = ({ onClose }) => {
       setError('');
       // Local saves only (cloud worlds were removed with the auth subsystem).
       deleteWorldSave(worldId);
+      if (worldId === useGameStore.getState()._sessionWorldId) {
+        // The world this tab plays: its next save (the autosave, the flush as the tab hides or closes) wrote it all back
+        // under a new name. The tab stops saving it, and the page reloads as a plain visit: the newest world left, or
+        // Start Adventure.
+        useGameStore.setState({ _sessionWorldId: null, _slotDeleted: true });
+        reloadPage();
+        return;
+      }
       setWorlds(listWorlds());
       setError('World deleted successfully.');
     } catch (error) {
@@ -323,6 +333,8 @@ const WorldCard = ({ world, onLoad, onDelete, isOwner }) => {
           {isOwner && (
             <button
               onClick={() => onDelete(world.id)}
+              aria-label={`Delete ${world.name}`}
+              data-testid={`world-delete-${world.id}`}
               className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-sm"
             >
               <Trash2 size={14} />
