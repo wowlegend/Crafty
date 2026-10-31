@@ -30,6 +30,55 @@ describe('S2-B4-M3: the zone registry (the chemistry core)', () => {
     expect(r.zones).toHaveLength(MAX_ZONES);
     expect(r.zones.find((z) => z.pos.x === 0)).toBeUndefined(); // the oldest gone
   });
+  // AUDIT:ultra:ultra-game-logic-4. The cap evicted reg.zones.shift(), the FIRST PAINTED, and a refresh keeps its place
+  // in the array, so a re-imbue that renewed a zone and then overflowed the cap (spawnZone, then spawnChain, in one bridge
+  // tick) evicted the zone it had just renewed while zones with seconds left survived.
+  describe('the cap evicts the soonest expiry', () => {
+    const fill = (r, n, burnAt = (i) => i * 10) => {
+      for (let i = 0; i < n; i++) spawnZone(r, { kind: 'burning', pos: at(burnAt(i), 0) }, i); // zone i expires at i + 10
+    };
+    it('a refreshed zone survives the overflow and the soonest-expiring one goes', () => {
+      const r = makeZoneRegistry();
+      fill(r, MAX_ZONES);                                                  // x 0..70, expiring at 10..17
+      const first = r.zones[0];
+      const again = spawnZone(r, { kind: 'burning', pos: at(1, 0) }, 14);  // re-imbue beside the first: expires at 24
+      expect(again.id, 'the re-imbue did not refresh the first zone: the setup is not the scenario').toBe(first.id);
+      expect(r.zones).toHaveLength(MAX_ZONES);
+      spawnZone(r, { kind: 'burning', pos: at(80, 0) }, 14.5);             // the overflow
+      expect(r.zones).toHaveLength(MAX_ZONES);
+      expect(r.zones.some((z) => z.id === first.id), 'the zone just refreshed was evicted').toBe(true);
+      expect(r.zones.some((z) => z.pos.x === 10), 'the soonest-expiring zone (x 10, 10 s into its life) survived').toBe(false);
+      expect(Math.min(...r.zones.map((z) => z.expiresAt)), 'the zones left include one that expires before the one evicted').toBeGreaterThanOrEqual(12);
+    });
+    it('the bridge order in one tick (spawnZone then spawnChain) keeps the zone it just refreshed', () => {
+      const r = makeZoneRegistry();
+      fill(r, MAX_ZONES, (i) => (i === 0 ? 0 : 100 + i * 10));            // the first painted sits at x 0; the rest are far off
+      const a = r.zones[0];
+      const impact = spawnZone(r, { kind: 'burning', pos: at(0.5, 0) }, 14); // the re-imbue: refreshes the first painted, to 24
+      expect(impact.id, 'the re-imbue did not refresh the first zone: the setup is not the scenario').toBe(a.id);
+      const mobs = [{ position: at(5, 0) }, { position: at(0, 6) }, { position: at(-5, 0) }];
+      const leaps = spawnChain(r, { kind: 'burning', pos: at(0.5, 0), chain: 3 }, mobs, () => true, 14);
+      expect(leaps, 'the chain leapt nowhere: the setup is not the scenario').toHaveLength(3);
+      expect(r.zones).toHaveLength(MAX_ZONES);
+      expect(r.zones.some((z) => z.id === a.id), 'a chain leap evicted the zone the same imbue had just refreshed').toBe(true);
+    });
+    it('the newcomer is never the one evicted, even when it expires soonest', () => {
+      const r = makeZoneRegistry();
+      fill(r, MAX_ZONES);
+      for (const z of r.zones) z.expiresAt = 100;                          // every older zone has more life than a conductive one
+      const fresh = spawnZone(r, { kind: 'conductive', pos: at(200, 0) }, 90); // 8 s: expires at 98, the soonest of all
+      expect(fresh, 'the cast returned no zone').not.toBeNull();
+      expect(r.zones.some((z) => z.id === fresh.id), 'the zone just cast was evicted at birth').toBe(true);
+      expect(r.zones).toHaveLength(MAX_ZONES);
+    });
+    it('equal expiry falls back to the first painted (the old order is the tie-break)', () => {
+      const r = makeZoneRegistry();
+      for (let i = 0; i < MAX_ZONES; i++) spawnZone(r, { kind: 'burning', pos: at(i * 10, 0) }, 10); // all expire at 20
+      spawnZone(r, { kind: 'burning', pos: at(80, 0) }, 10);
+      expect(r.zones.some((z) => z.pos.x === 0), 'a tie evicted a later zone, not the first painted').toBe(false);
+      expect(r.zones.some((z) => z.pos.x === 10)).toBe(true);
+    });
+  });
   it('dedupe-spacing: a same-kind spawn within DEDUPE_DIST REFRESHES the existing zone (no stack-stamping)', () => {
     const r = makeZoneRegistry();
     const a = spawnZone(r, { kind: 'burning', pos: at(0, 0) }, 10);

@@ -4,7 +4,7 @@
  * no-re-mesh gate covers this file from birth). THE OVERLAP RULES ARE THE DESIGN (combinatorial
  * chemistry): same-kind nearby = REFRESH (no stack-stamping) · fire vs ice = ANNIHILATE both
  * (steam) · a resonant rune is CONSUMED by the next non-resonant spawn touching it, AMPLIFYING
- * it (arcane bends, never reacts — the catalyst identity, design §2). MAX_ZONES oldest-evict:
+ * it (arcane bends, never reacts — the catalyst identity, design §2). MAX_ZONES soonest-expiry evict:
  * the economy cap IS the perf cap. The M4 bridge owns the live registry + the tick; M6 owns
  * the look. All numbers Kevin-tunable.
  */
@@ -27,6 +27,23 @@ const radiusMultOf = (spec) => (Number.isFinite(spec.radiusMult) && spec.radiusM
 
 export function makeZoneRegistry() {
   return { zones: [], nextId: 1 };
+}
+
+/**
+ * Make room for `keep`, the zone just painted: drop the zone with the soonest expiresAt, the first painted among equals.
+ * Not the first painted outright: a refresh renews a zone in place, so array order is paint order and says nothing about
+ * who has the least life left, and a re-imbue then evicted the zone it had just renewed while zones seconds from expiry
+ * stayed (AUDIT:ultra:ultra-game-logic-4). Never `keep` itself: the caller holds it as the cast's result, and a cast that
+ * is dead on arrival would play its sound and draw nothing.
+ */
+function evictSoonest(reg, keep) {
+  let at = -1;
+  for (let i = 0; i < reg.zones.length; i++) {
+    const z = reg.zones[i];
+    if (z === keep) continue;
+    if (at < 0 || z.expiresAt < reg.zones[at].expiresAt) at = i;
+  }
+  if (at >= 0) reg.zones.splice(at, 1);
 }
 
 /** spawnZone(reg, {kind, pos, radiusMult?}, now) -> the live zone (new or refreshed) | null (annihilated). */
@@ -74,7 +91,7 @@ export function spawnZone(reg, spec, now) {
     amplified,
   };
   reg.zones.push(zone);
-  if (reg.zones.length > MAX_ZONES) reg.zones.shift(); // oldest-evict
+  if (reg.zones.length > MAX_ZONES) evictSoonest(reg, zone);
   return zone;
 }
 
