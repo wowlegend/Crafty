@@ -123,8 +123,9 @@ verbose ... you decide the best shape for this command record html."
 
 **Decided by the L3 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L3 of the 2026-10-30 deep
 audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, seam S1 and section 4; registry
-AUDIT:lane:L3-store-owns-world-state). Branch `fix/l3-store-owns-world`. Items 250-259. Each stands while it earns its
-place.
+AUDIT:lane:L3-store-owns-world-state). Branch `fix/l3-store-owns-world`. Items 250-259; round 2, built by the fixer on
+the round-1 reviews, adds items 290-296 below them and corrects 250, 253, 255, 257 and 259 in place. Each stands while
+it earns its place.
 
 250. **A save the context-loss resume wiped is repaired at load to its slain dragon; decided before the boss fix, as
    the audit's one-way door asks.** The wipe: until lane L2 the resume loaded its world in ContextLossPanel's effect,
@@ -155,9 +156,12 @@ place.
      refund does, and a world that has loaded nothing starts with it recorded, so a later suspended fight at 700 is
      never touched. A return fight the wipe hit mid-way (its HP lost too) comes back as a slain dragon whose return was
      already due: it announces, wakes with its entrance and fights at its tier's full HP.
-   - **Not repaired:** the World Manager's in-place Load into a session whose hook had woken the dragon (the hook's
-     later writes carried its own HP, at most 700, and `active: true`, over the loaded tier): that is a live return
-     fight's shape, and no field tells the two apart. Gone since L2 too.
+   - **Not repaired** (corrected by item 290, round 2: this paragraph was wrong): the World Manager's in-place Load into
+     a session whose hook had woken the dragon (the hook's later writes carried its own HP, at most 700, and `active:
+     true`, over the loaded tier) was said to be a live return fight's shape that no field tells apart, and gone since
+     L2. A field does tell them apart, the return not due on the save's own progression, and L2's live boot made that
+     shape too (it woke a wiped slot at the lair); item 290 repairs it on every load and says what truly stays
+     indistinguishable.
    - Recorded before the boss fix, in its own commit (12f897eb); the repair and its gate,
      `frontend/tests/gates/boss-clobber-repair-gates.test.jsx`, landed in the next (16870cc8), before the hook reads the
      store (f86b7a06, item 251).
@@ -179,7 +183,8 @@ place.
 253. **A load with no quest log re-seeds the hook to a new world's log** (AUDIT:persistence:new-world-keeps-old-quests,
    defence in depth). `QuestSystem.jsx` `freshQuestState()` is the new world's log, used by the initializers and by the
    re-seed when the store holds none, where it returned early and kept the old world's quests, claims, counters and
-   achievements.
+   achievements. (Corrected by item 292, round 2: the store held none only for a save whose key was present and null;
+   a save with no key kept the session's log until the load read an absent key as null.)
 254. **The bound squad is saved with its world** (AUDIT:verbs:squad-not-saved-and-leaks-across-worlds, the persistence
    half; the soulbind spec 2026-06-10 s2b3 lines 63-65). The store's `squad` is the roster, one `{ type }` per creature,
    in `progression.squad`; a save with none loads none, as ember does. The type is the identity: everything else a
@@ -200,7 +205,8 @@ place.
    left shut is owed after a reload and comes back once, where recording the spawn would have lost the unopened reward to
    the reload. The board's own ref still stops a second chest while one is on it. A save from before the record has
    reached none: its player sees the shrine objective until they reach one again, and may open each shrine chest they
-   had already opened once more (before this, every reload re-armed them).
+   had already opened once more (before this, every reload re-armed them). (Amended by item 293, round 2: the loot of a
+   shrine's chest goes into the bag at the open, before the record, so a page closed before the pickup loses neither.)
 256. **Every key written to the store is declared in it** (AUDIT:debt:three-call-channels-dead-wires, the declare-keys
    half). 17 keys were written with setState and absent from the initial state at 8579918e. The 16 with readers are
    declared, null until their system publishes them; `shrineReached` was then replaced by item 255. `store.damageMob` had
@@ -209,7 +215,9 @@ place.
    from the syntax tree; it is sited in tests/scripts because its subject is the source's shape. The audit's hunter
    matched member calls only and so missed the three primary-action seams written through the setter Components hands
    `input/primaryInput.js`, and counted three React class-component `setState` keys as the store's.
-257. **The index chunk's ceiling rises by the lane's own bytes, 3,515 B, and no more** (`frontend/scripts/ci/bundle-budget.mjs`,
+257. **SUPERSEDED by item 282 (main, the command session's ruling): the ceiling stays 652,500 B, and this lane fits
+   under it (item 295, round 2); the raise below is gone from `frontend/scripts/ci/bundle-budget.mjs`.** As first
+   decided: **the index chunk's ceiling rises by the lane's own bytes, 3,515 B, and no more** (`frontend/scripts/ci/bundle-budget.mjs`,
    652,500 B to 656,015 B). Measured from a build at each commit (8579918e 649,342 B): the declared keys +374, the save
    repair +488, the store-owned fight +250, the squad +1,571, the shrine record +832; the lane ends at 652,857 B, 357 B
    past the old ceiling. The growth is the lane's features; the in-flight lanes keep the headroom they had.
@@ -224,8 +232,95 @@ place.
    a fresh module graph) and the real boot; the lived proof is CI's existing e2e suites on the exact sha. Not proven in a
    browser: the rebuilt squad's first steps onto the ground, and a pre-L3 save's first load in production.
 259. **Found, not fixed.** `setBossActive` has no caller in src now (the hook writes the encounter whole); it joins the
-   dead-setter half of AUDIT:debt:three-call-channels-dead-wires, lane L12's. The chest board itself still crosses an
+   dead-setter half of AUDIT:debt:three-call-channels-dead-wires, lane L12's (deleted in round 2, item 291, with the
+   other setters nothing called). The chest board itself still crosses an
    in-place load (closed for players by L2's reload; L3 made only the shrine facts per-world).
+
+**Round 2** (items 290-296), built on the round-1 static and dynamic reviews (static FIX on the ceiling raise and a
+false comment, dynamic FIX on wiped saves the repair missed), corrects items 250, 253, 255, 257 and 259 where they
+said more than was proven. Each stands while it earns its place.
+
+290. **A return fight its save does not hold due loads slain, on every load** (round-1 dynamic F1, static 4 and 5; the
+   one-way door, ruled by the command session). Item 250's repair matched the wipe's own shape, once per save, in slots
+   created before the window closed, and the wipe reaches disk past it three ways: the live L2 build (8579918e) boots a
+   wiped slot and the arrival poll wakes it, so the save then holds `{ health: 700, active: true, defeated: false,
+   tier: 1 }`, which the repair passes over (it needs `active: false`) while recording itself run (the review's probe
+   save, kept as `frontend/tests/fixtures/boss-woken-wipe-8579918e.json`); and a tab left open on a pre-L2 build keeps
+   running the old resume after the deploy, so it can write the wipe into a save that already records the repair, or
+   into a slot created after the window.
+   - **The sign.** A tier of 1 or more that is not defeated is a return fight, and the arrival poll wakes one only when
+     `bossCanReturn` holds (`game/bossTier.js`: three nights after the kill night, and a level of at least
+     `BOSS_BASE_LEVEL + LEVEL_STEP * tier`); its inputs never fall (`nightCount` is written
+     only as +1, and nothing lowers `level`). So a save holding a tier of 1 or more, not defeated, whose own
+     progression does not hold the return due, holds no fight a player can have reached: it is the wipe, however it was
+     written since.
+   - **The repair.** `hydrateBossState` (`frontend/src/game/bossPersistence.js`) loads that shape slain, its tier and
+     kill night kept, so its return is due as the kill set it, on every load: not once per save and not bounded by the
+     window, because the stale tab can write the shape again after any once-only migration has run. The store passes
+     the save's level (the session's when the save has none, as the load's own level does). A due return, a tier-0
+     fight and a slain dragon load as before. Item 250's arm stays for the one shape only it catches: a return that was
+     due, which the wipe reset to 700.
+   - **What stays indistinguishable** (this replaces item 250's "Not repaired" paragraph, which said no field told the
+     woken wipe from a live fight; item 290's sign does). A due return fight suspended at exactly 700 HP (its chunk
+     failed to load), inactive, in a slot created before the window whose repair has not run: item 250's arm loads it
+     slain, so it wakes again at its tier's full health (round-1 dynamic, info F; registry
+     REVIEW:l3:suspended-due-return-at-700). And a due return that a stale tab wipes after the repair is recorded keeps
+     its 700 and fights on at that health, with no entrance. No field the save holds tells either from a live fight.
+   - **The gate.** `frontend/tests/gates/boss-clobber-repair-gates.test.jsx` gains the 8579918e blob (repaired on the
+     head), a stale tab's wipe written after the record (inactive, and woken), a slot after the window, and item 250's
+     own match conditions (the review's surviving mutants KC and KD now die); receipts in cd8b6cfe's trailer.
+291. **The store's setters and seams with no caller are deleted** (the dead-setter half of
+   AUDIT:debt:three-call-channels-dead-wires, and item 259's `setBossActive`). `setBossActive` (the hook stopped calling
+   it in item 251) and `isBossActive()` (a second way to read `bossActive`: the three melee and aim branches in
+   `Components.jsx` and the projectile's boss test in `EnhancedMagicSystem.jsx` now read the field), 15 of the 17
+   setters the audit counted with no caller, and `checkNearbyChest`, which QuestSystem published and nothing read. Each
+   name has 0 word matches across `frontend/src`, the tests (e2e included), the scripts, `ci/` and `.githooks/` after
+   the cut. `setBuildingMode` and `setSelectedBuildBlock` stay for lane L6 (PR #68), which is reworking the building
+   tools that own them; the store hunks L6 also makes are written as L6 writes them, so the two merge cleanly. This is
+   code players never ran, out of their download (item 295).
+292. **A save with no quest log loads a fresh log, its key null or absent** (round-1 static 2, dynamic F3; corrects item
+   253). `loadWorldData` kept the session's log when a save had no `questState` key, so an in-place load of a save from
+   before the log carried the world loaded before's quests, counters and achievements into it; item 253 and the comment
+   in `QuestSystem.jsx` said that save was a fresh log, which held only for a key present and null. The load now reads
+   an absent key as null. At a boot the store is fresh, so only an in-place load could see the difference, and no player
+   path makes one since L2. Gated in `store-owns-encounter-gates` (the absent-key case).
+293. **A shrine's loot goes into the bag when its chest opens, before the record that it paid** (round-1 static 3;
+   amends item 255). Item 255 recorded a shrine rewarded at the open and still paid its loot as world drops, which live
+   in the ECS alone until they are picked up or banked (`frontend/src/systems/LootSystem.jsx`); the autosave flushes when
+   the tab is hidden or closed, so a page closed between the open and the pickup saved the record without the loot, and
+   the record keeps the chest from coming back. Of the two ways to keep them together, the loot is banked at the open:
+   each item into the bag and its XP granted, then the record written, in one synchronous run that no save can fall
+   inside. Recording at collection instead would have to follow every drop of one chest to its pickup or its banking,
+   and a close after part of them were picked up would either lose the rest or, unrecorded, re-arm the chest and pay the
+   collected part twice. Banking is what LootSystem does with a drop the player is not there for: one notice ("Looted:
+   ..."), no pickup pop or chime. The cost: a shrine's reward no longer bursts from its chest as drops; ordinary chests
+   keep theirs. Gated in `shrine-persistence-gates` (open, save before any pickup, reload: the record, every item and
+   the XP in the save, no second chest).
+294. **A rebuilt squad stands at the player's feet, on its own floor where that is known** (round-1 static 6; amends
+   item 254). The rebuild stood each creature at the y of the store's `playerPosition`, which just after a load is the
+   save's capsule centre (`game/saveSchema.js` `savePosition`), 0.9 m over the feet, and a creature is put on its floor
+   only by a step the squad AI orders. Each now starts half a block over its own floor (the height `SquadAISystem` gives
+   an ally), found from the player's feet with the squad AI's `groundForMover` rule, and over the feet where no floor is
+   known yet; the ring placement is unchanged. Gated in `squad-roster-gates` (the computed start, which also kills the
+   review's mutant KH). Not seen in a browser: the squad's first steps after a load.
+295. **The lane fits under the index ceiling, 652,500 B, with no raise** (item 282, the command session's ruling,
+   supersedes item 257). Measured with `npm run build` on the merge of main 2ab00451 into the lane (94915136): the index
+   chunk is 647,955 B, 4,545 B under the ceiling, against main's 645,324 B, so the lane adds 2,631 B net; the budget
+   script's own reading is 632.8 KB of 637.2 KB with every marker check passing. Round 1 measured its growth at 3,515 B
+   on its own builds, so round 2's fixes and cuts net to about 884 B less (derived from the two measurements, not
+   measured per commit). What offsets the growth is the code item 291 deleted, which players never ran. Tried and
+   dropped: installing the squad's persistence from a lazy chunk. The squad gate went red on it ("the save holds no
+   squad roster": a bind made before the chunk resolves is never written to the roster, and the install's rebuild then
+   clears that body), and the persistence runs for every player, so it is not code item 282 moves out of the download.
+   One factory, `game/mobTypes.js` `mobEntity`, now makes a mob's entity for the spawner and for a rebuilt bound
+   creature, which each wrote out by hand.
+296. **Found in round 1 and not fixed here, each with an owner.** The review's mutants KF and KG (an in-place load
+   keeping the session's shrines or squad) now die in `store-owns-encounter-gates`. Recorded: a due return suspended at
+   exactly 700 refilled by item 250's arm (REVIEW:l3:suspended-due-return-at-700; the fix the review offered, also
+   requiring the save's `saved_at` after the window's start, is the command session's call); the in-place defence of a
+   disarmed lair that no gate pins (mutant KI; REVIEW:l3:in-place-lair-disarm-unpinned, lane L12); and a pre-L3 save
+   that had completed Pilgrimage, which shows the shrine objective again although the quest proves a shrine was reached
+   (REVIEW:l3:pilgrimage-done-shows-shrine-objective, LOW).
 
 ---
 
