@@ -125,6 +125,217 @@ Every row's disposition, with the command that proved it and the verifier's verd
    sources (STATUS section 2, QUEUE, OPEN-ITEMS, the masterpiece tables) retire next, under reset-plan row 32, which
    deletes the harvest's extraction half and `registry-floors.json`.
 
+## 2026-10-31 (lane L8, round 2) — [LOOP] a refresh continues the world the tab was playing; round 1's ungated claims gated; what a refused sessionStorage still does
+
+**Decided by the L8 round-2 fixer under the standing grant** (DECISIONS 2026-10-28 item 14), from round 1's static and
+dynamic reviews of `acbee88c`, with the refresh call (item 343) made by the command session. Branch
+`fix/l8-save-slots`. Items 343-350 (round 1 used 330-342; lane L7's section, below, also numbers 330-336, and each
+section names its lane). Each stands while it earns its place.
+
+343. **A refresh continues the world the tab was playing, even an empty New World** (the command session's ruling on
+   the dynamic review's F3). This supersedes item 334's cost sentence for a refresh: a New World played without earning
+   anything is no longer passed over when the same tab reloads. A visit with no note (a new tab) keeps item 334's rule.
+   As the page goes (pagehide, which HTML's unload steps fire before the page is hidden), App's autosave install
+   writes a pending save and then leaves the tab the boot note naming its world (`worldBoot.js` `leaveTabNote`, the
+   note a world switch leaves since item 200), so the note names the slot that save made. The boot honours a note
+   before any rule of the plain visit, and its prune keeps the world a note names. No note is left where the next load
+   must be a plain visit or another's note:
+   - a switch's note is already there (the switch decides where the reload goes);
+   - the tab deleted its world (item 335's plain-visit reload);
+   - the tab has no world in play (it loaded none and was never started);
+   - the world it loaded never ran a frame (the boot attempt is still there, so item 220's crash-loop breaker still
+     holds that world on the title after the crash screen's Reload);
+   - the page is kept for the back-forward cache (`persisted`), where it may be shown again alive, with no boot.
+   pagehide also flushes the pending save itself, for a browser that fires no beforeunload. Not covered: another tab's
+   prune of the world this tab plays (it cannot read this tab's note; REVIEW:l8:delete-in-another-tab-writes-back),
+   and a real browser's event order (the gate dispatches the events). Gate:
+   `tests/gates/refresh-tab-note-gates.test.jsx`, through the real entry: F5 in an empty New World, twice, past the
+   boot's prune; pagehide alone; the five no-note cases; a new tab keeps item 334.
+344. **A reached shrine is earned progress** (dynamic F6; amends item 333's list). Reaching a frontier shrine grants
+   nothing (store `reachShrine`), so a world whose only progress was a reached shrine counted as empty: the prune could
+   delete it and a plain visit passed over it. `holdsNothing` reads `game_state.shrines.reached`, and item 333's blind
+   spot narrows to an item picked up with no XP, coin, block or chest. Gate: the one-field case in `slot-prune-gates`.
+345. **Items 333's and 330's claims are gated, not only stated** (dynamic F1 and F2; no behaviour change). The review's
+   mutants of the prune's reads survived every spec but the coins read. `slot-prune-gates` now boots one world holding
+   exactly one earned thing (coins, XP at level 1, a level, a block, a chest, the win, a claimed quest, a reached
+   shrine, or no progression slice at all) under four newer empty worlds, and asserts it is both kept and continued,
+   and that a new world's state is deleted. A refresh at no mana keeps none (`refresh-keeps-vitals-gates`), and a dead
+   player's save loads full mana as well as full health (`dead-refresh-gates`).
+346. **At a full storage only the first failed save of a run prunes** (static finding 1; amends item 333's "when a
+   write fails for room"). The room-prune reads and parses every `Save_`-named save, the player's real worlds among
+   them (nothing renames a slot the autosave made), and at a full storage every autosave fails, so each 5 s tick re-read
+   every world. It now runs on the first failure of a run (`_saveFailing`, item 332), and the retry that lets a real
+   world's save land still runs, once. The boot's prune still reads every placeholder-named save once a load. Gate: a
+   case in `save-failure-gates` (6 reads on the first failed save, none on the next two, 6 again after a save lands).
+347. **Where sessionStorage refuses the note** (amends item 338). The conflict panel's Reload passes `orPlainVisit`
+   (static finding 4): refused, it was a dead button under an opaque panel. Its plain visit lands on the newest world
+   earned in or named: the one the other tab just saved, unless that is an empty placeholder. A refused Create takes
+   back the slot it minted and wrote a line earlier (dynamic F5), so the World Manager's "nothing changed" is true and
+   My Worlds keeps no world the tab cannot switch to; nothing the player made is in that slot. The fixer's call: the
+   brief also allowed keeping the world and saying so. That keeps a named, empty slot that no Load can reach in that
+   browser and no prune removes, and it needs a new line in both languages in the index chunk. Reversing it is one line
+   in `WorldManager.jsx`. Gate: two cases and a control in `switch-without-session-gates`.
+348. **What round 1 left, said where it belongs** (static findings 2, 3 and 6; dynamic F4). Opened, owner command
+   session, both LOW: REVIEW:l8:refresh-in-fight-sheds-mobs (F5 in a fight keeps the player's health since item 330,
+   but the save holds no mob and every load grants 5 s with no damage, so the fight is still left behind) and
+   REVIEW:l8:split-view-page-runs-clock (a visible but unfocused touch page, as in iPad Split View, runs its clock and
+   saves; item 336 raises the conflict panel at once). Item 331 now states its residual: a change held while the page
+   is hidden is lost if the tab is closed while still hidden. REVIEW:l8:delete-in-another-tab-writes-back's note is
+   corrected: a failed save's prune keeps none but its own slot, so it can delete an empty world another tab plays,
+   and that tab writes the world back at its next save.
+349. **Round 2 fits under the index ceiling, 652,500 B, with no raise** (item 282; supersedes item 341's headroom).
+   The round's code first built the index chunk at 652,622 B. Its own code was compacted, behaviour unchanged:
+   `holdsNothing` read with `|| {}` (the build then lowered each `?.` to a temporary and two null tests; since item
+   350 it does not, and `holdsNothing` reads with `?.` again);
+   `leaveTabNote` returns nothing, since nothing read it; `goToWorld`'s second parameter is the flag itself; and the
+   storage listener calls `noteStorageWrite` directly. With `npm run build` on the round's code head `38e901e3` the
+   index chunk is 652,430 B, 70 B under, and bundle-budget passes. Nothing was moved out. (Its headroom is superseded
+   by item 350: main's lane L7 landed while round 2 was in CI.)
+350. **The build target is Vite 6's default with Chrome and Edge at 91, so `?.` ships as written**
+   (`frontend/vite.config.js` `build.target`; the fixer's call, made without a ruling and recorded in the round's
+   QUESTION.md). Main's lane L7
+   landed while round 2 ran in CI and added 892 B to the index chunk, and the merged tree built it at 653,322 B, 822 B
+   over the ceiling, which is not raised (item 282). Vite 6's default target (`'modules'`: es2020, edge88, firefox78,
+   chrome87, safari14, as Vite's own Vite 7 announcement lists it) makes esbuild 0.25 lower every optional chain to a
+   temporary and two null tests, because esbuild's table starts optional chaining at Chrome and Edge 91 (measured:
+   `esbuild.transformSync('x=a?.b', { target })` keeps `?.` for chrome91, safari14 and firefox78 and lowers it for
+   chrome87, chrome90 and edge88). The compat-table data shows Chrome 80 to 90 failing only one optional-chaining test,
+   "spread parameters after optional chaining" (`fn?.(...[], 1)`), and passing the other four. A scan of every built
+   chunk found 176 optional calls and none with a spread argument, so Chrome and Edge 87 to 90 run this build's `?.`
+   correctly, and Firefox and Safari already ran it natively at their listed versions. The same build with the target
+   moved reads index 646,192 B (7,130 B less), r3f 688,507 B (444 B less), panelBundle 61,539 B (515 B less); three and
+   rapier are unchanged (at `7a96dd9a`; with `holdsNothing` back on `?.`, the index reads 646,175 B, 6,325 B under the
+   unchanged ceiling). That headroom is
+   the next lanes' (item 282's lookbook move left its freed bytes as headroom too). Vite 7's own default moves Chrome
+   and Edge to 107. Not covered: a future optional call that spreads its arguments would misbehave on Chrome and Edge
+   87 to 90 (REVIEW:l8:optional-call-spread-chrome-87-90, LOW). One line to reverse.
+
+---
+
+## 2026-10-31 (lane L8) — [LOOP] the save slot lifecycle: a refresh is no heal, a hidden tab writes nothing, a failed save says so, empty worlds do not pile up, a deleted world stays deleted
+
+**Decided by the L8 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L8 of the 2026-10-30 deep
+audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, seam S2 and section 4), with the load-heal call made by the
+command session. Branch `fix/l8-save-slots`. Items 330-342. Each stands while it earns its place. The one save path and
+the write epoch landed in lane L2 (item 221): every write of a world slot in `frontend/src` is `saveActiveWorld`'s, but
+the World Manager's Create, which writes a new slot of its own (`grep -rn "writeWorld(" frontend/src`); this lane
+extends the epoch (item 336) and does not redo it.
+
+330. **A refresh is no heal: the save keeps the player's health and mana, and a load restores them** (the command
+   session's call; AUDIT:numeric:load-mid-fight-full-heal). This supersedes item 222's last two sentences, which kept
+   the full heal at every load as lane L8's open design call, and item 206's "the load heal ... (L8)". Since lane L2 a
+   refresh resumes the newest save in place, so F5 mid-fight was a full heal where the player stood, as often as they
+   liked, with the dragon keeping its wounds. `buildSaveData` writes `player_data.health` and `player_data.mana` when
+   each is below its maximum, and nothing at full; `loadWorldData` restores each under the maximum the load derives
+   from the save's level and gear (`saveSchema.js` `loadedVital`), and loads the maximum when the save holds none or a
+   value no living player has (health at or below 0, a mana that is no number). Writing nothing at full is what keeps
+   a new world full: the store's placeholder 100 is not a wound of a level-1 maximum of 150. A dead player's save
+   (`asRespawned`, item 222) drops both, so it still loads as Respawn leaves them. The four store keys join
+   `PERSISTED_KEYS`, so a hit or a cast schedules a save and the unload flush writes it. The rejected half of the
+   audit's choice, refusing Load in a fight, is moot: every load is a reload, and a refusal of F5 is not the game's to
+   make. A level-up during a load (a retired quest's owed XP) still heals, as a level-up does in play. Gate:
+   `tests/gates/refresh-keeps-vitals-gates.test.jsx`.
+331. **A hidden page keeps no day clock and writes nothing** (L2 round-2 static F1; registry
+   REVIEW:l2:hidden-tab-keeps-clock-and-saves, opened and closed here). On touch nothing pauses a page that is switched
+   away from, so a hidden tab's clock ticked, each tick scheduled an autosave, and with two tabs on one world each of
+   those writes refused the visible tab's next save (item 221's conflict panel after every Continue). `shouldAdvanceClock`
+   (`game/dayNight.js`) takes the page's visibility as its own guard, read live each tick by `useDayNightClock`, and
+   `installAutosave` schedules nothing while the page is hidden: a change made then is held and scheduled when the page
+   is shown. The hide still flushes a save pending from before it, once. A change held while the page is hidden is
+   lost if the tab is closed while still hidden: the round-1 review found no path that earns progress or kills the
+   player on a hidden page, so what is lost is mostly mana regen (item 348). Not changed: the other interval timers of a
+   hidden touch page (mana regen, the quest chests, the spawner) still run, and save nothing until the page is shown
+   (REVIEW:l8:hidden-touch-page-timers-run). Gate: `tests/gates/hidden-tab-gates.test.jsx` (the real App on the touch
+   path).
+332. **A save that does not land says so, once a run** (the July review's save-write-failure-silent, :937; registry
+   AUDIT:persistence:save-write-failure-silent, opened and closed here). `saveActiveWorld` raises `save.failed`
+   (warning, en and zh-CN) on the first failed write of a run, a landed save ends the run (the transient
+   `_saveFailing`), and a failed index write after the blob landed counts as a failure, as `writeWorld` reports it. Gate:
+   `tests/gates/save-failure-gates.test.js`.
+333. **(Amended by items 344, a reached shrine is earned, and 346, the room-prune once a run of failures.) A browser
+   keeps at most three empty placeholder worlds** (the lane brief's "a rolling slot or a prune beyond K"; the orphan
+   half of AUDIT:persistence:returning-player-never-resumed). `worldSaves.js` `pruneEmptySlots` deletes the
+   worlds nobody named (the `Save_<time>` placeholder) and nothing was earned in (level 1, no XP, no coins, no block
+   edited, no chest, not won, no quest claimed; a save with no progression slice is never empty) beyond the
+   `KEEP_EMPTY_SLOTS` (3) newest, the world a page plays among those kept and never deleted. It runs at the boot, before
+   the world is chosen; after a new slot's first write; and, with none kept but the slot's own, when a write fails for
+   room, which then tries once more, so a real world's save lands where it stopped before. It writes the shortened index
+   first and removes the saves only once that has landed, so a refused index write never leaves the index naming saves
+   that are gone (785e18d2).
+   - **Why not a rolling slot:** one slot per browser for unnamed worlds would write each New World over the last one,
+     progress and all. **Why not recency alone:** on a disk an earlier build left, the player's real world is often the
+     OLDEST slot, under the orphans each later visit minted; a prune of all but the newest K would delete it.
+   - **The one-way door.** Deletion is of a player's data, so the rule deletes only what holds nothing earned and was
+     never named. Its blind spot: an item picked up with no XP, coin, block or chest (an empty world by this rule loses
+     it). Gate: `tests/gates/slot-prune-gates.test.js` (50 New World sessions leave 3 empty slots, the newest; a world
+     with coins, a named one and the real one stay; 40 orphans on disk; the quota retry; a refused index write).
+334. **(Superseded in part by item 343: a refresh in the same tab continues the world it was playing; the rule below
+   is a new tab's.) A returning player continues the world they earned, not an empty orphan written after it** (amends
+   item 200's plain visit, "the first index entry the player owns whose save reads"). `latestOwnedWorld` passes over a world that
+   item 333 counts as empty for the newest world that holds something, and continues the newest when none does. A
+   named world (the World Manager's Create) is always a choice. Until lane L2 every Start minted an empty slot, so a
+   player who gave up looking for their world had their Continue name a level-1 world: AUDIT:persistence:returning-
+   player-never-resumed's harm, live for every disk holding those orphans. The cost: a New World played without earning
+   anything and left is passed over on the next visit for an older world that holds something. Gates: two cases in
+   `slot-prune-gates`, one through the real entry in `tests/gates/returning-player-gates.test.jsx`.
+335. **A world deleted while it is played stays deleted** (the July review's delete-current-world-resurrects, :1185;
+   registry AUDIT:persistence:delete-current-world-resurrects, opened and closed here). Deleting the world the tab plays
+   (mid-game, or from the title, where the boot has loaded the world Continue names) ends the tab's claim and sets the
+   transient `_slotDeleted`, which `saveActiveWorld` reads, and the page reloads as a plain visit (no note). Clearing the
+   claim alone is what the July code did, and the next autosave minted a new slot for the deleted world. The delete
+   button is labelled with the world's name, and the prompt names the world it deletes. Not covered: a delete from
+   another tab, whose next save writes the world back (REVIEW:l8:delete-in-another-tab-writes-back). Gate:
+   `tests/gates/world-delete-gates.test.jsx`.
+336. **A stale tab is told the moment the other tab saves its world** (extends item 221;
+   REVIEW:l2:tab-conflict-told-at-next-save). `installAutosave` hands every `storage` event (a browser delivers one to
+   each other page of the origin when one writes localStorage) to the store's `noteStorageWrite`, which raises the
+   conflict panel at once when the slot was saved since the tab last read or wrote it. Still not covered: a write from
+   another tab landing between this tab's read of the index and its own write, in one task
+   (REVIEW:l8:slot-write-race-in-one-task). Gate: a case in `tests/gates/two-tab-save-gates.test.jsx`.
+337. **A load claims a slot only by its id, and only once it has loaded; chests are read as pairs** (the audit's two
+   REFUTED findings, ultra-state-saves-input-1 and -2, kept as this lane's hardening). The claim moved after the
+   reducer, a load with no id leaves the tab owning no slot (not the one loaded before), and `liveChests` drops an entry
+   that is no pair and chests that are no list, as `liveBlocks` does (item 219). A sweep of 147 corruptions of a save
+   (21 fields, 7 shapes each) found none that still throws as it loads, so `boot-guard-gates` stands its throwing save
+   in after the claim (`setActiveWorldId` throws for the broken slot), and its failure-path mutants still die. The
+   other half the brief named, the World Manager passing the slot id it read, holds since lane L2: every load is the
+   boot's, which passes the index entry's id. Gate: `tests/gates/load-hardening-gates.test.js`.
+338. **A world switch the browser will not carry is not made, and the player is told**
+   (REVIEW:l2:switch-without-session-storage). `switchWorld` returns null without reloading when sessionStorage refuses
+   the note, unless the caller passes `orPlainVisit`: the context-loss recovery does, since the lost context leaves
+   nothing to stay in, and since item 347 the conflict panel's Reload does too. Their plain visit continues the newest
+   world earned in or named: the world just saved, unless that is an empty placeholder (item 334), and then an older
+   world that holds something (corrected in round 2; it said "the world just saved"). `goToWorld` returns whether the
+   switch was made and raises `save.switchRefused` (en and zh-CN) when it was not; the World Manager shows the same line.
+   Gate:
+   `tests/gates/switch-without-session-gates.test.jsx`.
+339. **A due return fight suspended at exactly 700 HP stays loaded as item 250's arm loads it; the sign the review
+   offered is inert** (REVIEW:l3:suspended-due-return-at-700, the command session's call by item 296, closed as
+   decided). The offered fix was to require the save's `saved_at` at or after the window's start (2026-10-28T10:41:29Z).
+   GitHub's Production deployments (`gh api "repos/wowlegend/Crafty/deployments?environment=Production&per_page=40"`,
+   each sha tested with `git merge-base --is-ancestor 92120514 <sha>`, 92120514 being the first commit to write
+   `saved_at`) show no deploy carried `saved_at` before 8579918e at 2026-10-31T07:09:42Z, the window's end. So every save
+   that holds a `saved_at` was written at or after the window's end, and the rule excludes none of them; and a save with
+   none (every save written in the window) cannot be dated by it. No other field the save holds tells the suspended
+   fight from the wipe (item 290), so nothing changes: the rare case (a fight suspended at exactly 700) keeps waking at
+   its tier's full health.
+340. **A world whose Pilgrimage is done is not sent to reach a shrine again**
+   (REVIEW:l3:pilgrimage-done-shows-shrine-objective). The HUD objective tracker shows the shrine objective only while
+   the world has reached none and Pilgrimage is not among the claimed quests. The shrine record is unchanged: no key is
+   invented for a shrine the save does not name, so a shrine's chest still spawns where its reward has not been taken.
+   Gate: a case in `tests/gates/shrine-persistence-gates.test.jsx`.
+341. **(Its headroom is superseded by item 349: 70 B after round 2.) The lane fits under the index ceiling, 652,500 B,
+   with no raise** (item 282). Measured with `npm run build` on the lane's code head `785e18d2` (base 7250aa22, where the index chunk is 649,549 B by item 295): the index chunk is
+   652,132 B, 368 B under the ceiling, so the lane adds 2,583 B; the budget script reads 636.8 KB of 637.2 KB with every
+   marker check passing. The World Manager's changes are in the lazy panel chunk and cost the download nothing. Nothing
+   was moved out: the lane fits, and the next lane to land offsets what it adds beyond the 368 B left.
+342. **Opened, each with an owner** (command session, all LOW): REVIEW:l8:hidden-touch-page-timers-run (item 331),
+   REVIEW:l8:delete-in-another-tab-writes-back (item 335), REVIEW:l8:slot-write-race-in-one-task (item 336). Not seen in
+   a browser or on a device: every gate here runs in jsdom; CI's e2e runs the save paths it already covers
+   (`continue.spec.js`, `context-loss.spec.js`, `save-load` and the rest) on the exact sha.
+
+---
+
 ## 2026-10-31 — [LOOP] lane L10: Apple audio comes back after iOS stops it, and the soundtrack goes through Web Audio
 
 Lane L10 of the 2026-10-30 deep audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4), PR #70. It

@@ -155,7 +155,9 @@ test('a returning player continues from the title, and stands where they saved, 
   expect(saved.id, 'SETUP: the save wrote no world').toBeTruthy();
   expect(Math.max(Math.abs(saved.at.x), Math.abs(saved.at.z)), 'SETUP: the save is not three chunks out').toBeGreaterThanOrEqual(FAR);
 
-  // 3. Reload the tab: a plain visit. Every drawn frame of the new page is sampled from its first one.
+  // 3. Reload the tab, as F5 does: the page going leaves the tab a note naming the world it played (game/worldBoot.js
+  // leaveTabNote), the one just saved, and a plain visit would continue it too. Every drawn frame of the new page is
+  // sampled from its first one.
   await page.addInitScript(() => {
     window.__bodySamples = [];
     const tick = () => {

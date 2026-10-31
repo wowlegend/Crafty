@@ -56,6 +56,12 @@ export default defineConfig(({ command }) => ({
     build: {
         outDir: 'build',
         sourcemap: false,
+        // Vite 6's default target ('modules': es2020, edge88, firefox78, chrome87, safari14) with Chrome and Edge at 91.
+        // esbuild 0.25 lowers every `?.` for Chrome and Edge below 91, whose only optional-chaining failure in the
+        // compat-table is an optional call with a spread argument (`f?.(...args)`); the lowering cost the index chunk
+        // 7,130 B, and no optional call in the build spreads its arguments (DECISIONS 2026-10-31 (lane L8, round 2)
+        // item 350). Firefox and Safari already ran `?.` natively at these versions.
+        target: ['es2020', 'edge91', 'firefox78', 'chrome91', 'safari14'],
         // Suppress chunk size warnings: 3D games (Three.js, Rapier) inherently produce large bundles.
         // For zero-stutter gameplay, we intentionally want these loaded upfront.
         chunkSizeWarningLimit: 4000,
