@@ -535,12 +535,14 @@ export function deepEqual(a, b) {
 
 /**
  * The rules that read outside the file, each dependency injected so a test can fix it: S6 (a commit sha in closedBy is
- * an ancestor of HEAD), S7 (a DECISIONS reference is exactly one item), S9's Kevin half (the item names him) and S10's
- * clock (no LANE:triage row older than TRIAGE_DAYS by HEAD's committer date, so a sha always gets the same verdict).
+ * an ancestor of HEAD, or of MERGE_HEAD while a merge is unfinished: see liveReferences), S7 (a DECISIONS reference is
+ * exactly one item), S9's Kevin half (the item names him) and S10's clock (no LANE:triage row older than TRIAGE_DAYS by
+ * HEAD's committer date, so a sha always gets the same verdict).
  * @param {object[]} rows parsed rows (each with _line)
- * @param {{isAncestor: (sha: string) => boolean, decisionsText: string, headDate: string}} refs
+ * @param {{isAncestor: (sha: string) => boolean, decisionsText: string, headDate: string, mergeHead?: string|null}} refs
+ *   `mergeHead` only words S6's message; which shas pass is `isAncestor`'s to decide.
  */
-export function checkReferences(rows, { isAncestor, decisionsText, headDate } = {}) {
+export function checkReferences(rows, { isAncestor, decisionsText, headDate, mergeHead = null } = {}) {
   if (typeof isAncestor !== 'function' || typeof decisionsText !== 'string' || !DATE.test(String(headDate))) {
     throw new Error('checkReferences needs isAncestor, decisionsText and a YYYY-MM-DD headDate: a reference check run blind is not a pass');
   }
@@ -552,7 +554,9 @@ export function checkReferences(rows, { isAncestor, decisionsText, headDate } = 
     if (r.state === 'closed') {
       const form = closedByForm(r.closedBy);
       if (form === 'commits') {
-        for (const sha of r.closedBy.split(', ')) if (!isAncestor(sha)) add('S6', `closedBy ${sha} is not an ancestor of HEAD`);
+        for (const sha of r.closedBy.split(', ')) {
+          if (!isAncestor(sha)) add('S6', `closedBy ${sha} is not an ancestor of HEAD${mergeHead ? ` or of MERGE_HEAD ${String(mergeHead).slice(0, 8)}` : ''}`);
+        }
       }
       if (form === 'decision') {
         const d = resolveDecision(r.closedBy, entries);
@@ -569,14 +573,32 @@ export function checkReferences(rows, { isAncestor, decisionsText, headDate } = 
   return { findings, errors: findings.map(said) };
 }
 
-/** isAncestor, DECISIONS and HEAD's committer date read from the git checkout at `root`. */
+/**
+ * isAncestor, DECISIONS and HEAD's committer date read from the git checkout at `root`.
+ *
+ * A sha counts as on the history when HEAD reaches it, or, while a merge is unfinished, when MERGE_HEAD does. The
+ * documented way to take main into a lane is a merge commit (CLAUDE.md "Landing"), and its pre-commit hook runs S6 on
+ * the staged registry while HEAD is still the lane's own tip: without the second root every closedBy sha main added
+ * read "not an ancestor of HEAD", and the only way through was --no-verify. Once the merge commits, HEAD reaches
+ * MERGE_HEAD's commits and the allowance has nothing left to add. It is no wider than that: a sha on a branch the
+ * merge does not take in, or on no branch, is still refused, and so is every sha after `git merge --abort`. `git
+ * rev-parse --verify` finds the merge state in a linked worktree too, where `.git` is a file. An octopus merge reads
+ * only its first merged commit; a squash merge leaves no MERGE_HEAD and so no allowance.
+ */
 export function liveReferences(root = ROOT) {
   // A hook's GIT_DIR must not choose the repository: `root` does.
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
   const git = (args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', env, maxBuffer: 256 << 20, stdio: ['ignore', 'pipe', 'pipe'] });
+  let mergeHead = null;
+  try {
+    mergeHead = git(['rev-parse', '-q', '--verify', 'MERGE_HEAD']).trim() || null;
+  } catch {
+    // -q exits 1, silently, for "no such ref": no merge in progress. A git that is failing for any other reason fails
+    // the rev-list below the same way, and a MERGE_HEAD it cannot read leaves the strict rule, never a looser one.
+  }
   // One rev-list instead of a merge-base per sha: the set of commits HEAD reaches is what --is-ancestor asks about.
   const reachable = new Map();
-  for (const sha of git(['rev-list', 'HEAD']).split('\n')) {
+  for (const sha of git(['rev-list', 'HEAD', ...(mergeHead ? [mergeHead] : [])]).split('\n')) {
     if (!sha) continue;
     const k = sha.slice(0, 7);
     if (!reachable.has(k)) reachable.set(k, []);
@@ -588,6 +610,7 @@ export function liveReferences(root = ROOT) {
     decisionsText: readFileSync(join(root, DECISIONS), 'utf8'),
     headDate: git(['show', '-s', '--format=%cs', 'HEAD']).trim(),
     shallow,
+    mergeHead,
   };
 }
 
