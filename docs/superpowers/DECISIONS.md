@@ -19,6 +19,103 @@
 
 ---
 
+## 2026-10-30 (lane L2) — [LOOP] every world switch is a boot, and the title continues the player's world
+
+**Decided by the L2 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L2 of the 2026-10-30 deep
+audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, seam S1 and section 4). Branch `feat/l2-boot-is-the-only-load`,
+PR #65. Items 200-206. Each stands while it earns its place.
+
+200. **Every world switch is a boot; this supersedes B2a's "nothing resumes at boot"** (`memory/STATUS.md` B2a, and the
+   store's saveActiveWorld note it was written beside). A world's state had six owners and no world-load event: the
+   store, hook state seeded at mount (the dragon fight, the quest log, the XP refs), hook refs (quest chests, shrines), the
+   undeclared `shrineReached`, the ECS (allies, mobs, orbs, loot) and the Rapier body. `loadWorldData` reset the store
+   alone, and every load in the game ran after mount: the context-loss resume wiped the quest log and wrote a slain
+   dragon back alive (AUDIT:debt:resume-clobbers-quests-and-boss), a dragon woken before Load or Create New World stayed
+   in the hook at 600-700 HP where no hit reached it (AUDIT:softlocks:boss-hook-ignores-world-load), New World kept the
+   old quests (AUDIT:persistence:new-world-keeps-old-quests), chests, orbs, loot and mobs crossed into the next world
+   (AUDIT:leaks:world-load-keeps-previous-world-state), a Load of a higher save played LEVEL UP
+   (AUDIT:desync:level-up-fanfare-on-load), and a returning player started a fresh level-1 world on every visit
+   (AUDIT:persistence:returning-player-never-resumed). Now `game/worldBoot.js` `switchWorld` saves the world in play (a
+   synchronous localStorage write), leaves a note in sessionStorage and reloads; `startGame.jsx`, called by `index.jsx`,
+   runs `bootWorld` before `root.render`, so every owner starts from the loaded world.
+   - **The note** (`crafty.boot`, JSON): `{ world }` loads that slot; `{ fresh: true }` starts a world that owns no slot
+     until its first save in play; `{ fresh: true, world }` starts a new world in the slot the World Manager's Create
+     wrote. Written just before the reload, read and removed at boot whether or not it resolves, gone with the tab. A note
+     naming a world that is gone falls back to the plain visit. The old `crafty.resumeWorldId` key is not read: its world
+     was saved last, so a plain visit after the deploy lands on it anyway.
+   - **The plain visit** loads the first index entry the player owns whose save reads; `writeWorld` puts the world it
+     writes first, so that is the most recently written. The load claims the slot (`_sessionWorldId`), so the autosave
+     writes back into it and a visit mints no slot. B2a's invariant stands (an autosave writes only a slot the session
+     opened or created); what changed is that the boot opens one.
+   - **The hold.** The boot's load sets `resumeSpawn` and `worldReloading` (chaos-play items 154, 155, 168), the edits
+     wait for Terrain to publish its worker, and the hold asks the ground probe only after load_modifications_done's wipe
+     has committed: the hold starts at that event, the audit's threat about releasing on the old colliders.
+   - **Switches:** the World Manager's Load and Create New World, the title's New World and the context-loss resume.
+     The resume names the tab's own slot, or a fresh world when it owns none, so a loss on a new world's title brings
+     the new world back rather than the newest save (red first: the plain-visit fallback alone loads the old world).
+   - `loadWorldData` stays as the boot's primitive. The e2e specs that drive it in place (load-hold, world-rebuild,
+     save-load, quest-text, the-cut) now test that primitive, not a player path; L3 makes an in-place load correct if one
+     returns (the audit's door is two-way).
+201. **The title shows Continue (the world's name, its level, when it was last played) and New World** when the boot
+   loaded a world, and Start Adventure when it did not (`MenuSystem.jsx`, store `continueWorld`, transient). Continue
+   enters the world the boot already loaded; it needs no reload (a routine call: the audit listed Continue among the
+   reloading switches, but on a plain visit the world it names is the one in memory). Last played is
+   `Intl.RelativeTimeFormat` in the UI locale (`ui/lastPlayed.js`) from a new `saved_at` the save writes; a save from
+   before it shows none. Strings `menu.start`, `menu.continue`, `menu.newWorld`, `menu.level`, `menu.lastPlayed` in en and
+   zh-CN (the title's one button was hard-coded English). Design: the primitives' primary and secondary Buttons, the
+   sword and sparkles icons, the caption in `text-text/85` with the hint strip's shadow over the existing bottom scrim.
+   The look is shot by the CI e2e with no save and with one (artifact `title-shots-shard-<n>`, item 205).
+202. **A reload mid-fight resumes the fight without its entrance** (REVIEW:w3b:reload-replays-entrance, the audit's first
+   L2 threat). The hook's record that a fight had been entered lived in memory, and every switch is now a reload.
+   `game/bossPersistence.js` `enteredBefore` seeds it from the loaded store: a fight on, or one the dragon has lost health
+   in and not been slain. A fight never begun and a slain dragon's return keep the entrance. No save-format change; L3
+   decides the repair of boss saves already clobbered on disk.
+203. **Nothing is saved before Start, and a load's pending spot is what a save writes.** App's autosave and every switch
+   go through `saveWorldInPlay`, which saves only once the game has started: a title save minted a slot for an empty world
+   (a New World pressed and left would have taken the next visit's Continue) and moved "last played". `savePosition`
+   returns a pending `resumeSpawn`: until the hold places the body it is in the sky freeze over the origin or held, and a
+   save then wrote the freeze over the save's spot. The boot's load ran before the quest system published the
+   notification channel, so its notices (a retired quest's reward, the Cut's respec) were lost; `bootWorld` holds them
+   in `_bootNotices` and the quest system replays them.
+204. **Gates whose subject moved, changed with their reason.** `context-loss-gates`: the boot resume moved from
+   ContextLossPanel's effect to `bootWorld`, and before Start the recovery now writes a note naming what the tab holds
+   (it wrote none). `hud-hotbar-gates`: the HUD slice has two consumers, not three (the World Manager no longer takes
+   the slice), so its scan floor is "at least 2". `hud-slice-reachability`: the Create World row is gone with the
+   `startNewWorld` and `loadWorldData` keys the slice no longer carries. `lazy-motion-strict-gates`: the World Manager's
+   props. `tests/e2e/context-loss.spec.js` reads the new note key.
+205. **The proof.** Red first against 5f00f246 from a scratch copy (logs in the lane's scratch): the returning-player
+   gate (visit 2: "the title offers no Continue (state level 1, worlds 1)"), the switch gate (the quest log after the
+   resume is the fresh one; after Create and after Load the dragon hook keeps the fight at 600 and 550 HP), the
+   entrance gate (two of three cases), `savePosition` (the sky written over the pending spot). The two jsdom gates ran
+   on HEAD with three instrument stubs, none changing behaviour: `startGame.jsx` as 5f00f246's `index.jsx` render,
+   `data-testid` on the title's one button, and the reload as a module function. Mutation proofs in the commit
+   trailers. The lived proof is `tests/e2e/continue.spec.js` on CI: stand on land more than three chunks out, save,
+   reload, click Continue while the world builds; body y sampled every drawn frame from the reload to 30 frames after
+   the body stands at the save, never more than 1 m under the save at its column, never off it, the autosave writes
+   that spot into the one slot, no pageerror. Green on the PR's run 41160914054 (head `6477b756`, first attempt; its
+   readings: minY equal to the save, the slot at the save). Its red half on branches carrying the spec's final text,
+   the e2e job narrowed to it: control `mut/l2-ctl` run 41160940418 green on the first attempt; `mut/l2-hold`
+   (resolveResumeSpawn places the save at once) run 41160942734 red, "the body dropped more than 1 m under the saved
+   height at the save's column" (minY 45.55 against 56.95, and the autosave wrote 45.55 into the slot), the later
+   attempts with the player killed by the fall before the click; `mut/l2-boot` (startGame renders without the boot's
+   load) run 41160944978 red on all three, "the title offers no Continue after the reload". Each branch's unit job
+   failed on `ci-required-check.test.js`, which the narrowed matrix breaks, and on the mutated subject's own gates.
+   - **The harness took four rounds, each read from its trace.** Waiting for the arrival before clicking lost the title
+     to App's world-ready lock, which CI's headless Chromium granted with no gesture (run 41154002602; registry
+     REVIEW:l2:headless-grants-gestureless-lock); refusing every lock paused the world from the click, and in that pause
+     the save's ground streamed in under the hold mutant, which passed (run 41157732564); the page now grants a lock only
+     for the spec's own click. CI drew this page at 0.4 to 1.3 frames a second, so the window after the arrival is
+     counted in drawn frames, each up to 0.25 s of world time.
+206. **What stays open.** The persistence halves of AUDIT:verbs:squad-not-saved-and-leaks-across-worlds and
+   AUDIT:debt:shrine-facts-session-scoped (L3), the lifetime half of AUDIT:leaks:stranded-pickups-never-despawn (L9) and
+   the load heal of AUDIT:numeric:load-mid-fight-full-heal (L8): their carry, leak, world and wounded-dragon halves are
+   this lane's, now closed by the reload (the dragon after a Load is the save's, flushed a moment before). Opened: a far
+   save's boot streams the origin's chunks first, because the world-built signal is chunk 0_0
+   (REVIEW:l2:far-save-boot-streams-origin-first), and the e2e harness's note that headless Chromium refuses a
+   gestureless lock no longer holds on CI (REVIEW:l2:headless-grants-gestureless-lock).
+
+---
+
 ## 2026-10-30 (lane L5, round 2) — [LOOP] the Player loop's half of the predicate is gated, a locked Aspect key reads it, and every way back is gated to ask for the pointer
 
 **Decided by lane L5's round-2 fixer under the standing grant** (DECISIONS 2026-10-28 item 14). Round 1's static and
