@@ -560,20 +560,19 @@ export const useGameStore = create((set, get) => ({
     // Single source of truth for boss-active state. The VALUE `bossActive` is what
     // SoundManager gates the boss battle music on (`state.bossActive`); the FUNCTION
     // `isBossActive()` returns that SAME value, so callers reading either path can
-    // never diverge. `useBossSystem` drives both via `setBossActive`.
+    // never diverge.
     bossActive: false,
     setBossActive: (v) => set({ bossActive: !!v }),
     isBossActive: () => get().bossActive,
-    // A-bis B2g: health + defeated join bossActive as the PERSISTED mirror of the encounter. `useBossSystem`
-    // stays the live owner (its React state drives the fight and the HUD); these are what reaches the save,
-    // written through the one effect that already mirrors bossActive, so there is a single writer. Before
-    // this, the whole fight was hook-local — a reload mid-boss handed the dragon back every point of health
-    // the player had taken off it. Phase is deliberately absent: it is DERIVED from health
-    // (`game/bossPersistence.phaseForHealth`), and persisting a derived value invites it to drift.
+    // THE ENCOUNTER, persisted (A-bis B2g) and owned here (deep audit lane L3): `useBossSystem` selects these and writes
+    // them through setBossEncounter, keeping no copy, so a load is the fight the hook shows. Before B2g the whole fight
+    // was hook-local, and a reload mid-boss handed the dragon back every point of health the player had taken off it.
+    // Phase is deliberately absent: it is DERIVED from health (`game/bossPersistence.phaseForHealth`), and persisting a
+    // derived value invites it to drift.
     bossHealth: BOSS_CONFIG.health,
     bossDefeated: false,
     // QUEUE C3: dragons slain so far (the next fight's tier, game/bossTier.js) and the night of the last kill
-    // (the return cadence counts from it). Persisted with the encounter; written by the same single writer.
+    // (the return cadence counts from it). Persisted with the encounter; written only when passed.
     bossTier: 0,
     bossKillNight: 0,
     setBossEncounter: ({ health, active, defeated, tier, killNight }) =>
@@ -630,10 +629,12 @@ export const useGameStore = create((set, get) => ({
     setAspectHint: (v) => set({ aspectHint: v }),
     // S2a: serializable mirror of useQuestSystem's persistable state (quest
     // progress + achievement counters). The gameplay hook owns the working
-    // state; this is a JSON-safe snapshot for buildSaveData. `questLoadedAt`
-    // is a monotonic resync tick bumped on load so the hook re-seeds.
+    // state; this is a JSON-safe snapshot for buildSaveData.
     questState: null,
-    questLoadedAt: 0,
+    // The world-load event: a monotonic tick every loadWorldData bumps (startNewWorld too), so each owner of per-world
+    // state outside the store re-seeds from the loaded world: the quest log (QuestSystem.jsx), the dragon's arrival
+    // latches (world/bossSystem.js), the squad's bodies (world/squadPersistence.js).
+    worldLoadedAt: 0,
     setQuestState: (qs) => set({ questState: qs }),
     chests: new Map(),
     activeChestCoords: null,
@@ -1246,7 +1247,7 @@ export const useGameStore = create((set, get) => ({
                 questState: Object.prototype.hasOwnProperty.call(saveData, 'questState')
                     ? liveQuestState(saveData.questState, owed.claimedQuestIds)
                     : state.questState,
-                questLoadedAt: (state.questLoadedAt || 0) + 1,
+                worldLoadedAt: (state.worldLoadedAt || 0) + 1,
             };
         });
 

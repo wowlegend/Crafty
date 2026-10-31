@@ -32,11 +32,11 @@ const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm,
  * Mutation-Proof: 3 mutations, recorded on the commit.
  */
 describe('quest persistence wiring gates', () => {
-  it('the store really HAS questState / setQuestState / questLoadedAt — driven, not matched', () => {
+  it('the store really HAS questState / setQuestState / worldLoadedAt — driven, not matched', () => {
     const before = useGameStore.getState();
     expect(before).toHaveProperty('questState');
     expect(typeof before.setQuestState, 'setQuestState must be callable, not merely mentioned').toBe('function');
-    expect(before).toHaveProperty('questLoadedAt');
+    expect(before).toHaveProperty('worldLoadedAt');
 
     // Call it and observe the effect. A setter that exists and does nothing is the failure a
     // property-existence check cannot see.
@@ -46,11 +46,11 @@ describe('quest persistence wiring gates', () => {
     useGameStore.setState({ questState: before.questState });
   });
 
-  it('QuestSystem mirrors to the store and re-seeds on questLoadedAt, each at one site', () => {
+  it('QuestSystem mirrors to the store and re-seeds on worldLoadedAt, each at one site', () => {
     const src = strip(readFileSync(resolve(SRC, 'QuestSystem.jsx'), 'utf8'));
     // Call shape, not bare token: an import or a comment is not a mirror.
     expect((src.match(/setQuestState\s*\(/g) || []).length,
       'the quest mirror is missing or duplicated').toBeGreaterThan(0);
-    expect(src, 'nothing re-seeds quests when a save loads').toMatch(/questLoadedAt/);
+    expect(src, 'nothing re-seeds quests when a save loads').toMatch(/worldLoadedAt/);
   });
 });

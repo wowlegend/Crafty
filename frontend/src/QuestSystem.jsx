@@ -165,31 +165,39 @@ const fillFeed = (quests, completedQuestIds) => {
     return feed;
 };
 
+// A fresh quest log, as a new world starts it: the first three tier-1 quests, no claims, zero counters and the
+// achievement every player starts with. New objects on every call, since the hook's state replaces them by reference.
+// M-NARRATIVE.2: each quest is enriched with the frontier lore/giver and a themed description (story flavor over the
+// generic chore). type/target/xpReward stay untouched (the {...q} spread), so every driver and the claim flow are
+// unchanged; loreFor returns {} for non-chain quests (spreads nothing).
+const freshQuestState = () => ({
+    quests: QUEST_LIST.filter(q => q.tier === 1).slice(0, 3).map(q => ({
+        ...q,
+        description: themedDescription(q),
+        ...(loreFor(q.id) || {}),
+        progress: 0,
+        completed: false,
+        claimed: false,
+    })),
+    completedQuestIds: [],
+    stats: {
+        kills: 0, kills_by_type: {}, spells: 0, blocks_placed: 0,
+        blocks_broken: 0, chests: 0, distance: 0, deaths: 0, level: 1,
+    },
+    unlockedAchievements: ['first_step'],
+});
+
 export const useQuestSystem = () => {
     // S2a: seed the persistable working state from the store's questState mirror
     // (set by loadWorldData) when present, else the fresh-game defaults.
     const [quests, setQuests] = useState(() => {
         const saved = useGameStore.getState().questState;
         if (saved && Array.isArray(saved.quests)) return fillFeed(saved.quests.map(withCurrentAsk), saved.completedQuestIds);
-        // Initialize active quests (first 3 from tier 1)
-        // M-NARRATIVE.2: enrich with the frontier lore/giver + a themed description (story flavor over the
-        // generic chore). type/target/xpReward stay untouched (the {...q} spread), so every driver + the
-        // claim flow are unchanged; loreFor returns {} for non-chain quests (spreads nothing).
-        return QUEST_LIST.filter(q => q.tier === 1).slice(0, 3).map(q => ({
-            ...q,
-            description: themedDescription(q),
-            ...(loreFor(q.id) || {}),
-            progress: 0,
-            completed: false,
-            claimed: false,
-        }));
+        return freshQuestState().quests;
     });
 
     const [completedQuestIds, setCompletedQuestIds] = useState(() => new Set(_arrOr(useGameStore.getState().questState?.completedQuestIds, [])));
-    const [stats, setStats] = useState(() => _objOr(useGameStore.getState().questState?.stats, {
-        kills: 0, kills_by_type: {}, spells: 0, blocks_placed: 0,
-        blocks_broken: 0, chests: 0, distance: 0, deaths: 0, level: 1,
-    }));
+    const [stats, setStats] = useState(() => _objOr(useGameStore.getState().questState?.stats, freshQuestState().stats));
     // The LIVE mirror of `stats`. applyStats reads and writes it, so a batch of kills accumulates
     // correctly without any state updater doing work a re-render would have to repeat.
     const statsRef = useRef(stats);
@@ -208,7 +216,7 @@ export const useQuestSystem = () => {
     // S2a — MIRROR (hook -> store, one-way): keep a JSON-safe snapshot of the
     // persistable state in the store so buildSaveData can serialize it. Sets are
     // flattened to arrays here. This effect ONLY writes questState; it does not
-    // read questLoadedAt, so it cannot fight the re-seed below (no feedback loop).
+    // read worldLoadedAt, so it cannot fight the re-seed below (no feedback loop).
     useEffect(() => {
         useGameStore.getState().setQuestState({
             quests,
@@ -218,17 +226,17 @@ export const useQuestSystem = () => {
         });
     }, [quests, completedQuestIds, stats, unlockedAchievements]);
 
-    // S2a — RE-SEED ON LOAD (store -> hook): when loadWorldData bumps the resync
+    // S2a — RE-SEED ON LOAD (store -> hook): when loadWorldData bumps the world-load
     // tick, re-seed the local working state from the loaded snapshot. Gated by a
     // mount guard so the initial render (already seeded via the useState initializers)
-    // doesn't clobber state. This effect watches ONLY questLoadedAt; the mirror
-    // watches the state values -> the two never feed each other.
-    const questLoadedAt = useGameStore((s) => s.questLoadedAt);
+    // doesn't clobber state. This effect watches ONLY worldLoadedAt; the mirror
+    // watches the state values -> the two never feed each other. A world whose save holds no log (a new world's, or a
+    // save from before the log) is a fresh log: the defaults, as the initializers seed them.
+    const worldLoadedAt = useGameStore((s) => s.worldLoadedAt);
     const didMountQuest = useRef(false);
     useEffect(() => {
         if (!didMountQuest.current) { didMountQuest.current = true; return; }
-        const qs = useGameStore.getState().questState;
-        if (!qs) return;
+        const qs = useGameStore.getState().questState || freshQuestState();
         if (Array.isArray(qs.quests)) setQuests(fillFeed(qs.quests.map(withCurrentAsk), qs.completedQuestIds));
         setCompletedQuestIds(new Set(_arrOr(qs.completedQuestIds, [])));
         if (_objOr(qs.stats, null)) {
@@ -240,7 +248,7 @@ export const useQuestSystem = () => {
         unlockedRef.current = restored; // the ref is the live read — a restore that skipped it would
         // re-fire every already-earned achievement's toast on the first kill after loading a save.
         setUnlockedAchievements(restored);
-    }, [questLoadedAt]);
+    }, [worldLoadedAt]);
 
     // The one notification channel (ui/notifications.js): a dictionary key or a plain string; a key is dropped when the
     // same one showed inside one toast's life.
