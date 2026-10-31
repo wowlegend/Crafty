@@ -6,9 +6,10 @@ import { bootDev, startPlayActive } from './_boot.js';
 // player-never-resumed and AUDIT:desync:load-drops-player-out-of-world; DECISIONS 2026-10-30 items 200-203).
 //
 // The real page in the real browser: play, stand on land more than three chunks from the origin, save, reload the tab (a
-// plain visit, no note), and the title offers Continue with the world's name and level. From the reload until 10 s after
-// Continue is clicked, the body is sampled every drawn frame. It must reach the save's column, never be more than 1 m
-// under the saved height there, still stand there at the end, and the autosave after Continue must write that spot. The
+// plain visit, no note), and the title offers Continue with the world's name and level; it is clicked while the world
+// builds, as a player would. From the reload until 10 s after the body stands at the save, it is sampled every drawn
+// frame. It must reach the save's column, never be more than 1 m under the saved height there, still stand there at the
+// end, and the autosave after Continue must write that spot. The
 // far column is the point: the page boots over the origin, so the save's chunks are not there when the world is first
 // built, and a hold that lets go early drops the player through the gap (the verifier's sim: 0 of 52 runs within 1 m).
 // Every pageerror is recorded and must be none (the verifier's node-only Rapier crash after a wipe was a lead to settle).
@@ -156,18 +157,20 @@ test('a returning player continues from the title, and stands where they saved, 
   await page.waitForTimeout(1600);
   await page.screenshot({ path: `${SHOTS}/title-with-save.png` });
 
-  // 5. The boot stands the body at the save once that column's ground is in (the subject, not a precondition).
+  // 5. Continue, as a player does once it shows: while the world is still building. (Click it now: a headless page can be
+  // granted the world-ready pointer lock App asks for, and a lock starts play and takes the title away.)
+  await cont.click();
+  expect(await page.evaluate(() => window.useGameStore.getState().gameStarted), 'Continue did not start play').toBe(true);
+  await startPlayActive(page); // a headless page may refuse the pointer: hold the input gate the way a lock would
+
+  // 6. The boot stands the body at the save once that column's ground is in (the subject, not a precondition), then 10 s of
+  // play.
   const arrived = await page.waitForFunction((at) => {
     const s = window.useGameStore.getState();
     const t = s.playerRigidBodyRef?.current?.translation();
     return !!t && s.resumeSpawn === null && Math.hypot(t.x - at.x, t.z - at.z) < 1.5;
   }, saved.at, { timeout: 180000 }).then(() => true, () => false);
   expect(arrived, `the boot never stood the player at the save: ${JSON.stringify(await page.evaluate(gates))}`).toBe(true);
-
-  // 6. Continue, then 10 s of play.
-  await cont.click();
-  expect(await page.evaluate(() => window.useGameStore.getState().gameStarted), 'Continue did not start play').toBe(true);
-  await startPlayActive(page); // a headless page may refuse the pointer: hold the input gate the way a lock would
   const t0 = await page.evaluate(() => performance.now());
   await page.waitForTimeout(10000);
 
@@ -180,7 +183,7 @@ test('a returning player continues from the title, and stands where they saved, 
     const left = first < 0 ? [] : rows.slice(first).filter((row) => !near(row));
     const blob = JSON.parse(localStorage.getItem(`crafty_world_save_${id}`) || 'null');
     return {
-      samples: rows.length, atColumn: atCol.length, afterContinue: rows.filter((row) => row[0] >= t0).length,
+      samples: rows.length, atColumn: atCol.length, afterArrival: rows.filter((row) => row[0] >= t0).length,
       minY: low[2], minAt: low[0], leftColumn: left.length, last: rows.at(-1), slot: blob?.player_data?.position ?? null, slotSavedAt: blob?.saved_at,
       worlds: JSON.parse(localStorage.getItem('crafty_world_saves') || '[]').length,
     };
@@ -188,11 +191,11 @@ test('a returning player continues from the title, and stands where they saved, 
   console.log(`continue: after the reload ${JSON.stringify({ ...r, saved: saved.at, pageErrors })}`);
   const why = JSON.stringify({ ...r, saved: saved.at, gates: await page.evaluate(gates) });
   expect(r.atColumn, `SETUP: too few frames sampled at the save's column to judge: ${why}`).toBeGreaterThan(100);
-  expect(r.afterContinue, `SETUP: too few frames sampled after Continue: ${why}`).toBeGreaterThan(60);
+  expect(r.afterArrival, `SETUP: too few frames sampled after the arrival: ${why}`).toBeGreaterThan(60);
   expect(r.minY, `the body dropped more than 1 m under the saved height at the save's column: ${why}`).toBeGreaterThanOrEqual(saved.at.y - 1);
   expect(Math.hypot(r.last[1] - saved.at.x, r.last[3] - saved.at.z), `the player did not stay at the save: ${why}`).toBeLessThan(1.5);
   expect(r.leftColumn, `the body left the save's column (a fall through the world comes back at the origin): ${why}`).toBe(0);
-  expect(r.slotSavedAt, `no autosave ran in the 10 s after Continue (the slot cannot show what one writes): ${why}`).not.toBe(saved.savedAt);
+  expect(r.slotSavedAt, `no autosave ran after Continue (the slot cannot show what one writes): ${why}`).not.toBe(saved.savedAt);
   expect(r.slot && Math.hypot(r.slot.x - saved.at.x, r.slot.z - saved.at.z), `the autosave after Continue wrote another place: ${why}`).toBeLessThan(1.5);
   expect(r.slot && Math.abs(r.slot.y - saved.at.y), `the autosave after Continue wrote another height: ${why}`).toBeLessThan(1);
   expect(r.worlds, `the visit minted another slot: ${why}`).toBe(saved.worlds);
