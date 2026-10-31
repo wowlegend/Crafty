@@ -30,24 +30,36 @@ export function makeZoneRegistry() {
 }
 
 /**
- * Make room for `keep`, the zone just painted: drop the zone with the soonest expiresAt, the first painted among equals.
- * Not the first painted outright: a refresh renews a zone in place, so array order is paint order and says nothing about
- * who has the least life left, and a re-imbue then evicted the zone it had just renewed while zones seconds from expiry
- * stayed (AUDIT:ultra:ultra-game-logic-4). Never `keep` itself: the caller holds it as the cast's result, and a cast that
- * is dead on arrival would play its sound and draw nothing.
+ * Make room on a full board: drop the zone with the soonest expiresAt, the first painted among equals, from the zones the
+ * CAST does not own. A cast owns the zones it painted or refreshed (spawnZone adds each to `cast`): its impact, a zone the
+ * impact renewed, and every chain leap. Not the first painted outright: a refresh renews a zone in place, so array order is
+ * paint order and says nothing about who has the least life left (AUDIT:ultra:ultra-game-logic-4). Not only the zone the last
+ * spawnZone call painted: the next leap of the same cast then evicted it, in the same tick, and the bridge voiced a zone
+ * that was already gone. A board the cast owns whole has nothing of anyone else's to give up (castZone stops the chain
+ * before that); a caller who hands spawnZone such a cast anyway gets the cap kept at the cost of the soonest of the cast's
+ * own, never the newcomer `keep`.
  */
-function evictSoonest(reg, keep) {
-  let at = -1;
-  for (let i = 0; i < reg.zones.length; i++) {
-    const z = reg.zones[i];
-    if (z === keep) continue;
-    if (at < 0 || z.expiresAt < reg.zones[at].expiresAt) at = i;
-  }
+function evictSoonest(reg, cast, keep) {
+  const soonest = (eligible) => {
+    let at = -1;
+    for (let i = 0; i < reg.zones.length; i++) {
+      const z = reg.zones[i];
+      if (!eligible(z)) continue;
+      if (at < 0 || z.expiresAt < reg.zones[at].expiresAt) at = i;
+    }
+    return at;
+  };
+  let at = soonest((z) => !cast.has(z));
+  if (at < 0) at = soonest((z) => z !== keep);
   if (at >= 0) reg.zones.splice(at, 1);
 }
 
-/** spawnZone(reg, {kind, pos, radiusMult?}, now) -> the live zone (new or refreshed) | null (annihilated). */
-export function spawnZone(reg, spec, now) {
+/**
+ * spawnZone(reg, {kind, pos, radiusMult?}, now, cast?) -> the live zone (new or refreshed) | null (annihilated).
+ * `cast` is the Set of zones this cast has painted or refreshed so far (castZone owns one); the zone returned joins it, and
+ * the cap never evicts a member. Left out, the zone is a cast of its own.
+ */
+export function spawnZone(reg, spec, now, cast = new Set()) {
   const def = ZONE_DEFS[spec.kind];
   if (!def) return null;
   // Conflux (game/verbMods.js zoneRadiusMult) widens a zone the player painted; a missing or junk value is 1. The zone
@@ -69,6 +81,7 @@ export function spawnZone(reg, spec, now) {
   if (near) {
     near.expiresAt = now + (near.amplified ? def.ttl * AMP_TTL_MULT : def.ttl);
     near.radius = Math.max(near.radius, radius * (near.amplified ? AMP_RADIUS_MULT : 1));
+    cast.add(near);
     return near;
   }
 
@@ -91,7 +104,8 @@ export function spawnZone(reg, spec, now) {
     amplified,
   };
   reg.zones.push(zone);
-  if (reg.zones.length > MAX_ZONES) evictSoonest(reg, zone);
+  cast.add(zone);
+  if (reg.zones.length > MAX_ZONES) evictSoonest(reg, cast, zone);
   return zone;
 }
 
@@ -99,14 +113,15 @@ export function spawnZone(reg, spec, now) {
 export const CHAIN_RANGE = 8;
 
 /**
- * spawnChain(reg, {kind, pos, chain, radiusMult?}, mobs, isTarget, now) -> the leaps taken, as spawnZone's results.
+ * spawnChain(reg, {kind, pos, chain, radiusMult?}, mobs, isTarget, now, cast?) -> the leaps taken, as spawnZone's results.
  * An imbue that chains paints up to `chain` more zones of its kind, each under the nearest hostile `isTarget` accepts
  * within CHAIN_RANGE of the impact that stands outside the impact's own zone and outside every zone of that kind, the
  * ones this chain paints included. A hostile already in a zone of the element takes its ticks there, so a leap onto it
  * would only stack a second zone's ticks on the same body; the leap goes on to the next hostile instead. Call it after
- * spawning the impact's own zone.
+ * spawning the impact's own zone, with the same `cast`. The chain stops when every zone on a full board is the cast's own:
+ * one more leap could only evict a zone this cast painted.
  */
-export function spawnChain(reg, req, mobs, isTarget, now) {
+export function spawnChain(reg, req, mobs, isTarget, now, cast = new Set()) {
   const def = ZONE_DEFS[req?.kind];
   const count = Number.isFinite(req?.chain) ? Math.floor(req.chain) : 0;
   if (!def || count <= 0 || !req.pos) return [];
@@ -123,10 +138,25 @@ export function spawnChain(reg, req, mobs, isTarget, now) {
   for (const c of candidates) {
     if (leaps.length >= count) break;
     if (covered(c.pos)) continue;
-    leaps.push(spawnZone(reg, { kind: req.kind, pos: { x: c.pos.x, y: c.pos.y, z: c.pos.z }, radiusMult: req.radiusMult }, now));
+    if (reg.zones.length >= MAX_ZONES && reg.zones.every((z) => cast.has(z))) break;
+    leaps.push(spawnZone(reg, { kind: req.kind, pos: { x: c.pos.x, y: c.pos.y, z: c.pos.z }, radiusMult: req.radiusMult }, now, cast));
   }
   return leaps;
 }
+
+/**
+ * castZone(reg, req, mobs, isTarget, now) -> { zone, leaps }: one imbued impact as the unit the cap protects. The impact's
+ * own zone (new, or an old one it refreshed) and the leaps of its chain share one cast, so no part of it evicts another;
+ * what the cap evicts on the way is the soonest expiry among the rest of the board. `zone` is null when the impact
+ * annihilated an opposed zone; a non-null `zone` is on the board when this returns (the bridge voices it).
+ */
+export function castZone(reg, req, mobs, isTarget, now) {
+  const cast = new Set();
+  const zone = spawnZone(reg, req, now, cast);
+  const leaps = spawnChain(reg, req, mobs, isTarget, now, cast);
+  return { zone, leaps };
+}
+
 
 /** stepZones(reg, now) -> { expired } — the bridge ticks this at 15Hz (M4). */
 export function stepZones(reg, now) {
