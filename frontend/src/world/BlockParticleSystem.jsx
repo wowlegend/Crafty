@@ -103,8 +103,8 @@ export const BlockParticleSystem = ({ worker }) => {
         const delta = realDelta(frameDelta);
         if (!meshRef.current || !api.current) return;
         
-        // Age each live particle; at 2s it's "dead" and teleported far below the world (no scale change —
-        // particles hold full scale for their whole 2s life).
+        // Age each live particle; at 2s it's "dead" and parked (park(), above): asleep at its own spot far below the
+        // world, its instance written at zero scale. A live particle holds full scale for its whole 2s life.
         for (let i = 0; i < MAX_PARTICLES; i++) {
             if (ages.current[i] < 2.0) {
                 ages.current[i] += delta;

@@ -959,8 +959,9 @@ export const useTreasureChests = () => {
             }
         }
 
-        // Every chest item pays the same pickup XP. An XP token's own XP is paid once, when it is Used (ui/GamePanels.jsx):
-        // a Golden Crown is worn or cashed in, not both.
+        // Every chest item pays the same pickup XP. An XP token's own XP is paid once, when it is Used (ui/GamePanels.jsx).
+        // The store does not make a Golden Crown's two uses exclusive: it can be worn, and once it is off cashed in, which
+        // uses it up, so the cash-in is the one payment.
         const PICKUP_XP = 10;
         const paid = chest && chest.shrineKey;
         if (paid) {
