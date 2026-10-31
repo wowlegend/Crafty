@@ -13,10 +13,23 @@ import { HOTBAR_BLOCKS } from '../../src/world/Blocks';
 // timeStamp (the stepper groups a run of events into one gesture by the gaps between them). The notch sizes are the ones
 // browsers report (input/wheelStep.js names them): Chrome on Windows 100 px, Firefox 3 lines, Chrome and Safari on macOS
 // 4 px for a slow notch. The trackpad stream is the audit verifier's: a finger ramp and a decaying momentum tail at
-// 16 ms, 135 px in 30 events, which moved 30 slots. Not covered: a real device's stream, which only a person with the
-// wheel in hand can judge.
+// 16 ms, 135 px in 30 events, which moved 30 slots; it is judged by the slots the bar moved through, counted event by
+// event, since the final slot of a 9-slot bar is the same after 1 step and after 10. Not covered: a real device's
+// stream, which only a person with the wheel in hand can judge, and a fast spin on a macOS mouse (4 px notches under
+// GESTURE_GAP_MS apart: the first slot at once, then one per 25 notches; registry REVIEW:l5:wheel-mac-medium-spin).
 
 const slot = () => HOTBAR_BLOCKS.indexOf(useGameStore.getState().selectedBlock);
+/** The slots a run of readings moved through from `start`: each event moves at most one, so a wrap counts as one. */
+function stepsOf(start, trace) {
+  let steps = 0;
+  let prev = start;
+  for (const s of trace) {
+    const d = (s - prev + HOTBAR_BLOCKS.length) % HOTBAR_BLOCKS.length;
+    steps += Math.min(d, HOTBAR_BLOCKS.length - d);
+    prev = s;
+  }
+  return steps;
+}
 let t = 1e6;
 function wheel({ deltaY = 0, deltaX = 0, deltaMode = 0, gap = 16 }) {
   t += gap;
@@ -35,7 +48,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); setActive(false); });
 
 describe('one slot per notch, on every wheel', () => {
-  it('a notched mouse moves one slot per notch, slow or fast, in each browser\'s units, and back the other way', () => {
+  it('a notched mouse moves one slot per notch, slow in each browser\'s units and fast in Chrome on Windows, and back the other way', () => {
     from(0);
     const windowsSlow = run([{ deltaY: 100, gap: 300 }, { deltaY: 100, gap: 300 }, { deltaY: 100, gap: 300 }, { deltaY: -100, gap: 300 }]);
     from(0);
@@ -59,10 +72,11 @@ describe('one slot per notch, on every wheel', () => {
     for (let v = 9; v >= 0.5; v *= 0.85) momentum.push(Math.round(v * 10) / 10);
     const seq = [...fingers, ...momentum].map((deltaY) => ({ deltaY, gap: 16 }));
     const trace = run(seq);
-    console.log(`[wheel] trackpad: ${seq.length} events, ${seq.reduce((a, e) => a + e.deltaY, 0).toFixed(0)} px, slots ${trace.join(',')}`);
+    const steps = stepsOf(0, trace);
+    console.log(`[wheel] trackpad: ${seq.length} events, ${seq.reduce((a, e) => a + e.deltaY, 0).toFixed(0)} px, ${steps} steps, slots ${trace.join(',')}`);
     expect(seq.length, 'the denominator: the verifier\'s 30-event stream').toBe(30);
-    expect(trace[trace.length - 1], 'the swipe spun the hotbar').toBeGreaterThanOrEqual(1);
-    expect(trace[trace.length - 1], 'the swipe spun the hotbar').toBeLessThanOrEqual(2);
+    expect(steps, `PRESENCE: the swipe moved the bar no slot (slots ${trace.join(',')})`).toBeGreaterThanOrEqual(1);
+    expect(steps, `the swipe spun the hotbar through ${steps} slots (slots ${trace.join(',')})`).toBeLessThanOrEqual(2);
   });
 
   it('a 0.01 px nudge and a sideways swipe move nothing; the same bar still moves for a notch (the presence)', () => {
