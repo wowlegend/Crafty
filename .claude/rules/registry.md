@@ -68,7 +68,8 @@ closes the lane's leftovers and closes the lane row (advisory; a lane row left o
 | false-positive | a DECISIONS item | "False positive: " and the backticked command that shows it |
 
 The form of `closedBy` and the sentence its note must hold are S5; whether the reason convinces is advisory. A sha must
-be on HEAD's history (S6), which proves ancestry, not that it fixed the row. A DECISIONS reference is
+be on HEAD's history (S6), or on MERGE_HEAD's while a merge is unfinished (the next section), which proves ancestry, not
+that it fixed the row. A DECISIONS reference is
 `DECISIONS <date> [(<tag>)] item[s] N` and names exactly one item (S7); when two entries of a date share a number, it
 names the entry's tag. A `duplicate:` or `superseded:` target is a row other than this one, and a duplicate's target is
 not itself a duplicate (S8). A decision closes done only on a DECISIONS item (S9). A Kevin row closes only as a
@@ -89,6 +90,17 @@ closure, note, kind, area, lane and acceptance (R4).
 4. Append new rows at the end: the file merges by union, and `registry-dedupe.mjs` collapses a row a merge left
    twice, keeping the copy furthest along (closed, then in flight, then open) and dropping the other copy's edits, so
    read what it drops.
+
+## Merging main into a lane
+
+Take main in with a plain two-parent merge (`git merge origin/main`, the way `CLAUDE.md` "Landing" says), and the commit
+goes through the hook. A merge commit's pre-commit runs while HEAD is still the lane's own tip, so S6 also counts a sha
+that `MERGE_HEAD` reaches, as long as `git rev-parse -q --verify MERGE_HEAD` resolves: the shas main added to the
+registry read as on the history before the merge commit exists. The allowance is that narrow. A sha on a branch the
+merge does not take in, or on no branch, still fails S6, and so does every sha once `git merge --abort` has run. A
+squash merge leaves no `MERGE_HEAD` and an octopus merge reads only its first merged commit, so neither gets the
+allowance. A red S6 during a merge therefore means a sha that no branch the merge brings in holds: fix the row, never
+`--no-verify`.
 
 ## Landing beside the v2 migration
 
