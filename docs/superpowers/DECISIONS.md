@@ -19,6 +19,86 @@
 
 ---
 
+## 2026-10-30 (lane L4) — [LOOP] the void line is the world's floor, the void reset and the respawn go back to the spawn one way, and the spawn waits for its ground in seconds
+
+**Decided by lane L4's builder** (registry AUDIT:lane:L4-void-line-and-spawn-recovery, from the deep audit's section 4,
+`docs/superpowers/audits/2026-10-30-deep-audit.md`; branch `fix/l4-void-line`). Items 190-196.
+
+190. **The void line is the world's floor, not y 10.** The void guard reset any body whose centre was under y 10, and the
+   deep ocean's seabed is 6 to 10 (`frontend/src/world/oceanProfile.js` DEEP_FLOOR), and a player can dig to the last
+   cell at y 0: standing there, they were taken to the origin with no message (registry
+   AUDIT:desync:void-guard-fires-inside-the-playable-world, REVIEW:chaos-play:deep-seabed-under-void-line). The world's
+   cells run from y 0 up, so no floor is lower than y 1; a body under the world has nothing below it, and one clipped
+   into the ground falls through the hollow trimesh onto the bottom face of the cells at y 0 (a scratch probe: from y 4
+   in the rock it stood at 0.95). `frontend/src/game/spawnPlacement.js` puts the line at the base capsule's centre with
+   its lowest point half a metre from both floors (y 1.4); every beast form's centre, standing on either, falls on the
+   same side, and the unit test stands every shape `BEAST_FORMS` holds on both. `resolveResumeSpawn` reads the same line,
+   so a save on the seabed under y 10 now resumes there (item 156 covered the seabed at 10 only). The chaos harness's deep
+   place stands at DEEP_FLOOR (item 156 stood it at 10 to keep it over the old line; superseded). Commit `22955c99`; its
+   message leaves out one changed test input, which `c5ea507c`'s message records: `context-loss-gates.test.jsx`'s
+   unusable save "a void y" was y 2, where a base capsule stands on the last cell, and is now y 0.5.
+191. **The void reset and the respawn after a death go back to the spawn one way.** The respawn moved the body to the
+   origin's hold, restarted the probe's wait and moved the camera there (chunk streaming follows the camera, KEVIN-FIX
+   C1). The void reset moved only the body: the camera stayed at the fall site, the origin never streamed while the body
+   waited, and the probe's count went on from the first spawn's (registry AUDIT:ultra:ultra-player-world-7).
+   `spawnPlacement.js returnToSpawn` clears the placed flag, restarts the wait, holds the body over the origin through
+   `kinematicMove.js placeBody` (the collider with it) and stops it, resets the stance and puts the camera at the hold's
+   eye; `Components.jsx`'s void branch and respawn effect both call it, and the frame order is unchanged. The chaos
+   harness calls it too. `teleportPlayer` keeps one caller, the store's load, so `combatStance.js` no longer re-exports it
+   (knip --production). Commit `c5ea507c`.
+192. **The spawn waits for its ground in seconds: six.** The audit asked for the respawn's late drop at med and high tier
+   to be measured. The wait was 120 frames, 2 s at 60 Hz and 1 s at 120 Hz, and the spawn corner's last chunk (0_0) is
+   asked for 1.05 s on at low, 1.95 s at med and 3.15 s at high (`frontend/src/world/Terrain.jsx`: two requests every
+   150 ms, row by row across the box round the camera's chunk), so the player was dropped from y 60 over ground still
+   streaming in. Verifier 39's probe (the real Player loop and Rapier, Terrain.jsx's streamer modelled), ported to a
+   120 Hz display, at three tiers and three chunk latencies (0.1, 0.25, 0.5 s), after a death and after a fall under
+   the world 390 m out:
+
+   | Code | 60 Hz: ended in the ground | 120 Hz: ended in the ground | Blind drops from y 60 |
+   |---|---|---|---|
+   | `5f00f246` | 4 of 18 (the void reset's 3 at 0.5 s, the respawn's at high) | 5 of 18 | 33 of 36 runs |
+   | `c5ea507c` (item 191, the old wait) | 2 of 18 (high, 0.5 s) | 6 of 18 (every high-tier run, at y 2 to 15.5) | 29 of 36 |
+   | `1c58500c` (this item) | 0 | 0 | 0; every run stood 1.05 to 3.61 s on and walked away |
+
+   Item 190 made the second row worse than the first at high tier: y 10 had reset a body sinking through the rock, and in
+   those runs the body stopped above the world's bottom face (y 2 to 15.5) at the spawn corner, where the border faces of
+   four chunks meet inside the rock (the mesher closes every chunk); why it stops there was not isolated.
+   `SPAWN_PROBE_MAX_SEC` (6 s) replaces the frame count; `resolveSpawnGround` takes the seconds waited and the frame's
+   step, the Player loop adds its frame's delta. The resume hold's wait is still 600 frames (registry
+   REVIEW:l4:resume-wait-counted-in-frames). Commit `1c58500c`.
+193. **The chaos gate's sixth invariant, and the dig-then-reset seed.** I6: the void guard resets no player with ground
+   under their feet (the logical world, the columns the capsule's footprint covers); the instruments show it seeing a
+   reset on open land and none under the world or on its bottom face. Every deep-place session ends by digging a
+   two-column shaft through the seabed's last cells and out of the bottom of the world, then respawns; the teleport the
+   other places end with puts the body under the world (y -2), not at y 5, which is now inside the rock. Floors:
+   voidResets 16 a file; at the shore file framesUnderOldVoidLine 1700 (5188 reached on seed 1) and shaftsThroughWorld 2
+   (7 of 8). A one-column shaft did not work as the seed: a capsule within the controller's 0.05 m offset of a wall reads
+   grounded on about half its frames and slides down it at the glue speed (registry REVIEW:l4:kcc-grounded-on-wall).
+   Commit `22955c99`.
+194. **Two items of the brief were already done.** Spawn ground by `worldBlocks.get(key) > 0`: the audit's verifier ran
+   `62159bc1`, before item 152 (`3fd4b468`) took the worldBlocks read out of the Player loop; the spawn reads the four
+   corner columns by the physics probe (`git merge-base --is-ancestor 3fd4b468 62159bc1` exits 1, and `grep -n
+   worldBlocks frontend/src/Components.jsx` lists only the voidhand tint). Raising REVIEW:fix-invisible-box:respawn-counts-
+   mined to HIGH: the row was closed by `3fd4b468`, and the verifier's trap (moved 0 m after digging at the origin and
+   a void reset) was the read item 152 removed; at `5f00f246` the chaos origin sessions dig that column before their fall
+   (floor respawnsAfterOriginMine 2) and none is held.
+195. **Found, not fixed.** REVIEW:l4:kcc-grounded-on-wall (item 193) and REVIEW:l4:resume-wait-counted-in-frames (item
+   192), each a registry row with its measurement.
+
+The gate on seeds 1 to 8 after the fixes (at `1c58500c`, local, the three session files): 56 sessions a seed, none red,
+the deepest into solid 0.000 m on every seed; walk-held readings 32, 21, 26, 30, 22, 37, 28 and 28, every one an own
+shell, none held; shafts dug out of the world 7, 7, 7, 5, 6, 7, 5 and 5 of 8; frames under the old line 4814 to 5287 (floor
+1700); void resets 56 a seed, I6 0. Seed 2 misses the same SETUP floor as in items 165 and 170 (field-origin
+swapsRefused 1, floor 2).
+
+Mutation proofs (`frontend/scripts/dev/mutate.sh` in a throwaway copy; identity mutants first and last, all survived)
+are in each commit's trailer: the line back at 10, under the bottom face, over the last cell, and the Player loop's guard
+on the old line; I6 never noted; returnToSpawn without the camera, the restarted wait, placeBody or the stance reset;
+either branch back to its inline teleport; the wait back at 2 s, counted in 60 Hz frames, or blind to the frame's step.
+Each RED.
+
+---
+
 ## 2026-10-30 (chaos play, round 3) — [LOOP] a placement moves the collider with the body, so the next frame sweeps from where the player stands
 
 **Decided by the chaos-play lane's round-3 fixer** (the round-2 dynamic review said FIX on one defect; the static review's
