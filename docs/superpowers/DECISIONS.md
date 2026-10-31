@@ -47,22 +47,28 @@ in code; whether a player on a real iPhone or iPad hears the difference is Kevin
      the music slider and Mute All act.
    - **The mix.** Each GainNode feeds `ctx.destination` directly, beside the effects' master bus, as the media
      elements' output did: not through the bus's SFX gain (the SFX slider would then scale the music) and not through
-     its limiter (loud effects would then duck the music). Levels, fade step and balance are unchanged: 0.4 x the
-     slider, 0.04 per 60 ms tick, 0 for the tracks not wanted. The element's own volume is never written (it stays 1).
+     its limiter (loud effects would then duck the music). Levels, fade slope and balance are unchanged: 0.4 x the
+     slider, 0 for the tracks not wanted, and the crossfade's slope of 0.04 per 60 ms (0.67 a second). The element's
+     own volume is never written (it stays 1).
+   - **The fade runs on the audio clock.** It was 60 ms timer ticks writing a volume; it is now one linear ramp per
+     track on its GainNode at that slope (`linearRampToValueAtTime`), and one timer pauses the tracks bound for 0 once
+     the longest ramp has run. Why: on the e2e's run 41209984080 a track was still playing 3 s after Mute All in
+     Chromium on CI (passed on the retry); a ramp is not slowed by a busy main thread, where eleven ticks in a row
+     are, and it moves the gain smoothly where the ticks moved it in steps.
    - **Start and the gesture.** A play() the platform refused is asked for again inside the next gesture, the Start
      tap included. That gesture also plays and pauses each other track once, since WebKit lifts an element's gesture
      restriction when it is played inside one (`HTMLMediaElement::play`), so a dusk or boss crossfade can start its
      track from a timer. A permitted play() clears `paused` before it returns (HTML, the play() method), so a finger's
      pointerdown, which carries no activation, primes nothing.
-   - **Mute All** wants no track, so every track fades and is paused by the player's own state, within 660 ms.
+   - **Mute All** wants no track, so every track fades and is paused by the player's own state, 600 ms from full.
    - **What may sound different, for Kevin's ear (item 305).** The tracks need a running context now, so on a desktop
      whose browser did let the boot play() through, title music that played at load may begin at the first click or
-     key instead. On iOS, Web Audio may follow the ring/silent switch where a media element did not; nothing here
-     measured either.
+     key instead. On iOS, Web Audio may follow the ring/silent switch where a media element did not. A crossfade is
+     now a continuous ramp where it moved in 60 ms steps, at the same slope. Nothing here measured any of the three.
    - **The bytes.** The index chunk measured 646,232 B on a05bf328 and 647,661 B here (+1,429 B), under the unchanged
      652,500 B ceiling (item 282); nothing was moved out, as it fits. Merged with main `7250aa22`, where lane L3 has
-     landed (649,549 B, item 295), the chunk measures 650,978 B, and 651,001 B with item 300's suspend refinement
-     (`82149662`), 1,499 B under the ceiling.
+     landed (649,549 B, item 295), the chunk measures 650,978 B; with item 300's suspend refinement and the fade on the
+     audio clock it is 651,079 B, 1,421 B under the ceiling.
 
 302. **The route is run in Chromium on CI (`tests/e2e/music-bus.spec.js`); its mutation proof is owed.** The spec
    wraps the media element and `createMediaElementSource` (each wrapper calls the real one), enters play as the suite
@@ -114,7 +120,7 @@ in code; whether a player on a real iPhone or iPad hears the difference is Kevin
 305. **The lived proof is Kevin's**, appended to registry row `REVIEW:l1:ios-device-run`: on an iPhone and an iPad
    (record the iOS versions), sound effects come back after Home for 10 s and return, after a call and after Siri,
    with no reload; the soundtrack plays within a few seconds of Start, the music slider moves it and Mute All
-   silences it within a second; past dusk the night track takes over with no tap. Plus the two differences item 301 names.
+   silences it within a second; past dusk the night track takes over with no tap. Plus the three differences item 301 names.
 
 ## 2026-10-31 — [LOOP] a bundle ceiling never rises to make a build green; the lookbook seam leaves the boot chunk
 
