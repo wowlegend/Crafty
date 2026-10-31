@@ -11,8 +11,10 @@ describe('Biome-ambience gate (interleave)', () => {
   const sm = strip(read('SoundManager.jsx'));
   it('a looping wind bed exists, biome-keyed via climate + biomeAmbience + playerPosition', () => {
     expect(sm).toMatch(/from '\.\/audio\/biomeAmbience\.js'/);
-    expect(sm).toMatch(/surfaceBlockAt\(/);
-    expect(sm).toMatch(/biomeAmbience\(/);
+    // The sample is ambienceAt(playerPosition), which floors to the player's column (water-one-predicate-gates drives it
+    // against the worker); a bed that asks surfaceBlockAt at the float itself reads a point no column has.
+    expect(sm).toMatch(/ambienceAt\(pp\.x, pp\.z\)/);
+    expect(sm).not.toMatch(/surfaceBlockAt\(/);
     expect(sm).toMatch(/playerPosition/);
     expect(sm).toMatch(/windBedRef/);
     expect(sm).toMatch(/loop = true/);

@@ -36,7 +36,17 @@ export function surfaceBlockAt(worldX, worldZ) {
   return { surfaceBlock, surfaceY, isWater: isSeaColumn(surfaceY), biome: biome.name }; // biome: the far field colours by it
 }
 
+/**
+ * What a foot at a world POSITION stands on. The worker generates whole columns at integer coordinates (worldX = chunk * 16
+ * + x), so a position's answer is its column's. `surfaceBlockAt` at the float itself reads a point no column has: a
+ * quarter of the positions inside the shore's two sea-line columns land on the other side of the line, and the wind bed
+ * sounded underwater on dry sand (or dry over the sea). Every reader that starts from a player's position asks here.
+ */
+export function surfaceBlockUnderfoot(worldX, worldZ) {
+  return surfaceBlockAt(Math.floor(worldX), Math.floor(worldZ));
+}
+
 const FOOTSTEP_TYPE = { 1: 'grass', 2: 'dirt', 3: 'stone', 4: 'sand', 5: 'snow', 6: 'wood' };
 export function footstepTypeAt(worldX, worldZ) {
-  return FOOTSTEP_TYPE[surfaceBlockAt(worldX, worldZ).surfaceBlock] || 'grass';
+  return FOOTSTEP_TYPE[surfaceBlockUnderfoot(worldX, worldZ).surfaceBlock] || 'grass';
 }

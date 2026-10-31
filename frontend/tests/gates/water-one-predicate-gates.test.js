@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { surfaceBlockAt, seedClimate } from '../../src/world/climate.js';
+import { surfaceBlockAt, seedClimate, footstepTypeAt } from '../../src/world/climate.js';
+import { ambienceAt } from '../../src/audio/biomeAmbience.js';
 import { SEA_LEVEL } from '../../src/world/oceanProfile.js';
 import { CHUNK_SIZE, chunkOf } from '../../src/world/chunkLayout.js';
 
@@ -85,5 +86,93 @@ describe.each(SEEDS)('seed %i: the climate sampler and the terrain worker agree 
       .map((r) => `(${r.x}, ${r.z}) surfaceY ${r.surfaceY}: climate isWater ${r.climateWater}, worker water ${r.workerWater}`);
     expect(readings.length, 'columns compared').toBe(CLASSES.length * PER_CLASS);
     expect(disagree, `${disagree.length} of ${readings.length} columns disagree`).toEqual([]);
+  });
+});
+
+/**
+ * THE SAME FACT, READ FROM A POSITION (the wind bed and the footsteps). The block above compares COLUMNS. A player is not
+ * on a column's integer corner: SoundManager asks about `playerPosition`, a float inside a column, and the worker builds
+ * whole columns. `surfaceBlockAt` at the float reads a point no column has, and along the shore (columns of surfaceY 27,
+ * 28 and 29, with the sea line between 27 and 28) that point lands in the wrong state about a fifth of the time: dry
+ * sand sounded underwater and the first wet column sounded dry (measured: 12.5% and 22.9% of the positions inside them).
+ *
+ * This drives the sound path's own sampler, `ambienceAt` (the one call SoundManager makes), and the footstep sampler over
+ * the 16 positions inside each shore column, against what the real worker put above that column. The columns are picked
+ * where a wet column and a dry one touch, because that is where the two points differ.
+ *
+ * Mutation-Proof: see the commit trailer.
+ */
+const SUBDIV = 4;
+const SHORE_SPACING = 150; // two picked columns of one class are at least this far apart: the whole coast, not one bay
+
+/** Per class, up to PER_CLASS columns that touch both a wet column (surface below the sea) and a dry one. */
+function pickShoreColumns() {
+  const picked = new Map(CLASSES.map((c) => [c, []]));
+  const touchesBoth = (x, z) => {
+    let wet = false, dry = false;
+    for (let dz = -1; dz <= 1; dz++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (surfaceBlockAt(x + dx, z + dz).surfaceY < SEA_LEVEL) wet = true; else dry = true;
+      }
+    }
+    return wet && dry;
+  };
+  for (let x = -1500; x <= 1500; x += 7) {
+    for (let z = -1500; z <= 1500; z += 5) {
+      if (Math.abs(x) < 64 && Math.abs(z) < 64) continue;
+      const list = picked.get(surfaceBlockAt(x, z).surfaceY);
+      if (!list || list.length >= PER_CLASS) continue;
+      if (list.some(([px, pz]) => Math.max(Math.abs(px - x), Math.abs(pz - z)) < SHORE_SPACING)) continue;
+      if (touchesBoth(x, z)) list.push([x, z]);
+    }
+  }
+  return picked;
+}
+
+/** The SUBDIV x SUBDIV positions inside column (x, z), at the middle of each cell. */
+function positionsIn(x, z) {
+  const out = [];
+  for (let i = 0; i < SUBDIV; i++) for (let j = 0; j < SUBDIV; j++) out.push([x + (i + 0.5) / SUBDIV, z + (j + 0.5) / SUBDIV]);
+  return out;
+}
+
+describe.each(SEEDS)('seed %i: a player standing anywhere inside a shore column hears and steps on that column', (seed) => {
+  let columns;
+  beforeAll(() => {
+    send('init', { seed });
+    seedClimate(seed);
+    columns = [];
+    for (const [surfaceY, list] of pickShoreColumns()) {
+      for (const [x, z] of list) {
+        columns.push({ x, z, surfaceY, workerWater: workerVoxel(x, surfaceY + 1, z) === 9, at: positionsIn(x, z) });
+      }
+    }
+  });
+  const positions = () => columns.flatMap((c) => c.at.map(([px, pz]) => ({ ...c, px, pz })));
+
+  it('SETUP: the probe holds shore columns of every class, and the unsnapped float sample is visibly wrong on them', () => {
+    for (const c of CLASSES) expect(columns.filter((k) => k.surfaceY === c).length, `shore columns with surfaceY ${c}`).toBe(PER_CLASS);
+    expect(columns.filter((k) => k.surfaceY === SEA_LEVEL - 1).every((k) => k.workerWater), 'the cell above a surfaceY 27 column is not water').toBe(true);
+    expect(columns.filter((k) => k.surfaceY >= SEA_LEVEL).some((k) => k.workerWater), 'water above a column at or over the sea').toBe(false);
+    expect(positions().length, 'positions probed').toBe(CLASSES.length * PER_CLASS * SUBDIV * SUBDIV);
+    // A probe that cannot see the defect proves nothing: the old rule, the float itself, must be wrong somewhere in here.
+    const floatWater = positions().filter((p) => surfaceBlockAt(p.px, p.pz).isWater !== p.workerWater).length;
+    const floatSurface = positions().filter((p) => surfaceBlockAt(p.px, p.pz).surfaceBlock !== surfaceBlockAt(p.x, p.z).surfaceBlock).length;
+    expect(floatWater, 'positions where sampling the float disagrees with the worker about water').toBeGreaterThan(0);
+    expect(floatSurface, 'positions where sampling the float reads another surface block than its column').toBeGreaterThan(0);
+  });
+
+  it('the wind bed sounds underwater at every position inside a column exactly where the worker put water on top of it', () => {
+    const wrong = positions()
+      .filter((p) => (ambienceAt(p.px, p.pz).label === 'underwater') !== p.workerWater)
+      .map((p) => `(${p.px}, ${p.pz}) in column (${p.x}, ${p.z}) surfaceY ${p.surfaceY}: worker water ${p.workerWater}, wind bed ${ambienceAt(p.px, p.pz).label}`);
+    expect(wrong.length, `${wrong.length} of ${positions().length} positions: ${wrong.slice(0, 3).join('; ')}`).toBe(0);
+  });
+
+  it('a footstep at every position inside a column is the footstep of that column', () => {
+    const wrong = positions()
+      .filter((p) => footstepTypeAt(p.px, p.pz) !== footstepTypeAt(p.x, p.z))
+      .map((p) => `(${p.px}, ${p.pz}) in column (${p.x}, ${p.z}): ${footstepTypeAt(p.px, p.pz)}, the column steps ${footstepTypeAt(p.x, p.z)}`);
+    expect(wrong.length, `${wrong.length} of ${positions().length} positions: ${wrong.slice(0, 3).join('; ')}`).toBe(0);
   });
 });
