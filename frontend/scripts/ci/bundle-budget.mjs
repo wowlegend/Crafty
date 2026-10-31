@@ -39,8 +39,9 @@ const BUDGETS = [
   // chunk and the ceiling came down with it: a module this chunk carries that renders the full `motion` component puts
   // the framer-motion features back, about 47.6 KB, which is past the ceiling by itself. A module the lazy panel chunk
   // carries moves that chunk, which has no ceiling (ForgePanel with `motion` read 636,434 B here, under it): the
-  // full-motion markers further down hold every chunk.
-  { name: 'index', max: 652_500, actualAtWrite: 634_075 },
+  // full-motion markers further down hold every chunk. Lane L3 (DECISIONS 2026-10-31 item 257) raised it by its own
+  // measured bytes, 3,515 (the squad's roster, the shrine record, the save repair, the declared keys), and no more.
+  { name: 'index', max: 656_015, actualAtWrite: 634_075 },
   { name: 'three', max: 740_000, actualAtWrite: 680_700 },
 ];
 
