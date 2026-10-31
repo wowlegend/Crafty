@@ -75,6 +75,8 @@ function makeAudioContextClass(world) {
       this.calls.push('resume');
       if (this.state === 'closed') return Promise.reject(new DOMException('closed', 'InvalidStateError'));
       if (this._stuck) return new Promise(() => {});
+      // resume() on a running context has nothing to do (Web Audio, the resume() method), so a stopped clock stays stopped.
+      if (this.state === 'running') return Promise.resolve();
       if (!this._started && !world.inGesture) return new Promise(() => {});
       this._started = true; this._frozen = false; this._setState('running');
       return Promise.resolve();

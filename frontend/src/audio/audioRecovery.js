@@ -26,10 +26,14 @@ function contextNeedsRecovery(ctx) {
 
 const warn = (e) => console.warn('Audio context restart refused:', e);
 
-/** suspend() then resume(), both asked for now: the context runs them in order, and resume() is inside the caller's gesture. */
+/**
+ * suspend() then resume(), both asked for now: the context runs them in order, and resume() is inside the caller's
+ * gesture. A context already 'suspended' needs only the resume(), so a browser that never interrupts one (Chromium)
+ * is never asked to suspend a context it is about to start.
+ */
 function restartContext(ctx) {
   if (!ctx || ctx.state === 'closed') return;
-  if (typeof ctx.suspend === 'function') Promise.resolve(ctx.suspend()).catch(warn);
+  if (ctx.state !== 'suspended' && typeof ctx.suspend === 'function') Promise.resolve(ctx.suspend()).catch(warn);
   Promise.resolve(ctx.resume()).catch(warn);
 }
 

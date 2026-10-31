@@ -31,6 +31,9 @@ in code; whether a player on a real iPhone or iPad hears the difference is Kevin
      with a clock that has stopped (bug 263627). suspend() then resume() recovers both (MDN BaseAudioContext.state,
      "Resuming interrupted play states in iOS Safari"; the workaround in bug 276016). Both are asked for in the same
      turn: WebKit chains them (`AudioContext.cpp`, `m_currentRenderingOperation`), so resume() is inside the gesture.
+     A context that is only `'suspended'` gets the resume() alone, as before, so Chromium, which never interrupts one,
+     is never asked to suspend a context it is about to start (added after the e2e hangs of item 302, as a precaution:
+     nothing showed suspend() caused them).
    - **When.** On every user gesture, in the capture phase on `window`, so the first tap after a return is heard; on
      `visibilitychange` to visible; on `pageshow`. On a return, a running context is restarted only when its clock has
      not moved for 300 ms (`FROZEN_CLOCK_MS`), so a healthy desktop tab is not restarted, which could click. The

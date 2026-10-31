@@ -67,6 +67,13 @@ describe('the audio context comes back after the platform stops it', () => {
     return ctx;
   }
 
+  it('a suspended context is only resumed: nothing asks it to suspend first', async () => {
+    const ctx = await enterRunning();
+    expect(ctx.calls.filter((c) => c === 'resume').length, 'SETUP: the entry never called resume()').toBeGreaterThan(0);
+    act(() => ios.tap(document.body));
+    expect(ctx.calls, 'a context that was only suspended was asked to suspend again before it started').not.toContain('suspend');
+  });
+
   it('an interrupted context is running again after the next tap', async () => {
     const ctx = await enterRunning();
     ctx.interrupt();
