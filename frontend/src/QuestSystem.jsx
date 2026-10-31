@@ -321,28 +321,26 @@ export const useQuestSystem = () => {
         }));
     }, [addNotification]);
 
-    // S8c: the Pilgrimage quest — fire reach_shrine progress when the player reaches a NEW shrine (within
-    // ~10 blocks of the nearest landmark). Claimed-once via reachedShrines (keyed by chunk) so re-visits
-    // don't re-fire. Capture-suppressed; ~3s poll with transient store reads -> Game-Loop-Isolation. Gives
-    // the outward journey a concrete GOAL (replaces the dead Travel-500 explorer quest, which had no driver).
-    const reachedShrines = useRef(new Set());
+    // S8c: the Pilgrimage quest. A shrine is reached within ~10 blocks of the nearest landmark, and the world records it
+    // (the store's reachedShrines, saved with the world, keyed by chunk); the HUD ObjectiveTracker turns from "reach the
+    // frontier shrine" to "shatter the Blight Heart" once one is. The quest is CREDITED FROM THAT RECORD, every poll,
+    // whenever it is in the feed: a shrine reached before Pilgrimage is offered counts when it is (deep audit lane L3; it
+    // used to count only a reach while the quest was active, and a saved record alone would have made that permanent).
+    // Capture-suppressed; ~3s poll with transient store reads -> Game-Loop-Isolation. Gives the outward journey a
+    // concrete GOAL (replaces the dead Travel-500 explorer quest, which had no driver).
     useEffect(() => {
         const interval = setInterval(() => {
             // INSIDE the callback: this effect's deps are [] and the harness flips the capture flag AFTER
             // mount, so a guard on the setup path is provably false every time and suppresses nothing.
             if (isCaptureMode() || isWorldFrozenNow()) return;
-            const playerPos = useGameStore.getState().playerPosition;
+            const store = useGameStore.getState();
+            const playerPos = store.playerPosition;
             if (!playerPos) return;
             const s = nearestLandmark(playerPos.x, playerPos.z);
-            if (!s) return;
-            const key = `${s.cx}_${s.cz}`;
-            if (reachedShrines.current.has(key)) return;
-            if (Math.hypot(playerPos.x - s.worldX, playerPos.z - s.worldZ) > 10) return;
-            reachedShrines.current.add(key);
-            // Mirror a transient flag so the HUD ObjectiveTracker can switch the spawn-direction cue from
-            // "reach the frontier shrine" to "shatter the Blight Heart" once any shrine is reached.
-            useGameStore.setState({ shrineReached: true });
-            updateQuestProgress('reach_shrine');
+            if (s && Math.hypot(playerPos.x - s.worldX, playerPos.z - s.worldZ) <= 10) store.reachShrine(`${s.cx}_${s.cz}`);
+            const reached = useGameStore.getState().reachedShrines.length;
+            const q = questsRef.current.find((x) => x.type === 'reach_shrine' && !x.completed && !x.claimed);
+            if (q && Math.min(reached, q.target) > q.progress) updateQuestProgress('reach_shrine', Math.min(reached, q.target) - q.progress);
         }, 3000);
         return () => clearInterval(interval);
     }, [updateQuestProgress]);
@@ -876,9 +874,11 @@ export const useTreasureChests = () => {
 
     // S8c-bis: a guaranteed reward chest at each frontier shrine -- the deferred S8 destination payoff.
     // Lives HERE (the hook that owns setChests) so no cross-hook bridge is needed. Deterministic +
-    // once-per-shrine (keyed by chunk in a ref Set) + capture-guarded (shrines can sit near origin, so the
-    // guard keeps chests out of the deterministic baselines). Mirrors the reach_shrine `reachedShrines`
-    // poll. Game-Loop-Isolation: setInterval + transient getState reads, not a useFrame subscription.
+    // once-per-shrine + capture-guarded (shrines can sit near origin, so the guard keeps chests out of the deterministic
+    // baselines). ONCE PER SHRINE, PER WORLD: opening its chest records the shrine as rewarded in the store (saved with the
+    // world), and a rewarded shrine spawns none again; the ref is the board's own record that a chest for the shrine is
+    // on it, which dies with the board. A chest left shut is owed after a reload, and comes back once.
+    // Game-Loop-Isolation: setInterval + transient getState reads, not a useFrame subscription.
     const shrineChestsSpawned = useRef(new Set());
     useEffect(() => {
         const interval = setInterval(() => {
@@ -890,7 +890,7 @@ export const useTreasureChests = () => {
             if (!s) return;
             if (Math.hypot(playerPos.x - s.worldX, playerPos.z - s.worldZ) > 12) return;
             const key = `${s.cx}_${s.cz}`;
-            if (shrineChestsSpawned.current.has(key)) return;
+            if (shrineChestsSpawned.current.has(key) || useGameStore.getState().rewardedShrines.includes(key)) return;
             shrineChestsSpawned.current.add(key);
 
             let y = 15;
@@ -901,7 +901,7 @@ export const useTreasureChests = () => {
                 if (typeof h === 'number' && !isNaN(h)) { y = h + 1; resolved = true; }
             }
             // EXEMPT from the periodic spawner's 5-cap: a guaranteed, once-per-shrine reward.
-            setChests(prev => [...prev, { id: chestId.current++, position: [s.worldX, y, s.worldZ], opened: false, resolved, shrine: true }]);
+            setChests(prev => [...prev, { id: chestId.current++, position: [s.worldX, y, s.worldZ], opened: false, resolved, shrine: true, shrineKey: key }]);
         }, 3000);
         return () => clearInterval(interval);
     }, []);
@@ -950,6 +950,7 @@ export const useTreasureChests = () => {
         // to the rarer half of CHEST_LOOT. zoneTier already caps at MAX_TIER, so far shrines reward more
         // (matching the S7 lootTier risk/reward philosophy). Non-shrine chests are unchanged.
         if (chest && chest.shrine) {
+            if (chest.shrineKey) useGameStore.getState().rewardShrine(chest.shrineKey);
             const tier = zoneTier(chest.position[0], chest.position[2]);
             const pool = CHEST_LOOT.slice(Math.floor(CHEST_LOOT.length / 2));
             for (let i = 0; i < 1 + tier; i++) {

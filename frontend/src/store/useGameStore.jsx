@@ -8,7 +8,7 @@ import { foldVerbMods } from '../game/verbMods.js';
 import { relicTier, normalizeRelicTiers } from '../game/relics.js';
 import { buy as forgeBuy } from '../game/forge.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, asRespawned, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, TALENT_CUT, BOSS_WIPE_REPAIR } from '../game/saveSchema.js';
+import { buildSaveData, asRespawned, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, liveShrines, TALENT_CUT, BOSS_WIPE_REPAIR } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -541,7 +541,15 @@ export const useGameStore = create((set, get) => ({
     pressPrimary: null,
     releasePrimary: null,
     debugChunks: null, // world/Terrain.jsx: the loaded chunks, for the debug overlay
-    shrineReached: false, // QuestSystem.jsx: a frontier shrine reached this session, for the HUD objective
+
+    // The frontier shrines this world has reached, and those whose reward chest has been opened: chunk keys
+    // (world/shrines.js), persisted in game_state.shrines. QuestSystem.jsx writes them; the HUD objective turns to the
+    // Blight Heart once one is reached, Pilgrimage is credited from the reached list, and a rewarded shrine spawns no
+    // second chest. Each write leaves the list as it was when the key is already in it.
+    reachedShrines: [],
+    rewardedShrines: [],
+    reachShrine: (key) => set((s) => (s.reachedShrines.includes(key) ? s : { reachedShrines: [...s.reachedShrines, key] })),
+    rewardShrine: (key) => set((s) => (s.rewardedShrines.includes(key) ? s : { rewardedShrines: [...s.rewardedShrines, key] })),
 
     // damageMob / checkMobCollision DELETED 2026-08-11 along with their setters: a write-only mirror of
     // the GameMethods singleton that all eleven live consumers actually read. Two publication mechanisms
@@ -1186,6 +1194,8 @@ export const useGameStore = create((set, get) => ({
             // The save's own squad, and none when it holds none: a squad belongs to its world, so the session's never
             // crosses into another (a save from before the roster had its squad dropped by the load that wrote it).
             const squad = liveSquad(prog?.squad);
+            // The save's own shrine record, and none when it holds none: the facts of another world never count here.
+            const shrines = liveShrines(saveData.game_state?.shrines);
 
             // The retired items leave every chest too (the tombstone holds them for the save).
             const chests = saveData.chests ? new Map(liveChests(saveData.chests)) : state.chests;
@@ -1233,6 +1243,8 @@ export const useGameStore = create((set, get) => ({
                 ember,
                 emberBuildDay,
                 squad,
+                reachedShrines: shrines.reached,
+                rewardedShrines: shrines.rewarded,
                 chests,
                 maxHealth,
                 maxMana,

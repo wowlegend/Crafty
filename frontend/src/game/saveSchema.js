@@ -209,6 +209,19 @@ export function liveBlocks(blocks) {
   return Array.isArray(blocks) ? blocks.filter((e) => Array.isArray(e) && e.length === 2 && typeof e[0] === 'string' && CELL_KEY.test(e[0])) : [];
 }
 
+// A shrine's key: its chunk's integer cx_cz (world/shrines.js landmarkAt, the same place in every world).
+const SHRINE_KEY = /^-?\d+_-?\d+$/;
+const shrineKeys = (v) => (Array.isArray(v) ? [...new Set(v.filter((k) => typeof k === 'string' && SHRINE_KEY.test(k)))] : []);
+
+/**
+ * A save's shrine record: the shrines its world has reached and the shrines whose reward chest has been opened, each a
+ * list of chunk keys. A save from before the record, or one holding anything else, has reached none. Pure.
+ * @returns {{ reached: string[], rewarded: string[] }}
+ */
+export function liveShrines(shrines) {
+  return { reached: shrineKeys(shrines?.reached), rewarded: shrineKeys(shrines?.rewarded) };
+}
+
 /** A save's chest entries ([coords, chest]) with the retired keys taken out of each chest's inventory. Pure. */
 export function liveChests(chests) {
   if (!Array.isArray(chests)) return chests;
@@ -268,7 +281,7 @@ export const PERSISTED_KEYS = Object.freeze([
   '_tombstone', 'worldBlocks', 'chests', 'inventory', 'questState',
   'level', 'currentXP', 'totalXP', 'equipment', 'relicTiers', 'talentPoints', 'unlockedTalents', 'coins',
   'nightCount', 'lastRewardedNight', 'ember', 'emberBuildDay', 'squad',
-  'worldSeed', 'selectedBlock', 'activeSpell', 'isDay', 'gameTime', 'gameWon',
+  'worldSeed', 'selectedBlock', 'activeSpell', 'isDay', 'gameTime', 'gameWon', 'reachedShrines', 'rewardedShrines',
   'bossActive', 'bossHealth', 'bossDefeated', 'bossTier', 'bossKillNight',
 ]);
 
@@ -350,6 +363,8 @@ export function buildSaveData(state, { position } = {}) {
       // `achievements` DELETED 2026-08-11: setAchievements had zero callers and the array zero readers,
       // so this wrote an empty list into every save. QuestSystem's achievements ride in questState.
       gameWon: state.gameWon, // S9c: the win-state survives a reload
+      // The frontier shrines this world has reached, and those whose reward chest has been opened (QuestSystem.jsx).
+      shrines: { reached: state.reachedShrines, rewarded: state.rewardedShrines },
       // A-bis B2g: the boss FIGHT survives a reload too, not just the win. gameWon alone only stopped a
       // slain dragon respawning; a fight in progress was hook-local React state, so a refresh at 5% HP
       // restored the dragon to all 700. Phase is not stored — it re-derives from health on load.

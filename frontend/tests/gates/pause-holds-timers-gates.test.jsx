@@ -60,7 +60,7 @@ describe.each(HOLDS)('held by $name', ({ hold, release }) => {
   describe('the quest chests and the shrine quest', () => {
     // The nearest shrine to the origin, read from the live landmark hash rather than retyped.
     const shrine = nearestLandmark(0, 0);
-    beforeEach(() => useGameStore.setState({ getMobGroundLevel: () => 64, shrineReached: false }));
+    beforeEach(() => useGameStore.setState({ getMobGroundLevel: () => 64, reachedShrines: [] }));
 
     it('the periodic chest spawner adds none while held, and adds again on release', async () => {
       useGameStore.setState({ playerPosition: { x: shrine.worldX + 200, y: 60, z: shrine.worldZ + 200 } });
@@ -97,10 +97,10 @@ describe.each(HOLDS)('held by $name', ({ hold, release }) => {
       renderHook(() => useQuestSystem());
       hold();
       advance(9100);
-      expect(useGameStore.getState().shrineReached, 'the shrine counted as reached while the world was held').toBe(false);
+      expect(useGameStore.getState().reachedShrines, 'the shrine counted as reached while the world was held').toEqual([]);
       release();
       advance(3100);
-      expect(useGameStore.getState().shrineReached, 'the shrine never counted after the release').toBe(true);
+      expect(useGameStore.getState().reachedShrines, 'the shrine never counted after the release').toHaveLength(1);
     });
   });
 

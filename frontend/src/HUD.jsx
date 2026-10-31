@@ -205,7 +205,7 @@ export const ObjectiveTracker = React.memo(() => {
 
       // Objective: the nearest frontier shrine until one is reached, then the Blight Heart climax.
       let targetX, targetZ, label, color;
-      if (!state.shrineReached) {
+      if (!state.reachedShrines.length) {
         const now = performance.now();
         if (now - shrineCache.current.t > 750) {
           shrineCache.current = { t: now, shrine: nearestLandmark(playerPos.x, playerPos.z) };
