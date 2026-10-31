@@ -3,9 +3,18 @@ import { PerspectiveCamera, Vector3, MathUtils, Object3D } from 'three';
 import { EffectComposer, EffectPass, VignetteEffect, ToneMappingEffect, BloomEffect, BlendFunction } from 'postprocessing';
 import { World } from 'miniplex';
 import {
-  parseLookbookParam,
   timeOfDayForCycle,
   installLookbookSeam,
+  yawForHeading,
+  headingOf,
+  hostileReach,
+  mobList,
+  sunBearing,
+  DRAGON_POSES,
+  _resetLookbookForTest,
+} from '../../src/render/lookbookSeam.js';
+import {
+  parseLookbookParam,
   lookbookPose,
   applyLookbookPose,
   subscribeLookbook,
@@ -13,16 +22,9 @@ import {
   lookbookHidesHands,
   lookbookHandPose,
   lookbookHandPoseKind,
-  yawForHeading,
-  headingOf,
-  hostileReach,
-  mobList,
   lookbookPassesOff,
-  sunBearing,
   lookbookDragonHold,
-  DRAGON_POSES,
-  _resetLookbookForTest,
-} from '../../src/render/lookbookSeam.js';
+} from '../../src/render/lookbookState.js';
 import { applyPassesOff, LOOKBOOK_PASS_NAMES } from '../../src/render/passesOff.js';
 import { createPassTimer, installPassTimer } from '../../src/render/passTimer.js';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
@@ -71,6 +73,15 @@ import { contextLossCount, glInfo, _resetGlDiagnosticsForTest } from '../../src/
  *   B5 an unknown dragon pose accepted -> "refuses an unknown pose (naming it)"
  *   B6 the hold never set -> both dragon tests;  B7 the hold set before the spawn answered -> "refuses ..."
  *   G1 groundAt reads the probe with its axes swapped -> "reads the mobs' ground probe at the point asked"
+ * Added with the split into render/lookbookState.js (what the game reads) and render/lookbookSeam.js (the lazy installer;
+ * DECISIONS 2026-10-31 item 282), each observed RED against the 45 tests:
+ *   S1 setLookbookPose does not tell subscribers -> "subscribers (the Player hiding its hands) hear every pose and clear" and the hands test
+ *   S2 setLookbookHandPose does not tell subscribers -> "handPose() validates each kind, notifies the subscribers, ..."
+ *   S3 setLookbookPassesOff a no-op -> both passesOff tests;  S4 setLookbookDragonHold a no-op -> both dragon tests
+ *   S5 plausible-wrong: the hands hide for an eye pose too -> "a hero pose hides the hands and an eye pose keeps them"
+ *   S6 plausible-wrong: parseLookbookParam accepts any value present -> "parses only the exact value"
+ *   S7 the seam's reset leaves the state module's pose in place -> the look(), stand(), form() and dragon() tests
+ *   S8 the handPose verb never writes the held pose -> the hand-pose test;  L6 re-observed on the installer
  *
  * BLIND SPOT: that Components.jsx's Player useFrame applies the pose to the LIVE camera (and stops applying it on
  * clear), that the hands really hide, and that index.jsx installs the seam, are the e2e's

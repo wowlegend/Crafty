@@ -66,7 +66,7 @@ import { isInputLive } from './input/inputLive.js';
 import { RigidBody, CapsuleCollider, useRapier } from '@react-three/rapier';
 import { useGameStore } from './store/useGameStore';
 import { isCaptureMode, getCaptureOpts } from './devtest/captureMode';
-import { lookbookPose, applyLookbookPose, subscribeLookbook, lookbookHidesHands } from './render/lookbookSeam.js';
+import { lookbookPose, applyLookbookPose, subscribeLookbook, lookbookHidesHands } from './render/lookbookState.js';
 import { isPerfProbe } from './devtest/perfProbe';
 import { getInput, setIntent, setActive, resetInput } from './input/inputState';
 import { installBlurReset } from './input/blurReset';
@@ -676,7 +676,7 @@ export const Player = ({ isWorldBuilt }) => {
       return;
     }
 
-    // The lookbook probe's camera pin (render/lookbookSeam.js): null unless the page was opened with ?lookbook=1 AND
+    // The lookbook probe's camera pin (render/lookbookState.js): null unless the page was opened with ?lookbook=1 AND
     // a script posed it, so this is one null read per frame in play. Same early-return shape as capture above, but
     // the world is NOT paused: the physics step, mobs, weather and the clock keep running — motion-on frames are its
     // whole point. What stops is THIS controller, from this return to the end of the callback: movement and the KCC,
