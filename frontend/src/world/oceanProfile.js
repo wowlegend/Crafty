@@ -9,6 +9,21 @@ export const SEA_LEVEL = 28;        // water fills y <= SEA_LEVEL; foliage only 
 export const BEACH_BAND_TOP = 30;   // surfaceY < BEACH_BAND_TOP renders as sand (the beach band)
 export const DEEP_FLOOR = 6;        // deepest seabed -> max divable depth = SEA_LEVEL - DEEP_FLOOR = 22
 
+/**
+ * Does the sea fill the cell at height `y` of a column whose surface block is at `surfaceY`? The terrain worker fills
+ * with this, and `isSeaColumn` is derived from it, so the voxels and the main thread's "is this column under water"
+ * (climate.js: the wind bed, the far-field ring) are one fact. A column whose surface IS the sea level is dry sand:
+ * nothing lies above it up to SEA_LEVEL.
+ */
+export function seaFillsCell(y, surfaceY) {
+  return y > surfaceY && y <= SEA_LEVEL;
+}
+
+/** Is the column under water: does the sea fill the cell just above its surface? */
+export function isSeaColumn(surfaceY) {
+  return seaFillsCell(surfaceY + 1, surfaceY);
+}
+
 // The ocean blend: as `continent` falls below the threshold, the surface lerps from the land
 // baseHeight down toward the deep seabed over a transition band (the shore -> deep ramp).
 // De-island (Kevin "seemingly on an island") EXECUTED in W2-T7 (2026-06-17): the threshold dropped

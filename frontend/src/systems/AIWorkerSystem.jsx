@@ -4,7 +4,7 @@ import { useGameStore } from '../store/useGameStore';
 import { mobsQuery } from '../ecs/world';
 import { isCaptureMode } from '../devtest/captureMode';
 import { routinePositionInto, npcFollowT } from '../game/npcRoutine.js';
-import { heightGridAt, snapMob } from '../game/localPath.js';
+import { mobGridsAt, snapMob } from '../game/localPath.js';
 import { groundForMover } from '../game/mobFloor.js';
 import { strikesToApply, holdStagger } from '../game/perfectDodge.js';
 import { playerSensePoint } from './playerSensePoint.js';
@@ -217,15 +217,16 @@ export const AIWorkerSystem = () => {
     const store = useGameStore.getState();
     const getMobFloor = store.getMobFloor;
     const mobsData = mobsQuery.entities.filter(e => e && e.health > 0 && !e.isStatic).map(e => {
-      let heightGrid = null;
+      let grids = { heightGrid: null, sightGrid: null };
       if (!e.passive && e.isAggro) {
         // The one grid framing (game/localPath.js, review #4 R5.1), of FLOORS as the mob's feet see them — a roof
-        // over a column is not a wall in it (review #6, R7.1).
-        heightGrid = getMobFloor ? heightGridAt(e.position.x, e.position.z, e.position.y - 0.5, getMobFloor) : [];
+        // over a column is not a wall in it (review #6, R7.1) — and the sight grid beside it, which keeps a wall's
+        // true top where the floor says Infinity.
+        grids = getMobFloor ? mobGridsAt(e.position.x, e.position.z, e.position.y - 0.5, getMobFloor, store.getMobGroundLevel) : { heightGrid: [], sightGrid: null };
       }
       return buildMobPayload(e, {
         speed: e.speed * (e.zoneSlowMult || 1) * spellSlowFactor(e, performance.now()), // zone slow + iceball spell-freeze (separate channels)
-        heightGrid,
+        ...grids,
       });
     });
 

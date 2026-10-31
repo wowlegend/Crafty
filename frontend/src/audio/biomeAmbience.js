@@ -1,7 +1,9 @@
-// Per-biome ambient wind character (interleave). Pure map: the player's surface block (from
-// world/climate.surfaceBlockAt) -> a looping wind bed's filter cutoff + gain. SoundManager ramps a
+// Per-biome ambient wind character (interleave). The player's surface block (from
+// world/climate.surfaceBlockUnderfoot) -> a looping wind bed's filter cutoff + gain. SoundManager ramps a
 // noise voice toward these so each biome SOUNDS distinct (rides the M3/M4a biome visuals). Underwater
 // (isWater) muffles everything. Tuned conservatively — the bed is a subtle UNDER-layer, not music.
+import { surfaceBlockUnderfoot } from '../world/climate.js';
+
 const LAND = {
   5: { cutoff: 5200, gain: 0.075, label: 'snow' },   // bright, airy howl
   4: { cutoff: 2600, gain: 0.060, label: 'desert' },  // dry mid hiss
@@ -15,4 +17,10 @@ const UNDERWATER = { cutoff: 380, gain: 0.085, label: 'underwater' }; // muffled
 export function biomeAmbience(surfaceBlock, isWater) {
   if (isWater) return { ...UNDERWATER };
   return { ...(LAND[surfaceBlock] || DEFAULT) };
+}
+
+/** The wind bed's character for the player standing at a world position: the one sample SoundManager takes. */
+export function ambienceAt(worldX, worldZ) {
+  const { surfaceBlock, isWater } = surfaceBlockUnderfoot(worldX, worldZ);
+  return biomeAmbience(surfaceBlock, isWater);
 }
