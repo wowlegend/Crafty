@@ -117,6 +117,68 @@ tree, then green; each commit's `Mutation-Proof:` trailer names its mutants, eve
    `REVIEW:l7:orphan-chest-record-pays-a-chest` (a chest record a pre-L7 smash left over air pays a chest for a block
    later mined in its cell); `REVIEW:l7:chest-mined-before-its-answer-pays-wood` (the click's drop tag cannot see a chest
    placement still owed its answer). The last two were found by reading the code and were not run.
+332. **Round 2 (tests and records only) corrects item 327's reason: a Golden Crown's two uses are not exclusive.** Item 327
+   said the crown's choice, wear it or cash it in, "cost nothing" and that Use is the one payment "because it is the
+   choice". The store does not enforce a choice: `game/equipment.js` lets the crown be worn (head), `unequipItem` returns it
+   to the bag, and Use cashes it in for 200 XP (`game/consumables.js`), so a player can wear it, take it off and cash it
+   in. What holds is narrower, and it is the rule: the token's own XP is paid once, on Use, because Use uses the item up;
+   wearing pays no XP, so wearing first costs nothing and adds no XP. Making the two exclusive
+   would be a design change nobody has asked for, so none is made. The code comment in `QuestSystem.jsx` ("worn or cashed
+   in, not both") said more than the store does and is corrected, as is the stale comment in `BlockParticleSystem.jsx`
+   (it still said a dead cube keeps full scale and is teleported; it is parked asleep at zero scale). Round 1 static
+   review, findings 1 and 2.
+333. **The dragon's smash now breaks about twice as many real blocks per strike, and that is kept.** At `7250aa22` each
+   column pushed two picks, the air above its top block and the block, so half of every strike's picks broke nothing; now
+   every pick is a block (item 322 recorded the crater's depth, not this count). Measured on the two functions
+   (`7250aa22`'s `bossSmash.js` and this lane's), driven as `render/BossEntity.jsx` calls them: radius 5.0, a cap of
+   `floor(random * 5) + 4` blocks, centred on the ground under the strike, the ground answering the generator's top face;
+   2,213 strikes at random centres over an 800 x 800 area about the hub (787 draws on sea or hub columns skipped), each
+   strike drawn identically for both. Both pick 5.94 cells a strike (the cap's mean is 6.0 and nearly always binds: a
+   radius-5 disc holds about 78 columns); before, 2.99 of them held a block (49.6% air), after, 5.94 (ratio 1.99). A radius-5 strike is therefore twice
+   as hard on the player's placed blocks, which are lost and never paid back (item 321). Kept: the cap of 4 to 8 is the
+   number of blocks the author asked a strike to break, and the air picks silently halved it; a gentler hazard is a change
+   to that cap in `BossEntity.jsx` (two sites), not a reason to keep aiming at the air. "A block" here is a cell at or
+   below the generator's surface; trees, placed blocks and caves are not modelled, and the probe is not kept. Round 1
+   static review, finding 3.
+334. **The break sound's position is gated.** Item 320 said the sound plays at the block and no gate read where. Row 1 of
+   `tests/gates/verb-ledger-gates.test.jsx` now asserts, for the first break and for the control break, that the worker
+   emptied the cell the click aimed at and that the last sound is at that cell's centre. `scripts/dev/mutate.sh` on
+   `world/mineAtHit.js` (verb-ledger, 4 tests): the identity mutant (a comment) survived; RED: S1 the sound at the world
+   origin, S2 no position, S3 the block's corner, not its centre. Round 1 dynamic review, claim 6 and finding F1.
+   **Not measured:** how long after the click the sound arrives in a browser. The worker handles messages one at a time
+   and the streamer posts up to two `generate` messages every 150 ms, so while chunks stream the sound waits behind them;
+   the block's removal always waited for the same answer, so the sound, the debris and the removal now land together. That
+   is Kevin's real-device call.
+335. **Where each new sub-assertion was seen red.** Round 1's static review found that each red row stopped at its first
+   failing `expect`, so later ones were never seen red. Re-run this round on `7250aa22`'s `frontend/src` with every
+   `expect` after the first `describe` made soft (`expect.soft`, so a row runs past its first failure; scratch copy, not
+   kept), the gates as they stand at the head:
+   - **Red at `7250aa22`, each for its own reason:** verb ledger: two clicks `{broken: 2, sounds: 2}`; the chest round trip
+     `[chest, ...]`; the smash: 19 of 38 posts held a block, it took the chest's cell, the chest did not survive (the top
+     read 48, not 49), and it paid `{grass: 18, wood: 1}`; all four world queries 0 of 120. The commit body of `7ee97985`
+     says 36 sent and 14 broken for the smash, which differs: the gate as committed reads 38 and 19. Player debris:
+     `{rise: 0.511, walked: 11.89}` against `{0.054, 12.22}` clear (both clauses red); the vault +0.749 m off a cube in
+     flight; the head ray's cube took a real ledge's vault away (-0.57 m for more than 0.2). Debris lifecycle: 200 awake and
+     200 falling; drawn 0 of 60; past 2 s `{meshDrawn: false, shown: 8, awake: 192}`. Token ledger: Golden Crown 400, not
+     210. Potion at full `{count: 1, value: 100, notices: 0}` for `{2, 100, 1}`. Stale strikes `[live, dead, dying,
+     bound]` for `[live]`.
+   - **The overlap check could not see its own defect and is fixed.** It read 0 at `7250aa22` because it was taken after
+     120 frames, when a falling pool has scattered. It is now also read at mount, before the first step, and the larger is
+     asserted: 19,900 pairs (all 200 bodies at one point) at `7250aa22`, 0 at the head. Mutants on
+     `BlockParticleSystem.jsx` (debris-lifecycle, 2 tests): identity survived; RED: B3 the pool not parked at mount, B4 every
+     body parked at one spot (asleep, so only the overlap clause sees it in row 1).
+   - **Not red at `7250aa22` by nature, proven by mutants.** The break sound's position and the potion refusal's notice (item
+     334; the refusal's `warn` type, and its text, which no gate read: this round adds `'Already full: keep it for later'`,
+     and `denyToast.js` mutated to `info` (N1) and `GamePanels.jsx` raising `delete-rule` instead (N2) are both RED against
+     `inventory-consume`, 5 tests, the identity mutant surviving). The two first-break sound rows do read red at
+     `7250aa22`, but only because the old sound carried a `THREE.Vector3` hit point; the position itself is proven by S1 to
+     S3, not by that.
+   - **Unproven, and said so.** Controls and setup, which are green on both sides by design and whose killability this
+     round did not show one by one: row 1's control click, the potion rows just below full (item 326's P4 in `f0b602a0`),
+     the changed first row of `perfect-dodge-gates`, and every `SETUP:` precondition.
+336. **Found, not fixed** (registry): `REVIEW:l7:break-sound-spatial-trigger-captured-once` (found by reading, not run; for
+   the audio lane); and the `mob-floor.spec.js:227` sighting of run 41212401755 (shard 6/8, retry #1 passed) is appended to
+   `REVIEW:e2e-flakes:mob-floor-roof-floor-infinity`.
 
 ---
 
