@@ -41,4 +41,10 @@ test('boots, renders a non-blank canvas, and enters play with no runtime errors'
     /TypeError|is not a function|is not defined|Rendered (more|fewer) hooks|Maximum update depth|setTranslation|Cannot read prop/.test(e)
   );
   expect(fatal, `runtime errors during boot+play:\n${errors.join('\n') || '(none)'}`).toEqual([]);
+
+  // SCRATCH (lane L12 round 2 mutant, not for merge): a reactor throws, then the page reloads, so the document the test
+  // ends on counts 0. The listening fixture must still fail this test, with the failure from the first load.
+  await page.evaluate(async (u) => { const bus = await import(u); bus.on(bus.EVENTS.reward, () => { throw new Error('L12 round 2 mutant reactor before a reload, listening'); }); bus.emit(bus.EVENTS.reward); }, '/src/game/eventBus.js');
+  await page.reload();
+  await page.waitForFunction(() => typeof window.__isolatedFailures === 'object' && window.__isolatedFailures.count === 0);
 });
