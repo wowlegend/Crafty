@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as THREE from 'three';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { placeAtHit } from '../../src/world/placeAtHit.js';
-import { mineAtHit, payBrokenBlock } from '../../src/world/mineAtHit.js';
+import { mineAtHit, creditBrokenBlock } from '../../src/world/mineAtHit.js';
 import { voxelIndex } from '../../src/world/chunkLayout.js';
 import { DEFAULT_WORLD_SEED } from '../../src/world/worldSeed.js';
 import { loadTerrainWorker, sendToWorker, workerVerbIo } from '../_support/terrainWorker.js';
@@ -12,10 +12,10 @@ import { loadTerrainWorker, sendToWorker, workerVerbIo } from '../_support/terra
 // so building/mining silently advanced NO quest (builder/architect/world_builder/miner) or achievement
 // (Master Builder / Deep Digger). This pins the wiring by driving the executors Terrain.jsx's verbs call
 // (world/mineAtHit.js, world/placeAtHit.js): break fires from a mine, place from a placement, each once per
-// action (no cross-wire, no double-count), and neither for an action the worker did nothing for. Then the same
-// verbs over the real terrain worker, every reply heard as Terrain.jsx hears it (world/cellEdits.js `heard`, the
-// block_broken payment world/mineAtHit.js payBrokenBlock): the payment a worker message makes counts nothing, so a
-// mine is one break and not two. The callback BODIES are covered by QuestSystem tests.
+// action (no cross-wire, no double-count), and neither for an action the worker did nothing for: a single mine counts
+// when the worker's block_broken says it broke a block (world/mineAtHit.js creditBrokenBlock), never at the click. Then
+// the same verbs over the real terrain worker, every reply heard as Terrain.jsx hears it (world/cellEdits.js `heard`):
+// a mine is one break and not two. The callback BODIES are covered by QuestSystem tests.
 //
 // WHAT THIS DOES NOT CHECK: that Terrain.jsx's verbs call these executors (tests/e2e/the-cut.spec.js places and
 // tests/e2e/input-live.spec.js mines through real clicks).
@@ -43,11 +43,15 @@ describe('M6 block place/break advance quests + achievements (dead-wire fix)', (
     const hit = () => ({ hitPoint: new THREE.Vector3(2.5, 25, 2.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0),
       targetedX: 2, targetedY: 24, targetedZ: 2, targetCoords: '2_24_2' });
 
-    it('a mine fires the registered onBlockBreak callback once (not onBlockPlace)', async () => {
+    it('a mine counts nothing at the click, and once (not onBlockPlace) when the worker says it broke the block', async () => {
       const posted = [];
       await mineAtHit(hit(), { post: (m) => posted.push(m), editCells: answering(), playBreak: () => {} });
       expect(posted.length, 'SETUP: the mine sent the worker nothing').toBe(1);
-      expect(calls, 'a mine did not fire onBlockBreak alone').toEqual(['break']);
+      expect(calls, 'a mine counted before the worker said what it broke').toEqual([]);
+      // The worker's block_broken echoes the post's tags (terrain.worker.js update_block).
+      const { y, source, drop } = posted[0].payload;
+      creditBrokenBlock({ x: 2, y, z: 2, blockType: 3, source, drop });
+      expect(calls, 'the worker\'s break of the mined block did not fire onBlockBreak alone').toEqual(['break']);
     });
 
     it('a Delete Tool removal fires it once however many blocks it took, and not when it took none', async () => {
@@ -99,7 +103,7 @@ describe('M6 block place/break advance quests + achievements (dead-wire fix)', (
       sendToWorker('load_modifications', { modifications: [
         ...OWN.map(([x, y, z]) => [0, 0, voxelIndex(x, y, z), 3]), [0, 0, voxelIndex(2, 24, 2), 3], [0, 0, voxelIndex(2, 25, 2), 0]] });
       useGameStore.setState({ worldBlocks: new Map(OWN.map(([x, y, z]) => [`${x}_${y}_${z}`, 3])) });
-      const io = workerVerbIo({ onBroken: payBrokenBlock });
+      const io = workerVerbIo({ onBroken: creditBrokenBlock });
       const stone = () => S().inventory.blocks.stone;
       const start = stone();
 

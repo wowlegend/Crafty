@@ -30,7 +30,7 @@ import { HubRender } from '../render/HubRender';
 import { HEARTH_Y, HEARTH_FIRE } from './homeAnchor.js';
 import { chestHasItems } from '../game/chestState.js';
 import { placeAtHit } from './placeAtHit.js';
-import { mineAtHit, payBrokenBlock } from './mineAtHit.js';
+import { mineAtHit, creditBrokenBlock } from './mineAtHit.js';
 import { createCellEdits } from './cellEdits.js';
 import { mineTarget } from './buildTarget.js';
 import { createPlacedCellColliders, createEditSeq } from './placedCellColliders.js';
@@ -43,8 +43,10 @@ worker.postMessage({ type: 'init', payload: { seed: useGameStore.getState().worl
 const nextEditSeq = createEditSeq();
 // The build verbs' answers from the worker (a batch's cells_edited, a lone removal's block_broken), heard for as long as
 // the worker lives, not while Terrain is mounted, so what a click spent or took is paid back and recorded whatever
-// unmounts before the answer (world/cellEdits.js).
-const cellEdits = createCellEdits((msg) => worker.postMessage(msg), { onBroken: payBrokenBlock });
+// unmounts before the answer (world/cellEdits.js). A player's lone mine is heard by the break sound MinecraftWorld hands in
+// while it is mounted, its sound hook's; one answered after it unmounts is paid and counted, unheard.
+const breakHeard = { play: null };
+const cellEdits = createCellEdits((msg) => worker.postMessage(msg), { onBroken: (b) => creditBrokenBlock(b, breakHeard.play) });
 worker.addEventListener('message', (e) => cellEdits.heard(e.data));
 
 const ChunkMesh = React.memo(({ cx, cz, meshData, onMount, onUnmount, placedCells }) => {
@@ -808,7 +810,9 @@ export const MinecraftWorld = React.memo(() => {
         GameMethods.castBuildRay = castBuildRay;
         GameMethods.castWorldRay = castWorldRay;
         GameMethods.terrainVerbs = { mine, place, open };
+        breakHeard.play = playBlockBreak;
         return () => {
+            breakHeard.play = null;
             delete GameMethods.castBuildRay;
             delete GameMethods.castWorldRay;
             delete GameMethods.terrainVerbs;

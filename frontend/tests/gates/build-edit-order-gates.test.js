@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vite
 import * as THREE from 'three';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { placeAtHit } from '../../src/world/placeAtHit.js';
-import { mineAtHit, payBrokenBlock } from '../../src/world/mineAtHit.js';
+import { mineAtHit, creditBrokenBlock } from '../../src/world/mineAtHit.js';
 import { destroyVoxelsInRadius } from '../../src/world/bossSmash.js';
 import { idForBlock, blockForId } from '../../src/world/blockIds.js';
 import { CHUNK_SIZE, voxelIndex } from '../../src/world/chunkLayout.js';
@@ -75,10 +75,10 @@ function verbs(io) {
       return mineAtHit({ hitPoint: new THREE.Vector3(c.x + 0.5, c.y + 1, c.z + 0.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0),
         targetedX: c.x, targetedY: c.y, targetedZ: c.z, targetCoords: key(c) }, { post: io.post, editCells: io.editCells, playBreak: () => {} });
     },
-    /** The dragon's smash over exactly cell `c`: the ground probe names its column at c's height (the smash breaks the
-     *  cell at the probe's whole height, and the one under it if the sphere holds it, which this one does not). */
+    /** The dragon's smash over exactly cell `c`: the ground probe answers c's top face, as Terrain.jsx's probe answers a
+     *  column's (the smash breaks the block under the face, one a column). */
     smash(c) {
-      useGameStore.setState({ terrainWorker: { postMessage: io.post }, getMobGroundLevel: (x, z) => (x === c.x && z === c.z ? c.y : null) });
+      useGameStore.setState({ terrainWorker: { postMessage: io.post }, getMobGroundLevel: (x, z) => (x === c.x && z === c.z ? c.y + 1 : null) });
       destroyVoxelsInRadius(new THREE.Vector3(c.x + 0.5, c.y + 0.5, c.z + 0.5), 0.6, 8);
     },
   };
@@ -88,7 +88,7 @@ const C = { x: OX + 6, y: GROUND + 1, z: OZ + 6 };
 
 describe('a placement\'s late answer never writes over a later record (named interleavings)', () => {
   it('place, then a single mine of its stand-in, then the answer: the record holds air, as the worker does', async () => {
-    const io = workerVerbIo({ onBroken: payBrokenBlock, deferred: true });
+    const io = workerVerbIo({ onBroken: creditBrokenBlock, deferred: true });
     const v = verbs(io);
     const placed = v.place(C);
     await v.mine(C);
@@ -100,7 +100,7 @@ describe('a placement\'s late answer never writes over a later record (named int
   });
 
   it('a chest placed, then mined before the answer, is no storage chest and no record', async () => {
-    const io = workerVerbIo({ onBroken: payBrokenBlock, deferred: true });
+    const io = workerVerbIo({ onBroken: creditBrokenBlock, deferred: true });
     const v = verbs(io);
     const placed = v.place(C, 'chest');
     await v.mine(C);
@@ -111,7 +111,7 @@ describe('a placement\'s late answer never writes over a later record (named int
   });
 
   it('the dragon\'s smash over a placement still owed its answer: the record holds air, as the worker does', async () => {
-    const io = workerVerbIo({ onBroken: payBrokenBlock, deferred: true });
+    const io = workerVerbIo({ onBroken: creditBrokenBlock, deferred: true });
     const v = verbs(io);
     const placed = v.place(C);
     v.smash(C);
@@ -122,7 +122,7 @@ describe('a placement\'s late answer never writes over a later record (named int
   });
 
   it('two placements of one cell before either answer: the first fills it and records it, the second is paid back', async () => {
-    const io = workerVerbIo({ onBroken: payBrokenBlock, deferred: true });
+    const io = workerVerbIo({ onBroken: creditBrokenBlock, deferred: true });
     const v = verbs(io);
     const first = v.place(C, 'stone');
     const second = v.place(C, 'dirt');
@@ -133,7 +133,7 @@ describe('a placement\'s late answer never writes over a later record (named int
   });
 
   it('place, mine, place again, then the answers: the second placement is recorded, as the worker holds it', async () => {
-    const io = workerVerbIo({ onBroken: payBrokenBlock, deferred: true });
+    const io = workerVerbIo({ onBroken: creditBrokenBlock, deferred: true });
     const v = verbs(io);
     const first = v.place(C, 'stone');
     await v.mine(C);
@@ -152,7 +152,7 @@ describe('a Delete Tool click that takes nothing says the rule, and says nothing
   it('a chest the player placed stays, nothing reaches the worker, and the one notice names chests', async () => {
     const notes = [];
     useGameStore.setState({ addNotification: (text, type) => notes.push({ text, type }) });
-    const io = workerVerbIo({ onBroken: payBrokenBlock });
+    const io = workerVerbIo({ onBroken: creditBrokenBlock });
     const v = verbs(io);
     expect(await v.place(C, 'chest'), 'SETUP: the chest was not placed').toBe(1);
     expect(S().chests.has(key(C)), 'SETUP: the placed chest is not in the store').toBe(true);
@@ -167,7 +167,7 @@ describe('a Delete Tool click that takes nothing says the rule, and says nothing
   it('a block whose placement is still owed its answer: the click says nothing, then the next click takes it', async () => {
     const notes = [];
     useGameStore.setState({ addNotification: (text) => notes.push(text) });
-    const io = workerVerbIo({ onBroken: payBrokenBlock, deferred: true });
+    const io = workerVerbIo({ onBroken: creditBrokenBlock, deferred: true });
     const v = verbs(io);
     const placed = v.place(C);
     expect(recorded(C), 'SETUP: the placement is already recorded, so there is no owed answer to click over').toBe(0);
@@ -185,7 +185,7 @@ describe('a Delete Tool click that takes nothing says the rule, and says nothing
   it('with nothing owed, a click on the ground still gets the notice (the silence is only for an owed answer)', async () => {
     const notes = [];
     useGameStore.setState({ addNotification: (text) => notes.push(text) });
-    const io = workerVerbIo({ onBroken: payBrokenBlock });
+    const io = workerVerbIo({ onBroken: creditBrokenBlock });
     expect(await verbs(io).mine({ x: C.x, y: GROUND, z: C.z }, 'delete'), 'the Delete Tool took the ground').toBe(0);
     expect(notes, 'a click on the ground raised no notice, or more than one').toHaveLength(1);
   });
@@ -211,7 +211,7 @@ describe('a seeded run of edits and late answers keeps the record and the worker
     for (const t of TYPES) expect(blockForId(idForBlock(t)), `SETUP: ${t} is not paid back as itself`).toBe(t);
     const rnd = mulberry32(270);
     const pick = (list) => list[Math.floor(rnd() * list.length)];
-    const io = workerVerbIo({ onBroken: payBrokenBlock, deferred: true });
+    const io = workerVerbIo({ onBroken: creditBrokenBlock, deferred: true });
     const v = verbs(io);
     const start = Object.fromEntries(TYPES.map((t) => [t, S().inventory.blocks[t]]));
     const tally = { places: 0, mines: 0, deletes: 0, smashes: 0, answers: 0, checks: 0, cellsChecked: 0,
@@ -278,9 +278,13 @@ describe('a seeded run of edits and late answers keeps the record and the worker
     io.answer();
     await Promise.all(pending);
     check('the end', BOX);
+    // A block the dragon broke is gone from both: a hazard pays nobody (world/mineAtHit.js creditBrokenBlock).
+    const smashed = (t) => io.received.filter((m) => m.type === 'block_broken' && m.payload.source === 'dragon'
+      && m.payload.blockType === idForBlock(t)).length;
+    expect(TYPES.reduce((n, t) => n + smashed(t), 0), 'SETUP: no smash broke a placed block, so the hazard\'s share is unread').toBeGreaterThan(0);
     for (const t of TYPES) {
       const inWorld = BOX.filter((c) => readVoxel(c.x, c.y, c.z) === idForBlock(t)).length;
-      expect(S().inventory.blocks[t] + inWorld, `${t} was made or lost between the inventory and the world`).toBe(start[t]);
+      expect(S().inventory.blocks[t] + inWorld + smashed(t), `${t} was made or lost between the inventory and the world`).toBe(start[t]);
     }
     process.stdout.write(`\nbuild edit-order gate: ${JSON.stringify(tally)}\n`);
     expect(tally.checks, 'SETUP: the record was compared with the worker too few times').toBeGreaterThanOrEqual(20);
