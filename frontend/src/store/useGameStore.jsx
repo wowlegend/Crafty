@@ -1299,6 +1299,14 @@ export const useGameStore = create((set, get) => ({
         if (id) setActiveWorldId(id);
     },
 
+    // Another page of the origin wrote localStorage (a `storage` event, game/autosave.js): when it saved this tab's slot
+    // since the tab last read or wrote it, the conflict panel says so now, not at this tab's next save.
+    noteStorageWrite: () => {
+        const id = get()._sessionWorldId;
+        const entry = id && listWorlds().find((w) => w.id === id);
+        if (entry && writtenSince(entry.saved_at, get()._slotSavedAt) && !get().slotConflict) set({ slotConflict: { id } });
+    },
+
     // Local-first autosave: serialize the live state to the world slot THIS SESSION OWNS. No-op
     // under the visual-capture harness so capture frames never touch localStorage.
     //
