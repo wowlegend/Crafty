@@ -170,7 +170,6 @@ export function liveInventory(inventory) {
   return Object.fromEntries(Object.entries(inventory).map(([bag, items]) => [bag, holdsRetired(items) ? withoutRetired(items) : items]));
 }
 
-/** A save's chest entries ([coords, chest]) with the retired keys taken out of each chest's inventory. Pure. */
 // A block edit's key: the cell's integer x_y_z (the store's worldBlocks).
 const CELL_KEY = /^-?\d+_-?\d+_-?\d+$/;
 
@@ -186,6 +185,7 @@ export function liveBlocks(blocks) {
   return Array.isArray(blocks) ? blocks.filter((e) => Array.isArray(e) && e.length === 2 && typeof e[0] === 'string' && CELL_KEY.test(e[0])) : [];
 }
 
+/** A save's chest entries ([coords, chest]) with the retired keys taken out of each chest's inventory. Pure. */
 export function liveChests(chests) {
   if (!Array.isArray(chests)) return chests;
   return chests.map((e) => (Array.isArray(e) && isPlainObject(e[1]) && holdsRetired(e[1].inventory)

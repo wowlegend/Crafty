@@ -1296,10 +1296,9 @@ export const useGameStore = create((set, get) => ({
     // the world a page plays (game/worldBoot.js), which is how a returning player's saves land in their slot.
     // `saved_at` is the title's "last played" (MenuSystem.jsx).
     // TWO TABS, ONE SLOT. Every plain visit claims the newest world's slot (game/worldBoot.js), so a second tab and
-    // Continue put two tabs on one slot, and the one played longer ago wrote its older state over the other's
-    // (AUDIT:persistence:two-tabs-clobber-world). The tab knows the slot's saved_at as it last read or wrote it
-    // (`_slotSavedAt`); a save that finds the index's newer refuses, and `slotConflict` tells the player
-    // (ui/SlotConflictPanel.jsx). Returns whether it wrote.
+    // Continue put two tabs on one slot, and a save from the one played longer ago would write its older state over the
+    // other's. The tab knows the slot's saved_at as it last read or wrote it (`_slotSavedAt`); a save that finds the
+    // index's newer refuses, and `slotConflict` tells the player (ui/SlotConflictPanel.jsx). Returns whether it wrote.
     saveActiveWorld: (position) => {
         if (get().isCaptureMode) return false;
         // A dead player is saved as Respawn would leave them (game/saveSchema.js asRespawned): a refresh on the death

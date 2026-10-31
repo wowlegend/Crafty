@@ -42,9 +42,9 @@ export const WorldManager = ({ onClose }) => {
   };
 
   const saveCurrentWorld = async () => {
-    // The autosave's own writer (store saveActiveWorld): the slot this tab owns, or a new one; the world's name, creation
-    // date and visibility kept (a save of its own renamed the world "Guest's World - <date>" for good,
-    // AUDIT:persistence:manual-save-renames-and-resets); and refused, like the autosave, over a newer save from another tab.
+    // The autosave's own writer (store saveActiveWorld), so the two cannot disagree: the slot this tab owns, or a new
+    // one, under the world's own name, creation date and visibility, and refused, as the autosave is, over a newer save
+    // from another tab.
     setError('');
     const s = useGameStore.getState();
     const saved = s.saveActiveWorld(savePosition(s));
