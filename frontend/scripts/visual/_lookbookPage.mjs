@@ -63,8 +63,8 @@ export function initScript({ touch = false, firstSession = false } = {}) {
   if (touch) {
     delete Element.prototype.requestPointerLock;
     delete HTMLElement.prototype.requestPointerLock;
-    try { Object.defineProperty(document, 'pointerLockElement', { get: () => null }); } catch { /* read-only */ }
-    document.exitPointerLock = () => {};
+    delete Document.prototype.exitPointerLock;
+    delete Document.prototype.pointerLockElement;
   }
 }
 

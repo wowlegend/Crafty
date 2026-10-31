@@ -44,7 +44,7 @@
     "src/ui/DamageDirection.jsx": 2,
     "src/ui/DuskWarning.jsx": 1,
     "src/ui/LowHealthVignette.jsx": 1,
-    "src/ui/MusicPlayer.jsx": 2,
+    "src/ui/MusicPlayer.jsx": 3,
     "src/ui/RadialMinimap.jsx": 1,
     "src/ui/TargetFrame.jsx": 1,
     "src/ui/TouchControls.jsx": 1,

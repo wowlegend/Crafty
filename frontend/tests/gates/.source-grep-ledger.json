@@ -1,5 +1,5 @@
 {
-  "_count": 94,
+  "_count": 93,
   "gates": [
     "tests/gates/ability-bar-gates.test.js",
     "tests/gates/allegiance-gates.test.js",
@@ -10,7 +10,6 @@
     "tests/gates/aspect-trees-gates.test.js",
     "tests/gates/atmosphere-isolation-gates.test.js",
     "tests/gates/attack-telegraph-gates.test.js",
-    "tests/gates/audio-resume-gates.test.js",
     "tests/gates/biome-ambience-gates.test.js",
     "tests/gates/biome-flora-gates.test.js",
     "tests/gates/biome-foliage-gates.test.js",
