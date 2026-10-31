@@ -231,8 +231,9 @@ export const useQuestSystem = () => {
     // tick, re-seed the local working state from the loaded snapshot. Gated by a
     // mount guard so the initial render (already seeded via the useState initializers)
     // doesn't clobber state. This effect watches ONLY worldLoadedAt; the mirror
-    // watches the state values -> the two never feed each other. A world whose save holds no log (a new world's, or a
-    // save from before the log) is a fresh log: the defaults, as the initializers seed them.
+    // watches the state values -> the two never feed each other. A world whose save holds no log is a fresh log, the
+    // defaults as the initializers seed them: the load makes the store's log null for a new world's save (null) and for
+    // one from before the log (no key) alike.
     const worldLoadedAt = useGameStore((s) => s.worldLoadedAt);
     const didMountQuest = useRef(false);
     useEffect(() => {

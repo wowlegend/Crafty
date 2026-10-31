@@ -1256,18 +1256,10 @@ export const useGameStore = create((set, get) => ({
                 // talent, so a block carried through the load would be thrown by a verb the player does not have.
                 voidhandHeld: false,
                 heldPhantom: null,
-                // S2a: restore the quest/achievement mirror (tolerate pre-questState
-                // saves by falling back) and bump the resync tick so useQuestSystem
-                // re-seeds its local working state from the loaded snapshot.
-                // PRESENCE test, not `??`. The two callers need opposite merge semantics through this
-                // one function: loading an older save must tolerate a MISSING key (forward compat), while
-                // startNewWorld — which is deliberately "load a save built from the INITIAL state" —
-                // must force the reset. buildSaveData writes `questState: state.questState || null`, so a
-                // fresh reset save carries the key PRESENT with value null, and `null ?? state.questState`
-                // kept the OLD world's completed quests and achievements in the new one.
-                questState: Object.prototype.hasOwnProperty.call(saveData, 'questState')
-                    ? liveQuestState(saveData.questState, owed.claimedQuestIds)
-                    : state.questState,
+                // S2a: the quest/achievement mirror, which useQuestSystem re-seeds from on the tick below. A save with no
+                // log is a fresh log, its key null (a new world's: buildSaveData writes `state.questState || null`) or
+                // absent (a save from before the log): never the session's, which is the world loaded before.
+                questState: liveQuestState(saveData.questState ?? null, owed.claimedQuestIds),
                 worldLoadedAt: (state.worldLoadedAt || 0) + 1,
             };
         });

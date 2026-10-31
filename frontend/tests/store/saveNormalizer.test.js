@@ -142,11 +142,11 @@ describe('questState persistence (quest progress + achievements)', () => {
     expect(s.worldLoadedAt).toBeGreaterThan(before); // tick bumped → hook re-seeds
   });
 
-  it('a pre-questState save (no questState) loads without crashing, keeps current', () => {
+  it('a pre-questState save (no questState) loads without crashing, as a fresh log (DECISIONS 2026-10-31 item 292)', () => {
     useGameStore.setState({ questState: { stats: { kills: 1 } } });
     expect(() => useGameStore.getState().loadWorldData({
       world_data: { blocks: [] }, player_data: { inventory: { blocks: {} }, stats: {} }, game_state: {},
     })).not.toThrow();
-    expect(useGameStore.getState().questState.stats.kills).toBe(1); // fell back
+    expect(useGameStore.getState().questState, 'the session\'s log crossed into a save that holds none').toBeNull();
   });
 });

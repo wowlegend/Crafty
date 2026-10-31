@@ -141,4 +141,27 @@ describe('the quest hook re-seeds on every load, a null quest log to the new wor
     expect(r.stats.kills, 'old counters survived').toBe(0);
     expect([...r.unlockedAchievements], 'old achievements survived').toEqual(['first_step']);
   });
+
+  it('a log with progress, then a save from before the log (no questState key) loads: the hook is at the defaults too', () => {
+    const hook = renderHook(() => useQuestSystem());
+    const firstTier = QUEST_LIST.filter((q) => q.tier === 1).slice(0, 3).map((q) => q.id);
+    loadInPlace(save({ health: MAX0, active: false, defeated: false, tier: 0, killNight: 0 }, {
+      questState: {
+        quests: [{ ...QUEST_LIST.find((q) => q.id === 'pilgrim'), progress: 0, completed: false, claimed: false }],
+        completedQuestIds: ['first_blood'],
+        stats: { kills: 12, kills_by_type: {}, spells: 0, blocks_placed: 0, blocks_broken: 0, chests: 0, distance: 0, deaths: 0, level: 9 },
+        unlockedAchievements: ['first_step', 'first_kill'],
+      },
+    }));
+    expect(hook.result.current.stats.kills, 'SETUP: the first load did not reach the hook').toBe(12);
+    const old = save({ health: MAX0, active: false, defeated: false, tier: 0, killNight: 0 });
+    delete old.questState;
+    expect(Object.prototype.hasOwnProperty.call(old, 'questState'), 'SETUP: the save still has the key').toBe(false);
+    loadInPlace(old);
+    const r = hook.result.current;
+    expect(r.stats.kills, 'the old world\'s counters survived a save with no log').toBe(0);
+    expect(r.quests.map((q) => q.id), 'the old world\'s quests survived').toEqual(firstTier);
+    expect(useGameStore.getState().questState?.completedQuestIds ?? [], 'old claims survived in the mirror').toEqual([]);
+    expect([...r.unlockedAchievements], 'old achievements survived').toEqual(['first_step']);
+  });
 });
