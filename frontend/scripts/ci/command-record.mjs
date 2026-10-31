@@ -12,7 +12,7 @@
  *
  * WHAT IT READS. The data file, and memory/registry.jsonl for two sections, read from the rows' v2 fields when the page
  * is written (DECISIONS 2026-10-31 (registry v2) item 361), so they age like the rest of it: the health section's open
- * work (by severity, by kind, what waits on Kevin) and "Waiting on you", which lists every open row Kevin owns, highest
+ * work (by severity, what waits on Kevin, closed) and "Waiting on you", which lists every open row Kevin owns, highest
  * first, grouped by lane when there is more than one. Neither is kept by hand in the data file. CI, the deploy and the PRs are read by whoever refreshes the
  * data (gh, curl) and written there with the time they were read: this script makes no network call.
  *
@@ -313,10 +313,10 @@ const NOW = {
     + `<polygon class="dragon" points="${pts([60, 52], [84, 40], [98, 46], [86, 56], [72, 60])}"/>`
     + `<polygon class="dragon-2" points="${pts([66, 50], [60, 28], [78, 44])}"/>`
     + check(232, 30, 13),
-  wall: () => scene(150, 46, 22, [[0, 0, 0, 'stone'], [1, 0, 0, 'stone'], [0, 1, 0, 'stone'], [1, 1, 0, 'stone'],
-    [0, 0, 1, 'stone'], [1, 0, 1, 'stone'], [0, 1, 1, 'stone']])
-    + '<g transform="rotate(-35 214 52)">' + rect(209, 40, 9, 70, 'wood-l e', 3)
-    + rect(196, 30, 36, 18, 'dark-l e', 3) + '</g>',
+  stall: () => rect(86, 24, 128, 90, 'device', 8) + rect(93, 31, 114, 76, 'screen', 4)
+    + rect(118, 42, 64, 24, 'tag tag-idle', 12) + text(150, 59, 'Start', 14, 'lbl on-tag')
+    + rect(106, 80, 88, 10, 'slot-line', 5) + rect(106, 80, 34, 10, 'bar-before', 5)
+    + busy(214, 28, 13),
   slots: () => rect(118, 22, 96, 70, 'slot slot-3', 8) + rect(108, 34, 96, 70, 'slot slot-2', 8)
     + rect(98, 46, 96, 70, 'slot', 8) + rect(106, 54, 42, 30, 'sky', 4)
     + `<polygon class="hill" points="${pts([106, 84], [106, 72], [122, 64], [148, 72], [148, 84])}"/>`
@@ -415,21 +415,15 @@ function registryRows() {
 const SEVERITY_RANK = Object.freeze({ HIGH: 0, MED: 1, LOW: 2 });
 const liveWork = (rows) => rows.filter((r) => (r.state === 'open' || r.state === 'in-flight') && r.kind !== 'lane');
 
-/** PURE. The health section's open-work row: the open work rows (lanes are not work) by severity and kind. */
+/** PURE. The health section's open-work row: the open work rows (lanes are not work) by severity, in 15 words or fewer. */
 export function openWorkRow(rows) {
   const work = liveWork(rows);
   const n = (f) => work.filter(f).length;
-  const high = n((r) => r.severity === 'HIGH');
-  // The deep audit's rows carry its plan unit; an id prefix is provenance only.
-  const hunt = n((r) => r.severity === 'HIGH' && r.planUnit === 'deep-audit');
-  const bugs = n((r) => r.kind === 'bug');
-  const features = n((r) => r.kind === 'feature');
   const closed = rows.filter((r) => r.state === 'closed').length;
   return {
     lead: 'Open work',
-    text: `${work.length} open: ${high} high${hunt ? ` (${hunt} from the bug hunt)` : ''}, ${n((r) => r.severity === 'MED')} medium, `
-      + `${n((r) => r.severity === 'LOW')} low; ${bugs} bugs, ${features} features, ${work.length - bugs - features} upkeep; `
-      + `${n((r) => r.owner === 'Kevin')} wait on you; ${closed} closed.`,
+    text: `${work.length} open: ${n((r) => r.severity === 'HIGH')} high, ${n((r) => r.severity === 'MED')} medium, `
+      + `${n((r) => r.severity === 'LOW')} low; ${n((r) => r.owner === 'Kevin')} wait on you; ${closed} closed.`,
   };
 }
 

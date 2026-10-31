@@ -28,18 +28,18 @@
       "big": "8 big ones",
       "fixed": "8 fixed",
       "busy": "2 on device",
-      "alt": "Over 40 real bugs found, 8 of them big. All 8 are fixed in code; two wait on your iPhone and iPad.",
-      "caption": "All 8 big ones are fixed in code. Two need your iPhone and iPad."
+      "alt": "Over 40 real bugs found, 8 of them big. All 8 are fixed in code and all 12 fix lanes have landed; two wait on your iPhone and iPad.",
+      "caption": "All 8 big ones are fixed in code, and all 12 fix lanes landed. Two need your iPhone and iPad."
     },
     "now": {
       "cells": [
-        { "pic": "wall", "tag": "Done", "state": "ok", "lines": ["Build tools do", "what they say"] },
+        { "pic": "chest", "tag": "Done", "state": "ok", "lines": ["Rewards match", "what happened"] },
+        { "pic": "slots", "tag": "Done", "state": "ok", "lines": ["Saves that fail", "now tell you"] },
         { "pic": "shrine", "tag": "Done", "state": "ok", "lines": ["Remembers your", "squad and shrines"] },
-        { "pic": "chest", "tag": "Now", "state": "run", "lines": ["Rewards match", "what happened"] },
-        { "pic": "slots", "tag": "Now", "state": "run", "lines": ["Better save", "slots"] }
+        { "pic": "stall", "tag": "Now", "state": "run", "lines": ["Checking a stall", "on test machines"] }
       ],
-      "alt": "Done: build tools do what they say; the game remembers your squad and shrines. Now: rewards match what really happened; better save slots. Also being built: sound on iPhone and iPad, and better tests.",
-      "caption": "Two just shipped. Also being built: iPhone and iPad sound, and better tests."
+      "alt": "Done: rewards match what really happened; saves that fail now tell you; the game remembers your squad and shrines. Now: checking a stall that automatic checks saw when Start is clicked before the world is built; whether players meet it is not measured. Also landed: sound fixes for iPhone and iPad, which you still need to hear, and better tests. Next: the First Night.",
+      "caption": "Just shipped: rewards, saves, better tests, and iPhone and iPad sound fixes you still need to hear. Now: a stall seen on test machines. Next: the First Night."
     },
     "you": {
       "cols": [
@@ -59,6 +59,15 @@
       "sub": "Every merged change since 27 October, plus a few direct ones. Days are UTC.",
       "rows": [
         { "day": "2026-10-31", "rows": [
+          { "pr": 74, "text": "The project list is cleaned: 279 open rows in 13 lanes, 535 closed, as merged.", "src": "gh pr view 74: merged 22:47:50Z (main 5510db64), title 'Registry v2: one list of open work, cleaned and kept clean'; DECISIONS (registry v2) items 361-368, item 367 for the counts on main bd06dacf: 827 rows, 292 open, 279 of them work rows in 13 lane rows, 535 closed (349 before); the same counts read from memory/registry.jsonl by script on 5510db64 (827 rows, 292 open, 13 open lane rows, 535 closed); the registry-v2 plan's 193 is its snapshot a150a93a count and is not used; Production deploy 22:48:09Z" },
+          { "commit": "13cbf789", "text": "Command Record now reads its open-work counts and your waiting list from the project list.", "src": "git show 13cbf789 (feat(orient, command-record)): the health row and 'Waiting on you' read memory/registry.jsonl; reached main inside PR #74, merged 22:47:50Z; DECISIONS (registry v2) item 361" },
+          { "pr": 71, "text": "Tests now catch errors the game swallowed, and show which code they reach.", "src": "gh pr view 71: merged 20:29:03Z (main bd06dacf), title 'L12: instruments that can see'; PR body (a reactor or effect that throws is reported; one merged report of the code the 8 test shards reach); DECISIONS (lane L12) items 310-317; registry AUDIT:lane:L12-instruments-that-can-see closed; Production deploy 20:29:43Z" },
+          { "pr": 73, "text": "Save slots: a refresh no longer heals you; a failed save tells you.", "src": "gh pr view 73: merged 19:36:46Z (main 341531d1); PR body table, items 330 and 332 (a refresh keeps health and mana; a save that does not land says so, once a run); DECISIONS (lane L8) items 330-342; registry AUDIT:lane:L8-save-slot-lifecycle closed; Production deploy 19:37:05Z" },
+          { "pr": 73, "text": "A world deleted while you play it stays deleted; empty placeholder worlds stop piling up.", "src": "gh pr view 73: PR body table, item 335 (a world deleted while it is played stays deleted) and item 333 (at most three empty placeholder worlds are kept); DECISIONS (lane L8); a delete made from another tab is not covered: registry REVIEW:l8:delete-in-another-tab-writes-back (LOW, open) says that tab's next save writes the world back" },
+          { "pr": 70, "text": "Sound should come back on iPhone and iPad after a call or app switch.", "src": "gh pr view 70: merged 17:39:28Z (main 61696120); PR body ('sound effects come back after an app switch, a call or Siri'); DECISIONS (lane L10) items 300-305; not proven on a real device (PR body 'Not proven here'): registry REVIEW:l1:ios-device-run open, Kevin's; Production deploy 17:40:06Z" },
+          { "pr": 70, "text": "Music should follow Mute All; iPhone music plays about 8 dB quieter. Your ear decides.", "src": "gh pr view 70: PR body (the soundtrack routes through the Web Audio graph; Mute All pauses every track, run in Chromium on CI); DECISIONS (lane L10) item 301: on an iPhone the track now plays at 0.4 x the slider, about 8 dB lower, and 'Nothing here measured any of the four'; listed on registry REVIEW:l1:ios-device-run (Kevin's by-ear list)" },
+          { "pr": 72, "text": "Rewards, sounds and counts follow what really happened, not the click.", "src": "gh pr view 72: merged 16:34:43Z (main a150a93a); PR body ('credit from the effect, not the click'); DECISIONS (lane L7) items 320-336; registry AUDIT:lane:L7-credit-from-the-effect closed; Production deploy 16:35:07Z" },
+          { "commit": "f20ddb68", "text": "Command Record refreshed: the last big bug fixed, build tools and squad lanes landed.", "src": "git log 4c9587c7, ef435dd3, f20ddb68; session-truth 13:41:40Z (published in place); Production deploy 13:47:35Z (gh api deployments)" },
           { "pr": 69, "text": "Each world now saves your squad and the shrines you reached.", "src": "gh pr list --state merged: #69 merged 13:21:52Z (main 7250aa22), title 'the store owns per-world state'; DECISIONS items 254-255; registry AUDIT:lane:L3-store-owns-world-state closed; Production deploy 13:22:12Z (gh api deployments)" },
           { "pr": 68, "text": "Build tools do what they say; the Delete Tool removes only blocks you placed.", "src": "gh: #68 merged 12:26:53Z, title 'L6: build tools that do what they say'; DECISIONS items 230-237, 271; registry AUDIT:lane:L6-build-tools closed" },
           { "commit": "2ab00451", "text": "Test-only code leaves the player's first download, which is 6,004 bytes smaller.", "src": "git log 2ab00451 (a537288d moved the code); DECISIONS item 282; rebuilt here with vite build: index chunk 651,328 B on 86f6b5dc, 645,324 B on 2ab00451; Production deploy 11:59:36Z" },
@@ -161,7 +170,7 @@
         ] }
       ],
       "lanes": {
-        "title": "The twelve fix lanes",
+        "title": "The twelve fix lanes, all landed",
         "rows": [
           { "lane": "L1", "text": "Quick wins: iPhone death crash, Show Stats on touch, effects setting restored, Settings gear.", "state": "landed", "pr": 62, "src": "registry AUDIT:lane:L1-quick-wins closed; gh #62 merged" },
           { "lane": "L2", "text": "Every world switch reloads into that world; Continue on the title.", "state": "landed", "pr": 65, "src": "registry AUDIT:lane:L2-boot-is-the-only-load closed; gh #65 merged" },
@@ -169,12 +178,12 @@
           { "lane": "L4", "text": "Falling out of the world is judged at its floor, with one shared recovery.", "state": "landed", "pr": 66, "src": "registry AUDIT:lane:L4-void-line-and-spawn-recovery closed; gh #66 merged" },
           { "lane": "L5", "text": "One rule decides when keys and taps act on the game.", "state": "landed", "pr": 63, "src": "registry AUDIT:lane:L5-input-live-predicate closed; gh #63 merged" },
           { "lane": "L6", "text": "Build tools that do what they say.", "state": "landed", "pr": 68, "src": "registry AUDIT:lane:L6-build-tools closed (f27deacb); gh #68 merged" },
-          { "lane": "L7", "text": "Rewards, sounds and tallies follow what actually happened, not the click.", "state": "in flight", "src": "registry AUDIT:lane:L7-credit-from-the-effect open; session-truth 13:23:19Z (launched from main 7250aa22); worktree l7-credit on fix/l7-credit-from-effect; no PR yet" },
-          { "lane": "L8", "text": "Save slots: one way to save, old ones cleared, failures shown, two-tab clashes handled.", "state": "in flight", "src": "registry AUDIT:lane:L8-save-slot-lifecycle open; session-truth 13:23:19Z (launched from main 7250aa22); worktree l8-save-slots on fix/l8-save-slots; no PR yet" },
+          { "lane": "L7", "text": "Rewards, sounds and tallies follow what actually happened, not the click.", "state": "landed", "pr": 72, "src": "registry AUDIT:lane:L7-credit-from-the-effect closed done (closedBy aa5934d4, a150a93a); gh #72 merged 2026-10-31T16:34:43Z" },
+          { "lane": "L8", "text": "Save slots: one way to save, old ones cleared, failures shown, two-tab clashes handled.", "state": "landed", "pr": 73, "src": "registry AUDIT:lane:L8-save-slot-lifecycle closed done (closedBy 82d87142); gh #73 merged 2026-10-31T19:36:46Z" },
           { "lane": "L9", "text": "Quest chests, dropped items and spell areas no longer pile up forever.", "state": "landed", "pr": 67, "src": "registry AUDIT:lane:L9-pools-with-lifetimes closed; gh #67 merged" },
-          { "lane": "L10", "text": "Sound recovers on Apple devices; music joins the shared volume control; your device run.", "state": "in flight", "pr": 70, "src": "registry AUDIT:lane:L10-apple-audio-and-device-run open; session-truth 12:28:04Z (launched); gh pr list: #70 open" },
+          { "lane": "L10", "text": "Sound should recover on Apple devices; music should join Mute All; your device run waits.", "state": "landed", "pr": 70, "src": "registry AUDIT:lane:L10-apple-audio-and-device-run closed done (closedBy bf063ee4); gh #70 merged 2026-10-31T17:39:28Z; the device run is registry REVIEW:l1:ios-device-run, open, Kevin's" },
           { "lane": "L11", "text": "The game stops disagreeing with itself about the sea, shrines, sight and loot.", "state": "landed", "pr": 64, "src": "registry AUDIT:lane:L11-one-fact-one-predicate closed; gh #64 merged" },
-          { "lane": "L12", "text": "Checks that can really see failures, since some passed while bugs were live.", "state": "in flight", "pr": 71, "src": "registry AUDIT:lane:L12-instruments-that-can-see open; session-truth 12:28:04Z (launched); gh pr list: #71 open" }
+          { "lane": "L12", "text": "Checks that can really see failures, since some passed while bugs were live.", "state": "landed", "pr": 71, "src": "registry AUDIT:lane:L12-instruments-that-can-see closed done (closedBy DECISIONS (lane L12) items 310-317); gh #71 merged 2026-10-31T20:29:03Z; session-truth 20:29:06Z (all twelve lanes landed)" }
         ]
       }
     },
@@ -182,6 +191,9 @@
       "title": "Calls made",
       "sub": "A selection of the calls made, each with its number in the decision record.",
       "rows": [
+        { "item": "362 (list)", "text": "Each open row in the project list belongs to an open lane.", "src": "DECISIONS (registry v2) item 362: 'an open row's lane must be an open lane row'; 'A lane row now closes only when no open row names it (S4)'; item 362 is also numbered in lane L12 round 3, so the lead names the entry (the registry-v2 one, here called the project list)" },
+        { "item": "350 (L8)", "text": "The first download is 7 KB smaller; Chrome and Edge 87-90 still run it today.", "src": "DECISIONS (lane L8, round 2) item 350: build target Chrome and Edge 91, index chunk 646,192 B (7,130 B less) after main's lane L7 left the merged tree 822 B over the 652,500 B ceiling, which item 282 forbids raising; a scan of every built chunk found no optional call with a spread argument, so Chrome and Edge 87-90 still run it today (registry REVIEW:l8:optional-call-spread-chrome-87-90 open, LOW); item 350 is also numbered in lane L12 round 2" },
+        { "item": "330 (L8)", "text": "A refresh in a fight is no free heal; health and mana are kept.", "src": "gh pr view 73 body, item 330 ('the command session's call, superseding item 222's open call'); DECISIONS (lane L8) item 330; items 330 and 331 are also numbered in lane L7" },
         { "item": "290", "text": "A wiped dragon whose return is not due now loads slain, on every load.", "src": "DECISIONS item 290 (main, PR #69): adds an every-load repair beside item 250's once-only arm, which stays; item 290 lists the wiped shapes no field can tell apart" },
         { "item": "282", "text": "The download size limit is never raised just to let a change pass.", "src": "DECISIONS item 282 (main, 2ab00451): supersedes items 257 and 278, which raised the limit; item 279 puts it back" },
         { "item": "281", "text": "This page: pictures on top, short details below, built from one data file.", "src": "DECISIONS item 281 (main, 608c7612, 86f6b5dc); Kevin 2026-10-31 (session-truth 09:31Z)" },
@@ -203,22 +215,20 @@
     },
     "next": {
       "title": "In flight and next",
-      "sub": "Being built first, then queued work; no order is promised.",
+      "sub": "Being built first, then queued work. The First Night is next; the rest has no set order.",
       "rows": [
-        { "lane": "L7", "text": "Rewards and sounds come from what happened, not from the click.", "state": "in flight", "src": "registry AUDIT:lane:L7-credit-from-the-effect open; session-truth 13:23:19Z (launched from main 7250aa22); no PR yet" },
-        { "lane": "L8", "text": "Save slots: one way to save, old slots cleared, a notice when saving fails.", "state": "in flight", "src": "registry AUDIT:lane:L8-save-slot-lifecycle open; session-truth 13:23:19Z (launched from main 7250aa22); no PR yet" },
-        { "lane": "L10", "text": "Sound recovers after interruptions on Apple devices; music joins the shared volume control.", "state": "in flight", "pr": 70, "src": "gh pr list: #70 open at 13:29Z, created 13:01:31Z; session-truth 12:28:04Z (launched)" },
-        { "lane": "L12", "text": "Better checks: one report of which code the tests reach, and errors get logged.", "state": "in flight", "pr": 71, "src": "gh pr list: #71 open at 13:29Z, created 13:18:22Z; session-truth 12:28:04Z (launched)" },
-        { "lane": "Gaps", "text": "Corners the audit never reached: hurl, snare, the Forge, quest givers.", "state": "queued", "src": "registry AUDIT:critic:coverage-gaps (MED, open)" },
-        { "lane": "W3-A", "text": "The First Night: a siege marches on your Hearth until a golden dawn.", "state": "queued", "src": "registry MASTERPIECE:encounters-and-a-siege-that (W3-A, open); retired long form 002b0b9e 'What comes next'" }
+        { "lane": "Start", "text": "Checking a stall test machines hit on an early Start; players' machines not yet measured.", "state": "in flight", "src": "the registry row still reads open until the lane lands (the page says in flight because the lane has a branch and a worktree: git branch -v read fix/start-before-built-stall 5 commits ahead of main at 23:10Z); registry REVIEW:l10:music-e2e-title-hang (MED, open, LANE:W3-C): a Start click before the spawn chunk is built stalled the page on CI's software renderer, Chromium near 16 GB, whether a player can meet it is unmeasured; session-truth 20:37:00Z (lane launched from main bd06dacf) and 22:48:40Z (in flight, worktree start-stall); git rev-list origin/main..fix/start-before-built-stall is 4 at 22:56Z (3 at the 22:50Z orient read), a merge of main among them; gh pr list: 0 open" },
+        { "lane": "L13", "text": "Stuck-in-rock leftovers: climbing walls, respawn and load waits, clicks through a block just placed.", "state": "queued", "src": "registry LANE:L13-stuck-in-solid-remainder (open, MED; 20 open rows name it); DECISIONS (registry v2) item 362; no session-truth row says it has started" },
+        { "lane": "Gaps", "text": "Corners the audit never reached: hurl, snare, the Forge, quest givers.", "state": "queued", "src": "registry AUDIT:critic:coverage-gaps/hunt (MED, open, lane ACTIVE_PLAN:T23); its parent AUDIT:critic:coverage-gaps is closed as superseded by this row and AUDIT:critic:coverage-gaps/ultra (Kevin's)" },
+        { "lane": "W3-A", "text": "The First Night: a siege marches on your Hearth until a golden dawn.", "state": "queued", "src": "registry LANE:W3-A (open, HIGH; 13 open rows) and MASTERPIECE:encounters-and-a-siege-that (open, HIGH); session-truth 22:48:40Z (NEXT: W3-A First Night); retired long form 002b0b9e 'What comes next'" }
       ]
     },
     "health": {
       "title": "Health",
-      "sub": "Read 31 October, 13:29 UTC; the count is made when the page is written.",
+      "sub": "Read 31 October, 22:59 UTC; the count is made when the page is written.",
       "rows": [
-        { "label": "Checks", "text": "All checks passed on the newest change, as read at 13:29 UTC.", "src": "full suite: PR #69 run 41201866979 success on 7250aa22; main push run 41205232641 success on 7250aa22 (created 13:21:53Z, updated 13:22:44Z), read 13:29Z; git ls-remote origin main is 7250aa22" },
-        { "label": "Live site", "text": "The live game is that newest change, from 13:22 UTC, as read at 13:29.", "src": "gh api deployments (Production 7459159038, success 13:22:12Z); curl crafty-sand and crafty-game: both index-DVI5kV9R.js at 13:29Z; that chunk (649,549 B) equals a local vite build of 7250aa22 once chunk-name hashes are masked" }
+        { "label": "Checks", "text": "All checks passed on the newest change, as read at 22:59 UTC.", "src": "gh run list --branch main read 22:59Z: CI run 41249766864 success on 5510db64 (created 22:47:51Z, updated 22:48:41Z) and CodeQL run 41249766770 success on 5510db64; full suite on the PR: run 41245466393 success on 5510db64; git ls-remote origin main is 5510db64; gh pr list: 0 open" },
+        { "label": "Live site", "text": "The live game is that newest change, from 22:48 UTC, as read at 22:59.", "src": "gh api deployments read 22:59Z (Production 7465485103, sha 5510db64, success 22:48:09Z); curl crafty-sand and crafty-game: both serve assets/index-CAGKPMxK.js, 647,757 B at 22:56Z, the size DECISIONS (lane L12, round 3) item 364 records for the L12 branch merged with 341531d1 (section line 246); git diff bd06dacf 5510db64 -- frontend/src is empty; no local build made here, so the match is of size and file name only" }
       ]
     },
     "waiting": {

@@ -10,7 +10,7 @@ import { openWorkRow, waitingRows } from '../../scripts/ci/command-record.mjs';
 const rows = [
   { id: 'LANE:kevin', kind: 'lane', state: 'open', owner: 'command session', severity: 'HIGH', title: 'What only Kevin can do' },
   { id: 'LANE:W3-A', kind: 'lane', state: 'open', owner: 'command session', severity: 'MED', title: 'The First Night' },
-  { id: 'a', kind: 'bug', state: 'open', owner: 'command session', severity: 'HIGH', planUnit: 'deep-audit', lane: 'LANE:W3-A', title: 'a' },
+  { id: 'a', kind: 'bug', state: 'open', owner: 'command session', severity: 'HIGH', lane: 'LANE:W3-A', title: 'a' },
   { id: 'b', kind: 'feature', state: 'in-flight', owner: 'command session', severity: 'MED', lane: 'LANE:W3-A', title: 'b' },
   { id: 'c', kind: 'instrument', state: 'open', owner: 'Kevin', severity: 'LOW', lane: 'LANE:kevin', title: 'Kevin checks c' },
   { id: 'd', kind: 'decision', state: 'open', owner: 'Kevin', severity: 'HIGH', lane: 'LANE:kevin', title: 'Kevin decides d' },
@@ -20,11 +20,10 @@ const rows = [
 ];
 
 describe('the Command Record reads the registry', () => {
-  it('open work counts work rows only (a lane is not work), by severity and kind, and the bug hunt by its plan unit', () => {
-    expect(openWorkRow(rows)).toEqual({
-      lead: 'Open work',
-      text: '5 open: 2 high (1 from the bug hunt), 2 medium, 1 low; 1 bugs, 1 features, 3 upkeep; 3 wait on you; 2 closed.',
-    });
+  it('open work counts work rows only (a lane is not work), by severity, in a line of 15 words or fewer', () => {
+    const row = openWorkRow(rows);
+    expect(row).toEqual({ lead: 'Open work', text: '5 open: 2 high, 2 medium, 1 low; 3 wait on you; 2 closed.' });
+    expect(row.text.split(/\s+/).length).toBeLessThanOrEqual(15);
   });
 
   it('waiting on you lists every open row Kevin owns, highest first, by lane, with the ask its kind makes', () => {
