@@ -101,3 +101,16 @@ export function hydrateBossState(saved, { maxHealth, gameWon = false, nightCount
 
   return { active: !!saved.active, health, defeated: false, phase: phaseForHealth(health, max), tier, killNight };
 }
+
+/**
+ * Whether the encounter a page loaded with was already entered, so its next arrival resumes it without the entrance beat
+ * (the notice, the freeze, the shake, the bloom): a fight on, or one the dragon has lost health in and not been slain.
+ * Every world switch is a reload (game/worldBoot.js), and the hook's in-memory record of an entered fight did not survive
+ * one (REVIEW:w3b:reload-replays-entrance). A slain dragon's return and a fight never begun get the entrance.
+ * @param {{ bossActive?: boolean, bossHealth?: number, bossDefeated?: boolean, bossTier?: number }} state the store
+ */
+export function enteredBefore({ bossActive, bossHealth, bossDefeated, bossTier } = {}) {
+  if (bossActive) return true;
+  if (bossDefeated) return false;
+  return num(bossHealth, Infinity) < bossTierStats(nat(bossTier, 0)).health;
+}

@@ -46,15 +46,13 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   });
 }
 
-import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import './theme/fonts.css';
 import { applyThemeVars } from './theme/cssVars.js';
-import App from './App';
+import { startGame } from './startGame.jsx';
 import { useGameStore } from './store/useGameStore';
 import { GameMethods } from './GameMethods';
-import { ErrorBoundary } from './ui/ErrorBoundary.jsx';
 import { installLookbookSeam } from './render/lookbookSeam.js';
 import { setActive, getActiveSnapshot } from './input/inputState.js';
 import { cycleFraction } from './game/dayPhase.js';
@@ -90,9 +88,5 @@ if (typeof window !== 'undefined') {
   });
 }
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>
-);
+// The world this tab plays is loaded before the first render (startGame.jsx, game/worldBoot.js).
+startGame(ReactDOM.createRoot(document.getElementById('root')));

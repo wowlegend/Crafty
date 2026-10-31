@@ -7,9 +7,9 @@ import { buildSaveData } from '../../src/game/saveSchema';
 // B2a — THE AUTOSAVE DESTROYS THE PLAYER'S WORLD ON THEIR NEXT VISIT.
 // (18-domain review, CRITICAL, confirmed by an independent refuter and re-derived by reading the code.)
 //
-// `loadWorldData` is called from exactly ONE place in the entire app: the World Manager's "Load" button
-// (MenuSystem.jsx:170). Nothing resumes a save at boot. But `saveActiveWorld` reuses `getActiveWorldId()`,
-// which lives in localStorage and therefore SURVIVES the session. So:
+// When this was found, `loadWorldData` had one caller, the World Manager's "Load" button, and nothing resumed a
+// save at boot (the boot does now: game/worldBoot.js, DECISIONS 2026-10-30 item 200). `saveActiveWorld` reused
+// `getActiveWorldId()`, which lives in localStorage and therefore SURVIVES the session. So:
 //
 //   session 1: play to level 15, 3150 coins -> autosave mints world `local_X`, ACTIVE = local_X.
 //   session 2: page loads. Store is fresh (level 1, 0 coins). Player never clicks Load.

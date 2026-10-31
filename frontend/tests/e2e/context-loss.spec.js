@@ -13,7 +13,7 @@ import { bootDev, startPlayActive } from './_boot.js';
 // Mutation-Proof: NOT YET RUN — this lane does not run e2e (port 4179 and the browser belong to the command session).
 // Intended batch, via scripts/dev/mutate-e2e.sh:
 //   E1 the panel never shows (`if (!lost) return null;` -> `return null;`, ContextLossPanel.jsx) -> RED expected: "no panel after the loss"
-//   E2 the boot resume effect removed (ContextLossPanel.jsx)                                    -> RED expected: "the reload did not resume the world"
+//   E2 the boot's load removed (startGame.jsx)                                                  -> RED expected: "the reload did not resume the world"
 //   E3 handleContextLost no longer sets the flag (GameScene.jsx)                                -> RED expected: "no panel after the loss"
 //   E4 Terrain publishes the worker with a bare setState again (bypassing setTerrainWorker)     -> RED expected: "did not resume the block"
 //   E5 the Player's spawn ignores resumeSpawn (Components.jsx)                                  -> RED expected: "where they stood"
@@ -167,25 +167,24 @@ test('a lost context shows the panel; a restore clears it and draws again; a tap
   await page.evaluate(() => window.__craftyTest.call('webglContext', 'lose'));
   await expect(panel).toBeVisible({ timeout: 10000 });
   await Promise.all([page.waitForEvent('load', { timeout: 60000 }), panel.click()]);
-  // NOT bootDev: it navigates (page.goto), a SECOND load of the tab. The first load after the recovery consumed the
-  // breadcrumb and resumed the world in memory; a second one starts empty with no breadcrumb left. Found by the first
-  // local run of this spec (2026-10-27): three `[vite] connecting...` in the trace and `world: null, coins: 0` — the
-  // check read a page with nothing left to resume, whatever the resume had done. Wait for the reloaded page instead.
+  // NOT bootDev: it navigates (page.goto), a SECOND load of the tab. The first load after the recovery consumed the note
+  // and loaded the world; a second one is a plain visit with no note left. Found by the first local run of this spec
+  // (2026-10-27): three `[vite] connecting...` in the trace and `world: null, coins: 0` — the check read a page that was
+  // not the recovery's. Wait for the reloaded page instead.
   await page.waitForFunction(
     () => typeof window.useGameStore === 'function' && !!window.__craftyTest && typeof window.__craftyTest.ready === 'function' && window.__craftyTest.ready(),
     null, { timeout: 60000 },
   ).catch((e) => { throw new Error(`SETUP: the reloaded page never came up (store + test bridge) — ${e.message}`); });
-  await page.waitForTimeout(1500); // the boot effect that consumes the breadcrumb
   const after = await page.evaluate(() => ({
     coins: window.useGameStore.getState().coins,
     world: window.useGameStore.getState()._sessionWorldId,
-    crumb: window.sessionStorage.getItem('crafty.resumeWorldId'),
+    crumb: window.sessionStorage.getItem('crafty.boot'),
     lost: window.useGameStore.getState().isWebGLContextLost,
   }));
   console.log(`context-loss: after the recovery reload ${JSON.stringify(after)}`);
   expect(after.world, `the reload did not resume the world (no session world): ${JSON.stringify(after)}`).toBeTruthy();
   expect(after.coins, `the reload did not resume the world (coins ${after.coins}, saved ${MARK}): ${JSON.stringify(after)}`).toBe(MARK);
-  expect(after.crumb, 'the breadcrumb survived its use').toBeNull();
+  expect(after.crumb, 'the boot note survived its use').toBeNull();
   expect(after.lost, 'the fresh page still believes its context is lost').toBe(false);
 
   // The resumed world's blocks and the player's place. The spawn consumes resumeSpawn once its column has colliders; the

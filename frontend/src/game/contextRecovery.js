@@ -5,16 +5,10 @@
 // store's isWebGLContextLost and nothing read it: the player was left with a black canvas under a live HUD, mobs still
 // swinging, and no way back but a reload they had to think of themselves — losing whatever the debounced autosave had
 // not written yet. A restored context is not reliable either (every GPU resource is gone, and three re-creates them
-// lazily, if the context comes back at all), so the recovery is a reload: save first, then reload INTO THE SAME WORLD.
-//
-// Why a session-scoped breadcrumb: nothing resumes a save at boot (a reload lands on the title, and the session's world
-// id is deliberately in-memory only — useGameStore saveActiveWorld's B2a note). sessionStorage survives a reload of the
-// same tab and dies with it, which is exactly "resume what this tab was playing" and nothing more.
+// lazily, if the context comes back at all), so the recovery is a reload: save first, then reload INTO THE SAME WORLD,
+// which is a world switch to the world the tab holds (game/worldBoot.js).
 import { markShadowWorldChanged } from '../render/shadowSchedule.js';
-import { savePosition } from './saveSchema.js';
-
-/** The sessionStorage key holding the world this tab was playing when its context was lost. */
-export const RESUME_WORLD_KEY = 'crafty.resumeWorldId';
+import { switchWorld, tabNote } from './worldBoot.js';
 
 /**
  * GameScene's `webglcontextlost` handler, after preventDefault: mark the loss, and release a locked pointer. The panel is
@@ -42,25 +36,15 @@ export function onContextRestored(gl, { setLost, raf }) {
 }
 
 /**
- * Save the live world, leave a breadcrumb naming it, then reload. Order matters: the save must land before the reload.
- * Before Start there is no world in play: a save would mint a slot from the title's untouched state and the breadcrumb
- * would resume it, so the recovery is the reload alone (review 2026-10-27, steady-cool LOW 5).
- * @param {{ getState: () => object, storage: Storage, reload: () => void }} deps
- * @returns {string|null} the world id the breadcrumb names
+ * Save the world in play, leave the note naming the world this tab holds, then reload (game/worldBoot.js switchWorld). The
+ * world in play is saved first, so the reload resumes it where it stood. Before Start nothing is saved (a save there
+ * minted a slot from the title's untouched state, review 2026-10-27, steady-cool LOW 5), and the note still brings the
+ * tab back to what its title showed: its loaded world, or a fresh one.
+ * @param {{ getState: () => object, storage: Storage|null, reload: () => void }} deps
+ * @returns {string|null} the world id the note names
  */
 export function recoverFromContextLoss({ getState, storage, reload }) {
-  const st = getState();
-  if (!st.gameStarted) {
-    reload();
-    return null;
-  }
-  st.saveActiveWorld(savePosition(st));
-  const id = getState()._sessionWorldId || null; // saveActiveWorld mints one if the session owned none
-  try {
-    if (id) storage.setItem(RESUME_WORLD_KEY, id);
-  } catch { /* storage refused (private mode): the reload still recovers the graphics; the world is in the list */ }
-  reload();
-  return id;
+  return switchWorld(tabNote, { getState, storage, reload }).world || null;
 }
 
 /**
@@ -89,21 +73,4 @@ export function whenDrawnAgain(gl, onDrawn, raf = (fn) => requestAnimationFrame(
   };
   raf(check);
   return () => { live = false; };
-}
-
-/**
- * At boot: take the breadcrumb (once — it is removed whether or not the world still exists) and return that world's
- * save, or null. The caller loads it; the player still presses Start, a gesture the browser needs anyway.
- * @param {{ storage: Storage, readWorld: (id: string) => object|null }} deps
- */
-export function consumeResumeWorld({ storage, readWorld }) {
-  let id = null;
-  try {
-    id = storage.getItem(RESUME_WORLD_KEY);
-    if (id) storage.removeItem(RESUME_WORLD_KEY);
-  } catch {
-    return null;
-  }
-  if (!id) return null;
-  return readWorld(id) || null;
 }

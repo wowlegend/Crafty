@@ -117,4 +117,14 @@ describe('savePosition', () => {
   it('is the store\'s playerPosition only with no body', () => {
     expect(savePosition({ playerRigidBodyRef: { current: null }, playerPosition: { x: 1, y: 2, z: 3 } })).toEqual({ x: 1, y: 2, z: 3 });
   });
+
+  // A loaded save's spot is pending until the Player places the body there (store resumeSpawn): before the world is built
+  // the body waits in the sky over the origin, then it is held. A save in that window wrote the sky over the save's spot.
+  it('keeps a loaded save\'s spot while it is pending, and the body\'s once it is placed', () => {
+    const sky = { translation: () => ({ x: 0, y: 120, z: 0 }), collider: () => ({ halfHeight: () => BASE_CAPSULE.halfHeight, radius: () => BASE_CAPSULE.radius }) };
+    const pending = { x: 61.5, y: 33.2, z: -40.5 };
+    expect(savePosition({ playerRigidBodyRef: { current: sky }, playerPosition: { x: 0, y: 121, z: 0 }, resumeSpawn: pending }),
+      'a save while the load\'s spot is pending wrote where the body waits').toEqual(pending);
+    expect(savePosition({ playerRigidBodyRef: { current: sky }, resumeSpawn: null }), 'presence: with nothing pending the body is the place').toEqual({ x: 0, y: 120, z: 0 });
+  });
 });

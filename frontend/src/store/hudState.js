@@ -73,14 +73,10 @@ export const selectHudState = (state) => ({
   // Design Language section of CLAUDE.md, so the licence obligation rode on a path that could not run.
   showCredits: state.showCredits,
   setShowCredits: state.setShowCredits,
-  // WorldManager "Create World" called an undefined function inside a try, so the failure was swallowed
-  // and the button did nothing at all.
-  startNewWorld: state.startNewWorld,
   // NOT in the store literal: GameScene.jsx:98 installs it via setState on mount and nulls it on
   // unmount. The KEY must still be selected or useShallow never propagates it, and every
   // `if (gameState.requestPointerLock)` takes its false branch forever.
   requestPointerLock: state.requestPointerLock,
-  loadWorldData: state.loadWorldData,
   selectedBlock: state.selectedBlock,
   setSelectedBlock: state.setSelectedBlock, // X3: absent until 2026-08-05 — the hotbar click threw
   activeSpell: state.activeSpell,
@@ -109,14 +105,12 @@ export const HUD_CALLABLE_KEYS = [
   'setShowQuestLog',
   'setShowControls',
   'setShowWorldManager',
-  'loadWorldData',
   'setSelectedBlock',
   'setActiveSpell',
   'setSelectedVillager',
   'setShowChestInterface',
   'setActiveChestCoords',
   'setShowCredits',
-  'startNewWorld',
   // requestPointerLock is deliberately NOT here. This list means "called UNCONDITIONALLY, so it must be
   // a function"; GameScene installs requestPointerLock on mount and every caller guards with
   // `if (gameState.requestPointerLock)`, so undefined is a supported state. Adding it made the existing

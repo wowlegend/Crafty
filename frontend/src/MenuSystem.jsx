@@ -27,6 +27,16 @@ import { isTouchDevice, isTouchUIMode } from './input/touchDevice';
 import { requestGameLock } from './input/pointerLock.js';
 import { useT } from './i18n/i18n.js';
 import { useGameStore } from './store/useGameStore';
+import { goToWorld } from './game/worldSwitch.js';
+import { lastPlayedText } from './ui/lastPlayed.js';
+
+/** The title's line under Continue: the world's name, its level, and when it was last saved in play. */
+function continueCaption(world, t, locale) {
+  const parts = [world.name, t('menu.level', { n: world.level })];
+  const when = lastPlayedText(world.savedAt, Date.now(), locale);
+  if (when) parts.push(t('menu.lastPlayed', { when }));
+  return parts.filter(Boolean).join(' · ');
+}
 
 // The full-bleed live 3D Hearth diorama VISTA — the title screen's hero face (W2). It REPLACES
 // the old fixed-size 2D-canvas TitleMascot lockup (which double-stacked a second hero over the
@@ -50,6 +60,9 @@ export function MenuSystem({
   questSystem
 }) {
   const t = useT();
+  const continueWorld = useGameStore((s) => s.continueWorld);
+  const bootHeld = useGameStore((s) => s.bootHeld);
+  const locale = useGameStore((s) => s.locale);
   // The title/pause menu shows on pointer-unlock, but opening ANY panel exits pointer-lock, so it must be
   // suppressed whenever a panel is open. The whole gate lives in panelState.js (shouldShowTitleMenu) so the
   // old hardcoded `!showInventory && ...` list can't silently omit panels (it omitted 8 -> menu-over-panel).
@@ -230,8 +243,6 @@ export function MenuSystem({
         {gameState.showWorldManager && (
           <Suspense key="WorldManager" fallback={null}>
             <WorldManager
-              gameState={gameState}
-              onWorldLoad={gameState.loadWorldData}
               onClose={() => {
                 gameState.setShowWorldManager(false);
                 // KEVIN-FIX C4: the relock-on-close the other panels already do (in-game only)
@@ -335,10 +346,47 @@ export function MenuSystem({
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9, duration: 0.5 }}
+                  className="flex flex-col items-center gap-3"
                 >
-                  <Button variant="primary" size="lg" onClick={enterPlay}>
-                    <Icon name="sword" size={22} className="flex-none" /> Start Adventure
-                  </Button>
+                  {continueWorld ? (
+                    <>
+                      {/* The boot loaded this world (game/worldBoot.js): Continue enters it, no reload needed. */}
+                      <Button variant="primary" size="lg" onClick={enterPlay} data-testid="title-continue">
+                        <Icon name="sword" size={22} className="flex-none" /> {t('menu.continue')}
+                      </Button>
+                      <p
+                        data-testid="title-continue-meta"
+                        className="text-sm text-text/85 rounded-full px-4 py-0.5"
+                        style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}
+                      >
+                        {continueCaption(continueWorld, t, locale)}
+                      </p>
+                      <Button variant="secondary" size="md" onClick={() => goToWorld({ fresh: true })} data-testid="title-new-world">
+                        <Icon name="sparkles" size={18} className="flex-none" /> {t('menu.newWorld')}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="primary" size="lg" onClick={enterPlay} data-testid="title-start">
+                        <Icon name="sword" size={22} className="flex-none" /> {t('menu.start')}
+                      </Button>
+                      {/* The boot did not open the newest world (game/worldBoot.js bootHeld): the title says why. */}
+                      {bootHeld && (
+                        <p
+                          data-testid="title-held"
+                          className="max-w-md text-center text-sm text-text/85 rounded-2xl px-4 py-1"
+                          style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}
+                        >
+                          {t(bootHeld.reason === 'stopped' ? 'menu.heldStopped' : 'menu.heldUnreadable', { name: bootHeld.name })}
+                        </p>
+                      )}
+                      {bootHeld && bootHeld.reason === 'stopped' && (
+                        <Button variant="secondary" size="md" onClick={() => goToWorld({ world: bootHeld.id })} data-testid="title-held-retry">
+                          {t('menu.openAnyway')}
+                        </Button>
+                      )}
+                    </>
+                  )}
                 </m.div>
 
                 {/* Keyboard keys mean nothing on a touchscreen, where the on-screen controls carry the verbs. The

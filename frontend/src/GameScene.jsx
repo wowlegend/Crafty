@@ -20,6 +20,7 @@ import { MoodGradeDriver } from './render/MoodGradeDriver';
 import { BloomSpikeDriver } from './render/BloomSpikeDriver';
 import { Player } from './Components';
 import { PositionTracker } from './systems/PositionTracker';
+import { BootSettle } from './systems/BootSettle.jsx';
 import { MinecraftWorld } from './world/Terrain';
 import { EnhancedMagicSystem } from './EnhancedMagicSystem';
 import { NPCSystem } from './SimplifiedNPCSystem';
@@ -456,6 +457,9 @@ export const GameScene = React.memo(function GameScene({
             <MinecraftWorld />
 
             <Player isWorldBuilt={isWorldBuilt} />
+
+            {/* After the world and the player: the boot's attempt is taken back on the world's first frame. */}
+            <BootSettle />
 
             <EnhancedMagicSystem />
 
