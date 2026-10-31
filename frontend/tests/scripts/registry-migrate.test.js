@@ -210,6 +210,17 @@ describe('registry-migrate never writes over a lane edit it has not read', () =>
     expect(report.laneTouched).toEqual([`${d.id}: the lane changed state; kept the lane's state`]);
   });
 
+  it('a row a lane took out of flight is closed by the triage, and the report says the closure stands', () => {
+    const d = DISPOSITIONS.find((x) => x.action === 'CLOSE' && x.set.resolution === 'wont-fix');
+    const inFlight = (text) => text.split('\n').map((l) => (l.includes(`"id": "${d.id}"`) ? dumps({ ...JSON.parse(l), state: 'in-flight' }) : l)).join('\n');
+    const baseText = inFlight(SNAPSHOT);
+    const current = laneEdit(d.id, (r) => ({ ...r, state: 'open' }));
+    const { text, report } = run(current, { baseText, landing: [read(rowOf(current, d.id))] });
+    expect(rowOf(text, d.id)).toMatchObject({ state: 'closed', resolution: 'wont-fix' });
+    expect(report.forReading).toEqual(expect.arrayContaining([`${d.id}: the lane moved it to open and the triage closes it wont-fix; the triage's closure stands`]));
+    expect(report.laneTouched).toEqual([`${d.id}: the lane changed state; kept none of them; the triage or a landing record wrote state`]);
+  });
+
   it('a re-run over a lane-edited result rewrites nothing and lists no lane edit', () => {
     const closer = laneEdit('QUEUE:Q49', (r) => ({ ...r, state: 'closed', resolution: 'done', closedBy: 'abc1234', note: 'Closed by the lane.' }));
     const current = closer.split('\n').map((l) => (l.includes('"id": "REVIEW:l1:ios-device-run"') ? dumps({ ...JSON.parse(l), note: 'The lane\'s own note.' }) : l)).join('\n');
@@ -220,6 +231,28 @@ describe('registry-migrate never writes over a lane edit it has not read', () =>
     expect(second.text).toBe(first.text);
     expect(second.report).toMatchObject({ migrated: 0, laneTouched: [], laneClosureKept: [], forReading: [], conflicts: [] });
     expect(second.report.alreadyMigrated).toBe(767);
+  });
+
+  it('the retired fields leave a row a lane touched, and a closedNote\'s text joins the lane\'s note', () => {
+    // STATUS:R2 carries dupOf at the snapshot; ACTIVE_PLAN:T19 (closed there) carries a closedNote.
+    expect(rowOf(SNAPSHOT, 'STATUS:R2').dupOf).toBeDefined();
+    const closedNote = rowOf(SNAPSHOT, 'ACTIVE_PLAN:T19').closedNote;
+    expect(closedNote).toBeTruthy();
+    const closer = laneEdit('STATUS:R2', (r) => ({ ...r, state: 'closed', resolution: 'done', closedBy: 'abc1234', lane: 'LANE:backlog', note: 'Closed by the lane.' }));
+    const current = closer.split('\n').map((l) => (l.includes('"id": "ACTIVE_PLAN:T19"') ? dumps({ ...JSON.parse(l), note: 'The lane\'s note.' }) : l)).join('\n');
+    const landing = [read(rowOf(current, 'STATUS:R2')), read(rowOf(current, 'ACTIVE_PLAN:T19'))];
+    // T19's own record appends the closedNote's text; without it, only the merge can carry that text.
+    const dispositions = DISPOSITIONS.map((d) => (d.id === 'ACTIVE_PLAN:T19' ? { ...d, noteOps: [] } : d));
+    const { text, report } = run(current, { landing, dispositions });
+    expect(report.conflicts).toEqual([]);
+    const r2 = rowOf(text, 'STATUS:R2');
+    expect(r2).toMatchObject({ state: 'closed', resolution: 'done', closedBy: 'abc1234' });
+    expect(r2.dupOf).toBeUndefined();
+    expect(r2.lane).toBeUndefined();
+    const t19 = rowOf(text, 'ACTIVE_PLAN:T19');
+    expect(t19.closedNote).toBeUndefined();
+    expect(t19.note).toContain('The lane\'s note.');
+    expect(t19.note).toContain(closedNote);
   });
 
   it('a lane closure the same as the triage\'s, placeholder and all, is reported consistent', () => {

@@ -325,7 +325,8 @@ export function migrate({ baseText, currentText, dispositions, landing = [], tri
           }
         }
       }
-      M = closedRowRules(retire(M, id), recs);
+      // O retired its closedNote into O's note; a lane's note replaced that one, so the text joins the lane's note.
+      M = closedRowRules(retire({ ...M, closedNote: T.closedNote }, id), recs);
       if (B.state === 'closed' && M.state !== 'closed') e.forReading.push(`${id}: closed at the base and open now; closed is final (gate R2)`);
     }
     e.merged = M;
