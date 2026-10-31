@@ -105,6 +105,44 @@ mob-floor.spec.js:227 fails its first attempt in all four recent runs on three b
 terrain code (`REVIEW:e2e-flakes:mob-floor-roof-floor-infinity`), and hud-at-rest.spec.js:354 failed once, where the run
 before it, on identical `src/`, passed it first time (`REVIEW:e2e-flakes:hud-at-rest-tracker-tap-canvas`).
 
+**Round 2: the fixer after the round-1 reviews (static: LAND with six follow-ups; dynamic: FIX on one item).** Items 186-188
+continue this lane's range. Main (5f00f246, the chaos-play gate) was merged in first with a merge commit; DECISIONS, Terrain.jsx
+and the registry merged without a code conflict.
+
+186. **A position is read at its column: `climate.surfaceBlockUnderfoot(x, z)` floors both axes.** (Supersedes the last sentence
+   of item 180, "the verifier's 18.2% residue ... which this does not touch"; AUDIT:ultra:ultra-player-world-9.) The worker
+   builds whole columns at integer coordinates, and SoundManager asked `surfaceBlockAt` at `playerPosition`, a float inside a
+   column: a point no column has. The round-1 dynamic review measured it over a coastal band at seed 12345: the float sample
+   read the wrong state at 12.5% of positions on the dry strip (surfaceY 28) and at 22.9% on the first wet column (surfaceY
+   27, up from 0.7% once the predicate was strict, which item 180 had not recorded), while the column sample read 0.0% wrong
+   on all three. Item 180 closed the row with the symptom still present, and with part of it new. `ambienceAt(x, z)` is now the
+   one call SoundManager makes and goes through `surfaceBlockUnderfoot`; `footstepTypeAt` does too, because a footstep on the
+   beach edge had the same defect (grass or snow on a sand column; 28 of 384 positions at each seed). The gate
+   (`water-one-predicate-gates`, a second block) picks 8 shore columns per class (surfaceY 27, 28, 29, where a wet column and
+   a dry one touch, 150 blocks apart) and drives the real worker's fill and `ambienceAt` over the 4 x 4 positions inside each: 384
+   positions per seed. Red on the float sampler: the wind bed wrong at 64 of 384 positions at seed 12345 and 68 at seed 777, the
+   footstep at 28 and 28. Not covered: SoundManager's interval itself (a React effect with an audio context; its call is pinned by
+   `biome-ambience-gates`, a source check), and a lived run (no local browser). Not done on purpose: `surfaceBlockAt` itself
+   still takes a float, because FarField and Ocean sample on purpose at ring and camera points, and flooring there would move
+   the far-field silhouette (`REVIEW:l11:far-field-coast-no-frames` is the standing row for that look).
+
+187. **The round-1 follow-ups, each disposed of.** Rows (LOW, open): `REVIEW:l11:sight-roofed-player` (static 1: CONFIRMED by
+   a run in round 2, the review's own repro: with one block over the pillar the sight grid reads the roof, 61, the mob does
+   not seek cover; the no-roof control does), `REVIEW:l11:sight-grid-every-aggro-mob` (static 2), `REVIEW:e2e-flakes:dragon-fight-parried-bite`
+   (static 3 and dynamic: it predates the lane but the lane's effect on its rate is not shown), `REVIEW:l11:weather-samples-float-position`
+   (found in round 2: two more player-position samples, in a component no gate drives) and `REVIEW:l11:far-field-coast-no-frames`
+   (static: not reachable). Fixed here: static 6, CONFIRMED by a run (the landmark gate's SETUP counted surfaceY 31 and 32
+   chunks under the other block's seed, because every describe body runs at collection; it now re-seeds and holds that the
+   sampler counts the drawn chunks it counted at collection, red when the re-seed is removed); static 5 (`shrines.js` said both
+   that FarBeacon asks every frame and that callers never do) and static 7 (history and audit receipts in three comments,
+   against item 15); the `AUDIT` tag left the code comments.
+
+188. **Reviewer verdicts are hypotheses until re-derived.** The static review called finding 1 LOW on a reading; its repro,
+   run, shows the sight fix still fails for a roofed player, which is the lane's own headline fix. It stays a row because the
+   case needs a roof over a pillar 5 or more blocks high with a wall between and a mob under a quarter health, and the right
+   fix (the player's real y as the end height) changes what the worker is sent, which is not a one-line change in a review
+   round; the row carries the scene and the numbers so the gate can be written red first.
+
 ---
 
 ## 2026-10-30 (chaos play, round 3) — [LOOP] a placement moves the collider with the body, so the next frame sweeps from where the player stands
