@@ -11,6 +11,8 @@ test('boots, renders a non-blank canvas, and enters play with no runtime errors'
   const errors = await bootDev(page, { withErrors: true });
   await startPlay(page);
   await page.waitForTimeout(1500); // let several frames render + any per-frame throw surface
+  // SCRATCH (lane L12 mutation check, not for merge): a reactor that throws, so the fixture's isolated-failure read must fail this test.
+  await page.evaluate(async (u) => { const bus = await import(u); bus.on(bus.EVENTS.reward, () => { throw new Error('L12 mutant reactor'); }); bus.emit(bus.EVENTS.reward); }, '/src/game/eventBus.js');
 
   const canvas = page.locator('canvas').first();
   await expect(canvas).toBeVisible();
