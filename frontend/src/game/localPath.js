@@ -150,7 +150,9 @@ export function walkAgainstWalls(fromX, fromZ, toX, toZ, canEnter) {
 /**
  * The mob's grid of FLOORS in the one framing above: each column's floor as the mob's feet see it
  * (game/mobFloor.js) — Infinity where it cannot stand, so A* and clampMove treat it as a wall; a column the
- * probe knows nothing about reads as level with the mob. AIWorkerSystem builds every aggro mob's grid here.
+ * probe knows nothing about reads as level with the mob. AIWorkerSystem builds every aggro mob's grid through
+ * mobGridsAt, which calls this.
+ * @internal Exported for the tests that build a grid directly.
  * @param {(x:number, z:number, feet:number) => number|null} floorAt
  */
 export function heightGridAt(x, z, feet, floorAt) {
@@ -163,6 +165,38 @@ export function heightGridAt(x, z, feet, floorAt) {
     }
   }
   return out;
+}
+
+/**
+ * The grid line of sight reads. Where the floor grid says Infinity — a column the mob cannot stand in, a wall or a
+ * pillar past its reach — the column is still there, and sight must see how high it is: hasLineOfSight compares a
+ * column with the HIGHER of its two ends plus 1.2, so an Infinity end (the player on a pillar 5 or more blocks above the
+ * mob's feet) made that bar Infinity and nothing blocked, and a wounded mob never took cover from a player above it
+ * behind a wall. Each Infinity cell becomes the column's true top.
+ * A finite stand-in would give the same sight and loosen clampMove, which reads the floor grid, so this is a second grid
+ * and the floor grid is left alone.
+ * Returns null when no cell is Infinity (the floor grid is the sight grid) or no top probe exists.
+ * @param {number[]} heightGrid  heightGridAt's grid
+ * @param {(x:number, z:number) => number|null} topAt  the column top (the store's getMobGroundLevel)
+ * @returns {number[]|null}
+ */
+export function sightGridAt(heightGrid, x, z, topAt) {
+  if (!topAt || heightGrid.length !== GRID * GRID || !heightGrid.includes(Infinity)) return null;
+  const ox = gridOrigin(x), oz = gridOrigin(z);
+  return heightGrid.map((h, i) => {
+    if (h !== Infinity) return h;
+    const top = topAt(ox + (i % GRID), oz + Math.floor(i / GRID));
+    return typeof top === 'number' && !Number.isNaN(top) ? top : h;
+  });
+}
+
+/**
+ * Both grids of one aggro mob, as AIWorkerSystem sends them: `heightGrid` (floors, for A* and clampMove) and `sightGrid`
+ * (for line of sight, null when it equals the floor grid).
+ */
+export function mobGridsAt(x, z, feet, floorAt, topAt) {
+  const heightGrid = heightGridAt(x, z, feet, floorAt);
+  return { heightGrid, sightGrid: sightGridAt(heightGrid, x, z, topAt) };
 }
 
 /** Is the mob still on the column of its last footing — or has it none yet (a first snap)? */

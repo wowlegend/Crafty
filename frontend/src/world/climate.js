@@ -5,13 +5,18 @@
 // copy drifted once: it kept a stale, shallower base-height formula while the worker deepened its
 // relief, mis-placing landmarks + mis-keying footstep/ambience). Reuses pickBiome + the ocean consts.
 import { pickBiome } from './biomeTable.js';
-import { SEA_LEVEL, BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY } from './oceanProfile.js';
+import { BEACH_BAND_TOP, OCEAN_CONTINENT_THRESHOLD, oceanSurfaceY, isSeaColumn } from './oceanProfile.js';
 import { computeHeight } from './heightAt.js';
 import { makeWorldNoise } from './worldNoise.js';
 import { DEFAULT_WORLD_SEED, resolveWorldSeed } from './worldSeed.js';
 
 let climateSeed = DEFAULT_WORLD_SEED;
 let noise2D = makeWorldNoise(climateSeed).noise2D;
+
+/** The seed the sampler is on: a cache of anything it computed (shrines.js) is valid for this seed only. */
+export function getClimateSeed() {
+  return climateSeed;
+}
 
 /** Sample the world seeded `seed` from now on (the store calls this when a world loads). */
 export function seedClimate(seed) {
@@ -28,10 +33,21 @@ export function surfaceBlockAt(worldX, worldZ) {
   const biome = pickBiome(temperature, moisture, continent);
   let { surfaceBlock } = biome;
   if (surfaceY < BEACH_BAND_TOP) surfaceBlock = 4; // beach (matches the worker's override)
-  return { surfaceBlock, surfaceY, isWater: surfaceY <= SEA_LEVEL, biome: biome.name }; // biome: the far field colours by it
+  return { surfaceBlock, surfaceY, isWater: isSeaColumn(surfaceY), biome: biome.name }; // biome: the far field colours by it
+}
+
+/**
+ * What a foot at a world POSITION stands on. The worker generates whole columns at integer coordinates (worldX = chunk * 16
+ * + x), so a position's answer is its column's, the floor of each axis. `surfaceBlockAt` at the float itself reads a
+ * point no column has, and along the shore that point is on the other side of the sea line often enough to hear
+ * (water-one-predicate-gates). Pass an unrounded position, the camera's: the store's playerPosition is rounded to whole
+ * metres, and the rounded point is the next column over once the player is past a block's middle.
+ */
+export function surfaceBlockUnderfoot(worldX, worldZ) {
+  return surfaceBlockAt(Math.floor(worldX), Math.floor(worldZ));
 }
 
 const FOOTSTEP_TYPE = { 1: 'grass', 2: 'dirt', 3: 'stone', 4: 'sand', 5: 'snow', 6: 'wood' };
 export function footstepTypeAt(worldX, worldZ) {
-  return FOOTSTEP_TYPE[surfaceBlockAt(worldX, worldZ).surfaceBlock] || 'grass';
+  return FOOTSTEP_TYPE[surfaceBlockUnderfoot(worldX, worldZ).surfaceBlock] || 'grass';
 }

@@ -21,11 +21,11 @@ export const MOB_STATE_FIELDS = Object.freeze([
 ]);
 
 /**
- * What AIWorkerSystem sends the worker for one mob. `speed` and `heightGrid` are computed by the caller
- * (zone and spell slows; the terrain sample) because they depend on main-thread state this module must not
- * import.
+ * What AIWorkerSystem sends the worker for one mob. `speed`, `heightGrid` and `sightGrid` are computed by the caller
+ * (zone and spell slows; the terrain samples, game/localPath.js mobGridsAt) because they depend on main-thread state
+ * this module must not import.
  */
-export function buildMobPayload(e, { speed, heightGrid }) {
+export function buildMobPayload(e, { speed, heightGrid, sightGrid = null }) {
   return {
     id: e.id,
     passive: e.passive,
@@ -53,6 +53,7 @@ export function buildMobPayload(e, { speed, heightGrid }) {
     health: e.health,
     maxHealth: e.maxHealth,
     heightGrid,
+    sightGrid,
   };
 }
 

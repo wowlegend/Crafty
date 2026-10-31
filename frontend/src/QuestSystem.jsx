@@ -430,7 +430,7 @@ export const useQuestSystem = () => {
         const drops = [];
         // S7 reward: far from spawn = rarer drops. The kill-position zone tier boosts non-common rows
         // (common staples unchanged); tier 0 near spawn is identical to the legacy roll (no regression).
-        const killTier = zoneTier(position?.x ?? 0, position?.z ?? 0);
+        const killTier = zoneTier(position?.[0] ?? 0, position?.[2] ?? 0); // the bus carries [x, y, z] (game/mobKillBus.js), not {x, z}
         lootTable.forEach(loot => {
             const chance = tierLootChance(loot.chance, getItemRarity(loot.item), killTier);
             if (Math.random() < chance) {
