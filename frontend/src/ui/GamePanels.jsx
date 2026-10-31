@@ -521,8 +521,10 @@ export const MagicSystem = ({ onClose }) => {
 
 export const BuildingTools = React.memo(({ onClose }) => {
     const gameState = useGameStore(useShallow(state => ({ selectedBlock: state.selectedBlock })));
-    const [selectedTool, setSelectedTool] = React.useState('single');
-    const [buildSize, setBuildSize] = React.useState(3);
+    // The store holds the mode and size, so the panel opens on what the player picked last.
+    const { buildingMode: selectedTool, buildSize, setBuildingMode: setSelectedTool, setBuildSize } = useGameStore(useShallow((state) => ({
+        buildingMode: state.buildingMode, buildSize: state.buildSize, setBuildingMode: state.setBuildingMode, setBuildSize: state.setBuildSize,
+    })));
 
     const t = useT();
     // ToolIcon = lucide chrome glyph per build mode (app-chrome, not game-icon content).
@@ -533,11 +535,6 @@ export const BuildingTools = React.memo(({ onClose }) => {
         { id: 'cube', name: 'Cube Builder', ToolIcon: Box, description: `Build ${buildSize}x${buildSize}x${buildSize} cubes` },
         { id: 'delete', name: 'Delete Tool', ToolIcon: Trash2, description: 'Remove multiple blocks' },
     ];
-
-    // Set global building mode
-    React.useEffect(() => {
-        useGameStore.setState({ buildingMode: selectedTool, buildSize, selectedBuildBlock: gameState.selectedBlock });
-    }, [selectedTool, buildSize, gameState.selectedBlock]);
 
     return (
         <Modal testId="building-panel" className="absolute inset-0 bg-ink/75 grid place-items-center z-50 select-none animate-fade-in" label="Building Tools" onClose={onClose}>
@@ -584,6 +581,7 @@ export const BuildingTools = React.memo(({ onClose }) => {
                                 <button
                                     key={tool.id}
                                     type="button"
+                                    aria-pressed={isSelected}
                                     onClick={() => setSelectedTool(tool.id)}
                                     className={`text-left rounded-md border-chrome p-3 transition-colors ${isSelected ? 'border-accent bg-slot' : 'border-ink bg-panel-inset hover:bg-slot'}`}
                                 >

@@ -658,9 +658,11 @@ export const useGameStore = create((set, get) => ({
         };
     }),
 
+    // The Building Tools panel's mode and size: the panel reads and writes them, and placeAtHit and mineAtHit read them.
+    // 3 is the panel's opening size.
     buildingMode: 'single',
     setBuildingMode: (mode) => set({ buildingMode: mode }),
-    buildSize: 1,
+    buildSize: 3,
     setBuildSize: (size) => set({ buildSize: size }),
 
     // Look sensitivity (mouse pointerSpeed + touch drag-look); 1 = default, clamped 0.3..2.5.
@@ -670,8 +672,6 @@ export const useGameStore = create((set, get) => ({
     sunAboveHorizon: true,
     lookSensitivity: 1,
     setLookSensitivity: (v) => set({ lookSensitivity: Math.max(0.3, Math.min(2.5, Number(v) || 1)) }),
-    selectedBuildBlock: null,
-    setSelectedBuildBlock: (block) => set({ selectedBuildBlock: block }),
 
     // W3 M-HUD.9: the controls cheatsheet (CombatInstructions) is now a toggle/auto-fade, not always-on.
     // HUD auto-fades it after the first ~8s of play; H re-summons it (InputManager). Default false so the
