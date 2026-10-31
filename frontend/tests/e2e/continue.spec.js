@@ -21,26 +21,30 @@ import { bootDev, startPlayActive } from './_boot.js';
 // WHAT THIS DOES NOT CHECK: the World Manager's Load and Create, the context-loss resume and the dragon after a switch
 // (tests/gates/world-switch-boot-gates.test.jsx, the real App in jsdom; tests/e2e/context-loss.spec.js drives the real
 // context-loss reload); touch and WebKit (the title's buttons are the same elements there); the pointer lock itself,
-// which this page grants only to its own Continue click (lockOnlyWhenArmed); the input gate is also held as the other
-// specs hold it.
+// which this page grants only to a request made inside a trusted input event (lockOnGestureOnly); the input gate is
+// also held as the other specs hold it.
 //
 // Mutation-Proof: red on dispatched CI runs, each with one line of the game reverted (the run ids are in DECISIONS
 // 2026-10-30 item 205); no local browser run.
 
 const SHOTS = 'test-results/title-shots';
 
-/** In the page, before any of its scripts: a pointer lock is granted only once the spec arms it for its own Continue
- *  click (window.__e2eLockArmed), or to the element already holding one; every other request is refused, as a player's
- *  browser refuses one asked for with no gesture. Headless Chromium on CI granted App's world-ready request: play began
- *  on its own and the title, with Continue, was gone before the spec could click it (dispatched runs 41154002602 and
- *  41158525305; navigator.userActivation did not tell the click from that request). Refusing every request paused the
- *  world from the click until the spec held the input gate, and in that pause the save's ground streamed in under a
- *  hold that had let go too early, so the hold mutant passed (run 41157732564): a player's click locks the pointer and
- *  the world runs at once. A refusal is a rejected promise and a pointerlockerror, as the browser gives. */
-function lockOnlyWhenArmed() {
+/** In the page, before any of its scripts: a pointer lock is granted to a request made while a trusted input event is
+ *  being dispatched (the Continue click's handler asks for it) or by the element already holding one, and refused
+ *  otherwise, as a player's browser refuses one asked for with no gesture. App asks once the world is built, from a
+ *  timer, and CI's headless Chromium granted that: play began on its own and the title, with Continue, was gone before
+ *  the spec could click it (dispatched runs 41154002602, 41158525305; navigator.userActivation did not tell the two
+ *  apart, and a flag armed just before the click let the timer's request through while the click waited for the button
+ *  to settle, run 41162831435 attempt 1). Refusing every request paused the world from the click until the spec held
+ *  the input gate, and in that pause the save's ground streamed in under a hold that had let go too early, so the hold
+ *  mutant passed (run 41157732564): a player's click locks the pointer and the world runs at once. A refusal is a
+ *  rejected promise and a pointerlockerror, as the browser gives. */
+function lockOnGestureOnly() {
   const real = HTMLCanvasElement.prototype.requestPointerLock;
+  const GESTURES = new Set(['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup', 'keydown', 'touchend']);
   HTMLCanvasElement.prototype.requestPointerLock = function gated(...args) {
-    if (document.pointerLockElement === this || window.__e2eLockArmed) return real.apply(this, args);
+    const ev = window.event;
+    if (document.pointerLockElement === this || (ev && ev.isTrusted && GESTURES.has(ev.type))) return real.apply(this, args);
     setTimeout(() => document.dispatchEvent(new Event('pointerlockerror')), 0);
     return Promise.reject(new DOMException('pointer lock refused (e2e: no lock without a gesture)', 'NotAllowedError'));
   };
@@ -123,7 +127,7 @@ test('a returning player continues from the title, and stands where they saved, 
   const pageErrors = [];
   page.on('pageerror', (e) => pageErrors.push(e.message));
   mkdirSync(SHOTS, { recursive: true });
-  await page.addInitScript(lockOnlyWhenArmed);
+  await page.addInitScript(lockOnGestureOnly);
 
   // 1. A first visit: the title starts a world.
   await bootDev(page);
@@ -181,7 +185,6 @@ test('a returning player continues from the title, and stands where they saved, 
 
   // 5. Continue, as a player does once it shows, whether or not the world behind the title has finished building. The click
   // locks the pointer, as a player's does.
-  await page.evaluate(() => { window.__e2eLockArmed = true; });
   await cont.click();
   expect(await page.evaluate(() => window.useGameStore.getState().gameStarted), 'Continue did not start play').toBe(true);
   console.log(`continue: after the click ${JSON.stringify(await page.evaluate(gates))}`);
