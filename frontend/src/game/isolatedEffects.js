@@ -15,13 +15,25 @@
  */
 
 let failureCount = 0;
+// The function an e2e test's page exposes (tests/e2e/_isolatedFailures.js ISOLATED_BINDING): it lives in the test's Node
+// process and survives a reload, which resets this module and the counter below. A torn-down page rejects the call, and
+// the rejection is the test's to see, not the game's, so it is dropped here.
+const E2E_BINDING = '__craftyIsolatedFailure';
+const toE2e = (event) => {
+  const sent = window[E2E_BINDING]?.(event);
+  if (sent && typeof sent.catch === 'function') sent.catch(() => {});
+};
 // Published at load, not at the first failure: a counter that exists only after a failure cannot tell a page with none
-// from a page that never had the instrument (tests/e2e/_isolatedFailures.js reads it at every test's end).
-if (import.meta.env.DEV && typeof window !== 'undefined') window.__isolatedFailures = { count: 0, last: '' };
+// from a page that never had the instrument, and the e2e side treats a game page that never armed as unread.
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  window.__isolatedFailures = { count: 0, last: '' };
+  toE2e({ kind: 'armed' });
+}
 
 /**
- * Say that an isolated reactor or effect threw: a console.error naming where, and in a dev server a counter an e2e or a
- * probe can read (window.__isolatedFailures = { count, last }). Isolation keeps one failure from stranding the rest; it
+ * Say that an isolated reactor or effect threw: a console.error naming where, and in a dev server a counter a probe can
+ * read (window.__isolatedFailures = { count, last }) and a call of the e2e binding, which an e2e test collects across
+ * every load of its page. Isolation keeps one failure from stranding the rest; it
  * must not also make the failure invisible. The production build drops every console call (vite.config.js esbuild.drop), so
  * there is no console to report to there and the counter is dev only.
  * @param {string} where  the event or the effect that threw
@@ -32,7 +44,9 @@ export function reportIsolatedFailure(where, error) {
   failureCount++;
   console.error(`isolated failure in ${where}:`, error);
   if (typeof window !== 'undefined') {
-    window.__isolatedFailures = { count: failureCount, last: `${where}: ${error instanceof Error ? error.message : String(error)}` };
+    const message = error instanceof Error ? error.message : String(error);
+    window.__isolatedFailures = { count: failureCount, last: `${where}: ${message}` };
+    toE2e({ kind: 'failure', where, message });
   }
 }
 

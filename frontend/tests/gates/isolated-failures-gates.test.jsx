@@ -8,6 +8,7 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { GameMethods } from '../../src/GameMethods.js';
 import { blightHeartSite } from '../../src/world/blightHeart.js';
 import { bossTierStats } from '../../src/game/bossTier.js';
+import { ISOLATED_BINDING } from '../e2e/_isolatedFailures.js';
 
 // A FAILURE THAT IS ISOLATED IS STILL A FAILURE, AND IT IS SEEN (deep audit 2026-10-30, lane L12;
 // AUDIT:debt:isolation-swallows-errors).
@@ -53,6 +54,46 @@ describe('the dev counter', () => {
     // seen() reads 0 for both an absent counter and a zero one; this is the case that tells them apart.
     expect(window.__isolatedFailures, 'the counter is not on window after the module loaded').toBeTypeOf('object');
     expect(window.__isolatedFailures.count).toBeTypeOf('number');
+  });
+});
+
+// The e2e side collects through the binding the fixture exposes (tests/e2e/_isolatedFailures.js), by the name it exports:
+// a binding survives a reload, so a failure before one is kept. These drive the producer half of that seam.
+describe('the e2e binding: the module arms it at load and reports each failure through it', () => {
+  afterEach(() => { delete window[ISOLATED_BINDING]; });
+
+  it('a fresh load of the module calls the binding once with { kind: "armed" }', async () => {
+    const sent = [];
+    window[ISOLATED_BINDING] = (event) => { sent.push(event); return Promise.resolve(); };
+    vi.resetModules();
+    await import('../../src/game/isolatedEffects.js');
+    expect(sent, 'the module loaded and did not arm the e2e binding').toEqual([{ kind: 'armed' }]);
+  });
+
+  it('a failed effect and a throwing bus subscriber are each sent with where and the message', () => {
+    const sent = [];
+    window[ISOLATED_BINDING] = (event) => { sent.push(event); return Promise.resolve(); };
+    runIsolatedEffects([['the loot grant', () => { throw new Error('no chest'); }]]);
+    on(EVENTS.reward, () => { throw new Error('quest reactor'); });
+    emit(EVENTS.reward);
+    expect(sent).toEqual([
+      { kind: 'failure', where: 'the loot grant', message: 'no chest' },
+      { kind: 'failure', where: 'the reward event', message: 'quest reactor' },
+    ]);
+  });
+
+  it('a binding that rejects (a page torn down mid-call) does not throw into the game', async () => {
+    window[ISOLATED_BINDING] = () => Promise.reject(new Error('Target closed'));
+    const rejections = [];
+    const onRejection = (e) => rejections.push(e);
+    process.on('unhandledRejection', onRejection);
+    try {
+      expect(() => runIsolatedEffects([['x', () => { throw new Error('y'); }]])).not.toThrow();
+      await new Promise((r) => setTimeout(r, 10));
+      expect(rejections, 'the rejected binding call surfaced as an unhandled rejection').toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onRejection);
+    }
   });
 });
 
@@ -110,8 +151,7 @@ describe('runIsolatedEffects reports each failed effect by name and returns the 
     expect(failed.map((f) => f.name)).toEqual(['sound']);
     const out = lines();
     expect(out, 'the failed effect was dropped with no console line').toHaveLength(1);
-    expect(out[0]).toContain('sound');
-    expect(out[0]).toContain('Error(no audio)');
+    expect(out[0]).toBe('isolated failure in sound: Error(no audio)');
   });
 
   it('logs nothing for a list that does not throw (the spy is not simply always full)', () => {

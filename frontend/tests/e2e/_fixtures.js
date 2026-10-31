@@ -9,13 +9,15 @@
 // Specs import `test` from HERE rather than from '@playwright/test'. `expect` is re-exported so the
 // import line is a one-for-one swap and nothing else in a spec changes.
 import { test as base, expect } from '@playwright/test';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readIsolatedFailures, isolatedFailureLine, isolatedFailureProblem } from './_isolatedFailures.js';
+import { isolatedFailureTracker, gameEntryOf, ISOLATED_BINDING } from './_isolatedFailures.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = resolve(ROOT, 'test-results/coverage');
+// The page a test loaded is the game when it requested this: the module script index.html names.
+const GAME_ENTRY = gameEntryOf(readFileSync(resolve(ROOT, 'index.html'), 'utf8'));
 
 // Set COVERAGE=0 to skip collection. Deliberately opt-OUT: the default has to be the collecting one, or
 // the instrument quietly stops running the moment someone forgets a flag, and reports nothing forever.
@@ -41,6 +43,11 @@ export const test = base.extend({
   e2eDprCap: [E2E_DPR_CAP, { option: true }],
   page: async ({ page, e2eDprCap }, use, testInfo) => {
     if (e2eDprCap != null) await page.addInitScript((cap) => { window.__craftyE2eDprCap = cap; }, e2eDprCap);
+    // What the game's isolated reactors and effects throw while this test runs (src/game/isolatedEffects.js), collected
+    // here in Node: the binding survives every reload of the page, and this tracker is this test's alone.
+    const isolated = isolatedFailureTracker(GAME_ENTRY);
+    await page.exposeBinding(ISOLATED_BINDING, (_source, event) => isolated.onEvent(event));
+    page.on('request', (request) => isolated.onRequest(request.url()));
     let started = false;
     if (ENABLED) {
       try {
@@ -66,16 +73,16 @@ export const test = base.extend({
       // A closed or crashed page has nothing to read; the test's own verdict stands.
     }
 
-    // What the game's isolated reactors and effects threw while this test ran (src/game/isolatedEffects.js). Read before the
-    // coverage is written and raised after it, so a failing test still leaves its coverage file.
-    const isolated = await readIsolatedFailures(page);
-    console.log(isolatedFailureLine(isolated, testInfo.title));
-    const isolatedProblem = isolatedFailureProblem(isolated);
+    // The verdict on what was collected, after the canvas read above (a round trip to the page, which the binding calls
+    // it sent before are ahead of). Printed for every test, the denominator; raised after the coverage is written, so a
+    // failing test still leaves its coverage file. An unread game page fails as well as a counted failure.
+    const verdict = isolated.verdict(testInfo.title);
+    console.log(verdict.line);
 
     if (started) {
       await writeCoverage(page, testInfo);
     }
-    if (isolatedProblem) throw new Error(isolatedProblem);
+    if (verdict.problem) throw new Error(verdict.problem);
   },
 });
 

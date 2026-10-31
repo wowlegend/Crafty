@@ -1,70 +1,121 @@
 import { describe, it, expect } from 'vitest';
-import { readIsolatedFailures, isolatedFailureLine, isolatedFailureProblem } from '../e2e/_isolatedFailures.js';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { isolatedFailureTracker, gameEntryOf } from '../e2e/_isolatedFailures.js';
+import { workerClosure } from '../../scripts/ci/runtime-reach.mjs';
 
 /**
- * What every e2e test asks the page at its end: how many isolated reactors or effects threw (tests/e2e/_fixtures.js).
- * A Playwright fixture cannot run in the unit suite, so the read, the printed line and the verdict are three functions
- * driven here with a fake page, in the cases the fixture meets: a clean page, a page with failures, a page that did
- * not answer, a page that threw on the read, and a page without the counter.
+ * What every e2e test collects from its page while it runs, and its verdict at the end (tests/e2e/_fixtures.js).
+ * A Playwright fixture cannot run in the unit suite, so the tracker the fixture feeds is driven here with the events and
+ * requests a page sends: a clean game page, failures before and after a reload, a game page whose instrument never armed,
+ * a page that is not the game. The producer half (src/game/isolatedEffects.js arms and reports through the binding) is
+ * tests/gates/isolated-failures-gates.test.jsx.
  *
- * SITED IN tests/scripts/, not tests/gates/: the subject is a Playwright helper file under tests/e2e/ that no gate
- * imports, and the check imports it and drives it, reading no source text.
+ * SITED IN tests/scripts/, not tests/gates/: the subject is a Playwright helper file under tests/e2e/ and the HTML entry
+ * it reads; the check drives the helper and reads index.html and the entry's import graph, no game behaviour.
  *
  * Mutation-Proof: scripts/dev/mutate.sh, receipts in the commit.
  */
+const APP = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const ENTRY = '/src/index.jsx';
+const at = (path) => `http://localhost:4179${path}`;
+const armed = { kind: 'armed' };
+const failure = (where, message) => ({ kind: 'failure', where, message });
 
-// Playwright's page.evaluate(fn) runs fn in the page; here fn runs against a fake window.
-const pageWith = (win) => ({ evaluate: async (fn) => { globalThis.window = win; try { return fn(); } finally { delete globalThis.window; } } });
-
-describe('readIsolatedFailures — the page\'s counter, or null when it cannot be read', () => {
-  it('reads a clean page as a count of 0 (the case that proves the read can see a zero)', async () => {
-    expect(await readIsolatedFailures(pageWith({ __isolatedFailures: { count: 0, last: '' } }))).toEqual({ count: 0, last: '' });
+describe('isolatedFailureTracker — what one test collected, across every load of its page', () => {
+  it('a game page that armed and reported nothing reads 0, with the loads it counted (the case that proves it can see a zero)', () => {
+    const t = isolatedFailureTracker(ENTRY);
+    t.onRequest(at('/src/index.jsx'));
+    t.onEvent(armed);
+    const v = t.verdict('a test');
+    expect(v.problem).toBeNull();
+    expect(v.line).toBe('[isolated-failures] 0 over 1 page load(s) · a test');
   });
 
-  it('reads a page with failures as its count and last message', async () => {
-    expect(await readIsolatedFailures(pageWith({ __isolatedFailures: { count: 3, last: 'sound: no audio' } }))).toEqual({ count: 3, last: 'sound: no audio' });
+  it('a failure before a reload is kept: the count is the test\'s, not the last document\'s', () => {
+    const t = isolatedFailureTracker(ENTRY);
+    t.onRequest(at('/src/index.jsx'));
+    t.onEvent(armed);
+    t.onEvent(failure('the mobKill event', 'quest reactor threw'));
+    t.onEvent(armed); // the reload: the page's module state starts again at 0, the tracker does not
+    const v = t.verdict('context-loss');
+    expect(v.problem).toContain('1 isolated failure(s) while this test ran');
+    expect(v.problem).toContain('over 2 page load(s)');
+    expect(v.problem).toContain('the mobKill event: quest reactor threw');
+    expect(v.line).toContain('[isolated-failures] 1 over 2 page load(s)');
   });
 
-  it('a page without the counter is unread (null), never read as 0', async () => {
-    expect(await readIsolatedFailures(pageWith({}))).toBeNull();
-    expect(await readIsolatedFailures(pageWith({ __isolatedFailures: 'x' }))).toBeNull();
-    expect(await readIsolatedFailures(pageWith({ __isolatedFailures: { count: '2' } }))).toBeNull();
+  it('every failure counts and the last one is named', () => {
+    const t = isolatedFailureTracker(ENTRY);
+    t.onEvent(armed);
+    t.onEvent(failure('a', 'one'));
+    t.onEvent(failure('b', 'two'));
+    expect(t.verdict('x').problem).toMatch(/^2 isolated failure\(s\).*the last: b: two/);
   });
 
-  it('a page that throws on the read (closed, crashed) is unread, not a throw', async () => {
-    const dead = { evaluate: async () => { throw new Error('Target page, context or browser has been closed'); } };
-    expect(await readIsolatedFailures(dead)).toBeNull();
+  it('a game page whose instrument never armed is unread, and unread is a failure', () => {
+    const t = isolatedFailureTracker(ENTRY);
+    t.onRequest(at('/src/index.jsx?t=1730000000000'));
+    const v = t.verdict('boot');
+    expect(v.problem, 'an unread game page passed').toContain('never reported in');
+    expect(v.line).toContain('unread');
   });
 
-  it('a page that does not answer inside the bound is unread, and the read returns', async () => {
-    const hung = { evaluate: () => new Promise(() => {}) };
-    const t0 = Date.now();
-    expect(await readIsolatedFailures(hung, 30)).toBeNull();
-    expect(Date.now() - t0, 'the read waited on the page instead of the bound').toBeLessThan(2000);
+  it('a page that never requested the game entry is not a game page: printed as such, and no failure', () => {
+    const t = isolatedFailureTracker(ENTRY);
+    t.onRequest(at('/tests/e2e/_fog-probe.html'));
+    t.onRequest(at('/src/render/fogShader.js'));
+    const v = t.verdict('fog');
+    expect(v.problem).toBeNull();
+    expect(v.line).toBe('[isolated-failures] not a game page (/src/index.jsx was never requested) · fog');
+  });
+
+  it('a page that is not the game but loads the instrument is read like any other', () => {
+    const t = isolatedFailureTracker(ENTRY);
+    t.onEvent(armed);
+    t.onEvent(failure('probe', 'x'));
+    expect(t.verdict('probe').problem).toContain('1 isolated failure(s)');
+  });
+
+  it('an event of another shape is ignored, not counted', () => {
+    const t = isolatedFailureTracker(ENTRY);
+    t.onRequest(at('/src/index.jsx'));
+    for (const e of [null, undefined, 'armed', { kind: 'other' }, { kind: 'failure' }]) t.onEvent(e);
+    expect(t.verdict('x').problem, 'a malformed event armed the tracker or counted').toContain('never reported in');
+  });
+
+  it('two tests do not share a count', () => {
+    const a = isolatedFailureTracker(ENTRY);
+    const b = isolatedFailureTracker(ENTRY);
+    a.onEvent(armed);
+    a.onEvent(failure('a', 'x'));
+    b.onEvent(armed);
+    expect(a.verdict('a').problem).not.toBeNull();
+    expect(b.verdict('b').problem).toBeNull();
+  });
+
+  it('a tracker with no game entry cannot tell a game page and fails every test', () => {
+    const t = isolatedFailureTracker(null);
+    t.onEvent(armed);
+    expect(t.verdict('x').problem).toContain('no game entry');
   });
 });
 
-describe('isolatedFailureProblem — the error a test ends with', () => {
-  it('is null for an unread page and for a count of 0: nothing to raise', () => {
-    expect(isolatedFailureProblem(null)).toBeNull();
-    expect(isolatedFailureProblem({ count: 0, last: '' })).toBeNull();
+describe('the game entry and the producer on it', () => {
+  it('gameEntryOf reads the module script index.html loads, and null when there is none', () => {
+    expect(gameEntryOf('<html><body><script type="module" src="/src/index.jsx"></script></body></html>')).toBe('/src/index.jsx');
+    expect(gameEntryOf('<script src="/legacy.js"></script>')).toBeNull();
   });
 
-  it('names the count and the last failure when the page counted any', () => {
-    const p = isolatedFailureProblem({ count: 2, last: 'the mobKill event: boom' });
-    expect(p).toContain('2 isolated failure(s)');
-    expect(p).toContain('the mobKill event: boom');
+  it('the real index.html names the entry the tracker listens for', () => {
+    expect(gameEntryOf(readFileSync(join(APP, 'index.html'), 'utf8'))).toBe(ENTRY);
   });
 
-  it('a single failure is enough', () => {
-    expect(isolatedFailureProblem({ count: 1, last: 'x' })).not.toBeNull();
-  });
-});
-
-describe('isolatedFailureLine — the denominator a test prints', () => {
-  it('prints the count, and says "unread" for a page that could not be read', () => {
-    expect(isolatedFailureLine({ count: 0, last: '' }, 'a test')).toBe('[isolated-failures] 0 · a test');
-    expect(isolatedFailureLine({ count: 4, last: 'x' }, 'a test')).toContain('[isolated-failures] 4');
-    expect(isolatedFailureLine(null, 'a test')).toContain('unread');
+  it('src/game/isolatedEffects.js is in the entry\'s static import graph, so every game page loads the instrument', () => {
+    const read = (p) => { try { return readFileSync(join(APP, p), 'utf8'); } catch { return null; } };
+    const closure = workerClosure(['src/index.jsx'], read);
+    expect(closure.size, 'the import graph came back empty').toBeGreaterThan(300);
+    expect([...closure]).toContain('src/game/isolatedEffects.js');
   });
 });
