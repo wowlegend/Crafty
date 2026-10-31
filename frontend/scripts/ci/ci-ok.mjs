@@ -43,8 +43,8 @@ import { fileURLToPath } from 'node:url';
 /** This job's id in ci.yml, and the change-scope job's. */
 export const SELF = 'ci-ok';
 export const SCOPE_JOB = 'changes';
-/** The jobs ci.yml skips on a docs-only or certified verdict (`if: needs.changes.outputs.code != 'false' && ...`). */
-export const SKIPPABLE_ON_DOCS = ['e2e'];
+/** The jobs ci.yml skips on a docs-only or certified verdict (`if: needs.changes.outputs.code != 'false' && ...`): the browser job and the job that merges its shards' reach. */
+export const SKIPPABLE_ON_DOCS = ['e2e', 'runtime-reach'];
 
 /** PURE. The job ids of a workflow: the 2-space keys under the top-level `jobs:` key, until the next top-level key. */
 export function jobIds(ymlText) {

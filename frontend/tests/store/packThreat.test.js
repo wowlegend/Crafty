@@ -1,9 +1,9 @@
 // A PACK OF SIX DEALT THE DAMAGE OF ONE.
 //
-// `damagePlayer` opened with `if (now - state.lastDamageTime < 500) return;` and `lastDamageTime` is ONE
-// number for the whole game. So the lockout was never "this attacker may hit me twice a second" — it was
-// "the WORLD may hit me twice a second". A duskhound, a moss brute and four skitterlings swinging on their
-// own cooldowns landed, between them, the damage of a single mob.
+// A lockout of one stamp for the whole game (`if (now - state.lastDamageTime < 500) return;`, the defect
+// this file guards against) means "the WORLD may hit me twice a second", not "this attacker may hit me twice a
+// second": a duskhound, a moss brute and four skitterlings swinging on their own cooldowns land, between
+// them, the damage of a single mob.
 //
 // That one line silently deleted the threat model above it: the night siege, world/SquadAISystem.jsx,
 // game/squadAI.js, and every distinction game/mobArchetypes.js draws between archetypes. Numbers were
@@ -26,7 +26,6 @@ const reset = (over = {}) => {
     isAlive: true,
     playerHealth: 100,
     maxHealth: 100,
-    lastDamageTime: 0,
     damageLockouts: {},
     hitstopUntil: 0,
     lastHitDir: null,

@@ -161,7 +161,7 @@ function useLatch(value) {
   return latched || !!value;
 }
 
-export const GameScene = React.memo(function GameScene({
+export const GameScene = React.memo(function GameSceneRender({
   isWorldBuilt,
   bossActive,
   bossPositionRef,

@@ -54,7 +54,7 @@ const DRAGON_FEATURES = [
 const AIRBORNE_GAP_M = 3;
 const LANDED_Y = 0.8;
 const DIVE_OVER_FEET_M = 1.2;
-// Where its three melee hit points sit on today's model: the head ahead of the chest, the hips behind.
+// Where its three melee hit points sit on the model: the head ahead of the chest, the hips behind.
 const HEAD_AHEAD_M = 2.6;
 const HEAD_UP_M = 1.4;
 const HIPS_BEHIND_M = 2;
@@ -71,7 +71,7 @@ const DANGER = new THREE.Color(DECAL_COLOR);
 const HEAD_GLOW = new THREE.Color(BOSS_CONFIG.secondaryColor);
 const HIT_RED = new THREE.Color('#ef4444');
 
-// The stagger on today's model: head down, wings folded down.
+// The stagger pose: head down, wings folded down.
 const STAGGER_PITCH = 0.3;
 const STAGGER_WING_Z = 1.0;
 // The head's emissive at rest (the declarative value) and at the strike of a windup.

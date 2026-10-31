@@ -10,24 +10,12 @@ import { BLOCK_TYPES, HOTBAR_BLOCKS } from '../world/Blocks';
 import { ControlsHint } from './CombatInstructions.jsx';
 import { useHudMode } from './hudLayout.js';
 
-// X3 — FIXED 2026-08-05, and CONFIRMED by a lived browser run before the fix was written.
-//
-// The bug: the full-screen TOUCH layer (ui/TouchControls.jsx, z-40) sits ABOVE the HUD (z-20), and its
-// `onStart` routed any touch that was not a `button[data-touch-btn]` into the move/look zones AND called
-// preventDefault(), suppressing the synthesized click. A hotbar slot is a `<button data-hotbar-block>`
-// inside the `data-hud-interactive` container below — neither matched — so the tap never reached its
-// onClick, leaving a voxel BUILDING game locked to one block on its own stated iPad target.
-//
-// The routing now lives in `input/touchOwnership.js` (`ownsTouch`), which the router calls; it claims both
-// `button[data-touch-btn]` and `[data-hud-interactive]`.
-//
-// TWO EARLIER VERSIONS OF THIS COMMENT WERE WRONG IN OPPOSITE DIRECTIONS, which is why the wording above is
-// deliberately specific. The first asserted the fix was done when only the seam existed. The second
-// correctly retracted that, but described the mechanism as a code READING — unconfirmed, because every
-// attempt to verify it had failed to get into the game. `scripts/visual/touch-probe.mjs` finally ran clean
-// on 2026-08-05 and reported: tapped "dirt" (was "grass") -> selected "grass" — swallowed. The fix followed
-// the evidence rather than the argument. That probe, which reads `selectedBlock` from the store after a real
-// touch, is the check that keeps this honest; the unit tests cover the predicate, not the wiring.
+// A hotbar slot is a `<button data-hotbar-block>` inside the `data-hud-interactive` container below. The full-screen touch
+// layer (ui/TouchControls.jsx, z-40) sits above the HUD (z-20) and calls preventDefault() on any touch it routes to the
+// move and look zones, which suppresses the synthesized click. `input/touchOwnership.js` (`ownsTouch`) therefore claims
+// both `button[data-touch-btn]` and `[data-hud-interactive]`, so a slot's tap reaches its onClick. The check that keeps
+// the wiring honest is `scripts/visual/touch-probe.mjs`, which reads `selectedBlock` from the store after a real touch;
+// the unit tests cover the predicate, not the wiring.
 /** The share of a level's XP earned, as a CSS width: 0 to 100%, whatever the caller hands in. */
 export const xpWidth = (xpProgress) => `${Math.max(0, Math.min(100, Number(xpProgress) || 0))}%`;
 
@@ -52,10 +40,9 @@ const MinecraftHotbar = React.memo(({ gameState, level, xpProgress }) => {
   const compact = mode.compactHotbar;
   if (!gameState) return null;
   // The hotbar is the largest piece of chrome at rest, so it is nine slots and nothing behind them: no panel, 40 px
-  // slots on a keyboard (9 x 40 + 8 gaps of 6 = 408 px), 48 px on touch, where each slot is a tap target. The lookbook's
-  // footprint holds the eye-level frames at rest under 8% with it (DECISIONS 2026-10-29 item 99). B7 (18-domain
-  // review): a full hotbar overflowed a phone; on narrow screens (≤640px) it scales to fit, keeping a phone's slot about
-  // 35 px; origin-bottom keeps it anchored and centred. A short touch screen narrower than the full bar's room between the
+  // slots on a keyboard (9 x 40 + 8 gaps of 6 = 408 px), 48 px on touch, where each slot is a tap target. A full hotbar
+  // overflows a phone, so on narrow screens (≤640px) it scales to fit, keeping a phone's slot about 35 px; origin-bottom
+  // keeps it anchored and centred. A short touch screen narrower than the full bar's room between the
   // joystick and the cast button (a phone on its side) scales it the same way (ui/hudLayout.js compactHotbar). On a phone
   // it sits 8 px from the bottom, where its XP edge clears the cast button (9% up, so 60 px on a 664 px screen).
   const touch = isTouchUIMode();

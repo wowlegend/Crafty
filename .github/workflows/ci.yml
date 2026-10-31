@@ -223,16 +223,28 @@ jobs:
         if: always()
         run: node scripts/ci/flaky-report.mjs
 
-      # RUNTIME REACHABILITY — which src modules the RUNNING GAME executed, from V8 coverage collected
-      # inside the browser while Playwright drove a real booted session. This is the only instrument here
-      # that can see the dominant defect class: four features on 2026-08-05 that shipped, compiled, gated
-      # green and never ran. knip sees the export used, a grep gate sees the line exist, build sees it
-      # compile, coverage-zero sees whether a TEST ran it — none sees whether the GAME reaches it.
-      # REPORT-ONLY: the unreached list legitimately contains subsystems the 28-spec suite never visits,
-      # and failing on that would be failing on E2E breadth in a reachability costume.
-      - name: Runtime reachability report
+      # RUNTIME REACHABILITY, this shard's half — which src modules the RUNNING GAME executed, from V8 coverage collected
+      # inside the browser while Playwright drove a real booted session. The only instrument here that can see the
+      # dominant defect class: four features on 2026-08-05 that shipped, compiled, gated green and never ran. knip
+      # sees the export used, a grep gate sees the line exist, build sees it compile, coverage-zero sees whether a TEST
+      # ran it — none sees whether the GAME reaches it.
+      # EACH SHARD REPORTS ALONE TO ONE JOB, not to the log: 8 shards each reach 391-397 of the 415 modules, so a
+      # per-shard report listed the dragon's modules as never reached in half of them and a shard with no coverage
+      # printed "instrument failure" and exited 0 (deep audit 2026-10-30, AUDIT:debt:runtime-reach-per-shard). This step
+      # writes the modules this shard evaluated and the named functions that ran as a small file, and exits 1 when it read
+      # no coverage or the coverage carries no function names; the upload below
+      # fails the shard if the file is missing; the `runtime-reach` job unions the 8 and judges them.
+      - name: Runtime reach (this shard's modules)
         if: always()
-        run: node scripts/ci/runtime-reach.mjs
+        run: node scripts/ci/runtime-reach.mjs --emit test-results/reach/shard-${{ matrix.shard }}.json --shard ${{ matrix.shard }}
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: reach-shard-${{ matrix.shard }}
+          path: frontend/test-results/reach/
+          retention-days: 7
+          if-no-files-found: error # an upload path is a denominator too: a missing file must not read as a shard with nothing to say
 
       # UPLOAD THE ARTEFACTS THAT ACTUALLY EXIST. This uploaded `frontend/playwright-report/` until
       # 2026-08-13 — a directory NOTHING creates, because the CI reporter set is [github, list, json]
@@ -269,6 +281,44 @@ jobs:
           if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
+  # RUNTIME REACH, MERGED (2026-10-31, lane L12). One report over the 8 shards' files, and a contract: it exits 1 when a
+  # shard file is missing, duplicated, empty or nameless (an instrument failure is never a clean report) and when an entry
+  # point in MUST_REACH (scripts/ci/runtime-reach.mjs: a mounted component or a called hook or function, by name) ran in
+  # none of the shards, whether or not its module was evaluated. The unreached list is still a report;
+  # the named set is the gate. `--expect` is the matrix size above: tests/scripts/runtime-reach-merge.test.js fails when
+  # the two differ. It runs after a RED e2e too (`always()`): a shard that failed or was cancelled uploaded what it had,
+  # and the missing files are named, so a red e2e does not hide which shards the report lacks. Same skip as e2e, for the
+  # same reason: with no e2e there is nothing to merge, and `ci ok` passes the skip only under the words it passes e2e's.
+  # ---------------------------------------------------------------------------
+  runtime-reach:
+    name: runtime reach (merged)
+    needs: [changes, e2e]
+    if: always() && needs.changes.outputs.code != 'false' && needs.changes.outputs.certified != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # The script reads `git ls-files src` and the worker entry files, so src is checked out; nothing is installed.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            frontend/scripts/ci/runtime-reach.mjs
+            frontend/src/
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: reach-shard-*
+          path: frontend/test-results/reach
+          merge-multiple: true
+
+      - name: One report over the shards, and the must-reach contract
+        run: node scripts/ci/runtime-reach.mjs --merge test-results/reach --expect 8
+
+  # ---------------------------------------------------------------------------
   # `ci ok` — THE REQUIRED CHECK (2026-10-28). Branch protection on main requires this job's name and nothing else.
   # It needs EVERY other job (ci-ok.mjs fails the run if ci.yml has a job missing from this list) and passes only
   # when each one succeeded, or, for e2e alone, was skipped because the change-scope job said code `false` or, on a push
@@ -279,7 +329,7 @@ jobs:
   # ---------------------------------------------------------------------------
   ci-ok:
     name: ci ok
-    needs: [changes, gates, e2e]
+    needs: [changes, gates, e2e, runtime-reach]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5

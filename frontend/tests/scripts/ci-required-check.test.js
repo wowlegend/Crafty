@@ -486,8 +486,15 @@ describe('ci.yml — the wiring that connects the two scripts', () => {
     const conditional = ids.filter((j) => /\n {4}if: .*needs\.changes\.outputs\.code/.test(block(j)));
     expect(conditional.sort()).toEqual([...SKIPPABLE_ON_DOCS].sort());
     for (const j of conditional) {
-      expect(block(j)).toMatch(/\n {4}if: needs\.changes\.outputs\.code != 'false' && needs\.changes\.outputs\.certified != 'true'\n/);
-      expect(block(j)).toMatch(/\n {4}needs: changes\n/);
+      // The browser job skips on exactly the scope condition. The job that merges its shards' reach (lane L12) skips on the
+      // same condition and ALSO runs after a red or cancelled e2e (`always()`), so it names the shards the report lacks.
+      if (j === 'runtime-reach') {
+        expect(block(j)).toMatch(/\n {4}if: always\(\) && needs\.changes\.outputs\.code != 'false' && needs\.changes\.outputs\.certified != 'true'\n/);
+        expect(block(j)).toMatch(/\n {4}needs: \[changes, e2e\]\n/);
+      } else {
+        expect(block(j)).toMatch(/\n {4}if: needs\.changes\.outputs\.code != 'false' && needs\.changes\.outputs\.certified != 'true'\n/);
+        expect(block(j)).toMatch(/\n {4}needs: changes\n/);
+      }
     }
   });
 

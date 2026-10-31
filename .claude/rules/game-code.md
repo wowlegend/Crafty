@@ -13,9 +13,12 @@ it earns its place (DECISIONS 2026-10-28 items 14 and 16), and changing one is r
   reference first. Several intended look changes in one campaign get one batched taste review (a contact sheet),
   recorded in DECISIONS and shown on the Command Record.
 - **Capture mode is a test tool, not a look oracle.** e2e specs and probes call `enterCapture` to freeze the world,
-  and it works by suppression: `isCaptureMode()` guards turn things off. Add no new guard. An existing guard must RESET
-  to a declared value, never early-`return`, and must check inside the callback, because capture is enabled after
-  boot and boot length varies per process. Each guard leaves when its subject next moves (reset plan row 48).
+  and it works by suppression: `isCaptureMode()` guards turn things off. Add no new guard, and read the flag inside the
+  callback, never at module scope, because capture is enabled after boot and boot length varies per process
+  (`tests/scripts/capture-guards-ratchet.test.js` holds the count per file, which may only fall, and bans the module-scope
+  read). A guard may `return` early: "reset to a declared value" kept a pixel baseline run-independent, and the oracle
+  that read those pixels retired (DECISIONS 2026-10-31, lane L12). The title screen's guards still reset
+  (`capture-phase-reset-gates`). Each guard leaves when its subject next moves (reset plan row 48).
 - **The Player loop.** `Components.jsx` is the `Player` `useFrame` controller; its pure logic lives in `game/*`. The
   per-frame ORDER of that loop is load-bearing: a split must keep it and prove it in the running game (e2e or a live
   probe), not only that it compiles. Render JSX never reads fields a worker or the loop mutates (Game-Loop Isolation).

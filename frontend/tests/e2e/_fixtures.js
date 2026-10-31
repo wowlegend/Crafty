@@ -9,12 +9,16 @@
 // Specs import `test` from HERE rather than from '@playwright/test'. `expect` is re-exported so the
 // import line is a one-for-one swap and nothing else in a spec changes.
 import { test as base, expect } from '@playwright/test';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isolatedFailureTracker, gameEntryOf } from './_isolatedFailures.js';
+import { slimCoverage } from './_coverage.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = resolve(ROOT, 'test-results/coverage');
+// The page a test loaded is the game when it requested this: the module script index.html names.
+const GAME_ENTRY = gameEntryOf(readFileSync(resolve(ROOT, 'index.html'), 'utf8'));
 
 // Set COVERAGE=0 to skip collection. Deliberately opt-OUT: the default has to be the collecting one, or
 // the instrument quietly stops running the moment someone forgets a flag, and reports nothing forever.
@@ -40,6 +44,13 @@ export const test = base.extend({
   e2eDprCap: [E2E_DPR_CAP, { option: true }],
   page: async ({ page, e2eDprCap }, use, testInfo) => {
     if (e2eDprCap != null) await page.addInitScript((cap) => { window.__craftyE2eDprCap = cap; }, e2eDprCap);
+    // What the game's isolated reactors and effects throw while this test runs (src/game/isolatedEffects.js), collected
+    // here in Node by listening only: console events and requests keep coming across every reload of the page, and this
+    // tracker is this test's alone. Nothing here calls into the page, because a call is a user gesture there
+    // (tests/e2e/_isolatedFailures.js says how that was found).
+    const isolated = isolatedFailureTracker(GAME_ENTRY);
+    page.on('console', (message) => isolated.onConsole(message.type(), message.text()));
+    page.on('request', (request) => isolated.onRequest(request.url()));
     let started = false;
     if (ENABLED) {
       try {
@@ -65,23 +76,30 @@ export const test = base.extend({
       // A closed or crashed page has nothing to read; the test's own verdict stands.
     }
 
-    if (!started) return;
-    try {
-      const entries = await page.coverage.stopJSCoverage();
-      // Keep url + ranges only. `source` is the FULL module text per entry, which turns a shard's
-      // artifact into tens of MB of the repo's own source for no analytical gain.
-      const slim = entries.map((e) => ({
-        url: e.url,
-        functions: (e.functions || []).map((f) => ({ ranges: (f.ranges || []).map((r) => ({ count: r.count })) })),
-      }));
-      mkdirSync(OUT, { recursive: true }); // FIRST — writeFileSync into a missing dir throws
-      const safe = `${testInfo.title}-${seq++}`.replace(/[^a-z0-9-]+/gi, '_').slice(0, 80);
-      writeFileSync(resolve(OUT, `${safe}.json`), JSON.stringify(slim));
-    } catch {
-      // A page that already crashed cannot report coverage. Never let the instrument fail the test it
-      // is only observing — the test's own verdict is the thing that matters.
+    // The verdict on what was collected, after the canvas read above (a round trip to the page, which the console events
+    // it sent before are ahead of). Printed for every test, the denominator; raised after the coverage is written, so a
+    // failing test still leaves its coverage file. An unread game page fails as well as a counted failure.
+    const verdict = isolated.verdict(testInfo.title);
+    console.log(verdict.line);
+
+    if (started) {
+      await writeCoverage(page, testInfo);
     }
+    if (verdict.problem) throw new Error(verdict.problem);
   },
 });
+
+async function writeCoverage(page, testInfo) {
+  try {
+    // The url, and each function's name and counts (tests/e2e/_coverage.js says why each is kept or dropped).
+    const slim = slimCoverage(await page.coverage.stopJSCoverage());
+    mkdirSync(OUT, { recursive: true }); // FIRST — writeFileSync into a missing dir throws
+    const safe = `${testInfo.title}-${seq++}`.replace(/[^a-z0-9-]+/gi, '_').slice(0, 80);
+    writeFileSync(resolve(OUT, `${safe}.json`), JSON.stringify(slim));
+  } catch {
+    // A page that already crashed cannot report coverage. Never let the instrument fail the test it
+    // is only observing — the test's own verdict is the thing that matters.
+  }
+}
 
 export { expect };

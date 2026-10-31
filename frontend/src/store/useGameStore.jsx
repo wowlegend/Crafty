@@ -977,11 +977,8 @@ export const useGameStore = create((set, get) => ({
     setDamageFlash: (flash) => set({ damageFlash: flash }),
     setScreenShake: (shake) => set({ screenShake: shake }),
 
-    lastDamageTime: 0,
-
-    // Per-ATTACKER damage lockout stamps, keyed by sourceKey (see damagePlayer). `lastDamageTime` above
-    // is kept because it is a different thing: the timestamp of the most recent accepted hit, which the
-    // HUD and the camera controller read as a hit SIGNAL. It is no longer the rate limiter.
+    // Per-ATTACKER damage lockout stamps, keyed by sourceKey (see damagePlayer): the rate limiter. The hit SIGNAL the HUD
+    // and the camera controller read is `lastHitDir.t`, below.
     damageLockouts: {},
 
     damagePlayer: (amount, source = 'unknown', sourcePos = null, sourceKey = null) => {
@@ -997,10 +994,9 @@ export const useGameStore = create((set, get) => ({
         const now = Date.now();
         if (now - useGameStore.getState()._spawnTime < 5000) return;
 
-        // PER-ATTACKER, not global. This read `now - state.lastDamageTime < 500`, and lastDamageTime is
-        // one number for the whole game — so the rule was never "this attacker may hit me twice a second",
-        // it was "the WORLD may hit me twice a second". Six mobs swinging on their own cooldowns landed
-        // the damage of one, which silently deleted the threat model above it: the night siege,
+        // PER-ATTACKER, not global: the rule is "this attacker may hit me twice a second", not "the WORLD may
+        // hit me twice a second". One stamp for the whole game would let six mobs swinging on their own
+        // cooldowns land the damage of one, which deletes the threat model above it: the night siege,
         // SquadAISystem, squadAI.js and every archetype distinction mobArchetypes.js draws.
         //
         // `sourceKey` identifies the ATTACKER; `source` stays the display/attribution string. Callers that
@@ -1029,12 +1025,11 @@ export const useGameStore = create((set, get) => ({
         // armour never makes the screen stutter more as it absorbs more.
         const stopMs = hurtStopMs(finalDamage, state.maxHealth);
         set({
-            lastDamageTime: now,
             damageLockouts: { ...lockouts, [key]: now },
             damageFlash: true,
             screenShake: finalDamage / 10,
-            // The stamp is also the HIT SIGNAL the per-frame camera controller edge-detects for its kick,
-            // so it is set on every accepted hit, not only when an attacker position was supplied.
+            // `lastHitDir.t` is the HIT SIGNAL the per-frame camera controller edge-detects for its kick, so lastHitDir is
+            // stamped on every accepted hit, not only when an attacker position was supplied.
             lastHitDir: dir != null ? { angle: dir, t: now } : { angle: state.lastHitDir?.angle ?? null, t: now },
         });
         if (stopMs > 0) get().triggerHitstop(stopMs);

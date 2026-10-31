@@ -79,7 +79,7 @@ function Tag({ entity }) {
   );
 }
 
-export const Nametags = React.memo(() => {
+export const Nametags = React.memo(function NametagsRender() {
   // Hooks must run unconditionally (Rules of Hooks) — subscribe first, then capture-suppress the
   // OUTPUT so the deterministic visual baselines never see the overlay.
   const mobs = useEntities(mobsQuery);

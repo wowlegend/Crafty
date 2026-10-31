@@ -37,7 +37,9 @@ const PRIORITY = Object.freeze(['diveBite', 'bite', 'roar', 'lava', 'summon', 'f
 /** How far above or below the dragon a bite still reaches (it bites what is in front of its jaw, not under its belly in
  *  flight). */
 const BITE_REACH_Y = 3.5;
-/** The roar's damage over the dragon's base hit, and its shove (the impulse the dragon's roar has always given). */
+/** The roar's damage over the dragon's base hit, and its shove: the horizontal and vertical velocity it adds to the
+ *  player's knockback (Components.jsx), scaled by roarFalloff(d). (36, 14) is the impulse the roar gave before the dragon
+ *  rework, kept so the shove did not change (plans/2026-10-27-crafty-shadow-dragon.md). */
 const ROAR_DAMAGE_MULT = 1.3;
 const ROAR_PUSH = 36;
 const ROAR_LIFT = 14;
