@@ -61,16 +61,21 @@ in code; whether a player on a real iPhone or iPad hears the difference is Kevin
      landed (649,549 B, item 295), the chunk measures 650,978 B, 1,522 B under the ceiling.
 
 302. **The route is run in Chromium on CI (`tests/e2e/music-bus.spec.js`); its mutation proof is owed.** The spec
-   wraps the media element and `createMediaElementSource` (each wrapper calls the real one), makes a trusted click
-   on Start Adventure, and reads that the day track plays through a running context with its clock advancing, that
-   Mute All pauses every track (within 3 s on a loaded runner; the 1 s bound is the jsdom gate's), and that unmute
-   brings it back. A dispatched CI run of a mutant was planned (commit `bf063ee4` points here) and not made: the
-   commit hook runs the unit gates that import a staged file, the jsdom gate catches the same mutant, and a commit
-   that skips the hook is a bright line. No local browser runs in this lane. So the proof is owed, as registry row
-   `REVIEW:l10:music-e2e-mutation-owed` (the mutant and the way to run it). Its first CI run (41203933423, shard 6)
-   timed out at its own click: App's timer took the title away (continue.spec.js's race) and, entered from the title
-   rather than `_boot.js`'s helpers, the world ran above the suite's `low` tier; `2b68fdad` and `1aabcb8a` keep the
-   title until the click and pin the tier, with no assertion changed.
+   wraps the media element and `createMediaElementSource` (each wrapper calls the real one), enters play as the suite
+   does (`_boot.js` `startPlayActive`), makes one trusted key press (F2, bound to nothing), and reads that the day
+   track plays through a running context with its clock advancing, that Mute All pauses every track (within 3 s on a
+   loaded runner; the 1 s bound is the jsdom gate's), and that unmute brings it back. A dispatched CI run of a
+   mutant was planned (commit `bf063ee4` points here) and not made: the commit hook runs the unit gates that import
+   a staged file, the jsdom gate catches the same mutant, and a commit that skips the hook is a bright line. No local
+   browser runs in this lane. So the proof is owed, as registry row
+   `REVIEW:l10:music-e2e-mutation-owed` (the mutant and the way to run it). It first entered play by a trusted click
+   on the title's Start Adventure, and on two of its first three CI runs (41203933423 and 41208277637, shard 6) the
+   page stopped answering and the test ran out its budget; it passed in 53.8 s on the other (41206449396). Keeping the
+   title until the click (`2b68fdad`) and pinning the tier (`1aabcb8a`) did not stop it, and with the job killed no
+   failure message survived, so the cause is not known: the title path diverges from the suite's own entry, and the
+   music route is the other candidate. So the spec now enters play the suite's way and bounds every page read, so a
+   page that stops answering names its step; the Start tap stays the jsdom gate's, on the real title menu. The open
+   question is registry row `REVIEW:l10:music-e2e-title-hang`.
 
 303. **A no-op stub is banned in the harnesses that drive a real browser** (gate G-ios, audit section S7).
    - **Why.** `touch-probe.mjs`, `ipad-probe.mjs` and `_lookbookPage.mjs` made Chromium look like iOS with
