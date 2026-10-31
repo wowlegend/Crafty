@@ -4,11 +4,11 @@
  * Generic on purpose: it takes `[name, fn]` pairs and isolates each, and both the boss kill and the boss ENTRANCE
  * beat call it, so its name says what it does rather than which caller it serves.
  *
- * WHY ISOLATION MATTERS HERE (B2h): rewards run in one block inside a setState updater, with the idempotency latch
- * set first and `markGameWon` last, let one throwing reward (a loot grant, an XP call) strand the win forever:
- * bossHealth 0, bossDefeated true, gameWon false, so the player kills the dragon and the game never admits it.
- * Isolating each effect means a cosmetic failure (a missing sound, a bloom spike on a lost context) can never cost
- * the player the thing they earned.
+ * WHY ISOLATION MATTERS HERE (B2h): rewards that ran in one block, with the idempotency latch set first and
+ * `markGameWon` last, would let one throwing reward (a loot grant, an XP call) strand the win forever: bossHealth 0,
+ * bossDefeated true, gameWon false, so the player kills the dragon and the game never admits it. The boss system runs the
+ * effects after its health commit, never inside a setState updater (world/bossSystem.js), and isolates each one, so a
+ * cosmetic failure (a missing sound, a bloom spike on a lost context) can never cost the player the thing they earned.
  *
  * Every failure is reported where it is caught (reportIsolatedFailure) and also returned, so a caller that wants to act on
  * one can. The two boss callers discard the list, which is why the report lives here and not in them.
