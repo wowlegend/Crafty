@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
+import { fixtureGit } from './_isolatedGit.js';
 import {
   ROOT, REGISTRY, SOURCES, FLOORS_FILE, harvest, compare, parseRegistry, readFloors, slug,
   extractStatus, extractActivePlan, extractQueue, extractOpenItems, extractMasterpiece,
+  checkReferences, liveReferences, decisionsIndex, resolveDecision,
 } from '../../scripts/ci/registry-harvest.mjs';
 
 // Sited in tests/scripts/ because its subject is the content of five docs and the registry file. It executes the
@@ -171,27 +173,34 @@ describe('the extraction rules, on fixtures where the answer is known', () => {
 });
 
 describe('the registry schema', () => {
-  const row = (o) => JSON.stringify({
-    id: 'K', key: 'K', title: 't', playerVisible: true, severity: 'LOW', owner: 'command session', state: 'open',
-    evidence: 'memory/STATUS.md:1@a3fb66cd', opened: '2026-07-13', planUnit: 'W2-D', ...o,
+  // A lane row for the fixtures' open rows to name: S4 refuses an open row whose lane is not a row.
+  const lane = JSON.stringify({
+    id: 'L', key: 'L', planUnit: 'p', title: 'a lane', kind: 'lane', area: 'harness', severity: 'LOW', playerVisible: false,
+    owner: 'command session', state: 'open', acceptance: 'every row it owns has closed', evidence: 'e', opened: '2026-10-31', updated: '2026-10-31',
   });
+  const row = (o) => JSON.stringify({
+    id: 'K', key: 'K', planUnit: 'W2-D', title: 't', kind: 'debt', area: 'harness', severity: 'LOW', playerVisible: false,
+    owner: 'command session', state: 'open', lane: 'L', acceptance: 'a named check that makes it done',
+    evidence: 'memory/STATUS.md:1@a3fb66cd', opened: '2026-07-13', updated: '2026-10-31', ...o,
+  });
+  const closed = { state: 'closed', lane: undefined, acceptance: undefined };
 
   it('accepts a well-formed open row, split parts of one key, and closed rows naming a commit or a decision', () => {
     expect(parseRegistry([
-      row(), row({ id: 'K/a' }), row({ id: 'K/b', state: 'closed', closedBy: 'abc1234' }),
-      row({ id: 'K/c', state: 'closed', closedBy: 'DECISIONS 2026-10-28 (W1-H) item 1' }),
+      lane, row(), row({ id: 'K/a' }), row({ id: 'K/sun-glow-fog' }), row({ id: 'K/b', ...closed, resolution: 'done', closedBy: 'abc1234' }),
+      row({ id: 'K/c', ...closed, resolution: 'superseded', closedBy: 'DECISIONS 2026-10-28 (W1-H) item 1' }),
     ].join('\n')).errors).toEqual([]);
   });
 
   it('refuses a bad owner, a bad state, a closed row with no closedBy, a repeated id, a missing field, a bad date and a non-JSON line', () => {
     const { errors } = parseRegistry([
-      row({ owner: 'someone' }), row({ id: 'K/a', state: 'done' }), row({ id: 'K/b', state: 'closed' }), row({ id: 'K/b' }),
+      lane, row({ owner: 'someone' }), row({ id: 'K/a', state: 'done' }), row({ id: 'K/b', ...closed, resolution: 'done' }), row({ id: 'K/b' }),
       row({ id: 'K/c', evidence: '' }), row({ id: 'K/d', opened: '10-28' }), 'not json',
     ].join('\n'));
     expect(errors).toHaveLength(7);
     expect(errors.join('\n')).toMatch(/owner "someone"/);
     expect(errors.join('\n')).toMatch(/state "done"/);
-    expect(errors.join('\n')).toMatch(/closed with no closedBy/);
+    expect(errors.join('\n')).toMatch(/closed done with no closedBy/);
     expect(errors.join('\n')).toMatch(/id "K\/b" repeats/);
     expect(errors.join('\n')).toMatch(/missing evidence/);
     expect(errors.join('\n')).toMatch(/opened "10-28" is not a YYYY-MM-DD date/);
@@ -199,8 +208,8 @@ describe('the registry schema', () => {
   });
 
   it('an id is its key or key/part, so a split row cannot drift away from the source item it came from', () => {
-    for (const id of ['K-b', 'KX', 'Q/a', 'K/', 'K/B', 'K/a/b']) {
-      expect(parseRegistry(row({ id })).errors, id).toEqual([expect.stringContaining(`(${id}): id is neither its key "K" nor "K/<part>"`)]);
+    for (const id of ['K-b', 'KX', 'Q/a', 'K/', 'K/B', 'K/a/b', 'K/-a', 'K/a-']) {
+      expect(parseRegistry([lane, row({ id })].join('\n')).errors, id).toEqual([expect.stringContaining(`(${id}): id is neither its key "K" nor "K/<part>"`)]);
     }
   });
 
@@ -209,5 +218,89 @@ describe('the registry schema', () => {
     const r = compare(extracted, [{ key: 'K1' }, { key: 'READ' }]);
     expect(r.perSource[0].missing.map((m) => m.key)).toEqual(['K2']);
     expect(r.unextracted.map((u) => u.key)).toEqual(['READ']);
+  });
+});
+
+describe('schema v2: the committed registry passes, the v1 registry fails, and one broken copy fails each rule alone', () => {
+  const REG = readFileSync(join(ROOT, REGISTRY), 'utf8');
+  const LIVE_REFS = liveReferences(ROOT);
+  const rulesOf = (text, refs = LIVE_REFS) => {
+    const p = parseRegistry(text);
+    const r = checkReferences(p.rows, refs);
+    return [...new Set([...p.findings, ...r.findings].map((f) => f.rule))].sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  };
+  /** The registry with one row changed by `fn` (a row returned as null is left out of the change: see S1). */
+  const edit = (id, fn) => {
+    let hit = 0;
+    const out = REG.split('\n').map((l) => {
+      if (!l.trim()) return l;
+      const r = JSON.parse(l);
+      if (r.id !== id) return l;
+      hit += 1;
+      return JSON.stringify(fn({ ...r }));
+    }).join('\n');
+    expect(hit, `${id} is a row`).toBe(1);
+    return out;
+  };
+
+  it('the committed registry: every line is a row, and no rule finds anything', () => {
+    const lines = REG.split('\n').filter((l) => l.trim()).length;
+    const p = parseRegistry(REG);
+    expect(p.rows).toHaveLength(lines);
+    expect(lines).toBeGreaterThan(700);
+    expect(p.findings).toEqual([]);
+    expect(checkReferences(p.rows, LIVE_REFS).findings).toEqual([]);
+  });
+
+  it('the v1 registry at the triage snapshot a150a93a fails the schema rules (red first, on real data)', () => {
+    const v1 = fixtureGit(ROOT, 'show', `a150a93a:${REGISTRY}`);
+    expect(rulesOf(v1)).toEqual(expect.arrayContaining(['S0', 'S2', 'S3', 'S4', 'S5', 'S10', 'S11']));
+  });
+
+  const cases = [
+    ['S0', 'a row gains a field outside the set', () => edit('QUEUE:Q49', (r) => ({ ...r, priority: 'P1' }))],
+    ['S1', 'two rows share one id', () => `${REG}${REG.split('\n').find((l) => l.includes('"id": "QUEUE:Q49"'))}\n`],
+    ['S2', 'an open row has no kind', () => edit('QUEUE:Q49', ({ kind: _k, ...r }) => r)],
+    ['S3', 'an open row has no acceptance', () => edit('QUEUE:Q49', ({ acceptance: _a, ...r }) => r)],
+    ['S4', 'a lane closes while 14 open rows name it', () => edit('LANE:W3-D', (r) => ({ ...r, state: 'closed', resolution: 'done', closedBy: 'a150a93a', acceptance: undefined }))],
+    ['S5', "a wont-fix row's note loses its reason", () => edit('QUEUE:Q55', (r) => ({ ...r, note: 'dropped' }))],
+    ['S6', 'a closure names a sha that is not on main', () => edit('STATUS:R4', (r) => ({ ...r, closedBy: 'deadbeef' }))],
+    ['S7', 'a closure names a DECISIONS item that does not exist', () => edit('STATUS:R4', (r) => ({ ...r, closedBy: 'DECISIONS 2026-10-30 item 9999' }))],
+    ['S8', 'a duplicate points at no row', () => edit('STATUS:F1', (r) => ({ ...r, closedBy: 'duplicate:QUEUE:Q9999' }))],
+    ['S8', 'a duplicate points at a duplicate (a chain)', () => edit('STATUS:F1', (r) => ({ ...r, closedBy: 'duplicate:OPEN_ITEMS:OI-42' }))],
+    ['S9', 'a bug no player can see', () => edit('QUEUE:Q49', (r) => ({ ...r, kind: 'bug', playerVisible: false }))],
+    ['S10', 'an unrated row outside triage', () => edit('QUEUE:Q49', (r) => ({ ...r, severity: 'unrated' }))],
+    ['S11', 'a 161-character title', () => edit('QUEUE:Q49', (r) => ({ ...r, title: 'x'.repeat(161) }))],
+  ];
+  it.each(cases)('%s: %s', (rule, _what, broken) => {
+    expect(rulesOf(broken())).toEqual([rule]);
+  });
+
+  it('S10: a triage row may stay 7 days by the head commit\'s date, not the wall clock; the 8th day fails', () => {
+    const refs = { ...LIVE_REFS, headDate: '2026-12-01' };
+    const inTriage = (opened) => edit('QUEUE:Q49', (r) => ({ ...r, lane: 'LANE:triage', opened }));
+    expect(rulesOf(inTriage('2026-11-24'), refs)).toEqual([]);
+    expect(rulesOf(inTriage('2026-11-23'), refs)).toEqual(['S10']);
+  });
+
+  it('S7 resolves a reference by date, tag and number, and refuses one that is ambiguous or absent', () => {
+    const idx = decisionsIndex(['## 2026-10-28 (W1-H) — a', '1. one', 'more of one', '2. two', '## 2026-10-28 (W2-A) — b', '1. other one', '## 2026-10-29 — c', '5. five', '6. six'].join('\n'));
+    expect(resolveDecision('DECISIONS 2026-10-28 (W1-H) item 1', idx)).toMatchObject({ ok: true, items: ['1. one\nmore of one'] });
+    expect(resolveDecision('DECISIONS 2026-10-28 item 1', idx)).toMatchObject({ ok: false });
+    expect(resolveDecision('DECISIONS 2026-10-29 items 5-6', idx).ok).toBe(true);
+    expect(resolveDecision('DECISIONS 2026-10-29 items 5 and 7', idx).ok).toBe(false);
+    expect(resolveDecision('DECISIONS 2026-10-29 item 6(a)', idx).ok).toBe(true);
+  });
+
+  it('S9: a Kevin row closes done only on an item that names him', () => {
+    const decisionsText = ['## 2026-10-31 — x', '1. Kevin ran it on his iPad.', '2. The session decided it.'].join('\n');
+    const kevin = { id: 'K', state: 'closed', owner: 'Kevin', resolution: 'done', _line: 1 };
+    const refs = { isAncestor: () => true, decisionsText, headDate: '2026-10-31' };
+    expect(checkReferences([{ ...kevin, closedBy: 'DECISIONS 2026-10-31 item 1' }], refs).findings).toEqual([]);
+    expect(checkReferences([{ ...kevin, closedBy: 'DECISIONS 2026-10-31 item 2' }], refs).findings.map((f) => f.rule)).toEqual(['S9']);
+  });
+
+  it('a reference check with nothing injected throws rather than passing', () => {
+    expect(() => checkReferences([], {})).toThrow(/run blind is not a pass/);
   });
 });

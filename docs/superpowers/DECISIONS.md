@@ -19,6 +19,111 @@
 
 ---
 
+## 2026-10-31 (registry v2) — [LOOP] one list of open work, cleaned and kept clean: schema v2, lanes as rows, closed is final, and the gates that hold it
+
+Kevin, 2026-10-31: "a total review / cleanup of that registry jsonl, remember lots of these were done by inferior
+models and may have become redundant or inferior thinking / tasks ... so that we have a SOTA and future-proof single
+list from now on, make it a masterpiece." The review's record, with every count and example, is
+`docs/superpowers/plans/2026-10-31-registry-v2.md`; its design is `docs/superpowers/specs/2026-10-31-registry-v2-design.md`.
+Every row's disposition, with the command that proved it and the verifier's verdict, is
+`docs/superpowers/registry-v2-dispositions.jsonl`; `frontend/scripts/ci/registry-migrate.mjs` applies it.
+
+361. **Schema v2.** A row has at most 20 fields, a closed set: `id`, `key`, `planUnit`, `title`, `kind`, `area`,
+   `severity`, `playerVisible`, `owner`, `state`, `lane`, `acceptance`, `blockedBy`, `evidence`, `note`, `opened`,
+   `updated`, `resolution`, `closedBy`, `reopens`. Eight kinds (bug, feature, debt, instrument, flake, decision,
+   process, lane), thirteen areas, three severities plus `unrated` (only in `LANE:triage`), six resolutions (done,
+   duplicate, superseded, obsolete, wont-fix, false-positive), and a typed `closedBy` for each. An open row names its
+   lane and one checkable line of acceptance; a title is at most 160 characters and a note 1,500. `dupOf` and
+   `closedNote` are retired: a duplicate closes as `duplicate:<id>`, and a closed note joins `note`. This amends
+   2026-10-28 (W1-H) item 9 and reset-plan row 30's field list, and supersedes reset-plan section 5's generated
+   STATUS view: a committed view would conflict on every landing and go stale between refreshes, so views are
+   printed when asked (`npm run orient`, `npm run orient -- --registry <lane|kind|area|owner>`). The rules a writer
+   follows are `.claude/rules/registry.md`, which loads when the registry or its scripts are touched.
+
+362. **Lanes are rows.** A lane is a row of kind `lane`, and an open row's `lane` must be an open lane row. Four
+   standing lanes: `LANE:triage` (bulk intake, at most 7 days), `LANE:backlog`, `LANE:flakes` and `LANE:kevin`
+   (his device, ear, money, sign-ins, external sends and the decisions reserved to him). Each reset-plan lane with
+   open work has a row (`LANE:W2-M`, `LANE:W3-A` to `LANE:W3-E`, `LANE:W3-G`), and a new fix lane,
+   `LANE:L13-stuck-in-solid-remainder`, takes the eight invisible-box bugs no lane owned and their eleven gate holes.
+   Why: about 230 open rows named a lane that had already landed, and nothing noticed. A lane row now closes only when
+   no open row names it, so a lane that lands moves or closes its leftovers in the same change.
+
+363. **Closed is final.** A closed row is never reopened; a regression is a new row with `reopens: <id>`. Why: the
+   registry merges by union and `registry-dedupe.mjs` keeps the copy furthest along, so a reopen that races an edit
+   of the closed row is silently undone. A closed row may change only its closure, note, kind, area, lane and
+   acceptance.
+
+364. **The gates.** No new gate script. `registry-harvest.mjs` checks the tree in every unit run: S0 a field outside
+   the set; S1 a bad line or a repeated id; S2 a required field missing or outside its enum; S3 an open row with no
+   lane, area or acceptance, or with a closure; S4 an orphan (an open row whose lane is missing, not a lane, or
+   closed); S5 a `closedBy` that does not fit its resolution, or a missing reason sentence; S6 a sha that is not an
+   ancestor of HEAD; S7 a DECISIONS reference that is not exactly one item; S8 a dangling pointer, a duplicate chain
+   or a self-pointer; S9 a bug no player can see, a decision closed done without a DECISIONS item, or a Kevin row
+   closed outside his rules; S10 `unrated` outside triage, or a triage row older than 7 days by HEAD's committer date
+   (so a sha always gets the same verdict and main never turns red by itself); S11 a title or note over its cap.
+   `registry-append-only.mjs` checks the change, on push and in CI: R1 a row deleted; R2 a closed row reopened; R3 a
+   row whose text changed while its `updated` did not move; R4 a v2 row closed at the base changing anything but its
+   closure, note, kind, area, lane or acceptance. Advisory, and said so: whether an acceptance is really checkable,
+   whether a sha fixed what its row says (S6 proves ancestry, not relevance), whether an item says what the row
+   claims (S7 proves it exists), a wrong kind or area, and a backlog row not updated in 60 days, which orient lists
+   and nothing closes, since closing on age is closing on an assumption.
+
+365. **The rubric's amendments**, found where its rules met real rows:
+   1. **R4 binds only rows that were v2 at the base** (they carry `kind`). The rubric froze a closed row's title and
+      also capped every title at 160 characters, and 113 closed titles at the snapshot were longer (the longest 619,
+      `STATUS:G-ledger:20`): the S11-against-R4 conflict the review-a verifier found. So the one migration commit retitles and rates the v1 closed rows once;
+      after it, a closed row's title and severity are frozen.
+   2. **`done` accepts `PR #N`** when the row's whole task was to close that PR (QUEUE:Q01, Q05; OPEN_ITEMS:OI-04, OI-05).
+   3. **A reason is a sentence anywhere in the note** ("Won't fix:", "False positive:", "Obsolete:"), not its
+      opening, since a reason appended to a row that already had a note could never pass.
+   4. **A lane row carries no `lane`,** and its severity is the highest of its open rows, set when it is written.
+   5. **One placeholder for this entry's item:** the 57 closures that cite item 366 were written against a
+      placeholder, and the migration refuses to run without the real reference.
+   6. **R3 allows a second edit on the same day.** `updated` is a date, so a row edited twice in a day keeps it. R3
+      fails when the text changed and `updated` moved backwards, or did not move while it is more than a day older
+      than the head commit's date. The literal rule ("the same `updated` at both ends") would fail every same-day
+      re-run of this migration.
+   7. **A split part may be a slug** (`MASTERPIECE:ember-against-the-dark-the/sun-glow-fog`), not only letters and
+      digits, since the triage names its parts in words.
+   8. **Rows added after the snapshot get their v2 fields from a landing file**,
+      `docs/superpowers/registry-v2-landing.jsonl`, applied on top of the merge, which also shortens the notes and the
+      title that lane L10 lengthened past the caps after the snapshot.
+
+366. **What this triage decided, the item its own closures cite.** Kevin's rows were closed only as duplicates of his
+   other rows; every other closure cites a commit, a row or an earlier item, except these 57, which cite this item,
+   each with its own reason in its note (49 won't-fix, 4 false-positive, 3 done, 1 superseded):
+   - harness and debt LOWs are dropped under reset-plan section 5 when they guard no MED or HIGH player class;
+   - nothing is owed to pre-Cut stat builds beyond the refund every rank already gets back as a point;
+   - the mobKillBus typed wrappers stay: their names document the event's shape for three callers;
+   - a terrain face's look gets no running-world check: every look change already shoots eye-level lookbook frames;
+   - Soulbind factions and Elemancer terrain chemistry are dropped: kit depth ships as talent modifier nodes
+     (2026-10-29 (W2-F step 4) item 44);
+   - WebGPU and TSL stay "not now", the 2026-10-27 call, made citable here: a pipeline rewrite for a non-bottleneck;
+   - 2026-10-28 (W1-H) item 9 is narrowed to what the harvest proves: every item its extraction rules find has a row,
+     and nothing wider;
+   - W2-C's owed deploy proof is measured: all 48 Production deployments since the lane landed have a green `ci ok`
+     on their sha, measured twice, the second time independently;
+   - the accretion ratchet of `docs/superpowers/specs/crafty-coherence-pillars.md` is not built (QUEUE:Q42): an
+     advisory script for a harness the reset plan shrinks; knip in both modes already runs in CI.
+
+367. **The counts,** on main `61696120`. Before: 770 rows, 440 open (16 HIGH, 88 MED, 318 LOW, 18 unrated; 16
+   Kevin's), 330 closed, no row with a kind or a lane, 44 known duplicates still open, 44 closed rows with no
+   resolution, titles up to 843 characters. After: 802 rows (32 new, none deleted), 282 open, 267 of them work rows
+   (6 HIGH, 49 MED, 212 LOW; 62 bugs, 39 features, 86 instruments, 35 debt, 30 flakes, 8 decisions, 7 process; 15
+   Kevin's) in 15 lane rows; 520 closed (293 done, 89 superseded, 55 duplicate, 53 wont-fix, 26 obsolete, 4
+   false-positive); no orphan, no unrated row, titles at most 160 characters. Independent verifiers re-checked 496
+   rows of the triage: 393 upheld, 92 adjusted, 11 refuted, and every refuted closure is open again or closed the way
+   the verifier proposed and checked.
+
+368. **The migration is a script, reproducible from the repo.** `registry-migrate.mjs` reads the registry at the
+   snapshot `a150a93a`, the triage's dispositions and the landing file, and merges three ways keyed by id: a field a
+   lane changed since the snapshot keeps the lane's value, a row a lane closed keeps the lane's closure, and every
+   other field takes the triage's. It never deletes a row, keeps file order, appends the new rows, and a second run
+   changes no byte; on the snapshot it writes exactly the triage's emulated registry. Lanes L8 (PR #73) and L12
+   (PR #71) edit rows and land first; the migration is re-run on main after each lands, in its own commit. The old
+   sources (STATUS section 2, QUEUE, OPEN-ITEMS, the masterpiece tables) retire next, under reset-plan row 32, which
+   deletes the harvest's extraction half and `registry-floors.json`.
+
 ## 2026-10-31 — [LOOP] lane L10: Apple audio comes back after iOS stops it, and the soundtrack goes through Web Audio
 
 Lane L10 of the 2026-10-30 deep audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4), PR #70. It

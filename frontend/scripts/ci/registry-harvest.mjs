@@ -39,6 +39,7 @@
  *   node scripts/ci/registry-harvest.mjs          check; prints each source's denominator and floor
  *   node scripts/ci/registry-harvest.mjs --list   print every extracted item (key, line, title) as TSV
  */
+import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,14 +49,49 @@ export const ROOT = resolve(HERE, '../../..');
 export const REGISTRY = 'memory/registry.jsonl';
 export const FLOORS_FILE = join(HERE, 'registry-floors.json');
 
+export const DECISIONS = 'docs/superpowers/DECISIONS.md';
+
+// Schema v2 (DECISIONS 2026-10-31 (registry v2) items 361-368; `.claude/rules/registry.md` says it in plain words).
+// The field set is closed, in this order, which is also the order a row's keys are written in (registry-migrate.mjs).
+export const V2_FIELDS = Object.freeze([
+  'id', 'key', 'planUnit', 'title', 'kind', 'area', 'severity', 'playerVisible', 'owner', 'state', 'lane', 'acceptance',
+  'blockedBy', 'evidence', 'note', 'opened', 'updated', 'resolution', 'closedBy', 'reopens',
+]);
+export const KINDS = Object.freeze(['bug', 'feature', 'debt', 'instrument', 'flake', 'decision', 'process', 'lane']);
+export const AREAS = Object.freeze([
+  'combat', 'world', 'physics', 'input', 'render', 'audio', 'ui', 'save', 'progression', 'perf', 'harness', 'docs', 'public',
+]);
 export const OWNERS = Object.freeze(['command session', 'Kevin', 'AB Command']);
 export const STATES = Object.freeze(['open', 'in-flight', 'closed']);
 export const SEVERITIES = Object.freeze(['HIGH', 'MED', 'LOW', 'unrated']);
-// The reset plan's schema (sota-reset.md, the registry row): {id, title, playerVisible, severity, owner, state,
-// evidence, opened, closedBy}, plus the harvest key and the plan unit. closedBy is required only on a closed row.
-const REQUIRED_FIELDS = Object.freeze(['id', 'key', 'title', 'playerVisible', 'severity', 'owner', 'state', 'evidence', 'opened', 'planUnit']);
+export const RESOLUTIONS = Object.freeze(['done', 'duplicate', 'superseded', 'obsolete', 'wont-fix', 'false-positive']);
+/** The forms a `closedBy` may take, and which forms each resolution accepts. */
+export const CLOSED_BY = Object.freeze({
+  commits: /^[0-9a-f]{7,40}(, [0-9a-f]{7,40})*$/,
+  decision: /^DECISIONS \d{4}-\d{2}-\d{2}( \([^)]+\))? items? \d+[a-z]?(\([a-z]\))?((, | and |-)\d+[a-z]?(\([a-z]\))?)*$/,
+  duplicate: /^duplicate:[^,\s]+$/,
+  superseded: /^superseded:[^,\s]+(,[^,\s]+)*$/,
+  pr: /^PR #\d+$/,
+});
+export const FORMS_BY_RESOLUTION = Object.freeze({
+  done: ['commits', 'decision', 'pr'],
+  duplicate: ['duplicate'],
+  superseded: ['superseded', 'decision', 'commits'],
+  obsolete: ['commits', 'decision'],
+  'wont-fix': ['decision', 'pr'],
+  'false-positive': ['decision'],
+});
+export const TITLE_MAX = 160;
+export const NOTE_MAX = 1500;
+export const ACCEPTANCE_MIN = 20;
+export const ACCEPTANCE_MAX = 240;
+export const TRIAGE_LANE = 'LANE:triage';
+export const TRIAGE_DAYS = 7;
+const REQUIRED_FIELDS = Object.freeze(['id', 'key', 'planUnit', 'title', 'kind', 'severity', 'playerVisible', 'owner', 'state', 'evidence', 'opened', 'updated']);
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const PART = /^[a-z0-9]+$/;
+// A part is a slug: the triage's split rows name theirs in words (`/sun-glow-fog`), not only a letter.
+const PART = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const LIVE = new Set(['open', 'in-flight']);
 
 /** The words of a line, lower-cased, markup and tags removed, joined by '-'. */
 export function slug(text, words = 5) {
@@ -276,38 +312,283 @@ export const SOURCES = Object.freeze([
   { name: 'MASTERPIECE', path: 'docs/superpowers/plans/2026-10-27-crafty-masterpiece.md', extract: extractMasterpiece },
 ]);
 
-/** Parse the registry, one JSON object per line; a bad line or a missing field is an error, not a skip. */
+/** A finding's printed form: the rule first, so a reader can count by rule. */
+const said = (f) => `${f.rule} ${REGISTRY}:${f.line}${f.id === undefined ? '' : ` (${f.id})`}: ${f.text}`;
+
+/** The form of a closedBy, or null when it fits none. */
+export function closedByForm(closedBy) {
+  return Object.keys(CLOSED_BY).find((form) => CLOSED_BY[form].test(String(closedBy ?? ''))) ?? null;
+}
+
+/** Ids a closure points at: the targets of `duplicate:<id>` and `superseded:<id>[,<id>...]`, else none. */
+function closureTargets(closedBy) {
+  const m = String(closedBy ?? '').match(/^(duplicate|superseded):(.+)$/);
+  return m ? { kind: m[1], ids: m[2].split(',') } : { kind: null, ids: [] };
+}
+
+/** One row's own checks: everything that needs no other row, no git and no DECISIONS. */
+function rowFindings(row, add) {
+  const unknown = Object.keys(row).filter((k) => !V2_FIELDS.includes(k));
+  if (unknown.length) add('S0', `unknown field(s) ${unknown.join(', ')}; the v2 field set is closed (.claude/rules/registry.md)`);
+
+  const missing = REQUIRED_FIELDS.filter((f) => !Object.hasOwn(row, f) || row[f] === '' || row[f] === null);
+  if (missing.length) add('S2', `missing ${missing.join(', ')}`);
+  const enums = [['kind', KINDS], ['area', AREAS], ['severity', SEVERITIES], ['owner', OWNERS], ['state', STATES]];
+  for (const [f, values] of enums) {
+    if (row[f] !== undefined && row[f] !== null && !values.includes(row[f])) add('S2', `${f} "${row[f]}" is not one of ${values.join(' / ')}`);
+  }
+  if (row.playerVisible !== undefined && typeof row.playerVisible !== 'boolean') add('S2', 'playerVisible must be true or false');
+  for (const f of ['opened', 'updated']) {
+    if (row[f] && !DATE.test(row[f])) add('S2', `${f} "${row[f]}" is not a YYYY-MM-DD date`);
+  }
+  if (row.blockedBy !== undefined && !(Array.isArray(row.blockedBy) && row.blockedBy.length && row.blockedBy.every((b) => typeof b === 'string' && b))) {
+    add('S2', 'blockedBy must be a list of row ids');
+  }
+  if (row.reopens !== undefined && !(typeof row.reopens === 'string' && row.reopens)) add('S2', 'reopens must be one row id');
+  if (row.id && row.key && row.id !== row.key && !(row.id.startsWith(`${row.key}/`) && PART.test(row.id.slice(row.key.length + 1)))) {
+    add('S2', `id is neither its key "${row.key}" nor "${row.key}/<part>"`);
+  }
+
+  if (LIVE.has(row.state)) {
+    if (row.kind === 'lane' && row.lane !== undefined) add('S3', 'a lane row carries no lane of its own');
+    if (row.kind !== 'lane' && !row.lane) add('S3', `an ${row.state} row needs a lane (a row of kind lane; standing lanes: LANE:backlog, LANE:flakes, LANE:kevin, ${TRIAGE_LANE})`);
+    if (!row.area) add('S3', `an ${row.state} row needs an area`);
+    const a = row.acceptance;
+    if (typeof a !== 'string' || a.length < ACCEPTANCE_MIN || a.length > ACCEPTANCE_MAX || a === row.title) {
+      add('S3', `acceptance must be one line of ${ACCEPTANCE_MIN} to ${ACCEPTANCE_MAX} characters naming the check that makes it done, not the title (it is ${typeof a === 'string' ? `${a.length} characters${a === row.title ? ', the title' : ''}` : 'missing'})`);
+    }
+    if (row.resolution !== undefined || row.closedBy !== undefined) add('S3', `an ${row.state} row carries a closure (resolution or closedBy)`);
+  }
+
+  if (row.state === 'closed') {
+    const res = row.resolution;
+    const form = closedByForm(row.closedBy);
+    if (!RESOLUTIONS.includes(res)) add('S5', `closed with resolution ${res === undefined ? '(none)' : `"${res}"`}; one of ${RESOLUTIONS.join(' / ')}`);
+    else if (!row.closedBy) add('S5', `closed ${res} with no closedBy`);
+    else if (!FORMS_BY_RESOLUTION[res].includes(form)) add('S5', `closedBy "${row.closedBy}" is not a form a ${res} closure takes (${FORMS_BY_RESOLUTION[res].join(', ')})`);
+    const note = row.note ?? '';
+    if (res === 'wont-fix' && !/Won't fix: .{40,}/.test(note)) add('S5', 'a wont-fix closure needs the sentence "Won\'t fix: <a reason of at least 40 characters>" in its note');
+    if (res === 'false-positive' && !(/False positive: /.test(note) && note.includes('`'))) add('S5', 'a false-positive closure needs "False positive: " in its note with the backticked command that shows it');
+    if (res === 'obsolete' && form === 'decision' && !/Obsolete: /.test(note)) add('S5', 'an obsolete closure on a decision needs the sentence "Obsolete: <the grep that finds nothing>" in its note');
+  }
+
+  if (row.kind === 'bug' && row.playerVisible !== true) add('S9', 'a bug is something a player sees; playerVisible must be true (else it is debt or an instrument)');
+  if (row.kind === 'decision' && row.state === 'closed' && row.resolution === 'done' && closedByForm(row.closedBy) !== 'decision') {
+    add('S9', 'a decision closes done only on a DECISIONS item');
+  }
+  if (row.owner === 'Kevin' && row.state === 'closed' && !['duplicate', 'done', 'superseded'].includes(row.resolution)) {
+    add('S9', `a Kevin row closes only as a duplicate of another Kevin row, or done or superseded on a DECISIONS item that records him (not ${row.resolution})`);
+  }
+  if (row.owner === 'Kevin' && row.state === 'closed' && ['done', 'superseded'].includes(row.resolution) && closedByForm(row.closedBy) !== 'decision') {
+    add('S9', `a Kevin row closes ${row.resolution} only on a DECISIONS item that records him, never on inference`);
+  }
+
+  if (row.severity === 'unrated' && !(LIVE.has(row.state) && row.lane === TRIAGE_LANE)) add('S10', `severity unrated outside ${TRIAGE_LANE}`);
+
+  if (typeof row.title === 'string' && row.title.length > TITLE_MAX) add('S11', `title is ${row.title.length} characters, over ${TITLE_MAX}; detail goes in note`);
+  if (typeof row.note === 'string' && row.note.length > NOTE_MAX) add('S11', `note is ${row.note.length} characters, over ${NOTE_MAX}`);
+}
+
+/** The checks that read other rows: the orphan check (S4) and the pointers (S8, and S9's Kevin duplicate). */
+function crossFindings(rows, findings) {
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  for (const r of rows) {
+    const add = (rule, text) => findings.push({ rule, line: r._line, id: r.id, text });
+    if (LIVE.has(r.state) && r.kind !== 'lane') {
+      const lane = r.lane ? byId.get(r.lane) : undefined;
+      if (!r.lane) add('S4', 'an orphan: it names no lane, so no lane owns it');
+      else if (!lane) add('S4', `lane "${r.lane}" is not a row`);
+      else if (lane.kind !== 'lane') add('S4', `lane "${r.lane}" is a ${lane.kind ?? 'kindless'} row, not a lane`);
+      else if (lane.state === 'closed') add('S4', `lane "${r.lane}" is closed: a lane lands only when every open row naming it has moved or closed`);
+      else if (r.state === 'in-flight' && lane.state !== 'in-flight') add('S4', `an in-flight row's lane must be in flight; "${r.lane}" is ${lane.state}`);
+    }
+    if (r.state === 'closed') {
+      const t = closureTargets(r.closedBy);
+      for (const id of t.ids) {
+        const target = byId.get(id);
+        if (!target) add('S8', `${t.kind}:${id} names no row`);
+        else if (id === r.id) add('S8', `${t.kind}: points at the row itself`);
+        else if (t.kind === 'duplicate' && target.state === 'closed' && target.resolution === 'duplicate') {
+          add('S8', `duplicate:${id} is itself closed as a duplicate; point at its root (${target.closedBy})`);
+        }
+      }
+      if (r.owner === 'Kevin' && r.resolution === 'duplicate' && t.kind === 'duplicate' && byId.get(t.ids[0]) && byId.get(t.ids[0]).owner !== 'Kevin') {
+        add('S9', `a Kevin row closes as a duplicate only of another Kevin row; ${t.ids[0]} is owned by ${byId.get(t.ids[0]).owner}`);
+      }
+    }
+    for (const b of Array.isArray(r.blockedBy) ? r.blockedBy : []) {
+      if (!byId.has(b)) add('S8', `blockedBy ${b} names no row`);
+      else if (b === r.id) add('S8', 'blockedBy names the row itself');
+    }
+    if (typeof r.reopens === 'string') {
+      const target = byId.get(r.reopens);
+      if (!target) add('S8', `reopens ${r.reopens} names no row`);
+      else if (target.state !== 'closed') add('S8', `reopens ${r.reopens}, which is not closed (a regression is a new row of a closed one)`);
+    }
+  }
+}
+
+/**
+ * Parse the registry, one JSON object per line, and run every rule that needs nothing outside the file (S0-S5, S8,
+ * S9's pure half, S10's unrated rule, S11). A bad line or a missing field is a finding, never a skip.
+ * @returns {{rows: object[], errors: string[], findings: {rule: string, line: number, id?: string, text: string}[]}}
+ */
 export function parseRegistry(text) {
   const rows = [];
-  const errors = [];
+  const findings = [];
   text.split('\n').forEach((line, i) => {
     if (!line.trim()) return;
     let row;
     try {
       row = JSON.parse(line);
     } catch {
-      errors.push(`${REGISTRY}:${i + 1}: not a JSON object`);
+      findings.push({ rule: 'S1', line: i + 1, text: 'not a JSON object' });
       return;
     }
-    const missing = REQUIRED_FIELDS.filter((f) => !Object.hasOwn(row, f) || row[f] === '' || row[f] === null);
-    if (missing.length) errors.push(`${REGISTRY}:${i + 1} (${row.id ?? '?'}): missing ${missing.join(', ')}`);
-    if (row.owner && !OWNERS.includes(row.owner)) errors.push(`${REGISTRY}:${i + 1} (${row.id}): owner "${row.owner}" is not one of ${OWNERS.join(' / ')}`);
-    if (row.state && !STATES.includes(row.state)) errors.push(`${REGISTRY}:${i + 1} (${row.id}): state "${row.state}" is not one of ${STATES.join(' / ')}`);
-    if (row.severity && !SEVERITIES.includes(row.severity)) errors.push(`${REGISTRY}:${i + 1} (${row.id}): severity "${row.severity}" is not one of ${SEVERITIES.join(' / ')}`);
-    if (row.state === 'closed' && !row.closedBy) errors.push(`${REGISTRY}:${i + 1} (${row.id}): closed with no closedBy (the commit, decision or document that closed it)`);
-    if (row.opened && !DATE.test(row.opened)) errors.push(`${REGISTRY}:${i + 1} (${row.id}): opened "${row.opened}" is not a YYYY-MM-DD date`);
-    if (row.id && row.key && row.id !== row.key && !(row.id.startsWith(`${row.key}/`) && PART.test(row.id.slice(row.key.length + 1)))) {
-      errors.push(`${REGISTRY}:${i + 1} (${row.id}): id is neither its key "${row.key}" nor "${row.key}/<part>"`);
+    if (!row || typeof row !== 'object' || Array.isArray(row) || typeof row.id !== 'string' || !row.id) {
+      findings.push({ rule: 'S1', line: i + 1, text: 'not a JSON object with a string id' });
+      return;
     }
-    if (row.playerVisible !== undefined && typeof row.playerVisible !== 'boolean') errors.push(`${REGISTRY}:${i + 1} (${row.id}): playerVisible must be true or false`);
+    rowFindings(row, (rule, t) => findings.push({ rule, line: i + 1, id: row.id, text: t }));
     rows.push({ ...row, _line: i + 1 });
   });
   const ids = new Map();
   for (const r of rows) {
-    if (ids.has(r.id)) errors.push(`${REGISTRY}:${r._line}: id "${r.id}" repeats line ${ids.get(r.id)}`);
+    if (ids.has(r.id)) findings.push({ rule: 'S1', line: r._line, text: `id "${r.id}" repeats line ${ids.get(r.id)}` });
     else ids.set(r.id, r._line);
   }
-  return { rows, errors };
+  crossFindings(rows, findings);
+  findings.sort((a, b) => a.line - b.line || a.rule.localeCompare(b.rule, 'en', { numeric: true }));
+  return { rows, findings, errors: findings.map(said) };
+}
+
+/**
+ * PURE. The DECISIONS record as entries: a `## YYYY-MM-DD...` heading, and the items in it, an item being a line
+ * that opens `N. `. Each item keeps its text (to the next item or heading), so a check can read what it says.
+ */
+export function decisionsIndex(text) {
+  const entries = [];
+  let entry = null;
+  let item = null;
+  for (const line of String(text).split('\n')) {
+    const h = line.match(/^## (\d{4}-\d{2}-\d{2})(.*)$/);
+    if (h) {
+      entry = { date: h[1], heading: line.trim(), items: new Map() };
+      entries.push(entry);
+      item = null;
+      continue;
+    }
+    if (!entry) continue;
+    const m = line.match(/^(\d+)\. /);
+    if (m) {
+      const n = Number(m[1]);
+      item = { text: line };
+      if (!entry.items.has(n)) entry.items.set(n, []);
+      entry.items.get(n).push(item);
+    } else if (item) item.text += `\n${line}`;
+  }
+  return entries;
+}
+
+/**
+ * PURE. Resolve `DECISIONS <date> [(<tag>)] item[s] <n>[, <n>| and <n>|-<n>]...` against the index. Every number
+ * must be exactly one item across the entries of that date (whose heading contains the tag, when one is given).
+ * @returns {{ok: boolean, why: string, items: string[]}}
+ */
+export function resolveDecision(ref, entries) {
+  const m = String(ref).match(/^DECISIONS (\d{4}-\d{2}-\d{2})(?: \(([^)]+)\))? items? (.+)$/);
+  if (!m) return { ok: false, why: 'not a DECISIONS reference', items: [] };
+  const [, date, tag, list] = m;
+  const numbers = [];
+  for (const part of list.split(/, | and /)) {
+    const r = part.match(/^(\d+)[a-z]?(?:\([a-z]\))?(?:-(\d+)[a-z]?(?:\([a-z]\))?)?$/);
+    if (!r) return { ok: false, why: `"${part}" is not an item number`, items: [] };
+    const lo = Number(r[1]);
+    const hi = r[2] === undefined ? lo : Number(r[2]);
+    if (hi < lo || hi - lo > 50) return { ok: false, why: `"${part}" is not a range of items`, items: [] };
+    for (let n = lo; n <= hi; n += 1) numbers.push(n);
+  }
+  const candidates = entries.filter((e) => e.date === date && (!tag || e.heading.includes(tag)));
+  const items = [];
+  for (const n of numbers) {
+    const hits = candidates.flatMap((e) => e.items.get(n) ?? []);
+    if (hits.length !== 1) {
+      return { ok: false, why: `item ${n} is in ${hits.length} place(s) across the ${candidates.length} entr${candidates.length === 1 ? 'y' : 'ies'} dated ${date}${tag ? ` tagged "${tag}"` : ''}${hits.length > 1 ? '; name the entry by its tag' : ''}`, items: [] };
+    }
+    items.push(hits[0].text);
+  }
+  return { ok: true, why: 'ok', items };
+}
+
+/** A YYYY-MM-DD date as a day count, for differences in whole days. */
+export const dayNumber = (date) => Math.round(Date.parse(`${date}T00:00:00Z`) / 86_400_000);
+
+/** Deep equality of parsed JSON values; key order does not matter, array order does. */
+export function deepEqual(a, b) {
+  if (a === b) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a);
+  const kb = Object.keys(b);
+  return ka.length === kb.length && ka.every((k) => Object.hasOwn(b, k) && deepEqual(a[k], b[k]));
+}
+
+/**
+ * The rules that read outside the file, each dependency injected so a test can fix it: S6 (a commit sha in closedBy is
+ * an ancestor of HEAD), S7 (a DECISIONS reference is exactly one item), S9's Kevin half (the item names him) and S10's
+ * clock (no LANE:triage row older than TRIAGE_DAYS by HEAD's committer date, so a sha always gets the same verdict).
+ * @param {object[]} rows parsed rows (each with _line)
+ * @param {{isAncestor: (sha: string) => boolean, decisionsText: string, headDate: string}} refs
+ */
+export function checkReferences(rows, { isAncestor, decisionsText, headDate } = {}) {
+  if (typeof isAncestor !== 'function' || typeof decisionsText !== 'string' || !DATE.test(String(headDate))) {
+    throw new Error('checkReferences needs isAncestor, decisionsText and a YYYY-MM-DD headDate: a reference check run blind is not a pass');
+  }
+  const entries = decisionsIndex(decisionsText);
+  const findings = [];
+  const today = dayNumber(headDate);
+  for (const r of rows) {
+    const add = (rule, text) => findings.push({ rule, line: r._line, id: r.id, text });
+    if (r.state === 'closed') {
+      const form = closedByForm(r.closedBy);
+      if (form === 'commits') {
+        for (const sha of r.closedBy.split(', ')) if (!isAncestor(sha)) add('S6', `closedBy ${sha} is not an ancestor of HEAD`);
+      }
+      if (form === 'decision') {
+        const d = resolveDecision(r.closedBy, entries);
+        if (!d.ok) add('S7', `"${r.closedBy}" does not resolve to exactly one item: ${d.why}`);
+        else if (r.owner === 'Kevin' && ['done', 'superseded'].includes(r.resolution) && !d.items.some((t) => /\bKevin\b/.test(t))) {
+          add('S9', `a Kevin row closes ${r.resolution} only on an item that records him; "${r.closedBy}" does not name Kevin`);
+        }
+      }
+    }
+    if (LIVE.has(r.state) && r.lane === TRIAGE_LANE && DATE.test(String(r.opened)) && today - dayNumber(r.opened) > TRIAGE_DAYS) {
+      add('S10', `in ${TRIAGE_LANE} since ${r.opened}, ${today - dayNumber(r.opened)} days before HEAD's ${headDate}; give it a kind, severity, lane and acceptance`);
+    }
+  }
+  return { findings, errors: findings.map(said) };
+}
+
+/** isAncestor, DECISIONS and HEAD's committer date read from the git checkout at `root`. */
+export function liveReferences(root = ROOT) {
+  // A hook's GIT_DIR must not choose the repository: `root` does.
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+  const git = (args) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', env, maxBuffer: 256 << 20, stdio: ['ignore', 'pipe', 'pipe'] });
+  // One rev-list instead of a merge-base per sha: the set of commits HEAD reaches is what --is-ancestor asks about.
+  const reachable = new Map();
+  for (const sha of git(['rev-list', 'HEAD']).split('\n')) {
+    if (!sha) continue;
+    const k = sha.slice(0, 7);
+    if (!reachable.has(k)) reachable.set(k, []);
+    reachable.get(k).push(sha);
+  }
+  const shallow = git(['rev-parse', '--is-shallow-repository']).trim() === 'true';
+  return {
+    isAncestor: (sha) => !shallow && (reachable.get(sha.slice(0, 7)) ?? []).filter((full) => full.startsWith(sha)).length === 1,
+    decisionsText: readFileSync(join(root, DECISIONS), 'utf8'),
+    headDate: git(['show', '-s', '--format=%cs', 'HEAD']).trim(),
+    shallow,
+  };
 }
 
 /**
@@ -353,7 +634,7 @@ export function readFloors(text) {
  * `floorsText` is the floors file's text; it is read beside this script, not under `root`, so a fixture tree tests the
  * committed floors.
  */
-export function harvest(root = ROOT, floorsText = readFileSync(FLOORS_FILE, 'utf8')) {
+export function harvest(root = ROOT, floorsText = readFileSync(FLOORS_FILE, 'utf8'), references = liveReferences(ROOT)) {
   const errors = [];
   const { floors, errors: floorErrors } = readFloors(floorsText);
   errors.push(...floorErrors);
@@ -376,13 +657,23 @@ export function harvest(root = ROOT, floorsText = readFileSync(FLOORS_FILE, 'utf
     return { ...s, floor, items };
   });
   const regAbs = join(root, REGISTRY);
-  const { rows, errors: regErrors } = existsSync(regAbs) ? parseRegistry(readFileSync(regAbs, 'utf8')) : { rows: [], errors: [`${REGISTRY}: missing`] };
-  errors.push(...regErrors);
+  const parsed = existsSync(regAbs) ? parseRegistry(readFileSync(regAbs, 'utf8')) : { rows: [], findings: [], errors: [`${REGISTRY}: missing`] };
+  const { rows } = parsed;
+  const refs = checkReferences(rows, references);
+  const findings = [...parsed.findings, ...refs.findings];
+  errors.push(...parsed.errors, ...refs.errors);
   const result = compare(extracted, rows);
   for (const s of result.perSource) {
     for (const m of s.missing) errors.push(`${s.path}:${m.line}: open item "${m.key}" has no row in ${REGISTRY} (${m.title.slice(0, 90)})`);
   }
-  return { extracted, rows, errors, ...result };
+  return { extracted, rows, findings, errors, ...result };
+}
+
+/** Findings counted by rule, in rule order: the line a reader reads first. */
+export function countByRule(findings) {
+  const counts = {};
+  for (const f of findings) counts[f.rule] = (counts[f.rule] ?? 0) + 1;
+  return Object.fromEntries(Object.entries(counts).sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true })));
 }
 
 function main() {
@@ -396,6 +687,8 @@ function main() {
     console.log(`  ${s.name.padEnd(12)} ${String(s.total).padStart(4)} items extracted (floor ${s.floor ?? 'none'}) from ${s.path}; ${s.missing.length} missing from the registry`);
   }
   console.log(`  registry     ${r.rows.length} rows: ${byState('open')} open, ${byState('in-flight')} in flight, ${byState('closed')} closed; ${r.unextracted.length} not produced by the rules (harvested by reading)`);
+  const byRule = countByRule(r.findings);
+  console.log(`  schema v2    ${r.rows.length} rows checked by S0-S11: ${r.findings.length ? Object.entries(byRule).map(([k, n]) => `${k} ${n}`).join(', ') : 'no findings'}`);
   if (r.errors.length) {
     console.error(`\n✖ registry-harvest: ${r.errors.length} problem(s)`);
     for (const e of r.errors) console.error(`  • ${e}`);
@@ -404,7 +697,7 @@ function main() {
     process.exit(1);
   }
   const total = r.perSource.reduce((a, s) => a + s.total, 0);
-  console.log(`✓ registry-harvest: all ${total} extracted items from ${r.perSource.length} sources have a registry row, and no source is below its floor`);
+  console.log(`✓ registry-harvest: all ${total} extracted items from ${r.perSource.length} sources have a registry row, no source is below its floor, and all ${r.rows.length} rows pass schema v2`);
 }
 
 if (import.meta.main) main();
