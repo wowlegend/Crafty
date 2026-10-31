@@ -20,7 +20,6 @@ import { fileURLToPath } from 'node:url';
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '../../src');
 
 const CALL = /gameState\.([A-Za-z_$][\w$]*)\s*\(/g;
-const ANY_USE = /gameState\.([A-Za-z_$][\w$]*)/g;
 /** A file that builds its OWN slice is not a consumer of the HUD slice, whatever it calls its variable. */
 const OWN_SLICE = /const\s+gameState\s*=/;
 
@@ -55,17 +54,4 @@ export function handlersCalledOnHudSlice() {
     for (const n of found) names.add(n);
   }
   return { names: [...names].sort(), files };
-}
-
-/**
- * Every `gameState.X` MENTION anywhere in src, called or merely passed by reference.
- * `onWorldLoad={gameState.loadWorldData}` is a use; requiring the open paren reported that key as fiction.
- */
-export function everyGameStateUse() {
-  const names = new Set();
-  for (const f of srcFiles()) {
-    if (f.endsWith('hudState.js')) continue;
-    for (const m of readFileSync(f, 'utf8').matchAll(ANY_USE)) names.add(m[1]);
-  }
-  return [...names].sort();
 }
