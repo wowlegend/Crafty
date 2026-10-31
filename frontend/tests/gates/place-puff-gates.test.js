@@ -13,12 +13,14 @@ import { placeAtHit } from '../../src/world/placeAtHit.js';
 //
 // Mutation-Proof: see the commit trailer (the spark call removed; the colour taken from a fixed constant).
 const hit = () => ({ hitPoint: new THREE.Vector3(4.5, 30, 4.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0) });
+/** The worker's answer to the placement's batched edit (world/cellEdits.js): every cell filled, or none. */
+const worker = (fills = true) => ({ editCells: (edit, done) => done(fills ? edit.cells.map((_, i) => i) : []) });
 
 beforeEach(() => useGameStore.setState(useGameStore.getInitialState(), true));
 afterEach(() => useGameStore.setState(useGameStore.getInitialState(), true));
 
 describe('block-place puff is wired', () => {
-  it('a placement fires one GPU-spark puff, at the placed cell, in the placed block\'s colour', () => {
+  it('a placement fires one GPU-spark puff, at the placed cell, in the placed block\'s colour', async () => {
     const sparks = [];
     for (const block of ['sand', 'stone', 'glass']) {
       useGameStore.setState((s) => ({
@@ -26,7 +28,7 @@ describe('block-place puff is wired', () => {
         inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, [block]: 1 } },
         triggerGPUSparks: (pos, colour, count) => sparks.push({ block, colour, count, y: Math.floor(pos.y) }),
       }));
-      expect(placeAtHit(hit(), { post: () => {} }), `SETUP: the ${block} placement placed nothing`).toBe(1);
+      expect(await placeAtHit(hit(), worker()), `SETUP: the ${block} placement placed nothing`).toBe(1);
     }
     // Three blocks with three different colours: a fixed colour cannot satisfy all three.
     expect(sparks, 'each placement must puff once, in its own block colour, at the placed cell').toEqual([
@@ -37,14 +39,17 @@ describe('block-place puff is wired', () => {
     expect(new Set(sparks.map((s) => s.colour)).size, 'SETUP: the sampled blocks share a colour').toBe(3);
   });
 
-  it('a refused placement makes no puff', () => {
+  it('a refused placement makes no puff, nor one the worker filled nothing for', async () => {
     const sparks = [];
     useGameStore.setState((s) => ({
       selectedBlock: 'sand', inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, sand: 0 } },
-      triggerGPUSparks: () => sparks.push(1),
+      triggerGPUSparks: () => sparks.push(1), addNotification: () => {},
     }));
-    expect(placeAtHit(hit(), { post: () => {} })).toBe(0);
+    expect(await placeAtHit(hit(), worker())).toBe(0);
     expect(sparks, 'an empty stack still puffed').toEqual([]);
+    useGameStore.setState((s) => ({ inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, sand: 1 } } }));
+    expect(await placeAtHit(hit(), worker(false))).toBe(0);
+    expect(sparks, 'a placement into a cell that held a block still puffed').toEqual([]);
   });
 
   it('every BLOCK_TYPES entry has a hex color the puff can use', () => {

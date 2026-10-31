@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import { BEAST_FORMS } from '../../../src/game/beasts.js';
 import {
-  makeSession, tick, lookDir, buildRay, rightClick, leftClick, enterForm, exitForm, voidFall, writeSave, loadSave,
+  makeSession, tick, lookDir, buildRay, rightClick, leftClick, deleteClick, enterForm, exitForm, voidFall, writeSave, loadSave,
   checkEscape, finishSession, mulberry32, clipInto, wholeInRock, CLIP_RECOVERY_FRAMES, FIELD_CAVE, LAND_TOP,
 } from './harness.js';
 
@@ -69,7 +69,10 @@ function randomLeft(S, rnd, yaw) {
   if (r < 0.3) h = buildRay(S, lookDir(rnd() * 6.283, -1.55));
   else if (r < 0.55) { const w = nearestWall(S); h = buildRay(S, lookDir(w ? w.yaw : yaw, (rnd() - 0.5) * 0.8)); }
   else h = buildRay(S, lookDir(rnd() * 6.283, -1.55 + rnd() * 2.0));
-  if (h) leftClick(S, h);
+  if (!h) return;
+  // A fifth of the left clicks are the Delete Tool's, which takes a 2- or 3-wide cube behind the face (world/mineAtHit.js).
+  if (rnd() < 0.2) deleteClick(S, h, 2 + Math.floor(rnd() * 2));
+  else leftClick(S, h);
 }
 
 function frames(S, n, input, clicks = null) {

@@ -42,7 +42,7 @@ test.describe('ore glow', () => {
     // top out at most one cell above the eye (getMobGroundLevel: the column's top surface, roofs and canopies
     // included), under the line of sight. The camera's own heading is tried first, then the other three.
     const RAISE = 3;
-    const row = await page.evaluate((RAISE) => {
+    const row = await page.evaluate(async (RAISE) => {
       const s = window.useGameStore.getState();
       const cam = window.__threeCamera;
       const V = cam.position.constructor;
@@ -78,7 +78,8 @@ test.describe('ore glow', () => {
         const x = bx + side[0] * k, z = bz + side[1] * k;
         s.setSelectedBlock(block);
         s.addToInventory(block, 4);
-        window.GameMethods.terrainVerbs.place({ hitPoint: new V(x + 0.5, by + 0.5, z + 0.5), normal: { x: 0, y: 1, z: 0 } });
+        // `place` resolves once the worker has answered which cells it filled; the store records only those.
+        await window.GameMethods.terrainVerbs.place({ hitPoint: new V(x + 0.5, by + 0.5, z + 0.5), normal: { x: 0, y: 1, z: 0 } });
         cells.push({ block, x, y: by, z, placed: window.useGameStore.getState().worldBlocks.get(`${x}_${by}_${z}`) ?? null });
       }
       // The camera is pinned at the centre of the eye's cell, facing the middle block's near face square. The eye

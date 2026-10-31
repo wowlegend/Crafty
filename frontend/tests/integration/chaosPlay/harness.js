@@ -17,7 +17,9 @@
 //    vault, jump / glue / gravity with the form's multipliers, the queued form swap, and one moveKinematic write with the
 //    unindexed colliders;
 //  - clicks between frames: the build ray from the steady eye (Terrain.jsx castBuildRay, its direction scaled by the
-//    hit's toi), the real placeAtHit and the real mineTarget with the mine verb's worker post and store write;
+//    hit's toi), the real placeAtHit and the real mineTarget with the mine verb's worker post and store write, and the
+//    Delete Tool's left click through the real mineAtHit; the worker's answer to a batched edit (world/cellEdits.js) is
+//    given at the click, from the logical world;
 //  - a form swap through the store (enterBeastForm / exitBeastForm) and Components.jsx's activeBeastForm effect;
 //  - a save written by buildSaveData and loaded by the store's loadWorldData, its worker answered as terrain.worker.js
 //    answers it and its wipe done as Terrain.jsx does it.
@@ -29,6 +31,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import * as THREE from 'three';
 import { useGameStore } from '../../../src/store/useGameStore.jsx';
 import { placeAtHit } from '../../../src/world/placeAtHit.js';
+import { mineAtHit } from '../../../src/world/mineAtHit.js';
 import { mineTarget } from '../../../src/world/buildTarget.js';
 import { buildFootprint } from '../../../src/game/buildFootprint.js';
 import { createPlacedCellColliders, createEditSeq } from '../../../src/world/placedCellColliders.js';
@@ -198,7 +201,8 @@ function landDue(S) {
     const key = `${chunkOf(q.wx)}_${chunkOf(q.wz)}`;
     if (!S.gen.has(key)) continue; // beyond the world: nothing streamed there to re-mesh
     if (S.gen.get(key) === BASE.chunks.get(key)) S.gen.set(key, BASE.chunks.get(key).slice()); // copy on first write
-    writeCell(S.gen, q.wx, q.y, q.wz, q.t);
+    // A cell the worker refused changes no voxel; its chunk is re-meshed all the same (terrain.worker.js edit_cells).
+    if (q.t !== null) writeCell(S.gen, q.wx, q.y, q.wz, q.t);
     byChunk.set(key, q.editSeq);
   }
   if (!byChunk.size) return;
@@ -677,7 +681,34 @@ function cellInBody(S, [x, y, z]) {
   return false;
 }
 
-/** The right click: the real placeAtHit, its worker posts applied to the logical world at the click. */
+/** terrain.worker.js's edit_cells, answered at the click against the logical world (the worker's voxels: every edit
+ *  is applied there at its click, as the worker applies messages in order): a cell changes only into the other kind, a
+ *  block filling air or water and a removal taking a solid block, and every sent cell's chunk is re-meshed. Each sent
+ *  cell's stand-in (the click's cuboids are the last ones unindexed, in the order sent) is tracked for I4. */
+function editCells(S, edit, done) {
+  const u = S.cells.unindexed();
+  const cuboids = u.slice(u.length - edit.cells.filter((c) => typeof c.seq === 'number').length);
+  const applied = [];
+  edit.cells.forEach((c, i) => {
+    const cx = chunkOf(c.x), cz = chunkOf(c.z);
+    const was = cellOf(S.logical, c.x, c.y, c.z);
+    const empty = was === AIR || was === WATER;
+    const changes = edit.blockType === AIR ? !empty : empty;
+    if (changes) {
+      writeCell(S.logical, c.x, c.y, c.z, edit.blockType);
+      applied.push(i);
+    }
+    if (typeof c.seq === 'number') {
+      const cuboid = cuboids.shift();
+      if (cuboid) S.standIns.push({ handle: cuboid.handle, cx, cz, seq: c.seq, due: null, cell: [c.x, c.y, c.z] });
+    }
+    post(S, { type: 'update_block', payload: { cx, cz, x: c.x - cx * CHUNK_SIZE, y: c.y, z: c.z - cz * CHUNK_SIZE, blockType: changes ? edit.blockType : null, seq: c.seq } });
+  });
+  done(applied);
+  return applied.length;
+}
+
+/** The right click: the real placeAtHit, its batched edit answered against the logical world at the click. */
 export function rightClick(S, h, mode = 'single', size = 1) {
   useGameStore.setState((s) => ({ buildingMode: mode, buildSize: size, inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, grass: 64 } } }));
   const n = h.normal ? new THREE.Vector3(h.normal.x, h.normal.y, h.normal.z) : h.direction.clone().normalize().multiplyScalar(-1);
@@ -685,20 +716,8 @@ export function rightClick(S, h, mode = 'single', size = 1) {
   const aimed = buildFootprint(mode, size, { x: Math.floor(p.x), y: Math.floor(p.y), z: Math.floor(p.z) }, h.normal);
   const intoBody = aimed.filter((c) => cellInBody(S, [c.x, c.y, c.z])).length;
   if (intoBody) S.stats.rightClicksIntoBody++;
-  const placed = placeAtHit(h, {
-    cells: S.cells,
-    post: (msg) => {
-      const { cx, cz, x, y, z, blockType, seq } = msg.payload;
-      const wx = cx * CHUNK_SIZE + x, wz = cz * CHUNK_SIZE + z;
-      writeCell(S.logical, wx, y, wz, blockType);
-      if (typeof seq === 'number' && y >= 0 && y < CHUNK_HEIGHT) {
-        const u = S.cells.unindexed();
-        const cuboid = u[u.length - 1];
-        if (cuboid) S.standIns.push({ handle: cuboid.handle, cx, cz, seq, due: null, cell: [wx, y, wz] });
-      }
-      post(S, msg);
-    },
-  });
+  let placed = 0;
+  placeAtHit(h, { cells: S.cells, editCells: (edit, done) => { placed = editCells(S, edit, done); } });
   if (S.lag === 0) landDue(S); // at once: the click's meshes land as one commit before the next frame
   S.stats.rightClicks++;
   S.stats.cellsPlaced += placed;
@@ -723,6 +742,27 @@ export function leftClick(S, h) {
   if (c.x === 0 && c.z === 0) S.stats.originColumnEdits++;
   S.recent.push(`f${S.f} L ${c.x},${c.y},${c.z}`);
   return c;
+}
+
+/** The Delete Tool's left click (world/mineAtHit.js): the real executor, the cell mineTarget takes as Terrain.jsx
+ *  castBuildRay names it, its batched removal answered against the logical world at the click. */
+export function deleteClick(S, h, size) {
+  const store = useGameStore.getState();
+  const c = mineTarget(h.hitPoint, h.direction, store);
+  useGameStore.setState({ buildingMode: 'delete', buildSize: size });
+  let removed = 0;
+  mineAtHit({ ...h, targetedX: c.x, targetedY: c.y, targetedZ: c.z, targetCoords: `${c.x}_${c.y}_${c.z}` }, {
+    post: () => { throw new Error('the Delete Tool sent a lone update_block'); },
+    editCells: (edit, done) => { removed = editCells(S, edit, done); },
+  });
+  useGameStore.setState({ buildingMode: 'single', buildSize: 1 });
+  if (S.lag === 0) landDue(S);
+  S.stats.deleteClicks++;
+  S.stats.cellsDeleted += removed;
+  const t = S.p.body.translation();
+  if (Math.abs(c.x + 0.5 - t.x) < 2 && Math.abs(c.z + 0.5 - t.z) < 2 && c.y < t.y) S.stats.deletesUnderFeet++;
+  S.recent.push(`f${S.f} D${size} ${c.x},${c.y},${c.z} -> ${removed}`);
+  return removed;
 }
 
 /** Whether a solid cell lies within `gap` of the base capsule's top, above it (a ceiling the swap grows into). */
@@ -844,6 +884,9 @@ export function mulberry32(a) {
 /** A fresh session at a spot: the world, the stand-in registry, the player settled on the ground. */
 export function makeSession({ spot, rnd, hz, lag, tol }) {
   base();
+  // The world is the generated one, so the store records no edit and no chest in it: placeAtHit holds back a cell the
+  // store records as built, and a test that plays two sessions on one store would otherwise carry the first one's in.
+  useGameStore.setState({ worldBlocks: new Map(), chests: new Map() });
   const world = new RAPIER.World({ x: 0, y: -30, z: 0 });
   const S = {
     world, hz, lag, tol, f: 0, steps: 0, acc: 0, vy: 0, kb: { x: 0, z: 0 }, resumeFails: 0,
@@ -854,6 +897,7 @@ export function makeSession({ spot, rnd, hz, lag, tol }) {
     violations: { I1: [], I2: [], I3: [], I4: [], I5: [], I6: [], I7: [] }, counts: { I1: 0, I2: 0, I3: 0, I4: 0, I5: 0, I6: 0, I7: 0 }, lastNoted: {},
     held: false, loadPending: null, clip: null, stuck: makeStuckWatch(), blind: { left: 0 },
     stats: { frames: 0, rightClicks: 0, rightClicksIntoBody: 0, cellsPlaced: 0, leftClicks: 0, minesUnderFeet: 0,
+      deleteClicks: 0, cellsDeleted: 0, deletesUnderFeet: 0,
       originColumnEdits: 0, wallContactFrames: 0, swaps: 0, swapsUnderCeiling: 0, swapsAgainstWall: 0, swapsRefused: 0, formExits: 0,
       clickPairs: 0, respawns: 0, loadHoldFrames: 0, respawnsAfterOriginMine: 0, respawnsAfterOriginPlace: 0, loads: 0, vaults: 0, escapes: 0, ownShellOut: 0,
       saves: 0, savesLegacy: 0, savesInForm: 0, loadsReleased: 0, heldFrames: 0, heldInSolidFrames: 0,

@@ -98,5 +98,5 @@ export function chaosSuite(spots, floors) {
 export const COMMON_FLOORS = {
   rightClicksIntoBody: 100, wallContactFrames: 500, clickPairs: 40, swaps: 12, swapsAgainstWall: 3, swapsRefused: 2, loads: 16,
   loadHoldFrames: 12, loadsReleased: 16, savesLegacy: 2, savesInForm: 6, respawns: 16, escapes: 32, ownShellOut: 1,
-  voidResets: 16,
+  voidResets: 16, deleteClicks: 20, cellsDeleted: 250, deletesUnderFeet: 12,
 };

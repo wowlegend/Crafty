@@ -17,10 +17,12 @@ import {
 // A seeded player plays sessions at six places (the shore, a cliff face, a two-high tunnel, an overhang, open field, the
 // origin column every respawn reads) at 60 and 120 Hz, with every edit's trimesh landing 0, 2, 4 or 8 frames late: walks
 // and jumps, into walls too; right-clicks at walls, at the feet, straight down, at the eye's own cell, single and
-// footprint; left-clicks, under the feet and down the origin column; beast-form swaps, under ceilings and against walls;
+// footprint; left-clicks, under the feet and down the origin column, and the Delete Tool's 2- and 3-wide removals;
+// beast-form swaps, under ceilings and against walls;
 // a save written and loaded; a fall through the void (at the deep seabed, down a shaft dug out of the bottom of the world)
 // and the respawn. The real Rapier build, the real greedy mesher, the
-// real executors (placeAtHit, mineTarget, moveKinematic, placedCellColliders, formFit, the spawn and resume decisions,
+// real executors (placeAtHit, mineAtHit's Delete Tool, mineTarget, moveKinematic, placedCellColliders, formFit, the
+// spawn and resume decisions,
 // buildSaveData and loadWorldData), wired as the game wires them (chaosPlay/harness.js says how, and what it leaves out).
 //
 // SEVEN INVARIANTS. I1, I2, I6 and I7 read the voxel grid as the verbs have made it, never the colliders; I3 reads a
@@ -49,7 +51,7 @@ import {
 // DENOMINATORS: each file asserts floors on the risky events its sessions reached (clicks aimed into the body, wall
 // contact frames, swaps under a ceiling and against a wall, refused swaps, loads, saves in a form and from the old Save
 // button, the frames a load held the body, respawns, respawns after an origin-column dig and build, escape tests, own
-// shells left), and prints them with the frames, the deepest any session reached into solid and the walk-held readings.
+// shells left, Delete Tool clicks and the blocks they took, under the feet too), and prints them with the frames, the deepest any session reached into solid and the walk-held readings.
 //
 // WHAT IT DOES NOT CHECK: the game's React effect order and Terrain.jsx's own wiring (the e2e suite drives those), mobs,
 // knockback, dodge, the accel ramp, the camera's bob and shake, chunk streaming by distance (every chunk stays loaded,
