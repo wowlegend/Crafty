@@ -14,11 +14,14 @@ import { deadSetters, STORE_FILE } from '../_support/storeSetters.js';
  * published, so a missing publisher reads as a silent no-op (callers guard with `?.()`), and it hides which of the
  * three channels is the live one. Lane L6 removed 13 by hand and lane L3 the last two with the boss mirror; this is the check that keeps the count at its floor, zero.
  *
- * A setter has a caller when its name is used as a member of something, anywhere in the non-test source (the store's own file
- * included): `get().setX(...)`, `state.setX`, `store['setX']`, `const { setX } = ...`. It reads the syntax tree
- * (@babel/parser), so a comment or a template text naming a setter cannot satisfy it, and a bare identifier does not count
- * either: a component's own `const [v, setX] = useState()` would credit a dead store setter of the same name. It does not
- * prove the caller RUNS (that is runtime-reach's question, and a different grain); it proves the name is used.
+ * A setter has a caller when it is read as a member of the STORE, anywhere in the non-test source (the store's own file
+ * included): `get().setX(...)`, `useGameStore.getState().setX`, a selector's `s.setX`, `const { setX } = state`, and the
+ * same through an alias, a parameter, an object argument or a prop the state was passed in (tests/_support/storeSetters.js
+ * lists the forms, tests/_support/sourceFlow.js how a value is followed). A member of anything else does not count:
+ * `body.setTranslation` is a Rapier body's method and keeps no store setter alive, and a component's own
+ * `const [v, setX] = useState()` keeps none either. It reads the syntax tree with scopes (@babel/parser,
+ * @babel/traverse), so a comment or a template text naming a setter cannot satisfy it. It does not prove the caller RUNS
+ * (that is runtime-reach's question, and a different grain); it proves the store's member is read.
  * Members that are not `set*` functions are out of scope (getPlayerXP and isBeastFormActive are read by tests and e2e only).
  *
  * SITED IN tests/scripts/, not tests/gates/: the subject is the shape of the source (which members it declares and which
@@ -48,6 +51,53 @@ describe('every set* member of the store has a caller', () => {
     expect(r.dead, 'set* members of useGameStore.jsx with no use anywhere in src: delete them').toEqual([]);
   });
 
+  it('the detector credits a member of the STORE only: a Rapier body\'s setTranslation does not keep a dead store setTranslation alive', () => {
+    const store = [
+      'import { create } from "zustand";',
+      'export const useS = create((set, get) => ({',
+      '  setTranslation: (v) => set({ t: v }),',
+      '  setDead: (v) => set({ d: v }),',
+      '  setViaAlias: (v) => set({ a: v }),',
+      '  setViaStateFn: (v) => set({ b: v }),',
+      '  setViaSelector: (v) => set({ c: v }),',
+      '  setViaShallow: (v) => set({ e: v }),',
+      '  setViaNamedSelector: (v) => set({ f: v }),',
+      '  setViaParam: (v) => set({ g: v }),',
+      '  setViaProp: (v) => set({ h: v }),',
+      '  setViaGetStateFn: (v) => set({ i: v }),',
+      '  setViaObjectArg: (v) => set({ j: v }),',
+      '  setViaWindow: (v) => set({ k: v }),',
+      '  setInStore: (v) => set({ l: v }),',
+      '  caller: () => get().setInStore(1),',
+      '}));',
+    ].join('\n');
+    const files = [
+      { file: 'src/a.jsx', text: [
+        "import { useS } from './store/useGameStore.jsx';",
+        "import { install, run } from './b.js';",
+        "import { Menu } from './Menu.jsx';",
+        'const body = rigidRef.current; body.setTranslation({ x: 0 }); rigidRef.current.setTranslation({ x: 1 });',
+        'export function lift(rb) { rb.setTranslation({ x: 2 }); rb.setDead(1); }',
+        'const s = useS.getState(); s.setViaAlias(1);',
+        'const store = () => useS.getState(); store().setViaStateFn(1);',
+        'export function D() { const f = useS((st) => st.setViaSelector); const g = useS(useShallow((st) => ({ a: st.setViaShallow }))); return [f, g]; }',
+        'const pick = (st) => ({ b: st.setViaNamedSelector }); export function E() { return useS(useShallow(pick)); }',
+        'install(useS);',
+        'export function F() { return <Menu gameState={useS.getState()} />; }',
+        'const getS = useS.getState; getS().setViaGetStateFn(1);',
+        'run({ getState: useS.getState });',
+        'window.useS.getState().setViaWindow(1);',
+      ].join('\n') },
+      { file: 'src/b.js', text: 'export function install(store) { store.getState().setViaParam(1); }\nexport function run({ getState }) { getState().setViaObjectArg(1); }' },
+      { file: 'src/Menu.jsx', text: 'export function Menu({ gameState }) { gameState.setViaProp(1); return null; }' },
+    ];
+    const out = deadSetters(files, store);
+    expect(out.setters).toHaveLength(13);
+    expect(out.dead, 'a member read off something that is not the store credits nothing').toEqual(['setTranslation', 'setDead']);
+    expect(out.live).toEqual(['setViaAlias', 'setViaStateFn', 'setViaSelector', 'setViaShallow', 'setViaNamedSelector', 'setViaParam',
+      'setViaProp', 'setViaGetStateFn', 'setViaObjectArg', 'setViaWindow', 'setInStore']);
+  });
+
   it('the detector, on a store and a tree it is handed, names the dead setter, credits every form of use and not a namesake', () => {
     const store = [
       'import { create } from "zustand";',
@@ -69,6 +119,7 @@ describe('every set* member of the store has a caller', () => {
     const files = [{
       file: 'src/a.js',
       text: [
+        "import { useS } from './store/useGameStore.jsx';",
         '// setCommentOnly is mentioned here only',
         'const t = `setTemplateOnly ${1}`;',
         'useS.getState().setViaMember(1);',
