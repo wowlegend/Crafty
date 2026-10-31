@@ -8,7 +8,7 @@ import { foldVerbMods } from '../game/verbMods.js';
 import { relicTier, normalizeRelicTiers } from '../game/relics.js';
 import { buy as forgeBuy } from '../game/forge.js';
 import { aspectUnlockHint } from '../game/aspectHints.js';
-import { buildSaveData, asRespawned, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, liveShrines, TALENT_CUT, BOSS_WIPE_REPAIR } from '../game/saveSchema.js';
+import { buildSaveData, asRespawned, migrateSaveData, splitTombstone, liveQuestState, migrateRetired, liveInventory, liveChests, liveBlocks, liveEquipment, liveShrines, loadedVital, TALENT_CUT, BOSS_WIPE_REPAIR } from '../game/saveSchema.js';
 import { resolvePlacement } from '../world/placementEconomy.js';
 import { motionIntensity } from '../game/a11y.js';
 import { teleportPlayer } from '../game/stanceState.js';
@@ -1174,8 +1174,8 @@ export const useGameStore = create((set, get) => ({
             // The retired items leave every chest too (the tombstone holds them for the save).
             const chests = saveData.chests ? new Map(liveChests(saveData.chests)) : state.chests;
 
-            // Derived caps from the level and the gear (never baked); a loaded character arrives at full HP and mana, as a
-            // respawn does.
+            // Derived caps from the level and the gear (never baked). The player's health and mana are the save's, under
+            // those caps, and full where the save holds none (saveSchema.js loadedVital): a refresh is no heal.
             const eff = effectiveWith(level, equipment);
             const { maxHealth, maxMana } = deriveMaxStats(level, eff);
 
@@ -1222,8 +1222,8 @@ export const useGameStore = create((set, get) => ({
                 chests,
                 maxHealth,
                 maxMana,
-                playerHealth: maxHealth,
-                mana: maxMana,
+                playerHealth: loadedVital(saveData.player_data?.health, maxHealth, Number.MIN_VALUE),
+                mana: loadedVital(saveData.player_data?.mana, maxMana, 0),
                 playerPosition: position || state.playerPosition,
                 // A grabbed block belongs to the world it was grabbed in, and the loaded build may not hold the grab at
                 // all (the Cut's respec, a rank refunded as unknown): the held branch of game/voidhand.js reads no

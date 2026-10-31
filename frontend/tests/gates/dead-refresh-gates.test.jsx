@@ -4,7 +4,7 @@ import { render, act, cleanup, fireEvent, screen } from '@testing-library/react'
 
 /**
  * A REFRESH ON THE DEATH SCREEN IS NOT A WAY BACK TO LIFE (L2 review round 1, static F3). A refresh now resumes the
- * newest save in place, and every load arrives at full HP, so F5 on the death screen brought the player back alive
+ * newest save in place, and a load then stood the player at full HP, so F5 on the death screen brought the player back alive
  * where they fell: the save written while dead stood them there (saveWorldInPlay saved a dead player as any other),
  * and with nothing pending the reload loaded the last save made alive, a few seconds before the death. Respawn sends
  * the player back to the origin spawn and counts the death (HUD.jsx: respawn, then the quest system's onPlayerDeath).

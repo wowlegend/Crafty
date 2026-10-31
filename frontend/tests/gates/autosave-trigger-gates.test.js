@@ -82,7 +82,8 @@ describe('the installed autosave', () => {
   });
 
   it('control: a change to a key no save records schedules nothing', () => {
-    useGameStore.setState({ playerPosition: [5, 60, 5], mana: 3, playerHealth: 7 });
+    // Health and mana are saved since lane L8 (DECISIONS 2026-10-31 item 330); the hit flash and the shake are not.
+    useGameStore.setState({ playerPosition: [5, 60, 5], damageFlash: true, screenShake: 3 });
     vi.advanceTimersByTime(DELAY * 2);
     expect(save, 'the autosave saved for a field the save does not hold').not.toHaveBeenCalled();
   });
