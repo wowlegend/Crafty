@@ -4,7 +4,8 @@ import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { freshStorePerTest, TOL } from './chaosPlay/suite.js';
 import {
   makeSession, tick, setCell, deepestSolid, eyeCell, solidAt, escape, rightClick, buildRay, lookDir, mulberry32, STONE,
-  LAND_TOP, checkEscape, writeSave, loadSave, LOAD_RELEASE_FRAMES, voidReset, groundUnder, DEEP_SEABED,
+  LAND_TOP, checkEscape, writeSave, loadSave, LOAD_RELEASE_FRAMES, voidReset, groundUnder, DEEP_SEABED, clipInto, recovered,
+  CLIP_RECOVERY_FRAMES,
 } from './chaosPlay/harness.js';
 
 // THE CHAOS-PLAY GATE: CAN THE PLAYER STILL LEAVE? Kevin, five minutes of left and right clicking near the ocean
@@ -22,10 +23,11 @@ import {
 // real executors (placeAtHit, mineTarget, moveKinematic, placedCellColliders, formFit, the spawn and resume decisions,
 // buildSaveData and loadWorldData), wired as the game wires them (chaosPlay/harness.js says how, and what it leaves out).
 //
-// SIX INVARIANTS. I1, I2 and I6 read the voxel grid as the verbs have made it, never the colliders; I3 reads a sandbox
-// built from the landed chunk meshes and the live stand-ins; I4 reads the world's colliders; I5 reads the load's hold.
-//  I1 at the end of every frame the player is in play (not held by a load) the live capsule reaches into no solid cell
-//     deeper than TOL (suite.js says why 5 mm);
+// SEVEN INVARIANTS. I1, I2, I6 and I7 read the voxel grid as the verbs have made it, never the colliders; I3 reads a
+// sandbox built from the landed chunk meshes and the live stand-ins; I4 reads the world's colliders; I5 reads the load's
+// hold.
+//  I1 at the end of every frame the player is in play (not held by a load, not clipped into the rock) the live capsule
+//     reaches into no solid cell deeper than TOL (suite.js says why 5 mm);
 //  I2 the eye is never inside a solid cell then (inside one, every face points away and the block cannot be seen);
 //  I3 every 90 frames and at the session's end the player can leave: a metre's move within a second on one of 8
 //     headings, walking or jump-walking, or doing so once every block of their own within 4 m is mined, as many clicks
@@ -36,15 +38,23 @@ import {
 //  I5 a load lets the player go within 2 x lag + 12 frames, never to the origin spawn (the frames between are its hold,
 //     which I1 and I2 do not read: the body is held at the saved spot until the new world's column is in);
 //  I6 the void guard resets no player who has ground under their feet: it fires on a body under the world, or one in
-//     the world's last cells (fallen through the hollow trimesh onto its bottom face), never on the deep seabed or at
-//     the bottom of a shaft the player dug (DECISIONS 2026-10-30 item 190).
+//     the world's last cells (on its bottom face), never on the deep seabed or at the bottom of a shaft the player dug
+//     (DECISIONS 2026-10-30 item 190). It reads ground under the feet only, and at the line (a centre under 1.4, the
+//     feet under 0.68) no cell lies under them, so it restates the line's height: it goes red when the line is raised
+//     (to 10, or to 2.4), not on a reset it could tell apart from the line;
+//  I7 a body clipped into the rock (each field session clips once, over the cave under the field) is stood clear within
+//     half a second, within a metre of where it clipped, before any void reset; and no stuck-in-rock recovery moves a
+//     player who never clipped (DECISIONS 2026-10-30 item 196). The frames between the clip and the recovery are not
+//     read by I1 and I2 (the body is in the rock by construction).
 // DENOMINATORS: each file asserts floors on the risky events its sessions reached (clicks aimed into the body, wall
 // contact frames, swaps under a ceiling and against a wall, refused swaps, loads, saves in a form and from the old Save
 // button, the frames a load held the body, respawns, respawns after an origin-column dig and build, escape tests, own
 // shells left), and prints them with the frames, the deepest any session reached into solid and the walk-held readings.
 //
 // WHAT IT DOES NOT CHECK: the game's React effect order and Terrain.jsx's own wiring (the e2e suite drives those), mobs,
-// knockback, dodge, the accel ramp, the camera's bob and shake, chunk streaming by distance, the rendering of anything.
+// knockback, dodge, the accel ramp, the camera's bob and shake, chunk streaming by distance (every chunk stays loaded,
+// so the spawn's probe always answers, and its blind drop and the follow after it never run here:
+// tests/gates/stuck-in-rock-gates.test.jsx drives them in the Player's loop), the rendering of anything.
 // Rapier 0.19.2 itself is trusted: one history made it panic after a load's wipe left only the player's capsule in the
 // broad phase, so the harness keeps a collider far below the world (registry REVIEW:chaos-play:rapier-panic-after-wipe).
 
@@ -165,6 +175,30 @@ describe('the chaos-play instruments see what they report on', () => {
     const D = makeSession({ spot: 'deep', rnd: mulberry32(7), hz: 60, lag: 2, tol: TOL });
     expect(D.p.body.translation().y, 'SETUP: the deep place\'s session does not stand on the deepest seabed').toBeCloseTo(DEEP_SEABED + 0.95, 1);
     expect(groundUnder(D), 'the instrument sees no ground under a player on the deep seabed').not.toBeNull();
+  });
+
+  it('I7 reads a clipped body left in the rock, a recovery of a player who never clipped, and one stood far from the clip', () => {
+    const clipAt = (S) => { const t = S.p.body.translation(); return { x: t.x, y: 15, z: t.z }; };
+    // The Player's recovery on: the clip over the cave is stood clear and I7 reads nothing.
+    const R = session();
+    clipInto(R, clipAt(R));
+    for (let i = 0; i < CLIP_RECOVERY_FRAMES(R.hz) + 5; i++) tick(R, {});
+    expect([R.counts.I7, R.stats.stuckRecoveries, R.clip], 'SETUP: the recovery did not stand the clipped body clear').toEqual([0, 1, null]);
+    // Its readings stopped (a watch that never reads): the body stays in the rock past the bound.
+    const S = session();
+    clipInto(S, clipAt(S));
+    S.stuck.sinceRead = -Infinity;
+    for (let i = 0; i < CLIP_RECOVERY_FRAMES(S.hz) + 5; i++) tick(S, {});
+    expect(S.violations.I7.map((v) => v.why), 'I7 did not read a body left in the rock past its bound').toContainEqual(expect.stringMatching(/still in the rock/));
+    expect(S.stats.stuckRecoveries, 'SETUP: a watch that never reads moved the body').toBe(0);
+    // A recovery with no clip before it, and one that stood the clipped body at the origin.
+    const N = session();
+    recovered(N, N.p.body.translation());
+    expect(N.violations.I7.map((v) => v.why), 'I7 did not read a recovery of a player who never clipped').toContainEqual(expect.stringMatching(/had not clipped/));
+    const O = session();
+    clipInto(O, clipAt(O));
+    recovered(O, { x: 0, y: LAND_TOP + 0.95, z: 0 });
+    expect(O.violations.I7.map((v) => v.why), 'I7 did not read a body stood at the origin, away from its clip').toContainEqual(expect.stringMatching(/from where the body clipped/));
   });
 
   it('I4 reads a stand-in kept past its chunk\'s mesh, and none kept on the real registry', () => {

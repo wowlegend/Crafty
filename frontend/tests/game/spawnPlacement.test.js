@@ -19,7 +19,7 @@ describe('spawnPlacement (S3-M5 p2) — the spawn-ground decision (pinned to the
   });
   it('at the end of the wait, falls back to SPAWN_FALLBACK_Y (no infinite wait)', () => {
     const r = resolveSpawnGround(null, null, SPAWN_PROBE_MAX_SEC - 1 / 120, true, 1 / 120); // this frame's step reaches it
-    expect(r).toEqual({ groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true });
+    expect(r).toEqual({ groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true, blind: true });
   });
   it('spawnTargetY lands the player SPAWN_EYE_OFFSET above ground', () => {
     expect(spawnTargetY(56)).toBe(56 + SPAWN_EYE_OFFSET);

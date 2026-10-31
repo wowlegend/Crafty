@@ -13,7 +13,11 @@ export const SPAWN_FREEZE_Y = 120;      // hold in the sky until the world build
 // (1.95 s) and the 7th at low (1.05 s), and the worker builds it after that. Counted as 120 frames, the wait was 2 s at
 // 60 Hz and 1 s at 120 Hz: the player was dropped from SPAWN_FALLBACK_Y over ground still streaming in at med and high,
 // and at every tier on a 120 Hz display, and a chunk whose trimesh landed round the falling body left them inside the
-// rock (registry REVIEW:l4:spawn-wait-counted-in-frames). Six seconds covers the top tier's corner and the worker.
+// rock (registry REVIEW:l4:spawn-wait-counted-in-frames). Six seconds is past the top tier's request for the corner; it
+// does not bound the build. The one terrain worker builds its chunks one after another, in the order asked
+// (world/Terrain.jsx, world/terrain.worker.js), and after a respawn far out 0_0 is the top tier's 41st request, so a
+// worker slower than about 0.15 s a chunk is still building it when the wait runs out. So the drop is followed
+// (followBlindDrop), and a body left in the rock anyway is stood clear (game/stuckInRock.js).
 export const SPAWN_PROBE_MAX_SEC = 6;
 export const SPAWN_FALLBACK_Y = 60;      // if the probe never resolves
 export const SPAWN_EYE_OFFSET = 1.2;     // player center this far above ground (instant land)
@@ -22,11 +26,13 @@ const PROBE_MIN_Y = 15;                  // physicsY <= this is rejected (origin
 // THE VOID LINE IS THE WORLD'S. Its cells run from y 0 up (world/chunkLayout.js), so no floor lies lower than the top of
 // the cells at y 0, at 1: a body standing anywhere in the world, on the deep seabed (world/oceanProfile.js DEEP_FLOOR, 6)
 // or at the foot of a shaft dug to the last cell, stands on 1 or above. A body under the world has nothing below it, and
-// one that clipped into the ground falls through the hollow trimesh onto the bottom face of those cells, at 0, and stands
-// there. The line is the base capsule's centre with its lowest point at the middle of that last cell, half a metre from
-// either floor; each beast form's centre, standing on either, falls on the same side of it (spawnPlacement.test.js stands
-// every shape on both). A centre under y 10 reset a player standing on the seabed (registry
-// AUDIT:desync:void-guard-fires-inside-the-playable-world).
+// one standing on the bottom face of those cells, at 0, is out of the world too. The line is the base capsule's centre
+// with its lowest point at the middle of that last cell, half a metre from either floor; each beast form's centre,
+// standing on either, falls on the same side of it (spawnPlacement.test.js stands every shape on both). A centre under
+// y 10 reset a player standing on the seabed (registry AUDIT:desync:void-guard-fires-inside-the-playable-world).
+// The line is not a rescue for a body clipped into the ground: inside the hollow rock it falls until the back of a face
+// stops it, and over a cave that is the cave's ceiling, above the line (DECISIONS 2026-10-30 item 196). game/stuckInRock.js
+// stands that body clear.
 const VOID_LINE_Y = 0.5 + BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius;
 
 /** Has the body, its centre at `y`, fallen out of the bottom of the world. */
@@ -60,7 +66,8 @@ export function returnToSpawn(world, body, camera, eye, spawn) {
 // blockGroundY: highest placed-block y at origin, or null. physicsY: raycast ground, or null.
 // waitedSec: the seconds already waited (before this frame); stepSec: this frame's step. Returns { groundY, retry,
 // incFails }: the caller adds stepSec to its wait when incFails, teleports-to-freeze + returns when retry, else spawns at
-// spawnTargetY(groundY). The fallback comes on the frame whose step reaches SPAWN_PROBE_MAX_SEC.
+// spawnTargetY(groundY). The fallback comes on the frame whose step reaches SPAWN_PROBE_MAX_SEC, and carries
+// `blind: true`: the caller follows that drop (followBlindDrop).
 // probeAvailable: whether the physics raycast (getMobGroundLevel) exists this frame. If NOT, the
 // old code skipped the probe branch entirely -> immediate fallback (no retry, no fail-increment).
 export function resolveSpawnGround(blockGroundY, physicsY, waitedSec, probeAvailable = true, stepSec = 0) {
@@ -69,10 +76,33 @@ export function resolveSpawnGround(blockGroundY, physicsY, waitedSec, probeAvail
   const invalid = physicsY == null || Number.isNaN(physicsY) || physicsY <= PROBE_MIN_Y;
   if (!invalid) return { groundY: physicsY, retry: false, incFails: false };
   if (waitedSec + stepSec < SPAWN_PROBE_MAX_SEC) return { groundY: null, retry: true, incFails: true };
-  return { groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true };
+  return { groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true, blind: true };
 }
 
 export function spawnTargetY(groundY) { return groundY + SPAWN_EYE_OFFSET; }
+
+// THE BLIND DROP IS FOLLOWED. The fallback drops the body from SPAWN_FALLBACK_Y over a corner whose ground has not
+// answered, and a chunk whose trimesh lands round the falling body leaves it in the rock: at the corner the capsule
+// straddles the closed edges of four chunks, the only faces there, and they stop it inside them
+// (tests/gates/stuck-in-rock-gates.test.jsx lands the corner's chunks round the falling body).
+// So for the wait's length again (SPAWN_PROBE_MAX_SEC) after the drop the corner is read each frame, the wait's own probe
+// and cost, and once it answers, a body whose lowest point is under that ground is stood on it. A body that has walked
+// off the corner, or a corner that never answers, is left to the stuck-in-rock recovery (game/stuckInRock.js).
+const CORNER_REACH = 1; // further from the corner than this, the body stands on other ground, not the corner's
+
+/**
+ * One frame of following the blind drop. Returns the centre's y to stand the body at, over the corner, or null; counts
+ * the follow's time down and ends it once the corner answers or the body has left it.
+ *   follow  { left }: the seconds of following left (SPAWN_PROBE_MAX_SEC from the drop)
+ *   ground  spawnCornerGround's answer this frame (null until every column answers)
+ *   at      the body's centre; reach: its centre's height over its lowest point (half-height + radius)
+ */
+export function followBlindDrop(follow, ground, at, reach, stepSec) {
+  if (Math.hypot(at.x, at.z) > CORNER_REACH) { follow.left = 0; return null; }
+  if (ground == null) { follow.left = Math.max(0, follow.left - stepSec); return null; }
+  follow.left = 0;
+  return at.y - reach < ground ? spawnTargetY(ground) : null;
+}
 
 // The spawn stands at x 0 z 0, the corner where four block columns meet, so the base capsule (radius 0.4 m) stands across
 // all four: its ground is the highest of them. One probe at (0.1, 0.1) read only the column x 0 z 0, and a player who had

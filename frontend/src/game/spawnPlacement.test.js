@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  isVoidFall, resolveSpawnGround, spawnTargetY, spawnCornerGround, resumeColumnProbe, returnToSpawn,
+  isVoidFall, resolveSpawnGround, spawnTargetY, spawnCornerGround, resumeColumnProbe, returnToSpawn, followBlindDrop,
   SPAWN_FALLBACK_Y, SPAWN_PROBE_MAX_SEC, SPAWN_EYE_OFFSET, SPAWN_FREEZE_Y,
 } from './spawnPlacement.js';
 import { stance } from './stanceState.js';
@@ -13,8 +13,9 @@ import { DEEP_FLOOR } from '../world/oceanProfile.js';
 
 // A body stands its controller's offset over a floor (Components.jsx createCharacterController(0.05)), its centre its
 // reach (half-height plus radius) above that. The world's cells run from y 0 up, so the lowest floor is the top of the
-// cells at y 0, at 1; under the world there is none, and a body that clipped into the ground falls through the hollow
-// trimesh onto the bottom face of those cells, at 0 (scratch probe, 2026-10-30: from y 4 inside the rock it stood at 0.95).
+// cells at y 0, at 1; under the world there is none, and a body standing on the bottom face of those cells, at 0, is out
+// of it too (a body clipped into rock that runs down to y 0 falls through the hollow trimesh to there; over a cave its
+// ceiling stops it first, above the line, and stuckInRock.js stands it clear: DECISIONS 2026-10-30 item 196).
 // Every shape the player can have is read: the line is one height, and a form whose reach crossed it would fail here.
 describe('isVoidFall: the void line lies under every floor of the world, for every shape the player can have', () => {
   const OFFSET = 0.05;
@@ -107,7 +108,7 @@ describe('resolveSpawnGround', () => {
   it('falls back (no more retry) once the bounded probe wait is exhausted', () => {
     // the frame whose step reaches the bound falls back, and still counts
     expect(resolveSpawnGround(null, null, SPAWN_PROBE_MAX_SEC - 1 / 60, true, 1 / 60)).toEqual({
-      groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true,
+      groundY: SPAWN_FALLBACK_Y, retry: false, incFails: true, blind: true,
     });
   });
 
@@ -157,6 +158,39 @@ describe('spawnCornerGround', () => {
 
 // A loaded save's column counts as in only once every chunk the load fit reads (a metre round the saved centre) has
 // answered: the probe is asked at the four corners of that square, each a column, and at the saved column itself.
+// After the blind drop the corner is read again each frame; a body whose lowest point is under its ground once it answers
+// is stood on it (the Player's loop, Components.jsx; tests/gates/stuck-in-rock-gates.test.jsx drives it there).
+describe('followBlindDrop', () => {
+  const REACH = BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius;
+  it('waits, counting down, while the corner has not answered, and ends when the time is spent', () => {
+    const follow = { left: SPAWN_PROBE_MAX_SEC };
+    expect(followBlindDrop(follow, null, { x: 0, y: 40, z: 0 }, REACH, 1 / 60)).toBeNull();
+    expect(follow.left).toBeCloseTo(SPAWN_PROBE_MAX_SEC - 1 / 60, 9);
+    follow.left = 1 / 120;
+    expect(followBlindDrop(follow, null, { x: 0, y: 40, z: 0 }, REACH, 1 / 60)).toBeNull();
+    expect(follow.left).toBe(0);
+  });
+  it('stands a body whose lowest point is under the answered ground on it, over the corner, and ends', () => {
+    for (const y of [40, 52.5, 52.9 - 0.001]) { // in the rock; the centre over the top but the feet under it
+      const follow = { left: 3 };
+      expect(followBlindDrop(follow, 52, { x: 0.02, y, z: -0.01 }, REACH, 1 / 60), `centre at ${y}`).toBe(spawnTargetY(52));
+      expect(follow.left, `centre at ${y}`).toBe(0);
+    }
+  });
+  it('leaves a body standing on the ground or falling over it, and ends', () => {
+    for (const y of [52 + 0.05 + REACH, 58]) {
+      const follow = { left: 3 };
+      expect(followBlindDrop(follow, 52, { x: 0, y, z: 0 }, REACH, 1 / 60), `centre at ${y}`).toBeNull();
+      expect(follow.left, `centre at ${y}`).toBe(0);
+    }
+  });
+  it('lets go of a body that has walked off the corner, whatever the corner says', () => {
+    const follow = { left: 3 };
+    expect(followBlindDrop(follow, 52, { x: 1.2, y: 40, z: 0 }, REACH, 1 / 60)).toBeNull();
+    expect(follow.left).toBe(0);
+  });
+});
+
 describe('resumeColumnProbe', () => {
   it('is the saved column\'s ground once all four corners answer, and asks each corner\'s column', () => {
     const asked = [];

@@ -19,7 +19,8 @@ import { ViewmodelLayer } from './render/ViewmodelLayer.jsx';
 import { makeVoidhandState, decideVoidhand, PHANTOM_BLOCK_COLORS } from './game/voidhand.js';
 import { buildCooldownMirror } from './game/cooldownMirror.js';
 import { footstepTypeAt } from './world/climate.js';
-import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, returnToSpawn, SPAWN_FREEZE_Y } from './game/spawnPlacement.js';
+import { resolveSpawnGround, resolveResumeSpawn, resumeColumnProbe, spawnTargetY, spawnCornerGround, isVoidFall, returnToSpawn, followBlindDrop, SPAWN_FREEZE_Y, SPAWN_PROBE_MAX_SEC } from './game/spawnPlacement.js';
+import { makeStuckWatch, stuckInRock } from './game/stuckInRock.js';
 import { moveSpeed, jumpVelocity, applyGravity, moveVector, VAULT_VELOCITY, GLUE_VELOCITY } from './game/locomotion.js';
 import { coyoteOk, bufferOk, COYOTE_TIME, JUMP_BUFFER } from './game/gameFeel.js';
 import { dodgeDirection, dodgeSpeed, isDodgeInvincible } from './game/dodge.js';
@@ -120,6 +121,8 @@ export const Player = ({ isWorldBuilt }) => {
   const prevImbueRef = useRef(false);
   const spawnProbeWaitRef = useRef(0); // KEVIN-FIX C1: the bounded spawn-probe wait, in seconds (game/spawnPlacement.js)
   const resumeProbeFailsRef = useRef(0); // the resumed save's own bounded wait (game/spawnPlacement.js resolveResumeSpawn)
+  const blindFollowRef = useRef({ left: 0 }); // the spawn's blind drop, followed (game/spawnPlacement.js followBlindDrop)
+  const stuckWatchRef = useRef(makeStuckWatch()); // the stuck-in-rock recovery's readings (game/stuckInRock.js)
   const fuseSMRef = useRef(makeFuseState()); // S2-B3-M6: the FUSE channel state
   const prevSnareRef = useRef(false);
   const voidhandVerbRef = useRef({ attack: false, cast: false }); // M3: held-click edges -> SM
@@ -1082,7 +1085,32 @@ export const Player = ({ isWorldBuilt }) => {
       camera.position.set(0, safeY + EYE_HEIGHT_M, 0);
 
       spawnPosSet.current = true;
+      if (spawn.blind) blindFollowRef.current.left = SPAWN_PROBE_MAX_SEC; // dropped over a corner that never answered: followed as long again
       return;
+    }
+
+    // A BODY LEFT IN THE ROCK IS STOOD CLEAR WHERE IT IS, never sent to the origin: after the spawn's blind drop, on the
+    // corner's ground once it answers (game/spawnPlacement.js followBlindDrop); anywhere else, once its centre has read
+    // solid for a fifth of a second (game/stuckInRock.js). The collider goes with the body (game/kinematicMove.js
+    // placeBody) and the fall it carried is dropped.
+    {
+      const store = useGameStore.getState();
+      const body = rigidBodyRef.current;
+      let standAt = null;
+      if (blindFollowRef.current.left > 0) {
+        const c = body.collider(0);
+        const y = followBlindDrop(blindFollowRef.current, store.getMobGroundLevel ? spawnCornerGround(store.getMobGroundLevel) : null, currentTrans, c.halfHeight() + c.radius(), delta);
+        if (y !== null) standAt = { x: 0, y, z: 0 };
+      }
+      if (!standAt) standAt = stuckInRock(stuckWatchRef.current, world, rapier, body, delta, store.getMobGroundLevel, GameMethods.placedCells?.unindexed());
+      if (standAt) {
+        console.warn('Player was in the rock; stood clear where they were.');
+        placeBody(world, body, standAt);
+        body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        velocityY.current = 0;
+        camera.position.set(standAt.x, standAt.y + EYE_HEIGHT_M, standAt.z);
+        return;
+      }
     }
     if (isNaN(velocityY.current) || isNaN(currentTrans.y)) {
       console.error('Physics corrupted', velocityY.current, currentTrans);

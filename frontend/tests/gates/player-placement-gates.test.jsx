@@ -23,8 +23,10 @@ import RAPIER from '@dimforge/rapier3d-compat';
  *   - a load's hold waits while a chunk the fit reads across a border has not streamed back
  *     (game/spawnPlacement.js resumeColumnProbe), and once it is in, the player stands on the saved column's top;
  *   - the void guard leaves a player on the deepest seabed (world/oceanProfile.js DEEP_FLOOR) where they stand and walk,
- *     and resets one clipped into the ground once they have fallen through the rock onto the world's bottom face
- *     (game/spawnPlacement.js isVoidFall: the line is the world's, not y 10);
+ *     and resets one on the world's bottom face, inside its last cells (game/spawnPlacement.js isVoidFall: the line is the
+ *     world's, not y 10); a player clipped into the ground over the cave under the field, whom the hollow rock lets fall
+ *     onto the back of its ceiling above that line, is stood on their column's top where they clipped
+ *     (game/stuckInRock.js), not left on the ceiling and not sent to the origin (DECISIONS 2026-10-30 item 196);
  *   - the void guard's reset and the respawn after a death go back to the origin spawn's wait one way
  *     (game/spawnPlacement.js returnToSpawn): on their own frame the camera is at the origin's hold, where chunk streaming
  *     follows it (Terrain.jsx), and the collider with the body; the spawn's wait for the origin's ground starts again.
@@ -68,7 +70,7 @@ const { EYE_HEIGHT_M } = await import('../../src/combat/swingOrigin.js');
 const { setIntent, setActive, resetInput } = await import('../../src/input/inputState.js');
 const { generateMesh } = await import('../../src/world/mesher.js');
 const { CHUNK_SIZE, CHUNK_VOLUME, voxelIndex } = await import('../../src/world/chunkLayout.js');
-const { genCell, deepestSolid, eyeCell, solidAt, LAND_TOP, DEEP_SEABED } = await import('../integration/chaosPlay/harness.js');
+const { genCell, deepestSolid, eyeCell, solidAt, LAND_TOP, DEEP_SEABED, FIELD_CAVE } = await import('../integration/chaosPlay/harness.js');
 
 const TOL = 0.05 / 10; // the chaos gate's I1 tolerance (tests/integration/chaosPlay/suite.js says why)
 const DT = 1 / 60; // @react-three/rapier 2.2.0's fixed step
@@ -300,18 +302,37 @@ describe('the void guard fires under the world, never in it, and it and the resp
     expect(voidWarnings(warn), 'the void guard fired on the deep seabed').toBe(0);
   });
 
-  it('a player clipped into the ground falls through the hollow rock onto the world\'s bottom face and is reset, not left there', () => {
+  it('a player clipped into the ground over the cave under the field is stood on their column\'s top where they clipped, not left on the cave\'s ceiling', () => {
     const hz = 60;
     standPlayer(hz);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    // In the rock under the field, as a clip through the floor leaves the body: a chunk's trimesh is hollow.
-    h.body.setTranslation({ x: -8.5, y: 15, z: 20.5 }, true);
+    // In the rock over the cave under the field, as a clip through the floor leaves the body: a chunk's trimesh is hollow,
+    // and the body falls through the rock towards the back of the cave's ceiling at y 5.
+    const clip = { x: -8.5, y: 15, z: 20.5 };
+    expect(FIELD_CAVE.ceiling, 'SETUP: the field\'s cave ceiling is not between the void line and the clip').toBeLessThan(clip.y);
+    h.body.setTranslation(clip, true);
+    let lowest = Infinity;
+    for (let i = 0; i < 90; i++) { frame(hz); lowest = Math.min(lowest, h.body.translation().y); }
+    const end = at();
+    const r = { clip, lowest: +lowest.toFixed(2), end, ...reading(), voids: voidWarnings(warn) };
+    expect(Math.hypot(end.x - clip.x, end.z - clip.z), `the player was moved away from where they clipped ${JSON.stringify(r)}`).toBeLessThan(0.5);
+    expect(end.y, `the player does not stand on their column's top ${JSON.stringify(r)}`).toBeCloseTo(LAND_TOP + 0.95, 1);
+    expect(r.depth, `the capsule reaches into the ground ${JSON.stringify(r)}`).toBeLessThanOrEqual(TOL);
+    expect(r.voids, `the void guard reset the player to the origin ${JSON.stringify(r)}`).toBe(0);
+  });
+
+  it('a player on the world\'s bottom face, inside its last cells, is reset by the void guard and stood on the origin\'s ground', () => {
+    const hz = 60;
+    standPlayer(hz);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Under the cave's floor, in the cells at y 0 and 1: the centre is under the void line, the feet on the bottom face.
+    h.body.setTranslation({ x: -8.5, y: 0.95, z: 20.5 }, true);
     let resetOn = null;
     for (let i = 0; i < 90 && resetOn === null; i++) {
       frame(hz);
       if (voidWarnings(warn)) resetOn = i;
     }
-    expect(resetOn, `the player in the rock was never reset ${JSON.stringify(at())}`).not.toBeNull();
+    expect(resetOn, `the player on the world's bottom face was never reset ${JSON.stringify(at())}`).not.toBeNull();
     for (let i = 0; i < 20; i++) frame(hz);
     const end = spot(h.body.translation());
     expect([end.x, end.z], `the reset did not stand the player at the origin ${JSON.stringify(end)}`).toEqual([0, 0]);
