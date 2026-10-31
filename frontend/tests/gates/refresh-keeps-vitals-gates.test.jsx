@@ -22,6 +22,7 @@ import { render, act, cleanup, fireEvent, screen } from '@testing-library/react'
  *   V4 a change of health schedules no save (the hit, then F5 at once)         -> RED expected
  *   V5 the load does not cap a saved vital at the derived maximum               -> RED expected
  *   V6 plausible-wrong: a save at full records the placeholder health          -> RED expected (the new world)
+ *   V7 plausible-wrong: the mana floor is above 0 (a refresh at no mana refills) -> RED expected
  *   V0 identity (a comment edit)                                               -> must SURVIVE
  */
 
@@ -122,6 +123,18 @@ describe('a refresh keeps the player\'s health and mana', () => {
     const q = await pageLoad();
     expect(vitals(q.S()), 'a save at full did not load at the maximum').toEqual({ hp: q.S().maxHealth, mana: q.S().maxMana });
     q.unload();
+  }, 30000);
+
+  it('every point of mana spent, then F5: the next page has none, as a living player can (mana is kept from 0)', async () => {
+    let p = await continueWorld();
+    act(() => { p.S().damagePlayer(20, 'gate'); p.S().useMana(p.S().mana); });
+    const left = vitals(p.S());
+    expect({ mana: left.mana, alive: p.S().isAlive }, 'SETUP: the cast did not spend every point').toEqual({ mana: 0, alive: true });
+    p.unload();
+    p = await pageLoad();
+    // PRESENCE: the wounded health came back as saved, so the load read this save's vitals.
+    expect(vitals(p.S()), 'a refresh at no mana refilled it').toEqual(left);
+    p.unload();
   }, 30000);
 
   it('a saved vital is capped at the maximum the load derives, and one no living player has loads full', async () => {

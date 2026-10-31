@@ -23,6 +23,7 @@ import { render, act, cleanup, fireEvent, screen } from '@testing-library/react'
  *   D2 the save written while dead does not count the death                  -> RED expected
  *   D3 the death schedules no save (isAlive not an autosave trigger)          -> RED expected
  *   D4 plausible-wrong: the death is counted on the live save too (twice)     -> RED expected
+ *   D5 the save written while dead keeps the mana spent before the death     -> RED expected
  *   D0 identity (a comment edit)                                              -> must SURVIVE
  */
 
@@ -93,14 +94,17 @@ afterEach(() => {
 describe('a refresh on the death screen resumes as Respawn would', () => {
   it('F5 at once after the death: the next page has the player alive at the origin spawn, at full health, the death counted', async () => {
     let p = await playFar();
+    act(() => { p.S().useMana(40); }); // spent before the death, so a respawn's full mana is visible
+    expect(p.S().mana < p.S().maxMana, 'SETUP: the cast did not spend mana').toBe(true);
     act(() => { p.S().damagePlayer(99999, 'gate'); });
     expect(p.S().isAlive, 'SETUP: the player did not die').toBe(false);
     p.unload(); // the refresh, a moment after the death: the unload flush is the only save
 
     p = await pageLoad();
     const s = p.S();
-    expect({ alive: s.isAlive, full: s.playerHealth === s.maxHealth, resumeSpawn: s.resumeSpawn },
-      'the refresh brought the player back where they fell, not to the origin spawn').toEqual({ alive: true, full: true, resumeSpawn: null });
+    expect({ alive: s.isAlive, full: s.playerHealth === s.maxHealth, mana: s.mana === s.maxMana, resumeSpawn: s.resumeSpawn },
+      'the refresh brought the player back where they fell, not to the origin spawn, or not at full health and mana')
+      .toEqual({ alive: true, full: true, mana: true, resumeSpawn: null });
     expect(deaths(s.questState), 'the refresh skipped the death').toBe(1);
     expect(disk().player_data.position, 'the save written while dead holds the spot where the player fell').toBeUndefined();
     p.unload();
