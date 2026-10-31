@@ -153,7 +153,8 @@ describe('the terrain worker builds from the seed it is given', () => {
 
   // [cx, cz, x, y, z, block id]: the blocks main's worker (4a01607b; src/world is the same at 80238889) builds with no
   // seed, read through its own message handler by readVoxels below. Per chunk: two ground columns (the top block and
-  // the air above it pin the height), wood, leaves, a cave and an ore. The chunks hold the columns pinned above at
+  // the air above it pin the height), a cave and an ore, and the wood and leaves the chunk has (the ocean chunk has
+  // neither, and the wood at chunk (2, 153) is a cavern post, not a tree). The chunks hold the columns pinned above at
   // (-250, 413), the highland swell (37, 2453) and the ocean (-6000, -6000), and the chunk the mesh test builds.
   const VOXELS_12345 = [
     [2, -3, 0, 54, 0, 1], [2, -3, 0, 55, 0, 0], [2, -3, 10, 50, 6, 1], [2, -3, 10, 51, 6, 0],
@@ -165,8 +166,8 @@ describe('the terrain worker builds from the seed it is given', () => {
     [-16, 25, 0, 48, 0, 1], [-16, 25, 0, 49, 0, 0], [-16, 25, 5, 46, 3, 1], [-16, 25, 5, 47, 3, 0],
     [-16, 25, 14, 47, 10, 6], [-16, 25, 13, 54, 7, 7], [-16, 25, 0, 5, 0, 0], [-16, 25, 2, 1, 2, 11],
   ];
-  // A trunk and a leaf of a tree in three chunks at seed 777, read from this worker when the seed was plumbed (main
-  // ignored the seed, so it has no 777 to compare). Trees placed by another seed's hash leave these spots.
+  // A trunk and a leaf of a tree in three chunks at seed 777, read from this worker when the seed was plumbed (the
+  // worker with no seed has no 777 tree to compare). Trees placed by another seed's hash leave these spots.
   const TREES_777 = [
     [2, -3, 6, 51, 7, 6], [2, -3, 6, 52, 5, 7], [-16, 25, 14, 58, 13, 6], [-16, 25, 13, 59, 12, 7],
     [1, -1, 1, 54, 12, 6], [1, -1, 1, 55, 10, 7],

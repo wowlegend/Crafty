@@ -1,20 +1,13 @@
 /**
- * bossEntrance.js — the Shadow Dragon's ARRIVAL is the climax of the run and had no beat (STATUS §E-ter/E4).
+ * bossEntrance.js — the Shadow Dragon's ARRIVAL is the climax of the run, so it has a beat of its own: a held breath,
+ * a bloom swell and a shake, with the toast. The boss KILL fires eight isolated effects including a 160ms hitstop and a
+ * bloom spike, so the start of the fight carries weight as the end does.
  *
- * WHAT WAS THERE. `bossSystem.js` positioned the dragon, flipped `bossActive`, and called
- * `setBossNotification('The Blight Heart stirs -- the Shadow Dragon awakens! [Climax]')`. That is the whole
- * entrance: a line of text. Meanwhile the boss KILL fires eight isolated effects including a 160ms hitstop
- * and a bloom spike. The end of the fight had weight; the start of it had a toast.
+ * The mood snap is not part of this beat: `bossSystem.js` drives `setDangerLevel(bossActive ? 2 : 0)` (the obsidian
+ * danger mood) on its own. What this adds is the physical punch: shake, freeze, bloom.
  *
- * ONE CLAUSE OF THE REGISTRY ENTRY WAS WRONG, and is corrected rather than repeated: it listed "no mood
- * snap" among the gaps. `bossSystem.js:156` has driven `setDangerLevel(bossActive ? 2 : 0)` — the obsidian
- * danger mood — since the A5 bridge landed. The mood snap works. What is genuinely missing is the physical
- * punch: shake, freeze, bloom.
- *
- * NO ROAR. The registry also asks for one. The sound API exposes `defeat`, `fanfare` and `victory` and
- * nothing that reads as a dragon, and inventing an audio asset is outside a loop slice — so the beat ships
- * silent and the roar stays on the list, rather than firing `playVictory` at an ENTRANCE because it was the
- * closest thing to hand.
+ * NO ROAR. The sound API exposes `defeat`, `fanfare` and `victory` and nothing that reads as a dragon, so the beat is
+ * silent rather than firing `playVictory` at an ENTRANCE because it was the closest thing to hand.
  *
  * DESIGNED AGAINST THE KILL, not in isolation — they are different emotions and should not be the same
  * shape. The kill is an IMPACT: a sharp 160ms freeze and a 450ms bloom flash, plus six more effects (XP,
@@ -35,12 +28,9 @@ export const ENTRANCE = Object.freeze({
   // An impact WEIGHT for triggerCameraShake, on the same scale every other producer uses: a normal melee
   // hit is 1.0 and a crit 1.6, so 0.8 is "felt, but below being hit", which is what this beat is for.
   //
-  // It used to be 1.4 fed to setScreenShake, and setScreenShake is not a camera shake at all -- HUD wires
-  // it to DamageOverlay's intensity, i.e. the RED DAMAGE VIGNETTE. So the dragon's arrival painted the
-  // screen with the cue for taking damage, and the player read "I am being hurt" at the exact moment the
-  // design doc above asks them to stop and feel dread. A cue that means something else is worse than no
-  // cue. BossEntity's own comments already recorded that setScreenShake feeds the vignette; the entrance
-  // never got the memo.
+  // It goes to triggerCameraShake and never to setScreenShake: HUD wires setScreenShake to DamageOverlay's intensity,
+  // i.e. the RED DAMAGE VIGNETTE, so the arrival would paint the cue for taking damage at the moment the beat asks the
+  // player to stop and feel dread. A cue that means something else is worse than no cue.
   shakeWeight: 0.8,
 });
 

@@ -24,10 +24,10 @@ export const ENERGY_PROFILE = {
     glowColor: '#FF7A1A',   // saturated fiery orange shell (spec §4 #FF7A3C, pushed hot)
     midColor: '#FFC24D',    // v7-S3.2: gold blackbody mid-stop (white->gold->orange ramp; consumed S3.4)
     coreIntensity: 6.0,
-    glowIntensity: 7.0,     // v7-S3.2: push the ORANGE shape harder into HDR so the bloom HALO reads orange (was 5.5)
-    coreScale: 0.30,        // v7-S3.2: shrink the white heart -> less white/pink wash, orange shape dominates (was 0.40)
-    glowScale: 0.88,        // v7-S3.2: tighter halo -> denser orange, less diffuse pale wash (was 0.92)
-    glowOpacity: 0.12,      // v7-S3.2: RESTRAIN the additive shell (additive orange over a bright sky washes pale-pink; meshBasic can't go HDR) -> let the HDR emissive SHAPE (glowIntensity 7.0) bloom the orange halo instead (was 0.22)
+    glowIntensity: 7.0,     // v7-S3.2: push the ORANGE shape harder into HDR so the bloom HALO reads orange
+    coreScale: 0.30,        // v7-S3.2: shrink the white heart -> less white/pink wash, orange shape dominates
+    glowScale: 0.88,        // v7-S3.2: tighter halo -> denser orange, less diffuse pale wash
+    glowOpacity: 0.12,      // v7-S3.2: RESTRAIN the additive shell (additive orange over a bright sky washes pale-pink; meshBasic can't go HDR) -> let the HDR emissive SHAPE (glowIntensity 7.0) bloom the orange halo instead
     flicker: 0.18,          // strong fiery turbulence (gameplay only)
     flickerSpeed: 14,
     capturePhase: 0.65,     // flattering frozen phase (sin arg) -> slightly expanded
@@ -43,9 +43,9 @@ export const ENERGY_PROFILE = {
     midColor: '#6FC8E8',    // v7-S3.2: mid ice-cyan stop (white->cyan->deep-teal ramp; consumed S3.4/S3.5)
     coreIntensity: 5.5,
     glowIntensity: 5.0,     // W2-T4: shape is the hero — boost the crystal emissive
-    coreScale: 0.20,        // v7-S3.5: shrink the white core to a tiny frozen spec (the solid crystal must not be washed white; was 0.36)
+    coreScale: 0.20,        // v7-S3.5: shrink the white core to a tiny frozen spec (the solid crystal must not be washed white)
     glowScale: 0.86,
-    glowOpacity: 0.14,      // v7-S3.2: lower -> crisp high-contrast facets, not a glow ball (was 0.20)
+    glowOpacity: 0.14,      // v7-S3.2: lower -> crisp high-contrast facets, not a glow ball
     flicker: 0.07,          // crisp, low-turbulence (ice is sharp, not roiling)
     flickerSpeed: 7,
     capturePhase: 0.30,
