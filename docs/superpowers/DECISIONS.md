@@ -19,6 +19,36 @@
 
 ---
 
+## 2026-10-31 — [LOOP] the Command Record keeps the glance and gains a terse record below it (amends item 280)
+
+**Kevin, 2026-10-31, after seeing the eli5 page, verbatim:** "the command record looks good as a one-glance summary to
+me, but i would want the details (previously you made it basically like a changelog of things?) on it too, if i want
+to scroll down to read into the details. what i meant when i said too much text was that the text was a bit too
+verbose ... you decide the best shape for this command record html."
+
+281. **The page is the glance on top and a terse record below it** (amends item 280, which made the whole page the
+   glance and left the detail to other files). The top is item 280's glance, unchanged: five drawings, one short line
+   each, 233 visible words. Below a ground-line divider, "The details": one fact a row, about 15 words at most, no
+   paragraphs, every PR linked on GitHub, in six parts: what landed since the 2026-10-27 handover by UTC day (every
+   merged PR from #22, and the direct landings that matter: Wave 1, branch protection, the deep audit's record, the
+   Command Record's versions); the bug hunt (the invisible box, the audit's 8 HIGH rows, the 3 HIGH rows the lanes'
+   reviews found, the twelve lanes and their state); the non-routine calls, each with its item; in flight and next;
+   health (CI on main, the live site, the registry's counts); and the three things waiting on Kevin, each with why.
+   Version 14, the first of this shape, carries 1,563 detail words (1,796 visible in all), counted over the rendered
+   text in headless Chromium at 1200 px and 390 px; at 390 px nothing scrolls sideways.
+   - **One data file and one script.** `docs/superpowers/command-record.json` holds every fact: the glance's captions
+     and counts, and every detail row with a `src` naming where it was read (not shown on the page).
+     `node frontend/scripts/ci/command-record.mjs` writes the page from it, copies the as-of stamp between its markers
+     byte for byte, and counts `memory/registry.jsonl` itself so that row cannot go stale; `--check` exits 1 when the
+     page is not what the data writes (a manual command; no tier runs it). The script is the eli5 build's Python
+     generator ported to Node with no new dependency; with the detail removed and the layout comment restored, its
+     output is byte-identical to the page at `feb456e3`. A refresh is a data edit, that command, then the stamp,
+     republish and sync of item 280.
+   - **Why the detail is on the page and not only in the files.** It still lives in DECISIONS, the registry and git,
+     which stay the source of truth; this record is the reading copy of the slice Kevin asked for, and each row's `src`
+     points back to them. What item 280 cut was length per line, and this shape keeps each line short.
+   - `CLAUDE.md`'s standing principle names the shape, and its session close names the data file and the command.
+
 ## 2026-10-31 — [KEVIN] the Command Record is an eli5 page: big pictures, few words
 
 **Kevin's rule, 2026-10-31, verbatim:** "The command record is way too much text, make it always /eli5:eli5 looking."

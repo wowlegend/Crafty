@@ -1,0 +1,231 @@
+{
+  "about": "The facts behind docs/superpowers/command-record.html. Edit this file, then run node frontend/scripts/ci/command-record.mjs (DECISIONS 2026-10-31 items 280 and 281). Each detail row's src says where its fact was read; it is not shown on the page. Glance: about 250 visible words. Detail rows: one plain line each, about 15 words at most.",
+  "glance": {
+    "stands": {
+      "live": "Live",
+      "green": "All green",
+      "alt": "The game's world is live for players, and every check is green.",
+      "caption": "Live for everyone, and every check is green: 31 October 2026."
+    },
+    "better": {
+      "sub": "Since you handed over on 27 October.",
+      "cards": [
+        { "pic": "box", "alt": "A player steps out of an invisible box, free.", "caption": "Placing a block can no longer trap you in an invisible box." },
+        { "pic": "continue", "alt": "The title screen offers Continue, with New World below.", "caption": "Continue on the title takes you straight back to your world." },
+        { "pic": "dragon", "alt": "The Shadow Dragon flies over a glowing ring on the ground where its attack will land; the player steps out of it.", "caption": "The Shadow Dragon marks the ground before each attack lands." },
+        { "pic": "death", "alt": "An iPhone and an iPad show the YOU DIED screen, not a crash.", "caption": "Dying on iPhone or iPad should no longer crash. Check it on yours." },
+        { "pic": "rock", "alt": "A player stuck in rock is lifted to open ground, and a player at the bottom of a deep hole stays there.", "caption": "Stuck in rock? You are moved clear." },
+        { "pic": "mac", "alt": "On a big Mac screen the game draws about 4.2 million pixels where it drew 7.7 million: two bars to scale.", "caption": "Big Macs draw half the pixels, so they should run cooler." },
+        { "pic": "look", "alt": "A grass block with clear top and side faces, and a game screen that is almost all world with small on-screen panels.", "caption": "Blocks have a new look, and the screen is far less cluttered." },
+        { "pic": "build", "alt": "A block mined from stone travels to the wall you build.", "caption": "Building uses the blocks you mine." }
+      ]
+    },
+    "bugs": {
+      "small": 33,
+      "bigCount": 8,
+      "fixedCount": 7,
+      "total": "40+ real bugs",
+      "big": "8 big ones",
+      "fixed": "7 fixed",
+      "busy": "1 being fixed",
+      "alt": "Over 40 real bugs found, 8 of them big. Seven big ones are fixed and one is being fixed.",
+      "caption": "The hunt you asked for. Last big one left: saving your squad."
+    },
+    "now": {
+      "cells": [
+        { "pic": "chest", "tag": "Done", "state": "ok", "lines": ["Loot and chests", "tidy up"] },
+        { "pic": "shrine", "tag": "Now", "state": "run", "lines": ["Remembers your", "squad and shrines"] },
+        { "pic": "wall", "tag": "Now", "state": "run", "lines": ["Build tools do", "what they say"] },
+        { "pic": "slots", "tag": "Next", "state": "idle", "lines": ["Better save", "slots"] }
+      ],
+      "alt": "Done: loot and chests tidy up. Now: the game remembers your squad and shrines; build tools do what they say. Next: better save slots.",
+      "caption": "One just shipped, two are being built, and save slots come next."
+    },
+    "you": {
+      "cols": [
+        { "pic": "devices", "lines": ["Play on iPhone", "and iPad"] },
+        { "pic": "ears", "lines": ["Mix the sound", "by ear"] },
+        { "pic": "lens", "lines": ["3 deep reviews", "on account 2"] }
+      ],
+      "alt": "Three things for you: play on iPhone and iPad, mix the sound by ear, and if you like, three deep reviews on account 2.",
+      "caption": "Only you can do these. Nothing is blocked on them."
+    }
+  },
+  "details": {
+    "title": "The details",
+    "sub": "The record behind the pictures, one fact a line, newest first.",
+    "log": {
+      "title": "What landed",
+      "sub": "Every merged PR since the 27 October handover, and the direct landings that matter. Days are UTC.",
+      "rows": [
+        { "day": "2026-10-31", "rows": [
+          { "commit": "feb456e3", "text": "Command Record versions 12 and 13: the picture glance replaces the long form.", "src": "git log feb456e3 (002b0b9e v12, 2cc12308 v13); Production deploy 09:31:13Z (gh api deployments)" },
+          { "pr": 67, "text": "Quest chests follow you, pickups expire, and a spell never evicts its own zones.", "src": "gh pr list --state merged: #67 merged 08:55Z; session-truth 08:55Z (L9 landed)" },
+          { "pr": 65, "text": "Every world switch reloads into that world; the title offers Continue.", "src": "gh: #65 merged 07:09Z; DECISIONS items 200-201" },
+          { "pr": 66, "text": "The deep seabed no longer resets you; a body stuck in rock is set clear.", "src": "gh: #66 merged 05:12Z; DECISIONS items 207, 213-214" },
+          { "commit": "64b621b1", "text": "Command Record version 11.", "src": "git log 64b621b1; Production deploy 04:05:12Z" },
+          { "pr": 64, "text": "One rule per world fact: shore sound, shrine guides, mob cover, loot tier.", "src": "gh: #64 merged 03:38Z; DECISIONS items 180-185" },
+          { "pr": 63, "text": "Input works only while nothing covers the game; typed world names stay text.", "src": "gh: #63 merged 02:34Z; DECISIONS items 171-174" }
+        ] },
+        { "day": "2026-10-30", "rows": [
+          { "pr": 61, "text": "A test plays the game chaotically and checks you can always leave; seven fixes.", "src": "gh: #61 merged 23:45Z; DECISIONS item 150; retired long form 002b0b9e (its seven fixes)" },
+          { "pr": 62, "text": "Deaths on iPhone and iPad show YOU DIED, not a crash; every touch button answers.", "src": "gh: #62 merged 21:04Z; DECISIONS items 160, 164" },
+          { "commit": "dd11f962", "text": "The deep audit's record: nine bug hunters, 40 confirmed bugs, twelve fix lanes.", "src": "git log dd11f962; docs/superpowers/audits/2026-10-30-deep-audit.md counts; deploy 19:40:28Z" },
+          { "commit": "b48ec9f1", "text": "Command Record version 10.", "src": "git log b48ec9f1; deploy 17:59:10Z" },
+          { "pr": 60, "text": "The game's first download is 47,557 bytes smaller; menus still animate.", "src": "gh: #60 merged 16:53Z, title 'index -47,557 B'; DECISIONS item 140" },
+          { "pr": 59, "text": "Your invisible box is fixed: a right-click never places a block inside you.", "src": "gh: #59 merged 15:29Z; DECISIONS item 130; registry REVIEW:fix-invisible-box:placed-into-body" },
+          { "pr": 58, "text": "Every dragon attack marks the ground first; dodges, heavies and Aspect kits reach it.", "src": "gh: #58 merged 12:32Z; DECISIONS items 124-126" },
+          { "pr": 56, "text": "The dragon's code loads only when a fight is due.", "src": "gh: #56 merged 12:32Z; DECISIONS item 121" },
+          { "pr": 57, "text": "Your world autosaves while you play; reward sounds run on one event bus.", "src": "gh: #57 merged 11:39Z and its body; DECISIONS items 110-113" },
+          { "commit": "c40da851", "text": "Command Record version 9.", "src": "git log c40da851; first deployed inside 4a01607b at 08:40:14Z" },
+          { "pr": 53, "text": "The HUD at rest covers 6.6% of the screen, down from 22%.", "src": "gh: #53 merged 07:42Z; retired long form 002b0b9e (22.14% to 6.58% of a 1280x800 frame)" },
+          { "pr": 54, "text": "Three panels replace seven: Character, Journal and Build; quests claim themselves.", "src": "gh: #54 merged 07:42Z; DECISIONS item 96" },
+          { "pr": 55, "text": "Closed records moved behind a git tag; the changelog is generated.", "src": "gh: #55 merged 01:34Z; DECISIONS items 100-101" }
+        ] },
+        { "day": "2026-10-29", "rows": [
+          { "pr": 52, "text": "First person finished: your beast stays out of view; mobs sense your body.", "src": "gh: #52 merged 22:57Z; DECISIONS items 80, 83" },
+          { "commit": "96d00fd6", "text": "Command Record version 8.", "src": "git log 96d00fd6; deploy 18:38:19Z" },
+          { "pr": 51, "text": "Hunt quests name the creature you see on screen.", "src": "gh: #51 merged 18:09Z; DECISIONS item 75" },
+          { "pr": 50, "text": "Hunger and the five foods are gone.", "src": "gh: #50 merged 17:29Z; DECISIONS items 70-71" },
+          { "pr": 49, "text": "End-to-end tests tightened after seven review findings.", "src": "gh: #49 merged 16:34Z and its body (four review findings, three claims)" },
+          { "pr": 47, "text": "Mara's Forge replaces the crafting grid.", "src": "gh: #47 merged 15:03Z; DECISIONS item 60" },
+          { "commit": "99a3edc9", "text": "Only main deploys to the live site; branch previews are off.", "src": "git log 99a3edc9; DECISIONS item 58; first deployed inside ddd4fe78 at 15:03:54Z" },
+          { "pr": 46, "text": "The README picture and share card are frames of the real game.", "src": "gh: #46 merged 14:04Z" },
+          { "pr": 48, "text": "Three flaky end-to-end tests fixed at the cause.", "src": "gh: #48 merged 13:45Z" },
+          { "commit": "bcd7fbdc", "text": "Command Record version 7.", "src": "git log bcd7fbdc; deploy 09:29:21Z" },
+          { "pr": 44, "text": "Talents change what your moves do; relics drop as loot; damage scales with level.", "src": "gh: #44 merged 09:04Z; DECISIONS items 41-45" },
+          { "pr": 43, "text": "Your first-person hands are drawn properly; your eye sits at 1.62 m.", "src": "gh: #43 merged 08:15Z; DECISIONS items 33-34" },
+          { "pr": 45, "text": "One browser test tool across the repo: Playwright.", "src": "gh: #45 merged 06:33Z" },
+          { "commit": "34b2aef7", "text": "Command Record version 6, at the link it still has.", "src": "git log 34b2aef7; first deployed inside 739dcd42 at 04:44:14Z; .artifact-sync.json url" },
+          { "pr": 42, "text": "A short instruction file, an orient command and a task cursor; old loop docs retired.", "src": "gh: #42 merged 03:42Z" },
+          { "pr": 41, "text": "Follow-ups from the block-face and lookbook reviews.", "src": "gh: #41 merged 03:07Z and its body" },
+          { "pr": 38, "text": "One ember bar replaces the four Aspect meters.", "src": "gh: #38 merged 02:32Z" },
+          { "pr": 40, "text": "Three production dependencies updated (Dependabot).", "src": "gh: #40 merged 01:36Z" },
+          { "pr": 39, "text": "The costly N8AO shading pass is deleted, measured on the GPU's own time.", "src": "gh: #39 merged 00:21Z; DECISIONS items 28-29" },
+          { "pr": 37, "text": "Blocks get clustered tones and different top, side and bottom faces.", "src": "gh: #37 merged 00:01Z; DECISIONS items 25-27" }
+        ] },
+        { "day": "2026-10-28", "rows": [
+          { "commit": "29199116", "text": "Command Record: three refreshes in the day, ending at version 5.", "src": "git log a3fb66cd, 13c600ad, 29199116; deploys 14:51Z, 18:08Z, 22:29Z" },
+          { "pr": 36, "text": "Fogged sprites draw again.", "src": "gh: #36 merged 22:08Z" },
+          { "pr": 32, "text": "The 31-frame screenshot oracle retires; looks are judged on lookbook frames.", "src": "gh: #32 merged 21:35Z; DECISIONS 2026-10-28 W1-H item 1" },
+          { "pr": 33, "text": "Building spends the blocks you mine, in every world; old saves keep progress.", "src": "gh: #33 merged 21:10Z" },
+          { "pr": 35, "text": "Touch titles drop keyboard hints; ground less metallic; sea foam stops glowing at night.", "src": "gh: #35 merged 20:51Z" },
+          { "pr": 34, "text": "CI alone judges end-to-end tests; a commit runs a fast tier of checks.", "src": "gh: #34 merged 20:28Z; DECISIONS 2026-10-28 items 22-23" },
+          { "pr": 31, "text": "Combat stance: fights you cannot out-walk, off-screen attack warnings, a three-hit combo.", "src": "gh: #31 merged 18:25Z" },
+          { "commit": "6752ce5c", "text": "Light and colour: a moonlit night, a warm golden hour, a 480-second day.", "src": "git log 6752ce5c, 14c9707b; registry MASTERPIECE:seen:* rows closed by 6752ce5c; DECISIONS 2026-10-28 item 21; deploy 17:36:30Z" },
+          { "commit": "6ccc483c", "text": "Block textures are mipmapped, so leaves and stone stop sparkling at a distance.", "src": "git log 6ccc483c; DECISIONS 2026-10-28 item 20; first deployed inside d201c073 at 16:22:48Z" },
+          { "commit": "56a5ef8e", "text": "Game icons load on demand: the first download is 104 kB smaller.", "src": "git show 56a5ef8e (index 723,187 to 618,708 B); first deployed inside c6d04db8 at 16:04:47Z" },
+          { "commit": "a7ad2fbc", "text": "A pause now holds the whole world.", "src": "git log a7ad2fbc; first deployed inside 030ada1f at 14:08:59Z" },
+          { "commit": "7c1eea2f", "text": "Settler kills pay nothing; spell XP counts only spells that hit enemies.", "src": "git log 7c1eea2f; first deployed inside 030ada1f at 14:08:59Z" },
+          { "commit": "d700e531", "text": "One instruction file for every agent: CLAUDE.md at the repo root.", "src": "git log d700e531; DECISIONS 2026-10-28 [KEVIN] One CLAUDE.md; deploy 11:30:09Z" },
+          { "commit": "1c4e3bc1", "text": "Main is protected: only a commit with green CI can land.", "src": "git log 1c4e3bc1; deploy 11:11:54Z; retired long form 002b0b9e (protection on since 1c4e3bc1)" },
+          { "pr": 24, "text": "Big screens draw about half the pixels; the game idles behind panels.", "src": "gh: #24 merged 10:41Z and its body (dpr from a pixel budget, pacing behind panels)" },
+          { "pr": 27, "text": "Test harness cleanup: deterministic seams, and a lane receipt bug fixed.", "src": "gh: #27 merged 10:41Z and its body" },
+          { "commit": "2bb0857d", "text": "Main CI green again after a touch-test freeze fix.", "src": "git log 2bb0857d; deploy 07:40:44Z; retired long form 002b0b9e (red until 2bb0857d)" },
+          { "pr": 23, "text": "Instruments: real-GPU lookbook frames, an in-game diagnostics readout, a power A/B.", "src": "gh: #23 merged 06:08Z" },
+          { "pr": 25, "text": "Touch: hold to roar, and an action button with charge rings.", "src": "gh: #25 merged 06:08Z" },
+          { "pr": 22, "text": "Parked work shipped: title pacing, compass, glowing ore, swaying leaves, storm lightning.", "src": "gh: #22 merged 02:40Z" },
+          { "pr": 29, "text": "Two end-to-end tests judge by outcome: the roofed fireball and the hit-stop.", "src": "gh: #29 merged 00:43Z" }
+        ] },
+        { "day": "2026-10-27", "rows": [
+          { "commit": "230fd72f", "text": "Main CI green for the first time since 23 September.", "src": "git log 230fd72f; deploy 14:12:43Z; retired long form 002b0b9e (run 40518887229; last green a01b1982 on 09-23)" },
+          { "href": "https://github.com/wowlegend/Crafty/blob/main/docs/superpowers/DECISIONS.md", "label": "rule", "text": "You handed over with full autonomy: decide, act, record every call.", "src": "DECISIONS 2026-10-27 (later) [KEVIN] The Crafty command session's mandate" }
+        ] }
+      ]
+    },
+    "hunt": {
+      "title": "The bug hunt",
+      "sub": "After your invisible box, a deep audit hunted that kind of bug: 47 rechecked independently, 40 confirmed.",
+      "groups": [
+        { "title": "The one you found", "rows": [
+          { "state": "fixed", "text": "A right-click sealed you inside your own block.", "lane": "", "pr": 59, "src": "registry REVIEW:fix-invisible-box:placed-into-body, HIGH, closedBy 2fb8c72c (PR #59)" }
+        ] },
+        { "title": "The 8 big ones", "rows": [
+          { "state": "fixed", "text": "Every death on iPhone or iPad crashed the game.", "lane": "L1", "pr": 62, "src": "registry AUDIT:input:ios-death-crash, HIGH, closedBy 5514906d (PR #62)" },
+          { "state": "fixed", "text": "A returning player never got their world back; Start began a fresh one.", "lane": "L2", "pr": 65, "src": "registry AUDIT:persistence:returning-player-never-resumed, HIGH, closedBy 92120514 (PR #65)" },
+          { "state": "fixed", "text": "Loading a world dropped you out of it, into a cave or the void.", "lane": "L2", "pr": 65, "src": "registry AUDIT:desync:load-drops-player-out-of-world, HIGH, closedBy 92120514 (PR #65)" },
+          { "state": "fixed", "text": "Recovering from a graphics crash wiped your quests and revived a slain dragon.", "lane": "L2", "pr": 65, "src": "registry AUDIT:debt:resume-clobbers-quests-and-boss, HIGH, closedBy 92120514 (PR #65)" },
+          { "state": "fixed", "text": "After a load, an unhittable dragon chased a level-1 hero.", "lane": "L2", "pr": 65, "src": "registry AUDIT:softlocks:boss-hook-ignores-world-load, HIGH, closedBy 92120514 (PR #65)" },
+          { "state": "open", "text": "Your bound squad is never saved.", "lane": "L3", "pr": 69, "src": "registry AUDIT:verbs:squad-not-saved-and-leaks-across-worlds, HIGH, open; PR #69 open" },
+          { "state": "fixed", "text": "On touch, the Settings gear never opened.", "lane": "L1", "pr": 62, "src": "registry AUDIT:input:touch-settings-gear-unreachable, HIGH, closedBy 9b89e569 (PR #62)" },
+          { "state": "fixed", "text": "Two tabs on one world overwrote each other's progress.", "lane": "L2", "pr": 65, "src": "registry AUDIT:persistence:two-tabs-clobber-world, raised MED to HIGH, closedBy 66d83473 (PR #65)" }
+        ] },
+        { "title": "Big ones the fix lanes' reviews found", "rows": [
+          { "state": "fixed", "text": "On touch, Respawn and Keep exploring ignored a finger.", "lane": "L1", "pr": 62, "src": "registry REVIEW:l1:touch-overlay-buttons-cancelled, HIGH, closedBy 9b89e569 (PR #62)" },
+          { "state": "fixed", "text": "A respawn could drop you blind from high up, sometimes into rock.", "lane": "L4", "pr": 66, "src": "registry REVIEW:l4:spawn-wait-counted-in-frames, HIGH, closedBy 1c58500c (PR #66)" },
+          { "state": "fixed", "text": "A body clipped into rock above a cave stayed stuck there.", "lane": "L4", "pr": 66, "src": "registry REVIEW:l4:clip-over-cave-left-in-rock, HIGH, closedBy ab662a2f (PR #66)" }
+        ] }
+      ],
+      "lanes": {
+        "title": "The twelve fix lanes",
+        "rows": [
+          { "lane": "L1", "text": "Quick wins: the iOS death crash, Show Stats on touch, the juice dial, the gear.", "state": "landed", "pr": 62, "src": "registry AUDIT:lane:L1-quick-wins closed; gh #62 merged" },
+          { "lane": "L2", "text": "Every world switch is a boot; Continue on the title.", "state": "landed", "pr": 65, "src": "registry AUDIT:lane:L2-boot-is-the-only-load closed; gh #65 merged" },
+          { "lane": "L3", "text": "The store owns each world's state; the squad and shrines are saved.", "state": "in flight", "pr": 69, "src": "registry AUDIT:lane:L3-store-owns-world-state open; gh #69 open" },
+          { "lane": "L4", "text": "The void line at the world's floor; one recovery for void and respawn.", "state": "landed", "pr": 66, "src": "registry AUDIT:lane:L4-void-line-and-spawn-recovery closed; gh #66 merged" },
+          { "lane": "L5", "text": "One rule for whether input is live.", "state": "landed", "pr": 63, "src": "registry AUDIT:lane:L5-input-live-predicate closed; gh #63 merged" },
+          { "lane": "L6", "text": "Build tools that do what they say.", "state": "in flight", "pr": 68, "src": "registry AUDIT:lane:L6-build-tools open; gh #68 open" },
+          { "lane": "L7", "text": "Credit, sound and counters come from what happened, not the click.", "state": "next", "src": "registry AUDIT:lane:L7-credit-from-the-effect open" },
+          { "lane": "L8", "text": "Save slots: one save path, pruning, failures shown, tab conflicts.", "state": "next", "src": "registry AUDIT:lane:L8-save-slot-lifecycle open" },
+          { "lane": "L9", "text": "Every pool gets a lifetime: quest chests, pickups, spell zones.", "state": "landed", "pr": 67, "src": "registry AUDIT:lane:L9-pools-with-lifetimes closed; gh #67 merged" },
+          { "lane": "L10", "text": "Apple audio recovery, music on the sound bus, and your device run.", "state": "next", "src": "registry AUDIT:lane:L10-apple-audio-and-device-run open" },
+          { "lane": "L11", "text": "One rule per world fact.", "state": "landed", "pr": 64, "src": "registry AUDIT:lane:L11-one-fact-one-predicate closed; gh #64 merged" },
+          { "lane": "L12", "text": "Instruments that can see the failure.", "state": "next", "src": "registry AUDIT:lane:L12-instruments-that-can-see open" }
+        ]
+      }
+    },
+    "calls": {
+      "title": "Calls made",
+      "sub": "The non-routine decisions, each with its DECISIONS item.",
+      "rows": [
+        { "item": "281", "text": "This page: the glance on top, terse details below, one data file, one script.", "src": "this commit; Kevin 2026-10-31 (session-truth 09:31Z)" },
+        { "item": "pending", "text": "The Delete Tool removes only blocks you placed, refunded as themselves.", "src": "session-truth 2026-10-31T08:49Z (the command session's call for L6 round 2; its item, 270 or later, lands with PR #68)" },
+        { "item": "250", "text": "A save the old recovery wiped gets its slain dragon back, once.", "src": "DECISIONS item 250 on origin/fix/l3-store-owns-world (PR #69, in flight)" },
+        { "item": "213-214", "text": "A body stuck in rock gets its own recovery, never a trip to spawn.", "src": "DECISIONS items 213-214 (main)" },
+        { "item": "207", "text": "The void line moves from y 10 down to the world's floor.", "src": "DECISIONS item 207 (main)" },
+        { "item": "200-201", "text": "Every world switch is a boot, and the title offers Continue.", "src": "DECISIONS items 200-201 (main); supersedes B2a's 'nothing resumes at boot'" },
+        { "item": "177", "text": "Touch keeps one Cast button; no separate force-cast.", "src": "DECISIONS item 177 (main)" },
+        { "item": "164", "text": "Every button over the game owns its touch, decided by kind, not a list.", "src": "DECISIONS item 164 (main)" },
+        { "item": "150", "text": "A standing test plays the game chaotically and asks: can you still leave?", "src": "DECISIONS item 150 (main)" },
+        { "item": "130", "text": "A right-click never fills a cell your body fills.", "src": "DECISIONS item 130 (main)" },
+        { "item": "70-71", "text": "Hunger and the five foods are deleted, not hidden.", "src": "DECISIONS items 70-71 (main)" },
+        { "item": "58", "text": "Only main deploys to the live site; previews are off.", "src": "DECISIONS item 58 (main)" },
+        { "item": "29", "text": "N8AO is deleted: it cost 26% of a midnight frame.", "src": "DECISIONS item 29 (main): 2.31 ms at midnight, 26% of the frame" },
+        { "item": "W1-H 9", "text": "One registry is the home for all open work.", "src": "DECISIONS 2026-10-28 W1-H item 9 (main)" },
+        { "item": "W1-H 1", "text": "The screenshot oracle retires; looks are judged on lookbook frames.", "src": "DECISIONS 2026-10-28 W1-H item 1 (main)" },
+        { "item": "10-27", "text": "Reviewers run at xhigh effort, never max: your rule, kept.", "src": "DECISIONS 2026-10-27 (later) [KEVIN] mandate: 'Reviewers at xhigh, never max'" }
+      ]
+    },
+    "next": {
+      "title": "In flight and next",
+      "sub": "In the order they will land.",
+      "rows": [
+        { "lane": "L3", "text": "The store owns each world's state; your squad and shrines are saved.", "state": "in flight", "pr": 69, "src": "gh pr view 69: open, head 78f3dac1, CI running at 09:40Z" },
+        { "lane": "L6", "text": "Build tools do what they say; its second round is under way.", "state": "in flight", "pr": 68, "src": "gh pr view 68: open, ci ok green on aa523a49; session-truth 08:49Z (round 2 launched)" },
+        { "lane": "L8", "text": "Save slots: one save path, old slots pruned, a notice when saving fails.", "state": "next", "src": "registry AUDIT:lane:L8-save-slot-lifecycle; deep audit section 4" },
+        { "lane": "L7", "text": "Rewards and sounds come from what happened, not from the click.", "state": "then", "src": "registry AUDIT:lane:L7-credit-from-the-effect; deep audit section 4" },
+        { "lane": "L10", "text": "Apple audio recovers after interruptions; music runs through the sound bus.", "state": "then", "src": "registry AUDIT:lane:L10-apple-audio-and-device-run; deep audit section 4" },
+        { "lane": "L12", "text": "Instruments that can see failures: one reach report, logged errors.", "state": "then", "src": "registry AUDIT:lane:L12-instruments-that-can-see; deep audit section 4" },
+        { "lane": "Gaps", "text": "Corners the audit never reached: hurl, snare, the Forge, quest givers.", "state": "then", "src": "registry AUDIT:critic:coverage-gaps (MED, open)" },
+        { "lane": "W3-A", "text": "The First Night: a siege marches on your Hearth until a golden dawn.", "state": "then", "src": "registry MASTERPIECE:encounters-and-a-siege-that (W3-A, open); retired long form 002b0b9e 'What comes next'" }
+      ]
+    },
+    "health": {
+      "title": "Health",
+      "sub": "Read on 31 October at 09:36 UTC; the registry is counted when the page is written.",
+      "rows": [
+        { "label": "CI on main", "text": "Green on the newest commit, feb456e3, at 09:31 UTC.", "src": "gh run list --branch main --workflow ci.yml: 41188992830 success on feb456e3" },
+        { "label": "Live site", "text": "Serves feb456e3 since 09:31 UTC; both addresses serve the same build.", "src": "gh api deployments (Production 7456868114, success 09:31:13Z); curl crafty-sand and crafty-game: both index-Biky60AC.js at 09:36Z" }
+      ]
+    },
+    "waiting": {
+      "title": "Waiting on you",
+      "sub": "Nothing is blocked on these.",
+      "rows": [
+        { "what": "Play on iPhone and iPad", "why": "CI runs Chromium with touch faked; only your devices prove Safari and a finger.", "src": "CLAUDE.md 'Only Kevin: real-device feel'; DECISIONS item 161; retired long form 002b0b9e (device runs for L1, L5, L2)" },
+        { "what": "Mix the sound by ear", "why": "Only your ears can judge the mix.", "src": "CLAUDE.md 'Only Kevin: ... the audio mix by ear'; registry STATUS:#44" },
+        { "what": "3 deep reviews (optional)", "why": "Ultra review of the UI, render and audio code is your keystroke, on account 2's free runs.", "src": "CLAUDE.md 'Only Kevin: /code-review ultra'; retired long form 002b0b9e (chunks 4 to 6, account 2's free runs)" }
+      ]
+    }
+  }
+}
