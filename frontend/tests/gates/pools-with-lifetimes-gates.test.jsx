@@ -74,6 +74,7 @@ const ORB_BOUND = 64;      // XP orbs alive at once
 const LOOT_BOUND = 32;     // loot drops alive at once
 const CHEST_BOUND = 5;     // unopened periodic chests, for a player who stays put
 const WALK_CHEST_BOUND = 8; // ... for a player who walks on: five in reach plus the few still inside the retire radius
+const BOARD_MAX = 10;      // ... for ANY player, however they move: the board's maximum, the farthest chests give way to it
 const ZONE_BOUND = 8;      // element zones
 const LIFETIME_S = 90;
 const CULL_RANGE = 100;
@@ -441,5 +442,61 @@ describe('the audit gate: the player 600 m away for ten simulated minutes', () =
     expect(minutesWithAChest, 'the compass showed no chest for most of the walk').toBeGreaterThanOrEqual(18);
     expect(peak, 'the board grew without bound as the player walked').toBeLessThanOrEqual(WALK_CHEST_BOUND);
     expect(peak, 'no chest was ever on the board: the walk is not the scenario').toBeGreaterThan(0);
+  }, 180000);
+
+  // THE WORST CASE THE COUNT RADIUS ALLOWS. The cap counts chests within 120 m, so a player who loops through the ring
+  // between 120 m and 240 m keeps adding chests where they no longer count and the retire radius does not yet reach. Measured
+  // before the board had a maximum (three seeds, a circle walked at 3.5 m/s): 17 chests on a 125 m radius within the first
+  // hour; 21 on a 140 m radius by the sixth hour, still rising at the end. Not a farm (a chest still comes only every 30 s),
+  // but a pool nothing bounded. Three hours on the 140 m circle is where the old board passed 19.
+  it('a player who circles a ring the count radius does not reach keeps the board at its maximum, and keeps a chest within reach', () => {
+    const { result } = renderHook(() => useTreasureChests());
+    const periodic = () => result.current.chests.filter((c) => !c.shrine && !result.current.openedChestIds.has(c.id));
+    const R = 140, pace = 3.5, HOURS = 3;
+    const samples = [];
+    let minutesWithAChestInReach = 0;
+    for (let s = 1; s <= HOURS * 3600; s++) {
+      const a = (s * pace) / R;
+      const px = R * Math.cos(a), pz = R * Math.sin(a);
+      placePlayer(px, pz);
+      act(() => { vi.advanceTimersByTime(1000); });
+      samples.push(periodic().length);
+      if (s % 60 === 0 && periodic().some((c) => hDist({ x: c.position[0], z: c.position[2] }, px, pz) <= 120)) minutesWithAChestInReach += 1;
+    }
+    const peak = Math.max(...samples);
+    const hourPeaks = Array.from({ length: HOURS }, (_, h) => Math.max(...samples.slice(h * 3600, (h + 1) * 3600)));
+    console.log(`[L9] circled a ${R} m ring for ${HOURS} h: periodic chests peaked at ${peak} (maximum ${BOARD_MAX}), per hour ${JSON.stringify(hourPeaks)}; a chest within reach (120 m) in ${minutesWithAChestInReach}/${HOURS * 60} minutes`);
+    expect(samples, 'the walk sampled something other than every second').toHaveLength(HOURS * 3600);
+    expect(peak, 'the board never passed the nominal five: the walk is not the scenario the maximum is for').toBeGreaterThan(CHEST_BOUND);
+    expect(peak, 'a player circling the ring left the board past its maximum').toBeLessThanOrEqual(BOARD_MAX);
+    expect(minutesWithAChestInReach, 'the maximum starved the player of a chest within reach').toBeGreaterThanOrEqual(HOURS * 60 * 0.9);
+  }, 240000);
+
+  // THE CALL SITE. The helper's radius is pinned in chestBoard.test.js; this pins the number the SPAWNER hands it. Every chest
+  // is placed 40 m due west of the player (Math.random 0.5), so the geometry is set by where the player stands, not by luck.
+  it('the spawner counts a chest within 120 m and no farther: one 100 m away still holds its slot, one 145 m away does not', () => {
+    Math.random.mockImplementation(() => 0.5);
+    const { result } = renderHook(() => useTreasureChests());
+    const periodic = () => result.current.chests.filter((c) => !c.shrine && !result.current.openedChestIds.has(c.id));
+    const dists = (x) => periodic().map((c) => hDist({ x: c.position[0], z: c.position[2] }, x, 0));
+    const seconds = (n) => { for (let s = 0; s < n; s++) act(() => { vi.advanceTimersByTime(1000); }); };
+    seconds(150);
+    expect(periodic(), 'the board never filled at the spawn: the fixture is not the scenario').toHaveLength(CHEST_BOUND);
+
+    // 75-100 m away: past the 60 m a miscounting spawner might use, inside 120 m. The board is full, so nothing spawns.
+    placePlayer(60, 0);
+    expect(Math.min(...dists(60)), 'the fixture is not past 60 m').toBeGreaterThan(60);
+    expect(Math.max(...dists(60)), 'the fixture is not within 120 m').toBeLessThanOrEqual(120);
+    seconds(150);
+    expect(periodic(), 'a chest 75-100 m away stopped holding its slot').toHaveLength(CHEST_BOUND);
+
+    // 145-170 m away: past the count radius, inside the retire radius. Every chest on the board is out of reach, so the next
+    // tick spawns one beside the player, and the old five stay on the board.
+    placePlayer(130, 0);
+    expect(Math.min(...dists(130)), 'the fixture is not past 120 m').toBeGreaterThan(120);
+    expect(Math.max(...dists(130)), 'the fixture is not inside the retire radius').toBeLessThan(240);
+    seconds(35);
+    expect(periodic().filter((c) => hDist({ x: c.position[0], z: c.position[2] }, 130, 0) <= 60), 'no chest was spawned though every chest on the board was past 120 m').toHaveLength(1);
+    expect(periodic(), 'the chests past 120 m, inside 240 m, left the board').toHaveLength(CHEST_BOUND + 1);
   }, 180000);
 });

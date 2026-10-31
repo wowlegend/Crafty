@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { CHEST_CAP, CHEST_COUNT_RADIUS, CHEST_RETIRE_RADIUS, countNearChests, retireFarChests } from './chestBoard.js';
+import { CHEST_CAP, CHEST_COUNT_RADIUS, CHEST_RETIRE_RADIUS, CHEST_BOARD_MAX, countNearChests, retireFarChests } from './chestBoard.js';
 
 // AUDIT:leaks:chest-board-slots-never-reclaimed. The periodic spawner capped the board at 5 UNOPENED chests wherever they
 // stood, so five the player walked away from held every slot for the session. The cap now counts the chests within reach,
 // and a chest far behind is retired.
-const CAP_R = 120, RETIRE_R = 240; // the contract numbers (DECISIONS 2026-10-30 lane L9), not read back from the module
+const CAP_R = 120, RETIRE_R = 240, BOARD_MAX = 10; // the contract numbers (DECISIONS 2026-10-30 lane L9), not read back from the module
 const chest = (id, x, z, extra = {}) => ({ id, position: [x, 60, z], opened: false, ...extra });
 const me = { x: 0, y: 70, z: 0 };
 const none = new Set();
@@ -14,6 +14,7 @@ describe('the chest board is bounded by where the player is', () => {
     expect(CHEST_CAP).toBe(5);
     expect(CHEST_COUNT_RADIUS).toBe(CAP_R);
     expect(CHEST_RETIRE_RADIUS).toBe(RETIRE_R);
+    expect(CHEST_BOARD_MAX).toBe(BOARD_MAX);
   });
 
   describe('countNearChests', () => {
@@ -62,6 +63,43 @@ describe('the chest board is bounded by where the player is', () => {
     it('a player who moves takes the board with them', () => {
       const board = [chest(1, 0, 0), chest(2, 600, 0)];
       expect(retireFarChests(board, none, { x: 600, y: 60, z: 0 }).map((c) => c.id)).toEqual([2]);
+    });
+  });
+
+  // The count radius lets a player who loops through the ring between 120 m and 240 m keep adding chests there, and the board
+  // creeps: measured 17 on a 125 m circle in the first hour and 21 on a 140 m circle in the sixth, still rising
+  // (DECISIONS 2026-10-30 lane L9, round 2). The board has a maximum, and the farthest chests give way to it.
+  describe('retireFarChests: the board has a maximum', () => {
+    // n unopened chests inside the retire radius, the i-th at x = 130 + i
+    const annulus = (n) => Array.from({ length: n }, (_, i) => chest(i + 1, CAP_R + 10 + i, 0));
+    it('keeps a board at its maximum as it is, the same array', () => {
+      const board = annulus(BOARD_MAX);
+      expect(retireFarChests(board, none, me)).toBe(board);
+    });
+    it('retires the farthest unopened chests past the maximum, exactly the excess', () => {
+      const board = annulus(BOARD_MAX + 3);
+      const kept = retireFarChests(board, none, me).map((c) => c.id);
+      expect(kept).toHaveLength(BOARD_MAX);
+      expect(kept.sort((a, b) => a - b), 'the chests that went are not the three farthest').toEqual(Array.from({ length: BOARD_MAX }, (_, i) => i + 1));
+    });
+    it('retires by distance from the player, not by position in the array', () => {
+      const board = [...annulus(BOARD_MAX), chest(99, 5, 0)].reverse(); // the nearest is listed first-last; the farthest is x = 130 + 9 (id 10)
+      const kept = retireFarChests(board, none, me).map((c) => c.id);
+      expect(kept).toContain(99);
+      expect(kept, 'the farthest chest was kept').not.toContain(BOARD_MAX);
+    });
+    it('counts only unopened periodic chests: shrine chests and opened chests neither count toward it nor go', () => {
+      const shrines = Array.from({ length: 4 }, (_, i) => chest(200 + i, 30 + i, 0, { shrine: true }));
+      const opened = Array.from({ length: 4 }, (_, i) => chest(300 + i, 40 + i, 0));
+      const board = [...annulus(BOARD_MAX + 2), ...shrines, ...opened];
+      const kept = retireFarChests(board, new Set(opened.map((c) => c.id)), me).map((c) => c.id);
+      for (const c of [...shrines, ...opened]) expect(kept, `chest ${c.id} was retired by the maximum`).toContain(c.id);
+      expect(kept.filter((id) => id < 200)).toHaveLength(BOARD_MAX);
+    });
+    it('trims a board whose excess is all within the retire radius, the chests nearest the player surviving', () => {
+      const board = Array.from({ length: BOARD_MAX + 5 }, (_, i) => chest(i + 1, 20 + i * 5, 0)); // x 20..110, all in reach
+      const kept = retireFarChests(board, none, me).map((c) => c.id);
+      expect(kept.sort((a, b) => a - b)).toEqual(Array.from({ length: BOARD_MAX }, (_, i) => i + 1));
     });
   });
 });
