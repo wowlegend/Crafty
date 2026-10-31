@@ -786,6 +786,14 @@ export const useGameStore = create((set, get) => ({
     showCredits: false,
     setShowCredits: (show) => set((state) => ({ showCredits: typeof show === 'function' ? show(state.showCredits) : show })),
 
+    // The Talents panel and the Journal's Feats tab. Store flags like every other panel, so one read of the store answers
+    // whether any panel is up (ui/panelState.js) for the world clock and the verb gate, which cannot see React state.
+    showSpellUpgrades: false,
+    setShowSpellUpgrades: (show) => set((state) => ({ showSpellUpgrades: typeof show === 'function' ? show(state.showSpellUpgrades) : show })),
+
+    showAchievements: false,
+    setShowAchievements: (show) => set((state) => ({ showAchievements: typeof show === 'function' ? show(state.showAchievements) : show })),
+
     isDay: true,
 
     // M3b night siege: nightCount (nights entered/survived) is the ONE source of

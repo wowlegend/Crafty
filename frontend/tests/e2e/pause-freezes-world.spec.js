@@ -12,7 +12,7 @@ import { archetypeFor } from '../../src/game/mobArchetypes.js';
 //     after it are the game's own. It does not exercise the browser's ESC-to-unlock step, which no page can observe.
 //   - the touch Pause button, tapped as a finger would (Playwright's touchscreen tap after its hit-target check).
 // Both resume through the input gate's own writer (the test bridge's forcePlay), which is where a granted lock or a tap
-// on Tap to Play also lands.
+// on Tap to Play also lands; the ESC case first closes the pause panel the unlock opened, as the player does.
 //
 // TWO HOLDS, BECAUSE MOVEMENT AND STRIKES ARE SEPARATE CHANNELS. The first pause catches a zombie mid-chase, out of
 // its reach: its position and the world clock must not move. That hold says nothing about strikes, since a mob out of
@@ -199,8 +199,10 @@ test.describe('pause freezes the world', () => {
         });
         await waitActive(page, false, 'the unlock did not reach the input gate');
       },
+      // The unlock opened the pause panel (App), and the world holds while any panel is up (input/inputLive.js), so the
+      // resume is the player's: the panel closed, then the gate opened again.
       resume: async () => {
-        await page.evaluate(() => window.__craftyTest.call('forcePlay'));
+        await page.evaluate(() => { window.useGameStore.getState().setShowSettings(false); window.__craftyTest.call('forcePlay'); });
         await waitActive(page, true, 'the resume did not reach the input gate');
       },
     });

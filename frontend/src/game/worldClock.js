@@ -14,6 +14,7 @@
 // moment the freeze ended and disagree about whether the world was frozen.
 import { useGameStore } from '../store/useGameStore';
 import { getInput } from '../input/inputState';
+import { isInputLive } from '../input/inputLive.js';
 import { isCaptureMode } from '../devtest/captureMode';
 import { worldTimeScale } from './hitstop.js';
 import { frameStep } from './frameStep.js';
@@ -26,20 +27,23 @@ let pausedAt = null; // that clock's reading at the tick a pause was first seen;
 let pausedTotal = 0; // that clock's ms spent in every finished pause
 
 /**
- * The player has stopped the game: play has begun, they are alive, and their input is dead. ESC, an open panel and
- * the touch Pause all clear the one input gate (input/inputState.js), so every pause path lands here. A desktop
- * window losing focus does too, because the browser must exit pointer lock then (Pointer Lock 2.0, "Pointer lock must
- * be exited if ... the user agent, window, or tab loses focus"). On touch nothing clears the gate when the page is
- * hidden (input/blurReset.js clears only held intents), so switching apps does not pause.
+ * The player has stopped the game: play has begun, they are alive, and their input is not live (input/inputLive.js):
+ * the input gate is down (ESC, a key-opened panel, the touch Pause), or a surface covers the game whatever opened it (a
+ * panel, VICTORY, the lost-context panel). A chest opened from the world on touch drops no gate, which is why the
+ * surfaces are read: with the gate alone the world runs on behind the chest and a mob can kill the player inside the
+ * menu. A desktop window losing focus pauses too, because the browser must exit pointer lock then (Pointer Lock 2.0,
+ * "Pointer lock must be exited if ... the user agent, window, or tab loses focus"). On touch nothing clears the gate
+ * when the page is hidden (input/blurReset.js clears only held intents), so switching apps does not pause.
  * The world behind the title keeps running, the death screen is not a pause, and under capture the visual harness
  * holds the world its own way.
+ * @param {object} s the store's state, or any object carrying its flags; `active` and `captureMode` default to its own
  */
-export function isPlayPaused({ gameStarted, isAlive, active, captureMode } = {}) {
-  return !!gameStarted && isAlive !== false && !active && !captureMode;
+export function isPlayPaused(s = {}, active = s.active, captureMode = s.captureMode) {
+  return !!s.gameStarted && s.isAlive !== false && !captureMode && !isInputLive(s, active);
 }
 
 function pausedIn(state) {
-  return isPlayPaused({ gameStarted: state.gameStarted, isAlive: state.isAlive, active: getInput().active, captureMode: isCaptureMode() });
+  return isPlayPaused(state, getInput().active, isCaptureMode());
 }
 
 /**

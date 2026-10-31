@@ -145,6 +145,157 @@ and the registry merged without a code conflict.
 
 ---
 
+## 2026-10-30 (lane L5, round 2) — [LOOP] the Player loop's half of the predicate is gated, a locked Aspect key reads it, and every way back is gated to ask for the pointer
+
+**Decided by lane L5's round-2 fixer under the standing grant** (DECISIONS 2026-10-28 item 14). Round 1's static and
+dynamic reviews of PR #63 both said FIX; this entry answers every finding they said must be fixed before landing, and
+corrects two claims of the L5 entry below. Each stands while it earns its place.
+
+178. **The Player loop's half of item 171's predicate is gated in jsdom, and a locked Aspect key reads the predicate.
+   This corrects item 174's departure, whose reason was false twice.** Item 174 said a guard in Components' keydown
+   "could not be gated in jsdom (the Player is R3F)" and that a key typed into a field "acts on nothing there".
+   `tests/gates/player-view-hold-gates.test.jsx` already mounted the real Player with the real Rapier; and
+   `denyAspectPress` (`src/input/aspectDeny.js`) read the input gate and `isAlive`, not `isInputLive`, so on touch, where
+   the gate stays up under World Manager and under VICTORY, a locked R, V, X or Z typed into World Manager's name field
+   or pressed under VICTORY raised a "locked Aspect" toast (REVIEW:l5:aspect-deny-reads-gate). It now reads
+   `isInputLive(state, getInput().active)`. The departure itself stands on the true reason: Components' keydown gets no
+   text-field guard, because the one text field is on World Manager, a covering surface, and the walk, the five Aspect
+   machines and the refusal all read the predicate there.
+   - `tests/gates/player-input-live-gates.test.jsx` mounts the real Player, raises the gate, and drives walk, jump,
+     dodge, roar, grab, snare, fuse and imbue through their real intents (talents and a full ember bar) under each of 15
+     covering surfaces put up by a store write that drops no gate: in play (the presence) walk 3.15 m, jump 1.81 m,
+     dodge 4.62 m and every Aspect verb starts; under each surface, 0 m and none starts. Its keydown case types into the
+     real World Manager's name field on touch and presses under VICTORY: on the old `denyAspectPress`, 6 and 4 locked
+     toasts; on the fix, 0 and 0. Red under the frame reading the gate alone (the code before the lane), under each
+     Aspect machine's and the walk's, jump's and dodge's own revert, and under the old refusal (`84dd95b8`;
+     REVIEW:l5:player-loop-ungated).
+   - **Every way back the player clicks or presses is gated to ask for the pointer once its surface is gone**
+     (`tests/gates/close-relock-gates.test.jsx`, `3b9cd2c4`; REVIEW:l5:relock-ungated): each PANEL_FLAG's own close
+     control and Esc over each (13 and 13), Keep exploring and Respawn, under the real MenuSystem, useInputManager and
+     HUD. Because item 173 made `requestGameLock` refuse under any surface, a caller handing it state read before its
+     own close write fails silently, and before this gate reverting MenuSystem's `enterPlay` to the render's gameState,
+     or deleting Keep exploring's request, left every unit spec green.
+   - **The wheel gate counts the slots a trackpad swipe moves through** (`08fc7e6c`; REVIEW:l5:wheel-gate-final-slot):
+     it read the final slot of a 9-slot bar, which a stepper spinning the swipe through 19 slots also reaches. Its first
+     case's title no longer claims a fast case on every browser; a fast macOS spin is REVIEW:l5:wheel-mac-medium-spin.
+   - `input-live-gates`' chest case opens the chest as Terrain does now, with no release of its own, and its header names
+     files that exist (`c1d88395`; REVIEW:l5:chest-case-old-opener).
+179. **Item 172's "on touch play is never dropped" is corrected: two touch openers drop it.** The tray rows
+   (`src/ui/TouchControls.jsx:324`, `if (yielded) setActive(false)`) and the locked Aspect sector (`:352`) drop `active`
+   when they open a panel. Nothing item 172 decided rests on the claim: the predicate holds the world and the verbs
+   whether or not an opener drops the gate, which `input-live-gates` checks for both openers. Round 1's other findings,
+   each LOW and left for later by its review, are registry rows: REVIEW:l5:wheel-mac-medium-spin (a device question),
+   REVIEW:l5:lock-granted-after-surface and REVIEW:l5:open-talents-hand-list; and the first-attempt flake both reviews'
+   CI runs showed, which had no row, is REVIEW:e2e-flakes:dragon-fight-parried-bite-move.
+
+**Not covered:** a real device (REVIEW:l5:device-run, Kevin's); whether the browser grants a lock the gates see asked for.
+
+---
+
+## 2026-10-30 — [LOOP] L5: one predicate for "input is live", close lists from PANEL_FLAGS, keys that respect focus, the wheel per notch, and the backdrop per press
+
+**Decided by the L5 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L5 of the 2026-10-30 deep
+audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, section 4). PR #63. Each stands while it earns its place.
+
+171. **Input is live only while nothing covers the game, whatever opened the surface: `src/input/inputLive.js`.** The input
+   gate (`getInput().active`) is the pointer lock on desktop and play on touch, and every opener was trusted to drop it.
+   Two did not: a chest opened from the world on touch (no lock to lose, so the world ran on behind its scrim and a mob
+   could kill the player inside the menu, AUDIT:input:touch-panel-world-runs) and VICTORY, a store write under a held lock
+   (AUDIT:input:victory-under-pointer-lock). `isInputLive(state, active)` is the gate open, the player alive and no surface
+   up: `coveringSurfaceUp` (`src/ui/panelState.js`: every PANEL_FLAG, VICTORY, the lost-context panel) or the death screen.
+   The world clock's pause, performVerb, the primary press, F and T (inside the express router), Shift's dodge, the spell
+   keys, G, the wheel, the panel keys' gate, the touch router and the Player loop's walk and Aspect machines read it.
+   - **Departure from the brief.** The audit's formula includes `gameStarted`; the verb half leaves it out. In play `active`
+     rises only with a granted lock or the touch entry, both of which start the game, and the e2e suite's `forcePlay`
+     raises it without starting one (`tests/e2e/_boot.js`), so the term adds nothing in play and would stop every e2e
+     that drives a verb. The pause keeps it: the world behind the title runs.
+   - The Talents and Feats flags (`showSpellUpgrades`, `showAchievements`) move from useInputManager's React state into
+     the store, so one read of the store answers for the clock and the verb gate; useInputManager returns them as before.
+172. **A covering surface takes the pointer back itself, and VICTORY is exempt from pause-on-unlock.** InputManager releases
+   the lock (L1's `releasePointerLock`) when any covering surface goes up. It is the one release for every opener: the
+   panel keys, G and Terrain's chest open no longer release on their own, so item 160's list of release sites loses
+   Terrain's chest open. The release opens no pause panel (`shouldOpenPauseOnUnlock`) and no resume overlay
+   (`shouldShowResumeOverlay`, fed through App's slice, `store/hudState.js`, which now carries `victoryPending` and
+   `isWebGLContextLost`) over the surface; Keep exploring asks for the lock again. Before, Esc was the only way out
+   of VICTORY and left Settings open under it. On touch play is never dropped: the predicate holds the world and the
+   verbs, and Respawn, Keep exploring and the context-loss panel own their touches by kind (item 164).
+173. **The pointer is taken again only when no surface remains, and every close sweep is PANEL_FLAGS.**
+   `requestGameLock` refuses while any surface is up, so every caller hands it the store read after its own writes
+   (MenuSystem's close controls passed the render's gameState, which still shows the panel closing). `CLOSED_ON_SWITCH`
+   is PANEL_FLAGS, so a panel key or a tab closes every other panel, the trade panel, a chest, World Manager and Credits
+   included, and Esc closes all thirteen (`closeAllPanels`); a closed villager panel or chest lets go of its villager or
+   chest. A panel key pressed twice over the trade panel or a chest used to relock with that panel drawn, its clicks
+   editing the world (AUDIT:input:panel-stack-relock-still-live).
+174. **Keys respect focus.** InputManager leaves a key whose target takes text to the field (Esc still closes the panel it
+   is on), a key mid-composition (`isComposing`, or keyCode 229) to the IME, and Tab in a dialog other than Character to
+   that dialog's focus trap; a toggle key's auto-repeat does nothing (AUDIT:softlocks:world-manager-keys-stolen, the July
+   review's repeat strobe). B, J and H still switch panels from any dialog; Tab opens and closes Character, whose key it
+   is, and no longer switches to it from Settings or the Journal.
+   - **Departure from the brief.** The audit asked for the guard in both keydown handlers. Components' own (movement,
+     jump, dodge, the Aspect verbs, F and T) has none: a text field is only ever on a panel, and every verb and the walk
+     read item 171's predicate, which is false under any panel, so a key typed into a field acts on nothing there. A
+     guard there could not be gated in jsdom (the Player is R3F) and would only restate the predicate.
+175. **The wheel steps per gesture: 4 px for the first slot, 100 px for each further one, a gesture ending at an 80 ms gap
+   or a reversal, one slot per event at most** (`src/input/wheelStep.js`, AUDIT:input:wheel-hotbar-per-event). What a
+   notch reports differs by browser: Chrome on Windows 100 px and on Linux 120 px; Firefox 3 lines (40 px each here) on
+   Windows, 108 to 138 px where it reports pixels, and 16 px on macOS; Chrome and Safari on macOS 4 px for a slow notch
+   and up to 400 px fast; a trackpad starts near 1 px (published measurements, collected by the builder: MDN's mousewheel
+   notes, the goxjs/glfw and dvui issue threads, dwv's scrollWheel source). The verifier's sketch, 100 px a slot, would
+   make a macOS mouse turn 25 notches a slot. A mostly sideways event is no scroll, and a tile off the bar comes back to
+   the first slot.
+176. **A modal's backdrop closes only for a press that began on it, and a surface on its way out claims nothing.** The Modal
+   primitive records where the pointer went down; the tray tap that opened a panel (its row unmounts on the lift) and a
+   drag out of the card no longer close it (the Modal half of AUDIT:input:ipad-tray-ghost-click; its WebKit half stays
+   with lane L10). While a panel fades out under AnimatePresence it keeps no `aria-modal` and takes no pointer
+   (`useSurfaceProps`, on framer-motion's `useIsPresent`), so L1's ownership by kind no longer gives the first touch after
+   a close to the fading panel; the chest and talents panels, which draw their own dialog, use the same props.
+177. **Touch keeps one contextual Cast button; no touch force-cast is built.** AUDIT:input:touch-lacks-express-verbs: on
+   touch, Cast is the router's right button, so with ground within 8 m nearer than any mob in the narrow aim cone it
+   places a block (or says "No Dirt left") where desktop's F would cast. Cast is also touch's only way to place a block, so
+   making it always cast would take building away from touch, and a second control is a look change, judged on lookbook
+   frames and on Kevin's device, that this lane cannot make. Cast stays the right button. What would change this: a
+   touch layout pass that adds a place or force-cast control and is judged on the device; the finding closes as decided.
+
+**Gates**, each red first on 1a3910e7's code (a scratch copy with the gate dropped in; for key-focus, also World Manager's
+two new test ids) and mutation-proven with `scripts/dev/mutate.sh` (the numbers are in each commit's `Mutation-Proof:`
+trailer):
+- `tests/gates/input-live-gates.test.jsx`: exhaustive over device x surface x opener, 49 cases (every surface by a bare
+  store write that drops no gate, on desktop and on touch, plus the panel keys, G to a smith and a merchant, the touch tray
+  rows and a locked Aspect sector): no wheel step, spell key or F verb, the world held (death excepted), the lock released
+  and no pause owed on desktop, the touch router yielding; a panel key twice over trade or a chest never locks with a
+  panel drawn; requestGameLock asks for nothing under any of 16 surfaces; Esc closes all 13 PANEL_FLAGS. All 4 red (110
+  violations across the 49 cases); 16 real mutants red, the identity green. A fifth case, added when CI's victory e2e
+  failed on the fix: the resume overlay, fed by App's real slice, stands aside for VICTORY and the lost-context panel
+  (red on the fix's first form, the slice without the two flags).
+- `tests/gates/key-focus-gates.test.jsx`: 38 keys into World Manager's name field, none taken, and Esc from it closes
+  World Manager; both composition signals open nothing; Tab in Settings wraps inside it, and still closes Character; B,
+  H, J and Tab toggle once across one and three auto-repeats. All 4 red; 9 real mutants red, the identity green.
+- `tests/gates/wheel-hotbar-gates.test.jsx`: notched mice in three browsers' units, slow and fast; the verifier's
+  30-event trackpad stream moves one or two slots; a nudge and sideways swipes move none; coal comes back to slot 0. 3 of
+  4 red (the notched case passes on main, the control); 8 real mutants red, the identity green.
+- `tests/gates/modal-surface-gates.test.jsx`: after each tray row that opens a Modal, the tap's own click and a drag out
+  of the card leave it open and a press on the backdrop closes it; three surfaces taken away inside AnimatePresence claim
+  nothing while they leave; on touch the fading trade panel gives the touch to the world. The 3 tests of the time all
+  red; 7 real mutants red, the identity green.
+- `src/ui/panelState.test.js`: the way-back invariant enumerates VICTORY and the lost-context panel and measures that each
+  renders its way back; the resume overlay is suppressed by both.
+- `tests/e2e/input-live.spec.js` (CI): VICTORY under a stand-in lock, then an aimed click on the scrim (presence: the
+  same click mines first), then Keep exploring; and a touch chest holding the world clock and the walk. The victory case
+  was red on main's game code in CI runs 41131019672 and 41133453153, all three attempts each, at the release
+  (`exits 0`). On the fix (run 41137409781) it went red again at Keep exploring: PAUSED was drawn over it, because the
+  slice App hands MenuSystem (`store/hudState.js`) did not carry `victoryPending`, so the resume overlay could not see the
+  surface; the slice carries both covering flags now, and `input-live-gates` holds it through the real slice. The touch
+  case is not red-first evidence: its first two forms entered play by `forcePlay`, which does not start the game, and the
+  world behind the title runs by design, so its clock ran on main's code and on the fix alike. It now starts the game and
+  walks back over the ground its presence walk crossed (the first form's walk read 0 m on main after a 40-frame walk that
+  probably ended against something). The jsdom gate is the red-first for the touch chest (REVIEW:l5:touch-chest-e2e-not-red-first).
+
+**Not covered:** a real iPad or iPhone (a hardware keyboard typing into World Manager, a world chest holding the world, a
+tray tap not closing its panel in WebKit), which is REVIEW:l5:device-run, Kevin's; a click in a browser on the context-loss
+panel under a held lock (jsdom only); Components' keydown for keys typed into a field (item 174).
+
+---
+
 ## 2026-10-30 (chaos play, round 3) — [LOOP] a placement moves the collider with the body, so the next frame sweeps from where the player stands
 
 **Decided by the chaos-play lane's round-3 fixer** (the round-2 dynamic review said FIX on one defect; the static review's

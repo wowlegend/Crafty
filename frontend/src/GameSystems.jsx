@@ -216,6 +216,7 @@ export const VictoryOverlay = ({ onDismiss }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="fixed inset-0 bg-black/80 flex items-center justify-center z-modal"
+            data-testid="victory-overlay"
         >
             <m.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                 <Panel variant="raise" className="text-center px-10 py-8 max-w-md">
@@ -227,7 +228,7 @@ export const VictoryOverlay = ({ onDismiss }) => {
                         <RunStat label="Level" value={level} />
                         <RunStat label="Nights survived" value={nights} />
                     </div>
-                    <Button variant="primary" size="lg" onClick={onDismiss}>{t('ui.keepExploring')}</Button>
+                    <Button variant="primary" size="lg" onClick={onDismiss} data-testid="victory-keep-exploring">{t('ui.keepExploring')}</Button>
                 </Panel>
             </m.div>
         </m.div>

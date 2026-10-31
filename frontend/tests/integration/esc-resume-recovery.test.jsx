@@ -54,6 +54,9 @@ function menuProps(overrides = {}) {
   // above with their partial, dropping requestPointerLock and every panel flag. Latent here — no current
   // caller overrides gameState — and it bit the touch-entry gate the moment one did, so it is fixed in
   // both rather than left as a trap for the next person who copies this helper.
+  // The requester lives in the store, where GameScene installs it: enterPlay reads the store at the call, after a close
+  // control's own write, so the render's gameState cannot decide whether a surface is still up.
+  useGameStore.setState({ requestPointerLock: gameState.requestPointerLock ?? null });
   return {
     showAchievements: false, setShowAchievements: NOOP,
     showSpellUpgrades: false, setShowSpellUpgrades: NOOP,

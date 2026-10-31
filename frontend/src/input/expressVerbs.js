@@ -3,8 +3,8 @@
  *
  * F casts the selected spell, T melees (Kevin, 2026-06-28: magic is the marquee feature, so the prime
  * key gets it). Both are express shortcuts layered on the contextual mouse router in verbRouter.js —
- * LMB mine/melee, RMB cast/place — and both gate on the same active+alive precondition every live verb
- * in this game gates on.
+ * LMB mine/melee, RMB cast/place — and both gate on the one input-live predicate every live verb in
+ * this game gates on (input/inputLive.js).
  *
  * WHY IT IS A MODULE. The binding lived as two inline `if (e.code === ...)` blocks inside a 1380-line
  * component's keydown closure, so the only thing that could reach it was a WINDOWED SOURCE REGEX:
@@ -21,6 +21,7 @@
  * depends on aim, targets and distance. This is a fixed key->verb table with a liveness precondition.
  * Two different questions; one file each.
  */
+import { isInputLive } from './inputLive.js';
 
 /** The express bindings. Adding a row here is the whole cost of a new express verb. */
 export const EXPRESS_VERBS = Object.freeze({
@@ -32,14 +33,16 @@ export const EXPRESS_VERBS = Object.freeze({
  * PURE. Which express verb, if any, this key fires right now.
  *
  * @param {string} code            KeyboardEvent.code
- * @param {{active?: boolean, isAlive?: boolean}} ctx  the same liveness gate every live verb uses
+ * @param {object} ctx             the store's state (isAlive and the surface flags input/inputLive.js reads)
+ * @param {boolean} [active]       getInput().active; defaults to ctx.active
  * @returns {'cast'|'melee'|null}
  */
-export function routeExpressVerb(code, ctx) {
+export function routeExpressVerb(code, ctx, active = ctx?.active) {
   const verb = EXPRESS_VERBS[code];
   if (!verb) return null;
-  // Dead or input-inactive means no verb at all — NOT a verb the caller is trusted to discard. Returning
-  // the verb here and gating at the call site is how a second call site ends up forgetting to gate.
-  if (!ctx || !ctx.active || !ctx.isAlive) return null;
+  // Input not live (inactive, dead, or a surface over the game) means no verb at all — NOT a verb the caller is
+  // trusted to discard. Returning the verb here and gating at the call site is how a second call site ends up
+  // forgetting to gate.
+  if (!ctx || !isInputLive(ctx, active)) return null;
   return verb;
 }

@@ -113,6 +113,11 @@ describe('shouldShowResumeOverlay — the recovery surface for a REFUSED pointer
     }
   });
 
+  it('is SUPPRESSED by VICTORY and the lost-context panel — each is its own way back, and the overlay would cover it', () => {
+    expect(shouldShowResumeOverlay({ ...live, victoryPending: true }), 'a second scrim over Keep exploring').toBe(false);
+    expect(shouldShowResumeOverlay({ ...live, isWebGLContextLost: true }), 'a second scrim over the recovery tap').toBe(false);
+  });
+
   it('never throws on empty/null input', () => {
     expect(shouldShowResumeOverlay(null)).toBe(false);
     expect(shouldShowResumeOverlay(undefined)).toBe(false);
@@ -176,6 +181,31 @@ async function closesItself(flag) {
   return close.mock.calls.length > 0;
 }
 
+// The two covering surfaces that are not panels (coveringSurfaceUp): each suppresses the resume overlay and the pause
+// panel, so each must render its own way back. VICTORY's Keep exploring dismisses it; the lost-context panel's tap runs the
+// recovery (a save and a reload).
+const SURFACE_FLAGS = ['victoryPending', 'isWebGLContextLost'];
+async function surfaceDismisses(flag) {
+  if (flag === 'victoryPending') {
+    const { VictoryOverlay } = await import('../GameSystems.jsx');
+    const dismiss = vi.fn();
+    render(createElement(SoundProvider, null, createElement(VictoryOverlay, { onDismiss: dismiss })));
+    const keep = screen.queryByTestId('victory-keep-exploring');
+    if (keep) fireEvent.click(keep);
+    cleanup();
+    return dismiss.mock.calls.length > 0;
+  }
+  const { ContextLossPanel } = await import('./ContextLossPanel.jsx');
+  const reload = vi.fn();
+  useGameStore.setState({ isWebGLContextLost: true });
+  render(createElement(ContextLossPanel, { reload }));
+  const resume = screen.queryByTestId('context-loss-resume');
+  if (resume) fireEvent.click(resume);
+  cleanup();
+  useGameStore.setState({ isWebGLContextLost: false });
+  return reload.mock.calls.length > 0;
+}
+
 describe('INVARIANT: input can never be dead with no way back (exhaustive over the state space)', () => {
   // This is the gate that actually matters. The bug was not in one branch — it was that NO branch
   // owned the "lock refused" case. So enumerate the WHOLE reachable cross-product rather than
@@ -184,10 +214,11 @@ describe('INVARIANT: input can never be dead with no way back (exhaustive over t
   const LOCKED = [true, false];
   const STARTED = [true, false, undefined];
   const ALIVE = [true, false, undefined];
-  const PANELS = [null, ...PANEL_FLAGS];
+  const PANELS = [null, ...PANEL_FLAGS, ...SURFACE_FLAGS];
   const closable = new Set();
   beforeAll(async () => {
     for (const flag of PANEL_FLAGS) if (await closesItself(flag)) closable.add(flag);
+    for (const flag of SURFACE_FLAGS) if (await surfaceDismisses(flag)) closable.add(flag);
   }, 60000);
   afterEach(cleanup);
 
@@ -195,6 +226,10 @@ describe('INVARIANT: input can never be dead with no way back (exhaustive over t
     const notClosable = PANEL_FLAGS.filter((f) => !closable.has(f));
     expect(PANEL_FLAGS.length, 'SETUP: no panels listed — nothing was measured').toBeGreaterThan(0);
     expect(notClosable, 'a panel flag renders nothing that closes it — it is no way back, and it suppresses the pause panel and the resume overlay').toEqual([]);
+  });
+
+  it('VICTORY and the lost-context panel each render their own way back (they suppress the resume overlay too)', () => {
+    expect(SURFACE_FLAGS.filter((f) => !closable.has(f)), 'a covering surface renders nothing that leaves it').toEqual([]);
   });
 
   it('holds for every combination of lock x gameStarted x isAlive x panel', () => {
@@ -214,8 +249,8 @@ describe('INVARIANT: input can never be dead with no way back (exhaustive over t
             const gameLive = gameStarted === true && isAlive !== false;
             if (!(inputDead && gameLive)) continue;
 
-            // An open panel is a way back only if it renders its own close control (measured above).
-            const closablePanelOpen = PANEL_FLAGS.some((f) => s[f] && closable.has(f));
+            // An open panel or a covering surface is a way back only if it renders its own control (measured above).
+            const closablePanelOpen = [...PANEL_FLAGS, ...SURFACE_FLAGS].some((f) => s[f] && closable.has(f));
             const wayBack = closablePanelOpen || shouldShowTitleMenu(s) || shouldShowResumeOverlay(s);
             if (!wayBack) stranded.push(JSON.stringify(s));
           }
