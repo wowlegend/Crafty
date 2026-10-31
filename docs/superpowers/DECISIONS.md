@@ -113,7 +113,10 @@ tree, then green; each commit's `Mutation-Proof:` trailer names its mutants, eve
 330. **Bytes.** The index chunk (`vite build`) is 649,549 B on `7250aa22` and 650,441 B on `aa5934d4`: 892 B more, under the
    652,500 B ceiling (item 282) with 2,059 B to spare, so nothing was moved out to offset it. The lanes in flight beside
    this one share that room; whichever lands past the ceiling offsets what it adds.
-331. **Found, not fixed** (registry): `REVIEW:l7:chest-loot-effect-fields-unread`.
+331. **Found, not fixed** (registry): `REVIEW:l7:chest-loot-effect-fields-unread`;
+   `REVIEW:l7:orphan-chest-record-pays-a-chest` (a chest record a pre-L7 smash left over air pays a chest for a block
+   later mined in its cell); `REVIEW:l7:chest-mined-before-its-answer-pays-wood` (the click's drop tag cannot see a chest
+   placement still owed its answer). The last two were found by reading the code and were not run.
 
 ---
 

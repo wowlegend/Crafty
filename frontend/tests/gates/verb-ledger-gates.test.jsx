@@ -70,6 +70,8 @@ function asWorker(fn) {
 
 // One chunk is streamed; the rest of the streamer's requests are dropped.
 const CX = 3, CZ = -2;
+// A row steps the real Physics for hundreds of frames (about 3 s here); a shared CI runner gets the room to do it.
+const ROW_MS = 60000;
 let act, r, GameMethods, store, S, routeMouseVerb, HOTBAR_BLOCKS, GOODS, destroyVoxelsInRadius, setActive, blockForId, RAPIER;
 
 // The debris' bursts and the smash's order are drawn from Math.random: seeded, so every run plays the same session.
@@ -222,7 +224,7 @@ describe('a mine pays, counts and sounds the block the worker broke', () => {
     expect(brokenIn(rs3).length, 'SETUP: the control click broke nothing').toBe(1);
     expect({ broken: b2.broken - b1.broken, sounds: b2.sounds - b1.sounds }, 'a real break was not counted and heard once')
       .toEqual({ broken: 1, sounds: 1 });
-  });
+  }, ROW_MS);
 
   it('every hotbar block and every Forge good, placed and mined, comes back as itself', async () => {
     const c = SITES[1];
@@ -252,7 +254,7 @@ describe('a mine pays, counts and sounds the block the worker broke', () => {
     expect(setup, 'SETUP: a kind was not placed and then mined at the cell it was placed in').toEqual([]);
     const wrong = Object.entries(out).filter(([, v]) => Object.keys(v.net).length || v.counted !== 1 || v.heard !== 1);
     expect(wrong, 'a block placed and mined did not come back as itself, counted and heard once').toEqual([]);
-  });
+  }, ROW_MS);
 });
 
 describe('the dragon\'s smash is a hazard: it breaks the ground under it and pays nobody', () => {
@@ -283,7 +285,7 @@ describe('the dragon\'s smash is a hazard: it breaks the ground under it and pay
       .toEqual({ chest: true, chestTop: chestTop + 1 });
     expect({ bag: bagDelta(b0.bag, b1.bag), broken: b1.broken - b0.broken, sounds: b1.sounds - b0.sounds },
       'the smash paid, counted or sounded a break').toEqual({ bag: {}, broken: 0, sounds: 0 });
-  });
+  }, ROW_MS);
 });
 
 describe('the debris a mine bursts is not the world: 120 frames of it under the aim', () => {
@@ -342,5 +344,5 @@ describe('the debris a mine bursts is not the world: 120 frames of it under the 
     expect(every.debrisSeen, 'SETUP: the aim did not pass through the cube, so this measured nothing').toBe(every.aimed);
     expect(every, `a world query saw the debris (${wrong.slice(0, 6).join('; ')})`)
       .toEqual({ ...every, build: every.aimed, outline: every.aimed, anvil: every.aimed, ground: every.aimed });
-  });
+  }, ROW_MS);
 });
