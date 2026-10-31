@@ -23,7 +23,7 @@
 
 **Decided by the L3 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L3 of the 2026-10-30 deep
 audit (`docs/superpowers/audits/2026-10-30-deep-audit.md`, seam S1 and section 4; registry
-AUDIT:lane:L3-store-owns-world-state). Branch `fix/l3-store-owns-world`. Items from 250. Each stands while it earns its
+AUDIT:lane:L3-store-owns-world-state). Branch `fix/l3-store-owns-world`. Items 250-259. Each stands while it earns its
 place.
 
 250. **A save the context-loss resume wiped is repaired at load to its slain dragon; decided before the boss fix, as
@@ -58,8 +58,74 @@ place.
    - **Not repaired:** the World Manager's in-place Load into a session whose hook had woken the dragon (the hook's
      later writes carried its own HP, at most 700, and `active: true`, over the loaded tier): that is a live return
      fight's shape, and no field tells the two apart. Gone since L2 too.
-   - Recorded before the boss fix, in its own commit; the repair and its gate land in the next one, before the hook
-     reads the store (item 251).
+   - Recorded before the boss fix, in its own commit (12f897eb); the repair and its gate,
+     `frontend/tests/gates/boss-clobber-repair-gates.test.jsx`, landed in the next (16870cc8), before the hook reads the
+     store (f86b7a06, item 251).
+251. **The store owns the dragon fight; the hook keeps no copy** (AUDIT:softlocks:boss-hook-ignores-world-load, defence in
+   depth after lane L2). `world/bossSystem.js` selects `bossActive`, `bossHealth`, `bossDefeated` and `bossTier` from the
+   store and writes them through `setBossEncounter` (a `writeEncounter` helper merges a part into the whole, and passes
+   no tier, so only the kill's tier step moves the tier). The mirror effect is deleted, and with it the registration
+   effect's `setBossActive`. The phase derives from the health; `damageBoss` reads the store at the call (two hits in a
+   frame both land) and announces the phase a hit crosses into, so a load, a spawn or a return at a phase's health
+   announces nothing (the old phase effect announced any change, a load's included). On a world load the hook's arrival
+   latch, disarm, return notice, kill latch, position and entered record return to the loaded world's, as a mount gives
+   them, and the poll re-arms. Every switch is a boot since L2, so no player path loads in place; this keeps the
+   primitive correct if one returns. The comment at the old `bossSystem.js:41` that said a load would not reach the hook
+   (the audit's lying comment, item 1 of AUDIT:debt:comments-that-lie) went with it.
+252. **One world-load event, `worldLoadedAt`** (seam S1: "no world-load event"). The store's `questLoadedAt` was already a
+   tick every `loadWorldData` bumps; it is renamed for what it is, since the quest log, the dragon's latches and the
+   squad's bodies now all re-seed on it. Three tests that set or read the tick were renamed with it, no assertion's
+   meaning changed.
+253. **A load with no quest log re-seeds the hook to a new world's log** (AUDIT:persistence:new-world-keeps-old-quests,
+   defence in depth). `QuestSystem.jsx` `freshQuestState()` is the new world's log, used by the initializers and by the
+   re-seed when the store holds none, where it returned early and kept the old world's quests, claims, counters and
+   achievements.
+254. **The bound squad is saved with its world** (AUDIT:verbs:squad-not-saved-and-leaks-across-worlds, the persistence
+   half; the soulbind spec 2026-06-10 s2b3 lines 63-65). The store's `squad` is the roster, one `{ type }` per creature,
+   in `progression.squad`; a save with none loads none, as ember does. The type is the identity: everything else a
+   creature carries derives from it as a bind and a fusion derive it (`game/squadRoster.js` `allyFor`, `game/hybrids.js`
+   `hybridAlly`, now the fusion's own factory too), so the spec's listed `maxHealth` is left out: stored, it would be a
+   second copy of `MOB_TYPES[type].health`. `world/squadPersistence.js`, installed by App after the boot's load, writes
+   the roster on every add and remove of the allies query (a bind, a fusion, the cap's release) and, on a world load
+   (and at install), clears the bodies and rebuilds them from the roster one metre outside the follow ring around the
+   player, so the squad's first steps walk them in and ground-snap them (`SquadAISystem.jsx` snaps every step it
+   orders, never a creature holding still). Rebuilt ids are `ally_<n>` strings, unique against the spawner's numbers. A
+   save from before the roster has no squad: the load that wrote it had already dropped it.
+255. **A world remembers its shrines, and Pilgrimage counts them** (AUDIT:debt:shrine-facts-session-scoped, the
+   persistence half). The store's `reachedShrines` and `rewardedShrines` (chunk keys, `game_state.shrines`) replace the
+   session flag `shrineReached` and two hook refs' worth of facts. The HUD objective turns to the Blight Heart once one
+   is reached. The reach poll credits any active `reach_shrine` quest up to the number of shrines this world has reached,
+   every poll, so a shrine reached before Pilgrimage is offered counts when it is (the verifier's caution: a saved set
+   alone would have made that bug permanent). A shrine is REWARDED WHEN ITS CHEST IS OPENED, not when it spawns: a chest
+   left shut is owed after a reload and comes back once, where recording the spawn would have lost the unopened reward to
+   the reload. The board's own ref still stops a second chest while one is on it. A save from before the record has
+   reached none: its player sees the shrine objective until they reach one again, and may open each shrine chest they
+   had already opened once more (before this, every reload re-armed them).
+256. **Every key written to the store is declared in it** (AUDIT:debt:three-call-channels-dead-wires, the declare-keys
+   half). 17 keys were written with setState and absent from the initial state at 8579918e. The 16 with readers are
+   declared, null until their system publishes them; `shrineReached` was then replaced by item 255. `store.damageMob` had
+   no reader (every caller reads `GameMethods.damageMob`), so CombatSystem's write went instead of a dead slot being
+   declared. The gate is `tests/scripts/store-keys-declared.test.js`, which parses every src file and reads the writes
+   from the syntax tree; it is sited in tests/scripts because its subject is the source's shape. The audit's hunter
+   matched member calls only and so missed the three primary-action seams written through the setter Components hands
+   `input/primaryInput.js`, and counted three React class-component `setState` keys as the store's.
+257. **The index chunk's ceiling rises by the lane's own bytes, 3,515 B, and no more** (`frontend/scripts/ci/bundle-budget.mjs`,
+   652,500 B to 656,015 B). Measured from a build at each commit (8579918e 649,342 B): the declared keys +374, the save
+   repair +488, the store-owned fight +250, the squad +1,571, the shrine record +832; the lane ends at 652,857 B, 357 B
+   past the old ceiling. The growth is the lane's features; the in-flight lanes keep the headroom they had.
+258. **The proof.** Each gate was red first against 8579918e's src from a scratch copy, then green on the fix, and killed
+   by its mutants (receipts in each commit's Mutation-Proof trailer; an identity mutant survived in every batch):
+   `tests/gates/boss-clobber-repair-gates.test.jsx` (item 250: 5 of 6 red, the wiped dragon woke at 700),
+   `tests/gates/store-owns-encounter-gates.test.jsx` (items 251-253: the hooks mount first, then the world loads; 5 of 5
+   red), `tests/gates/squad-roster-gates.test.jsx` (item 254: the real App through page loads; 2 of 2 red),
+   `tests/gates/shrine-persistence-gates.test.jsx` (item 255: the real hooks and HUD tracker through the real boot; 4 of
+   5 red, the control passing) and `tests/scripts/store-keys-declared.test.js` (item 256: 24 undeclared writes of 17 keys
+   and one unreadable write). No e2e was added: a world switch is a reload, which the gates model with a fresh store (or
+   a fresh module graph) and the real boot; the lived proof is CI's existing e2e suites on the exact sha. Not proven in a
+   browser: the rebuilt squad's first steps onto the ground, and a pre-L3 save's first load in production.
+259. **Found, not fixed.** `setBossActive` has no caller in src now (the hook writes the encounter whole); it joins the
+   dead-setter half of AUDIT:debt:three-call-channels-dead-wires, lane L12's. The chest board itself still crosses an
+   in-place load (closed for players by L2's reload; L3 made only the shrine facts per-world).
 
 
 **Decided by the L2 builder under the standing grant** (DECISIONS 2026-10-28 item 14), as lane L2 of the 2026-10-30 deep
