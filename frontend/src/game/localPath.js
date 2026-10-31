@@ -172,9 +172,9 @@ export function heightGridAt(x, z, feet, floorAt) {
  * pillar past its reach — the column is still there, and sight must see how high it is: hasLineOfSight compares a
  * column with the HIGHER of its two ends plus 1.2, so an Infinity end (the player on a pillar 5 or more blocks above the
  * mob's feet) made that bar Infinity and nothing blocked, and a wounded mob never took cover from a player above it
- * behind a wall (AUDIT:ultra:ultra-game-logic-3). Each Infinity cell becomes the column's true top.
- * A finite stand-in (the hunter's idea) would give the same sight and loosen clampMove, which reads the floor grid, so
- * this is a second grid and the floor grid is left alone.
+ * behind a wall. Each Infinity cell becomes the column's true top.
+ * A finite stand-in would give the same sight and loosen clampMove, which reads the floor grid, so this is a second grid
+ * and the floor grid is left alone.
  * Returns null when no cell is Infinity (the floor grid is the sight grid) or no top probe exists.
  * @param {number[]} heightGrid  heightGridAt's grid
  * @param {(x:number, z:number) => number|null} topAt  the column top (the store's getMobGroundLevel)

@@ -54,9 +54,8 @@ const KEYS = { KeyW: 'w', KeyA: 'a', KeyS: 's', KeyD: 'd' };
 
 /** In node: beach columns near Kevin's spot, nearest first and 8 m apart. Land one block above the sea with water on one
  *  side, and the beach flat for two blocks either way along the other axis (the pillar is built along it). "Water on one
- *  side" is a neighbour AT OR BELOW the sea line: the dry shore strip (surfaceY 28) or the sea. It read `isWater` while
- *  that was true on the strip too; the strip is dry (AUDIT:ultra:ultra-player-world-9), and the columns this picks, Kevin's
- *  spot among them, are the same ones. */
+ *  side" is a neighbour AT OR BELOW the sea line: the dry shore strip (surfaceY 28) or the sea; `isWater` is false on the
+ *  strip, which is dry. */
 function shoreColumns(want) {
   const out = [];
   const at = (x, z) => surfaceBlockAt(x, z);

@@ -14,8 +14,7 @@ let siteCacheSeed = null;
 /**
  * THE landmark that exists in chunk (cx, cz), or null: { cx, cz, worldX, worldZ, type, surfaceY }. A hashed chunk holds
  * one only on land (the climate sampler's column at the chunk centre). Terrain.jsx draws exactly these, and the
- * finder below, and so the beam, compass, minimap, objective and reward chest, lead to exactly these: they were two
- * rules once, and 22% of hashed chunks lay in ocean, never drawn but led to (AUDIT:ultra:ultra-player-world-6).
+ * finder below, and so the beam, compass, minimap, objective and reward chest, lead to exactly these.
  */
 export function landmarkAt(cx, cz) {
   if (!isLandmarkChunk(cx, cz)) return null;
@@ -36,8 +35,10 @@ export function landmarkAt(cx, cz) {
 // grid within `maxChunks` of the player's chunk for a landmark (landmarkAt) and returns the nearest
 // { cx, cz, worldX, worldZ, type, surfaceY, dist } or null. Deterministic for a seed (the landmark hash and the climate
 // sampler), so it is capture-safe + unit-testable. The HUD compass marker, the reward-chest siting and the
-// "reach nearest shrine" quest all consume this single source. Cheap (<= (2*maxChunks+1)^2 hash calls);
-// callers throttle to ~once a second (never per-frame) -> Game-Loop-Isolation.
+// "reach nearest shrine" quest all consume this single source. A call is (2*maxChunks+1)^2 hash calls plus a cache
+// lookup for each chunk that hashes as a landmark. The HUD, minimap and compass throttle to about once a second;
+// FarBeacon (Terrain.jsx) asks every frame at maxChunks 16, which is why landmarkAt caches. It reads no store or ref a
+// loop writes, so Game-Loop Isolation holds either way.
 export function nearestLandmark(playerX, playerZ, maxChunks = 8) {
   const pcx = Math.floor(playerX / CHUNK), pcz = Math.floor(playerZ / CHUNK);
   let best = null;

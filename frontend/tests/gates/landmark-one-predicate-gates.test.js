@@ -54,6 +54,9 @@ describe.each(SEEDS)('seed %i: the finder leads only to landmarks the renderer d
   const undrawn = hashed.filter(([cx, cz]) => !standsOnLand(cx, cz));
 
   it('SETUP: the census has landmark chunks on land, in the sea, and either side of the surface-32 line to tell apart', () => {
+    // Every describe body ran while the tests were being collected, so the sampler is on whichever block was collected last.
+    seedClimate(seed);
+    expect(hashed.filter(([cx, cz]) => standsOnLand(cx, cz)).length, "the sampler is on this block's seed: it counts the drawn chunks it counted at collection").toBe(drawn.length);
     const at = (y) => hashed.filter(([cx, cz]) => surfaceBlockAt(centre(cx), centre(cz)).surfaceY === y).length;
     expect(hashed.length, 'hashed landmark chunks in the window').toBeGreaterThanOrEqual(3000);
     expect(drawn.length, 'hashed chunks on land').toBeGreaterThanOrEqual(2000);
