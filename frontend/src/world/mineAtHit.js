@@ -20,9 +20,20 @@ function payBrokenBlocks(broken) {
     for (const [blockName, n] of counts) store.addToInventory(blockName, n);
 }
 
-/** A lone removal's `block_broken` (the single mine's, the dragon's smash) is a batch of one. */
-export function payBrokenBlock(payload) {
-    payBrokenBlocks([payload]);
+/**
+ * A lone removal's `block_broken` (world/cellEdits.js `heard`): the single mine's is paid as the block it took (a chest as
+ * the chest it was), counted once toward Miner and Deep Digger and heard where the block was. Any other removal, the
+ * dragon's smash, pays, counts and sounds nothing: no player asked for it.
+ * @param {{x: number, y: number, z: number, blockType: number, source?: string, drop?: string}} payload
+ * @param {(pos: {x: number, y: number, z: number}) => void} [playBreak] the break sound (Terrain.jsx hands it in)
+ */
+export function creditBrokenBlock(payload, playBreak) {
+    if (payload.source !== 'player') return;
+    const store = useGameStore.getState();
+    if (payload.drop === 'chest') store.addToInventory('chest', 1);
+    else payBrokenBlocks([payload]);
+    playBreak?.({ x: payload.x + 0.5, y: payload.y + 0.5, z: payload.z + 0.5 });
+    store.onBlockBreak?.();
 }
 
 /**
@@ -30,9 +41,10 @@ export function payBrokenBlock(payload) {
  *   targetedZ: number, targetCoords: string}|null} h the build-ray hit (Terrain.jsx castBuildRay)
  * @param {{post: (msg: object) => void, editCells: (edit: object,
  *   onApplied: (applied: number[], recordable?: number[], broken?: object[]) => void) => void,
- *   playBreak?: (pos: object) => void}} io the worker's postMessage and its batched edit (world/cellEdits.js)
+ *   playBreak?: (pos: object) => void}} io the worker's postMessage and its batched edit (world/cellEdits.js), and the
+ *   Delete Tool's break sound (the single mine's is played by creditBrokenBlock, on the worker's block_broken)
  * @returns {Promise<number>} the blocks the verb asked the worker to remove: the Delete Tool's, once the worker has said
- *   which it took; the single mine's at once, since its edit is not answered
+ *   which it took; the single mine's at once, since it is paid when its block_broken arrives, not by this answer
  */
 export function mineAtHit(h, { post, editCells, playBreak }) {
     if (!h) return Promise.resolve(0);
@@ -48,8 +60,11 @@ export function mineAtHit(h, { post, editCells, playBreak }) {
     const lx = tx - cx * CHUNK_SIZE;
     const lz = tz - cz * CHUNK_SIZE;
 
-    post({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: 0 } });
-    playBreak?.(h.hitPoint);
+    // Paid, counted toward Miner and Deep Digger and heard when the worker says what it broke (creditBrokenBlock), never at
+    // the click: a second click before the rebuilt trimesh lands aims at the cell this one emptied and breaks nothing. A
+    // chest's voxel is wood and its record is deleted below, before the answer, so what it is owed is said here.
+    const chest = !!(store.chests && store.chests.has(h.targetCoords));
+    post({ type: 'update_block', payload: { cx, cz, x: lx, y: ty, z: lz, blockType: 0, source: 'player', drop: chest ? 'chest' : undefined } });
 
     // Recorded at the click: a placement of this cell still waiting on the worker must not record its block over this.
     recordingAtClick([`${tx}_${ty}_${tz}`]);
@@ -57,16 +72,11 @@ export function mineAtHit(h, { post, editCells, playBreak }) {
     newBlocks.set(`${tx}_${ty}_${tz}`, 0);
     store.setWorldBlocks(newBlocks);
 
-    // Clean up chest in Zustand Map
-    if (store.chests && store.chests.has(h.targetCoords)) {
+    if (chest) {
         const newChests = new Map(store.chests);
         newChests.delete(h.targetCoords);
         useGameStore.setState({ chests: newChests });
     }
-
-    // M6: a mined block advances the Miner quest + Deep Digger achievement (the callback is
-    // registered by QuestSystem; mine() is the 1-action-1-count verb -- NOT the worker handler).
-    store.onBlockBreak?.();
     return Promise.resolve(1);
 }
 

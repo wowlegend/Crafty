@@ -1287,7 +1287,7 @@ export const Player = ({ isWorldBuilt }) => {
         chestRay,
         0.8,
         true,
-        undefined,
+        rapier.QueryFilterFlags.EXCLUDE_DYNAMIC, // the debris is no ledge (see the controller's sweep below)
         undefined,
         undefined,
         rigidBodyRef.current,
@@ -1301,7 +1301,7 @@ export const Player = ({ isWorldBuilt }) => {
           headRay,
           1.0,
           true,
-          undefined,
+          rapier.QueryFilterFlags.EXCLUDE_DYNAMIC,
           undefined,
           undefined,
           rigidBodyRef.current,
@@ -1455,10 +1455,12 @@ export const Player = ({ isWorldBuilt }) => {
     // The Rapier KCC sweep and the frame's one kinematic write (game/kinematicMove.js: it also sweeps a move given on a
     // frame that took no world step, which a plain write would lose). The colliders made since the last world step (a
     // placed cell's stand-in, a rebuilt chunk) are ones the KCC's sweep cannot see yet, so the move is cut at them
-    // (world/placedCellColliders.js).
+    // (world/placedCellColliders.js). The block-break debris, the only dynamic bodies, is swept through: seen, a pile of
+    // it is ground the capsule stands and stalls on for its 2 s.
     const collider = rigidBodyRef.current.collider(0);
     if (collider && controllerRef.current) {
-      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, 0, filterPredicate, GameMethods.placedCells?.unindexed());
+      moveKinematic(rigidBodyRef.current, controllerRef.current, collider, displacement, 0, filterPredicate, GameMethods.placedCells?.unindexed(),
+        rapier.QueryFilterFlags.EXCLUDE_DYNAMIC);
     }
 
     // Phase 9: Dynamic FOV Momentum & Camera Bobbing

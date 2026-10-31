@@ -102,8 +102,11 @@ self.onmessage = function(e) {
       meshData.ao.buffer
     ]);
   }
+  // A removal's block_broken carries back who asked for it (`source`) and what they are owed in place of the block
+  // (`drop`), so the main thread pays, counts and sounds the block this broke, never a click that broke nothing
+  // (world/mineAtHit.js creditBrokenBlock).
   else if (type === 'update_block') {
-    const { cx, cz, x, y, z, blockType, seq } = payload;
+    const { cx, cz, x, y, z, blockType, seq, source, drop } = payload;
     if (typeof seq === 'number') lastEditSeq = seq;
     const key = `${cx}_${cz}`;
     const blocks = chunkBlocks(cx, cz, key);
@@ -111,7 +114,9 @@ self.onmessage = function(e) {
     if (index >= 0 && index < VOLUME) {
       const prevBlock = blocks[index];
       writeVoxel(cx, cz, x, y, z, blocks, index, blockType);
-      if (blockType === 0 && prevBlock !== 0) self.postMessage({ type: 'block_broken', payload: brokenBlock(cx, cz, x, y, z, prevBlock) });
+      if (blockType === 0 && prevBlock !== 0) {
+        self.postMessage({ type: 'block_broken', payload: { ...brokenBlock(cx, cz, x, y, z, prevBlock), source, drop } });
+      }
       postChunkMesh(cx, cz, key, blocks);
     }
   }

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../../src/store/useGameStore.jsx';
 import { BuildingTools } from '../../src/ui/GamePanels.jsx';
 import { placeAtHit } from '../../src/world/placeAtHit.js';
-import { mineAtHit, payBrokenBlock } from '../../src/world/mineAtHit.js';
+import { mineAtHit, creditBrokenBlock } from '../../src/world/mineAtHit.js';
 import { CHUNK_SIZE, voxelIndex } from '../../src/world/chunkLayout.js';
 import { DEFAULT_WORLD_SEED } from '../../src/world/worldSeed.js';
 import { loadTerrainWorker, sendToWorker, readVoxel, workerVerbIo } from '../_support/terrainWorker.js';
@@ -133,7 +133,7 @@ function recordedSince(before) {
 async function place(aim, normal) {
   sendToWorker('load_modifications', { modifications: siteMods() });
   useGameStore.setState((s) => ({ worldBlocks: new Map(), inventory: { ...s.inventory, blocks: { ...s.inventory.blocks, stone: 64 } } }));
-  const io = workerVerbIo({ onBroken: payBrokenBlock });
+  const io = workerVerbIo({ onBroken: creditBrokenBlock });
   const [x, y, z] = aim;
   const h = { hitPoint: new THREE.Vector3(x + 0.5 - normal.x * 0.5, y + 0.5 - normal.y * 0.5, z + 0.5 - normal.z * 0.5), normal, direction: new THREE.Vector3(-normal.x, -normal.y, -normal.z) };
   const before = blocksOf();
@@ -146,7 +146,7 @@ async function place(aim, normal) {
 async function mine(aim = MINED, own = []) {
   sendToWorker('load_modifications', { modifications: siteMods().concat(own.map(([x, y, z]) => [CX, CZ, voxelIndex(x - OX, y, z - OZ), STONE])) });
   useGameStore.setState({ worldBlocks: new Map(own.map(([x, y, z]) => [`${x}_${y}_${z}`, STONE])) });
-  const io = workerVerbIo({ onBroken: payBrokenBlock });
+  const io = workerVerbIo({ onBroken: creditBrokenBlock });
   const [x, y, z] = aim;
   const h = { hitPoint: new THREE.Vector3(x + 0.5, y + 1, z + 0.5), normal: { x: 0, y: 1, z: 0 }, direction: new THREE.Vector3(0, -1, 0),
     targetedX: x, targetedY: y, targetedZ: z, targetCoords: `${x}_${y}_${z}`, chestTargeted: false, chestHasItems: false };

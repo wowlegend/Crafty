@@ -15,6 +15,7 @@ import { MAX_SIZE } from '../game/buildFootprint.js';
 import { relicEffectText, TIER_NUMERAL } from './relicText.js';
 import { gearStatRows } from '../game/gearCompare.js';
 import { isConsumable, consumeEffect } from '../game/consumables.js';
+import { notifyDenied } from './denyToast.js';
 import { replayOnboardingTips } from '../game/onboardingTips.js';
 import { ItemIcon } from './panels/itemUi';
 
@@ -207,6 +208,11 @@ export const Inventory = ({ onClose }) => {
         const fx = consumeEffect(item);
         if (!fx) return; // not a consumable (e.g. equippable gear) -> never consume/destroy it
         const s = useGameStore.getState();
+        // A potion whose every effect the cap would clamp away is refused, not spent for nothing.
+        if (!fx.xp && (!fx.heal || s.playerHealth >= s.maxHealth) && (!fx.mana || s.mana >= s.maxMana)) {
+            notifyDenied('already-full');
+            return;
+        }
         if (fx.heal && s.healPlayer) s.healPlayer(fx.heal);
         if (fx.mana && s.restoreMana) s.restoreMana(fx.mana);
         if (fx.xp && GameMethods.grantXP) GameMethods.grantXP(fx.xp, item);

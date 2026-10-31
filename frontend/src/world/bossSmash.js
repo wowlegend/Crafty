@@ -17,6 +17,9 @@ export const destroyVoxelsInRadius = (centerPos, radius, maxCount) => {
     const minZ = Math.floor(centerPos.z - radius);
     const maxZ = Math.ceil(centerPos.z + radius);
 
+    // The block each column stands on, inside the sphere: the ground probe answers the top FACE, a whole number up to f32
+    // noise on either side, so the block is the face rounded, less one (the face's floor is the air above the block). One
+    // block a column, a crater one deep. A chest is a player's, so the smash leaves it.
     for (let x = minX; x <= maxX; x++) {
         for (let z = minZ; z <= maxZ; z++) {
             const dx = x + 0.5 - centerPos.x;
@@ -24,18 +27,10 @@ export const destroyVoxelsInRadius = (centerPos, radius, maxCount) => {
             if (dx * dx + dz * dz <= radius * radius) {
                 const groundY = getGround(x, z);
                 if (groundY !== null && !isNaN(groundY)) {
-                    const blockY = Math.floor(groundY);
+                    const blockY = Math.round(groundY) - 1;
                     const dy = blockY + 0.5 - centerPos.y;
-                    if (dx * dx + dy * dy + dz * dz <= radius * radius) {
-                        if (blockY > 1) {
-                            blocksToBreak.push({ x, y: blockY, z });
-                            if (blockY - 1 > 1) {
-                                const dy2 = blockY - 0.5 - centerPos.y;
-                                if (dx * dx + dy2 * dy2 + dz * dz <= radius * radius) {
-                                    blocksToBreak.push({ x, y: blockY - 1, z });
-                                }
-                            }
-                        }
+                    if (dx * dx + dy * dy + dz * dz <= radius * radius && blockY > 1 && !store.chests?.has(`${x}_${blockY}_${z}`)) {
+                        blocksToBreak.push({ x, y: blockY, z });
                     }
                 }
             }
@@ -58,9 +53,10 @@ export const destroyVoxelsInRadius = (centerPos, radius, maxCount) => {
         const lx = b.x - cx * CHUNK_SIZE;
         const lz = b.z - cz * CHUNK_SIZE;
 
+        // A hazard's: its block_broken pays, counts and sounds nothing (world/mineAtHit.js creditBrokenBlock).
         worker.postMessage({
             type: 'update_block',
-            payload: { cx, cz, x: lx, y: b.y, z: lz, blockType: 0 }
+            payload: { cx, cz, x: lx, y: b.y, z: lz, blockType: 0, source: 'dragon' }
         });
 
         newBlocks.set(`${b.x}_${b.y}_${b.z}`, 0);
