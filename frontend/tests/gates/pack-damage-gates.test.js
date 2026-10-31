@@ -106,11 +106,11 @@ describe('C1 pack damage — the lockout is PER-ATTACKER', () => {
     expect(useGameStore.getState().playerHealth, 'a keyless caller lost its rate limit entirely').toBe(afterFirst);
   });
 
-  it('lastDamageTime is still stamped — the HUD and camera read it as a hit SIGNAL', () => {
-    // It was kept deliberately when it stopped being the rate limiter. If a future edit deletes it as
-    // "unused", the hit direction indicator and the camera shake lose their trigger.
-    useGameStore.setState({ lastDamageTime: 0 });
+  it('lastHitDir.t is stamped on every accepted hit — the HUD and the camera read it as the hit SIGNAL', () => {
+    // The camera controller edge-detects lastHitDir.t for its kick (Components.jsx isNewHit) and the damage indicator
+    // reads its angle. A hit that stamped nothing would land with no kick and no indicator.
+    useGameStore.setState({ lastHitDir: null });
     hit('mob-1');
-    expect(useGameStore.getState().lastDamageTime, 'the hit signal is no longer stamped').toBeGreaterThan(0);
+    expect(useGameStore.getState().lastHitDir?.t, 'the hit signal is no longer stamped').toBeGreaterThan(0);
   });
 });
