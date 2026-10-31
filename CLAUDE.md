@@ -12,8 +12,8 @@ Crafty was built by far weaker models. **Nothing is locked:** the game, architec
 changed or deleted as the command session judges best, with full autonomy. Ask Kevin nothing unless absolutely
 needed; install any tool that helps. A decision stands while it earns its place; reverse it with a new dated DECISIONS
 entry naming the one it supersedes. A lock label in a dated plan binds nothing. Kevin reviews one page, the Command
-Record (`docs/superpowers/command-record.html`), an eli5 page (big pictures, few words; DECISIONS 2026-10-31 item
-280), refreshed at every landing. Keep the public face and the docs SOTA.
+Record (`docs/superpowers/command-record.html`): an eli5 glance on top, a terse record below (DECISIONS 2026-10-31
+items 280, 281), refreshed at every landing. Keep the public face and the docs SOTA.
 
 **Record every non-routine decision in DECISIONS with its reason** (Kevin, 2026-10-27): a hard delete of a referenced
 file, a new dependency, an external send he approved, a reversal. A large player-facing deletion also records the lived
@@ -141,7 +141,8 @@ below these files.
 "Get Crafty's remote github surfaces updated too near the end of every session when you hit the context-watermark."
 At the watermark, unprompted: kill leaked test processes and list orphan preview tabs
 (`sh frontend/scripts/dev/close-preview-tabs.sh`, list only); green the tree or revert the unfinished unit; update the
-cursor, the registry, STATUS and the Command Record (stamp, republish in place, sync:
+cursor, the registry, STATUS and the Command Record (edit `docs/superpowers/command-record.json`, run
+`node frontend/scripts/ci/command-record.mjs`, then stamp, republish in place, sync:
 `frontend/scripts/ci/artifact-currency.mjs`); regenerate `memory/CHANGELOG.md`
 (`node frontend/scripts/ci/changelog.mjs --write`, in a committed tree with no merge in progress);
 check the README prose is still true; refresh the About line, topics and labels with
