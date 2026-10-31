@@ -182,7 +182,11 @@ in code; whether a player on a real iPhone or iPad hears the difference is Kevin
      retry deleted failed 2 of 2 at "the day track is not playing through a running context after a key press".
    - **Retries recorded.** The three retries of run 41212363395 are sightings on their rows:
      `REVIEW:e2e-flakes:touch-gear-tap-canvas-intercepts`, `REVIEW:w2d:forge-walk-settle` and
-     `REVIEW:e2e-flakes:mob-floor-roof-floor-infinity`.
+     `REVIEW:e2e-flakes:mob-floor-roof-floor-infinity`. So are the four of round 2's run 41219390962 (head
+     `3c3ac42d`): the dragon fight's burn and zone case red on all three tries, which failed the run
+     (`REVIEW:e2e-flakes:dragon-fight-burning-zone-never-reached`), and one retry each for mob-floor's roof case, heavy
+     melee's charged release (`REVIEW:e2e-flakes:heavy-melee-release-nothing`) and the Cut's hunger case
+     (`REVIEW:e2e-flakes:the-cut-pauseat-past`). music-bus.spec.js passed its first attempt there.
 
 ## 2026-10-31 — [LOOP] a bundle ceiling never rises to make a build green; the lookbook seam leaves the boot chunk
 
