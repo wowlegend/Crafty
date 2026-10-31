@@ -23,7 +23,8 @@
 
 **Decided by the L8 round-2 fixer under the standing grant** (DECISIONS 2026-10-28 item 14), from round 1's static and
 dynamic reviews of `acbee88c`, with the refresh call (item 343) made by the command session. Branch
-`fix/l8-save-slots`. Items 343-349 (round 1 used 330-342). Each stands while it earns its place.
+`fix/l8-save-slots`. Items 343-350 (round 1 used 330-342; lane L7's section, below, also numbers 330-336, and each
+section names its lane). Each stands while it earns its place.
 
 343. **A refresh continues the world the tab was playing, even an empty New World** (the command session's ruling on
    the dynamic review's F3). This supersedes item 334's cost sentence for a refresh: a New World played without earning
@@ -81,8 +82,25 @@ dynamic reviews of `acbee88c`, with the refresh call (item 343) made by the comm
    `holdsNothing` reads with `|| {}` (this build lowers each `?.` to a temporary and two null tests);
    `leaveTabNote` returns nothing, since nothing read it; `goToWorld`'s second parameter is the flag itself; and the
    storage listener calls `noteStorageWrite` directly. With `npm run build` on the round's code head `38e901e3` the
-   index chunk is 652,430 B, 70 B under, and bundle-budget passes. Nothing was moved out. The next lane to land
-   offsets what it adds beyond 70 B.
+   index chunk is 652,430 B, 70 B under, and bundle-budget passes. Nothing was moved out. (Its headroom is superseded
+   by item 350: main's lane L7 landed while round 2 was in CI.)
+350. **The build target is Vite 6's default with Chrome and Edge at 91, so `?.` ships as written**
+   (`frontend/vite.config.js` `build.target`; the fixer's call, made without a ruling and recorded in the round's
+   QUESTION.md). Main's lane L7
+   landed while round 2 ran in CI and added 892 B to the index chunk, and the merged tree built it at 653,322 B, 822 B
+   over the ceiling, which is not raised (item 282). Vite 6's default target (`'modules'`: es2020, edge88, firefox78,
+   chrome87, safari14, as Vite's own Vite 7 announcement lists it) makes esbuild 0.25 lower every optional chain to a
+   temporary and two null tests, because esbuild's table starts optional chaining at Chrome and Edge 91 (measured:
+   `esbuild.transformSync('x=a?.b', { target })` keeps `?.` for chrome91, safari14 and firefox78 and lowers it for
+   chrome87, chrome90 and edge88). The compat-table data shows Chrome 80 to 90 failing only one optional-chaining test,
+   "spread parameters after optional chaining" (`fn?.(...[], 1)`), and passing the other four. A scan of every built
+   chunk found 176 optional calls and none with a spread argument, so Chrome and Edge 87 to 90 run this build's `?.`
+   correctly, and Firefox and Safari already ran it natively at their listed versions. The same build with the target
+   moved reads index 646,192 B (7,130 B less), r3f 688,507 B (444 B less), panelBundle 61,539 B (515 B less); three and
+   rapier are unchanged. So the index chunk is 6,308 B under the unchanged ceiling at this head, and that headroom is
+   the next lanes' (item 282's lookbook move left its freed bytes as headroom too). Vite 7's own default moves Chrome
+   and Edge to 107. Not covered: a future optional call that spreads its arguments would misbehave on Chrome and Edge
+   87 to 90 (REVIEW:l8:optional-call-spread-chrome-87-90, LOW). One line to reverse.
 
 ---
 
