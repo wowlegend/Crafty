@@ -19,6 +19,62 @@
 
 ---
 
+## 2026-10-31 (lane L6, round 3) — [LOOP] the index chunk's ceiling stays at 652,500 B: item 278's raise is withdrawn and the bytes are cut from code nothing reads; the Delete Tool's notice states its rule
+
+**Ruled by the command session** (consistent with lane L3's): `bundle-budget.mjs` ("RAISING one to make a red build go
+green is a reward-hack and is forbidden") and `CLAUDE.md`, "Never weaken to pass", forbid what item 278 did. Round 2's two
+reviews had landed (no correctness defect in scope); this round is the fixer's short pass on three points. Branch
+`fix/l6-build-tools`.
+
+279. **Item 278 is superseded: the ceiling is back at 652,500 B and the lane fits it.** The raise (`0bfbfc11`) is undone by
+   a new commit that sets `max` to 652,500 again, not by a reset. The index chunk, built with `vite build` on a clean
+   archive of each commit, went 654,131 B (the merge of main, `4be3e177`, whose changes touch no `frontend/src` file)
+   to 653,038 B (`983d5711`), 652,253 B (`1152d96c`) and 652,236 B at the head of the notice fix (`2865a75b`): 1,895 B
+   cut from the first figure, 264 B under the ceiling. `983d5711`'s message says 652,964 B; that figure is the tree with
+   `payBrokenBlock` folded as well, which is a later commit; the figures here are the measured ones.
+   - **What was cut, each name word-bounded across `frontend/src`, `frontend/tests` and `frontend/scripts` at `fdcd9f62`
+     with no use but its own definition (`git grep -nw <name> fdcd9f62 -- frontend/src frontend/tests frontend/scripts`
+     returns that line alone; at HEAD it returns nothing):**
+     - `useGameStore.jsx`, 13 setters: `setPlayerRigidBodyRef`, `setOnSpellCast`, `setOnBlockPlace`, `setOnBlockBreak`,
+       `setOnChestOpen`, `setOnPlayerDeath`, `setCheckNearbyChest`, `setOpenNearbyChest`, `setGameCamera`,
+       `setCastSpell`, `setChestInventory`, `setInventory`, `setLastDamageTime`. The state each wrote is still read and
+       still written with `setState`.
+     - `checkNearbyChest`, the store key and QuestSystem's one write of it: published, read by nothing anywhere
+       (`openNearbyChest`, which calls the same `checkChestProximity`, is read by `input/talk.js` and stays).
+     - `SoundManager.jsx` `useGameSounds`, 7 members: `playFootstep`, `playRoar`, `playGrab`, `playHurl`, `playSlam`,
+       `playAnvilHit`, `playBind`. The footsteps and the Aspect verbs play through the store's `playSpatialSound` with the
+       same registry names.
+     - One copy of each repeated helper: the headroom guard that seven voices spelled out (`audio/headroom.js limitPeak`,
+       with `src/audio/headroom.test.js`, which the guard never had: its function, that all ten voices call it with their
+       limit, and 300 seeded slams within 0.98), `seededUnit` (`spellVfx.jsx` kept `spellGeometry.js`'s), the resize
+       subscriber (`useSpellAnchor.js` kept `hudLayout.js`'s `subscribeResize`), and `payBrokenBlock` as a batch of one.
+     - Measured separately on the tree: the setters and the sound members 1,038 B, `checkNearbyChest` about 55 B, the
+       `payBrokenBlock` fold about 74 B, the limiter 619 B, `seededUnit` and the subscriber 166 B.
+   - **Looked for and not found:** knip and `knip --production` were clean before and after; no i18n key is dead
+     (`scripts/ci/i18n-dead-keys.mjs`: 322 keys, 0 dead); of the 103 keys the source publishes with `setState`, none but the one
+     above is read by nothing; every registry name in `VOICES` is still named at a trigger. Exact-clone and
+     object-member scans over the index chunk's sources found the duplicates above and no more that were safe to take.
+   - **Left alone.** Lane L3's boss and squad paths: `setDamageBoss`, `setGetBossPosition` and `setBossActive` are
+     unread setters too, and L3 is cutting there. Lane L12 owns the rest of the dead setters. Left in `useGameStore.jsx`
+     for whoever owns it next (about 350 B, a behaviour-preserving extraction, outside "unread setters"): `equipItem` and
+     `unequipItem` repeat a bag-return block and a stats block. `getPlayerXP` and `isBeastFormActive` are read only by tests.
+     The voice factories' shared buffer preamble (29 copies) is not folded: `src/audio/synthVoices.test.js` asserts the
+     floored frame count at 20 or more sites in the source, a gate that would need rewriting for a few hundred bytes.
+   - **The next lane that grows this chunk meets the ceiling at 264 B of room and says why**, as item 278 meant to.
+   - **The notice (round 2's static finding 3, confirmed).** A Delete Tool click that took nothing said "takes only blocks
+     you placed", which is untrue of a chest the player placed and of a block placed a moment ago whose record is written when
+     the worker answers. It now states the rule and the exception ("The Delete Tool takes back only blocks you placed, never a
+     chest"; zh 删除工具只拆你放的方块，不拆箱子), as `deny.deleteRule`, and a click made while an edit is owed its answer says
+     nothing (`cellEdits.editsOwed`); the next click takes the block. This amends item 271's wording only. Gated in
+     `tests/gates/build-edit-order-gates.test.js` (a placed chest stays and nothing reaches the worker; an owed placement is
+     silent and then taken; the ground still says it) and the table gate's text. Nine real mutants red, one identity mutant green.
+   - **Found, not fixed** (registry): REVIEW:l6:chest-indicator-interval-after-teardown (one unhandled `window is not defined`
+     from ChestIndicator's poll in a related-test run at commit time, 67 files green, gone on the next run).
+   - **Not checked:** no local e2e or browser; the silence while an answer is owed is a few frames on a busy worker, which the
+     unit gate drives with the worker's replies held back and the real device has not shown.
+
+---
+
 ## 2026-10-31 (lane L6, round 2) — [LOOP] the record and the worker agree whatever lands before an answer, the Delete Tool takes back only the player's own blocks in one answer, and every label says the size it builds
 
 **Decided by the command session** under the standing grant (DECISIONS 2026-10-28 item 14), on lane L6's round-1
@@ -100,7 +156,7 @@ reviews (static finding 1 and dynamic P8, required; static 2 to 5; dynamic's fou
    was dug empty holds the player about 10 s, then sends them to the origin spawn; the load path's to fix, and with
    item 271 the Delete Tool no longer empties a column cheaply); the mob-floor.spec.js:227 and ember.spec.js:202
    sightings on PR #68's run, each on its row.
-278. **The index chunk's ceiling goes from 652,500 B to 655,000 B** (`frontend/scripts/ci/bundle-budget.mjs`), in its
+278. **(Superseded by item 279: the raise is withdrawn and the ceiling is 652,500 B again.) The index chunk's ceiling goes from 652,500 B to 655,000 B** (`frontend/scripts/ci/bundle-budget.mjs`), in its
    own commit. Measured with `vite build` on each tree: main at `8579918e` 649,342 B; lane L6's round 1 on it
    (`aa523a49`) 651,326 B, +1,984 B; main at `feb456e3` (lane L9 landed) 651,328 B, +1,986 B; this lane's head on it
    653,949 B, so round 2 adds about 637 B (the edit-order ledger, the batched removal's payment, the debris choice;
