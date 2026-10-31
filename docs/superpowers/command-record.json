@@ -23,23 +23,23 @@
     "bugs": {
       "small": 33,
       "bigCount": 8,
-      "fixedCount": 7,
+      "fixedCount": 8,
       "total": "40+ real bugs",
       "big": "8 big ones",
-      "fixed": "7 fixed",
-      "busy": "1 being fixed",
-      "alt": "Over 40 real bugs found, 8 of them big. Seven big ones are fixed and one is being fixed.",
-      "caption": "The hunt you asked for. Last big one left: saving your squad."
+      "fixed": "8 fixed",
+      "busy": "0 left",
+      "alt": "Over 40 real bugs found, 8 of them big. All 8 big ones are fixed; none is being fixed now.",
+      "caption": "The hunt you asked for. The last big one, saving your squad, is fixed."
     },
     "now": {
       "cells": [
-        { "pic": "chest", "tag": "Done", "state": "ok", "lines": ["Loot and chests", "tidy up"] },
-        { "pic": "shrine", "tag": "Now", "state": "run", "lines": ["Remembers your", "squad and shrines"] },
-        { "pic": "wall", "tag": "Now", "state": "run", "lines": ["Build tools do", "what they say"] },
-        { "pic": "slots", "tag": "Next", "state": "idle", "lines": ["Better save", "slots"] }
+        { "pic": "wall", "tag": "Done", "state": "ok", "lines": ["Build tools do", "what they say"] },
+        { "pic": "shrine", "tag": "Done", "state": "ok", "lines": ["Remembers your", "squad and shrines"] },
+        { "pic": "chest", "tag": "Now", "state": "run", "lines": ["Rewards match", "what happened"] },
+        { "pic": "slots", "tag": "Now", "state": "run", "lines": ["Better save", "slots"] }
       ],
-      "alt": "Done: loot and chests tidy up. Now: the game remembers your squad and shrines; build tools do what they say. Next: better save slots.",
-      "caption": "One just shipped, two are being built, and save slots come next."
+      "alt": "Done: build tools do what they say; the game remembers your squad and shrines. Now: rewards match what really happened; better save slots. Also being built: sound on iPhone and iPad, and better tests.",
+      "caption": "Two just shipped. Also being built: iPhone and iPad sound, and better tests."
     },
     "you": {
       "cols": [
@@ -59,6 +59,10 @@
       "sub": "Every merged change since 27 October, plus a few direct ones. Days are UTC.",
       "rows": [
         { "day": "2026-10-31", "rows": [
+          { "pr": 69, "text": "Each world now saves your squad and the shrines you reached.", "src": "gh pr list --state merged: #69 merged 13:21:52Z (main 7250aa22), title 'the store owns per-world state'; DECISIONS items 254-255; registry AUDIT:lane:L3-store-owns-world-state closed; Production deploy 13:22:12Z (gh api deployments)" },
+          { "pr": 68, "text": "Build tools do what they say; the Delete Tool removes only blocks you placed.", "src": "gh: #68 merged 12:26:53Z, title 'L6: build tools that do what they say'; DECISIONS items 230-237, 271; registry AUDIT:lane:L6-build-tools closed" },
+          { "commit": "2ab00451", "text": "Test-only code leaves the player's first download, which is 6,004 bytes smaller.", "src": "git log 2ab00451 (a537288d moved the code); DECISIONS item 282; rebuilt here with vite build: index chunk 651,328 B on 86f6b5dc, 645,324 B on 2ab00451; Production deploy 11:59:36Z" },
+          { "commit": "86f6b5dc", "text": "Command Record version 14: pictures on top, a short record of details below.", "src": "git log 608c7612, afad131c, 86f6b5dc; DECISIONS item 281 ('Version 14, the first of this shape'); session-truth 10:21:53Z (published in place); Production deploy 10:45:26Z" },
           { "commit": "feb456e3", "text": "Command Record versions 12 and 13: pictures on top replace the long text.", "src": "git log feb456e3 (002b0b9e v12, 2cc12308 v13); Production deploy 09:31:13Z (gh api deployments)" },
           { "pr": 67, "text": "Quest chests follow you, dropped items expire, and spells keep their newest areas.", "src": "gh pr list --state merged: #67 merged 08:55Z; session-truth 08:55Z (L9 landed)" },
           { "pr": 65, "text": "Every world switch reloads into that world; the title offers Continue.", "src": "gh: #65 merged 07:09Z; DECISIONS items 200-201" },
@@ -146,7 +150,7 @@
           { "state": "fixed", "text": "Loading a world could drop you into a cave or out of the world.", "lane": "L2", "pr": 65, "src": "registry AUDIT:desync:load-drops-player-out-of-world, HIGH, closedBy 92120514 (PR #65)" },
           { "state": "fixed", "text": "Recovering from a graphics crash wiped your quests and revived a slain dragon.", "lane": "L2", "pr": 65, "src": "registry AUDIT:debt:resume-clobbers-quests-and-boss, HIGH, closedBy 92120514 (PR #65)" },
           { "state": "fixed", "text": "After a load, an unhittable dragon chased a level-1 hero.", "lane": "L2", "pr": 65, "src": "registry AUDIT:softlocks:boss-hook-ignores-world-load, HIGH, closedBy 92120514 (PR #65)" },
-          { "state": "open", "text": "Your bound squad is never saved.", "lane": "L3", "pr": 69, "src": "registry AUDIT:verbs:squad-not-saved-and-leaks-across-worlds, HIGH, open; PR #69 open" },
+          { "state": "fixed", "text": "Your bound squad is never saved.", "lane": "L3", "pr": 69, "src": "registry AUDIT:verbs:squad-not-saved-and-leaks-across-worlds, HIGH, closedBy 7f670f28 (PR #69)" },
           { "state": "fixed", "text": "On touch, the Settings gear never opened.", "lane": "L1", "pr": 62, "src": "registry AUDIT:input:touch-settings-gear-unreachable, HIGH, closedBy 9b89e569 (PR #62)" },
           { "state": "fixed", "text": "Two browser tabs on one world overwrote each other's progress.", "lane": "L2", "pr": 65, "src": "registry AUDIT:persistence:two-tabs-clobber-world, raised MED to HIGH, closedBy 66d83473 (PR #65)" }
         ] },
@@ -161,16 +165,16 @@
         "rows": [
           { "lane": "L1", "text": "Quick wins: iPhone death crash, Show Stats on touch, effects setting restored, Settings gear.", "state": "landed", "pr": 62, "src": "registry AUDIT:lane:L1-quick-wins closed; gh #62 merged" },
           { "lane": "L2", "text": "Every world switch reloads into that world; Continue on the title.", "state": "landed", "pr": 65, "src": "registry AUDIT:lane:L2-boot-is-the-only-load closed; gh #65 merged" },
-          { "lane": "L3", "text": "Each world keeps its own squad and shrines, and they are saved.", "state": "in flight", "pr": 69, "src": "registry AUDIT:lane:L3-store-owns-world-state open; gh #69 open" },
+          { "lane": "L3", "text": "Each world keeps its own squad and shrines, and they are saved.", "state": "landed", "pr": 69, "src": "registry AUDIT:lane:L3-store-owns-world-state closed (f86b7a06); gh #69 merged" },
           { "lane": "L4", "text": "Falling out of the world is judged at its floor, with one shared recovery.", "state": "landed", "pr": 66, "src": "registry AUDIT:lane:L4-void-line-and-spawn-recovery closed; gh #66 merged" },
           { "lane": "L5", "text": "One rule decides when keys and taps act on the game.", "state": "landed", "pr": 63, "src": "registry AUDIT:lane:L5-input-live-predicate closed; gh #63 merged" },
-          { "lane": "L6", "text": "Build tools that do what they say.", "state": "in flight", "pr": 68, "src": "registry AUDIT:lane:L6-build-tools open; gh #68 open" },
-          { "lane": "L7", "text": "Rewards, sounds and tallies follow what actually happened, not the click.", "state": "queued", "src": "registry AUDIT:lane:L7-credit-from-the-effect open" },
-          { "lane": "L8", "text": "Save slots: one way to save, old ones cleared, failures shown, two-tab clashes handled.", "state": "queued", "src": "registry AUDIT:lane:L8-save-slot-lifecycle open" },
+          { "lane": "L6", "text": "Build tools that do what they say.", "state": "landed", "pr": 68, "src": "registry AUDIT:lane:L6-build-tools closed (f27deacb); gh #68 merged" },
+          { "lane": "L7", "text": "Rewards, sounds and tallies follow what actually happened, not the click.", "state": "in flight", "src": "registry AUDIT:lane:L7-credit-from-the-effect open; session-truth 13:23:19Z (launched from main 7250aa22); worktree l7-credit on fix/l7-credit-from-effect; no PR yet" },
+          { "lane": "L8", "text": "Save slots: one way to save, old ones cleared, failures shown, two-tab clashes handled.", "state": "in flight", "src": "registry AUDIT:lane:L8-save-slot-lifecycle open; session-truth 13:23:19Z (launched from main 7250aa22); worktree l8-save-slots on fix/l8-save-slots; no PR yet" },
           { "lane": "L9", "text": "Quest chests, dropped items and spell areas no longer pile up forever.", "state": "landed", "pr": 67, "src": "registry AUDIT:lane:L9-pools-with-lifetimes closed; gh #67 merged" },
-          { "lane": "L10", "text": "Sound recovers on Apple devices; music joins the shared volume control; your device run.", "state": "queued", "src": "registry AUDIT:lane:L10-apple-audio-and-device-run open" },
+          { "lane": "L10", "text": "Sound recovers on Apple devices; music joins the shared volume control; your device run.", "state": "in flight", "pr": 70, "src": "registry AUDIT:lane:L10-apple-audio-and-device-run open; session-truth 12:28:04Z (launched); gh pr list: #70 open" },
           { "lane": "L11", "text": "The game stops disagreeing with itself about the sea, shrines, sight and loot.", "state": "landed", "pr": 64, "src": "registry AUDIT:lane:L11-one-fact-one-predicate closed; gh #64 merged" },
-          { "lane": "L12", "text": "Checks that can really see failures, since some passed while bugs were live.", "state": "queued", "src": "registry AUDIT:lane:L12-instruments-that-can-see open" }
+          { "lane": "L12", "text": "Checks that can really see failures, since some passed while bugs were live.", "state": "in flight", "pr": 71, "src": "registry AUDIT:lane:L12-instruments-that-can-see open; session-truth 12:28:04Z (launched); gh pr list: #71 open" }
         ]
       }
     },
@@ -178,9 +182,10 @@
       "title": "Calls made",
       "sub": "A selection of the calls made, each with its number in the decision record.",
       "rows": [
-        { "item": "281", "text": "This page: pictures on top, short details below, built from one data file.", "src": "this commit; Kevin 2026-10-31 (session-truth 09:31Z)" },
-        { "item": "271", "text": "The Delete Tool removes only blocks you placed, refunded as themselves.", "src": "DECISIONS item 271 on origin/fix/l6-build-tools (fdcd9f62, pushed; PR #68, in flight); session-truth 2026-10-31T08:49Z" },
-        { "item": "250", "text": "A save wiped by the old crash recovery gets its slain dragon back, once.", "src": "DECISIONS item 250 on origin/fix/l3-store-owns-world (PR #69, in flight)" },
+        { "item": "290", "text": "A dragon save damaged by the old crash recovery loads slain, on every load.", "src": "DECISIONS item 290 (main, PR #69); replaces item 250's once-only repair, which item 290 says it passes over for some saves" },
+        { "item": "282", "text": "The size limit on the first download never rises; code players never run moves out.", "src": "DECISIONS item 282 (main, 2ab00451): supersedes items 257 and 278, which raised the limit; item 279 puts it back" },
+        { "item": "281", "text": "This page: pictures on top, short details below, built from one data file.", "src": "DECISIONS item 281 (main, 608c7612, 86f6b5dc); Kevin 2026-10-31 (session-truth 09:31Z)" },
+        { "item": "271", "text": "The Delete Tool removes only blocks you placed, refunded as themselves.", "src": "DECISIONS item 271 (main, PR #68 merged 12:26:53Z); session-truth 2026-10-31T08:49Z" },
         { "item": "213-214", "text": "A body stuck in rock gets its own recovery, never a trip to spawn.", "src": "DECISIONS items 213-214 (main)" },
         { "item": "207", "text": "You fall out of the world at its real floor, not 10 blocks above it.", "src": "DECISIONS item 207 (main)" },
         { "item": "200-201", "text": "Every world switch reloads into that world; the title offers Continue.", "src": "DECISIONS items 200-201 (main); supersedes B2a's 'nothing resumes at boot'" },
@@ -200,22 +205,20 @@
       "title": "In flight and next",
       "sub": "Being built first, then queued work; no order is promised.",
       "rows": [
-        { "lane": "L3", "text": "Each world keeps its own squad and shrines, and they are saved.", "state": "in flight", "pr": 69, "src": "gh pr view 69: open, head 78f3dac1, CI running at 09:40Z" },
-        { "lane": "L6", "text": "Build tools do what they say; its second round is under way.", "state": "in flight", "pr": 68, "src": "gh pr view 68: open, ci ok green on aa523a49; session-truth 08:49Z (round 2 launched)" },
-        { "lane": "L7", "text": "Rewards and sounds come from what happened, not from the click.", "state": "queued", "src": "registry AUDIT:lane:L7-credit-from-the-effect; deep audit section 4" },
-        { "lane": "L8", "text": "Save slots: one way to save, old slots cleared, a notice when saving fails.", "state": "queued", "src": "registry AUDIT:lane:L8-save-slot-lifecycle; deep audit section 4" },
-        { "lane": "L10", "text": "Sound recovers after interruptions on Apple devices; music joins the shared volume control.", "state": "queued", "src": "registry AUDIT:lane:L10-apple-audio-and-device-run; deep audit section 4" },
-        { "lane": "L12", "text": "Better checks: one report of which code the tests reach, and errors get logged.", "state": "queued", "src": "registry AUDIT:lane:L12-instruments-that-can-see; deep audit section 4" },
+        { "lane": "L7", "text": "Rewards and sounds come from what happened, not from the click.", "state": "in flight", "src": "registry AUDIT:lane:L7-credit-from-the-effect open; session-truth 13:23:19Z (launched from main 7250aa22); no PR yet" },
+        { "lane": "L8", "text": "Save slots: one way to save, old slots cleared, a notice when saving fails.", "state": "in flight", "src": "registry AUDIT:lane:L8-save-slot-lifecycle open; session-truth 13:23:19Z (launched from main 7250aa22); no PR yet" },
+        { "lane": "L10", "text": "Sound recovers after interruptions on Apple devices; music joins the shared volume control.", "state": "in flight", "pr": 70, "src": "gh pr list: #70 open at 13:29Z, created 13:01:31Z; session-truth 12:28:04Z (launched)" },
+        { "lane": "L12", "text": "Better checks: one report of which code the tests reach, and errors get logged.", "state": "in flight", "pr": 71, "src": "gh pr list: #71 open at 13:29Z, created 13:18:22Z; session-truth 12:28:04Z (launched)" },
         { "lane": "Gaps", "text": "Corners the audit never reached: hurl, snare, the Forge, quest givers.", "state": "queued", "src": "registry AUDIT:critic:coverage-gaps (MED, open)" },
         { "lane": "W3-A", "text": "The First Night: a siege marches on your Hearth until a golden dawn.", "state": "queued", "src": "registry MASTERPIECE:encounters-and-a-siege-that (W3-A, open); retired long form 002b0b9e 'What comes next'" }
       ]
     },
     "health": {
       "title": "Health",
-      "sub": "Read 31 October, 09:36 UTC; the count is made when the page is written.",
+      "sub": "Read 31 October, 13:29 UTC; the count is made when the page is written.",
       "rows": [
-        { "label": "Checks", "text": "All checks passed on feb456e3, the newest change when read, at 09:31 UTC.", "src": "gh run list --branch main --workflow ci.yml: 41188992830 success on feb456e3" },
-        { "label": "Live site", "text": "Served feb456e3 from 09:31 UTC on both web addresses, as read at 09:36.", "src": "gh api deployments (Production 7456868114, success 09:31:13Z); curl crafty-sand and crafty-game: both index-Biky60AC.js at 09:36Z" }
+        { "label": "Checks", "text": "All checks passed on 7250aa22, the newest change when read, at 13:22 UTC.", "src": "gh run list --branch main --workflow ci.yml: 41205232641 success on 7250aa22 (created 13:21:53Z, updated 13:22:44Z), read 13:29Z; git ls-remote origin main is 7250aa22" },
+        { "label": "Live site", "text": "Served 7250aa22 from 13:22 UTC on both web addresses, as read at 13:29.", "src": "gh api deployments (Production 7459159038, success 13:22:12Z); curl crafty-sand and crafty-game: both index-DVI5kV9R.js at 13:29Z; that chunk (649,549 B) equals a local vite build of 7250aa22 once chunk-name hashes are masked" }
       ]
     },
     "waiting": {
