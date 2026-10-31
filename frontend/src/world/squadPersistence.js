@@ -2,11 +2,16 @@ import { Vector3 } from 'three';
 import { ecs, alliesQuery } from '../ecs/world';
 import { rosterOf, allyFor, sameRoster } from '../game/squadRoster.js';
 import { FOLLOW_RING } from '../game/squadAI.js';
+import { groundForMover } from '../game/mobFloor.js';
+import { BASE_CAPSULE } from '../game/beasts.js';
 
 // Where a rebuilt creature stands: just outside the squad's follow ring around the player, spread by its place in the
-// roster, so the squad's first steps walk it in and stand it on the ground (world/SquadAISystem.jsx ground-snaps every
-// step it orders; a creature inside the ring holds still and would keep the height it was put at).
+// roster, so the squad's first steps walk it in (world/SquadAISystem.jsx ground-snaps every step it orders), and half a
+// block over its own floor as those steps put it, found from the player's feet; where no floor is known yet (a boot,
+// before the terrain), over the player's feet. Just after a load the store's playerPosition is the save's, the base
+// capsule's centre (game/saveSchema.js savePosition), so the feet are its lower end.
 const REBUILD_M = FOLLOW_RING.max + 1;
+const CENTRE_OVER_FEET = BASE_CAPSULE.halfHeight + BASE_CAPSULE.radius;
 let minted = 0;
 
 /**
@@ -28,12 +33,14 @@ export function installSquadPersistence(store) {
     rebuilding = true;
     try {
       for (const a of [...alliesQuery.entities]) ecs.remove(a);
-      const { squad, playerPosition } = store.getState();
+      const { squad, playerPosition, getMobFloor, getMobGroundLevel } = store.getState();
       const p = playerPosition || { x: 0, y: 18, z: 0 };
+      const feet = p.y - CENTRE_OVER_FEET;
       squad.forEach((entry, i) => {
         const angle = (i / squad.length) * Math.PI * 2;
-        const at = new Vector3(p.x + Math.cos(angle) * REBUILD_M, p.y, p.z + Math.sin(angle) * REBUILD_M);
-        ecs.add(allyFor(entry, `ally_${++minted}`, at));
+        const x = p.x + Math.cos(angle) * REBUILD_M, z = p.z + Math.sin(angle) * REBUILD_M;
+        const floor = groundForMover(getMobFloor, getMobGroundLevel, x, z, feet, true);
+        ecs.add(allyFor(entry, `ally_${++minted}`, new Vector3(x, (Number.isFinite(floor) ? floor : feet) + 0.5, z)));
       });
     } finally {
       rebuilding = false;

@@ -141,6 +141,40 @@ describe('a bound squad comes back with its world, at the player, and a new worl
     p.unload();
   }, 60000);
 
+  it('a rebuilt creature starts just outside the follow ring at the player\'s feet, and on its own floor where that is known', async () => {
+    vi.resetModules();
+    const { useGameStore } = await import('../../src/store/useGameStore');
+    const { alliesQuery } = await import('../../src/ecs/world.js');
+    const { installSquadPersistence } = await import('../../src/world/squadPersistence.js');
+    const { FOLLOW_RING } = await import('../../src/game/squadAI.js');
+    // A load's player position is the save's: the base capsule's centre (game/saveSchema.js savePosition), 0.9 m over its
+    // lower end, so these feet are at 20.05. The camera would be 0.67 m over the centre.
+    const CENTRE = { x: 40, y: 20.95, z: -12 };
+    const FEET = 20.05;
+    const squad = [{ type: 'zombie' }, { type: 'skeleton' }, { type: 'dreadweaver' }];
+    useGameStore.setState({ squad, playerPosition: CENTRE, getMobFloor: null, getMobGroundLevel: null });
+    let off = installSquadPersistence(useGameStore);
+    expect(alliesQuery.entities.map((a) => a.type), 'SETUP: the roster was not rebuilt').toEqual(squad.map((e) => e.type));
+    for (const a of alliesQuery.entities) {
+      expect(Math.hypot(a.position.x - CENTRE.x, a.position.z - CENTRE.z), `${a.type} is not just outside the follow ring`)
+        .toBeCloseTo(FOLLOW_RING.max + 1, 6);
+      expect(a.position.y, `${a.type}, no floor known: not standing at the player's feet`).toBeCloseTo(FEET + 0.5, 6);
+    }
+    off();
+    // The floor known, and different in two columns: each creature stands half a block over its own (SquadAISystem.jsx).
+    const askedFrom = [];
+    const floorAt = (x) => (x > CENTRE.x ? 18 : 21);
+    useGameStore.setState({ getMobFloor: (x, z, feet) => { askedFrom.push(feet); return floorAt(x); } });
+    off = installSquadPersistence(useGameStore);
+    expect(alliesQuery.entities.filter((a) => a.position.x > CENTRE.x), 'SETUP: no creature on the lower column').toHaveLength(1);
+    for (const a of alliesQuery.entities) {
+      expect(a.position.y, `${a.type} is not on its floor`).toBeCloseTo(floorAt(a.position.x) + 0.5, 6);
+    }
+    expect(askedFrom, 'the floor was not looked for from the player\'s feet').toHaveLength(3);
+    for (const f of askedFrom) expect(f).toBeCloseTo(FEET, 6);
+    off();
+  });
+
   it('in one page: the cap\'s release writes the roster, a load in place stands the loaded squad, and a new world none', async () => {
     const p = await pageLoad();
     act(() => { p.useGameStore.setState({ playerPosition: SPOT }); });
