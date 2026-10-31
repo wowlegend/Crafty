@@ -26,6 +26,7 @@ import { buildSaveData } from '../../src/game/saveSchema.js';
  *   P4 plausible-wrong: a named world counts as a placeholder            -> RED expected
  *   P5 plausible-wrong: the oldest empties are kept, not the newest      -> RED expected
  *   P6 a failed write is not retried after the prune                      -> RED expected (the quota case)
+ *   P8 the saves are deleted when the index write is refused              -> RED expected
  *   P0 identity (a comment edit)                                         -> must SURVIVE
  */
 
@@ -116,6 +117,19 @@ describe('a browser keeps at most KEEP_EMPTY_SLOTS empty placeholder worlds', ()
     onDisk('local_b');
     session(null);
     expect(S()._sessionWorldId, 'with every world empty, the visit did not continue the newest').toBe('local_b');
+  });
+
+  it('a prune whose index write is refused deletes no save, so the index never names a world it lost', () => {
+    for (let i = 0; i < 5; i++) onDisk(`local_orphan_${i}`);
+    const real = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (k, v) {
+      if (k === 'crafty_world_saves') throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+      return real.call(this, k, v);
+    });
+    expect(worldSaves.pruneEmptySlots(null), 'a prune whose index write failed reported worlds deleted').toEqual([]);
+    const listed = slots().map((w) => w.id);
+    expect(listed.length, 'SETUP: the index lost its entries').toBe(5);
+    expect(listed.filter((id) => !localStorage.getItem(`crafty_world_save_${id}`)), 'the index names worlds whose saves were deleted').toEqual([]);
   });
 
   it('a save that fails for room deletes every other empty placeholder world and lands; nothing is said', async () => {

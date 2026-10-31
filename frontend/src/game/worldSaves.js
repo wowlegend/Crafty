@@ -88,10 +88,10 @@ export function pruneEmptySlots(keepId = null, keep = KEEP_EMPTY_SLOTS) {
     if (w.id === keepId || kept < keep) kept++;
     else gone.push(w.id);
   }
-  if (gone.length) {
-    saveIndex(listWorlds().filter((w) => !gone.includes(w.id)));
-    for (const id of gone) safeRemove(BLOB_PREFIX + id);
-  }
+  // The index first, and the saves only once it has landed: a refused index write must not leave it naming saves that
+  // are gone (a storage that refuses every write still removes).
+  if (!gone.length || !saveIndex(listWorlds().filter((w) => !gone.includes(w.id)))) return [];
+  for (const id of gone) safeRemove(BLOB_PREFIX + id);
   return gone;
 }
 
